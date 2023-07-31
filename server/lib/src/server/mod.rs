@@ -1479,13 +1479,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
     /// Initiate a domain rename process. This is generally an internal function but it's
     /// exposed to the cli for admins to be able to initiate the process.
-    pub fn domain_rename(&mut self, new_domain_name: &str) -> Result<(), OperationError> {
-        // We can't use the d_info struct here, because this has the database version of the domain
-        // name, not the in memory (config) version. We need to accept the domain's
-        // new name from the caller so we can change this.
-        unsafe { self.domain_rename_inner(new_domain_name) }
-    }
-
+    ///
     /// # Safety
     /// This is UNSAFE because while it may change the domain name, it doesn't update
     /// the running configured version of the domain name that is resident to the
@@ -1495,10 +1489,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     /// that impacts spns, but in the future we may need to reconsider how this is
     /// approached, especially if we have a domain re-name replicated to us. It could
     /// be that we end up needing to have this as a cow cell or similar?
-    pub(crate) unsafe fn domain_rename_inner(
-        &mut self,
-        new_domain_name: &str,
-    ) -> Result<(), OperationError> {
+    pub fn danger_domain_rename(&mut self, new_domain_name: &str) -> Result<(), OperationError> {
         let modl = ModifyList::new_purge_and_set("domain_name", Value::new_iname(new_domain_name));
         let udi = PVUUID_DOMAIN_INFO.clone();
         let filt = filter_all!(f_eq("uuid", udi));
@@ -1830,12 +1821,10 @@ mod tests {
         // Start a new write
         let mut server_txn = server.write(duration_from_epoch_now()).await;
         // delete the class
-        let de_class = unsafe {
-            DeleteEvent::new_internal_invalid(filter!(f_eq(
-                "classname",
-                PartialValue::new_class("testclass")
-            )))
-        };
+        let de_class = DeleteEvent::new_internal_invalid(filter!(f_eq(
+            "classname",
+            PartialValue::new_class("testclass")
+        )));
         assert!(server_txn.delete(&de_class).is_ok());
         // Commit
         server_txn.commit().expect("should not fail");
@@ -1908,12 +1897,10 @@ mod tests {
         // Start a new write
         let mut server_txn = server.write(duration_from_epoch_now()).await;
         // delete the attr
-        let de_attr = unsafe {
-            DeleteEvent::new_internal_invalid(filter!(f_eq(
-                "attributename",
-                PartialValue::new_iutf8("testattr")
-            )))
-        };
+        let de_attr = DeleteEvent::new_internal_invalid(filter!(f_eq(
+            "attributename",
+            PartialValue::new_iutf8("testattr")
+        )));
         assert!(server_txn.delete(&de_attr).is_ok());
         // Commit
         server_txn.commit().expect("should not fail");

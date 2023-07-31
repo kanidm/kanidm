@@ -624,15 +624,13 @@ mod tests {
 
         let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await;
         // make the admin a valid posix account
-        let me_posix = unsafe {
-            ModifyEvent::new_internal_invalid(
-                filter!(f_eq("name", PartialValue::new_iname("admin"))),
-                ModifyList::new_list(vec![
-                    Modify::Present(AttrString::from("class"), Value::new_class("posixaccount")),
-                    Modify::Present(AttrString::from("gidnumber"), Value::new_uint32(2001)),
-                ]),
-            )
-        };
+        let me_posix = ModifyEvent::new_internal_invalid(
+            filter!(f_eq("name", PartialValue::new_iname("admin"))),
+            ModifyList::new_list(vec![
+                Modify::Present(AttrString::from("class"), Value::new_class("posixaccount")),
+                Modify::Present(AttrString::from("gidnumber"), Value::new_uint32(2001)),
+            ]),
+        );
         assert!(idms_prox_write.qs_write.modify(&me_posix).is_ok());
 
         let pce = UnixPasswordChangeEvent::new_internal(UUID_ADMIN, TEST_PASSWORD);
@@ -1010,18 +1008,16 @@ mod tests {
             assert!(server_txn.qs_write.create(&ce).is_ok());
 
             // idm_people_read_priv
-            let me = unsafe {
-                ModifyEvent::new_internal_invalid(
-                    filter!(f_eq(
-                        "name",
-                        PartialValue::new_iname("idm_people_read_priv")
-                    )),
-                    ModifyList::new_list(vec![Modify::Present(
-                        AttrString::from("member"),
-                        Value::Refer(sa_uuid),
-                    )]),
-                )
-            };
+            let me = ModifyEvent::new_internal_invalid(
+                filter!(f_eq(
+                    "name",
+                    PartialValue::new_iname("idm_people_read_priv")
+                )),
+                ModifyList::new_list(vec![Modify::Present(
+                    AttrString::from("member"),
+                    Value::Refer(sa_uuid),
+                )]),
+            );
             assert!(server_txn.qs_write.modify(&me).is_ok());
 
             // Issue a token
@@ -1206,15 +1202,13 @@ mod tests {
 
         let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await;
         // make the admin a valid posix account
-        let me_posix = unsafe {
-            ModifyEvent::new_internal_invalid(
-                filter!(f_eq("uuid", PartialValue::Uuid(UUID_DOMAIN_INFO))),
-                ModifyList::new_purge_and_set(
-                    "domain_ldap_basedn",
-                    Value::new_iutf8("o=kanidmproject"),
-                ),
-            )
-        };
+        let me_posix = ModifyEvent::new_internal_invalid(
+            filter!(f_eq("uuid", PartialValue::Uuid(UUID_DOMAIN_INFO))),
+            ModifyList::new_purge_and_set(
+                "domain_ldap_basedn",
+                Value::new_iutf8("o=kanidmproject"),
+            ),
+        );
         assert!(idms_prox_write.qs_write.modify(&me_posix).is_ok());
 
         assert!(idms_prox_write.commit().is_ok());

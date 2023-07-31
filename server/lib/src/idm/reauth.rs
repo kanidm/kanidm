@@ -27,12 +27,9 @@ impl<'a> IdmServerAuthTransaction<'a> {
     ) -> Result<AuthResult, OperationError> {
         // re-auth only works on users, so lets get the user account.
         // hint - it's in the ident!
-        let entry = match ident.get_user_entry() {
-            Some(entry) => entry,
-            None => {
-                error!("Ident is not a user and has no entry associated. Unable to proceed.");
-                return Err(OperationError::InvalidState);
-            }
+        let Some(entry) = ident.get_user_entry() else {
+            error!("Ident is not a user and has no entry associated. Unable to proceed.");
+            return Err(OperationError::InvalidState);
         };
 
         // Setup the account record.

@@ -69,7 +69,7 @@ macro_rules! entry_to_account {
         use crate::idm::account::Account;
         use crate::value::Value;
 
-        let mut e: Entry<EntryInvalid, EntryNew> = unsafe { $entry.clone().into_invalid_new() };
+        let mut e: Entry<EntryInvalid, EntryNew> = $entry.clone().into_invalid_new();
         // Add spn, because normally this is generated but in tests we can't.
         let spn = e
             .get_ava_single_iname("name")
@@ -77,7 +77,7 @@ macro_rules! entry_to_account {
             .expect("Failed to munge spn from name!");
         e.set_ava("spn", once(spn));
 
-        let e = unsafe { e.into_sealed_committed() };
+        let e = e.into_sealed_committed();
 
         Account::try_from_entry_no_groups(&e).expect("Account conversion failure")
     }};
@@ -171,10 +171,8 @@ macro_rules! run_modify_test {
         }
 
         let me = match $internal {
-            None => unsafe { ModifyEvent::new_internal_invalid($modify_filter, $modify_list) },
-            Some(ent) => unsafe {
-                ModifyEvent::new_impersonate_entry(ent, $modify_filter, $modify_list)
-            },
+            None => ModifyEvent::new_internal_invalid($modify_filter, $modify_list),
+            Some(ent) => ModifyEvent::new_impersonate_entry(ent, $modify_filter, $modify_list),
         };
 
         {
@@ -227,8 +225,8 @@ macro_rules! run_delete_test {
         let qs = setup_test!($preload_entries);
 
         let de = match $internal {
-            Some(ent) => unsafe { DeleteEvent::new_impersonate_entry(ent, $delete_filter.clone()) },
-            None => unsafe { DeleteEvent::new_internal_invalid($delete_filter.clone()) },
+            Some(ent) => DeleteEvent::new_impersonate_entry(ent, $delete_filter.clone()),
+            None => DeleteEvent::new_internal_invalid($delete_filter.clone()),
         };
 
         {

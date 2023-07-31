@@ -31,10 +31,7 @@ impl From<UnixUserToken> for UserToken {
             valid,
         } = value;
 
-        let groups = groups
-            .into_iter()
-            .map(GroupToken::from)
-            .collect();
+        let groups = groups.into_iter().map(GroupToken::from).collect();
 
         UserToken {
             name,

@@ -12,7 +12,7 @@ pub(crate) struct ModifyPartial<'a> {
 impl<'a> QueryServerWriteTransaction<'a> {
     #[instrument(level = "debug", skip_all)]
     pub fn modify(&mut self, me: &ModifyEvent) -> Result<(), OperationError> {
-        let mp = unsafe { self.modify_pre_apply(me)? };
+        let mp = self.modify_pre_apply(me)?;
         if let Some(mp) = mp {
             self.modify_apply(mp)
         } else {
@@ -25,7 +25,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     /// the Ok(None) case which occurs during internal operations, and that you DO NOT re-order
     /// and call multiple pre-applies at the same time, else you can cause DB corruption.
     #[instrument(level = "debug", skip_all)]
-    pub(crate) unsafe fn modify_pre_apply<'x>(
+    pub(crate) fn modify_pre_apply<'x>(
         &mut self,
         me: &'x ModifyEvent,
     ) -> Result<Option<ModifyPartial<'x>>, OperationError> {
@@ -511,25 +511,21 @@ mod tests {
         assert!(cr.is_ok());
 
         // Empty Modlist (filter is valid)
-        let me_emp = unsafe {
-            ModifyEvent::new_internal_invalid(
-                filter!(f_pres("class")),
-                ModifyList::new_list(vec![]),
-            )
-        };
+        let me_emp = ModifyEvent::new_internal_invalid(
+            filter!(f_pres("class")),
+            ModifyList::new_list(vec![]),
+        );
         assert!(server_txn.modify(&me_emp) == Err(OperationError::EmptyRequest));
 
         // Mod changes no objects
-        let me_nochg = unsafe {
-            ModifyEvent::new_impersonate_entry_ser(
-                JSON_ADMIN_V1,
-                filter!(f_eq("name", PartialValue::new_iname("flarbalgarble"))),
-                ModifyList::new_list(vec![Modify::Present(
-                    AttrString::from("description"),
-                    Value::from("anusaosu"),
-                )]),
-            )
-        };
+        let me_nochg = ModifyEvent::new_impersonate_entry_ser(
+            JSON_ADMIN_V1,
+            filter!(f_eq("name", PartialValue::new_iname("flarbalgarble"))),
+            ModifyList::new_list(vec![Modify::Present(
+                AttrString::from("description"),
+                Value::from("anusaosu"),
+            )]),
+        );
         assert!(server_txn.modify(&me_nochg) == Err(OperationError::NoMatchingEntries));
 
         // Filter is invalid to schema - to check this due to changes in the way events are
@@ -551,15 +547,13 @@ mod tests {
         );
 
         // Mod is invalid to schema
-        let me_inv_m = unsafe {
-            ModifyEvent::new_internal_invalid(
-                filter!(f_pres("class")),
-                ModifyList::new_list(vec![Modify::Present(
-                    AttrString::from("htnaonu"),
-                    Value::from("anusaosu"),
-                )]),
-            )
-        };
+        let me_inv_m = ModifyEvent::new_internal_invalid(
+            filter!(f_pres("class")),
+            ModifyList::new_list(vec![Modify::Present(
+                AttrString::from("htnaonu"),
+                Value::from("anusaosu"),
+            )]),
+        );
         assert!(
             server_txn.modify(&me_inv_m)
                 == Err(OperationError::SchemaViolation(
@@ -568,30 +562,26 @@ mod tests {
         );
 
         // Mod single object
-        let me_sin = unsafe {
-            ModifyEvent::new_internal_invalid(
-                filter!(f_eq("name", PartialValue::new_iname("testperson2"))),
-                ModifyList::new_list(vec![
-                    Modify::Purged(AttrString::from("description")),
-                    Modify::Present(AttrString::from("description"), Value::from("anusaosu")),
-                ]),
-            )
-        };
+        let me_sin = ModifyEvent::new_internal_invalid(
+            filter!(f_eq("name", PartialValue::new_iname("testperson2"))),
+            ModifyList::new_list(vec![
+                Modify::Purged(AttrString::from("description")),
+                Modify::Present(AttrString::from("description"), Value::from("anusaosu")),
+            ]),
+        );
         assert!(server_txn.modify(&me_sin).is_ok());
 
         // Mod multiple object
-        let me_mult = unsafe {
-            ModifyEvent::new_internal_invalid(
-                filter!(f_or!([
-                    f_eq("name", PartialValue::new_iname("testperson1")),
-                    f_eq("name", PartialValue::new_iname("testperson2")),
-                ])),
-                ModifyList::new_list(vec![
-                    Modify::Purged(AttrString::from("description")),
-                    Modify::Present(AttrString::from("description"), Value::from("anusaosu")),
-                ]),
-            )
-        };
+        let me_mult = ModifyEvent::new_internal_invalid(
+            filter!(f_or!([
+                f_eq("name", PartialValue::new_iname("testperson1")),
+                f_eq("name", PartialValue::new_iname("testperson2")),
+            ])),
+            ModifyList::new_list(vec![
+                Modify::Purged(AttrString::from("description")),
+                Modify::Present(AttrString::from("description"), Value::from("anusaosu")),
+            ]),
+        );
         assert!(server_txn.modify(&me_mult).is_ok());
 
         assert!(server_txn.commit().is_ok());
@@ -659,52 +649,44 @@ mod tests {
         assert!(cr.is_ok());
 
         // Add class but no values
-        let me_sin = unsafe {
-            ModifyEvent::new_internal_invalid(
-                filter!(f_eq("name", PartialValue::new_iname("testperson1"))),
-                ModifyList::new_list(vec![Modify::Present(
-                    AttrString::from("class"),
-                    Value::new_class("system_info"),
-                )]),
-            )
-        };
+        let me_sin = ModifyEvent::new_internal_invalid(
+            filter!(f_eq("name", PartialValue::new_iname("testperson1"))),
+            ModifyList::new_list(vec![Modify::Present(
+                AttrString::from("class"),
+                Value::new_class("system_info"),
+            )]),
+        );
         assert!(server_txn.modify(&me_sin).is_err());
 
         // Add multivalue where not valid
-        let me_sin = unsafe {
-            ModifyEvent::new_internal_invalid(
-                filter!(f_eq("name", PartialValue::new_iname("testperson1"))),
-                ModifyList::new_list(vec![Modify::Present(
-                    AttrString::from("name"),
-                    Value::new_iname("testpersonx"),
-                )]),
-            )
-        };
+        let me_sin = ModifyEvent::new_internal_invalid(
+            filter!(f_eq("name", PartialValue::new_iname("testperson1"))),
+            ModifyList::new_list(vec![Modify::Present(
+                AttrString::from("name"),
+                Value::new_iname("testpersonx"),
+            )]),
+        );
         assert!(server_txn.modify(&me_sin).is_err());
 
         // add class and valid values?
-        let me_sin = unsafe {
-            ModifyEvent::new_internal_invalid(
-                filter!(f_eq("name", PartialValue::new_iname("testperson1"))),
-                ModifyList::new_list(vec![
-                    Modify::Present(AttrString::from("class"), Value::new_class("system_info")),
-                    // Modify::Present("domain".to_string(), Value::new_iutf8("domain.name")),
-                    Modify::Present(AttrString::from("version"), Value::new_uint32(1)),
-                ]),
-            )
-        };
+        let me_sin = ModifyEvent::new_internal_invalid(
+            filter!(f_eq("name", PartialValue::new_iname("testperson1"))),
+            ModifyList::new_list(vec![
+                Modify::Present(AttrString::from("class"), Value::new_class("system_info")),
+                // Modify::Present("domain".to_string(), Value::new_iutf8("domain.name")),
+                Modify::Present(AttrString::from("version"), Value::new_uint32(1)),
+            ]),
+        );
         assert!(server_txn.modify(&me_sin).is_ok());
 
         // Replace a value
-        let me_sin = unsafe {
-            ModifyEvent::new_internal_invalid(
-                filter!(f_eq("name", PartialValue::new_iname("testperson1"))),
-                ModifyList::new_list(vec![
-                    Modify::Purged(AttrString::from("name")),
-                    Modify::Present(AttrString::from("name"), Value::new_iname("testpersonx")),
-                ]),
-            )
-        };
+        let me_sin = ModifyEvent::new_internal_invalid(
+            filter!(f_eq("name", PartialValue::new_iname("testperson1"))),
+            ModifyList::new_list(vec![
+                Modify::Purged(AttrString::from("name")),
+                Modify::Present(AttrString::from("name"), Value::new_iname("testpersonx")),
+            ]),
+        );
         assert!(server_txn.modify(&me_sin).is_ok());
     }
 
@@ -736,15 +718,13 @@ mod tests {
         assert!(v_cred.validate());
 
         // now modify and provide a primary credential.
-        let me_inv_m = unsafe {
-            ModifyEvent::new_internal_invalid(
-                filter!(f_eq("name", PartialValue::new_iname("testperson1"))),
-                ModifyList::new_list(vec![Modify::Present(
-                    AttrString::from("primary_credential"),
-                    v_cred,
-                )]),
-            )
-        };
+        let me_inv_m = ModifyEvent::new_internal_invalid(
+            filter!(f_eq("name", PartialValue::new_iname("testperson1"))),
+            ModifyList::new_list(vec![Modify::Present(
+                AttrString::from("primary_credential"),
+                v_cred,
+            )]),
+        );
         // go!
         assert!(server_txn.modify(&me_inv_m).is_ok());
 

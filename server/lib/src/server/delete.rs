@@ -234,35 +234,28 @@ mod tests {
         assert!(cr.is_ok());
 
         // Delete filter is syntax invalid
-        let de_inv =
-            unsafe { DeleteEvent::new_internal_invalid(filter!(f_pres("nhtoaunaoehtnu"))) };
+        let de_inv = DeleteEvent::new_internal_invalid(filter!(f_pres("nhtoaunaoehtnu")));
         assert!(server_txn.delete(&de_inv).is_err());
 
         // Delete deletes nothing
-        let de_empty = unsafe {
-            DeleteEvent::new_internal_invalid(filter!(f_eq(
-                "uuid",
-                PartialValue::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-000000000000"))
-            )))
-        };
+        let de_empty = DeleteEvent::new_internal_invalid(filter!(f_eq(
+            "uuid",
+            PartialValue::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-000000000000"))
+        )));
         assert!(server_txn.delete(&de_empty).is_err());
 
         // Delete matches one
-        let de_sin = unsafe {
-            DeleteEvent::new_internal_invalid(filter!(f_eq(
-                "name",
-                PartialValue::new_iname("testperson3")
-            )))
-        };
+        let de_sin = DeleteEvent::new_internal_invalid(filter!(f_eq(
+            "name",
+            PartialValue::new_iname("testperson3")
+        )));
         assert!(server_txn.delete(&de_sin).is_ok());
 
         // Delete matches many
-        let de_mult = unsafe {
-            DeleteEvent::new_internal_invalid(filter!(f_eq(
-                "description",
-                PartialValue::new_utf8s("testperson")
-            )))
-        };
+        let de_mult = DeleteEvent::new_internal_invalid(filter!(f_eq(
+            "description",
+            PartialValue::new_utf8s("testperson")
+        )));
         assert!(server_txn.delete(&de_mult).is_ok());
 
         assert!(server_txn.commit().is_ok());

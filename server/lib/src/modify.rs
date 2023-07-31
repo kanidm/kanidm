@@ -227,8 +227,10 @@ impl ModifyList<ModifyInvalid> {
         })
     }
 
+    /// ⚠️  - Convert a modlist to be considered valid, bypassing schema.
+    /// This is a TEST ONLY method and will never be exposed in production.
     #[cfg(test)]
-    pub(crate) unsafe fn into_valid(self) -> ModifyList<ModifyValid> {
+    pub(crate) fn into_valid(self) -> ModifyList<ModifyValid> {
         ModifyList {
             valid: ModifyValid,
             mods: self.mods,
@@ -237,8 +239,10 @@ impl ModifyList<ModifyInvalid> {
 }
 
 impl ModifyList<ModifyValid> {
+    /// ⚠️  - Create a new modlist that is considered valid, bypassing schema.
+    /// This is a TEST ONLY method and will never be exposed in production.
     #[cfg(test)]
-    pub unsafe fn new_valid_list(mods: Vec<Modify>) -> Self {
+    pub fn new_valid_list(mods: Vec<Modify>) -> Self {
         ModifyList {
             valid: ModifyValid,
             mods,

@@ -1062,14 +1062,22 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
         self.db.create_idx(attr, itype)
     }
 
-    pub unsafe fn purge_idxs(&mut self) -> Result<(), OperationError> {
-        self.db.purge_idxs().map(|()| {
+    /// ⚠️  - This function will destroy all indexes in the database.
+    ///
+    /// It should only be called internally by the backend in limited and
+    /// specific situations.
+    pub fn danger_purge_idxs(&mut self) -> Result<(), OperationError> {
+        self.db.danger_purge_idxs().map(|()| {
             self.idl_cache.clear();
         })
     }
 
-    pub unsafe fn purge_id2entry(&mut self) -> Result<(), OperationError> {
-        self.db.purge_id2entry().map(|()| {
+    /// ⚠️  - This function will destroy all entries in the database.
+    ///
+    /// It should only be called internally by the backend in limited and
+    /// specific situations.
+    pub fn danger_purge_id2entry(&mut self) -> Result<(), OperationError> {
+        self.db.danger_purge_id2entry().map(|()| {
             let mut ids = IDLBitRange::new();
             ids.compress();
             std::mem::swap(self.allids.deref_mut(), &mut ids);

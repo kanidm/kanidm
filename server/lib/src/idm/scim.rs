@@ -1604,12 +1604,10 @@ mod tests {
         // -- Revoke the session
 
         let mut idms_prox_write = idms.proxy_write(ct).await;
-        let me_inv_m = unsafe {
-            ModifyEvent::new_internal_invalid(
-                filter!(f_eq("name", PartialValue::new_iname("test_scim_sync"))),
-                ModifyList::new_list(vec![Modify::Purged(AttrString::from("sync_token_session"))]),
-            )
-        };
+        let me_inv_m = ModifyEvent::new_internal_invalid(
+            filter!(f_eq("name", PartialValue::new_iname("test_scim_sync"))),
+            ModifyList::new_list(vec![Modify::Purged(AttrString::from("sync_token_session"))]),
+        );
         assert!(idms_prox_write.qs_write.modify(&me_inv_m).is_ok());
         assert!(idms_prox_write.commit().is_ok());
 
@@ -1628,14 +1626,12 @@ mod tests {
             .scim_sync_generate_token(&gte, ct)
             .expect("failed to generate new scim sync token");
 
-        let me_inv_m = unsafe {
-            ModifyEvent::new_internal_invalid(
-                filter!(f_eq("name", PartialValue::new_iname("test_scim_sync"))),
-                ModifyList::new_list(vec![Modify::Purged(AttrString::from(
-                    "jws_es256_private_key",
-                ))]),
-            )
-        };
+        let me_inv_m = ModifyEvent::new_internal_invalid(
+            filter!(f_eq("name", PartialValue::new_iname("test_scim_sync"))),
+            ModifyList::new_list(vec![Modify::Purged(AttrString::from(
+                "jws_es256_private_key",
+            ))]),
+        );
         assert!(idms_prox_write.qs_write.modify(&me_inv_m).is_ok());
         assert!(idms_prox_write.commit().is_ok());
 

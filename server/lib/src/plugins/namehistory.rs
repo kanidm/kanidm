@@ -169,10 +169,10 @@ mod tests {
                     .get_ava_set("name_history")
                     .expect("failed to get primary cred.");
                 dbg!(c.clone());
-                return assert!(
+                assert!(
                     c.contains(&PartialValue::new_utf8s("old_name"))
                         && c.contains(&PartialValue::new_utf8s("new_name_1"))
-                );
+                )
             }
         );
     }
@@ -207,7 +207,7 @@ mod tests {
                     .get_ava_set("name_history")
                     .expect("failed to get name_history ava");
 
-                return assert!(name_history.contains(&PartialValue::new_utf8s(&"old_name")));
+                assert!(name_history.contains(&PartialValue::new_utf8s("old_name")))
             }
         );
     }
@@ -257,10 +257,10 @@ mod tests {
                 let c = e
                     .get_ava_set("name_history")
                     .expect("failed to get name_history ava :/");
-                return assert!(
-                    !c.contains(&PartialValue::new_utf8s(&"old_name1"))
-                        && c.contains(&PartialValue::new_utf8s(&"new_name"))
-                );
+                assert!(
+                    !c.contains(&PartialValue::new_utf8s("old_name1"))
+                        && c.contains(&PartialValue::new_utf8s("new_name"))
+                )
             }
         );
     }

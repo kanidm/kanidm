@@ -451,7 +451,7 @@ pub async fn domain_rename_core(config: &Configuration) {
 
     let mut qs_write = qs.write(duration_from_epoch_now()).await;
     let r = qs_write
-        .domain_rename(new_domain_name)
+        .danger_domain_rename(new_domain_name)
         .and_then(|_| qs_write.commit());
 
     match r {

@@ -895,15 +895,12 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                     .check_oauth2_account_uuid_valid(uuid, session_id, parent_session_id, iat, ct)
                     .map_err(|_| admin_error!("Account is not valid"));
 
-                let entry = match valid {
-                    Ok(Some(entry)) => entry,
-                    _ => {
-                        security_info!(
-                            ?uuid,
-                            "access token has no account not valid, returning inactive"
-                        );
-                        return Err(Oauth2Error::InvalidToken);
-                    }
+                let Ok(Some(entry)) = valid else {
+                    security_info!(
+                        ?uuid,
+                        "access token has no account not valid, returning inactive"
+                    );
+                    return Err(Oauth2Error::InvalidToken);
                 };
 
                 // Check the not issued before of the session relative to this refresh iat
@@ -1612,15 +1609,12 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
                     .check_oauth2_account_uuid_valid(uuid, session_id, parent_session_id, iat, ct)
                     .map_err(|_| admin_error!("Account is not valid"));
 
-                let entry = match valid {
-                    Ok(Some(entry)) => entry,
-                    _ => {
-                        security_info!(
-                            ?uuid,
-                            "access token has no account not valid, returning inactive"
-                        );
-                        return Ok(AccessTokenIntrospectResponse::inactive());
-                    }
+                let Ok(Some(entry)) = valid else {
+                    security_info!(
+                        ?uuid,
+                        "access token has no account not valid, returning inactive"
+                    );
+                    return Ok(AccessTokenIntrospectResponse::inactive());
                 };
 
                 let account = match Account::try_from_entry_no_groups(&entry) {
@@ -1718,15 +1712,12 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
                     .check_oauth2_account_uuid_valid(uuid, session_id, parent_session_id, iat, ct)
                     .map_err(|_| admin_error!("Account is not valid"));
 
-                let entry = match valid {
-                    Ok(Some(entry)) => entry,
-                    _ => {
-                        security_info!(
-                            ?uuid,
-                            "access token has account not valid, returning inactive"
-                        );
-                        return Err(Oauth2Error::InvalidToken);
-                    }
+                let Ok(Some(entry)) = valid else {
+                    security_info!(
+                        ?uuid,
+                        "access token has account not valid, returning inactive"
+                    );
+                    return Err(Oauth2Error::InvalidToken);
                 };
 
                 let account = match Account::try_from_entry_ro(&entry, &mut self.qs_read) {
@@ -2900,15 +2891,13 @@ mod tests {
         let mut idms_prox_write = idms.proxy_write(ct).await;
         // Expire the account, should cause introspect to return inactive.
         let v_expire = Value::new_datetime_epoch(Duration::from_secs(TEST_CURRENT_TIME - 1));
-        let me_inv_m = unsafe {
-            ModifyEvent::new_internal_invalid(
-                filter!(f_eq("name", PartialValue::new_iname("admin"))),
-                ModifyList::new_list(vec![Modify::Present(
-                    AttrString::from("account_expire"),
-                    v_expire,
-                )]),
-            )
-        };
+        let me_inv_m = ModifyEvent::new_internal_invalid(
+            filter!(f_eq("name", PartialValue::new_iname("admin"))),
+            ModifyList::new_list(vec![Modify::Present(
+                AttrString::from("account_expire"),
+                v_expire,
+            )]),
+        );
         // go!
         assert!(idms_prox_write.qs_write.modify(&me_inv_m).is_ok());
         assert!(idms_prox_write.commit().is_ok());
@@ -3144,12 +3133,10 @@ mod tests {
 
         // Delete the resource server.
 
-        let de = unsafe {
-            DeleteEvent::new_internal_invalid(filter!(f_eq(
-                "oauth2_rs_name",
-                PartialValue::new_iname("test_resource_server")
-            )))
-        };
+        let de = DeleteEvent::new_internal_invalid(filter!(f_eq(
+            "oauth2_rs_name",
+            PartialValue::new_iname("test_resource_server")
+        )));
 
         assert!(idms_prox_write.qs_write.delete(&de).is_ok());
 
@@ -3962,22 +3949,20 @@ mod tests {
         // Great! Now change the scopes on the oauth2 instance, this revokes the permit.
         let mut idms_prox_write = idms.proxy_write(ct).await;
 
-        let me_extend_scopes = unsafe {
-            ModifyEvent::new_internal_invalid(
-                filter!(f_eq(
-                    "oauth2_rs_name",
-                    PartialValue::new_iname("test_resource_server")
-                )),
-                ModifyList::new_list(vec![Modify::Present(
-                    AttrString::from("oauth2_rs_scope_map"),
-                    Value::new_oauthscopemap(
-                        UUID_IDM_ALL_ACCOUNTS,
-                        btreeset!["email".to_string(), "openid".to_string()],
-                    )
-                    .expect("invalid oauthscope"),
-                )]),
-            )
-        };
+        let me_extend_scopes = ModifyEvent::new_internal_invalid(
+            filter!(f_eq(
+                "oauth2_rs_name",
+                PartialValue::new_iname("test_resource_server")
+            )),
+            ModifyList::new_list(vec![Modify::Present(
+                AttrString::from("oauth2_rs_scope_map"),
+                Value::new_oauthscopemap(
+                    UUID_IDM_ALL_ACCOUNTS,
+                    btreeset!["email".to_string(), "openid".to_string()],
+                )
+                .expect("invalid oauthscope"),
+            )]),
+        );
 
         assert!(idms_prox_write.qs_write.modify(&me_extend_scopes).is_ok());
         assert!(idms_prox_write.commit().is_ok());
@@ -4027,22 +4012,17 @@ mod tests {
         // Now change the supplemental scopes on the oauth2 instance, this revokes the permit.
         let mut idms_prox_write = idms.proxy_write(ct).await;
 
-        let me_extend_scopes = unsafe {
-            ModifyEvent::new_internal_invalid(
-                filter!(f_eq(
-                    "oauth2_rs_name",
-                    PartialValue::new_iname("test_resource_server")
-                )),
-                ModifyList::new_list(vec![Modify::Present(
-                    AttrString::from("oauth2_rs_sup_scope_map"),
-                    Value::new_oauthscopemap(
-                        UUID_IDM_ALL_ACCOUNTS,
-                        btreeset!["newscope".to_string()],
-                    )
+        let me_extend_scopes = ModifyEvent::new_internal_invalid(
+            filter!(f_eq(
+                "oauth2_rs_name",
+                PartialValue::new_iname("test_resource_server")
+            )),
+            ModifyList::new_list(vec![Modify::Present(
+                AttrString::from("oauth2_rs_sup_scope_map"),
+                Value::new_oauthscopemap(UUID_IDM_ALL_ACCOUNTS, btreeset!["newscope".to_string()])
                     .expect("invalid oauthscope"),
-                )]),
-            )
-        };
+            )]),
+        );
 
         assert!(idms_prox_write.qs_write.modify(&me_extend_scopes).is_ok());
         assert!(idms_prox_write.commit().is_ok());
@@ -4143,12 +4123,10 @@ mod tests {
         );
 
         // Now trigger the delete of the RS
-        let de = unsafe {
-            DeleteEvent::new_internal_invalid(filter!(f_eq(
-                "oauth2_rs_name",
-                PartialValue::new_iname("test_resource_server")
-            )))
-        };
+        let de = DeleteEvent::new_internal_invalid(filter!(f_eq(
+            "oauth2_rs_name",
+            PartialValue::new_iname("test_resource_server")
+        )));
 
         assert!(idms_prox_write.qs_write.delete(&de).is_ok());
         // Assert the consent maps are gone.

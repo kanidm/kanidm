@@ -172,7 +172,7 @@ mod tests {
         let filt = filter!(f_eq("name", PartialValue::new_iname("testperson")));
         let admin = server_txn.internal_search_uuid(UUID_ADMIN).expect("failed");
 
-        let se1 = unsafe { SearchEvent::new_impersonate_entry(admin, filt) };
+        let se1 = SearchEvent::new_impersonate_entry(admin, filt);
 
         let mut e = entry_init!(
             ("class", Value::new_class("object")),
@@ -212,7 +212,7 @@ mod tests {
             Value::AuditLogString(server_txn.get_txn_cid().clone(), "testperson".to_string()),
         );
 
-        let expected = unsafe { vec![Arc::new(e.into_sealed_committed())] };
+        let expected = vec![Arc::new(e.into_sealed_committed())];
 
         assert_eq!(r2, expected);
 
@@ -230,12 +230,12 @@ mod tests {
         let admin = server_a_txn
             .internal_search_uuid(UUID_ADMIN)
             .expect("failed");
-        let se_a = unsafe { SearchEvent::new_impersonate_entry(admin, filt.clone()) };
+        let se_a = SearchEvent::new_impersonate_entry(admin, filt.clone());
 
         let admin = server_b_txn
             .internal_search_uuid(UUID_ADMIN)
             .expect("failed");
-        let se_b = unsafe { SearchEvent::new_impersonate_entry(admin, filt) };
+        let se_b = SearchEvent::new_impersonate_entry(admin, filt);
 
         let e = entry_init!(
             ("class", Value::new_class("person")),

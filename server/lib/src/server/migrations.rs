@@ -153,9 +153,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // correctly!
         trace!("internal_migrate_or_create operating on {:?}", e.get_uuid());
 
-        let filt = match e.filter_from_attrs(&[AttrString::from("uuid")]) {
-            Some(f) => f,
-            None => return Err(OperationError::FilterGeneration),
+        let Some(filt) = e.filter_from_attrs(&[AttrString::from("uuid")]) else {
+            return Err(OperationError::FilterGeneration)
         };
 
         trace!("internal_migrate_or_create search {:?}", filt);

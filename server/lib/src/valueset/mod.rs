@@ -78,14 +78,6 @@ pub type ValueSet = Box<dyn ValueSetT + Send + Sync + 'static>;
 dyn_clone::clone_trait_object!(ValueSetT);
 
 pub trait ValueSetT: std::fmt::Debug + DynClone {
-    /// # Safety
-    /// This is unsafe as you are unable to distinguish the case between
-    /// the value already existing, OR the value being an incorrect type to add
-    /// to the set.
-    unsafe fn insert(&mut self, value: Value) -> bool {
-        self.insert_checked(value).unwrap_or(false)
-    }
-
     fn insert_checked(&mut self, value: Value) -> Result<bool, OperationError>;
 
     fn clear(&mut self);
@@ -577,9 +569,7 @@ pub fn uuid_to_proto_string(u: Uuid) -> String {
 pub fn from_result_value_iter(
     mut iter: impl Iterator<Item = Result<Value, OperationError>>,
 ) -> Result<ValueSet, OperationError> {
-    let init = if let Some(v) = iter.next() {
-        v
-    } else {
+    let Some(init) = iter.next() else {
         admin_error!("Empty value iterator");
         return Err(OperationError::InvalidValueState);
     };
@@ -638,9 +628,7 @@ pub fn from_result_value_iter(
 }
 
 pub fn from_value_iter(mut iter: impl Iterator<Item = Value>) -> Result<ValueSet, OperationError> {
-    let init = if let Some(v) = iter.next() {
-        v
-    } else {
+    let Some(init) = iter.next() else {
         admin_error!("Empty value iterator");
         return Err(OperationError::InvalidValueState);
     };

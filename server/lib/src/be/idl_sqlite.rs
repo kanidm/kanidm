@@ -541,14 +541,12 @@ pub trait IdlSqliteTransaction {
     // This allow is critical as it resolves a life time issue in stmt.
     #[allow(clippy::let_and_return)]
     fn verify(&self) -> Vec<Result<(), ConsistencyError>> {
-        let conn = match self.get_conn() {
-            Ok(conn) => conn,
-            Err(_) => return vec![Err(ConsistencyError::SqliteIntegrityFailure)],
+        let Ok(conn) = self.get_conn() else {
+            return vec![Err(ConsistencyError::SqliteIntegrityFailure)]
         };
 
-        let mut stmt = match conn.prepare("PRAGMA integrity_check;") {
-            Ok(r) => r,
-            Err(_) => return vec![Err(ConsistencyError::SqliteIntegrityFailure)],
+        let Ok(mut stmt) = conn.prepare("PRAGMA integrity_check;") else {
+            return vec![Err(ConsistencyError::SqliteIntegrityFailure)]
         };
 
         // Allow this as it actually extends the life of stmt
@@ -1034,7 +1032,11 @@ impl IdlSqliteWriteTransaction {
             .map_err(sqlite_error)
     }
 
-    pub unsafe fn purge_idxs(&self) -> Result<(), OperationError> {
+    /// ⚠️  - This function will destroy all indexes in the database.
+    ///
+    /// It should only be called internally by the backend in limited and
+    /// specific situations.
+    pub fn danger_purge_idxs(&self) -> Result<(), OperationError> {
         let idx_table_list = self.list_idxs()?;
 
         idx_table_list.iter().try_for_each(|idx_table| {
@@ -1124,7 +1126,11 @@ impl IdlSqliteWriteTransaction {
         Ok(slope)
     }
 
-    pub unsafe fn purge_id2entry(&self) -> Result<(), OperationError> {
+    /// ⚠️  - This function will destroy all entries in the database.
+    ///
+    /// It should only be called internally by the backend in limited and
+    /// specific situations.
+    pub fn danger_purge_id2entry(&self) -> Result<(), OperationError> {
         self.get_conn()?
             .execute(&format!("DELETE FROM {}.id2entry", self.get_db_name()), [])
             .map(|_| ())

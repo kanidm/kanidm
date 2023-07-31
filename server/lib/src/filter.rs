@@ -412,8 +412,10 @@ impl Filter<FilterInvalid> {
         }
     }
 
+    /// ⚠️  - Bypass the schema state machine and force the filter to be considered valid.
+    /// This is a TEST ONLY method and will never be exposed in production.
     #[cfg(test)]
-    pub unsafe fn into_valid_resolved(self) -> Filter<FilterValidResolved> {
+    pub fn into_valid_resolved(self) -> Filter<FilterValidResolved> {
         // There is a good reason this function only exists in tests ...
         //
         // YOLO.
@@ -449,8 +451,10 @@ impl Filter<FilterInvalid> {
         }
     }
 
+    /// ⚠️  - Bypass the schema state machine and force the filter to be considered valid.
+    /// This is a TEST ONLY method and will never be exposed in production.
     #[cfg(test)]
-    pub unsafe fn into_valid(self) -> Filter<FilterValid> {
+    pub fn into_valid(self) -> Filter<FilterValid> {
         // There is a good reason this function only exists in tests ...
         //
         // YOLO.
@@ -464,8 +468,10 @@ impl Filter<FilterInvalid> {
         }
     }
 
+    /// ⚠️  - Blindly accept a filter from a string, panicking if it fails to parse.
+    /// This is a TEST ONLY method and will never be exposed in production.
     #[cfg(test)]
-    pub unsafe fn from_str(fc: &str) -> Self {
+    pub fn from_str(fc: &str) -> Self {
         let f: FC = serde_json::from_str(fc).expect("Failure parsing filter!");
         Filter {
             state: FilterInvalid {
@@ -1007,8 +1013,10 @@ impl Ord for FilterResolved {
 }
 
 impl FilterResolved {
+    /// ⚠️  - Process a filter without verifying with schema.
+    /// This is a TEST ONLY method and will never be exposed in production.
     #[cfg(test)]
-    unsafe fn from_invalid(fc: FilterComp, idxmeta: &HashSet<(&AttrString, &IndexType)>) -> Self {
+    fn from_invalid(fc: FilterComp, idxmeta: &HashSet<(&AttrString, &IndexType)>) -> Self {
         match fc {
             FilterComp::Eq(a, v) => {
                 let idx = idxmeta.contains(&(&a, &IndexType::Equality));
@@ -1378,9 +1386,9 @@ mod tests {
             let f_init: Filter<FilterInvalid> = Filter::new($init);
             let f_expect: Filter<FilterInvalid> = Filter::new($expect);
             // Create a resolved filter, via the most unsafe means possible!
-            let f_init_r = unsafe { f_init.into_valid_resolved() };
+            let f_init_r = f_init.into_valid_resolved();
             let f_init_o = f_init_r.optimise();
-            let f_init_e = unsafe { f_expect.into_valid_resolved() };
+            let f_init_e = f_expect.into_valid_resolved();
             debug!("--");
             debug!("init   --> {:?}", f_init_r);
             debug!("opt    --> {:?}", f_init_o);
@@ -1513,25 +1521,25 @@ mod tests {
         // Test that we uphold the rules of partialOrd
         // Basic equality
         // Test the two major paths here (str vs list)
-        let f_t1a = unsafe { filter_resolved!(f_pres("userid")) };
-        let f_t1b = unsafe { filter_resolved!(f_pres("userid")) };
+        let f_t1a = filter_resolved!(f_pres("userid"));
+        let f_t1b = filter_resolved!(f_pres("userid"));
 
         assert_eq!(f_t1a.partial_cmp(&f_t1b), Some(Ordering::Equal));
         assert_eq!(f_t1b.partial_cmp(&f_t1a), Some(Ordering::Equal));
 
-        let f_t2a = unsafe { filter_resolved!(f_and!([])) };
-        let f_t2b = unsafe { filter_resolved!(f_and!([])) };
+        let f_t2a = filter_resolved!(f_and!([]));
+        let f_t2b = filter_resolved!(f_and!([]));
         assert_eq!(f_t2a.partial_cmp(&f_t2b), Some(Ordering::Equal));
         assert_eq!(f_t2b.partial_cmp(&f_t2a), Some(Ordering::Equal));
 
         // antisymmetry: if a < b then !(a > b), as well as a > b implying !(a < b); and
         // These are unindexed so we have to check them this way.
-        let f_t3b = unsafe { filter_resolved!(f_eq("userid", PartialValue::new_iutf8(""))) };
+        let f_t3b = filter_resolved!(f_eq("userid", PartialValue::new_iutf8("")));
         assert_eq!(f_t1a.partial_cmp(&f_t3b), Some(Ordering::Greater));
         assert_eq!(f_t3b.partial_cmp(&f_t1a), Some(Ordering::Less));
 
         // transitivity: a < b and b < c implies a < c. The same must hold for both == and >.
-        let f_t4b = unsafe { filter_resolved!(f_sub("userid", PartialValue::new_iutf8(""))) };
+        let f_t4b = filter_resolved!(f_sub("userid", PartialValue::new_iutf8("")));
         assert_eq!(f_t1a.partial_cmp(&f_t4b), Some(Ordering::Less));
         assert_eq!(f_t3b.partial_cmp(&f_t4b), Some(Ordering::Less));
 
@@ -1543,16 +1551,16 @@ mod tests {
     fn test_filter_clone() {
         // Test that cloning filters yields the same result regardless of
         // complexity.
-        let f_t1a = unsafe { filter_resolved!(f_pres("userid")) };
+        let f_t1a = filter_resolved!(f_pres("userid"));
         let f_t1b = f_t1a.clone();
-        let f_t1c = unsafe { filter_resolved!(f_pres("zzzz")) };
+        let f_t1c = filter_resolved!(f_pres("zzzz"));
 
         assert!(f_t1a == f_t1b);
         assert!(f_t1a != f_t1c);
 
-        let f_t2a = unsafe { filter_resolved!(f_and!([f_pres("userid")])) };
+        let f_t2a = filter_resolved!(f_and!([f_pres("userid")]));
         let f_t2b = f_t2a.clone();
-        let f_t2c = unsafe { filter_resolved!(f_and!([f_pres("zzzz")])) };
+        let f_t2c = filter_resolved!(f_and!([f_pres("zzzz")]));
 
         assert!(f_t2a == f_t2b);
         assert!(f_t2a != f_t2c);
@@ -1560,205 +1568,168 @@ mod tests {
 
     #[test]
     fn test_lessthan_entry_filter() {
-        let e = unsafe {
-            entry_init!(
-                ("userid", Value::new_iutf8("william")),
-                (
-                    "uuid",
-                    Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
-                ),
-                ("gidnumber", Value::Uint32(1000))
-            )
-            .into_sealed_new()
-        };
+        let e = entry_init!(
+            ("userid", Value::new_iutf8("william")),
+            (
+                "uuid",
+                Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
+            ),
+            ("gidnumber", Value::Uint32(1000))
+        )
+        .into_sealed_new();
 
-        let f_t1a = unsafe { filter_resolved!(f_lt("gidnumber", PartialValue::new_uint32(500))) };
+        let f_t1a = filter_resolved!(f_lt("gidnumber", PartialValue::new_uint32(500)));
         assert!(!e.entry_match_no_index(&f_t1a));
 
-        let f_t1b = unsafe { filter_resolved!(f_lt("gidnumber", PartialValue::new_uint32(1000))) };
+        let f_t1b = filter_resolved!(f_lt("gidnumber", PartialValue::new_uint32(1000)));
         assert!(!e.entry_match_no_index(&f_t1b));
 
-        let f_t1c = unsafe { filter_resolved!(f_lt("gidnumber", PartialValue::new_uint32(1001))) };
+        let f_t1c = filter_resolved!(f_lt("gidnumber", PartialValue::new_uint32(1001)));
         assert!(e.entry_match_no_index(&f_t1c));
     }
 
     #[test]
     fn test_or_entry_filter() {
-        let e = unsafe {
-            entry_init!(
-                ("userid", Value::new_iutf8("william")),
-                (
-                    "uuid",
-                    Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
-                ),
-                ("gidnumber", Value::Uint32(1000))
-            )
-            .into_sealed_new()
-        };
+        let e = entry_init!(
+            ("userid", Value::new_iutf8("william")),
+            (
+                "uuid",
+                Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
+            ),
+            ("gidnumber", Value::Uint32(1000))
+        )
+        .into_sealed_new();
 
-        let f_t1a = unsafe {
-            filter_resolved!(f_or!([
-                f_eq("userid", PartialValue::new_iutf8("william")),
-                f_eq("gidnumber", PartialValue::Uint32(1000)),
-            ]))
-        };
+        let f_t1a = filter_resolved!(f_or!([
+            f_eq("userid", PartialValue::new_iutf8("william")),
+            f_eq("gidnumber", PartialValue::Uint32(1000)),
+        ]));
         assert!(e.entry_match_no_index(&f_t1a));
 
-        let f_t2a = unsafe {
-            filter_resolved!(f_or!([
-                f_eq("userid", PartialValue::new_iutf8("william")),
-                f_eq("gidnumber", PartialValue::Uint32(1000)),
-            ]))
-        };
+        let f_t2a = filter_resolved!(f_or!([
+            f_eq("userid", PartialValue::new_iutf8("william")),
+            f_eq("gidnumber", PartialValue::Uint32(1000)),
+        ]));
         assert!(e.entry_match_no_index(&f_t2a));
 
-        let f_t3a = unsafe {
-            filter_resolved!(f_or!([
-                f_eq("userid", PartialValue::new_iutf8("alice")),
-                f_eq("gidnumber", PartialValue::Uint32(1000)),
-            ]))
-        };
+        let f_t3a = filter_resolved!(f_or!([
+            f_eq("userid", PartialValue::new_iutf8("alice")),
+            f_eq("gidnumber", PartialValue::Uint32(1000)),
+        ]));
         assert!(e.entry_match_no_index(&f_t3a));
 
-        let f_t4a = unsafe {
-            filter_resolved!(f_or!([
-                f_eq("userid", PartialValue::new_iutf8("alice")),
-                f_eq("gidnumber", PartialValue::Uint32(1001)),
-            ]))
-        };
+        let f_t4a = filter_resolved!(f_or!([
+            f_eq("userid", PartialValue::new_iutf8("alice")),
+            f_eq("gidnumber", PartialValue::Uint32(1001)),
+        ]));
         assert!(!e.entry_match_no_index(&f_t4a));
     }
 
     #[test]
     fn test_and_entry_filter() {
-        let e = unsafe {
-            entry_init!(
-                ("userid", Value::new_iutf8("william")),
-                (
-                    "uuid",
-                    Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
-                ),
-                ("gidnumber", Value::Uint32(1000))
-            )
-            .into_sealed_new()
-        };
+        let e = entry_init!(
+            ("userid", Value::new_iutf8("william")),
+            (
+                "uuid",
+                Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
+            ),
+            ("gidnumber", Value::Uint32(1000))
+        )
+        .into_sealed_new();
 
-        let f_t1a = unsafe {
-            filter_resolved!(f_and!([
-                f_eq("userid", PartialValue::new_iutf8("william")),
-                f_eq("gidnumber", PartialValue::Uint32(1000)),
-            ]))
-        };
+        let f_t1a = filter_resolved!(f_and!([
+            f_eq("userid", PartialValue::new_iutf8("william")),
+            f_eq("gidnumber", PartialValue::Uint32(1000)),
+        ]));
         assert!(e.entry_match_no_index(&f_t1a));
 
-        let f_t2a = unsafe {
-            filter_resolved!(f_and!([
-                f_eq("userid", PartialValue::new_iutf8("william")),
-                f_eq("gidnumber", PartialValue::Uint32(1001)),
-            ]))
-        };
+        let f_t2a = filter_resolved!(f_and!([
+            f_eq("userid", PartialValue::new_iutf8("william")),
+            f_eq("gidnumber", PartialValue::Uint32(1001)),
+        ]));
         assert!(!e.entry_match_no_index(&f_t2a));
 
-        let f_t3a = unsafe {
-            filter_resolved!(f_and!([
-                f_eq("userid", PartialValue::new_iutf8("alice")),
-                f_eq("gidnumber", PartialValue::Uint32(1000)),
-            ]))
-        };
+        let f_t3a = filter_resolved!(f_and!([
+            f_eq("userid", PartialValue::new_iutf8("alice")),
+            f_eq("gidnumber", PartialValue::Uint32(1000)),
+        ]));
         assert!(!e.entry_match_no_index(&f_t3a));
 
-        let f_t4a = unsafe {
-            filter_resolved!(f_and!([
-                f_eq("userid", PartialValue::new_iutf8("alice")),
-                f_eq("gidnumber", PartialValue::Uint32(1001)),
-            ]))
-        };
+        let f_t4a = filter_resolved!(f_and!([
+            f_eq("userid", PartialValue::new_iutf8("alice")),
+            f_eq("gidnumber", PartialValue::Uint32(1001)),
+        ]));
         assert!(!e.entry_match_no_index(&f_t4a));
     }
 
     #[test]
     fn test_not_entry_filter() {
-        let e1 = unsafe {
-            entry_init!(
-                ("userid", Value::new_iutf8("william")),
-                (
-                    "uuid",
-                    Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
-                ),
-                ("gidnumber", Value::Uint32(1000))
-            )
-            .into_sealed_new()
-        };
+        let e1 = entry_init!(
+            ("userid", Value::new_iutf8("william")),
+            (
+                "uuid",
+                Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
+            ),
+            ("gidnumber", Value::Uint32(1000))
+        )
+        .into_sealed_new();
 
-        let f_t1a =
-            unsafe { filter_resolved!(f_andnot(f_eq("userid", PartialValue::new_iutf8("alice")))) };
+        let f_t1a = filter_resolved!(f_andnot(f_eq("userid", PartialValue::new_iutf8("alice"))));
         assert!(e1.entry_match_no_index(&f_t1a));
 
-        let f_t2a = unsafe {
-            filter_resolved!(f_andnot(f_eq("userid", PartialValue::new_iutf8("william"))))
-        };
+        let f_t2a = filter_resolved!(f_andnot(f_eq("userid", PartialValue::new_iutf8("william"))));
         assert!(!e1.entry_match_no_index(&f_t2a));
     }
 
     #[test]
     fn test_nested_entry_filter() {
-        let e1 = unsafe {
-            entry_init!(
-                ("class", CLASS_PERSON.clone()),
-                (
-                    "uuid",
-                    Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
-                ),
-                ("gidnumber", Value::Uint32(1000))
-            )
-            .into_sealed_new()
-        };
+        let e1 = entry_init!(
+            ("class", CLASS_PERSON.clone()),
+            (
+                "uuid",
+                Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
+            ),
+            ("gidnumber", Value::Uint32(1000))
+        )
+        .into_sealed_new();
 
-        let e2 = unsafe {
-            entry_init!(
-                ("class", CLASS_PERSON.clone()),
-                (
-                    "uuid",
-                    Value::Uuid(uuid::uuid!("4b6228ab-1dbe-42a4-a9f5-f6368222438e"))
-                ),
-                ("gidnumber", Value::Uint32(1001))
-            )
-            .into_sealed_new()
-        };
+        let e2 = entry_init!(
+            ("class", CLASS_PERSON.clone()),
+            (
+                "uuid",
+                Value::Uuid(uuid::uuid!("4b6228ab-1dbe-42a4-a9f5-f6368222438e"))
+            ),
+            ("gidnumber", Value::Uint32(1001))
+        )
+        .into_sealed_new();
 
-        let e3 = unsafe {
-            entry_init!(
-                ("class", CLASS_PERSON.clone()),
-                (
-                    "uuid",
-                    Value::Uuid(uuid::uuid!("7b23c99d-c06b-4a9a-a958-3afa56383e1d"))
-                ),
-                ("gidnumber", Value::Uint32(1002))
-            )
-            .into_sealed_new()
-        };
+        let e3 = entry_init!(
+            ("class", CLASS_PERSON.clone()),
+            (
+                "uuid",
+                Value::Uuid(uuid::uuid!("7b23c99d-c06b-4a9a-a958-3afa56383e1d"))
+            ),
+            ("gidnumber", Value::Uint32(1002))
+        )
+        .into_sealed_new();
 
-        let e4 = unsafe {
-            entry_init!(
-                ("class", CLASS_GROUP.clone()),
-                (
-                    "uuid",
-                    Value::Uuid(uuid::uuid!("21d816b5-1f6a-4696-b7c1-6ed06d22ed81"))
-                ),
-                ("gidnumber", Value::Uint32(1000))
-            )
-            .into_sealed_new()
-        };
+        let e4 = entry_init!(
+            ("class", CLASS_GROUP.clone()),
+            (
+                "uuid",
+                Value::Uuid(uuid::uuid!("21d816b5-1f6a-4696-b7c1-6ed06d22ed81"))
+            ),
+            ("gidnumber", Value::Uint32(1000))
+        )
+        .into_sealed_new();
 
-        let f_t1a = unsafe {
-            filter_resolved!(f_and!([
-                f_eq("class", PVCLASS_PERSON.clone()),
-                f_or!([
-                    f_eq("gidnumber", PartialValue::Uint32(1001)),
-                    f_eq("gidnumber", PartialValue::Uint32(1000))
-                ])
-            ]))
-        };
+        let f_t1a = filter_resolved!(f_and!([
+            f_eq("class", PVCLASS_PERSON.clone()),
+            f_or!([
+                f_eq("gidnumber", PartialValue::Uint32(1001)),
+                f_eq("gidnumber", PartialValue::Uint32(1000))
+            ])
+        ]));
 
         assert!(e1.entry_match_no_index(&f_t1a));
         assert!(e2.entry_match_no_index(&f_t1a));
@@ -1773,22 +1744,18 @@ mod tests {
         f_expect.insert("class");
         // Given filters, get their expected attribute sets - this is used by access control profiles
         // to determine what attrs we are requesting regardless of the partialvalue.
-        let f_t1a = unsafe {
-            filter_valid!(f_and!([
-                f_eq("userid", PartialValue::new_iutf8("alice")),
-                f_eq("class", PartialValue::new_iutf8("1001")),
-            ]))
-        };
+        let f_t1a = filter_valid!(f_and!([
+            f_eq("userid", PartialValue::new_iutf8("alice")),
+            f_eq("class", PartialValue::new_iutf8("1001")),
+        ]));
 
         assert!(f_t1a.get_attr_set() == f_expect);
 
-        let f_t2a = unsafe {
-            filter_valid!(f_and!([
-                f_eq("userid", PartialValue::new_iutf8("alice")),
-                f_eq("class", PartialValue::new_iutf8("1001")),
-                f_eq("userid", PartialValue::new_iutf8("claire")),
-            ]))
-        };
+        let f_t2a = filter_valid!(f_and!([
+            f_eq("userid", PartialValue::new_iutf8("alice")),
+            f_eq("class", PartialValue::new_iutf8("1001")),
+            f_eq("userid", PartialValue::new_iutf8("claire")),
+        ]));
 
         assert!(f_t2a.get_attr_set() == f_expect);
     }
@@ -1843,12 +1810,10 @@ mod tests {
         let cr = server_txn.create(&ce);
         assert!(cr.is_ok());
 
-        let de_sin = unsafe {
-            DeleteEvent::new_internal_invalid(filter!(f_or!([f_eq(
-                "name",
-                PartialValue::new_iname("testperson3")
-            )])))
-        };
+        let de_sin = DeleteEvent::new_internal_invalid(filter!(f_or!([f_eq(
+            "name",
+            PartialValue::new_iname("testperson3")
+        )])));
         assert!(server_txn.delete(&de_sin).is_ok());
 
         // Commit

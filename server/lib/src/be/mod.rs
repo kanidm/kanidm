@@ -431,14 +431,11 @@ pub trait BackendTransaction {
 
                 for f in f_andnot.iter() {
                     f_rem_count -= 1;
-                    let f_in = match f {
-                        FilterResolved::AndNot(f_in, _) => f_in,
-                        _ => {
-                            filter_error!(
-                                "Invalid server state, a cand filter leaked to andnot set!"
-                            );
-                            return Err(OperationError::InvalidState);
-                        }
+                    let FilterResolved::AndNot(f_in, _) = f else {
+                        filter_error!(
+                            "Invalid server state, a cand filter leaked to andnot set!"
+                        );
+                        return Err(OperationError::InvalidState);
                     };
                     let (inter, fp) = self.filter2idl(f_in, thres)?;
                     // It's an and not, so we need to wrap the plan accordingly.
@@ -754,12 +751,9 @@ pub trait BackendTransaction {
             // We only check these on live entries.
             let (n2u_add, n2u_rem) = Entry::idx_name2uuid_diff(None, Some(e));
 
-            let n2u_set = match (n2u_add, n2u_rem) {
-                (Some(set), None) => set,
-                (_, _) => {
-                    admin_error!("Invalid idx_name2uuid_diff state");
-                    return Err(ConsistencyError::BackendIndexSync);
-                }
+            let (Some(n2u_set), None) = (n2u_add, n2u_rem) else {
+                admin_error!("Invalid idx_name2uuid_diff state");
+                return Err(ConsistencyError::BackendIndexSync);
             };
 
             // If the set.len > 1, check each item.
@@ -1588,7 +1582,7 @@ impl<'a> BackendWriteTransaction<'a> {
 
     pub fn reindex(&mut self) -> Result<(), OperationError> {
         // Purge the idxs
-        unsafe { self.idlayer.purge_idxs()? };
+        self.idlayer.danger_purge_idxs()?;
 
         // Using the index metadata on the txn, create all our idx tables
         self.create_idxs()?;
@@ -1632,17 +1626,23 @@ impl<'a> BackendWriteTransaction<'a> {
         Ok(())
     }
 
-    fn purge_idxs(&mut self) -> Result<(), OperationError> {
-        unsafe { self.get_idlayer().purge_idxs() }
+    /// ⚠️  - This function will destroy all indexes in the database.
+    ///
+    /// It should only be called internally by the backend in limited and
+    /// specific situations.
+    fn danger_purge_idxs(&mut self) -> Result<(), OperationError> {
+        self.get_idlayer().danger_purge_idxs()
     }
 
+    /// ⚠️  - This function will destroy all entries and indexes in the database.
+    ///
+    /// It should only be called internally by the backend in limited and
+    /// specific situations.
     pub(crate) fn danger_delete_all_db_content(&mut self) -> Result<(), OperationError> {
         self.get_ruv().clear();
-        unsafe {
-            self.get_idlayer()
-                .purge_id2entry()
-                .and_then(|_| self.purge_idxs())
-        }
+        self.get_idlayer()
+            .danger_purge_id2entry()
+            .and_then(|_| self.danger_purge_idxs())
     }
 
     #[cfg(test)]
@@ -1678,7 +1678,7 @@ impl<'a> BackendWriteTransaction<'a> {
             OperationError::FsError
         })?;
 
-        unsafe { idlayer.purge_id2entry() }.map_err(|e| {
+        idlayer.danger_purge_id2entry().map_err(|e| {
             admin_error!("purge_id2entry failed {:?}", e);
             e
         })?;
@@ -1997,10 +1997,10 @@ mod tests {
     use crate::value::{IndexType, PartialValue, Value};
 
     lazy_static! {
-        static ref CID_ZERO: Cid = unsafe { Cid::new_zero() };
-        static ref CID_ONE: Cid = unsafe { Cid::new_count(1) };
-        static ref CID_TWO: Cid = unsafe { Cid::new_count(2) };
-        static ref CID_THREE: Cid = unsafe { Cid::new_count(3) };
+        static ref CID_ZERO: Cid = Cid::new_zero();
+        static ref CID_ONE: Cid = Cid::new_count(1);
+        static ref CID_TWO: Cid = Cid::new_count(2);
+        static ref CID_THREE: Cid = Cid::new_count(3);
     }
 
     macro_rules! run_test {
@@ -2053,12 +2053,11 @@ mod tests {
 
     macro_rules! entry_exists {
         ($be:expr, $ent:expr) => {{
-            let ei = unsafe { $ent.clone().into_sealed_committed() };
-            let filt = unsafe {
-                ei.filter_from_attrs(&vec![AttrString::from("uuid")])
-                    .expect("failed to generate filter")
-                    .into_valid_resolved()
-            };
+            let ei = $ent.clone().into_sealed_committed();
+            let filt = ei
+                .filter_from_attrs(&vec![AttrString::from("uuid")])
+                .expect("failed to generate filter")
+                .into_valid_resolved();
             let lims = Limits::unlimited();
             let entries = $be.search(&lims, &filt).expect("failed to search");
             entries.first().is_some()
@@ -2067,12 +2066,11 @@ mod tests {
 
     macro_rules! entry_attr_pres {
         ($be:expr, $ent:expr, $attr:expr) => {{
-            let ei = unsafe { $ent.clone().into_sealed_committed() };
-            let filt = unsafe {
-                ei.filter_from_attrs(&vec![AttrString::from("userid")])
-                    .expect("failed to generate filter")
-                    .into_valid_resolved()
-            };
+            let ei = $ent.clone().into_sealed_committed();
+            let filt = ei
+                .filter_from_attrs(&vec![AttrString::from("userid")])
+                .expect("failed to generate filter")
+                .into_valid_resolved();
             let lims = Limits::unlimited();
             let entries = $be.search(&lims, &filt).expect("failed to search");
             match entries.first() {
@@ -2104,7 +2102,7 @@ mod tests {
             let mut e: Entry<EntryInit, EntryNew> = Entry::new();
             e.add_ava("userid", Value::from("william"));
             e.add_ava("uuid", Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
-            let e = unsafe { e.into_sealed_new() };
+            let e = e.into_sealed_new();
 
             let single_result = be.create(&CID_ZERO, vec![e.clone()]);
 
@@ -2123,14 +2121,13 @@ mod tests {
             let mut e: Entry<EntryInit, EntryNew> = Entry::new();
             e.add_ava("userid", Value::from("claire"));
             e.add_ava("uuid", Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
-            let e = unsafe { e.into_sealed_new() };
+            let e = e.into_sealed_new();
 
             let single_result = be.create(&CID_ZERO, vec![e]);
             assert!(single_result.is_ok());
             // Test a simple EQ search
 
-            let filt =
-                unsafe { filter_resolved!(f_eq("userid", PartialValue::new_utf8s("claire"))) };
+            let filt = filter_resolved!(f_eq("userid", PartialValue::new_utf8s("claire")));
 
             let lims = Limits::unlimited();
 
@@ -2159,8 +2156,8 @@ mod tests {
             e2.add_ava("userid", Value::from("alice"));
             e2.add_ava("uuid", Value::from("4b6228ab-1dbe-42a4-a9f5-f6368222438e"));
 
-            let ve1 = unsafe { e1.clone().into_sealed_new() };
-            let ve2 = unsafe { e2.clone().into_sealed_new() };
+            let ve1 = e1.clone().into_sealed_new();
+            let ve2 = e2.clone().into_sealed_new();
 
             assert!(be.create(&CID_ZERO, vec![ve1, ve2]).is_ok());
             assert!(entry_exists!(be, e1));
@@ -2168,20 +2165,20 @@ mod tests {
 
             // You need to now retrieve the entries back out to get the entry id's
             let mut results = be
-                .search(&lims, unsafe { &filter_resolved!(f_pres("userid")) })
+                .search(&lims, &filter_resolved!(f_pres("userid")))
                 .expect("Failed to search");
 
             // Get these out to usable entries.
             let r1 = results.remove(0);
             let r2 = results.remove(0);
 
-            let mut r1 = unsafe { r1.as_ref().clone().into_invalid() };
-            let mut r2 = unsafe { r2.as_ref().clone().into_invalid() };
+            let mut r1 = r1.as_ref().clone().into_invalid();
+            let mut r2 = r2.as_ref().clone().into_invalid();
 
             // Modify no id (err)
             // This is now impossible due to the state machine design.
             // However, with some unsafe ....
-            let ue1 = unsafe { e1.clone().into_sealed_committed() };
+            let ue1 = e1.clone().into_sealed_committed();
             assert!(be
                 .modify(&CID_ZERO, &[Arc::new(ue1.clone())], &[ue1])
                 .is_err());
@@ -2189,15 +2186,15 @@ mod tests {
             assert!(be.modify(&CID_ZERO, &[], &[]).is_err());
 
             // Make some changes to r1, r2.
-            let pre1 = unsafe { Arc::new(r1.clone().into_sealed_committed()) };
-            let pre2 = unsafe { Arc::new(r2.clone().into_sealed_committed()) };
+            let pre1 = Arc::new(r1.clone().into_sealed_committed());
+            let pre2 = Arc::new(r2.clone().into_sealed_committed());
             r1.add_ava("desc", Value::from("modified"));
             r2.add_ava("desc", Value::from("modified"));
 
             // Now ... cheat.
 
-            let vr1 = unsafe { r1.into_sealed_committed() };
-            let vr2 = unsafe { r2.into_sealed_committed() };
+            let vr1 = r1.into_sealed_committed();
+            let vr2 = r2.into_sealed_committed();
 
             // Modify single
             assert!(be.modify(&CID_ZERO, &[pre1], &[vr1.clone()]).is_ok());
@@ -2238,9 +2235,9 @@ mod tests {
             e3.add_ava("userid", Value::from("lucy"));
             e3.add_ava("uuid", Value::from("7b23c99d-c06b-4a9a-a958-3afa56383e1d"));
 
-            let ve1 = unsafe { e1.clone().into_sealed_new() };
-            let ve2 = unsafe { e2.clone().into_sealed_new() };
-            let ve3 = unsafe { e3.clone().into_sealed_new() };
+            let ve1 = e1.clone().into_sealed_new();
+            let ve2 = e2.clone().into_sealed_new();
+            let ve3 = e3.clone().into_sealed_new();
 
             assert!(be.create(&CID_ZERO, vec![ve1, ve2, ve3]).is_ok());
             assert!(entry_exists!(be, e1));
@@ -2249,7 +2246,7 @@ mod tests {
 
             // You need to now retrieve the entries back out to get the entry id's
             let mut results = be
-                .search(&lims, unsafe { &filter_resolved!(f_pres("userid")) })
+                .search(&lims, &filter_resolved!(f_pres("userid")))
                 .expect("Failed to search");
 
             // Get these out to usable entries.
@@ -2262,12 +2259,12 @@ mod tests {
 
             // Put them into the tombstone state, and write that down.
             // This sets up the RUV with the changes.
-            let r1_ts = unsafe { r1.to_tombstone(CID_ONE.clone()).into_sealed_committed() };
+            let r1_ts = r1.to_tombstone(CID_ONE.clone()).into_sealed_committed();
 
             assert!(be.modify(&CID_ONE, &[r1], &[r1_ts.clone()]).is_ok());
 
-            let r2_ts = unsafe { r2.to_tombstone(CID_TWO.clone()).into_sealed_committed() };
-            let r3_ts = unsafe { r3.to_tombstone(CID_TWO.clone()).into_sealed_committed() };
+            let r2_ts = r2.to_tombstone(CID_TWO.clone()).into_sealed_committed();
+            let r3_ts = r3.to_tombstone(CID_TWO.clone()).into_sealed_committed();
 
             assert!(be
                 .modify(&CID_TWO, &[r2, r3], &[r2_ts.clone(), r3_ts.clone()])
@@ -2334,9 +2331,9 @@ mod tests {
             e3.add_ava("userid", Value::from("lucy"));
             e3.add_ava("uuid", Value::from("7b23c99d-c06b-4a9a-a958-3afa56383e1d"));
 
-            let ve1 = unsafe { e1.clone().into_sealed_new() };
-            let ve2 = unsafe { e2.clone().into_sealed_new() };
-            let ve3 = unsafe { e3.clone().into_sealed_new() };
+            let ve1 = e1.clone().into_sealed_new();
+            let ve2 = e2.clone().into_sealed_new();
+            let ve3 = e3.clone().into_sealed_new();
 
             assert!(be.create(&CID_ZERO, vec![ve1, ve2, ve3]).is_ok());
             assert!(entry_exists!(be, e1));
@@ -2389,9 +2386,9 @@ mod tests {
             e3.add_ava("userid", Value::from("lucy"));
             e3.add_ava("uuid", Value::from("7b23c99d-c06b-4a9a-a958-3afa56383e1d"));
 
-            let ve1 = unsafe { e1.clone().into_sealed_new() };
-            let ve2 = unsafe { e2.clone().into_sealed_new() };
-            let ve3 = unsafe { e3.clone().into_sealed_new() };
+            let ve1 = e1.clone().into_sealed_new();
+            let ve2 = e2.clone().into_sealed_new();
+            let ve3 = e3.clone().into_sealed_new();
 
             assert!(be.create(&CID_ZERO, vec![ve1, ve2, ve3]).is_ok());
             assert!(entry_exists!(be, e1));
@@ -2475,17 +2472,17 @@ mod tests {
             let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
             e1.add_ava("name", Value::new_iname("william"));
             e1.add_ava("uuid", Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
-            let e1 = unsafe { e1.into_sealed_new() };
+            let e1 = e1.into_sealed_new();
 
             let mut e2: Entry<EntryInit, EntryNew> = Entry::new();
             e2.add_ava("name", Value::new_iname("claire"));
             e2.add_ava("uuid", Value::from("bd651620-00dd-426b-aaa0-4494f7b7906f"));
-            let e2 = unsafe { e2.into_sealed_new() };
+            let e2 = e2.into_sealed_new();
 
             be.create(&CID_ZERO, vec![e1, e2]).unwrap();
 
             // purge indexes
-            be.purge_idxs().unwrap();
+            be.danger_purge_idxs().unwrap();
             // Check they are gone
             let missing = be.missing_idxs().unwrap();
             assert!(missing.len() == 7);
@@ -2572,7 +2569,7 @@ mod tests {
             let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
             e1.add_ava("name", Value::from("william"));
             e1.add_ava("uuid", Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
-            let e1 = unsafe { e1.into_sealed_new() };
+            let e1 = e1.into_sealed_new();
 
             let rset = be.create(&CID_ZERO, vec![e1]).unwrap();
             let mut rset: Vec<_> = rset.into_iter().map(Arc::new).collect();
@@ -2598,7 +2595,7 @@ mod tests {
             assert!(be.uuid2rdn(william_uuid) == Ok(Some("name=william".to_string())));
 
             // == Now we reap_tombstones, and assert we removed the items.
-            let e1_ts = unsafe { e1.to_tombstone(CID_ONE.clone()).into_sealed_committed() };
+            let e1_ts = e1.to_tombstone(CID_ONE.clone()).into_sealed_committed();
             assert!(be.modify(&CID_ONE, &[e1], &[e1_ts]).is_ok());
             be.reap_tombstones(&CID_TWO).unwrap();
 
@@ -2633,17 +2630,17 @@ mod tests {
             let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
             e1.add_ava("name", Value::new_iname("william"));
             e1.add_ava("uuid", Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
-            let e1 = unsafe { e1.into_sealed_new() };
+            let e1 = e1.into_sealed_new();
 
             let mut e2: Entry<EntryInit, EntryNew> = Entry::new();
             e2.add_ava("name", Value::new_iname("claire"));
             e2.add_ava("uuid", Value::from("bd651620-00dd-426b-aaa0-4494f7b7906f"));
-            let e2 = unsafe { e2.into_sealed_new() };
+            let e2 = e2.into_sealed_new();
 
             let mut e3: Entry<EntryInit, EntryNew> = Entry::new();
             e3.add_ava("userid", Value::new_iname("lucy"));
             e3.add_ava("uuid", Value::from("7b23c99d-c06b-4a9a-a958-3afa56383e1d"));
-            let e3 = unsafe { e3.into_sealed_new() };
+            let e3 = e3.into_sealed_new();
 
             let mut rset = be.create(&CID_ZERO, vec![e1, e2, e3]).unwrap();
             rset.remove(1);
@@ -2652,8 +2649,8 @@ mod tests {
             let e3 = rset.pop().unwrap();
 
             // Now remove e1, e3.
-            let e1_ts = unsafe { e1.to_tombstone(CID_ONE.clone()).into_sealed_committed() };
-            let e3_ts = unsafe { e3.to_tombstone(CID_ONE.clone()).into_sealed_committed() };
+            let e1_ts = e1.to_tombstone(CID_ONE.clone()).into_sealed_committed();
+            let e3_ts = e3.to_tombstone(CID_ONE.clone()).into_sealed_committed();
             assert!(be.modify(&CID_ONE, &[e1, e3], &[e1_ts, e3_ts]).is_ok());
             be.reap_tombstones(&CID_TWO).unwrap();
 
@@ -2702,12 +2699,12 @@ mod tests {
             e1.add_ava("name", Value::new_iname("william"));
             e1.add_ava("uuid", Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
             e1.add_ava("ta", Value::from("test"));
-            let e1 = unsafe { e1.into_sealed_new() };
+            let e1 = e1.into_sealed_new();
 
             let rset = be.create(&CID_ZERO, vec![e1]).unwrap();
             let rset: Vec<_> = rset.into_iter().map(Arc::new).collect();
             // Now, alter the new entry.
-            let mut ce1 = unsafe { rset[0].as_ref().clone().into_invalid() };
+            let mut ce1 = rset[0].as_ref().clone().into_invalid();
             // add something.
             ce1.add_ava("tb", Value::from("test"));
             // remove something.
@@ -2716,7 +2713,7 @@ mod tests {
             ce1.purge_ava("name");
             ce1.add_ava("name", Value::new_iname("claire"));
 
-            let ce1 = unsafe { ce1.into_sealed_committed() };
+            let ce1 = ce1.into_sealed_committed();
 
             be.modify(&CID_ZERO, &rset, &[ce1]).unwrap();
 
@@ -2747,17 +2744,17 @@ mod tests {
             let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
             e1.add_ava("name", Value::new_iname("william"));
             e1.add_ava("uuid", Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
-            let e1 = unsafe { e1.into_sealed_new() };
+            let e1 = e1.into_sealed_new();
 
             let rset = be.create(&CID_ZERO, vec![e1]).unwrap();
             let rset: Vec<_> = rset.into_iter().map(Arc::new).collect();
             // Now, alter the new entry.
-            let mut ce1 = unsafe { rset[0].as_ref().clone().into_invalid() };
+            let mut ce1 = rset[0].as_ref().clone().into_invalid();
             ce1.purge_ava("name");
             ce1.purge_ava("uuid");
             ce1.add_ava("name", Value::new_iname("claire"));
             ce1.add_ava("uuid", Value::from("04091a7a-6ce4-42d2-abf5-c2ce244ac9e8"));
-            let ce1 = unsafe { ce1.into_sealed_committed() };
+            let ce1 = ce1.into_sealed_committed();
 
             be.modify(&CID_ZERO, &rset, &[ce1]).unwrap();
 
@@ -2805,17 +2802,16 @@ mod tests {
             e1.add_ava("uuid", Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
             e1.add_ava("no-index", Value::from("william"));
             e1.add_ava("other-no-index", Value::from("william"));
-            let e1 = unsafe { e1.into_sealed_new() };
+            let e1 = e1.into_sealed_new();
 
             let mut e2: Entry<EntryInit, EntryNew> = Entry::new();
             e2.add_ava("name", Value::new_iname("claire"));
             e2.add_ava("uuid", Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d2"));
-            let e2 = unsafe { e2.into_sealed_new() };
+            let e2 = e2.into_sealed_new();
 
             let _rset = be.create(&CID_ZERO, vec![e1, e2]).unwrap();
             // Test fully unindexed
-            let f_un =
-                unsafe { filter_resolved!(f_eq("no-index", PartialValue::new_utf8s("william"))) };
+            let f_un = filter_resolved!(f_eq("no-index", PartialValue::new_utf8s("william")));
 
             let (r, _plan) = be.filter2idl(f_un.to_inner(), 0).unwrap();
             match r {
@@ -2826,7 +2822,7 @@ mod tests {
             }
 
             // Test that a fully indexed search works
-            let feq = unsafe { filter_resolved!(f_eq("name", PartialValue::new_utf8s("william"))) };
+            let feq = filter_resolved!(f_eq("name", PartialValue::new_utf8s("william")));
 
             let (r, _plan) = be.filter2idl(feq.to_inner(), 0).unwrap();
             match r {
@@ -2840,15 +2836,13 @@ mod tests {
 
             // Test and/or
             //   full index and
-            let f_in_and = unsafe {
-                filter_resolved!(f_and!([
-                    f_eq("name", PartialValue::new_utf8s("william")),
-                    f_eq(
-                        "uuid",
-                        PartialValue::new_utf8s("db237e8a-0079-4b8c-8a56-593b22aa44d1")
-                    )
-                ]))
-            };
+            let f_in_and = filter_resolved!(f_and!([
+                f_eq("name", PartialValue::new_utf8s("william")),
+                f_eq(
+                    "uuid",
+                    PartialValue::new_utf8s("db237e8a-0079-4b8c-8a56-593b22aa44d1")
+                )
+            ]));
 
             let (r, _plan) = be.filter2idl(f_in_and.to_inner(), 0).unwrap();
             match r {
@@ -2861,19 +2855,15 @@ mod tests {
             }
 
             //   partial index and
-            let f_p1 = unsafe {
-                filter_resolved!(f_and!([
-                    f_eq("name", PartialValue::new_utf8s("william")),
-                    f_eq("no-index", PartialValue::new_utf8s("william"))
-                ]))
-            };
+            let f_p1 = filter_resolved!(f_and!([
+                f_eq("name", PartialValue::new_utf8s("william")),
+                f_eq("no-index", PartialValue::new_utf8s("william"))
+            ]));
 
-            let f_p2 = unsafe {
-                filter_resolved!(f_and!([
-                    f_eq("name", PartialValue::new_utf8s("william")),
-                    f_eq("no-index", PartialValue::new_utf8s("william"))
-                ]))
-            };
+            let f_p2 = filter_resolved!(f_and!([
+                f_eq("name", PartialValue::new_utf8s("william")),
+                f_eq("no-index", PartialValue::new_utf8s("william"))
+            ]));
 
             let (r, _plan) = be.filter2idl(f_p1.to_inner(), 0).unwrap();
             match r {
@@ -2896,12 +2886,10 @@ mod tests {
             }
 
             //   no index and
-            let f_no_and = unsafe {
-                filter_resolved!(f_and!([
-                    f_eq("no-index", PartialValue::new_utf8s("william")),
-                    f_eq("other-no-index", PartialValue::new_utf8s("william"))
-                ]))
-            };
+            let f_no_and = filter_resolved!(f_and!([
+                f_eq("no-index", PartialValue::new_utf8s("william")),
+                f_eq("other-no-index", PartialValue::new_utf8s("william"))
+            ]));
 
             let (r, _plan) = be.filter2idl(f_no_and.to_inner(), 0).unwrap();
             match r {
@@ -2912,9 +2900,8 @@ mod tests {
             }
 
             //   full index or
-            let f_in_or = unsafe {
-                filter_resolved!(f_or!([f_eq("name", PartialValue::new_utf8s("william"))]))
-            };
+            let f_in_or =
+                filter_resolved!(f_or!([f_eq("name", PartialValue::new_utf8s("william"))]));
 
             let (r, _plan) = be.filter2idl(f_in_or.to_inner(), 0).unwrap();
             match r {
@@ -2926,12 +2913,10 @@ mod tests {
                 }
             }
             //   partial (aka allids) or
-            let f_un_or = unsafe {
-                filter_resolved!(f_or!([f_eq(
-                    "no-index",
-                    PartialValue::new_utf8s("william")
-                )]))
-            };
+            let f_un_or = filter_resolved!(f_or!([f_eq(
+                "no-index",
+                PartialValue::new_utf8s("william")
+            )]));
 
             let (r, _plan) = be.filter2idl(f_un_or.to_inner(), 0).unwrap();
             match r {
@@ -2942,9 +2927,8 @@ mod tests {
             }
 
             // Test root andnot
-            let f_r_andnot = unsafe {
-                filter_resolved!(f_andnot(f_eq("name", PartialValue::new_utf8s("william"))))
-            };
+            let f_r_andnot =
+                filter_resolved!(f_andnot(f_eq("name", PartialValue::new_utf8s("william"))));
 
             let (r, _plan) = be.filter2idl(f_r_andnot.to_inner(), 0).unwrap();
             match r {
@@ -2957,12 +2941,10 @@ mod tests {
             }
 
             // test andnot as only in and
-            let f_and_andnot = unsafe {
-                filter_resolved!(f_and!([f_andnot(f_eq(
-                    "name",
-                    PartialValue::new_utf8s("william")
-                ))]))
-            };
+            let f_and_andnot = filter_resolved!(f_and!([f_andnot(f_eq(
+                "name",
+                PartialValue::new_utf8s("william")
+            ))]));
 
             let (r, _plan) = be.filter2idl(f_and_andnot.to_inner(), 0).unwrap();
             match r {
@@ -2974,12 +2956,10 @@ mod tests {
                 }
             }
             // test andnot as only in or
-            let f_or_andnot = unsafe {
-                filter_resolved!(f_or!([f_andnot(f_eq(
-                    "name",
-                    PartialValue::new_utf8s("william")
-                ))]))
-            };
+            let f_or_andnot = filter_resolved!(f_or!([f_andnot(f_eq(
+                "name",
+                PartialValue::new_utf8s("william")
+            ))]));
 
             let (r, _plan) = be.filter2idl(f_or_andnot.to_inner(), 0).unwrap();
             match r {
@@ -2992,12 +2972,10 @@ mod tests {
             }
 
             // test andnot in and (first) with name
-            let f_and_andnot = unsafe {
-                filter_resolved!(f_and!([
-                    f_andnot(f_eq("name", PartialValue::new_utf8s("claire"))),
-                    f_pres("name")
-                ]))
-            };
+            let f_and_andnot = filter_resolved!(f_and!([
+                f_andnot(f_eq("name", PartialValue::new_utf8s("claire"))),
+                f_pres("name")
+            ]));
 
             let (r, _plan) = be.filter2idl(f_and_andnot.to_inner(), 0).unwrap();
             match r {
@@ -3010,12 +2988,10 @@ mod tests {
                 }
             }
             // test andnot in and (last) with name
-            let f_and_andnot = unsafe {
-                filter_resolved!(f_and!([
-                    f_pres("name"),
-                    f_andnot(f_eq("name", PartialValue::new_utf8s("claire")))
-                ]))
-            };
+            let f_and_andnot = filter_resolved!(f_and!([
+                f_pres("name"),
+                f_andnot(f_eq("name", PartialValue::new_utf8s("claire")))
+            ]));
 
             let (r, _plan) = be.filter2idl(f_and_andnot.to_inner(), 0).unwrap();
             match r {
@@ -3027,12 +3003,10 @@ mod tests {
                 }
             }
             // test andnot in and (first) with no-index
-            let f_and_andnot = unsafe {
-                filter_resolved!(f_and!([
-                    f_andnot(f_eq("name", PartialValue::new_utf8s("claire"))),
-                    f_pres("no-index")
-                ]))
-            };
+            let f_and_andnot = filter_resolved!(f_and!([
+                f_andnot(f_eq("name", PartialValue::new_utf8s("claire"))),
+                f_pres("no-index")
+            ]));
 
             let (r, _plan) = be.filter2idl(f_and_andnot.to_inner(), 0).unwrap();
             match r {
@@ -3042,12 +3016,10 @@ mod tests {
                 }
             }
             // test andnot in and (last) with no-index
-            let f_and_andnot = unsafe {
-                filter_resolved!(f_and!([
-                    f_pres("no-index"),
-                    f_andnot(f_eq("name", PartialValue::new_utf8s("claire")))
-                ]))
-            };
+            let f_and_andnot = filter_resolved!(f_and!([
+                f_pres("no-index"),
+                f_andnot(f_eq("name", PartialValue::new_utf8s("claire")))
+            ]));
 
             let (r, _plan) = be.filter2idl(f_and_andnot.to_inner(), 0).unwrap();
             match r {
@@ -3058,7 +3030,7 @@ mod tests {
             }
 
             //   empty or
-            let f_e_or = unsafe { filter_resolved!(f_or!([])) };
+            let f_e_or = filter_resolved!(f_or!([]));
 
             let (r, _plan) = be.filter2idl(f_e_or.to_inner(), 0).unwrap();
             match r {
@@ -3070,7 +3042,7 @@ mod tests {
                 }
             }
 
-            let f_e_and = unsafe { filter_resolved!(f_and!([])) };
+            let f_e_and = filter_resolved!(f_and!([]));
 
             let (r, _plan) = be.filter2idl(f_e_and.to_inner(), 0).unwrap();
             match r {
@@ -3089,10 +3061,9 @@ mod tests {
         run_test!(|be: &mut BackendWriteTransaction| {
             // Test where the index is in schema but not created (purge idxs)
             // should fall back to an empty set because we can't satisfy the term
-            be.purge_idxs().unwrap();
+            be.danger_purge_idxs().unwrap();
             debug!("{:?}", be.missing_idxs().unwrap());
-            let f_eq =
-                unsafe { filter_resolved!(f_eq("name", PartialValue::new_utf8s("william"))) };
+            let f_eq = filter_resolved!(f_eq("name", PartialValue::new_utf8s("william")));
 
             let (r, _plan) = be.filter2idl(f_eq.to_inner(), 0).unwrap();
             match r {
@@ -3113,21 +3084,21 @@ mod tests {
             e1.add_ava("uuid", Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
             e1.add_ava("ta", Value::from("dupe"));
             e1.add_ava("tb", Value::from("1"));
-            let e1 = unsafe { e1.into_sealed_new() };
+            let e1 = e1.into_sealed_new();
 
             let mut e2: Entry<EntryInit, EntryNew> = Entry::new();
             e2.add_ava("name", Value::new_iname("claire"));
             e2.add_ava("uuid", Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d2"));
             e2.add_ava("ta", Value::from("dupe"));
             e2.add_ava("tb", Value::from("1"));
-            let e2 = unsafe { e2.into_sealed_new() };
+            let e2 = e2.into_sealed_new();
 
             let mut e3: Entry<EntryInit, EntryNew> = Entry::new();
             e3.add_ava("name", Value::new_iname("benny"));
             e3.add_ava("uuid", Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d3"));
             e3.add_ava("ta", Value::from("dupe"));
             e3.add_ava("tb", Value::from("2"));
-            let e3 = unsafe { e3.into_sealed_new() };
+            let e3 = e3.into_sealed_new();
 
             let _rset = be.create(&CID_ZERO, vec![e1, e2, e3]).unwrap();
 
@@ -3212,15 +3183,14 @@ mod tests {
             e.add_ava("userid", Value::from("william"));
             e.add_ava("uuid", Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
             e.add_ava("nonexist", Value::from("x"));
-            let e = unsafe { e.into_sealed_new() };
+            let e = e.into_sealed_new();
             let single_result = be.create(&CID_ZERO, vec![e.clone()]);
 
             assert!(single_result.is_ok());
-            let filt = unsafe {
-                e.filter_from_attrs(&[AttrString::from("nonexist")])
-                    .expect("failed to generate filter")
-                    .into_valid_resolved()
-            };
+            let filt = e
+                .filter_from_attrs(&[AttrString::from("nonexist")])
+                .expect("failed to generate filter")
+                .into_valid_resolved();
             // check allow on allids
             let res = be.search(&lim_allow_allids, &filt);
             assert!(res.is_ok());
@@ -3248,15 +3218,14 @@ mod tests {
             e.add_ava("userid", Value::from("william"));
             e.add_ava("uuid", Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
             e.add_ava("nonexist", Value::from("x"));
-            let e = unsafe { e.into_sealed_new() };
+            let e = e.into_sealed_new();
             let single_result = be.create(&CID_ZERO, vec![e.clone()]);
             assert!(single_result.is_ok());
 
-            let filt = unsafe {
-                e.filter_from_attrs(&[AttrString::from("nonexist")])
-                    .expect("failed to generate filter")
-                    .into_valid_resolved()
-            };
+            let filt = e
+                .filter_from_attrs(&[AttrString::from("nonexist")])
+                .expect("failed to generate filter")
+                .into_valid_resolved();
 
             // --> This is the all ids path (unindexed)
             // check allow on entry max
@@ -3306,7 +3275,7 @@ mod tests {
             e.add_ava("uuid", Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
             e.add_ava("nonexist", Value::from("x"));
             e.add_ava("nonexist", Value::from("y"));
-            let e = unsafe { e.into_sealed_new() };
+            let e = e.into_sealed_new();
             let single_result = be.create(&CID_ZERO, vec![e]);
             assert!(single_result.is_ok());
 
@@ -3323,18 +3292,16 @@ mod tests {
             //
             // This creates a partial, and because it's the first iteration in the loop, this
             // doesn't encounter partial threshold testing.
-            let filt = unsafe {
-                filter_resolved!(f_and!([
-                    f_or!([
-                        f_eq("nonexist", PartialValue::new_utf8s("x")),
-                        f_eq("nonexist", PartialValue::new_utf8s("y"))
-                    ]),
-                    f_or!([
-                        f_eq("name", PartialValue::new_utf8s("claire")),
-                        f_eq("name", PartialValue::new_utf8s("william"))
-                    ]),
-                ]))
-            };
+            let filt = filter_resolved!(f_and!([
+                f_or!([
+                    f_eq("nonexist", PartialValue::new_utf8s("x")),
+                    f_eq("nonexist", PartialValue::new_utf8s("y"))
+                ]),
+                f_or!([
+                    f_eq("name", PartialValue::new_utf8s("claire")),
+                    f_eq("name", PartialValue::new_utf8s("william"))
+                ]),
+            ]));
 
             let res = be.search(&lim_allow, &filt);
             assert!(res.is_ok());
@@ -3375,14 +3342,14 @@ mod tests {
         let mut e: Entry<EntryInit, EntryNew> = Entry::new();
         e.add_ava("userid", Value::from("william"));
         e.add_ava("uuid", Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
-        let e = unsafe { e.into_sealed_new() };
+        let e = e.into_sealed_new();
 
         let single_result = be_a_txn.create(&CID_ZERO, vec![e]);
 
         assert!(single_result.is_ok());
 
         // Assert it's in A but not B.
-        let filt = unsafe { filter_resolved!(f_eq("userid", PartialValue::new_utf8s("william"))) };
+        let filt = filter_resolved!(f_eq("userid", PartialValue::new_utf8s("william")));
 
         let lims = Limits::unlimited();
 
@@ -3396,14 +3363,14 @@ mod tests {
         let mut e: Entry<EntryInit, EntryNew> = Entry::new();
         e.add_ava("userid", Value::from("claire"));
         e.add_ava("uuid", Value::from("0c680959-0944-47d6-9dea-53304d124266"));
-        let e = unsafe { e.into_sealed_new() };
+        let e = e.into_sealed_new();
 
         let single_result = be_b_txn.create(&CID_ZERO, vec![e]);
 
         assert!(single_result.is_ok());
 
         // Assert it's in B but not A
-        let filt = unsafe { filter_resolved!(f_eq("userid", PartialValue::new_utf8s("claire"))) };
+        let filt = filter_resolved!(f_eq("userid", PartialValue::new_utf8s("claire")));
 
         let lims = Limits::unlimited();
 

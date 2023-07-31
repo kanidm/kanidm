@@ -98,17 +98,14 @@ impl Plugin for Spn {
         let mut r = Vec::new();
 
         for e in all_cand {
-            let g_spn = match e.generate_spn(&domain_name) {
-                Some(s) => s,
-                None => {
-                    admin_error!(
-                        uuid = ?e.get_uuid(),
-                        "Entry SPN could not be generated (missing name!?)",
-                    );
-                    debug_assert!(false);
-                    r.push(Err(ConsistencyError::InvalidSpn(e.get_id())));
-                    continue;
-                }
+            let Some(g_spn) = e.generate_spn(&domain_name) else {
+                admin_error!(
+                    uuid = ?e.get_uuid(),
+                    "Entry SPN could not be generated (missing name!?)",
+                );
+                debug_assert!(false);
+                r.push(Err(ConsistencyError::InvalidSpn(e.get_id())));
+                continue;
             };
             match e.get_ava_single("spn") {
                 Some(r_spn) => {
@@ -182,9 +179,8 @@ impl Spn {
             }
         });
 
-        let domain_name = match domain_name_changed {
-            Some(s) => s,
-            None => return Ok(()),
+        let Some(domain_name) = domain_name_changed else {
+            return Ok(())
         };
 
         admin_info!(
@@ -337,11 +333,9 @@ mod tests {
         // trigger the domain_name change (this will be a cli option to the server
         // in the final version), but it will still call the same qs function to perform the
         // change.
-        unsafe {
-            server_txn
-                .domain_rename_inner("new.example.com")
-                .expect("should not fail!");
-        }
+        server_txn
+            .danger_domain_rename("new.example.com")
+            .expect("should not fail!");
 
         // check the spn on admin is admin@<new domain>
         let e_post = server_txn
