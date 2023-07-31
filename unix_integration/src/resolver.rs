@@ -302,7 +302,7 @@ where
                 let exists = Path::new(shell).exists();
                 if !exists {
                     info!(
-                        "User requested shell is not present on this system - {}",
+                        "User shell is not present on this system - {}. Check `/etc/shells` for valid shell options.",
                         shell
                     )
                 }
