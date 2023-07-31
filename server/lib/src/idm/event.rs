@@ -323,19 +323,13 @@ impl AuthEventStep {
             }
 
             AuthStep::Begin(mech) => match sid {
-                Some(sessionid) => Ok(AuthEventStep::Begin(AuthEventStepMech {
-                    sessionid,
-                    mech,
-                })),
+                Some(sessionid) => Ok(AuthEventStep::Begin(AuthEventStepMech { sessionid, mech })),
                 None => Err(OperationError::InvalidAuthState(
                     "session id not present in cred presented to 'begin' step".to_string(),
                 )),
             },
             AuthStep::Cred(cred) => match sid {
-                Some(sessionid) => Ok(AuthEventStep::Cred(AuthEventStepCred {
-                    sessionid,
-                    cred,
-                })),
+                Some(sessionid) => Ok(AuthEventStep::Cred(AuthEventStepCred { sessionid, cred })),
                 None => Err(OperationError::InvalidAuthState(
                     "session id not present in cred to 'cred' step".to_string(),
                 )),

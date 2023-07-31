@@ -10,8 +10,8 @@ use uuid::Uuid;
 
 pub(crate) mod caching;
 pub(crate) mod compression;
-pub(crate) mod security_headers;
 pub(crate) mod hsts_header;
+pub(crate) mod security_headers;
 
 // the version middleware injects
 const KANIDM_VERSION: &str = env!("CARGO_PKG_VERSION");
