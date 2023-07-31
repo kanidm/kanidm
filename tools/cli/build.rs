@@ -12,6 +12,8 @@ include!("src/opt/ssh_authorizedkeys.rs");
 include!("src/opt/kanidm.rs");
 
 fn main() {
+    profiles::apply_profile();
+
     let outdir = match env::var_os("OUT_DIR") {
         None => return,
         Some(outdir) => outdir,

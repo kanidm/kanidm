@@ -233,7 +233,7 @@ async fn main() {
     debug!("cli -> {:?}", opt);
     match opt {
         OrcaOpt::Version(_opt) => {
-            println!("{}", kanidm_proto::utils::get_version("orca"));
+            println!("orca {}", env!("KANIDM_PKG_VERSION"));
             std::process::exit(0);
         }
         OrcaOpt::TestConnection(opt) => {

@@ -34,11 +34,11 @@ mod views;
 
 mod components;
 
+/// This is the entry point of the web front end. This triggers the manager app to load and begin
+/// it's event loop.
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
 pub fn run_app() -> Result<(), JsValue> {
     yew::Renderer::<manager::ManagerApp>::new().render();
-    #[cfg(debug_assertions)]
-    gloo::console::debug!(kanidm_proto::utils::get_version("kanidmd_web_ui"));
     Ok(())
 }
 

@@ -236,7 +236,7 @@ async fn main() -> ExitCode {
 
             // print the app version and bail
             if let KanidmdOpt::Version(_) = &opt.commands {
-                kanidm_proto::utils::show_version("kanidmd");
+                println!("kanidmd {}",  env!("KANIDM_PKG_VERSION"));
                 return ExitCode::SUCCESS
             };
 

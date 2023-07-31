@@ -31,10 +31,7 @@ async fn main() -> ExitCode {
         ::std::env::set_var("RUST_LOG", "kanidm=debug,kanidm_client=debug");
     }
     if opt.version {
-        println!(
-            "{}",
-            kanidm_proto::utils::get_version("kanidm_ssh_authorizedkeys")
-        );
+        println!("ssh_authorizedkeys {}", env!("KANIDM_PKG_VERSION"));
         return ExitCode::SUCCESS;
     }
     sketching::tracing_subscriber::fmt::init();
