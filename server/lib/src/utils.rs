@@ -16,7 +16,7 @@ use touch::file as touch_file;
 // use std::os::windows::fs::MetadataExt;
 use crate::prelude::*;
 #[cfg(target_family = "unix")]
-use users::{get_current_gid, get_current_uid};
+use kanidm_utils_users::{get_current_gid, get_current_uid};
 
 #[derive(Debug)]
 pub struct DistinctAlpha;

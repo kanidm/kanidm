@@ -11,4 +11,4 @@ edition = "2021"
 whoami = {workspace = true}
 
 [target.'cfg(not(target_family = "windows"))'.dependencies]
-users = {workspace = true}
+kanidm_utils_users = { workspace = true }

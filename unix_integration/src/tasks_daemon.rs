@@ -23,6 +23,7 @@ use futures::{SinkExt, StreamExt};
 use kanidm_unix_common::constants::DEFAULT_CONFIG_PATH;
 use kanidm_unix_common::unix_config::KanidmUnixdConfig;
 use kanidm_unix_common::unix_proto::{HomeDirectoryInfo, TaskRequest, TaskResponse};
+use kanidm_utils_users::{get_effective_gid, get_effective_uid};
 use libc::{lchown, umask};
 use sketching::tracing_forest::traits::*;
 use sketching::tracing_forest::util::*;
@@ -31,7 +32,6 @@ use tokio::net::UnixStream;
 use tokio::sync::broadcast;
 use tokio::time;
 use tokio_util::codec::{Decoder, Encoder, Framed};
-use users::{get_effective_gid, get_effective_uid};
 use walkdir::WalkDir;
 
 #[cfg(all(target_family = "unix", feature = "selinux"))]

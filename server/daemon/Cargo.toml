@@ -40,7 +40,7 @@ sd-notify.workspace = true
 whoami = { workspace = true }
 
 [target.'cfg(not(target_family = "windows"))'.dependencies]
-users = { workspace = true }
+kanidm_utils_users = { workspace = true }
 tikv-jemallocator = { workspace = true }
 
 [build-dependencies]

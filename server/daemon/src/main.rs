@@ -26,6 +26,8 @@ use std::process::ExitCode;
 
 use clap::{Args, Parser, Subcommand};
 use futures::{SinkExt, StreamExt};
+#[cfg(not(target_family = "windows"))] // not needed for windows builds
+use kanidm_utils_users::{get_current_gid, get_current_uid, get_effective_gid, get_effective_uid};
 use kanidmd_core::admin::{AdminTaskRequest, AdminTaskResponse, ClientCodec};
 use kanidmd_core::config::{Configuration, LogLevel, ServerConfig};
 use kanidmd_core::{
@@ -39,8 +41,6 @@ use sketching::tracing_forest::util::*;
 use sketching::tracing_forest::{self};
 use tokio::net::UnixStream;
 use tokio_util::codec::Framed;
-#[cfg(not(target_family = "windows"))] // not needed for windows builds
-use users::{get_current_gid, get_current_uid, get_effective_gid, get_effective_uid};
 #[cfg(target_family = "windows")] // for windows builds
 use whoami;
 

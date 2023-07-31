@@ -2,6 +2,7 @@ use crate::actors::v1_write::QueryServerWriteV1;
 use crate::CoreAction;
 use bytes::{BufMut, BytesMut};
 use futures::{SinkExt, StreamExt};
+use kanidm_utils_users::get_current_uid;
 use serde::{Deserialize, Serialize};
 use std::error::Error;
 use std::io;
@@ -10,7 +11,6 @@ use tokio::net::{UnixListener, UnixStream};
 use tokio::sync::broadcast;
 use tokio_util::codec::{Decoder, Encoder, Framed};
 use tracing::{span, Level};
-use users::get_current_uid;
 use uuid::Uuid;
 
 #[derive(Serialize, Deserialize, Debug)]

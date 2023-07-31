@@ -12,7 +12,6 @@ homepage = { workspace = true }
 repository = { workspace = true }
 
 [dependencies]
-async-trait = { workspace = true }
 num_enum = { workspace = true }
 tracing = { workspace = true, features = ["attributes"] }
 tracing-subscriber = { workspace = true, features = ["env-filter"] }

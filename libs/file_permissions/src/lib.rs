@@ -9,7 +9,7 @@ use std::os::macos::fs::MetadataExt;
 // #[cfg(target_os = "windows")]
 // use std::os::windows::fs::MetadataExt;
 #[cfg(target_family = "unix")]
-use users::{get_current_gid, get_current_uid};
+use kanidm_utils_users::{get_current_gid, get_current_uid};
 
 #[cfg(target_family = "unix")]
 /// Check a given file's metadata is read-only for the current user (true = read-only)
