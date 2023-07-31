@@ -73,7 +73,7 @@ uuid = { workspace = true }
 walkdir = { workspace = true }
 
 [target.'cfg(not(target_family = "windows"))'.dependencies]
-users = { workspace = true }
+kanidm_utils_users = { workspace = true }
 
 [dev-dependencies]
 kanidmd_core = { workspace = true }

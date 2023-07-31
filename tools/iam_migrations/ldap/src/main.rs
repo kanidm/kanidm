@@ -49,7 +49,7 @@ use kanidm_proto::scim_v1::{
 use kanidmd_lib::utils::file_permissions_readonly;
 
 #[cfg(target_family = "unix")]
-use users::{get_current_gid, get_current_uid, get_effective_gid, get_effective_uid};
+use kanidm_utils_users::{get_current_gid, get_current_uid, get_effective_gid, get_effective_uid};
 
 use ldap3_client::{proto, LdapClientBuilder, LdapSyncRepl, LdapSyncReplEntry, LdapSyncStateValue};
 

@@ -1,7 +1,6 @@
-use std::env;
-
 use base64::{engine::general_purpose, Engine as _};
 use serde::Deserialize;
+use std::env;
 
 #[derive(Debug, Deserialize)]
 #[allow(non_camel_case_types)]
@@ -73,6 +72,19 @@ pub fn apply_profile() {
 
     let profile_cfg: ProfileConfig = toml::from_slice(&data)
         .unwrap_or_else(|_| panic!("Failed to parse profile - {} - {}", profile, contents));
+
+    // We have to setup for our pkg version to be passed into things correctly
+    // now. This relies on the profile build.rs to get the commit rev if present, but
+    // we combine it with the local package version
+    let version = env!("CARGO_PKG_VERSION");
+    if let Some(commit_rev) = option_env!("KANIDM_PKG_COMMIT_REV") {
+        println!(
+            "cargo:rustc-env=KANIDM_PKG_VERSION={} {}",
+            version, commit_rev
+        );
+    } else {
+        println!("cargo:rustc-env=KANIDM_PKG_VERSION={}", version);
+    };
 
     match profile_cfg.cpu_flags {
         CpuOptLevel::apple_m1 => println!("cargo:rustc-env=RUSTFLAGS=-Ctarget-cpu=apple_m1"),

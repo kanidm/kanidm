@@ -29,5 +29,3 @@ urlencoding = { workspace = true }
 uuid = { workspace = true, features = ["serde"] }
 webauthn-rs-proto = { workspace = true }
 
-[target.'cfg(not(target_family = "wasm"))'.dependencies]
-last-git-commit = { workspace = true }

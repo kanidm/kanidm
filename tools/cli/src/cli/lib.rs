@@ -100,7 +100,7 @@ impl KanidmClientOpt {
             KanidmClientOpt::System { commands } => commands.debug(),
             KanidmClientOpt::Recycle { commands } => commands.debug(),
             KanidmClientOpt::Version {} => {
-                kanidm_proto::utils::show_version("kanidm");
+                println!("kanidm {}", env!("KANIDM_PKG_VERSION"));
                 true
             }
         }

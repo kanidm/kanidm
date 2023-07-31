@@ -20,7 +20,6 @@ name = "scaling_10k"
 harness = false
 
 [dependencies]
-async-trait = { workspace = true }
 base64 = { workspace = true }
 base64urlsafedata = { workspace = true }
 compact_jwt = { workspace = true, features = ["openssl"] }
@@ -28,7 +27,7 @@ concread = { workspace = true }
 dyn-clone = { workspace = true }
 fernet = { workspace = true, features = ["fernet_danger_timestamps"] }
 filetime = { workspace = true }
-futures-util = { workspace = true }
+# futures-util = { workspace = true }
 hashbrown = { workspace = true }
 idlset = { workspace = true }
 kanidm_proto = { workspace = true }
@@ -74,7 +73,7 @@ whoami = { workspace = true }
 
 [target.'cfg(not(target_family = "windows"))'.dependencies]
 rusqlite = { workspace = true }
-users = { workspace = true }
+kanidm_utils_users = { workspace = true }
 
 [features]
 # default = [ "libsqlite3-sys/bundled", "openssl/vendored" ]

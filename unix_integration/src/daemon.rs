@@ -33,6 +33,7 @@ use kanidm_unix_common::unix_config::KanidmUnixdConfig;
 use kanidm_unix_common::unix_passwd::{parse_etc_group, parse_etc_passwd};
 use kanidm_unix_common::unix_proto::{ClientRequest, ClientResponse, TaskRequest, TaskResponse};
 
+use kanidm_utils_users::{get_current_gid, get_current_uid, get_effective_gid, get_effective_uid};
 use libc::umask;
 use sketching::tracing_forest::traits::*;
 use sketching::tracing_forest::util::*;
@@ -45,7 +46,6 @@ use tokio::sync::mpsc::{channel, Receiver, Sender};
 use tokio::sync::oneshot;
 use tokio::time;
 use tokio_util::codec::{Decoder, Encoder, Framed};
-use users::{get_current_gid, get_current_uid, get_effective_gid, get_effective_uid};
 
 use notify_debouncer_full::{new_debouncer, notify::RecursiveMode, notify::Watcher};
 

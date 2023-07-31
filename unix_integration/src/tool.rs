@@ -212,7 +212,7 @@ async fn main() -> ExitCode {
             ExitCode::SUCCESS
         }
         KanidmUnixOpt::Version { debug: _ } => {
-            println!("{}", kanidm_proto::utils::get_version("kanidm-unix"));
+            println!("kanidm-unix {}", env!("KANIDM_PKG_VERSION"));
             ExitCode::SUCCESS
         }
     }

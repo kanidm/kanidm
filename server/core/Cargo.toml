@@ -26,9 +26,7 @@ cron = { workspace = true }
 futures = { workspace = true }
 futures-util = { workspace = true }
 http = "0.2.9"
-http-types = { workspace = true }
 hyper = { workspace = true }
-hyper-tls = { workspace = true }
 kanidm_proto = { workspace = true }
 kanidmd_lib = { workspace = true }
 ldap3_proto = { workspace = true }
@@ -36,7 +34,6 @@ libc = { workspace = true }
 openssl = { workspace = true }
 rand = { workspace = true }
 regex = { workspace = true }
-reqwest = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 sketching = { workspace = true }
@@ -50,7 +47,7 @@ tower-http = { version = "0.4.3", features = ["tokio", "tracing", "uuid", "compr
 tracing = { workspace = true, features = ["attributes"] }
 tracing-subscriber = { workspace = true, features = ["time", "json"] }
 urlencoding = { workspace = true }
-users = { workspace = true }
+kanidm_utils_users = { workspace = true }
 uuid = { workspace = true, features = ["serde", "v4" ] }
 
 [build-dependencies]

@@ -3,6 +3,7 @@
 ```bash
 cargo install cargo-audit
 cargo install cargo-outdated
+cargo install cargo-udeps
 ```
 
 ## Check List
@@ -13,6 +14,7 @@ cargo install cargo-outdated
 
 ### Cargo Tasks
 
+- [ ] cargo udeps
 - [ ] cargo outdated -R
 - [ ] cargo audit
 - [ ] cargo test
