@@ -973,7 +973,7 @@ dependencies = [
 
 [[package]]
 name = "daemon"
-version = "1.1.0-beta.13-dev"
+version = "1.1.0-beta.13"
 dependencies = [
  "clap",
  "clap_complete",
@@ -2087,7 +2087,7 @@ dependencies = [
 
 [[package]]
 name = "kanidm-ipa-sync"
-version = "1.1.0-beta.13-dev"
+version = "1.1.0-beta.13"
 dependencies = [
  "base64urlsafedata",
  "chrono",
@@ -2111,7 +2111,7 @@ dependencies = [
 
 [[package]]
 name = "kanidm-ldap-sync"
-version = "1.1.0-beta.13-dev"
+version = "1.1.0-beta.13"
 dependencies = [
  "base64urlsafedata",
  "chrono",
@@ -2135,7 +2135,7 @@ dependencies = [
 
 [[package]]
 name = "kanidm_client"
-version = "1.1.0-beta.13-dev"
+version = "1.1.0-beta.13"
 dependencies = [
  "kanidm_proto",
  "reqwest",
@@ -2178,7 +2178,7 @@ dependencies = [
 
 [[package]]
 name = "kanidm_proto"
-version = "1.1.0-beta.13-dev"
+version = "1.1.0-beta.13"
 dependencies = [
  "base32",
  "base64urlsafedata",
@@ -2196,7 +2196,7 @@ dependencies = [
 
 [[package]]
 name = "kanidm_tools"
-version = "1.1.0-beta.13-dev"
+version = "1.1.0-beta.13"
 dependencies = [
  "async-recursion",
  "clap",
@@ -2225,7 +2225,7 @@ dependencies = [
 
 [[package]]
 name = "kanidm_unix_int"
-version = "1.1.0-beta.13-dev"
+version = "1.1.0-beta.13"
 dependencies = [
  "async-trait",
  "base64urlsafedata",
@@ -2263,14 +2263,14 @@ dependencies = [
 
 [[package]]
 name = "kanidm_utils_users"
-version = "1.1.0-beta.13-dev"
+version = "1.1.0-beta.13"
 dependencies = [
  "libc",
 ]
 
 [[package]]
 name = "kanidmd_core"
-version = "1.1.0-beta.13-dev"
+version = "1.1.0-beta.13"
 dependencies = [
  "async-trait",
  "axum",
@@ -2313,7 +2313,7 @@ dependencies = [
 
 [[package]]
 name = "kanidmd_lib"
-version = "1.1.0-beta.13-dev"
+version = "1.1.0-beta.13"
 dependencies = [
  "base64 0.21.2",
  "base64urlsafedata",
@@ -2376,7 +2376,7 @@ dependencies = [
 
 [[package]]
 name = "kanidmd_testkit"
-version = "1.1.0-beta.13-dev"
+version = "1.1.0-beta.13"
 dependencies = [
  "compact_jwt",
  "fantoccini",
@@ -2599,9 +2599,9 @@ dependencies = [
 
 [[package]]
 name = "linux-raw-sys"
-version = "0.4.3"
+version = "0.4.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "09fc20d2ca12cb9f044c93e3bd6d32d523e6e2ec3db4f7b2939cd99026ecd3f0"
+checksum = "57bcfdad1b858c2db7c38303a6d2ad4dfaf5eb53dfeb0910128b2c26d6158503"
 
 [[package]]
 name = "lock_api"
@@ -2815,7 +2815,7 @@ dependencies = [
 
 [[package]]
 name = "nss_kanidm"
-version = "1.1.0-beta.13-dev"
+version = "1.1.0-beta.13"
 dependencies = [
  "kanidm_unix_int",
  "lazy_static",
@@ -3047,7 +3047,7 @@ dependencies = [
 
 [[package]]
 name = "orca"
-version = "1.1.0-beta.13-dev"
+version = "1.1.0-beta.13"
 dependencies = [
  "clap",
  "crossbeam",
@@ -3082,7 +3082,7 @@ checksum = "b15813163c1d831bf4a13c3610c05c0d03b39feb07f7e09fa234dac9b15aaf39"
 
 [[package]]
 name = "pam_kanidm"
-version = "1.1.0-beta.13-dev"
+version = "1.1.0-beta.13"
 dependencies = [
  "kanidm_unix_int",
  "libc",
@@ -3386,7 +3386,7 @@ dependencies = [
 
 [[package]]
 name = "profiles"
-version = "1.1.0-beta.13-dev"
+version = "1.1.0-beta.13"
 dependencies = [
  "base64 0.21.2",
  "git2",
@@ -3858,9 +3858,9 @@ dependencies = [
 
 [[package]]
 name = "serde"
-version = "1.0.179"
+version = "1.0.180"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0a5bf42b8d227d4abf38a1ddb08602e229108a517cd4e5bb28f9c7eaafdce5c0"
+checksum = "0ea67f183f058fe88a4e3ec6e2788e003840893b91bac4559cabedd00863b3ed"
 dependencies = [
  "serde_derive",
 ]
@@ -3918,9 +3918,9 @@ dependencies = [
 
 [[package]]
 name = "serde_derive"
-version = "1.0.179"
+version = "1.0.180"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "741e124f5485c7e60c03b043f79f320bff3527f4bbf12cf3831750dc46a0ec2c"
+checksum = "24e744d7782b686ab3b73267ef05697159cc0e5abbed3f47f9933165e5219036"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -4035,7 +4035,7 @@ dependencies = [
 
 [[package]]
 name = "sketching"
-version = "1.1.0-beta.13-dev"
+version = "1.1.0-beta.13"
 dependencies = [
  "num_enum",
  "tracing",
@@ -4129,9 +4129,9 @@ checksum = "73473c0e59e6d5812c5dfe2a064a6444949f089e20eec9a2e5506596494e4623"
 
 [[package]]
 name = "subtle"
-version = "2.4.1"
+version = "2.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6bdef32e8150c2a081110b42772ffe7d7c9032b606bc226c8260fd97e0976601"
+checksum = "81cdd64d312baedb58e21336b31bc043b77e01cc99033ce76ef539f78e965ebc"
 
 [[package]]
 name = "syn"
@@ -4175,9 +4175,9 @@ dependencies = [
 
 [[package]]
 name = "target-lexicon"
-version = "0.12.10"
+version = "0.12.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1d2faeef5759ab89935255b1a4cd98e0baf99d1085e37d36599c625dac49ae8e"
+checksum = "9d0e916b1148c8e263850e1ebcbd046f333e0683c724876bb0da63ea4373dc8a"
 
 [[package]]
 name = "tempfile"
@@ -4521,8 +4521,9 @@ dependencies = [
 
 [[package]]
 name = "tracing-forest"
-version = "0.1.5"
-source = "git+https://github.com/QnnOkabayashi/tracing-forest.git?rev=77daf8c8abf010b87d45ece2bf656983c6f8cecb#77daf8c8abf010b87d45ece2bf656983c6f8cecb"
+version = "0.1.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ee40835db14ddd1e3ba414292272eddde9dad04d3d4b65509656414d1c42592f"
 dependencies = [
  "smallvec",
  "thiserror",

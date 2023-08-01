@@ -73,6 +73,7 @@ Kanidm is pronounced as "kar - nee - dee - em".
 ## Comparison with other services
 
 <details><summary>LLDAP</summary>
+
 [LLDAP](https://github.com/nitnelave/lldap) is a similar project aiming for a small and easy to
 administer LDAP server with a web administration portal. Both projects use the
 [Kanidm LDAP bindings](https://github.com/kanidm/ldap3), and have many similar ideas.
@@ -128,7 +129,7 @@ start with in many cases.
 Kanidm does NOT require Keycloak to provide services such as Oauth2 and integrates many of the
 elements in a simpler and correct way out of the box in comparison.
 
-<details>
+</details>
 
 ## Developer Getting Started
 

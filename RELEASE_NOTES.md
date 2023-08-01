@@ -14,6 +14,56 @@ report it to our [issue tracker].
 
 # Release Notes
 
+## 2023-05-01 - Kanidm 1.1.0-beta13
+
+This is the thirteenth pre-release of the Kanidm Identity Management project. Pre-releases are to
+help get feedback and ideas from the community on how we can continue to make this project better.
+
+At this point we believe we are on the final stretch to making something we consider "release
+ready". After this we will start to ship release candidates as our focus will now be changing to
+finish our production components and the stability of the API's for longer term support.
+
+### Release Highlights
+
+- Replication foundations
+  - Full implementation of replication refresh
+  - Full implementation of incremental replication
+  - RUV consistency is now stricter
+- Allow tpm binding unixd password hash cache
+- Use argon2id for all password hash types
+- Allow distros to set default shell
+- Convert from tide to axum
+- Modularise unix integration for third party modules
+- Improve account recovery by performing over unix socket for live changes
+- Support hsts in all responses
+- Allow sync agreements to yield some attrs to kanidm
+- Fix bug with posix account gid setting causing gid to be randomised
+- Improve account sync import, including mail attrs and better session handling
+- Bug fix in unixd when certain operation orders could cause group cache to be ignored
+- pre-compress all wasm to improve loading times
+- Add preflight headers for SPA oauth2 clients
+- Persist nonce through refresh tokens to support public clients
+- Allow public (pkce) oauth2 clients
+- Add client UX for external credential portals for synchronised accounts
+- Improve migration durability with a global transaction
+- Cli now shows spn instead of username to allow better multidomain admin
+- Add qrcode for self-enrolling other devices with auth methods
+- Add tls certgen to main binary to improve developer and quickstart setup
+- Unixd now blocks all local account names and id's resolving prevent priv-esc
+- Fix bug with service-account session logout access
+- Oauth2 app list shows when no applications are available
+- Improve ip audit logging
+- Improve cli with re-auth when session is expired
+- Support legacy cron syntax in backup config
+- Improve socket startup in main daemon
+- Add support for selinux labeling of home dirs by tasks daemon
+- Resolve bug in ssh key management if key tag has a space in it
+- Allow tokens to be identified
+- Remove incompatible credentials for service accounts during recovery
+- Fix issues with signal handling for unix tasks daemon
+- Improve create-reset-token user experience
+- Improve self-healing for some reference issues
+
 ## 2023-05-01 - Kanidm 1.1.0-alpha12
 
 This is the twelfth alpha series release of the Kanidm Identity Management project. Alpha releases
