@@ -28,7 +28,7 @@ members = [
 ]
 
 [workspace.package]
-version = "1.1.0-rc.14"
+version = "1.1.0-rc.14-dev"
 authors = [
     "William Brown <william@blackhats.net.au>",
     "James Hodgkinson <james@terminaloutcomes.com>",
@@ -40,6 +40,17 @@ homepage = "https://github.com/kanidm/kanidm/"
 repository = "https://github.com/kanidm/kanidm/"
 
 [workspace.dependencies]
+kanidmd_core = { path = "./server/core" }
+kanidmd_lib = { path = "./server/lib" }
+kanidmd_lib_macros = { path = "./server/lib-macros" }
+kanidm_build_profiles = { path = "./libs/profiles", version = "1.1.0-rc.14-dev" }
+kanidm_lib_crypto = { path = "./libs/crypto" }
+kanidm_lib_file_permissions = { path = "./libs/file_permissions" }
+kanidm_client = { path = "./libs/client", version = "1.1.0-rc.14-dev" }
+kanidm_proto = { path = "./proto", version = "1.1.0-rc.14-dev" }
+kanidm_unix_int = { path = "./unix_integration" }
+kanidm_utils_users = { path = "./libs/users" }
+
 argon2 = { version = "0.5.1", features = ["alloc"] }
 async-recursion = "1.0.4"
 async-trait = "^0.1.72"
@@ -78,15 +89,6 @@ hyper-tls = "0.5.0"
 idlset = "^0.2.4"
 # idlset = { path = "../idlset" }
 js-sys = "^0.3.63"
-kanidmd_core = { path = "./server/core" }
-kanidmd_lib = { path = "./server/lib" }
-kanidmd_lib_macros = { path = "./server/lib-macros" }
-kanidm_lib_crypto = { path = "./libs/crypto" }
-kanidm_lib_file_permissions = { path = "./libs/file_permissions" }
-kanidm_client = { path = "./libs/client", version = "1.1.0-alpha.11" }
-kanidm_proto = { path = "./proto", version = "1.1.0-alpha.11" }
-kanidm_unix_int = { path = "./unix_integration" }
-kanidm_utils_users = { path = "./libs/users" }
 # REMOVE this
 lazy_static = "^1.4.0"
 ldap3_client = "^0.3.5"
@@ -110,7 +112,6 @@ openssl = "^0.10.55"
 paste = "^1.0.14"
 pkg-config = "^0.3.27"
 proc-macro2 = "1.0.66"
-profiles = { path = "./libs/profiles" }
 qrcode = "^0.12.0"
 quote = "1"
 rand = "^0.8.5"
@@ -181,5 +182,3 @@ yew-router = "^0.17.0"
 zxcvbn = "^2.2.2"
 
 nonempty = "0.8.1"
-# link time optimization using using whole-program analysis
-# lto = true
