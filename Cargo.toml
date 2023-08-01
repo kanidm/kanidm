@@ -28,7 +28,7 @@ members = [
 ]
 
 [workspace.package]
-version = "1.1.0-beta.13-dev"
+version = "1.1.0-beta.13"
 authors = [
     "William Brown <william@blackhats.net.au>",
     "James Hodgkinson <james@terminaloutcomes.com>",
@@ -151,7 +151,8 @@ tracing = { version = "^0.1.37" }
 tracing-subscriber = { version = "^0.3.17", features = ["env-filter"] }
 
 # tracing-forest = { path = "/Users/william/development/tracing-forest/tracing-forest" }
-tracing-forest = { git = "https://github.com/QnnOkabayashi/tracing-forest.git", rev = "77daf8c8abf010b87d45ece2bf656983c6f8cecb" }
+# tracing-forest = { git = "https://github.com/QnnOkabayashi/tracing-forest.git", rev = "77daf8c8abf010b87d45ece2bf656983c6f8cecb" }
+tracing-forest = "^0.1.6"
 
 tss-esapi = "^7.2.0"
 
