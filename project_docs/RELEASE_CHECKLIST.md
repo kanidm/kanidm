@@ -14,7 +14,7 @@ cargo install cargo-udeps
 
 ### Cargo Tasks
 
-- [ ] cargo udeps
+- [ ] RUSTC\_BOOTSTRAP=1 cargo udeps
 - [ ] cargo outdated -R
 - [ ] cargo audit
 - [ ] cargo test
@@ -34,15 +34,14 @@ cargo install cargo-udeps
 - [ ] build wasm components with release profile
 - [ ] Update `RELEASE_NOTES.md`
 - [ ] git commit
-- [ ] git rebase -i HEAD~X
 - [ ] git push origin YYYYMMDD-release
 - [ ] Merge PR
 
 ### Git Management
 
 - [ ] git checkout master
-- [ ] git branch 1.1.0-alpha.x (Note no v to prevent ref conflict)
-- [ ] git checkout v1.1.0-alpha.x
+- [ ] git pull
+- [ ] git checkout -b 1.1.0-alpha.x (Note no v to prevent ref conflict)
 - [ ] git tag v1.1.0-alpha.x
 
 - [ ] Final inspect of the branch
@@ -50,6 +49,7 @@ cargo install cargo-udeps
 - [ ] git push origin 1.1.0-alpha.x
 - [ ] git push origin 1.1.0-alpha.x --tags
 
+- [ ] github -> Ensure release branch is protected
 - [ ] github -> create new release based on tag (not branch) - use tag because then tools will get
       the tag + patches we apply.
 
@@ -75,6 +75,7 @@ cargo install cargo-udeps
 
 - [ ] git checkout master
 - [ ] git pull
-- [ ] git branch YYYYMMDD-dev-version
-- [ ] update version in ./kanidmd\_web\_ui/Cargo.toml
+- [ ] git checkout -b YYYYMMDD-dev-version
+- [ ] update version in ./server/web\_ui/Cargo.toml
 - [ ] update version in ./Cargo.toml
+- [ ] update version in ./Makefile
