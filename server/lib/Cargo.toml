@@ -86,5 +86,5 @@ futures = { workspace = true }
 kanidmd_lib_macros = { workspace = true }
 
 [build-dependencies]
-profiles = { workspace = true }
+kanidm_build_profiles = { workspace = true }
 

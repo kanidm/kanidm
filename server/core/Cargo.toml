@@ -51,4 +51,4 @@ kanidm_utils_users = { workspace = true }
 uuid = { workspace = true, features = ["serde", "v4" ] }
 
 [build-dependencies]
-profiles = { workspace = true }
+kanidm_build_profiles = { workspace = true }

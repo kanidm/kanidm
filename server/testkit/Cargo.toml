@@ -41,7 +41,7 @@ tokio = { workspace = true, features = ["net", "sync", "io-util", "macros"] }
 
 
 [build-dependencies]
-profiles = { workspace = true }
+kanidm_build_profiles = { workspace = true }
 
 [dev-dependencies]
 compact_jwt = { workspace = true }

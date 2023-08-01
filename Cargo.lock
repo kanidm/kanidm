@@ -980,11 +980,11 @@ dependencies = [
  "fs2",
  "futures",
  "is-terminal",
+ "kanidm_build_profiles",
  "kanidm_lib_file_permissions",
  "kanidm_proto",
  "kanidm_utils_users",
  "kanidmd_core",
- "profiles",
  "reqwest",
  "sd-notify",
  "serde",
@@ -2134,6 +2134,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "kanidm_build_profiles"
+version = "1.1.0-beta.13"
+dependencies = [
+ "base64 0.21.2",
+ "git2",
+ "serde",
+ "toml",
+]
+
+[[package]]
 name = "kanidm_client"
 version = "1.1.0-beta.13"
 dependencies = [
@@ -2204,10 +2214,10 @@ dependencies = [
  "compact_jwt",
  "dialoguer",
  "futures-concurrency",
+ "kanidm_build_profiles",
  "kanidm_client",
  "kanidm_proto",
  "libc",
- "profiles",
  "qrcode",
  "rpassword 7.2.0",
  "serde",
@@ -2235,6 +2245,7 @@ dependencies = [
  "csv",
  "futures",
  "hashbrown 0.14.0",
+ "kanidm_build_profiles",
  "kanidm_client",
  "kanidm_lib_crypto",
  "kanidm_lib_file_permissions",
@@ -2245,7 +2256,6 @@ dependencies = [
  "libsqlite3-sys",
  "lru 0.8.1",
  "notify-debouncer-full",
- "profiles",
  "rpassword 7.2.0",
  "rusqlite",
  "selinux",
@@ -2286,13 +2296,13 @@ dependencies = [
  "futures-util",
  "http",
  "hyper",
+ "kanidm_build_profiles",
  "kanidm_proto",
  "kanidm_utils_users",
  "kanidmd_lib",
  "ldap3_proto",
  "libc",
  "openssl",
- "profiles",
  "rand",
  "regex",
  "serde",
@@ -2326,6 +2336,7 @@ dependencies = [
  "futures",
  "hashbrown 0.14.0",
  "idlset",
+ "kanidm_build_profiles",
  "kanidm_lib_crypto",
  "kanidm_proto",
  "kanidm_utils_users",
@@ -2338,7 +2349,6 @@ dependencies = [
  "num_enum",
  "openssl",
  "openssl-sys",
- "profiles",
  "rand",
  "regex",
  "rusqlite",
@@ -2382,12 +2392,12 @@ dependencies = [
  "fantoccini",
  "futures",
  "hyper-tls",
+ "kanidm_build_profiles",
  "kanidm_client",
  "kanidm_proto",
  "kanidmd_core",
  "kanidmd_lib",
  "oauth2",
- "profiles",
  "reqwest",
  "serde_json",
  "sketching",
@@ -3055,12 +3065,12 @@ dependencies = [
  "dialoguer",
  "futures-util",
  "hashbrown 0.14.0",
+ "kanidm_build_profiles",
  "kanidm_client",
  "kanidm_proto",
  "ldap3_proto",
  "mathru",
  "openssl",
- "profiles",
  "rand",
  "serde",
  "serde_json",
@@ -3382,16 +3392,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "18fb31db3f9bddb2ea821cde30a9f70117e3f119938b5ee630b7403aa6e2ead9"
 dependencies = [
  "unicode-ident",
-]
-
-[[package]]
-name = "profiles"
-version = "1.1.0-beta.13"
-dependencies = [
- "base64 0.21.2",
- "git2",
- "serde",
- "toml",
 ]
 
 [[package]]
