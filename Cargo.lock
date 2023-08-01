@@ -973,7 +973,7 @@ dependencies = [
 
 [[package]]
 name = "daemon"
-version = "1.1.0-rc.14"
+version = "1.1.0-rc.14-dev"
 dependencies = [
  "clap",
  "clap_complete",
@@ -2087,7 +2087,7 @@ dependencies = [
 
 [[package]]
 name = "kanidm-ipa-sync"
-version = "1.1.0-rc.14"
+version = "1.1.0-rc.14-dev"
 dependencies = [
  "base64urlsafedata",
  "chrono",
@@ -2111,7 +2111,7 @@ dependencies = [
 
 [[package]]
 name = "kanidm-ldap-sync"
-version = "1.1.0-rc.14"
+version = "1.1.0-rc.14-dev"
 dependencies = [
  "base64urlsafedata",
  "chrono",
@@ -2135,7 +2135,7 @@ dependencies = [
 
 [[package]]
 name = "kanidm_build_profiles"
-version = "1.1.0-rc.14"
+version = "1.1.0-rc.14-dev"
 dependencies = [
  "base64 0.21.2",
  "git2",
@@ -2145,7 +2145,7 @@ dependencies = [
 
 [[package]]
 name = "kanidm_client"
-version = "1.1.0-rc.14"
+version = "1.1.0-rc.14-dev"
 dependencies = [
  "kanidm_proto",
  "reqwest",
@@ -2188,7 +2188,7 @@ dependencies = [
 
 [[package]]
 name = "kanidm_proto"
-version = "1.1.0-rc.14"
+version = "1.1.0-rc.14-dev"
 dependencies = [
  "base32",
  "base64urlsafedata",
@@ -2206,7 +2206,7 @@ dependencies = [
 
 [[package]]
 name = "kanidm_tools"
-version = "1.1.0-rc.14"
+version = "1.1.0-rc.14-dev"
 dependencies = [
  "async-recursion",
  "clap",
@@ -2235,7 +2235,7 @@ dependencies = [
 
 [[package]]
 name = "kanidm_unix_int"
-version = "1.1.0-rc.14"
+version = "1.1.0-rc.14-dev"
 dependencies = [
  "async-trait",
  "base64urlsafedata",
@@ -2273,14 +2273,14 @@ dependencies = [
 
 [[package]]
 name = "kanidm_utils_users"
-version = "1.1.0-rc.14"
+version = "1.1.0-rc.14-dev"
 dependencies = [
  "libc",
 ]
 
 [[package]]
 name = "kanidmd_core"
-version = "1.1.0-rc.14"
+version = "1.1.0-rc.14-dev"
 dependencies = [
  "async-trait",
  "axum",
@@ -2323,7 +2323,7 @@ dependencies = [
 
 [[package]]
 name = "kanidmd_lib"
-version = "1.1.0-rc.14"
+version = "1.1.0-rc.14-dev"
 dependencies = [
  "base64 0.21.2",
  "base64urlsafedata",
@@ -2386,7 +2386,7 @@ dependencies = [
 
 [[package]]
 name = "kanidmd_testkit"
-version = "1.1.0-rc.14"
+version = "1.1.0-rc.14-dev"
 dependencies = [
  "compact_jwt",
  "fantoccini",
@@ -2411,7 +2411,7 @@ dependencies = [
 
 [[package]]
 name = "kanidmd_web_ui"
-version = "1.1.0-rc.14"
+version = "1.1.0-rc.14-dev"
 dependencies = [
  "gloo",
  "js-sys",
@@ -2825,7 +2825,7 @@ dependencies = [
 
 [[package]]
 name = "nss_kanidm"
-version = "1.1.0-rc.14"
+version = "1.1.0-rc.14-dev"
 dependencies = [
  "kanidm_unix_int",
  "lazy_static",
@@ -3057,7 +3057,7 @@ dependencies = [
 
 [[package]]
 name = "orca"
-version = "1.1.0-rc.14"
+version = "1.1.0-rc.14-dev"
 dependencies = [
  "clap",
  "crossbeam",
@@ -3092,7 +3092,7 @@ checksum = "b15813163c1d831bf4a13c3610c05c0d03b39feb07f7e09fa234dac9b15aaf39"
 
 [[package]]
 name = "pam_kanidm"
-version = "1.1.0-rc.14"
+version = "1.1.0-rc.14-dev"
 dependencies = [
  "kanidm_unix_int",
  "libc",
@@ -4035,7 +4035,7 @@ dependencies = [
 
 [[package]]
 name = "sketching"
-version = "1.1.0-rc.14"
+version = "1.1.0-rc.14-dev"
 dependencies = [
  "num_enum",
  "tracing",
