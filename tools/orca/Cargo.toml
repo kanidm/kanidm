@@ -42,4 +42,4 @@ uuid = { workspace = true, features = ["serde", "v4" ] }
 tikv-jemallocator = { workspace = true }
 
 [build-dependencies]
-profiles = { workspace = true }
+kanidm_build_profiles = { workspace = true }

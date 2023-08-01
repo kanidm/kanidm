@@ -54,7 +54,7 @@ zxcvbn = { workspace=true }
 [build-dependencies]
 clap = { workspace = true, features = ["derive"] }
 clap_complete = { workspace=true }
-profiles = { workspace = true }
+kanidm_build_profiles = { workspace = true }
 uuid = { workspace=true }
 url = { workspace = true }
 

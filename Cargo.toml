@@ -81,10 +81,11 @@ js-sys = "^0.3.63"
 kanidmd_core = { path = "./server/core" }
 kanidmd_lib = { path = "./server/lib" }
 kanidmd_lib_macros = { path = "./server/lib-macros" }
+kanidm_build_profiles = { path = "./libs/profiles", version = "1.1.0-rc.14" }
 kanidm_lib_crypto = { path = "./libs/crypto" }
 kanidm_lib_file_permissions = { path = "./libs/file_permissions" }
-kanidm_client = { path = "./libs/client", version = "1.1.0-alpha.11" }
-kanidm_proto = { path = "./proto", version = "1.1.0-alpha.11" }
+kanidm_client = { path = "./libs/client", version = "1.1.0-rc.14" }
+kanidm_proto = { path = "./proto", version = "1.1.0-rc.14" }
 kanidm_unix_int = { path = "./unix_integration" }
 kanidm_utils_users = { path = "./libs/users" }
 # REMOVE this
@@ -110,7 +111,6 @@ openssl = "^0.10.55"
 paste = "^1.0.14"
 pkg-config = "^0.3.27"
 proc-macro2 = "1.0.66"
-profiles = { path = "./libs/profiles" }
 qrcode = "^0.12.0"
 quote = "1"
 rand = "^0.8.5"
