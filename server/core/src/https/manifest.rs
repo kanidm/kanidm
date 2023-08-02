@@ -5,6 +5,7 @@ use axum::response::{IntoResponse, Response};
 use axum::Extension;
 use http::HeaderValue;
 use serde::{Deserialize, Serialize};
+use serde_with::skip_serializing_none;
 
 use super::middleware::KOpId;
 // Thanks to the webmanifest crate for a lot of this code
@@ -14,6 +15,8 @@ use super::ServerState;
 const MIME_TYPE_MANIFEST: &str = "application/manifest+json;charset=utf-8";
 
 /// Create a new manifest builder.
+
+#[skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Manifest {
     name: String,
@@ -22,28 +25,22 @@ pub struct Manifest {
     #[serde(rename = "display")]
     display_mode: DisplayMode,
     background_color: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
     description: Option<String>,
     #[serde(rename = "dir")]
     direction: Direction,
     // direction: Option<Direction>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     orientation: Option<String>,
     // orientation: Option<Orientation>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     lang: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     scope: Option<String>,
-    // #[serde(skip_serializing_if = "Option::is_none")]
+    //
     theme_color: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
     prefer_related_applications: Option<bool>,
     // #[serde(borrow)]
-    // #[serde(skip_serializing_if = "Option::is_none")]
+    //
     icons: Vec<ManifestIcon>,
     // icons: Vec<Icon<'i>>,
     // #[serde(borrow)]
-    #[serde(skip_serializing_if = "Option::is_none")]
     related_applications: Option<Vec<String>>,
     // related_applications: Vec<Related<'r>>,
 }

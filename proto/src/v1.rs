@@ -1,12 +1,12 @@
+use num_enum::TryFromPrimitive;
+use serde::{Deserialize, Serialize};
+use serde_with::skip_serializing_none;
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 use std::str::FromStr;
-use url::Url;
-
-use num_enum::TryFromPrimitive;
-use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
+use url::Url;
 use uuid::Uuid;
 use webauthn_rs_proto::{
     CreationChallengeResponse, PublicKeyCredential, RegisterPublicKeyCredential,
@@ -574,6 +574,7 @@ pub struct GroupUnixExtend {
     pub gidnumber: Option<u32>,
 }
 
+#[skip_serializing_none]
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct UnixUserToken {
     pub name: String,
@@ -581,7 +582,6 @@ pub struct UnixUserToken {
     pub displayname: String,
     pub gidnumber: u32,
     pub uuid: Uuid,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub shell: Option<String>,
     pub groups: Vec<UnixGroupToken>,
     pub sshkeys: Vec<String>,

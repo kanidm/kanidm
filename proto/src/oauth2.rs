@@ -20,18 +20,18 @@ pub struct PkceRequest {
     pub code_challenge_method: CodeChallengeMethod,
 }
 
+#[skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct AuthorisationRequest {
     // Must be "code". (or token, see 4.2.1)
     pub response_type: String,
     pub client_id: String,
     pub state: String,
-    #[serde(flatten, skip_serializing_if = "Option::is_none")]
+    #[serde(flatten)]
     pub pkce_request: Option<PkceRequest>,
     pub redirect_uri: Url,
     pub scope: String,
     // OIDC adds a nonce parameter that is optional.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub nonce: Option<String>,
     // OIDC also allows other optional params
     #[serde(flatten)]
@@ -40,23 +40,16 @@ pub struct AuthorisationRequest {
     pub unknown_keys: BTreeMap<String, serde_json::value::Value>,
 }
 
+#[skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct AuthorisationRequestOidc {
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub display: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub prompt: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub max_age: Option<i64>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub ui_locales: Option<()>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub claims_locales: Option<()>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub id_token_hint: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub login_hint: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub acr: Option<String>,
 }
 
@@ -99,15 +92,14 @@ pub enum GrantTypeReq {
     },
 }
 
+#[skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug)]
 pub struct AccessTokenRequest {
     #[serde(flatten)]
     pub grant_type: GrantTypeReq,
     // REQUIRED, if the client is not authenticating with the
     //  authorization server as described in Section 3.2.1.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub client_id: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub client_secret: Option<String>,
 }
 
@@ -121,17 +113,18 @@ impl From<GrantTypeReq> for AccessTokenRequest {
     }
 }
 
+#[skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug)]
 pub struct TokenRevokeRequest {
     pub token: String,
     /// Generally not needed. See:
     /// <https://datatracker.ietf.org/doc/html/rfc7009#section-4.1.2>
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub token_type_hint: Option<String>,
 }
 
 // The corresponding Response to a revoke request is empty body with 200.
 
+#[skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug)]
 pub struct AccessTokenResponse {
     // Could be  Base64UrlSafeData
@@ -140,50 +133,37 @@ pub struct AccessTokenResponse {
     pub token_type: String,
     // seconds.
     pub expires_in: u32,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub refresh_token: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     /// Space separated list of scopes that were approved, if this differs from the
     /// original request.
     pub scope: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     /// Oidc puts the token here.
     pub id_token: Option<String>,
 }
 
+#[skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug)]
 pub struct AccessTokenIntrospectRequest {
     pub token: String,
     /// Generally not needed. See:
     /// <https://datatracker.ietf.org/doc/html/rfc7009#section-4.1.2>
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub token_type_hint: Option<String>,
 }
 
+#[skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug)]
 pub struct AccessTokenIntrospectResponse {
     pub active: bool,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub scope: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub client_id: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub username: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub token_type: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub exp: Option<i64>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub iat: Option<i64>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub nbf: Option<i64>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub sub: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub aud: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub iss: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub jti: Option<String>,
 }
 
@@ -303,18 +283,16 @@ fn require_request_uri_parameter_supported_default() -> bool {
     false
 }
 
+#[skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug)]
 // https://openid.net/specs/openid-connect-discovery-1_0.html#ProviderMetadata
 pub struct OidcDiscoveryResponse {
     pub issuer: Url,
     pub authorization_endpoint: Url,
     pub token_endpoint: Url,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub userinfo_endpoint: Option<Url>,
     pub jwks_uri: Url,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub registration_endpoint: Option<Url>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub scopes_supported: Option<Vec<String>>,
     // https://datatracker.ietf.org/doc/html/rfc6749#section-3.1.1
     pub response_types_supported: Vec<ResponseType>,
@@ -324,45 +302,30 @@ pub struct OidcDiscoveryResponse {
     // Need to fill in as authorization_code only else a default is assumed.
     #[serde(default = "grant_types_supported_default")]
     pub grant_types_supported: Vec<GrantType>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub acr_values_supported: Option<Vec<String>>,
     // https://openid.net/specs/openid-connect-core-1_0.html#PairwiseAlg
     pub subject_types_supported: Vec<SubjectType>,
     pub id_token_signing_alg_values_supported: Vec<IdTokenSignAlg>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub id_token_encryption_alg_values_supported: Option<Vec<String>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub id_token_encryption_enc_values_supported: Option<Vec<String>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub userinfo_signing_alg_values_supported: Option<Vec<String>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub userinfo_encryption_alg_values_supported: Option<Vec<String>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub userinfo_encryption_enc_values_supported: Option<Vec<String>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub request_object_signing_alg_values_supported: Option<Vec<String>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub request_object_encryption_alg_values_supported: Option<Vec<String>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub request_object_encryption_enc_values_supported: Option<Vec<String>>,
     // Defaults to client_secret_basic
     #[serde(default = "token_endpoint_auth_methods_supported_default")]
     pub token_endpoint_auth_methods_supported: Vec<TokenEndpointAuthMethod>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub token_endpoint_auth_signing_alg_values_supported: Option<Vec<String>>,
     // https://openid.net/specs/openid-connect-core-1_0.html#AuthRequest
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub display_values_supported: Option<Vec<DisplayValue>>,
     // Default to normal.
     #[serde(default = "claim_types_supported_default")]
     pub claim_types_supported: Vec<ClaimType>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub claims_supported: Option<Vec<String>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub service_documentation: Option<Url>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub claims_locales_supported: Option<Vec<String>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub ui_locales_supported: Option<Vec<String>>,
     // Default false.
     #[serde(default = "claims_parameter_supported_default")]
@@ -373,18 +336,15 @@ pub struct OidcDiscoveryResponse {
     pub request_uri_parameter_supported: bool,
     #[serde(default = "require_request_uri_parameter_supported_default")]
     pub require_request_uri_registration: bool,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub op_policy_uri: Option<Url>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub op_tos_uri: Option<Url>,
 }
 
+#[skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ErrorResponse {
     pub error: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub error_description: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub error_uri: Option<Url>,
 }
 
