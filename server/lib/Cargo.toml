@@ -65,7 +65,7 @@ uuid = { workspace = true, features = ["serde", "v4" ] }
 webauthn-rs = { workspace = true, features = ["resident-key-support", "preview-features", "danger-credential-internals"] }
 webauthn-rs-core = { workspace = true }
 zxcvbn = { workspace = true }
-serde_with = "3.1.0"
+serde_with = { workspace = true }
 
 # because windows really can't build without the bundled one
 [target.'cfg(target_family = "windows")'.dependencies]
