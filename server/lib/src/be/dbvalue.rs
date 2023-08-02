@@ -3,6 +3,7 @@ use std::time::Duration;
 
 use hashbrown::HashSet;
 use serde::{Deserialize, Serialize};
+use serde_with::skip_serializing_none;
 use url::Url;
 use uuid::Uuid;
 use webauthn_rs::prelude::{
@@ -114,54 +115,39 @@ fn is_false(b: &bool) -> bool {
     !b
 }
 
+#[skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(tag = "type_")]
 pub enum DbCred {
     // These are the old v1 versions.
     Pw {
-        #[serde(skip_serializing_if = "Option::is_none")]
         password: Option<DbPasswordV1>,
-        #[serde(skip_serializing_if = "Option::is_none")]
         webauthn: Option<Vec<DbWebauthnV1>>,
-        #[serde(skip_serializing_if = "Option::is_none")]
         totp: Option<DbTotpV1>,
-        #[serde(skip_serializing_if = "Option::is_none")]
         backup_code: Option<DbBackupCodeV1>,
         claims: Vec<String>,
         uuid: Uuid,
     },
     GPw {
-        #[serde(skip_serializing_if = "Option::is_none")]
         password: Option<DbPasswordV1>,
-        #[serde(skip_serializing_if = "Option::is_none")]
         webauthn: Option<Vec<DbWebauthnV1>>,
-        #[serde(skip_serializing_if = "Option::is_none")]
         totp: Option<DbTotpV1>,
-        #[serde(skip_serializing_if = "Option::is_none")]
         backup_code: Option<DbBackupCodeV1>,
         claims: Vec<String>,
         uuid: Uuid,
     },
     PwMfa {
-        #[serde(skip_serializing_if = "Option::is_none")]
         password: Option<DbPasswordV1>,
-        #[serde(skip_serializing_if = "Option::is_none")]
         webauthn: Option<Vec<DbWebauthnV1>>,
-        #[serde(skip_serializing_if = "Option::is_none")]
         totp: Option<DbTotpV1>,
-        #[serde(skip_serializing_if = "Option::is_none")]
         backup_code: Option<DbBackupCodeV1>,
         claims: Vec<String>,
         uuid: Uuid,
     },
     Wn {
-        #[serde(skip_serializing_if = "Option::is_none")]
         password: Option<DbPasswordV1>,
-        #[serde(skip_serializing_if = "Option::is_none")]
         webauthn: Option<Vec<DbWebauthnV1>>,
-        #[serde(skip_serializing_if = "Option::is_none")]
         totp: Option<DbTotpV1>,
-        #[serde(skip_serializing_if = "Option::is_none")]
         backup_code: Option<DbBackupCodeV1>,
         claims: Vec<String>,
         uuid: Uuid,
@@ -680,6 +666,7 @@ impl DbValueSetV2 {
 mod tests {
     use base64::{engine::general_purpose, Engine as _};
     use serde::{Deserialize, Serialize};
+    use serde_with::skip_serializing_none;
     use uuid::Uuid;
 
     use super::{DbBackupCodeV1, DbCred, DbPasswordV1, DbTotpV1, DbWebauthnV1};
@@ -699,17 +686,14 @@ mod tests {
         // PwWnVer,
     }
 
+    #[skip_serializing_none]
     #[derive(Serialize, Deserialize, Debug)]
     pub struct DbCredV1 {
         #[serde(default = "dbcred_type_default_pw")]
         pub type_: DbCredTypeV1,
-        #[serde(skip_serializing_if = "Option::is_none")]
         pub password: Option<DbPasswordV1>,
-        #[serde(skip_serializing_if = "Option::is_none")]
         pub webauthn: Option<Vec<DbWebauthnV1>>,
-        #[serde(skip_serializing_if = "Option::is_none")]
         pub totp: Option<DbTotpV1>,
-        #[serde(skip_serializing_if = "Option::is_none")]
         pub backup_code: Option<DbBackupCodeV1>,
         pub claims: Vec<String>,
         pub uuid: Uuid,
