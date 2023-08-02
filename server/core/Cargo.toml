@@ -49,7 +49,7 @@ tracing-subscriber = { workspace = true, features = ["time", "json"] }
 urlencoding = { workspace = true }
 kanidm_utils_users = { workspace = true }
 uuid = { workspace = true, features = ["serde", "v4" ] }
-serde_with = "3.1.0"
+serde_with = { workspace = true }
 
 [build-dependencies]
 kanidm_build_profiles = { workspace = true }
