@@ -59,7 +59,7 @@ jobs:
     uses: './.github/workflows/kanidm_individual_book.yml'
     needs: pre_deploy
     # yamllint disable-line rule:line-length
-    # if: ${{ github.action_ref == 'refs/heads/master' && github.repository == 'kanidm/kanidm' }}
+    if: ${{ github.action_ref == 'refs/heads/master' && github.repository == 'kanidm/kanidm' }}
 
     strategy:
       fail-fast: false
@@ -85,7 +85,7 @@ jobs:
       - docs_master
     runs-on: ubuntu-latest
     # yamllint disable-line rule:line-length
-    if: ${{ github.action_ref == 'refs/heads/master' && github.repository == 'kanidm/kanidm' && github.event == 'merge' }}
+    if: ${{ github.action_ref == 'refs/heads/master' && github.repository == 'kanidm/kanidm' }}
     steps:
       - name: Setup Pages
         uses: actions/configure-pages@v3
@@ -134,4 +134,4 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v2
-        if: ${{ github.ref == 'refs/heads/master' && github.repository == 'kanidm/kanidm' }}
+        if: github.event.pull_request.merged == true
