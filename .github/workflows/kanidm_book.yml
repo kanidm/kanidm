@@ -129,6 +129,9 @@ jobs:
         with:
           # Upload entire repository
           path: 'docs/'
+      - name: what's the state
+        run: |
+          echo "${github.event}"
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v2
