@@ -15,7 +15,7 @@ use std::sync::atomic::{AtomicU16, Ordering};
 
 use kanidm_client::{KanidmClient, KanidmClientBuilder};
 use kanidm_proto::v1::{Filter, Modify, ModifyList};
-use kanidmd_core::config::{Configuration, IntegrationTestConfig, ServerRole};
+use kanidmd_core::config::{Configuration, IntegrationTestConfig};
 use kanidmd_core::{create_server_core, CoreHandle};
 use tokio::task;
 
@@ -37,7 +37,7 @@ pub fn is_free_port(port: u16) -> bool {
 
 // allowed because the use of this function is behind a test gate
 #[allow(dead_code)]
-pub async fn setup_async_test() -> (KanidmClient, CoreHandle) {
+pub async fn setup_async_test(mut config: Configuration) -> (KanidmClient, CoreHandle) {
     sketching::test_init();
 
     let mut counter = 0;
@@ -61,14 +61,11 @@ pub async fn setup_async_test() -> (KanidmClient, CoreHandle) {
 
     let addr = format!("http://localhost:{}", port);
 
-    // Setup the config ...
-    let mut config = Configuration::new();
+    // Setup the address and origin..
     config.address = format!("127.0.0.1:{}", port);
     config.integration_test_config = Some(int_config);
-    config.role = ServerRole::WriteReplica;
     config.domain = "localhost".to_string();
     config.origin = addr.clone();
-    config.threads = 1;
 
     let core_handle = match create_server_core(config, false).await {
         Ok(val) => val,
