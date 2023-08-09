@@ -53,7 +53,7 @@ lazy_static! {
     /// Only lowercase+numbers, with limited chars.
     pub static ref INAME_RE: Regex = {
         #[allow(clippy::expect_used)]
-        Regex::new("^[a-z][a-z0-9-_\\.]+$").expect("Invalid Iname regex found")
+        Regex::new("^[a-z][a-z0-9-_\\.]*$").expect("Invalid Iname regex found")
     };
 
     pub static ref EXTRACT_VAL_DN: Regex = {
