@@ -2,8 +2,6 @@ use kanidm_client::{KanidmClient, APPLICATION_JSON};
 use kanidm_proto::v1::{AuthIssueSession, AuthRequest, AuthStep};
 use reqwest::header::CONTENT_TYPE;
 
-const PROXY_ADDRESS: &str = "203.0.113.195";
-
 #[kanidmd_testkit::test(trust_x_forward_for = false)]
 async fn dont_trust_xff_send_header(rsclient: KanidmClient) {
     let addr = rsclient.get_url();
@@ -21,7 +19,10 @@ async fn dont_trust_xff_send_header(rsclient: KanidmClient) {
 
     let response = client
         .post([&addr, "/v1/auth"].concat())
-        .header("X-Forwarded-For", PROXY_ADDRESS)
+        .header(
+            "X-Forwarded-For",
+            "An invalid header that will get through!!!",
+        )
         .header(CONTENT_TYPE, APPLICATION_JSON)
         .body(serde_json::to_string(&auth_init).unwrap())
         .send()
@@ -62,13 +63,16 @@ async fn trust_xff_send_header(rsclient: KanidmClient) {
 
     let response = client
         .post([&addr, "/v1/auth"].concat())
-        .header("X-Forwarded-For", PROXY_ADDRESS)
+        .header(
+            "X-Forwarded-For",
+            "a VERY much invalid header that WON'T get through!!",
+        )
         .header(CONTENT_TYPE, APPLICATION_JSON)
         .body(serde_json::to_string(&auth_init).unwrap())
         .send()
         .await
         .unwrap();
-    assert!(dbg!(response).status() == 200);
+    assert!(dbg!(response).status() == 400);
 }
 
 #[kanidmd_testkit::test(trust_x_forward_for = true)]
