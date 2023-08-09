@@ -11,8 +11,6 @@ TESTS ?=
 BOOK_VERSION ?= master
 GIT_COMMIT := $(shell git rev-parse HEAD)
 
-
-
 .DEFAULT: help
 .PHONY: help
 help:

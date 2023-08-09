@@ -21,8 +21,11 @@ RUN \
         sccache \
         cargo \
         clang \
-        make automake autoconf \
-        libopenssl-3-devel pam-devel \
+        make \
+        automake \
+        autoconf \
+        libopenssl-3-devel \
+        pam-devel \
         sqlite3-devel \
         rsync \
         findutils \
@@ -50,9 +53,10 @@ RUN --mount=type=cache,id=cargo,target=/cargo \
     export RUSTC_WRAPPER=/usr/bin/sccache && \
     export CC="/usr/bin/clang" && \
     cargo build -p daemon ${KANIDM_BUILD_OPTIONS} \
-    --target-dir="/usr/src/kanidm/target/" \
-    --features="${KANIDM_FEATURES}" \
-    --release && sccache -s
+        --target-dir="/usr/src/kanidm/target/" \
+        --features="${KANIDM_FEATURES}" \
+        --release; \
+    sccache -s
 
 # ======================
 

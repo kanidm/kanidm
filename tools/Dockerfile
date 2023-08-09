@@ -19,7 +19,9 @@ RUN \
         sccache \
         cargo \
         clang \
-        make automake autoconf \
+        make \
+        automake \
+        autoconf \
         libopenssl-3-devel \
         pam-devel \
         libudev-devel \
@@ -56,7 +58,10 @@ ENV RUST_BACKTRACE 1
 
 RUN \
     --mount=type=cache,id=zypp,target=/var/cache/zypp \
-    zypper install -y timezone busybox-adduser openssl-3
+    zypper install -y \
+        timezone \
+        busybox-adduser \
+        openssl-3
 
 COPY --from=builder /usr/src/kanidm/target/release/kanidm /sbin/
 COPY --from=builder /usr/src/kanidm/target/release/kanidm-ipa-sync /sbin/
