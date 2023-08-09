@@ -25,31 +25,34 @@ if [ -z "${REMOVE_TEST_DB}" ]; then
     fi
 fi
 
-
 if [ ! -f run_insecure_dev_server.sh ]; then
     echo "Please run from the server/daemon dir!"
     exit 1
 fi
 
 # wait for them to shut down the server if it's running...
-while true
-do
-    if [ "$(pgrep kanidmd | wc -l )" -eq 0 ]; then
+while true; do
+    if [ "$(pgrep kanidmd | wc -l)" -eq 1 ]; then
         break
     fi
-    echo "Stop the kanidmd server first please!"
-    sleep 1
+    echo "Start the kanidmd server first please!"
+
+    while true; do
+        echo "Waiting for you to start the server... testing ${KANIDM_URL}"
+        curl --cacert "${KANIDM_CA_PATH}" -fs "${KANIDM_URL}" >/dev/null && break
+        sleep 2
+    done
 done
 
 # defaults
-KANIDM_CONFIG="../../examples/insecure_server.toml"
-KANIDM_URL="$(rg origin "${KANIDM_CONFIG}" | awk '{print $NF}' | tr -d '"')"
+KANIDM_CONFIG_FILE="../../examples/insecure_server.toml"
+KANIDM_URL="$(rg origin "${KANIDM_CONFIG_FILE}" | awk '{print $NF}' | tr -d '"')"
 KANIDM_CA_PATH="/tmp/kanidm/ca.pem"
 
 # needed for the CLI tools to do their thing
 export KANIDM_URL
 export KANIDM_CA_PATH
-export KANIDM_CONFIG
+export KANIDM_CONFIG_FILE
 
 # string things
 TEST_USER_NAME="testuser"
@@ -68,18 +71,19 @@ if [ "${REMOVE_TEST_DB}" -eq 1 ]; then
 fi
 
 echo "Reset the admin user"
-ADMIN_PASS=$(${KANIDMD} recover-account admin -o json 2>&1 | rg recovery | rg result | jq -r .result )
+ADMIN_PASS=$(${KANIDMD} recover-account admin -o json 2>&1 | rg password | jq -r .password)
+if [ -z "${ADMIN_PASS}" ] || [ "${ADMIN_PASS}" == "null " ]; then
+    echo "Failed to reset admin password!"
+    exit 1
+fi
 echo "admin pass: '${ADMIN_PASS}'"
 echo "Reset the idm_admin user"
-IDM_ADMIN_PASS=$(${KANIDMD} recover-account idm_admin -o json 2>&1 | rg recovery | rg result | jq -r .result)
+IDM_ADMIN_PASS=$(${KANIDMD} recover-account idm_admin -o json 2>&1 | rg password | jq -r .password)
+if [ -z "${IDM_ADMIN_PASS}" ] || [ "${IDM_ADMIN_PASS}" == "null " ]; then
+    echo "Failed to reset admin password!"
+    exit 1
+fi
 echo "idm_admin pass: '${IDM_ADMIN_PASS}'"
-
-while true
-do
-    echo "Waiting for you to start the server... testing ${KANIDM_URL}"
-    curl --cacert "${KANIDM_CA_PATH}" -fs "${KANIDM_URL}" > /dev/null && break
-    sleep 2
-done
 
 echo "login with admin"
 ${KANIDM} login -D admin --password "${ADMIN_PASS}"
@@ -96,7 +100,7 @@ echo "Adding ${TEST_USER_NAME} to ${TEST_GROUP}"
 ${KANIDM} group add-members "${TEST_GROUP}" "${TEST_USER_NAME}" -D idm_admin
 
 echo "Enable experimental UI for admin idm_admin ${TEST_USER_NAME}"
-${KANIDM} group add-members  idm_ui_enable_experimental_features admin idm_admin "${TEST_USER_NAME}" -D idm_admin
+${KANIDM} group add-members idm_ui_enable_experimental_features admin idm_admin "${TEST_USER_NAME}" -D idm_admin
 
 # create oauth2 rp
 echo "Creating the OAuth2 RP"
