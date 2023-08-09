@@ -11,19 +11,19 @@ ARG RADIUS_USER=radiusd
 RUN \
     --mount=type=cache,id=zypp,target=/var/cache/zypp \
     zypper install -y \
-    freeradius-client \
-    freeradius-server \
-    freeradius-server-python3 \
-    freeradius-server-utils \
-    hostname \
-    python3 \
-    python3-devel \
-    python3-pip \
-    timezone \
-    iproute2 \
-    iputils \
-    openssl \
-    curl
+        freeradius-client \
+        freeradius-server \
+        freeradius-server-python3 \
+        freeradius-server-utils \
+        hostname \
+        python3 \
+        python3-devel \
+        python3-pip \
+        timezone \
+        iproute2 \
+        iputils \
+        openssl \
+        curl
 
 # Don't put in the TZ at build time - it needs to be bind mounted at runtime
 # else we are forcing things on people.

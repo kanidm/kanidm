@@ -18,16 +18,16 @@ ENV RUSTFLAGS="-Clinker=clang -Clink-arg=-fuse-ld=/usr/bin/ld.mold"
 RUN \
     --mount=type=cache,id=zypp,target=/var/cache/zypp \
     zypper install -y --no-recommends \
-    sccache \
-    cargo \
-    clang \
-    make automake autoconf \
-    libopenssl-3-devel pam-devel \
-    sqlite3-devel \
-    rsync \
-    findutils \
-    which \
-    mold
+        sccache \
+        cargo \
+        clang \
+        make automake autoconf \
+        libopenssl-3-devel pam-devel \
+        sqlite3-devel \
+        rsync \
+        findutils \
+        which \
+        mold
 
 COPY . /usr/src/kanidm
 
@@ -60,10 +60,10 @@ FROM repos
 RUN \
     --mount=type=cache,id=zypp,target=/var/cache/zypp \
     zypper install -y \
-    timezone \
-    openssl-3 \
-    sqlite3 \
-    pam
+        timezone \
+        openssl-3 \
+        sqlite3 \
+        pam
 
 COPY --from=builder /usr/src/kanidm/target/release/kanidmd /sbin/
 COPY --from=builder /usr/src/kanidm/server/web_ui/pkg /pkg
