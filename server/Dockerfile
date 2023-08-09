@@ -57,7 +57,6 @@ RUN --mount=type=cache,id=cargo,target=/cargo \
 # ======================
 
 FROM repos
-ARG GIT_COMMIT=""
 RUN \
     --mount=type=cache,id=zypp,target=/var/cache/zypp \
     zypper install -y \
@@ -74,7 +73,5 @@ EXPOSE 8443 3636
 VOLUME /data
 
 ENV RUST_BACKTRACE 1
-
-LABEL "com.kanidm.git-commit"=${GIT_COMMIT}
 
 CMD [ "/sbin/kanidmd", "server", "-c", "/data/server.toml"]

@@ -51,7 +51,6 @@ RUN \
 
 # == Construct the tools container
 FROM repos
-ARG GIT_COMMIT=""
 
 ENV RUST_BACKTRACE 1
 
@@ -69,7 +68,5 @@ RUN adduser -D -H kanidm && \
     touch /etc/kanidm/config
 
 USER kanidm
-
-LABEL "com.kanidm.git-commit"=${GIT_COMMIT}
 
 CMD [ "/sbin/kanidm", "-h" ]

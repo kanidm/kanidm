@@ -1,5 +1,3 @@
-ARG GIT_COMMIT=""
-
 FROM ubuntu/apache2:latest
 
 RUN apt-get update
@@ -13,4 +11,3 @@ RUN rm /etc/apache2/sites-enabled/000-default.conf
 COPY index.html /var/www/html/index.html
 COPY oauth2.conf /etc/apache2/sites-enabled/oauth2.conf
 
-LABEL "com.kanidm.git-commit"=${GIT_COMMIT}

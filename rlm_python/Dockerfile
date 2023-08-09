@@ -7,7 +7,6 @@ RUN --mount=type=cache,id=zypp,target=/var/cache/zypp /zypper_fixing.sh
 FROM repos
 EXPOSE 1812 1813
 ARG RADIUS_USER=radiusd
-ARG GIT_COMMIT=""
 
 RUN \
     --mount=type=cache,id=zypp,target=/var/cache/zypp \
@@ -61,7 +60,5 @@ ENV KANIDM_CONFIG_FILE="/data/kanidm"
 
 RUN chmod a+r /etc/raddb/certs/ -R
 USER $RADIUS_USER
-
-LABEL "com.kanidm.git-commit"=${GIT_COMMIT}
 
 CMD [ "/usr/bin/python3", "/radius_entrypoint.py" ]
