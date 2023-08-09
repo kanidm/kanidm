@@ -120,6 +120,7 @@ async fn test_server_search(rsclient: KanidmClient) {
     // First show we are un-authenticated.
     let pre_res = rsclient.whoami().await;
     // This means it was okay whoami, but no uat attached.
+    println!("Response: {:?}", pre_res);
     assert!(pre_res.unwrap().is_none());
 
     let res = rsclient

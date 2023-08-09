@@ -30,6 +30,11 @@ if [ ! -f run_insecure_dev_server.sh ]; then
     exit 1
 fi
 
+# defaults
+KANIDM_CONFIG_FILE="../../examples/insecure_server.toml"
+KANIDM_URL="$(rg origin "${KANIDM_CONFIG_FILE}" | awk '{print $NF}' | tr -d '"')"
+KANIDM_CA_PATH="/tmp/kanidm/ca.pem"
+
 # wait for them to shut down the server if it's running...
 while true; do
     if [ "$(pgrep kanidmd | wc -l)" -eq 1 ]; then
@@ -43,11 +48,6 @@ while true; do
         sleep 2
     done
 done
-
-# defaults
-KANIDM_CONFIG_FILE="../../examples/insecure_server.toml"
-KANIDM_URL="$(rg origin "${KANIDM_CONFIG_FILE}" | awk '{print $NF}' | tr -d '"')"
-KANIDM_CA_PATH="/tmp/kanidm/ca.pem"
 
 # needed for the CLI tools to do their thing
 export KANIDM_URL

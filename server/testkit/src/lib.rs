@@ -99,25 +99,24 @@ pub async fn create_user(rsclient: &KanidmClient, id: &str, group_name: &str) {
         .expect("Failed to create the user");
 
     // Create group and add to user to test read attr: member_of
-    #[allow(clippy::expect_used)]
+    #[allow(clippy::panic)]
     if rsclient
         .idm_group_get(group_name)
         .await
-        .expect("Failed to get group")
+        .unwrap_or_else(|_| panic!("Failed to get group {}", group_name))
         .is_none()
     {
-        #[allow(clippy::expect_used)]
+        #[allow(clippy::panic)]
         rsclient
             .idm_group_create(group_name)
             .await
-            .expect("Failed to create group");
+            .unwrap_or_else(|_| panic!("Failed to create group {}", group_name));
     }
-
-    #[allow(clippy::expect_used)]
+    #[allow(clippy::panic)]
     rsclient
         .idm_group_add_members(group_name, &[id])
         .await
-        .expect("Failed to set group membership for user");
+        .unwrap_or_else(|_| panic!("Failed to add user {} to group {}", id, group_name));
 }
 
 pub async fn create_user_with_all_attrs(

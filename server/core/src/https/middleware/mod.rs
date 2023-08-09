@@ -70,7 +70,7 @@ pub async fn are_we_json_yet<B>(request: Request<B>, next: Next<B>) -> Response 
 }
 
 /// This runs at the start of the request, adding an extension with `KOpId` which has useful things inside it.
-#[instrument(name = "request", skip_all)]
+#[instrument(name = "kopid_middleware", skip_all, level = "DEBUG")]
 pub async fn kopid_middleware<B>(
     auth: Option<TypedHeader<Authorization<Bearer>>>,
     mut request: Request<B>,
@@ -86,10 +86,11 @@ pub async fn kopid_middleware<B>(
     request.extensions_mut().insert(KOpId { eventid, uat });
     let mut response = next.run(request).await;
 
-    #[allow(clippy::unwrap_used)]
+    #[allow(clippy::expect_used)]
     response.headers_mut().insert(
         "X-KANIDM-OPID",
-        HeaderValue::from_str(&eventid.as_hyphenated().to_string()).unwrap(),
+        HeaderValue::from_str(&eventid.as_hyphenated().to_string())
+            .expect("Failed to set X-KANIDM-OPID header in response!"),
     );
 
     response
