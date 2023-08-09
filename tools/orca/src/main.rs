@@ -25,6 +25,7 @@ use uuid::Uuid;
 use crate::ds::DirectoryServer;
 use crate::ipa::IpaServer;
 use crate::kani::{KaniHttpServer, KaniLdapServer};
+use crate::profile::Profile;
 use crate::setup::config;
 
 mod data;
@@ -49,6 +50,7 @@ impl OrcaOpt {
             OrcaOpt::Setup(opt) => opt.copt.debug,
             OrcaOpt::Run(opt) => opt.copt.debug,
             OrcaOpt::Version(opt) => opt.debug,
+            OrcaOpt::Configure(opt) => opt.copt.debug,
         }
     }
 }
@@ -249,6 +251,64 @@ async fn main() {
             // read the profile that we are going to be using/testing
             // load the related data (if any) or generate it
             // run the test!
+        }
+        OrcaOpt::Configure(opt) => {
+            let mut profile = match opt.profile.exists() {
+                true => {
+                    let file_contents = std::fs::read_to_string(&opt.profile).unwrap();
+                    toml::from_str(&file_contents).unwrap()
+                }
+
+                false => Profile::default(),
+            };
+            println!("Current profile:\n{}", toml::to_string(&profile).unwrap());
+
+            if let Some(name) = opt.name {
+                println!("Updating config name.");
+                profile.name = name;
+            };
+
+            if let Some(new_password) = opt.admin_password {
+                println!("Updating admin password.");
+                profile.kani_http_config.as_mut().unwrap().admin_pw = new_password.clone();
+                profile.kani_ldap_config.as_mut().unwrap().admin_pw = new_password;
+            };
+
+            if let Some(kani_uri) = opt.kanidm_uri {
+                println!("Updating kanidm uri.");
+                profile.kani_http_config.as_mut().unwrap().uri = kani_uri.clone();
+                profile.kani_ldap_config.as_mut().unwrap().uri = kani_uri;
+            };
+
+            if let Some(ldap_uri) = opt.ldap_uri {
+                println!("Updating ldap uri.");
+                profile.kani_ldap_config.as_mut().unwrap().ldap_uri = ldap_uri;
+            };
+
+            if let Some(base_dn) = opt.ldap_base_dn {
+                println!("Updating base DN.");
+                profile.kani_ldap_config.as_mut().unwrap().base_dn = base_dn;
+            };
+
+            let file_contents = match toml::to_string(&profile) {
+                Err(err) => {
+                    error!("Failed to serialize the config file: {:?}", err);
+                    return;
+                }
+                Ok(val) => val,
+            };
+
+            match std::fs::write(&opt.profile, &file_contents) {
+                Err(err) => {
+                    eprintln!("Failed to write the config file: {:?}", err);
+                    return;
+                }
+                Ok(_) => {
+                    println!("Wrote out the new config file");
+                }
+            };
+
+            println!("New config:\n{}", file_contents);
         }
     };
     debug!("Exit");
