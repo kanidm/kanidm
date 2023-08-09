@@ -35,18 +35,18 @@ WORKDIR /usr/src/kanidm/
 RUN \
     --mount=type=cache,id=cargo,target=/cargo \
     --mount=type=cache,id=sccache,target=/sccache \
-    export CARGO_HOME=/cargo
-    export SCCACHE_DIR=/sccache
-    export RUSTC_WRAPPER=/usr/bin/sccache
-    export CC="/usr/bin/clang"
+    export CARGO_HOME=/cargo; \
+    export SCCACHE_DIR=/sccache; \
+    export RUSTC_WRAPPER=/usr/bin/sccache; \
+    export CC="/usr/bin/clang"; \
     cargo build -p kanidm_tools ${KANIDM_BUILD_OPTIONS} \
         --target-dir="/usr/src/kanidm/target/" \
         --features="${KANIDM_FEATURES}" \
-        --release
+        --release && \
     cargo build -p kanidm-ipa-sync ${KANIDM_BUILD_OPTIONS} \
         --target-dir="/usr/src/kanidm/target/" \
         --features="${KANIDM_FEATURES}" \
-        --release
+        --release  && \
     sccache -s
 
 # == Construct the tools container
