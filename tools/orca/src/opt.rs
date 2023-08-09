@@ -76,6 +76,14 @@ struct ConfigOpt {
     pub name: Option<String>,
 
     #[clap(value_parser, short, long)]
+    /// The data file path to update (or create)
+    pub data_file: Option<String>,
+
+    #[clap(value_parser, short, long)]
+    /// The place we'll drop the results
+    pub results: Option<PathBuf>,
+
+    #[clap(value_parser, short, long)]
     /// The configuration file path to update (or create)
     pub profile: PathBuf,
 }
