@@ -393,7 +393,7 @@ where
         account_id: &Id,
         token: Option<UserToken>,
     ) -> Result<Option<UserToken>, ()> {
-        match self.client.unix_user_get(account_id).await {
+        match self.client.unix_user_get(account_id, token.clone()).await {
             Ok(mut n_tok) => {
                 if self.check_nxset(&n_tok.name, n_tok.gidnumber).await {
                     // Refuse to release the token, it's in the denied set.

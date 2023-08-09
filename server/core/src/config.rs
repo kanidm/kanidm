@@ -245,6 +245,13 @@ impl Configuration {
         }
     }
 
+    pub fn new_for_test() -> Self {
+        Configuration {
+            threads: 1,
+            ..Configuration::new()
+        }
+    }
+
     pub fn update_online_backup(&mut self, cfg: &Option<OnlineBackup>) {
         match cfg {
             None => {}
