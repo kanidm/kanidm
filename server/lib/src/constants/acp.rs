@@ -1448,6 +1448,43 @@ lazy_static! {
 }
 
 lazy_static! {
+    pub static ref E_IDM_ACP_SYSTEM_CONFIG_SESSION_EXP_PRIV_V1: EntryInitNew = entry_init!(
+        ("class", CLASS_OBJECT.clone()),
+        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
+        ("class", CLASS_ACCESS_CONTROL_MODIFY.clone()),
+        ("class", CLASS_ACCESS_CONTROL_SEARCH.clone()),
+        ("name", Value::new_iname("idm_acp_system_config_session_exp_priv")),
+        ("uuid", Value::Uuid(UUID_IDM_ACP_SYSTEM_CONFIG_SESSION_EXP_PRIV_V1)),
+        (
+            "description",
+            Value::new_utf8s("Builtin IDM Control for granting session expiry configuration rights")
+        ),
+        (
+            "acp_receiver_group",
+            Value::Refer(UUID_SYSTEM_ADMINS)
+        ),
+        (
+            "acp_targetscope",
+            Value::new_json_filter_s(
+                "{\"and\": [{\"eq\": [\"uuid\",\"00000000-0000-0000-0000-ffffff000027\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
+            )
+                .expect("Invalid JSON filter")
+        ),
+        ("acp_search_attr", Value::new_iutf8("class")),
+        ("acp_search_attr", Value::new_iutf8("name")),
+        ("acp_search_attr", Value::new_iutf8("uuid")),
+        ("acp_search_attr", Value::new_iutf8("description")),
+        ("acp_search_attr", Value::new_iutf8("authsession_expiry")),
+        ("acp_modify_presentattr", Value::new_iutf8("authsession_expiry")),
+        ("acp_modify_removedattr", Value::new_iutf8("authsession_expiry")),
+        ("acp_search_attr", Value::new_iutf8("privilege_expiry")),
+        ("acp_modify_presentattr", Value::new_iutf8("privilege_expiry")),
+        ("acp_modify_removedattr", Value::new_iutf8("privilege_expiry"))
+
+    );
+}
+
+lazy_static! {
     pub static ref E_IDM_ACP_ACCOUNT_UNIX_EXTEND_PRIV_V1: EntryInitNew = entry_init!(
         (ATTR_CLASS, EntryClass::Object.to_value()),
         (ATTR_CLASS, EntryClass::AccessControlProfile.to_value()),

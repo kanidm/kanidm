@@ -32,6 +32,8 @@ lazy_static! {
         m.insert("id_verification_eckey");
         m.insert("badlist_password");
         m.insert("domain_display_name");
+        m.insert("authsession_expiry");
+        m.insert("privilege_expiry");
         m
     };
 }

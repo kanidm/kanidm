@@ -193,6 +193,24 @@ pub static ref SCHEMA_ATTR_BADLIST_PASSWORD: SchemaAttribute = SchemaAttribute {
     ..Default::default()
 };
 
+pub static ref SCHEMA_ATTR_AUTH_SESSION_EXPIRY: SchemaAttribute = SchemaAttribute {
+    uuid: UUID_SCHEMA_ATTR_AUTH_SESSION_EXPIRY,
+    name: "authsession_expiry".into(),
+
+    description: "An expiration time for an authentication session.".to_string(),
+    syntax: SyntaxType::Uint32,
+    ..Default::default()
+};
+
+pub static ref SCHEMA_ATTR_AUTH_PRIVILEGE_EXPIRY: SchemaAttribute = SchemaAttribute {
+    uuid: UUID_SCHEMA_ATTR_AUTH_PRIVILEGE_EXPIRY,
+    name: "privilege_expiry".into(),
+
+    description: "An expiration time for a privileged authentication session.".to_string(),
+    syntax: SyntaxType::Uint32,
+    ..Default::default()
+};
+
 pub static ref SCHEMA_ATTR_LOGINSHELL: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_LOGINSHELL,
     name: Attribute::LoginShell.into(),
@@ -714,6 +732,8 @@ pub static ref SCHEMA_CLASS_SYSTEM_CONFIG: SchemaClass = SchemaClass {
     systemmay: vec![
         Attribute::Description.into(),
         Attribute::BadlistPassword.into(),
+        Attribute::AuthSessionExpiry.into(),
+        Attribute::PrivilegeExpiry.into()
         ],
     ..Default::default()
 };

@@ -2118,7 +2118,12 @@ mod tests {
             .target_to_account(UUID_ADMIN)
             .expect("account must exist");
         let uat = account
-            .to_userauthtoken(session_id, SessionScope::ReadWrite, ct)
+            .to_userauthtoken(
+                session_id,
+                SessionScope::ReadWrite,
+                ct,
+                DEFAULT_AUTH_SESSION_EXPIRY,
+            )
             .expect("Unable to create uat");
 
         // Need the uat first for expiry.
@@ -2232,7 +2237,12 @@ mod tests {
             .target_to_account(UUID_ADMIN)
             .expect("account must exist");
         let uat = account
-            .to_userauthtoken(session_id, SessionScope::ReadWrite, ct)
+            .to_userauthtoken(
+                session_id,
+                SessionScope::ReadWrite,
+                ct,
+                DEFAULT_AUTH_SESSION_EXPIRY,
+            )
             .expect("Unable to create uat");
 
         // Need the uat first for expiry.
@@ -2287,7 +2297,12 @@ mod tests {
             .expect("account must exist");
         let session_id = uuid::Uuid::new_v4();
         let uat = account
-            .to_userauthtoken(session_id, SessionScope::ReadWrite, ct)
+            .to_userauthtoken(
+                session_id,
+                SessionScope::ReadWrite,
+                ct,
+                DEFAULT_AUTH_SESSION_EXPIRY,
+            )
             .expect("Unable to create uat");
         let ident = idms_prox_write
             .process_uat_to_identity(&uat, ct)
@@ -2612,7 +2627,12 @@ mod tests {
                 .expect("account must exist");
             let session_id = uuid::Uuid::new_v4();
             let uat2 = account
-                .to_userauthtoken(session_id, SessionScope::ReadWrite, ct)
+                .to_userauthtoken(
+                    session_id,
+                    SessionScope::ReadWrite,
+                    ct,
+                    DEFAULT_AUTH_SESSION_EXPIRY,
+                )
                 .expect("Unable to create uat");
             let ident2 = idms_prox_write
                 .process_uat_to_identity(&uat2, ct)
@@ -3212,7 +3232,12 @@ mod tests {
                 .expect("account must exist");
             let session_id = uuid::Uuid::new_v4();
             let uat2 = account
-                .to_userauthtoken(session_id, SessionScope::ReadWrite, ct)
+                .to_userauthtoken(
+                    session_id,
+                    SessionScope::ReadWrite,
+                    ct,
+                    DEFAULT_AUTH_SESSION_EXPIRY,
+                )
                 .expect("Unable to create uat");
             let ident2 = idms_prox_write
                 .process_uat_to_identity(&uat2, ct)

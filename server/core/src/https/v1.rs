@@ -1219,6 +1219,24 @@ pub async fn system_delete_attr(
     .await
 }
 
+pub async fn system_put_attr(
+    State(state): State<ServerState>,
+    Path(attr): Path<String>,
+    Extension(kopid): Extension<KOpId>,
+    Json(values): Json<Vec<String>>,
+) -> impl IntoResponse {
+    let filter = filter_all!(f_eq("class", PartialValue::new_class("system_config")));
+    json_rest_event_put_attr(
+        state,
+        STR_UUID_SYSTEM_CONFIG.to_string(),
+        attr,
+        filter,
+        values,
+        kopid,
+    )
+    .await
+}
+
 pub async fn recycle_bin_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
@@ -1661,6 +1679,7 @@ pub fn router(state: ServerState) -> Router<ServerState> {
             "/v1/system/_attr/:attr",
             get(system_get_attr)
                 .post(system_post_attr)
+                .put(system_put_attr)
                 .delete(system_delete_attr),
         )
         .route("/v1/recycle_bin", get(recycle_bin_get))

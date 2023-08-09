@@ -90,6 +90,8 @@ pub struct IdmServer {
     pw_badlist_cache: Arc<CowCell<HashSet<String>>>,
     oauth2rs: Arc<Oauth2ResourceServers>,
     domain_keys: Arc<CowCell<DomainKeys>>,
+    privilege_expiry: Arc<CowCell<u32>>,
+    authsession_expiry: Arc<CowCell<u32>>,
 }
 
 /// Contains methods that require writes, but in the context of writing to the idm in memory structures (maybe the query server too). This is things like authentication.
@@ -107,6 +109,8 @@ pub struct IdmServerAuthTransaction<'a> {
     pub(crate) webauthn: &'a Webauthn,
     pub(crate) pw_badlist_cache: CowCellReadTxn<HashSet<String>>,
     pub(crate) domain_keys: CowCellReadTxn<DomainKeys>,
+    pub(crate) privilege_expiry: CowCellReadTxn<u32>,
+    pub(crate) authsession_expiry: CowCellReadTxn<u32>,
 }
 
 pub struct IdmServerCredUpdateTransaction<'a> {
@@ -136,6 +140,8 @@ pub struct IdmServerProxyWriteTransaction<'a> {
     crypto_policy: &'a CryptoPolicy,
     webauthn: &'a Webauthn,
     pw_badlist_cache: CowCellWriteTxn<'a, HashSet<String>>,
+    authsession_expiry: CowCellWriteTxn<'a, u32>,
+    privilege_expiry: CowCellWriteTxn<'a, u32>,
     pub(crate) domain_keys: CowCellWriteTxn<'a, DomainKeys>,
     pub(crate) oauth2rs: Oauth2ResourceServersWriteTransaction<'a>,
 }
@@ -168,6 +174,8 @@ impl IdmServer {
             cookie_key,
             pw_badlist_set,
             oauth2rs_set,
+            privilege_expiry,
+            authsession_expiry,
         ) = {
             let mut qs_read = qs.read().await;
             (
@@ -179,6 +187,8 @@ impl IdmServer {
                 qs_read.get_password_badlist()?,
                 // Add a read/reload of all oauth2 configurations.
                 qs_read.get_oauth2rs_set()?,
+                qs_read.get_privilege_expiry()?,
+                qs_read.get_authsession_expiry()?,
             )
         };
 
@@ -256,6 +266,8 @@ impl IdmServer {
                 pw_badlist_cache: Arc::new(CowCell::new(pw_badlist_set)),
                 domain_keys,
                 oauth2rs: Arc::new(oauth2rs),
+                authsession_expiry: Arc::new(CowCell::new(authsession_expiry)),
+                privilege_expiry: Arc::new(CowCell::new(privilege_expiry)),
             },
             IdmServerDelayed { async_rx },
             IdmServerAudit { audit_rx },
@@ -285,6 +297,8 @@ impl IdmServer {
             webauthn: &self.webauthn,
             pw_badlist_cache: self.pw_badlist_cache.read(),
             domain_keys: self.domain_keys.read(),
+            authsession_expiry: self.authsession_expiry.read(),
+            privilege_expiry: self.privilege_expiry.read(),
         }
     }
 
@@ -316,6 +330,8 @@ impl IdmServer {
             pw_badlist_cache: self.pw_badlist_cache.write(),
             domain_keys: self.domain_keys.write(),
             oauth2rs: self.oauth2rs.write(),
+            authsession_expiry: self.authsession_expiry.write(),
+            privilege_expiry: self.privilege_expiry.write(),
         }
     }
 
@@ -1130,6 +1146,8 @@ impl<'a> IdmServerAuthTransaction<'a> {
                             self.webauthn,
                             pw_badlist_cache,
                             &self.domain_keys.uat_jwt_signer,
+                            *self.authsession_expiry,
+                            *self.privilege_expiry,
                         )
                         .map(|aus| {
                             // Inspect the result:
@@ -1979,7 +1997,11 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             .get_changed_uuids()
             .contains(&UUID_SYSTEM_CONFIG)
         {
+            // TODO: probably it would be more efficient to introduce a single check for each of the possible system configs
+            // but that would require changing what uuid the operation is assigned
             self.reload_password_badlist()?;
+            self.reload_authsession_expiry()?;
+            self.reload_privilege_expiry()?;
         };
         if self.qs_write.get_changed_ouath2() {
             self.qs_write
@@ -2031,6 +2053,8 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         self.domain_keys.commit();
         self.pw_badlist_cache.commit();
         self.cred_update_sessions.commit();
+        self.authsession_expiry.commit();
+        self.privilege_expiry.commit();
         trace!("cred_update_session.commit");
         self.qs_write.commit()
     }
@@ -2039,6 +2063,26 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         match self.qs_write.get_password_badlist() {
             Ok(badlist_entry) => {
                 *self.pw_badlist_cache = badlist_entry;
+                Ok(())
+            }
+            Err(e) => Err(e),
+        }
+    }
+
+    fn reload_authsession_expiry(&mut self) -> Result<(), OperationError> {
+        match self.qs_write.get_authsession_expiry() {
+            Ok(expiry) => {
+                *self.authsession_expiry = expiry;
+                Ok(())
+            }
+            Err(e) => Err(e),
+        }
+    }
+
+    fn reload_privilege_expiry(&mut self) -> Result<(), OperationError> {
+        match self.qs_write.get_privilege_expiry() {
+            Ok(expiry) => {
+                *self.privilege_expiry = expiry;
                 Ok(())
             }
             Err(e) => Err(e),
@@ -2067,7 +2111,7 @@ mod tests {
         PasswordChangeEvent, RadiusAuthTokenEvent, RegenerateRadiusSecretEvent,
         UnixGroupTokenEvent, UnixPasswordChangeEvent, UnixUserAuthEvent, UnixUserTokenEvent,
     };
-    use crate::idm::server::{IdmServer, IdmServerTransaction};
+    use crate::idm::server::{IdmServer, IdmServerTransaction, Token};
     use crate::idm::AuthState;
     use crate::modify::{Modify, ModifyList};
     use crate::prelude::*;
@@ -3396,7 +3440,7 @@ mod tests {
     #[idm_test]
     async fn test_idm_jwt_uat_expiry(idms: &IdmServer, idms_delayed: &mut IdmServerDelayed) {
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
-        let expiry = ct + Duration::from_secs(AUTH_SESSION_EXPIRY + 1);
+        let expiry = ct + Duration::from_secs((DEFAULT_AUTH_SESSION_EXPIRY + 1).into());
         // Do an authenticate
         init_admin_w_password(idms, TEST_PASSWORD)
             .await
@@ -3431,8 +3475,8 @@ mod tests {
         _idms_delayed: &mut IdmServerDelayed,
     ) {
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
-        let expiry_a = ct + Duration::from_secs(AUTH_SESSION_EXPIRY + 1);
-        let expiry_b = ct + Duration::from_secs((AUTH_SESSION_EXPIRY + 1) * 2);
+        let expiry_a = ct + Duration::from_secs((DEFAULT_AUTH_SESSION_EXPIRY + 1).into());
+        let expiry_b = ct + Duration::from_secs(((DEFAULT_AUTH_SESSION_EXPIRY + 1) * 2).into());
 
         let session_a = Uuid::new_v4();
         let session_b = Uuid::new_v4();
@@ -3533,7 +3577,7 @@ mod tests {
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
 
         let post_grace = ct + GRACE_WINDOW + Duration::from_secs(1);
-        let expiry = ct + Duration::from_secs(AUTH_SESSION_EXPIRY + 1);
+        let expiry = ct + Duration::from_secs(DEFAULT_AUTH_SESSION_EXPIRY as u64 + 1);
 
         // Assert that our grace time is less than expiry, so we know the failure is due to
         // this.
@@ -3593,6 +3637,137 @@ mod tests {
     }
 
     #[idm_test]
+    async fn test_idm_account_session_expiry(
+        idms: &IdmServer,
+        _idms_delayed: &mut IdmServerDelayed,
+    ) {
+        let ct = Duration::from_secs(TEST_CURRENT_TIME);
+
+        //we first set the expiry to a custom value
+        let mut idms_prox_write = idms.proxy_write(ct).await;
+
+        let new_authsession_expiry = 1000_u32;
+        *idms_prox_write.authsession_expiry = new_authsession_expiry;
+        assert!(idms_prox_write.commit().is_ok());
+
+        // Start anonymous auth.
+        let mut idms_auth = idms.auth().await;
+        // Send the initial auth event for initialising the session
+        let anon_init = AuthEvent::anonymous_init();
+        // Expect success
+        let r1 = idms_auth.auth(&anon_init, ct, Source::Internal).await;
+        /* Some weird lifetime things happen here ... */
+
+        let sid = match r1 {
+            Ok(ar) => {
+                let AuthResult { sessionid, state } = ar;
+                match state {
+                    AuthState::Choose(mut conts) => {
+                        // Should only be one auth mech
+                        assert!(conts.len() == 1);
+                        // And it should be anonymous
+                        let m = conts.pop().expect("Should not fail");
+                        assert!(m == AuthMech::Anonymous);
+                    }
+                    _ => {
+                        error!("A critical error has occurred! We have a non-continue result!");
+                        panic!();
+                    }
+                };
+                // Now pass back the sessionid, we are good to continue.
+                sessionid
+            }
+            Err(e) => {
+                // Should not occur!
+                error!("A critical error has occurred! {:?}", e);
+                panic!();
+            }
+        };
+
+        idms_auth.commit().expect("Must not fail");
+
+        let mut idms_auth = idms.auth().await;
+        let anon_begin = AuthEvent::begin_mech(sid, AuthMech::Anonymous);
+
+        let r2 = idms_auth.auth(&anon_begin, ct, Source::Internal).await;
+
+        match r2 {
+            Ok(ar) => {
+                let AuthResult {
+                    sessionid: _,
+                    state,
+                } = ar;
+
+                match state {
+                    AuthState::Continue(allowed) => {
+                        // Check the uat.
+                        assert!(allowed.len() == 1);
+                        assert!(allowed.first() == Some(&AuthAllowed::Anonymous));
+                    }
+                    _ => {
+                        error!("A critical error has occurred! We have a non-continue result!");
+                        panic!();
+                    }
+                }
+            }
+            Err(e) => {
+                error!("A critical error has occurred! {:?}", e);
+                // Should not occur!
+                panic!();
+            }
+        };
+
+        idms_auth.commit().expect("Must not fail");
+
+        let mut idms_auth = idms.auth().await;
+        // Now send the anonymous request, given the session id.
+        let anon_step = AuthEvent::cred_step_anonymous(sid);
+
+        // Expect success
+        let r2 = idms_auth.auth(&anon_step, ct, Source::Internal).await;
+
+        let token = match r2 {
+            Ok(ar) => {
+                let AuthResult {
+                    sessionid: _,
+                    state,
+                } = ar;
+
+                match state {
+                    AuthState::Success(uat, AuthIssueSession::Token) => uat,
+                    _ => {
+                        error!("A critical error has occurred! We have a non-succcess result!");
+                        panic!();
+                    }
+                }
+            }
+            Err(e) => {
+                error!("A critical error has occurred! {:?}", e);
+                // Should not occur!
+                panic!();
+            }
+        };
+
+        idms_auth.commit().expect("Must not fail");
+
+        // Token_str to uat
+        // we have to do it this way because anonymous doesn't have an ideantity for which we cam get the expiry value
+        let Token::UserAuthToken(uat) = idms
+            .proxy_read()
+            .await
+            .validate_and_parse_token_to_token(Some(&token), ct)
+            .expect("Must not fail") else {
+            panic!("Unexpected auth token type for anonymous auth");
+            };
+
+        debug!(?uat);
+
+        assert!(
+            matches!(uat.expiry, Some(x) if dbg!(x) == OffsetDateTime::UNIX_EPOCH + ct + Duration::from_secs(new_authsession_expiry as u64))
+        );
+    }
+
+    #[idm_test]
     async fn test_idm_uat_claim_insertion(idms: &IdmServer, _idms_delayed: &mut IdmServerDelayed) {
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
         let mut idms_prox_write = idms.proxy_write(ct).await;
@@ -3609,7 +3784,12 @@ mod tests {
 
         // == anonymous
         let uat = account
-            .to_userauthtoken(session_id, SessionScope::ReadWrite, ct)
+            .to_userauthtoken(
+                session_id,
+                SessionScope::ReadWrite,
+                ct,
+                DEFAULT_AUTH_SESSION_EXPIRY,
+            )
             .expect("Unable to create uat");
         let ident = idms_prox_write
             .process_uat_to_identity(&uat, ct)
@@ -3623,7 +3803,12 @@ mod tests {
 
         // == unixpassword
         let uat = account
-            .to_userauthtoken(session_id, SessionScope::ReadWrite, ct)
+            .to_userauthtoken(
+                session_id,
+                SessionScope::ReadWrite,
+                ct,
+                DEFAULT_AUTH_SESSION_EXPIRY,
+            )
             .expect("Unable to create uat");
         let ident = idms_prox_write
             .process_uat_to_identity(&uat, ct)
@@ -3637,7 +3822,12 @@ mod tests {
 
         // == password
         let uat = account
-            .to_userauthtoken(session_id, SessionScope::ReadWrite, ct)
+            .to_userauthtoken(
+                session_id,
+                SessionScope::ReadWrite,
+                ct,
+                DEFAULT_AUTH_SESSION_EXPIRY,
+            )
             .expect("Unable to create uat");
         let ident = idms_prox_write
             .process_uat_to_identity(&uat, ct)
@@ -3651,7 +3841,12 @@ mod tests {
 
         // == generatedpassword
         let uat = account
-            .to_userauthtoken(session_id, SessionScope::ReadWrite, ct)
+            .to_userauthtoken(
+                session_id,
+                SessionScope::ReadWrite,
+                ct,
+                DEFAULT_AUTH_SESSION_EXPIRY,
+            )
             .expect("Unable to create uat");
         let ident = idms_prox_write
             .process_uat_to_identity(&uat, ct)
@@ -3665,7 +3860,12 @@ mod tests {
 
         // == webauthn
         let uat = account
-            .to_userauthtoken(session_id, SessionScope::ReadWrite, ct)
+            .to_userauthtoken(
+                session_id,
+                SessionScope::ReadWrite,
+                ct,
+                DEFAULT_AUTH_SESSION_EXPIRY,
+            )
             .expect("Unable to create uat");
         let ident = idms_prox_write
             .process_uat_to_identity(&uat, ct)
@@ -3679,7 +3879,12 @@ mod tests {
 
         // == passwordmfa
         let uat = account
-            .to_userauthtoken(session_id, SessionScope::ReadWrite, ct)
+            .to_userauthtoken(
+                session_id,
+                SessionScope::ReadWrite,
+                ct,
+                DEFAULT_AUTH_SESSION_EXPIRY,
+            )
             .expect("Unable to create uat");
         let ident = idms_prox_write
             .process_uat_to_identity(&uat, ct)
