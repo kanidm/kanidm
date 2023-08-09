@@ -1,17 +1,13 @@
 ARG BASE_IMAGE=opensuse/tumbleweed:latest
 FROM ${BASE_IMAGE} AS repos
-RUN \
-    --mount=type=cache,id=zypp,target=/var/cache/zypp \
-    zypper mr -k repo-oss; \
-    zypper mr -k repo-non-oss; \
-    zypper mr -k repo-update; \
-    zypper ref --force; \
-    zypper -v dup -y
+ADD ../scripts/zypper_fixing.sh /zypper_fixing.sh
+RUN --mount=type=cache,id=zypp,target=/var/cache/zypp /zypper_fixing.sh
 
 # ======================
 FROM repos
 EXPOSE 1812 1813
 ARG RADIUS_USER=radiusd
+ARG GIT_COMMIT=""
 
 RUN \
     --mount=type=cache,id=zypp,target=/var/cache/zypp \
@@ -34,7 +30,7 @@ RUN \
 # else we are forcing things on people.
 # RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
-ADD  rlm_python/mods-available/ /etc/raddb/mods-available/
+ADD rlm_python/mods-available/ /etc/raddb/mods-available/
 COPY rlm_python/sites-available/ /etc/raddb/sites-available/
 
 # Set a working directory of /etc/raddb
@@ -65,5 +61,7 @@ ENV KANIDM_CONFIG_FILE="/data/kanidm"
 
 RUN chmod a+r /etc/raddb/certs/ -R
 USER $RADIUS_USER
+
+LABEL "com.kanidm.git-commit"=${GIT_COMMIT}
 
 CMD [ "/usr/bin/python3", "/radius_entrypoint.py" ]

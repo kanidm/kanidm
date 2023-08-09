@@ -1,13 +1,8 @@
 # This builds the kanidm CLI tools
 ARG BASE_IMAGE=opensuse/tumbleweed:latest
 FROM ${BASE_IMAGE} AS repos
-RUN \
-    --mount=type=cache,id=zypp,target=/var/cache/zypp \
-    zypper mr -k repo-oss; \
-    zypper mr -k repo-non-oss; \
-    zypper mr -k repo-update; \
-    zypper ref --force; \
-    zypper -v dup -y
+ADD ../scripts/zypper_fixing.sh /zypper_fixing.sh
+RUN --mount=type=cache,id=zypp,target=/var/cache/zypp /zypper_fixing.sh
 
 FROM repos AS builder
 ARG KANIDM_FEATURES
@@ -21,16 +16,16 @@ ENV RUSTFLAGS="-Clinker=clang -Clink-arg=-fuse-ld=/usr/bin/ld.mold"
 RUN \
     --mount=type=cache,id=zypp,target=/var/cache/zypp \
     zypper install -y --no-recommends \
-        sccache \
-        cargo \
-        clang \
-        make automake autoconf \
-        libopenssl-3-devel \
-        pam-devel \
-        libudev-devel \
-        sqlite3-devel \
-        rsync \
-        mold
+    sccache \
+    cargo \
+    clang \
+    make automake autoconf \
+    libopenssl-3-devel \
+    pam-devel \
+    libudev-devel \
+    sqlite3-devel \
+    rsync \
+    mold
 
 COPY . /usr/src/kanidm
 
@@ -38,24 +33,25 @@ WORKDIR /usr/src/kanidm/
 
 # build the CLI
 RUN \
---mount=type=cache,id=cargo,target=/cargo \
---mount=type=cache,id=sccache,target=/sccache \
-export CARGO_HOME=/cargo; \
-export SCCACHE_DIR=/sccache; \
-export RUSTC_WRAPPER=/usr/bin/sccache; \
-export CC="/usr/bin/clang"; \
+    --mount=type=cache,id=cargo,target=/cargo \
+    --mount=type=cache,id=sccache,target=/sccache \
+    export CARGO_HOME=/cargo
+    export SCCACHE_DIR=/sccache
+    export RUSTC_WRAPPER=/usr/bin/sccache
+    export CC="/usr/bin/clang"
     cargo build -p kanidm_tools ${KANIDM_BUILD_OPTIONS} \
         --target-dir="/usr/src/kanidm/target/" \
         --features="${KANIDM_FEATURES}" \
-        --release; \
+        --release
     cargo build -p kanidm-ipa-sync ${KANIDM_BUILD_OPTIONS} \
         --target-dir="/usr/src/kanidm/target/" \
         --features="${KANIDM_FEATURES}" \
-        --release; \
+        --release
     sccache -s
 
 # == Construct the tools container
 FROM repos
+ARG GIT_COMMIT=""
 
 ENV RUST_BACKTRACE 1
 
@@ -74,5 +70,6 @@ RUN adduser -D -H kanidm && \
 
 USER kanidm
 
-CMD [ "/sbin/kanidm", "-h" ]
+LABEL "com.kanidm.git-commit"=${GIT_COMMIT}
 
+CMD [ "/sbin/kanidm", "-h" ]
