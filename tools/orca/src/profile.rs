@@ -73,8 +73,8 @@ impl Default for Profile {
 
         Self {
             name: "orca default profile".to_string(),
-            data: "".to_string(),
-            results: "".to_string(),
+            data: "/tmp/kanidm/orcatest".to_string(),
+            results: "/tmp/kanidm/orca-results/".to_string(),
             ds_config: None,
             ipa_config: None,
             kani_http_config: Some(kani_http_config),
