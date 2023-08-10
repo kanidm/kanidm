@@ -892,6 +892,7 @@ pub async fn account_get_id_radius_token(
     res
 }
 
+/// Expects an `AccountUnixExtend` object
 pub async fn account_post_id_unix(
     State(state): State<ServerState>,
     Path(id): Path<String>,
@@ -1481,7 +1482,7 @@ pub fn router(state: ServerState) -> Router<ServerState> {
         .route(
             "/v1/person/:id/_radius/_token",
             get(account_get_id_radius_token),
-        ) // TODO: make this cacheable
+        ) // TODO: make radius token cacheable
         .route("/v1/person/:id/_unix", post(account_post_id_unix))
         .route(
             "/v1/person/:id/_unix/_credential",
