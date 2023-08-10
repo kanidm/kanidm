@@ -635,6 +635,34 @@ async fn test_server_rest_posix_auth_lifecycle(rsclient: KanidmClient) {
         .await
         .unwrap();
 
+    // test sending a faulty JSON blob to the person unix update endpoint
+    let bad_json: serde_json::Value = serde_json::json!({
+        "shell" : "test_value",
+        "gidnumber" : "5" // this should be a u32, but it's not!
+    });
+    let res = rsclient
+        .perform_post_request::<serde_json::Value, String>(
+            format!("/v1/person/{}/_unix", "posix_account").as_str(),
+            bad_json,
+        )
+        .await;
+    dbg!(&res);
+    assert!(res.is_err());
+
+    // test sending a faulty JSON blob to the person unix update endpoint
+    let bad_json: serde_json::Value = serde_json::json!({
+        "crab" : "cakes", // this is an invalid field.
+        "gidnumber" : 5
+    });
+    let res = rsclient
+        .perform_post_request::<serde_json::Value, String>(
+            format!("/v1/person/{}/_unix", "posix_account").as_str(),
+            bad_json,
+        )
+        .await;
+    dbg!(&res);
+    assert!(res.is_err());
+
     // attempt to verify (good, anon-conn)
     let r1 = anon_rsclient
         .idm_account_unix_cred_verify("posix_account", UNIX_TEST_PASSWORD)
