@@ -611,6 +611,7 @@ impl fmt::Display for UnixUserToken {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(deny_unknown_fields)]
 pub struct AccountUnixExtend {
     pub gidnumber: Option<u32>,
     pub shell: Option<String>,
