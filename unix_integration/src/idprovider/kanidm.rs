@@ -201,6 +201,22 @@ impl IdProvider for KanidmProvider {
         }
     }
 
+    async fn unix_user_authenticate_continue(
+        &self,
+        id: &Id,
+        resp: &str,
+        data: Option<String>,
+    ) -> Result<Option<UserToken>, IdpError> {
+        Err(IdpError::BadRequest)
+    }
+
+    async fn unix_user_authenticate_initiate_continue(
+        &self,
+        id: &Id,
+    ) -> Result<(Option<String>, Option<String>), IdpError> {
+        Err(IdpError::BadRequest)
+    }
+
     async fn unix_group_get(&self, id: &Id) -> Result<GroupToken, IdpError> {
         match self
             .client

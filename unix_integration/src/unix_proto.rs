@@ -26,6 +26,7 @@ pub enum ClientRequest {
     NssGroupByGid(u32),
     NssGroupByName(String),
     PamAuthenticate(String, String),
+    PamAuthenticateContinue(String, String, Option<String>),
     PamAccountAllowed(String),
     PamAccountBeginSession(String),
     InvalidateCache,
@@ -41,6 +42,7 @@ pub enum ClientResponse {
     NssGroups(Vec<NssGroup>),
     NssGroup(Option<NssGroup>),
     PamStatus(Option<bool>),
+    PamPrompt(String, Option<String>),
     Ok,
     Error,
 }

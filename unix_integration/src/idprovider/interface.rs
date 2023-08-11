@@ -20,6 +20,9 @@ pub enum IdpError {
     /// The idp has indicated that the requested resource does not exist and should
     /// be considered deleted, removed, or not present.
     NotFound,
+    /// The idp is requesting an authentication continuation, and the resolver must
+    /// forward this information back to pam.
+    Continue,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -62,6 +65,18 @@ pub trait IdProvider {
         id: &Id,
         cred: &str,
     ) -> Result<Option<UserToken>, IdpError>;
+
+    async fn unix_user_authenticate_continue(
+        &self,
+        id: &Id,
+        resp: &str,
+        data: Option<String>,
+    ) -> Result<Option<UserToken>, IdpError>;
+
+    async fn unix_user_authenticate_initiate_continue(
+        &self,
+        id: &Id,
+    ) -> Result<(Option<String>, Option<String>), IdpError>;
 
     async fn unix_group_get(&self, id: &Id) -> Result<GroupToken, IdpError>;
 }

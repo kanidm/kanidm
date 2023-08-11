@@ -14,7 +14,7 @@ use uuid::Uuid;
 use crate::db::{Cache, CacheTxn, Db};
 use crate::idprovider::interface::{GroupToken, Id, IdProvider, IdpError, UserToken};
 use crate::unix_config::{HomeAttr, UidAttr};
-use crate::unix_proto::{HomeDirectoryInfo, NssGroup, NssUser};
+use crate::unix_proto::{HomeDirectoryInfo, NssGroup, NssUser, ClientResponse};
 
 // use crate::unix_passwd::{EtcUser, EtcGroup};
 
@@ -435,6 +435,10 @@ where
                 // Some other transient error, continue with the token.
                 Ok(token)
             }
+            Err(IdpError::Continue) => {
+                // We can't continue from a refresh
+                Ok(None)
+            }
         }
     }
 
@@ -481,6 +485,10 @@ where
             Err(IdpError::BadRequest) => {
                 // Some other transient error, continue with the token.
                 Ok(token)
+            }
+            Err(IdpError::Continue) => {
+                // We can't continue from a refresh
+                Ok(None)
             }
         }
     }
@@ -734,7 +742,7 @@ where
         token: &Option<UserToken>,
         account_id: &Id,
         cred: &str,
-    ) -> Result<Option<bool>, ()> {
+    ) -> Result<ClientResponse, ()> {
         debug!("Attempt online password check");
         // We are online, attempt the pw to the server.
         match self.client.unix_user_authenticate(account_id, cred).await {
@@ -742,18 +750,18 @@ where
                 if self.check_nxset(&n_tok.name, n_tok.gidnumber).await {
                     // Refuse to release the token, it's in the denied set.
                     self.delete_cache_usertoken(n_tok.uuid).await?;
-                    Ok(None)
+                    Ok(ClientResponse::PamStatus(None))
                 } else {
                     debug!("online password check success.");
                     self.set_cache_usertoken(&mut n_tok).await?;
                     self.set_cache_userpassword(n_tok.uuid, cred).await?;
-                    Ok(Some(true))
+                    Ok(ClientResponse::PamStatus(Some(true)))
                 }
             }
             Ok(None) => {
                 error!("incorrect password");
                 // PW failed the check.
-                Ok(Some(false))
+                Ok(ClientResponse::PamStatus(Some(false)))
             }
             Err(IdpError::Transport) => {
                 error!("transport error, moving to offline");
@@ -762,8 +770,11 @@ where
                 self.set_cachestate(CacheState::OfflineNextCheck(time))
                     .await;
                 match token.as_ref() {
-                    Some(t) => self.check_cache_userpassword(t.uuid, cred).await.map(Some),
-                    None => Ok(None),
+                    Some(t) => match self.check_cache_userpassword(t.uuid, cred).await.map(Some) {
+                        Ok(r) => Ok(ClientResponse::PamStatus(r)),
+                        Err(e) => Err(e),
+                    },
+                    None => Ok(ClientResponse::PamStatus(None)),
                 }
             }
 
@@ -773,11 +784,24 @@ where
                 self.set_cachestate(CacheState::OfflineNextCheck(time))
                     .await;
                 match token.as_ref() {
-                    Some(t) => self.check_cache_userpassword(t.uuid, cred).await.map(Some),
-                    None => Ok(None),
+                    Some(t) => match self.check_cache_userpassword(t.uuid, cred).await.map(Some) {
+                        Ok(r) => Ok(ClientResponse::PamStatus(r)),
+                        Err(e) => Err(e),
+                    },
+                    None => Ok(ClientResponse::PamStatus(None)),
                 }
             }
-            Err(IdpError::NotFound) => Ok(None),
+            Err(IdpError::NotFound) => Ok(ClientResponse::PamStatus(None)),
+            Err(IdpError::Continue) => {
+                let (msg, data) = match self.client.unix_user_authenticate_initiate_continue(account_id).await {
+                    Ok((msg, data)) => match msg {
+                        Some(msg) => (msg, data),
+                        None => return Err(()),
+                    },
+                    Err(_e) => return Err(()),
+                };
+                Ok(ClientResponse::PamPrompt(msg, data))
+            }
             Err(IdpError::BadRequest) => {
                 // Some other unknown processing error?
                 Err(())
@@ -841,7 +865,7 @@ where
         &self,
         account_id: &str,
         cred: &str,
-    ) -> Result<Option<bool>, ()> {
+    ) -> Result<ClientResponse, ()> {
         let id = Id::Name(account_id.to_string());
 
         let state = self.get_cachestate().await;
@@ -856,12 +880,98 @@ where
                     self.online_account_authenticate(&token, &id, cred).await
                 } else {
                     // We are offline, check from the cache if possible.
-                    self.offline_account_authenticate(&token, cred).await
+                    match self.offline_account_authenticate(&token, cred).await {
+                        Ok(res) => Ok(ClientResponse::PamStatus(res)),
+                        Err(e) => Err(e),
+                    }
                 }
             }
             _ => {
                 // We are offline, check from the cache if possible.
-                self.offline_account_authenticate(&token, cred).await
+                match self.offline_account_authenticate(&token, cred).await {
+                    Ok(res) => Ok(ClientResponse::PamStatus(res)),
+                    Err(e) => Err(e),
+                }
+            }
+        }
+    }
+
+    async fn account_authenticate_continue(
+        &self,
+        account_id: &Id,
+        resp: &str,
+        data: Option<String>,
+    ) -> Result<Option<bool>, ()> {
+        debug!("Attempt an authentication continue");
+        match self.client.unix_user_authenticate_continue(account_id, resp, data).await {
+            Ok(Some(mut n_tok)) => {
+                if self.check_nxset(&n_tok.name, n_tok.gidnumber).await {
+                    // Refuse to release the token, it's in the denied set.
+                    self.delete_cache_usertoken(n_tok.uuid).await?;
+                    Ok(None)
+                } else {
+                    debug!("authentication continue success.");
+                    self.set_cache_usertoken(&mut n_tok).await?;
+                    Ok(Some(true))
+                }
+            }
+            Ok(None) => {
+                error!("authentication continue failed");
+                // check failed.
+                Ok(Some(false))
+            }
+            Err(IdpError::Transport) => {
+                error!("transport error, moving to offline");
+                // Something went wrong, mark offline.
+                let time = SystemTime::now().add(Duration::from_secs(15));
+                self.set_cachestate(CacheState::OfflineNextCheck(time))
+                    .await;
+                Ok(Some(false))
+            }
+            Err(IdpError::ProviderUnauthorised) => {
+                // Something went wrong, mark offline to force a re-auth ASAP.
+                let time = SystemTime::now().sub(Duration::from_secs(1));
+                self.set_cachestate(CacheState::OfflineNextCheck(time))
+                    .await;
+                Ok(Some(false))
+            }
+            Err(IdpError::NotFound) => Ok(None),
+            Err(IdpError::BadRequest) => {
+                // Some other unknown processing error?
+                Err(())
+            }
+            Err(IdpError::Continue) => {
+                // We don't continue from a continue (should we?)
+                Ok(None)
+            }
+        }
+    }
+
+    pub async fn pam_account_authenticate_continue(
+        &self,
+        account_id: &str,
+        resp: &str,
+        data: Option<String>,
+    ) -> Result<Option<bool>, ()> {
+        let id = Id::Name(account_id.to_string());
+
+        let state = self.get_cachestate().await;
+
+        match state {
+            CacheState::Online => self.account_authenticate_continue(&id, resp, data).await,
+            CacheState::OfflineNextCheck(_time) => {
+                // Always attempt to go online to attempt the authentication.
+                if self.test_connection().await {
+                    // Brought ourselves online, lets check.
+                    self.account_authenticate_continue(&id, resp, data).await
+                } else {
+                    // We are offline, we can't complete the authenticate continue
+                    Ok(Some(false))
+                }
+            }
+            _ => {
+                // We are offline, we can't complete the authenticate continue
+                Ok(Some(false))
             }
         }
     }

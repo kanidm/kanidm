@@ -282,6 +282,9 @@ async fn handle_client(
                     .map(ClientResponse::PamStatus)
                     .unwrap_or(ClientResponse::Error)
             }
+            ClientRequest::PamAuthenticateContinue(_account_id, _resp, _data) => {
+                ClientResponse::PamStatus(false)
+            }
             ClientRequest::PamAccountAllowed(account_id) => {
                 debug!("pam account allowed");
                 cachelayer

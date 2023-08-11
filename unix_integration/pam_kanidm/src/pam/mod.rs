@@ -241,7 +241,7 @@ impl PamHooks for PamKanidm {
             Ok(cfg) => cfg,
             Err(e) => return e,
         };
-        let req = ClientRequest::PamAuthenticate(account_id, authtok);
+        let req = ClientRequest::PamAuthenticate(account_id.clone(), authtok);
 
         match call_daemon_blocking(cfg.sock_path.as_str(), &req, cfg.unix_sock_timeout) {
             Ok(r) => match r {
@@ -259,6 +259,55 @@ impl PamHooks for PamKanidm {
                         PamResultCode::PAM_IGNORE
                     } else {
                         PamResultCode::PAM_USER_UNKNOWN
+                    }
+                }
+                ClientResponse::PamPrompt(msg, data) => {
+                    let conv = match pamh.get_item::<PamConv>() {
+                        Ok(conv) => conv,
+                        Err(err) => {
+                            if opts.debug {
+                                println!("Couldn't get pam_conv");
+                            }
+                            return err;
+                        }
+                    };
+                    let resp = match conv.send(PAM_PROMPT_ECHO_OFF, &msg) {
+                        Ok(mfa) => match mfa {
+                            Some(mfa) => mfa,
+                            None => return PamResultCode::PAM_CRED_INSUFFICIENT,
+                        },
+                        Err(err) => return err,
+                    };
+                    let req = ClientRequest::PamAuthenticateContinue(account_id, resp, data);
+                    match call_daemon_blocking(cfg.sock_path.as_str(), &req, cfg.unix_sock_timeout) {
+                        Ok(r) => match r {
+                            ClientResponse::PamStatus(Some(true)) => {
+                                PamResultCode::PAM_SUCCESS
+                            }
+                            ClientResponse::PamStatus(Some(false)) => {
+                                PamResultCode::PAM_AUTH_ERR
+                            }
+                            ClientResponse::PamStatus(None) => {
+                                if opts.ignore_unknown_user {
+                                    PamResultCode::PAM_IGNORE
+                                } else {
+                                    PamResultCode::PAM_USER_UNKNOWN
+                                }
+                            }
+                            _ => {
+                                // unexpected response.
+                                if opts.debug {
+                                    println!("PAM_IGNORE -> {:?}", r);
+                                }
+                                PamResultCode::PAM_IGNORE
+                            }
+                        },
+                        Err(e) => {
+                            if opts.debug {
+                                println!("PAM_IGNORE -> {:?}", e);
+                            }
+                            PamResultCode::PAM_IGNORE
+                        }
                     }
                 }
                 _ => {
