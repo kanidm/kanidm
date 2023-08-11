@@ -2,7 +2,7 @@ use crate::https::APPLICATION_JSON;
 
 use super::middleware::KOpId;
 use super::v1::{json_rest_event_get, json_rest_event_post};
-use super::{to_axum_response, ServerState};
+use super::{to_axum_response, HttpOperationError, ServerState};
 use axum::extract::{Path, Query, State};
 use axum::middleware::from_fn;
 use axum::response::{IntoResponse, Response};
@@ -25,6 +25,45 @@ use kanidmd_lib::prelude::f_eq;
 use kanidmd_lib::prelude::*;
 use kanidmd_lib::value::PartialValue;
 use serde::{Deserialize, Serialize};
+
+pub struct HTTPOauth2Error(Oauth2Error);
+
+impl IntoResponse for HTTPOauth2Error {
+    fn into_response(self) -> Response {
+        let HTTPOauth2Error(error) = self;
+
+        if let Oauth2Error::AuthenticationRequired = error {
+            #[allow(clippy::unwrap_used)]
+            Response::builder()
+                .status(StatusCode::UNAUTHORIZED)
+                .header(WWW_AUTHENTICATE, "Bearer")
+                .header(ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+                .body(Body::empty())
+                .unwrap()
+        } else {
+            let err = ErrorResponse {
+                error: Some(error.to_string()),
+               ..Default::default()
+            };
+
+            let body = match serde_json::to_string(&err) {
+                Ok(val) => val,
+                Err(e) => {
+                    admin_warn!("Failed to serialize error response: original_error=\"{:?}\" serialization_error=\"{:?}\"", err, e);
+                    format!("{:?}", err)
+                }
+            };
+            #[allow(clippy::unwrap_used)]
+            Response::builder()
+                .status(StatusCode::BAD_REQUEST)
+                .header(ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+                .body(Body::from(body))
+                .unwrap()
+
+        }
+            .into_response()
+    }
+}
 
 // == Oauth2 Configuration Endpoints ==
 
@@ -77,7 +116,7 @@ pub async fn oauth2_id_get(
     State(state): State<ServerState>,
     Path(rs_name): Path<String>,
     Extension(kopid): Extension<KOpId>,
-) -> impl IntoResponse {
+) -> Response<Body> {
     let filter = oauth2_id(&rs_name);
 
     let res = state
@@ -93,7 +132,7 @@ pub async fn oauth2_id_get_basic_secret(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     Path(rs_name): Path<String>,
-) -> impl IntoResponse {
+) -> Response<Body> {
     let filter = oauth2_id(&rs_name);
     let res = state
         .qe_r_ref
@@ -107,7 +146,7 @@ pub async fn oauth2_id_patch(
     Path(rs_name): Path<String>,
     Extension(kopid): Extension<KOpId>,
     Json(obj): Json<ProtoEntry>,
-) -> impl IntoResponse {
+) -> Response<Body> {
     let filter = oauth2_id(&rs_name);
 
     let res = state
@@ -122,7 +161,7 @@ pub async fn oauth2_id_scopemap_post(
     Extension(kopid): Extension<KOpId>,
     Path((rs_name, group)): Path<(String, String)>,
     Json(scopes): Json<Vec<String>>,
-) -> impl IntoResponse {
+) -> Response<Body> {
     let filter = oauth2_id(&rs_name);
     let res = state
         .qe_w_ref
@@ -135,7 +174,7 @@ pub async fn oauth2_id_scopemap_delete(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     Path((rs_name, group)): Path<(String, String)>,
-) -> impl IntoResponse {
+) -> Response<Body> {
     let filter = oauth2_id(&rs_name);
     let res = state
         .qe_w_ref
@@ -149,7 +188,7 @@ pub async fn oauth2_id_sup_scopemap_post(
     Extension(kopid): Extension<KOpId>,
     Path((rs_name, group)): Path<(String, String)>,
     Json(scopes): Json<Vec<String>>,
-) -> impl IntoResponse {
+) -> Response<Body> {
     let filter = oauth2_id(&rs_name);
     let res = state
         .qe_w_ref
@@ -162,7 +201,7 @@ pub async fn oauth2_id_sup_scopemap_delete(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     Path((rs_name, group)): Path<(String, String)>,
-) -> impl IntoResponse {
+) -> Response<Body> {
     let filter = oauth2_id(&rs_name);
     let res = state
         .qe_w_ref
@@ -175,7 +214,7 @@ pub async fn oauth2_id_delete(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     Path(rs_name): Path<String>,
-) -> impl IntoResponse {
+) -> Response<Body> {
     let filter = oauth2_id(&rs_name);
     let res = state
         .qe_w_ref
@@ -436,9 +475,9 @@ async fn oauth2_authorise_permit(
             #[allow(clippy::unwrap_used)]
             Response::builder()
                 .status(StatusCode::FOUND)
-                .header("Location", redirect_uri.as_str())
+                .header(LOCATION, redirect_uri.as_str())
                 .header(
-                    "Access-Control-Allow-Origin",
+                    ACCESS_CONTROL_ALLOW_ORIGIN,
                     redirect_uri.origin().ascii_serialization(),
                 )
                 .body(Body::empty())
@@ -468,7 +507,7 @@ pub async fn oauth2_authorise_reject_post(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     Form(consent_req): Form<ConsentRequestData>,
-) -> impl IntoResponse {
+) -> Response<Body> {
     oauth2_authorise_reject(state, consent_req.token, kopid).await
 }
 
@@ -476,7 +515,7 @@ pub async fn oauth2_authorise_reject_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     Query(consent_req): Query<ConsentRequestData>,
-) -> impl IntoResponse {
+) -> Response<Body> {
     oauth2_authorise_reject(state, consent_req.token, kopid).await
 }
 
@@ -487,7 +526,7 @@ async fn oauth2_authorise_reject(
     state: ServerState,
     consent_req: String,
     kopid: KOpId,
-) -> impl IntoResponse {
+) -> Response<Body> {
     // Need to go back to the redir_uri
     // For this, we'll need to lookup where to go.
 
@@ -529,73 +568,12 @@ async fn oauth2_authorise_reject(
     }
 }
 
-pub struct HttpOperationError(OperationError);
-
-impl IntoResponse for HttpOperationError {
-    fn into_response(self) -> Response {
-        let HttpOperationError(error) = self;
-
-        let body = match serde_json::to_string(&error) {
-            Ok(val) => val,
-            Err(e) => {
-                admin_warn!("Failed to serialize error response: original_error=\"{:?}\" serialization_error=\"{:?}\"", error , e);
-                format!("{:?}", error)
-            }
-        };
-        #[allow(clippy::unwrap_used)]
-        Response::builder()
-            .status(StatusCode::BAD_REQUEST)
-            .header(ACCESS_CONTROL_ALLOW_ORIGIN, "*")
-            .body(Body::from(body))
-            .unwrap()
-            .into_response()
-    }
-}
-pub struct HTTPOauth2Error(Oauth2Error);
-
-impl IntoResponse for HTTPOauth2Error {
-    fn into_response(self) -> Response {
-        let HTTPOauth2Error(error) = self;
-
-        if let Oauth2Error::AuthenticationRequired = error {
-            #[allow(clippy::unwrap_used)]
-            Response::builder()
-                .status(StatusCode::UNAUTHORIZED)
-                .header(ACCESS_CONTROL_ALLOW_ORIGIN, "*")
-                .body(Body::empty())
-                .unwrap()
-        } else {
-            let err = ErrorResponse {
-                error: error.to_string(),
-                error_description: None,
-                error_uri: None,
-            };
-
-            let body = match serde_json::to_string(&err) {
-                Ok(val) => val,
-                Err(e) => {
-                    admin_warn!("Failed to serialize error response: original_error=\"{:?}\" serialization_error=\"{:?}\"", err, e);
-                    format!("{:?}", err)
-                }
-            };
-            #[allow(clippy::unwrap_used)]
-            Response::builder()
-                .status(StatusCode::BAD_REQUEST)
-                .header(ACCESS_CONTROL_ALLOW_ORIGIN, "*")
-                .body(Body::from(body))
-                .unwrap()
-
-        }
-            .into_response()
-    }
-}
-
 #[axum_macros::debug_handler]
 #[instrument(skip(state, kopid, headers), level = "DEBUG")]
 pub async fn oauth2_token_post(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
-    headers: HeaderMap, // TODO: make this a typed basic auth header
+    headers: HeaderMap,
     Form(tok_req): Form<AccessTokenRequest>,
 ) -> Result<Json<kanidm_proto::oauth2::AccessTokenResponse>, HTTPOauth2Error> {
     // This is called directly by the resource server, where we then issue
@@ -665,16 +643,7 @@ pub async fn oauth2_openid_userinfo_get(
         .await;
 
     match res {
-        Ok(uir) => {
-            #[allow(clippy::unwrap_used)]
-            let body = serde_json::to_string(&uir).unwrap();
-            #[allow(clippy::unwrap_used)]
-            Ok(Response::builder()
-                .status(StatusCode::OK)
-                .header(CONTENT_TYPE, APPLICATION_JSON)
-                .body(Body::from(body))
-                .unwrap())
-        }
+        Ok(uir) => Ok(Json(uir)),
         Err(e) => Err(HTTPOauth2Error(e)),
     }
 }
@@ -760,9 +729,8 @@ pub async fn oauth2_token_introspect_post(
         Err(e) => {
             // https://datatracker.ietf.org/doc/html/rfc6749#section-5.2
             let err = ErrorResponse {
-                error: e.to_string(),
-                error_description: None,
-                error_uri: None,
+                error: Some(e.to_string()),
+                ..Default::default()
             };
 
             let body = match serde_json::to_string(&err) {
@@ -831,22 +799,23 @@ pub async fn oauth2_token_revoke_post(
         Err(e) => {
             // https://datatracker.ietf.org/doc/html/rfc6749#section-5.2
             let err = ErrorResponse {
-                error: e.to_string(),
-                error_description: None,
-                error_uri: None,
+                error: Some(e.to_string()),
+                ..Default::default()
             };
             #[allow(clippy::unwrap_used)]
             Response::builder()
                 .status(StatusCode::BAD_REQUEST)
                 .header(ACCESS_CONTROL_ALLOW_ORIGIN, "*")
-                .body(Body::from(serde_json::to_string(&err).unwrap()))
+                .body(Body::from(
+                    serde_json::to_string(&err).unwrap_or("".to_string()),
+                ))
                 .unwrap()
         }
     }
 }
 
 // Some requests from browsers require preflight so that CORS works.
-pub async fn oauth2_preflight_options() -> impl IntoResponse {
+pub async fn oauth2_preflight_options() -> Response<Body> {
     #[allow(clippy::unwrap_used)]
     Response::builder()
         .status(StatusCode::OK)
