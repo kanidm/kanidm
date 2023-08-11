@@ -333,8 +333,8 @@ Host 172.24.11.129 was not connected to because it violates local access rules
 This module does not support PKCE or ES256. You will need to run:
 
 ```bash
-kanidm system oauth2 warning_insecure_client_disable_pkce <resource server name>
-kanidm system oauth2 warning_enable_legacy_crypto <resource server name>
+kanidm system oauth2 warning-insecure-client-disable-pkce <resource server name>
+kanidm system oauth2 warning-enable-legacy-crypto <resource server name>
 ```
 
 In the settings menu, configure the discovery URL and client ID and secret.
@@ -366,7 +366,7 @@ GUI:
 Velociraptor does not support PKCE. You will need to run the following:
 
 ```bash
-kanidm system oauth2 warning_insecure_client_disable_pkce <resource server name>
+kanidm system oauth2 warning-insecure-client-disable-pkce <resource server name>
 ```
 
 Initial users are mapped via their email in the Velociraptor server.config.yaml config:
