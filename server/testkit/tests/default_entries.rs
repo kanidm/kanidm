@@ -2,8 +2,7 @@
 use std::collections::HashSet;
 
 use kanidm_client::KanidmClient;
-
-use kanidm_proto::v1::APPLICATION_JSON;
+use kanidm_proto::constants::APPLICATION_JSON;
 use kanidmd_testkit::*;
 use reqwest::header::CONTENT_TYPE;
 

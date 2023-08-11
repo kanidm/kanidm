@@ -14,7 +14,7 @@
 #![allow(clippy::disallowed_types)]
 
 use error::FetchError;
-use kanidm_proto::v1::APPLICATION_JSON;
+use kanidm_proto::constants::APPLICATION_JSON;
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::JsFuture;

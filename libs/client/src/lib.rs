@@ -24,6 +24,7 @@ use std::os::unix::fs::MetadataExt;
 use std::path::Path;
 use std::time::Duration;
 
+use kanidm_proto::constants::APPLICATION_JSON;
 use kanidm_proto::v1::*;
 use reqwest::header::CONTENT_TYPE;
 pub use reqwest::StatusCode;

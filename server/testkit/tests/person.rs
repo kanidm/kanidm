@@ -1,5 +1,5 @@
 use kanidm_client::KanidmClient;
-use kanidm_proto::v1::APPLICATION_JSON;
+use kanidm_proto::constants::APPLICATION_JSON;
 use reqwest::header::CONTENT_TYPE;
 
 /// This literally tests that the thing exists and responds in a way we expect, probably worth testing it better...

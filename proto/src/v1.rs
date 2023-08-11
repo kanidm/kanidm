@@ -13,8 +13,6 @@ use webauthn_rs_proto::{
     RequestChallengeResponse,
 };
 
-pub const APPLICATION_JSON: &str = "application/json";
-
 // These proto implementations are here because they have public definitions
 
 /* ===== errors ===== */

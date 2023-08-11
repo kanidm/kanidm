@@ -4,11 +4,11 @@ use std::convert::TryFrom;
 use std::str::FromStr;
 
 use compact_jwt::{JwkKeySet, JwsValidator, OidcToken, OidcUnverified};
+use kanidm_proto::constants::APPLICATION_JSON;
 use kanidm_proto::oauth2::{
     AccessTokenIntrospectRequest, AccessTokenIntrospectResponse, AccessTokenRequest,
     AccessTokenResponse, AuthorisationResponse, GrantTypeReq, OidcDiscoveryResponse,
 };
-use kanidm_proto::v1::APPLICATION_JSON;
 use oauth2_ext::PkceCodeChallenge;
 use reqwest::header::{HeaderValue, CONTENT_TYPE};
 use reqwest::StatusCode;
