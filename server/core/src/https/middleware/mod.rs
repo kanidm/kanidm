@@ -32,6 +32,19 @@ pub struct KOpId {
     pub uat: Option<String>,
 }
 
+/// Ensure the status code is 200..=299
+fn from_200_to_299(status: http::StatusCode) -> bool {
+    status.as_u16() >= 200 && status.as_u16() <= 299
+}
+
+#[test]
+fn test_from_200_to_299() {
+    assert!(from_200_to_299(http::StatusCode::OK));
+    assert!(from_200_to_299(http::StatusCode::IM_USED));
+    assert!(!from_200_to_299(http::StatusCode::BAD_REQUEST));
+    assert!(!from_200_to_299(http::StatusCode::INTERNAL_SERVER_ERROR));
+}
+
 #[cfg(debug_assertions)]
 /// This is a debug middleware to ensure that /v1/ endpoints only return JSON
 #[instrument(name = "are_we_json_yet", skip_all)]
@@ -40,10 +53,7 @@ pub async fn are_we_json_yet<B>(request: Request<B>, next: Next<B>) -> Response 
 
     let response = next.run(request).await;
 
-    if uri.starts_with("/v1")
-        && 200 >= response.status().as_u16()
-        && response.status().as_u16() <= 299
-    {
+    if uri.starts_with("/v1") && from_200_to_299(response.status()) {
         let headers = response.headers();
         assert!(headers.contains_key(CONTENT_TYPE));
         dbg!(headers.get(CONTENT_TYPE));
