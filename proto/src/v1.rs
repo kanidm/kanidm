@@ -614,6 +614,7 @@ impl fmt::Display for UnixUserToken {
 #[serde(deny_unknown_fields)]
 pub struct AccountUnixExtend {
     pub gidnumber: Option<u32>,
+    #[serde(alias = "loginshell")]
     pub shell: Option<String>,
 }
 
