@@ -42,7 +42,7 @@ impl IntoResponse for HTTPOauth2Error {
                 .unwrap()
         } else {
             let err = ErrorResponse {
-                error: Some(error.to_string()),
+                error: error.to_string(),
                ..Default::default()
             };
 
@@ -729,7 +729,7 @@ pub async fn oauth2_token_introspect_post(
         Err(e) => {
             // https://datatracker.ietf.org/doc/html/rfc6749#section-5.2
             let err = ErrorResponse {
-                error: Some(e.to_string()),
+                error: e.to_string(),
                 ..Default::default()
             };
 
@@ -799,7 +799,7 @@ pub async fn oauth2_token_revoke_post(
         Err(e) => {
             // https://datatracker.ietf.org/doc/html/rfc6749#section-5.2
             let err = ErrorResponse {
-                error: Some(e.to_string()),
+                error: e.to_string(),
                 ..Default::default()
             };
             #[allow(clippy::unwrap_used)]
