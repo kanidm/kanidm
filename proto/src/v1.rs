@@ -614,8 +614,10 @@ impl fmt::Display for UnixUserToken {
 #[serde(deny_unknown_fields)]
 pub struct AccountUnixExtend {
     pub gidnumber: Option<u32>,
+    // TODO: rename shell to loginshell everywhere we can find
+    /// The internal attribute is "loginshell" but we use shell in the API currently
     #[serde(alias = "loginshell")]
-    pub shell: Option<String>,
+    pub loginshell: Option<String>,
 }
 
 /*
