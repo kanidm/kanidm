@@ -651,7 +651,7 @@ pub async fn oauth2_openid_publickey_get(
     State(state): State<ServerState>,
     Path(client_id): Path<String>,
     Extension(kopid): Extension<KOpId>,
-) -> impl IntoResponse {
+) -> Response<Body> {
     to_axum_response(
         state
             .qe_r_ref
