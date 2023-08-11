@@ -3,6 +3,7 @@ pub use kanidm_proto::oauth2::{
     AccessTokenRequest, AccessTokenResponse, AuthorisationRequest, AuthorisationResponse,
     CodeChallengeMethod, ErrorResponse,
 };
+use kanidm_proto::v1::APPLICATION_JSON;
 use wasm_bindgen::{JsCast, JsValue, UnwrapThrowExt};
 use wasm_bindgen_futures::JsFuture;
 use web_sys::{Request, RequestInit, RequestMode, RequestRedirect, Response};
@@ -146,9 +147,10 @@ impl Oauth2App {
         opts.body(Some(&consentreq_jsvalue));
 
         let request = Request::new_with_str_and_init("/oauth2/authorise/permit", &opts)?;
+
         request
             .headers()
-            .set("content-type", "application/json")
+            .set(crate::constants::CONTENT_TYPE, APPLICATION_JSON)
             .expect_throw("failed to set header");
 
         if let Some(bearer_token) = models::get_bearer_token() {

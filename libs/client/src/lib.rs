@@ -44,7 +44,6 @@ mod service_account;
 mod sync_account;
 mod system;
 
-pub const APPLICATION_JSON: &str = "application/json";
 pub const KOPID: &str = "X-KANIDM-OPID";
 pub const KSESSIONID: &str = "X-KANIDM-AUTH-SESSION-ID";
 

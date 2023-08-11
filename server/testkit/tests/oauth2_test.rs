@@ -8,7 +8,9 @@ use kanidm_proto::oauth2::{
     AccessTokenIntrospectRequest, AccessTokenIntrospectResponse, AccessTokenRequest,
     AccessTokenResponse, AuthorisationResponse, GrantTypeReq, OidcDiscoveryResponse,
 };
+use kanidm_proto::v1::APPLICATION_JSON;
 use oauth2_ext::PkceCodeChallenge;
+use reqwest::header::{HeaderValue, CONTENT_TYPE};
 use reqwest::StatusCode;
 use url::Url;
 
@@ -318,6 +320,9 @@ async fn test_oauth2_openid_basic_flow(rsclient: KanidmClient) {
         .expect("Failed to send code exchange request.");
 
     assert!(response.status() == reqwest::StatusCode::OK);
+    assert!(
+        response.headers().get(CONTENT_TYPE) == Some(&HeaderValue::from_static(APPLICATION_JSON))
+    );
     assert_no_cache!(response);
 
     // The body is a json AccessTokenResponse
@@ -342,6 +347,10 @@ async fn test_oauth2_openid_basic_flow(rsclient: KanidmClient) {
         .expect("Failed to send token introspect request.");
 
     assert!(response.status() == reqwest::StatusCode::OK);
+    dbg!(response.headers());
+    assert!(
+        response.headers().get(CONTENT_TYPE) == Some(&HeaderValue::from_static(APPLICATION_JSON))
+    );
     assert_no_cache!(response);
 
     let tir = response
@@ -384,6 +393,10 @@ async fn test_oauth2_openid_basic_flow(rsclient: KanidmClient) {
         .await
         .expect("Failed to send userinfo request.");
 
+    dbg!(response.headers());
+    assert!(
+        response.headers().get(CONTENT_TYPE) == Some(&HeaderValue::from_static(APPLICATION_JSON))
+    );
     let userinfo = response
         .json::<OidcToken>()
         .await

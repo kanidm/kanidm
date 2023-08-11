@@ -3,6 +3,7 @@
 use axum::extract::State;
 use axum::response::{IntoResponse, Response};
 use axum::Extension;
+use http::header::CONTENT_TYPE;
 use http::HeaderValue;
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
@@ -163,7 +164,7 @@ pub(crate) async fn manifest(
     let mut res = Response::new(manifest_string);
 
     res.headers_mut()
-        .insert("Content-Type", HeaderValue::from_static(MIME_TYPE_MANIFEST));
+        .insert(CONTENT_TYPE, HeaderValue::from_static(MIME_TYPE_MANIFEST));
 
     res
 }

@@ -2,6 +2,7 @@ use axum::extract::State;
 use axum::http::HeaderValue;
 use axum::response::Response;
 use axum::Extension;
+use http::header::CONTENT_TYPE;
 
 use super::middleware::KOpId;
 use super::ServerState;
@@ -58,7 +59,7 @@ pub async fn ui_handler(
 
     let mut res = Response::new(body);
     res.headers_mut().insert(
-        "Content-Type",
+        CONTENT_TYPE,
         HeaderValue::from_static("text/html;charset=utf-8"),
     );
     res

@@ -14,6 +14,7 @@
 #![allow(clippy::disallowed_types)]
 
 use error::FetchError;
+use kanidm_proto::v1::APPLICATION_JSON;
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::JsFuture;
@@ -83,7 +84,7 @@ pub async fn do_request(
     let request = Request::new_with_str_and_init(uri, &opts)?;
     request
         .headers()
-        .set("content-type", "application/json")
+        .set(crate::constants::CONTENT_TYPE, APPLICATION_JSON)
         .expect_throw("failed to set content-type header");
 
     if let Some(sessionid) = models::pop_auth_session_id() {

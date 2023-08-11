@@ -1,4 +1,6 @@
 use kanidm_client::KanidmClient;
+use kanidm_proto::v1::APPLICATION_JSON;
+use reqwest::header::CONTENT_TYPE;
 
 /// This literally tests that the thing exists and responds in a way we expect, probably worth testing it better...
 #[kanidmd_testkit::test]
@@ -14,7 +16,7 @@ async fn test_v1_person_patch(rsclient: KanidmClient) {
 
     let response = match client
         .patch(format!("{}/v1/person/foo", &addr))
-        .header("Content-Type", "application/json")
+        .header(CONTENT_TYPE, APPLICATION_JSON)
         .body(post_body)
         .send()
         .await

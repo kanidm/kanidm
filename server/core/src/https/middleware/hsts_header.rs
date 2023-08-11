@@ -10,10 +10,10 @@ pub async fn strict_transport_security_layer<B>(request: Request<B>, next: Next<
     let mut response = next.run(request).await;
 
     // add the header
-    let headers = response.headers_mut();
-    let hsts_header = HeaderValue::from_static(HSTS_HEADER);
-
-    headers.insert(http::header::STRICT_TRANSPORT_SECURITY, hsts_header);
+    response.headers_mut().insert(
+        http::header::STRICT_TRANSPORT_SECURITY,
+        HeaderValue::from_static(HSTS_HEADER),
+    );
 
     response
 }

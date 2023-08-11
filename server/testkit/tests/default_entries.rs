@@ -3,7 +3,9 @@ use std::collections::HashSet;
 
 use kanidm_client::KanidmClient;
 
+use kanidm_proto::v1::APPLICATION_JSON;
 use kanidmd_testkit::*;
+use reqwest::header::CONTENT_TYPE;
 
 static USER_READABLE_ATTRS: [&str; 9] = [
     "name",
@@ -607,7 +609,7 @@ async fn test_v1_raw_delete(rsclient: KanidmClient) {
 
     let response = match client
         .post(format!("{}/v1/raw/delete", &addr))
-        .header("Content-Type", "application/json")
+        .header(CONTENT_TYPE, APPLICATION_JSON)
         .body(post_body)
         .send()
         .await

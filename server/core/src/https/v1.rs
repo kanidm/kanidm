@@ -1404,27 +1404,26 @@ pub fn router(state: ServerState) -> Router<ServerState> {
         )
         .route(
             "/v1/schema/classtype/:id",
-            get(schema_classtype_get_id)
-                .put(|| async { "TODO" })
-                .patch(|| async { "TODO" }),
+            get(schema_classtype_get_id), //         .put(|| async { "TODO" })
+                                          //         .patch(|| async { "TODO" }),
         )
         .route("/v1/self", get(whoami))
         .route("/v1/self/_uat", get(whoami_uat))
-        .route("/v1/self/_attr/:attr", get(|| async { "TODO" }))
-        .route("/v1/self/_credential", get(|| async { "TODO" }))
-        .route("/v1/self/_credential/:cid/_lock", get(|| async { "TODO" }))
-        .route(
-            "/v1/self/_radius",
-            get(|| async { "TODO" })
-                .delete(|| async { "TODO" })
-                .post(|| async { "TODO" }),
-        )
-        .route("/v1/self/_radius/_config", post(|| async { "TODO" }))
-        .route("/v1/self/_radius/_config/:token", get(|| async { "TODO" }))
-        .route(
-            "/v1/self/_radius/_config/:token/apple",
-            get(|| async { "TODO" }),
-        )
+        // .route("/v1/self/_attr/:attr", get(|| async { "TODO" }))
+        // .route("/v1/self/_credential", get(|| async { "TODO" }))
+        // .route("/v1/self/_credential/:cid/_lock", get(|| async { "TODO" }))
+        // .route(
+        //     "/v1/self/_radius",
+        //     get(|| async { "TODO" })
+        //         .delete(|| async { "TODO" })
+        //         .post(|| async { "TODO" }),
+        // )
+        // .route("/v1/self/_radius/_config", post(|| async { "TODO" }))
+        // .route("/v1/self/_radius/_config/:token", get(|| async { "TODO" }))
+        // .route(
+        //     "/v1/self/_radius/_config/:token/apple",
+        //     get(|| async { "TODO" }),
+        // )
         // Applinks are the list of apps this account can access.
         .route("/v1/self/_applinks", get(applinks_get))
         // Person routes
@@ -1443,16 +1442,16 @@ pub fn router(state: ServerState) -> Router<ServerState> {
                 .post(account_id_post_attr)
                 .delete(account_id_delete_attr),
         )
-        .route("/v1/person/:id/_lock", get(|| async { "TODO" }))
-        .route("/v1/person/:id/_credential", get(|| async { "TODO" }))
+        // .route("/v1/person/:id/_lock", get(|| async { "TODO" }))
+        // .route("/v1/person/:id/_credential", get(|| async { "TODO" }))
         .route(
             "/v1/person/:id/_credential/_status",
             get(account_get_id_credential_status),
         )
-        .route(
-            "/v1/person/:id/_credential/:cid/_lock",
-            get(|| async { "TODO" }),
-        )
+        // .route(
+        //     "/v1/person/:id/_credential/:cid/_lock",
+        //     get(|| async { "TODO" }),
+        // )
         .route(
             "/v1/person/:id/_credential/_update",
             get(account_get_id_credential_update),
@@ -1508,7 +1507,7 @@ pub fn router(state: ServerState) -> Router<ServerState> {
                 .post(account_id_post_attr)
                 .delete(account_id_delete_attr),
         )
-        .route("/v1/service_account/:id/_lock", get(|| async { "TODO" }))
+        // .route("/v1/service_account/:id/_lock", get(|| async { "TODO" }))
         .route(
             "/v1/service_account/:id/_into_person",
             post(service_account_into_person),
@@ -1521,10 +1520,10 @@ pub fn router(state: ServerState) -> Router<ServerState> {
             "/v1/service_account/:id/_api_token/:token_id",
             delete(service_account_api_token_delete),
         )
-        .route(
-            "/v1/service_account/:id/_credential",
-            get(|| async { "TODO" }),
-        )
+        // .route(
+        //     "/v1/service_account/:id/_credential",
+        //     get(|| async { "TODO" }),
+        // )
         .route(
             "/v1/service_account/:id/_credential/_generate",
             get(service_account_credential_generate),
@@ -1533,10 +1532,10 @@ pub fn router(state: ServerState) -> Router<ServerState> {
             "/v1/service_account/:id/_credential/_status",
             get(account_get_id_credential_status),
         )
-        .route(
-            "/v1/service_account/:id/_credential/:cid/_lock",
-            get(|| async { "TODO" }),
-        )
+        // .route(
+        //     "/v1/service_account/:id/_credential/:cid/_lock",
+        //     get(|| async { "TODO" }),
+        // )
         .route(
             "/v1/service_account/:id/_ssh_pubkeys",
             get(account_get_id_ssh_pubkeys).post(account_post_id_ssh_pubkey),
@@ -1615,12 +1614,12 @@ pub fn router(state: ServerState) -> Router<ServerState> {
             "/v1/recycle_bin/:id/_revive",
             post(recycle_bin_revive_id_post),
         )
-        .route("/v1/access_profile", get(|| async { "TODO" }))
-        .route("/v1/access_profile/:id", get(|| async { "TODO" }))
-        .route(
-            "/v1/access_profile/:id/_attr/:attr",
-            get(|| async { "TODO" }),
-        )
+        // .route("/v1/access_profile", get(|| async { "TODO" }))
+        // .route("/v1/access_profile/:id", get(|| async { "TODO" }))
+        // .route(
+        //     "/v1/access_profile/:id/_attr/:attr",
+        //     get(|| async { "TODO" }),
+        // )
         .route("/v1/auth", post(auth))
         .route("/v1/auth/valid", get(auth_valid))
         .route("/v1/logout", get(logout))
