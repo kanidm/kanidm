@@ -1,5 +1,3 @@
-use crate::https::APPLICATION_JSON;
-
 use super::middleware::KOpId;
 use super::v1::{json_rest_event_get, json_rest_event_post};
 use super::{to_axum_response, HttpOperationError, ServerState};
@@ -15,6 +13,7 @@ use http::header::{
 };
 use http::{HeaderMap, HeaderValue, StatusCode};
 use hyper::Body;
+use kanidm_proto::constants::APPLICATION_JSON;
 use kanidm_proto::oauth2::{AuthorisationResponse, OidcDiscoveryResponse};
 use kanidm_proto::v1::Entry as ProtoEntry;
 use kanidmd_lib::idm::oauth2::{
