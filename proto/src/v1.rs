@@ -617,7 +617,7 @@ pub struct AccountUnixExtend {
     // TODO: rename shell to loginshell everywhere we can find
     /// The internal attribute is "loginshell" but we use shell in the API currently
     #[serde(alias = "loginshell")]
-    pub loginshell: Option<String>,
+    pub shell: Option<String>,
 }
 
 /*
