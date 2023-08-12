@@ -5,7 +5,9 @@ use axum::{
     response::Response,
     TypedHeader,
 };
-use http::{header::CONTENT_TYPE, HeaderValue};
+#[cfg(debug_assertions)]
+use http::header::CONTENT_TYPE;
+use http::HeaderValue;
 use uuid::Uuid;
 
 pub(crate) mod caching;
@@ -33,6 +35,7 @@ pub struct KOpId {
 }
 
 /// Ensure the status code is 200..=299
+#[cfg(debug_assertions)]
 fn from_200_to_299(status: http::StatusCode) -> bool {
     status.as_u16() >= 200 && status.as_u16() <= 299
 }
