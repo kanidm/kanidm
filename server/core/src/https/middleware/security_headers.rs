@@ -26,7 +26,6 @@ pub async fn security_headers_layer<B>(
     //
     // https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Content-Type-Options
     // https://scotthelme.co.uk/hardening-your-http-response-headers/#x-content-type-options
-    #[allow(clippy::expect_used)]
     headers.insert(
         X_CONTENT_TYPE_OPTIONS,
         HeaderValue::from_static(X_CONTENT_TYPE_OPTIONS_VALUE),
