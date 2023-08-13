@@ -504,7 +504,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         let r = idm_schema
             .into_iter()
             // Each item individually logs it's result
-            .try_for_each(|e_str| self.internal_migrate_or_create(e_str));
+            .try_for_each(|entry| self.internal_migrate_or_create(entry));
 
         if r.is_err() {
             error!(res = ?r, "initialise_schema_idm -> Error");
