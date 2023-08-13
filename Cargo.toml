@@ -54,7 +54,7 @@ kanidm_utils_users = { path = "./libs/users" }
 serde_with = "3.2.0"
 argon2 = { version = "0.5.1", features = ["alloc"] }
 async-recursion = "1.0.4"
-async-trait = "^0.1.72"
+async-trait = "^0.1.73"
 axum = {version = "0.6.20", features = ["json", "http2", "macros", "tracing", "headers", "original-uri", "query", "form", "http2"]}
 axum-csp = { version = "0.0.5" }
 base32 = "^0.4.0"
