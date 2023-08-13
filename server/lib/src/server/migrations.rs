@@ -435,8 +435,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
         admin_debug!("initialise_schema_idm -> start ...");
 
         let idm_schema_attrs = [
-            E_SCHEMA_ATTR_SYNC_CREDENTIAL_PORTAL.clone(),
-            E_SCHEMA_ATTR_SYNC_YIELD_AUTHORITY.clone(),
+            SCHEMA_ATTR_SYNC_CREDENTIAL_PORTAL.clone().into(),
+            SCHEMA_ATTR_SYNC_YIELD_AUTHORITY.clone().into(),
         ];
 
         let r: Result<(), _> = idm_schema_attrs
@@ -449,72 +449,62 @@ impl<'a> QueryServerWriteTransaction<'a> {
         debug_assert!(r.is_ok());
 
         // List of IDM schemas to init.
-        let idm_schema: Vec<&str> = vec![
-            JSON_SCHEMA_ATTR_DISPLAYNAME,
-            JSON_SCHEMA_ATTR_LEGALNAME,
-            JSON_SCHEMA_ATTR_NAME_HISTORY,
-            JSON_SCHEMA_ATTR_MAIL,
-            JSON_SCHEMA_ATTR_SSH_PUBLICKEY,
-            JSON_SCHEMA_ATTR_PRIMARY_CREDENTIAL,
-            JSON_SCHEMA_ATTR_RADIUS_SECRET,
-            JSON_SCHEMA_ATTR_DOMAIN_NAME,
-            JSON_SCHEMA_ATTR_DOMAIN_DISPLAY_NAME,
-            JSON_SCHEMA_ATTR_DOMAIN_UUID,
-            JSON_SCHEMA_ATTR_DOMAIN_SSID,
-            JSON_SCHEMA_ATTR_DOMAIN_TOKEN_KEY,
-            JSON_SCHEMA_ATTR_FERNET_PRIVATE_KEY_STR,
-            JSON_SCHEMA_ATTR_GIDNUMBER,
-            JSON_SCHEMA_ATTR_BADLIST_PASSWORD,
-            JSON_SCHEMA_ATTR_LOGINSHELL,
-            JSON_SCHEMA_ATTR_UNIX_PASSWORD,
-            JSON_SCHEMA_ATTR_ACCOUNT_EXPIRE,
-            JSON_SCHEMA_ATTR_ACCOUNT_VALID_FROM,
-            JSON_SCHEMA_ATTR_OAUTH2_RS_NAME,
-            JSON_SCHEMA_ATTR_OAUTH2_RS_ORIGIN,
-            JSON_SCHEMA_ATTR_OAUTH2_RS_SCOPE_MAP,
-            JSON_SCHEMA_ATTR_OAUTH2_RS_IMPLICIT_SCOPES,
-            JSON_SCHEMA_ATTR_OAUTH2_RS_BASIC_SECRET,
-            JSON_SCHEMA_ATTR_OAUTH2_RS_TOKEN_KEY,
-            JSON_SCHEMA_ATTR_ES256_PRIVATE_KEY_DER,
-            JSON_SCHEMA_ATTR_OAUTH2_ALLOW_INSECURE_CLIENT_DISABLE_PKCE,
-            JSON_SCHEMA_ATTR_OAUTH2_JWT_LEGACY_CRYPTO_ENABLE,
-            JSON_SCHEMA_ATTR_RS256_PRIVATE_KEY_DER,
-            JSON_SCHEMA_ATTR_CREDENTIAL_UPDATE_INTENT_TOKEN,
-            JSON_SCHEMA_ATTR_OAUTH2_CONSENT_SCOPE_MAP,
-            JSON_SCHEMA_ATTR_PASSKEYS,
-            JSON_SCHEMA_ATTR_DEVICEKEYS,
-            JSON_SCHEMA_ATTR_DYNGROUP_FILTER,
-            JSON_SCHEMA_ATTR_JWS_ES256_PRIVATE_KEY,
-            JSON_SCHEMA_ATTR_API_TOKEN_SESSION,
-            JSON_SCHEMA_ATTR_OAUTH2_RS_SUP_SCOPE_MAP,
-            JSON_SCHEMA_ATTR_USER_AUTH_TOKEN_SESSION,
-            JSON_SCHEMA_ATTR_OAUTH2_SESSION,
-            JSON_SCHEMA_ATTR_NSUNIQUEID,
-            JSON_SCHEMA_ATTR_OAUTH2_PREFER_SHORT_USERNAME,
-            JSON_SCHEMA_ATTR_SYNC_TOKEN_SESSION,
-            JSON_SCHEMA_ATTR_SYNC_COOKIE,
-            JSON_SCHEMA_ATTR_GRANT_UI_HINT,
-            JSON_SCHEMA_ATTR_OAUTH2_RS_ORIGIN_LANDING,
-            JSON_SCHEMA_ATTR_DOMAIN_LDAP_BASEDN,
-            JSON_SCHEMA_CLASS_PERSON,
-            JSON_SCHEMA_CLASS_ORGPERSON,
-            JSON_SCHEMA_CLASS_GROUP,
-            JSON_SCHEMA_CLASS_DYNGROUP,
-            JSON_SCHEMA_CLASS_ACCOUNT,
-            JSON_SCHEMA_CLASS_SERVICE_ACCOUNT,
-            JSON_SCHEMA_CLASS_DOMAIN_INFO,
-            JSON_SCHEMA_CLASS_POSIXACCOUNT,
-            JSON_SCHEMA_CLASS_POSIXGROUP,
-            JSON_SCHEMA_CLASS_SYSTEM_CONFIG,
-            JSON_SCHEMA_CLASS_SYNC_ACCOUNT,
-            JSON_SCHEMA_CLASS_OAUTH2_RS,
-            JSON_SCHEMA_ATTR_PRIVATE_COOKIE_KEY,
+        let idm_schema: Vec<EntryInitNew> = vec![
+            SCHEMA_ATTR_MAIL.clone().into(),
+            SCHEMA_ATTR_ACCOUNT_EXPIRE.clone().into(),
+            SCHEMA_ATTR_ACCOUNT_VALID_FROM.clone().into(),
+            SCHEMA_ATTR_API_TOKEN_SESSION.clone().into(),
+            SCHEMA_ATTR_BADLIST_PASSWORD.clone().into(),
+            SCHEMA_ATTR_CREDENTIAL_UPDATE_INTENT_TOKEN.clone().into(),
+            SCHEMA_ATTR_DEVICEKEYS.clone().into(),
+            SCHEMA_ATTR_DISPLAYNAME.clone().into(),
+            SCHEMA_ATTR_DOMAIN_DISPLAY_NAME.clone().into(),
+            SCHEMA_ATTR_DOMAIN_LDAP_BASEDN.clone().into(),
+            SCHEMA_ATTR_DOMAIN_NAME.clone().into(),
+            SCHEMA_ATTR_DOMAIN_SSID.clone().into(),
+            SCHEMA_ATTR_DOMAIN_TOKEN_KEY.clone().into(),
+            SCHEMA_ATTR_DOMAIN_UUID.clone().into(),
+            SCHEMA_ATTR_DYNGROUP_FILTER.clone().into(),
+            SCHEMA_ATTR_ES256_PRIVATE_KEY_DER.clone().into(),
+            SCHEMA_ATTR_FERNET_PRIVATE_KEY_STR.clone().into(),
+            SCHEMA_ATTR_GIDNUMBER.clone().into(),
+            SCHEMA_ATTR_GRANT_UI_HINT.clone().into(),
+            SCHEMA_ATTR_JWS_ES256_PRIVATE_KEY.clone().into(),
+            SCHEMA_ATTR_LEGALNAME.clone().into(),
+            SCHEMA_ATTR_LOGINSHELL.clone().into(),
+            SCHEMA_ATTR_NAME_HISTORY.clone().into(),
+            SCHEMA_ATTR_NSUNIQUEID.clone().into(),
+            SCHEMA_ATTR_OAUTH2_ALLOW_INSECURE_CLIENT_DISABLE_PKCE
+                .clone()
+                .into(),
+            SCHEMA_ATTR_OAUTH2_CONSENT_SCOPE_MAP.clone().into(),
+            SCHEMA_ATTR_OAUTH2_JWT_LEGACY_CRYPTO_ENABLE.clone().into(),
+            SCHEMA_ATTR_OAUTH2_PREFER_SHORT_USERNAME.clone().into(),
+            SCHEMA_ATTR_OAUTH2_RS_BASIC_SECRET.clone().into(),
+            SCHEMA_ATTR_OAUTH2_RS_IMPLICIT_SCOPES.clone().into(),
+            SCHEMA_ATTR_OAUTH2_RS_NAME.clone().into(),
+            SCHEMA_ATTR_OAUTH2_RS_ORIGIN_LANDING.clone().into(),
+            SCHEMA_ATTR_OAUTH2_RS_ORIGIN.clone().into(),
+            SCHEMA_ATTR_OAUTH2_RS_SCOPE_MAP.clone().into(),
+            SCHEMA_ATTR_OAUTH2_RS_SUP_SCOPE_MAP.clone().into(),
+            SCHEMA_ATTR_OAUTH2_RS_TOKEN_KEY.clone().into(),
+            SCHEMA_ATTR_OAUTH2_SESSION.clone().into(),
+            SCHEMA_ATTR_PASSKEYS.clone().into(),
+            SCHEMA_ATTR_PRIMARY_CREDENTIAL.clone().into(),
+            SCHEMA_ATTR_PRIVATE_COOKIE_KEY.clone().into(),
+            SCHEMA_ATTR_RADIUS_SECRET.clone().into(),
+            SCHEMA_ATTR_RS256_PRIVATE_KEY_DER.clone().into(),
+            SCHEMA_ATTR_SSH_PUBLICKEY.clone().into(),
+            SCHEMA_ATTR_SYNC_COOKIE.clone().into(),
+            SCHEMA_ATTR_SYNC_TOKEN_SESSION.clone().into(),
+            SCHEMA_ATTR_UNIX_PASSWORD.clone().into(),
+            SCHEMA_ATTR_USER_AUTH_TOKEN_SESSION.clone().into(),
         ];
 
         let r = idm_schema
-            .iter()
+            .into_iter()
             // Each item individually logs it's result
-            .try_for_each(|e_str| self.internal_migrate_or_create_str(e_str));
+            .try_for_each(|e_str| self.internal_migrate_or_create(e_str));
 
         if r.is_err() {
             error!(res = ?r, "initialise_schema_idm -> Error");
@@ -522,9 +512,21 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
         debug_assert!(r.is_ok());
 
-        let idm_schema_classes = [
-            E_SCHEMA_CLASS_OAUTH2_RS_BASIC.clone(),
-            E_SCHEMA_CLASS_OAUTH2_RS_PUBLIC.clone(),
+        let idm_schema_classes: Vec<EntryInitNew> = vec![
+            SCHEMA_CLASS_ACCOUNT.clone().into(),
+            SCHEMA_CLASS_DOMAIN_INFO.clone().into(),
+            SCHEMA_CLASS_DYNGROUP.clone().into(),
+            SCHEMA_CLASS_GROUP.clone().into(),
+            SCHEMA_CLASS_OAUTH2_RS.clone().into(),
+            SCHEMA_CLASS_ORGPERSON.clone().into(),
+            SCHEMA_CLASS_PERSON.clone().into(),
+            SCHEMA_CLASS_POSIXACCOUNT.clone().into(),
+            SCHEMA_CLASS_POSIXGROUP.clone().into(),
+            SCHEMA_CLASS_SERVICE_ACCOUNT.clone().into(),
+            SCHEMA_CLASS_SYNC_ACCOUNT.clone().into(),
+            SCHEMA_CLASS_SYSTEM_CONFIG.clone().into(),
+            SCHEMA_CLASS_OAUTH2_RS_BASIC.clone().into(),
+            SCHEMA_CLASS_OAUTH2_RS_PUBLIC.clone().into(),
         ];
 
         let r: Result<(), _> = idm_schema_classes

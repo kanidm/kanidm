@@ -1,1643 +1,1005 @@
-// Core
-// Schema uuids start at 00000000-0000-0000-0000-ffff00000000
-
+//! Core Constants
+//!
+//! Schema uuids start at `00000000-0000-0000-0000-ffff00000000`
+//!
 use crate::constants::uuids::*;
 use crate::constants::values::*;
-use crate::entry::{Entry, EntryInit, EntryInitNew, EntryNew};
+use crate::entry::EntryInitNew;
+use crate::value::IndexType;
 use crate::value::{SyntaxType, Value};
 
-// system supplementary
-pub const JSON_SCHEMA_ATTR_DISPLAYNAME: &str = r#"{
-    "attrs": {
-      "class": [
-        "object",
-        "system",
-        "attributetype"
-      ],
-      "description": [
-        "The publicly visible display name of this person"
-      ],
-      "index": [
-        "EQUALITY"
-      ],
-      "unique": [
-        "false"
-      ],
-      "multivalue": [
-        "false"
-      ],
-      "sync_allowed": [
-        "true"
-      ],
-      "attributename": [
-        "displayname"
-      ],
-      "syntax": [
-        "UTF8STRING"
-      ],
-      "uuid": [
-        "00000000-0000-0000-0000-ffff00000040"
-      ]
-    }
-}"#;
-pub const JSON_SCHEMA_ATTR_MAIL: &str = r#"
-  {
-    "attrs": {
-      "class": [
-        "object",
-        "system",
-        "attributetype"
-      ],
-      "description": [
-        "mail addresses of the object"
-      ],
-      "index": [
-        "EQUALITY"
-      ],
-      "unique": [
-        "true"
-      ],
-      "multivalue": [
-        "true"
-      ],
-      "sync_allowed": [
-        "true"
-      ],
-      "attributename": [
-        "mail"
-      ],
-      "syntax": [
-        "EMAIL_ADDRESS"
-      ],
-      "uuid": [
-        "00000000-0000-0000-0000-ffff00000041"
-      ]
-    }
-  }
-"#;
-pub const JSON_SCHEMA_ATTR_SSH_PUBLICKEY: &str = r#"
-  {
-    "attrs": {
-      "class": [
-        "object",
-        "system",
-        "attributetype"
-      ],
-      "description": [
-        "SSH public keys of the object"
-      ],
-      "index": [],
-      "unique": [
-        "false"
-      ],
-      "multivalue": [
-        "true"
-      ],
-      "sync_allowed": [
-        "true"
-      ],
-      "attributename": [
-        "ssh_publickey"
-      ],
-      "syntax": [
-        "SSHKEY"
-      ],
-      "uuid": [
-        "00000000-0000-0000-0000-ffff00000042"
-      ]
-    }
-  }
-"#;
-pub const JSON_SCHEMA_ATTR_PRIMARY_CREDENTIAL: &str = r#"
-  {
-    "attrs": {
-      "class": [
-        "object",
-        "system",
-        "attributetype"
-      ],
-      "description": [
-        "Primary credential material of the account for authentication interactively."
-      ],
-      "index": [
-        "PRESENCE"
-      ],
-      "unique": [
-        "false"
-      ],
-      "multivalue": [
-        "false"
-      ],
-      "sync_allowed": [
-        "true"
-      ],
-      "attributename": [
-        "primary_credential"
-      ],
-      "syntax": [
-        "CREDENTIAL"
-      ],
-      "uuid": [
-        "00000000-0000-0000-0000-ffff00000043"
-      ]
-    }
-  }
-"#;
-pub const JSON_SCHEMA_ATTR_LEGALNAME: &str = r#"{
-    "attrs": {
-      "class": [
-        "object",
-        "system",
-        "attributetype"
-      ],
-      "description": [
-        "The private and sensitive legal name of this person"
-      ],
-      "index": [
-        "EQUALITY"
-      ],
-      "unique": [
-        "false"
-      ],
-      "multivalue": [
-        "false"
-      ],
-      "sync_allowed": [
-        "true"
-      ],
-      "attributename": [
-        "legalname"
-      ],
-      "syntax": [
-        "UTF8STRING"
-      ],
-      "uuid": [
-        "00000000-0000-0000-0000-ffff00000050"
-      ]
-    }
-}"#;
-
-pub const JSON_SCHEMA_ATTR_NAME_HISTORY: &str = r#"{
-    "attrs": {
-      "class": [
-        "object",
-        "system",
-        "attributetype"
-      ],
-      "description": [
-        "The history of names that a person has had"
-      ],
-      "index": [
-        "EQUALITY"
-      ],
-      "unique": [
-        "false"
-      ],
-      "multivalue": [
-        "true"
-      ],
-      "sync_allowed": [
-        "true"
-      ],
-      "attributename": [
-        "name_history"
-      ],
-      "syntax": [
-        "AUDIT_LOG_STRING"
-      ],
-      "uuid": [
-        "00000000-0000-0000-0000-ffff00000133"
-      ]
-    }
-}"#;
-
-pub const JSON_SCHEMA_ATTR_RADIUS_SECRET: &str = r#"{
-    "attrs": {
-      "class": [
-        "object",
-        "system",
-        "attributetype"
-      ],
-      "description": [
-        "The accounts generated radius secret for device network authentication"
-      ],
-      "index": [],
-      "unique": [
-        "false"
-      ],
-      "multivalue": [
-        "false"
-      ],
-      "sync_allowed": [
-        "true"
-      ],
-      "attributename": [
-        "radius_secret"
-      ],
-      "syntax": [
-        "SECRET_UTF8STRING"
-      ],
-      "uuid": [
-        "00000000-0000-0000-0000-ffff00000051"
-      ]
-    }
-}"#;
-
-pub const JSON_SCHEMA_ATTR_DOMAIN_NAME: &str = r#"{
-    "attrs": {
-      "class": [
-        "object",
-        "system",
-        "attributetype"
-      ],
-      "description": [
-        "The domain's DNS name for webauthn and SPN generation purposes."
-      ],
-      "index": [
-        "EQUALITY",
-        "PRESENCE"
-      ],
-      "unique": [
-        "true"
-      ],
-      "multivalue": [
-        "false"
-      ],
-      "attributename": [
-        "domain_name"
-      ],
-      "syntax": [
-        "UTF8STRING_INAME"
-      ],
-      "uuid": [
-        "00000000-0000-0000-0000-ffff00000053"
-      ]
-    }
-}"#;
-
-pub const JSON_SCHEMA_ATTR_DOMAIN_LDAP_BASEDN: &str = r#"{
-    "attrs": {
-      "class": [
-        "object",
-        "system",
-        "attributetype"
-      ],
-      "description": [
-        "The domain's optional ldap basedn. If unset defaults to domain components of domain name."
-      ],
-      "unique": [
-        "true"
-      ],
-      "multivalue": [
-        "false"
-      ],
-      "attributename": [
-        "domain_ldap_basedn"
-      ],
-      "syntax": [
-        "UTF8STRING_INSENSITIVE"
-      ],
-      "uuid": [
-        "00000000-0000-0000-0000-ffff00000131"
-      ]
-    }
-}"#;
-
-pub const JSON_SCHEMA_ATTR_DOMAIN_DISPLAY_NAME: &str = r#"{
-  "attrs": {
-    "class": [
-      "object",
-      "system",
-      "attributetype"
-    ],
-    "description": [
-      "The user-facing display name of the Kanidm domain."
-    ],
-    "index": [
-      "EQUALITY"
-    ],
-    "unique": [
-      "false"
-    ],
-    "multivalue": [
-      "false"
-    ],
-    "attributename": [
-      "domain_display_name"
-    ],
-    "syntax": [
-      "UTF8STRING"
-    ],
-    "uuid": [
-      "00000000-0000-0000-0000-ffff00000098"
-    ]
-  }
-}"#;
-
-pub const JSON_SCHEMA_ATTR_DOMAIN_UUID: &str = r#"{
-    "attrs": {
-      "class": [
-        "object",
-        "system",
-        "attributetype"
-      ],
-      "description": [
-        "The domain's uuid, used in CSN and trust relationships."
-      ],
-      "index": [
-        "EQUALITY"
-      ],
-      "unique": [
-        "true"
-      ],
-      "multivalue": [
-        "false"
-      ],
-      "attributename": [
-        "domain_uuid"
-      ],
-      "syntax": [
-        "UUID"
-      ],
-      "uuid": [
-        "00000000-0000-0000-0000-ffff00000054"
-      ]
-    }
-}"#;
-pub const JSON_SCHEMA_ATTR_DOMAIN_SSID: &str = r#"{
-    "attrs": {
-      "class": [
-        "object",
-        "system",
-        "attributetype"
-      ],
-      "description": [
-        "The domains site-wide SSID for device autoconfiguration of wireless"
-      ],
-      "index": [
-        "EQUALITY"
-      ],
-      "unique": [
-        "true"
-      ],
-      "multivalue": [
-        "false"
-      ],
-      "attributename": [
-        "domain_ssid"
-      ],
-      "syntax": [
-        "UTF8STRING"
-      ],
-      "uuid": [
-        "00000000-0000-0000-0000-ffff00000055"
-      ]
-    }
-}"#;
-
-pub const JSON_SCHEMA_ATTR_DOMAIN_TOKEN_KEY: &str = r#"{
-    "attrs": {
-      "class": [
-        "object",
-        "system",
-        "attributetype"
-      ],
-      "description": [
-        "The domain token encryption private key (NOT USED)."
-      ],
-      "index": [],
-      "unique": [
-        "false"
-      ],
-      "multivalue": [
-        "false"
-      ],
-      "attributename": [
-        "domain_token_key"
-      ],
-      "syntax": [
-        "SECRET_UTF8STRING"
-      ],
-      "uuid": [
-        "00000000-0000-0000-0000-ffff00000088"
-      ]
-    }
-}"#;
-
-pub const JSON_SCHEMA_ATTR_FERNET_PRIVATE_KEY_STR: &str = r#"{
-    "attrs": {
-      "class": [
-        "object",
-        "system",
-        "attributetype"
-      ],
-      "description": [
-        "The token encryption private key."
-      ],
-      "index": [],
-      "unique": [
-        "false"
-      ],
-      "multivalue": [
-        "false"
-      ],
-      "attributename": [
-        "fernet_private_key_str"
-      ],
-      "syntax": [
-        "SECRET_UTF8STRING"
-      ],
-      "uuid": [
-        "00000000-0000-0000-0000-ffff00000095"
-      ]
-    }
-}"#;
-
-pub const JSON_SCHEMA_ATTR_GIDNUMBER: &str = r#"{
-    "attrs": {
-      "class": [
-        "object",
-        "system",
-        "attributetype"
-      ],
-      "description": [
-        "The groupid (uid) number of a group or account. This is the same value as the UID number on posix accounts for security reasons."
-      ],
-      "index": [
-        "EQUALITY"
-      ],
-      "unique": [
-        "true"
-      ],
-      "multivalue": [
-        "false"
-      ],
-      "sync_allowed": [
-        "true"
-      ],
-      "attributename": [
-        "gidnumber"
-      ],
-      "syntax": [
-        "UINT32"
-      ],
-      "uuid": [
-        "00000000-0000-0000-0000-ffff00000056"
-      ]
-    }
-}"#;
-
-pub const JSON_SCHEMA_ATTR_BADLIST_PASSWORD: &str = r#"{
-    "attrs": {
-      "class": [
-        "object",
-        "system",
-        "attributetype"
-      ],
-      "description": [
-        "A password that is badlisted meaning that it can not be set as a valid password by any user account."
-      ],
-      "index": [],
-      "unique": [
-        "false"
-      ],
-      "multivalue": [
-        "true"
-      ],
-      "attributename": [
-        "badlist_password"
-      ],
-      "syntax": [
-        "UTF8STRING_INSENSITIVE"
-      ],
-      "uuid": [
-        "00000000-0000-0000-0000-ffff00000059"
-      ]
-    }
-}"#;
-
-pub const JSON_SCHEMA_ATTR_LOGINSHELL: &str = r#"{
-    "attrs": {
-      "class": [
-        "object",
-        "system",
-        "attributetype"
-      ],
-      "description": [
-        "A posix users unix login shell"
-      ],
-      "index": [],
-      "unique": [
-        "false"
-      ],
-      "multivalue": [
-        "false"
-      ],
-      "sync_allowed": [
-        "true"
-      ],
-      "attributename": [
-        "loginshell"
-      ],
-      "syntax": [
-        "UTF8STRING_INSENSITIVE"
-      ],
-      "uuid": [
-        "00000000-0000-0000-0000-ffff00000061"
-      ]
-    }
-}"#;
-
-pub const JSON_SCHEMA_ATTR_UNIX_PASSWORD: &str = r#"{
-    "attrs": {
-      "class": [
-        "object",
-        "system",
-        "attributetype"
-      ],
-      "description": [
-        "A posix users unix login password."
-      ],
-      "index": [
-        "PRESENCE"
-      ],
-      "unique": [
-        "false"
-      ],
-      "multivalue": [
-        "false"
-      ],
-      "attributename": [
-        "unix_password"
-      ],
-      "syntax": [
-        "CREDENTIAL"
-      ],
-      "uuid": [
-        "00000000-0000-0000-0000-ffff00000062"
-      ]
-    }
-}"#;
-
-pub const JSON_SCHEMA_ATTR_NSUNIQUEID: &str = r#"{
-    "attrs": {
-      "class": [
-        "object",
-        "system",
-        "attributetype"
-      ],
-      "description": [
-        "A unique id compatibility for 389-ds/dsee"
-      ],
-      "index": [
-        "EQUALITY"
-      ],
-      "unique": [
-        "true"
-      ],
-      "multivalue": [
-        "false"
-      ],
-      "sync_allowed": [
-        "true"
-      ],
-      "attributename": [
-        "nsuniqueid"
-      ],
-      "syntax": [
-        "NSUNIQUEID"
-      ],
-      "uuid": [
-        "00000000-0000-0000-0000-ffff00000067"
-      ]
-    }
-}"#;
-
-pub const JSON_SCHEMA_ATTR_ACCOUNT_EXPIRE: &str = r#"{
-    "attrs": {
-      "class": [
-        "object",
-        "system",
-        "attributetype"
-      ],
-      "description": [
-        "The datetime after which this accounnt no longer may authenticate."
-      ],
-      "index": [],
-      "unique": [
-        "false"
-      ],
-      "multivalue": [
-        "false"
-      ],
-      "sync_allowed": [
-        "true"
-      ],
-      "attributename": [
-        "account_expire"
-      ],
-      "syntax": [
-        "DATETIME"
-      ],
-      "uuid": [
-        "00000000-0000-0000-0000-ffff00000072"
-      ]
-    }
-}"#;
-
-pub const JSON_SCHEMA_ATTR_ACCOUNT_VALID_FROM: &str = r#"{
-    "attrs": {
-      "class": [
-        "object",
-        "system",
-        "attributetype"
-      ],
-      "description": [
-        "The datetime after which this account may commence authenticating."
-      ],
-      "index": [],
-      "unique": [
-        "false"
-      ],
-      "multivalue": [
-        "false"
-      ],
-      "sync_allowed": [
-        "true"
-      ],
-      "attributename": [
-        "account_valid_from"
-      ],
-      "syntax": [
-        "DATETIME"
-      ],
-      "uuid": [
-        "00000000-0000-0000-0000-ffff00000073"
-      ]
-    }
-}"#;
-
-pub const JSON_SCHEMA_ATTR_OAUTH2_RS_NAME: &str = r#"{
-    "attrs": {
-      "class": [
-        "object",
-        "system",
-        "attributetype"
-      ],
-      "description": [
-        "The unique name of an external Oauth2 resource"
-      ],
-      "index": [
-        "EQUALITY"
-      ],
-      "unique": [
-        "true"
-      ],
-      "multivalue": [
-        "false"
-      ],
-      "attributename": [
-        "oauth2_rs_name"
-      ],
-      "syntax": [
-        "UTF8STRING_INAME"
-      ],
-      "uuid": [
-        "00000000-0000-0000-0000-ffff00000080"
-      ]
-    }
-}"#;
-
-pub const JSON_SCHEMA_ATTR_OAUTH2_RS_ORIGIN: &str = r#"{
-    "attrs": {
-      "class": [
-        "object",
-        "system",
-        "attributetype"
-      ],
-      "description": [
-        "The origin domain of an oauth2 resource server"
-      ],
-      "index": [],
-      "unique": [
-        "false"
-      ],
-      "multivalue": [
-        "false"
-      ],
-      "attributename": [
-        "oauth2_rs_origin"
-      ],
-      "syntax": [
-        "URL"
-      ],
-      "uuid": [
-        "00000000-0000-0000-0000-ffff00000081"
-      ]
-    }
-}"#;
-
-pub const JSON_SCHEMA_ATTR_OAUTH2_RS_ORIGIN_LANDING: &str = r#"{
-    "attrs": {
-      "class": [
-        "object",
-        "system",
-        "attributetype"
-      ],
-      "description": [
-        "The landing page of an RS, that will automatically trigger the auth process."
-      ],
-      "index": [],
-      "unique": [
-        "false"
-      ],
-      "multivalue": [
-        "false"
-      ],
-      "attributename": [
-        "oauth2_rs_origin_landing"
-      ],
-      "syntax": [
-        "URL"
-      ],
-      "uuid": [
-        "00000000-0000-0000-0000-ffff00000120"
-      ]
-    }
-}"#;
-
-pub const JSON_SCHEMA_ATTR_OAUTH2_RS_SCOPE_MAP: &str = r#"{
-    "attrs": {
-      "class": [
-        "object",
-        "system",
-        "attributetype"
-      ],
-      "description": [
-        "A reference to a group mapped to scopes for the associated oauth2 resource server"
-      ],
-      "index": [
-        "EQUALITY"
-      ],
-      "unique": [
-        "false"
-      ],
-      "multivalue": [
-        "true"
-      ],
-      "attributename": [
-        "oauth2_rs_scope_map"
-      ],
-      "syntax": [
-        "OAUTH_SCOPE_MAP"
-      ],
-      "uuid": [
-        "00000000-0000-0000-0000-ffff00000082"
-      ]
-    }
-}"#;
-
-pub const JSON_SCHEMA_ATTR_OAUTH2_RS_SUP_SCOPE_MAP: &str = r#"{
-    "attrs": {
-      "class": [
-        "object",
-        "system",
-        "attributetype"
-      ],
-      "description": [
-        "A reference to a group mapped to scopes for the associated oauth2 resource server"
-      ],
-      "index": [
-        "EQUALITY"
-      ],
-      "unique": [
-        "false"
-      ],
-      "multivalue": [
-        "true"
-      ],
-      "attributename": [
-        "oauth2_rs_sup_scope_map"
-      ],
-      "syntax": [
-        "OAUTH_SCOPE_MAP"
-      ],
-      "uuid": [
-        "00000000-0000-0000-0000-ffff00000112"
-      ]
-    }
-}"#;
-
-pub const JSON_SCHEMA_ATTR_OAUTH2_RS_BASIC_SECRET: &str = r#"{
-    "attrs": {
-      "class": [
-        "object",
-        "system",
-        "attributetype"
-      ],
-      "description": [
-        "When using oauth2 basic authentication, the secret string of the resource server"
-      ],
-      "index": [],
-      "unique": [
-        "false"
-      ],
-      "multivalue": [
-        "false"
-      ],
-      "attributename": [
-        "oauth2_rs_basic_secret"
-      ],
-      "syntax": [
-        "SECRET_UTF8STRING"
-      ],
-      "uuid": [
-        "00000000-0000-0000-0000-ffff00000083"
-      ]
-    }
-}"#;
-
-pub const JSON_SCHEMA_ATTR_OAUTH2_RS_TOKEN_KEY: &str = r#"{
-    "attrs": {
-      "class": [
-        "object",
-        "system",
-        "attributetype"
-      ],
-      "description": [
-        "An oauth2 resource servers unique token signing key"
-      ],
-      "index": [],
-      "unique": [
-        "false"
-      ],
-      "multivalue": [
-        "false"
-      ],
-      "attributename": [
-        "oauth2_rs_token_key"
-      ],
-      "syntax": [
-        "SECRET_UTF8STRING"
-      ],
-      "uuid": [
-        "00000000-0000-0000-0000-ffff00000084"
-      ]
-    }
-}"#;
-
-pub const JSON_SCHEMA_ATTR_OAUTH2_RS_IMPLICIT_SCOPES: &str = r#"{
-    "attrs": {
-      "class": [
-        "object",
-        "system",
-        "attributetype"
-      ],
-      "description": [
-        "An oauth2 resource servers scopes that are implicitly granted to all users"
-      ],
-      "index": [],
-      "unique": [
-        "false"
-      ],
-      "multivalue": [
-        "true"
-      ],
-      "attributename": [
-        "oauth2_rs_implicit_scopes"
-      ],
-      "syntax": [
-        "OAUTH_SCOPE"
-      ],
-      "uuid": [
-        "00000000-0000-0000-0000-ffff00000089"
-      ]
-    }
-}"#;
-
-pub const JSON_SCHEMA_ATTR_OAUTH2_CONSENT_SCOPE_MAP: &str = r#"{
-    "attrs": {
-      "class": [
-        "object",
-        "system",
-        "attributetype"
-      ],
-      "description": [
-        "A set of scopes mapped from a relying server to a user, where the user has previously consented to the following. If changed or deleted, consent will be re-sought."
-      ],
-      "index": [
-        "EQUALITY"
-      ],
-      "unique": [
-        "false"
-      ],
-      "multivalue": [
-        "true"
-      ],
-      "attributename": [
-        "oauth2_consent_scope_map"
-      ],
-      "syntax": [
-        "OAUTH_SCOPE_MAP"
-      ],
-      "uuid": [
-        "00000000-0000-0000-0000-ffff00000097"
-      ]
-    }
-}"#;
-
-pub const JSON_SCHEMA_ATTR_ES256_PRIVATE_KEY_DER: &str = r#"{
-    "attrs": {
-      "class": [
-        "object",
-        "system",
-        "attributetype"
-      ],
-      "description": [
-        "An es256 private key"
-      ],
-      "index": [],
-      "unique": [
-        "false"
-      ],
-      "multivalue": [
-        "false"
-      ],
-      "attributename": [
-        "es256_private_key_der"
-      ],
-      "syntax": [
-        "PRIVATE_BINARY"
-      ],
-      "uuid": [
-        "00000000-0000-0000-0000-ffff00000090"
-      ]
-    }
-}"#;
-
-pub const JSON_SCHEMA_ATTR_RS256_PRIVATE_KEY_DER: &str = r#"{
-    "attrs": {
-      "class": [
-        "object",
-        "system",
-        "attributetype"
-      ],
-      "description": [
-        "An rs256 private key"
-      ],
-      "index": [],
-      "unique": [
-        "false"
-      ],
-      "multivalue": [
-        "false"
-      ],
-      "attributename": [
-        "rs256_private_key_der"
-      ],
-      "syntax": [
-        "PRIVATE_BINARY"
-      ],
-      "uuid": [
-        "00000000-0000-0000-0000-ffff00000093"
-      ]
-    }
-}"#;
-
-pub const JSON_SCHEMA_ATTR_JWS_ES256_PRIVATE_KEY: &str = r#"{
-    "attrs": {
-      "class": [
-        "object",
-        "system",
-        "attributetype"
-      ],
-      "description": [
-        "An es256 private key for jws"
-      ],
-      "index": [
-        "EQUALITY"
-      ],
-      "unique": [
-        "true"
-      ],
-      "multivalue": [
-        "false"
-      ],
-      "attributename": [
-        "jws_es256_private_key"
-      ],
-      "syntax": [
-        "JWS_KEY_ES256"
-      ],
-      "uuid": [
-        "00000000-0000-0000-0000-ffff00000110"
-      ]
-    }
-}"#;
-
-pub const JSON_SCHEMA_ATTR_PRIVATE_COOKIE_KEY: &str = r#"{
-    "attrs": {
-      "class": [
-        "object",
-        "system",
-        "attributetype"
-      ],
-      "description": [
-        "An private cookie hmac key"
-      ],
-      "index": [],
-      "unique": [
-        "false"
-      ],
-      "multivalue": [
-        "false"
-      ],
-      "attributename": [
-        "private_cookie_key"
-      ],
-      "syntax": [
-        "PRIVATE_BINARY"
-      ],
-      "uuid": [
-        "00000000-0000-0000-0000-ffff00000130"
-      ]
-    }
-}"#;
-
-pub const JSON_SCHEMA_ATTR_OAUTH2_ALLOW_INSECURE_CLIENT_DISABLE_PKCE: &str = r#"{
-    "attrs": {
-      "class": [
-        "object",
-        "system",
-        "attributetype"
-      ],
-      "description": [
-        "Allows disabling of pkce for insecure oauth2 clients"
-      ],
-      "index": [],
-      "unique": [
-        "false"
-      ],
-      "multivalue": [
-        "false"
-      ],
-      "attributename": [
-        "oauth2_allow_insecure_client_disable_pkce"
-      ],
-      "syntax": [
-        "BOOLEAN"
-      ],
-      "uuid": [
-        "00000000-0000-0000-0000-ffff00000091"
-      ]
-    }
-}"#;
-
-pub const JSON_SCHEMA_ATTR_OAUTH2_JWT_LEGACY_CRYPTO_ENABLE: &str = r#"{
-    "attrs": {
-      "class": [
-        "object",
-        "system",
-        "attributetype"
-      ],
-      "description": [
-        "Allows enabling legacy jwt cryptograhpy for clients"
-      ],
-      "index": [],
-      "unique": [
-        "false"
-      ],
-      "multivalue": [
-        "false"
-      ],
-      "attributename": [
-        "oauth2_jwt_legacy_crypto_enable"
-      ],
-      "syntax": [
-        "BOOLEAN"
-      ],
-      "uuid": [
-        "00000000-0000-0000-0000-ffff00000092"
-      ]
-    }
-}"#;
-
-pub const JSON_SCHEMA_ATTR_CREDENTIAL_UPDATE_INTENT_TOKEN: &str = r#"{
-    "attrs": {
-      "class": [
-        "object",
-        "system",
-        "attributetype"
-      ],
-      "description": [
-        "The status of a credential update intent token"
-      ],
-      "index": [
-        "EQUALITY"
-      ],
-      "unique": [
-        "false"
-      ],
-      "multivalue": [
-        "true"
-      ],
-      "attributename": [
-        "credential_update_intent_token"
-      ],
-      "syntax": [
-        "INTENT_TOKEN"
-      ],
-      "uuid": [
-        "00000000-0000-0000-0000-ffff00000096"
-      ]
-    }
-}"#;
-
-pub const JSON_SCHEMA_ATTR_PASSKEYS: &str = r#"{
-    "attrs": {
-      "class": [
-        "object",
-        "system",
-        "attributetype"
-      ],
-      "description": [
-        "A set of registered passkeys"
-      ],
-      "index": [
-        "EQUALITY"
-      ],
-      "unique": [
-        "false"
-      ],
-      "multivalue": [
-        "true"
-      ],
-      "sync_allowed": [
-        "true"
-      ],
-      "attributename": [
-        "passkeys"
-      ],
-      "syntax": [
-        "PASSKEY"
-      ],
-      "uuid": [
-        "00000000-0000-0000-0000-ffff00000099"
-      ]
-    }
-}"#;
-
-pub const JSON_SCHEMA_ATTR_DEVICEKEYS: &str = r#"{
-    "attrs": {
-      "class": [
-        "object",
-        "system",
-        "attributetype"
-      ],
-      "description": [
-        "A set of registered device keys"
-      ],
-      "index": [
-        "EQUALITY"
-      ],
-      "unique": [
-        "false"
-      ],
-      "multivalue": [
-        "true"
-      ],
-      "sync_allowed": [
-        "true"
-      ],
-      "attributename": [
-        "devicekeys"
-      ],
-      "syntax": [
-        "DEVICEKEY"
-      ],
-      "uuid": [
-        "00000000-0000-0000-0000-ffff00000100"
-      ]
-    }
-}"#;
-
-pub const JSON_SCHEMA_ATTR_DYNGROUP_FILTER: &str = r#"{
-    "attrs": {
-      "class": [
-        "object",
-        "system",
-        "attributetype"
-      ],
-      "description": [
-        "A filter describing the set of entries to add to a dynamic group"
-      ],
-      "unique": [
-        "false"
-      ],
-      "multivalue": [
-        "false"
-      ],
-      "attributename": [
-        "dyngroup_filter"
-      ],
-      "syntax": [
-        "JSON_FILTER"
-      ],
-      "uuid": [
-        "00000000-0000-0000-0000-ffff00000108"
-      ]
-    }
-}"#;
-
-pub const JSON_SCHEMA_ATTR_OAUTH2_PREFER_SHORT_USERNAME: &str = r#"{
-    "attrs": {
-      "class": [
-        "object",
-        "system",
-        "attributetype"
-      ],
-      "description": [
-        "Use 'name' instead of 'spn' in the preferred_username claim"
-      ],
-      "index": [],
-      "unique": [
-        "false"
-      ],
-      "multivalue": [
-        "false"
-      ],
-      "attributename": [
-        "oauth2_prefer_short_username"
-      ],
-      "syntax": [
-        "BOOLEAN"
-      ],
-      "uuid": [
-        "00000000-0000-0000-0000-ffff00000109"
-      ]
-    }
-}"#;
-
-pub const JSON_SCHEMA_ATTR_API_TOKEN_SESSION: &str = r#"{
-    "attrs": {
-      "class": [
-        "object",
-        "system",
-        "attributetype"
-      ],
-      "description": [
-        "A session entry related to an issued api token"
-      ],
-      "index": [
-        "EQUALITY"
-      ],
-      "unique": [
-        "true"
-      ],
-      "multivalue": [
-        "true"
-      ],
-      "attributename": [
-        "api_token_session"
-      ],
-      "syntax": [
-        "APITOKEN"
-      ],
-      "uuid": [
-        "00000000-0000-0000-0000-ffff00000111"
-      ]
-    }
-}"#;
-
-pub const JSON_SCHEMA_ATTR_USER_AUTH_TOKEN_SESSION: &str = r#"{
-    "attrs": {
-      "class": [
-        "object",
-        "system",
-        "attributetype"
-      ],
-      "description": [
-        "A session entry related to an issued user auth token"
-      ],
-      "index": [
-        "EQUALITY"
-      ],
-      "unique": [
-        "true"
-      ],
-      "multivalue": [
-        "true"
-      ],
-      "attributename": [
-        "user_auth_token_session"
-      ],
-      "syntax": [
-        "SESSION"
-      ],
-      "uuid": [
-        "00000000-0000-0000-0000-ffff00000113"
-      ]
-    }
-}"#;
-
-pub const JSON_SCHEMA_ATTR_OAUTH2_SESSION: &str = r#"{
-    "attrs": {
-      "class": [
-        "object",
-        "system",
-        "attributetype"
-      ],
-      "description": [
-        "A session entry to an active oauth2 session, bound to a parent user auth token"
-      ],
-      "index": [
-        "EQUALITY"
-      ],
-      "unique": [
-        "false"
-      ],
-      "multivalue": [
-        "true"
-      ],
-      "attributename": [
-        "oauth2_session"
-      ],
-      "syntax": [
-        "OAUTH2SESSION"
-      ],
-      "uuid": [
-        "00000000-0000-0000-0000-ffff00000117"
-      ]
-    }
-}"#;
-
-pub const JSON_SCHEMA_ATTR_SYNC_TOKEN_SESSION: &str = r#"{
-    "attrs": {
-      "class": [
-        "object",
-        "system",
-        "attributetype"
-      ],
-      "description": [
-        "A session entry related to an issued sync token"
-      ],
-      "index": [
-        "EQUALITY"
-      ],
-      "unique": [
-        "true"
-      ],
-      "multivalue": [
-        "false"
-      ],
-      "attributename": [
-        "sync_token_session"
-      ],
-      "syntax": [
-        "APITOKEN"
-      ],
-      "uuid": [
-        "00000000-0000-0000-0000-ffff00000115"
-      ]
-    }
-}"#;
-
-pub const JSON_SCHEMA_ATTR_SYNC_COOKIE: &str = r#"{
-    "attrs": {
-      "class": [
-        "object",
-        "system",
-        "attributetype"
-      ],
-      "description": [
-        "A private sync cookie for a remote IDM source"
-      ],
-      "index": [],
-      "unique": [
-        "false"
-      ],
-      "multivalue": [
-        "false"
-      ],
-      "attributename": [
-        "sync_cookie"
-      ],
-      "syntax": [
-        "PRIVATE_BINARY"
-      ],
-      "uuid": [
-        "00000000-0000-0000-0000-ffff00000116"
-      ]
-    }
-}"#;
-
-pub const JSON_SCHEMA_ATTR_GRANT_UI_HINT: &str = r#"{
-    "attrs": {
-      "class": [
-        "object",
-        "system",
-        "attributetype"
-      ],
-      "description": [
-        "A ui hint that is granted via membership to a group"
-      ],
-      "index": [
-        "EQUALITY"
-      ],
-      "unique": [
-        "false"
-      ],
-      "multivalue": [
-        "true"
-      ],
-      "attributename": [
-        "grant_ui_hint"
-      ],
-      "syntax": [
-        "UIHINT"
-      ],
-      "uuid": [
-        "00000000-0000-0000-0000-ffff00000119"
-      ]
-    }
-}"#;
-
-lazy_static! {
-    pub static ref E_SCHEMA_ATTR_SYNC_CREDENTIAL_PORTAL: EntryInitNew = entry_init!(
-        ("class", CLASS_OBJECT.clone()),
-        ("class", CLASS_SYSTEM.clone()),
-        ("class", CLASS_ATTRIBUTETYPE.clone()),
-        (
-            "description",
-            Value::new_utf8s("The url of an external credential portal for synced accounts to visit to update their credentials.")
-        ),
-        ("unique", Value::Bool(false)),
-        ("multivalue", Value::Bool(false)),
-        ("attributename", Value::new_iutf8("sync_credential_portal")),
-        ("syntax", Value::Syntax(SyntaxType::Url)),
-        ("uuid", Value::Uuid(UUID_SCHEMA_ATTR_SYNC_CREDENTIAL_PORTAL))
-    );
-
-    pub static ref E_SCHEMA_ATTR_SYNC_YIELD_AUTHORITY: EntryInitNew = entry_init!(
-        ("class", CLASS_OBJECT.clone()),
-        ("class", CLASS_SYSTEM.clone()),
-        ("class", CLASS_ATTRIBUTETYPE.clone()),
-        (
-            "description",
-            Value::new_utf8s("A set of attributes that have their authority yielded to Kanidm in a sync agreement.")
-        ),
-        ("unique", Value::Bool(false)),
-        ("multivalue", Value::Bool(true)),
-        ("attributename", Value::new_iutf8("sync_yield_authority")),
-        ("syntax", Value::Syntax(SyntaxType::Utf8StringInsensitive)),
-        ("uuid", Value::Uuid(UUID_SCHEMA_ATTR_SYNC_YIELD_AUTHORITY))
-    );
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Schema {
+    pub attrs: SchemaAttrs,
 }
+impl From<Schema> for EntryInitNew {
+    fn from(value: Schema) -> Self {
+        value.attrs.into()
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct SchemaAttrs {
+    pub classname: Option<&'static str>,
+    pub attributename: Option<&'static str>,
+    pub class: Vec<Value>,
+    pub description: &'static str,
+    pub index: Vec<IndexType>,
+    pub unique: bool,
+    pub multivalue: bool,
+    pub sync_allowed: bool,
+    pub syntax: SyntaxType,
+    pub uuid: uuid::Uuid,
+    pub systemmay: Vec<&'static str>,
+    pub systemexcludes: Vec<&'static str>,
+    pub systemmust: Vec<&'static str>,
+    pub systemsupplements: Vec<&'static str>,
+}
+
+impl From<SchemaAttrs> for Schema {
+    fn from(attrs: SchemaAttrs) -> Self {
+        assert!(!attrs.class.is_empty());
+        Self { attrs }
+    }
+}
+impl From<SchemaAttrs> for EntryInitNew {
+    fn from(value: SchemaAttrs) -> Self {
+        let mut entry = EntryInitNew::new();
+
+        if value.class.contains(&CLASS_CLASSTYPE.clone()) {
+            #[allow(clippy::expect_used)]
+            entry.set_ava(
+                "classname",
+                vec![Value::new_iutf8(
+                    value.classname.expect("This requires a class name!"),
+                )]
+                .into_iter(),
+            );
+        } else if value.class.contains(&CLASS_ATTRIBUTETYPE.clone()) {
+            #[allow(clippy::expect_used)]
+            entry.set_ava(
+                "attributename",
+                vec![Value::new_iutf8(
+                    value
+                        .attributename
+                        .expect("This requires an attribute name!"),
+                )]
+                .into_iter(),
+            );
+            entry.add_ava("multivalue", Value::Bool(value.multivalue));
+            // syntax
+            entry.set_ava("syntax", vec![Value::Syntax(value.syntax)]);
+            entry.set_ava("unique", vec![Value::Bool(value.unique)].into_iter());
+            // index
+            entry.set_ava("index", value.index.into_iter().map(Value::Index));
+        }
+
+        // class
+        entry.set_ava("class", value.class);
+        // description
+        entry.set_ava(
+            "description",
+            vec![Value::new_utf8s(value.description)].into_iter(),
+        );
+        // unique
+        // multivalue
+
+        // sync_allowed
+        entry.set_ava(
+            "sync_allowed",
+            vec![Value::Bool(value.sync_allowed)].into_iter(),
+        );
+
+        // uid
+        entry.set_ava("uuid", vec![Value::Uuid(value.uuid)].into_iter());
+
+        // systemmay
+        if !value.systemmay.is_empty() {
+            entry.set_ava(
+                "systemmay",
+                value.systemmay.into_iter().map(Value::new_iutf8),
+            );
+        }
+        // systemexcludes
+        if !value.systemexcludes.is_empty() {
+            entry.set_ava(
+                "systemexcludes",
+                value.systemexcludes.into_iter().map(Value::new_iutf8),
+            );
+        }
+        // systemmust
+        if !value.systemmust.is_empty() {
+            entry.set_ava(
+                "systemmust",
+                value.systemmust.into_iter().map(Value::new_iutf8),
+            );
+        }
+        // systemsupplements
+        if !value.systemsupplements.is_empty() {
+            entry.set_ava(
+                "systemsupplements",
+                value.systemsupplements.into_iter().map(Value::new_iutf8),
+            );
+        }
+
+        entry
+    }
+}
+
+lazy_static!(
+
+pub static ref SCHEMA_ATTR_DISPLAYNAME: Schema = Schema::from(SchemaAttrs {
+    class: vec![
+        CLASS_OBJECT.clone(),
+        CLASS_SYSTEM.clone(),
+        CLASS_ATTRIBUTETYPE.clone(),
+    ],
+    description: "The publicly visible display name of this person",
+    index: vec![IndexType::Equality],
+    unique: false,
+    multivalue: false,
+    sync_allowed: true,
+    attributename: Some("displayname"),
+    syntax: SyntaxType::Utf8String,
+    uuid: UUID_SCHEMA_ATTR_DISPLAYNAME,
+    ..Default::default()
+});
+
+pub static ref SCHEMA_ATTR_MAIL: Schema = Schema::from(SchemaAttrs {
+    uuid: UUID_SCHEMA_ATTR_MAIL,
+    attributename: Some("mail"),
+    description: "mail addresses of the object",
+    class: vec![
+        CLASS_OBJECT.clone(),
+        CLASS_SYSTEM.clone(),
+        CLASS_ATTRIBUTETYPE.clone(),
+    ],
+    index: vec![IndexType::Equality],
+    unique: true,
+    multivalue: true,
+    sync_allowed: true,
+    syntax: SyntaxType::EmailAddress,
+    ..Default::default()
+});
+
+pub static ref SCHEMA_ATTR_SSH_PUBLICKEY: Schema = Schema::from(SchemaAttrs {
+    class: vec![
+        CLASS_OBJECT.clone(),
+        CLASS_SYSTEM.clone(),
+        CLASS_ATTRIBUTETYPE.clone(),
+    ],
+    description: "SSH public keys of the object",
+    index: vec![],
+    unique: false,
+    multivalue: true,
+    sync_allowed: true,
+    attributename: Some("ssh_publickey"),
+    syntax: SyntaxType::SshKey,
+    uuid: UUID_SCHEMA_ATTR_SSH_PUBLICKEY,
+    ..Default::default()
+});
+
+pub static ref SCHEMA_ATTR_PRIMARY_CREDENTIAL: Schema = Schema::from(SchemaAttrs {
+    class: vec![
+        CLASS_OBJECT.clone(),
+        CLASS_SYSTEM.clone(),
+        CLASS_ATTRIBUTETYPE.clone(),
+    ],
+    description: "Primary credential material of the account for authentication interactively.",
+    index: vec![IndexType::Presence],
+    unique: false,
+    multivalue: false,
+    sync_allowed: true,
+    attributename: Some("primary_credential"),
+    syntax: SyntaxType::Credential,
+    uuid: UUID_SCHEMA_ATTR_PRIMARY_CREDENTIAL,
+    ..Default::default()
+});
+pub static ref SCHEMA_ATTR_LEGALNAME: Schema = Schema::from(SchemaAttrs {
+    class: vec![
+        CLASS_OBJECT.clone(),
+        CLASS_SYSTEM.clone(),
+        CLASS_ATTRIBUTETYPE.clone(),
+    ],
+    description: "The private and sensitive legal name of this person",
+    index: vec![IndexType::Equality],
+    unique: false,
+    multivalue: false,
+    sync_allowed: true,
+    attributename: Some("legalname"),
+    syntax: SyntaxType::Utf8String,
+    uuid: UUID_SCHEMA_ATTR_LEGALNAME,
+    ..Default::default()
+});
+
+pub static ref SCHEMA_ATTR_NAME_HISTORY: Schema = Schema::from(SchemaAttrs {
+    class: vec![
+        CLASS_OBJECT.clone(),
+        CLASS_SYSTEM.clone(),
+        CLASS_ATTRIBUTETYPE.clone(),
+    ],
+    description: "The history of names that a person has had",
+    index: vec![IndexType::Equality],
+    unique: false,
+    multivalue: true,
+    sync_allowed: true,
+    attributename: Some("name_history"),
+    syntax: SyntaxType::AuditLogString,
+    uuid: UUID_SCHEMA_ATTR_NAME_HISTORY,
+    ..Default::default()
+});
+
+pub static ref SCHEMA_ATTR_RADIUS_SECRET: Schema = Schema::from(SchemaAttrs {
+    class: vec![
+        CLASS_OBJECT.clone(),
+        CLASS_SYSTEM.clone(),
+        CLASS_ATTRIBUTETYPE.clone(),
+    ],
+    description: "The accounts generated radius secret for device network authentication",
+    index: vec![],
+    unique: false,
+    multivalue: false,
+    sync_allowed: true,
+    attributename: Some("radius_secret"),
+    syntax: SyntaxType::SecretUtf8String,
+    uuid: UUID_SCHEMA_ATTR_RADIUS_SECRET,
+    ..Default::default()
+});
+
+pub static ref SCHEMA_ATTR_DOMAIN_NAME: Schema = Schema::from(SchemaAttrs {
+    uuid: UUID_SCHEMA_ATTR_DOMAIN_NAME,
+    attributename: Some("domain_name"),
+    description: "The domain's DNS name for webauthn and SPN generation purposes.",
+    class: vec![
+        CLASS_OBJECT.clone(),
+        CLASS_SYSTEM.clone(),
+        CLASS_ATTRIBUTETYPE.clone(),
+    ],
+    index: vec![IndexType::Equality, IndexType::Presence],
+    unique: true,
+    multivalue: false,
+    syntax: SyntaxType::Utf8StringIname,
+    ..Default::default()
+});
+
+pub static ref SCHEMA_ATTR_DOMAIN_LDAP_BASEDN: Schema = Schema::from(SchemaAttrs {
+    uuid: UUID_SCHEMA_ATTR_DOMAIN_LDAP_BASEDN,
+    attributename: Some("domain_ldap_basedn"),
+    description:
+        "The domain's optional ldap basedn. If unset defaults to domain components of domain name.",
+    class: vec![
+        CLASS_OBJECT.clone(),
+        CLASS_SYSTEM.clone(),
+        CLASS_ATTRIBUTETYPE.clone(),
+    ],
+    unique: true,
+    multivalue: false,
+    syntax: SyntaxType::Utf8StringInsensitive,
+    ..Default::default()
+});
+
+pub static ref SCHEMA_ATTR_DOMAIN_DISPLAY_NAME: Schema = Schema::from(SchemaAttrs {
+    uuid: UUID_SCHEMA_ATTR_DOMAIN_DISPLAY_NAME,
+    attributename: Some("domain_display_name"),
+    class: vec![
+        CLASS_OBJECT.clone(),
+        CLASS_SYSTEM.clone(),
+        CLASS_ATTRIBUTETYPE.clone(),
+    ],
+    description: "The user-facing display name of the Kanidm domain.",
+    index: vec![IndexType::Equality],
+    unique: false,
+    multivalue: false,
+    syntax: SyntaxType::Utf8String,
+    ..Default::default()
+});
+
+pub static ref SCHEMA_ATTR_DOMAIN_UUID: Schema = Schema::from(SchemaAttrs {
+    uuid: UUID_SCHEMA_ATTR_DOMAIN_UUID,
+    attributename: Some("domain_uuid"),
+    description: "The domain's uuid, used in CSN and trust relationships.",
+    class: vec![
+        CLASS_OBJECT.clone(),
+        CLASS_SYSTEM.clone(),
+        CLASS_ATTRIBUTETYPE.clone(),
+    ],
+    index: vec![IndexType::Equality],
+    unique: true,
+    multivalue: false,
+    syntax: SyntaxType::Uuid,
+    ..Default::default()
+});
+pub static ref SCHEMA_ATTR_DOMAIN_SSID: Schema = Schema::from(SchemaAttrs {
+    uuid: UUID_SCHEMA_ATTR_DOMAIN_SSID,
+    attributename: Some("domain_ssid"),
+    description: "The domains site-wide SSID for device autoconfiguration of wireless",
+    class: vec![
+        CLASS_OBJECT.clone(),
+        CLASS_SYSTEM.clone(),
+        CLASS_ATTRIBUTETYPE.clone(),
+    ],
+    index: vec![IndexType::Equality],
+    unique: true,
+    multivalue: false,
+    syntax: SyntaxType::Utf8String,
+    ..Default::default()
+});
+
+pub static ref SCHEMA_ATTR_DOMAIN_TOKEN_KEY: Schema = Schema::from(SchemaAttrs {
+    uuid: UUID_SCHEMA_ATTR_DOMAIN_TOKEN_KEY,
+    attributename: Some("domain_token_key"),
+    description: "The domain token encryption private key (NOT USED).",
+    class: vec![
+        CLASS_OBJECT.clone(),
+        CLASS_SYSTEM.clone(),
+        CLASS_ATTRIBUTETYPE.clone(),
+    ],
+    index: vec![],
+    unique: false,
+    multivalue: false,
+    syntax: SyntaxType::SecretUtf8String,
+    ..Default::default()
+});
+
+pub static ref SCHEMA_ATTR_FERNET_PRIVATE_KEY_STR: Schema = Schema::from(SchemaAttrs {
+    uuid: UUID_SCHEMA_ATTR_FERNET_PRIVATE_KEY_STR,
+    attributename: Some("fernet_private_key_str"),
+    description: "The token encryption private key.",
+    class: vec![
+        CLASS_OBJECT.clone(),
+        CLASS_SYSTEM.clone(),
+        CLASS_ATTRIBUTETYPE.clone(),
+    ],
+    index: vec![],
+    unique: false,
+    multivalue: false,
+    syntax: SyntaxType::SecretUtf8String,
+    ..Default::default()
+});
+
+pub static ref SCHEMA_ATTR_GIDNUMBER: Schema = Schema::from(SchemaAttrs {
+    uuid: UUID_SCHEMA_ATTR_GIDNUMBER,
+    attributename: Some("gidnumber"),
+    description: "The groupid (uid) number of a group or account. This is the same value as the UID number on posix accounts for security reasons.",
+
+    class: vec![
+        CLASS_OBJECT.clone(),
+        CLASS_SYSTEM.clone(),
+        CLASS_ATTRIBUTETYPE.clone(),
+    ],
+    index: vec![IndexType::Equality],
+    unique: true,
+    multivalue: false,
+    sync_allowed: true,
+    syntax: SyntaxType::Uint32,
+    ..Default::default()
+});
+
+pub static ref SCHEMA_ATTR_BADLIST_PASSWORD: Schema = Schema::from(SchemaAttrs {
+    uuid: UUID_SCHEMA_ATTR_BADLIST_PASSWORD,
+    attributename: Some("badlist_password"),
+    description: "A password that is badlisted meaning that it can not be set as a valid password by any user account.",
+    class: vec![
+        CLASS_OBJECT.clone(),
+        CLASS_SYSTEM.clone(),
+        CLASS_ATTRIBUTETYPE.clone(),
+    ],
+    index: vec![],
+    unique: false,
+    multivalue: true,
+    syntax: SyntaxType::Utf8StringInsensitive,
+    ..Default::default()
+});
+
+pub static ref SCHEMA_ATTR_LOGINSHELL: Schema = Schema::from(SchemaAttrs {
+    uuid: UUID_SCHEMA_ATTR_LOGINSHELL,
+    attributename: Some("loginshell"),
+    description: "A POSIX user's UNIX login shell",
+
+    class: vec![
+        CLASS_OBJECT.clone(),
+        CLASS_SYSTEM.clone(),
+        CLASS_ATTRIBUTETYPE.clone(),
+    ],
+    index: vec![],
+    unique: false,
+    multivalue: false,
+    sync_allowed: true,
+    syntax: SyntaxType::Utf8StringInsensitive,
+    ..Default::default()
+});
+
+pub static ref SCHEMA_ATTR_UNIX_PASSWORD: Schema = Schema::from(SchemaAttrs {
+    uuid: UUID_SCHEMA_ATTR_UNIX_PASSWORD,
+    attributename: Some("unix_password"),
+    description: "A POSIX user's UNIX login password.",
+    class: vec![
+        CLASS_OBJECT.clone(),
+        CLASS_SYSTEM.clone(),
+        CLASS_ATTRIBUTETYPE.clone(),
+    ],
+    index: vec![IndexType::Presence],
+    unique: false,
+    multivalue: false,
+    syntax: SyntaxType::Credential,
+    ..Default::default()
+});
+
+pub static ref SCHEMA_ATTR_NSUNIQUEID: Schema = Schema::from(SchemaAttrs {
+    uuid: UUID_SCHEMA_ATTR_NSUNIQUEID,
+    attributename: Some("nsuniqueid"),
+    description: "A unique id compatibility for 389-ds/dsee",
+    class: vec![
+        CLASS_OBJECT.clone(),
+        CLASS_SYSTEM.clone(),
+        CLASS_ATTRIBUTETYPE.clone(),
+    ],
+    index: vec![IndexType::Equality],
+    unique: true,
+    multivalue: false,
+    sync_allowed: true,
+    syntax: SyntaxType::NsUniqueId,
+    ..Default::default()
+});
+
+pub static ref SCHEMA_ATTR_ACCOUNT_EXPIRE: Schema = Schema::from(SchemaAttrs {
+    uuid: UUID_SCHEMA_ATTR_ACCOUNT_EXPIRE,
+    attributename: Some("account_expire"),
+    description: "The datetime after which this accounnt no longer may authenticate.",
+
+    class: vec![
+        CLASS_OBJECT.clone(),
+        CLASS_SYSTEM.clone(),
+        CLASS_ATTRIBUTETYPE.clone(),
+    ],
+    index: vec![],
+    unique: false,
+    multivalue: false,
+    sync_allowed: true,
+    syntax: SyntaxType::DateTime,
+    ..Default::default()
+});
+
+pub static ref SCHEMA_ATTR_ACCOUNT_VALID_FROM: Schema = Schema::from(SchemaAttrs {
+    uuid: UUID_SCHEMA_ATTR_ACCOUNT_VALID_FROM,
+    attributename: Some("account_valid_from"),
+    description: "The datetime after which this account may commence authenticating.",
+    class: vec![
+        CLASS_OBJECT.clone(),
+        CLASS_SYSTEM.clone(),
+        CLASS_ATTRIBUTETYPE.clone(),
+    ],
+    index: vec![],
+    unique: false,
+    multivalue: false,
+    sync_allowed: true,
+    syntax: SyntaxType::DateTime,
+    ..Default::default()
+});
+
+pub static ref SCHEMA_ATTR_OAUTH2_RS_NAME: Schema = Schema::from(SchemaAttrs {
+    uuid: UUID_SCHEMA_ATTR_OAUTH2_RS_NAME,
+    attributename: Some("oauth2_rs_name"),
+    description: "The unique name of an external Oauth2 resource",
+    class: vec![
+        CLASS_OBJECT.clone(),
+        CLASS_SYSTEM.clone(),
+        CLASS_ATTRIBUTETYPE.clone(),
+    ],
+    index: vec![IndexType::Equality],
+    unique: true,
+    multivalue: false,
+    syntax: SyntaxType::Utf8StringIname,
+    ..Default::default()
+});
+
+pub static ref SCHEMA_ATTR_OAUTH2_RS_ORIGIN: Schema = Schema::from(SchemaAttrs {
+    uuid: UUID_SCHEMA_ATTR_OAUTH2_RS_ORIGIN,
+    attributename: Some("oauth2_rs_origin"),
+    description: "The origin domain of an oauth2 resource server",
+    class: vec![
+        CLASS_OBJECT.clone(),
+        CLASS_SYSTEM.clone(),
+        CLASS_ATTRIBUTETYPE.clone(),
+    ],
+    index: vec![],
+    unique: false,
+    multivalue: false,
+    syntax: SyntaxType::Url,
+    ..Default::default()
+});
+
+pub static ref SCHEMA_ATTR_OAUTH2_RS_ORIGIN_LANDING: Schema = Schema::from(SchemaAttrs {
+    uuid: UUID_SCHEMA_ATTR_OAUTH2_RS_ORIGIN_LANDING,
+    attributename: Some("oauth2_rs_origin_landing"),
+    description: "The landing page of an RS, that will automatically trigger the auth process.",
+    class: vec![
+        CLASS_OBJECT.clone(),
+        CLASS_SYSTEM.clone(),
+        CLASS_ATTRIBUTETYPE.clone(),
+    ],
+    index: vec![],
+    unique: false,
+    multivalue: false,
+    syntax: SyntaxType::Url,
+    ..Default::default()
+});
+
+pub static ref SCHEMA_ATTR_OAUTH2_RS_SCOPE_MAP: Schema = Schema::from(SchemaAttrs {
+    uuid: UUID_SCHEMA_ATTR_OAUTH2_RS_SCOPE_MAP,
+    attributename: Some("oauth2_rs_scope_map"),
+    description:
+        "A reference to a group mapped to scopes for the associated oauth2 resource server",
+    class: vec![
+        CLASS_OBJECT.clone(),
+        CLASS_SYSTEM.clone(),
+        CLASS_ATTRIBUTETYPE.clone(),
+    ],
+    index: vec![IndexType::Equality],
+    unique: false,
+    multivalue: true,
+    syntax: SyntaxType::OauthScopeMap,
+    ..Default::default()
+});
+
+pub static ref SCHEMA_ATTR_OAUTH2_RS_SUP_SCOPE_MAP: Schema = Schema::from(SchemaAttrs {
+    uuid: UUID_SCHEMA_ATTR_OAUTH2_RS_SUP_SCOPE_MAP,
+    attributename: Some("oauth2_rs_sup_scope_map"),
+    description:
+        "A reference to a group mapped to scopes for the associated oauth2 resource server",
+    class: vec![
+        CLASS_OBJECT.clone(),
+        CLASS_SYSTEM.clone(),
+        CLASS_ATTRIBUTETYPE.clone(),
+    ],
+    index: vec![IndexType::Equality],
+    unique: false,
+    multivalue: true,
+    syntax: SyntaxType::OauthScopeMap,
+    ..Default::default()
+});
+
+pub static ref SCHEMA_ATTR_OAUTH2_RS_BASIC_SECRET: Schema = Schema::from(SchemaAttrs {
+    uuid: UUID_SCHEMA_ATTR_OAUTH2_RS_BASIC_SECRET,
+    attributename: Some("oauth2_rs_basic_secret"),
+    description: "When using oauth2 basic authentication, the secret string of the resource server",
+    class: vec![
+        CLASS_OBJECT.clone(),
+        CLASS_SYSTEM.clone(),
+        CLASS_ATTRIBUTETYPE.clone(),
+    ],
+    index: vec![],
+    unique: false,
+    multivalue: false,
+    syntax: SyntaxType::SecretUtf8String,
+    ..Default::default()
+});
+
+pub static ref SCHEMA_ATTR_OAUTH2_RS_TOKEN_KEY: Schema = Schema::from(SchemaAttrs {
+    uuid: UUID_SCHEMA_ATTR_OAUTH2_RS_TOKEN_KEY,
+    attributename: Some("oauth2_rs_token_key"),
+    description: "An oauth2 resource servers unique token signing key",
+    class: vec![
+        CLASS_OBJECT.clone(),
+        CLASS_SYSTEM.clone(),
+        CLASS_ATTRIBUTETYPE.clone(),
+    ],
+    index: vec![],
+    unique: false,
+    multivalue: false,
+    syntax: SyntaxType::SecretUtf8String,
+    ..Default::default()
+});
+
+pub static ref SCHEMA_ATTR_OAUTH2_RS_IMPLICIT_SCOPES: Schema = Schema::from(SchemaAttrs {
+    uuid: UUID_SCHEMA_ATTR_OAUTH2_RS_IMPLICIT_SCOPES,
+    attributename: Some("oauth2_rs_implicit_scopes"),
+    description: "An oauth2 resource servers scopes that are implicitly granted to all users",
+    class: vec![
+        CLASS_OBJECT.clone(),
+        CLASS_SYSTEM.clone(),
+        CLASS_ATTRIBUTETYPE.clone(),
+    ],
+    index: vec![],
+    unique: false,
+    multivalue: true,
+    syntax: SyntaxType::OauthScope,
+    ..Default::default()
+});
+
+pub static ref SCHEMA_ATTR_OAUTH2_CONSENT_SCOPE_MAP: Schema = Schema::from(SchemaAttrs {
+    uuid: UUID_SCHEMA_ATTR_OAUTH2_CONSENT_SCOPE_MAP,
+    attributename: Some("oauth2_consent_scope_map"),
+    description: "A set of scopes mapped from a relying server to a user, where the user has previously consented to the following. If changed or deleted, consent will be re-sought.",
+    class: vec![
+        CLASS_OBJECT.clone(),
+        CLASS_SYSTEM.clone(),
+        CLASS_ATTRIBUTETYPE.clone(),
+        ],
+    index: vec![IndexType::Equality],
+    unique: false,
+    multivalue: true,
+    syntax: SyntaxType::OauthScopeMap,
+    ..Default::default()
+});
+
+pub static ref SCHEMA_ATTR_ES256_PRIVATE_KEY_DER: Schema = Schema::from(SchemaAttrs {
+    uuid: UUID_SCHEMA_ATTR_ES256_PRIVATE_KEY_DER,
+    attributename: Some("es256_private_key_der"),
+    description: "An es256 private key",
+    class: vec![
+        CLASS_OBJECT.clone(),
+        CLASS_SYSTEM.clone(),
+        CLASS_ATTRIBUTETYPE.clone(),
+    ],
+    index: vec![],
+    unique: false,
+    multivalue: false,
+    syntax: SyntaxType::PrivateBinary,
+    ..Default::default()
+});
+
+pub static ref SCHEMA_ATTR_RS256_PRIVATE_KEY_DER: Schema = Schema::from(SchemaAttrs {
+    uuid: UUID_SCHEMA_ATTR_RS256_PRIVATE_KEY_DER,
+    attributename: Some("rs256_private_key_der"),
+    description: "An rs256 private key",
+    class: vec![
+        CLASS_OBJECT.clone(),
+        CLASS_SYSTEM.clone(),
+        CLASS_ATTRIBUTETYPE.clone(),
+    ],
+    index: vec![],
+    unique: false,
+    multivalue: false,
+    syntax: SyntaxType::PrivateBinary,
+    ..Default::default()
+});
+
+pub static ref SCHEMA_ATTR_JWS_ES256_PRIVATE_KEY: Schema = Schema::from(SchemaAttrs {
+    uuid: UUID_SCHEMA_ATTR_JWS_ES256_PRIVATE_KEY,
+    attributename: Some("jws_es256_private_key"),
+    description: "An es256 private key for jws",
+    class: vec![
+        CLASS_OBJECT.clone(),
+        CLASS_SYSTEM.clone(),
+        CLASS_ATTRIBUTETYPE.clone(),
+    ],
+    index: vec![IndexType::Equality],
+    unique: true,
+    multivalue: false,
+    syntax: SyntaxType::JwsKeyEs256,
+    ..Default::default()
+});
+
+pub static ref SCHEMA_ATTR_PRIVATE_COOKIE_KEY: Schema = Schema::from(SchemaAttrs {
+    uuid: UUID_SCHEMA_ATTR_PRIVATE_COOKIE_KEY,
+    attributename: Some("private_cookie_key"),
+    description: "An private cookie hmac key",
+    class: vec![
+        CLASS_OBJECT.clone(),
+        CLASS_SYSTEM.clone(),
+        CLASS_ATTRIBUTETYPE.clone(),
+    ],
+    index: vec![],
+    unique: false,
+    multivalue: false,
+    syntax: SyntaxType::PrivateBinary,
+    ..Default::default()
+});
+
+pub static ref SCHEMA_ATTR_OAUTH2_ALLOW_INSECURE_CLIENT_DISABLE_PKCE: Schema =
+Schema::from(SchemaAttrs {
+        uuid: UUID_SCHEMA_ATTR_OAUTH2_ALLOW_INSECURE_CLIENT_DISABLE_PKCE,
+        attributename: Some("oauth2_allow_insecure_client_disable_pkce"),
+        description: "Allows disabling of PKCE for insecure OAuth2 clients",
+        class: vec![
+            CLASS_OBJECT.clone(),
+            CLASS_SYSTEM.clone(),
+            CLASS_ATTRIBUTETYPE.clone(),
+        ],
+        index: vec![],
+        unique: false,
+        multivalue: false,
+        syntax: SyntaxType::Boolean,
+        ..Default::default()
+    });
+
+pub static ref SCHEMA_ATTR_OAUTH2_JWT_LEGACY_CRYPTO_ENABLE: Schema = Schema::from(SchemaAttrs {
+    uuid: UUID_SCHEMA_ATTR_OAUTH2_JWT_LEGACY_CRYPTO_ENABLE,
+    attributename: Some("oauth2_jwt_legacy_crypto_enable"),
+    description: "Allows enabling legacy JWT cryptograhpy for clients",
+    class: vec![
+        CLASS_OBJECT.clone(),
+        CLASS_SYSTEM.clone(),
+        CLASS_ATTRIBUTETYPE.clone(),
+    ],
+    index: vec![],
+    unique: false,
+    multivalue: false,
+    syntax: SyntaxType::Boolean,
+    ..Default::default()
+});
+
+pub static ref SCHEMA_ATTR_CREDENTIAL_UPDATE_INTENT_TOKEN: Schema = Schema::from(SchemaAttrs {
+    uuid: UUID_SCHEMA_ATTR_CREDENTIAL_UPDATE_INTENT_TOKEN,
+    attributename: Some("credential_update_intent_token"),
+    description: "The status of a credential update intent token",
+    class: vec![
+        CLASS_OBJECT.clone(),
+        CLASS_SYSTEM.clone(),
+        CLASS_ATTRIBUTETYPE.clone(),
+    ],
+    index: vec![IndexType::Equality],
+    unique: false,
+    multivalue: true,
+    syntax: SyntaxType::IntentToken,
+    ..Default::default()
+});
+
+pub static ref SCHEMA_ATTR_PASSKEYS: Schema = Schema::from(SchemaAttrs {
+    uuid: UUID_SCHEMA_ATTR_PASSKEYS,
+    attributename: Some("passkeys"),
+    description: "A set of registered passkeys",
+    class: vec![
+        CLASS_OBJECT.clone(),
+        CLASS_SYSTEM.clone(),
+        CLASS_ATTRIBUTETYPE.clone(),
+    ],
+    index: vec![IndexType::Equality],
+    unique: false,
+    multivalue: true,
+    sync_allowed: true,
+    syntax: SyntaxType::Passkey,
+    ..Default::default()
+});
+
+pub static ref SCHEMA_ATTR_DEVICEKEYS: Schema = Schema::from(SchemaAttrs {
+    uuid: UUID_SCHEMA_ATTR_DEVICEKEYS,
+    attributename: Some("devicekeys"),
+    description: "A set of registered device keys",
+    class: vec![
+        CLASS_OBJECT.clone(),
+        CLASS_SYSTEM.clone(),
+        CLASS_ATTRIBUTETYPE.clone(),
+    ],
+    index: vec![IndexType::Equality],
+    unique: false,
+    multivalue: true,
+    sync_allowed: true,
+    syntax: SyntaxType::DeviceKey,
+    ..Default::default()
+});
+
+pub static ref SCHEMA_ATTR_DYNGROUP_FILTER: Schema = Schema::from(SchemaAttrs {
+    uuid: UUID_SCHEMA_ATTR_DYNGROUP_FILTER,
+    attributename: Some("dyngroup_filter"),
+    description: "A filter describing the set of entries to add to a dynamic group",
+    class: vec![
+        CLASS_OBJECT.clone(),
+        CLASS_SYSTEM.clone(),
+        CLASS_ATTRIBUTETYPE.clone(),
+    ],
+    unique: false,
+    multivalue: false,
+    syntax: SyntaxType::JsonFilter,
+    ..Default::default()
+});
+
+pub static ref SCHEMA_ATTR_OAUTH2_PREFER_SHORT_USERNAME: Schema = Schema::from(SchemaAttrs {
+    uuid: UUID_SCHEMA_ATTR_OAUTH2_PREFER_SHORT_USERNAME,
+    attributename: Some("oauth2_prefer_short_username"),
+    description: "Use 'name' instead of 'spn' in the preferred_username claim",
+    class: vec![
+        CLASS_OBJECT.clone(),
+        CLASS_SYSTEM.clone(),
+        CLASS_ATTRIBUTETYPE.clone(),
+    ],
+    index: vec![],
+    unique: false,
+    multivalue: false,
+    syntax: SyntaxType::Boolean,
+    ..Default::default()
+});
+
+pub static ref SCHEMA_ATTR_API_TOKEN_SESSION: Schema = Schema::from(SchemaAttrs {
+    uuid: UUID_SCHEMA_ATTR_API_TOKEN_SESSION,
+    attributename: Some("api_token_session"),
+    description: "A session entry related to an issued API token",
+    class: vec![
+        CLASS_OBJECT.clone(),
+        CLASS_SYSTEM.clone(),
+        CLASS_ATTRIBUTETYPE.clone(),
+    ],
+    index: vec![IndexType::Equality],
+    unique: true,
+    multivalue: true,
+    syntax: SyntaxType::ApiToken,
+    ..Default::default()
+});
+
+pub static ref SCHEMA_ATTR_USER_AUTH_TOKEN_SESSION: Schema = Schema::from(SchemaAttrs {
+    class: vec![
+        CLASS_OBJECT.clone(),
+        CLASS_SYSTEM.clone(),
+        CLASS_ATTRIBUTETYPE.clone(),
+    ],
+    description: "A session entry related to an issued user auth token",
+    index: vec![IndexType::Equality],
+    unique: true,
+    multivalue: true,
+    attributename: Some("user_auth_token_session"),
+    syntax: SyntaxType::Session,
+    uuid: UUID_SCHEMA_ATTR_USER_AUTH_TOKEN_SESSION,
+    ..Default::default()
+});
+
+pub static ref SCHEMA_ATTR_OAUTH2_SESSION: Schema = Schema::from(SchemaAttrs {
+    uuid: UUID_SCHEMA_ATTR_OAUTH2_SESSION,
+    attributename: Some("oauth2_session"),
+    description: "A session entry to an active oauth2 session, bound to a parent user auth token",
+    class: vec![
+        CLASS_OBJECT.clone(),
+        CLASS_SYSTEM.clone(),
+        CLASS_ATTRIBUTETYPE.clone(),
+    ],
+    index: vec![IndexType::Equality],
+    unique: false,
+    multivalue: true,
+    syntax: SyntaxType::Oauth2Session,
+    ..Default::default()
+});
+
+pub static ref SCHEMA_ATTR_SYNC_TOKEN_SESSION: Schema = Schema::from(SchemaAttrs {
+    uuid: UUID_SCHEMA_ATTR_SYNC_TOKEN_SESSION,
+    attributename: Some("sync_token_session"),
+    description: "A session entry related to an issued sync token",
+    class: vec![
+        CLASS_OBJECT.clone(),
+        CLASS_SYSTEM.clone(),
+        CLASS_ATTRIBUTETYPE.clone(),
+    ],
+    index: vec![IndexType::Equality],
+    unique: true,
+    multivalue: false,
+    syntax: SyntaxType::ApiToken,
+    ..Default::default()
+});
+
+pub static ref SCHEMA_ATTR_SYNC_COOKIE: Schema = Schema::from(SchemaAttrs {
+    uuid: UUID_SCHEMA_ATTR_SYNC_COOKIE,
+    attributename: Some("sync_cookie"),
+    description: "A private sync cookie for a remote IDM source",
+    class: vec![
+        CLASS_OBJECT.clone(),
+        CLASS_SYSTEM.clone(),
+        CLASS_ATTRIBUTETYPE.clone(),
+    ],
+    index: vec![],
+    unique: false,
+    multivalue: false,
+    syntax: SyntaxType::PrivateBinary,
+    ..Default::default()
+});
+
+pub static ref SCHEMA_ATTR_GRANT_UI_HINT: Schema = Schema::from(SchemaAttrs {
+    uuid: UUID_SCHEMA_ATTR_GRANT_UI_HINT,
+    attributename: Some("grant_ui_hint"),
+    description: "A UI hint that is granted via membership to a group",
+    class: vec![
+        CLASS_OBJECT.clone(),
+        CLASS_SYSTEM.clone(),
+        CLASS_ATTRIBUTETYPE.clone(),
+    ],
+    index: vec![IndexType::Equality],
+    unique: false,
+    multivalue: true,
+    syntax: SyntaxType::UiHint,
+    ..Default::default()
+});
+
+pub static ref SCHEMA_ATTR_SYNC_CREDENTIAL_PORTAL: Schema = Schema::from(SchemaAttrs {
+    uuid: UUID_SCHEMA_ATTR_SYNC_CREDENTIAL_PORTAL,
+    attributename: Some("sync_credential_portal"),
+    description: "The url of an external credential portal for synced accounts to visit to update their credentials.",
+    class: vec![
+        CLASS_OBJECT.clone(),
+        CLASS_SYSTEM.clone(),
+        CLASS_ATTRIBUTETYPE.clone(),
+    ],
+    unique: false,
+    multivalue: false,
+    syntax: SyntaxType::Url,
+    ..Default::default()
+});
+
+pub static ref SCHEMA_ATTR_SYNC_YIELD_AUTHORITY: Schema = Schema::from(SchemaAttrs {
+    uuid: UUID_SCHEMA_ATTR_SYNC_YIELD_AUTHORITY,
+    attributename: Some("sync_yield_authority"),
+    description: "A set of attributes that have their authority yielded to Kanidm in a sync agreement.",
+    class: vec![
+        CLASS_OBJECT.clone(),
+        CLASS_SYSTEM.clone(),
+        CLASS_ATTRIBUTETYPE.clone(),
+    ],
+    unique: false,
+    multivalue: true,
+    syntax: SyntaxType::Utf8StringInsensitive,
+    ..Default::default()
+});
 
 // === classes ===
 
-pub const JSON_SCHEMA_CLASS_PERSON: &str = r#"
-  {
-    "attrs": {
-      "class": [
-        "object",
-        "system",
-        "classtype"
-      ],
-      "description": [
-        "Object representation of a person"
-      ],
-      "sync_allowed": [
-        "true"
-      ],
-      "classname": [
-        "person"
-      ],
-      "systemmay": [
-        "mail",
-        "legalname"
-      ],
-      "systemmust": [
-        "displayname",
-        "name"
-      ],
-      "uuid": [
-        "00000000-0000-0000-0000-ffff00000044"
-      ]
-    }
-  }
-"#;
+pub static ref SCHEMA_CLASS_PERSON: Schema = Schema::from(SchemaAttrs {
+    uuid: UUID_SCHEMA_CLASS_PERSON,
+    classname: Some("person"),
+    description: "Object representation of a person",
+    class: vec![
+        CLASS_OBJECT.clone(),
+        CLASS_SYSTEM.clone(),
+        CLASS_CLASSTYPE.clone(),
+    ],
+    sync_allowed: true,
+    systemmay: vec!["mail", "legalname"],
+    systemmust: vec!["displayname", "name"],
+    ..Default::default()
+});
 
-pub const JSON_SCHEMA_CLASS_ORGPERSON: &str = r#"
-  {
-    "attrs": {
-      "class": [
-        "object",
-        "system",
-        "classtype"
-      ],
-      "description": [
-        "Object representation of an org person"
-      ],
-      "classname": [
-        "orgperson"
-      ],
-      "systemmay": [
-        "legalname"
-      ],
-      "systemmust": [
-        "mail",
-        "displayname",
-        "name"
-      ],
-      "uuid": [
-        "00000000-0000-0000-0000-ffff00000094"
-      ]
-    }
-  }
-"#;
+pub static ref SCHEMA_CLASS_ORGPERSON: Schema = Schema::from(SchemaAttrs {
+    class: vec![
+        CLASS_OBJECT.clone(),
+        CLASS_SYSTEM.clone(),
+        CLASS_CLASSTYPE.clone(),
+    ],
+    description: "Object representation of an org person",
+    classname: Some("orgperson"),
+    systemmay: vec!["legalname"],
+    systemmust: vec!["mail", "displayname", "name"],
+    uuid: UUID_SCHEMA_CLASS_ORGPERSON,
+    ..Default::default()
+});
 
-pub const JSON_SCHEMA_CLASS_GROUP: &str = r#"
-  {
-    "attrs": {
-      "class": [
-        "object",
-        "system",
-        "classtype"
-      ],
-      "description": [
-        "Object representation of a group"
-      ],
-      "sync_allowed": [
-        "true"
-      ],
-      "classname": [
-        "group"
-      ],
-      "systemmay": [
-        "member",
-        "grant_ui_hint",
-        "description"
-      ],
-      "systemmust": [
-        "name",
-        "spn"
-      ],
-      "uuid": [
-        "00000000-0000-0000-0000-ffff00000045"
-      ]
-    }
-  }
-"#;
+pub static ref SCHEMA_CLASS_GROUP: Schema = Schema::from(SchemaAttrs {
+    uuid: UUID_SCHEMA_CLASS_GROUP,
+    classname: Some("group"),
+    description: "Object representation of a group",
+    class: vec![
+        CLASS_OBJECT.clone(),
+        CLASS_SYSTEM.clone(),
+        CLASS_CLASSTYPE.clone(),
+    ],
+    sync_allowed: true,
+    systemmay: vec!["member", "grant_ui_hint", "description"],
+    systemmust: vec!["name", "spn"],
+    ..Default::default()
+});
 
-pub const JSON_SCHEMA_CLASS_DYNGROUP: &str = r#"
-  {
-    "attrs": {
-      "class": [
-        "object",
-        "system",
-        "classtype"
-      ],
-      "description": [
-        "Object representation of a dynamic group"
-      ],
-      "classname": [
-        "dyngroup"
-      ],
-      "systemmust": [
-        "dyngroup_filter"
-      ],
-      "systemmay": [
-        "dynmember"
-      ],
-      "systemsupplements": [
-        "group"
-      ],
-      "uuid": [
-        "00000000-0000-0000-0000-ffff00000107"
-      ]
-    }
-  }
-"#;
+pub static ref SCHEMA_CLASS_DYNGROUP: Schema = Schema::from(SchemaAttrs {
+    uuid: UUID_SCHEMA_CLASS_DYNGROUP,
+    classname: Some("dyngroup"),
+    description: "Object representation of a dynamic group",
+    class: vec![
+        CLASS_OBJECT.clone(),
+        CLASS_SYSTEM.clone(),
+        CLASS_CLASSTYPE.clone(),
+    ],
+    systemmust: vec!["dyngroup_filter"],
+    systemmay: vec!["dynmember"],
+    systemsupplements: vec!["group"],
+    ..Default::default()
+});
 
-pub const JSON_SCHEMA_CLASS_ACCOUNT: &str = r#"
-  {
-    "attrs": {
-      "class": [
-        "object",
-        "system",
-        "classtype"
-      ],
-      "description": [
-        "Object representation of a account"
-      ],
-      "sync_allowed": [
-        "true"
-      ],
-      "classname": [
-        "account"
-      ],
-      "systemmay": [
+pub static ref SCHEMA_CLASS_ACCOUNT: Schema = Schema::from(SchemaAttrs {
+    uuid: UUID_SCHEMA_CLASS_ACCOUNT,
+    classname: Some("account"),
+    description: "Object representation of an account",
+    class: vec![
+        CLASS_OBJECT.clone(),
+        CLASS_SYSTEM.clone(),
+        CLASS_CLASSTYPE.clone(),
+    ],
+
+    sync_allowed: true,
+    systemmay: vec![
         "primary_credential",
         "passkeys",
         "devicekeys",
@@ -1651,115 +1013,69 @@ pub const JSON_SCHEMA_CLASS_ACCOUNT: &str = r#"
         "user_auth_token_session",
         "oauth2_session",
         "description",
-        "name_history"
-      ],
-      "systemmust": [
-        "displayname",
-        "name",
-        "spn"
-      ],
-      "uuid": [
-        "00000000-0000-0000-0000-ffff00000046"
-      ],
-      "systemsupplements": [
-        "person",
-        "service_account"
-      ]
-    }
-  }
-"#;
+        "name_history",
+    ],
+    systemmust: vec!["displayname", "name", "spn"],
+    systemsupplements: vec!["person", "service_account"],
+    ..Default::default()
+});
 
-pub const JSON_SCHEMA_CLASS_SERVICE_ACCOUNT: &str = r#"
-  {
-    "attrs": {
-      "class": [
-        "object",
-        "system",
-        "classtype"
-      ],
-      "description": [
-        "Object representation of service account"
-      ],
-      "sync_allowed": [
-        "true"
-      ],
-      "classname": [
-        "service_account"
-      ],
-      "systemmay": [
+pub static ref SCHEMA_CLASS_SERVICE_ACCOUNT: Schema = Schema::from(SchemaAttrs {
+    uuid: UUID_SCHEMA_CLASS_SERVICE_ACCOUNT,
+    classname: Some("service_account"),
+    description: "Object representation of service account",
+    class: vec![
+        CLASS_OBJECT.clone(),
+        CLASS_SYSTEM.clone(),
+        CLASS_CLASSTYPE.clone(),
+    ],
+    sync_allowed: true,
+    systemmay: vec![
         "mail",
         "primary_credential",
         "jws_es256_private_key",
-        "api_token_session"
-      ],
-      "uuid": [
-        "00000000-0000-0000-0000-ffff00000106"
-      ],
-      "systemexcludes": [
-        "person"
-      ]
-    }
-  }
-"#;
+        "api_token_session",
+    ],
+    systemexcludes: vec!["person"],
+    ..Default::default()
+});
 
-pub const JSON_SCHEMA_CLASS_SYNC_ACCOUNT: &str = r#"
-  {
-    "attrs": {
-      "class": [
-        "object",
-        "system",
-        "classtype"
-      ],
-      "description": [
-        "Object representation of sync account"
-      ],
-      "classname": [
-        "sync_account"
-      ],
-      "systemmust": [
-        "name",
-        "jws_es256_private_key"
-      ],
-      "systemmay": [
+pub static ref SCHEMA_CLASS_SYNC_ACCOUNT: Schema = Schema::from(SchemaAttrs {
+    uuid: UUID_SCHEMA_CLASS_SYNC_ACCOUNT,
+    classname: Some("sync_account"),
+    description: "Object representation of sync account",
+    class: vec![
+        CLASS_OBJECT.clone(),
+        CLASS_SYSTEM.clone(),
+        CLASS_CLASSTYPE.clone(),
+    ],
+    systemmust: vec!["name", "jws_es256_private_key"],
+    systemmay: vec![
         "sync_token_session",
         "sync_cookie",
         "sync_credential_portal",
-        "sync_yield_authority"
-      ],
-      "uuid": [
-        "00000000-0000-0000-0000-ffff00000114"
-      ],
-      "systemexcludes": [
-        "account"
-      ]
-    }
-  }
-"#;
+        "sync_yield_authority",
+    ],
+    systemexcludes: vec!["account"],
+    ..Default::default()
+});
 
 // domain_info type
 //  domain_uuid
 //  domain_name <- should be the dns name?
 //  domain_ssid <- for radius
 //
-pub const JSON_SCHEMA_CLASS_DOMAIN_INFO: &str = r#"
-  {
-    "attrs": {
-      "class": [
-        "object",
-        "system",
-        "classtype"
-      ],
-      "description": [
-        "Local domain information and partial configuration."
-      ],
-      "classname": [
-        "domain_info"
-      ],
-      "systemmay": [
-        "domain_ssid",
-        "domain_ldap_basedn"
-      ],
-      "systemmust": [
+pub static ref SCHEMA_CLASS_DOMAIN_INFO: Schema = Schema::from(SchemaAttrs {
+    class: vec![
+        CLASS_OBJECT.clone(),
+        CLASS_SYSTEM.clone(),
+        CLASS_CLASSTYPE.clone(),
+    ],
+    uuid: UUID_SCHEMA_CLASS_DOMAIN_INFO,
+    classname: Some("domain_info"),
+    description: "Local domain information and partial configuration.",
+    systemmay: vec!["domain_ssid", "domain_ldap_basedn"],
+    systemmust: vec![
         "name",
         "domain_uuid",
         "domain_name",
@@ -1767,169 +1083,110 @@ pub const JSON_SCHEMA_CLASS_DOMAIN_INFO: &str = r#"
         "fernet_private_key_str",
         "es256_private_key_der",
         "private_cookie_key",
-        "version"
-      ],
-      "uuid": [
-        "00000000-0000-0000-0000-ffff00000052"
-      ]
-    }
-  }
-"#;
+        "version",
+    ],
+    ..Default::default()
+});
 
-pub const JSON_SCHEMA_CLASS_POSIXGROUP: &str = r#"
-  {
-    "attrs": {
-      "class": [
-        "object",
-        "system",
-        "classtype"
-      ],
-      "description": [
-        "Object representation of a posix group, requires group"
-      ],
-      "sync_allowed": [
-        "true"
-      ],
-      "classname": [
-        "posixgroup"
-      ],
-      "systemmust": [
-        "gidnumber"
-      ],
-      "uuid": [
-        "00000000-0000-0000-0000-ffff00000058"
-      ],
-      "systemsupplements": [
-        "group"
-      ]
-    }
-  }
-"#;
+pub static ref SCHEMA_CLASS_POSIXGROUP: Schema = Schema::from(SchemaAttrs {
+    uuid: UUID_SCHEMA_CLASS_POSIXGROUP,
+    classname: Some("posixgroup"),
+    description: "Object representation of a posix group, requires group",
+    class: vec![
+        CLASS_OBJECT.clone(),
+        CLASS_SYSTEM.clone(),
+        CLASS_CLASSTYPE.clone(),
+    ],
+    sync_allowed: true,
+    systemmust: vec!["gidnumber"],
+    systemsupplements: vec!["group"],
+    ..Default::default()
+});
 
-pub const JSON_SCHEMA_CLASS_POSIXACCOUNT: &str = r#"
-  {
-    "attrs": {
-      "class": [
-        "object",
-        "system",
-        "classtype"
-      ],
-      "description": [
-        "Object representation of a posix account, requires account"
-      ],
-      "sync_allowed": [
-        "true"
-      ],
-      "classname": [
-        "posixaccount"
-      ],
-      "systemmay": [
-        "loginshell",
-        "unix_password"
-      ],
-      "systemmust": [
-        "gidnumber"
-      ],
-      "uuid": [
-        "00000000-0000-0000-0000-ffff00000057"
-      ],
-      "systemsupplements": [
-        "account"
-      ]
-    }
-  }
-"#;
+pub static ref SCHEMA_CLASS_POSIXACCOUNT: Schema = Schema::from(SchemaAttrs {
+    uuid: UUID_SCHEMA_CLASS_POSIXACCOUNT,
+    classname: Some("posixaccount"),
+    description: "Object representation of a posix account, requires account",
+    class: vec![
+        CLASS_OBJECT.clone(),
+        CLASS_SYSTEM.clone(),
+        CLASS_CLASSTYPE.clone(),
+    ],
+    sync_allowed: true,
+    systemmay: vec!["loginshell", "unix_password"],
+    systemmust: vec!["gidnumber"],
+    systemsupplements: vec!["account"],
+    ..Default::default()
+});
 
-pub const JSON_SCHEMA_CLASS_SYSTEM_CONFIG: &str = r#"
-  {
-    "attrs": {
-      "class": [
-        "object",
-        "system",
-        "classtype"
-      ],
-      "description": [
-        "The class representing a system (topologies) configuration options."
-      ],
-      "classname": [
-        "system_config"
-      ],
-      "systemmay": [
-        "description",
-        "badlist_password"
-      ],
-      "uuid": [
-        "00000000-0000-0000-0000-ffff00000060"
-      ]
-    }
-  }
-"#;
+pub static ref SCHEMA_CLASS_SYSTEM_CONFIG: Schema = Schema::from(SchemaAttrs {
+    uuid: UUID_SCHEMA_CLASS_SYSTEM_CONFIG,
+    classname: Some("system_config"),
+    description: "The class representing a system (topologies) configuration options.",
+    class: vec![
+        CLASS_OBJECT.clone(),
+        CLASS_SYSTEM.clone(),
+        CLASS_CLASSTYPE.clone(),
+    ],
+    systemmay: vec!["description", "badlist_password"],
+    ..Default::default()
+});
 
-pub const JSON_SCHEMA_CLASS_OAUTH2_RS: &str = r#"
-  {
-    "attrs": {
-      "class": [
-        "object",
-        "system",
-        "classtype"
-      ],
-      "description": [
-        "The class representing a configured Oauth2 Resource Server"
-      ],
-      "classname": [
-        "oauth2_resource_server"
-      ],
-      "systemmay": [
+pub static ref SCHEMA_CLASS_OAUTH2_RS: Schema = Schema::from(SchemaAttrs {
+    uuid: UUID_SCHEMA_CLASS_OAUTH2_RS,
+    classname: Some("oauth2_resource_server"),
+    description: "The class representing a configured Oauth2 Resource Server",
+    class: vec![
+        CLASS_OBJECT.clone(),
+        CLASS_SYSTEM.clone(),
+        CLASS_CLASSTYPE.clone(),
+    ],
+    systemmay: vec![
         "description",
         "oauth2_rs_scope_map",
         "oauth2_rs_sup_scope_map",
         "rs256_private_key_der",
         "oauth2_jwt_legacy_crypto_enable",
         "oauth2_prefer_short_username",
-        "oauth2_rs_origin_landing"
-      ],
-      "systemmust": [
+        "oauth2_rs_origin_landing",
+    ],
+    systemmust: vec![
         "oauth2_rs_name",
         "displayname",
         "oauth2_rs_origin",
         "oauth2_rs_token_key",
-        "es256_private_key_der"
-      ],
-      "uuid": [
-        "00000000-0000-0000-0000-ffff00000085"
-      ]
-    }
-  }
-"#;
+        "es256_private_key_der",
+    ],
+    ..Default::default()
+});
 
-lazy_static! {
-    pub static ref E_SCHEMA_CLASS_OAUTH2_RS_BASIC: EntryInitNew = entry_init!(
-        ("class", CLASS_OBJECT.clone()),
-        ("class", CLASS_SYSTEM.clone()),
-        ("class", CLASS_CLASSTYPE.clone()),
-        (
-            "description",
-            Value::new_utf8s(
-        "The class representing a configured Oauth2 Resource Server authenticated with http basic authentication"),
-        ),
-        ("classname", Value::new_iutf8("oauth2_resource_server_basic")),
-        ("systemmay", Value::new_iutf8("oauth2_allow_insecure_client_disable_pkce")),
-        ("systemmust", Value::new_iutf8("oauth2_rs_basic_secret")),
-        ("systemexcludes", Value::new_iutf8("oauth2_resource_server_public")),
-        ("uuid", Value::Uuid(UUID_SCHEMA_CLASS_OAUTH2_RS_BASIC))
-    );
+pub static ref SCHEMA_CLASS_OAUTH2_RS_BASIC: Schema = Schema::from(SchemaAttrs {
+    uuid: UUID_SCHEMA_CLASS_OAUTH2_RS_BASIC,
+    classname: Some("oauth2_resource_server_basic"),
+    description: "The class representing a configured Oauth2 Resource Server authenticated with http basic authentication",
+    class: vec![
+        CLASS_OBJECT.clone(),
+        CLASS_SYSTEM.clone(),
+        CLASS_CLASSTYPE.clone(),
+    ],
+    systemmay: vec![ "oauth2_allow_insecure_client_disable_pkce"],
+    systemmust: vec![ "oauth2_rs_basic_secret"],
+    systemexcludes: vec![ "oauth2_resource_server_public"],
+    ..Default::default()
+});
 
-    pub static ref E_SCHEMA_CLASS_OAUTH2_RS_PUBLIC: EntryInitNew = entry_init!(
-        ("class", CLASS_OBJECT.clone()),
-        ("class", CLASS_SYSTEM.clone()),
-        ("class", CLASS_CLASSTYPE.clone()),
-        (
-            "description",
-            Value::new_utf8s(
-        "The class representing a configured Oauth2 Resource Server with public clients and pkce verification"),
-        ),
-        ("classname", Value::new_iutf8("oauth2_resource_server_public")),
-        ("systemexcludes", Value::new_iutf8("oauth2_resource_server_basic")),
-        ("uuid", Value::Uuid(UUID_SCHEMA_CLASS_OAUTH2_RS_PUBLIC))
-    );
-}
+
+pub static ref SCHEMA_CLASS_OAUTH2_RS_PUBLIC: Schema = Schema::from(SchemaAttrs {
+    uuid: UUID_SCHEMA_CLASS_OAUTH2_RS_PUBLIC,
+    classname: Some("oauth2_resource_server_public"),
+    class: vec![
+        CLASS_OBJECT.clone(),
+        CLASS_SYSTEM.clone(),
+        CLASS_CLASSTYPE.clone(),
+    ],
+    description: "The class representing a configured Oauth2 Resource Server with public clients and pkce verification",
+    systemexcludes: vec!["oauth2_resource_server_basic"],
+    ..Default::default()
+});
+
+);

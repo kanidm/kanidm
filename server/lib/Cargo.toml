@@ -42,7 +42,13 @@ num_enum = { workspace = true }
 openssl-sys = { workspace = true }
 openssl = { workspace = true }
 rand = { workspace = true }
-regex = { workspace = true, features = ["std", "perf", "perf-inline", "unicode", "unicode-gencat"] }
+regex = { workspace = true, features = [
+    "std",
+    "perf",
+    "perf-inline",
+    "unicode",
+    "unicode-gencat",
+] }
 serde = { workspace = true, features = ["derive"] }
 serde_cbor = { workspace = true }
 serde_json = { workspace = true }
@@ -61,8 +67,12 @@ tracing = { workspace = true, features = ["attributes"] }
 
 url = { workspace = true, features = ["serde"] }
 urlencoding = { workspace = true }
-uuid = { workspace = true, features = ["serde", "v4" ] }
-webauthn-rs = { workspace = true, features = ["resident-key-support", "preview-features", "danger-credential-internals"] }
+uuid = { workspace = true, features = ["serde", "v4"] }
+webauthn-rs = { workspace = true, features = [
+    "resident-key-support",
+    "preview-features",
+    "danger-credential-internals",
+] }
 webauthn-rs-core = { workspace = true }
 zxcvbn = { workspace = true }
 serde_with = { workspace = true }
@@ -87,5 +97,6 @@ futures = { workspace = true }
 kanidmd_lib_macros = { workspace = true }
 
 [build-dependencies]
+hashbrown = { workspace = true }
 kanidm_build_profiles = { workspace = true }
-
+regex = { workspace = true }
