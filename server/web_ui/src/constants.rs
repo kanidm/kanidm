@@ -1,5 +1,7 @@
 //! Constants
 
+pub const CONTENT_TYPE: &str = "content-type";
+
 // CSS classes that get applied to full-page forms
 pub const CSS_CLASSES_BODY_FORM: &[&str] = &["flex-column", "d-flex", "h-100"];
 

@@ -14,21 +14,24 @@ use crate::actors::v1_write::QueryServerWriteV1;
 use crate::config::{Configuration, ServerRole, TlsConfiguration};
 use axum::extract::connect_info::{IntoMakeServiceWithConnectInfo, ResponseFuture};
 use axum::middleware::{from_fn, from_fn_with_state};
-use axum::response::{Redirect, Response};
+use axum::response::{IntoResponse, Redirect, Response};
 use axum::routing::*;
 use axum::Router;
 use axum_csp::{CspDirectiveType, CspValue};
 use axum_macros::FromRef;
 use compact_jwt::{Jws, JwsSigner, JwsUnverified};
 use generic::*;
-use http::{HeaderMap, HeaderValue};
+use http::header::{ACCESS_CONTROL_ALLOW_ORIGIN, CONTENT_TYPE};
+use http::{HeaderMap, HeaderValue, StatusCode};
 use hyper::server::accept::Accept;
 use hyper::server::conn::{AddrStream, Http};
 use hyper::Body;
 use javascript::*;
+use kanidm_proto::constants::APPLICATION_JSON;
 use kanidm_proto::v1::OperationError;
 use kanidmd_lib::status::StatusActor;
 use openssl::ssl::{Ssl, SslAcceptor, SslFiletype, SslMethod};
+use sketching::*;
 use tokio_openssl::SslStream;
 
 use futures_util::future::poll_fn;
@@ -247,7 +250,13 @@ pub async fn create_https_server(
         // This is because the last middleware here is the first to be entered and the last
         // to be exited, and this middleware sets up ids' and other bits for for logging
         // coherence to be maintained.
-        .layer(from_fn(middleware::kopid_middleware))
+        .layer(from_fn(middleware::kopid_middleware));
+
+    // layer which checks the responses have a content-type of JSON when we're in debug mode
+    #[cfg(debug_assertions)]
+    let app = app.layer(from_fn(middleware::are_we_json_yet));
+
+    let app = app
         .with_state(state)
         // the connect_info bit here lets us pick up the remote address of the client
         .into_make_service_with_connect_info::<SocketAddr>();
@@ -369,8 +378,8 @@ async fn handle_conn(
                     std::io::Error::from(ErrorKind::ConnectionAborted)
                 })
         }
-        Err(_error) => {
-            // trace!("Failed to handle connection: {:?}", error);
+        Err(error) => {
+            trace!("Failed to handle connection: {:?}", error);
             Ok(())
         }
     }
@@ -393,7 +402,10 @@ pub fn to_axum_response<T: Serialize + core::fmt::Debug>(
             };
             trace!("Response Body: {:?}", body);
             #[allow(clippy::unwrap_used)]
-            Response::builder().body(Body::from(body)).unwrap()
+            Response::builder()
+                .header(CONTENT_TYPE, APPLICATION_JSON)
+                .body(Body::from(body))
+                .unwrap()
         }
         Err(e) => {
             debug!("OperationError: {:?}", e);
@@ -428,5 +440,29 @@ pub fn to_axum_response<T: Serialize + core::fmt::Debug>(
                     .expect("Failed to build response!"),
             }
         }
+    }
+}
+
+/// Wrapper for the externally-defined error type from the protocol
+pub struct HttpOperationError(OperationError);
+
+impl IntoResponse for HttpOperationError {
+    fn into_response(self) -> Response {
+        let HttpOperationError(error) = self;
+
+        let body = match serde_json::to_string(&error) {
+            Ok(val) => val,
+            Err(e) => {
+                admin_warn!("Failed to serialize error response: original_error=\"{:?}\" serialization_error=\"{:?}\"", error , e);
+                format!("{:?}", error)
+            }
+        };
+        #[allow(clippy::unwrap_used)]
+        Response::builder()
+            .status(StatusCode::BAD_REQUEST)
+            .header(ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+            .body(Body::from(body))
+            .unwrap()
+            .into_response()
     }
 }

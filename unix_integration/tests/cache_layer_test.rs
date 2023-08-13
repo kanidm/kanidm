@@ -137,6 +137,7 @@ async fn test_fixture(rsclient: KanidmClient) {
         .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
         .await;
     debug!("auth_simple_password res: {:?}", res);
+    dbg!(&res);
     assert!(res.is_ok());
     // Not recommended in production!
     rsclient

@@ -341,7 +341,7 @@ pub struct OidcDiscoveryResponse {
 }
 
 #[skip_serializing_none]
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Default)]
 pub struct ErrorResponse {
     pub error: String,
     pub error_description: Option<String>,

@@ -1,4 +1,5 @@
 use gloo::console;
+use kanidm_proto::constants::APPLICATION_JSON;
 pub use kanidm_proto::oauth2::{
     AccessTokenRequest, AccessTokenResponse, AuthorisationRequest, AuthorisationResponse,
     CodeChallengeMethod, ErrorResponse,
@@ -146,9 +147,10 @@ impl Oauth2App {
         opts.body(Some(&consentreq_jsvalue));
 
         let request = Request::new_with_str_and_init("/oauth2/authorise/permit", &opts)?;
+
         request
             .headers()
-            .set("content-type", "application/json")
+            .set(crate::constants::CONTENT_TYPE, APPLICATION_JSON)
             .expect_throw("failed to set header");
 
         if let Some(bearer_token) = models::get_bearer_token() {

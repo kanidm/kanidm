@@ -26,32 +26,26 @@ pub async fn security_headers_layer<B>(
     //
     // https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Content-Type-Options
     // https://scotthelme.co.uk/hardening-your-http-response-headers/#x-content-type-options
-    #[allow(clippy::expect_used)]
     headers.insert(
         X_CONTENT_TYPE_OPTIONS,
-        HeaderValue::from_str(X_CONTENT_TYPE_OPTIONS_VALUE)
-            .expect("Failed to generate security header X-Content-Type-Options"),
+        HeaderValue::from_static(X_CONTENT_TYPE_OPTIONS_VALUE),
     );
 
     // Permissions policy defines access to platform services like geolocation, fullscreen etc.
     //
     // https://www.w3.org/TR/permissions-policy-1/
-    #[allow(clippy::expect_used)]
     headers.insert(
         "Permissions-Policy",
-        HeaderValue::from_str(PERMISSIONS_POLICY_VALUE)
-            .expect("Failed to generate security header Permissions-Policy"),
+        HeaderValue::from_static(PERMISSIONS_POLICY_VALUE),
     );
 
     // Don't send a referrer header when the user is navigating to a non-HTTPS URL
     // Ref:
     // https://scotthelme.co.uk/a-new-security-header-referrer-policy/
     // https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Referrer-Policy
-    #[allow(clippy::expect_used)]
     headers.insert(
         http::header::REFERRER_POLICY,
-        HeaderValue::from_str("no-referrer-when-downgrade")
-            .expect("Failed to generate Referer-Policy header"),
+        HeaderValue::from_static("no-referrer-when-downgrade"),
     );
 
     response

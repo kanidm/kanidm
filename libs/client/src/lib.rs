@@ -24,6 +24,7 @@ use std::os::unix::fs::MetadataExt;
 use std::path::Path;
 use std::time::Duration;
 
+use kanidm_proto::constants::APPLICATION_JSON;
 use kanidm_proto::v1::*;
 use reqwest::header::CONTENT_TYPE;
 pub use reqwest::StatusCode;
@@ -44,7 +45,6 @@ mod service_account;
 mod sync_account;
 mod system;
 
-pub const APPLICATION_JSON: &str = "application/json";
 pub const KOPID: &str = "X-KANIDM-OPID";
 pub const KSESSIONID: &str = "X-KANIDM-AUTH-SESSION-ID";
 
@@ -621,7 +621,7 @@ impl KanidmClient {
             .map_err(|e| ClientError::JsonDecode(e, opid))
     }
 
-    async fn perform_post_request<R: Serialize, T: DeserializeOwned>(
+    pub async fn perform_post_request<R: Serialize, T: DeserializeOwned>(
         &self,
         dest: &str,
         request: R,
