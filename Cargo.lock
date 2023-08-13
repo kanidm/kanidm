@@ -3854,9 +3854,9 @@ dependencies = [
 
 [[package]]
 name = "selinux"
-version = "0.4.1"
+version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6b5ff8f655381fc80f470384da0a461b19b7bf18d685639ccf6df0abd3d2363d"
+checksum = "80b091d970bd4a17a59cb1b7c537786f2bee4292abb5ec89ee3b7f17e9077138"
 dependencies = [
  "bitflags 2.3.3",
  "libc",
