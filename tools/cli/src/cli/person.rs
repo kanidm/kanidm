@@ -16,7 +16,6 @@ use qrcode::render::unicode;
 use qrcode::QrCode;
 use time::format_description::well_known::Rfc3339;
 use time::OffsetDateTime;
-use url::Url;
 use uuid::Uuid;
 
 use crate::webauthn::get_authenticator;
@@ -603,14 +602,7 @@ impl AccountCredential {
                     .await
                 {
                     Ok(cuintent_token) => {
-                        let mut url = match Url::parse(client.get_url()) {
-                            Ok(u) => u,
-                            Err(e) => {
-                                error!("Unable to parse url - {:?}", e);
-                                return;
-                            }
-                        };
-                        url.set_path("/ui/reset");
+                        let mut url = client.make_url("/ui/reset");
                         url.query_pairs_mut()
                             .append_pair("token", cuintent_token.token.as_str());
 

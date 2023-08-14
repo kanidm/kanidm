@@ -618,10 +618,16 @@ impl QueryServerReadV1 {
             .qs_read
             .name_to_uuid(uuid_or_name.as_str())
             .map_err(|e| {
+                // sometimes it comes back as empty which is bad, it's safe to start with `<empty` here
+                // because a valid username/uuid can never start with that and we're only logging it
+                let uuid_or_name_val = match uuid_or_name.is_empty() {
+                    true => "<empty uuid_or_name>",
+                    false => &uuid_or_name,
+                };
                 admin_info!(
                     err = ?e,
                     "Error resolving {} as gidnumber continuing ...",
-                    uuid_or_name
+                    uuid_or_name_val
                 );
                 e
             })?;

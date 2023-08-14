@@ -3,13 +3,16 @@ use kanidm_client::KanidmClient;
 #[kanidmd_testkit::test]
 async fn test_https_manifest(rsclient: KanidmClient) {
     // We need to do manual reqwests here.
-    let addr = rsclient.get_url();
 
     // here we test the /ui/ endpoint which should have the headers
-    let response = match reqwest::get(format!("{}/manifest.webmanifest", &addr)).await {
+    let response = match reqwest::get(rsclient.make_url("/manifest.webmanifest")).await {
         Ok(value) => value,
         Err(error) => {
-            panic!("Failed to query {:?} : {:#?}", addr, error);
+            panic!(
+                "Failed to query {:?} : {:#?}",
+                rsclient.make_url("/manifest.webmanifest"),
+                error
+            );
         }
     };
     eprintln!("response: {:#?}", response);

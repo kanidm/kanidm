@@ -6,7 +6,6 @@ use reqwest::header::CONTENT_TYPE;
 #[kanidmd_testkit::test]
 async fn test_v1_person_patch(rsclient: KanidmClient) {
     // We need to do manual reqwests here.
-    let addr = rsclient.get_url();
     let client = reqwest::ClientBuilder::new()
         .danger_accept_invalid_certs(true)
         .build()
@@ -15,7 +14,7 @@ async fn test_v1_person_patch(rsclient: KanidmClient) {
     let post_body = serde_json::json!({"attrs": { "email" : "crab@example.com"}}).to_string();
 
     let response = match client
-        .patch(format!("{}/v1/person/foo", &addr))
+        .patch(rsclient.make_url("/v1/person/foo"))
         .header(CONTENT_TYPE, APPLICATION_JSON)
         .body(post_body)
         .send()
@@ -23,7 +22,11 @@ async fn test_v1_person_patch(rsclient: KanidmClient) {
     {
         Ok(value) => value,
         Err(error) => {
-            panic!("Failed to query {:?} : {:#?}", addr, error);
+            panic!(
+                "Failed to query {:?} : {:#?}",
+                rsclient.make_url("/v1/person/foo"),
+                error
+            );
         }
     };
     eprintln!("response: {:#?}", response);

@@ -1,3 +1,5 @@
+#![allow(non_upper_case_globals)]
+
 use num_enum::TryFromPrimitive;
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
@@ -293,14 +295,6 @@ pub struct Claim {
     // some may even need requesting.
     // pub expiry: DateTime
 }
-
-/*
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct Application {
-    pub name: String,
-    pub uuid: String,
-}
-*/
 
 #[derive(Debug, Serialize, Deserialize, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 #[serde(rename_all = "lowercase")]

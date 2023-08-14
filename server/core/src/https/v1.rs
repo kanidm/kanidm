@@ -874,7 +874,7 @@ pub async fn account_delete_id_radius(
     json_rest_event_delete_id_attr(state, id, attr, filter, None, kopid).await
 }
 
-pub async fn account_get_id_radius_token(
+pub async fn account_id_radius_token(
     State(state): State<ServerState>,
     Path(id): Path<String>,
     Extension(kopid): Extension<KOpId>,
@@ -893,6 +893,7 @@ pub async fn account_get_id_radius_token(
 }
 
 /// Expects an `AccountUnixExtend` object
+#[instrument(name = "account_post_id_unix", level = "INFO", skip(id, state, kopid))]
 pub async fn account_post_id_unix(
     State(state): State<ServerState>,
     Path(id): Path<String>,
@@ -906,15 +907,46 @@ pub async fn account_post_id_unix(
     to_axum_response(res)
 }
 
-pub async fn account_get_id_unix_token(
+#[instrument(name = "account_id_unix_token", level = "INFO", skip_all)]
+pub async fn account_id_unix_token(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     Path(id): Path<String>,
 ) -> impl IntoResponse {
+    // no point asking for an empty id
+    if id.is_empty() {
+        #[allow(clippy::unwrap_used)]
+        return Response::builder()
+            .status(StatusCode::BAD_REQUEST)
+            .body(Body::empty())
+            .unwrap();
+    }
+
     let res = state
         .qe_r_ref
         .handle_internalunixusertokenread(kopid.uat, id, kopid.eventid)
         .await;
+
+    if let Err(OperationError::InvalidAccountState(val)) = &res {
+        // if they're not a posix user we should just hide them
+        if *val == format!("Missing class: {}", "posixaccount") {
+            #[allow(clippy::unwrap_used)]
+            return Response::builder()
+                .status(StatusCode::NOT_FOUND)
+                .body(Body::empty())
+                .unwrap();
+        }
+    };
+
+    // the was returning a 500 error which wasn't right
+    if let Err(OperationError::InvalidValueState) = &res {
+        #[allow(clippy::unwrap_used)]
+        return Response::builder()
+            .status(StatusCode::NOT_FOUND)
+            .body(Body::empty())
+            .unwrap();
+    };
+
     to_axum_response(res)
 }
 
@@ -1480,8 +1512,8 @@ pub fn router(state: ServerState) -> Router<ServerState> {
         )
         .route(
             "/v1/person/:id/_radius/_token",
-            get(account_get_id_radius_token),
-        ) // TODO: make radius token cacheable
+            get(account_id_radius_token),
+        ) // TODO: make this cacheable
         .route("/v1/person/:id/_unix", post(account_post_id_unix))
         .route(
             "/v1/person/:id/_unix/_credential",
@@ -1551,11 +1583,11 @@ pub fn router(state: ServerState) -> Router<ServerState> {
         )
         .route(
             "/v1/account/:id/_unix/_token",
-            post(account_get_id_unix_token).get(account_get_id_unix_token), // TODO: make this cacheable
+            post(account_id_unix_token).get(account_id_unix_token), // TODO: make this cacheable
         )
         .route(
             "/v1/account/:id/_radius/_token",
-            post(account_get_id_radius_token).get(account_get_id_radius_token), // TODO: make this cacheable
+            post(account_id_radius_token).get(account_id_radius_token), // TODO: make this cacheable
         )
         .route(
             "/v1/account/:id/_ssh_pubkeys",

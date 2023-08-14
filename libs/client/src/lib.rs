@@ -204,7 +204,7 @@ impl KanidmClientBuilder {
         let verify_ca = kcc.verify_ca.unwrap_or(verify_ca);
         let verify_hostnames = kcc.verify_hostnames.unwrap_or(verify_hostnames);
         let ca = match kcc.ca_path {
-            Some(ca_path) => Some(Self::parse_certificate(ca_path.as_str())?),
+            Some(ca_path) => Some(Self::parse_certificate(&ca_path)?),
             None => ca,
         };
 
@@ -271,7 +271,7 @@ impl KanidmClientBuilder {
             ClientError::ConfigParseIssue(format!("{:?}", e))
         })?;
 
-        let config: KanidmClientConfig = toml::from_str(contents.as_str()).map_err(|e| {
+        let config: KanidmClientConfig = toml::from_str(&contents).map_err(|e| {
             error!("{:?}", e);
             ClientError::ConfigParseIssue(format!("{:?}", e))
         })?;
@@ -396,7 +396,7 @@ impl KanidmClientBuilder {
             }
         };
 
-        self.display_warnings(address.as_str());
+        self.display_warnings(&address);
 
         let client_builder = reqwest::Client::builder()
             .user_agent(KanidmClientBuilder::user_agent())
@@ -442,13 +442,49 @@ impl KanidmClientBuilder {
     }
 }
 
+#[test]
+fn test_make_url() {
+    let client: KanidmClient = KanidmClientBuilder::new()
+        .address("https://localhost:8080".to_string())
+        .build()
+        .unwrap();
+    assert_eq!(
+        client.get_url(),
+        Url::parse("https://localhost:8080").unwrap()
+    );
+    assert_eq!(
+        client.make_url("/hello"),
+        Url::parse("https://localhost:8080/hello").unwrap()
+    );
+
+    let client: KanidmClient = KanidmClientBuilder::new()
+        .address("https://localhost:8080/cheese/".to_string())
+        .build()
+        .unwrap();
+    assert_eq!(
+        client.make_url("hello"),
+        Url::parse("https://localhost:8080/cheese/hello").unwrap()
+    );
+}
+
 impl KanidmClient {
     pub fn get_origin(&self) -> &Url {
         &self.origin
     }
 
-    pub fn get_url(&self) -> &str {
-        self.addr.as_str()
+    /// Returns the base URL of the server
+    pub fn get_url(&self) -> Url {
+        #[allow(clippy::panic)]
+        match self.addr.parse::<Url>() {
+            Ok(val) => val,
+            Err(err) => panic!("Failed to parse {} into URL: {:?}", self.addr, err),
+        }
+    }
+
+    /// Get a URL based on adding an endpoint to the base URL of the server
+    pub fn make_url(&self, endpoint: &str) -> Url {
+        #[allow(clippy::expect_used)]
+        self.get_url().join(endpoint).expect("Failed to join URL")
     }
 
     pub async fn set_token(&self, new_token: String) {
@@ -474,6 +510,7 @@ impl KanidmClient {
         Ok(())
     }
 
+    /// Check that we're getting the right version back from the server.
     async fn expect_version(&self, response: &reqwest::Response) {
         let mut guard = self.check_version.lock().await;
 
@@ -508,13 +545,11 @@ impl KanidmClient {
         dest: &str,
         request: &R,
     ) -> Result<T, ClientError> {
-        let dest = format!("{}{}", self.get_url(), dest);
-
         let req_string = serde_json::to_string(request).map_err(ClientError::JsonEncode)?;
 
         let response = self
             .client
-            .post(dest.as_str())
+            .post(self.make_url(dest))
             .body(req_string)
             .header(CONTENT_TYPE, APPLICATION_JSON);
 
@@ -552,13 +587,12 @@ impl KanidmClient {
         dest: &str,
         request: R,
     ) -> Result<T, ClientError> {
-        let dest = format!("{}{}", self.get_url(), dest);
         trace!("perform_auth_post_request connecting to {}", dest);
         let req_string = serde_json::to_string(&request).map_err(ClientError::JsonEncode)?;
 
         let response = self
             .client
-            .post(dest.as_str())
+            .post(self.make_url(dest))
             .body(req_string)
             .header(CONTENT_TYPE, APPLICATION_JSON);
 
@@ -626,12 +660,10 @@ impl KanidmClient {
         dest: &str,
         request: R,
     ) -> Result<T, ClientError> {
-        let dest = format!("{}{}", self.get_url(), dest);
-
         let req_string = serde_json::to_string(&request).map_err(ClientError::JsonEncode)?;
         let response = self
             .client
-            .post(dest.as_str())
+            .post(self.make_url(dest))
             .body(req_string)
             .header(CONTENT_TYPE, APPLICATION_JSON);
 
@@ -678,13 +710,11 @@ impl KanidmClient {
         dest: &str,
         request: R,
     ) -> Result<T, ClientError> {
-        let dest = format!("{}{}", self.get_url(), dest);
-
         let req_string = serde_json::to_string(&request).map_err(ClientError::JsonEncode)?;
 
         let response = self
             .client
-            .put(dest.as_str())
+            .put(self.make_url(dest))
             .header(CONTENT_TYPE, APPLICATION_JSON);
         let response = {
             let tguard = self.bearer_token.read().await;
@@ -734,12 +764,10 @@ impl KanidmClient {
         dest: &str,
         request: R,
     ) -> Result<T, ClientError> {
-        let dest = format!("{}{}", self.get_url(), dest);
-
         let req_string = serde_json::to_string(&request).map_err(ClientError::JsonEncode)?;
         let response = self
             .client
-            .patch(dest.as_str())
+            .patch(self.make_url(dest))
             .body(req_string)
             .header(CONTENT_TYPE, APPLICATION_JSON);
 
@@ -782,10 +810,11 @@ impl KanidmClient {
     }
 
     #[instrument(level = "debug", skip(self))]
-    async fn perform_get_request<T: DeserializeOwned>(&self, dest: &str) -> Result<T, ClientError> {
-        let dest = format!("{}{}", self.get_url(), dest);
-        let response = self.client.get(dest.as_str());
-
+    pub async fn perform_get_request<T: DeserializeOwned>(
+        &self,
+        dest: &str,
+    ) -> Result<T, ClientError> {
+        let response = self.client.get(self.make_url(dest));
         let response = {
             let tguard = self.bearer_token.read().await;
             if let Some(token) = &(*tguard) {
@@ -826,11 +855,9 @@ impl KanidmClient {
     }
 
     async fn perform_delete_request(&self, dest: &str) -> Result<(), ClientError> {
-        let dest = format!("{}{}", self.get_url(), dest);
-
         let response = self
             .client
-            .delete(dest.as_str())
+            .delete(self.make_url(dest))
             .header(CONTENT_TYPE, APPLICATION_JSON);
 
         let response = {
@@ -876,12 +903,10 @@ impl KanidmClient {
         dest: &str,
         request: R,
     ) -> Result<(), ClientError> {
-        let dest = format!("{}{}", self.get_url(), dest);
-
         let req_string = serde_json::to_string(&request).map_err(ClientError::JsonEncode)?;
         let response = self
             .client
-            .delete(dest.as_str())
+            .delete(self.make_url(dest))
             .body(req_string)
             .header(CONTENT_TYPE, APPLICATION_JSON);
 
@@ -1352,10 +1377,7 @@ impl KanidmClient {
     }
 
     pub async fn whoami(&self) -> Result<Option<Entry>, ClientError> {
-        let whoami_dest = [self.addr.as_str(), "/v1/self"].concat();
-        // format!("{}/v1/self", self.addr);
-        debug!("{:?}", whoami_dest);
-        let response = self.client.get(whoami_dest.as_str());
+        let response = self.client.get(self.make_url("/v1/self"));
 
         let response = {
             let tguard = self.bearer_token.read().await;
@@ -1429,15 +1451,14 @@ impl KanidmClient {
     }
 
     pub async fn idm_group_get(&self, id: &str) -> Result<Option<Entry>, ClientError> {
-        self.perform_get_request(format!("/v1/group/{}", id).as_str())
-            .await
+        self.perform_get_request(&format!("/v1/group/{}", id)).await
     }
 
     pub async fn idm_group_get_members(
         &self,
         id: &str,
     ) -> Result<Option<Vec<String>>, ClientError> {
-        self.perform_get_request(format!("/v1/group/{}/_attr/member", id).as_str())
+        self.perform_get_request(&format!("/v1/group/{}/_attr/member", id))
             .await
     }
 
@@ -1457,7 +1478,7 @@ impl KanidmClient {
         members: &[&str],
     ) -> Result<(), ClientError> {
         let m: Vec<_> = members.iter().map(|v| (*v).to_string()).collect();
-        self.perform_put_request(format!("/v1/group/{}/_attr/member", id).as_str(), m)
+        self.perform_put_request(&format!("/v1/group/{}/_attr/member", id), m)
             .await
     }
 
@@ -1467,7 +1488,7 @@ impl KanidmClient {
         members: &[&str],
     ) -> Result<(), ClientError> {
         let m: Vec<_> = members.iter().map(|v| (*v).to_string()).collect();
-        self.perform_post_request(["/v1/group/", id, "/_attr/member"].concat().as_str(), m)
+        self.perform_post_request(&format!("/v1/group/{}/_attr/member", id), m)
             .await
     }
 
@@ -1477,24 +1498,19 @@ impl KanidmClient {
         members: &[&str],
     ) -> Result<(), ClientError> {
         debug!(
-            "{}",
-            &[
-                "Asked to remove members ",
-                &members.join(","),
-                " from ",
-                group
-            ]
-            .concat()
+            "Asked to remove members {} from {}",
+            &members.join(","),
+            group
         );
         self.perform_delete_request_with_body(
-            ["/v1/group/", group, "/_attr/member"].concat().as_str(),
+            &format!("/v1/group/{}/_attr/member", group),
             &members,
         )
         .await
     }
 
     pub async fn idm_group_purge_members(&self, id: &str) -> Result<(), ClientError> {
-        self.perform_delete_request(format!("/v1/group/{}/_attr/member", id).as_str())
+        self.perform_delete_request(&format!("/v1/group/{}/_attr/member", id))
             .await
     }
 
@@ -1504,26 +1520,24 @@ impl KanidmClient {
         gidnumber: Option<u32>,
     ) -> Result<(), ClientError> {
         let gx = GroupUnixExtend { gidnumber };
-        self.perform_post_request(format!("/v1/group/{}/_unix", id).as_str(), gx)
+        self.perform_post_request(&format!("/v1/group/{}/_unix", id), gx)
             .await
     }
 
     pub async fn idm_group_unix_token_get(&self, id: &str) -> Result<UnixGroupToken, ClientError> {
-        self.perform_get_request(["/v1/group/", id, "/_unix/_token"].concat().as_str())
+        self.perform_get_request(&format!("/v1/group/{}/_unix/_token", id))
             .await
     }
 
     pub async fn idm_group_delete(&self, id: &str) -> Result<(), ClientError> {
-        self.perform_delete_request(["/v1/group/", id].concat().as_str())
+        self.perform_delete_request(&format!("/v1/group/{}", id))
             .await
     }
 
     // ==== ACCOUNTS
 
     pub async fn idm_account_unix_token_get(&self, id: &str) -> Result<UnixUserToken, ClientError> {
-        // Format doesn't work in async
-        // format!("/v1/account/{}/_unix/_token", id).as_str()
-        self.perform_get_request(["/v1/account/", id, "/_unix/_token"].concat().as_str())
+        self.perform_get_request(&format!("/v1/account/{}/_unix/_token", id))
             .await
     }
 
@@ -1535,15 +1549,14 @@ impl KanidmClient {
         ttl: Option<u32>,
     ) -> Result<CUIntentToken, ClientError> {
         if let Some(ttl) = ttl {
-            self.perform_get_request(
-                format!("/v1/person/{}/_credential/_update_intent?ttl={}", id, ttl).as_str(),
-            )
+            self.perform_get_request(&format!(
+                "/v1/person/{}/_credential/_update_intent?ttl={}",
+                id, ttl
+            ))
             .await
         } else {
-            self.perform_get_request(
-                format!("/v1/person/{}/_credential/_update_intent", id).as_str(),
-            )
-            .await
+            self.perform_get_request(&format!("/v1/person/{}/_credential/_update_intent", id))
+                .await
         }
     }
 
@@ -1551,7 +1564,7 @@ impl KanidmClient {
         &self,
         id: &str,
     ) -> Result<(CUSessionToken, CUStatus), ClientError> {
-        self.perform_get_request(format!("/v1/person/{}/_credential/_update", id).as_str())
+        self.perform_get_request(&format!("/v1/person/{}/_credential/_update", id))
             .await
     }
 
@@ -1692,7 +1705,7 @@ impl KanidmClient {
         &self,
         id: &str,
     ) -> Result<RadiusAuthToken, ClientError> {
-        self.perform_get_request(format!("/v1/account/{}/_radius/_token", id).as_str())
+        self.perform_get_request(&format!("/v1/account/{}/_radius/_token", id))
             .await
     }
 
@@ -1704,7 +1717,7 @@ impl KanidmClient {
         let req = SingleStringRequest {
             value: cred.to_string(),
         };
-        self.perform_post_request(["/v1/account/", id, "/_unix/_auth"].concat().as_str(), req)
+        self.perform_post_request(&format!("/v1/account/{}/_unix/_auth", id), req)
             .await
     }
 
@@ -1714,12 +1727,12 @@ impl KanidmClient {
         id: &str,
         tag: &str,
     ) -> Result<Option<String>, ClientError> {
-        self.perform_get_request(format!("/v1/account/{}/_ssh_pubkeys/{}", id, tag).as_str())
+        self.perform_get_request(&format!("/v1/account/{}/_ssh_pubkeys/{}", id, tag))
             .await
     }
 
     pub async fn idm_account_get_ssh_pubkeys(&self, id: &str) -> Result<Vec<String>, ClientError> {
-        self.perform_get_request(format!("/v1/account/{}/_ssh_pubkeys", id).as_str())
+        self.perform_get_request(&format!("/v1/account/{}/_ssh_pubkeys", id))
             .await
     }
 
@@ -1783,7 +1796,7 @@ impl KanidmClient {
         &self,
         id: &str,
     ) -> Result<Option<Entry>, ClientError> {
-        self.perform_get_request(format!("/v1/schema/attributetype/{}", id).as_str())
+        self.perform_get_request(&format!("/v1/schema/attributetype/{}", id))
             .await
     }
 
@@ -1792,7 +1805,7 @@ impl KanidmClient {
     }
 
     pub async fn idm_schema_classtype_get(&self, id: &str) -> Result<Option<Entry>, ClientError> {
-        self.perform_get_request(format!("/v1/schema/classtype/{}", id).as_str())
+        self.perform_get_request(&format!("/v1/schema/classtype/{}", id))
             .await
     }
 
@@ -1802,12 +1815,12 @@ impl KanidmClient {
     }
 
     pub async fn recycle_bin_get(&self, id: &str) -> Result<Option<Entry>, ClientError> {
-        self.perform_get_request(format!("/v1/recycle_bin/{}", id).as_str())
+        self.perform_get_request(&format!("/v1/recycle_bin/{}", id))
             .await
     }
 
     pub async fn recycle_bin_revive(&self, id: &str) -> Result<(), ClientError> {
-        self.perform_post_request(format!("/v1/recycle_bin/{}/_revive", id).as_str(), ())
+        self.perform_post_request(&format!("/v1/recycle_bin/{}/_revive", id), ())
             .await
     }
 }

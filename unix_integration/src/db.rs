@@ -78,11 +78,19 @@ pub struct DbTxn<'a> {
     require_tpm: Option<&'a tpm::TpmConfig>,
 }
 
+#[derive(Debug)]
+/// Errors coming back from the `Db` struct
+pub enum DbError {
+    Sqlite,
+    Tpm,
+}
+
 impl Db {
-    pub fn new(path: &str, tpm_policy: &TpmPolicy) -> Result<Self, ()> {
+    pub fn new(path: &str, tpm_policy: &TpmPolicy) -> Result<Self, DbError> {
         let before = unsafe { umask(0o0027) };
         let conn = Connection::open(path).map_err(|e| {
             error!(err = ?e, "rusqulite error");
+            DbError::Sqlite
         })?;
         let _ = unsafe { umask(before) };
         // We only build a single thread. If we need more than one, we'll
@@ -96,7 +104,9 @@ impl Db {
         let require_tpm = match tpm_policy {
             TpmPolicy::Ignore => None,
             TpmPolicy::IfPossible(tcti_str) => Db::tpm_setup_context(tcti_str, &conn).ok(),
-            TpmPolicy::Required(tcti_str) => Some(Db::tpm_setup_context(tcti_str, &conn)?),
+            TpmPolicy::Required(tcti_str) => {
+                Some(Db::tpm_setup_context(tcti_str, &conn).map_err(|_| DbError::Tpm)?)
+            }
         };
 
         Ok(Db {
@@ -784,16 +794,19 @@ impl<'a> Drop for DbTxn<'a> {
 
 #[cfg(not(feature = "tpm"))]
 pub(crate) mod tpm {
-    use super::Db;
+    use super::{Db, DbError};
 
     use rusqlite::Connection;
 
     pub struct TpmConfig {}
 
     impl Db {
-        pub fn tpm_setup_context(_tcti_str: &str, _conn: &Connection) -> Result<TpmConfig, ()> {
+        pub fn tpm_setup_context(
+            _tcti_str: &str,
+            _conn: &Connection,
+        ) -> Result<TpmConfig, DbError> {
             warn!("tpm feature is not available in this build");
-            Err(())
+            Err(DbError::Tpm)
         }
     }
 }
