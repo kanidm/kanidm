@@ -16,5 +16,7 @@ fi
 zypper mr -k repo-oss
 zypper mr -k repo-non-oss
 zypper mr -k repo-update
+# force the refresh because zypper is too silly to work out it needs to do it itself
 zypper ref --force
+# show which mirror is failing if an error occurs (otherwise zypper shows the wrong mirror url)
 zypper -v dup -y
