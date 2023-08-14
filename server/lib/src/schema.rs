@@ -300,6 +300,52 @@ impl SchemaAttribute {
     }
 }
 
+impl From<SchemaAttribute> for EntryInitNew {
+    fn from(value: SchemaAttribute) -> Self {
+        let mut entry = EntryInitNew::new();
+
+        #[allow(clippy::expect_used)]
+        entry.set_ava(
+            "attributename",
+            vec![Value::new_iutf8(&value.name)].into_iter(),
+        );
+        entry.add_ava("multivalue", Value::Bool(value.multivalue));
+        // syntax
+        entry.set_ava("syntax", vec![Value::Syntax(value.syntax)]);
+        entry.set_ava("unique", vec![Value::Bool(value.unique)].into_iter());
+        // index
+        entry.set_ava("index", value.index.into_iter().map(Value::Index));
+
+        // class
+        entry.set_ava(
+            "class",
+            vec![
+                CLASS_OBJECT.clone(),
+                CLASS_SYSTEM.clone(),
+                CLASS_ATTRIBUTETYPE.clone(),
+            ],
+        );
+        // description
+        entry.set_ava(
+            "description",
+            vec![Value::new_utf8s(&value.description)].into_iter(),
+        );
+        // unique
+        // multivalue
+
+        // sync_allowed
+        entry.set_ava(
+            "sync_allowed",
+            vec![Value::Bool(value.sync_allowed)].into_iter(),
+        );
+
+        // uid
+        entry.set_ava("uuid", vec![Value::Uuid(value.uuid)].into_iter());
+
+        entry
+    }
+}
+
 /// An item representing a class and the rules for that class. These rules enforce that an
 /// [`Entry`]'s avas conform to a set of requirements, giving structure to an entry about
 /// what avas must or may exist. The kanidm project provides attributes in `systemmust` and
@@ -432,6 +478,71 @@ impl SchemaClass {
             .chain(self.may.iter())
             .chain(self.systemmust.iter())
             .chain(self.must.iter())
+    }
+}
+
+impl From<SchemaClass> for EntryInitNew {
+    fn from(value: SchemaClass) -> Self {
+        let mut entry = EntryInitNew::new();
+
+        #[allow(clippy::expect_used)]
+        entry.set_ava("classname", vec![Value::new_iutf8(&value.name)].into_iter());
+
+        // class
+        entry.set_ava(
+            "class",
+            vec![
+                CLASS_OBJECT.clone(),
+                CLASS_SYSTEM.clone(),
+                CLASS_CLASSTYPE.clone(),
+            ],
+        );
+
+        // description
+        entry.set_ava(
+            "description",
+            vec![Value::new_utf8s(&value.description)].into_iter(),
+        );
+
+        // sync_allowed
+        entry.set_ava(
+            "sync_allowed",
+            vec![Value::Bool(value.sync_allowed)].into_iter(),
+        );
+
+        // uid
+        entry.set_ava("uuid", vec![Value::Uuid(value.uuid)].into_iter());
+
+        // systemmay
+        if !value.systemmay.is_empty() {
+            entry.set_ava(
+                "systemmay",
+                value.systemmay.iter().map(|s| Value::new_iutf8(s)),
+            );
+        }
+        // systemexcludes
+        if !value.systemexcludes.is_empty() {
+            entry.set_ava(
+                "systemexcludes",
+                value.systemexcludes.iter().map(|s| Value::new_iutf8(s)),
+            );
+        }
+        // systemmust
+        if !value.systemmust.is_empty() {
+            entry.set_ava(
+                "systemmust",
+                value.systemmust.iter().map(|s| Value::new_iutf8(s)),
+            );
+        }
+        // systemsupplements
+        if !value.systemsupplements.is_empty() {
+            entry.set_ava(
+                "systemsupplements",
+                value.systemsupplements.iter().map(|s| Value::new_iutf8(s)),
+            );
+        }
+
+        entry
     }
 }
 
