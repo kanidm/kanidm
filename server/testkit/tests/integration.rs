@@ -82,7 +82,7 @@ async fn test_webdriver_user_login(rsclient: kanidm_client::KanidmClient) {
 
     handle_error!(
         c,
-        c.goto(rsclient.get_url().to_string()).await,
+        c.goto(&rsclient.get_url().into()).await,
         "Couldn't get URL"
     );
 
