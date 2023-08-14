@@ -53,6 +53,41 @@ struct RunOpt {
     pub profile_path: PathBuf,
 }
 
+#[derive(Debug, Parser)]
+/// Configuration options
+struct ConfigOpt {
+    #[clap(flatten)]
+    pub copt: CommonOpt,
+    #[clap(value_parser, short, long)]
+    /// Update the admin password
+    pub admin_password: Option<String>,
+    #[clap(value_parser, short, long)]
+    /// Update the Kanidm URI
+    pub kanidm_uri: Option<String>,
+    #[clap(value_parser, short, long)]
+    /// Update the LDAP URI
+    pub ldap_uri: Option<String>,
+    #[clap(value_parser, short = 'D', long)]
+    /// Update the LDAP base DN
+    pub ldap_base_dn: Option<String>,
+
+    #[clap(value_parser, short = 'D', long)]
+    /// Set the configuration name
+    pub name: Option<String>,
+
+    #[clap(value_parser, short, long)]
+    /// The data file path to update (or create)
+    pub data_file: Option<String>,
+
+    #[clap(value_parser, short, long)]
+    /// The place we'll drop the results
+    pub results: Option<PathBuf>,
+
+    #[clap(value_parser, short, long)]
+    /// The configuration file path to update (or create)
+    pub profile: PathBuf,
+}
+
 #[derive(Debug, Subcommand, Clone)]
 /// The target to run against
 pub(crate) enum TargetOpt {
@@ -150,5 +185,8 @@ enum OrcaOpt {
     Run(RunOpt),
     #[clap(name = "version")]
     /// Print version info and exit
-    Version(CommonOpt)
+    Version(CommonOpt),
+    #[clap(name = "configure")]
+    /// Update a config file
+    Configure(ConfigOpt),
 }
