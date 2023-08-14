@@ -1,12 +1,7 @@
 ARG BASE_IMAGE=opensuse/tumbleweed:latest
 FROM ${BASE_IMAGE} AS repos
-RUN \
-    --mount=type=cache,id=zypp,target=/var/cache/zypp \
-    zypper mr -k repo-oss; \
-    zypper mr -k repo-non-oss; \
-    zypper mr -k repo-update; \
-    zypper ref --force; \
-    zypper -v dup -y
+ADD ../scripts/zypper_fixing.sh /zypper_fixing.sh
+RUN --mount=type=cache,id=zypp,target=/var/cache/zypp /zypper_fixing.sh
 
 # ======================
 FROM repos
@@ -16,25 +11,25 @@ ARG RADIUS_USER=radiusd
 RUN \
     --mount=type=cache,id=zypp,target=/var/cache/zypp \
     zypper install -y \
-    freeradius-client \
-    freeradius-server \
-    freeradius-server-python3 \
-    freeradius-server-utils \
-    hostname \
-    python3 \
-    python3-devel \
-    python3-pip \
-    timezone \
-    iproute2 \
-    iputils \
-    openssl \
-    curl
+        freeradius-client \
+        freeradius-server \
+        freeradius-server-python3 \
+        freeradius-server-utils \
+        hostname \
+        python3 \
+        python3-devel \
+        python3-pip \
+        timezone \
+        iproute2 \
+        iputils \
+        openssl \
+        curl
 
 # Don't put in the TZ at build time - it needs to be bind mounted at runtime
 # else we are forcing things on people.
 # RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
-ADD  rlm_python/mods-available/ /etc/raddb/mods-available/
+ADD rlm_python/mods-available/ /etc/raddb/mods-available/
 COPY rlm_python/sites-available/ /etc/raddb/sites-available/
 
 # Set a working directory of /etc/raddb

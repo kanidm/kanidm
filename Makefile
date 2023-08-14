@@ -9,6 +9,7 @@ CONTAINER_TOOL ?= docker
 BUILDKIT_PROGRESS ?= plain
 TESTS ?=
 BOOK_VERSION ?= master
+GIT_COMMIT := $(shell git rev-parse HEAD)
 
 .DEFAULT: help
 .PHONY: help
@@ -32,6 +33,8 @@ buildx/kanidmd:
 		--progress $(BUILDKIT_PROGRESS) \
 		--build-arg "KANIDM_BUILD_PROFILE=container_generic" \
 		--build-arg "KANIDM_FEATURES=" \
+		--label "com.kanidm.git-commit=$(GIT_COMMIT)" \
+		--label "com.kanidm.version=$(IMAGE_EXT_VERSION)" \
 		$(CONTAINER_BUILD_ARGS) .
 
 .PHONY: buildx/kanidm_tools
@@ -45,6 +48,8 @@ buildx/kanidm_tools:
 		--progress $(BUILDKIT_PROGRESS) \
 		--build-arg "KANIDM_BUILD_PROFILE=container_generic" \
 		--build-arg "KANIDM_FEATURES=" \
+		--label "com.kanidm.git-commit=$(GIT_COMMIT)" \
+		--label "com.kanidm.version=$(IMAGE_EXT_VERSION)" \
 		$(CONTAINER_BUILD_ARGS) .
 
 .PHONY: buildx/radiusd
@@ -54,6 +59,8 @@ buildx/radiusd:
 		--pull --push --platform $(IMAGE_ARCH) \
 		-f rlm_python/Dockerfile \
 		--progress $(BUILDKIT_PROGRESS) \
+		--label "com.kanidm.git-commit=$(GIT_COMMIT)" \
+		--label "com.kanidm.version=$(IMAGE_EXT_VERSION)" \
 		-t $(IMAGE_BASE)/radius:$(IMAGE_VERSION) \
 		-t $(IMAGE_BASE)/radius:$(IMAGE_EXT_VERSION) .
 
@@ -65,17 +72,19 @@ build/kanidmd:	## Build the kanidmd docker image locally
 build/kanidmd:
 	@$(CONTAINER_TOOL) build $(CONTAINER_TOOL_ARGS) -f server/Dockerfile \
 		-t $(IMAGE_BASE)/server:$(IMAGE_VERSION) \
-		--platform $(IMAGE_ARCH) \
 		--build-arg "KANIDM_BUILD_PROFILE=container_generic" \
 		--build-arg "KANIDM_FEATURES=" \
+		--label "com.kanidm.git-commit=$(GIT_COMMIT)" \
+		--label "com.kanidm.version=$(IMAGE_EXT_VERSION)" \
 		$(CONTAINER_BUILD_ARGS) .
 
 .PHONY: build/radiusd
 build/radiusd:	## Build the radiusd docker image locally
 build/radiusd:
 	@$(CONTAINER_TOOL) build $(CONTAINER_TOOL_ARGS) \
-		--platform $(IMAGE_ARCH) \
 		-f rlm_python/Dockerfile \
+		--label "com.kanidm.git-commit=$(GIT_COMMIT)" \
+		--label "com.kanidm.version=$(IMAGE_EXT_VERSION)" \
 		-t $(IMAGE_BASE)/radius:$(IMAGE_VERSION) .
 
 .PHONY: build
@@ -88,6 +97,8 @@ test/kanidmd:
 		$(CONTAINER_TOOL_ARGS) -f server/Dockerfile \
 		--target builder \
 		-t $(IMAGE_BASE)/server:$(IMAGE_VERSION)-builder \
+		--label "com.kanidm.git-commit=$(GIT_COMMIT)" \
+		--label "com.kanidm.version=$(IMAGE_EXT_VERSION)" \
 		$(CONTAINER_BUILD_ARGS) .
 	@$(CONTAINER_TOOL) run --rm $(IMAGE_BASE)/server:$(IMAGE_VERSION)-builder cargo test
 
