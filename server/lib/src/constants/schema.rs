@@ -13,7 +13,7 @@ macro_rules! attrstring_vec {
     ($input:expr) => {
         $input
             .into_iter()
-            .map(|s| AttrString::from(s))
+            .map(|s| s.into())
             .collect::<Vec<AttrString>>()
     };
 }
@@ -22,7 +22,7 @@ lazy_static!(
 
 pub static ref SCHEMA_ATTR_DISPLAYNAME: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_DISPLAYNAME,
-    name: AttrString::from("displayname"),
+    name: "displayname".into(),
     description: "The publicly visible display name of this person".to_string(),
 
     index: vec![IndexType::Equality],
@@ -33,7 +33,7 @@ pub static ref SCHEMA_ATTR_DISPLAYNAME: SchemaAttribute = SchemaAttribute {
 
 pub static ref SCHEMA_ATTR_MAIL: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_MAIL,
-    name: AttrString::from("mail"),
+    name: "mail".into(),
     description: "mail addresses of the object".to_string(),
 
     index: vec![IndexType::Equality],
@@ -46,7 +46,7 @@ pub static ref SCHEMA_ATTR_MAIL: SchemaAttribute = SchemaAttribute {
 
 pub static ref SCHEMA_ATTR_SSH_PUBLICKEY: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_SSH_PUBLICKEY,
-    name: AttrString::from("ssh_publickey"),
+    name: "ssh_publickey".into(),
     description: "SSH public keys of the object".to_string(),
 
     multivalue: true,
@@ -57,7 +57,7 @@ pub static ref SCHEMA_ATTR_SSH_PUBLICKEY: SchemaAttribute = SchemaAttribute {
 
 pub static ref SCHEMA_ATTR_PRIMARY_CREDENTIAL: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_PRIMARY_CREDENTIAL,
-    name: AttrString::from("primary_credential"),
+    name: "primary_credential".into(),
     description: "Primary credential material of the account for authentication interactively.to_string().".to_string(),
 
     index: vec![IndexType::Presence],
@@ -67,7 +67,7 @@ pub static ref SCHEMA_ATTR_PRIMARY_CREDENTIAL: SchemaAttribute = SchemaAttribute
 };
 pub static ref SCHEMA_ATTR_LEGALNAME: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_LEGALNAME,
-    name: AttrString::from("legalname"),
+    name: "legalname".into(),
     description: "The private and sensitive legal name of this person".to_string(),
 
     index: vec![IndexType::Equality],
@@ -78,7 +78,7 @@ pub static ref SCHEMA_ATTR_LEGALNAME: SchemaAttribute = SchemaAttribute {
 
 pub static ref SCHEMA_ATTR_NAME_HISTORY: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_NAME_HISTORY,
-    name: AttrString::from("name_history"),
+    name: "name_history".into(),
     description: "The history of names that a person has had".to_string(),
 
     index: vec![IndexType::Equality],
@@ -90,7 +90,7 @@ pub static ref SCHEMA_ATTR_NAME_HISTORY: SchemaAttribute = SchemaAttribute {
 
 pub static ref SCHEMA_ATTR_RADIUS_SECRET: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_RADIUS_SECRET,
-    name: AttrString::from("radius_secret"),
+    name: "radius_secret".into(),
     description: "The accounts generated radius secret for device network authentication".to_string(),
 
     sync_allowed: true,
@@ -100,7 +100,7 @@ pub static ref SCHEMA_ATTR_RADIUS_SECRET: SchemaAttribute = SchemaAttribute {
 
 pub static ref SCHEMA_ATTR_DOMAIN_NAME: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_DOMAIN_NAME,
-    name: AttrString::from("domain_name"),
+    name: "domain_name".into(),
     description: "The domain's DNS name for webauthn and SPN generation purposes.to_string().".to_string(),
 
     index: vec![IndexType::Equality, IndexType::Presence],
@@ -111,7 +111,7 @@ pub static ref SCHEMA_ATTR_DOMAIN_NAME: SchemaAttribute = SchemaAttribute {
 
 pub static ref SCHEMA_ATTR_DOMAIN_LDAP_BASEDN: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_DOMAIN_LDAP_BASEDN,
-    name: AttrString::from("domain_ldap_basedn"),
+    name: "domain_ldap_basedn".into(),
     description:
         "The domain's optional ldap basedn. If unset defaults to domain components of domain name.".to_string(),
 
@@ -122,7 +122,7 @@ pub static ref SCHEMA_ATTR_DOMAIN_LDAP_BASEDN: SchemaAttribute = SchemaAttribute
 
 pub static ref SCHEMA_ATTR_DOMAIN_DISPLAY_NAME: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_DOMAIN_DISPLAY_NAME,
-    name: AttrString::from("domain_display_name"),
+    name: "domain_display_name".into(),
     description: "The user-facing display name of the Kanidm domain.to_string().".to_string(),
 
     index: vec![IndexType::Equality],
@@ -132,7 +132,7 @@ pub static ref SCHEMA_ATTR_DOMAIN_DISPLAY_NAME: SchemaAttribute = SchemaAttribut
 
 pub static ref SCHEMA_ATTR_DOMAIN_UUID: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_DOMAIN_UUID,
-    name: AttrString::from("domain_uuid"),
+    name: "domain_uuid".into(),
     description: "The domain's uuid, used in CSN and trust relationships.to_string().".to_string(),
 
     index: vec![IndexType::Equality],
@@ -142,7 +142,7 @@ pub static ref SCHEMA_ATTR_DOMAIN_UUID: SchemaAttribute = SchemaAttribute {
 };
 pub static ref SCHEMA_ATTR_DOMAIN_SSID: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_DOMAIN_SSID,
-    name: AttrString::from("domain_ssid"),
+    name: "domain_ssid".into(),
     description: "The domains site-wide SSID for device autoconfiguration of wireless".to_string(),
 
     index: vec![IndexType::Equality],
@@ -153,7 +153,7 @@ pub static ref SCHEMA_ATTR_DOMAIN_SSID: SchemaAttribute = SchemaAttribute {
 
 pub static ref SCHEMA_ATTR_DOMAIN_TOKEN_KEY: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_DOMAIN_TOKEN_KEY,
-    name: AttrString::from("domain_token_key"),
+    name: "domain_token_key".into(),
     description: "The domain token encryption private key (NOT USED).to_string().".to_string(),
 
     syntax: SyntaxType::SecretUtf8String,
@@ -162,7 +162,7 @@ pub static ref SCHEMA_ATTR_DOMAIN_TOKEN_KEY: SchemaAttribute = SchemaAttribute {
 
 pub static ref SCHEMA_ATTR_FERNET_PRIVATE_KEY_STR: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_FERNET_PRIVATE_KEY_STR,
-    name: AttrString::from("fernet_private_key_str"),
+    name: "fernet_private_key_str".into(),
     description: "The token encryption private key.to_string().".to_string(),
 
     syntax: SyntaxType::SecretUtf8String,
@@ -171,7 +171,7 @@ pub static ref SCHEMA_ATTR_FERNET_PRIVATE_KEY_STR: SchemaAttribute = SchemaAttri
 
 pub static ref SCHEMA_ATTR_GIDNUMBER: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_GIDNUMBER,
-    name: AttrString::from("gidnumber"),
+    name: "gidnumber".into(),
     description: "The groupid (uid) number of a group or account.to_string(). This is the same value as the UID number on posix accounts for security reasons.".to_string(),
 
     index: vec![IndexType::Equality],
@@ -183,7 +183,7 @@ pub static ref SCHEMA_ATTR_GIDNUMBER: SchemaAttribute = SchemaAttribute {
 
 pub static ref SCHEMA_ATTR_BADLIST_PASSWORD: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_BADLIST_PASSWORD,
-    name: AttrString::from("badlist_password"),
+    name: "badlist_password".into(),
     description: "A password that is badlisted meaning that it can not be set as a valid password by any user account.to_string().".to_string(),
 
     multivalue: true,
@@ -193,7 +193,7 @@ pub static ref SCHEMA_ATTR_BADLIST_PASSWORD: SchemaAttribute = SchemaAttribute {
 
 pub static ref SCHEMA_ATTR_LOGINSHELL: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_LOGINSHELL,
-    name: AttrString::from("loginshell"),
+    name: "loginshell".into(),
     description: "A POSIX user's UNIX login shell".to_string(),
 
     sync_allowed: true,
@@ -203,7 +203,7 @@ pub static ref SCHEMA_ATTR_LOGINSHELL: SchemaAttribute = SchemaAttribute {
 
 pub static ref SCHEMA_ATTR_UNIX_PASSWORD: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_UNIX_PASSWORD,
-    name: AttrString::from("unix_password"),
+    name: "unix_password".into(),
     description: "A POSIX user's UNIX login password.to_string().".to_string(),
 
     index: vec![IndexType::Presence],
@@ -213,7 +213,7 @@ pub static ref SCHEMA_ATTR_UNIX_PASSWORD: SchemaAttribute = SchemaAttribute {
 
 pub static ref SCHEMA_ATTR_NSUNIQUEID: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_NSUNIQUEID,
-    name: AttrString::from("nsuniqueid"),
+    name: "nsuniqueid".into(),
     description: "A unique id compatibility for 389-ds/dsee".to_string(),
 
     index: vec![IndexType::Equality],
@@ -225,7 +225,7 @@ pub static ref SCHEMA_ATTR_NSUNIQUEID: SchemaAttribute = SchemaAttribute {
 
 pub static ref SCHEMA_ATTR_ACCOUNT_EXPIRE: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_ACCOUNT_EXPIRE,
-    name: AttrString::from("account_expire"),
+    name: "account_expire".into(),
     description: "The datetime after which this accounnt no longer may authenticate.to_string().".to_string(),
 
     sync_allowed: true,
@@ -235,7 +235,7 @@ pub static ref SCHEMA_ATTR_ACCOUNT_EXPIRE: SchemaAttribute = SchemaAttribute {
 
 pub static ref SCHEMA_ATTR_ACCOUNT_VALID_FROM: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_ACCOUNT_VALID_FROM,
-    name: AttrString::from("account_valid_from"),
+    name: "account_valid_from".into(),
     description: "The datetime after which this account may commence authenticating.to_string().".to_string(),
 
     sync_allowed: true,
@@ -245,7 +245,7 @@ pub static ref SCHEMA_ATTR_ACCOUNT_VALID_FROM: SchemaAttribute = SchemaAttribute
 
 pub static ref SCHEMA_ATTR_OAUTH2_RS_NAME: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_OAUTH2_RS_NAME,
-    name: AttrString::from("oauth2_rs_name"),
+    name: "oauth2_rs_name".into(),
     description: "The unique name of an external Oauth2 resource".to_string(),
 
     index: vec![IndexType::Equality],
@@ -256,7 +256,7 @@ pub static ref SCHEMA_ATTR_OAUTH2_RS_NAME: SchemaAttribute = SchemaAttribute {
 
 pub static ref SCHEMA_ATTR_OAUTH2_RS_ORIGIN: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_OAUTH2_RS_ORIGIN,
-    name: AttrString::from("oauth2_rs_origin"),
+    name: "oauth2_rs_origin".into(),
     description: "The origin domain of an oauth2 resource server".to_string(),
 
     syntax: SyntaxType::Url,
@@ -265,7 +265,7 @@ pub static ref SCHEMA_ATTR_OAUTH2_RS_ORIGIN: SchemaAttribute = SchemaAttribute {
 
 pub static ref SCHEMA_ATTR_OAUTH2_RS_ORIGIN_LANDING: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_OAUTH2_RS_ORIGIN_LANDING,
-    name: AttrString::from("oauth2_rs_origin_landing"),
+    name: "oauth2_rs_origin_landing".into(),
     description: "The landing page of an RS, that will automatically trigger the auth process.to_string().".to_string(),
 
     syntax: SyntaxType::Url,
@@ -274,7 +274,7 @@ pub static ref SCHEMA_ATTR_OAUTH2_RS_ORIGIN_LANDING: SchemaAttribute = SchemaAtt
 
 pub static ref SCHEMA_ATTR_OAUTH2_RS_SCOPE_MAP: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_OAUTH2_RS_SCOPE_MAP,
-    name: AttrString::from("oauth2_rs_scope_map"),
+    name: "oauth2_rs_scope_map".into(),
     description:
         "A reference to a group mapped to scopes for the associated oauth2 resource server".to_string(),
 
@@ -286,7 +286,7 @@ pub static ref SCHEMA_ATTR_OAUTH2_RS_SCOPE_MAP: SchemaAttribute = SchemaAttribut
 
 pub static ref SCHEMA_ATTR_OAUTH2_RS_SUP_SCOPE_MAP: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_OAUTH2_RS_SUP_SCOPE_MAP,
-    name: AttrString::from("oauth2_rs_sup_scope_map"),
+    name: "oauth2_rs_sup_scope_map".into(),
     description:
         "A reference to a group mapped to scopes for the associated oauth2 resource server".to_string(),
 
@@ -298,7 +298,7 @@ pub static ref SCHEMA_ATTR_OAUTH2_RS_SUP_SCOPE_MAP: SchemaAttribute = SchemaAttr
 
 pub static ref SCHEMA_ATTR_OAUTH2_RS_BASIC_SECRET: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_OAUTH2_RS_BASIC_SECRET,
-    name: AttrString::from("oauth2_rs_basic_secret"),
+    name: "oauth2_rs_basic_secret".into(),
     description: "When using oauth2 basic authentication, the secret string of the resource server".to_string(),
 
     syntax: SyntaxType::SecretUtf8String,
@@ -307,7 +307,7 @@ pub static ref SCHEMA_ATTR_OAUTH2_RS_BASIC_SECRET: SchemaAttribute = SchemaAttri
 
 pub static ref SCHEMA_ATTR_OAUTH2_RS_TOKEN_KEY: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_OAUTH2_RS_TOKEN_KEY,
-    name: AttrString::from("oauth2_rs_token_key"),
+    name: "oauth2_rs_token_key".into(),
     description: "An oauth2 resource servers unique token signing key".to_string(),
 
     syntax: SyntaxType::SecretUtf8String,
@@ -316,7 +316,7 @@ pub static ref SCHEMA_ATTR_OAUTH2_RS_TOKEN_KEY: SchemaAttribute = SchemaAttribut
 
 pub static ref SCHEMA_ATTR_OAUTH2_RS_IMPLICIT_SCOPES: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_OAUTH2_RS_IMPLICIT_SCOPES,
-    name: AttrString::from("oauth2_rs_implicit_scopes"),
+    name: "oauth2_rs_implicit_scopes".into(),
     description: "An oauth2 resource servers scopes that are implicitly granted to all users".to_string(),
 
     multivalue: true,
@@ -326,7 +326,7 @@ pub static ref SCHEMA_ATTR_OAUTH2_RS_IMPLICIT_SCOPES: SchemaAttribute = SchemaAt
 
 pub static ref SCHEMA_ATTR_OAUTH2_CONSENT_SCOPE_MAP: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_OAUTH2_CONSENT_SCOPE_MAP,
-    name: AttrString::from("oauth2_consent_scope_map"),
+    name: "oauth2_consent_scope_map".into(),
     description: "A set of scopes mapped from a relying server to a user, where the user has previously consented to the following. If changed or deleted, consent will be re-sought.".to_string(),
 
     index: vec![IndexType::Equality],
@@ -337,7 +337,7 @@ pub static ref SCHEMA_ATTR_OAUTH2_CONSENT_SCOPE_MAP: SchemaAttribute = SchemaAtt
 
 pub static ref SCHEMA_ATTR_ES256_PRIVATE_KEY_DER: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_ES256_PRIVATE_KEY_DER,
-    name: AttrString::from("es256_private_key_der"),
+    name: "es256_private_key_der".into(),
     description: "An es256 private key".to_string(),
 
     syntax: SyntaxType::PrivateBinary,
@@ -346,7 +346,7 @@ pub static ref SCHEMA_ATTR_ES256_PRIVATE_KEY_DER: SchemaAttribute = SchemaAttrib
 
 pub static ref SCHEMA_ATTR_RS256_PRIVATE_KEY_DER: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_RS256_PRIVATE_KEY_DER,
-    name: AttrString::from("rs256_private_key_der"),
+    name: "rs256_private_key_der".into(),
     description: "An rs256 private key".to_string(),
 
     syntax: SyntaxType::PrivateBinary,
@@ -355,7 +355,7 @@ pub static ref SCHEMA_ATTR_RS256_PRIVATE_KEY_DER: SchemaAttribute = SchemaAttrib
 
 pub static ref SCHEMA_ATTR_JWS_ES256_PRIVATE_KEY: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_JWS_ES256_PRIVATE_KEY,
-    name: AttrString::from("jws_es256_private_key"),
+    name: "jws_es256_private_key".into(),
     description: "An es256 private key for jws".to_string(),
 
     index: vec![IndexType::Equality],
@@ -366,7 +366,7 @@ pub static ref SCHEMA_ATTR_JWS_ES256_PRIVATE_KEY: SchemaAttribute = SchemaAttrib
 
 pub static ref SCHEMA_ATTR_PRIVATE_COOKIE_KEY: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_PRIVATE_COOKIE_KEY,
-    name: AttrString::from("private_cookie_key"),
+    name: "private_cookie_key".into(),
     description: "An private cookie hmac key".to_string(),
 
     syntax: SyntaxType::PrivateBinary,
@@ -375,7 +375,7 @@ pub static ref SCHEMA_ATTR_PRIVATE_COOKIE_KEY: SchemaAttribute = SchemaAttribute
 
 pub static ref SCHEMA_ATTR_OAUTH2_ALLOW_INSECURE_CLIENT_DISABLE_PKCE: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_OAUTH2_ALLOW_INSECURE_CLIENT_DISABLE_PKCE,
-    name: AttrString::from("oauth2_allow_insecure_client_disable_pkce"),
+    name: "oauth2_allow_insecure_client_disable_pkce".into(),
     description: "Allows disabling of PKCE for insecure OAuth2 clients".to_string(),
 
     syntax: SyntaxType::Boolean,
@@ -384,7 +384,7 @@ pub static ref SCHEMA_ATTR_OAUTH2_ALLOW_INSECURE_CLIENT_DISABLE_PKCE: SchemaAttr
 
 pub static ref SCHEMA_ATTR_OAUTH2_JWT_LEGACY_CRYPTO_ENABLE: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_OAUTH2_JWT_LEGACY_CRYPTO_ENABLE,
-    name: AttrString::from("oauth2_jwt_legacy_crypto_enable"),
+    name: "oauth2_jwt_legacy_crypto_enable".into(),
     description: "Allows enabling legacy JWT cryptograhpy for clients".to_string(),
 
     syntax: SyntaxType::Boolean,
@@ -393,7 +393,7 @@ pub static ref SCHEMA_ATTR_OAUTH2_JWT_LEGACY_CRYPTO_ENABLE: SchemaAttribute = Sc
 
 pub static ref SCHEMA_ATTR_CREDENTIAL_UPDATE_INTENT_TOKEN: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_CREDENTIAL_UPDATE_INTENT_TOKEN,
-    name: AttrString::from("credential_update_intent_token"),
+    name: "credential_update_intent_token".into(),
     description: "The status of a credential update intent token".to_string(),
 
     index: vec![IndexType::Equality],
@@ -404,7 +404,7 @@ pub static ref SCHEMA_ATTR_CREDENTIAL_UPDATE_INTENT_TOKEN: SchemaAttribute = Sch
 
 pub static ref SCHEMA_ATTR_PASSKEYS: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_PASSKEYS,
-    name: AttrString::from("passkeys"),
+    name: "passkeys".into(),
     description: "A set of registered passkeys".to_string(),
 
     index: vec![IndexType::Equality],
@@ -416,7 +416,7 @@ pub static ref SCHEMA_ATTR_PASSKEYS: SchemaAttribute = SchemaAttribute {
 
 pub static ref SCHEMA_ATTR_DEVICEKEYS: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_DEVICEKEYS,
-    name: AttrString::from("devicekeys"),
+    name: "devicekeys".into(),
     description: "A set of registered device keys".to_string(),
 
     index: vec![IndexType::Equality],
@@ -428,7 +428,7 @@ pub static ref SCHEMA_ATTR_DEVICEKEYS: SchemaAttribute = SchemaAttribute {
 
 pub static ref SCHEMA_ATTR_DYNGROUP_FILTER: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_DYNGROUP_FILTER,
-    name: AttrString::from("dyngroup_filter"),
+    name: "dyngroup_filter".into(),
     description: "A filter describing the set of entries to add to a dynamic group".to_string(),
 
     syntax: SyntaxType::JsonFilter,
@@ -437,7 +437,7 @@ pub static ref SCHEMA_ATTR_DYNGROUP_FILTER: SchemaAttribute = SchemaAttribute {
 
 pub static ref SCHEMA_ATTR_OAUTH2_PREFER_SHORT_USERNAME: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_OAUTH2_PREFER_SHORT_USERNAME,
-    name: AttrString::from("oauth2_prefer_short_username"),
+    name: "oauth2_prefer_short_username".into(),
     description: "Use 'name' instead of 'spn' in the preferred_username claim".to_string(),
 
     syntax: SyntaxType::Boolean,
@@ -446,7 +446,7 @@ pub static ref SCHEMA_ATTR_OAUTH2_PREFER_SHORT_USERNAME: SchemaAttribute = Schem
 
 pub static ref SCHEMA_ATTR_API_TOKEN_SESSION: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_API_TOKEN_SESSION,
-    name: AttrString::from("api_token_session"),
+    name: "api_token_session".into(),
     description: "A session entry related to an issued API token".to_string(),
 
     index: vec![IndexType::Equality],
@@ -458,7 +458,7 @@ pub static ref SCHEMA_ATTR_API_TOKEN_SESSION: SchemaAttribute = SchemaAttribute 
 
 pub static ref SCHEMA_ATTR_USER_AUTH_TOKEN_SESSION: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_USER_AUTH_TOKEN_SESSION,
-    name: AttrString::from("user_auth_token_session"),
+    name: "user_auth_token_session".into(),
     description: "A session entry related to an issued user auth token".to_string(),
 
     index: vec![IndexType::Equality],
@@ -470,7 +470,7 @@ pub static ref SCHEMA_ATTR_USER_AUTH_TOKEN_SESSION: SchemaAttribute = SchemaAttr
 
 pub static ref SCHEMA_ATTR_OAUTH2_SESSION: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_OAUTH2_SESSION,
-    name: AttrString::from("oauth2_session"),
+    name: "oauth2_session".into(),
     description: "A session entry to an active oauth2 session, bound to a parent user auth token".to_string(),
 
     index: vec![IndexType::Equality],
@@ -481,7 +481,7 @@ pub static ref SCHEMA_ATTR_OAUTH2_SESSION: SchemaAttribute = SchemaAttribute {
 
 pub static ref SCHEMA_ATTR_SYNC_TOKEN_SESSION: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_SYNC_TOKEN_SESSION,
-    name: AttrString::from("sync_token_session"),
+    name: "sync_token_session".into(),
     description: "A session entry related to an issued sync token".to_string(),
 
     index: vec![IndexType::Equality],
@@ -492,7 +492,7 @@ pub static ref SCHEMA_ATTR_SYNC_TOKEN_SESSION: SchemaAttribute = SchemaAttribute
 
 pub static ref SCHEMA_ATTR_SYNC_COOKIE: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_SYNC_COOKIE,
-    name: AttrString::from("sync_cookie"),
+    name: "sync_cookie".into(),
     description: "A private sync cookie for a remote IDM source".to_string(),
 
     syntax: SyntaxType::PrivateBinary,
@@ -501,7 +501,7 @@ pub static ref SCHEMA_ATTR_SYNC_COOKIE: SchemaAttribute = SchemaAttribute {
 
 pub static ref SCHEMA_ATTR_GRANT_UI_HINT: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_GRANT_UI_HINT,
-    name: AttrString::from("grant_ui_hint"),
+    name: "grant_ui_hint".into(),
     description: "A UI hint that is granted via membership to a group".to_string(),
 
     index: vec![IndexType::Equality],
@@ -512,7 +512,7 @@ pub static ref SCHEMA_ATTR_GRANT_UI_HINT: SchemaAttribute = SchemaAttribute {
 
 pub static ref SCHEMA_ATTR_SYNC_CREDENTIAL_PORTAL: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_SYNC_CREDENTIAL_PORTAL,
-    name: AttrString::from("sync_credential_portal"),
+    name: "sync_credential_portal".into(),
     description: "The url of an external credential portal for synced accounts to visit to update their credentials.to_string().".to_string(),
 
     syntax: SyntaxType::Url,
@@ -521,7 +521,7 @@ pub static ref SCHEMA_ATTR_SYNC_CREDENTIAL_PORTAL: SchemaAttribute = SchemaAttri
 
 pub static ref SCHEMA_ATTR_SYNC_YIELD_AUTHORITY: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_SYNC_YIELD_AUTHORITY,
-    name: AttrString::from("sync_yield_authority"),
+    name: "sync_yield_authority".into(),
     description: "A set of attributes that have their authority yielded to Kanidm in a sync agreement.to_string().".to_string(),
 
     multivalue: true,
@@ -533,7 +533,7 @@ pub static ref SCHEMA_ATTR_SYNC_YIELD_AUTHORITY: SchemaAttribute = SchemaAttribu
 
 pub static ref SCHEMA_CLASS_PERSON: SchemaClass = SchemaClass {
     uuid: UUID_SCHEMA_CLASS_PERSON,
-    name: AttrString::from("person"),
+    name: "person".into(),
     description: "Object representation of a person".to_string(),
 
     sync_allowed: true,
@@ -544,7 +544,7 @@ pub static ref SCHEMA_CLASS_PERSON: SchemaClass = SchemaClass {
 
 pub static ref SCHEMA_CLASS_ORGPERSON: SchemaClass = SchemaClass {
     uuid: UUID_SCHEMA_CLASS_ORGPERSON,
-    name: AttrString::from("orgperson"),
+    name: "orgperson".into(),
     description: "Object representation of an org person".to_string(),
 
     systemmay: attrstring_vec!(["legalname"]),
@@ -554,7 +554,7 @@ pub static ref SCHEMA_CLASS_ORGPERSON: SchemaClass = SchemaClass {
 
 pub static ref SCHEMA_CLASS_GROUP: SchemaClass = SchemaClass {
     uuid: UUID_SCHEMA_CLASS_GROUP,
-    name: AttrString::from("group"),
+    name: "group".into(),
     description: "Object representation of a group".to_string(),
 
     sync_allowed: true,
@@ -565,7 +565,7 @@ pub static ref SCHEMA_CLASS_GROUP: SchemaClass = SchemaClass {
 
 pub static ref SCHEMA_CLASS_DYNGROUP: SchemaClass = SchemaClass {
     uuid: UUID_SCHEMA_CLASS_DYNGROUP,
-    name: AttrString::from("dyngroup"),
+    name: "dyngroup".into(),
     description: "Object representation of a dynamic group".to_string(),
 
     systemmust: attrstring_vec!(["dyngroup_filter"]),
@@ -576,7 +576,7 @@ pub static ref SCHEMA_CLASS_DYNGROUP: SchemaClass = SchemaClass {
 
 pub static ref SCHEMA_CLASS_ACCOUNT: SchemaClass = SchemaClass {
     uuid: UUID_SCHEMA_CLASS_ACCOUNT,
-    name: AttrString::from("account"),
+    name: "account".into(),
     description: "Object representation of an account".to_string(),
 
     sync_allowed: true,
@@ -603,7 +603,7 @@ pub static ref SCHEMA_CLASS_ACCOUNT: SchemaClass = SchemaClass {
 
 pub static ref SCHEMA_CLASS_SERVICE_ACCOUNT: SchemaClass = SchemaClass {
     uuid: UUID_SCHEMA_CLASS_SERVICE_ACCOUNT,
-    name: AttrString::from("service_account"),
+    name: "service_account".into(),
     description: "Object representation of service account".to_string(),
 
     sync_allowed: true,
@@ -619,7 +619,7 @@ pub static ref SCHEMA_CLASS_SERVICE_ACCOUNT: SchemaClass = SchemaClass {
 
 pub static ref SCHEMA_CLASS_SYNC_ACCOUNT: SchemaClass = SchemaClass {
     uuid: UUID_SCHEMA_CLASS_SYNC_ACCOUNT,
-    name: AttrString::from("sync_account"),
+    name: "sync_account".into(),
     description: "Object representation of sync account".to_string(),
 
     systemmust: attrstring_vec!(["name", "jws_es256_private_key"]),
@@ -640,7 +640,7 @@ pub static ref SCHEMA_CLASS_SYNC_ACCOUNT: SchemaClass = SchemaClass {
 //
 pub static ref SCHEMA_CLASS_DOMAIN_INFO: SchemaClass = SchemaClass {
     uuid: UUID_SCHEMA_CLASS_DOMAIN_INFO,
-    name: AttrString::from("domain_info"),
+    name: "domain_info".into(),
     description: "Local domain information and partial configuration.to_string().".to_string(),
 
     systemmay: attrstring_vec!(["domain_ssid", "domain_ldap_basedn"]),
@@ -659,7 +659,7 @@ pub static ref SCHEMA_CLASS_DOMAIN_INFO: SchemaClass = SchemaClass {
 
 pub static ref SCHEMA_CLASS_POSIXGROUP: SchemaClass = SchemaClass {
     uuid: UUID_SCHEMA_CLASS_POSIXGROUP,
-    name: AttrString::from("posixgroup"),
+    name: "posixgroup".into(),
     description: "Object representation of a posix group, requires group".to_string(),
 
     sync_allowed: true,
@@ -670,7 +670,7 @@ pub static ref SCHEMA_CLASS_POSIXGROUP: SchemaClass = SchemaClass {
 
 pub static ref SCHEMA_CLASS_POSIXACCOUNT: SchemaClass = SchemaClass {
     uuid: UUID_SCHEMA_CLASS_POSIXACCOUNT,
-    name: AttrString::from("posixaccount"),
+    name: "posixaccount".into(),
     description: "Object representation of a posix account, requires account".to_string(),
 
     sync_allowed: true,
@@ -682,7 +682,7 @@ pub static ref SCHEMA_CLASS_POSIXACCOUNT: SchemaClass = SchemaClass {
 
 pub static ref SCHEMA_CLASS_SYSTEM_CONFIG: SchemaClass = SchemaClass {
     uuid: UUID_SCHEMA_CLASS_SYSTEM_CONFIG,
-    name: AttrString::from("system_config"),
+    name: "system_config".into(),
     description: "The class representing a system (topologies) configuration options.to_string().".to_string(),
 
     systemmay: attrstring_vec!(["description", "badlist_password"]),
@@ -691,7 +691,7 @@ pub static ref SCHEMA_CLASS_SYSTEM_CONFIG: SchemaClass = SchemaClass {
 
 pub static ref SCHEMA_CLASS_OAUTH2_RS: SchemaClass = SchemaClass {
     uuid: UUID_SCHEMA_CLASS_OAUTH2_RS,
-    name: AttrString::from("oauth2_resource_server"),
+    name: "oauth2_resource_server".into(),
     description: "The class representing a configured Oauth2 Resource Server".to_string(),
 
     systemmay: attrstring_vec!([
@@ -715,7 +715,7 @@ pub static ref SCHEMA_CLASS_OAUTH2_RS: SchemaClass = SchemaClass {
 
 pub static ref SCHEMA_CLASS_OAUTH2_RS_BASIC: SchemaClass = SchemaClass {
     uuid: UUID_SCHEMA_CLASS_OAUTH2_RS_BASIC,
-    name: AttrString::from("oauth2_resource_server_basic"),
+    name: "oauth2_resource_server_basic".into(),
     description: "The class representing a configured Oauth2 Resource Server authenticated with http basic authentication".to_string(),
 
     systemmay: attrstring_vec!([ "oauth2_allow_insecure_client_disable_pkce"]),
@@ -727,7 +727,7 @@ pub static ref SCHEMA_CLASS_OAUTH2_RS_BASIC: SchemaClass = SchemaClass {
 
 pub static ref SCHEMA_CLASS_OAUTH2_RS_PUBLIC: SchemaClass = SchemaClass {
     uuid: UUID_SCHEMA_CLASS_OAUTH2_RS_PUBLIC,
-    name: AttrString::from("oauth2_resource_server_public"),
+    name: "oauth2_resource_server_public".into(),
 
     description: "The class representing a configured Oauth2 Resource Server with public clients and pkce verification".to_string(),
     systemexcludes: attrstring_vec!(["oauth2_resource_server_basic"]),
