@@ -80,7 +80,11 @@ async fn test_webdriver_user_login(rsclient: kanidm_client::KanidmClient) {
 
     let c = get_webdriver_client().await;
 
-    handle_error!(c, c.goto(rsclient.get_url()).await, "Couldn't get URL");
+    handle_error!(
+        c,
+        c.goto(rsclient.get_url().to_string()).await,
+        "Couldn't get URL"
+    );
 
     println!("Waiting for page to load");
     let mut wait_attempts = 0;
