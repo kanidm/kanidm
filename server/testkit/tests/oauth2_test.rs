@@ -121,8 +121,6 @@ async fn test_oauth2_openid_basic_flow(rsclient: KanidmClient) {
         .await
         .expect("No user auth token found");
 
-    let url = rsclient.get_url().to_string();
-
     // We need a new reqwest client here.
 
     // from here, we can now begin what would be a "interaction" to the oauth server.
@@ -137,10 +135,7 @@ async fn test_oauth2_openid_basic_flow(rsclient: KanidmClient) {
     let response = client
         .request(
             reqwest::Method::OPTIONS,
-            format!(
-                "{}/oauth2/openid/test_integration/.well-known/openid-configuration",
-                url
-            ),
+            rsclient.make_url("/oauth2/openid/test_integration/.well-known/openid-configuration"),
         )
         .send()
         .await
@@ -156,10 +151,7 @@ async fn test_oauth2_openid_basic_flow(rsclient: KanidmClient) {
     assert!(cors_header.eq("*"));
 
     let response = client
-        .get(format!(
-            "{}/oauth2/openid/test_integration/.well-known/openid-configuration",
-            url
-        ))
+        .get(rsclient.make_url("/oauth2/openid/test_integration/.well-known/openid-configuration"))
         .send()
         .await
         .expect("Failed to send request.");
@@ -176,36 +168,24 @@ async fn test_oauth2_openid_basic_flow(rsclient: KanidmClient) {
 
     // Most values are checked in idm/oauth2.rs, but we want to sanity check
     // the urls here as an extended function smoke test.
-    assert!(
-        discovery.issuer == Url::parse(&format!("{}/oauth2/openid/test_integration", url)).unwrap()
-    );
+    assert!(discovery.issuer == rsclient.make_url("/oauth2/openid/test_integration"));
 
-    assert!(discovery.authorization_endpoint == Url::parse(&format!("{}/ui/oauth2", url)).unwrap());
+    assert!(discovery.authorization_endpoint == rsclient.make_url("/ui/oauth2"));
 
-    assert!(discovery.token_endpoint == Url::parse(&format!("{}/oauth2/token", url)).unwrap());
+    assert!(discovery.token_endpoint == rsclient.make_url("/oauth2/token"));
 
     assert!(
         discovery.userinfo_endpoint
-            == Some(
-                Url::parse(&format!("{}/oauth2/openid/test_integration/userinfo", url)).unwrap()
-            )
+            == Some(rsclient.make_url("/oauth2/openid/test_integration/userinfo"))
     );
 
     assert!(
-        discovery.jwks_uri
-            == Url::parse(&format!(
-                "{}/oauth2/openid/test_integration/public_key.jwk",
-                url
-            ))
-            .unwrap()
+        discovery.jwks_uri == rsclient.make_url("/oauth2/openid/test_integration/public_key.jwk")
     );
 
     // Step 0 - get the jwks public key.
     let response = client
-        .get(format!(
-            "{}/oauth2/openid/test_integration/public_key.jwk",
-            url
-        ))
+        .get(rsclient.make_url("/oauth2/openid/test_integration/public_key.jwk"))
         .send()
         .await
         .expect("Failed to send request.");
@@ -231,7 +211,7 @@ async fn test_oauth2_openid_basic_flow(rsclient: KanidmClient) {
     let (pkce_code_challenge, pkce_code_verifier) = PkceCodeChallenge::new_random_sha256();
 
     let response = client
-        .get(format!("{}/oauth2/authorise", url))
+        .get(rsclient.make_url("/oauth2/authorise"))
         .bearer_auth(oauth_test_uat.clone())
         .query(&[
             ("response_type", "code"),
@@ -271,7 +251,7 @@ async fn test_oauth2_openid_basic_flow(rsclient: KanidmClient) {
     // state and code.
 
     let response = client
-        .get(format!("{}/oauth2/authorise/permit", url))
+        .get(rsclient.make_url("/oauth2/authorise/permit"))
         .bearer_auth(oauth_test_uat)
         .query(&[("token", consent_token.as_str())])
         .send()
@@ -312,7 +292,7 @@ async fn test_oauth2_openid_basic_flow(rsclient: KanidmClient) {
     .into();
 
     let response = client
-        .post(format!("{}/oauth2/token", url))
+        .post(rsclient.make_url("/oauth2/token"))
         .basic_auth("test_integration", Some(client_secret.clone()))
         .form(&form_req)
         .send()
@@ -339,7 +319,7 @@ async fn test_oauth2_openid_basic_flow(rsclient: KanidmClient) {
     };
 
     let response = client
-        .post(format!("{}/oauth2/token/introspect", url))
+        .post(rsclient.make_url("/oauth2/token/introspect"))
         .basic_auth("test_integration", Some(client_secret))
         .form(&intr_request)
         .send()
@@ -381,13 +361,13 @@ async fn test_oauth2_openid_basic_flow(rsclient: KanidmClient) {
 
     // This is mostly checked inside of idm/oauth2.rs. This is more to check the oidc
     // token and the userinfo endpoints.
-    assert!(oidc.iss == Url::parse(&format!("{}/oauth2/openid/test_integration", url)).unwrap());
+    assert!(oidc.iss == rsclient.make_url("/oauth2/openid/test_integration"));
     eprintln!("{:?}", oidc.s_claims.email);
     assert!(oidc.s_claims.email.as_deref() == Some("oauth_test@localhost"));
     assert!(oidc.s_claims.email_verified == Some(true));
 
     let response = client
-        .get(format!("{}/oauth2/openid/test_integration/userinfo", url))
+        .get(rsclient.make_url("/oauth2/openid/test_integration/userinfo"))
         .bearer_auth(atr.access_token.clone())
         .send()
         .await
@@ -486,8 +466,6 @@ async fn test_oauth2_openid_public_flow(rsclient: KanidmClient) {
         .await
         .expect("No user auth token found");
 
-    let url = rsclient.get_url().to_string();
-
     // We need a new reqwest client here.
 
     // from here, we can now begin what would be a "interaction" to the oauth server.
@@ -500,10 +478,7 @@ async fn test_oauth2_openid_public_flow(rsclient: KanidmClient) {
 
     // Step 0 - get the jwks public key.
     let response = client
-        .get(format!(
-            "{}/oauth2/openid/test_integration/public_key.jwk",
-            url
-        ))
+        .get(rsclient.make_url("/oauth2/openid/test_integration/public_key.jwk"))
         .send()
         .await
         .expect("Failed to send request.");
@@ -528,7 +503,7 @@ async fn test_oauth2_openid_public_flow(rsclient: KanidmClient) {
     let (pkce_code_challenge, pkce_code_verifier) = PkceCodeChallenge::new_random_sha256();
 
     let response = client
-        .get(format!("{}/oauth2/authorise", url))
+        .get(rsclient.make_url("/oauth2/authorise"))
         .bearer_auth(oauth_test_uat.clone())
         .query(&[
             ("response_type", "code"),
@@ -567,7 +542,7 @@ async fn test_oauth2_openid_public_flow(rsclient: KanidmClient) {
     // Step 2 - we now send the consent get to the server which yields a redirect with a
     // state and code.
     let response = client
-        .get(format!("{}/oauth2/authorise/permit", url))
+        .get(rsclient.make_url("/oauth2/authorise/permit"))
         .bearer_auth(oauth_test_uat)
         .query(&[("token", consent_token.as_str())])
         .send()
@@ -611,7 +586,7 @@ async fn test_oauth2_openid_public_flow(rsclient: KanidmClient) {
     };
 
     let response = client
-        .post(format!("{}/oauth2/token", url))
+        .post(rsclient.make_url("/oauth2/token"))
         .form(&form_req)
         .send()
         .await
@@ -636,7 +611,7 @@ async fn test_oauth2_openid_public_flow(rsclient: KanidmClient) {
 
     // This is mostly checked inside of idm/oauth2.rs. This is more to check the oidc
     // token and the userinfo endpoints.
-    assert!(oidc.iss == Url::parse(&format!("{}/oauth2/openid/test_integration", url)).unwrap());
+    assert!(oidc.iss == rsclient.make_url("/oauth2/openid/test_integration"));
     eprintln!("{:?}", oidc.s_claims.email);
     assert!(oidc.s_claims.email.as_deref() == Some("oauth_test@localhost"));
     assert!(oidc.s_claims.email_verified == Some(true));
@@ -645,7 +620,7 @@ async fn test_oauth2_openid_public_flow(rsclient: KanidmClient) {
     let response = client
         .request(
             reqwest::Method::OPTIONS,
-            format!("{}/oauth2/openid/test_integration/userinfo", url),
+            rsclient.make_url("/oauth2/openid/test_integration/userinfo"),
         )
         .send()
         .await
@@ -661,7 +636,7 @@ async fn test_oauth2_openid_public_flow(rsclient: KanidmClient) {
     assert!(cors_header.eq("*"));
 
     let response = client
-        .get(format!("{}/oauth2/openid/test_integration/userinfo", url))
+        .get(rsclient.make_url("/oauth2/openid/test_integration/userinfo"))
         .bearer_auth(atr.access_token.clone())
         .send()
         .await
@@ -695,7 +670,6 @@ async fn test_oauth2_token_post_bad_bodies(rsclient: KanidmClient) {
         .await;
     assert!(res.is_ok());
 
-    let url = rsclient.get_url().to_string();
     let client = reqwest::Client::builder()
         .redirect(reqwest::redirect::Policy::none())
         .no_proxy()
@@ -704,7 +678,7 @@ async fn test_oauth2_token_post_bad_bodies(rsclient: KanidmClient) {
 
     // test for a bad-body request on token
     let response = client
-        .post(format!("{}/oauth2/token", url))
+        .post(rsclient.make_url("/oauth2/token"))
         .form(&serde_json::json!({}))
         // .bearer_auth(atr.access_token.clone())
         .send()
@@ -715,7 +689,7 @@ async fn test_oauth2_token_post_bad_bodies(rsclient: KanidmClient) {
 
     // test for a bad-auth request
     let response = client
-        .post(format!("{}/oauth2/token/introspect", url))
+        .post(rsclient.make_url("/oauth2/token/introspect"))
         .form(&serde_json::json!({ "token": "lol" }))
         .send()
         .await
@@ -731,7 +705,6 @@ async fn test_oauth2_token_revoke_post(rsclient: KanidmClient) {
         .await;
     assert!(res.is_ok());
 
-    let url = rsclient.get_url().to_string();
     let client = reqwest::Client::builder()
         .redirect(reqwest::redirect::Policy::none())
         .no_proxy()
@@ -740,7 +713,7 @@ async fn test_oauth2_token_revoke_post(rsclient: KanidmClient) {
 
     // test for a bad-body request on token
     let response = client
-        .post(format!("{}/oauth2/token/revoke", url))
+        .post(rsclient.make_url("/oauth2/token/revoke"))
         .form(&serde_json::json!({}))
         .bearer_auth("lolol")
         .send()
@@ -751,7 +724,7 @@ async fn test_oauth2_token_revoke_post(rsclient: KanidmClient) {
 
     // test for a invalid format request on token
     let response = client
-        .post(format!("{}/oauth2/token/revoke", url))
+        .post(rsclient.make_url("/oauth2/token/revoke"))
         .json("")
         .bearer_auth("lolol")
         .send()
@@ -763,7 +736,7 @@ async fn test_oauth2_token_revoke_post(rsclient: KanidmClient) {
 
     // test for a bad-body request on token
     let response = client
-        .post(format!("{}/oauth2/token/revoke", url))
+        .post(rsclient.make_url("/oauth2/token/revoke"))
         .form(&serde_json::json!({}))
         .bearer_auth("Basic lolol")
         .send()
@@ -774,7 +747,7 @@ async fn test_oauth2_token_revoke_post(rsclient: KanidmClient) {
 
     // test for a bad-body request on token
     let response = client
-        .post(format!("{}/oauth2/token/revoke", url))
+        .post(rsclient.make_url("/oauth2/token/revoke"))
         .body(serde_json::json!({}).to_string())
         .bearer_auth("Basic lolol")
         .send()

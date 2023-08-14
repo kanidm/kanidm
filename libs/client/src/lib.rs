@@ -442,19 +442,49 @@ impl KanidmClientBuilder {
     }
 }
 
+#[test]
+fn test_make_url() {
+    let client: KanidmClient = KanidmClientBuilder::new()
+        .address("https://localhost:8080".to_string())
+        .build()
+        .unwrap();
+    assert_eq!(
+        client.get_url(),
+        Url::parse("https://localhost:8080").unwrap()
+    );
+    assert_eq!(
+        client.make_url("/hello"),
+        Url::parse("https://localhost:8080/hello").unwrap()
+    );
+
+    let client: KanidmClient = KanidmClientBuilder::new()
+        .address("https://localhost:8080/cheese/".to_string())
+        .build()
+        .unwrap();
+    assert_eq!(
+        client.make_url("hello"),
+        Url::parse("https://localhost:8080/cheese/hello").unwrap()
+    );
+}
+
 impl KanidmClient {
     pub fn get_origin(&self) -> &Url {
         &self.origin
     }
 
     /// Returns the base URL of the server
-    pub fn get_url(&self) -> &str {
-        &self.addr
+    pub fn get_url(&self) -> Url {
+        #[allow(clippy::panic)]
+        match self.addr.parse::<Url>() {
+            Ok(val) => val,
+            Err(err) => panic!("Failed to parse {} into URL: {:?}", self.addr, err),
+        }
     }
 
     /// Get a URL based on adding an endpoint to the base URL of the server
-    pub fn make_url(&self, endpoint: &impl ToString) -> String {
-        format!("{}{}", self.get_url(), endpoint.to_string())
+    pub fn make_url(&self, endpoint: &str) -> Url {
+        #[allow(clippy::expect_used)]
+        self.get_url().join(endpoint).expect("Failed to join URL")
     }
 
     pub async fn set_token(&self, new_token: String) {
@@ -519,7 +549,7 @@ impl KanidmClient {
 
         let response = self
             .client
-            .post(self.make_url(&dest))
+            .post(self.make_url(dest))
             .body(req_string)
             .header(CONTENT_TYPE, APPLICATION_JSON);
 
@@ -562,7 +592,7 @@ impl KanidmClient {
 
         let response = self
             .client
-            .post(self.make_url(&dest))
+            .post(self.make_url(dest))
             .body(req_string)
             .header(CONTENT_TYPE, APPLICATION_JSON);
 
@@ -633,7 +663,7 @@ impl KanidmClient {
         let req_string = serde_json::to_string(&request).map_err(ClientError::JsonEncode)?;
         let response = self
             .client
-            .post(self.make_url(&dest))
+            .post(self.make_url(dest))
             .body(req_string)
             .header(CONTENT_TYPE, APPLICATION_JSON);
 
@@ -684,7 +714,7 @@ impl KanidmClient {
 
         let response = self
             .client
-            .put(self.make_url(&dest))
+            .put(self.make_url(dest))
             .header(CONTENT_TYPE, APPLICATION_JSON);
         let response = {
             let tguard = self.bearer_token.read().await;
@@ -737,7 +767,7 @@ impl KanidmClient {
         let req_string = serde_json::to_string(&request).map_err(ClientError::JsonEncode)?;
         let response = self
             .client
-            .patch(self.make_url(&dest))
+            .patch(self.make_url(dest))
             .body(req_string)
             .header(CONTENT_TYPE, APPLICATION_JSON);
 
@@ -784,7 +814,7 @@ impl KanidmClient {
         &self,
         dest: &str,
     ) -> Result<T, ClientError> {
-        let response = self.client.get(self.make_url(&dest));
+        let response = self.client.get(self.make_url(dest));
         let response = {
             let tguard = self.bearer_token.read().await;
             if let Some(token) = &(*tguard) {
@@ -827,7 +857,7 @@ impl KanidmClient {
     async fn perform_delete_request(&self, dest: &str) -> Result<(), ClientError> {
         let response = self
             .client
-            .delete(self.make_url(&dest))
+            .delete(self.make_url(dest))
             .header(CONTENT_TYPE, APPLICATION_JSON);
 
         let response = {
@@ -876,7 +906,7 @@ impl KanidmClient {
         let req_string = serde_json::to_string(&request).map_err(ClientError::JsonEncode)?;
         let response = self
             .client
-            .delete(self.make_url(&dest))
+            .delete(self.make_url(dest))
             .body(req_string)
             .header(CONTENT_TYPE, APPLICATION_JSON);
 
@@ -1347,7 +1377,7 @@ impl KanidmClient {
     }
 
     pub async fn whoami(&self) -> Result<Option<Entry>, ClientError> {
-        let response = self.client.get(self.make_url(&"/v1/self"));
+        let response = self.client.get(self.make_url("/v1/self"));
 
         let response = {
             let tguard = self.bearer_token.read().await;

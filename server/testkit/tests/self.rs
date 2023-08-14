@@ -4,20 +4,23 @@ use kanidm_client::KanidmClient;
 #[kanidmd_testkit::test]
 async fn test_v1_self_applinks(rsclient: KanidmClient) {
     // We need to do manual reqwests here.
-    let addr = rsclient.get_url();
     let client = reqwest::ClientBuilder::new()
         .danger_accept_invalid_certs(true)
         .build()
         .unwrap();
 
     let response = match client
-        .get(format!("{}/v1/self/_applinks", &addr))
+        .get(rsclient.make_url("/v1/self/_applinks"))
         .send()
         .await
     {
         Ok(value) => value,
         Err(error) => {
-            panic!("Failed to query {:?} : {:#?}", addr, error);
+            panic!(
+                "Failed to query {:?} : {:#?}",
+                rsclient.make_url("/v1/self/_applinks"),
+                error
+            );
         }
     };
     eprintln!("response: {:#?}", response);
@@ -31,16 +34,19 @@ async fn test_v1_self_applinks(rsclient: KanidmClient) {
 #[kanidmd_testkit::test]
 async fn test_v1_self_whoami_uat(rsclient: KanidmClient) {
     // We need to do manual reqwests here.
-    let addr = rsclient.get_url();
     let client = reqwest::ClientBuilder::new()
         .danger_accept_invalid_certs(true)
         .build()
         .unwrap();
 
-    let response = match client.get(format!("{}/v1/self/_uat", &addr)).send().await {
+    let response = match client.get(rsclient.make_url("/v1/self/_uat")).send().await {
         Ok(value) => value,
         Err(error) => {
-            panic!("Failed to query {:?} : {:#?}", addr, error);
+            panic!(
+                "Failed to query {:?} : {:#?}",
+                rsclient.make_url("/v1/self/_uat"),
+                error
+            );
         }
     };
     eprintln!("response: {:#?}", response);

@@ -4,7 +4,6 @@ use kanidm_client::KanidmClient;
 #[kanidmd_testkit::test]
 async fn test_v1_service_account_id_attr_attr_delete(rsclient: KanidmClient) {
     // We need to do manual reqwests here.
-    let addr = rsclient.get_url();
     let client = reqwest::ClientBuilder::new()
         .danger_accept_invalid_certs(true)
         .build()
@@ -13,13 +12,17 @@ async fn test_v1_service_account_id_attr_attr_delete(rsclient: KanidmClient) {
     // let post_body = serde_json::json!({"filter": "self"}).to_string();
 
     let response = match client
-        .delete(format!("{}/v1/service_account/admin/_attr/email", &addr))
+        .delete(rsclient.make_url("/v1/service_account/admin/_attr/email"))
         .send()
         .await
     {
         Ok(value) => value,
         Err(error) => {
-            panic!("Failed to query {:?} : {:#?}", addr, error);
+            panic!(
+                "Failed to query {:?} : {:#?}",
+                rsclient.make_url("/v1/service_account/admin/_attr/email"),
+                error
+            );
         }
     };
     eprintln!("response: {:#?}", response);

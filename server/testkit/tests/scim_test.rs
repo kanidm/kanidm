@@ -93,7 +93,6 @@ async fn test_sync_account_lifecycle(rsclient: KanidmClient) {
 #[kanidmd_testkit::test]
 async fn test_scim_sync_get(rsclient: KanidmClient) {
     // We need to do manual reqwests here.
-    let addr = rsclient.get_url();
 
     let mut headers = reqwest::header::HeaderMap::new();
     headers.insert(
@@ -107,10 +106,14 @@ async fn test_scim_sync_get(rsclient: KanidmClient) {
         .build()
         .unwrap();
     // here we test the /ui/ endpoint which should have the headers
-    let response = match client.get(format!("{}/scim/v1/Sync", addr)).send().await {
+    let response = match client.get(rsclient.make_url("/scim/v1/Sync")).send().await {
         Ok(value) => value,
         Err(error) => {
-            panic!("Failed to query {:?} : {:#?}", addr, error);
+            panic!(
+                "Failed to query {:?} : {:#?}",
+                rsclient.make_url("/scim/v1/Sync"),
+                error
+            );
         }
     };
     eprintln!("response: {:#?}", response);

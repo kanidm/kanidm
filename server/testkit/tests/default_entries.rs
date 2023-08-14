@@ -554,12 +554,15 @@ async fn test_self_write_mail_priv_people(rsclient: KanidmClient) {
 #[kanidmd_testkit::test]
 async fn test_https_robots_txt(rsclient: KanidmClient) {
     // We need to do manual reqwests here.
-    let addr = rsclient.get_url();
 
-    let response = match reqwest::get(format!("{}/robots.txt", &addr)).await {
+    let response = match reqwest::get(rsclient.make_url("/robots.txt")).await {
         Ok(value) => value,
         Err(error) => {
-            panic!("Failed to query {:?} : {:#?}", addr, error);
+            panic!(
+                "Failed to query {:?} : {:#?}",
+                rsclient.make_url("/robots.txt"),
+                error
+            );
         }
     };
     eprintln!("response: {:#?}", response);
@@ -577,9 +580,7 @@ async fn test_https_robots_txt(rsclient: KanidmClient) {
 // #[kanidmd_testkit::test]
 // async fn test_https_routemap(rsclient: KanidmClient) {
 //     // We need to do manual reqwests here.
-//     let addr = rsclient.get_url();
-
-//     let response = match reqwest::get(format!("{}/v1/routemap", &addr)).await {
+//     let response = match reqwest::get(rsclient.make_url("/v1/routemap")).await {
 //         Ok(value) => value,
 //         Err(error) => {
 //             panic!("Failed to query {:?} : {:#?}", addr, error);
@@ -598,7 +599,7 @@ async fn test_https_robots_txt(rsclient: KanidmClient) {
 #[kanidmd_testkit::test]
 async fn test_v1_raw_delete(rsclient: KanidmClient) {
     // We need to do manual reqwests here.
-    let addr = rsclient.get_url();
+
     let client = reqwest::ClientBuilder::new()
         .danger_accept_invalid_certs(true)
         .build()
@@ -607,7 +608,7 @@ async fn test_v1_raw_delete(rsclient: KanidmClient) {
     let post_body = serde_json::json!({"filter": "self"}).to_string();
 
     let response = match client
-        .post(format!("{}/v1/raw/delete", &addr))
+        .post(rsclient.make_url("/v1/raw/delete"))
         .header(CONTENT_TYPE, APPLICATION_JSON)
         .body(post_body)
         .send()
@@ -615,7 +616,11 @@ async fn test_v1_raw_delete(rsclient: KanidmClient) {
     {
         Ok(value) => value,
         Err(error) => {
-            panic!("Failed to query {:?} : {:#?}", addr, error);
+            panic!(
+                "Failed to query {:?} : {:#?}",
+                rsclient.make_url("/v1/raw/delete"),
+                error
+            );
         }
     };
     eprintln!("response: {:#?}", response);
@@ -629,16 +634,19 @@ async fn test_v1_raw_delete(rsclient: KanidmClient) {
 #[kanidmd_testkit::test]
 async fn test_v1_raw_logout(rsclient: KanidmClient) {
     // We need to do manual reqwests here.
-    let addr = rsclient.get_url();
     let client = reqwest::ClientBuilder::new()
         .danger_accept_invalid_certs(true)
         .build()
         .unwrap();
 
-    let response = match client.get(format!("{}/v1/logout", &addr)).send().await {
+    let response = match client.get(rsclient.make_url("/v1/logout")).send().await {
         Ok(value) => value,
         Err(error) => {
-            panic!("Failed to query {:?} : {:#?}", addr, error);
+            panic!(
+                "Failed to query {:?} : {:#?}",
+                rsclient.make_url("/v1/logout"),
+                error
+            );
         }
     };
     eprintln!("response: {:#?}", response);
@@ -652,16 +660,19 @@ async fn test_v1_raw_logout(rsclient: KanidmClient) {
 #[kanidmd_testkit::test]
 async fn test_status_endpoint(rsclient: KanidmClient) {
     // We need to do manual reqwests here.
-    let addr = rsclient.get_url();
     let client = reqwest::ClientBuilder::new()
         .danger_accept_invalid_certs(true)
         .build()
         .unwrap();
 
-    let response = match client.get(format!("{}/status", &addr)).send().await {
+    let response = match client.get(rsclient.make_url("/status")).send().await {
         Ok(value) => value,
         Err(error) => {
-            panic!("Failed to query {:?} : {:#?}", addr, error);
+            panic!(
+                "Failed to query {:?} : {:#?}",
+                rsclient.make_url("/status"),
+                error
+            );
         }
     };
     eprintln!("response: {:#?}", response);
