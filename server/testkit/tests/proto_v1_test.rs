@@ -647,7 +647,7 @@ async fn test_server_rest_posix_auth_lifecycle(rsclient: KanidmClient) {
             bad_json,
         )
         .await;
-    dbg!(&res);
+    tracing::trace!("{:?}", &res);
     assert!(res.is_err());
 
     // test sending a faulty JSON blob to the person unix update endpoint
@@ -661,7 +661,7 @@ async fn test_server_rest_posix_auth_lifecycle(rsclient: KanidmClient) {
             bad_json,
         )
         .await;
-    dbg!(&res);
+    tracing::trace!("{:?}", &res);
     assert!(res.is_err());
 
     // attempt to verify (good, anon-conn)

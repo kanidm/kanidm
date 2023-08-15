@@ -168,7 +168,7 @@ mod tests {
                 let c = e
                     .get_ava_set("name_history")
                     .expect("failed to get primary cred.");
-                dbg!(c.clone());
+                trace!("{:?}", c.clone());
                 assert!(
                     c.contains(&PartialValue::new_utf8s("old_name"))
                         && c.contains(&PartialValue::new_utf8s("new_name_1"))
@@ -202,7 +202,7 @@ mod tests {
                 let e = qs
                     .internal_search_uuid(uuid!("d2b496bd-8493-47b7-8142-f568b5cf47e1"))
                     .expect("failed to get entry");
-                dbg!(e.get_ava());
+                trace!("{:?}", e.get_ava());
                 let name_history = e
                     .get_ava_set("name_history")
                     .expect("failed to get name_history ava");
@@ -253,7 +253,7 @@ mod tests {
                 let e = qs
                     .internal_search_uuid(uuid!("d2b496bd-8493-47b7-8142-f568b5cf47ee"))
                     .expect("failed to get entry");
-                dbg!(e.get_ava());
+                trace!("{:?}", e.get_ava());
                 let c = e
                     .get_ava_set("name_history")
                     .expect("failed to get name_history ava :/");
