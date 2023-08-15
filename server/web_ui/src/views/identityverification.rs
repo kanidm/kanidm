@@ -216,7 +216,7 @@ impl Component for IdentityVerificationApp {
                         *totp_valid = VALIDATE_TOTP_RE.is_match(&input);
                         #[cfg(debug_assertions)]
                         console::debug!(input.clone());
-                        *other_totp = input.parse::<u32>().ok(); //this should never fail as we set the input type to "number"
+                        *other_totp = input.parse::<u32>().ok();
                     }
                     _ => self.set_state_to_corrupt_state_err(),
                 }
