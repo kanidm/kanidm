@@ -49,7 +49,6 @@ pub static ref SCHEMA_ATTR_EC_KEY_PRIVATE: SchemaAttribute = SchemaAttribute {
     name: "id_verification_eckey".into(),
     description: "Account verification private key.".to_string(),
 
-    multivalue: false,
     index: vec![IndexType::Presence],
     unique: false,
     sync_allowed: false,

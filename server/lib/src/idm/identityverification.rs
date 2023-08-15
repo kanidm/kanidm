@@ -196,7 +196,11 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
         let search = match SearchEvent::from_whoami_request(ident.clone(), &self.qs_read) {
             Ok(s) => s,
             Err(e) => {
-                admin_error!("Failed to retrieve user with the given UUID: {:?}", e);
+                admin_error!(
+                    "Failed to retrieve user with the given UUID: {}. \n{:?}",
+                    ident.get_uuid().unwrap_or_default(),
+                    e
+                );
                 return Err(e);
             }
         };
@@ -207,9 +211,10 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
             .and_then(
                 |entry| match entry.get_ava_single_eckey_private("id_verification_eckey") {
                     Some(key) => Ok(key.clone()),
-                    None => Err(OperationError::InvalidAccountState(
-                        "The user private key is missing!".to_string(),
-                    )),
+                    None => Err(OperationError::InvalidAccountState(format!(
+                        "{}'s private key is missing!",
+                        ident.get_uuid().unwrap_or_default()
+                    ))),
                 },
             )
     }
@@ -223,7 +228,11 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
             match SearchEvent::from_target_uuid_request(ident.clone(), *target, &self.qs_read) {
                 Ok(s) => s,
                 Err(e) => {
-                    admin_error!("Failed to retrieve user with the given UUID: {:?}", e);
+                    admin_error!(
+                        "Failed to retrieve user with the given UUID: {}. \n{:?}",
+                        ident.get_uuid().unwrap_or_default(),
+                        e
+                    );
                     return Err(e);
                 }
             };
@@ -233,9 +242,9 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
             .and_then(
                 |entry| match entry.get_ava_single_eckey_public("id_verification_eckey") {
                     Some(key) => Ok(key.clone()),
-                    None => Err(OperationError::InvalidAccountState(
-                        "The requested public key is missing!".to_string(),
-                    )),
+                    None => Err(OperationError::InvalidAccountState(format!(
+                        "{target}'s public key is missing!",
+                    ))),
                 },
             )
     }

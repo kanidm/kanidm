@@ -66,7 +66,6 @@ impl TotpDisplayApp {
             Err(_) => return Msg::Cancel,
         };
         match serde_wasm_bindgen::from_value(response) {
-            // TODO: check how the backend encodes the totp when sending it
             Ok(IdentifyUserResponse::ProvideCode { totp, step: _ }) => Msg::NewTotp(totp),
             _ => Msg::Cancel,
         }
