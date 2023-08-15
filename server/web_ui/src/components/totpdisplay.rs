@@ -1,5 +1,4 @@
 use gloo::console;
-use gloo::console::console;
 use gloo_timers::callback::{Interval, Timeout};
 use js_sys::Array;
 use kanidm_proto::internal::{IdentifyUserRequest, IdentifyUserResponse};
@@ -66,7 +65,6 @@ impl TotpDisplayApp {
             Ok((_, _, response, _)) => response,
             Err(_) => return Msg::Cancel,
         };
-        console!(response.clone());
         match serde_wasm_bindgen::from_value(response) {
             // TODO: check how the backend encodes the totp when sending it
             Ok(IdentifyUserResponse::ProvideCode { totp, step: _ }) => Msg::NewTotp(totp),
@@ -309,7 +307,6 @@ impl Component for TotpDisplayApp {
                     </div>
                     </div>
                     <button
-                        style="width: fit-content;"
                         class="btn btn-secondary"
                         data-bs-toggle="modal"
                         data-bs-target={format!("#{}", ID_IDENTITY_VERIFICATION_SYSTEM_TOTP_MODAL)}

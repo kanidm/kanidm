@@ -16,12 +16,26 @@ use crate::{do_request, RequestMethod};
 pub enum IdentifyUserState {
     Start,
     IdDisplayAndSubmit,
-    SubmitCodeFirst { other_totp: u32, totp_valid: bool },
-    SubmitCodeSecond { other_totp: u32, totp_valid: bool },
-    DisplayCodeFirst { self_totp: u32, step: u32 },
-    DisplayCodeSecond { self_totp: u32, step: u32 },
+    SubmitCodeFirst {
+        other_totp: Option<u32>,
+        totp_valid: bool,
+    },
+    SubmitCodeSecond {
+        other_totp: Option<u32>,
+        totp_valid: bool,
+    },
+    DisplayCodeFirst {
+        self_totp: u32,
+        step: u32,
+    },
+    DisplayCodeSecond {
+        self_totp: u32,
+        step: u32,
+    },
     Success,
-    Error { msg: String },
+    Error {
+        msg: String,
+    },
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -164,13 +178,13 @@ impl Component for IdentityVerificationApp {
                 match &self.state {
                     IdentifyUserState::IdDisplayAndSubmit => {
                         self.state = IdentifyUserState::SubmitCodeFirst {
-                            other_totp: 0_u32,
+                            other_totp: None,
                             totp_valid: false,
                         };
                     }
                     IdentifyUserState::DisplayCodeFirst { .. } => {
                         self.state = IdentifyUserState::SubmitCodeSecond {
-                            other_totp: 0_u32,
+                            other_totp: None,
                             totp_valid: false,
                         };
                     }
@@ -202,7 +216,7 @@ impl Component for IdentityVerificationApp {
                         *totp_valid = VALIDATE_TOTP_RE.is_match(&input);
                         #[cfg(debug_assertions)]
                         console::debug!(input.clone());
-                        *other_totp = input.parse::<u32>().unwrap_or_default();
+                        *other_totp = input.parse::<u32>().ok(); //this should never fail as we set the input type to "number"
                     }
                     _ => self.set_state_to_corrupt_state_err(),
                 }
@@ -316,7 +330,7 @@ impl IdentityVerificationApp {
         }
     }
 
-    fn view_submit_code(&self, ctx: &Context<Self>, totp: u32, totp_valid: bool) -> Html {
+    fn view_submit_code(&self, ctx: &Context<Self>, totp: Option<u32>, totp_valid: bool) -> Html {
         let self_clone = self.clone();
         html! {
             <div class="identity-verification-container">
@@ -336,10 +350,13 @@ impl IdentityVerificationApp {
                         class="autofocus form-control"
                         id="totp-code-input"
                         name="code"
-                        type="text"
+                        type="number"
+                        step="1"
+                        max="999999"
+                        min="0"
                         autocomplete="code"
                         oninput={Self::input_callback(ctx, "totp-code-input")}
-                        value={ totp.to_string() }
+                        value={ totp.map(|x| x.to_string()) }
                     />
                 </div>
 
@@ -435,7 +452,8 @@ impl IdentityVerificationApp {
             } => {
                 if *totp_valid {
                     IdentifyUserRequest::SubmitCode {
-                        other_totp: *other_totp,
+                        other_totp: other_totp.unwrap_or_default(), // we know that the totp is valid so this should always be Some,
+                                                                    // if for some reason it's None then we are still covered
                     }
                 } else {
                     return IdentifyUserTransition::DoNothing;
