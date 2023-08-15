@@ -108,7 +108,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
         if other_user_totp != *code {
             return Ok(IdentifyUserResponse::CodeFailure);
         }
-        // if we are the fist it means now it's time to go for ProvideCode, otherwise we just confirm that the code is correct
+        // if we are the first it means now it's time to go for ProvideCode, otherwise we just confirm that the code is correct
         // (we know this for a fact as we have already checked that the code is correct)
         let res = if ident.get_uuid() < Some(*target) {
             let shared_secret = self.get_self_totp_secret(target, ident)?;
