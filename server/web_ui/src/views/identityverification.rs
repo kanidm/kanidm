@@ -408,13 +408,13 @@ impl IdentityVerificationApp {
     // the purpose of the following functions is to get what to do next in the state machine.
     // each main view has its own function, that is the start view (even though it's displayed for few ms), the id_display_and_submit view
     // and the submit_code
-
+    // we have to prefix
     async fn get_transition_from_start(
-        state: IdentifyUserState,
+        _state: IdentifyUserState,
         self_id: String,
     ) -> IdentifyUserTransition {
         #[cfg(debug_assertions)]
-        assert!(matches!(state, IdentifyUserState::Start));
+        assert!(matches!(_state, IdentifyUserState::Start));
         // IdentifyUserRequest is hard coded as this function is called on start so that's the only possible state
         let response = match Self::do_typed_request(IdentifyUserRequest::Start, &self_id).await {
             Ok(res) => res,

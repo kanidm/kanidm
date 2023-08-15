@@ -1,13 +1,12 @@
+#[cfg(debug_assertions)]
 use gloo::console;
 use gloo_timers::callback::{Interval, Timeout};
-use js_sys::Array;
 use kanidm_proto::internal::{IdentifyUserRequest, IdentifyUserResponse};
 use wasm_bindgen::JsValue;
 use wasm_timer::SystemTime;
 use yew::prelude::*;
 
 use crate::constants::ID_IDENTITY_VERIFICATION_SYSTEM_TOTP_MODAL;
-use crate::utils::document;
 use crate::views::identityverification::{
     IdentifyUserState, IdentifyUserTransition, CORRUPT_STATE_ERROR,
 };
@@ -104,37 +103,6 @@ impl TotpDisplayApp {
             "green"
         })
     }
-
-    // TODO! It's not remotely doing what I wanted to do, damned CSS
-    fn no_transition_switch_from_red_to_green() {
-        if let Some(el) = document().get_element_by_id("totp-timer-path-remaining") {
-            let str_to_sys_array = |s: &str| Array::from(&JsValue::from(s));
-            #[allow(clippy::expect_used)]
-            el.class_list()
-                .add(&str_to_sys_array("no-transition"))
-                .expect("We should be able to add to the classlist of totp-timer-path-remaining");
-            #[allow(clippy::expect_used)]
-            el.class_list()
-                .remove(&str_to_sys_array("red"))
-                .expect("We should be able to remove the red class from totp-timer-path-remaining");
-            #[allow(clippy::expect_used)]
-            el.class_list()
-                .add(&str_to_sys_array("green"))
-                .expect("We should be able to add to the classlist of totp-timer-path-remaining");
-            // I know this is super duper awful but turns out there is no better way to disable the transition
-            // temporarily and re enable it afterwards
-        };
-    }
-
-    fn reenable_transitions() {
-        if let Some(el) = document().get_element_by_id("totp-timer-path-remaining") {
-            let str_to_sys_array = |s: &str| Array::from(&JsValue::from(s));
-            #[allow(clippy::expect_used)]
-            el.class_list().remove(&str_to_sys_array("no-transition")).expect(
-                "We should be able to remove the no-transition class from totp-timer-path-remaining",
-            );
-        };
-    }
 }
 
 impl Component for TotpDisplayApp {
@@ -182,8 +150,6 @@ impl Component for TotpDisplayApp {
         match msg {
             Msg::FetchTotpAndResetTimer => {
                 self.secret = TotpStatus::Waiting;
-                // when the timer is over we added the no-transition class, switch to green and remove the no-transition class
-                Self::no_transition_switch_from_red_to_green();
                 let time_left = self.get_time_left_from_now();
 
                 let handle = {
@@ -208,7 +174,6 @@ impl Component for TotpDisplayApp {
                 }));
             }
             Msg::StartTicking => {
-                Self::reenable_transitions();
                 self.ticks_left = (self.get_time_left_from_now() / 1000) as u8 + 1;
                 self.ticks_timer = {
                     let link = ctx.link().clone();
