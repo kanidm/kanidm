@@ -54,7 +54,7 @@ pub(crate) static CORRUPT_STATE_ERROR: &str =
     "The identity verification flow is in a corrupt state, please abort and start again";
 
 static UNAVAILABLE_IDENTITY_VERIFICATION_ERROR: &str =
-    "The identity verification features is currently unavailable for this account 😢";
+    "The identity verification feature is currently unavailable for this account 😢";
 static INVALID_USERID_ERROR: &str = "The provided UserID is invalid!";
 
 lazy_static::lazy_static! {
