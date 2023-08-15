@@ -1115,7 +1115,7 @@ impl QueryServer {
     pub async fn write(&self, curtime: Duration) -> QueryServerWriteTransaction<'_> {
         // Guarantee we are the only writer on the thread pool
         #[allow(clippy::expect_used)]
-        let write_ticket = if cfg!(debug_assertions) {
+        let write_ticket = if cfg!(test) {
             self.write_ticket
                 .try_acquire()
                 .expect("unable to acquire writer_ticket for qsw")

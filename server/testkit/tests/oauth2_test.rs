@@ -327,7 +327,7 @@ async fn test_oauth2_openid_basic_flow(rsclient: KanidmClient) {
         .expect("Failed to send token introspect request.");
 
     assert!(response.status() == reqwest::StatusCode::OK);
-    dbg!(response.headers());
+    tracing::trace!("{:?}", response.headers());
     assert!(
         response.headers().get(CONTENT_TYPE) == Some(&HeaderValue::from_static(APPLICATION_JSON))
     );
@@ -373,7 +373,7 @@ async fn test_oauth2_openid_basic_flow(rsclient: KanidmClient) {
         .await
         .expect("Failed to send userinfo request.");
 
-    dbg!(response.headers());
+    tracing::trace!("{:?}", response.headers());
     assert!(
         response.headers().get(CONTENT_TYPE) == Some(&HeaderValue::from_static(APPLICATION_JSON))
     );

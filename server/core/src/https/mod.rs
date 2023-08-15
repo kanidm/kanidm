@@ -255,7 +255,8 @@ pub async fn create_https_server(
         ));
 
     // layer which checks the responses have a content-type of JSON when we're in debug mode
-    #[cfg(debug_assertions)]
+
+    #[cfg(any(test, debug_assertions))]
     let app = app.layer(from_fn(middleware::are_we_json_yet));
 
     let app = app

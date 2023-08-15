@@ -275,7 +275,7 @@ impl Configuration {
 
     // Startup config action, used in kanidmd server etc
     pub fn update_config_for_server_mode(&mut self, sconfig: &ServerConfig) {
-        #[cfg(debug_assertions)]
+        #[cfg(any(test, debug_assertions))]
         debug!("update_config_for_server_mode {:?}", sconfig);
         self.update_tls(&sconfig.tls_chain, &sconfig.tls_key);
         self.update_bind(&sconfig.bindaddress);

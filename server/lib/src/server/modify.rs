@@ -313,7 +313,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
         let norm_cand: Vec<Entry<_, _>> = res?;
 
-        if cfg!(debug_assertions) {
+        if cfg!(debug_assertions) || cfg!(test) {
             pre_candidates
                 .iter()
                 .zip(norm_cand.iter())

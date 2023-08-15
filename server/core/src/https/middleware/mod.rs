@@ -5,8 +5,6 @@ use axum::{
     response::Response,
     TypedHeader,
 };
-#[cfg(debug_assertions)]
-use http::header::CONTENT_TYPE;
 use http::HeaderValue;
 use uuid::Uuid;
 
@@ -34,21 +32,7 @@ pub struct KOpId {
     pub uat: Option<String>,
 }
 
-/// Ensure the status code is 200..=299
-#[cfg(debug_assertions)]
-fn from_200_to_299(status: http::StatusCode) -> bool {
-    status.as_u16() >= 200 && status.as_u16() <= 299
-}
-
-#[test]
-fn test_from_200_to_299() {
-    assert!(from_200_to_299(http::StatusCode::OK));
-    assert!(from_200_to_299(http::StatusCode::IM_USED));
-    assert!(!from_200_to_299(http::StatusCode::BAD_REQUEST));
-    assert!(!from_200_to_299(http::StatusCode::INTERNAL_SERVER_ERROR));
-}
-
-#[cfg(debug_assertions)]
+#[cfg(any(test, debug_assertions))]
 /// This is a debug middleware to ensure that /v1/ endpoints only return JSON
 #[instrument(name = "are_we_json_yet", skip_all)]
 pub async fn are_we_json_yet<B>(request: Request<B>, next: Next<B>) -> Response {
@@ -56,12 +40,11 @@ pub async fn are_we_json_yet<B>(request: Request<B>, next: Next<B>) -> Response 
 
     let response = next.run(request).await;
 
-    if uri.starts_with("/v1") && from_200_to_299(response.status()) {
+    if uri.starts_with("/v1") && response.status().is_success() {
         let headers = response.headers();
-        assert!(headers.contains_key(CONTENT_TYPE));
-        dbg!(headers.get(CONTENT_TYPE));
+        assert!(headers.contains_key(http::header::CONTENT_TYPE));
         assert!(
-            headers.get(CONTENT_TYPE)
+            headers.get(http::header::CONTENT_TYPE)
                 == Some(&HeaderValue::from_static(crate::https::APPLICATION_JSON))
         );
     }
