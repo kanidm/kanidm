@@ -55,7 +55,11 @@ pub struct UserToken {
 pub trait IdProvider {
     async fn provider_authenticate(&self) -> Result<(), IdpError>;
 
-    async fn unix_user_get(&self, id: &Id, old_token: Option<UserToken>) -> Result<UserToken, IdpError>;
+    async fn unix_user_get(
+        &self,
+        id: &Id,
+        old_token: Option<UserToken>,
+    ) -> Result<UserToken, IdpError>;
 
     async fn unix_user_authenticate(
         &self,
