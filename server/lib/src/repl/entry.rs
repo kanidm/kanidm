@@ -41,7 +41,7 @@ impl EntryChangeState {
         let class = attrs.get("class");
         let st = if class
             .as_ref()
-            .map(|c| c.contains(&PVCLASS_TOMBSTONE as &PartialValue))
+            .map(|c| c.contains(&AcpClass::Tombstone.to_partialvalue()))
             .unwrap_or(false)
         {
             State::Tombstone { at: cid.clone() }
@@ -175,7 +175,7 @@ impl EntryChangeState {
         let class = expected_attrs.get("class");
         let is_ts = class
             .as_ref()
-            .map(|c| c.contains(&PVCLASS_TOMBSTONE as &PartialValue))
+            .map(|c| c.contains(&AcpClass::Tombstone.to_partialvalue()))
             .unwrap_or(false);
 
         match (&self.st, is_ts) {

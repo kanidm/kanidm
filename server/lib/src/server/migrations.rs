@@ -202,8 +202,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
     pub fn migrate_8_to_9(&mut self) -> Result<(), OperationError> {
         admin_warn!("starting 8 to 9 migration.");
         let filt = filter_all!(f_or!([
-            f_eq("class", PVCLASS_OAUTH2_RS.clone()),
-            f_eq("class", PVCLASS_OAUTH2_BASIC.clone()),
+            f_eq("class", AcpClass::OAuth2ResourceServer.into()),
+            f_eq("class", AcpClass::OAuth2ResourceServerBasic.into()),
         ]));
 
         let pre_candidates = self.internal_search(filt).map_err(|e| {
@@ -406,7 +406,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     pub fn migrate_12_to_13(&mut self) -> Result<(), OperationError> {
         admin_warn!("starting 12 to 13 migration.");
         let filter = filter!(f_and!([
-            f_eq("class", PVCLASS_DOMAIN_INFO.clone()),
+            f_eq("class", AcpClass::DomainInfo.into()),
             f_eq("uuid", PVUUID_DOMAIN_INFO.clone()),
         ]));
         // Delete the existing cookie key to trigger a regeneration.

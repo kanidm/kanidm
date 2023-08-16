@@ -1,6 +1,7 @@
 use crate::constants::uuids::*;
-use crate::constants::values::*;
+
 use crate::entry::{Entry, EntryInit, EntryInitNew, EntryNew};
+use crate::prelude::AcpClass;
 use crate::value::Value;
 
 // Default entries for system_config
@@ -8,9 +9,9 @@ use crate::value::Value;
 
 lazy_static! {
     pub static ref E_SYSTEM_CONFIG_V1: EntryInitNew = entry_init!(
-        ("class", CLASS_OBJECT.clone()),
-        ("class", CLASS_SYSTEM_CONFIG.clone()),
-        ("class", CLASS_SYSTEM.clone()),
+        ("class", AcpClass::Object.to_value()),
+        ("class", AcpClass::SystemConfig.to_value()),
+        ("class", AcpClass::System.to_value()),
         ("uuid", Value::Uuid(UUID_SYSTEM_CONFIG)),
         (
             "description",

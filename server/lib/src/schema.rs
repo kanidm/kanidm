@@ -103,7 +103,7 @@ impl SchemaAttribute {
         let uuid = value.get_uuid();
 
         // class
-        if !value.attribute_equality("class", &PVCLASS_ATTRIBUTETYPE) {
+        if !value.attribute_equality("class", &AcpClass::AttributeType.into()) {
             admin_error!("class attribute type not present - {:?}", uuid);
             return Err(OperationError::InvalidSchemaState(
                 "missing attributetype".to_string(),
@@ -322,9 +322,9 @@ impl From<SchemaAttribute> for EntryInitNew {
         entry.set_ava(
             "class",
             vec![
-                CLASS_OBJECT.clone(),
-                CLASS_SYSTEM.clone(),
-                CLASS_ATTRIBUTETYPE.clone(),
+                AcpClass::Object.to_value(),
+                AcpClass::System.into(),
+                AcpClass::AttributeType.to_value(),
             ],
         );
         // description
@@ -395,7 +395,7 @@ impl SchemaClass {
         // uuid
         let uuid = value.get_uuid();
         // Convert entry to a schema class.
-        if !value.attribute_equality("class", &PVCLASS_CLASSTYPE) {
+        if !value.attribute_equality("class", &AcpClass::ClassType.into()) {
             admin_error!("class classtype not present - {:?}", uuid);
             return Err(OperationError::InvalidSchemaState(
                 "missing classtype".to_string(),
@@ -494,9 +494,9 @@ impl From<SchemaClass> for EntryInitNew {
         entry.set_ava(
             "class",
             vec![
-                CLASS_OBJECT.clone(),
-                CLASS_SYSTEM.clone(),
-                CLASS_CLASSTYPE.clone(),
+                AcpClass::Object.to_value(),
+                AcpClass::System.into(),
+                AcpClass::ClassType.into(),
             ],
         );
 
@@ -2509,8 +2509,8 @@ mod tests {
                 "uuid",
                 Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
             ),
-            ("class", CLASS_OBJECT.clone()),
-            ("class", CLASS_ATTRIBUTETYPE.clone())
+            ("class", AcpClass::Object.to_value()),
+            ("class", AcpClass::AttributeType.to_value())
         )
         .into_invalid_new();
         let res = e_attr_invalid.validate(&schema);
@@ -2520,8 +2520,8 @@ mod tests {
         });
 
         let e_attr_invalid_may = entry_init!(
-            ("class", CLASS_OBJECT.clone()),
-            ("class", CLASS_ATTRIBUTETYPE.clone()),
+            ("class", AcpClass::Object.to_value()),
+            ("class", AcpClass::AttributeType.to_value()),
             ("attributename", Value::new_iutf8("testattr")),
             ("description", Value::Utf8("testattr".to_string())),
             ("multivalue", Value::Bool(false)),
@@ -2541,8 +2541,8 @@ mod tests {
         );
 
         let e_attr_invalid_syn = entry_init!(
-            ("class", CLASS_OBJECT.clone()),
-            ("class", CLASS_ATTRIBUTETYPE.clone()),
+            ("class", AcpClass::Object.to_value()),
+            ("class", AcpClass::AttributeType.to_value()),
             ("attributename", Value::new_iutf8("testattr")),
             ("description", Value::Utf8("testattr".to_string())),
             ("multivalue", Value::Utf8("false".to_string())),
@@ -2564,8 +2564,8 @@ mod tests {
 
         // You may not have the phantom.
         let e_phantom = entry_init!(
-            ("class", CLASS_OBJECT.clone()),
-            ("class", CLASS_ATTRIBUTETYPE.clone()),
+            ("class", AcpClass::Object.to_value()),
+            ("class", AcpClass::AttributeType.to_value()),
             ("attributename", Value::new_iutf8("testattr")),
             ("description", Value::Utf8("testattr".to_string())),
             ("multivalue", Value::Bool(false)),
@@ -2581,8 +2581,8 @@ mod tests {
         assert!(e_phantom.validate(&schema).is_err());
 
         let e_ok = entry_init!(
-            ("class", CLASS_OBJECT.clone()),
-            ("class", CLASS_ATTRIBUTETYPE.clone()),
+            ("class", AcpClass::Object.to_value()),
+            ("class", AcpClass::AttributeType.to_value()),
             ("attributename", Value::new_iutf8("testattr")),
             ("description", Value::Utf8("testattr".to_string())),
             ("multivalue", Value::Bool(true)),
@@ -2800,12 +2800,12 @@ mod tests {
                 AttrString::from("uuid"),
                 AttrString::from("last_modified_cid"),
             ],
-            systemsupplements: vec![AttrString::from("service"), AttrString::from("person")],
+            systemsupplements: vec![AcpClass::Service.into(), AcpClass::Person.into()],
             ..Default::default()
         };
 
         let class_person = SchemaClass {
-            name: AttrString::from("person"),
+            name: AcpClass::Person.into(),
             uuid: Uuid::new_v4(),
             description: String::from("person object"),
             systemmust: vec![
@@ -2817,7 +2817,7 @@ mod tests {
         };
 
         let class_service = SchemaClass {
-            name: AttrString::from("service"),
+            name: AcpClass::Service.into(),
             uuid: Uuid::new_v4(),
             description: String::from("service object"),
             systemmust: vec![
@@ -2825,7 +2825,7 @@ mod tests {
                 AttrString::from("uuid"),
                 AttrString::from("last_modified_cid"),
             ],
-            excludes: vec![AttrString::from("person")],
+            excludes: vec![AcpClass::Person.into()],
             ..Default::default()
         };
 
@@ -2835,7 +2835,7 @@ mod tests {
 
         // Missing person or service account.
         let e_account = entry_init!(
-            ("class", Value::new_class("account")),
+            ("class", AcpClass::Account.to_value()),
             ("uuid", Value::Uuid(Uuid::new_v4()))
         )
         .into_invalid_new();
@@ -2843,8 +2843,8 @@ mod tests {
         assert_eq!(
             e_account.validate(&schema),
             Err(SchemaError::SupplementsNotSatisfied(vec![
-                "service".to_string(),
-                "person".to_string(),
+                AcpClass::Service.into(),
+                AcpClass::Person.into(),
             ]))
         );
 
@@ -2863,9 +2863,9 @@ mod tests {
 
         // Service can't have person
         let e_service_person = entry_init!(
-            ("class", Value::new_class("service")),
-            ("class", Value::new_class("account")),
-            ("class", Value::new_class("person")),
+            ("class", AcpClass::Service.to_value()),
+            ("class", AcpClass::Account.to_value()),
+            ("class", AcpClass::Person.to_value()),
             ("uuid", Value::Uuid(Uuid::new_v4()))
         )
         .into_invalid_new();
@@ -2880,7 +2880,7 @@ mod tests {
         // These are valid configurations.
         let e_service_valid = entry_init!(
             ("class", Value::new_class("service")),
-            ("class", Value::new_class("account")),
+            ("class", AcpClass::Account.to_value()),
             ("uuid", Value::Uuid(Uuid::new_v4()))
         )
         .into_invalid_new();
@@ -2888,8 +2888,8 @@ mod tests {
         assert!(e_service_valid.validate(&schema).is_ok());
 
         let e_person_valid = entry_init!(
-            ("class", Value::new_class("person")),
-            ("class", Value::new_class("account")),
+            ("class", AcpClass::Person.to_value()),
+            ("class", AcpClass::Account.to_value()),
             ("uuid", Value::Uuid(Uuid::new_v4()))
         )
         .into_invalid_new();
@@ -2897,7 +2897,7 @@ mod tests {
         assert!(e_person_valid.validate(&schema).is_ok());
 
         let e_person_valid = entry_init!(
-            ("class", Value::new_class("person")),
+            ("class", AcpClass::Person.to_value()),
             ("uuid", Value::Uuid(Uuid::new_v4()))
         )
         .into_invalid_new();

@@ -15,7 +15,7 @@ pub struct NameHistory {}
 lazy_static! {
     // it contains all the partialvalues used to match against an Entry's class,
     // we just need a partialvalue to match in order to target the entry
-    static ref CLASSES_TO_UPDATE: [PartialValue; 1] = [PartialValue::new_iutf8("account")];
+    static ref CLASSES_TO_UPDATE: [PartialValue; 1] = [PartialValue::new_iutf8(AcpClass::Account.into())];
     static ref HISTORY_ATTRIBUTES: [&'static str;1] = ["name"];
 }
 
@@ -124,7 +124,7 @@ mod tests {
     use std::time::Duration;
 
     use crate::entry::{Entry, EntryInit, EntryNew};
-    use crate::prelude::uuid;
+    use crate::prelude::{uuid, AcpClass};
     use crate::repl::cid::Cid;
     use crate::value::Value;
 
@@ -136,8 +136,8 @@ mod tests {
             Duration::new(20, 2),
         );
         let ea = entry_init!(
-            ("class", Value::new_class("account")),
-            ("class", Value::new_class("posixaccount")),
+            ("class", AcpClass::Account.to_value()),
+            ("class", AcpClass::PosixAccount.to_value()),
             ("name", Value::new_iname("old_name")),
             (
                 "uuid",
@@ -181,8 +181,8 @@ mod tests {
     fn name_creation() {
         // Add another uuid to a type
         let ea = entry_init!(
-            ("class", Value::new_class("account")),
-            ("class", Value::new_class("posixaccount")),
+            ("class", AcpClass::Account.to_value()),
+            ("class", AcpClass::PosixAccount.to_value()),
             ("name", Value::new_iname("old_name")),
             (
                 "uuid",
@@ -223,8 +223,8 @@ mod tests {
         }
         // Add another uuid to a type
         let mut ea = entry_init!(
-            ("class", Value::new_class("account")),
-            ("class", Value::new_class("posixaccount")),
+            ("class", AcpClass::Account.to_value()),
+            ("class", AcpClass::PosixAccount.to_value()),
             ("name", Value::new_iname("old_name8")),
             (
                 "uuid",

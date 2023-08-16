@@ -42,7 +42,7 @@ impl Plugin for Base {
         // For each candidate
         for entry in cand.iter_mut() {
             // First, ensure we have the 'object', class in the class set.
-            entry.add_ava("class", CLASS_OBJECT.clone());
+            entry.add_ava("class", AcpClass::Object.to_value());
 
             // if they don't have uuid, create it.
             match entry.get_ava_set("uuid").map(|s| s.len()) {
@@ -250,8 +250,8 @@ mod tests {
 
     lazy_static! {
         pub static ref TEST_ACCOUNT: EntryInitNew = entry_init!(
-            ("class", Value::new_class("account")),
-            ("class", Value::new_class("service_account")),
+            ("class", AcpClass::Account.to_value()),
+            ("class", AcpClass::ServiceAccount.to_value()),
             ("class", Value::new_class("memberof")),
             ("name", Value::new_iname("test_account_1")),
             ("displayname", Value::new_utf8s("test_account_1")),
@@ -265,7 +265,7 @@ mod tests {
             ("member", Value::Refer(UUID_TEST_ACCOUNT))
         );
         pub static ref ALLOW_ALL: EntryInitNew = entry_init!(
-            ("class", Value::new_class("object")),
+            ("class", AcpClass::Object.to_value()),
             ("class", Value::new_class("access_control_profile")),
             ("class", Value::new_class("access_control_modify")),
             ("class", Value::new_class("access_control_create")),

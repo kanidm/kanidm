@@ -2,15 +2,15 @@
 //! Constant Entries for the IDM
 
 use crate::constants::uuids::*;
-use crate::constants::values::*;
 use crate::entry::{Entry, EntryInit, EntryInitNew, EntryNew};
+use crate::prelude::*;
 use crate::value::Value;
 
 lazy_static! {
     pub static ref E_IDM_ADMINS_ACP_RECYCLE_SEARCH_V1: EntryInitNew = entry_init!(
-        ("class", CLASS_OBJECT.clone()),
-        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_SEARCH.clone()),
+        ("class", AcpClass::Object.to_value()),
+        ("class", AcpClass::AccessControlProfile.to_value()),
+        ("class", AcpClass::AccessControlSearch.to_value()),
         ("name", Value::new_iname("idm_admins_acp_recycle_search")),
         ("uuid", Value::Uuid(UUID_IDM_ADMINS_ACP_RECYCLE_SEARCH_V1)),
         (
@@ -33,9 +33,9 @@ lazy_static! {
 
 lazy_static! {
     pub static ref E_IDM_ADMINS_ACP_REVIVE_V1: EntryInitNew = entry_init!(
-        ("class", CLASS_OBJECT.clone()),
-        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_MODIFY.clone()),
+        ("class", AcpClass::Object.to_value()),
+        ("class", AcpClass::AccessControlProfile.to_value()),
+        ("class", AcpClass::AccessControlModify.to_value()),
         ("name", Value::new_iname("idm_admins_acp_revive")),
         ("uuid", Value::Uuid(UUID_IDM_ADMINS_ACP_REVIVE_V1)),
         (
@@ -55,9 +55,9 @@ lazy_static! {
 
 lazy_static! {
     pub static ref E_IDM_SELF_ACP_READ_V1: EntryInitNew = entry_init!(
-        ("class", CLASS_OBJECT.clone()),
-        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_SEARCH.clone()),
+        ("class", AcpClass::Object.to_value()),
+        ("class", AcpClass::AccessControlProfile.to_value()),
+        ("class", AcpClass::AccessControlSearch.to_value()),
         ("name", Value::new_iname("idm_self_acp_read")),
         ("uuid", Value::Uuid(UUID_IDM_SELF_ACP_READ_V1)),
         (
@@ -98,9 +98,9 @@ lazy_static! {
 
 lazy_static! {
     pub static ref E_IDM_SELF_ACP_WRITE_V1: EntryInitNew = entry_init!(
-        ("class", CLASS_OBJECT.clone()),
-        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_MODIFY.clone()),
+        ("class", AcpClass::Object.to_value()),
+        ("class", AcpClass::AccessControlProfile.to_value()),
+        ("class", AcpClass::AccessControlModify.to_value()),
         ("name", Value::new_iname("idm_self_acp_write")),
         ("uuid", Value::Uuid(UUID_IDM_SELF_ACP_WRITE_V1)),
         (
@@ -143,9 +143,9 @@ lazy_static! {
 
 lazy_static! {
     pub static ref E_IDM_ACCOUNT_SELF_ACP_WRITE_V1: EntryInitNew = entry_init!(
-        ("class", CLASS_OBJECT.clone()),
-        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_MODIFY.clone()),
+        ("class", AcpClass::Object.to_value()),
+        ("class", AcpClass::AccessControlProfile.to_value()),
+        ("class", AcpClass::AccessControlModify.to_value()),
         ("name", Value::new_iname("idm_self_account_acp_write")),
         ("uuid", Value::Uuid(UUID_IDM_ACCOUNT_SELF_ACP_WRITE_V1)),
         (
@@ -169,9 +169,9 @@ lazy_static! {
 
 lazy_static! {
     pub static ref E_IDM_PEOPLE_SELF_ACP_WRITE_MAIL_PRIV_V1: EntryInitNew = entry_init!(
-        ("class", CLASS_OBJECT.clone()),
-        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_MODIFY.clone()),
+        ("class", AcpClass::Object.to_value()),
+        ("class", AcpClass::AccessControlProfile.to_value()),
+        ("class", AcpClass::AccessControlModify.to_value()),
         ("name", Value::new_iname("idm_people_self_acp_write_mail")),
         ("uuid", Value::Uuid(UUID_IDM_PEOPLE_SELF_ACP_WRITE_MAIL_V1)),
         (
@@ -196,9 +196,9 @@ lazy_static! {
 
 lazy_static! {
     pub static ref E_IDM_ALL_ACP_READ_V1: EntryInitNew = entry_init!(
-        ("class", CLASS_OBJECT.clone()),
-        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_SEARCH.clone()),
+        ("class", AcpClass::Object.to_value()),
+        ("class", AcpClass::AccessControlProfile.to_value()),
+        ("class", AcpClass::AccessControlSearch.to_value()),
         ("name", Value::new_iname("idm_all_acp_read")),
         ("uuid", Value::Uuid(UUID_IDM_ALL_ACP_READ_V1)),
         (
@@ -233,9 +233,9 @@ lazy_static! {
 
 lazy_static! {
     pub static ref E_IDM_ACP_PEOPLE_READ_PRIV_V1: EntryInitNew = entry_init!(
-        ("class", CLASS_OBJECT.clone()),
-        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_SEARCH.clone()),
+        ("class", AcpClass::Object.to_value()),
+        ("class", AcpClass::AccessControlProfile.to_value()),
+        ("class", AcpClass::AccessControlSearch.to_value()),
         ("name", Value::new_iname("idm_acp_people_read_priv")),
         ("uuid", Value::Uuid(UUID_IDM_ACP_PEOPLE_READ_PRIV_V1)),
         (
@@ -263,9 +263,9 @@ lazy_static! {
 
 lazy_static! {
     pub static ref E_IDM_ACP_PEOPLE_WRITE_PRIV_V1: EntryInitNew = entry_init!(
-        ("class", CLASS_OBJECT.clone()),
-        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_MODIFY.clone()),
+        ("class", AcpClass::Object.to_value()),
+        ("class", AcpClass::AccessControlProfile.to_value()),
+        ("class", AcpClass::AccessControlModify.to_value()),
         ("name", Value::new_iname("idm_acp_people_write_priv")),
         ("uuid", Value::Uuid(UUID_IDM_ACP_PEOPLE_WRITE_PRIV_V1)),
         (
@@ -297,10 +297,10 @@ lazy_static! {
 
 lazy_static! {
     pub static ref E_IDM_ACP_PEOPLE_MANAGE_PRIV_V1: EntryInitNew = entry_init!(
-        ("class", CLASS_OBJECT.clone()),
-        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_DELETE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_CREATE.clone()),
+        ("class", AcpClass::Object.to_value()),
+        ("class", AcpClass::AccessControlProfile.to_value()),
+        ("class", AcpClass::AccessControlDelete.to_value()),
+        ("class", AcpClass::AccessControlCreate.to_value()),
         ("name", Value::new_iname("idm_acp_people_manage")),
         ("uuid", Value::Uuid(UUID_IDM_ACP_PEOPLE_MANAGE_PRIV_V1)),
         (
@@ -341,9 +341,9 @@ lazy_static! {
 // acp that allows the create here too? Should it be separate?
 lazy_static! {
     pub static ref E_IDM_ACP_PEOPLE_ACCOUNT_PASSWORD_IMPORT_PRIV_V1: EntryInitNew = entry_init!(
-        ("class", CLASS_OBJECT.clone()),
-        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_MODIFY.clone()),
+        ("class", AcpClass::Object.to_value()),
+        ("class", AcpClass::AccessControlProfile.to_value()),
+        ("class", AcpClass::AccessControlModify.to_value()),
         ("name", Value::new_iname("idm_acp_people_account_password_import_priv")),
         ("uuid", Value::Uuid(UUID_IDM_ACP_PEOPLE_ACCOUNT_PASSWORD_IMPORT_PRIV_V1)),
         (
@@ -368,9 +368,9 @@ lazy_static! {
 
 lazy_static! {
     pub static ref E_IDM_ACP_PEOPLE_EXTEND_PRIV_V1: EntryInitNew = entry_init!(
-        ("class", CLASS_OBJECT.clone()),
-        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_MODIFY.clone()),
+        ("class", AcpClass::Object.to_value()),
+        ("class", AcpClass::AccessControlProfile.to_value()),
+        ("class", AcpClass::AccessControlModify.to_value()),
         ("name", Value::new_iname("idm_acp_people_extend_priv")),
         ("uuid", Value::Uuid(UUID_IDM_ACP_PEOPLE_EXTEND_PRIV_V1)),
         (
@@ -403,9 +403,9 @@ lazy_static! {
 
 lazy_static! {
     pub static ref E_IDM_ACP_HP_PEOPLE_READ_PRIV_V1: EntryInitNew = entry_init!(
-        ("class", CLASS_OBJECT.clone()),
-        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_SEARCH.clone()),
+        ("class", AcpClass::Object.to_value()),
+        ("class", AcpClass::AccessControlProfile.to_value()),
+        ("class", AcpClass::AccessControlSearch.to_value()),
         ("name", Value::new_iname("idm_acp_hp_people_read_priv")),
         ("uuid", Value::Uuid(UUID_IDM_ACP_HP_PEOPLE_READ_PRIV_V1)),
         (
@@ -432,9 +432,9 @@ lazy_static! {
 
 lazy_static! {
     pub static ref E_IDM_ACP_ACCOUNT_MAIL_READ_PRIV_V1: EntryInitNew = entry_init!(
-        ("class", CLASS_OBJECT.clone()),
-        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_SEARCH.clone()),
+        ("class", AcpClass::Object.to_value()),
+        ("class", AcpClass::AccessControlProfile.to_value()),
+        ("class", AcpClass::AccessControlSearch.to_value()),
         (
             "name",
             Value::new_iname("idm_acp_account_mail_read_priv")
@@ -464,9 +464,9 @@ lazy_static! {
 
 lazy_static! {
     pub static ref E_IDM_ACP_HP_PEOPLE_WRITE_PRIV_V1: EntryInitNew = entry_init!(
-        ("class", CLASS_OBJECT.clone()),
-        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_MODIFY.clone()),
+        ("class", AcpClass::Object.to_value()),
+        ("class", AcpClass::AccessControlProfile.to_value()),
+        ("class", AcpClass::AccessControlModify.to_value()),
         ("name", Value::new_iname("idm_acp_hp_people_write_priv")),
         ("uuid", Value::Uuid(UUID_IDM_ACP_HP_PEOPLE_WRITE_PRIV_V1)),
         (
@@ -497,9 +497,9 @@ lazy_static! {
 
 lazy_static! {
     pub static ref E_IDM_ACP_HP_PEOPLE_EXTEND_PRIV_V1: EntryInitNew = entry_init!(
-        ("class", CLASS_OBJECT.clone()),
-        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_MODIFY.clone()),
+        ("class", AcpClass::Object.to_value()),
+        ("class", AcpClass::AccessControlProfile.to_value()),
+        ("class", AcpClass::AccessControlModify.to_value()),
         ("name", Value::new_iname("idm_acp_hp_people_extend_priv")),
         ("uuid", Value::Uuid(UUID_IDM_ACP_HP_PEOPLE_EXTEND_PRIV_V1)),
         (
@@ -534,10 +534,10 @@ lazy_static! {
 
 lazy_static! {
     pub static ref E_IDM_ACP_GROUP_WRITE_PRIV_V1: EntryInitNew = entry_init!(
-        ("class", CLASS_OBJECT.clone()),
-        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_MODIFY.clone()),
-        ("class", CLASS_ACCESS_CONTROL_SEARCH.clone()),
+        ("class", AcpClass::Object.to_value()),
+        ("class", AcpClass::AccessControlProfile.to_value()),
+        ("class", AcpClass::AccessControlModify.to_value()),
+        ("class", AcpClass::AccessControlSearch.to_value()),
         ("name", Value::new_iname("idm_acp_group_write_priv")),
         ("uuid", Value::Uuid(UUID_IDM_ACP_GROUP_WRITE_PRIV_V1)),
         (
@@ -574,9 +574,9 @@ lazy_static! {
 
 lazy_static! {
     pub static ref E_IDM_ACP_ACCOUNT_READ_PRIV_V1: EntryInitNew = entry_init!(
-        ("class", CLASS_OBJECT.clone()),
-        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_SEARCH.clone()),
+        ("class", AcpClass::Object.to_value()),
+        ("class", AcpClass::AccessControlProfile.to_value()),
+        ("class", AcpClass::AccessControlSearch.to_value()),
         ("name", Value::new_iname("idm_acp_account_read_priv")),
         ("uuid", Value::Uuid(UUID_IDM_ACP_ACCOUNT_READ_PRIV_V1)),
         (
@@ -615,9 +615,9 @@ lazy_static! {
 
 lazy_static! {
     pub static ref E_IDM_ACP_ACCOUNT_WRITE_PRIV_V1: EntryInitNew = entry_init!(
-        ("class", CLASS_OBJECT.clone()),
-        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_MODIFY.clone()),
+        ("class", AcpClass::Object.to_value()),
+        ("class", AcpClass::AccessControlProfile.to_value()),
+        ("class", AcpClass::AccessControlModify.to_value()),
         ("name", Value::new_iname("idm_acp_account_write_priv")),
         ("uuid", Value::Uuid(UUID_IDM_ACP_ACCOUNT_WRITE_PRIV_V1)),
         (
@@ -663,10 +663,10 @@ lazy_static! {
 
 lazy_static! {
     pub static ref E_IDM_ACP_ACCOUNT_MANAGE_PRIV_V1: EntryInitNew = entry_init!(
-        ("class", CLASS_OBJECT.clone()),
-        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_DELETE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_CREATE.clone()),
+        ("class", AcpClass::Object.to_value()),
+        ("class", AcpClass::AccessControlProfile.to_value()),
+        ("class", AcpClass::AccessControlDelete.to_value()),
+        ("class", AcpClass::AccessControlCreate.to_value()),
         ("name", Value::new_iname("idm_acp_account_manage")),
         ("uuid", Value::Uuid(UUID_IDM_ACP_ACCOUNT_MANAGE_PRIV_V1)),
         (
@@ -695,9 +695,10 @@ lazy_static! {
         ("acp_create_attr", Value::new_iutf8("account_valid_from")),
         ("acp_create_attr", Value::new_iutf8("passkeys")),
         ("acp_create_attr", Value::new_iutf8("devicekeys")),
-        ("acp_create_class", Value::new_iutf8("object")),
-        ("acp_create_class", Value::new_iutf8("account")),
-        ("acp_create_class", Value::new_iutf8("service_account"))
+
+        ("acp_create_class", Value::new_iutf8(AcpClass::Object.into())),
+        ("acp_create_class", Value::new_iutf8(AcpClass::Account.into())),
+        ("acp_create_class", Value::new_iutf8(AcpClass::ServiceAccount.into()))
     );
 }
 
@@ -707,9 +708,9 @@ lazy_static! {
 
 lazy_static! {
     pub static ref E_IDM_ACP_RADIUS_SECRET_READ_PRIV_V1: EntryInitNew = entry_init!(
-        ("class", CLASS_OBJECT.clone()),
-        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_SEARCH.clone()),
+        ("class", AcpClass::Object.to_value()),
+        ("class", AcpClass::AccessControlProfile.to_value()),
+        ("class", AcpClass::AccessControlSearch.to_value()),
         ("name", Value::new_iname("idm_acp_radius_secret_read_priv")),
         ("uuid", Value::Uuid(UUID_IDM_ACP_RADIUS_SECRET_READ_PRIV_V1)),
         (
@@ -733,9 +734,9 @@ lazy_static! {
 
 lazy_static! {
     pub static ref E_IDM_ACP_RADIUS_SECRET_WRITE_PRIV_V1: EntryInitNew = entry_init!(
-        ("class", CLASS_OBJECT.clone()),
-        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_MODIFY.clone()),
+        ("class", AcpClass::Object.to_value()),
+        ("class", AcpClass::AccessControlProfile.to_value()),
+        ("class", AcpClass::AccessControlModify.to_value()),
         ("name", Value::new_iname("idm_acp_radius_secret_write_priv")),
         ("uuid", Value::Uuid(UUID_IDM_ACP_RADIUS_SECRET_WRITE_PRIV_V1)),
         (
@@ -761,9 +762,9 @@ lazy_static! {
 
 lazy_static! {
     pub static ref E_IDM_ACP_RADIUS_SERVERS_V1: EntryInitNew = entry_init!(
-        ("class", CLASS_OBJECT.clone()),
-        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_SEARCH.clone()),
+        ("class", AcpClass::Object.to_value()),
+        ("class", AcpClass::AccessControlProfile.to_value()),
+        ("class", AcpClass::AccessControlSearch.to_value()),
         ("name", Value::new_iname("idm_acp_radius_servers")),
         ("uuid", Value::Uuid(UUID_IDM_ACP_RADIUS_SERVERS_V1)),
         (
@@ -791,9 +792,9 @@ lazy_static! {
 
 lazy_static! {
     pub static ref E_IDM_ACP_HP_ACCOUNT_READ_PRIV_V1: EntryInitNew = entry_init!(
-        ("class", CLASS_OBJECT.clone()),
-        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_SEARCH.clone()),
+        ("class", AcpClass::Object.to_value()),
+        ("class", AcpClass::AccessControlProfile.to_value()),
+        ("class", AcpClass::AccessControlSearch.to_value()),
         ("name", Value::new_iname("idm_acp_hp_account_read_priv")),
         ("uuid", Value::Uuid(UUID_IDM_ACP_HP_ACCOUNT_READ_PRIV_V1)),
         (
@@ -830,9 +831,9 @@ lazy_static! {
 
 lazy_static! {
     pub static ref E_IDM_ACP_HP_ACCOUNT_WRITE_PRIV_V1: EntryInitNew = entry_init!(
-        ("class", CLASS_OBJECT.clone()),
-        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_MODIFY.clone()),
+        ("class", AcpClass::Object.to_value()),
+        ("class", AcpClass::AccessControlProfile.to_value()),
+        ("class", AcpClass::AccessControlModify.to_value()),
         ("name", Value::new_iname("idm_acp_hp_account_write_priv")),
         ("uuid", Value::Uuid(UUID_IDM_ACP_HP_ACCOUNT_WRITE_PRIV_V1)),
         (
@@ -876,10 +877,10 @@ lazy_static! {
 
 lazy_static! {
     pub static ref E_IDM_ACP_HP_GROUP_WRITE_PRIV_V1: EntryInitNew = entry_init!(
-        ("class", CLASS_OBJECT.clone()),
-        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_MODIFY.clone()),
-        ("class", CLASS_ACCESS_CONTROL_SEARCH.clone()),
+        ("class", AcpClass::Object.to_value()),
+        ("class", AcpClass::AccessControlProfile.to_value()),
+        ("class", AcpClass::AccessControlModify.to_value()),
+        ("class", AcpClass::AccessControlSearch.to_value()),
         ("name", Value::new_iname("idm_acp_hp_group_write_priv")),
         ("uuid", Value::Uuid(UUID_IDM_ACP_HP_GROUP_WRITE_PRIV_V1)),
         (
@@ -916,11 +917,11 @@ lazy_static! {
 
 lazy_static! {
     pub static ref E_IDM_ACP_SCHEMA_WRITE_ATTRS_PRIV_V1: EntryInitNew = entry_init!(
-        ("class", CLASS_OBJECT.clone()),
-        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_CREATE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_MODIFY.clone()),
-        ("class", CLASS_ACCESS_CONTROL_SEARCH.clone()),
+        ("class", AcpClass::Object.to_value()),
+        ("class", AcpClass::AccessControlProfile.to_value()),
+        ("class", AcpClass::AccessControlCreate.to_value()),
+        ("class", AcpClass::AccessControlModify.to_value()),
+        ("class", AcpClass::AccessControlSearch.to_value()),
         ("name", Value::new_iname("idm_acp_schema_write_attrs_priv")),
         ("uuid", Value::Uuid(UUID_IDM_ACP_SCHEMA_WRITE_ATTRS_PRIV_V1)),
         (
@@ -975,12 +976,12 @@ lazy_static! {
 
 lazy_static! {
     pub static ref E_IDM_ACP_ACP_MANAGE_PRIV_V1: EntryInitNew = entry_init!(
-        ("class", CLASS_OBJECT.clone()),
-        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_CREATE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_DELETE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_MODIFY.clone()),
-        ("class", CLASS_ACCESS_CONTROL_SEARCH.clone()),
+        ("class", AcpClass::Object.to_value()),
+        ("class", AcpClass::AccessControlProfile.to_value()),
+        ("class", AcpClass::AccessControlCreate.to_value()),
+        ("class", AcpClass::AccessControlDelete.to_value()),
+        ("class", AcpClass::AccessControlModify.to_value()),
+        ("class", AcpClass::AccessControlSearch.to_value()),
         ("name", Value::new_iname("idm_acp_acp_manage_priv")),
         ("uuid", Value::Uuid(UUID_IDM_ACP_ACP_MANAGE_PRIV_V1)),
         (
@@ -1067,11 +1068,11 @@ lazy_static! {
 
 lazy_static! {
     pub static ref E_IDM_ACP_SCHEMA_WRITE_CLASSES_PRIV_V1: EntryInitNew = entry_init!(
-        ("class", CLASS_OBJECT.clone()),
-        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_CREATE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_MODIFY.clone()),
-        ("class", CLASS_ACCESS_CONTROL_SEARCH.clone()),
+        ("class", AcpClass::Object.to_value()),
+        ("class", AcpClass::AccessControlProfile.to_value()),
+        ("class", AcpClass::AccessControlCreate.to_value()),
+        ("class", AcpClass::AccessControlModify.to_value()),
+        ("class", AcpClass::AccessControlSearch.to_value()),
         ("name", Value::new_iname("idm_acp_schema_write_classes_priv")),
         ("uuid", Value::Uuid(UUID_IDM_ACP_SCHEMA_WRITE_CLASSES_PRIV_V1)),
         (
@@ -1120,10 +1121,10 @@ lazy_static! {
 
 lazy_static! {
     pub static ref E_IDM_ACP_GROUP_MANAGE_PRIV_V1: EntryInitNew = entry_init!(
-        ("class", CLASS_OBJECT.clone()),
-        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_DELETE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_CREATE.clone()),
+        ("class", AcpClass::Object.to_value()),
+        ("class", AcpClass::AccessControlProfile.to_value()),
+        ("class", AcpClass::AccessControlDelete.to_value()),
+        ("class", AcpClass::AccessControlCreate.to_value()),
         ("name", Value::new_iname("idm_acp_group_manage")),
         ("uuid", Value::Uuid(UUID_IDM_ACP_GROUP_MANAGE_PRIV_V1)),
         (
@@ -1152,10 +1153,10 @@ lazy_static! {
 
 lazy_static! {
     pub static ref E_IDM_ACP_HP_ACCOUNT_MANAGE_PRIV_V1: EntryInitNew = entry_init!(
-        ("class", CLASS_OBJECT.clone()),
-        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_DELETE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_CREATE.clone()),
+        ("class", AcpClass::Object.to_value()),
+        ("class", AcpClass::AccessControlProfile.to_value()),
+        ("class", AcpClass::AccessControlDelete.to_value()),
+        ("class", AcpClass::AccessControlCreate.to_value()),
         ("name", Value::new_iname("idm_acp_hp_account_manage")),
         ("uuid", Value::Uuid(UUID_IDM_ACP_HP_ACCOUNT_MANAGE_PRIV_V1)),
         (
@@ -1185,16 +1186,16 @@ lazy_static! {
         ("acp_create_attr", Value::new_iutf8("devicekeys")),
         ("acp_create_class", Value::new_iutf8("object")),
         ("acp_create_class", Value::new_iutf8("account")),
-        ("acp_create_class", Value::new_iutf8("service_account"))
+        ("acp_create_class", AcpClass::ServiceAccount.to_value())
     );
 }
 
 lazy_static! {
     pub static ref E_IDM_ACP_HP_GROUP_MANAGE_PRIV_V1: EntryInitNew = entry_init!(
-        ("class", CLASS_OBJECT.clone()),
-        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_DELETE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_CREATE.clone()),
+        ("class", AcpClass::Object.to_value()),
+        ("class", AcpClass::AccessControlProfile.to_value()),
+        ("class", AcpClass::AccessControlDelete.to_value()),
+        ("class", AcpClass::AccessControlCreate.to_value()),
         ("name", Value::new_iname("idm_acp_hp_group_manage")),
         ("uuid", Value::Uuid(UUID_IDM_ACP_HP_GROUP_MANAGE_PRIV_V1)),
         (
@@ -1223,10 +1224,10 @@ lazy_static! {
 
 lazy_static! {
     pub static ref E_IDM_ACP_DOMAIN_ADMIN_PRIV_V1: EntryInitNew = entry_init!(
-        ("class", CLASS_OBJECT.clone()),
-        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_MODIFY.clone()),
-        ("class", CLASS_ACCESS_CONTROL_SEARCH.clone()),
+        ("class", AcpClass::Object.to_value()),
+        ("class", AcpClass::AccessControlProfile.to_value()),
+        ("class", AcpClass::AccessControlModify.to_value()),
+        ("class", AcpClass::AccessControlSearch.to_value()),
         ("name", Value::new_iname("idm_acp_domain_admin_priv")),
         ("uuid", Value::Uuid(UUID_IDM_ACP_DOMAIN_ADMIN_PRIV_V1)),
         (
@@ -1269,10 +1270,10 @@ lazy_static! {
 
 lazy_static! {
     pub static ref E_IDM_ACP_SYSTEM_CONFIG_PRIV_V1: EntryInitNew = entry_init!(
-        ("class", CLASS_OBJECT.clone()),
-        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_MODIFY.clone()),
-        ("class", CLASS_ACCESS_CONTROL_SEARCH.clone()),
+        ("class", AcpClass::Object.to_value()),
+        ("class", AcpClass::AccessControlProfile.to_value()),
+        ("class", AcpClass::AccessControlModify.to_value()),
+        ("class", AcpClass::AccessControlSearch.to_value()),
         ("name", Value::new_iname("idm_acp_system_config_priv")),
         ("uuid", Value::Uuid(UUID_IDM_ACP_SYSTEM_CONFIG_PRIV_V1)),
         (
@@ -1302,10 +1303,10 @@ lazy_static! {
 
 lazy_static! {
     pub static ref E_IDM_ACP_ACCOUNT_UNIX_EXTEND_PRIV_V1: EntryInitNew = entry_init!(
-        ("class", CLASS_OBJECT.clone()),
-        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_MODIFY.clone()),
-        ("class", CLASS_ACCESS_CONTROL_SEARCH.clone()),
+        ("class", AcpClass::Object.to_value()),
+        ("class", AcpClass::AccessControlProfile.to_value()),
+        ("class", AcpClass::AccessControlModify.to_value()),
+        ("class", AcpClass::AccessControlSearch.to_value()),
         ("name", Value::new_iname("idm_acp_account_unix_extend_priv")),
         ("uuid", Value::Uuid(UUID_IDM_ACP_ACCOUNT_UNIX_EXTEND_PRIV_V1)),
         (
@@ -1344,10 +1345,10 @@ lazy_static! {
 
 lazy_static! {
     pub static ref E_IDM_ACP_GROUP_UNIX_EXTEND_PRIV_V1: EntryInitNew = entry_init!(
-        ("class", CLASS_OBJECT.clone()),
-        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_MODIFY.clone()),
-        ("class", CLASS_ACCESS_CONTROL_SEARCH.clone()),
+        ("class", AcpClass::Object.to_value()),
+        ("class", AcpClass::AccessControlProfile.to_value()),
+        ("class", AcpClass::AccessControlModify.to_value()),
+        ("class", AcpClass::AccessControlSearch.to_value()),
         ("name", Value::new_iname("idm_acp_group_unix_extend_priv")),
         ("uuid", Value::Uuid(UUID_IDM_ACP_GROUP_UNIX_EXTEND_PRIV_V1)),
         (
@@ -1382,10 +1383,10 @@ lazy_static! {
 
 lazy_static! {
     pub static ref E_IDM_HP_ACP_ACCOUNT_UNIX_EXTEND_PRIV_V1: EntryInitNew = entry_init!(
-        ("class", CLASS_OBJECT.clone()),
-        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_MODIFY.clone()),
-        ("class", CLASS_ACCESS_CONTROL_SEARCH.clone()),
+        ("class", AcpClass::Object.to_value()),
+        ("class", AcpClass::AccessControlProfile.to_value()),
+        ("class", AcpClass::AccessControlModify.to_value()),
+        ("class", AcpClass::AccessControlSearch.to_value()),
         ("name", Value::new_iname("idm_acp_hp_account_unix_extend_priv")),
         ("uuid", Value::Uuid(UUID_IDM_HP_ACP_ACCOUNT_UNIX_EXTEND_PRIV_V1)),
         (
@@ -1424,10 +1425,10 @@ lazy_static! {
 
 lazy_static! {
     pub static ref E_IDM_HP_ACP_GROUP_UNIX_EXTEND_PRIV_V1: EntryInitNew = entry_init!(
-        ("class", CLASS_OBJECT.clone()),
-        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_MODIFY.clone()),
-        ("class", CLASS_ACCESS_CONTROL_SEARCH.clone()),
+        ("class", AcpClass::Object.to_value()),
+        ("class", AcpClass::AccessControlProfile.to_value()),
+        ("class", AcpClass::AccessControlModify.to_value()),
+        ("class", AcpClass::AccessControlSearch.to_value()),
         ("name", Value::new_iname("idm_acp_hp_group_unix_extend_priv")),
         ("uuid", Value::Uuid(UUID_IDM_HP_ACP_GROUP_UNIX_EXTEND_PRIV_V1)),
         (
@@ -1462,12 +1463,12 @@ lazy_static! {
 
 lazy_static! {
     pub static ref E_IDM_HP_ACP_OAUTH2_MANAGE_PRIV_V1: EntryInitNew = entry_init!(
-        ("class", CLASS_OBJECT.clone()),
-        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_CREATE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_DELETE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_MODIFY.clone()),
-        ("class", CLASS_ACCESS_CONTROL_SEARCH.clone()),
+        ("class", AcpClass::Object.to_value()),
+        ("class", AcpClass::AccessControlProfile.to_value()),
+        ("class", AcpClass::AccessControlCreate.to_value()),
+        ("class", AcpClass::AccessControlDelete.to_value()),
+        ("class", AcpClass::AccessControlModify.to_value()),
+        ("class", AcpClass::AccessControlSearch.to_value()),
         ("name", Value::new_iname("idm_acp_hp_oauth2_manage_priv")),
         ("uuid", Value::Uuid(UUID_IDM_HP_ACP_OAUTH2_MANAGE_PRIV_V1)),
         (
@@ -1550,10 +1551,10 @@ lazy_static! {
 
 lazy_static! {
     pub static ref E_IDM_HP_ACP_SERVICE_ACCOUNT_INTO_PERSON_MIGRATE_V1: EntryInitNew = entry_init!(
-        ("class", CLASS_OBJECT.clone()),
-        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_MODIFY.clone()),
-        ("class", CLASS_ACCESS_CONTROL_SEARCH.clone()),
+        ("class", AcpClass::Object.to_value()),
+        ("class", AcpClass::AccessControlProfile.to_value()),
+        ("class", AcpClass::AccessControlModify.to_value()),
+        ("class", AcpClass::AccessControlSearch.to_value()),
         ("name", Value::new_iname("idm_hp_acp_service_account_into_person_migrate")),
         ("uuid", Value::Uuid(UUID_IDM_HP_ACP_SERVICE_ACCOUNT_INTO_PERSON_MIGRATE_V1)),
         (
@@ -1583,12 +1584,12 @@ lazy_static! {
 
 lazy_static! {
     pub static ref E_IDM_HP_ACP_SYNC_ACCOUNT_MANAGE_PRIV_V1: EntryInitNew = entry_init!(
-        ("class", CLASS_OBJECT.clone()),
-        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_CREATE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_DELETE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_MODIFY.clone()),
-        ("class", CLASS_ACCESS_CONTROL_SEARCH.clone()),
+        ("class", AcpClass::Object.to_value()),
+        ("class", AcpClass::AccessControlProfile.to_value()),
+        ("class", AcpClass::AccessControlCreate.to_value()),
+        ("class", AcpClass::AccessControlDelete.to_value()),
+        ("class", AcpClass::AccessControlModify.to_value()),
+        ("class", AcpClass::AccessControlSearch.to_value()),
         ("name", Value::new_iname("idm_acp_hp_sync_account_manage_priv")),
         ("uuid", Value::Uuid(UUID_IDM_HP_ACP_SYNC_ACCOUNT_MANAGE_PRIV_V1)),
         (

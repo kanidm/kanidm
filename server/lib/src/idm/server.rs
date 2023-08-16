@@ -2607,14 +2607,14 @@ mod tests {
         let me_posix = ModifyEvent::new_internal_invalid(
             filter!(f_eq("name", PartialValue::new_iname("admin"))),
             ModifyList::new_list(vec![
-                Modify::Present(AttrString::from("class"), Value::new_class("posixaccount")),
+                Modify::Present(AttrString::from("class"), AcpClass::PosixAccount.into()),
                 Modify::Present(AttrString::from("gidnumber"), Value::new_uint32(2001)),
             ]),
         );
         assert!(idms_prox_write.qs_write.modify(&me_posix).is_ok());
         // Add a posix group that has the admin as a member.
         let e: Entry<EntryInit, EntryNew> = entry_init!(
-            ("class", Value::new_class("object")),
+            ("class", AcpClass::Object.to_value()),
             ("class", Value::new_class("group")),
             ("class", Value::new_class("posixgroup")),
             ("name", Value::new_iname("testgroup")),
@@ -2689,7 +2689,7 @@ mod tests {
         let me_posix = ModifyEvent::new_internal_invalid(
             filter!(f_eq("name", PartialValue::new_iname("admin"))),
             ModifyList::new_list(vec![
-                Modify::Present(AttrString::from("class"), Value::new_class("posixaccount")),
+                Modify::Present(AttrString::from("class"), AcpClass::PosixAccount.into()),
                 Modify::Present(AttrString::from("gidnumber"), Value::new_uint32(2001)),
             ]),
         );
@@ -2839,7 +2839,7 @@ mod tests {
         let me_posix = ModifyEvent::new_internal_invalid(
             filter!(f_eq("name", PartialValue::new_iname("admin"))),
             ModifyList::new_list(vec![
-                Modify::Present(AttrString::from("class"), Value::new_class("posixaccount")),
+                Modify::Present(AttrString::from("class"), AcpClass::PosixAccount.into()),
                 Modify::Present(AttrString::from("gidnumber"), Value::new_uint32(2001)),
                 Modify::Present(AttrString::from("unix_password"), v_cred),
             ]),
@@ -2984,7 +2984,7 @@ mod tests {
         let me_posix = ModifyEvent::new_internal_invalid(
             filter!(f_eq("name", PartialValue::new_iname("admin"))),
             ModifyList::new_list(vec![
-                Modify::Present(AttrString::from("class"), Value::new_class("posixaccount")),
+                Modify::Present(AttrString::from("class"), AcpClass::PosixAccount.into()),
                 Modify::Present(AttrString::from("gidnumber"), Value::new_uint32(2001)),
             ]),
         );
@@ -3347,7 +3347,7 @@ mod tests {
         let me_posix = ModifyEvent::new_internal_invalid(
             filter!(f_eq("name", PartialValue::new_iname("admin"))),
             ModifyList::new_list(vec![
-                Modify::Present(AttrString::from("class"), Value::new_class("posixaccount")),
+                Modify::Present(AttrString::from("class"), AcpClass::PosixAccount.into()),
                 Modify::Present(AttrString::from("gidnumber"), Value::new_uint32(2001)),
             ]),
         );
@@ -3762,9 +3762,9 @@ mod tests {
 
         // Create a service account
         let e = entry_init!(
-            ("class", Value::new_class("object")),
-            ("class", Value::new_class("account")),
-            ("class", Value::new_class("service_account")),
+            ("class", AcpClass::Object.to_value()),
+            ("class", AcpClass::Account.to_value()),
+            ("class", AcpClass::ServiceAccount.to_value()),
             ("name", Value::new_iname("testaccount")),
             ("uuid", Value::Uuid(target_uuid)),
             ("description", Value::new_utf8s("testaccount")),

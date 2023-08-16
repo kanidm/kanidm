@@ -26,7 +26,7 @@ use kanidm_lib_crypto::CryptoPolicy;
 macro_rules! try_from_entry {
     ($value:expr, $groups:expr) => {{
         // Check the classes
-        if !$value.attribute_equality("class", &PVCLASS_ACCOUNT) {
+        if !$value.attribute_equality("class", &AcpClass::Account.into()) {
             return Err(OperationError::InvalidAccountState(
                 "Missing class: account".to_string(),
             ));
@@ -101,15 +101,15 @@ macro_rules! try_from_entry {
             .collect();
 
         // For now disable cred updates on sync accounts too.
-        if $value.attribute_equality("class", &PVCLASS_PERSON) {
+        if $value.attribute_equality("class", &AcpClass::Person.into()) {
             ui_hints.insert(UiHint::CredentialUpdate);
         }
 
-        if $value.attribute_equality("class", &PVCLASS_SYNC_OBJECT) {
+        if $value.attribute_equality("class", &AcpClass::SyncObject.into()) {
             ui_hints.insert(UiHint::SynchronisedAccount);
         }
 
-        if $value.attribute_equality("class", &PVCLASS_POSIXACCOUNT) {
+        if $value.attribute_equality("class", &AcpClass::PosixAccount.into()) {
             ui_hints.insert(UiHint::PosixAccount);
         }
 
@@ -667,7 +667,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         // Remove the service account class.
         // Add the person class.
         let mut new_classes = prev_classes.clone();
-        new_classes.remove("service_account");
+        new_classes.remove(AcpClass::ServiceAccount.into());
         new_classes.insert("person");
 
         // diff the schema attrs, and remove the ones that are service_account only.
@@ -683,9 +683,9 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         // Now construct the modlist which:
         // removes service_account
         let mut modlist =
-            ModifyList::new_remove("class", PartialValue::new_class("service_account"));
+            ModifyList::new_remove("class", AcpClass::ServiceAccount.to_partialvalue());
         // add person
-        modlist.push_mod(Modify::Present("class".into(), Value::new_class("person")));
+        modlist.push_mod(Modify::Present("class".into(), AcpClass::Person.to_value()));
         // purge the other attrs that are SA only.
         removed
             .into_iter()
@@ -796,9 +796,9 @@ mod tests {
         // Create a user. So far no ui hints.
         // Create a service account
         let e = entry_init!(
-            ("class", Value::new_class("object")),
-            ("class", Value::new_class("account")),
-            ("class", Value::new_class("person")),
+            ("class", AcpClass::Object.to_value()),
+            ("class", AcpClass::Account.to_value()),
+            ("class", AcpClass::Person.to_value()),
             ("name", Value::new_iname("testaccount")),
             ("uuid", Value::Uuid(target_uuid)),
             ("description", Value::new_utf8s("testaccount")),
@@ -824,7 +824,7 @@ mod tests {
         let me_posix = ModifyEvent::new_internal_invalid(
             filter!(f_eq("name", PartialValue::new_iname("testaccount"))),
             ModifyList::new_list(vec![
-                Modify::Present(AttrString::from("class"), Value::new_class("posixaccount")),
+                Modify::Present(AttrString::from("class"), AcpClass::PosixAccount.into()),
                 Modify::Present(AttrString::from("gidnumber"), Value::new_uint32(2001)),
             ]),
         );
@@ -845,7 +845,7 @@ mod tests {
 
         // Add a group with a ui hint, and then check they get the hint.
         let e = entry_init!(
-            ("class", Value::new_class("object")),
+            ("class", AcpClass::Object.to_value()),
             ("class", Value::new_class("group")),
             ("name", Value::new_iname("test_uihint_group")),
             ("member", Value::Refer(target_uuid)),

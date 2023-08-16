@@ -1148,8 +1148,8 @@ impl Entry<EntryInvalid, EntryCommitted> {
     /// Convert this entry into a recycled entry, that is "in the recycle bin".
     pub fn to_revived(mut self) -> Self {
         // This will put the modify ahead of the revive transition.
-        self.remove_ava("class", &PVCLASS_RECYCLED);
-        self.remove_ava("class", &PVCLASS_CONFLICT);
+        self.remove_ava("class", &AcpClass::Recycled.into());
+        self.remove_ava("class", &AcpClass::Conflict.into());
         self.purge_ava("source_uuid");
 
         // Change state repl doesn't need this flag
@@ -1898,18 +1898,18 @@ impl<STATE> Entry<EntryValid, STATE> {
             return Err(SchemaError::NoClassFound);
         }
 
-        if self.attribute_equality("class", &PVCLASS_CONFLICT) {
+        if self.attribute_equality("class", &AcpClass::Conflict.into()) {
             // Conflict entries are exempt from schema enforcement. Return true.
             trace!("Skipping schema validation on conflict entry");
             return Ok(());
         };
 
         // Are we in the recycle bin? We soften some checks if we are.
-        let recycled = self.attribute_equality("class", &PVCLASS_RECYCLED);
+        let recycled = self.attribute_equality("class", &AcpClass::Recycled.into());
 
         // Do we have extensible? We still validate syntax of attrs but don't
         // check for valid object structures.
-        let extensible = self.attribute_equality("class", &PVCLASS_EXTENSIBLE);
+        let extensible = self.attribute_equality("class", &AcpClass::ExtensibleObject.into());
 
         let entry_classes = self.get_ava_set("class").ok_or_else(|| {
             admin_debug!("Attribute 'class' missing from entry");
@@ -2832,8 +2832,8 @@ impl<VALID, STATE> Entry<VALID, STATE> {
         // Only when cls has ts/rc then None, else lways Some(self).
         match self.attrs.get("class") {
             Some(cls) => {
-                if cls.contains(&PVCLASS_TOMBSTONE as &PartialValue)
-                    || cls.contains(&PVCLASS_RECYCLED as &PartialValue)
+                if cls.contains(&AcpClass::Tombstone.to_partialvalue())
+                    || cls.contains(&AcpClass::Recycled.to_partialvalue())
                 {
                     None
                 } else {
@@ -2850,7 +2850,7 @@ impl<VALID, STATE> Entry<VALID, STATE> {
         // Only when cls has ts/rc then None, else lways Some(self).
         match self.attrs.get("class") {
             Some(cls) => {
-                if cls.contains(&PVCLASS_RECYCLED as &PartialValue) {
+                if cls.contains(&AcpClass::Recycled.to_partialvalue()) {
                     None
                 } else {
                     Some(self)
@@ -2866,7 +2866,7 @@ impl<VALID, STATE> Entry<VALID, STATE> {
         // Only when cls has ts/rc then None, else lways Some(self).
         match self.attrs.get("class") {
             Some(cls) => {
-                if cls.contains(&PVCLASS_TOMBSTONE as &PartialValue) {
+                if cls.contains(&AcpClass::Tombstone.to_partialvalue()) {
                     None
                 } else {
                     Some(self)
@@ -3434,12 +3434,12 @@ mod tests {
     #[test]
     fn test_entry_mask_recycled_ts() {
         let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
-        e1.add_ava("class", Value::new_class("person"));
+        e1.add_ava("class", AcpClass::Person.to_value());
         let e1 = e1.into_sealed_committed();
         assert!(e1.mask_recycled_ts().is_some());
 
         let mut e2: Entry<EntryInit, EntryNew> = Entry::new();
-        e2.add_ava("class", Value::new_class("person"));
+        e2.add_ava("class", AcpClass::Person.to_value());
         e2.add_ava("class", Value::new_class("recycled"));
         let e2 = e2.into_sealed_committed();
         assert!(e2.mask_recycled_ts().is_none());
@@ -3459,7 +3459,7 @@ mod tests {
         // none, some - test adding an entry gives back add sets
         {
             let mut e: Entry<EntryInit, EntryNew> = Entry::new();
-            e.add_ava("class", Value::new_class("person"));
+            e.add_ava("class", AcpClass::Person.to_value());
             let e = e.into_sealed_committed();
 
             assert!(Entry::idx_name2uuid_diff(None, Some(&e)) == (Some(Set::new()), None));
@@ -3467,7 +3467,7 @@ mod tests {
 
         {
             let mut e: Entry<EntryInit, EntryNew> = Entry::new();
-            e.add_ava("class", Value::new_class("person"));
+            e.add_ava("class", AcpClass::Person.to_value());
             e.add_ava("gidnumber", Value::new_uint32(1300));
             e.add_ava("name", Value::new_iname("testperson"));
             e.add_ava("spn", Value::new_spn_str("testperson", "example.com"));
@@ -3513,12 +3513,12 @@ mod tests {
 
         {
             let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
-            e1.add_ava("class", Value::new_class("person"));
+            e1.add_ava("class", AcpClass::Person.to_value());
             e1.add_ava("spn", Value::new_spn_str("testperson", "example.com"));
             let e1 = e1.into_sealed_committed();
 
             let mut e2: Entry<EntryInit, EntryNew> = Entry::new();
-            e2.add_ava("class", Value::new_class("person"));
+            e2.add_ava("class", AcpClass::Person.to_value());
             e2.add_ava("name", Value::new_iname("testperson"));
             e2.add_ava("spn", Value::new_spn_str("testperson", "example.com"));
             let e2 = e2.into_sealed_committed();
@@ -3539,12 +3539,12 @@ mod tests {
         // Value changed, remove old, add new.
         {
             let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
-            e1.add_ava("class", Value::new_class("person"));
+            e1.add_ava("class", AcpClass::Person.to_value());
             e1.add_ava("spn", Value::new_spn_str("testperson", "example.com"));
             let e1 = e1.into_sealed_committed();
 
             let mut e2: Entry<EntryInit, EntryNew> = Entry::new();
-            e2.add_ava("class", Value::new_class("person"));
+            e2.add_ava("class", AcpClass::Person.to_value());
             e2.add_ava("spn", Value::new_spn_str("renameperson", "example.com"));
             let e2 = e2.into_sealed_committed();
 

@@ -98,19 +98,19 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // schema or acp requires reload.
         if !self.changed_schema {
             self.changed_schema = del_cand.iter().any(|e| {
-                e.attribute_equality("class", &PVCLASS_CLASSTYPE)
-                    || e.attribute_equality("class", &PVCLASS_ATTRIBUTETYPE)
+                e.attribute_equality("class", &AcpClass::ClassType.into())
+                    || e.attribute_equality("class", &AcpClass::AttributeType.into())
             });
         }
         if !self.changed_acp {
             self.changed_acp = del_cand
                 .iter()
-                .any(|e| e.attribute_equality("class", &PVCLASS_ACP));
+                .any(|e| e.attribute_equality("class", &AcpClass::AccessControlProfile.into()));
         }
         if !self.changed_oauth2 {
             self.changed_oauth2 = del_cand
                 .iter()
-                .any(|e| e.attribute_equality("class", &PVCLASS_OAUTH2_RS));
+                .any(|e| e.attribute_equality("class", &AcpClass::OAuth2ResourceServer.into()));
         }
         if !self.changed_domain {
             self.changed_domain = del_cand
@@ -120,7 +120,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         if !self.changed_sync_agreement {
             self.changed_sync_agreement = del_cand
                 .iter()
-                .any(|e| e.attribute_equality("uuid", &PVCLASS_SYNC_ACCOUNT));
+                .any(|e| e.attribute_equality("uuid", &AcpClass::SyncAccount.into()));
         }
 
         self.changed_uuid
@@ -193,8 +193,8 @@ mod tests {
         let mut server_txn = server.write(duration_from_epoch_now()).await;
 
         let e1 = entry_init!(
-            ("class", Value::new_class("object")),
-            ("class", Value::new_class("person")),
+            ("class", AcpClass::Object.to_value()),
+            ("class", AcpClass::Person.to_value()),
             ("name", Value::new_iname("testperson1")),
             (
                 "uuid",
@@ -205,8 +205,8 @@ mod tests {
         );
 
         let e2 = entry_init!(
-            ("class", Value::new_class("object")),
-            ("class", Value::new_class("person")),
+            ("class", AcpClass::Object.to_value()),
+            ("class", AcpClass::Person.to_value()),
             ("name", Value::new_iname("testperson2")),
             (
                 "uuid",
@@ -217,8 +217,8 @@ mod tests {
         );
 
         let e3 = entry_init!(
-            ("class", Value::new_class("object")),
-            ("class", Value::new_class("person")),
+            ("class", AcpClass::Object.to_value()),
+            ("class", AcpClass::Person.to_value()),
             ("name", Value::new_iname("testperson3")),
             (
                 "uuid",

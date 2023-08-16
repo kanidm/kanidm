@@ -1684,7 +1684,7 @@ mod tests {
     #[test]
     fn test_nested_entry_filter() {
         let e1 = entry_init!(
-            ("class", CLASS_PERSON.clone()),
+            ("class", AcpClass::Person.to_value().clone()),
             (
                 "uuid",
                 Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
@@ -1694,7 +1694,7 @@ mod tests {
         .into_sealed_new();
 
         let e2 = entry_init!(
-            ("class", CLASS_PERSON.clone()),
+            ("class", AcpClass::Person.to_value().clone()),
             (
                 "uuid",
                 Value::Uuid(uuid::uuid!("4b6228ab-1dbe-42a4-a9f5-f6368222438e"))
@@ -1704,7 +1704,7 @@ mod tests {
         .into_sealed_new();
 
         let e3 = entry_init!(
-            ("class", CLASS_PERSON.clone()),
+            ("class", AcpClass::Person.to_value()),
             (
                 "uuid",
                 Value::Uuid(uuid::uuid!("7b23c99d-c06b-4a9a-a958-3afa56383e1d"))
@@ -1714,7 +1714,7 @@ mod tests {
         .into_sealed_new();
 
         let e4 = entry_init!(
-            ("class", CLASS_GROUP.clone()),
+            ("class", AcpClass::Group.to_value()),
             (
                 "uuid",
                 Value::Uuid(uuid::uuid!("21d816b5-1f6a-4696-b7c1-6ed06d22ed81"))
@@ -1724,7 +1724,7 @@ mod tests {
         .into_sealed_new();
 
         let f_t1a = filter_resolved!(f_and!([
-            f_eq("class", PVCLASS_PERSON.clone()),
+            f_eq("class", AcpClass::Person.into()),
             f_or!([
                 f_eq("gidnumber", PartialValue::Uint32(1001)),
                 f_eq("gidnumber", PartialValue::Uint32(1000))
@@ -1769,9 +1769,9 @@ mod tests {
         let mut server_txn = server.write(time_p1).await;
 
         let e1 = entry_init!(
-            ("class", CLASS_OBJECT.clone()),
-            ("class", CLASS_PERSON.clone()),
-            ("class", CLASS_ACCOUNT.clone()),
+            ("class", AcpClass::Object.to_value()),
+            ("class", AcpClass::Person.to_value()),
+            ("class", AcpClass::Account.to_value()),
             ("name", Value::new_iname("testperson1")),
             (
                 "uuid",
@@ -1782,8 +1782,8 @@ mod tests {
         );
 
         let e2 = entry_init!(
-            ("class", CLASS_OBJECT.clone()),
-            ("class", CLASS_PERSON.clone()),
+            ("class", AcpClass::Object.to_value()),
+            ("class", AcpClass::Person.to_value().clone()),
             ("name", Value::new_iname("testperson2")),
             (
                 "uuid",
@@ -1795,8 +1795,8 @@ mod tests {
 
         // We need to add these and then push through the state machine.
         let e_ts = entry_init!(
-            ("class", CLASS_OBJECT.clone()),
-            ("class", CLASS_PERSON.clone()),
+            ("class", AcpClass::Object.to_value()),
+            ("class", AcpClass::Person.to_value().clone()),
             ("name", Value::new_iname("testperson3")),
             (
                 "uuid",

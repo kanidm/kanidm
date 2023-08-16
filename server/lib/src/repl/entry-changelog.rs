@@ -224,16 +224,15 @@ impl EntryChangelog {
         // or recycled!
         let class = attrs.get("class");
 
-        let (anchors, changes) = 
-        if class
+        let (anchors, changes) = if class
             .as_ref()
-            .map(|c| c.contains(&PVCLASS_TOMBSTONE as &PartialValue))
+            .map(|c| c.contains(&AcpClass::Tombstone.to_partialvalue()))
             .unwrap_or(false)
         {
             (btreemap![(cid, State::Tombstone(attrs))], BTreeMap::new())
         } else if class
             .as_ref()
-            .map(|c| c.contains(&PVCLASS_RECYCLED as &PartialValue))
+            .map(|c| c.contains(&AcpClass::Recycled.to_partialvalue()))
             .unwrap_or(false)
         {
             (btreemap![(cid, State::Recycled(attrs))], BTreeMap::new())

@@ -403,7 +403,7 @@ pub async fn person_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
 ) -> impl IntoResponse {
-    let filter = filter_all!(f_eq("class", PartialValue::new_class("person")));
+    let filter = filter_all!(f_eq("class", AcpClass::Person.into()));
     json_rest_event_get(state, None, filter, kopid).await
 }
 
@@ -414,10 +414,10 @@ pub async fn person_post(
     Extension(kopid): Extension<KOpId>,
     Json(obj): Json<ProtoEntry>,
 ) -> impl IntoResponse {
-    let classes = vec![
-        "person".to_string(),
-        "account".to_string(),
-        "object".to_string(),
+    let classes: Vec<String> = vec![
+        AcpClass::Person.into(),
+        AcpClass::Account.into(),
+        AcpClass::Object.into(),
     ];
     json_rest_event_post(state, classes, obj, kopid).await
 }
@@ -427,7 +427,7 @@ pub async fn person_id_get(
     Path(id): Path<String>,
     Extension(kopid): Extension<KOpId>,
 ) -> impl IntoResponse {
-    let filter = filter_all!(f_eq("class", PartialValue::new_class("person")));
+    let filter = filter_all!(f_eq("class", AcpClass::Person.into()));
     json_rest_event_get_id(state, id, filter, None, kopid).await
 }
 
@@ -436,7 +436,7 @@ pub async fn person_account_id_delete(
     Path(id): Path<String>,
     Extension(kopid): Extension<KOpId>,
 ) -> impl IntoResponse {
-    let filter = filter_all!(f_eq("class", PartialValue::new_class("person")));
+    let filter = filter_all!(f_eq("class", AcpClass::Person.into()));
     json_rest_event_delete_id(state, id, filter, kopid).await
 }
 
@@ -446,7 +446,7 @@ pub async fn service_account_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
 ) -> impl IntoResponse {
-    let filter = filter_all!(f_eq("class", PartialValue::new_class("service_account")));
+    let filter = filter_all!(f_eq("class", AcpClass::ServiceAccount.into()));
     json_rest_event_get(state, None, filter, kopid).await
 }
 
@@ -455,10 +455,10 @@ pub async fn service_account_post(
     Extension(kopid): Extension<KOpId>,
     Json(obj): Json<ProtoEntry>,
 ) -> impl IntoResponse {
-    let classes = vec![
-        "service_account".to_string(),
-        "account".to_string(),
-        "object".to_string(),
+    let classes: Vec<String> = vec![
+        AcpClass::ServiceAccount.into(),
+        AcpClass::Account.into(),
+        AcpClass::Object.into(),
     ];
     json_rest_event_post(state, classes, obj, kopid).await
 }
@@ -468,7 +468,7 @@ pub async fn service_account_id_get(
     Path(id): Path<String>,
     Extension(kopid): Extension<KOpId>,
 ) -> impl IntoResponse {
-    let filter = filter_all!(f_eq("class", PartialValue::new_class("service_account")));
+    let filter = filter_all!(f_eq("class", AcpClass::ServiceAccount.into()));
     json_rest_event_get_id(state, id, filter, None, kopid).await
 }
 
@@ -477,7 +477,7 @@ pub async fn service_account_id_delete(
     Path(id): Path<String>,
     Extension(kopid): Extension<KOpId>,
 ) -> impl IntoResponse {
-    let filter = filter_all!(f_eq("class", PartialValue::new_class("service_account")));
+    let filter = filter_all!(f_eq("class", AcpClass::ServiceAccount.into()));
     json_rest_event_delete_id(state, id, filter, kopid).await
 }
 
@@ -562,7 +562,7 @@ pub async fn account_id_get_attr(
     Path((id, attr)): Path<(String, String)>,
     Extension(kopid): Extension<KOpId>,
 ) -> impl IntoResponse {
-    let filter = filter_all!(f_eq("class", PartialValue::new_class("account")));
+    let filter = filter_all!(f_eq("class", AcpClass::Account.into()));
     json_rest_event_get_attr(state, id.as_str(), attr, filter, kopid).await
 }
 
@@ -572,7 +572,7 @@ pub async fn account_id_post_attr(
     Extension(kopid): Extension<KOpId>,
     Json(values): Json<Vec<String>>,
 ) -> impl IntoResponse {
-    let filter = filter_all!(f_eq("class", PartialValue::new_class("account")));
+    let filter = filter_all!(f_eq("class", AcpClass::Account.into()));
     json_rest_event_post_id_attr(state, id, attr, filter, values, kopid).await
 }
 
@@ -581,7 +581,7 @@ pub async fn account_id_delete_attr(
     Path((id, attr)): Path<(String, String)>,
     Extension(kopid): Extension<KOpId>,
 ) -> impl IntoResponse {
-    let filter = filter_all!(f_eq("class", PartialValue::new_class("account")));
+    let filter = filter_all!(f_eq("class", AcpClass::Account.into()));
     json_rest_event_delete_id_attr(state, id, attr, filter, None, kopid).await
 }
 
@@ -591,7 +591,7 @@ pub async fn account_id_put_attr(
     Extension(kopid): Extension<KOpId>,
     Json(values): Json<Vec<String>>,
 ) -> impl IntoResponse {
-    let filter = filter_all!(f_eq("class", PartialValue::new_class("account")));
+    let filter = filter_all!(f_eq("class", AcpClass::Account.into()));
     json_rest_event_put_attr(state, id, attr, filter, values, kopid).await
 }
 
@@ -603,7 +603,7 @@ pub async fn account_id_patch(
 ) -> impl IntoResponse {
     // Update a value / attrs
 
-    let filter = filter_all!(f_eq("class", PartialValue::new_class("account")));
+    let filter = filter_all!(f_eq("class", AcpClass::Account.into()));
     let filter = Filter::join_parts_and(filter, filter_all!(f_id(id.as_str())));
     let res = state
         .qe_w_ref
@@ -802,7 +802,7 @@ pub async fn account_post_id_ssh_pubkey(
     Path(id): Path<String>,
     Json((tag, key)): Json<(String, String)>,
 ) -> impl IntoResponse {
-    let filter = filter_all!(f_eq("class", PartialValue::new_class("account")));
+    let filter = filter_all!(f_eq("class", AcpClass::Account.into()));
     // Add a msg here
     let res = state
         .qe_w_ref
@@ -830,7 +830,7 @@ pub async fn account_delete_id_ssh_pubkey_tag(
 ) -> impl IntoResponse {
     let attr = "ssh_publickey".to_string();
     let values = vec![tag];
-    let filter = filter_all!(f_eq("class", PartialValue::new_class("account")));
+    let filter = filter_all!(f_eq("class", AcpClass::Account.into()));
     let res = state
         .qe_w_ref
         .handle_removeattributevalues(kopid.uat, id, attr, values, filter, kopid.eventid)
@@ -870,7 +870,7 @@ pub async fn account_delete_id_radius(
     Extension(kopid): Extension<KOpId>,
 ) -> impl IntoResponse {
     let attr = "radius_secret".to_string();
-    let filter = filter_all!(f_eq("class", PartialValue::new_class("account")));
+    let filter = filter_all!(f_eq("class", AcpClass::Account.into()));
     json_rest_event_delete_id_attr(state, id, attr, filter, None, kopid).await
 }
 
@@ -981,7 +981,7 @@ pub async fn account_delete_id_unix_credential(
     Extension(kopid): Extension<KOpId>,
     Path(id): Path<String>,
 ) -> impl IntoResponse {
-    let filter = filter_all!(f_eq("class", PartialValue::new_class("posixaccount")));
+    let filter = filter_all!(f_eq("class", AcpClass::PosixAccount.into()));
     let res = state
         .qe_w_ref
         .handle_purgeattribute(

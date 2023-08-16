@@ -186,21 +186,21 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 .iter()
                 .chain(pre_candidates.iter().map(|e| e.as_ref()))
                 .any(|e| {
-                    e.attribute_equality("class", &PVCLASS_CLASSTYPE)
-                        || e.attribute_equality("class", &PVCLASS_ATTRIBUTETYPE)
+                    e.attribute_equality("class", &AcpClass::ClassType.into())
+                        || e.attribute_equality("class", &AcpClass::AttributeType.into())
                 });
         }
         if !self.changed_acp {
             self.changed_acp = norm_cand
                 .iter()
                 .chain(pre_candidates.iter().map(|e| e.as_ref()))
-                .any(|e| e.attribute_equality("class", &PVCLASS_ACP));
+                .any(|e| e.attribute_equality("class", &AcpClass::AccessControlProfile.into()));
         }
         if !self.changed_oauth2 {
             self.changed_oauth2 = norm_cand
                 .iter()
                 .chain(pre_candidates.iter().map(|e| e.as_ref()))
-                .any(|e| e.attribute_equality("class", &PVCLASS_OAUTH2_RS));
+                .any(|e| e.attribute_equality("class", &AcpClass::OAuth2ResourceServer.into()));
         }
         if !self.changed_domain {
             self.changed_domain = norm_cand
@@ -264,11 +264,11 @@ mod tests {
         assert!(server_txn
             .internal_create(vec![
                 entry_init!(
-                    ("class", Value::new_class("object")),
+                    ("class", AcpClass::Object.to_value()),
                     ("uuid", Value::Uuid(uuid_a))
                 ),
                 entry_init!(
-                    ("class", Value::new_class("object")),
+                    ("class", AcpClass::Object.to_value()),
                     ("uuid", Value::Uuid(uuid_b))
                 ),
             ])

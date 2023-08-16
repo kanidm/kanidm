@@ -32,7 +32,7 @@ use crate::value::ApiToken;
 macro_rules! try_from_entry {
     ($value:expr) => {{
         // Check the classes
-        if !$value.attribute_equality("class", &PVCLASS_SERVICE_ACCOUNT) {
+        if !$value.attribute_equality("class", &AcpClass::ServiceAccount.into()) {
             return Err(OperationError::InvalidAccountState(
                 "Missing class: service account".to_string(),
             ));
@@ -436,9 +436,9 @@ mod tests {
         let testaccount_uuid = Uuid::new_v4();
 
         let e1 = entry_init!(
-            ("class", Value::new_class("object")),
-            ("class", Value::new_class("account")),
-            ("class", Value::new_class("service_account")),
+            ("class", AcpClass::Object.to_value()),
+            ("class", AcpClass::Account.to_value()),
+            ("class", AcpClass::ServiceAccount.to_value()),
             ("name", Value::new_iname("test_account_only")),
             ("uuid", Value::Uuid(testaccount_uuid)),
             ("description", Value::new_utf8s("testaccount")),

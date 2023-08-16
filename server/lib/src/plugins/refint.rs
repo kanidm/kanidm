@@ -222,7 +222,7 @@ impl ReferentialIntegrity {
         // Fast Path
         let mut vsiter = cand.iter().flat_map(|c| {
             // If it's dyngroup, skip member since this will be reset in the next step.
-            let dyn_group = c.attribute_equality("class", &PVCLASS_DYNGROUP);
+            let dyn_group = c.attribute_equality("class", &AcpClass::DynGroup.into());
 
             ref_types.values().filter_map(move |rtype| {
                 // Skip dynamic members
@@ -729,7 +729,7 @@ mod tests {
         // scope maps, so we need to check that when the group is deleted, that the
         // scope map is also appropriately affected.
         let ea: Entry<EntryInit, EntryNew> = entry_init!(
-            ("class", Value::new_class("object")),
+            ("class", AcpClass::Object.to_value()),
             ("class", Value::new_class("oauth2_resource_server")),
             // ("class", Value::new_class("oauth2_resource_server_basic")),
             ("oauth2_rs_name", Value::new_iname("test_resource_server")),
@@ -796,9 +796,9 @@ mod tests {
         let rs_uuid = Uuid::new_v4();
 
         let e1 = entry_init!(
-            ("class", Value::new_class("object")),
-            ("class", Value::new_class("person")),
-            ("class", Value::new_class("account")),
+            ("class", AcpClass::Object.to_value()),
+            ("class", AcpClass::Person.to_value()),
+            ("class", AcpClass::Account.to_value()),
             ("name", Value::new_iname("testperson1")),
             ("uuid", Value::Uuid(tuuid)),
             ("description", Value::new_utf8s("testperson1")),
@@ -810,7 +810,7 @@ mod tests {
         );
 
         let e2 = entry_init!(
-            ("class", Value::new_class("object")),
+            ("class", AcpClass::Object.to_value()),
             ("class", Value::new_class("oauth2_resource_server")),
             // ("class", Value::new_class("oauth2_resource_server_basic")),
             ("uuid", Value::Uuid(rs_uuid)),
@@ -919,7 +919,7 @@ mod tests {
         let inv_mb_uuid = Uuid::new_v4();
 
         let e_dyn = entry_init!(
-            ("class", Value::new_class("object")),
+            ("class", AcpClass::Object.to_value()),
             ("class", Value::new_class("group")),
             ("class", Value::new_class("dyngroup")),
             ("uuid", Value::Uuid(dyn_uuid)),

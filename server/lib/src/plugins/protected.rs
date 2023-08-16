@@ -53,13 +53,13 @@ impl Plugin for Protected {
         }
 
         cand.iter().try_fold((), |(), cand| {
-            if cand.attribute_equality("class", &PVCLASS_SYSTEM)
-                || cand.attribute_equality("class", &PVCLASS_DOMAIN_INFO)
-                || cand.attribute_equality("class", &PVCLASS_SYSTEM_INFO)
-                || cand.attribute_equality("class", &PVCLASS_SYSTEM_CONFIG)
-                || cand.attribute_equality("class", &PVCLASS_TOMBSTONE)
-                || cand.attribute_equality("class", &PVCLASS_RECYCLED)
-                || cand.attribute_equality("class", &PVCLASS_DYNGROUP)
+            if cand.attribute_equality("class", &AcpClass::System.into())
+                || cand.attribute_equality("class", &AcpClass::DomainInfo.into())
+                || cand.attribute_equality("class", &AcpClass::SystemInfo.into())
+                || cand.attribute_equality("class", &AcpClass::SystemConfig.into())
+                || cand.attribute_equality("class", &AcpClass::Tombstone.into())
+                || cand.attribute_equality("class", &AcpClass::Recycled.into())
+                || cand.attribute_equality("class", &AcpClass::DynGroup.into())
             {
                 Err(OperationError::SystemProtectedObject)
             } else {
@@ -83,14 +83,14 @@ impl Plugin for Protected {
         me.modlist.iter().try_fold((), |(), m| match m {
             Modify::Present(a, v) => {
                 if a == "class"
-                    && (v == &(*CLASS_SYSTEM)
-                        || v == &(*CLASS_DOMAIN_INFO)
-                        || v == &(*CLASS_SYSTEM_INFO)
-                        || v == &(*CLASS_SYSTEM_CONFIG)
-                        || v == &(*CLASS_DYNGROUP)
-                        || v == &(*CLASS_SYNC_OBJECT)
-                        || v == &(*CLASS_TOMBSTONE)
-                        || v == &(*CLASS_RECYCLED))
+                    && (v == &AcpClass::System.to_value()
+                        || v == &AcpClass::DomainInfo.to_value()
+                        || v == &AcpClass::SystemInfo.into()
+                        || v == &AcpClass::SystemConfig.to_value()
+                        || v == &AcpClass::DynGroup.to_value()
+                        || v == &AcpClass::SyncObject.to_value()
+                        || v == &AcpClass::Tombstone.to_value()
+                        || v == &AcpClass::Recycled.to_value())
                 {
                     Err(OperationError::SystemProtectedObject)
                 } else {
@@ -103,9 +103,9 @@ impl Plugin for Protected {
         // HARD block mods on tombstone or recycle. We soft block on the rest as they may
         // have some allowed attrs.
         cand.iter().try_fold((), |(), cand| {
-            if cand.attribute_equality("class", &PVCLASS_TOMBSTONE)
-                || cand.attribute_equality("class", &PVCLASS_RECYCLED)
-                || cand.attribute_equality("class", &PVCLASS_DYNGROUP)
+            if cand.attribute_equality("class", &AcpClass::Tombstone.into())
+                || cand.attribute_equality("class", &AcpClass::Recycled.into())
+                || cand.attribute_equality("class", &AcpClass::DynGroup.into())
             {
                 Err(OperationError::SystemProtectedObject)
             } else {
@@ -117,7 +117,7 @@ impl Plugin for Protected {
         let system_pres = cand.iter().any(|c| {
             // We don't need to check for domain info here because domain_info has a class
             // system also. We just need to block it from being created.
-            c.attribute_equality("class", &PVCLASS_SYSTEM)
+            c.attribute_equality("class", &AcpClass::System.into())
         });
 
         trace!("class: system -> {}", system_pres);
@@ -162,14 +162,14 @@ impl Plugin for Protected {
             .try_fold((), |(), m| match m {
                 Modify::Present(a, v) => {
                     if a == "class"
-                        && (v == &(*CLASS_SYSTEM)
-                            || v == &(*CLASS_DOMAIN_INFO)
-                            || v == &(*CLASS_SYSTEM_INFO)
-                            || v == &(*CLASS_SYSTEM_CONFIG)
-                            || v == &(*CLASS_DYNGROUP)
-                            || v == &(*CLASS_SYNC_OBJECT)
-                            || v == &(*CLASS_TOMBSTONE)
-                            || v == &(*CLASS_RECYCLED))
+                        && (v == &AcpClass::System.to_value()
+                            || v == &AcpClass::DomainInfo.to_value()
+                            || v == &(AcpClass::SystemInfo.to_value())
+                            || v == &AcpClass::SystemConfig.to_value()
+                            || v == &AcpClass::DynGroup.to_value()
+                            || v == &AcpClass::SyncObject.to_value()
+                            || v == &AcpClass::Tombstone.to_value()
+                            || v == &AcpClass::Recycled.to_value())
                     {
                         Err(OperationError::SystemProtectedObject)
                     } else {
@@ -182,9 +182,9 @@ impl Plugin for Protected {
         // HARD block mods on tombstone or recycle. We soft block on the rest as they may
         // have some allowed attrs.
         cand.iter().try_fold((), |(), cand| {
-            if cand.attribute_equality("class", &PVCLASS_TOMBSTONE)
-                || cand.attribute_equality("class", &PVCLASS_RECYCLED)
-                || cand.attribute_equality("class", &PVCLASS_DYNGROUP)
+            if cand.attribute_equality("class", &AcpClass::Tombstone.into())
+                || cand.attribute_equality("class", &AcpClass::Recycled.into())
+                || cand.attribute_equality("class", &AcpClass::DynGroup.into())
             {
                 Err(OperationError::SystemProtectedObject)
             } else {
@@ -196,7 +196,7 @@ impl Plugin for Protected {
         let system_pres = cand.iter().any(|c| {
             // We don't need to check for domain info here because domain_info has a class
             // system also. We just need to block it from being created.
-            c.attribute_equality("class", &PVCLASS_SYSTEM)
+            c.attribute_equality("class", &AcpClass::System.into())
         });
 
         trace!("class: system -> {}", system_pres);
@@ -240,13 +240,13 @@ impl Plugin for Protected {
         }
 
         cand.iter().try_fold((), |(), cand| {
-            if cand.attribute_equality("class", &PVCLASS_SYSTEM)
-                || cand.attribute_equality("class", &PVCLASS_DOMAIN_INFO)
-                || cand.attribute_equality("class", &PVCLASS_SYSTEM_INFO)
-                || cand.attribute_equality("class", &PVCLASS_SYSTEM_CONFIG)
-                || cand.attribute_equality("class", &PVCLASS_TOMBSTONE)
-                || cand.attribute_equality("class", &PVCLASS_RECYCLED)
-                || cand.attribute_equality("class", &PVCLASS_DYNGROUP)
+            if cand.attribute_equality("class", &AcpClass::System.into())
+                || cand.attribute_equality("class", &AcpClass::DomainInfo.into())
+                || cand.attribute_equality("class", &AcpClass::SystemInfo.into())
+                || cand.attribute_equality("class", &AcpClass::SystemConfig.into())
+                || cand.attribute_equality("class", &AcpClass::Tombstone.into())
+                || cand.attribute_equality("class", &AcpClass::Recycled.into())
+                || cand.attribute_equality("class", &AcpClass::DynGroup.into())
             {
                 Err(OperationError::SystemProtectedObject)
             } else {
@@ -267,8 +267,8 @@ mod tests {
 
     lazy_static! {
         pub static ref TEST_ACCOUNT: EntryInitNew = entry_init!(
-            ("class", Value::new_class("account")),
-            ("class", Value::new_class("service_account")),
+            ("class", AcpClass::Account.to_value()),
+            ("class", AcpClass::ServiceAccount.to_value()),
             ("class", Value::new_class("memberof")),
             ("name", Value::new_iname("test_account_1")),
             ("displayname", Value::new_utf8s("test_account_1")),
@@ -282,7 +282,7 @@ mod tests {
             ("member", Value::Refer(UUID_TEST_ACCOUNT))
         );
         pub static ref ALLOW_ALL: EntryInitNew = entry_init!(
-            ("class", Value::new_class("object")),
+            ("class", AcpClass::Object.to_value()),
             ("class", Value::new_class("access_control_profile")),
             ("class", Value::new_class("access_control_modify")),
             ("class", Value::new_class("access_control_create")),

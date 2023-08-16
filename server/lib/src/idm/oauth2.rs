@@ -316,13 +316,13 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
                 let uuid = ent.get_uuid();
                 admin_info!(?uuid, "Checking oauth2 configuration");
                 // From each entry, attempt to make an oauth2 configuration.
-                if !ent.attribute_equality("class", &PVCLASS_OAUTH2_RS) {
+                if !ent.attribute_equality("class", &AcpClass::OAuth2ResourceServer.into()) {
                     admin_error!("Missing class oauth2_resource_server");
                     // Check we have oauth2_resource_server class
                     return Err(OperationError::InvalidEntryState);
                 }
 
-                let type_ = if ent.attribute_equality("class", &PVCLASS_OAUTH2_BASIC) {
+                let type_ = if ent.attribute_equality("class", &AcpClass::OAuth2ResourceServerBasic.into()) {
                     let authz_secret = ent
                         .get_ava_single_secret("oauth2_rs_basic_secret")
                         .map(str::to_string)
@@ -337,7 +337,7 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
                         authz_secret,
                         enable_pkce,
                     }
-                } else if ent.attribute_equality("class", &PVCLASS_OAUTH2_PUBLIC) {
+                } else if ent.attribute_equality("class", &AcpClass::OAuth2ResourceServerPublic.into()) {
                     OauthRSType::Public
                 } else {
                     error!("Missing class determining oauth2 rs type");
@@ -2029,7 +2029,7 @@ mod tests {
         let uuid = Uuid::new_v4();
 
         let e: Entry<EntryInit, EntryNew> = entry_init!(
-            ("class", Value::new_class("object")),
+            ("class", AcpClass::Object.to_value()),
             ("class", Value::new_class("oauth2_resource_server")),
             ("class", Value::new_class("oauth2_resource_server_basic")),
             ("uuid", Value::Uuid(uuid)),
@@ -2149,7 +2149,7 @@ mod tests {
         let uuid = Uuid::new_v4();
 
         let e: Entry<EntryInit, EntryNew> = entry_init!(
-            ("class", Value::new_class("object")),
+            ("class", AcpClass::Object.to_value()),
             ("class", Value::new_class("oauth2_resource_server")),
             ("class", Value::new_class("oauth2_resource_server_public")),
             ("uuid", Value::Uuid(uuid)),

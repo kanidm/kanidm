@@ -80,8 +80,8 @@ impl<'a> QueryServerReadTransaction<'a> {
         let (schema_entries, rem_entries): (Vec<_>, Vec<_>) = entries.into_iter().partition(|e| {
             e.get_ava_set("class")
                 .map(|cls| {
-                    cls.contains(&PVCLASS_ATTRIBUTETYPE as &PartialValue)
-                        || cls.contains(&PVCLASS_CLASSTYPE as &PartialValue)
+                    cls.contains(&AcpClass::AttributeType.into() as &PartialValue)
+                        || cls.contains(&AcpClass::ClassType.into() as &PartialValue)
                 })
                 .unwrap_or(false)
         });
@@ -162,8 +162,8 @@ impl<'a> QueryServerReadTransaction<'a> {
         //   * schema defines what we exclude!
 
         let schema_filter = filter!(f_or!([
-            f_eq("class", PVCLASS_ATTRIBUTETYPE.clone()),
-            f_eq("class", PVCLASS_CLASSTYPE.clone()),
+            f_eq("class", AcpClass::AttributeType.into()),
+            f_eq("class", AcpClass::ClassType.into()),
         ]));
 
         let meta_filter = filter!(f_or!([
@@ -177,15 +177,15 @@ impl<'a> QueryServerReadTransaction<'a> {
                 f_pres("class"),
                 f_andnot(f_or(vec![
                     // These are from above!
-                    f_eq("class", PVCLASS_ATTRIBUTETYPE.clone()),
-                    f_eq("class", PVCLASS_CLASSTYPE.clone()),
+                    f_eq("class", AcpClass::AttributeType.into()),
+                    f_eq("class", AcpClass::ClassType.into()),
                     f_eq("uuid", PVUUID_DOMAIN_INFO.clone()),
                     f_eq("uuid", PVUUID_SYSTEM_INFO.clone()),
                     f_eq("uuid", PVUUID_SYSTEM_CONFIG.clone()),
                 ])),
             ]),
-            f_eq("class", PVCLASS_TOMBSTONE.clone()),
-            f_eq("class", PVCLASS_RECYCLED.clone()),
+            f_eq("class", AcpClass::Tombstone.into()),
+            f_eq("class", AcpClass::Recycled.into()),
         ]));
 
         let schema_entries = self

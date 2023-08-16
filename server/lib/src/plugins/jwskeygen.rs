@@ -46,14 +46,14 @@ impl Plugin for JwsKeygen {
 impl JwsKeygen {
     fn modify_inner<T: Clone>(cand: &mut [Entry<EntryInvalid, T>]) -> Result<(), OperationError> {
         cand.iter_mut().try_for_each(|e| {
-        if e.attribute_equality("class", &PVCLASS_OAUTH2_BASIC) &&
+        if e.attribute_equality("class", &AcpClass::OAuth2ResourceServerBasic.into()) &&
             !e.attribute_pres("oauth2_rs_basic_secret") {
                 security_info!("regenerating oauth2 basic secret");
                 let v = Value::SecretValue(password_from_random());
                 e.add_ava("oauth2_rs_basic_secret", v);
         }
 
-        if e.attribute_equality("class", &PVCLASS_OAUTH2_RS) {
+        if e.attribute_equality("class", &AcpClass::OAuth2ResourceServer.into()) {
             if !e.attribute_pres("oauth2_rs_token_key") {
                 security_info!("regenerating oauth2 token key");
                 let k = fernet::Fernet::generate_key();
@@ -85,8 +85,8 @@ impl JwsKeygen {
             }
         }
 
-        if (e.attribute_equality("class", &PVCLASS_SERVICE_ACCOUNT) ||
-            e.attribute_equality("class", &PVCLASS_SYNC_ACCOUNT)) &&
+        if (e.attribute_equality("class", &AcpClass::ServiceAccount.into()) ||
+            e.attribute_equality("class", &AcpClass::SyncAccount.into())) &&
             !e.attribute_pres("jws_es256_private_key") {
                 security_info!("regenerating jws es256 private key");
                 let jwssigner = JwsSigner::generate_es256()
@@ -113,7 +113,7 @@ mod tests {
 
         let uuid = Uuid::new_v4();
         let e: Entry<EntryInit, EntryNew> = entry_init!(
-            ("class", Value::new_class("object")),
+            ("class", AcpClass::Object.to_value()),
             ("class", Value::new_class("oauth2_resource_server")),
             ("class", Value::new_class("oauth2_resource_server_basic")),
             ("uuid", Value::Uuid(uuid)),
@@ -152,7 +152,7 @@ mod tests {
         let uuid = Uuid::new_v4();
 
         let e: Entry<EntryInit, EntryNew> = entry_init!(
-            ("class", Value::new_class("object")),
+            ("class", AcpClass::Object.to_value()),
             ("class", Value::new_class("oauth2_resource_server")),
             ("class", Value::new_class("oauth2_resource_server_basic")),
             ("uuid", Value::Uuid(uuid)),

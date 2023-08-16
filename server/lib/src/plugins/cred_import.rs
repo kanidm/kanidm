@@ -295,8 +295,8 @@ mod tests {
         let euuid = Uuid::new_v4();
 
         let ea = entry_init!(
-            ("class", Value::new_class("account")),
-            ("class", Value::new_class("person")),
+            ("class", AcpClass::Account.to_value()),
+            ("class", AcpClass::Person.to_value()),
             ("name", Value::new_iname("testperson")),
             ("description", Value::Utf8("testperson".to_string())),
             ("displayname", Value::Utf8("testperson".to_string())),
@@ -353,8 +353,8 @@ mod tests {
         let euuid = Uuid::new_v4();
 
         let ea = entry_init!(
-            ("class", Value::new_class("account")),
-            ("class", Value::new_class("person")),
+            ("class", AcpClass::Account.to_value()),
+            ("class", AcpClass::Person.to_value()),
             ("name", Value::new_iname("testperson")),
             ("description", Value::Utf8("testperson".to_string())),
             ("displayname", Value::Utf8("testperson".to_string())),

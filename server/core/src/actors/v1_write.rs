@@ -1061,7 +1061,7 @@ impl QueryServerWriteV1 {
         // in the actual request.
         let mods: Vec<_> = iter::once(Some(Modify::Present(
             "class".into(),
-            Value::new_class("posixaccount"),
+            AcpClass::PosixAccount.into(),
         )))
         .chain(iter::once(
             gidnumber
@@ -1082,7 +1082,7 @@ impl QueryServerWriteV1 {
 
         let ml = ModifyList::new_list(mods);
 
-        let filter = filter_all!(f_eq("class", PartialValue::new_class("account")));
+        let filter = filter_all!(f_eq("class", AcpClass::Account.into()));
 
         self.modify_from_internal_parts(uat, &uuid_or_name, &ml, filter)
             .await
@@ -1122,7 +1122,7 @@ impl QueryServerWriteV1 {
 
         let ml = ModifyList::new_list(mods);
 
-        let filter = filter_all!(f_eq("class", PartialValue::new_class("group")));
+        let filter = filter_all!(f_eq("class", AcpClass::Group.into()));
 
         self.modify_from_internal_parts(uat, &uuid_or_name, &ml, filter)
             .await

@@ -34,7 +34,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             e
         })?;
         let rc = self.internal_search(filter_all!(f_and!([
-            f_eq("class", PVCLASS_RECYCLED.clone()),
+            f_eq("class", AcpClass::Recycled.into()),
             f_lt("last_modified_cid", PartialValue::new_cid(cid)),
         ])))?;
 
@@ -109,7 +109,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // Check access against a "fake" modify.
         let modlist = ModifyList::new_list(vec![Modify::Removed(
             AttrString::from("class"),
-            PVCLASS_RECYCLED.clone(),
+            AcpClass::Recycled.into(),
         )]);
 
         let m_valid = modlist.validate(self.get_schema()).map_err(|e| {
@@ -255,7 +255,7 @@ mod tests {
 
         let filt_i_ts = filter_all!(f_eq("class", PartialValue::new_class("tombstone")));
 
-        let filt_i_per = filter_all!(f_eq("class", PartialValue::new_class("person")));
+        let filt_i_per = filter_all!(f_eq("class", AcpClass::Person.into()));
 
         // Create fake external requests. Probably from admin later
         let me_rc = ModifyEvent::new_impersonate_entry(
@@ -280,8 +280,8 @@ mod tests {
 
         // Create some recycled objects
         let e1 = entry_init!(
-            ("class", Value::new_class("object")),
-            ("class", Value::new_class("person")),
+            ("class", AcpClass::Object.to_value()),
+            ("class", AcpClass::Person.to_value()),
             ("name", Value::new_iname("testperson1")),
             (
                 "uuid",
@@ -292,8 +292,8 @@ mod tests {
         );
 
         let e2 = entry_init!(
-            ("class", Value::new_class("object")),
-            ("class", Value::new_class("person")),
+            ("class", AcpClass::Object.to_value()),
+            ("class", AcpClass::Person.to_value()),
             ("name", Value::new_iname("testperson2")),
             (
                 "uuid",
@@ -386,8 +386,8 @@ mod tests {
         let admin = server_txn.internal_search_uuid(UUID_ADMIN).expect("failed");
 
         let e1 = entry_init!(
-            ("class", Value::new_class("object")),
-            ("class", Value::new_class("person")),
+            ("class", AcpClass::Object.to_value()),
+            ("class", AcpClass::Person.to_value()),
             ("name", Value::new_iname("testperson1")),
             (
                 "uuid",
@@ -425,9 +425,9 @@ mod tests {
         let mut server_txn = server.write(duration_from_epoch_now()).await;
 
         let e1 = entry_init!(
-            ("class", Value::new_class("object")),
-            ("class", Value::new_class("person")),
-            ("class", Value::new_class("account")),
+            ("class", AcpClass::Object.to_value()),
+            ("class", AcpClass::Person.to_value()),
+            ("class", AcpClass::Account.to_value()),
             ("name", Value::new_iname("testperson1")),
             (
                 "uuid",
@@ -518,8 +518,8 @@ mod tests {
 
         // First, create an entry, then push it through the lifecycle.
         let e_ts = entry_init!(
-            ("class", Value::new_class("object")),
-            ("class", Value::new_class("person")),
+            ("class", AcpClass::Object.to_value()),
+            ("class", AcpClass::Person.to_value()),
             ("name", Value::new_iname("testperson1")),
             (
                 "uuid",
@@ -596,8 +596,8 @@ mod tests {
 
     fn create_user(name: &str, uuid: &str) -> Entry<EntryInit, EntryNew> {
         entry_init!(
-            ("class", Value::new_class("object")),
-            ("class", Value::new_class("person")),
+            ("class", AcpClass::Object.to_value()),
+            ("class", AcpClass::Person.to_value()),
             ("name", Value::new_iname(name)),
             ("uuid", Value::new_uuid_s(uuid).expect("uuid")),
             ("description", Value::new_utf8s("testperson-entry")),
@@ -607,7 +607,7 @@ mod tests {
 
     fn create_group(name: &str, uuid: &str, members: &[&str]) -> Entry<EntryInit, EntryNew> {
         let mut e1 = entry_init!(
-            ("class", Value::new_class("object")),
+            ("class", AcpClass::Object.to_value()),
             ("class", Value::new_class("group")),
             ("name", Value::new_iname(name)),
             ("uuid", Value::new_uuid_s(uuid).expect("uuid")),

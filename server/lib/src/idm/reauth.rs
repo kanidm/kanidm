@@ -188,9 +188,9 @@ mod tests {
         let mut idms_prox_write = idms.proxy_write(ct).await;
 
         let e2 = entry_init!(
-            ("class", Value::new_class("object")),
-            ("class", Value::new_class("account")),
-            ("class", Value::new_class("person")),
+            ("class", AcpClass::Object.to_value()),
+            ("class", AcpClass::Account.to_value()),
+            ("class", AcpClass::Person.to_value()),
             ("name", Value::new_iname("testperson")),
             ("uuid", Value::Uuid(TESTPERSON_UUID)),
             ("description", Value::new_utf8s("testperson")),

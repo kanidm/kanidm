@@ -24,7 +24,7 @@ members = [
     "libs/file_permissions",
     "libs/profiles",
     "libs/sketching",
-    "libs/users"
+    "libs/users",
 ]
 
 [workspace.package]
@@ -32,7 +32,7 @@ version = "1.1.0-rc.14-dev"
 authors = [
     "William Brown <william@blackhats.net.au>",
     "James Hodgkinson <james@terminaloutcomes.com>",
-    ]
+]
 rust-version = "1.66"
 edition = "2021"
 license = "MPL-2.0"
@@ -55,7 +55,17 @@ serde_with = "3.2.0"
 argon2 = { version = "0.5.1", features = ["alloc"] }
 async-recursion = "1.0.4"
 async-trait = "^0.1.73"
-axum = {version = "0.6.20", features = ["json", "http2", "macros", "tracing", "headers", "original-uri", "query", "form", "http2"]}
+axum = { version = "0.6.20", features = [
+    "json",
+    "http2",
+    "macros",
+    "tracing",
+    "headers",
+    "original-uri",
+    "query",
+    "form",
+    "http2",
+] }
 axum-csp = { version = "0.0.5" }
 base32 = "^0.4.0"
 base64 = "^0.21.0"
@@ -117,7 +127,13 @@ qrcode = "^0.12.0"
 quote = "1"
 rand = "^0.8.5"
 regex = "1.9.3"
-reqwest = { version = "0.11.18", default-features = false, features=["cookies", "json", "gzip", "native-tls", "native-tls-alpn"] }
+reqwest = { version = "0.11.18", default-features = false, features = [
+    "cookies",
+    "json",
+    "gzip",
+    "native-tls",
+    "native-tls-alpn",
+] }
 rpassword = "^7.2.0"
 rusqlite = "^0.28.0"
 

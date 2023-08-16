@@ -83,8 +83,8 @@ impl Plugin for Spn {
         let domain_name = qs.get_domain_name().to_string();
 
         let filt_in = filter!(f_or!([
-            f_eq("class", PVCLASS_GROUP.clone()),
-            f_eq("class", PVCLASS_ACCOUNT.clone())
+            f_eq("class", AcpClass::Group.into()),
+            f_eq("class", AcpClass::Account.into()),
         ]));
 
         let all_cand = match qs
@@ -139,8 +139,8 @@ impl Spn {
         let domain_name = qs.get_domain_name();
 
         for ent in cand.iter_mut() {
-            if ent.attribute_equality("class", &PVCLASS_GROUP)
-                || ent.attribute_equality("class", &PVCLASS_ACCOUNT)
+            if ent.attribute_equality("class", &AcpClass::Group.into())
+                || ent.attribute_equality("class", &AcpClass::Account.into())
             {
                 let spn = ent
                     .generate_spn(domain_name)
@@ -192,8 +192,8 @@ impl Spn {
         // within the transaction, just in case!
         qs.internal_modify(
             &filter!(f_or!([
-                f_eq("class", PVCLASS_GROUP.clone()),
-                f_eq("class", PVCLASS_ACCOUNT.clone())
+                f_eq("class", AcpClass::Group.into()),
+                f_eq("class", AcpClass::Account.into()),
             ])),
             &modlist!([m_purge("spn")]),
         )
