@@ -955,6 +955,7 @@ impl KanidmClient {
             step: AuthStep::Init2 {
                 username: ident.to_string(),
                 issue: AuthIssueSession::Token,
+                privileged: false,
             },
         };
 

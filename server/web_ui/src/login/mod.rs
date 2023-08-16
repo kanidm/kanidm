@@ -100,6 +100,7 @@ impl LoginApp {
             step: AuthStep::Init2 {
                 username,
                 issue: AuthIssueSession::Token,
+                privileged: false,
             },
         };
         let req_jsvalue = serde_json::to_string(&authreq)

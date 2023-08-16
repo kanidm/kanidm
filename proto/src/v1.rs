@@ -919,6 +919,7 @@ pub enum AuthStep {
     Init2 {
         username: String,
         issue: AuthIssueSession,
+        privileged: bool,
     },
     // We want to talk to you like this.
     Begin(AuthMech),
