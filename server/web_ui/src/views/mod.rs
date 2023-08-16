@@ -11,9 +11,11 @@ use crate::models;
 use crate::{do_request, error::*, RequestMethod};
 
 mod apps;
+pub mod identityverification;
 mod profile;
 
 use apps::AppsApp;
+use identityverification::IdentityVerificationApp;
 use profile::ProfileApp;
 
 #[derive(Routable, PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
@@ -26,6 +28,9 @@ pub enum ViewRoute {
 
     #[at("/ui/profile")]
     Profile,
+
+    #[at("/ui/identity-verification")]
+    IdentityVerification,
 
     #[not_found]
     #[at("/ui/404")]
@@ -117,12 +122,6 @@ impl Component for ViewsApp {
         ViewsApp { state }
     }
 
-    fn changed(&mut self, _ctx: &Context<Self>, _props: &Self::Properties) -> bool {
-        #[cfg(debug_assertions)]
-        console::debug!("views::changed");
-        false
-    }
-
     fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
         #[cfg(debug_assertions)]
         console::debug!("views::update");
@@ -162,9 +161,10 @@ impl Component for ViewsApp {
         }
     }
 
-    fn rendered(&mut self, _ctx: &Context<Self>, _first_render: bool) {
+    fn changed(&mut self, _ctx: &Context<Self>, _props: &Self::Properties) -> bool {
         #[cfg(debug_assertions)]
-        console::debug!("views::rendered");
+        console::debug!("views::changed");
+        false
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
@@ -217,14 +217,19 @@ impl Component for ViewsApp {
             }
         }
     }
+
+    fn rendered(&mut self, _ctx: &Context<Self>, _first_render: bool) {
+        #[cfg(debug_assertions)]
+        console::debug!("views::rendered");
+    }
 }
 
 impl ViewsApp {
     /// The base page for the user dashboard
     fn view_authenticated(&self, ctx: &Context<Self>, uat: &UserAuthToken) -> Html {
         let current_user_uat = uat.clone();
-
         let ui_hint_experimental = uat.ui_hints.contains(&UiHint::ExperimentalFeatures);
+        let credential_update = uat.ui_hints.contains(&UiHint::CredentialUpdate);
 
         // WARN set dash-body against body here?
         html! {
@@ -247,13 +252,22 @@ impl ViewsApp {
                         { "Apps" }
                       </Link<ViewRoute>>
                     </li>
-
-                    <li class="mb-1">
+                    if ui_hint_experimental {
+                      <li class="mb-1">
+                        <Link<ViewRoute> classes="nav-link" to={ViewRoute::IdentityVerification}>
+                          <span data-feather="file"></span>
+                          { "Identity verification" }
+                        </Link<ViewRoute>>
+                      </li>
+                    }
+                    if credential_update {
+                      <li class="mb-1">
                         <Link<ViewRoute> classes="nav-link" to={ViewRoute::Profile}>
                           <span data-feather="file"></span>
                           { "Profile" }
                         </Link<ViewRoute>>
-                    </li>
+                      </li>
+                    }
 
                     if ui_hint_experimental {
                       <li class="mb-1">
@@ -309,6 +323,7 @@ impl ViewsApp {
                             <Switch<AdminRoute> render={ admin_routes } />
                         },
                         #[allow(clippy::let_unit_value)]
+                        ViewRoute::IdentityVerification => html! { <IdentityVerificationApp current_user_uat={ current_user_uat.clone() } />},
                         ViewRoute::Apps => html! { <AppsApp /> },
                         ViewRoute::Profile => html! { <ProfileApp current_user_uat={ current_user_uat.clone() } /> },
                         ViewRoute::NotFound => html! {

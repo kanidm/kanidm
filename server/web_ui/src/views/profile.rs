@@ -59,12 +59,6 @@ impl Component for ProfileApp {
         ProfileApp { state: State::Init }
     }
 
-    fn changed(&mut self, _ctx: &Context<Self>, _props: &Self::Properties) -> bool {
-        #[cfg(debug_assertions)]
-        console::debug!("views::security::changed");
-        true
-    }
-
     fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
         #[cfg(debug_assertions)]
         console::debug!("views::security::update");
@@ -124,9 +118,10 @@ impl Component for ProfileApp {
         }
     }
 
-    fn rendered(&mut self, _ctx: &Context<Self>, _first_render: bool) {
+    fn changed(&mut self, _ctx: &Context<Self>, _props: &Self::Properties) -> bool {
         #[cfg(debug_assertions)]
-        console::debug!("views::security::rendered");
+        console::debug!("views::security::changed");
+        true
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
@@ -190,6 +185,11 @@ impl Component for ProfileApp {
               { main }
             </>
         }
+    }
+
+    fn rendered(&mut self, _ctx: &Context<Self>, _first_render: bool) {
+        #[cfg(debug_assertions)]
+        console::debug!("views::security::rendered");
     }
 }
 

@@ -38,6 +38,7 @@ sketching = { workspace = true }
 testkit-macros = { workspace = true }
 tracing = { workspace = true, features = ["attributes"] }
 tokio = { workspace = true, features = ["net", "sync", "io-util", "macros"] }
+openssl.workspace = true
 
 
 [build-dependencies]

@@ -7,7 +7,7 @@ version = "1.1.0-rc.14-dev"
 authors = [
     "William Brown <william@blackhats.net.au>",
     "James Hodgkinson <james@terminaloutcomes.com>",
-    ]
+]
 rust-version = "1.66"
 edition = "2021"
 license = "MPL-2.0"
@@ -32,6 +32,10 @@ uuid = { workspace = true }
 yew = { workspace = true, features = ["csr"] }
 yew-router = { workspace = true }
 time = { workspace = true }
+gloo-timers = "0.2.6"
+wasm-timer = "0.2.5"
+regex.workspace = true
+lazy_static.workspace = true
 
 [dependencies.web-sys]
 workspace = true

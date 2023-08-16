@@ -133,19 +133,6 @@ impl Component for AdminListGroups {
         }
     }
 
-    fn view(&self, ctx: &Context<Self>) -> Html {
-        html! {
-            <>
-              {do_page_header("Group Administration")}
-
-              { alpha_warning_banner() }
-        <div id={"grouplist"}>
-        {self.view_state(ctx)}
-        </div>
-        </>
-        }
-    }
-
     fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
             AdminListGroupsMsg::Responded { response } => {
@@ -167,6 +154,19 @@ impl Component for AdminListGroups {
             }
         }
         false
+    }
+
+    fn view(&self, ctx: &Context<Self>) -> Html {
+        html! {
+            <>
+              {do_page_header("Group Administration")}
+
+              { alpha_warning_banner() }
+        <div id={"grouplist"}>
+        {self.view_state(ctx)}
+        </div>
+        </>
+        }
     }
 }
 

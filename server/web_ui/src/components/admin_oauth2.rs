@@ -130,6 +130,29 @@ impl Component for AdminListOAuth2 {
         }
     }
 
+    fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
+        match msg {
+            AdminListOAuth2Msg::Responded { response } => {
+                // TODO: do we paginate here?
+                #[cfg(debug_assertions)]
+                for key in response.keys() {
+                    let j = response
+                        .get(key)
+                        .and_then(|k| serde_json::to_string(k).ok())
+                        .unwrap_or_else(|| "Failed to dump response key".to_string());
+                    console::log!("response: {}", j);
+                }
+                self.state = ListViewState::Responded { response };
+                return true;
+            }
+            AdminListOAuth2Msg::Failed { emsg, kopid } => {
+                console::log!("emsg: {:?}", emsg);
+                console::log!("kopid: {:?}", kopid);
+            }
+        }
+        false
+    }
+
     fn view(&self, _ctx: &Context<Self>) -> Html {
         match &self.state {
             ListViewState::Loading => {
@@ -222,29 +245,6 @@ impl Component for AdminListOAuth2 {
                 do_alert_error("You're not authorized to see this page!", None)
             }
         }
-    }
-
-    fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
-        match msg {
-            AdminListOAuth2Msg::Responded { response } => {
-                // TODO: do we paginate here?
-                #[cfg(debug_assertions)]
-                for key in response.keys() {
-                    let j = response
-                        .get(key)
-                        .and_then(|k| serde_json::to_string(k).ok())
-                        .unwrap_or_else(|| "Failed to dump response key".to_string());
-                    console::log!("response: {}", j);
-                }
-                self.state = ListViewState::Responded { response };
-                return true;
-            }
-            AdminListOAuth2Msg::Failed { emsg, kopid } => {
-                console::log!("emsg: {:?}", emsg);
-                console::log!("kopid: {:?}", kopid);
-            }
-        }
-        false
     }
 }
 

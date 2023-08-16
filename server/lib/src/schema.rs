@@ -210,6 +210,7 @@ impl SchemaAttribute {
             SyntaxType::JwsKeyEs256 => matches!(v, PartialValue::Iutf8(_)),
             SyntaxType::JwsKeyRs256 => matches!(v, PartialValue::Iutf8(_)),
             SyntaxType::UiHint => matches!(v, PartialValue::UiHint(_)),
+            SyntaxType::EcKeyPrivate => matches!(v, PartialValue::SecretValue),
             // Comparing on the label.
             SyntaxType::TotpSecret => matches!(v, PartialValue::Utf8(_)),
             SyntaxType::AuditLogString => matches!(v, PartialValue::Utf8(_)),
@@ -263,6 +264,7 @@ impl SchemaAttribute {
                 SyntaxType::UiHint => matches!(v, Value::UiHint(_)),
                 SyntaxType::TotpSecret => matches!(v, Value::TotpSecret(_, _)),
                 SyntaxType::AuditLogString => matches!(v, Value::Utf8(_)),
+                SyntaxType::EcKeyPrivate => matches!(v, Value::EcKeyPrivate(_)),
             };
         if r {
             Ok(())

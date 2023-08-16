@@ -121,6 +121,10 @@ impl Component for ChangeUnixPassword {
         }
     }
 
+    fn changed(&mut self, _ctx: &Context<Self>, _props: &Self::Properties) -> bool {
+        false
+    }
+
     fn view(&self, ctx: &Context<Self>) -> Html {
         let flash = match &self.state {
             State::Error { emsg, kopid } => {
@@ -231,10 +235,6 @@ impl Component for ChangeUnixPassword {
             </div>
           </>
         }
-    }
-
-    fn changed(&mut self, _ctx: &Context<Self>, _props: &Self::Properties) -> bool {
-        false
     }
 
     fn rendered(&mut self, _ctx: &Context<Self>, _first_render: bool) {}

@@ -120,12 +120,6 @@ impl Component for TotpModalApp {
         }
     }
 
-    fn changed(&mut self, _ctx: &Context<Self>, _props: &Self::Properties) -> bool {
-        #[cfg(debug_assertions)]
-        console::debug!("totp modal::change");
-        false
-    }
-
     fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
         #[cfg(debug_assertions)]
         console::debug!("totp modal::update");
@@ -226,14 +220,10 @@ impl Component for TotpModalApp {
         true
     }
 
-    fn rendered(&mut self, _ctx: &Context<Self>, _first_render: bool) {
+    fn changed(&mut self, _ctx: &Context<Self>, _props: &Self::Properties) -> bool {
         #[cfg(debug_assertions)]
-        console::debug!("totp modal::rendered");
-    }
-
-    fn destroy(&mut self, _ctx: &Context<Self>) {
-        #[cfg(debug_assertions)]
-        console::debug!("totp modal::destroy");
+        console::debug!("totp modal::change");
+        false
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
@@ -444,5 +434,15 @@ impl Component for TotpModalApp {
             </div>
           </>
         }
+    }
+
+    fn rendered(&mut self, _ctx: &Context<Self>, _first_render: bool) {
+        #[cfg(debug_assertions)]
+        console::debug!("totp modal::rendered");
+    }
+
+    fn destroy(&mut self, _ctx: &Context<Self>) {
+        #[cfg(debug_assertions)]
+        console::debug!("totp modal::destroy");
     }
 }

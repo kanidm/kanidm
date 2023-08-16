@@ -3,6 +3,9 @@ use std::collections::{BTreeMap, BTreeSet};
 use compact_jwt::JwsSigner;
 use dyn_clone::DynClone;
 use hashbrown::HashSet;
+use openssl::ec::EcKey;
+use openssl::pkey::Private;
+use openssl::pkey::Public;
 use smolset::SmolSet;
 use time::OffsetDateTime;
 // use std::fmt::Debug;
@@ -26,6 +29,7 @@ pub use self::bool::ValueSetBool;
 pub use self::cid::ValueSetCid;
 pub use self::cred::{ValueSetCredential, ValueSetDeviceKey, ValueSetIntentToken, ValueSetPasskey};
 pub use self::datetime::ValueSetDateTime;
+pub use self::eckey::ValueSetEcKeyPrivate;
 pub use self::iname::ValueSetIname;
 pub use self::index::ValueSetIndex;
 pub use self::iutf8::ValueSetIutf8;
@@ -53,6 +57,7 @@ mod bool;
 mod cid;
 mod cred;
 mod datetime;
+pub mod eckey;
 mod iname;
 mod index;
 mod iutf8;
@@ -503,6 +508,16 @@ pub trait ValueSetT: std::fmt::Debug + DynClone {
         None
     }
 
+    fn to_eckey_private_single(&self) -> Option<&EcKey<Private>> {
+        debug_assert!(false);
+        None
+    }
+
+    fn to_eckey_public_single(&self) -> Option<&EcKey<Public>> {
+        debug_assert!(false);
+        None
+    }
+
     fn as_jws_key_es256_set(&self) -> Option<&HashSet<JwsSigner>> {
         debug_assert!(false);
         None
@@ -527,7 +542,13 @@ pub trait ValueSetT: std::fmt::Debug + DynClone {
         debug_assert!(false);
         None
     }
+
     fn as_audit_log_string(&self) -> Option<&SmolSet<[(Cid, String); 8]>> {
+        debug_assert!(false);
+        None
+    }
+
+    fn as_ec_key_private(&self) -> Option<&EcKey<Private>> {
         debug_assert!(false);
         None
     }
@@ -605,6 +626,7 @@ pub fn from_result_value_iter(
         Value::EmailAddress(a, _) => ValueSetEmailAddress::new(a),
         Value::UiHint(u) => ValueSetUiHint::new(u),
         Value::AuditLogString(c, s) => ValueSetAuditLogString::new((c, s)),
+        Value::EcKeyPrivate(k) => ValueSetEcKeyPrivate::new(&k),
         Value::PhoneNumber(_, _)
         | Value::Passkey(_, _, _)
         | Value::DeviceKey(_, _, _)
@@ -670,6 +692,7 @@ pub fn from_value_iter(mut iter: impl Iterator<Item = Value>) -> Result<ValueSet
         Value::UiHint(u) => ValueSetUiHint::new(u),
         Value::TotpSecret(l, t) => ValueSetTotpSecret::new(l, t),
         Value::AuditLogString(c, s) => ValueSetAuditLogString::new((c, s)),
+        Value::EcKeyPrivate(k) => ValueSetEcKeyPrivate::new(&k),
         Value::PhoneNumber(_, _) => {
             debug_assert!(false);
             return Err(OperationError::InvalidValueState);
@@ -720,6 +743,7 @@ pub fn from_db_valueset_v2(dbvs: DbValueSetV2) -> Result<ValueSet, OperationErro
         DbValueSetV2::UiHint(set) => ValueSetUiHint::from_dbvs2(set),
         DbValueSetV2::TotpSecret(set) => ValueSetTotpSecret::from_dbvs2(set),
         DbValueSetV2::AuditLogString(set) => ValueSetAuditLogString::from_dbvs2(set),
+        DbValueSetV2::EcKeyPrivate(key) => ValueSetEcKeyPrivate::from_dbvs2(&key),
         DbValueSetV2::PhoneNumber(_, _) | DbValueSetV2::TrustedDeviceEnrollment(_) => {
             debug_assert!(false);
             Err(OperationError::InvalidValueState)
@@ -767,5 +791,6 @@ pub fn from_repl_v1(rv1: &ReplAttrV1) -> Result<ValueSet, OperationError> {
         ReplAttrV1::ApiToken { set } => ValueSetApiToken::from_repl_v1(set),
         ReplAttrV1::TotpSecret { set } => ValueSetTotpSecret::from_repl_v1(set),
         ReplAttrV1::AuditLogString { set } => ValueSetAuditLogString::from_repl_v1(set),
+        ReplAttrV1::EcKeyPrivate { key } => ValueSetEcKeyPrivate::from_repl_v1(key),
     }
 }

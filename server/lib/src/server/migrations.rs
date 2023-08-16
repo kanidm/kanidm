@@ -465,6 +465,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             SCHEMA_ATTR_DOMAIN_TOKEN_KEY.clone().into(),
             SCHEMA_ATTR_DOMAIN_UUID.clone().into(),
             SCHEMA_ATTR_DYNGROUP_FILTER.clone().into(),
+            SCHEMA_ATTR_EC_KEY_PRIVATE.clone().into(),
             SCHEMA_ATTR_ES256_PRIVATE_KEY_DER.clone().into(),
             SCHEMA_ATTR_FERNET_PRIVATE_KEY_STR.clone().into(),
             SCHEMA_ATTR_GIDNUMBER.clone().into(),
