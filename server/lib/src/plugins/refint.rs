@@ -164,7 +164,7 @@ impl Plugin for ReferentialIntegrity {
         qs.internal_apply_writable(work_set)
     }
 
-    #[instrument(level = "debug", name = "verify::refint", skip_all)]
+    #[instrument(level = "debug", name = "refint::verify", skip_all)]
     fn verify(qs: &mut QueryServerReadTransaction) -> Vec<Result<(), ConsistencyError>> {
         // Get all entries as cand
         //      build a cand-uuid set
