@@ -1,3 +1,4 @@
+use crate::unix_proto::ProviderResult;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -61,11 +62,11 @@ pub trait IdProvider {
         old_token: Option<UserToken>,
     ) -> Result<UserToken, IdpError>;
 
-    async fn unix_user_authenticate(
+    async fn unix_user_authenticate_step(
         &self,
         id: &Id,
-        cred: &str,
-    ) -> Result<Option<UserToken>, IdpError>;
+        cred: Option<&str>,
+    ) -> Result<ProviderResult, IdpError>;
 
     async fn unix_group_get(&self, id: &Id) -> Result<GroupToken, IdpError>;
 }

@@ -14,7 +14,9 @@ use uuid::Uuid;
 use crate::db::{Cache, CacheTxn, Db};
 use crate::idprovider::interface::{GroupToken, Id, IdProvider, IdpError, UserToken};
 use crate::unix_config::{HomeAttr, UidAttr};
-use crate::unix_proto::{HomeDirectoryInfo, NssGroup, NssUser};
+use crate::unix_proto::{
+    ClientResponse, HomeDirectoryInfo, NssGroup, NssUser, PamCred, PamPrompt, ProviderResult,
+};
 
 // use crate::unix_passwd::{EtcUser, EtcGroup};
 
@@ -733,27 +735,48 @@ where
         &self,
         token: &Option<UserToken>,
         account_id: &Id,
-        cred: &str,
-    ) -> Result<Option<bool>, ()> {
+        cred: Option<PamCred>,
+    ) -> Result<ClientResponse, ()> {
         debug!("Attempt online password check");
+        // Unwrap the cred for passing to the step function
+        let ucred = match &cred {
+            Some(PamCred::Password(v)) => Some(v.clone()),
+            Some(PamCred::MFACode(v)) => Some(v.clone()),
+            None => None,
+        };
         // We are online, attempt the pw to the server.
-        match self.client.unix_user_authenticate(account_id, cred).await {
-            Ok(Some(mut n_tok)) => {
+        match self
+            .client
+            .unix_user_authenticate_step(account_id, ucred.as_deref())
+            .await
+        {
+            Ok(ProviderResult::UserToken(Some(mut n_tok))) => {
                 if self.check_nxset(&n_tok.name, n_tok.gidnumber).await {
                     // Refuse to release the token, it's in the denied set.
                     self.delete_cache_usertoken(n_tok.uuid).await?;
-                    Ok(None)
+                    Ok(ClientResponse::PamStatus(None))
                 } else {
                     debug!("online password check success.");
                     self.set_cache_usertoken(&mut n_tok).await?;
-                    self.set_cache_userpassword(n_tok.uuid, cred).await?;
-                    Ok(Some(true))
+                    match cred {
+                        Some(PamCred::Password(cred)) => {
+                            // Only cache an actual password (not an MFA token)
+                            self.set_cache_userpassword(n_tok.uuid, &cred).await?;
+                        }
+                        Some(_) => {}
+                        None => {}
+                    }
+                    Ok(ClientResponse::PamStatus(Some(true)))
                 }
             }
-            Ok(None) => {
+            Ok(ProviderResult::UserToken(None)) => {
                 error!("incorrect password");
                 // PW failed the check.
-                Ok(Some(false))
+                Ok(ClientResponse::PamStatus(Some(false)))
+            }
+            Ok(ProviderResult::PamPrompt(prompt)) => {
+                debug!("Requesting pam prompt {:?}", prompt);
+                Ok(ClientResponse::PamPrompt(prompt))
             }
             Err(IdpError::Transport) => {
                 error!("transport error, moving to offline");
@@ -762,8 +785,14 @@ where
                 self.set_cachestate(CacheState::OfflineNextCheck(time))
                     .await;
                 match token.as_ref() {
-                    Some(t) => self.check_cache_userpassword(t.uuid, cred).await.map(Some),
-                    None => Ok(None),
+                    Some(t) => match ucred {
+                        Some(cred) => match self.check_cache_userpassword(t.uuid, &cred).await {
+                            Ok(res) => Ok(ClientResponse::PamStatus(Some(res))),
+                            Err(e) => Err(e),
+                        },
+                        None => Ok(ClientResponse::PamPrompt(PamPrompt::passwd_prompt())),
+                    },
+                    None => Ok(ClientResponse::PamStatus(None)),
                 }
             }
 
@@ -773,11 +802,17 @@ where
                 self.set_cachestate(CacheState::OfflineNextCheck(time))
                     .await;
                 match token.as_ref() {
-                    Some(t) => self.check_cache_userpassword(t.uuid, cred).await.map(Some),
-                    None => Ok(None),
+                    Some(t) => match ucred {
+                        Some(cred) => match self.check_cache_userpassword(t.uuid, &cred).await {
+                            Ok(res) => Ok(ClientResponse::PamStatus(Some(res))),
+                            Err(e) => Err(e),
+                        },
+                        None => Ok(ClientResponse::PamPrompt(PamPrompt::passwd_prompt())),
+                    },
+                    None => Ok(ClientResponse::PamStatus(None)),
                 }
             }
-            Err(IdpError::NotFound) => Ok(None),
+            Err(IdpError::NotFound) => Ok(ClientResponse::PamStatus(None)),
             Err(IdpError::BadRequest) => {
                 // Some other unknown processing error?
                 Err(())
@@ -788,18 +823,29 @@ where
     async fn offline_account_authenticate(
         &self,
         token: &Option<UserToken>,
-        cred: &str,
-    ) -> Result<Option<bool>, ()> {
+        cred: Option<PamCred>,
+    ) -> Result<ClientResponse, ()> {
+        let cred = match cred {
+            Some(cred) => match cred {
+                PamCred::Password(v) => v.clone(),
+                // We can only authenticate using a password
+                _ => return Ok(ClientResponse::PamStatus(Some(false))),
+            },
+            None => return Ok(ClientResponse::PamPrompt(PamPrompt::passwd_prompt())),
+        };
         debug!("Attempt offline password check");
         match token.as_ref() {
             Some(t) => {
                 if t.valid {
-                    self.check_cache_userpassword(t.uuid, cred).await.map(Some)
+                    match self.check_cache_userpassword(t.uuid, &cred).await {
+                        Ok(res) => Ok(ClientResponse::PamStatus(Some(res))),
+                        Err(e) => Err(e),
+                    }
                 } else {
-                    Ok(Some(false))
+                    Ok(ClientResponse::PamStatus(Some(false)))
                 }
             }
-            None => Ok(None),
+            None => Ok(ClientResponse::PamStatus(None)),
         }
         /*
         token
@@ -837,11 +883,11 @@ where
         }
     }
 
-    pub async fn pam_account_authenticate(
+    pub async fn pam_account_authenticate_step(
         &self,
         account_id: &str,
-        cred: &str,
-    ) -> Result<Option<bool>, ()> {
+        cred: Option<PamCred>,
+    ) -> Result<ClientResponse, ()> {
         let id = Id::Name(account_id.to_string());
 
         let state = self.get_cachestate().await;

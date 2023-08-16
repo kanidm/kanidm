@@ -1,3 +1,4 @@
+use crate::idprovider::interface::UserToken;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -16,6 +17,59 @@ pub struct NssGroup {
     pub members: Vec<String>,
 }
 
+#[derive(Serialize, Deserialize, Debug, Default)]
+pub enum PamMessageStyle {
+    #[default]
+    PamPromptEchoOff,
+    PamPromptEchoOn,
+    PamErrorMsg,
+    PamTextInfo,
+}
+
+impl PamMessageStyle {
+    pub fn value(&self) -> i32 {
+        match *self {
+            PamMessageStyle::PamPromptEchoOff => 1,
+            PamMessageStyle::PamPromptEchoOn => 2,
+            PamMessageStyle::PamErrorMsg => 3,
+            PamMessageStyle::PamTextInfo => 4,
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Default)]
+pub enum CredType {
+    #[default]
+    Password,
+    MFACode,
+}
+
+#[derive(Serialize, Deserialize, Debug, Default)]
+pub struct PamPrompt {
+    pub style: PamMessageStyle,
+    pub msg: String,
+    pub timeout: Option<u64>, // timeout of None means use the config default
+    pub cred_type: Option<CredType>,
+}
+
+impl PamPrompt {
+    // Produce a typical password prompt
+    pub fn passwd_prompt() -> Self {
+        PamPrompt {
+            style: PamMessageStyle::PamPromptEchoOff,
+            msg: "Password: ".to_string(),
+            timeout: None,
+            cred_type: Some(CredType::Password),
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub enum PamCred {
+    Password(String), // Will be stored in the cache
+    MFACode(String),
+}
+
 #[derive(Serialize, Deserialize, Debug)]
 pub enum ClientRequest {
     SshKey(String),
@@ -25,7 +79,8 @@ pub enum ClientRequest {
     NssGroups,
     NssGroupByGid(u32),
     NssGroupByName(String),
-    PamAuthenticate(String, String),
+    PamAuthenticateInit(String),
+    PamAuthenticateStep(Option<PamCred>),
     PamAccountAllowed(String),
     PamAccountBeginSession(String),
     InvalidateCache,
@@ -41,6 +96,7 @@ pub enum ClientResponse {
     NssGroups(Vec<NssGroup>),
     NssGroup(Option<NssGroup>),
     PamStatus(Option<bool>),
+    PamPrompt(PamPrompt),
     Ok,
     Error,
 }
@@ -61,4 +117,15 @@ pub enum TaskRequest {
 pub enum TaskResponse {
     Success,
     Error(String),
+}
+
+#[derive(Debug)]
+pub enum ProviderResult {
+    PamPrompt(PamPrompt),
+    UserToken(Option<UserToken>),
+}
+
+pub enum PamState {
+    Uninitialized,
+    Step(String),
 }
