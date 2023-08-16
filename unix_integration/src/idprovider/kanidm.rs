@@ -79,7 +79,11 @@ impl IdProvider for KanidmProvider {
         }
     }
 
-    async fn unix_user_get(&self, id: &Id, _old_token: Option<UserToken>) -> Result<UserToken, IdpError> {
+    async fn unix_user_get(
+        &self,
+        id: &Id,
+        _old_token: Option<UserToken>,
+    ) -> Result<UserToken, IdpError> {
         match self
             .client
             .read()
