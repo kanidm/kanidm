@@ -155,7 +155,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     }
 
     pub fn internal_delete_uuid(&mut self, target_uuid: Uuid) -> Result<(), OperationError> {
-        let filter = filter!(f_eq("uuid", PartialValue::Uuid(target_uuid)));
+        let filter = filter!(f_eq(ValueAttribute::Uuid, PartialValue::Uuid(target_uuid)));
         let f_valid = filter
             .validate(self.get_schema())
             .map_err(OperationError::SchemaViolation)?;
@@ -168,7 +168,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         &mut self,
         target_uuid: Uuid,
     ) -> Result<(), OperationError> {
-        let filter = filter!(f_eq("uuid", PartialValue::Uuid(target_uuid)));
+        let filter = filter!(f_eq(ValueAttribute::Uuid, PartialValue::Uuid(target_uuid)));
         let f_valid = filter
             .validate(self.get_schema())
             .map_err(OperationError::SchemaViolation)?;
@@ -193,8 +193,14 @@ mod tests {
         let mut server_txn = server.write(duration_from_epoch_now()).await;
 
         let e1 = entry_init!(
-            ("class", ValueClass::Object.to_value()),
-            ("class", ValueClass::Person.to_value()),
+            (
+                ValueAttribute::Class.as_str(),
+                ValueClass::Object.to_value()
+            ),
+            (
+                ValueAttribute::Class.as_str(),
+                ValueClass::Person.to_value()
+            ),
             ("name", Value::new_iname("testperson1")),
             (
                 "uuid",
@@ -205,8 +211,14 @@ mod tests {
         );
 
         let e2 = entry_init!(
-            ("class", ValueClass::Object.to_value()),
-            ("class", ValueClass::Person.to_value()),
+            (
+                ValueAttribute::Class.as_str(),
+                ValueClass::Object.to_value()
+            ),
+            (
+                ValueAttribute::Class.as_str(),
+                ValueClass::Person.to_value()
+            ),
             ("name", Value::new_iname("testperson2")),
             (
                 "uuid",
@@ -217,8 +229,14 @@ mod tests {
         );
 
         let e3 = entry_init!(
-            ("class", ValueClass::Object.to_value()),
-            ("class", ValueClass::Person.to_value()),
+            (
+                ValueAttribute::Class.as_str(),
+                ValueClass::Object.to_value()
+            ),
+            (
+                ValueAttribute::Class.as_str(),
+                ValueClass::Person.to_value()
+            ),
             ("name", Value::new_iname("testperson3")),
             (
                 "uuid",
@@ -239,21 +257,21 @@ mod tests {
 
         // Delete deletes nothing
         let de_empty = DeleteEvent::new_internal_invalid(filter!(f_eq(
-            "uuid",
+            ValueAttribute::Uuid,
             PartialValue::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-000000000000"))
         )));
         assert!(server_txn.delete(&de_empty).is_err());
 
         // Delete matches one
         let de_sin = DeleteEvent::new_internal_invalid(filter!(f_eq(
-            "name",
+            ValueAttribute::Name,
             PartialValue::new_iname("testperson3")
         )));
         assert!(server_txn.delete(&de_sin).is_ok());
 
         // Delete matches many
         let de_mult = DeleteEvent::new_internal_invalid(filter!(f_eq(
-            "description",
+            ValueAttribute::Description,
             PartialValue::new_utf8s("testperson")
         )));
         assert!(server_txn.delete(&de_mult).is_ok());

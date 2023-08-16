@@ -562,7 +562,10 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 )]);
 
                 self.qs_write
-                    .internal_modify(&filter!(f_eq("uuid", PartialValue::Uuid(uuid))), &modlist)
+                    .internal_modify(
+                        &filter!(f_eq(ValueAttribute::Uuid, PartialValue::Uuid(uuid))),
+                        &modlist,
+                    )
                     .map_err(|e| {
                         admin_error!("Failed to modify - revoke oauth2 session {:?}", e);
                         Oauth2Error::ServerError(e)
@@ -735,7 +738,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         ]);
 
         self.qs_write.internal_modify(
-            &filter_all!(f_eq("uuid", PartialValue::Uuid(uat.uuid))),
+            &filter_all!(f_eq(ValueAttribute::Uuid, PartialValue::Uuid(uat.uuid))),
             &modlist,
         )?;
 
@@ -932,7 +935,10 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                     )]);
 
                     self.qs_write
-                        .internal_modify(&filter!(f_eq("uuid", PartialValue::Uuid(uuid))), &modlist)
+                        .internal_modify(
+                            &filter!(f_eq(ValueAttribute::Uuid, PartialValue::Uuid(uuid))),
+                            &modlist,
+                        )
                         .map_err(|e| {
                             admin_error!("Failed to modify - revoke oauth2 session {:?}", e);
                             Oauth2Error::ServerError(e)
@@ -1138,7 +1144,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         self.qs_write
             .internal_modify(
-                &filter!(f_eq("uuid", PartialValue::Uuid(account_uuid))),
+                &filter!(f_eq(ValueAttribute::Uuid, PartialValue::Uuid(account_uuid))),
                 &modlist,
             )
             .map_err(|e| {
@@ -2029,9 +2035,18 @@ mod tests {
         let uuid = Uuid::new_v4();
 
         let e: Entry<EntryInit, EntryNew> = entry_init!(
-            ("class", ValueClass::Object.to_value()),
-            ("class", ValueClass::OAuth2ResourceServer.to_value()),
-            ("class", ValueClass::OAuth2ResourceServerBasic.to_value()),
+            (
+                ValueAttribute::Class.as_str(),
+                ValueClass::Object.to_value()
+            ),
+            (
+                ValueAttribute::Class.as_str(),
+                ValueClass::OAuth2ResourceServer.to_value()
+            ),
+            (
+                ValueAttribute::Class.as_str(),
+                ValueClass::OAuth2ResourceServerBasic.to_value()
+            ),
             ("uuid", Value::Uuid(uuid)),
             ("oauth2_rs_name", Value::new_iname("test_resource_server")),
             ("displayname", Value::new_utf8s("test_resource_server")),
@@ -2126,7 +2141,7 @@ mod tests {
         idms_prox_write
             .qs_write
             .internal_modify(
-                &filter!(f_eq("uuid", PartialValue::Uuid(UUID_ADMIN))),
+                &filter!(f_eq(ValueAttribute::Uuid, PartialValue::Uuid(UUID_ADMIN))),
                 &modlist,
             )
             .expect("Failed to modify user");
@@ -2149,9 +2164,18 @@ mod tests {
         let uuid = Uuid::new_v4();
 
         let e: Entry<EntryInit, EntryNew> = entry_init!(
-            ("class", ValueClass::Object.to_value()),
-            ("class", ValueClass::OAuth2ResourceServer.to_value()),
-            ("class", ValueClass::OAuth2ResourceServerPublic.to_value()),
+            (
+                ValueAttribute::Class.as_str(),
+                ValueClass::Object.to_value()
+            ),
+            (
+                ValueAttribute::Class.as_str(),
+                ValueClass::OAuth2ResourceServer.to_value()
+            ),
+            (
+                ValueAttribute::Class.as_str(),
+                ValueClass::OAuth2ResourceServerPublic.to_value()
+            ),
             ("uuid", Value::Uuid(uuid)),
             ("oauth2_rs_name", Value::new_iname("test_resource_server")),
             ("displayname", Value::new_utf8s("test_resource_server")),
@@ -2225,7 +2249,7 @@ mod tests {
         idms_prox_write
             .qs_write
             .internal_modify(
-                &filter!(f_eq("uuid", PartialValue::Uuid(UUID_ADMIN))),
+                &filter!(f_eq(ValueAttribute::Uuid, PartialValue::Uuid(UUID_ADMIN))),
                 &modlist,
             )
             .expect("Failed to modify user");
@@ -2892,7 +2916,7 @@ mod tests {
         // Expire the account, should cause introspect to return inactive.
         let v_expire = Value::new_datetime_epoch(Duration::from_secs(TEST_CURRENT_TIME - 1));
         let me_inv_m = ModifyEvent::new_internal_invalid(
-            filter!(f_eq("name", PartialValue::new_iname("admin"))),
+            filter!(f_eq(ValueAttribute::Name, PartialValue::new_iname("admin"))),
             ModifyList::new_list(vec![Modify::Present(
                 AttrString::from("account_expire"),
                 v_expire,
@@ -3134,7 +3158,7 @@ mod tests {
         // Delete the resource server.
 
         let de = DeleteEvent::new_internal_invalid(filter!(f_eq(
-            "oauth2_rs_name",
+            ValueAttribute::OAuth2RsName,
             PartialValue::new_iname("test_resource_server")
         )));
 
@@ -3951,7 +3975,7 @@ mod tests {
 
         let me_extend_scopes = ModifyEvent::new_internal_invalid(
             filter!(f_eq(
-                "oauth2_rs_name",
+                ValueAttribute::OAuth2RsName,
                 PartialValue::new_iname("test_resource_server")
             )),
             ModifyList::new_list(vec![Modify::Present(
@@ -4014,7 +4038,7 @@ mod tests {
 
         let me_extend_scopes = ModifyEvent::new_internal_invalid(
             filter!(f_eq(
-                "oauth2_rs_name",
+                ValueAttribute::OAuth2RsName,
                 PartialValue::new_iname("test_resource_server")
             )),
             ModifyList::new_list(vec![Modify::Present(
@@ -4124,7 +4148,7 @@ mod tests {
 
         // Now trigger the delete of the RS
         let de = DeleteEvent::new_internal_invalid(filter!(f_eq(
-            "oauth2_rs_name",
+            ValueAttribute::OAuth2RsName,
             PartialValue::new_iname("test_resource_server")
         )));
 
@@ -4133,7 +4157,11 @@ mod tests {
         let ident = idms_prox_write
             .process_uat_to_identity(&uat, ct)
             .expect("Unable to process uat");
-        assert!(ident.get_oauth2_consent_scopes(o2rs_uuid).is_none());
+        dbg!(&o2rs_uuid);
+        dbg!(&ident);
+        let consent_scopes = ident.get_oauth2_consent_scopes(o2rs_uuid);
+        dbg!(consent_scopes);
+        assert!(consent_scopes.is_none());
 
         assert!(idms_prox_write.commit().is_ok());
     }

@@ -339,8 +339,8 @@ pub async fn schema_get(
     // to the recycle/ts types in the filter, and we need the aci to only eval on this
     // part of the filter!
     let filter = filter_all!(f_or!([
-        f_eq("class", ValueClass::AttributeType.into()),
-        f_eq("class", ValueClass::ClassType.into())
+        f_eq(ValueAttribute::Class, ValueClass::AttributeType.into()),
+        f_eq(ValueAttribute::Class, ValueClass::ClassType.into())
     ]));
     json_rest_event_get(state, None, filter, kopid).await
 }
@@ -349,7 +349,10 @@ pub async fn schema_attributetype_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
 ) -> impl IntoResponse {
-    let filter = filter_all!(f_eq("class", ValueClass::AttributeType.into()));
+    let filter = filter_all!(f_eq(
+        ValueAttribute::Class,
+        ValueClass::AttributeType.into()
+    ));
     json_rest_event_get(state, None, filter, kopid).await
 }
 
@@ -360,8 +363,11 @@ pub async fn schema_attributetype_get_id(
 ) -> impl IntoResponse {
     // These can't use get_id because the attribute name and class name aren't ... well name.
     let filter = filter_all!(f_and!([
-        f_eq("class", ValueClass::AttributeType.into()),
-        f_eq("attributename", PartialValue::new_iutf8(id.as_str()))
+        f_eq(ValueAttribute::Class, ValueClass::AttributeType.into()),
+        f_eq(
+            ValueAttribute::AttributeName,
+            PartialValue::new_iutf8(id.as_str())
+        )
     ]));
 
     let res = state
@@ -376,7 +382,7 @@ pub async fn schema_classtype_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
 ) -> impl IntoResponse {
-    let filter = filter_all!(f_eq("class", ValueClass::ClassType.into()));
+    let filter = filter_all!(f_eq(ValueAttribute::Class, ValueClass::ClassType.into()));
     json_rest_event_get(state, None, filter, kopid).await
 }
 
@@ -387,8 +393,11 @@ pub async fn schema_classtype_get_id(
 ) -> impl IntoResponse {
     // These can't use get_id because they attribute name and class name aren't ... well name.
     let filter = filter_all!(f_and!([
-        f_eq("class", ValueClass::ClassType.into()),
-        f_eq("classname", PartialValue::new_iutf8(id.as_str()))
+        f_eq(ValueAttribute::Class, ValueClass::ClassType.into()),
+        f_eq(
+            ValueAttribute::ClassName,
+            PartialValue::new_iutf8(id.as_str())
+        )
     ]));
     let res = state
         .qe_r_ref
@@ -403,7 +412,7 @@ pub async fn person_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
 ) -> impl IntoResponse {
-    let filter = filter_all!(f_eq("class", ValueClass::Person.into()));
+    let filter = filter_all!(f_eq(ValueAttribute::Class, ValueClass::Person.into()));
     json_rest_event_get(state, None, filter, kopid).await
 }
 
@@ -427,7 +436,7 @@ pub async fn person_id_get(
     Path(id): Path<String>,
     Extension(kopid): Extension<KOpId>,
 ) -> impl IntoResponse {
-    let filter = filter_all!(f_eq("class", ValueClass::Person.into()));
+    let filter = filter_all!(f_eq(ValueAttribute::Class, ValueClass::Person.into()));
     json_rest_event_get_id(state, id, filter, None, kopid).await
 }
 
@@ -436,7 +445,7 @@ pub async fn person_account_id_delete(
     Path(id): Path<String>,
     Extension(kopid): Extension<KOpId>,
 ) -> impl IntoResponse {
-    let filter = filter_all!(f_eq("class", ValueClass::Person.into()));
+    let filter = filter_all!(f_eq(ValueAttribute::Class, ValueClass::Person.into()));
     json_rest_event_delete_id(state, id, filter, kopid).await
 }
 
@@ -446,7 +455,10 @@ pub async fn service_account_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
 ) -> impl IntoResponse {
-    let filter = filter_all!(f_eq("class", ValueClass::ServiceAccount.into()));
+    let filter = filter_all!(f_eq(
+        ValueAttribute::Class,
+        ValueClass::ServiceAccount.into()
+    ));
     json_rest_event_get(state, None, filter, kopid).await
 }
 
@@ -468,7 +480,10 @@ pub async fn service_account_id_get(
     Path(id): Path<String>,
     Extension(kopid): Extension<KOpId>,
 ) -> impl IntoResponse {
-    let filter = filter_all!(f_eq("class", ValueClass::ServiceAccount.into()));
+    let filter = filter_all!(f_eq(
+        ValueAttribute::Class,
+        ValueClass::ServiceAccount.into()
+    ));
     json_rest_event_get_id(state, id, filter, None, kopid).await
 }
 
@@ -477,7 +492,10 @@ pub async fn service_account_id_delete(
     Path(id): Path<String>,
     Extension(kopid): Extension<KOpId>,
 ) -> impl IntoResponse {
-    let filter = filter_all!(f_eq("class", ValueClass::ServiceAccount.into()));
+    let filter = filter_all!(f_eq(
+        ValueAttribute::Class,
+        ValueClass::ServiceAccount.into()
+    ));
     json_rest_event_delete_id(state, id, filter, kopid).await
 }
 
@@ -562,7 +580,7 @@ pub async fn account_id_get_attr(
     Path((id, attr)): Path<(String, String)>,
     Extension(kopid): Extension<KOpId>,
 ) -> impl IntoResponse {
-    let filter = filter_all!(f_eq("class", ValueClass::Account.into()));
+    let filter = filter_all!(f_eq(ValueAttribute::Class, ValueClass::Account.into()));
     json_rest_event_get_attr(state, id.as_str(), attr, filter, kopid).await
 }
 
@@ -572,7 +590,7 @@ pub async fn account_id_post_attr(
     Extension(kopid): Extension<KOpId>,
     Json(values): Json<Vec<String>>,
 ) -> impl IntoResponse {
-    let filter = filter_all!(f_eq("class", ValueClass::Account.into()));
+    let filter = filter_all!(f_eq(ValueAttribute::Class, ValueClass::Account.into()));
     json_rest_event_post_id_attr(state, id, attr, filter, values, kopid).await
 }
 
@@ -581,7 +599,7 @@ pub async fn account_id_delete_attr(
     Path((id, attr)): Path<(String, String)>,
     Extension(kopid): Extension<KOpId>,
 ) -> impl IntoResponse {
-    let filter = filter_all!(f_eq("class", ValueClass::Account.into()));
+    let filter = filter_all!(f_eq(ValueAttribute::Class, ValueClass::Account.into()));
     json_rest_event_delete_id_attr(state, id, attr, filter, None, kopid).await
 }
 
@@ -591,7 +609,7 @@ pub async fn account_id_put_attr(
     Extension(kopid): Extension<KOpId>,
     Json(values): Json<Vec<String>>,
 ) -> impl IntoResponse {
-    let filter = filter_all!(f_eq("class", ValueClass::Account.into()));
+    let filter = filter_all!(f_eq(ValueAttribute::Class, ValueClass::Account.into()));
     json_rest_event_put_attr(state, id, attr, filter, values, kopid).await
 }
 
@@ -603,7 +621,7 @@ pub async fn account_id_patch(
 ) -> impl IntoResponse {
     // Update a value / attrs
 
-    let filter = filter_all!(f_eq("class", ValueClass::Account.into()));
+    let filter = filter_all!(f_eq(ValueAttribute::Class, ValueClass::Account.into()));
     let filter = Filter::join_parts_and(filter, filter_all!(f_id(id.as_str())));
     let res = state
         .qe_w_ref
@@ -802,7 +820,7 @@ pub async fn account_post_id_ssh_pubkey(
     Path(id): Path<String>,
     Json((tag, key)): Json<(String, String)>,
 ) -> impl IntoResponse {
-    let filter = filter_all!(f_eq("class", ValueClass::Account.into()));
+    let filter = filter_all!(f_eq(ValueAttribute::Class, ValueClass::Account.into()));
     // Add a msg here
     let res = state
         .qe_w_ref
@@ -830,7 +848,7 @@ pub async fn account_delete_id_ssh_pubkey_tag(
 ) -> impl IntoResponse {
     let attr = "ssh_publickey".to_string();
     let values = vec![tag];
-    let filter = filter_all!(f_eq("class", ValueClass::Account.into()));
+    let filter = filter_all!(f_eq(ValueAttribute::Class, ValueClass::Account.into()));
     let res = state
         .qe_w_ref
         .handle_removeattributevalues(kopid.uat, id, attr, values, filter, kopid.eventid)
@@ -870,7 +888,7 @@ pub async fn account_delete_id_radius(
     Extension(kopid): Extension<KOpId>,
 ) -> impl IntoResponse {
     let attr = "radius_secret".to_string();
-    let filter = filter_all!(f_eq("class", ValueClass::Account.into()));
+    let filter = filter_all!(f_eq(ValueAttribute::Class, ValueClass::Account.into()));
     json_rest_event_delete_id_attr(state, id, attr, filter, None, kopid).await
 }
 
@@ -981,7 +999,7 @@ pub async fn account_delete_id_unix_credential(
     Extension(kopid): Extension<KOpId>,
     Path(id): Path<String>,
 ) -> impl IntoResponse {
-    let filter = filter_all!(f_eq("class", ValueClass::PosixAccount.into()));
+    let filter = filter_all!(f_eq(ValueAttribute::Class, ValueClass::PosixAccount.into()));
     let res = state
         .qe_w_ref
         .handle_purgeattribute(
@@ -1012,7 +1030,7 @@ pub async fn group_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
 ) -> impl IntoResponse {
-    let filter = filter_all!(f_eq("class", ValueClass::Group.into()));
+    let filter = filter_all!(f_eq(ValueAttribute::Class, ValueClass::Group.into()));
     json_rest_event_get(state, None, filter, kopid).await
 }
 
@@ -1030,7 +1048,7 @@ pub async fn group_id_get(
     Extension(kopid): Extension<KOpId>,
     Path(id): Path<String>,
 ) -> impl IntoResponse {
-    let filter = filter_all!(f_eq("class", ValueClass::Group.into()));
+    let filter = filter_all!(f_eq(ValueAttribute::Class, ValueClass::Group.into()));
     json_rest_event_get_id(state, id, filter, None, kopid).await
 }
 
@@ -1039,7 +1057,7 @@ pub async fn group_id_get_attr(
     Path((id, attr)): Path<(String, String)>,
     Extension(kopid): Extension<KOpId>,
 ) -> impl IntoResponse {
-    let filter = filter_all!(f_eq("class", ValueClass::Group.into()));
+    let filter = filter_all!(f_eq(ValueAttribute::Class, ValueClass::Group.into()));
     json_rest_event_get_id_attr(state, id, attr, filter, kopid).await
 }
 
@@ -1049,7 +1067,7 @@ pub async fn group_id_post_attr(
     Extension(kopid): Extension<KOpId>,
     Json(values): Json<Vec<String>>,
 ) -> impl IntoResponse {
-    let filter = filter_all!(f_eq("class", ValueClass::Group.into()));
+    let filter = filter_all!(f_eq(ValueAttribute::Class, ValueClass::Group.into()));
     json_rest_event_post_id_attr(state, id, attr, filter, values, kopid).await
 }
 
@@ -1059,7 +1077,7 @@ pub async fn group_id_delete_attr(
     Extension(kopid): Extension<KOpId>,
     values: Option<Json<Vec<String>>>,
 ) -> impl IntoResponse {
-    let filter = filter_all!(f_eq("class", ValueClass::Group.into()));
+    let filter = filter_all!(f_eq(ValueAttribute::Class, ValueClass::Group.into()));
     let values = values.map(|v| v.0);
     json_rest_event_delete_id_attr(state, id, attr, filter, values, kopid).await
 }
@@ -1070,7 +1088,7 @@ pub async fn group_id_put_attr(
     Extension(kopid): Extension<KOpId>,
     Json(values): Json<Vec<String>>,
 ) -> impl IntoResponse {
-    let filter = filter_all!(f_eq("class", ValueClass::Group.into()));
+    let filter = filter_all!(f_eq(ValueAttribute::Class, ValueClass::Group.into()));
     json_rest_event_put_id_attr(state, id, attr, filter, values, kopid).await
 }
 pub async fn group_id_delete(
@@ -1078,7 +1096,7 @@ pub async fn group_id_delete(
     Extension(kopid): Extension<KOpId>,
     Path(id): Path<String>,
 ) -> impl IntoResponse {
-    let filter = filter_all!(f_eq("class", ValueClass::Group.into()));
+    let filter = filter_all!(f_eq(ValueAttribute::Class, ValueClass::Group.into()));
     json_rest_event_delete_id(state, id, filter, kopid).await
 }
 
@@ -1111,7 +1129,10 @@ pub async fn domain_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
 ) -> impl IntoResponse {
-    let filter = filter_all!(f_eq("uuid", PartialValue::Uuid(UUID_DOMAIN_INFO)));
+    let filter = filter_all!(f_eq(
+        ValueAttribute::Uuid,
+        PartialValue::Uuid(UUID_DOMAIN_INFO)
+    ));
     json_rest_event_get(state, None, filter, kopid).await
 }
 
@@ -1120,7 +1141,7 @@ pub async fn domain_get_attr(
     Extension(kopid): Extension<KOpId>,
     Path(attr): Path<String>,
 ) -> impl IntoResponse {
-    let filter = filter_all!(f_eq("class", ValueClass::DomainInfo.into()));
+    let filter = filter_all!(f_eq(ValueAttribute::Class, ValueClass::DomainInfo.into()));
     json_rest_event_get_attr(state, STR_UUID_DOMAIN_INFO, attr, filter, kopid).await
 }
 
@@ -1130,7 +1151,7 @@ pub async fn domain_put_attr(
     Path(attr): Path<String>,
     Json(values): Json<Vec<String>>,
 ) -> impl IntoResponse {
-    let filter = filter_all!(f_eq("class", ValueClass::DomainInfo.into()));
+    let filter = filter_all!(f_eq(ValueAttribute::Class, ValueClass::DomainInfo.into()));
     json_rest_event_put_attr(
         state,
         STR_UUID_DOMAIN_INFO.to_string(),
@@ -1148,7 +1169,7 @@ pub async fn domain_delete_attr(
     Extension(kopid): Extension<KOpId>,
     Json(values): Json<Option<Vec<String>>>,
 ) -> impl IntoResponse {
-    let filter = filter_all!(f_eq("class", ValueClass::DomainInfo.into()));
+    let filter = filter_all!(f_eq(ValueAttribute::Class, ValueClass::DomainInfo.into()));
     json_rest_event_delete_attr(
         state,
         STR_UUID_DOMAIN_INFO.to_string(),
@@ -1164,7 +1185,10 @@ pub async fn system_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
 ) -> impl IntoResponse {
-    let filter = filter_all!(f_eq("uuid", PartialValue::Uuid(UUID_SYSTEM_CONFIG)));
+    let filter = filter_all!(f_eq(
+        ValueAttribute::Uuid,
+        PartialValue::Uuid(UUID_SYSTEM_CONFIG)
+    ));
     json_rest_event_get(state, None, filter, kopid).await
 }
 
@@ -1173,7 +1197,7 @@ pub async fn system_get_attr(
     Path(attr): Path<String>,
     Extension(kopid): Extension<KOpId>,
 ) -> impl IntoResponse {
-    let filter = filter_all!(f_eq("class", ValueClass::SystemConfig.into()));
+    let filter = filter_all!(f_eq(ValueAttribute::Class, ValueClass::SystemConfig.into()));
     json_rest_event_get_attr(state, STR_UUID_SYSTEM_CONFIG, attr, filter, kopid).await
 }
 
@@ -1183,7 +1207,7 @@ pub async fn system_post_attr(
     Extension(kopid): Extension<KOpId>,
     Json(values): Json<Vec<String>>,
 ) -> impl IntoResponse {
-    let filter = filter_all!(f_eq("class", ValueClass::SystemConfig.into()));
+    let filter = filter_all!(f_eq(ValueAttribute::Class, ValueClass::SystemConfig.into()));
     json_rest_event_post_attr(
         state,
         STR_UUID_SYSTEM_CONFIG.to_string(),
@@ -1201,7 +1225,7 @@ pub async fn system_delete_attr(
     Extension(kopid): Extension<KOpId>,
     Json(values): Json<Option<Vec<String>>>,
 ) -> impl IntoResponse {
-    let filter = filter_all!(f_eq("class", ValueClass::SystemConfig.into()));
+    let filter = filter_all!(f_eq(ValueAttribute::Class, ValueClass::SystemConfig.into()));
     json_rest_event_delete_attr(
         state,
         STR_UUID_SYSTEM_CONFIG.to_string(),

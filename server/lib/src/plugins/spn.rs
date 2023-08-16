@@ -83,8 +83,8 @@ impl Plugin for Spn {
         let domain_name = qs.get_domain_name().to_string();
 
         let filt_in = filter!(f_or!([
-            f_eq("class", ValueClass::Group.into()),
-            f_eq("class", ValueClass::Account.into()),
+            f_eq(ValueAttribute::Class, ValueClass::Group.into()),
+            f_eq(ValueAttribute::Class, ValueClass::Account.into()),
         ]));
 
         let all_cand = match qs
@@ -192,8 +192,8 @@ impl Spn {
         // within the transaction, just in case!
         qs.internal_modify(
             &filter!(f_or!([
-                f_eq("class", ValueClass::Group.into()),
-                f_eq("class", ValueClass::Account.into()),
+                f_eq(ValueAttribute::Class, ValueClass::Group.into()),
+                f_eq(ValueAttribute::Class, ValueClass::Account.into()),
             ])),
             &modlist!([m_purge("spn")]),
         )
@@ -250,7 +250,10 @@ mod tests {
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq("name", PartialValue::new_iname("testperson"))),
+            filter!(f_eq(
+                ValueAttribute::Name,
+                PartialValue::new_iname("testperson")
+            )),
             modlist!([m_purge("spn")]),
             None,
             |_| {},
@@ -304,7 +307,10 @@ mod tests {
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq("name", PartialValue::new_iname("testperson"))),
+            filter!(f_eq(
+                ValueAttribute::Name,
+                PartialValue::new_iname("testperson")
+            )),
             modlist!([
                 m_purge("spn"),
                 m_pres("spn", &Value::new_spn_str("invalid", "spn"))

@@ -18,7 +18,7 @@ pub async fn sync_account_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
 ) -> impl IntoResponse {
-    let filter = filter_all!(f_eq("class", ValueClass::SyncAccount.into()));
+    let filter = filter_all!(f_eq(ValueAttribute::Class, ValueClass::SyncAccount.into()));
     json_rest_event_get(state, None, filter, kopid).await
 }
 
@@ -36,7 +36,7 @@ pub async fn sync_account_id_get(
     Path(id): Path<String>,
     Extension(kopid): Extension<KOpId>,
 ) -> impl IntoResponse {
-    let filter = filter_all!(f_eq("class", ValueClass::SyncAccount.into()));
+    let filter = filter_all!(f_eq(ValueAttribute::Class, ValueClass::SyncAccount.into()));
     json_rest_event_get_id(state, id, filter, None, kopid).await
 }
 
@@ -46,7 +46,7 @@ pub async fn sync_account_id_patch(
     Extension(kopid): Extension<KOpId>,
     Json(obj): Json<ProtoEntry>,
 ) -> impl IntoResponse {
-    let filter = filter_all!(f_eq("class", ValueClass::SyncAccount.into()));
+    let filter = filter_all!(f_eq(ValueAttribute::Class, ValueClass::SyncAccount.into()));
     let filter = Filter::join_parts_and(filter, filter_all!(f_id(id.as_str())));
 
     let res = state
@@ -137,7 +137,7 @@ pub async fn sync_account_id_get_attr(
     Extension(kopid): Extension<KOpId>,
     Path((id, attr)): Path<(String, String)>,
 ) -> impl IntoResponse {
-    let filter = filter_all!(f_eq("class", ValueClass::SyncAccount.into()));
+    let filter = filter_all!(f_eq(ValueAttribute::Class, ValueClass::SyncAccount.into()));
     json_rest_event_get_id_attr(state, id, attr, filter, kopid).await
 }
 
@@ -147,7 +147,7 @@ pub async fn sync_account_id_put_attr(
     Path((id, attr)): Path<(String, String)>,
     Json(values): Json<Vec<String>>,
 ) -> impl IntoResponse {
-    let filter = filter_all!(f_eq("class", ValueClass::SyncAccount.into()));
+    let filter = filter_all!(f_eq(ValueAttribute::Class, ValueClass::SyncAccount.into()));
     json_rest_event_put_id_attr(state, id, attr, filter, values, kopid).await
 }
 

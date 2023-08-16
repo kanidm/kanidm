@@ -21,10 +21,13 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
             ident_mo
                 .iter()
                 .copied()
-                .map(|uuid| { f_eq("oauth2_rs_scope_map", PartialValue::Refer(uuid)) })
+                .map(|uuid| { f_eq(ValueAttribute::OAuth2RsScopeMap, PartialValue::Refer(uuid)) })
                 .collect()
         ));
-        let f_intent = filter!(f_eq("class", ValueClass::OAuth2ResourceServer.into()));
+        let f_intent = filter!(f_eq(
+            ValueAttribute::Class,
+            ValueClass::OAuth2ResourceServer.into()
+        ));
 
         // _ext reduces the entries based on access.
         let oauth2_related = self
@@ -80,9 +83,18 @@ mod tests {
         let grp_uuid = Uuid::new_v4();
 
         let e_rs: Entry<EntryInit, EntryNew> = entry_init!(
-            ("class", ValueClass::Object.to_value()),
-            ("class", ValueClass::OAuth2ResourceServer.to_value()),
-            ("class", ValueClass::OAuth2ResourceServerBasic.to_value()),
+            (
+                ValueAttribute::Class.as_str(),
+                ValueClass::Object.to_value()
+            ),
+            (
+                ValueAttribute::Class.as_str(),
+                ValueClass::OAuth2ResourceServer.to_value()
+            ),
+            (
+                ValueAttribute::Class.as_str(),
+                ValueClass::OAuth2ResourceServerBasic.to_value()
+            ),
             ("oauth2_rs_name", Value::new_iname("test_resource_server")),
             ("displayname", Value::new_utf8s("test_resource_server")),
             (
@@ -102,9 +114,18 @@ mod tests {
         );
 
         let e_usr = entry_init!(
-            ("class", ValueClass::Object.to_value()),
-            ("class", ValueClass::Account.to_value()),
-            ("class", ValueClass::Person.to_value()),
+            (
+                ValueAttribute::Class.as_str(),
+                ValueClass::Object.to_value()
+            ),
+            (
+                ValueAttribute::Class.as_str(),
+                ValueClass::Account.to_value()
+            ),
+            (
+                ValueAttribute::Class.as_str(),
+                ValueClass::Person.to_value()
+            ),
             ("name", Value::new_iname("testaccount")),
             ("uuid", Value::Uuid(usr_uuid)),
             ("description", Value::new_utf8s("testaccount")),
@@ -112,8 +133,11 @@ mod tests {
         );
 
         let e_grp = entry_init!(
-            ("class", ValueClass::Object.to_value()),
-            ("class", ValueClass::Group.to_value()),
+            (
+                ValueAttribute::Class.as_str(),
+                ValueClass::Object.to_value()
+            ),
+            (ValueAttribute::Class.as_str(), ValueClass::Group.to_value()),
             ("uuid", Value::Uuid(grp_uuid)),
             ("name", Value::new_iname("test_oauth2_group"))
         );
@@ -141,7 +165,7 @@ mod tests {
         // Add them to the group.
         let mut idms_prox_write = idms.proxy_write(ct).await;
         let me_inv_m = ModifyEvent::new_internal_invalid(
-            filter!(f_eq("uuid", PartialValue::Refer(grp_uuid))),
+            filter!(f_eq(ValueAttribute::Uuid, PartialValue::Refer(grp_uuid))),
             ModifyList::new_append("member", Value::Refer(usr_uuid)),
         );
         assert!(idms_prox_write.qs_write.modify(&me_inv_m).is_ok());

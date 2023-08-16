@@ -6,10 +6,179 @@ use crate::constants::uuids::*;
 use crate::entry::{Entry, EntryInit, EntryInitNew, EntryNew};
 use crate::value::PartialValue;
 use crate::value::Value;
-use kanidm_proto::v1::UiHint;
+use kanidm_proto::v1::{OperationError, UiHint};
 
 #[cfg(test)]
 use uuid::{uuid, Uuid};
+
+#[test]
+fn test_valueattribute_as_str() {
+    assert!(ValueAttribute::Class.as_str() == "class");
+}
+
+#[derive(Copy, Clone)]
+pub enum ValueAttribute {
+    Class,
+    AcpEnable,
+    Uuid,
+    Name,
+    UserId,
+    Uid,
+    DisplayName,
+    OAuth2RsName,
+    AttributeName,
+    ClassName,
+    GidNumber,
+    NoIndex,
+    Description,
+    Term,
+    Member,
+    MemberOf,
+    MultiValue,
+    DirectMemberOf,
+    DynMember,
+    SyncParentUuid,
+    UserAuthTokenSession,
+    OAuth2RsScopeMap,
+    OAuth2Session,
+    OtherNoIndex,
+    OAuth2ConsentScopeMap,
+    AcpReceiverGroup,
+    CredentialUpdateIntentToken,
+    #[cfg(any(debug_assertions, test))]
+    NonExist,
+    #[cfg(any(debug_assertions, test))]
+    TestAttr,
+    JwsEs256PrivateKey,
+    ApiTokenSession,
+    SourceUuid,
+    OAuth2RsSupScopeMap,
+}
+
+impl ValueAttribute {
+    pub fn as_str(self) -> &'static str {
+        self.into()
+    }
+}
+
+impl From<&ValueAttribute> for &'static str {
+    fn from(value: &ValueAttribute) -> Self {
+        (*value).into()
+    }
+}
+
+impl TryFrom<String> for ValueAttribute {
+    type Error = OperationError;
+    fn try_from(val: String) -> Result<Self, OperationError> {
+        let res = match val.as_str() {
+            "acp_enable" => ValueAttribute::AcpEnable,
+            "dynmember" => ValueAttribute::DynMember,
+            "no-index" => ValueAttribute::NoIndex,
+            "class" => ValueAttribute::Class,
+            "name" => ValueAttribute::Name,
+            "description" => ValueAttribute::Description,
+            "displayname" => ValueAttribute::DisplayName,
+            "uuid" => ValueAttribute::Uuid,
+            "sync_parent_uuid" => ValueAttribute::SyncParentUuid,
+            "uid" => ValueAttribute::Uid,
+            "member" => ValueAttribute::Member,
+            "userid" => ValueAttribute::UserId,
+            "gidnumber" => ValueAttribute::GidNumber,
+            "oauth2_rs_name" => ValueAttribute::OAuth2RsName,
+            "oauth2_session" => ValueAttribute::OAuth2Session,
+            "attributename" => ValueAttribute::AttributeName,
+            "classname" => ValueAttribute::ClassName,
+            "term" => ValueAttribute::Term,
+            "acp_receiver_group" => ValueAttribute::AcpReceiverGroup,
+            "user_auth_token_session" => ValueAttribute::UserAuthTokenSession,
+            "oauth2_rs_sup_scope_map" => ValueAttribute::OAuth2RsSupScopeMap,
+            "oauth2_consent_scope_map" => ValueAttribute::OAuth2ConsentScopeMap,
+
+            "memberof" => ValueAttribute::MemberOf,
+            "multivalue" => ValueAttribute::MultiValue,
+            "directmemberof" => ValueAttribute::DirectMemberOf,
+            "oauth2_rs_scope_map" => ValueAttribute::OAuth2RsScopeMap,
+            "other-no-index" => ValueAttribute::OtherNoIndex,
+            "credential_update_intent_token" => ValueAttribute::CredentialUpdateIntentToken,
+            #[cfg(any(debug_assertions, test))]
+            "non-exist" => ValueAttribute::NonExist,
+            #[cfg(any(debug_assertions, test))]
+            "testattr" => ValueAttribute::TestAttr,
+            "jws_es256_private_key" => ValueAttribute::JwsEs256PrivateKey,
+            "api_token_session" => ValueAttribute::ApiTokenSession,
+            "source_uuid" => ValueAttribute::SourceUuid,
+            _ => return Err(OperationError::InvalidAttributeName(val)),
+        };
+        Ok(res)
+    }
+}
+
+impl From<ValueAttribute> for &'static str {
+    fn from(val: ValueAttribute) -> Self {
+        match val {
+            ValueAttribute::AcpEnable => "acp_enable",
+            ValueAttribute::DynMember => "dynmember",
+            ValueAttribute::NoIndex => "no-index",
+            ValueAttribute::Class => "class",
+            ValueAttribute::Name => "name",
+            ValueAttribute::Description => "description",
+            ValueAttribute::DisplayName => "displayname",
+            ValueAttribute::Uuid => "uuid",
+            ValueAttribute::SyncParentUuid => "sync_parent_uuid",
+            ValueAttribute::Uid => "uid",
+            ValueAttribute::Member => "member",
+            ValueAttribute::UserId => "userid",
+            ValueAttribute::GidNumber => "gidnumber",
+            ValueAttribute::OAuth2RsName => "oauth2_rs_name",
+            ValueAttribute::OAuth2Session => "oauth2_session",
+            ValueAttribute::AcpReceiverGroup => "acp_receiver_group",
+            ValueAttribute::AttributeName => "attributename",
+            ValueAttribute::ClassName => "classname",
+            ValueAttribute::Term => "term",
+            ValueAttribute::UserAuthTokenSession => "user_auth_token_session",
+            ValueAttribute::OAuth2ConsentScopeMap => "oauth2_consent_scope_map",
+            ValueAttribute::MemberOf => "memberof",
+            ValueAttribute::MultiValue => "multivalue",
+            ValueAttribute::DirectMemberOf => "directmemberof",
+            ValueAttribute::OAuth2RsScopeMap => "oauth2_rs_scope_map",
+            ValueAttribute::OAuth2RsSupScopeMap => "oauth2_rs_sup_scope_map",
+            ValueAttribute::OtherNoIndex => "other-no-index",
+            ValueAttribute::CredentialUpdateIntentToken => "credential_update_intent_token",
+            #[cfg(any(debug_assertions, test))]
+            ValueAttribute::NonExist => "non-exist",
+            #[cfg(any(debug_assertions, test))]
+            ValueAttribute::TestAttr => "testattr",
+            ValueAttribute::JwsEs256PrivateKey => "jws_es256_private_key",
+            ValueAttribute::ApiTokenSession => "api_token_session",
+            ValueAttribute::SourceUuid => "source_uuid",
+        }
+    }
+}
+
+impl From<ValueAttribute> for crate::prelude::AttrString {
+    fn from(val: ValueAttribute) -> Self {
+        crate::prelude::AttrString::from(val.to_string())
+    }
+}
+
+impl Display for ValueAttribute {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s: &'static str = (*self).into();
+        write!(f, "{}", s)
+    }
+}
+
+impl ValueAttribute {
+    pub fn to_value(self) -> Value {
+        let s: &'static str = self.into();
+        Value::new_iutf8(s)
+    }
+
+    pub fn to_partialvalue(self) -> PartialValue {
+        let s: &'static str = self.into();
+        PartialValue::new_iutf8(s)
+    }
+}
 
 #[derive(Copy, Clone)]
 pub enum ValueClass {
@@ -147,10 +316,22 @@ pub const JSON_ADMIN_V1: &str = r#"{
 
 lazy_static! {
     pub static ref E_ADMIN_V1: EntryInitNew = entry_init!(
-        ("class", ValueClass::Account.to_value()),
-        ("class", ValueClass::MemberOf.to_value()),
-        ("class", ValueClass::Object.to_value()),
-        ("class", ValueClass::ServiceAccount.to_value()),
+        (
+            ValueAttribute::Class.as_str(),
+            ValueClass::Account.to_value()
+        ),
+        (
+            ValueAttribute::Class.as_str(),
+            ValueClass::MemberOf.to_value()
+        ),
+        (
+            ValueAttribute::Class.as_str(),
+            ValueClass::Object.to_value()
+        ),
+        (
+            ValueAttribute::Class.as_str(),
+            ValueClass::ServiceAccount.to_value()
+        ),
         ("name", Value::new_iname("admin")),
         ("uuid", Value::Uuid(UUID_ADMIN)),
         (
@@ -164,10 +345,10 @@ lazy_static! {
 lazy_static! {
     /// Builtin IDM Admin account.
     pub static ref E_IDM_ADMIN_V1: EntryInitNew = entry_init!(
-        ("class", ValueClass::Account.to_value()),
-        ("class", ValueClass::MemberOf.to_value()),
-        ("class", ValueClass::Object.to_value()),
-        ("class", ValueClass::ServiceAccount.to_value()),
+        (ValueAttribute::Class.as_str(), ValueClass::Account.to_value()),
+        (ValueAttribute::Class.as_str(), ValueClass::MemberOf.to_value()),
+        (ValueAttribute::Class.as_str(), ValueClass::Object.to_value()),
+        (ValueAttribute::Class.as_str(), ValueClass::ServiceAccount.to_value()),
         ("name", Value::new_iname("idm_admin")),
         ("uuid", Value::Uuid(UUID_IDM_ADMIN)),
         (
@@ -181,8 +362,8 @@ lazy_static! {
 lazy_static! {
     /// Builtin IDM Administrators Group.
     pub static ref E_IDM_ADMINS_V1: EntryInitNew = entry_init!(
-        ("class", ValueClass::Group.to_value()),
-        ("class", ValueClass::Object.to_value()),
+        (ValueAttribute::Class.as_str(), ValueClass::Group.to_value()),
+        (ValueAttribute::Class.as_str(), ValueClass::Object.to_value()),
         ("name", Value::new_iname("idm_admins")),
         ("uuid", Value::Uuid(UUID_IDM_ADMINS)),
         (
@@ -196,8 +377,8 @@ lazy_static! {
 lazy_static! {
     /// Builtin System Administrators Group.
     pub static ref E_SYSTEM_ADMINS_V1: EntryInitNew = entry_init!(
-        ("class", ValueClass::Group.to_value()),
-        ("class", ValueClass::Object.to_value()),
+        (ValueAttribute::Class.as_str(), ValueClass::Group.to_value()),
+        (ValueAttribute::Class.as_str(), ValueClass::Object.to_value()),
         ("name", Value::new_iname("system_admins")),
         ("uuid", Value::Uuid(UUID_SYSTEM_ADMINS)),
         (
@@ -620,8 +801,8 @@ pub const JSON_IDM_ALL_ACCOUNTS: &str = r#"{
 
 lazy_static! {
     pub static ref E_IDM_UI_ENABLE_EXPERIMENTAL_FEATURES: EntryInitNew = entry_init!(
-        ("class", ValueClass::Object.to_value()),
-        ("class", ValueClass::Group.to_value()),
+        (ValueAttribute::Class.as_str(), ValueClass::Object.to_value()),
+        (ValueAttribute::Class.as_str(), ValueClass::Group.to_value()),
         (
             "name",
             Value::new_iname("idm_ui_enable_experimental_features")
@@ -640,8 +821,8 @@ lazy_static! {
     );
 
     pub static ref E_IDM_ACCOUNT_MAIL_READ_PRIV: EntryInitNew = entry_init!(
-        ("class", ValueClass::Object.to_value()),
-        ("class", ValueClass::Group.to_value()),
+        (ValueAttribute::Class.as_str(), ValueClass::Object.to_value()),
+        (ValueAttribute::Class.as_str(), ValueClass::Group.to_value()),
         (
             "name",
             Value::new_iname("idm_account_mail_read_priv")
@@ -702,9 +883,18 @@ pub const JSON_IDM_HIGH_PRIVILEGE_V1: &str = r#"{
 
 lazy_static! {
     pub static ref E_SYSTEM_INFO_V1: EntryInitNew = entry_init!(
-        ("class", ValueClass::Object.to_value()),
-        ("class", ValueClass::SystemInfo.to_value()),
-        ("class", ValueClass::System.to_value()),
+        (
+            ValueAttribute::Class.as_str(),
+            ValueClass::Object.to_value()
+        ),
+        (
+            ValueAttribute::Class.as_str(),
+            ValueClass::SystemInfo.to_value()
+        ),
+        (
+            ValueAttribute::Class.as_str(),
+            ValueClass::System.to_value()
+        ),
         ("uuid", Value::Uuid(UUID_SYSTEM_INFO)),
         (
             "description",
@@ -716,9 +906,18 @@ lazy_static! {
 
 lazy_static! {
     pub static ref E_DOMAIN_INFO_V1: EntryInitNew = entry_init!(
-        ("class", ValueClass::Object.to_value()),
-        ("class", ValueClass::DomainInfo.to_value()),
-        ("class", ValueClass::System.to_value()),
+        (
+            ValueAttribute::Class.as_str(),
+            ValueClass::Object.to_value()
+        ),
+        (
+            ValueAttribute::Class.as_str(),
+            ValueClass::DomainInfo.to_value()
+        ),
+        (
+            ValueAttribute::Class.as_str(),
+            ValueClass::System.to_value()
+        ),
         ("name", Value::new_iname("domain_local")),
         ("uuid", Value::Uuid(UUID_DOMAIN_INFO)),
         (
@@ -741,9 +940,18 @@ pub const JSON_ANONYMOUS_V1: &str = r#"{
 
 lazy_static! {
     pub static ref E_ANONYMOUS_V1: EntryInitNew = entry_init!(
-        ("class", ValueClass::Object.to_value()),
-        ("class", ValueClass::Account.to_value()),
-        ("class", ValueClass::ServiceAccount.to_value()),
+        (
+            ValueAttribute::Class.as_str(),
+            ValueClass::Object.to_value()
+        ),
+        (
+            ValueAttribute::Class.as_str(),
+            ValueClass::Account.to_value()
+        ),
+        (
+            ValueAttribute::Class.as_str(),
+            ValueClass::ServiceAccount.to_value()
+        ),
         ("name", Value::new_iname("anonymous")),
         ("uuid", Value::Uuid(UUID_ANONYMOUS)),
         ("description", Value::new_utf8s("Anonymous access account.")),
@@ -779,12 +987,18 @@ pub const JSON_TESTPERSON2: &str = r#"{
 #[cfg(test)]
 lazy_static! {
     pub static ref E_TESTPERSON_1: EntryInitNew = entry_init!(
-        ("class", ValueClass::Object.to_value()),
+        (
+            ValueAttribute::Class.as_str(),
+            ValueClass::Object.to_value()
+        ),
         ("name", Value::new_iname("testperson1")),
         ("uuid", Value::Uuid(UUID_TESTPERSON_1))
     );
     pub static ref E_TESTPERSON_2: EntryInitNew = entry_init!(
-        ("class", ValueClass::Object.to_value()),
+        (
+            ValueAttribute::Class.as_str(),
+            ValueClass::Object.to_value()
+        ),
         ("name", Value::new_iname("testperson2")),
         ("uuid", Value::Uuid(UUID_TESTPERSON_2))
     );

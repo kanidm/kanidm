@@ -775,8 +775,10 @@ impl Entry<EntryIncremental, EntryNew> {
                         let new_uuid = Uuid::new_v4();
                         cnf_ent.purge_ava("uuid");
                         cnf_ent.add_ava("uuid", Value::Uuid(new_uuid));
-                        cnf_ent.add_ava("class", ValueClass::Recycled.into());
-                        cnf_ent.add_ava("class", ValueClass::Conflict.into());
+                        cnf_ent
+                            .add_ava(ValueAttribute::Class.as_str(), ValueClass::Recycled.into());
+                        cnf_ent
+                            .add_ava(ValueAttribute::Class.as_str(), ValueClass::Conflict.into());
 
                         // Now we have to internally bypass some states.
                         // This is okay because conflict entries aren't subject
@@ -1055,8 +1057,8 @@ impl Entry<EntryIncremental, EntryCommitted> {
 
         if let Err(e) = ne.validate(schema) {
             warn!(uuid = ?self.valid.uuid, err = ?e, "Entry failed schema check, moving to a conflict state");
-            ne.add_ava_int("class", ValueClass::Recycled.into());
-            ne.add_ava_int("class", ValueClass::Conflict.into());
+            ne.add_ava_int(ValueAttribute::Class.as_str(), ValueClass::Recycled.into());
+            ne.add_ava_int(ValueAttribute::Class.as_str(), ValueClass::Conflict.into());
             ne.add_ava_int("source_uuid", Value::Uuid(self.valid.uuid));
         }
         ne
@@ -1133,7 +1135,7 @@ impl Entry<EntryInvalid, EntryCommitted> {
     /// Convert this entry into a recycled entry, that is "in the recycle bin".
     pub fn to_recycled(mut self) -> Self {
         // This will put the modify ahead of the recycle transition.
-        self.add_ava("class", ValueClass::Recycled.into());
+        self.add_ava(ValueAttribute::Class.as_str(), ValueClass::Recycled.into());
 
         // Change state repl doesn't need this flag
         // self.valid.ecstate.recycled(&self.valid.cid);
@@ -3069,7 +3071,10 @@ impl From<&SchemaAttribute> for Entry<EntryInit, EntryNew> {
         // let mut attrs: Map<AttrString, Set<Value>> = Map::with_capacity(8);
         let mut attrs: Map<AttrString, ValueSet> = Map::new();
         attrs.insert(AttrString::from("attributename"), name_v);
-        attrs.insert(AttrString::from("description"), desc_v);
+        attrs.insert(
+            AttrString::from(ValueAttribute::Description.as_str()),
+            desc_v,
+        );
         attrs.insert(AttrString::from("uuid"), uuid_v);
         attrs.insert(AttrString::from("multivalue"), multivalue_v);
         attrs.insert(AttrString::from("phantom"), phantom_v);
@@ -3105,7 +3110,10 @@ impl From<&SchemaClass> for Entry<EntryInit, EntryNew> {
         // let mut attrs: Map<AttrString, Set<Value>> = Map::with_capacity(8);
         let mut attrs: Map<AttrString, ValueSet> = Map::new();
         attrs.insert(AttrString::from("classname"), name_v);
-        attrs.insert(AttrString::from("description"), desc_v);
+        attrs.insert(
+            AttrString::from(ValueAttribute::Description.as_str()),
+            desc_v,
+        );
         attrs.insert(AttrString::from("sync_allowed"), sync_allowed_v);
         attrs.insert(AttrString::from("uuid"), uuid_v);
         attrs.insert(
@@ -3434,18 +3442,24 @@ mod tests {
     #[test]
     fn test_entry_mask_recycled_ts() {
         let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
-        e1.add_ava("class", ValueClass::Person.to_value());
+        e1.add_ava(
+            ValueAttribute::Class.as_str(),
+            ValueClass::Person.to_value(),
+        );
         let e1 = e1.into_sealed_committed();
         assert!(e1.mask_recycled_ts().is_some());
 
         let mut e2: Entry<EntryInit, EntryNew> = Entry::new();
-        e2.add_ava("class", ValueClass::Person.to_value());
-        e2.add_ava("class", ValueClass::Recycled.into());
+        e2.add_ava(
+            ValueAttribute::Class.as_str(),
+            ValueClass::Person.to_value(),
+        );
+        e2.add_ava(ValueAttribute::Class.as_str(), ValueClass::Recycled.into());
         let e2 = e2.into_sealed_committed();
         assert!(e2.mask_recycled_ts().is_none());
 
         let mut e3: Entry<EntryInit, EntryNew> = Entry::new();
-        e3.add_ava("class", ValueClass::Tombstone.into());
+        e3.add_ava(ValueAttribute::Class.as_str(), ValueClass::Tombstone.into());
         let e3 = e3.into_sealed_committed();
         assert!(e3.mask_recycled_ts().is_none());
     }
@@ -3459,7 +3473,10 @@ mod tests {
         // none, some - test adding an entry gives back add sets
         {
             let mut e: Entry<EntryInit, EntryNew> = Entry::new();
-            e.add_ava("class", ValueClass::Person.to_value());
+            e.add_ava(
+                ValueAttribute::Class.as_str(),
+                ValueClass::Person.to_value(),
+            );
             let e = e.into_sealed_committed();
 
             assert!(Entry::idx_name2uuid_diff(None, Some(&e)) == (Some(Set::new()), None));
@@ -3467,7 +3484,10 @@ mod tests {
 
         {
             let mut e: Entry<EntryInit, EntryNew> = Entry::new();
-            e.add_ava("class", ValueClass::Person.to_value());
+            e.add_ava(
+                ValueAttribute::Class.as_str(),
+                ValueClass::Person.to_value(),
+            );
             e.add_ava("gidnumber", Value::new_uint32(1300));
             e.add_ava("name", Value::new_iname("testperson"));
             e.add_ava("spn", Value::new_spn_str("testperson", "example.com"));
@@ -3513,12 +3533,18 @@ mod tests {
 
         {
             let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
-            e1.add_ava("class", ValueClass::Person.to_value());
+            e1.add_ava(
+                ValueAttribute::Class.as_str(),
+                ValueClass::Person.to_value(),
+            );
             e1.add_ava("spn", Value::new_spn_str("testperson", "example.com"));
             let e1 = e1.into_sealed_committed();
 
             let mut e2: Entry<EntryInit, EntryNew> = Entry::new();
-            e2.add_ava("class", ValueClass::Person.to_value());
+            e2.add_ava(
+                ValueAttribute::Class.as_str(),
+                ValueClass::Person.to_value(),
+            );
             e2.add_ava("name", Value::new_iname("testperson"));
             e2.add_ava("spn", Value::new_spn_str("testperson", "example.com"));
             let e2 = e2.into_sealed_committed();
@@ -3539,12 +3565,18 @@ mod tests {
         // Value changed, remove old, add new.
         {
             let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
-            e1.add_ava("class", ValueClass::Person.to_value());
+            e1.add_ava(
+                ValueAttribute::Class.as_str(),
+                ValueClass::Person.to_value(),
+            );
             e1.add_ava("spn", Value::new_spn_str("testperson", "example.com"));
             let e1 = e1.into_sealed_committed();
 
             let mut e2: Entry<EntryInit, EntryNew> = Entry::new();
-            e2.add_ava("class", ValueClass::Person.to_value());
+            e2.add_ava(
+                ValueAttribute::Class.as_str(),
+                ValueClass::Person.to_value(),
+            );
             e2.add_ava("spn", Value::new_spn_str("renameperson", "example.com"));
             let e2 = e2.into_sealed_committed();
 

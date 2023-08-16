@@ -619,13 +619,19 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             .impersonate_modify(
                 // Filter as executed
                 &filter!(f_and!([
-                    f_eq("uuid", PartialValue::Uuid(dte.target)),
-                    f_eq("user_auth_token_session", PartialValue::Refer(dte.token_id))
+                    f_eq(ValueAttribute::Uuid, PartialValue::Uuid(dte.target)),
+                    f_eq(
+                        ValueAttribute::UserAuthTokenSession,
+                        PartialValue::Refer(dte.token_id)
+                    )
                 ])),
                 // Filter as intended (acp)
                 &filter_all!(f_and!([
-                    f_eq("uuid", PartialValue::Uuid(dte.target)),
-                    f_eq("user_auth_token_session", PartialValue::Refer(dte.token_id))
+                    f_eq(ValueAttribute::Uuid, PartialValue::Uuid(dte.target)),
+                    f_eq(
+                        ValueAttribute::UserAuthTokenSession,
+                        PartialValue::Refer(dte.token_id)
+                    )
                 ])),
                 &modlist,
                 // Provide the event to impersonate. Notice how we project this with readwrite
@@ -682,8 +688,10 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         // Now construct the modlist which:
         // removes service_account
-        let mut modlist =
-            ModifyList::new_remove("class", ValueClass::ServiceAccount.to_partialvalue());
+        let mut modlist = ModifyList::new_remove(
+            ValueAttribute::Class.as_str(),
+            ValueClass::ServiceAccount.to_partialvalue(),
+        );
         // add person
         modlist.push_mod(Modify::Present(
             "class".into(),
@@ -699,9 +707,9 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         self.qs_write
             .impersonate_modify(
                 // Filter as executed
-                &filter!(f_eq("uuid", PartialValue::Uuid(target_uuid))),
+                &filter!(f_eq(ValueAttribute::Uuid, PartialValue::Uuid(target_uuid))),
                 // Filter as intended (acp)
-                &filter_all!(f_eq("uuid", PartialValue::Uuid(target_uuid))),
+                &filter_all!(f_eq(ValueAttribute::Uuid, PartialValue::Uuid(target_uuid))),
                 &modlist,
                 // Provide the entry to impersonate
                 ident,
@@ -799,9 +807,18 @@ mod tests {
         // Create a user. So far no ui hints.
         // Create a service account
         let e = entry_init!(
-            ("class", ValueClass::Object.to_value()),
-            ("class", ValueClass::Account.to_value()),
-            ("class", ValueClass::Person.to_value()),
+            (
+                ValueAttribute::Class.as_str(),
+                ValueClass::Object.to_value()
+            ),
+            (
+                ValueAttribute::Class.as_str(),
+                ValueClass::Account.to_value()
+            ),
+            (
+                ValueAttribute::Class.as_str(),
+                ValueClass::Person.to_value()
+            ),
             ("name", Value::new_iname("testaccount")),
             ("uuid", Value::Uuid(target_uuid)),
             ("description", Value::new_utf8s("testaccount")),
@@ -825,7 +842,10 @@ mod tests {
 
         // Modify the user to be a posix account, ensure they get the hint.
         let me_posix = ModifyEvent::new_internal_invalid(
-            filter!(f_eq("name", PartialValue::new_iname("testaccount"))),
+            filter!(f_eq(
+                ValueAttribute::Name,
+                PartialValue::new_iname("testaccount")
+            )),
             ModifyList::new_list(vec![
                 Modify::Present(AttrString::from("class"), ValueClass::PosixAccount.into()),
                 Modify::Present(AttrString::from("gidnumber"), Value::new_uint32(2001)),
@@ -848,8 +868,11 @@ mod tests {
 
         // Add a group with a ui hint, and then check they get the hint.
         let e = entry_init!(
-            ("class", ValueClass::Object.to_value()),
-            ("class", ValueClass::Group.to_value()),
+            (
+                ValueAttribute::Class.as_str(),
+                ValueClass::Object.to_value()
+            ),
+            (ValueAttribute::Class.as_str(), ValueClass::Group.to_value()),
             ("name", Value::new_iname("test_uihint_group")),
             ("member", Value::Refer(target_uuid)),
             ("grant_ui_hint", Value::UiHint(UiHint::ExperimentalFeatures))

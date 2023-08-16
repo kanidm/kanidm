@@ -625,7 +625,7 @@ mod tests {
         let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await;
         // make the admin a valid posix account
         let me_posix = ModifyEvent::new_internal_invalid(
-            filter!(f_eq("name", PartialValue::new_iname("admin"))),
+            filter!(f_eq(ValueAttribute::Name, PartialValue::new_iname("admin"))),
             ModifyList::new_list(vec![
                 Modify::Present(AttrString::from("class"), ValueClass::PosixAccount.into()),
                 Modify::Present(AttrString::from("gidnumber"), Value::new_uint32(2001)),
@@ -809,10 +809,22 @@ mod tests {
         // Setup a user we want to check.
         {
             let e1 = entry_init!(
-                ("class", ValueClass::Object.to_value()),
-                ("class", ValueClass::Person.to_value()),
-                ("class", ValueClass::Account.to_value()),
-                ("class", ValueClass::PosixAccount.to_value()),
+                (
+                    ValueAttribute::Class.as_str(),
+                    ValueClass::Object.to_value()
+                ),
+                (
+                    ValueAttribute::Class.as_str(),
+                    ValueClass::Person.to_value()
+                ),
+                (
+                    ValueAttribute::Class.as_str(),
+                    ValueClass::Account.to_value()
+                ),
+                (
+                    ValueAttribute::Class.as_str(),
+                    ValueClass::PosixAccount.to_value()
+                ),
                 ("name", Value::new_iname("testperson1")),
                 (
                     "uuid",
@@ -855,10 +867,22 @@ mod tests {
                 assert_entry_contains!(
                     lsre,
                     "spn=testperson1@example.com,dc=example,dc=com",
-                    ("class", ValueClass::Object.to_string()),
-                    ("class", ValueClass::Person.to_string()),
-                    ("class", ValueClass::Account.to_string()),
-                    ("class", ValueClass::PosixAccount.to_string()),
+                    (
+                        ValueAttribute::Class.as_str(),
+                        ValueClass::Object.to_string()
+                    ),
+                    (
+                        ValueAttribute::Class.as_str(),
+                        ValueClass::Person.to_string()
+                    ),
+                    (
+                        ValueAttribute::Class.as_str(),
+                        ValueClass::Account.to_string()
+                    ),
+                    (
+                        ValueAttribute::Class.as_str(),
+                        ValueClass::PosixAccount.to_string()
+                    ),
                     ("displayname", "testperson1"),
                     ("name", "testperson1"),
                     ("gidnumber", "12345678"),
@@ -970,9 +994,18 @@ mod tests {
             // Create a service account,
 
             let e1 = entry_init!(
-                ("class", ValueClass::Object.to_value()),
-                ("class", ValueClass::ServiceAccount.to_value()),
-                ("class", ValueClass::Account.to_value()),
+                (
+                    ValueAttribute::Class.as_str(),
+                    ValueClass::Object.to_value()
+                ),
+                (
+                    ValueAttribute::Class.as_str(),
+                    ValueClass::ServiceAccount.to_value()
+                ),
+                (
+                    ValueAttribute::Class.as_str(),
+                    ValueClass::Account.to_value()
+                ),
                 ("uuid", Value::Uuid(sa_uuid)),
                 ("name", Value::new_iname("service_permission_test")),
                 ("displayname", Value::new_utf8s("service_permission_test"))
@@ -980,10 +1013,22 @@ mod tests {
 
             // Setup a person with an email
             let e2 = entry_init!(
-                ("class", ValueClass::Object.to_value()),
-                ("class", ValueClass::Person.to_value()),
-                ("class", ValueClass::Account.to_value()),
-                ("class", ValueClass::PosixAccount.to_value()),
+                (
+                    ValueAttribute::Class.as_str(),
+                    ValueClass::Object.to_value()
+                ),
+                (
+                    ValueAttribute::Class.as_str(),
+                    ValueClass::Person.to_value()
+                ),
+                (
+                    ValueAttribute::Class.as_str(),
+                    ValueClass::Account.to_value()
+                ),
+                (
+                    ValueAttribute::Class.as_str(),
+                    ValueClass::PosixAccount.to_value()
+                ),
                 ("name", Value::new_iname("testperson1")),
                 (
                     "mail",
@@ -1010,7 +1055,7 @@ mod tests {
             // idm_people_read_priv
             let me = ModifyEvent::new_internal_invalid(
                 filter!(f_eq(
-                    "name",
+                    ValueAttribute::Name,
                     PartialValue::new_iname("idm_people_read_priv")
                 )),
                 ModifyList::new_list(vec![Modify::Present(
@@ -1109,8 +1154,14 @@ mod tests {
         // Setup a user we want to check.
         {
             let e1 = entry_init!(
-                ("class", ValueClass::Person.to_value()),
-                ("class", ValueClass::Account.to_value()),
+                (
+                    ValueAttribute::Class.as_str(),
+                    ValueClass::Person.to_value()
+                ),
+                (
+                    ValueAttribute::Class.as_str(),
+                    ValueClass::Account.to_value()
+                ),
                 ("name", Value::new_iname("testperson1")),
                 ("uuid", Value::Uuid(acct_uuid)),
                 ("description", Value::new_utf8s("testperson1")),
@@ -1203,7 +1254,10 @@ mod tests {
         let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await;
         // make the admin a valid posix account
         let me_posix = ModifyEvent::new_internal_invalid(
-            filter!(f_eq("uuid", PartialValue::Uuid(UUID_DOMAIN_INFO))),
+            filter!(f_eq(
+                ValueAttribute::Uuid,
+                PartialValue::Uuid(UUID_DOMAIN_INFO)
+            )),
             ModifyList::new_purge_and_set(
                 "domain_ldap_basedn",
                 Value::new_iutf8("o=kanidmproject"),
