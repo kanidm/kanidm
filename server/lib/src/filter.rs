@@ -1363,7 +1363,7 @@ mod tests {
     #[test]
     fn test_filter_simple() {
         // Test construction.
-        let _filt: Filter<FilterInvalid> = filter!(f_eq("class", PartialValue::new_class("user")));
+        let _filt: Filter<FilterInvalid> = filter!(f_eq("class", AcpClass::User.into()));
 
         // AFTER
         let _complex_filt: Filter<FilterInvalid> = filter!(f_and!([
@@ -1371,7 +1371,7 @@ mod tests {
                 f_eq("userid", PartialValue::new_iutf8("test_a")),
                 f_eq("userid", PartialValue::new_iutf8("test_b")),
             ]),
-            f_sub("class", PartialValue::new_class("user")),
+            f_sub("class", AcpClass::User.into()),
         ]));
     }
 
@@ -1402,39 +1402,33 @@ mod tests {
         sketching::test_init();
         // Given sets of "optimisable" filters, optimise them.
         filter_optimise_assert!(
-            f_and(vec![f_and(vec![f_eq(
-                "class",
-                PartialValue::new_class("test")
-            )])]),
-            f_eq("class", PartialValue::new_class("test"))
+            f_and(vec![f_and(vec![f_eq("class", AcpClass::TestClass.into())])]),
+            f_eq("class", AcpClass::TestClass.into())
         );
 
         filter_optimise_assert!(
-            f_or(vec![f_or(vec![f_eq(
-                "class",
-                PartialValue::new_class("test")
-            )])]),
-            f_eq("class", PartialValue::new_class("test"))
+            f_or(vec![f_or(vec![f_eq("class", AcpClass::TestClass.into())])]),
+            f_eq("class", AcpClass::TestClass.into())
         );
 
         filter_optimise_assert!(
             f_and(vec![f_or(vec![f_and(vec![f_eq(
                 "class",
-                PartialValue::new_class("test")
+                AcpClass::TestClass.to_partialvalue()
             )])])]),
-            f_eq("class", PartialValue::new_class("test"))
+            f_eq("class", AcpClass::TestClass.to_partialvalue())
         );
 
         // Later this can test duplicate filter detection.
         filter_optimise_assert!(
             f_and(vec![
-                f_and(vec![f_eq("class", PartialValue::new_class("test"))]),
+                f_and(vec![f_eq("class", AcpClass::TestClass.to_partialvalue())]),
                 f_sub("class", PartialValue::new_class("te")),
                 f_pres("class"),
-                f_eq("class", PartialValue::new_class("test"))
+                f_eq("class", AcpClass::TestClass.to_partialvalue())
             ]),
             f_and(vec![
-                f_eq("class", PartialValue::new_class("test")),
+                f_eq("class", AcpClass::TestClass.to_partialvalue()),
                 f_pres("class"),
                 f_sub("class", PartialValue::new_class("te")),
             ])
@@ -1445,16 +1439,16 @@ mod tests {
             f_and(vec![
                 f_and(vec![
                     f_eq("class", PartialValue::new_class("foo")),
-                    f_eq("class", PartialValue::new_class("test")),
+                    f_eq("class", AcpClass::TestClass.to_partialvalue()),
                     f_eq("uid", PartialValue::new_class("bar")),
                 ]),
                 f_sub("class", PartialValue::new_class("te")),
                 f_pres("class"),
-                f_eq("class", PartialValue::new_class("test"))
+                f_eq("class", AcpClass::TestClass.to_partialvalue())
             ]),
             f_and(vec![
                 f_eq("class", PartialValue::new_class("foo")),
-                f_eq("class", PartialValue::new_class("test")),
+                f_eq("class", AcpClass::TestClass.to_partialvalue()),
                 f_pres("class"),
                 f_eq("uid", PartialValue::new_class("bar")),
                 f_sub("class", PartialValue::new_class("te")),
@@ -1463,34 +1457,34 @@ mod tests {
 
         filter_optimise_assert!(
             f_or(vec![
-                f_eq("class", PartialValue::new_class("test")),
+                f_eq("class", AcpClass::TestClass.to_partialvalue()),
                 f_pres("class"),
                 f_sub("class", PartialValue::new_class("te")),
-                f_or(vec![f_eq("class", PartialValue::new_class("test"))]),
+                f_or(vec![f_eq("class", AcpClass::TestClass.to_partialvalue())]),
             ]),
             f_or(vec![
                 f_sub("class", PartialValue::new_class("te")),
                 f_pres("class"),
-                f_eq("class", PartialValue::new_class("test"))
+                f_eq("class", AcpClass::TestClass.to_partialvalue())
             ])
         );
 
         // Test dedup doesn't affect nested items incorrectly.
         filter_optimise_assert!(
             f_or(vec![
-                f_eq("class", PartialValue::new_class("test")),
+                f_eq("class", AcpClass::TestClass.to_partialvalue()),
                 f_and(vec![
-                    f_eq("class", PartialValue::new_class("test")),
-                    f_eq("term", PartialValue::new_class("test")),
-                    f_or(vec![f_eq("class", PartialValue::new_class("test"))])
+                    f_eq("class", AcpClass::TestClass.to_partialvalue()),
+                    f_eq("term", AcpClass::TestClass.to_partialvalue()),
+                    f_or(vec![f_eq("class", AcpClass::TestClass.to_partialvalue())])
                 ]),
             ]),
             f_or(vec![
                 f_and(vec![
-                    f_eq("class", PartialValue::new_class("test")),
-                    f_eq("term", PartialValue::new_class("test"))
+                    f_eq("class", AcpClass::TestClass.to_partialvalue()),
+                    f_eq("term", AcpClass::TestClass.to_partialvalue())
                 ]),
-                f_eq("class", PartialValue::new_class("test")),
+                f_eq("class", AcpClass::TestClass.to_partialvalue()),
             ])
         );
     }

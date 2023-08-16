@@ -1114,7 +1114,7 @@ impl QueryServerWriteV1 {
         };
         let mods: Vec<_> = iter::once(Some(Modify::Present(
             "class".into(),
-            Value::new_class("posixgroup"),
+            AcpClass::PosixGroup.into(),
         )))
         .chain(gidnumber_mods)
         .flatten()

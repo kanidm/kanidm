@@ -188,7 +188,7 @@ mod tests {
             Ok(()),
             preload,
             filter!(f_eq("name", PartialValue::new_iname("testperson"))),
-            modlist!([m_pres("class", &Value::new_class("posixgroup"))]),
+            modlist!([m_pres("class", &AcpClass::PosixGroup.into())]),
             None,
             |_| {},
             |qs_write: &mut QueryServerWriteTransaction| check_gid(

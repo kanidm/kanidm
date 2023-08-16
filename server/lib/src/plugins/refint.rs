@@ -730,8 +730,8 @@ mod tests {
         // scope map is also appropriately affected.
         let ea: Entry<EntryInit, EntryNew> = entry_init!(
             ("class", AcpClass::Object.to_value()),
-            ("class", Value::new_class("oauth2_resource_server")),
-            // ("class", Value::new_class("oauth2_resource_server_basic")),
+            ("class", AcpClass::OAuth2ResourceServer.to_value()),
+            // ("class", AcpClass::OAuth2ResourceServerBasic.into()),
             ("oauth2_rs_name", Value::new_iname("test_resource_server")),
             ("displayname", Value::new_utf8s("test_resource_server")),
             (
@@ -749,7 +749,7 @@ mod tests {
         );
 
         let eb: Entry<EntryInit, EntryNew> = entry_init!(
-            ("class", Value::new_class("group")),
+            ("class", AcpClass::Group.to_value()),
             ("name", Value::new_iname("testgroup")),
             (
                 "uuid",
@@ -811,8 +811,8 @@ mod tests {
 
         let e2 = entry_init!(
             ("class", AcpClass::Object.to_value()),
-            ("class", Value::new_class("oauth2_resource_server")),
-            // ("class", Value::new_class("oauth2_resource_server_basic")),
+            ("class", AcpClass::OAuth2ResourceServer.to_value()),
+            // ("class", AcpClass::OAuth2ResourceServerBasic.into()),
             ("uuid", Value::Uuid(rs_uuid)),
             ("oauth2_rs_name", Value::new_iname("test_resource_server")),
             ("displayname", Value::new_utf8s("test_resource_server")),
@@ -920,8 +920,8 @@ mod tests {
 
         let e_dyn = entry_init!(
             ("class", AcpClass::Object.to_value()),
-            ("class", Value::new_class("group")),
-            ("class", Value::new_class("dyngroup")),
+            ("class", AcpClass::Group.to_value()),
+            ("class", AcpClass::DynGroup.to_value()),
             ("uuid", Value::Uuid(dyn_uuid)),
             ("name", Value::new_iname("test_dyngroup")),
             ("dynmember", Value::Refer(inv_mb_uuid)),
@@ -932,8 +932,8 @@ mod tests {
         );
 
         let e_group: Entry<EntryInit, EntryNew> = entry_init!(
-            ("class", Value::new_class("group")),
-            ("class", Value::new_class("memberof")),
+            ("class", AcpClass::Group.to_value()),
+            ("class", AcpClass::MemberOf.to_value()),
             ("name", Value::new_iname("testgroup")),
             ("uuid", Value::Uuid(tgroup_uuid)),
             ("memberof", Value::Refer(inv_mo_uuid))

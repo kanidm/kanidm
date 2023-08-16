@@ -315,16 +315,14 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 OperationError::InvalidState
             })?;
 
-            let modlist = std::iter::once(Modify::Removed(
-                "class".into(),
-                PartialValue::new_class("sync_object"),
-            ))
-            .chain(
-                sync_class
-                    .may_iter()
-                    .map(|aname| Modify::Purged(aname.clone())),
-            )
-            .collect();
+            let modlist =
+                std::iter::once(Modify::Removed("class".into(), AcpClass::SyncObject.into()))
+                    .chain(
+                        sync_class
+                            .may_iter()
+                            .map(|aname| Modify::Purged(aname.clone())),
+                    )
+                    .collect();
 
             let mods = ModifyList::new_list(modlist);
 
@@ -438,16 +436,14 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 OperationError::InvalidState
             })?;
 
-            let modlist = std::iter::once(Modify::Removed(
-                "class".into(),
-                PartialValue::new_class("sync_object"),
-            ))
-            .chain(
-                sync_class
-                    .may_iter()
-                    .map(|aname| Modify::Purged(aname.clone())),
-            )
-            .collect();
+            let modlist =
+                std::iter::once(Modify::Removed("class".into(), AcpClass::SyncObject.into()))
+                    .chain(
+                        sync_class
+                            .may_iter()
+                            .map(|aname| Modify::Purged(aname.clone())),
+                    )
+                    .collect();
 
             let mods = ModifyList::new_list(modlist);
 
@@ -664,7 +660,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             .map(|u| {
                 entry_init!(
                     ("class", AcpClass::Object.to_value()),
-                    ("class", Value::new_class("sync_object")),
+                    ("class", AcpClass::SyncObject.to_value()),
                     ("sync_parent_uuid", Value::Refer(sync_uuid)),
                     ("uuid", Value::Uuid(u))
                 )
@@ -1508,7 +1504,7 @@ mod tests {
 
         let e1 = entry_init!(
             ("class", AcpClass::Object.to_value()),
-            ("class", Value::new_class("sync_account")),
+            ("class", AcpClass::SyncAccount.to_value()),
             ("name", Value::new_iname("test_scim_sync")),
             ("uuid", Value::Uuid(sync_uuid)),
             ("description", Value::new_utf8s("A test sync agreement"))
@@ -1575,7 +1571,7 @@ mod tests {
 
         let e1 = entry_init!(
             ("class", AcpClass::Object.to_value()),
-            ("class", Value::new_class("sync_account")),
+            ("class", AcpClass::SyncAccount.to_value()),
             ("name", Value::new_iname("test_scim_sync")),
             ("uuid", Value::Uuid(sync_uuid)),
             ("description", Value::new_utf8s("A test sync agreement"))
@@ -1690,7 +1686,7 @@ mod tests {
 
         let e1 = entry_init!(
             ("class", AcpClass::Object.to_value()),
-            ("class", Value::new_class("sync_account")),
+            ("class", AcpClass::SyncAccount.to_value()),
             ("name", Value::new_iname("test_scim_sync")),
             ("uuid", Value::Uuid(sync_uuid)),
             ("description", Value::new_utf8s("A test sync agreement"))

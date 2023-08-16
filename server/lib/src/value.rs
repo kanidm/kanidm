@@ -3,6 +3,8 @@
 //! typed values, allows their comparison, filtering and more. It also has the code for serialising
 //! these into a form for the backend that can be persistent into the [`Backend`](crate::be::Backend).
 
+#![allow(non_upper_case_globals)]
+
 use std::collections::BTreeSet;
 use std::convert::TryFrom;
 use std::fmt;
@@ -455,6 +457,7 @@ impl PartialValue {
         PartialValue::Iname(s.to_lowercase())
     }
 
+    // TODO: take this away
     #[inline]
     pub fn new_class(s: &str) -> Self {
         PartialValue::new_iutf8(s)
@@ -1069,6 +1072,8 @@ impl Value {
         matches!(self, Value::Iutf8(_))
     }
 
+    // TODO: take this away
+    #[inline(always)]
     pub fn new_class(s: &str) -> Self {
         Value::Iutf8(s.to_lowercase())
     }

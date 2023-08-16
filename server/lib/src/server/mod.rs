@@ -1651,7 +1651,7 @@ mod tests {
         assert!(server_txn
             .internal_create(vec![entry_init!(
                 ("class", AcpClass::Object.to_value()),
-                ("class", Value::new_class("extensibleobject")),
+                ("class", AcpClass::ExtensibleObject.to_value()),
                 ("uuid", Value::Uuid(t_uuid)),
                 ("sync_external_id", Value::new_iutf8("uid=testperson"))
             ),])
@@ -1782,7 +1782,7 @@ mod tests {
     async fn test_dynamic_schema_class(server: &QueryServer) {
         let e1 = entry_init!(
             ("class", AcpClass::Object.to_value()),
-            ("class", Value::new_class("testclass")),
+            ("class", AcpClass::TestClass.to_value()),
             ("name", Value::new_iname("testobj1")),
             (
                 "uuid",
@@ -1793,8 +1793,8 @@ mod tests {
         // Class definition
         let e_cd = entry_init!(
             ("class", AcpClass::Object.to_value()),
-            ("class", Value::new_class("classtype")),
-            ("classname", Value::new_iutf8("testclass")),
+            ("class", AcpClass::ClassType.to_value()),
+            ("classname", AcpClass::TestClass.to_value()),
             (
                 "uuid",
                 Value::Uuid(uuid!("cfcae205-31c3-484b-8ced-667d1709c5e3"))
@@ -1828,7 +1828,7 @@ mod tests {
         // delete the class
         let de_class = DeleteEvent::new_internal_invalid(filter!(f_eq(
             "classname",
-            PartialValue::new_class("testclass")
+            AcpClass::TestClass.into()
         )));
         assert!(server_txn.delete(&de_class).is_ok());
         // Commit
@@ -1843,7 +1843,7 @@ mod tests {
         let testobj1 = server_txn
             .internal_search_uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
             .expect("failed");
-        assert!(testobj1.attribute_equality("class", &PartialValue::new_class("testclass")));
+        assert!(testobj1.attribute_equality("class", &AcpClass::TestClass.into()));
 
         // Should still be good
         server_txn.commit().expect("should not fail");
@@ -1854,7 +1854,7 @@ mod tests {
     async fn test_dynamic_schema_attr(server: &QueryServer) {
         let e1 = entry_init!(
             ("class", AcpClass::Object.to_value()),
-            ("class", Value::new_class("extensibleobject")),
+            ("class", AcpClass::ExtensibleObject.to_value()),
             ("name", Value::new_iname("testobj1")),
             (
                 "uuid",
@@ -1866,7 +1866,7 @@ mod tests {
         // Attribute definition
         let e_ad = entry_init!(
             ("class", AcpClass::Object.to_value()),
-            ("class", Value::new_class("attributetype")),
+            ("class", AcpClass::AttributeType.to_value()),
             (
                 "uuid",
                 Value::Uuid(uuid!("cfcae205-31c3-484b-8ced-667d1709c5e3"))

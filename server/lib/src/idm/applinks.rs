@@ -81,8 +81,8 @@ mod tests {
 
         let e_rs: Entry<EntryInit, EntryNew> = entry_init!(
             ("class", AcpClass::Object.to_value()),
-            ("class", Value::new_class("oauth2_resource_server")),
-            ("class", Value::new_class("oauth2_resource_server_basic")),
+            ("class", AcpClass::OAuth2ResourceServer.to_value()),
+            ("class", AcpClass::OAuth2ResourceServerBasic.to_value()),
             ("oauth2_rs_name", Value::new_iname("test_resource_server")),
             ("displayname", Value::new_utf8s("test_resource_server")),
             (
@@ -113,7 +113,7 @@ mod tests {
 
         let e_grp = entry_init!(
             ("class", AcpClass::Object.to_value()),
-            ("class", Value::new_class("group")),
+            ("class", AcpClass::Group.to_value()),
             ("uuid", Value::Uuid(grp_uuid)),
             ("name", Value::new_iname("test_oauth2_group"))
         );

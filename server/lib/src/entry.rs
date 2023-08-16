@@ -775,8 +775,8 @@ impl Entry<EntryIncremental, EntryNew> {
                         let new_uuid = Uuid::new_v4();
                         cnf_ent.purge_ava("uuid");
                         cnf_ent.add_ava("uuid", Value::Uuid(new_uuid));
-                        cnf_ent.add_ava("class", Value::new_class("recycled"));
-                        cnf_ent.add_ava("class", Value::new_class("conflict"));
+                        cnf_ent.add_ava("class", AcpClass::Recycled.into());
+                        cnf_ent.add_ava("class", AcpClass::Conflict.into());
 
                         // Now we have to internally bypass some states.
                         // This is okay because conflict entries aren't subject
@@ -1055,8 +1055,8 @@ impl Entry<EntryIncremental, EntryCommitted> {
 
         if let Err(e) = ne.validate(schema) {
             warn!(uuid = ?self.valid.uuid, err = ?e, "Entry failed schema check, moving to a conflict state");
-            ne.add_ava_int("class", Value::new_class("recycled"));
-            ne.add_ava_int("class", Value::new_class("conflict"));
+            ne.add_ava_int("class", AcpClass::Recycled.into());
+            ne.add_ava_int("class", AcpClass::Conflict.into());
             ne.add_ava_int("source_uuid", Value::Uuid(self.valid.uuid));
         }
         ne
@@ -1133,7 +1133,7 @@ impl Entry<EntryInvalid, EntryCommitted> {
     /// Convert this entry into a recycled entry, that is "in the recycle bin".
     pub fn to_recycled(mut self) -> Self {
         // This will put the modify ahead of the recycle transition.
-        self.add_ava("class", Value::new_class("recycled"));
+        self.add_ava("class", AcpClass::Recycled.into());
 
         // Change state repl doesn't need this flag
         // self.valid.ecstate.recycled(&self.valid.cid);
@@ -3188,7 +3188,7 @@ mod tests {
         assert!(!e.attribute_equality("userid", &PartialValue::new_utf8s("test")));
         assert!(!e.attribute_equality("nonexist", &PartialValue::new_utf8s("william")));
         // Also test non-matching attr syntax
-        assert!(!e.attribute_equality("userid", &PartialValue::new_class("william")));
+        assert!(!e.attribute_equality("userid", &PartialValue::new_iutf8("william")));
     }
 
     #[test]
@@ -3440,12 +3440,12 @@ mod tests {
 
         let mut e2: Entry<EntryInit, EntryNew> = Entry::new();
         e2.add_ava("class", AcpClass::Person.to_value());
-        e2.add_ava("class", Value::new_class("recycled"));
+        e2.add_ava("class", AcpClass::Recycled.into());
         let e2 = e2.into_sealed_committed();
         assert!(e2.mask_recycled_ts().is_none());
 
         let mut e3: Entry<EntryInit, EntryNew> = Entry::new();
-        e3.add_ava("class", Value::new_class("tombstone"));
+        e3.add_ava("class", AcpClass::Tombstone.into());
         let e3 = e3.into_sealed_committed();
         assert!(e3.mask_recycled_ts().is_none());
     }

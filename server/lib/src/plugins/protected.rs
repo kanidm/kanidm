@@ -269,25 +269,25 @@ mod tests {
         pub static ref TEST_ACCOUNT: EntryInitNew = entry_init!(
             ("class", AcpClass::Account.to_value()),
             ("class", AcpClass::ServiceAccount.to_value()),
-            ("class", Value::new_class("memberof")),
+            ("class", AcpClass::MemberOf.to_value()),
             ("name", Value::new_iname("test_account_1")),
             ("displayname", Value::new_utf8s("test_account_1")),
             ("uuid", Value::Uuid(UUID_TEST_ACCOUNT)),
             ("memberof", Value::Refer(UUID_TEST_GROUP))
         );
         pub static ref TEST_GROUP: EntryInitNew = entry_init!(
-            ("class", Value::new_class("group")),
+            ("class", AcpClass::Group.to_value()),
             ("name", Value::new_iname("test_group_a")),
             ("uuid", Value::Uuid(UUID_TEST_GROUP)),
             ("member", Value::Refer(UUID_TEST_ACCOUNT))
         );
         pub static ref ALLOW_ALL: EntryInitNew = entry_init!(
             ("class", AcpClass::Object.to_value()),
-            ("class", Value::new_class("access_control_profile")),
-            ("class", Value::new_class("access_control_modify")),
-            ("class", Value::new_class("access_control_create")),
-            ("class", Value::new_class("access_control_delete")),
-            ("class", Value::new_class("access_control_search")),
+            ("class", AcpClass::AccessControlProfile.to_value()),
+            ("class", AcpClass::AccessControlModify.to_value()),
+            ("class", AcpClass::AccessControlCreate.to_value()),
+            ("class", AcpClass::AccessControlDelete.to_value()),
+            ("class", AcpClass::AccessControlSearch.to_value()),
             ("name", Value::new_iname("idm_admins_acp_allow_all_test")),
             ("uuid", Value::Uuid(UUID_TEST_ACP)),
             ("acp_receiver_group", Value::Refer(UUID_TEST_GROUP)),
@@ -435,6 +435,7 @@ mod tests {
     #[test]
     fn test_pre_modify_class_add_deny() {
         // Show that adding a system class is denied
+        // TODO: replace this with a `SchemaClass` object
         let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "attrs": {
@@ -445,14 +446,13 @@ mod tests {
             }
         }"#,
         );
-
         let mut preload = PRELOAD.clone();
         preload.push(e);
 
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq("classname", PartialValue::new_class("testclass"))),
+            filter!(f_eq("classname", AcpClass::TestClass.into())),
             modlist!([
                 m_pres("may", &Value::new_iutf8("name")),
                 m_pres("must", &Value::new_iutf8("name")),

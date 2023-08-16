@@ -2699,7 +2699,7 @@ mod tests {
         let schema_outer = Schema::new().expect("failed to create schema");
         let schema = schema_outer.read();
         // Test non existent attr name
-        let f_mixed = filter_all!(f_eq("nonClAsS", PartialValue::new_class("attributetype")));
+        let f_mixed = filter_all!(f_eq("nonClAsS", AcpClass::AttributeType.into()));
         assert_eq!(
             f_mixed.validate(&schema),
             Err(SchemaError::InvalidAttribute("nonclass".to_string()))
@@ -2714,13 +2714,10 @@ mod tests {
             ))
         );
         // test insensitive values
-        let f_insense = filter_all!(f_eq("class", PartialValue::new_class("AttributeType")));
+        let f_insense = filter_all!(f_eq("class", AcpClass::AttributeType.into()));
         assert_eq!(
             f_insense.validate(&schema),
-            Ok(filter_valid!(f_eq(
-                "class",
-                PartialValue::new_class("attributetype")
-            )))
+            Ok(filter_valid!(f_eq("class", AcpClass::AttributeType.into())))
         );
         // Test the recursive structures validate
         let f_or_empty = filter_all!(f_or!([]));
@@ -2733,7 +2730,7 @@ mod tests {
             ))
         );
         let f_or_mult = filter_all!(f_and!([
-            f_eq("class", PartialValue::new_class("attributetype")),
+            f_eq("class", AcpClass::AttributeType.into()),
             f_eq("multivalue", PartialValue::new_iutf8("zzzzzzz")),
         ]));
         assert_eq!(
@@ -2744,15 +2741,15 @@ mod tests {
         );
         // Test mixed case attr name - this is a pass, due to normalisation
         let f_or_ok = filter_all!(f_andnot(f_and!([
-            f_eq("Class", PartialValue::new_class("AttributeType")),
-            f_sub("class", PartialValue::new_class("classtype")),
+            f_eq("Class", AcpClass::AttributeType.into()),
+            f_sub("class", AcpClass::ClassType.into()),
             f_pres("class")
         ])));
         assert_eq!(
             f_or_ok.validate(&schema),
             Ok(filter_valid!(f_andnot(f_and!([
-                f_eq("class", PartialValue::new_class("attributetype")),
-                f_sub("class", PartialValue::new_class("classtype")),
+                f_eq("class", AcpClass::AttributeType.into()),
+                f_sub("class", AcpClass::ClassType.into()),
                 f_pres("class")
             ]))))
         );
@@ -2851,7 +2848,7 @@ mod tests {
         // Service account missing account
         /*
         let e_service = unsafe { entry_init!(
-            ("class", Value::new_class("service")),
+            ("class", AcpClass::Service.to_value()),
             ("uuid", Value::new_uuid(Uuid::new_v4()))
         ).into_invalid_new() };
 
@@ -2879,7 +2876,7 @@ mod tests {
 
         // These are valid configurations.
         let e_service_valid = entry_init!(
-            ("class", Value::new_class("service")),
+            ("class", AcpClass::Service.to_value()),
             ("class", AcpClass::Account.to_value()),
             ("uuid", Value::Uuid(Uuid::new_v4()))
         )

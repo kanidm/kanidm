@@ -2745,7 +2745,7 @@ mod tests {
 
         let e1 = entry_init!(
             ("class", AcpClass::Object.to_value()),
-            ("class", Value::new_class("sync_account")),
+            ("class", AcpClass::SyncAccount.to_value()),
             ("name", Value::new_iname("test_scim_sync")),
             ("uuid", Value::Uuid(sync_uuid)),
             ("description", Value::new_utf8s("A test sync agreement"))
@@ -2753,7 +2753,7 @@ mod tests {
 
         let e2 = entry_init!(
             ("class", AcpClass::Object.to_value()),
-            ("class", Value::new_class("sync_object")),
+            ("class", AcpClass::SyncObject.to_value()),
             ("class", AcpClass::Account.to_value()),
             ("class", AcpClass::Person.to_value()),
             ("sync_parent_uuid", Value::Refer(sync_uuid)),

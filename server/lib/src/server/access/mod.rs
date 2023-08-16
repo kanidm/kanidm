@@ -1180,7 +1180,7 @@ mod tests {
             &mut qs_write,
             entry_init!(
                 ("class", AcpClass::Object.to_value()),
-                ("class", Value::new_class("access_control_profile")),
+                ("class", AcpClass::AccessControlProfile.to_value()),
                 ("name", Value::new_iname("acp_valid")),
                 (
                     "uuid",
@@ -1223,8 +1223,8 @@ mod tests {
             &mut qs_write,
             entry_init!(
                 ("class", AcpClass::Object.to_value()),
-                ("class", Value::new_class("access_control_profile")),
-                ("class", Value::new_class("access_control_delete")),
+                ("class", AcpClass::AccessControlProfile.to_value()),
+                ("class", AcpClass::AccessControlDelete.to_value()),
                 ("name", Value::new_iname("acp_valid")),
                 (
                     "uuid",
@@ -1306,8 +1306,8 @@ mod tests {
             &mut qs_write,
             entry_init!(
                 ("class", AcpClass::Object.to_value()),
-                ("class", Value::new_class("access_control_profile")),
-                ("class", Value::new_class("access_control_search")),
+                ("class", AcpClass::AccessControlProfile.to_value()),
+                ("class", AcpClass::AccessControlSearch.to_value()),
                 ("name", Value::new_iname("acp_valid")),
                 (
                     "uuid",
@@ -1356,8 +1356,8 @@ mod tests {
             &mut qs_write,
             entry_init!(
                 ("class", AcpClass::Object.to_value()),
-                ("class", Value::new_class("access_control_profile")),
-                ("class", Value::new_class("access_control_modify")),
+                ("class", AcpClass::AccessControlProfile.to_value()),
+                ("class", AcpClass::AccessControlModify.to_value()),
                 ("name", Value::new_iname("acp_valid")),
                 (
                     "uuid",
@@ -1379,8 +1379,8 @@ mod tests {
             &mut qs_write,
             entry_init!(
                 ("class", AcpClass::Object.to_value()),
-                ("class", Value::new_class("access_control_profile")),
-                ("class", Value::new_class("access_control_modify")),
+                ("class", AcpClass::AccessControlProfile.to_value()),
+                ("class", AcpClass::AccessControlModify.to_value()),
                 ("name", Value::new_iname("acp_valid")),
                 (
                     "uuid",
@@ -1429,8 +1429,8 @@ mod tests {
             &mut qs_write,
             entry_init!(
                 ("class", AcpClass::Object.to_value()),
-                ("class", Value::new_class("access_control_profile")),
-                ("class", Value::new_class("access_control_create")),
+                ("class", AcpClass::AccessControlProfile.to_value()),
+                ("class", AcpClass::AccessControlCreate.to_value()),
                 ("name", Value::new_iname("acp_valid")),
                 (
                     "uuid",
@@ -1452,8 +1452,8 @@ mod tests {
             &mut qs_write,
             entry_init!(
                 ("class", AcpClass::Object.to_value()),
-                ("class", Value::new_class("access_control_profile")),
-                ("class", Value::new_class("access_control_create")),
+                ("class", AcpClass::AccessControlProfile.to_value()),
+                ("class", AcpClass::AccessControlCreate.to_value()),
                 ("name", Value::new_iname("acp_valid")),
                 (
                     "uuid",
@@ -1484,11 +1484,11 @@ mod tests {
 
         let e = entry_init!(
             ("class", AcpClass::Object.to_value()),
-            ("class", Value::new_class("access_control_profile")),
-            ("class", Value::new_class("access_control_create")),
-            ("class", Value::new_class("access_control_delete")),
-            ("class", Value::new_class("access_control_modify")),
-            ("class", Value::new_class("access_control_search")),
+            ("class", AcpClass::AccessControlProfile.to_value()),
+            ("class", AcpClass::AccessControlCreate.to_value()),
+            ("class", AcpClass::AccessControlDelete.to_value()),
+            ("class", AcpClass::AccessControlModify.to_value()),
+            ("class", AcpClass::AccessControlSearch.to_value()),
             ("name", Value::new_iname("acp_valid")),
             (
                 "uuid",
@@ -2035,7 +2035,7 @@ mod tests {
 
         let ev4 = entry_init!(
             ("class", AcpClass::Account.to_value()),
-            ("class", Value::new_class("group")),
+            ("class", AcpClass::Group.to_value()),
             ("name", Value::new_iname("testperson1")),
             ("uuid", Value::Uuid(UUID_TEST_ACCOUNT_1))
         );
@@ -2542,8 +2542,8 @@ mod tests {
         let rs_uuid = Uuid::new_v4();
         let ev1 = entry_init!(
             ("class", AcpClass::Object.to_value()),
-            ("class", Value::new_class("oauth2_resource_server")),
-            ("class", Value::new_class("oauth2_resource_server_basic")),
+            ("class", AcpClass::OAuth2ResourceServer.to_value()),
+            ("class", AcpClass::OAuth2ResourceServerBasic.to_value()),
             ("uuid", Value::Uuid(rs_uuid)),
             ("oauth2_rs_name", Value::new_iname("test_resource_server")),
             ("displayname", Value::new_utf8s("test_resource_server")),
@@ -2572,8 +2572,8 @@ mod tests {
 
         let ev1_reduced = entry_init!(
             ("class", AcpClass::Object.to_value()),
-            ("class", Value::new_class("oauth2_resource_server")),
-            ("class", Value::new_class("oauth2_resource_server_basic")),
+            ("class", AcpClass::OAuth2ResourceServer.to_value()),
+            ("class", AcpClass::OAuth2ResourceServerBasic.to_value()),
             ("uuid", Value::Uuid(rs_uuid)),
             ("oauth2_rs_name", Value::new_iname("test_resource_server")),
             ("displayname", Value::new_utf8s("test_resource_server")),
@@ -2586,8 +2586,8 @@ mod tests {
 
         let ev2 = entry_init!(
             ("class", AcpClass::Object.to_value()),
-            ("class", Value::new_class("oauth2_resource_server")),
-            ("class", Value::new_class("oauth2_resource_server_basic")),
+            ("class", AcpClass::OAuth2ResourceServer.to_value()),
+            ("class", AcpClass::OAuth2ResourceServerBasic.to_value()),
             ("uuid", Value::Uuid(Uuid::new_v4())),
             ("oauth2_rs_name", Value::new_iname("second_resource_server")),
             ("displayname", Value::new_utf8s("second_resource_server")),

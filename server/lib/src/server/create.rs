@@ -201,7 +201,7 @@ mod tests {
         assert!(r2.len() == 1);
 
         // We apply some member-of in the server now, so we add these before we seal.
-        e.add_ava("class", Value::new_class("memberof"));
+        e.add_ava("class", AcpClass::MemberOf.into());
         e.add_ava("memberof", Value::Refer(UUID_IDM_ALL_PERSONS));
         e.add_ava("directmemberof", Value::Refer(UUID_IDM_ALL_PERSONS));
         e.add_ava("memberof", Value::Refer(UUID_IDM_ALL_ACCOUNTS));

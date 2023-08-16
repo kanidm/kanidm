@@ -653,7 +653,7 @@ mod tests {
             filter!(f_eq("name", PartialValue::new_iname("testperson1"))),
             ModifyList::new_list(vec![Modify::Present(
                 AttrString::from("class"),
-                Value::new_class("system_info"),
+                AcpClass::SystemInfo.to_value(),
             )]),
         );
         assert!(server_txn.modify(&me_sin).is_err());
@@ -672,7 +672,7 @@ mod tests {
         let me_sin = ModifyEvent::new_internal_invalid(
             filter!(f_eq("name", PartialValue::new_iname("testperson1"))),
             ModifyList::new_list(vec![
-                Modify::Present(AttrString::from("class"), Value::new_class("system_info")),
+                Modify::Present(AttrString::from("class"), AcpClass::SystemInfo.to_value()),
                 // Modify::Present("domain".to_string(), Value::new_iutf8("domain.name")),
                 Modify::Present(AttrString::from("version"), Value::new_uint32(1)),
             ]),

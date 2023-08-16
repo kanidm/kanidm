@@ -251,9 +251,9 @@ mod tests {
         let mut server_txn = server.write(time_p1).await;
         let admin = server_txn.internal_search_uuid(UUID_ADMIN).expect("failed");
 
-        let filt_i_rc = filter_all!(f_eq("class", PartialValue::new_class("recycled")));
+        let filt_i_rc = filter_all!(f_eq("class", AcpClass::Recycled.into()));
 
-        let filt_i_ts = filter_all!(f_eq("class", PartialValue::new_class("tombstone")));
+        let filt_i_ts = filter_all!(f_eq("class", AcpClass::Tombstone.into()));
 
         let filt_i_per = filter_all!(f_eq("class", AcpClass::Person.into()));
 
@@ -263,7 +263,7 @@ mod tests {
             filt_i_rc.clone(),
             ModifyList::new_list(vec![Modify::Present(
                 AttrString::from("class"),
-                Value::new_class("recycled"),
+                AcpClass::Recycled.into(),
             )]),
         );
 
@@ -407,7 +407,7 @@ mod tests {
         )));
         assert!(server_txn.delete(&de_sin).is_ok());
         // Can in be seen by special search? (external recycle search)
-        let filt_rc = filter_all!(f_eq("class", PartialValue::new_class("recycled")));
+        let filt_rc = filter_all!(f_eq("class", AcpClass::Recycled.into()));
         let sre_rc = SearchEvent::new_rec_impersonate_entry(admin, filt_rc);
         let r2 = server_txn.search(&sre_rc).expect("search failed");
         assert!(r2.len() == 1);
@@ -500,7 +500,7 @@ mod tests {
         let mut server_txn = server.write(time_p1).await;
         let admin = server_txn.internal_search_uuid(UUID_ADMIN).expect("failed");
 
-        let filt_i_ts = filter_all!(f_eq("class", PartialValue::new_class("tombstone")));
+        let filt_i_ts = filter_all!(f_eq("class", AcpClass::Tombstone.into()));
 
         // Create fake external requests. Probably from admin later
         // Should we do this with impersonate instead of using the external
@@ -509,7 +509,7 @@ mod tests {
             filt_i_ts.clone(),
             ModifyList::new_list(vec![Modify::Present(
                 AttrString::from("class"),
-                Value::new_class("tombstone"),
+                AcpClass::Tombstone.into(),
             )]),
         );
 
@@ -608,7 +608,7 @@ mod tests {
     fn create_group(name: &str, uuid: &str, members: &[&str]) -> Entry<EntryInit, EntryNew> {
         let mut e1 = entry_init!(
             ("class", AcpClass::Object.to_value()),
-            ("class", Value::new_class("group")),
+            ("class", AcpClass::Group.to_value()),
             ("name", Value::new_iname(name)),
             ("uuid", Value::new_uuid_s(uuid).expect("uuid")),
             ("description", Value::new_utf8s("testgroup-entry"))

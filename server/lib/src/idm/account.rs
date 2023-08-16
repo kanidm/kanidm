@@ -846,7 +846,7 @@ mod tests {
         // Add a group with a ui hint, and then check they get the hint.
         let e = entry_init!(
             ("class", AcpClass::Object.to_value()),
-            ("class", Value::new_class("group")),
+            ("class", AcpClass::Group.to_value()),
             ("name", Value::new_iname("test_uihint_group")),
             ("member", Value::Refer(target_uuid)),
             ("grant_ui_hint", Value::UiHint(UiHint::ExperimentalFeatures))

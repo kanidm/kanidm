@@ -2615,8 +2615,8 @@ mod tests {
         // Add a posix group that has the admin as a member.
         let e: Entry<EntryInit, EntryNew> = entry_init!(
             ("class", AcpClass::Object.to_value()),
-            ("class", Value::new_class("group")),
-            ("class", Value::new_class("posixgroup")),
+            ("class", AcpClass::Group.to_value()),
+            ("class", AcpClass::PosixGroup.to_value()),
             ("name", Value::new_iname("testgroup")),
             (
                 "uuid",
