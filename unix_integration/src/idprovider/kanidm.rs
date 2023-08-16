@@ -4,6 +4,7 @@ use kanidm_proto::v1::{OperationError, UnixGroupToken, UnixUserToken};
 use tokio::sync::RwLock;
 
 use super::interface::{GroupToken, Id, IdProvider, IdpError, UserToken};
+use crate::unix_proto::{PamPrompt, ProviderResult};
 
 pub struct KanidmProvider {
     client: RwLock<KanidmClient>,
@@ -141,11 +142,17 @@ impl IdProvider for KanidmProvider {
         }
     }
 
-    async fn unix_user_authenticate(
+    async fn unix_user_authenticate_step(
         &self,
         id: &Id,
-        cred: &str,
-    ) -> Result<Option<UserToken>, IdpError> {
+        cred: Option<&str>,
+    ) -> Result<ProviderResult, IdpError> {
+        let cred = match cred {
+            Some(cred) => cred,
+            None => {
+                return Ok(ProviderResult::PamPrompt(PamPrompt::passwd_prompt()));
+            }
+        };
         match self
             .client
             .read()
@@ -153,8 +160,8 @@ impl IdProvider for KanidmProvider {
             .idm_account_unix_cred_verify(id.to_string().as_str(), cred)
             .await
         {
-            Ok(Some(n_tok)) => Ok(Some(UserToken::from(n_tok))),
-            Ok(None) => Ok(None),
+            Ok(Some(n_tok)) => Ok(ProviderResult::UserToken(Some(UserToken::from(n_tok)))),
+            Ok(None) => Ok(ProviderResult::UserToken(None)),
             Err(ClientError::Transport(err)) => {
                 error!(?err);
                 Err(IdpError::Transport)

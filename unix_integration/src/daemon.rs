@@ -31,7 +31,9 @@ use kanidm_unix_common::idprovider::kanidm::KanidmProvider;
 use kanidm_unix_common::resolver::Resolver;
 use kanidm_unix_common::unix_config::KanidmUnixdConfig;
 use kanidm_unix_common::unix_passwd::{parse_etc_group, parse_etc_passwd};
-use kanidm_unix_common::unix_proto::{ClientRequest, ClientResponse, TaskRequest, TaskResponse};
+use kanidm_unix_common::unix_proto::{
+    ClientRequest, ClientResponse, PamState, TaskRequest, TaskResponse,
+};
 
 use kanidm_utils_users::{get_current_gid, get_current_uid, get_effective_gid, get_effective_uid};
 use libc::umask;
@@ -193,6 +195,7 @@ async fn handle_client(
     };
 
     let mut reqs = Framed::new(sock, ClientCodec);
+    let mut pam_state = PamState::Uninitialized;
 
     trace!("Waiting for requests ...");
     while let Some(Ok(req)) = reqs.next().await {
@@ -274,13 +277,34 @@ async fn handle_client(
                         ClientResponse::NssGroup(None)
                     })
             }
-            ClientRequest::PamAuthenticate(account_id, cred) => {
-                debug!("pam authenticate");
+            ClientRequest::PamAuthenticateInit(account_id) => {
+                debug!("pam authenticate init");
+                pam_state = PamState::Step(account_id.clone());
                 cachelayer
-                    .pam_account_authenticate(account_id.as_str(), cred.as_str())
+                    .pam_account_authenticate_step(account_id.as_str(), None)
                     .await
-                    .map(ClientResponse::PamStatus)
                     .unwrap_or(ClientResponse::Error)
+            }
+            ClientRequest::PamAuthenticateStep(cred) => {
+                debug!("pam authenticate step");
+                match &pam_state {
+                    PamState::Step(account_id) => match cachelayer
+                        .pam_account_authenticate_step(account_id.as_str(), cred)
+                        .await
+                        .unwrap_or(ClientResponse::Error)
+                    {
+                        ClientResponse::PamPrompt(prompt) => {
+                            // A pam_prompt response indicates the transaction isn't complete
+                            ClientResponse::PamPrompt(prompt)
+                        }
+                        other => {
+                            // Any other response terminates the transaction
+                            pam_state = PamState::Uninitialized;
+                            other
+                        }
+                    },
+                    PamState::Uninitialized => ClientResponse::Error,
+                }
             }
             ClientRequest::PamAccountAllowed(account_id) => {
                 debug!("pam account allowed");

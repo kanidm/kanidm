@@ -19,7 +19,10 @@ use clap::Parser;
 use kanidm_unix_common::client::call_daemon;
 use kanidm_unix_common::constants::DEFAULT_CONFIG_PATH;
 use kanidm_unix_common::unix_config::KanidmUnixdConfig;
-use kanidm_unix_common::unix_proto::{ClientRequest, ClientResponse};
+use kanidm_unix_common::unix_proto::{
+    ClientRequest, ClientResponse, CredType, PamCred, PamMessageStyle, PamPrompt,
+};
+use std::io;
 use std::path::PathBuf;
 
 include!("./opt/tool.rs");
@@ -58,37 +61,99 @@ async fn main() -> ExitCode {
             return ExitCode::FAILURE
         };
 
-            let password = match rpassword::prompt_password("Enter Unix password: ") {
-                Ok(p) => p,
-                Err(e) => {
-                    error!("Problem getting input password: {}", e);
-                    return ExitCode::FAILURE;
-                }
-            };
-
-            let req = ClientRequest::PamAuthenticate(account_id.clone(), password);
+            let mut req = ClientRequest::PamAuthenticateInit(account_id.clone());
             let sereq = ClientRequest::PamAccountAllowed(account_id);
+            let mut prompt: PamPrompt = Default::default();
 
-            match call_daemon(cfg.sock_path.as_str(), req, cfg.unix_sock_timeout).await {
-                Ok(r) => match r {
-                    ClientResponse::PamStatus(Some(true)) => {
-                        println!("auth success!");
+            loop {
+                let timeout = match prompt.timeout {
+                    Some(timeout) => timeout,
+                    None => cfg.unix_sock_timeout,
+                };
+                match call_daemon(cfg.sock_path.as_str(), req, timeout).await {
+                    Ok(r) => match r {
+                        ClientResponse::PamPrompt(resp) => {
+                            prompt = resp;
+                        }
+                        ClientResponse::PamStatus(Some(true)) => {
+                            println!("auth success!");
+                            break;
+                        }
+                        ClientResponse::PamStatus(Some(false)) => {
+                            println!("auth failed!");
+                            break;
+                        }
+                        ClientResponse::PamStatus(None) => {
+                            println!("auth user unknown");
+                            break;
+                        }
+                        _ => {
+                            // unexpected response.
+                            error!("Error: unexpected response -> {:?}", r);
+                            break;
+                        }
+                    },
+                    Err(e) => {
+                        error!("Error -> {:?}", e);
+                        break;
                     }
-                    ClientResponse::PamStatus(Some(false)) => {
-                        println!("auth failed!");
-                    }
-                    ClientResponse::PamStatus(None) => {
-                        println!("auth user unknown");
-                    }
-                    _ => {
-                        // unexpected response.
-                        error!("Error: unexpected response -> {:?}", r);
-                    }
-                },
-                Err(e) => {
-                    error!("Error -> {:?}", e);
                 }
-            };
+
+                match prompt.style {
+                    PamMessageStyle::PamPromptEchoOff => {
+                        let password = match rpassword::prompt_password(prompt.msg) {
+                            Ok(p) => p,
+                            Err(e) => {
+                                error!("Problem getting input: {}", e);
+                                return ExitCode::FAILURE;
+                            }
+                        };
+                        match prompt.cred_type {
+                            Some(CredType::Password) => {
+                                req = ClientRequest::PamAuthenticateStep(Some(PamCred::Password(
+                                    password,
+                                )));
+                            }
+                            _ => {
+                                req = ClientRequest::PamAuthenticateStep(Some(PamCred::MFACode(
+                                    password,
+                                )));
+                            }
+                        }
+                    }
+                    PamMessageStyle::PamPromptEchoOn => {
+                        let mut passcode = String::new();
+                        match io::stdin().read_line(&mut passcode) {
+                            Ok(_) => {}
+                            Err(e) => {
+                                error!("Problem getting input: {}", e);
+                                return ExitCode::FAILURE;
+                            }
+                        }
+                        passcode = passcode.trim_end_matches('\n').to_string();
+                        match prompt.cred_type {
+                            Some(CredType::Password) => {
+                                req = ClientRequest::PamAuthenticateStep(Some(PamCred::Password(
+                                    passcode,
+                                )));
+                            }
+                            _ => {
+                                req = ClientRequest::PamAuthenticateStep(Some(PamCred::MFACode(
+                                    passcode,
+                                )));
+                            }
+                        }
+                    }
+                    PamMessageStyle::PamErrorMsg => {
+                        error!(prompt.msg);
+                        req = ClientRequest::PamAuthenticateStep(None);
+                    }
+                    PamMessageStyle::PamTextInfo => {
+                        info!(prompt.msg);
+                        req = ClientRequest::PamAuthenticateStep(None);
+                    }
+                }
+            }
 
             match call_daemon(cfg.sock_path.as_str(), sereq, cfg.unix_sock_timeout).await {
                 Ok(r) => match r {
