@@ -602,6 +602,9 @@ pub enum RawOpt {
 
 #[derive(Debug, Subcommand)]
 pub enum SelfOpt {
+    /// Use the identify user feature
+    #[clap(name = "identify-user")]
+    IdentifyUser(CommonOpt),
     /// Show the current authenticated user's identity
     Whoami(CommonOpt),
 }
