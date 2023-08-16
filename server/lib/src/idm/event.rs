@@ -352,7 +352,7 @@ impl AuthEventStep {
         AuthEventStep::Init(AuthEventStepInit {
             username: "anonymous".to_string(),
             issue: AuthIssueSession::Token,
-            privileged: Some(false),
+            privileged: false,
         })
     }
 
@@ -361,7 +361,7 @@ impl AuthEventStep {
         AuthEventStep::Init(AuthEventStepInit {
             username: name.to_string(),
             issue: AuthIssueSession::Token,
-            privileged: Some(false),
+            privileged: false,
         })
     }
 

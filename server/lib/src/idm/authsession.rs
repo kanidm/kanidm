@@ -77,7 +77,9 @@ impl fmt::Display for AuthType {
 
 #[derive(Debug, Clone)]
 enum AuthIntent {
-    InitialAuth,
+    InitialAuth {
+        privileged: bool,
+    },
     Reauth {
         session_id: Uuid,
         session_expiry: Option<OffsetDateTime>,
@@ -751,6 +753,7 @@ impl AuthSession {
     pub fn new(
         account: Account,
         issue: AuthIssueSession,
+        privileged: bool,
         webauthn: &Webauthn,
         ct: Duration,
         source: Source,
@@ -808,7 +811,7 @@ impl AuthSession {
                 account,
                 state,
                 issue,
-                intent: AuthIntent::InitialAuth,
+                intent: AuthIntent::InitialAuth { privileged },
                 source,
             };
             // Get the set of mechanisms that can proceed. This is tied
@@ -1109,7 +1112,7 @@ impl AuthSession {
     ) -> Result<UserAuthToken, OperationError> {
         security_debug!("Successful cred handling");
         match self.intent {
-            AuthIntent::InitialAuth => {
+            AuthIntent::InitialAuth { privileged } => {
                 let session_id = Uuid::new_v4();
                 // We need to actually work this out better, and then
                 // pass it to to_userauthtoken
@@ -1122,8 +1125,9 @@ impl AuthSession {
                 };
 
                 security_info!(
-                    "Issuing {:?} session {} for {} {}",
+                    "Issuing {:?} session ({:?}) {} for {} {}",
                     self.issue,
+                    scope,
                     session_id,
                     self.account.spn,
                     self.account.uuid
@@ -1282,6 +1286,7 @@ mod tests {
         let (session, state) = AuthSession::new(
             anon_account,
             AuthIssueSession::Token,
+            Some(false),
             &webauthn,
             duration_from_epoch_now(),
             Source::Internal,
@@ -1316,6 +1321,7 @@ mod tests {
             let (session, state) = AuthSession::new(
                 $account.clone(),
                 AuthIssueSession::Token,
+                Some(false),
                 $webauthn,
                 duration_from_epoch_now(),
                 Source::Internal,
@@ -1464,6 +1470,7 @@ mod tests {
             let (session, state) = AuthSession::new(
                 $account.clone(),
                 AuthIssueSession::Token,
+                Some(false),
                 $webauthn,
                 duration_from_epoch_now(),
                 Source::Internal,
@@ -1790,6 +1797,7 @@ mod tests {
             let (session, state) = AuthSession::new(
                 $account.clone(),
                 AuthIssueSession::Token,
+                Some(false),
                 $webauthn,
                 duration_from_epoch_now(),
                 Source::Internal,
