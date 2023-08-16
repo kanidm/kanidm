@@ -146,6 +146,12 @@ async fn main() -> ExitCode {
     // Read CLI args, determine what the user has asked us to do.
     let opt = KanidmdParser::parse();
 
+    // print the app version and bail
+    if let KanidmdOpt::Version(_) = &opt.commands {
+        println!("kanidmd {}", env!("KANIDM_PKG_VERSION"));
+        return ExitCode::SUCCESS;
+    };
+
     //we set up a list of these so we can set the log config THEN log out the errors.
     let mut config_error: Vec<String> = Vec::new();
     let mut config = Configuration::new();
@@ -232,12 +238,6 @@ async fn main() -> ExitCode {
                     return ExitCode::FAILURE
                 }
                 (cuid, ceuid)
-            };
-
-            // print the app version and bail
-            if let KanidmdOpt::Version(_) = &opt.commands {
-                println!("kanidmd {}",  env!("KANIDM_PKG_VERSION"));
-                return ExitCode::SUCCESS
             };
 
             let sconfig = match sconfig {
