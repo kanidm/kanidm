@@ -202,8 +202,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
     pub fn migrate_8_to_9(&mut self) -> Result<(), OperationError> {
         admin_warn!("starting 8 to 9 migration.");
         let filt = filter_all!(f_or!([
-            f_eq("class", AcpClass::OAuth2ResourceServer.into()),
-            f_eq("class", AcpClass::OAuth2ResourceServerBasic.into()),
+            f_eq("class", ValueClass::OAuth2ResourceServer.into()),
+            f_eq("class", ValueClass::OAuth2ResourceServerBasic.into()),
         ]));
 
         let pre_candidates = self.internal_search(filt).map_err(|e| {
@@ -291,7 +291,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         ]));
         // This "does nothing" since everything has object anyway, but it forces the entry to be
         // loaded and rewritten.
-        let modlist = ModifyList::new_append("class", AcpClass::Object.to_value());
+        let modlist = ModifyList::new_append("class", ValueClass::Object.to_value());
         self.internal_modify(&filter, &modlist)
         // Complete
     }
@@ -406,7 +406,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     pub fn migrate_12_to_13(&mut self) -> Result<(), OperationError> {
         admin_warn!("starting 12 to 13 migration.");
         let filter = filter!(f_and!([
-            f_eq("class", AcpClass::DomainInfo.into()),
+            f_eq("class", ValueClass::DomainInfo.into()),
             f_eq("uuid", PVUUID_DOMAIN_INFO.clone()),
         ]));
         // Delete the existing cookie key to trigger a regeneration.

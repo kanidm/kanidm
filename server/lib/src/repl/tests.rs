@@ -245,8 +245,8 @@ async fn test_repl_increment_basic_entry_add(server_a: &QueryServer, server_b: &
     let t_uuid = Uuid::new_v4();
     assert!(server_b_txn
         .internal_create(vec![entry_init!(
-            ("class", AcpClass::Object.to_value()),
-            ("class", AcpClass::Person.to_value()),
+            ("class", ValueClass::Object.to_value()),
+            ("class", ValueClass::Person.to_value()),
             ("name", Value::new_iname("testperson1")),
             ("uuid", Value::Uuid(t_uuid)),
             ("description", Value::new_utf8s("testperson1")),
@@ -348,8 +348,8 @@ async fn test_repl_increment_basic_entry_recycle(server_a: &QueryServer, server_
     let t_uuid = Uuid::new_v4();
     assert!(server_b_txn
         .internal_create(vec![entry_init!(
-            ("class", AcpClass::Object.to_value()),
-            ("class", AcpClass::Person.to_value()),
+            ("class", ValueClass::Object.to_value()),
+            ("class", ValueClass::Person.to_value()),
             ("name", Value::new_iname("testperson1")),
             ("uuid", Value::Uuid(t_uuid)),
             ("description", Value::new_utf8s("testperson1")),
@@ -406,8 +406,8 @@ async fn test_repl_increment_basic_entry_tombstone(server_a: &QueryServer, serve
     let t_uuid = Uuid::new_v4();
     assert!(server_b_txn
         .internal_create(vec![entry_init!(
-            ("class", AcpClass::Object.to_value()),
-            ("class", AcpClass::Person.to_value()),
+            ("class", ValueClass::Object.to_value()),
+            ("class", ValueClass::Person.to_value()),
             ("name", Value::new_iname("testperson1")),
             ("uuid", Value::Uuid(t_uuid)),
             ("description", Value::new_utf8s("testperson1")),
@@ -446,7 +446,7 @@ async fn test_repl_increment_basic_entry_tombstone(server_a: &QueryServer, serve
         .internal_search_all_uuid(t_uuid)
         .expect("Unable to access entry.");
 
-    assert!(e1.attribute_equality("class", &AcpClass::Tombstone.into()));
+    assert!(e1.attribute_equality("class", &ValueClass::Tombstone.into()));
 
     assert!(e1 == e2);
 
@@ -476,8 +476,8 @@ async fn test_repl_increment_consumer_lagging_tombstone(
     let t_uuid = Uuid::new_v4();
     assert!(server_b_txn
         .internal_create(vec![entry_init!(
-            ("class", AcpClass::Object.to_value()),
-            ("class", AcpClass::Person.to_value()),
+            ("class", ValueClass::Object.to_value()),
+            ("class", ValueClass::Person.to_value()),
             ("name", Value::new_iname("testperson1")),
             ("uuid", Value::Uuid(t_uuid)),
             ("description", Value::new_utf8s("testperson1")),
@@ -579,8 +579,8 @@ async fn test_repl_increment_basic_bidirectional_write(
     let t_uuid = Uuid::new_v4();
     assert!(server_b_txn
         .internal_create(vec![entry_init!(
-            ("class", AcpClass::Object.to_value()),
-            ("class", AcpClass::Person.to_value()),
+            ("class", ValueClass::Object.to_value()),
+            ("class", ValueClass::Person.to_value()),
             ("name", Value::new_iname("testperson1")),
             ("uuid", Value::Uuid(t_uuid)),
             ("description", Value::new_utf8s("testperson1")),
@@ -662,8 +662,8 @@ async fn test_repl_increment_simultaneous_bidirectional_write(
     let t_uuid = Uuid::new_v4();
     assert!(server_b_txn
         .internal_create(vec![entry_init!(
-            ("class", AcpClass::Object.to_value()),
-            ("class", AcpClass::Person.to_value()),
+            ("class", ValueClass::Object.to_value()),
+            ("class", ValueClass::Person.to_value()),
             ("name", Value::new_iname("testperson1")),
             ("uuid", Value::Uuid(t_uuid)),
             ("description", Value::new_utf8s("testperson1")),
@@ -773,8 +773,8 @@ async fn test_repl_increment_basic_bidirectional_lifecycle(
     let t_uuid = Uuid::new_v4();
     assert!(server_b_txn
         .internal_create(vec![entry_init!(
-            ("class", AcpClass::Object.to_value()),
-            ("class", AcpClass::Person.to_value()),
+            ("class", ValueClass::Object.to_value()),
+            ("class", ValueClass::Person.to_value()),
             ("name", Value::new_iname("testperson1")),
             ("uuid", Value::Uuid(t_uuid)),
             ("description", Value::new_utf8s("testperson1")),
@@ -827,7 +827,7 @@ async fn test_repl_increment_basic_bidirectional_lifecycle(
 
     // They are consistent again.
     assert!(e1 == e2);
-    assert!(e1.attribute_equality("class", &AcpClass::Recycled.into()));
+    assert!(e1.attribute_equality("class", &ValueClass::Recycled.into()));
 
     server_b_txn.commit().expect("Failed to commit");
     drop(server_a_txn);
@@ -861,9 +861,9 @@ async fn test_repl_increment_basic_bidirectional_lifecycle(
     // They are NOT consistent.
     assert!(e1 != e2);
     // E1 from A is NOT a tombstone ... yet.
-    assert!(!e1.attribute_equality("class", &AcpClass::Tombstone.into()));
+    assert!(!e1.attribute_equality("class", &ValueClass::Tombstone.into()));
     // E2 from B is a tombstone!
-    assert!(e2.attribute_equality("class", &AcpClass::Tombstone.into()));
+    assert!(e2.attribute_equality("class", &ValueClass::Tombstone.into()));
 
     server_b_txn.commit().expect("Failed to commit");
     drop(server_a_txn);
@@ -882,7 +882,7 @@ async fn test_repl_increment_basic_bidirectional_lifecycle(
         .expect("Unable to access entry.");
 
     // Ts on both.
-    assert!(e1.attribute_equality("class", &AcpClass::Tombstone.into()));
+    assert!(e1.attribute_equality("class", &ValueClass::Tombstone.into()));
     assert!(e1 == e2);
 
     server_a_txn.commit().expect("Failed to commit");
@@ -914,8 +914,8 @@ async fn test_repl_increment_basic_bidirectional_recycle(
     let t_uuid = Uuid::new_v4();
     assert!(server_b_txn
         .internal_create(vec![entry_init!(
-            ("class", AcpClass::Object.to_value()),
-            ("class", AcpClass::Person.to_value()),
+            ("class", ValueClass::Object.to_value()),
+            ("class", ValueClass::Person.to_value()),
             ("name", Value::new_iname("testperson1")),
             ("uuid", Value::Uuid(t_uuid)),
             ("description", Value::new_utf8s("testperson1")),
@@ -973,7 +973,7 @@ async fn test_repl_increment_basic_bidirectional_recycle(
     // They are equal, but their CL states are not. e2 should have been
     // retained due to being the latest!
     assert!(e1 == e2);
-    assert!(e1.attribute_equality("class", &AcpClass::Recycled.into()));
+    assert!(e1.attribute_equality("class", &ValueClass::Recycled.into()));
 
     // Remember entry comparison doesn't compare last_mod_cid.
     assert!(e1.get_last_changed() < e2.get_last_changed());
@@ -1037,8 +1037,8 @@ async fn test_repl_increment_basic_bidirectional_tombstone(
     let t_uuid = Uuid::new_v4();
     assert!(server_b_txn
         .internal_create(vec![entry_init!(
-            ("class", AcpClass::Object.to_value()),
-            ("class", AcpClass::Person.to_value()),
+            ("class", ValueClass::Object.to_value()),
+            ("class", ValueClass::Person.to_value()),
             ("name", Value::new_iname("testperson1")),
             ("uuid", Value::Uuid(t_uuid)),
             ("description", Value::new_utf8s("testperson1")),
@@ -1091,8 +1091,8 @@ async fn test_repl_increment_basic_bidirectional_tombstone(
         .internal_search_all_uuid(t_uuid)
         .expect("Unable to access entry.");
 
-    assert!(e1.attribute_equality("class", &AcpClass::Tombstone.into()));
-    assert!(e2.attribute_equality("class", &AcpClass::Tombstone.into()));
+    assert!(e1.attribute_equality("class", &ValueClass::Tombstone.into()));
+    assert!(e2.attribute_equality("class", &ValueClass::Tombstone.into()));
     trace!("{:?}", e1.get_last_changed());
     trace!("{:?}", e2.get_last_changed());
     assert!(e1.get_last_changed() < e2.get_last_changed());
@@ -1113,8 +1113,8 @@ async fn test_repl_increment_basic_bidirectional_tombstone(
         .internal_search_all_uuid(t_uuid)
         .expect("Unable to access entry.");
 
-    assert!(e1.attribute_equality("class", &AcpClass::Tombstone.into()));
-    assert!(e2.attribute_equality("class", &AcpClass::Tombstone.into()));
+    assert!(e1.attribute_equality("class", &ValueClass::Tombstone.into()));
+    assert!(e2.attribute_equality("class", &ValueClass::Tombstone.into()));
     assert!(e1.get_last_changed() == e2.get_last_changed());
 
     server_b_txn.commit().expect("Failed to commit");
@@ -1141,8 +1141,8 @@ async fn test_repl_increment_creation_uuid_conflict(
     // Now create the same entry on both servers.
     let t_uuid = Uuid::new_v4();
     let e_init = entry_init!(
-        ("class", AcpClass::Object.to_value()),
-        ("class", AcpClass::Person.to_value()),
+        ("class", ValueClass::Object.to_value()),
+        ("class", ValueClass::Person.to_value()),
         ("name", Value::new_iname("testperson1")),
         ("uuid", Value::Uuid(t_uuid)),
         ("description", Value::new_utf8s("testperson1")),
@@ -1272,8 +1272,8 @@ async fn test_repl_increment_create_tombstone_uuid_conflict(
     // Now create the same entry on both servers.
     let t_uuid = Uuid::new_v4();
     let e_init = entry_init!(
-        ("class", AcpClass::Object.to_value()),
-        ("class", AcpClass::Person.to_value()),
+        ("class", ValueClass::Object.to_value()),
+        ("class", ValueClass::Person.to_value()),
         ("name", Value::new_iname("testperson1")),
         ("uuid", Value::Uuid(t_uuid)),
         ("description", Value::new_utf8s("testperson1")),
@@ -1319,9 +1319,9 @@ async fn test_repl_increment_create_tombstone_uuid_conflict(
         .expect("Unable to access entry.");
     assert!(e1 != e2);
     // E1 from A is a ts
-    assert!(e1.attribute_equality("class", &AcpClass::Tombstone.into()));
+    assert!(e1.attribute_equality("class", &ValueClass::Tombstone.into()));
     // E2 from B is not a TS
-    assert!(!e2.attribute_equality("class", &AcpClass::Tombstone.into()));
+    assert!(!e2.attribute_equality("class", &ValueClass::Tombstone.into()));
 
     server_a_txn.commit().expect("Failed to commit");
     drop(server_b_txn);
@@ -1341,7 +1341,7 @@ async fn test_repl_increment_create_tombstone_uuid_conflict(
         .internal_search_all_uuid(t_uuid)
         .expect("Unable to access entry.");
     assert!(e1 == e2);
-    assert!(e1.attribute_equality("class", &AcpClass::Tombstone.into()));
+    assert!(e1.attribute_equality("class", &ValueClass::Tombstone.into()));
 
     server_b_txn.commit().expect("Failed to commit");
     drop(server_a_txn);
@@ -1365,8 +1365,8 @@ async fn test_repl_increment_create_tombstone_conflict(
     // Now create the same entry on both servers.
     let t_uuid = Uuid::new_v4();
     let e_init = entry_init!(
-        ("class", AcpClass::Object.to_value()),
-        ("class", AcpClass::Person.to_value()),
+        ("class", ValueClass::Object.to_value()),
+        ("class", ValueClass::Person.to_value()),
         ("name", Value::new_iname("testperson1")),
         ("uuid", Value::Uuid(t_uuid)),
         ("description", Value::new_utf8s("testperson1")),
@@ -1416,8 +1416,8 @@ async fn test_repl_increment_create_tombstone_conflict(
 
     assert!(e1.get_last_changed() > e2.get_last_changed());
     // Yet, they are both TS. Curious.
-    assert!(e1.attribute_equality("class", &AcpClass::Tombstone.into()));
-    assert!(e2.attribute_equality("class", &AcpClass::Tombstone.into()));
+    assert!(e1.attribute_equality("class", &ValueClass::Tombstone.into()));
+    assert!(e2.attribute_equality("class", &ValueClass::Tombstone.into()));
 
     server_b_txn.commit().expect("Failed to commit");
     drop(server_a_txn);
@@ -1437,7 +1437,7 @@ async fn test_repl_increment_create_tombstone_conflict(
         .expect("Unable to access entry.");
 
     assert!(e1 == e2);
-    assert!(e1.attribute_equality("class", &AcpClass::Tombstone.into()));
+    assert!(e1.attribute_equality("class", &ValueClass::Tombstone.into()));
 
     server_a_txn.commit().expect("Failed to commit");
     drop(server_b_txn);
@@ -1461,8 +1461,8 @@ async fn test_repl_increment_schema_conflict(server_a: &QueryServer, server_b: &
     let t_uuid = Uuid::new_v4();
     assert!(server_b_txn
         .internal_create(vec![entry_init!(
-            ("class", AcpClass::Object.to_value()),
-            ("class", AcpClass::Person.to_value()),
+            ("class", ValueClass::Object.to_value()),
+            ("class", ValueClass::Person.to_value()),
             ("name", Value::new_iname("testperson1")),
             ("uuid", Value::Uuid(t_uuid)),
             ("description", Value::new_utf8s("testperson1")),
@@ -1534,7 +1534,7 @@ async fn test_repl_increment_schema_conflict(server_a: &QueryServer, server_b: &
         .internal_search_all_uuid(t_uuid)
         .expect("Unable to access new entry.");
 
-    assert!(e1.attribute_equality("class", &AcpClass::Conflict.into()));
+    assert!(e1.attribute_equality("class", &ValueClass::Conflict.into()));
 
     server_a_txn.commit().expect("Failed to commit");
     drop(server_b_txn);
@@ -1550,7 +1550,7 @@ async fn test_repl_increment_schema_conflict(server_a: &QueryServer, server_b: &
         .internal_search_all_uuid(t_uuid)
         .expect("Unable to access entry.");
 
-    assert!(e2.attribute_equality("class", &AcpClass::Conflict.into()));
+    assert!(e2.attribute_equality("class", &ValueClass::Conflict.into()));
 
     server_b_txn.commit().expect("Failed to commit");
     drop(server_a_txn);
@@ -1578,8 +1578,8 @@ async fn test_repl_increment_consumer_lagging_attributes(
     let t_uuid = Uuid::new_v4();
     assert!(server_b_txn
         .internal_create(vec![entry_init!(
-            ("class", AcpClass::Object.to_value()),
-            ("class", AcpClass::Person.to_value()),
+            ("class", ValueClass::Object.to_value()),
+            ("class", ValueClass::Person.to_value()),
             ("name", Value::new_iname("testperson1")),
             ("uuid", Value::Uuid(t_uuid)),
             ("description", Value::new_utf8s("testperson1")),

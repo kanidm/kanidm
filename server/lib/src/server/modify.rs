@@ -188,21 +188,21 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 .iter()
                 .chain(pre_candidates.iter().map(|e| e.as_ref()))
                 .any(|e| {
-                    e.attribute_equality("class", &AcpClass::ClassType.into())
-                        || e.attribute_equality("class", &AcpClass::AttributeType.into())
+                    e.attribute_equality("class", &ValueClass::ClassType.into())
+                        || e.attribute_equality("class", &ValueClass::AttributeType.into())
                 });
         }
         if !self.changed_acp {
             self.changed_acp = norm_cand
                 .iter()
                 .chain(pre_candidates.iter().map(|e| e.as_ref()))
-                .any(|e| e.attribute_equality("class", &AcpClass::AccessControlProfile.into()))
+                .any(|e| e.attribute_equality("class", &ValueClass::AccessControlProfile.into()))
         }
         if !self.changed_oauth2 {
             self.changed_oauth2 = norm_cand
                 .iter()
                 .chain(pre_candidates.iter().map(|e| e.as_ref()))
-                .any(|e| e.attribute_equality("class", &AcpClass::OAuth2ResourceServer.into()));
+                .any(|e| e.attribute_equality("class", &ValueClass::OAuth2ResourceServer.into()));
         }
         if !self.changed_domain {
             self.changed_domain = norm_cand
@@ -214,7 +214,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             self.changed_sync_agreement = norm_cand
                 .iter()
                 .chain(pre_candidates.iter().map(|e| e.as_ref()))
-                .any(|e| e.attribute_equality("class", &AcpClass::SyncAccount.into()));
+                .any(|e| e.attribute_equality("class", &ValueClass::SyncAccount.into()));
         }
 
         self.changed_uuid.extend(
@@ -340,20 +340,20 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 .iter()
                 .chain(pre_candidates.iter().map(|e| e.as_ref()))
                 .any(|e| {
-                    e.attribute_equality("class", &AcpClass::ClassType.into())
-                        || e.attribute_equality("class", &AcpClass::AttributeType.into())
+                    e.attribute_equality("class", &ValueClass::ClassType.into())
+                        || e.attribute_equality("class", &ValueClass::AttributeType.into())
                 });
         }
         if !self.changed_acp {
             self.changed_acp = norm_cand
                 .iter()
                 .chain(pre_candidates.iter().map(|e| e.as_ref()))
-                .any(|e| e.attribute_equality("class", &AcpClass::AccessControlProfile.into()));
+                .any(|e| e.attribute_equality("class", &ValueClass::AccessControlProfile.into()));
         }
         if !self.changed_oauth2 {
             self.changed_oauth2 = norm_cand
                 .iter()
-                .any(|e| e.attribute_equality("class", &AcpClass::OAuth2ResourceServer.into()));
+                .any(|e| e.attribute_equality("class", &ValueClass::OAuth2ResourceServer.into()));
         }
         if !self.changed_domain {
             self.changed_domain = norm_cand
@@ -482,8 +482,8 @@ mod tests {
         let mut server_txn = server.write(duration_from_epoch_now()).await;
 
         let e1 = entry_init!(
-            ("class", AcpClass::Object.to_value()),
-            ("class", AcpClass::Person.to_value()),
+            ("class", ValueClass::Object.to_value()),
+            ("class", ValueClass::Person.to_value()),
             ("name", Value::new_iname("testperson1")),
             (
                 "uuid",
@@ -494,8 +494,8 @@ mod tests {
         );
 
         let e2 = entry_init!(
-            ("class", AcpClass::Object.to_value()),
-            ("class", AcpClass::Person.to_value()),
+            ("class", ValueClass::Object.to_value()),
+            ("class", ValueClass::Person.to_value()),
             ("name", Value::new_iname("testperson2")),
             (
                 "uuid",
@@ -596,7 +596,7 @@ mod tests {
 
         assert!(server_txn
             .internal_create(vec![entry_init!(
-                ("class", AcpClass::Object.to_value()),
+                ("class", ValueClass::Object.to_value()),
                 ("uuid", Value::Uuid(t_uuid))
             ),])
             .is_ok());
@@ -632,8 +632,8 @@ mod tests {
         let mut server_txn = server.write(duration_from_epoch_now()).await;
 
         let e1 = entry_init!(
-            ("class", AcpClass::Object.to_value()),
-            ("class", AcpClass::Person.to_value()),
+            ("class", ValueClass::Object.to_value()),
+            ("class", ValueClass::Person.to_value()),
             ("name", Value::new_iname("testperson1")),
             (
                 "uuid",
@@ -653,7 +653,7 @@ mod tests {
             filter!(f_eq("name", PartialValue::new_iname("testperson1"))),
             ModifyList::new_list(vec![Modify::Present(
                 AttrString::from("class"),
-                AcpClass::SystemInfo.to_value(),
+                ValueClass::SystemInfo.to_value(),
             )]),
         );
         assert!(server_txn.modify(&me_sin).is_err());
@@ -672,7 +672,7 @@ mod tests {
         let me_sin = ModifyEvent::new_internal_invalid(
             filter!(f_eq("name", PartialValue::new_iname("testperson1"))),
             ModifyList::new_list(vec![
-                Modify::Present(AttrString::from("class"), AcpClass::SystemInfo.to_value()),
+                Modify::Present(AttrString::from("class"), ValueClass::SystemInfo.to_value()),
                 // Modify::Present("domain".to_string(), Value::new_iutf8("domain.name")),
                 Modify::Present(AttrString::from("version"), Value::new_uint32(1)),
             ]),
@@ -693,9 +693,9 @@ mod tests {
     #[qs_test]
     async fn test_modify_password_only(server: &QueryServer) {
         let e1 = entry_init!(
-            ("class", AcpClass::Object.to_value()),
-            ("class", AcpClass::Person.to_value()),
-            ("class", AcpClass::Account.to_value()),
+            ("class", ValueClass::Object.to_value()),
+            ("class", ValueClass::Person.to_value()),
+            ("class", ValueClass::Account.to_value()),
             ("name", Value::new_iname("testperson1")),
             (
                 "uuid",

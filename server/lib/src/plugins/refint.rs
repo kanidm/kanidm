@@ -222,7 +222,7 @@ impl ReferentialIntegrity {
         // Fast Path
         let mut vsiter = cand.iter().flat_map(|c| {
             // If it's dyngroup, skip member since this will be reset in the next step.
-            let dyn_group = c.attribute_equality("class", &AcpClass::DynGroup.into());
+            let dyn_group = c.attribute_equality("class", &ValueClass::DynGroup.into());
 
             ref_types.values().filter_map(move |rtype| {
                 // Skip dynamic members
@@ -729,9 +729,9 @@ mod tests {
         // scope maps, so we need to check that when the group is deleted, that the
         // scope map is also appropriately affected.
         let ea: Entry<EntryInit, EntryNew> = entry_init!(
-            ("class", AcpClass::Object.to_value()),
-            ("class", AcpClass::OAuth2ResourceServer.to_value()),
-            // ("class", AcpClass::OAuth2ResourceServerBasic.into()),
+            ("class", ValueClass::Object.to_value()),
+            ("class", ValueClass::OAuth2ResourceServer.to_value()),
+            // ("class", ValueClass::OAuth2ResourceServerBasic.into()),
             ("oauth2_rs_name", Value::new_iname("test_resource_server")),
             ("displayname", Value::new_utf8s("test_resource_server")),
             (
@@ -749,7 +749,7 @@ mod tests {
         );
 
         let eb: Entry<EntryInit, EntryNew> = entry_init!(
-            ("class", AcpClass::Group.to_value()),
+            ("class", ValueClass::Group.to_value()),
             ("name", Value::new_iname("testgroup")),
             (
                 "uuid",
@@ -796,9 +796,9 @@ mod tests {
         let rs_uuid = Uuid::new_v4();
 
         let e1 = entry_init!(
-            ("class", AcpClass::Object.to_value()),
-            ("class", AcpClass::Person.to_value()),
-            ("class", AcpClass::Account.to_value()),
+            ("class", ValueClass::Object.to_value()),
+            ("class", ValueClass::Person.to_value()),
+            ("class", ValueClass::Account.to_value()),
             ("name", Value::new_iname("testperson1")),
             ("uuid", Value::Uuid(tuuid)),
             ("description", Value::new_utf8s("testperson1")),
@@ -810,9 +810,9 @@ mod tests {
         );
 
         let e2 = entry_init!(
-            ("class", AcpClass::Object.to_value()),
-            ("class", AcpClass::OAuth2ResourceServer.to_value()),
-            // ("class", AcpClass::OAuth2ResourceServerBasic.into()),
+            ("class", ValueClass::Object.to_value()),
+            ("class", ValueClass::OAuth2ResourceServer.to_value()),
+            // ("class", ValueClass::OAuth2ResourceServerBasic.into()),
             ("uuid", Value::Uuid(rs_uuid)),
             ("oauth2_rs_name", Value::new_iname("test_resource_server")),
             ("displayname", Value::new_utf8s("test_resource_server")),
@@ -919,9 +919,9 @@ mod tests {
         let inv_mb_uuid = Uuid::new_v4();
 
         let e_dyn = entry_init!(
-            ("class", AcpClass::Object.to_value()),
-            ("class", AcpClass::Group.to_value()),
-            ("class", AcpClass::DynGroup.to_value()),
+            ("class", ValueClass::Object.to_value()),
+            ("class", ValueClass::Group.to_value()),
+            ("class", ValueClass::DynGroup.to_value()),
             ("uuid", Value::Uuid(dyn_uuid)),
             ("name", Value::new_iname("test_dyngroup")),
             ("dynmember", Value::Refer(inv_mb_uuid)),
@@ -932,8 +932,8 @@ mod tests {
         );
 
         let e_group: Entry<EntryInit, EntryNew> = entry_init!(
-            ("class", AcpClass::Group.to_value()),
-            ("class", AcpClass::MemberOf.to_value()),
+            ("class", ValueClass::Group.to_value()),
+            ("class", ValueClass::MemberOf.to_value()),
             ("name", Value::new_iname("testgroup")),
             ("uuid", Value::Uuid(tgroup_uuid)),
             ("memberof", Value::Refer(inv_mo_uuid))

@@ -6,7 +6,7 @@ use criterion::{
 
 use kanidmd_lib::entry::{Entry, EntryInit, EntryNew};
 use kanidmd_lib::entry_init;
-use kanidmd_lib::prelude::AcpClass;
+use kanidmd_lib::prelude::ValueClass;
 use kanidmd_lib::utils::duration_from_epoch_now;
 use kanidmd_lib::value::Value;
 
@@ -40,9 +40,9 @@ pub fn scaling_user_create_single(c: &mut Criterion) {
                                 let mut idms_prox_write = idms.proxy_write(ct).await;
                                 let name = format!("testperson_{counter}");
                                 let e1 = entry_init!(
-                                    ("class", AcpClass::Object.to_value()),
-                                    ("class", AcpClass::Person.to_value()),
-                                    ("class", AcpClass::Account.to_value()),
+                                    ("class", ValueClass::Object.to_value()),
+                                    ("class", ValueClass::Person.to_value()),
+                                    ("class", ValueClass::Account.to_value()),
                                     ("name", Value::new_iname(&name)),
                                     ("description", Value::new_utf8s("criterion")),
                                     ("displayname", Value::new_utf8s(&name))
@@ -81,9 +81,9 @@ pub fn scaling_user_create_batched(c: &mut Criterion) {
                     .map(|i| {
                         let name = format!("testperson_{i}");
                         entry_init!(
-                            ("class", AcpClass::Object.to_value()),
-                            ("class", AcpClass::Person.to_value()),
-                            ("class", AcpClass::Account.to_value()),
+                            ("class", ValueClass::Object.to_value()),
+                            ("class", ValueClass::Person.to_value()),
+                            ("class", ValueClass::Account.to_value()),
                             ("name", Value::new_iname(&name)),
                             ("description", Value::new_utf8s("criterion")),
                             ("displayname", Value::new_utf8s(&name))

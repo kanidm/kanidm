@@ -1363,7 +1363,7 @@ mod tests {
     #[test]
     fn test_filter_simple() {
         // Test construction.
-        let _filt: Filter<FilterInvalid> = filter!(f_eq("class", AcpClass::User.into()));
+        let _filt: Filter<FilterInvalid> = filter!(f_eq("class", ValueClass::User.into()));
 
         // AFTER
         let _complex_filt: Filter<FilterInvalid> = filter!(f_and!([
@@ -1371,7 +1371,7 @@ mod tests {
                 f_eq("userid", PartialValue::new_iutf8("test_a")),
                 f_eq("userid", PartialValue::new_iutf8("test_b")),
             ]),
-            f_sub("class", AcpClass::User.into()),
+            f_sub("class", ValueClass::User.into()),
         ]));
     }
 
@@ -1402,33 +1402,39 @@ mod tests {
         sketching::test_init();
         // Given sets of "optimisable" filters, optimise them.
         filter_optimise_assert!(
-            f_and(vec![f_and(vec![f_eq("class", AcpClass::TestClass.into())])]),
-            f_eq("class", AcpClass::TestClass.into())
+            f_and(vec![f_and(vec![f_eq(
+                "class",
+                ValueClass::TestClass.into()
+            )])]),
+            f_eq("class", ValueClass::TestClass.into())
         );
 
         filter_optimise_assert!(
-            f_or(vec![f_or(vec![f_eq("class", AcpClass::TestClass.into())])]),
-            f_eq("class", AcpClass::TestClass.into())
+            f_or(vec![f_or(vec![f_eq(
+                "class",
+                ValueClass::TestClass.into()
+            )])]),
+            f_eq("class", ValueClass::TestClass.into())
         );
 
         filter_optimise_assert!(
             f_and(vec![f_or(vec![f_and(vec![f_eq(
                 "class",
-                AcpClass::TestClass.to_partialvalue()
+                ValueClass::TestClass.to_partialvalue()
             )])])]),
-            f_eq("class", AcpClass::TestClass.to_partialvalue())
+            f_eq("class", ValueClass::TestClass.to_partialvalue())
         );
 
         // Later this can test duplicate filter detection.
         filter_optimise_assert!(
             f_and(vec![
-                f_and(vec![f_eq("class", AcpClass::TestClass.to_partialvalue())]),
+                f_and(vec![f_eq("class", ValueClass::TestClass.to_partialvalue())]),
                 f_sub("class", PartialValue::new_class("te")),
                 f_pres("class"),
-                f_eq("class", AcpClass::TestClass.to_partialvalue())
+                f_eq("class", ValueClass::TestClass.to_partialvalue())
             ]),
             f_and(vec![
-                f_eq("class", AcpClass::TestClass.to_partialvalue()),
+                f_eq("class", ValueClass::TestClass.to_partialvalue()),
                 f_pres("class"),
                 f_sub("class", PartialValue::new_class("te")),
             ])
@@ -1439,16 +1445,16 @@ mod tests {
             f_and(vec![
                 f_and(vec![
                     f_eq("class", PartialValue::new_class("foo")),
-                    f_eq("class", AcpClass::TestClass.to_partialvalue()),
+                    f_eq("class", ValueClass::TestClass.to_partialvalue()),
                     f_eq("uid", PartialValue::new_class("bar")),
                 ]),
                 f_sub("class", PartialValue::new_class("te")),
                 f_pres("class"),
-                f_eq("class", AcpClass::TestClass.to_partialvalue())
+                f_eq("class", ValueClass::TestClass.to_partialvalue())
             ]),
             f_and(vec![
                 f_eq("class", PartialValue::new_class("foo")),
-                f_eq("class", AcpClass::TestClass.to_partialvalue()),
+                f_eq("class", ValueClass::TestClass.to_partialvalue()),
                 f_pres("class"),
                 f_eq("uid", PartialValue::new_class("bar")),
                 f_sub("class", PartialValue::new_class("te")),
@@ -1457,34 +1463,34 @@ mod tests {
 
         filter_optimise_assert!(
             f_or(vec![
-                f_eq("class", AcpClass::TestClass.to_partialvalue()),
+                f_eq("class", ValueClass::TestClass.to_partialvalue()),
                 f_pres("class"),
                 f_sub("class", PartialValue::new_class("te")),
-                f_or(vec![f_eq("class", AcpClass::TestClass.to_partialvalue())]),
+                f_or(vec![f_eq("class", ValueClass::TestClass.to_partialvalue())]),
             ]),
             f_or(vec![
                 f_sub("class", PartialValue::new_class("te")),
                 f_pres("class"),
-                f_eq("class", AcpClass::TestClass.to_partialvalue())
+                f_eq("class", ValueClass::TestClass.to_partialvalue())
             ])
         );
 
         // Test dedup doesn't affect nested items incorrectly.
         filter_optimise_assert!(
             f_or(vec![
-                f_eq("class", AcpClass::TestClass.to_partialvalue()),
+                f_eq("class", ValueClass::TestClass.to_partialvalue()),
                 f_and(vec![
-                    f_eq("class", AcpClass::TestClass.to_partialvalue()),
-                    f_eq("term", AcpClass::TestClass.to_partialvalue()),
-                    f_or(vec![f_eq("class", AcpClass::TestClass.to_partialvalue())])
+                    f_eq("class", ValueClass::TestClass.to_partialvalue()),
+                    f_eq("term", ValueClass::TestClass.to_partialvalue()),
+                    f_or(vec![f_eq("class", ValueClass::TestClass.to_partialvalue())])
                 ]),
             ]),
             f_or(vec![
                 f_and(vec![
-                    f_eq("class", AcpClass::TestClass.to_partialvalue()),
-                    f_eq("term", AcpClass::TestClass.to_partialvalue())
+                    f_eq("class", ValueClass::TestClass.to_partialvalue()),
+                    f_eq("term", ValueClass::TestClass.to_partialvalue())
                 ]),
-                f_eq("class", AcpClass::TestClass.to_partialvalue()),
+                f_eq("class", ValueClass::TestClass.to_partialvalue()),
             ])
         );
     }
@@ -1678,7 +1684,7 @@ mod tests {
     #[test]
     fn test_nested_entry_filter() {
         let e1 = entry_init!(
-            ("class", AcpClass::Person.to_value().clone()),
+            ("class", ValueClass::Person.to_value().clone()),
             (
                 "uuid",
                 Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
@@ -1688,7 +1694,7 @@ mod tests {
         .into_sealed_new();
 
         let e2 = entry_init!(
-            ("class", AcpClass::Person.to_value().clone()),
+            ("class", ValueClass::Person.to_value().clone()),
             (
                 "uuid",
                 Value::Uuid(uuid::uuid!("4b6228ab-1dbe-42a4-a9f5-f6368222438e"))
@@ -1698,7 +1704,7 @@ mod tests {
         .into_sealed_new();
 
         let e3 = entry_init!(
-            ("class", AcpClass::Person.to_value()),
+            ("class", ValueClass::Person.to_value()),
             (
                 "uuid",
                 Value::Uuid(uuid::uuid!("7b23c99d-c06b-4a9a-a958-3afa56383e1d"))
@@ -1708,7 +1714,7 @@ mod tests {
         .into_sealed_new();
 
         let e4 = entry_init!(
-            ("class", AcpClass::Group.to_value()),
+            ("class", ValueClass::Group.to_value()),
             (
                 "uuid",
                 Value::Uuid(uuid::uuid!("21d816b5-1f6a-4696-b7c1-6ed06d22ed81"))
@@ -1718,7 +1724,7 @@ mod tests {
         .into_sealed_new();
 
         let f_t1a = filter_resolved!(f_and!([
-            f_eq("class", AcpClass::Person.into()),
+            f_eq("class", ValueClass::Person.into()),
             f_or!([
                 f_eq("gidnumber", PartialValue::Uint32(1001)),
                 f_eq("gidnumber", PartialValue::Uint32(1000))
@@ -1763,9 +1769,9 @@ mod tests {
         let mut server_txn = server.write(time_p1).await;
 
         let e1 = entry_init!(
-            ("class", AcpClass::Object.to_value()),
-            ("class", AcpClass::Person.to_value()),
-            ("class", AcpClass::Account.to_value()),
+            ("class", ValueClass::Object.to_value()),
+            ("class", ValueClass::Person.to_value()),
+            ("class", ValueClass::Account.to_value()),
             ("name", Value::new_iname("testperson1")),
             (
                 "uuid",
@@ -1776,8 +1782,8 @@ mod tests {
         );
 
         let e2 = entry_init!(
-            ("class", AcpClass::Object.to_value()),
-            ("class", AcpClass::Person.to_value().clone()),
+            ("class", ValueClass::Object.to_value()),
+            ("class", ValueClass::Person.to_value().clone()),
             ("name", Value::new_iname("testperson2")),
             (
                 "uuid",
@@ -1789,8 +1795,8 @@ mod tests {
 
         // We need to add these and then push through the state machine.
         let e_ts = entry_init!(
-            ("class", AcpClass::Object.to_value()),
-            ("class", AcpClass::Person.to_value().clone()),
+            ("class", ValueClass::Object.to_value()),
+            ("class", ValueClass::Person.to_value().clone()),
             ("name", Value::new_iname("testperson3")),
             (
                 "uuid",

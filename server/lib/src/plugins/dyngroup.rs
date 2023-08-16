@@ -99,7 +99,7 @@ impl DynGroup {
     pub fn reload(qs: &mut QueryServerWriteTransaction) -> Result<(), OperationError> {
         let ident_internal = Identity::from_internal();
         // Internal search all our definitions.
-        let filt = filter!(f_eq("class", AcpClass::DynGroup.into()));
+        let filt = filter!(f_eq("class", ValueClass::DynGroup.into()));
         let entries = qs.internal_search(filt).map_err(|e| {
             admin_error!("internal search failure -> {:?}", e);
             e
@@ -147,7 +147,7 @@ impl DynGroup {
 
         let (n_dyn_groups, entries): (Vec<&Entry<_, _>>, Vec<_>) = cand
             .iter()
-            .partition(|entry| entry.attribute_equality("class", &AcpClass::DynGroup.into()));
+            .partition(|entry| entry.attribute_equality("class", &ValueClass::DynGroup.into()));
 
         // DANGER: Why do we have to do this? During the use of qs for internal search
         // and other operations we need qs to be mut. But when we borrow dyn groups here we
@@ -249,11 +249,11 @@ impl DynGroup {
         // Probably should be filter here instead.
         let (_, pre_entries): (Vec<&Arc<Entry<_, _>>>, Vec<_>) = pre_cand
             .iter()
-            .partition(|entry| entry.attribute_equality("class", &AcpClass::DynGroup.into()));
+            .partition(|entry| entry.attribute_equality("class", &ValueClass::DynGroup.into()));
 
         let (n_dyn_groups, post_entries): (Vec<&Entry<_, _>>, Vec<_>) = cand
             .iter()
-            .partition(|entry| entry.attribute_equality("class", &AcpClass::DynGroup.into()));
+            .partition(|entry| entry.attribute_equality("class", &ValueClass::DynGroup.into()));
 
         // DANGER: Why do we have to do this? During the use of qs for internal search
         // and other operations we need qs to be mut. But when we borrow dyn groups here we
@@ -365,9 +365,9 @@ mod tests {
     #[test]
     fn test_create_dyngroup_add_new_group() {
         let e_dyn = entry_init!(
-            ("class", AcpClass::Object.to_value()),
-            ("class", AcpClass::Group.to_value()),
-            ("class", AcpClass::DynGroup.to_value()),
+            ("class", ValueClass::Object.to_value()),
+            ("class", ValueClass::Group.to_value()),
+            ("class", ValueClass::DynGroup.to_value()),
             ("name", Value::new_iname("test_dyngroup")),
             (
                 "dyngroup_filter",
@@ -376,7 +376,7 @@ mod tests {
         );
 
         let e_group: Entry<EntryInit, EntryNew> = entry_init!(
-            ("class", AcpClass::Group.to_value()),
+            ("class", ValueClass::Group.to_value()),
             ("name", Value::new_iname("testgroup")),
             ("uuid", Value::Uuid(UUID_TEST_GROUP))
         );
@@ -411,9 +411,9 @@ mod tests {
     #[test]
     fn test_create_dyngroup_add_matching_entry() {
         let e_dyn = entry_init!(
-            ("class", AcpClass::Object.to_value()),
-            ("class", AcpClass::Group.to_value()),
-            ("class", AcpClass::DynGroup.to_value()),
+            ("class", ValueClass::Object.to_value()),
+            ("class", ValueClass::Group.to_value()),
+            ("class", ValueClass::DynGroup.to_value()),
             ("name", Value::new_iname("test_dyngroup")),
             (
                 "dyngroup_filter",
@@ -422,7 +422,7 @@ mod tests {
         );
 
         let e_group: Entry<EntryInit, EntryNew> = entry_init!(
-            ("class", AcpClass::Group.to_value()),
+            ("class", ValueClass::Group.to_value()),
             ("name", Value::new_iname("testgroup")),
             ("uuid", Value::Uuid(UUID_TEST_GROUP))
         );
@@ -457,9 +457,9 @@ mod tests {
     #[test]
     fn test_create_dyngroup_add_non_matching_entry() {
         let e_dyn = entry_init!(
-            ("class", AcpClass::Object.to_value()),
-            ("class", AcpClass::Group.to_value()),
-            ("class", AcpClass::DynGroup.to_value()),
+            ("class", ValueClass::Object.to_value()),
+            ("class", ValueClass::Group.to_value()),
+            ("class", ValueClass::DynGroup.to_value()),
             ("name", Value::new_iname("test_dyngroup")),
             (
                 "dyngroup_filter",
@@ -471,7 +471,7 @@ mod tests {
         );
 
         let e_group: Entry<EntryInit, EntryNew> = entry_init!(
-            ("class", AcpClass::Group.to_value()),
+            ("class", ValueClass::Group.to_value()),
             ("name", Value::new_iname("testgroup")),
             ("uuid", Value::Uuid(UUID_TEST_GROUP))
         );
@@ -502,9 +502,9 @@ mod tests {
     #[test]
     fn test_create_dyngroup_add_matching_entry_and_group() {
         let e_dyn = entry_init!(
-            ("class", AcpClass::Object.to_value()),
-            ("class", AcpClass::Group.to_value()),
-            ("class", AcpClass::DynGroup.to_value()),
+            ("class", ValueClass::Object.to_value()),
+            ("class", ValueClass::Group.to_value()),
+            ("class", ValueClass::DynGroup.to_value()),
             ("name", Value::new_iname("test_dyngroup")),
             (
                 "dyngroup_filter",
@@ -513,7 +513,7 @@ mod tests {
         );
 
         let e_group: Entry<EntryInit, EntryNew> = entry_init!(
-            ("class", AcpClass::Group.to_value()),
+            ("class", ValueClass::Group.to_value()),
             ("name", Value::new_iname("testgroup")),
             ("uuid", Value::Uuid(UUID_TEST_GROUP))
         );
@@ -549,9 +549,9 @@ mod tests {
     #[test]
     fn test_modify_dyngroup_existing_dyngroup_filter_into_scope() {
         let e_dyn = entry_init!(
-            ("class", AcpClass::Object.to_value()),
-            ("class", AcpClass::Group.to_value()),
-            ("class", AcpClass::DynGroup.to_value()),
+            ("class", ValueClass::Object.to_value()),
+            ("class", ValueClass::Group.to_value()),
+            ("class", ValueClass::DynGroup.to_value()),
             ("name", Value::new_iname("test_dyngroup")),
             (
                 "dyngroup_filter",
@@ -563,7 +563,7 @@ mod tests {
         );
 
         let e_group: Entry<EntryInit, EntryNew> = entry_init!(
-            ("class", AcpClass::Group.to_value()),
+            ("class", ValueClass::Group.to_value()),
             ("name", Value::new_iname("testgroup")),
             ("uuid", Value::Uuid(UUID_TEST_GROUP))
         );
@@ -604,9 +604,9 @@ mod tests {
     #[test]
     fn test_modify_dyngroup_existing_dyngroup_filter_outof_scope() {
         let e_dyn = entry_init!(
-            ("class", AcpClass::Object.to_value()),
-            ("class", AcpClass::Group.to_value()),
-            ("class", AcpClass::DynGroup.to_value()),
+            ("class", ValueClass::Object.to_value()),
+            ("class", ValueClass::Group.to_value()),
+            ("class", ValueClass::DynGroup.to_value()),
             ("name", Value::new_iname("test_dyngroup")),
             (
                 "dyngroup_filter",
@@ -615,7 +615,7 @@ mod tests {
         );
 
         let e_group: Entry<EntryInit, EntryNew> = entry_init!(
-            ("class", AcpClass::Group.to_value()),
+            ("class", ValueClass::Group.to_value()),
             ("name", Value::new_iname("testgroup")),
             ("uuid", Value::Uuid(UUID_TEST_GROUP))
         );
@@ -655,9 +655,9 @@ mod tests {
     #[test]
     fn test_modify_dyngroup_existing_dyngroup_member_add() {
         let e_dyn = entry_init!(
-            ("class", AcpClass::Object.to_value()),
-            ("class", AcpClass::Group.to_value()),
-            ("class", AcpClass::DynGroup.to_value()),
+            ("class", ValueClass::Object.to_value()),
+            ("class", ValueClass::Group.to_value()),
+            ("class", ValueClass::DynGroup.to_value()),
             ("name", Value::new_iname("test_dyngroup")),
             (
                 "dyngroup_filter",
@@ -666,7 +666,7 @@ mod tests {
         );
 
         let e_group: Entry<EntryInit, EntryNew> = entry_init!(
-            ("class", AcpClass::Group.to_value()),
+            ("class", ValueClass::Group.to_value()),
             ("name", Value::new_iname("testgroup")),
             ("uuid", Value::Uuid(UUID_TEST_GROUP))
         );
@@ -705,9 +705,9 @@ mod tests {
     #[test]
     fn test_modify_dyngroup_existing_dyngroup_member_remove() {
         let e_dyn = entry_init!(
-            ("class", AcpClass::Object.to_value()),
-            ("class", AcpClass::Group.to_value()),
-            ("class", AcpClass::DynGroup.to_value()),
+            ("class", ValueClass::Object.to_value()),
+            ("class", ValueClass::Group.to_value()),
+            ("class", ValueClass::DynGroup.to_value()),
             ("name", Value::new_iname("test_dyngroup")),
             (
                 "dyngroup_filter",
@@ -716,7 +716,7 @@ mod tests {
         );
 
         let e_group: Entry<EntryInit, EntryNew> = entry_init!(
-            ("class", AcpClass::Group.to_value()),
+            ("class", ValueClass::Group.to_value()),
             ("name", Value::new_iname("testgroup")),
             ("uuid", Value::Uuid(UUID_TEST_GROUP))
         );
@@ -751,9 +751,9 @@ mod tests {
     #[test]
     fn test_modify_dyngroup_into_matching_entry() {
         let e_dyn = entry_init!(
-            ("class", AcpClass::Object.to_value()),
-            ("class", AcpClass::Group.to_value()),
-            ("class", AcpClass::DynGroup.to_value()),
+            ("class", ValueClass::Object.to_value()),
+            ("class", ValueClass::Group.to_value()),
+            ("class", ValueClass::DynGroup.to_value()),
             ("name", Value::new_iname("test_dyngroup")),
             (
                 "dyngroup_filter",
@@ -762,7 +762,7 @@ mod tests {
         );
 
         let e_group: Entry<EntryInit, EntryNew> = entry_init!(
-            ("class", AcpClass::Group.to_value()),
+            ("class", ValueClass::Group.to_value()),
             ("name", Value::new_iname("not_testgroup")),
             ("uuid", Value::Uuid(UUID_TEST_GROUP))
         );
@@ -800,9 +800,9 @@ mod tests {
     #[test]
     fn test_modify_dyngroup_into_non_matching_entry() {
         let e_dyn = entry_init!(
-            ("class", AcpClass::Object.to_value()),
-            ("class", AcpClass::Group.to_value()),
-            ("class", AcpClass::DynGroup.to_value()),
+            ("class", ValueClass::Object.to_value()),
+            ("class", ValueClass::Group.to_value()),
+            ("class", ValueClass::DynGroup.to_value()),
             ("name", Value::new_iname("test_dyngroup")),
             (
                 "dyngroup_filter",
@@ -811,7 +811,7 @@ mod tests {
         );
 
         let e_group: Entry<EntryInit, EntryNew> = entry_init!(
-            ("class", AcpClass::Group.to_value()),
+            ("class", ValueClass::Group.to_value()),
             ("name", Value::new_iname("testgroup")),
             ("uuid", Value::Uuid(UUID_TEST_GROUP))
         );
@@ -845,9 +845,9 @@ mod tests {
     #[test]
     fn test_delete_dyngroup_matching_entry() {
         let e_dyn = entry_init!(
-            ("class", AcpClass::Object.to_value()),
-            ("class", AcpClass::Group.to_value()),
-            ("class", AcpClass::DynGroup.to_value()),
+            ("class", ValueClass::Object.to_value()),
+            ("class", ValueClass::Group.to_value()),
+            ("class", ValueClass::DynGroup.to_value()),
             ("name", Value::new_iname("test_dyngroup")),
             (
                 "dyngroup_filter",
@@ -856,7 +856,7 @@ mod tests {
         );
 
         let e_group: Entry<EntryInit, EntryNew> = entry_init!(
-            ("class", AcpClass::Group.to_value()),
+            ("class", ValueClass::Group.to_value()),
             ("name", Value::new_iname("testgroup")),
             ("uuid", Value::Uuid(UUID_TEST_GROUP))
         );
@@ -885,9 +885,9 @@ mod tests {
     #[test]
     fn test_delete_dyngroup_group() {
         let e_dyn = entry_init!(
-            ("class", AcpClass::Object.to_value()),
-            ("class", AcpClass::Group.to_value()),
-            ("class", AcpClass::DynGroup.to_value()),
+            ("class", ValueClass::Object.to_value()),
+            ("class", ValueClass::Group.to_value()),
+            ("class", ValueClass::DynGroup.to_value()),
             ("name", Value::new_iname("test_dyngroup")),
             (
                 "dyngroup_filter",
@@ -896,7 +896,7 @@ mod tests {
         );
 
         let e_group: Entry<EntryInit, EntryNew> = entry_init!(
-            ("class", AcpClass::Group.to_value()),
+            ("class", ValueClass::Group.to_value()),
             ("name", Value::new_iname("testgroup")),
             ("uuid", Value::Uuid(UUID_TEST_GROUP))
         );

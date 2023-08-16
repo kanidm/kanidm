@@ -204,7 +204,7 @@ fn modify_sync_constrain<'a>(
             // * We have a sync_parent_uuid
             let is_sync = entry
                 .get_ava_set("class")
-                .map(|classes| classes.contains(&AcpClass::SyncObject.into()))
+                .map(|classes| classes.contains(&ValueClass::SyncObject.into()))
                 .unwrap_or(false);
 
             if !is_sync {

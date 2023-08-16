@@ -53,13 +53,13 @@ impl Plugin for Protected {
         }
 
         cand.iter().try_fold((), |(), cand| {
-            if cand.attribute_equality("class", &AcpClass::System.into())
-                || cand.attribute_equality("class", &AcpClass::DomainInfo.into())
-                || cand.attribute_equality("class", &AcpClass::SystemInfo.into())
-                || cand.attribute_equality("class", &AcpClass::SystemConfig.into())
-                || cand.attribute_equality("class", &AcpClass::Tombstone.into())
-                || cand.attribute_equality("class", &AcpClass::Recycled.into())
-                || cand.attribute_equality("class", &AcpClass::DynGroup.into())
+            if cand.attribute_equality("class", &ValueClass::System.into())
+                || cand.attribute_equality("class", &ValueClass::DomainInfo.into())
+                || cand.attribute_equality("class", &ValueClass::SystemInfo.into())
+                || cand.attribute_equality("class", &ValueClass::SystemConfig.into())
+                || cand.attribute_equality("class", &ValueClass::Tombstone.into())
+                || cand.attribute_equality("class", &ValueClass::Recycled.into())
+                || cand.attribute_equality("class", &ValueClass::DynGroup.into())
             {
                 Err(OperationError::SystemProtectedObject)
             } else {
@@ -83,14 +83,14 @@ impl Plugin for Protected {
         me.modlist.iter().try_fold((), |(), m| match m {
             Modify::Present(a, v) => {
                 if a == "class"
-                    && (v == &AcpClass::System.to_value()
-                        || v == &AcpClass::DomainInfo.to_value()
-                        || v == &AcpClass::SystemInfo.into()
-                        || v == &AcpClass::SystemConfig.to_value()
-                        || v == &AcpClass::DynGroup.to_value()
-                        || v == &AcpClass::SyncObject.to_value()
-                        || v == &AcpClass::Tombstone.to_value()
-                        || v == &AcpClass::Recycled.to_value())
+                    && (v == &ValueClass::System.to_value()
+                        || v == &ValueClass::DomainInfo.to_value()
+                        || v == &ValueClass::SystemInfo.into()
+                        || v == &ValueClass::SystemConfig.to_value()
+                        || v == &ValueClass::DynGroup.to_value()
+                        || v == &ValueClass::SyncObject.to_value()
+                        || v == &ValueClass::Tombstone.to_value()
+                        || v == &ValueClass::Recycled.to_value())
                 {
                     Err(OperationError::SystemProtectedObject)
                 } else {
@@ -103,9 +103,9 @@ impl Plugin for Protected {
         // HARD block mods on tombstone or recycle. We soft block on the rest as they may
         // have some allowed attrs.
         cand.iter().try_fold((), |(), cand| {
-            if cand.attribute_equality("class", &AcpClass::Tombstone.into())
-                || cand.attribute_equality("class", &AcpClass::Recycled.into())
-                || cand.attribute_equality("class", &AcpClass::DynGroup.into())
+            if cand.attribute_equality("class", &ValueClass::Tombstone.into())
+                || cand.attribute_equality("class", &ValueClass::Recycled.into())
+                || cand.attribute_equality("class", &ValueClass::DynGroup.into())
             {
                 Err(OperationError::SystemProtectedObject)
             } else {
@@ -117,7 +117,7 @@ impl Plugin for Protected {
         let system_pres = cand.iter().any(|c| {
             // We don't need to check for domain info here because domain_info has a class
             // system also. We just need to block it from being created.
-            c.attribute_equality("class", &AcpClass::System.into())
+            c.attribute_equality("class", &ValueClass::System.into())
         });
 
         trace!("class: system -> {}", system_pres);
@@ -162,14 +162,14 @@ impl Plugin for Protected {
             .try_fold((), |(), m| match m {
                 Modify::Present(a, v) => {
                     if a == "class"
-                        && (v == &AcpClass::System.to_value()
-                            || v == &AcpClass::DomainInfo.to_value()
-                            || v == &(AcpClass::SystemInfo.to_value())
-                            || v == &AcpClass::SystemConfig.to_value()
-                            || v == &AcpClass::DynGroup.to_value()
-                            || v == &AcpClass::SyncObject.to_value()
-                            || v == &AcpClass::Tombstone.to_value()
-                            || v == &AcpClass::Recycled.to_value())
+                        && (v == &ValueClass::System.to_value()
+                            || v == &ValueClass::DomainInfo.to_value()
+                            || v == &(ValueClass::SystemInfo.to_value())
+                            || v == &ValueClass::SystemConfig.to_value()
+                            || v == &ValueClass::DynGroup.to_value()
+                            || v == &ValueClass::SyncObject.to_value()
+                            || v == &ValueClass::Tombstone.to_value()
+                            || v == &ValueClass::Recycled.to_value())
                     {
                         Err(OperationError::SystemProtectedObject)
                     } else {
@@ -182,9 +182,9 @@ impl Plugin for Protected {
         // HARD block mods on tombstone or recycle. We soft block on the rest as they may
         // have some allowed attrs.
         cand.iter().try_fold((), |(), cand| {
-            if cand.attribute_equality("class", &AcpClass::Tombstone.into())
-                || cand.attribute_equality("class", &AcpClass::Recycled.into())
-                || cand.attribute_equality("class", &AcpClass::DynGroup.into())
+            if cand.attribute_equality("class", &ValueClass::Tombstone.into())
+                || cand.attribute_equality("class", &ValueClass::Recycled.into())
+                || cand.attribute_equality("class", &ValueClass::DynGroup.into())
             {
                 Err(OperationError::SystemProtectedObject)
             } else {
@@ -196,7 +196,7 @@ impl Plugin for Protected {
         let system_pres = cand.iter().any(|c| {
             // We don't need to check for domain info here because domain_info has a class
             // system also. We just need to block it from being created.
-            c.attribute_equality("class", &AcpClass::System.into())
+            c.attribute_equality("class", &ValueClass::System.into())
         });
 
         trace!("class: system -> {}", system_pres);
@@ -240,13 +240,13 @@ impl Plugin for Protected {
         }
 
         cand.iter().try_fold((), |(), cand| {
-            if cand.attribute_equality("class", &AcpClass::System.into())
-                || cand.attribute_equality("class", &AcpClass::DomainInfo.into())
-                || cand.attribute_equality("class", &AcpClass::SystemInfo.into())
-                || cand.attribute_equality("class", &AcpClass::SystemConfig.into())
-                || cand.attribute_equality("class", &AcpClass::Tombstone.into())
-                || cand.attribute_equality("class", &AcpClass::Recycled.into())
-                || cand.attribute_equality("class", &AcpClass::DynGroup.into())
+            if cand.attribute_equality("class", &ValueClass::System.into())
+                || cand.attribute_equality("class", &ValueClass::DomainInfo.into())
+                || cand.attribute_equality("class", &ValueClass::SystemInfo.into())
+                || cand.attribute_equality("class", &ValueClass::SystemConfig.into())
+                || cand.attribute_equality("class", &ValueClass::Tombstone.into())
+                || cand.attribute_equality("class", &ValueClass::Recycled.into())
+                || cand.attribute_equality("class", &ValueClass::DynGroup.into())
             {
                 Err(OperationError::SystemProtectedObject)
             } else {
@@ -267,27 +267,27 @@ mod tests {
 
     lazy_static! {
         pub static ref TEST_ACCOUNT: EntryInitNew = entry_init!(
-            ("class", AcpClass::Account.to_value()),
-            ("class", AcpClass::ServiceAccount.to_value()),
-            ("class", AcpClass::MemberOf.to_value()),
+            ("class", ValueClass::Account.to_value()),
+            ("class", ValueClass::ServiceAccount.to_value()),
+            ("class", ValueClass::MemberOf.to_value()),
             ("name", Value::new_iname("test_account_1")),
             ("displayname", Value::new_utf8s("test_account_1")),
             ("uuid", Value::Uuid(UUID_TEST_ACCOUNT)),
             ("memberof", Value::Refer(UUID_TEST_GROUP))
         );
         pub static ref TEST_GROUP: EntryInitNew = entry_init!(
-            ("class", AcpClass::Group.to_value()),
+            ("class", ValueClass::Group.to_value()),
             ("name", Value::new_iname("test_group_a")),
             ("uuid", Value::Uuid(UUID_TEST_GROUP)),
             ("member", Value::Refer(UUID_TEST_ACCOUNT))
         );
         pub static ref ALLOW_ALL: EntryInitNew = entry_init!(
-            ("class", AcpClass::Object.to_value()),
-            ("class", AcpClass::AccessControlProfile.to_value()),
-            ("class", AcpClass::AccessControlModify.to_value()),
-            ("class", AcpClass::AccessControlCreate.to_value()),
-            ("class", AcpClass::AccessControlDelete.to_value()),
-            ("class", AcpClass::AccessControlSearch.to_value()),
+            ("class", ValueClass::Object.to_value()),
+            ("class", ValueClass::AccessControlProfile.to_value()),
+            ("class", ValueClass::AccessControlModify.to_value()),
+            ("class", ValueClass::AccessControlCreate.to_value()),
+            ("class", ValueClass::AccessControlDelete.to_value()),
+            ("class", ValueClass::AccessControlSearch.to_value()),
             ("name", Value::new_iname("idm_admins_acp_allow_all_test")),
             ("uuid", Value::Uuid(UUID_TEST_ACP)),
             ("acp_receiver_group", Value::Refer(UUID_TEST_GROUP)),
@@ -452,7 +452,7 @@ mod tests {
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq("classname", AcpClass::TestClass.into())),
+            filter!(f_eq("classname", ValueClass::TestClass.into())),
             modlist!([
                 m_pres("may", &Value::new_iutf8("name")),
                 m_pres("must", &Value::new_iutf8("name")),

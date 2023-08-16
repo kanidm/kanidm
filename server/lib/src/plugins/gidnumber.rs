@@ -20,8 +20,8 @@ const GID_SAFETY_NUMBER_MIN: u32 = 1000;
 pub struct GidNumber {}
 
 fn apply_gidnumber<T: Clone>(e: &mut Entry<EntryInvalid, T>) -> Result<(), OperationError> {
-    if (e.attribute_equality("class", &AcpClass::PosixGroup.into())
-        || e.attribute_equality("class", &AcpClass::PosixAccount.into()))
+    if (e.attribute_equality("class", &ValueClass::PosixGroup.into())
+        || e.attribute_equality("class", &ValueClass::PosixAccount.into()))
         && !e.attribute_pres("gidnumber")
     {
         let u_ref = e
@@ -108,8 +108,8 @@ mod tests {
     #[test]
     fn test_gidnumber_create_generate() {
         let e = entry_init!(
-            ("class", AcpClass::Account.to_value()),
-            ("class", AcpClass::PosixAccount.to_value()),
+            ("class", ValueClass::Account.to_value()),
+            ("class", ValueClass::PosixAccount.to_value()),
             ("name", Value::new_iname("testperson")),
             (
                 "uuid",
@@ -139,8 +139,8 @@ mod tests {
     #[test]
     fn test_gidnumber_create_noaction() {
         let e = entry_init!(
-            ("class", AcpClass::Account.to_value()),
-            ("class", AcpClass::PosixAccount.to_value()),
+            ("class", ValueClass::Account.to_value()),
+            ("class", ValueClass::PosixAccount.to_value()),
             ("name", Value::new_iname("testperson")),
             ("gidnumber", Value::Uint32(10001)),
             (
@@ -171,8 +171,8 @@ mod tests {
     #[test]
     fn test_gidnumber_modify_generate() {
         let e = entry_init!(
-            ("class", AcpClass::Account.to_value()),
-            ("class", AcpClass::PosixAccount.to_value()),
+            ("class", ValueClass::Account.to_value()),
+            ("class", ValueClass::PosixAccount.to_value()),
             ("name", Value::new_iname("testperson")),
             (
                 "uuid",
@@ -188,7 +188,7 @@ mod tests {
             Ok(()),
             preload,
             filter!(f_eq("name", PartialValue::new_iname("testperson"))),
-            modlist!([m_pres("class", &AcpClass::PosixGroup.into())]),
+            modlist!([m_pres("class", &ValueClass::PosixGroup.into())]),
             None,
             |_| {},
             |qs_write: &mut QueryServerWriteTransaction| check_gid(
@@ -203,8 +203,8 @@ mod tests {
     #[test]
     fn test_gidnumber_modify_regenerate() {
         let e = entry_init!(
-            ("class", AcpClass::Account.to_value()),
-            ("class", AcpClass::PosixAccount.to_value()),
+            ("class", ValueClass::Account.to_value()),
+            ("class", ValueClass::PosixAccount.to_value()),
             ("name", Value::new_iname("testperson")),
             (
                 "uuid",
@@ -235,8 +235,8 @@ mod tests {
     #[test]
     fn test_gidnumber_modify_noregen() {
         let e = entry_init!(
-            ("class", AcpClass::Account.to_value()),
-            ("class", AcpClass::PosixAccount.to_value()),
+            ("class", ValueClass::Account.to_value()),
+            ("class", ValueClass::PosixAccount.to_value()),
             ("name", Value::new_iname("testperson")),
             (
                 "uuid",
@@ -269,8 +269,8 @@ mod tests {
     #[test]
     fn test_gidnumber_create_system_reject() {
         let e = entry_init!(
-            ("class", AcpClass::Account.to_value()),
-            ("class", AcpClass::PosixAccount.to_value()),
+            ("class", ValueClass::Account.to_value()),
+            ("class", ValueClass::PosixAccount.to_value()),
             ("name", Value::new_iname("testperson")),
             (
                 "uuid",
@@ -297,8 +297,8 @@ mod tests {
     #[test]
     fn test_gidnumber_create_secure_reject() {
         let e = entry_init!(
-            ("class", AcpClass::Account.to_value()),
-            ("class", AcpClass::PosixAccount.to_value()),
+            ("class", ValueClass::Account.to_value()),
+            ("class", ValueClass::PosixAccount.to_value()),
             ("name", Value::new_iname("testperson")),
             ("gidnumber", Value::Uint32(500)),
             ("description", Value::new_utf8s("testperson")),
@@ -322,8 +322,8 @@ mod tests {
     #[test]
     fn test_gidnumber_create_secure_root_reject() {
         let e = entry_init!(
-            ("class", AcpClass::Account.to_value()),
-            ("class", AcpClass::PosixAccount.to_value()),
+            ("class", ValueClass::Account.to_value()),
+            ("class", ValueClass::PosixAccount.to_value()),
             ("name", Value::new_iname("testperson")),
             ("gidnumber", Value::Uint32(0)),
             ("description", Value::new_utf8s("testperson")),

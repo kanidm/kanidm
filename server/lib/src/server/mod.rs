@@ -453,7 +453,7 @@ pub trait QueryServerTransaction<'a> {
     ) -> Result<Vec<Arc<EntrySealedCommitted>>, OperationError> {
         let filter = filter_all!(f_and(vec![
             f_eq("source_uuid", PartialValue::Uuid(uuid)),
-            f_eq("class", AcpClass::Conflict.into())
+            f_eq("class", ValueClass::Conflict.into())
         ]));
         let f_valid = filter.validate(self.get_schema()).map_err(|e| {
             error!(?e, "Filter Validate - SchemaViolation");
@@ -823,7 +823,7 @@ pub trait QueryServerTransaction<'a> {
     fn get_oauth2rs_set(&mut self) -> Result<Vec<Arc<EntrySealedCommitted>>, OperationError> {
         self.internal_search(filter!(f_eq(
             "class",
-            AcpClass::OAuth2ResourceServer.into(),
+            ValueClass::OAuth2ResourceServer.into(),
         )))
     }
 
@@ -1207,7 +1207,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     pub(crate) fn reload_schema(&mut self) -> Result<(), OperationError> {
         // supply entries to the writable schema to reload from.
         // find all attributes.
-        let filt = filter!(f_eq("class", AcpClass::AttributeType.into()));
+        let filt = filter!(f_eq("class", ValueClass::AttributeType.into()));
         let res = self.internal_search(filt).map_err(|e| {
             admin_error!("reload schema internal search failed {:?}", e);
             e
@@ -1226,7 +1226,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         })?;
 
         // find all classes
-        let filt = filter!(f_eq("class", AcpClass::ClassType.into()));
+        let filt = filter!(f_eq("class", ValueClass::ClassType.into()));
         let res = self.internal_search(filt).map_err(|e| {
             admin_error!("reload schema internal search failed {:?}", e);
             e
@@ -1289,7 +1289,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
         // Update the set of sync agreements
 
-        let filt = filter!(f_eq("class", AcpClass::SyncAccount.into()));
+        let filt = filter!(f_eq("class", ValueClass::SyncAccount.into()));
 
         let res = self.internal_search(filt).map_err(|e| {
             admin_error!(
@@ -1313,8 +1313,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
         // Update search
         let filt = filter!(f_and!([
-            f_eq("class", AcpClass::AccessControlProfile.into()),
-            f_eq("class", AcpClass::AccessControlSearch.into()),
+            f_eq("class", ValueClass::AccessControlProfile.into()),
+            f_eq("class", ValueClass::AccessControlSearch.into()),
             f_andnot(f_eq("acp_enable", PV_FALSE.clone())),
         ]));
 
@@ -1343,8 +1343,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
             })?;
         // Update create
         let filt = filter!(f_and!([
-            f_eq("class", AcpClass::AccessControlProfile.into()),
-            f_eq("class", AcpClass::AccessControlCreate.into()),
+            f_eq("class", ValueClass::AccessControlProfile.into()),
+            f_eq("class", ValueClass::AccessControlCreate.into()),
             f_andnot(f_eq("acp_enable", PV_FALSE.clone())),
         ]));
 
@@ -1373,8 +1373,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
             })?;
         // Update modify
         let filt = filter!(f_and!([
-            f_eq("class", AcpClass::AccessControlProfile.into()),
-            f_eq("class", AcpClass::AccessControlModify.into()),
+            f_eq("class", ValueClass::AccessControlProfile.into()),
+            f_eq("class", ValueClass::AccessControlModify.into()),
             f_andnot(f_eq("acp_enable", PV_FALSE.clone())),
         ]));
 
@@ -1400,8 +1400,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
             })?;
         // Update delete
         let filt = filter!(f_and!([
-            f_eq("class", AcpClass::AccessControlProfile.into()),
-            f_eq("class", AcpClass::AccessControlDelete.into()),
+            f_eq("class", ValueClass::AccessControlProfile.into()),
+            f_eq("class", ValueClass::AccessControlDelete.into()),
             f_andnot(f_eq("acp_enable", PV_FALSE.clone())),
         ]));
 
@@ -1614,8 +1614,8 @@ mod tests {
         let t_uuid = Uuid::new_v4();
         assert!(server_txn
             .internal_create(vec![entry_init!(
-                ("class", AcpClass::Object.to_value()),
-                ("class", AcpClass::Person.to_value()),
+                ("class", ValueClass::Object.to_value()),
+                ("class", ValueClass::Person.to_value()),
                 ("name", Value::new_iname("testperson1")),
                 ("uuid", Value::Uuid(t_uuid)),
                 ("description", Value::new_utf8s("testperson1")),
@@ -1650,8 +1650,8 @@ mod tests {
         let t_uuid = Uuid::new_v4();
         assert!(server_txn
             .internal_create(vec![entry_init!(
-                ("class", AcpClass::Object.to_value()),
-                ("class", AcpClass::ExtensibleObject.to_value()),
+                ("class", ValueClass::Object.to_value()),
+                ("class", ValueClass::ExtensibleObject.to_value()),
                 ("uuid", Value::Uuid(t_uuid)),
                 ("sync_external_id", Value::new_iutf8("uid=testperson"))
             ),])
@@ -1676,9 +1676,9 @@ mod tests {
         let mut server_txn = server.write(duration_from_epoch_now()).await;
 
         let e1 = entry_init!(
-            ("class", AcpClass::Object.to_value()),
-            ("class", AcpClass::Person.to_value()),
-            ("class", AcpClass::Account.to_value()),
+            ("class", ValueClass::Object.to_value()),
+            ("class", ValueClass::Person.to_value()),
+            ("class", ValueClass::Account.to_value()),
             ("name", Value::new_iname("testperson1")),
             (
                 "uuid",
@@ -1709,9 +1709,9 @@ mod tests {
         let mut server_txn = server.write(duration_from_epoch_now()).await;
 
         let e1 = entry_init!(
-            ("class", AcpClass::Object.to_value()),
-            ("class", AcpClass::Person.to_value()),
-            ("class", AcpClass::Account.to_value()),
+            ("class", ValueClass::Object.to_value()),
+            ("class", ValueClass::Person.to_value()),
+            ("class", ValueClass::Account.to_value()),
             ("name", Value::new_iname("testperson1")),
             (
                 "uuid",
@@ -1741,8 +1741,8 @@ mod tests {
     async fn test_clone_value(server: &QueryServer) {
         let mut server_txn = server.write(duration_from_epoch_now()).await;
         let e1 = entry_init!(
-            ("class", AcpClass::Object.to_value()),
-            ("class", AcpClass::Person.to_value()),
+            ("class", ValueClass::Object.to_value()),
+            ("class", ValueClass::Person.to_value()),
             ("name", Value::new_iname("testperson1")),
             (
                 "uuid",
@@ -1781,8 +1781,8 @@ mod tests {
     #[qs_test]
     async fn test_dynamic_schema_class(server: &QueryServer) {
         let e1 = entry_init!(
-            ("class", AcpClass::Object.to_value()),
-            ("class", AcpClass::TestClass.to_value()),
+            ("class", ValueClass::Object.to_value()),
+            ("class", ValueClass::TestClass.to_value()),
             ("name", Value::new_iname("testobj1")),
             (
                 "uuid",
@@ -1792,9 +1792,9 @@ mod tests {
 
         // Class definition
         let e_cd = entry_init!(
-            ("class", AcpClass::Object.to_value()),
-            ("class", AcpClass::ClassType.to_value()),
-            ("classname", AcpClass::TestClass.to_value()),
+            ("class", ValueClass::Object.to_value()),
+            ("class", ValueClass::ClassType.to_value()),
+            ("classname", ValueClass::TestClass.to_value()),
             (
                 "uuid",
                 Value::Uuid(uuid!("cfcae205-31c3-484b-8ced-667d1709c5e3"))
@@ -1828,7 +1828,7 @@ mod tests {
         // delete the class
         let de_class = DeleteEvent::new_internal_invalid(filter!(f_eq(
             "classname",
-            AcpClass::TestClass.into()
+            ValueClass::TestClass.into()
         )));
         assert!(server_txn.delete(&de_class).is_ok());
         // Commit
@@ -1843,7 +1843,7 @@ mod tests {
         let testobj1 = server_txn
             .internal_search_uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
             .expect("failed");
-        assert!(testobj1.attribute_equality("class", &AcpClass::TestClass.into()));
+        assert!(testobj1.attribute_equality("class", &ValueClass::TestClass.into()));
 
         // Should still be good
         server_txn.commit().expect("should not fail");
@@ -1853,8 +1853,8 @@ mod tests {
     #[qs_test]
     async fn test_dynamic_schema_attr(server: &QueryServer) {
         let e1 = entry_init!(
-            ("class", AcpClass::Object.to_value()),
-            ("class", AcpClass::ExtensibleObject.to_value()),
+            ("class", ValueClass::Object.to_value()),
+            ("class", ValueClass::ExtensibleObject.to_value()),
             ("name", Value::new_iname("testobj1")),
             (
                 "uuid",
@@ -1865,8 +1865,8 @@ mod tests {
 
         // Attribute definition
         let e_ad = entry_init!(
-            ("class", AcpClass::Object.to_value()),
-            ("class", AcpClass::AttributeType.to_value()),
+            ("class", ValueClass::Object.to_value()),
+            ("class", ValueClass::AttributeType.to_value()),
             (
                 "uuid",
                 Value::Uuid(uuid!("cfcae205-31c3-484b-8ced-667d1709c5e3"))

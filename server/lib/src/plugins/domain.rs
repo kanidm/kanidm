@@ -68,7 +68,7 @@ impl Domain {
         cand: &mut [Entry<EntryInvalid, T>],
     ) -> Result<(), OperationError> {
         cand.iter_mut().try_for_each(|e| {
-            if e.attribute_equality("class", &AcpClass::DomainInfo.into())
+            if e.attribute_equality("class", &ValueClass::DomainInfo.into())
                 && e.attribute_equality("uuid", &PVUUID_DOMAIN_INFO)
             {
                 // Validate the domain ldap basedn syntax.

@@ -46,14 +46,14 @@ impl Plugin for JwsKeygen {
 impl JwsKeygen {
     fn modify_inner<T: Clone>(cand: &mut [Entry<EntryInvalid, T>]) -> Result<(), OperationError> {
         cand.iter_mut().try_for_each(|e| {
-        if e.attribute_equality("class", &AcpClass::OAuth2ResourceServerBasic.into()) &&
+        if e.attribute_equality("class", &ValueClass::OAuth2ResourceServerBasic.into()) &&
             !e.attribute_pres("oauth2_rs_basic_secret") {
                 security_info!("regenerating oauth2 basic secret");
                 let v = Value::SecretValue(password_from_random());
                 e.add_ava("oauth2_rs_basic_secret", v);
         }
 
-        if e.attribute_equality("class", &AcpClass::OAuth2ResourceServer.into()) {
+        if e.attribute_equality("class", &ValueClass::OAuth2ResourceServer.into()) {
             if !e.attribute_pres("oauth2_rs_token_key") {
                 security_info!("regenerating oauth2 token key");
                 let k = fernet::Fernet::generate_key();
@@ -85,8 +85,8 @@ impl JwsKeygen {
             }
         }
 
-        if (e.attribute_equality("class", &AcpClass::ServiceAccount.into()) ||
-            e.attribute_equality("class", &AcpClass::SyncAccount.into())) &&
+        if (e.attribute_equality("class", &ValueClass::ServiceAccount.into()) ||
+            e.attribute_equality("class", &ValueClass::SyncAccount.into())) &&
             !e.attribute_pres("jws_es256_private_key") {
                 security_info!("regenerating jws es256 private key");
                 let jwssigner = JwsSigner::generate_es256()
@@ -113,9 +113,9 @@ mod tests {
 
         let uuid = Uuid::new_v4();
         let e: Entry<EntryInit, EntryNew> = entry_init!(
-            ("class", AcpClass::Object.to_value()),
-            ("class", AcpClass::OAuth2ResourceServer.to_value()),
-            ("class", AcpClass::OAuth2ResourceServerBasic.to_value()),
+            ("class", ValueClass::Object.to_value()),
+            ("class", ValueClass::OAuth2ResourceServer.to_value()),
+            ("class", ValueClass::OAuth2ResourceServerBasic.to_value()),
             ("uuid", Value::Uuid(uuid)),
             ("displayname", Value::new_utf8s("test_resource_server")),
             ("oauth2_rs_name", Value::new_iname("test_resource_server")),
@@ -152,9 +152,9 @@ mod tests {
         let uuid = Uuid::new_v4();
 
         let e: Entry<EntryInit, EntryNew> = entry_init!(
-            ("class", AcpClass::Object.to_value()),
-            ("class", AcpClass::OAuth2ResourceServer.to_value()),
-            ("class", AcpClass::OAuth2ResourceServerBasic.to_value()),
+            ("class", ValueClass::Object.to_value()),
+            ("class", ValueClass::OAuth2ResourceServer.to_value()),
+            ("class", ValueClass::OAuth2ResourceServerBasic.to_value()),
             ("uuid", Value::Uuid(uuid)),
             ("oauth2_rs_name", Value::new_iname("test_resource_server")),
             ("displayname", Value::new_utf8s("test_resource_server")),

@@ -107,19 +107,19 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // schema or acp requires reload.
         if !self.changed_schema {
             self.changed_schema = commit_cand.iter().any(|e| {
-                e.attribute_equality("class", &AcpClass::ClassType.into())
-                    || e.attribute_equality("class", &AcpClass::AttributeType.into())
+                e.attribute_equality("class", &ValueClass::ClassType.into())
+                    || e.attribute_equality("class", &ValueClass::AttributeType.into())
             });
         }
         if !self.changed_acp {
             self.changed_acp = commit_cand
                 .iter()
-                .any(|e| e.attribute_equality("class", &AcpClass::AccessControlProfile.into()));
+                .any(|e| e.attribute_equality("class", &ValueClass::AccessControlProfile.into()));
         }
         if !self.changed_oauth2 {
             self.changed_oauth2 = commit_cand
                 .iter()
-                .any(|e| e.attribute_equality("class", &AcpClass::OAuth2ResourceServer.into()));
+                .any(|e| e.attribute_equality("class", &ValueClass::OAuth2ResourceServer.into()));
         }
         if !self.changed_domain {
             self.changed_domain = commit_cand
@@ -129,7 +129,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         if !self.changed_sync_agreement {
             self.changed_sync_agreement = commit_cand
                 .iter()
-                .any(|e| e.attribute_equality("class", &AcpClass::SyncAccount.into()));
+                .any(|e| e.attribute_equality("class", &ValueClass::SyncAccount.into()));
         }
 
         self.changed_uuid
@@ -175,9 +175,9 @@ mod tests {
         let se1 = SearchEvent::new_impersonate_entry(admin, filt);
 
         let mut e = entry_init!(
-            ("class", AcpClass::Object.to_value()),
-            ("class", AcpClass::Person.to_value()),
-            ("class", AcpClass::Account.to_value()),
+            ("class", ValueClass::Object.to_value()),
+            ("class", ValueClass::Person.to_value()),
+            ("class", ValueClass::Account.to_value()),
             ("name", Value::new_iname("testperson")),
             ("spn", Value::new_spn_str("testperson", "example.com")),
             (
@@ -201,7 +201,7 @@ mod tests {
         assert!(r2.len() == 1);
 
         // We apply some member-of in the server now, so we add these before we seal.
-        e.add_ava("class", AcpClass::MemberOf.into());
+        e.add_ava("class", ValueClass::MemberOf.into());
         e.add_ava("memberof", Value::Refer(UUID_IDM_ALL_PERSONS));
         e.add_ava("directmemberof", Value::Refer(UUID_IDM_ALL_PERSONS));
         e.add_ava("memberof", Value::Refer(UUID_IDM_ALL_ACCOUNTS));
@@ -246,8 +246,8 @@ mod tests {
         let se_b = SearchEvent::new_impersonate_entry(admin, filt);
 
         let e = entry_init!(
-            ("class", AcpClass::Person.to_value()),
-            ("class", AcpClass::Account.to_value()),
+            ("class", ValueClass::Person.to_value()),
+            ("class", ValueClass::Account.to_value()),
             ("name", Value::new_iname("testperson")),
             ("description", Value::new_utf8s("testperson")),
             ("displayname", Value::new_utf8s("testperson"))

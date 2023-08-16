@@ -627,7 +627,7 @@ mod tests {
         let me_posix = ModifyEvent::new_internal_invalid(
             filter!(f_eq("name", PartialValue::new_iname("admin"))),
             ModifyList::new_list(vec![
-                Modify::Present(AttrString::from("class"), AcpClass::PosixAccount.into()),
+                Modify::Present(AttrString::from("class"), ValueClass::PosixAccount.into()),
                 Modify::Present(AttrString::from("gidnumber"), Value::new_uint32(2001)),
             ]),
         );
@@ -809,10 +809,10 @@ mod tests {
         // Setup a user we want to check.
         {
             let e1 = entry_init!(
-                ("class", AcpClass::Object.to_value()),
-                ("class", AcpClass::Person.to_value()),
-                ("class", AcpClass::Account.to_value()),
-                ("class", AcpClass::PosixAccount.to_value()),
+                ("class", ValueClass::Object.to_value()),
+                ("class", ValueClass::Person.to_value()),
+                ("class", ValueClass::Account.to_value()),
+                ("class", ValueClass::PosixAccount.to_value()),
                 ("name", Value::new_iname("testperson1")),
                 (
                     "uuid",
@@ -855,10 +855,10 @@ mod tests {
                 assert_entry_contains!(
                     lsre,
                     "spn=testperson1@example.com,dc=example,dc=com",
-                    ("class", AcpClass::Object.to_string()),
-                    ("class", AcpClass::Person.to_string()),
-                    ("class", AcpClass::Account.to_string()),
-                    ("class", AcpClass::PosixAccount.to_string()),
+                    ("class", ValueClass::Object.to_string()),
+                    ("class", ValueClass::Person.to_string()),
+                    ("class", ValueClass::Account.to_string()),
+                    ("class", ValueClass::PosixAccount.to_string()),
                     ("displayname", "testperson1"),
                     ("name", "testperson1"),
                     ("gidnumber", "12345678"),
@@ -970,9 +970,9 @@ mod tests {
             // Create a service account,
 
             let e1 = entry_init!(
-                ("class", AcpClass::Object.to_value()),
-                ("class", AcpClass::ServiceAccount.to_value()),
-                ("class", AcpClass::Account.to_value()),
+                ("class", ValueClass::Object.to_value()),
+                ("class", ValueClass::ServiceAccount.to_value()),
+                ("class", ValueClass::Account.to_value()),
                 ("uuid", Value::Uuid(sa_uuid)),
                 ("name", Value::new_iname("service_permission_test")),
                 ("displayname", Value::new_utf8s("service_permission_test"))
@@ -980,10 +980,10 @@ mod tests {
 
             // Setup a person with an email
             let e2 = entry_init!(
-                ("class", AcpClass::Object.to_value()),
-                ("class", AcpClass::Person.to_value()),
-                ("class", AcpClass::Account.to_value()),
-                ("class", AcpClass::PosixAccount.to_value()),
+                ("class", ValueClass::Object.to_value()),
+                ("class", ValueClass::Person.to_value()),
+                ("class", ValueClass::Account.to_value()),
+                ("class", ValueClass::PosixAccount.to_value()),
                 ("name", Value::new_iname("testperson1")),
                 (
                     "mail",
@@ -1109,8 +1109,8 @@ mod tests {
         // Setup a user we want to check.
         {
             let e1 = entry_init!(
-                ("class", AcpClass::Person.to_value()),
-                ("class", AcpClass::Account.to_value()),
+                ("class", ValueClass::Person.to_value()),
+                ("class", ValueClass::Account.to_value()),
                 ("name", Value::new_iname("testperson1")),
                 ("uuid", Value::Uuid(acct_uuid)),
                 ("description", Value::new_utf8s("testperson1")),

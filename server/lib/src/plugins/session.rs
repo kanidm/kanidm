@@ -179,9 +179,9 @@ mod tests {
         let tuuid = uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930");
 
         let e1 = entry_init!(
-            ("class", AcpClass::Object.to_value()),
-            ("class", AcpClass::Person.to_value()),
-            ("class", AcpClass::Account.to_value()),
+            ("class", ValueClass::Object.to_value()),
+            ("class", ValueClass::Person.to_value()),
+            ("class", ValueClass::Account.to_value()),
             ("name", Value::new_iname("testperson1")),
             ("uuid", Value::Uuid(tuuid)),
             ("description", Value::new_utf8s("testperson1")),
@@ -274,9 +274,9 @@ mod tests {
         let rs_uuid = Uuid::new_v4();
 
         let e1 = entry_init!(
-            ("class", AcpClass::Object.to_value()),
-            ("class", AcpClass::Person.to_value()),
-            ("class", AcpClass::Account.to_value()),
+            ("class", ValueClass::Object.to_value()),
+            ("class", ValueClass::Person.to_value()),
+            ("class", ValueClass::Account.to_value()),
             ("name", Value::new_iname("testperson1")),
             ("uuid", Value::Uuid(tuuid)),
             ("description", Value::new_utf8s("testperson1")),
@@ -288,9 +288,9 @@ mod tests {
         );
 
         let e2 = entry_init!(
-            ("class", AcpClass::Object.to_value()),
-            ("class", AcpClass::OAuth2ResourceServer.to_value()),
-            ("class", AcpClass::OAuth2ResourceServerBasic.to_value()),
+            ("class", ValueClass::Object.to_value()),
+            ("class", ValueClass::OAuth2ResourceServer.to_value()),
+            ("class", ValueClass::OAuth2ResourceServerBasic.to_value()),
             ("uuid", Value::Uuid(rs_uuid)),
             ("oauth2_rs_name", Value::new_iname("test_resource_server")),
             ("displayname", Value::new_utf8s("test_resource_server")),
@@ -412,9 +412,9 @@ mod tests {
         let rs_uuid = Uuid::new_v4();
 
         let e1 = entry_init!(
-            ("class", AcpClass::Object.to_value()),
-            ("class", AcpClass::Person.to_value()),
-            ("class", AcpClass::Account.to_value()),
+            ("class", ValueClass::Object.to_value()),
+            ("class", ValueClass::Person.to_value()),
+            ("class", ValueClass::Account.to_value()),
             ("name", Value::new_iname("testperson1")),
             ("uuid", Value::Uuid(tuuid)),
             ("description", Value::new_utf8s("testperson1")),
@@ -426,9 +426,9 @@ mod tests {
         );
 
         let e2 = entry_init!(
-            ("class", AcpClass::Object.to_value()),
-            ("class", AcpClass::OAuth2ResourceServer.to_value()),
-            ("class", AcpClass::OAuth2ResourceServerBasic.to_value()),
+            ("class", ValueClass::Object.to_value()),
+            ("class", ValueClass::OAuth2ResourceServer.to_value()),
+            ("class", ValueClass::OAuth2ResourceServerBasic.to_value()),
             ("uuid", Value::Uuid(rs_uuid)),
             ("oauth2_rs_name", Value::new_iname("test_resource_server")),
             ("displayname", Value::new_utf8s("test_resource_server")),
@@ -545,9 +545,9 @@ mod tests {
         let rs_uuid = Uuid::new_v4();
 
         let e1 = entry_init!(
-            ("class", AcpClass::Object.to_value()),
-            ("class", AcpClass::Person.to_value()),
-            ("class", AcpClass::Account.to_value()),
+            ("class", ValueClass::Object.to_value()),
+            ("class", ValueClass::Person.to_value()),
+            ("class", ValueClass::Account.to_value()),
             ("name", Value::new_iname("testperson1")),
             ("uuid", Value::Uuid(tuuid)),
             ("description", Value::new_utf8s("testperson1")),
@@ -555,9 +555,9 @@ mod tests {
         );
 
         let e2 = entry_init!(
-            ("class", AcpClass::Object.to_value()),
-            ("class", AcpClass::OAuth2ResourceServer.to_value()),
-            ("class", AcpClass::OAuth2ResourceServerBasic.to_value()),
+            ("class", ValueClass::Object.to_value()),
+            ("class", ValueClass::OAuth2ResourceServer.to_value()),
+            ("class", ValueClass::OAuth2ResourceServerBasic.to_value()),
             ("uuid", Value::Uuid(rs_uuid)),
             ("oauth2_rs_name", Value::new_iname("test_resource_server")),
             ("displayname", Value::new_utf8s("test_resource_server")),
@@ -646,9 +646,9 @@ mod tests {
         let tuuid = uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930");
 
         let e1 = entry_init!(
-            ("class", AcpClass::Object.to_value()),
-            ("class", AcpClass::Person.to_value()),
-            ("class", AcpClass::Account.to_value()),
+            ("class", ValueClass::Object.to_value()),
+            ("class", ValueClass::Person.to_value()),
+            ("class", ValueClass::Account.to_value()),
             ("name", Value::new_iname("testperson1")),
             ("uuid", Value::Uuid(tuuid)),
             ("description", Value::new_utf8s("testperson1")),

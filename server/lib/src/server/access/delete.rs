@@ -116,7 +116,7 @@ fn protected_filter_entry(ident: &Identity, entry: &Arc<EntrySealedCommitted>) -
 
             // For now we just block create on sync object
             if let Some(classes) = entry.get_ava_set("class") {
-                if classes.contains(&AcpClass::SyncObject.into()) {
+                if classes.contains(&ValueClass::SyncObject.into()) {
                     // Block the mod
                     security_access!("attempt to delete with protected class type");
                     IResult::Denied

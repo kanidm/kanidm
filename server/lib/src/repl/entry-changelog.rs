@@ -226,13 +226,13 @@ impl EntryChangelog {
 
         let (anchors, changes) = if class
             .as_ref()
-            .map(|c| c.contains(&AcpClass::Tombstone.to_partialvalue()))
+            .map(|c| c.contains(&ValueClass::Tombstone.to_partialvalue()))
             .unwrap_or(false)
         {
             (btreemap![(cid, State::Tombstone(attrs))], BTreeMap::new())
         } else if class
             .as_ref()
-            .map(|c| c.contains(&AcpClass::Recycled.to_partialvalue()))
+            .map(|c| c.contains(&ValueClass::Recycled.to_partialvalue()))
             .unwrap_or(false)
         {
             (btreemap![(cid, State::Recycled(attrs))], BTreeMap::new())

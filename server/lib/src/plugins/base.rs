@@ -42,7 +42,7 @@ impl Plugin for Base {
         // For each candidate
         for entry in cand.iter_mut() {
             // First, ensure we have the 'object', class in the class set.
-            entry.add_ava("class", AcpClass::Object.to_value());
+            entry.add_ava("class", ValueClass::Object.to_value());
 
             // if they don't have uuid, create it.
             match entry.get_ava_set("uuid").map(|s| s.len()) {
@@ -250,27 +250,27 @@ mod tests {
 
     lazy_static! {
         pub static ref TEST_ACCOUNT: EntryInitNew = entry_init!(
-            ("class", AcpClass::Account.to_value()),
-            ("class", AcpClass::ServiceAccount.to_value()),
-            ("class", AcpClass::MemberOf.to_value()),
+            ("class", ValueClass::Account.to_value()),
+            ("class", ValueClass::ServiceAccount.to_value()),
+            ("class", ValueClass::MemberOf.to_value()),
             ("name", Value::new_iname("test_account_1")),
             ("displayname", Value::new_utf8s("test_account_1")),
             ("uuid", Value::Uuid(UUID_TEST_ACCOUNT)),
             ("memberof", Value::Refer(UUID_TEST_GROUP))
         );
         pub static ref TEST_GROUP: EntryInitNew = entry_init!(
-            ("class", AcpClass::Group.to_value()),
+            ("class", ValueClass::Group.to_value()),
             ("name", Value::new_iname("test_group_a")),
             ("uuid", Value::Uuid(UUID_TEST_GROUP)),
             ("member", Value::Refer(UUID_TEST_ACCOUNT))
         );
         pub static ref ALLOW_ALL: EntryInitNew = entry_init!(
-            ("class", AcpClass::Object.to_value()),
-            ("class", AcpClass::AccessControlProfile.to_value()),
-            ("class", AcpClass::AccessControlModify.to_value()),
-            ("class", AcpClass::AccessControlCreate.to_value()),
-            ("class", AcpClass::AccessControlDelete.to_value()),
-            ("class", AcpClass::AccessControlSearch.to_value()),
+            ("class", ValueClass::Object.to_value()),
+            ("class", ValueClass::AccessControlProfile.to_value()),
+            ("class", ValueClass::AccessControlModify.to_value()),
+            ("class", ValueClass::AccessControlCreate.to_value()),
+            ("class", ValueClass::AccessControlDelete.to_value()),
+            ("class", ValueClass::AccessControlSearch.to_value()),
             ("name", Value::new_iname("idm_admins_acp_allow_all_test")),
             ("uuid", Value::Uuid(UUID_TEST_ACP)),
             ("acp_receiver_group", Value::Refer(UUID_TEST_GROUP)),

@@ -12,7 +12,7 @@ use kanidm_proto::v1::UiHint;
 use uuid::{uuid, Uuid};
 
 #[derive(Copy, Clone)]
-pub enum AcpClass {
+pub enum ValueClass {
     AccessControlCreate,
     AccessControlDelete,
     AccessControlModify,
@@ -49,80 +49,80 @@ pub enum AcpClass {
     TestClass,
 }
 
-impl From<AcpClass> for &'static str {
-    fn from(val: AcpClass) -> Self {
+impl From<ValueClass> for &'static str {
+    fn from(val: ValueClass) -> Self {
         match val {
-            AcpClass::AccessControlCreate => "access_control_create",
-            AcpClass::AccessControlDelete => "access_control_delete",
-            AcpClass::AccessControlModify => "access_control_modify",
-            AcpClass::AccessControlProfile => "access_control_profile",
-            AcpClass::AccessControlSearch => "access_control_search",
-            AcpClass::Account => "account",
-            AcpClass::AttributeType => "attributetype",
-            AcpClass::Class => "class",
-            AcpClass::ClassType => "classtype",
-            AcpClass::Conflict => "conflict",
-            AcpClass::DomainInfo => "domain_info",
-            AcpClass::DynGroup => "dyngroup",
-            AcpClass::ExtensibleObject => "extensibleobject",
-            AcpClass::Group => "group",
-            AcpClass::MemberOf => "memberof",
-            AcpClass::OAuth2ResourceServer => "oauth2_resource_server",
-            AcpClass::OAuth2ResourceServerBasic => "oauth2_resource_server_basic",
-            AcpClass::OAuth2ResourceServerPublic => "oauth2_resource_server_public",
-            AcpClass::Object => "object",
-            AcpClass::Person => "person",
-            AcpClass::PosixAccount => "posixaccount",
-            AcpClass::PosixGroup => "posixgroup",
-            AcpClass::Recycled => "recycled",
-            AcpClass::Service => "service",
-            AcpClass::ServiceAccount => "service_account",
-            AcpClass::SyncAccount => "sync_account",
-            AcpClass::SyncObject => "sync_object",
-            AcpClass::System => "system",
-            AcpClass::SystemConfig => "system_config",
-            AcpClass::SystemInfo => "system_info",
-            AcpClass::Tombstone => "tombstone",
+            ValueClass::AccessControlCreate => "access_control_create",
+            ValueClass::AccessControlDelete => "access_control_delete",
+            ValueClass::AccessControlModify => "access_control_modify",
+            ValueClass::AccessControlProfile => "access_control_profile",
+            ValueClass::AccessControlSearch => "access_control_search",
+            ValueClass::Account => "account",
+            ValueClass::AttributeType => "attributetype",
+            ValueClass::Class => "class",
+            ValueClass::ClassType => "classtype",
+            ValueClass::Conflict => "conflict",
+            ValueClass::DomainInfo => "domain_info",
+            ValueClass::DynGroup => "dyngroup",
+            ValueClass::ExtensibleObject => "extensibleobject",
+            ValueClass::Group => "group",
+            ValueClass::MemberOf => "memberof",
+            ValueClass::OAuth2ResourceServer => "oauth2_resource_server",
+            ValueClass::OAuth2ResourceServerBasic => "oauth2_resource_server_basic",
+            ValueClass::OAuth2ResourceServerPublic => "oauth2_resource_server_public",
+            ValueClass::Object => "object",
+            ValueClass::Person => "person",
+            ValueClass::PosixAccount => "posixaccount",
+            ValueClass::PosixGroup => "posixgroup",
+            ValueClass::Recycled => "recycled",
+            ValueClass::Service => "service",
+            ValueClass::ServiceAccount => "service_account",
+            ValueClass::SyncAccount => "sync_account",
+            ValueClass::SyncObject => "sync_object",
+            ValueClass::System => "system",
+            ValueClass::SystemConfig => "system_config",
+            ValueClass::SystemInfo => "system_info",
+            ValueClass::Tombstone => "tombstone",
             #[cfg(any(test, debug_assertions))]
-            AcpClass::TestClass => "testclass",
-            AcpClass::User => "user",
+            ValueClass::TestClass => "testclass",
+            ValueClass::User => "user",
         }
     }
 }
 
-impl From<AcpClass> for String {
-    fn from(val: AcpClass) -> Self {
+impl From<ValueClass> for String {
+    fn from(val: ValueClass) -> Self {
         let s: &'static str = val.into();
         s.to_string()
     }
 }
 
-impl From<AcpClass> for Value {
-    fn from(val: AcpClass) -> Self {
+impl From<ValueClass> for Value {
+    fn from(val: ValueClass) -> Self {
         Value::new_iutf8(val.into())
     }
 }
 
-impl From<AcpClass> for PartialValue {
-    fn from(val: AcpClass) -> Self {
+impl From<ValueClass> for PartialValue {
+    fn from(val: ValueClass) -> Self {
         PartialValue::new_iutf8(val.into())
     }
 }
 
-impl From<AcpClass> for crate::prelude::AttrString {
-    fn from(val: AcpClass) -> Self {
+impl From<ValueClass> for crate::prelude::AttrString {
+    fn from(val: ValueClass) -> Self {
         crate::prelude::AttrString::from(val.to_string())
     }
 }
 
-impl Display for AcpClass {
+impl Display for ValueClass {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> std::fmt::Result {
         let s: String = (*self).into();
         write!(f, "{}", s)
     }
 }
 
-impl AcpClass {
+impl ValueClass {
     pub fn to_value(self) -> Value {
         let s: &'static str = self.into();
         Value::new_iutf8(s)
@@ -147,10 +147,10 @@ pub const JSON_ADMIN_V1: &str = r#"{
 
 lazy_static! {
     pub static ref E_ADMIN_V1: EntryInitNew = entry_init!(
-        ("class", AcpClass::Account.to_value()),
-        ("class", AcpClass::MemberOf.to_value()),
-        ("class", AcpClass::Object.to_value()),
-        ("class", AcpClass::ServiceAccount.to_value()),
+        ("class", ValueClass::Account.to_value()),
+        ("class", ValueClass::MemberOf.to_value()),
+        ("class", ValueClass::Object.to_value()),
+        ("class", ValueClass::ServiceAccount.to_value()),
         ("name", Value::new_iname("admin")),
         ("uuid", Value::Uuid(UUID_ADMIN)),
         (
@@ -164,10 +164,10 @@ lazy_static! {
 lazy_static! {
     /// Builtin IDM Admin account.
     pub static ref E_IDM_ADMIN_V1: EntryInitNew = entry_init!(
-        ("class", AcpClass::Account.to_value()),
-        ("class", AcpClass::MemberOf.to_value()),
-        ("class", AcpClass::Object.to_value()),
-        ("class", AcpClass::ServiceAccount.to_value()),
+        ("class", ValueClass::Account.to_value()),
+        ("class", ValueClass::MemberOf.to_value()),
+        ("class", ValueClass::Object.to_value()),
+        ("class", ValueClass::ServiceAccount.to_value()),
         ("name", Value::new_iname("idm_admin")),
         ("uuid", Value::Uuid(UUID_IDM_ADMIN)),
         (
@@ -181,8 +181,8 @@ lazy_static! {
 lazy_static! {
     /// Builtin IDM Administrators Group.
     pub static ref E_IDM_ADMINS_V1: EntryInitNew = entry_init!(
-        ("class", AcpClass::Group.to_value()),
-        ("class", AcpClass::Object.to_value()),
+        ("class", ValueClass::Group.to_value()),
+        ("class", ValueClass::Object.to_value()),
         ("name", Value::new_iname("idm_admins")),
         ("uuid", Value::Uuid(UUID_IDM_ADMINS)),
         (
@@ -196,8 +196,8 @@ lazy_static! {
 lazy_static! {
     /// Builtin System Administrators Group.
     pub static ref E_SYSTEM_ADMINS_V1: EntryInitNew = entry_init!(
-        ("class", AcpClass::Group.to_value()),
-        ("class", AcpClass::Object.to_value()),
+        ("class", ValueClass::Group.to_value()),
+        ("class", ValueClass::Object.to_value()),
         ("name", Value::new_iname("system_admins")),
         ("uuid", Value::Uuid(UUID_SYSTEM_ADMINS)),
         (
@@ -620,8 +620,8 @@ pub const JSON_IDM_ALL_ACCOUNTS: &str = r#"{
 
 lazy_static! {
     pub static ref E_IDM_UI_ENABLE_EXPERIMENTAL_FEATURES: EntryInitNew = entry_init!(
-        ("class", AcpClass::Object.to_value()),
-        ("class", AcpClass::Group.to_value()),
+        ("class", ValueClass::Object.to_value()),
+        ("class", ValueClass::Group.to_value()),
         (
             "name",
             Value::new_iname("idm_ui_enable_experimental_features")
@@ -640,8 +640,8 @@ lazy_static! {
     );
 
     pub static ref E_IDM_ACCOUNT_MAIL_READ_PRIV: EntryInitNew = entry_init!(
-        ("class", AcpClass::Object.to_value()),
-        ("class", AcpClass::Group.to_value()),
+        ("class", ValueClass::Object.to_value()),
+        ("class", ValueClass::Group.to_value()),
         (
             "name",
             Value::new_iname("idm_account_mail_read_priv")
@@ -702,9 +702,9 @@ pub const JSON_IDM_HIGH_PRIVILEGE_V1: &str = r#"{
 
 lazy_static! {
     pub static ref E_SYSTEM_INFO_V1: EntryInitNew = entry_init!(
-        ("class", AcpClass::Object.to_value()),
-        ("class", AcpClass::SystemInfo.to_value()),
-        ("class", AcpClass::System.to_value()),
+        ("class", ValueClass::Object.to_value()),
+        ("class", ValueClass::SystemInfo.to_value()),
+        ("class", ValueClass::System.to_value()),
         ("uuid", Value::Uuid(UUID_SYSTEM_INFO)),
         (
             "description",
@@ -716,9 +716,9 @@ lazy_static! {
 
 lazy_static! {
     pub static ref E_DOMAIN_INFO_V1: EntryInitNew = entry_init!(
-        ("class", AcpClass::Object.to_value()),
-        ("class", AcpClass::DomainInfo.to_value()),
-        ("class", AcpClass::System.to_value()),
+        ("class", ValueClass::Object.to_value()),
+        ("class", ValueClass::DomainInfo.to_value()),
+        ("class", ValueClass::System.to_value()),
         ("name", Value::new_iname("domain_local")),
         ("uuid", Value::Uuid(UUID_DOMAIN_INFO)),
         (
@@ -741,9 +741,9 @@ pub const JSON_ANONYMOUS_V1: &str = r#"{
 
 lazy_static! {
     pub static ref E_ANONYMOUS_V1: EntryInitNew = entry_init!(
-        ("class", AcpClass::Object.to_value()),
-        ("class", AcpClass::Account.to_value()),
-        ("class", AcpClass::ServiceAccount.to_value()),
+        ("class", ValueClass::Object.to_value()),
+        ("class", ValueClass::Account.to_value()),
+        ("class", ValueClass::ServiceAccount.to_value()),
         ("name", Value::new_iname("anonymous")),
         ("uuid", Value::Uuid(UUID_ANONYMOUS)),
         ("description", Value::new_utf8s("Anonymous access account.")),
@@ -779,12 +779,12 @@ pub const JSON_TESTPERSON2: &str = r#"{
 #[cfg(test)]
 lazy_static! {
     pub static ref E_TESTPERSON_1: EntryInitNew = entry_init!(
-        ("class", AcpClass::Object.to_value()),
+        ("class", ValueClass::Object.to_value()),
         ("name", Value::new_iname("testperson1")),
         ("uuid", Value::Uuid(UUID_TESTPERSON_1))
     );
     pub static ref E_TESTPERSON_2: EntryInitNew = entry_init!(
-        ("class", AcpClass::Object.to_value()),
+        ("class", ValueClass::Object.to_value()),
         ("name", Value::new_iname("testperson2")),
         ("uuid", Value::Uuid(UUID_TESTPERSON_2))
     );

@@ -28,7 +28,7 @@ pub(crate) struct SyncAccount {
 macro_rules! try_from_entry {
     ($value:expr) => {{
         // Check the classes
-        if !$value.attribute_equality("class", &AcpClass::SyncAccount.into()) {
+        if !$value.attribute_equality("class", &ValueClass::SyncAccount.into()) {
             return Err(OperationError::InvalidAccountState(
                 "Missing class: sync account".to_string(),
             ));
@@ -283,7 +283,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         // First, get the set of uuids that exist. We need this so we have the set of uuids we'll
         // be deleting *at the end*.
         let f_all_sync = filter_all!(f_and!([
-            f_eq("class", AcpClass::SyncObject.into()),
+            f_eq("class", ValueClass::SyncObject.into()),
             f_eq("sync_parent_uuid", PartialValue::Refer(sync_uuid))
         ]));
 
@@ -315,14 +315,16 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 OperationError::InvalidState
             })?;
 
-            let modlist =
-                std::iter::once(Modify::Removed("class".into(), AcpClass::SyncObject.into()))
-                    .chain(
-                        sync_class
-                            .may_iter()
-                            .map(|aname| Modify::Purged(aname.clone())),
-                    )
-                    .collect();
+            let modlist = std::iter::once(Modify::Removed(
+                "class".into(),
+                ValueClass::SyncObject.into(),
+            ))
+            .chain(
+                sync_class
+                    .may_iter()
+                    .map(|aname| Modify::Purged(aname.clone())),
+            )
+            .collect();
 
             let mods = ModifyList::new_list(modlist);
 
@@ -406,7 +408,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         // First, get the set of uuids that exist. We need this so we have the set of uuids we'll
         // be deleting *at the end*.
         let f_all_sync = filter_all!(f_and!([
-            f_eq("class", AcpClass::SyncObject.into()),
+            f_eq("class", ValueClass::SyncObject.into()),
             f_eq("sync_parent_uuid", PartialValue::Refer(sync_uuid))
         ]));
 
@@ -436,14 +438,16 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 OperationError::InvalidState
             })?;
 
-            let modlist =
-                std::iter::once(Modify::Removed("class".into(), AcpClass::SyncObject.into()))
-                    .chain(
-                        sync_class
-                            .may_iter()
-                            .map(|aname| Modify::Purged(aname.clone())),
-                    )
-                    .collect();
+            let modlist = std::iter::once(Modify::Removed(
+                "class".into(),
+                ValueClass::SyncObject.into(),
+            ))
+            .chain(
+                sync_class
+                    .may_iter()
+                    .map(|aname| Modify::Purged(aname.clone())),
+            )
+            .collect();
 
             let mods = ModifyList::new_list(modlist);
 
@@ -659,8 +663,8 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             .copied()
             .map(|u| {
                 entry_init!(
-                    ("class", AcpClass::Object.to_value()),
-                    ("class", AcpClass::SyncObject.to_value()),
+                    ("class", ValueClass::Object.to_value()),
+                    ("class", ValueClass::SyncObject.to_value()),
                     ("sync_parent_uuid", Value::Refer(sync_uuid)),
                     ("uuid", Value::Uuid(u))
                 )
@@ -1503,8 +1507,8 @@ mod tests {
         let sync_uuid = Uuid::new_v4();
 
         let e1 = entry_init!(
-            ("class", AcpClass::Object.to_value()),
-            ("class", AcpClass::SyncAccount.to_value()),
+            ("class", ValueClass::Object.to_value()),
+            ("class", ValueClass::SyncAccount.to_value()),
             ("name", Value::new_iname("test_scim_sync")),
             ("uuid", Value::Uuid(sync_uuid)),
             ("description", Value::new_utf8s("A test sync agreement"))
@@ -1570,8 +1574,8 @@ mod tests {
         let sync_uuid = Uuid::new_v4();
 
         let e1 = entry_init!(
-            ("class", AcpClass::Object.to_value()),
-            ("class", AcpClass::SyncAccount.to_value()),
+            ("class", ValueClass::Object.to_value()),
+            ("class", ValueClass::SyncAccount.to_value()),
             ("name", Value::new_iname("test_scim_sync")),
             ("uuid", Value::Uuid(sync_uuid)),
             ("description", Value::new_utf8s("A test sync agreement"))
@@ -1685,8 +1689,8 @@ mod tests {
         let sync_uuid = Uuid::new_v4();
 
         let e1 = entry_init!(
-            ("class", AcpClass::Object.to_value()),
-            ("class", AcpClass::SyncAccount.to_value()),
+            ("class", ValueClass::Object.to_value()),
+            ("class", ValueClass::SyncAccount.to_value()),
             ("name", Value::new_iname("test_scim_sync")),
             ("uuid", Value::Uuid(sync_uuid)),
             ("description", Value::new_utf8s("A test sync agreement"))
@@ -1801,7 +1805,7 @@ mod tests {
         assert!(idms_prox_write
             .qs_write
             .internal_create(vec![entry_init!(
-                ("class", AcpClass::Object.to_value()),
+                ("class", ValueClass::Object.to_value()),
                 ("uuid", Value::Uuid(user_sync_uuid))
             )])
             .is_ok());
@@ -2155,7 +2159,7 @@ mod tests {
         assert!(idms_prox_write
             .qs_write
             .internal_create(vec![entry_init!(
-                ("class", AcpClass::Object.to_value()),
+                ("class", ValueClass::Object.to_value()),
                 ("uuid", Value::Uuid(user_sync_uuid))
             )])
             .is_ok());
@@ -2192,7 +2196,7 @@ mod tests {
         assert!(idms_prox_write
             .qs_write
             .internal_create(vec![entry_init!(
-                ("class", AcpClass::Object.to_value()),
+                ("class", ValueClass::Object.to_value()),
                 ("uuid", Value::Uuid(user_sync_uuid))
             )])
             .is_ok());
@@ -2851,16 +2855,16 @@ mod tests {
 
         // Check that the entries still exists but now have no sync_object attached.
         let testgroup = get_single_entry("testgroup", &mut idms_prox_write);
-        assert!(!testgroup.attribute_equality("class", &AcpClass::SyncObject.into()));
+        assert!(!testgroup.attribute_equality("class", &ValueClass::SyncObject.into()));
 
         let testposix = get_single_entry("testposix", &mut idms_prox_write);
-        assert!(!testposix.attribute_equality("class", &AcpClass::SyncObject.into()));
+        assert!(!testposix.attribute_equality("class", &ValueClass::SyncObject.into()));
 
         let testexternal = get_single_entry("testexternal", &mut idms_prox_write);
-        assert!(!testexternal.attribute_equality("class", &AcpClass::SyncObject.into()));
+        assert!(!testexternal.attribute_equality("class", &ValueClass::SyncObject.into()));
 
         let testuser = get_single_entry("testuser", &mut idms_prox_write);
-        assert!(!testuser.attribute_equality("class", &AcpClass::SyncObject.into()));
+        assert!(!testuser.attribute_equality("class", &ValueClass::SyncObject.into()));
 
         assert!(idms_prox_write.commit().is_ok());
     }
@@ -2906,10 +2910,10 @@ mod tests {
 
         // Check that the entries still exists but now have no sync_object attached.
         let testgroup = get_single_entry("testgroup", &mut idms_prox_write);
-        assert!(!testgroup.attribute_equality("class", &AcpClass::SyncObject.into()));
+        assert!(!testgroup.attribute_equality("class", &ValueClass::SyncObject.into()));
 
         let testuser = get_single_entry("testuser", &mut idms_prox_write);
-        assert!(!testuser.attribute_equality("class", &AcpClass::SyncObject.into()));
+        assert!(!testuser.attribute_equality("class", &ValueClass::SyncObject.into()));
 
         for iname in ["testposix", "testexternal"] {
             trace!(%iname);

@@ -2,7 +2,7 @@
 //!
 //! Schema uuids start at `00000000-0000-0000-0000-ffff00000000`
 //!
-use crate::constants::entries::AcpClass;
+use crate::constants::entries::ValueClass;
 use crate::constants::uuids::*;
 use crate::schema::{SchemaAttribute, SchemaClass};
 use crate::value::IndexType;
@@ -610,13 +610,13 @@ pub static ref SCHEMA_CLASS_ACCOUNT: SchemaClass = SchemaClass {
         "name_history",
     ]),
     systemmust: attrstring_vec!(["displayname", "name", "spn"]),
-    systemsupplements: attrstring_vec!(["person", AcpClass::ServiceAccount.into()]),
+    systemsupplements: attrstring_vec!(["person", ValueClass::ServiceAccount.into()]),
     ..Default::default()
 };
 
 pub static ref SCHEMA_CLASS_SERVICE_ACCOUNT: SchemaClass = SchemaClass {
     uuid: UUID_SCHEMA_CLASS_SERVICE_ACCOUNT,
-    name: AcpClass::ServiceAccount.into(),
+    name: ValueClass::ServiceAccount.into(),
     description: "Object representation of service account".to_string(),
 
     sync_allowed: true,
@@ -626,7 +626,7 @@ pub static ref SCHEMA_CLASS_SERVICE_ACCOUNT: SchemaClass = SchemaClass {
         "jws_es256_private_key",
         "api_token_session",
     ]),
-    systemexcludes: attrstring_vec!([AcpClass::Person.to_string()]),
+    systemexcludes: attrstring_vec!([ValueClass::Person.to_string()]),
     ..Default::default()
 };
 
@@ -642,7 +642,7 @@ pub static ref SCHEMA_CLASS_SYNC_ACCOUNT: SchemaClass = SchemaClass {
         "sync_credential_portal",
         "sync_yield_authority",
     ]),
-    systemexcludes: attrstring_vec!([AcpClass::Account.to_string()]),
+    systemexcludes: attrstring_vec!([ValueClass::Account.to_string()]),
     ..Default::default()
 };
 
