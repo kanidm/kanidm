@@ -185,10 +185,8 @@ impl ValueSetT for ValueSetEcKeyPrivate {
     fn merge(&mut self, other: &super::ValueSet) -> Result<(), kanidm_proto::v1::OperationError> {
         if let Some(other_key) = other.as_ec_key_private() {
             let priv_key = other_key.clone();
-            #[allow(clippy::expect_used)]
-            let pub_key = Self::private_key_to_public_key(&priv_key).expect(
-                "Unable to retrieve public key from private key, likely corrupted. You must restore from backup.",
-            );
+            let pub_key = Self::private_key_to_public_key(&priv_key)
+                .ok_or(OperationError::CryptographyError)?;
             self.set = Some(EcKeyPrivate { pub_key, priv_key });
             Ok(())
         } else {
