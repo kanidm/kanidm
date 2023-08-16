@@ -170,6 +170,7 @@ pub trait IdlSqliteTransaction {
                 // I have now is probably really bad :(
                 let mut results = Vec::new();
 
+                // Faster to iterate over the compressed form believe it or not.
                 /*
                 let decompressed: Result<Vec<i64>, _> = idli.into_iter()
                     .map(|u| i64::try_from(u).map_err(|_| OperationError::InvalidEntryId))
@@ -488,6 +489,39 @@ pub trait IdlSqliteTransaction {
 
     fn list_id2entry(&self) -> Result<Vec<(u64, String)>, OperationError> {
         let allids = self.get_identry_raw(&IdList::AllIds)?;
+        allids
+            .into_iter()
+            .map(|data| data.into_dbentry().map(|(id, db_e)| (id, db_e.to_string())))
+            .collect()
+    }
+
+    fn list_quarantined(&self) -> Result<Vec<(u64, String)>, OperationError> {
+        // This is a more direct version of get_identry_raw adapted for the simpler
+        // quarantine setup.
+        let mut stmt = self
+            .get_conn()?
+            .prepare(&format!(
+                "SELECT id, data FROM {}.id2entry_quarantine",
+                self.get_db_name()
+            ))
+            .map_err(sqlite_error)?;
+        let id2entry_iter = stmt
+            .query_map([], |row| {
+                Ok(IdSqliteEntry {
+                    id: row.get(0)?,
+                    data: row.get(1)?,
+                })
+            })
+            .map_err(sqlite_error)?;
+        let allids = id2entry_iter
+            .map(|v| {
+                v.map_err(sqlite_error).and_then(|ise| {
+                    // Convert the idsqlite to id raw
+                    ise.try_into()
+                })
+            })
+            .collect::<Result<Vec<IdRawEntry>, _>>()?;
+
         allids
             .into_iter()
             .map(|data| data.into_dbentry().map(|(id, db_e)| (id, db_e.to_string())))
@@ -1126,6 +1160,80 @@ impl IdlSqliteWriteTransaction {
         Ok(slope)
     }
 
+    pub fn quarantine_entry(&self, id: u64) -> Result<(), OperationError> {
+        let iid = i64::try_from(id).map_err(|_| OperationError::InvalidEntryId)?;
+
+        let id_sqlite_entry = self
+            .get_conn()?
+            .query_row(
+                &format!(
+                    "DELETE FROM {}.id2entry WHERE id = :idl RETURNING id, data",
+                    self.get_db_name()
+                ),
+                [&iid],
+                |row| {
+                    Ok(IdSqliteEntry {
+                        id: row.get(0)?,
+                        data: row.get(1)?,
+                    })
+                },
+            )
+            .map_err(sqlite_error)?;
+
+        trace!(?id_sqlite_entry);
+
+        self.get_conn()?
+            .execute(
+                &format!(
+                    "INSERT OR REPLACE INTO {}.id2entry_quarantine VALUES(:id, :data)",
+                    self.get_db_name()
+                ),
+                named_params! {
+                    ":id": &id_sqlite_entry.id,
+                    ":data": &id_sqlite_entry.data.as_slice()
+                },
+            )
+            .map_err(sqlite_error)
+            .map(|_| ())
+    }
+
+    pub fn restore_quarantined(&self, id: u64) -> Result<(), OperationError> {
+        let iid = i64::try_from(id).map_err(|_| OperationError::InvalidEntryId)?;
+
+        let id_sqlite_entry = self
+            .get_conn()?
+            .query_row(
+                &format!(
+                    "DELETE FROM {}.id2entry_quarantine WHERE id = :idl RETURNING id, data",
+                    self.get_db_name()
+                ),
+                [&iid],
+                |row| {
+                    Ok(IdSqliteEntry {
+                        id: row.get(0)?,
+                        data: row.get(1)?,
+                    })
+                },
+            )
+            .map_err(sqlite_error)?;
+
+        trace!(?id_sqlite_entry);
+
+        self.get_conn()?
+            .execute(
+                &format!(
+                    "INSERT INTO {}.id2entry VALUES(:id, :data)",
+                    self.get_db_name()
+                ),
+                named_params! {
+                    ":id": &id_sqlite_entry.id,
+                    ":data": &id_sqlite_entry.data.as_slice()
+                },
+            )
+            .map_err(sqlite_error)
+            .map(|_| ())
+    }
+
     /// ⚠️  - This function will destroy all entries in the database.
     ///
     /// It should only be called internally by the backend in limited and
@@ -1399,6 +1507,25 @@ impl IdlSqliteWriteTransaction {
             info!(entry = %dbv_id2entry, "dbv_id2entry migrated (externalid2uuid)");
         }
         //   * if v6 -> complete.
+        if dbv_id2entry == 6 {
+            self.get_conn()?
+                .execute(
+                    &format!(
+                        "CREATE TABLE IF NOT EXISTS {}.id2entry_quarantine (
+                        id INTEGER PRIMARY KEY ASC,
+                        data BLOB NOT NULL
+                    )
+                    ",
+                        self.get_db_name()
+                    ),
+                    [],
+                )
+                .map_err(sqlite_error)?;
+
+            dbv_id2entry = 7;
+            info!(entry = %dbv_id2entry, "dbv_id2entry migrated (quarantine)");
+        }
+        //   * if v7 -> complete.
 
         self.set_db_version_key(DBV_ID2ENTRY, dbv_id2entry)?;
 

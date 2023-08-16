@@ -203,7 +203,7 @@ impl Plugin for Base {
             })
     }
 
-    #[instrument(level = "debug", name = "base_verify", skip(qs))]
+    #[instrument(level = "debug", name = "base::verify", skip_all)]
     fn verify(qs: &mut QueryServerReadTransaction) -> Vec<Result<(), ConsistencyError>> {
         // Search for class = *
         let entries = match qs.internal_search(filter!(f_pres("class"))) {

@@ -541,6 +541,7 @@ mod tests {
                     .expect("No members on dyn group");
 
                 assert!(members.to_refer_single() == Some(UUID_TEST_GROUP));
+                assert!(d_group.get_ava_set("member").is_none());
             }
         );
     }

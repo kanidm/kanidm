@@ -369,6 +369,8 @@ pub trait IdlArcSqliteTransaction {
 
     fn list_id2entry(&self) -> Result<Vec<(u64, String)>, OperationError>;
 
+    fn list_quarantined(&self) -> Result<Vec<(u64, String)>, OperationError>;
+
     fn list_index_content(
         &self,
         index_name: &str,
@@ -447,6 +449,11 @@ impl<'a> IdlArcSqliteTransaction for IdlArcSqliteReadTransaction<'a> {
     fn list_id2entry(&self) -> Result<Vec<(u64, String)>, OperationError> {
         // This is only used in tests or debug tools, so bypass the cache.
         self.db.list_id2entry()
+    }
+
+    fn list_quarantined(&self) -> Result<Vec<(u64, String)>, OperationError> {
+        // No cache of quarantined entries.
+        self.db.list_quarantined()
     }
 
     fn list_index_content(
@@ -536,6 +543,11 @@ impl<'a> IdlArcSqliteTransaction for IdlArcSqliteWriteTransaction<'a> {
     fn list_id2entry(&self) -> Result<Vec<(u64, String)>, OperationError> {
         // This is only used in tests or debug tools, so bypass the cache.
         self.db.list_id2entry()
+    }
+
+    fn list_quarantined(&self) -> Result<Vec<(u64, String)>, OperationError> {
+        // No cache of quarantined entries.
+        self.db.list_quarantined()
     }
 
     fn list_index_content(
@@ -978,6 +990,14 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
             // always in range.
             unsafe { sf.to_int_unchecked::<IdxSlope>() }
         }
+    }
+
+    pub fn quarantine_entry(&self, id: u64) -> Result<(), OperationError> {
+        self.db.quarantine_entry(id)
+    }
+
+    pub fn restore_quarantined(&self, id: u64) -> Result<(), OperationError> {
+        self.db.restore_quarantined(id)
     }
 
     pub fn create_name2uuid(&self) -> Result<(), OperationError> {

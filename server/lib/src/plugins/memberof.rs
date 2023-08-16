@@ -284,7 +284,7 @@ impl Plugin for MemberOf {
         apply_memberof(qs, group_affect)
     }
 
-    #[instrument(level = "debug", name = "memberof_verify", skip(qs))]
+    #[instrument(level = "debug", name = "memberof::verify", skip_all)]
     fn verify(qs: &mut QueryServerReadTransaction) -> Vec<Result<(), ConsistencyError>> {
         let mut r = Vec::new();
 

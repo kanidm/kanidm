@@ -73,7 +73,7 @@ impl Plugin for Spn {
         Self::post_modify_inner(qs, pre_cand, cand)
     }
 
-    #[instrument(level = "debug", name = "spn_verify", skip(qs))]
+    #[instrument(level = "debug", name = "spn::verify", skip_all)]
     fn verify(qs: &mut QueryServerReadTransaction) -> Vec<Result<(), ConsistencyError>> {
         // Verify that all items with spn's have valid spns.
         //   We need to consider the case that an item has a different origin domain too,

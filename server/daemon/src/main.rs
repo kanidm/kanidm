@@ -33,7 +33,8 @@ use kanidmd_core::config::{Configuration, LogLevel, ServerConfig};
 use kanidmd_core::{
     backup_server_core, cert_generate_core, create_server_core, dbscan_get_id2entry_core,
     dbscan_list_id2entry_core, dbscan_list_index_analysis_core, dbscan_list_index_core,
-    dbscan_list_indexes_core, domain_rename_core, reindex_server_core, restore_server_core,
+    dbscan_list_indexes_core, dbscan_list_quarantined_core, dbscan_quarantine_id2entry_core,
+    dbscan_restore_quarantined_core, domain_rename_core, reindex_server_core, restore_server_core,
     vacuum_server_core, verify_server_core,
 };
 use sketching::tracing_forest::traits::*;
@@ -67,7 +68,16 @@ impl KanidmdOpt {
             KanidmdOpt::Database {
                 commands: DbCommands::Restore(ropt),
             } => &ropt.commonopts,
-            KanidmdOpt::RecoverAccount { commonopts, .. } => commonopts,
+            KanidmdOpt::DbScan {
+                commands: DbScanOpt::QuarantineId2Entry { commonopts, .. },
+            }
+            | KanidmdOpt::DbScan {
+                commands: DbScanOpt::ListQuarantined { commonopts },
+            }
+            | KanidmdOpt::DbScan {
+                commands: DbScanOpt::RestoreQuarantined { commonopts, .. },
+            }
+            | KanidmdOpt::RecoverAccount { commonopts, .. } => commonopts,
             KanidmdOpt::DbScan {
                 commands: DbScanOpt::ListIndex(dopt),
             } => &dopt.commonopts,
@@ -568,6 +578,34 @@ async fn main() -> ExitCode {
                     info!("👀 db scan - get id2 entry - {}", dopt.id);
                     dbscan_get_id2entry_core(&config, dopt.id);
                 }
+
+                KanidmdOpt::DbScan {
+                    commands: DbScanOpt::QuarantineId2Entry {
+                        id, commonopts: _
+                    }
+                } => {
+                    info!("☣️  db scan - quarantine id2 entry - {}", id);
+                    dbscan_quarantine_id2entry_core(&config, *id);
+                }
+
+                KanidmdOpt::DbScan {
+                    commands: DbScanOpt::ListQuarantined {
+                        commonopts: _
+                    }
+                } => {
+                    info!("☣️  db scan - list quarantined");
+                    dbscan_list_quarantined_core(&config);
+                }
+
+                KanidmdOpt::DbScan {
+                    commands: DbScanOpt::RestoreQuarantined {
+                        id, commonopts: _
+                    }
+                } => {
+                    info!("☣️  db scan - restore quarantined entry - {}", id);
+                    dbscan_restore_quarantined_core(&config, *id);
+                }
+
                 KanidmdOpt::DomainSettings {
                     commands: DomainSettingsCmds::DomainChange(_dopt),
                 } => {
