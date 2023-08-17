@@ -1079,18 +1079,30 @@ mod tests {
     lazy_static! {
         pub static ref E_TEST_ACCOUNT_1: Arc<EntrySealedCommitted> = Arc::new(
             entry_init!(
-                ("class", ValueClass::Object.to_value()),
+                (
+                    ValueAttribute::Class.as_str(),
+                    ValueClass::Object.to_value()
+                ),
                 ("name", Value::new_iname("test_account_1")),
-                ("uuid", Value::Uuid(UUID_TEST_ACCOUNT_1)),
+                (
+                    ValueAttribute::Uuid.as_str(),
+                    Value::Uuid(UUID_TEST_ACCOUNT_1)
+                ),
                 ("memberof", Value::Refer(UUID_TEST_GROUP_1))
             )
             .into_sealed_committed()
         );
         pub static ref E_TEST_ACCOUNT_2: Arc<EntrySealedCommitted> = Arc::new(
             entry_init!(
-                ("class", ValueClass::Object.to_value()),
+                (
+                    ValueAttribute::Class.as_str(),
+                    ValueClass::Object.to_value()
+                ),
                 ("name", Value::new_iname("test_account_1")),
-                ("uuid", Value::Uuid(UUID_TEST_ACCOUNT_2)),
+                (
+                    ValueAttribute::Uuid.as_str(),
+                    Value::Uuid(UUID_TEST_ACCOUNT_2)
+                ),
                 ("memberof", Value::Refer(UUID_TEST_GROUP_2))
             )
             .into_sealed_committed()
@@ -1179,8 +1191,14 @@ mod tests {
         acp_from_entry_ok!(
             &mut qs_write,
             entry_init!(
-                ("class", ValueClass::Object.to_value()),
-                ("class", ValueClass::AccessControlProfile.to_value()),
+                (
+                    ValueAttribute::Class.as_str(),
+                    ValueClass::Object.to_value()
+                ),
+                (
+                    ValueAttribute::Class.as_str(),
+                    ValueClass::AccessControlProfile.to_value()
+                ),
                 ("name", Value::new_iname("acp_valid")),
                 (
                     "uuid",
@@ -1222,9 +1240,18 @@ mod tests {
         acp_from_entry_ok!(
             &mut qs_write,
             entry_init!(
-                ("class", ValueClass::Object.to_value()),
-                ("class", ValueClass::AccessControlProfile.to_value()),
-                ("class", ValueClass::AccessControlDelete.to_value()),
+                (
+                    ValueAttribute::Class.as_str(),
+                    ValueClass::Object.to_value()
+                ),
+                (
+                    ValueAttribute::Class.as_str(),
+                    ValueClass::AccessControlProfile.to_value()
+                ),
+                (
+                    ValueAttribute::Class.as_str(),
+                    ValueClass::AccessControlDelete.to_value()
+                ),
                 ("name", Value::new_iname("acp_valid")),
                 (
                     "uuid",
@@ -1305,20 +1332,29 @@ mod tests {
         acp_from_entry_ok!(
             &mut qs_write,
             entry_init!(
-                ("class", ValueClass::Object.to_value()),
-                ("class", ValueClass::AccessControlProfile.to_value()),
-                ("class", ValueClass::AccessControlSearch.to_value()),
-                ("name", Value::new_iname("acp_valid")),
                 (
-                    "uuid",
+                    ValueAttribute::Class.as_str(),
+                    ValueClass::Object.to_value()
+                ),
+                (
+                    ValueAttribute::Class.as_str(),
+                    ValueClass::AccessControlProfile.to_value()
+                ),
+                (
+                    ValueAttribute::Class.as_str(),
+                    ValueClass::AccessControlSearch.to_value()
+                ),
+                (ValueAttribute::Name.as_str(), Value::new_iname("acp_valid")),
+                (
+                    ValueAttribute::Uuid.as_str(),
                     Value::Uuid(uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
                 ),
                 (
-                    "acp_receiver_group",
+                    ValueAttribute::AcpReceiverGroup.as_str(),
                     Value::Refer(uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
                 ),
                 (
-                    "acp_targetscope",
+                    ValueAttribute::AcpTargetScope.as_str(),
                     Value::new_json_filter_s("{\"eq\":[\"name\",\"a\"]}").expect("filter")
                 ),
                 ("acp_search_attr", Value::new_iutf8("name")),
@@ -1355,9 +1391,18 @@ mod tests {
         acp_from_entry_ok!(
             &mut qs_write,
             entry_init!(
-                ("class", ValueClass::Object.to_value()),
-                ("class", ValueClass::AccessControlProfile.to_value()),
-                ("class", ValueClass::AccessControlModify.to_value()),
+                (
+                    ValueAttribute::Class.as_str(),
+                    ValueClass::Object.to_value()
+                ),
+                (
+                    ValueAttribute::Class.as_str(),
+                    ValueClass::AccessControlProfile.to_value()
+                ),
+                (
+                    ValueAttribute::Class.as_str(),
+                    ValueClass::AccessControlModify.to_value()
+                ),
                 ("name", Value::new_iname("acp_valid")),
                 (
                     "uuid",
@@ -1378,9 +1423,18 @@ mod tests {
         acp_from_entry_ok!(
             &mut qs_write,
             entry_init!(
-                ("class", ValueClass::Object.to_value()),
-                ("class", ValueClass::AccessControlProfile.to_value()),
-                ("class", ValueClass::AccessControlModify.to_value()),
+                (
+                    ValueAttribute::Class.as_str(),
+                    ValueClass::Object.to_value()
+                ),
+                (
+                    ValueAttribute::Class.as_str(),
+                    ValueClass::AccessControlProfile.to_value()
+                ),
+                (
+                    ValueAttribute::Class.as_str(),
+                    ValueClass::AccessControlModify.to_value()
+                ),
                 ("name", Value::new_iname("acp_valid")),
                 (
                     "uuid",
@@ -1428,9 +1482,18 @@ mod tests {
         acp_from_entry_ok!(
             &mut qs_write,
             entry_init!(
-                ("class", ValueClass::Object.to_value()),
-                ("class", ValueClass::AccessControlProfile.to_value()),
-                ("class", ValueClass::AccessControlCreate.to_value()),
+                (
+                    ValueAttribute::Class.as_str(),
+                    ValueClass::Object.to_value()
+                ),
+                (
+                    ValueAttribute::Class.as_str(),
+                    ValueClass::AccessControlProfile.to_value()
+                ),
+                (
+                    ValueAttribute::Class.as_str(),
+                    ValueClass::AccessControlCreate.to_value()
+                ),
                 ("name", Value::new_iname("acp_valid")),
                 (
                     "uuid",
@@ -1451,9 +1514,18 @@ mod tests {
         acp_from_entry_ok!(
             &mut qs_write,
             entry_init!(
-                ("class", ValueClass::Object.to_value()),
-                ("class", ValueClass::AccessControlProfile.to_value()),
-                ("class", ValueClass::AccessControlCreate.to_value()),
+                (
+                    ValueAttribute::Class.as_str(),
+                    ValueClass::Object.to_value()
+                ),
+                (
+                    ValueAttribute::Class.as_str(),
+                    ValueClass::AccessControlProfile.to_value()
+                ),
+                (
+                    ValueAttribute::Class.as_str(),
+                    ValueClass::AccessControlCreate.to_value()
+                ),
                 ("name", Value::new_iname("acp_valid")),
                 (
                     "uuid",
@@ -1468,7 +1540,7 @@ mod tests {
                     Value::new_json_filter_s("{\"eq\":[\"name\",\"a\"]}").expect("filter")
                 ),
                 ("acp_create_attr", Value::new_iutf8("name")),
-                ("acp_create_class", Value::new_iutf8("object"))
+                ("acp_create_class", ValueClass::Object.to_value())
             ),
             AccessControlCreate
         );
@@ -1483,12 +1555,30 @@ mod tests {
         let mut qs_write = qs.write(duration_from_epoch_now()).await;
 
         let e = entry_init!(
-            ("class", ValueClass::Object.to_value()),
-            ("class", ValueClass::AccessControlProfile.to_value()),
-            ("class", ValueClass::AccessControlCreate.to_value()),
-            ("class", ValueClass::AccessControlDelete.to_value()),
-            ("class", ValueClass::AccessControlModify.to_value()),
-            ("class", ValueClass::AccessControlSearch.to_value()),
+            (
+                ValueAttribute::Class.as_str(),
+                ValueClass::Object.to_value()
+            ),
+            (
+                ValueAttribute::Class.as_str(),
+                ValueClass::AccessControlProfile.to_value()
+            ),
+            (
+                ValueAttribute::Class.as_str(),
+                ValueClass::AccessControlCreate.to_value()
+            ),
+            (
+                ValueAttribute::Class.as_str(),
+                ValueClass::AccessControlDelete.to_value()
+            ),
+            (
+                ValueAttribute::Class.as_str(),
+                ValueClass::AccessControlModify.to_value()
+            ),
+            (
+                ValueAttribute::Class.as_str(),
+                ValueClass::AccessControlSearch.to_value()
+            ),
             ("name", Value::new_iname("acp_valid")),
             (
                 "uuid",
@@ -1503,7 +1593,7 @@ mod tests {
                 Value::new_json_filter_s("{\"eq\":[\"name\",\"a\"]}").expect("filter")
             ),
             ("acp_search_attr", Value::new_iutf8("name")),
-            ("acp_create_class", Value::new_iutf8("class")),
+            ("acp_create_class", ValueClass::Class.to_value()),
             ("acp_create_attr", Value::new_iutf8("name")),
             ("acp_modify_removedattr", Value::new_iutf8("name")),
             ("acp_modify_presentattr", Value::new_iutf8("name")),
@@ -1573,7 +1663,7 @@ mod tests {
     #[test]
     fn test_access_internal_search() {
         // Test that an internal search bypasses ACS
-        let se = SearchEvent::new_internal_invalid(filter!(f_pres("class")));
+        let se = SearchEvent::new_internal_invalid(filter!(f_pres(ValueAttribute::Class.as_str())));
 
         let expect = vec![E_TEST_ACCOUNT_1.clone()];
         let entries = vec![E_TEST_ACCOUNT_1.clone()];
@@ -1619,7 +1709,10 @@ mod tests {
             // apply to admin only
             UUID_TEST_GROUP_1,
             // Allow admin to read only testperson1
-            filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
+            filter_valid!(f_eq(
+                ValueAttribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
             // In that read, admin may only view the "name" attribute, or query on
             // the name attribute. Any other query (should be) rejected.
             "name",
@@ -1658,7 +1751,10 @@ mod tests {
             // apply to admin only
             UUID_TEST_GROUP_1,
             // Allow admin to read only testperson1
-            filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
+            filter_valid!(f_eq(
+                ValueAttribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
             // In that read, admin may only view the "name" attribute, or query on
             // the name attribute. Any other query (should be) rejected.
             "name",
@@ -1693,7 +1789,10 @@ mod tests {
             // apply to all accounts.
             UUID_TEST_GROUP_1,
             // Allow anonymous to read only testperson1
-            filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
+            filter_valid!(f_eq(
+                ValueAttribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
             // In that read, admin may only view the "name" attribute, or query on
             // the name attribute. Any other query (should be) rejected.
             "name",
@@ -1721,7 +1820,10 @@ mod tests {
 
         let se_anon = SearchEvent::new_impersonate_entry(
             E_TEST_ACCOUNT_1.clone(),
-            filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
+            filter_all!(f_eq(
+                ValueAttribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
         );
 
         let acp = AccessControlSearch::from_raw(
@@ -1730,7 +1832,10 @@ mod tests {
             // apply to anonymous only
             UUID_TEST_GROUP_1,
             // Allow anonymous to read only testperson1
-            filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
+            filter_valid!(f_eq(
+                ValueAttribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
             // In that read, admin may only view the "name" attribute, or query on
             // the name attribute. Any other query (should be) rejected.
             "name",
@@ -1754,7 +1859,10 @@ mod tests {
 
         let mut se_anon = SearchEvent::new_impersonate_entry(
             E_TEST_ACCOUNT_1.clone(),
-            filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
+            filter_all!(f_eq(
+                ValueAttribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
         );
         // the requested attrs here.
         se_anon.attrs = Some(btreeset![AttrString::from("name")]);
@@ -1765,7 +1873,10 @@ mod tests {
             // apply to anonymous only
             UUID_TEST_GROUP_1,
             // Allow anonymous to read only testperson1
-            filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
+            filter_valid!(f_eq(
+                ValueAttribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
             // In that read, admin may only view the "name" attribute, or query on
             // the name attribute. Any other query (should be) rejected.
             "name uuid",
@@ -1833,39 +1944,57 @@ mod tests {
         // Name present
         let me_pres = ModifyEvent::new_impersonate_entry(
             E_TEST_ACCOUNT_1.clone(),
-            filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
+            filter_all!(f_eq(
+                ValueAttribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
             modlist!([m_pres("name", &Value::new_iname("value"))]),
         );
         // Name rem
         let me_rem = ModifyEvent::new_impersonate_entry(
             E_TEST_ACCOUNT_1.clone(),
-            filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
+            filter_all!(f_eq(
+                ValueAttribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
             modlist!([m_remove("name", &PartialValue::new_iname("value"))]),
         );
         // Name purge
         let me_purge = ModifyEvent::new_impersonate_entry(
             E_TEST_ACCOUNT_1.clone(),
-            filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
+            filter_all!(f_eq(
+                ValueAttribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
             modlist!([m_purge("name")]),
         );
 
         // Class account pres
         let me_pres_class = ModifyEvent::new_impersonate_entry(
             E_TEST_ACCOUNT_1.clone(),
-            filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
+            filter_all!(f_eq(
+                ValueAttribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
             modlist!([m_pres("class", &ValueClass::Account.to_value())]),
         );
         // Class account rem
         let me_rem_class = ModifyEvent::new_impersonate_entry(
             E_TEST_ACCOUNT_1.clone(),
-            filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
+            filter_all!(f_eq(
+                ValueAttribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
             modlist!([m_remove("class", &ValueClass::Account.to_partialvalue())]),
         );
         // Class purge
         let me_purge_class = ModifyEvent::new_impersonate_entry(
             E_TEST_ACCOUNT_1.clone(),
-            filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
-            modlist!([m_purge("class")]),
+            filter_all!(f_eq(
+                ValueAttribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
+            modlist!([m_purge(ValueAttribute::Class.into())]),
         );
 
         // Allow name and class, class is account
@@ -1875,7 +2004,10 @@ mod tests {
             // Apply to admin
             UUID_TEST_GROUP_1,
             // To modify testperson
-            filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
+            filter_valid!(f_eq(
+                ValueAttribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
             // Allow pres name and class
             "name class",
             // Allow rem name and class
@@ -1890,7 +2022,10 @@ mod tests {
             // Apply to admin
             UUID_TEST_GROUP_1,
             // To modify testperson
-            filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
+            filter_valid!(f_eq(
+                ValueAttribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
             // Allow pres name and class
             "member class",
             // Allow rem name and class
@@ -1905,7 +2040,10 @@ mod tests {
             // Apply to admin
             UUID_TEST_GROUP_1,
             // To modify testperson
-            filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
+            filter_valid!(f_eq(
+                ValueAttribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
             // Allow pres name and class
             "name class",
             // Allow rem name and class
@@ -1953,14 +2091,20 @@ mod tests {
         // Name present
         let me_pres_ro = ModifyEvent::new_impersonate_identity(
             Identity::from_impersonate_entry_readonly(E_TEST_ACCOUNT_1.clone()),
-            filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
+            filter_all!(f_eq(
+                ValueAttribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
             modlist!([m_pres("name", &Value::new_iname("value"))]),
         );
 
         // Name present
         let me_pres_rw = ModifyEvent::new_impersonate_identity(
             Identity::from_impersonate_entry_readwrite(E_TEST_ACCOUNT_1.clone()),
-            filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
+            filter_all!(f_eq(
+                ValueAttribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
             modlist!([m_pres("name", &Value::new_iname("value"))]),
         );
 
@@ -1970,7 +2114,10 @@ mod tests {
             // apply to admin only
             UUID_TEST_GROUP_1,
             // To modify testperson
-            filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
+            filter_valid!(f_eq(
+                ValueAttribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
             // Allow pres name and class
             "name class",
             // Allow rem name and class
@@ -2010,34 +2157,58 @@ mod tests {
     #[test]
     fn test_access_enforce_create() {
         let ev1 = entry_init!(
-            ("class", ValueClass::Account.to_value()),
+            (
+                ValueAttribute::Class.as_str(),
+                ValueClass::Account.to_value()
+            ),
             ("name", Value::new_iname("testperson1")),
-            ("uuid", Value::Uuid(UUID_TEST_ACCOUNT_1))
+            (
+                ValueAttribute::Uuid.as_str(),
+                Value::Uuid(UUID_TEST_ACCOUNT_1)
+            )
         );
         let r1_set = vec![ev1];
 
         let ev2 = entry_init!(
-            ("class", ValueClass::Account.to_value()),
+            (
+                ValueAttribute::Class.as_str(),
+                ValueClass::Account.to_value()
+            ),
             ("notallowed", Value::new_class("notallowed")),
             ("name", Value::new_iname("testperson1")),
-            ("uuid", Value::Uuid(UUID_TEST_ACCOUNT_1))
+            (
+                ValueAttribute::Uuid.as_str(),
+                Value::Uuid(UUID_TEST_ACCOUNT_1)
+            )
         );
 
         let r2_set = vec![ev2];
 
         let ev3 = entry_init!(
-            ("class", ValueClass::Account.to_value()),
+            (
+                ValueAttribute::Class.as_str(),
+                ValueClass::Account.to_value()
+            ),
             ("class", Value::new_class("notallowed")),
             ("name", Value::new_iname("testperson1")),
-            ("uuid", Value::Uuid(UUID_TEST_ACCOUNT_1))
+            (
+                ValueAttribute::Uuid.as_str(),
+                Value::Uuid(UUID_TEST_ACCOUNT_1)
+            )
         );
         let r3_set = vec![ev3];
 
         let ev4 = entry_init!(
-            ("class", ValueClass::Account.to_value()),
-            ("class", ValueClass::Group.to_value()),
+            (
+                ValueAttribute::Class.as_str(),
+                ValueClass::Account.to_value()
+            ),
+            (ValueAttribute::Class.as_str(), ValueClass::Group.to_value()),
             ("name", Value::new_iname("testperson1")),
-            ("uuid", Value::Uuid(UUID_TEST_ACCOUNT_1))
+            (
+                ValueAttribute::Uuid.as_str(),
+                Value::Uuid(UUID_TEST_ACCOUNT_1)
+            )
         );
         let r4_set = vec![ev4];
 
@@ -2059,7 +2230,10 @@ mod tests {
             UUID_TEST_GROUP_1,
             // To create matching filter testperson
             // Can this be empty?
-            filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
+            filter_valid!(f_eq(
+                ValueAttribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
             // classes
             "account",
             // attrs
@@ -2072,7 +2246,10 @@ mod tests {
             // Apply to admin
             UUID_TEST_GROUP_1,
             // To create matching filter testperson
-            filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
+            filter_valid!(f_eq(
+                ValueAttribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
             // classes
             "group",
             // attrs
@@ -2092,9 +2269,15 @@ mod tests {
     #[test]
     fn test_access_enforce_scope_create() {
         let ev1 = entry_init!(
-            ("class", ValueClass::Account.to_value()),
+            (
+                ValueAttribute::Class.as_str(),
+                ValueClass::Account.to_value()
+            ),
             ("name", Value::new_iname("testperson1")),
-            ("uuid", Value::Uuid(UUID_TEST_ACCOUNT_1))
+            (
+                ValueAttribute::Uuid.as_str(),
+                Value::Uuid(UUID_TEST_ACCOUNT_1)
+            )
         );
         let r1_set = vec![ev1];
 
@@ -2117,7 +2300,10 @@ mod tests {
             UUID_TEST_GROUP_1,
             // To create matching filter testperson
             // Can this be empty?
-            filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
+            filter_valid!(f_eq(
+                ValueAttribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
             // classes
             "account",
             // attrs
@@ -2159,12 +2345,18 @@ mod tests {
 
         let de_admin = DeleteEvent::new_impersonate_entry(
             E_TEST_ACCOUNT_1.clone(),
-            filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
+            filter_all!(f_eq(
+                ValueAttribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
         );
 
         let de_anon = DeleteEvent::new_impersonate_entry(
             E_TEST_ACCOUNT_2.clone(),
-            filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
+            filter_all!(f_eq(
+                ValueAttribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
         );
 
         let acp = AccessControlDelete::from_raw(
@@ -2173,7 +2365,10 @@ mod tests {
             // Apply to admin
             UUID_TEST_GROUP_1,
             // To delete testperson
-            filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
+            filter_valid!(f_eq(
+                ValueAttribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
         );
 
         // Test allowed to delete
@@ -2191,12 +2386,18 @@ mod tests {
 
         let de_admin_ro = DeleteEvent::new_impersonate_identity(
             Identity::from_impersonate_entry_readonly(admin.clone()),
-            filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
+            filter_all!(f_eq(
+                ValueAttribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
         );
 
         let de_admin_rw = DeleteEvent::new_impersonate_identity(
             Identity::from_impersonate_entry_readwrite(admin),
-            filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
+            filter_all!(f_eq(
+                ValueAttribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
         );
 
         let acp = AccessControlDelete::from_raw(
@@ -2205,7 +2406,10 @@ mod tests {
             // Apply to admin
             UUID_TEST_GROUP_1,
             // To delete testperson
-            filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
+            filter_valid!(f_eq(
+                ValueAttribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
         );
 
         test_acp_delete!(&de_admin_ro, vec![acp.clone()], &r_set, false);
@@ -2261,7 +2465,10 @@ mod tests {
                 // apply to admin only
                 UUID_TEST_GROUP_1,
                 // Allow admin to read only testperson1
-                filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
+                filter_valid!(f_eq(
+                    ValueAttribute::Name,
+                    PartialValue::new_iname("testperson1")
+                )),
                 // They can read "name".
                 "name",
             )],
@@ -2299,7 +2506,10 @@ mod tests {
                 // apply to admin only
                 UUID_TEST_GROUP_1,
                 // Allow admin to read only testperson1
-                filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
+                filter_valid!(f_eq(
+                    ValueAttribute::Name,
+                    PartialValue::new_iname("testperson1")
+                )),
                 // They can read "name".
                 "name",
                 "name",
@@ -2328,17 +2538,32 @@ mod tests {
 
         // We can create without a sync class.
         let ev1 = entry_init!(
-            ("class", ValueClass::Account.to_value()),
+            (
+                ValueAttribute::Class.as_str(),
+                ValueClass::Account.to_value()
+            ),
             ("name", Value::new_iname("testperson1")),
-            ("uuid", Value::Uuid(UUID_TEST_ACCOUNT_1))
+            (
+                ValueAttribute::Uuid.as_str(),
+                Value::Uuid(UUID_TEST_ACCOUNT_1)
+            )
         );
         let r1_set = vec![ev1];
 
         let ev2 = entry_init!(
-            ("class", ValueClass::Account.to_value()),
-            ("class", ValueClass::SyncObject.to_value()),
+            (
+                ValueAttribute::Class.as_str(),
+                ValueClass::Account.to_value()
+            ),
+            (
+                ValueAttribute::Class.as_str(),
+                ValueClass::SyncObject.to_value()
+            ),
             ("name", Value::new_iname("testperson1")),
-            ("uuid", Value::Uuid(UUID_TEST_ACCOUNT_1))
+            (
+                ValueAttribute::Uuid.as_str(),
+                Value::Uuid(UUID_TEST_ACCOUNT_1)
+            )
         );
         let r2_set = vec![ev2];
 
@@ -2349,7 +2574,10 @@ mod tests {
             UUID_TEST_GROUP_1,
             // To create matching filter testperson
             // Can this be empty?
-            filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
+            filter_valid!(f_eq(
+                ValueAttribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
             // classes
             "account sync_object",
             // attrs
@@ -2367,25 +2595,43 @@ mod tests {
         sketching::test_init();
 
         let ev1 = entry_init!(
-            ("class", ValueClass::Account.to_value()),
+            (
+                ValueAttribute::Class.as_str(),
+                ValueClass::Account.to_value()
+            ),
             ("name", Value::new_iname("testperson1")),
-            ("uuid", Value::Uuid(UUID_TEST_ACCOUNT_1))
+            (
+                ValueAttribute::Uuid.as_str(),
+                Value::Uuid(UUID_TEST_ACCOUNT_1)
+            )
         )
         .into_sealed_committed();
         let r1_set = vec![Arc::new(ev1)];
 
         let ev2 = entry_init!(
-            ("class", ValueClass::Account.to_value()),
-            ("class", ValueClass::SyncObject.to_value()),
+            (
+                ValueAttribute::Class.as_str(),
+                ValueClass::Account.to_value()
+            ),
+            (
+                ValueAttribute::Class.as_str(),
+                ValueClass::SyncObject.to_value()
+            ),
             ("name", Value::new_iname("testperson1")),
-            ("uuid", Value::Uuid(UUID_TEST_ACCOUNT_1))
+            (
+                ValueAttribute::Uuid.as_str(),
+                Value::Uuid(UUID_TEST_ACCOUNT_1)
+            )
         )
         .into_sealed_committed();
         let r2_set = vec![Arc::new(ev2)];
 
         let de_admin = DeleteEvent::new_impersonate_entry(
             E_TEST_ACCOUNT_1.clone(),
-            filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
+            filter_all!(f_eq(
+                ValueAttribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
         );
 
         let acp = AccessControlDelete::from_raw(
@@ -2394,7 +2640,10 @@ mod tests {
             // Apply to admin
             UUID_TEST_GROUP_1,
             // To delete testperson
-            filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
+            filter_valid!(f_eq(
+                ValueAttribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
         );
 
         // Test allowed to delete
@@ -2408,20 +2657,35 @@ mod tests {
         sketching::test_init();
 
         let ev1 = entry_init!(
-            ("class", ValueClass::Account.to_value()),
+            (
+                ValueAttribute::Class.as_str(),
+                ValueClass::Account.to_value()
+            ),
             ("name", Value::new_iname("testperson1")),
-            ("uuid", Value::Uuid(UUID_TEST_ACCOUNT_1))
+            (
+                ValueAttribute::Uuid.as_str(),
+                Value::Uuid(UUID_TEST_ACCOUNT_1)
+            )
         )
         .into_sealed_committed();
         let r1_set = vec![Arc::new(ev1)];
 
         let sync_uuid = Uuid::new_v4();
         let ev2 = entry_init!(
-            ("class", ValueClass::Account.to_value()),
-            ("class", ValueClass::SyncObject.to_value()),
+            (
+                ValueAttribute::Class.as_str(),
+                ValueClass::Account.to_value()
+            ),
+            (
+                ValueAttribute::Class.as_str(),
+                ValueClass::SyncObject.to_value()
+            ),
             ("sync_parent_uuid", Value::Refer(sync_uuid)),
             ("name", Value::new_iname("testperson1")),
-            ("uuid", Value::Uuid(UUID_TEST_ACCOUNT_1))
+            (
+                ValueAttribute::Uuid.as_str(),
+                Value::Uuid(UUID_TEST_ACCOUNT_1)
+            )
         )
         .into_sealed_committed();
         let r2_set = vec![Arc::new(ev2)];
@@ -2433,7 +2697,10 @@ mod tests {
             // Apply to admin
             UUID_TEST_GROUP_1,
             // To modify testperson
-            filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
+            filter_valid!(f_eq(
+                ValueAttribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
             // Allow pres user_auth_token_session
             "user_auth_token_session name",
             // Allow user_auth_token_session
@@ -2447,7 +2714,10 @@ mod tests {
         // Name present
         let me_pres = ModifyEvent::new_impersonate_entry(
             E_TEST_ACCOUNT_1.clone(),
-            filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
+            filter_all!(f_eq(
+                ValueAttribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
             modlist!([m_pres(
                 "user_auth_token_session",
                 &Value::new_iname("value")
@@ -2456,7 +2726,10 @@ mod tests {
         // Name rem
         let me_rem = ModifyEvent::new_impersonate_entry(
             E_TEST_ACCOUNT_1.clone(),
-            filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
+            filter_all!(f_eq(
+                ValueAttribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
             modlist!([m_remove(
                 "user_auth_token_session",
                 &PartialValue::new_iname("value")
@@ -2465,7 +2738,10 @@ mod tests {
         // Name purge
         let me_purge = ModifyEvent::new_impersonate_entry(
             E_TEST_ACCOUNT_1.clone(),
-            filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
+            filter_all!(f_eq(
+                ValueAttribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
             modlist!([m_purge("user_auth_token_session")]),
         );
 
@@ -2486,19 +2762,28 @@ mod tests {
         // But other attrs are blocked.
         let me_pres = ModifyEvent::new_impersonate_entry(
             E_TEST_ACCOUNT_1.clone(),
-            filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
+            filter_all!(f_eq(
+                ValueAttribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
             modlist!([m_pres("name", &Value::new_iname("value"))]),
         );
         // Name rem
         let me_rem = ModifyEvent::new_impersonate_entry(
             E_TEST_ACCOUNT_1.clone(),
-            filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
+            filter_all!(f_eq(
+                ValueAttribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
             modlist!([m_remove("name", &PartialValue::new_iname("value"))]),
         );
         // Name purge
         let me_purge = ModifyEvent::new_impersonate_entry(
             E_TEST_ACCOUNT_1.clone(),
-            filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
+            filter_all!(f_eq(
+                ValueAttribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
             modlist!([m_purge("name")]),
         );
 
@@ -2541,10 +2826,19 @@ mod tests {
         // the ability to search that rs.
         let rs_uuid = Uuid::new_v4();
         let ev1 = entry_init!(
-            ("class", ValueClass::Object.to_value()),
-            ("class", ValueClass::OAuth2ResourceServer.to_value()),
-            ("class", ValueClass::OAuth2ResourceServerBasic.to_value()),
-            ("uuid", Value::Uuid(rs_uuid)),
+            (
+                ValueAttribute::Class.as_str(),
+                ValueClass::Object.to_value()
+            ),
+            (
+                ValueAttribute::Class.as_str(),
+                ValueClass::OAuth2ResourceServer.to_value()
+            ),
+            (
+                ValueAttribute::Class.as_str(),
+                ValueClass::OAuth2ResourceServerBasic.to_value()
+            ),
+            (ValueAttribute::Uuid.as_str(), Value::Uuid(rs_uuid)),
             ("oauth2_rs_name", Value::new_iname("test_resource_server")),
             ("displayname", Value::new_utf8s("test_resource_server")),
             (
@@ -2571,10 +2865,19 @@ mod tests {
         .into_sealed_committed();
 
         let ev1_reduced = entry_init!(
-            ("class", ValueClass::Object.to_value()),
-            ("class", ValueClass::OAuth2ResourceServer.to_value()),
-            ("class", ValueClass::OAuth2ResourceServerBasic.to_value()),
-            ("uuid", Value::Uuid(rs_uuid)),
+            (
+                ValueAttribute::Class.as_str(),
+                ValueClass::Object.to_value()
+            ),
+            (
+                ValueAttribute::Class.as_str(),
+                ValueClass::OAuth2ResourceServer.to_value()
+            ),
+            (
+                ValueAttribute::Class.as_str(),
+                ValueClass::OAuth2ResourceServerBasic.to_value()
+            ),
+            (ValueAttribute::Uuid.as_str(), Value::Uuid(rs_uuid)),
             ("oauth2_rs_name", Value::new_iname("test_resource_server")),
             ("displayname", Value::new_utf8s("test_resource_server")),
             (
@@ -2585,10 +2888,19 @@ mod tests {
         .into_sealed_committed();
 
         let ev2 = entry_init!(
-            ("class", ValueClass::Object.to_value()),
-            ("class", ValueClass::OAuth2ResourceServer.to_value()),
-            ("class", ValueClass::OAuth2ResourceServerBasic.to_value()),
-            ("uuid", Value::Uuid(Uuid::new_v4())),
+            (
+                ValueAttribute::Class.as_str(),
+                ValueClass::Object.to_value()
+            ),
+            (
+                ValueAttribute::Class.as_str(),
+                ValueClass::OAuth2ResourceServer.to_value()
+            ),
+            (
+                ValueAttribute::Class.as_str(),
+                ValueClass::OAuth2ResourceServerBasic.to_value()
+            ),
+            (ValueAttribute::Uuid.as_str(), Value::Uuid(Uuid::new_v4())),
             ("oauth2_rs_name", Value::new_iname("second_resource_server")),
             ("displayname", Value::new_utf8s("second_resource_server")),
             (
@@ -2652,26 +2964,44 @@ mod tests {
         let portal_url = Url::parse("https://localhost/portal").unwrap();
 
         let ev1 = entry_init!(
-            ("class", ValueClass::Object.to_value()),
-            ("class", ValueClass::SyncAccount.to_value()),
-            ("uuid", Value::Uuid(sync_uuid)),
+            (
+                ValueAttribute::Class.as_str(),
+                ValueClass::Object.to_value()
+            ),
+            (
+                ValueAttribute::Class.as_str(),
+                ValueClass::SyncAccount.to_value()
+            ),
+            (ValueAttribute::Uuid.as_str(), Value::Uuid(sync_uuid)),
             ("name", Value::new_iname("test_sync_account")),
             ("sync_credential_portal", Value::Url(portal_url.clone()))
         )
         .into_sealed_committed();
 
         let ev1_reduced = entry_init!(
-            ("class", ValueClass::Object.to_value()),
-            ("class", ValueClass::SyncAccount.to_value()),
-            ("uuid", Value::Uuid(sync_uuid)),
+            (
+                ValueAttribute::Class.as_str(),
+                ValueClass::Object.to_value()
+            ),
+            (
+                ValueAttribute::Class.as_str(),
+                ValueClass::SyncAccount.to_value()
+            ),
+            (ValueAttribute::Uuid.as_str(), Value::Uuid(sync_uuid)),
             ("sync_credential_portal", Value::Url(portal_url.clone()))
         )
         .into_sealed_committed();
 
         let ev2 = entry_init!(
-            ("class", ValueClass::Object.to_value()),
-            ("class", ValueClass::SyncAccount.to_value()),
-            ("uuid", Value::Uuid(Uuid::new_v4())),
+            (
+                ValueAttribute::Class.as_str(),
+                ValueClass::Object.to_value()
+            ),
+            (
+                ValueAttribute::Class.as_str(),
+                ValueClass::SyncAccount.to_value()
+            ),
+            (ValueAttribute::Uuid.as_str(), Value::Uuid(Uuid::new_v4())),
             ("name", Value::new_iname("test_sync_account")),
             ("sync_credential_portal", Value::Url(portal_url.clone()))
         )
@@ -2679,11 +3009,23 @@ mod tests {
 
         let sync_test_account: Arc<EntrySealedCommitted> = Arc::new(
             entry_init!(
-                ("class", ValueClass::Object.to_value()),
-                ("class", ValueClass::Account.to_value()),
-                ("class", ValueClass::SyncObject.to_value()),
+                (
+                    ValueAttribute::Class.as_str(),
+                    ValueClass::Object.to_value()
+                ),
+                (
+                    ValueAttribute::Class.as_str(),
+                    ValueClass::Account.to_value()
+                ),
+                (
+                    ValueAttribute::Class.as_str(),
+                    ValueClass::SyncObject.to_value()
+                ),
                 ("name", Value::new_iname("test_account_1")),
-                ("uuid", Value::Uuid(UUID_TEST_ACCOUNT_1)),
+                (
+                    ValueAttribute::Uuid.as_str(),
+                    Value::Uuid(UUID_TEST_ACCOUNT_1)
+                ),
                 ("memberof", Value::Refer(UUID_TEST_GROUP_1)),
                 ("sync_parent_uuid", Value::Refer(sync_uuid))
             )

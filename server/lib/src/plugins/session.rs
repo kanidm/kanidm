@@ -152,6 +152,7 @@ mod tests {
 
     use crate::event::CreateEvent;
     use crate::value::{Oauth2Session, Session};
+    use kanidm_proto::constants::OAUTH2_SCOPE_OPENID;
     use std::time::Duration;
     use time::OffsetDateTime;
     use uuid::uuid;
@@ -179,13 +180,31 @@ mod tests {
         let tuuid = uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930");
 
         let e1 = entry_init!(
-            ("class", ValueClass::Object.to_value()),
-            ("class", ValueClass::Person.to_value()),
-            ("class", ValueClass::Account.to_value()),
-            ("name", Value::new_iname("testperson1")),
-            ("uuid", Value::Uuid(tuuid)),
-            ("description", Value::new_utf8s("testperson1")),
-            ("displayname", Value::new_utf8s("testperson1")),
+            (
+                ValueAttribute::Class.as_str(),
+                ValueClass::Object.to_value()
+            ),
+            (
+                ValueAttribute::Class.as_str(),
+                ValueClass::Person.to_value()
+            ),
+            (
+                ValueAttribute::Class.as_str(),
+                ValueClass::Account.to_value()
+            ),
+            (
+                ValueAttribute::Name.as_str(),
+                Value::new_iname("testperson1")
+            ),
+            (ValueAttribute::Uuid.as_str(), Value::Uuid(tuuid)),
+            (
+                ValueAttribute::Description.as_str(),
+                Value::new_utf8s("testperson1")
+            ),
+            (
+                ValueAttribute::DisplayName.as_str(),
+                Value::new_utf8s("testperson1")
+            ),
             (
                 "primary_credential",
                 Value::Cred("primary".to_string(), cred.clone())
@@ -224,31 +243,43 @@ mod tests {
         let modlist = ModifyList::new_append("user_auth_token_session", session);
 
         server_txn
-            .internal_modify(&filter!(f_eq("uuid", PartialValue::Uuid(tuuid))), &modlist)
+            .internal_modify(
+                &filter!(f_eq(ValueAttribute::Uuid, PartialValue::Uuid(tuuid))),
+                &modlist,
+            )
             .expect("Failed to modify user");
 
         // Still there
 
         let entry = server_txn.internal_search_uuid(tuuid).expect("failed");
 
-        assert!(entry.attribute_equality("user_auth_token_session", &pv_session_id));
+        assert!(
+            entry.attribute_equality(ValueAttribute::UserAuthTokenSession.into(), &pv_session_id)
+        );
 
         assert!(server_txn.commit().is_ok());
         let mut server_txn = server.write(exp_curtime).await;
 
         // Mod again - anything will do.
-        let modlist =
-            ModifyList::new_purge_and_set("description", Value::new_utf8s("test person 1 change"));
+        let modlist = ModifyList::new_purge_and_set(
+            ValueAttribute::Description.as_str(),
+            Value::new_utf8s("test person 1 change"),
+        );
 
         server_txn
-            .internal_modify(&filter!(f_eq("uuid", PartialValue::Uuid(tuuid))), &modlist)
+            .internal_modify(
+                &filter!(f_eq(ValueAttribute::Uuid, PartialValue::Uuid(tuuid))),
+                &modlist,
+            )
             .expect("Failed to modify user");
 
         // Session gone.
         let entry = server_txn.internal_search_uuid(tuuid).expect("failed");
 
         // Note it's a not condition now.
-        assert!(!entry.attribute_equality("user_auth_token_session", &pv_session_id));
+        assert!(
+            !entry.attribute_equality(ValueAttribute::UserAuthTokenSession.into(), &pv_session_id)
+        );
 
         assert!(server_txn.commit().is_ok());
     }
@@ -274,13 +305,31 @@ mod tests {
         let rs_uuid = Uuid::new_v4();
 
         let e1 = entry_init!(
-            ("class", ValueClass::Object.to_value()),
-            ("class", ValueClass::Person.to_value()),
-            ("class", ValueClass::Account.to_value()),
-            ("name", Value::new_iname("testperson1")),
-            ("uuid", Value::Uuid(tuuid)),
-            ("description", Value::new_utf8s("testperson1")),
-            ("displayname", Value::new_utf8s("testperson1")),
+            (
+                ValueAttribute::Class.as_str(),
+                ValueClass::Object.to_value()
+            ),
+            (
+                ValueAttribute::Class.as_str(),
+                ValueClass::Person.to_value()
+            ),
+            (
+                ValueAttribute::Class.as_str(),
+                ValueClass::Account.to_value()
+            ),
+            (
+                ValueAttribute::Name.as_str(),
+                Value::new_iname("testperson1")
+            ),
+            (ValueAttribute::Uuid.as_str(), Value::Uuid(tuuid)),
+            (
+                ValueAttribute::Description.as_str(),
+                Value::new_utf8s("testperson1")
+            ),
+            (
+                ValueAttribute::DisplayName.as_str(),
+                Value::new_utf8s("testperson1")
+            ),
             (
                 "primary_credential",
                 Value::Cred("primary".to_string(), cred.clone())
@@ -288,12 +337,27 @@ mod tests {
         );
 
         let e2 = entry_init!(
-            ("class", ValueClass::Object.to_value()),
-            ("class", ValueClass::OAuth2ResourceServer.to_value()),
-            ("class", ValueClass::OAuth2ResourceServerBasic.to_value()),
-            ("uuid", Value::Uuid(rs_uuid)),
-            ("oauth2_rs_name", Value::new_iname("test_resource_server")),
-            ("displayname", Value::new_utf8s("test_resource_server")),
+            (
+                ValueAttribute::Class.as_str(),
+                ValueClass::Object.to_value()
+            ),
+            (
+                ValueAttribute::Class.as_str(),
+                ValueClass::OAuth2ResourceServer.to_value()
+            ),
+            (
+                ValueAttribute::Class.as_str(),
+                ValueClass::OAuth2ResourceServerBasic.to_value()
+            ),
+            (ValueAttribute::Uuid.as_str(), Value::Uuid(rs_uuid)),
+            (
+                ValueAttribute::OAuth2RsName.as_str(),
+                Value::new_iname("test_resource_server")
+            ),
+            (
+                ValueAttribute::DisplayName.as_str(),
+                Value::new_utf8s("test_resource_server")
+            ),
             (
                 "oauth2_rs_origin",
                 Value::new_url_s("https://demo.example.com").unwrap()
@@ -301,8 +365,11 @@ mod tests {
             // System admins
             (
                 "oauth2_rs_scope_map",
-                Value::new_oauthscopemap(UUID_IDM_ALL_ACCOUNTS, btreeset!["openid".to_string()])
-                    .expect("invalid oauthscope")
+                Value::new_oauthscopemap(
+                    UUID_IDM_ALL_ACCOUNTS,
+                    btreeset![OAUTH2_SCOPE_OPENID.to_string()]
+                )
+                .expect("invalid oauthscope")
             )
         );
 
@@ -359,15 +426,20 @@ mod tests {
         ]);
 
         server_txn
-            .internal_modify(&filter!(f_eq("uuid", PartialValue::Uuid(tuuid))), &modlist)
+            .internal_modify(
+                &filter!(f_eq(ValueAttribute::Uuid, PartialValue::Uuid(tuuid))),
+                &modlist,
+            )
             .expect("Failed to modify user");
 
         // Still there
 
         let entry = server_txn.internal_search_uuid(tuuid).expect("failed");
 
-        assert!(entry.attribute_equality("user_auth_token_session", &pv_parent_id));
-        assert!(entry.attribute_equality("oauth2_session", &pv_session_id));
+        assert!(
+            entry.attribute_equality(ValueAttribute::UserAuthTokenSession.into(), &pv_parent_id)
+        );
+        assert!(entry.attribute_equality(ValueAttribute::OAuth2Session.into(), &pv_session_id));
 
         assert!(server_txn.commit().is_ok());
 
@@ -376,20 +448,27 @@ mod tests {
         let mut server_txn = server.write(exp_curtime).await;
 
         // Mod again - anything will do.
-        let modlist =
-            ModifyList::new_purge_and_set("description", Value::new_utf8s("test person 1 change"));
+        let modlist = ModifyList::new_purge_and_set(
+            ValueAttribute::Description.as_str(),
+            Value::new_utf8s("test person 1 change"),
+        );
 
         server_txn
-            .internal_modify(&filter!(f_eq("uuid", PartialValue::Uuid(tuuid))), &modlist)
+            .internal_modify(
+                &filter!(f_eq(ValueAttribute::Uuid, PartialValue::Uuid(tuuid))),
+                &modlist,
+            )
             .expect("Failed to modify user");
 
         // Session gone.
         let entry = server_txn.internal_search_uuid(tuuid).expect("failed");
 
         // Note the uat is still present
-        assert!(entry.attribute_equality("user_auth_token_session", &pv_parent_id));
+        assert!(
+            entry.attribute_equality(ValueAttribute::UserAuthTokenSession.into(), &pv_parent_id)
+        );
         // Note it's a not condition now.
-        assert!(!entry.attribute_equality("oauth2_session", &pv_session_id));
+        assert!(!entry.attribute_equality(ValueAttribute::OAuth2Session.into(), &pv_session_id));
 
         assert!(server_txn.commit().is_ok());
     }
@@ -412,13 +491,31 @@ mod tests {
         let rs_uuid = Uuid::new_v4();
 
         let e1 = entry_init!(
-            ("class", ValueClass::Object.to_value()),
-            ("class", ValueClass::Person.to_value()),
-            ("class", ValueClass::Account.to_value()),
-            ("name", Value::new_iname("testperson1")),
-            ("uuid", Value::Uuid(tuuid)),
-            ("description", Value::new_utf8s("testperson1")),
-            ("displayname", Value::new_utf8s("testperson1")),
+            (
+                ValueAttribute::Class.as_str(),
+                ValueClass::Object.to_value()
+            ),
+            (
+                ValueAttribute::Class.as_str(),
+                ValueClass::Person.to_value()
+            ),
+            (
+                ValueAttribute::Class.as_str(),
+                ValueClass::Account.to_value()
+            ),
+            (
+                ValueAttribute::Name.as_str(),
+                Value::new_iname("testperson1")
+            ),
+            (ValueAttribute::Uuid.as_str(), Value::Uuid(tuuid)),
+            (
+                ValueAttribute::Description.as_str(),
+                Value::new_utf8s("testperson1")
+            ),
+            (
+                ValueAttribute::DisplayName.as_str(),
+                Value::new_utf8s("testperson1")
+            ),
             (
                 "primary_credential",
                 Value::Cred("primary".to_string(), cred.clone())
@@ -426,12 +523,27 @@ mod tests {
         );
 
         let e2 = entry_init!(
-            ("class", ValueClass::Object.to_value()),
-            ("class", ValueClass::OAuth2ResourceServer.to_value()),
-            ("class", ValueClass::OAuth2ResourceServerBasic.to_value()),
-            ("uuid", Value::Uuid(rs_uuid)),
-            ("oauth2_rs_name", Value::new_iname("test_resource_server")),
-            ("displayname", Value::new_utf8s("test_resource_server")),
+            (
+                ValueAttribute::Class.as_str(),
+                ValueClass::Object.to_value()
+            ),
+            (
+                ValueAttribute::Class.as_str(),
+                ValueClass::OAuth2ResourceServer.to_value()
+            ),
+            (
+                ValueAttribute::Class.as_str(),
+                ValueClass::OAuth2ResourceServerBasic.to_value()
+            ),
+            (ValueAttribute::Uuid.as_str(), Value::Uuid(rs_uuid)),
+            (
+                ValueAttribute::OAuth2RsName.as_str(),
+                Value::new_iname("test_resource_server")
+            ),
+            (
+                ValueAttribute::DisplayName.as_str(),
+                Value::new_utf8s("test_resource_server")
+            ),
             (
                 "oauth2_rs_origin",
                 Value::new_url_s("https://demo.example.com").unwrap()
@@ -439,8 +551,11 @@ mod tests {
             // System admins
             (
                 "oauth2_rs_scope_map",
-                Value::new_oauthscopemap(UUID_IDM_ALL_ACCOUNTS, btreeset!["openid".to_string()])
-                    .expect("invalid oauthscope")
+                Value::new_oauthscopemap(
+                    UUID_IDM_ALL_ACCOUNTS,
+                    btreeset![OAUTH2_SCOPE_OPENID.to_string()]
+                )
+                .expect("invalid oauthscope")
             )
         );
 
@@ -496,15 +611,20 @@ mod tests {
         ]);
 
         server_txn
-            .internal_modify(&filter!(f_eq("uuid", PartialValue::Uuid(tuuid))), &modlist)
+            .internal_modify(
+                &filter!(f_eq(ValueAttribute::Uuid, PartialValue::Uuid(tuuid))),
+                &modlist,
+            )
             .expect("Failed to modify user");
 
         // Still there
 
         let entry = server_txn.internal_search_uuid(tuuid).expect("failed");
 
-        assert!(entry.attribute_equality("user_auth_token_session", &pv_parent_id));
-        assert!(entry.attribute_equality("oauth2_session", &pv_session_id));
+        assert!(
+            entry.attribute_equality(ValueAttribute::UserAuthTokenSession.into(), &pv_parent_id)
+        );
+        assert!(entry.attribute_equality(ValueAttribute::OAuth2Session.into(), &pv_session_id));
 
         // We need the time to be past grace_window.
         assert!(server_txn.commit().is_ok());
@@ -514,16 +634,21 @@ mod tests {
         let modlist = ModifyList::new_remove("user_auth_token_session", pv_parent_id.clone());
 
         server_txn
-            .internal_modify(&filter!(f_eq("uuid", PartialValue::Uuid(tuuid))), &modlist)
+            .internal_modify(
+                &filter!(f_eq(ValueAttribute::Uuid, PartialValue::Uuid(tuuid))),
+                &modlist,
+            )
             .expect("Failed to modify user");
 
         // Session gone.
         let entry = server_txn.internal_search_uuid(tuuid).expect("failed");
 
         // Note the uat is removed
-        assert!(!entry.attribute_equality("user_auth_token_session", &pv_parent_id));
+        assert!(
+            !entry.attribute_equality(ValueAttribute::UserAuthTokenSession.into(), &pv_parent_id)
+        );
         // The oauth2 session is also removed.
-        assert!(!entry.attribute_equality("oauth2_session", &pv_session_id));
+        assert!(!entry.attribute_equality(ValueAttribute::OAuth2Session.into(), &pv_session_id));
 
         assert!(server_txn.commit().is_ok());
     }
@@ -545,31 +670,67 @@ mod tests {
         let rs_uuid = Uuid::new_v4();
 
         let e1 = entry_init!(
-            ("class", ValueClass::Object.to_value()),
-            ("class", ValueClass::Person.to_value()),
-            ("class", ValueClass::Account.to_value()),
-            ("name", Value::new_iname("testperson1")),
-            ("uuid", Value::Uuid(tuuid)),
-            ("description", Value::new_utf8s("testperson1")),
-            ("displayname", Value::new_utf8s("testperson1"))
+            (
+                ValueAttribute::Class.as_str(),
+                ValueClass::Object.to_value()
+            ),
+            (
+                ValueAttribute::Class.as_str(),
+                ValueClass::Person.to_value()
+            ),
+            (
+                ValueAttribute::Class.as_str(),
+                ValueClass::Account.to_value()
+            ),
+            (
+                ValueAttribute::Name.as_str(),
+                Value::new_iname("testperson1")
+            ),
+            (ValueAttribute::Uuid.as_str(), Value::Uuid(tuuid)),
+            (
+                ValueAttribute::Description.as_str(),
+                Value::new_utf8s("testperson1")
+            ),
+            (
+                ValueAttribute::DisplayName.as_str(),
+                Value::new_utf8s("testperson1")
+            )
         );
 
         let e2 = entry_init!(
-            ("class", ValueClass::Object.to_value()),
-            ("class", ValueClass::OAuth2ResourceServer.to_value()),
-            ("class", ValueClass::OAuth2ResourceServerBasic.to_value()),
-            ("uuid", Value::Uuid(rs_uuid)),
-            ("oauth2_rs_name", Value::new_iname("test_resource_server")),
-            ("displayname", Value::new_utf8s("test_resource_server")),
             (
-                "oauth2_rs_origin",
+                ValueAttribute::Class.as_str(),
+                ValueClass::Object.to_value()
+            ),
+            (
+                ValueAttribute::Class.as_str(),
+                ValueClass::OAuth2ResourceServer.to_value()
+            ),
+            (
+                ValueAttribute::Class.as_str(),
+                ValueClass::OAuth2ResourceServerBasic.to_value()
+            ),
+            (ValueAttribute::Uuid.as_str(), Value::Uuid(rs_uuid)),
+            (
+                ValueAttribute::OAuth2RsName.as_str(),
+                Value::new_iname("test_resource_server")
+            ),
+            (
+                ValueAttribute::DisplayName.as_str(),
+                Value::new_utf8s("test_resource_server")
+            ),
+            (
+                ValueAttribute::OAuth2RsOrigin.as_str(),
                 Value::new_url_s("https://demo.example.com").unwrap()
             ),
             // System admins
             (
-                "oauth2_rs_scope_map",
-                Value::new_oauthscopemap(UUID_IDM_ALL_ACCOUNTS, btreeset!["openid".to_string()])
-                    .expect("invalid oauthscope")
+                ValueAttribute::OAuth2RsScopeMap.as_str(),
+                Value::new_oauthscopemap(
+                    UUID_IDM_ALL_ACCOUNTS,
+                    btreeset![OAUTH2_SCOPE_OPENID.to_string()]
+                )
+                .expect("invalid oauthscope")
             )
         );
 
@@ -596,17 +757,20 @@ mod tests {
         );
 
         // Mod the user
-        let modlist = ModifyList::new_append("oauth2_session", session);
+        let modlist = ModifyList::new_append(ValueAttribute::OAuth2Session.into(), session);
 
         server_txn
-            .internal_modify(&filter!(f_eq("uuid", PartialValue::Uuid(tuuid))), &modlist)
+            .internal_modify(
+                &filter!(f_eq(ValueAttribute::Uuid, PartialValue::Uuid(tuuid))),
+                &modlist,
+            )
             .expect("Failed to modify user");
 
         // Still there
 
         let entry = server_txn.internal_search_uuid(tuuid).expect("failed");
 
-        assert!(entry.attribute_equality("oauth2_session", &pv_session_id));
+        assert!(entry.attribute_equality(ValueAttribute::OAuth2Session.into(), &pv_session_id));
 
         assert!(server_txn.commit().is_ok());
 
@@ -615,18 +779,23 @@ mod tests {
         let mut server_txn = server.write(exp_curtime).await;
 
         // Mod again - anything will do.
-        let modlist =
-            ModifyList::new_purge_and_set("description", Value::new_utf8s("test person 1 change"));
+        let modlist = ModifyList::new_purge_and_set(
+            ValueAttribute::Description.as_str(),
+            Value::new_utf8s("test person 1 change"),
+        );
 
         server_txn
-            .internal_modify(&filter!(f_eq("uuid", PartialValue::Uuid(tuuid))), &modlist)
+            .internal_modify(
+                &filter!(f_eq(ValueAttribute::Uuid, PartialValue::Uuid(tuuid))),
+                &modlist,
+            )
             .expect("Failed to modify user");
 
         // Session gone.
         let entry = server_txn.internal_search_uuid(tuuid).expect("failed");
 
         // Note it's a not condition now.
-        assert!(!entry.attribute_equality("oauth2_session", &pv_session_id));
+        assert!(!entry.attribute_equality(ValueAttribute::OAuth2Session.as_str(), &pv_session_id));
 
         assert!(server_txn.commit().is_ok());
     }
@@ -646,15 +815,33 @@ mod tests {
         let tuuid = uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930");
 
         let e1 = entry_init!(
-            ("class", ValueClass::Object.to_value()),
-            ("class", ValueClass::Person.to_value()),
-            ("class", ValueClass::Account.to_value()),
-            ("name", Value::new_iname("testperson1")),
-            ("uuid", Value::Uuid(tuuid)),
-            ("description", Value::new_utf8s("testperson1")),
-            ("displayname", Value::new_utf8s("testperson1")),
             (
-                "primary_credential",
+                ValueAttribute::Class.as_str(),
+                ValueClass::Object.to_value()
+            ),
+            (
+                ValueAttribute::Class.as_str(),
+                ValueClass::Person.to_value()
+            ),
+            (
+                ValueAttribute::Class.as_str(),
+                ValueClass::Account.to_value()
+            ),
+            (
+                ValueAttribute::Name.as_str(),
+                Value::new_iname("testperson1")
+            ),
+            (ValueAttribute::Uuid.as_str(), Value::Uuid(tuuid)),
+            (
+                ValueAttribute::Description.as_str(),
+                Value::new_utf8s("testperson1")
+            ),
+            (
+                ValueAttribute::DisplayName.as_str(),
+                Value::new_utf8s("testperson1")
+            ),
+            (
+                ValueAttribute::PrimaryCredential.as_str(),
                 Value::Cred("primary".to_string(), cred.clone())
             )
         );
@@ -692,14 +879,19 @@ mod tests {
         let modlist = ModifyList::new_append("user_auth_token_session", session);
 
         server_txn
-            .internal_modify(&filter!(f_eq("uuid", PartialValue::Uuid(tuuid))), &modlist)
+            .internal_modify(
+                &filter!(f_eq(ValueAttribute::Uuid, PartialValue::Uuid(tuuid))),
+                &modlist,
+            )
             .expect("Failed to modify user");
 
         // Still there
 
         let entry = server_txn.internal_search_uuid(tuuid).expect("failed");
 
-        assert!(entry.attribute_equality("user_auth_token_session", &pv_session_id));
+        assert!(
+            entry.attribute_equality(ValueAttribute::UserAuthTokenSession.into(), &pv_session_id)
+        );
 
         assert!(server_txn.commit().is_ok());
 
@@ -710,14 +902,19 @@ mod tests {
         let modlist = ModifyList::new_purge("primary_credential");
 
         server_txn
-            .internal_modify(&filter!(f_eq("uuid", PartialValue::Uuid(tuuid))), &modlist)
+            .internal_modify(
+                &filter!(f_eq(ValueAttribute::Uuid, PartialValue::Uuid(tuuid))),
+                &modlist,
+            )
             .expect("Failed to modify user");
 
         // Session gone.
         let entry = server_txn.internal_search_uuid(tuuid).expect("failed");
 
         // Note it's a not condition now.
-        assert!(!entry.attribute_equality("user_auth_token_session", &pv_session_id));
+        assert!(
+            !entry.attribute_equality(ValueAttribute::UserAuthTokenSession.into(), &pv_session_id)
+        );
 
         assert!(server_txn.commit().is_ok());
     }

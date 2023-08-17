@@ -95,21 +95,30 @@ mod tests {
                 ValueAttribute::Class.as_str(),
                 ValueClass::OAuth2ResourceServerBasic.to_value()
             ),
-            ("oauth2_rs_name", Value::new_iname("test_resource_server")),
-            ("displayname", Value::new_utf8s("test_resource_server")),
             (
-                "oauth2_rs_origin",
+                ValueAttribute::OAuth2RsName.as_str(),
+                Value::new_iname("test_resource_server")
+            ),
+            (
+                ValueAttribute::DisplayName.as_str(),
+                Value::new_utf8s("test_resource_server")
+            ),
+            (
+                ValueAttribute::OAuth2RsOrigin.as_str(),
                 Value::new_url_s("https://demo.example.com").unwrap()
             ),
             (
-                "oauth2_rs_origin_landing",
+                ValueAttribute::OAuth2RsOriginLanding.as_str(),
                 Value::new_url_s("https://demo.example.com/landing").unwrap()
             ),
             // System admins
             (
-                "oauth2_rs_scope_map",
-                Value::new_oauthscopemap(grp_uuid, btreeset!["read".to_string()])
-                    .expect("invalid oauthscope")
+                ValueAttribute::OAuth2RsScopeMap.as_str(),
+                Value::new_oauthscopemap(
+                    grp_uuid,
+                    btreeset![kanidm_proto::constants::OAUTH2_SCOPE_READ.to_string()]
+                )
+                .expect("invalid oauthscope")
             )
         );
 
@@ -126,10 +135,19 @@ mod tests {
                 ValueAttribute::Class.as_str(),
                 ValueClass::Person.to_value()
             ),
-            ("name", Value::new_iname("testaccount")),
-            ("uuid", Value::Uuid(usr_uuid)),
-            ("description", Value::new_utf8s("testaccount")),
-            ("displayname", Value::new_utf8s("Test Account"))
+            (
+                ValueAttribute::Name.as_str(),
+                Value::new_iname("testaccount")
+            ),
+            (ValueAttribute::Uuid.as_str(), Value::Uuid(usr_uuid)),
+            (
+                ValueAttribute::Description.as_str(),
+                Value::new_utf8s("testaccount")
+            ),
+            (
+                ValueAttribute::DisplayName.as_str(),
+                Value::new_utf8s("Test Account")
+            )
         );
 
         let e_grp = entry_init!(
@@ -138,8 +156,11 @@ mod tests {
                 ValueClass::Object.to_value()
             ),
             (ValueAttribute::Class.as_str(), ValueClass::Group.to_value()),
-            ("uuid", Value::Uuid(grp_uuid)),
-            ("name", Value::new_iname("test_oauth2_group"))
+            (ValueAttribute::Uuid.as_str(), Value::Uuid(grp_uuid)),
+            (
+                ValueAttribute::Name.as_str(),
+                Value::new_iname("test_oauth2_group")
+            )
         );
 
         let ce = CreateEvent::new_internal(vec![e_rs, e_grp, e_usr]);

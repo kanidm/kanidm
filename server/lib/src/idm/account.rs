@@ -26,7 +26,7 @@ use kanidm_lib_crypto::CryptoPolicy;
 macro_rules! try_from_entry {
     ($value:expr, $groups:expr) => {{
         // Check the classes
-        if !$value.attribute_equality("class", &ValueClass::Account.into()) {
+        if !$value.attribute_equality(ValueAttribute::Class.as_str(), &ValueClass::Account.into()) {
             return Err(OperationError::InvalidAccountState(
                 "Missing class: account".to_string(),
             ));
@@ -101,15 +101,21 @@ macro_rules! try_from_entry {
             .collect();
 
         // For now disable cred updates on sync accounts too.
-        if $value.attribute_equality("class", &ValueClass::Person.into()) {
+        if $value.attribute_equality(ValueAttribute::Class.as_str(), &ValueClass::Person.into()) {
             ui_hints.insert(UiHint::CredentialUpdate);
         }
 
-        if $value.attribute_equality("class", &ValueClass::SyncObject.into()) {
+        if $value.attribute_equality(
+            ValueAttribute::Class.as_str(),
+            &ValueClass::SyncObject.into(),
+        ) {
             ui_hints.insert(UiHint::SynchronisedAccount);
         }
 
-        if $value.attribute_equality("class", &ValueClass::PosixAccount.into()) {
+        if $value.attribute_equality(
+            ValueAttribute::Class.as_str(),
+            &ValueClass::PosixAccount.into(),
+        ) {
             ui_hints.insert(UiHint::PosixAccount);
         }
 
@@ -663,9 +669,12 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         // Copy the current classes
         let prev_classes: BTreeSet<_> = account_entry
-            .get_ava_as_iutf8_iter("class")
+            .get_ava_as_iutf8_iter(ValueAttribute::Class.as_str())
             .ok_or_else(|| {
-                admin_error!("Invalid entry, class attribute is not present or not iutf8");
+                admin_error!(
+                    "Invalid entry, {} attribute is not present or not iutf8",
+                    ValueAttribute::Class.as_str()
+                );
                 OperationError::InvalidAccountState("Missing attribute: class".to_string())
             })?
             .collect();
@@ -694,7 +703,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         );
         // add person
         modlist.push_mod(Modify::Present(
-            "class".into(),
+            ValueAttribute::Class.into(),
             ValueClass::Person.to_value(),
         ));
         // purge the other attrs that are SA only.
@@ -819,10 +828,19 @@ mod tests {
                 ValueAttribute::Class.as_str(),
                 ValueClass::Person.to_value()
             ),
-            ("name", Value::new_iname("testaccount")),
-            ("uuid", Value::Uuid(target_uuid)),
-            ("description", Value::new_utf8s("testaccount")),
-            ("displayname", Value::new_utf8s("Test Account"))
+            (
+                ValueAttribute::Name.as_str(),
+                Value::new_iname("testaccount")
+            ),
+            (ValueAttribute::Uuid.as_str(), Value::Uuid(target_uuid)),
+            (
+                ValueAttribute::Description.as_str(),
+                Value::new_utf8s("testaccount")
+            ),
+            (
+                ValueAttribute::DisplayName.as_str(),
+                Value::new_utf8s("Test Account")
+            )
         );
 
         let ce = CreateEvent::new_internal(vec![e]);
@@ -847,7 +865,10 @@ mod tests {
                 PartialValue::new_iname("testaccount")
             )),
             ModifyList::new_list(vec![
-                Modify::Present(AttrString::from("class"), ValueClass::PosixAccount.into()),
+                Modify::Present(
+                    ValueAttribute::Class.into(),
+                    ValueClass::PosixAccount.into(),
+                ),
                 Modify::Present(AttrString::from("gidnumber"), Value::new_uint32(2001)),
             ]),
         );
@@ -873,9 +894,15 @@ mod tests {
                 ValueClass::Object.to_value()
             ),
             (ValueAttribute::Class.as_str(), ValueClass::Group.to_value()),
-            ("name", Value::new_iname("test_uihint_group")),
-            ("member", Value::Refer(target_uuid)),
-            ("grant_ui_hint", Value::UiHint(UiHint::ExperimentalFeatures))
+            (
+                ValueAttribute::Name.as_str(),
+                Value::new_iname("test_uihint_group")
+            ),
+            (ValueAttribute::Member.as_str(), Value::Refer(target_uuid)),
+            (
+                ValueAttribute::GrantUiHint.as_str(),
+                Value::UiHint(UiHint::ExperimentalFeatures)
+            )
         );
 
         let ce = CreateEvent::new_internal(vec![e]);

@@ -2,7 +2,7 @@
 //!
 //! Schema uuids start at `00000000-0000-0000-0000-ffff00000000`
 //!
-use crate::constants::entries::ValueClass;
+use crate::constants::entries::{ValueAttribute, ValueClass};
 use crate::constants::uuids::*;
 use crate::schema::{SchemaAttribute, SchemaClass};
 use crate::value::IndexType;
@@ -59,7 +59,7 @@ pub static ref SCHEMA_ATTR_EC_KEY_PRIVATE: SchemaAttribute = SchemaAttribute {
 
 pub static ref SCHEMA_ATTR_SSH_PUBLICKEY: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_SSH_PUBLICKEY,
-    name: "ssh_publickey".into(),
+    name: ValueAttribute::SshUnderscorePublicKey.into(),
     description: "SSH public keys of the object".to_string(),
 
     multivalue: true,
@@ -91,7 +91,7 @@ pub static ref SCHEMA_ATTR_LEGALNAME: SchemaAttribute = SchemaAttribute {
 
 pub static ref SCHEMA_ATTR_NAME_HISTORY: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_NAME_HISTORY,
-    name: "name_history".into(),
+    name: ValueAttribute::NameHistory.into(),
     description: "The history of names that a person has had".to_string(),
 
     index: vec![IndexType::Equality],
@@ -103,7 +103,7 @@ pub static ref SCHEMA_ATTR_NAME_HISTORY: SchemaAttribute = SchemaAttribute {
 
 pub static ref SCHEMA_ATTR_RADIUS_SECRET: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_RADIUS_SECRET,
-    name: "radius_secret".into(),
+    name: ValueAttribute::RadiusSecret.into(),
     description: "The accounts generated radius secret for device network authentication".to_string(),
 
     sync_allowed: true,
@@ -388,7 +388,7 @@ pub static ref SCHEMA_ATTR_PRIVATE_COOKIE_KEY: SchemaAttribute = SchemaAttribute
 
 pub static ref SCHEMA_ATTR_OAUTH2_ALLOW_INSECURE_CLIENT_DISABLE_PKCE: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_OAUTH2_ALLOW_INSECURE_CLIENT_DISABLE_PKCE,
-    name: "oauth2_allow_insecure_client_disable_pkce".into(),
+    name: ValueAttribute::OAuth2AllowInsecureClientDisablePkce.into(),
     description: "Allows disabling of PKCE for insecure OAuth2 clients".to_string(),
 
     syntax: SyntaxType::Boolean,
@@ -397,7 +397,7 @@ pub static ref SCHEMA_ATTR_OAUTH2_ALLOW_INSECURE_CLIENT_DISABLE_PKCE: SchemaAttr
 
 pub static ref SCHEMA_ATTR_OAUTH2_JWT_LEGACY_CRYPTO_ENABLE: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_OAUTH2_JWT_LEGACY_CRYPTO_ENABLE,
-    name: "oauth2_jwt_legacy_crypto_enable".into(),
+    name: ValueAttribute::OAuth2JwtLegacyCryptoEnable.into(),
     description: "Allows enabling legacy JWT cryptograhpy for clients".to_string(),
 
     syntax: SyntaxType::Boolean,
@@ -406,7 +406,7 @@ pub static ref SCHEMA_ATTR_OAUTH2_JWT_LEGACY_CRYPTO_ENABLE: SchemaAttribute = Sc
 
 pub static ref SCHEMA_ATTR_CREDENTIAL_UPDATE_INTENT_TOKEN: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_CREDENTIAL_UPDATE_INTENT_TOKEN,
-    name: "credential_update_intent_token".into(),
+    name: ValueAttribute::CredentialUpdateIntentToken.into(),
     description: "The status of a credential update intent token".to_string(),
 
     index: vec![IndexType::Equality],
@@ -417,7 +417,7 @@ pub static ref SCHEMA_ATTR_CREDENTIAL_UPDATE_INTENT_TOKEN: SchemaAttribute = Sch
 
 pub static ref SCHEMA_ATTR_PASSKEYS: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_PASSKEYS,
-    name: "passkeys".into(),
+    name: ValueAttribute::PassKeys.into(),
     description: "A set of registered passkeys".to_string(),
 
     index: vec![IndexType::Equality],
@@ -571,7 +571,7 @@ pub static ref SCHEMA_CLASS_GROUP: SchemaClass = SchemaClass {
     description: "Object representation of a group".to_string(),
 
     sync_allowed: true,
-    systemmay: attrstring_vec!(["member", "grant_ui_hint", "description"]),
+    systemmay: attrstring_vec!(["member", "grant_ui_hint", ValueAttribute::Description.as_str()]),
     systemmust: attrstring_vec!(["name", "spn"]),
     ..Default::default()
 };
@@ -598,7 +598,7 @@ pub static ref SCHEMA_CLASS_ACCOUNT: SchemaClass = SchemaClass {
         "passkeys",
         "devicekeys",
         "credential_update_intent_token",
-        "ssh_publickey",
+        ValueAttribute::SshUnderscorePublicKey.as_str(),
         "radius_secret",
         "account_expire",
         "account_valid_from",
@@ -606,8 +606,8 @@ pub static ref SCHEMA_CLASS_ACCOUNT: SchemaClass = SchemaClass {
         "oauth2_consent_scope_map",
         "user_auth_token_session",
         "oauth2_session",
-        "description",
-        "name_history",
+        ValueAttribute::Description.as_str(),
+        ValueAttribute::NameHistory.as_str(),
     ]),
     systemmust: attrstring_vec!(["displayname", "name", "spn"]),
     systemsupplements: attrstring_vec!(["person", ValueClass::ServiceAccount.into()]),
@@ -698,7 +698,7 @@ pub static ref SCHEMA_CLASS_SYSTEM_CONFIG: SchemaClass = SchemaClass {
     name: "system_config".into(),
     description: "The class representing a system (topologies) configuration options.to_string().".to_string(),
 
-    systemmay: attrstring_vec!(["description", "badlist_password"]),
+    systemmay: attrstring_vec!([ValueAttribute::Description.as_str(), "badlist_password"]),
     ..Default::default()
 };
 
@@ -708,13 +708,13 @@ pub static ref SCHEMA_CLASS_OAUTH2_RS: SchemaClass = SchemaClass {
     description: "The class representing a configured Oauth2 Resource Server".to_string(),
 
     systemmay: attrstring_vec!([
-        "description",
+        ValueAttribute::Description.as_str(),
         "oauth2_rs_scope_map",
         "oauth2_rs_sup_scope_map",
         "rs256_private_key_der",
-        "oauth2_jwt_legacy_crypto_enable",
+        ValueAttribute::OAuth2JwtLegacyCryptoEnable.as_str(),
         "oauth2_prefer_short_username",
-        "oauth2_rs_origin_landing",
+        ValueAttribute::OAuth2RsOriginLanding.as_str(),
     ]),
     systemmust: attrstring_vec!([
         "oauth2_rs_name",
@@ -731,8 +731,8 @@ pub static ref SCHEMA_CLASS_OAUTH2_RS_BASIC: SchemaClass = SchemaClass {
     name: "oauth2_resource_server_basic".into(),
     description: "The class representing a configured Oauth2 Resource Server authenticated with http basic authentication".to_string(),
 
-    systemmay: attrstring_vec!([ "oauth2_allow_insecure_client_disable_pkce"]),
-    systemmust: attrstring_vec!([ "oauth2_rs_basic_secret"]),
+    systemmay: attrstring_vec!([ ValueAttribute::OAuth2AllowInsecureClientDisablePkce.as_str()]),
+    systemmust: attrstring_vec!([ ValueAttribute::OAuth2RsBasicSecret.as_str()]),
     systemexcludes: attrstring_vec!([ "oauth2_resource_server_public"]),
     ..Default::default()
 };

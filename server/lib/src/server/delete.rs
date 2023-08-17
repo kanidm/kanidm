@@ -98,29 +98,43 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // schema or acp requires reload.
         if !self.changed_schema {
             self.changed_schema = del_cand.iter().any(|e| {
-                e.attribute_equality("class", &ValueClass::ClassType.into())
-                    || e.attribute_equality("class", &ValueClass::AttributeType.into())
+                e.attribute_equality(
+                    ValueAttribute::Class.as_str(),
+                    &ValueClass::ClassType.into(),
+                ) || e.attribute_equality(
+                    ValueAttribute::Class.as_str(),
+                    &ValueClass::AttributeType.into(),
+                )
             });
         }
         if !self.changed_acp {
-            self.changed_acp = del_cand
-                .iter()
-                .any(|e| e.attribute_equality("class", &ValueClass::AccessControlProfile.into()));
+            self.changed_acp = del_cand.iter().any(|e| {
+                e.attribute_equality(
+                    ValueAttribute::Class.as_str(),
+                    &ValueClass::AccessControlProfile.into(),
+                )
+            });
         }
         if !self.changed_oauth2 {
-            self.changed_oauth2 = del_cand
-                .iter()
-                .any(|e| e.attribute_equality("class", &ValueClass::OAuth2ResourceServer.into()));
+            self.changed_oauth2 = del_cand.iter().any(|e| {
+                e.attribute_equality(
+                    ValueAttribute::Class.as_str(),
+                    &ValueClass::OAuth2ResourceServer.into(),
+                )
+            });
         }
         if !self.changed_domain {
             self.changed_domain = del_cand
                 .iter()
-                .any(|e| e.attribute_equality("uuid", &PVUUID_DOMAIN_INFO));
+                .any(|e| e.attribute_equality(ValueAttribute::Uuid.as_str(), &PVUUID_DOMAIN_INFO));
         }
         if !self.changed_sync_agreement {
-            self.changed_sync_agreement = del_cand
-                .iter()
-                .any(|e| e.attribute_equality("uuid", &ValueClass::SyncAccount.into()));
+            self.changed_sync_agreement = del_cand.iter().any(|e| {
+                e.attribute_equality(
+                    ValueAttribute::Uuid.as_str(),
+                    &ValueClass::SyncAccount.into(),
+                )
+            });
         }
 
         self.changed_uuid
@@ -201,13 +215,22 @@ mod tests {
                 ValueAttribute::Class.as_str(),
                 ValueClass::Person.to_value()
             ),
-            ("name", Value::new_iname("testperson1")),
+            (
+                ValueAttribute::Name.as_str(),
+                Value::new_iname("testperson1")
+            ),
             (
                 "uuid",
                 Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
             ),
-            ("description", Value::new_utf8s("testperson")),
-            ("displayname", Value::new_utf8s("testperson1"))
+            (
+                ValueAttribute::Description.as_str(),
+                Value::new_utf8s("testperson")
+            ),
+            (
+                ValueAttribute::DisplayName.as_str(),
+                Value::new_utf8s("testperson1")
+            )
         );
 
         let e2 = entry_init!(
@@ -219,13 +242,22 @@ mod tests {
                 ValueAttribute::Class.as_str(),
                 ValueClass::Person.to_value()
             ),
-            ("name", Value::new_iname("testperson2")),
+            (
+                ValueAttribute::Name.as_str(),
+                Value::new_iname("testperson2")
+            ),
             (
                 "uuid",
                 Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63932"))
             ),
-            ("description", Value::new_utf8s("testperson")),
-            ("displayname", Value::new_utf8s("testperson2"))
+            (
+                ValueAttribute::Description.as_str(),
+                Value::new_utf8s("testperson")
+            ),
+            (
+                ValueAttribute::DisplayName.as_str(),
+                Value::new_utf8s("testperson2")
+            )
         );
 
         let e3 = entry_init!(
@@ -237,13 +269,22 @@ mod tests {
                 ValueAttribute::Class.as_str(),
                 ValueClass::Person.to_value()
             ),
-            ("name", Value::new_iname("testperson3")),
+            (
+                ValueAttribute::Name.as_str(),
+                Value::new_iname("testperson3")
+            ),
             (
                 "uuid",
                 Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63933"))
             ),
-            ("description", Value::new_utf8s("testperson")),
-            ("displayname", Value::new_utf8s("testperson3"))
+            (
+                ValueAttribute::Description.as_str(),
+                Value::new_utf8s("testperson")
+            ),
+            (
+                ValueAttribute::DisplayName.as_str(),
+                Value::new_utf8s("testperson3")
+            )
         );
 
         let ce = CreateEvent::new_internal(vec![e1, e2, e3]);

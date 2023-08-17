@@ -1,4 +1,5 @@
 //! Constant Entries for the IDM
+use enum_iterator::Sequence;
 
 use std::fmt::Display;
 
@@ -6,6 +7,7 @@ use crate::constants::uuids::*;
 use crate::entry::{Entry, EntryInit, EntryInitNew, EntryNew};
 use crate::value::PartialValue;
 use crate::value::Value;
+use kanidm_proto::constants::*;
 use kanidm_proto::v1::{OperationError, UiHint};
 
 #[cfg(test)]
@@ -16,43 +18,106 @@ fn test_valueattribute_as_str() {
     assert!(ValueAttribute::Class.as_str() == "class");
 }
 
-#[derive(Copy, Clone)]
+#[test]
+// this ensures we cover both ends of the conversion to/from string-types
+fn test_valueattribute_round_trip() {
+    use enum_iterator::all;
+    let the_list = all::<ValueAttribute>().collect::<Vec<_>>();
+    for attr in the_list {
+        let s: &'static str = attr.into();
+        let attr2 = ValueAttribute::try_from(s.to_string()).unwrap();
+        assert!(attr == attr2);
+    }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Sequence)]
 pub enum ValueAttribute {
-    Class,
+    AcpCreateAttr,
+    AcpCreateClass,
     AcpEnable,
-    Uuid,
-    Name,
-    UserId,
-    Uid,
-    DisplayName,
-    OAuth2RsName,
+    AcpModifyClass,
+    AcpModifyPresentAttr,
+    AcpModifyRemovedAttr,
+    AcpReceiverGroup,
+    AcpSearchAttr,
+    AcpTargetScope,
+    ApiTokenSession,
+    Attr,
     AttributeName,
+    BadlistPassword,
+    Claim,
+    Class,
     ClassName,
-    GidNumber,
-    NoIndex,
+    Cn,
+    CredentialUpdateIntentToken,
     Description,
-    Term,
+    DeviceKeys,
+    DirectMemberOf,
+    DisplayName,
+    DomainName,
+    DomainUuid,
+    DynMember,
+    Email,
+    EmailAlternative,
+    EmailPrimary,
+    GidNumber,
+    GrantUiHint,
+    IpaNtHash,
+    JwsEs256PrivateKey,
+    LastModifiedCid,
+    LegalName,
+    LoginShell,
     Member,
     MemberOf,
     MultiValue,
-    DirectMemberOf,
-    DynMember,
-    SyncParentUuid,
-    UserAuthTokenSession,
-    OAuth2RsScopeMap,
-    OAuth2Session,
-    OtherNoIndex,
+    Name,
+    NameHistory,
+    NoIndex,
+    OAuth2AllowInsecureClientDisablePkce,
     OAuth2ConsentScopeMap,
-    AcpReceiverGroup,
-    CredentialUpdateIntentToken,
+    OAuth2JwtLegacyCryptoEnable,
+    OAuth2PreferShortUsername,
+    OAuth2RsBasicSecret,
+    OAuth2RsName,
+    OAuth2RsOrigin,
+    OAuth2RsOriginLanding,
+    OAuth2RsScopeMap,
+    OAuth2RsSupScopeMap,
+    OAuth2RsTokenKey,
+    OAuth2Session,
+    ObjectClass,
+    OtherNoIndex,
+    PassKeys,
+    Phantom,
+    PrimaryCredential,
+    RadiusSecret,
+    Replicated,
+    SourceUuid,
+    Spn,
+    /// An LDAP-compatible sshpublickey
+    SshPublicKey,
+    /// The Kanidm-local ssh_publickey
+    SshUnderscorePublicKey,
+    SyncParentUuid,
+    Syntax,
+    SyncAllowed,
+    Term,
+    Uid,
+    UidNumber,
+    Unique,
+    UnixPassword,
+    UserAuthTokenSession,
+    UserId,
+    UserPassword,
+    Uuid,
+    Version,
+
     #[cfg(any(debug_assertions, test))]
     NonExist,
     #[cfg(any(debug_assertions, test))]
     TestAttr,
-    JwsEs256PrivateKey,
-    ApiTokenSession,
-    SourceUuid,
-    OAuth2RsSupScopeMap,
+    #[cfg(any(debug_assertions, test))]
+    Extra,
 }
 
 impl ValueAttribute {
@@ -71,42 +136,92 @@ impl TryFrom<String> for ValueAttribute {
     type Error = OperationError;
     fn try_from(val: String) -> Result<Self, OperationError> {
         let res = match val.as_str() {
-            "acp_enable" => ValueAttribute::AcpEnable,
-            "dynmember" => ValueAttribute::DynMember,
-            "no-index" => ValueAttribute::NoIndex,
-            "class" => ValueAttribute::Class,
-            "name" => ValueAttribute::Name,
-            "description" => ValueAttribute::Description,
-            "displayname" => ValueAttribute::DisplayName,
-            "uuid" => ValueAttribute::Uuid,
-            "sync_parent_uuid" => ValueAttribute::SyncParentUuid,
-            "uid" => ValueAttribute::Uid,
-            "member" => ValueAttribute::Member,
-            "userid" => ValueAttribute::UserId,
-            "gidnumber" => ValueAttribute::GidNumber,
-            "oauth2_rs_name" => ValueAttribute::OAuth2RsName,
-            "oauth2_session" => ValueAttribute::OAuth2Session,
-            "attributename" => ValueAttribute::AttributeName,
-            "classname" => ValueAttribute::ClassName,
-            "term" => ValueAttribute::Term,
-            "acp_receiver_group" => ValueAttribute::AcpReceiverGroup,
-            "user_auth_token_session" => ValueAttribute::UserAuthTokenSession,
-            "oauth2_rs_sup_scope_map" => ValueAttribute::OAuth2RsSupScopeMap,
-            "oauth2_consent_scope_map" => ValueAttribute::OAuth2ConsentScopeMap,
+            ATTR_ACP_CREATE_ATTR => ValueAttribute::AcpCreateAttr,
+            ATTR_ACP_CREATE_CLASS => ValueAttribute::AcpCreateClass,
+            ATTR_OAUTH2_ALLOW_INSECURE_CLIENT_DISABLE_PKCE => {
+                ValueAttribute::OAuth2AllowInsecureClientDisablePkce
+            }
+            ATTR_ACP_ENABLE => ValueAttribute::AcpEnable,
+            ATTR_ACP_MODIFY_CLASS => ValueAttribute::AcpModifyClass,
+            ATTR_ACP_MODIFY_PRESENTATTR => ValueAttribute::AcpModifyPresentAttr,
+            ATTR_ACP_MODIFY_REMOVEDATTR => ValueAttribute::AcpModifyRemovedAttr,
+            ATTR_ACP_RECEIVER_GROUP => ValueAttribute::AcpReceiverGroup,
+            ATTR_ACP_SEARCH_ATTR => ValueAttribute::AcpSearchAttr,
+            ATTR_ACP_TARGET_SCOPE => ValueAttribute::AcpTargetScope,
+            ATTR_API_TOKEN_SESSION => ValueAttribute::ApiTokenSession,
+            ATTR_ATTR => ValueAttribute::Attr,
+            ATTR_ATTRIBUTENAME => ValueAttribute::AttributeName,
+            ATTR_BADLIST_PASSWORD => ValueAttribute::BadlistPassword,
+            ATTR_CLAIM => ValueAttribute::Claim,
+            ATTR_CLASS => ValueAttribute::Class,
+            ATTR_CLASSNAME => ValueAttribute::ClassName,
+            ATTR_CN => ValueAttribute::Cn,
+            ATTR_CREDENTIAL_UPDATE_INTENT_TOKEN => ValueAttribute::CredentialUpdateIntentToken,
+            ATTR_DESCRIPTION => ValueAttribute::Description,
+            ATTR_DIRECTMEMBEROF => ValueAttribute::DirectMemberOf,
+            ATTR_DISPLAYNAME => ValueAttribute::DisplayName,
+            ATTR_DOMAIN_NAME => ValueAttribute::DomainName,
+            ATTR_DOMAIN_UUID => ValueAttribute::DomainUuid,
+            ATTR_DYNMEMBER => ValueAttribute::DynMember,
+            ATTR_EMAIL => ValueAttribute::Email,
+            ATTR_EMAIL_ALTERNATIVE => ValueAttribute::EmailAlternative,
+            ATTR_EMAIL_PRIMARY => ValueAttribute::EmailPrimary,
+            ATTR_GIDNUMBER => ValueAttribute::GidNumber,
+            ATTR_GRANT_UI_HINT => ValueAttribute::GrantUiHint,
+            ATTR_IPANTHASH => ValueAttribute::IpaNtHash,
+            ATTR_JWS_ES256_PRIVATE_KEY => ValueAttribute::JwsEs256PrivateKey,
+            ATTR_LAST_MODIFIED_CID => ValueAttribute::LastModifiedCid,
+            ATTR_LOGINSHELL => ValueAttribute::LoginShell,
+            ATTR_MEMBER => ValueAttribute::Member,
+            ATTR_MEMBEROF => ValueAttribute::MemberOf,
+            ATTR_MULTIVALUE => ValueAttribute::MultiValue,
+            ATTR_NAME => ValueAttribute::Name,
+            ATTR_NO_INDEX => ValueAttribute::NoIndex,
+            ATTR_OAUTH2_CONSENT_SCOPE_MAP => ValueAttribute::OAuth2ConsentScopeMap,
+            ATTR_OAUTH2_JWT_LEGACY_CRYPTO_ENABLE => ValueAttribute::OAuth2JwtLegacyCryptoEnable,
+            ATTR_OAUTH2_PREFER_SHORT_USERNAME => ValueAttribute::OAuth2PreferShortUsername,
+            ATTR_OAUTH2_RS_BASIC_SECRET => ValueAttribute::OAuth2RsBasicSecret,
+            ATTR_OAUTH2_RS_NAME => ValueAttribute::OAuth2RsName,
+            ATTR_OAUTH2_RS_ORIGIN => ValueAttribute::OAuth2RsOrigin,
+            ATTR_OAUTH2_RS_ORIGIN_LANDING => ValueAttribute::OAuth2RsOriginLanding,
+            ATTR_OAUTH2_RS_SCOPE_MAP => ValueAttribute::OAuth2RsScopeMap,
+            ATTR_OAUTH2_RS_SUP_SCOPE_MAP => ValueAttribute::OAuth2RsSupScopeMap,
+            ATTR_OAUTH2_RS_TOKEN_KEY => ValueAttribute::OAuth2RsTokenKey,
+            ATTR_OAUTH2_SESSION => ValueAttribute::OAuth2Session,
+            ATTR_OBJECTCLASS => ValueAttribute::ObjectClass,
+            ATTR_OTHER_NO_INDEX => ValueAttribute::OtherNoIndex,
+            ATTR_PASSKEYS => ValueAttribute::PassKeys,
+            ATTR_PHANTOM => ValueAttribute::Phantom,
+            ATTR_PRIMARY_CREDENTIAL => ValueAttribute::PrimaryCredential,
+            ATTR_REPLICATED => ValueAttribute::Replicated,
+            ATTR_SOURCE_UUID => ValueAttribute::SourceUuid,
+            ATTR_SPN => ValueAttribute::Spn,
+            ATTR_SSHPUBLICKEY => ValueAttribute::SshPublicKey,
+            ATTR_SSH_PUBLICKEY => ValueAttribute::SshUnderscorePublicKey,
+            ATTR_SYNC_ALLOWED => ValueAttribute::SyncAllowed,
+            ATTR_SYNC_PARENT_UUID => ValueAttribute::SyncParentUuid,
+            ATTR_SYNTAX => ValueAttribute::Syntax,
+            ATTR_TERM => ValueAttribute::Term,
+            ATTR_UID => ValueAttribute::Uid,
+            ATTR_UIDNUMBER => ValueAttribute::UidNumber,
+            ATTR_UNIQUE => ValueAttribute::Unique,
+            ATTR_UNIXPASSWORD => ValueAttribute::UnixPassword,
+            ATTR_USER_AUTH_TOKEN_SESSION => ValueAttribute::UserAuthTokenSession,
+            ATTR_USERID => ValueAttribute::UserId,
+            ATTR_USERPASSWORD => ValueAttribute::UserPassword,
+            ATTR_UUID => ValueAttribute::Uuid,
+            ATTR_VERSION => ValueAttribute::Version,
+            ATTR_NAME_HISTORY => ValueAttribute::NameHistory,
+            ATTR_DEVICEKEYS => ValueAttribute::DeviceKeys,
+            ATTR_LEGALNAME => ValueAttribute::LegalName,
+            ATTR_RADIUS_SECRET => ValueAttribute::RadiusSecret,
 
-            "memberof" => ValueAttribute::MemberOf,
-            "multivalue" => ValueAttribute::MultiValue,
-            "directmemberof" => ValueAttribute::DirectMemberOf,
-            "oauth2_rs_scope_map" => ValueAttribute::OAuth2RsScopeMap,
-            "other-no-index" => ValueAttribute::OtherNoIndex,
-            "credential_update_intent_token" => ValueAttribute::CredentialUpdateIntentToken,
             #[cfg(any(debug_assertions, test))]
-            "non-exist" => ValueAttribute::NonExist,
+            TEST_ATTR_NON_EXIST => ValueAttribute::NonExist,
             #[cfg(any(debug_assertions, test))]
-            "testattr" => ValueAttribute::TestAttr,
-            "jws_es256_private_key" => ValueAttribute::JwsEs256PrivateKey,
-            "api_token_session" => ValueAttribute::ApiTokenSession,
-            "source_uuid" => ValueAttribute::SourceUuid,
+            TEST_ATTR_TEST_ATTR => ValueAttribute::TestAttr,
+            #[cfg(any(debug_assertions, test))]
+            TEST_ATTR_EXTRA => ValueAttribute::Extra,
             _ => return Err(OperationError::InvalidAttributeName(val)),
         };
         Ok(res)
@@ -116,41 +231,93 @@ impl TryFrom<String> for ValueAttribute {
 impl From<ValueAttribute> for &'static str {
     fn from(val: ValueAttribute) -> Self {
         match val {
-            ValueAttribute::AcpEnable => "acp_enable",
-            ValueAttribute::DynMember => "dynmember",
-            ValueAttribute::NoIndex => "no-index",
-            ValueAttribute::Class => "class",
-            ValueAttribute::Name => "name",
-            ValueAttribute::Description => "description",
-            ValueAttribute::DisplayName => "displayname",
-            ValueAttribute::Uuid => "uuid",
-            ValueAttribute::SyncParentUuid => "sync_parent_uuid",
-            ValueAttribute::Uid => "uid",
-            ValueAttribute::Member => "member",
-            ValueAttribute::UserId => "userid",
-            ValueAttribute::GidNumber => "gidnumber",
-            ValueAttribute::OAuth2RsName => "oauth2_rs_name",
-            ValueAttribute::OAuth2Session => "oauth2_session",
-            ValueAttribute::AcpReceiverGroup => "acp_receiver_group",
-            ValueAttribute::AttributeName => "attributename",
-            ValueAttribute::ClassName => "classname",
-            ValueAttribute::Term => "term",
-            ValueAttribute::UserAuthTokenSession => "user_auth_token_session",
-            ValueAttribute::OAuth2ConsentScopeMap => "oauth2_consent_scope_map",
-            ValueAttribute::MemberOf => "memberof",
-            ValueAttribute::MultiValue => "multivalue",
-            ValueAttribute::DirectMemberOf => "directmemberof",
-            ValueAttribute::OAuth2RsScopeMap => "oauth2_rs_scope_map",
-            ValueAttribute::OAuth2RsSupScopeMap => "oauth2_rs_sup_scope_map",
-            ValueAttribute::OtherNoIndex => "other-no-index",
-            ValueAttribute::CredentialUpdateIntentToken => "credential_update_intent_token",
+            ValueAttribute::DeviceKeys => ATTR_DEVICEKEYS,
+            ValueAttribute::LegalName => ATTR_LEGALNAME,
+            ValueAttribute::UnixPassword => ATTR_UNIXPASSWORD,
+            ValueAttribute::RadiusSecret => ATTR_RADIUS_SECRET,
+            ValueAttribute::NameHistory => ATTR_NAME_HISTORY,
+
+            ValueAttribute::AcpCreateAttr => ATTR_ACP_CREATE_ATTR,
+            ValueAttribute::AcpCreateClass => ATTR_ACP_CREATE_CLASS,
+            ValueAttribute::AcpEnable => ATTR_ACP_ENABLE,
+            ValueAttribute::AcpModifyClass => ATTR_ACP_MODIFY_CLASS,
+            ValueAttribute::AcpModifyPresentAttr => ATTR_ACP_MODIFY_PRESENTATTR,
+            ValueAttribute::AcpModifyRemovedAttr => ATTR_ACP_MODIFY_REMOVEDATTR,
+            ValueAttribute::AcpReceiverGroup => ATTR_ACP_RECEIVER_GROUP,
+            ValueAttribute::AcpSearchAttr => ATTR_ACP_SEARCH_ATTR,
+            ValueAttribute::AcpTargetScope => ATTR_ACP_TARGET_SCOPE,
+            ValueAttribute::ApiTokenSession => ATTR_API_TOKEN_SESSION,
+            ValueAttribute::Attr => ATTR_ATTR,
+            ValueAttribute::AttributeName => ATTR_ATTRIBUTENAME,
+            ValueAttribute::BadlistPassword => ATTR_BADLIST_PASSWORD,
+            ValueAttribute::Claim => ATTR_CLAIM,
+            ValueAttribute::Class => ATTR_CLASS,
+            ValueAttribute::ClassName => ATTR_CLASSNAME,
+            ValueAttribute::Cn => ATTR_CN,
+            ValueAttribute::CredentialUpdateIntentToken => ATTR_CREDENTIAL_UPDATE_INTENT_TOKEN,
+            ValueAttribute::Description => ATTR_DESCRIPTION,
+            ValueAttribute::DirectMemberOf => ATTR_DIRECTMEMBEROF,
+            ValueAttribute::DisplayName => ATTR_DISPLAYNAME,
+            ValueAttribute::DomainName => ATTR_DOMAIN_NAME,
+            ValueAttribute::DomainUuid => ATTR_DOMAIN_UUID,
+            ValueAttribute::DynMember => ATTR_DYNMEMBER,
+            ValueAttribute::Email => ATTR_EMAIL,
+            ValueAttribute::EmailAlternative => ATTR_EMAIL_ALTERNATIVE,
+            ValueAttribute::EmailPrimary => ATTR_EMAIL_PRIMARY,
+            ValueAttribute::GidNumber => ATTR_GIDNUMBER,
+            ValueAttribute::GrantUiHint => ATTR_GRANT_UI_HINT,
+            ValueAttribute::IpaNtHash => ATTR_IPANTHASH,
+            ValueAttribute::JwsEs256PrivateKey => ATTR_JWS_ES256_PRIVATE_KEY,
+            ValueAttribute::LastModifiedCid => ATTR_LAST_MODIFIED_CID,
+            ValueAttribute::LoginShell => ATTR_LOGINSHELL,
+            ValueAttribute::Member => ATTR_MEMBER,
+            ValueAttribute::MemberOf => ATTR_MEMBEROF,
+            ValueAttribute::MultiValue => ATTR_MULTIVALUE,
+            ValueAttribute::Name => ATTR_NAME,
+            ValueAttribute::NoIndex => ATTR_NO_INDEX,
+            ValueAttribute::OAuth2AllowInsecureClientDisablePkce => {
+                ATTR_OAUTH2_ALLOW_INSECURE_CLIENT_DISABLE_PKCE
+            }
+            ValueAttribute::OAuth2ConsentScopeMap => ATTR_OAUTH2_CONSENT_SCOPE_MAP,
+            ValueAttribute::OAuth2JwtLegacyCryptoEnable => ATTR_OAUTH2_JWT_LEGACY_CRYPTO_ENABLE,
+            ValueAttribute::OAuth2PreferShortUsername => ATTR_OAUTH2_PREFER_SHORT_USERNAME,
+            ValueAttribute::OAuth2RsBasicSecret => ATTR_OAUTH2_RS_BASIC_SECRET,
+            ValueAttribute::OAuth2RsName => ATTR_OAUTH2_RS_NAME,
+            ValueAttribute::OAuth2RsOrigin => ATTR_OAUTH2_RS_ORIGIN,
+            ValueAttribute::OAuth2RsOriginLanding => ATTR_OAUTH2_RS_ORIGIN_LANDING,
+            ValueAttribute::OAuth2RsScopeMap => ATTR_OAUTH2_RS_SCOPE_MAP,
+            ValueAttribute::OAuth2RsSupScopeMap => ATTR_OAUTH2_RS_SUP_SCOPE_MAP,
+            ValueAttribute::OAuth2RsTokenKey => ATTR_OAUTH2_RS_TOKEN_KEY,
+            ValueAttribute::OAuth2Session => ATTR_OAUTH2_SESSION,
+            ValueAttribute::ObjectClass => ATTR_OBJECTCLASS,
+            ValueAttribute::OtherNoIndex => ATTR_OTHER_NO_INDEX,
+            ValueAttribute::PassKeys => ATTR_PASSKEYS,
+            ValueAttribute::Phantom => ATTR_PHANTOM,
+            ValueAttribute::PrimaryCredential => ATTR_PRIMARY_CREDENTIAL,
+            ValueAttribute::Replicated => ATTR_REPLICATED,
+            ValueAttribute::SourceUuid => ATTR_SOURCE_UUID,
+            ValueAttribute::Spn => ATTR_SPN,
+            ValueAttribute::SshPublicKey => ATTR_SSHPUBLICKEY,
+            ValueAttribute::SshUnderscorePublicKey => ATTR_SSH_PUBLICKEY,
+            ValueAttribute::SyncAllowed => ATTR_SYNC_ALLOWED,
+            ValueAttribute::SyncParentUuid => ATTR_SYNC_PARENT_UUID,
+            ValueAttribute::Syntax => ATTR_SYNTAX,
+            ValueAttribute::Term => ATTR_TERM,
+            ValueAttribute::Uid => ATTR_UID,
+            ValueAttribute::UidNumber => ATTR_UIDNUMBER,
+            ValueAttribute::Unique => ATTR_UNIQUE,
+            ValueAttribute::UserAuthTokenSession => ATTR_USER_AUTH_TOKEN_SESSION,
+            ValueAttribute::UserId => ATTR_USERID,
+            ValueAttribute::UserPassword => ATTR_USERPASSWORD,
+            ValueAttribute::Uuid => ATTR_UUID,
+            ValueAttribute::Version => ATTR_VERSION,
+
             #[cfg(any(debug_assertions, test))]
-            ValueAttribute::NonExist => "non-exist",
+            ValueAttribute::NonExist => TEST_ATTR_NON_EXIST,
             #[cfg(any(debug_assertions, test))]
-            ValueAttribute::TestAttr => "testattr",
-            ValueAttribute::JwsEs256PrivateKey => "jws_es256_private_key",
-            ValueAttribute::ApiTokenSession => "api_token_session",
-            ValueAttribute::SourceUuid => "source_uuid",
+            ValueAttribute::TestAttr => TEST_ATTR_TEST_ATTR,
+            #[cfg(any(debug_assertions, test))]
+            ValueAttribute::Extra => TEST_ATTR_EXTRA,
         }
     }
 }
@@ -214,6 +381,7 @@ pub enum ValueClass {
     System,
     SystemInfo,
     SystemConfig,
+    SourceUuid,
     #[cfg(any(test, debug_assertions))]
     TestClass,
 }
@@ -246,6 +414,7 @@ impl From<ValueClass> for &'static str {
             ValueClass::Recycled => "recycled",
             ValueClass::Service => "service",
             ValueClass::ServiceAccount => "service_account",
+            ValueClass::SourceUuid => CLASS_SOURCEUUID,
             ValueClass::SyncAccount => "sync_account",
             ValueClass::SyncObject => "sync_object",
             ValueClass::System => "system",
@@ -332,13 +501,16 @@ lazy_static! {
             ValueAttribute::Class.as_str(),
             ValueClass::ServiceAccount.to_value()
         ),
-        ("name", Value::new_iname("admin")),
-        ("uuid", Value::Uuid(UUID_ADMIN)),
+        (ValueAttribute::Name.as_str(), Value::new_iname("admin")),
+        (ValueAttribute::Uuid.as_str(), Value::Uuid(UUID_ADMIN)),
         (
-            "description",
+            ValueAttribute::Description.as_str(),
             Value::new_utf8s("Builtin System Admin account.")
         ),
-        ("displayname", Value::new_utf8s("System Administrator"))
+        (
+            ValueAttribute::DisplayName.as_str(),
+            Value::new_utf8s("System Administrator")
+        )
     );
 }
 
@@ -349,13 +521,13 @@ lazy_static! {
         (ValueAttribute::Class.as_str(), ValueClass::MemberOf.to_value()),
         (ValueAttribute::Class.as_str(), ValueClass::Object.to_value()),
         (ValueAttribute::Class.as_str(), ValueClass::ServiceAccount.to_value()),
-        ("name", Value::new_iname("idm_admin")),
-        ("uuid", Value::Uuid(UUID_IDM_ADMIN)),
+        (ValueAttribute::Name.as_str(), Value::new_iname("idm_admin")),
+        (ValueAttribute::Uuid.as_str(), Value::Uuid(UUID_IDM_ADMIN)),
         (
-            "description",
+            ValueAttribute::Description.as_str(),
             Value::new_utf8s("Builtin IDM Admin account.")
         ),
-        ("displayname", Value::new_utf8s("IDM Administrator"))
+        (ValueAttribute::DisplayName.as_str(), Value::new_utf8s("IDM Administrator"))
     );
 }
 
@@ -364,13 +536,13 @@ lazy_static! {
     pub static ref E_IDM_ADMINS_V1: EntryInitNew = entry_init!(
         (ValueAttribute::Class.as_str(), ValueClass::Group.to_value()),
         (ValueAttribute::Class.as_str(), ValueClass::Object.to_value()),
-        ("name", Value::new_iname("idm_admins")),
-        ("uuid", Value::Uuid(UUID_IDM_ADMINS)),
+        (ValueAttribute::Name.as_str(), Value::new_iname("idm_admins")),
+        (ValueAttribute::Uuid.as_str(), Value::Uuid(UUID_IDM_ADMINS)),
         (
-            "description",
+            ValueAttribute::Description.as_str(),
             Value::new_utf8s("Builtin IDM Administrators Group.")
         ),
-        ("member", Value::Refer(UUID_IDM_ADMIN))
+        (ValueAttribute::Member.as_str(), Value::Refer(UUID_IDM_ADMIN))
     );
 }
 
@@ -379,13 +551,13 @@ lazy_static! {
     pub static ref E_SYSTEM_ADMINS_V1: EntryInitNew = entry_init!(
         (ValueAttribute::Class.as_str(), ValueClass::Group.to_value()),
         (ValueAttribute::Class.as_str(), ValueClass::Object.to_value()),
-        ("name", Value::new_iname("system_admins")),
-        ("uuid", Value::Uuid(UUID_SYSTEM_ADMINS)),
+        (ValueAttribute::Name.as_str(), Value::new_iname("system_admins")),
+        (ValueAttribute::Uuid.as_str(), Value::Uuid(UUID_SYSTEM_ADMINS)),
         (
-            "description",
+            ValueAttribute::Description.as_str(),
             Value::new_utf8s("Builtin System Administrators Group.")
         ),
-        ("member", Value::Refer(UUID_ADMIN))
+        (ValueAttribute::Member.as_str(), Value::Refer(UUID_ADMIN))
     );
 }
 
@@ -804,35 +976,35 @@ lazy_static! {
         (ValueAttribute::Class.as_str(), ValueClass::Object.to_value()),
         (ValueAttribute::Class.as_str(), ValueClass::Group.to_value()),
         (
-            "name",
+            ValueAttribute::Name.as_str(),
             Value::new_iname("idm_ui_enable_experimental_features")
         ),
         (
-            "uuid",
+            ValueAttribute::Uuid.as_str(),
             Value::Uuid(UUID_IDM_UI_ENABLE_EXPERIMENTAL_FEATURES)
         ),
         (
-            "description",
+            ValueAttribute::Description.as_str(),
             Value::new_utf8s(
                 "Members of this group will have access to experimental web UI features."
             )
         ),
-        ("grant_ui_hint", Value::UiHint(UiHint::ExperimentalFeatures))
+        (ValueAttribute::GrantUiHint .as_str(), Value::UiHint(UiHint::ExperimentalFeatures))
     );
 
     pub static ref E_IDM_ACCOUNT_MAIL_READ_PRIV: EntryInitNew = entry_init!(
         (ValueAttribute::Class.as_str(), ValueClass::Object.to_value()),
         (ValueAttribute::Class.as_str(), ValueClass::Group.to_value()),
         (
-            "name",
+            ValueAttribute::Name.as_str(),
             Value::new_iname("idm_account_mail_read_priv")
         ),
         (
-            "uuid",
+            ValueAttribute::Uuid.as_str(),
             Value::Uuid(UUID_IDM_ACCOUNT_MAIL_READ_PRIV)
         ),
         (
-            "description",
+            ValueAttribute::Description.as_str(),
             Value::new_utf8s(
                 "Members of this group will have access to read the mail attribute of all persons and service accounts."
             )
@@ -895,12 +1067,12 @@ lazy_static! {
             ValueAttribute::Class.as_str(),
             ValueClass::System.to_value()
         ),
-        ("uuid", Value::Uuid(UUID_SYSTEM_INFO)),
+        (ValueAttribute::Uuid.as_str(), Value::Uuid(UUID_SYSTEM_INFO)),
         (
-            "description",
+            ValueAttribute::Description.as_str(),
             Value::new_utf8s("System (local) info and metadata object.")
         ),
-        ("version", Value::Uint32(15))
+        (ValueAttribute::Version.as_str(), Value::Uint32(14))
     );
 }
 
@@ -918,10 +1090,13 @@ lazy_static! {
             ValueAttribute::Class.as_str(),
             ValueClass::System.to_value()
         ),
-        ("name", Value::new_iname("domain_local")),
-        ("uuid", Value::Uuid(UUID_DOMAIN_INFO)),
         (
-            "description",
+            ValueAttribute::Name.as_str(),
+            Value::new_iname("domain_local")
+        ),
+        (ValueAttribute::Uuid.as_str(), Value::Uuid(UUID_DOMAIN_INFO)),
+        (
+            ValueAttribute::Description.as_str(),
             Value::new_utf8s("This local domain's info and metadata object.")
         )
     );
@@ -952,10 +1127,16 @@ lazy_static! {
             ValueAttribute::Class.as_str(),
             ValueClass::ServiceAccount.to_value()
         ),
-        ("name", Value::new_iname("anonymous")),
-        ("uuid", Value::Uuid(UUID_ANONYMOUS)),
-        ("description", Value::new_utf8s("Anonymous access account.")),
-        ("displayname", Value::new_utf8s("Anonymous"))
+        (ValueAttribute::Name.as_str(), Value::new_iname("anonymous")),
+        (ValueAttribute::Uuid.as_str(), Value::Uuid(UUID_ANONYMOUS)),
+        (
+            ValueAttribute::Description.as_str(),
+            Value::new_utf8s("Anonymous access account.")
+        ),
+        (
+            ValueAttribute::DisplayName.as_str(),
+            Value::new_utf8s("Anonymous")
+        )
     );
 }
 
@@ -991,15 +1172,27 @@ lazy_static! {
             ValueAttribute::Class.as_str(),
             ValueClass::Object.to_value()
         ),
-        ("name", Value::new_iname("testperson1")),
-        ("uuid", Value::Uuid(UUID_TESTPERSON_1))
+        (
+            ValueAttribute::Name.as_str(),
+            Value::new_iname("testperson1")
+        ),
+        (
+            ValueAttribute::Uuid.as_str(),
+            Value::Uuid(UUID_TESTPERSON_1)
+        )
     );
     pub static ref E_TESTPERSON_2: EntryInitNew = entry_init!(
         (
             ValueAttribute::Class.as_str(),
             ValueClass::Object.to_value()
         ),
-        ("name", Value::new_iname("testperson2")),
-        ("uuid", Value::Uuid(UUID_TESTPERSON_2))
+        (
+            ValueAttribute::Name.as_str(),
+            Value::new_iname("testperson2")
+        ),
+        (
+            ValueAttribute::Uuid.as_str(),
+            Value::Uuid(UUID_TESTPERSON_2)
+        )
     );
 }

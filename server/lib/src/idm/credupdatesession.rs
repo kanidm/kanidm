@@ -350,8 +350,8 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             .effective_permission_check(
                 ident,
                 Some(btreeset![
-                    AttrString::from("primary_credential"),
-                    AttrString::from("passkeys")
+                    ValueAttribute::PrimaryCredential.into(),
+                    ValueAttribute::PassKeys.into()
                 ]),
                 &[entry],
             )?;
@@ -964,27 +964,27 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         if session.primary_can_edit {
             match &session.primary {
                 Some(ncred) => {
-                    modlist.push_mod(Modify::Purged(AttrString::from("primary_credential")));
+                    modlist.push_mod(Modify::Purged(ValueAttribute::PrimaryCredential.into()));
                     let vcred = Value::new_credential("primary", ncred.clone());
                     modlist.push_mod(Modify::Present(
-                        AttrString::from("primary_credential"),
+                        ValueAttribute::PrimaryCredential.into(),
                         vcred,
                     ));
                 }
                 None => {
-                    modlist.push_mod(Modify::Purged(AttrString::from("primary_credential")));
+                    modlist.push_mod(Modify::Purged(ValueAttribute::PrimaryCredential.into()));
                 }
             };
         };
 
         if session.passkeys_can_edit {
             // Need to update passkeys.
-            modlist.push_mod(Modify::Purged(AttrString::from("passkeys")));
+            modlist.push_mod(Modify::Purged(ValueAttribute::PassKeys.into()));
             // Add all the passkeys. If none, nothing will be added! This handles
             // the delete case quite cleanly :)
             session.passkeys.iter().for_each(|(uuid, (tag, pk))| {
                 let v_pk = Value::Passkey(*uuid, tag.clone(), pk.clone());
-                modlist.push_mod(Modify::Present(AttrString::from("passkeys"), v_pk));
+                modlist.push_mod(Modify::Present(ValueAttribute::PassKeys.into(), v_pk));
             });
         };
 
@@ -1789,10 +1789,19 @@ mod tests {
                 ValueAttribute::Class.as_str(),
                 ValueClass::ServiceAccount.to_value()
             ),
-            ("name", Value::new_iname("user_account_only")),
-            ("uuid", Value::Uuid(testaccount_uuid)),
-            ("description", Value::new_utf8s("testaccount")),
-            ("displayname", Value::new_utf8s("testaccount"))
+            (
+                ValueAttribute::Name.as_str(),
+                Value::new_iname("user_account_only")
+            ),
+            (ValueAttribute::Uuid.as_str(), Value::Uuid(testaccount_uuid)),
+            (
+                ValueAttribute::Description.as_str(),
+                Value::new_utf8s("testaccount")
+            ),
+            (
+                ValueAttribute::DisplayName.as_str(),
+                Value::new_utf8s("testaccount")
+            )
         );
 
         let e2 = entry_init!(
@@ -1808,10 +1817,19 @@ mod tests {
                 ValueAttribute::Class.as_str(),
                 ValueClass::Person.to_value()
             ),
-            ("name", Value::new_iname("testperson")),
-            ("uuid", Value::Uuid(TESTPERSON_UUID)),
-            ("description", Value::new_utf8s("testperson")),
-            ("displayname", Value::new_utf8s("testperson"))
+            (
+                ValueAttribute::Name.as_str(),
+                Value::new_iname("testperson")
+            ),
+            (ValueAttribute::Uuid.as_str(), Value::Uuid(TESTPERSON_UUID)),
+            (
+                ValueAttribute::Description.as_str(),
+                Value::new_utf8s("testperson")
+            ),
+            (
+                ValueAttribute::DisplayName.as_str(),
+                Value::new_utf8s("testperson")
+            )
         );
 
         let ce = CreateEvent::new_internal(vec![e1, e2]);
@@ -1922,10 +1940,19 @@ mod tests {
                 ValueAttribute::Class.as_str(),
                 ValueClass::Person.to_value()
             ),
-            ("name", Value::new_iname("testperson")),
-            ("uuid", Value::Uuid(TESTPERSON_UUID)),
-            ("description", Value::new_utf8s("testperson")),
-            ("displayname", Value::new_utf8s("testperson"))
+            (
+                ValueAttribute::Name.as_str(),
+                Value::new_iname("testperson")
+            ),
+            (ValueAttribute::Uuid.as_str(), Value::Uuid(TESTPERSON_UUID)),
+            (
+                ValueAttribute::Description.as_str(),
+                Value::new_utf8s("testperson")
+            ),
+            (
+                ValueAttribute::DisplayName.as_str(),
+                Value::new_utf8s("testperson")
+            )
         );
 
         let ce = CreateEvent::new_internal(vec![e2]);
@@ -2785,9 +2812,15 @@ mod tests {
                 ValueAttribute::Class.as_str(),
                 ValueClass::SyncAccount.to_value()
             ),
-            ("name", Value::new_iname("test_scim_sync")),
-            ("uuid", Value::Uuid(sync_uuid)),
-            ("description", Value::new_utf8s("A test sync agreement"))
+            (
+                ValueAttribute::Name.as_str(),
+                Value::new_iname("test_scim_sync")
+            ),
+            (ValueAttribute::Uuid.as_str(), Value::Uuid(sync_uuid)),
+            (
+                ValueAttribute::Description.as_str(),
+                Value::new_utf8s("A test sync agreement")
+            )
         );
 
         let e2 = entry_init!(
@@ -2807,11 +2840,23 @@ mod tests {
                 ValueAttribute::Class.as_str(),
                 ValueClass::Person.to_value()
             ),
-            ("sync_parent_uuid", Value::Refer(sync_uuid)),
-            ("name", Value::new_iname("testperson")),
-            ("uuid", Value::Uuid(TESTPERSON_UUID)),
-            ("description", Value::new_utf8s("testperson")),
-            ("displayname", Value::new_utf8s("testperson"))
+            (
+                ValueAttribute::SyncParentUuid.as_str(),
+                Value::Refer(sync_uuid)
+            ),
+            (
+                ValueAttribute::Name.as_str(),
+                Value::new_iname("testperson")
+            ),
+            (ValueAttribute::Uuid.as_str(), Value::Uuid(TESTPERSON_UUID)),
+            (
+                ValueAttribute::Description.as_str(),
+                Value::new_utf8s("testperson")
+            ),
+            (
+                ValueAttribute::DisplayName.as_str(),
+                Value::new_utf8s("testperson")
+            )
         );
 
         let ce = CreateEvent::new_internal(vec![e1, e2]);

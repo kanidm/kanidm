@@ -354,35 +354,42 @@ impl Entry<EntryInit, EntryNew> {
                 } else {
                 let attr = AttrString::from(k.to_lowercase());
                 let vv: ValueSet = match attr.as_str() {
-                    "attributename" | "classname" | "domain" => {
+                    kanidm_proto::constants::ATTR_ATTRIBUTENAME | kanidm_proto::constants::ATTR_CLASSNAME | kanidm_proto::constants::ATTR_DOMAIN => {
                         valueset::from_value_iter(
                             vs.into_iter().map(|v| Value::new_iutf8(&v))
                         )
                     }
-                    "name" | "domain_name" => {
+                    kanidm_proto::constants::ATTR_NAME | kanidm_proto::constants::ATTR_DOMAIN_NAME => {
                         valueset::from_value_iter(
                             vs.into_iter().map(|v| Value::new_iname(&v))
                         )
                     }
-                    "userid" | "uidnumber" => {
+                    kanidm_proto::constants::ATTR_USERID | kanidm_proto::constants::ATTR_UIDNUMBER  => {
                         warn!("WARNING: Use of unstabilised attributes userid/uidnumber");
                         valueset::from_value_iter(
                             vs.into_iter().map(|v| Value::new_iutf8(&v))
                         )
                     }
-                    "class" | "acp_create_class" | "acp_modify_class"  => {
+                    kanidm_proto::constants::ATTR_CLASS | kanidm_proto::constants::ATTR_ACP_CREATE_CLASS | kanidm_proto::constants::ATTR_ACP_MODIFY_CLASS  => {
                         valueset::from_value_iter(
                             vs.into_iter().map(|v| Value::new_class(v.as_str()))
                         )
                     }
-                    "acp_create_attr" | "acp_search_attr" | "acp_modify_removedattr" | "acp_modify_presentattr" |
-                    "systemmay" | "may" | "systemmust" | "must"
+                    kanidm_proto::constants::ATTR_ACP_CREATE_ATTR |
+                    kanidm_proto::constants::ATTR_ACP_SEARCH_ATTR |
+                    kanidm_proto::constants::ATTR_ACP_MODIFY_REMOVEDATTR |
+                    kanidm_proto::constants::ATTR_ACP_MODIFY_PRESENTATTR |
+                    kanidm_proto::constants::ATTR_SYSTEMMAY |
+                    kanidm_proto::constants::ATTR_SYSTEMMUST |
+                    kanidm_proto::constants::ATTR_MAY |
+                    kanidm_proto::constants::ATTR_MUST
                     => {
                         valueset::from_value_iter(
                             vs.into_iter().map(|v| Value::new_attr(v.as_str()))
                         )
                     }
-                    "uuid" | "domain_uuid" => {
+                    kanidm_proto::constants::ATTR_UUID |
+                    kanidm_proto::constants::ATTR_DOMAIN_UUID => {
                         valueset::from_value_iter(
                             vs.into_iter().map(|v| Value::new_uuid_s(v.as_str())
                                 .unwrap_or_else(|| {
@@ -392,12 +399,17 @@ impl Entry<EntryInit, EntryNew> {
                             )
                         )
                     }
-                    "member" | "memberof" | "directmemberof" | "acp_receiver_group" => {
+                    kanidm_proto::constants::ATTR_MEMBER |
+                    kanidm_proto::constants::ATTR_MEMBEROF |
+                    kanidm_proto::constants::ATTR_DIRECTMEMBEROF |
+                    kanidm_proto::constants::ATTR_ACP_RECEIVER_GROUP => {
                         valueset::from_value_iter(
                             vs.into_iter().map(|v| Value::new_refer_s(v.as_str()).unwrap() )
                         )
                     }
-                    "acp_enable" | "multivalue" | "unique" => {
+                    kanidm_proto::constants::ATTR_ACP_ENABLE |
+                    kanidm_proto::constants::ATTR_MULTIVALUE |
+                    kanidm_proto::constants::ATTR_UNIQUE => {
                         valueset::from_value_iter(
                         vs.into_iter().map(|v| Value::new_bools(v.as_str())
                             .unwrap_or_else(|| {
@@ -407,7 +419,7 @@ impl Entry<EntryInit, EntryNew> {
                             )
                         )
                     }
-                    "syntax" => {
+                    kanidm_proto::constants::ATTR_SYNTAX => {
                         valueset::from_value_iter(
                         vs.into_iter().map(|v| Value::new_syntaxs(v.as_str())
                             .unwrap_or_else(|| {
@@ -417,7 +429,7 @@ impl Entry<EntryInit, EntryNew> {
                         )
                         )
                     }
-                    "index" => {
+                    kanidm_proto::constants::ATTR_INDEX => {
                         valueset::from_value_iter(
                         vs.into_iter().map(|v| Value::new_indexes(v.as_str())
                             .unwrap_or_else(|| {
@@ -427,7 +439,9 @@ impl Entry<EntryInit, EntryNew> {
                         )
                         )
                     }
-                    "acp_targetscope" | "acp_receiver" => {
+                    kanidm_proto::constants::ATTR_ACP_TARGET_SCOPE |
+                    kanidm_proto::constants::ATTR_ACP_RECEIVER
+                     => {
                         valueset::from_value_iter(
                         vs.into_iter().map(|v| Value::new_json_filter_s(v.as_str())
                             .unwrap_or_else(|| {
@@ -437,12 +451,12 @@ impl Entry<EntryInit, EntryNew> {
                         )
                         )
                     }
-                    "displayname" | "description" | "domain_display_name" => {
+                    kanidm_proto::constants::ATTR_DISPLAYNAME | kanidm_proto::constants::ATTR_DESCRIPTION | kanidm_proto::constants::ATTR_DOMAIN_DISPLAY_NAME => {
                         valueset::from_value_iter(
                         vs.into_iter().map(Value::new_utf8)
                         )
                     }
-                    "spn" => {
+                    kanidm_proto::constants::ATTR_SPN => {
                         valueset::from_value_iter(
                         vs.into_iter().map(|v| {
                             Value::new_spn_parse(v.as_str())
@@ -453,7 +467,8 @@ impl Entry<EntryInit, EntryNew> {
                         })
                         )
                     }
-                    "gidnumber" | "version" => {
+                    kanidm_proto::constants::ATTR_GIDNUMBER |
+                    kanidm_proto::constants::ATTR_VERSION => {
                         valueset::from_value_iter(
                         vs.into_iter().map(|v| {
                             Value::new_uint32_str(v.as_str())
@@ -464,18 +479,20 @@ impl Entry<EntryInit, EntryNew> {
                         })
                         )
                     }
-                    "domain_token_key" | "fernet_private_key_str" => {
+                    kanidm_proto::constants::ATTR_DOMAIN_TOKEN_KEY |
+                    kanidm_proto::constants::ATTR_FERNET_PRIVATE_KEY_STR => {
                         valueset::from_value_iter(
                             vs.into_iter().map(|v| Value::new_secret_str(&v))
                         )
                     }
-                    "es256_private_key_der" | "private_cookie_key" => {
+                    kanidm_proto::constants::ATTR_ES256_PRIVATE_KEY_DER |
+                    kanidm_proto::constants::ATTR_PRIVATE_COOKIE_KEY => {
                         valueset::from_value_iter(
                             vs.into_iter().map(|v| Value::new_privatebinary_base64(&v))
                         )
                     }
                     ia => {
-                        warn!("WARNING: Allowing invalid attribute {} to be interpreted as UTF8 string. YOU MAY ENCOUNTER ODD BEHAVIOUR!!!", ia);
+                        error!("WARNING: Allowing invalid attribute {} to be interpreted as UTF8 string. YOU MAY ENCOUNTER ODD BEHAVIOUR!!!", ia);
                         valueset::from_value_iter(
                             vs.into_iter().map(Value::new_utf8)
                         )
@@ -769,7 +786,10 @@ impl Entry<EntryIncremental, EntryNew> {
                         cnf_ent.trigger_last_changed();
 
                         // Move the current uuid to source_uuid
-                        cnf_ent.add_ava("source_uuid", Value::Uuid(db_ent.valid.uuid));
+                        cnf_ent.add_ava(
+                            ValueAttribute::SourceUuid.as_str(),
+                            Value::Uuid(db_ent.valid.uuid),
+                        );
 
                         // We need to make a random uuid in the conflict gen process.
                         let new_uuid = Uuid::new_v4();
@@ -972,9 +992,9 @@ impl Entry<EntryIncremental, EntryNew> {
                 let class_ava = vs_iutf8!["object", "tombstone"];
                 let last_mod_ava = vs_cid![left_at.clone()];
 
-                attrs_new.insert(AttrString::from("uuid"), vs_uuid![self.valid.uuid]);
-                attrs_new.insert(AttrString::from("class"), class_ava);
-                attrs_new.insert(AttrString::from("last_modified_cid"), last_mod_ava);
+                attrs_new.insert(ValueAttribute::Uuid.into(), vs_uuid![self.valid.uuid]);
+                attrs_new.insert(ValueAttribute::Class.into(), class_ava);
+                attrs_new.insert(ValueAttribute::LastModifiedCid.into(), last_mod_ava);
 
                 Entry {
                     valid: EntryIncremental {
@@ -1021,9 +1041,9 @@ impl Entry<EntryIncremental, EntryNew> {
                 let class_ava = vs_iutf8!["object", "tombstone"];
                 let last_mod_ava = vs_cid![at.clone()];
 
-                attrs_new.insert(AttrString::from("uuid"), vs_uuid![db_ent.valid.uuid]);
-                attrs_new.insert(AttrString::from("class"), class_ava);
-                attrs_new.insert(AttrString::from("last_modified_cid"), last_mod_ava);
+                attrs_new.insert(ValueAttribute::Uuid.into(), vs_uuid![db_ent.valid.uuid]);
+                attrs_new.insert(ValueAttribute::Class.into(), class_ava);
+                attrs_new.insert(ValueAttribute::LastModifiedCid.into(), last_mod_ava);
 
                 Entry {
                     valid: EntryIncremental {
@@ -1059,7 +1079,10 @@ impl Entry<EntryIncremental, EntryCommitted> {
             warn!(uuid = ?self.valid.uuid, err = ?e, "Entry failed schema check, moving to a conflict state");
             ne.add_ava_int(ValueAttribute::Class.as_str(), ValueClass::Recycled.into());
             ne.add_ava_int(ValueAttribute::Class.as_str(), ValueClass::Conflict.into());
-            ne.add_ava_int("source_uuid", Value::Uuid(self.valid.uuid));
+            ne.add_ava_int(
+                ValueAttribute::SourceUuid.as_str(),
+                Value::Uuid(self.valid.uuid),
+            );
         }
         ne
     }
@@ -1150,9 +1173,9 @@ impl Entry<EntryInvalid, EntryCommitted> {
     /// Convert this entry into a recycled entry, that is "in the recycle bin".
     pub fn to_revived(mut self) -> Self {
         // This will put the modify ahead of the revive transition.
-        self.remove_ava("class", &ValueClass::Recycled.into());
-        self.remove_ava("class", &ValueClass::Conflict.into());
-        self.purge_ava("source_uuid");
+        self.remove_ava(ValueAttribute::Class.into(), &ValueClass::Recycled.into());
+        self.remove_ava(ValueAttribute::Class.into(), &ValueClass::Conflict.into());
+        self.purge_ava(ValueClass::SourceUuid.into());
 
         // Change state repl doesn't need this flag
         // self.valid.ecstate.revive(&self.valid.cid);
@@ -1849,9 +1872,9 @@ impl Entry<EntrySealed, EntryCommitted> {
         let class_ava = vs_iutf8!["object", "tombstone"];
         let last_mod_ava = vs_cid![cid.clone()];
 
-        attrs_new.insert(AttrString::from("uuid"), vs_uuid![self.get_uuid()]);
-        attrs_new.insert(AttrString::from("class"), class_ava);
-        attrs_new.insert(AttrString::from("last_modified_cid"), last_mod_ava);
+        attrs_new.insert(ValueAttribute::Uuid.into(), vs_uuid![self.get_uuid()]);
+        attrs_new.insert(ValueAttribute::Class.into(), class_ava);
+        attrs_new.insert(ValueAttribute::LastModifiedCid.into(), last_mod_ava);
 
         // ⚠️  No return from this point!
         ecstate.tombstone(&cid);
@@ -1895,28 +1918,37 @@ impl<STATE> Entry<EntryValid, STATE> {
         trace!(?self.attrs, "Entry::validate -> target");
 
         // First, check we have class on the object ....
-        if !self.attribute_pres("class") {
+        if !self.attribute_pres(ValueAttribute::Class.into()) {
             // lrequest_error!("Missing attribute class");
             return Err(SchemaError::NoClassFound);
         }
 
-        if self.attribute_equality("class", &ValueClass::Conflict.into()) {
+        if self.attribute_equality(ValueAttribute::Class.as_str(), &ValueClass::Conflict.into()) {
             // Conflict entries are exempt from schema enforcement. Return true.
             trace!("Skipping schema validation on conflict entry");
             return Ok(());
         };
 
         // Are we in the recycle bin? We soften some checks if we are.
-        let recycled = self.attribute_equality("class", &ValueClass::Recycled.into());
+        let recycled =
+            self.attribute_equality(ValueAttribute::Class.as_str(), &ValueClass::Recycled.into());
 
         // Do we have extensible? We still validate syntax of attrs but don't
         // check for valid object structures.
-        let extensible = self.attribute_equality("class", &ValueClass::ExtensibleObject.into());
+        let extensible = self.attribute_equality(
+            ValueAttribute::Class.into(),
+            &ValueClass::ExtensibleObject.into(),
+        );
 
-        let entry_classes = self.get_ava_set("class").ok_or_else(|| {
-            admin_debug!("Attribute 'class' missing from entry");
-            SchemaError::NoClassFound
-        })?;
+        let entry_classes = self
+            .get_ava_set(ValueAttribute::Class.into())
+            .ok_or_else(|| {
+                admin_debug!(
+                    "Attribute '{}' missing from entry",
+                    ValueAttribute::Class.as_str()
+                );
+                SchemaError::NoClassFound
+            })?;
         let mut invalid_classes = Vec::with_capacity(0);
 
         let mut classes: Vec<&SchemaClass> = Vec::with_capacity(entry_classes.len());
@@ -2363,7 +2395,9 @@ impl<VALID, STATE> Entry<VALID, STATE> {
     #[cfg(test)]
     fn set_last_changed(&mut self, cid: Cid) {
         let cv = vs_cid![cid];
-        let _ = self.attrs.insert(AttrString::from("last_modified_cid"), cv);
+        let _ = self
+            .attrs
+            .insert(ValueAttribute::LastModifiedCid.into(), cv);
     }
 
     pub(crate) fn get_display_id(&self) -> String {
@@ -2653,7 +2687,7 @@ impl<VALID, STATE> Entry<VALID, STATE> {
     #[inline(always)]
     /// Return a single security principle name, if valid to transform this value.
     pub(crate) fn generate_spn(&self, domain_name: &str) -> Option<Value> {
-        self.get_ava_single_iname("name")
+        self.get_ava_single_iname(ValueAttribute::Name.as_str())
             .map(|name| Value::new_spn_str(name, domain_name))
     }
 
@@ -2664,8 +2698,8 @@ impl<VALID, STATE> Entry<VALID, STATE> {
     }
 
     #[inline(always)]
-    /// Assert if an attribute of this name is present, and one of it's values contains
-    /// the an exact match of this partial value.
+    /// Assert if an attribute of this name is present, and one of its values contains
+    /// an exact match of this partial value.
     pub fn attribute_equality(&self, attr: &str, value: &PartialValue) -> bool {
         // we assume based on schema normalisation on the way in
         // that the equality here of the raw values MUST be correct.
@@ -2832,7 +2866,7 @@ impl<VALID, STATE> Entry<VALID, STATE> {
     /// filter_map to effectively remove entries that should not be considered as "alive".
     pub fn mask_recycled_ts(&self) -> Option<&Self> {
         // Only when cls has ts/rc then None, else lways Some(self).
-        match self.attrs.get("class") {
+        match self.attrs.get(ValueAttribute::Class.as_str()) {
             Some(cls) => {
                 if cls.contains(&ValueClass::Tombstone.to_partialvalue())
                     || cls.contains(&ValueClass::Recycled.to_partialvalue())
@@ -2850,7 +2884,7 @@ impl<VALID, STATE> Entry<VALID, STATE> {
     /// filter_map to effectively remove entries that are recycled in some cases.
     pub fn mask_recycled(&self) -> Option<&Self> {
         // Only when cls has ts/rc then None, else lways Some(self).
-        match self.attrs.get("class") {
+        match self.attrs.get(ValueAttribute::Class.as_str()) {
             Some(cls) => {
                 if cls.contains(&ValueClass::Recycled.to_partialvalue()) {
                     None
@@ -2866,7 +2900,7 @@ impl<VALID, STATE> Entry<VALID, STATE> {
     /// filter_map to effectively remove entries that are tombstones in some cases.
     pub fn mask_tombstone(&self) -> Option<&Self> {
         // Only when cls has ts/rc then None, else lways Some(self).
-        match self.attrs.get("class") {
+        match self.attrs.get(ValueAttribute::Class.as_str()) {
             Some(cls) => {
                 if cls.contains(&ValueClass::Tombstone.to_partialvalue()) {
                     None
@@ -2886,9 +2920,11 @@ where
     fn trigger_last_changed(&mut self) {
         self.valid
             .ecstate
-            .change_ava(&self.valid.cid, "last_modified_cid");
+            .change_ava(&self.valid.cid, ValueAttribute::LastModifiedCid.as_str());
         let cv = vs_cid![self.valid.cid.clone()];
-        let _ = self.attrs.insert(AttrString::from("last_modified_cid"), cv);
+        let _ = self
+            .attrs
+            .insert(ValueAttribute::LastModifiedCid.into(), cv);
     }
 
     // This should always work? It's only on validate that we'll build
@@ -3075,7 +3111,7 @@ impl From<&SchemaAttribute> for Entry<EntryInit, EntryNew> {
             AttrString::from(ValueAttribute::Description.as_str()),
             desc_v,
         );
-        attrs.insert(AttrString::from("uuid"), uuid_v);
+        attrs.insert(ValueAttribute::Uuid.into(), uuid_v);
         attrs.insert(AttrString::from("multivalue"), multivalue_v);
         attrs.insert(AttrString::from("phantom"), phantom_v);
         attrs.insert(AttrString::from("sync_allowed"), sync_allowed_v);
@@ -3086,7 +3122,7 @@ impl From<&SchemaAttribute> for Entry<EntryInit, EntryNew> {
         }
         attrs.insert(AttrString::from("syntax"), syntax_v);
         attrs.insert(
-            AttrString::from("class"),
+            ValueAttribute::Class.into(),
             vs_iutf8!["object", "system", "attributetype"],
         );
 
@@ -3115,9 +3151,9 @@ impl From<&SchemaClass> for Entry<EntryInit, EntryNew> {
             desc_v,
         );
         attrs.insert(AttrString::from("sync_allowed"), sync_allowed_v);
-        attrs.insert(AttrString::from("uuid"), uuid_v);
+        attrs.insert(ValueAttribute::Uuid.into(), uuid_v);
         attrs.insert(
-            AttrString::from("class"),
+            ValueAttribute::Class.into(),
             vs_iutf8!["object", "system", "classtype"],
         );
 
@@ -3169,10 +3205,12 @@ mod tests {
         // are adding ... Or do we validate after the changes are made in
         // total?
         let mut e: Entry<EntryInit, EntryNew> = Entry::new();
-        e.add_ava("userid", Value::from("william"));
-        e.add_ava("userid", Value::from("william"));
+        e.add_ava(ValueAttribute::UserId.into(), Value::from("william"));
+        e.add_ava(ValueAttribute::UserId.into(), Value::from("william"));
 
-        let values = e.get_ava_set("userid").expect("Failed to get ava");
+        let values = e
+            .get_ava_set(ValueAttribute::UserId.into())
+            .expect("Failed to get ava");
         // Should only be one value!
         assert_eq!(values.len(), 1)
     }
@@ -3180,38 +3218,71 @@ mod tests {
     #[test]
     fn test_entry_pres() {
         let mut e: Entry<EntryInit, EntryNew> = Entry::new();
-        e.add_ava("userid", Value::from("william"));
+        e.add_ava(ValueAttribute::UserId.into(), Value::from("william"));
 
-        assert!(e.attribute_pres("userid"));
-        assert!(!e.attribute_pres("name"));
+        assert!(e.attribute_pres(ValueAttribute::UserId.into()));
+        assert!(!e.attribute_pres(ValueAttribute::Name.into()));
     }
 
     #[test]
     fn test_entry_equality() {
         let mut e: Entry<EntryInit, EntryNew> = Entry::new();
 
-        e.add_ava("userid", Value::from("william"));
+        e.add_ava(ValueAttribute::UserId.into(), Value::from("william"));
 
-        assert!(e.attribute_equality("userid", &PartialValue::new_utf8s("william")));
-        assert!(!e.attribute_equality("userid", &PartialValue::new_utf8s("test")));
-        assert!(!e.attribute_equality("nonexist", &PartialValue::new_utf8s("william")));
+        assert!(e.attribute_equality(
+            ValueAttribute::UserId.into(),
+            &PartialValue::new_utf8s("william")
+        ));
+        assert!(!e.attribute_equality(
+            ValueAttribute::UserId.into(),
+            &PartialValue::new_utf8s("test")
+        ));
+        assert!(!e.attribute_equality(
+            ValueAttribute::NonExist.into(),
+            &PartialValue::new_utf8s("william")
+        ));
         // Also test non-matching attr syntax
-        assert!(!e.attribute_equality("userid", &PartialValue::new_iutf8("william")));
+        assert!(!e.attribute_equality(
+            ValueAttribute::UserId.into(),
+            &PartialValue::new_iutf8("william")
+        ));
     }
 
     #[test]
     fn test_entry_substring() {
         let mut e: Entry<EntryInit, EntryNew> = Entry::new();
 
-        e.add_ava("userid", Value::from("william"));
+        e.add_ava(ValueAttribute::UserId.into(), Value::from("william"));
 
-        assert!(e.attribute_substring("userid", &PartialValue::new_utf8s("william")));
-        assert!(e.attribute_substring("userid", &PartialValue::new_utf8s("will")));
-        assert!(e.attribute_substring("userid", &PartialValue::new_utf8s("liam")));
-        assert!(e.attribute_substring("userid", &PartialValue::new_utf8s("lli")));
-        assert!(!e.attribute_substring("userid", &PartialValue::new_utf8s("llim")));
-        assert!(!e.attribute_substring("userid", &PartialValue::new_utf8s("bob")));
-        assert!(!e.attribute_substring("userid", &PartialValue::new_utf8s("wl")));
+        assert!(e.attribute_substring(
+            ValueAttribute::UserId.into(),
+            &PartialValue::new_utf8s("william")
+        ));
+        assert!(e.attribute_substring(
+            ValueAttribute::UserId.into(),
+            &PartialValue::new_utf8s("will")
+        ));
+        assert!(e.attribute_substring(
+            ValueAttribute::UserId.into(),
+            &PartialValue::new_utf8s("liam")
+        ));
+        assert!(e.attribute_substring(
+            ValueAttribute::UserId.into(),
+            &PartialValue::new_utf8s("lli")
+        ));
+        assert!(!e.attribute_substring(
+            ValueAttribute::UserId.into(),
+            &PartialValue::new_utf8s("llim")
+        ));
+        assert!(!e.attribute_substring(
+            ValueAttribute::UserId.into(),
+            &PartialValue::new_utf8s("bob")
+        ));
+        assert!(!e.attribute_substring(
+            ValueAttribute::UserId.into(),
+            &PartialValue::new_utf8s("wl")
+        ));
     }
 
     #[test]
@@ -3243,44 +3314,56 @@ mod tests {
         // Test application of changes to an entry.
         let mut e: Entry<EntryInvalid, EntryNew> = Entry::new().into_invalid_new();
 
-        e.add_ava("userid", Value::from("william"));
+        e.add_ava(ValueAttribute::UserId.into(), Value::from("william"));
 
         let present_single_mods = ModifyList::new_valid_list(vec![Modify::Present(
-            AttrString::from("attr"),
+            ValueAttribute::Attr.into(),
             Value::new_iutf8("value"),
         )]);
 
         assert!(e.apply_modlist(&present_single_mods).is_ok());
 
         // Assert the changes are there
-        assert!(e.attribute_equality("userid", &PartialValue::new_utf8s("william")));
-        assert!(e.attribute_equality("attr", &PartialValue::new_iutf8("value")));
+        assert!(e.attribute_equality(
+            ValueAttribute::UserId.into(),
+            &PartialValue::new_utf8s("william")
+        ));
+        assert!(e.attribute_equality(
+            ValueAttribute::Attr.into(),
+            &PartialValue::new_iutf8("value")
+        ));
 
         // Assert present for multivalue
         let present_multivalue_mods = ModifyList::new_valid_list(vec![
-            Modify::Present(AttrString::from("class"), Value::new_iutf8("test")),
-            Modify::Present(AttrString::from("class"), Value::new_iutf8("multi_test")),
+            Modify::Present(ValueAttribute::Class.into(), Value::new_iutf8("test")),
+            Modify::Present(ValueAttribute::Class.into(), Value::new_iutf8("multi_test")),
         ]);
 
         assert!(e.apply_modlist(&present_multivalue_mods).is_ok());
 
-        assert!(e.attribute_equality("class", &PartialValue::new_iutf8("test")));
-        assert!(e.attribute_equality("class", &PartialValue::new_iutf8("multi_test")));
+        assert!(e.attribute_equality(
+            ValueAttribute::Class.into(),
+            &PartialValue::new_iutf8("test")
+        ));
+        assert!(e.attribute_equality(
+            ValueAttribute::Class.into(),
+            &PartialValue::new_iutf8("multi_test")
+        ));
 
         // Assert purge on single/multi/empty value
         let purge_single_mods =
-            ModifyList::new_valid_list(vec![Modify::Purged(AttrString::from("attr"))]);
+            ModifyList::new_valid_list(vec![Modify::Purged(ValueAttribute::Attr.into())]);
 
         assert!(e.apply_modlist(&purge_single_mods).is_ok());
 
-        assert!(!e.attribute_pres("attr"));
+        assert!(!e.attribute_pres(ValueAttribute::Attr.into()));
 
         let purge_multi_mods =
-            ModifyList::new_valid_list(vec![Modify::Purged(AttrString::from("class"))]);
+            ModifyList::new_valid_list(vec![Modify::Purged(ValueAttribute::Class.into())]);
 
         assert!(e.apply_modlist(&purge_multi_mods).is_ok());
 
-        assert!(!e.attribute_pres("class"));
+        assert!(!e.attribute_pres(ValueAttribute::Class.into()));
 
         let purge_empty_mods = purge_single_mods;
 
@@ -3288,47 +3371,50 @@ mod tests {
 
         // Assert removed on value that exists and doesn't exist
         let remove_mods = ModifyList::new_valid_list(vec![Modify::Removed(
-            AttrString::from("attr"),
+            ValueAttribute::Attr.into(),
             PartialValue::new_iutf8("value"),
         )]);
 
         assert!(e.apply_modlist(&present_single_mods).is_ok());
-        assert!(e.attribute_equality("attr", &PartialValue::new_iutf8("value")));
+        assert!(e.attribute_equality(
+            ValueAttribute::Attr.into(),
+            &PartialValue::new_iutf8("value")
+        ));
         assert!(e.apply_modlist(&remove_mods).is_ok());
-        assert!(e.attrs.get("attr").is_none());
+        assert!(e.attrs.get(ValueAttribute::Attr.into()).is_none());
 
         let remove_empty_mods = remove_mods;
 
         assert!(e.apply_modlist(&remove_empty_mods).is_ok());
 
-        assert!(e.attrs.get("attr").is_none());
+        assert!(e.attrs.get(ValueAttribute::Attr.into()).is_none());
     }
 
     #[test]
     fn test_entry_idx_diff() {
         let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
-        e1.add_ava("userid", Value::from("william"));
+        e1.add_ava(ValueAttribute::UserId.as_str(), Value::from("william"));
         let mut e1_mod = e1.clone();
-        e1_mod.add_ava("extra", Value::from("test"));
+        e1_mod.add_ava(ValueAttribute::Extra.into(), Value::from("test"));
 
         let e1 = e1.into_sealed_committed();
         let e1_mod = e1_mod.into_sealed_committed();
 
         let mut e2: Entry<EntryInit, EntryNew> = Entry::new();
-        e2.add_ava("userid", Value::from("claire"));
+        e2.add_ava(ValueAttribute::UserId.as_str(), Value::from("claire"));
         let e2 = e2.into_sealed_committed();
 
         let mut idxmeta = HashMap::with_capacity(8);
         idxmeta.insert(
             IdxKey {
-                attr: AttrString::from("userid"),
+                attr: ValueAttribute::UserId.into(),
                 itype: IndexType::Equality,
             },
             IdxSlope::MAX,
         );
         idxmeta.insert(
             IdxKey {
-                attr: AttrString::from("userid"),
+                attr: ValueAttribute::UserId.into(),
                 itype: IndexType::Presence,
             },
             IdxSlope::MAX,
@@ -3353,7 +3439,7 @@ mod tests {
         assert!(
             del_r[0]
                 == Err((
-                    &AttrString::from("userid"),
+                    &ValueAttribute::UserId.into(),
                     IndexType::Equality,
                     "william".to_string()
                 ))
@@ -3361,7 +3447,7 @@ mod tests {
         assert!(
             del_r[1]
                 == Err((
-                    &AttrString::from("userid"),
+                    &ValueAttribute::UserId.into(),
                     IndexType::Presence,
                     "_".to_string()
                 ))
@@ -3374,7 +3460,7 @@ mod tests {
         assert!(
             add_r[0]
                 == Ok((
-                    &AttrString::from("userid"),
+                    &ValueAttribute::UserId.into(),
                     IndexType::Equality,
                     "william".to_string()
                 ))
@@ -3382,7 +3468,7 @@ mod tests {
         assert!(
             add_r[1]
                 == Ok((
-                    &AttrString::from("userid"),
+                    &ValueAttribute::UserId.into(),
                     IndexType::Presence,
                     "_".to_string()
                 ))
@@ -3423,7 +3509,7 @@ mod tests {
         assert!(
             chg_r[1]
                 == Err((
-                    &AttrString::from("userid"),
+                    &ValueAttribute::UserId.into(),
                     IndexType::Equality,
                     "william".to_string()
                 ))
@@ -3432,7 +3518,7 @@ mod tests {
         assert!(
             chg_r[0]
                 == Ok((
-                    &AttrString::from("userid"),
+                    &ValueAttribute::UserId.into(),
                     IndexType::Equality,
                     "claire".to_string()
                 ))

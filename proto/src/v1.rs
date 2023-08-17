@@ -15,6 +15,8 @@ use webauthn_rs_proto::{
     RequestChallengeResponse,
 };
 
+use crate::constants::{ATTR_GROUP, ATTR_SSH_PUBLICKEY};
+
 // These proto implementations are here because they have public definitions
 
 /* ===== errors ===== */
@@ -597,10 +599,10 @@ impl fmt::Display for UnixUserToken {
         }
         self.sshkeys
             .iter()
-            .try_for_each(|s| writeln!(f, "ssh_publickey: {}", s))?;
+            .try_for_each(|s| writeln!(f, "{}: {}", ATTR_SSH_PUBLICKEY, s))?;
         self.groups
             .iter()
-            .try_for_each(|g| writeln!(f, "group: {}", g))
+            .try_for_each(|g| writeln!(f, "{}: {}", ATTR_GROUP, g))
     }
 }
 
@@ -1194,11 +1196,12 @@ impl SingleStringRequest {
 
 #[cfg(test)]
 mod tests {
+    use crate::constants::ATTR_CLASS;
     use crate::v1::{Filter as ProtoFilter, TotpAlgo, TotpSecret};
 
     #[test]
     fn test_protofilter_simple() {
-        let pf: ProtoFilter = ProtoFilter::Pres("class".to_string());
+        let pf: ProtoFilter = ProtoFilter::Pres(ATTR_CLASS.to_string());
 
         println!("{:?}", serde_json::to_string(&pf).expect("JSON failure"));
     }

@@ -312,13 +312,19 @@ mod tests {
                 ValueAttribute::Class.as_str(),
                 ValueClass::Person.to_value()
             ),
-            ("name", Value::new_iname("testperson")),
+            (
+                ValueAttribute::Name.as_str(),
+                Value::new_iname("testperson")
+            ),
             (
                 ValueAttribute::Description.as_str(),
                 Value::Utf8("testperson".to_string())
             ),
-            ("displayname", Value::Utf8("testperson".to_string())),
-            ("uuid", Value::Uuid(euuid))
+            (
+                ValueAttribute::DisplayName.as_str(),
+                Value::Utf8("testperson".to_string())
+            ),
+            (ValueAttribute::Uuid.as_str(), Value::Uuid(euuid))
         );
 
         let preload = vec![ea];
@@ -390,8 +396,11 @@ mod tests {
                 ValueAttribute::Description.as_str(),
                 Value::Utf8("testperson".to_string())
             ),
-            ("displayname", Value::Utf8("testperson".to_string())),
-            ("uuid", Value::Uuid(euuid))
+            (
+                ValueAttribute::DisplayName.as_str(),
+                Value::Utf8("testperson".to_string())
+            ),
+            (ValueAttribute::Uuid.as_str(), Value::Uuid(euuid))
         );
 
         let preload = vec![ea];

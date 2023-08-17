@@ -46,14 +46,14 @@ impl Plugin for JwsKeygen {
 impl JwsKeygen {
     fn modify_inner<T: Clone>(cand: &mut [Entry<EntryInvalid, T>]) -> Result<(), OperationError> {
         cand.iter_mut().try_for_each(|e| {
-        if e.attribute_equality("class", &ValueClass::OAuth2ResourceServerBasic.into()) &&
+        if e.attribute_equality(ValueAttribute::Class.as_str(), &ValueClass::OAuth2ResourceServerBasic.into()) &&
             !e.attribute_pres("oauth2_rs_basic_secret") {
                 security_info!("regenerating oauth2 basic secret");
                 let v = Value::SecretValue(password_from_random());
                 e.add_ava("oauth2_rs_basic_secret", v);
         }
 
-        if e.attribute_equality("class", &ValueClass::OAuth2ResourceServer.into()) {
+        if e.attribute_equality(ValueAttribute::Class.as_str(), &ValueClass::OAuth2ResourceServer.into()) {
             if !e.attribute_pres("oauth2_rs_token_key") {
                 security_info!("regenerating oauth2 token key");
                 let k = fernet::Fernet::generate_key();
@@ -85,8 +85,8 @@ impl JwsKeygen {
             }
         }
 
-        if (e.attribute_equality("class", &ValueClass::ServiceAccount.into()) ||
-            e.attribute_equality("class", &ValueClass::SyncAccount.into())) &&
+        if (e.attribute_equality(ValueAttribute::Class.as_str(), &ValueClass::ServiceAccount.into()) ||
+            e.attribute_equality(ValueAttribute::Class.as_str(), &ValueClass::SyncAccount.into())) &&
             !e.attribute_pres("jws_es256_private_key") {
                 security_info!("regenerating jws es256 private key");
                 let jwssigner = JwsSigner::generate_es256()
@@ -113,20 +113,38 @@ mod tests {
 
         let uuid = Uuid::new_v4();
         let e: Entry<EntryInit, EntryNew> = entry_init!(
-            ("class", ValueClass::Object.to_value()),
-            ("class", ValueClass::OAuth2ResourceServer.to_value()),
-            ("class", ValueClass::OAuth2ResourceServerBasic.to_value()),
-            ("uuid", Value::Uuid(uuid)),
-            ("displayname", Value::new_utf8s("test_resource_server")),
-            ("oauth2_rs_name", Value::new_iname("test_resource_server")),
+            (
+                ValueAttribute::Class.as_str(),
+                ValueClass::Object.to_value()
+            ),
+            (
+                ValueAttribute::Class.as_str(),
+                ValueClass::OAuth2ResourceServer.to_value()
+            ),
+            (
+                ValueAttribute::Class.as_str(),
+                ValueClass::OAuth2ResourceServerBasic.to_value()
+            ),
+            (ValueAttribute::Uuid.as_str(), Value::Uuid(uuid)),
+            (
+                ValueAttribute::DisplayName.as_str(),
+                Value::new_utf8s("test_resource_server")
+            ),
+            (
+                ValueAttribute::OAuth2RsName.as_str(),
+                Value::new_iname("test_resource_server")
+            ),
             (
                 "oauth2_rs_origin",
                 Value::new_url_s("https://demo.example.com").unwrap()
             ),
             (
                 "oauth2_rs_scope_map",
-                Value::new_oauthscopemap(UUID_IDM_ALL_ACCOUNTS, btreeset!["read".to_string()])
-                    .expect("invalid oauthscope")
+                Value::new_oauthscopemap(
+                    UUID_IDM_ALL_ACCOUNTS,
+                    btreeset![OAUTH2_SCOPE_READ.to_string()]
+                )
+                .expect("invalid oauthscope")
             )
         );
 
@@ -152,23 +170,47 @@ mod tests {
         let uuid = Uuid::new_v4();
 
         let e: Entry<EntryInit, EntryNew> = entry_init!(
-            ("class", ValueClass::Object.to_value()),
-            ("class", ValueClass::OAuth2ResourceServer.to_value()),
-            ("class", ValueClass::OAuth2ResourceServerBasic.to_value()),
-            ("uuid", Value::Uuid(uuid)),
-            ("oauth2_rs_name", Value::new_iname("test_resource_server")),
-            ("displayname", Value::new_utf8s("test_resource_server")),
+            (
+                ValueAttribute::Class.as_str(),
+                ValueClass::Object.to_value()
+            ),
+            (
+                ValueAttribute::Class.as_str(),
+                ValueClass::OAuth2ResourceServer.to_value()
+            ),
+            (
+                ValueAttribute::Class.as_str(),
+                ValueClass::OAuth2ResourceServerBasic.to_value()
+            ),
+            (ValueAttribute::Uuid.as_str(), Value::Uuid(uuid)),
+            (
+                ValueAttribute::OAuth2RsName.as_str(),
+                Value::new_iname("test_resource_server")
+            ),
+            (
+                ValueAttribute::DisplayName.as_str(),
+                Value::new_utf8s("test_resource_server")
+            ),
             (
                 "oauth2_rs_origin",
                 Value::new_url_s("https://demo.example.com").unwrap()
             ),
             (
                 "oauth2_rs_scope_map",
-                Value::new_oauthscopemap(UUID_IDM_ALL_ACCOUNTS, btreeset!["read".to_string()])
-                    .expect("invalid oauthscope")
+                Value::new_oauthscopemap(
+                    UUID_IDM_ALL_ACCOUNTS,
+                    btreeset![OAUTH2_SCOPE_READ.to_string()]
+                )
+                .expect("invalid oauthscope")
             ),
-            ("oauth2_rs_basic_secret", Value::new_secret_str("12345")),
-            ("oauth2_rs_token_key", Value::new_secret_str("12345"))
+            (
+                ValueAttribute::OAuth2RsBasicSecret.as_str(),
+                Value::new_secret_str("12345")
+            ),
+            (
+                ValueAttribute::OAuth2RsTokenKey.as_str(),
+                Value::new_secret_str("12345")
+            )
         );
 
         let preload = vec![e];
@@ -176,7 +218,7 @@ mod tests {
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq("uuid", PartialValue::Uuid(uuid))),
+            filter!(f_eq(ValueAttribute::Uuid, PartialValue::Uuid(uuid))),
             ModifyList::new_list(vec![
                 Modify::Purged(AttrString::from("oauth2_rs_basic_secret"),),
                 Modify::Purged(AttrString::from("oauth2_rs_token_key"),)

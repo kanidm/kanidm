@@ -575,7 +575,7 @@ pub trait BackendTransaction {
         let (idl, fplan) = trace_span!("be::search -> filter2idl")
             .in_scope(|| self.filter2idl(filt.to_inner(), FILTER_SEARCH_TEST_THRESHOLD))?;
 
-        debug!(filter_executed_plan = ?fplan);
+        debug!(search_filter_executed_plan = ?fplan);
 
         match &idl {
             IdList::AllIds => {
@@ -668,7 +668,7 @@ pub trait BackendTransaction {
         let (idl, fplan) = trace_span!("be::exists -> filter2idl")
             .in_scope(|| self.filter2idl(filt.to_inner(), FILTER_EXISTS_TEST_THRESHOLD))?;
 
-        debug!(filter_executed_plan = ?fplan);
+        debug!(exist_filter_executed_plan = ?fplan);
 
         // Apply limits to the IdList.
         match &idl {
@@ -1864,10 +1864,10 @@ impl<'a> BackendWriteTransaction<'a> {
 // these are values that are generally "good enough" for most applications
 fn get_idx_slope_default(ikey: &IdxKey) -> IdxSlope {
     match (ikey.attr.as_str(), &ikey.itype) {
-        ("name", IndexType::Equality)
-        | ("spn", IndexType::Equality)
-        | ("uuid", IndexType::Equality) => 1,
-        ("class", IndexType::Equality) => 180,
+        (ATTR_NAME, IndexType::Equality)
+        | (ATTR_SPN, IndexType::Equality)
+        | (ATTR_UUID, IndexType::Equality) => 1,
+        (ATTR_CLASS, IndexType::Equality) => 180,
         (_, IndexType::Equality) => 45,
         (_, IndexType::SubString) => 90,
         (_, IndexType::Presence) => 90,

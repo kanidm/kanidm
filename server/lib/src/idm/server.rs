@@ -505,7 +505,7 @@ pub trait IdmServerTransaction<'a> {
             let entry = self
                 .get_qs_txn()
                 .internal_search(filter!(f_eq(
-                    "jws_es256_private_key",
+                    ValueAttribute::JwsEs256PrivateKey,
                     PartialValue::new_iutf8(kid)
                 )))
                 .and_then(|mut vs| match vs.pop() {
@@ -829,7 +829,7 @@ pub trait IdmServerTransaction<'a> {
         let entry = self
             .get_qs_txn()
             .internal_search(filter!(f_eq(
-                "jws_es256_private_key",
+                ValueAttribute::JwsEs256PrivateKey,
                 PartialValue::new_iutf8(kid)
             )))
             .and_then(|mut vs| match vs.pop() {
@@ -1618,9 +1618,9 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             .qs_write
             .impersonate_modify_gen_event(
                 // Filter as executed
-                &filter!(f_eq("uuid", PartialValue::Uuid(pce.target))),
+                &filter!(f_eq(ValueAttribute::Uuid, PartialValue::Uuid(pce.target))),
                 // Filter as intended (acp)
-                &filter_all!(f_eq("uuid", PartialValue::Uuid(pce.target))),
+                &filter_all!(f_eq(ValueAttribute::Uuid, PartialValue::Uuid(pce.target))),
                 &modlist,
                 &pce.ident,
             )
@@ -1696,9 +1696,9 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             .qs_write
             .impersonate_modify_gen_event(
                 // Filter as executed
-                &filter!(f_eq("uuid", PartialValue::Uuid(pce.target))),
+                &filter!(f_eq(ValueAttribute::Uuid, PartialValue::Uuid(pce.target))),
                 // Filter as intended (acp)
-                &filter_all!(f_eq("uuid", PartialValue::Uuid(pce.target))),
+                &filter_all!(f_eq(ValueAttribute::Uuid, PartialValue::Uuid(pce.target))),
                 &modlist,
                 &pce.ident,
             )
@@ -1767,7 +1767,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         self.qs_write
             .internal_modify(
                 // Filter as executed
-                &filter!(f_eq("uuid", PartialValue::Uuid(target))),
+                &filter!(f_eq(ValueAttribute::Uuid, PartialValue::Uuid(target))),
                 &modlist,
             )
             .map_err(|e| {
@@ -1801,9 +1801,9 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         self.qs_write
             .impersonate_modify(
                 // Filter as executed
-                &filter!(f_eq("uuid", PartialValue::Uuid(rrse.target))),
+                &filter!(f_eq(ValueAttribute::Uuid, PartialValue::Uuid(rrse.target))),
                 // Filter as intended (acp)
-                &filter_all!(f_eq("uuid", PartialValue::Uuid(rrse.target))),
+                &filter_all!(f_eq(ValueAttribute::Uuid, PartialValue::Uuid(rrse.target))),
                 &modlist,
                 // Provide the event to impersonate
                 &rrse.ident,
@@ -1831,7 +1831,10 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         if let Some(modlist) = maybe_modlist {
             self.qs_write.internal_modify(
-                &filter_all!(f_eq("uuid", PartialValue::Uuid(pwu.target_uuid))),
+                &filter_all!(f_eq(
+                    ValueAttribute::Uuid,
+                    PartialValue::Uuid(pwu.target_uuid)
+                )),
                 &modlist,
             )
         } else {
@@ -1859,7 +1862,10 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         if let Some(modlist) = maybe_modlist {
             self.qs_write.internal_modify(
-                &filter_all!(f_eq("uuid", PartialValue::Uuid(pwu.target_uuid))),
+                &filter_all!(f_eq(
+                    ValueAttribute::Uuid,
+                    PartialValue::Uuid(pwu.target_uuid)
+                )),
                 &modlist,
             )
         } else {
@@ -1886,7 +1892,10 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         if let Some(modlist) = opt_modlist {
             self.qs_write.internal_modify(
-                &filter_all!(f_eq("uuid", PartialValue::Uuid(wci.target_uuid))),
+                &filter_all!(f_eq(
+                    ValueAttribute::Uuid,
+                    PartialValue::Uuid(wci.target_uuid)
+                )),
                 &modlist,
             )
         } else {
@@ -1912,7 +1921,10 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             })?;
 
         self.qs_write.internal_modify(
-            &filter_all!(f_eq("uuid", PartialValue::Uuid(bcr.target_uuid))),
+            &filter_all!(f_eq(
+                ValueAttribute::Uuid,
+                PartialValue::Uuid(bcr.target_uuid)
+            )),
             &modlist,
         )
     }
@@ -1948,7 +1960,10 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         self.qs_write
             .internal_modify(
-                &filter!(f_eq("uuid", PartialValue::Uuid(asr.target_uuid))),
+                &filter!(f_eq(
+                    ValueAttribute::Uuid,
+                    PartialValue::Uuid(asr.target_uuid)
+                )),
                 &modlist,
             )
             .map_err(|e| {
@@ -2248,9 +2263,9 @@ mod tests {
 
         // now modify and provide a primary credential.
         let me_inv_m = ModifyEvent::new_internal_invalid(
-            filter!(f_eq("name", PartialValue::new_iname("admin"))),
+            filter!(f_eq(ValueAttribute::Name, PartialValue::new_iname("admin"))),
             ModifyList::new_list(vec![Modify::Present(
-                AttrString::from("primary_credential"),
+                ValueAttribute::PrimaryCredential.into(),
                 v_cred,
             )]),
         );
@@ -2605,24 +2620,36 @@ mod tests {
         let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await;
         // Modify admin to have posixaccount
         let me_posix = ModifyEvent::new_internal_invalid(
-            filter!(f_eq("name", PartialValue::new_iname("admin"))),
+            filter!(f_eq(ValueAttribute::Name, PartialValue::new_iname("admin"))),
             ModifyList::new_list(vec![
-                Modify::Present(AttrString::from("class"), ValueClass::PosixAccount.into()),
+                Modify::Present(
+                    ValueAttribute::Class.into(),
+                    ValueClass::PosixAccount.into(),
+                ),
                 Modify::Present(AttrString::from("gidnumber"), Value::new_uint32(2001)),
             ]),
         );
         assert!(idms_prox_write.qs_write.modify(&me_posix).is_ok());
         // Add a posix group that has the admin as a member.
         let e: Entry<EntryInit, EntryNew> = entry_init!(
-            ("class", ValueClass::Object.to_value()),
-            ("class", ValueClass::Group.to_value()),
-            ("class", ValueClass::PosixGroup.to_value()),
-            ("name", Value::new_iname("testgroup")),
+            (
+                ValueAttribute::Class.as_str(),
+                ValueClass::Object.to_value()
+            ),
+            (ValueAttribute::Class.as_str(), ValueClass::Group.to_value()),
+            (
+                ValueAttribute::Class.as_str(),
+                ValueClass::PosixGroup.to_value()
+            ),
+            (ValueAttribute::Name.as_str(), Value::new_iname("testgroup")),
             (
                 "uuid",
                 Value::Uuid(uuid::uuid!("01609135-a1c4-43d5-966b-a28227644445"))
             ),
-            ("description", Value::new_utf8s("testgroup")),
+            (
+                ValueAttribute::Description.as_str(),
+                Value::new_utf8s("testgroup")
+            ),
             (
                 "member",
                 Value::Refer(uuid::uuid!("00000000-0000-0000-0000-000000000000"))
@@ -2687,9 +2714,12 @@ mod tests {
         let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await;
         // make the admin a valid posix account
         let me_posix = ModifyEvent::new_internal_invalid(
-            filter!(f_eq("name", PartialValue::new_iname("admin"))),
+            filter!(f_eq(ValueAttribute::Name, PartialValue::new_iname("admin"))),
             ModifyList::new_list(vec![
-                Modify::Present(AttrString::from("class"), ValueClass::PosixAccount.into()),
+                Modify::Present(
+                    ValueAttribute::Class.into(),
+                    ValueClass::PosixAccount.into(),
+                ),
                 Modify::Present(AttrString::from("gidnumber"), Value::new_uint32(2001)),
             ]),
         );
@@ -2725,7 +2755,7 @@ mod tests {
         // Check deleting the password
         let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await;
         let me_purge_up = ModifyEvent::new_internal_invalid(
-            filter!(f_eq("name", PartialValue::new_iname("admin"))),
+            filter!(f_eq(ValueAttribute::Name, PartialValue::new_iname("admin"))),
             ModifyList::new_list(vec![Modify::Purged(AttrString::from("unix_password"))]),
         );
         assert!(idms_prox_write.qs_write.modify(&me_purge_up).is_ok());
@@ -2757,7 +2787,7 @@ mod tests {
             // now modify and provide a primary credential.
             let me_inv_m =
                 ModifyEvent::new_internal_invalid(
-                        filter!(f_eq("name", PartialValue::new_iname("admin"))),
+                        filter!(f_eq(ValueAttribute::Name, PartialValue::new_iname("admin"))),
                         ModifyList::new_list(vec![Modify::Present(
                             AttrString::from("password_import"),
                             Value::from("{SSHA512}JwrSUHkI7FTAfHRVR6KoFlSN0E3dmaQWARjZ+/UsShYlENOqDtFVU77HJLLrY2MuSp0jve52+pwtdVl2QUAHukQ0XUf5LDtM")
@@ -2837,9 +2867,12 @@ mod tests {
         let v_cred = Value::new_credential("unix", cred);
 
         let me_posix = ModifyEvent::new_internal_invalid(
-            filter!(f_eq("name", PartialValue::new_iname("admin"))),
+            filter!(f_eq(ValueAttribute::Name, PartialValue::new_iname("admin"))),
             ModifyList::new_list(vec![
-                Modify::Present(AttrString::from("class"), ValueClass::PosixAccount.into()),
+                Modify::Present(
+                    ValueAttribute::Class.into(),
+                    ValueClass::PosixAccount.into(),
+                ),
                 Modify::Present(AttrString::from("gidnumber"), Value::new_uint32(2001)),
                 Modify::Present(AttrString::from("unix_password"), v_cred),
             ]),
@@ -2892,7 +2925,7 @@ mod tests {
 
         // now modify and provide a primary credential.
         let me_inv_m = ModifyEvent::new_internal_invalid(
-            filter!(f_eq("name", PartialValue::new_iname("admin"))),
+            filter!(f_eq(ValueAttribute::Name, PartialValue::new_iname("admin"))),
             ModifyList::new_list(vec![
                 Modify::Present(AttrString::from("account_expire"), v_expire),
                 Modify::Present(AttrString::from("account_valid_from"), v_valid_from),
@@ -2982,9 +3015,12 @@ mod tests {
         // make the admin a valid posix account
         let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await;
         let me_posix = ModifyEvent::new_internal_invalid(
-            filter!(f_eq("name", PartialValue::new_iname("admin"))),
+            filter!(f_eq(ValueAttribute::Name, PartialValue::new_iname("admin"))),
             ModifyList::new_list(vec![
-                Modify::Present(AttrString::from("class"), ValueClass::PosixAccount.into()),
+                Modify::Present(
+                    ValueAttribute::Class.into(),
+                    ValueClass::PosixAccount.into(),
+                ),
                 Modify::Present(AttrString::from("gidnumber"), Value::new_uint32(2001)),
             ]),
         );
@@ -3345,9 +3381,12 @@ mod tests {
         // make the admin a valid posix account
         let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await;
         let me_posix = ModifyEvent::new_internal_invalid(
-            filter!(f_eq("name", PartialValue::new_iname("admin"))),
+            filter!(f_eq(ValueAttribute::Name, PartialValue::new_iname("admin"))),
             ModifyList::new_list(vec![
-                Modify::Present(AttrString::from("class"), ValueClass::PosixAccount.into()),
+                Modify::Present(
+                    ValueAttribute::Class.into(),
+                    ValueClass::PosixAccount.into(),
+                ),
                 Modify::Present(AttrString::from("gidnumber"), Value::new_uint32(2001)),
             ]),
         );
@@ -3722,7 +3761,10 @@ mod tests {
         // es256_private_key_der
         let mut idms_prox_write = idms.proxy_write(ct).await;
         let me_reset_tokens = ModifyEvent::new_internal_invalid(
-            filter!(f_eq("uuid", PartialValue::Uuid(UUID_DOMAIN_INFO))),
+            filter!(f_eq(
+                ValueAttribute::Uuid,
+                PartialValue::Uuid(UUID_DOMAIN_INFO)
+            )),
             ModifyList::new_list(vec![
                 Modify::Purged(AttrString::from("fernet_private_key_str")),
                 Modify::Purged(AttrString::from("es256_private_key_der")),
@@ -3762,13 +3804,31 @@ mod tests {
 
         // Create a service account
         let e = entry_init!(
-            ("class", ValueClass::Object.to_value()),
-            ("class", ValueClass::Account.to_value()),
-            ("class", ValueClass::ServiceAccount.to_value()),
-            ("name", Value::new_iname("testaccount")),
-            ("uuid", Value::Uuid(target_uuid)),
-            ("description", Value::new_utf8s("testaccount")),
-            ("displayname", Value::new_utf8s("Test Account"))
+            (
+                ValueAttribute::Class.as_str(),
+                ValueClass::Object.to_value()
+            ),
+            (
+                ValueAttribute::Class.as_str(),
+                ValueClass::Account.to_value()
+            ),
+            (
+                ValueAttribute::Class.as_str(),
+                ValueClass::ServiceAccount.to_value()
+            ),
+            (
+                ValueAttribute::Name.as_str(),
+                Value::new_iname("testaccount")
+            ),
+            (ValueAttribute::Uuid.as_str(), Value::Uuid(target_uuid)),
+            (
+                ValueAttribute::Description.as_str(),
+                Value::new_utf8s("testaccount")
+            ),
+            (
+                ValueAttribute::DisplayName.as_str(),
+                Value::new_utf8s("Test Account")
+            )
         );
 
         let ce = CreateEvent::new_internal(vec![e]);

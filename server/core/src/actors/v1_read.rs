@@ -540,7 +540,7 @@ impl QueryServerReadV1 {
                     // From the entry, turn it into the value
                     .and_then(|entry| {
                         entry
-                            .get_ava_single("radius_secret")
+                            .get_ava_single(ValueAttribute::RadiusSecret.as_str())
                             .and_then(|v| v.get_secret_str().map(str::to_string))
                     });
                 Ok(r)
@@ -744,7 +744,7 @@ impl QueryServerReadV1 {
                     // get the first entry
                     .and_then(|e| {
                         // From the entry, turn it into the value
-                        e.get_ava_iter_sshpubkeys("ssh_publickey")
+                        e.get_ava_iter_sshpubkeys(ValueAttribute::SshUnderscorePublicKey.into())
                             .map(|i| i.map(|s| s.to_string()).collect())
                     })
                     .unwrap_or_else(|| {
@@ -807,10 +807,11 @@ impl QueryServerReadV1 {
                     // get the first entry
                     .map(|e| {
                         // From the entry, turn it into the value
-                        e.get_ava_set("ssh_publickey").and_then(|vs| {
-                            // Get the one tagged value
-                            vs.get_ssh_tag(&tag).map(str::to_string)
-                        })
+                        e.get_ava_set(ValueAttribute::SshUnderscorePublicKey.into())
+                            .and_then(|vs| {
+                                // Get the one tagged value
+                                vs.get_ssh_tag(&tag).map(str::to_string)
+                            })
                     })
                     .unwrap_or_else(|| {
                         // No matching entry? Return none.
@@ -1273,7 +1274,7 @@ impl QueryServerReadV1 {
                     // From the entry, turn it into the value
                     .and_then(|entry| {
                         entry
-                            .get_ava_single("oauth2_rs_basic_secret")
+                            .get_ava_single(ValueAttribute::OAuth2RsBasicSecret.into())
                             .and_then(|v| v.get_secret_str().map(str::to_string))
                     });
                 Ok(r)

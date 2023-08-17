@@ -180,13 +180,23 @@ impl<'a> QueryServerWriteTransaction<'a> {
             self.changed_acp = cand
                 .iter()
                 .chain(pre_cand.iter().map(|e| e.as_ref()))
-                .any(|e| e.attribute_equality("class", &ValueClass::AccessControlProfile.into()))
+                .any(|e| {
+                    e.attribute_equality(
+                        ValueAttribute::Class.into(),
+                        &ValueClass::AccessControlProfile.into(),
+                    )
+                })
         }
         if !self.changed_oauth2 {
             self.changed_oauth2 = cand
                 .iter()
                 .chain(pre_cand.iter().map(|e| e.as_ref()))
-                .any(|e| e.attribute_equality("class", &ValueClass::OAuth2ResourceServer.into()));
+                .any(|e| {
+                    e.attribute_equality(
+                        ValueAttribute::Class.into(),
+                        &ValueClass::OAuth2ResourceServer.into(),
+                    )
+                });
         }
 
         trace!(

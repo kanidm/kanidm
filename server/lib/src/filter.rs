@@ -18,6 +18,7 @@ use concread::arcache::ARCacheReadTxn;
 use hashbrown::HashMap;
 #[cfg(test)]
 use hashbrown::HashSet;
+use kanidm_proto::constants::ATTR_UUID;
 use kanidm_proto::v1::{Filter as ProtoFilter, OperationError, SchemaError};
 use ldap3_proto::proto::{LdapFilter, LdapSubstringFilter};
 // use smartstring::alias::String as AttrString;
@@ -427,19 +428,19 @@ impl Filter<FilterInvalid> {
         // some core test idxs faster. This is never used in production, it's JUST for
         // test case speedups.
         let idxmeta = vec![
-            (AttrString::from("uuid"), IndexType::Equality),
-            (AttrString::from("uuid"), IndexType::Presence),
-            (AttrString::from("name"), IndexType::Equality),
-            (AttrString::from("name"), IndexType::SubString),
-            (AttrString::from("name"), IndexType::Presence),
-            (AttrString::from("class"), IndexType::Equality),
-            (AttrString::from("class"), IndexType::Presence),
-            (AttrString::from("member"), IndexType::Equality),
-            (AttrString::from("member"), IndexType::Presence),
-            (AttrString::from("memberof"), IndexType::Equality),
-            (AttrString::from("memberof"), IndexType::Presence),
-            (AttrString::from("directmemberof"), IndexType::Equality),
-            (AttrString::from("directmemberof"), IndexType::Presence),
+            (ValueAttribute::Uuid.into(), IndexType::Equality),
+            (ValueAttribute::Uuid.into(), IndexType::Presence),
+            (ValueAttribute::Name.into(), IndexType::Equality),
+            (ValueAttribute::Name.into(), IndexType::SubString),
+            (ValueAttribute::Name.into(), IndexType::Presence),
+            (ValueAttribute::Class.into(), IndexType::Equality),
+            (ValueAttribute::Class.into(), IndexType::Presence),
+            (ValueAttribute::Member.into(), IndexType::Equality),
+            (ValueAttribute::Member.into(), IndexType::Presence),
+            (ValueAttribute::MemberOf.into(), IndexType::Equality),
+            (ValueAttribute::MemberOf.into(), IndexType::Presence),
+            (ValueAttribute::DirectMemberOf.into(), IndexType::Equality),
+            (ValueAttribute::DirectMemberOf.into(), IndexType::Presence),
         ];
 
         let idxmeta_ref = idxmeta.iter().map(|(attr, itype)| (attr, itype)).collect();
@@ -560,14 +561,8 @@ impl FilterComp {
     fn new_ignore_hidden(fc: FilterComp) -> Self {
         FilterComp::And(vec![
             FilterComp::AndNot(Box::new(FilterComp::Or(vec![
-                FilterComp::Eq(
-                    AttrString::from("class"),
-                    PartialValue::new_iutf8("tombstone"),
-                ),
-                FilterComp::Eq(
-                    AttrString::from("class"),
-                    PartialValue::new_iutf8("recycled"),
-                ),
+                FilterComp::Eq(ValueAttribute::Class.into(), ValueClass::Tombstone.into()),
+                FilterComp::Eq(ValueAttribute::Class.into(), ValueClass::Recycled.into()),
             ]))),
             fc,
         ])
@@ -575,10 +570,7 @@ impl FilterComp {
 
     fn new_recycled(fc: FilterComp) -> Self {
         FilterComp::And(vec![
-            FilterComp::Eq(
-                AttrString::from("class"),
-                PartialValue::new_iutf8("recycled"),
-            ),
+            FilterComp::Eq(ValueAttribute::Class.into(), ValueClass::Recycled.into()),
             fc,
         ])
     }
@@ -602,7 +594,7 @@ impl FilterComp {
             FilterComp::Inclusion(vs) => vs.iter().for_each(|f| f.get_attr_set(r_set)),
             FilterComp::AndNot(f) => f.get_attr_set(r_set),
             FilterComp::SelfUuid => {
-                r_set.insert("uuid");
+                r_set.insert(ATTR_UUID);
             }
         }
     }
@@ -1088,13 +1080,12 @@ impl FilterResolved {
                 Some(FilterResolved::Eq(a, v, idx))
             }
             FilterComp::SelfUuid => ev.get_uuid().map(|uuid| {
-                let uuid_s = AttrString::from("uuid");
-                let idxkref = IdxKeyRef::new(&uuid_s, &IndexType::Equality);
+                let idxkref = IdxKeyRef::new(ValueAttribute::Uuid.as_str(), &IndexType::Equality);
                 let idx = idxmeta
                     .get(&idxkref as &dyn IdxKeyToRef)
                     .copied()
                     .and_then(NonZeroU8::new);
-                FilterResolved::Eq(uuid_s, PartialValue::Uuid(uuid), idx)
+                FilterResolved::Eq(ValueAttribute::Uuid.into(), PartialValue::Uuid(uuid), idx)
             }),
             FilterComp::Sub(a, v) => {
                 let idxkref = IdxKeyRef::new(&a, &IndexType::SubString);
@@ -1167,7 +1158,7 @@ impl FilterResolved {
             }
             FilterComp::SelfUuid => ev.get_uuid().map(|uuid| {
                 FilterResolved::Eq(
-                    AttrString::from("uuid"),
+                    ValueAttribute::Uuid.into(),
                     PartialValue::Uuid(uuid),
                     NonZeroU8::new(true as u8),
                 )
@@ -1436,8 +1427,11 @@ mod tests {
                     ValueAttribute::Class,
                     ValueClass::TestClass.to_partialvalue()
                 )]),
-                f_sub("class", PartialValue::new_class("te")),
-                f_pres("class"),
+                f_sub(
+                    ValueAttribute::Class.as_str(),
+                    PartialValue::new_class("te")
+                ),
+                f_pres(ValueAttribute::Class.as_str()),
                 f_eq(
                     ValueAttribute::Class,
                     ValueClass::TestClass.to_partialvalue()
@@ -1448,8 +1442,11 @@ mod tests {
                     ValueAttribute::Class,
                     ValueClass::TestClass.to_partialvalue()
                 ),
-                f_pres("class"),
-                f_sub("class", PartialValue::new_class("te")),
+                f_pres(ValueAttribute::Class.as_str()),
+                f_sub(
+                    ValueAttribute::Class.as_str(),
+                    PartialValue::new_class("te")
+                ),
             ])
         );
 
@@ -1464,8 +1461,11 @@ mod tests {
                     ),
                     f_eq(ValueAttribute::Uid, PartialValue::new_class("bar")),
                 ]),
-                f_sub("class", PartialValue::new_class("te")),
-                f_pres("class"),
+                f_sub(
+                    ValueAttribute::Class.as_str(),
+                    PartialValue::new_class("te")
+                ),
+                f_pres(ValueAttribute::Class.as_str()),
                 f_eq(
                     ValueAttribute::Class,
                     ValueClass::TestClass.to_partialvalue()
@@ -1477,9 +1477,12 @@ mod tests {
                     ValueAttribute::Class,
                     ValueClass::TestClass.to_partialvalue()
                 ),
-                f_pres("class"),
+                f_pres(ValueAttribute::Class.as_str()),
                 f_eq(ValueAttribute::Uid, PartialValue::new_class("bar")),
-                f_sub("class", PartialValue::new_class("te")),
+                f_sub(
+                    ValueAttribute::Class.as_str(),
+                    PartialValue::new_class("te")
+                ),
             ])
         );
 
@@ -1489,16 +1492,22 @@ mod tests {
                     ValueAttribute::Class,
                     ValueClass::TestClass.to_partialvalue()
                 ),
-                f_pres("class"),
-                f_sub("class", PartialValue::new_class("te")),
+                f_pres(ValueAttribute::Class.as_str()),
+                f_sub(
+                    ValueAttribute::Class.as_str(),
+                    PartialValue::new_class("te")
+                ),
                 f_or(vec![f_eq(
                     ValueAttribute::Class,
                     ValueClass::TestClass.to_partialvalue()
                 )]),
             ]),
             f_or(vec![
-                f_sub("class", PartialValue::new_class("te")),
-                f_pres("class"),
+                f_sub(
+                    ValueAttribute::Class.as_str(),
+                    PartialValue::new_class("te")
+                ),
+                f_pres(ValueAttribute::Class.as_str()),
                 f_eq(
                     ValueAttribute::Class,
                     ValueClass::TestClass.to_partialvalue()
@@ -1621,12 +1630,12 @@ mod tests {
     #[test]
     fn test_lessthan_entry_filter() {
         let e = entry_init!(
-            ("userid", Value::new_iutf8("william")),
+            (ValueAttribute::UserId.as_str(), Value::new_iutf8("william")),
             (
                 "uuid",
                 Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
             ),
-            ("gidnumber", Value::Uint32(1000))
+            (ValueAttribute::GidNumber.as_str(), Value::Uint32(1000))
         )
         .into_sealed_new();
 
@@ -1643,12 +1652,12 @@ mod tests {
     #[test]
     fn test_or_entry_filter() {
         let e = entry_init!(
-            ("userid", Value::new_iutf8("william")),
+            (ValueAttribute::UserId.as_str(), Value::new_iutf8("william")),
             (
-                "uuid",
+                ValueAttribute::Uuid.as_str(),
                 Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
             ),
-            ("gidnumber", Value::Uint32(1000))
+            (ValueAttribute::GidNumber.as_str(), Value::Uint32(1000))
         )
         .into_sealed_new();
 
@@ -1680,12 +1689,12 @@ mod tests {
     #[test]
     fn test_and_entry_filter() {
         let e = entry_init!(
-            ("userid", Value::new_iutf8("william")),
+            (ValueAttribute::UserId.as_str(), Value::new_iutf8("william")),
             (
-                "uuid",
+                ValueAttribute::Uuid.as_str(),
                 Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
             ),
-            ("gidnumber", Value::Uint32(1000))
+            (ValueAttribute::GidNumber.as_str(), Value::Uint32(1000))
         )
         .into_sealed_new();
 
@@ -1717,12 +1726,12 @@ mod tests {
     #[test]
     fn test_not_entry_filter() {
         let e1 = entry_init!(
-            ("userid", Value::new_iutf8("william")),
+            (ValueAttribute::UserId.as_str(), Value::new_iutf8("william")),
             (
-                "uuid",
+                ValueAttribute::Uuid.as_str(),
                 Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
             ),
-            ("gidnumber", Value::Uint32(1000))
+            (ValueAttribute::GidNumber.as_str(), Value::Uint32(1000))
         )
         .into_sealed_new();
 
@@ -1747,10 +1756,10 @@ mod tests {
                 ValueClass::Person.to_value().clone()
             ),
             (
-                "uuid",
+                ValueAttribute::Uuid.as_str(),
                 Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
             ),
-            ("gidnumber", Value::Uint32(1000))
+            (ValueAttribute::GidNumber.as_str(), Value::Uint32(1000))
         )
         .into_sealed_new();
 
@@ -1760,10 +1769,10 @@ mod tests {
                 ValueClass::Person.to_value().clone()
             ),
             (
-                "uuid",
+                ValueAttribute::Uuid.as_str(),
                 Value::Uuid(uuid::uuid!("4b6228ab-1dbe-42a4-a9f5-f6368222438e"))
             ),
-            ("gidnumber", Value::Uint32(1001))
+            (ValueAttribute::GidNumber.as_str(), Value::Uint32(1001))
         )
         .into_sealed_new();
 
@@ -1773,20 +1782,20 @@ mod tests {
                 ValueClass::Person.to_value()
             ),
             (
-                "uuid",
+                ValueAttribute::Uuid.as_str(),
                 Value::Uuid(uuid::uuid!("7b23c99d-c06b-4a9a-a958-3afa56383e1d"))
             ),
-            ("gidnumber", Value::Uint32(1002))
+            (ValueAttribute::GidNumber.as_str(), Value::Uint32(1002))
         )
         .into_sealed_new();
 
         let e4 = entry_init!(
             (ValueAttribute::Class.as_str(), ValueClass::Group.to_value()),
             (
-                "uuid",
+                ValueAttribute::Uuid.as_str(),
                 Value::Uuid(uuid::uuid!("21d816b5-1f6a-4696-b7c1-6ed06d22ed81"))
             ),
-            ("gidnumber", Value::Uint32(1000))
+            (ValueAttribute::GidNumber.as_str(), Value::Uint32(1000))
         )
         .into_sealed_new();
 
@@ -1808,7 +1817,7 @@ mod tests {
     fn test_attr_set_filter() {
         let mut f_expect = BTreeSet::new();
         f_expect.insert("userid");
-        f_expect.insert("class");
+        f_expect.insert(ValueAttribute::Class.as_str());
         // Given filters, get their expected attribute sets - this is used by access control profiles
         // to determine what attrs we are requesting regardless of the partialvalue.
         let f_t1a = filter_valid!(f_and!([
@@ -1848,16 +1857,22 @@ mod tests {
                 ValueAttribute::Class.as_str(),
                 ValueClass::Account.to_value()
             ),
-            ("name", Value::new_iname("testperson1")),
             (
-                "uuid",
+                ValueAttribute::Name.as_str(),
+                Value::new_iname("testperson1")
+            ),
+            (
+                ValueAttribute::Uuid.as_str(),
                 Value::Uuid(uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
             ),
             (
                 ValueAttribute::Description.as_str(),
                 Value::new_utf8s("testperson1")
             ),
-            ("displayname", Value::new_utf8s("testperson1"))
+            (
+                ValueAttribute::DisplayName.as_str(),
+                Value::new_utf8s("testperson1")
+            )
         );
 
         let e2 = entry_init!(
@@ -1869,16 +1884,22 @@ mod tests {
                 ValueAttribute::Class.as_str(),
                 ValueClass::Person.to_value().clone()
             ),
-            ("name", Value::new_iname("testperson2")),
             (
-                "uuid",
+                ValueAttribute::Name.as_str(),
+                Value::new_iname("testperson2")
+            ),
+            (
+                ValueAttribute::Uuid.as_str(),
                 Value::Uuid(uuid::uuid!("a67c0c71-0b35-4218-a6b0-22d23d131d27"))
             ),
             (
                 ValueAttribute::Description.as_str(),
                 Value::new_utf8s("testperson2")
             ),
-            ("displayname", Value::new_utf8s("testperson2"))
+            (
+                ValueAttribute::DisplayName.as_str(),
+                Value::new_utf8s("testperson2")
+            )
         );
 
         // We need to add these and then push through the state machine.
@@ -1891,16 +1912,22 @@ mod tests {
                 ValueAttribute::Class.as_str(),
                 ValueClass::Person.to_value().clone()
             ),
-            ("name", Value::new_iname("testperson3")),
             (
-                "uuid",
+                ValueAttribute::Name.as_str(),
+                Value::new_iname("testperson3")
+            ),
+            (
+                ValueAttribute::Uuid.as_str(),
                 Value::Uuid(uuid!("9557f49c-97a5-4277-a9a5-097d17eb8317"))
             ),
             (
                 ValueAttribute::Description.as_str(),
                 Value::new_utf8s("testperson3")
             ),
-            ("displayname", Value::new_utf8s("testperson3"))
+            (
+                ValueAttribute::DisplayName.as_str(),
+                Value::new_utf8s("testperson3")
+            )
         );
 
         let ce = CreateEvent::new_internal(vec![e1, e2, e_ts]);
@@ -1960,12 +1987,12 @@ mod tests {
     async fn test_filter_depth_limits(server: &QueryServer) {
         let mut r_txn = server.read().await;
 
-        let mut inv_proto = ProtoFilter::Pres("class".to_string());
+        let mut inv_proto = ProtoFilter::Pres(ValueAttribute::Class.to_string());
         for _i in 0..(FILTER_DEPTH_MAX + 1) {
             inv_proto = ProtoFilter::And(vec![inv_proto]);
         }
 
-        let mut inv_ldap = LdapFilter::Present("class".to_string());
+        let mut inv_ldap = LdapFilter::Present(ValueAttribute::Class.to_string());
         for _i in 0..(FILTER_DEPTH_MAX + 1) {
             inv_ldap = LdapFilter::And(vec![inv_ldap]);
         }
@@ -1996,13 +2023,13 @@ mod tests {
 
         let inv_proto = ProtoFilter::And(
             (0..(LIMIT * 2))
-                .map(|_| ProtoFilter::Pres("class".to_string()))
+                .map(|_| ProtoFilter::Pres(ValueAttribute::Class.to_string()))
                 .collect(),
         );
 
         let inv_ldap = LdapFilter::And(
             (0..(LIMIT * 2))
-                .map(|_| LdapFilter::Present("class".to_string()))
+                .map(|_| LdapFilter::Present(ValueAttribute::Class.to_string()))
                 .collect(),
         );
 

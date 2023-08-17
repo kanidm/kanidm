@@ -200,10 +200,19 @@ mod tests {
                 ValueAttribute::Class.as_str(),
                 ValueClass::Person.to_value()
             ),
-            ("name", Value::new_iname("testperson")),
-            ("uuid", Value::Uuid(TESTPERSON_UUID)),
-            ("description", Value::new_utf8s("testperson")),
-            ("displayname", Value::new_utf8s("testperson"))
+            (
+                ValueAttribute::Name.as_str(),
+                Value::new_iname("testperson")
+            ),
+            (ValueAttribute::Uuid.as_str(), Value::Uuid(TESTPERSON_UUID)),
+            (
+                ValueAttribute::Description.as_str(),
+                Value::new_utf8s("testperson")
+            ),
+            (
+                ValueAttribute::DisplayName.as_str(),
+                Value::new_utf8s("testperson")
+            )
         );
 
         let cr = idms_prox_write.qs_write.internal_create(vec![e2]);

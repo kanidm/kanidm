@@ -4,7 +4,7 @@ use std::convert::TryFrom;
 use std::str::FromStr;
 
 use compact_jwt::{JwkKeySet, JwsValidator, OidcToken, OidcUnverified};
-use kanidm_proto::constants::APPLICATION_JSON;
+use kanidm_proto::constants::*;
 use kanidm_proto::oauth2::{
     AccessTokenIntrospectRequest, AccessTokenIntrospectResponse, AccessTokenRequest,
     AccessTokenResponse, AuthorisationResponse, GrantTypeReq, OidcDiscoveryResponse,
@@ -93,7 +93,7 @@ async fn test_oauth2_openid_basic_flow(rsclient: KanidmClient) {
         .idm_oauth2_rs_update_scope_map(
             "test_integration",
             "idm_all_accounts",
-            vec!["read", "email", "openid"],
+            vec![OAUTH2_SCOPE_READ, OAUTH2_SCOPE_EMAIL, OAUTH2_SCOPE_OPENID],
         )
         .await
         .expect("Failed to update oauth2 scopes");
@@ -445,7 +445,7 @@ async fn test_oauth2_openid_public_flow(rsclient: KanidmClient) {
         .idm_oauth2_rs_update_scope_map(
             "test_integration",
             "idm_all_accounts",
-            vec!["read", "email", "openid"],
+            vec![OAUTH2_SCOPE_READ, OAUTH2_SCOPE_EMAIL, OAUTH2_SCOPE_OPENID],
         )
         .await
         .expect("Failed to update oauth2 scopes");

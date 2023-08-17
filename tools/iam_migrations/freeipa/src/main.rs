@@ -23,6 +23,7 @@ use base64urlsafedata::Base64UrlSafeData;
 use chrono::Utc;
 use clap::Parser;
 use cron::Schedule;
+use kanidmd_lib::prelude::ValueAttribute;
 use std::collections::BTreeMap;
 use std::fs::metadata;
 use std::fs::File;
@@ -795,9 +796,14 @@ fn ipa_to_scim_entry(
         let user_name = if let Some(name) = entry_config.map_name.clone() {
             name
         } else {
-            entry.remove_ava_single("uid").ok_or_else(|| {
-                error!("Missing required attribute uid");
-            })?
+            entry
+                .remove_ava_single(ValueAttribute::Uid.as_str())
+                .ok_or_else(|| {
+                    error!(
+                        "Missing required attribute {}",
+                        ValueAttribute::Uid.as_str()
+                    );
+                })?
         };
 
         // ⚠️  hardcoded skip on admin here!!!
@@ -806,30 +812,32 @@ fn ipa_to_scim_entry(
             return Ok(None);
         }
 
-        let display_name = entry.remove_ava_single("cn").ok_or_else(|| {
-            error!("Missing required attribute cn");
-        })?;
+        let display_name = entry
+            .remove_ava_single(ValueAttribute::Cn.as_str())
+            .ok_or_else(|| {
+                error!("Missing required attribute {}", ValueAttribute::Cn.as_str());
+            })?;
 
         let gidnumber = if let Some(number) = entry_config.map_gidnumber {
             Some(number)
         } else {
             entry
-                .remove_ava_single("gidnumber")
+                .remove_ava_single(ValueAttribute::GidNumber.as_str())
                 .map(|gid| {
                     u32::from_str(&gid).map_err(|_| {
-                        error!("Invalid gidnumber");
+                        error!("Invalid {}", ValueAttribute::GidNumber.as_str());
                     })
                 })
                 .transpose()?
         };
 
         let password_import = entry
-            .remove_ava_single("ipanthash")
+            .remove_ava_single(ValueAttribute::IpaNtHash.as_str())
             .map(|s| format!("ipaNTHash: {}", s))
             // If we don't have this, try one of the other hashes that *might* work
             // The reason we don't do this by default is there are multiple
             // pw hash formats in 389-ds we don't support!
-            .or_else(|| entry.remove_ava_single("userpassword"));
+            .or_else(|| entry.remove_ava_single(ValueAttribute::UserPassword.as_str()));
 
         let mail: Vec<_> = entry
             .remove_ava("mail")
@@ -874,7 +882,7 @@ fn ipa_to_scim_entry(
             })
             .unwrap_or_default();
 
-        let login_shell = entry.remove_ava_single("loginshell");
+        let login_shell = entry.remove_ava_single(ValueAttribute::LoginShell.as_str());
         let external_id = Some(entry.dn);
 
         Ok(Some(
@@ -901,9 +909,11 @@ fn ipa_to_scim_entry(
 
         let id = entry_uuid;
 
-        let name = entry.remove_ava_single("cn").ok_or_else(|| {
-            error!("Missing required attribute cn");
-        })?;
+        let name = entry
+            .remove_ava_single(ValueAttribute::Cn.as_str())
+            .ok_or_else(|| {
+                error!("Missing required attribute cn");
+            })?;
 
         // ⚠️  hardcoded skip on trust admins / editors / ipausers here!!!
         if name == "trust admins" || name == "editors" || name == "ipausers" || name == "admins" {
@@ -911,10 +921,10 @@ fn ipa_to_scim_entry(
             return Ok(None);
         }
 
-        let description = entry.remove_ava_single("description");
+        let description = entry.remove_ava_single(ValueAttribute::Description.as_str());
 
         let gidnumber = entry
-            .remove_ava_single("gidnumber")
+            .remove_ava_single(ValueAttribute::GidNumber.as_str())
             .map(|gid| {
                 u32::from_str(&gid).map_err(|_| {
                     error!("Invalid gidnumber");

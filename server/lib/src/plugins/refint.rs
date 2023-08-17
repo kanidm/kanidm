@@ -184,7 +184,7 @@ impl Plugin for ReferentialIntegrity {
     fn verify(qs: &mut QueryServerReadTransaction) -> Vec<Result<(), ConsistencyError>> {
         // Get all entries as cand
         //      build a cand-uuid set
-        let filt_in = filter_all!(f_pres("class"));
+        let filt_in = filter_all!(f_pres(ValueAttribute::Class.as_str()));
 
         let all_cand = match qs
             .internal_search(filt_in)
@@ -238,7 +238,8 @@ impl ReferentialIntegrity {
         // Fast Path
         let mut vsiter = cand.iter().flat_map(|c| {
             // If it's dyngroup, skip member since this will be reset in the next step.
-            let dyn_group = c.attribute_equality("class", &ValueClass::DynGroup.into());
+            let dyn_group =
+                c.attribute_equality(ValueAttribute::Class.as_str(), &ValueClass::DynGroup.into());
 
             ref_types.values().filter_map(move |rtype| {
                 // Skip dynamic members
@@ -784,8 +785,14 @@ mod tests {
                 ValueClass::OAuth2ResourceServer.to_value()
             ),
             // (ValueAttribute::Class.as_str(), ValueClass::OAuth2ResourceServerBasic.into()),
-            ("oauth2_rs_name", Value::new_iname("test_resource_server")),
-            ("displayname", Value::new_utf8s("test_resource_server")),
+            (
+                ValueAttribute::OAuth2RsName.as_str(),
+                Value::new_iname("test_resource_server")
+            ),
+            (
+                ValueAttribute::DisplayName.as_str(),
+                Value::new_utf8s("test_resource_server")
+            ),
             (
                 "oauth2_rs_origin",
                 Value::new_url_s("https://demo.example.com").unwrap()
@@ -794,7 +801,7 @@ mod tests {
                 "oauth2_rs_scope_map",
                 Value::new_oauthscopemap(
                     uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"),
-                    btreeset!["read".to_string()]
+                    btreeset![OAUTH2_SCOPE_READ.to_string()]
                 )
                 .expect("Invalid scope")
             )
@@ -802,12 +809,15 @@ mod tests {
 
         let eb: Entry<EntryInit, EntryNew> = entry_init!(
             (ValueAttribute::Class.as_str(), ValueClass::Group.to_value()),
-            ("name", Value::new_iname("testgroup")),
+            (ValueAttribute::Name.as_str(), Value::new_iname("testgroup")),
             (
                 "uuid",
                 Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
             ),
-            ("description", Value::new_utf8s("testgroup"))
+            (
+                ValueAttribute::Description.as_str(),
+                Value::new_utf8s("testgroup")
+            )
         );
 
         let preload = vec![ea, eb];
@@ -863,10 +873,19 @@ mod tests {
                 ValueAttribute::Class.as_str(),
                 ValueClass::Account.to_value()
             ),
-            ("name", Value::new_iname("testperson1")),
-            ("uuid", Value::Uuid(tuuid)),
-            ("description", Value::new_utf8s("testperson1")),
-            ("displayname", Value::new_utf8s("testperson1")),
+            (
+                ValueAttribute::Name.as_str(),
+                Value::new_iname("testperson1")
+            ),
+            (ValueAttribute::Uuid.as_str(), Value::Uuid(tuuid)),
+            (
+                ValueAttribute::Description.as_str(),
+                Value::new_utf8s("testperson1")
+            ),
+            (
+                ValueAttribute::DisplayName.as_str(),
+                Value::new_utf8s("testperson1")
+            ),
             (
                 "primary_credential",
                 Value::Cred("primary".to_string(), cred.clone())
@@ -882,9 +901,15 @@ mod tests {
                 ValueAttribute::Class.as_str(),
                 ValueClass::OAuth2ResourceServer.to_value()
             ),
-            ("uuid", Value::Uuid(rs_uuid)),
-            ("oauth2_rs_name", Value::new_iname("test_resource_server")),
-            ("displayname", Value::new_utf8s("test_resource_server")),
+            (ValueAttribute::Uuid.as_str(), Value::Uuid(rs_uuid)),
+            (
+                ValueAttribute::OAuth2RsName.as_str(),
+                Value::new_iname("test_resource_server")
+            ),
+            (
+                ValueAttribute::DisplayName.as_str(),
+                Value::new_utf8s("test_resource_server")
+            ),
             (
                 "oauth2_rs_origin",
                 Value::new_url_s("https://demo.example.com").unwrap()
@@ -892,8 +917,11 @@ mod tests {
             // System admins
             (
                 "oauth2_rs_scope_map",
-                Value::new_oauthscopemap(UUID_IDM_ALL_ACCOUNTS, btreeset!["openid".to_string()])
-                    .expect("invalid oauthscope")
+                Value::new_oauthscopemap(
+                    UUID_IDM_ALL_ACCOUNTS,
+                    btreeset![OAUTH2_SCOPE_OPENID.to_string()]
+                )
+                .expect("invalid oauthscope")
             )
         );
 
@@ -958,8 +986,10 @@ mod tests {
         // Still there
 
         let entry = server_txn.internal_search_uuid(tuuid).expect("failed");
-        assert!(entry.attribute_equality("user_auth_token_session", &pv_parent_id));
-        assert!(entry.attribute_equality("oauth2_session", &pv_session_id));
+        assert!(
+            entry.attribute_equality(ValueAttribute::UserAuthTokenSession.as_str(), &pv_parent_id)
+        );
+        assert!(entry.attribute_equality(ValueAttribute::OAuth2Session.as_str(), &pv_session_id));
 
         // Delete the oauth2 resource server.
         assert!(server_txn.internal_delete_uuid(rs_uuid).is_ok());
@@ -968,11 +998,13 @@ mod tests {
         let entry = server_txn.internal_search_uuid(tuuid).expect("failed");
 
         // Note the uat is present still.
-        assert!(entry.attribute_equality("user_auth_token_session", &pv_parent_id));
+        assert!(
+            entry.attribute_equality(ValueAttribute::UserAuthTokenSession.as_str(), &pv_parent_id)
+        );
         // The oauth2 session is removed.
         dbg!(&entry);
         dbg!(&pv_session_id);
-        assert!(!entry.attribute_equality("oauth2_session", &pv_session_id));
+        assert!(!entry.attribute_equality(ValueAttribute::OAuth2Session.as_str(), &pv_session_id));
 
         assert!(server_txn.commit().is_ok());
     }
@@ -1002,8 +1034,11 @@ mod tests {
                 ValueAttribute::Class.as_str(),
                 ValueClass::DynGroup.to_value()
             ),
-            ("uuid", Value::Uuid(dyn_uuid)),
-            ("name", Value::new_iname("test_dyngroup")),
+            (ValueAttribute::Uuid.as_str(), Value::Uuid(dyn_uuid)),
+            (
+                ValueAttribute::Name.as_str(),
+                Value::new_iname("test_dyngroup")
+            ),
             ("dynmember", Value::Refer(inv_mb_uuid)),
             (
                 "dyngroup_filter",
@@ -1017,9 +1052,9 @@ mod tests {
                 ValueAttribute::Class.as_str(),
                 ValueClass::MemberOf.to_value()
             ),
-            ("name", Value::new_iname("testgroup")),
-            ("uuid", Value::Uuid(tgroup_uuid)),
-            ("memberof", Value::Refer(inv_mo_uuid))
+            (ValueAttribute::Name.as_str(), Value::new_iname("testgroup")),
+            (ValueAttribute::Uuid.as_str(), Value::Uuid(tgroup_uuid)),
+            (ValueAttribute::MemberOf.as_str(), Value::Refer(inv_mo_uuid))
         );
 
         let ce = CreateEvent::new_internal(vec![e_dyn, e_group]);

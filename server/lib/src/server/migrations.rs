@@ -161,7 +161,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // correctly!
         trace!("internal_migrate_or_create operating on {:?}", e.get_uuid());
 
-        let Some(filt) = e.filter_from_attrs(&[AttrString::from("uuid")]) else {
+        let Some(filt) = e.filter_from_attrs(&[ValueAttribute::Uuid.into()]) else {
             return Err(OperationError::FilterGeneration)
         };
 
@@ -836,9 +836,9 @@ mod tests {
             ModifyEvent::new_internal_invalid(
                 filter!(f_eq(ValueAttribute::Uuid, PartialValue::Uuid(UUID_DOMAIN_INFO))),
                 ModifyList::new_list(vec![
-                    Modify::Purged(AttrString::from("name")),
+                    Modify::Purged(ValueAttribute::Name.into()),
                     Modify::Purged(AttrString::from("domain_name")),
-                    Modify::Present(AttrString::from("name"), Value::new_iutf8("domain_local")),
+                    Modify::Present(ValueAttribute::Name.into(), Value::new_iutf8("domain_local")),
                     Modify::Present(
                         AttrString::from("domain_name"),
                         Value::new_iutf8("example.com"),

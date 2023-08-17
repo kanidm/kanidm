@@ -204,7 +204,7 @@ pub async fn json_rest_event_post(
     debug_assert!(!classes.is_empty());
 
     let mut obj = obj;
-    obj.attrs.insert("class".to_string(), classes);
+    obj.attrs.insert(ValueAttribute::Class.to_string(), classes);
     let msg = CreateRequest {
         entries: vec![obj.to_owned()],
     };
@@ -846,7 +846,7 @@ pub async fn account_delete_id_ssh_pubkey_tag(
     Extension(kopid): Extension<KOpId>,
     Path((id, tag)): Path<(String, String)>,
 ) -> impl IntoResponse {
-    let attr = "ssh_publickey".to_string();
+    let attr = ValueAttribute::SshUnderscorePublicKey.to_string();
     let values = vec![tag];
     let filter = filter_all!(f_eq(ValueAttribute::Class, ValueClass::Account.into()));
     let res = state
@@ -1241,7 +1241,7 @@ pub async fn recycle_bin_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
 ) -> impl IntoResponse {
-    let filter = filter_all!(f_pres("class"));
+    let filter = filter_all!(f_pres(ValueAttribute::Class.as_str()));
     let attrs = None;
     let res = state
         .qe_r_ref

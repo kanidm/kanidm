@@ -1121,8 +1121,8 @@ impl IdlSqliteWriteTransaction {
                 )
                 .map(|_| ())
                 .map_err(|e| {
-                    admin_error!(immediate = true, ?e, "CRITICAL: rusqlite error");
-                    eprintln!("CRITICAL: rusqlite error {e:?}");
+                    admin_error!(immediate = true, ?e, "CRITICAL: rusqlite error in store_idx_slope_analysis");
+                    eprintln!("CRITICAL: rusqlite error in store_idx_slope_analysis: {e:?}");
                     OperationError::SqliteError
                 })
         })
@@ -1265,16 +1265,24 @@ impl IdlSqliteWriteTransaction {
             )
             .map(|_| ())
             .map_err(|e| {
-                admin_error!(immediate = true, ?e, "CRITICAL: ruslite error");
-                eprintln!("CRITICAL: rusqlite error {e:?}");
+                admin_error!(
+                    immediate = true,
+                    ?e,
+                    "CRITICAL: rusqlite error in write_db_s_uuid"
+                );
+                eprintln!("CRITICAL: rusqlite error in write_db_s_uuid {e:?}");
                 OperationError::SqliteError
             })
     }
 
     pub fn write_db_d_uuid(&self, nsid: Uuid) -> Result<(), OperationError> {
         let data = serde_json::to_vec(&nsid).map_err(|e| {
-            admin_error!(immediate = true, ?e, "CRITICAL: Serde JSON Error");
-            eprintln!("CRITICAL: Serde JSON Error -> {e:?}");
+            admin_error!(
+                immediate = true,
+                ?e,
+                "CRITICAL: Serde JSON Error in write_db_d_uuid"
+            );
+            eprintln!("CRITICAL: Serde JSON Error  in write_db_d_uuid-> {e:?}");
             OperationError::SerdeJsonError
         })?;
 
@@ -1291,16 +1299,24 @@ impl IdlSqliteWriteTransaction {
             )
             .map(|_| ())
             .map_err(|e| {
-                admin_error!(immediate = true, ?e, "CRITICAL: rusqlite error");
-                eprintln!("CRITICAL: rusqlite error {e:?}");
+                admin_error!(
+                    immediate = true,
+                    ?e,
+                    "CRITICAL: rusqlite error in write_db_d_uuid"
+                );
+                eprintln!("CRITICAL: rusqlite error in write_db_d_uuid {e:?}");
                 OperationError::SqliteError
             })
     }
 
     pub fn set_db_ts_max(&self, ts: Duration) -> Result<(), OperationError> {
         let data = serde_json::to_vec(&ts).map_err(|e| {
-            admin_error!(immediate = true, ?e, "CRITICAL: Serde JSON Error");
-            eprintln!("CRITICAL: Serde JSON Error -> {e:?}");
+            admin_error!(
+                immediate = true,
+                ?e,
+                "CRITICAL: Serde JSON Error in set_db_ts_max"
+            );
+            eprintln!("CRITICAL: Serde JSON Error in set_db_ts_max -> {e:?}");
             OperationError::SerdeJsonError
         })?;
 
@@ -1317,8 +1333,12 @@ impl IdlSqliteWriteTransaction {
             )
             .map(|_| ())
             .map_err(|e| {
-                admin_error!(immediate = true, ?e, "CRITICAL: rusqlite error");
-                eprintln!("CRITICAL: rusqlite error {e:?}");
+                admin_error!(
+                    immediate = true,
+                    ?e,
+                    "CRITICAL: rusqlite error in set_db_ts_max"
+                );
+                eprintln!("CRITICAL: rusqlite error in set_db_ts_max {e:?}");
                 OperationError::SqliteError
             })
     }
@@ -1357,8 +1377,12 @@ impl IdlSqliteWriteTransaction {
             )
             .map(|_| ())
             .map_err(|e| {
-                admin_error!(immediate = true, ?e, "CRITICAL: rusqlite error");
-                eprintln!("CRITICAL: rusqlite error {e:?}");
+                admin_error!(
+                    immediate = true,
+                    ?e,
+                    "CRITICAL: rusqlite error in set_db_version_key"
+                );
+                eprintln!("CRITICAL: rusqlite error in set_db_version_key {e:?}");
                 OperationError::SqliteError
             })
     }

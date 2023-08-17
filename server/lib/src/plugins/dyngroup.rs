@@ -145,9 +145,9 @@ impl DynGroup {
 
         let ident_internal = Identity::from_internal();
 
-        let (n_dyn_groups, entries): (Vec<&Entry<_, _>>, Vec<_>) = cand
-            .iter()
-            .partition(|entry| entry.attribute_equality("class", &ValueClass::DynGroup.into()));
+        let (n_dyn_groups, entries): (Vec<&Entry<_, _>>, Vec<_>) = cand.iter().partition(|entry| {
+            entry.attribute_equality(ValueAttribute::Class.as_str(), &ValueClass::DynGroup.into())
+        });
 
         // DANGER: Why do we have to do this? During the use of qs for internal search
         // and other operations we need qs to be mut. But when we borrow dyn groups here we
@@ -247,13 +247,21 @@ impl DynGroup {
         let ident_internal = Identity::from_internal();
 
         // Probably should be filter here instead.
-        let (_, pre_entries): (Vec<&Arc<Entry<_, _>>>, Vec<_>) = pre_cand
-            .iter()
-            .partition(|entry| entry.attribute_equality("class", &ValueClass::DynGroup.into()));
+        let (_, pre_entries): (Vec<&Arc<Entry<_, _>>>, Vec<_>) =
+            pre_cand.iter().partition(|entry| {
+                entry.attribute_equality(
+                    ValueAttribute::Class.as_str(),
+                    &ValueClass::DynGroup.into(),
+                )
+            });
 
-        let (n_dyn_groups, post_entries): (Vec<&Entry<_, _>>, Vec<_>) = cand
-            .iter()
-            .partition(|entry| entry.attribute_equality("class", &ValueClass::DynGroup.into()));
+        let (n_dyn_groups, post_entries): (Vec<&Entry<_, _>>, Vec<_>) =
+            cand.iter().partition(|entry| {
+                entry.attribute_equality(
+                    ValueAttribute::Class.as_str(),
+                    &ValueClass::DynGroup.into(),
+                )
+            });
 
         // DANGER: Why do we have to do this? During the use of qs for internal search
         // and other operations we need qs to be mut. But when we borrow dyn groups here we
@@ -374,7 +382,10 @@ mod tests {
                 ValueAttribute::Class.as_str(),
                 ValueClass::DynGroup.to_value()
             ),
-            ("name", Value::new_iname("test_dyngroup")),
+            (
+                ValueAttribute::Name.as_str(),
+                Value::new_iname("test_dyngroup")
+            ),
             (
                 "dyngroup_filter",
                 Value::JsonFilt(ProtoFilter::Eq("name".to_string(), "testgroup".to_string()))
@@ -383,8 +394,8 @@ mod tests {
 
         let e_group: Entry<EntryInit, EntryNew> = entry_init!(
             (ValueAttribute::Class.as_str(), ValueClass::Group.to_value()),
-            ("name", Value::new_iname("testgroup")),
-            ("uuid", Value::Uuid(UUID_TEST_GROUP))
+            (ValueAttribute::Name.as_str(), Value::new_iname("testgroup")),
+            (ValueAttribute::Uuid.as_str(), Value::Uuid(UUID_TEST_GROUP))
         );
 
         let preload = vec![e_group];
@@ -426,7 +437,10 @@ mod tests {
                 ValueAttribute::Class.as_str(),
                 ValueClass::DynGroup.to_value()
             ),
-            ("name", Value::new_iname("test_dyngroup")),
+            (
+                ValueAttribute::Name.as_str(),
+                Value::new_iname("test_dyngroup")
+            ),
             (
                 "dyngroup_filter",
                 Value::JsonFilt(ProtoFilter::Eq("name".to_string(), "testgroup".to_string()))
@@ -435,8 +449,8 @@ mod tests {
 
         let e_group: Entry<EntryInit, EntryNew> = entry_init!(
             (ValueAttribute::Class.as_str(), ValueClass::Group.to_value()),
-            ("name", Value::new_iname("testgroup")),
-            ("uuid", Value::Uuid(UUID_TEST_GROUP))
+            (ValueAttribute::Name.as_str(), Value::new_iname("testgroup")),
+            (ValueAttribute::Uuid.as_str(), Value::Uuid(UUID_TEST_GROUP))
         );
 
         let preload = vec![e_dyn];
@@ -478,7 +492,10 @@ mod tests {
                 ValueAttribute::Class.as_str(),
                 ValueClass::DynGroup.to_value()
             ),
-            ("name", Value::new_iname("test_dyngroup")),
+            (
+                ValueAttribute::Name.as_str(),
+                Value::new_iname("test_dyngroup")
+            ),
             (
                 "dyngroup_filter",
                 Value::JsonFilt(ProtoFilter::Eq(
@@ -490,8 +507,8 @@ mod tests {
 
         let e_group: Entry<EntryInit, EntryNew> = entry_init!(
             (ValueAttribute::Class.as_str(), ValueClass::Group.to_value()),
-            ("name", Value::new_iname("testgroup")),
-            ("uuid", Value::Uuid(UUID_TEST_GROUP))
+            (ValueAttribute::Name.as_str(), Value::new_iname("testgroup")),
+            (ValueAttribute::Uuid.as_str(), Value::Uuid(UUID_TEST_GROUP))
         );
 
         let preload = vec![e_dyn];
@@ -529,7 +546,10 @@ mod tests {
                 ValueAttribute::Class.as_str(),
                 ValueClass::DynGroup.to_value()
             ),
-            ("name", Value::new_iname("test_dyngroup")),
+            (
+                ValueAttribute::Name.as_str(),
+                Value::new_iname("test_dyngroup")
+            ),
             (
                 "dyngroup_filter",
                 Value::JsonFilt(ProtoFilter::Eq("name".to_string(), "testgroup".to_string()))
@@ -538,8 +558,8 @@ mod tests {
 
         let e_group: Entry<EntryInit, EntryNew> = entry_init!(
             (ValueAttribute::Class.as_str(), ValueClass::Group.to_value()),
-            ("name", Value::new_iname("testgroup")),
-            ("uuid", Value::Uuid(UUID_TEST_GROUP))
+            (ValueAttribute::Name.as_str(), Value::new_iname("testgroup")),
+            (ValueAttribute::Uuid.as_str(), Value::Uuid(UUID_TEST_GROUP))
         );
 
         let preload = vec![];
@@ -582,7 +602,10 @@ mod tests {
                 ValueAttribute::Class.as_str(),
                 ValueClass::DynGroup.to_value()
             ),
-            ("name", Value::new_iname("test_dyngroup")),
+            (
+                ValueAttribute::Name.as_str(),
+                Value::new_iname("test_dyngroup")
+            ),
             (
                 "dyngroup_filter",
                 Value::JsonFilt(ProtoFilter::Eq(
@@ -594,8 +617,8 @@ mod tests {
 
         let e_group: Entry<EntryInit, EntryNew> = entry_init!(
             (ValueAttribute::Class.as_str(), ValueClass::Group.to_value()),
-            ("name", Value::new_iname("testgroup")),
-            ("uuid", Value::Uuid(UUID_TEST_GROUP))
+            (ValueAttribute::Name.as_str(), Value::new_iname("testgroup")),
+            (ValueAttribute::Uuid.as_str(), Value::Uuid(UUID_TEST_GROUP))
         );
 
         let preload = vec![e_dyn, e_group];
@@ -646,7 +669,10 @@ mod tests {
                 ValueAttribute::Class.as_str(),
                 ValueClass::DynGroup.to_value()
             ),
-            ("name", Value::new_iname("test_dyngroup")),
+            (
+                ValueAttribute::Name.as_str(),
+                Value::new_iname("test_dyngroup")
+            ),
             (
                 "dyngroup_filter",
                 Value::JsonFilt(ProtoFilter::Eq("name".to_string(), "testgroup".to_string()))
@@ -655,8 +681,8 @@ mod tests {
 
         let e_group: Entry<EntryInit, EntryNew> = entry_init!(
             (ValueAttribute::Class.as_str(), ValueClass::Group.to_value()),
-            ("name", Value::new_iname("testgroup")),
-            ("uuid", Value::Uuid(UUID_TEST_GROUP))
+            (ValueAttribute::Name.as_str(), Value::new_iname("testgroup")),
+            (ValueAttribute::Uuid.as_str(), Value::Uuid(UUID_TEST_GROUP))
         );
 
         let preload = vec![e_dyn, e_group];
@@ -706,7 +732,10 @@ mod tests {
                 ValueAttribute::Class.as_str(),
                 ValueClass::DynGroup.to_value()
             ),
-            ("name", Value::new_iname("test_dyngroup")),
+            (
+                ValueAttribute::Name.as_str(),
+                Value::new_iname("test_dyngroup")
+            ),
             (
                 "dyngroup_filter",
                 Value::JsonFilt(ProtoFilter::Eq("name".to_string(), "testgroup".to_string()))
@@ -715,8 +744,8 @@ mod tests {
 
         let e_group: Entry<EntryInit, EntryNew> = entry_init!(
             (ValueAttribute::Class.as_str(), ValueClass::Group.to_value()),
-            ("name", Value::new_iname("testgroup")),
-            ("uuid", Value::Uuid(UUID_TEST_GROUP))
+            (ValueAttribute::Name.as_str(), Value::new_iname("testgroup")),
+            (ValueAttribute::Uuid.as_str(), Value::Uuid(UUID_TEST_GROUP))
         );
 
         let preload = vec![e_dyn, e_group];
@@ -765,7 +794,10 @@ mod tests {
                 ValueAttribute::Class.as_str(),
                 ValueClass::DynGroup.to_value()
             ),
-            ("name", Value::new_iname("test_dyngroup")),
+            (
+                ValueAttribute::Name.as_str(),
+                Value::new_iname("test_dyngroup")
+            ),
             (
                 "dyngroup_filter",
                 Value::JsonFilt(ProtoFilter::Eq("name".to_string(), "testgroup".to_string()))
@@ -774,8 +806,8 @@ mod tests {
 
         let e_group: Entry<EntryInit, EntryNew> = entry_init!(
             (ValueAttribute::Class.as_str(), ValueClass::Group.to_value()),
-            ("name", Value::new_iname("testgroup")),
-            ("uuid", Value::Uuid(UUID_TEST_GROUP))
+            (ValueAttribute::Name.as_str(), Value::new_iname("testgroup")),
+            (ValueAttribute::Uuid.as_str(), Value::Uuid(UUID_TEST_GROUP))
         );
 
         let preload = vec![e_dyn, e_group];
@@ -820,7 +852,10 @@ mod tests {
                 ValueAttribute::Class.as_str(),
                 ValueClass::DynGroup.to_value()
             ),
-            ("name", Value::new_iname("test_dyngroup")),
+            (
+                ValueAttribute::Name.as_str(),
+                Value::new_iname("test_dyngroup")
+            ),
             (
                 "dyngroup_filter",
                 Value::JsonFilt(ProtoFilter::Eq("name".to_string(), "testgroup".to_string()))
@@ -829,8 +864,11 @@ mod tests {
 
         let e_group: Entry<EntryInit, EntryNew> = entry_init!(
             (ValueAttribute::Class.as_str(), ValueClass::Group.to_value()),
-            ("name", Value::new_iname("not_testgroup")),
-            ("uuid", Value::Uuid(UUID_TEST_GROUP))
+            (
+                ValueAttribute::Name.as_str(),
+                Value::new_iname("not_testgroup")
+            ),
+            (ValueAttribute::Uuid.as_str(), Value::Uuid(UUID_TEST_GROUP))
         );
 
         let preload = vec![e_dyn, e_group];
@@ -843,8 +881,8 @@ mod tests {
                 PartialValue::new_iname("not_testgroup")
             )),
             ModifyList::new_list(vec![
-                Modify::Purged(AttrString::from("name"),),
-                Modify::Present(AttrString::from("name"), Value::new_iname("testgroup"))
+                Modify::Purged(ValueAttribute::Name.into(),),
+                Modify::Present(ValueAttribute::Name.into(), Value::new_iname("testgroup"))
             ]),
             None,
             |_| {},
@@ -878,7 +916,10 @@ mod tests {
                 ValueAttribute::Class.as_str(),
                 ValueClass::DynGroup.to_value()
             ),
-            ("name", Value::new_iname("test_dyngroup")),
+            (
+                ValueAttribute::Name.as_str(),
+                Value::new_iname("test_dyngroup")
+            ),
             (
                 "dyngroup_filter",
                 Value::JsonFilt(ProtoFilter::Eq("name".to_string(), "testgroup".to_string()))
@@ -887,8 +928,8 @@ mod tests {
 
         let e_group: Entry<EntryInit, EntryNew> = entry_init!(
             (ValueAttribute::Class.as_str(), ValueClass::Group.to_value()),
-            ("name", Value::new_iname("testgroup")),
-            ("uuid", Value::Uuid(UUID_TEST_GROUP))
+            (ValueAttribute::Name.as_str(), Value::new_iname("testgroup")),
+            (ValueAttribute::Uuid.as_str(), Value::Uuid(UUID_TEST_GROUP))
         );
 
         let preload = vec![e_dyn, e_group];
@@ -901,8 +942,11 @@ mod tests {
                 PartialValue::new_iname("testgroup")
             )),
             ModifyList::new_list(vec![
-                Modify::Purged(AttrString::from("name"),),
-                Modify::Present(AttrString::from("name"), Value::new_iname("not_testgroup"))
+                Modify::Purged(ValueAttribute::Name.into(),),
+                Modify::Present(
+                    ValueAttribute::Name.into(),
+                    Value::new_iname("not_testgroup")
+                )
             ]),
             None,
             |_| {},
@@ -932,7 +976,10 @@ mod tests {
                 ValueAttribute::Class.as_str(),
                 ValueClass::DynGroup.to_value()
             ),
-            ("name", Value::new_iname("test_dyngroup")),
+            (
+                ValueAttribute::Name.as_str(),
+                Value::new_iname("test_dyngroup")
+            ),
             (
                 "dyngroup_filter",
                 Value::JsonFilt(ProtoFilter::Eq("name".to_string(), "testgroup".to_string()))
@@ -941,8 +988,8 @@ mod tests {
 
         let e_group: Entry<EntryInit, EntryNew> = entry_init!(
             (ValueAttribute::Class.as_str(), ValueClass::Group.to_value()),
-            ("name", Value::new_iname("testgroup")),
-            ("uuid", Value::Uuid(UUID_TEST_GROUP))
+            (ValueAttribute::Name.as_str(), Value::new_iname("testgroup")),
+            (ValueAttribute::Uuid.as_str(), Value::Uuid(UUID_TEST_GROUP))
         );
 
         let preload = vec![e_dyn, e_group];
@@ -981,7 +1028,10 @@ mod tests {
                 ValueAttribute::Class.as_str(),
                 ValueClass::DynGroup.to_value()
             ),
-            ("name", Value::new_iname("test_dyngroup")),
+            (
+                ValueAttribute::Name.as_str(),
+                Value::new_iname("test_dyngroup")
+            ),
             (
                 "dyngroup_filter",
                 Value::JsonFilt(ProtoFilter::Eq("name".to_string(), "testgroup".to_string()))
@@ -990,8 +1040,8 @@ mod tests {
 
         let e_group: Entry<EntryInit, EntryNew> = entry_init!(
             (ValueAttribute::Class.as_str(), ValueClass::Group.to_value()),
-            ("name", Value::new_iname("testgroup")),
-            ("uuid", Value::Uuid(UUID_TEST_GROUP))
+            (ValueAttribute::Name.as_str(), Value::new_iname("testgroup")),
+            (ValueAttribute::Uuid.as_str(), Value::Uuid(UUID_TEST_GROUP))
         );
 
         let preload = vec![e_dyn, e_group];

@@ -1037,7 +1037,7 @@ impl QueryServerWriteV1 {
     ) -> Result<(), OperationError> {
         // Because this is from internal, we can generate a real modlist, rather
         // than relying on the proto ones.
-        let ml = ModifyList::new_append("ssh_publickey", Value::new_sshkey(tag, key));
+        let ml = ModifyList::new_append(ATTR_SSH_PUBLICKEY, Value::new_sshkey(tag, key));
 
         self.modify_from_internal_parts(uat, &uuid_or_name, &ml, filter)
             .await
@@ -1060,7 +1060,7 @@ impl QueryServerWriteV1 {
         // The filter_map here means we only create the mods if the gidnumber or shell are set
         // in the actual request.
         let mods: Vec<_> = iter::once(Some(Modify::Present(
-            "class".into(),
+            ValueAttribute::Class.into(),
             ValueClass::PosixAccount.into(),
         )))
         .chain(iter::once(
@@ -1113,7 +1113,7 @@ impl QueryServerWriteV1 {
             [None, None]
         };
         let mods: Vec<_> = iter::once(Some(Modify::Present(
-            "class".into(),
+            ValueAttribute::Class.into(),
             ValueClass::PosixGroup.into(),
         )))
         .chain(gidnumber_mods)

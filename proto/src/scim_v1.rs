@@ -7,6 +7,11 @@ pub use scim_proto::prelude::{ScimAttr, ScimComplexAttr, ScimEntry, ScimError, S
 pub use scim_proto::user::MultiValueAttr;
 use scim_proto::*;
 
+use crate::constants::{
+    ATTR_DESCRIPTION, ATTR_DISPLAYNAME, ATTR_GIDNUMBER, ATTR_LOGINSHELL, ATTR_MAIL, ATTR_MEMBER,
+    ATTR_NAME, ATTR_SSH_PUBLICKEY,
+};
+
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub enum ScimSyncState {
     Refresh,
@@ -163,14 +168,14 @@ impl Into<ScimEntry> for ScimSyncPerson {
 
         let mut attrs = BTreeMap::default();
 
-        set_string!(attrs, "name", user_name);
-        set_string!(attrs, "displayname", display_name);
-        set_option_u32!(attrs, "gidnumber", gidnumber);
+        set_string!(attrs, ATTR_NAME, user_name);
+        set_string!(attrs, ATTR_DISPLAYNAME, display_name);
+        set_option_u32!(attrs, ATTR_GIDNUMBER, gidnumber);
         set_option_string!(attrs, "password_import", password_import);
         set_multi_complex!(attrs, "totp_import", totp_import);
-        set_option_string!(attrs, "loginshell", login_shell);
-        set_multi_complex!(attrs, "mail", mail);
-        set_multi_complex!(attrs, "ssh_publickey", ssh_publickey);
+        set_option_string!(attrs, ATTR_LOGINSHELL, login_shell);
+        set_multi_complex!(attrs, ATTR_MAIL, mail);
+        set_multi_complex!(attrs, ATTR_SSH_PUBLICKEY, ssh_publickey);
 
         ScimEntry {
             schemas,
@@ -243,10 +248,10 @@ impl Into<ScimEntry> for ScimSyncGroup {
 
         let mut attrs = BTreeMap::default();
 
-        set_string!(attrs, "name", name);
-        set_option_u32!(attrs, "gidnumber", gidnumber);
-        set_option_string!(attrs, "description", description);
-        set_multi_complex!(attrs, "member", members);
+        set_string!(attrs, ATTR_NAME, name);
+        set_option_u32!(attrs, ATTR_GIDNUMBER, gidnumber);
+        set_option_string!(attrs, ATTR_DESCRIPTION, description);
+        set_multi_complex!(attrs, ATTR_MEMBER, members);
 
         ScimEntry {
             schemas,

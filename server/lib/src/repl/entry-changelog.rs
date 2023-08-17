@@ -222,7 +222,7 @@ impl EntryChangelog {
 
         // We need to pick a state that reflects the current state WRT to tombstone
         // or recycled!
-        let class = attrs.get("class");
+        let class = attrs.get(ValueAttribute::Class.as_str());
 
         let (anchors, changes) = if class
             .as_ref()
@@ -416,7 +416,7 @@ impl EntryChangelog {
                         | State::Recycled(ref mut attrs)
                         | State::Tombstone(ref mut attrs) => {
                             let cv = vs_cid![change_cid.clone()];
-                            let _ = attrs.insert(AttrString::from("last_modified_cid"), cv);
+                            let _ = attrs.insert(ValueAttribute::LastModifiedCid.into(), cv);
                         }
                     };
                     new_state

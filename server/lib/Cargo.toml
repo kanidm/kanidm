@@ -25,6 +25,7 @@ base64urlsafedata = { workspace = true }
 compact_jwt = { workspace = true, features = ["openssl"] }
 concread = { workspace = true }
 dyn-clone = { workspace = true }
+enum-iterator = { workspace = true }
 fernet = { workspace = true, features = ["fernet_danger_timestamps"] }
 filetime = { workspace = true }
 # futures-util = { workspace = true }

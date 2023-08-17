@@ -1,4 +1,5 @@
 use crate::{ClientError, KanidmClient};
+use kanidm_proto::constants::{ATTR_DESCRIPTION, ATTR_NAME};
 use kanidm_proto::v1::Entry;
 use std::collections::BTreeMap;
 use url::Url;
@@ -66,11 +67,11 @@ impl KanidmClient {
 
         new_acct
             .attrs
-            .insert("name".to_string(), vec![name.to_string()]);
+            .insert(ATTR_NAME.to_string(), vec![name.to_string()]);
         if let Some(description) = description {
             new_acct
                 .attrs
-                .insert("description".to_string(), vec![description.to_string()]);
+                .insert(ATTR_DESCRIPTION.to_string(), vec![description.to_string()]);
         }
 
         self.perform_post_request("/v1/sync_account", new_acct)

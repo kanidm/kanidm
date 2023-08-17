@@ -38,7 +38,7 @@ impl EntryChangeState {
     }
 
     pub fn new_without_schema(cid: &Cid, attrs: &Eattrs) -> Self {
-        let class = attrs.get("class");
+        let class = attrs.get(ValueAttribute::Class.as_str());
         let st = if class
             .as_ref()
             .map(|c| c.contains(&ValueClass::Tombstone.to_partialvalue()))
@@ -172,7 +172,7 @@ impl EntryChangeState {
         entry_id: u64,
         results: &mut Vec<Result<(), ConsistencyError>>,
     ) {
-        let class = expected_attrs.get("class");
+        let class = expected_attrs.get(ValueAttribute::Class.as_str());
         let is_ts = class
             .as_ref()
             .map(|c| c.contains(&ValueClass::Tombstone.to_partialvalue()))
