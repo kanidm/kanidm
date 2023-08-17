@@ -334,6 +334,14 @@ macro_rules! filter_all {
     }};
 }
 
+#[macro_export]
+/// Build a filter which matches class == input
+macro_rules! match_class_filter {
+    ($class:expr) => {
+        ProtoFilter::Eq(ValueAttribute::Class.to_string(), $class.to_string())
+    };
+}
+
 #[cfg(test)]
 #[allow(unused_macros)]
 #[macro_export]
