@@ -1120,7 +1120,11 @@ impl AuthSession {
                     AuthType::UnixPassword | AuthType::Anonymous => SessionScope::ReadOnly,
                     AuthType::GeneratedPassword => SessionScope::ReadWrite,
                     AuthType::Password | AuthType::PasswordMfa | AuthType::Passkey => {
-                        SessionScope::PrivilegeCapable
+                        if privileged {
+                            SessionScope::ReadWrite
+                        } else {
+                            SessionScope::PrivilegeCapable
+                        }
                     }
                 };
 
@@ -1286,7 +1290,7 @@ mod tests {
         let (session, state) = AuthSession::new(
             anon_account,
             AuthIssueSession::Token,
-            Some(false),
+            false,
             &webauthn,
             duration_from_epoch_now(),
             Source::Internal,
