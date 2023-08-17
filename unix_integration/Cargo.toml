@@ -65,7 +65,15 @@ serde_json = { workspace = true }
 sketching = { workspace = true }
 
 toml = { workspace = true }
-tokio = { workspace = true, features = ["rt", "fs", "macros", "sync", "time", "net", "io-util"] }
+tokio = { workspace = true, features = [
+    "rt",
+    "fs",
+    "macros",
+    "sync",
+    "time",
+    "net",
+    "io-util",
+] }
 tokio-util = { workspace = true, features = ["codec"] }
 tracing = { workspace = true }
 tss-esapi = { workspace = true, optional = true }
