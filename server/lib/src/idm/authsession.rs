@@ -1355,9 +1355,7 @@ mod tests {
         }};
     }
 
-    #[test]
-    fn test_idm_authsession_simple_password_mech() {
-        sketching::test_init();
+    fn start_session_simple_password_mech(privileged: bool) -> () {
         let webauthn = create_webauthn();
         // create the ent
         let mut account = entry_to_account!(E_ADMIN_V1.clone());
@@ -1396,7 +1394,7 @@ mod tests {
         // === Now begin a new session, and use a good pw.
 
         let (mut session, pw_badlist_cache) =
-            start_password_session!(&mut audit, account, &webauthn, false);
+            start_password_session!(&mut audit, account, &webauthn, privileged);
 
         let attempt = AuthCredential::Password("test_password".to_string());
         match session.validate_creds(
@@ -1421,6 +1419,12 @@ mod tests {
         assert!(async_rx.blocking_recv().is_none());
         drop(audit_tx);
         assert!(audit_rx.blocking_recv().is_none());
+    }
+
+    #[test]
+    fn test_idm_authsession_simple_password_mech() {
+        sketching::test_init();
+        start_session_simple_password_mech(false);
     }
 
     #[test]
