@@ -1,8 +1,6 @@
 use std::collections::BTreeMap;
 
-use kanidm_proto::constants::{
-    ATTR_DESCRIPTION, ATTR_DISPLAYNAME, ATTR_LEGALNAME, ATTR_MAIL, ATTR_NAME,
-};
+use kanidm_proto::constants::*;
 use kanidm_proto::internal::{IdentifyUserRequest, IdentifyUserResponse};
 use kanidm_proto::v1::{
     AccountUnixExtend, CredentialStatus, Entry, SingleStringRequest, UatStatus,
@@ -34,7 +32,7 @@ impl KanidmClient {
             .insert(ATTR_NAME.to_string(), vec![name.to_string()]);
         new_acct
             .attrs
-            .insert(ATTR_DESCRIPTION.to_string(), vec![displayname.to_string()]);
+            .insert(ATTR_DISPLAYNAME.to_string(), vec![displayname.to_string()]);
         self.perform_post_request("/v1/person", new_acct).await
     }
 
