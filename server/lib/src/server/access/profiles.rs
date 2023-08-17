@@ -302,7 +302,7 @@ impl AccessControlProfile {
 
         // === ⚠️   WARNING!!! ⚠️  ===
         // See struct ACP for details.
-        let receiver = value.get_ava_single_refer("acp_receiver_group");
+        let receiver = value.get_ava_single_refer(ATTR_ACP_RECEIVER_GROUP);
         /*
         .ok_or_else(|| {
             admin_error!("Missing acp_receiver_group");

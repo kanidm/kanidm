@@ -676,9 +676,9 @@ impl<'a> QueryServerWriteTransaction<'a> {
         debug_assert!(res.is_ok());
         res?;
 
-        let idm_entries = [
+        let idm_entries: [EntryInitNew; 43] = [
             // Built in access controls.
-            E_IDM_ADMINS_ACP_RECYCLE_SEARCH_V1.clone(),
+            IDM_ADMINS_ACP_RECYCLE_SEARCH_V1.clone().into(),
             E_IDM_ADMINS_ACP_REVIVE_V1.clone(),
             E_IDM_ALL_ACP_READ_V1.clone(),
             E_IDM_SELF_ACP_READ_V1.clone(),
