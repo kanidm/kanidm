@@ -1500,6 +1500,7 @@ async fn test_repl_increment_schema_conflict(server_a: &QueryServer, server_b: &
     let modlist = ModifyList::new_list(vec![
         Modify::Removed("class".into(), PVCLASS_PERSON.clone()),
         Modify::Present("class".into(), CLASS_GROUP.clone()),
+        Modify::Purged("id_verification_eckey".into()),
         Modify::Purged("displayname".into()),
     ]);
     assert!(server_b_txn.internal_modify_uuid(t_uuid, &modlist).is_ok());

@@ -107,6 +107,10 @@ impl QueryServer {
             if system_info_version < 14 {
                 write_txn.migrate_13_to_14()?;
             }
+
+            if system_info_version < 15 {
+                write_txn.migrate_14_to_15()?;
+            }
         }
 
         write_txn.reload()?;
@@ -417,6 +421,17 @@ impl<'a> QueryServerWriteTransaction<'a> {
         let filter = filter!(f_eq("class", PVCLASS_DYNGROUP.clone()));
         // Delete the incorrectly added "member" attr.
         let modlist = ModifyList::new_purge("member");
+        self.internal_modify(&filter, &modlist)
+        // Complete
+    }
+
+    #[instrument(level = "debug", skip_all)]
+    pub fn migrate_14_to_15(&mut self) -> Result<(), OperationError> {
+        admin_warn!("starting 14 to 15 migration.");
+        let filter = filter!(f_eq("class", PVCLASS_PERSON.clone()));
+        // Delete the non-existing attr for idv private key which triggers
+        // it to regen.
+        let modlist = ModifyList::new_purge("id_verification_eckey");
         self.internal_modify(&filter, &modlist)
         // Complete
     }
