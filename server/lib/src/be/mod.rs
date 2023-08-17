@@ -946,6 +946,10 @@ impl<'a> BackendReadTransaction<'a> {
     pub fn get_id2entry(&mut self, id: u64) -> Result<(u64, String), OperationError> {
         self.get_idlayer().get_id2entry(id)
     }
+
+    pub fn list_quarantined(&mut self) -> Result<Vec<(u64, String)>, OperationError> {
+        self.get_idlayer().list_quarantined()
+    }
 }
 
 impl<'a> BackendTransaction for BackendWriteTransaction<'a> {
@@ -1759,6 +1763,20 @@ impl<'a> BackendWriteTransaction<'a> {
         self.get_ruv().rebuild(&entries)?;
 
         Ok(())
+    }
+
+    pub fn quarantine_entry(&mut self, id: u64) -> Result<(), OperationError> {
+        self.get_idlayer().quarantine_entry(id)?;
+        // We have to set the index version to 0 so that on next start we force
+        // a reindex to automatically occur.
+        self.set_db_index_version(0)
+    }
+
+    pub fn restore_quarantined(&mut self, id: u64) -> Result<(), OperationError> {
+        self.get_idlayer().restore_quarantined(id)?;
+        // We have to set the index version to 0 so that on next start we force
+        // a reindex to automatically occur.
+        self.set_db_index_version(0)
     }
 
     pub fn commit(self) -> Result<(), OperationError> {

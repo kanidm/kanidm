@@ -101,6 +101,28 @@ enum DbScanOpt {
     #[clap(name = "list-index-analysis")]
     /// List all content of index analysis
     ListIndexAnalysis(CommonOpt),
+    #[clap(name = "quarantine-id2entry")]
+    /// Given an entry id, quarantine the entry in a hidden db partition
+    QuarantineId2Entry {
+        /// The id of the entry to display
+        id: u64,
+        #[clap(flatten)]
+        commonopts: CommonOpt,
+    },
+    #[clap(name = "list-quarantined")]
+    /// List the entries in quarantine
+    ListQuarantined {
+        #[clap(flatten)]
+        commonopts: CommonOpt,
+    },
+    #[clap(name = "restore-quarantined")]
+    /// Given an entry id, restore the entry from the hidden db partition
+    RestoreQuarantined {
+        /// The id of the entry to display
+        id: u64,
+        #[clap(flatten)]
+        commonopts: CommonOpt,
+    },
 }
 
 #[derive(Debug, Parser)]

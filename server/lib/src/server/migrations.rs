@@ -103,6 +103,10 @@ impl QueryServer {
             if system_info_version < 13 {
                 write_txn.migrate_12_to_13()?;
             }
+
+            if system_info_version < 14 {
+                write_txn.migrate_13_to_14()?;
+            }
         }
 
         write_txn.reload()?;
@@ -403,6 +407,16 @@ impl<'a> QueryServerWriteTransaction<'a> {
         ]));
         // Delete the existing cookie key to trigger a regeneration.
         let modlist = ModifyList::new_purge("private_cookie_key");
+        self.internal_modify(&filter, &modlist)
+        // Complete
+    }
+
+    #[instrument(level = "debug", skip_all)]
+    pub fn migrate_13_to_14(&mut self) -> Result<(), OperationError> {
+        admin_warn!("starting 13 to 14 migration.");
+        let filter = filter!(f_eq("class", PVCLASS_DYNGROUP.clone()));
+        // Delete the incorrectly added "member" attr.
+        let modlist = ModifyList::new_purge("member");
         self.internal_modify(&filter, &modlist)
         // Complete
     }

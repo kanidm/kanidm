@@ -164,7 +164,7 @@ impl Plugin for ReferentialIntegrity {
         qs.internal_apply_writable(work_set)
     }
 
-    #[instrument(level = "debug", name = "verify", skip(qs))]
+    #[instrument(level = "debug", name = "refint::verify", skip_all)]
     fn verify(qs: &mut QueryServerReadTransaction) -> Vec<Result<(), ConsistencyError>> {
         // Get all entries as cand
         //      build a cand-uuid set
@@ -232,6 +232,7 @@ impl ReferentialIntegrity {
                 if skip_mb || skip_mo {
                     None
                 } else {
+                    trace!(rtype_name = ?rtype.name, "examining");
                     c.get_ava_set(&rtype.name)
                 }
             })

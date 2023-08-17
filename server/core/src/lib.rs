@@ -238,6 +238,57 @@ pub fn dbscan_get_id2entry_core(config: &Configuration, id: u64) {
     };
 }
 
+pub fn dbscan_quarantine_id2entry_core(config: &Configuration, id: u64) {
+    let be = dbscan_setup_be!(config);
+    let mut be_wrtxn = be.write();
+
+    match be_wrtxn
+        .quarantine_entry(id)
+        .and_then(|_| be_wrtxn.commit())
+    {
+        Ok(()) => {
+            println!("quarantined - {:>8}", id)
+        }
+        Err(e) => {
+            error!("Failed to quarantine id2entry value: {:?}", e);
+        }
+    };
+}
+
+pub fn dbscan_list_quarantined_core(config: &Configuration) {
+    let be = dbscan_setup_be!(config);
+    let mut be_rotxn = be.read();
+
+    match be_rotxn.list_quarantined() {
+        Ok(mut id_list) => {
+            id_list.sort_unstable_by_key(|k| k.0);
+            id_list.iter().for_each(|(id, value)| {
+                println!("{:>8}: {}", id, value);
+            })
+        }
+        Err(e) => {
+            error!("Failed to retrieve id2entry list: {:?}", e);
+        }
+    };
+}
+
+pub fn dbscan_restore_quarantined_core(config: &Configuration, id: u64) {
+    let be = dbscan_setup_be!(config);
+    let mut be_wrtxn = be.write();
+
+    match be_wrtxn
+        .restore_quarantined(id)
+        .and_then(|_| be_wrtxn.commit())
+    {
+        Ok(()) => {
+            println!("restored - {:>8}", id)
+        }
+        Err(e) => {
+            error!("Failed to restore quarantined id2entry value: {:?}", e);
+        }
+    };
+}
+
 pub fn backup_server_core(config: &Configuration, dst_path: &str) {
     let schema = match Schema::new() {
         Ok(s) => s,
