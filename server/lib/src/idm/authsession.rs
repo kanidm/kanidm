@@ -1320,12 +1320,13 @@ mod tests {
         (
             $audit:expr,
             $account:expr,
-            $webauthn:expr
+            $webauthn:expr,
+            $privileged:expr
         ) => {{
             let (session, state) = AuthSession::new(
                 $account.clone(),
                 AuthIssueSession::Token,
-                Some(false),
+                $privileged,
                 $webauthn,
                 duration_from_epoch_now(),
                 Source::Internal,
@@ -1370,7 +1371,7 @@ mod tests {
 
         // now check
         let (mut session, pw_badlist_cache) =
-            start_password_session!(&mut audit, account, &webauthn);
+            start_password_session!(&mut audit, account, &webauthn, false);
 
         let attempt = AuthCredential::Password("bad_password".to_string());
         let jws_signer = create_jwt_signer();
@@ -1395,7 +1396,7 @@ mod tests {
         // === Now begin a new session, and use a good pw.
 
         let (mut session, pw_badlist_cache) =
-            start_password_session!(&mut audit, account, &webauthn);
+            start_password_session!(&mut audit, account, &webauthn, false);
 
         let attempt = AuthCredential::Password("test_password".to_string());
         match session.validate_creds(
@@ -1439,7 +1440,7 @@ mod tests {
 
         // now check, even though the password is correct, Auth should be denied since it is in badlist
         let (mut session, pw_badlist_cache) =
-            start_password_session!(&mut audit, account, &webauthn);
+            start_password_session!(&mut audit, account, &webauthn, false);
 
         let attempt = AuthCredential::Password("list@no3IBTyqHu$bad".to_string());
         match session.validate_creds(
@@ -1474,7 +1475,7 @@ mod tests {
             let (session, state) = AuthSession::new(
                 $account.clone(),
                 AuthIssueSession::Token,
-                Some(false),
+                false,
                 $webauthn,
                 duration_from_epoch_now(),
                 Source::Internal,
@@ -1801,7 +1802,7 @@ mod tests {
             let (session, state) = AuthSession::new(
                 $account.clone(),
                 AuthIssueSession::Token,
-                Some(false),
+                false,
                 $webauthn,
                 duration_from_epoch_now(),
                 Source::Internal,
