@@ -79,11 +79,11 @@ serde_with = { workspace = true }
 
 # because windows really can't build without the bundled one
 [target.'cfg(target_family = "windows")'.dependencies]
-rusqlite = { workspace = true, features = ["array", "bundled"] }
+rusqlite = { workspace = true, features = ["bundled"] }
 whoami = { workspace = true }
 
 [target.'cfg(not(target_family = "windows"))'.dependencies]
-rusqlite = { workspace = true, features = ["array"] }
+rusqlite = { workspace = true }
 kanidm_utils_users = { workspace = true }
 
 [features]

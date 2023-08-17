@@ -8,7 +8,6 @@ use std::time::Duration;
 use hashbrown::HashMap;
 use idlset::v2::IDLBitRange;
 use kanidm_proto::v1::{ConsistencyError, OperationError};
-use rusqlite::vtab::array::Array;
 use rusqlite::{Connection, OpenFlags, OptionalExtension};
 use uuid::Uuid;
 
@@ -158,31 +157,47 @@ pub trait IdlSqliteTransaction {
                     .collect()
             }
             IdList::Partial(idli) | IdList::PartialThreshold(idli) | IdList::Indexed(idli) => {
-                let mut id_list: Vec<rusqlite::types::Value> = vec![];
-                for item in idli.into_iter() {
-                    id_list.push(rusqlite::types::Value::Integer(
-                        i64::try_from(item).map_err(|_| OperationError::InvalidEntryId)?,
-                    ));
-                }
-
                 let mut stmt = self
                     .get_conn()?
                     .prepare(&format!(
-                        "SELECT id, data FROM {}.id2entry WHERE id IN (:idl)",
+                        "SELECT id, data FROM {}.id2entry WHERE id = :idl",
                         self.get_db_name()
                     ))
                     .map_err(sqlite_error)?;
 
-                let mut results: Vec<IdRawEntry> = vec![];
-                let _ = stmt
-                    .query_map(&[(":idl", &Array::from(id_list))], |row| {
-                        results.push(IdRawEntry {
-                            id: row.get(0)?,
-                            data: row.get(1)?,
-                        });
-                        Ok(())
-                    })
-                    .map_err(sqlite_error)?;
+                // TODO #258: Can this actually just load in a single select?
+                // TODO #258: I have no idea how to make this an iterator chain ... so what
+                // I have now is probably really bad :(
+                let mut results = Vec::new();
+
+                /*
+                let decompressed: Result<Vec<i64>, _> = idli.into_iter()
+                    .map(|u| i64::try_from(u).map_err(|_| OperationError::InvalidEntryId))
+                    .collect();
+                */
+
+                for id in idli {
+                    let iid = i64::try_from(id).map_err(|_| OperationError::InvalidEntryId)?;
+                    let id2entry_iter = stmt
+                        .query_map([&iid], |row| {
+                            Ok(IdSqliteEntry {
+                                id: row.get(0)?,
+                                data: row.get(1)?,
+                            })
+                        })
+                        .map_err(sqlite_error)?;
+
+                    let r: Result<Vec<_>, _> = id2entry_iter
+                        .map(|v| {
+                            v.map_err(sqlite_error).and_then(|ise| {
+                                // Convert the idsqlite to id raw
+                                ise.try_into()
+                            })
+                        })
+                        .collect();
+                    let mut r = r?;
+                    results.append(&mut r);
+                }
                 Ok(results)
             }
         }
