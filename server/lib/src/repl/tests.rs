@@ -1746,8 +1746,8 @@ async fn test_repl_increment_schema_conflict(server_a: &QueryServer, server_b: &
     let ct = ct + Duration::from_secs(1);
     let mut server_b_txn = server_b.write(ct).await;
     let modlist = ModifyList::new_list(vec![
-        Modify::Removed("class".into(), ValueClassClass::Person.into()),
-        Modify::Present("class".into(), ValueClassClass::Group.into()),
+        Modify::Removed("class".into(), ValueClass::Person.into()),
+        Modify::Present("class".into(), ValueClass::Group.into()),
         Modify::Purged("id_verification_eckey".into()),
         Modify::Purged("displayname".into()),
     ]);

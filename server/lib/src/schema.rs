@@ -2789,12 +2789,6 @@ mod tests {
     fn test_schema_filter_validation() {
         let schema_outer = Schema::new().expect("failed to create schema");
         let schema = schema_outer.read();
-        // Test non existent attr name
-        // let f_mixed = filter_all!(f_eq(ValueAttribute::MembernonClAsS", ValueClass::AttributeType.into()));
-        // assert_eq!(
-        //     f_mixed.validate(&schema),
-        //     Err(SchemaError::InvalidAttribute("nonclass".to_string()))
-        // );
 
         // test syntax of bool
         let f_bool = filter_all!(f_eq(
