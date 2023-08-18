@@ -8,7 +8,7 @@ use crate::value::Value;
 use kanidm_proto::v1::Filter as ProtoFilter;
 
 #[derive(Clone)]
-/// Built-in Acess Control Profile definitions
+/// Built-in Access Control Profile definitions
 pub struct BuiltinAcp {
     classes: Vec<EntryClass>,
     name: &'static str,
