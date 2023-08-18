@@ -628,7 +628,7 @@ mod test {
         name.truncate(14);
         entry_init!(
             (ATTR_CLASS, ValueClass::Object.to_value()),
-            (ATTR_CLASS, ValueClass::Class.to_value()),
+            (ATTR_CLASS, ValueClass::Account.to_value()),
             (ATTR_CLASS, ValueClass::Person.to_value()),
             (ATTR_NAME, Value::new_iname(&name)),
             (ATTR_UUID, Value::Uuid(uuid)),
@@ -640,7 +640,7 @@ mod test {
     fn create_invalid_user_account(uuid: Uuid) -> EntryInitNew {
         entry_init!(
             (ATTR_CLASS, ValueClass::Object.to_value()),
-            (ATTR_CLASS, ValueClass::Class.to_value()),
+            (ATTR_CLASS, ValueClass::Account.to_value()),
             (ATTR_CLASS, ValueClass::ServiceAccount.to_value()),
             (ATTR_NAME, Value::new_iname("invalid_user")),
             (ATTR_UUID, Value::Uuid(uuid)),

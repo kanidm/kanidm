@@ -4,11 +4,6 @@ use openssl::nid::Nid;
 use crate::prelude::*;
 
 use super::Plugin;
-use crate::event::{CreateEvent, ModifyEvent};
-use crate::modify::{ModifyList, ModifyValid};
-use crate::server::QueryServerWriteTransaction;
-use sketching::tagged_event;
-use sketching::EventTag;
 
 lazy_static! {
     // it contains all the partialvalues used to match against an Entry's class,
@@ -23,17 +18,12 @@ lazy_static! {
 pub struct EcdhKeyGen {}
 
 impl EcdhKeyGen {
-    fn is_entry_to_update<VALUE, STATE>(entry: &mut Entry<VALUE, STATE>) -> bool {
-        CLASSES_TO_UPDATE
-            .iter()
-            .all(|pv| entry.attribute_equality(ATTR_CLASS, pv))
-    }
     // we optionally provide a target_cand to update only the entry with the given uuid
     fn generate_key<STATE: Clone>(
         cands: &mut [Entry<EntryInvalid, STATE>],
     ) -> Result<(), OperationError> {
         for cand in cands.iter_mut() {
-            if cand.attribute_equality("class", &PVCLASS_PERSON)
+            if cand.attribute_equality("class", &ValueClass::Person.into())
                 && !cand.attribute_pres("id_verification_eckey")
             {
                 debug!("Generating idv_eckey for {}", cand.get_display_id());
@@ -49,49 +39,6 @@ impl EcdhKeyGen {
             }
         }
         Ok(())
-    }
-
-    fn handle_modify(
-        cands: &mut [EntryInvalidCommitted],
-        me: &ModifyEvent,
-    ) -> Result<(), OperationError> {
-        if Self::should_regenerate_ecdh_key(&me.modlist)? {
-            security_info!("regenerating personal ecdh secret");
-            Self::generate_key(cands, None)?;
-        };
-
-        Ok(())
-    }
-
-    fn handle_batch_modify(
-        cands: &mut [EntryInvalidCommitted],
-        me: &BatchModifyEvent,
-    ) -> Result<(), OperationError> {
-        for (uuid, modlist) in me.modset.iter() {
-            if Self::should_regenerate_ecdh_key(modlist)? {
-                security_info!("regenerating personal ecdh secret");
-                Self::generate_key(cands, Some(*uuid))?;
-            };
-        }
-        Ok(())
-    }
-
-    fn should_regenerate_ecdh_key(
-        modlist: &ModifyList<ModifyValid>,
-    ) -> Result<bool, OperationError> {
-        let modify_present_attempted = modlist.iter().any(|m| match m {
-            Modify::Present(a, _) => a == ATTR_ID_VERIFICATION_ECKEY,
-            _ => false,
-        });
-        if modify_present_attempted {
-            Err(OperationError::SystemProtectedAttribute)
-        } else {
-            let should_regenerate_ecdh_key = modlist.iter().any(|m| match m {
-                Modify::Purged(a) | Modify::Removed(a, _) => a == ATTR_ID_VERIFICATION_ECKEY,
-                _ => false,
-            });
-            Ok(should_regenerate_ecdh_key)
-        }
     }
 }
 
