@@ -52,6 +52,7 @@ uuid = { workspace=true }
 zxcvbn = { workspace=true }
 regex.workspace = true
 lazy_static.workspace = true
+cursive = "0.20.0"
 
 [build-dependencies]
 clap = { workspace = true, features = ["derive"] }
