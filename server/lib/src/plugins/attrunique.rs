@@ -184,7 +184,11 @@ impl Plugin for AttrUnique {
         "plugin_attrunique"
     }
 
-    #[instrument(level = "debug", name = "attrunique_pre_create_transform", skip_all)]
+    #[instrument(
+        level = "debug",
+        name = "attrunique_pre_create_transform",
+        skip(qs, _ce)
+    )]
     fn pre_create_transform(
         qs: &mut QueryServerWriteTransaction,
         cand: &mut Vec<Entry<EntryInvalid, EntryNew>>,

@@ -4,10 +4,10 @@ use crate::server::Plugins;
 
 impl<'a> QueryServerWriteTransaction<'a> {
     #[instrument(level = "debug", skip_all)]
+    /// The create event is a raw, read only representation of the request
+    /// that was made to us, including information about the identity
+    /// performing the request.
     pub fn create(&mut self, ce: &CreateEvent) -> Result<(), OperationError> {
-        // The create event is a raw, read only representation of the request
-        // that was made to us, including information about the identity
-        // performing the request.
         if !ce.ident.is_internal() {
             security_info!(name = %ce.ident, "create initiator");
         }

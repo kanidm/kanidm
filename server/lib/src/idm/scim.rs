@@ -1166,7 +1166,10 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 "sync_class".into(),
                 Value::new_iutf8(req_class),
             ));
-            mods.push(Modify::Present("class".into(), Value::new_iutf8(req_class)));
+            mods.push(Modify::Present(
+                ValueClass::Class.into(),
+                Value::new_iutf8(req_class),
+            ));
         }
 
         // Clean up from removed classes. NEED THE OLD ENTRY FOR THIS.

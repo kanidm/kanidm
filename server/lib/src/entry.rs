@@ -1173,9 +1173,9 @@ impl Entry<EntryInvalid, EntryCommitted> {
     /// Convert this entry into a recycled entry, that is "in the recycle bin".
     pub fn to_revived(mut self) -> Self {
         // This will put the modify ahead of the revive transition.
-        self.remove_ava(ValueAttribute::Class.into(), &ValueClass::Recycled.into());
-        self.remove_ava(ValueAttribute::Class.into(), &ValueClass::Conflict.into());
-        self.purge_ava(ValueClass::SourceUuid.into());
+        self.remove_ava(ATTR_CLASS, &ValueClass::Recycled.into());
+        self.remove_ava(ATTR_CLASS, &ValueClass::Conflict.into());
+        self.purge_ava(ATTR_SOURCE_UUID);
 
         // Change state repl doesn't need this flag
         // self.valid.ecstate.revive(&self.valid.cid);

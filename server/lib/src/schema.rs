@@ -825,7 +825,7 @@ impl<'a> SchemaWriteTransaction<'a> {
         // Bootstrap in definitions of our own schema types
         // First, add all the needed core attributes for schema parsing
         self.attributes.insert(
-            ValueAttribute::Class.into(),
+            ValueClass::Class.into(),
             SchemaAttribute {
                 name: ValueAttribute::Class.into(),
                 uuid: UUID_SCHEMA_ATTR_CLASS,
