@@ -1,3 +1,4 @@
+use crate::pam_data::PamData;
 use crate::unix_proto::ProviderResult;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
@@ -66,6 +67,7 @@ pub trait IdProvider {
         &self,
         id: &Id,
         cred: Option<&str>,
+        data: Option<PamData>,
     ) -> Result<ProviderResult, IdpError>;
 
     async fn unix_group_get(&self, id: &Id) -> Result<GroupToken, IdpError>;

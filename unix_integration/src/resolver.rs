@@ -13,6 +13,7 @@ use uuid::Uuid;
 
 use crate::db::{Cache, CacheTxn, Db};
 use crate::idprovider::interface::{GroupToken, Id, IdProvider, IdpError, UserToken};
+use crate::pam_data::PamData;
 use crate::unix_config::{HomeAttr, UidAttr};
 use crate::unix_proto::{
     ClientResponse, HomeDirectoryInfo, NssGroup, NssUser, PamCred, PamPrompt, ProviderResult,
@@ -736,6 +737,7 @@ where
         token: &Option<UserToken>,
         account_id: &Id,
         cred: Option<PamCred>,
+        data: Option<PamData>,
     ) -> Result<ClientResponse, ()> {
         debug!("Attempt online password check");
         // Unwrap the cred for passing to the step function
@@ -747,7 +749,7 @@ where
         // We are online, attempt the pw to the server.
         match self
             .client
-            .unix_user_authenticate_step(account_id, ucred.as_deref())
+            .unix_user_authenticate_step(account_id, ucred.as_deref(), data)
             .await
         {
             Ok(ProviderResult::UserToken(Some(mut n_tok))) => {
@@ -887,6 +889,7 @@ where
         &self,
         account_id: &str,
         cred: Option<PamCred>,
+        data: Option<PamData>,
     ) -> Result<ClientResponse, ()> {
         let id = Id::Name(account_id.to_string());
 
@@ -894,12 +897,16 @@ where
         let (_expired, token) = self.get_cached_usertoken(&id).await?;
 
         match state {
-            CacheState::Online => self.online_account_authenticate(&token, &id, cred).await,
+            CacheState::Online => {
+                self.online_account_authenticate(&token, &id, cred, data)
+                    .await
+            }
             CacheState::OfflineNextCheck(_time) => {
                 // Always attempt to go online to attempt the authentication.
                 if self.test_connection().await {
                     // Brought ourselves online, lets check.
-                    self.online_account_authenticate(&token, &id, cred).await
+                    self.online_account_authenticate(&token, &id, cred, data)
+                        .await
                 } else {
                     // We are offline, check from the cache if possible.
                     self.offline_account_authenticate(&token, cred).await

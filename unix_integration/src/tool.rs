@@ -110,14 +110,16 @@ async fn main() -> ExitCode {
                         };
                         match prompt.cred_type {
                             Some(CredType::Password) => {
-                                req = ClientRequest::PamAuthenticateStep(Some(PamCred::Password(
-                                    password,
-                                )));
+                                req = ClientRequest::PamAuthenticateStep(
+                                    Some(PamCred::Password(password)),
+                                    prompt.data,
+                                );
                             }
                             _ => {
-                                req = ClientRequest::PamAuthenticateStep(Some(PamCred::MFACode(
-                                    password,
-                                )));
+                                req = ClientRequest::PamAuthenticateStep(
+                                    Some(PamCred::MFACode(password)),
+                                    prompt.data,
+                                );
                             }
                         }
                     }
@@ -133,24 +135,26 @@ async fn main() -> ExitCode {
                         passcode = passcode.trim_end_matches('\n').to_string();
                         match prompt.cred_type {
                             Some(CredType::Password) => {
-                                req = ClientRequest::PamAuthenticateStep(Some(PamCred::Password(
-                                    passcode,
-                                )));
+                                req = ClientRequest::PamAuthenticateStep(
+                                    Some(PamCred::Password(passcode)),
+                                    prompt.data,
+                                );
                             }
                             _ => {
-                                req = ClientRequest::PamAuthenticateStep(Some(PamCred::MFACode(
-                                    passcode,
-                                )));
+                                req = ClientRequest::PamAuthenticateStep(
+                                    Some(PamCred::MFACode(passcode)),
+                                    prompt.data,
+                                );
                             }
                         }
                     }
                     PamMessageStyle::PamErrorMsg => {
                         error!(prompt.msg);
-                        req = ClientRequest::PamAuthenticateStep(None);
+                        req = ClientRequest::PamAuthenticateStep(None, prompt.data);
                     }
                     PamMessageStyle::PamTextInfo => {
                         info!(prompt.msg);
-                        req = ClientRequest::PamAuthenticateStep(None);
+                        req = ClientRequest::PamAuthenticateStep(None, prompt.data);
                     }
                 }
             }

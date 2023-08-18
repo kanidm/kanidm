@@ -4,6 +4,7 @@ use kanidm_proto::v1::{OperationError, UnixGroupToken, UnixUserToken};
 use tokio::sync::RwLock;
 
 use super::interface::{GroupToken, Id, IdProvider, IdpError, UserToken};
+use crate::pam_data::PamData;
 use crate::unix_proto::{PamPrompt, ProviderResult};
 
 pub struct KanidmProvider {
@@ -146,6 +147,7 @@ impl IdProvider for KanidmProvider {
         &self,
         id: &Id,
         cred: Option<&str>,
+        _data: Option<PamData>,
     ) -> Result<ProviderResult, IdpError> {
         let cred = match cred {
             Some(cred) => cred,

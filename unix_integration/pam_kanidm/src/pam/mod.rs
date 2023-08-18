@@ -286,10 +286,16 @@ impl PamHooks for PamKanidm {
                     };
                     match prompt.cred_type {
                         Some(CredType::Password) => {
-                            req = ClientRequest::PamAuthenticateStep(Some(PamCred::Password(resp)));
+                            req = ClientRequest::PamAuthenticateStep(
+                                Some(PamCred::Password(resp)),
+                                prompt.data,
+                            );
                         }
                         _ => {
-                            req = ClientRequest::PamAuthenticateStep(Some(PamCred::MFACode(resp)));
+                            req = ClientRequest::PamAuthenticateStep(
+                                Some(PamCred::MFACode(resp)),
+                                prompt.data,
+                            );
                         }
                     }
                     // We've consumed any authtok, delete it
@@ -305,7 +311,7 @@ impl PamHooks for PamKanidm {
                             return err;
                         }
                     }
-                    req = ClientRequest::PamAuthenticateStep(None);
+                    req = ClientRequest::PamAuthenticateStep(None, prompt.data);
                 }
                 _ => {
                     return PamResultCode::PAM_IGNORE;
