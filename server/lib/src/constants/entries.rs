@@ -11,7 +11,9 @@ use kanidm_proto::constants::*;
 use kanidm_proto::v1::{OperationError, UiHint};
 
 #[cfg(test)]
-use uuid::{uuid, Uuid};
+use uuid::uuid;
+
+use uuid::Uuid;
 
 #[test]
 fn test_valueattribute_as_str() {
@@ -663,18 +665,18 @@ lazy_static! {
         member: UUID_IDM_ADMIN,
     };
     /// Builtin IDM Administrators Group.
-    // pub static ref E_IDM_ADMINS_V1: EntryInitNew = IDM_ADMINS_V1.clone().into();
-    pub static ref E_IDM_ADMINS_V1: EntryInitNew = entry_init!(
-        (Attribute::Class.as_str(), EntryClass::Group.to_value()),
-        (Attribute::Class.as_str(), EntryClass::Object.to_value()),
-        (Attribute::Name.as_str(), Value::new_iname("idm_admins")),
-        (Attribute::Uuid.as_str(), Value::Uuid(UUID_IDM_ADMINS)),
-        (
-            Attribute::Description.as_str(),
-            Value::new_utf8s("Builtin IDM Administrators Group.")
-        ),
-        (Attribute::Member.as_str(), Value::Refer(UUID_IDM_ADMIN))
-    );
+    pub static ref E_IDM_ADMINS_V1: EntryInitNew = IDM_ADMINS_V1.clone().into();
+    // pub static ref E_IDM_ADMINS_V1: EntryInitNew = entry_init!(
+    //     (Attribute::Class.as_str(), EntryClass::Group.to_value()),
+    //     (Attribute::Class.as_str(), EntryClass::Object.to_value()),
+    //     (Attribute::Name.as_str(), Value::new_iname("idm_admins")),
+    //     (Attribute::Uuid.as_str(), Value::Uuid(UUID_IDM_ADMINS)),
+    //     (
+    //         Attribute::Description.as_str(),
+    //         Value::new_utf8s("Builtin IDM Administrators Group.")
+    //     ),
+    //     (Attribute::Member.as_str(), Value::Refer(UUID_IDM_ADMIN))
+    // );
 }
 
 lazy_static! {
@@ -1213,35 +1215,98 @@ lazy_static! {
 }
 
 // Anonymous should be the last object in the range here.
-pub const JSON_ANONYMOUS_V1: &str = r#"{
-    "attrs": {
-        "class": ["account", "service_account", "object"],
-        "name": ["anonymous"],
-        "uuid": ["00000000-0000-0000-0000-ffffffffffff"],
-        "description": ["Anonymous access account."],
-        "displayname": ["Anonymous"]
+// pub const JSON_ANONYMOUS_V1: &str = r#"{
+//     "attrs": {
+//         "class": ["account", "service_account", "object"],
+//         "name": ["anonymous"],
+//         "uuid": ["00000000-0000-0000-0000-ffffffffffff"],
+//         "description": ["Anonymous access account."],
+//         "displayname": ["Anonymous"]
+//     }
+// }"#;
+
+#[derive(Debug, Clone)]
+/// Built in accounts such as anonymous, idm_admin and admin
+pub struct BuiltinAccount {
+    pub classes: Vec<EntryClass>,
+    pub name: &'static str,
+    pub uuid: Uuid,
+    pub description: &'static str,
+    pub displayname: &'static str,
+}
+
+impl Default for BuiltinAccount {
+    fn default() -> Self {
+        BuiltinAccount {
+            classes: [EntryClass::Object].to_vec(),
+            name: "",
+            uuid: Uuid::new_v4(),
+            description: "<set description>",
+            displayname: "<set displayname>",
+        }
     }
-}"#;
+}
+
+impl From<BuiltinAccount> for EntryInitNew {
+    fn from(value: BuiltinAccount) -> Self {
+        let mut entry = EntryInitNew::new();
+        entry.add_ava(Attribute::Name.as_str(), Value::new_iname(value.name));
+        entry.add_ava(Attribute::Uuid.as_str(), Value::Uuid(value.uuid));
+        entry.add_ava(
+            Attribute::Description.as_str(),
+            Value::new_utf8s(value.description),
+        );
+        entry.add_ava(
+            Attribute::DisplayName.as_str(),
+            Value::new_utf8s(value.displayname),
+        );
+
+        entry.add_ava(Attribute::Class.as_str(), EntryClass::Object.to_value());
+        entry.add_ava(Attribute::Class.as_str(), EntryClass::Account.to_value());
+        entry.set_ava(
+            Attribute::Class.as_str(),
+            value
+                .classes
+                .into_iter()
+                .map(|c| c.to_value())
+                .collect::<Vec<Value>>(),
+        );
+
+        entry
+    }
+}
 
 lazy_static! {
-    pub static ref E_ANONYMOUS_V1: EntryInitNew = entry_init!(
-        (Attribute::Class.as_str(), EntryClass::Object.to_value()),
-        (Attribute::Class.as_str(), EntryClass::Account.to_value()),
-        (
-            Attribute::Class.as_str(),
-            EntryClass::ServiceAccount.to_value()
-        ),
-        (Attribute::Name.as_str(), Value::new_iname("anonymous")),
-        (Attribute::Uuid.as_str(), Value::Uuid(UUID_ANONYMOUS)),
-        (
-            Attribute::Description.as_str(),
-            Value::new_utf8s("Anonymous access account.")
-        ),
-        (
-            Attribute::DisplayName.as_str(),
-            Value::new_utf8s("Anonymous")
-        )
-    );
+    // pub static ref E_ANONYMOUS_V1: EntryInitNew = entry_init!(
+    //     (Attribute::Class.as_str(), EntryClass::Object.to_value()),
+    //     (Attribute::Class.as_str(), EntryClass::Account.to_value()),
+    //     (
+    //         Attribute::Class.as_str(),
+    //         EntryClass::ServiceAccount.to_value()
+    //     ),
+    //     (Attribute::Name.as_str(), Value::new_iname("anonymous")),
+    //     (Attribute::Uuid.as_str(), Value::Uuid(UUID_ANONYMOUS)),
+    //     (
+    //         Attribute::Description.as_str(),
+    //         Value::new_utf8s("Anonymous access account.")
+    //     ),
+    //     (
+    //         Attribute::DisplayName.as_str(),
+    //         Value::new_utf8s("Anonymous")
+    //     )
+    // );
+    pub static ref ACCOUNT_ANONYMOUS_V1: BuiltinAccount = BuiltinAccount {
+        classes: [
+            EntryClass::Account,
+            EntryClass::ServiceAccount,
+            EntryClass::Object,
+        ].to_vec(),
+        name: "anonymous",
+        uuid: UUID_ANONYMOUS,
+        description: "Anonymous access account.",
+        displayname: "Anonymous",
+    };
+    pub static ref E_ANONYMOUS_V1: EntryInitNew = ACCOUNT_ANONYMOUS_V1.clone().into();
 }
 
 // ============ TEST DATA ============
