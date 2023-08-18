@@ -10,43 +10,23 @@
 #![deny(clippy::trivially_copy_pass_by_ref)]
 // We allow expect since it forces good error messages at the least.
 #![allow(clippy::expect_used)]
-#![allow(warnings)]
 #[macro_use]
 extern crate tracing;
 
 use crate::common::OpType;
-use async_recursion::async_recursion;
 use cursive::{
     align::HAlign,
-    event::{Event, EventResult},
     view::{Nameable, Resizable},
-    views::{Dialog, DummyView, EditView, LinearLayout, TextView, ViewRef},
-    CbSink, Cursive, CursiveExt, CursiveRunner, View,
+    views::{Dialog, DummyView, EditView, LinearLayout, TextView},
+    CbSink, Cursive, CursiveExt, View,
 };
-use dialoguer::{console::Term, theme::ColorfulTheme, Confirm, Input};
 use kanidm_client::KanidmClient;
 use kanidm_proto::internal::{IdentifyUserRequest, IdentifyUserResponse};
 use regex::Regex;
-use std::{
-    borrow::BorrowMut,
-    cell::RefCell,
-    f32::consts::E,
-    io::{stdin, stdout, Write},
-    path::PathBuf,
-    sync::Arc,
-    time::{Duration, SystemTime},
-};
-use tokio::{
-    join,
-    runtime::{self, Builder},
-    sync::{
-        mpsc::{
-            channel, error::TryRecvError, unbounded_channel, UnboundedReceiver, UnboundedSender,
-        },
-        oneshot::{self, Receiver},
-    },
-    task,
-    time::interval,
+use std::{cell::RefCell, path::PathBuf, sync::Arc, time::SystemTime};
+use tokio::sync::{
+    mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender},
+    oneshot::{self, Receiver},
 };
 use url::Url;
 use uuid::Uuid;
@@ -113,12 +93,7 @@ impl SelfOpt {
                     }
                 };
 
-                let spn = match whoami_response
-                    .attrs
-                    .get("spn")
-                    .map(|v| v.first())
-                    .flatten()
-                {
+                let spn = match whoami_response.attrs.get("spn").and_then(|v| v.first()) {
                     Some(spn) => spn,
                     None => {
                         eprintln!("Failed to retrieve the id from whoami response :/\nExiting....");
@@ -220,17 +195,20 @@ lazy_static::lazy_static! {
 }
 // here I used a simple function instead of a struct because all the channel stuff requires ownership, so if we were to use a struct with a `run` method, it would have to take ownership of everything
 // so might as well just use a function
-pub async fn run_identity_verification_tui(self_id: &String, client: KanidmClient) {
+pub async fn run_identity_verification_tui(self_id: &str, client: KanidmClient) {
     //unbounded channel to send messages to the controller from the ui
-    let (controller_tx, mut controller_rx) = unbounded_channel::<IdentifyUserMsg>();
+    let (controller_tx, controller_rx) = unbounded_channel::<IdentifyUserMsg>();
     // unbounded channel to send messages to the ui from the controller
-    let (ui_tx, mut ui_rx) = unbounded_channel::<IdentifyUserState>();
+    let (ui_tx, ui_rx) = unbounded_channel::<IdentifyUserState>();
 
     // we manually send the initial start message
-    controller_tx.send(IdentifyUserMsg::Start);
+    if controller_tx.send(IdentifyUserMsg::Start).is_err() {
+        eprint!("Failed to send the initial start message to the controller! Aborting...");
+        return;
+    };
 
     // oneshot channel to get the callback sink from the ui
-    let (cb_tx, mut cb_rx) = oneshot::channel::<CbSink>();
+    let (cb_tx, cb_rx) = oneshot::channel::<CbSink>();
     // we start the ui in its own thread
     let gui_handle = std::thread::spawn(move || {
         let mut ui = Ui::new(controller_tx, ui_rx);
@@ -250,9 +228,9 @@ pub async fn run_identity_verification_tui(self_id: &String, client: KanidmClien
 
 async fn start_business_logic_loop(
     mut controller_rx: UnboundedReceiver<IdentifyUserMsg>,
-    mut cb_rx: Receiver<CbSink>,
+    cb_rx: Receiver<CbSink>,
     ui_tx: UnboundedSender<IdentifyUserState>,
-    self_id: &String,
+    self_id: &str,
     client: KanidmClient,
 ) {
     let Ok(cb) = cb_rx.await else {
@@ -263,14 +241,12 @@ async fn start_business_logic_loop(
     let send_msg_and_call_callback = |msg: IdentifyUserState| {
         if ui_tx.send(msg).is_err() {
             eprintln!("UI channel closed too soon! Aborting..."); // TODO: what the hell are we supposed to tell the user?
-            return;
         }
         if cb.send(Box::new(Ui::update_state_callback)).is_err() {
             eprintln!("Callback channel closed too soon! Aborting..."); // TODO: what the hell are we supposed to tell the user?
-            return;
         };
     };
-    let self_id = Arc::new(self_id.clone());
+    let self_id = Arc::new(self_id.to_string());
     // conveniently when the `quit()` is called on the ui it also drops the controller_tx since it's stored in the `user_data` so as per the doc `controller_rx.recv()` will return None and therefore the loop will exit
     while let Some(msg) = controller_rx.recv().await {
         // ** NEVER EVER CALL `break` inside the loop as it will drop the mpsc receiver and sender and the ui won't be able to process whatever message is sent to it
@@ -287,13 +263,13 @@ async fn start_business_logic_loop(
             ),
             IdentifyUserMsg::CodeConfirmedFirst { other_id } => {
                 send_msg_and_call_callback(IdentifyUserState::WaitForCode {
-                    other_id: other_id.clone(), // I know it's bad cloning but organizing things this way allows us to just have this clone and the one below throughout the whole loop
+                    other_id: other_id.clone(),
                 });
                 continue;
             }
             IdentifyUserMsg::CodeConfirmedSecond { other_id } => {
                 send_msg_and_call_callback(IdentifyUserState::Success {
-                    other_id: other_id.clone(), // (the second clone mentioned above)
+                    other_id: other_id.clone(),
                 });
                 continue;
             }
@@ -302,7 +278,7 @@ async fn start_business_logic_loop(
                 (other_id, IdentifyUserRequest::DisplayCode)
             }
         };
-        let res = match client.idm_person_identify_user(&id, req).await {
+        let res = match client.idm_person_identify_user(id, req).await {
             Ok(res) => res,
             Err(e) => {
                 let err = IdentifyUserState::Error {
@@ -330,7 +306,7 @@ async fn start_business_logic_loop(
             },
             IdentifyUserResponse::Success => {
                 match msg {
-                    IdentifyUserMsg::SubmitCode { code, other_id } => IdentifyUserState::Success { other_id },
+                    IdentifyUserMsg::SubmitCode {  other_id, .. } => IdentifyUserState::Success { other_id },
                      _ => IdentifyUserState::invalid_state_error()
                 }
             },
@@ -406,7 +382,6 @@ impl Ui {
         ui_rx: UnboundedReceiver<IdentifyUserState>,
     ) -> Self {
         let mut cursive = Cursive::new();
-        let controller_tx_clone = controller_tx.clone();
         cursive.add_global_callback('q', |s| {
             s.quit();
         });
@@ -455,9 +430,13 @@ impl Ui {
                         EditView::new()
                             .content("sample@id.com")
                             .on_submit(move |s, user_id: &str| {
-                                &controller_tx.send(IdentifyUserMsg::SubmitOtherId {
-                                    other_id: Arc::new(user_id.to_string()),
-                                });
+                                let send_outcome =
+                                    controller_tx.send(IdentifyUserMsg::SubmitOtherId {
+                                        other_id: Arc::new(user_id.to_string()),
+                                    });
+                                if send_outcome.is_err() {
+                                    s.quit();
+                                };
                                 Self::loading_view(s);
                             })
                             .with_name("id-user-input"),
@@ -469,14 +448,26 @@ impl Ui {
                             s.quit();
                         })
                         .button("Continue", move |s| {
-                            let user_id = s
+                            let user_id = match s
                                 .call_on_name("id-user-input", |view: &mut EditView| {
                                     view.get_content()
-                                })
-                                .unwrap();
-                            controller_tx_clone.send(IdentifyUserMsg::SubmitOtherId {
-                                other_id: Arc::new(user_id.to_string()),
-                            });
+                                }) {
+                                Some(user_id) => user_id,
+                                None => {
+                                    return Self::error_state_view(
+                                        s,
+                                        "Couldn't get the id-user-input view",
+                                    )
+                                }
+                            };
+
+                            let send_outcome =
+                                controller_tx_clone.send(IdentifyUserMsg::SubmitOtherId {
+                                    other_id: Arc::new(user_id.to_string()),
+                                });
+                            if send_outcome.is_err() {
+                                s.quit();
+                            };
                             Self::loading_view(s);
                         }),
                 );
@@ -496,10 +487,15 @@ impl Ui {
                             .content("123456")
                             .on_submit(move |s, code: &str| {
                                 let code_u32 = code.parse::<u32>().unwrap(); // TODO: show user feedback
-                                &controller_tx.send(IdentifyUserMsg::SubmitCode {
-                                    code: code_u32,
-                                    other_id: other_id_clone.clone(),
-                                });
+                                if controller_tx
+                                    .send(IdentifyUserMsg::SubmitCode {
+                                        code: code_u32,
+                                        other_id: other_id_clone.clone(),
+                                    })
+                                    .is_err()
+                                {
+                                    s.quit();
+                                };
                                 Self::loading_view(s);
                             })
                             .with_name("totp-input"),
@@ -510,16 +506,27 @@ impl Ui {
                             s.quit();
                         })
                         .button("Continue", move |s| {
-                            let code = s
-                                .call_on_name("totp-input", |view: &mut EditView| {
-                                    view.get_content()
-                                })
-                                .unwrap();
+                            let code = match s.call_on_name("totp-input", |view: &mut EditView| {
+                                view.get_content()
+                            }) {
+                                Some(code) => code,
+                                None => {
+                                    return Self::error_state_view(
+                                        s,
+                                        "Couldn't get the totp-input view",
+                                    )
+                                }
+                            };
+
                             let code_u32 = code.parse::<u32>().unwrap(); // TODO: show user feedback
-                            controller_tx_clone.send(IdentifyUserMsg::SubmitCode {
-                                code: code_u32,
-                                other_id: other_id.clone(),
-                            });
+                            let send_outcome =
+                                controller_tx_clone.send(IdentifyUserMsg::SubmitCode {
+                                    code: code_u32,
+                                    other_id: other_id.clone(),
+                                });
+                            if send_outcome.is_err() {
+                                s.quit();
+                            };
                             Self::loading_view(s);
                         }),
                 );
@@ -532,7 +539,7 @@ impl Ui {
                 s.pop_layer();
                 let layout = LinearLayout::vertical()
                     .child(TextView::new(format!(
-                        "Provide the following code when asked: {self_totp}"
+                        "Provide the following code when asked: {self_totp}" // TODO: improve timer alignment
                     )))
                     .child(TotpCountdownView::new(
                         step as u64,
@@ -544,7 +551,7 @@ impl Ui {
                 s.add_layer(Dialog::around(layout).button("Continue", move |s| {
                     Self::confirmation_view(
                         s,
-                        other_id.clone(),
+                        &other_id,
                         controller_tx.clone(),
                         IdentifyUserMsg::CodeConfirmedFirst {
                             other_id: other_id.clone(),
@@ -560,7 +567,7 @@ impl Ui {
                 s.pop_layer();
                 let layout = LinearLayout::vertical()
                     .child(TextView::new(format!(
-                        "Provide the following code when asked: {self_totp}"
+                        "Provide the following code when asked: {self_totp}" // TODO: improve timer alignment
                     )))
                     .child(TotpCountdownView::new(
                         step as u64,
@@ -572,7 +579,7 @@ impl Ui {
                 s.add_layer(Dialog::around(layout).button("Continue", move |s| {
                     Self::confirmation_view(
                         s,
-                        other_id.clone(),
+                        &other_id,
                         controller_tx.clone(),
                         IdentifyUserMsg::CodeConfirmedSecond {
                             other_id: other_id.clone(),
@@ -586,9 +593,14 @@ impl Ui {
                     "{other_id}'s identity has been successfully verified!"
                 )));
 
-                s.add_layer(Dialog::around(layout).button("Quit", |s| {
-                    s.quit();
-                }));
+                s.add_layer(
+                    Dialog::around(layout)
+                        .padding_lrtb(1, 1, 1, 0)
+                        .title("Success 🎉🎉")
+                        .button("Quit", |s| {
+                            s.quit();
+                        }),
+                );
             }
             IdentifyUserState::Error { msg } => Self::error_state_view(s, &msg),
         };
@@ -612,15 +624,19 @@ impl Ui {
 
     fn confirmation_view(
         s: &mut Cursive,
-        other_id: Arc<String>,
+        other_id: &Arc<String>,
         controller_tx: UnboundedSender<IdentifyUserMsg>,
         msg: IdentifyUserMsg,
     ) {
+        s.pop_layer();
         s.add_layer(
             Dialog::around(TextView::new(format!("Did you confirm that {other_id} correctly verified your code? If you proceed, you won't be able to go back.")))
                 .button("Yes, proceed", move |s| {
                     s.pop_layer();
-                    controller_tx.send(msg.to_owned());
+                    let send_outcome  = controller_tx.send(msg.to_owned());
+                    if send_outcome.is_err() {
+                        s.quit();
+                    };
                 })
                 .button("No, exit", |s| {
                     s.quit();
@@ -651,7 +667,6 @@ impl Ui {
 
 struct TotpCountdownView {
     msg: IdentifyUserMsg,
-    ticks_left: u64,
     step: u64,
     controller_tx: UnboundedSender<IdentifyUserMsg>,
     should_call_callback: RefCell<bool>, // we need to use a refcell since we need to mutate this data inside the `draw` method which has a `&self` reference
@@ -666,24 +681,23 @@ impl TotpCountdownView {
         Self {
             should_call_callback: RefCell::new(true),
             msg,
-            ticks_left: Self::get_ticks_left_from_now(step),
             step,
             controller_tx,
         }
     }
 
-    fn get_ticks_left_from_now(step: u64) -> u64 {
+    fn get_ticks_left_from_now(&self, step: u64) -> u64 {
         #[allow(clippy::expect_used)]
         let dur = SystemTime::now()
             .duration_since(SystemTime::UNIX_EPOCH)
             .expect("invalid duration from epoch now");
-        (step - dur.as_secs() % (step))
+        step - dur.as_secs() % (step)
     }
 }
 
 impl View for TotpCountdownView {
     fn draw(&self, printer: &cursive::Printer) {
-        let ticks_left_from_now = Self::get_ticks_left_from_now(self.step);
+        let ticks_left_from_now = self.get_ticks_left_from_now(self.step);
         // basically whenever the ticks_left reset to step, i.e. the first time this function has been called after we got to a new totp window, then we
         // call the callback to fetch a new code which will be displayed at best in the next tick. On very slow connections the user might see the old
         // code for a bit. If we want to get rid of this we would need to pass to the struct a callback to show a loading screen
