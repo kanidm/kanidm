@@ -50,7 +50,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             .modset
             .keys()
             .copied()
-            .map(|u| f_eq(ValueAttribute::Uuid, PartialValue::Uuid(u)))
+            .map(|u| f_eq(Attribute::Uuid, PartialValue::Uuid(u)))
             .collect();
 
         let filter = filter_all!(f_or(filter_or))
@@ -186,13 +186,11 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 .iter()
                 .chain(pre_candidates.iter().map(|e| e.as_ref()))
                 .any(|e| {
-                    e.attribute_equality(
-                        ValueAttribute::Class.as_str(),
-                        &ValueClass::ClassType.into(),
-                    ) || e.attribute_equality(
-                        ValueAttribute::Class.as_str(),
-                        &ValueClass::AttributeType.into(),
-                    )
+                    e.attribute_equality(Attribute::Class.as_str(), &EntryClass::ClassType.into())
+                        || e.attribute_equality(
+                            Attribute::Class.as_str(),
+                            &EntryClass::AttributeType.into(),
+                        )
                 });
         }
         if !self.changed_acp {
@@ -201,8 +199,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 .chain(pre_candidates.iter().map(|e| e.as_ref()))
                 .any(|e| {
                     e.attribute_equality(
-                        ValueAttribute::Class.as_str(),
-                        &ValueClass::AccessControlProfile.into(),
+                        Attribute::Class.as_str(),
+                        &EntryClass::AccessControlProfile.into(),
                     )
                 });
         }
@@ -212,8 +210,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 .chain(pre_candidates.iter().map(|e| e.as_ref()))
                 .any(|e| {
                     e.attribute_equality(
-                        ValueAttribute::Class.as_str(),
-                        &ValueClass::OAuth2ResourceServer.into(),
+                        Attribute::Class.as_str(),
+                        &EntryClass::OAuth2ResourceServer.into(),
                     )
                 });
         }
@@ -221,7 +219,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             self.changed_domain = norm_cand
                 .iter()
                 .chain(pre_candidates.iter().map(|e| e.as_ref()))
-                .any(|e| e.attribute_equality(ValueAttribute::Uuid.as_str(), &PVUUID_DOMAIN_INFO));
+                .any(|e| e.attribute_equality(Attribute::Uuid.as_str(), &PVUUID_DOMAIN_INFO));
         }
 
         self.changed_uuid.extend(
@@ -279,18 +277,12 @@ mod tests {
         assert!(server_txn
             .internal_create(vec![
                 entry_init!(
-                    (
-                        ValueAttribute::Class.as_str(),
-                        ValueClass::Object.to_value()
-                    ),
-                    (ValueAttribute::Uuid.as_str(), Value::Uuid(uuid_a))
+                    (Attribute::Class.as_str(), EntryClass::Object.to_value()),
+                    (Attribute::Uuid.as_str(), Value::Uuid(uuid_a))
                 ),
                 entry_init!(
-                    (
-                        ValueAttribute::Class.as_str(),
-                        ValueClass::Object.to_value()
-                    ),
-                    (ValueAttribute::Uuid.as_str(), Value::Uuid(uuid_b))
+                    (Attribute::Class.as_str(), EntryClass::Object.to_value()),
+                    (Attribute::Uuid.as_str(), Value::Uuid(uuid_b))
                 ),
             ])
             .is_ok());
@@ -302,14 +294,14 @@ mod tests {
                     (
                         uuid_a,
                         ModifyList::new_append(
-                            ValueAttribute::Description.as_str(),
+                            Attribute::Description.as_str(),
                             Value::Utf8("a".into())
                         )
                     ),
                     (
                         uuid_b,
                         ModifyList::new_append(
-                            ValueAttribute::Description.as_str(),
+                            Attribute::Description.as_str(),
                             Value::Utf8("b".into())
                         )
                     ),
@@ -326,7 +318,7 @@ mod tests {
             .internal_search_uuid(uuid_b)
             .expect("Failed to get entry.");
 
-        assert!(ent_a.get_ava_single_utf8(ValueAttribute::Description.as_str()) == Some("a"));
-        assert!(ent_b.get_ava_single_utf8(ValueAttribute::Description.as_str()) == Some("b"));
+        assert!(ent_a.get_ava_single_utf8(Attribute::Description.as_str()) == Some("a"));
+        assert!(ent_b.get_ava_single_utf8(Attribute::Description.as_str()) == Some("b"));
     }
 }

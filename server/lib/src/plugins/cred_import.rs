@@ -191,10 +191,7 @@ mod tests {
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq(
-                ValueAttribute::Name,
-                PartialValue::new_iutf8("testperson")
-            )),
+            filter!(f_eq(Attribute::Name, PartialValue::new_iutf8("testperson"))),
             ModifyList::new_list(vec![Modify::Present(
                 AttrString::from("password_import"),
                 Value::from(IMPORT_HASH)
@@ -229,10 +226,7 @@ mod tests {
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq(
-                ValueAttribute::Name,
-                PartialValue::new_iutf8("testperson")
-            )),
+            filter!(f_eq(Attribute::Name, PartialValue::new_iutf8("testperson"))),
             ModifyList::new_list(vec![Modify::Present(
                 AttrString::from("password_import"),
                 Value::from(IMPORT_HASH)
@@ -270,10 +264,7 @@ mod tests {
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq(
-                ValueAttribute::Name,
-                PartialValue::new_iutf8("testperson")
-            )),
+            filter!(f_eq(Attribute::Name, PartialValue::new_iutf8("testperson"))),
             ModifyList::new_list(vec![Modify::Present(
                 AttrString::from("password_import"),
                 Value::from(IMPORT_HASH)
@@ -304,27 +295,18 @@ mod tests {
         let euuid = Uuid::new_v4();
 
         let ea = entry_init!(
+            (Attribute::Class.as_str(), EntryClass::Account.to_value()),
+            (Attribute::Class.as_str(), EntryClass::Person.to_value()),
+            (Attribute::Name.as_str(), Value::new_iname("testperson")),
             (
-                ValueAttribute::Class.as_str(),
-                ValueClass::Account.to_value()
-            ),
-            (
-                ValueAttribute::Class.as_str(),
-                ValueClass::Person.to_value()
-            ),
-            (
-                ValueAttribute::Name.as_str(),
-                Value::new_iname("testperson")
-            ),
-            (
-                ValueAttribute::Description.as_str(),
+                Attribute::Description.as_str(),
                 Value::Utf8("testperson".to_string())
             ),
             (
-                ValueAttribute::DisplayName.as_str(),
+                Attribute::DisplayName.as_str(),
                 Value::Utf8("testperson".to_string())
             ),
-            (ValueAttribute::Uuid.as_str(), Value::Uuid(euuid))
+            (Attribute::Uuid.as_str(), Value::Uuid(euuid))
         );
 
         let preload = vec![ea];
@@ -335,10 +317,7 @@ mod tests {
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq(
-                ValueAttribute::Name,
-                PartialValue::new_iutf8("testperson")
-            )),
+            filter!(f_eq(Attribute::Name, PartialValue::new_iutf8("testperson"))),
             ModifyList::new_list(vec![
                 Modify::Present(
                     AttrString::from("password_import"),
@@ -380,27 +359,18 @@ mod tests {
         let euuid = Uuid::new_v4();
 
         let ea = entry_init!(
+            (Attribute::Class.as_str(), EntryClass::Account.to_value()),
+            (Attribute::Class.as_str(), EntryClass::Person.to_value()),
+            (Attribute::Name.as_str(), Value::new_iname("testperson")),
             (
-                ValueAttribute::Class.as_str(),
-                ValueClass::Account.to_value()
-            ),
-            (
-                ValueAttribute::Class.as_str(),
-                ValueClass::Person.to_value()
-            ),
-            (
-                ValueAttribute::Name.as_str(),
-                Value::new_iname("testperson")
-            ),
-            (
-                ValueAttribute::Description.as_str(),
+                Attribute::Description.as_str(),
                 Value::Utf8("testperson".to_string())
             ),
             (
-                ValueAttribute::DisplayName.as_str(),
+                Attribute::DisplayName.as_str(),
                 Value::Utf8("testperson".to_string())
             ),
-            (ValueAttribute::Uuid.as_str(), Value::Uuid(euuid))
+            (Attribute::Uuid.as_str(), Value::Uuid(euuid))
         );
 
         let preload = vec![ea];
@@ -413,10 +383,7 @@ mod tests {
                     .to_string()
             ))),
             preload,
-            filter!(f_eq(
-                ValueAttribute::Name,
-                PartialValue::new_iutf8("testperson")
-            )),
+            filter!(f_eq(Attribute::Name, PartialValue::new_iutf8("testperson"))),
             ModifyList::new_list(vec![Modify::Present(
                 AttrString::from("totp_import"),
                 Value::TotpSecret("a".to_string(), totp_a)

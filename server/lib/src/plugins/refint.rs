@@ -36,7 +36,7 @@ impl ReferentialIntegrity {
 
         let inner = inner
             .into_iter()
-            .map(|pv| f_eq(ValueAttribute::Uuid, pv))
+            .map(|pv| f_eq(Attribute::Uuid, pv))
             .collect();
 
         // F_inc(lusion). All items of inner must be 1 or more, or the filter
@@ -144,7 +144,7 @@ impl Plugin for ReferentialIntegrity {
                 .flat_map(|u| ref_types.values().filter_map(move |r_type| {
                     let value_attribute = r_type.name.to_string();
                     // For everything that references the uuid's in the deleted set.
-                    let val: Result<ValueAttribute, OperationError> = value_attribute.try_into();
+                    let val: Result<Attribute, OperationError> = value_attribute.try_into();
                     // error!("{:?}", val);
                     let res = match val {
                         Ok(val) => {
@@ -184,7 +184,7 @@ impl Plugin for ReferentialIntegrity {
     fn verify(qs: &mut QueryServerReadTransaction) -> Vec<Result<(), ConsistencyError>> {
         // Get all entries as cand
         //      build a cand-uuid set
-        let filt_in = filter_all!(f_pres(ValueAttribute::Class.as_str()));
+        let filt_in = filter_all!(f_pres(Attribute::Class.as_str()));
 
         let all_cand = match qs
             .internal_search(filt_in)
@@ -239,7 +239,7 @@ impl ReferentialIntegrity {
         let mut vsiter = cand.iter().flat_map(|c| {
             // If it's dyngroup, skip member since this will be reset in the next step.
             let dyn_group =
-                c.attribute_equality(ValueAttribute::Class.as_str(), &ValueClass::DynGroup.into());
+                c.attribute_equality(Attribute::Class.as_str(), &EntryClass::DynGroup.into());
 
             ref_types.values().filter_map(move |rtype| {
                 // Skip dynamic members
@@ -354,7 +354,7 @@ mod tests {
             |qs: &mut QueryServerWriteTransaction| {
                 let cands = qs
                     .internal_search(filter!(f_eq(
-                        ValueAttribute::Name,
+                        Attribute::Name,
                         PartialValue::new_iname("testgroup_b")
                     )))
                     .expect("Internal search failure");
@@ -390,7 +390,7 @@ mod tests {
             |qs: &mut QueryServerWriteTransaction| {
                 let cands = qs
                     .internal_search(filter!(f_eq(
-                        ValueAttribute::Name,
+                        Attribute::Name,
                         PartialValue::new_iname("testgroup")
                     )))
                     .expect("Internal search failure");
@@ -429,7 +429,7 @@ mod tests {
             Ok(()),
             preload,
             filter!(f_eq(
-                ValueAttribute::Name,
+                Attribute::Name,
                 PartialValue::new_iname("testgroup_b")
             )),
             ModifyList::new_list(vec![Modify::Present(
@@ -463,7 +463,7 @@ mod tests {
             ))),
             preload,
             filter!(f_eq(
-                ValueAttribute::Name,
+                Attribute::Name,
                 PartialValue::new_iname("testgroup_b")
             )),
             ModifyList::new_list(vec![Modify::Present(
@@ -509,7 +509,7 @@ mod tests {
             ))),
             preload,
             filter!(f_eq(
-                ValueAttribute::Name,
+                Attribute::Name,
                 PartialValue::new_iname("testgroup_b")
             )),
             ModifyList::new_list(vec![
@@ -559,7 +559,7 @@ mod tests {
             Ok(()),
             preload,
             filter!(f_eq(
-                ValueAttribute::Name,
+                Attribute::Name,
                 PartialValue::new_iname("testgroup_b")
             )),
             ModifyList::new_list(vec![Modify::Purged(AttrString::from("member"))]),
@@ -589,7 +589,7 @@ mod tests {
             Ok(()),
             preload,
             filter!(f_eq(
-                ValueAttribute::Name,
+                Attribute::Name,
                 PartialValue::new_iname("testgroup_a")
             )),
             ModifyList::new_list(vec![Modify::Present(
@@ -634,7 +634,7 @@ mod tests {
             ))),
             preload,
             filter!(f_eq(
-                ValueAttribute::Name,
+                Attribute::Name,
                 PartialValue::new_iname("testgroup_b")
             )),
             ModifyList::new_list(vec![Modify::Present(
@@ -646,7 +646,7 @@ mod tests {
                 // Any pre_hooks we need. In this case, we need to trigger the delete of testgroup_a
                 let de_sin =
                     crate::event::DeleteEvent::new_internal_invalid(filter!(f_or!([f_eq(
-                        ValueAttribute::Name,
+                        Attribute::Name,
                         PartialValue::new_iname("testgroup_a")
                     )])));
                 assert!(qs.delete(&de_sin).is_ok());
@@ -688,7 +688,7 @@ mod tests {
             Ok(()),
             preload,
             filter!(f_eq(
-                ValueAttribute::Name,
+                Attribute::Name,
                 PartialValue::new_iname("testgroup_a")
             )),
             None,
@@ -733,7 +733,7 @@ mod tests {
             Ok(()),
             preload,
             filter!(f_eq(
-                ValueAttribute::Name,
+                Attribute::Name,
                 PartialValue::new_iname("testgroup_b")
             )),
             None,
@@ -762,7 +762,7 @@ mod tests {
             Ok(()),
             preload,
             filter!(f_eq(
-                ValueAttribute::Name,
+                Attribute::Name,
                 PartialValue::new_iname("testgroup_b")
             )),
             None,
@@ -776,21 +776,18 @@ mod tests {
         // scope maps, so we need to check that when the group is deleted, that the
         // scope map is also appropriately affected.
         let ea: Entry<EntryInit, EntryNew> = entry_init!(
+            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
             (
-                ValueAttribute::Class.as_str(),
-                ValueClass::Object.to_value()
+                Attribute::Class.as_str(),
+                EntryClass::OAuth2ResourceServer.to_value()
             ),
+            // (Attribute::Class.as_str(), EntryClass::OAuth2ResourceServerBasic.into()),
             (
-                ValueAttribute::Class.as_str(),
-                ValueClass::OAuth2ResourceServer.to_value()
-            ),
-            // (ValueAttribute::Class.as_str(), ValueClass::OAuth2ResourceServerBasic.into()),
-            (
-                ValueAttribute::OAuth2RsName.as_str(),
+                Attribute::OAuth2RsName.as_str(),
                 Value::new_iname("test_resource_server")
             ),
             (
-                ValueAttribute::DisplayName.as_str(),
+                Attribute::DisplayName.as_str(),
                 Value::new_utf8s("test_resource_server")
             ),
             (
@@ -808,14 +805,14 @@ mod tests {
         );
 
         let eb: Entry<EntryInit, EntryNew> = entry_init!(
-            (ValueAttribute::Class.as_str(), ValueClass::Group.to_value()),
-            (ValueAttribute::Name.as_str(), Value::new_iname("testgroup")),
+            (Attribute::Class.as_str(), EntryClass::Group.to_value()),
+            (Attribute::Name.as_str(), Value::new_iname("testgroup")),
             (
                 "uuid",
                 Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
             ),
             (
-                ValueAttribute::Description.as_str(),
+                Attribute::Description.as_str(),
                 Value::new_utf8s("testgroup")
             )
         );
@@ -825,15 +822,12 @@ mod tests {
         run_delete_test!(
             Ok(()),
             preload,
-            filter!(f_eq(
-                ValueAttribute::Name,
-                PartialValue::new_iname("testgroup")
-            )),
+            filter!(f_eq(Attribute::Name, PartialValue::new_iname("testgroup"))),
             None,
             |qs: &mut QueryServerWriteTransaction| {
                 let cands = qs
                     .internal_search(filter!(f_eq(
-                        ValueAttribute::OAuth2RsName,
+                        Attribute::OAuth2RsName,
                         PartialValue::new_iname("test_resource_server")
                     )))
                     .expect("Internal search failure");
@@ -861,29 +855,17 @@ mod tests {
         let rs_uuid = Uuid::new_v4();
 
         let e1 = entry_init!(
+            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_str(), EntryClass::Person.to_value()),
+            (Attribute::Class.as_str(), EntryClass::Account.to_value()),
+            (Attribute::Name.as_str(), Value::new_iname("testperson1")),
+            (Attribute::Uuid.as_str(), Value::Uuid(tuuid)),
             (
-                ValueAttribute::Class.as_str(),
-                ValueClass::Object.to_value()
-            ),
-            (
-                ValueAttribute::Class.as_str(),
-                ValueClass::Person.to_value()
-            ),
-            (
-                ValueAttribute::Class.as_str(),
-                ValueClass::Account.to_value()
-            ),
-            (
-                ValueAttribute::Name.as_str(),
-                Value::new_iname("testperson1")
-            ),
-            (ValueAttribute::Uuid.as_str(), Value::Uuid(tuuid)),
-            (
-                ValueAttribute::Description.as_str(),
+                Attribute::Description.as_str(),
                 Value::new_utf8s("testperson1")
             ),
             (
-                ValueAttribute::DisplayName.as_str(),
+                Attribute::DisplayName.as_str(),
                 Value::new_utf8s("testperson1")
             ),
             (
@@ -893,21 +875,18 @@ mod tests {
         );
 
         let e2 = entry_init!(
+            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
             (
-                ValueAttribute::Class.as_str(),
-                ValueClass::Object.to_value()
+                Attribute::Class.as_str(),
+                EntryClass::OAuth2ResourceServer.to_value()
             ),
+            (Attribute::Uuid.as_str(), Value::Uuid(rs_uuid)),
             (
-                ValueAttribute::Class.as_str(),
-                ValueClass::OAuth2ResourceServer.to_value()
-            ),
-            (ValueAttribute::Uuid.as_str(), Value::Uuid(rs_uuid)),
-            (
-                ValueAttribute::OAuth2RsName.as_str(),
+                Attribute::OAuth2RsName.as_str(),
                 Value::new_iname("test_resource_server")
             ),
             (
-                ValueAttribute::DisplayName.as_str(),
+                Attribute::DisplayName.as_str(),
                 Value::new_utf8s("test_resource_server")
             ),
             (
@@ -978,7 +957,7 @@ mod tests {
 
         server_txn
             .internal_modify(
-                &filter!(f_eq(ValueAttribute::Uuid, PartialValue::Uuid(tuuid))),
+                &filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(tuuid))),
                 &modlist,
             )
             .expect("Failed to modify user");
@@ -986,10 +965,8 @@ mod tests {
         // Still there
 
         let entry = server_txn.internal_search_uuid(tuuid).expect("failed");
-        assert!(
-            entry.attribute_equality(ValueAttribute::UserAuthTokenSession.as_str(), &pv_parent_id)
-        );
-        assert!(entry.attribute_equality(ValueAttribute::OAuth2Session.as_str(), &pv_session_id));
+        assert!(entry.attribute_equality(Attribute::UserAuthTokenSession.as_str(), &pv_parent_id));
+        assert!(entry.attribute_equality(Attribute::OAuth2Session.as_str(), &pv_session_id));
 
         // Delete the oauth2 resource server.
         assert!(server_txn.internal_delete_uuid(rs_uuid).is_ok());
@@ -998,13 +975,11 @@ mod tests {
         let entry = server_txn.internal_search_uuid(tuuid).expect("failed");
 
         // Note the uat is present still.
-        assert!(
-            entry.attribute_equality(ValueAttribute::UserAuthTokenSession.as_str(), &pv_parent_id)
-        );
+        assert!(entry.attribute_equality(Attribute::UserAuthTokenSession.as_str(), &pv_parent_id));
         // The oauth2 session is removed.
         dbg!(&entry);
         dbg!(&pv_session_id);
-        assert!(!entry.attribute_equality(ValueAttribute::OAuth2Session.as_str(), &pv_session_id));
+        assert!(!entry.attribute_equality(Attribute::OAuth2Session.as_str(), &pv_session_id));
 
         assert!(server_txn.commit().is_ok());
     }
@@ -1025,20 +1000,11 @@ mod tests {
         let inv_mb_uuid = Uuid::new_v4();
 
         let e_dyn = entry_init!(
-            (
-                ValueAttribute::Class.as_str(),
-                ValueClass::Object.to_value()
-            ),
-            (ValueAttribute::Class.as_str(), ValueClass::Group.to_value()),
-            (
-                ValueAttribute::Class.as_str(),
-                ValueClass::DynGroup.to_value()
-            ),
-            (ValueAttribute::Uuid.as_str(), Value::Uuid(dyn_uuid)),
-            (
-                ValueAttribute::Name.as_str(),
-                Value::new_iname("test_dyngroup")
-            ),
+            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_str(), EntryClass::Group.to_value()),
+            (Attribute::Class.as_str(), EntryClass::DynGroup.to_value()),
+            (Attribute::Uuid.as_str(), Value::Uuid(dyn_uuid)),
+            (Attribute::Name.as_str(), Value::new_iname("test_dyngroup")),
             ("dynmember", Value::Refer(inv_mb_uuid)),
             (
                 "dyngroup_filter",
@@ -1047,14 +1013,11 @@ mod tests {
         );
 
         let e_group: Entry<EntryInit, EntryNew> = entry_init!(
-            (ValueAttribute::Class.as_str(), ValueClass::Group.to_value()),
-            (
-                ValueAttribute::Class.as_str(),
-                ValueClass::MemberOf.to_value()
-            ),
-            (ValueAttribute::Name.as_str(), Value::new_iname("testgroup")),
-            (ValueAttribute::Uuid.as_str(), Value::Uuid(tgroup_uuid)),
-            (ValueAttribute::MemberOf.as_str(), Value::Refer(inv_mo_uuid))
+            (Attribute::Class.as_str(), EntryClass::Group.to_value()),
+            (Attribute::Class.as_str(), EntryClass::MemberOf.to_value()),
+            (Attribute::Name.as_str(), Value::new_iname("testgroup")),
+            (Attribute::Uuid.as_str(), Value::Uuid(tgroup_uuid)),
+            (Attribute::MemberOf.as_str(), Value::Refer(inv_mo_uuid))
         );
 
         let ce = CreateEvent::new_internal(vec![e_dyn, e_group]);

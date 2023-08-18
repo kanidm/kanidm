@@ -203,8 +203,8 @@ fn modify_sync_constrain<'a>(
             // * We are a sync object
             // * We have a sync_parent_uuid
             let is_sync = entry
-                .get_ava_set(ValueAttribute::Class.as_str())
-                .map(|classes| classes.contains(&ValueClass::SyncObject.into()))
+                .get_ava_set(Attribute::Class.as_str())
+                .map(|classes| classes.contains(&EntryClass::SyncObject.into()))
                 .unwrap_or(false);
 
             if !is_sync {

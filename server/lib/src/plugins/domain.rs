@@ -68,8 +68,8 @@ impl Domain {
         cand: &mut [Entry<EntryInvalid, T>],
     ) -> Result<(), OperationError> {
         cand.iter_mut().try_for_each(|e| {
-            if e.attribute_equality(ValueAttribute::Class.as_str(), &ValueClass::DomainInfo.into())
-                && e.attribute_equality(ValueAttribute::Uuid.as_str(), &PVUUID_DOMAIN_INFO)
+            if e.attribute_equality(Attribute::Class.as_str(), &EntryClass::DomainInfo.into())
+                && e.attribute_equality(Attribute::Uuid.as_str(), &PVUUID_DOMAIN_INFO)
             {
                 // Validate the domain ldap basedn syntax.
                 if let Some(basedn) = e
@@ -159,9 +159,8 @@ mod tests {
 
         let u_dom = server_txn.get_domain_uuid();
 
-        assert!(e_dom.attribute_equality(
-            ValueAttribute::DomainUuid.as_str(),
-            &PartialValue::Uuid(u_dom)
-        ));
+        assert!(
+            e_dom.attribute_equality(Attribute::DomainUuid.as_str(), &PartialValue::Uuid(u_dom))
+        );
     }
 }

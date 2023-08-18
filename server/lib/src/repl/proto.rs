@@ -522,9 +522,9 @@ impl ReplEntryV1 {
                 let class_ava = vs_iutf8!["object", "tombstone"];
                 let last_mod_ava = vs_cid![at.clone()];
 
-                eattrs.insert(ValueAttribute::Uuid.into(), vs_uuid![self.uuid]);
-                eattrs.insert(ValueAttribute::Class.into(), class_ava);
-                eattrs.insert(ValueAttribute::LastModifiedCid.into(), last_mod_ava);
+                eattrs.insert(Attribute::Uuid.into(), vs_uuid![self.uuid]);
+                eattrs.insert(Attribute::Class.into(), class_ava);
+                eattrs.insert(Attribute::LastModifiedCid.into(), last_mod_ava);
 
                 let ecstate = EntryChangeState {
                     st: State::Tombstone { at },

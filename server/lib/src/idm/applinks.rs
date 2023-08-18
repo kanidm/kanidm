@@ -21,12 +21,12 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
             ident_mo
                 .iter()
                 .copied()
-                .map(|uuid| { f_eq(ValueAttribute::OAuth2RsScopeMap, PartialValue::Refer(uuid)) })
+                .map(|uuid| { f_eq(Attribute::OAuth2RsScopeMap, PartialValue::Refer(uuid)) })
                 .collect()
         ));
         let f_intent = filter!(f_eq(
-            ValueAttribute::Class,
-            ValueClass::OAuth2ResourceServer.into()
+            Attribute::Class,
+            EntryClass::OAuth2ResourceServer.into()
         ));
 
         // _ext reduces the entries based on access.
@@ -83,37 +83,34 @@ mod tests {
         let grp_uuid = Uuid::new_v4();
 
         let e_rs: Entry<EntryInit, EntryNew> = entry_init!(
+            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
             (
-                ValueAttribute::Class.as_str(),
-                ValueClass::Object.to_value()
+                Attribute::Class.as_str(),
+                EntryClass::OAuth2ResourceServer.to_value()
             ),
             (
-                ValueAttribute::Class.as_str(),
-                ValueClass::OAuth2ResourceServer.to_value()
+                Attribute::Class.as_str(),
+                EntryClass::OAuth2ResourceServerBasic.to_value()
             ),
             (
-                ValueAttribute::Class.as_str(),
-                ValueClass::OAuth2ResourceServerBasic.to_value()
-            ),
-            (
-                ValueAttribute::OAuth2RsName.as_str(),
+                Attribute::OAuth2RsName.as_str(),
                 Value::new_iname("test_resource_server")
             ),
             (
-                ValueAttribute::DisplayName.as_str(),
+                Attribute::DisplayName.as_str(),
                 Value::new_utf8s("test_resource_server")
             ),
             (
-                ValueAttribute::OAuth2RsOrigin.as_str(),
+                Attribute::OAuth2RsOrigin.as_str(),
                 Value::new_url_s("https://demo.example.com").unwrap()
             ),
             (
-                ValueAttribute::OAuth2RsOriginLanding.as_str(),
+                Attribute::OAuth2RsOriginLanding.as_str(),
                 Value::new_url_s("https://demo.example.com/landing").unwrap()
             ),
             // System admins
             (
-                ValueAttribute::OAuth2RsScopeMap.as_str(),
+                Attribute::OAuth2RsScopeMap.as_str(),
                 Value::new_oauthscopemap(
                     grp_uuid,
                     btreeset![kanidm_proto::constants::OAUTH2_SCOPE_READ.to_string()]
@@ -123,42 +120,27 @@ mod tests {
         );
 
         let e_usr = entry_init!(
+            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_str(), EntryClass::Account.to_value()),
+            (Attribute::Class.as_str(), EntryClass::Person.to_value()),
+            (Attribute::Name.as_str(), Value::new_iname("testaccount")),
+            (Attribute::Uuid.as_str(), Value::Uuid(usr_uuid)),
             (
-                ValueAttribute::Class.as_str(),
-                ValueClass::Object.to_value()
-            ),
-            (
-                ValueAttribute::Class.as_str(),
-                ValueClass::Account.to_value()
-            ),
-            (
-                ValueAttribute::Class.as_str(),
-                ValueClass::Person.to_value()
-            ),
-            (
-                ValueAttribute::Name.as_str(),
-                Value::new_iname("testaccount")
-            ),
-            (ValueAttribute::Uuid.as_str(), Value::Uuid(usr_uuid)),
-            (
-                ValueAttribute::Description.as_str(),
+                Attribute::Description.as_str(),
                 Value::new_utf8s("testaccount")
             ),
             (
-                ValueAttribute::DisplayName.as_str(),
+                Attribute::DisplayName.as_str(),
                 Value::new_utf8s("Test Account")
             )
         );
 
         let e_grp = entry_init!(
+            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_str(), EntryClass::Group.to_value()),
+            (Attribute::Uuid.as_str(), Value::Uuid(grp_uuid)),
             (
-                ValueAttribute::Class.as_str(),
-                ValueClass::Object.to_value()
-            ),
-            (ValueAttribute::Class.as_str(), ValueClass::Group.to_value()),
-            (ValueAttribute::Uuid.as_str(), Value::Uuid(grp_uuid)),
-            (
-                ValueAttribute::Name.as_str(),
+                Attribute::Name.as_str(),
                 Value::new_iname("test_oauth2_group")
             )
         );
@@ -186,7 +168,7 @@ mod tests {
         // Add them to the group.
         let mut idms_prox_write = idms.proxy_write(ct).await;
         let me_inv_m = ModifyEvent::new_internal_invalid(
-            filter!(f_eq(ValueAttribute::Uuid, PartialValue::Refer(grp_uuid))),
+            filter!(f_eq(Attribute::Uuid, PartialValue::Refer(grp_uuid))),
             ModifyList::new_append("member", Value::Refer(usr_uuid)),
         );
         assert!(idms_prox_write.qs_write.modify(&me_inv_m).is_ok());

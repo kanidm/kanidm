@@ -161,7 +161,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // correctly!
         trace!("internal_migrate_or_create operating on {:?}", e.get_uuid());
 
-        let Some(filt) = e.filter_from_attrs(&[ValueAttribute::Uuid.into()]) else {
+        let Some(filt) = e.filter_from_attrs(&[Attribute::Uuid.into()]) else {
             return Err(OperationError::FilterGeneration)
         };
 
@@ -202,13 +202,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
     pub fn migrate_8_to_9(&mut self) -> Result<(), OperationError> {
         admin_warn!("starting 8 to 9 migration.");
         let filt = filter_all!(f_or!([
+            f_eq(Attribute::Class, EntryClass::OAuth2ResourceServer.into()),
             f_eq(
-                ValueAttribute::Class,
-                ValueClass::OAuth2ResourceServer.into()
-            ),
-            f_eq(
-                ValueAttribute::Class,
-                ValueClass::OAuth2ResourceServerBasic.into()
+                Attribute::Class,
+                EntryClass::OAuth2ResourceServerBasic.into()
             ),
         ]));
 
@@ -297,10 +294,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
         ]));
         // This "does nothing" since everything has object anyway, but it forces the entry to be
         // loaded and rewritten.
-        let modlist = ModifyList::new_append(
-            ValueAttribute::Class.as_str(),
-            ValueClass::Object.to_value(),
-        );
+        let modlist =
+            ModifyList::new_append(Attribute::Class.as_str(), EntryClass::Object.to_value());
         self.internal_modify(&filter, &modlist)
         // Complete
     }
@@ -415,8 +410,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
     pub fn migrate_12_to_13(&mut self) -> Result<(), OperationError> {
         admin_warn!("starting 12 to 13 migration.");
         let filter = filter!(f_and!([
-            f_eq(ValueAttribute::Class, ValueClass::DomainInfo.into()),
-            f_eq(ValueAttribute::Uuid, PVUUID_DOMAIN_INFO.clone()),
+            f_eq(Attribute::Class, EntryClass::DomainInfo.into()),
+            f_eq(Attribute::Uuid, PVUUID_DOMAIN_INFO.clone()),
         ]));
         // Delete the existing cookie key to trigger a regeneration.
         let modlist = ModifyList::new_purge(ATTR_PRIVATE_COOKIE_KEY);
@@ -428,8 +423,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
     pub fn migrate_13_to_14(&mut self) -> Result<(), OperationError> {
         admin_warn!("starting 13 to 14 migration.");
         let filter = filter!(f_eq(
-            ValueAttribute::Class,
-            ValueClass::DynGroup.to_partialvalue()
+            Attribute::Class,
+            EntryClass::DynGroup.to_partialvalue()
         ));
         // Delete the incorrectly added "member" attr.
         let modlist = ModifyList::new_purge("member");
@@ -440,7 +435,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     #[instrument(level = "debug", skip_all)]
     pub fn migrate_14_to_15(&mut self) -> Result<(), OperationError> {
         admin_warn!("starting 14 to 15 migration.");
-        let filter = filter!(f_eq(ValueAttribute::Class, ValueClass::Person.into()));
+        let filter = filter!(f_eq(Attribute::Class, EntryClass::Person.into()));
         // Delete the non-existing attr for idv private key which triggers
         // it to regen.
         let modlist = ModifyList::new_purge("id_verification_eckey");
@@ -821,8 +816,8 @@ mod tests {
         let me_syn = unsafe {
             ModifyEvent::new_internal_invalid(
                 filter!(f_or!([
-                    f_eq(ValueAttribute::AttributeName, PartialValue::new_iutf8("name")),
-                    f_eq(ValueAttribute::AttributeName, PartialValue::new_iutf8("domain_name")),
+                    f_eq(Attribute::AttributeName, PartialValue::new_iutf8("name")),
+                    f_eq(Attribute::AttributeName, PartialValue::new_iutf8("domain_name")),
                 ])),
                 ModifyList::new_purge_and_set(
                     "syntax",
@@ -837,11 +832,11 @@ mod tests {
         // ++ Mod domain name and name to be the old type.
         let me_dn = unsafe {
             ModifyEvent::new_internal_invalid(
-                filter!(f_eq(ValueAttribute::Uuid, PartialValue::Uuid(UUID_DOMAIN_INFO))),
+                filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(UUID_DOMAIN_INFO))),
                 ModifyList::new_list(vec![
-                    Modify::Purged(ValueAttribute::Name.into()),
+                    Modify::Purged(Attribute::Name.into()),
                     Modify::Purged(AttrString::from("domain_name")),
-                    Modify::Present(ValueAttribute::Name.into(), Value::new_iutf8("domain_local")),
+                    Modify::Present(Attribute::Name.into(), Value::new_iutf8("domain_local")),
                     Modify::Present(
                         AttrString::from("domain_name"),
                         Value::new_iutf8("example.com"),
@@ -864,8 +859,8 @@ mod tests {
         let me_syn = unsafe {
             ModifyEvent::new_internal_invalid(
                 filter!(f_or!([
-                    f_eq(ValueAttribute::AttributeName, PartialValue::new_iutf8("name")),
-                    f_eq(ValueAttribute::AttributeName, PartialValue::new_iutf8("domain_name")),
+                    f_eq(Attribute::AttributeName, PartialValue::new_iutf8("name")),
+                    f_eq(Attribute::AttributeName, PartialValue::new_iutf8("domain_name")),
                 ])),
                 ModifyList::new_purge_and_set(
                     "syntax",

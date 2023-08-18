@@ -317,20 +317,20 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
                 let uuid = ent.get_uuid();
                 admin_info!(?uuid, "Checking oauth2 configuration");
                 // From each entry, attempt to make an oauth2 configuration.
-                if !ent.attribute_equality(ValueAttribute::Class.as_str(), &ValueClass::OAuth2ResourceServer.into()) {
+                if !ent.attribute_equality(Attribute::Class.as_str(), &EntryClass::OAuth2ResourceServer.into()) {
                     admin_error!("Missing class oauth2_resource_server");
                     // Check we have oauth2_resource_server class
                     return Err(OperationError::InvalidEntryState);
                 }
 
-                let type_ = if ent.attribute_equality(ValueAttribute::Class.as_str(), &ValueClass::OAuth2ResourceServerBasic.into()) {
+                let type_ = if ent.attribute_equality(Attribute::Class.as_str(), &EntryClass::OAuth2ResourceServerBasic.into()) {
                     let authz_secret = ent
                         .get_ava_single_secret(ATTR_OAUTH2_RS_BASIC_SECRET)
                         .map(str::to_string)
                         .ok_or(OperationError::InvalidValueState)?;
 
                     let enable_pkce = ent
-                        .get_ava_single_bool(ValueAttribute::OAuth2AllowInsecureClientDisablePkce.as_str())
+                        .get_ava_single_bool(Attribute::OAuth2AllowInsecureClientDisablePkce.as_str())
                         .map(|e| !e)
                         .unwrap_or(true);
 
@@ -338,7 +338,7 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
                         authz_secret,
                         enable_pkce,
                     }
-                } else if ent.attribute_equality(ValueAttribute::Class.as_str(), &ValueClass::OAuth2ResourceServerPublic.into()) {
+                } else if ent.attribute_equality(Attribute::Class.as_str(), &EntryClass::OAuth2ResourceServerPublic.into()) {
                     OauthRSType::Public
                 } else {
                     error!("Missing class determining oauth2 rs type");
@@ -357,7 +357,7 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
                     .ok_or(OperationError::InvalidValueState)?;
 
                 let (origin, origin_https) = ent
-                    .get_ava_single_url(ValueAttribute::OAuth2RsOrigin.as_str())
+                    .get_ava_single_url(Attribute::OAuth2RsOrigin.as_str())
                     .map(|url| (url.origin(), url.scheme() == "https"))
                     .ok_or(OperationError::InvalidValueState)?;
 
@@ -378,17 +378,17 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
                     })?;
 
                 let scope_maps = ent
-                    .get_ava_as_oauthscopemaps(ValueAttribute::OAuth2RsScopeMap.as_str())
+                    .get_ava_as_oauthscopemaps(Attribute::OAuth2RsScopeMap.as_str())
                     .cloned()
                     .unwrap_or_default();
 
                 let sup_scope_maps = ent
-                    .get_ava_as_oauthscopemaps(ValueAttribute::OAuth2RsSupScopeMap.as_str())
+                    .get_ava_as_oauthscopemaps(Attribute::OAuth2RsSupScopeMap.as_str())
                     .cloned()
                     .unwrap_or_default();
 
-                trace!("{}", ValueAttribute::OAuth2JwtLegacyCryptoEnable.as_str());
-                let jws_signer = if ent.get_ava_single_bool(ValueAttribute::OAuth2JwtLegacyCryptoEnable.as_str()).unwrap_or(false) {
+                trace!("{}", Attribute::OAuth2JwtLegacyCryptoEnable.as_str());
+                let jws_signer = if ent.get_ava_single_bool(Attribute::OAuth2JwtLegacyCryptoEnable.as_str()).unwrap_or(false) {
                     trace!("rs256_private_key_der");
                     ent
                         .get_ava_single_private_binary("rs256_private_key_der")
@@ -564,7 +564,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
                 self.qs_write
                     .internal_modify(
-                        &filter!(f_eq(ValueAttribute::Uuid, PartialValue::Uuid(uuid))),
+                        &filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(uuid))),
                         &modlist,
                     )
                     .map_err(|e| {
@@ -739,7 +739,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         ]);
 
         self.qs_write.internal_modify(
-            &filter_all!(f_eq(ValueAttribute::Uuid, PartialValue::Uuid(uat.uuid))),
+            &filter_all!(f_eq(Attribute::Uuid, PartialValue::Uuid(uat.uuid))),
             &modlist,
         )?;
 
@@ -937,7 +937,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
                     self.qs_write
                         .internal_modify(
-                            &filter!(f_eq(ValueAttribute::Uuid, PartialValue::Uuid(uuid))),
+                            &filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(uuid))),
                             &modlist,
                         )
                         .map_err(|e| {
@@ -1145,7 +1145,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         self.qs_write
             .internal_modify(
-                &filter!(f_eq(ValueAttribute::Uuid, PartialValue::Uuid(account_uuid))),
+                &filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(account_uuid))),
                 &modlist,
             )
             .map_err(|e| {
@@ -2037,34 +2037,31 @@ mod tests {
         let uuid = Uuid::new_v4();
 
         let e: Entry<EntryInit, EntryNew> = entry_init!(
+            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
             (
-                ValueAttribute::Class.as_str(),
-                ValueClass::Object.to_value()
+                Attribute::Class.as_str(),
+                EntryClass::OAuth2ResourceServer.to_value()
             ),
             (
-                ValueAttribute::Class.as_str(),
-                ValueClass::OAuth2ResourceServer.to_value()
+                Attribute::Class.as_str(),
+                EntryClass::OAuth2ResourceServerBasic.to_value()
             ),
+            (Attribute::Uuid.as_str(), Value::Uuid(uuid)),
             (
-                ValueAttribute::Class.as_str(),
-                ValueClass::OAuth2ResourceServerBasic.to_value()
-            ),
-            (ValueAttribute::Uuid.as_str(), Value::Uuid(uuid)),
-            (
-                ValueAttribute::OAuth2RsName.as_str(),
+                Attribute::OAuth2RsName.as_str(),
                 Value::new_iname("test_resource_server")
             ),
             (
-                ValueAttribute::DisplayName.as_str(),
+                Attribute::DisplayName.as_str(),
                 Value::new_utf8s("test_resource_server")
             ),
             (
-                ValueAttribute::OAuth2RsOrigin.as_str(),
+                Attribute::OAuth2RsOrigin.as_str(),
                 Value::new_url_s("https://demo.example.com").unwrap()
             ),
             // System admins
             (
-                ValueAttribute::OAuth2RsScopeMap.as_str(),
+                Attribute::OAuth2RsScopeMap.as_str(),
                 Value::new_oauthscopemap(
                     UUID_SYSTEM_ADMINS,
                     btreeset![OAUTH2_SCOPE_GROUPS.to_string()]
@@ -2072,7 +2069,7 @@ mod tests {
                 .expect("invalid oauthscope")
             ),
             (
-                ValueAttribute::OAuth2RsScopeMap.as_str(),
+                Attribute::OAuth2RsScopeMap.as_str(),
                 Value::new_oauthscopemap(
                     UUID_IDM_ALL_ACCOUNTS,
                     btreeset![OAUTH2_SCOPE_OPENID.to_string()]
@@ -2080,7 +2077,7 @@ mod tests {
                 .expect("invalid oauthscope")
             ),
             (
-                ValueAttribute::OAuth2RsSupScopeMap.as_str(),
+                Attribute::OAuth2RsSupScopeMap.as_str(),
                 Value::new_oauthscopemap(
                     UUID_IDM_ALL_ACCOUNTS,
                     btreeset!["supplement".to_string()]
@@ -2088,11 +2085,11 @@ mod tests {
                 .expect("invalid oauthscope")
             ),
             (
-                ValueAttribute::OAuth2AllowInsecureClientDisablePkce.as_str(),
+                Attribute::OAuth2AllowInsecureClientDisablePkce.as_str(),
                 Value::new_bool(!enable_pkce)
             ),
             (
-                ValueAttribute::OAuth2JwtLegacyCryptoEnable.as_str(),
+                Attribute::OAuth2JwtLegacyCryptoEnable.as_str(),
                 Value::new_bool(enable_legacy_crypto)
             ),
             (
@@ -2155,7 +2152,7 @@ mod tests {
         idms_prox_write
             .qs_write
             .internal_modify(
-                &filter!(f_eq(ValueAttribute::Uuid, PartialValue::Uuid(UUID_ADMIN))),
+                &filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(UUID_ADMIN))),
                 &modlist,
             )
             .expect("Failed to modify user");
@@ -2178,39 +2175,36 @@ mod tests {
         let uuid = Uuid::new_v4();
 
         let e: Entry<EntryInit, EntryNew> = entry_init!(
+            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
             (
-                ValueAttribute::Class.as_str(),
-                ValueClass::Object.to_value()
+                Attribute::Class.as_str(),
+                EntryClass::OAuth2ResourceServer.to_value()
             ),
             (
-                ValueAttribute::Class.as_str(),
-                ValueClass::OAuth2ResourceServer.to_value()
+                Attribute::Class.as_str(),
+                EntryClass::OAuth2ResourceServerPublic.to_value()
             ),
+            (Attribute::Uuid.as_str(), Value::Uuid(uuid)),
             (
-                ValueAttribute::Class.as_str(),
-                ValueClass::OAuth2ResourceServerPublic.to_value()
-            ),
-            (ValueAttribute::Uuid.as_str(), Value::Uuid(uuid)),
-            (
-                ValueAttribute::OAuth2RsName.as_str(),
+                Attribute::OAuth2RsName.as_str(),
                 Value::new_iname("test_resource_server")
             ),
             (
-                ValueAttribute::DisplayName.as_str(),
+                Attribute::DisplayName.as_str(),
                 Value::new_utf8s("test_resource_server")
             ),
             (
-                ValueAttribute::OAuth2RsOrigin.as_str(),
+                Attribute::OAuth2RsOrigin.as_str(),
                 Value::new_url_s("https://demo.example.com").unwrap()
             ),
             // System admins
             (
-                ValueAttribute::OAuth2RsScopeMap.as_str(),
+                Attribute::OAuth2RsScopeMap.as_str(),
                 Value::new_oauthscopemap(UUID_SYSTEM_ADMINS, btreeset!["groups".to_string()])
                     .expect("invalid oauthscope")
             ),
             (
-                ValueAttribute::OAuth2RsScopeMap.as_str(),
+                Attribute::OAuth2RsScopeMap.as_str(),
                 Value::new_oauthscopemap(
                     UUID_IDM_ALL_ACCOUNTS,
                     btreeset![OAUTH2_SCOPE_OPENID.to_string()]
@@ -2218,7 +2212,7 @@ mod tests {
                 .expect("invalid oauthscope")
             ),
             (
-                ValueAttribute::OAuth2RsSupScopeMap.as_str(),
+                Attribute::OAuth2RsSupScopeMap.as_str(),
                 Value::new_oauthscopemap(
                     UUID_IDM_ALL_ACCOUNTS,
                     btreeset!["supplement".to_string()]
@@ -2272,7 +2266,7 @@ mod tests {
         idms_prox_write
             .qs_write
             .internal_modify(
-                &filter!(f_eq(ValueAttribute::Uuid, PartialValue::Uuid(UUID_ADMIN))),
+                &filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(UUID_ADMIN))),
                 &modlist,
             )
             .expect("Failed to modify user");
@@ -2939,7 +2933,7 @@ mod tests {
         // Expire the account, should cause introspect to return inactive.
         let v_expire = Value::new_datetime_epoch(Duration::from_secs(TEST_CURRENT_TIME - 1));
         let me_inv_m = ModifyEvent::new_internal_invalid(
-            filter!(f_eq(ValueAttribute::Name, PartialValue::new_iname("admin"))),
+            filter!(f_eq(Attribute::Name, PartialValue::new_iname("admin"))),
             ModifyList::new_list(vec![Modify::Present(
                 AttrString::from("account_expire"),
                 v_expire,
@@ -3181,7 +3175,7 @@ mod tests {
         // Delete the resource server.
 
         let de = DeleteEvent::new_internal_invalid(filter!(f_eq(
-            ValueAttribute::OAuth2RsName,
+            Attribute::OAuth2RsName,
             PartialValue::new_iname("test_resource_server")
         )));
 
@@ -4000,11 +3994,11 @@ mod tests {
 
         let me_extend_scopes = ModifyEvent::new_internal_invalid(
             filter!(f_eq(
-                ValueAttribute::OAuth2RsName,
+                Attribute::OAuth2RsName,
                 PartialValue::new_iname("test_resource_server")
             )),
             ModifyList::new_list(vec![Modify::Present(
-                AttrString::from(ValueAttribute::OAuth2RsScopeMap.as_str()),
+                AttrString::from(Attribute::OAuth2RsScopeMap.as_str()),
                 Value::new_oauthscopemap(
                     UUID_IDM_ALL_ACCOUNTS,
                     btreeset![
@@ -4066,11 +4060,11 @@ mod tests {
 
         let me_extend_scopes = ModifyEvent::new_internal_invalid(
             filter!(f_eq(
-                ValueAttribute::OAuth2RsName,
+                Attribute::OAuth2RsName,
                 PartialValue::new_iname("test_resource_server")
             )),
             ModifyList::new_list(vec![Modify::Present(
-                ValueAttribute::OAuth2RsSupScopeMap.into(),
+                Attribute::OAuth2RsSupScopeMap.into(),
                 Value::new_oauthscopemap(UUID_IDM_ALL_ACCOUNTS, btreeset!["newscope".to_string()])
                     .expect("invalid oauthscope"),
             )]),
@@ -4179,7 +4173,7 @@ mod tests {
 
         // Now trigger the delete of the RS
         let de = DeleteEvent::new_internal_invalid(filter!(f_eq(
-            ValueAttribute::OAuth2RsName,
+            Attribute::OAuth2RsName,
             PartialValue::new_iname("test_resource_server")
         )));
 

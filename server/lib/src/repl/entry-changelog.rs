@@ -222,17 +222,17 @@ impl EntryChangelog {
 
         // We need to pick a state that reflects the current state WRT to tombstone
         // or recycled!
-        let class = attrs.get(ValueAttribute::Class.as_str());
+        let class = attrs.get(Attribute::Class.as_str());
 
         let (anchors, changes) = if class
             .as_ref()
-            .map(|c| c.contains(&ValueClass::Tombstone.to_partialvalue()))
+            .map(|c| c.contains(&EntryClass::Tombstone.to_partialvalue()))
             .unwrap_or(false)
         {
             (btreemap![(cid, State::Tombstone(attrs))], BTreeMap::new())
         } else if class
             .as_ref()
-            .map(|c| c.contains(&ValueClass::Recycled.to_partialvalue()))
+            .map(|c| c.contains(&EntryClass::Recycled.to_partialvalue()))
             .unwrap_or(false)
         {
             (btreemap![(cid, State::Recycled(attrs))], BTreeMap::new())
@@ -416,7 +416,7 @@ impl EntryChangelog {
                         | State::Recycled(ref mut attrs)
                         | State::Tombstone(ref mut attrs) => {
                             let cv = vs_cid![change_cid.clone()];
-                            let _ = attrs.insert(ValueAttribute::LastModifiedCid.into(), cv);
+                            let _ = attrs.insert(Attribute::LastModifiedCid.into(), cv);
                         }
                     };
                     new_state

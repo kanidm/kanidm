@@ -410,7 +410,7 @@ pub trait QueryServerTransaction<'a> {
         &mut self,
         uuid: Uuid,
     ) -> Result<Arc<EntrySealedCommitted>, OperationError> {
-        let filter = filter!(f_eq(ValueAttribute::Uuid, PartialValue::Uuid(uuid)));
+        let filter = filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(uuid)));
         let f_valid = filter.validate(self.get_schema()).map_err(|e| {
             error!(?e, "Filter Validate - SchemaViolation");
             OperationError::SchemaViolation(e)
@@ -431,7 +431,7 @@ pub trait QueryServerTransaction<'a> {
         &mut self,
         uuid: Uuid,
     ) -> Result<Arc<EntrySealedCommitted>, OperationError> {
-        let filter = filter_all!(f_eq(ValueAttribute::Uuid, PartialValue::Uuid(uuid)));
+        let filter = filter_all!(f_eq(Attribute::Uuid, PartialValue::Uuid(uuid)));
         let f_valid = filter.validate(self.get_schema()).map_err(|e| {
             error!(?e, "Filter Validate - SchemaViolation");
             OperationError::SchemaViolation(e)
@@ -452,8 +452,8 @@ pub trait QueryServerTransaction<'a> {
         uuid: Uuid,
     ) -> Result<Vec<Arc<EntrySealedCommitted>>, OperationError> {
         let filter = filter_all!(f_and(vec![
-            f_eq(ValueAttribute::SourceUuid, PartialValue::Uuid(uuid)),
-            f_eq(ValueAttribute::Class, ValueClass::Conflict.into())
+            f_eq(Attribute::SourceUuid, PartialValue::Uuid(uuid)),
+            f_eq(Attribute::Class, EntryClass::Conflict.into())
         ]));
         let f_valid = filter.validate(self.get_schema()).map_err(|e| {
             error!(?e, "Filter Validate - SchemaViolation");
@@ -470,8 +470,8 @@ pub trait QueryServerTransaction<'a> {
         uuid: Uuid,
         event: &Identity,
     ) -> Result<Entry<EntryReduced, EntryCommitted>, OperationError> {
-        let filter_intent = filter_all!(f_eq(ValueAttribute::Uuid, PartialValue::Uuid(uuid)));
-        let filter = filter!(f_eq(ValueAttribute::Uuid, PartialValue::Uuid(uuid)));
+        let filter_intent = filter_all!(f_eq(Attribute::Uuid, PartialValue::Uuid(uuid)));
+        let filter = filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(uuid)));
 
         let mut vs = self.impersonate_search_ext(filter, filter_intent, event)?;
         match vs.pop() {
@@ -486,8 +486,8 @@ pub trait QueryServerTransaction<'a> {
         uuid: Uuid,
         event: &Identity,
     ) -> Result<Arc<EntrySealedCommitted>, OperationError> {
-        let filter_intent = filter_all!(f_eq(ValueAttribute::Uuid, PartialValue::Uuid(uuid)));
-        let filter = filter!(f_eq(ValueAttribute::Uuid, PartialValue::Uuid(uuid)));
+        let filter_intent = filter_all!(f_eq(Attribute::Uuid, PartialValue::Uuid(uuid)));
+        let filter = filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(uuid)));
 
         let mut vs = self.impersonate_search(filter, filter_intent, event)?;
         match vs.pop() {
@@ -822,8 +822,8 @@ pub trait QueryServerTransaction<'a> {
 
     fn get_oauth2rs_set(&mut self) -> Result<Vec<Arc<EntrySealedCommitted>>, OperationError> {
         self.internal_search(filter!(f_eq(
-            ValueAttribute::Class,
-            ValueClass::OAuth2ResourceServer.into(),
+            Attribute::Class,
+            EntryClass::OAuth2ResourceServer.into(),
         )))
     }
 
@@ -955,7 +955,7 @@ impl<'a> QueryServerReadTransaction<'a> {
         // the entry changelogs are consistent to their entries.
         let schema = self.get_schema();
 
-        let filt_all = filter!(f_pres(ValueAttribute::Class.as_str()));
+        let filt_all = filter!(f_pres(Attribute::Class.as_str()));
         let all_entries = match self.internal_search(filt_all) {
             Ok(a) => a,
             Err(_e) => return vec![Err(ConsistencyError::QueryServerSearchFailure)],
@@ -1207,10 +1207,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     pub(crate) fn reload_schema(&mut self) -> Result<(), OperationError> {
         // supply entries to the writable schema to reload from.
         // find all attributes.
-        let filt = filter!(f_eq(
-            ValueAttribute::Class,
-            ValueClass::AttributeType.into()
-        ));
+        let filt = filter!(f_eq(Attribute::Class, EntryClass::AttributeType.into()));
         let res = self.internal_search(filt).map_err(|e| {
             admin_error!("reload schema internal search failed {:?}", e);
             e
@@ -1229,7 +1226,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         })?;
 
         // find all classes
-        let filt = filter!(f_eq(ValueAttribute::Class, ValueClass::ClassType.into()));
+        let filt = filter!(f_eq(Attribute::Class, EntryClass::ClassType.into()));
         let res = self.internal_search(filt).map_err(|e| {
             admin_error!("reload schema internal search failed {:?}", e);
             e
@@ -1292,7 +1289,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
         // Update the set of sync agreements
 
-        let filt = filter!(f_eq(ValueAttribute::Class, ValueClass::SyncAccount.into()));
+        let filt = filter!(f_eq(Attribute::Class, EntryClass::SyncAccount.into()));
 
         let res = self.internal_search(filt).map_err(|e| {
             admin_error!(
@@ -1316,15 +1313,9 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
         // Update search
         let filt = filter!(f_and!([
-            f_eq(
-                ValueAttribute::Class,
-                ValueClass::AccessControlProfile.into()
-            ),
-            f_eq(
-                ValueAttribute::Class,
-                ValueClass::AccessControlSearch.into()
-            ),
-            f_andnot(f_eq(ValueAttribute::AcpEnable, PV_FALSE.clone())),
+            f_eq(Attribute::Class, EntryClass::AccessControlProfile.into()),
+            f_eq(Attribute::Class, EntryClass::AccessControlSearch.into()),
+            f_andnot(f_eq(Attribute::AcpEnable, PV_FALSE.clone())),
         ]));
 
         let res = self.internal_search(filt).map_err(|e| {
@@ -1352,15 +1343,9 @@ impl<'a> QueryServerWriteTransaction<'a> {
             })?;
         // Update create
         let filt = filter!(f_and!([
-            f_eq(
-                ValueAttribute::Class,
-                ValueClass::AccessControlProfile.into()
-            ),
-            f_eq(
-                ValueAttribute::Class,
-                ValueClass::AccessControlCreate.into()
-            ),
-            f_andnot(f_eq(ValueAttribute::AcpEnable, PV_FALSE.clone())),
+            f_eq(Attribute::Class, EntryClass::AccessControlProfile.into()),
+            f_eq(Attribute::Class, EntryClass::AccessControlCreate.into()),
+            f_andnot(f_eq(Attribute::AcpEnable, PV_FALSE.clone())),
         ]));
 
         let res = self.internal_search(filt).map_err(|e| {
@@ -1388,15 +1373,9 @@ impl<'a> QueryServerWriteTransaction<'a> {
             })?;
         // Update modify
         let filt = filter!(f_and!([
-            f_eq(
-                ValueAttribute::Class,
-                ValueClass::AccessControlProfile.into()
-            ),
-            f_eq(
-                ValueAttribute::Class,
-                ValueClass::AccessControlModify.into()
-            ),
-            f_andnot(f_eq(ValueAttribute::AcpEnable, PV_FALSE.clone())),
+            f_eq(Attribute::Class, EntryClass::AccessControlProfile.into()),
+            f_eq(Attribute::Class, EntryClass::AccessControlModify.into()),
+            f_andnot(f_eq(Attribute::AcpEnable, PV_FALSE.clone())),
         ]));
 
         let res = self.internal_search(filt).map_err(|e| {
@@ -1421,15 +1400,9 @@ impl<'a> QueryServerWriteTransaction<'a> {
             })?;
         // Update delete
         let filt = filter!(f_and!([
-            f_eq(
-                ValueAttribute::Class,
-                ValueClass::AccessControlProfile.into()
-            ),
-            f_eq(
-                ValueAttribute::Class,
-                ValueClass::AccessControlDelete.into()
-            ),
-            f_andnot(f_eq(ValueAttribute::AcpEnable, PV_FALSE.clone())),
+            f_eq(Attribute::Class, EntryClass::AccessControlProfile.into()),
+            f_eq(Attribute::Class, EntryClass::AccessControlDelete.into()),
+            f_andnot(f_eq(Attribute::AcpEnable, PV_FALSE.clone())),
         ]));
 
         let res = self.internal_search(filt).map_err(|e| {
@@ -1505,7 +1478,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             Value::new_utf8(new_domain_name.to_string()),
         );
         let udi = PVUUID_DOMAIN_INFO.clone();
-        let filt = filter_all!(f_eq(ValueAttribute::Uuid, udi));
+        let filt = filter_all!(f_eq(Attribute::Uuid, udi));
         self.internal_modify(&filt, &modl)
     }
 
@@ -1524,7 +1497,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     pub fn danger_domain_rename(&mut self, new_domain_name: &str) -> Result<(), OperationError> {
         let modl = ModifyList::new_purge_and_set("domain_name", Value::new_iname(new_domain_name));
         let udi = PVUUID_DOMAIN_INFO.clone();
-        let filt = filter_all!(f_eq(ValueAttribute::Uuid, udi));
+        let filt = filter_all!(f_eq(Attribute::Uuid, udi));
         self.internal_modify(&filt, &modl)
     }
 
@@ -1641,16 +1614,10 @@ mod tests {
         let t_uuid = Uuid::new_v4();
         assert!(server_txn
             .internal_create(vec![entry_init!(
-                (
-                    ValueAttribute::Class.as_str(),
-                    ValueClass::Object.to_value()
-                ),
-                (
-                    ValueAttribute::Class.as_str(),
-                    ValueClass::Person.to_value()
-                ),
+                (Attribute::Class.as_str(), EntryClass::Object.to_value()),
+                (Attribute::Class.as_str(), EntryClass::Person.to_value()),
                 ("name", Value::new_iname("testperson1")),
-                (ValueAttribute::Uuid.as_str(), Value::Uuid(t_uuid)),
+                (Attribute::Uuid.as_str(), Value::Uuid(t_uuid)),
                 ("description", Value::new_utf8s("testperson1")),
                 ("displayname", Value::new_utf8s("testperson1"))
             ),])
@@ -1683,15 +1650,12 @@ mod tests {
         let t_uuid = Uuid::new_v4();
         assert!(server_txn
             .internal_create(vec![entry_init!(
+                (Attribute::Class.as_str(), EntryClass::Object.to_value()),
                 (
-                    ValueAttribute::Class.as_str(),
-                    ValueClass::Object.to_value()
+                    Attribute::Class.as_str(),
+                    EntryClass::ExtensibleObject.to_value()
                 ),
-                (
-                    ValueAttribute::Class.as_str(),
-                    ValueClass::ExtensibleObject.to_value()
-                ),
-                (ValueAttribute::Uuid.as_str(), Value::Uuid(t_uuid)),
+                (Attribute::Uuid.as_str(), Value::Uuid(t_uuid)),
                 ("sync_external_id", Value::new_iutf8("uid=testperson"))
             ),])
             .is_ok());
@@ -1715,18 +1679,9 @@ mod tests {
         let mut server_txn = server.write(duration_from_epoch_now()).await;
 
         let e1 = entry_init!(
-            (
-                ValueAttribute::Class.as_str(),
-                ValueClass::Object.to_value()
-            ),
-            (
-                ValueAttribute::Class.as_str(),
-                ValueClass::Person.to_value()
-            ),
-            (
-                ValueAttribute::Class.as_str(),
-                ValueClass::Account.to_value()
-            ),
+            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_str(), EntryClass::Person.to_value()),
+            (Attribute::Class.as_str(), EntryClass::Account.to_value()),
             ("name", Value::new_iname("testperson1")),
             (
                 "uuid",
@@ -1757,18 +1712,9 @@ mod tests {
         let mut server_txn = server.write(duration_from_epoch_now()).await;
 
         let e1 = entry_init!(
-            (
-                ValueAttribute::Class.as_str(),
-                ValueClass::Object.to_value()
-            ),
-            (
-                ValueAttribute::Class.as_str(),
-                ValueClass::Person.to_value()
-            ),
-            (
-                ValueAttribute::Class.as_str(),
-                ValueClass::Account.to_value()
-            ),
+            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_str(), EntryClass::Person.to_value()),
+            (Attribute::Class.as_str(), EntryClass::Account.to_value()),
             ("name", Value::new_iname("testperson1")),
             (
                 "uuid",
@@ -1798,14 +1744,8 @@ mod tests {
     async fn test_clone_value(server: &QueryServer) {
         let mut server_txn = server.write(duration_from_epoch_now()).await;
         let e1 = entry_init!(
-            (
-                ValueAttribute::Class.as_str(),
-                ValueClass::Object.to_value()
-            ),
-            (
-                ValueAttribute::Class.as_str(),
-                ValueClass::Person.to_value()
-            ),
+            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_str(), EntryClass::Person.to_value()),
             ("name", Value::new_iname("testperson1")),
             (
                 "uuid",
@@ -1844,14 +1784,8 @@ mod tests {
     #[qs_test]
     async fn test_dynamic_schema_class(server: &QueryServer) {
         let e1 = entry_init!(
-            (
-                ValueAttribute::Class.as_str(),
-                ValueClass::Object.to_value()
-            ),
-            (
-                ValueAttribute::Class.as_str(),
-                ValueClass::TestClass.to_value()
-            ),
+            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_str(), EntryClass::TestClass.to_value()),
             ("name", Value::new_iname("testobj1")),
             (
                 "uuid",
@@ -1861,15 +1795,9 @@ mod tests {
 
         // Class definition
         let e_cd = entry_init!(
-            (
-                ValueAttribute::Class.as_str(),
-                ValueClass::Object.to_value()
-            ),
-            (
-                ValueAttribute::Class.as_str(),
-                ValueClass::ClassType.to_value()
-            ),
-            ("classname", ValueClass::TestClass.to_value()),
+            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_str(), EntryClass::ClassType.to_value()),
+            ("classname", EntryClass::TestClass.to_value()),
             (
                 "uuid",
                 Value::Uuid(uuid!("cfcae205-31c3-484b-8ced-667d1709c5e3"))
@@ -1902,8 +1830,8 @@ mod tests {
         let mut server_txn = server.write(duration_from_epoch_now()).await;
         // delete the class
         let de_class = DeleteEvent::new_internal_invalid(filter!(f_eq(
-            ValueAttribute::ClassName,
-            ValueClass::TestClass.into()
+            Attribute::ClassName,
+            EntryClass::TestClass.into()
         )));
         assert!(server_txn.delete(&de_class).is_ok());
         // Commit
@@ -1918,7 +1846,7 @@ mod tests {
         let testobj1 = server_txn
             .internal_search_uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
             .expect("failed");
-        assert!(testobj1.attribute_equality("class", &ValueClass::TestClass.into()));
+        assert!(testobj1.attribute_equality("class", &EntryClass::TestClass.into()));
 
         // Should still be good
         server_txn.commit().expect("should not fail");
@@ -1928,13 +1856,10 @@ mod tests {
     #[qs_test]
     async fn test_dynamic_schema_attr(server: &QueryServer) {
         let e1 = entry_init!(
+            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
             (
-                ValueAttribute::Class.as_str(),
-                ValueClass::Object.to_value()
-            ),
-            (
-                ValueAttribute::Class.as_str(),
-                ValueClass::ExtensibleObject.to_value()
+                Attribute::Class.as_str(),
+                EntryClass::ExtensibleObject.to_value()
             ),
             ("name", Value::new_iname("testobj1")),
             (
@@ -1946,13 +1871,10 @@ mod tests {
 
         // Attribute definition
         let e_ad = entry_init!(
+            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
             (
-                ValueAttribute::Class.as_str(),
-                ValueClass::Object.to_value()
-            ),
-            (
-                ValueAttribute::Class.as_str(),
-                ValueClass::AttributeType.to_value()
+                Attribute::Class.as_str(),
+                EntryClass::AttributeType.to_value()
             ),
             (
                 "uuid",
@@ -1990,7 +1912,7 @@ mod tests {
         let mut server_txn = server.write(duration_from_epoch_now()).await;
         // delete the attr
         let de_attr = DeleteEvent::new_internal_invalid(filter!(f_eq(
-            ValueAttribute::AttributeName,
+            Attribute::AttributeName,
             PartialValue::new_iutf8("testattr")
         )));
         assert!(server_txn.delete(&de_attr).is_ok());
@@ -2003,10 +1925,7 @@ mod tests {
         let ce_fail = CreateEvent::new_internal(vec![e1.clone()]);
         assert!(server_txn.create(&ce_fail).is_err());
         // Search our attribute - should FAIL
-        let filt = filter!(f_eq(
-            ValueAttribute::TestAttr,
-            PartialValue::new_utf8s("test")
-        ));
+        let filt = filter!(f_eq(Attribute::TestAttr, PartialValue::new_utf8s("test")));
         assert!(server_txn.internal_search(filt).is_err());
         // Search the entry - the attribute will still be present
         // even if we can't search on it.

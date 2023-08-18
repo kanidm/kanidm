@@ -21,8 +21,8 @@ impl AccessControlSearch {
         value: &Entry<EntrySealed, EntryCommitted>,
     ) -> Result<Self, OperationError> {
         if !value.attribute_equality(
-            ValueAttribute::Class.as_str(),
-            &ValueClass::AccessControlSearch.into(),
+            Attribute::Class.as_str(),
+            &EntryClass::AccessControlSearch.into(),
         ) {
             admin_error!("class access_control_search not present.");
             return Err(OperationError::InvalidAcpState(
@@ -77,8 +77,8 @@ impl AccessControlDelete {
         value: &Entry<EntrySealed, EntryCommitted>,
     ) -> Result<Self, OperationError> {
         if !value.attribute_equality(
-            ValueAttribute::Class.as_str(),
-            &ValueClass::AccessControlDelete.into(),
+            Attribute::Class.as_str(),
+            &EntryClass::AccessControlDelete.into(),
         ) {
             admin_error!("class access_control_delete not present.");
             return Err(OperationError::InvalidAcpState(
@@ -124,8 +124,8 @@ impl AccessControlCreate {
         value: &Entry<EntrySealed, EntryCommitted>,
     ) -> Result<Self, OperationError> {
         if !value.attribute_equality(
-            ValueAttribute::Class.as_str(),
-            &ValueClass::AccessControlCreate.into(),
+            Attribute::Class.as_str(),
+            &EntryClass::AccessControlCreate.into(),
         ) {
             admin_error!("class access_control_create not present.");
             return Err(OperationError::InvalidAcpState(
@@ -188,8 +188,8 @@ impl AccessControlModify {
         value: &Entry<EntrySealed, EntryCommitted>,
     ) -> Result<Self, OperationError> {
         if !value.attribute_equality(
-            ValueAttribute::Class.as_str(),
-            &ValueClass::AccessControlModify.into(),
+            Attribute::Class.as_str(),
+            &EntryClass::AccessControlModify.into(),
         ) {
             admin_error!("class access_control_modify not present.");
             return Err(OperationError::InvalidAcpState(
@@ -279,8 +279,8 @@ impl AccessControlProfile {
     ) -> Result<Self, OperationError> {
         // Assert we have class access_control_profile
         if !value.attribute_equality(
-            ValueAttribute::Class.as_str(),
-            &ValueClass::AccessControlProfile.into(),
+            Attribute::Class.as_str(),
+            &EntryClass::AccessControlProfile.into(),
         ) {
             admin_error!("class access_control_profile not present.");
             return Err(OperationError::InvalidAcpState(

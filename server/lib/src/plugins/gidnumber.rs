@@ -20,13 +20,9 @@ const GID_SAFETY_NUMBER_MIN: u32 = 1000;
 pub struct GidNumber {}
 
 fn apply_gidnumber<T: Clone>(e: &mut Entry<EntryInvalid, T>) -> Result<(), OperationError> {
-    if (e.attribute_equality(
-        ValueAttribute::Class.as_str(),
-        &ValueClass::PosixGroup.into(),
-    ) || e.attribute_equality(
-        ValueAttribute::Class.into(),
-        &ValueClass::PosixAccount.into(),
-    )) && !e.attribute_pres("gidnumber")
+    if (e.attribute_equality(Attribute::Class.as_str(), &EntryClass::PosixGroup.into())
+        || e.attribute_equality(Attribute::Class.into(), &EntryClass::PosixAccount.into()))
+        && !e.attribute_pres("gidnumber")
     {
         let u_ref = e
             .get_uuid()
@@ -112,28 +108,22 @@ mod tests {
     #[test]
     fn test_gidnumber_create_generate() {
         let e = entry_init!(
+            (Attribute::Class.as_str(), EntryClass::Account.to_value()),
             (
-                ValueAttribute::Class.as_str(),
-                ValueClass::Account.to_value()
+                Attribute::Class.as_str(),
+                EntryClass::PosixAccount.to_value()
             ),
-            (
-                ValueAttribute::Class.as_str(),
-                ValueClass::PosixAccount.to_value()
-            ),
-            (
-                ValueAttribute::Name.as_str(),
-                Value::new_iname("testperson")
-            ),
+            (Attribute::Name.as_str(), Value::new_iname("testperson")),
             (
                 "uuid",
                 Value::Uuid(uuid!("83a0927f-3de1-45ec-bea0-2f7b997ef244"))
             ),
             (
-                ValueAttribute::Description.as_str(),
+                Attribute::Description.as_str(),
                 Value::new_utf8s("testperson")
             ),
             (
-                ValueAttribute::DisplayName.as_str(),
+                Attribute::DisplayName.as_str(),
                 Value::new_utf8s("testperson")
             )
         );
@@ -158,29 +148,23 @@ mod tests {
     #[test]
     fn test_gidnumber_create_noaction() {
         let e = entry_init!(
+            (Attribute::Class.as_str(), EntryClass::Account.to_value()),
             (
-                ValueAttribute::Class.as_str(),
-                ValueClass::Account.to_value()
+                Attribute::Class.as_str(),
+                EntryClass::PosixAccount.to_value()
             ),
-            (
-                ValueAttribute::Class.as_str(),
-                ValueClass::PosixAccount.to_value()
-            ),
-            (
-                ValueAttribute::Name.as_str(),
-                Value::new_iname("testperson")
-            ),
-            (ValueAttribute::GidNumber.as_str(), Value::Uint32(10001)),
+            (Attribute::Name.as_str(), Value::new_iname("testperson")),
+            (Attribute::GidNumber.as_str(), Value::Uint32(10001)),
             (
                 "uuid",
                 Value::Uuid(uuid!("83a0927f-3de1-45ec-bea0-2f7b997ef244"))
             ),
             (
-                ValueAttribute::Description.as_str(),
+                Attribute::Description.as_str(),
                 Value::new_utf8s("testperson")
             ),
             (
-                ValueAttribute::DisplayName.as_str(),
+                Attribute::DisplayName.as_str(),
                 Value::new_utf8s("testperson")
             )
         );
@@ -205,28 +189,22 @@ mod tests {
     #[test]
     fn test_gidnumber_modify_generate() {
         let e = entry_init!(
+            (Attribute::Class.as_str(), EntryClass::Account.to_value()),
             (
-                ValueAttribute::Class.as_str(),
-                ValueClass::Account.to_value()
+                Attribute::Class.as_str(),
+                EntryClass::PosixAccount.to_value()
             ),
-            (
-                ValueAttribute::Class.as_str(),
-                ValueClass::PosixAccount.to_value()
-            ),
-            (
-                ValueAttribute::Name.as_str(),
-                Value::new_iname("testperson")
-            ),
+            (Attribute::Name.as_str(), Value::new_iname("testperson")),
             (
                 "uuid",
                 Value::Uuid(uuid!("83a0927f-3de1-45ec-bea0-2f7b997ef244"))
             ),
             (
-                ValueAttribute::Description.as_str(),
+                Attribute::Description.as_str(),
                 Value::new_utf8s("testperson")
             ),
             (
-                ValueAttribute::DisplayName.as_str(),
+                Attribute::DisplayName.as_str(),
                 Value::new_utf8s("testperson")
             )
         );
@@ -236,11 +214,8 @@ mod tests {
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq(
-                ValueAttribute::Name,
-                PartialValue::new_iname("testperson")
-            )),
-            modlist!([m_pres("class", &ValueClass::PosixGroup.into())]),
+            filter!(f_eq(Attribute::Name, PartialValue::new_iname("testperson"))),
+            modlist!([m_pres("class", &EntryClass::PosixGroup.into())]),
             None,
             |_| {},
             |qs_write: &mut QueryServerWriteTransaction| check_gid(
@@ -255,28 +230,22 @@ mod tests {
     #[test]
     fn test_gidnumber_modify_regenerate() {
         let e = entry_init!(
+            (Attribute::Class.as_str(), EntryClass::Account.to_value()),
             (
-                ValueAttribute::Class.as_str(),
-                ValueClass::Account.to_value()
+                Attribute::Class.as_str(),
+                EntryClass::PosixAccount.to_value()
             ),
-            (
-                ValueAttribute::Class.as_str(),
-                ValueClass::PosixAccount.to_value()
-            ),
-            (
-                ValueAttribute::Name.as_str(),
-                Value::new_iname("testperson")
-            ),
+            (Attribute::Name.as_str(), Value::new_iname("testperson")),
             (
                 "uuid",
                 Value::Uuid(uuid::uuid!("83a0927f-3de1-45ec-bea0-2f7b997ef244"))
             ),
             (
-                ValueAttribute::Description.as_str(),
+                Attribute::Description.as_str(),
                 Value::new_utf8s("testperson")
             ),
             (
-                ValueAttribute::DisplayName.as_str(),
+                Attribute::DisplayName.as_str(),
                 Value::new_utf8s("testperson")
             )
         );
@@ -286,10 +255,7 @@ mod tests {
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq(
-                ValueAttribute::Name,
-                PartialValue::new_iname("testperson")
-            )),
+            filter!(f_eq(Attribute::Name, PartialValue::new_iname("testperson"))),
             modlist!([m_purge("gidnumber")]),
             None,
             |_| {},
@@ -305,28 +271,22 @@ mod tests {
     #[test]
     fn test_gidnumber_modify_noregen() {
         let e = entry_init!(
+            (Attribute::Class.as_str(), EntryClass::Account.to_value()),
             (
-                ValueAttribute::Class.as_str(),
-                ValueClass::Account.to_value()
+                Attribute::Class.as_str(),
+                EntryClass::PosixAccount.to_value()
             ),
-            (
-                ValueAttribute::Class.as_str(),
-                ValueClass::PosixAccount.to_value()
-            ),
-            (
-                ValueAttribute::Name.as_str(),
-                Value::new_iname("testperson")
-            ),
+            (Attribute::Name.as_str(), Value::new_iname("testperson")),
             (
                 "uuid",
                 Value::Uuid(uuid::uuid!("83a0927f-3de1-45ec-bea0-2f7b997ef244"))
             ),
             (
-                ValueAttribute::Description.as_str(),
+                Attribute::Description.as_str(),
                 Value::new_utf8s("testperson")
             ),
             (
-                ValueAttribute::DisplayName.as_str(),
+                Attribute::DisplayName.as_str(),
                 Value::new_utf8s("testperson")
             )
         );
@@ -336,10 +296,7 @@ mod tests {
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq(
-                ValueAttribute::Name,
-                PartialValue::new_iname("testperson")
-            )),
+            filter!(f_eq(Attribute::Name, PartialValue::new_iname("testperson"))),
             modlist!([
                 m_purge("gidnumber"),
                 m_pres("gidnumber", &Value::new_uint32(2000))
@@ -357,28 +314,22 @@ mod tests {
     #[test]
     fn test_gidnumber_create_system_reject() {
         let e = entry_init!(
+            (Attribute::Class.as_str(), EntryClass::Account.to_value()),
             (
-                ValueAttribute::Class.as_str(),
-                ValueClass::Account.to_value()
+                Attribute::Class.as_str(),
+                EntryClass::PosixAccount.to_value()
             ),
-            (
-                ValueAttribute::Class.as_str(),
-                ValueClass::PosixAccount.to_value()
-            ),
-            (
-                ValueAttribute::Name.as_str(),
-                Value::new_iname("testperson")
-            ),
+            (Attribute::Name.as_str(), Value::new_iname("testperson")),
             (
                 "uuid",
                 Value::Uuid(uuid::uuid!("83a0927f-3de1-45ec-bea0-000000000244"))
             ),
             (
-                ValueAttribute::Description.as_str(),
+                Attribute::Description.as_str(),
                 Value::new_utf8s("testperson")
             ),
             (
-                ValueAttribute::DisplayName.as_str(),
+                Attribute::DisplayName.as_str(),
                 Value::new_utf8s("testperson")
             )
         );
@@ -400,25 +351,19 @@ mod tests {
     #[test]
     fn test_gidnumber_create_secure_reject() {
         let e = entry_init!(
+            (Attribute::Class.as_str(), EntryClass::Account.to_value()),
             (
-                ValueAttribute::Class.as_str(),
-                ValueClass::Account.to_value()
+                Attribute::Class.as_str(),
+                EntryClass::PosixAccount.to_value()
             ),
+            (Attribute::Name.as_str(), Value::new_iname("testperson")),
+            (Attribute::GidNumber.as_str(), Value::Uint32(500)),
             (
-                ValueAttribute::Class.as_str(),
-                ValueClass::PosixAccount.to_value()
-            ),
-            (
-                ValueAttribute::Name.as_str(),
-                Value::new_iname("testperson")
-            ),
-            (ValueAttribute::GidNumber.as_str(), Value::Uint32(500)),
-            (
-                ValueAttribute::Description.as_str(),
+                Attribute::Description.as_str(),
                 Value::new_utf8s("testperson")
             ),
             (
-                ValueAttribute::DisplayName.as_str(),
+                Attribute::DisplayName.as_str(),
                 Value::new_utf8s("testperson")
             )
         );
@@ -440,25 +385,19 @@ mod tests {
     #[test]
     fn test_gidnumber_create_secure_root_reject() {
         let e = entry_init!(
+            (Attribute::Class.as_str(), EntryClass::Account.to_value()),
             (
-                ValueAttribute::Class.as_str(),
-                ValueClass::Account.to_value()
+                Attribute::Class.as_str(),
+                EntryClass::PosixAccount.to_value()
             ),
+            (Attribute::Name.as_str(), Value::new_iname("testperson")),
+            (Attribute::GidNumber.as_str(), Value::Uint32(0)),
             (
-                ValueAttribute::Class.as_str(),
-                ValueClass::PosixAccount.to_value()
-            ),
-            (
-                ValueAttribute::Name.as_str(),
-                Value::new_iname("testperson")
-            ),
-            (ValueAttribute::GidNumber.as_str(), Value::Uint32(0)),
-            (
-                ValueAttribute::Description.as_str(),
+                Attribute::Description.as_str(),
                 Value::new_utf8s("testperson")
             ),
             (
-                ValueAttribute::DisplayName.as_str(),
+                Attribute::DisplayName.as_str(),
                 Value::new_utf8s("testperson")
             )
         );

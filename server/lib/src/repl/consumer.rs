@@ -182,8 +182,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 .chain(pre_cand.iter().map(|e| e.as_ref()))
                 .any(|e| {
                     e.attribute_equality(
-                        ValueAttribute::Class.into(),
-                        &ValueClass::AccessControlProfile.into(),
+                        Attribute::Class.into(),
+                        &EntryClass::AccessControlProfile.into(),
                     )
                 })
         }
@@ -193,8 +193,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 .chain(pre_cand.iter().map(|e| e.as_ref()))
                 .any(|e| {
                     e.attribute_equality(
-                        ValueAttribute::Class.into(),
-                        &ValueClass::OAuth2ResourceServer.into(),
+                        Attribute::Class.into(),
+                        &EntryClass::OAuth2ResourceServer.into(),
                     )
                 });
         }

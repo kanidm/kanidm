@@ -73,7 +73,7 @@ impl LdapServer {
             .map(|s| s.to_string())
             .or_else(|| {
                 domain_entry
-                    .get_ava_single_iname(ValueAttribute::DomainName.as_str())
+                    .get_ava_single_iname(Attribute::DomainName.as_str())
                     .map(ldap_domain_to_dc)
             })
             .ok_or(OperationError::InvalidEntryState)?;
@@ -289,16 +289,13 @@ impl LdapServer {
                     sr.filter.clone(),
                     ext,
                     LdapFilter::Not(Box::new(LdapFilter::Or(vec![
+                        LdapFilter::Equality(Attribute::Class.to_string(), "classtype".to_string()),
                         LdapFilter::Equality(
-                            ValueAttribute::Class.to_string(),
-                            "classtype".to_string(),
-                        ),
-                        LdapFilter::Equality(
-                            ValueAttribute::Class.to_string(),
+                            Attribute::Class.to_string(),
                             "attributetype".to_string(),
                         ),
                         LdapFilter::Equality(
-                            ValueAttribute::Class.to_string(),
+                            Attribute::Class.to_string(),
                             "access_control_profile".to_string(),
                         ),
                     ]))),
@@ -306,16 +303,13 @@ impl LdapServer {
                 None => LdapFilter::And(vec![
                     sr.filter.clone(),
                     LdapFilter::Not(Box::new(LdapFilter::Or(vec![
+                        LdapFilter::Equality(Attribute::Class.to_string(), "classtype".to_string()),
                         LdapFilter::Equality(
-                            ValueAttribute::Class.to_string(),
-                            "classtype".to_string(),
-                        ),
-                        LdapFilter::Equality(
-                            ValueAttribute::Class.to_string(),
+                            Attribute::Class.to_string(),
                             "attributetype".to_string(),
                         ),
                         LdapFilter::Equality(
-                            ValueAttribute::Class.to_string(),
+                            Attribute::Class.to_string(),
                             "access_control_profile".to_string(),
                         ),
                     ]))),
@@ -638,12 +632,9 @@ mod tests {
         let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await;
         // make the admin a valid posix account
         let me_posix = ModifyEvent::new_internal_invalid(
-            filter!(f_eq(ValueAttribute::Name, PartialValue::new_iname("admin"))),
+            filter!(f_eq(Attribute::Name, PartialValue::new_iname("admin"))),
             ModifyList::new_list(vec![
-                Modify::Present(
-                    ValueAttribute::Class.into(),
-                    ValueClass::PosixAccount.into(),
-                ),
+                Modify::Present(Attribute::Class.into(), EntryClass::PosixAccount.into()),
                 Modify::Present(AttrString::from("gidnumber"), Value::new_uint32(2001)),
             ]),
         );
@@ -825,48 +816,30 @@ mod tests {
         // Setup a user we want to check.
         {
             let e1 = entry_init!(
+                (Attribute::Class.as_str(), EntryClass::Object.to_value()),
+                (Attribute::Class.as_str(), EntryClass::Person.to_value()),
+                (Attribute::Class.as_str(), EntryClass::Account.to_value()),
                 (
-                    ValueAttribute::Class.as_str(),
-                    ValueClass::Object.to_value()
+                    Attribute::Class.as_str(),
+                    EntryClass::PosixAccount.to_value()
                 ),
-                (
-                    ValueAttribute::Class.as_str(),
-                    ValueClass::Person.to_value()
-                ),
-                (
-                    ValueAttribute::Class.as_str(),
-                    ValueClass::Account.to_value()
-                ),
-                (
-                    ValueAttribute::Class.as_str(),
-                    ValueClass::PosixAccount.to_value()
-                ),
-                (
-                    ValueAttribute::Name.as_str(),
-                    Value::new_iname("testperson1")
-                ),
+                (Attribute::Name.as_str(), Value::new_iname("testperson1")),
                 (
                     "uuid",
                     Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
                 ),
                 (
-                    ValueAttribute::Description.as_str(),
+                    Attribute::Description.as_str(),
                     Value::new_utf8s("testperson1")
                 ),
                 (
-                    ValueAttribute::DisplayName.as_str(),
+                    Attribute::DisplayName.as_str(),
                     Value::new_utf8s("testperson1")
                 ),
+                (Attribute::GidNumber.as_str(), Value::new_uint32(12345678)),
+                (Attribute::LoginShell.as_str(), Value::new_iutf8("/bin/zsh")),
                 (
-                    ValueAttribute::GidNumber.as_str(),
-                    Value::new_uint32(12345678)
-                ),
-                (
-                    ValueAttribute::LoginShell.as_str(),
-                    Value::new_iutf8("/bin/zsh")
-                ),
-                (
-                    ValueAttribute::SshUnderscorePublicKey.as_str(),
+                    Attribute::SshUnderscorePublicKey.as_str(),
                     Value::new_sshkey_str("test", ssh_ed25519)
                 )
             );
@@ -901,29 +874,20 @@ mod tests {
                 assert_entry_contains!(
                     lsre,
                     "spn=testperson1@example.com,dc=example,dc=com",
+                    (Attribute::Class.as_str(), EntryClass::Object.to_string()),
+                    (Attribute::Class.as_str(), EntryClass::Person.to_string()),
+                    (Attribute::Class.as_str(), EntryClass::Account.to_string()),
                     (
-                        ValueAttribute::Class.as_str(),
-                        ValueClass::Object.to_string()
+                        Attribute::Class.as_str(),
+                        EntryClass::PosixAccount.to_string()
                     ),
+                    (Attribute::DisplayName.as_str(), "testperson1"),
+                    (Attribute::Name.as_str(), "testperson1"),
+                    (Attribute::GidNumber.as_str(), "12345678"),
+                    (Attribute::LoginShell.as_str(), "/bin/zsh"),
+                    (Attribute::SshUnderscorePublicKey.as_str(), ssh_ed25519),
                     (
-                        ValueAttribute::Class.as_str(),
-                        ValueClass::Person.to_string()
-                    ),
-                    (
-                        ValueAttribute::Class.as_str(),
-                        ValueClass::Account.to_string()
-                    ),
-                    (
-                        ValueAttribute::Class.as_str(),
-                        ValueClass::PosixAccount.to_string()
-                    ),
-                    (ValueAttribute::DisplayName.as_str(), "testperson1"),
-                    (ValueAttribute::Name.as_str(), "testperson1"),
-                    (ValueAttribute::GidNumber.as_str(), "12345678"),
-                    (ValueAttribute::LoginShell.as_str(), "/bin/zsh"),
-                    (ValueAttribute::SshUnderscorePublicKey.as_str(), ssh_ed25519),
-                    (
-                        ValueAttribute::Uuid.as_str(),
+                        Attribute::Uuid.as_str(),
                         "cc8e95b4-c24f-4d68-ba54-8bed76f63930"
                     )
                 );
@@ -948,15 +912,15 @@ mod tests {
                 assert_entry_contains!(
                     lsre,
                     "spn=testperson1@example.com,dc=example,dc=com",
-                    (ValueAttribute::ObjectClass.as_str(), "object"),
-                    (ValueAttribute::ObjectClass.as_str(), "person"),
-                    (ValueAttribute::ObjectClass.as_str(), "account"),
-                    (ValueAttribute::ObjectClass.as_str(), "posixaccount"),
-                    (ValueAttribute::DisplayName.as_str(), "testperson1"),
-                    (ValueAttribute::Name.as_str(), "testperson1"),
-                    (ValueAttribute::GidNumber.as_str(), "12345678"),
-                    (ValueAttribute::LoginShell.as_str(), "/bin/zsh"),
-                    (ValueAttribute::SshUnderscorePublicKey.as_str(), ssh_ed25519),
+                    (Attribute::ObjectClass.as_str(), "object"),
+                    (Attribute::ObjectClass.as_str(), "person"),
+                    (Attribute::ObjectClass.as_str(), "account"),
+                    (Attribute::ObjectClass.as_str(), "posixaccount"),
+                    (Attribute::DisplayName.as_str(), "testperson1"),
+                    (Attribute::Name.as_str(), "testperson1"),
+                    (Attribute::GidNumber.as_str(), "12345678"),
+                    (Attribute::LoginShell.as_str(), "/bin/zsh"),
+                    (Attribute::SshUnderscorePublicKey.as_str(), ssh_ed25519),
                     ("entryuuid", "cc8e95b4-c24f-4d68-ba54-8bed76f63930"),
                     ("entrydn", "spn=testperson1@example.com,dc=example,dc=com"),
                     ("uidnumber", "12345678"),
@@ -989,7 +953,7 @@ mod tests {
                 assert_entry_contains!(
                     lsre,
                     "spn=testperson1@example.com,dc=example,dc=com",
-                    (ValueAttribute::Name.as_str(), "testperson1"),
+                    (Attribute::Name.as_str(), "testperson1"),
                     ("entrydn", "spn=testperson1@example.com,dc=example,dc=com"),
                     ("uidnumber", "12345678"),
                     ("keys", ssh_ed25519)
@@ -1031,51 +995,33 @@ mod tests {
             // Create a service account,
 
             let e1 = entry_init!(
+                (Attribute::Class.as_str(), EntryClass::Object.to_value()),
                 (
-                    ValueAttribute::Class.as_str(),
-                    ValueClass::Object.to_value()
+                    Attribute::Class.as_str(),
+                    EntryClass::ServiceAccount.to_value()
                 ),
+                (Attribute::Class.as_str(), EntryClass::Account.to_value()),
+                (Attribute::Uuid.as_str(), Value::Uuid(sa_uuid)),
                 (
-                    ValueAttribute::Class.as_str(),
-                    ValueClass::ServiceAccount.to_value()
-                ),
-                (
-                    ValueAttribute::Class.as_str(),
-                    ValueClass::Account.to_value()
-                ),
-                (ValueAttribute::Uuid.as_str(), Value::Uuid(sa_uuid)),
-                (
-                    ValueAttribute::Name.as_str(),
+                    Attribute::Name.as_str(),
                     Value::new_iname("service_permission_test")
                 ),
                 (
-                    ValueAttribute::DisplayName.as_str(),
+                    Attribute::DisplayName.as_str(),
                     Value::new_utf8s("service_permission_test")
                 )
             );
 
             // Setup a person with an email
             let e2 = entry_init!(
+                (Attribute::Class.as_str(), EntryClass::Object.to_value()),
+                (Attribute::Class.as_str(), EntryClass::Person.to_value()),
+                (Attribute::Class.as_str(), EntryClass::Account.to_value()),
                 (
-                    ValueAttribute::Class.as_str(),
-                    ValueClass::Object.to_value()
+                    Attribute::Class.as_str(),
+                    EntryClass::PosixAccount.to_value()
                 ),
-                (
-                    ValueAttribute::Class.as_str(),
-                    ValueClass::Person.to_value()
-                ),
-                (
-                    ValueAttribute::Class.as_str(),
-                    ValueClass::Account.to_value()
-                ),
-                (
-                    ValueAttribute::Class.as_str(),
-                    ValueClass::PosixAccount.to_value()
-                ),
-                (
-                    ValueAttribute::Name.as_str(),
-                    Value::new_iname("testperson1")
-                ),
+                (Attribute::Name.as_str(), Value::new_iname("testperson1")),
                 (
                     "mail",
                     Value::EmailAddress("testperson1@example.com".to_string(), true)
@@ -1085,21 +1031,15 @@ mod tests {
                     Value::EmailAddress("testperson1.alternative@example.com".to_string(), false)
                 ),
                 (
-                    ValueAttribute::Description.as_str(),
+                    Attribute::Description.as_str(),
                     Value::new_utf8s("testperson1")
                 ),
                 (
-                    ValueAttribute::DisplayName.as_str(),
+                    Attribute::DisplayName.as_str(),
                     Value::new_utf8s("testperson1")
                 ),
-                (
-                    ValueAttribute::GidNumber.as_str(),
-                    Value::new_uint32(12345678)
-                ),
-                (
-                    ValueAttribute::LoginShell.as_str(),
-                    Value::new_iutf8("/bin/zsh")
-                )
+                (Attribute::GidNumber.as_str(), Value::new_uint32(12345678)),
+                (Attribute::LoginShell.as_str(), Value::new_iutf8("/bin/zsh"))
             );
 
             // Setup an access control for the service account to view mail attrs.
@@ -1113,7 +1053,7 @@ mod tests {
             // idm_people_read_priv
             let me = ModifyEvent::new_internal_invalid(
                 filter!(f_eq(
-                    ValueAttribute::Name,
+                    Attribute::Name,
                     PartialValue::new_iname("idm_people_read_priv")
                 )),
                 ModifyList::new_list(vec![Modify::Present(
@@ -1151,7 +1091,7 @@ mod tests {
                 assert_entry_contains!(
                     lsre,
                     "spn=testperson1@example.com,dc=example,dc=com",
-                    (ValueAttribute::Name.as_str(), "testperson1")
+                    (Attribute::Name.as_str(), "testperson1")
                 );
             }
             _ => assert!(false),
@@ -1187,7 +1127,7 @@ mod tests {
                 assert_entry_contains!(
                     lsre,
                     "spn=testperson1@example.com,dc=example,dc=com",
-                    (ValueAttribute::Name.as_str(), "testperson1"),
+                    (Attribute::Name.as_str(), "testperson1"),
                     ("mail", "testperson1@example.com"),
                     ("mail", "testperson1.alternative@example.com"),
                     ("mail;primary", "testperson1@example.com"),
@@ -1212,25 +1152,16 @@ mod tests {
         // Setup a user we want to check.
         {
             let e1 = entry_init!(
+                (Attribute::Class.as_str(), EntryClass::Person.to_value()),
+                (Attribute::Class.as_str(), EntryClass::Account.to_value()),
+                (Attribute::Name.as_str(), Value::new_iname("testperson1")),
+                (Attribute::Uuid.as_str(), Value::Uuid(acct_uuid)),
                 (
-                    ValueAttribute::Class.as_str(),
-                    ValueClass::Person.to_value()
-                ),
-                (
-                    ValueAttribute::Class.as_str(),
-                    ValueClass::Account.to_value()
-                ),
-                (
-                    ValueAttribute::Name.as_str(),
-                    Value::new_iname("testperson1")
-                ),
-                (ValueAttribute::Uuid.as_str(), Value::Uuid(acct_uuid)),
-                (
-                    ValueAttribute::Description.as_str(),
+                    Attribute::Description.as_str(),
                     Value::new_utf8s("testperson1")
                 ),
                 (
-                    ValueAttribute::DisplayName.as_str(),
+                    Attribute::DisplayName.as_str(),
                     Value::new_utf8s("testperson1")
                 )
             );
@@ -1270,10 +1201,10 @@ mod tests {
                 assert_entry_contains!(
                     lsre,
                     "spn=testperson1@example.com,dc=example,dc=com",
-                    (ValueAttribute::Name.as_str(), "testperson1"),
-                    (ValueAttribute::DisplayName.as_str(), "testperson1"),
+                    (Attribute::Name.as_str(), "testperson1"),
+                    (Attribute::DisplayName.as_str(), "testperson1"),
                     (
-                        ValueAttribute::Uuid.as_str(),
+                        Attribute::Uuid.as_str(),
                         "cc8e95b4-c24f-4d68-ba54-8bed76f63930"
                     ),
                     ("entryuuid", "cc8e95b4-c24f-4d68-ba54-8bed76f63930")
@@ -1308,7 +1239,7 @@ mod tests {
                 assert_entry_contains!(
                     lsre,
                     "",
-                    (ValueAttribute::ObjectClass.as_str(), "top"),
+                    (Attribute::ObjectClass.as_str(), "top"),
                     ("vendorname", "Kanidm Project"),
                     ("supportedldapversion", "3"),
                     ("defaultnamingcontext", "dc=example,dc=com")
@@ -1324,10 +1255,7 @@ mod tests {
         let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await;
         // make the admin a valid posix account
         let me_posix = ModifyEvent::new_internal_invalid(
-            filter!(f_eq(
-                ValueAttribute::Uuid,
-                PartialValue::Uuid(UUID_DOMAIN_INFO)
-            )),
+            filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(UUID_DOMAIN_INFO))),
             ModifyList::new_purge_and_set(
                 "domain_ldap_basedn",
                 Value::new_iutf8("o=kanidmproject"),
@@ -1361,7 +1289,7 @@ mod tests {
                 assert_entry_contains!(
                     lsre,
                     "",
-                    (ValueAttribute::ObjectClass.as_str(), "top"),
+                    (Attribute::ObjectClass.as_str(), "top"),
                     ("vendorname", "Kanidm Project"),
                     ("supportedldapversion", "3"),
                     ("defaultnamingcontext", "o=kanidmproject")

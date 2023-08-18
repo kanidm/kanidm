@@ -107,42 +107,37 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // schema or acp requires reload.
         if !self.changed_schema {
             self.changed_schema = commit_cand.iter().any(|e| {
-                e.attribute_equality(
-                    ValueAttribute::Class.as_str(),
-                    &ValueClass::ClassType.into(),
-                ) || e.attribute_equality(
-                    ValueAttribute::Class.as_str(),
-                    &ValueClass::AttributeType.into(),
-                )
+                e.attribute_equality(Attribute::Class.as_str(), &EntryClass::ClassType.into())
+                    || e.attribute_equality(
+                        Attribute::Class.as_str(),
+                        &EntryClass::AttributeType.into(),
+                    )
             });
         }
         if !self.changed_acp {
             self.changed_acp = commit_cand.iter().any(|e| {
                 e.attribute_equality(
-                    ValueAttribute::Class.as_str(),
-                    &ValueClass::AccessControlProfile.into(),
+                    Attribute::Class.as_str(),
+                    &EntryClass::AccessControlProfile.into(),
                 )
             });
         }
         if !self.changed_oauth2 {
             self.changed_oauth2 = commit_cand.iter().any(|e| {
                 e.attribute_equality(
-                    ValueAttribute::Class.as_str(),
-                    &ValueClass::OAuth2ResourceServer.into(),
+                    Attribute::Class.as_str(),
+                    &EntryClass::OAuth2ResourceServer.into(),
                 )
             });
         }
         if !self.changed_domain {
             self.changed_domain = commit_cand
                 .iter()
-                .any(|e| e.attribute_equality(ValueAttribute::Uuid.as_str(), &PVUUID_DOMAIN_INFO));
+                .any(|e| e.attribute_equality(Attribute::Uuid.as_str(), &PVUUID_DOMAIN_INFO));
         }
         if !self.changed_sync_agreement {
             self.changed_sync_agreement = commit_cand.iter().any(|e| {
-                e.attribute_equality(
-                    ValueAttribute::Class.as_str(),
-                    &ValueClass::SyncAccount.into(),
-                )
+                e.attribute_equality(Attribute::Class.as_str(), &EntryClass::SyncAccount.into())
             });
         }
 
@@ -183,45 +178,30 @@ mod tests {
     #[qs_test]
     async fn test_create_user(server: &QueryServer) {
         let mut server_txn = server.write(duration_from_epoch_now()).await;
-        let filt = filter!(f_eq(
-            ValueAttribute::Name,
-            PartialValue::new_iname("testperson")
-        ));
+        let filt = filter!(f_eq(Attribute::Name, PartialValue::new_iname("testperson")));
         let admin = server_txn.internal_search_uuid(UUID_ADMIN).expect("failed");
 
         let se1 = SearchEvent::new_impersonate_entry(admin, filt);
 
         let mut e = entry_init!(
+            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_str(), EntryClass::Person.to_value()),
+            (Attribute::Class.as_str(), EntryClass::Account.to_value()),
+            (Attribute::Name.as_str(), Value::new_iname("testperson")),
             (
-                ValueAttribute::Class.as_str(),
-                ValueClass::Object.to_value()
-            ),
-            (
-                ValueAttribute::Class.as_str(),
-                ValueClass::Person.to_value()
-            ),
-            (
-                ValueAttribute::Class.as_str(),
-                ValueClass::Account.to_value()
-            ),
-            (
-                ValueAttribute::Name.as_str(),
-                Value::new_iname("testperson")
-            ),
-            (
-                ValueAttribute::Spn.as_str(),
+                Attribute::Spn.as_str(),
                 Value::new_spn_str("testperson", "example.com")
             ),
             (
-                ValueAttribute::Uuid.as_str(),
+                Attribute::Uuid.as_str(),
                 Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
             ),
             (
-                ValueAttribute::Description.as_str(),
+                Attribute::Description.as_str(),
                 Value::new_utf8s("testperson")
             ),
             (
-                ValueAttribute::DisplayName.as_str(),
+                Attribute::DisplayName.as_str(),
                 Value::new_utf8s("testperson")
             )
         );
@@ -239,14 +219,14 @@ mod tests {
         assert!(r2.len() == 1);
 
         // We apply some member-of in the server now, so we add these before we seal.
-        e.add_ava(ValueAttribute::Class.as_str(), ValueClass::MemberOf.into());
+        e.add_ava(Attribute::Class.as_str(), EntryClass::MemberOf.into());
         e.add_ava("memberof", Value::Refer(UUID_IDM_ALL_PERSONS));
         e.add_ava("directmemberof", Value::Refer(UUID_IDM_ALL_PERSONS));
         e.add_ava("memberof", Value::Refer(UUID_IDM_ALL_ACCOUNTS));
         e.add_ava("directmemberof", Value::Refer(UUID_IDM_ALL_ACCOUNTS));
         // we also add the name_history ava!
         e.add_ava(
-            ValueAttribute::NameHistory.as_str(),
+            Attribute::NameHistory.as_str(),
             Value::AuditLogString(server_txn.get_txn_cid().clone(), "testperson".to_string()),
         );
         // this is kinda ugly but since ecdh keys are generated we don't have any other way
@@ -271,10 +251,7 @@ mod tests {
         let mut server_b_txn = server_b.write(duration_from_epoch_now()).await;
 
         // Create on server a
-        let filt = filter!(f_eq(
-            ValueAttribute::Name,
-            PartialValue::new_iname("testperson")
-        ));
+        let filt = filter!(f_eq(Attribute::Name, PartialValue::new_iname("testperson")));
 
         let admin = server_a_txn
             .internal_search_uuid(UUID_ADMIN)
@@ -287,24 +264,15 @@ mod tests {
         let se_b = SearchEvent::new_impersonate_entry(admin, filt);
 
         let e = entry_init!(
+            (Attribute::Class.as_str(), EntryClass::Person.to_value()),
+            (Attribute::Class.as_str(), EntryClass::Account.to_value()),
+            (Attribute::Name.as_str(), Value::new_iname("testperson")),
             (
-                ValueAttribute::Class.as_str(),
-                ValueClass::Person.to_value()
-            ),
-            (
-                ValueAttribute::Class.as_str(),
-                ValueClass::Account.to_value()
-            ),
-            (
-                ValueAttribute::Name.as_str(),
-                Value::new_iname("testperson")
-            ),
-            (
-                ValueAttribute::Description.as_str(),
+                Attribute::Description.as_str(),
                 Value::new_utf8s("testperson")
             ),
             (
-                ValueAttribute::DisplayName.as_str(),
+                Attribute::DisplayName.as_str(),
                 Value::new_utf8s("testperson")
             )
         );

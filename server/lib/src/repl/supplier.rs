@@ -78,10 +78,10 @@ impl<'a> QueryServerReadTransaction<'a> {
 
         // Separate the entries into schema, meta and remaining.
         let (schema_entries, rem_entries): (Vec<_>, Vec<_>) = entries.into_iter().partition(|e| {
-            e.get_ava_set(ValueAttribute::Class.as_str())
+            e.get_ava_set(Attribute::Class.as_str())
                 .map(|cls| {
-                    cls.contains(&ValueClass::AttributeType.into() as &PartialValue)
-                        || cls.contains(&ValueClass::ClassType.into() as &PartialValue)
+                    cls.contains(&EntryClass::AttributeType.into() as &PartialValue)
+                        || cls.contains(&EntryClass::ClassType.into() as &PartialValue)
                 })
                 .unwrap_or(false)
         });
@@ -162,30 +162,30 @@ impl<'a> QueryServerReadTransaction<'a> {
         //   * schema defines what we exclude!
 
         let schema_filter = filter!(f_or!([
-            f_eq(ValueAttribute::Class, ValueClass::AttributeType.into()),
-            f_eq(ValueAttribute::Class, ValueClass::ClassType.into()),
+            f_eq(Attribute::Class, EntryClass::AttributeType.into()),
+            f_eq(Attribute::Class, EntryClass::ClassType.into()),
         ]));
 
         let meta_filter = filter!(f_or!([
-            f_eq(ValueAttribute::Uuid, PVUUID_DOMAIN_INFO.clone()),
-            f_eq(ValueAttribute::Uuid, PVUUID_SYSTEM_INFO.clone()),
-            f_eq(ValueAttribute::Uuid, PVUUID_SYSTEM_CONFIG.clone()),
+            f_eq(Attribute::Uuid, PVUUID_DOMAIN_INFO.clone()),
+            f_eq(Attribute::Uuid, PVUUID_SYSTEM_INFO.clone()),
+            f_eq(Attribute::Uuid, PVUUID_SYSTEM_CONFIG.clone()),
         ]));
 
         let entry_filter = filter_all!(f_or!([
             f_and!([
-                f_pres(ValueAttribute::Class.as_str()),
+                f_pres(Attribute::Class.as_str()),
                 f_andnot(f_or(vec![
                     // These are from above!
-                    f_eq(ValueAttribute::Class, ValueClass::AttributeType.into()),
-                    f_eq(ValueAttribute::Class, ValueClass::ClassType.into()),
-                    f_eq(ValueAttribute::Uuid, PVUUID_DOMAIN_INFO.clone()),
-                    f_eq(ValueAttribute::Uuid, PVUUID_SYSTEM_INFO.clone()),
-                    f_eq(ValueAttribute::Uuid, PVUUID_SYSTEM_CONFIG.clone()),
+                    f_eq(Attribute::Class, EntryClass::AttributeType.into()),
+                    f_eq(Attribute::Class, EntryClass::ClassType.into()),
+                    f_eq(Attribute::Uuid, PVUUID_DOMAIN_INFO.clone()),
+                    f_eq(Attribute::Uuid, PVUUID_SYSTEM_INFO.clone()),
+                    f_eq(Attribute::Uuid, PVUUID_SYSTEM_CONFIG.clone()),
                 ])),
             ]),
-            f_eq(ValueAttribute::Class, ValueClass::Tombstone.into()),
-            f_eq(ValueAttribute::Class, ValueClass::Recycled.into()),
+            f_eq(Attribute::Class, EntryClass::Tombstone.into()),
+            f_eq(Attribute::Class, EntryClass::Recycled.into()),
         ]));
 
         let schema_entries = self

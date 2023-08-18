@@ -23,7 +23,7 @@ use base64urlsafedata::Base64UrlSafeData;
 use chrono::Utc;
 use clap::Parser;
 use cron::Schedule;
-use kanidmd_lib::prelude::ValueAttribute;
+use kanidmd_lib::prelude::Attribute;
 use std::collections::BTreeMap;
 use std::fs::metadata;
 use std::fs::File;
@@ -797,12 +797,9 @@ fn ipa_to_scim_entry(
             name
         } else {
             entry
-                .remove_ava_single(ValueAttribute::Uid.as_str())
+                .remove_ava_single(Attribute::Uid.as_str())
                 .ok_or_else(|| {
-                    error!(
-                        "Missing required attribute {}",
-                        ValueAttribute::Uid.as_str()
-                    );
+                    error!("Missing required attribute {}", Attribute::Uid.as_str());
                 })?
         };
 
@@ -813,31 +810,31 @@ fn ipa_to_scim_entry(
         }
 
         let display_name = entry
-            .remove_ava_single(ValueAttribute::Cn.as_str())
+            .remove_ava_single(Attribute::Cn.as_str())
             .ok_or_else(|| {
-                error!("Missing required attribute {}", ValueAttribute::Cn.as_str());
+                error!("Missing required attribute {}", Attribute::Cn.as_str());
             })?;
 
         let gidnumber = if let Some(number) = entry_config.map_gidnumber {
             Some(number)
         } else {
             entry
-                .remove_ava_single(ValueAttribute::GidNumber.as_str())
+                .remove_ava_single(Attribute::GidNumber.as_str())
                 .map(|gid| {
                     u32::from_str(&gid).map_err(|_| {
-                        error!("Invalid {}", ValueAttribute::GidNumber.as_str());
+                        error!("Invalid {}", Attribute::GidNumber.as_str());
                     })
                 })
                 .transpose()?
         };
 
         let password_import = entry
-            .remove_ava_single(ValueAttribute::IpaNtHash.as_str())
+            .remove_ava_single(Attribute::IpaNtHash.as_str())
             .map(|s| format!("ipaNTHash: {}", s))
             // If we don't have this, try one of the other hashes that *might* work
             // The reason we don't do this by default is there are multiple
             // pw hash formats in 389-ds we don't support!
-            .or_else(|| entry.remove_ava_single(ValueAttribute::UserPassword.as_str()));
+            .or_else(|| entry.remove_ava_single(Attribute::UserPassword.as_str()));
 
         let mail: Vec<_> = entry
             .remove_ava("mail")
@@ -882,7 +879,7 @@ fn ipa_to_scim_entry(
             })
             .unwrap_or_default();
 
-        let login_shell = entry.remove_ava_single(ValueAttribute::LoginShell.as_str());
+        let login_shell = entry.remove_ava_single(Attribute::LoginShell.as_str());
         let external_id = Some(entry.dn);
 
         Ok(Some(
@@ -910,7 +907,7 @@ fn ipa_to_scim_entry(
         let id = entry_uuid;
 
         let name = entry
-            .remove_ava_single(ValueAttribute::Cn.as_str())
+            .remove_ava_single(Attribute::Cn.as_str())
             .ok_or_else(|| {
                 error!("Missing required attribute cn");
             })?;
@@ -921,10 +918,10 @@ fn ipa_to_scim_entry(
             return Ok(None);
         }
 
-        let description = entry.remove_ava_single(ValueAttribute::Description.as_str());
+        let description = entry.remove_ava_single(Attribute::Description.as_str());
 
         let gidnumber = entry
-            .remove_ava_single(ValueAttribute::GidNumber.as_str())
+            .remove_ava_single(Attribute::GidNumber.as_str())
             .map(|gid| {
                 u32::from_str(&gid).map_err(|_| {
                     error!("Invalid gidnumber");

@@ -72,8 +72,8 @@ pub async fn oauth2_get(
     Extension(kopid): Extension<KOpId>,
 ) -> impl IntoResponse {
     let filter = filter_all!(f_eq(
-        ValueAttribute::Class,
-        ValueClass::OAuth2ResourceServer.into()
+        Attribute::Class,
+        EntryClass::OAuth2ResourceServer.into()
     ));
     json_rest_event_get(state, None, filter, kopid).await
 }
@@ -106,14 +106,8 @@ pub async fn oauth2_public_post(
 
 fn oauth2_id(rs_name: &str) -> Filter<FilterInvalid> {
     filter_all!(f_and!([
-        f_eq(
-            ValueAttribute::Class,
-            ValueClass::OAuth2ResourceServer.into()
-        ),
-        f_eq(
-            ValueAttribute::OAuth2RsName,
-            PartialValue::new_iname(rs_name)
-        )
+        f_eq(Attribute::Class, EntryClass::OAuth2ResourceServer.into()),
+        f_eq(Attribute::OAuth2RsName, PartialValue::new_iname(rs_name))
     ]))
 }
 

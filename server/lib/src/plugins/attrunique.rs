@@ -259,7 +259,7 @@ impl Plugin for AttrUnique {
     #[instrument(level = "debug", name = "attrunique::verify", skip_all)]
     fn verify(qs: &mut QueryServerReadTransaction) -> Vec<Result<(), ConsistencyError>> {
         // Only check live entries, not recycled.
-        let filt_in = filter!(f_pres(ValueAttribute::Class.as_str()));
+        let filt_in = filter!(f_pres(Attribute::Class.as_str()));
 
         let all_cand = match qs
             .internal_search(filt_in)
@@ -389,12 +389,12 @@ mod tests {
             ))),
             preload,
             filter!(f_or!([f_eq(
-                ValueAttribute::Name,
+                Attribute::Name,
                 PartialValue::new_iname("testgroup_b")
             ),])),
             ModifyList::new_list(vec![
-                Modify::Purged(ValueAttribute::Name.into()),
-                Modify::Present(ValueAttribute::Name.into(), Value::new_iname("testgroup_a"))
+                Modify::Purged(Attribute::Name.into()),
+                Modify::Present(Attribute::Name.into(), Value::new_iname("testgroup_a"))
             ]),
             None,
             |_| {},
@@ -433,12 +433,12 @@ mod tests {
             ))),
             preload,
             filter!(f_or!([
-                f_eq(ValueAttribute::Name, PartialValue::new_iname("testgroup_a")),
-                f_eq(ValueAttribute::Name, PartialValue::new_iname("testgroup_b")),
+                f_eq(Attribute::Name, PartialValue::new_iname("testgroup_a")),
+                f_eq(Attribute::Name, PartialValue::new_iname("testgroup_b")),
             ])),
             ModifyList::new_list(vec![
-                Modify::Purged(ValueAttribute::Name.into()),
-                Modify::Present(ValueAttribute::Name.into(), Value::new_iname("testgroup"))
+                Modify::Purged(Attribute::Name.into()),
+                Modify::Present(Attribute::Name.into(), Value::new_iname("testgroup"))
             ]),
             None,
             |_| {},

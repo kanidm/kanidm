@@ -188,13 +188,11 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 .iter()
                 .chain(pre_candidates.iter().map(|e| e.as_ref()))
                 .any(|e| {
-                    e.attribute_equality(
-                        ValueAttribute::Class.as_str(),
-                        &ValueClass::ClassType.into(),
-                    ) || e.attribute_equality(
-                        ValueAttribute::Class.as_str(),
-                        &ValueClass::AttributeType.into(),
-                    )
+                    e.attribute_equality(Attribute::Class.as_str(), &EntryClass::ClassType.into())
+                        || e.attribute_equality(
+                            Attribute::Class.as_str(),
+                            &EntryClass::AttributeType.into(),
+                        )
                 });
         }
         if !self.changed_acp {
@@ -203,8 +201,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 .chain(pre_candidates.iter().map(|e| e.as_ref()))
                 .any(|e| {
                     e.attribute_equality(
-                        ValueAttribute::Class.as_str(),
-                        &ValueClass::AccessControlProfile.into(),
+                        Attribute::Class.as_str(),
+                        &EntryClass::AccessControlProfile.into(),
                     )
                 })
         }
@@ -214,8 +212,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 .chain(pre_candidates.iter().map(|e| e.as_ref()))
                 .any(|e| {
                     e.attribute_equality(
-                        ValueAttribute::Class.as_str(),
-                        &ValueClass::OAuth2ResourceServer.into(),
+                        Attribute::Class.as_str(),
+                        &EntryClass::OAuth2ResourceServer.into(),
                     )
                 });
         }
@@ -223,17 +221,14 @@ impl<'a> QueryServerWriteTransaction<'a> {
             self.changed_domain = norm_cand
                 .iter()
                 .chain(pre_candidates.iter().map(|e| e.as_ref()))
-                .any(|e| e.attribute_equality(ValueAttribute::Uuid.as_str(), &PVUUID_DOMAIN_INFO));
+                .any(|e| e.attribute_equality(Attribute::Uuid.as_str(), &PVUUID_DOMAIN_INFO));
         }
         if !self.changed_sync_agreement {
             self.changed_sync_agreement = norm_cand
                 .iter()
                 .chain(pre_candidates.iter().map(|e| e.as_ref()))
                 .any(|e| {
-                    e.attribute_equality(
-                        ValueAttribute::Class.as_str(),
-                        &ValueClass::SyncAccount.into(),
-                    )
+                    e.attribute_equality(Attribute::Class.as_str(), &EntryClass::SyncAccount.into())
                 });
         }
 
@@ -360,13 +355,11 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 .iter()
                 .chain(pre_candidates.iter().map(|e| e.as_ref()))
                 .any(|e| {
-                    e.attribute_equality(
-                        ValueAttribute::Class.as_str(),
-                        &ValueClass::ClassType.into(),
-                    ) || e.attribute_equality(
-                        ValueAttribute::Class.as_str(),
-                        &ValueClass::AttributeType.into(),
-                    )
+                    e.attribute_equality(Attribute::Class.as_str(), &EntryClass::ClassType.into())
+                        || e.attribute_equality(
+                            Attribute::Class.as_str(),
+                            &EntryClass::AttributeType.into(),
+                        )
                 });
         }
         if !self.changed_acp {
@@ -375,23 +368,23 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 .chain(pre_candidates.iter().map(|e| e.as_ref()))
                 .any(|e| {
                     e.attribute_equality(
-                        ValueAttribute::Class.as_str(),
-                        &ValueClass::AccessControlProfile.into(),
+                        Attribute::Class.as_str(),
+                        &EntryClass::AccessControlProfile.into(),
                     )
                 });
         }
         if !self.changed_oauth2 {
             self.changed_oauth2 = norm_cand.iter().any(|e| {
                 e.attribute_equality(
-                    ValueAttribute::Class.as_str(),
-                    &ValueClass::OAuth2ResourceServer.into(),
+                    Attribute::Class.as_str(),
+                    &EntryClass::OAuth2ResourceServer.into(),
                 )
             });
         }
         if !self.changed_domain {
             self.changed_domain = norm_cand
                 .iter()
-                .any(|e| e.attribute_equality(ValueAttribute::Uuid.into(), &PVUUID_DOMAIN_INFO));
+                .any(|e| e.attribute_equality(Attribute::Uuid.into(), &PVUUID_DOMAIN_INFO));
         }
         self.changed_uuid.extend(
             norm_cand
@@ -431,7 +424,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         target_uuid: Uuid,
         modlist: &ModifyList<ModifyInvalid>,
     ) -> Result<(), OperationError> {
-        let filter = filter!(f_eq(ValueAttribute::Uuid, PartialValue::Uuid(target_uuid)));
+        let filter = filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(target_uuid)));
         let f_valid = filter
             .validate(self.get_schema())
             .map_err(OperationError::SchemaViolation)?;
@@ -515,55 +508,37 @@ mod tests {
         let mut server_txn = server.write(duration_from_epoch_now()).await;
 
         let e1 = entry_init!(
-            (
-                ValueAttribute::Class.as_str(),
-                ValueClass::Object.to_value()
-            ),
-            (
-                ValueAttribute::Class.as_str(),
-                ValueClass::Person.to_value()
-            ),
-            (
-                ValueAttribute::Name.as_str(),
-                Value::new_iname("testperson1")
-            ),
+            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_str(), EntryClass::Person.to_value()),
+            (Attribute::Name.as_str(), Value::new_iname("testperson1")),
             (
                 "uuid",
                 Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
             ),
             (
-                ValueAttribute::Description.as_str(),
+                Attribute::Description.as_str(),
                 Value::new_utf8s("testperson1")
             ),
             (
-                ValueAttribute::DisplayName.as_str(),
+                Attribute::DisplayName.as_str(),
                 Value::new_utf8s("testperson1")
             )
         );
 
         let e2 = entry_init!(
-            (
-                ValueAttribute::Class.as_str(),
-                ValueClass::Object.to_value()
-            ),
-            (
-                ValueAttribute::Class.as_str(),
-                ValueClass::Person.to_value()
-            ),
-            (
-                ValueAttribute::Name.as_str(),
-                Value::new_iname("testperson2")
-            ),
+            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_str(), EntryClass::Person.to_value()),
+            (Attribute::Name.as_str(), Value::new_iname("testperson2")),
             (
                 "uuid",
                 Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63932"))
             ),
             (
-                ValueAttribute::Description.as_str(),
+                Attribute::Description.as_str(),
                 Value::new_utf8s("testperson2")
             ),
             (
-                ValueAttribute::DisplayName.as_str(),
+                Attribute::DisplayName.as_str(),
                 Value::new_utf8s("testperson2")
             )
         );
@@ -575,7 +550,7 @@ mod tests {
 
         // Empty Modlist (filter is valid)
         let me_emp = ModifyEvent::new_internal_invalid(
-            filter!(f_pres(ValueAttribute::Class.as_str())),
+            filter!(f_pres(Attribute::Class.as_str())),
             ModifyList::new_list(vec![]),
         );
         assert!(server_txn.modify(&me_emp) == Err(OperationError::EmptyRequest));
@@ -584,11 +559,11 @@ mod tests {
         let me_nochg = ModifyEvent::new_impersonate_entry_ser(
             JSON_ADMIN_V1,
             filter!(f_eq(
-                ValueAttribute::Name,
+                Attribute::Name,
                 PartialValue::new_iname("flarbalgarble")
             )),
             ModifyList::new_list(vec![Modify::Present(
-                ValueAttribute::Description.into(),
+                Attribute::Description.into(),
                 Value::from("anusaosu"),
             )]),
         );
@@ -601,7 +576,7 @@ mod tests {
         // this.
         // let r_inv_1 = server_txn.internal_modify(
         //     &filter!(f_eq(
-        //         ValueAttribute::TestAttr,
+        //         Attribute::TestAttr,
         //         PartialValue::new_iname("Flarbalgarble")
         //     )),
         //     &ModifyList::new_list(vec![Modify::Present(
@@ -618,7 +593,7 @@ mod tests {
 
         // Mod is invalid to schema
         let me_inv_m = ModifyEvent::new_internal_invalid(
-            filter!(f_pres(ValueAttribute::Class.as_str())),
+            filter!(f_pres(Attribute::Class.as_str())),
             ModifyList::new_list(vec![Modify::Present(
                 AttrString::from("htnaonu"),
                 Value::from("anusaosu"),
@@ -634,12 +609,12 @@ mod tests {
         // Mod single object
         let me_sin = ModifyEvent::new_internal_invalid(
             filter!(f_eq(
-                ValueAttribute::Name,
+                Attribute::Name,
                 PartialValue::new_iname("testperson2")
             )),
             ModifyList::new_list(vec![
-                Modify::Purged(ValueAttribute::Description.into()),
-                Modify::Present(ValueAttribute::Description.into(), Value::from("anusaosu")),
+                Modify::Purged(Attribute::Description.into()),
+                Modify::Present(Attribute::Description.into(), Value::from("anusaosu")),
             ]),
         );
         assert!(server_txn.modify(&me_sin).is_ok());
@@ -647,12 +622,12 @@ mod tests {
         // Mod multiple object
         let me_mult = ModifyEvent::new_internal_invalid(
             filter!(f_or!([
-                f_eq(ValueAttribute::Name, PartialValue::new_iname("testperson1")),
-                f_eq(ValueAttribute::Name, PartialValue::new_iname("testperson2")),
+                f_eq(Attribute::Name, PartialValue::new_iname("testperson1")),
+                f_eq(Attribute::Name, PartialValue::new_iname("testperson2")),
             ])),
             ModifyList::new_list(vec![
-                Modify::Purged(ValueAttribute::Description.into()),
-                Modify::Present(ValueAttribute::Description.into(), Value::from("anusaosu")),
+                Modify::Purged(Attribute::Description.into()),
+                Modify::Present(Attribute::Description.into(), Value::from("anusaosu")),
             ]),
         );
         assert!(server_txn.modify(&me_mult).is_ok());
@@ -669,11 +644,8 @@ mod tests {
 
         assert!(server_txn
             .internal_create(vec![entry_init!(
-                (
-                    ValueAttribute::Class.as_str(),
-                    ValueClass::Object.to_value()
-                ),
-                (ValueAttribute::Uuid.as_str(), Value::Uuid(t_uuid))
+                (Attribute::Class.as_str(), EntryClass::Object.to_value()),
+                (Attribute::Uuid.as_str(), Value::Uuid(t_uuid))
             ),])
             .is_ok());
 
@@ -682,11 +654,8 @@ mod tests {
             server_txn.internal_modify_uuid(
                 t_uuid,
                 &ModifyList::new_list(vec![
-                    m_assert(ValueAttribute::Uuid.as_str(), &PartialValue::Uuid(r_uuid)),
-                    m_pres(
-                        ValueAttribute::Description.into(),
-                        &Value::Utf8("test".into())
-                    )
+                    m_assert(Attribute::Uuid.as_str(), &PartialValue::Uuid(r_uuid)),
+                    m_pres(Attribute::Description.into(), &Value::Utf8("test".into()))
                 ])
             ),
             Err(OperationError::ModifyAssertionFailed)
@@ -698,10 +667,7 @@ mod tests {
                 t_uuid,
                 &ModifyList::new_list(vec![
                     m_assert("uuid", &PartialValue::Uuid(t_uuid)),
-                    m_pres(
-                        ValueAttribute::Description.into(),
-                        &Value::Utf8("test".into())
-                    )
+                    m_pres(Attribute::Description.into(), &Value::Utf8("test".into()))
                 ])
             )
             .is_ok());
@@ -714,28 +680,19 @@ mod tests {
         let mut server_txn = server.write(duration_from_epoch_now()).await;
 
         let e1 = entry_init!(
-            (
-                ValueAttribute::Class.as_str(),
-                ValueClass::Object.to_value()
-            ),
-            (
-                ValueAttribute::Class.as_str(),
-                ValueClass::Person.to_value()
-            ),
-            (
-                ValueAttribute::Name.as_str(),
-                Value::new_iname("testperson1")
-            ),
+            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_str(), EntryClass::Person.to_value()),
+            (Attribute::Name.as_str(), Value::new_iname("testperson1")),
             (
                 "uuid",
                 Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
             ),
             (
-                ValueAttribute::Description.as_str(),
+                Attribute::Description.as_str(),
                 Value::new_utf8s("testperson1")
             ),
             (
-                ValueAttribute::DisplayName.as_str(),
+                Attribute::DisplayName.as_str(),
                 Value::new_utf8s("testperson1")
             )
         );
@@ -748,12 +705,12 @@ mod tests {
         // Add class but no values
         let me_sin = ModifyEvent::new_internal_invalid(
             filter!(f_eq(
-                ValueAttribute::Name,
+                Attribute::Name,
                 PartialValue::new_iname("testperson1")
             )),
             ModifyList::new_list(vec![Modify::Present(
-                ValueAttribute::Class.into(),
-                ValueClass::SystemInfo.to_value(),
+                Attribute::Class.into(),
+                EntryClass::SystemInfo.to_value(),
             )]),
         );
         assert!(server_txn.modify(&me_sin).is_err());
@@ -761,11 +718,11 @@ mod tests {
         // Add multivalue where not valid
         let me_sin = ModifyEvent::new_internal_invalid(
             filter!(f_eq(
-                ValueAttribute::Name,
+                Attribute::Name,
                 PartialValue::new_iname("testperson1")
             )),
             ModifyList::new_list(vec![Modify::Present(
-                ValueAttribute::Name.into(),
+                Attribute::Name.into(),
                 Value::new_iname("testpersonx"),
             )]),
         );
@@ -774,14 +731,11 @@ mod tests {
         // add class and valid values?
         let me_sin = ModifyEvent::new_internal_invalid(
             filter!(f_eq(
-                ValueAttribute::Name,
+                Attribute::Name,
                 PartialValue::new_iname("testperson1")
             )),
             ModifyList::new_list(vec![
-                Modify::Present(
-                    ValueAttribute::Class.into(),
-                    ValueClass::SystemInfo.to_value(),
-                ),
+                Modify::Present(Attribute::Class.into(), EntryClass::SystemInfo.to_value()),
                 // Modify::Present("domain".to_string(), Value::new_iutf8("domain.name")),
                 Modify::Present(AttrString::from("version"), Value::new_uint32(1)),
             ]),
@@ -791,12 +745,12 @@ mod tests {
         // Replace a value
         let me_sin = ModifyEvent::new_internal_invalid(
             filter!(f_eq(
-                ValueAttribute::Name,
+                Attribute::Name,
                 PartialValue::new_iname("testperson1")
             )),
             ModifyList::new_list(vec![
-                Modify::Purged(ValueAttribute::Name.into()),
-                Modify::Present(ValueAttribute::Name.into(), Value::new_iname("testpersonx")),
+                Modify::Purged(Attribute::Name.into()),
+                Modify::Present(Attribute::Name.into(), Value::new_iname("testpersonx")),
             ]),
         );
         assert!(server_txn.modify(&me_sin).is_ok());
@@ -805,32 +759,20 @@ mod tests {
     #[qs_test]
     async fn test_modify_password_only(server: &QueryServer) {
         let e1 = entry_init!(
+            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_str(), EntryClass::Person.to_value()),
+            (Attribute::Class.as_str(), EntryClass::Account.to_value()),
+            (Attribute::Name.as_str(), Value::new_iname("testperson1")),
             (
-                ValueAttribute::Class.as_str(),
-                ValueClass::Object.to_value()
-            ),
-            (
-                ValueAttribute::Class.as_str(),
-                ValueClass::Person.to_value()
-            ),
-            (
-                ValueAttribute::Class.as_str(),
-                ValueClass::Account.to_value()
-            ),
-            (
-                ValueAttribute::Name.as_str(),
-                Value::new_iname("testperson1")
-            ),
-            (
-                ValueAttribute::Uuid.as_str(),
+                Attribute::Uuid.as_str(),
                 Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
             ),
             (
-                ValueAttribute::Description.as_str(),
+                Attribute::Description.as_str(),
                 Value::new_utf8s("testperson1")
             ),
             (
-                ValueAttribute::DisplayName.as_str(),
+                Attribute::DisplayName.as_str(),
                 Value::new_utf8s("testperson1")
             )
         );
@@ -850,11 +792,11 @@ mod tests {
         // now modify and provide a primary credential.
         let me_inv_m = ModifyEvent::new_internal_invalid(
             filter!(f_eq(
-                ValueAttribute::Name,
+                Attribute::Name,
                 PartialValue::new_iname("testperson1")
             )),
             ModifyList::new_list(vec![Modify::Present(
-                ValueAttribute::PrimaryCredential.into(),
+                Attribute::PrimaryCredential.into(),
                 v_cred,
             )]),
         );

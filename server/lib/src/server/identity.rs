@@ -221,20 +221,18 @@ impl Identity {
     pub fn has_claim(&self, claim: &str) -> bool {
         match &self.origin {
             IdentType::Internal | IdentType::Synch(_) => false,
-            IdentType::User(u) => u.entry.attribute_equality(
-                ValueAttribute::Claim.as_str(),
-                &PartialValue::new_iutf8(claim),
-            ),
+            IdentType::User(u) => u
+                .entry
+                .attribute_equality(Attribute::Claim.as_str(), &PartialValue::new_iutf8(claim)),
         }
     }
 
     pub fn is_memberof(&self, group: Uuid) -> bool {
         match &self.origin {
             IdentType::Internal | IdentType::Synch(_) => false,
-            IdentType::User(u) => u.entry.attribute_equality(
-                ValueAttribute::MemberOf.as_str(),
-                &PartialValue::Refer(group),
-            ),
+            IdentType::User(u) => u
+                .entry
+                .attribute_equality(Attribute::MemberOf.as_str(), &PartialValue::Refer(group)),
         }
     }
 

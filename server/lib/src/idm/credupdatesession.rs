@@ -350,8 +350,8 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             .effective_permission_check(
                 ident,
                 Some(btreeset![
-                    ValueAttribute::PrimaryCredential.into(),
-                    ValueAttribute::PassKeys.into()
+                    Attribute::PrimaryCredential.into(),
+                    Attribute::PassKeys.into()
                 ]),
                 &[entry],
             )?;
@@ -616,7 +616,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         self.qs_write
             .internal_modify(
                 // Filter as executed
-                &filter!(f_eq(ValueAttribute::Uuid, PartialValue::Uuid(account.uuid))),
+                &filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(account.uuid))),
                 &modlist,
             )
             .map_err(|e| {
@@ -644,7 +644,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         // ⚠️  If not present, it may be due to replication delay. We can report this.
 
         let mut vs = self.qs_write.internal_search(filter!(f_eq(
-            ValueAttribute::CredentialUpdateIntentToken,
+            Attribute::CredentialUpdateIntentToken,
             PartialValue::IntentToken(intent_id.clone())
         )))?;
 
@@ -670,7 +670,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                     ));
 
                     let filter_or = matched_uuids.into_iter()
-                        .map(|u| f_eq(ValueAttribute::Uuid, PartialValue::new_uuid(u)))
+                        .map(|u| f_eq(Attribute::Uuid, PartialValue::new_uuid(u)))
                         .collect();
 
                     self.qs_write
@@ -798,7 +798,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         self.qs_write
             .internal_modify(
                 // Filter as executed
-                &filter!(f_eq(ValueAttribute::Uuid, PartialValue::Uuid(account.uuid))),
+                &filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(account.uuid))),
                 &modlist,
             )
             .map_err(|e| {
@@ -964,27 +964,24 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         if session.primary_can_edit {
             match &session.primary {
                 Some(ncred) => {
-                    modlist.push_mod(Modify::Purged(ValueAttribute::PrimaryCredential.into()));
+                    modlist.push_mod(Modify::Purged(Attribute::PrimaryCredential.into()));
                     let vcred = Value::new_credential("primary", ncred.clone());
-                    modlist.push_mod(Modify::Present(
-                        ValueAttribute::PrimaryCredential.into(),
-                        vcred,
-                    ));
+                    modlist.push_mod(Modify::Present(Attribute::PrimaryCredential.into(), vcred));
                 }
                 None => {
-                    modlist.push_mod(Modify::Purged(ValueAttribute::PrimaryCredential.into()));
+                    modlist.push_mod(Modify::Purged(Attribute::PrimaryCredential.into()));
                 }
             };
         };
 
         if session.passkeys_can_edit {
             // Need to update passkeys.
-            modlist.push_mod(Modify::Purged(ValueAttribute::PassKeys.into()));
+            modlist.push_mod(Modify::Purged(Attribute::PassKeys.into()));
             // Add all the passkeys. If none, nothing will be added! This handles
             // the delete case quite cleanly :)
             session.passkeys.iter().for_each(|(uuid, (tag, pk))| {
                 let v_pk = Value::Passkey(*uuid, tag.clone(), pk.clone());
-                modlist.push_mod(Modify::Present(ValueAttribute::PassKeys.into(), v_pk));
+                modlist.push_mod(Modify::Present(Attribute::PassKeys.into(), v_pk));
             });
         };
 
@@ -999,7 +996,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 .internal_modify(
                     // Filter as executed
                     &filter!(f_eq(
-                        ValueAttribute::Uuid,
+                        Attribute::Uuid,
                         PartialValue::Uuid(session.account.uuid)
                     )),
                     &modlist,
@@ -1073,7 +1070,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 .internal_modify(
                     // Filter as executed
                     &filter!(f_eq(
-                        ValueAttribute::Uuid,
+                        Attribute::Uuid,
                         PartialValue::Uuid(session.account.uuid)
                     )),
                     &modlist,
@@ -1777,57 +1774,39 @@ mod tests {
         let testaccount_uuid = Uuid::new_v4();
 
         let e1 = entry_init!(
+            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_str(), EntryClass::Account.to_value()),
             (
-                ValueAttribute::Class.as_str(),
-                ValueClass::Object.to_value()
+                Attribute::Class.as_str(),
+                EntryClass::ServiceAccount.to_value()
             ),
             (
-                ValueAttribute::Class.as_str(),
-                ValueClass::Account.to_value()
-            ),
-            (
-                ValueAttribute::Class.as_str(),
-                ValueClass::ServiceAccount.to_value()
-            ),
-            (
-                ValueAttribute::Name.as_str(),
+                Attribute::Name.as_str(),
                 Value::new_iname("user_account_only")
             ),
-            (ValueAttribute::Uuid.as_str(), Value::Uuid(testaccount_uuid)),
+            (Attribute::Uuid.as_str(), Value::Uuid(testaccount_uuid)),
             (
-                ValueAttribute::Description.as_str(),
+                Attribute::Description.as_str(),
                 Value::new_utf8s("testaccount")
             ),
             (
-                ValueAttribute::DisplayName.as_str(),
+                Attribute::DisplayName.as_str(),
                 Value::new_utf8s("testaccount")
             )
         );
 
         let e2 = entry_init!(
+            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_str(), EntryClass::Account.to_value()),
+            (Attribute::Class.as_str(), EntryClass::Person.to_value()),
+            (Attribute::Name.as_str(), Value::new_iname("testperson")),
+            (Attribute::Uuid.as_str(), Value::Uuid(TESTPERSON_UUID)),
             (
-                ValueAttribute::Class.as_str(),
-                ValueClass::Object.to_value()
-            ),
-            (
-                ValueAttribute::Class.as_str(),
-                ValueClass::Account.to_value()
-            ),
-            (
-                ValueAttribute::Class.as_str(),
-                ValueClass::Person.to_value()
-            ),
-            (
-                ValueAttribute::Name.as_str(),
-                Value::new_iname("testperson")
-            ),
-            (ValueAttribute::Uuid.as_str(), Value::Uuid(TESTPERSON_UUID)),
-            (
-                ValueAttribute::Description.as_str(),
+                Attribute::Description.as_str(),
                 Value::new_utf8s("testperson")
             ),
             (
-                ValueAttribute::DisplayName.as_str(),
+                Attribute::DisplayName.as_str(),
                 Value::new_utf8s("testperson")
             )
         );
@@ -1928,29 +1907,17 @@ mod tests {
         let mut idms_prox_write = idms.proxy_write(ct).await;
 
         let e2 = entry_init!(
+            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_str(), EntryClass::Account.to_value()),
+            (Attribute::Class.as_str(), EntryClass::Person.to_value()),
+            (Attribute::Name.as_str(), Value::new_iname("testperson")),
+            (Attribute::Uuid.as_str(), Value::Uuid(TESTPERSON_UUID)),
             (
-                ValueAttribute::Class.as_str(),
-                ValueClass::Object.to_value()
-            ),
-            (
-                ValueAttribute::Class.as_str(),
-                ValueClass::Account.to_value()
-            ),
-            (
-                ValueAttribute::Class.as_str(),
-                ValueClass::Person.to_value()
-            ),
-            (
-                ValueAttribute::Name.as_str(),
-                Value::new_iname("testperson")
-            ),
-            (ValueAttribute::Uuid.as_str(), Value::Uuid(TESTPERSON_UUID)),
-            (
-                ValueAttribute::Description.as_str(),
+                Attribute::Description.as_str(),
                 Value::new_utf8s("testperson")
             ),
             (
-                ValueAttribute::DisplayName.as_str(),
+                Attribute::DisplayName.as_str(),
                 Value::new_utf8s("testperson")
             )
         );
@@ -2804,57 +2771,33 @@ mod tests {
         let sync_uuid = Uuid::new_v4();
 
         let e1 = entry_init!(
+            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
             (
-                ValueAttribute::Class.as_str(),
-                ValueClass::Object.to_value()
+                Attribute::Class.as_str(),
+                EntryClass::SyncAccount.to_value()
             ),
+            (Attribute::Name.as_str(), Value::new_iname("test_scim_sync")),
+            (Attribute::Uuid.as_str(), Value::Uuid(sync_uuid)),
             (
-                ValueAttribute::Class.as_str(),
-                ValueClass::SyncAccount.to_value()
-            ),
-            (
-                ValueAttribute::Name.as_str(),
-                Value::new_iname("test_scim_sync")
-            ),
-            (ValueAttribute::Uuid.as_str(), Value::Uuid(sync_uuid)),
-            (
-                ValueAttribute::Description.as_str(),
+                Attribute::Description.as_str(),
                 Value::new_utf8s("A test sync agreement")
             )
         );
 
         let e2 = entry_init!(
+            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_str(), EntryClass::SyncObject.to_value()),
+            (Attribute::Class.as_str(), EntryClass::Account.to_value()),
+            (Attribute::Class.as_str(), EntryClass::Person.to_value()),
+            (Attribute::SyncParentUuid.as_str(), Value::Refer(sync_uuid)),
+            (Attribute::Name.as_str(), Value::new_iname("testperson")),
+            (Attribute::Uuid.as_str(), Value::Uuid(TESTPERSON_UUID)),
             (
-                ValueAttribute::Class.as_str(),
-                ValueClass::Object.to_value()
-            ),
-            (
-                ValueAttribute::Class.as_str(),
-                ValueClass::SyncObject.to_value()
-            ),
-            (
-                ValueAttribute::Class.as_str(),
-                ValueClass::Account.to_value()
-            ),
-            (
-                ValueAttribute::Class.as_str(),
-                ValueClass::Person.to_value()
-            ),
-            (
-                ValueAttribute::SyncParentUuid.as_str(),
-                Value::Refer(sync_uuid)
-            ),
-            (
-                ValueAttribute::Name.as_str(),
-                Value::new_iname("testperson")
-            ),
-            (ValueAttribute::Uuid.as_str(), Value::Uuid(TESTPERSON_UUID)),
-            (
-                ValueAttribute::Description.as_str(),
+                Attribute::Description.as_str(),
                 Value::new_utf8s("testperson")
             ),
             (
-                ValueAttribute::DisplayName.as_str(),
+                Attribute::DisplayName.as_str(),
                 Value::new_utf8s("testperson")
             )
         );

@@ -9,13 +9,13 @@ use kanidm_proto::v1::Filter as ProtoFilter;
 
 #[derive(Clone)]
 pub struct SchemaAcp {
-    classes: Vec<ValueClass>,
+    classes: Vec<EntryClass>,
     name: &'static str,
     uuid: Uuid,
     description: &'static str,
     receiver_group: Uuid,
     target_scope: ProtoFilter,
-    search_attrs: Vec<ValueAttribute>,
+    search_attrs: Vec<Attribute>,
 }
 
 impl From<SchemaAcp> for EntryInitNew {
@@ -53,31 +53,31 @@ lazy_static! {
         name: "idm_admins_acp_recycle_search",
         description: "Builtin IDM admin recycle bin search permission.",
         classes: vec![
-            ValueClass::Object,
-            ValueClass::AccessControlProfile,
-            ValueClass::AccessControlSearch,
+            EntryClass::Object,
+            EntryClass::AccessControlProfile,
+            EntryClass::AccessControlSearch,
         ],
         receiver_group: UUID_SYSTEM_ADMINS,
         target_scope: ProtoFilter::Eq(ATTR_CLASS.to_string(), ATTR_RECYCLED.to_string()),
 
         search_attrs: vec![
-            ValueAttribute::Class,
-            ValueAttribute::Name,
-            ValueAttribute::Uuid,
-            ValueAttribute::LastModifiedCid,
+            Attribute::Class,
+            Attribute::Name,
+            Attribute::Uuid,
+            Attribute::LastModifiedCid,
         ],
     };
 }
 
 lazy_static! {
     pub static ref E_IDM_ADMINS_ACP_REVIVE_V1: EntryInitNew = entry_init!(
-        (ATTR_CLASS, ValueClass::Object.to_value()),
-        (ATTR_CLASS, ValueClass::AccessControlProfile.to_value()),
-        (ATTR_CLASS, ValueClass::AccessControlModify.to_value()),
+        (ATTR_CLASS, EntryClass::Object.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlProfile.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlModify.to_value()),
         (ATTR_NAME, Value::new_iname("idm_admins_acp_revive")),
         (ATTR_UUID, Value::Uuid(UUID_IDM_ADMINS_ACP_REVIVE_V1)),
         (
-            ValueAttribute::Description.as_str(),
+            Attribute::Description.as_str(),
             Value::new_utf8s("Builtin IDM admin recycle bin revive permission.")
         ),
         (ATTR_ACP_RECEIVER_GROUP, Value::Refer(UUID_SYSTEM_ADMINS)),
@@ -88,23 +88,20 @@ lazy_static! {
                 ATTR_RECYCLED.to_string()
             ))
         ),
-        (
-            ATTR_ACP_MODIFY_REMOVEDATTR,
-            ValueAttribute::Class.to_value()
-        ),
-        (ATTR_ACP_MODIFY_CLASS, ValueClass::Recycled.to_value())
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::Class.to_value()),
+        (ATTR_ACP_MODIFY_CLASS, EntryClass::Recycled.to_value())
     );
 }
 
 lazy_static! {
     pub static ref E_IDM_SELF_ACP_READ_V1: EntryInitNew = entry_init!(
-        (ATTR_CLASS, ValueClass::Object.to_value()),
-        (ATTR_CLASS, ValueClass::AccessControlProfile.to_value()),
-        (ATTR_CLASS, ValueClass::AccessControlSearch.to_value()),
+        (ATTR_CLASS, EntryClass::Object.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlProfile.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlSearch.to_value()),
         (ATTR_NAME, Value::new_iname("idm_self_acp_read")),
         (ATTR_UUID, Value::Uuid(UUID_IDM_SELF_ACP_READ_V1)),
         (
-            ValueAttribute::Description.as_str(),
+            Attribute::Description.as_str(),
             Value::new_utf8s(
                 "Builtin IDM Control for self read - required for whoami and many other functions"
             )
@@ -115,40 +112,40 @@ lazy_static! {
             Value::new_json_filter_s("\"self\"").expect("Invalid JSON filter")
             // Value::JsonFilt(ProtoFilter::SelfUuid)
         ),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Class.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Name.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Spn.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::DisplayName.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::LegalName.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Class.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::MemberOf.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Mail.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::RadiusSecret.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::GidNumber.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::LoginShell.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Uuid.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::SyncParentUuid.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::AccountExpire.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::AccountValidFrom.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::PrimaryCredential.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::Class.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::Name.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::Spn.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::DisplayName.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::LegalName.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::Class.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::MemberOf.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::Mail.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::RadiusSecret.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::GidNumber.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::LoginShell.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::Uuid.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::SyncParentUuid.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::AccountExpire.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::AccountValidFrom.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::PrimaryCredential.to_value()),
         (
             ATTR_ACP_SEARCH_ATTR,
-            ValueAttribute::UserAuthTokenSession.to_value()
+            Attribute::UserAuthTokenSession.to_value()
         ),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::PassKeys.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::DeviceKeys.to_value())
+        (ATTR_ACP_SEARCH_ATTR, Attribute::PassKeys.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::DeviceKeys.to_value())
     );
 }
 
 lazy_static! {
     pub static ref E_IDM_SELF_ACP_WRITE_V1: EntryInitNew = entry_init!(
-        (ATTR_CLASS, ValueClass::Object.to_value()),
-        (ATTR_CLASS, ValueClass::AccessControlProfile.to_value()),
-        (ATTR_CLASS, ValueClass::AccessControlModify.to_value()),
+        (ATTR_CLASS, EntryClass::Object.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlProfile.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlModify.to_value()),
         (ATTR_NAME, Value::new_iname("idm_self_acp_write")),
         (ATTR_UUID, Value::Uuid(UUID_IDM_SELF_ACP_WRITE_V1)),
         (
-            ValueAttribute::Description.as_str(),
+            Attribute::Description.as_str(),
             Value::new_utf8s("Builtin IDM Control for self write - required for people to update their own identities and credentials in line with best practices.")
         ),
         (
@@ -158,8 +155,8 @@ lazy_static! {
         (
             ATTR_ACP_TARGET_SCOPE,
             // Value::JsonFilt(ProtoFilter::And(vec![
-            //     ProtoFilter::Eq(ValueAttribute::Class.to_string(), ValueClass::Person.to_string()),
-            //     ProtoFilter::Eq(ValueAttribute::Class.to_string(), ValueClass::Account.to_string()),
+            //     ProtoFilter::Eq(Attribute::Class.to_string(), EntryClass::Person.to_string()),
+            //     ProtoFilter::Eq(Attribute::Class.to_string(), EntryClass::Account.to_string()),
             //     ProtoFilter::SelfUuid,
             // ]))
             Value::new_json_filter_s(
@@ -167,38 +164,38 @@ lazy_static! {
             )
                 .expect("Invalid JSON filter")
         ),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::Name.to_value()),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::DisplayName.to_value()),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::LegalName.to_value()),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::RadiusSecret.to_value()),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::PrimaryCredential.to_value()),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::SshUnderscorePublicKey.to_value()),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::UnixPassword.to_value()),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::PassKeys.to_value()),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::DeviceKeys.to_value()),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::UserAuthTokenSession.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::Name.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::DisplayName.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::LegalName.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::RadiusSecret.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::PrimaryCredential.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::SshUnderscorePublicKey.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::UnixPassword.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::PassKeys.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::DeviceKeys.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::UserAuthTokenSession.to_value()),
 
-        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::Name.to_value()),
-        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::DisplayName.to_value()),
-        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::LegalName.to_value()),
-        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::RadiusSecret.to_value()),
-        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::PrimaryCredential.to_value()),
-        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::SshUnderscorePublicKey.to_value()),
-        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::UnixPassword.to_value()),
-        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::PassKeys.to_value()),
-        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::DeviceKeys.to_value())
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::Name.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::DisplayName.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::LegalName.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::RadiusSecret.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::PrimaryCredential.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::SshUnderscorePublicKey.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::UnixPassword.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::PassKeys.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::DeviceKeys.to_value())
     );
 }
 
 lazy_static! {
     pub static ref E_IDM_ACCOUNT_SELF_ACP_WRITE_V1: EntryInitNew = entry_init!(
-        (ATTR_CLASS, ValueClass::Object.to_value()),
-        (ATTR_CLASS, ValueClass::AccessControlProfile.to_value()),
-        (ATTR_CLASS, ValueClass::AccessControlModify.to_value()),
+        (ATTR_CLASS, EntryClass::Object.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlProfile.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlModify.to_value()),
         (ATTR_NAME, Value::new_iname("idm_self_account_acp_write")),
         (ATTR_UUID, Value::Uuid(UUID_IDM_ACCOUNT_SELF_ACP_WRITE_V1)),
         (
-            ValueAttribute::Description.as_str(),
+            Attribute::Description.as_str(),
             Value::new_utf8s("Builtin IDM Control for self write - required for accounts to update their own session state.")
         ),
         (
@@ -208,7 +205,7 @@ lazy_static! {
         (
             ATTR_ACP_TARGET_SCOPE,
             // Value::JsonFilt(ProtoFilter::And(vec![
-            //     match_class_filter!(ValueClass::Account).clone(),
+            //     match_class_filter!(EntryClass::Account).clone(),
             //     ProtoFilter::SelfUuid,
             // ]))
             Value::new_json_filter_s(
@@ -216,19 +213,19 @@ lazy_static! {
             )
                 .expect("Invalid JSON filter")
         ),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::UserAuthTokenSession.to_value())
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::UserAuthTokenSession.to_value())
     );
 }
 
 lazy_static! {
     pub static ref E_IDM_PEOPLE_SELF_ACP_WRITE_MAIL_PRIV_V1: EntryInitNew = entry_init!(
-        (ATTR_CLASS, ValueClass::Object.to_value()),
-        (ATTR_CLASS, ValueClass::AccessControlProfile.to_value()),
-        (ATTR_CLASS, ValueClass::AccessControlModify.to_value()),
+        (ATTR_CLASS, EntryClass::Object.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlProfile.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlModify.to_value()),
         (ATTR_NAME, Value::new_iname("idm_people_self_acp_write_mail")),
         (ATTR_UUID, Value::Uuid(UUID_IDM_PEOPLE_SELF_ACP_WRITE_MAIL_V1)),
         (
-            ValueAttribute::Description.as_str(),
+            Attribute::Description.as_str(),
             Value::new_utf8s("Builtin IDM Control for self write of mail for people accounts.")
         ),
         (
@@ -238,8 +235,8 @@ lazy_static! {
         (
             ATTR_ACP_TARGET_SCOPE,
             // Value::JsonFilt(ProtoFilter::And(vec![
-            //     match_class_filter!(ValueClass::Person).clone(),
-            //     match_class_filter!(ValueClass::Account).clone(),
+            //     match_class_filter!(EntryClass::Person).clone(),
+            //     match_class_filter!(EntryClass::Account).clone(),
             //     ProtoFilter::SelfUuid,
             // ]))
             Value::new_json_filter_s(
@@ -247,20 +244,20 @@ lazy_static! {
             )
                 .expect("Invalid JSON filter")
         ),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::Mail.to_value()),
-        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::Mail.to_value())
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::Mail.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::Mail.to_value())
     );
 }
 
 lazy_static! {
     pub static ref E_IDM_ALL_ACP_READ_V1: EntryInitNew = entry_init!(
-        (ATTR_CLASS, ValueClass::Object.to_value()),
-        (ATTR_CLASS, ValueClass::AccessControlProfile.to_value()),
-        (ATTR_CLASS, ValueClass::AccessControlSearch.to_value()),
+        (ATTR_CLASS, EntryClass::Object.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlProfile.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlSearch.to_value()),
         (ATTR_NAME, Value::new_iname("idm_all_acp_read")),
         (ATTR_UUID, Value::Uuid(UUID_IDM_ALL_ACP_READ_V1)),
         (
-            ValueAttribute::Description.as_str(),
+            Attribute::Description.as_str(),
             Value::new_utf8s("Builtin IDM Control for all read - e.g. anonymous and all authenticated accounts.")
         ),
         (
@@ -271,14 +268,14 @@ lazy_static! {
             ATTR_ACP_TARGET_SCOPE,
             // Value::JsonFilt(ProtoFilter::And(vec![
             //     ProtoFilter::Or(vec![
-            //         match_class_filter!(ValueClass::Account),
-            //         match_class_filter!(ValueClass::Group),
+            //         match_class_filter!(EntryClass::Account),
+            //         match_class_filter!(EntryClass::Group),
 
             //         ]),
             //     ProtoFilter::AndNot(Box::new(
             //         ProtoFilter::Or(vec![
-            //             match_class_filter!(ValueClass::Tombstone),
-            //             match_class_filter!(ValueClass::Recycled),
+            //             match_class_filter!(EntryClass::Tombstone),
+            //             match_class_filter!(EntryClass::Recycled),
             //         ])
             //     )),
             // ]))
@@ -299,17 +296,17 @@ lazy_static! {
             )
                 .expect("Invalid JSON filter")
         ),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Class.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Name.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Spn.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::DisplayName.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Class.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::MemberOf.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Member.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Uuid.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::GidNumber.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::LoginShell.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::SshUnderscorePublicKey.to_value())
+        (ATTR_ACP_SEARCH_ATTR, Attribute::Class.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::Name.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::Spn.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::DisplayName.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::Class.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::MemberOf.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::Member.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::Uuid.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::GidNumber.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::LoginShell.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::SshUnderscorePublicKey.to_value())
     );
 }
 
@@ -317,24 +314,24 @@ lazy_static! {
 
 
     pub static ref FILTER_HP: ProtoFilter = ProtoFilter::Eq(
-        ValueAttribute::MemberOf.to_string(),
+        Attribute::MemberOf.to_string(),
         UUID_IDM_HIGH_PRIVILEGE.to_string()
     );
 
     pub static ref FILTER_HP_OR_RECYCLED_OR_TOMBSTONE: ProtoFilter = ProtoFilter::Or(vec![
         FILTER_HP.clone(),
-        match_class_filter!(ValueClass::Recycled),
-        match_class_filter!(ValueClass::Tombstone),
+        match_class_filter!(EntryClass::Recycled),
+        match_class_filter!(EntryClass::Tombstone),
     ]);
 
     pub static ref E_IDM_ACP_PEOPLE_READ_PRIV_V1: EntryInitNew = entry_init!(
-        (ATTR_CLASS, ValueClass::Object.to_value()),
-        (ATTR_CLASS, ValueClass::AccessControlProfile.to_value()),
-        (ATTR_CLASS, ValueClass::AccessControlSearch.to_value()),
+        (ATTR_CLASS, EntryClass::Object.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlProfile.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlSearch.to_value()),
         (ATTR_NAME, Value::new_iname("idm_acp_people_read_priv")),
         (ATTR_UUID, Value::Uuid(UUID_IDM_ACP_PEOPLE_READ_PRIV_V1)),
         (
-            ValueAttribute::Description.as_str(),
+            Attribute::Description.as_str(),
             Value::new_utf8s("Builtin IDM Control for reading personal sensitive data.")
         ),
         (
@@ -344,7 +341,7 @@ lazy_static! {
         (
             ATTR_ACP_TARGET_SCOPE,
             Value::JsonFilt(ProtoFilter::And(vec![
-                match_class_filter!(ValueClass::Person).clone(),
+                match_class_filter!(EntryClass::Person).clone(),
                 ProtoFilter::AndNot(Box::new(
                     FILTER_HP_OR_RECYCLED_OR_TOMBSTONE.clone()
                 )),
@@ -364,23 +361,23 @@ lazy_static! {
             // )
             // .expect("Invalid JSON filter")
         ),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Class.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Name.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::DisplayName.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::LegalName.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Mail.to_value())
+        (ATTR_ACP_SEARCH_ATTR, Attribute::Class.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::Name.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::DisplayName.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::LegalName.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::Mail.to_value())
     );
 }
 
 lazy_static! {
     pub static ref E_IDM_ACP_PEOPLE_WRITE_PRIV_V1: EntryInitNew = entry_init!(
-        (ATTR_CLASS, ValueClass::Object.to_value()),
-        (ATTR_CLASS, ValueClass::AccessControlProfile.to_value()),
-        (ATTR_CLASS, ValueClass::AccessControlModify.to_value()),
+        (ATTR_CLASS, EntryClass::Object.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlProfile.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlModify.to_value()),
         (ATTR_NAME, Value::new_iname("idm_acp_people_write_priv")),
         (ATTR_UUID, Value::Uuid(UUID_IDM_ACP_PEOPLE_WRITE_PRIV_V1)),
         (
-            ValueAttribute::Description.as_str(),
+            Attribute::Description.as_str(),
             Value::new_utf8s("Builtin IDM Control for managing personal and sensitive data.")
         ),
         (
@@ -403,39 +400,33 @@ lazy_static! {
             )
             .expect("Invalid JSON filter")
         ),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::Name.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::Name.to_value()),
         (
             ATTR_ACP_MODIFY_REMOVEDATTR,
-            ValueAttribute::DisplayName.to_value()
+            Attribute::DisplayName.to_value()
         ),
-        (
-            ATTR_ACP_MODIFY_REMOVEDATTR,
-            ValueAttribute::LegalName.to_value()
-        ),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::Mail.to_value()),
-        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::Name.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::LegalName.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::Mail.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::Name.to_value()),
         (
             ATTR_ACP_MODIFY_PRESENTATTR,
-            ValueAttribute::DisplayName.to_value()
+            Attribute::DisplayName.to_value()
         ),
-        (
-            ATTR_ACP_MODIFY_PRESENTATTR,
-            ValueAttribute::LegalName.to_value()
-        ),
-        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::Mail.to_value())
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::LegalName.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::Mail.to_value())
     );
 }
 
 lazy_static! {
     pub static ref E_IDM_ACP_PEOPLE_MANAGE_PRIV_V1: EntryInitNew = entry_init!(
-        (ATTR_CLASS, ValueClass::Object.to_value()),
-        (ATTR_CLASS, ValueClass::AccessControlProfile.to_value()),
-        (ATTR_CLASS, ValueClass::AccessControlDelete.to_value()),
-        (ATTR_CLASS, ValueClass::AccessControlCreate.to_value()),
+        (ATTR_CLASS, EntryClass::Object.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlProfile.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlDelete.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlCreate.to_value()),
         (ATTR_NAME, Value::new_iname("idm_acp_people_manage")),
         (ATTR_UUID, Value::Uuid(UUID_IDM_ACP_PEOPLE_MANAGE_PRIV_V1)),
         (
-            ValueAttribute::Description.as_str(),
+            Attribute::Description.as_str(),
             Value::new_utf8s("Builtin IDM Control for creating person (user) accounts")
         ),
         (
@@ -458,32 +449,26 @@ lazy_static! {
             )
             .expect("Invalid JSON filter")
         ),
-        (ATTR_ACP_CREATE_ATTR, ValueAttribute::Class.to_value()),
-        (ATTR_ACP_CREATE_ATTR, ValueAttribute::Name.to_value()),
-        (ATTR_ACP_CREATE_ATTR, ValueAttribute::DisplayName.to_value()),
-        (ATTR_ACP_CREATE_ATTR, ValueAttribute::LegalName.to_value()),
+        (ATTR_ACP_CREATE_ATTR, Attribute::Class.to_value()),
+        (ATTR_ACP_CREATE_ATTR, Attribute::Name.to_value()),
+        (ATTR_ACP_CREATE_ATTR, Attribute::DisplayName.to_value()),
+        (ATTR_ACP_CREATE_ATTR, Attribute::LegalName.to_value()),
         (
             ATTR_ACP_CREATE_ATTR,
-            ValueAttribute::PrimaryCredential.to_value()
+            Attribute::PrimaryCredential.to_value()
         ),
         (
             ATTR_ACP_CREATE_ATTR,
-            ValueAttribute::SshUnderscorePublicKey.to_value()
+            Attribute::SshUnderscorePublicKey.to_value()
         ),
-        (ATTR_ACP_CREATE_ATTR, ValueAttribute::Mail.to_value()),
-        (
-            ATTR_ACP_CREATE_ATTR,
-            ValueAttribute::AccountExpire.to_value()
-        ),
-        (
-            ATTR_ACP_CREATE_ATTR,
-            ValueAttribute::AccountValidFrom.to_value()
-        ),
-        (ATTR_ACP_CREATE_ATTR, ValueAttribute::PassKeys.to_value()),
-        (ATTR_ACP_CREATE_ATTR, ValueAttribute::DeviceKeys.to_value()),
-        (ATTR_ACP_CREATE_CLASS, ValueClass::Object.to_value()),
-        (ATTR_ACP_CREATE_CLASS, ValueClass::Account.to_value()),
-        (ATTR_ACP_CREATE_CLASS, ValueClass::Person.to_value())
+        (ATTR_ACP_CREATE_ATTR, Attribute::Mail.to_value()),
+        (ATTR_ACP_CREATE_ATTR, Attribute::AccountExpire.to_value()),
+        (ATTR_ACP_CREATE_ATTR, Attribute::AccountValidFrom.to_value()),
+        (ATTR_ACP_CREATE_ATTR, Attribute::PassKeys.to_value()),
+        (ATTR_ACP_CREATE_ATTR, Attribute::DeviceKeys.to_value()),
+        (ATTR_ACP_CREATE_CLASS, EntryClass::Object.to_value()),
+        (ATTR_ACP_CREATE_CLASS, EntryClass::Account.to_value()),
+        (ATTR_ACP_CREATE_CLASS, EntryClass::Person.to_value())
     );
 }
 
@@ -493,13 +478,13 @@ lazy_static! {
 // acp that allows the create here too? Should it be separate?
 lazy_static! {
     pub static ref E_IDM_ACP_PEOPLE_ACCOUNT_PASSWORD_IMPORT_PRIV_V1: EntryInitNew = entry_init!(
-        (ATTR_CLASS, ValueClass::Object.to_value()),
-        (ATTR_CLASS, ValueClass::AccessControlProfile.to_value()),
-        (ATTR_CLASS, ValueClass::AccessControlModify.to_value()),
+        (ATTR_CLASS, EntryClass::Object.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlProfile.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlModify.to_value()),
         (ATTR_NAME, Value::new_iname("idm_acp_people_account_password_import_priv")),
         (ATTR_UUID, Value::Uuid(UUID_IDM_ACP_PEOPLE_ACCOUNT_PASSWORD_IMPORT_PRIV_V1)),
         (
-            ValueAttribute::Description.as_str(),
+            Attribute::Description.as_str(),
             Value::new_utf8s("Builtin IDM Control for allowing imports of passwords to people+account types.")
         ),
         (
@@ -513,20 +498,20 @@ lazy_static! {
             )
                 .expect("Invalid JSON filter")
         ),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::PasswordImport.to_value()),
-        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::PasswordImport.to_value())
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::PasswordImport.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::PasswordImport.to_value())
     );
 }
 
 lazy_static! {
     pub static ref E_IDM_ACP_PEOPLE_EXTEND_PRIV_V1: EntryInitNew = entry_init!(
-        (ATTR_CLASS, ValueClass::Object.to_value()),
-        (ATTR_CLASS, ValueClass::AccessControlProfile.to_value()),
-        (ATTR_CLASS, ValueClass::AccessControlModify.to_value()),
+        (ATTR_CLASS, EntryClass::Object.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlProfile.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlModify.to_value()),
         (ATTR_NAME, Value::new_iname("idm_acp_people_extend_priv")),
         (ATTR_UUID, Value::Uuid(UUID_IDM_ACP_PEOPLE_EXTEND_PRIV_V1)),
         (
-            ValueAttribute::Description.as_str(),
+            Attribute::Description.as_str(),
             Value::new_utf8s("Builtin IDM Control for allowing person class extension")
         ),
         (
@@ -540,28 +525,28 @@ lazy_static! {
             )
                 .expect("Invalid JSON filter")
         ),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::Name.to_value()),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::DisplayName.to_value()),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::LegalName.to_value()),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::Mail.to_value()),
-        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::Class.to_value()),
-        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::Name.to_value()),
-        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::DisplayName.to_value()),
-        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::LegalName.to_value()),
-        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::Name.to_value()),
-        (ATTR_ACP_MODIFY_CLASS, ValueClass::Person.to_value())
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::Name.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::DisplayName.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::LegalName.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::Mail.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::Class.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::Name.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::DisplayName.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::LegalName.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::Name.to_value()),
+        (ATTR_ACP_MODIFY_CLASS, EntryClass::Person.to_value())
     );
 }
 
 lazy_static! {
     pub static ref E_IDM_ACP_HP_PEOPLE_READ_PRIV_V1: EntryInitNew = entry_init!(
-        (ATTR_CLASS, ValueClass::Object.to_value()),
-        (ATTR_CLASS, ValueClass::AccessControlProfile.to_value()),
-        (ATTR_CLASS, ValueClass::AccessControlSearch.to_value()),
+        (ATTR_CLASS, EntryClass::Object.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlProfile.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlSearch.to_value()),
         (ATTR_NAME, Value::new_iname("idm_acp_hp_people_read_priv")),
         (ATTR_UUID, Value::Uuid(UUID_IDM_ACP_HP_PEOPLE_READ_PRIV_V1)),
         (
-            ValueAttribute::Description.as_str(),
+            Attribute::Description.as_str(),
             Value::new_utf8s(
                 "Builtin IDM Control for reading high privilege personal sensitive data."
             )
@@ -585,18 +570,18 @@ lazy_static! {
             )
             .expect("Invalid JSON filter")
         ),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Name.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::DisplayName.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::LegalName.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Mail.to_value())
+        (ATTR_ACP_SEARCH_ATTR, Attribute::Name.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::DisplayName.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::LegalName.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::Mail.to_value())
     );
 }
 
 lazy_static! {
     pub static ref E_IDM_ACP_ACCOUNT_MAIL_READ_PRIV_V1: EntryInitNew = entry_init!(
-        (ATTR_CLASS, ValueClass::Object.to_value()),
-        (ATTR_CLASS, ValueClass::AccessControlProfile.to_value()),
-        (ATTR_CLASS, ValueClass::AccessControlSearch.to_value()),
+        (ATTR_CLASS, EntryClass::Object.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlProfile.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlSearch.to_value()),
         (
             ATTR_NAME,
             Value::new_iname("idm_acp_account_mail_read_priv")
@@ -606,7 +591,7 @@ lazy_static! {
             Value::Uuid(UUID_IDM_ACP_ACCOUNT_MAIL_READ_PRIV_V1)
         ),
         (
-            ValueAttribute::Description.as_str(),
+            Attribute::Description.as_str(),
             Value::new_utf8s(
                 "Builtin IDM Control for reading account mail attributes."
             )
@@ -620,19 +605,19 @@ lazy_static! {
             Value::new_json_filter_s("{\"and\": [{\"eq\": [\"class\",\"account\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}")
                 .expect("Invalid JSON filter")
         ),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Mail.to_value())
+        (ATTR_ACP_SEARCH_ATTR, Attribute::Mail.to_value())
     );
 }
 
 lazy_static! {
     pub static ref E_IDM_ACP_HP_PEOPLE_WRITE_PRIV_V1: EntryInitNew = entry_init!(
-        (ATTR_CLASS, ValueClass::Object.to_value()),
-        (ATTR_CLASS, ValueClass::AccessControlProfile.to_value()),
-        (ATTR_CLASS, ValueClass::AccessControlModify.to_value()),
+        (ATTR_CLASS, EntryClass::Object.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlProfile.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlModify.to_value()),
         (ATTR_NAME, Value::new_iname("idm_acp_hp_people_write_priv")),
         (ATTR_UUID, Value::Uuid(UUID_IDM_ACP_HP_PEOPLE_WRITE_PRIV_V1)),
         (
-            ValueAttribute::Description.as_str(),
+            Attribute::Description.as_str(),
             Value::new_utf8s("Builtin IDM Control for managing privilege personal and sensitive data.")
         ),
         (
@@ -646,26 +631,26 @@ lazy_static! {
             )
                 .expect("Invalid JSON filter")
         ),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::Name.to_value()),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::DisplayName.to_value()),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::LegalName.to_value()),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::Mail.to_value()),
-        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::Name.to_value()),
-        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::DisplayName.to_value()),
-        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::LegalName.to_value()),
-        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::Name.to_value())
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::Name.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::DisplayName.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::LegalName.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::Mail.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::Name.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::DisplayName.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::LegalName.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::Name.to_value())
     );
 }
 
 lazy_static! {
     pub static ref E_IDM_ACP_HP_PEOPLE_EXTEND_PRIV_V1: EntryInitNew = entry_init!(
-        (ATTR_CLASS, ValueClass::Object.to_value()),
-        (ATTR_CLASS, ValueClass::AccessControlProfile.to_value()),
-        (ATTR_CLASS, ValueClass::AccessControlModify.to_value()),
+        (ATTR_CLASS, EntryClass::Object.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlProfile.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlModify.to_value()),
         (ATTR_NAME, Value::new_iname("idm_acp_hp_people_extend_priv")),
         (ATTR_UUID, Value::Uuid(UUID_IDM_ACP_HP_PEOPLE_EXTEND_PRIV_V1)),
         (
-            ValueAttribute::Description.as_str(),
+            Attribute::Description.as_str(),
             Value::new_utf8s("Builtin IDM Control for allowing privilege person class extension")
         ),
         (
@@ -679,16 +664,16 @@ lazy_static! {
             )
                 .expect("Invalid JSON filter")
         ),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::Name.to_value()),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::DisplayName.to_value()),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::LegalName.to_value()),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::Mail.to_value()),
-        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::Class.to_value()),
-        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::Name.to_value()),
-        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::DisplayName.to_value()),
-        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::LegalName.to_value()),
-        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::Name.to_value()),
-        (ATTR_ACP_MODIFY_CLASS, ValueClass::Person.to_value())
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::Name.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::DisplayName.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::LegalName.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::Mail.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::Class.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::Name.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::DisplayName.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::LegalName.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::Name.to_value()),
+        (ATTR_ACP_MODIFY_CLASS, EntryClass::Person.to_value())
     );
 }
 
@@ -696,14 +681,14 @@ lazy_static! {
 
 lazy_static! {
     pub static ref E_IDM_ACP_GROUP_WRITE_PRIV_V1: EntryInitNew = entry_init!(
-        (ATTR_CLASS, ValueClass::Object.to_value()),
-        (ATTR_CLASS, ValueClass::AccessControlProfile.to_value()),
-        (ATTR_CLASS, ValueClass::AccessControlModify.to_value()),
-        (ATTR_CLASS, ValueClass::AccessControlSearch.to_value()),
+        (ATTR_CLASS, EntryClass::Object.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlProfile.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlModify.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlSearch.to_value()),
         (ATTR_NAME, Value::new_iname("idm_acp_group_write_priv")),
         (ATTR_UUID, Value::Uuid(UUID_IDM_ACP_GROUP_WRITE_PRIV_V1)),
         (
-            ValueAttribute::Description.as_str(),
+            Attribute::Description.as_str(),
             Value::new_utf8s("Builtin IDM Control for managing groups")
         ),
         (
@@ -717,31 +702,31 @@ lazy_static! {
             )
                 .expect("Invalid JSON filter")
         ),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Class.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Name.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Uuid.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Spn.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Uuid.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Description.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Member.to_value()),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::Name.to_value()),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::Description.to_value()),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::Member.to_value()),
-        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::Name.to_value()),
-        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::Description.to_value()),
-        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::Member.to_value())
+        (ATTR_ACP_SEARCH_ATTR, Attribute::Class.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::Name.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::Uuid.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::Spn.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::Uuid.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::Description.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::Member.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::Name.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::Description.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::Member.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::Name.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::Description.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::Member.to_value())
     );
 }
 
 lazy_static! {
     pub static ref E_IDM_ACP_ACCOUNT_READ_PRIV_V1: EntryInitNew = entry_init!(
-        (ATTR_CLASS, ValueClass::Object.to_value()),
-        (ATTR_CLASS, ValueClass::AccessControlProfile.to_value()),
-        (ATTR_CLASS, ValueClass::AccessControlSearch.to_value()),
+        (ATTR_CLASS, EntryClass::Object.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlProfile.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlSearch.to_value()),
         (ATTR_NAME, Value::new_iname("idm_acp_account_read_priv")),
         (ATTR_UUID, Value::Uuid(UUID_IDM_ACP_ACCOUNT_READ_PRIV_V1)),
         (
-            ValueAttribute::Description.as_str(),
+            Attribute::Description.as_str(),
             Value::new_utf8s("Builtin IDM Control for reading accounts.")
         ),
         (
@@ -755,34 +740,34 @@ lazy_static! {
             )
                 .expect("Invalid JSON filter")
         ),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Class.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Name.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Spn.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Uuid.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::DisplayName.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::SshUnderscorePublicKey.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::PrimaryCredential.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::MemberOf.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Mail.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::GidNumber.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::AccountExpire.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::AccountValidFrom.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::PassKeys.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::DeviceKeys.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::ApiTokenSession.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::UserAuthTokenSession.to_value())
+        (ATTR_ACP_SEARCH_ATTR, Attribute::Class.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::Name.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::Spn.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::Uuid.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::DisplayName.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::SshUnderscorePublicKey.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::PrimaryCredential.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::MemberOf.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::Mail.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::GidNumber.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::AccountExpire.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::AccountValidFrom.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::PassKeys.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::DeviceKeys.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::ApiTokenSession.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::UserAuthTokenSession.to_value())
     );
 }
 
 lazy_static! {
     pub static ref E_IDM_ACP_ACCOUNT_WRITE_PRIV_V1: EntryInitNew = entry_init!(
-        (ATTR_CLASS, ValueClass::Object.to_value()),
-        (ATTR_CLASS, ValueClass::AccessControlProfile.to_value()),
-        (ATTR_CLASS, ValueClass::AccessControlModify.to_value()),
+        (ATTR_CLASS, EntryClass::Object.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlProfile.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlModify.to_value()),
         (ATTR_NAME, Value::new_iname("idm_acp_account_write_priv")),
         (ATTR_UUID, Value::Uuid(UUID_IDM_ACP_ACCOUNT_WRITE_PRIV_V1)),
         (
-            ValueAttribute::Description.as_str(),
+            Attribute::Description.as_str(),
             Value::new_utf8s("Builtin IDM Control for managing all accounts (both person and service).")
         ),
         (
@@ -796,42 +781,42 @@ lazy_static! {
             )
                 .expect("Invalid JSON filter")
         ),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::Name.to_value()),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::DisplayName.to_value()),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::SshUnderscorePublicKey.to_value()),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::Mail.to_value()),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::AccountExpire.to_value()),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::AccountValidFrom.to_value()),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::AccountValidFrom.to_value()),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::PassKeys.to_value()),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::DeviceKeys.to_value()),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::ApiTokenSession.to_value()),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::UserAuthTokenSession.to_value()),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::IdVerificationEcKey.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::Name.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::DisplayName.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::SshUnderscorePublicKey.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::Mail.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::AccountExpire.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::AccountValidFrom.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::AccountValidFrom.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::PassKeys.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::DeviceKeys.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::ApiTokenSession.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::UserAuthTokenSession.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::IdVerificationEcKey.to_value()),
 
-        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::Name.to_value()),
-        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::DisplayName.to_value()),
-        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::SshUnderscorePublicKey.to_value()),
-        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::PrimaryCredential.to_value()),
-        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::Mail.to_value()),
-        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::AccountExpire.to_value()),
-        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::AccountValidFrom.to_value()),
-        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::PassKeys.to_value()),
-        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::DeviceKeys.to_value()),
-        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::ApiTokenSession.to_value())
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::Name.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::DisplayName.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::SshUnderscorePublicKey.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::PrimaryCredential.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::Mail.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::AccountExpire.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::AccountValidFrom.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::PassKeys.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::DeviceKeys.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::ApiTokenSession.to_value())
     );
 }
 
 lazy_static! {
     pub static ref E_IDM_ACP_ACCOUNT_MANAGE_PRIV_V1: EntryInitNew = entry_init!(
-        (ATTR_CLASS, ValueClass::Object.to_value()),
-        (ATTR_CLASS, ValueClass::AccessControlProfile.to_value()),
-        (ATTR_CLASS, ValueClass::AccessControlDelete.to_value()),
-        (ATTR_CLASS, ValueClass::AccessControlCreate.to_value()),
+        (ATTR_CLASS, EntryClass::Object.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlProfile.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlDelete.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlCreate.to_value()),
         (ATTR_NAME, Value::new_iname("idm_acp_account_manage")),
         (ATTR_UUID, Value::Uuid(UUID_IDM_ACP_ACCOUNT_MANAGE_PRIV_V1)),
         (
-            ValueAttribute::Description.as_str(),
+            Attribute::Description.as_str(),
             Value::new_utf8s("Builtin IDM Control for creating and deleting (service) accounts")
         ),
         (
@@ -845,21 +830,21 @@ lazy_static! {
             )
                 .expect("Invalid JSON filter")
         ),
-        (ATTR_ACP_CREATE_ATTR, ValueAttribute::Class.to_value()),
-        (ATTR_ACP_CREATE_ATTR, ValueAttribute::Name.to_value()),
-        (ATTR_ACP_CREATE_ATTR, ValueAttribute::DisplayName.to_value()),
-        (ATTR_ACP_CREATE_ATTR, ValueAttribute::Description.to_value()),
-        (ATTR_ACP_CREATE_ATTR, ValueAttribute::PrimaryCredential.to_value()),
-        (ATTR_ACP_CREATE_ATTR, ValueAttribute::SshUnderscorePublicKey.to_value()),
-        (ATTR_ACP_CREATE_ATTR, ValueAttribute::Mail.to_value()),
-        (ATTR_ACP_CREATE_ATTR, ValueAttribute::AccountExpire.to_value()),
-        (ATTR_ACP_CREATE_ATTR, ValueAttribute::AccountValidFrom.to_value()),
-        (ATTR_ACP_CREATE_ATTR, ValueAttribute::PassKeys.to_value()),
-        (ATTR_ACP_CREATE_ATTR, ValueAttribute::DeviceKeys.to_value()),
+        (ATTR_ACP_CREATE_ATTR, Attribute::Class.to_value()),
+        (ATTR_ACP_CREATE_ATTR, Attribute::Name.to_value()),
+        (ATTR_ACP_CREATE_ATTR, Attribute::DisplayName.to_value()),
+        (ATTR_ACP_CREATE_ATTR, Attribute::Description.to_value()),
+        (ATTR_ACP_CREATE_ATTR, Attribute::PrimaryCredential.to_value()),
+        (ATTR_ACP_CREATE_ATTR, Attribute::SshUnderscorePublicKey.to_value()),
+        (ATTR_ACP_CREATE_ATTR, Attribute::Mail.to_value()),
+        (ATTR_ACP_CREATE_ATTR, Attribute::AccountExpire.to_value()),
+        (ATTR_ACP_CREATE_ATTR, Attribute::AccountValidFrom.to_value()),
+        (ATTR_ACP_CREATE_ATTR, Attribute::PassKeys.to_value()),
+        (ATTR_ACP_CREATE_ATTR, Attribute::DeviceKeys.to_value()),
 
-        (ATTR_ACP_CREATE_CLASS, ValueClass::Object.to_value()),
-        (ATTR_ACP_CREATE_CLASS, ValueClass::Account.to_value()),
-        (ATTR_ACP_CREATE_CLASS, ValueClass::ServiceAccount.to_value())
+        (ATTR_ACP_CREATE_CLASS, EntryClass::Object.to_value()),
+        (ATTR_ACP_CREATE_CLASS, EntryClass::Account.to_value()),
+        (ATTR_ACP_CREATE_CLASS, EntryClass::ServiceAccount.to_value())
     );
 }
 
@@ -869,13 +854,13 @@ lazy_static! {
 
 lazy_static! {
     pub static ref E_IDM_ACP_RADIUS_SECRET_READ_PRIV_V1: EntryInitNew = entry_init!(
-        (ATTR_CLASS, ValueClass::Object.to_value()),
-        (ATTR_CLASS, ValueClass::AccessControlProfile.to_value()),
-        (ATTR_CLASS, ValueClass::AccessControlSearch.to_value()),
+        (ATTR_CLASS, EntryClass::Object.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlProfile.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlSearch.to_value()),
         (ATTR_NAME, Value::new_iname("idm_acp_radius_secret_read_priv")),
         (ATTR_UUID, Value::Uuid(UUID_IDM_ACP_RADIUS_SECRET_READ_PRIV_V1)),
         (
-            ValueAttribute::Description.as_str(),
+            Attribute::Description.as_str(),
             Value::new_utf8s("Builtin IDM Control for reading user radius secrets.")
         ),
         (
@@ -889,19 +874,19 @@ lazy_static! {
             )
                 .expect("Invalid JSON filter")
         ),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::RadiusSecret.to_value())
+        (ATTR_ACP_SEARCH_ATTR, Attribute::RadiusSecret.to_value())
     );
 }
 
 lazy_static! {
     pub static ref E_IDM_ACP_RADIUS_SECRET_WRITE_PRIV_V1: EntryInitNew = entry_init!(
-        (ATTR_CLASS, ValueClass::Object.to_value()),
-        (ATTR_CLASS, ValueClass::AccessControlProfile.to_value()),
-        (ATTR_CLASS, ValueClass::AccessControlModify.to_value()),
+        (ATTR_CLASS, EntryClass::Object.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlProfile.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlModify.to_value()),
         (ATTR_NAME, Value::new_iname("idm_acp_radius_secret_write_priv")),
         (ATTR_UUID, Value::Uuid(UUID_IDM_ACP_RADIUS_SECRET_WRITE_PRIV_V1)),
         (
-            ValueAttribute::Description.as_str(),
+            Attribute::Description.as_str(),
             Value::new_utf8s("Builtin IDM Control allowing writes to user radius secrets.")
         ),
         (
@@ -915,21 +900,21 @@ lazy_static! {
             )
                 .expect("Invalid JSON filter")
         ),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::RadiusSecret.to_value()),
-        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::RadiusSecret.to_value())
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::RadiusSecret.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::RadiusSecret.to_value())
 
     );
 }
 
 lazy_static! {
     pub static ref E_IDM_ACP_RADIUS_SERVERS_V1: EntryInitNew = entry_init!(
-        (ATTR_CLASS, ValueClass::Object.to_value()),
-        (ATTR_CLASS, ValueClass::AccessControlProfile.to_value()),
-        (ATTR_CLASS, ValueClass::AccessControlSearch.to_value()),
+        (ATTR_CLASS, EntryClass::Object.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlProfile.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlSearch.to_value()),
         (ATTR_NAME, Value::new_iname("idm_acp_radius_servers")),
         (ATTR_UUID, Value::Uuid(UUID_IDM_ACP_RADIUS_SERVERS_V1)),
         (
-            ValueAttribute::Description.as_str(),
+            Attribute::Description.as_str(),
             Value::new_utf8s("Builtin IDM Control for RADIUS servers to read credentials and other needed details.")
         ),
         (
@@ -943,23 +928,23 @@ lazy_static! {
             )
                 .expect("Invalid JSON filter")
         ),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Class.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Name.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Spn.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Uuid.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::RadiusSecret.to_value())
+        (ATTR_ACP_SEARCH_ATTR, Attribute::Class.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::Name.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::Spn.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::Uuid.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::RadiusSecret.to_value())
     );
 }
 
 lazy_static! {
     pub static ref E_IDM_ACP_HP_ACCOUNT_READ_PRIV_V1: EntryInitNew = entry_init!(
-        (ATTR_CLASS, ValueClass::Object.to_value()),
-        (ATTR_CLASS, ValueClass::AccessControlProfile.to_value()),
-        (ATTR_CLASS, ValueClass::AccessControlSearch.to_value()),
+        (ATTR_CLASS, EntryClass::Object.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlProfile.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlSearch.to_value()),
         (ATTR_NAME, Value::new_iname("idm_acp_hp_account_read_priv")),
         (ATTR_UUID, Value::Uuid(UUID_IDM_ACP_HP_ACCOUNT_READ_PRIV_V1)),
         (
-            ValueAttribute::Description.as_str(),
+            Attribute::Description.as_str(),
             Value::new_utf8s("Builtin IDM Control for reading high privilege accounts.")
         ),
         (
@@ -973,32 +958,32 @@ lazy_static! {
             )
                 .expect("Invalid JSON filter")
         ),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Class.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Name.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Spn.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Uuid.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::DisplayName.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::SshUnderscorePublicKey.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::PrimaryCredential.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::MemberOf.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::AccountExpire.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::AccountValidFrom.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::PassKeys.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::DeviceKeys.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::ApiTokenSession.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::UserAuthTokenSession.to_value())
+        (ATTR_ACP_SEARCH_ATTR, Attribute::Class.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::Name.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::Spn.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::Uuid.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::DisplayName.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::SshUnderscorePublicKey.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::PrimaryCredential.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::MemberOf.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::AccountExpire.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::AccountValidFrom.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::PassKeys.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::DeviceKeys.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::ApiTokenSession.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::UserAuthTokenSession.to_value())
     );
 }
 
 lazy_static! {
     pub static ref E_IDM_ACP_HP_ACCOUNT_WRITE_PRIV_V1: EntryInitNew = entry_init!(
-        (ATTR_CLASS, ValueClass::Object.to_value()),
-        (ATTR_CLASS, ValueClass::AccessControlProfile.to_value()),
-        (ATTR_CLASS, ValueClass::AccessControlModify.to_value()),
+        (ATTR_CLASS, EntryClass::Object.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlProfile.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlModify.to_value()),
         (ATTR_NAME, Value::new_iname("idm_acp_hp_account_write_priv")),
         (ATTR_UUID, Value::Uuid(UUID_IDM_ACP_HP_ACCOUNT_WRITE_PRIV_V1)),
         (
-            ValueAttribute::Description.as_str(),
+            Attribute::Description.as_str(),
             Value::new_utf8s("Builtin IDM Control for managing high privilege accounts (both person and service).")
         ),
         (
@@ -1012,40 +997,40 @@ lazy_static! {
             )
                 .expect("Invalid JSON filter")
         ),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::Name.to_value()),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::DisplayName.to_value()),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::SshUnderscorePublicKey.to_value()),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::PrimaryCredential.to_value()),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::AccountExpire.to_value()),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::AccountValidFrom.to_value()),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::PassKeys.to_value()),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::DeviceKeys.to_value()),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::ApiTokenSession.to_value()),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::UserAuthTokenSession.to_value()),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::IdVerificationEcKey.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::Name.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::DisplayName.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::SshUnderscorePublicKey.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::PrimaryCredential.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::AccountExpire.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::AccountValidFrom.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::PassKeys.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::DeviceKeys.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::ApiTokenSession.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::UserAuthTokenSession.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::IdVerificationEcKey.to_value()),
 
-        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::Name.to_value()),
-        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::DisplayName.to_value()),
-        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::SshUnderscorePublicKey.to_value()),
-        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::PrimaryCredential.to_value()),
-        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::AccountExpire.to_value()),
-        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::AccountValidFrom.to_value()),
-        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::PassKeys.to_value()),
-        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::DeviceKeys.to_value()),
-        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::ApiTokenSession.to_value())
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::Name.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::DisplayName.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::SshUnderscorePublicKey.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::PrimaryCredential.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::AccountExpire.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::AccountValidFrom.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::PassKeys.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::DeviceKeys.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::ApiTokenSession.to_value())
     );
 }
 
 lazy_static! {
     pub static ref E_IDM_ACP_HP_GROUP_WRITE_PRIV_V1: EntryInitNew = entry_init!(
-        (ATTR_CLASS, ValueClass::Object.to_value()),
-        (ATTR_CLASS, ValueClass::AccessControlProfile.to_value()),
-        (ATTR_CLASS, ValueClass::AccessControlModify.to_value()),
-        (ATTR_CLASS, ValueClass::AccessControlSearch.to_value()),
+        (ATTR_CLASS, EntryClass::Object.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlProfile.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlModify.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlSearch.to_value()),
         (ATTR_NAME, Value::new_iname("idm_acp_hp_group_write_priv")),
         (ATTR_UUID, Value::Uuid(UUID_IDM_ACP_HP_GROUP_WRITE_PRIV_V1)),
         (
-            ValueAttribute::Description.as_str(),
+            Attribute::Description.as_str(),
             Value::new_utf8s("Builtin IDM Control for managing high privilege groups")
         ),
         (
@@ -1059,33 +1044,33 @@ lazy_static! {
             )
                 .expect("Invalid JSON filter")
         ),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Class.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Name.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Uuid.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Spn.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Uuid.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Description.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Member.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::DynMember.to_value()),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::Description.to_value()),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::Member.to_value()),
-        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::Name.to_value()),
-        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::Description.to_value()),
-        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::Member.to_value())
+        (ATTR_ACP_SEARCH_ATTR, Attribute::Class.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::Name.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::Uuid.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::Spn.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::Uuid.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::Description.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::Member.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::DynMember.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::Description.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::Member.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::Name.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::Description.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::Member.to_value())
     );
 }
 
 lazy_static! {
     pub static ref E_IDM_ACP_SCHEMA_WRITE_ATTRS_PRIV_V1: EntryInitNew = entry_init!(
-        (ATTR_CLASS, ValueClass::Object.to_value()),
-        (ATTR_CLASS, ValueClass::AccessControlProfile.to_value()),
-        (ATTR_CLASS, ValueClass::AccessControlCreate.to_value()),
-        (ATTR_CLASS, ValueClass::AccessControlModify.to_value()),
-        (ATTR_CLASS, ValueClass::AccessControlSearch.to_value()),
+        (ATTR_CLASS, EntryClass::Object.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlProfile.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlCreate.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlModify.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlSearch.to_value()),
         (ATTR_NAME, Value::new_iname("idm_acp_schema_write_attrs_priv")),
         (ATTR_UUID, Value::Uuid(UUID_IDM_ACP_SCHEMA_WRITE_ATTRS_PRIV_V1)),
         (
-            ValueAttribute::Description.as_str(),
+            Attribute::Description.as_str(),
             Value::new_utf8s("Builtin IDM Control for management of schema attributes.")
         ),
         (
@@ -1099,53 +1084,53 @@ lazy_static! {
             )
                 .expect("Invalid JSON filter")
         ),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Class.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Description.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Index.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Unique.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::MultiValue.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::AttributeName.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Syntax.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Uuid.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::Class.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::Description.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::Index.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::Unique.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::MultiValue.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::AttributeName.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::Syntax.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::Uuid.to_value()),
 
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::Description.to_value()),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::Index.to_value()),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::Unique.to_value()),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::MultiValue.to_value()),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::Syntax.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::Description.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::Index.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::Unique.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::MultiValue.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::Syntax.to_value()),
 
-        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::Description.to_value()),
-        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::Index.to_value()),
-        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::Unique.to_value()),
-        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::MultiValue.to_value()),
-        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::Syntax.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::Description.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::Index.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::Unique.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::MultiValue.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::Syntax.to_value()),
 
-        (ATTR_ACP_CREATE_ATTR, ValueAttribute::Class.to_value()),
-        (ATTR_ACP_CREATE_ATTR, ValueAttribute::Description.to_value()),
-        (ATTR_ACP_CREATE_ATTR, ValueAttribute::Index.to_value()),
-        (ATTR_ACP_CREATE_ATTR, ValueAttribute::Unique.to_value()),
-        (ATTR_ACP_CREATE_ATTR, ValueAttribute::MultiValue.to_value()),
-        (ATTR_ACP_CREATE_ATTR, ValueAttribute::AttributeName.to_value()),
-        (ATTR_ACP_CREATE_ATTR, ValueAttribute::Syntax.to_value()),
-        (ATTR_ACP_CREATE_ATTR, ValueAttribute::Uuid.to_value()),
+        (ATTR_ACP_CREATE_ATTR, Attribute::Class.to_value()),
+        (ATTR_ACP_CREATE_ATTR, Attribute::Description.to_value()),
+        (ATTR_ACP_CREATE_ATTR, Attribute::Index.to_value()),
+        (ATTR_ACP_CREATE_ATTR, Attribute::Unique.to_value()),
+        (ATTR_ACP_CREATE_ATTR, Attribute::MultiValue.to_value()),
+        (ATTR_ACP_CREATE_ATTR, Attribute::AttributeName.to_value()),
+        (ATTR_ACP_CREATE_ATTR, Attribute::Syntax.to_value()),
+        (ATTR_ACP_CREATE_ATTR, Attribute::Uuid.to_value()),
 
-        (ATTR_ACP_CREATE_CLASS, ValueClass::Object.to_value()),
-        (ATTR_ACP_CREATE_CLASS, ValueClass::AttributeType.to_value())
+        (ATTR_ACP_CREATE_CLASS, EntryClass::Object.to_value()),
+        (ATTR_ACP_CREATE_CLASS, EntryClass::AttributeType.to_value())
     );
 }
 
 lazy_static! {
     pub static ref E_IDM_ACP_ACP_MANAGE_PRIV_V1: EntryInitNew = entry_init!(
-        (ATTR_CLASS, ValueClass::Object.to_value()),
-        (ATTR_CLASS, ValueClass::AccessControlProfile.to_value()),
-        (ATTR_CLASS, ValueClass::AccessControlCreate.to_value()),
-        (ATTR_CLASS, ValueClass::AccessControlDelete.to_value()),
-        (ATTR_CLASS, ValueClass::AccessControlModify.to_value()),
-        (ATTR_CLASS, ValueClass::AccessControlSearch.to_value()),
+        (ATTR_CLASS, EntryClass::Object.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlProfile.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlCreate.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlDelete.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlModify.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlSearch.to_value()),
         (ATTR_NAME, Value::new_iname("idm_acp_acp_manage_priv")),
         (ATTR_UUID, Value::Uuid(UUID_IDM_ACP_ACP_MANAGE_PRIV_V1)),
         (
-            ValueAttribute::Description.as_str(),
+            Attribute::Description.as_str(),
             Value::new_utf8s("Builtin IDM Control for access profiles management.")
         ),
         (
@@ -1159,84 +1144,84 @@ lazy_static! {
             )
                 .expect("Invalid JSON filter")
         ),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Class.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Name.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Description.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::AcpEnable.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::AcpReceiverGroup.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::AcpTargetScope.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::AcpSearchAttr.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::AcpModifyRemovedAttr.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::AcpModifyPresentAttr.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::AcpModifyClass.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::AcpCreateClass.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::AcpCreateAttr.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::Class.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::Name.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::Description.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::AcpEnable.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::AcpReceiverGroup.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::AcpTargetScope.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::AcpSearchAttr.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::AcpModifyRemovedAttr.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::AcpModifyPresentAttr.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::AcpModifyClass.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::AcpCreateClass.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::AcpCreateAttr.to_value()),
 
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::Class.to_value()),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::Name.to_value()),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::Description.to_value()),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::AcpEnable.to_value()),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::AcpReceiverGroup.to_value()),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::AcpTargetScope.to_value()),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::AcpSearchAttr.to_value()),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::AcpModifyRemovedAttr.to_value()),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::AcpModifyPresentAttr.to_value()),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::AcpModifyClass.to_value()),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::AcpCreateClass.to_value()),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::AcpCreateAttr.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::Class.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::Name.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::Description.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::AcpEnable.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::AcpReceiverGroup.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::AcpTargetScope.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::AcpSearchAttr.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::AcpModifyRemovedAttr.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::AcpModifyPresentAttr.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::AcpModifyClass.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::AcpCreateClass.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::AcpCreateAttr.to_value()),
 
-        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::Class.to_value()),
-        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::Name.to_value()),
-        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::Description.to_value()),
-        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::AcpEnable.to_value()),
-        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::AcpReceiverGroup.to_value()),
-        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::AcpTargetScope.to_value()),
-        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::AcpSearchAttr.to_value()),
-        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::AcpModifyRemovedAttr.to_value()),
-        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::AcpModifyPresentAttr.to_value()),
-        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::AcpModifyClass.to_value()),
-        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::AcpCreateClass.to_value()),
-        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::AcpCreateAttr.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::Class.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::Name.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::Description.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::AcpEnable.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::AcpReceiverGroup.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::AcpTargetScope.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::AcpSearchAttr.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::AcpModifyRemovedAttr.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::AcpModifyPresentAttr.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::AcpModifyClass.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::AcpCreateClass.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::AcpCreateAttr.to_value()),
 
-        (ATTR_ACP_CREATE_ATTR, ValueAttribute::Class.to_value()),
-        (ATTR_ACP_CREATE_ATTR, ValueAttribute::Name.to_value()),
-        (ATTR_ACP_CREATE_ATTR, ValueAttribute::Description.to_value()),
-        (ATTR_ACP_CREATE_ATTR, ValueAttribute::AcpEnable.to_value()),
-        (ATTR_ACP_CREATE_ATTR, ValueAttribute::AcpReceiverGroup.to_value()),
-        (ATTR_ACP_CREATE_ATTR, ValueAttribute::AcpTargetScope.to_value()),
-        (ATTR_ACP_CREATE_ATTR, ValueAttribute::AcpSearchAttr.to_value()),
-        (ATTR_ACP_CREATE_ATTR, ValueAttribute::AcpModifyRemovedAttr.to_value()),
-        (ATTR_ACP_CREATE_ATTR, ValueAttribute::AcpModifyPresentAttr.to_value()),
-        (ATTR_ACP_CREATE_ATTR, ValueAttribute::AcpModifyClass.to_value()),
-        (ATTR_ACP_CREATE_ATTR, ValueAttribute::AcpCreateClass.to_value()),
-        (ATTR_ACP_CREATE_ATTR, ValueAttribute::AcpCreateAttr.to_value()),
+        (ATTR_ACP_CREATE_ATTR, Attribute::Class.to_value()),
+        (ATTR_ACP_CREATE_ATTR, Attribute::Name.to_value()),
+        (ATTR_ACP_CREATE_ATTR, Attribute::Description.to_value()),
+        (ATTR_ACP_CREATE_ATTR, Attribute::AcpEnable.to_value()),
+        (ATTR_ACP_CREATE_ATTR, Attribute::AcpReceiverGroup.to_value()),
+        (ATTR_ACP_CREATE_ATTR, Attribute::AcpTargetScope.to_value()),
+        (ATTR_ACP_CREATE_ATTR, Attribute::AcpSearchAttr.to_value()),
+        (ATTR_ACP_CREATE_ATTR, Attribute::AcpModifyRemovedAttr.to_value()),
+        (ATTR_ACP_CREATE_ATTR, Attribute::AcpModifyPresentAttr.to_value()),
+        (ATTR_ACP_CREATE_ATTR, Attribute::AcpModifyClass.to_value()),
+        (ATTR_ACP_CREATE_ATTR, Attribute::AcpCreateClass.to_value()),
+        (ATTR_ACP_CREATE_ATTR, Attribute::AcpCreateAttr.to_value()),
 
 
-        (ATTR_ACP_MODIFY_CLASS, ValueClass::AccessControlProfile.to_value()),
-        (ATTR_ACP_MODIFY_CLASS, ValueClass::AccessControlSearch.to_value()),
-        (ATTR_ACP_MODIFY_CLASS, ValueClass::AccessControlModify.to_value()),
-        (ATTR_ACP_MODIFY_CLASS, ValueClass::AccessControlCreate.to_value()),
-        (ATTR_ACP_MODIFY_CLASS, ValueClass::AccessControlDelete.to_value()),
+        (ATTR_ACP_MODIFY_CLASS, EntryClass::AccessControlProfile.to_value()),
+        (ATTR_ACP_MODIFY_CLASS, EntryClass::AccessControlSearch.to_value()),
+        (ATTR_ACP_MODIFY_CLASS, EntryClass::AccessControlModify.to_value()),
+        (ATTR_ACP_MODIFY_CLASS, EntryClass::AccessControlCreate.to_value()),
+        (ATTR_ACP_MODIFY_CLASS, EntryClass::AccessControlDelete.to_value()),
 
-        (ATTR_ACP_CREATE_CLASS, ValueClass::AccessControlProfile.to_value()),
-        (ATTR_ACP_CREATE_CLASS, ValueClass::AccessControlSearch.to_value()),
-        (ATTR_ACP_CREATE_CLASS, ValueClass::AccessControlModify.to_value()),
-        (ATTR_ACP_CREATE_CLASS, ValueClass::AccessControlCreate.to_value()),
-        (ATTR_ACP_CREATE_CLASS, ValueClass::AccessControlDelete.to_value())
+        (ATTR_ACP_CREATE_CLASS, EntryClass::AccessControlProfile.to_value()),
+        (ATTR_ACP_CREATE_CLASS, EntryClass::AccessControlSearch.to_value()),
+        (ATTR_ACP_CREATE_CLASS, EntryClass::AccessControlModify.to_value()),
+        (ATTR_ACP_CREATE_CLASS, EntryClass::AccessControlCreate.to_value()),
+        (ATTR_ACP_CREATE_CLASS, EntryClass::AccessControlDelete.to_value())
     );
 }
 
 lazy_static! {
     pub static ref E_IDM_ACP_SCHEMA_WRITE_CLASSES_PRIV_V1: EntryInitNew = entry_init!(
-        (ATTR_CLASS, ValueClass::Object.to_value()),
-        (ATTR_CLASS, ValueClass::AccessControlProfile.to_value()),
-        (ATTR_CLASS, ValueClass::AccessControlCreate.to_value()),
-        (ATTR_CLASS, ValueClass::AccessControlModify.to_value()),
-        (ATTR_CLASS, ValueClass::AccessControlSearch.to_value()),
+        (ATTR_CLASS, EntryClass::Object.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlProfile.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlCreate.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlModify.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlSearch.to_value()),
         (ATTR_NAME, Value::new_iname("idm_acp_schema_write_classes_priv")),
         (ATTR_UUID, Value::Uuid(UUID_IDM_ACP_SCHEMA_WRITE_CLASSES_PRIV_V1)),
         (
-            ValueAttribute::Description.as_str(),
+            Attribute::Description.as_str(),
             Value::new_utf8s("Builtin IDM Control for management of schema classes.")
         ),
         (
@@ -1250,30 +1235,30 @@ lazy_static! {
             )
                 .expect("Invalid JSON filter")
         ),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Class.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::ClassName.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Description.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::SystemMay.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::May.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::SystemMust.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Must.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Uuid.to_value()),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::Class.to_value()),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::Description.to_value()),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::May.to_value()),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::Must.to_value()),
-        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::Name.to_value()),
-        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::Description.to_value()),
-        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::May.to_value()),
-        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::Must.to_value()),
-        (ATTR_ACP_CREATE_ATTR, ValueAttribute::Class.to_value()),
-        (ATTR_ACP_CREATE_ATTR, ValueAttribute::ClassName.to_value()),
-        (ATTR_ACP_CREATE_ATTR, ValueAttribute::Description.to_value()),
-        (ATTR_ACP_CREATE_ATTR, ValueAttribute::May.to_value()),
-        (ATTR_ACP_CREATE_ATTR, ValueAttribute::Must.to_value()),
-        (ATTR_ACP_CREATE_ATTR, ValueAttribute::Uuid.to_value()),
-        (ATTR_ACP_CREATE_CLASS, ValueClass::Object.to_value()),
-        (ATTR_ACP_CREATE_CLASS, ValueClass::ClassType.to_value())
+        (ATTR_ACP_SEARCH_ATTR, Attribute::Class.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::ClassName.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::Description.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::SystemMay.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::May.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::SystemMust.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::Must.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::Uuid.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::Class.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::Description.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::May.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::Must.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::Name.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::Description.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::May.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::Must.to_value()),
+        (ATTR_ACP_CREATE_ATTR, Attribute::Class.to_value()),
+        (ATTR_ACP_CREATE_ATTR, Attribute::ClassName.to_value()),
+        (ATTR_ACP_CREATE_ATTR, Attribute::Description.to_value()),
+        (ATTR_ACP_CREATE_ATTR, Attribute::May.to_value()),
+        (ATTR_ACP_CREATE_ATTR, Attribute::Must.to_value()),
+        (ATTR_ACP_CREATE_ATTR, Attribute::Uuid.to_value()),
+        (ATTR_ACP_CREATE_CLASS, EntryClass::Object.to_value()),
+        (ATTR_ACP_CREATE_CLASS, EntryClass::ClassType.to_value())
     );
 }
 
@@ -1281,14 +1266,14 @@ lazy_static! {
 
 lazy_static! {
     pub static ref E_IDM_ACP_GROUP_MANAGE_PRIV_V1: EntryInitNew = entry_init!(
-        (ATTR_CLASS, ValueClass::Object.to_value()),
-        (ATTR_CLASS, ValueClass::AccessControlProfile.to_value()),
-        (ATTR_CLASS, ValueClass::AccessControlDelete.to_value()),
-        (ATTR_CLASS, ValueClass::AccessControlCreate.to_value()),
+        (ATTR_CLASS, EntryClass::Object.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlProfile.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlDelete.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlCreate.to_value()),
         (ATTR_NAME, Value::new_iname("idm_acp_group_manage")),
         (ATTR_UUID, Value::Uuid(UUID_IDM_ACP_GROUP_MANAGE_PRIV_V1)),
         (
-            ValueAttribute::Description.as_str(),
+            Attribute::Description.as_str(),
             Value::new_utf8s("Builtin IDM Control for creating and deleting groups in the directory")
         ),
         (
@@ -1302,25 +1287,25 @@ lazy_static! {
             )
                 .expect("Invalid JSON filter")
         ),
-        (ATTR_ACP_CREATE_ATTR, ValueAttribute::Class.to_value()),
-        (ATTR_ACP_CREATE_ATTR, ValueAttribute::Name.to_value()),
-        (ATTR_ACP_CREATE_ATTR, ValueAttribute::Description.to_value()),
-        (ATTR_ACP_CREATE_ATTR, ValueAttribute::Member.to_value()),
-        (ATTR_ACP_CREATE_CLASS, ValueClass::Object.to_value()),
-        (ATTR_ACP_CREATE_CLASS, ValueClass::Group.to_value())
+        (ATTR_ACP_CREATE_ATTR, Attribute::Class.to_value()),
+        (ATTR_ACP_CREATE_ATTR, Attribute::Name.to_value()),
+        (ATTR_ACP_CREATE_ATTR, Attribute::Description.to_value()),
+        (ATTR_ACP_CREATE_ATTR, Attribute::Member.to_value()),
+        (ATTR_ACP_CREATE_CLASS, EntryClass::Object.to_value()),
+        (ATTR_ACP_CREATE_CLASS, EntryClass::Group.to_value())
     );
 }
 
 lazy_static! {
     pub static ref E_IDM_ACP_HP_ACCOUNT_MANAGE_PRIV_V1: EntryInitNew = entry_init!(
-        (ATTR_CLASS, ValueClass::Object.to_value()),
-        (ATTR_CLASS, ValueClass::AccessControlProfile.to_value()),
-        (ATTR_CLASS, ValueClass::AccessControlDelete.to_value()),
-        (ATTR_CLASS, ValueClass::AccessControlCreate.to_value()),
+        (ATTR_CLASS, EntryClass::Object.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlProfile.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlDelete.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlCreate.to_value()),
         (ATTR_NAME, Value::new_iname("idm_acp_hp_account_manage")),
         (ATTR_UUID, Value::Uuid(UUID_IDM_ACP_HP_ACCOUNT_MANAGE_PRIV_V1)),
         (
-            ValueAttribute::Description.as_str(),
+            Attribute::Description.as_str(),
             Value::new_utf8s("Builtin IDM Control for creating and deleting hp and regular (service) accounts")
         ),
         (
@@ -1334,32 +1319,32 @@ lazy_static! {
             )
                 .expect("Invalid JSON filter")
         ),
-        (ATTR_ACP_CREATE_ATTR, ValueAttribute::Class.to_value()),
-        (ATTR_ACP_CREATE_ATTR, ValueAttribute::Name.to_value()),
-        (ATTR_ACP_CREATE_ATTR, ValueAttribute::DisplayName.to_value()),
-        (ATTR_ACP_CREATE_ATTR, ValueAttribute::Description.to_value()),
-        (ATTR_ACP_CREATE_ATTR, ValueAttribute::PrimaryCredential.to_value()),
-        (ATTR_ACP_CREATE_ATTR, ValueAttribute::SshUnderscorePublicKey.to_value()),
-        (ATTR_ACP_CREATE_ATTR, ValueAttribute::AccountExpire.to_value()),
-        (ATTR_ACP_CREATE_ATTR, ValueAttribute::AccountValidFrom.to_value()),
-        (ATTR_ACP_CREATE_ATTR, ValueAttribute::PassKeys.to_value()),
-        (ATTR_ACP_CREATE_ATTR, ValueAttribute::DeviceKeys.to_value()),
-        (ATTR_ACP_CREATE_CLASS, ValueClass::Object.to_value()),
-        (ATTR_ACP_CREATE_CLASS, ValueClass::Account.to_value()),
-        (ATTR_ACP_CREATE_CLASS, ValueClass::ServiceAccount.to_value())
+        (ATTR_ACP_CREATE_ATTR, Attribute::Class.to_value()),
+        (ATTR_ACP_CREATE_ATTR, Attribute::Name.to_value()),
+        (ATTR_ACP_CREATE_ATTR, Attribute::DisplayName.to_value()),
+        (ATTR_ACP_CREATE_ATTR, Attribute::Description.to_value()),
+        (ATTR_ACP_CREATE_ATTR, Attribute::PrimaryCredential.to_value()),
+        (ATTR_ACP_CREATE_ATTR, Attribute::SshUnderscorePublicKey.to_value()),
+        (ATTR_ACP_CREATE_ATTR, Attribute::AccountExpire.to_value()),
+        (ATTR_ACP_CREATE_ATTR, Attribute::AccountValidFrom.to_value()),
+        (ATTR_ACP_CREATE_ATTR, Attribute::PassKeys.to_value()),
+        (ATTR_ACP_CREATE_ATTR, Attribute::DeviceKeys.to_value()),
+        (ATTR_ACP_CREATE_CLASS, EntryClass::Object.to_value()),
+        (ATTR_ACP_CREATE_CLASS, EntryClass::Account.to_value()),
+        (ATTR_ACP_CREATE_CLASS, EntryClass::ServiceAccount.to_value())
     );
 }
 
 lazy_static! {
     pub static ref E_IDM_ACP_HP_GROUP_MANAGE_PRIV_V1: EntryInitNew = entry_init!(
-        (ATTR_CLASS, ValueClass::Object.to_value()),
-        (ATTR_CLASS, ValueClass::AccessControlProfile.to_value()),
-        (ATTR_CLASS, ValueClass::AccessControlDelete.to_value()),
-        (ATTR_CLASS, ValueClass::AccessControlCreate.to_value()),
+        (ATTR_CLASS, EntryClass::Object.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlProfile.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlDelete.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlCreate.to_value()),
         (ATTR_NAME, Value::new_iname("idm_acp_hp_group_manage")),
         (ATTR_UUID, Value::Uuid(UUID_IDM_ACP_HP_GROUP_MANAGE_PRIV_V1)),
         (
-            ValueAttribute::Description.as_str(),
+            Attribute::Description.as_str(),
             Value::new_utf8s("Builtin IDM Control for creating and deleting hp and regular groups in the directory")
         ),
         (
@@ -1373,25 +1358,25 @@ lazy_static! {
             )
                 .expect("Invalid JSON filter")
         ),
-        (ATTR_ACP_CREATE_ATTR, ValueAttribute::Class.to_value()),
-        (ATTR_ACP_CREATE_ATTR, ValueAttribute::Name.to_value()),
-        (ATTR_ACP_CREATE_ATTR, ValueAttribute::Description.to_value()),
-        (ATTR_ACP_CREATE_ATTR, ValueAttribute::Member.to_value()),
-        (ATTR_ACP_CREATE_CLASS, ValueClass::Object.to_value()),
-        (ATTR_ACP_CREATE_CLASS, ValueClass::Group.to_value())
+        (ATTR_ACP_CREATE_ATTR, Attribute::Class.to_value()),
+        (ATTR_ACP_CREATE_ATTR, Attribute::Name.to_value()),
+        (ATTR_ACP_CREATE_ATTR, Attribute::Description.to_value()),
+        (ATTR_ACP_CREATE_ATTR, Attribute::Member.to_value()),
+        (ATTR_ACP_CREATE_CLASS, EntryClass::Object.to_value()),
+        (ATTR_ACP_CREATE_CLASS, EntryClass::Group.to_value())
     );
 }
 
 lazy_static! {
     pub static ref E_IDM_ACP_DOMAIN_ADMIN_PRIV_V1: EntryInitNew = entry_init!(
-        (ATTR_CLASS, ValueClass::Object.to_value()),
-        (ATTR_CLASS, ValueClass::AccessControlProfile.to_value()),
-        (ATTR_CLASS, ValueClass::AccessControlModify.to_value()),
-        (ATTR_CLASS, ValueClass::AccessControlSearch.to_value()),
+        (ATTR_CLASS, EntryClass::Object.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlProfile.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlModify.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlSearch.to_value()),
         (ATTR_NAME, Value::new_iname("idm_acp_domain_admin_priv")),
         (ATTR_UUID, Value::Uuid(UUID_IDM_ACP_DOMAIN_ADMIN_PRIV_V1)),
         (
-            ValueAttribute::Description.as_str(),
+            Attribute::Description.as_str(),
             Value::new_utf8s("Builtin IDM Control for granting domain info administration locally")
         ),
         (
@@ -1405,39 +1390,39 @@ lazy_static! {
             )
                 .expect("Invalid JSON filter")
         ),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Class.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Name.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Uuid.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::DomainDisplayName.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::DomainName.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::DomainLdapBasedn.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::DomainSsid.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::DomainUuid.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Es256PrivateKeyDer.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::FernetPrivateKeyStr.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::CookiePrivateKey.to_value()),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::DomainDisplayName.to_value()),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::DomainSsid.to_value()),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::DomainLdapBasedn.to_value()),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::Es256PrivateKeyDer.to_value()),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::CookiePrivateKey.to_value()),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::FernetPrivateKeyStr.to_value()),
-        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::DomainDisplayName.to_value()),
-        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::DomainLdapBasedn.to_value()),
-        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::DomainSsid.to_value())
+        (ATTR_ACP_SEARCH_ATTR, Attribute::Class.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::Name.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::Uuid.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::DomainDisplayName.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::DomainName.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::DomainLdapBasedn.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::DomainSsid.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::DomainUuid.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::Es256PrivateKeyDer.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::FernetPrivateKeyStr.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::CookiePrivateKey.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::DomainDisplayName.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::DomainSsid.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::DomainLdapBasedn.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::Es256PrivateKeyDer.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::CookiePrivateKey.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::FernetPrivateKeyStr.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::DomainDisplayName.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::DomainLdapBasedn.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::DomainSsid.to_value())
     );
 }
 
 lazy_static! {
     pub static ref E_IDM_ACP_SYSTEM_CONFIG_PRIV_V1: EntryInitNew = entry_init!(
-        (ATTR_CLASS, ValueClass::Object.to_value()),
-        (ATTR_CLASS, ValueClass::AccessControlProfile.to_value()),
-        (ATTR_CLASS, ValueClass::AccessControlModify.to_value()),
-        (ATTR_CLASS, ValueClass::AccessControlSearch.to_value()),
+        (ATTR_CLASS, EntryClass::Object.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlProfile.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlModify.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlSearch.to_value()),
         (ATTR_NAME, Value::new_iname("idm_acp_system_config_priv")),
         (ATTR_UUID, Value::Uuid(UUID_IDM_ACP_SYSTEM_CONFIG_PRIV_V1)),
         (
-            ValueAttribute::Description.as_str(),
+            Attribute::Description.as_str(),
             Value::new_utf8s("Builtin IDM Control for granting system configuration rights")
         ),
         (
@@ -1451,26 +1436,26 @@ lazy_static! {
             )
                 .expect("Invalid JSON filter")
         ),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Class.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Name.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Uuid.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Description.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::BadlistPassword.to_value()),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::BadlistPassword.to_value()),
-        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::BadlistPassword.to_value())
+        (ATTR_ACP_SEARCH_ATTR, Attribute::Class.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::Name.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::Uuid.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::Description.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::BadlistPassword.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::BadlistPassword.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::BadlistPassword.to_value())
     );
 }
 
 lazy_static! {
     pub static ref E_IDM_ACP_ACCOUNT_UNIX_EXTEND_PRIV_V1: EntryInitNew = entry_init!(
-        (ATTR_CLASS, ValueClass::Object.to_value()),
-        (ATTR_CLASS, ValueClass::AccessControlProfile.to_value()),
-        (ATTR_CLASS, ValueClass::AccessControlModify.to_value()),
-        (ATTR_CLASS, ValueClass::AccessControlSearch.to_value()),
+        (ATTR_CLASS, EntryClass::Object.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlProfile.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlModify.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlSearch.to_value()),
         (ATTR_NAME, Value::new_iname("idm_acp_account_unix_extend_priv")),
         (ATTR_UUID, Value::Uuid(UUID_IDM_ACP_ACCOUNT_UNIX_EXTEND_PRIV_V1)),
         (
-            ValueAttribute::Description.as_str(),
+            Attribute::Description.as_str(),
             Value::new_utf8s("Builtin IDM Control for managing and extending unix accounts")
         ),
         (
@@ -1484,35 +1469,35 @@ lazy_static! {
             )
                 .expect("Invalid JSON filter")
         ),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Class.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Name.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Uuid.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Spn.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Description.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::GidNumber.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::LoginShell.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::UnixPassword.to_value()),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::GidNumber.to_value()),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::LoginShell.to_value()),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::UnixPassword.to_value()),
-        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::Class.to_value()),
-        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::GidNumber.to_value()),
-        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::LoginShell.to_value()),
-        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::UnixPassword.to_value()),
-        (ATTR_ACP_MODIFY_CLASS, ValueClass::PosixAccount.to_value())
+        (ATTR_ACP_SEARCH_ATTR, Attribute::Class.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::Name.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::Uuid.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::Spn.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::Description.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::GidNumber.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::LoginShell.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::UnixPassword.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::GidNumber.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::LoginShell.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::UnixPassword.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::Class.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::GidNumber.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::LoginShell.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::UnixPassword.to_value()),
+        (ATTR_ACP_MODIFY_CLASS, EntryClass::PosixAccount.to_value())
     );
 }
 
 lazy_static! {
     pub static ref E_IDM_ACP_GROUP_UNIX_EXTEND_PRIV_V1: EntryInitNew = entry_init!(
-        (ATTR_CLASS, ValueClass::Object.to_value()),
-        (ATTR_CLASS, ValueClass::AccessControlProfile.to_value()),
-        (ATTR_CLASS, ValueClass::AccessControlModify.to_value()),
-        (ATTR_CLASS, ValueClass::AccessControlSearch.to_value()),
+        (ATTR_CLASS, EntryClass::Object.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlProfile.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlModify.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlSearch.to_value()),
         (ATTR_NAME, Value::new_iname("idm_acp_group_unix_extend_priv")),
         (ATTR_UUID, Value::Uuid(UUID_IDM_ACP_GROUP_UNIX_EXTEND_PRIV_V1)),
         (
-            ValueAttribute::Description.as_str(),
+            Attribute::Description.as_str(),
             Value::new_utf8s("Builtin IDM Control for managing and extending unix groups")
         ),
         (
@@ -1526,30 +1511,30 @@ lazy_static! {
             )
                 .expect("Invalid JSON filter")
         ),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Class.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Name.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Uuid.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Spn.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Description.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Member.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::GidNumber.to_value()),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::GidNumber.to_value()),
-        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::Class.to_value()),
-        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::GidNumber.to_value()),
-        (ATTR_ACP_MODIFY_CLASS, ValueClass::PosixGroup.to_value())
+        (ATTR_ACP_SEARCH_ATTR, Attribute::Class.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::Name.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::Uuid.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::Spn.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::Description.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::Member.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::GidNumber.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::GidNumber.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::Class.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::GidNumber.to_value()),
+        (ATTR_ACP_MODIFY_CLASS, EntryClass::PosixGroup.to_value())
     );
 }
 
 lazy_static! {
     pub static ref E_IDM_HP_ACP_ACCOUNT_UNIX_EXTEND_PRIV_V1: EntryInitNew = entry_init!(
-        (ATTR_CLASS, ValueClass::Object.to_value()),
-        (ATTR_CLASS, ValueClass::AccessControlProfile.to_value()),
-        (ATTR_CLASS, ValueClass::AccessControlModify.to_value()),
-        (ATTR_CLASS, ValueClass::AccessControlSearch.to_value()),
+        (ATTR_CLASS, EntryClass::Object.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlProfile.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlModify.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlSearch.to_value()),
         (ATTR_NAME, Value::new_iname("idm_acp_hp_account_unix_extend_priv")),
         (ATTR_UUID, Value::Uuid(UUID_IDM_HP_ACP_ACCOUNT_UNIX_EXTEND_PRIV_V1)),
         (
-            ValueAttribute::Description.as_str(),
+            Attribute::Description.as_str(),
             Value::new_utf8s("Builtin IDM Control for managing and extending unix accounts")
         ),
         (
@@ -1563,35 +1548,35 @@ lazy_static! {
             )
                 .expect("Invalid JSON filter")
         ),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Class.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Name.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Uuid.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Spn.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Description.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::GidNumber.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::LoginShell.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::UnixPassword.to_value()),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::GidNumber.to_value()),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::LoginShell.to_value()),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::UnixPassword.to_value()),
-        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::Class.to_value()),
-        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::GidNumber.to_value()),
-        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::LoginShell.to_value()),
-        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::UnixPassword.to_value()),
-        (ATTR_ACP_MODIFY_CLASS, ValueClass::PosixAccount.to_value())
+        (ATTR_ACP_SEARCH_ATTR, Attribute::Class.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::Name.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::Uuid.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::Spn.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::Description.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::GidNumber.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::LoginShell.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::UnixPassword.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::GidNumber.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::LoginShell.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::UnixPassword.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::Class.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::GidNumber.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::LoginShell.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::UnixPassword.to_value()),
+        (ATTR_ACP_MODIFY_CLASS, EntryClass::PosixAccount.to_value())
     );
 }
 
 lazy_static! {
     pub static ref E_IDM_HP_ACP_GROUP_UNIX_EXTEND_PRIV_V1: EntryInitNew = entry_init!(
-        (ATTR_CLASS, ValueClass::Object.to_value()),
-        (ATTR_CLASS, ValueClass::AccessControlProfile.to_value()),
-        (ATTR_CLASS, ValueClass::AccessControlModify.to_value()),
-        (ATTR_CLASS, ValueClass::AccessControlSearch.to_value()),
+        (ATTR_CLASS, EntryClass::Object.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlProfile.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlModify.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlSearch.to_value()),
         (ATTR_NAME, Value::new_iname("idm_acp_hp_group_unix_extend_priv")),
         (ATTR_UUID, Value::Uuid(UUID_IDM_HP_ACP_GROUP_UNIX_EXTEND_PRIV_V1)),
         (
-            ValueAttribute::Description.as_str(),
+            Attribute::Description.as_str(),
             Value::new_utf8s("Builtin IDM Control for managing and extending unix high privilege groups")
         ),
         (
@@ -1605,33 +1590,33 @@ lazy_static! {
             )
                 .expect("Invalid JSON filter")
         ),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::DynMember.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Class.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Name.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Uuid.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Spn.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Description.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Member.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::GidNumber.to_value()),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::GidNumber.to_value()),
-        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::Class.to_value()),
-        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::GidNumber.to_value()),
-        (ATTR_ACP_MODIFY_CLASS, ValueClass::PosixGroup.to_value())
+        (ATTR_ACP_SEARCH_ATTR, Attribute::DynMember.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::Class.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::Name.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::Uuid.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::Spn.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::Description.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::Member.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::GidNumber.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::GidNumber.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::Class.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::GidNumber.to_value()),
+        (ATTR_ACP_MODIFY_CLASS, EntryClass::PosixGroup.to_value())
     );
 }
 
 lazy_static! {
     pub static ref E_IDM_HP_ACP_OAUTH2_MANAGE_PRIV_V1: EntryInitNew = entry_init!(
-        (ATTR_CLASS, ValueClass::Object.to_value()),
-        (ATTR_CLASS, ValueClass::AccessControlProfile.to_value()),
-        (ATTR_CLASS, ValueClass::AccessControlCreate.to_value()),
-        (ATTR_CLASS, ValueClass::AccessControlDelete.to_value()),
-        (ATTR_CLASS, ValueClass::AccessControlModify.to_value()),
-        (ATTR_CLASS, ValueClass::AccessControlSearch.to_value()),
+        (ATTR_CLASS, EntryClass::Object.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlProfile.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlCreate.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlDelete.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlModify.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlSearch.to_value()),
         (ATTR_NAME, Value::new_iname("idm_acp_hp_oauth2_manage_priv")),
         (ATTR_UUID, Value::Uuid(UUID_IDM_HP_ACP_OAUTH2_MANAGE_PRIV_V1)),
         (
-            ValueAttribute::Description.as_str(),
+            Attribute::Description.as_str(),
             Value::new_utf8s("Builtin IDM Control for managing oauth2 resource server integrations.")
         ),
         (
@@ -1645,79 +1630,79 @@ lazy_static! {
             )
                 .expect("Invalid JSON filter")
         ),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Class.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Description.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::DisplayName.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::OAuth2RsName.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::OAuth2RsOrigin.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::OAuth2RsOriginLanding.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::OAuth2RsScopeMap.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::OAuth2RsSupScopeMap.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::OAuth2RsBasicSecret.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::OAuth2RsTokenKey.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Es256PrivateKeyDer.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::OAuth2AllowInsecureClientDisablePkce.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Rs256PrivateKeyDer.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::OAuth2JwtLegacyCryptoEnable.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::OAuth2PreferShortUsername.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::Class.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::Description.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::DisplayName.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::OAuth2RsName.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::OAuth2RsOrigin.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::OAuth2RsOriginLanding.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::OAuth2RsScopeMap.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::OAuth2RsSupScopeMap.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::OAuth2RsBasicSecret.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::OAuth2RsTokenKey.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::Es256PrivateKeyDer.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::OAuth2AllowInsecureClientDisablePkce.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::Rs256PrivateKeyDer.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::OAuth2JwtLegacyCryptoEnable.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::OAuth2PreferShortUsername.to_value()),
 
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::Description.to_value()),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::DisplayName.to_value()),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::OAuth2RsName.to_value()),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::OAuth2RsOrigin.to_value()),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::OAuth2RsOriginLanding.to_value()),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::OAuth2RsScopeMap.to_value()),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::OAuth2RsSupScopeMap.to_value()),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::OAuth2RsBasicSecret.to_value()),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::OAuth2RsTokenKey.to_value()),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::Es256PrivateKeyDer.to_value()),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::OAuth2AllowInsecureClientDisablePkce.to_value()),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::Rs256PrivateKeyDer.to_value()),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::OAuth2JwtLegacyCryptoEnable.to_value()),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::OAuth2PreferShortUsername.to_value()),
-
-
-        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::Description.to_value()),
-        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::DisplayName.to_value()),
-        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::OAuth2RsName.to_value()),
-        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::OAuth2RsOrigin.to_value()),
-        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::OAuth2RsOriginLanding.to_value()),
-        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::OAuth2RsSupScopeMap.to_value()),
-        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::OAuth2RsScopeMap.to_value()),
-        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::OAuth2AllowInsecureClientDisablePkce.to_value()),
-        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::OAuth2JwtLegacyCryptoEnable.to_value()),
-        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::OAuth2PreferShortUsername.to_value()),
-
-        (ATTR_ACP_CREATE_ATTR, ValueAttribute::Class.to_value()),
-        (ATTR_ACP_CREATE_ATTR, ValueAttribute::Description.to_value()),
-        (ATTR_ACP_CREATE_ATTR, ValueAttribute::DisplayName.to_value()),
-        (ATTR_ACP_CREATE_ATTR, ValueAttribute::OAuth2RsName.to_value()),
-        (ATTR_ACP_CREATE_ATTR, ValueAttribute::OAuth2RsOrigin.to_value()),
-        (ATTR_ACP_CREATE_ATTR, ValueAttribute::OAuth2RsOriginLanding.to_value()),
-        (ATTR_ACP_CREATE_ATTR, ValueAttribute::OAuth2RsSupScopeMap.to_value()),
-        (ATTR_ACP_CREATE_ATTR, ValueAttribute::OAuth2RsScopeMap.to_value()),
-        (ATTR_ACP_CREATE_ATTR, ValueAttribute::OAuth2AllowInsecureClientDisablePkce.to_value()),
-        (ATTR_ACP_CREATE_ATTR, ValueAttribute::OAuth2JwtLegacyCryptoEnable.to_value()),
-        (ATTR_ACP_CREATE_ATTR, ValueAttribute::OAuth2PreferShortUsername.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::Description.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::DisplayName.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::OAuth2RsName.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::OAuth2RsOrigin.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::OAuth2RsOriginLanding.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::OAuth2RsScopeMap.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::OAuth2RsSupScopeMap.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::OAuth2RsBasicSecret.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::OAuth2RsTokenKey.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::Es256PrivateKeyDer.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::OAuth2AllowInsecureClientDisablePkce.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::Rs256PrivateKeyDer.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::OAuth2JwtLegacyCryptoEnable.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::OAuth2PreferShortUsername.to_value()),
 
 
-        (ATTR_ACP_CREATE_CLASS, ValueClass::Object.to_value()),
-        (ATTR_ACP_CREATE_CLASS, ValueClass::OAuth2ResourceServer.to_value()),
-        (ATTR_ACP_CREATE_CLASS, ValueClass::OAuth2ResourceServerBasic.to_value()),
-        (ATTR_ACP_CREATE_CLASS, ValueClass::OAuth2ResourceServerPublic.to_value())
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::Description.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::DisplayName.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::OAuth2RsName.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::OAuth2RsOrigin.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::OAuth2RsOriginLanding.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::OAuth2RsSupScopeMap.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::OAuth2RsScopeMap.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::OAuth2AllowInsecureClientDisablePkce.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::OAuth2JwtLegacyCryptoEnable.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::OAuth2PreferShortUsername.to_value()),
+
+        (ATTR_ACP_CREATE_ATTR, Attribute::Class.to_value()),
+        (ATTR_ACP_CREATE_ATTR, Attribute::Description.to_value()),
+        (ATTR_ACP_CREATE_ATTR, Attribute::DisplayName.to_value()),
+        (ATTR_ACP_CREATE_ATTR, Attribute::OAuth2RsName.to_value()),
+        (ATTR_ACP_CREATE_ATTR, Attribute::OAuth2RsOrigin.to_value()),
+        (ATTR_ACP_CREATE_ATTR, Attribute::OAuth2RsOriginLanding.to_value()),
+        (ATTR_ACP_CREATE_ATTR, Attribute::OAuth2RsSupScopeMap.to_value()),
+        (ATTR_ACP_CREATE_ATTR, Attribute::OAuth2RsScopeMap.to_value()),
+        (ATTR_ACP_CREATE_ATTR, Attribute::OAuth2AllowInsecureClientDisablePkce.to_value()),
+        (ATTR_ACP_CREATE_ATTR, Attribute::OAuth2JwtLegacyCryptoEnable.to_value()),
+        (ATTR_ACP_CREATE_ATTR, Attribute::OAuth2PreferShortUsername.to_value()),
+
+
+        (ATTR_ACP_CREATE_CLASS, EntryClass::Object.to_value()),
+        (ATTR_ACP_CREATE_CLASS, EntryClass::OAuth2ResourceServer.to_value()),
+        (ATTR_ACP_CREATE_CLASS, EntryClass::OAuth2ResourceServerBasic.to_value()),
+        (ATTR_ACP_CREATE_CLASS, EntryClass::OAuth2ResourceServerPublic.to_value())
     );
 }
 
 lazy_static! {
     pub static ref E_IDM_HP_ACP_SERVICE_ACCOUNT_INTO_PERSON_MIGRATE_V1: EntryInitNew = entry_init!(
-        (ATTR_CLASS, ValueClass::Object.to_value()),
-        (ATTR_CLASS, ValueClass::AccessControlProfile.to_value()),
-        (ATTR_CLASS, ValueClass::AccessControlModify.to_value()),
-        (ATTR_CLASS, ValueClass::AccessControlSearch.to_value()),
+        (ATTR_CLASS, EntryClass::Object.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlProfile.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlModify.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlSearch.to_value()),
         (ATTR_NAME, Value::new_iname("idm_hp_acp_service_account_into_person_migrate")),
         (ATTR_UUID, Value::Uuid(UUID_IDM_HP_ACP_SERVICE_ACCOUNT_INTO_PERSON_MIGRATE_V1)),
         (
-            ValueAttribute::Description.as_str(),
+            Attribute::Description.as_str(),
             Value::new_utf8s("Builtin IDM Control allowing service accounts to be migrated into persons")
         ),
         (
@@ -1731,28 +1716,28 @@ lazy_static! {
             )
                 .expect("Invalid JSON filter")
         ),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Class.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Name.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Uuid.to_value()),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::Class.to_value()),
-        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::Class.to_value()),
-        (ATTR_ACP_MODIFY_CLASS, ValueClass::ServiceAccount.to_value()),
-        (ATTR_ACP_MODIFY_CLASS, ValueClass::Person.to_value())
+        (ATTR_ACP_SEARCH_ATTR, Attribute::Class.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::Name.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::Uuid.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::Class.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::Class.to_value()),
+        (ATTR_ACP_MODIFY_CLASS, EntryClass::ServiceAccount.to_value()),
+        (ATTR_ACP_MODIFY_CLASS, EntryClass::Person.to_value())
     );
 }
 
 lazy_static! {
     pub static ref E_IDM_HP_ACP_SYNC_ACCOUNT_MANAGE_PRIV_V1: EntryInitNew = entry_init!(
-        (ATTR_CLASS, ValueClass::Object.to_value()),
-        (ATTR_CLASS, ValueClass::AccessControlProfile.to_value()),
-        (ATTR_CLASS, ValueClass::AccessControlCreate.to_value()),
-        (ATTR_CLASS, ValueClass::AccessControlDelete.to_value()),
-        (ATTR_CLASS, ValueClass::AccessControlModify.to_value()),
-        (ATTR_CLASS, ValueClass::AccessControlSearch.to_value()),
+        (ATTR_CLASS, EntryClass::Object.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlProfile.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlCreate.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlDelete.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlModify.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlSearch.to_value()),
         (ATTR_NAME, Value::new_iname("idm_acp_hp_sync_account_manage_priv")),
         (ATTR_UUID, Value::Uuid(UUID_IDM_HP_ACP_SYNC_ACCOUNT_MANAGE_PRIV_V1)),
         (
-            ValueAttribute::Description.as_str(),
+            Attribute::Description.as_str(),
             Value::new_utf8s("Builtin IDM Control for managing IDM synchronisation accounts / connections")
         ),
         (
@@ -1766,31 +1751,31 @@ lazy_static! {
             )
                 .expect("Invalid JSON filter")
         ),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Class.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Uuid.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Name.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Description.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::JwsEs256PrivateKey.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::SyncTokenSession.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::SyncCredentialPortal.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::SyncYieldAuthority.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::SyncCookie.to_value()),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::Name.to_value()),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::Description.to_value()),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::JwsEs256PrivateKey.to_value()),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::SyncTokenSession.to_value()),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::SyncCredentialPortal.to_value()),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::SyncCookie.to_value()),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::SyncYieldAuthority.to_value()),
-        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::Name.to_value()),
-        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::Description.to_value()),
-        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::SyncTokenSession.to_value()),
-        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::SyncCredentialPortal.to_value()),
-        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::SyncYieldAuthority.to_value()),
-        (ATTR_ACP_CREATE_ATTR, ValueAttribute::Class.to_value()),
-        (ATTR_ACP_CREATE_ATTR, ValueAttribute::Name.to_value()),
-        (ATTR_ACP_CREATE_ATTR, ValueAttribute::Description.to_value()),
-        (ATTR_ACP_CREATE_CLASS, ValueClass::Object.to_value()),
-        (ATTR_ACP_CREATE_CLASS, ValueClass::SyncAccount.to_value())
+        (ATTR_ACP_SEARCH_ATTR, Attribute::Class.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::Uuid.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::Name.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::Description.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::JwsEs256PrivateKey.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::SyncTokenSession.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::SyncCredentialPortal.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::SyncYieldAuthority.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::SyncCookie.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::Name.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::Description.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::JwsEs256PrivateKey.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::SyncTokenSession.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::SyncCredentialPortal.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::SyncCookie.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::SyncYieldAuthority.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::Name.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::Description.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::SyncTokenSession.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::SyncCredentialPortal.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::SyncYieldAuthority.to_value()),
+        (ATTR_ACP_CREATE_ATTR, Attribute::Class.to_value()),
+        (ATTR_ACP_CREATE_ATTR, Attribute::Name.to_value()),
+        (ATTR_ACP_CREATE_ATTR, Attribute::Description.to_value()),
+        (ATTR_ACP_CREATE_CLASS, EntryClass::Object.to_value()),
+        (ATTR_ACP_CREATE_CLASS, EntryClass::SyncAccount.to_value())
     );
 }

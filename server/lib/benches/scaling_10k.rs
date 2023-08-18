@@ -6,7 +6,7 @@ use criterion::{
 
 use kanidmd_lib::entry::{Entry, EntryInit, EntryNew};
 use kanidmd_lib::entry_init;
-use kanidmd_lib::prelude::{ValueAttribute, ValueClass};
+use kanidmd_lib::prelude::{Attribute, EntryClass};
 use kanidmd_lib::utils::duration_from_epoch_now;
 use kanidmd_lib::value::Value;
 
@@ -40,27 +40,15 @@ pub fn scaling_user_create_single(c: &mut Criterion) {
                                 let mut idms_prox_write = idms.proxy_write(ct).await;
                                 let name = format!("testperson_{counter}");
                                 let e1 = entry_init!(
+                                    (Attribute::Class.as_str(), EntryClass::Object.to_value()),
+                                    (Attribute::Class.as_str(), EntryClass::Person.to_value()),
+                                    (Attribute::Class.as_str(), EntryClass::Account.to_value()),
+                                    (Attribute::Name.as_str(), Value::new_iname(&name)),
                                     (
-                                        ValueAttribute::Class.as_str(),
-                                        ValueClass::Object.to_value()
-                                    ),
-                                    (
-                                        ValueAttribute::Class.as_str(),
-                                        ValueClass::Person.to_value()
-                                    ),
-                                    (
-                                        ValueAttribute::Class.as_str(),
-                                        ValueClass::Account.to_value()
-                                    ),
-                                    (ValueAttribute::Name.as_str(), Value::new_iname(&name)),
-                                    (
-                                        ValueAttribute::Description.as_str(),
+                                        Attribute::Description.as_str(),
                                         Value::new_utf8s("criterion")
                                     ),
-                                    (
-                                        ValueAttribute::DisplayName.as_str(),
-                                        Value::new_utf8s(&name)
-                                    )
+                                    (Attribute::DisplayName.as_str(), Value::new_utf8s(&name))
                                 );
 
                                 let cr = idms_prox_write.qs_write.internal_create(vec![e1]);
@@ -96,27 +84,15 @@ pub fn scaling_user_create_batched(c: &mut Criterion) {
                     .map(|i| {
                         let name = format!("testperson_{i}");
                         entry_init!(
+                            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
+                            (Attribute::Class.as_str(), EntryClass::Person.to_value()),
+                            (Attribute::Class.as_str(), EntryClass::Account.to_value()),
+                            (Attribute::Name.as_str(), Value::new_iname(&name)),
                             (
-                                ValueAttribute::Class.as_str(),
-                                ValueClass::Object.to_value()
-                            ),
-                            (
-                                ValueAttribute::Class.as_str(),
-                                ValueClass::Person.to_value()
-                            ),
-                            (
-                                ValueAttribute::Class.as_str(),
-                                ValueClass::Account.to_value()
-                            ),
-                            (ValueAttribute::Name.as_str(), Value::new_iname(&name)),
-                            (
-                                ValueAttribute::Description.as_str(),
+                                Attribute::Description.as_str(),
                                 Value::new_utf8s("criterion")
                             ),
-                            (
-                                ValueAttribute::DisplayName.as_str(),
-                                Value::new_utf8s(&name)
-                            )
+                            (Attribute::DisplayName.as_str(), Value::new_utf8s(&name))
                         )
                     })
                     .collect();

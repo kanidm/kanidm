@@ -91,14 +91,13 @@ fn create_filter_entry<'a>(
     // I still think if this is None, we should just fail here ...
     // because it shouldn't be possible to match.
 
-    let create_classes: BTreeSet<&str> =
-        match entry.get_ava_iter_iutf8(ValueAttribute::Class.as_str()) {
-            Some(s) => s.collect(),
-            None => {
-                admin_error!("Class set failed to build - corrupted entry?");
-                return IResult::Denied;
-            }
-        };
+    let create_classes: BTreeSet<&str> = match entry.get_ava_iter_iutf8(Attribute::Class.as_str()) {
+        Some(s) => s.collect(),
+        None => {
+            admin_error!("Class set failed to build - corrupted entry?");
+            return IResult::Denied;
+        }
+    };
 
     //      Find the set of related acps for this entry.
     //
@@ -162,8 +161,8 @@ fn protected_filter_entry(ident: &Identity, entry: &Entry<EntryInit, EntryNew>) 
             // Now check things ...
 
             // For now we just block create on sync object
-            if let Some(classes) = entry.get_ava_set(ValueAttribute::Class.as_str()) {
-                if classes.contains(&ValueClass::SyncObject.into()) {
+            if let Some(classes) = entry.get_ava_set(Attribute::Class.as_str()) {
+                if classes.contains(&EntryClass::SyncObject.into()) {
                     // Block the mod
                     security_access!("attempt to create with protected class type");
                     IResult::Denied

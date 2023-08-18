@@ -101,10 +101,7 @@ impl SchemaAttribute {
         let uuid = value.get_uuid();
 
         // class
-        if !value.attribute_equality(
-            ValueAttribute::Class.as_str(),
-            &ValueClass::AttributeType.into(),
-        ) {
+        if !value.attribute_equality(Attribute::Class.as_str(), &EntryClass::AttributeType.into()) {
             admin_error!("class attribute type not present - {:?}", uuid);
             return Err(OperationError::InvalidSchemaState(
                 "missing attributetype".to_string(),
@@ -113,55 +110,47 @@ impl SchemaAttribute {
 
         // name
         let name = value
-            .get_ava_single_iutf8(ValueAttribute::AttributeName.into())
+            .get_ava_single_iutf8(Attribute::AttributeName.into())
             .map(|s| s.into())
             .ok_or_else(|| {
-                admin_error!(
-                    "missing {} - {:?}",
-                    ValueAttribute::AttributeName.as_str(),
-                    uuid
-                );
+                admin_error!("missing {} - {:?}", Attribute::AttributeName.as_str(), uuid);
                 OperationError::InvalidSchemaState("missing attributename".to_string())
             })?;
         // description
         let description = value
-            .get_ava_single_utf8(ValueAttribute::Description.as_str())
+            .get_ava_single_utf8(Attribute::Description.as_str())
             .map(|s| s.to_string())
             .ok_or_else(|| {
-                admin_error!(
-                    "missing {} - {}",
-                    ValueAttribute::Description.as_str(),
-                    name
-                );
+                admin_error!("missing {} - {}", Attribute::Description.as_str(), name);
                 OperationError::InvalidSchemaState("missing description".to_string())
             })?;
 
         // multivalue
         let multivalue = value
-            .get_ava_single_bool(ValueAttribute::MultiValue.as_str())
+            .get_ava_single_bool(Attribute::MultiValue.as_str())
             .ok_or_else(|| {
-                admin_error!("missing {} - {}", ValueAttribute::MultiValue.as_str(), name);
+                admin_error!("missing {} - {}", Attribute::MultiValue.as_str(), name);
                 OperationError::InvalidSchemaState("missing multivalue".to_string())
             })?;
         let unique = value
-            .get_ava_single_bool(ValueAttribute::Unique.as_str())
+            .get_ava_single_bool(Attribute::Unique.as_str())
             .ok_or_else(|| {
-                admin_error!("missing {} - {}", ValueAttribute::Unique.as_str(), name);
+                admin_error!("missing {} - {}", Attribute::Unique.as_str(), name);
                 OperationError::InvalidSchemaState("missing unique".to_string())
             })?;
 
         let phantom = value
-            .get_ava_single_bool(ValueAttribute::Phantom.as_str())
+            .get_ava_single_bool(Attribute::Phantom.as_str())
             .unwrap_or(false);
 
         let sync_allowed = value
-            .get_ava_single_bool(ValueAttribute::SyncAllowed.as_str())
+            .get_ava_single_bool(Attribute::SyncAllowed.as_str())
             .unwrap_or(false);
 
         // Default, all attributes are replicated unless you opt in for them to NOT be.
         // Generally this is internal to the server only, so we don't advertise it.
         let replicated = value
-            .get_ava_single_bool(ValueAttribute::Replicated.as_str())
+            .get_ava_single_bool(Attribute::Replicated.as_str())
             .unwrap_or(true);
 
         // index vec
@@ -339,16 +328,16 @@ impl From<SchemaAttribute> for EntryInitNew {
 
         // class
         entry.set_ava(
-            ValueAttribute::Class.as_str(),
+            Attribute::Class.as_str(),
             vec![
-                ValueClass::Object.to_value(),
-                ValueClass::System.into(),
-                ValueClass::AttributeType.to_value(),
+                EntryClass::Object.to_value(),
+                EntryClass::System.into(),
+                EntryClass::AttributeType.to_value(),
             ],
         );
         // description
         entry.set_ava(
-            ValueAttribute::Description.as_str(),
+            Attribute::Description.as_str(),
             vec![Value::new_utf8s(&value.description)].into_iter(),
         );
         // unique
@@ -414,10 +403,7 @@ impl SchemaClass {
         // uuid
         let uuid = value.get_uuid();
         // Convert entry to a schema class.
-        if !value.attribute_equality(
-            ValueAttribute::Class.as_str(),
-            &ValueClass::ClassType.into(),
-        ) {
+        if !value.attribute_equality(Attribute::Class.as_str(), &EntryClass::ClassType.into()) {
             admin_error!("class classtype not present - {:?}", uuid);
             return Err(OperationError::InvalidSchemaState(
                 "missing classtype".to_string(),
@@ -434,7 +420,7 @@ impl SchemaClass {
             })?;
         // description
         let description = value
-            .get_ava_single_utf8(ValueAttribute::Description.as_str())
+            .get_ava_single_utf8(Attribute::Description.as_str())
             .map(String::from)
             .ok_or_else(|| {
                 admin_error!("missing description - {}", name);
@@ -514,17 +500,17 @@ impl From<SchemaClass> for EntryInitNew {
 
         // class
         entry.set_ava(
-            ValueAttribute::Class.as_str(),
+            Attribute::Class.as_str(),
             vec![
-                ValueClass::Object.to_value(),
-                ValueClass::System.into(),
-                ValueClass::ClassType.into(),
+                EntryClass::Object.to_value(),
+                EntryClass::System.into(),
+                EntryClass::ClassType.into(),
             ],
         );
 
         // description
         entry.set_ava(
-            ValueAttribute::Description.as_str(),
+            Attribute::Description.as_str(),
             vec![Value::new_utf8s(&value.description)].into_iter(),
         );
 
@@ -825,9 +811,9 @@ impl<'a> SchemaWriteTransaction<'a> {
         // Bootstrap in definitions of our own schema types
         // First, add all the needed core attributes for schema parsing
         self.attributes.insert(
-            ValueClass::Class.into(),
+            EntryClass::Class.into(),
             SchemaAttribute {
-                name: ValueAttribute::Class.into(),
+                name: Attribute::Class.into(),
                 uuid: UUID_SCHEMA_ATTR_CLASS,
                 description: String::from("The set of classes defining an object"),
                 multivalue: true,
@@ -857,9 +843,9 @@ impl<'a> SchemaWriteTransaction<'a> {
             },
         );
         self.attributes.insert(
-            ValueAttribute::SourceUuid.into(),
+            Attribute::SourceUuid.into(),
             SchemaAttribute {
-                name: ValueAttribute::SourceUuid.into(),
+                name: Attribute::SourceUuid.into(),
                 uuid: UUID_SCHEMA_ATTR_SOURCE_UUID,
                 description: String::from(
                     "The universal unique id of the source object where this conflict came from",
@@ -876,9 +862,9 @@ impl<'a> SchemaWriteTransaction<'a> {
             },
         );
         self.attributes.insert(
-            ValueAttribute::LastModifiedCid.into(),
+            Attribute::LastModifiedCid.into(),
             SchemaAttribute {
-                name: ValueAttribute::LastModifiedCid.into(),
+                name: Attribute::LastModifiedCid.into(),
                 uuid: UUID_SCHEMA_ATTR_LAST_MOD_CID,
                 description: String::from("The cid of the last change to this object"),
                 multivalue: false,
@@ -955,9 +941,9 @@ impl<'a> SchemaWriteTransaction<'a> {
             },
         );
         self.attributes.insert(
-            AttrString::from(ValueAttribute::Description.as_str()),
+            AttrString::from(Attribute::Description.as_str()),
             SchemaAttribute {
-                name: AttrString::from(ValueAttribute::Description.as_str()),
+                name: AttrString::from(Attribute::Description.as_str()),
                 uuid: UUID_SCHEMA_ATTR_DESCRIPTION,
                 description: String::from("A description of an attribute, object or class"),
                 multivalue: false,
@@ -1276,9 +1262,9 @@ impl<'a> SchemaWriteTransaction<'a> {
             },
         );
         self.attributes.insert(
-            ValueAttribute::AcpSearchAttr.into(),
+            Attribute::AcpSearchAttr.into(),
             SchemaAttribute {
-                name: ValueAttribute::AcpSearchAttr.into(),
+                name: Attribute::AcpSearchAttr.into(),
                 uuid: UUID_SCHEMA_ATTR_ACP_SEARCH_ATTR,
                 description: String::from(
                     "The attributes that may be viewed or searched by the receiver on targetscope.",
@@ -1293,9 +1279,9 @@ impl<'a> SchemaWriteTransaction<'a> {
             },
         );
         self.attributes.insert(
-            ValueAttribute::AcpCreateClass.into(),
+            Attribute::AcpCreateClass.into(),
             SchemaAttribute {
-                name: ValueAttribute::AcpCreateClass.into(),
+                name: Attribute::AcpCreateClass.into(),
                 uuid: UUID_SCHEMA_ATTR_ACP_CREATE_CLASS,
                 description: String::from("The set of classes that can be created on a new entry."),
                 multivalue: true,
@@ -1308,9 +1294,9 @@ impl<'a> SchemaWriteTransaction<'a> {
             },
         );
         self.attributes.insert(
-            ValueAttribute::AcpCreateAttr.into(),
+            Attribute::AcpCreateAttr.into(),
             SchemaAttribute {
-                name: ValueAttribute::AcpCreateAttr.into(),
+                name: Attribute::AcpCreateAttr.into(),
                 uuid: UUID_SCHEMA_ATTR_ACP_CREATE_ATTR,
                 description: String::from(
                     "The set of attribute types that can be created on an entry.",
@@ -1679,9 +1665,9 @@ impl<'a> SchemaWriteTransaction<'a> {
             },
         );
         self.attributes.insert(
-            ValueAttribute::SshPublicKey.into(),
+            Attribute::SshPublicKey.into(),
             SchemaAttribute {
-                name: ValueAttribute::SshPublicKey.into(),
+                name: Attribute::SshPublicKey.into(),
                 uuid: UUID_SCHEMA_ATTR_SSHPUBLICKEY,
                 description: String::from("An LDAP Compatible sshPublicKey"),
                 multivalue: true,
@@ -1694,9 +1680,9 @@ impl<'a> SchemaWriteTransaction<'a> {
             },
         );
         self.attributes.insert(
-            ValueAttribute::Email.into(),
+            Attribute::Email.into(),
             SchemaAttribute {
-                name: ValueAttribute::Email.into(),
+                name: Attribute::Email.into(),
                 uuid: UUID_SCHEMA_ATTR_EMAIL,
                 description: String::from("An LDAP Compatible email"),
                 multivalue: true,
@@ -1709,9 +1695,9 @@ impl<'a> SchemaWriteTransaction<'a> {
             },
         );
         self.attributes.insert(
-            ValueAttribute::EmailPrimary.into(),
+            Attribute::EmailPrimary.into(),
             SchemaAttribute {
-                name: ValueAttribute::EmailPrimary.into(),
+                name: Attribute::EmailPrimary.into(),
                 uuid: UUID_SCHEMA_ATTR_EMAILPRIMARY,
                 description: String::from("An LDAP Compatible primary email"),
                 multivalue: false,
@@ -1724,9 +1710,9 @@ impl<'a> SchemaWriteTransaction<'a> {
             },
         );
         self.attributes.insert(
-            ValueAttribute::EmailAlternative.into(),
+            Attribute::EmailAlternative.into(),
             SchemaAttribute {
-                name: ValueAttribute::EmailAlternative.into(),
+                name: Attribute::EmailAlternative.into(),
                 uuid: UUID_SCHEMA_ATTR_EMAILALTERNATIVE,
                 description: String::from("An LDAP Compatible alternative email"),
                 multivalue: false,
@@ -1754,9 +1740,9 @@ impl<'a> SchemaWriteTransaction<'a> {
             },
         );
         self.attributes.insert(
-            ValueAttribute::UidNumber.into(),
+            Attribute::UidNumber.into(),
             SchemaAttribute {
-                name: ValueAttribute::UidNumber.into(),
+                name: Attribute::UidNumber.into(),
                 uuid: UUID_SCHEMA_ATTR_UIDNUMBER,
                 description: String::from("An LDAP Compatible uidNumber"),
                 multivalue: false,
@@ -1783,12 +1769,12 @@ impl<'a> SchemaWriteTransaction<'a> {
                     AttrString::from("index"),
                 ],
                 systemmust: vec![
-                    ValueAttribute::Class.into(),
+                    Attribute::Class.into(),
                     AttrString::from("attributename"),
                     AttrString::from("multivalue"),
                     AttrString::from("unique"),
                     AttrString::from("syntax"),
-                    AttrString::from(ValueAttribute::Description.as_str()),
+                    AttrString::from(Attribute::Description.as_str()),
                 ],
                 systemexcludes: vec![AttrString::from("classtype")],
                 ..Default::default()
@@ -1812,9 +1798,9 @@ impl<'a> SchemaWriteTransaction<'a> {
                     AttrString::from("excludes"),
                 ],
                 systemmust: vec![
-                    ValueAttribute::Class.into(),
+                    Attribute::Class.into(),
                     AttrString::from("classname"),
-                    AttrString::from(ValueAttribute::Description.as_str()),
+                    AttrString::from(Attribute::Description.as_str()),
                 ],
                 systemexcludes: vec![AttrString::from("attributetype")],
                 ..Default::default()
@@ -1826,11 +1812,11 @@ impl<'a> SchemaWriteTransaction<'a> {
                 name: AttrString::from("object"),
                 uuid: UUID_SCHEMA_CLASS_OBJECT,
                 description: String::from("A system created class that all objects must contain"),
-                systemmay: vec![AttrString::from(ValueAttribute::Description.as_str())],
+                systemmay: vec![AttrString::from(Attribute::Description.as_str())],
                 systemmust: vec![
-                    ValueAttribute::Class.into(),
+                    Attribute::Class.into(),
                     AttrString::from("uuid"),
-                    ValueAttribute::LastModifiedCid.into(),
+                    Attribute::LastModifiedCid.into(),
                 ],
                 ..Default::default()
             },
@@ -1878,7 +1864,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                     uuid: UUID_SCHEMA_CLASS_TOMBSTONE,
                     description: String::from("An object that is purged from the recycle bin. This is a system internal state. Tombstones have no attributes beside UUID."),
                     systemmust: vec![
-                        ValueAttribute::Class.into(),
+                        Attribute::Class.into(),
                         AttrString::from("uuid"),
                     ],
                     .. Default::default()
@@ -1892,7 +1878,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 description: String::from(
                     "An entry representing conflicts that occurred during replication",
                 ),
-                systemmust: vec![ValueAttribute::SourceUuid.into()],
+                systemmust: vec![Attribute::SourceUuid.into()],
                 systemsupplements: vec![AttrString::from("recycled")],
                 ..Default::default()
             },
@@ -1917,7 +1903,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 description: String::from("System Access Control Profile Class"),
                 systemmay: vec![
                     AttrString::from("acp_enable"),
-                    AttrString::from(ValueAttribute::Description.as_str()),
+                    AttrString::from(Attribute::Description.as_str()),
                     AttrString::from("acp_receiver"),
                 ],
                 systemmust: vec![
@@ -1940,7 +1926,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 name: AttrString::from("access_control_search"),
                 uuid: UUID_SCHEMA_CLASS_ACCESS_CONTROL_SEARCH,
                 description: String::from("System Access Control Search Class"),
-                systemmust: vec![ValueAttribute::AcpSearchAttr.into()],
+                systemmust: vec![Attribute::AcpSearchAttr.into()],
                 ..Default::default()
             },
         );
@@ -1974,8 +1960,8 @@ impl<'a> SchemaWriteTransaction<'a> {
                 uuid: UUID_SCHEMA_CLASS_ACCESS_CONTROL_CREATE,
                 description: String::from("System Access Control Create Class"),
                 systemmay: vec![
-                    ValueAttribute::AcpCreateClass.into(),
-                    ValueAttribute::AcpCreateAttr.into(),
+                    Attribute::AcpCreateClass.into(),
+                    Attribute::AcpCreateAttr.into(),
                 ],
                 ..Default::default()
             },
@@ -2518,7 +2504,7 @@ mod tests {
                 "uuid",
                 Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
             ),
-            (ValueAttribute::Class.as_str(), Value::new_class("zzzzzz"))
+            (Attribute::Class.as_str(), Value::new_class("zzzzzz"))
         )
         .into_invalid_new();
         assert_eq!(
@@ -2531,13 +2517,10 @@ mod tests {
                 "uuid",
                 Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
             ),
+            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
             (
-                ValueAttribute::Class.as_str(),
-                ValueClass::Object.to_value()
-            ),
-            (
-                ValueAttribute::Class.as_str(),
-                ValueClass::AttributeType.to_value()
+                Attribute::Class.as_str(),
+                EntryClass::AttributeType.to_value()
             )
         )
         .into_invalid_new();
@@ -2548,30 +2531,27 @@ mod tests {
         });
 
         let e_attr_invalid_may = entry_init!(
+            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
             (
-                ValueAttribute::Class.as_str(),
-                ValueClass::Object.to_value()
+                Attribute::Class.as_str(),
+                EntryClass::AttributeType.to_value()
             ),
             (
-                ValueAttribute::Class.as_str(),
-                ValueClass::AttributeType.to_value()
-            ),
-            (
-                ValueAttribute::AttributeName.as_str(),
+                Attribute::AttributeName.as_str(),
                 Value::new_iutf8("testattr")
             ),
             (
-                ValueAttribute::Description.as_str(),
+                Attribute::Description.as_str(),
                 Value::Utf8("testattr".to_string())
             ),
-            (ValueAttribute::MultiValue.as_str(), Value::Bool(false)),
-            (ValueAttribute::Unique.as_str(), Value::Bool(false)),
+            (Attribute::MultiValue.as_str(), Value::Bool(false)),
+            (Attribute::Unique.as_str(), Value::Bool(false)),
             (
-                ValueAttribute::Syntax.as_str(),
+                Attribute::Syntax.as_str(),
                 Value::Syntax(SyntaxType::Utf8String)
             ),
             (
-                ValueAttribute::Uuid.as_str(),
+                Attribute::Uuid.as_str(),
                 Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
             ),
             ("zzzzz", Value::Utf8("zzzz".to_string()))
@@ -2584,29 +2564,26 @@ mod tests {
         );
 
         let e_attr_invalid_syn = entry_init!(
+            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
             (
-                ValueAttribute::Class.as_str(),
-                ValueClass::Object.to_value()
+                Attribute::Class.as_str(),
+                EntryClass::AttributeType.to_value()
             ),
             (
-                ValueAttribute::Class.as_str(),
-                ValueClass::AttributeType.to_value()
-            ),
-            (
-                ValueAttribute::AttributeName.as_str(),
+                Attribute::AttributeName.as_str(),
                 Value::new_iutf8("testattr")
             ),
             (
-                ValueAttribute::Description.as_str(),
+                Attribute::Description.as_str(),
                 Value::Utf8("testattr".to_string())
             ),
             (
-                ValueAttribute::MultiValue.as_str(),
+                Attribute::MultiValue.as_str(),
                 Value::Utf8("false".to_string())
             ),
-            (ValueAttribute::Unique.as_str(), Value::Bool(false)),
+            (Attribute::Unique.as_str(), Value::Bool(false)),
             (
-                ValueAttribute::Syntax.as_str(),
+                Attribute::Syntax.as_str(),
                 Value::Syntax(SyntaxType::Utf8String)
             ),
             (
@@ -2625,26 +2602,23 @@ mod tests {
 
         // You may not have the phantom.
         let e_phantom = entry_init!(
+            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
             (
-                ValueAttribute::Class.as_str(),
-                ValueClass::Object.to_value()
+                Attribute::Class.as_str(),
+                EntryClass::AttributeType.to_value()
             ),
             (
-                ValueAttribute::Class.as_str(),
-                ValueClass::AttributeType.to_value()
-            ),
-            (
-                ValueAttribute::AttributeName.as_str(),
+                Attribute::AttributeName.as_str(),
                 Value::new_iutf8("testattr")
             ),
             (
-                ValueAttribute::Description.as_str(),
+                Attribute::Description.as_str(),
                 Value::Utf8("testattr".to_string())
             ),
-            (ValueAttribute::MultiValue.as_str(), Value::Bool(false)),
-            (ValueAttribute::Unique.as_str(), Value::Bool(false)),
+            (Attribute::MultiValue.as_str(), Value::Bool(false)),
+            (Attribute::Unique.as_str(), Value::Bool(false)),
             (
-                ValueAttribute::Syntax.as_str(),
+                Attribute::Syntax.as_str(),
                 Value::Syntax(SyntaxType::Utf8String)
             ),
             (
@@ -2657,26 +2631,23 @@ mod tests {
         assert!(e_phantom.validate(&schema).is_err());
 
         let e_ok = entry_init!(
+            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
             (
-                ValueAttribute::Class.as_str(),
-                ValueClass::Object.to_value()
+                Attribute::Class.as_str(),
+                EntryClass::AttributeType.to_value()
             ),
             (
-                ValueAttribute::Class.as_str(),
-                ValueClass::AttributeType.to_value()
-            ),
-            (
-                ValueAttribute::AttributeName.as_str(),
+                Attribute::AttributeName.as_str(),
                 Value::new_iutf8("testattr")
             ),
             (
-                ValueAttribute::Description.as_str(),
+                Attribute::Description.as_str(),
                 Value::Utf8("testattr".to_string())
             ),
-            (ValueAttribute::MultiValue.as_str(), Value::Bool(true)),
-            (ValueAttribute::Unique.as_str(), Value::Bool(false)),
+            (Attribute::MultiValue.as_str(), Value::Bool(true)),
+            (Attribute::Unique.as_str(), Value::Bool(false)),
             (
-                ValueAttribute::Syntax.as_str(),
+                Attribute::Syntax.as_str(),
                 Value::Syntax(SyntaxType::Utf8String)
             ),
             (
@@ -2791,10 +2762,7 @@ mod tests {
         let schema = schema_outer.read();
 
         // test syntax of bool
-        let f_bool = filter_all!(f_eq(
-            ValueAttribute::MultiValue,
-            PartialValue::new_iutf8("zzzz")
-        ));
+        let f_bool = filter_all!(f_eq(Attribute::MultiValue, PartialValue::new_iutf8("zzzz")));
         assert_eq!(
             f_bool.validate(&schema),
             Err(SchemaError::InvalidAttributeSyntax(
@@ -2802,22 +2770,19 @@ mod tests {
             ))
         );
         // test insensitive values
-        let f_insense = filter_all!(f_eq(
-            ValueAttribute::Class,
-            ValueClass::AttributeType.into()
-        ));
+        let f_insense = filter_all!(f_eq(Attribute::Class, EntryClass::AttributeType.into()));
         assert_eq!(
             f_insense.validate(&schema),
             Ok(filter_valid!(f_eq(
-                ValueAttribute::Class,
-                ValueClass::AttributeType.into()
+                Attribute::Class,
+                EntryClass::AttributeType.into()
             )))
         );
         // Test the recursive structures validate
         let f_or_empty = filter_all!(f_or!([]));
         assert_eq!(f_or_empty.validate(&schema), Err(SchemaError::EmptyFilter));
         let f_or = filter_all!(f_or!([f_eq(
-            ValueAttribute::MultiValue,
+            Attribute::MultiValue,
             PartialValue::new_iutf8("zzzz")
         )]));
         assert_eq!(
@@ -2827,11 +2792,8 @@ mod tests {
             ))
         );
         let f_or_mult = filter_all!(f_and!([
-            f_eq(ValueAttribute::Class, ValueClass::AttributeType.into()),
-            f_eq(
-                ValueAttribute::MultiValue,
-                PartialValue::new_iutf8("zzzzzzz")
-            ),
+            f_eq(Attribute::Class, EntryClass::AttributeType.into()),
+            f_eq(Attribute::MultiValue, PartialValue::new_iutf8("zzzzzzz")),
         ]));
         assert_eq!(
             f_or_mult.validate(&schema),
@@ -2841,16 +2803,16 @@ mod tests {
         );
         // Test mixed case attr name - this is a pass, due to normalisation
         let f_or_ok = filter_all!(f_andnot(f_and!([
-            f_eq(ValueAttribute::Class, ValueClass::AttributeType.into()),
-            f_sub(ValueAttribute::Class.as_str(), ValueClass::ClassType.into()),
-            f_pres(ValueAttribute::Class.as_str())
+            f_eq(Attribute::Class, EntryClass::AttributeType.into()),
+            f_sub(Attribute::Class.as_str(), EntryClass::ClassType.into()),
+            f_pres(Attribute::Class.as_str())
         ])));
         assert_eq!(
             f_or_ok.validate(&schema),
             Ok(filter_valid!(f_andnot(f_and!([
-                f_eq(ValueAttribute::Class, ValueClass::AttributeType.into()),
-                f_sub(ValueAttribute::Class.as_str(), ValueClass::ClassType.into()),
-                f_pres(ValueAttribute::Class.as_str())
+                f_eq(Attribute::Class, EntryClass::AttributeType.into()),
+                f_sub(Attribute::Class.as_str(), EntryClass::ClassType.into()),
+                f_pres(Attribute::Class.as_str())
             ]))))
         );
     }
@@ -2893,36 +2855,36 @@ mod tests {
             uuid: Uuid::new_v4(),
             description: String::from("account object"),
             systemmust: vec![
-                ValueAttribute::Class.into(),
+                Attribute::Class.into(),
                 AttrString::from("uuid"),
-                ValueAttribute::LastModifiedCid.into(),
+                Attribute::LastModifiedCid.into(),
             ],
-            systemsupplements: vec![ValueClass::Service.into(), ValueClass::Person.into()],
+            systemsupplements: vec![EntryClass::Service.into(), EntryClass::Person.into()],
             ..Default::default()
         };
 
         let class_person = SchemaClass {
-            name: ValueClass::Person.into(),
+            name: EntryClass::Person.into(),
             uuid: Uuid::new_v4(),
             description: String::from("person object"),
             systemmust: vec![
-                ValueAttribute::Class.into(),
+                Attribute::Class.into(),
                 AttrString::from("uuid"),
-                ValueAttribute::LastModifiedCid.into(),
+                Attribute::LastModifiedCid.into(),
             ],
             ..Default::default()
         };
 
         let class_service = SchemaClass {
-            name: ValueClass::Service.into(),
+            name: EntryClass::Service.into(),
             uuid: Uuid::new_v4(),
             description: String::from("service object"),
             systemmust: vec![
-                ValueAttribute::Class.into(),
+                Attribute::Class.into(),
                 AttrString::from("uuid"),
-                ValueAttribute::LastModifiedCid.into(),
+                Attribute::LastModifiedCid.into(),
             ],
-            excludes: vec![ValueClass::Person.into()],
+            excludes: vec![EntryClass::Person.into()],
             ..Default::default()
         };
 
@@ -2932,27 +2894,24 @@ mod tests {
 
         // Missing person or service account.
         let e_account = entry_init!(
-            (
-                ValueAttribute::Class.as_str(),
-                ValueClass::Account.to_value()
-            ),
-            (ValueAttribute::Uuid.as_str(), Value::Uuid(Uuid::new_v4()))
+            (Attribute::Class.as_str(), EntryClass::Account.to_value()),
+            (Attribute::Uuid.as_str(), Value::Uuid(Uuid::new_v4()))
         )
         .into_invalid_new();
 
         assert_eq!(
             e_account.validate(&schema),
             Err(SchemaError::SupplementsNotSatisfied(vec![
-                ValueClass::Service.into(),
-                ValueClass::Person.into(),
+                EntryClass::Service.into(),
+                EntryClass::Person.into(),
             ]))
         );
 
         // Service account missing account
         /*
         let e_service = unsafe { entry_init!(
-            (ValueAttribute::Class.as_str(), ValueClass::Service.to_value()),
-            (ValueAttribute::Uuid.as_str(), Value::new_uuid(Uuid::new_v4()))
+            (Attribute::Class.as_str(), EntryClass::Service.to_value()),
+            (Attribute::Uuid.as_str(), Value::new_uuid(Uuid::new_v4()))
         ).into_invalid_new() };
 
         assert_eq!(
@@ -2963,19 +2922,10 @@ mod tests {
 
         // Service can't have person
         let e_service_person = entry_init!(
-            (
-                ValueAttribute::Class.as_str(),
-                ValueClass::Service.to_value()
-            ),
-            (
-                ValueAttribute::Class.as_str(),
-                ValueClass::Account.to_value()
-            ),
-            (
-                ValueAttribute::Class.as_str(),
-                ValueClass::Person.to_value()
-            ),
-            (ValueAttribute::Uuid.as_str(), Value::Uuid(Uuid::new_v4()))
+            (Attribute::Class.as_str(), EntryClass::Service.to_value()),
+            (Attribute::Class.as_str(), EntryClass::Account.to_value()),
+            (Attribute::Class.as_str(), EntryClass::Person.to_value()),
+            (Attribute::Uuid.as_str(), Value::Uuid(Uuid::new_v4()))
         )
         .into_invalid_new();
 
@@ -2988,41 +2938,26 @@ mod tests {
 
         // These are valid configurations.
         let e_service_valid = entry_init!(
-            (
-                ValueAttribute::Class.as_str(),
-                ValueClass::Service.to_value()
-            ),
-            (
-                ValueAttribute::Class.as_str(),
-                ValueClass::Account.to_value()
-            ),
-            (ValueAttribute::Uuid.as_str(), Value::Uuid(Uuid::new_v4()))
+            (Attribute::Class.as_str(), EntryClass::Service.to_value()),
+            (Attribute::Class.as_str(), EntryClass::Account.to_value()),
+            (Attribute::Uuid.as_str(), Value::Uuid(Uuid::new_v4()))
         )
         .into_invalid_new();
 
         assert!(e_service_valid.validate(&schema).is_ok());
 
         let e_person_valid = entry_init!(
-            (
-                ValueAttribute::Class.as_str(),
-                ValueClass::Person.to_value()
-            ),
-            (
-                ValueAttribute::Class.as_str(),
-                ValueClass::Account.to_value()
-            ),
-            (ValueAttribute::Uuid.as_str(), Value::Uuid(Uuid::new_v4()))
+            (Attribute::Class.as_str(), EntryClass::Person.to_value()),
+            (Attribute::Class.as_str(), EntryClass::Account.to_value()),
+            (Attribute::Uuid.as_str(), Value::Uuid(Uuid::new_v4()))
         )
         .into_invalid_new();
 
         assert!(e_person_valid.validate(&schema).is_ok());
 
         let e_person_valid = entry_init!(
-            (
-                ValueAttribute::Class.as_str(),
-                ValueClass::Person.to_value()
-            ),
-            (ValueAttribute::Uuid.as_str(), Value::Uuid(Uuid::new_v4()))
+            (Attribute::Class.as_str(), EntryClass::Person.to_value()),
+            (Attribute::Uuid.as_str(), Value::Uuid(Uuid::new_v4()))
         )
         .into_invalid_new();
 

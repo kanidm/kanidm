@@ -34,7 +34,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             e
         })?;
         let rc = self.internal_search(filter_all!(f_and!([
-            f_eq(ValueAttribute::Class, ValueClass::Recycled.into()),
+            f_eq(Attribute::Class, EntryClass::Recycled.into()),
             f_lt("last_modified_cid", PartialValue::new_cid(cid)),
         ])))?;
 
@@ -108,8 +108,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
         // Check access against a "fake" modify.
         let modlist = ModifyList::new_list(vec![Modify::Removed(
-            ValueAttribute::Class.into(),
-            ValueClass::Recycled.into(),
+            Attribute::Class.into(),
+            EntryClass::Recycled.into(),
         )]);
 
         let m_valid = modlist.validate(self.get_schema()).map_err(|e| {
@@ -213,7 +213,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             // I think the filter/filter_all shouldn't matter here because the only
             // valid direct memberships should be still valid/live references, as refint
             // removes anything that was deleted even from recycled entries.
-            let f = filter_all!(f_eq(ValueAttribute::Uuid, PartialValue::Uuid(g)));
+            let f = filter_all!(f_eq(Attribute::Uuid, PartialValue::Uuid(g)));
             self.internal_modify(&f, &mods)?;
         }
 
@@ -223,7 +223,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     #[cfg(test)]
     pub(crate) fn internal_revive_uuid(&mut self, target_uuid: Uuid) -> Result<(), OperationError> {
         // Note the use of filter_rec here for only recycled targets.
-        let filter = filter_rec!(f_eq(ValueAttribute::Uuid, PartialValue::Uuid(target_uuid)));
+        let filter = filter_rec!(f_eq(Attribute::Uuid, PartialValue::Uuid(target_uuid)));
         let f_valid = filter
             .validate(self.get_schema())
             .map_err(OperationError::SchemaViolation)?;
@@ -251,19 +251,19 @@ mod tests {
         let mut server_txn = server.write(time_p1).await;
         let admin = server_txn.internal_search_uuid(UUID_ADMIN).expect("failed");
 
-        let filt_i_rc = filter_all!(f_eq(ValueAttribute::Class, ValueClass::Recycled.into()));
+        let filt_i_rc = filter_all!(f_eq(Attribute::Class, EntryClass::Recycled.into()));
 
-        let filt_i_ts = filter_all!(f_eq(ValueAttribute::Class, ValueClass::Tombstone.into()));
+        let filt_i_ts = filter_all!(f_eq(Attribute::Class, EntryClass::Tombstone.into()));
 
-        let filt_i_per = filter_all!(f_eq(ValueAttribute::Class, ValueClass::Person.into()));
+        let filt_i_per = filter_all!(f_eq(Attribute::Class, EntryClass::Person.into()));
 
         // Create fake external requests. Probably from admin later
         let me_rc = ModifyEvent::new_impersonate_entry(
             admin.clone(),
             filt_i_rc.clone(),
             ModifyList::new_list(vec![Modify::Present(
-                ValueAttribute::Class.into(),
-                ValueClass::Recycled.into(),
+                Attribute::Class.into(),
+                EntryClass::Recycled.into(),
             )]),
         );
 
@@ -276,62 +276,44 @@ mod tests {
         let rre_rc = ReviveRecycledEvent::new_impersonate_entry(
             admin,
             filter_all!(f_eq(
-                ValueAttribute::Name,
+                Attribute::Name,
                 PartialValue::new_iname("testperson1")
             )),
         );
 
         // Create some recycled objects
         let e1 = entry_init!(
+            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_str(), EntryClass::Person.to_value()),
+            (Attribute::Name.as_str(), Value::new_iname("testperson1")),
             (
-                ValueAttribute::Class.as_str(),
-                ValueClass::Object.to_value()
-            ),
-            (
-                ValueAttribute::Class.as_str(),
-                ValueClass::Person.to_value()
-            ),
-            (
-                ValueAttribute::Name.as_str(),
-                Value::new_iname("testperson1")
-            ),
-            (
-                ValueAttribute::Uuid.as_str(),
+                Attribute::Uuid.as_str(),
                 Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
             ),
             (
-                ValueAttribute::Description.as_str(),
+                Attribute::Description.as_str(),
                 Value::new_utf8s("testperson1")
             ),
             (
-                ValueAttribute::DisplayName.as_str(),
+                Attribute::DisplayName.as_str(),
                 Value::new_utf8s("testperson1")
             )
         );
 
         let e2 = entry_init!(
+            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_str(), EntryClass::Person.to_value()),
+            (Attribute::Name.as_str(), Value::new_iname("testperson2")),
             (
-                ValueAttribute::Class.as_str(),
-                ValueClass::Object.to_value()
-            ),
-            (
-                ValueAttribute::Class.as_str(),
-                ValueClass::Person.to_value()
-            ),
-            (
-                ValueAttribute::Name.as_str(),
-                Value::new_iname("testperson2")
-            ),
-            (
-                ValueAttribute::Uuid.as_str(),
+                Attribute::Uuid.as_str(),
                 Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63932"))
             ),
             (
-                ValueAttribute::Description.as_str(),
+                Attribute::Description.as_str(),
                 Value::new_utf8s("testperson2")
             ),
             (
-                ValueAttribute::DisplayName.as_str(),
+                Attribute::DisplayName.as_str(),
                 Value::new_utf8s("testperson2")
             )
         );
@@ -342,8 +324,8 @@ mod tests {
 
         // Now we immediately delete these to force them to the correct state.
         let de_sin = DeleteEvent::new_internal_invalid(filter!(f_or!([
-            f_eq(ValueAttribute::Name, PartialValue::new_iname("testperson1")),
-            f_eq(ValueAttribute::Name, PartialValue::new_iname("testperson2")),
+            f_eq(Attribute::Name, PartialValue::new_iname("testperson1")),
+            f_eq(Attribute::Name, PartialValue::new_iname("testperson2")),
         ])));
         assert!(server_txn.delete(&de_sin).is_ok());
 
@@ -419,28 +401,19 @@ mod tests {
         let admin = server_txn.internal_search_uuid(UUID_ADMIN).expect("failed");
 
         let e1 = entry_init!(
+            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_str(), EntryClass::Person.to_value()),
+            (Attribute::Name.as_str(), Value::new_iname("testperson1")),
             (
-                ValueAttribute::Class.as_str(),
-                ValueClass::Object.to_value()
-            ),
-            (
-                ValueAttribute::Class.as_str(),
-                ValueClass::Person.to_value()
-            ),
-            (
-                ValueAttribute::Name.as_str(),
-                Value::new_iname("testperson1")
-            ),
-            (
-                ValueAttribute::Uuid.as_str(),
+                Attribute::Uuid.as_str(),
                 Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
             ),
             (
-                ValueAttribute::Description.as_str(),
+                Attribute::Description.as_str(),
                 Value::new_utf8s("testperson1")
             ),
             (
-                ValueAttribute::DisplayName.as_str(),
+                Attribute::DisplayName.as_str(),
                 Value::new_utf8s("testperson1")
             )
         );
@@ -450,12 +423,12 @@ mod tests {
         assert!(cr.is_ok());
         // Delete and ensure they became recycled.
         let de_sin = DeleteEvent::new_internal_invalid(filter!(f_eq(
-            ValueAttribute::Name,
+            Attribute::Name,
             PartialValue::new_iname("testperson1")
         )));
         assert!(server_txn.delete(&de_sin).is_ok());
         // Can in be seen by special search? (external recycle search)
-        let filt_rc = filter_all!(f_eq(ValueAttribute::Class, ValueClass::Recycled.into()));
+        let filt_rc = filter_all!(f_eq(Attribute::Class, EntryClass::Recycled.into()));
         let sre_rc = SearchEvent::new_rec_impersonate_entry(admin, filt_rc);
         let r2 = server_txn.search(&sre_rc).expect("search failed");
         assert!(r2.len() == 1);
@@ -473,32 +446,20 @@ mod tests {
         let mut server_txn = server.write(duration_from_epoch_now()).await;
 
         let e1 = entry_init!(
+            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_str(), EntryClass::Person.to_value()),
+            (Attribute::Class.as_str(), EntryClass::Account.to_value()),
+            (Attribute::Name.as_str(), Value::new_iname("testperson1")),
             (
-                ValueAttribute::Class.as_str(),
-                ValueClass::Object.to_value()
-            ),
-            (
-                ValueAttribute::Class.as_str(),
-                ValueClass::Person.to_value()
-            ),
-            (
-                ValueAttribute::Class.as_str(),
-                ValueClass::Account.to_value()
-            ),
-            (
-                ValueAttribute::Name.as_str(),
-                Value::new_iname("testperson1")
-            ),
-            (
-                ValueAttribute::Uuid.as_str(),
+                Attribute::Uuid.as_str(),
                 Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
             ),
             (
-                ValueAttribute::Description.as_str(),
+                Attribute::Description.as_str(),
                 Value::new_utf8s("testperson1")
             ),
             (
-                ValueAttribute::DisplayName.as_str(),
+                Attribute::DisplayName.as_str(),
                 Value::new_utf8s("testperson1")
             )
         );
@@ -520,7 +481,7 @@ mod tests {
 
         // delete
         let de_sin = DeleteEvent::new_internal_invalid(filter!(f_eq(
-            ValueAttribute::Name,
+            Attribute::Name,
             PartialValue::new_iname("testperson1")
         )));
         assert!(server_txn.delete(&de_sin).is_ok());
@@ -540,7 +501,7 @@ mod tests {
         let rre_rc = ReviveRecycledEvent::new_impersonate_entry(
             admin,
             filter_all!(f_eq(
-                ValueAttribute::Name,
+                Attribute::Name,
                 PartialValue::new_iname("testperson1")
             )),
         );
@@ -569,7 +530,7 @@ mod tests {
         let mut server_txn = server.write(time_p1).await;
         let admin = server_txn.internal_search_uuid(UUID_ADMIN).expect("failed");
 
-        let filt_i_ts = filter_all!(f_eq(ValueAttribute::Class, ValueClass::Tombstone.into()));
+        let filt_i_ts = filter_all!(f_eq(Attribute::Class, EntryClass::Tombstone.into()));
 
         // Create fake external requests. Probably from admin later
         // Should we do this with impersonate instead of using the external
@@ -577,8 +538,8 @@ mod tests {
             admin.clone(),
             filt_i_ts.clone(),
             ModifyList::new_list(vec![Modify::Present(
-                ValueAttribute::Class.into(),
-                ValueClass::Tombstone.into(),
+                Attribute::Class.into(),
+                EntryClass::Tombstone.into(),
             )]),
         );
 
@@ -587,28 +548,19 @@ mod tests {
 
         // First, create an entry, then push it through the lifecycle.
         let e_ts = entry_init!(
+            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_str(), EntryClass::Person.to_value()),
+            (Attribute::Name.as_str(), Value::new_iname("testperson1")),
             (
-                ValueAttribute::Class.as_str(),
-                ValueClass::Object.to_value()
-            ),
-            (
-                ValueAttribute::Class.as_str(),
-                ValueClass::Person.to_value()
-            ),
-            (
-                ValueAttribute::Name.as_str(),
-                Value::new_iname("testperson1")
-            ),
-            (
-                ValueAttribute::Uuid.as_str(),
+                Attribute::Uuid.as_str(),
                 Value::Uuid(uuid!("9557f49c-97a5-4277-a9a5-097d17eb8317"))
             ),
             (
-                ValueAttribute::Description.as_str(),
+                Attribute::Description.as_str(),
                 Value::new_utf8s("testperson1")
             ),
             (
-                ValueAttribute::DisplayName.as_str(),
+                Attribute::DisplayName.as_str(),
                 Value::new_utf8s("testperson1")
             )
         );
@@ -618,7 +570,7 @@ mod tests {
         assert!(cr.is_ok());
 
         let de_sin = DeleteEvent::new_internal_invalid(filter!(f_or!([f_eq(
-            ValueAttribute::Name,
+            Attribute::Name,
             PartialValue::new_iname("testperson1")
         )])));
         assert!(server_txn.delete(&de_sin).is_ok());
@@ -680,41 +632,32 @@ mod tests {
 
     fn create_user(name: &str, uuid: &str) -> Entry<EntryInit, EntryNew> {
         entry_init!(
+            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_str(), EntryClass::Person.to_value()),
+            (Attribute::Name.as_str(), Value::new_iname(name)),
             (
-                ValueAttribute::Class.as_str(),
-                ValueClass::Object.to_value()
-            ),
-            (
-                ValueAttribute::Class.as_str(),
-                ValueClass::Person.to_value()
-            ),
-            (ValueAttribute::Name.as_str(), Value::new_iname(name)),
-            (
-                ValueAttribute::Uuid.as_str(),
+                Attribute::Uuid.as_str(),
                 Value::new_uuid_s(uuid).expect("uuid")
             ),
             (
-                ValueAttribute::Description.as_str(),
+                Attribute::Description.as_str(),
                 Value::new_utf8s("testperson-entry")
             ),
-            (ValueAttribute::DisplayName.as_str(), Value::new_utf8s(name))
+            (Attribute::DisplayName.as_str(), Value::new_utf8s(name))
         )
     }
 
     fn create_group(name: &str, uuid: &str, members: &[&str]) -> Entry<EntryInit, EntryNew> {
         let mut e1 = entry_init!(
+            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_str(), EntryClass::Group.to_value()),
+            (Attribute::Name.as_str(), Value::new_iname(name)),
             (
-                ValueAttribute::Class.as_str(),
-                ValueClass::Object.to_value()
-            ),
-            (ValueAttribute::Class.as_str(), ValueClass::Group.to_value()),
-            (ValueAttribute::Name.as_str(), Value::new_iname(name)),
-            (
-                ValueAttribute::Uuid.as_str(),
+                Attribute::Uuid.as_str(),
                 Value::new_uuid_s(uuid).expect("uuid")
             ),
             (
-                ValueAttribute::Description.as_str(),
+                Attribute::Description.as_str(),
                 Value::new_utf8s("testgroup-entry")
             )
         );
@@ -727,7 +670,7 @@ mod tests {
     fn check_entry_has_mo(qs: &mut QueryServerWriteTransaction, name: &str, mo: &str) -> bool {
         let e = qs
             .internal_search(filter!(f_eq(
-                ValueAttribute::Name,
+                Attribute::Name,
                 PartialValue::new_iname(name)
             )))
             .unwrap()
@@ -735,7 +678,7 @@ mod tests {
             .unwrap();
 
         e.attribute_equality(
-            ValueAttribute::MemberOf.as_str(),
+            Attribute::MemberOf.as_str(),
             &PartialValue::new_refer_s(mo).unwrap(),
         )
     }
@@ -790,19 +733,19 @@ mod tests {
 
         // Now recycle the needed entries.
         let de = DeleteEvent::new_internal_invalid(filter!(f_or(vec![
-            f_eq(ValueAttribute::Name, PartialValue::new_iname("u1")),
-            f_eq(ValueAttribute::Name, PartialValue::new_iname("u2")),
-            f_eq(ValueAttribute::Name, PartialValue::new_iname("u3")),
-            f_eq(ValueAttribute::Name, PartialValue::new_iname("g3")),
-            f_eq(ValueAttribute::Name, PartialValue::new_iname("u4")),
-            f_eq(ValueAttribute::Name, PartialValue::new_iname("g4"))
+            f_eq(Attribute::Name, PartialValue::new_iname("u1")),
+            f_eq(Attribute::Name, PartialValue::new_iname("u2")),
+            f_eq(Attribute::Name, PartialValue::new_iname("u3")),
+            f_eq(Attribute::Name, PartialValue::new_iname("g3")),
+            f_eq(Attribute::Name, PartialValue::new_iname("u4")),
+            f_eq(Attribute::Name, PartialValue::new_iname("g4"))
         ])));
         assert!(server_txn.delete(&de).is_ok());
 
         // Now revive and check each one, one at a time.
         let rev1 = ReviveRecycledEvent::new_impersonate_entry(
             admin.clone(),
-            filter_all!(f_eq(ValueAttribute::Name, PartialValue::new_iname("u1"))),
+            filter_all!(f_eq(Attribute::Name, PartialValue::new_iname("u1"))),
         );
         assert!(server_txn.revive_recycled(&rev1).is_ok());
         // check u1 contains MO ->
@@ -815,7 +758,7 @@ mod tests {
         // Revive u2 and check it has two mo.
         let rev2 = ReviveRecycledEvent::new_impersonate_entry(
             admin.clone(),
-            filter_all!(f_eq(ValueAttribute::Name, PartialValue::new_iname("u2"))),
+            filter_all!(f_eq(Attribute::Name, PartialValue::new_iname("u2"))),
         );
         assert!(server_txn.revive_recycled(&rev2).is_ok());
         assert!(check_entry_has_mo(
@@ -833,8 +776,8 @@ mod tests {
         let rev3 = ReviveRecycledEvent::new_impersonate_entry(
             admin.clone(),
             filter_all!(f_or(vec![
-                f_eq(ValueAttribute::Name, PartialValue::new_iname("u3")),
-                f_eq(ValueAttribute::Name, PartialValue::new_iname("g3"))
+                f_eq(Attribute::Name, PartialValue::new_iname("u3")),
+                f_eq(Attribute::Name, PartialValue::new_iname("g3"))
             ])),
         );
         assert!(server_txn.revive_recycled(&rev3).is_ok());
@@ -847,7 +790,7 @@ mod tests {
         // Revive u4, should NOT have the MO.
         let rev4a = ReviveRecycledEvent::new_impersonate_entry(
             admin.clone(),
-            filter_all!(f_eq(ValueAttribute::Name, PartialValue::new_iname("u4"))),
+            filter_all!(f_eq(Attribute::Name, PartialValue::new_iname("u4"))),
         );
         assert!(server_txn.revive_recycled(&rev4a).is_ok());
         assert!(!check_entry_has_mo(
@@ -859,7 +802,7 @@ mod tests {
         // Now revive g4, should allow MO onto u4.
         let rev4b = ReviveRecycledEvent::new_impersonate_entry(
             admin,
-            filter_all!(f_eq(ValueAttribute::Name, PartialValue::new_iname("g4"))),
+            filter_all!(f_eq(Attribute::Name, PartialValue::new_iname("g4"))),
         );
         assert!(server_txn.revive_recycled(&rev4b).is_ok());
         assert!(!check_entry_has_mo(

@@ -38,10 +38,10 @@ impl EntryChangeState {
     }
 
     pub fn new_without_schema(cid: &Cid, attrs: &Eattrs) -> Self {
-        let class = attrs.get(ValueAttribute::Class.as_str());
+        let class = attrs.get(Attribute::Class.as_str());
         let st = if class
             .as_ref()
-            .map(|c| c.contains(&ValueClass::Tombstone.to_partialvalue()))
+            .map(|c| c.contains(&EntryClass::Tombstone.to_partialvalue()))
             .unwrap_or(false)
         {
             State::Tombstone { at: cid.clone() }
@@ -172,10 +172,10 @@ impl EntryChangeState {
         entry_id: u64,
         results: &mut Vec<Result<(), ConsistencyError>>,
     ) {
-        let class = expected_attrs.get(ValueAttribute::Class.as_str());
+        let class = expected_attrs.get(Attribute::Class.as_str());
         let is_ts = class
             .as_ref()
-            .map(|c| c.contains(&ValueClass::Tombstone.to_partialvalue()))
+            .map(|c| c.contains(&EntryClass::Tombstone.to_partialvalue()))
             .unwrap_or(false);
 
         match (&self.st, is_ts) {

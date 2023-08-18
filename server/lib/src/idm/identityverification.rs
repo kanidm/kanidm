@@ -627,9 +627,9 @@ mod test {
         // and wonders to this line of code I'm sorry to have wasted your time
         name.truncate(14);
         entry_init!(
-            (ATTR_CLASS, ValueClass::Object.to_value()),
-            (ATTR_CLASS, ValueClass::Account.to_value()),
-            (ATTR_CLASS, ValueClass::Person.to_value()),
+            (ATTR_CLASS, EntryClass::Object.to_value()),
+            (ATTR_CLASS, EntryClass::Account.to_value()),
+            (ATTR_CLASS, EntryClass::Person.to_value()),
             (ATTR_NAME, Value::new_iname(&name)),
             (ATTR_UUID, Value::Uuid(uuid)),
             (ATTR_DESCRIPTION, Value::new_utf8s("some valid user")),
@@ -639,9 +639,9 @@ mod test {
 
     fn create_invalid_user_account(uuid: Uuid) -> EntryInitNew {
         entry_init!(
-            (ATTR_CLASS, ValueClass::Object.to_value()),
-            (ATTR_CLASS, ValueClass::Account.to_value()),
-            (ATTR_CLASS, ValueClass::ServiceAccount.to_value()),
+            (ATTR_CLASS, EntryClass::Object.to_value()),
+            (ATTR_CLASS, EntryClass::Account.to_value()),
+            (ATTR_CLASS, EntryClass::ServiceAccount.to_value()),
             (ATTR_NAME, Value::new_iname("invalid_user")),
             (ATTR_UUID, Value::Uuid(uuid)),
             (ATTR_DESCRIPTION, Value::new_utf8s("invalid_user")),

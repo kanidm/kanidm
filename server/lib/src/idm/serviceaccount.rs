@@ -33,8 +33,8 @@ macro_rules! try_from_entry {
     ($value:expr) => {{
         // Check the classes
         if !$value.attribute_equality(
-            ValueAttribute::Class.as_str(),
-            &ValueClass::ServiceAccount.into(),
+            Attribute::Class.as_str(),
+            &EntryClass::ServiceAccount.into(),
         ) {
             return Err(OperationError::InvalidAccountState(
                 "Missing class: service account".to_string(),
@@ -256,9 +256,9 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         self.qs_write
             .impersonate_modify(
                 // Filter as executed
-                &filter!(f_eq(ValueAttribute::Uuid, PartialValue::Uuid(gte.target))),
+                &filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(gte.target))),
                 // Filter as intended (acp)
-                &filter_all!(f_eq(ValueAttribute::Uuid, PartialValue::Uuid(gte.target))),
+                &filter_all!(f_eq(Attribute::Uuid, PartialValue::Uuid(gte.target))),
                 &modlist,
                 // Provide the event to impersonate
                 &gte.ident,
@@ -294,17 +294,17 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             .impersonate_modify(
                 // Filter as executed
                 &filter!(f_and!([
-                    f_eq(ValueAttribute::Uuid, PartialValue::Uuid(dte.target)),
+                    f_eq(Attribute::Uuid, PartialValue::Uuid(dte.target)),
                     f_eq(
-                        ValueAttribute::ApiTokenSession,
+                        Attribute::ApiTokenSession,
                         PartialValue::Refer(dte.token_id)
                     )
                 ])),
                 // Filter as intended (acp)
                 &filter_all!(f_and!([
-                    f_eq(ValueAttribute::Uuid, PartialValue::Uuid(dte.target)),
+                    f_eq(Attribute::Uuid, PartialValue::Uuid(dte.target)),
                     f_eq(
-                        ValueAttribute::ApiTokenSession,
+                        Attribute::ApiTokenSession,
                         PartialValue::Refer(dte.token_id)
                     )
                 ])),
@@ -344,9 +344,9 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         self.qs_write
             .impersonate_modify(
                 // Filter as executed
-                &filter!(f_eq(ValueAttribute::Uuid, PartialValue::Uuid(gpe.target))),
+                &filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(gpe.target))),
                 // Filter as intended (acp)
-                &filter_all!(f_eq(ValueAttribute::Uuid, PartialValue::Uuid(gpe.target))),
+                &filter_all!(f_eq(Attribute::Uuid, PartialValue::Uuid(gpe.target))),
                 &modlist,
                 // Provide the event to impersonate
                 &gpe.ident,
@@ -445,29 +445,23 @@ mod tests {
         let testaccount_uuid = Uuid::new_v4();
 
         let e1 = entry_init!(
+            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_str(), EntryClass::Account.to_value()),
             (
-                ValueAttribute::Class.as_str(),
-                ValueClass::Object.to_value()
+                Attribute::Class.as_str(),
+                EntryClass::ServiceAccount.to_value()
             ),
             (
-                ValueAttribute::Class.as_str(),
-                ValueClass::Account.to_value()
-            ),
-            (
-                ValueAttribute::Class.as_str(),
-                ValueClass::ServiceAccount.to_value()
-            ),
-            (
-                ValueAttribute::Name.as_str(),
+                Attribute::Name.as_str(),
                 Value::new_iname("test_account_only")
             ),
-            (ValueAttribute::Uuid.as_str(), Value::Uuid(testaccount_uuid)),
+            (Attribute::Uuid.as_str(), Value::Uuid(testaccount_uuid)),
             (
-                ValueAttribute::Description.as_str(),
+                Attribute::Description.as_str(),
                 Value::new_utf8s("testaccount")
             ),
             (
-                ValueAttribute::DisplayName.as_str(),
+                Attribute::DisplayName.as_str(),
                 Value::new_utf8s("testaccount")
             )
         );

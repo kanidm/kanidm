@@ -83,8 +83,8 @@ impl Plugin for Spn {
         let domain_name = qs.get_domain_name().to_string();
 
         let filt_in = filter!(f_or!([
-            f_eq(ValueAttribute::Class, ValueClass::Group.into()),
-            f_eq(ValueAttribute::Class, ValueClass::Account.into()),
+            f_eq(Attribute::Class, EntryClass::Group.into()),
+            f_eq(Attribute::Class, EntryClass::Account.into()),
         ]));
 
         let all_cand = match qs
@@ -139,9 +139,8 @@ impl Spn {
         let domain_name = qs.get_domain_name();
 
         for ent in cand.iter_mut() {
-            if ent.attribute_equality(ValueAttribute::Class.as_str(), &ValueClass::Group.into())
-                || ent
-                    .attribute_equality(ValueAttribute::Class.as_str(), &ValueClass::Account.into())
+            if ent.attribute_equality(Attribute::Class.as_str(), &EntryClass::Group.into())
+                || ent.attribute_equality(Attribute::Class.as_str(), &EntryClass::Account.into())
             {
                 let spn = ent
                     .generate_spn(domain_name)
@@ -171,7 +170,7 @@ impl Spn {
 
         let domain_name_changed = cand.iter().zip(pre_cand.iter()).find_map(|(post, pre)| {
             let domain_name = post.get_ava_single("domain_name");
-            if post.attribute_equality(ValueAttribute::Uuid.as_str(), &PVUUID_DOMAIN_INFO)
+            if post.attribute_equality(Attribute::Uuid.as_str(), &PVUUID_DOMAIN_INFO)
                 && domain_name != pre.get_ava_single("domain_name")
             {
                 domain_name
@@ -193,8 +192,8 @@ impl Spn {
         // within the transaction, just in case!
         qs.internal_modify(
             &filter!(f_or!([
-                f_eq(ValueAttribute::Class, ValueClass::Group.into()),
-                f_eq(ValueAttribute::Class, ValueClass::Account.into()),
+                f_eq(Attribute::Class, EntryClass::Group.into()),
+                f_eq(Attribute::Class, EntryClass::Account.into()),
             ])),
             &modlist!([m_purge("spn")]),
         )
@@ -251,10 +250,7 @@ mod tests {
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq(
-                ValueAttribute::Name,
-                PartialValue::new_iname("testperson")
-            )),
+            filter!(f_eq(Attribute::Name, PartialValue::new_iname("testperson"))),
             modlist!([m_purge("spn")]),
             None,
             |_| {},
@@ -308,10 +304,7 @@ mod tests {
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq(
-                ValueAttribute::Name,
-                PartialValue::new_iname("testperson")
-            )),
+            filter!(f_eq(Attribute::Name, PartialValue::new_iname("testperson"))),
             modlist!([
                 m_purge("spn"),
                 m_pres("spn", &Value::new_spn_str("invalid", "spn"))

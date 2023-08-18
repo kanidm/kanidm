@@ -1,4 +1,4 @@
-use kanidmd_lib::prelude::ValueAttribute;
+use kanidmd_lib::prelude::Attribute;
 use serde::Deserialize;
 use std::collections::BTreeMap;
 use url::Url;
@@ -19,15 +19,15 @@ fn person_attr_display_name() -> String {
 }
 
 fn person_attr_gidnumber() -> String {
-    ValueAttribute::UidNumber.to_string()
+    Attribute::UidNumber.to_string()
 }
 
 fn person_attr_password() -> String {
-    ValueAttribute::UserPassword.to_string()
+    Attribute::UserPassword.to_string()
 }
 
 fn person_attr_login_shell() -> String {
-    ValueAttribute::LoginShell.to_string()
+    Attribute::LoginShell.to_string()
 }
 
 fn person_attr_mail() -> String {
@@ -43,19 +43,19 @@ fn group_objectclass() -> String {
 }
 
 fn group_attr_name() -> String {
-    ValueAttribute::Cn.to_string()
+    Attribute::Cn.to_string()
 }
 
 fn group_attr_description() -> String {
-    ValueAttribute::Description.to_string()
+    Attribute::Description.to_string()
 }
 
 fn group_attr_member() -> String {
-    ValueAttribute::Member.to_string()
+    Attribute::Member.to_string()
 }
 
 fn group_attr_gidnumber() -> String {
-    ValueAttribute::GidNumber.to_string()
+    Attribute::GidNumber.to_string()
 }
 
 #[derive(Debug, Deserialize)]
