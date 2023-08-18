@@ -29,7 +29,7 @@ lazy_static! {
         m.insert("domain_ldap_basedn");
         m.insert("fernet_private_key_str");
         m.insert("es256_private_key_der");
-        m.insert("id_verification_eckey");
+        m.insert(ATTR_ID_VERIFICATION_ECKEY);
         m.insert("badlist_password");
         m.insert("domain_display_name");
         m

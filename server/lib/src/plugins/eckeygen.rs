@@ -23,8 +23,10 @@ impl EcdhKeyGen {
         cands: &mut [Entry<EntryInvalid, STATE>],
     ) -> Result<(), OperationError> {
         for cand in cands.iter_mut() {
-            if cand.attribute_equality("class", &ValueClass::Person.into())
-                && !cand.attribute_pres("id_verification_eckey")
+            if cand.attribute_equality(
+                ValueAttribute::Class.as_str(),
+                &ValueClass::Person.to_partialvalue(),
+            ) && !cand.attribute_pres(ATTR_ID_VERIFICATION_ECKEY)
             {
                 debug!("Generating idv_eckey for {}", cand.get_display_id());
 
@@ -32,7 +34,8 @@ impl EcdhKeyGen {
                     error!(err = ?e, "Unable to generate id verification ECDH private key");
                     OperationError::CryptographyError
                 })?;
-                cand.add_ava_if_not_exist(
+
+                cand.add_ava(
                     ATTR_ID_VERIFICATION_ECKEY,
                     crate::value::Value::EcKeyPrivate(new_private_key),
                 )
@@ -84,7 +87,7 @@ mod tests {
     use uuid::Uuid;
 
     use crate::plugins::eckeygen::DEFAULT_KEY_GROUP;
-    use crate::prelude::*;
+    use crate::prelude::{Entry, EntryInit, EntryNew};
     use crate::value::Value;
     use crate::valueset;
 
@@ -92,13 +95,13 @@ mod tests {
     fn test_new_user_generate_key() {
         let uuid = Uuid::new_v4();
         let ea = entry_init!(
-            (ATTR_CLASS, ValueClass::Account.to_value()),
-            (ATTR_CLASS, ValueClass::Person.to_value()),
-            (ATTR_CLASS, ValueClass::Object.to_value()),
-            (ATTR_NAME, Value::new_iname("test_name")),
-            (ATTR_UUID, Value::Uuid(uuid)),
-            (ATTR_DESCRIPTION, Value::new_utf8s("testperson")),
-            (ATTR_DISPLAYNAME, Value::new_utf8s("Test Person"))
+            (ATTR_CLASS, Value::new_class("account")),
+            (ATTR_CLASS, Value::new_class("person")),
+            (ATTR_CLASS, Value::new_class("object")),
+            ("name", Value::new_iname("test_name")),
+            ("uuid", Value::Uuid(uuid)),
+            ("description", Value::new_utf8s("testperson")),
+            ("displayname", Value::new_utf8s("Test Person"))
         );
         let preload: Vec<Entry<EntryInit, EntryNew>> = Vec::new();
 
@@ -126,11 +129,11 @@ mod tests {
     #[test]
     fn test_modify_present_ecdkey() {
         let ea = entry_init!(
-            (ATTR_CLASS, ValueClass::Account.to_value()),
-            (ATTR_CLASS, ValueClass::Person.to_value()),
-            (ATTR_CLASS, ValueClass::Object.to_value()),
-            (ATTR_NAME, Value::new_iname("test_name")),
-            (ATTR_DESCRIPTION, Value::new_utf8s("testperson")),
+            (ATTR_CLASS, Value::new_class("account")),
+            (ATTR_CLASS, Value::new_class("person")),
+            (ATTR_CLASS, Value::new_class("object")),
+            ("name", Value::new_iname("test_name")),
+            ("description", Value::new_utf8s("testperson")),
             ("displayname", Value::new_utf8s("Test person!"))
         );
         let preload = vec![ea];
@@ -138,10 +141,7 @@ mod tests {
         run_modify_test!(
             Err(OperationError::SystemProtectedAttribute),
             preload,
-            filter!(f_eq(
-                ValueAttribute::Name,
-                PartialValue::new_iname("test_name")
-            )),
+            filter!(f_eq(ValueAttribute::Class, PartialValue::new_iname("test_name"))),
             modlist!([m_pres(
                 ATTR_ID_VERIFICATION_ECKEY,
                 &Value::EcKeyPrivate(new_private_key)
@@ -161,13 +161,13 @@ mod tests {
         let uuid = Uuid::new_v4();
 
         let ea = entry_init!(
-            (ATTR_CLASS, ValueClass::Account.to_value()),
-            (ATTR_CLASS, ValueClass::Person.to_value()),
-            (ATTR_CLASS, ValueClass::Object.to_value()),
-            (ATTR_NAME, Value::new_iname("test_name")),
-            (ATTR_UUID, Value::Uuid(uuid)),
+            (ATTR_CLASS, Value::new_class("account")),
+            (ATTR_CLASS, Value::new_class("person")),
+            (ATTR_CLASS, Value::new_class("object")),
+            ("name", Value::new_iname("test_name")),
+            ("uuid", Value::Uuid(uuid)),
             (ATTR_ID_VERIFICATION_ECKEY, private_key_value.clone()),
-            (ATTR_DESCRIPTION, Value::new_utf8s("testperson")),
+            ("description", Value::new_utf8s("testperson")),
             ("displayname", Value::new_utf8s("Test person!"))
         );
         let key_partialvalue = valueset::from_value_iter(std::iter::once(private_key_value))
@@ -180,7 +180,7 @@ mod tests {
             Ok(()),
             preload,
             filter!(f_eq(
-                ValueAttribute::Name,
+                ValueAttribute::Class,
                 PartialValue::new_iname("test_name")
             )),
             modlist!([m_purge(ATTR_ID_VERIFICATION_ECKEY)]),
@@ -204,13 +204,13 @@ mod tests {
         let uuid = Uuid::new_v4();
 
         let ea = entry_init!(
-            (ATTR_CLASS, ValueClass::Account.to_value()),
-            (ATTR_CLASS, ValueClass::Person.to_value()),
-            (ATTR_CLASS, ValueClass::Object.to_value()),
-            (ATTR_NAME, Value::new_iname("test_name")),
-            (ATTR_UUID, Value::Uuid(uuid)),
+            (ATTR_CLASS, Value::new_class("account")),
+            (ATTR_CLASS, Value::new_class("person")),
+            (ATTR_CLASS, Value::new_class("object")),
+            ("name", Value::new_iname("test_name")),
+            ("uuid", Value::Uuid(uuid)),
             (ATTR_ID_VERIFICATION_ECKEY, private_key_value.clone()),
-            (ATTR_DESCRIPTION, Value::new_utf8s("testperson")),
+            ("description", Value::new_utf8s("testperson")),
             ("displayname", Value::new_utf8s("Test person!"))
         );
         let key_partialvalue = valueset::from_value_iter(std::iter::once(private_key_value))
@@ -223,7 +223,7 @@ mod tests {
             Ok(()),
             preload,
             filter!(f_eq(
-                ValueAttribute::Name,
+                ValueAttribute::Class,
                 PartialValue::new_iname("test_name")
             )),
             modlist!([m_remove(ATTR_ID_VERIFICATION_ECKEY, &key_partialvalue)]),

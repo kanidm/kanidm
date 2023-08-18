@@ -1746,10 +1746,13 @@ async fn test_repl_increment_schema_conflict(server_a: &QueryServer, server_b: &
     let ct = ct + Duration::from_secs(1);
     let mut server_b_txn = server_b.write(ct).await;
     let modlist = ModifyList::new_list(vec![
-        Modify::Removed(ValueClass::Class.into(), ValueClass::Person.into()),
-        Modify::Present(ValueClass::Class.into(), ValueClass::Group.into()),
+        Modify::Removed(
+            ValueAttribute::Class.into(),
+            ValueClass::Person.to_partialvalue(),
+        ),
+        Modify::Present(ValueAttribute::Class.into(), ValueClass::Group.to_value()),
         Modify::Purged(ATTR_ID_VERIFICATION_ECKEY.into()),
-        Modify::Purged(ValueAttribute::DisplayName.into()),
+        Modify::Purged("displayname".into()),
     ]);
     assert!(server_b_txn.internal_modify_uuid(t_uuid, &modlist).is_ok());
     server_b_txn.commit().expect("Failed to commit");
