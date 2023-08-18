@@ -17,16 +17,20 @@ extern crate tracing;
 use crate::common::OpType;
 use async_recursion::async_recursion;
 use cursive::{
-    view::Nameable,
-    views::{Dialog, EditView, LinearLayout, TextView, ViewRef},
-    CbSink, Cursive, CursiveExt, CursiveRunner,
+    align::HAlign,
+    event::{Event, EventResult},
+    view::{Nameable, Resizable},
+    views::{Dialog, DummyView, EditView, LinearLayout, TextView, ViewRef},
+    CbSink, Cursive, CursiveExt, CursiveRunner, View,
 };
 use dialoguer::{console::Term, theme::ColorfulTheme, Confirm, Input};
 use kanidm_client::KanidmClient;
 use kanidm_proto::internal::{IdentifyUserRequest, IdentifyUserResponse};
 use regex::Regex;
 use std::{
+    borrow::BorrowMut,
     cell::RefCell,
+    f32::consts::E,
     io::{stdin, stdout, Write},
     path::PathBuf,
     sync::Arc,
@@ -39,7 +43,7 @@ use tokio::{
         mpsc::{
             channel, error::TryRecvError, unbounded_channel, UnboundedReceiver, UnboundedSender,
         },
-        oneshot,
+        oneshot::{self, Receiver},
     },
     task,
     time::interval,
@@ -121,7 +125,7 @@ impl SelfOpt {
                         return;
                     }
                 };
-                start_identity_verification_tui(spn.to_string(), client).await;
+                run_identity_verification_tui(spn, client).await;
             } // end PersonOpt::Validity
         }
     }
@@ -214,20 +218,160 @@ lazy_static::lazy_static! {
         Regex::new(r"^\d{6}$").expect("Invalid singleline regex found")
     };
 }
+// here I used a simple function instead of a struct because all the channel stuff requires ownership, so if we were to use a struct with a `run` method, it would have to take ownership of everything
+// so might as well just use a function
+pub async fn run_identity_verification_tui(self_id: &String, client: KanidmClient) {
+    //unbounded channel to send messages to the controller from the ui
+    let (controller_tx, mut controller_rx) = unbounded_channel::<IdentifyUserMsg>();
+    // unbounded channel to send messages to the ui from the controller
+    let (ui_tx, mut ui_rx) = unbounded_channel::<IdentifyUserState>();
 
+    // we manually send the initial start message
+    controller_tx.send(IdentifyUserMsg::Start);
+
+    // oneshot channel to get the callback sink from the ui
+    let (cb_tx, mut cb_rx) = oneshot::channel::<CbSink>();
+    // we start the ui in its own thread
+    let gui_handle = std::thread::spawn(move || {
+        let mut ui = Ui::new(controller_tx, ui_rx);
+        if cb_tx.send(ui.get_cb()).is_err() {
+            eprintln!("Callback oneshot channel closed too soon! Aborting..."); // TODO: what the hell are we supposed to tell the user?
+            return;
+        };
+        ui.0.run();
+    });
+
+    start_business_logic_loop(controller_rx, cb_rx, ui_tx, self_id, client).await;
+
+    if let Err(e) = gui_handle.join() {
+        eprintln!("The UI thread returned an error: {:?}", e);
+    };
+}
+
+async fn start_business_logic_loop(
+    mut controller_rx: UnboundedReceiver<IdentifyUserMsg>,
+    mut cb_rx: Receiver<CbSink>,
+    ui_tx: UnboundedSender<IdentifyUserState>,
+    self_id: &String,
+    client: KanidmClient,
+) {
+    let Ok(cb) = cb_rx.await else {
+        eprintln!("Callback oneshot channel closed too soon! Aborting..."); // TODO: what the hell are we supposed to tell the user?
+        return;
+    };
+
+    let send_msg_and_call_callback = |msg: IdentifyUserState| {
+        if ui_tx.send(msg).is_err() {
+            eprintln!("UI channel closed too soon! Aborting..."); // TODO: what the hell are we supposed to tell the user?
+            return;
+        }
+        if cb.send(Box::new(Ui::update_state_callback)).is_err() {
+            eprintln!("Callback channel closed too soon! Aborting..."); // TODO: what the hell are we supposed to tell the user?
+            return;
+        };
+    };
+    let self_id = Arc::new(self_id.clone());
+    // conveniently when the `quit()` is called on the ui it also drops the controller_tx since it's stored in the `user_data` so as per the doc `controller_rx.recv()` will return None and therefore the loop will exit
+    while let Some(msg) = controller_rx.recv().await {
+        // ** NEVER EVER CALL `break` inside the loop as it will drop the mpsc receiver and sender and the ui won't be able to process whatever message is sent to it
+        // ** instead use `continue` so that the loop will only exit when the ui drops its controllers
+        let (id, req) = match &msg {
+            IdentifyUserMsg::Start => (&self_id, IdentifyUserRequest::Start),
+            IdentifyUserMsg::SubmitOtherId { other_id } => (other_id, IdentifyUserRequest::Start),
+            IdentifyUserMsg::SubmitCode {
+                code: totp,
+                other_id,
+            } => (
+                other_id,
+                IdentifyUserRequest::SubmitCode { other_totp: *totp },
+            ),
+            IdentifyUserMsg::CodeConfirmedFirst { other_id } => {
+                send_msg_and_call_callback(IdentifyUserState::WaitForCode {
+                    other_id: other_id.clone(), // I know it's bad cloning but organizing things this way allows us to just have this clone and the one below throughout the whole loop
+                });
+                continue;
+            }
+            IdentifyUserMsg::CodeConfirmedSecond { other_id } => {
+                send_msg_and_call_callback(IdentifyUserState::Success {
+                    other_id: other_id.clone(), // (the second clone mentioned above)
+                });
+                continue;
+            }
+            IdentifyUserMsg::ReDisplayCodeFirst { other_id }
+            | IdentifyUserMsg::ReDisplayCodeSecond { other_id } => {
+                (other_id, IdentifyUserRequest::DisplayCode)
+            }
+        };
+        let res = match client.idm_person_identify_user(&id, req).await {
+            Ok(res) => res,
+            Err(e) => {
+                let err = IdentifyUserState::Error {
+                    msg: format!("{:?}", e),
+                };
+                send_msg_and_call_callback(err);
+                continue;
+            }
+        };
+        let state = match res {
+            IdentifyUserResponse::IdentityVerificationUnavailable => IdentifyUserState::Error { msg: "Unfortunately the identity verification feature is not available for your account.".to_string() },
+            IdentifyUserResponse::IdentityVerificationAvailable => IdentifyUserState::IdDisplayAndSubmit {self_id: self_id.to_string()},
+            IdentifyUserResponse::ProvideCode { step, totp } => {
+                match msg {
+                    IdentifyUserMsg::SubmitOtherId { other_id} | IdentifyUserMsg::ReDisplayCodeFirst { other_id}=> IdentifyUserState::DisplayCodeFirst { self_totp: totp, step, other_id },
+                    IdentifyUserMsg::SubmitCode { other_id, ..} | IdentifyUserMsg::ReDisplayCodeSecond { other_id} => IdentifyUserState::DisplayCodeSecond { self_totp: totp, step, other_id },
+                    _ => IdentifyUserState::invalid_state_error()
+                }
+            },
+            IdentifyUserResponse::WaitForCode => {
+                match msg {
+                    IdentifyUserMsg::SubmitOtherId { other_id } | IdentifyUserMsg::SubmitCode { other_id, .. }=>  IdentifyUserState::WaitForCode { other_id },
+                    _ => IdentifyUserState::invalid_state_error()
+                }
+            },
+            IdentifyUserResponse::Success => {
+                match msg {
+                    IdentifyUserMsg::SubmitCode { code, other_id } => IdentifyUserState::Success { other_id },
+                     _ => IdentifyUserState::invalid_state_error()
+                }
+            },
+            IdentifyUserResponse::CodeFailure => {
+                match msg {
+                    IdentifyUserMsg::SubmitCode { other_id, .. } => IdentifyUserState::Error { msg: format!("The provided code doesn't belong to {other_id}") },
+                    _ => IdentifyUserState::invalid_state_error()
+                }
+            },
+        IdentifyUserResponse::InvalidUserId => IdentifyUserState::Error { msg: format!("{id}'s account exists but cannot access the identity verification feature") }
+        };
+        send_msg_and_call_callback(state);
+    }
+}
+
+// this is kind of awkward but Cursive doesn't allow us to store data in the `user_data` without having to clone it every time we access it,
+// so since the `other_id` String will never change during the execution of the program, we can just use an Arc to avoid cloning it every time
 #[derive(Debug, Clone, PartialEq)]
 enum IdentifyUserState {
-    IdDisplayAndSubmit,
-    SubmitCode { other_id: String },
-    DisplayCodeFirst { self_totp: u32, step: u32 },
-    DisplayCodeSecond { self_totp: u32, step: u32 },
-    WaitForCodeFirst { other_id: String },
-    WaitForCodeSecond { other_id: String },
-    ConfirmCodeVerifiedFirst { other_id: String },
-    ConfirmCodeVerifiedSecond { other_id: String },
-    Success,
-    Error { msg: String },
-    Quit,
+    IdDisplayAndSubmit {
+        self_id: String,
+    },
+    WaitForCode {
+        other_id: Arc<String>,
+    },
+    DisplayCodeFirst {
+        self_totp: u32,
+        step: u32,
+        other_id: Arc<String>,
+    },
+    DisplayCodeSecond {
+        self_totp: u32,
+        step: u32,
+        other_id: Arc<String>,
+    },
+    Success {
+        other_id: Arc<String>,
+    },
+    Error {
+        msg: String,
+    },
 }
 
 impl IdentifyUserState {
@@ -241,35 +385,34 @@ impl IdentifyUserState {
 #[derive(Debug, Clone)]
 enum IdentifyUserMsg {
     Start,
-    SubmitOtherId { other_id: String },
-    SubmitTotp { totp: u32, other_id: String },
-    CodeConfirmedFirst { other_id: String },
-    CodeConfirmedSecond { other_id: String },
-    Quit,
+    SubmitOtherId { other_id: Arc<String> },
+    SubmitCode { code: u32, other_id: Arc<String> },
+    CodeConfirmedFirst { other_id: Arc<String> },
+    CodeConfirmedSecond { other_id: Arc<String> },
+    ReDisplayCodeFirst { other_id: Arc<String> },
+    ReDisplayCodeSecond { other_id: Arc<String> },
 }
 
 struct Ui(Cursive);
 
 struct UiUserData {
     controller_tx: UnboundedSender<IdentifyUserMsg>,
-    self_id: String,
     ui_rx: UnboundedReceiver<IdentifyUserState>,
 }
 
 impl Ui {
-    pub fn new(
+    fn new(
         controller_tx: UnboundedSender<IdentifyUserMsg>,
         ui_rx: UnboundedReceiver<IdentifyUserState>,
-        self_id: String,
     ) -> Self {
         let mut cursive = Cursive::new();
         let controller_tx_clone = controller_tx.clone();
         cursive.add_global_callback('q', |s| {
             s.quit();
         });
+        cursive.set_autorefresh(true);
         cursive.set_user_data(UiUserData {
             controller_tx,
-            self_id,
             ui_rx,
         });
 
@@ -284,39 +427,46 @@ impl Ui {
         s: &mut Cursive,
         state: IdentifyUserState,
         controller_tx: UnboundedSender<IdentifyUserMsg>,
-        self_id: String,
     ) {
-        match dbg!(state) {
-            IdentifyUserState::IdDisplayAndSubmit => {
-                let cloned_ui_tx = controller_tx.clone();
+        match state {
+            IdentifyUserState::IdDisplayAndSubmit { self_id } => {
+                let controller_tx_clone = controller_tx.clone();
                 let layout = LinearLayout::vertical()
-                    .child(TextView::new(format!(
-                        "When asked for your ID, provide the following: {}",
-                        self_id
-                    )))
-                    .child(TextView::new("---------------------------------------"))
-                    .child(TextView::new(
-                        "Ask for the other person's ID, and insert it here!",
-                    ))
+                    .child(DummyView.fixed_height(1))
+                    .child(
+                        TextView::new(format!(
+                            "When asked for your ID, provide the following: {}",
+                            self_id
+                        ))
+                        .h_align(HAlign::Center),
+                    )
+                    .child(DummyView.fixed_height(1))
+                    .child(
+                        TextView::new("-----------------------------------------------")
+                            .h_align(HAlign::Center),
+                    )
+                    .child(DummyView.fixed_height(1))
+                    .child(
+                        TextView::new("Ask for the other person's ID, and insert it here!")
+                            .h_align(HAlign::Center),
+                    )
+                    .child(DummyView.fixed_height(1))
                     .child(
                         EditView::new()
                             .content("sample@id.com")
                             .on_submit(move |s, user_id: &str| {
-                                s.pop_layer();
-                                cloned_ui_tx.send(IdentifyUserMsg::SubmitOtherId {
-                                    other_id: user_id.to_string(),
+                                &controller_tx.send(IdentifyUserMsg::SubmitOtherId {
+                                    other_id: Arc::new(user_id.to_string()),
                                 });
+                                Self::loading_view(s);
                             })
                             .with_name("id-user-input"),
                     );
                 // we have to redeclare this because we consumed it in the prev closure
-                let cloned_ui_tx = controller_tx.clone();
-                let cloned_ui_tx_2 = controller_tx.clone();
                 s.add_layer(
                     Dialog::around(layout)
-                        .button("Quit", move |s| {
-                            s.pop_layer();
-                            cloned_ui_tx.clone().send(IdentifyUserMsg::Quit);
+                        .button("Quit", |s| {
+                            s.quit();
                         })
                         .button("Continue", move |s| {
                             let user_id = s
@@ -324,496 +474,223 @@ impl Ui {
                                     view.get_content()
                                 })
                                 .unwrap();
-                            s.pop_layer();
-                            cloned_ui_tx_2.send(IdentifyUserMsg::SubmitOtherId {
-                                other_id: user_id.to_string(),
+                            controller_tx_clone.send(IdentifyUserMsg::SubmitOtherId {
+                                other_id: Arc::new(user_id.to_string()),
                             });
+                            Self::loading_view(s);
                         }),
                 );
             }
-            IdentifyUserState::SubmitCode { other_id } => {
-                // Display Prompt
-                let cloned_ui_tx = controller_tx.clone();
-                let cloned_ui_tx_2 = controller_tx.clone();
-                let other_id_clone = other_id.to_string();
+            IdentifyUserState::WaitForCode { other_id } => {
+                s.pop_layer();
+                let other_id_clone = other_id.clone();
+                let controller_tx_clone = controller_tx.clone();
                 let layout = LinearLayout::vertical()
                     .child(TextView::new(format!(
-                        "Ask for {other_id}'s code, and insert it here!"
+                        "Ask for {}'s code, and insert it here!",
+                        &other_id
                     )))
+                    .child(DummyView.fixed_height(1))
                     .child(
                         EditView::new()
                             .content("123456")
-                            .on_submit(move |_, code: &str| {
-                                let code_u32 = code.parse::<u32>().unwrap();
-                                cloned_ui_tx.send(IdentifyUserMsg::SubmitTotp {
-                                    totp: code_u32,
+                            .on_submit(move |s, code: &str| {
+                                let code_u32 = code.parse::<u32>().unwrap(); // TODO: show user feedback
+                                &controller_tx.send(IdentifyUserMsg::SubmitCode {
+                                    code: code_u32,
                                     other_id: other_id_clone.clone(),
                                 });
+                                Self::loading_view(s);
                             })
-                            .with_name("id-user-input"),
+                            .with_name("totp-input"),
                     );
-                s.add_layer(Dialog::around(layout).button("Quit", move |s| {
-                    cloned_ui_tx_2.send(IdentifyUserMsg::Quit);
+                s.add_layer(
+                    Dialog::around(layout)
+                        .button("Quit", |s| {
+                            s.quit();
+                        })
+                        .button("Continue", move |s| {
+                            let code = s
+                                .call_on_name("totp-input", |view: &mut EditView| {
+                                    view.get_content()
+                                })
+                                .unwrap();
+                            let code_u32 = code.parse::<u32>().unwrap(); // TODO: show user feedback
+                            controller_tx_clone.send(IdentifyUserMsg::SubmitCode {
+                                code: code_u32,
+                                other_id: other_id.clone(),
+                            });
+                            Self::loading_view(s);
+                        }),
+                );
+            }
+            IdentifyUserState::DisplayCodeFirst {
+                self_totp,
+                step,
+                other_id,
+            } => {
+                s.pop_layer();
+                let layout = LinearLayout::vertical()
+                    .child(TextView::new(format!(
+                        "Provide the following code when asked: {self_totp}"
+                    )))
+                    .child(TotpCountdownView::new(
+                        step as u64,
+                        controller_tx.clone(),
+                        IdentifyUserMsg::ReDisplayCodeFirst {
+                            other_id: other_id.clone(),
+                        },
+                    ));
+                s.add_layer(Dialog::around(layout).button("Continue", move |s| {
+                    Self::confirmation_view(
+                        s,
+                        other_id.clone(),
+                        controller_tx.clone(),
+                        IdentifyUserMsg::CodeConfirmedFirst {
+                            other_id: other_id.clone(),
+                        },
+                    );
                 }));
             }
-            IdentifyUserState::DisplayCodeFirst { self_totp, step } => {
-                // println!("\r\rProvide the following code when asked: {}", self_totp);
-                // let _ = stdout().flush();
-                // let join = task::spawn(async move {
-                //     // let theme = ColorfulTheme::default();
-                //     // let proceed = Confirm::with_theme(&theme)
-                //     //     .with_prompt("Did you confirm the other user successfully verified your code?")
-                //     //     .interact_on(&Term::stderr())
-                //     //     .unwrap();
-                //     let mut stdin = InteractiveStdin::new();
-                //     let res = stdin.next_line().await;
-                //     dbg!(res);
-                // });
-                // print_ticks(step).await;
-                // // print_ticks(step).await;
-                // join.await.unwrap();
-
-                // let res = match client
-                //     .idm_person_identify_user(
-                //         &other_id.unwrap_or_default(),
-                //         IdentifyUserRequest::DisplayCode,
-                //     )
-                //     .await
-                // {
-                //     Ok(res) => res,
-                //     Err(e) => {
-                //         eprintln!("An error occurred -> {:?}", e);
-                //         println!("Exiting...");
-                //         return;
-                //     }
-                // };
-                // let IdentifyUserResponse::ProvideCode { step, totp } = res else {
-                //     eprintln!("Invalid response from server. Exiting...");
-                //     return;
-                // };
-                // identify_user_exec(
-                //     IdentifyUserState::DisplayCodeFirst {
-                //         self_totp: totp,
-                //         step,
-                //     },
-                //     client,
-                //     self_id,
-                //     other_id,
-                // )
-                // .await;
+            IdentifyUserState::DisplayCodeSecond {
+                self_totp,
+                step,
+                other_id,
+            } => {
+                s.pop_layer();
+                let layout = LinearLayout::vertical()
+                    .child(TextView::new(format!(
+                        "Provide the following code when asked: {self_totp}"
+                    )))
+                    .child(TotpCountdownView::new(
+                        step as u64,
+                        controller_tx.clone(),
+                        IdentifyUserMsg::ReDisplayCodeSecond {
+                            other_id: other_id.clone(),
+                        },
+                    ));
+                s.add_layer(Dialog::around(layout).button("Continue", move |s| {
+                    Self::confirmation_view(
+                        s,
+                        other_id.clone(),
+                        controller_tx.clone(),
+                        IdentifyUserMsg::CodeConfirmedSecond {
+                            other_id: other_id.clone(),
+                        },
+                    );
+                }));
             }
-            IdentifyUserState::DisplayCodeSecond { self_totp, step } => {}
-            IdentifyUserState::ConfirmCodeVerifiedFirst { other_id } => {}
-            IdentifyUserState::ConfirmCodeVerifiedSecond { other_id } => {}
-            IdentifyUserState::Success => todo!(),
-            IdentifyUserState::Error { msg } => todo!(),
-            IdentifyUserState::Quit => s.quit(),
-            IdentifyUserState::WaitForCodeFirst { other_id } => todo!(),
-            IdentifyUserState::WaitForCodeSecond { other_id } => todo!(),
+            IdentifyUserState::Success { other_id } => {
+                s.pop_layer();
+                let layout = LinearLayout::vertical().child(TextView::new(format!(
+                    "{other_id}'s identity has been successfully verified!"
+                )));
+
+                s.add_layer(Dialog::around(layout).button("Quit", |s| {
+                    s.quit();
+                }));
+            }
+            IdentifyUserState::Error { msg } => Self::error_state_view(s, &msg),
         };
     }
 
-    pub fn update_state_callback(s: &mut Cursive) {
+    fn update_state_callback(s: &mut Cursive) {
         let user_data = match s.user_data::<UiUserData>() {
             Some(data) => data,
-            None => return, // TODO: make this make sense
+            None => {
+                return Self::error_state_view(
+                    s,
+                    "It looks like some data got corrupted, you have to start from scratch",
+                )
+            }
         };
         if let Some(state) = user_data.ui_rx.blocking_recv() {
-            let controller_rx = user_data.controller_tx.clone(); // we have to take ownership so the mut borrow `s` can be passed to `render_state`
-            let self_id = user_data.self_id.clone();
-            Ui::render_state(s, dbg!(state), controller_rx, self_id);
+            let controller_rx = user_data.controller_tx.to_owned(); // we have to take ownership so the mut borrow `s` can be passed to `render_state`
+            Ui::render_state(s, state, controller_rx);
         }
     }
 
-    pub async fn very_dumb_run(&mut self) {
-        loop {
-            // self.0.step();
-            tokio::time::sleep(Duration::from_millis(100)).await;
+    fn confirmation_view(
+        s: &mut Cursive,
+        other_id: Arc<String>,
+        controller_tx: UnboundedSender<IdentifyUserMsg>,
+        msg: IdentifyUserMsg,
+    ) {
+        s.add_layer(
+            Dialog::around(TextView::new(format!("Did you confirm that {other_id} correctly verified your code? If you proceed, you won't be able to go back.")))
+                .button("Yes, proceed", move |s| {
+                    s.pop_layer();
+                    controller_tx.send(msg.to_owned());
+                })
+                .button("No, exit", |s| {
+                    s.quit();
+                }),
+        );
+    }
+
+    fn error_state_view(s: &mut Cursive, msg: &str) {
+        s.pop_layer();
+        let layout = LinearLayout::vertical()
+            .child(DummyView.fixed_height(1))
+            .child(TextView::new(msg));
+
+        s.add_layer(
+            Dialog::around(layout)
+                .title("An error occurred!")
+                .button("Quit", |s| {
+                    s.quit();
+                }),
+        );
+    }
+
+    fn loading_view(s: &mut Cursive) {
+        s.pop_layer();
+        s.add_layer(TextView::new("Hold tight while we're loading..."));
+    }
+}
+
+struct TotpCountdownView {
+    msg: IdentifyUserMsg,
+    ticks_left: u64,
+    step: u64,
+    controller_tx: UnboundedSender<IdentifyUserMsg>,
+    should_call_callback: RefCell<bool>, // we need to use a refcell since we need to mutate this data inside the `draw` method which has a `&self` reference
+}
+
+impl TotpCountdownView {
+    fn new(
+        step: u64,
+        controller_tx: UnboundedSender<IdentifyUserMsg>,
+        msg: IdentifyUserMsg,
+    ) -> Self {
+        Self {
+            should_call_callback: RefCell::new(true),
+            msg,
+            ticks_left: Self::get_ticks_left_from_now(step),
+            step,
+            controller_tx,
         }
     }
-}
 
-pub async fn start_identity_verification_tui(self_id: String, client: KanidmClient) {
-    let (controller_tx, mut controller_rx) = unbounded_channel::<IdentifyUserMsg>();
-    let (ui_tx, mut ui_rx) = unbounded_channel::<IdentifyUserState>();
-
-    controller_tx.send(IdentifyUserMsg::Start);
-    let self_id_clone = self_id.clone();
-
-    // oneshot channel to get the callback sink from the ui
-    let (cb_tx, mut cb_rx) = oneshot::channel::<CbSink>();
-    // we start the ui in its own thread
-    let gui_handle = std::thread::spawn(move || {
-        let mut ui = Ui::new(controller_tx, ui_rx, self_id_clone);
-        cb_tx.send(ui.get_cb()).unwrap();
-        ui.0.run();
-    });
-
-    let cb = cb_rx.await.unwrap();
-    let send_msg_and_call_callback = |msg: IdentifyUserState| {
-        println!("Sent msg: {:?}", msg);
-        ui_tx.send(msg.clone()).unwrap();
-        cb.send(Box::new(Ui::update_state_callback));
-    };
-    while let Some(msg) = controller_rx.recv().await {
-        println!("Received msg: {:?}", msg.clone());
-        let (id, req) = match &msg {
-            IdentifyUserMsg::Start => (&self_id, IdentifyUserRequest::Start),
-            IdentifyUserMsg::SubmitOtherId { other_id } => (other_id, IdentifyUserRequest::Start),
-            IdentifyUserMsg::SubmitTotp { totp, other_id } => (
-                other_id,
-                IdentifyUserRequest::SubmitCode { other_totp: *totp },
-            ),
-            IdentifyUserMsg::CodeConfirmedFirst { other_id } => todo!(),
-            IdentifyUserMsg::CodeConfirmedSecond { other_id } => {
-                send_msg_and_call_callback(IdentifyUserState::Success);
-                continue;
-            }
-            IdentifyUserMsg::Quit => {
-                send_msg_and_call_callback(IdentifyUserState::Quit);
-                return;
-            }
-        };
-        println!("Sending request: {:?}, with id: {id}", req);
-        let res = match client.idm_person_identify_user(&id, req.clone()).await {
-            Ok(res) => res,
-            Err(e) => {
-                let err = IdentifyUserState::Error {
-                    msg: format!("An error occurred -> {:?}", e),
-                };
-                println!("got error...");
-                send_msg_and_call_callback(err);
-                return;
-            }
-        };
-        println!("Got response: {:?}", res);
-        let state = match dbg!(res) {
-                        IdentifyUserResponse::IdentityVerificationUnavailable => IdentifyUserState::Error { msg: "Unfortunately the identity verification feature is not available for your account.".to_string() },
-                        IdentifyUserResponse::IdentityVerificationAvailable => IdentifyUserState::IdDisplayAndSubmit,
-                        IdentifyUserResponse::ProvideCode { step, totp } => {
-                            match msg {
-                                IdentifyUserMsg::SubmitOtherId { .. } => IdentifyUserState::DisplayCodeFirst { self_totp: totp, step },
-                                IdentifyUserMsg::SubmitTotp { .. } => IdentifyUserState::DisplayCodeSecond { self_totp: totp, step },
-                                _ => IdentifyUserState::invalid_state_error()
-                            }
-                        },
-                        IdentifyUserResponse::WaitForCode => {
-                            match msg {
-                                IdentifyUserMsg::SubmitOtherId { other_id } => IdentifyUserState::WaitForCodeFirst { other_id },
-                                IdentifyUserMsg::SubmitTotp { other_id, .. } => IdentifyUserState::WaitForCodeSecond { other_id },
-                                _ => IdentifyUserState::invalid_state_error()
-                            }
-                        },
-                        IdentifyUserResponse::Success => IdentifyUserState::Success,
-                        IdentifyUserResponse::CodeFailure => todo!(),
-                        IdentifyUserResponse::InvalidUserId => todo!()
-                    };
-        send_msg_and_call_callback(state);
+    fn get_ticks_left_from_now(step: u64) -> u64 {
+        #[allow(clippy::expect_used)]
+        let dur = SystemTime::now()
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .expect("invalid duration from epoch now");
+        (step - dur.as_secs() % (step))
     }
-
-    gui_handle.join().unwrap();
 }
 
-// * Don't mind this part ....
-// /// This is the identity verification feature handler
-// #[async_recursion] // dear lord have mercy for I have sinned writing this function
-// async fn identify_user_exec<'a>(
-//     state: IdentifyUserState,
-//     send_rec_c: SendRecChannels,
-//     self_id: &'a str,
-//     other_id: Option<&'a str>,
-// ) {
-//     match state {
-//         IdentifyUserState::Start => {
-//             send_rec_c
-//                 .send
-//                 .send((self_id, IdentifyUserRequest::Start))
-//                 .await;
-//             let res = match send_rec_c.rec.recv().await {
-//                 Some(res) => res,
-//                 None => {
-//                     return;
-//                 }
-//             };
-//             match res {
-//                 IdentifyUserResponse::IdentityVerificationUnavailable => {
-//                     let mut siv = Cursive::default();
-//                     siv.add_layer(
-//                         Dialog::text("Unfortunately the identity verification feature is not available for your account.")
-//                             .title("Error!")
-//                             .button("Quit",  |s| s.quit()),
-//                     );
-//                     siv.run();
-//                     return;
-//                 }
-//                 IdentifyUserResponse::IdentityVerificationAvailable => {
-//                     identify_user_exec(
-//                         IdentifyUserState::IdDisplayAndSubmit,
-//                         send_rec_c,
-//                         self_id,
-//                         other_id,
-//                     )
-//                     .await
-//                 }
-//                 _ => {
-//                     eprintln!("Invalid response from server. Exiting...");
-//                     return;
-//                 }
-//             }
-//         }
-//         IdentifyUserState::IdDisplayAndSubmit => {
-//             let mut siv = Cursive::default();
-//             let layout = LinearLayout::vertical()
-//                 .child(TextView::new(format!(
-//                     "When asked for your ID, provide the following: {self_id}"
-//                 )))
-//                 .child(TextView::new("---------------------------------------"))
-//                 .child(TextView::new(
-//                     "Ask for the other person's ID, and insert it here!",
-//                 ))
-//                 .child(EditView::new().content("sample@id.com"));
-
-//             siv.add_layer(
-//                 Dialog::around(layout)
-//                     .button("Quit", |s| s.quit())
-//                     .button("Continue", |s| s.pop_layer()),
-//             );
-
-//             siv.refresh();
-//             loop {}
-
-//             send_rec_c
-//                 .send
-//                 .send((self_id, IdentifyUserRequest::Start))
-//                 .await;
-//             // Display Prompt
-//             let other_user_id: String = "".to_string();
-
-//             let res = match client
-//                 .idm_person_identify_user(&other_user_id, IdentifyUserRequest::Start)
-//                 .await
-//             {
-//                 Ok(res) => res,
-//                 Err(e) => {
-//                     eprintln!("An error occurred -> {:?}", e);
-//                     println!("Exiting...");
-//                     return;
-//                 }
-//             };
-//             match res {
-//                 IdentifyUserResponse::WaitForCode => {
-//                     identify_user_exec(
-//                         IdentifyUserState::SubmitCode,
-//                         client,
-//                         self_id,
-//                         Some(&other_user_id),
-//                     )
-//                     .await
-//                 }
-//                 IdentifyUserResponse::ProvideCode { step, totp } => {
-//                     identify_user_exec(
-//                         IdentifyUserState::DisplayCodeFirst {
-//                             self_totp: totp,
-//                             step,
-//                         },
-//                         client,
-//                         self_id,
-//                         Some(&other_user_id),
-//                     )
-//                     .await
-//                 }
-//                 IdentifyUserResponse::InvalidUserId => {
-//                     eprintln!(
-//                         "{other_user_id} cannot use the identity verification feature. Exiting..."
-//                     );
-//                     return;
-//                 }
-//                 _ => {
-//                     eprintln!("Invalid response from server. Exiting...");
-//                     return;
-//                 }
-//             }
-//         }
-//         IdentifyUserState::SubmitCode => {
-//             // Display Prompt
-//             let other_totp: String = Input::new()
-//                 .with_prompt("\nInsert here the other person code")
-//                 .validate_with(|s: &String| -> Result<(), &str> {
-//                     if VALIDATE_TOTP_RE.is_match(s) {
-//                         Ok(())
-//                     } else {
-//                         Err("Invalid code format")
-//                     }
-//                 })
-//                 .interact_text()
-//                 .expect("Failed to interact with interactive session");
-
-//             let res = match client
-//                 .idm_person_identify_user(
-//                     &other_id.unwrap_or_default(),
-//                     IdentifyUserRequest::SubmitCode {
-//                         other_totp: other_totp.parse().unwrap_or_default(),
-//                     },
-//                 )
-//                 .await
-//             {
-//                 Ok(res) => res,
-//                 Err(e) => {
-//                     eprintln!("An error occurred -> {:?}", e);
-//                     println!("Exiting...");
-//                     return;
-//                 }
-//             };
-//             match res {
-//                 IdentifyUserResponse::CodeFailure => {
-//                     eprintln!(
-//                         "The provided code doesn't belong to {}. Exiting...",
-//                         other_id.unwrap_or_default()
-//                     );
-//                     return;
-//                 }
-//                 IdentifyUserResponse::Success => {
-//                     println!(
-//                         "{}'s identity has been successfully verified",
-//                         other_id.unwrap_or_default()
-//                     );
-//                     return;
-//                 }
-//                 IdentifyUserResponse::InvalidUserId => {
-//                     eprintln!(
-//                         "{} cannot use the identity verification feature. Exiting...",
-//                         other_id.unwrap_or_default()
-//                     );
-//                     return;
-//                 }
-//                 IdentifyUserResponse::ProvideCode { step, totp } => {
-//                     identify_user_exec(
-//                         // since we have already inserted the code, we have to go to display code second,
-//                         IdentifyUserState::DisplayCodeSecond {
-//                             self_totp: totp,
-//                             step,
-//                         },
-//                         client,
-//                         self_id,
-//                         other_id,
-//                     )
-//                     .await
-//                 }
-
-//                 _ => {
-//                     eprintln!("Invalid response from server. Exiting...");
-//                     return;
-//                 }
-//             }
-//         }
-//         IdentifyUserState::DisplayCodeFirst { self_totp, step } => {
-//             println!("\r\rProvide the following code when asked: {}", self_totp);
-//             let _ = stdout().flush();
-//             let join = task::spawn(async move {
-//                 // let theme = ColorfulTheme::default();
-//                 // let proceed = Confirm::with_theme(&theme)
-//                 //     .with_prompt("Did you confirm the other user successfully verified your code?")
-//                 //     .interact_on(&Term::stderr())
-//                 //     .unwrap();
-//                 let mut stdin = InteractiveStdin::new();
-//                 let res = stdin.next_line().await;
-//                 dbg!(res);
-//             });
-//             print_ticks(step).await;
-//             // print_ticks(step).await;
-//             join.await.unwrap();
-
-//             let res = match client
-//                 .idm_person_identify_user(
-//                     &other_id.unwrap_or_default(),
-//                     IdentifyUserRequest::DisplayCode,
-//                 )
-//                 .await
-//             {
-//                 Ok(res) => res,
-//                 Err(e) => {
-//                     eprintln!("An error occurred -> {:?}", e);
-//                     println!("Exiting...");
-//                     return;
-//                 }
-//             };
-//             let IdentifyUserResponse::ProvideCode { step, totp } = res else {
-//                 eprintln!("Invalid response from server. Exiting...");
-//                 return;
-//             };
-//             identify_user_exec(
-//                 IdentifyUserState::DisplayCodeFirst {
-//                     self_totp: totp,
-//                     step,
-//                 },
-//                 client,
-//                 self_id,
-//                 other_id,
-//             )
-//             .await;
-//         }
-//         IdentifyUserState::DisplayCodeSecond { self_totp, step } => {}
-//         IdentifyUserState::ConfirmCodeVerifiedFirst => {}
-//         IdentifyUserState::ConfirmCodeVerifiedSecond => {}
-//     }
-// }
-
-// TODO: this function is somewhat a duplicate of what can be found in the webui, see https://github.com/kanidm/kanidm/blob/003234c2d0a52146683628156e2a106bf61fe9f4/server/web_ui/src/components/totpdisplay.rs#L83
-// * should we move it to a common crate or can we just leave it there?
-fn get_time_left_from_now(step: u128) -> u32 {
-    #[allow(clippy::expect_used)]
-    let dur = SystemTime::now()
-        .duration_since(SystemTime::UNIX_EPOCH)
-        .expect("invalid duration from epoch now");
-    let secs: u128 = dur.as_millis();
-    (step * 1000 - secs % (step * 1000)) as u32
-}
-
-async fn print_ticks(step: u32) {
-    let time_left = get_time_left_from_now(step as u128);
-    let stdin = stdin();
-    let time_left_ms = time_left % 1000;
-    let mut ticks_left = ((time_left - time_left_ms) / 1000) as i32 + 1;
-    let mut sync_interval = interval(Duration::from_millis(time_left_ms as u64));
-
-    sync_interval.tick().await;
-    // wait for us to be synched to the second
-    let mut interval = interval(Duration::from_secs(1));
-    while ticks_left >= 0 {
-        print!("\rtime left: {ticks_left}s");
-        let _ = stdout().flush();
-        interval.tick().await;
-        ticks_left -= 1;
+impl View for TotpCountdownView {
+    fn draw(&self, printer: &cursive::Printer) {
+        let ticks_left_from_now = Self::get_ticks_left_from_now(self.step);
+        // basically whenever the ticks_left reset to step, i.e. the first time this function has been called after we got to a new totp window, then we
+        // call the callback to fetch a new code which will be displayed at best in the next tick. On very slow connections the user might see the old
+        // code for a bit. If we want to get rid of this we would need to pass to the struct a callback to show a loading screen
+        if ticks_left_from_now == self.step && *self.should_call_callback.borrow() {
+            self.controller_tx.send(self.msg.to_owned()).unwrap();
+            *self.should_call_callback.borrow_mut() = false;
+        };
+        printer.print((0, 0), &format!("{:?} seconds left", ticks_left_from_now));
     }
-    let _ = stdout().flush(); // we wait another second so the next function call
-                              // will never have a `ticks_left` == 0
 }
-
-use tokio::sync::mpsc;
-
-struct InteractiveStdin {
-    chan: mpsc::UnboundedReceiver<std::io::Result<String>>,
-}
-
-// impl InteractiveStdin {
-//     fn new() -> Self {
-//         let (send, recv) = mpsc::channel(16);
-//         std::thread::spawn(move || {
-//             for line in std::io::stdin().lines() {
-//                 if send.blocking_send(line).is_err() {
-//                     return;
-//                 }
-//             }
-//         });
-//         InteractiveStdin { chan: recv }
-//     }
-
-//     /// Get the next line from stdin.
-//     ///
-//     /// Returns `Ok(None)` if stdin has been closed.
-//     ///
-//     /// This method is cancel safe.
-//     async fn next_line(&mut self) -> std::io::Result<Option<String>> {
-//         self.chan.recv().await.transpose()
-//     }
-// }
