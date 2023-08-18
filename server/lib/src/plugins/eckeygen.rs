@@ -138,7 +138,7 @@ mod tests {
         run_modify_test!(
             Err(OperationError::SystemProtectedAttribute),
             preload,
-            filter!(f_eq("name", PartialValue::new_iname("test_name"))),
+            filter!(f_eq(ValueAttribute::Name, PartialValue::new_iname("test_name"))),
             modlist!([m_pres(
                 ATTR_ID_VERIFICATION_ECKEY,
                 &Value::EcKeyPrivate(new_private_key)
@@ -176,7 +176,10 @@ mod tests {
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq("name", PartialValue::new_iname("test_name"))),
+            filter!(f_eq(
+                ValueAttribute::Name,
+                PartialValue::new_iname("test_name")
+            )),
             modlist!([m_purge("id_verification_eckey")]),
             None,
             |_| {},
@@ -216,7 +219,10 @@ mod tests {
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq("name", PartialValue::new_iname("test_name"))),
+            filter!(f_eq(
+                ValueAttribute::Name,
+                PartialValue::new_iname("test_name")
+            )),
             modlist!([m_remove("id_verification_eckey", &key_partialvalue)]),
             None,
             |_| {},
