@@ -580,25 +580,25 @@ pub struct SchemaGroup {
     member: uuid::Uuid,
 }
 
-impl Into<EntryInitNew> for SchemaGroup {
-    fn into(self) -> EntryInitNew {
+impl From<SchemaGroup> for EntryInitNew {
+    fn from(val: SchemaGroup) -> Self {
         let mut entry = EntryInitNew::new();
 
-        entry.add_ava(Attribute::Name.as_str(), Value::new_iname(self.name));
+        entry.add_ava(Attribute::Name.as_str(), Value::new_iname(val.name));
         entry.add_ava(
             Attribute::Description.as_str(),
-            Value::new_utf8s(self.description),
+            Value::new_utf8s(val.description),
         );
         // classes
         entry.set_ava(
             Attribute::Class.as_str(),
-            self.classes
+            val.classes
                 .into_iter()
                 .map(|class| class.to_value())
                 .collect::<Vec<Value>>(),
         );
-        entry.add_ava(Attribute::Uuid.as_str(), Value::Uuid(self.uuid));
-        entry.add_ava(Attribute::Member.as_str(), Value::Refer(self.member));
+        entry.add_ava(Attribute::Uuid.as_str(), Value::Uuid(val.uuid));
+        entry.add_ava(Attribute::Member.as_str(), Value::Refer(val.member));
         entry
     }
 }
