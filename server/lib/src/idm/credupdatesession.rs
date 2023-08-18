@@ -372,19 +372,19 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         let eperm_search_primary_cred = match &eperm.search {
             Access::Denied => false,
             Access::Grant => true,
-            Access::Allow(attrs) => attrs.contains("primary_credential"),
+            Access::Allow(attrs) => attrs.contains(ValueAttribute::PrimaryCredential.as_str()),
         };
 
         let eperm_mod_primary_cred = match &eperm.modify_pres {
             Access::Denied => false,
             Access::Grant => true,
-            Access::Allow(attrs) => attrs.contains("primary_credential"),
+            Access::Allow(attrs) => attrs.contains(ValueAttribute::PrimaryCredential.as_str()),
         };
 
         let eperm_rem_primary_cred = match &eperm.modify_rem {
             Access::Denied => false,
             Access::Grant => true,
-            Access::Allow(attrs) => attrs.contains("primary_credential"),
+            Access::Allow(attrs) => attrs.contains(ValueAttribute::PrimaryCredential.as_str()),
         };
 
         let primary_can_edit =
@@ -393,19 +393,19 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         let eperm_search_passkeys = match &eperm.search {
             Access::Denied => false,
             Access::Grant => true,
-            Access::Allow(attrs) => attrs.contains("passkeys"),
+            Access::Allow(attrs) => attrs.contains(ATTR_PASSKEYS),
         };
 
         let eperm_mod_passkeys = match &eperm.modify_pres {
             Access::Denied => false,
             Access::Grant => true,
-            Access::Allow(attrs) => attrs.contains("passkeys"),
+            Access::Allow(attrs) => attrs.contains(ATTR_PASSKEYS),
         };
 
         let eperm_rem_passkeys = match &eperm.modify_rem {
             Access::Denied => false,
             Access::Grant => true,
-            Access::Allow(attrs) => attrs.contains("passkeys"),
+            Access::Allow(attrs) => attrs.contains(ATTR_PASSKEYS),
         };
 
         let passkeys_can_edit = eperm_search_passkeys && eperm_mod_passkeys && eperm_rem_passkeys;
@@ -607,7 +607,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
                 if ct >= max_ttl {
                     modlist.push_mod(Modify::Removed(
-                        AttrString::from("credential_update_intent_token"),
+                        AttrString::from(ATTR_CREDENTIAL_UPDATE_INTENT_TOKEN),
                         PartialValue::IntentToken(existing_intent_id.clone()),
                     ));
                 }
@@ -665,7 +665,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                     let mut modlist = ModifyList::new();
 
                     modlist.push_mod(Modify::Removed(
-                        AttrString::from("credential_update_intent_token"),
+                        AttrString::from(ATTR_CREDENTIAL_UPDATE_INTENT_TOKEN),
                         PartialValue::IntentToken(intent_id.clone()),
                     ));
 
@@ -779,11 +779,11 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         let mut modlist = ModifyList::new();
 
         modlist.push_mod(Modify::Removed(
-            AttrString::from("credential_update_intent_token"),
+            AttrString::from(ATTR_CREDENTIAL_UPDATE_INTENT_TOKEN),
             PartialValue::IntentToken(intent_id.clone()),
         ));
         modlist.push_mod(Modify::Present(
-            AttrString::from("credential_update_intent_token"),
+            AttrString::from(ATTR_CREDENTIAL_UPDATE_INTENT_TOKEN),
             Value::IntentToken(
                 intent_id.clone(),
                 IntentTokenState::InProgress {
@@ -949,11 +949,11 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             };
 
             modlist.push_mod(Modify::Removed(
-                AttrString::from("credential_update_intent_token"),
+                AttrString::from(ATTR_CREDENTIAL_UPDATE_INTENT_TOKEN),
                 PartialValue::IntentToken(intent_token_id.clone()),
             ));
             modlist.push_mod(Modify::Present(
-                AttrString::from("credential_update_intent_token"),
+                AttrString::from(ATTR_CREDENTIAL_UPDATE_INTENT_TOKEN),
                 Value::IntentToken(
                     intent_token_id.clone(),
                     IntentTokenState::Consumed { max_ttl },
@@ -1053,11 +1053,11 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             };
 
             modlist.push_mod(Modify::Removed(
-                AttrString::from("credential_update_intent_token"),
+                AttrString::from(ATTR_CREDENTIAL_UPDATE_INTENT_TOKEN),
                 PartialValue::IntentToken(intent_token_id.clone()),
             ));
             modlist.push_mod(Modify::Present(
-                AttrString::from("credential_update_intent_token"),
+                AttrString::from(ATTR_CREDENTIAL_UPDATE_INTENT_TOKEN),
                 Value::IntentToken(
                     intent_token_id.clone(),
                     IntentTokenState::Valid { max_ttl, perms },

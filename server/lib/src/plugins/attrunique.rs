@@ -86,7 +86,10 @@ fn enforce_unique<VALID, STATE>(
                 // Basically this says where name but also not self.
                 f_and(vec![
                     FC::Eq(attr, v.clone()),
-                    f_andnot(FC::Eq("uuid", PartialValue::Uuid(*uuid))),
+                    f_andnot(FC::Eq(
+                        ValueAttribute::Uuid.as_str(),
+                        PartialValue::Uuid(*uuid),
+                    )),
                 ])
             })
             .collect()

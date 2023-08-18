@@ -53,7 +53,7 @@ impl Plugin for Base {
                     // Generate
                     let ava_uuid = Value::Uuid(Uuid::new_v4());
                     trace!("Setting temporary UUID {:?} to entry", ava_uuid);
-                    entry.set_ava("uuid", once(ava_uuid));
+                    entry.set_ava(ValueAttribute::Uuid.as_str(), once(ava_uuid));
                 }
                 Some(1) => {
                     // Do nothing
@@ -124,7 +124,7 @@ impl Plugin for Base {
         let filt_in = filter_all!(FC::Or(
             cand_uuid
                 .into_iter()
-                .map(|u| FC::Eq("uuid", PartialValue::Uuid(u)))
+                .map(|u| FC::Eq(ValueAttribute::Uuid.as_str(), PartialValue::Uuid(u)))
                 .collect(),
         ));
 

@@ -53,36 +53,36 @@ macro_rules! try_from_entry {
         let sync_parent_uuid = $value.get_ava_single_refer("sync_parent_uuid");
 
         let primary = $value
-            .get_ava_single_credential("primary_credential")
+            .get_ava_single_credential(ValueAttribute::PrimaryCredential.as_str())
             .map(|v| v.clone());
 
         let passkeys = $value
-            .get_ava_passkeys("passkeys")
+            .get_ava_passkeys(ATTR_PASSKEYS)
             .cloned()
             .unwrap_or_default();
 
         let devicekeys = $value
-            .get_ava_devicekeys("devicekeys")
+            .get_ava_devicekeys(ATTR_DEVICEKEYS)
             .cloned()
             .unwrap_or_default();
 
-        let spn = $value.get_ava_single_proto_string("spn").ok_or(
+        let spn = $value.get_ava_single_proto_string(ATTR_SPN).ok_or(
             OperationError::InvalidAccountState("Missing attribute: spn".to_string()),
         )?;
 
-        let mail_primary = $value.get_ava_mail_primary("mail").map(str::to_string);
+        let mail_primary = $value.get_ava_mail_primary(ATTR_MAIL).map(str::to_string);
 
         let mail = $value
-            .get_ava_iter_mail("mail")
+            .get_ava_iter_mail(ATTR_MAIL)
             .map(|i| i.map(str::to_string).collect())
             .unwrap_or_else(Vec::new);
 
-        let valid_from = $value.get_ava_single_datetime("account_valid_from");
+        let valid_from = $value.get_ava_single_datetime(ATTR_ACCOUNT_VALID_FROM);
 
-        let expire = $value.get_ava_single_datetime("account_expire");
+        let expire = $value.get_ava_single_datetime(ATTR_ACCOUNT_EXPIRE);
 
         let radius_secret = $value
-            .get_ava_single_secret("radius_secret")
+            .get_ava_single_secret(ATTR_RADIUS_SECRET)
             .map(str::to_string);
 
         // Resolved by the caller
@@ -91,7 +91,7 @@ macro_rules! try_from_entry {
         let uuid = $value.get_uuid().clone();
 
         let credential_update_intent_tokens = $value
-            .get_ava_as_intenttokens("credential_update_intent_token")
+            .get_ava_as_intenttokens(ATTR_CREDENTIAL_UPDATE_INTENT_TOKEN)
             .cloned()
             .unwrap_or_default();
 
@@ -403,13 +403,19 @@ impl Account {
             Some(primary) => {
                 let ncred = primary.set_password(crypto_policy, cleartext)?;
                 let vcred = Value::new_credential("primary", ncred);
-                Ok(ModifyList::new_purge_and_set("primary_credential", vcred))
+                Ok(ModifyList::new_purge_and_set(
+                    ValueAttribute::PrimaryCredential.as_str(),
+                    vcred,
+                ))
             }
             // Make a new credential instead
             None => {
                 let ncred = Credential::new_password_only(crypto_policy, cleartext)?;
                 let vcred = Value::new_credential("primary", ncred);
-                Ok(ModifyList::new_purge_and_set("primary_credential", vcred))
+                Ok(ModifyList::new_purge_and_set(
+                    ValueAttribute::PrimaryCredential.as_str(),
+                    vcred,
+                ))
             }
         }
     }
@@ -425,7 +431,7 @@ impl Account {
                 if let Some(ncred) = primary.upgrade_password(crypto_policy, cleartext)? {
                     let vcred = Value::new_credential("primary", ncred);
                     Ok(Some(ModifyList::new_purge_and_set(
-                        "primary_credential",
+                        ValueAttribute::PrimaryCredential.as_str(),
                         vcred,
                     )))
                 } else {
@@ -451,20 +457,25 @@ impl Account {
 
         if let Some(ncred) = opt_ncred {
             let vcred = Value::new_credential("primary", ncred);
-            ml.push(Modify::Purged("primary_credential".into()));
-            ml.push(Modify::Present("primary_credential".into(), vcred));
+            ml.push(Modify::Purged(
+                ValueAttribute::PrimaryCredential.as_str().into(),
+            ));
+            ml.push(Modify::Present(
+                ValueAttribute::PrimaryCredential.as_str().into(),
+                vcred,
+            ));
         }
 
         // Is it a passkey?
         self.passkeys.iter_mut().for_each(|(u, (t, k))| {
             if let Some(true) = k.update_credential(auth_result) {
                 ml.push(Modify::Removed(
-                    "passkeys".into(),
+                    ValueAttribute::PassKeys.into(),
                     PartialValue::Passkey(*u),
                 ));
 
                 ml.push(Modify::Present(
-                    "passkeys".into(),
+                    ValueAttribute::PassKeys.into(),
                     Value::Passkey(*u, t.clone(), k.clone()),
                 ));
             }
@@ -488,7 +499,10 @@ impl Account {
                 match r_ncred {
                     Ok(ncred) => {
                         let vcred = Value::new_credential("primary", ncred);
-                        Ok(ModifyList::new_purge_and_set("primary_credential", vcred))
+                        Ok(ModifyList::new_purge_and_set(
+                            ValueAttribute::PrimaryCredential.as_str(),
+                            vcred,
+                        ))
                     }
                     Err(e) => Err(e),
                 }
@@ -543,8 +557,10 @@ impl Account {
 
         let within_valid_window = Account::check_within_valid_time(
             ct,
-            entry.get_ava_single_datetime("account_valid_from").as_ref(),
-            entry.get_ava_single_datetime("account_expire").as_ref(),
+            entry
+                .get_ava_single_datetime(ATTR_ACCOUNT_VALID_FROM)
+                .as_ref(),
+            entry.get_ava_single_datetime(ATTR_ACCOUNT_EXPIRE).as_ref(),
         );
 
         if !within_valid_window {

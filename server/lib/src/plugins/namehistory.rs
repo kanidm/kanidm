@@ -207,7 +207,7 @@ mod tests {
             ),
             (ValueAttribute::Name.as_str(), Value::new_iname("old_name")),
             (
-                "uuid",
+                ValueAttribute::Uuid.as_str(),
                 Value::Uuid(uuid!("d2b496bd-8493-47b7-8142-f568b5cf47e1"))
             ),
             (
@@ -261,7 +261,7 @@ mod tests {
             ),
             (ValueAttribute::Name.as_str(), Value::new_iname("old_name8")),
             (
-                "uuid",
+                ValueAttribute::Uuid.as_str(),
                 Value::Uuid(uuid!("d2b496bd-8493-47b7-8142-f568b5cf47ee"))
             ),
             (

@@ -23,6 +23,7 @@ use base64urlsafedata::Base64UrlSafeData;
 use chrono::Utc;
 use clap::Parser;
 use cron::Schedule;
+use kanidm_proto::constants::ATTR_MAIL;
 use kanidmd_lib::prelude::ValueAttribute;
 use std::collections::BTreeMap;
 use std::fs::metadata;
@@ -840,7 +841,7 @@ fn ipa_to_scim_entry(
             .or_else(|| entry.remove_ava_single(ValueAttribute::UserPassword.as_str()));
 
         let mail: Vec<_> = entry
-            .remove_ava("mail")
+            .remove_ava(ATTR_MAIL)
             .map(|set| {
                 set.into_iter()
                     .map(|addr| MultiValueAttr {

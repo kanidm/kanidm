@@ -28,7 +28,7 @@ macro_rules! try_from_account_e {
         */
 
         // Setup the user private group
-        let spn = $value.get_ava_single_proto_string("spn").ok_or(
+        let spn = $value.get_ava_single_proto_string(ATTR_SPN).ok_or(
             OperationError::InvalidAccountState("Missing attribute: spn".to_string()),
         )?;
 
@@ -117,7 +117,7 @@ impl Group {
                 OperationError::InvalidAccountState("Missing attribute: name".to_string())
             })?;
         */
-        let spn = value.get_ava_single_proto_string("spn").ok_or_else(|| {
+        let spn = value.get_ava_single_proto_string(ATTR_SPN).ok_or_else(|| {
             OperationError::InvalidAccountState("Missing attribute: spn".to_string())
         })?;
 

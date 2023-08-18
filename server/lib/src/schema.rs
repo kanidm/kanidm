@@ -361,7 +361,10 @@ impl From<SchemaAttribute> for EntryInitNew {
         );
 
         // uid
-        entry.set_ava("uuid", vec![Value::Uuid(value.uuid)].into_iter());
+        entry.set_ava(
+            ValueAttribute::Uuid.as_str(),
+            vec![Value::Uuid(value.uuid)].into_iter(),
+        );
 
         entry
     }
@@ -535,7 +538,10 @@ impl From<SchemaClass> for EntryInitNew {
         );
 
         // uid
-        entry.set_ava("uuid", vec![Value::Uuid(value.uuid)].into_iter());
+        entry.set_ava(
+            ValueAttribute::Uuid.as_str(),
+            vec![Value::Uuid(value.uuid)].into_iter(),
+        );
 
         // systemmay
         if !value.systemmay.is_empty() {
@@ -908,9 +914,9 @@ impl<'a> SchemaWriteTransaction<'a> {
             },
         );
         self.attributes.insert(
-            AttrString::from("spn"),
+            AttrString::from(ATTR_SPN),
             SchemaAttribute {
-                name: AttrString::from("spn"),
+                name: AttrString::from(ATTR_SPN),
                 uuid: UUID_SCHEMA_ATTR_SPN,
                 description: String::from(
                     "The Security Principal Name of an object, unique across all domain trusts",
@@ -1604,9 +1610,9 @@ impl<'a> SchemaWriteTransaction<'a> {
             },
         );
         self.attributes.insert(
-            AttrString::from("entrydn"),
+            AttrString::from(LDAP_ENTRYDN),
             SchemaAttribute {
-                name: AttrString::from("entrydn"),
+                name: AttrString::from(LDAP_ENTRYDN),
                 uuid: UUID_SCHEMA_ATTR_ENTRYDN,
                 description: String::from("An LDAP Compatible EntryDN"),
                 multivalue: false,
@@ -2502,11 +2508,13 @@ mod tests {
 
         assert_eq!(
             e_no_uuid.validate(&schema),
-            Err(SchemaError::MissingMustAttribute(vec!["uuid".to_string()]))
+            Err(SchemaError::MissingMustAttribute(vec![
+                ValueAttribute::Uuid.to_string()
+            ]))
         );
 
         let e_no_class = entry_init!((
-            "uuid",
+            ValueAttribute::Uuid.as_str(),
             Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
         ))
         .into_invalid_new();
@@ -2515,7 +2523,7 @@ mod tests {
 
         let e_bad_class = entry_init!(
             (
-                "uuid",
+                ValueAttribute::Uuid.as_str(),
                 Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
             ),
             (ValueAttribute::Class.as_str(), Value::new_class("zzzzzz"))
@@ -2528,7 +2536,7 @@ mod tests {
 
         let e_attr_invalid = entry_init!(
             (
-                "uuid",
+                ValueAttribute::Uuid.as_str(),
                 Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
             ),
             (
@@ -2610,7 +2618,7 @@ mod tests {
                 Value::Syntax(SyntaxType::Utf8String)
             ),
             (
-                "uuid",
+                ValueAttribute::Uuid.as_str(),
                 Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
             )
         )
@@ -2648,7 +2656,7 @@ mod tests {
                 Value::Syntax(SyntaxType::Utf8String)
             ),
             (
-                "uuid",
+                ValueAttribute::Uuid.as_str(),
                 Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
             ),
             ("password_import", Value::Utf8("password".to_string()))
@@ -2680,7 +2688,7 @@ mod tests {
                 Value::Syntax(SyntaxType::Utf8String)
             ),
             (
-                "uuid",
+                ValueAttribute::Uuid.as_str(),
                 Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
             )
         )
@@ -2749,7 +2757,7 @@ mod tests {
         assert_eq!(
             e_extensible_bad.validate(&schema),
             Err(SchemaError::InvalidAttributeSyntax(
-                "multivalue".to_string()
+                ATTR_MULTIVALUE.to_string()
             ))
         );
 

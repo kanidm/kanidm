@@ -86,19 +86,17 @@ impl CredImport {
                 })?;
 
                 // does the entry have a primary cred?
-                match e.get_ava_single_credential("primary_credential") {
+                match e.get_ava_single_credential(ValueAttribute::PrimaryCredential.as_str()) {
                     Some(c) => {
                         let c = c.update_password(pw);
-                        e.set_ava(
-                            "primary_credential",
+                        e.set_ava(ValueAttribute::PrimaryCredential.as_str(),
                             once(Value::new_credential("primary", c)),
                         );
                     }
                     None => {
                         // just set it then!
                         let c = Credential::new_from_password(pw);
-                        e.set_ava(
-                            "primary_credential",
+                        e.set_ava(ValueAttribute::PrimaryCredential.as_str(),
                             once(Value::new_credential("primary", c)),
                         );
                     }
@@ -116,12 +114,11 @@ impl CredImport {
                     ))
                 })?;
 
-                if let Some(c) = e.get_ava_single_credential("primary_credential") {
+                if let Some(c) = e.get_ava_single_credential(ValueAttribute::PrimaryCredential.as_str()) {
                     let c = totps.iter().fold(c.clone(), |acc, (label, totp)| {
                         acc.append_totp(label.clone(), totp.clone())
                     });
-                    e.set_ava(
-                        "primary_credential",
+                    e.set_ava(ValueAttribute::PrimaryCredential.as_str(),
                         once(Value::new_credential("primary", c)),
                     );
                 } else {
@@ -222,7 +219,10 @@ mod tests {
 
         let p = CryptoPolicy::minimum();
         let c = Credential::new_password_only(&p, "password").unwrap();
-        ea.add_ava("primary_credential", Value::new_credential("primary", c));
+        ea.add_ava(
+            ValueAttribute::PrimaryCredential.as_str(),
+            Value::new_credential("primary", c),
+        );
 
         let preload = vec![ea];
 
@@ -263,7 +263,10 @@ mod tests {
         let c = Credential::new_password_only(&p, "password")
             .unwrap()
             .append_totp("totp".to_string(), totp);
-        ea.add_ava("primary_credential", Value::new_credential("primary", c));
+        ea.add_ava(
+            ValueAttribute::PrimaryCredential.as_str(),
+            Value::new_credential("primary", c),
+        );
 
         let preload = vec![ea];
 
@@ -285,7 +288,7 @@ mod tests {
                     .internal_search_uuid(uuid!("d2b496bd-8493-47b7-8142-f568b5cf47ee"))
                     .expect("failed to get entry");
                 let c = e
-                    .get_ava_single_credential("primary_credential")
+                    .get_ava_single_credential(ValueAttribute::PrimaryCredential.as_str())
                     .expect("failed to get primary cred.");
                 match &c.type_ {
                     CredentialType::PasswordMfa(_pw, totp, webauthn, backup_code) => {
@@ -358,7 +361,7 @@ mod tests {
             |qs: &mut QueryServerWriteTransaction| {
                 let e = qs.internal_search_uuid(euuid).expect("failed to get entry");
                 let c = e
-                    .get_ava_single_credential("primary_credential")
+                    .get_ava_single_credential(ValueAttribute::PrimaryCredential.as_str())
                     .expect("failed to get primary cred.");
                 match &c.type_ {
                     CredentialType::PasswordMfa(_pw, totp, webauthn, backup_code) => {

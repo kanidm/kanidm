@@ -1,4 +1,7 @@
 use hashbrown::{HashMap, HashSet};
+use kanidm_proto::constants::{
+    LDAP_ATTR_CN, LDAP_ATTR_OBJECT_CLASS, LDAP_ATTR_OU, LDAP_GROUPS, LDAP_MEMBER,
+};
 use std::time::{Duration, Instant};
 
 use ldap3_proto::proto::*;
@@ -59,7 +62,7 @@ impl DirectoryServer {
         let filter = LdapFilter::Or(
             targets
                 .iter()
-                .map(|u| LdapFilter::Equality("cn".to_string(), u.to_string()))
+                .map(|u| LdapFilter::Equality(LDAP_ATTR_CN.to_string(), u.to_string()))
                 .collect(),
         );
 
@@ -86,7 +89,10 @@ impl DirectoryServer {
         // Check if ou=people and ou=group exist
         let res = self
             .ldap
-            .search(LdapFilter::Equality("ou".to_string(), "people".to_string()))
+            .search(LdapFilter::Equality(
+                LDAP_ATTR_OU.to_string(),
+                "people".to_string(),
+            ))
             .await?;
 
         if res.is_empty() {
@@ -96,14 +102,14 @@ impl DirectoryServer {
                 dn: format!("ou=people,{}", self.ldap.basedn),
                 attributes: vec![
                     LdapAttribute {
-                        atype: "objectClass".to_string(),
+                        atype: LDAP_ATTR_OBJECT_CLASS.to_string(),
                         vals: vec![
                             "top".as_bytes().into(),
                             "organizationalUnit".as_bytes().into(),
                         ],
                     },
                     LdapAttribute {
-                        atype: "ou".to_string(),
+                        atype: LDAP_ATTR_OU.to_string(),
                         vals: vec!["people".as_bytes().into()],
                     },
                 ],
@@ -113,25 +119,28 @@ impl DirectoryServer {
 
         let res = self
             .ldap
-            .search(LdapFilter::Equality("ou".to_string(), "groups".to_string()))
+            .search(LdapFilter::Equality(
+                LDAP_ATTR_OU.to_string(),
+                LDAP_GROUPS.to_string(),
+            ))
             .await?;
 
         if res.is_empty() {
             // Doesn't exist
             info!("Creating ou=groups");
             let ou_groups = LdapAddRequest {
-                dn: format!("ou=groups,{}", self.ldap.basedn),
+                dn: format!("ou={},{}", LDAP_GROUPS, self.ldap.basedn),
                 attributes: vec![
                     LdapAttribute {
-                        atype: "objectClass".to_string(),
+                        atype: LDAP_ATTR_OBJECT_CLASS.to_string(),
                         vals: vec![
                             "top".as_bytes().into(),
                             "organizationalUnit".as_bytes().into(),
                         ],
                     },
                     LdapAttribute {
-                        atype: "ou".to_string(),
-                        vals: vec!["groups".as_bytes().into()],
+                        atype: LDAP_ATTR_OU.to_string(),
+                        vals: vec![LDAP_GROUPS.as_bytes().into()],
                     },
                 ],
             };
@@ -144,7 +153,10 @@ impl DirectoryServer {
             // does it already exist?
             let res = self
                 .ldap
-                .search(LdapFilter::Equality("cn".to_string(), u.to_string()))
+                .search(LdapFilter::Equality(
+                    LDAP_ATTR_CN.to_string(),
+                    u.to_string(),
+                ))
                 .await?;
 
             if !res.is_empty() {
@@ -159,7 +171,7 @@ impl DirectoryServer {
                         dn,
                         attributes: vec![
                             LdapAttribute {
-                                atype: "objectClass".to_string(),
+                                atype: LDAP_ATTR_OBJECT_CLASS.to_string(),
                                 vals: vec![
                                     "top".as_bytes().into(),
                                     "nsPerson".as_bytes().into(),
@@ -169,7 +181,7 @@ impl DirectoryServer {
                                 ],
                             },
                             LdapAttribute {
-                                atype: "cn".to_string(),
+                                atype: LDAP_ATTR_CN.to_string(),
                                 vals: vec![a.uuid.as_bytes().to_vec()],
                             },
                             LdapAttribute {
@@ -205,14 +217,14 @@ impl DirectoryServer {
                         dn,
                         attributes: vec![
                             LdapAttribute {
-                                atype: "objectClass".to_string(),
+                                atype: LDAP_ATTR_OBJECT_CLASS.to_string(),
                                 vals: vec![
                                     "top".as_bytes().into(),
                                     "groupOfNames".as_bytes().into(),
                                 ],
                             },
                             LdapAttribute {
-                                atype: "cn".to_string(),
+                                atype: LDAP_ATTR_CN.to_string(),
                                 vals: vec![g.uuid.as_bytes().to_vec(), g.name.as_bytes().into()],
                             },
                         ],
@@ -249,7 +261,7 @@ impl DirectoryServer {
                 changes: vec![LdapModify {
                     operation: LdapModifyType::Replace,
                     modification: LdapPartialAttribute {
-                        atype: "member".to_string(),
+                        atype: LDAP_MEMBER.to_string(),
                         vals,
                     },
                 }],
@@ -268,7 +280,7 @@ impl DirectoryServer {
         let res = self
             .ldap
             .search(LdapFilter::Equality(
-                "cn".to_string(),
+                LDAP_ATTR_CN.to_string(),
                 "priv_account_manage".to_string(),
             ))
             .await?;
@@ -280,11 +292,11 @@ impl DirectoryServer {
                 dn: format!("cn=priv_account_manage,{}", self.ldap.basedn),
                 attributes: vec![
                     LdapAttribute {
-                        atype: "objectClass".to_string(),
+                        atype: LDAP_ATTR_OBJECT_CLASS.to_string(),
                         vals: vec!["top".as_bytes().into(), "groupOfNames".as_bytes().into()],
                     },
                     LdapAttribute {
-                        atype: "cn".to_string(),
+                        atype: LDAP_ATTR_CN.to_string(),
                         vals: vec!["priv_account_manage".as_bytes().into()],
                     },
                 ],
@@ -295,23 +307,23 @@ impl DirectoryServer {
         let res = self
             .ldap
             .search(LdapFilter::Equality(
-                "cn".to_string(),
+                LDAP_ATTR_CN.to_string(),
                 "priv_group_manage".to_string(),
             ))
             .await?;
 
         if res.is_empty() {
             // Doesn't exist
-            info!("Creating cn=priv_group_manage");
+            info!("Creating {}=priv_group_manage", LDAP_ATTR_CN);
             let group = LdapAddRequest {
-                dn: format!("cn=priv_group_manage,{}", self.ldap.basedn),
+                dn: format!("{}=priv_group_manage,{}", LDAP_ATTR_CN, self.ldap.basedn),
                 attributes: vec![
                     LdapAttribute {
-                        atype: "objectClass".to_string(),
+                        atype: LDAP_ATTR_OBJECT_CLASS.to_string(),
                         vals: vec!["top".as_bytes().into(), "groupOfNames".as_bytes().into()],
                     },
                     LdapAttribute {
-                        atype: "cn".to_string(),
+                        atype: LDAP_ATTR_CN.to_string(),
                         vals: vec!["priv_group_manage".as_bytes().into()],
                     },
                 ],
@@ -392,7 +404,7 @@ impl DirectoryServer {
             changes: vec![LdapModify {
                 operation: LdapModifyType::Delete,
                 modification: LdapPartialAttribute {
-                    atype: "member".to_string(),
+                    atype: LDAP_MEMBER.to_string(),
                     vals: priv_group,
                 },
             }],
@@ -405,7 +417,7 @@ impl DirectoryServer {
             changes: vec![LdapModify {
                 operation: LdapModifyType::Delete,
                 modification: LdapPartialAttribute {
-                    atype: "member".to_string(),
+                    atype: LDAP_MEMBER.to_string(),
                     vals: priv_account,
                 },
             }],

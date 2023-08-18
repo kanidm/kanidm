@@ -146,7 +146,7 @@ fn search_oauth2_filter_entry<'a>(
                 return AccessResult::Allow(btreeset!(
                     "class",
                     "displayname",
-                    "uuid",
+                    ValueAttribute::Uuid.as_str(),
                     "oauth2_rs_name",
                     "oauth2_rs_origin",
                     "oauth2_rs_origin_landing"
@@ -198,7 +198,7 @@ fn search_sync_account_filter_entry<'a>(
 
                         return AccessResult::Allow(btreeset!(
                             "class",
-                            "uuid",
+                            ValueAttribute::Uuid.as_str(),
                             "sync_credential_portal"
                         ));
                     }

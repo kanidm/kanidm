@@ -1201,7 +1201,7 @@ mod tests {
                 ),
                 ("name", Value::new_iname("acp_valid")),
                 (
-                    "uuid",
+                    ValueAttribute::Uuid.as_str(),
                     Value::Uuid(uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
                 ),
                 (
@@ -1254,7 +1254,7 @@ mod tests {
                 ),
                 ("name", Value::new_iname("acp_valid")),
                 (
-                    "uuid",
+                    ValueAttribute::Uuid.as_str(),
                     Value::Uuid(uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
                 ),
                 (
@@ -1405,7 +1405,7 @@ mod tests {
                 ),
                 ("name", Value::new_iname("acp_valid")),
                 (
-                    "uuid",
+                    ValueAttribute::Uuid.as_str(),
                     Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
                 ),
                 (
@@ -1437,7 +1437,7 @@ mod tests {
                 ),
                 ("name", Value::new_iname("acp_valid")),
                 (
-                    "uuid",
+                    ValueAttribute::Uuid.as_str(),
                     Value::Uuid(uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
                 ),
                 (
@@ -1496,7 +1496,7 @@ mod tests {
                 ),
                 ("name", Value::new_iname("acp_valid")),
                 (
-                    "uuid",
+                    ValueAttribute::Uuid.as_str(),
                     Value::Uuid(uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
                 ),
                 (
@@ -1528,7 +1528,7 @@ mod tests {
                 ),
                 ("name", Value::new_iname("acp_valid")),
                 (
-                    "uuid",
+                    ValueAttribute::Uuid.as_str(),
                     Value::Uuid(uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
                 ),
                 (
@@ -1581,7 +1581,7 @@ mod tests {
             ),
             ("name", Value::new_iname("acp_valid")),
             (
-                "uuid",
+                ValueAttribute::Uuid.as_str(),
                 Value::Uuid(uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
             ),
             (
@@ -2847,13 +2847,19 @@ mod tests {
             ),
             (
                 "oauth2_rs_scope_map",
-                Value::new_oauthscopemap(UUID_TEST_GROUP_1, btreeset!["groups".to_string()])
-                    .expect("invalid oauthscope")
+                Value::new_oauthscopemap(
+                    UUID_TEST_GROUP_1,
+                    btreeset![OAUTH2_SCOPE_GROUPS.to_string()]
+                )
+                .expect("invalid oauthscope")
             ),
             (
                 "oauth2_rs_sup_scope_map",
-                Value::new_oauthscopemap(UUID_TEST_GROUP_1, btreeset!["supplement".to_string()])
-                    .expect("invalid oauthscope")
+                Value::new_oauthscopemap(
+                    UUID_TEST_GROUP_1,
+                    btreeset![OAUTH2_SCOPE_SUPPLEMENT.to_string()]
+                )
+                .expect("invalid oauthscope")
             ),
             (
                 "oauth2_allow_insecure_client_disable_pkce",
@@ -2909,15 +2915,18 @@ mod tests {
             ),
             (
                 "oauth2_rs_scope_map",
-                Value::new_oauthscopemap(UUID_SYSTEM_ADMINS, btreeset!["groups".to_string()])
-                    .expect("invalid oauthscope")
+                Value::new_oauthscopemap(
+                    UUID_SYSTEM_ADMINS,
+                    btreeset![OAUTH2_SCOPE_GROUPS.to_string()]
+                )
+                .expect("invalid oauthscope")
             ),
             (
                 "oauth2_rs_sup_scope_map",
                 Value::new_oauthscopemap(
                     // This is NOT the scope map that is access checked!
                     UUID_TEST_GROUP_1,
-                    btreeset!["supplement".to_string()]
+                    btreeset![OAUTH2_SCOPE_SUPPLEMENT.to_string()]
                 )
                 .expect("invalid oauthscope")
             ),

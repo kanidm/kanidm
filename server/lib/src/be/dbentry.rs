@@ -7,7 +7,7 @@ use smartstring::alias::String as AttrString;
 use uuid::Uuid;
 
 use crate::be::dbvalue::{DbValueEmailAddressV1, DbValuePhoneNumberV1, DbValueSetV2, DbValueV1};
-use crate::prelude::OperationError;
+use crate::prelude::*;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct DbEntryV1 {
@@ -438,7 +438,7 @@ impl std::fmt::Display for DbEntry {
         match &self.ent {
             DbEntryVers::V1(dbe_v1) => {
                 write!(f, "v1 - {{ ")?;
-                match dbe_v1.attrs.get("uuid") {
+                match dbe_v1.attrs.get(ValueAttribute::Uuid.as_str()) {
                     Some(uuids) => {
                         for uuid in uuids {
                             write!(f, "{uuid:?}, ")?;
@@ -465,7 +465,7 @@ impl std::fmt::Display for DbEntry {
             }
             DbEntryVers::V2(dbe_v2) => {
                 write!(f, "v2 - {{ ")?;
-                match dbe_v2.attrs.get("uuid") {
+                match dbe_v2.attrs.get(ValueAttribute::Uuid.as_str()) {
                     Some(uuids) => {
                         write!(f, "{uuids:?}, ")?;
                     }
