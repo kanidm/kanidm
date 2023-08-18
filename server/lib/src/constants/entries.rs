@@ -569,6 +569,38 @@ impl EntryClass {
     }
 }
 
+#[derive(Clone, Debug)]
+pub struct SchemaGroup {
+    pub name: &'static str,
+    description: &'static str,
+    classes: Vec<EntryClass>,
+    uuid: uuid::Uuid,
+    member: uuid::Uuid,
+}
+
+impl Into<EntryInitNew> for SchemaGroup {
+    fn into(self) -> EntryInitNew {
+        let mut entry = EntryInitNew::new();
+
+        entry.add_ava(Attribute::Name.as_str(), Value::new_iname(self.name));
+        entry.add_ava(
+            Attribute::Description.as_str(),
+            Value::new_utf8s(self.description),
+        );
+        // classes
+        entry.set_ava(
+            Attribute::Class.as_str(),
+            self.classes
+                .into_iter()
+                .map(|class| class.to_value())
+                .collect::<Vec<Value>>(),
+        );
+        entry.add_ava(Attribute::Uuid.as_str(), Value::Uuid(self.uuid));
+        entry.add_ava(Attribute::Member.as_str(), Value::Refer(self.member));
+        entry
+    }
+}
+
 /// Builtin System Admin account.
 pub const JSON_ADMIN_V1: &str = r#"{
     "attrs": {
@@ -617,38 +649,6 @@ lazy_static! {
         ),
         (Attribute::DisplayName.as_str(), Value::new_utf8s("IDM Administrator"))
     );
-}
-
-#[derive(Clone, Debug)]
-pub struct SchemaGroup {
-    pub name: &'static str,
-    description: &'static str,
-    classes: Vec<EntryClass>,
-    uuid: uuid::Uuid,
-    member: uuid::Uuid,
-}
-
-impl Into<EntryInitNew> for SchemaGroup {
-    fn into(self) -> EntryInitNew {
-        let mut entry = EntryInitNew::new();
-
-        entry.add_ava(Attribute::Name.as_str(), Value::new_iname(self.name));
-        entry.add_ava(
-            Attribute::Description.as_str(),
-            Value::new_utf8s(self.description),
-        );
-        // classes
-        entry.set_ava(
-            Attribute::Class.as_str(),
-            self.classes
-                .into_iter()
-                .map(|class| class.to_value())
-                .collect::<Vec<Value>>(),
-        );
-        entry.add_ava(Attribute::Uuid.as_str(), Value::Uuid(self.uuid));
-        entry.add_ava(Attribute::Member.as_str(), Value::Refer(self.member));
-        entry
-    }
 }
 
 lazy_static! {
