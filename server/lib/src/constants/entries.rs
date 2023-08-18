@@ -152,15 +152,17 @@ pub enum Attribute {
     Extra,
 }
 
-impl Attribute {
-    pub fn as_str(self) -> &'static str {
+impl AsRef<str> for Attribute {
+    fn as_ref(&self) -> &str {
         self.into()
     }
-
-    pub fn as_ref(&self) -> &str {
-        self.as_str()
-    }
 }
+
+// impl Attribute {
+//     pub fn as_str(self) -> &'static str {
+//         self.into()
+//     }
+// }
 
 impl From<&Attribute> for &'static str {
     fn from(value: &Attribute) -> Self {
@@ -1126,7 +1128,7 @@ lazy_static! {
                 "Members of this group will have access to experimental web UI features."
             )
         ),
-        (Attribute::GrantUiHint .as_str(), Value::UiHint(UiHint::ExperimentalFeatures))
+        (Attribute::GrantUiHint.as_ref(), Value::UiHint(UiHint::ExperimentalFeatures))
     );
 
     pub static ref E_IDM_ACCOUNT_MAIL_READ_PRIV: EntryInitNew = entry_init!(
