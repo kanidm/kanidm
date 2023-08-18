@@ -1,4 +1,5 @@
 use crate::idprovider::interface::UserToken;
+use crate::pam_data::PamData;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -50,6 +51,7 @@ pub struct PamPrompt {
     pub msg: String,
     pub timeout: Option<u64>, // timeout of None means use the config default
     pub cred_type: Option<CredType>,
+    pub data: Option<PamData>,
 }
 
 impl PamPrompt {
@@ -60,6 +62,7 @@ impl PamPrompt {
             msg: "Password: ".to_string(),
             timeout: None,
             cred_type: Some(CredType::Password),
+            data: None,
         }
     }
 }
@@ -80,7 +83,7 @@ pub enum ClientRequest {
     NssGroupByGid(u32),
     NssGroupByName(String),
     PamAuthenticateInit(String),
-    PamAuthenticateStep(Option<PamCred>),
+    PamAuthenticateStep(Option<PamCred>, Option<PamData>),
     PamAccountAllowed(String),
     PamAccountBeginSession(String),
     InvalidateCache,

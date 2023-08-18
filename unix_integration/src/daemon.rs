@@ -281,15 +281,15 @@ async fn handle_client(
                 debug!("pam authenticate init");
                 pam_state = PamState::Step(account_id.clone());
                 cachelayer
-                    .pam_account_authenticate_step(account_id.as_str(), None)
+                    .pam_account_authenticate_step(account_id.as_str(), None, None)
                     .await
                     .unwrap_or(ClientResponse::Error)
             }
-            ClientRequest::PamAuthenticateStep(cred) => {
+            ClientRequest::PamAuthenticateStep(cred, data) => {
                 debug!("pam authenticate step");
                 match &pam_state {
                     PamState::Step(account_id) => match cachelayer
-                        .pam_account_authenticate_step(account_id.as_str(), cred)
+                        .pam_account_authenticate_step(account_id.as_str(), cred, data)
                         .await
                         .unwrap_or(ClientResponse::Error)
                     {
