@@ -35,8 +35,11 @@ use std::{
 use tokio::{
     join,
     runtime::{self, Builder},
-    sync::mpsc::{
-        channel, error::TryRecvError, unbounded_channel, UnboundedReceiver, UnboundedSender,
+    sync::{
+        mpsc::{
+            channel, error::TryRecvError, unbounded_channel, UnboundedReceiver, UnboundedSender,
+        },
+        oneshot,
     },
     task,
     time::interval,
@@ -118,7 +121,7 @@ impl SelfOpt {
                         return;
                     }
                 };
-                start_identity_verification_tui(spn.to_string(), client);
+                start_identity_verification_tui(spn.to_string(), client).await;
             } // end PersonOpt::Validity
         }
     }
@@ -247,6 +250,12 @@ enum IdentifyUserMsg {
 
 struct Ui(Cursive);
 
+struct UiUserData {
+    controller_tx: UnboundedSender<IdentifyUserMsg>,
+    self_id: String,
+    ui_rx: UnboundedReceiver<IdentifyUserState>,
+}
+
 impl Ui {
     pub fn new(
         controller_tx: UnboundedSender<IdentifyUserMsg>,
@@ -258,9 +267,12 @@ impl Ui {
         cursive.add_global_callback('q', |s| {
             s.quit();
         });
-        cursive.set_user_data(controller_tx);
-        cursive.set_user_data(ui_rx);
-        cursive.set_user_data(self_id);
+        cursive.set_user_data(UiUserData {
+            controller_tx,
+            self_id,
+            ui_rx,
+        });
+
         Ui(cursive)
     }
 
@@ -268,15 +280,12 @@ impl Ui {
         self.0.cb_sink().clone()
     }
 
-    fn render_state(s: &mut Cursive, state: IdentifyUserState) {
-        let controller_tx = s
-            .user_data::<UnboundedSender<IdentifyUserMsg>>()
-            .unwrap()
-            .to_owned();
-        let self_id = s.user_data::<String>().unwrap().to_owned();
-
-        panic!("render_state not implemented");
-
+    fn render_state(
+        s: &mut Cursive,
+        state: IdentifyUserState,
+        controller_tx: UnboundedSender<IdentifyUserMsg>,
+        self_id: String,
+    ) {
         match dbg!(state) {
             IdentifyUserState::IdDisplayAndSubmit => {
                 let cloned_ui_tx = controller_tx.clone();
@@ -405,13 +414,14 @@ impl Ui {
     }
 
     pub fn update_state_callback(s: &mut Cursive) {
-        let state = s
-            .with_user_data(|ui_rx: &mut UnboundedReceiver<IdentifyUserState>| {
-                ui_rx.blocking_recv()
-            })
-            .flatten();
-        if let Some(state) = state {
-            Ui::render_state(s, dbg!(state));
+        let user_data = match s.user_data::<UiUserData>() {
+            Some(data) => data,
+            None => return, // TODO: make this make sense
+        };
+        if let Some(state) = user_data.ui_rx.blocking_recv() {
+            let controller_rx = user_data.controller_tx.clone(); // we have to take ownership so the mut borrow `s` can be passed to `render_state`
+            let self_id = user_data.self_id.clone();
+            Ui::render_state(s, dbg!(state), controller_rx, self_id);
         }
     }
 
@@ -423,64 +433,61 @@ impl Ui {
     }
 }
 
-pub fn start_identity_verification_tui(self_id: String, client: KanidmClient) {
+pub async fn start_identity_verification_tui(self_id: String, client: KanidmClient) {
     let (controller_tx, mut controller_rx) = unbounded_channel::<IdentifyUserMsg>();
     let (ui_tx, mut ui_rx) = unbounded_channel::<IdentifyUserState>();
 
-    let self_id_clone = self_id.to_string();
     controller_tx.send(IdentifyUserMsg::Start);
-    print!("Starting UI");
+    let self_id_clone = self_id.clone();
 
-    let (cb_tx, mut cb_rx) = unbounded_channel::<CbSink>();
+    // oneshot channel to get the callback sink from the ui
+    let (cb_tx, mut cb_rx) = oneshot::channel::<CbSink>();
+    // we start the ui in its own thread
+    let gui_handle = std::thread::spawn(move || {
+        let mut ui = Ui::new(controller_tx, ui_rx, self_id_clone);
+        cb_tx.send(ui.get_cb()).unwrap();
+        ui.0.run();
+    });
 
-    let mut ui = Ui::new(controller_tx, ui_rx, self_id_clone);
-    dbg!("Starting UI");
-
-    let cb = ui.get_cb();
-    let handle = std::thread::spawn(move || {
-        panic!("Dio cane avete rotto il cazzo");
-        let runtime = Builder::new_current_thread().enable_all().build().unwrap();
-        let logic_handle = runtime.spawn(async move {
-            let send_msg_and_call_callback = |msg: IdentifyUserState| {
-                println!("Sent msg: {:?}", msg);    
-                ui_tx.send(msg.clone()).unwrap();
-                cb.send(Box::new(Ui::update_state_callback));
-            };
-        dbg!("Starting UI");
-        loop {
-        while let Some(msg) = controller_rx.recv().await {
-            println!("Received msg: {:?}", msg.clone());
-            let (id, req) = match &msg {
-                IdentifyUserMsg::Start => (&self_id, IdentifyUserRequest::Start),
-                IdentifyUserMsg::SubmitOtherId { other_id } => {
-                    (other_id, IdentifyUserRequest::Start)
-                }
-                IdentifyUserMsg::SubmitTotp { totp, other_id } => (
-                    other_id,
-                    IdentifyUserRequest::SubmitCode { other_totp: *totp },
-                ),
-                IdentifyUserMsg::CodeConfirmedFirst { other_id } => todo!(),
-                IdentifyUserMsg::CodeConfirmedSecond { other_id } => {
-                    send_msg_and_call_callback(IdentifyUserState::Success);
-                    continue;
-                }
-                IdentifyUserMsg::Quit => {
-                   send_msg_and_call_callback(IdentifyUserState::Quit);
-                    return;
-                }
-            };
-
-            let res = match client.idm_person_identify_user(&id, req.clone()).await {
-                Ok(res) => res,
-                Err(e) => {
-                    let err = IdentifyUserState::Error {
-                        msg: format!("An error occurred -> {:?}", e),
-                    };
-                    send_msg_and_call_callback(err);
-                    return;
-                }
-            };
-            let state = match res {
+    let cb = cb_rx.await.unwrap();
+    let send_msg_and_call_callback = |msg: IdentifyUserState| {
+        println!("Sent msg: {:?}", msg);
+        ui_tx.send(msg.clone()).unwrap();
+        cb.send(Box::new(Ui::update_state_callback));
+    };
+    while let Some(msg) = controller_rx.recv().await {
+        println!("Received msg: {:?}", msg.clone());
+        let (id, req) = match &msg {
+            IdentifyUserMsg::Start => (&self_id, IdentifyUserRequest::Start),
+            IdentifyUserMsg::SubmitOtherId { other_id } => (other_id, IdentifyUserRequest::Start),
+            IdentifyUserMsg::SubmitTotp { totp, other_id } => (
+                other_id,
+                IdentifyUserRequest::SubmitCode { other_totp: *totp },
+            ),
+            IdentifyUserMsg::CodeConfirmedFirst { other_id } => todo!(),
+            IdentifyUserMsg::CodeConfirmedSecond { other_id } => {
+                send_msg_and_call_callback(IdentifyUserState::Success);
+                continue;
+            }
+            IdentifyUserMsg::Quit => {
+                send_msg_and_call_callback(IdentifyUserState::Quit);
+                return;
+            }
+        };
+        println!("Sending request: {:?}, with id: {id}", req);
+        let res = match client.idm_person_identify_user(&id, req.clone()).await {
+            Ok(res) => res,
+            Err(e) => {
+                let err = IdentifyUserState::Error {
+                    msg: format!("An error occurred -> {:?}", e),
+                };
+                println!("got error...");
+                send_msg_and_call_callback(err);
+                return;
+            }
+        };
+        println!("Got response: {:?}", res);
+        let state = match dbg!(res) {
                         IdentifyUserResponse::IdentityVerificationUnavailable => IdentifyUserState::Error { msg: "Unfortunately the identity verification feature is not available for your account.".to_string() },
                         IdentifyUserResponse::IdentityVerificationAvailable => IdentifyUserState::IdDisplayAndSubmit,
                         IdentifyUserResponse::ProvideCode { step, totp } => {
@@ -501,18 +508,13 @@ pub fn start_identity_verification_tui(self_id: String, client: KanidmClient) {
                         IdentifyUserResponse::CodeFailure => todo!(),
                         IdentifyUserResponse::InvalidUserId => todo!()
                     };
-            send_msg_and_call_callback(state);
-        }
+        send_msg_and_call_callback(state);
     }
-    });
-    });
 
-    // ui.cursive_runner.add_layer(TextView::new("Hello world!"));
-    ui.0.run();
-    handle.join().unwrap();
-    // logic_handle.await.unwrap();
+    gui_handle.join().unwrap();
 }
 
+// * Don't mind this part ....
 // /// This is the identity verification feature handler
 // #[async_recursion] // dear lord have mercy for I have sinned writing this function
 // async fn identify_user_exec<'a>(
