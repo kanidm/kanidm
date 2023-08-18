@@ -549,8 +549,8 @@ pub static ref SCHEMA_CLASS_PERSON: SchemaClass = SchemaClass {
     description: "Object representation of a person".to_string(),
 
     sync_allowed: true,
-    systemmay: attrstring_vec!(["mail", "legalname", "id_verification_eckey"]),
-    systemmust: attrstring_vec!(["displayname", "name"]),
+    systemmay: attrstring_vec!(["mail", "legalname"]),
+    systemmust: attrstring_vec!(["displayname", "name", "id_verification_eckey"]),
     ..Default::default()
 };
 

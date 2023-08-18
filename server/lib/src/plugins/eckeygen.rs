@@ -1,103 +1,45 @@
 use openssl::ec::{EcGroup, EcKey};
 use openssl::nid::Nid;
-use sketching::{admin_error, security_info};
-use uuid::Uuid;
+
+use crate::prelude::*;
 
 use super::Plugin;
-use crate::event::{CreateEvent, ModifyEvent};
-use crate::modify::{ModifyList, ModifyValid};
-use crate::prelude::{BatchModifyEvent, EntryInvalidCommitted, Modify};
-use crate::prelude::{Entry, EntryInvalid, EntryInvalidNew, OperationError};
-use crate::server::QueryServerWriteTransaction;
-use crate::value::PartialValue;
-use sketching::tagged_event;
-use sketching::EventTag;
 
 lazy_static! {
     // it contains all the partialvalues used to match against an Entry's class,
     // we need ALL partialvalues to match in order to target the entry
-    static ref CLASSES_TO_UPDATE: [PartialValue; 3] = [PartialValue::new_iutf8("account"), PartialValue::new_iutf8("person"), PartialValue::new_iutf8("object")];
-
     static ref DEFAULT_KEY_GROUP: EcGroup = {
         let nid = Nid::X9_62_PRIME256V1; // NIST P-256 curve
         #[allow(clippy::unwrap_used)]
         EcGroup::from_curve_name(nid).unwrap()
     };
 }
+
 pub struct EcdhKeyGen {}
 
 impl EcdhKeyGen {
-    fn is_entry_to_update<VALUE, STATE>(entry: &mut Entry<VALUE, STATE>) -> bool {
-        CLASSES_TO_UPDATE
-            .iter()
-            .all(|pv| entry.attribute_equality("class", pv))
-    }
     // we optionally provide a target_cand to update only the entry with the given uuid
     fn generate_key<STATE: Clone>(
         cands: &mut [Entry<EntryInvalid, STATE>],
-        target_cand: Option<Uuid>,
     ) -> Result<(), OperationError> {
         for cand in cands.iter_mut() {
-            if Self::is_entry_to_update(cand) {
-                if let (Some(target_cand), Some(current_uuid)) = (target_cand, cand.get_uuid()) {
-                    if target_cand != current_uuid {
-                        continue;
-                    }
-                }
+            if cand.attribute_equality("class", &PVCLASS_PERSON)
+                && !cand.attribute_pres("id_verification_eckey")
+            {
+                debug!("Generating idv_eckey for {}", cand.get_display_id());
+
                 let new_private_key = EcKey::generate(&DEFAULT_KEY_GROUP).map_err(|e| {
-                    admin_error!(err = ?e, "Unable to generate identification ECDH private key");
+                    error!(err = ?e, "Unable to generate id verification ECDH private key");
                     OperationError::CryptographyError
                 })?;
-                cand.add_ava_if_not_exist(
+
+                cand.add_ava(
                     "id_verification_eckey",
                     crate::value::Value::EcKeyPrivate(new_private_key),
                 )
             }
         }
         Ok(())
-    }
-
-    fn handle_modify(
-        cands: &mut [EntryInvalidCommitted],
-        me: &ModifyEvent,
-    ) -> Result<(), OperationError> {
-        if Self::should_regenerate_ecdh_key(&me.modlist)? {
-            security_info!("regenerating personal ecdh secret");
-            Self::generate_key(cands, None)?;
-        };
-
-        Ok(())
-    }
-
-    fn handle_batch_modify(
-        cands: &mut [EntryInvalidCommitted],
-        me: &BatchModifyEvent,
-    ) -> Result<(), OperationError> {
-        for (uuid, modlist) in me.modset.iter() {
-            if Self::should_regenerate_ecdh_key(modlist)? {
-                security_info!("regenerating personal ecdh secret");
-                Self::generate_key(cands, Some(*uuid))?;
-            };
-        }
-        Ok(())
-    }
-
-    fn should_regenerate_ecdh_key(
-        modlist: &ModifyList<ModifyValid>,
-    ) -> Result<bool, OperationError> {
-        let modify_present_attempted = modlist.iter().any(|m| match m {
-            Modify::Present(a, _) => a == "id_verification_eckey",
-            _ => false,
-        });
-        if modify_present_attempted {
-            Err(OperationError::SystemProtectedAttribute)
-        } else {
-            let should_regenerate_ecdh_key = modlist.iter().any(|m| match m {
-                Modify::Purged(a) | Modify::Removed(a, _) => a == "id_verification_eckey",
-                _ => false,
-            });
-            Ok(should_regenerate_ecdh_key)
-        }
     }
 }
 
@@ -106,30 +48,33 @@ impl Plugin for EcdhKeyGen {
         "plugin_ecdhkey_gen"
     }
 
+    #[instrument(level = "debug", name = "ecdhkeygen::pre_create_transform", skip_all)]
     fn pre_create_transform(
         _qs: &mut QueryServerWriteTransaction,
         cand: &mut Vec<EntryInvalidNew>,
         _ce: &CreateEvent,
     ) -> Result<(), OperationError> {
-        Self::generate_key(cand, None)
+        Self::generate_key(cand)
     }
 
+    #[instrument(level = "debug", name = "ecdhkeygen::pre_modify", skip_all)]
     fn pre_modify(
         _qs: &mut crate::server::QueryServerWriteTransaction,
         _pre_cand: &[std::sync::Arc<crate::prelude::EntrySealedCommitted>],
         cand: &mut Vec<crate::prelude::EntryInvalidCommitted>,
-        me: &crate::event::ModifyEvent,
+        _me: &crate::event::ModifyEvent,
     ) -> Result<(), kanidm_proto::v1::OperationError> {
-        Self::handle_modify(cand, me)
+        Self::generate_key(cand)
     }
 
+    #[instrument(level = "debug", name = "ecdhkeygen::pre_batch_modify", skip_all)]
     fn pre_batch_modify(
         _qs: &mut crate::server::QueryServerWriteTransaction,
         _pre_cand: &[std::sync::Arc<crate::prelude::EntrySealedCommitted>],
         cand: &mut Vec<crate::prelude::EntryInvalidCommitted>,
-        me: &crate::server::batch_modify::BatchModifyEvent,
+        _me: &crate::server::batch_modify::BatchModifyEvent,
     ) -> Result<(), kanidm_proto::v1::OperationError> {
-        Self::handle_batch_modify(cand, me)
+        Self::generate_key(cand)
     }
 }
 
@@ -175,6 +120,9 @@ mod tests {
         );
     }
 
+    /*
+    // Invalid, can't be set due to no impl from clone_value
+
     #[test]
     fn test_modify_present_ecdkey() {
         let ea = entry_init!(
@@ -200,6 +148,7 @@ mod tests {
             |_| {}
         );
     }
+    */
 
     #[test]
     fn test_modify_purge_eckey() {
