@@ -627,25 +627,25 @@ mod test {
         // and wonders to this line of code I'm sorry to have wasted your time
         name.truncate(14);
         entry_init!(
-            ("class", Value::new_class("object")),
-            ("class", Value::new_class("account")),
-            ("class", Value::new_class("person")),
-            ("name", Value::new_iname(&name)),
-            ("uuid", Value::Uuid(uuid)),
-            ("description", Value::new_utf8s("some valid user")),
-            ("displayname", Value::new_utf8s("Some valid user"))
+            (ATTR_CLASS, ValueClass::Object.to_value()),
+            (ATTR_CLASS, ValueClass::Class.to_value()),
+            (ATTR_CLASS, ValueClass::Person.to_value()),
+            (ATTR_NAME, Value::new_iname(&name)),
+            (ATTR_UUID, Value::Uuid(uuid)),
+            (ATTR_DESCRIPTION, Value::new_utf8s("some valid user")),
+            (ATTR_DISPLAYNAME, Value::new_utf8s("Some valid user"))
         )
     }
 
     fn create_invalid_user_account(uuid: Uuid) -> EntryInitNew {
         entry_init!(
-            ("class", Value::new_class("object")),
-            ("class", Value::new_class("account")),
-            ("class", Value::new_class("service_account")),
-            ("name", Value::new_iname("invalid_user")),
-            ("uuid", Value::Uuid(uuid)),
-            ("description", Value::new_utf8s("invalid_user")),
-            ("displayname", Value::new_utf8s("Invalid user"))
+            (ATTR_CLASS, ValueClass::Object.to_value()),
+            (ATTR_CLASS, ValueClass::Class.to_value()),
+            (ATTR_CLASS, ValueClass::ServiceAccount.to_value()),
+            (ATTR_NAME, Value::new_iname("invalid_user")),
+            (ATTR_UUID, Value::Uuid(uuid)),
+            (ATTR_DESCRIPTION, Value::new_utf8s("invalid_user")),
+            (ATTR_DISPLAYNAME, Value::new_utf8s("Invalid user"))
         )
     }
 }

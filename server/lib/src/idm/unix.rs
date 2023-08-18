@@ -34,7 +34,10 @@ pub(crate) struct UnixUserAccount {
 
 macro_rules! try_from_entry {
     ($value:expr, $groups:expr) => {{
-        if !$value.attribute_equality(ValueAttribute::Class.as_str(), &ValueClass::Account.into()) {
+        if !$value.attribute_equality(
+            ValueAttribute::Class.as_str(),
+            &ValueClass::Account.to_partialvalue(),
+        ) {
             return Err(OperationError::InvalidAccountState(
                 "Missing class: account".to_string(),
             ));
@@ -42,7 +45,7 @@ macro_rules! try_from_entry {
 
         if !$value.attribute_equality(
             ValueAttribute::Class.as_str(),
-            &ValueClass::PosixAccount.into(),
+            &ValueClass::PosixAccount.to_partialvalue(),
         ) {
             return Err(OperationError::InvalidAccountState(
                 "Missing class: posixaccount".to_string(),
@@ -309,19 +312,19 @@ macro_rules! try_from_group_e {
     ($value:expr) => {{
         // We could be looking at a user for their UPG, OR a true group.
 
-        if !(($value
-            .attribute_equality(ValueAttribute::Class.as_str(), &ValueClass::Account.into())
-            && $value.attribute_equality(
-                ValueAttribute::Class.into(),
-                &ValueClass::PosixAccount.into(),
-            ))
-            || ($value
-                .attribute_equality(ValueAttribute::Class.as_str(), &ValueClass::Group.into())
-                && $value.attribute_equality(
-                    ValueAttribute::Class.into(),
-                    &ValueClass::PosixGroup.into(),
-                )))
-        {
+        if !(($value.attribute_equality(
+            ValueAttribute::Class.as_str(),
+            &ValueClass::Account.to_partialvalue(),
+        ) && $value.attribute_equality(
+            ValueAttribute::Class.into(),
+            &ValueClass::PosixAccount.to_partialvalue(),
+        )) || ($value.attribute_equality(
+            ValueAttribute::Class.as_str(),
+            &ValueClass::Group.to_partialvalue(),
+        ) && $value.attribute_equality(
+            ValueAttribute::Class.into(),
+            &ValueClass::PosixGroup.to_partialvalue(),
+        ))) {
             return Err(OperationError::InvalidAccountState(
                 "Missing class: account && posixaccount OR group && posixgroup".to_string(),
             ));
@@ -358,7 +361,10 @@ macro_rules! try_from_account_group_e {
         // First synthesise the self-group from the account.
         // We have already checked these, but paranoia is better than
         // complacency.
-        if !$value.attribute_equality(ValueAttribute::Class.as_str(), &ValueClass::Account.into()) {
+        if !$value.attribute_equality(
+            ValueAttribute::Class.as_str(),
+            &ValueClass::Account.to_partialvalue(),
+        ) {
             return Err(OperationError::InvalidAccountState(
                 "Missing class: account".to_string(),
             ));
@@ -366,7 +372,7 @@ macro_rules! try_from_account_group_e {
 
         if !$value.attribute_equality(
             ValueAttribute::Class.as_str(),
-            &ValueClass::PosixAccount.into(),
+            &ValueClass::PosixAccount.to_partialvalue(),
         ) {
             return Err(OperationError::InvalidAccountState(
                 "Missing class: posixaccount".to_string(),

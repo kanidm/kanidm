@@ -26,7 +26,10 @@ use kanidm_lib_crypto::CryptoPolicy;
 macro_rules! try_from_entry {
     ($value:expr, $groups:expr) => {{
         // Check the classes
-        if !$value.attribute_equality(ValueAttribute::Class.as_str(), &ValueClass::Account.into()) {
+        if !$value.attribute_equality(
+            ValueAttribute::Class.as_str(),
+            &ValueClass::Account.to_partialvalue(),
+        ) {
             return Err(OperationError::InvalidAccountState(
                 "Missing class: account".to_string(),
             ));
@@ -34,14 +37,14 @@ macro_rules! try_from_entry {
 
         // Now extract our needed attributes
         let name = $value
-            .get_ava_single_iname("name")
+            .get_ava_single_iname(ValueAttribute::Name.as_str())
             .map(|s| s.to_string())
             .ok_or(OperationError::InvalidAccountState(
                 "Missing attribute: name".to_string(),
             ))?;
 
         let displayname = $value
-            .get_ava_single_utf8("displayname")
+            .get_ava_single_utf8(ValueAttribute::DisplayName.as_str())
             .map(|s| s.to_string())
             .ok_or(OperationError::InvalidAccountState(
                 "Missing attribute: displayname".to_string(),
@@ -101,20 +104,23 @@ macro_rules! try_from_entry {
             .collect();
 
         // For now disable cred updates on sync accounts too.
-        if $value.attribute_equality(ValueAttribute::Class.as_str(), &ValueClass::Person.into()) {
+        if $value.attribute_equality(
+            ValueAttribute::Class.as_str(),
+            &ValueClass::Person.to_partialvalue(),
+        ) {
             ui_hints.insert(UiHint::CredentialUpdate);
         }
 
         if $value.attribute_equality(
             ValueAttribute::Class.as_str(),
-            &ValueClass::SyncObject.into(),
+            &ValueClass::SyncObject.to_partialvalue(),
         ) {
             ui_hints.insert(UiHint::SynchronisedAccount);
         }
 
         if $value.attribute_equality(
             ValueAttribute::Class.as_str(),
-            &ValueClass::PosixAccount.into(),
+            &ValueClass::PosixAccount.to_partialvalue(),
         ) {
             ui_hints.insert(UiHint::PosixAccount);
         }
