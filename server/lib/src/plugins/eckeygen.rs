@@ -87,7 +87,7 @@ mod tests {
     use uuid::Uuid;
 
     use crate::plugins::eckeygen::DEFAULT_KEY_GROUP;
-    use crate::prelude::*;
+    use crate::prelude::{Entry, EntryInit, EntryNew};
     use crate::value::Value;
     use crate::valueset;
 
