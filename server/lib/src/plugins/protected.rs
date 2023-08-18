@@ -465,7 +465,7 @@ mod tests {
             ),
             (
                 "acp_modify_removedattr",
-                Value::new_iutf8("private_cookie_key")
+                ValueAttribute::PrivateCookieKey.to_value()
             ),
             (
                 ValueAttribute::AcpModifyPresentAttr.as_str(),
@@ -509,7 +509,7 @@ mod tests {
             ),
             (
                 "acp_modify_presentattr",
-                Value::new_iutf8("private_cookie_key")
+                ValueAttribute::PrivateCookieKey.to_value()
             ),
             (
                 ValueAttribute::AcpCreateClass.as_str(),
@@ -573,7 +573,7 @@ mod tests {
             ),
             (
                 ValueAttribute::AcpCreateAttr.as_str(),
-                Value::new_iutf8("private_cookie_key")
+                ValueAttribute::PrivateCookieKey.to_value()
             ),
             (
                 ValueAttribute::AcpCreateAttr.as_str(),

@@ -92,7 +92,7 @@ lazy_static! {
             ATTR_ACP_MODIFY_REMOVEDATTR,
             ValueAttribute::Class.to_value()
         ),
-        (ATTR_ACP_MODIFY_CLASS, Value::new_iutf8("recycled"))
+        (ATTR_ACP_MODIFY_CLASS, ValueClass::Recycled.to_value())
     );
 }
 
@@ -300,16 +300,16 @@ lazy_static! {
             //     .expect("Invalid JSON filter")
         ),
         (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Class.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Value::new_iutf8(ATTR_NAME)),
-        (ATTR_ACP_SEARCH_ATTR, Value::new_iutf8("spn")),
-        (ATTR_ACP_SEARCH_ATTR, Value::new_iutf8("displayname")),
+        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Name.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Spn.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::DisplayName.to_value()),
         (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Class.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Value::new_iutf8("memberof")),
-        (ATTR_ACP_SEARCH_ATTR, Value::new_iutf8("member")),
-        (ATTR_ACP_SEARCH_ATTR, Value::new_iutf8(ATTR_UUID)),
-        (ATTR_ACP_SEARCH_ATTR, Value::new_iutf8("gidnumber")),
-        (ATTR_ACP_SEARCH_ATTR, Value::new_iutf8("loginshell")),
-        (ATTR_ACP_SEARCH_ATTR, Value::new_iutf8("ssh_publickey"))
+        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::MemberOf.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Member.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Uuid.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::GidNumber.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::LoginShell.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::SshUnderscorePublicKey.to_value())
     );
 }
 
@@ -718,18 +718,18 @@ lazy_static! {
                 .expect("Invalid JSON filter")
         ),
         (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Class.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Value::new_iutf8(ATTR_NAME)),
-        (ATTR_ACP_SEARCH_ATTR, Value::new_iutf8(ATTR_UUID)),
-        (ATTR_ACP_SEARCH_ATTR, Value::new_iutf8("spn")),
-        (ATTR_ACP_SEARCH_ATTR, Value::new_iutf8(ATTR_UUID)),
+        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Name.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Uuid.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Spn.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Uuid.to_value()),
         (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Description.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Value::new_iutf8("member")),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, Value::new_iutf8(ATTR_NAME)),
+        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Member.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::Name.to_value()),
         (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::Description.to_value()),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, Value::new_iutf8("member")),
-        (ATTR_ACP_MODIFY_PRESENTATTR, Value::new_iutf8(ATTR_NAME)),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::Member.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::Name.to_value()),
         (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::Description.to_value()),
-        (ATTR_ACP_MODIFY_PRESENTATTR, Value::new_iutf8("member"))
+        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::Member.to_value())
     );
 }
 
@@ -807,7 +807,7 @@ lazy_static! {
         (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::DeviceKeys.to_value()),
         (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::ApiTokenSession.to_value()),
         (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::UserAuthTokenSession.to_value()),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, Value::new_iutf8("id_verification_eckey")),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::IdVerificationEcKey.to_value()),
 
         (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::Name.to_value()),
         (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::DisplayName.to_value()),
@@ -1012,17 +1012,17 @@ lazy_static! {
             )
                 .expect("Invalid JSON filter")
         ),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, Value::new_iutf8(ATTR_NAME)),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, Value::new_iutf8("displayname")),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, Value::new_iutf8("ssh_publickey")),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, Value::new_iutf8("primary_credential")),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, Value::new_iutf8("account_expire")),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, Value::new_iutf8("account_valid_from")),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, Value::new_iutf8("passkeys")),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, Value::new_iutf8("devicekeys")),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, Value::new_iutf8("api_token_session")),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, Value::new_iutf8("user_auth_token_session")),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, Value::new_iutf8("id_verification_eckey")),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::Name.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::DisplayName.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::SshUnderscorePublicKey.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::PrimaryCredential.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::AccountExpire.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::AccountValidFrom.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::PassKeys.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::DeviceKeys.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::ApiTokenSession.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::UserAuthTokenSession.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::IdVerificationEcKey.to_value()),
 
         (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::Name.to_value()),
         (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::DisplayName.to_value()),
@@ -1066,7 +1066,7 @@ lazy_static! {
         (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Uuid.to_value()),
         (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Description.to_value()),
         (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Member.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Value::new_iutf8("dynmember")),
+        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::DynMember.to_value()),
         (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::Description.to_value()),
         (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::Member.to_value()),
         (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::Name.to_value()),
@@ -1527,16 +1527,16 @@ lazy_static! {
                 .expect("Invalid JSON filter")
         ),
         (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Class.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Value::new_iutf8(ATTR_NAME)),
-        (ATTR_ACP_SEARCH_ATTR, Value::new_iutf8(ATTR_UUID)),
-        (ATTR_ACP_SEARCH_ATTR, Value::new_iutf8("spn")),
+        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Name.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Uuid.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Spn.to_value()),
         (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Description.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Value::new_iutf8("member")),
-        (ATTR_ACP_SEARCH_ATTR, Value::new_iutf8("gidnumber")),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, Value::new_iutf8("gidnumber")),
+        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Member.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, ValueAttribute::GidNumber.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::GidNumber.to_value()),
         (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::Class.to_value()),
-        (ATTR_ACP_MODIFY_PRESENTATTR, Value::new_iutf8("gidnumber")),
-        (ATTR_ACP_MODIFY_CLASS, Value::new_iutf8("posixgroup"))
+        (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::GidNumber.to_value()),
+        (ATTR_ACP_MODIFY_CLASS, ValueClass::PosixGroup.to_value())
     );
 }
 

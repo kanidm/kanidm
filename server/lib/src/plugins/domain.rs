@@ -127,13 +127,13 @@ impl Domain {
                     e.add_ava("es256_private_key_der", v);
                 }
 
-                if !e.attribute_pres("private_cookie_key") {
+                if !e.attribute_pres(ATTR_PRIVATE_COOKIE_KEY) {
                     security_info!("regenerating domain cookie key");
                     let mut key = [0; 64];
                     let mut rng = StdRng::from_entropy();
                     rng.fill(&mut key);
                     let v = Value::new_privatebinary(&key);
-                    e.add_ava("private_cookie_key", v);
+                    e.add_ava(ATTR_PRIVATE_COOKIE_KEY, v);
                 }
 
                 trace!(?e);

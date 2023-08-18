@@ -419,7 +419,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             f_eq(ValueAttribute::Uuid, PVUUID_DOMAIN_INFO.clone()),
         ]));
         // Delete the existing cookie key to trigger a regeneration.
-        let modlist = ModifyList::new_purge("private_cookie_key");
+        let modlist = ModifyList::new_purge(ATTR_PRIVATE_COOKIE_KEY);
         self.internal_modify(&filter, &modlist)
         // Complete
     }
@@ -427,7 +427,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     #[instrument(level = "debug", skip_all)]
     pub fn migrate_13_to_14(&mut self) -> Result<(), OperationError> {
         admin_warn!("starting 13 to 14 migration.");
-        let filter = filter!(f_eq("class", PVCLASS_DYNGROUP.clone()));
+        let filter = filter!(f_eq(ValueAttribute::Class, ValueClass::DynGroup.into()));
         // Delete the incorrectly added "member" attr.
         let modlist = ModifyList::new_purge("member");
         self.internal_modify(&filter, &modlist)

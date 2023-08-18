@@ -253,10 +253,10 @@ mod tests {
         let key = r2
             .first()
             .unwrap()
-            .get_ava_single_eckey_private("id_verification_eckey")
+            .get_ava_single_eckey_private(ATTR_ID_VERIFICATION_ECKEY)
             .unwrap();
 
-        e.add_ava("id_verification_eckey", Value::EcKeyPrivate(key.clone()));
+        e.add_ava(ATTR_ID_VERIFICATION_ECKEY, Value::EcKeyPrivate(key.clone()));
 
         let expected = vec![Arc::new(e.into_sealed_committed())];
 

@@ -3091,7 +3091,7 @@ impl From<&SchemaAttribute> for Entry<EntryInit, EntryNew> {
         // Convert an Attribute to an entry ... make it good!
         let uuid_v = vs_uuid![s.uuid];
         let name_v = vs_iutf8![s.name.as_str()];
-        let desc_v = vs_utf8![s.description.clone()];
+        let desc_v = vs_utf8![s.description.to_owned()];
 
         let multivalue_v = vs_bool![s.multivalue];
         let sync_allowed_v = vs_bool![s.sync_allowed];
@@ -3140,7 +3140,7 @@ impl From<&SchemaClass> for Entry<EntryInit, EntryNew> {
     fn from(s: &SchemaClass) -> Self {
         let uuid_v = vs_uuid![s.uuid];
         let name_v = vs_iutf8![s.name.as_str()];
-        let desc_v = vs_utf8![s.description.clone()];
+        let desc_v = vs_utf8![s.description.to_owned()];
         let sync_allowed_v = vs_bool![s.sync_allowed];
 
         // let mut attrs: Map<AttrString, Set<Value>> = Map::with_capacity(8);
