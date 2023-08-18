@@ -245,7 +245,7 @@ impl std::fmt::Debug for Oauth2RS {
         f.debug_struct("Oauth2RS")
             .field("name", &self.name)
             .field("displayname", &self.displayname)
-            .field(ValueAttribute::Uuid.as_str(), &self.uuid)
+            .field("uuid", &self.uuid)
             .field("type", &self.type_)
             .field("origin", &self.origin)
             .field("scope_maps", &self.scope_maps)
@@ -1934,9 +1934,9 @@ fn extra_claims_for_account(
     scopes: &BTreeSet<String>,
 ) -> BTreeMap<String, serde_json::Value> {
     let mut extra_claims = BTreeMap::new();
-    if scopes.contains(OAUTH2_SCOPE_GROUPS) {
+    if scopes.contains(&"groups".to_string()) {
         extra_claims.insert(
-            OAUTH2_SCOPE_GROUPS.to_string(),
+            "groups".to_string(),
             account.groups.iter().map(|x| x.to_proto().uuid).collect(),
         );
     }
@@ -2083,7 +2083,7 @@ mod tests {
                 ValueAttribute::OAuth2RsSupScopeMap.as_str(),
                 Value::new_oauthscopemap(
                     UUID_IDM_ALL_ACCOUNTS,
-                    btreeset![OAUTH2_SCOPE_SUPPLEMENT.to_string()]
+                    btreeset!["supplement".to_string()]
                 )
                 .expect("invalid oauthscope")
             ),
@@ -2147,7 +2147,7 @@ mod tests {
         let modlist = ModifyList::new_list(vec![
             Modify::Present("user_auth_token_session".into(), session),
             Modify::Present(
-                ValueAttribute::PrimaryCredential.as_str().into(),
+                "primary_credential".into(),
                 Value::Cred("primary".to_string(), cred),
             ),
         ]);
@@ -2206,11 +2206,8 @@ mod tests {
             // System admins
             (
                 ValueAttribute::OAuth2RsScopeMap.as_str(),
-                Value::new_oauthscopemap(
-                    UUID_SYSTEM_ADMINS,
-                    btreeset![OAUTH2_SCOPE_GROUPS.to_string()]
-                )
-                .expect("invalid oauthscope")
+                Value::new_oauthscopemap(UUID_SYSTEM_ADMINS, btreeset!["groups".to_string()])
+                    .expect("invalid oauthscope")
             ),
             (
                 ValueAttribute::OAuth2RsScopeMap.as_str(),
@@ -2224,7 +2221,7 @@ mod tests {
                 ValueAttribute::OAuth2RsSupScopeMap.as_str(),
                 Value::new_oauthscopemap(
                     UUID_IDM_ALL_ACCOUNTS,
-                    btreeset![OAUTH2_SCOPE_SUPPLEMENT.to_string()]
+                    btreeset!["supplement".to_string()]
                 )
                 .expect("invalid oauthscope")
             )
@@ -2267,7 +2264,7 @@ mod tests {
         let modlist = ModifyList::new_list(vec![
             Modify::Present("user_auth_token_session".into(), session),
             Modify::Present(
-                ValueAttribute::PrimaryCredential.as_str().into(),
+                "primary_credential".into(),
                 Value::Cred("primary".to_string(), cred),
             ),
         ]);
@@ -2944,7 +2941,7 @@ mod tests {
         let me_inv_m = ModifyEvent::new_internal_invalid(
             filter!(f_eq(ValueAttribute::Name, PartialValue::new_iname("admin"))),
             ModifyList::new_list(vec![Modify::Present(
-                AttrString::from(ATTR_ACCOUNT_EXPIRE),
+                AttrString::from("account_expire"),
                 v_expire,
             )]),
         );
@@ -3377,9 +3374,9 @@ mod tests {
         assert!(
             discovery.scopes_supported
                 == Some(vec![
-                    OAUTH2_SCOPE_GROUPS.to_string(),
+                    "groups".to_string(),
                     OAUTH2_SCOPE_OPENID.to_string(),
-                    OAUTH2_SCOPE_SUPPLEMENT.to_string(),
+                    "supplement".to_string(),
                 ])
         );
 
@@ -3537,11 +3534,7 @@ mod tests {
         assert!(oidc.s_claims.name == Some("System Administrator".to_string()));
         assert!(oidc.s_claims.preferred_username == Some("admin@example.com".to_string()));
         assert!(
-            oidc.s_claims.scopes
-                == vec![
-                    OAUTH2_SCOPE_OPENID.to_string(),
-                    OAUTH2_SCOPE_SUPPLEMENT.to_string()
-                ]
+            oidc.s_claims.scopes == vec![OAUTH2_SCOPE_OPENID.to_string(), "supplement".to_string()]
         );
         assert!(oidc.claims.is_empty());
         // Does our access token work with the userinfo endpoint?
@@ -3774,11 +3767,11 @@ mod tests {
             .expect("Failed to verify oidc");
 
         // does our id_token contain the expected groups?
-        assert!(oidc.claims.contains_key(OAUTH2_SCOPE_GROUPS));
+        assert!(oidc.claims.contains_key(&"groups".to_string()));
 
         assert!(oidc
             .claims
-            .get(OAUTH2_SCOPE_GROUPS)
+            .get(&"groups".to_string())
             .expect("unable to find key")
             .as_array()
             .unwrap()
@@ -3790,7 +3783,9 @@ mod tests {
             .expect("failed to get userinfo");
 
         // does the userinfo endpoint provide the same groups?
-        assert!(oidc.claims.get(OAUTH2_SCOPE_GROUPS) == userinfo.claims.get(OAUTH2_SCOPE_GROUPS));
+        assert!(
+            oidc.claims.get(&"groups".to_string()) == userinfo.claims.get(&"groups".to_string())
+        );
     }
 
     //  Check insecure pkce behaviour.
@@ -4178,7 +4173,7 @@ mod tests {
             ident.get_oauth2_consent_scopes(o2rs_uuid)
                 == Some(&btreeset![
                     OAUTH2_SCOPE_OPENID.to_string(),
-                    OAUTH2_SCOPE_SUPPLEMENT.to_string()
+                    "supplement".to_string()
                 ])
         );
 

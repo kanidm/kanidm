@@ -292,7 +292,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     pub fn migrate_9_to_10(&mut self) -> Result<(), OperationError> {
         admin_warn!("starting 9 to 10 migration.");
         let filter = filter!(f_or!([
-            f_pres(ValueAttribute::PrimaryCredential.as_str()),
+            f_pres("primary_credential"),
             f_pres("unix_password"),
         ]));
         // This "does nothing" since everything has object anyway, but it forces the entry to be
@@ -314,7 +314,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     #[instrument(level = "debug", skip_all)]
     pub fn migrate_10_to_11(&mut self) -> Result<(), OperationError> {
         admin_warn!("starting 9 to 10 migration.");
-        let filter = filter!(f_pres(ValueAttribute::PrimaryCredential.as_str()));
+        let filter = filter!(f_pres("primary_credential"));
 
         let pre_candidates = self.internal_search(filter).map_err(|e| {
             admin_error!(err = ?e, "migrate_10_to_11 internal search failure");
@@ -326,20 +326,18 @@ impl<'a> QueryServerWriteTransaction<'a> {
         let modset: Vec<_> = pre_candidates
             .into_iter()
             .filter_map(|ent| {
-                ent.get_ava_single_credential(ValueAttribute::PrimaryCredential.as_str())
+                ent.get_ava_single_credential("primary_credential")
                     .and_then(|cred| cred.passkey_ref().ok())
                     .map(|pk_map| {
                         let modlist = pk_map
                             .iter()
                             .map(|(t, k)| {
                                 Modify::Present(
-                                    ValueAttribute::PassKeys.into(),
+                                    "passkeys".into(),
                                     Value::Passkey(Uuid::new_v4(), t.clone(), k.clone()),
                                 )
                             })
-                            .chain(std::iter::once(m_purge(
-                                ValueAttribute::PrimaryCredential.as_str(),
-                            )))
+                            .chain(std::iter::once(m_purge("primary_credential")))
                             .collect();
                         (ent.get_uuid(), ModifyList::new_list(modlist))
                     })

@@ -608,10 +608,8 @@ pub trait IdmServerTransaction<'a> {
 
         let within_valid_window = Account::check_within_valid_time(
             ct,
-            entry
-                .get_ava_single_datetime(ATTR_ACCOUNT_VALID_FROM)
-                .as_ref(),
-            entry.get_ava_single_datetime(ATTR_ACCOUNT_EXPIRE).as_ref(),
+            entry.get_ava_single_datetime("account_valid_from").as_ref(),
+            entry.get_ava_single_datetime("account_expire").as_ref(),
         );
 
         if !within_valid_window {
@@ -772,10 +770,8 @@ pub trait IdmServerTransaction<'a> {
 
                 if Account::check_within_valid_time(
                     ct,
-                    entry
-                        .get_ava_single_datetime(ATTR_ACCOUNT_VALID_FROM)
-                        .as_ref(),
-                    entry.get_ava_single_datetime(ATTR_ACCOUNT_EXPIRE).as_ref(),
+                    entry.get_ava_single_datetime("account_valid_from").as_ref(),
+                    entry.get_ava_single_datetime("account_expire").as_ref(),
                 ) {
                     // Good to go
                     let limits = Limits::default();
@@ -1253,7 +1249,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
                 }))
             }
             Token::ApiToken(apit, entry) => {
-                let spn = entry.get_ava_single_proto_string(ATTR_SPN).ok_or_else(|| {
+                let spn = entry.get_ava_single_proto_string("spn").ok_or_else(|| {
                     OperationError::InvalidAccountState("Missing attribute: spn".to_string())
                 })?;
 
@@ -1761,9 +1757,9 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         let vcred = Value::new_credential("primary", ncred);
         // We need to remove other credentials too.
         let modlist = ModifyList::new_list(vec![
-            m_purge(ATTR_PASSKEYS),
-            m_purge(ValueAttribute::PrimaryCredential.as_str()),
-            Modify::Present(ValueAttribute::PrimaryCredential.as_str().into(), vcred),
+            m_purge("passkeys"),
+            m_purge("primary_credential"),
+            Modify::Present("primary_credential".into(), vcred),
         ]);
 
         trace!(?modlist, "processing change");
@@ -2647,7 +2643,7 @@ mod tests {
             ),
             (ValueAttribute::Name.as_str(), Value::new_iname("testgroup")),
             (
-                ValueAttribute::Uuid.as_str(),
+                "uuid",
                 Value::Uuid(uuid::uuid!("01609135-a1c4-43d5-966b-a28227644445"))
             ),
             (
@@ -2810,7 +2806,7 @@ mod tests {
             .internal_search_uuid(UUID_ADMIN)
             .expect("Can't access admin entry.");
         let cred_before = admin_entry
-            .get_ava_single_credential(ValueAttribute::PrimaryCredential.as_str())
+            .get_ava_single_credential("primary_credential")
             .expect("No credential present")
             .clone();
         drop(idms_prox_read);
@@ -2841,7 +2837,7 @@ mod tests {
             .internal_search_uuid(UUID_ADMIN)
             .expect("Can't access admin entry.");
         let cred_after = admin_entry
-            .get_ava_single_credential(ValueAttribute::PrimaryCredential.as_str())
+            .get_ava_single_credential("primary_credential")
             .expect("No credential present")
             .clone();
         drop(idms_prox_read);
@@ -2931,8 +2927,8 @@ mod tests {
         let me_inv_m = ModifyEvent::new_internal_invalid(
             filter!(f_eq(ValueAttribute::Name, PartialValue::new_iname("admin"))),
             ModifyList::new_list(vec![
-                Modify::Present(AttrString::from(ATTR_ACCOUNT_EXPIRE), v_expire),
-                Modify::Present(AttrString::from(ATTR_ACCOUNT_VALID_FROM), v_valid_from),
+                Modify::Present(AttrString::from("account_expire"), v_expire),
+                Modify::Present(AttrString::from("account_valid_from"), v_valid_from),
             ]),
         );
         // go!

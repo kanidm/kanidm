@@ -2021,11 +2021,11 @@ mod tests {
                 meta: None,
                 attrs: btreemap!(
                     (
-                        ValueAttribute::Name.to_string(),
+                        "name".to_string(),
                         ScimAttr::SingleSimple(ScimSimpleAttr::String("testgroup".to_string()))
                     ),
                     (
-                        ValueAttribute::Uuid.to_string(),
+                        "uuid".to_string(),
                         ScimAttr::SingleSimple(ScimSimpleAttr::String(
                             "2c019619-f894-4a94-b356-05d371850e3d".to_string()
                         ))

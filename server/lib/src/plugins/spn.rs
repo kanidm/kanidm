@@ -107,7 +107,7 @@ impl Plugin for Spn {
                 r.push(Err(ConsistencyError::InvalidSpn(e.get_id())));
                 continue;
             };
-            match e.get_ava_single(ATTR_SPN) {
+            match e.get_ava_single("spn") {
                 Some(r_spn) => {
                     trace!("verify spn: s {:?} == ex {:?} ?", r_spn, g_spn);
                     if r_spn != g_spn {
@@ -196,7 +196,7 @@ impl Spn {
                 f_eq(ValueAttribute::Class, ValueClass::Group.into()),
                 f_eq(ValueAttribute::Class, ValueClass::Account.into()),
             ])),
-            &modlist!([m_purge(ATTR_SPN)]),
+            &modlist!([m_purge("spn")]),
         )
     }
 }
@@ -255,7 +255,7 @@ mod tests {
                 ValueAttribute::Name,
                 PartialValue::new_iname("testperson")
             )),
-            modlist!([m_purge(ATTR_SPN)]),
+            modlist!([m_purge("spn")]),
             None,
             |_| {},
             |_| {}
@@ -313,7 +313,7 @@ mod tests {
                 PartialValue::new_iname("testperson")
             )),
             modlist!([
-                m_purge(ATTR_SPN),
+                m_purge("spn"),
                 m_pres("spn", &Value::new_spn_str("invalid", "spn"))
             ]),
             None,
@@ -334,7 +334,7 @@ mod tests {
             .internal_search_uuid(UUID_ADMIN)
             .expect("must not fail");
 
-        let e_pre_spn = e_pre.get_ava_single(ATTR_SPN).expect("must not fail");
+        let e_pre_spn = e_pre.get_ava_single("spn").expect("must not fail");
         assert!(e_pre_spn == ex1);
 
         // trigger the domain_name change (this will be a cli option to the server
@@ -349,7 +349,7 @@ mod tests {
             .internal_search_uuid(UUID_ADMIN)
             .expect("must not fail");
 
-        let e_post_spn = e_post.get_ava_single(ATTR_SPN).expect("must not fail");
+        let e_post_spn = e_post.get_ava_single("spn").expect("must not fail");
         debug!("{:?}", e_post_spn);
         debug!("{:?}", ex2);
         assert!(e_post_spn == ex2);

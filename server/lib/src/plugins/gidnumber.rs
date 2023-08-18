@@ -125,7 +125,7 @@ mod tests {
                 Value::new_iname("testperson")
             ),
             (
-                ValueAttribute::Uuid.as_str(),
+                "uuid",
                 Value::Uuid(uuid!("83a0927f-3de1-45ec-bea0-2f7b997ef244"))
             ),
             (
@@ -172,7 +172,7 @@ mod tests {
             ),
             (ValueAttribute::GidNumber.as_str(), Value::Uint32(10001)),
             (
-                ValueAttribute::Uuid.as_str(),
+                "uuid",
                 Value::Uuid(uuid!("83a0927f-3de1-45ec-bea0-2f7b997ef244"))
             ),
             (
@@ -218,7 +218,7 @@ mod tests {
                 Value::new_iname("testperson")
             ),
             (
-                ValueAttribute::Uuid.as_str(),
+                "uuid",
                 Value::Uuid(uuid!("83a0927f-3de1-45ec-bea0-2f7b997ef244"))
             ),
             (
@@ -268,7 +268,7 @@ mod tests {
                 Value::new_iname("testperson")
             ),
             (
-                ValueAttribute::Uuid.as_str(),
+                "uuid",
                 Value::Uuid(uuid::uuid!("83a0927f-3de1-45ec-bea0-2f7b997ef244"))
             ),
             (
@@ -318,7 +318,7 @@ mod tests {
                 Value::new_iname("testperson")
             ),
             (
-                ValueAttribute::Uuid.as_str(),
+                "uuid",
                 Value::Uuid(uuid::uuid!("83a0927f-3de1-45ec-bea0-2f7b997ef244"))
             ),
             (
@@ -370,7 +370,7 @@ mod tests {
                 Value::new_iname("testperson")
             ),
             (
-                ValueAttribute::Uuid.as_str(),
+                "uuid",
                 Value::Uuid(uuid::uuid!("83a0927f-3de1-45ec-bea0-000000000244"))
             ),
             (

@@ -86,7 +86,7 @@ pub fn f_self<'a>() -> FC<'a> {
 pub fn f_id(id: &str) -> FC<'static> {
     let uf = Uuid::parse_str(id)
         .ok()
-        .map(|u| FC::Eq(ValueAttribute::Uuid.as_str(), PartialValue::Uuid(u)));
+        .map(|u| FC::Eq("uuid", PartialValue::Uuid(u)));
     let spnf = PartialValue::new_spn_s(id).map(|spn| FC::Eq("spn", spn));
     let nf = FC::Eq("name", PartialValue::new_iname(id));
     let f: Vec<_> = iter::once(uf)
@@ -1632,7 +1632,7 @@ mod tests {
         let e = entry_init!(
             (ValueAttribute::UserId.as_str(), Value::new_iutf8("william")),
             (
-                ValueAttribute::Uuid.as_str(),
+                "uuid",
                 Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
             ),
             (ValueAttribute::GidNumber.as_str(), Value::Uint32(1000))

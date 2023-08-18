@@ -2,23 +2,26 @@
 use std::collections::HashSet;
 
 use kanidm_client::KanidmClient;
-use kanidm_proto::constants::*;
+use kanidm_proto::constants::{
+    APPLICATION_JSON, ATTR_ACP_RECEIVER_GROUP, ATTR_ACP_TARGET_SCOPE, ATTR_DESCRIPTION, ATTR_NAME,
+    ATTR_SSH_PUBLICKEY,
+};
 use kanidmd_testkit::*;
 use reqwest::header::CONTENT_TYPE;
 
 static USER_READABLE_ATTRS: [&str; 9] = [
-    ATTR_NAME,
-    ATTR_SPN,
-    ATTR_DISPLAYNAME,
-    ATTR_CLASS,
-    ATTR_MEMBEROF,
-    ATTR_UUID,
-    ATTR_GIDNUMBER,
-    ATTR_LOGINSHELL,
+    "name",
+    "spn",
+    "displayname",
+    "class",
+    "memberof",
+    "uuid",
+    "gidnumber",
+    "loginshell",
     ATTR_SSH_PUBLICKEY,
 ];
 static SELF_WRITEABLE_ATTRS: [&str; 7] = [
-    ATTR_NAME,
+    "name",
     "displayname",
     "legalname",
     "radius_secret",
@@ -71,8 +74,7 @@ async fn test_default_entries_rbac_users(rsclient: KanidmClient) {
     test_read_attrs(&rsclient, "self_account", &USER_READABLE_ATTRS, true).await;
     test_read_attrs(&rsclient, "other_account", &USER_READABLE_ATTRS, true).await;
 
-    static GROUP_READABLE_ATTRS: [&str; 5] =
-        [ATTR_CLASS, ATTR_NAME, ATTR_SPN, ATTR_UUID, ATTR_MEMBER];
+    static GROUP_READABLE_ATTRS: [&str; 5] = ["class", "name", "spn", "uuid", "member"];
     test_read_attrs(&rsclient, "self_group", &GROUP_READABLE_ATTRS, true).await;
     test_read_attrs(&rsclient, "other_group", &GROUP_READABLE_ATTRS, true).await;
 
@@ -86,8 +88,7 @@ async fn test_default_entries_rbac_users(rsclient: KanidmClient) {
     test_write_attrs(&rsclient, "self_account", &SELF_WRITEABLE_ATTRS, true).await;
     test_write_attrs(&rsclient, "other_account", &SELF_WRITEABLE_ATTRS, false).await;
 
-    static NON_SELF_WRITEABLE_ATTRS: [&str; 5] =
-        [ATTR_SPN, ATTR_CLASS, "memberof", "gidnumber", "uuid"];
+    static NON_SELF_WRITEABLE_ATTRS: [&str; 5] = ["spn", "class", "memberof", "gidnumber", "uuid"];
     test_write_attrs(&rsclient, "self_account", &NON_SELF_WRITEABLE_ATTRS, false).await;
 }
 
@@ -111,7 +112,7 @@ async fn test_default_entries_rbac_account_managers(rsclient: KanidmClient) {
     )
     .await;
     static ACCOUNT_MANAGER_ATTRS: [&str; 5] = [
-        ATTR_NAME,
+        "name",
         "displayname",
         "primary_credential",
         ATTR_SSH_PUBLICKEY,
@@ -166,7 +167,7 @@ async fn test_default_entries_rbac_group_managers(rsclient: KanidmClient) {
     let groups = rsclient.idm_group_list().await.unwrap();
     let group_names: HashSet<String> = groups
         .iter()
-        .map(|entry| entry.attrs.get(ATTR_NAME).unwrap().first().unwrap())
+        .map(|entry| entry.attrs.get("name").unwrap().first().unwrap())
         .cloned()
         .collect();
     assert!(default_group_names.is_subset(&group_names));
@@ -269,7 +270,7 @@ async fn test_default_entries_rbac_admins_schema_entries(rsclient: KanidmClient)
     let classtype_entries = rsclient.idm_schema_classtype_list().await.unwrap();
     let classnames: HashSet<String> = classtype_entries
         .iter()
-        .map(|entry| entry.attrs.get(ATTR_CLASSNAME).unwrap().first().unwrap())
+        .map(|entry| entry.attrs.get("classname").unwrap().first().unwrap())
         .cloned()
         .collect();
     println!("{:?}", classnames);
@@ -277,54 +278,54 @@ async fn test_default_entries_rbac_admins_schema_entries(rsclient: KanidmClient)
     assert!(default_classnames.is_subset(&classnames));
 
     let default_attributenames: HashSet<String> = [
-        ATTR_ACP_CREATE_ATTR,
-        ATTR_ACP_CREATE_CLASS,
-        ATTR_ACP_ENABLE,
-        ATTR_ACP_MODIFY_CLASS,
-        ATTR_ACP_MODIFY_PRESENTATTR,
-        ATTR_ACP_MODIFY_REMOVEDATTR,
-        ATTR_ACP_RECEIVER_GROUP,
-        ATTR_ACP_SEARCH_ATTR,
-        ATTR_ACP_TARGET_SCOPE,
-        ATTR_ATTRIBUTENAME,
-        ATTR_CLAIM,
-        ATTR_CLASS,
-        ATTR_CLASSNAME,
+        "acp_create_attr",
+        "acp_create_class",
+        "acp_enable",
+        "acp_modify_class",
+        "acp_modify_presentattr",
+        "acp_modify_removedattr",
+        "acp_receiver_group",
+        "acp_search_attr",
+        "acp_targetscope",
+        "attributename",
+        "claim",
+        "class",
+        "classname",
         ATTR_DESCRIPTION,
-        ATTR_DIRECTMEMBEROF,
-        ATTR_DOMAIN,
-        ATTR_INDEX,
-        ATTR_LAST_MODIFIED_CID,
-        ATTR_MAY,
-        ATTR_MEMBER,
-        ATTR_MEMBEROF,
-        ATTR_MULTIVALUE,
-        ATTR_MUST,
+        "directmemberof",
+        "domain",
+        "index",
+        "last_modified_cid",
+        "may",
+        "member",
+        "memberof",
+        "multivalue",
+        "must",
         ATTR_NAME,
-        ATTR_PASSWORD_IMPORT,
-        ATTR_PHANTOM,
-        ATTR_SPN,
-        ATTR_SYNTAX,
-        ATTR_SYSTEMMAY,
-        ATTR_SYSTEMMUST,
-        ATTR_UNIQUE,
-        ATTR_UUID,
-        ATTR_VERSION,
-        ATTR_DISPLAYNAME,
-        ATTR_LEGALNAME,
-        ATTR_MAIL,
+        "password_import",
+        "phantom",
+        "spn",
+        "syntax",
+        "systemmay",
+        "systemmust",
+        "unique",
+        "uuid",
+        "version",
+        "displayname",
+        "legalname",
+        "mail",
         ATTR_SSH_PUBLICKEY,
-        ATTR_PRIMARY_CREDENTIAL,
-        ATTR_RADIUS_SECRET,
-        ATTR_DOMAIN_NAME,
-        ATTR_DOMAIN_DISPLAY_NAME,
-        ATTR_DOMAIN_UUID,
-        ATTR_DOMAIN_SSID,
-        ATTR_GIDNUMBER,
-        ATTR_BADLIST_PASSWORD,
-        ATTR_LOGINSHELL,
-        ATTR_UNIX_PASSWORD,
-        ATTR_NSUNIQUEID,
+        "primary_credential",
+        "radius_secret",
+        "domain_name",
+        "domain_display_name",
+        "domain_uuid",
+        "domain_ssid",
+        "gidnumber",
+        "badlist_password",
+        "loginshell",
+        "unix_password",
+        "nsuniqueid",
     ]
     .iter()
     .map(ToString::to_string)
@@ -334,14 +335,7 @@ async fn test_default_entries_rbac_admins_schema_entries(rsclient: KanidmClient)
     println!("{:?}", attributename_entries);
     let attributenames = attributename_entries
         .iter()
-        .map(|entry| {
-            entry
-                .attrs
-                .get(ATTR_ATTRIBUTENAME)
-                .unwrap()
-                .first()
-                .unwrap()
-        })
+        .map(|entry| entry.attrs.get("attributename").unwrap().first().unwrap())
         .cloned()
         .collect();
 
@@ -367,7 +361,7 @@ async fn test_default_entries_rbac_admins_group_entries(rsclient: KanidmClient) 
 async fn test_default_entries_rbac_admins_ha_accounts(rsclient: KanidmClient) {
     login_put_admin_idm_admins(&rsclient).await;
 
-    static MAIN_ATTRS: [&str; 3] = [ATTR_NAME, "displayname", "primary_credential"];
+    static MAIN_ATTRS: [&str; 3] = ["name", "displayname", "primary_credential"];
     test_write_attrs(&rsclient, "idm_admin", &MAIN_ATTRS, true).await;
 }
 
@@ -505,7 +499,7 @@ async fn test_default_entries_rbac_radius_servers(rsclient: KanidmClient) {
     create_user_with_all_attrs(&rsclient, NOT_ADMIN_TEST_USERNAME, Some("test_group")).await;
 
     login_account(&rsclient, "radius_server").await;
-    static RADIUS_NECESSARY_ATTRS: [&str; 4] = [ATTR_NAME, ATTR_SPN, ATTR_UUID, "radius_secret"];
+    static RADIUS_NECESSARY_ATTRS: [&str; 4] = ["name", "spn", "uuid", "radius_secret"];
 
     test_read_attrs(
         &rsclient,

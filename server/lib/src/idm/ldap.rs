@@ -182,7 +182,7 @@ impl LdapServer {
                 (LdapSearchScope::Children, None) | (LdapSearchScope::OneLevel, None) => {
                     // exclude domain_info
                     Some(LdapFilter::Not(Box::new(LdapFilter::Equality(
-                        ValueAttribute::Uuid.to_string(),
+                        "uuid".to_string(),
                         STR_UUID_DOMAIN_INFO.to_string(),
                     ))))
                 }
@@ -193,7 +193,7 @@ impl LdapServer {
                 (LdapSearchScope::Base, None) => {
                     // domain_info
                     Some(LdapFilter::Equality(
-                        ValueAttribute::Uuid.to_string(),
+                        "uuid".to_string(),
                         STR_UUID_DOMAIN_INFO.to_string(),
                     ))
                 }
@@ -265,7 +265,7 @@ impl LdapServer {
                     .filter_map(|a| {
                         // EntryDN and DN have special handling in to_ldap in Entry. We don't
                         // need these here, we know they will be returned as part of the transform.
-                        if a == LDAP_ENTRYDN || a == "dn" {
+                        if a == "entrydn" || a == "dn" {
                             None
                         } else {
                             Some(AttrString::from(ldap_vattr_map(a).unwrap_or(a)))
@@ -572,8 +572,8 @@ pub(crate) fn ldap_all_vattrs() -> Vec<String> {
         "emailaddress".to_string(),
         "emailalternative".to_string(),
         "emailprimary".to_string(),
-        LDAP_ENTRYDN.to_string(),
-        LDAP_ENTRYUUID.to_string(),
+        "entrydn".to_string(),
+        "entryuuid".to_string(),
         "keys".to_string(),
         "mail;alternative".to_string(),
         "mail;primary".to_string(),
@@ -597,13 +597,13 @@ pub(crate) fn ldap_vattr_map(input: &str) -> Option<&str> {
         "emailaddress" => Some(ATTR_MAIL),
         "emailalternative" => Some(ATTR_MAIL),
         "emailprimary" => Some(ATTR_MAIL),
-        LDAP_ENTRYUUID => Some(ATTR_UUID),
-        LDAP_KEYS => Some(ATTR_SSH_PUBLICKEY),
+        "entryuuid" => Some(ATTR_UUID),
+        "keys" => Some(ATTR_SSH_PUBLICKEY),
         "mail;alternative" => Some(ATTR_MAIL),
         "mail;primary" => Some(ATTR_MAIL),
         "objectclass" => Some(ATTR_CLASS),
-        ATTR_SSHPUBLICKEY => Some(ATTR_SSH_PUBLICKEY), // no-underscore -> underscore
-        ATTR_UIDNUMBER => Some(ATTR_GIDNUMBER),        // yes this is intentional
+        "sshpublickey" => Some(ATTR_SSH_PUBLICKEY), // no-underscore -> underscore
+        "uidnumber" => Some(ATTR_GIDNUMBER),        // yes this is intentional
         _ => None,
     }
 }
@@ -846,7 +846,7 @@ mod tests {
                     Value::new_iname("testperson1")
                 ),
                 (
-                    ValueAttribute::Uuid.as_str(),
+                    "uuid",
                     Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
                 ),
                 (
@@ -957,12 +957,9 @@ mod tests {
                     (ValueAttribute::GidNumber.as_str(), "12345678"),
                     (ValueAttribute::LoginShell.as_str(), "/bin/zsh"),
                     (ValueAttribute::SshUnderscorePublicKey.as_str(), ssh_ed25519),
-                    (LDAP_ENTRYUUID, "cc8e95b4-c24f-4d68-ba54-8bed76f63930"),
-                    (
-                        LDAP_ENTRYDN,
-                        "spn=testperson1@example.com,dc=example,dc=com"
-                    ),
-                    (ValueAttribute::UidNumber.as_str(), "12345678"),
+                    ("entryuuid", "cc8e95b4-c24f-4d68-ba54-8bed76f63930"),
+                    ("entrydn", "spn=testperson1@example.com,dc=example,dc=com"),
+                    ("uidnumber", "12345678"),
                     ("cn", "testperson1"),
                     ("keys", ssh_ed25519)
                 );
@@ -977,10 +974,10 @@ mod tests {
             scope: LdapSearchScope::Subtree,
             filter: LdapFilter::Equality("name".to_string(), "testperson1".to_string()),
             attrs: vec![
-                ATTR_NAME.to_string(),
-                LDAP_ENTRYDN.to_string(),
-                LDAP_KEYS.to_string(),
-                ATTR_UIDNUMBER.to_string(),
+                "name".to_string(),
+                "entrydn".to_string(),
+                "keys".to_string(),
+                "uidnumber".to_string(),
             ],
         };
         let r1 = ldaps.do_search(idms, &sr, &anon_t).await.unwrap();
@@ -993,10 +990,7 @@ mod tests {
                     lsre,
                     "spn=testperson1@example.com,dc=example,dc=com",
                     (ValueAttribute::Name.as_str(), "testperson1"),
-                    (
-                        LDAP_ENTRYDN,
-                        "spn=testperson1@example.com,dc=example,dc=com"
-                    ),
+                    ("entrydn", "spn=testperson1@example.com,dc=example,dc=com"),
                     ("uidnumber", "12345678"),
                     ("keys", ssh_ed25519)
                 );
@@ -1020,8 +1014,8 @@ mod tests {
             scope: LdapSearchScope::Subtree,
             filter: LdapFilter::Equality("name".to_string(), "testperson1".to_string()),
             attrs: vec![
-                ATTR_NAME.to_string(),
-                LDAP_MAIL.to_string(),
+                "name".to_string(),
+                "mail".to_string(),
                 "mail;primary".to_string(),
                 "mail;alternative".to_string(),
                 "emailprimary".to_string(),
@@ -1083,11 +1077,11 @@ mod tests {
                     Value::new_iname("testperson1")
                 ),
                 (
-                    ValueAttribute::Mail.as_str(),
+                    "mail",
                     Value::EmailAddress("testperson1@example.com".to_string(), true)
                 ),
                 (
-                    ValueAttribute::Mail.as_str(),
+                    "mail",
                     Value::EmailAddress("testperson1.alternative@example.com".to_string(), false)
                 ),
                 (
@@ -1193,16 +1187,13 @@ mod tests {
                 assert_entry_contains!(
                     lsre,
                     "spn=testperson1@example.com,dc=example,dc=com",
-                    (LDAP_NAME, "testperson1"),
-                    (LDAP_MAIL, "testperson1@example.com"),
-                    (LDAP_MAIL, "testperson1.alternative@example.com"),
-                    (LDAP_MAIL_PRIMARY, "testperson1@example.com"),
-                    (LDAP_MAIL_ALTERNATIVE, "testperson1.alternative@example.com"),
-                    (LDAP_EMAIL_PRIMARY, "testperson1@example.com"),
-                    (
-                        LDAP_EMAIL_ALTERNATIVE,
-                        "testperson1.alternative@example.com"
-                    )
+                    (ValueAttribute::Name.as_str(), "testperson1"),
+                    ("mail", "testperson1@example.com"),
+                    ("mail", "testperson1.alternative@example.com"),
+                    ("mail;primary", "testperson1@example.com"),
+                    ("mail;alternative", "testperson1.alternative@example.com"),
+                    ("emailprimary", "testperson1@example.com"),
+                    ("emailalternative", "testperson1.alternative@example.com")
                 );
             }
             _ => assert!(false),
@@ -1265,9 +1256,9 @@ mod tests {
             attrs: vec![
                 "*".to_string(),
                 // Already being returned
-                LDAP_NAME.to_string(),
+                "name".to_string(),
                 // This is a virtual attribute
-                LDAP_ENTRYUUID.to_string(),
+                "entryuuid".to_string(),
             ],
         };
         let r1 = ldaps.do_search(idms, &sr, &anon_t).await.unwrap();
@@ -1285,7 +1276,7 @@ mod tests {
                         ValueAttribute::Uuid.as_str(),
                         "cc8e95b4-c24f-4d68-ba54-8bed76f63930"
                     ),
-                    (LDAP_ENTRYUUID, "cc8e95b4-c24f-4d68-ba54-8bed76f63930")
+                    ("entryuuid", "cc8e95b4-c24f-4d68-ba54-8bed76f63930")
                 );
             }
             _ => assert!(false),
@@ -1338,7 +1329,7 @@ mod tests {
                 PartialValue::Uuid(UUID_DOMAIN_INFO)
             )),
             ModifyList::new_purge_and_set(
-                ValueAttribute::DomainLdapBasedn.as_str(),
+                "domain_ldap_basedn",
                 Value::new_iutf8("o=kanidmproject"),
             ),
         );

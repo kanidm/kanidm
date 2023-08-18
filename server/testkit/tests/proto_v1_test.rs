@@ -1,12 +1,10 @@
 #![deny(warnings)]
 use std::time::SystemTime;
 
-use kanidm_proto::constants::ATTR_SPN;
 use kanidm_proto::v1::{
     ApiToken, CURegState, CredentialDetailType, Entry, Filter, Modify, ModifyList, UserAuthToken,
 };
 use kanidmd_lib::credential::totp::Totp;
-use kanidmd_lib::prelude::{ValueAttribute, ValueClass, IDM_ADMINS_V1};
 use tracing::debug;
 
 use std::str::FromStr;
@@ -87,7 +85,7 @@ async fn test_server_whoami_anonymous(rsclient: KanidmClient) {
         .expect("Unable to call whoami")
         .expect("No entry matching self returned");
     debug!(?e);
-    assert!(e.attrs.get(ATTR_SPN) == Some(&vec!["anonymous@localhost".to_string()]));
+    assert!(e.attrs.get("spn") == Some(&vec!["anonymous@localhost".to_string()]));
 
     // Do a check of the auth/valid endpoint, tells us if our token
     // is okay.
@@ -114,7 +112,7 @@ async fn test_server_whoami_admin_simple_password(rsclient: KanidmClient) {
         .expect("Unable to call whoami")
         .expect("No entry matching self returned");
     debug!(?e);
-    assert!(e.attrs.get(ATTR_SPN) == Some(&vec!["admin@localhost".to_string()]));
+    assert!(e.attrs.get("spn") == Some(&vec!["admin@localhost".to_string()]));
 }
 
 #[kanidmd_testkit::test]
@@ -267,17 +265,11 @@ async fn test_server_rest_schema_read(rsclient: KanidmClient) {
     assert!(!c_list.is_empty());
 
     // Get an attr/class
-    let a = rsclient
-        .idm_schema_attributetype_get(ValueAttribute::Name.as_str())
-        .await
-        .unwrap();
+    let a = rsclient.idm_schema_attributetype_get("name").await.unwrap();
     assert!(a.is_some());
     println!("{:?}", a);
 
-    let c = rsclient
-        .idm_schema_classtype_get(ValueClass::Account.into())
-        .await
-        .unwrap();
+    let c = rsclient.idm_schema_classtype_get("account").await.unwrap();
     assert!(c.is_some());
     println!("{:?}", c);
 }
@@ -292,7 +284,7 @@ async fn test_server_radius_credential_lifecycle(rsclient: KanidmClient) {
 
     // All admin to create persons.
     rsclient
-        .idm_group_add_members(IDM_ADMINS_V1.name, &["admin"])
+        .idm_group_add_members("idm_admins", &["admin"])
         .await
         .unwrap();
 

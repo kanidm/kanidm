@@ -528,7 +528,7 @@ mod tests {
                 Value::new_iname("testperson1")
             ),
             (
-                ValueAttribute::Uuid.as_str(),
+                "uuid",
                 Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
             ),
             (
@@ -555,7 +555,7 @@ mod tests {
                 Value::new_iname("testperson2")
             ),
             (
-                ValueAttribute::Uuid.as_str(),
+                "uuid",
                 Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63932"))
             ),
             (
@@ -694,7 +694,7 @@ mod tests {
             .internal_modify_uuid(
                 t_uuid,
                 &ModifyList::new_list(vec![
-                    m_assert(ValueAttribute::Uuid.as_str(), &PartialValue::Uuid(t_uuid)),
+                    m_assert("uuid", &PartialValue::Uuid(t_uuid)),
                     m_pres(
                         ValueAttribute::Description.into(),
                         &Value::Utf8("test".into())
@@ -724,7 +724,7 @@ mod tests {
                 Value::new_iname("testperson1")
             ),
             (
-                ValueAttribute::Uuid.as_str(),
+                "uuid",
                 Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
             ),
             (
@@ -864,7 +864,7 @@ mod tests {
             .expect("failed");
         // get the primary ava
         let cred_ref = test_ent
-            .get_ava_single_credential(ValueAttribute::PrimaryCredential.as_str())
+            .get_ava_single_credential("primary_credential")
             .expect("Failed");
         // do a pw check.
         assert!(cred_ref.verify_password("test_password").unwrap());

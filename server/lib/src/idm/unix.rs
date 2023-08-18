@@ -59,11 +59,9 @@ macro_rules! try_from_entry {
                 OperationError::InvalidAccountState("Missing attribute: name".to_string())
             })?;
 
-        let spn = $value
-            .get_ava_single_proto_string(ATTR_SPN)
-            .ok_or_else(|| {
-                OperationError::InvalidAccountState("Missing attribute: spn".to_string())
-            })?;
+        let spn = $value.get_ava_single_proto_string("spn").ok_or_else(|| {
+            OperationError::InvalidAccountState("Missing attribute: spn".to_string())
+        })?;
 
         let uuid = $value.get_uuid();
 
@@ -92,17 +90,17 @@ macro_rules! try_from_entry {
             .map(|v| v.clone());
 
         let radius_secret = $value
-            .get_ava_single_secret(ATTR_RADIUS_SECRET)
+            .get_ava_single_secret("radius_secret")
             .map(str::to_string);
 
         let mail = $value
-            .get_ava_iter_mail(ATTR_MAIL)
+            .get_ava_iter_mail("mail")
             .map(|i| i.map(str::to_string).collect())
             .unwrap_or_else(Vec::new);
 
-        let valid_from = $value.get_ava_single_datetime(ATTR_ACCOUNT_VALID_FROM);
+        let valid_from = $value.get_ava_single_datetime("account_valid_from");
 
-        let expire = $value.get_ava_single_datetime(ATTR_ACCOUNT_EXPIRE);
+        let expire = $value.get_ava_single_datetime("account_expire");
 
         Ok(UnixUserAccount {
             name,
@@ -339,11 +337,9 @@ macro_rules! try_from_group_e {
                 OperationError::InvalidAccountState("Missing attribute: name".to_string())
             })?;
 
-        let spn = $value
-            .get_ava_single_proto_string(ATTR_SPN)
-            .ok_or_else(|| {
-                OperationError::InvalidAccountState("Missing attribute: spn".to_string())
-            })?;
+        let spn = $value.get_ava_single_proto_string("spn").ok_or_else(|| {
+            OperationError::InvalidAccountState("Missing attribute: spn".to_string())
+        })?;
 
         let uuid = $value.get_uuid();
 
@@ -390,11 +386,9 @@ macro_rules! try_from_account_group_e {
                 OperationError::InvalidAccountState("Missing attribute: name".to_string())
             })?;
 
-        let spn = $value
-            .get_ava_single_proto_string(ATTR_SPN)
-            .ok_or_else(|| {
-                OperationError::InvalidAccountState("Missing attribute: spn".to_string())
-            })?;
+        let spn = $value.get_ava_single_proto_string("spn").ok_or_else(|| {
+            OperationError::InvalidAccountState("Missing attribute: spn".to_string())
+        })?;
 
         let uuid = $value.get_uuid();
 

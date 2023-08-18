@@ -1729,7 +1729,7 @@ mod tests {
             ),
             ("name", Value::new_iname("testperson1")),
             (
-                ValueAttribute::Uuid.as_str(),
+                "uuid",
                 Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
             ),
             ("description", Value::new_utf8s("testperson1")),
@@ -1771,7 +1771,7 @@ mod tests {
             ),
             ("name", Value::new_iname("testperson1")),
             (
-                ValueAttribute::Uuid.as_str(),
+                "uuid",
                 Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
             ),
             ("description", Value::new_utf8s("testperson")),
@@ -1808,7 +1808,7 @@ mod tests {
             ),
             ("name", Value::new_iname("testperson1")),
             (
-                ValueAttribute::Uuid.as_str(),
+                "uuid",
                 Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
             ),
             ("description", Value::new_utf8s("testperson1")),
@@ -1854,7 +1854,7 @@ mod tests {
             ),
             ("name", Value::new_iname("testobj1")),
             (
-                ValueAttribute::Uuid.as_str(),
+                "uuid",
                 Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
             )
         );
@@ -1871,7 +1871,7 @@ mod tests {
             ),
             ("classname", ValueClass::TestClass.to_value()),
             (
-                ValueAttribute::Uuid.as_str(),
+                "uuid",
                 Value::Uuid(uuid!("cfcae205-31c3-484b-8ced-667d1709c5e3"))
             ),
             ("description", Value::new_utf8s("Test Class")),
@@ -1938,7 +1938,7 @@ mod tests {
             ),
             ("name", Value::new_iname("testobj1")),
             (
-                ValueAttribute::Uuid.as_str(),
+                "uuid",
                 Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
             ),
             ("testattr", Value::new_utf8s("test"))
@@ -1955,7 +1955,7 @@ mod tests {
                 ValueClass::AttributeType.to_value()
             ),
             (
-                ValueAttribute::Uuid.as_str(),
+                "uuid",
                 Value::Uuid(uuid!("cfcae205-31c3-484b-8ced-667d1709c5e3"))
             ),
             ("attributename", Value::new_iutf8("testattr")),

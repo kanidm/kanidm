@@ -255,9 +255,7 @@ where
 {
     /// Get the uuid of this entry.
     pub(crate) fn get_uuid(&self) -> Option<Uuid> {
-        self.attrs
-            .get(kanidm_proto::constants::ATTR_UUID)
-            .and_then(|vs| vs.to_uuid_single())
+        self.attrs.get("uuid").and_then(|vs| vs.to_uuid_single())
     }
 }
 
@@ -656,14 +654,11 @@ impl<STATE> Entry<EntryRefresh, STATE> {
     ) -> Result<Entry<EntryValid, STATE>, SchemaError> {
         let uuid: Uuid = self
             .attrs
-            .get(ValueAttribute::Uuid.into())
-            .ok_or_else(|| {
-                SchemaError::MissingMustAttribute(vec![ValueAttribute::Uuid.to_string()])
-            })
+            .get("uuid")
+            .ok_or_else(|| SchemaError::MissingMustAttribute(vec!["uuid".to_string()]))
             .and_then(|vs| {
-                vs.to_uuid_single().ok_or_else(|| {
-                    SchemaError::MissingMustAttribute(vec![ValueAttribute::Uuid.to_string()])
-                })
+                vs.to_uuid_single()
+                    .ok_or_else(|| SchemaError::MissingMustAttribute(vec!["uuid".to_string()]))
             })?;
 
         // Build the new valid entry ...
@@ -798,8 +793,8 @@ impl Entry<EntryIncremental, EntryNew> {
 
                         // We need to make a random uuid in the conflict gen process.
                         let new_uuid = Uuid::new_v4();
-                        cnf_ent.purge_ava(ValueAttribute::Uuid.as_str());
-                        cnf_ent.add_ava(ValueAttribute::Uuid.as_str(), Value::Uuid(new_uuid));
+                        cnf_ent.purge_ava("uuid");
+                        cnf_ent.add_ava("uuid", Value::Uuid(new_uuid));
                         cnf_ent
                             .add_ava(ValueAttribute::Class.as_str(), ValueClass::Recycled.into());
                         cnf_ent
@@ -1096,9 +1091,7 @@ impl Entry<EntryIncremental, EntryCommitted> {
 impl<STATE> Entry<EntryInvalid, STATE> {
     // This is only used in tests today, but I don't want to cfg test it.
     pub(crate) fn get_uuid(&self) -> Option<Uuid> {
-        self.attrs
-            .get(ValueAttribute::Uuid.as_str())
-            .and_then(|vs| vs.to_uuid_single())
+        self.attrs.get("uuid").and_then(|vs| vs.to_uuid_single())
     }
 
     /// Validate that this entry and its attribute-value sets are conformant to the system's'
@@ -1109,14 +1102,11 @@ impl<STATE> Entry<EntryInvalid, STATE> {
     ) -> Result<Entry<EntryValid, STATE>, SchemaError> {
         let uuid: Uuid = self
             .attrs
-            .get(ValueAttribute::Uuid.as_str())
-            .ok_or_else(|| {
-                SchemaError::MissingMustAttribute(vec![ValueAttribute::Uuid.to_string()])
-            })
+            .get("uuid")
+            .ok_or_else(|| SchemaError::MissingMustAttribute(vec!["uuid".to_string()]))
             .and_then(|vs| {
-                vs.to_uuid_single().ok_or_else(|| {
-                    SchemaError::MissingMustAttribute(vec![ValueAttribute::Uuid.to_string()])
-                })
+                vs.to_uuid_single()
+                    .ok_or_else(|| SchemaError::MissingMustAttribute(vec!["uuid".to_string()]))
             })?;
 
         // Build the new valid entry ...
@@ -1407,7 +1397,7 @@ impl Entry<EntrySealed, EntryCommitted> {
     /// extract it's name, and if that's not present, extract it's uuid.
     pub(crate) fn get_uuid2spn(&self) -> Value {
         self.attrs
-            .get(ATTR_SPN)
+            .get("spn")
             .and_then(|vs| vs.to_value_single())
             .or_else(|| self.attrs.get("name").and_then(|vs| vs.to_value_single()))
             .unwrap_or_else(|| Value::Uuid(self.get_uuid()))
@@ -1417,7 +1407,7 @@ impl Entry<EntrySealed, EntryCommitted> {
     /// Given this entry, determine it's relative distinguished named for LDAP compatibility.
     pub(crate) fn get_uuid2rdn(&self) -> String {
         self.attrs
-            .get(ATTR_SPN)
+            .get("spn")
             .and_then(|vs| vs.to_proto_string_single().map(|v| format!("spn={v}")))
             .or_else(|| {
                 self.attrs
@@ -1797,9 +1787,7 @@ impl Entry<EntrySealed, EntryCommitted> {
 
         let attrs = r_attrs.ok()?;
 
-        let uuid = attrs
-            .get(ValueAttribute::Uuid.as_str())
-            .and_then(|vs| vs.to_uuid_single())?;
+        let uuid = attrs.get("uuid").and_then(|vs| vs.to_uuid_single())?;
 
         /*
          * ⚠️  ==== The Hack Zoen ==== ⚠️
@@ -2324,11 +2312,11 @@ impl Entry<EntryReduced, EntryCommitted> {
             .filter_map(|(ldap_a, kani_a)| {
                 // In some special cases, we may need to transform or rewrite the values.
                 match ldap_a {
-                    LDAP_ENTRYDN => Some(LdapPartialAttribute {
-                        atype: LDAP_ENTRYDN.to_string(),
+                    "entrydn" => Some(LdapPartialAttribute {
+                        atype: "entrydn".to_string(),
                         vals: vec![dn.as_bytes().to_vec()],
                     }),
-                    LDAP_MAIL_PRIMARY | LDAP_EMAIL_PRIMARY => {
+                    "mail;primary" | "emailprimary" => {
                         attr_map.get(kani_a).map(|pvs| LdapPartialAttribute {
                             atype: ldap_a.to_string(),
                             vals: pvs
@@ -2337,7 +2325,7 @@ impl Entry<EntryReduced, EntryCommitted> {
                                 .unwrap_or_default(),
                         })
                     }
-                    LDAP_MAIL_ALTERNATIVE | LDAP_EMAIL_ALTERNATIVE => {
+                    "mail;alternative" | "emailalternative" => {
                         attr_map.get(kani_a).map(|pvs| LdapPartialAttribute {
                             atype: ldap_a.to_string(),
                             vals: pvs
@@ -2414,18 +2402,10 @@ impl<VALID, STATE> Entry<VALID, STATE> {
 
     pub(crate) fn get_display_id(&self) -> String {
         self.attrs
-            .get(ATTR_SPN)
+            .get("spn")
             .and_then(|vs| vs.to_value_single())
-            .or_else(|| {
-                self.attrs
-                    .get(ATTR_NAME)
-                    .and_then(|vs| vs.to_value_single())
-            })
-            .or_else(|| {
-                self.attrs
-                    .get(ATTR_UUID)
-                    .and_then(|vs| vs.to_value_single())
-            })
+            .or_else(|| self.attrs.get("name").and_then(|vs| vs.to_value_single()))
+            .or_else(|| self.attrs.get("uuid").and_then(|vs| vs.to_value_single()))
             .map(|value| value.to_proto_string_clone())
             .unwrap_or_else(|| "no entry id available".to_string())
     }
@@ -3598,7 +3578,7 @@ mod tests {
             e.add_ava("name", Value::new_iname("testperson"));
             e.add_ava("spn", Value::new_spn_str("testperson", "example.com"));
             e.add_ava(
-                ValueAttribute::Uuid.as_str(),
+                "uuid",
                 Value::Uuid(uuid!("9fec0398-c46c-4df4-9df5-b0016f7d563f")),
             );
             let e = e.into_sealed_committed();

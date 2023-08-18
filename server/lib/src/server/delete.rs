@@ -220,7 +220,7 @@ mod tests {
                 Value::new_iname("testperson1")
             ),
             (
-                ValueAttribute::Uuid.as_str(),
+                "uuid",
                 Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
             ),
             (
@@ -247,7 +247,7 @@ mod tests {
                 Value::new_iname("testperson2")
             ),
             (
-                ValueAttribute::Uuid.as_str(),
+                "uuid",
                 Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63932"))
             ),
             (
@@ -274,7 +274,7 @@ mod tests {
                 Value::new_iname("testperson3")
             ),
             (
-                ValueAttribute::Uuid.as_str(),
+                "uuid",
                 Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63933"))
             ),
             (

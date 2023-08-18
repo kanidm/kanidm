@@ -811,7 +811,7 @@ mod tests {
             (ValueAttribute::Class.as_str(), ValueClass::Group.to_value()),
             (ValueAttribute::Name.as_str(), Value::new_iname("testgroup")),
             (
-                ValueAttribute::Uuid.as_str(),
+                "uuid",
                 Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
             ),
             (
@@ -887,7 +887,7 @@ mod tests {
                 Value::new_utf8s("testperson1")
             ),
             (
-                ValueAttribute::PrimaryCredential.as_str(),
+                "primary_credential",
                 Value::Cred("primary".to_string(), cred.clone())
             )
         );

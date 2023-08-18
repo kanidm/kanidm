@@ -55,12 +55,12 @@ impl SessionConsistency {
             // * If the session's credential is no longer on the account, we remove the session.
             let cred_ids: BTreeSet<Uuid> =
                 entry
-                    .get_ava_single_credential(ValueAttribute::PrimaryCredential.as_str())
+                    .get_ava_single_credential("primary_credential")
                         .iter()
                         .map(|c| c.uuid)
 
                 .chain(
-                    entry.get_ava_passkeys(ATTR_PASSKEYS)
+                    entry.get_ava_passkeys("passkeys")
                         .iter()
                         .flat_map(|pks| pks.keys().copied()  )
                 )
@@ -206,7 +206,7 @@ mod tests {
                 Value::new_utf8s("testperson1")
             ),
             (
-                ValueAttribute::PrimaryCredential.as_str(),
+                "primary_credential",
                 Value::Cred("primary".to_string(), cred.clone())
             )
         );
@@ -331,7 +331,7 @@ mod tests {
                 Value::new_utf8s("testperson1")
             ),
             (
-                ValueAttribute::PrimaryCredential.as_str(),
+                "primary_credential",
                 Value::Cred("primary".to_string(), cred.clone())
             )
         );
@@ -517,7 +517,7 @@ mod tests {
                 Value::new_utf8s("testperson1")
             ),
             (
-                ValueAttribute::PrimaryCredential.as_str(),
+                "primary_credential",
                 Value::Cred("primary".to_string(), cred.clone())
             )
         );
@@ -899,7 +899,7 @@ mod tests {
         let mut server_txn = server.write(curtime).await;
 
         // Remove the primary credential
-        let modlist = ModifyList::new_purge(ValueAttribute::PrimaryCredential.as_str());
+        let modlist = ModifyList::new_purge("primary_credential");
 
         server_txn
             .internal_modify(

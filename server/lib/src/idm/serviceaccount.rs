@@ -41,7 +41,7 @@ macro_rules! try_from_entry {
             ));
         }
 
-        let spn = $value.get_ava_single_proto_string(ATTR_SPN).ok_or(
+        let spn = $value.get_ava_single_proto_string("spn").ok_or(
             OperationError::InvalidAccountState("Missing attribute: spn".to_string()),
         )?;
 
@@ -57,9 +57,9 @@ macro_rules! try_from_entry {
             .cloned()
             .unwrap_or_default();
 
-        let valid_from = $value.get_ava_single_datetime(ATTR_ACCOUNT_VALID_FROM);
+        let valid_from = $value.get_ava_single_datetime("account_valid_from");
 
-        let expire = $value.get_ava_single_datetime(ATTR_ACCOUNT_EXPIRE);
+        let expire = $value.get_ava_single_datetime("account_expire");
 
         let uuid = $value.get_uuid().clone();
 
@@ -103,10 +103,8 @@ impl ServiceAccount {
     ) -> bool {
         let within_valid_window = Account::check_within_valid_time(
             ct,
-            entry
-                .get_ava_single_datetime(ATTR_ACCOUNT_VALID_FROM)
-                .as_ref(),
-            entry.get_ava_single_datetime(ATTR_ACCOUNT_EXPIRE).as_ref(),
+            entry.get_ava_single_datetime("account_valid_from").as_ref(),
+            entry.get_ava_single_datetime("account_expire").as_ref(),
         );
 
         if !within_valid_window {
@@ -335,9 +333,9 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         let vcred = Value::new_credential("primary", ncred);
         // We need to remove other credentials too.
         let modlist = ModifyList::new_list(vec![
-            m_purge(ATTR_PASSKEYS),
-            m_purge(ValueAttribute::PrimaryCredential.as_str()),
-            Modify::Present(ValueAttribute::PrimaryCredential.as_str().into(), vcred),
+            m_purge("passkeys"),
+            m_purge("primary_credential"),
+            Modify::Present("primary_credential".into(), vcred),
         ]);
 
         trace!(?modlist, "processing change");

@@ -31,7 +31,7 @@ impl RadiusAccount {
         }
 
         let radius_secret = value
-            .get_ava_single_secret(ATTR_RADIUS_SECRET)
+            .get_ava_single_secret("radius_secret")
             .ok_or_else(|| {
                 OperationError::InvalidAccountState("Missing attribute: radius_secret".to_string())
             })?
@@ -55,9 +55,9 @@ impl RadiusAccount {
 
         let groups = Group::try_from_account_entry_red_ro(value, qs)?;
 
-        let valid_from = value.get_ava_single_datetime(ATTR_ACCOUNT_VALID_FROM);
+        let valid_from = value.get_ava_single_datetime("account_valid_from");
 
-        let expire = value.get_ava_single_datetime(ATTR_ACCOUNT_EXPIRE);
+        let expire = value.get_ava_single_datetime("account_expire");
 
         Ok(RadiusAccount {
             name,
