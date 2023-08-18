@@ -663,18 +663,18 @@ lazy_static! {
         member: UUID_IDM_ADMIN,
     };
     /// Builtin IDM Administrators Group.
-    pub static ref E_IDM_ADMINS_V1: EntryInitNew = IDM_ADMINS_V1.clone().into();
-    // pub static ref E_IDM_ADMINS_V1: EntryInitNew = entry_init!(
-    //     (Attribute::Class.as_str(), EntryClass::Group.to_value()),
-    //     (Attribute::Class.as_str(), EntryClass::Object.to_value()),
-    //     (Attribute::Name.as_str(), Value::new_iname("idm_admins")),
-    //     (Attribute::Uuid.as_str(), Value::Uuid(UUID_IDM_ADMINS)),
-    //     (
-    //         Attribute::Description.as_str(),
-    //         Value::new_utf8s("Builtin IDM Administrators Group.")
-    //     ),
-    //     (Attribute::Member.as_str(), Value::Refer(UUID_IDM_ADMIN))
-    // );
+    // pub static ref E_IDM_ADMINS_V1: EntryInitNew = IDM_ADMINS_V1.clone().into();
+    pub static ref E_IDM_ADMINS_V1: EntryInitNew = entry_init!(
+        (Attribute::Class.as_str(), EntryClass::Group.to_value()),
+        (Attribute::Class.as_str(), EntryClass::Object.to_value()),
+        (Attribute::Name.as_str(), Value::new_iname("idm_admins")),
+        (Attribute::Uuid.as_str(), Value::Uuid(UUID_IDM_ADMINS)),
+        (
+            Attribute::Description.as_str(),
+            Value::new_utf8s("Builtin IDM Administrators Group.")
+        ),
+        (Attribute::Member.as_str(), Value::Refer(UUID_IDM_ADMIN))
+    );
 }
 
 lazy_static! {

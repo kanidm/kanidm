@@ -349,6 +349,7 @@ pub async fn test_modify_group(
         for attr in [ATTR_DESCRIPTION, ATTR_NAME].iter() {
             #[allow(clippy::unwrap_used)]
             let is_writable = is_attr_writable(rsclient, group, attr).await.unwrap();
+            dbg!(group, attr, is_writable, can_be_modified);
             assert!(is_writable == can_be_modified)
         }
         assert!(
