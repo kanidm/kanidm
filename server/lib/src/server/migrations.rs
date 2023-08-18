@@ -439,13 +439,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
     #[instrument(level = "debug", skip_all)]
     pub fn migrate_14_to_15(&mut self) -> Result<(), OperationError> {
         admin_warn!("starting 14 to 15 migration.");
-        let filter = filter!(f_eq(
-            ValueAttribute::Class,
-            ValueClass::Person.to_partialvalue()
-        ));
+        let filter = filter!(f_eq(ValueAttribute::Class, ValueClass::Person.into()));
         // Delete the non-existing attr for idv private key which triggers
         // it to regen.
-        let modlist = ModifyList::new_purge(ATTR_ID_VERIFICATION_ECKEY);
+        let modlist = ModifyList::new_purge("id_verification_eckey");
         self.internal_modify(&filter, &modlist)
         // Complete
     }
