@@ -8,7 +8,8 @@ use crate::value::Value;
 use kanidm_proto::v1::Filter as ProtoFilter;
 
 #[derive(Clone)]
-pub struct SchemaAcp {
+/// Built-in Acess Control Profile definitions
+pub struct BuiltinAcp {
     classes: Vec<EntryClass>,
     name: &'static str,
     uuid: Uuid,
@@ -18,8 +19,8 @@ pub struct SchemaAcp {
     search_attrs: Vec<Attribute>,
 }
 
-impl From<SchemaAcp> for EntryInitNew {
-    fn from(value: SchemaAcp) -> Self {
+impl From<BuiltinAcp> for EntryInitNew {
+    fn from(value: BuiltinAcp) -> Self {
         let mut entry = EntryInitNew::default();
 
         value.classes.into_iter().for_each(|class| {
@@ -48,7 +49,7 @@ impl From<SchemaAcp> for EntryInitNew {
 }
 
 lazy_static! {
-    pub static ref IDM_ADMINS_ACP_RECYCLE_SEARCH_V1: SchemaAcp = SchemaAcp {
+    pub static ref IDM_ADMINS_ACP_RECYCLE_SEARCH_V1: BuiltinAcp = BuiltinAcp {
         uuid: UUID_IDM_ADMINS_ACP_RECYCLE_SEARCH_V1,
         name: "idm_admins_acp_recycle_search",
         description: "Builtin IDM admin recycle bin search permission.",

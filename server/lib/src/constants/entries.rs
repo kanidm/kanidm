@@ -578,7 +578,8 @@ impl EntryClass {
 }
 
 #[derive(Clone, Debug)]
-pub struct SchemaGroup {
+/// Built-in group definitions
+pub struct BuiltinGroup {
     pub name: &'static str,
     description: &'static str,
     classes: Vec<EntryClass>,
@@ -586,8 +587,8 @@ pub struct SchemaGroup {
     member: uuid::Uuid,
 }
 
-impl From<SchemaGroup> for EntryInitNew {
-    fn from(val: SchemaGroup) -> Self {
+impl From<BuiltinGroup> for EntryInitNew {
+    fn from(val: BuiltinGroup) -> Self {
         let mut entry = EntryInitNew::new();
 
         entry.add_ava(Attribute::Name.as_ref(), Value::new_iname(val.name));
@@ -660,7 +661,7 @@ lazy_static! {
 }
 
 lazy_static! {
-    pub static ref IDM_ADMINS_V1: SchemaGroup = SchemaGroup {
+    pub static ref IDM_ADMINS_V1: BuiltinGroup = BuiltinGroup {
         name: "idm_admins",
         description: "Builtin IDM Administrators Group.",
         classes: vec![
