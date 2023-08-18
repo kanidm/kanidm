@@ -2790,7 +2790,7 @@ mod tests {
         let schema_outer = Schema::new().expect("failed to create schema");
         let schema = schema_outer.read();
         // Test non existent attr name
-        // let f_mixed = filter_all!(f_eq("nonClAsS", ValueClass::AttributeType.into()));
+        // let f_mixed = filter_all!(f_eq(ValueAttribute::MembernonClAsS", ValueClass::AttributeType.into()));
         // assert_eq!(
         //     f_mixed.validate(&schema),
         //     Err(SchemaError::InvalidAttribute("nonclass".to_string()))

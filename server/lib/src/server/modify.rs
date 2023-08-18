@@ -432,6 +432,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         modlist: &ModifyList<ModifyInvalid>,
     ) -> Result<(), OperationError> {
         let filter = filter!(f_eq(ValueAttribute::Uuid, PartialValue::Uuid(target_uuid)));
+        let filter = filter!(f_eq(ValueAttribute::Uuid, PartialValue::Uuid(target_uuid)));
         let f_valid = filter
             .validate(self.get_schema())
             .map_err(OperationError::SchemaViolation)?;
@@ -599,19 +600,22 @@ mod tests {
         // handled, we put this via the internal modify function to get the modlist
         // checked for us. Normal server operation doesn't allow weird bypasses like
         // this.
-        // let r_inv_1 = server_txn.internal_modify(
-        //     &filter!(f_eq("tnanuanou", PartialValue::new_iname("Flarbalgarble"))),
-        //     &ModifyList::new_list(vec![Modify::Present(
-        //         ValueAttribute::Description.into(),
-        //         Value::from("anusaosu"),
-        //     )]),
-        // );
-        // assert!(
-        //     r_inv_1
-        //         == Err(OperationError::SchemaViolation(
-        //             SchemaError::InvalidAttribute("tnanuanou".to_string())
-        //         ))
-        // );
+        let r_inv_1 = server_txn.internal_modify(
+            &filter!(f_eq(
+                ValueAttribute::TestAttr,
+                PartialValue::new_iname("Flarbalgarble")
+            )),
+            &ModifyList::new_list(vec![Modify::Present(
+                AttrString::from("description"),
+                Value::from("anusaosu"),
+            )]),
+        );
+        assert!(
+            r_inv_1
+                == Err(OperationError::SchemaViolation(
+                    SchemaError::InvalidAttribute("tnanuanou".to_string())
+                ))
+        );
 
         // Mod is invalid to schema
         let me_inv_m = ModifyEvent::new_internal_invalid(

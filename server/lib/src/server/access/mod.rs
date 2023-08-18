@@ -1994,7 +1994,7 @@ mod tests {
                 ValueAttribute::Name,
                 PartialValue::new_iname("testperson1")
             )),
-            modlist!([m_purge(ValueAttribute::Class.into())]),
+            modlist!([m_purge("class")]),
         );
 
         // Allow name and class, class is account

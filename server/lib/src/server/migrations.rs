@@ -427,7 +427,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
     #[instrument(level = "debug", skip_all)]
     pub fn migrate_13_to_14(&mut self) -> Result<(), OperationError> {
         admin_warn!("starting 13 to 14 migration.");
-        let filter = filter!(f_eq(ValueAttribute::Class, ValueClass::DynGroup.into()));
+        let filter = filter!(f_eq(
+            ValueAttribute::Class,
+            ValueClass::DynGroup.to_partialvalue()
+        ));
         // Delete the incorrectly added "member" attr.
         let modlist = ModifyList::new_purge("member");
         self.internal_modify(&filter, &modlist)

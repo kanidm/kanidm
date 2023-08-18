@@ -23,7 +23,7 @@ impl EcdhKeyGen {
         cands: &mut [Entry<EntryInvalid, STATE>],
     ) -> Result<(), OperationError> {
         for cand in cands.iter_mut() {
-            if cand.attribute_equality("class", &ValueClass::Person.into())
+            if cand.attribute_equality("class", &ValueClass::Person.to_partialvalue())
                 && !cand.attribute_pres("id_verification_eckey")
             {
                 debug!("Generating idv_eckey for {}", cand.get_display_id());
@@ -138,10 +138,7 @@ mod tests {
         run_modify_test!(
             Err(OperationError::SystemProtectedAttribute),
             preload,
-            filter!(f_eq(
-                ValueAttribute::Name,
-                PartialValue::new_iname("test_name")
-            )),
+            filter!(f_eq("name", PartialValue::new_iname("test_name"))),
             modlist!([m_pres(
                 ATTR_ID_VERIFICATION_ECKEY,
                 &Value::EcKeyPrivate(new_private_key)
@@ -179,11 +176,8 @@ mod tests {
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq(
-                ValueAttribute::Name,
-                PartialValue::new_iname("test_name")
-            )),
-            modlist!([m_purge(ATTR_ID_VERIFICATION_ECKEY)]),
+            filter!(f_eq("name", PartialValue::new_iname("test_name"))),
+            modlist!([m_purge("id_verification_eckey")]),
             None,
             |_| {},
             |qs: &mut QueryServerWriteTransaction| {
@@ -222,11 +216,8 @@ mod tests {
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq(
-                ValueAttribute::Name,
-                PartialValue::new_iname("test_name")
-            )),
-            modlist!([m_remove(ATTR_ID_VERIFICATION_ECKEY, &key_partialvalue)]),
+            filter!(f_eq("name", PartialValue::new_iname("test_name"))),
+            modlist!([m_remove("id_verification_eckey", &key_partialvalue)]),
             None,
             |_| {},
             |qs: &mut QueryServerWriteTransaction| {
