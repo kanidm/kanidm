@@ -787,7 +787,7 @@ impl Entry<EntryIncremental, EntryNew> {
 
                         // Move the current uuid to source_uuid
                         cnf_ent.add_ava(
-                            Attribute::SourceUuid.as_str(),
+                            Attribute::SourceUuid.as_ref(),
                             Value::Uuid(db_ent.valid.uuid),
                         );
 
@@ -795,8 +795,8 @@ impl Entry<EntryIncremental, EntryNew> {
                         let new_uuid = Uuid::new_v4();
                         cnf_ent.purge_ava("uuid");
                         cnf_ent.add_ava("uuid", Value::Uuid(new_uuid));
-                        cnf_ent.add_ava(Attribute::Class.as_str(), EntryClass::Recycled.into());
-                        cnf_ent.add_ava(Attribute::Class.as_str(), EntryClass::Conflict.into());
+                        cnf_ent.add_ava(Attribute::Class.as_ref(), EntryClass::Recycled.into());
+                        cnf_ent.add_ava(Attribute::Class.as_ref(), EntryClass::Conflict.into());
 
                         // Now we have to internally bypass some states.
                         // This is okay because conflict entries aren't subject
@@ -1075,9 +1075,9 @@ impl Entry<EntryIncremental, EntryCommitted> {
 
         if let Err(e) = ne.validate(schema) {
             warn!(uuid = ?self.valid.uuid, err = ?e, "Entry failed schema check, moving to a conflict state");
-            ne.add_ava_int(Attribute::Class.as_str(), EntryClass::Recycled.into());
-            ne.add_ava_int(Attribute::Class.as_str(), EntryClass::Conflict.into());
-            ne.add_ava_int(Attribute::SourceUuid.as_str(), Value::Uuid(self.valid.uuid));
+            ne.add_ava_int(Attribute::Class.as_ref(), EntryClass::Recycled.into());
+            ne.add_ava_int(Attribute::Class.as_ref(), EntryClass::Conflict.into());
+            ne.add_ava_int(Attribute::SourceUuid.as_ref(), Value::Uuid(self.valid.uuid));
         }
         ne
     }
@@ -1153,7 +1153,7 @@ impl Entry<EntryInvalid, EntryCommitted> {
     /// Convert this entry into a recycled entry, that is "in the recycle bin".
     pub fn to_recycled(mut self) -> Self {
         // This will put the modify ahead of the recycle transition.
-        self.add_ava(Attribute::Class.as_str(), EntryClass::Recycled.into());
+        self.add_ava(Attribute::Class.as_ref(), EntryClass::Recycled.into());
 
         // Change state repl doesn't need this flag
         // self.valid.ecstate.recycled(&self.valid.cid);
@@ -1918,7 +1918,7 @@ impl<STATE> Entry<EntryValid, STATE> {
             return Err(SchemaError::NoClassFound);
         }
 
-        if self.attribute_equality(Attribute::Class.as_str(), &EntryClass::Conflict.into()) {
+        if self.attribute_equality(Attribute::Class.as_ref(), &EntryClass::Conflict.into()) {
             // Conflict entries are exempt from schema enforcement. Return true.
             trace!("Skipping schema validation on conflict entry");
             return Ok(());
@@ -1926,7 +1926,7 @@ impl<STATE> Entry<EntryValid, STATE> {
 
         // Are we in the recycle bin? We soften some checks if we are.
         let recycled =
-            self.attribute_equality(Attribute::Class.as_str(), &EntryClass::Recycled.into());
+            self.attribute_equality(Attribute::Class.as_ref(), &EntryClass::Recycled.into());
 
         // Do we have extensible? We still validate syntax of attrs but don't
         // check for valid object structures.
@@ -1938,7 +1938,7 @@ impl<STATE> Entry<EntryValid, STATE> {
         let entry_classes = self.get_ava_set(Attribute::Class.into()).ok_or_else(|| {
             admin_debug!(
                 "Attribute '{}' missing from entry",
-                Attribute::Class.as_str()
+                Attribute::Class.as_ref()
             );
             SchemaError::NoClassFound
         })?;
@@ -2678,7 +2678,7 @@ impl<VALID, STATE> Entry<VALID, STATE> {
     #[inline(always)]
     /// Return a single security principle name, if valid to transform this value.
     pub(crate) fn generate_spn(&self, domain_name: &str) -> Option<Value> {
-        self.get_ava_single_iname(Attribute::Name.as_str())
+        self.get_ava_single_iname(Attribute::Name.as_ref())
             .map(|name| Value::new_spn_str(name, domain_name))
     }
 
@@ -2857,7 +2857,7 @@ impl<VALID, STATE> Entry<VALID, STATE> {
     /// filter_map to effectively remove entries that should not be considered as "alive".
     pub fn mask_recycled_ts(&self) -> Option<&Self> {
         // Only when cls has ts/rc then None, else lways Some(self).
-        match self.attrs.get(Attribute::Class.as_str()) {
+        match self.attrs.get(Attribute::Class.as_ref()) {
             Some(cls) => {
                 if cls.contains(&EntryClass::Tombstone.to_partialvalue())
                     || cls.contains(&EntryClass::Recycled.to_partialvalue())
@@ -2875,7 +2875,7 @@ impl<VALID, STATE> Entry<VALID, STATE> {
     /// filter_map to effectively remove entries that are recycled in some cases.
     pub fn mask_recycled(&self) -> Option<&Self> {
         // Only when cls has ts/rc then None, else lways Some(self).
-        match self.attrs.get(Attribute::Class.as_str()) {
+        match self.attrs.get(Attribute::Class.as_ref()) {
             Some(cls) => {
                 if cls.contains(&EntryClass::Recycled.to_partialvalue()) {
                     None
@@ -2891,7 +2891,7 @@ impl<VALID, STATE> Entry<VALID, STATE> {
     /// filter_map to effectively remove entries that are tombstones in some cases.
     pub fn mask_tombstone(&self) -> Option<&Self> {
         // Only when cls has ts/rc then None, else lways Some(self).
-        match self.attrs.get(Attribute::Class.as_str()) {
+        match self.attrs.get(Attribute::Class.as_ref()) {
             Some(cls) => {
                 if cls.contains(&EntryClass::Tombstone.to_partialvalue()) {
                     None
@@ -2911,7 +2911,7 @@ where
     fn trigger_last_changed(&mut self) {
         self.valid
             .ecstate
-            .change_ava(&self.valid.cid, Attribute::LastModifiedCid.as_str());
+            .change_ava(&self.valid.cid, Attribute::LastModifiedCid.as_ref());
         let cv = vs_cid![self.valid.cid.clone()];
         let _ = self.attrs.insert(Attribute::LastModifiedCid.into(), cv);
     }
@@ -3096,7 +3096,7 @@ impl From<&SchemaAttribute> for Entry<EntryInit, EntryNew> {
         // let mut attrs: Map<AttrString, Set<Value>> = Map::with_capacity(8);
         let mut attrs: Map<AttrString, ValueSet> = Map::new();
         attrs.insert(AttrString::from("attributename"), name_v);
-        attrs.insert(AttrString::from(Attribute::Description.as_str()), desc_v);
+        attrs.insert(AttrString::from(Attribute::Description.as_ref()), desc_v);
         attrs.insert(Attribute::Uuid.into(), uuid_v);
         attrs.insert(AttrString::from("multivalue"), multivalue_v);
         attrs.insert(AttrString::from("phantom"), phantom_v);
@@ -3132,7 +3132,7 @@ impl From<&SchemaClass> for Entry<EntryInit, EntryNew> {
         // let mut attrs: Map<AttrString, Set<Value>> = Map::with_capacity(8);
         let mut attrs: Map<AttrString, ValueSet> = Map::new();
         attrs.insert(AttrString::from("classname"), name_v);
-        attrs.insert(AttrString::from(Attribute::Description.as_str()), desc_v);
+        attrs.insert(AttrString::from(Attribute::Description.as_ref()), desc_v);
         attrs.insert(AttrString::from("sync_allowed"), sync_allowed_v);
         attrs.insert(Attribute::Uuid.into(), uuid_v);
         attrs.insert(
@@ -3346,7 +3346,7 @@ mod tests {
     #[test]
     fn test_entry_idx_diff() {
         let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
-        e1.add_ava(Attribute::UserId.as_str(), Value::from("william"));
+        e1.add_ava(Attribute::UserId.as_ref(), Value::from("william"));
         let mut e1_mod = e1.clone();
         e1_mod.add_ava(Attribute::Extra.into(), Value::from("test"));
 
@@ -3354,7 +3354,7 @@ mod tests {
         let e1_mod = e1_mod.into_sealed_committed();
 
         let mut e2: Entry<EntryInit, EntryNew> = Entry::new();
-        e2.add_ava(Attribute::UserId.as_str(), Value::from("claire"));
+        e2.add_ava(Attribute::UserId.as_ref(), Value::from("claire"));
         let e2 = e2.into_sealed_committed();
 
         let mut idxmeta = HashMap::with_capacity(8);
@@ -3481,18 +3481,18 @@ mod tests {
     #[test]
     fn test_entry_mask_recycled_ts() {
         let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
-        e1.add_ava(Attribute::Class.as_str(), EntryClass::Person.to_value());
+        e1.add_ava(Attribute::Class.as_ref(), EntryClass::Person.to_value());
         let e1 = e1.into_sealed_committed();
         assert!(e1.mask_recycled_ts().is_some());
 
         let mut e2: Entry<EntryInit, EntryNew> = Entry::new();
-        e2.add_ava(Attribute::Class.as_str(), EntryClass::Person.to_value());
-        e2.add_ava(Attribute::Class.as_str(), EntryClass::Recycled.into());
+        e2.add_ava(Attribute::Class.as_ref(), EntryClass::Person.to_value());
+        e2.add_ava(Attribute::Class.as_ref(), EntryClass::Recycled.into());
         let e2 = e2.into_sealed_committed();
         assert!(e2.mask_recycled_ts().is_none());
 
         let mut e3: Entry<EntryInit, EntryNew> = Entry::new();
-        e3.add_ava(Attribute::Class.as_str(), EntryClass::Tombstone.into());
+        e3.add_ava(Attribute::Class.as_ref(), EntryClass::Tombstone.into());
         let e3 = e3.into_sealed_committed();
         assert!(e3.mask_recycled_ts().is_none());
     }
@@ -3506,7 +3506,7 @@ mod tests {
         // none, some - test adding an entry gives back add sets
         {
             let mut e: Entry<EntryInit, EntryNew> = Entry::new();
-            e.add_ava(Attribute::Class.as_str(), EntryClass::Person.to_value());
+            e.add_ava(Attribute::Class.as_ref(), EntryClass::Person.to_value());
             let e = e.into_sealed_committed();
 
             assert!(Entry::idx_name2uuid_diff(None, Some(&e)) == (Some(Set::new()), None));
@@ -3514,7 +3514,7 @@ mod tests {
 
         {
             let mut e: Entry<EntryInit, EntryNew> = Entry::new();
-            e.add_ava(Attribute::Class.as_str(), EntryClass::Person.to_value());
+            e.add_ava(Attribute::Class.as_ref(), EntryClass::Person.to_value());
             e.add_ava("gidnumber", Value::new_uint32(1300));
             e.add_ava("name", Value::new_iname("testperson"));
             e.add_ava("spn", Value::new_spn_str("testperson", "example.com"));
@@ -3560,12 +3560,12 @@ mod tests {
 
         {
             let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
-            e1.add_ava(Attribute::Class.as_str(), EntryClass::Person.to_value());
+            e1.add_ava(Attribute::Class.as_ref(), EntryClass::Person.to_value());
             e1.add_ava("spn", Value::new_spn_str("testperson", "example.com"));
             let e1 = e1.into_sealed_committed();
 
             let mut e2: Entry<EntryInit, EntryNew> = Entry::new();
-            e2.add_ava(Attribute::Class.as_str(), EntryClass::Person.to_value());
+            e2.add_ava(Attribute::Class.as_ref(), EntryClass::Person.to_value());
             e2.add_ava("name", Value::new_iname("testperson"));
             e2.add_ava("spn", Value::new_spn_str("testperson", "example.com"));
             let e2 = e2.into_sealed_committed();
@@ -3586,12 +3586,12 @@ mod tests {
         // Value changed, remove old, add new.
         {
             let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
-            e1.add_ava(Attribute::Class.as_str(), EntryClass::Person.to_value());
+            e1.add_ava(Attribute::Class.as_ref(), EntryClass::Person.to_value());
             e1.add_ava("spn", Value::new_spn_str("testperson", "example.com"));
             let e1 = e1.into_sealed_committed();
 
             let mut e2: Entry<EntryInit, EntryNew> = Entry::new();
-            e2.add_ava(Attribute::Class.as_str(), EntryClass::Person.to_value());
+            e2.add_ava(Attribute::Class.as_ref(), EntryClass::Person.to_value());
             e2.add_ava("spn", Value::new_spn_str("renameperson", "example.com"));
             let e2 = e2.into_sealed_committed();
 

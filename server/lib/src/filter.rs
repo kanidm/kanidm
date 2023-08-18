@@ -1080,7 +1080,7 @@ impl FilterResolved {
                 Some(FilterResolved::Eq(a, v, idx))
             }
             FilterComp::SelfUuid => ev.get_uuid().map(|uuid| {
-                let idxkref = IdxKeyRef::new(Attribute::Uuid.as_str(), &IndexType::Equality);
+                let idxkref = IdxKeyRef::new(Attribute::Uuid.as_ref(), &IndexType::Equality);
                 let idx = idxmeta
                     .get(&idxkref as &dyn IdxKeyToRef)
                     .copied()
@@ -1362,7 +1362,7 @@ mod tests {
                 f_eq(Attribute::UserId, PartialValue::new_iutf8("test_a")),
                 f_eq(Attribute::UserId, PartialValue::new_iutf8("test_b")),
             ]),
-            f_sub(Attribute::Class.as_str(), EntryClass::User.into()),
+            f_sub(Attribute::Class.as_ref(), EntryClass::User.into()),
         ]));
     }
 
@@ -1423,14 +1423,14 @@ mod tests {
                     Attribute::Class,
                     EntryClass::TestClass.to_partialvalue()
                 )]),
-                f_sub(Attribute::Class.as_str(), PartialValue::new_class("te")),
-                f_pres(Attribute::Class.as_str()),
+                f_sub(Attribute::Class.as_ref(), PartialValue::new_class("te")),
+                f_pres(Attribute::Class.as_ref()),
                 f_eq(Attribute::Class, EntryClass::TestClass.to_partialvalue())
             ]),
             f_and(vec![
                 f_eq(Attribute::Class, EntryClass::TestClass.to_partialvalue()),
-                f_pres(Attribute::Class.as_str()),
-                f_sub(Attribute::Class.as_str(), PartialValue::new_class("te")),
+                f_pres(Attribute::Class.as_ref()),
+                f_sub(Attribute::Class.as_ref(), PartialValue::new_class("te")),
             ])
         );
 
@@ -1442,32 +1442,32 @@ mod tests {
                     f_eq(Attribute::Class, EntryClass::TestClass.to_partialvalue()),
                     f_eq(Attribute::Uid, PartialValue::new_class("bar")),
                 ]),
-                f_sub(Attribute::Class.as_str(), PartialValue::new_class("te")),
-                f_pres(Attribute::Class.as_str()),
+                f_sub(Attribute::Class.as_ref(), PartialValue::new_class("te")),
+                f_pres(Attribute::Class.as_ref()),
                 f_eq(Attribute::Class, EntryClass::TestClass.to_partialvalue())
             ]),
             f_and(vec![
                 f_eq(Attribute::Class, PartialValue::new_class("foo")),
                 f_eq(Attribute::Class, EntryClass::TestClass.to_partialvalue()),
-                f_pres(Attribute::Class.as_str()),
+                f_pres(Attribute::Class.as_ref()),
                 f_eq(Attribute::Uid, PartialValue::new_class("bar")),
-                f_sub(Attribute::Class.as_str(), PartialValue::new_class("te")),
+                f_sub(Attribute::Class.as_ref(), PartialValue::new_class("te")),
             ])
         );
 
         filter_optimise_assert!(
             f_or(vec![
                 f_eq(Attribute::Class, EntryClass::TestClass.to_partialvalue()),
-                f_pres(Attribute::Class.as_str()),
-                f_sub(Attribute::Class.as_str(), PartialValue::new_class("te")),
+                f_pres(Attribute::Class.as_ref()),
+                f_sub(Attribute::Class.as_ref(), PartialValue::new_class("te")),
                 f_or(vec![f_eq(
                     Attribute::Class,
                     EntryClass::TestClass.to_partialvalue()
                 )]),
             ]),
             f_or(vec![
-                f_sub(Attribute::Class.as_str(), PartialValue::new_class("te")),
-                f_pres(Attribute::Class.as_str()),
+                f_sub(Attribute::Class.as_ref(), PartialValue::new_class("te")),
+                f_pres(Attribute::Class.as_ref()),
                 f_eq(Attribute::Class, EntryClass::TestClass.to_partialvalue())
             ])
         );
@@ -1569,12 +1569,12 @@ mod tests {
     #[test]
     fn test_lessthan_entry_filter() {
         let e = entry_init!(
-            (Attribute::UserId.as_str(), Value::new_iutf8("william")),
+            (Attribute::UserId.as_ref(), Value::new_iutf8("william")),
             (
                 "uuid",
                 Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
             ),
-            (Attribute::GidNumber.as_str(), Value::Uint32(1000))
+            (Attribute::GidNumber.as_ref(), Value::Uint32(1000))
         )
         .into_sealed_new();
 
@@ -1591,12 +1591,12 @@ mod tests {
     #[test]
     fn test_or_entry_filter() {
         let e = entry_init!(
-            (Attribute::UserId.as_str(), Value::new_iutf8("william")),
+            (Attribute::UserId.as_ref(), Value::new_iutf8("william")),
             (
-                Attribute::Uuid.as_str(),
+                Attribute::Uuid.as_ref(),
                 Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
             ),
-            (Attribute::GidNumber.as_str(), Value::Uint32(1000))
+            (Attribute::GidNumber.as_ref(), Value::Uint32(1000))
         )
         .into_sealed_new();
 
@@ -1628,12 +1628,12 @@ mod tests {
     #[test]
     fn test_and_entry_filter() {
         let e = entry_init!(
-            (Attribute::UserId.as_str(), Value::new_iutf8("william")),
+            (Attribute::UserId.as_ref(), Value::new_iutf8("william")),
             (
-                Attribute::Uuid.as_str(),
+                Attribute::Uuid.as_ref(),
                 Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
             ),
-            (Attribute::GidNumber.as_str(), Value::Uint32(1000))
+            (Attribute::GidNumber.as_ref(), Value::Uint32(1000))
         )
         .into_sealed_new();
 
@@ -1665,12 +1665,12 @@ mod tests {
     #[test]
     fn test_not_entry_filter() {
         let e1 = entry_init!(
-            (Attribute::UserId.as_str(), Value::new_iutf8("william")),
+            (Attribute::UserId.as_ref(), Value::new_iutf8("william")),
             (
-                Attribute::Uuid.as_str(),
+                Attribute::Uuid.as_ref(),
                 Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
             ),
-            (Attribute::GidNumber.as_str(), Value::Uint32(1000))
+            (Attribute::GidNumber.as_ref(), Value::Uint32(1000))
         )
         .into_sealed_new();
 
@@ -1691,47 +1691,47 @@ mod tests {
     fn test_nested_entry_filter() {
         let e1 = entry_init!(
             (
-                Attribute::Class.as_str(),
+                Attribute::Class.as_ref(),
                 EntryClass::Person.to_value().clone()
             ),
             (
-                Attribute::Uuid.as_str(),
+                Attribute::Uuid.as_ref(),
                 Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
             ),
-            (Attribute::GidNumber.as_str(), Value::Uint32(1000))
+            (Attribute::GidNumber.as_ref(), Value::Uint32(1000))
         )
         .into_sealed_new();
 
         let e2 = entry_init!(
             (
-                Attribute::Class.as_str(),
+                Attribute::Class.as_ref(),
                 EntryClass::Person.to_value().clone()
             ),
             (
-                Attribute::Uuid.as_str(),
+                Attribute::Uuid.as_ref(),
                 Value::Uuid(uuid::uuid!("4b6228ab-1dbe-42a4-a9f5-f6368222438e"))
             ),
-            (Attribute::GidNumber.as_str(), Value::Uint32(1001))
+            (Attribute::GidNumber.as_ref(), Value::Uint32(1001))
         )
         .into_sealed_new();
 
         let e3 = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Person.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
             (
-                Attribute::Uuid.as_str(),
+                Attribute::Uuid.as_ref(),
                 Value::Uuid(uuid::uuid!("7b23c99d-c06b-4a9a-a958-3afa56383e1d"))
             ),
-            (Attribute::GidNumber.as_str(), Value::Uint32(1002))
+            (Attribute::GidNumber.as_ref(), Value::Uint32(1002))
         )
         .into_sealed_new();
 
         let e4 = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Group.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Group.to_value()),
             (
-                Attribute::Uuid.as_str(),
+                Attribute::Uuid.as_ref(),
                 Value::Uuid(uuid::uuid!("21d816b5-1f6a-4696-b7c1-6ed06d22ed81"))
             ),
-            (Attribute::GidNumber.as_str(), Value::Uint32(1000))
+            (Attribute::GidNumber.as_ref(), Value::Uint32(1000))
         )
         .into_sealed_new();
 
@@ -1753,7 +1753,7 @@ mod tests {
     fn test_attr_set_filter() {
         let mut f_expect = BTreeSet::new();
         f_expect.insert("userid");
-        f_expect.insert(Attribute::Class.as_str());
+        f_expect.insert(Attribute::Class.as_ref());
         // Given filters, get their expected attribute sets - this is used by access control profiles
         // to determine what attrs we are requesting regardless of the partialvalue.
         let f_t1a = filter_valid!(f_and!([
@@ -1781,63 +1781,63 @@ mod tests {
         let mut server_txn = server.write(time_p1).await;
 
         let e1 = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_str(), EntryClass::Person.to_value()),
-            (Attribute::Class.as_str(), EntryClass::Account.to_value()),
-            (Attribute::Name.as_str(), Value::new_iname("testperson1")),
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
+            (Attribute::Name.as_ref(), Value::new_iname("testperson1")),
             (
-                Attribute::Uuid.as_str(),
+                Attribute::Uuid.as_ref(),
                 Value::Uuid(uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
             ),
             (
-                Attribute::Description.as_str(),
+                Attribute::Description.as_ref(),
                 Value::new_utf8s("testperson1")
             ),
             (
-                Attribute::DisplayName.as_str(),
+                Attribute::DisplayName.as_ref(),
                 Value::new_utf8s("testperson1")
             )
         );
 
         let e2 = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
             (
-                Attribute::Class.as_str(),
+                Attribute::Class.as_ref(),
                 EntryClass::Person.to_value().clone()
             ),
-            (Attribute::Name.as_str(), Value::new_iname("testperson2")),
+            (Attribute::Name.as_ref(), Value::new_iname("testperson2")),
             (
-                Attribute::Uuid.as_str(),
+                Attribute::Uuid.as_ref(),
                 Value::Uuid(uuid::uuid!("a67c0c71-0b35-4218-a6b0-22d23d131d27"))
             ),
             (
-                Attribute::Description.as_str(),
+                Attribute::Description.as_ref(),
                 Value::new_utf8s("testperson2")
             ),
             (
-                Attribute::DisplayName.as_str(),
+                Attribute::DisplayName.as_ref(),
                 Value::new_utf8s("testperson2")
             )
         );
 
         // We need to add these and then push through the state machine.
         let e_ts = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
             (
-                Attribute::Class.as_str(),
+                Attribute::Class.as_ref(),
                 EntryClass::Person.to_value().clone()
             ),
-            (Attribute::Name.as_str(), Value::new_iname("testperson3")),
+            (Attribute::Name.as_ref(), Value::new_iname("testperson3")),
             (
-                Attribute::Uuid.as_str(),
+                Attribute::Uuid.as_ref(),
                 Value::Uuid(uuid!("9557f49c-97a5-4277-a9a5-097d17eb8317"))
             ),
             (
-                Attribute::Description.as_str(),
+                Attribute::Description.as_ref(),
                 Value::new_utf8s("testperson3")
             ),
             (
-                Attribute::DisplayName.as_str(),
+                Attribute::DisplayName.as_ref(),
                 Value::new_utf8s("testperson3")
             )
         );

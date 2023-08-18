@@ -21,7 +21,7 @@ impl AccessControlSearch {
         value: &Entry<EntrySealed, EntryCommitted>,
     ) -> Result<Self, OperationError> {
         if !value.attribute_equality(
-            Attribute::Class.as_str(),
+            Attribute::Class.as_ref(),
             &EntryClass::AccessControlSearch.into(),
         ) {
             admin_error!("class access_control_search not present.");
@@ -77,7 +77,7 @@ impl AccessControlDelete {
         value: &Entry<EntrySealed, EntryCommitted>,
     ) -> Result<Self, OperationError> {
         if !value.attribute_equality(
-            Attribute::Class.as_str(),
+            Attribute::Class.as_ref(),
             &EntryClass::AccessControlDelete.into(),
         ) {
             admin_error!("class access_control_delete not present.");
@@ -124,7 +124,7 @@ impl AccessControlCreate {
         value: &Entry<EntrySealed, EntryCommitted>,
     ) -> Result<Self, OperationError> {
         if !value.attribute_equality(
-            Attribute::Class.as_str(),
+            Attribute::Class.as_ref(),
             &EntryClass::AccessControlCreate.into(),
         ) {
             admin_error!("class access_control_create not present.");
@@ -188,7 +188,7 @@ impl AccessControlModify {
         value: &Entry<EntrySealed, EntryCommitted>,
     ) -> Result<Self, OperationError> {
         if !value.attribute_equality(
-            Attribute::Class.as_str(),
+            Attribute::Class.as_ref(),
             &EntryClass::AccessControlModify.into(),
         ) {
             admin_error!("class access_control_modify not present.");
@@ -279,7 +279,7 @@ impl AccessControlProfile {
     ) -> Result<Self, OperationError> {
         // Assert we have class access_control_profile
         if !value.attribute_equality(
-            Attribute::Class.as_str(),
+            Attribute::Class.as_ref(),
             &EntryClass::AccessControlProfile.into(),
         ) {
             admin_error!("class access_control_profile not present.");

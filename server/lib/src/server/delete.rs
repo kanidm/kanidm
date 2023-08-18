@@ -98,9 +98,9 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // schema or acp requires reload.
         if !self.changed_schema {
             self.changed_schema = del_cand.iter().any(|e| {
-                e.attribute_equality(Attribute::Class.as_str(), &EntryClass::ClassType.into())
+                e.attribute_equality(Attribute::Class.as_ref(), &EntryClass::ClassType.into())
                     || e.attribute_equality(
-                        Attribute::Class.as_str(),
+                        Attribute::Class.as_ref(),
                         &EntryClass::AttributeType.into(),
                     )
             });
@@ -108,7 +108,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         if !self.changed_acp {
             self.changed_acp = del_cand.iter().any(|e| {
                 e.attribute_equality(
-                    Attribute::Class.as_str(),
+                    Attribute::Class.as_ref(),
                     &EntryClass::AccessControlProfile.into(),
                 )
             });
@@ -116,7 +116,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         if !self.changed_oauth2 {
             self.changed_oauth2 = del_cand.iter().any(|e| {
                 e.attribute_equality(
-                    Attribute::Class.as_str(),
+                    Attribute::Class.as_ref(),
                     &EntryClass::OAuth2ResourceServer.into(),
                 )
             });
@@ -124,11 +124,11 @@ impl<'a> QueryServerWriteTransaction<'a> {
         if !self.changed_domain {
             self.changed_domain = del_cand
                 .iter()
-                .any(|e| e.attribute_equality(Attribute::Uuid.as_str(), &PVUUID_DOMAIN_INFO));
+                .any(|e| e.attribute_equality(Attribute::Uuid.as_ref(), &PVUUID_DOMAIN_INFO));
         }
         if !self.changed_sync_agreement {
             self.changed_sync_agreement = del_cand.iter().any(|e| {
-                e.attribute_equality(Attribute::Uuid.as_str(), &EntryClass::SyncAccount.into())
+                e.attribute_equality(Attribute::Uuid.as_ref(), &EntryClass::SyncAccount.into())
             });
         }
 
@@ -202,55 +202,55 @@ mod tests {
         let mut server_txn = server.write(duration_from_epoch_now()).await;
 
         let e1 = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_str(), EntryClass::Person.to_value()),
-            (Attribute::Name.as_str(), Value::new_iname("testperson1")),
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
+            (Attribute::Name.as_ref(), Value::new_iname("testperson1")),
             (
                 "uuid",
                 Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
             ),
             (
-                Attribute::Description.as_str(),
+                Attribute::Description.as_ref(),
                 Value::new_utf8s("testperson")
             ),
             (
-                Attribute::DisplayName.as_str(),
+                Attribute::DisplayName.as_ref(),
                 Value::new_utf8s("testperson1")
             )
         );
 
         let e2 = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_str(), EntryClass::Person.to_value()),
-            (Attribute::Name.as_str(), Value::new_iname("testperson2")),
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
+            (Attribute::Name.as_ref(), Value::new_iname("testperson2")),
             (
                 "uuid",
                 Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63932"))
             ),
             (
-                Attribute::Description.as_str(),
+                Attribute::Description.as_ref(),
                 Value::new_utf8s("testperson")
             ),
             (
-                Attribute::DisplayName.as_str(),
+                Attribute::DisplayName.as_ref(),
                 Value::new_utf8s("testperson2")
             )
         );
 
         let e3 = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_str(), EntryClass::Person.to_value()),
-            (Attribute::Name.as_str(), Value::new_iname("testperson3")),
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
+            (Attribute::Name.as_ref(), Value::new_iname("testperson3")),
             (
                 "uuid",
                 Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63933"))
             ),
             (
-                Attribute::Description.as_str(),
+                Attribute::Description.as_ref(),
                 Value::new_utf8s("testperson")
             ),
             (
-                Attribute::DisplayName.as_str(),
+                Attribute::DisplayName.as_ref(),
                 Value::new_utf8s("testperson3")
             )
         );

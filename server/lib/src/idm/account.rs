@@ -27,7 +27,7 @@ macro_rules! try_from_entry {
     ($value:expr, $groups:expr) => {{
         // Check the classes
         if !$value.attribute_equality(
-            Attribute::Class.as_str(),
+            Attribute::Class.as_ref(),
             &EntryClass::Account.to_partialvalue(),
         ) {
             return Err(OperationError::InvalidAccountState(
@@ -37,14 +37,14 @@ macro_rules! try_from_entry {
 
         // Now extract our needed attributes
         let name = $value
-            .get_ava_single_iname(Attribute::Name.as_str())
+            .get_ava_single_iname(Attribute::Name.as_ref())
             .map(|s| s.to_string())
             .ok_or(OperationError::InvalidAccountState(
                 "Missing attribute: name".to_string(),
             ))?;
 
         let displayname = $value
-            .get_ava_single_utf8(Attribute::DisplayName.as_str())
+            .get_ava_single_utf8(Attribute::DisplayName.as_ref())
             .map(|s| s.to_string())
             .ok_or(OperationError::InvalidAccountState(
                 "Missing attribute: displayname".to_string(),
@@ -105,21 +105,21 @@ macro_rules! try_from_entry {
 
         // For now disable cred updates on sync accounts too.
         if $value.attribute_equality(
-            Attribute::Class.as_str(),
+            Attribute::Class.as_ref(),
             &EntryClass::Person.to_partialvalue(),
         ) {
             ui_hints.insert(UiHint::CredentialUpdate);
         }
 
         if $value.attribute_equality(
-            Attribute::Class.as_str(),
+            Attribute::Class.as_ref(),
             &EntryClass::SyncObject.to_partialvalue(),
         ) {
             ui_hints.insert(UiHint::SynchronisedAccount);
         }
 
         if $value.attribute_equality(
-            Attribute::Class.as_str(),
+            Attribute::Class.as_ref(),
             &EntryClass::PosixAccount.to_partialvalue(),
         ) {
             ui_hints.insert(UiHint::PosixAccount);
@@ -675,11 +675,11 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         // Copy the current classes
         let prev_classes: BTreeSet<_> = account_entry
-            .get_ava_as_iutf8_iter(Attribute::Class.as_str())
+            .get_ava_as_iutf8_iter(Attribute::Class.as_ref())
             .ok_or_else(|| {
                 admin_error!(
                     "Invalid entry, {} attribute is not present or not iutf8",
-                    Attribute::Class.as_str()
+                    Attribute::Class.as_ref()
                 );
                 OperationError::InvalidAccountState("Missing attribute: class".to_string())
             })?
@@ -704,7 +704,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         // Now construct the modlist which:
         // removes service_account
         let mut modlist = ModifyList::new_remove(
-            Attribute::Class.as_str(),
+            Attribute::Class.as_ref(),
             EntryClass::ServiceAccount.to_partialvalue(),
         );
         // add person
@@ -822,17 +822,17 @@ mod tests {
         // Create a user. So far no ui hints.
         // Create a service account
         let e = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_str(), EntryClass::Account.to_value()),
-            (Attribute::Class.as_str(), EntryClass::Person.to_value()),
-            (Attribute::Name.as_str(), Value::new_iname("testaccount")),
-            (Attribute::Uuid.as_str(), Value::Uuid(target_uuid)),
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
+            (Attribute::Name.as_ref(), Value::new_iname("testaccount")),
+            (Attribute::Uuid.as_ref(), Value::Uuid(target_uuid)),
             (
-                Attribute::Description.as_str(),
+                Attribute::Description.as_ref(),
                 Value::new_utf8s("testaccount")
             ),
             (
-                Attribute::DisplayName.as_str(),
+                Attribute::DisplayName.as_ref(),
                 Value::new_utf8s("Test Account")
             )
         );
@@ -880,15 +880,15 @@ mod tests {
 
         // Add a group with a ui hint, and then check they get the hint.
         let e = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_str(), EntryClass::Group.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Group.to_value()),
             (
-                Attribute::Name.as_str(),
+                Attribute::Name.as_ref(),
                 Value::new_iname("test_uihint_group")
             ),
-            (Attribute::Member.as_str(), Value::Refer(target_uuid)),
+            (Attribute::Member.as_ref(), Value::Refer(target_uuid)),
             (
-                Attribute::GrantUiHint.as_str(),
+                Attribute::GrantUiHint.as_ref(),
                 Value::UiHint(UiHint::ExperimentalFeatures)
             )
         );

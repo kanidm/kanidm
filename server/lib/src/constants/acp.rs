@@ -77,7 +77,7 @@ lazy_static! {
         (ATTR_NAME, Value::new_iname("idm_admins_acp_revive")),
         (ATTR_UUID, Value::Uuid(UUID_IDM_ADMINS_ACP_REVIVE_V1)),
         (
-            Attribute::Description.as_str(),
+            Attribute::Description.as_ref(),
             Value::new_utf8s("Builtin IDM admin recycle bin revive permission.")
         ),
         (ATTR_ACP_RECEIVER_GROUP, Value::Refer(UUID_SYSTEM_ADMINS)),
@@ -101,7 +101,7 @@ lazy_static! {
         (ATTR_NAME, Value::new_iname("idm_self_acp_read")),
         (ATTR_UUID, Value::Uuid(UUID_IDM_SELF_ACP_READ_V1)),
         (
-            Attribute::Description.as_str(),
+            Attribute::Description.as_ref(),
             Value::new_utf8s(
                 "Builtin IDM Control for self read - required for whoami and many other functions"
             )
@@ -145,7 +145,7 @@ lazy_static! {
         (ATTR_NAME, Value::new_iname("idm_self_acp_write")),
         (ATTR_UUID, Value::Uuid(UUID_IDM_SELF_ACP_WRITE_V1)),
         (
-            Attribute::Description.as_str(),
+            Attribute::Description.as_ref(),
             Value::new_utf8s("Builtin IDM Control for self write - required for people to update their own identities and credentials in line with best practices.")
         ),
         (
@@ -195,7 +195,7 @@ lazy_static! {
         (ATTR_NAME, Value::new_iname("idm_self_account_acp_write")),
         (ATTR_UUID, Value::Uuid(UUID_IDM_ACCOUNT_SELF_ACP_WRITE_V1)),
         (
-            Attribute::Description.as_str(),
+            Attribute::Description.as_ref(),
             Value::new_utf8s("Builtin IDM Control for self write - required for accounts to update their own session state.")
         ),
         (
@@ -225,7 +225,7 @@ lazy_static! {
         (ATTR_NAME, Value::new_iname("idm_people_self_acp_write_mail")),
         (ATTR_UUID, Value::Uuid(UUID_IDM_PEOPLE_SELF_ACP_WRITE_MAIL_V1)),
         (
-            Attribute::Description.as_str(),
+            Attribute::Description.as_ref(),
             Value::new_utf8s("Builtin IDM Control for self write of mail for people accounts.")
         ),
         (
@@ -257,7 +257,7 @@ lazy_static! {
         (ATTR_NAME, Value::new_iname("idm_all_acp_read")),
         (ATTR_UUID, Value::Uuid(UUID_IDM_ALL_ACP_READ_V1)),
         (
-            Attribute::Description.as_str(),
+            Attribute::Description.as_ref(),
             Value::new_utf8s("Builtin IDM Control for all read - e.g. anonymous and all authenticated accounts.")
         ),
         (
@@ -332,7 +332,7 @@ lazy_static! {
         (ATTR_NAME, Value::new_iname("idm_acp_people_read_priv")),
         (ATTR_UUID, Value::Uuid(UUID_IDM_ACP_PEOPLE_READ_PRIV_V1)),
         (
-            Attribute::Description.as_str(),
+            Attribute::Description.as_ref(),
             Value::new_utf8s("Builtin IDM Control for reading personal sensitive data.")
         ),
         (
@@ -378,7 +378,7 @@ lazy_static! {
         (ATTR_NAME, Value::new_iname("idm_acp_people_write_priv")),
         (ATTR_UUID, Value::Uuid(UUID_IDM_ACP_PEOPLE_WRITE_PRIV_V1)),
         (
-            Attribute::Description.as_str(),
+            Attribute::Description.as_ref(),
             Value::new_utf8s("Builtin IDM Control for managing personal and sensitive data.")
         ),
         (
@@ -427,7 +427,7 @@ lazy_static! {
         (ATTR_NAME, Value::new_iname("idm_acp_people_manage")),
         (ATTR_UUID, Value::Uuid(UUID_IDM_ACP_PEOPLE_MANAGE_PRIV_V1)),
         (
-            Attribute::Description.as_str(),
+            Attribute::Description.as_ref(),
             Value::new_utf8s("Builtin IDM Control for creating person (user) accounts")
         ),
         (
@@ -485,7 +485,7 @@ lazy_static! {
         (ATTR_NAME, Value::new_iname("idm_acp_people_account_password_import_priv")),
         (ATTR_UUID, Value::Uuid(UUID_IDM_ACP_PEOPLE_ACCOUNT_PASSWORD_IMPORT_PRIV_V1)),
         (
-            Attribute::Description.as_str(),
+            Attribute::Description.as_ref(),
             Value::new_utf8s("Builtin IDM Control for allowing imports of passwords to people+account types.")
         ),
         (
@@ -512,7 +512,7 @@ lazy_static! {
         (ATTR_NAME, Value::new_iname("idm_acp_people_extend_priv")),
         (ATTR_UUID, Value::Uuid(UUID_IDM_ACP_PEOPLE_EXTEND_PRIV_V1)),
         (
-            Attribute::Description.as_str(),
+            Attribute::Description.as_ref(),
             Value::new_utf8s("Builtin IDM Control for allowing person class extension")
         ),
         (
@@ -547,7 +547,7 @@ lazy_static! {
         (ATTR_NAME, Value::new_iname("idm_acp_hp_people_read_priv")),
         (ATTR_UUID, Value::Uuid(UUID_IDM_ACP_HP_PEOPLE_READ_PRIV_V1)),
         (
-            Attribute::Description.as_str(),
+            Attribute::Description.as_ref(),
             Value::new_utf8s(
                 "Builtin IDM Control for reading high privilege personal sensitive data."
             )
@@ -592,7 +592,7 @@ lazy_static! {
             Value::Uuid(UUID_IDM_ACP_ACCOUNT_MAIL_READ_PRIV_V1)
         ),
         (
-            Attribute::Description.as_str(),
+            Attribute::Description.as_ref(),
             Value::new_utf8s(
                 "Builtin IDM Control for reading account mail attributes."
             )
@@ -618,7 +618,7 @@ lazy_static! {
         (ATTR_NAME, Value::new_iname("idm_acp_hp_people_write_priv")),
         (ATTR_UUID, Value::Uuid(UUID_IDM_ACP_HP_PEOPLE_WRITE_PRIV_V1)),
         (
-            Attribute::Description.as_str(),
+            Attribute::Description.as_ref(),
             Value::new_utf8s("Builtin IDM Control for managing privilege personal and sensitive data.")
         ),
         (
@@ -651,7 +651,7 @@ lazy_static! {
         (ATTR_NAME, Value::new_iname("idm_acp_hp_people_extend_priv")),
         (ATTR_UUID, Value::Uuid(UUID_IDM_ACP_HP_PEOPLE_EXTEND_PRIV_V1)),
         (
-            Attribute::Description.as_str(),
+            Attribute::Description.as_ref(),
             Value::new_utf8s("Builtin IDM Control for allowing privilege person class extension")
         ),
         (
@@ -689,7 +689,7 @@ lazy_static! {
         (ATTR_NAME, Value::new_iname("idm_acp_group_write_priv")),
         (ATTR_UUID, Value::Uuid(UUID_IDM_ACP_GROUP_WRITE_PRIV_V1)),
         (
-            Attribute::Description.as_str(),
+            Attribute::Description.as_ref(),
             Value::new_utf8s("Builtin IDM Control for managing groups")
         ),
         (
@@ -728,7 +728,7 @@ lazy_static! {
         (ATTR_NAME, Value::new_iname("idm_acp_account_read_priv")),
         (ATTR_UUID, Value::Uuid(UUID_IDM_ACP_ACCOUNT_READ_PRIV_V1)),
         (
-            Attribute::Description.as_str(),
+            Attribute::Description.as_ref(),
             Value::new_utf8s("Builtin IDM Control for reading accounts.")
         ),
         (
@@ -769,7 +769,7 @@ lazy_static! {
         (ATTR_NAME, Value::new_iname("idm_acp_account_write_priv")),
         (ATTR_UUID, Value::Uuid(UUID_IDM_ACP_ACCOUNT_WRITE_PRIV_V1)),
         (
-            Attribute::Description.as_str(),
+            Attribute::Description.as_ref(),
             Value::new_utf8s("Builtin IDM Control for managing all accounts (both person and service).")
         ),
         (
@@ -818,7 +818,7 @@ lazy_static! {
         (ATTR_NAME, Value::new_iname("idm_acp_account_manage")),
         (ATTR_UUID, Value::Uuid(UUID_IDM_ACP_ACCOUNT_MANAGE_PRIV_V1)),
         (
-            Attribute::Description.as_str(),
+            Attribute::Description.as_ref(),
             Value::new_utf8s("Builtin IDM Control for creating and deleting (service) accounts")
         ),
         (
@@ -862,7 +862,7 @@ lazy_static! {
         (ATTR_NAME, Value::new_iname("idm_acp_radius_secret_read_priv")),
         (ATTR_UUID, Value::Uuid(UUID_IDM_ACP_RADIUS_SECRET_READ_PRIV_V1)),
         (
-            Attribute::Description.as_str(),
+            Attribute::Description.as_ref(),
             Value::new_utf8s("Builtin IDM Control for reading user radius secrets.")
         ),
         (
@@ -888,7 +888,7 @@ lazy_static! {
         (ATTR_NAME, Value::new_iname("idm_acp_radius_secret_write_priv")),
         (ATTR_UUID, Value::Uuid(UUID_IDM_ACP_RADIUS_SECRET_WRITE_PRIV_V1)),
         (
-            Attribute::Description.as_str(),
+            Attribute::Description.as_ref(),
             Value::new_utf8s("Builtin IDM Control allowing writes to user radius secrets.")
         ),
         (
@@ -916,7 +916,7 @@ lazy_static! {
         (ATTR_NAME, Value::new_iname("idm_acp_radius_servers")),
         (ATTR_UUID, Value::Uuid(UUID_IDM_ACP_RADIUS_SERVERS_V1)),
         (
-            Attribute::Description.as_str(),
+            Attribute::Description.as_ref(),
             Value::new_utf8s("Builtin IDM Control for RADIUS servers to read credentials and other needed details.")
         ),
         (
@@ -946,7 +946,7 @@ lazy_static! {
         (ATTR_NAME, Value::new_iname("idm_acp_hp_account_read_priv")),
         (ATTR_UUID, Value::Uuid(UUID_IDM_ACP_HP_ACCOUNT_READ_PRIV_V1)),
         (
-            Attribute::Description.as_str(),
+            Attribute::Description.as_ref(),
             Value::new_utf8s("Builtin IDM Control for reading high privilege accounts.")
         ),
         (
@@ -985,7 +985,7 @@ lazy_static! {
         (ATTR_NAME, Value::new_iname("idm_acp_hp_account_write_priv")),
         (ATTR_UUID, Value::Uuid(UUID_IDM_ACP_HP_ACCOUNT_WRITE_PRIV_V1)),
         (
-            Attribute::Description.as_str(),
+            Attribute::Description.as_ref(),
             Value::new_utf8s("Builtin IDM Control for managing high privilege accounts (both person and service).")
         ),
         (
@@ -1032,7 +1032,7 @@ lazy_static! {
         (ATTR_NAME, Value::new_iname("idm_acp_hp_group_write_priv")),
         (ATTR_UUID, Value::Uuid(UUID_IDM_ACP_HP_GROUP_WRITE_PRIV_V1)),
         (
-            Attribute::Description.as_str(),
+            Attribute::Description.as_ref(),
             Value::new_utf8s("Builtin IDM Control for managing high privilege groups")
         ),
         (
@@ -1073,7 +1073,7 @@ lazy_static! {
         (ATTR_NAME, Value::new_iname("idm_acp_schema_write_attrs_priv")),
         (ATTR_UUID, Value::Uuid(UUID_IDM_ACP_SCHEMA_WRITE_ATTRS_PRIV_V1)),
         (
-            Attribute::Description.as_str(),
+            Attribute::Description.as_ref(),
             Value::new_utf8s("Builtin IDM Control for management of schema attributes.")
         ),
         (
@@ -1133,7 +1133,7 @@ lazy_static! {
         (ATTR_NAME, Value::new_iname("idm_acp_acp_manage_priv")),
         (ATTR_UUID, Value::Uuid(UUID_IDM_ACP_ACP_MANAGE_PRIV_V1)),
         (
-            Attribute::Description.as_str(),
+            Attribute::Description.as_ref(),
             Value::new_utf8s("Builtin IDM Control for access profiles management.")
         ),
         (
@@ -1224,7 +1224,7 @@ lazy_static! {
         (ATTR_NAME, Value::new_iname("idm_acp_schema_write_classes_priv")),
         (ATTR_UUID, Value::Uuid(UUID_IDM_ACP_SCHEMA_WRITE_CLASSES_PRIV_V1)),
         (
-            Attribute::Description.as_str(),
+            Attribute::Description.as_ref(),
             Value::new_utf8s("Builtin IDM Control for management of schema classes.")
         ),
         (
@@ -1276,7 +1276,7 @@ lazy_static! {
         (ATTR_NAME, Value::new_iname("idm_acp_group_manage")),
         (ATTR_UUID, Value::Uuid(UUID_IDM_ACP_GROUP_MANAGE_PRIV_V1)),
         (
-            Attribute::Description.as_str(),
+            Attribute::Description.as_ref(),
             Value::new_utf8s("Builtin IDM Control for creating and deleting groups in the directory")
         ),
         (
@@ -1308,7 +1308,7 @@ lazy_static! {
         (ATTR_NAME, Value::new_iname("idm_acp_hp_account_manage")),
         (ATTR_UUID, Value::Uuid(UUID_IDM_ACP_HP_ACCOUNT_MANAGE_PRIV_V1)),
         (
-            Attribute::Description.as_str(),
+            Attribute::Description.as_ref(),
             Value::new_utf8s("Builtin IDM Control for creating and deleting hp and regular (service) accounts")
         ),
         (
@@ -1347,7 +1347,7 @@ lazy_static! {
         (ATTR_NAME, Value::new_iname("idm_acp_hp_group_manage")),
         (ATTR_UUID, Value::Uuid(UUID_IDM_ACP_HP_GROUP_MANAGE_PRIV_V1)),
         (
-            Attribute::Description.as_str(),
+            Attribute::Description.as_ref(),
             Value::new_utf8s("Builtin IDM Control for creating and deleting hp and regular groups in the directory")
         ),
         (
@@ -1379,7 +1379,7 @@ lazy_static! {
         (ATTR_NAME, Value::new_iname("idm_acp_domain_admin_priv")),
         (ATTR_UUID, Value::Uuid(UUID_IDM_ACP_DOMAIN_ADMIN_PRIV_V1)),
         (
-            Attribute::Description.as_str(),
+            Attribute::Description.as_ref(),
             Value::new_utf8s("Builtin IDM Control for granting domain info administration locally")
         ),
         (
@@ -1425,7 +1425,7 @@ lazy_static! {
         (ATTR_NAME, Value::new_iname("idm_acp_system_config_priv")),
         (ATTR_UUID, Value::Uuid(UUID_IDM_ACP_SYSTEM_CONFIG_PRIV_V1)),
         (
-            Attribute::Description.as_str(),
+            Attribute::Description.as_ref(),
             Value::new_utf8s("Builtin IDM Control for granting system configuration rights")
         ),
         (
@@ -1458,7 +1458,7 @@ lazy_static! {
         (ATTR_NAME, Value::new_iname("idm_acp_account_unix_extend_priv")),
         (ATTR_UUID, Value::Uuid(UUID_IDM_ACP_ACCOUNT_UNIX_EXTEND_PRIV_V1)),
         (
-            Attribute::Description.as_str(),
+            Attribute::Description.as_ref(),
             Value::new_utf8s("Builtin IDM Control for managing and extending unix accounts")
         ),
         (
@@ -1500,7 +1500,7 @@ lazy_static! {
         (ATTR_NAME, Value::new_iname("idm_acp_group_unix_extend_priv")),
         (ATTR_UUID, Value::Uuid(UUID_IDM_ACP_GROUP_UNIX_EXTEND_PRIV_V1)),
         (
-            Attribute::Description.as_str(),
+            Attribute::Description.as_ref(),
             Value::new_utf8s("Builtin IDM Control for managing and extending unix groups")
         ),
         (
@@ -1537,7 +1537,7 @@ lazy_static! {
         (ATTR_NAME, Value::new_iname("idm_acp_hp_account_unix_extend_priv")),
         (ATTR_UUID, Value::Uuid(UUID_IDM_HP_ACP_ACCOUNT_UNIX_EXTEND_PRIV_V1)),
         (
-            Attribute::Description.as_str(),
+            Attribute::Description.as_ref(),
             Value::new_utf8s("Builtin IDM Control for managing and extending unix accounts")
         ),
         (
@@ -1579,7 +1579,7 @@ lazy_static! {
         (ATTR_NAME, Value::new_iname("idm_acp_hp_group_unix_extend_priv")),
         (ATTR_UUID, Value::Uuid(UUID_IDM_HP_ACP_GROUP_UNIX_EXTEND_PRIV_V1)),
         (
-            Attribute::Description.as_str(),
+            Attribute::Description.as_ref(),
             Value::new_utf8s("Builtin IDM Control for managing and extending unix high privilege groups")
         ),
         (
@@ -1619,7 +1619,7 @@ lazy_static! {
         (ATTR_NAME, Value::new_iname("idm_acp_hp_oauth2_manage_priv")),
         (ATTR_UUID, Value::Uuid(UUID_IDM_HP_ACP_OAUTH2_MANAGE_PRIV_V1)),
         (
-            Attribute::Description.as_str(),
+            Attribute::Description.as_ref(),
             Value::new_utf8s("Builtin IDM Control for managing oauth2 resource server integrations.")
         ),
         (
@@ -1705,7 +1705,7 @@ lazy_static! {
         (ATTR_NAME, Value::new_iname("idm_hp_acp_service_account_into_person_migrate")),
         (ATTR_UUID, Value::Uuid(UUID_IDM_HP_ACP_SERVICE_ACCOUNT_INTO_PERSON_MIGRATE_V1)),
         (
-            Attribute::Description.as_str(),
+            Attribute::Description.as_ref(),
             Value::new_utf8s("Builtin IDM Control allowing service accounts to be migrated into persons")
         ),
         (
@@ -1740,7 +1740,7 @@ lazy_static! {
         (ATTR_NAME, Value::new_iname("idm_acp_hp_sync_account_manage_priv")),
         (ATTR_UUID, Value::Uuid(UUID_IDM_HP_ACP_SYNC_ACCOUNT_MANAGE_PRIV_V1)),
         (
-            Attribute::Description.as_str(),
+            Attribute::Description.as_ref(),
             Value::new_utf8s("Builtin IDM Control for managing IDM synchronisation accounts / connections")
         ),
         (

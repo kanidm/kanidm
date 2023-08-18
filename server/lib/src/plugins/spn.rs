@@ -139,8 +139,8 @@ impl Spn {
         let domain_name = qs.get_domain_name();
 
         for ent in cand.iter_mut() {
-            if ent.attribute_equality(Attribute::Class.as_str(), &EntryClass::Group.into())
-                || ent.attribute_equality(Attribute::Class.as_str(), &EntryClass::Account.into())
+            if ent.attribute_equality(Attribute::Class.as_ref(), &EntryClass::Group.into())
+                || ent.attribute_equality(Attribute::Class.as_ref(), &EntryClass::Account.into())
             {
                 let spn = ent
                     .generate_spn(domain_name)
@@ -170,7 +170,7 @@ impl Spn {
 
         let domain_name_changed = cand.iter().zip(pre_cand.iter()).find_map(|(post, pre)| {
             let domain_name = post.get_ava_single("domain_name");
-            if post.attribute_equality(Attribute::Uuid.as_str(), &PVUUID_DOMAIN_INFO)
+            if post.attribute_equality(Attribute::Uuid.as_ref(), &PVUUID_DOMAIN_INFO)
                 && domain_name != pre.get_ava_single("domain_name")
             {
                 domain_name

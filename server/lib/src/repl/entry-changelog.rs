@@ -222,7 +222,7 @@ impl EntryChangelog {
 
         // We need to pick a state that reflects the current state WRT to tombstone
         // or recycled!
-        let class = attrs.get(Attribute::Class.as_str());
+        let class = attrs.get(Attribute::Class.as_ref());
 
         let (anchors, changes) = if class
             .as_ref()

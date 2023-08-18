@@ -663,10 +663,10 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             .copied()
             .map(|u| {
                 entry_init!(
-                    (Attribute::Class.as_str(), EntryClass::Object.to_value()),
-                    (Attribute::Class.as_str(), EntryClass::SyncObject.to_value()),
-                    (Attribute::SyncParentUuid.as_str(), Value::Refer(sync_uuid)),
-                    (Attribute::Uuid.as_str(), Value::Uuid(u))
+                    (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+                    (Attribute::Class.as_ref(), EntryClass::SyncObject.to_value()),
+                    (Attribute::SyncParentUuid.as_ref(), Value::Refer(sync_uuid)),
+                    (Attribute::Uuid.as_ref(), Value::Uuid(u))
                 )
             })
             .collect();
@@ -1513,15 +1513,15 @@ mod tests {
         let sync_uuid = Uuid::new_v4();
 
         let e1 = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
             (
-                Attribute::Class.as_str(),
+                Attribute::Class.as_ref(),
                 EntryClass::SyncAccount.to_value()
             ),
-            (Attribute::Name.as_str(), Value::new_iname("test_scim_sync")),
-            (Attribute::Uuid.as_str(), Value::Uuid(sync_uuid)),
+            (Attribute::Name.as_ref(), Value::new_iname("test_scim_sync")),
+            (Attribute::Uuid.as_ref(), Value::Uuid(sync_uuid)),
             (
-                Attribute::Description.as_str(),
+                Attribute::Description.as_ref(),
                 Value::new_utf8s("A test sync agreement")
             )
         );
@@ -1586,15 +1586,15 @@ mod tests {
         let sync_uuid = Uuid::new_v4();
 
         let e1 = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
             (
-                Attribute::Class.as_str(),
+                Attribute::Class.as_ref(),
                 EntryClass::SyncAccount.to_value()
             ),
-            (Attribute::Name.as_str(), Value::new_iname("test_scim_sync")),
-            (Attribute::Uuid.as_str(), Value::Uuid(sync_uuid)),
+            (Attribute::Name.as_ref(), Value::new_iname("test_scim_sync")),
+            (Attribute::Uuid.as_ref(), Value::Uuid(sync_uuid)),
             (
-                Attribute::Description.as_str(),
+                Attribute::Description.as_ref(),
                 Value::new_utf8s("A test sync agreement")
             )
         );
@@ -1713,15 +1713,15 @@ mod tests {
         let sync_uuid = Uuid::new_v4();
 
         let e1 = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
             (
-                Attribute::Class.as_str(),
+                Attribute::Class.as_ref(),
                 EntryClass::SyncAccount.to_value()
             ),
-            (Attribute::Name.as_str(), Value::new_iname("test_scim_sync")),
-            (Attribute::Uuid.as_str(), Value::Uuid(sync_uuid)),
+            (Attribute::Name.as_ref(), Value::new_iname("test_scim_sync")),
+            (Attribute::Uuid.as_ref(), Value::Uuid(sync_uuid)),
             (
-                Attribute::Description.as_str(),
+                Attribute::Description.as_ref(),
                 Value::new_utf8s("A test sync agreement")
             )
         );
@@ -1835,8 +1835,8 @@ mod tests {
         assert!(idms_prox_write
             .qs_write
             .internal_create(vec![entry_init!(
-                (Attribute::Class.as_str(), EntryClass::Object.to_value()),
-                (Attribute::Uuid.as_str(), Value::Uuid(user_sync_uuid))
+                (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+                (Attribute::Uuid.as_ref(), Value::Uuid(user_sync_uuid))
             )])
             .is_ok());
 
@@ -2189,8 +2189,8 @@ mod tests {
         assert!(idms_prox_write
             .qs_write
             .internal_create(vec![entry_init!(
-                (Attribute::Class.as_str(), EntryClass::Object.to_value()),
-                (Attribute::Uuid.as_str(), Value::Uuid(user_sync_uuid))
+                (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+                (Attribute::Uuid.as_ref(), Value::Uuid(user_sync_uuid))
             )])
             .is_ok());
 
@@ -2226,8 +2226,8 @@ mod tests {
         assert!(idms_prox_write
             .qs_write
             .internal_create(vec![entry_init!(
-                (Attribute::Class.as_str(), EntryClass::Object.to_value()),
-                (Attribute::Uuid.as_str(), Value::Uuid(user_sync_uuid))
+                (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+                (Attribute::Uuid.as_ref(), Value::Uuid(user_sync_uuid))
             )])
             .is_ok());
 
@@ -2904,19 +2904,19 @@ mod tests {
         // Check that the entries still exists but now have no sync_object attached.
         let testgroup = get_single_entry("testgroup", &mut idms_prox_write);
         assert!(!testgroup
-            .attribute_equality(Attribute::Class.as_str(), &EntryClass::SyncObject.into()));
+            .attribute_equality(Attribute::Class.as_ref(), &EntryClass::SyncObject.into()));
 
         let testposix = get_single_entry("testposix", &mut idms_prox_write);
         assert!(!testposix
-            .attribute_equality(Attribute::Class.as_str(), &EntryClass::SyncObject.into()));
+            .attribute_equality(Attribute::Class.as_ref(), &EntryClass::SyncObject.into()));
 
         let testexternal = get_single_entry("testexternal", &mut idms_prox_write);
         assert!(!testexternal
-            .attribute_equality(Attribute::Class.as_str(), &EntryClass::SyncObject.into()));
+            .attribute_equality(Attribute::Class.as_ref(), &EntryClass::SyncObject.into()));
 
         let testuser = get_single_entry("testuser", &mut idms_prox_write);
         assert!(
-            !testuser.attribute_equality(Attribute::Class.as_str(), &EntryClass::SyncObject.into())
+            !testuser.attribute_equality(Attribute::Class.as_ref(), &EntryClass::SyncObject.into())
         );
 
         assert!(idms_prox_write.commit().is_ok());
@@ -2964,11 +2964,11 @@ mod tests {
         // Check that the entries still exists but now have no sync_object attached.
         let testgroup = get_single_entry("testgroup", &mut idms_prox_write);
         assert!(!testgroup
-            .attribute_equality(Attribute::Class.as_str(), &EntryClass::SyncObject.into()));
+            .attribute_equality(Attribute::Class.as_ref(), &EntryClass::SyncObject.into()));
 
         let testuser = get_single_entry("testuser", &mut idms_prox_write);
         assert!(
-            !testuser.attribute_equality(Attribute::Class.as_str(), &EntryClass::SyncObject.into())
+            !testuser.attribute_equality(Attribute::Class.as_ref(), &EntryClass::SyncObject.into())
         );
 
         for iname in ["testposix", "testexternal"] {

@@ -107,9 +107,9 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // schema or acp requires reload.
         if !self.changed_schema {
             self.changed_schema = commit_cand.iter().any(|e| {
-                e.attribute_equality(Attribute::Class.as_str(), &EntryClass::ClassType.into())
+                e.attribute_equality(Attribute::Class.as_ref(), &EntryClass::ClassType.into())
                     || e.attribute_equality(
-                        Attribute::Class.as_str(),
+                        Attribute::Class.as_ref(),
                         &EntryClass::AttributeType.into(),
                     )
             });
@@ -117,7 +117,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         if !self.changed_acp {
             self.changed_acp = commit_cand.iter().any(|e| {
                 e.attribute_equality(
-                    Attribute::Class.as_str(),
+                    Attribute::Class.as_ref(),
                     &EntryClass::AccessControlProfile.into(),
                 )
             });
@@ -125,7 +125,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         if !self.changed_oauth2 {
             self.changed_oauth2 = commit_cand.iter().any(|e| {
                 e.attribute_equality(
-                    Attribute::Class.as_str(),
+                    Attribute::Class.as_ref(),
                     &EntryClass::OAuth2ResourceServer.into(),
                 )
             });
@@ -133,11 +133,11 @@ impl<'a> QueryServerWriteTransaction<'a> {
         if !self.changed_domain {
             self.changed_domain = commit_cand
                 .iter()
-                .any(|e| e.attribute_equality(Attribute::Uuid.as_str(), &PVUUID_DOMAIN_INFO));
+                .any(|e| e.attribute_equality(Attribute::Uuid.as_ref(), &PVUUID_DOMAIN_INFO));
         }
         if !self.changed_sync_agreement {
             self.changed_sync_agreement = commit_cand.iter().any(|e| {
-                e.attribute_equality(Attribute::Class.as_str(), &EntryClass::SyncAccount.into())
+                e.attribute_equality(Attribute::Class.as_ref(), &EntryClass::SyncAccount.into())
             });
         }
 
@@ -184,24 +184,24 @@ mod tests {
         let se1 = SearchEvent::new_impersonate_entry(admin, filt);
 
         let mut e = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_str(), EntryClass::Person.to_value()),
-            (Attribute::Class.as_str(), EntryClass::Account.to_value()),
-            (Attribute::Name.as_str(), Value::new_iname("testperson")),
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
+            (Attribute::Name.as_ref(), Value::new_iname("testperson")),
             (
-                Attribute::Spn.as_str(),
+                Attribute::Spn.as_ref(),
                 Value::new_spn_str("testperson", "example.com")
             ),
             (
-                Attribute::Uuid.as_str(),
+                Attribute::Uuid.as_ref(),
                 Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
             ),
             (
-                Attribute::Description.as_str(),
+                Attribute::Description.as_ref(),
                 Value::new_utf8s("testperson")
             ),
             (
-                Attribute::DisplayName.as_str(),
+                Attribute::DisplayName.as_ref(),
                 Value::new_utf8s("testperson")
             )
         );
@@ -219,14 +219,14 @@ mod tests {
         assert!(r2.len() == 1);
 
         // We apply some member-of in the server now, so we add these before we seal.
-        e.add_ava(Attribute::Class.as_str(), EntryClass::MemberOf.into());
+        e.add_ava(Attribute::Class.as_ref(), EntryClass::MemberOf.into());
         e.add_ava("memberof", Value::Refer(UUID_IDM_ALL_PERSONS));
         e.add_ava("directmemberof", Value::Refer(UUID_IDM_ALL_PERSONS));
         e.add_ava("memberof", Value::Refer(UUID_IDM_ALL_ACCOUNTS));
         e.add_ava("directmemberof", Value::Refer(UUID_IDM_ALL_ACCOUNTS));
         // we also add the name_history ava!
         e.add_ava(
-            Attribute::NameHistory.as_str(),
+            Attribute::NameHistory.as_ref(),
             Value::AuditLogString(server_txn.get_txn_cid().clone(), "testperson".to_string()),
         );
         // this is kinda ugly but since ecdh keys are generated we don't have any other way
@@ -264,15 +264,15 @@ mod tests {
         let se_b = SearchEvent::new_impersonate_entry(admin, filt);
 
         let e = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Person.to_value()),
-            (Attribute::Class.as_str(), EntryClass::Account.to_value()),
-            (Attribute::Name.as_str(), Value::new_iname("testperson")),
+            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
+            (Attribute::Name.as_ref(), Value::new_iname("testperson")),
             (
-                Attribute::Description.as_str(),
+                Attribute::Description.as_ref(),
                 Value::new_utf8s("testperson")
             ),
             (
-                Attribute::DisplayName.as_str(),
+                Attribute::DisplayName.as_ref(),
                 Value::new_utf8s("testperson")
             )
         );

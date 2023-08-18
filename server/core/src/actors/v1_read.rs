@@ -540,7 +540,7 @@ impl QueryServerReadV1 {
                     // From the entry, turn it into the value
                     .and_then(|entry| {
                         entry
-                            .get_ava_single(Attribute::RadiusSecret.as_str())
+                            .get_ava_single(Attribute::RadiusSecret.as_ref())
                             .and_then(|v| v.get_secret_str().map(str::to_string))
                     });
                 Ok(r)

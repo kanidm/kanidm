@@ -24,7 +24,7 @@ impl RadiusAccount {
         value: &Entry<EntryReduced, EntryCommitted>,
         qs: &mut QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
-        if !value.attribute_equality(Attribute::Class.as_str(), &EntryClass::Account.into()) {
+        if !value.attribute_equality(Attribute::Class.as_ref(), &EntryClass::Account.into()) {
             return Err(OperationError::InvalidAccountState(
                 "Missing class: account".to_string(),
             ));

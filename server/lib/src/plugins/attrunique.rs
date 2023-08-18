@@ -259,7 +259,7 @@ impl Plugin for AttrUnique {
     #[instrument(level = "debug", name = "attrunique::verify", skip_all)]
     fn verify(qs: &mut QueryServerReadTransaction) -> Vec<Result<(), ConsistencyError>> {
         // Only check live entries, not recycled.
-        let filt_in = filter!(f_pres(Attribute::Class.as_str()));
+        let filt_in = filter!(f_pres(Attribute::Class.as_ref()));
 
         let all_cand = match qs
             .internal_search(filt_in)

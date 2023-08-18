@@ -44,7 +44,7 @@ fn do_memberof(
         })?;
 
     // Ensure we are MO capable. We only add this if it's not already present.
-    tgte.add_ava_if_not_exist(Attribute::Class.as_str(), EntryClass::MemberOf.into());
+    tgte.add_ava_if_not_exist(Attribute::Class.as_ref(), EntryClass::MemberOf.into());
     // Clear the dmo + mos, we will recreate them now.
     // This is how we handle deletes/etc.
     tgte.purge_ava("memberof");
@@ -133,7 +133,7 @@ fn apply_memberof(
         for (pre, mut tgte) in work_set.into_iter() {
             let guuid = pre.get_uuid();
             // load the entry from the db.
-            if !tgte.attribute_equality(Attribute::Class.as_str(), &EntryClass::Group.into()) {
+            if !tgte.attribute_equality(Attribute::Class.as_ref(), &EntryClass::Group.into()) {
                 // It's not a group, we'll deal with you later. We should NOT
                 // have seen this UUID before, as either we are on the first
                 // iteration OR the checks belowe should have filtered it out.
@@ -189,7 +189,7 @@ fn apply_memberof(
         .try_for_each(|(auuid, (pre, mut tgte))| {
             trace!("=> processing affected uuid {:?}", auuid);
             debug_assert!(
-                !tgte.attribute_equality(Attribute::Class.as_str(), &EntryClass::Group.into())
+                !tgte.attribute_equality(Attribute::Class.as_ref(), &EntryClass::Group.into())
             );
             do_memberof(qs, auuid, &mut tgte)?;
             // Only write if a change occurred.
@@ -262,7 +262,7 @@ impl Plugin for MemberOf {
             .iter()
             .filter_map(|e| {
                 // Is it a group?
-                if e.attribute_equality(Attribute::Class.as_str(), &EntryClass::Group.into()) {
+                if e.attribute_equality(Attribute::Class.as_ref(), &EntryClass::Group.into()) {
                     e.get_ava_as_refuuid("member")
                 } else {
                     None
@@ -274,7 +274,7 @@ impl Plugin for MemberOf {
                 cand.iter()
                     .filter_map(|post| {
                         if post.attribute_equality(
-                            Attribute::Class.as_str(),
+                            Attribute::Class.as_ref(),
                             &EntryClass::DynGroup.into(),
                         ) {
                             post.get_ava_as_refuuid("dynmember")
@@ -293,7 +293,7 @@ impl Plugin for MemberOf {
     fn verify(qs: &mut QueryServerReadTransaction) -> Vec<Result<(), ConsistencyError>> {
         let mut r = Vec::new();
 
-        let filt_in = filter!(f_pres(Attribute::Class.as_str()));
+        let filt_in = filter!(f_pres(Attribute::Class.as_ref()));
 
         let all_cand = match qs
             .internal_search(filt_in)
@@ -402,7 +402,7 @@ impl MemberOf {
                     .filter_map(|e| {
                         // Is it a group?
                         if e.attribute_equality(
-                            Attribute::Class.as_str(),
+                            Attribute::Class.as_ref(),
                             &EntryClass::Group.into(),
                         ) {
                             e.get_ava_as_refuuid("member")
@@ -435,7 +435,7 @@ impl MemberOf {
                     .iter()
                     .filter_map(|pre| {
                         if pre.attribute_equality(
-                            Attribute::Class.as_str(),
+                            Attribute::Class.as_ref(),
                             &EntryClass::Group.into(),
                         ) {
                             pre.get_ava_as_refuuid("member")
@@ -449,7 +449,7 @@ impl MemberOf {
                 cand.iter()
                     .filter_map(|post| {
                         if post.attribute_equality(
-                            Attribute::Class.as_str(),
+                            Attribute::Class.as_ref(),
                             &EntryClass::Group.into(),
                         ) {
                             post.get_ava_as_refuuid("member")

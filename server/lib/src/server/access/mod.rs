@@ -1079,18 +1079,18 @@ mod tests {
     lazy_static! {
         pub static ref E_TEST_ACCOUNT_1: Arc<EntrySealedCommitted> = Arc::new(
             entry_init!(
-                (Attribute::Class.as_str(), EntryClass::Object.to_value()),
+                (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
                 ("name", Value::new_iname("test_account_1")),
-                (Attribute::Uuid.as_str(), Value::Uuid(UUID_TEST_ACCOUNT_1)),
+                (Attribute::Uuid.as_ref(), Value::Uuid(UUID_TEST_ACCOUNT_1)),
                 ("memberof", Value::Refer(UUID_TEST_GROUP_1))
             )
             .into_sealed_committed()
         );
         pub static ref E_TEST_ACCOUNT_2: Arc<EntrySealedCommitted> = Arc::new(
             entry_init!(
-                (Attribute::Class.as_str(), EntryClass::Object.to_value()),
+                (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
                 ("name", Value::new_iname("test_account_1")),
-                (Attribute::Uuid.as_str(), Value::Uuid(UUID_TEST_ACCOUNT_2)),
+                (Attribute::Uuid.as_ref(), Value::Uuid(UUID_TEST_ACCOUNT_2)),
                 ("memberof", Value::Refer(UUID_TEST_GROUP_2))
             )
             .into_sealed_committed()
@@ -1179,9 +1179,9 @@ mod tests {
         acp_from_entry_ok!(
             &mut qs_write,
             entry_init!(
-                (Attribute::Class.as_str(), EntryClass::Object.to_value()),
+                (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
                 (
-                    Attribute::Class.as_str(),
+                    Attribute::Class.as_ref(),
                     EntryClass::AccessControlProfile.to_value()
                 ),
                 ("name", Value::new_iname("acp_valid")),
@@ -1225,13 +1225,13 @@ mod tests {
         acp_from_entry_ok!(
             &mut qs_write,
             entry_init!(
-                (Attribute::Class.as_str(), EntryClass::Object.to_value()),
+                (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
                 (
-                    Attribute::Class.as_str(),
+                    Attribute::Class.as_ref(),
                     EntryClass::AccessControlProfile.to_value()
                 ),
                 (
-                    Attribute::Class.as_str(),
+                    Attribute::Class.as_ref(),
                     EntryClass::AccessControlDelete.to_value()
                 ),
                 ("name", Value::new_iname("acp_valid")),
@@ -1314,26 +1314,26 @@ mod tests {
         acp_from_entry_ok!(
             &mut qs_write,
             entry_init!(
-                (Attribute::Class.as_str(), EntryClass::Object.to_value()),
+                (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
                 (
-                    Attribute::Class.as_str(),
+                    Attribute::Class.as_ref(),
                     EntryClass::AccessControlProfile.to_value()
                 ),
                 (
-                    Attribute::Class.as_str(),
+                    Attribute::Class.as_ref(),
                     EntryClass::AccessControlSearch.to_value()
                 ),
-                (Attribute::Name.as_str(), Value::new_iname("acp_valid")),
+                (Attribute::Name.as_ref(), Value::new_iname("acp_valid")),
                 (
-                    Attribute::Uuid.as_str(),
+                    Attribute::Uuid.as_ref(),
                     Value::Uuid(uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
                 ),
                 (
-                    Attribute::AcpReceiverGroup.as_str(),
+                    Attribute::AcpReceiverGroup.as_ref(),
                     Value::Refer(uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
                 ),
                 (
-                    Attribute::AcpTargetScope.as_str(),
+                    Attribute::AcpTargetScope.as_ref(),
                     Value::new_json_filter_s("{\"eq\":[\"name\",\"a\"]}").expect("filter")
                 ),
                 ("acp_search_attr", Value::new_iutf8("name")),
@@ -1370,13 +1370,13 @@ mod tests {
         acp_from_entry_ok!(
             &mut qs_write,
             entry_init!(
-                (Attribute::Class.as_str(), EntryClass::Object.to_value()),
+                (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
                 (
-                    Attribute::Class.as_str(),
+                    Attribute::Class.as_ref(),
                     EntryClass::AccessControlProfile.to_value()
                 ),
                 (
-                    Attribute::Class.as_str(),
+                    Attribute::Class.as_ref(),
                     EntryClass::AccessControlModify.to_value()
                 ),
                 ("name", Value::new_iname("acp_valid")),
@@ -1399,13 +1399,13 @@ mod tests {
         acp_from_entry_ok!(
             &mut qs_write,
             entry_init!(
-                (Attribute::Class.as_str(), EntryClass::Object.to_value()),
+                (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
                 (
-                    Attribute::Class.as_str(),
+                    Attribute::Class.as_ref(),
                     EntryClass::AccessControlProfile.to_value()
                 ),
                 (
-                    Attribute::Class.as_str(),
+                    Attribute::Class.as_ref(),
                     EntryClass::AccessControlModify.to_value()
                 ),
                 ("name", Value::new_iname("acp_valid")),
@@ -1455,13 +1455,13 @@ mod tests {
         acp_from_entry_ok!(
             &mut qs_write,
             entry_init!(
-                (Attribute::Class.as_str(), EntryClass::Object.to_value()),
+                (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
                 (
-                    Attribute::Class.as_str(),
+                    Attribute::Class.as_ref(),
                     EntryClass::AccessControlProfile.to_value()
                 ),
                 (
-                    Attribute::Class.as_str(),
+                    Attribute::Class.as_ref(),
                     EntryClass::AccessControlCreate.to_value()
                 ),
                 ("name", Value::new_iname("acp_valid")),
@@ -1484,13 +1484,13 @@ mod tests {
         acp_from_entry_ok!(
             &mut qs_write,
             entry_init!(
-                (Attribute::Class.as_str(), EntryClass::Object.to_value()),
+                (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
                 (
-                    Attribute::Class.as_str(),
+                    Attribute::Class.as_ref(),
                     EntryClass::AccessControlProfile.to_value()
                 ),
                 (
-                    Attribute::Class.as_str(),
+                    Attribute::Class.as_ref(),
                     EntryClass::AccessControlCreate.to_value()
                 ),
                 ("name", Value::new_iname("acp_valid")),
@@ -1522,25 +1522,25 @@ mod tests {
         let mut qs_write = qs.write(duration_from_epoch_now()).await;
 
         let e = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
             (
-                Attribute::Class.as_str(),
+                Attribute::Class.as_ref(),
                 EntryClass::AccessControlProfile.to_value()
             ),
             (
-                Attribute::Class.as_str(),
+                Attribute::Class.as_ref(),
                 EntryClass::AccessControlCreate.to_value()
             ),
             (
-                Attribute::Class.as_str(),
+                Attribute::Class.as_ref(),
                 EntryClass::AccessControlDelete.to_value()
             ),
             (
-                Attribute::Class.as_str(),
+                Attribute::Class.as_ref(),
                 EntryClass::AccessControlModify.to_value()
             ),
             (
-                Attribute::Class.as_str(),
+                Attribute::Class.as_ref(),
                 EntryClass::AccessControlSearch.to_value()
             ),
             ("name", Value::new_iname("acp_valid")),
@@ -1627,7 +1627,7 @@ mod tests {
     #[test]
     fn test_access_internal_search() {
         // Test that an internal search bypasses ACS
-        let se = SearchEvent::new_internal_invalid(filter!(f_pres(Attribute::Class.as_str())));
+        let se = SearchEvent::new_internal_invalid(filter!(f_pres(Attribute::Class.as_ref())));
 
         let expect = vec![E_TEST_ACCOUNT_1.clone()];
         let entries = vec![E_TEST_ACCOUNT_1.clone()];
@@ -2121,34 +2121,34 @@ mod tests {
     #[test]
     fn test_access_enforce_create() {
         let ev1 = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Account.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
             ("name", Value::new_iname("testperson1")),
-            (Attribute::Uuid.as_str(), Value::Uuid(UUID_TEST_ACCOUNT_1))
+            (Attribute::Uuid.as_ref(), Value::Uuid(UUID_TEST_ACCOUNT_1))
         );
         let r1_set = vec![ev1];
 
         let ev2 = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Account.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
             ("notallowed", Value::new_class("notallowed")),
             ("name", Value::new_iname("testperson1")),
-            (Attribute::Uuid.as_str(), Value::Uuid(UUID_TEST_ACCOUNT_1))
+            (Attribute::Uuid.as_ref(), Value::Uuid(UUID_TEST_ACCOUNT_1))
         );
 
         let r2_set = vec![ev2];
 
         let ev3 = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Account.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
             ("class", Value::new_class("notallowed")),
             ("name", Value::new_iname("testperson1")),
-            (Attribute::Uuid.as_str(), Value::Uuid(UUID_TEST_ACCOUNT_1))
+            (Attribute::Uuid.as_ref(), Value::Uuid(UUID_TEST_ACCOUNT_1))
         );
         let r3_set = vec![ev3];
 
         let ev4 = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Account.to_value()),
-            (Attribute::Class.as_str(), EntryClass::Group.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Group.to_value()),
             ("name", Value::new_iname("testperson1")),
-            (Attribute::Uuid.as_str(), Value::Uuid(UUID_TEST_ACCOUNT_1))
+            (Attribute::Uuid.as_ref(), Value::Uuid(UUID_TEST_ACCOUNT_1))
         );
         let r4_set = vec![ev4];
 
@@ -2209,9 +2209,9 @@ mod tests {
     #[test]
     fn test_access_enforce_scope_create() {
         let ev1 = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Account.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
             ("name", Value::new_iname("testperson1")),
-            (Attribute::Uuid.as_str(), Value::Uuid(UUID_TEST_ACCOUNT_1))
+            (Attribute::Uuid.as_ref(), Value::Uuid(UUID_TEST_ACCOUNT_1))
         );
         let r1_set = vec![ev1];
 
@@ -2472,17 +2472,17 @@ mod tests {
 
         // We can create without a sync class.
         let ev1 = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Account.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
             ("name", Value::new_iname("testperson1")),
-            (Attribute::Uuid.as_str(), Value::Uuid(UUID_TEST_ACCOUNT_1))
+            (Attribute::Uuid.as_ref(), Value::Uuid(UUID_TEST_ACCOUNT_1))
         );
         let r1_set = vec![ev1];
 
         let ev2 = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Account.to_value()),
-            (Attribute::Class.as_str(), EntryClass::SyncObject.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::SyncObject.to_value()),
             ("name", Value::new_iname("testperson1")),
-            (Attribute::Uuid.as_str(), Value::Uuid(UUID_TEST_ACCOUNT_1))
+            (Attribute::Uuid.as_ref(), Value::Uuid(UUID_TEST_ACCOUNT_1))
         );
         let r2_set = vec![ev2];
 
@@ -2514,18 +2514,18 @@ mod tests {
         sketching::test_init();
 
         let ev1 = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Account.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
             ("name", Value::new_iname("testperson1")),
-            (Attribute::Uuid.as_str(), Value::Uuid(UUID_TEST_ACCOUNT_1))
+            (Attribute::Uuid.as_ref(), Value::Uuid(UUID_TEST_ACCOUNT_1))
         )
         .into_sealed_committed();
         let r1_set = vec![Arc::new(ev1)];
 
         let ev2 = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Account.to_value()),
-            (Attribute::Class.as_str(), EntryClass::SyncObject.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::SyncObject.to_value()),
             ("name", Value::new_iname("testperson1")),
-            (Attribute::Uuid.as_str(), Value::Uuid(UUID_TEST_ACCOUNT_1))
+            (Attribute::Uuid.as_ref(), Value::Uuid(UUID_TEST_ACCOUNT_1))
         )
         .into_sealed_committed();
         let r2_set = vec![Arc::new(ev2)];
@@ -2561,20 +2561,20 @@ mod tests {
         sketching::test_init();
 
         let ev1 = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Account.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
             ("name", Value::new_iname("testperson1")),
-            (Attribute::Uuid.as_str(), Value::Uuid(UUID_TEST_ACCOUNT_1))
+            (Attribute::Uuid.as_ref(), Value::Uuid(UUID_TEST_ACCOUNT_1))
         )
         .into_sealed_committed();
         let r1_set = vec![Arc::new(ev1)];
 
         let sync_uuid = Uuid::new_v4();
         let ev2 = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Account.to_value()),
-            (Attribute::Class.as_str(), EntryClass::SyncObject.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::SyncObject.to_value()),
             ("sync_parent_uuid", Value::Refer(sync_uuid)),
             ("name", Value::new_iname("testperson1")),
-            (Attribute::Uuid.as_str(), Value::Uuid(UUID_TEST_ACCOUNT_1))
+            (Attribute::Uuid.as_ref(), Value::Uuid(UUID_TEST_ACCOUNT_1))
         )
         .into_sealed_committed();
         let r2_set = vec![Arc::new(ev2)];
@@ -2715,16 +2715,16 @@ mod tests {
         // the ability to search that rs.
         let rs_uuid = Uuid::new_v4();
         let ev1 = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
             (
-                Attribute::Class.as_str(),
+                Attribute::Class.as_ref(),
                 EntryClass::OAuth2ResourceServer.to_value()
             ),
             (
-                Attribute::Class.as_str(),
+                Attribute::Class.as_ref(),
                 EntryClass::OAuth2ResourceServerBasic.to_value()
             ),
-            (Attribute::Uuid.as_str(), Value::Uuid(rs_uuid)),
+            (Attribute::Uuid.as_ref(), Value::Uuid(rs_uuid)),
             ("oauth2_rs_name", Value::new_iname("test_resource_server")),
             ("displayname", Value::new_utf8s("test_resource_server")),
             (
@@ -2751,16 +2751,16 @@ mod tests {
         .into_sealed_committed();
 
         let ev1_reduced = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
             (
-                Attribute::Class.as_str(),
+                Attribute::Class.as_ref(),
                 EntryClass::OAuth2ResourceServer.to_value()
             ),
             (
-                Attribute::Class.as_str(),
+                Attribute::Class.as_ref(),
                 EntryClass::OAuth2ResourceServerBasic.to_value()
             ),
-            (Attribute::Uuid.as_str(), Value::Uuid(rs_uuid)),
+            (Attribute::Uuid.as_ref(), Value::Uuid(rs_uuid)),
             ("oauth2_rs_name", Value::new_iname("test_resource_server")),
             ("displayname", Value::new_utf8s("test_resource_server")),
             (
@@ -2771,16 +2771,16 @@ mod tests {
         .into_sealed_committed();
 
         let ev2 = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
             (
-                Attribute::Class.as_str(),
+                Attribute::Class.as_ref(),
                 EntryClass::OAuth2ResourceServer.to_value()
             ),
             (
-                Attribute::Class.as_str(),
+                Attribute::Class.as_ref(),
                 EntryClass::OAuth2ResourceServerBasic.to_value()
             ),
-            (Attribute::Uuid.as_str(), Value::Uuid(Uuid::new_v4())),
+            (Attribute::Uuid.as_ref(), Value::Uuid(Uuid::new_v4())),
             ("oauth2_rs_name", Value::new_iname("second_resource_server")),
             ("displayname", Value::new_utf8s("second_resource_server")),
             (
@@ -2844,35 +2844,35 @@ mod tests {
         let portal_url = Url::parse("https://localhost/portal").unwrap();
 
         let ev1 = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
             (
-                Attribute::Class.as_str(),
+                Attribute::Class.as_ref(),
                 EntryClass::SyncAccount.to_value()
             ),
-            (Attribute::Uuid.as_str(), Value::Uuid(sync_uuid)),
+            (Attribute::Uuid.as_ref(), Value::Uuid(sync_uuid)),
             ("name", Value::new_iname("test_sync_account")),
             ("sync_credential_portal", Value::Url(portal_url.clone()))
         )
         .into_sealed_committed();
 
         let ev1_reduced = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
             (
-                Attribute::Class.as_str(),
+                Attribute::Class.as_ref(),
                 EntryClass::SyncAccount.to_value()
             ),
-            (Attribute::Uuid.as_str(), Value::Uuid(sync_uuid)),
+            (Attribute::Uuid.as_ref(), Value::Uuid(sync_uuid)),
             ("sync_credential_portal", Value::Url(portal_url.clone()))
         )
         .into_sealed_committed();
 
         let ev2 = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
             (
-                Attribute::Class.as_str(),
+                Attribute::Class.as_ref(),
                 EntryClass::SyncAccount.to_value()
             ),
-            (Attribute::Uuid.as_str(), Value::Uuid(Uuid::new_v4())),
+            (Attribute::Uuid.as_ref(), Value::Uuid(Uuid::new_v4())),
             ("name", Value::new_iname("test_sync_account")),
             ("sync_credential_portal", Value::Url(portal_url.clone()))
         )
@@ -2880,11 +2880,11 @@ mod tests {
 
         let sync_test_account: Arc<EntrySealedCommitted> = Arc::new(
             entry_init!(
-                (Attribute::Class.as_str(), EntryClass::Object.to_value()),
-                (Attribute::Class.as_str(), EntryClass::Account.to_value()),
-                (Attribute::Class.as_str(), EntryClass::SyncObject.to_value()),
+                (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+                (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
+                (Attribute::Class.as_ref(), EntryClass::SyncObject.to_value()),
                 ("name", Value::new_iname("test_account_1")),
-                (Attribute::Uuid.as_str(), Value::Uuid(UUID_TEST_ACCOUNT_1)),
+                (Attribute::Uuid.as_ref(), Value::Uuid(UUID_TEST_ACCOUNT_1)),
                 ("memberof", Value::Refer(UUID_TEST_GROUP_1)),
                 ("sync_parent_uuid", Value::Refer(sync_uuid))
             )

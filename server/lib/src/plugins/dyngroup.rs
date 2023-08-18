@@ -146,7 +146,7 @@ impl DynGroup {
         let ident_internal = Identity::from_internal();
 
         let (n_dyn_groups, entries): (Vec<&Entry<_, _>>, Vec<_>) = cand.iter().partition(|entry| {
-            entry.attribute_equality(Attribute::Class.as_str(), &EntryClass::DynGroup.into())
+            entry.attribute_equality(Attribute::Class.as_ref(), &EntryClass::DynGroup.into())
         });
 
         // DANGER: Why do we have to do this? During the use of qs for internal search
@@ -249,12 +249,12 @@ impl DynGroup {
         // Probably should be filter here instead.
         let (_, pre_entries): (Vec<&Arc<Entry<_, _>>>, Vec<_>) =
             pre_cand.iter().partition(|entry| {
-                entry.attribute_equality(Attribute::Class.as_str(), &EntryClass::DynGroup.into())
+                entry.attribute_equality(Attribute::Class.as_ref(), &EntryClass::DynGroup.into())
             });
 
         let (n_dyn_groups, post_entries): (Vec<&Entry<_, _>>, Vec<_>) =
             cand.iter().partition(|entry| {
-                entry.attribute_equality(Attribute::Class.as_str(), &EntryClass::DynGroup.into())
+                entry.attribute_equality(Attribute::Class.as_ref(), &EntryClass::DynGroup.into())
             });
 
         // DANGER: Why do we have to do this? During the use of qs for internal search
@@ -367,10 +367,10 @@ mod tests {
     #[test]
     fn test_create_dyngroup_add_new_group() {
         let e_dyn = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_str(), EntryClass::Group.to_value()),
-            (Attribute::Class.as_str(), EntryClass::DynGroup.to_value()),
-            (Attribute::Name.as_str(), Value::new_iname("test_dyngroup")),
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Group.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::DynGroup.to_value()),
+            (Attribute::Name.as_ref(), Value::new_iname("test_dyngroup")),
             (
                 "dyngroup_filter",
                 Value::JsonFilt(ProtoFilter::Eq("name".to_string(), "testgroup".to_string()))
@@ -378,9 +378,9 @@ mod tests {
         );
 
         let e_group: Entry<EntryInit, EntryNew> = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Group.to_value()),
-            (Attribute::Name.as_str(), Value::new_iname("testgroup")),
-            (Attribute::Uuid.as_str(), Value::Uuid(UUID_TEST_GROUP))
+            (Attribute::Class.as_ref(), EntryClass::Group.to_value()),
+            (Attribute::Name.as_ref(), Value::new_iname("testgroup")),
+            (Attribute::Uuid.as_ref(), Value::Uuid(UUID_TEST_GROUP))
         );
 
         let preload = vec![e_group];
@@ -413,10 +413,10 @@ mod tests {
     #[test]
     fn test_create_dyngroup_add_matching_entry() {
         let e_dyn = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_str(), EntryClass::Group.to_value()),
-            (Attribute::Class.as_str(), EntryClass::DynGroup.to_value()),
-            (Attribute::Name.as_str(), Value::new_iname("test_dyngroup")),
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Group.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::DynGroup.to_value()),
+            (Attribute::Name.as_ref(), Value::new_iname("test_dyngroup")),
             (
                 "dyngroup_filter",
                 Value::JsonFilt(ProtoFilter::Eq("name".to_string(), "testgroup".to_string()))
@@ -424,9 +424,9 @@ mod tests {
         );
 
         let e_group: Entry<EntryInit, EntryNew> = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Group.to_value()),
-            (Attribute::Name.as_str(), Value::new_iname("testgroup")),
-            (Attribute::Uuid.as_str(), Value::Uuid(UUID_TEST_GROUP))
+            (Attribute::Class.as_ref(), EntryClass::Group.to_value()),
+            (Attribute::Name.as_ref(), Value::new_iname("testgroup")),
+            (Attribute::Uuid.as_ref(), Value::Uuid(UUID_TEST_GROUP))
         );
 
         let preload = vec![e_dyn];
@@ -459,10 +459,10 @@ mod tests {
     #[test]
     fn test_create_dyngroup_add_non_matching_entry() {
         let e_dyn = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_str(), EntryClass::Group.to_value()),
-            (Attribute::Class.as_str(), EntryClass::DynGroup.to_value()),
-            (Attribute::Name.as_str(), Value::new_iname("test_dyngroup")),
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Group.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::DynGroup.to_value()),
+            (Attribute::Name.as_ref(), Value::new_iname("test_dyngroup")),
             (
                 "dyngroup_filter",
                 Value::JsonFilt(ProtoFilter::Eq(
@@ -473,9 +473,9 @@ mod tests {
         );
 
         let e_group: Entry<EntryInit, EntryNew> = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Group.to_value()),
-            (Attribute::Name.as_str(), Value::new_iname("testgroup")),
-            (Attribute::Uuid.as_str(), Value::Uuid(UUID_TEST_GROUP))
+            (Attribute::Class.as_ref(), EntryClass::Group.to_value()),
+            (Attribute::Name.as_ref(), Value::new_iname("testgroup")),
+            (Attribute::Uuid.as_ref(), Value::Uuid(UUID_TEST_GROUP))
         );
 
         let preload = vec![e_dyn];
@@ -504,10 +504,10 @@ mod tests {
     #[test]
     fn test_create_dyngroup_add_matching_entry_and_group() {
         let e_dyn = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_str(), EntryClass::Group.to_value()),
-            (Attribute::Class.as_str(), EntryClass::DynGroup.to_value()),
-            (Attribute::Name.as_str(), Value::new_iname("test_dyngroup")),
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Group.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::DynGroup.to_value()),
+            (Attribute::Name.as_ref(), Value::new_iname("test_dyngroup")),
             (
                 "dyngroup_filter",
                 Value::JsonFilt(ProtoFilter::Eq("name".to_string(), "testgroup".to_string()))
@@ -515,9 +515,9 @@ mod tests {
         );
 
         let e_group: Entry<EntryInit, EntryNew> = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Group.to_value()),
-            (Attribute::Name.as_str(), Value::new_iname("testgroup")),
-            (Attribute::Uuid.as_str(), Value::Uuid(UUID_TEST_GROUP))
+            (Attribute::Class.as_ref(), EntryClass::Group.to_value()),
+            (Attribute::Name.as_ref(), Value::new_iname("testgroup")),
+            (Attribute::Uuid.as_ref(), Value::Uuid(UUID_TEST_GROUP))
         );
 
         let preload = vec![];
@@ -551,10 +551,10 @@ mod tests {
     #[test]
     fn test_modify_dyngroup_existing_dyngroup_filter_into_scope() {
         let e_dyn = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_str(), EntryClass::Group.to_value()),
-            (Attribute::Class.as_str(), EntryClass::DynGroup.to_value()),
-            (Attribute::Name.as_str(), Value::new_iname("test_dyngroup")),
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Group.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::DynGroup.to_value()),
+            (Attribute::Name.as_ref(), Value::new_iname("test_dyngroup")),
             (
                 "dyngroup_filter",
                 Value::JsonFilt(ProtoFilter::Eq(
@@ -565,9 +565,9 @@ mod tests {
         );
 
         let e_group: Entry<EntryInit, EntryNew> = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Group.to_value()),
-            (Attribute::Name.as_str(), Value::new_iname("testgroup")),
-            (Attribute::Uuid.as_str(), Value::Uuid(UUID_TEST_GROUP))
+            (Attribute::Class.as_ref(), EntryClass::Group.to_value()),
+            (Attribute::Name.as_ref(), Value::new_iname("testgroup")),
+            (Attribute::Uuid.as_ref(), Value::Uuid(UUID_TEST_GROUP))
         );
 
         let preload = vec![e_dyn, e_group];
@@ -609,10 +609,10 @@ mod tests {
     #[test]
     fn test_modify_dyngroup_existing_dyngroup_filter_outof_scope() {
         let e_dyn = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_str(), EntryClass::Group.to_value()),
-            (Attribute::Class.as_str(), EntryClass::DynGroup.to_value()),
-            (Attribute::Name.as_str(), Value::new_iname("test_dyngroup")),
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Group.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::DynGroup.to_value()),
+            (Attribute::Name.as_ref(), Value::new_iname("test_dyngroup")),
             (
                 "dyngroup_filter",
                 Value::JsonFilt(ProtoFilter::Eq("name".to_string(), "testgroup".to_string()))
@@ -620,9 +620,9 @@ mod tests {
         );
 
         let e_group: Entry<EntryInit, EntryNew> = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Group.to_value()),
-            (Attribute::Name.as_str(), Value::new_iname("testgroup")),
-            (Attribute::Uuid.as_str(), Value::Uuid(UUID_TEST_GROUP))
+            (Attribute::Class.as_ref(), EntryClass::Group.to_value()),
+            (Attribute::Name.as_ref(), Value::new_iname("testgroup")),
+            (Attribute::Uuid.as_ref(), Value::Uuid(UUID_TEST_GROUP))
         );
 
         let preload = vec![e_dyn, e_group];
@@ -663,10 +663,10 @@ mod tests {
     #[test]
     fn test_modify_dyngroup_existing_dyngroup_member_add() {
         let e_dyn = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_str(), EntryClass::Group.to_value()),
-            (Attribute::Class.as_str(), EntryClass::DynGroup.to_value()),
-            (Attribute::Name.as_str(), Value::new_iname("test_dyngroup")),
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Group.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::DynGroup.to_value()),
+            (Attribute::Name.as_ref(), Value::new_iname("test_dyngroup")),
             (
                 "dyngroup_filter",
                 Value::JsonFilt(ProtoFilter::Eq("name".to_string(), "testgroup".to_string()))
@@ -674,9 +674,9 @@ mod tests {
         );
 
         let e_group: Entry<EntryInit, EntryNew> = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Group.to_value()),
-            (Attribute::Name.as_str(), Value::new_iname("testgroup")),
-            (Attribute::Uuid.as_str(), Value::Uuid(UUID_TEST_GROUP))
+            (Attribute::Class.as_ref(), EntryClass::Group.to_value()),
+            (Attribute::Name.as_ref(), Value::new_iname("testgroup")),
+            (Attribute::Uuid.as_ref(), Value::Uuid(UUID_TEST_GROUP))
         );
 
         let preload = vec![e_dyn, e_group];
@@ -716,10 +716,10 @@ mod tests {
     #[test]
     fn test_modify_dyngroup_existing_dyngroup_member_remove() {
         let e_dyn = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_str(), EntryClass::Group.to_value()),
-            (Attribute::Class.as_str(), EntryClass::DynGroup.to_value()),
-            (Attribute::Name.as_str(), Value::new_iname("test_dyngroup")),
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Group.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::DynGroup.to_value()),
+            (Attribute::Name.as_ref(), Value::new_iname("test_dyngroup")),
             (
                 "dyngroup_filter",
                 Value::JsonFilt(ProtoFilter::Eq("name".to_string(), "testgroup".to_string()))
@@ -727,9 +727,9 @@ mod tests {
         );
 
         let e_group: Entry<EntryInit, EntryNew> = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Group.to_value()),
-            (Attribute::Name.as_str(), Value::new_iname("testgroup")),
-            (Attribute::Uuid.as_str(), Value::Uuid(UUID_TEST_GROUP))
+            (Attribute::Class.as_ref(), EntryClass::Group.to_value()),
+            (Attribute::Name.as_ref(), Value::new_iname("testgroup")),
+            (Attribute::Uuid.as_ref(), Value::Uuid(UUID_TEST_GROUP))
         );
 
         let preload = vec![e_dyn, e_group];
@@ -765,10 +765,10 @@ mod tests {
     #[test]
     fn test_modify_dyngroup_into_matching_entry() {
         let e_dyn = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_str(), EntryClass::Group.to_value()),
-            (Attribute::Class.as_str(), EntryClass::DynGroup.to_value()),
-            (Attribute::Name.as_str(), Value::new_iname("test_dyngroup")),
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Group.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::DynGroup.to_value()),
+            (Attribute::Name.as_ref(), Value::new_iname("test_dyngroup")),
             (
                 "dyngroup_filter",
                 Value::JsonFilt(ProtoFilter::Eq("name".to_string(), "testgroup".to_string()))
@@ -776,9 +776,9 @@ mod tests {
         );
 
         let e_group: Entry<EntryInit, EntryNew> = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Group.to_value()),
-            (Attribute::Name.as_str(), Value::new_iname("not_testgroup")),
-            (Attribute::Uuid.as_str(), Value::Uuid(UUID_TEST_GROUP))
+            (Attribute::Class.as_ref(), EntryClass::Group.to_value()),
+            (Attribute::Name.as_ref(), Value::new_iname("not_testgroup")),
+            (Attribute::Uuid.as_ref(), Value::Uuid(UUID_TEST_GROUP))
         );
 
         let preload = vec![e_dyn, e_group];
@@ -817,10 +817,10 @@ mod tests {
     #[test]
     fn test_modify_dyngroup_into_non_matching_entry() {
         let e_dyn = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_str(), EntryClass::Group.to_value()),
-            (Attribute::Class.as_str(), EntryClass::DynGroup.to_value()),
-            (Attribute::Name.as_str(), Value::new_iname("test_dyngroup")),
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Group.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::DynGroup.to_value()),
+            (Attribute::Name.as_ref(), Value::new_iname("test_dyngroup")),
             (
                 "dyngroup_filter",
                 Value::JsonFilt(ProtoFilter::Eq("name".to_string(), "testgroup".to_string()))
@@ -828,9 +828,9 @@ mod tests {
         );
 
         let e_group: Entry<EntryInit, EntryNew> = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Group.to_value()),
-            (Attribute::Name.as_str(), Value::new_iname("testgroup")),
-            (Attribute::Uuid.as_str(), Value::Uuid(UUID_TEST_GROUP))
+            (Attribute::Class.as_ref(), EntryClass::Group.to_value()),
+            (Attribute::Name.as_ref(), Value::new_iname("testgroup")),
+            (Attribute::Uuid.as_ref(), Value::Uuid(UUID_TEST_GROUP))
         );
 
         let preload = vec![e_dyn, e_group];
@@ -862,10 +862,10 @@ mod tests {
     #[test]
     fn test_delete_dyngroup_matching_entry() {
         let e_dyn = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_str(), EntryClass::Group.to_value()),
-            (Attribute::Class.as_str(), EntryClass::DynGroup.to_value()),
-            (Attribute::Name.as_str(), Value::new_iname("test_dyngroup")),
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Group.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::DynGroup.to_value()),
+            (Attribute::Name.as_ref(), Value::new_iname("test_dyngroup")),
             (
                 "dyngroup_filter",
                 Value::JsonFilt(ProtoFilter::Eq("name".to_string(), "testgroup".to_string()))
@@ -873,9 +873,9 @@ mod tests {
         );
 
         let e_group: Entry<EntryInit, EntryNew> = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Group.to_value()),
-            (Attribute::Name.as_str(), Value::new_iname("testgroup")),
-            (Attribute::Uuid.as_str(), Value::Uuid(UUID_TEST_GROUP))
+            (Attribute::Class.as_ref(), EntryClass::Group.to_value()),
+            (Attribute::Name.as_ref(), Value::new_iname("testgroup")),
+            (Attribute::Uuid.as_ref(), Value::Uuid(UUID_TEST_GROUP))
         );
 
         let preload = vec![e_dyn, e_group];
@@ -902,10 +902,10 @@ mod tests {
     #[test]
     fn test_delete_dyngroup_group() {
         let e_dyn = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_str(), EntryClass::Group.to_value()),
-            (Attribute::Class.as_str(), EntryClass::DynGroup.to_value()),
-            (Attribute::Name.as_str(), Value::new_iname("test_dyngroup")),
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Group.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::DynGroup.to_value()),
+            (Attribute::Name.as_ref(), Value::new_iname("test_dyngroup")),
             (
                 "dyngroup_filter",
                 Value::JsonFilt(ProtoFilter::Eq("name".to_string(), "testgroup".to_string()))
@@ -913,9 +913,9 @@ mod tests {
         );
 
         let e_group: Entry<EntryInit, EntryNew> = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Group.to_value()),
-            (Attribute::Name.as_str(), Value::new_iname("testgroup")),
-            (Attribute::Uuid.as_str(), Value::Uuid(UUID_TEST_GROUP))
+            (Attribute::Class.as_ref(), EntryClass::Group.to_value()),
+            (Attribute::Name.as_ref(), Value::new_iname("testgroup")),
+            (Attribute::Uuid.as_ref(), Value::Uuid(UUID_TEST_GROUP))
         );
 
         let preload = vec![e_dyn, e_group];

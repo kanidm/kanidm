@@ -46,14 +46,14 @@ impl Plugin for JwsKeygen {
 impl JwsKeygen {
     fn modify_inner<T: Clone>(cand: &mut [Entry<EntryInvalid, T>]) -> Result<(), OperationError> {
         cand.iter_mut().try_for_each(|e| {
-        if e.attribute_equality(Attribute::Class.as_str(), &EntryClass::OAuth2ResourceServerBasic.into()) &&
+        if e.attribute_equality(Attribute::Class.as_ref(), &EntryClass::OAuth2ResourceServerBasic.into()) &&
             !e.attribute_pres("oauth2_rs_basic_secret") {
                 security_info!("regenerating oauth2 basic secret");
                 let v = Value::SecretValue(password_from_random());
                 e.add_ava("oauth2_rs_basic_secret", v);
         }
 
-        if e.attribute_equality(Attribute::Class.as_str(), &EntryClass::OAuth2ResourceServer.into()) {
+        if e.attribute_equality(Attribute::Class.as_ref(), &EntryClass::OAuth2ResourceServer.into()) {
             if !e.attribute_pres("oauth2_rs_token_key") {
                 security_info!("regenerating oauth2 token key");
                 let k = fernet::Fernet::generate_key();
@@ -85,8 +85,8 @@ impl JwsKeygen {
             }
         }
 
-        if (e.attribute_equality(Attribute::Class.as_str(), &EntryClass::ServiceAccount.into()) ||
-            e.attribute_equality(Attribute::Class.as_str(), &EntryClass::SyncAccount.into())) &&
+        if (e.attribute_equality(Attribute::Class.as_ref(), &EntryClass::ServiceAccount.into()) ||
+            e.attribute_equality(Attribute::Class.as_ref(), &EntryClass::SyncAccount.into())) &&
             !e.attribute_pres("jws_es256_private_key") {
                 security_info!("regenerating jws es256 private key");
                 let jwssigner = JwsSigner::generate_es256()
@@ -113,22 +113,22 @@ mod tests {
 
         let uuid = Uuid::new_v4();
         let e: Entry<EntryInit, EntryNew> = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
             (
-                Attribute::Class.as_str(),
+                Attribute::Class.as_ref(),
                 EntryClass::OAuth2ResourceServer.to_value()
             ),
             (
-                Attribute::Class.as_str(),
+                Attribute::Class.as_ref(),
                 EntryClass::OAuth2ResourceServerBasic.to_value()
             ),
-            (Attribute::Uuid.as_str(), Value::Uuid(uuid)),
+            (Attribute::Uuid.as_ref(), Value::Uuid(uuid)),
             (
-                Attribute::DisplayName.as_str(),
+                Attribute::DisplayName.as_ref(),
                 Value::new_utf8s("test_resource_server")
             ),
             (
-                Attribute::OAuth2RsName.as_str(),
+                Attribute::OAuth2RsName.as_ref(),
                 Value::new_iname("test_resource_server")
             ),
             (
@@ -167,22 +167,22 @@ mod tests {
         let uuid = Uuid::new_v4();
 
         let e: Entry<EntryInit, EntryNew> = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
             (
-                Attribute::Class.as_str(),
+                Attribute::Class.as_ref(),
                 EntryClass::OAuth2ResourceServer.to_value()
             ),
             (
-                Attribute::Class.as_str(),
+                Attribute::Class.as_ref(),
                 EntryClass::OAuth2ResourceServerBasic.to_value()
             ),
-            (Attribute::Uuid.as_str(), Value::Uuid(uuid)),
+            (Attribute::Uuid.as_ref(), Value::Uuid(uuid)),
             (
-                Attribute::OAuth2RsName.as_str(),
+                Attribute::OAuth2RsName.as_ref(),
                 Value::new_iname("test_resource_server")
             ),
             (
-                Attribute::DisplayName.as_str(),
+                Attribute::DisplayName.as_ref(),
                 Value::new_utf8s("test_resource_server")
             ),
             (
@@ -198,11 +198,11 @@ mod tests {
                 .expect("invalid oauthscope")
             ),
             (
-                Attribute::OAuth2RsBasicSecret.as_str(),
+                Attribute::OAuth2RsBasicSecret.as_ref(),
                 Value::new_secret_str("12345")
             ),
             (
-                Attribute::OAuth2RsTokenKey.as_str(),
+                Attribute::OAuth2RsTokenKey.as_ref(),
                 Value::new_secret_str("12345")
             )
         );

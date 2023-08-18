@@ -2614,16 +2614,16 @@ mod tests {
         assert!(idms_prox_write.qs_write.modify(&me_posix).is_ok());
         // Add a posix group that has the admin as a member.
         let e: Entry<EntryInit, EntryNew> = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_str(), EntryClass::Group.to_value()),
-            (Attribute::Class.as_str(), EntryClass::PosixGroup.to_value()),
-            (Attribute::Name.as_str(), Value::new_iname("testgroup")),
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Group.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::PosixGroup.to_value()),
+            (Attribute::Name.as_ref(), Value::new_iname("testgroup")),
             (
                 "uuid",
                 Value::Uuid(uuid::uuid!("01609135-a1c4-43d5-966b-a28227644445"))
             ),
             (
-                Attribute::Description.as_str(),
+                Attribute::Description.as_ref(),
                 Value::new_utf8s("testgroup")
             ),
             (
@@ -3765,20 +3765,20 @@ mod tests {
 
         // Create a service account
         let e = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_str(), EntryClass::Account.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
             (
-                Attribute::Class.as_str(),
+                Attribute::Class.as_ref(),
                 EntryClass::ServiceAccount.to_value()
             ),
-            (Attribute::Name.as_str(), Value::new_iname("testaccount")),
-            (Attribute::Uuid.as_str(), Value::Uuid(target_uuid)),
+            (Attribute::Name.as_ref(), Value::new_iname("testaccount")),
+            (Attribute::Uuid.as_ref(), Value::Uuid(target_uuid)),
             (
-                Attribute::Description.as_str(),
+                Attribute::Description.as_ref(),
                 Value::new_utf8s("testaccount")
             ),
             (
-                Attribute::DisplayName.as_str(),
+                Attribute::DisplayName.as_ref(),
                 Value::new_utf8s("Test Account")
             )
         );

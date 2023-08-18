@@ -35,7 +35,7 @@ pub(crate) struct UnixUserAccount {
 macro_rules! try_from_entry {
     ($value:expr, $groups:expr) => {{
         if !$value.attribute_equality(
-            Attribute::Class.as_str(),
+            Attribute::Class.as_ref(),
             &EntryClass::Account.to_partialvalue(),
         ) {
             return Err(OperationError::InvalidAccountState(
@@ -44,7 +44,7 @@ macro_rules! try_from_entry {
         }
 
         if !$value.attribute_equality(
-            Attribute::Class.as_str(),
+            Attribute::Class.as_ref(),
             &EntryClass::PosixAccount.to_partialvalue(),
         ) {
             return Err(OperationError::InvalidAccountState(
@@ -313,16 +313,16 @@ macro_rules! try_from_group_e {
         // We could be looking at a user for their UPG, OR a true group.
 
         if !(($value.attribute_equality(
-            Attribute::Class.as_str(),
+            Attribute::Class.as_ref(),
             &EntryClass::Account.to_partialvalue(),
         ) && $value.attribute_equality(
-            Attribute::Class.as_str(),
+            Attribute::Class.as_ref(),
             &EntryClass::PosixAccount.to_partialvalue(),
         )) || ($value.attribute_equality(
-            Attribute::Class.as_str(),
+            Attribute::Class.as_ref(),
             &EntryClass::Group.to_partialvalue(),
         ) && $value.attribute_equality(
-            Attribute::Class.as_str(),
+            Attribute::Class.as_ref(),
             &EntryClass::PosixGroup.to_partialvalue(),
         ))) {
             return Err(OperationError::InvalidAccountState(
@@ -362,7 +362,7 @@ macro_rules! try_from_account_group_e {
         // We have already checked these, but paranoia is better than
         // complacency.
         if !$value.attribute_equality(
-            Attribute::Class.as_str(),
+            Attribute::Class.as_ref(),
             &EntryClass::Account.to_partialvalue(),
         ) {
             return Err(OperationError::InvalidAccountState(
@@ -371,7 +371,7 @@ macro_rules! try_from_account_group_e {
         }
 
         if !$value.attribute_equality(
-            Attribute::Class.as_str(),
+            Attribute::Class.as_ref(),
             &EntryClass::PosixAccount.to_partialvalue(),
         ) {
             return Err(OperationError::InvalidAccountState(

@@ -184,7 +184,7 @@ impl Plugin for ReferentialIntegrity {
     fn verify(qs: &mut QueryServerReadTransaction) -> Vec<Result<(), ConsistencyError>> {
         // Get all entries as cand
         //      build a cand-uuid set
-        let filt_in = filter_all!(f_pres(Attribute::Class.as_str()));
+        let filt_in = filter_all!(f_pres(Attribute::Class.as_ref()));
 
         let all_cand = match qs
             .internal_search(filt_in)
@@ -239,7 +239,7 @@ impl ReferentialIntegrity {
         let mut vsiter = cand.iter().flat_map(|c| {
             // If it's dyngroup, skip member since this will be reset in the next step.
             let dyn_group =
-                c.attribute_equality(Attribute::Class.as_str(), &EntryClass::DynGroup.into());
+                c.attribute_equality(Attribute::Class.as_ref(), &EntryClass::DynGroup.into());
 
             ref_types.values().filter_map(move |rtype| {
                 // Skip dynamic members
@@ -776,18 +776,18 @@ mod tests {
         // scope maps, so we need to check that when the group is deleted, that the
         // scope map is also appropriately affected.
         let ea: Entry<EntryInit, EntryNew> = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
             (
-                Attribute::Class.as_str(),
+                Attribute::Class.as_ref(),
                 EntryClass::OAuth2ResourceServer.to_value()
             ),
-            // (Attribute::Class.as_str(), EntryClass::OAuth2ResourceServerBasic.into()),
+            // (Attribute::Class.as_ref(), EntryClass::OAuth2ResourceServerBasic.into()),
             (
-                Attribute::OAuth2RsName.as_str(),
+                Attribute::OAuth2RsName.as_ref(),
                 Value::new_iname("test_resource_server")
             ),
             (
-                Attribute::DisplayName.as_str(),
+                Attribute::DisplayName.as_ref(),
                 Value::new_utf8s("test_resource_server")
             ),
             (
@@ -805,14 +805,14 @@ mod tests {
         );
 
         let eb: Entry<EntryInit, EntryNew> = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Group.to_value()),
-            (Attribute::Name.as_str(), Value::new_iname("testgroup")),
+            (Attribute::Class.as_ref(), EntryClass::Group.to_value()),
+            (Attribute::Name.as_ref(), Value::new_iname("testgroup")),
             (
                 "uuid",
                 Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
             ),
             (
-                Attribute::Description.as_str(),
+                Attribute::Description.as_ref(),
                 Value::new_utf8s("testgroup")
             )
         );
@@ -855,17 +855,17 @@ mod tests {
         let rs_uuid = Uuid::new_v4();
 
         let e1 = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_str(), EntryClass::Person.to_value()),
-            (Attribute::Class.as_str(), EntryClass::Account.to_value()),
-            (Attribute::Name.as_str(), Value::new_iname("testperson1")),
-            (Attribute::Uuid.as_str(), Value::Uuid(tuuid)),
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
+            (Attribute::Name.as_ref(), Value::new_iname("testperson1")),
+            (Attribute::Uuid.as_ref(), Value::Uuid(tuuid)),
             (
-                Attribute::Description.as_str(),
+                Attribute::Description.as_ref(),
                 Value::new_utf8s("testperson1")
             ),
             (
-                Attribute::DisplayName.as_str(),
+                Attribute::DisplayName.as_ref(),
                 Value::new_utf8s("testperson1")
             ),
             (
@@ -875,18 +875,18 @@ mod tests {
         );
 
         let e2 = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
             (
-                Attribute::Class.as_str(),
+                Attribute::Class.as_ref(),
                 EntryClass::OAuth2ResourceServer.to_value()
             ),
-            (Attribute::Uuid.as_str(), Value::Uuid(rs_uuid)),
+            (Attribute::Uuid.as_ref(), Value::Uuid(rs_uuid)),
             (
-                Attribute::OAuth2RsName.as_str(),
+                Attribute::OAuth2RsName.as_ref(),
                 Value::new_iname("test_resource_server")
             ),
             (
-                Attribute::DisplayName.as_str(),
+                Attribute::DisplayName.as_ref(),
                 Value::new_utf8s("test_resource_server")
             ),
             (
@@ -965,8 +965,8 @@ mod tests {
         // Still there
 
         let entry = server_txn.internal_search_uuid(tuuid).expect("failed");
-        assert!(entry.attribute_equality(Attribute::UserAuthTokenSession.as_str(), &pv_parent_id));
-        assert!(entry.attribute_equality(Attribute::OAuth2Session.as_str(), &pv_session_id));
+        assert!(entry.attribute_equality(Attribute::UserAuthTokenSession.as_ref(), &pv_parent_id));
+        assert!(entry.attribute_equality(Attribute::OAuth2Session.as_ref(), &pv_session_id));
 
         // Delete the oauth2 resource server.
         assert!(server_txn.internal_delete_uuid(rs_uuid).is_ok());
@@ -975,11 +975,11 @@ mod tests {
         let entry = server_txn.internal_search_uuid(tuuid).expect("failed");
 
         // Note the uat is present still.
-        assert!(entry.attribute_equality(Attribute::UserAuthTokenSession.as_str(), &pv_parent_id));
+        assert!(entry.attribute_equality(Attribute::UserAuthTokenSession.as_ref(), &pv_parent_id));
         // The oauth2 session is removed.
         dbg!(&entry);
         dbg!(&pv_session_id);
-        assert!(!entry.attribute_equality(Attribute::OAuth2Session.as_str(), &pv_session_id));
+        assert!(!entry.attribute_equality(Attribute::OAuth2Session.as_ref(), &pv_session_id));
 
         assert!(server_txn.commit().is_ok());
     }
@@ -1000,11 +1000,11 @@ mod tests {
         let inv_mb_uuid = Uuid::new_v4();
 
         let e_dyn = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_str(), EntryClass::Group.to_value()),
-            (Attribute::Class.as_str(), EntryClass::DynGroup.to_value()),
-            (Attribute::Uuid.as_str(), Value::Uuid(dyn_uuid)),
-            (Attribute::Name.as_str(), Value::new_iname("test_dyngroup")),
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Group.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::DynGroup.to_value()),
+            (Attribute::Uuid.as_ref(), Value::Uuid(dyn_uuid)),
+            (Attribute::Name.as_ref(), Value::new_iname("test_dyngroup")),
             ("dynmember", Value::Refer(inv_mb_uuid)),
             (
                 "dyngroup_filter",
@@ -1013,11 +1013,11 @@ mod tests {
         );
 
         let e_group: Entry<EntryInit, EntryNew> = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Group.to_value()),
-            (Attribute::Class.as_str(), EntryClass::MemberOf.to_value()),
-            (Attribute::Name.as_str(), Value::new_iname("testgroup")),
-            (Attribute::Uuid.as_str(), Value::Uuid(tgroup_uuid)),
-            (Attribute::MemberOf.as_str(), Value::Refer(inv_mo_uuid))
+            (Attribute::Class.as_ref(), EntryClass::Group.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::MemberOf.to_value()),
+            (Attribute::Name.as_ref(), Value::new_iname("testgroup")),
+            (Attribute::Uuid.as_ref(), Value::Uuid(tgroup_uuid)),
+            (Attribute::MemberOf.as_ref(), Value::Refer(inv_mo_uuid))
         );
 
         let ce = CreateEvent::new_internal(vec![e_dyn, e_group]);

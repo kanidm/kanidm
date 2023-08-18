@@ -20,7 +20,7 @@ const GID_SAFETY_NUMBER_MIN: u32 = 1000;
 pub struct GidNumber {}
 
 fn apply_gidnumber<T: Clone>(e: &mut Entry<EntryInvalid, T>) -> Result<(), OperationError> {
-    if (e.attribute_equality(Attribute::Class.as_str(), &EntryClass::PosixGroup.into())
+    if (e.attribute_equality(Attribute::Class.as_ref(), &EntryClass::PosixGroup.into())
         || e.attribute_equality(Attribute::Class.into(), &EntryClass::PosixAccount.into()))
         && !e.attribute_pres("gidnumber")
     {
@@ -108,22 +108,22 @@ mod tests {
     #[test]
     fn test_gidnumber_create_generate() {
         let e = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Account.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
             (
-                Attribute::Class.as_str(),
+                Attribute::Class.as_ref(),
                 EntryClass::PosixAccount.to_value()
             ),
-            (Attribute::Name.as_str(), Value::new_iname("testperson")),
+            (Attribute::Name.as_ref(), Value::new_iname("testperson")),
             (
                 "uuid",
                 Value::Uuid(uuid!("83a0927f-3de1-45ec-bea0-2f7b997ef244"))
             ),
             (
-                Attribute::Description.as_str(),
+                Attribute::Description.as_ref(),
                 Value::new_utf8s("testperson")
             ),
             (
-                Attribute::DisplayName.as_str(),
+                Attribute::DisplayName.as_ref(),
                 Value::new_utf8s("testperson")
             )
         );
@@ -148,23 +148,23 @@ mod tests {
     #[test]
     fn test_gidnumber_create_noaction() {
         let e = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Account.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
             (
-                Attribute::Class.as_str(),
+                Attribute::Class.as_ref(),
                 EntryClass::PosixAccount.to_value()
             ),
-            (Attribute::Name.as_str(), Value::new_iname("testperson")),
-            (Attribute::GidNumber.as_str(), Value::Uint32(10001)),
+            (Attribute::Name.as_ref(), Value::new_iname("testperson")),
+            (Attribute::GidNumber.as_ref(), Value::Uint32(10001)),
             (
                 "uuid",
                 Value::Uuid(uuid!("83a0927f-3de1-45ec-bea0-2f7b997ef244"))
             ),
             (
-                Attribute::Description.as_str(),
+                Attribute::Description.as_ref(),
                 Value::new_utf8s("testperson")
             ),
             (
-                Attribute::DisplayName.as_str(),
+                Attribute::DisplayName.as_ref(),
                 Value::new_utf8s("testperson")
             )
         );
@@ -189,22 +189,22 @@ mod tests {
     #[test]
     fn test_gidnumber_modify_generate() {
         let e = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Account.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
             (
-                Attribute::Class.as_str(),
+                Attribute::Class.as_ref(),
                 EntryClass::PosixAccount.to_value()
             ),
-            (Attribute::Name.as_str(), Value::new_iname("testperson")),
+            (Attribute::Name.as_ref(), Value::new_iname("testperson")),
             (
                 "uuid",
                 Value::Uuid(uuid!("83a0927f-3de1-45ec-bea0-2f7b997ef244"))
             ),
             (
-                Attribute::Description.as_str(),
+                Attribute::Description.as_ref(),
                 Value::new_utf8s("testperson")
             ),
             (
-                Attribute::DisplayName.as_str(),
+                Attribute::DisplayName.as_ref(),
                 Value::new_utf8s("testperson")
             )
         );
@@ -230,22 +230,22 @@ mod tests {
     #[test]
     fn test_gidnumber_modify_regenerate() {
         let e = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Account.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
             (
-                Attribute::Class.as_str(),
+                Attribute::Class.as_ref(),
                 EntryClass::PosixAccount.to_value()
             ),
-            (Attribute::Name.as_str(), Value::new_iname("testperson")),
+            (Attribute::Name.as_ref(), Value::new_iname("testperson")),
             (
                 "uuid",
                 Value::Uuid(uuid::uuid!("83a0927f-3de1-45ec-bea0-2f7b997ef244"))
             ),
             (
-                Attribute::Description.as_str(),
+                Attribute::Description.as_ref(),
                 Value::new_utf8s("testperson")
             ),
             (
-                Attribute::DisplayName.as_str(),
+                Attribute::DisplayName.as_ref(),
                 Value::new_utf8s("testperson")
             )
         );
@@ -271,22 +271,22 @@ mod tests {
     #[test]
     fn test_gidnumber_modify_noregen() {
         let e = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Account.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
             (
-                Attribute::Class.as_str(),
+                Attribute::Class.as_ref(),
                 EntryClass::PosixAccount.to_value()
             ),
-            (Attribute::Name.as_str(), Value::new_iname("testperson")),
+            (Attribute::Name.as_ref(), Value::new_iname("testperson")),
             (
                 "uuid",
                 Value::Uuid(uuid::uuid!("83a0927f-3de1-45ec-bea0-2f7b997ef244"))
             ),
             (
-                Attribute::Description.as_str(),
+                Attribute::Description.as_ref(),
                 Value::new_utf8s("testperson")
             ),
             (
-                Attribute::DisplayName.as_str(),
+                Attribute::DisplayName.as_ref(),
                 Value::new_utf8s("testperson")
             )
         );
@@ -314,22 +314,22 @@ mod tests {
     #[test]
     fn test_gidnumber_create_system_reject() {
         let e = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Account.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
             (
-                Attribute::Class.as_str(),
+                Attribute::Class.as_ref(),
                 EntryClass::PosixAccount.to_value()
             ),
-            (Attribute::Name.as_str(), Value::new_iname("testperson")),
+            (Attribute::Name.as_ref(), Value::new_iname("testperson")),
             (
                 "uuid",
                 Value::Uuid(uuid::uuid!("83a0927f-3de1-45ec-bea0-000000000244"))
             ),
             (
-                Attribute::Description.as_str(),
+                Attribute::Description.as_ref(),
                 Value::new_utf8s("testperson")
             ),
             (
-                Attribute::DisplayName.as_str(),
+                Attribute::DisplayName.as_ref(),
                 Value::new_utf8s("testperson")
             )
         );
@@ -351,19 +351,19 @@ mod tests {
     #[test]
     fn test_gidnumber_create_secure_reject() {
         let e = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Account.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
             (
-                Attribute::Class.as_str(),
+                Attribute::Class.as_ref(),
                 EntryClass::PosixAccount.to_value()
             ),
-            (Attribute::Name.as_str(), Value::new_iname("testperson")),
-            (Attribute::GidNumber.as_str(), Value::Uint32(500)),
+            (Attribute::Name.as_ref(), Value::new_iname("testperson")),
+            (Attribute::GidNumber.as_ref(), Value::Uint32(500)),
             (
-                Attribute::Description.as_str(),
+                Attribute::Description.as_ref(),
                 Value::new_utf8s("testperson")
             ),
             (
-                Attribute::DisplayName.as_str(),
+                Attribute::DisplayName.as_ref(),
                 Value::new_utf8s("testperson")
             )
         );
@@ -385,19 +385,19 @@ mod tests {
     #[test]
     fn test_gidnumber_create_secure_root_reject() {
         let e = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Account.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
             (
-                Attribute::Class.as_str(),
+                Attribute::Class.as_ref(),
                 EntryClass::PosixAccount.to_value()
             ),
-            (Attribute::Name.as_str(), Value::new_iname("testperson")),
-            (Attribute::GidNumber.as_str(), Value::Uint32(0)),
+            (Attribute::Name.as_ref(), Value::new_iname("testperson")),
+            (Attribute::GidNumber.as_ref(), Value::Uint32(0)),
             (
-                Attribute::Description.as_str(),
+                Attribute::Description.as_ref(),
                 Value::new_utf8s("testperson")
             ),
             (
-                Attribute::DisplayName.as_str(),
+                Attribute::DisplayName.as_ref(),
                 Value::new_utf8s("testperson")
             )
         );

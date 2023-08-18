@@ -73,7 +73,7 @@ impl LdapServer {
             .map(|s| s.to_string())
             .or_else(|| {
                 domain_entry
-                    .get_ava_single_iname(Attribute::DomainName.as_str())
+                    .get_ava_single_iname(Attribute::DomainName.as_ref())
                     .map(ldap_domain_to_dc)
             })
             .ok_or(OperationError::InvalidEntryState)?;
@@ -816,30 +816,30 @@ mod tests {
         // Setup a user we want to check.
         {
             let e1 = entry_init!(
-                (Attribute::Class.as_str(), EntryClass::Object.to_value()),
-                (Attribute::Class.as_str(), EntryClass::Person.to_value()),
-                (Attribute::Class.as_str(), EntryClass::Account.to_value()),
+                (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+                (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
+                (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
                 (
-                    Attribute::Class.as_str(),
+                    Attribute::Class.as_ref(),
                     EntryClass::PosixAccount.to_value()
                 ),
-                (Attribute::Name.as_str(), Value::new_iname("testperson1")),
+                (Attribute::Name.as_ref(), Value::new_iname("testperson1")),
                 (
                     "uuid",
                     Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
                 ),
                 (
-                    Attribute::Description.as_str(),
+                    Attribute::Description.as_ref(),
                     Value::new_utf8s("testperson1")
                 ),
                 (
-                    Attribute::DisplayName.as_str(),
+                    Attribute::DisplayName.as_ref(),
                     Value::new_utf8s("testperson1")
                 ),
-                (Attribute::GidNumber.as_str(), Value::new_uint32(12345678)),
-                (Attribute::LoginShell.as_str(), Value::new_iutf8("/bin/zsh")),
+                (Attribute::GidNumber.as_ref(), Value::new_uint32(12345678)),
+                (Attribute::LoginShell.as_ref(), Value::new_iutf8("/bin/zsh")),
                 (
-                    Attribute::SshUnderscorePublicKey.as_str(),
+                    Attribute::SshUnderscorePublicKey.as_ref(),
                     Value::new_sshkey_str("test", ssh_ed25519)
                 )
             );
@@ -874,20 +874,20 @@ mod tests {
                 assert_entry_contains!(
                     lsre,
                     "spn=testperson1@example.com,dc=example,dc=com",
-                    (Attribute::Class.as_str(), EntryClass::Object.to_string()),
-                    (Attribute::Class.as_str(), EntryClass::Person.to_string()),
-                    (Attribute::Class.as_str(), EntryClass::Account.to_string()),
+                    (Attribute::Class.as_ref(), EntryClass::Object.to_string()),
+                    (Attribute::Class.as_ref(), EntryClass::Person.to_string()),
+                    (Attribute::Class.as_ref(), EntryClass::Account.to_string()),
                     (
-                        Attribute::Class.as_str(),
+                        Attribute::Class.as_ref(),
                         EntryClass::PosixAccount.to_string()
                     ),
-                    (Attribute::DisplayName.as_str(), "testperson1"),
-                    (Attribute::Name.as_str(), "testperson1"),
-                    (Attribute::GidNumber.as_str(), "12345678"),
-                    (Attribute::LoginShell.as_str(), "/bin/zsh"),
-                    (Attribute::SshUnderscorePublicKey.as_str(), ssh_ed25519),
+                    (Attribute::DisplayName.as_ref(), "testperson1"),
+                    (Attribute::Name.as_ref(), "testperson1"),
+                    (Attribute::GidNumber.as_ref(), "12345678"),
+                    (Attribute::LoginShell.as_ref(), "/bin/zsh"),
+                    (Attribute::SshUnderscorePublicKey.as_ref(), ssh_ed25519),
                     (
-                        Attribute::Uuid.as_str(),
+                        Attribute::Uuid.as_ref(),
                         "cc8e95b4-c24f-4d68-ba54-8bed76f63930"
                     )
                 );
@@ -912,15 +912,15 @@ mod tests {
                 assert_entry_contains!(
                     lsre,
                     "spn=testperson1@example.com,dc=example,dc=com",
-                    (Attribute::ObjectClass.as_str(), "object"),
-                    (Attribute::ObjectClass.as_str(), "person"),
-                    (Attribute::ObjectClass.as_str(), "account"),
-                    (Attribute::ObjectClass.as_str(), "posixaccount"),
-                    (Attribute::DisplayName.as_str(), "testperson1"),
-                    (Attribute::Name.as_str(), "testperson1"),
-                    (Attribute::GidNumber.as_str(), "12345678"),
-                    (Attribute::LoginShell.as_str(), "/bin/zsh"),
-                    (Attribute::SshUnderscorePublicKey.as_str(), ssh_ed25519),
+                    (Attribute::ObjectClass.as_ref(), "object"),
+                    (Attribute::ObjectClass.as_ref(), "person"),
+                    (Attribute::ObjectClass.as_ref(), "account"),
+                    (Attribute::ObjectClass.as_ref(), "posixaccount"),
+                    (Attribute::DisplayName.as_ref(), "testperson1"),
+                    (Attribute::Name.as_ref(), "testperson1"),
+                    (Attribute::GidNumber.as_ref(), "12345678"),
+                    (Attribute::LoginShell.as_ref(), "/bin/zsh"),
+                    (Attribute::SshUnderscorePublicKey.as_ref(), ssh_ed25519),
                     ("entryuuid", "cc8e95b4-c24f-4d68-ba54-8bed76f63930"),
                     ("entrydn", "spn=testperson1@example.com,dc=example,dc=com"),
                     ("uidnumber", "12345678"),
@@ -953,7 +953,7 @@ mod tests {
                 assert_entry_contains!(
                     lsre,
                     "spn=testperson1@example.com,dc=example,dc=com",
-                    (Attribute::Name.as_str(), "testperson1"),
+                    (Attribute::Name.as_ref(), "testperson1"),
                     ("entrydn", "spn=testperson1@example.com,dc=example,dc=com"),
                     ("uidnumber", "12345678"),
                     ("keys", ssh_ed25519)
@@ -995,33 +995,33 @@ mod tests {
             // Create a service account,
 
             let e1 = entry_init!(
-                (Attribute::Class.as_str(), EntryClass::Object.to_value()),
+                (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
                 (
-                    Attribute::Class.as_str(),
+                    Attribute::Class.as_ref(),
                     EntryClass::ServiceAccount.to_value()
                 ),
-                (Attribute::Class.as_str(), EntryClass::Account.to_value()),
-                (Attribute::Uuid.as_str(), Value::Uuid(sa_uuid)),
+                (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
+                (Attribute::Uuid.as_ref(), Value::Uuid(sa_uuid)),
                 (
-                    Attribute::Name.as_str(),
+                    Attribute::Name.as_ref(),
                     Value::new_iname("service_permission_test")
                 ),
                 (
-                    Attribute::DisplayName.as_str(),
+                    Attribute::DisplayName.as_ref(),
                     Value::new_utf8s("service_permission_test")
                 )
             );
 
             // Setup a person with an email
             let e2 = entry_init!(
-                (Attribute::Class.as_str(), EntryClass::Object.to_value()),
-                (Attribute::Class.as_str(), EntryClass::Person.to_value()),
-                (Attribute::Class.as_str(), EntryClass::Account.to_value()),
+                (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+                (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
+                (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
                 (
-                    Attribute::Class.as_str(),
+                    Attribute::Class.as_ref(),
                     EntryClass::PosixAccount.to_value()
                 ),
-                (Attribute::Name.as_str(), Value::new_iname("testperson1")),
+                (Attribute::Name.as_ref(), Value::new_iname("testperson1")),
                 (
                     "mail",
                     Value::EmailAddress("testperson1@example.com".to_string(), true)
@@ -1031,15 +1031,15 @@ mod tests {
                     Value::EmailAddress("testperson1.alternative@example.com".to_string(), false)
                 ),
                 (
-                    Attribute::Description.as_str(),
+                    Attribute::Description.as_ref(),
                     Value::new_utf8s("testperson1")
                 ),
                 (
-                    Attribute::DisplayName.as_str(),
+                    Attribute::DisplayName.as_ref(),
                     Value::new_utf8s("testperson1")
                 ),
-                (Attribute::GidNumber.as_str(), Value::new_uint32(12345678)),
-                (Attribute::LoginShell.as_str(), Value::new_iutf8("/bin/zsh"))
+                (Attribute::GidNumber.as_ref(), Value::new_uint32(12345678)),
+                (Attribute::LoginShell.as_ref(), Value::new_iutf8("/bin/zsh"))
             );
 
             // Setup an access control for the service account to view mail attrs.
@@ -1091,7 +1091,7 @@ mod tests {
                 assert_entry_contains!(
                     lsre,
                     "spn=testperson1@example.com,dc=example,dc=com",
-                    (Attribute::Name.as_str(), "testperson1")
+                    (Attribute::Name.as_ref(), "testperson1")
                 );
             }
             _ => assert!(false),
@@ -1127,7 +1127,7 @@ mod tests {
                 assert_entry_contains!(
                     lsre,
                     "spn=testperson1@example.com,dc=example,dc=com",
-                    (Attribute::Name.as_str(), "testperson1"),
+                    (Attribute::Name.as_ref(), "testperson1"),
                     ("mail", "testperson1@example.com"),
                     ("mail", "testperson1.alternative@example.com"),
                     ("mail;primary", "testperson1@example.com"),
@@ -1152,16 +1152,16 @@ mod tests {
         // Setup a user we want to check.
         {
             let e1 = entry_init!(
-                (Attribute::Class.as_str(), EntryClass::Person.to_value()),
-                (Attribute::Class.as_str(), EntryClass::Account.to_value()),
-                (Attribute::Name.as_str(), Value::new_iname("testperson1")),
-                (Attribute::Uuid.as_str(), Value::Uuid(acct_uuid)),
+                (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
+                (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
+                (Attribute::Name.as_ref(), Value::new_iname("testperson1")),
+                (Attribute::Uuid.as_ref(), Value::Uuid(acct_uuid)),
                 (
-                    Attribute::Description.as_str(),
+                    Attribute::Description.as_ref(),
                     Value::new_utf8s("testperson1")
                 ),
                 (
-                    Attribute::DisplayName.as_str(),
+                    Attribute::DisplayName.as_ref(),
                     Value::new_utf8s("testperson1")
                 )
             );
@@ -1201,10 +1201,10 @@ mod tests {
                 assert_entry_contains!(
                     lsre,
                     "spn=testperson1@example.com,dc=example,dc=com",
-                    (Attribute::Name.as_str(), "testperson1"),
-                    (Attribute::DisplayName.as_str(), "testperson1"),
+                    (Attribute::Name.as_ref(), "testperson1"),
+                    (Attribute::DisplayName.as_ref(), "testperson1"),
                     (
-                        Attribute::Uuid.as_str(),
+                        Attribute::Uuid.as_ref(),
                         "cc8e95b4-c24f-4d68-ba54-8bed76f63930"
                     ),
                     ("entryuuid", "cc8e95b4-c24f-4d68-ba54-8bed76f63930")
@@ -1239,7 +1239,7 @@ mod tests {
                 assert_entry_contains!(
                     lsre,
                     "",
-                    (Attribute::ObjectClass.as_str(), "top"),
+                    (Attribute::ObjectClass.as_ref(), "top"),
                     ("vendorname", "Kanidm Project"),
                     ("supportedldapversion", "3"),
                     ("defaultnamingcontext", "dc=example,dc=com")
@@ -1289,7 +1289,7 @@ mod tests {
                 assert_entry_contains!(
                     lsre,
                     "",
-                    (Attribute::ObjectClass.as_str(), "top"),
+                    (Attribute::ObjectClass.as_ref(), "top"),
                     ("vendorname", "Kanidm Project"),
                     ("supportedldapversion", "3"),
                     ("defaultnamingcontext", "o=kanidmproject")

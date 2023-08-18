@@ -1774,39 +1774,39 @@ mod tests {
         let testaccount_uuid = Uuid::new_v4();
 
         let e1 = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_str(), EntryClass::Account.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
             (
-                Attribute::Class.as_str(),
+                Attribute::Class.as_ref(),
                 EntryClass::ServiceAccount.to_value()
             ),
             (
-                Attribute::Name.as_str(),
+                Attribute::Name.as_ref(),
                 Value::new_iname("user_account_only")
             ),
-            (Attribute::Uuid.as_str(), Value::Uuid(testaccount_uuid)),
+            (Attribute::Uuid.as_ref(), Value::Uuid(testaccount_uuid)),
             (
-                Attribute::Description.as_str(),
+                Attribute::Description.as_ref(),
                 Value::new_utf8s("testaccount")
             ),
             (
-                Attribute::DisplayName.as_str(),
+                Attribute::DisplayName.as_ref(),
                 Value::new_utf8s("testaccount")
             )
         );
 
         let e2 = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_str(), EntryClass::Account.to_value()),
-            (Attribute::Class.as_str(), EntryClass::Person.to_value()),
-            (Attribute::Name.as_str(), Value::new_iname("testperson")),
-            (Attribute::Uuid.as_str(), Value::Uuid(TESTPERSON_UUID)),
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
+            (Attribute::Name.as_ref(), Value::new_iname("testperson")),
+            (Attribute::Uuid.as_ref(), Value::Uuid(TESTPERSON_UUID)),
             (
-                Attribute::Description.as_str(),
+                Attribute::Description.as_ref(),
                 Value::new_utf8s("testperson")
             ),
             (
-                Attribute::DisplayName.as_str(),
+                Attribute::DisplayName.as_ref(),
                 Value::new_utf8s("testperson")
             )
         );
@@ -1907,17 +1907,17 @@ mod tests {
         let mut idms_prox_write = idms.proxy_write(ct).await;
 
         let e2 = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_str(), EntryClass::Account.to_value()),
-            (Attribute::Class.as_str(), EntryClass::Person.to_value()),
-            (Attribute::Name.as_str(), Value::new_iname("testperson")),
-            (Attribute::Uuid.as_str(), Value::Uuid(TESTPERSON_UUID)),
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
+            (Attribute::Name.as_ref(), Value::new_iname("testperson")),
+            (Attribute::Uuid.as_ref(), Value::Uuid(TESTPERSON_UUID)),
             (
-                Attribute::Description.as_str(),
+                Attribute::Description.as_ref(),
                 Value::new_utf8s("testperson")
             ),
             (
-                Attribute::DisplayName.as_str(),
+                Attribute::DisplayName.as_ref(),
                 Value::new_utf8s("testperson")
             )
         );
@@ -2771,33 +2771,33 @@ mod tests {
         let sync_uuid = Uuid::new_v4();
 
         let e1 = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
             (
-                Attribute::Class.as_str(),
+                Attribute::Class.as_ref(),
                 EntryClass::SyncAccount.to_value()
             ),
-            (Attribute::Name.as_str(), Value::new_iname("test_scim_sync")),
-            (Attribute::Uuid.as_str(), Value::Uuid(sync_uuid)),
+            (Attribute::Name.as_ref(), Value::new_iname("test_scim_sync")),
+            (Attribute::Uuid.as_ref(), Value::Uuid(sync_uuid)),
             (
-                Attribute::Description.as_str(),
+                Attribute::Description.as_ref(),
                 Value::new_utf8s("A test sync agreement")
             )
         );
 
         let e2 = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_str(), EntryClass::SyncObject.to_value()),
-            (Attribute::Class.as_str(), EntryClass::Account.to_value()),
-            (Attribute::Class.as_str(), EntryClass::Person.to_value()),
-            (Attribute::SyncParentUuid.as_str(), Value::Refer(sync_uuid)),
-            (Attribute::Name.as_str(), Value::new_iname("testperson")),
-            (Attribute::Uuid.as_str(), Value::Uuid(TESTPERSON_UUID)),
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::SyncObject.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
+            (Attribute::SyncParentUuid.as_ref(), Value::Refer(sync_uuid)),
+            (Attribute::Name.as_ref(), Value::new_iname("testperson")),
+            (Attribute::Uuid.as_ref(), Value::Uuid(TESTPERSON_UUID)),
             (
-                Attribute::Description.as_str(),
+                Attribute::Description.as_ref(),
                 Value::new_utf8s("testperson")
             ),
             (
-                Attribute::DisplayName.as_str(),
+                Attribute::DisplayName.as_ref(),
                 Value::new_utf8s("testperson")
             )
         );

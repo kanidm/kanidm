@@ -101,7 +101,7 @@ impl SchemaAttribute {
         let uuid = value.get_uuid();
 
         // class
-        if !value.attribute_equality(Attribute::Class.as_str(), &EntryClass::AttributeType.into()) {
+        if !value.attribute_equality(Attribute::Class.as_ref(), &EntryClass::AttributeType.into()) {
             admin_error!("class attribute type not present - {:?}", uuid);
             return Err(OperationError::InvalidSchemaState(
                 "missing attributetype".to_string(),
@@ -113,44 +113,44 @@ impl SchemaAttribute {
             .get_ava_single_iutf8(Attribute::AttributeName.into())
             .map(|s| s.into())
             .ok_or_else(|| {
-                admin_error!("missing {} - {:?}", Attribute::AttributeName.as_str(), uuid);
+                admin_error!("missing {} - {:?}", Attribute::AttributeName.as_ref(), uuid);
                 OperationError::InvalidSchemaState("missing attributename".to_string())
             })?;
         // description
         let description = value
-            .get_ava_single_utf8(Attribute::Description.as_str())
+            .get_ava_single_utf8(Attribute::Description.as_ref())
             .map(|s| s.to_string())
             .ok_or_else(|| {
-                admin_error!("missing {} - {}", Attribute::Description.as_str(), name);
+                admin_error!("missing {} - {}", Attribute::Description.as_ref(), name);
                 OperationError::InvalidSchemaState("missing description".to_string())
             })?;
 
         // multivalue
         let multivalue = value
-            .get_ava_single_bool(Attribute::MultiValue.as_str())
+            .get_ava_single_bool(Attribute::MultiValue.as_ref())
             .ok_or_else(|| {
-                admin_error!("missing {} - {}", Attribute::MultiValue.as_str(), name);
+                admin_error!("missing {} - {}", Attribute::MultiValue.as_ref(), name);
                 OperationError::InvalidSchemaState("missing multivalue".to_string())
             })?;
         let unique = value
-            .get_ava_single_bool(Attribute::Unique.as_str())
+            .get_ava_single_bool(Attribute::Unique.as_ref())
             .ok_or_else(|| {
-                admin_error!("missing {} - {}", Attribute::Unique.as_str(), name);
+                admin_error!("missing {} - {}", Attribute::Unique.as_ref(), name);
                 OperationError::InvalidSchemaState("missing unique".to_string())
             })?;
 
         let phantom = value
-            .get_ava_single_bool(Attribute::Phantom.as_str())
+            .get_ava_single_bool(Attribute::Phantom.as_ref())
             .unwrap_or(false);
 
         let sync_allowed = value
-            .get_ava_single_bool(Attribute::SyncAllowed.as_str())
+            .get_ava_single_bool(Attribute::SyncAllowed.as_ref())
             .unwrap_or(false);
 
         // Default, all attributes are replicated unless you opt in for them to NOT be.
         // Generally this is internal to the server only, so we don't advertise it.
         let replicated = value
-            .get_ava_single_bool(Attribute::Replicated.as_str())
+            .get_ava_single_bool(Attribute::Replicated.as_ref())
             .unwrap_or(true);
 
         // index vec
@@ -328,7 +328,7 @@ impl From<SchemaAttribute> for EntryInitNew {
 
         // class
         entry.set_ava(
-            Attribute::Class.as_str(),
+            Attribute::Class.as_ref(),
             vec![
                 EntryClass::Object.to_value(),
                 EntryClass::System.into(),
@@ -337,7 +337,7 @@ impl From<SchemaAttribute> for EntryInitNew {
         );
         // description
         entry.set_ava(
-            Attribute::Description.as_str(),
+            Attribute::Description.as_ref(),
             vec![Value::new_utf8s(&value.description)].into_iter(),
         );
         // unique
@@ -403,7 +403,7 @@ impl SchemaClass {
         // uuid
         let uuid = value.get_uuid();
         // Convert entry to a schema class.
-        if !value.attribute_equality(Attribute::Class.as_str(), &EntryClass::ClassType.into()) {
+        if !value.attribute_equality(Attribute::Class.as_ref(), &EntryClass::ClassType.into()) {
             admin_error!("class classtype not present - {:?}", uuid);
             return Err(OperationError::InvalidSchemaState(
                 "missing classtype".to_string(),
@@ -420,7 +420,7 @@ impl SchemaClass {
             })?;
         // description
         let description = value
-            .get_ava_single_utf8(Attribute::Description.as_str())
+            .get_ava_single_utf8(Attribute::Description.as_ref())
             .map(String::from)
             .ok_or_else(|| {
                 admin_error!("missing description - {}", name);
@@ -500,7 +500,7 @@ impl From<SchemaClass> for EntryInitNew {
 
         // class
         entry.set_ava(
-            Attribute::Class.as_str(),
+            Attribute::Class.as_ref(),
             vec![
                 EntryClass::Object.to_value(),
                 EntryClass::System.into(),
@@ -510,7 +510,7 @@ impl From<SchemaClass> for EntryInitNew {
 
         // description
         entry.set_ava(
-            Attribute::Description.as_str(),
+            Attribute::Description.as_ref(),
             vec![Value::new_utf8s(&value.description)].into_iter(),
         );
 
@@ -941,9 +941,9 @@ impl<'a> SchemaWriteTransaction<'a> {
             },
         );
         self.attributes.insert(
-            AttrString::from(Attribute::Description.as_str()),
+            AttrString::from(Attribute::Description.as_ref()),
             SchemaAttribute {
-                name: AttrString::from(Attribute::Description.as_str()),
+                name: AttrString::from(Attribute::Description.as_ref()),
                 uuid: UUID_SCHEMA_ATTR_DESCRIPTION,
                 description: String::from("A description of an attribute, object or class"),
                 multivalue: false,
@@ -1774,7 +1774,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                     AttrString::from("multivalue"),
                     AttrString::from("unique"),
                     AttrString::from("syntax"),
-                    AttrString::from(Attribute::Description.as_str()),
+                    AttrString::from(Attribute::Description.as_ref()),
                 ],
                 systemexcludes: vec![AttrString::from("classtype")],
                 ..Default::default()
@@ -1800,7 +1800,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 systemmust: vec![
                     Attribute::Class.into(),
                     AttrString::from("classname"),
-                    AttrString::from(Attribute::Description.as_str()),
+                    AttrString::from(Attribute::Description.as_ref()),
                 ],
                 systemexcludes: vec![AttrString::from("attributetype")],
                 ..Default::default()
@@ -1812,7 +1812,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 name: AttrString::from("object"),
                 uuid: UUID_SCHEMA_CLASS_OBJECT,
                 description: String::from("A system created class that all objects must contain"),
-                systemmay: vec![AttrString::from(Attribute::Description.as_str())],
+                systemmay: vec![AttrString::from(Attribute::Description.as_ref())],
                 systemmust: vec![
                     Attribute::Class.into(),
                     AttrString::from("uuid"),
@@ -1903,7 +1903,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 description: String::from("System Access Control Profile Class"),
                 systemmay: vec![
                     AttrString::from("acp_enable"),
-                    AttrString::from(Attribute::Description.as_str()),
+                    AttrString::from(Attribute::Description.as_ref()),
                     AttrString::from("acp_receiver"),
                 ],
                 systemmust: vec![
@@ -2504,7 +2504,7 @@ mod tests {
                 "uuid",
                 Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
             ),
-            (Attribute::Class.as_str(), Value::new_class("zzzzzz"))
+            (Attribute::Class.as_ref(), Value::new_class("zzzzzz"))
         )
         .into_invalid_new();
         assert_eq!(
@@ -2517,9 +2517,9 @@ mod tests {
                 "uuid",
                 Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
             ),
-            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
             (
-                Attribute::Class.as_str(),
+                Attribute::Class.as_ref(),
                 EntryClass::AttributeType.to_value()
             )
         )
@@ -2531,27 +2531,27 @@ mod tests {
         });
 
         let e_attr_invalid_may = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
             (
-                Attribute::Class.as_str(),
+                Attribute::Class.as_ref(),
                 EntryClass::AttributeType.to_value()
             ),
             (
-                Attribute::AttributeName.as_str(),
+                Attribute::AttributeName.as_ref(),
                 Value::new_iutf8("testattr")
             ),
             (
-                Attribute::Description.as_str(),
+                Attribute::Description.as_ref(),
                 Value::Utf8("testattr".to_string())
             ),
-            (Attribute::MultiValue.as_str(), Value::Bool(false)),
-            (Attribute::Unique.as_str(), Value::Bool(false)),
+            (Attribute::MultiValue.as_ref(), Value::Bool(false)),
+            (Attribute::Unique.as_ref(), Value::Bool(false)),
             (
-                Attribute::Syntax.as_str(),
+                Attribute::Syntax.as_ref(),
                 Value::Syntax(SyntaxType::Utf8String)
             ),
             (
-                Attribute::Uuid.as_str(),
+                Attribute::Uuid.as_ref(),
                 Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
             ),
             ("zzzzz", Value::Utf8("zzzz".to_string()))
@@ -2564,26 +2564,26 @@ mod tests {
         );
 
         let e_attr_invalid_syn = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
             (
-                Attribute::Class.as_str(),
+                Attribute::Class.as_ref(),
                 EntryClass::AttributeType.to_value()
             ),
             (
-                Attribute::AttributeName.as_str(),
+                Attribute::AttributeName.as_ref(),
                 Value::new_iutf8("testattr")
             ),
             (
-                Attribute::Description.as_str(),
+                Attribute::Description.as_ref(),
                 Value::Utf8("testattr".to_string())
             ),
             (
-                Attribute::MultiValue.as_str(),
+                Attribute::MultiValue.as_ref(),
                 Value::Utf8("false".to_string())
             ),
-            (Attribute::Unique.as_str(), Value::Bool(false)),
+            (Attribute::Unique.as_ref(), Value::Bool(false)),
             (
-                Attribute::Syntax.as_str(),
+                Attribute::Syntax.as_ref(),
                 Value::Syntax(SyntaxType::Utf8String)
             ),
             (
@@ -2602,23 +2602,23 @@ mod tests {
 
         // You may not have the phantom.
         let e_phantom = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
             (
-                Attribute::Class.as_str(),
+                Attribute::Class.as_ref(),
                 EntryClass::AttributeType.to_value()
             ),
             (
-                Attribute::AttributeName.as_str(),
+                Attribute::AttributeName.as_ref(),
                 Value::new_iutf8("testattr")
             ),
             (
-                Attribute::Description.as_str(),
+                Attribute::Description.as_ref(),
                 Value::Utf8("testattr".to_string())
             ),
-            (Attribute::MultiValue.as_str(), Value::Bool(false)),
-            (Attribute::Unique.as_str(), Value::Bool(false)),
+            (Attribute::MultiValue.as_ref(), Value::Bool(false)),
+            (Attribute::Unique.as_ref(), Value::Bool(false)),
             (
-                Attribute::Syntax.as_str(),
+                Attribute::Syntax.as_ref(),
                 Value::Syntax(SyntaxType::Utf8String)
             ),
             (
@@ -2631,23 +2631,23 @@ mod tests {
         assert!(e_phantom.validate(&schema).is_err());
 
         let e_ok = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
             (
-                Attribute::Class.as_str(),
+                Attribute::Class.as_ref(),
                 EntryClass::AttributeType.to_value()
             ),
             (
-                Attribute::AttributeName.as_str(),
+                Attribute::AttributeName.as_ref(),
                 Value::new_iutf8("testattr")
             ),
             (
-                Attribute::Description.as_str(),
+                Attribute::Description.as_ref(),
                 Value::Utf8("testattr".to_string())
             ),
-            (Attribute::MultiValue.as_str(), Value::Bool(true)),
-            (Attribute::Unique.as_str(), Value::Bool(false)),
+            (Attribute::MultiValue.as_ref(), Value::Bool(true)),
+            (Attribute::Unique.as_ref(), Value::Bool(false)),
             (
-                Attribute::Syntax.as_str(),
+                Attribute::Syntax.as_ref(),
                 Value::Syntax(SyntaxType::Utf8String)
             ),
             (
@@ -2804,15 +2804,15 @@ mod tests {
         // Test mixed case attr name - this is a pass, due to normalisation
         let f_or_ok = filter_all!(f_andnot(f_and!([
             f_eq(Attribute::Class, EntryClass::AttributeType.into()),
-            f_sub(Attribute::Class.as_str(), EntryClass::ClassType.into()),
-            f_pres(Attribute::Class.as_str())
+            f_sub(Attribute::Class.as_ref(), EntryClass::ClassType.into()),
+            f_pres(Attribute::Class.as_ref())
         ])));
         assert_eq!(
             f_or_ok.validate(&schema),
             Ok(filter_valid!(f_andnot(f_and!([
                 f_eq(Attribute::Class, EntryClass::AttributeType.into()),
-                f_sub(Attribute::Class.as_str(), EntryClass::ClassType.into()),
-                f_pres(Attribute::Class.as_str())
+                f_sub(Attribute::Class.as_ref(), EntryClass::ClassType.into()),
+                f_pres(Attribute::Class.as_ref())
             ]))))
         );
     }
@@ -2894,8 +2894,8 @@ mod tests {
 
         // Missing person or service account.
         let e_account = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Account.to_value()),
-            (Attribute::Uuid.as_str(), Value::Uuid(Uuid::new_v4()))
+            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
+            (Attribute::Uuid.as_ref(), Value::Uuid(Uuid::new_v4()))
         )
         .into_invalid_new();
 
@@ -2910,8 +2910,8 @@ mod tests {
         // Service account missing account
         /*
         let e_service = unsafe { entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Service.to_value()),
-            (Attribute::Uuid.as_str(), Value::new_uuid(Uuid::new_v4()))
+            (Attribute::Class.as_ref(), EntryClass::Service.to_value()),
+            (Attribute::Uuid.as_ref(), Value::new_uuid(Uuid::new_v4()))
         ).into_invalid_new() };
 
         assert_eq!(
@@ -2922,10 +2922,10 @@ mod tests {
 
         // Service can't have person
         let e_service_person = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Service.to_value()),
-            (Attribute::Class.as_str(), EntryClass::Account.to_value()),
-            (Attribute::Class.as_str(), EntryClass::Person.to_value()),
-            (Attribute::Uuid.as_str(), Value::Uuid(Uuid::new_v4()))
+            (Attribute::Class.as_ref(), EntryClass::Service.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
+            (Attribute::Uuid.as_ref(), Value::Uuid(Uuid::new_v4()))
         )
         .into_invalid_new();
 
@@ -2938,26 +2938,26 @@ mod tests {
 
         // These are valid configurations.
         let e_service_valid = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Service.to_value()),
-            (Attribute::Class.as_str(), EntryClass::Account.to_value()),
-            (Attribute::Uuid.as_str(), Value::Uuid(Uuid::new_v4()))
+            (Attribute::Class.as_ref(), EntryClass::Service.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
+            (Attribute::Uuid.as_ref(), Value::Uuid(Uuid::new_v4()))
         )
         .into_invalid_new();
 
         assert!(e_service_valid.validate(&schema).is_ok());
 
         let e_person_valid = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Person.to_value()),
-            (Attribute::Class.as_str(), EntryClass::Account.to_value()),
-            (Attribute::Uuid.as_str(), Value::Uuid(Uuid::new_v4()))
+            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
+            (Attribute::Uuid.as_ref(), Value::Uuid(Uuid::new_v4()))
         )
         .into_invalid_new();
 
         assert!(e_person_valid.validate(&schema).is_ok());
 
         let e_person_valid = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Person.to_value()),
-            (Attribute::Uuid.as_str(), Value::Uuid(Uuid::new_v4()))
+            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
+            (Attribute::Uuid.as_ref(), Value::Uuid(Uuid::new_v4()))
         )
         .into_invalid_new();
 

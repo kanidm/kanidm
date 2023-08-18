@@ -295,18 +295,18 @@ mod tests {
         let euuid = Uuid::new_v4();
 
         let ea = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Account.to_value()),
-            (Attribute::Class.as_str(), EntryClass::Person.to_value()),
-            (Attribute::Name.as_str(), Value::new_iname("testperson")),
+            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
+            (Attribute::Name.as_ref(), Value::new_iname("testperson")),
             (
-                Attribute::Description.as_str(),
+                Attribute::Description.as_ref(),
                 Value::Utf8("testperson".to_string())
             ),
             (
-                Attribute::DisplayName.as_str(),
+                Attribute::DisplayName.as_ref(),
                 Value::Utf8("testperson".to_string())
             ),
-            (Attribute::Uuid.as_str(), Value::Uuid(euuid))
+            (Attribute::Uuid.as_ref(), Value::Uuid(euuid))
         );
 
         let preload = vec![ea];
@@ -359,18 +359,18 @@ mod tests {
         let euuid = Uuid::new_v4();
 
         let ea = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Account.to_value()),
-            (Attribute::Class.as_str(), EntryClass::Person.to_value()),
-            (Attribute::Name.as_str(), Value::new_iname("testperson")),
+            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
+            (Attribute::Name.as_ref(), Value::new_iname("testperson")),
             (
-                Attribute::Description.as_str(),
+                Attribute::Description.as_ref(),
                 Value::Utf8("testperson".to_string())
             ),
             (
-                Attribute::DisplayName.as_str(),
+                Attribute::DisplayName.as_ref(),
                 Value::Utf8("testperson".to_string())
             ),
-            (Attribute::Uuid.as_str(), Value::Uuid(euuid))
+            (Attribute::Uuid.as_ref(), Value::Uuid(euuid))
         );
 
         let preload = vec![ea];

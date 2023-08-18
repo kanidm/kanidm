@@ -180,17 +180,17 @@ mod tests {
         let tuuid = uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930");
 
         let e1 = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_str(), EntryClass::Person.to_value()),
-            (Attribute::Class.as_str(), EntryClass::Account.to_value()),
-            (Attribute::Name.as_str(), Value::new_iname("testperson1")),
-            (Attribute::Uuid.as_str(), Value::Uuid(tuuid)),
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
+            (Attribute::Name.as_ref(), Value::new_iname("testperson1")),
+            (Attribute::Uuid.as_ref(), Value::Uuid(tuuid)),
             (
-                Attribute::Description.as_str(),
+                Attribute::Description.as_ref(),
                 Value::new_utf8s("testperson1")
             ),
             (
-                Attribute::DisplayName.as_str(),
+                Attribute::DisplayName.as_ref(),
                 Value::new_utf8s("testperson1")
             ),
             (
@@ -248,7 +248,7 @@ mod tests {
 
         // Mod again - anything will do.
         let modlist = ModifyList::new_purge_and_set(
-            Attribute::Description.as_str(),
+            Attribute::Description.as_ref(),
             Value::new_utf8s("test person 1 change"),
         );
 
@@ -289,17 +289,17 @@ mod tests {
         let rs_uuid = Uuid::new_v4();
 
         let e1 = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_str(), EntryClass::Person.to_value()),
-            (Attribute::Class.as_str(), EntryClass::Account.to_value()),
-            (Attribute::Name.as_str(), Value::new_iname("testperson1")),
-            (Attribute::Uuid.as_str(), Value::Uuid(tuuid)),
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
+            (Attribute::Name.as_ref(), Value::new_iname("testperson1")),
+            (Attribute::Uuid.as_ref(), Value::Uuid(tuuid)),
             (
-                Attribute::Description.as_str(),
+                Attribute::Description.as_ref(),
                 Value::new_utf8s("testperson1")
             ),
             (
-                Attribute::DisplayName.as_str(),
+                Attribute::DisplayName.as_ref(),
                 Value::new_utf8s("testperson1")
             ),
             (
@@ -309,22 +309,22 @@ mod tests {
         );
 
         let e2 = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
             (
-                Attribute::Class.as_str(),
+                Attribute::Class.as_ref(),
                 EntryClass::OAuth2ResourceServer.to_value()
             ),
             (
-                Attribute::Class.as_str(),
+                Attribute::Class.as_ref(),
                 EntryClass::OAuth2ResourceServerBasic.to_value()
             ),
-            (Attribute::Uuid.as_str(), Value::Uuid(rs_uuid)),
+            (Attribute::Uuid.as_ref(), Value::Uuid(rs_uuid)),
             (
-                Attribute::OAuth2RsName.as_str(),
+                Attribute::OAuth2RsName.as_ref(),
                 Value::new_iname("test_resource_server")
             ),
             (
-                Attribute::DisplayName.as_str(),
+                Attribute::DisplayName.as_ref(),
                 Value::new_utf8s("test_resource_server")
             ),
             (
@@ -416,7 +416,7 @@ mod tests {
 
         // Mod again - anything will do.
         let modlist = ModifyList::new_purge_and_set(
-            Attribute::Description.as_str(),
+            Attribute::Description.as_ref(),
             Value::new_utf8s("test person 1 change"),
         );
 
@@ -456,17 +456,17 @@ mod tests {
         let rs_uuid = Uuid::new_v4();
 
         let e1 = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_str(), EntryClass::Person.to_value()),
-            (Attribute::Class.as_str(), EntryClass::Account.to_value()),
-            (Attribute::Name.as_str(), Value::new_iname("testperson1")),
-            (Attribute::Uuid.as_str(), Value::Uuid(tuuid)),
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
+            (Attribute::Name.as_ref(), Value::new_iname("testperson1")),
+            (Attribute::Uuid.as_ref(), Value::Uuid(tuuid)),
             (
-                Attribute::Description.as_str(),
+                Attribute::Description.as_ref(),
                 Value::new_utf8s("testperson1")
             ),
             (
-                Attribute::DisplayName.as_str(),
+                Attribute::DisplayName.as_ref(),
                 Value::new_utf8s("testperson1")
             ),
             (
@@ -476,22 +476,22 @@ mod tests {
         );
 
         let e2 = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
             (
-                Attribute::Class.as_str(),
+                Attribute::Class.as_ref(),
                 EntryClass::OAuth2ResourceServer.to_value()
             ),
             (
-                Attribute::Class.as_str(),
+                Attribute::Class.as_ref(),
                 EntryClass::OAuth2ResourceServerBasic.to_value()
             ),
-            (Attribute::Uuid.as_str(), Value::Uuid(rs_uuid)),
+            (Attribute::Uuid.as_ref(), Value::Uuid(rs_uuid)),
             (
-                Attribute::OAuth2RsName.as_str(),
+                Attribute::OAuth2RsName.as_ref(),
                 Value::new_iname("test_resource_server")
             ),
             (
-                Attribute::DisplayName.as_str(),
+                Attribute::DisplayName.as_ref(),
                 Value::new_utf8s("test_resource_server")
             ),
             (
@@ -616,47 +616,47 @@ mod tests {
         let rs_uuid = Uuid::new_v4();
 
         let e1 = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_str(), EntryClass::Person.to_value()),
-            (Attribute::Class.as_str(), EntryClass::Account.to_value()),
-            (Attribute::Name.as_str(), Value::new_iname("testperson1")),
-            (Attribute::Uuid.as_str(), Value::Uuid(tuuid)),
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
+            (Attribute::Name.as_ref(), Value::new_iname("testperson1")),
+            (Attribute::Uuid.as_ref(), Value::Uuid(tuuid)),
             (
-                Attribute::Description.as_str(),
+                Attribute::Description.as_ref(),
                 Value::new_utf8s("testperson1")
             ),
             (
-                Attribute::DisplayName.as_str(),
+                Attribute::DisplayName.as_ref(),
                 Value::new_utf8s("testperson1")
             )
         );
 
         let e2 = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
             (
-                Attribute::Class.as_str(),
+                Attribute::Class.as_ref(),
                 EntryClass::OAuth2ResourceServer.to_value()
             ),
             (
-                Attribute::Class.as_str(),
+                Attribute::Class.as_ref(),
                 EntryClass::OAuth2ResourceServerBasic.to_value()
             ),
-            (Attribute::Uuid.as_str(), Value::Uuid(rs_uuid)),
+            (Attribute::Uuid.as_ref(), Value::Uuid(rs_uuid)),
             (
-                Attribute::OAuth2RsName.as_str(),
+                Attribute::OAuth2RsName.as_ref(),
                 Value::new_iname("test_resource_server")
             ),
             (
-                Attribute::DisplayName.as_str(),
+                Attribute::DisplayName.as_ref(),
                 Value::new_utf8s("test_resource_server")
             ),
             (
-                Attribute::OAuth2RsOrigin.as_str(),
+                Attribute::OAuth2RsOrigin.as_ref(),
                 Value::new_url_s("https://demo.example.com").unwrap()
             ),
             // System admins
             (
-                Attribute::OAuth2RsScopeMap.as_str(),
+                Attribute::OAuth2RsScopeMap.as_ref(),
                 Value::new_oauthscopemap(
                     UUID_IDM_ALL_ACCOUNTS,
                     btreeset![OAUTH2_SCOPE_OPENID.to_string()]
@@ -711,7 +711,7 @@ mod tests {
 
         // Mod again - anything will do.
         let modlist = ModifyList::new_purge_and_set(
-            Attribute::Description.as_str(),
+            Attribute::Description.as_ref(),
             Value::new_utf8s("test person 1 change"),
         );
 
@@ -726,7 +726,7 @@ mod tests {
         let entry = server_txn.internal_search_uuid(tuuid).expect("failed");
 
         // Note it's a not condition now.
-        assert!(!entry.attribute_equality(Attribute::OAuth2Session.as_str(), &pv_session_id));
+        assert!(!entry.attribute_equality(Attribute::OAuth2Session.as_ref(), &pv_session_id));
 
         assert!(server_txn.commit().is_ok());
     }
@@ -746,21 +746,21 @@ mod tests {
         let tuuid = uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930");
 
         let e1 = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_str(), EntryClass::Person.to_value()),
-            (Attribute::Class.as_str(), EntryClass::Account.to_value()),
-            (Attribute::Name.as_str(), Value::new_iname("testperson1")),
-            (Attribute::Uuid.as_str(), Value::Uuid(tuuid)),
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
+            (Attribute::Name.as_ref(), Value::new_iname("testperson1")),
+            (Attribute::Uuid.as_ref(), Value::Uuid(tuuid)),
             (
-                Attribute::Description.as_str(),
+                Attribute::Description.as_ref(),
                 Value::new_utf8s("testperson1")
             ),
             (
-                Attribute::DisplayName.as_str(),
+                Attribute::DisplayName.as_ref(),
                 Value::new_utf8s("testperson1")
             ),
             (
-                Attribute::PrimaryCredential.as_str(),
+                Attribute::PrimaryCredential.as_ref(),
                 Value::Cred("primary".to_string(), cred.clone())
             )
         );

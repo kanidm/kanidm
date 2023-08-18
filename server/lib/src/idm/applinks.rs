@@ -83,34 +83,34 @@ mod tests {
         let grp_uuid = Uuid::new_v4();
 
         let e_rs: Entry<EntryInit, EntryNew> = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
             (
-                Attribute::Class.as_str(),
+                Attribute::Class.as_ref(),
                 EntryClass::OAuth2ResourceServer.to_value()
             ),
             (
-                Attribute::Class.as_str(),
+                Attribute::Class.as_ref(),
                 EntryClass::OAuth2ResourceServerBasic.to_value()
             ),
             (
-                Attribute::OAuth2RsName.as_str(),
+                Attribute::OAuth2RsName.as_ref(),
                 Value::new_iname("test_resource_server")
             ),
             (
-                Attribute::DisplayName.as_str(),
+                Attribute::DisplayName.as_ref(),
                 Value::new_utf8s("test_resource_server")
             ),
             (
-                Attribute::OAuth2RsOrigin.as_str(),
+                Attribute::OAuth2RsOrigin.as_ref(),
                 Value::new_url_s("https://demo.example.com").unwrap()
             ),
             (
-                Attribute::OAuth2RsOriginLanding.as_str(),
+                Attribute::OAuth2RsOriginLanding.as_ref(),
                 Value::new_url_s("https://demo.example.com/landing").unwrap()
             ),
             // System admins
             (
-                Attribute::OAuth2RsScopeMap.as_str(),
+                Attribute::OAuth2RsScopeMap.as_ref(),
                 Value::new_oauthscopemap(
                     grp_uuid,
                     btreeset![kanidm_proto::constants::OAUTH2_SCOPE_READ.to_string()]
@@ -120,27 +120,27 @@ mod tests {
         );
 
         let e_usr = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_str(), EntryClass::Account.to_value()),
-            (Attribute::Class.as_str(), EntryClass::Person.to_value()),
-            (Attribute::Name.as_str(), Value::new_iname("testaccount")),
-            (Attribute::Uuid.as_str(), Value::Uuid(usr_uuid)),
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
+            (Attribute::Name.as_ref(), Value::new_iname("testaccount")),
+            (Attribute::Uuid.as_ref(), Value::Uuid(usr_uuid)),
             (
-                Attribute::Description.as_str(),
+                Attribute::Description.as_ref(),
                 Value::new_utf8s("testaccount")
             ),
             (
-                Attribute::DisplayName.as_str(),
+                Attribute::DisplayName.as_ref(),
                 Value::new_utf8s("Test Account")
             )
         );
 
         let e_grp = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_str(), EntryClass::Group.to_value()),
-            (Attribute::Uuid.as_str(), Value::Uuid(grp_uuid)),
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Group.to_value()),
+            (Attribute::Uuid.as_ref(), Value::Uuid(grp_uuid)),
             (
-                Attribute::Name.as_str(),
+                Attribute::Name.as_ref(),
                 Value::new_iname("test_oauth2_group")
             )
         );

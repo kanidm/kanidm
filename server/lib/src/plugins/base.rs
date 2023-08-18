@@ -42,7 +42,7 @@ impl Plugin for Base {
         // For each candidate
         for entry in cand.iter_mut() {
             // First, ensure we have the 'object', class in the class set.
-            entry.add_ava(Attribute::Class.as_str(), EntryClass::Object.to_value());
+            entry.add_ava(Attribute::Class.as_ref(), EntryClass::Object.to_value());
 
             // if they don't have uuid, create it.
             match entry.get_ava_set("uuid").map(|s| s.len()) {
@@ -206,7 +206,7 @@ impl Plugin for Base {
     #[instrument(level = "debug", name = "base::verify", skip_all)]
     fn verify(qs: &mut QueryServerReadTransaction) -> Vec<Result<(), ConsistencyError>> {
         // Search for class = *
-        let entries = match qs.internal_search(filter!(f_pres(Attribute::Class.as_str()))) {
+        let entries = match qs.internal_search(filter!(f_pres(Attribute::Class.as_ref()))) {
             Ok(v) => v,
             Err(e) => {
                 admin_error!("Internal Search Failure: {:?}", e);
@@ -250,129 +250,129 @@ mod tests {
 
     lazy_static! {
         pub static ref TEST_ACCOUNT: EntryInitNew = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Account.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
             (
-                Attribute::Class.as_str(),
+                Attribute::Class.as_ref(),
                 EntryClass::ServiceAccount.to_value()
             ),
-            (Attribute::Class.as_str(), EntryClass::MemberOf.to_value()),
-            (Attribute::Name.as_str(), Value::new_iname("test_account_1")),
+            (Attribute::Class.as_ref(), EntryClass::MemberOf.to_value()),
+            (Attribute::Name.as_ref(), Value::new_iname("test_account_1")),
             (
-                Attribute::DisplayName.as_str(),
+                Attribute::DisplayName.as_ref(),
                 Value::new_utf8s("test_account_1")
             ),
-            (Attribute::Uuid.as_str(), Value::Uuid(UUID_TEST_ACCOUNT)),
-            (Attribute::MemberOf.as_str(), Value::Refer(UUID_TEST_GROUP))
+            (Attribute::Uuid.as_ref(), Value::Uuid(UUID_TEST_ACCOUNT)),
+            (Attribute::MemberOf.as_ref(), Value::Refer(UUID_TEST_GROUP))
         );
         pub static ref TEST_GROUP: EntryInitNew = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Group.to_value()),
-            (Attribute::Name.as_str(), Value::new_iname("test_group_a")),
-            (Attribute::Uuid.as_str(), Value::Uuid(UUID_TEST_GROUP)),
-            (Attribute::Member.as_str(), Value::Refer(UUID_TEST_ACCOUNT))
+            (Attribute::Class.as_ref(), EntryClass::Group.to_value()),
+            (Attribute::Name.as_ref(), Value::new_iname("test_group_a")),
+            (Attribute::Uuid.as_ref(), Value::Uuid(UUID_TEST_GROUP)),
+            (Attribute::Member.as_ref(), Value::Refer(UUID_TEST_ACCOUNT))
         );
         pub static ref ALLOW_ALL: EntryInitNew = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
             (
-                Attribute::Class.as_str(),
+                Attribute::Class.as_ref(),
                 EntryClass::AccessControlProfile.to_value()
             ),
             (
-                Attribute::Class.as_str(),
+                Attribute::Class.as_ref(),
                 EntryClass::AccessControlModify.to_value()
             ),
             (
-                Attribute::Class.as_str(),
+                Attribute::Class.as_ref(),
                 EntryClass::AccessControlCreate.to_value()
             ),
             (
-                Attribute::Class.as_str(),
+                Attribute::Class.as_ref(),
                 EntryClass::AccessControlDelete.to_value()
             ),
             (
-                Attribute::Class.as_str(),
+                Attribute::Class.as_ref(),
                 EntryClass::AccessControlSearch.to_value()
             ),
             (
-                Attribute::Name.as_str(),
+                Attribute::Name.as_ref(),
                 Value::new_iname("idm_admins_acp_allow_all_test")
             ),
-            (Attribute::Uuid.as_str(), Value::Uuid(UUID_TEST_ACP)),
+            (Attribute::Uuid.as_ref(), Value::Uuid(UUID_TEST_ACP)),
             (
-                Attribute::AcpReceiverGroup.as_str(),
+                Attribute::AcpReceiverGroup.as_ref(),
                 Value::Refer(UUID_TEST_GROUP)
             ),
             (
                 "acp_targetscope",
                 Value::new_json_filter_s("{\"pres\":\"class\"}").expect("filter")
             ),
-            (Attribute::AcpSearchAttr.as_str(), Value::new_iutf8("name")),
+            (Attribute::AcpSearchAttr.as_ref(), Value::new_iutf8("name")),
             (
-                Attribute::AcpSearchAttr.as_str(),
+                Attribute::AcpSearchAttr.as_ref(),
                 Attribute::Class.to_value()
             ),
-            (Attribute::AcpSearchAttr.as_str(), Value::new_iutf8("uuid")),
+            (Attribute::AcpSearchAttr.as_ref(), Value::new_iutf8("uuid")),
             (
-                Attribute::AcpModifyClass.as_str(),
+                Attribute::AcpModifyClass.as_ref(),
                 Value::new_iutf8("system")
             ),
             (
-                Attribute::AcpModifyRemovedAttr.as_str(),
+                Attribute::AcpModifyRemovedAttr.as_ref(),
                 Attribute::Class.to_value()
             ),
             (
-                Attribute::AcpModifyRemovedAttr.as_str(),
+                Attribute::AcpModifyRemovedAttr.as_ref(),
                 Value::new_iutf8("displayname")
             ),
             (
-                Attribute::AcpModifyRemovedAttr.as_str(),
+                Attribute::AcpModifyRemovedAttr.as_ref(),
                 Value::new_iutf8("may")
             ),
             (
-                Attribute::AcpModifyRemovedAttr.as_str(),
+                Attribute::AcpModifyRemovedAttr.as_ref(),
                 Value::new_iutf8("must")
             ),
             (
-                Attribute::AcpModifyPresentAttr.as_str(),
+                Attribute::AcpModifyPresentAttr.as_ref(),
                 Attribute::Class.to_value()
             ),
             (
-                Attribute::AcpModifyPresentAttr.as_str(),
+                Attribute::AcpModifyPresentAttr.as_ref(),
                 Value::new_iutf8("displayname")
             ),
             (
-                Attribute::AcpModifyPresentAttr.as_str(),
+                Attribute::AcpModifyPresentAttr.as_ref(),
                 Value::new_iutf8("may")
             ),
             (
-                Attribute::AcpModifyPresentAttr.as_str(),
+                Attribute::AcpModifyPresentAttr.as_ref(),
                 Value::new_iutf8("must")
             ),
             (
-                Attribute::AcpCreateClass.as_str(),
+                Attribute::AcpCreateClass.as_ref(),
                 EntryClass::Object.to_value()
             ),
             (
-                Attribute::AcpCreateClass.as_str(),
+                Attribute::AcpCreateClass.as_ref(),
                 EntryClass::Person.to_value()
             ),
             (
-                Attribute::AcpCreateClass.as_str(),
+                Attribute::AcpCreateClass.as_ref(),
                 EntryClass::System.to_value()
             ),
-            (Attribute::AcpCreateAttr.as_str(), Value::new_iutf8("name")),
+            (Attribute::AcpCreateAttr.as_ref(), Value::new_iutf8("name")),
             (
-                Attribute::AcpCreateAttr.as_str(),
+                Attribute::AcpCreateAttr.as_ref(),
                 Attribute::Class.to_value()
             ),
             (
-                Attribute::AcpCreateAttr.as_str(),
+                Attribute::AcpCreateAttr.as_ref(),
                 Attribute::Description.to_value()
             ),
             (
-                Attribute::AcpCreateAttr.as_str(),
+                Attribute::AcpCreateAttr.as_ref(),
                 Value::new_iutf8("displayname")
             ),
-            (Attribute::AcpCreateAttr.as_str(), Value::new_iutf8("uuid"))
+            (Attribute::AcpCreateAttr.as_ref(), Value::new_iutf8("uuid"))
         );
         pub static ref PRELOAD: Vec<EntryInitNew> =
             vec![TEST_ACCOUNT.clone(), TEST_GROUP.clone(), ALLOW_ALL.clone()];

@@ -188,9 +188,9 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 .iter()
                 .chain(pre_candidates.iter().map(|e| e.as_ref()))
                 .any(|e| {
-                    e.attribute_equality(Attribute::Class.as_str(), &EntryClass::ClassType.into())
+                    e.attribute_equality(Attribute::Class.as_ref(), &EntryClass::ClassType.into())
                         || e.attribute_equality(
-                            Attribute::Class.as_str(),
+                            Attribute::Class.as_ref(),
                             &EntryClass::AttributeType.into(),
                         )
                 });
@@ -201,7 +201,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 .chain(pre_candidates.iter().map(|e| e.as_ref()))
                 .any(|e| {
                     e.attribute_equality(
-                        Attribute::Class.as_str(),
+                        Attribute::Class.as_ref(),
                         &EntryClass::AccessControlProfile.into(),
                     )
                 })
@@ -212,7 +212,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 .chain(pre_candidates.iter().map(|e| e.as_ref()))
                 .any(|e| {
                     e.attribute_equality(
-                        Attribute::Class.as_str(),
+                        Attribute::Class.as_ref(),
                         &EntryClass::OAuth2ResourceServer.into(),
                     )
                 });
@@ -221,14 +221,14 @@ impl<'a> QueryServerWriteTransaction<'a> {
             self.changed_domain = norm_cand
                 .iter()
                 .chain(pre_candidates.iter().map(|e| e.as_ref()))
-                .any(|e| e.attribute_equality(Attribute::Uuid.as_str(), &PVUUID_DOMAIN_INFO));
+                .any(|e| e.attribute_equality(Attribute::Uuid.as_ref(), &PVUUID_DOMAIN_INFO));
         }
         if !self.changed_sync_agreement {
             self.changed_sync_agreement = norm_cand
                 .iter()
                 .chain(pre_candidates.iter().map(|e| e.as_ref()))
                 .any(|e| {
-                    e.attribute_equality(Attribute::Class.as_str(), &EntryClass::SyncAccount.into())
+                    e.attribute_equality(Attribute::Class.as_ref(), &EntryClass::SyncAccount.into())
                 });
         }
 
@@ -355,9 +355,9 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 .iter()
                 .chain(pre_candidates.iter().map(|e| e.as_ref()))
                 .any(|e| {
-                    e.attribute_equality(Attribute::Class.as_str(), &EntryClass::ClassType.into())
+                    e.attribute_equality(Attribute::Class.as_ref(), &EntryClass::ClassType.into())
                         || e.attribute_equality(
-                            Attribute::Class.as_str(),
+                            Attribute::Class.as_ref(),
                             &EntryClass::AttributeType.into(),
                         )
                 });
@@ -368,7 +368,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 .chain(pre_candidates.iter().map(|e| e.as_ref()))
                 .any(|e| {
                     e.attribute_equality(
-                        Attribute::Class.as_str(),
+                        Attribute::Class.as_ref(),
                         &EntryClass::AccessControlProfile.into(),
                     )
                 });
@@ -376,7 +376,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         if !self.changed_oauth2 {
             self.changed_oauth2 = norm_cand.iter().any(|e| {
                 e.attribute_equality(
-                    Attribute::Class.as_str(),
+                    Attribute::Class.as_ref(),
                     &EntryClass::OAuth2ResourceServer.into(),
                 )
             });
@@ -508,37 +508,37 @@ mod tests {
         let mut server_txn = server.write(duration_from_epoch_now()).await;
 
         let e1 = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_str(), EntryClass::Person.to_value()),
-            (Attribute::Name.as_str(), Value::new_iname("testperson1")),
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
+            (Attribute::Name.as_ref(), Value::new_iname("testperson1")),
             (
                 "uuid",
                 Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
             ),
             (
-                Attribute::Description.as_str(),
+                Attribute::Description.as_ref(),
                 Value::new_utf8s("testperson1")
             ),
             (
-                Attribute::DisplayName.as_str(),
+                Attribute::DisplayName.as_ref(),
                 Value::new_utf8s("testperson1")
             )
         );
 
         let e2 = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_str(), EntryClass::Person.to_value()),
-            (Attribute::Name.as_str(), Value::new_iname("testperson2")),
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
+            (Attribute::Name.as_ref(), Value::new_iname("testperson2")),
             (
                 "uuid",
                 Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63932"))
             ),
             (
-                Attribute::Description.as_str(),
+                Attribute::Description.as_ref(),
                 Value::new_utf8s("testperson2")
             ),
             (
-                Attribute::DisplayName.as_str(),
+                Attribute::DisplayName.as_ref(),
                 Value::new_utf8s("testperson2")
             )
         );
@@ -550,7 +550,7 @@ mod tests {
 
         // Empty Modlist (filter is valid)
         let me_emp = ModifyEvent::new_internal_invalid(
-            filter!(f_pres(Attribute::Class.as_str())),
+            filter!(f_pres(Attribute::Class.as_ref())),
             ModifyList::new_list(vec![]),
         );
         assert!(server_txn.modify(&me_emp) == Err(OperationError::EmptyRequest));
@@ -593,7 +593,7 @@ mod tests {
 
         // Mod is invalid to schema
         let me_inv_m = ModifyEvent::new_internal_invalid(
-            filter!(f_pres(Attribute::Class.as_str())),
+            filter!(f_pres(Attribute::Class.as_ref())),
             ModifyList::new_list(vec![Modify::Present(
                 AttrString::from("htnaonu"),
                 Value::from("anusaosu"),
@@ -644,8 +644,8 @@ mod tests {
 
         assert!(server_txn
             .internal_create(vec![entry_init!(
-                (Attribute::Class.as_str(), EntryClass::Object.to_value()),
-                (Attribute::Uuid.as_str(), Value::Uuid(t_uuid))
+                (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+                (Attribute::Uuid.as_ref(), Value::Uuid(t_uuid))
             ),])
             .is_ok());
 
@@ -654,7 +654,7 @@ mod tests {
             server_txn.internal_modify_uuid(
                 t_uuid,
                 &ModifyList::new_list(vec![
-                    m_assert(Attribute::Uuid.as_str(), &PartialValue::Uuid(r_uuid)),
+                    m_assert(Attribute::Uuid.as_ref(), &PartialValue::Uuid(r_uuid)),
                     m_pres(Attribute::Description.into(), &Value::Utf8("test".into()))
                 ])
             ),
@@ -680,19 +680,19 @@ mod tests {
         let mut server_txn = server.write(duration_from_epoch_now()).await;
 
         let e1 = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_str(), EntryClass::Person.to_value()),
-            (Attribute::Name.as_str(), Value::new_iname("testperson1")),
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
+            (Attribute::Name.as_ref(), Value::new_iname("testperson1")),
             (
                 "uuid",
                 Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
             ),
             (
-                Attribute::Description.as_str(),
+                Attribute::Description.as_ref(),
                 Value::new_utf8s("testperson1")
             ),
             (
-                Attribute::DisplayName.as_str(),
+                Attribute::DisplayName.as_ref(),
                 Value::new_utf8s("testperson1")
             )
         );
@@ -759,20 +759,20 @@ mod tests {
     #[qs_test]
     async fn test_modify_password_only(server: &QueryServer) {
         let e1 = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_str(), EntryClass::Person.to_value()),
-            (Attribute::Class.as_str(), EntryClass::Account.to_value()),
-            (Attribute::Name.as_str(), Value::new_iname("testperson1")),
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
+            (Attribute::Name.as_ref(), Value::new_iname("testperson1")),
             (
-                Attribute::Uuid.as_str(),
+                Attribute::Uuid.as_ref(),
                 Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
             ),
             (
-                Attribute::Description.as_str(),
+                Attribute::Description.as_ref(),
                 Value::new_utf8s("testperson1")
             ),
             (
-                Attribute::DisplayName.as_str(),
+                Attribute::DisplayName.as_ref(),
                 Value::new_utf8s("testperson1")
             )
         );

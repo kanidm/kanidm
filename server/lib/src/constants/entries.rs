@@ -17,7 +17,7 @@ use uuid::Uuid;
 
 #[test]
 fn test_valueattribute_as_str() {
-    assert!(Attribute::Class.as_str() == "class");
+    assert!(Attribute::Class.as_ref() == "class");
     assert!(Attribute::Class.to_string() == String::from("class"));
 }
 
@@ -155,6 +155,10 @@ pub enum Attribute {
 impl Attribute {
     pub fn as_str(self) -> &'static str {
         self.into()
+    }
+
+    pub fn as_ref(&self) -> &str {
+        self.as_str()
     }
 }
 
@@ -584,21 +588,21 @@ impl From<SchemaGroup> for EntryInitNew {
     fn from(val: SchemaGroup) -> Self {
         let mut entry = EntryInitNew::new();
 
-        entry.add_ava(Attribute::Name.as_str(), Value::new_iname(val.name));
+        entry.add_ava(Attribute::Name.as_ref(), Value::new_iname(val.name));
         entry.add_ava(
-            Attribute::Description.as_str(),
+            Attribute::Description.as_ref(),
             Value::new_utf8s(val.description),
         );
         // classes
         entry.set_ava(
-            Attribute::Class.as_str(),
+            Attribute::Class.as_ref(),
             val.classes
                 .into_iter()
                 .map(|class| class.to_value())
                 .collect::<Vec<Value>>(),
         );
-        entry.add_ava(Attribute::Uuid.as_str(), Value::Uuid(val.uuid));
-        entry.add_ava(Attribute::Member.as_str(), Value::Refer(val.member));
+        entry.add_ava(Attribute::Uuid.as_ref(), Value::Uuid(val.uuid));
+        entry.add_ava(Attribute::Member.as_ref(), Value::Refer(val.member));
         entry
     }
 }
@@ -616,21 +620,21 @@ pub const JSON_ADMIN_V1: &str = r#"{
 
 lazy_static! {
     pub static ref E_ADMIN_V1: EntryInitNew = entry_init!(
-        (Attribute::Class.as_str(), EntryClass::Account.to_value()),
-        (Attribute::Class.as_str(), EntryClass::MemberOf.to_value()),
-        (Attribute::Class.as_str(), EntryClass::Object.to_value()),
+        (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
+        (Attribute::Class.as_ref(), EntryClass::MemberOf.to_value()),
+        (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
         (
-            Attribute::Class.as_str(),
+            Attribute::Class.as_ref(),
             EntryClass::ServiceAccount.to_value()
         ),
-        (Attribute::Name.as_str(), Value::new_iname("admin")),
-        (Attribute::Uuid.as_str(), Value::Uuid(UUID_ADMIN)),
+        (Attribute::Name.as_ref(), Value::new_iname("admin")),
+        (Attribute::Uuid.as_ref(), Value::Uuid(UUID_ADMIN)),
         (
-            Attribute::Description.as_str(),
+            Attribute::Description.as_ref(),
             Value::new_utf8s("Builtin System Admin account.")
         ),
         (
-            Attribute::DisplayName.as_str(),
+            Attribute::DisplayName.as_ref(),
             Value::new_utf8s("System Administrator")
         )
     );
@@ -639,17 +643,17 @@ lazy_static! {
 lazy_static! {
     /// Builtin IDM Admin account.
     pub static ref E_IDM_ADMIN_V1: EntryInitNew = entry_init!(
-        (Attribute::Class.as_str(), EntryClass::Account.to_value()),
-        (Attribute::Class.as_str(), EntryClass::MemberOf.to_value()),
-        (Attribute::Class.as_str(), EntryClass::Object.to_value()),
-        (Attribute::Class.as_str(), EntryClass::ServiceAccount.to_value()),
-        (Attribute::Name.as_str(), Value::new_iname("idm_admin")),
-        (Attribute::Uuid.as_str(), Value::Uuid(UUID_IDM_ADMIN)),
+        (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
+        (Attribute::Class.as_ref(), EntryClass::MemberOf.to_value()),
+        (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+        (Attribute::Class.as_ref(), EntryClass::ServiceAccount.to_value()),
+        (Attribute::Name.as_ref(), Value::new_iname("idm_admin")),
+        (Attribute::Uuid.as_ref(), Value::Uuid(UUID_IDM_ADMIN)),
         (
-            Attribute::Description.as_str(),
+            Attribute::Description.as_ref(),
             Value::new_utf8s("Builtin IDM Admin account.")
         ),
-        (Attribute::DisplayName.as_str(), Value::new_utf8s("IDM Administrator"))
+        (Attribute::DisplayName.as_ref(), Value::new_utf8s("IDM Administrator"))
     );
 }
 
@@ -667,30 +671,30 @@ lazy_static! {
     /// Builtin IDM Administrators Group.
     pub static ref E_IDM_ADMINS_V1: EntryInitNew = IDM_ADMINS_V1.clone().into();
     // pub static ref E_IDM_ADMINS_V1: EntryInitNew = entry_init!(
-    //     (Attribute::Class.as_str(), EntryClass::Group.to_value()),
-    //     (Attribute::Class.as_str(), EntryClass::Object.to_value()),
-    //     (Attribute::Name.as_str(), Value::new_iname("idm_admins")),
-    //     (Attribute::Uuid.as_str(), Value::Uuid(UUID_IDM_ADMINS)),
+    //     (Attribute::Class.as_ref(), EntryClass::Group.to_value()),
+    //     (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+    //     (Attribute::Name.as_ref(), Value::new_iname("idm_admins")),
+    //     (Attribute::Uuid.as_ref(), Value::Uuid(UUID_IDM_ADMINS)),
     //     (
-    //         Attribute::Description.as_str(),
+    //         Attribute::Description.as_ref(),
     //         Value::new_utf8s("Builtin IDM Administrators Group.")
     //     ),
-    //     (Attribute::Member.as_str(), Value::Refer(UUID_IDM_ADMIN))
+    //     (Attribute::Member.as_ref(), Value::Refer(UUID_IDM_ADMIN))
     // );
 }
 
 lazy_static! {
     /// Builtin System Administrators Group.
     pub static ref E_SYSTEM_ADMINS_V1: EntryInitNew = entry_init!(
-        (Attribute::Class.as_str(), EntryClass::Group.to_value()),
-        (Attribute::Class.as_str(), EntryClass::Object.to_value()),
-        (Attribute::Name.as_str(), Value::new_iname("system_admins")),
-        (Attribute::Uuid.as_str(), Value::Uuid(UUID_SYSTEM_ADMINS)),
+        (Attribute::Class.as_ref(), EntryClass::Group.to_value()),
+        (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+        (Attribute::Name.as_ref(), Value::new_iname("system_admins")),
+        (Attribute::Uuid.as_ref(), Value::Uuid(UUID_SYSTEM_ADMINS)),
         (
-            Attribute::Description.as_str(),
+            Attribute::Description.as_ref(),
             Value::new_utf8s("Builtin System Administrators Group.")
         ),
-        (Attribute::Member.as_str(), Value::Refer(UUID_ADMIN))
+        (Attribute::Member.as_ref(), Value::Refer(UUID_ADMIN))
     );
 }
 
@@ -1106,18 +1110,18 @@ pub const JSON_IDM_ALL_ACCOUNTS: &str = r#"{
 
 lazy_static! {
     pub static ref E_IDM_UI_ENABLE_EXPERIMENTAL_FEATURES: EntryInitNew = entry_init!(
-        (Attribute::Class.as_str(), EntryClass::Object.to_value()),
-        (Attribute::Class.as_str(), EntryClass::Group.to_value()),
+        (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+        (Attribute::Class.as_ref(), EntryClass::Group.to_value()),
         (
-            Attribute::Name.as_str(),
+            Attribute::Name.as_ref(),
             Value::new_iname("idm_ui_enable_experimental_features")
         ),
         (
-            Attribute::Uuid.as_str(),
+            Attribute::Uuid.as_ref(),
             Value::Uuid(UUID_IDM_UI_ENABLE_EXPERIMENTAL_FEATURES)
         ),
         (
-            Attribute::Description.as_str(),
+            Attribute::Description.as_ref(),
             Value::new_utf8s(
                 "Members of this group will have access to experimental web UI features."
             )
@@ -1126,18 +1130,18 @@ lazy_static! {
     );
 
     pub static ref E_IDM_ACCOUNT_MAIL_READ_PRIV: EntryInitNew = entry_init!(
-        (Attribute::Class.as_str(), EntryClass::Object.to_value()),
-        (Attribute::Class.as_str(), EntryClass::Group.to_value()),
+        (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+        (Attribute::Class.as_ref(), EntryClass::Group.to_value()),
         (
-            Attribute::Name.as_str(),
+            Attribute::Name.as_ref(),
             Value::new_iname("idm_account_mail_read_priv")
         ),
         (
-            Attribute::Uuid.as_str(),
+            Attribute::Uuid.as_ref(),
             Value::Uuid(UUID_IDM_ACCOUNT_MAIL_READ_PRIV)
         ),
         (
-            Attribute::Description.as_str(),
+            Attribute::Description.as_ref(),
             Value::new_utf8s(
                 "Members of this group will have access to read the mail attribute of all persons and service accounts."
             )
@@ -1188,27 +1192,27 @@ pub const JSON_IDM_HIGH_PRIVILEGE_V1: &str = r#"{
 
 lazy_static! {
     pub static ref E_SYSTEM_INFO_V1: EntryInitNew = entry_init!(
-        (Attribute::Class.as_str(), EntryClass::Object.to_value()),
-        (Attribute::Class.as_str(), EntryClass::SystemInfo.to_value()),
-        (Attribute::Class.as_str(), EntryClass::System.to_value()),
-        (Attribute::Uuid.as_str(), Value::Uuid(UUID_SYSTEM_INFO)),
+        (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+        (Attribute::Class.as_ref(), EntryClass::SystemInfo.to_value()),
+        (Attribute::Class.as_ref(), EntryClass::System.to_value()),
+        (Attribute::Uuid.as_ref(), Value::Uuid(UUID_SYSTEM_INFO)),
         (
-            Attribute::Description.as_str(),
+            Attribute::Description.as_ref(),
             Value::new_utf8s("System (local) info and metadata object.")
         ),
-        (Attribute::Version.as_str(), Value::Uint32(14))
+        (Attribute::Version.as_ref(), Value::Uint32(14))
     );
 }
 
 lazy_static! {
     pub static ref E_DOMAIN_INFO_V1: EntryInitNew = entry_init!(
-        (Attribute::Class.as_str(), EntryClass::Object.to_value()),
-        (Attribute::Class.as_str(), EntryClass::DomainInfo.to_value()),
-        (Attribute::Class.as_str(), EntryClass::System.to_value()),
-        (Attribute::Name.as_str(), Value::new_iname("domain_local")),
-        (Attribute::Uuid.as_str(), Value::Uuid(UUID_DOMAIN_INFO)),
+        (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+        (Attribute::Class.as_ref(), EntryClass::DomainInfo.to_value()),
+        (Attribute::Class.as_ref(), EntryClass::System.to_value()),
+        (Attribute::Name.as_ref(), Value::new_iname("domain_local")),
+        (Attribute::Uuid.as_ref(), Value::Uuid(UUID_DOMAIN_INFO)),
         (
-            Attribute::Description.as_str(),
+            Attribute::Description.as_ref(),
             Value::new_utf8s("This local domain's info and metadata object.")
         )
     );
@@ -1250,21 +1254,21 @@ impl Default for BuiltinAccount {
 impl From<BuiltinAccount> for EntryInitNew {
     fn from(value: BuiltinAccount) -> Self {
         let mut entry = EntryInitNew::new();
-        entry.add_ava(Attribute::Name.as_str(), Value::new_iname(value.name));
-        entry.add_ava(Attribute::Uuid.as_str(), Value::Uuid(value.uuid));
+        entry.add_ava(Attribute::Name.as_ref(), Value::new_iname(value.name));
+        entry.add_ava(Attribute::Uuid.as_ref(), Value::Uuid(value.uuid));
         entry.add_ava(
-            Attribute::Description.as_str(),
+            Attribute::Description.as_ref(),
             Value::new_utf8s(value.description),
         );
         entry.add_ava(
-            Attribute::DisplayName.as_str(),
+            Attribute::DisplayName.as_ref(),
             Value::new_utf8s(value.displayname),
         );
 
-        entry.add_ava(Attribute::Class.as_str(), EntryClass::Object.to_value());
-        entry.add_ava(Attribute::Class.as_str(), EntryClass::Account.to_value());
+        entry.add_ava(Attribute::Class.as_ref(), EntryClass::Object.to_value());
+        entry.add_ava(Attribute::Class.as_ref(), EntryClass::Account.to_value());
         entry.set_ava(
-            Attribute::Class.as_str(),
+            Attribute::Class.as_ref(),
             value
                 .classes
                 .into_iter()
@@ -1278,20 +1282,20 @@ impl From<BuiltinAccount> for EntryInitNew {
 
 lazy_static! {
     // pub static ref E_ANONYMOUS_V1: EntryInitNew = entry_init!(
-    //     (Attribute::Class.as_str(), EntryClass::Object.to_value()),
-    //     (Attribute::Class.as_str(), EntryClass::Account.to_value()),
+    //     (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+    //     (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
     //     (
-    //         Attribute::Class.as_str(),
+    //         Attribute::Class.as_ref(),
     //         EntryClass::ServiceAccount.to_value()
     //     ),
-    //     (Attribute::Name.as_str(), Value::new_iname("anonymous")),
-    //     (Attribute::Uuid.as_str(), Value::Uuid(UUID_ANONYMOUS)),
+    //     (Attribute::Name.as_ref(), Value::new_iname("anonymous")),
+    //     (Attribute::Uuid.as_ref(), Value::Uuid(UUID_ANONYMOUS)),
     //     (
-    //         Attribute::Description.as_str(),
+    //         Attribute::Description.as_ref(),
     //         Value::new_utf8s("Anonymous access account.")
     //     ),
     //     (
-    //         Attribute::DisplayName.as_str(),
+    //         Attribute::DisplayName.as_ref(),
     //         Value::new_utf8s("Anonymous")
     //     )
     // );
@@ -1337,13 +1341,13 @@ pub const JSON_TESTPERSON2: &str = r#"{
 #[cfg(test)]
 lazy_static! {
     pub static ref E_TESTPERSON_1: EntryInitNew = entry_init!(
-        (Attribute::Class.as_str(), EntryClass::Object.to_value()),
-        (Attribute::Name.as_str(), Value::new_iname("testperson1")),
-        (Attribute::Uuid.as_str(), Value::Uuid(UUID_TESTPERSON_1))
+        (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+        (Attribute::Name.as_ref(), Value::new_iname("testperson1")),
+        (Attribute::Uuid.as_ref(), Value::Uuid(UUID_TESTPERSON_1))
     );
     pub static ref E_TESTPERSON_2: EntryInitNew = entry_init!(
-        (Attribute::Class.as_str(), EntryClass::Object.to_value()),
-        (Attribute::Name.as_str(), Value::new_iname("testperson2")),
-        (Attribute::Uuid.as_str(), Value::Uuid(UUID_TESTPERSON_2))
+        (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+        (Attribute::Name.as_ref(), Value::new_iname("testperson2")),
+        (Attribute::Uuid.as_ref(), Value::Uuid(UUID_TESTPERSON_2))
     );
 }

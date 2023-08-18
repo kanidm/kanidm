@@ -78,7 +78,7 @@ impl<'a> QueryServerReadTransaction<'a> {
 
         // Separate the entries into schema, meta and remaining.
         let (schema_entries, rem_entries): (Vec<_>, Vec<_>) = entries.into_iter().partition(|e| {
-            e.get_ava_set(Attribute::Class.as_str())
+            e.get_ava_set(Attribute::Class.as_ref())
                 .map(|cls| {
                     cls.contains(&EntryClass::AttributeType.into() as &PartialValue)
                         || cls.contains(&EntryClass::ClassType.into() as &PartialValue)
@@ -174,7 +174,7 @@ impl<'a> QueryServerReadTransaction<'a> {
 
         let entry_filter = filter_all!(f_or!([
             f_and!([
-                f_pres(Attribute::Class.as_str()),
+                f_pres(Attribute::Class.as_ref()),
                 f_andnot(f_or(vec![
                     // These are from above!
                     f_eq(Attribute::Class, EntryClass::AttributeType.into()),

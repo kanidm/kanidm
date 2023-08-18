@@ -317,20 +317,20 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
                 let uuid = ent.get_uuid();
                 admin_info!(?uuid, "Checking oauth2 configuration");
                 // From each entry, attempt to make an oauth2 configuration.
-                if !ent.attribute_equality(Attribute::Class.as_str(), &EntryClass::OAuth2ResourceServer.into()) {
+                if !ent.attribute_equality(Attribute::Class.as_ref(), &EntryClass::OAuth2ResourceServer.into()) {
                     admin_error!("Missing class oauth2_resource_server");
                     // Check we have oauth2_resource_server class
                     return Err(OperationError::InvalidEntryState);
                 }
 
-                let type_ = if ent.attribute_equality(Attribute::Class.as_str(), &EntryClass::OAuth2ResourceServerBasic.into()) {
+                let type_ = if ent.attribute_equality(Attribute::Class.as_ref(), &EntryClass::OAuth2ResourceServerBasic.into()) {
                     let authz_secret = ent
                         .get_ava_single_secret(ATTR_OAUTH2_RS_BASIC_SECRET)
                         .map(str::to_string)
                         .ok_or(OperationError::InvalidValueState)?;
 
                     let enable_pkce = ent
-                        .get_ava_single_bool(Attribute::OAuth2AllowInsecureClientDisablePkce.as_str())
+                        .get_ava_single_bool(Attribute::OAuth2AllowInsecureClientDisablePkce.as_ref())
                         .map(|e| !e)
                         .unwrap_or(true);
 
@@ -338,7 +338,7 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
                         authz_secret,
                         enable_pkce,
                     }
-                } else if ent.attribute_equality(Attribute::Class.as_str(), &EntryClass::OAuth2ResourceServerPublic.into()) {
+                } else if ent.attribute_equality(Attribute::Class.as_ref(), &EntryClass::OAuth2ResourceServerPublic.into()) {
                     OauthRSType::Public
                 } else {
                     error!("Missing class determining oauth2 rs type");
@@ -357,7 +357,7 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
                     .ok_or(OperationError::InvalidValueState)?;
 
                 let (origin, origin_https) = ent
-                    .get_ava_single_url(Attribute::OAuth2RsOrigin.as_str())
+                    .get_ava_single_url(Attribute::OAuth2RsOrigin.as_ref())
                     .map(|url| (url.origin(), url.scheme() == "https"))
                     .ok_or(OperationError::InvalidValueState)?;
 
@@ -378,17 +378,17 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
                     })?;
 
                 let scope_maps = ent
-                    .get_ava_as_oauthscopemaps(Attribute::OAuth2RsScopeMap.as_str())
+                    .get_ava_as_oauthscopemaps(Attribute::OAuth2RsScopeMap.as_ref())
                     .cloned()
                     .unwrap_or_default();
 
                 let sup_scope_maps = ent
-                    .get_ava_as_oauthscopemaps(Attribute::OAuth2RsSupScopeMap.as_str())
+                    .get_ava_as_oauthscopemaps(Attribute::OAuth2RsSupScopeMap.as_ref())
                     .cloned()
                     .unwrap_or_default();
 
-                trace!("{}", Attribute::OAuth2JwtLegacyCryptoEnable.as_str());
-                let jws_signer = if ent.get_ava_single_bool(Attribute::OAuth2JwtLegacyCryptoEnable.as_str()).unwrap_or(false) {
+                trace!("{}", Attribute::OAuth2JwtLegacyCryptoEnable.as_ref());
+                let jws_signer = if ent.get_ava_single_bool(Attribute::OAuth2JwtLegacyCryptoEnable.as_ref()).unwrap_or(false) {
                     trace!("rs256_private_key_der");
                     ent
                         .get_ava_single_private_binary("rs256_private_key_der")
@@ -2037,31 +2037,31 @@ mod tests {
         let uuid = Uuid::new_v4();
 
         let e: Entry<EntryInit, EntryNew> = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
             (
-                Attribute::Class.as_str(),
+                Attribute::Class.as_ref(),
                 EntryClass::OAuth2ResourceServer.to_value()
             ),
             (
-                Attribute::Class.as_str(),
+                Attribute::Class.as_ref(),
                 EntryClass::OAuth2ResourceServerBasic.to_value()
             ),
-            (Attribute::Uuid.as_str(), Value::Uuid(uuid)),
+            (Attribute::Uuid.as_ref(), Value::Uuid(uuid)),
             (
-                Attribute::OAuth2RsName.as_str(),
+                Attribute::OAuth2RsName.as_ref(),
                 Value::new_iname("test_resource_server")
             ),
             (
-                Attribute::DisplayName.as_str(),
+                Attribute::DisplayName.as_ref(),
                 Value::new_utf8s("test_resource_server")
             ),
             (
-                Attribute::OAuth2RsOrigin.as_str(),
+                Attribute::OAuth2RsOrigin.as_ref(),
                 Value::new_url_s("https://demo.example.com").unwrap()
             ),
             // System admins
             (
-                Attribute::OAuth2RsScopeMap.as_str(),
+                Attribute::OAuth2RsScopeMap.as_ref(),
                 Value::new_oauthscopemap(
                     UUID_SYSTEM_ADMINS,
                     btreeset![OAUTH2_SCOPE_GROUPS.to_string()]
@@ -2069,7 +2069,7 @@ mod tests {
                 .expect("invalid oauthscope")
             ),
             (
-                Attribute::OAuth2RsScopeMap.as_str(),
+                Attribute::OAuth2RsScopeMap.as_ref(),
                 Value::new_oauthscopemap(
                     UUID_IDM_ALL_ACCOUNTS,
                     btreeset![OAUTH2_SCOPE_OPENID.to_string()]
@@ -2077,7 +2077,7 @@ mod tests {
                 .expect("invalid oauthscope")
             ),
             (
-                Attribute::OAuth2RsSupScopeMap.as_str(),
+                Attribute::OAuth2RsSupScopeMap.as_ref(),
                 Value::new_oauthscopemap(
                     UUID_IDM_ALL_ACCOUNTS,
                     btreeset!["supplement".to_string()]
@@ -2085,11 +2085,11 @@ mod tests {
                 .expect("invalid oauthscope")
             ),
             (
-                Attribute::OAuth2AllowInsecureClientDisablePkce.as_str(),
+                Attribute::OAuth2AllowInsecureClientDisablePkce.as_ref(),
                 Value::new_bool(!enable_pkce)
             ),
             (
-                Attribute::OAuth2JwtLegacyCryptoEnable.as_str(),
+                Attribute::OAuth2JwtLegacyCryptoEnable.as_ref(),
                 Value::new_bool(enable_legacy_crypto)
             ),
             (
@@ -2175,36 +2175,36 @@ mod tests {
         let uuid = Uuid::new_v4();
 
         let e: Entry<EntryInit, EntryNew> = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
             (
-                Attribute::Class.as_str(),
+                Attribute::Class.as_ref(),
                 EntryClass::OAuth2ResourceServer.to_value()
             ),
             (
-                Attribute::Class.as_str(),
+                Attribute::Class.as_ref(),
                 EntryClass::OAuth2ResourceServerPublic.to_value()
             ),
-            (Attribute::Uuid.as_str(), Value::Uuid(uuid)),
+            (Attribute::Uuid.as_ref(), Value::Uuid(uuid)),
             (
-                Attribute::OAuth2RsName.as_str(),
+                Attribute::OAuth2RsName.as_ref(),
                 Value::new_iname("test_resource_server")
             ),
             (
-                Attribute::DisplayName.as_str(),
+                Attribute::DisplayName.as_ref(),
                 Value::new_utf8s("test_resource_server")
             ),
             (
-                Attribute::OAuth2RsOrigin.as_str(),
+                Attribute::OAuth2RsOrigin.as_ref(),
                 Value::new_url_s("https://demo.example.com").unwrap()
             ),
             // System admins
             (
-                Attribute::OAuth2RsScopeMap.as_str(),
+                Attribute::OAuth2RsScopeMap.as_ref(),
                 Value::new_oauthscopemap(UUID_SYSTEM_ADMINS, btreeset!["groups".to_string()])
                     .expect("invalid oauthscope")
             ),
             (
-                Attribute::OAuth2RsScopeMap.as_str(),
+                Attribute::OAuth2RsScopeMap.as_ref(),
                 Value::new_oauthscopemap(
                     UUID_IDM_ALL_ACCOUNTS,
                     btreeset![OAUTH2_SCOPE_OPENID.to_string()]
@@ -2212,7 +2212,7 @@ mod tests {
                 .expect("invalid oauthscope")
             ),
             (
-                Attribute::OAuth2RsSupScopeMap.as_str(),
+                Attribute::OAuth2RsSupScopeMap.as_ref(),
                 Value::new_oauthscopemap(
                     UUID_IDM_ALL_ACCOUNTS,
                     btreeset!["supplement".to_string()]
@@ -3998,7 +3998,7 @@ mod tests {
                 PartialValue::new_iname("test_resource_server")
             )),
             ModifyList::new_list(vec![Modify::Present(
-                AttrString::from(Attribute::OAuth2RsScopeMap.as_str()),
+                AttrString::from(Attribute::OAuth2RsScopeMap.as_ref()),
                 Value::new_oauthscopemap(
                     UUID_IDM_ALL_ACCOUNTS,
                     btreeset![

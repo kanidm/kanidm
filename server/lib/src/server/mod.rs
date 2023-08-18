@@ -955,7 +955,7 @@ impl<'a> QueryServerReadTransaction<'a> {
         // the entry changelogs are consistent to their entries.
         let schema = self.get_schema();
 
-        let filt_all = filter!(f_pres(Attribute::Class.as_str()));
+        let filt_all = filter!(f_pres(Attribute::Class.as_ref()));
         let all_entries = match self.internal_search(filt_all) {
             Ok(a) => a,
             Err(_e) => return vec![Err(ConsistencyError::QueryServerSearchFailure)],
@@ -1614,10 +1614,10 @@ mod tests {
         let t_uuid = Uuid::new_v4();
         assert!(server_txn
             .internal_create(vec![entry_init!(
-                (Attribute::Class.as_str(), EntryClass::Object.to_value()),
-                (Attribute::Class.as_str(), EntryClass::Person.to_value()),
+                (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+                (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
                 ("name", Value::new_iname("testperson1")),
-                (Attribute::Uuid.as_str(), Value::Uuid(t_uuid)),
+                (Attribute::Uuid.as_ref(), Value::Uuid(t_uuid)),
                 ("description", Value::new_utf8s("testperson1")),
                 ("displayname", Value::new_utf8s("testperson1"))
             ),])
@@ -1650,12 +1650,12 @@ mod tests {
         let t_uuid = Uuid::new_v4();
         assert!(server_txn
             .internal_create(vec![entry_init!(
-                (Attribute::Class.as_str(), EntryClass::Object.to_value()),
+                (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
                 (
-                    Attribute::Class.as_str(),
+                    Attribute::Class.as_ref(),
                     EntryClass::ExtensibleObject.to_value()
                 ),
-                (Attribute::Uuid.as_str(), Value::Uuid(t_uuid)),
+                (Attribute::Uuid.as_ref(), Value::Uuid(t_uuid)),
                 ("sync_external_id", Value::new_iutf8("uid=testperson"))
             ),])
             .is_ok());
@@ -1679,9 +1679,9 @@ mod tests {
         let mut server_txn = server.write(duration_from_epoch_now()).await;
 
         let e1 = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_str(), EntryClass::Person.to_value()),
-            (Attribute::Class.as_str(), EntryClass::Account.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
             ("name", Value::new_iname("testperson1")),
             (
                 "uuid",
@@ -1712,9 +1712,9 @@ mod tests {
         let mut server_txn = server.write(duration_from_epoch_now()).await;
 
         let e1 = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_str(), EntryClass::Person.to_value()),
-            (Attribute::Class.as_str(), EntryClass::Account.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
             ("name", Value::new_iname("testperson1")),
             (
                 "uuid",
@@ -1744,8 +1744,8 @@ mod tests {
     async fn test_clone_value(server: &QueryServer) {
         let mut server_txn = server.write(duration_from_epoch_now()).await;
         let e1 = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_str(), EntryClass::Person.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
             ("name", Value::new_iname("testperson1")),
             (
                 "uuid",
@@ -1784,8 +1784,8 @@ mod tests {
     #[qs_test]
     async fn test_dynamic_schema_class(server: &QueryServer) {
         let e1 = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_str(), EntryClass::TestClass.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::TestClass.to_value()),
             ("name", Value::new_iname("testobj1")),
             (
                 "uuid",
@@ -1795,8 +1795,8 @@ mod tests {
 
         // Class definition
         let e_cd = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_str(), EntryClass::ClassType.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::ClassType.to_value()),
             ("classname", EntryClass::TestClass.to_value()),
             (
                 "uuid",
@@ -1856,9 +1856,9 @@ mod tests {
     #[qs_test]
     async fn test_dynamic_schema_attr(server: &QueryServer) {
         let e1 = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
             (
-                Attribute::Class.as_str(),
+                Attribute::Class.as_ref(),
                 EntryClass::ExtensibleObject.to_value()
             ),
             ("name", Value::new_iname("testobj1")),
@@ -1871,9 +1871,9 @@ mod tests {
 
         // Attribute definition
         let e_ad = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
             (
-                Attribute::Class.as_str(),
+                Attribute::Class.as_ref(),
                 EntryClass::AttributeType.to_value()
             ),
             (

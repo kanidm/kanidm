@@ -33,7 +33,7 @@ macro_rules! try_from_entry {
     ($value:expr) => {{
         // Check the classes
         if !$value.attribute_equality(
-            Attribute::Class.as_str(),
+            Attribute::Class.as_ref(),
             &EntryClass::ServiceAccount.into(),
         ) {
             return Err(OperationError::InvalidAccountState(
@@ -445,23 +445,23 @@ mod tests {
         let testaccount_uuid = Uuid::new_v4();
 
         let e1 = entry_init!(
-            (Attribute::Class.as_str(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_str(), EntryClass::Account.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
             (
-                Attribute::Class.as_str(),
+                Attribute::Class.as_ref(),
                 EntryClass::ServiceAccount.to_value()
             ),
             (
-                Attribute::Name.as_str(),
+                Attribute::Name.as_ref(),
                 Value::new_iname("test_account_only")
             ),
-            (Attribute::Uuid.as_str(), Value::Uuid(testaccount_uuid)),
+            (Attribute::Uuid.as_ref(), Value::Uuid(testaccount_uuid)),
             (
-                Attribute::Description.as_str(),
+                Attribute::Description.as_ref(),
                 Value::new_utf8s("testaccount")
             ),
             (
-                Attribute::DisplayName.as_str(),
+                Attribute::DisplayName.as_ref(),
                 Value::new_utf8s("testaccount")
             )
         );
