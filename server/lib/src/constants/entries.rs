@@ -268,7 +268,7 @@ impl TryFrom<String> for ValueAttribute {
             ATTR_UID => ValueAttribute::Uid,
             ATTR_UIDNUMBER => ValueAttribute::UidNumber,
             ATTR_UNIQUE => ValueAttribute::Unique,
-            ATTR_UNIXPASSWORD => ValueAttribute::UnixPassword,
+            ATTR_UNIX_PASSWORD => ValueAttribute::UnixPassword,
             ATTR_USER_AUTH_TOKEN_SESSION => ValueAttribute::UserAuthTokenSession,
             ATTR_USERID => ValueAttribute::UserId,
             ATTR_USERPASSWORD => ValueAttribute::UserPassword,
@@ -307,7 +307,7 @@ impl From<ValueAttribute> for &'static str {
             ValueAttribute::DeviceKeys => ATTR_DEVICEKEYS,
             ValueAttribute::LegalName => ATTR_LEGALNAME,
             ValueAttribute::DynGroupFilter => ATTR_DYNGROUP_FILTER,
-            ValueAttribute::UnixPassword => ATTR_UNIXPASSWORD,
+            ValueAttribute::UnixPassword => ATTR_UNIX_PASSWORD,
             ValueAttribute::RadiusSecret => ATTR_RADIUS_SECRET,
             ValueAttribute::NameHistory => ATTR_NAME_HISTORY,
             ValueAttribute::Must => ATTR_MUST,
@@ -437,7 +437,7 @@ impl ValueAttribute {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub enum ValueClass {
     AccessControlCreate,
     AccessControlDelete,
@@ -628,19 +628,62 @@ lazy_static! {
     );
 }
 
-lazy_static! {
-    /// Builtin IDM Administrators Group.
-    pub static ref E_IDM_ADMINS_V1: EntryInitNew = entry_init!(
-        (ValueAttribute::Class.as_str(), ValueClass::Group.to_value()),
-        (ValueAttribute::Class.as_str(), ValueClass::Object.to_value()),
-        (ValueAttribute::Name.as_str(), Value::new_iname("idm_admins")),
-        (ValueAttribute::Uuid.as_str(), Value::Uuid(UUID_IDM_ADMINS)),
-        (
+#[derive(Clone, Debug)]
+pub struct SchemaGroup {
+    pub name: &'static str,
+    description: &'static str,
+    classes: Vec<ValueClass>,
+    uuid: uuid::Uuid,
+    member: uuid::Uuid,
+}
+
+impl Into<EntryInitNew> for SchemaGroup {
+    fn into(self) -> EntryInitNew {
+        let mut entry = EntryInitNew::new();
+
+        entry.add_ava(ValueAttribute::Name.as_str(), Value::new_iname(self.name));
+        entry.add_ava(
             ValueAttribute::Description.as_str(),
-            Value::new_utf8s("Builtin IDM Administrators Group.")
-        ),
-        (ValueAttribute::Member.as_str(), Value::Refer(UUID_IDM_ADMIN))
-    );
+            Value::new_utf8s(self.description),
+        );
+        // classes
+        entry.set_ava(
+            ValueAttribute::Class.as_str(),
+            self.classes
+                .into_iter()
+                .map(|class| class.to_value())
+                .collect::<Vec<Value>>(),
+        );
+        entry.add_ava(ValueAttribute::Uuid.as_str(), Value::Uuid(self.uuid));
+        entry.add_ava(ValueAttribute::Member.as_str(), Value::Refer(self.member));
+        entry
+    }
+}
+
+lazy_static! {
+    pub static ref IDM_ADMINS_V1: SchemaGroup = SchemaGroup {
+        name: "idm_admins",
+        description: "Builtin IDM Administrators Group.",
+        classes: vec![
+            ValueClass::Group,
+            ValueClass::Object,
+        ],
+        uuid: UUID_IDM_ADMINS,
+        member: UUID_IDM_ADMIN,
+    };
+    /// Builtin IDM Administrators Group.
+    pub static ref E_IDM_ADMINS_V1: EntryInitNew = IDM_ADMINS_V1.clone().into();
+    // pub static ref E_IDM_ADMINS_V1: EntryInitNew = entry_init!(
+    //     (ValueAttribute::Class.as_str(), ValueClass::Group.to_value()),
+    //     (ValueAttribute::Class.as_str(), ValueClass::Object.to_value()),
+    //     (ValueAttribute::Name.as_str(), Value::new_iname("idm_admins")),
+    //     (ValueAttribute::Uuid.as_str(), Value::Uuid(UUID_IDM_ADMINS)),
+    //     (
+    //         ValueAttribute::Description.as_str(),
+    //         Value::new_utf8s("Builtin IDM Administrators Group.")
+    //     ),
+    //     (ValueAttribute::Member.as_str(), Value::Refer(UUID_IDM_ADMIN))
+    // );
 }
 
 lazy_static! {
