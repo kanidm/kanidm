@@ -316,13 +316,13 @@ macro_rules! try_from_group_e {
             ValueAttribute::Class.as_str(),
             &ValueClass::Account.to_partialvalue(),
         ) && $value.attribute_equality(
-            ValueAttribute::Class.into(),
+            ValueAttribute::Class.as_str(),
             &ValueClass::PosixAccount.to_partialvalue(),
         )) || ($value.attribute_equality(
             ValueAttribute::Class.as_str(),
             &ValueClass::Group.to_partialvalue(),
         ) && $value.attribute_equality(
-            ValueAttribute::Class.into(),
+            ValueAttribute::Class.as_str(),
             &ValueClass::PosixGroup.to_partialvalue(),
         ))) {
             return Err(OperationError::InvalidAccountState(

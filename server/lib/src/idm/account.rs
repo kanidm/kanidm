@@ -689,7 +689,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         // Add the person class.
         let mut new_classes = prev_classes.clone();
         new_classes.remove(ValueClass::ServiceAccount.into());
-        new_classes.insert("person");
+        new_classes.insert(ValueClass::Person.into());
 
         // diff the schema attrs, and remove the ones that are service_account only.
         let (_added, removed) = schema_ref

@@ -112,8 +112,8 @@ lazy_static! {
         (ATTR_ACP_RECEIVER_GROUP, Value::Refer(UUID_IDM_ALL_ACCOUNTS)),
         (
             ATTR_ACP_TARGET_SCOPE,
-            // Value::new_json_filter_s("\"self\"").expect("Invalid JSON filter")
-            Value::JsonFilt(ProtoFilter::SelfUuid)
+            Value::new_json_filter_s("\"self\"").expect("Invalid JSON filter")
+            // Value::JsonFilt(ProtoFilter::SelfUuid)
         ),
         (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Class.to_value()),
         (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Name.to_value()),
@@ -157,15 +157,15 @@ lazy_static! {
         ),
         (
             ATTR_ACP_TARGET_SCOPE,
-            Value::JsonFilt(ProtoFilter::And(vec![
-                ProtoFilter::Eq(ValueAttribute::Class.to_string(), ValueClass::Person.to_string()),
-                ProtoFilter::Eq(ValueAttribute::Class.to_string(), ValueClass::Account.to_string()),
-                ProtoFilter::SelfUuid,
-            ]))
-            // Value::new_json_filter_s(
-            //     "{\"and\": [{\"eq\": [\"class\",\"person\"]}, {\"eq\": [\"class\",\"account\"]}, \"self\"]}"
-            // )
-                // .expect("Invalid JSON filter")
+            // Value::JsonFilt(ProtoFilter::And(vec![
+            //     ProtoFilter::Eq(ValueAttribute::Class.to_string(), ValueClass::Person.to_string()),
+            //     ProtoFilter::Eq(ValueAttribute::Class.to_string(), ValueClass::Account.to_string()),
+            //     ProtoFilter::SelfUuid,
+            // ]))
+            Value::new_json_filter_s(
+                "{\"and\": [{\"eq\": [\"class\",\"person\"]}, {\"eq\": [\"class\",\"account\"]}, \"self\"]}"
+            )
+                .expect("Invalid JSON filter")
         ),
         (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::Name.to_value()),
         (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::DisplayName.to_value()),
@@ -207,14 +207,14 @@ lazy_static! {
         ),
         (
             ATTR_ACP_TARGET_SCOPE,
-            Value::JsonFilt(ProtoFilter::And(vec![
-                match_class_filter!(ValueClass::Account).clone(),
-                ProtoFilter::SelfUuid,
-            ]))
-            // Value::new_json_filter_s(
-            //     "{\"and\": [{\"eq\": [\"class\",\"account\"]}, \"self\"]}"
-            // )
-                // .expect("Invalid JSON filter")
+            // Value::JsonFilt(ProtoFilter::And(vec![
+            //     match_class_filter!(ValueClass::Account).clone(),
+            //     ProtoFilter::SelfUuid,
+            // ]))
+            Value::new_json_filter_s(
+                "{\"and\": [{\"eq\": [\"class\",\"account\"]}, \"self\"]}"
+            )
+                .expect("Invalid JSON filter")
         ),
         (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::UserAuthTokenSession.to_value())
     );
@@ -237,15 +237,15 @@ lazy_static! {
         ),
         (
             ATTR_ACP_TARGET_SCOPE,
-            Value::JsonFilt(ProtoFilter::And(vec![
-                match_class_filter!(ValueClass::Person).clone(),
-                match_class_filter!(ValueClass::Account).clone(),
-                ProtoFilter::SelfUuid,
-            ]))
-            // Value::new_json_filter_s(
-            //     "{\"and\": [{\"eq\": [\"class\",\"person\"]}, {\"eq\": [\"class\",\"account\"]}, \"self\"]}"
-            // )
-                // .expect("Invalid JSON filter")
+            // Value::JsonFilt(ProtoFilter::And(vec![
+            //     match_class_filter!(ValueClass::Person).clone(),
+            //     match_class_filter!(ValueClass::Account).clone(),
+            //     ProtoFilter::SelfUuid,
+            // ]))
+            Value::new_json_filter_s(
+                "{\"and\": [{\"eq\": [\"class\",\"person\"]}, {\"eq\": [\"class\",\"account\"]}, \"self\"]}"
+            )
+                .expect("Invalid JSON filter")
         ),
         (ATTR_ACP_MODIFY_REMOVEDATTR, ValueAttribute::Mail.to_value()),
         (ATTR_ACP_MODIFY_PRESENTATTR, ValueAttribute::Mail.to_value())
@@ -269,35 +269,35 @@ lazy_static! {
         ),
         (
             ATTR_ACP_TARGET_SCOPE,
-            Value::JsonFilt(ProtoFilter::And(vec![
-                ProtoFilter::Or(vec![
-                    match_class_filter!(ValueClass::Account),
-                    match_class_filter!(ValueClass::Group),
+            // Value::JsonFilt(ProtoFilter::And(vec![
+            //     ProtoFilter::Or(vec![
+            //         match_class_filter!(ValueClass::Account),
+            //         match_class_filter!(ValueClass::Group),
 
-                    ]),
-                ProtoFilter::AndNot(Box::new(
-                    ProtoFilter::Or(vec![
-                        match_class_filter!(ValueClass::Tombstone),
-                        match_class_filter!(ValueClass::Recycled),
-                    ])
-                )),
-            ]))
-            // Value::new_json_filter_s(
-            //     "{\"and\":
-            //          [{\"or\":
-            //              [{\"eq\": [\"class\",\"account\"]},
-            //               {\"eq\": [\"class\",\"group\"]}]
-            //           },
-            //          {\"andnot\":
-            //              {\"or\":
-            //                  [{\"eq\": [\"class\", \"tombstone\"]},
-            //                   {\"eq\": [\"class\", \"recycled\"]}
-            //                  ]
-            //              }
-            //          }
-            //      ]}"
-            // )
-            //     .expect("Invalid JSON filter")
+            //         ]),
+            //     ProtoFilter::AndNot(Box::new(
+            //         ProtoFilter::Or(vec![
+            //             match_class_filter!(ValueClass::Tombstone),
+            //             match_class_filter!(ValueClass::Recycled),
+            //         ])
+            //     )),
+            // ]))
+            Value::new_json_filter_s(
+                "{\"and\":
+                     [{\"or\":
+                         [{\"eq\": [\"class\",\"account\"]},
+                          {\"eq\": [\"class\",\"group\"]}]
+                      },
+                     {\"andnot\":
+                         {\"or\":
+                             [{\"eq\": [\"class\", \"tombstone\"]},
+                              {\"eq\": [\"class\", \"recycled\"]}
+                             ]
+                         }
+                     }
+                 ]}"
+            )
+                .expect("Invalid JSON filter")
         ),
         (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Class.to_value()),
         (ATTR_ACP_SEARCH_ATTR, ValueAttribute::Name.to_value()),

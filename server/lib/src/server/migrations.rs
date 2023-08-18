@@ -676,7 +676,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         debug_assert!(res.is_ok());
         res?;
 
-        let idm_entries: [EntryInitNew; 43] = [
+        let idm_entries: Vec<EntryInitNew> = vec![
             // Built in access controls.
             IDM_ADMINS_ACP_RECYCLE_SEARCH_V1.clone().into(),
             E_IDM_ADMINS_ACP_REVIVE_V1.clone(),
