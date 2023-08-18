@@ -120,11 +120,8 @@ pub const ATTR_USERPASSWORD: &str = "userpassword";
 pub const ATTR_UUID: &str = "uuid";
 pub const ATTR_VERSION: &str = "version";
 
-#[cfg(any(debug_assertions, test))]
 pub const TEST_ATTR_NON_EXIST: &str = "non-exist";
-#[cfg(any(debug_assertions, test))]
 pub const TEST_ATTR_TEST_ATTR: &str = "testattr";
-#[cfg(any(debug_assertions, test))]
 pub const TEST_ATTR_EXTRA: &str = "extra";
 
 pub const CLASS_SOURCEUUID: &str = "source_uuid";
