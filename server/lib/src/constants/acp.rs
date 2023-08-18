@@ -1054,6 +1054,7 @@ lazy_static! {
         (ATTR_ACP_SEARCH_ATTR, Attribute::Description.to_value()),
         (ATTR_ACP_SEARCH_ATTR, Attribute::Member.to_value()),
         (ATTR_ACP_SEARCH_ATTR, Attribute::DynMember.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::Name.to_value()),
         (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::Description.to_value()),
         (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::Member.to_value()),
         (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::Name.to_value()),
