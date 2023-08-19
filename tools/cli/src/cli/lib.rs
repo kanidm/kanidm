@@ -17,7 +17,7 @@ use crate::common::OpType;
 use cursive::{
     align::HAlign,
     view::{Nameable, Resizable},
-    views::{Dialog, DummyView, EditView, LinearLayout, TextView},
+    views::{Dialog, DummyView, EditView, LinearLayout, TextArea, TextView},
     CbSink, Cursive, CursiveExt, View,
 };
 use kanidm_client::KanidmClient;
@@ -282,14 +282,15 @@ async fn start_business_logic_loop(
             Ok(res) => res,
             Err(e) => {
                 let err = IdentifyUserState::Error {
-                    msg: format!("{:?}", e),
+                    error_title: "Server error!".to_string(),
+                    error_msg: format!("{:?}", e),
                 };
                 send_msg_and_call_callback(err);
                 continue;
             }
         };
         let state = match res {
-            IdentifyUserResponse::IdentityVerificationUnavailable => IdentifyUserState::Error { msg: "Unfortunately the identity verification feature is not available for your account.".to_string() },
+            IdentifyUserResponse::IdentityVerificationUnavailable => IdentifyUserState::Error { error_msg: "Unfortunately the identity verification feature is not available for your account.".to_string(), error_title: "Feature unavailable".to_string() },
             IdentifyUserResponse::IdentityVerificationAvailable => IdentifyUserState::IdDisplayAndSubmit {self_id: self_id.clone()},
             IdentifyUserResponse::ProvideCode { step, totp } => {
                 match msg {
@@ -312,11 +313,11 @@ async fn start_business_logic_loop(
             },
             IdentifyUserResponse::CodeFailure => {
                 match msg {
-                    IdentifyUserMsg::SubmitCode { other_id, .. } => IdentifyUserState::Error { msg: format!("The provided code doesn't belong to {other_id}") },
+                    IdentifyUserMsg::SubmitCode { other_id, .. } => IdentifyUserState::Error { error_msg: format!("The provided code doesn't belong to {other_id}"), error_title: "🚨 Identity verification failed 🚨".to_string() },
                     _ => IdentifyUserState::invalid_state_error()
                 }
             },
-        IdentifyUserResponse::InvalidUserId => IdentifyUserState::Error { msg: format!("{id}'s account exists but cannot access the identity verification feature 😕") }
+        IdentifyUserResponse::InvalidUserId => IdentifyUserState::Error { error_msg: format!("{id}'s account exists but cannot access the identity verification feature 😕"), error_title: "Invalid ID error".to_string()}
         };
         send_msg_and_call_callback(state);
     }
@@ -346,14 +347,16 @@ enum IdentifyUserState {
         other_id: Arc<String>,
     },
     Error {
-        msg: String,
+        error_msg: String,
+        error_title: String,
     },
 }
 
 impl IdentifyUserState {
     pub fn invalid_state_error() -> Self {
         IdentifyUserState::Error {
-            msg: "The user identification flow is in an invalid state :/".to_string(),
+            error_msg: "The user identification flow is in an invalid state 😵😵".to_string(),
+            error_title: "Invalid flow detected!".to_string(),
         }
     }
 }
@@ -456,6 +459,7 @@ impl Ui {
                                     return Self::error_state_view(
                                         s,
                                         "Couldn't get the id-user-input view",
+                                        None,
                                     )
                                 }
                             };
@@ -516,6 +520,7 @@ impl Ui {
                                     return Self::error_state_view(
                                         s,
                                         "Couldn't get the totp-input view",
+                                        None,
                                     )
                                 }
                             };
@@ -611,7 +616,10 @@ impl Ui {
                         }),
                 );
             }
-            IdentifyUserState::Error { msg } => Self::error_state_view(s, &msg),
+            IdentifyUserState::Error {
+                error_msg: msg,
+                error_title: title,
+            } => Self::error_state_view(s, &msg, Some(&title)),
         };
     }
 
@@ -622,6 +630,7 @@ impl Ui {
                 return Self::error_state_view(
                     s,
                     "It looks like some data got corrupted, you have to start from scratch",
+                    None,
                 )
             }
         };
@@ -637,23 +646,24 @@ impl Ui {
         controller_tx: UnboundedSender<IdentifyUserMsg>,
         msg: IdentifyUserMsg,
     ) {
-        s.pop_layer();
+        let textarea = TextArea::new().content(format!("Did you confirm that {other_id} correctly verified your code? If you proceed, you won't be able to go back.")).disabled().fixed_width(57);
         s.add_layer(
-            Dialog::around(TextView::new(format!("Did you confirm that {other_id} correctly verified your code? If you proceed, you won't be able to go back."))).padding_lrtb(1, 1, 1, 0).title("Warning!")
+            Dialog::around(textarea)
+                .padding_lrtb(1, 1, 0, 1)
+                .title("Warning!")
                 .button("Yes, proceed", move |s| {
                     s.pop_layer();
-                    let send_outcome  = controller_tx.send(msg.to_owned());
+                    s.pop_layer();
+                    let send_outcome = controller_tx.send(msg.to_owned());
                     if send_outcome.is_err() {
                         s.quit();
                     };
                 })
-                .button("No, exit", |s| {
-                    s.quit();
-                }),
+                .dismiss_button("No, go back"),
         );
     }
 
-    fn error_state_view(s: &mut Cursive, msg: &str) {
+    fn error_state_view(s: &mut Cursive, msg: &str, error_title: Option<&str>) {
         s.pop_layer();
         let layout = LinearLayout::vertical()
             .child(DummyView.fixed_height(1))
@@ -661,7 +671,7 @@ impl Ui {
 
         s.add_layer(
             Dialog::around(layout)
-                .title("An error occurred!")
+                .title(error_title.unwrap_or("An error occurred!"))
                 .button("Quit", |s| {
                     s.quit();
                 }),
