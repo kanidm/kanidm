@@ -27,7 +27,7 @@ To build the Web UI you'll need [wasm-pack](https://rustwasm.github.io/wasm-pack
 You will need to install rustup and our build dependencies with:
 
 ```bash
-zypper in rustup git libudev-devel sqlite3-devel libopenssl-3-devel libselinux-devel pam-devel tpm2-0-tss-devel
+zypper in rustup git libudev-devel sqlite3-devel libopenssl-3-devel libselinux-devel pam-devel tpm2-0-tss-devel ncurses5-devel
 ```
 
 You can then use rustup to complete the setup of the toolchain.
@@ -74,6 +74,12 @@ Building the Web UI requires additional packages:
 perl-FindBin perl-File-Compare
 ```
 
+Also building the CLI requires an additional package:
+
+```text
+ncurses-devel
+```
+
 ### Ubuntu
 
 You need [rustup](https://rustup.rs/) to install a Rust toolchain.
@@ -81,7 +87,7 @@ You need [rustup](https://rustup.rs/) to install a Rust toolchain.
 You will also need some system libraries to build this, which can be installed by running:
 
 ```bash
-sudo apt-get install libsqlite3-dev libudev-dev libssl-dev pkg-config libpam0g-dev
+sudo apt-get install libsqlite3-dev libudev-dev libssl-dev pkg-config libpam0g-dev libncursesw5-dev
 ```
 
 Tested with Ubuntu 20.04 and 22.04.
