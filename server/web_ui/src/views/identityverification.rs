@@ -60,7 +60,7 @@ static INVALID_USERID_ERROR: &str = "The provided UserID is invalid!";
 lazy_static::lazy_static! {
     pub static ref VALIDATE_TOTP_RE: Regex = {
         #[allow(clippy::expect_used)]
-        Regex::new(r"^\d{6}$").expect("Invalid singleline regex found")
+        Regex::new(r"^\d{5}$|^\d{6}$").expect("Invalid singleline regex found")
     };
 }
 
