@@ -255,17 +255,17 @@ pub async fn create_https_server(
         ));
 
     // layer which checks the responses have a content-type of JSON when we're in debug mode
-
     #[cfg(any(test, debug_assertions))]
     let app = app.layer(from_fn(middleware::are_we_json_yet));
 
     let app = app
-        .layer(trace_layer)
         // This must be the LAST middleware.
         // This is because the last middleware here is the first to be entered and the last
         // to be exited, and this middleware sets up ids' and other bits for for logging
         // coherence to be maintained.
         .layer(from_fn(middleware::kopid_middleware))
+        // this MUST be the last layer before with_state else the span never starts and everything breaks.
+        .layer(trace_layer)
         .with_state(state)
         // the connect_info bit here lets us pick up the remote address of the client
         .into_make_service_with_connect_info::<SocketAddr>();
