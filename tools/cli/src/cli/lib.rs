@@ -190,7 +190,7 @@ pub(crate) fn password_prompt(prompt: &str) -> Option<String> {
 lazy_static::lazy_static! {
     pub static ref VALIDATE_TOTP_RE: Regex = {
         #[allow(clippy::expect_used)]
-        Regex::new(r"^\d{6}$").expect("Invalid singleline regex found")
+        Regex::new(r"^\d{5}$|^\d{6}$").expect("Invalid singleline regex found")
     };
 }
 // here I used a simple function instead of a struct because all the channel stuff requires ownership, so if we were to use a struct with a `run` method, it would have to take ownership of everything
@@ -290,7 +290,7 @@ async fn start_business_logic_loop(
         };
         let state = match res {
             IdentifyUserResponse::IdentityVerificationUnavailable => IdentifyUserState::Error { msg: "Unfortunately the identity verification feature is not available for your account.".to_string() },
-            IdentifyUserResponse::IdentityVerificationAvailable => IdentifyUserState::IdDisplayAndSubmit {self_id: self_id.to_string()},
+            IdentifyUserResponse::IdentityVerificationAvailable => IdentifyUserState::IdDisplayAndSubmit {self_id: self_id.clone()},
             IdentifyUserResponse::ProvideCode { step, totp } => {
                 match msg {
                     IdentifyUserMsg::SubmitOtherId { other_id} | IdentifyUserMsg::ReDisplayCodeFirst { other_id}=> IdentifyUserState::DisplayCodeFirst { self_totp: totp, step, other_id },
@@ -316,18 +316,18 @@ async fn start_business_logic_loop(
                     _ => IdentifyUserState::invalid_state_error()
                 }
             },
-        IdentifyUserResponse::InvalidUserId => IdentifyUserState::Error { msg: format!("{id}'s account exists but cannot access the identity verification feature") }
+        IdentifyUserResponse::InvalidUserId => IdentifyUserState::Error { msg: format!("{id}'s account exists but cannot access the identity verification feature 😕") }
         };
         send_msg_and_call_callback(state);
     }
 }
 
 // this is kind of awkward but Cursive doesn't allow us to store data in the `user_data` without having to clone it every time we access it,
-// so since the `other_id` String will never change during the execution of the program, we can just use an Arc to avoid cloning it every time
+// so since all the Strings will never change during the execution of the program, we can just use Arcs to avoid cloning them every time
 #[derive(Debug, Clone, PartialEq)]
 enum IdentifyUserState {
     IdDisplayAndSubmit {
-        self_id: String,
+        self_id: Arc<String>,
     },
     WaitForCode {
         other_id: Arc<String>,
@@ -417,7 +417,7 @@ impl Ui {
                     )
                     .child(DummyView.fixed_height(1))
                     .child(
-                        TextView::new("-----------------------------------------------")
+                        TextView::new("  ----------------------------------------------  ")
                             .h_align(HAlign::Center),
                     )
                     .child(DummyView.fixed_height(1))
@@ -428,7 +428,6 @@ impl Ui {
                     .child(DummyView.fixed_height(1))
                     .child(
                         EditView::new()
-                            .content("sample@id.com")
                             .on_submit(move |s, user_id: &str| {
                                 let send_outcome =
                                     controller_tx.send(IdentifyUserMsg::SubmitOtherId {
@@ -484,16 +483,19 @@ impl Ui {
                     .child(DummyView.fixed_height(1))
                     .child(
                         EditView::new()
-                            .content("123456")
                             .on_submit(move |s, code: &str| {
-                                let code_u32 = code.parse::<u32>().unwrap(); // TODO: show user feedback
-                                if controller_tx
-                                    .send(IdentifyUserMsg::SubmitCode {
+                                let code_u32 =
+                                    match Self::parse_totp_code_and_display_popup(s, code) {
+                                        Some(code) => code,
+                                        None => return,
+                                    };
+
+                                let send_outcome =
+                                    controller_tx.send(IdentifyUserMsg::SubmitCode {
                                         code: code_u32,
                                         other_id: other_id_clone.clone(),
-                                    })
-                                    .is_err()
-                                {
+                                    });
+                                if send_outcome.is_err() {
                                     s.quit();
                                 };
                                 Self::loading_view(s);
@@ -518,7 +520,12 @@ impl Ui {
                                 }
                             };
 
-                            let code_u32 = code.parse::<u32>().unwrap(); // TODO: show user feedback
+                            let code_u32 =
+                                match Self::parse_totp_code_and_display_popup(s, code.as_str()) {
+                                    Some(code) => code,
+                                    None => return,
+                                };
+
                             let send_outcome =
                                 controller_tx_clone.send(IdentifyUserMsg::SubmitCode {
                                     code: code_u32,
@@ -539,8 +546,9 @@ impl Ui {
                 s.pop_layer();
                 let layout = LinearLayout::vertical()
                     .child(TextView::new(format!(
-                        "Provide the following code when asked: {self_totp}" // TODO: improve timer alignment
+                        "Provide the following code when asked: {self_totp}"
                     )))
+                    .child(DummyView.fixed_height(1))
                     .child(TotpCountdownView::new(
                         step as u64,
                         controller_tx.clone(),
@@ -567,8 +575,9 @@ impl Ui {
                 s.pop_layer();
                 let layout = LinearLayout::vertical()
                     .child(TextView::new(format!(
-                        "Provide the following code when asked: {self_totp}" // TODO: improve timer alignment
+                        "Provide the following code when asked: {self_totp}"
                     )))
+                    .child(DummyView.fixed_height(1))
                     .child(TotpCountdownView::new(
                         step as u64,
                         controller_tx.clone(),
@@ -630,7 +639,7 @@ impl Ui {
     ) {
         s.pop_layer();
         s.add_layer(
-            Dialog::around(TextView::new(format!("Did you confirm that {other_id} correctly verified your code? If you proceed, you won't be able to go back.")))
+            Dialog::around(TextView::new(format!("Did you confirm that {other_id} correctly verified your code? If you proceed, you won't be able to go back."))).padding_lrtb(1, 1, 1, 0).title("Warning!")
                 .button("Yes, proceed", move |s| {
                     s.pop_layer();
                     let send_outcome  = controller_tx.send(msg.to_owned());
@@ -657,6 +666,26 @@ impl Ui {
                     s.quit();
                 }),
         );
+    }
+
+    fn parse_totp_code_and_display_popup(s: &mut Cursive, code: &str) -> Option<u32> {
+        let code_u32 = match code.parse::<u32>() {
+            Ok(code_u32) => code_u32,
+            Err(_) => {
+                Self::disposable_warning_view(s, "The code you provided is not a number!");
+                return None;
+            }
+        };
+        if !VALIDATE_TOTP_RE.is_match(&code) {
+            Self::disposable_warning_view(s, "The totp code is a 5 or 6 digit number!");
+            return None;
+        };
+        Some(code_u32)
+    }
+
+    fn disposable_warning_view(s: &mut Cursive, msg: &str) {
+        let dialog = Dialog::text(msg).dismiss_button("Ok");
+        s.add_layer(dialog);
     }
 
     fn loading_view(s: &mut Cursive) {
@@ -702,9 +731,14 @@ impl View for TotpCountdownView {
         // call the callback to fetch a new code which will be displayed at best in the next tick. On very slow connections the user might see the old
         // code for a bit. If we want to get rid of this we would need to pass to the struct a callback to show a loading screen
         if ticks_left_from_now == self.step && *self.should_call_callback.borrow() {
-            self.controller_tx.send(self.msg.to_owned()).unwrap();
+            self.controller_tx
+                .send(self.msg.to_owned())
+                .expect("failed to send msg to controller");
             *self.should_call_callback.borrow_mut() = false;
         };
-        printer.print((0, 0), &format!("{:?} seconds left", ticks_left_from_now));
+        printer.print(
+            (0, 0),
+            &format!("                   {}s left", ticks_left_from_now),
+        );
     }
 }
