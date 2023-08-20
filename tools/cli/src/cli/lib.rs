@@ -686,7 +686,7 @@ impl Ui {
                 return None;
             }
         };
-        if !VALIDATE_TOTP_RE.is_match(&code) {
+        if !VALIDATE_TOTP_RE.is_match(code) {
             Self::disposable_warning_view(s, "The totp code is a 5 or 6 digit number!");
             return None;
         };
