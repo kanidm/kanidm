@@ -290,7 +290,10 @@ async fn start_business_logic_loop(
             }
         };
         let state = match res {
-            IdentifyUserResponse::IdentityVerificationUnavailable => IdentifyUserState::Error { error_msg: "Unfortunately the identity verification feature is not available for your account.".to_string(), error_title: "Feature unavailable".to_string() },
+            IdentifyUserResponse::IdentityVerificationUnavailable => IdentifyUserState::Error { 
+            error_title: "Feature unavailable".to_string() ,
+            error_msg: "The identity verification feature is not enabled for your account, please contact an administrator.".to_string(), 
+            },
             IdentifyUserResponse::IdentityVerificationAvailable => IdentifyUserState::IdDisplayAndSubmit {self_id: self_id.clone()},
             IdentifyUserResponse::ProvideCode { step, totp } => {
                 match msg {
@@ -313,7 +316,10 @@ async fn start_business_logic_loop(
             },
             IdentifyUserResponse::CodeFailure => {
                 match msg {
-                    IdentifyUserMsg::SubmitCode { other_id, .. } => IdentifyUserState::Error { error_msg: format!("The provided code doesn't belong to {other_id}"), error_title: "🚨 Identity verification failed 🚨".to_string() },
+                    IdentifyUserMsg::SubmitCode { other_id, .. } => IdentifyUserState::Error { 
+                    error_title: "🚨 Identity verification failed 🚨".to_string() ,
+                    error_msg: format!("The provided code doesn't match, please try again."), 
+                    },
                     _ => IdentifyUserState::invalid_state_error()
                 }
             },
@@ -355,7 +361,7 @@ enum IdentifyUserState {
 impl IdentifyUserState {
     pub fn invalid_state_error() -> Self {
         IdentifyUserState::Error {
-            error_msg: "The user identification flow is in an invalid state 😵😵".to_string(),
+            error_msg: "The user identification flow is in an invalid state 😵😵".to_string(), // TODO: add an error ID (internal error, restart)
             error_title: "Invalid flow detected!".to_string(),
         }
     }
@@ -458,7 +464,7 @@ impl Ui {
                                 None => {
                                     return Self::error_state_view(
                                         s,
-                                        "Couldn't get the id-user-input view",
+                                        "Internal error, couldn't get the 'id-user-input' view, please restart the program.", // TODO: add an error ID (internal error, restart)
                                         None,
                                     )
                                 }
@@ -519,7 +525,7 @@ impl Ui {
                                 None => {
                                     return Self::error_state_view(
                                         s,
-                                        "Couldn't get the totp-input view",
+                                        "Internal error, couldn't get the 'totp-input' view, please restart the program.", // TODO: add an error ID (internal error, restart)
                                         None,
                                     )
                                 }
@@ -629,7 +635,7 @@ impl Ui {
             None => {
                 return Self::error_state_view(
                     s,
-                    "It looks like some data got corrupted, you have to start from scratch",
+                    "Failed to parse server response, please start again.", // TODO: add error ID (internal error, restart)
                     None,
                 )
             }
@@ -651,7 +657,7 @@ impl Ui {
             Dialog::around(textarea)
                 .padding_lrtb(1, 1, 0, 1)
                 .title("Warning!")
-                .button("Yes, proceed", move |s| {
+                .button("Continue", move |s| {
                     s.pop_layer();
                     s.pop_layer();
                     let send_outcome = controller_tx.send(msg.to_owned());
@@ -659,7 +665,7 @@ impl Ui {
                         s.quit();
                     };
                 })
-                .dismiss_button("No, go back"),
+                .dismiss_button("Cancel"),
         );
     }
 
@@ -687,7 +693,7 @@ impl Ui {
             }
         };
         if !VALIDATE_TOTP_RE.is_match(code) {
-            Self::disposable_warning_view(s, "The totp code is a 5 or 6 digit number!");
+            Self::disposable_warning_view(s, "The code should be a 5 or 6 digit number!");
             return None;
         };
         Some(code_u32)
@@ -700,7 +706,7 @@ impl Ui {
 
     fn loading_view(s: &mut Cursive) {
         s.pop_layer();
-        s.add_layer(TextView::new("Hold tight while we're loading..."));
+        s.add_layer(TextView::new("Loading, please wait..."));
     }
 }
 
@@ -743,7 +749,7 @@ impl View for TotpCountdownView {
         if ticks_left_from_now == self.step && *self.should_call_callback.borrow() {
             self.controller_tx
                 .send(self.msg.to_owned())
-                .expect("failed to send msg to controller");
+                .expect("TOTP countdown view failed to send msg to controller"); // TODO: add an error ID (internal error, restart)
             *self.should_call_callback.borrow_mut() = false;
         };
         printer.print(
