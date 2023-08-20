@@ -37,6 +37,8 @@ use crate::prelude::*;
 use crate::value::Session;
 use time::OffsetDateTime;
 
+use super::server::AccountPolicy;
+
 // Each CredHandler takes one or more credentials and determines if the
 // handlers requirements can be 100% fulfilled. This is where MFA or other
 // auth policies would exist, but each credHandler has to be a whole
@@ -332,7 +334,7 @@ impl CredHandler {
         }
     }
 
-    /// Validate a singule password credential of the account.
+    /// Validate a single password credential of the account.
     fn validate_password(
         cred: &AuthCredential,
         cred_id: Uuid,
@@ -998,7 +1000,6 @@ impl AuthSession {
     /// Conduct a step of the authentication process. This validates the next credential factor
     /// presented and returns a result of Success, Continue, or Denied. Only in the success
     /// case is a UAT granted -- all others do not, including raised operation errors.
-    #[allow(clippy::too_many_arguments)]
     pub fn validate_creds(
         &mut self,
         cred: &AuthCredential,
@@ -1006,12 +1007,9 @@ impl AuthSession {
         async_tx: &Sender<DelayedAction>,
         audit_tx: &Sender<AuditEvent>,
         webauthn: &Webauthn,
-        pw_badlist_set: Option<&HashSet<String>>,
         uat_jwt_signer: &JwsSigner,
-        auth_session_expiry: u32,
-        auth_privilege_expiry: u32,
+        account_policy: &AccountPolicy,
     ) -> Result<AuthState, OperationError> {
-        dbg!(auth_session_expiry, auth_privilege_expiry);
         let (next_state, response) = match &mut self.state {
             AuthSessionState::Init(_) | AuthSessionState::Success | AuthSessionState::Denied(_) => {
                 return Err(OperationError::InvalidAuthState(
@@ -1025,7 +1023,7 @@ impl AuthSession {
                     self.account.uuid,
                     async_tx,
                     webauthn,
-                    pw_badlist_set,
+                    Some(&account_policy.pw_badlist_cache),
                 ) {
                     CredState::Success { auth_type, cred_id } => {
                         // Issue the uat based on a set of factors.
@@ -1034,8 +1032,8 @@ impl AuthSession {
                             time,
                             async_tx,
                             cred_id,
-                            auth_session_expiry,
-                            auth_privilege_expiry,
+                            account_policy.authsession_expiry,
+                            account_policy.privilege_expiry,
                         )?;
                         let jwt = Jws::new(uat);
 
@@ -1249,6 +1247,7 @@ mod tests {
         BAD_WEBAUTHN_MSG, PW_BADLIST_MSG,
     };
     use crate::idm::delayed::DelayedAction;
+    use crate::idm::server::AccountPolicy;
     use crate::idm::AuthState;
     use crate::prelude::*;
     use crate::utils::{duration_from_epoch_now, readable_password_from_random};
@@ -1372,10 +1371,8 @@ mod tests {
             &async_tx,
             &audit_tx,
             &webauthn,
-            Some(&pw_badlist_cache),
             &jws_signer,
-            DEFAULT_AUTH_SESSION_EXPIRY,
-            DEFAULT_AUTH_PRIVILEGE_EXPIRY,
+            &AccountPolicy::from_pw_badlist_cache(pw_badlist_cache),
         ) {
             Ok(AuthState::Denied(_)) => {}
             _ => panic!(),
@@ -1398,10 +1395,8 @@ mod tests {
             &async_tx,
             &audit_tx,
             &webauthn,
-            Some(&pw_badlist_cache),
             &jws_signer,
-            DEFAULT_AUTH_SESSION_EXPIRY,
-            DEFAULT_AUTH_PRIVILEGE_EXPIRY,
+            &AccountPolicy::from_pw_badlist_cache(pw_badlist_cache),
         ) {
             Ok(AuthState::Success(_, AuthIssueSession::Token)) => {}
             _ => panic!(),
@@ -1444,10 +1439,8 @@ mod tests {
             &async_tx,
             &audit_tx,
             &webauthn,
-            Some(&pw_badlist_cache),
             &jws_signer,
-            DEFAULT_AUTH_SESSION_EXPIRY,
-            DEFAULT_AUTH_PRIVILEGE_EXPIRY,
+            &AccountPolicy::from_pw_badlist_cache(pw_badlist_cache),
         ) {
             Ok(AuthState::Denied(msg)) => assert!(msg == PW_BADLIST_MSG),
             _ => panic!(),
@@ -1570,10 +1563,8 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                Some(&pw_badlist_cache),
                 &jws_signer,
-                DEFAULT_AUTH_SESSION_EXPIRY,
-                DEFAULT_AUTH_PRIVILEGE_EXPIRY,
+                &AccountPolicy::from_pw_badlist_cache(pw_badlist_cache),
             ) {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_AUTH_TYPE_MSG),
                 _ => panic!(),
@@ -1598,10 +1589,8 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                Some(&pw_badlist_cache),
                 &jws_signer,
-                DEFAULT_AUTH_SESSION_EXPIRY,
-                DEFAULT_AUTH_PRIVILEGE_EXPIRY,
+                &AccountPolicy::from_pw_badlist_cache(pw_badlist_cache),
             ) {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_AUTH_TYPE_MSG),
                 _ => panic!(),
@@ -1623,10 +1612,8 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                Some(&pw_badlist_cache),
                 &jws_signer,
-                DEFAULT_AUTH_SESSION_EXPIRY,
-                DEFAULT_AUTH_PRIVILEGE_EXPIRY,
+                &AccountPolicy::from_pw_badlist_cache(pw_badlist_cache),
             ) {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_TOTP_MSG),
                 _ => panic!(),
@@ -1650,10 +1637,8 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                Some(&pw_badlist_cache),
                 &jws_signer,
-                DEFAULT_AUTH_SESSION_EXPIRY,
-                DEFAULT_AUTH_PRIVILEGE_EXPIRY,
+                &AccountPolicy::from_pw_badlist_cache(pw_badlist_cache.to_owned()),
             ) {
                 Ok(AuthState::Continue(cont)) => assert!(cont == vec![AuthAllowed::Password]),
                 _ => panic!(),
@@ -1664,10 +1649,8 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                Some(&pw_badlist_cache),
                 &jws_signer,
-                DEFAULT_AUTH_SESSION_EXPIRY,
-                DEFAULT_AUTH_PRIVILEGE_EXPIRY,
+                &AccountPolicy::from_pw_badlist_cache(pw_badlist_cache),
             ) {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_PASSWORD_MSG),
                 _ => panic!(),
@@ -1691,10 +1674,8 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                Some(&pw_badlist_cache),
                 &jws_signer,
-                DEFAULT_AUTH_SESSION_EXPIRY,
-                DEFAULT_AUTH_PRIVILEGE_EXPIRY,
+                &AccountPolicy::from_pw_badlist_cache(pw_badlist_cache.to_owned()),
             ) {
                 Ok(AuthState::Continue(cont)) => assert!(cont == vec![AuthAllowed::Password]),
                 _ => panic!(),
@@ -1705,10 +1686,8 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                Some(&pw_badlist_cache),
                 &jws_signer,
-                DEFAULT_AUTH_SESSION_EXPIRY,
-                DEFAULT_AUTH_PRIVILEGE_EXPIRY,
+                &AccountPolicy::from_pw_badlist_cache(pw_badlist_cache),
             ) {
                 Ok(AuthState::Success(_, AuthIssueSession::Token)) => {}
                 _ => panic!(),
@@ -1772,10 +1751,8 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                Some(&pw_badlist_cache),
                 &jws_signer,
-                DEFAULT_AUTH_SESSION_EXPIRY,
-                DEFAULT_AUTH_PRIVILEGE_EXPIRY,
+                &AccountPolicy::from_pw_badlist_cache(pw_badlist_cache.to_owned()),
             ) {
                 Ok(AuthState::Continue(cont)) => assert!(cont == vec![AuthAllowed::Password]),
                 _ => panic!(),
@@ -1786,10 +1763,8 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                Some(&pw_badlist_cache),
                 &jws_signer,
-                DEFAULT_AUTH_SESSION_EXPIRY,
-                DEFAULT_AUTH_PRIVILEGE_EXPIRY,
+                &AccountPolicy::from_pw_badlist_cache(pw_badlist_cache),
             ) {
                 Ok(AuthState::Denied(msg)) => assert!(msg == PW_BADLIST_MSG),
                 _ => panic!(),
@@ -1933,10 +1908,8 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                None,
                 &jws_signer,
-                DEFAULT_AUTH_SESSION_EXPIRY,
-                DEFAULT_AUTH_PRIVILEGE_EXPIRY,
+                &Default::default(),
             ) {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_AUTH_TYPE_MSG),
                 _ => panic!(),
@@ -1963,10 +1936,8 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                None,
                 &jws_signer,
-                DEFAULT_AUTH_SESSION_EXPIRY,
-                DEFAULT_AUTH_PRIVILEGE_EXPIRY,
+                &Default::default(),
             ) {
                 Ok(AuthState::Success(_, AuthIssueSession::Token)) => {}
                 _ => panic!(),
@@ -2000,10 +1971,8 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                None,
                 &jws_signer,
-                DEFAULT_AUTH_SESSION_EXPIRY,
-                DEFAULT_AUTH_PRIVILEGE_EXPIRY,
+                &Default::default(),
             ) {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_WEBAUTHN_MSG),
                 _ => panic!(),
@@ -2051,10 +2020,8 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                None,
                 &jws_signer,
-                DEFAULT_AUTH_SESSION_EXPIRY,
-                DEFAULT_AUTH_PRIVILEGE_EXPIRY,
+                &Default::default(),
             ) {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_WEBAUTHN_MSG),
                 _ => panic!(),
@@ -2106,10 +2073,8 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                Some(&pw_badlist_cache),
                 &jws_signer,
-                DEFAULT_AUTH_SESSION_EXPIRY,
-                DEFAULT_AUTH_PRIVILEGE_EXPIRY,
+                &AccountPolicy::from_pw_badlist_cache(pw_badlist_cache),
             ) {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_AUTH_TYPE_MSG),
                 _ => panic!(),
@@ -2132,10 +2097,8 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                Some(&pw_badlist_cache),
                 &jws_signer,
-                DEFAULT_AUTH_SESSION_EXPIRY,
-                DEFAULT_AUTH_PRIVILEGE_EXPIRY,
+                &AccountPolicy::from_pw_badlist_cache(pw_badlist_cache),
             ) {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_AUTH_TYPE_MSG),
                 _ => panic!(),
@@ -2169,10 +2132,8 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                Some(&pw_badlist_cache),
                 &jws_signer,
-                DEFAULT_AUTH_SESSION_EXPIRY,
-                DEFAULT_AUTH_PRIVILEGE_EXPIRY,
+                &AccountPolicy::from_pw_badlist_cache(pw_badlist_cache),
             ) {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_WEBAUTHN_MSG),
                 _ => panic!(),
@@ -2201,10 +2162,8 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                Some(&pw_badlist_cache),
                 &jws_signer,
-                DEFAULT_AUTH_SESSION_EXPIRY,
-                DEFAULT_AUTH_PRIVILEGE_EXPIRY,
+                &AccountPolicy::from_pw_badlist_cache(pw_badlist_cache.to_owned()),
             ) {
                 Ok(AuthState::Continue(cont)) => assert!(cont == vec![AuthAllowed::Password]),
                 _ => panic!(),
@@ -2215,10 +2174,8 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                Some(&pw_badlist_cache),
                 &jws_signer,
-                DEFAULT_AUTH_SESSION_EXPIRY,
-                DEFAULT_AUTH_PRIVILEGE_EXPIRY,
+                &AccountPolicy::from_pw_badlist_cache(pw_badlist_cache),
             ) {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_PASSWORD_MSG),
                 _ => panic!(),
@@ -2253,10 +2210,8 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                Some(&pw_badlist_cache),
                 &jws_signer,
-                DEFAULT_AUTH_SESSION_EXPIRY,
-                DEFAULT_AUTH_PRIVILEGE_EXPIRY,
+                &AccountPolicy::from_pw_badlist_cache(pw_badlist_cache.to_owned()),
             ) {
                 Ok(AuthState::Continue(cont)) => assert!(cont == vec![AuthAllowed::Password]),
                 _ => panic!(),
@@ -2267,10 +2222,8 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                Some(&pw_badlist_cache),
                 &jws_signer,
-                DEFAULT_AUTH_SESSION_EXPIRY,
-                DEFAULT_AUTH_PRIVILEGE_EXPIRY,
+                &AccountPolicy::from_pw_badlist_cache(pw_badlist_cache),
             ) {
                 Ok(AuthState::Success(_, AuthIssueSession::Token)) => {}
                 _ => panic!(),
@@ -2338,10 +2291,8 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                Some(&pw_badlist_cache),
                 &jws_signer,
-                DEFAULT_AUTH_SESSION_EXPIRY,
-                DEFAULT_AUTH_PRIVILEGE_EXPIRY,
+                &AccountPolicy::from_pw_badlist_cache(pw_badlist_cache),
             ) {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_AUTH_TYPE_MSG),
                 _ => panic!(),
@@ -2364,10 +2315,8 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                Some(&pw_badlist_cache),
                 &jws_signer,
-                DEFAULT_AUTH_SESSION_EXPIRY,
-                DEFAULT_AUTH_PRIVILEGE_EXPIRY,
+                &AccountPolicy::from_pw_badlist_cache(pw_badlist_cache),
             ) {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_TOTP_MSG),
                 _ => panic!(),
@@ -2399,10 +2348,8 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                Some(&pw_badlist_cache),
                 &jws_signer,
-                DEFAULT_AUTH_SESSION_EXPIRY,
-                DEFAULT_AUTH_PRIVILEGE_EXPIRY,
+                &AccountPolicy::from_pw_badlist_cache(pw_badlist_cache),
             ) {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_WEBAUTHN_MSG),
                 _ => panic!(),
@@ -2431,10 +2378,8 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                Some(&pw_badlist_cache),
                 &jws_signer,
-                DEFAULT_AUTH_SESSION_EXPIRY,
-                DEFAULT_AUTH_PRIVILEGE_EXPIRY,
+                &AccountPolicy::from_pw_badlist_cache(pw_badlist_cache.to_owned()),
             ) {
                 Ok(AuthState::Continue(cont)) => assert!(cont == vec![AuthAllowed::Password]),
                 _ => panic!(),
@@ -2445,10 +2390,8 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                Some(&pw_badlist_cache),
                 &jws_signer,
-                DEFAULT_AUTH_SESSION_EXPIRY,
-                DEFAULT_AUTH_PRIVILEGE_EXPIRY,
+                &AccountPolicy::from_pw_badlist_cache(pw_badlist_cache),
             ) {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_PASSWORD_MSG),
                 _ => panic!(),
@@ -2477,10 +2420,8 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                Some(&pw_badlist_cache),
                 &jws_signer,
-                DEFAULT_AUTH_SESSION_EXPIRY,
-                DEFAULT_AUTH_PRIVILEGE_EXPIRY,
+                &AccountPolicy::from_pw_badlist_cache(pw_badlist_cache.to_owned()),
             ) {
                 Ok(AuthState::Continue(cont)) => assert!(cont == vec![AuthAllowed::Password]),
                 _ => panic!(),
@@ -2491,10 +2432,8 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                Some(&pw_badlist_cache),
                 &jws_signer,
-                DEFAULT_AUTH_SESSION_EXPIRY,
-                DEFAULT_AUTH_PRIVILEGE_EXPIRY,
+                &AccountPolicy::from_pw_badlist_cache(pw_badlist_cache),
             ) {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_PASSWORD_MSG),
                 _ => panic!(),
@@ -2517,10 +2456,8 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                Some(&pw_badlist_cache),
                 &jws_signer,
-                DEFAULT_AUTH_SESSION_EXPIRY,
-                DEFAULT_AUTH_PRIVILEGE_EXPIRY,
+                &AccountPolicy::from_pw_badlist_cache(pw_badlist_cache.to_owned()),
             ) {
                 Ok(AuthState::Continue(cont)) => assert!(cont == vec![AuthAllowed::Password]),
                 _ => panic!(),
@@ -2531,10 +2468,8 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                Some(&pw_badlist_cache),
                 &jws_signer,
-                DEFAULT_AUTH_SESSION_EXPIRY,
-                DEFAULT_AUTH_PRIVILEGE_EXPIRY,
+                &AccountPolicy::from_pw_badlist_cache(pw_badlist_cache),
             ) {
                 Ok(AuthState::Success(_, AuthIssueSession::Token)) => {}
                 _ => panic!(),
@@ -2563,10 +2498,8 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                Some(&pw_badlist_cache),
                 &jws_signer,
-                DEFAULT_AUTH_SESSION_EXPIRY,
-                DEFAULT_AUTH_PRIVILEGE_EXPIRY,
+                &AccountPolicy::from_pw_badlist_cache(pw_badlist_cache.to_owned()),
             ) {
                 Ok(AuthState::Continue(cont)) => assert!(cont == vec![AuthAllowed::Password]),
                 _ => panic!(),
@@ -2577,10 +2510,8 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                Some(&pw_badlist_cache),
                 &jws_signer,
-                DEFAULT_AUTH_SESSION_EXPIRY,
-                DEFAULT_AUTH_PRIVILEGE_EXPIRY,
+                &AccountPolicy::from_pw_badlist_cache(pw_badlist_cache),
             ) {
                 Ok(AuthState::Success(_, AuthIssueSession::Token)) => {}
                 _ => panic!(),
@@ -2659,10 +2590,8 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                Some(&pw_badlist_cache),
                 &jws_signer,
-                DEFAULT_AUTH_SESSION_EXPIRY,
-                DEFAULT_AUTH_PRIVILEGE_EXPIRY,
+                &AccountPolicy::from_pw_badlist_cache(pw_badlist_cache),
             ) {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_AUTH_TYPE_MSG),
                 _ => panic!(),
@@ -2684,10 +2613,8 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                Some(&pw_badlist_cache),
                 &jws_signer,
-                DEFAULT_AUTH_SESSION_EXPIRY,
-                DEFAULT_AUTH_PRIVILEGE_EXPIRY,
+                &AccountPolicy::from_pw_badlist_cache(pw_badlist_cache),
             ) {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_BACKUPCODE_MSG),
                 _ => panic!(),
@@ -2710,10 +2637,8 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                Some(&pw_badlist_cache),
                 &jws_signer,
-                DEFAULT_AUTH_SESSION_EXPIRY,
-                DEFAULT_AUTH_PRIVILEGE_EXPIRY,
+                &AccountPolicy::from_pw_badlist_cache(pw_badlist_cache.to_owned()),
             ) {
                 Ok(AuthState::Continue(cont)) => assert!(cont == vec![AuthAllowed::Password]),
                 _ => panic!(),
@@ -2724,10 +2649,8 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                Some(&pw_badlist_cache),
                 &jws_signer,
-                DEFAULT_AUTH_SESSION_EXPIRY,
-                DEFAULT_AUTH_PRIVILEGE_EXPIRY,
+                &AccountPolicy::from_pw_badlist_cache(pw_badlist_cache),
             ) {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_PASSWORD_MSG),
                 _ => panic!(),
@@ -2756,10 +2679,8 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                Some(&pw_badlist_cache),
                 &jws_signer,
-                DEFAULT_AUTH_SESSION_EXPIRY,
-                DEFAULT_AUTH_PRIVILEGE_EXPIRY,
+                &AccountPolicy::from_pw_badlist_cache(pw_badlist_cache.to_owned()),
             ) {
                 Ok(AuthState::Continue(cont)) => assert!(cont == vec![AuthAllowed::Password]),
                 _ => panic!(),
@@ -2770,10 +2691,8 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                Some(&pw_badlist_cache),
                 &jws_signer,
-                DEFAULT_AUTH_SESSION_EXPIRY,
-                DEFAULT_AUTH_PRIVILEGE_EXPIRY,
+                &AccountPolicy::from_pw_badlist_cache(pw_badlist_cache),
             ) {
                 Ok(AuthState::Success(_, AuthIssueSession::Token)) => {}
                 _ => panic!(),
@@ -2804,10 +2723,8 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                Some(&pw_badlist_cache),
                 &jws_signer,
-                DEFAULT_AUTH_SESSION_EXPIRY,
-                DEFAULT_AUTH_PRIVILEGE_EXPIRY,
+                &AccountPolicy::from_pw_badlist_cache(pw_badlist_cache.to_owned()),
             ) {
                 Ok(AuthState::Continue(cont)) => assert!(cont == vec![AuthAllowed::Password]),
                 _ => panic!(),
@@ -2818,10 +2735,8 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                Some(&pw_badlist_cache),
                 &jws_signer,
-                DEFAULT_AUTH_SESSION_EXPIRY,
-                DEFAULT_AUTH_PRIVILEGE_EXPIRY,
+                &AccountPolicy::from_pw_badlist_cache(pw_badlist_cache),
             ) {
                 Ok(AuthState::Success(_, AuthIssueSession::Token)) => {}
                 _ => panic!(),
@@ -2891,10 +2806,8 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                Some(&pw_badlist_cache),
                 &jws_signer,
-                DEFAULT_AUTH_SESSION_EXPIRY,
-                DEFAULT_AUTH_PRIVILEGE_EXPIRY,
+                &AccountPolicy::from_pw_badlist_cache(pw_badlist_cache.to_owned()),
             ) {
                 Ok(AuthState::Continue(cont)) => assert!(cont == vec![AuthAllowed::Password]),
                 _ => panic!(),
@@ -2905,10 +2818,8 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                Some(&pw_badlist_cache),
                 &jws_signer,
-                DEFAULT_AUTH_SESSION_EXPIRY,
-                DEFAULT_AUTH_PRIVILEGE_EXPIRY,
+                &AccountPolicy::from_pw_badlist_cache(pw_badlist_cache),
             ) {
                 Ok(AuthState::Success(_, AuthIssueSession::Token)) => {}
                 _ => panic!(),
@@ -2931,10 +2842,8 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                Some(&pw_badlist_cache),
                 &jws_signer,
-                DEFAULT_AUTH_SESSION_EXPIRY,
-                DEFAULT_AUTH_PRIVILEGE_EXPIRY,
+                &AccountPolicy::from_pw_badlist_cache(pw_badlist_cache.to_owned()),
             ) {
                 Ok(AuthState::Continue(cont)) => assert!(cont == vec![AuthAllowed::Password]),
                 _ => panic!(),
@@ -2945,10 +2854,8 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                Some(&pw_badlist_cache),
                 &jws_signer,
-                DEFAULT_AUTH_SESSION_EXPIRY,
-                DEFAULT_AUTH_PRIVILEGE_EXPIRY,
+                &AccountPolicy::from_pw_badlist_cache(pw_badlist_cache),
             ) {
                 Ok(AuthState::Success(_, AuthIssueSession::Token)) => {}
                 _ => panic!(),

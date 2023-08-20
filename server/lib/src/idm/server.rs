@@ -69,6 +69,44 @@ pub struct DomainKeys {
     pub(crate) cookie_key: [u8; 64],
 }
 
+#[derive(Clone)]
+pub struct AccountPolicy {
+    pub(crate) privilege_expiry: u32,
+    pub(crate) authsession_expiry: u32,
+    pub(crate) pw_badlist_cache: HashSet<String>,
+}
+
+impl AccountPolicy {
+    pub fn new(
+        privilege_expiry: u32,
+        authsession_expiry: u32,
+        pw_badlist_cache: HashSet<String>,
+    ) -> Self {
+        Self {
+            privilege_expiry,
+            authsession_expiry,
+            pw_badlist_cache,
+        }
+    }
+
+    pub fn from_pw_badlist_cache(pw_badlist_cache: HashSet<String>) -> Self {
+        Self {
+            pw_badlist_cache,
+            ..Default::default()
+        }
+    }
+}
+
+impl Default for AccountPolicy {
+    fn default() -> Self {
+        Self {
+            privilege_expiry: DEFAULT_AUTH_PRIVILEGE_EXPIRY,
+            authsession_expiry: DEFAULT_AUTH_SESSION_EXPIRY,
+            pw_badlist_cache: Default::default(), // TODO: more thoughts on this
+        }
+    }
+}
+
 pub struct IdmServer {
     // There is a good reason to keep this single thread - it
     // means that limits to sessions can be easily applied and checked to
@@ -87,11 +125,9 @@ pub struct IdmServer {
     audit_tx: Sender<AuditEvent>,
     /// [Webauthn] verifier/config
     webauthn: Webauthn,
-    pw_badlist_cache: Arc<CowCell<HashSet<String>>>,
     oauth2rs: Arc<Oauth2ResourceServers>,
     domain_keys: Arc<CowCell<DomainKeys>>,
-    privilege_expiry: Arc<CowCell<u32>>,
-    authsession_expiry: Arc<CowCell<u32>>,
+    account_policy: Arc<CowCell<AccountPolicy>>,
 }
 
 /// Contains methods that require writes, but in the context of writing to the idm in memory structures (maybe the query server too). This is things like authentication.
@@ -107,17 +143,15 @@ pub struct IdmServerAuthTransaction<'a> {
     pub(crate) async_tx: Sender<DelayedAction>,
     pub(crate) audit_tx: Sender<AuditEvent>,
     pub(crate) webauthn: &'a Webauthn,
-    pub(crate) pw_badlist_cache: CowCellReadTxn<HashSet<String>>,
+    pub(crate) account_policy: CowCellReadTxn<AccountPolicy>,
     pub(crate) domain_keys: CowCellReadTxn<DomainKeys>,
-    pub(crate) privilege_expiry: CowCellReadTxn<u32>,
-    pub(crate) authsession_expiry: CowCellReadTxn<u32>,
 }
 
 pub struct IdmServerCredUpdateTransaction<'a> {
     pub(crate) _qs_read: QueryServerReadTransaction<'a>,
     // sid: Sid,
     pub(crate) webauthn: &'a Webauthn,
-    pub(crate) pw_badlist_cache: CowCellReadTxn<HashSet<String>>,
+    pub(crate) account_policy: CowCellReadTxn<AccountPolicy>,
     pub(crate) cred_update_sessions: BptreeMapReadTxn<'a, Uuid, CredentialUpdateSessionMutex>,
     pub(crate) domain_keys: CowCellReadTxn<DomainKeys>,
     pub(crate) crypto_policy: &'a CryptoPolicy,
@@ -139,9 +173,7 @@ pub struct IdmServerProxyWriteTransaction<'a> {
     pub(crate) sid: Sid,
     crypto_policy: &'a CryptoPolicy,
     webauthn: &'a Webauthn,
-    pw_badlist_cache: CowCellWriteTxn<'a, HashSet<String>>,
-    authsession_expiry: CowCellWriteTxn<'a, u32>,
-    privilege_expiry: CowCellWriteTxn<'a, u32>,
+    account_policy: CowCellWriteTxn<'a, AccountPolicy>,
     pub(crate) domain_keys: CowCellWriteTxn<'a, DomainKeys>,
     pub(crate) oauth2rs: Oauth2ResourceServersWriteTransaction<'a>,
 }
@@ -263,11 +295,13 @@ impl IdmServer {
                 async_tx,
                 audit_tx,
                 webauthn,
-                pw_badlist_cache: Arc::new(CowCell::new(pw_badlist_set)),
+                account_policy: Arc::new(CowCell::new(AccountPolicy::new(
+                    privilege_expiry,
+                    authsession_expiry,
+                    pw_badlist_set,
+                ))),
                 domain_keys,
                 oauth2rs: Arc::new(oauth2rs),
-                authsession_expiry: Arc::new(CowCell::new(authsession_expiry)),
-                privilege_expiry: Arc::new(CowCell::new(privilege_expiry)),
             },
             IdmServerDelayed { async_rx },
             IdmServerAudit { audit_rx },
@@ -295,10 +329,8 @@ impl IdmServer {
             async_tx: self.async_tx.clone(),
             audit_tx: self.audit_tx.clone(),
             webauthn: &self.webauthn,
-            pw_badlist_cache: self.pw_badlist_cache.read(),
+            account_policy: self.account_policy.read(),
             domain_keys: self.domain_keys.read(),
-            authsession_expiry: self.authsession_expiry.read(),
-            privilege_expiry: self.privilege_expiry.read(),
         }
     }
 
@@ -327,11 +359,9 @@ impl IdmServer {
             sid,
             crypto_policy: &self.crypto_policy,
             webauthn: &self.webauthn,
-            pw_badlist_cache: self.pw_badlist_cache.write(),
+            account_policy: self.account_policy.write(),
             domain_keys: self.domain_keys.write(),
             oauth2rs: self.oauth2rs.write(),
-            authsession_expiry: self.authsession_expiry.write(),
-            privilege_expiry: self.privilege_expiry.write(),
         }
     }
 
@@ -340,7 +370,7 @@ impl IdmServer {
             _qs_read: self.qs.read().await,
             // sid: Sid,
             webauthn: &self.webauthn,
-            pw_badlist_cache: self.pw_badlist_cache.read(),
+            account_policy: self.account_policy.read(),
             cred_update_sessions: self.cred_update_sessions.read(),
             domain_keys: self.domain_keys.read(),
             crypto_policy: &self.crypto_policy,
@@ -1136,7 +1166,6 @@ impl<'a> IdmServerAuthTransaction<'a> {
                     // Process the credentials here as required.
                     // Basically throw them at the auth_session and see what
                     // falls out.
-                    let pw_badlist_cache = Some(&(*self.pw_badlist_cache));
                     auth_session
                         .validate_creds(
                             &creds.cred,
@@ -1144,10 +1173,8 @@ impl<'a> IdmServerAuthTransaction<'a> {
                             &self.async_tx,
                             &self.audit_tx,
                             self.webauthn,
-                            pw_badlist_cache,
                             &self.domain_keys.uat_jwt_signer,
-                            *self.authsession_expiry,
-                            *self.privilege_expiry,
+                            &self.account_policy,
                         )
                         .map(|aus| {
                             // Inspect the result:
@@ -1581,7 +1608,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         // check a password badlist to eliminate more content
         // we check the password as "lower case" to help eliminate possibilities
         // also, when pw_badlist_cache is read from DB, it is read as Value (iutf8 lowercase)
-        if (*self.pw_badlist_cache).contains(&cleartext.to_lowercase()) {
+        if (self.account_policy.pw_badlist_cache).contains(&cleartext.to_lowercase()) {
             security_info!("Password found in badlist, rejecting");
             Err(OperationError::PasswordQuality(vec![
                 PasswordFeedback::BadListed,
@@ -2051,10 +2078,8 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         // Commit everything.
         self.oauth2rs.commit();
         self.domain_keys.commit();
-        self.pw_badlist_cache.commit();
+        self.account_policy.commit();
         self.cred_update_sessions.commit();
-        self.authsession_expiry.commit();
-        self.privilege_expiry.commit();
         trace!("cred_update_session.commit");
         self.qs_write.commit()
     }
@@ -2062,7 +2087,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
     fn reload_password_badlist(&mut self) -> Result<(), OperationError> {
         match self.qs_write.get_password_badlist() {
             Ok(badlist_entry) => {
-                *self.pw_badlist_cache = badlist_entry;
+                self.account_policy.pw_badlist_cache = badlist_entry;
                 Ok(())
             }
             Err(e) => Err(e),
@@ -2072,7 +2097,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
     fn reload_authsession_expiry(&mut self) -> Result<(), OperationError> {
         match self.qs_write.get_authsession_expiry() {
             Ok(expiry) => {
-                *self.authsession_expiry = expiry;
+                self.account_policy.authsession_expiry = expiry;
                 Ok(())
             }
             Err(e) => Err(e),
@@ -2082,7 +2107,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
     fn reload_privilege_expiry(&mut self) -> Result<(), OperationError> {
         match self.qs_write.get_privilege_expiry() {
             Ok(expiry) => {
-                *self.privilege_expiry = expiry;
+                self.account_policy.privilege_expiry = expiry;
                 Ok(())
             }
             Err(e) => Err(e),
@@ -3647,7 +3672,7 @@ mod tests {
         let mut idms_prox_write = idms.proxy_write(ct).await;
 
         let new_authsession_expiry = 1000_u32;
-        *idms_prox_write.authsession_expiry = new_authsession_expiry;
+        idms_prox_write.account_policy.authsession_expiry = new_authsession_expiry;
         assert!(idms_prox_write.commit().is_ok());
 
         // Start anonymous auth.
