@@ -330,6 +330,7 @@ impl Account {
         expire: Option<&OffsetDateTime>,
     ) -> bool {
         let cot = OffsetDateTime::UNIX_EPOCH + ct;
+        trace!("Checking within valid time: {:?} {:?}", valid_from, expire);
 
         let vmin = if let Some(vft) = valid_from {
             // If current time greater than start time window
@@ -542,7 +543,7 @@ impl Account {
     ) -> bool {
         // Remember, token expiry is checked by validate_and_parse_token_to_token.
         // If we wanted we could check other properties of the uat here?
-        // Alternatelly, we could always store LESS in the uat because of this?
+        // Alternatively, we could always store LESS in the uat because of this?
 
         let within_valid_window = Account::check_within_valid_time(
             ct,
