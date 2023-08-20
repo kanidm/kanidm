@@ -18,7 +18,7 @@ use cursive::{
     align::HAlign,
     view::{Nameable, Resizable},
     views::{Dialog, DummyView, EditView, LinearLayout, TextArea, TextView},
-    CbSink, Cursive, CursiveExt, View,
+    CbSink, Cursive, View, crossterm, CursiveRunnable,
 };
 use kanidm_client::KanidmClient;
 use kanidm_proto::internal::{IdentifyUserRequest, IdentifyUserResponse};
@@ -316,7 +316,7 @@ async fn start_business_logic_loop(
             },
             IdentifyUserResponse::CodeFailure => {
                 match msg {
-                    IdentifyUserMsg::SubmitCode { other_id, .. } => IdentifyUserState::Error { 
+                    IdentifyUserMsg::SubmitCode {  .. } => IdentifyUserState::Error { 
                     error_title: "🚨 Identity verification failed 🚨".to_string() ,
                     error_msg: format!("The provided code doesn't match, please try again."), 
                     },
@@ -378,7 +378,7 @@ enum IdentifyUserMsg {
     ReDisplayCodeSecond { other_id: Arc<String> },
 }
 
-struct Ui(Cursive);
+struct Ui(CursiveRunnable);
 
 struct UiUserData {
     controller_tx: UnboundedSender<IdentifyUserMsg>,
@@ -390,7 +390,7 @@ impl Ui {
         controller_tx: UnboundedSender<IdentifyUserMsg>,
         ui_rx: UnboundedReceiver<IdentifyUserState>,
     ) -> Self {
-        let mut cursive = Cursive::new();
+        let mut cursive = crossterm();
         cursive.add_global_callback('q', |s| {
             s.quit();
         });
