@@ -82,13 +82,13 @@ impl SelfOpt {
                         match o_ent {
                             Some(ent) => ent,
                             None => {
-                                eprintln!("Authentication with cached token failed, can't query information.");
+                                eprintln!("Authentication with cached token failed, can't query information."); // TODO: add an error ID (login, or clear token cache)
                                 return;
                             }
                         }
                     }
                     Err(e) => {
-                        println!("Error: {:?}", e);
+                        println!("Error querying whoami endpoint: {:?}", e);  // TODO: add an error ID (internal/web response error, restart or check connectivity)
                         return;
                     }
                 };
@@ -96,7 +96,7 @@ impl SelfOpt {
                 let spn = match whoami_response.attrs.get("spn").and_then(|v| v.first()) {
                     Some(spn) => spn,
                     None => {
-                        eprintln!("Failed to retrieve the id from whoami response :/\nExiting....");
+                        eprintln!("Failed to parse your SPN from the system's whoami endpoint, exiting!"); // TODO: add an error ID (internal/web response error, restart)
                         return;
                     }
                 };
@@ -203,7 +203,7 @@ pub async fn run_identity_verification_tui(self_id: &str, client: KanidmClient) 
 
     // we manually send the initial start message
     if controller_tx.send(IdentifyUserMsg::Start).is_err() {
-        eprint!("Failed to send the initial start message to the controller! Aborting...");
+        eprint!("Failed to send the initial start message to the controller! Aborting..."); // TODO: add an error ID (internal error, restart)
         return;
     };
 
@@ -213,7 +213,7 @@ pub async fn run_identity_verification_tui(self_id: &str, client: KanidmClient) 
     let gui_handle = std::thread::spawn(move || {
         let mut ui = Ui::new(controller_tx, ui_rx);
         if cb_tx.send(ui.get_cb()).is_err() {
-            eprintln!("Callback oneshot channel closed too soon! Aborting..."); // TODO: what the hell are we supposed to tell the user?
+        eprintln!("Internal callback error in the CLI's TUI, please restart or log an issue with the Kanidm project if it continues to occur."); // TODO: add an error ID (internal error, restart)
             return;
         };
         ui.0.run();
@@ -222,7 +222,7 @@ pub async fn run_identity_verification_tui(self_id: &str, client: KanidmClient) 
     start_business_logic_loop(controller_rx, cb_rx, ui_tx, self_id, client).await;
 
     if let Err(e) = gui_handle.join() {
-        eprintln!("The UI thread returned an error: {:?}", e);
+        eprintln!("The UI thread returned an error, please restart the program. Error was: {:?}", e); // TODO: add an error ID (internal error, restart)
     };
 }
 
@@ -234,7 +234,7 @@ async fn start_business_logic_loop(
     client: KanidmClient,
 ) {
     let Ok(cb) = cb_rx.await else {
-        eprintln!("Callback oneshot channel closed too soon! Aborting..."); // TODO: what the hell are we supposed to tell the user?
+        eprintln!("Internal callback error in the CLI's logic loop, please restart or log an issue with the Kanidm project if it continues to occur."); // TODO: add an error ID (internal error, restart)
         return;
     };
 
