@@ -22,7 +22,6 @@ use cursive::{
 };
 use kanidm_client::KanidmClient;
 use kanidm_proto::internal::{IdentifyUserRequest, IdentifyUserResponse};
-use regex::Regex;
 use std::{cell::RefCell, path::PathBuf, sync::Arc, time::SystemTime};
 use tokio::sync::{
     mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender},
@@ -185,14 +184,6 @@ pub(crate) fn password_prompt(prompt: &str) -> Option<String> {
     None
 }
 
-// TODO: this regex is also used in the webui (https://github.com/kanidm/kanidm/blob/003234c2d0a52146683628156e2a106bf61fe9f4/server/web_ui/src/views/identityverification.rs#L60) should we move it to proto?
-
-lazy_static::lazy_static! {
-    pub static ref VALIDATE_TOTP_RE: Regex = {
-        #[allow(clippy::expect_used)]
-        Regex::new(r"^\d{5}$|^\d{6}$").expect("Invalid singleline regex found")
-    };
-}
 // here I used a simple function instead of a struct because all the channel stuff requires ownership, so if we were to use a struct with a `run` method, it would have to take ownership of everything
 // so might as well just use a function
 pub async fn run_identity_verification_tui(self_id: &str, client: KanidmClient) {
@@ -240,10 +231,10 @@ async fn start_business_logic_loop(
 
     let send_msg_and_call_callback = |msg: IdentifyUserState| {
         if ui_tx.send(msg).is_err() {
-            eprintln!("UI channel closed too soon! Aborting..."); // TODO: what the hell are we supposed to tell the user?
+            eprintln!("The UI thread returned an error, please restart the program."); // TODO: add an error ID (internal error, restart)
         }
         if cb.send(Box::new(Ui::update_state_callback)).is_err() {
-            eprintln!("Callback channel closed too soon! Aborting..."); // TODO: what the hell are we supposed to tell the user?
+            eprintln!("The UI thread returned an error, please restart the program."); // TODO: add an error ID (internal error, restart)
         };
     };
     let self_id = Arc::new(self_id.to_string());
@@ -692,7 +683,7 @@ impl Ui {
                 return None;
             }
         };
-        if !VALIDATE_TOTP_RE.is_match(code) {
+        if code.len() < 5 || code.len() > 6 {
             Self::disposable_warning_view(s, "The code should be a 5 or 6 digit number!");
             return None;
         };

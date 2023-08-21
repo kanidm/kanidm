@@ -50,8 +50,6 @@ tokio = { workspace = true, features = ["rt", "macros"] }
 url = { workspace = true, features = ["serde"] }
 uuid = { workspace=true }
 zxcvbn = { workspace=true }
-regex.workspace = true
-lazy_static.workspace = true
 
 [dependencies.cursive]
 version = "0.20.0"
