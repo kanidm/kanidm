@@ -1,6 +1,22 @@
-""" sudo plugin for Kanidm
+"""
 
-Totes untested, plz test.
+This is a sudo plugin for Kanidm, it allows you to use
+Kanidm as a source of truth for sudoers.
+
+See Sudo's documentation for how to use this plugin: https://www.sudo.ws/posts/2020/05/sudo-1.9-using-the-group-plugin-from-python/
+
+*** untested in a live environment, someone please test this ***
+
+Example running it on the CLI:
+
+```shell
+KANIDM_CONFIG=~/.config/kanidm kanidm_sudo.py \
+        username@example.org krab_admins
+INFO:root:Checking if username@example.org is a member of krab_admins
+INFO:root:result: 1
+```
+
+- @yaleman
 
 """
 import asyncio
@@ -36,7 +52,7 @@ class SudoGroupPlugin(sudo.Plugin):  # type: ignore
             self.event_loop = asyncio.new_event_loop()
 
             self.kanidm_client = kanidm.KanidmClient(
-                uri="https://internal.kanidm.yaleman.org"
+                config_file=os.getenv("KANIDM_CONFIG", "/etc/kanidm/kanidm.toml"),
             )
             self.auth_as_anonymous()
         except Exception as error:

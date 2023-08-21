@@ -159,19 +159,21 @@ class KanidmClient:
     ) -> ClientResponse:
         if timeout is None:
             timeout = self.config.connect_timeout
+        # if we have a token set, we send it.
+        if self.config.auth_token is not None:
+            if headers is None:
+                headers = self._token_headers
+            elif headers.get("authorization") is None:
+                headers.update(self._token_headers)
+        logging.debug(
+            "_call method=%s to %s, headers=%s",
+            method,
+            self.get_path_uri(path),
+            json_lib.dumps(headers),
+        )
+        response_headers: Dict[str, Any] = {}
+        response_status: int = -1
         async with aiohttp.client.ClientSession() as session:
-            # if we have a token set, we send it.
-            if self.config.auth_token is not None:
-                if headers is None:
-                    headers = self._token_headers
-                elif headers.get("authorization") is None:
-                    headers.update(self._token_headers)
-            logging.debug(
-                "_call method=%s to %s, headers=%s",
-                method,
-                self.get_path_uri(path),
-                json_lib.dumps(headers),
-            )
             async with session.request(
                 method=method,
                 url=self.get_path_uri(path),
@@ -186,18 +188,20 @@ class KanidmClient:
                     response_json = json_lib.loads(content)
                     if not isinstance(response_json, dict):
                         response_json = None
+                    response_headers = dict(request.headers)
+                    response_status = request.status
                 except json_lib.JSONDecodeError as json_error:
                     logging.error("Failed to JSON Decode Response: %s", json_error)
                     logging.error("Response data: %s", content)
                     response_json = {}
-                response_input = {
-                    "data": response_json,
-                    "content": content.decode("utf-8"),
-                    "headers": request.headers,
-                    "status_code": request.status,
-                }
-                logging.debug(json_lib.dumps(response_input, default=str, indent=4))
-                response = ClientResponse.model_validate(response_input)
+            response_input = {
+                "data": response_json,
+                "content": content.decode("utf-8"),
+                "headers": response_headers,
+                "status_code": response_status,
+            }
+            logging.debug(json_lib.dumps(response_input, default=str, indent=4))
+            response = ClientResponse.model_validate(response_input)
             return response
 
     async def call_get(
@@ -376,6 +380,7 @@ class KanidmClient:
     ) -> Dict[str, str]:
         """create a headers dict from a session id"""
         # TODO: perhaps allow session_header to take a dict and update it, too?
+
         return {
             "authorization": f"bearer {sessionid}",
         }
