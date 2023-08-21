@@ -14,6 +14,7 @@ use std::net::TcpStream;
 use std::sync::atomic::{AtomicU16, Ordering};
 
 use kanidm_client::{KanidmClient, KanidmClientBuilder};
+use kanidm_proto::constants::{ATTR_DESCRIPTION, ATTR_LDAP_SSH_PUBLICKEY, ATTR_MAIL, ATTR_NAME};
 use kanidm_proto::v1::{Filter, Modify, ModifyList};
 use kanidmd_core::config::{Configuration, IntegrationTestConfig};
 use kanidmd_core::{create_server_core, CoreHandle};
@@ -149,7 +150,7 @@ pub async fn add_all_attrs(
         .await
         .expect("Failed to extend user group");
 
-    for attr in ["ssh_publickey", "mail"].iter() {
+    for attr in [ATTR_LDAP_SSH_PUBLICKEY, ATTR_MAIL].iter() {
         println!("Checking writable for {}", attr);
         #[allow(clippy::expect_used)]
         let res = is_attr_writable(rsclient, id, attr)
@@ -198,7 +199,7 @@ pub async fn is_attr_writable(rsclient: &KanidmClient, id: &str, attr: &str) -> 
                 .await
                 .is_ok(),
         ),
-        "ssh_publickey" => Some(
+        kanidm_proto::constants::ATTR_LDAP_SSH_PUBLICKEY => Some(
             rsclient
                 .idm_person_account_post_ssh_pubkey(
                     id,
@@ -345,9 +346,10 @@ pub async fn test_modify_group(
     // need user test created to be added as test part
     for group in group_names.iter() {
         println!("Testing group: {}", group);
-        for attr in ["description", "name"].iter() {
+        for attr in [ATTR_DESCRIPTION, ATTR_NAME].iter() {
             #[allow(clippy::unwrap_used)]
             let is_writable = is_attr_writable(rsclient, group, attr).await.unwrap();
+            dbg!(group, attr, is_writable, can_be_modified);
             assert!(is_writable == can_be_modified)
         }
         assert!(

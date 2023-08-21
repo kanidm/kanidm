@@ -191,7 +191,7 @@ mod tests {
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq("name", PartialValue::new_iutf8("testperson"))),
+            filter!(f_eq(Attribute::Name, PartialValue::new_iutf8("testperson"))),
             ModifyList::new_list(vec![Modify::Present(
                 AttrString::from("password_import"),
                 Value::from(IMPORT_HASH)
@@ -226,7 +226,7 @@ mod tests {
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq("name", PartialValue::new_iutf8("testperson"))),
+            filter!(f_eq(Attribute::Name, PartialValue::new_iutf8("testperson"))),
             ModifyList::new_list(vec![Modify::Present(
                 AttrString::from("password_import"),
                 Value::from(IMPORT_HASH)
@@ -264,7 +264,7 @@ mod tests {
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq("name", PartialValue::new_iutf8("testperson"))),
+            filter!(f_eq(Attribute::Name, PartialValue::new_iutf8("testperson"))),
             ModifyList::new_list(vec![Modify::Present(
                 AttrString::from("password_import"),
                 Value::from(IMPORT_HASH)
@@ -295,12 +295,18 @@ mod tests {
         let euuid = Uuid::new_v4();
 
         let ea = entry_init!(
-            ("class", Value::new_class("account")),
-            ("class", Value::new_class("person")),
-            ("name", Value::new_iname("testperson")),
-            ("description", Value::Utf8("testperson".to_string())),
-            ("displayname", Value::Utf8("testperson".to_string())),
-            ("uuid", Value::Uuid(euuid))
+            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
+            (Attribute::Name.as_ref(), Value::new_iname("testperson")),
+            (
+                Attribute::Description.as_ref(),
+                Value::Utf8("testperson".to_string())
+            ),
+            (
+                Attribute::DisplayName.as_ref(),
+                Value::Utf8("testperson".to_string())
+            ),
+            (Attribute::Uuid.as_ref(), Value::Uuid(euuid))
         );
 
         let preload = vec![ea];
@@ -311,7 +317,7 @@ mod tests {
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq("name", PartialValue::new_iutf8("testperson"))),
+            filter!(f_eq(Attribute::Name, PartialValue::new_iutf8("testperson"))),
             ModifyList::new_list(vec![
                 Modify::Present(
                     AttrString::from("password_import"),
@@ -353,12 +359,18 @@ mod tests {
         let euuid = Uuid::new_v4();
 
         let ea = entry_init!(
-            ("class", Value::new_class("account")),
-            ("class", Value::new_class("person")),
-            ("name", Value::new_iname("testperson")),
-            ("description", Value::Utf8("testperson".to_string())),
-            ("displayname", Value::Utf8("testperson".to_string())),
-            ("uuid", Value::Uuid(euuid))
+            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
+            (Attribute::Name.as_ref(), Value::new_iname("testperson")),
+            (
+                Attribute::Description.as_ref(),
+                Value::Utf8("testperson".to_string())
+            ),
+            (
+                Attribute::DisplayName.as_ref(),
+                Value::Utf8("testperson".to_string())
+            ),
+            (Attribute::Uuid.as_ref(), Value::Uuid(euuid))
         );
 
         let preload = vec![ea];
@@ -371,7 +383,7 @@ mod tests {
                     .to_string()
             ))),
             preload,
-            filter!(f_eq("name", PartialValue::new_iutf8("testperson"))),
+            filter!(f_eq(Attribute::Name, PartialValue::new_iutf8("testperson"))),
             ModifyList::new_list(vec![Modify::Present(
                 AttrString::from("totp_import"),
                 Value::TotpSecret("a".to_string(), totp_a)

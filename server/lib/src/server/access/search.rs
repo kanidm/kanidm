@@ -127,7 +127,7 @@ fn search_oauth2_filter_entry<'a>(
         IdentType::Internal | IdentType::Synch(_) => AccessResult::Ignore,
         IdentType::User(iuser) => {
             let contains_o2_rs = entry
-                .get_ava_as_iutf8("class")
+                .get_ava_as_iutf8(Attribute::Class.as_ref())
                 .map(|set| {
                     trace!(?set);
                     set.contains("oauth2_resource_server")
@@ -167,7 +167,7 @@ fn search_sync_account_filter_entry<'a>(
             // Is the user a synced object?
             let is_user_sync_account = iuser
                 .entry
-                .get_ava_as_iutf8("class")
+                .get_ava_as_iutf8(Attribute::Class.as_ref())
                 .map(|set| {
                     trace!(?set);
                     set.contains("sync_object") && set.contains("account")
@@ -176,7 +176,7 @@ fn search_sync_account_filter_entry<'a>(
 
             if is_user_sync_account {
                 let is_target_sync_account = entry
-                    .get_ava_as_iutf8("class")
+                    .get_ava_as_iutf8(Attribute::Class.as_ref())
                     .map(|set| {
                         trace!(?set);
                         set.contains("sync_account")

@@ -18,6 +18,7 @@ use compact_jwt::{JwsSigner, OidcClaims, OidcSubject};
 use concread::cowcell::*;
 use fernet::Fernet;
 use hashbrown::HashMap;
+use kanidm_proto::constants::*;
 pub use kanidm_proto::oauth2::{
     AccessTokenIntrospectRequest, AccessTokenIntrospectResponse, AccessTokenRequest,
     AccessTokenResponse, AuthorisationRequest, CodeChallengeMethod, ErrorResponse, GrantTypeReq,
@@ -316,20 +317,20 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
                 let uuid = ent.get_uuid();
                 admin_info!(?uuid, "Checking oauth2 configuration");
                 // From each entry, attempt to make an oauth2 configuration.
-                if !ent.attribute_equality("class", &PVCLASS_OAUTH2_RS) {
+                if !ent.attribute_equality(Attribute::Class.as_ref(), &EntryClass::OAuth2ResourceServer.into()) {
                     admin_error!("Missing class oauth2_resource_server");
                     // Check we have oauth2_resource_server class
                     return Err(OperationError::InvalidEntryState);
                 }
 
-                let type_ = if ent.attribute_equality("class", &PVCLASS_OAUTH2_BASIC) {
+                let type_ = if ent.attribute_equality(Attribute::Class.as_ref(), &EntryClass::OAuth2ResourceServerBasic.into()) {
                     let authz_secret = ent
-                        .get_ava_single_secret("oauth2_rs_basic_secret")
+                        .get_ava_single_secret(ATTR_OAUTH2_RS_BASIC_SECRET)
                         .map(str::to_string)
                         .ok_or(OperationError::InvalidValueState)?;
 
                     let enable_pkce = ent
-                        .get_ava_single_bool("oauth2_allow_insecure_client_disable_pkce")
+                        .get_ava_single_bool(Attribute::OAuth2AllowInsecureClientDisablePkce.as_ref())
                         .map(|e| !e)
                         .unwrap_or(true);
 
@@ -337,7 +338,7 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
                         authz_secret,
                         enable_pkce,
                     }
-                } else if ent.attribute_equality("class", &PVCLASS_OAUTH2_PUBLIC) {
+                } else if ent.attribute_equality(Attribute::Class.as_ref(), &EntryClass::OAuth2ResourceServerPublic.into()) {
                     OauthRSType::Public
                 } else {
                     error!("Missing class determining oauth2 rs type");
@@ -356,7 +357,7 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
                     .ok_or(OperationError::InvalidValueState)?;
 
                 let (origin, origin_https) = ent
-                    .get_ava_single_url("oauth2_rs_origin")
+                    .get_ava_single_url(Attribute::OAuth2RsOrigin.as_ref())
                     .map(|url| (url.origin(), url.scheme() == "https"))
                     .ok_or(OperationError::InvalidValueState)?;
 
@@ -377,17 +378,17 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
                     })?;
 
                 let scope_maps = ent
-                    .get_ava_as_oauthscopemaps("oauth2_rs_scope_map")
+                    .get_ava_as_oauthscopemaps(Attribute::OAuth2RsScopeMap.as_ref())
                     .cloned()
                     .unwrap_or_default();
 
                 let sup_scope_maps = ent
-                    .get_ava_as_oauthscopemaps("oauth2_rs_sup_scope_map")
+                    .get_ava_as_oauthscopemaps(Attribute::OAuth2RsSupScopeMap.as_ref())
                     .cloned()
                     .unwrap_or_default();
 
-                trace!("oauth2_jwt_legacy_crypto_enable");
-                let jws_signer = if ent.get_ava_single_bool("oauth2_jwt_legacy_crypto_enable").unwrap_or(false) {
+                trace!("{}", Attribute::OAuth2JwtLegacyCryptoEnable.as_ref());
+                let jws_signer = if ent.get_ava_single_bool(Attribute::OAuth2JwtLegacyCryptoEnable.as_ref()).unwrap_or(false) {
                     trace!("rs256_private_key_der");
                     ent
                         .get_ava_single_private_binary("rs256_private_key_der")
@@ -562,7 +563,10 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 )]);
 
                 self.qs_write
-                    .internal_modify(&filter!(f_eq("uuid", PartialValue::Uuid(uuid))), &modlist)
+                    .internal_modify(
+                        &filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(uuid))),
+                        &modlist,
+                    )
                     .map_err(|e| {
                         admin_error!("Failed to modify - revoke oauth2 session {:?}", e);
                         Oauth2Error::ServerError(e)
@@ -735,7 +739,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         ]);
 
         self.qs_write.internal_modify(
-            &filter_all!(f_eq("uuid", PartialValue::Uuid(uat.uuid))),
+            &filter_all!(f_eq(Attribute::Uuid, PartialValue::Uuid(uat.uuid))),
             &modlist,
         )?;
 
@@ -932,7 +936,10 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                     )]);
 
                     self.qs_write
-                        .internal_modify(&filter!(f_eq("uuid", PartialValue::Uuid(uuid))), &modlist)
+                        .internal_modify(
+                            &filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(uuid))),
+                            &modlist,
+                        )
                         .map_err(|e| {
                             admin_error!("Failed to modify - revoke oauth2 session {:?}", e);
                             Oauth2Error::ServerError(e)
@@ -1004,7 +1011,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             Some(str_join(&scopes))
         };
 
-        let id_token = if scopes.contains(&"openid".to_string()) {
+        let id_token = if scopes.contains(OAUTH2_SCOPE_OPENID) {
             // TODO: Scopes map to claims:
             //
             // * profile - (name, family\_name, given\_name, middle\_name, nickname, preferred\_username, profile, picture, website, gender, birthdate, zoneinfo, locale, and updated\_at)
@@ -1138,7 +1145,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         self.qs_write
             .internal_modify(
-                &filter!(f_eq("uuid", PartialValue::Uuid(account_uuid))),
+                &filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(account_uuid))),
                 &modlist,
             )
             .map_err(|e| {
@@ -1380,7 +1387,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
 
         // MICRO OPTIMISATION = flag if we have openid first, so we can into_iter here rather than
         // cloning.
-        let openid_requested = req_scopes.contains("openid");
+        let openid_requested = req_scopes.contains(OAUTH2_SCOPE_OPENID);
 
         let granted_scopes: BTreeSet<String> = o2rs
             .sup_scope_maps
@@ -1450,8 +1457,8 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
             let mut pii_scopes = BTreeSet::default();
             if openid_requested {
                 // Only mutate if things were requested under openid
-                if granted_scopes.contains("email") {
-                    pii_scopes.insert("email".to_string());
+                if granted_scopes.contains(OAUTH2_SCOPE_EMAIL) {
+                    pii_scopes.insert(OAUTH2_SCOPE_EMAIL.to_string());
                     pii_scopes.insert("email_verified".to_string());
                 }
             };
@@ -1902,7 +1909,7 @@ fn s_claims_for_account(
         Some(account.spn.clone())
     };
 
-    let (email, email_verified) = if scopes.contains(&"email".to_string()) {
+    let (email, email_verified) = if scopes.contains(OAUTH2_SCOPE_EMAIL) {
         if let Some(mp) = &account.mail_primary {
             (Some(mp.clone()), Some(true))
         } else {
@@ -1959,6 +1966,7 @@ mod tests {
 
     use base64urlsafedata::Base64UrlSafeData;
     use compact_jwt::{JwaAlg, Jwk, JwkUse, JwsValidator, OidcSubject, OidcUnverified};
+    use kanidm_proto::constants::*;
     use kanidm_proto::oauth2::*;
     use kanidm_proto::v1::UserAuthToken;
     use openssl::sha;
@@ -2029,29 +2037,47 @@ mod tests {
         let uuid = Uuid::new_v4();
 
         let e: Entry<EntryInit, EntryNew> = entry_init!(
-            ("class", Value::new_class("object")),
-            ("class", Value::new_class("oauth2_resource_server")),
-            ("class", Value::new_class("oauth2_resource_server_basic")),
-            ("uuid", Value::Uuid(uuid)),
-            ("oauth2_rs_name", Value::new_iname("test_resource_server")),
-            ("displayname", Value::new_utf8s("test_resource_server")),
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
             (
-                "oauth2_rs_origin",
+                Attribute::Class.as_ref(),
+                EntryClass::OAuth2ResourceServer.to_value()
+            ),
+            (
+                Attribute::Class.as_ref(),
+                EntryClass::OAuth2ResourceServerBasic.to_value()
+            ),
+            (Attribute::Uuid.as_ref(), Value::Uuid(uuid)),
+            (
+                Attribute::OAuth2RsName.as_ref(),
+                Value::new_iname("test_resource_server")
+            ),
+            (
+                Attribute::DisplayName.as_ref(),
+                Value::new_utf8s("test_resource_server")
+            ),
+            (
+                Attribute::OAuth2RsOrigin.as_ref(),
                 Value::new_url_s("https://demo.example.com").unwrap()
             ),
             // System admins
             (
-                "oauth2_rs_scope_map",
-                Value::new_oauthscopemap(UUID_SYSTEM_ADMINS, btreeset!["groups".to_string()])
-                    .expect("invalid oauthscope")
+                Attribute::OAuth2RsScopeMap.as_ref(),
+                Value::new_oauthscopemap(
+                    UUID_SYSTEM_ADMINS,
+                    btreeset![OAUTH2_SCOPE_GROUPS.to_string()]
+                )
+                .expect("invalid oauthscope")
             ),
             (
-                "oauth2_rs_scope_map",
-                Value::new_oauthscopemap(UUID_IDM_ALL_ACCOUNTS, btreeset!["openid".to_string()])
-                    .expect("invalid oauthscope")
+                Attribute::OAuth2RsScopeMap.as_ref(),
+                Value::new_oauthscopemap(
+                    UUID_IDM_ALL_ACCOUNTS,
+                    btreeset![OAUTH2_SCOPE_OPENID.to_string()]
+                )
+                .expect("invalid oauthscope")
             ),
             (
-                "oauth2_rs_sup_scope_map",
+                Attribute::OAuth2RsSupScopeMap.as_ref(),
                 Value::new_oauthscopemap(
                     UUID_IDM_ALL_ACCOUNTS,
                     btreeset!["supplement".to_string()]
@@ -2059,11 +2085,11 @@ mod tests {
                 .expect("invalid oauthscope")
             ),
             (
-                "oauth2_allow_insecure_client_disable_pkce",
+                Attribute::OAuth2AllowInsecureClientDisablePkce.as_ref(),
                 Value::new_bool(!enable_pkce)
             ),
             (
-                "oauth2_jwt_legacy_crypto_enable",
+                Attribute::OAuth2JwtLegacyCryptoEnable.as_ref(),
                 Value::new_bool(enable_legacy_crypto)
             ),
             (
@@ -2126,7 +2152,7 @@ mod tests {
         idms_prox_write
             .qs_write
             .internal_modify(
-                &filter!(f_eq("uuid", PartialValue::Uuid(UUID_ADMIN))),
+                &filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(UUID_ADMIN))),
                 &modlist,
             )
             .expect("Failed to modify user");
@@ -2149,29 +2175,44 @@ mod tests {
         let uuid = Uuid::new_v4();
 
         let e: Entry<EntryInit, EntryNew> = entry_init!(
-            ("class", Value::new_class("object")),
-            ("class", Value::new_class("oauth2_resource_server")),
-            ("class", Value::new_class("oauth2_resource_server_public")),
-            ("uuid", Value::Uuid(uuid)),
-            ("oauth2_rs_name", Value::new_iname("test_resource_server")),
-            ("displayname", Value::new_utf8s("test_resource_server")),
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
             (
-                "oauth2_rs_origin",
+                Attribute::Class.as_ref(),
+                EntryClass::OAuth2ResourceServer.to_value()
+            ),
+            (
+                Attribute::Class.as_ref(),
+                EntryClass::OAuth2ResourceServerPublic.to_value()
+            ),
+            (Attribute::Uuid.as_ref(), Value::Uuid(uuid)),
+            (
+                Attribute::OAuth2RsName.as_ref(),
+                Value::new_iname("test_resource_server")
+            ),
+            (
+                Attribute::DisplayName.as_ref(),
+                Value::new_utf8s("test_resource_server")
+            ),
+            (
+                Attribute::OAuth2RsOrigin.as_ref(),
                 Value::new_url_s("https://demo.example.com").unwrap()
             ),
             // System admins
             (
-                "oauth2_rs_scope_map",
+                Attribute::OAuth2RsScopeMap.as_ref(),
                 Value::new_oauthscopemap(UUID_SYSTEM_ADMINS, btreeset!["groups".to_string()])
                     .expect("invalid oauthscope")
             ),
             (
-                "oauth2_rs_scope_map",
-                Value::new_oauthscopemap(UUID_IDM_ALL_ACCOUNTS, btreeset!["openid".to_string()])
-                    .expect("invalid oauthscope")
+                Attribute::OAuth2RsScopeMap.as_ref(),
+                Value::new_oauthscopemap(
+                    UUID_IDM_ALL_ACCOUNTS,
+                    btreeset![OAUTH2_SCOPE_OPENID.to_string()]
+                )
+                .expect("invalid oauthscope")
             ),
             (
-                "oauth2_rs_sup_scope_map",
+                Attribute::OAuth2RsSupScopeMap.as_ref(),
                 Value::new_oauthscopemap(
                     UUID_IDM_ALL_ACCOUNTS,
                     btreeset!["supplement".to_string()]
@@ -2225,7 +2266,7 @@ mod tests {
         idms_prox_write
             .qs_write
             .internal_modify(
-                &filter!(f_eq("uuid", PartialValue::Uuid(UUID_ADMIN))),
+                &filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(UUID_ADMIN))),
                 &modlist,
             )
             .expect("Failed to modify user");
@@ -2279,7 +2320,7 @@ mod tests {
             &uat,
             ct,
             code_challenge,
-            "openid".to_string()
+            OAUTH2_SCOPE_OPENID.to_string()
         );
 
         // Should be in the consent phase;
@@ -2345,7 +2386,7 @@ mod tests {
             &uat,
             ct,
             code_challenge,
-            "openid".to_string()
+            OAUTH2_SCOPE_OPENID.to_string()
         );
 
         // Should be in the consent phase;
@@ -2420,7 +2461,7 @@ mod tests {
             state: "123".to_string(),
             pkce_request: pkce_request.clone(),
             redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
-            scope: "openid".to_string(),
+            scope: OAUTH2_SCOPE_OPENID.to_string(),
             nonce: None,
             oidc_ext: Default::default(),
             unknown_keys: Default::default(),
@@ -2440,7 +2481,7 @@ mod tests {
             state: "123".to_string(),
             pkce_request: None,
             redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
-            scope: "openid".to_string(),
+            scope: OAUTH2_SCOPE_OPENID.to_string(),
             nonce: None,
             oidc_ext: Default::default(),
             unknown_keys: Default::default(),
@@ -2460,7 +2501,7 @@ mod tests {
             state: "123".to_string(),
             pkce_request: pkce_request.clone(),
             redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
-            scope: "openid".to_string(),
+            scope: OAUTH2_SCOPE_OPENID.to_string(),
             nonce: None,
             oidc_ext: Default::default(),
             unknown_keys: Default::default(),
@@ -2480,7 +2521,7 @@ mod tests {
             state: "123".to_string(),
             pkce_request: pkce_request.clone(),
             redirect_uri: Url::parse("https://totes.not.sus.org/oauth2/result").unwrap(),
-            scope: "openid".to_string(),
+            scope: OAUTH2_SCOPE_OPENID.to_string(),
             nonce: None,
             oidc_ext: Default::default(),
             unknown_keys: Default::default(),
@@ -2589,7 +2630,7 @@ mod tests {
             &uat,
             ct,
             code_challenge,
-            "openid".to_string()
+            OAUTH2_SCOPE_OPENID.to_string()
         );
 
         let consent_token =
@@ -2671,7 +2712,7 @@ mod tests {
             &uat,
             ct,
             code_challenge,
-            "openid".to_string()
+            OAUTH2_SCOPE_OPENID.to_string()
         );
 
         let consent_token =
@@ -2835,7 +2876,7 @@ mod tests {
             &uat,
             ct,
             code_challenge,
-            "openid".to_string()
+            OAUTH2_SCOPE_OPENID.to_string()
         );
 
         let consent_token =
@@ -2892,7 +2933,7 @@ mod tests {
         // Expire the account, should cause introspect to return inactive.
         let v_expire = Value::new_datetime_epoch(Duration::from_secs(TEST_CURRENT_TIME - 1));
         let me_inv_m = ModifyEvent::new_internal_invalid(
-            filter!(f_eq("name", PartialValue::new_iname("admin"))),
+            filter!(f_eq(Attribute::Name, PartialValue::new_iname("admin"))),
             ModifyList::new_list(vec![Modify::Present(
                 AttrString::from("account_expire"),
                 v_expire,
@@ -2931,7 +2972,7 @@ mod tests {
             &uat,
             ct,
             code_challenge,
-            "openid".to_string()
+            OAUTH2_SCOPE_OPENID.to_string()
         );
 
         let consent_token =
@@ -3077,7 +3118,7 @@ mod tests {
             &uat,
             ct,
             code_challenge,
-            "openid".to_string()
+            OAUTH2_SCOPE_OPENID.to_string()
         );
 
         let consent_token =
@@ -3134,7 +3175,7 @@ mod tests {
         // Delete the resource server.
 
         let de = DeleteEvent::new_internal_invalid(filter!(f_eq(
-            "oauth2_rs_name",
+            Attribute::OAuth2RsName,
             PartialValue::new_iname("test_resource_server")
         )));
 
@@ -3190,7 +3231,7 @@ mod tests {
             &uat,
             ct,
             code_challenge,
-            "openid".to_string()
+            OAUTH2_SCOPE_OPENID.to_string()
         );
 
         let consent_token =
@@ -3328,7 +3369,7 @@ mod tests {
             discovery.scopes_supported
                 == Some(vec![
                     "groups".to_string(),
-                    "openid".to_string(),
+                    OAUTH2_SCOPE_OPENID.to_string(),
                     "supplement".to_string(),
                 ])
         );
@@ -3400,7 +3441,7 @@ mod tests {
             &uat,
             ct,
             code_challenge,
-            "openid".to_string()
+            OAUTH2_SCOPE_OPENID.to_string()
         );
 
         let consent_token =
@@ -3486,7 +3527,9 @@ mod tests {
         assert!(oidc.jti.is_none());
         assert!(oidc.s_claims.name == Some("System Administrator".to_string()));
         assert!(oidc.s_claims.preferred_username == Some("admin@example.com".to_string()));
-        assert!(oidc.s_claims.scopes == vec!["openid".to_string(), "supplement".to_string()]);
+        assert!(
+            oidc.s_claims.scopes == vec![OAUTH2_SCOPE_OPENID.to_string(), "supplement".to_string()]
+        );
         assert!(oidc.claims.is_empty());
         // Does our access token work with the userinfo endpoint?
         // Do the id_token details line up to the userinfo?
@@ -3578,7 +3621,7 @@ mod tests {
             &uat,
             ct,
             code_challenge,
-            "openid".to_string()
+            OAUTH2_SCOPE_OPENID.to_string()
         );
 
         let consent_token =
@@ -3758,7 +3801,7 @@ mod tests {
             &uat,
             ct,
             code_challenge,
-            "openid".to_string()
+            OAUTH2_SCOPE_OPENID.to_string()
         );
 
         // Check we allow none.
@@ -3768,7 +3811,7 @@ mod tests {
             state: "123".to_string(),
             pkce_request: None,
             redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
-            scope: "openid".to_string(),
+            scope: OAUTH2_SCOPE_OPENID.to_string(),
             nonce: Some("abcdef".to_string()),
             oidc_ext: Default::default(),
             unknown_keys: Default::default(),
@@ -3825,7 +3868,7 @@ mod tests {
             &uat,
             ct,
             code_challenge,
-            "openid".to_string()
+            OAUTH2_SCOPE_OPENID.to_string()
         );
 
         let consent_token =
@@ -3897,7 +3940,7 @@ mod tests {
             &uat,
             ct,
             code_challenge,
-            "openid".to_string()
+            OAUTH2_SCOPE_OPENID.to_string()
         );
 
         // Should be in the consent phase;
@@ -3933,7 +3976,7 @@ mod tests {
             &uat,
             ct,
             code_challenge,
-            "openid".to_string()
+            OAUTH2_SCOPE_OPENID.to_string()
         );
 
         // Should be in the consent phase;
@@ -3951,14 +3994,17 @@ mod tests {
 
         let me_extend_scopes = ModifyEvent::new_internal_invalid(
             filter!(f_eq(
-                "oauth2_rs_name",
+                Attribute::OAuth2RsName,
                 PartialValue::new_iname("test_resource_server")
             )),
             ModifyList::new_list(vec![Modify::Present(
-                AttrString::from("oauth2_rs_scope_map"),
+                AttrString::from(Attribute::OAuth2RsScopeMap.as_ref()),
                 Value::new_oauthscopemap(
                     UUID_IDM_ALL_ACCOUNTS,
-                    btreeset!["email".to_string(), "openid".to_string()],
+                    btreeset![
+                        OAUTH2_SCOPE_EMAIL.to_string(),
+                        OAUTH2_SCOPE_OPENID.to_string()
+                    ],
                 )
                 .expect("invalid oauthscope"),
             )]),
@@ -4014,11 +4060,11 @@ mod tests {
 
         let me_extend_scopes = ModifyEvent::new_internal_invalid(
             filter!(f_eq(
-                "oauth2_rs_name",
+                Attribute::OAuth2RsName,
                 PartialValue::new_iname("test_resource_server")
             )),
             ModifyList::new_list(vec![Modify::Present(
-                AttrString::from("oauth2_rs_sup_scope_map"),
+                Attribute::OAuth2RsSupScopeMap.into(),
                 Value::new_oauthscopemap(UUID_IDM_ALL_ACCOUNTS, btreeset!["newscope".to_string()])
                     .expect("invalid oauthscope"),
             )]),
@@ -4093,7 +4139,7 @@ mod tests {
             &uat,
             ct,
             code_challenge,
-            "openid".to_string()
+            OAUTH2_SCOPE_OPENID.to_string()
         );
 
         // Should be in the consent phase;
@@ -4119,12 +4165,15 @@ mod tests {
         // Assert that the ident now has the consents.
         assert!(
             ident.get_oauth2_consent_scopes(o2rs_uuid)
-                == Some(&btreeset!["openid".to_string(), "supplement".to_string()])
+                == Some(&btreeset![
+                    OAUTH2_SCOPE_OPENID.to_string(),
+                    "supplement".to_string()
+                ])
         );
 
         // Now trigger the delete of the RS
         let de = DeleteEvent::new_internal_invalid(filter!(f_eq(
-            "oauth2_rs_name",
+            Attribute::OAuth2RsName,
             PartialValue::new_iname("test_resource_server")
         )));
 
@@ -4133,7 +4182,11 @@ mod tests {
         let ident = idms_prox_write
             .process_uat_to_identity(&uat, ct)
             .expect("Unable to process uat");
-        assert!(ident.get_oauth2_consent_scopes(o2rs_uuid).is_none());
+        dbg!(&o2rs_uuid);
+        dbg!(&ident);
+        let consent_scopes = ident.get_oauth2_consent_scopes(o2rs_uuid);
+        dbg!(consent_scopes);
+        assert!(consent_scopes.is_none());
 
         assert!(idms_prox_write.commit().is_ok());
     }
@@ -4182,7 +4235,7 @@ mod tests {
             state: "123".to_string(),
             pkce_request: None,
             redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
-            scope: "openid".to_string(),
+            scope: OAUTH2_SCOPE_OPENID.to_string(),
             nonce: None,
             oidc_ext: Default::default(),
             unknown_keys: Default::default(),
@@ -4262,7 +4315,7 @@ mod tests {
                 code_challenge_method: CodeChallengeMethod::S256,
             }),
             redirect_uri: Url::parse("http://demo.example.com/oauth2/result").unwrap(),
-            scope: "openid".to_string(),
+            scope: OAUTH2_SCOPE_OPENID.to_string(),
             nonce: None,
             oidc_ext: Default::default(),
             unknown_keys: Default::default(),
@@ -4282,7 +4335,7 @@ mod tests {
             &uat,
             ct,
             code_challenge,
-            "openid".to_string()
+            OAUTH2_SCOPE_OPENID.to_string()
         );
 
         // Should be in the consent phase;
@@ -4344,7 +4397,7 @@ mod tests {
             &uat,
             ct,
             code_challenge,
-            "openid".to_string()
+            OAUTH2_SCOPE_OPENID.to_string()
         );
 
         let consent_token =

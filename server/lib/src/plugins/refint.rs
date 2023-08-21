@@ -34,7 +34,10 @@ impl ReferentialIntegrity {
             return Ok(());
         }
 
-        let inner = inner.into_iter().map(|pv| f_eq("uuid", pv)).collect();
+        let inner = inner
+            .into_iter()
+            .map(|pv| f_eq(Attribute::Uuid, pv))
+            .collect();
 
         // F_inc(lusion). All items of inner must be 1 or more, or the filter
         // will fail. This will return the union of the inclusion after the
@@ -128,20 +131,33 @@ impl Plugin for ReferentialIntegrity {
         // Find all reference types in the schema
         let schema = qs.get_schema();
         let ref_types = schema.get_reference_types();
+
         // Get the UUID of all entries we are deleting
-        // let uuids: Vec<&Uuid> = cand.iter().map(|e| e.get_uuid()).collect();
+        let uuids: Vec<Uuid> = cand.iter().map(|e| e.get_uuid()).collect();
 
         // Generate a filter which is the set of all schema reference types
         // as EQ to all uuid of all entries in delete. - this INCLUDES recycled
         // types too!
         let filt = filter_all!(FC::Or(
-            // uuids
-            // .iter()
-            cand.iter()
-                .map(|e| e.get_uuid())
-                .flat_map(|u| ref_types.values().map(move |r_type| {
+            uuids
+                .into_iter()
+                .flat_map(|u| ref_types.values().filter_map(move |r_type| {
+                    let value_attribute = r_type.name.to_string();
                     // For everything that references the uuid's in the deleted set.
-                    f_eq(r_type.name.as_str(), PartialValue::Refer(u))
+                    let val: Result<Attribute, OperationError> = value_attribute.try_into();
+                    // error!("{:?}", val);
+                    let res = match val {
+                        Ok(val) => {
+                            let res = f_eq(val, PartialValue::Refer(u));
+                            Some(res)
+                        }
+                        Err(err) => {
+                            // we shouldn't be able to get here...
+                            admin_error!("post_delete invalid attribute specified - please log this as a bug! {:?}", err);
+                            None
+                        }
+                    };
+                    res
                 }))
                 .collect(),
         ));
@@ -168,7 +184,7 @@ impl Plugin for ReferentialIntegrity {
     fn verify(qs: &mut QueryServerReadTransaction) -> Vec<Result<(), ConsistencyError>> {
         // Get all entries as cand
         //      build a cand-uuid set
-        let filt_in = filter_all!(f_pres("class"));
+        let filt_in = filter_all!(f_pres(Attribute::Class.as_ref()));
 
         let all_cand = match qs
             .internal_search(filt_in)
@@ -222,7 +238,8 @@ impl ReferentialIntegrity {
         // Fast Path
         let mut vsiter = cand.iter().flat_map(|c| {
             // If it's dyngroup, skip member since this will be reset in the next step.
-            let dyn_group = c.attribute_equality("class", &PVCLASS_DYNGROUP);
+            let dyn_group =
+                c.attribute_equality(Attribute::Class.as_ref(), &EntryClass::DynGroup.into());
 
             ref_types.values().filter_map(move |rtype| {
                 // Skip dynamic members
@@ -337,7 +354,7 @@ mod tests {
             |qs: &mut QueryServerWriteTransaction| {
                 let cands = qs
                     .internal_search(filter!(f_eq(
-                        "name",
+                        Attribute::Name,
                         PartialValue::new_iname("testgroup_b")
                     )))
                     .expect("Internal search failure");
@@ -372,7 +389,10 @@ mod tests {
             None,
             |qs: &mut QueryServerWriteTransaction| {
                 let cands = qs
-                    .internal_search(filter!(f_eq("name", PartialValue::new_iname("testgroup"))))
+                    .internal_search(filter!(f_eq(
+                        Attribute::Name,
+                        PartialValue::new_iname("testgroup")
+                    )))
                     .expect("Internal search failure");
                 let _ue = cands.first().expect("No cand");
             }
@@ -408,7 +428,10 @@ mod tests {
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq("name", PartialValue::new_iname("testgroup_b"))),
+            filter!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("testgroup_b")
+            )),
             ModifyList::new_list(vec![Modify::Present(
                 AttrString::from("member"),
                 Value::new_refer_s("d2b496bd-8493-47b7-8142-f568b5cf47ee").unwrap()
@@ -439,7 +462,10 @@ mod tests {
                 "Uuid referenced not found in database".to_string()
             ))),
             preload,
-            filter!(f_eq("name", PartialValue::new_iname("testgroup_b"))),
+            filter!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("testgroup_b")
+            )),
             ModifyList::new_list(vec![Modify::Present(
                 AttrString::from("member"),
                 Value::new_refer_s("d2b496bd-8493-47b7-8142-f568b5cf47ee").unwrap()
@@ -482,7 +508,10 @@ mod tests {
                 "Uuid referenced not found in database".to_string()
             ))),
             preload,
-            filter!(f_eq("name", PartialValue::new_iname("testgroup_b"))),
+            filter!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("testgroup_b")
+            )),
             ModifyList::new_list(vec![
                 Modify::Present(
                     AttrString::from("member"),
@@ -529,7 +558,10 @@ mod tests {
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq("name", PartialValue::new_iname("testgroup_b"))),
+            filter!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("testgroup_b")
+            )),
             ModifyList::new_list(vec![Modify::Purged(AttrString::from("member"))]),
             None,
             |_| {},
@@ -556,7 +588,10 @@ mod tests {
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq("name", PartialValue::new_iname("testgroup_a"))),
+            filter!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("testgroup_a")
+            )),
             ModifyList::new_list(vec![Modify::Present(
                 AttrString::from("member"),
                 Value::new_refer_s("d2b496bd-8493-47b7-8142-f568b5cf47ee").unwrap()
@@ -598,7 +633,10 @@ mod tests {
                 "Uuid referenced not found in database".to_string()
             ))),
             preload,
-            filter!(f_eq("name", PartialValue::new_iname("testgroup_b"))),
+            filter!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("testgroup_b")
+            )),
             ModifyList::new_list(vec![Modify::Present(
                 AttrString::from("member"),
                 Value::new_refer_s("d2b496bd-8493-47b7-8142-f568b5cf47ee").unwrap()
@@ -608,7 +646,7 @@ mod tests {
                 // Any pre_hooks we need. In this case, we need to trigger the delete of testgroup_a
                 let de_sin =
                     crate::event::DeleteEvent::new_internal_invalid(filter!(f_or!([f_eq(
-                        "name",
+                        Attribute::Name,
                         PartialValue::new_iname("testgroup_a")
                     )])));
                 assert!(qs.delete(&de_sin).is_ok());
@@ -649,7 +687,10 @@ mod tests {
         run_delete_test!(
             Ok(()),
             preload,
-            filter!(f_eq("name", PartialValue::new_iname("testgroup_a"))),
+            filter!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("testgroup_a")
+            )),
             None,
             |_qs: &mut QueryServerWriteTransaction| {}
         );
@@ -691,7 +732,10 @@ mod tests {
         run_delete_test!(
             Ok(()),
             preload,
-            filter!(f_eq("name", PartialValue::new_iname("testgroup_b"))),
+            filter!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("testgroup_b")
+            )),
             None,
             |_qs: &mut QueryServerWriteTransaction| {}
         );
@@ -717,7 +761,10 @@ mod tests {
         run_delete_test!(
             Ok(()),
             preload,
-            filter!(f_eq("name", PartialValue::new_iname("testgroup_b"))),
+            filter!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("testgroup_b")
+            )),
             None,
             |_qs: &mut QueryServerWriteTransaction| {}
         );
@@ -729,11 +776,20 @@ mod tests {
         // scope maps, so we need to check that when the group is deleted, that the
         // scope map is also appropriately affected.
         let ea: Entry<EntryInit, EntryNew> = entry_init!(
-            ("class", Value::new_class("object")),
-            ("class", Value::new_class("oauth2_resource_server")),
-            // ("class", Value::new_class("oauth2_resource_server_basic")),
-            ("oauth2_rs_name", Value::new_iname("test_resource_server")),
-            ("displayname", Value::new_utf8s("test_resource_server")),
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+            (
+                Attribute::Class.as_ref(),
+                EntryClass::OAuth2ResourceServer.to_value()
+            ),
+            // (Attribute::Class.as_ref(), EntryClass::OAuth2ResourceServerBasic.into()),
+            (
+                Attribute::OAuth2RsName.as_ref(),
+                Value::new_iname("test_resource_server")
+            ),
+            (
+                Attribute::DisplayName.as_ref(),
+                Value::new_utf8s("test_resource_server")
+            ),
             (
                 "oauth2_rs_origin",
                 Value::new_url_s("https://demo.example.com").unwrap()
@@ -742,20 +798,23 @@ mod tests {
                 "oauth2_rs_scope_map",
                 Value::new_oauthscopemap(
                     uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"),
-                    btreeset!["read".to_string()]
+                    btreeset![OAUTH2_SCOPE_READ.to_string()]
                 )
                 .expect("Invalid scope")
             )
         );
 
         let eb: Entry<EntryInit, EntryNew> = entry_init!(
-            ("class", Value::new_class("group")),
-            ("name", Value::new_iname("testgroup")),
+            (Attribute::Class.as_ref(), EntryClass::Group.to_value()),
+            (Attribute::Name.as_ref(), Value::new_iname("testgroup")),
             (
                 "uuid",
                 Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
             ),
-            ("description", Value::new_utf8s("testgroup"))
+            (
+                Attribute::Description.as_ref(),
+                Value::new_utf8s("testgroup")
+            )
         );
 
         let preload = vec![ea, eb];
@@ -763,12 +822,12 @@ mod tests {
         run_delete_test!(
             Ok(()),
             preload,
-            filter!(f_eq("name", PartialValue::new_iname("testgroup"))),
+            filter!(f_eq(Attribute::Name, PartialValue::new_iname("testgroup"))),
             None,
             |qs: &mut QueryServerWriteTransaction| {
                 let cands = qs
                     .internal_search(filter!(f_eq(
-                        "oauth2_rs_name",
+                        Attribute::OAuth2RsName,
                         PartialValue::new_iname("test_resource_server")
                     )))
                     .expect("Internal search failure");
@@ -796,13 +855,19 @@ mod tests {
         let rs_uuid = Uuid::new_v4();
 
         let e1 = entry_init!(
-            ("class", Value::new_class("object")),
-            ("class", Value::new_class("person")),
-            ("class", Value::new_class("account")),
-            ("name", Value::new_iname("testperson1")),
-            ("uuid", Value::Uuid(tuuid)),
-            ("description", Value::new_utf8s("testperson1")),
-            ("displayname", Value::new_utf8s("testperson1")),
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
+            (Attribute::Name.as_ref(), Value::new_iname("testperson1")),
+            (Attribute::Uuid.as_ref(), Value::Uuid(tuuid)),
+            (
+                Attribute::Description.as_ref(),
+                Value::new_utf8s("testperson1")
+            ),
+            (
+                Attribute::DisplayName.as_ref(),
+                Value::new_utf8s("testperson1")
+            ),
             (
                 "primary_credential",
                 Value::Cred("primary".to_string(), cred.clone())
@@ -810,12 +875,20 @@ mod tests {
         );
 
         let e2 = entry_init!(
-            ("class", Value::new_class("object")),
-            ("class", Value::new_class("oauth2_resource_server")),
-            // ("class", Value::new_class("oauth2_resource_server_basic")),
-            ("uuid", Value::Uuid(rs_uuid)),
-            ("oauth2_rs_name", Value::new_iname("test_resource_server")),
-            ("displayname", Value::new_utf8s("test_resource_server")),
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+            (
+                Attribute::Class.as_ref(),
+                EntryClass::OAuth2ResourceServer.to_value()
+            ),
+            (Attribute::Uuid.as_ref(), Value::Uuid(rs_uuid)),
+            (
+                Attribute::OAuth2RsName.as_ref(),
+                Value::new_iname("test_resource_server")
+            ),
+            (
+                Attribute::DisplayName.as_ref(),
+                Value::new_utf8s("test_resource_server")
+            ),
             (
                 "oauth2_rs_origin",
                 Value::new_url_s("https://demo.example.com").unwrap()
@@ -823,8 +896,11 @@ mod tests {
             // System admins
             (
                 "oauth2_rs_scope_map",
-                Value::new_oauthscopemap(UUID_IDM_ALL_ACCOUNTS, btreeset!["openid".to_string()])
-                    .expect("invalid oauthscope")
+                Value::new_oauthscopemap(
+                    UUID_IDM_ALL_ACCOUNTS,
+                    btreeset![OAUTH2_SCOPE_OPENID.to_string()]
+                )
+                .expect("invalid oauthscope")
             )
         );
 
@@ -880,14 +956,17 @@ mod tests {
         ]);
 
         server_txn
-            .internal_modify(&filter!(f_eq("uuid", PartialValue::Uuid(tuuid))), &modlist)
+            .internal_modify(
+                &filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(tuuid))),
+                &modlist,
+            )
             .expect("Failed to modify user");
 
         // Still there
 
         let entry = server_txn.internal_search_uuid(tuuid).expect("failed");
-        assert!(entry.attribute_equality("user_auth_token_session", &pv_parent_id));
-        assert!(entry.attribute_equality("oauth2_session", &pv_session_id));
+        assert!(entry.attribute_equality(Attribute::UserAuthTokenSession.as_ref(), &pv_parent_id));
+        assert!(entry.attribute_equality(Attribute::OAuth2Session.as_ref(), &pv_session_id));
 
         // Delete the oauth2 resource server.
         assert!(server_txn.internal_delete_uuid(rs_uuid).is_ok());
@@ -896,9 +975,11 @@ mod tests {
         let entry = server_txn.internal_search_uuid(tuuid).expect("failed");
 
         // Note the uat is present still.
-        assert!(entry.attribute_equality("user_auth_token_session", &pv_parent_id));
+        assert!(entry.attribute_equality(Attribute::UserAuthTokenSession.as_ref(), &pv_parent_id));
         // The oauth2 session is removed.
-        assert!(!entry.attribute_equality("oauth2_session", &pv_session_id));
+        dbg!(&entry);
+        dbg!(&pv_session_id);
+        assert!(!entry.attribute_equality(Attribute::OAuth2Session.as_ref(), &pv_session_id));
 
         assert!(server_txn.commit().is_ok());
     }
@@ -919,11 +1000,11 @@ mod tests {
         let inv_mb_uuid = Uuid::new_v4();
 
         let e_dyn = entry_init!(
-            ("class", Value::new_class("object")),
-            ("class", Value::new_class("group")),
-            ("class", Value::new_class("dyngroup")),
-            ("uuid", Value::Uuid(dyn_uuid)),
-            ("name", Value::new_iname("test_dyngroup")),
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Group.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::DynGroup.to_value()),
+            (Attribute::Uuid.as_ref(), Value::Uuid(dyn_uuid)),
+            (Attribute::Name.as_ref(), Value::new_iname("test_dyngroup")),
             ("dynmember", Value::Refer(inv_mb_uuid)),
             (
                 "dyngroup_filter",
@@ -932,11 +1013,11 @@ mod tests {
         );
 
         let e_group: Entry<EntryInit, EntryNew> = entry_init!(
-            ("class", Value::new_class("group")),
-            ("class", Value::new_class("memberof")),
-            ("name", Value::new_iname("testgroup")),
-            ("uuid", Value::Uuid(tgroup_uuid)),
-            ("memberof", Value::Refer(inv_mo_uuid))
+            (Attribute::Class.as_ref(), EntryClass::Group.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::MemberOf.to_value()),
+            (Attribute::Name.as_ref(), Value::new_iname("testgroup")),
+            (Attribute::Uuid.as_ref(), Value::Uuid(tgroup_uuid)),
+            (Attribute::MemberOf.as_ref(), Value::Refer(inv_mo_uuid))
         );
 
         let ce = CreateEvent::new_internal(vec![e_dyn, e_group]);

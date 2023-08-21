@@ -50,7 +50,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             .modset
             .keys()
             .copied()
-            .map(|u| f_eq("uuid", PartialValue::Uuid(u)))
+            .map(|u| f_eq(Attribute::Uuid, PartialValue::Uuid(u)))
             .collect();
 
         let filter = filter_all!(f_or(filter_or))
@@ -186,27 +186,40 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 .iter()
                 .chain(pre_candidates.iter().map(|e| e.as_ref()))
                 .any(|e| {
-                    e.attribute_equality("class", &PVCLASS_CLASSTYPE)
-                        || e.attribute_equality("class", &PVCLASS_ATTRIBUTETYPE)
+                    e.attribute_equality(Attribute::Class.as_ref(), &EntryClass::ClassType.into())
+                        || e.attribute_equality(
+                            Attribute::Class.as_ref(),
+                            &EntryClass::AttributeType.into(),
+                        )
                 });
         }
         if !self.changed_acp {
             self.changed_acp = norm_cand
                 .iter()
                 .chain(pre_candidates.iter().map(|e| e.as_ref()))
-                .any(|e| e.attribute_equality("class", &PVCLASS_ACP));
+                .any(|e| {
+                    e.attribute_equality(
+                        Attribute::Class.as_ref(),
+                        &EntryClass::AccessControlProfile.into(),
+                    )
+                });
         }
         if !self.changed_oauth2 {
             self.changed_oauth2 = norm_cand
                 .iter()
                 .chain(pre_candidates.iter().map(|e| e.as_ref()))
-                .any(|e| e.attribute_equality("class", &PVCLASS_OAUTH2_RS));
+                .any(|e| {
+                    e.attribute_equality(
+                        Attribute::Class.as_ref(),
+                        &EntryClass::OAuth2ResourceServer.into(),
+                    )
+                });
         }
         if !self.changed_domain {
             self.changed_domain = norm_cand
                 .iter()
                 .chain(pre_candidates.iter().map(|e| e.as_ref()))
-                .any(|e| e.attribute_equality("uuid", &PVUUID_DOMAIN_INFO));
+                .any(|e| e.attribute_equality(Attribute::Uuid.as_ref(), &PVUUID_DOMAIN_INFO));
         }
 
         self.changed_uuid.extend(
@@ -264,12 +277,12 @@ mod tests {
         assert!(server_txn
             .internal_create(vec![
                 entry_init!(
-                    ("class", Value::new_class("object")),
-                    ("uuid", Value::Uuid(uuid_a))
+                    (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+                    (Attribute::Uuid.as_ref(), Value::Uuid(uuid_a))
                 ),
                 entry_init!(
-                    ("class", Value::new_class("object")),
-                    ("uuid", Value::Uuid(uuid_b))
+                    (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+                    (Attribute::Uuid.as_ref(), Value::Uuid(uuid_b))
                 ),
             ])
             .is_ok());
@@ -280,11 +293,17 @@ mod tests {
                 [
                     (
                         uuid_a,
-                        ModifyList::new_append("description", Value::Utf8("a".into()))
+                        ModifyList::new_append(
+                            Attribute::Description.as_ref(),
+                            Value::Utf8("a".into())
+                        )
                     ),
                     (
                         uuid_b,
-                        ModifyList::new_append("description", Value::Utf8("b".into()))
+                        ModifyList::new_append(
+                            Attribute::Description.as_ref(),
+                            Value::Utf8("b".into())
+                        )
                     ),
                 ]
                 .into_iter()
@@ -299,7 +318,7 @@ mod tests {
             .internal_search_uuid(uuid_b)
             .expect("Failed to get entry.");
 
-        assert!(ent_a.get_ava_single_utf8("description") == Some("a"));
-        assert!(ent_b.get_ava_single_utf8("description") == Some("b"));
+        assert!(ent_a.get_ava_single_utf8(Attribute::Description.as_ref()) == Some("a"));
+        assert!(ent_b.get_ava_single_utf8(Attribute::Description.as_ref()) == Some("b"));
     }
 }

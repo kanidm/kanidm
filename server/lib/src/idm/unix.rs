@@ -34,13 +34,19 @@ pub(crate) struct UnixUserAccount {
 
 macro_rules! try_from_entry {
     ($value:expr, $groups:expr) => {{
-        if !$value.attribute_equality("class", &PVCLASS_ACCOUNT) {
+        if !$value.attribute_equality(
+            Attribute::Class.as_ref(),
+            &EntryClass::Account.to_partialvalue(),
+        ) {
             return Err(OperationError::InvalidAccountState(
                 "Missing class: account".to_string(),
             ));
         }
 
-        if !$value.attribute_equality("class", &PVCLASS_POSIXACCOUNT) {
+        if !$value.attribute_equality(
+            Attribute::Class.as_ref(),
+            &EntryClass::PosixAccount.to_partialvalue(),
+        ) {
             return Err(OperationError::InvalidAccountState(
                 "Missing class: posixaccount".to_string(),
             ));
@@ -71,11 +77,11 @@ macro_rules! try_from_entry {
         })?;
 
         let shell = $value
-            .get_ava_single_iutf8("loginshell")
+            .get_ava_single_iutf8(ATTR_LOGINSHELL)
             .map(|s| s.to_string());
 
         let sshkeys = $value
-            .get_ava_iter_sshpubkeys("ssh_publickey")
+            .get_ava_iter_sshpubkeys(ATTR_LDAP_SSH_PUBLICKEY)
             .map(|i| i.map(|s| s.to_string()).collect())
             .unwrap_or_else(Vec::new);
 
@@ -306,11 +312,19 @@ macro_rules! try_from_group_e {
     ($value:expr) => {{
         // We could be looking at a user for their UPG, OR a true group.
 
-        if !(($value.attribute_equality("class", &PVCLASS_ACCOUNT)
-            && $value.attribute_equality("class", &PVCLASS_POSIXACCOUNT))
-            || ($value.attribute_equality("class", &PVCLASS_GROUP)
-                && $value.attribute_equality("class", &PVCLASS_POSIXGROUP)))
-        {
+        if !(($value.attribute_equality(
+            Attribute::Class.as_ref(),
+            &EntryClass::Account.to_partialvalue(),
+        ) && $value.attribute_equality(
+            Attribute::Class.as_ref(),
+            &EntryClass::PosixAccount.to_partialvalue(),
+        )) || ($value.attribute_equality(
+            Attribute::Class.as_ref(),
+            &EntryClass::Group.to_partialvalue(),
+        ) && $value.attribute_equality(
+            Attribute::Class.as_ref(),
+            &EntryClass::PosixGroup.to_partialvalue(),
+        ))) {
             return Err(OperationError::InvalidAccountState(
                 "Missing class: account && posixaccount OR group && posixgroup".to_string(),
             ));
@@ -347,13 +361,19 @@ macro_rules! try_from_account_group_e {
         // First synthesise the self-group from the account.
         // We have already checked these, but paranoia is better than
         // complacency.
-        if !$value.attribute_equality("class", &PVCLASS_ACCOUNT) {
+        if !$value.attribute_equality(
+            Attribute::Class.as_ref(),
+            &EntryClass::Account.to_partialvalue(),
+        ) {
             return Err(OperationError::InvalidAccountState(
                 "Missing class: account".to_string(),
             ));
         }
 
-        if !$value.attribute_equality("class", &PVCLASS_POSIXACCOUNT) {
+        if !$value.attribute_equality(
+            Attribute::Class.as_ref(),
+            &EntryClass::PosixAccount.to_partialvalue(),
+        ) {
             return Err(OperationError::InvalidAccountState(
                 "Missing class: posixaccount".to_string(),
             ));
@@ -387,9 +407,13 @@ macro_rules! try_from_account_group_e {
         match $value.get_ava_as_refuuid("memberof") {
             Some(riter) => {
                 let f = filter!(f_and!([
-                    f_eq("class", PVCLASS_POSIXGROUP.clone()),
-                    f_eq("class", PVCLASS_GROUP.clone()),
-                    f_or(riter.map(|u| f_eq("uuid", PartialValue::Uuid(u))).collect())
+                    f_eq(Attribute::Class, EntryClass::PosixGroup.into()),
+                    f_eq(Attribute::Class, EntryClass::Group.into()),
+                    f_or(
+                        riter
+                            .map(|u| f_eq(Attribute::Uuid, PartialValue::Uuid(u)))
+                            .collect()
+                    )
                 ]));
                 let group_entries: Vec<_> = $qs.internal_search(f)?;
                 let groups: Result<Vec<_>, _> = iter::once(Ok(upg))

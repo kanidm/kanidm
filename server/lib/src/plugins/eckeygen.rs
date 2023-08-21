@@ -23,7 +23,7 @@ impl EcdhKeyGen {
         cands: &mut [Entry<EntryInvalid, STATE>],
     ) -> Result<(), OperationError> {
         for cand in cands.iter_mut() {
-            if cand.attribute_equality("class", &PVCLASS_PERSON)
+            if cand.attribute_equality("class", &EntryClass::Person.to_partialvalue())
                 && !cand.attribute_pres("id_verification_eckey")
             {
                 debug!("Generating idv_eckey for {}", cand.get_display_id());
@@ -32,9 +32,8 @@ impl EcdhKeyGen {
                     error!(err = ?e, "Unable to generate id verification ECDH private key");
                     OperationError::CryptographyError
                 })?;
-
-                cand.add_ava(
-                    "id_verification_eckey",
+                cand.add_ava_if_not_exist(
+                    ATTR_ID_VERIFICATION_ECKEY,
                     crate::value::Value::EcKeyPrivate(new_private_key),
                 )
             }
@@ -80,11 +79,12 @@ impl Plugin for EcdhKeyGen {
 
 #[cfg(test)]
 mod tests {
+    use kanidm_proto::constants::*;
     use openssl::ec::EcKey;
     use uuid::Uuid;
 
     use crate::plugins::eckeygen::DEFAULT_KEY_GROUP;
-    use crate::prelude::{Entry, EntryInit, EntryNew};
+    use crate::prelude::*;
     use crate::value::Value;
     use crate::valueset;
 
@@ -92,13 +92,13 @@ mod tests {
     fn test_new_user_generate_key() {
         let uuid = Uuid::new_v4();
         let ea = entry_init!(
-            ("class", Value::new_class("account")),
-            ("class", Value::new_class("person")),
-            ("class", Value::new_class("object")),
-            ("name", Value::new_iname("test_name")),
-            ("uuid", Value::Uuid(uuid)),
-            ("description", Value::new_utf8s("testperson")),
-            ("displayname", Value::new_utf8s("Test Person"))
+            (ATTR_CLASS, EntryClass::Account.to_value()),
+            (ATTR_CLASS, EntryClass::Person.to_value()),
+            (ATTR_CLASS, EntryClass::Object.to_value()),
+            (ATTR_NAME, Value::new_iname("test_name")),
+            (ATTR_UUID, Value::Uuid(uuid)),
+            (ATTR_DESCRIPTION, Value::new_utf8s("testperson")),
+            (ATTR_DISPLAYNAME, Value::new_utf8s("Test Person"))
         );
         let preload: Vec<Entry<EntryInit, EntryNew>> = Vec::new();
 
@@ -112,7 +112,7 @@ mod tests {
                 let e = qs.internal_search_uuid(uuid).expect("failed to get entry");
 
                 let key = e
-                    .get_ava_single_eckey_private("id_verification_eckey")
+                    .get_ava_single_eckey_private(ATTR_ID_VERIFICATION_ECKEY)
                     .expect("unable to retrieve the ecdh key");
 
                 assert!(key.check_key().is_ok())
@@ -126,11 +126,11 @@ mod tests {
     #[test]
     fn test_modify_present_ecdkey() {
         let ea = entry_init!(
-            ("class", Value::new_class("account")),
-            ("class", Value::new_class("person")),
-            ("class", Value::new_class("object")),
-            ("name", Value::new_iname("test_name")),
-            ("description", Value::new_utf8s("testperson")),
+            (ATTR_CLASS, EntryClass::Account.to_value()),
+            (ATTR_CLASS, EntryClass::Person.to_value()),
+            (ATTR_CLASS, EntryClass::Object.to_value()),
+            (ATTR_NAME, Value::new_iname("test_name")),
+            (ATTR_DESCRIPTION, Value::new_utf8s("testperson")),
             ("displayname", Value::new_utf8s("Test person!"))
         );
         let preload = vec![ea];
@@ -138,9 +138,9 @@ mod tests {
         run_modify_test!(
             Err(OperationError::SystemProtectedAttribute),
             preload,
-            filter!(f_eq("name", PartialValue::new_iname("test_name"))),
+            filter!(f_eq(Attribute::Name, PartialValue::new_iname("test_name"))),
             modlist!([m_pres(
-                "id_verification_eckey",
+                ATTR_ID_VERIFICATION_ECKEY,
                 &Value::EcKeyPrivate(new_private_key)
             )]),
             None,
@@ -158,13 +158,13 @@ mod tests {
         let uuid = Uuid::new_v4();
 
         let ea = entry_init!(
-            ("class", Value::new_class("account")),
-            ("class", Value::new_class("person")),
-            ("class", Value::new_class("object")),
-            ("name", Value::new_iname("test_name")),
-            ("uuid", Value::Uuid(uuid)),
-            ("id_verification_eckey", private_key_value.clone()),
-            ("description", Value::new_utf8s("testperson")),
+            (ATTR_CLASS, EntryClass::Account.to_value()),
+            (ATTR_CLASS, EntryClass::Person.to_value()),
+            (ATTR_CLASS, EntryClass::Object.to_value()),
+            (ATTR_NAME, Value::new_iname("test_name")),
+            (ATTR_UUID, Value::Uuid(uuid)),
+            (ATTR_ID_VERIFICATION_ECKEY, private_key_value.clone()),
+            (ATTR_DESCRIPTION, Value::new_utf8s("testperson")),
             ("displayname", Value::new_utf8s("Test person!"))
         );
         let key_partialvalue = valueset::from_value_iter(std::iter::once(private_key_value))
@@ -176,7 +176,7 @@ mod tests {
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq("name", PartialValue::new_iname("test_name"))),
+            filter!(f_eq(Attribute::Name, PartialValue::new_iname("test_name"))),
             modlist!([m_purge("id_verification_eckey")]),
             None,
             |_| {},
@@ -184,8 +184,8 @@ mod tests {
                 let e = qs.internal_search_uuid(uuid).expect("failed to get entry");
 
                 assert!(
-                    !e.attribute_equality("id_verification_eckey", &key_partialvalue)
-                        && e.attribute_pres("id_verification_eckey")
+                    !e.attribute_equality(ATTR_ID_VERIFICATION_ECKEY, &key_partialvalue)
+                        && e.attribute_pres(ATTR_ID_VERIFICATION_ECKEY)
                 )
             }
         );
@@ -198,13 +198,13 @@ mod tests {
         let uuid = Uuid::new_v4();
 
         let ea = entry_init!(
-            ("class", Value::new_class("account")),
-            ("class", Value::new_class("person")),
-            ("class", Value::new_class("object")),
-            ("name", Value::new_iname("test_name")),
-            ("uuid", Value::Uuid(uuid)),
-            ("id_verification_eckey", private_key_value.clone()),
-            ("description", Value::new_utf8s("testperson")),
+            (ATTR_CLASS, EntryClass::Account.to_value()),
+            (ATTR_CLASS, EntryClass::Person.to_value()),
+            (ATTR_CLASS, EntryClass::Object.to_value()),
+            (ATTR_NAME, Value::new_iname("test_name")),
+            (ATTR_UUID, Value::Uuid(uuid)),
+            (ATTR_ID_VERIFICATION_ECKEY, private_key_value.clone()),
+            (ATTR_DESCRIPTION, Value::new_utf8s("testperson")),
             ("displayname", Value::new_utf8s("Test person!"))
         );
         let key_partialvalue = valueset::from_value_iter(std::iter::once(private_key_value))
@@ -216,7 +216,7 @@ mod tests {
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq("name", PartialValue::new_iname("test_name"))),
+            filter!(f_eq(Attribute::Name, PartialValue::new_iname("test_name"))),
             modlist!([m_remove("id_verification_eckey", &key_partialvalue)]),
             None,
             |_| {},
@@ -224,8 +224,8 @@ mod tests {
                 let e = qs.internal_search_uuid(uuid).expect("failed to get entry");
 
                 assert!(
-                    !e.attribute_equality("id_verification_eckey", &key_partialvalue)
-                        && e.attribute_pres("id_verification_eckey")
+                    !e.attribute_equality(ATTR_ID_VERIFICATION_ECKEY, &key_partialvalue)
+                        && e.attribute_pres(ATTR_ID_VERIFICATION_ECKEY)
                 )
             }
         );

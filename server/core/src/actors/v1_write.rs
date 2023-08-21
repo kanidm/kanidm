@@ -127,7 +127,7 @@ impl QueryServerWriteV1 {
                 e
             })?;
 
-        let f_uuid = filter_all!(f_eq("uuid", PartialValue::Uuid(target_uuid)));
+        let f_uuid = filter_all!(f_eq(Attribute::Uuid, PartialValue::Uuid(target_uuid)));
         // Add any supplemental conditions we have.
         let joined_filter = Filter::join_parts_and(f_uuid, filter);
 
@@ -1037,7 +1037,7 @@ impl QueryServerWriteV1 {
     ) -> Result<(), OperationError> {
         // Because this is from internal, we can generate a real modlist, rather
         // than relying on the proto ones.
-        let ml = ModifyList::new_append("ssh_publickey", Value::new_sshkey(tag, key));
+        let ml = ModifyList::new_append(ATTR_LDAP_SSH_PUBLICKEY, Value::new_sshkey(tag, key));
 
         self.modify_from_internal_parts(uat, &uuid_or_name, &ml, filter)
             .await
@@ -1060,8 +1060,8 @@ impl QueryServerWriteV1 {
         // The filter_map here means we only create the mods if the gidnumber or shell are set
         // in the actual request.
         let mods: Vec<_> = iter::once(Some(Modify::Present(
-            "class".into(),
-            Value::new_class("posixaccount"),
+            Attribute::Class.into(),
+            EntryClass::PosixAccount.into(),
         )))
         .chain(iter::once(
             gidnumber
@@ -1082,7 +1082,7 @@ impl QueryServerWriteV1 {
 
         let ml = ModifyList::new_list(mods);
 
-        let filter = filter_all!(f_eq("class", PartialValue::new_class("account")));
+        let filter = filter_all!(f_eq(Attribute::Class, EntryClass::Account.into()));
 
         self.modify_from_internal_parts(uat, &uuid_or_name, &ml, filter)
             .await
@@ -1113,8 +1113,8 @@ impl QueryServerWriteV1 {
             [None, None]
         };
         let mods: Vec<_> = iter::once(Some(Modify::Present(
-            "class".into(),
-            Value::new_class("posixgroup"),
+            Attribute::Class.into(),
+            EntryClass::PosixGroup.into(),
         )))
         .chain(gidnumber_mods)
         .flatten()
@@ -1122,7 +1122,7 @@ impl QueryServerWriteV1 {
 
         let ml = ModifyList::new_list(mods);
 
-        let filter = filter_all!(f_eq("class", PartialValue::new_class("group")));
+        let filter = filter_all!(f_eq(Attribute::Class, EntryClass::Group.into()));
 
         self.modify_from_internal_parts(uat, &uuid_or_name, &ml, filter)
             .await

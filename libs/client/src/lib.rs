@@ -24,7 +24,7 @@ use std::os::unix::fs::MetadataExt;
 use std::path::Path;
 use std::time::Duration;
 
-use kanidm_proto::constants::APPLICATION_JSON;
+use kanidm_proto::constants::{APPLICATION_JSON, ATTR_NAME};
 use kanidm_proto::v1::*;
 use reqwest::header::CONTENT_TYPE;
 pub use reqwest::StatusCode;
@@ -1468,7 +1468,7 @@ impl KanidmClient {
         };
         new_group
             .attrs
-            .insert("name".to_string(), vec![name.to_string()]);
+            .insert(ATTR_NAME.to_string(), vec![name.to_string()]);
         self.perform_post_request("/v1/group", new_group).await
     }
 

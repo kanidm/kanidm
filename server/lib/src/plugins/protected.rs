@@ -2,6 +2,7 @@
 // may only have certain modifications performed.
 
 use hashbrown::HashSet;
+use kanidm_proto::constants::{ATTR_MAY, ATTR_MUST};
 use std::sync::Arc;
 
 use crate::event::{CreateEvent, DeleteEvent, ModifyEvent};
@@ -21,8 +22,8 @@ lazy_static! {
         // Allow modification of some schema class types to allow local extension
         // of schema types.
         //
-        m.insert("must");
-        m.insert("may");
+        m.insert(ATTR_MUST);
+        m.insert(ATTR_MAY);
         // Allow modification of some domain info types for local configuration.
         m.insert("domain_ssid");
         m.insert("domain_ldap_basedn");
@@ -53,13 +54,14 @@ impl Plugin for Protected {
         }
 
         cand.iter().try_fold((), |(), cand| {
-            if cand.attribute_equality("class", &PVCLASS_SYSTEM)
-                || cand.attribute_equality("class", &PVCLASS_DOMAIN_INFO)
-                || cand.attribute_equality("class", &PVCLASS_SYSTEM_INFO)
-                || cand.attribute_equality("class", &PVCLASS_SYSTEM_CONFIG)
-                || cand.attribute_equality("class", &PVCLASS_TOMBSTONE)
-                || cand.attribute_equality("class", &PVCLASS_RECYCLED)
-                || cand.attribute_equality("class", &PVCLASS_DYNGROUP)
+            if cand.attribute_equality(Attribute::Class.as_ref(), &EntryClass::System.into())
+                || cand.attribute_equality(Attribute::Class.into(), &EntryClass::DomainInfo.into())
+                || cand.attribute_equality(Attribute::Class.into(), &EntryClass::SystemInfo.into())
+                || cand
+                    .attribute_equality(Attribute::Class.into(), &EntryClass::SystemConfig.into())
+                || cand.attribute_equality(Attribute::Class.as_ref(), &EntryClass::Tombstone.into())
+                || cand.attribute_equality(Attribute::Class.as_ref(), &EntryClass::Recycled.into())
+                || cand.attribute_equality(Attribute::Class.as_ref(), &EntryClass::DynGroup.into())
             {
                 Err(OperationError::SystemProtectedObject)
             } else {
@@ -83,14 +85,14 @@ impl Plugin for Protected {
         me.modlist.iter().try_fold((), |(), m| match m {
             Modify::Present(a, v) => {
                 if a == "class"
-                    && (v == &(*CLASS_SYSTEM)
-                        || v == &(*CLASS_DOMAIN_INFO)
-                        || v == &(*CLASS_SYSTEM_INFO)
-                        || v == &(*CLASS_SYSTEM_CONFIG)
-                        || v == &(*CLASS_DYNGROUP)
-                        || v == &(*CLASS_SYNC_OBJECT)
-                        || v == &(*CLASS_TOMBSTONE)
-                        || v == &(*CLASS_RECYCLED))
+                    && (v == &EntryClass::System.to_value()
+                        || v == &EntryClass::DomainInfo.to_value()
+                        || v == &EntryClass::SystemInfo.into()
+                        || v == &EntryClass::SystemConfig.to_value()
+                        || v == &EntryClass::DynGroup.to_value()
+                        || v == &EntryClass::SyncObject.to_value()
+                        || v == &EntryClass::Tombstone.to_value()
+                        || v == &EntryClass::Recycled.to_value())
                 {
                     Err(OperationError::SystemProtectedObject)
                 } else {
@@ -103,9 +105,9 @@ impl Plugin for Protected {
         // HARD block mods on tombstone or recycle. We soft block on the rest as they may
         // have some allowed attrs.
         cand.iter().try_fold((), |(), cand| {
-            if cand.attribute_equality("class", &PVCLASS_TOMBSTONE)
-                || cand.attribute_equality("class", &PVCLASS_RECYCLED)
-                || cand.attribute_equality("class", &PVCLASS_DYNGROUP)
+            if cand.attribute_equality(Attribute::Class.as_ref(), &EntryClass::Tombstone.into())
+                || cand.attribute_equality(Attribute::Class.as_ref(), &EntryClass::Recycled.into())
+                || cand.attribute_equality(Attribute::Class.as_ref(), &EntryClass::DynGroup.into())
             {
                 Err(OperationError::SystemProtectedObject)
             } else {
@@ -117,7 +119,7 @@ impl Plugin for Protected {
         let system_pres = cand.iter().any(|c| {
             // We don't need to check for domain info here because domain_info has a class
             // system also. We just need to block it from being created.
-            c.attribute_equality("class", &PVCLASS_SYSTEM)
+            c.attribute_equality(Attribute::Class.as_ref(), &EntryClass::System.into())
         });
 
         trace!("class: system -> {}", system_pres);
@@ -162,14 +164,14 @@ impl Plugin for Protected {
             .try_fold((), |(), m| match m {
                 Modify::Present(a, v) => {
                     if a == "class"
-                        && (v == &(*CLASS_SYSTEM)
-                            || v == &(*CLASS_DOMAIN_INFO)
-                            || v == &(*CLASS_SYSTEM_INFO)
-                            || v == &(*CLASS_SYSTEM_CONFIG)
-                            || v == &(*CLASS_DYNGROUP)
-                            || v == &(*CLASS_SYNC_OBJECT)
-                            || v == &(*CLASS_TOMBSTONE)
-                            || v == &(*CLASS_RECYCLED))
+                        && (v == &EntryClass::System.to_value()
+                            || v == &EntryClass::DomainInfo.to_value()
+                            || v == &(EntryClass::SystemInfo.to_value())
+                            || v == &EntryClass::SystemConfig.to_value()
+                            || v == &EntryClass::DynGroup.to_value()
+                            || v == &EntryClass::SyncObject.to_value()
+                            || v == &EntryClass::Tombstone.to_value()
+                            || v == &EntryClass::Recycled.to_value())
                     {
                         Err(OperationError::SystemProtectedObject)
                     } else {
@@ -182,9 +184,9 @@ impl Plugin for Protected {
         // HARD block mods on tombstone or recycle. We soft block on the rest as they may
         // have some allowed attrs.
         cand.iter().try_fold((), |(), cand| {
-            if cand.attribute_equality("class", &PVCLASS_TOMBSTONE)
-                || cand.attribute_equality("class", &PVCLASS_RECYCLED)
-                || cand.attribute_equality("class", &PVCLASS_DYNGROUP)
+            if cand.attribute_equality(Attribute::Class.as_ref(), &EntryClass::Tombstone.into())
+                || cand.attribute_equality(Attribute::Class.as_ref(), &EntryClass::Recycled.into())
+                || cand.attribute_equality(Attribute::Class.as_ref(), &EntryClass::DynGroup.into())
             {
                 Err(OperationError::SystemProtectedObject)
             } else {
@@ -196,7 +198,7 @@ impl Plugin for Protected {
         let system_pres = cand.iter().any(|c| {
             // We don't need to check for domain info here because domain_info has a class
             // system also. We just need to block it from being created.
-            c.attribute_equality("class", &PVCLASS_SYSTEM)
+            c.attribute_equality(Attribute::Class.as_ref(), &EntryClass::System.into())
         });
 
         trace!("class: system -> {}", system_pres);
@@ -240,13 +242,14 @@ impl Plugin for Protected {
         }
 
         cand.iter().try_fold((), |(), cand| {
-            if cand.attribute_equality("class", &PVCLASS_SYSTEM)
-                || cand.attribute_equality("class", &PVCLASS_DOMAIN_INFO)
-                || cand.attribute_equality("class", &PVCLASS_SYSTEM_INFO)
-                || cand.attribute_equality("class", &PVCLASS_SYSTEM_CONFIG)
-                || cand.attribute_equality("class", &PVCLASS_TOMBSTONE)
-                || cand.attribute_equality("class", &PVCLASS_RECYCLED)
-                || cand.attribute_equality("class", &PVCLASS_DYNGROUP)
+            if cand.attribute_equality(Attribute::Class.as_ref(), &EntryClass::System.into())
+                || cand.attribute_equality(Attribute::Class.into(), &EntryClass::DomainInfo.into())
+                || cand.attribute_equality(Attribute::Class.into(), &EntryClass::SystemInfo.into())
+                || cand
+                    .attribute_equality(Attribute::Class.into(), &EntryClass::SystemConfig.into())
+                || cand.attribute_equality(Attribute::Class.as_ref(), &EntryClass::Tombstone.into())
+                || cand.attribute_equality(Attribute::Class.as_ref(), &EntryClass::Recycled.into())
+                || cand.attribute_equality(Attribute::Class.as_ref(), &EntryClass::DynGroup.into())
             {
                 Err(OperationError::SystemProtectedObject)
             } else {
@@ -267,52 +270,115 @@ mod tests {
 
     lazy_static! {
         pub static ref TEST_ACCOUNT: EntryInitNew = entry_init!(
-            ("class", Value::new_class("account")),
-            ("class", Value::new_class("service_account")),
-            ("class", Value::new_class("memberof")),
-            ("name", Value::new_iname("test_account_1")),
-            ("displayname", Value::new_utf8s("test_account_1")),
-            ("uuid", Value::Uuid(UUID_TEST_ACCOUNT)),
-            ("memberof", Value::Refer(UUID_TEST_GROUP))
+            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
+            (
+                Attribute::Class.as_ref(),
+                EntryClass::ServiceAccount.to_value()
+            ),
+            (Attribute::Class.as_ref(), EntryClass::MemberOf.to_value()),
+            (Attribute::Name.as_ref(), Value::new_iname("test_account_1")),
+            (
+                Attribute::DisplayName.as_ref(),
+                Value::new_utf8s("test_account_1")
+            ),
+            (Attribute::Uuid.as_ref(), Value::Uuid(UUID_TEST_ACCOUNT)),
+            (Attribute::MemberOf.as_ref(), Value::Refer(UUID_TEST_GROUP))
         );
         pub static ref TEST_GROUP: EntryInitNew = entry_init!(
-            ("class", Value::new_class("group")),
-            ("name", Value::new_iname("test_group_a")),
-            ("uuid", Value::Uuid(UUID_TEST_GROUP)),
-            ("member", Value::Refer(UUID_TEST_ACCOUNT))
+            (Attribute::Class.as_ref(), EntryClass::Group.to_value()),
+            (Attribute::Name.as_ref(), Value::new_iname("test_group_a")),
+            (Attribute::Uuid.as_ref(), Value::Uuid(UUID_TEST_GROUP)),
+            (Attribute::Member.as_ref(), Value::Refer(UUID_TEST_ACCOUNT))
         );
         pub static ref ALLOW_ALL: EntryInitNew = entry_init!(
-            ("class", Value::new_class("object")),
-            ("class", Value::new_class("access_control_profile")),
-            ("class", Value::new_class("access_control_modify")),
-            ("class", Value::new_class("access_control_create")),
-            ("class", Value::new_class("access_control_delete")),
-            ("class", Value::new_class("access_control_search")),
-            ("name", Value::new_iname("idm_admins_acp_allow_all_test")),
-            ("uuid", Value::Uuid(UUID_TEST_ACP)),
-            ("acp_receiver_group", Value::Refer(UUID_TEST_GROUP)),
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+            (
+                Attribute::Class.as_ref(),
+                EntryClass::AccessControlProfile.to_value()
+            ),
+            (
+                Attribute::Class.as_ref(),
+                EntryClass::AccessControlModify.to_value()
+            ),
+            (
+                Attribute::Class.as_ref(),
+                EntryClass::AccessControlCreate.to_value()
+            ),
+            (
+                Attribute::Class.as_ref(),
+                EntryClass::AccessControlDelete.to_value()
+            ),
+            (
+                Attribute::Class.as_ref(),
+                EntryClass::AccessControlSearch.to_value()
+            ),
+            (
+                Attribute::Name.as_ref(),
+                Value::new_iname("idm_admins_acp_allow_all_test")
+            ),
+            (Attribute::Uuid.as_ref(), Value::Uuid(UUID_TEST_ACP)),
+            (
+                Attribute::AcpReceiverGroup.as_ref(),
+                Value::Refer(UUID_TEST_GROUP)
+            ),
             (
                 "acp_targetscope",
                 Value::new_json_filter_s("{\"pres\":\"class\"}").expect("filter")
             ),
-            ("acp_search_attr", Value::new_iutf8("name")),
-            ("acp_search_attr", Value::new_iutf8("class")),
-            ("acp_search_attr", Value::new_iutf8("uuid")),
-            ("acp_search_attr", Value::new_iutf8("classname")),
-            ("acp_search_attr", Value::new_iutf8("attributename")),
-            ("acp_modify_class", Value::new_iutf8("system")),
-            ("acp_modify_class", Value::new_iutf8("domain_info")),
-            ("acp_modify_removedattr", Value::new_iutf8("class")),
-            ("acp_modify_removedattr", Value::new_iutf8("displayname")),
-            ("acp_modify_removedattr", Value::new_iutf8("may")),
-            ("acp_modify_removedattr", Value::new_iutf8("must")),
-            ("acp_modify_removedattr", Value::new_iutf8("domain_name")),
+            (Attribute::AcpSearchAttr.as_ref(), Value::new_iutf8("name")),
+            (
+                Attribute::AcpSearchAttr.as_ref(),
+                Attribute::Class.to_value()
+            ),
+            (Attribute::AcpSearchAttr.as_ref(), Value::new_iutf8("uuid")),
+            (
+                Attribute::AcpSearchAttr.as_ref(),
+                Value::new_iutf8("classname")
+            ),
+            (
+                Attribute::AcpSearchAttr.as_ref(),
+                Value::new_iutf8("attributename")
+            ),
+            (
+                Attribute::AcpModifyClass.as_ref(),
+                Value::new_iutf8("system")
+            ),
+            (
+                Attribute::AcpModifyClass.as_ref(),
+                Value::new_iutf8("domain_info")
+            ),
+            (
+                Attribute::AcpModifyRemovedAttr.as_ref(),
+                Attribute::Class.to_value()
+            ),
+            (
+                Attribute::AcpModifyRemovedAttr.as_ref(),
+                Value::new_iutf8("displayname")
+            ),
+            (
+                Attribute::AcpModifyRemovedAttr.as_ref(),
+                Value::new_iutf8("may")
+            ),
+            (
+                Attribute::AcpModifyRemovedAttr.as_ref(),
+                Value::new_iutf8("must")
+            ),
+            (
+                Attribute::AcpModifyRemovedAttr.as_ref(),
+                Value::new_iutf8("domain_name")
+            ),
             (
                 "acp_modify_removedattr",
                 Value::new_iutf8("domain_display_name")
             ),
-            ("acp_modify_removedattr", Value::new_iutf8("domain_uuid")),
-            ("acp_modify_removedattr", Value::new_iutf8("domain_ssid")),
+            (
+                Attribute::AcpModifyRemovedAttr.as_ref(),
+                Value::new_iutf8("domain_uuid")
+            ),
+            (
+                Attribute::AcpModifyRemovedAttr.as_ref(),
+                Value::new_iutf8("domain_ssid")
+            ),
             (
                 "acp_modify_removedattr",
                 Value::new_iutf8("fernet_private_key_str")
@@ -323,19 +389,40 @@ mod tests {
             ),
             (
                 "acp_modify_removedattr",
-                Value::new_iutf8("private_cookie_key")
+                Attribute::PrivateCookieKey.to_value()
             ),
-            ("acp_modify_presentattr", Value::new_iutf8("class")),
-            ("acp_modify_presentattr", Value::new_iutf8("displayname")),
-            ("acp_modify_presentattr", Value::new_iutf8("may")),
-            ("acp_modify_presentattr", Value::new_iutf8("must")),
-            ("acp_modify_presentattr", Value::new_iutf8("domain_name")),
+            (
+                Attribute::AcpModifyPresentAttr.as_ref(),
+                Attribute::Class.to_value()
+            ),
+            (
+                Attribute::AcpModifyPresentAttr.as_ref(),
+                Value::new_iutf8("displayname")
+            ),
+            (
+                Attribute::AcpModifyPresentAttr.as_ref(),
+                Value::new_iutf8("may")
+            ),
+            (
+                Attribute::AcpModifyPresentAttr.as_ref(),
+                Value::new_iutf8("must")
+            ),
+            (
+                Attribute::AcpModifyPresentAttr.as_ref(),
+                Value::new_iutf8("domain_name")
+            ),
             (
                 "acp_modify_presentattr",
                 Value::new_iutf8("domain_display_name")
             ),
-            ("acp_modify_presentattr", Value::new_iutf8("domain_uuid")),
-            ("acp_modify_presentattr", Value::new_iutf8("domain_ssid")),
+            (
+                Attribute::AcpModifyPresentAttr.as_ref(),
+                Value::new_iutf8("domain_uuid")
+            ),
+            (
+                Attribute::AcpModifyPresentAttr.as_ref(),
+                Value::new_iutf8("domain_ssid")
+            ),
             (
                 "acp_modify_presentattr",
                 Value::new_iutf8("fernet_private_key_str")
@@ -346,28 +433,73 @@ mod tests {
             ),
             (
                 "acp_modify_presentattr",
-                Value::new_iutf8("private_cookie_key")
+                Attribute::PrivateCookieKey.to_value()
             ),
-            ("acp_create_class", Value::new_iutf8("object")),
-            ("acp_create_class", Value::new_iutf8("person")),
-            ("acp_create_class", Value::new_iutf8("system")),
-            ("acp_create_class", Value::new_iutf8("domain_info")),
-            ("acp_create_attr", Value::new_iutf8("name")),
-            ("acp_create_attr", Value::new_iutf8("class")),
-            ("acp_create_attr", Value::new_iutf8("description")),
-            ("acp_create_attr", Value::new_iutf8("displayname")),
-            ("acp_create_attr", Value::new_iutf8("domain_name")),
-            ("acp_create_attr", Value::new_iutf8("domain_display_name")),
-            ("acp_create_attr", Value::new_iutf8("domain_uuid")),
-            ("acp_create_attr", Value::new_iutf8("domain_ssid")),
-            ("acp_create_attr", Value::new_iutf8("uuid")),
+            (
+                Attribute::AcpCreateClass.as_ref(),
+                EntryClass::Object.to_value()
+            ),
+            (
+                Attribute::AcpCreateClass.as_ref(),
+                EntryClass::Person.to_value()
+            ),
+            (
+                Attribute::AcpCreateClass.as_ref(),
+                EntryClass::System.to_value()
+            ),
+            (
+                Attribute::AcpCreateClass.as_ref(),
+                EntryClass::DomainInfo.to_value()
+            ),
+            (
+                Attribute::AcpCreateAttr.as_ref(),
+                Attribute::Name.to_value()
+            ),
+            (
+                Attribute::AcpCreateAttr.as_ref(),
+                EntryClass::Class.to_value(),
+            ),
+            (
+                Attribute::AcpCreateAttr.as_ref(),
+                Attribute::Description.to_value(),
+            ),
+            (
+                Attribute::AcpCreateAttr.as_ref(),
+                Attribute::DisplayName.to_value(),
+            ),
+            (
+                Attribute::AcpCreateAttr.as_ref(),
+                Attribute::DomainName.to_value(),
+            ),
+            (
+                Attribute::AcpCreateAttr.as_ref(),
+                Value::new_iutf8("domain_display_name")
+            ),
+            (
+                Attribute::AcpCreateAttr.as_ref(),
+                Value::new_iutf8("domain_uuid")
+            ),
+            (
+                Attribute::AcpCreateAttr.as_ref(),
+                Value::new_iutf8("domain_ssid")
+            ),
+            (Attribute::AcpCreateAttr.as_ref(), Value::new_iutf8("uuid")),
             (
                 "acp_create_attr",
                 Value::new_iutf8("fernet_private_key_str")
             ),
-            ("acp_create_attr", Value::new_iutf8("es256_private_key_der")),
-            ("acp_create_attr", Value::new_iutf8("private_cookie_key")),
-            ("acp_create_attr", Value::new_iutf8("version"))
+            (
+                Attribute::AcpCreateAttr.as_ref(),
+                Value::new_iutf8("es256_private_key_der")
+            ),
+            (
+                Attribute::AcpCreateAttr.as_ref(),
+                Attribute::PrivateCookieKey.to_value()
+            ),
+            (
+                Attribute::AcpCreateAttr.as_ref(),
+                Value::new_iutf8("version")
+            )
         );
         pub static ref PRELOAD: Vec<EntryInitNew> =
             vec![TEST_ACCOUNT.clone(), TEST_GROUP.clone(), ALLOW_ALL.clone()];
@@ -421,7 +553,7 @@ mod tests {
         run_modify_test!(
             Err(OperationError::SystemProtectedObject),
             preload,
-            filter!(f_eq("name", PartialValue::new_iname("testperson"))),
+            filter!(f_eq(Attribute::Name, PartialValue::new_iname("testperson"))),
             modlist!([
                 m_purge("displayname"),
                 m_pres("displayname", &Value::new_utf8s("system test")),
@@ -435,6 +567,7 @@ mod tests {
     #[test]
     fn test_pre_modify_class_add_deny() {
         // Show that adding a system class is denied
+        // TODO: replace this with a `SchemaClass` object
         let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "attrs": {
@@ -445,14 +578,13 @@ mod tests {
             }
         }"#,
         );
-
         let mut preload = PRELOAD.clone();
         preload.push(e);
 
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq("classname", PartialValue::new_class("testclass"))),
+            filter!(f_eq(Attribute::ClassName, EntryClass::TestClass.into())),
             modlist!([
                 m_pres("may", &Value::new_iutf8("name")),
                 m_pres("must", &Value::new_iutf8("name")),
@@ -483,7 +615,7 @@ mod tests {
         run_delete_test!(
             Err(OperationError::SystemProtectedObject),
             preload,
-            filter!(f_eq("name", PartialValue::new_iname("testperson"))),
+            filter!(f_eq(Attribute::Name, PartialValue::new_iname("testperson"))),
             Some(E_TEST_ACCOUNT.clone()),
             |_| {}
         );
@@ -519,7 +651,7 @@ mod tests {
             Ok(()),
             preload,
             filter!(f_eq(
-                "name",
+                Attribute::Name,
                 PartialValue::new_iname("domain_example.net.au")
             )),
             modlist!([
@@ -595,7 +727,7 @@ mod tests {
             Err(OperationError::SystemProtectedObject),
             preload,
             filter!(f_eq(
-                "name",
+                Attribute::Name,
                 PartialValue::new_iname("domain_example.net.au")
             )),
             Some(E_TEST_ACCOUNT.clone()),

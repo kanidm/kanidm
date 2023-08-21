@@ -28,7 +28,7 @@ pub(crate) struct SyncAccount {
 macro_rules! try_from_entry {
     ($value:expr) => {{
         // Check the classes
-        if !$value.attribute_equality("class", &PVCLASS_SYNC_ACCOUNT) {
+        if !$value.attribute_equality(Attribute::Class.into(), &EntryClass::SyncAccount.into()) {
             return Err(OperationError::InvalidAccountState(
                 "Missing class: sync account".to_string(),
             ));
@@ -168,9 +168,9 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         self.qs_write
             .impersonate_modify(
                 // Filter as executed
-                &filter!(f_eq("uuid", PartialValue::Uuid(gte.target))),
+                &filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(gte.target))),
                 // Filter as intended (acp)
-                &filter_all!(f_eq("uuid", PartialValue::Uuid(gte.target))),
+                &filter_all!(f_eq(Attribute::Uuid, PartialValue::Uuid(gte.target))),
                 &modlist,
                 // Provide the event to impersonate
                 &gte.ident,
@@ -204,9 +204,9 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         self.qs_write
             .impersonate_modify(
                 // Filter as executed
-                &filter!(f_eq("uuid", PartialValue::Uuid(target))),
+                &filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(target))),
                 // Filter as intended (acp)
-                &filter!(f_eq("uuid", PartialValue::Uuid(target))),
+                &filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(target))),
                 &modlist,
                 // Provide the event to impersonate
                 ident,
@@ -283,8 +283,8 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         // First, get the set of uuids that exist. We need this so we have the set of uuids we'll
         // be deleting *at the end*.
         let f_all_sync = filter_all!(f_and!([
-            f_eq("class", PVCLASS_SYNC_OBJECT.clone()),
-            f_eq("sync_parent_uuid", PartialValue::Refer(sync_uuid))
+            f_eq(Attribute::Class, EntryClass::SyncObject.into()),
+            f_eq(Attribute::SyncParentUuid, PartialValue::Refer(sync_uuid))
         ]));
 
         // TODO: This could benefit from a search that only grabs uuids?
@@ -300,12 +300,12 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         /*
         let filter_or: Vec<_> = existing_entries
             .iter()
-            .map(|e| f_eq("uuid", PartialValue::Uuid(e.get_uuid())))
+            .map(|e| f_eq(Attribute::Uuid, PartialValue::Uuid(e.get_uuid())))
             .collect();
         */
 
         // We only need to delete the sync account itself.
-        let delete_filter = filter!(f_eq("uuid", PartialValue::Uuid(sync_uuid)));
+        let delete_filter = filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(sync_uuid)));
 
         if existing_entries {
             // Now modify these to remove their sync related attributes.
@@ -317,7 +317,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
             let modlist = std::iter::once(Modify::Removed(
                 "class".into(),
-                PartialValue::new_class("sync_object"),
+                EntryClass::SyncObject.into(),
             ))
             .chain(
                 sync_class
@@ -408,8 +408,8 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         // First, get the set of uuids that exist. We need this so we have the set of uuids we'll
         // be deleting *at the end*.
         let f_all_sync = filter_all!(f_and!([
-            f_eq("class", PVCLASS_SYNC_OBJECT.clone()),
-            f_eq("sync_parent_uuid", PartialValue::Refer(sync_uuid))
+            f_eq(Attribute::Class, EntryClass::SyncObject.into()),
+            f_eq(Attribute::SyncParentUuid, PartialValue::Refer(sync_uuid))
         ]));
 
         // TODO: This could benefit from a search that only grabs uuids?
@@ -423,12 +423,12 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         let delete_filter = if existing_entries.is_empty() {
             // We only need to delete the sync account itself.
-            filter!(f_eq("uuid", PartialValue::Uuid(sync_uuid)))
+            filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(sync_uuid)))
         } else {
             // This is the delete filter we need later.
             let filter_or: Vec<_> = existing_entries
                 .iter()
-                .map(|e| f_eq("uuid", PartialValue::Uuid(e.get_uuid())))
+                .map(|e| f_eq(Attribute::Uuid, PartialValue::Uuid(e.get_uuid())))
                 .collect();
 
             // Now modify these to remove their sync related attributes.
@@ -440,7 +440,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
             let modlist = std::iter::once(Modify::Removed(
                 "class".into(),
-                PartialValue::new_class("sync_object"),
+                EntryClass::SyncObject.into(),
             ))
             .chain(
                 sync_class
@@ -459,7 +459,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 })?;
 
             filter!(f_or!([
-                f_eq("uuid", PartialValue::Uuid(sync_uuid)),
+                f_eq(Attribute::Uuid, PartialValue::Uuid(sync_uuid)),
                 f_or(filter_or)
             ]))
         };
@@ -613,7 +613,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         let filter_or = change_entries
             .keys()
             .copied()
-            .map(|u| f_eq("uuid", PartialValue::Uuid(u)))
+            .map(|u| f_eq(Attribute::Uuid, PartialValue::Uuid(u)))
             .collect();
 
         // NOTE: We bypass recycled/ts here because we WANT to know if we are in that
@@ -663,10 +663,10 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             .copied()
             .map(|u| {
                 entry_init!(
-                    ("class", Value::new_class("object")),
-                    ("class", Value::new_class("sync_object")),
-                    ("sync_parent_uuid", Value::Refer(sync_uuid)),
-                    ("uuid", Value::Uuid(u))
+                    (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+                    (Attribute::Class.as_ref(), EntryClass::SyncObject.to_value()),
+                    (Attribute::SyncParentUuid.as_ref(), Value::Refer(sync_uuid)),
+                    (Attribute::Uuid.as_ref(), Value::Uuid(u))
                 )
             })
             .collect();
@@ -739,18 +739,18 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         let filter_or = change_entries
             .keys()
             .copied()
-            .map(|u| f_eq("uuid", PartialValue::Uuid(u)))
+            .map(|u| f_eq(Attribute::Uuid, PartialValue::Uuid(u)))
             .collect::<Vec<_>>();
 
         let delete_filter = if filter_or.is_empty() {
             filter!(f_and!([
                 // Must be part of this sync agreement.
-                f_eq("sync_parent_uuid", PartialValue::Refer(sync_uuid))
+                f_eq(Attribute::SyncParentUuid, PartialValue::Refer(sync_uuid))
             ]))
         } else {
             filter!(f_and!([
                 // Must be part of this sync agreement.
-                f_eq("sync_parent_uuid", PartialValue::Refer(sync_uuid)),
+                f_eq(Attribute::SyncParentUuid, PartialValue::Refer(sync_uuid)),
                 // Must not be an entry in the change set.
                 f_andnot(f_or(filter_or))
             ]))
@@ -1142,7 +1142,10 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 "sync_class".into(),
                 Value::new_iutf8(req_class),
             ));
-            mods.push(Modify::Present("class".into(), Value::new_iutf8(req_class)));
+            mods.push(Modify::Present(
+                EntryClass::Class.into(),
+                Value::new_iutf8(req_class),
+            ));
         }
 
         // Clean up from removed classes. NEED THE OLD ENTRY FOR THIS.
@@ -1327,18 +1330,18 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 let filter_or = present_uuids
                     .iter()
                     .copied()
-                    .map(|u| f_eq("uuid", PartialValue::Uuid(u)))
+                    .map(|u| f_eq(Attribute::Uuid, PartialValue::Uuid(u)))
                     .collect::<Vec<_>>();
 
                 if filter_or.is_empty() {
                     filter!(f_and!([
                         // F in chat for all these entries.
-                        f_eq("sync_parent_uuid", PartialValue::Refer(sync_uuid))
+                        f_eq(Attribute::SyncParentUuid, PartialValue::Refer(sync_uuid))
                     ]))
                 } else {
                     filter!(f_and!([
                         // Must be part of this sync agreement.
-                        f_eq("sync_parent_uuid", PartialValue::Refer(sync_uuid)),
+                        f_eq(Attribute::SyncParentUuid, PartialValue::Refer(sync_uuid)),
                         // Must not be an entry in the change set.
                         f_andnot(f_or(filter_or))
                     ]))
@@ -1354,7 +1357,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 let filter_or = delete_uuids
                     .iter()
                     .copied()
-                    .map(|u| f_eq("uuid", PartialValue::Uuid(u)))
+                    .map(|u| f_eq(Attribute::Uuid, PartialValue::Uuid(u)))
                     .collect();
 
                 // NOTE: We bypass recycled/ts here because we WANT to know if we are in that
@@ -1380,7 +1383,10 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                             );
                             Some(Err(OperationError::AccessDenied))
                         } else {
-                            Some(Ok(f_eq("uuid", PartialValue::Uuid(ent.get_uuid()))))
+                            Some(Ok(f_eq(
+                                Attribute::Uuid,
+                                PartialValue::Uuid(ent.get_uuid()),
+                            )))
                         }
                     })
                     .collect::<Result<Vec<_>, _>>()?;
@@ -1393,7 +1399,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 filter!(f_and(vec![
                     // Technically not needed, but it's better to add more safeties and this
                     // costs nothing to add.
-                    f_eq("sync_parent_uuid", PartialValue::Refer(sync_uuid)),
+                    f_eq(Attribute::SyncParentUuid, PartialValue::Refer(sync_uuid)),
                     f_or(delete_filter)
                 ]))
             }
@@ -1507,11 +1513,17 @@ mod tests {
         let sync_uuid = Uuid::new_v4();
 
         let e1 = entry_init!(
-            ("class", Value::new_class("object")),
-            ("class", Value::new_class("sync_account")),
-            ("name", Value::new_iname("test_scim_sync")),
-            ("uuid", Value::Uuid(sync_uuid)),
-            ("description", Value::new_utf8s("A test sync agreement"))
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+            (
+                Attribute::Class.as_ref(),
+                EntryClass::SyncAccount.to_value()
+            ),
+            (Attribute::Name.as_ref(), Value::new_iname("test_scim_sync")),
+            (Attribute::Uuid.as_ref(), Value::Uuid(sync_uuid)),
+            (
+                Attribute::Description.as_ref(),
+                Value::new_utf8s("A test sync agreement")
+            )
         );
 
         let ce = CreateEvent::new_internal(vec![e1]);
@@ -1574,11 +1586,17 @@ mod tests {
         let sync_uuid = Uuid::new_v4();
 
         let e1 = entry_init!(
-            ("class", Value::new_class("object")),
-            ("class", Value::new_class("sync_account")),
-            ("name", Value::new_iname("test_scim_sync")),
-            ("uuid", Value::Uuid(sync_uuid)),
-            ("description", Value::new_utf8s("A test sync agreement"))
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+            (
+                Attribute::Class.as_ref(),
+                EntryClass::SyncAccount.to_value()
+            ),
+            (Attribute::Name.as_ref(), Value::new_iname("test_scim_sync")),
+            (Attribute::Uuid.as_ref(), Value::Uuid(sync_uuid)),
+            (
+                Attribute::Description.as_ref(),
+                Value::new_utf8s("A test sync agreement")
+            )
         );
 
         let ce = CreateEvent::new_internal(vec![e1]);
@@ -1605,7 +1623,10 @@ mod tests {
 
         let mut idms_prox_write = idms.proxy_write(ct).await;
         let me_inv_m = ModifyEvent::new_internal_invalid(
-            filter!(f_eq("name", PartialValue::new_iname("test_scim_sync"))),
+            filter!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("test_scim_sync")
+            )),
             ModifyList::new_list(vec![Modify::Purged(AttrString::from("sync_token_session"))]),
         );
         assert!(idms_prox_write.qs_write.modify(&me_inv_m).is_ok());
@@ -1627,7 +1648,10 @@ mod tests {
             .expect("failed to generate new scim sync token");
 
         let me_inv_m = ModifyEvent::new_internal_invalid(
-            filter!(f_eq("name", PartialValue::new_iname("test_scim_sync"))),
+            filter!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("test_scim_sync")
+            )),
             ModifyList::new_list(vec![Modify::Purged(AttrString::from(
                 "jws_es256_private_key",
             ))]),
@@ -1689,11 +1713,17 @@ mod tests {
         let sync_uuid = Uuid::new_v4();
 
         let e1 = entry_init!(
-            ("class", Value::new_class("object")),
-            ("class", Value::new_class("sync_account")),
-            ("name", Value::new_iname("test_scim_sync")),
-            ("uuid", Value::Uuid(sync_uuid)),
-            ("description", Value::new_utf8s("A test sync agreement"))
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+            (
+                Attribute::Class.as_ref(),
+                EntryClass::SyncAccount.to_value()
+            ),
+            (Attribute::Name.as_ref(), Value::new_iname("test_scim_sync")),
+            (Attribute::Uuid.as_ref(), Value::Uuid(sync_uuid)),
+            (
+                Attribute::Description.as_ref(),
+                Value::new_utf8s("A test sync agreement")
+            )
         );
 
         let ce = CreateEvent::new_internal(vec![e1]);
@@ -1805,8 +1835,8 @@ mod tests {
         assert!(idms_prox_write
             .qs_write
             .internal_create(vec![entry_init!(
-                ("class", Value::new_class("object")),
-                ("uuid", Value::Uuid(user_sync_uuid))
+                (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+                (Attribute::Uuid.as_ref(), Value::Uuid(user_sync_uuid))
             )])
             .is_ok());
 
@@ -2103,7 +2133,7 @@ mod tests {
         assert!(idms_prox_write
             .qs_write
             .internal_search(filter_all!(f_eq(
-                "uuid",
+                Attribute::Uuid,
                 PartialValue::Uuid(user_sync_uuid)
             )))
             // Should be none as the entry was masked by being recycled.
@@ -2159,8 +2189,8 @@ mod tests {
         assert!(idms_prox_write
             .qs_write
             .internal_create(vec![entry_init!(
-                ("class", Value::new_class("object")),
-                ("uuid", Value::Uuid(user_sync_uuid))
+                (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+                (Attribute::Uuid.as_ref(), Value::Uuid(user_sync_uuid))
             )])
             .is_ok());
 
@@ -2196,8 +2226,8 @@ mod tests {
         assert!(idms_prox_write
             .qs_write
             .internal_create(vec![entry_init!(
-                ("class", Value::new_class("object")),
-                ("uuid", Value::Uuid(user_sync_uuid))
+                (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+                (Attribute::Uuid.as_ref(), Value::Uuid(user_sync_uuid))
             )])
             .is_ok());
 
@@ -2297,7 +2327,10 @@ mod tests {
         // Can't use internal_search_uuid since that applies a mask.
         assert!(idms_prox_write
             .qs_write
-            .internal_search(filter_all!(f_eq("uuid", PartialValue::Uuid(sync_uuid_b))))
+            .internal_search(filter_all!(f_eq(
+                Attribute::Uuid,
+                PartialValue::Uuid(sync_uuid_b)
+            )))
             // Should be none as the entry was masked by being recycled.
             .map(|entries| {
                 assert!(entries.len() == 1);
@@ -2378,7 +2411,10 @@ mod tests {
         // Can't use internal_search_uuid since that applies a mask.
         assert!(idms_prox_write
             .qs_write
-            .internal_search(filter_all!(f_eq("uuid", PartialValue::Uuid(sync_uuid_a))))
+            .internal_search(filter_all!(f_eq(
+                Attribute::Uuid,
+                PartialValue::Uuid(sync_uuid_a)
+            )))
             // Should be none as the entry was masked by being recycled.
             .map(|entries| {
                 assert!(entries.len() == 1);
@@ -2390,7 +2426,10 @@ mod tests {
         // Can't use internal_search_uuid since that applies a mask.
         assert!(idms_prox_write
             .qs_write
-            .internal_search(filter_all!(f_eq("uuid", PartialValue::Uuid(sync_uuid_b))))
+            .internal_search(filter_all!(f_eq(
+                Attribute::Uuid,
+                PartialValue::Uuid(sync_uuid_b)
+            )))
             // Should be none as the entry was masked by being recycled.
             .map(|entries| {
                 assert!(entries.len() == 1);
@@ -2520,7 +2559,10 @@ mod tests {
     ) -> Arc<EntrySealedCommitted> {
         idms_prox_write
             .qs_write
-            .internal_search(filter!(f_eq("name", PartialValue::new_iname(name))))
+            .internal_search(filter!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname(name)
+            )))
             .map_err(|_| ())
             .and_then(|mut entries| {
                 if entries.len() != 1 {
@@ -2584,7 +2626,7 @@ mod tests {
         assert!(testuser.get_ava_single_iutf8("loginshell") == Some("/bin/sh"));
 
         let mut ssh_keyiter = testuser
-            .get_ava_iter_sshpubkeys("ssh_publickey")
+            .get_ava_iter_sshpubkeys(Attribute::SshPublicKey.into())
             .expect("Failed to access ssh pubkeys");
         assert_eq!(ssh_keyiter.next(), Some("sk-ecdsa-sha2-nistp256@openssh.com AAAAInNrLWVjZHNhLXNoYTItbmlzdHAyNTZAb3BlbnNzaC5jb20AAAAIbmlzdHAyNTYAAABBBENubZikrb8hu+HeVRdZ0pp/VAk2qv4JDbuJhvD0yNdWDL2e3cBbERiDeNPkWx58Q4rVnxkbV1fa8E2waRtT91wAAAAEc3NoOg== testuser@fidokey"));
         assert_eq!(ssh_keyiter.next(), None);
@@ -2616,7 +2658,10 @@ mod tests {
         // Deleted
         assert!(idms_prox_write
             .qs_write
-            .internal_search(filter!(f_eq("name", PartialValue::new_iname("testgroup"))))
+            .internal_search(filter!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("testgroup")
+            )))
             .unwrap()
             .is_empty());
 
@@ -2724,14 +2769,17 @@ mod tests {
 
         assert!(idms_prox_write
             .qs_write
-            .internal_search(filter!(f_eq("name", PartialValue::new_iname("testposix"))))
+            .internal_search(filter!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("testposix")
+            )))
             .unwrap()
             .is_empty());
 
         assert!(idms_prox_write
             .qs_write
             .internal_search(filter!(f_eq(
-                "name",
+                Attribute::Name,
                 PartialValue::new_iname("testexternal")
             )))
             .unwrap()
@@ -2790,7 +2838,7 @@ mod tests {
             )
             .is_ok());
 
-        let testuser_filter = filter!(f_eq("name", PartialValue::new_iname("testuser")));
+        let testuser_filter = filter!(f_eq(Attribute::Name, PartialValue::new_iname("testuser")));
 
         // We then can change our user.
         assert!(idms_prox_write
@@ -2855,16 +2903,21 @@ mod tests {
 
         // Check that the entries still exists but now have no sync_object attached.
         let testgroup = get_single_entry("testgroup", &mut idms_prox_write);
-        assert!(!testgroup.attribute_equality("class", &PVCLASS_SYNC_OBJECT));
+        assert!(!testgroup
+            .attribute_equality(Attribute::Class.as_ref(), &EntryClass::SyncObject.into()));
 
         let testposix = get_single_entry("testposix", &mut idms_prox_write);
-        assert!(!testposix.attribute_equality("class", &PVCLASS_SYNC_OBJECT));
+        assert!(!testposix
+            .attribute_equality(Attribute::Class.as_ref(), &EntryClass::SyncObject.into()));
 
         let testexternal = get_single_entry("testexternal", &mut idms_prox_write);
-        assert!(!testexternal.attribute_equality("class", &PVCLASS_SYNC_OBJECT));
+        assert!(!testexternal
+            .attribute_equality(Attribute::Class.as_ref(), &EntryClass::SyncObject.into()));
 
         let testuser = get_single_entry("testuser", &mut idms_prox_write);
-        assert!(!testuser.attribute_equality("class", &PVCLASS_SYNC_OBJECT));
+        assert!(
+            !testuser.attribute_equality(Attribute::Class.as_ref(), &EntryClass::SyncObject.into())
+        );
 
         assert!(idms_prox_write.commit().is_ok());
     }
@@ -2910,16 +2963,22 @@ mod tests {
 
         // Check that the entries still exists but now have no sync_object attached.
         let testgroup = get_single_entry("testgroup", &mut idms_prox_write);
-        assert!(!testgroup.attribute_equality("class", &PVCLASS_SYNC_OBJECT));
+        assert!(!testgroup
+            .attribute_equality(Attribute::Class.as_ref(), &EntryClass::SyncObject.into()));
 
         let testuser = get_single_entry("testuser", &mut idms_prox_write);
-        assert!(!testuser.attribute_equality("class", &PVCLASS_SYNC_OBJECT));
+        assert!(
+            !testuser.attribute_equality(Attribute::Class.as_ref(), &EntryClass::SyncObject.into())
+        );
 
         for iname in ["testposix", "testexternal"] {
             trace!(%iname);
             assert!(idms_prox_write
                 .qs_write
-                .internal_search(filter!(f_eq("name", PartialValue::new_iname(iname))))
+                .internal_search(filter!(f_eq(
+                    Attribute::Name,
+                    PartialValue::new_iname(iname)
+                )))
                 .unwrap()
                 .is_empty());
         }
@@ -2967,7 +3026,10 @@ mod tests {
             trace!(%iname);
             assert!(idms_prox_write
                 .qs_write
-                .internal_search(filter!(f_eq("name", PartialValue::new_iname(iname))))
+                .internal_search(filter!(f_eq(
+                    Attribute::Name,
+                    PartialValue::new_iname(iname)
+                )))
                 .unwrap()
                 .is_empty());
         }
@@ -3022,7 +3084,10 @@ mod tests {
             trace!(%iname);
             assert!(idms_prox_write
                 .qs_write
-                .internal_search(filter!(f_eq("name", PartialValue::new_iname(iname))))
+                .internal_search(filter!(f_eq(
+                    Attribute::Name,
+                    PartialValue::new_iname(iname)
+                )))
                 .unwrap()
                 .is_empty());
         }

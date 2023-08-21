@@ -223,7 +223,7 @@ impl Identity {
             IdentType::Internal | IdentType::Synch(_) => false,
             IdentType::User(u) => u
                 .entry
-                .attribute_equality("claim", &PartialValue::new_iutf8(claim)),
+                .attribute_equality(Attribute::Claim.as_ref(), &PartialValue::new_iutf8(claim)),
         }
     }
 
@@ -232,7 +232,7 @@ impl Identity {
             IdentType::Internal | IdentType::Synch(_) => false,
             IdentType::User(u) => u
                 .entry
-                .attribute_equality("memberof", &PartialValue::Refer(group)),
+                .attribute_equality(Attribute::MemberOf.as_ref(), &PartialValue::Refer(group)),
         }
     }
 

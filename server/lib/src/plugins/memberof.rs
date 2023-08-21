@@ -32,10 +32,10 @@ fn do_memberof(
     //  search where we are member
     let groups = qs
         .internal_search(filter!(f_and!([
-            f_eq("class", PVCLASS_GROUP.clone()),
+            f_eq(Attribute::Class, EntryClass::Group.into()),
             f_or!([
-                f_eq("member", PartialValue::Refer(uuid)),
-                f_eq("dynmember", PartialValue::Refer(uuid))
+                f_eq(Attribute::Member, PartialValue::Refer(uuid)),
+                f_eq(Attribute::DynMember, PartialValue::Refer(uuid))
             ])
         ])))
         .map_err(|e| {
@@ -44,7 +44,7 @@ fn do_memberof(
         })?;
 
     // Ensure we are MO capable. We only add this if it's not already present.
-    tgte.add_ava_if_not_exist("class", CLASS_MEMBEROF.clone());
+    tgte.add_ava_if_not_exist(Attribute::Class.as_ref(), EntryClass::MemberOf.into());
     // Clear the dmo + mos, we will recreate them now.
     // This is how we handle deletes/etc.
     tgte.purge_ava("memberof");
@@ -121,7 +121,7 @@ fn apply_memberof(
         let filt = filter!(FC::Or(
             group_affect
                 .drain(0..)
-                .map(|u| f_eq("uuid", PartialValue::Uuid(u)))
+                .map(|u| f_eq(Attribute::Uuid, PartialValue::Uuid(u)))
                 .collect()
         ));
 
@@ -133,7 +133,7 @@ fn apply_memberof(
         for (pre, mut tgte) in work_set.into_iter() {
             let guuid = pre.get_uuid();
             // load the entry from the db.
-            if !tgte.attribute_equality("class", &PVCLASS_GROUP) {
+            if !tgte.attribute_equality(Attribute::Class.as_ref(), &EntryClass::Group.into()) {
                 // It's not a group, we'll deal with you later. We should NOT
                 // have seen this UUID before, as either we are on the first
                 // iteration OR the checks belowe should have filtered it out.
@@ -188,7 +188,9 @@ fn apply_memberof(
         .into_iter()
         .try_for_each(|(auuid, (pre, mut tgte))| {
             trace!("=> processing affected uuid {:?}", auuid);
-            debug_assert!(!tgte.attribute_equality("class", &PVCLASS_GROUP));
+            debug_assert!(
+                !tgte.attribute_equality(Attribute::Class.as_ref(), &EntryClass::Group.into())
+            );
             do_memberof(qs, auuid, &mut tgte)?;
             // Only write if a change occurred.
             if pre.get_ava_set("memberof") != tgte.get_ava_set("memberof")
@@ -260,7 +262,7 @@ impl Plugin for MemberOf {
             .iter()
             .filter_map(|e| {
                 // Is it a group?
-                if e.attribute_equality("class", &PVCLASS_GROUP) {
+                if e.attribute_equality(Attribute::Class.as_ref(), &EntryClass::Group.into()) {
                     e.get_ava_as_refuuid("member")
                 } else {
                     None
@@ -271,7 +273,10 @@ impl Plugin for MemberOf {
                 // Or a dyn group?
                 cand.iter()
                     .filter_map(|post| {
-                        if post.attribute_equality("class", &PVCLASS_DYNGROUP) {
+                        if post.attribute_equality(
+                            Attribute::Class.as_ref(),
+                            &EntryClass::DynGroup.into(),
+                        ) {
                             post.get_ava_as_refuuid("dynmember")
                         } else {
                             None
@@ -288,7 +293,7 @@ impl Plugin for MemberOf {
     fn verify(qs: &mut QueryServerReadTransaction) -> Vec<Result<(), ConsistencyError>> {
         let mut r = Vec::new();
 
-        let filt_in = filter!(f_pres("class"));
+        let filt_in = filter!(f_pres(Attribute::Class.as_ref()));
 
         let all_cand = match qs
             .internal_search(filt_in)
@@ -302,10 +307,10 @@ impl Plugin for MemberOf {
         for e in all_cand {
             let uuid = e.get_uuid();
             let filt_in = filter!(f_and!([
-                f_eq("class", PVCLASS_GROUP.clone()),
+                f_eq(Attribute::Class, EntryClass::Group.into()),
                 f_or!([
-                    f_eq("member", PartialValue::Refer(uuid)),
-                    f_eq("dynmember", PartialValue::Refer(uuid))
+                    f_eq(Attribute::Member, PartialValue::Refer(uuid)),
+                    f_eq(Attribute::DynMember, PartialValue::Refer(uuid))
                 ])
             ]));
 
@@ -396,7 +401,10 @@ impl MemberOf {
                 cand.iter()
                     .filter_map(|e| {
                         // Is it a group?
-                        if e.attribute_equality("class", &PVCLASS_GROUP) {
+                        if e.attribute_equality(
+                            Attribute::Class.as_ref(),
+                            &EntryClass::Group.into(),
+                        ) {
                             e.get_ava_as_refuuid("member")
                         } else {
                             None
@@ -426,7 +434,10 @@ impl MemberOf {
                 pre_cand
                     .iter()
                     .filter_map(|pre| {
-                        if pre.attribute_equality("class", &PVCLASS_GROUP) {
+                        if pre.attribute_equality(
+                            Attribute::Class.as_ref(),
+                            &EntryClass::Group.into(),
+                        ) {
                             pre.get_ava_as_refuuid("member")
                         } else {
                             None
@@ -437,7 +448,10 @@ impl MemberOf {
             .chain(
                 cand.iter()
                     .filter_map(|post| {
-                        if post.attribute_equality("class", &PVCLASS_GROUP) {
+                        if post.attribute_equality(
+                            Attribute::Class.as_ref(),
+                            &EntryClass::Group.into(),
+                        ) {
                             post.get_ava_as_refuuid("member")
                         } else {
                             None
@@ -501,7 +515,7 @@ mod tests {
             $cand:expr
         ) => {{
             let filt = filter!(f_and!([
-                f_eq("uuid", PartialValue::new_uuid_s($ea).unwrap()),
+                f_eq(Attribute::Uuid, PartialValue::new_uuid_s($ea).unwrap()),
                 f_eq($mo, PartialValue::new_refer_s($eb).unwrap())
             ]));
             let cands = $qs.internal_search(filt).expect("Internal search failure");
@@ -516,7 +530,7 @@ mod tests {
             $ea:expr,
             $eb:expr
         ) => {{
-            assert_memberof_int!($qs, $ea, $eb, "memberof", 1);
+            assert_memberof_int!($qs, $ea, $eb, Attribute::MemberOf, 1);
         }};
     }
 
@@ -526,7 +540,7 @@ mod tests {
             $ea:expr,
             $eb:expr
         ) => {{
-            assert_memberof_int!($qs, $ea, $eb, "directmemberof", 1);
+            assert_memberof_int!($qs, $ea, $eb, Attribute::DirectMemberOf, 1);
         }};
     }
 
@@ -536,7 +550,7 @@ mod tests {
             $ea:expr,
             $eb:expr
         ) => {{
-            assert_memberof_int!($qs, $ea, $eb, "memberof", 0);
+            assert_memberof_int!($qs, $ea, $eb, Attribute::MemberOf, 0);
         }};
     }
 
@@ -546,7 +560,7 @@ mod tests {
             $ea:expr,
             $eb:expr
         ) => {{
-            assert_memberof_int!($qs, $ea, $eb, "directmemberof", 0);
+            assert_memberof_int!($qs, $ea, $eb, Attribute::DirectMemberOf, 0);
         }};
     }
 
@@ -766,7 +780,10 @@ mod tests {
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq("uuid", PartialValue::new_uuid_s(UUID_A).unwrap())),
+            filter!(f_eq(
+                Attribute::Uuid,
+                PartialValue::new_uuid_s(UUID_A).unwrap()
+            )),
             ModifyList::new_list(vec![Modify::Present(
                 AttrString::from("member"),
                 Value::new_refer_s(UUID_B).unwrap()
@@ -802,7 +819,10 @@ mod tests {
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq("uuid", PartialValue::new_uuid_s(UUID_A).unwrap())),
+            filter!(f_eq(
+                Attribute::Uuid,
+                PartialValue::new_uuid_s(UUID_A).unwrap()
+            )),
             ModifyList::new_list(vec![Modify::Present(
                 AttrString::from("member"),
                 Value::new_refer_s(UUID_B).unwrap()
@@ -856,7 +876,10 @@ mod tests {
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq("uuid", PartialValue::new_uuid_s(UUID_B).unwrap())),
+            filter!(f_eq(
+                Attribute::Uuid,
+                PartialValue::new_uuid_s(UUID_B).unwrap()
+            )),
             ModifyList::new_list(vec![Modify::Present(
                 AttrString::from("member"),
                 Value::new_refer_s(UUID_C).unwrap()
@@ -913,7 +936,10 @@ mod tests {
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq("uuid", PartialValue::new_uuid_s(UUID_C).unwrap())),
+            filter!(f_eq(
+                Attribute::Uuid,
+                PartialValue::new_uuid_s(UUID_C).unwrap()
+            )),
             ModifyList::new_list(vec![Modify::Present(
                 AttrString::from("member"),
                 Value::new_refer_s(UUID_A).unwrap()
@@ -978,8 +1004,8 @@ mod tests {
             Ok(()),
             preload,
             filter!(f_or!([
-                f_eq("uuid", PartialValue::new_uuid_s(UUID_C).unwrap()),
-                f_eq("uuid", PartialValue::new_uuid_s(UUID_D).unwrap()),
+                f_eq(Attribute::Uuid, PartialValue::new_uuid_s(UUID_C).unwrap()),
+                f_eq(Attribute::Uuid, PartialValue::new_uuid_s(UUID_D).unwrap()),
             ])),
             ModifyList::new_list(vec![Modify::Present(
                 AttrString::from("member"),
@@ -1049,7 +1075,10 @@ mod tests {
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq("uuid", PartialValue::new_uuid_s(UUID_A).unwrap())),
+            filter!(f_eq(
+                Attribute::Uuid,
+                PartialValue::new_uuid_s(UUID_A).unwrap()
+            )),
             ModifyList::new_list(vec![Modify::Removed(
                 AttrString::from("member"),
                 PartialValue::new_refer_s(UUID_B).unwrap()
@@ -1088,7 +1117,10 @@ mod tests {
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq("uuid", PartialValue::new_uuid_s(UUID_A).unwrap())),
+            filter!(f_eq(
+                Attribute::Uuid,
+                PartialValue::new_uuid_s(UUID_A).unwrap()
+            )),
             ModifyList::new_list(vec![Modify::Removed(
                 AttrString::from("member"),
                 PartialValue::new_refer_s(UUID_B).unwrap()
@@ -1146,7 +1178,10 @@ mod tests {
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq("uuid", PartialValue::new_uuid_s(UUID_B).unwrap())),
+            filter!(f_eq(
+                Attribute::Uuid,
+                PartialValue::new_uuid_s(UUID_B).unwrap()
+            )),
             ModifyList::new_list(vec![Modify::Removed(
                 AttrString::from("member"),
                 PartialValue::new_refer_s(UUID_C).unwrap()
@@ -1214,7 +1249,10 @@ mod tests {
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq("uuid", PartialValue::new_uuid_s(UUID_C).unwrap())),
+            filter!(f_eq(
+                Attribute::Uuid,
+                PartialValue::new_uuid_s(UUID_C).unwrap()
+            )),
             ModifyList::new_list(vec![Modify::Removed(
                 AttrString::from("member"),
                 PartialValue::new_refer_s(UUID_A).unwrap()
@@ -1300,7 +1338,10 @@ mod tests {
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq("uuid", PartialValue::new_uuid_s(UUID_C).unwrap())),
+            filter!(f_eq(
+                Attribute::Uuid,
+                PartialValue::new_uuid_s(UUID_C).unwrap()
+            )),
             ModifyList::new_list(vec![
                 Modify::Removed(
                     AttrString::from("member"),
@@ -1373,7 +1414,10 @@ mod tests {
         run_delete_test!(
             Ok(()),
             preload,
-            filter!(f_eq("uuid", PartialValue::new_uuid_s(UUID_A).unwrap())),
+            filter!(f_eq(
+                Attribute::Uuid,
+                PartialValue::new_uuid_s(UUID_A).unwrap()
+            )),
             None,
             |qs: &mut QueryServerWriteTransaction| {
                 //                      V-- this uuid is
@@ -1407,7 +1451,10 @@ mod tests {
         run_delete_test!(
             Ok(()),
             preload,
-            filter!(f_eq("uuid", PartialValue::new_uuid_s(UUID_A).unwrap())),
+            filter!(f_eq(
+                Attribute::Uuid,
+                PartialValue::new_uuid_s(UUID_A).unwrap()
+            )),
             None,
             |qs: &mut QueryServerWriteTransaction| {
                 //                      V-- this uuid is
@@ -1451,7 +1498,10 @@ mod tests {
         run_delete_test!(
             Ok(()),
             preload,
-            filter!(f_eq("uuid", PartialValue::new_uuid_s(UUID_B).unwrap())),
+            filter!(f_eq(
+                Attribute::Uuid,
+                PartialValue::new_uuid_s(UUID_B).unwrap()
+            )),
             None,
             |qs: &mut QueryServerWriteTransaction| {
                 //                      V-- this uuid is
@@ -1504,7 +1554,10 @@ mod tests {
         run_delete_test!(
             Ok(()),
             preload,
-            filter!(f_eq("uuid", PartialValue::new_uuid_s(UUID_A).unwrap())),
+            filter!(f_eq(
+                Attribute::Uuid,
+                PartialValue::new_uuid_s(UUID_A).unwrap()
+            )),
             None,
             |qs: &mut QueryServerWriteTransaction| {
                 //                      V-- this uuid is
@@ -1570,7 +1623,10 @@ mod tests {
         run_delete_test!(
             Ok(()),
             preload,
-            filter!(f_eq("uuid", PartialValue::new_uuid_s(UUID_B).unwrap())),
+            filter!(f_eq(
+                Attribute::Uuid,
+                PartialValue::new_uuid_s(UUID_B).unwrap()
+            )),
             None,
             |qs: &mut QueryServerWriteTransaction| {
                 //                      V-- this uuid is

@@ -62,6 +62,7 @@ pub mod testkit;
 /// A prelude of imports that should be imported by all other Kanidm modules to
 /// help make imports cleaner.
 pub mod prelude {
+    pub use kanidm_proto::constants::*;
     pub use kanidm_proto::v1::{ConsistencyError, OperationError, SchemaError};
     pub use sketching::{
         admin_debug, admin_error, admin_info, admin_warn, filter_error, filter_info, filter_trace,

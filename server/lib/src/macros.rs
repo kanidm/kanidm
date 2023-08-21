@@ -72,10 +72,10 @@ macro_rules! entry_to_account {
         let mut e: Entry<EntryInvalid, EntryNew> = $entry.clone().into_invalid_new();
         // Add spn, because normally this is generated but in tests we can't.
         let spn = e
-            .get_ava_single_iname("name")
+            .get_ava_single_iname(Attribute::Name.as_ref())
             .map(|s| Value::new_spn_str(s, "example.com"))
             .expect("Failed to munge spn from name!");
-        e.set_ava("spn", once(spn));
+        e.set_ava(Attribute::Spn.as_ref(), once(spn));
 
         let e = e.into_sealed_committed();
 
@@ -332,6 +332,14 @@ macro_rules! filter_all {
     ) => {{
         Filter::new($fc)
     }};
+}
+
+#[macro_export]
+/// Build a filter which matches class == input
+macro_rules! match_class_filter {
+    ($class:expr) => {
+        ProtoFilter::Eq(Attribute::Class.to_string(), $class.to_string())
+    };
 }
 
 #[cfg(test)]

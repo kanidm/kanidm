@@ -68,8 +68,8 @@ impl Domain {
         cand: &mut [Entry<EntryInvalid, T>],
     ) -> Result<(), OperationError> {
         cand.iter_mut().try_for_each(|e| {
-            if e.attribute_equality("class", &PVCLASS_DOMAIN_INFO)
-                && e.attribute_equality("uuid", &PVUUID_DOMAIN_INFO)
+            if e.attribute_equality(Attribute::Class.as_ref(), &EntryClass::DomainInfo.into())
+                && e.attribute_equality(Attribute::Uuid.as_ref(), &PVUUID_DOMAIN_INFO)
             {
                 // Validate the domain ldap basedn syntax.
                 if let Some(basedn) = e
@@ -127,13 +127,13 @@ impl Domain {
                     e.add_ava("es256_private_key_der", v);
                 }
 
-                if !e.attribute_pres("private_cookie_key") {
+                if !e.attribute_pres(ATTR_PRIVATE_COOKIE_KEY) {
                     security_info!("regenerating domain cookie key");
                     let mut key = [0; 64];
                     let mut rng = StdRng::from_entropy();
                     rng.fill(&mut key);
                     let v = Value::new_privatebinary(&key);
-                    e.add_ava("private_cookie_key", v);
+                    e.add_ava(ATTR_PRIVATE_COOKIE_KEY, v);
                 }
 
                 trace!(?e);
@@ -159,6 +159,8 @@ mod tests {
 
         let u_dom = server_txn.get_domain_uuid();
 
-        assert!(e_dom.attribute_equality("domain_uuid", &PartialValue::Uuid(u_dom)));
+        assert!(
+            e_dom.attribute_equality(Attribute::DomainUuid.as_ref(), &PartialValue::Uuid(u_dom))
+        );
     }
 }

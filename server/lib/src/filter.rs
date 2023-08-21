@@ -18,6 +18,7 @@ use concread::arcache::ARCacheReadTxn;
 use hashbrown::HashMap;
 #[cfg(test)]
 use hashbrown::HashSet;
+use kanidm_proto::constants::ATTR_UUID;
 use kanidm_proto::v1::{Filter as ProtoFilter, OperationError, SchemaError};
 use ldap3_proto::proto::{LdapFilter, LdapSubstringFilter};
 // use smartstring::alias::String as AttrString;
@@ -36,8 +37,8 @@ const FILTER_DEPTH_MAX: usize = 16;
 
 // This is &Value so we can lazy const then clone, but perhaps we can reconsider
 // later if this should just take Value.
-#[allow(dead_code)]
-pub fn f_eq(a: &str, v: PartialValue) -> FC {
+pub fn f_eq<'a>(a: Attribute, v: PartialValue) -> FC<'a> {
+    let a: &'static str = a.into();
     FC::Eq(a, v)
 }
 
@@ -427,19 +428,19 @@ impl Filter<FilterInvalid> {
         // some core test idxs faster. This is never used in production, it's JUST for
         // test case speedups.
         let idxmeta = vec![
-            (AttrString::from("uuid"), IndexType::Equality),
-            (AttrString::from("uuid"), IndexType::Presence),
-            (AttrString::from("name"), IndexType::Equality),
-            (AttrString::from("name"), IndexType::SubString),
-            (AttrString::from("name"), IndexType::Presence),
-            (AttrString::from("class"), IndexType::Equality),
-            (AttrString::from("class"), IndexType::Presence),
-            (AttrString::from("member"), IndexType::Equality),
-            (AttrString::from("member"), IndexType::Presence),
-            (AttrString::from("memberof"), IndexType::Equality),
-            (AttrString::from("memberof"), IndexType::Presence),
-            (AttrString::from("directmemberof"), IndexType::Equality),
-            (AttrString::from("directmemberof"), IndexType::Presence),
+            (Attribute::Uuid.into(), IndexType::Equality),
+            (Attribute::Uuid.into(), IndexType::Presence),
+            (Attribute::Name.into(), IndexType::Equality),
+            (Attribute::Name.into(), IndexType::SubString),
+            (Attribute::Name.into(), IndexType::Presence),
+            (Attribute::Class.into(), IndexType::Equality),
+            (Attribute::Class.into(), IndexType::Presence),
+            (Attribute::Member.into(), IndexType::Equality),
+            (Attribute::Member.into(), IndexType::Presence),
+            (Attribute::MemberOf.into(), IndexType::Equality),
+            (Attribute::MemberOf.into(), IndexType::Presence),
+            (Attribute::DirectMemberOf.into(), IndexType::Equality),
+            (Attribute::DirectMemberOf.into(), IndexType::Presence),
         ];
 
         let idxmeta_ref = idxmeta.iter().map(|(attr, itype)| (attr, itype)).collect();
@@ -560,14 +561,8 @@ impl FilterComp {
     fn new_ignore_hidden(fc: FilterComp) -> Self {
         FilterComp::And(vec![
             FilterComp::AndNot(Box::new(FilterComp::Or(vec![
-                FilterComp::Eq(
-                    AttrString::from("class"),
-                    PartialValue::new_iutf8("tombstone"),
-                ),
-                FilterComp::Eq(
-                    AttrString::from("class"),
-                    PartialValue::new_iutf8("recycled"),
-                ),
+                FilterComp::Eq(Attribute::Class.into(), EntryClass::Tombstone.into()),
+                FilterComp::Eq(Attribute::Class.into(), EntryClass::Recycled.into()),
             ]))),
             fc,
         ])
@@ -575,10 +570,7 @@ impl FilterComp {
 
     fn new_recycled(fc: FilterComp) -> Self {
         FilterComp::And(vec![
-            FilterComp::Eq(
-                AttrString::from("class"),
-                PartialValue::new_iutf8("recycled"),
-            ),
+            FilterComp::Eq(Attribute::Class.into(), EntryClass::Recycled.into()),
             fc,
         ])
     }
@@ -602,7 +594,7 @@ impl FilterComp {
             FilterComp::Inclusion(vs) => vs.iter().for_each(|f| f.get_attr_set(r_set)),
             FilterComp::AndNot(f) => f.get_attr_set(r_set),
             FilterComp::SelfUuid => {
-                r_set.insert("uuid");
+                r_set.insert(ATTR_UUID);
             }
         }
     }
@@ -1088,13 +1080,12 @@ impl FilterResolved {
                 Some(FilterResolved::Eq(a, v, idx))
             }
             FilterComp::SelfUuid => ev.get_uuid().map(|uuid| {
-                let uuid_s = AttrString::from("uuid");
-                let idxkref = IdxKeyRef::new(&uuid_s, &IndexType::Equality);
+                let idxkref = IdxKeyRef::new(Attribute::Uuid.as_ref(), &IndexType::Equality);
                 let idx = idxmeta
                     .get(&idxkref as &dyn IdxKeyToRef)
                     .copied()
                     .and_then(NonZeroU8::new);
-                FilterResolved::Eq(uuid_s, PartialValue::Uuid(uuid), idx)
+                FilterResolved::Eq(Attribute::Uuid.into(), PartialValue::Uuid(uuid), idx)
             }),
             FilterComp::Sub(a, v) => {
                 let idxkref = IdxKeyRef::new(&a, &IndexType::SubString);
@@ -1167,7 +1158,7 @@ impl FilterResolved {
             }
             FilterComp::SelfUuid => ev.get_uuid().map(|uuid| {
                 FilterResolved::Eq(
-                    AttrString::from("uuid"),
+                    Attribute::Uuid.into(),
                     PartialValue::Uuid(uuid),
                     NonZeroU8::new(true as u8),
                 )
@@ -1363,15 +1354,15 @@ mod tests {
     #[test]
     fn test_filter_simple() {
         // Test construction.
-        let _filt: Filter<FilterInvalid> = filter!(f_eq("class", PartialValue::new_class("user")));
+        let _filt: Filter<FilterInvalid> = filter!(f_eq(Attribute::Class, EntryClass::User.into()));
 
         // AFTER
         let _complex_filt: Filter<FilterInvalid> = filter!(f_and!([
             f_or!([
-                f_eq("userid", PartialValue::new_iutf8("test_a")),
-                f_eq("userid", PartialValue::new_iutf8("test_b")),
+                f_eq(Attribute::UserId, PartialValue::new_iutf8("test_a")),
+                f_eq(Attribute::UserId, PartialValue::new_iutf8("test_b")),
             ]),
-            f_sub("class", PartialValue::new_class("user")),
+            f_sub(Attribute::Class.as_ref(), EntryClass::User.into()),
         ]));
     }
 
@@ -1403,40 +1394,43 @@ mod tests {
         // Given sets of "optimisable" filters, optimise them.
         filter_optimise_assert!(
             f_and(vec![f_and(vec![f_eq(
-                "class",
-                PartialValue::new_class("test")
+                Attribute::Class,
+                EntryClass::TestClass.into()
             )])]),
-            f_eq("class", PartialValue::new_class("test"))
+            f_eq(Attribute::Class, EntryClass::TestClass.into())
         );
 
         filter_optimise_assert!(
             f_or(vec![f_or(vec![f_eq(
-                "class",
-                PartialValue::new_class("test")
+                Attribute::Class,
+                EntryClass::TestClass.into()
             )])]),
-            f_eq("class", PartialValue::new_class("test"))
+            f_eq(Attribute::Class, EntryClass::TestClass.into())
         );
 
         filter_optimise_assert!(
             f_and(vec![f_or(vec![f_and(vec![f_eq(
-                "class",
-                PartialValue::new_class("test")
+                Attribute::Class,
+                EntryClass::TestClass.to_partialvalue()
             )])])]),
-            f_eq("class", PartialValue::new_class("test"))
+            f_eq(Attribute::Class, EntryClass::TestClass.to_partialvalue())
         );
 
         // Later this can test duplicate filter detection.
         filter_optimise_assert!(
             f_and(vec![
-                f_and(vec![f_eq("class", PartialValue::new_class("test"))]),
-                f_sub("class", PartialValue::new_class("te")),
-                f_pres("class"),
-                f_eq("class", PartialValue::new_class("test"))
+                f_and(vec![f_eq(
+                    Attribute::Class,
+                    EntryClass::TestClass.to_partialvalue()
+                )]),
+                f_sub(Attribute::Class.as_ref(), PartialValue::new_class("te")),
+                f_pres(Attribute::Class.as_ref()),
+                f_eq(Attribute::Class, EntryClass::TestClass.to_partialvalue())
             ]),
             f_and(vec![
-                f_eq("class", PartialValue::new_class("test")),
-                f_pres("class"),
-                f_sub("class", PartialValue::new_class("te")),
+                f_eq(Attribute::Class, EntryClass::TestClass.to_partialvalue()),
+                f_pres(Attribute::Class.as_ref()),
+                f_sub(Attribute::Class.as_ref(), PartialValue::new_class("te")),
             ])
         );
 
@@ -1444,53 +1438,59 @@ mod tests {
         filter_optimise_assert!(
             f_and(vec![
                 f_and(vec![
-                    f_eq("class", PartialValue::new_class("foo")),
-                    f_eq("class", PartialValue::new_class("test")),
-                    f_eq("uid", PartialValue::new_class("bar")),
+                    f_eq(Attribute::Class, PartialValue::new_class("foo")),
+                    f_eq(Attribute::Class, EntryClass::TestClass.to_partialvalue()),
+                    f_eq(Attribute::Uid, PartialValue::new_class("bar")),
                 ]),
-                f_sub("class", PartialValue::new_class("te")),
-                f_pres("class"),
-                f_eq("class", PartialValue::new_class("test"))
+                f_sub(Attribute::Class.as_ref(), PartialValue::new_class("te")),
+                f_pres(Attribute::Class.as_ref()),
+                f_eq(Attribute::Class, EntryClass::TestClass.to_partialvalue())
             ]),
             f_and(vec![
-                f_eq("class", PartialValue::new_class("foo")),
-                f_eq("class", PartialValue::new_class("test")),
-                f_pres("class"),
-                f_eq("uid", PartialValue::new_class("bar")),
-                f_sub("class", PartialValue::new_class("te")),
+                f_eq(Attribute::Class, PartialValue::new_class("foo")),
+                f_eq(Attribute::Class, EntryClass::TestClass.to_partialvalue()),
+                f_pres(Attribute::Class.as_ref()),
+                f_eq(Attribute::Uid, PartialValue::new_class("bar")),
+                f_sub(Attribute::Class.as_ref(), PartialValue::new_class("te")),
             ])
         );
 
         filter_optimise_assert!(
             f_or(vec![
-                f_eq("class", PartialValue::new_class("test")),
-                f_pres("class"),
-                f_sub("class", PartialValue::new_class("te")),
-                f_or(vec![f_eq("class", PartialValue::new_class("test"))]),
+                f_eq(Attribute::Class, EntryClass::TestClass.to_partialvalue()),
+                f_pres(Attribute::Class.as_ref()),
+                f_sub(Attribute::Class.as_ref(), PartialValue::new_class("te")),
+                f_or(vec![f_eq(
+                    Attribute::Class,
+                    EntryClass::TestClass.to_partialvalue()
+                )]),
             ]),
             f_or(vec![
-                f_sub("class", PartialValue::new_class("te")),
-                f_pres("class"),
-                f_eq("class", PartialValue::new_class("test"))
+                f_sub(Attribute::Class.as_ref(), PartialValue::new_class("te")),
+                f_pres(Attribute::Class.as_ref()),
+                f_eq(Attribute::Class, EntryClass::TestClass.to_partialvalue())
             ])
         );
 
         // Test dedup doesn't affect nested items incorrectly.
         filter_optimise_assert!(
             f_or(vec![
-                f_eq("class", PartialValue::new_class("test")),
+                f_eq(Attribute::Class, EntryClass::TestClass.to_partialvalue()),
                 f_and(vec![
-                    f_eq("class", PartialValue::new_class("test")),
-                    f_eq("term", PartialValue::new_class("test")),
-                    f_or(vec![f_eq("class", PartialValue::new_class("test"))])
+                    f_eq(Attribute::Class, EntryClass::TestClass.to_partialvalue()),
+                    f_eq(Attribute::Term, EntryClass::TestClass.to_partialvalue()),
+                    f_or(vec![f_eq(
+                        Attribute::Class,
+                        EntryClass::TestClass.to_partialvalue()
+                    )])
                 ]),
             ]),
             f_or(vec![
                 f_and(vec![
-                    f_eq("class", PartialValue::new_class("test")),
-                    f_eq("term", PartialValue::new_class("test"))
+                    f_eq(Attribute::Class, EntryClass::TestClass.to_partialvalue()),
+                    f_eq(Attribute::Term, EntryClass::TestClass.to_partialvalue())
                 ]),
-                f_eq("class", PartialValue::new_class("test")),
+                f_eq(Attribute::Class, EntryClass::TestClass.to_partialvalue()),
             ])
         );
     }
@@ -1534,7 +1534,7 @@ mod tests {
 
         // antisymmetry: if a < b then !(a > b), as well as a > b implying !(a < b); and
         // These are unindexed so we have to check them this way.
-        let f_t3b = filter_resolved!(f_eq("userid", PartialValue::new_iutf8("")));
+        let f_t3b = filter_resolved!(f_eq(Attribute::UserId, PartialValue::new_iutf8("")));
         assert_eq!(f_t1a.partial_cmp(&f_t3b), Some(Ordering::Greater));
         assert_eq!(f_t3b.partial_cmp(&f_t1a), Some(Ordering::Less));
 
@@ -1569,12 +1569,12 @@ mod tests {
     #[test]
     fn test_lessthan_entry_filter() {
         let e = entry_init!(
-            ("userid", Value::new_iutf8("william")),
+            (Attribute::UserId.as_ref(), Value::new_iutf8("william")),
             (
                 "uuid",
                 Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
             ),
-            ("gidnumber", Value::Uint32(1000))
+            (Attribute::GidNumber.as_ref(), Value::Uint32(1000))
         )
         .into_sealed_new();
 
@@ -1591,36 +1591,36 @@ mod tests {
     #[test]
     fn test_or_entry_filter() {
         let e = entry_init!(
-            ("userid", Value::new_iutf8("william")),
+            (Attribute::UserId.as_ref(), Value::new_iutf8("william")),
             (
-                "uuid",
+                Attribute::Uuid.as_ref(),
                 Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
             ),
-            ("gidnumber", Value::Uint32(1000))
+            (Attribute::GidNumber.as_ref(), Value::Uint32(1000))
         )
         .into_sealed_new();
 
         let f_t1a = filter_resolved!(f_or!([
-            f_eq("userid", PartialValue::new_iutf8("william")),
-            f_eq("gidnumber", PartialValue::Uint32(1000)),
+            f_eq(Attribute::UserId, PartialValue::new_iutf8("william")),
+            f_eq(Attribute::GidNumber, PartialValue::Uint32(1000)),
         ]));
         assert!(e.entry_match_no_index(&f_t1a));
 
         let f_t2a = filter_resolved!(f_or!([
-            f_eq("userid", PartialValue::new_iutf8("william")),
-            f_eq("gidnumber", PartialValue::Uint32(1000)),
+            f_eq(Attribute::UserId, PartialValue::new_iutf8("william")),
+            f_eq(Attribute::GidNumber, PartialValue::Uint32(1000)),
         ]));
         assert!(e.entry_match_no_index(&f_t2a));
 
         let f_t3a = filter_resolved!(f_or!([
-            f_eq("userid", PartialValue::new_iutf8("alice")),
-            f_eq("gidnumber", PartialValue::Uint32(1000)),
+            f_eq(Attribute::UserId, PartialValue::new_iutf8("alice")),
+            f_eq(Attribute::GidNumber, PartialValue::Uint32(1000)),
         ]));
         assert!(e.entry_match_no_index(&f_t3a));
 
         let f_t4a = filter_resolved!(f_or!([
-            f_eq("userid", PartialValue::new_iutf8("alice")),
-            f_eq("gidnumber", PartialValue::Uint32(1001)),
+            f_eq(Attribute::UserId, PartialValue::new_iutf8("alice")),
+            f_eq(Attribute::GidNumber, PartialValue::Uint32(1001)),
         ]));
         assert!(!e.entry_match_no_index(&f_t4a));
     }
@@ -1628,36 +1628,36 @@ mod tests {
     #[test]
     fn test_and_entry_filter() {
         let e = entry_init!(
-            ("userid", Value::new_iutf8("william")),
+            (Attribute::UserId.as_ref(), Value::new_iutf8("william")),
             (
-                "uuid",
+                Attribute::Uuid.as_ref(),
                 Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
             ),
-            ("gidnumber", Value::Uint32(1000))
+            (Attribute::GidNumber.as_ref(), Value::Uint32(1000))
         )
         .into_sealed_new();
 
         let f_t1a = filter_resolved!(f_and!([
-            f_eq("userid", PartialValue::new_iutf8("william")),
-            f_eq("gidnumber", PartialValue::Uint32(1000)),
+            f_eq(Attribute::UserId, PartialValue::new_iutf8("william")),
+            f_eq(Attribute::GidNumber, PartialValue::Uint32(1000)),
         ]));
         assert!(e.entry_match_no_index(&f_t1a));
 
         let f_t2a = filter_resolved!(f_and!([
-            f_eq("userid", PartialValue::new_iutf8("william")),
-            f_eq("gidnumber", PartialValue::Uint32(1001)),
+            f_eq(Attribute::UserId, PartialValue::new_iutf8("william")),
+            f_eq(Attribute::GidNumber, PartialValue::Uint32(1001)),
         ]));
         assert!(!e.entry_match_no_index(&f_t2a));
 
         let f_t3a = filter_resolved!(f_and!([
-            f_eq("userid", PartialValue::new_iutf8("alice")),
-            f_eq("gidnumber", PartialValue::Uint32(1000)),
+            f_eq(Attribute::UserId, PartialValue::new_iutf8("alice")),
+            f_eq(Attribute::GidNumber, PartialValue::Uint32(1000)),
         ]));
         assert!(!e.entry_match_no_index(&f_t3a));
 
         let f_t4a = filter_resolved!(f_and!([
-            f_eq("userid", PartialValue::new_iutf8("alice")),
-            f_eq("gidnumber", PartialValue::Uint32(1001)),
+            f_eq(Attribute::UserId, PartialValue::new_iutf8("alice")),
+            f_eq(Attribute::GidNumber, PartialValue::Uint32(1001)),
         ]));
         assert!(!e.entry_match_no_index(&f_t4a));
     }
@@ -1665,69 +1665,81 @@ mod tests {
     #[test]
     fn test_not_entry_filter() {
         let e1 = entry_init!(
-            ("userid", Value::new_iutf8("william")),
+            (Attribute::UserId.as_ref(), Value::new_iutf8("william")),
             (
-                "uuid",
+                Attribute::Uuid.as_ref(),
                 Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
             ),
-            ("gidnumber", Value::Uint32(1000))
+            (Attribute::GidNumber.as_ref(), Value::Uint32(1000))
         )
         .into_sealed_new();
 
-        let f_t1a = filter_resolved!(f_andnot(f_eq("userid", PartialValue::new_iutf8("alice"))));
+        let f_t1a = filter_resolved!(f_andnot(f_eq(
+            Attribute::UserId,
+            PartialValue::new_iutf8("alice")
+        )));
         assert!(e1.entry_match_no_index(&f_t1a));
 
-        let f_t2a = filter_resolved!(f_andnot(f_eq("userid", PartialValue::new_iutf8("william"))));
+        let f_t2a = filter_resolved!(f_andnot(f_eq(
+            Attribute::UserId,
+            PartialValue::new_iutf8("william")
+        )));
         assert!(!e1.entry_match_no_index(&f_t2a));
     }
 
     #[test]
     fn test_nested_entry_filter() {
         let e1 = entry_init!(
-            ("class", CLASS_PERSON.clone()),
             (
-                "uuid",
+                Attribute::Class.as_ref(),
+                EntryClass::Person.to_value().clone()
+            ),
+            (
+                Attribute::Uuid.as_ref(),
                 Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
             ),
-            ("gidnumber", Value::Uint32(1000))
+            (Attribute::GidNumber.as_ref(), Value::Uint32(1000))
         )
         .into_sealed_new();
 
         let e2 = entry_init!(
-            ("class", CLASS_PERSON.clone()),
             (
-                "uuid",
+                Attribute::Class.as_ref(),
+                EntryClass::Person.to_value().clone()
+            ),
+            (
+                Attribute::Uuid.as_ref(),
                 Value::Uuid(uuid::uuid!("4b6228ab-1dbe-42a4-a9f5-f6368222438e"))
             ),
-            ("gidnumber", Value::Uint32(1001))
+            (Attribute::GidNumber.as_ref(), Value::Uint32(1001))
         )
         .into_sealed_new();
 
         let e3 = entry_init!(
-            ("class", CLASS_PERSON.clone()),
+            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
             (
-                "uuid",
+                Attribute::Uuid.as_ref(),
                 Value::Uuid(uuid::uuid!("7b23c99d-c06b-4a9a-a958-3afa56383e1d"))
             ),
-            ("gidnumber", Value::Uint32(1002))
+            (Attribute::GidNumber.as_ref(), Value::Uint32(1002))
         )
         .into_sealed_new();
 
         let e4 = entry_init!(
-            ("class", CLASS_GROUP.clone()),
+            (Attribute::Class.as_ref(), EntryClass::Group.to_value()),
             (
-                "uuid",
+                Attribute::Uuid.as_ref(),
                 Value::Uuid(uuid::uuid!("21d816b5-1f6a-4696-b7c1-6ed06d22ed81"))
             ),
-            ("gidnumber", Value::Uint32(1000))
+            (Attribute::GidNumber.as_ref(), Value::Uint32(1000))
         )
         .into_sealed_new();
 
         let f_t1a = filter_resolved!(f_and!([
-            f_eq("class", PVCLASS_PERSON.clone()),
+            f_eq(Attribute::Class, EntryClass::Person.into()),
             f_or!([
-                f_eq("gidnumber", PartialValue::Uint32(1001)),
-                f_eq("gidnumber", PartialValue::Uint32(1000))
+                f_eq(Attribute::GidNumber, PartialValue::Uint32(1001)),
+                f_eq(Attribute::GidNumber, PartialValue::Uint32(1000))
             ])
         ]));
 
@@ -1741,20 +1753,20 @@ mod tests {
     fn test_attr_set_filter() {
         let mut f_expect = BTreeSet::new();
         f_expect.insert("userid");
-        f_expect.insert("class");
+        f_expect.insert(Attribute::Class.as_ref());
         // Given filters, get their expected attribute sets - this is used by access control profiles
         // to determine what attrs we are requesting regardless of the partialvalue.
         let f_t1a = filter_valid!(f_and!([
-            f_eq("userid", PartialValue::new_iutf8("alice")),
-            f_eq("class", PartialValue::new_iutf8("1001")),
+            f_eq(Attribute::UserId, PartialValue::new_iutf8("alice")),
+            f_eq(Attribute::Class, PartialValue::new_iutf8("1001")),
         ]));
 
         assert!(f_t1a.get_attr_set() == f_expect);
 
         let f_t2a = filter_valid!(f_and!([
-            f_eq("userid", PartialValue::new_iutf8("alice")),
-            f_eq("class", PartialValue::new_iutf8("1001")),
-            f_eq("userid", PartialValue::new_iutf8("claire")),
+            f_eq(Attribute::UserId, PartialValue::new_iutf8("alice")),
+            f_eq(Attribute::Class, PartialValue::new_iutf8("1001")),
+            f_eq(Attribute::UserId, PartialValue::new_iutf8("claire")),
         ]));
 
         assert!(f_t2a.get_attr_set() == f_expect);
@@ -1769,41 +1781,65 @@ mod tests {
         let mut server_txn = server.write(time_p1).await;
 
         let e1 = entry_init!(
-            ("class", CLASS_OBJECT.clone()),
-            ("class", CLASS_PERSON.clone()),
-            ("class", CLASS_ACCOUNT.clone()),
-            ("name", Value::new_iname("testperson1")),
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
+            (Attribute::Name.as_ref(), Value::new_iname("testperson1")),
             (
-                "uuid",
+                Attribute::Uuid.as_ref(),
                 Value::Uuid(uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
             ),
-            ("description", Value::new_utf8s("testperson1")),
-            ("displayname", Value::new_utf8s("testperson1"))
+            (
+                Attribute::Description.as_ref(),
+                Value::new_utf8s("testperson1")
+            ),
+            (
+                Attribute::DisplayName.as_ref(),
+                Value::new_utf8s("testperson1")
+            )
         );
 
         let e2 = entry_init!(
-            ("class", CLASS_OBJECT.clone()),
-            ("class", CLASS_PERSON.clone()),
-            ("name", Value::new_iname("testperson2")),
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
             (
-                "uuid",
+                Attribute::Class.as_ref(),
+                EntryClass::Person.to_value().clone()
+            ),
+            (Attribute::Name.as_ref(), Value::new_iname("testperson2")),
+            (
+                Attribute::Uuid.as_ref(),
                 Value::Uuid(uuid::uuid!("a67c0c71-0b35-4218-a6b0-22d23d131d27"))
             ),
-            ("description", Value::new_utf8s("testperson2")),
-            ("displayname", Value::new_utf8s("testperson2"))
+            (
+                Attribute::Description.as_ref(),
+                Value::new_utf8s("testperson2")
+            ),
+            (
+                Attribute::DisplayName.as_ref(),
+                Value::new_utf8s("testperson2")
+            )
         );
 
         // We need to add these and then push through the state machine.
         let e_ts = entry_init!(
-            ("class", CLASS_OBJECT.clone()),
-            ("class", CLASS_PERSON.clone()),
-            ("name", Value::new_iname("testperson3")),
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
             (
-                "uuid",
+                Attribute::Class.as_ref(),
+                EntryClass::Person.to_value().clone()
+            ),
+            (Attribute::Name.as_ref(), Value::new_iname("testperson3")),
+            (
+                Attribute::Uuid.as_ref(),
                 Value::Uuid(uuid!("9557f49c-97a5-4277-a9a5-097d17eb8317"))
             ),
-            ("description", Value::new_utf8s("testperson3")),
-            ("displayname", Value::new_utf8s("testperson3"))
+            (
+                Attribute::Description.as_ref(),
+                Value::new_utf8s("testperson3")
+            ),
+            (
+                Attribute::DisplayName.as_ref(),
+                Value::new_utf8s("testperson3")
+            )
         );
 
         let ce = CreateEvent::new_internal(vec![e1, e2, e_ts]);
@@ -1811,7 +1847,7 @@ mod tests {
         assert!(cr.is_ok());
 
         let de_sin = DeleteEvent::new_internal_invalid(filter!(f_or!([f_eq(
-            "name",
+            Attribute::Name,
             PartialValue::new_iname("testperson3")
         )])));
         assert!(server_txn.delete(&de_sin).is_ok());
@@ -1863,12 +1899,12 @@ mod tests {
     async fn test_filter_depth_limits(server: &QueryServer) {
         let mut r_txn = server.read().await;
 
-        let mut inv_proto = ProtoFilter::Pres("class".to_string());
+        let mut inv_proto = ProtoFilter::Pres(Attribute::Class.to_string());
         for _i in 0..(FILTER_DEPTH_MAX + 1) {
             inv_proto = ProtoFilter::And(vec![inv_proto]);
         }
 
-        let mut inv_ldap = LdapFilter::Present("class".to_string());
+        let mut inv_ldap = LdapFilter::Present(Attribute::Class.to_string());
         for _i in 0..(FILTER_DEPTH_MAX + 1) {
             inv_ldap = LdapFilter::And(vec![inv_ldap]);
         }
@@ -1899,13 +1935,13 @@ mod tests {
 
         let inv_proto = ProtoFilter::And(
             (0..(LIMIT * 2))
-                .map(|_| ProtoFilter::Pres("class".to_string()))
+                .map(|_| ProtoFilter::Pres(Attribute::Class.to_string()))
                 .collect(),
         );
 
         let inv_ldap = LdapFilter::And(
             (0..(LIMIT * 2))
-                .map(|_| LdapFilter::Present("class".to_string()))
+                .map(|_| LdapFilter::Present(Attribute::Class.to_string()))
                 .collect(),
         );
 

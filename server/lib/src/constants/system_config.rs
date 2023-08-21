@@ -1,6 +1,7 @@
 use crate::constants::uuids::*;
-use crate::constants::values::*;
+
 use crate::entry::{Entry, EntryInit, EntryInitNew, EntryNew};
+use crate::prelude::{Attribute, EntryClass};
 use crate::value::Value;
 
 // Default entries for system_config
@@ -8,662 +9,2570 @@ use crate::value::Value;
 
 lazy_static! {
     pub static ref E_SYSTEM_CONFIG_V1: EntryInitNew = entry_init!(
-        ("class", CLASS_OBJECT.clone()),
-        ("class", CLASS_SYSTEM_CONFIG.clone()),
-        ("class", CLASS_SYSTEM.clone()),
-        ("uuid", Value::Uuid(UUID_SYSTEM_CONFIG)),
+        (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
         (
-            "description",
+            Attribute::Class.as_ref(),
+            EntryClass::SystemConfig.to_value()
+        ),
+        (Attribute::Class.as_ref(), EntryClass::System.to_value()),
+        (Attribute::Uuid.as_ref(), Value::Uuid(UUID_SYSTEM_CONFIG)),
+        (
+            Attribute::Description.as_ref(),
             Value::new_utf8s("System (replicated) configuration options.")
         ),
-        ("badlist_password", Value::new_iutf8("bad@no3IBTyqHu$list")),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("bad@no3IBTyqHu$list")
+        ),
         (
             "badlist_password",
             Value::new_iutf8(
                 "demo_badlist_shohfie3aeci2oobur0aru9uushah6EiPi2woh4hohngoighaiRuepieN3ongoo1"
             )
         ),
-        ("badlist_password", Value::new_iutf8("100preteamare")),
-        ("badlist_password", Value::new_iutf8("14defebrero")),
-        ("badlist_password", Value::new_iutf8("1life1love")),
-        ("badlist_password", Value::new_iutf8("1life2live")),
-        ("badlist_password", Value::new_iutf8("1love1life")),
-        ("badlist_password", Value::new_iutf8("1love4life")),
-        ("badlist_password", Value::new_iutf8("212224236248")),
-        ("badlist_password", Value::new_iutf8("2813308004")),
-        ("badlist_password", Value::new_iutf8("2fast2furious")),
-        ("badlist_password", Value::new_iutf8("2gether4ever")),
-        ("badlist_password", Value::new_iutf8("2pacshakur")),
-        ("badlist_password", Value::new_iutf8("30secondstomars")),
-        ("badlist_password", Value::new_iutf8("3doorsdown")),
-        ("badlist_password", Value::new_iutf8("6cyclemind")),
-        ("badlist_password", Value::new_iutf8("<div><embed src=\\")),
-        ("badlist_password", Value::new_iutf8("@hotmail.com")),
-        ("badlist_password", Value::new_iutf8("@yahoo.com")),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("100preteamare")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("14defebrero")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("1life1love")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("1life2live")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("1love1life")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("1love4life")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("212224236248")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("2813308004")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("2fast2furious")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("2gether4ever")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("2pacshakur")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("30secondstomars")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("3doorsdown")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("6cyclemind")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("<div><embed src=\\")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("@hotmail.com")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("@yahoo.com")
+        ),
         (
             "badlist_password",
             Value::new_iutf8("Lets you update your FunNotes and more!")
         ),
-        ("badlist_password", Value::new_iutf8("TEQUIEROMUCHO")),
-        ("badlist_password", Value::new_iutf8("TEXT ONLY AD")),
-        ("badlist_password", Value::new_iutf8("abretesesamo")),
-        ("badlist_password", Value::new_iutf8("administrador")),
-        ("badlist_password", Value::new_iutf8("aeropostale")),
-        ("badlist_password", Value::new_iutf8("akinkalang")),
-        ("badlist_password", Value::new_iutf8("akucintakamu")),
-        ("badlist_password", Value::new_iutf8("akusayangkamu")),
-        ("badlist_password", Value::new_iutf8("alfayomega")),
-        ("badlist_password", Value::new_iutf8("alhamdulillah")),
-        ("badlist_password", Value::new_iutf8("allaboutme")),
-        ("badlist_password", Value::new_iutf8("allahuakbar")),
-        ("badlist_password", Value::new_iutf8("alleyesonme")),
-        ("badlist_password", Value::new_iutf8("alquimista")),
-        ("badlist_password", Value::new_iutf8("alwaysandforever")),
-        ("badlist_password", Value::new_iutf8("amarteduele")),
-        ("badlist_password", Value::new_iutf8("amigas4ever")),
-        ("badlist_password", Value::new_iutf8("amigasporsiempre")),
-        ("badlist_password", Value::new_iutf8("amigasx100pre")),
-        ("badlist_password", Value::new_iutf8("amigasxsiempre")),
-        ("badlist_password", Value::new_iutf8("amoamifamilia")),
-        ("badlist_password", Value::new_iutf8("amordelbueno")),
-        ("badlist_password", Value::new_iutf8("amordemivida")),
-        ("badlist_password", Value::new_iutf8("amoresperros")),
-        ("badlist_password", Value::new_iutf8("amoreterno")),
-        ("badlist_password", Value::new_iutf8("amorimposible")),
-        ("badlist_password", Value::new_iutf8("amorporsiempre")),
-        ("badlist_password", Value::new_iutf8("amorprohibido")),
-        ("badlist_password", Value::new_iutf8("amorverdadero")),
-        ("badlist_password", Value::new_iutf8("amotemuito")),
-        ("badlist_password", Value::new_iutf8("anaranjado")),
-        ("badlist_password", Value::new_iutf8("angeldeamor")),
-        ("badlist_password", Value::new_iutf8("angellocsin")),
-        ("badlist_password", Value::new_iutf8("angelofdeath")),
-        ("badlist_password", Value::new_iutf8("anggandako")),
-        ("badlist_password", Value::new_iutf8("aniversario")),
-        ("badlist_password", Value::new_iutf8("apaixonada")),
-        ("badlist_password", Value::new_iutf8("apocalipsa")),
-        ("badlist_password", Value::new_iutf8("apocalipse")),
-        ("badlist_password", Value::new_iutf8("apocalipsis")),
-        ("badlist_password", Value::new_iutf8("apolinario")),
-        ("badlist_password", Value::new_iutf8("arquitectura")),
-        ("badlist_password", Value::new_iutf8("arrolladora")),
-        ("badlist_password", Value::new_iutf8("asieslavida")),
-        ("badlist_password", Value::new_iutf8("assalamualaikum")),
-        ("badlist_password", Value::new_iutf8("auxiliadora")),
-        ("badlist_password", Value::new_iutf8("avengedsevenfold")),
-        ("badlist_password", Value::new_iutf8("ayamgoreng")),
-        ("badlist_password", Value::new_iutf8("babasonicos")),
-        ("badlist_password", Value::new_iutf8("balla4life")),
-        ("badlist_password", Value::new_iutf8("barriofino")),
-        ("badlist_password", Value::new_iutf8("bball4life")),
-        ("badlist_password", Value::new_iutf8("bebitalinda")),
-        ("badlist_password", Value::new_iutf8("bellissima")),
-        ("badlist_password", Value::new_iutf8("bendiciones")),
-        ("badlist_password", Value::new_iutf8("benfiquista")),
-        ("badlist_password", Value::new_iutf8("bestfriends4ever")),
-        ("badlist_password", Value::new_iutf8("bestfriendsforever")),
-        ("badlist_password", Value::new_iutf8("bienvenido")),
-        ("badlist_password", Value::new_iutf8("billandben")),
-        ("badlist_password", Value::new_iutf8("blackandwhite")),
-        ("badlist_password", Value::new_iutf8("blackeyedpeas")),
-        ("badlist_password", Value::new_iutf8("bobesponja")),
-        ("badlist_password", Value::new_iutf8("bobthebuilder")),
-        ("badlist_password", Value::new_iutf8("bomboncito")),
-        ("badlist_password", Value::new_iutf8("borreguito")),
-        ("badlist_password", Value::new_iutf8("boysoverflowers")),
-        ("badlist_password", Value::new_iutf8("bringmetolife")),
-        ("badlist_password", Value::new_iutf8("bustitbaby")),
-        ("badlist_password", Value::new_iutf8("cachorrita")),
-        ("badlist_password", Value::new_iutf8("cachorrito")),
-        ("badlist_password", Value::new_iutf8("cafetacuba")),
-        ("badlist_password", Value::new_iutf8("calculadora")),
-        ("badlist_password", Value::new_iutf8("californication")),
-        ("badlist_password", Value::new_iutf8("camiloteamo")),
-        ("badlist_password", Value::new_iutf8("candyland1")),
-        ("badlist_password", Value::new_iutf8("candyshop1")),
-        ("badlist_password", Value::new_iutf8("canttouchthis")),
-        ("badlist_password", Value::new_iutf8("caperucita")),
-        ("badlist_password", Value::new_iutf8("caprichosa")),
-        ("badlist_password", Value::new_iutf8("caradeperro")),
-        ("badlist_password", Value::new_iutf8("caranguejo")),
-        ("badlist_password", Value::new_iutf8("caricatura")),
-        ("badlist_password", Value::new_iutf8("caritadeangel")),
-        ("badlist_password", Value::new_iutf8("carteldesanta")),
-        ("badlist_password", Value::new_iutf8("castravete")),
-        ("badlist_password", Value::new_iutf8("catinthehat")),
-        ("badlist_password", Value::new_iutf8("catsanddogs")),
-        ("badlist_password", Value::new_iutf8("celticfc1888")),
-        ("badlist_password", Value::new_iutf8("cenicienta")),
-        ("badlist_password", Value::new_iutf8("chaparrita")),
-        ("badlist_password", Value::new_iutf8("chaparrito")),
-        ("badlist_password", Value::new_iutf8("charolastra")),
-        ("badlist_password", Value::new_iutf8("chicafresa")),
-        ("badlist_password", Value::new_iutf8("chikistrikis")),
-        ("badlist_password", Value::new_iutf8("chilindrina")),
-        ("badlist_password", Value::new_iutf8("chingatumadre")),
-        ("badlist_password", Value::new_iutf8("chiquititas")),
-        ("badlist_password", Value::new_iutf8("chocoholic")),
-        ("badlist_password", Value::new_iutf8("chris brown")),
-        ("badlist_password", Value::new_iutf8("chupachups")),
-        ("badlist_password", Value::new_iutf8("cintasejati")),
-        ("badlist_password", Value::new_iutf8("classof2004")),
-        ("badlist_password", Value::new_iutf8("classof2005")),
-        ("badlist_password", Value::new_iutf8("classof2006")),
-        ("badlist_password", Value::new_iutf8("classof2007")),
-        ("badlist_password", Value::new_iutf8("classof2008")),
-        ("badlist_password", Value::new_iutf8("classof2009")),
-        ("badlist_password", Value::new_iutf8("classof2010")),
-        ("badlist_password", Value::new_iutf8("classof2011")),
-        ("badlist_password", Value::new_iutf8("classof2012")),
-        ("badlist_password", Value::new_iutf8("computacion")),
-        ("badlist_password", Value::new_iutf8("comunicacion")),
-        ("badlist_password", Value::new_iutf8("confidencial")),
-        ("badlist_password", Value::new_iutf8("contabilidad")),
-        ("badlist_password", Value::new_iutf8("cookiesncream")),
-        ("badlist_password", Value::new_iutf8("corazondemelon")),
-        ("badlist_password", Value::new_iutf8("cositarica")),
-        ("badlist_password", Value::new_iutf8("cradleoffilth")),
-        ("badlist_password", Value::new_iutf8("crazysexycool")),
-        ("badlist_password", Value::new_iutf8("crepusculo")),
-        ("badlist_password", Value::new_iutf8("crisostomo")),
-        ("badlist_password", Value::new_iutf8("cristomeama")),
-        ("badlist_password", Value::new_iutf8("cristoteama")),
-        ("badlist_password", Value::new_iutf8("cristoteamo")),
-        ("badlist_password", Value::new_iutf8("cristovive")),
-        ("badlist_password", Value::new_iutf8("cualquiera")),
-        ("badlist_password", Value::new_iutf8("cualquiercosa")),
-        ("badlist_password", Value::new_iutf8("cuchurrumin")),
-        ("badlist_password", Value::new_iutf8("cymruambyth")),
-        ("badlist_password", Value::new_iutf8("daddyslilgirl")),
-        ("badlist_password", Value::new_iutf8("daddyslittlegirl")),
-        ("badlist_password", Value::new_iutf8("danitykane")),
-        ("badlist_password", Value::new_iutf8("daveyhavok")),
-        ("badlist_password", Value::new_iutf8("dcshoecousa")),
-        ("badlist_password", Value::new_iutf8("deportivocali")),
-        ("badlist_password", Value::new_iutf8("depredador")),
-        ("badlist_password", Value::new_iutf8("desiderata")),
-        ("badlist_password", Value::new_iutf8("dgenerationx")),
-        ("badlist_password", Value::new_iutf8("dimmuborgir")),
-        ("badlist_password", Value::new_iutf8("diosesbueno")),
-        ("badlist_password", Value::new_iutf8("diostebendiga")),
-        ("badlist_password", Value::new_iutf8("divalicious")),
-        ("badlist_password", Value::new_iutf8("dolcegabbana")),
-        ("badlist_password", Value::new_iutf8("dracomalfoy")),
-        ("badlist_password", Value::new_iutf8("dragosteamea")),
-        ("badlist_password", Value::new_iutf8("eatmyshorts")),
-        ("badlist_password", Value::new_iutf8("ecuatoriana")),
-        ("badlist_password", Value::new_iutf8("elamorapesta")),
-        ("badlist_password", Value::new_iutf8("elamordemivida")),
-        ("badlist_password", Value::new_iutf8("elamorduele")),
-        ("badlist_password", Value::new_iutf8("elamornoexiste")),
-        ("badlist_password", Value::new_iutf8("emperatriz")),
-        ("badlist_password", Value::new_iutf8("encantadia")),
-        ("badlist_password", Value::new_iutf8("enfermagem")),
-        ("badlist_password", Value::new_iutf8("enfermeria")),
-        ("badlist_password", Value::new_iutf8("ereselamordemivida")),
-        ("badlist_password", Value::new_iutf8("ereslomaximo")),
-        ("badlist_password", Value::new_iutf8("ereslomejor")),
-        ("badlist_password", Value::new_iutf8("eresmiamor")),
-        ("badlist_password", Value::new_iutf8("eresmivida")),
-        ("badlist_password", Value::new_iutf8("escritorio")),
-        ("badlist_password", Value::new_iutf8("espiritusanto")),
-        ("badlist_password", Value::new_iutf8("estadosunidos")),
-        ("badlist_password", Value::new_iutf8("estrelinha")),
-        ("badlist_password", Value::new_iutf8("estudiante")),
-        ("badlist_password", Value::new_iutf8("ewankosayo")),
-        ("badlist_password", Value::new_iutf8("extraterrestre")),
-        ("badlist_password", Value::new_iutf8("eyeshield21")),
-        ("badlist_password", Value::new_iutf8("fadetoblack")),
-        ("badlist_password", Value::new_iutf8("fergalicious")),
-        ("badlist_password", Value::new_iutf8("figueiredo")),
-        ("badlist_password", Value::new_iutf8("filadelfia")),
-        ("badlist_password", Value::new_iutf8("finisterra")),
-        ("badlist_password", Value::new_iutf8("fishandchips")),
-        ("badlist_password", Value::new_iutf8("flordeliza")),
-        ("badlist_password", Value::new_iutf8("flordeloto")),
-        ("badlist_password", Value::new_iutf8("floricienta")),
-        ("badlist_password", Value::new_iutf8("florinsalam")),
-        ("badlist_password", Value::new_iutf8("floripondia")),
-        ("badlist_password", Value::new_iutf8("foreverandever")),
-        ("badlist_password", Value::new_iutf8("frangipani")),
-        ("badlist_password", Value::new_iutf8("free2rhyme")),
-        ("badlist_password", Value::new_iutf8("fresasconcrema")),
-        ("badlist_password", Value::new_iutf8("frootloops")),
-        ("badlist_password", Value::new_iutf8("fuckevery1")),
-        ("badlist_password", Value::new_iutf8("fuckthepope")),
-        ("badlist_password", Value::new_iutf8("funinthesun")),
-        ("badlist_password", Value::new_iutf8("funkymunky")),
-        ("badlist_password", Value::new_iutf8("fushigiyugi")),
-        ("badlist_password", Value::new_iutf8("fushigiyuugi")),
-        ("badlist_password", Value::new_iutf8("gastronomia")),
-        ("badlist_password", Value::new_iutf8("gatitolindo")),
-        ("badlist_password", Value::new_iutf8("gearsofwar")),
-        ("badlist_password", Value::new_iutf8("gettherefast")),
-        ("badlist_password", Value::new_iutf8("girlygirl1")),
-        ("badlist_password", Value::new_iutf8("glorytogod")),
-        ("badlist_password", Value::new_iutf8("godschild1")),
-        ("badlist_password", Value::new_iutf8("gofuckyourself")),
-        ("badlist_password", Value::new_iutf8("goody2shoes")),
-        ("badlist_password", Value::new_iutf8("grandtheftauto")),
-        ("badlist_password", Value::new_iutf8("grenouille")),
-        ("badlist_password", Value::new_iutf8("gryffindor")),
-        ("badlist_password", Value::new_iutf8("gummybear1")),
-        ("badlist_password", Value::new_iutf8("gunsandroses")),
-        ("badlist_password", Value::new_iutf8("gunsnroses")),
-        ("badlist_password", Value::new_iutf8("habbohotel")),
-        ("badlist_password", Value::new_iutf8("hakunamatata")),
-        ("badlist_password", Value::new_iutf8("hannah montana")),
-        ("badlist_password", Value::new_iutf8("happygolucky")),
-        ("badlist_password", Value::new_iutf8("harry potter")),
-        ("badlist_password", Value::new_iutf8("hateitorloveit")),
-        ("badlist_password", Value::new_iutf8("haveaniceday")),
-        ("badlist_password", Value::new_iutf8("hello kitty")),
-        ("badlist_password", Value::new_iutf8("hindikoalam")),
-        ("badlist_password", Value::new_iutf8("hipopotamo")),
-        ("badlist_password", Value::new_iutf8("hocuspocus")),
-        ("badlist_password", Value::new_iutf8("holaatodos")),
-        ("badlist_password", Value::new_iutf8("holacomoestas")),
-        ("badlist_password", Value::new_iutf8("holaquetal")),
-        ("badlist_password", Value::new_iutf8("hollaback1")),
-        ("badlist_password", Value::new_iutf8("homeandaway")),
-        ("badlist_password", Value::new_iutf8("homesweethome")),
-        ("badlist_password", Value::new_iutf8("hoobastank")),
-        ("badlist_password", Value::new_iutf8("hotandsexy")),
-        ("badlist_password", Value::new_iutf8("hotmail.com")),
-        ("badlist_password", Value::new_iutf8("hotmail123")),
-        ("badlist_password", Value::new_iutf8("hugsandkisses")),
-        ("badlist_password", Value::new_iutf8("hugsnkisses")),
-        ("badlist_password", Value::new_iutf8("hunnibunni")),
-        ("badlist_password", Value::new_iutf8("hunterxhunter")),
-        ("badlist_password", Value::new_iutf8("i love you")),
-        ("badlist_password", Value::new_iutf8("i.love.you")),
-        ("badlist_password", Value::new_iutf8("i_love_you")),
-        ("badlist_password", Value::new_iutf8("iamwhatiam")),
-        ("badlist_password", Value::new_iutf8("ichliebedich")),
-        ("badlist_password", Value::new_iutf8("idontloveyou")),
-        ("badlist_password", Value::new_iutf8("ihatelife1")),
-        ("badlist_password", Value::new_iutf8("ihatemylife")),
-        ("badlist_password", Value::new_iutf8("ihave3kids")),
-        ("badlist_password", Value::new_iutf8("iheartyou!")),
-        ("badlist_password", Value::new_iutf8("iheartyou1")),
-        ("badlist_password", Value::new_iutf8("iheartyou2")),
-        ("badlist_password", Value::new_iutf8("ikawlamang")),
-        ("badlist_password", Value::new_iutf8("ikhouvanjou")),
-        ("badlist_password", Value::new_iutf8("illnevertell")),
-        ("badlist_password", Value::new_iutf8("ilove2dance")),
-        ("badlist_password", Value::new_iutf8("iloveboys!")),
-        ("badlist_password", Value::new_iutf8("iloveboys1")),
-        ("badlist_password", Value::new_iutf8("iloveboys2")),
-        ("badlist_password", Value::new_iutf8("ilovechrisbrown")),
-        ("badlist_password", Value::new_iutf8("ilovecody1")),
-        ("badlist_password", Value::new_iutf8("ilovedogs1")),
-        ("badlist_password", Value::new_iutf8("ilovejake1")),
-        ("badlist_password", Value::new_iutf8("ilovejose1")),
-        ("badlist_password", Value::new_iutf8("ilovejosh!")),
-        ("badlist_password", Value::new_iutf8("ilovejosh1")),
-        ("badlist_password", Value::new_iutf8("ilovekyle1")),
-        ("badlist_password", Value::new_iutf8("ilovemike!")),
-        ("badlist_password", Value::new_iutf8("ilovemyboo")),
-        ("badlist_password", Value::new_iutf8("ilovemycat")),
-        ("badlist_password", Value::new_iutf8("ilovemydad")),
-        ("badlist_password", Value::new_iutf8("ilovemydaddy")),
-        ("badlist_password", Value::new_iutf8("ilovemydog")),
-        ("badlist_password", Value::new_iutf8("ilovemyfriends")),
-        ("badlist_password", Value::new_iutf8("ilovemymom")),
-        ("badlist_password", Value::new_iutf8("ilovemymommy")),
-        ("badlist_password", Value::new_iutf8("ilovemymum")),
-        ("badlist_password", Value::new_iutf8("ilovemymummy")),
-        ("badlist_password", Value::new_iutf8("ilovemysister")),
-        ("badlist_password", Value::new_iutf8("ilovemyson")),
-        ("badlist_password", Value::new_iutf8("ilovenickjonas")),
-        ("badlist_password", Value::new_iutf8("ilovenoone")),
-        ("badlist_password", Value::new_iutf8("ilovepink1")),
-        ("badlist_password", Value::new_iutf8("iloveryan!")),
-        ("badlist_password", Value::new_iutf8("iloveryan1")),
-        ("badlist_password", Value::new_iutf8("ilovesome1")),
-        ("badlist_password", Value::new_iutf8("ilovethelord")),
-        ("badlist_password", Value::new_iutf8("ilovethisgame")),
-        ("badlist_password", Value::new_iutf8("ilovetodance")),
-        ("badlist_password", Value::new_iutf8("iloveusomuch")),
-        ("badlist_password", Value::new_iutf8("iloveyousomuch")),
-        ("badlist_password", Value::new_iutf8("ilovezacefron")),
-        ("badlist_password", Value::new_iutf8("iluv2dance")),
-        ("badlist_password", Value::new_iutf8("iluvu4ever")),
-        ("badlist_password", Value::new_iutf8("imprimanta")),
-        ("badlist_password", Value::new_iutf8("imthebest1")),
-        ("badlist_password", Value::new_iutf8("inalcanzable")),
-        ("badlist_password", Value::new_iutf8("indragostita")),
-        ("badlist_password", Value::new_iutf8("inframundo")),
-        ("badlist_password", Value::new_iutf8("inglaterra")),
-        ("badlist_password", Value::new_iutf8("ingoditrust")),
-        ("badlist_password", Value::new_iutf8("inmaculada")),
-        ("badlist_password", Value::new_iutf8("inolvidable")),
-        ("badlist_password", Value::new_iutf8("insaneclownposse")),
-        ("badlist_password", Value::new_iutf8("inspiracion")),
-        ("badlist_password", Value::new_iutf8("inteligencia")),
-        ("badlist_password", Value::new_iutf8("inteligente")),
-        ("badlist_password", Value::new_iutf8("invu4uraqt")),
-        ("badlist_password", Value::new_iutf8("ioriyagami")),
-        ("badlist_password", Value::new_iutf8("itsallaboutme")),
-        ("badlist_password", Value::new_iutf8("iubireamea")),
-        ("badlist_password", Value::new_iutf8("iwillsurvive")),
-        ("badlist_password", Value::new_iutf8("jabbawockeez")),
-        ("badlist_password", Value::new_iutf8("jackandjill")),
-        ("badlist_password", Value::new_iutf8("jamiroquai")),
-        ("badlist_password", Value::new_iutf8("jensenackles")),
-        ("badlist_password", Value::new_iutf8("jesusesamor")),
-        ("badlist_password", Value::new_iutf8("jigglypuff")),
-        ("badlist_password", Value::new_iutf8("joeyjordison")),
-        ("badlist_password", Value::new_iutf8("jogabonito")),
-        ("badlist_password", Value::new_iutf8("jonas brothers")),
-        ("badlist_password", Value::new_iutf8("joshgroban")),
-        ("badlist_password", Value::new_iutf8("juggalette")),
-        ("badlist_password", Value::new_iutf8("kagandahan")),
-        ("badlist_password", Value::new_iutf8("kaleidostar")),
-        ("badlist_password", Value::new_iutf8("keepitreal")),
-        ("badlist_password", Value::new_iutf8("keteimporta")),
-        ("badlist_password", Value::new_iutf8("kilometros")),
-        ("badlist_password", Value::new_iutf8("kimsamsoon")),
-        ("badlist_password", Value::new_iutf8("kingofkings")),
-        ("badlist_password", Value::new_iutf8("kmzwa8awaa")),
-        ("badlist_password", Value::new_iutf8("kumbiakings")),
-        ("badlist_password", Value::new_iutf8("kuvhlubkoj")),
-        ("badlist_password", Value::new_iutf8("lacramioara")),
-        ("badlist_password", Value::new_iutf8("lacunacoil")),
-        ("badlist_password", Value::new_iutf8("laffytaffy")),
-        ("badlist_password", Value::new_iutf8("lamaravilla")),
-        ("badlist_password", Value::new_iutf8("lamashermosa")),
-        ("badlist_password", Value::new_iutf8("laprincesita")),
-        ("badlist_password", Value::new_iutf8("larcenciel")),
-        ("badlist_password", Value::new_iutf8("lasdivinas")),
-        ("badlist_password", Value::new_iutf8("lavidaesbella")),
-        ("badlist_password", Value::new_iutf8("lavidaloca")),
-        ("badlist_password", Value::new_iutf8("leedongwook")),
-        ("badlist_password", Value::new_iutf8("leothelion")),
-        ("badlist_password", Value::new_iutf8("licenciada")),
-        ("badlist_password", Value::new_iutf8("lifegoeson")),
-        ("badlist_password", Value::new_iutf8("lifesabitch")),
-        ("badlist_password", Value::new_iutf8("linkin park")),
-        ("badlist_password", Value::new_iutf8("lipgloss12")),
-        ("badlist_password", Value::new_iutf8("literatura")),
-        ("badlist_password", Value::new_iutf8("livelaughlove")),
-        ("badlist_password", Value::new_iutf8("livelovelaugh")),
-        ("badlist_password", Value::new_iutf8("liveyourlife")),
-        ("badlist_password", Value::new_iutf8("lordoftherings")),
-        ("badlist_password", Value::new_iutf8("loserface1")),
-        ("badlist_password", Value::new_iutf8("losmejores")),
-        ("badlist_password", Value::new_iutf8("lotsoflove")),
-        ("badlist_password", Value::new_iutf8("loveandhate")),
-        ("badlist_password", Value::new_iutf8("loveandpeace")),
-        ("badlist_password", Value::new_iutf8("loveisintheair")),
-        ("badlist_password", Value::new_iutf8("lovemeorhateme")),
-        ("badlist_password", Value::new_iutf8("lovenkrands")),
-        ("badlist_password", Value::new_iutf8("loveofmylife")),
-        ("badlist_password", Value::new_iutf8("loveorhate")),
-        ("badlist_password", Value::new_iutf8("lovetolove")),
-        ("badlist_password", Value::new_iutf8("loveu4ever")),
-        ("badlist_password", Value::new_iutf8("loveydovey")),
-        ("badlist_password", Value::new_iutf8("loveyousomuch")),
-        ("badlist_password", Value::new_iutf8("luciernaga")),
-        ("badlist_password", Value::new_iutf8("luvme4ever")),
-        ("badlist_password", Value::new_iutf8("luzviminda")),
-        ("badlist_password", Value::new_iutf8("machupichu")),
-        ("badlist_password", Value::new_iutf8("madalinutza")),
-        ("badlist_password", Value::new_iutf8("mahal kita")),
-        ("badlist_password", Value::new_iutf8("mahalkokayo")),
-        ("badlist_password", Value::new_iutf8("mahalnamahalkita")),
-        ("badlist_password", Value::new_iutf8("makedonija")),
-        ("badlist_password", Value::new_iutf8("mamichula1")),
-        ("badlist_password", Value::new_iutf8("mapagmahal")),
-        ("badlist_password", Value::new_iutf8("maravillosa")),
-        ("badlist_password", Value::new_iutf8("maravilloso")),
-        ("badlist_password", Value::new_iutf8("mardecopas")),
-        ("badlist_password", Value::new_iutf8("mariadelcarmen")),
-        ("badlist_password", Value::new_iutf8("matrimonio")),
-        ("badlist_password", Value::new_iutf8("meamomucho")),
-        ("badlist_password", Value::new_iutf8("mejoresamigas")),
-        ("badlist_password", Value::new_iutf8("memyselfandi")),
-        ("badlist_password", Value::new_iutf8("meneketehe")),
-        ("badlist_password", Value::new_iutf8("mequieromucho")),
-        ("badlist_password", Value::new_iutf8("mercadotecnia")),
-        ("badlist_password", Value::new_iutf8("metamorfosis")),
-        ("badlist_password", Value::new_iutf8("miamorerestu")),
-        ("badlist_password", Value::new_iutf8("miamorteamo")),
-        ("badlist_password", Value::new_iutf8("mikeshinoda")),
-        ("badlist_password", Value::new_iutf8("milagritos")),
-        ("badlist_password", Value::new_iutf8("millonarios")),
-        ("badlist_password", Value::new_iutf8("mimamamemima")),
-        ("badlist_password", Value::new_iutf8("mimejoramiga")),
-        ("badlist_password", Value::new_iutf8("mirmodepon")),
-        ("badlist_password", Value::new_iutf8("mis3amores")),
-        ("badlist_password", Value::new_iutf8("misdosamores")),
-        ("badlist_password", Value::new_iutf8("misericordia")),
-        ("badlist_password", Value::new_iutf8("missthang1")),
-        ("badlist_password", Value::new_iutf8("miunicoamor")),
-        ("badlist_password", Value::new_iutf8("mividaerestu")),
-        ("badlist_password", Value::new_iutf8("mividaloca")),
-        ("badlist_password", Value::new_iutf8("mommasgirl")),
-        ("badlist_password", Value::new_iutf8("mommyanddaddy")),
-        ("badlist_password", Value::new_iutf8("monserrath")),
-        ("badlist_password", Value::new_iutf8("morethanwords")),
-        ("badlist_password", Value::new_iutf8("moscraciun")),
-        ("badlist_password", Value::new_iutf8("moulinrouge")),
-        ("badlist_password", Value::new_iutf8("msnhotmail")),
-        ("badlist_password", Value::new_iutf8("muiesteaua")),
-        ("badlist_password", Value::new_iutf8("mummyanddaddy")),
-        ("badlist_password", Value::new_iutf8("mummysgirl")),
-        ("badlist_password", Value::new_iutf8("musicislife")),
-        ("badlist_password", Value::new_iutf8("musicismylife")),
-        ("badlist_password", Value::new_iutf8("muthafucka")),
-        ("badlist_password", Value::new_iutf8("muñequita")),
-        ("badlist_password", Value::new_iutf8("mychemicalromance")),
-        ("badlist_password", Value::new_iutf8("mylittlepony")),
-        ("badlist_password", Value::new_iutf8("myonlylove")),
-        ("badlist_password", Value::new_iutf8("myslideshow")),
-        ("badlist_password", Value::new_iutf8("myspace.com")),
-        ("badlist_password", Value::new_iutf8("nabucodonosor")),
-        ("badlist_password", Value::new_iutf8("nascimento")),
-        ("badlist_password", Value::new_iutf8("nasigoreng")),
-        ("badlist_password", Value::new_iutf8("nebunatica")),
-        ("badlist_password", Value::new_iutf8("nepomuceno")),
-        ("badlist_password", Value::new_iutf8("neversaynever")),
-        ("badlist_password", Value::new_iutf8("nick jonas")),
-        ("badlist_password", Value::new_iutf8("nickjonas1")),
-        ("badlist_password", Value::new_iutf8("nistelrooy")),
-        ("badlist_password", Value::new_iutf8("nomeacuerdo")),
-        ("badlist_password", Value::new_iutf8("nomeolvides")),
-        ("badlist_password", Value::new_iutf8("nosequeponer")),
-        ("badlist_password", Value::new_iutf8("nuncateolvidare")),
-        ("badlist_password", Value::new_iutf8("nymphetamine")),
-        ("badlist_password", Value::new_iutf8("odontologia")),
-        ("badlist_password", Value::new_iutf8("ojosverdes")),
-        ("badlist_password", Value::new_iutf8("oneandonly")),
-        ("badlist_password", Value::new_iutf8("oneofakind")),
-        ("badlist_password", Value::new_iutf8("onetreehill")),
-        ("badlist_password", Value::new_iutf8("onomatopoeia")),
-        ("badlist_password", Value::new_iutf8("ositolindo")),
-        ("badlist_password", Value::new_iutf8("ositopanda")),
-        ("badlist_password", Value::new_iutf8("padrinosmagicos")),
-        ("badlist_password", Value::new_iutf8("painislove")),
-        ("badlist_password", Value::new_iutf8("pandalandia")),
-        ("badlist_password", Value::new_iutf8("panganiban")),
-        ("badlist_password", Value::new_iutf8("pangilinan")),
-        ("badlist_password", Value::new_iutf8("panicatthedisco")),
-        ("badlist_password", Value::new_iutf8("pantelimon")),
-        ("badlist_password", Value::new_iutf8("paralelepipedo")),
-        ("badlist_password", Value::new_iutf8("paralelipiped")),
-        ("badlist_password", Value::new_iutf8("parasiempre")),
-        ("badlist_password", Value::new_iutf8("pasawayako")),
-        ("badlist_password", Value::new_iutf8("pasodeblas")),
-        ("badlist_password", Value::new_iutf8("peace&love")),
-        ("badlist_password", Value::new_iutf8("peaceandlove")),
-        ("badlist_password", Value::new_iutf8("periwinkle")),
-        ("badlist_password", Value::new_iutf8("petewentz1")),
-        ("badlist_password", Value::new_iutf8("pimpmyride")),
-        ("badlist_password", Value::new_iutf8("pinkaholic")),
-        ("badlist_password", Value::new_iutf8("pinkandblue")),
-        ("badlist_password", Value::new_iutf8("playa4life")),
-        ("badlist_password", Value::new_iutf8("policarpio")),
-        ("badlist_password", Value::new_iutf8("politecnico")),
-        ("badlist_password", Value::new_iutf8("praisethelord")),
-        ("badlist_password", Value::new_iutf8("prettyinpink")),
-        ("badlist_password", Value::new_iutf8("prostituta")),
-        ("badlist_password", Value::new_iutf8("psicologia")),
-        ("badlist_password", Value::new_iutf8("psihologie")),
-        ("badlist_password", Value::new_iutf8("puccaygaru")),
-        ("badlist_password", Value::new_iutf8("punknotdead")),
-        ("badlist_password", Value::new_iutf8("pussinboots")),
-        ("badlist_password", Value::new_iutf8("queteimporta")),
-        ("badlist_password", Value::new_iutf8("quetzalcoatl")),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("TEQUIEROMUCHO")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("TEXT ONLY AD")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("abretesesamo")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("administrador")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("aeropostale")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("akinkalang")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("akucintakamu")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("akusayangkamu")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("alfayomega")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("alhamdulillah")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("allaboutme")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("allahuakbar")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("alleyesonme")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("alquimista")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("alwaysandforever")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("amarteduele")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("amigas4ever")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("amigasporsiempre")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("amigasx100pre")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("amigasxsiempre")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("amoamifamilia")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("amordelbueno")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("amordemivida")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("amoresperros")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("amoreterno")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("amorimposible")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("amorporsiempre")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("amorprohibido")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("amorverdadero")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("amotemuito")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("anaranjado")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("angeldeamor")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("angellocsin")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("angelofdeath")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("anggandako")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("aniversario")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("apaixonada")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("apocalipsa")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("apocalipse")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("apocalipsis")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("apolinario")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("arquitectura")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("arrolladora")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("asieslavida")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("assalamualaikum")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("auxiliadora")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("avengedsevenfold")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("ayamgoreng")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("babasonicos")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("balla4life")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("barriofino")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("bball4life")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("bebitalinda")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("bellissima")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("bendiciones")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("benfiquista")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("bestfriends4ever")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("bestfriendsforever")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("bienvenido")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("billandben")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("blackandwhite")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("blackeyedpeas")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("bobesponja")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("bobthebuilder")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("bomboncito")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("borreguito")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("boysoverflowers")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("bringmetolife")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("bustitbaby")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("cachorrita")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("cachorrito")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("cafetacuba")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("calculadora")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("californication")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("camiloteamo")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("candyland1")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("candyshop1")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("canttouchthis")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("caperucita")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("caprichosa")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("caradeperro")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("caranguejo")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("caricatura")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("caritadeangel")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("carteldesanta")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("castravete")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("catinthehat")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("catsanddogs")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("celticfc1888")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("cenicienta")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("chaparrita")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("chaparrito")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("charolastra")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("chicafresa")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("chikistrikis")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("chilindrina")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("chingatumadre")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("chiquititas")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("chocoholic")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("chris brown")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("chupachups")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("cintasejati")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("classof2004")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("classof2005")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("classof2006")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("classof2007")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("classof2008")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("classof2009")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("classof2010")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("classof2011")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("classof2012")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("computacion")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("comunicacion")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("confidencial")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("contabilidad")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("cookiesncream")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("corazondemelon")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("cositarica")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("cradleoffilth")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("crazysexycool")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("crepusculo")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("crisostomo")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("cristomeama")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("cristoteama")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("cristoteamo")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("cristovive")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("cualquiera")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("cualquiercosa")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("cuchurrumin")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("cymruambyth")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("daddyslilgirl")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("daddyslittlegirl")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("danitykane")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("daveyhavok")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("dcshoecousa")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("deportivocali")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("depredador")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("desiderata")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("dgenerationx")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("dimmuborgir")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("diosesbueno")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("diostebendiga")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("divalicious")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("dolcegabbana")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("dracomalfoy")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("dragosteamea")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("eatmyshorts")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("ecuatoriana")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("elamorapesta")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("elamordemivida")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("elamorduele")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("elamornoexiste")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("emperatriz")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("encantadia")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("enfermagem")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("enfermeria")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("ereselamordemivida")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("ereslomaximo")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("ereslomejor")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("eresmiamor")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("eresmivida")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("escritorio")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("espiritusanto")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("estadosunidos")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("estrelinha")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("estudiante")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("ewankosayo")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("extraterrestre")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("eyeshield21")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("fadetoblack")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("fergalicious")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("figueiredo")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("filadelfia")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("finisterra")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("fishandchips")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("flordeliza")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("flordeloto")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("floricienta")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("florinsalam")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("floripondia")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("foreverandever")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("frangipani")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("free2rhyme")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("fresasconcrema")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("frootloops")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("fuckevery1")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("fuckthepope")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("funinthesun")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("funkymunky")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("fushigiyugi")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("fushigiyuugi")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("gastronomia")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("gatitolindo")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("gearsofwar")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("gettherefast")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("girlygirl1")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("glorytogod")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("godschild1")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("gofuckyourself")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("goody2shoes")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("grandtheftauto")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("grenouille")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("gryffindor")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("gummybear1")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("gunsandroses")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("gunsnroses")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("habbohotel")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("hakunamatata")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("hannah montana")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("happygolucky")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("harry potter")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("hateitorloveit")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("haveaniceday")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("hello kitty")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("hindikoalam")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("hipopotamo")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("hocuspocus")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("holaatodos")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("holacomoestas")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("holaquetal")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("hollaback1")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("homeandaway")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("homesweethome")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("hoobastank")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("hotandsexy")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("hotmail.com")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("hotmail123")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("hugsandkisses")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("hugsnkisses")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("hunnibunni")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("hunterxhunter")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("i love you")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("i.love.you")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("i_love_you")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("iamwhatiam")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("ichliebedich")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("idontloveyou")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("ihatelife1")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("ihatemylife")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("ihave3kids")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("iheartyou!")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("iheartyou1")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("iheartyou2")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("ikawlamang")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("ikhouvanjou")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("illnevertell")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("ilove2dance")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("iloveboys!")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("iloveboys1")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("iloveboys2")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("ilovechrisbrown")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("ilovecody1")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("ilovedogs1")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("ilovejake1")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("ilovejose1")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("ilovejosh!")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("ilovejosh1")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("ilovekyle1")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("ilovemike!")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("ilovemyboo")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("ilovemycat")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("ilovemydad")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("ilovemydaddy")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("ilovemydog")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("ilovemyfriends")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("ilovemymom")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("ilovemymommy")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("ilovemymum")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("ilovemymummy")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("ilovemysister")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("ilovemyson")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("ilovenickjonas")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("ilovenoone")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("ilovepink1")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("iloveryan!")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("iloveryan1")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("ilovesome1")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("ilovethelord")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("ilovethisgame")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("ilovetodance")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("iloveusomuch")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("iloveyousomuch")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("ilovezacefron")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("iluv2dance")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("iluvu4ever")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("imprimanta")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("imthebest1")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("inalcanzable")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("indragostita")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("inframundo")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("inglaterra")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("ingoditrust")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("inmaculada")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("inolvidable")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("insaneclownposse")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("inspiracion")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("inteligencia")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("inteligente")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("invu4uraqt")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("ioriyagami")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("itsallaboutme")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("iubireamea")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("iwillsurvive")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("jabbawockeez")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("jackandjill")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("jamiroquai")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("jensenackles")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("jesusesamor")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("jigglypuff")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("joeyjordison")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("jogabonito")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("jonas brothers")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("joshgroban")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("juggalette")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("kagandahan")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("kaleidostar")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("keepitreal")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("keteimporta")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("kilometros")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("kimsamsoon")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("kingofkings")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("kmzwa8awaa")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("kumbiakings")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("kuvhlubkoj")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("lacramioara")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("lacunacoil")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("laffytaffy")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("lamaravilla")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("lamashermosa")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("laprincesita")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("larcenciel")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("lasdivinas")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("lavidaesbella")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("lavidaloca")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("leedongwook")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("leothelion")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("licenciada")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("lifegoeson")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("lifesabitch")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("linkin park")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("lipgloss12")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("literatura")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("livelaughlove")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("livelovelaugh")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("liveyourlife")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("lordoftherings")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("loserface1")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("losmejores")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("lotsoflove")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("loveandhate")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("loveandpeace")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("loveisintheair")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("lovemeorhateme")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("lovenkrands")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("loveofmylife")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("loveorhate")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("lovetolove")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("loveu4ever")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("loveydovey")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("loveyousomuch")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("luciernaga")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("luvme4ever")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("luzviminda")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("machupichu")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("madalinutza")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("mahal kita")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("mahalkokayo")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("mahalnamahalkita")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("makedonija")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("mamichula1")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("mapagmahal")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("maravillosa")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("maravilloso")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("mardecopas")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("mariadelcarmen")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("matrimonio")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("meamomucho")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("mejoresamigas")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("memyselfandi")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("meneketehe")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("mequieromucho")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("mercadotecnia")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("metamorfosis")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("miamorerestu")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("miamorteamo")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("mikeshinoda")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("milagritos")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("millonarios")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("mimamamemima")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("mimejoramiga")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("mirmodepon")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("mis3amores")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("misdosamores")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("misericordia")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("missthang1")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("miunicoamor")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("mividaerestu")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("mividaloca")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("mommasgirl")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("mommyanddaddy")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("monserrath")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("morethanwords")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("moscraciun")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("moulinrouge")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("msnhotmail")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("muiesteaua")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("mummyanddaddy")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("mummysgirl")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("musicislife")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("musicismylife")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("muthafucka")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("muñequita")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("mychemicalromance")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("mylittlepony")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("myonlylove")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("myslideshow")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("myspace.com")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("nabucodonosor")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("nascimento")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("nasigoreng")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("nebunatica")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("nepomuceno")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("neversaynever")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("nick jonas")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("nickjonas1")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("nistelrooy")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("nomeacuerdo")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("nomeolvides")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("nosequeponer")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("nuncateolvidare")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("nymphetamine")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("odontologia")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("ojosverdes")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("oneandonly")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("oneofakind")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("onetreehill")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("onomatopoeia")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("ositolindo")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("ositopanda")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("padrinosmagicos")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("painislove")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("pandalandia")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("panganiban")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("pangilinan")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("panicatthedisco")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("pantelimon")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("paralelepipedo")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("paralelipiped")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("parasiempre")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("pasawayako")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("pasodeblas")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("peace&love")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("peaceandlove")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("periwinkle")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("petewentz1")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("pimpmyride")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("pinkaholic")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("pinkandblue")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("playa4life")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("policarpio")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("politecnico")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("praisethelord")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("prettyinpink")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("prostituta")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("psicologia")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("psihologie")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("puccaygaru")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("punknotdead")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("pussinboots")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("queteimporta")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("quetzalcoatl")
+        ),
         (
             "badlist_password",
             Value::new_iutf8("qwertyuiopasdfghjklzxcvbnm")
         ),
-        ("badlist_password", Value::new_iutf8("recuerdame")),
-        ("badlist_password", Value::new_iutf8("resistencia")),
-        ("badlist_password", Value::new_iutf8("restinpeace")),
-        ("badlist_password", Value::new_iutf8("reymisterio619")),
-        ("badlist_password", Value::new_iutf8("reymysterio619")),
-        ("badlist_password", Value::new_iutf8("ricardoarjona")),
-        ("badlist_password", Value::new_iutf8("romeoyjulieta")),
-        ("badlist_password", Value::new_iutf8("rosesarered")),
-        ("badlist_password", Value::new_iutf8("rositafresita")),
-        ("badlist_password", Value::new_iutf8("rupertgrint")),
-        ("badlist_password", Value::new_iutf8("ryansheckler")),
-        ("badlist_password", Value::new_iutf8("ryomaechizen")),
-        ("badlist_password", Value::new_iutf8("sampaguita")),
-        ("badlist_password", Value::new_iutf8("sangreazul")),
-        ("badlist_password", Value::new_iutf8("sarangheyo")),
-        ("badlist_password", Value::new_iutf8("sassygirl1")),
-        ("badlist_password", Value::new_iutf8("sasukeuchiha")),
-        ("badlist_password", Value::new_iutf8("schokolade")),
-        ("badlist_password", Value::new_iutf8("sebasteamo")),
-        ("badlist_password", Value::new_iutf8("sectumsempra")),
-        ("badlist_password", Value::new_iutf8("semeolvido")),
-        ("badlist_password", Value::new_iutf8("seniseviyorum")),
-        ("badlist_password", Value::new_iutf8("sentimiento")),
-        ("badlist_password", Value::new_iutf8("sesshomaru")),
-        ("badlist_password", Value::new_iutf8("sesshoumaru")),
-        ("badlist_password", Value::new_iutf8("sexandthecity")),
-        ("badlist_password", Value::new_iutf8("sexonthebeach")),
-        ("badlist_password", Value::new_iutf8("sexymomma1")),
-        ("badlist_password", Value::new_iutf8("sexythang1")),
-        ("badlist_password", Value::new_iutf8("sexything1")),
-        ("badlist_password", Value::new_iutf8("shaggy2dope")),
-        ("badlist_password", Value::new_iutf8("shippuuden")),
-        ("badlist_password", Value::new_iutf8("shopaholic")),
-        ("badlist_password", Value::new_iutf8("showmethemoney")),
-        ("badlist_password", Value::new_iutf8("siemprejuntos")),
-        ("badlist_password", Value::new_iutf8("siempreteamare")),
-        ("badlist_password", Value::new_iutf8("simanjuntak")),
-        ("badlist_password", Value::new_iutf8("simplementeyo")),
-        ("badlist_password", Value::new_iutf8("sinterklaas")),
-        ("badlist_password", Value::new_iutf8("sk8er4life")),
-        ("badlist_password", Value::new_iutf8("skateordie")),
-        ("badlist_password", Value::new_iutf8("soloparami")),
-        ("badlist_password", Value::new_iutf8("soloparati")),
-        ("badlist_password", Value::new_iutf8("somostuyyo")),
-        ("badlist_password", Value::new_iutf8("souljaboy1")),
-        ("badlist_password", Value::new_iutf8("souljagirl")),
-        ("badlist_password", Value::new_iutf8("souljagurl")),
-        ("badlist_password", Value::new_iutf8("soyelmejor")),
-        ("badlist_password", Value::new_iutf8("soylamejor")),
-        ("badlist_password", Value::new_iutf8("soylomaximo")),
-        ("badlist_password", Value::new_iutf8("soylomejor")),
-        ("badlist_password", Value::new_iutf8("spongebobsquarepants")),
-        ("badlist_password", Value::new_iutf8("steauabucuresti")),
-        ("badlist_password", Value::new_iutf8("suankularb")),
-        ("badlist_password", Value::new_iutf8("subhanallah")),
-        ("badlist_password", Value::new_iutf8("sugarandspice")),
-        ("badlist_password", Value::new_iutf8("sugarnspice")),
-        ("badlist_password", Value::new_iutf8("superchica")),
-        ("badlist_password", Value::new_iutf8("superinggo")),
-        ("badlist_password", Value::new_iutf8("superpoderosa")),
-        ("badlist_password", Value::new_iutf8("supladitah")),
-        ("badlist_password", Value::new_iutf8("tamagotchi")),
-        ("badlist_password", Value::new_iutf8("taugammaphi")),
-        ("badlist_password", Value::new_iutf8("teamareporsiempre")),
-        ("badlist_password", Value::new_iutf8("teamaresiempre")),
-        ("badlist_password", Value::new_iutf8("teamarex100pre")),
-        ("badlist_password", Value::new_iutf8("teamarexsiempre")),
-        ("badlist_password", Value::new_iutf8("teamobebito")),
-        ("badlist_password", Value::new_iutf8("teamodemasiado")),
-        ("badlist_password", Value::new_iutf8("teamogordo")),
-        ("badlist_password", Value::new_iutf8("teamomiamor")),
-        ("badlist_password", Value::new_iutf8("teamomibebe")),
-        ("badlist_password", Value::new_iutf8("teamomivida")),
-        ("badlist_password", Value::new_iutf8("teamosoloati")),
-        ("badlist_password", Value::new_iutf8("teamotanto")),
-        ("badlist_password", Value::new_iutf8("teamox100pre")),
-        ("badlist_password", Value::new_iutf8("tecnologia")),
-        ("badlist_password", Value::new_iutf8("teextraño")),
-        ("badlist_password", Value::new_iutf8("teiubescmult")),
-        ("badlist_password", Value::new_iutf8("tekelomucho")),
-        ("badlist_password", Value::new_iutf8("tekelomuxo")),
-        ("badlist_password", Value::new_iutf8("tekieromucho")),
-        ("badlist_password", Value::new_iutf8("tekieromuxo")),
-        ("badlist_password", Value::new_iutf8("telecomanda")),
-        ("badlist_password", Value::new_iutf8("teletubbies")),
-        ("badlist_password", Value::new_iutf8("tenecesito")),
-        ("badlist_password", Value::new_iutf8("tengounamor")),
-        ("badlist_password", Value::new_iutf8("teolvidare")),
-        ("badlist_password", Value::new_iutf8("tequieromucho")),
-        ("badlist_password", Value::new_iutf8("tequieromuxo")),
-        ("badlist_password", Value::new_iutf8("tesigoamando")),
-        ("badlist_password", Value::new_iutf8("thaitanium")),
-        ("badlist_password", Value::new_iutf8("theblackparade")),
-        ("badlist_password", Value::new_iutf8("theoneandonly")),
-        ("badlist_password", Value::new_iutf8("theveronicas")),
-        ("badlist_password", Value::new_iutf8("thisismypassword")),
-        ("badlist_password", Value::new_iutf8("threedaysgrace")),
-        ("badlist_password", Value::new_iutf8("timbiriche")),
-        ("badlist_password", Value::new_iutf8("tinkywinky")),
-        ("badlist_password", Value::new_iutf8("titoelbambino")),
-        ("badlist_password", Value::new_iutf8("tivogliobene")),
-        ("badlist_password", Value::new_iutf8("todalavida")),
-        ("badlist_password", Value::new_iutf8("todocambio")),
-        ("badlist_password", Value::new_iutf8("todopoderoso")),
-        ("badlist_password", Value::new_iutf8("tohoshinki")),
-        ("badlist_password", Value::new_iutf8("tokio hotel")),
-        ("badlist_password", Value::new_iutf8("tomandjerry")),
-        ("badlist_password", Value::new_iutf8("tomwelling")),
-        ("badlist_password", Value::new_iutf8("trandafiri")),
-        ("badlist_password", Value::new_iutf8("trincheranorte")),
-        ("badlist_password", Value::new_iutf8("triskelion")),
-        ("badlist_password", Value::new_iutf8("tueresmiamor")),
-        ("badlist_password", Value::new_iutf8("tueresmivida")),
-        ("badlist_password", Value::new_iutf8("tumamacalata")),
-        ("badlist_password", Value::new_iutf8("tuttifrutti")),
-        ("badlist_password", Value::new_iutf8("tuyyox100pre")),
-        ("badlist_password", Value::new_iutf8("uchihasasuke")),
-        ("badlist_password", Value::new_iutf8("undermyskin")),
-        ("badlist_password", Value::new_iutf8("unforgetable")),
-        ("badlist_password", Value::new_iutf8("unodostres")),
-        ("badlist_password", Value::new_iutf8("vacaciones")),
-        ("badlist_password", Value::new_iutf8("valderrama")),
-        ("badlist_password", Value::new_iutf8("vatoslocos")),
-        ("badlist_password", Value::new_iutf8("verjaardag")),
-        ("badlist_password", Value::new_iutf8("vetealamierda")),
-        ("badlist_password", Value::new_iutf8("veterinaria")),
-        ("badlist_password", Value::new_iutf8("villacorta")),
-        ("badlist_password", Value::new_iutf8("vivaelrock")),
-        ("badlist_password", Value::new_iutf8("vivalaraza")),
-        ("badlist_password", Value::new_iutf8("vivalavida")),
-        ("badlist_password", Value::new_iutf8("vivelavida")),
-        ("badlist_password", Value::new_iutf8("webelongtogether")),
-        ("badlist_password", Value::new_iutf8("weezyfbaby")),
-        ("badlist_password", Value::new_iutf8("welcometomylife")),
-        ("badlist_password", Value::new_iutf8("whereisthelove")),
-        ("badlist_password", Value::new_iutf8("winniethepooh")),
-        ("badlist_password", Value::new_iutf8("wipemedown")),
-        ("badlist_password", Value::new_iutf8("wisinyandel")),
-        ("badlist_password", Value::new_iutf8("wisinyyandel")),
-        ("badlist_password", Value::new_iutf8("worldofwarcraft")),
-        ("badlist_password", Value::new_iutf8("yosoyelmejor")),
-        ("badlist_password", Value::new_iutf8("yosoylamejor")),
-        ("badlist_password", Value::new_iutf8("youcantseeme")),
-        ("badlist_password", Value::new_iutf8("yougotserved")),
-        ("badlist_password", Value::new_iutf8("yuyuhakusho")),
-        ("badlist_password", Value::new_iutf8("zonnebloem"))
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("recuerdame")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("resistencia")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("restinpeace")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("reymisterio619")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("reymysterio619")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("ricardoarjona")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("romeoyjulieta")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("rosesarered")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("rositafresita")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("rupertgrint")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("ryansheckler")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("ryomaechizen")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("sampaguita")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("sangreazul")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("sarangheyo")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("sassygirl1")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("sasukeuchiha")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("schokolade")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("sebasteamo")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("sectumsempra")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("semeolvido")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("seniseviyorum")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("sentimiento")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("sesshomaru")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("sesshoumaru")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("sexandthecity")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("sexonthebeach")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("sexymomma1")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("sexythang1")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("sexything1")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("shaggy2dope")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("shippuuden")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("shopaholic")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("showmethemoney")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("siemprejuntos")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("siempreteamare")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("simanjuntak")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("simplementeyo")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("sinterklaas")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("sk8er4life")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("skateordie")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("soloparami")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("soloparati")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("somostuyyo")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("souljaboy1")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("souljagirl")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("souljagurl")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("soyelmejor")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("soylamejor")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("soylomaximo")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("soylomejor")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("spongebobsquarepants")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("steauabucuresti")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("suankularb")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("subhanallah")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("sugarandspice")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("sugarnspice")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("superchica")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("superinggo")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("superpoderosa")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("supladitah")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("tamagotchi")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("taugammaphi")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("teamareporsiempre")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("teamaresiempre")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("teamarex100pre")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("teamarexsiempre")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("teamobebito")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("teamodemasiado")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("teamogordo")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("teamomiamor")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("teamomibebe")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("teamomivida")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("teamosoloati")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("teamotanto")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("teamox100pre")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("tecnologia")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("teextraño")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("teiubescmult")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("tekelomucho")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("tekelomuxo")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("tekieromucho")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("tekieromuxo")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("telecomanda")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("teletubbies")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("tenecesito")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("tengounamor")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("teolvidare")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("tequieromucho")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("tequieromuxo")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("tesigoamando")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("thaitanium")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("theblackparade")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("theoneandonly")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("theveronicas")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("thisismypassword")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("threedaysgrace")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("timbiriche")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("tinkywinky")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("titoelbambino")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("tivogliobene")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("todalavida")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("todocambio")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("todopoderoso")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("tohoshinki")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("tokio hotel")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("tomandjerry")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("tomwelling")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("trandafiri")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("trincheranorte")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("triskelion")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("tueresmiamor")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("tueresmivida")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("tumamacalata")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("tuttifrutti")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("tuyyox100pre")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("uchihasasuke")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("undermyskin")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("unforgetable")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("unodostres")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("vacaciones")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("valderrama")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("vatoslocos")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("verjaardag")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("vetealamierda")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("veterinaria")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("villacorta")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("vivaelrock")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("vivalaraza")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("vivalavida")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("vivelavida")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("webelongtogether")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("weezyfbaby")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("welcometomylife")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("whereisthelove")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("winniethepooh")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("wipemedown")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("wisinyandel")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("wisinyyandel")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("worldofwarcraft")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("yosoyelmejor")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("yosoylamejor")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("youcantseeme")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("yougotserved")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("yuyuhakusho")
+        ),
+        (
+            Attribute::BadlistPassword.as_ref(),
+            Value::new_iutf8("zonnebloem")
+        )
     );
 }

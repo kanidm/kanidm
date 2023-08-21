@@ -98,29 +98,38 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // schema or acp requires reload.
         if !self.changed_schema {
             self.changed_schema = del_cand.iter().any(|e| {
-                e.attribute_equality("class", &PVCLASS_CLASSTYPE)
-                    || e.attribute_equality("class", &PVCLASS_ATTRIBUTETYPE)
+                e.attribute_equality(Attribute::Class.as_ref(), &EntryClass::ClassType.into())
+                    || e.attribute_equality(
+                        Attribute::Class.as_ref(),
+                        &EntryClass::AttributeType.into(),
+                    )
             });
         }
         if !self.changed_acp {
-            self.changed_acp = del_cand
-                .iter()
-                .any(|e| e.attribute_equality("class", &PVCLASS_ACP));
+            self.changed_acp = del_cand.iter().any(|e| {
+                e.attribute_equality(
+                    Attribute::Class.as_ref(),
+                    &EntryClass::AccessControlProfile.into(),
+                )
+            });
         }
         if !self.changed_oauth2 {
-            self.changed_oauth2 = del_cand
-                .iter()
-                .any(|e| e.attribute_equality("class", &PVCLASS_OAUTH2_RS));
+            self.changed_oauth2 = del_cand.iter().any(|e| {
+                e.attribute_equality(
+                    Attribute::Class.as_ref(),
+                    &EntryClass::OAuth2ResourceServer.into(),
+                )
+            });
         }
         if !self.changed_domain {
             self.changed_domain = del_cand
                 .iter()
-                .any(|e| e.attribute_equality("uuid", &PVUUID_DOMAIN_INFO));
+                .any(|e| e.attribute_equality(Attribute::Uuid.as_ref(), &PVUUID_DOMAIN_INFO));
         }
         if !self.changed_sync_agreement {
-            self.changed_sync_agreement = del_cand
-                .iter()
-                .any(|e| e.attribute_equality("uuid", &PVCLASS_SYNC_ACCOUNT));
+            self.changed_sync_agreement = del_cand.iter().any(|e| {
+                e.attribute_equality(Attribute::Uuid.as_ref(), &EntryClass::SyncAccount.into())
+            });
         }
 
         self.changed_uuid
@@ -155,7 +164,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     }
 
     pub fn internal_delete_uuid(&mut self, target_uuid: Uuid) -> Result<(), OperationError> {
-        let filter = filter!(f_eq("uuid", PartialValue::Uuid(target_uuid)));
+        let filter = filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(target_uuid)));
         let f_valid = filter
             .validate(self.get_schema())
             .map_err(OperationError::SchemaViolation)?;
@@ -168,7 +177,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         &mut self,
         target_uuid: Uuid,
     ) -> Result<(), OperationError> {
-        let filter = filter!(f_eq("uuid", PartialValue::Uuid(target_uuid)));
+        let filter = filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(target_uuid)));
         let f_valid = filter
             .validate(self.get_schema())
             .map_err(OperationError::SchemaViolation)?;
@@ -193,39 +202,57 @@ mod tests {
         let mut server_txn = server.write(duration_from_epoch_now()).await;
 
         let e1 = entry_init!(
-            ("class", Value::new_class("object")),
-            ("class", Value::new_class("person")),
-            ("name", Value::new_iname("testperson1")),
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
+            (Attribute::Name.as_ref(), Value::new_iname("testperson1")),
             (
                 "uuid",
                 Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
             ),
-            ("description", Value::new_utf8s("testperson")),
-            ("displayname", Value::new_utf8s("testperson1"))
+            (
+                Attribute::Description.as_ref(),
+                Value::new_utf8s("testperson")
+            ),
+            (
+                Attribute::DisplayName.as_ref(),
+                Value::new_utf8s("testperson1")
+            )
         );
 
         let e2 = entry_init!(
-            ("class", Value::new_class("object")),
-            ("class", Value::new_class("person")),
-            ("name", Value::new_iname("testperson2")),
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
+            (Attribute::Name.as_ref(), Value::new_iname("testperson2")),
             (
                 "uuid",
                 Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63932"))
             ),
-            ("description", Value::new_utf8s("testperson")),
-            ("displayname", Value::new_utf8s("testperson2"))
+            (
+                Attribute::Description.as_ref(),
+                Value::new_utf8s("testperson")
+            ),
+            (
+                Attribute::DisplayName.as_ref(),
+                Value::new_utf8s("testperson2")
+            )
         );
 
         let e3 = entry_init!(
-            ("class", Value::new_class("object")),
-            ("class", Value::new_class("person")),
-            ("name", Value::new_iname("testperson3")),
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
+            (Attribute::Name.as_ref(), Value::new_iname("testperson3")),
             (
                 "uuid",
                 Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63933"))
             ),
-            ("description", Value::new_utf8s("testperson")),
-            ("displayname", Value::new_utf8s("testperson3"))
+            (
+                Attribute::Description.as_ref(),
+                Value::new_utf8s("testperson")
+            ),
+            (
+                Attribute::DisplayName.as_ref(),
+                Value::new_utf8s("testperson3")
+            )
         );
 
         let ce = CreateEvent::new_internal(vec![e1, e2, e3]);
@@ -239,21 +266,21 @@ mod tests {
 
         // Delete deletes nothing
         let de_empty = DeleteEvent::new_internal_invalid(filter!(f_eq(
-            "uuid",
+            Attribute::Uuid,
             PartialValue::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-000000000000"))
         )));
         assert!(server_txn.delete(&de_empty).is_err());
 
         // Delete matches one
         let de_sin = DeleteEvent::new_internal_invalid(filter!(f_eq(
-            "name",
+            Attribute::Name,
             PartialValue::new_iname("testperson3")
         )));
         assert!(server_txn.delete(&de_sin).is_ok());
 
         // Delete matches many
         let de_mult = DeleteEvent::new_internal_invalid(filter!(f_eq(
-            "description",
+            Attribute::Description,
             PartialValue::new_utf8s("testperson")
         )));
         assert!(server_txn.delete(&de_mult).is_ok());

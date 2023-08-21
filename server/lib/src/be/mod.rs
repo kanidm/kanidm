@@ -575,7 +575,7 @@ pub trait BackendTransaction {
         let (idl, fplan) = trace_span!("be::search -> filter2idl")
             .in_scope(|| self.filter2idl(filt.to_inner(), FILTER_SEARCH_TEST_THRESHOLD))?;
 
-        debug!(filter_executed_plan = ?fplan);
+        debug!(search_filter_executed_plan = ?fplan);
 
         match &idl {
             IdList::AllIds => {
@@ -668,7 +668,7 @@ pub trait BackendTransaction {
         let (idl, fplan) = trace_span!("be::exists -> filter2idl")
             .in_scope(|| self.filter2idl(filt.to_inner(), FILTER_EXISTS_TEST_THRESHOLD))?;
 
-        debug!(filter_executed_plan = ?fplan);
+        debug!(exist_filter_executed_plan = ?fplan);
 
         // Apply limits to the IdList.
         match &idl {
@@ -1864,10 +1864,10 @@ impl<'a> BackendWriteTransaction<'a> {
 // these are values that are generally "good enough" for most applications
 fn get_idx_slope_default(ikey: &IdxKey) -> IdxSlope {
     match (ikey.attr.as_str(), &ikey.itype) {
-        ("name", IndexType::Equality)
-        | ("spn", IndexType::Equality)
-        | ("uuid", IndexType::Equality) => 1,
-        ("class", IndexType::Equality) => 180,
+        (ATTR_NAME, IndexType::Equality)
+        | (ATTR_SPN, IndexType::Equality)
+        | (ATTR_UUID, IndexType::Equality) => 1,
+        (ATTR_CLASS, IndexType::Equality) => 180,
         (_, IndexType::Equality) => 45,
         (_, IndexType::SubString) => 90,
         (_, IndexType::Presence) => 90,
@@ -2145,7 +2145,7 @@ mod tests {
             assert!(single_result.is_ok());
             // Test a simple EQ search
 
-            let filt = filter_resolved!(f_eq("userid", PartialValue::new_utf8s("claire")));
+            let filt = filter_resolved!(f_eq(Attribute::UserId, PartialValue::new_utf8s("claire")));
 
             let lims = Limits::unlimited();
 
@@ -2829,7 +2829,8 @@ mod tests {
 
             let _rset = be.create(&CID_ZERO, vec![e1, e2]).unwrap();
             // Test fully unindexed
-            let f_un = filter_resolved!(f_eq("no-index", PartialValue::new_utf8s("william")));
+            let f_un =
+                filter_resolved!(f_eq(Attribute::NoIndex, PartialValue::new_utf8s("william")));
 
             let (r, _plan) = be.filter2idl(f_un.to_inner(), 0).unwrap();
             match r {
@@ -2840,7 +2841,7 @@ mod tests {
             }
 
             // Test that a fully indexed search works
-            let feq = filter_resolved!(f_eq("name", PartialValue::new_utf8s("william")));
+            let feq = filter_resolved!(f_eq(Attribute::Name, PartialValue::new_utf8s("william")));
 
             let (r, _plan) = be.filter2idl(feq.to_inner(), 0).unwrap();
             match r {
@@ -2855,9 +2856,9 @@ mod tests {
             // Test and/or
             //   full index and
             let f_in_and = filter_resolved!(f_and!([
-                f_eq("name", PartialValue::new_utf8s("william")),
+                f_eq(Attribute::Name, PartialValue::new_utf8s("william")),
                 f_eq(
-                    "uuid",
+                    Attribute::Uuid,
                     PartialValue::new_utf8s("db237e8a-0079-4b8c-8a56-593b22aa44d1")
                 )
             ]));
@@ -2874,13 +2875,13 @@ mod tests {
 
             //   partial index and
             let f_p1 = filter_resolved!(f_and!([
-                f_eq("name", PartialValue::new_utf8s("william")),
-                f_eq("no-index", PartialValue::new_utf8s("william"))
+                f_eq(Attribute::Name, PartialValue::new_utf8s("william")),
+                f_eq(Attribute::NoIndex, PartialValue::new_utf8s("william"))
             ]));
 
             let f_p2 = filter_resolved!(f_and!([
-                f_eq("name", PartialValue::new_utf8s("william")),
-                f_eq("no-index", PartialValue::new_utf8s("william"))
+                f_eq(Attribute::Name, PartialValue::new_utf8s("william")),
+                f_eq(Attribute::NoIndex, PartialValue::new_utf8s("william"))
             ]));
 
             let (r, _plan) = be.filter2idl(f_p1.to_inner(), 0).unwrap();
@@ -2905,8 +2906,8 @@ mod tests {
 
             //   no index and
             let f_no_and = filter_resolved!(f_and!([
-                f_eq("no-index", PartialValue::new_utf8s("william")),
-                f_eq("other-no-index", PartialValue::new_utf8s("william"))
+                f_eq(Attribute::NoIndex, PartialValue::new_utf8s("william")),
+                f_eq(Attribute::OtherNoIndex, PartialValue::new_utf8s("william"))
             ]));
 
             let (r, _plan) = be.filter2idl(f_no_and.to_inner(), 0).unwrap();
@@ -2918,8 +2919,10 @@ mod tests {
             }
 
             //   full index or
-            let f_in_or =
-                filter_resolved!(f_or!([f_eq("name", PartialValue::new_utf8s("william"))]));
+            let f_in_or = filter_resolved!(f_or!([f_eq(
+                Attribute::Name,
+                PartialValue::new_utf8s("william")
+            )]));
 
             let (r, _plan) = be.filter2idl(f_in_or.to_inner(), 0).unwrap();
             match r {
@@ -2932,7 +2935,7 @@ mod tests {
             }
             //   partial (aka allids) or
             let f_un_or = filter_resolved!(f_or!([f_eq(
-                "no-index",
+                Attribute::NoIndex,
                 PartialValue::new_utf8s("william")
             )]));
 
@@ -2945,8 +2948,10 @@ mod tests {
             }
 
             // Test root andnot
-            let f_r_andnot =
-                filter_resolved!(f_andnot(f_eq("name", PartialValue::new_utf8s("william"))));
+            let f_r_andnot = filter_resolved!(f_andnot(f_eq(
+                Attribute::Name,
+                PartialValue::new_utf8s("william")
+            )));
 
             let (r, _plan) = be.filter2idl(f_r_andnot.to_inner(), 0).unwrap();
             match r {
@@ -2960,7 +2965,7 @@ mod tests {
 
             // test andnot as only in and
             let f_and_andnot = filter_resolved!(f_and!([f_andnot(f_eq(
-                "name",
+                Attribute::Name,
                 PartialValue::new_utf8s("william")
             ))]));
 
@@ -2975,7 +2980,7 @@ mod tests {
             }
             // test andnot as only in or
             let f_or_andnot = filter_resolved!(f_or!([f_andnot(f_eq(
-                "name",
+                Attribute::Name,
                 PartialValue::new_utf8s("william")
             ))]));
 
@@ -2991,7 +2996,7 @@ mod tests {
 
             // test andnot in and (first) with name
             let f_and_andnot = filter_resolved!(f_and!([
-                f_andnot(f_eq("name", PartialValue::new_utf8s("claire"))),
+                f_andnot(f_eq(Attribute::Name, PartialValue::new_utf8s("claire"))),
                 f_pres("name")
             ]));
 
@@ -3008,7 +3013,7 @@ mod tests {
             // test andnot in and (last) with name
             let f_and_andnot = filter_resolved!(f_and!([
                 f_pres("name"),
-                f_andnot(f_eq("name", PartialValue::new_utf8s("claire")))
+                f_andnot(f_eq(Attribute::Name, PartialValue::new_utf8s("claire")))
             ]));
 
             let (r, _plan) = be.filter2idl(f_and_andnot.to_inner(), 0).unwrap();
@@ -3022,7 +3027,7 @@ mod tests {
             }
             // test andnot in and (first) with no-index
             let f_and_andnot = filter_resolved!(f_and!([
-                f_andnot(f_eq("name", PartialValue::new_utf8s("claire"))),
+                f_andnot(f_eq(Attribute::Name, PartialValue::new_utf8s("claire"))),
                 f_pres("no-index")
             ]));
 
@@ -3036,7 +3041,7 @@ mod tests {
             // test andnot in and (last) with no-index
             let f_and_andnot = filter_resolved!(f_and!([
                 f_pres("no-index"),
-                f_andnot(f_eq("name", PartialValue::new_utf8s("claire")))
+                f_andnot(f_eq(Attribute::Name, PartialValue::new_utf8s("claire")))
             ]));
 
             let (r, _plan) = be.filter2idl(f_and_andnot.to_inner(), 0).unwrap();
@@ -3081,7 +3086,7 @@ mod tests {
             // should fall back to an empty set because we can't satisfy the term
             be.danger_purge_idxs().unwrap();
             debug!("{:?}", be.missing_idxs().unwrap());
-            let f_eq = filter_resolved!(f_eq("name", PartialValue::new_utf8s("william")));
+            let f_eq = filter_resolved!(f_eq(Attribute::Name, PartialValue::new_utf8s("william")));
 
             let (r, _plan) = be.filter2idl(f_eq.to_inner(), 0).unwrap();
             match r {
@@ -3312,12 +3317,12 @@ mod tests {
             // doesn't encounter partial threshold testing.
             let filt = filter_resolved!(f_and!([
                 f_or!([
-                    f_eq("nonexist", PartialValue::new_utf8s("x")),
-                    f_eq("nonexist", PartialValue::new_utf8s("y"))
+                    f_eq(Attribute::NonExist, PartialValue::new_utf8s("x")),
+                    f_eq(Attribute::NonExist, PartialValue::new_utf8s("y"))
                 ]),
                 f_or!([
-                    f_eq("name", PartialValue::new_utf8s("claire")),
-                    f_eq("name", PartialValue::new_utf8s("william"))
+                    f_eq(Attribute::Name, PartialValue::new_utf8s("claire")),
+                    f_eq(Attribute::Name, PartialValue::new_utf8s("william"))
                 ]),
             ]));
 
@@ -3367,7 +3372,7 @@ mod tests {
         assert!(single_result.is_ok());
 
         // Assert it's in A but not B.
-        let filt = filter_resolved!(f_eq("userid", PartialValue::new_utf8s("william")));
+        let filt = filter_resolved!(f_eq(Attribute::UserId, PartialValue::new_utf8s("william")));
 
         let lims = Limits::unlimited();
 
@@ -3388,7 +3393,7 @@ mod tests {
         assert!(single_result.is_ok());
 
         // Assert it's in B but not A
-        let filt = filter_resolved!(f_eq("userid", PartialValue::new_utf8s("claire")));
+        let filt = filter_resolved!(f_eq(Attribute::UserId, PartialValue::new_utf8s("claire")));
 
         let lims = Limits::unlimited();
 

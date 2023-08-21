@@ -42,7 +42,7 @@ impl Plugin for Base {
         // For each candidate
         for entry in cand.iter_mut() {
             // First, ensure we have the 'object', class in the class set.
-            entry.add_ava("class", CLASS_OBJECT.clone());
+            entry.add_ava(Attribute::Class.as_ref(), EntryClass::Object.to_value());
 
             // if they don't have uuid, create it.
             match entry.get_ava_set("uuid").map(|s| s.len()) {
@@ -206,7 +206,7 @@ impl Plugin for Base {
     #[instrument(level = "debug", name = "base::verify", skip_all)]
     fn verify(qs: &mut QueryServerReadTransaction) -> Vec<Result<(), ConsistencyError>> {
         // Search for class = *
-        let entries = match qs.internal_search(filter!(f_pres("class"))) {
+        let entries = match qs.internal_search(filter!(f_pres(Attribute::Class.as_ref()))) {
             Ok(v) => v,
             Err(e) => {
                 admin_error!("Internal Search Failure: {:?}", e);
@@ -250,54 +250,129 @@ mod tests {
 
     lazy_static! {
         pub static ref TEST_ACCOUNT: EntryInitNew = entry_init!(
-            ("class", Value::new_class("account")),
-            ("class", Value::new_class("service_account")),
-            ("class", Value::new_class("memberof")),
-            ("name", Value::new_iname("test_account_1")),
-            ("displayname", Value::new_utf8s("test_account_1")),
-            ("uuid", Value::Uuid(UUID_TEST_ACCOUNT)),
-            ("memberof", Value::Refer(UUID_TEST_GROUP))
+            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
+            (
+                Attribute::Class.as_ref(),
+                EntryClass::ServiceAccount.to_value()
+            ),
+            (Attribute::Class.as_ref(), EntryClass::MemberOf.to_value()),
+            (Attribute::Name.as_ref(), Value::new_iname("test_account_1")),
+            (
+                Attribute::DisplayName.as_ref(),
+                Value::new_utf8s("test_account_1")
+            ),
+            (Attribute::Uuid.as_ref(), Value::Uuid(UUID_TEST_ACCOUNT)),
+            (Attribute::MemberOf.as_ref(), Value::Refer(UUID_TEST_GROUP))
         );
         pub static ref TEST_GROUP: EntryInitNew = entry_init!(
-            ("class", Value::new_class("group")),
-            ("name", Value::new_iname("test_group_a")),
-            ("uuid", Value::Uuid(UUID_TEST_GROUP)),
-            ("member", Value::Refer(UUID_TEST_ACCOUNT))
+            (Attribute::Class.as_ref(), EntryClass::Group.to_value()),
+            (Attribute::Name.as_ref(), Value::new_iname("test_group_a")),
+            (Attribute::Uuid.as_ref(), Value::Uuid(UUID_TEST_GROUP)),
+            (Attribute::Member.as_ref(), Value::Refer(UUID_TEST_ACCOUNT))
         );
         pub static ref ALLOW_ALL: EntryInitNew = entry_init!(
-            ("class", Value::new_class("object")),
-            ("class", Value::new_class("access_control_profile")),
-            ("class", Value::new_class("access_control_modify")),
-            ("class", Value::new_class("access_control_create")),
-            ("class", Value::new_class("access_control_delete")),
-            ("class", Value::new_class("access_control_search")),
-            ("name", Value::new_iname("idm_admins_acp_allow_all_test")),
-            ("uuid", Value::Uuid(UUID_TEST_ACP)),
-            ("acp_receiver_group", Value::Refer(UUID_TEST_GROUP)),
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+            (
+                Attribute::Class.as_ref(),
+                EntryClass::AccessControlProfile.to_value()
+            ),
+            (
+                Attribute::Class.as_ref(),
+                EntryClass::AccessControlModify.to_value()
+            ),
+            (
+                Attribute::Class.as_ref(),
+                EntryClass::AccessControlCreate.to_value()
+            ),
+            (
+                Attribute::Class.as_ref(),
+                EntryClass::AccessControlDelete.to_value()
+            ),
+            (
+                Attribute::Class.as_ref(),
+                EntryClass::AccessControlSearch.to_value()
+            ),
+            (
+                Attribute::Name.as_ref(),
+                Value::new_iname("idm_admins_acp_allow_all_test")
+            ),
+            (Attribute::Uuid.as_ref(), Value::Uuid(UUID_TEST_ACP)),
+            (
+                Attribute::AcpReceiverGroup.as_ref(),
+                Value::Refer(UUID_TEST_GROUP)
+            ),
             (
                 "acp_targetscope",
                 Value::new_json_filter_s("{\"pres\":\"class\"}").expect("filter")
             ),
-            ("acp_search_attr", Value::new_iutf8("name")),
-            ("acp_search_attr", Value::new_iutf8("class")),
-            ("acp_search_attr", Value::new_iutf8("uuid")),
-            ("acp_modify_class", Value::new_iutf8("system")),
-            ("acp_modify_removedattr", Value::new_iutf8("class")),
-            ("acp_modify_removedattr", Value::new_iutf8("displayname")),
-            ("acp_modify_removedattr", Value::new_iutf8("may")),
-            ("acp_modify_removedattr", Value::new_iutf8("must")),
-            ("acp_modify_presentattr", Value::new_iutf8("class")),
-            ("acp_modify_presentattr", Value::new_iutf8("displayname")),
-            ("acp_modify_presentattr", Value::new_iutf8("may")),
-            ("acp_modify_presentattr", Value::new_iutf8("must")),
-            ("acp_create_class", Value::new_iutf8("object")),
-            ("acp_create_class", Value::new_iutf8("person")),
-            ("acp_create_class", Value::new_iutf8("system")),
-            ("acp_create_attr", Value::new_iutf8("name")),
-            ("acp_create_attr", Value::new_iutf8("class")),
-            ("acp_create_attr", Value::new_iutf8("description")),
-            ("acp_create_attr", Value::new_iutf8("displayname")),
-            ("acp_create_attr", Value::new_iutf8("uuid"))
+            (Attribute::AcpSearchAttr.as_ref(), Value::new_iutf8("name")),
+            (
+                Attribute::AcpSearchAttr.as_ref(),
+                Attribute::Class.to_value()
+            ),
+            (Attribute::AcpSearchAttr.as_ref(), Value::new_iutf8("uuid")),
+            (
+                Attribute::AcpModifyClass.as_ref(),
+                Value::new_iutf8("system")
+            ),
+            (
+                Attribute::AcpModifyRemovedAttr.as_ref(),
+                Attribute::Class.to_value()
+            ),
+            (
+                Attribute::AcpModifyRemovedAttr.as_ref(),
+                Value::new_iutf8("displayname")
+            ),
+            (
+                Attribute::AcpModifyRemovedAttr.as_ref(),
+                Value::new_iutf8("may")
+            ),
+            (
+                Attribute::AcpModifyRemovedAttr.as_ref(),
+                Value::new_iutf8("must")
+            ),
+            (
+                Attribute::AcpModifyPresentAttr.as_ref(),
+                Attribute::Class.to_value()
+            ),
+            (
+                Attribute::AcpModifyPresentAttr.as_ref(),
+                Value::new_iutf8("displayname")
+            ),
+            (
+                Attribute::AcpModifyPresentAttr.as_ref(),
+                Value::new_iutf8("may")
+            ),
+            (
+                Attribute::AcpModifyPresentAttr.as_ref(),
+                Value::new_iutf8("must")
+            ),
+            (
+                Attribute::AcpCreateClass.as_ref(),
+                EntryClass::Object.to_value()
+            ),
+            (
+                Attribute::AcpCreateClass.as_ref(),
+                EntryClass::Person.to_value()
+            ),
+            (
+                Attribute::AcpCreateClass.as_ref(),
+                EntryClass::System.to_value()
+            ),
+            (Attribute::AcpCreateAttr.as_ref(), Value::new_iutf8("name")),
+            (
+                Attribute::AcpCreateAttr.as_ref(),
+                Attribute::Class.to_value()
+            ),
+            (
+                Attribute::AcpCreateAttr.as_ref(),
+                Attribute::Description.to_value()
+            ),
+            (
+                Attribute::AcpCreateAttr.as_ref(),
+                Value::new_iutf8("displayname")
+            ),
+            (Attribute::AcpCreateAttr.as_ref(), Value::new_iutf8("uuid"))
         );
         pub static ref PRELOAD: Vec<EntryInitNew> =
             vec![TEST_ACCOUNT.clone(), TEST_GROUP.clone(), ALLOW_ALL.clone()];
@@ -330,7 +405,10 @@ mod tests {
             None,
             |qs: &mut QueryServerWriteTransaction| {
                 let cands = qs
-                    .internal_search(filter!(f_eq("name", PartialValue::new_iname("testperson"))))
+                    .internal_search(filter!(f_eq(
+                        Attribute::Name,
+                        PartialValue::new_iname("testperson")
+                    )))
                     .expect("Internal search failure");
                 let ue = cands.first().expect("No cand");
                 assert!(ue.attribute_pres("uuid"));
@@ -425,11 +503,14 @@ mod tests {
             None,
             |qs: &mut QueryServerWriteTransaction| {
                 let cands = qs
-                    .internal_search(filter!(f_eq("name", PartialValue::new_iname("testperson"))))
+                    .internal_search(filter!(f_eq(
+                        Attribute::Name,
+                        PartialValue::new_iname("testperson")
+                    )))
                     .expect("Internal search failure");
                 let ue = cands.first().expect("No cand");
                 assert!(ue.attribute_equality(
-                    "uuid",
+                    Attribute::Uuid.into(),
                     &PartialValue::Uuid(uuid!("79724141-3603-4060-b6bb-35c72772611d"))
                 ));
             }
@@ -563,9 +644,12 @@ mod tests {
         run_modify_test!(
             Err(OperationError::SystemProtectedAttribute),
             preload,
-            filter!(f_eq("name", PartialValue::new_iname("testgroup_a"))),
+            filter!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("testgroup_a")
+            )),
             ModifyList::new_list(vec![Modify::Present(
-                AttrString::from("uuid"),
+                Attribute::Uuid.into(),
                 Value::from("f15a7219-1d15-44e3-a7b4-bec899c07788")
             )]),
             None,
@@ -593,9 +677,12 @@ mod tests {
         run_modify_test!(
             Err(OperationError::SystemProtectedAttribute),
             preload,
-            filter!(f_eq("name", PartialValue::new_iname("testgroup_a"))),
+            filter!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("testgroup_a")
+            )),
             ModifyList::new_list(vec![Modify::Removed(
-                AttrString::from("uuid"),
+                Attribute::Uuid.into(),
                 PartialValue::Uuid(uuid!("f15a7219-1d15-44e3-a7b4-bec899c07788"))
             )]),
             None,
@@ -623,8 +710,11 @@ mod tests {
         run_modify_test!(
             Err(OperationError::SystemProtectedAttribute),
             preload,
-            filter!(f_eq("name", PartialValue::new_iname("testgroup_a"))),
-            ModifyList::new_list(vec![Modify::Purged(AttrString::from("uuid"))]),
+            filter!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("testgroup_a")
+            )),
+            ModifyList::new_list(vec![Modify::Purged(Attribute::Uuid.into())]),
             None,
             |_| {},
             |_| {}

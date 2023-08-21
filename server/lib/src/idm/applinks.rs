@@ -21,10 +21,13 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
             ident_mo
                 .iter()
                 .copied()
-                .map(|uuid| { f_eq("oauth2_rs_scope_map", PartialValue::Refer(uuid)) })
+                .map(|uuid| { f_eq(Attribute::OAuth2RsScopeMap, PartialValue::Refer(uuid)) })
                 .collect()
         ));
-        let f_intent = filter!(f_eq("class", PVCLASS_OAUTH2_RS.clone()));
+        let f_intent = filter!(f_eq(
+            Attribute::Class,
+            EntryClass::OAuth2ResourceServer.into()
+        ));
 
         // _ext reduces the entries based on access.
         let oauth2_related = self
@@ -80,42 +83,66 @@ mod tests {
         let grp_uuid = Uuid::new_v4();
 
         let e_rs: Entry<EntryInit, EntryNew> = entry_init!(
-            ("class", Value::new_class("object")),
-            ("class", Value::new_class("oauth2_resource_server")),
-            ("class", Value::new_class("oauth2_resource_server_basic")),
-            ("oauth2_rs_name", Value::new_iname("test_resource_server")),
-            ("displayname", Value::new_utf8s("test_resource_server")),
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
             (
-                "oauth2_rs_origin",
+                Attribute::Class.as_ref(),
+                EntryClass::OAuth2ResourceServer.to_value()
+            ),
+            (
+                Attribute::Class.as_ref(),
+                EntryClass::OAuth2ResourceServerBasic.to_value()
+            ),
+            (
+                Attribute::OAuth2RsName.as_ref(),
+                Value::new_iname("test_resource_server")
+            ),
+            (
+                Attribute::DisplayName.as_ref(),
+                Value::new_utf8s("test_resource_server")
+            ),
+            (
+                Attribute::OAuth2RsOrigin.as_ref(),
                 Value::new_url_s("https://demo.example.com").unwrap()
             ),
             (
-                "oauth2_rs_origin_landing",
+                Attribute::OAuth2RsOriginLanding.as_ref(),
                 Value::new_url_s("https://demo.example.com/landing").unwrap()
             ),
             // System admins
             (
-                "oauth2_rs_scope_map",
-                Value::new_oauthscopemap(grp_uuid, btreeset!["read".to_string()])
-                    .expect("invalid oauthscope")
+                Attribute::OAuth2RsScopeMap.as_ref(),
+                Value::new_oauthscopemap(
+                    grp_uuid,
+                    btreeset![kanidm_proto::constants::OAUTH2_SCOPE_READ.to_string()]
+                )
+                .expect("invalid oauthscope")
             )
         );
 
         let e_usr = entry_init!(
-            ("class", Value::new_class("object")),
-            ("class", Value::new_class("account")),
-            ("class", Value::new_class("person")),
-            ("name", Value::new_iname("testaccount")),
-            ("uuid", Value::Uuid(usr_uuid)),
-            ("description", Value::new_utf8s("testaccount")),
-            ("displayname", Value::new_utf8s("Test Account"))
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
+            (Attribute::Name.as_ref(), Value::new_iname("testaccount")),
+            (Attribute::Uuid.as_ref(), Value::Uuid(usr_uuid)),
+            (
+                Attribute::Description.as_ref(),
+                Value::new_utf8s("testaccount")
+            ),
+            (
+                Attribute::DisplayName.as_ref(),
+                Value::new_utf8s("Test Account")
+            )
         );
 
         let e_grp = entry_init!(
-            ("class", Value::new_class("object")),
-            ("class", Value::new_class("group")),
-            ("uuid", Value::Uuid(grp_uuid)),
-            ("name", Value::new_iname("test_oauth2_group"))
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Group.to_value()),
+            (Attribute::Uuid.as_ref(), Value::Uuid(grp_uuid)),
+            (
+                Attribute::Name.as_ref(),
+                Value::new_iname("test_oauth2_group")
+            )
         );
 
         let ce = CreateEvent::new_internal(vec![e_rs, e_grp, e_usr]);
@@ -141,7 +168,7 @@ mod tests {
         // Add them to the group.
         let mut idms_prox_write = idms.proxy_write(ct).await;
         let me_inv_m = ModifyEvent::new_internal_invalid(
-            filter!(f_eq("uuid", PartialValue::Refer(grp_uuid))),
+            filter!(f_eq(Attribute::Uuid, PartialValue::Refer(grp_uuid))),
             ModifyList::new_append("member", Value::Refer(usr_uuid)),
         );
         assert!(idms_prox_write.qs_write.modify(&me_inv_m).is_ok());

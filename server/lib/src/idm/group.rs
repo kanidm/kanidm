@@ -48,7 +48,9 @@ macro_rules! try_from_account_e {
                 // given a list of uuid, make a filter: even if this is empty, the be will
                 // just give and empty result set.
                 let f = filter!(f_or(
-                    riter.map(|u| f_eq("uuid", PartialValue::Uuid(u))).collect()
+                    riter
+                        .map(|u| f_eq(Attribute::Uuid, PartialValue::Uuid(u)))
+                        .collect()
                 ));
                 let group_entries: Vec<_> = $qs.internal_search(f).map_err(|e| {
                     admin_error!(?e, "internal search failed");
@@ -100,7 +102,7 @@ impl Group {
     pub fn try_from_entry(
         value: &Entry<EntrySealed, EntryCommitted>,
     ) -> Result<Self, OperationError> {
-        if !value.attribute_equality("class", &PVCLASS_GROUP) {
+        if !value.attribute_equality(Attribute::Class.as_ref(), &EntryClass::Group.into()) {
             return Err(OperationError::InvalidAccountState(
                 "Missing class: group".to_string(),
             ));

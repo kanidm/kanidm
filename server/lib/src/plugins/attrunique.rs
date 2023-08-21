@@ -121,7 +121,7 @@ fn enforce_unique<VALID, STATE>(
                 // Basically this says where name but also not self.
                 f_and(vec![
                     FC::Eq(attr, v),
-                    f_andnot(FC::Eq("uuid", PartialValue::Uuid(uuid))),
+                    f_andnot(FC::Eq(ATTR_UUID, PartialValue::Uuid(uuid))),
                 ])
             })
             .collect();
@@ -184,7 +184,11 @@ impl Plugin for AttrUnique {
         "plugin_attrunique"
     }
 
-    #[instrument(level = "debug", name = "attrunique_pre_create_transform", skip_all)]
+    #[instrument(
+        level = "debug",
+        name = "attrunique_pre_create_transform",
+        skip(qs, _ce)
+    )]
     fn pre_create_transform(
         qs: &mut QueryServerWriteTransaction,
         cand: &mut Vec<Entry<EntryInvalid, EntryNew>>,
@@ -255,7 +259,7 @@ impl Plugin for AttrUnique {
     #[instrument(level = "debug", name = "attrunique::verify", skip_all)]
     fn verify(qs: &mut QueryServerReadTransaction) -> Vec<Result<(), ConsistencyError>> {
         // Only check live entries, not recycled.
-        let filt_in = filter!(f_pres("class"));
+        let filt_in = filter!(f_pres(Attribute::Class.as_ref()));
 
         let all_cand = match qs
             .internal_search(filt_in)
@@ -385,12 +389,12 @@ mod tests {
             ))),
             preload,
             filter!(f_or!([f_eq(
-                "name",
+                Attribute::Name,
                 PartialValue::new_iname("testgroup_b")
             ),])),
             ModifyList::new_list(vec![
-                Modify::Purged(AttrString::from("name")),
-                Modify::Present(AttrString::from("name"), Value::new_iname("testgroup_a"))
+                Modify::Purged(Attribute::Name.into()),
+                Modify::Present(Attribute::Name.into(), Value::new_iname("testgroup_a"))
             ]),
             None,
             |_| {},
@@ -429,12 +433,12 @@ mod tests {
             ))),
             preload,
             filter!(f_or!([
-                f_eq("name", PartialValue::new_iname("testgroup_a")),
-                f_eq("name", PartialValue::new_iname("testgroup_b")),
+                f_eq(Attribute::Name, PartialValue::new_iname("testgroup_a")),
+                f_eq(Attribute::Name, PartialValue::new_iname("testgroup_b")),
             ])),
             ModifyList::new_list(vec![
-                Modify::Purged(AttrString::from("name")),
-                Modify::Present(AttrString::from("name"), Value::new_iname("testgroup"))
+                Modify::Purged(Attribute::Name.into()),
+                Modify::Present(Attribute::Name.into(), Value::new_iname("testgroup"))
             ]),
             None,
             |_| {},

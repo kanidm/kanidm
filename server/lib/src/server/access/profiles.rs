@@ -20,7 +20,10 @@ impl AccessControlSearch {
         qs: &mut QueryServerWriteTransaction,
         value: &Entry<EntrySealed, EntryCommitted>,
     ) -> Result<Self, OperationError> {
-        if !value.attribute_equality("class", &PVCLASS_ACS) {
+        if !value.attribute_equality(
+            Attribute::Class.as_ref(),
+            &EntryClass::AccessControlSearch.into(),
+        ) {
             admin_error!("class access_control_search not present.");
             return Err(OperationError::InvalidAcpState(
                 "Missing access_control_search".to_string(),
@@ -73,7 +76,10 @@ impl AccessControlDelete {
         qs: &mut QueryServerWriteTransaction,
         value: &Entry<EntrySealed, EntryCommitted>,
     ) -> Result<Self, OperationError> {
-        if !value.attribute_equality("class", &PVCLASS_ACD) {
+        if !value.attribute_equality(
+            Attribute::Class.as_ref(),
+            &EntryClass::AccessControlDelete.into(),
+        ) {
             admin_error!("class access_control_delete not present.");
             return Err(OperationError::InvalidAcpState(
                 "Missing access_control_delete".to_string(),
@@ -117,7 +123,10 @@ impl AccessControlCreate {
         qs: &mut QueryServerWriteTransaction,
         value: &Entry<EntrySealed, EntryCommitted>,
     ) -> Result<Self, OperationError> {
-        if !value.attribute_equality("class", &PVCLASS_ACC) {
+        if !value.attribute_equality(
+            Attribute::Class.as_ref(),
+            &EntryClass::AccessControlCreate.into(),
+        ) {
             admin_error!("class access_control_create not present.");
             return Err(OperationError::InvalidAcpState(
                 "Missing access_control_create".to_string(),
@@ -178,7 +187,10 @@ impl AccessControlModify {
         qs: &mut QueryServerWriteTransaction,
         value: &Entry<EntrySealed, EntryCommitted>,
     ) -> Result<Self, OperationError> {
-        if !value.attribute_equality("class", &PVCLASS_ACM) {
+        if !value.attribute_equality(
+            Attribute::Class.as_ref(),
+            &EntryClass::AccessControlModify.into(),
+        ) {
             admin_error!("class access_control_modify not present.");
             return Err(OperationError::InvalidAcpState(
                 "Missing access_control_modify".to_string(),
@@ -266,7 +278,10 @@ impl AccessControlProfile {
         value: &Entry<EntrySealed, EntryCommitted>,
     ) -> Result<Self, OperationError> {
         // Assert we have class access_control_profile
-        if !value.attribute_equality("class", &PVCLASS_ACP) {
+        if !value.attribute_equality(
+            Attribute::Class.as_ref(),
+            &EntryClass::AccessControlProfile.into(),
+        ) {
             admin_error!("class access_control_profile not present.");
             return Err(OperationError::InvalidAcpState(
                 "Missing access_control_profile".to_string(),
@@ -287,7 +302,7 @@ impl AccessControlProfile {
 
         // === ⚠️   WARNING!!! ⚠️  ===
         // See struct ACP for details.
-        let receiver = value.get_ava_single_refer("acp_receiver_group");
+        let receiver = value.get_ava_single_refer(ATTR_ACP_RECEIVER_GROUP);
         /*
         .ok_or_else(|| {
             admin_error!("Missing acp_receiver_group");

@@ -1,12 +1,10 @@
-//! Reimplementation of [`tower-http`]'s [`DefaultMakeSpan`] that only runs at "INFO" level for our own needs.
+//! Reimplementation of tower-http's DefaultMakeSpan that only runs at "INFO" level for our own needs.
 
 use http::Request;
 use tracing::{Level, Span};
 
-/// The default way [`Span`]s will be created for [`Trace`].
+/// The default way Spans will be created for Trace.
 ///
-/// [`Span`]: tracing::Span
-/// [`Trace`]: super::Trace
 #[derive(Debug, Clone)]
 pub struct DefaultMakeSpanKanidmd {}
 

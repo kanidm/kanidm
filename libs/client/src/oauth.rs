@@ -1,4 +1,8 @@
 use crate::{ClientError, KanidmClient};
+use kanidm_proto::constants::{
+    ATTR_DISPLAYNAME, ATTR_OAUTH2_ALLOW_INSECURE_CLIENT_DISABLE_PKCE,
+    ATTR_OAUTH2_JWT_LEGACY_CRYPTO_ENABLE, ATTR_OAUTH2_RS_NAME, ATTR_OAUTH2_RS_ORIGIN,
+};
 use kanidm_proto::v1::Entry;
 use std::collections::BTreeMap;
 
@@ -18,13 +22,13 @@ impl KanidmClient {
         let mut new_oauth2_rs = Entry::default();
         new_oauth2_rs
             .attrs
-            .insert("oauth2_rs_name".to_string(), vec![name.to_string()]);
+            .insert(ATTR_OAUTH2_RS_NAME.to_string(), vec![name.to_string()]);
         new_oauth2_rs
             .attrs
-            .insert("displayname".to_string(), vec![displayname.to_string()]);
+            .insert(ATTR_DISPLAYNAME.to_string(), vec![displayname.to_string()]);
         new_oauth2_rs
             .attrs
-            .insert("oauth2_rs_origin".to_string(), vec![origin.to_string()]);
+            .insert(ATTR_OAUTH2_RS_ORIGIN.to_string(), vec![origin.to_string()]);
         self.perform_post_request("/v1/oauth2/_basic", new_oauth2_rs)
             .await
     }
@@ -38,13 +42,13 @@ impl KanidmClient {
         let mut new_oauth2_rs = Entry::default();
         new_oauth2_rs
             .attrs
-            .insert("oauth2_rs_name".to_string(), vec![name.to_string()]);
+            .insert(ATTR_OAUTH2_RS_NAME.to_string(), vec![name.to_string()]);
         new_oauth2_rs
             .attrs
-            .insert("displayname".to_string(), vec![displayname.to_string()]);
+            .insert(ATTR_DISPLAYNAME.to_string(), vec![displayname.to_string()]);
         new_oauth2_rs
             .attrs
-            .insert("oauth2_rs_origin".to_string(), vec![origin.to_string()]);
+            .insert(ATTR_OAUTH2_RS_ORIGIN.to_string(), vec![origin.to_string()]);
         self.perform_post_request("/v1/oauth2/_public", new_oauth2_rs)
             .await
     }
@@ -82,17 +86,19 @@ impl KanidmClient {
         if let Some(newname) = name {
             update_oauth2_rs
                 .attrs
-                .insert("oauth2_rs_name".to_string(), vec![newname.to_string()]);
+                .insert(ATTR_OAUTH2_RS_NAME.to_string(), vec![newname.to_string()]);
         }
         if let Some(newdisplayname) = displayname {
-            update_oauth2_rs
-                .attrs
-                .insert("displayname".to_string(), vec![newdisplayname.to_string()]);
+            update_oauth2_rs.attrs.insert(
+                ATTR_DISPLAYNAME.to_string(),
+                vec![newdisplayname.to_string()],
+            );
         }
         if let Some(neworigin) = origin {
-            update_oauth2_rs
-                .attrs
-                .insert("oauth2_rs_origin".to_string(), vec![neworigin.to_string()]);
+            update_oauth2_rs.attrs.insert(
+                ATTR_OAUTH2_RS_ORIGIN.to_string(),
+                vec![neworigin.to_string()],
+            );
         }
         if let Some(newlanding) = landing {
             update_oauth2_rs.attrs.insert(
@@ -178,7 +184,7 @@ impl KanidmClient {
             attrs: BTreeMap::new(),
         };
         update_oauth2_rs.attrs.insert(
-            "oauth2_allow_insecure_client_disable_pkce".to_string(),
+            ATTR_OAUTH2_ALLOW_INSECURE_CLIENT_DISABLE_PKCE.to_string(),
             Vec::new(),
         );
         self.perform_patch_request(format!("/v1/oauth2/{}", id).as_str(), update_oauth2_rs)
@@ -190,7 +196,7 @@ impl KanidmClient {
             attrs: BTreeMap::new(),
         };
         update_oauth2_rs.attrs.insert(
-            "oauth2_allow_insecure_client_disable_pkce".to_string(),
+            ATTR_OAUTH2_ALLOW_INSECURE_CLIENT_DISABLE_PKCE.to_string(),
             vec!["true".to_string()],
         );
         self.perform_patch_request(format!("/v1/oauth2/{}", id).as_str(), update_oauth2_rs)
@@ -202,7 +208,7 @@ impl KanidmClient {
             attrs: BTreeMap::new(),
         };
         update_oauth2_rs.attrs.insert(
-            "oauth2_jwt_legacy_crypto_enable".to_string(),
+            ATTR_OAUTH2_JWT_LEGACY_CRYPTO_ENABLE.to_string(),
             vec!["true".to_string()],
         );
         self.perform_patch_request(format!("/v1/oauth2/{}", id).as_str(), update_oauth2_rs)
@@ -214,7 +220,7 @@ impl KanidmClient {
             attrs: BTreeMap::new(),
         };
         update_oauth2_rs.attrs.insert(
-            "oauth2_jwt_legacy_crypto_enable".to_string(),
+            ATTR_OAUTH2_JWT_LEGACY_CRYPTO_ENABLE.to_string(),
             vec!["false".to_string()],
         );
         self.perform_patch_request(format!("/v1/oauth2/{}", id).as_str(), update_oauth2_rs)

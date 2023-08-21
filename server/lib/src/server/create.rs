@@ -4,10 +4,10 @@ use crate::server::Plugins;
 
 impl<'a> QueryServerWriteTransaction<'a> {
     #[instrument(level = "debug", skip_all)]
+    /// The create event is a raw, read only representation of the request
+    /// that was made to us, including information about the identity
+    /// performing the request.
     pub fn create(&mut self, ce: &CreateEvent) -> Result<(), OperationError> {
-        // The create event is a raw, read only representation of the request
-        // that was made to us, including information about the identity
-        // performing the request.
         if !ce.ident.is_internal() {
             security_info!(name = %ce.ident, "create initiator");
         }
@@ -107,29 +107,38 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // schema or acp requires reload.
         if !self.changed_schema {
             self.changed_schema = commit_cand.iter().any(|e| {
-                e.attribute_equality("class", &PVCLASS_CLASSTYPE)
-                    || e.attribute_equality("class", &PVCLASS_ATTRIBUTETYPE)
+                e.attribute_equality(Attribute::Class.as_ref(), &EntryClass::ClassType.into())
+                    || e.attribute_equality(
+                        Attribute::Class.as_ref(),
+                        &EntryClass::AttributeType.into(),
+                    )
             });
         }
         if !self.changed_acp {
-            self.changed_acp = commit_cand
-                .iter()
-                .any(|e| e.attribute_equality("class", &PVCLASS_ACP));
+            self.changed_acp = commit_cand.iter().any(|e| {
+                e.attribute_equality(
+                    Attribute::Class.as_ref(),
+                    &EntryClass::AccessControlProfile.into(),
+                )
+            });
         }
         if !self.changed_oauth2 {
-            self.changed_oauth2 = commit_cand
-                .iter()
-                .any(|e| e.attribute_equality("class", &PVCLASS_OAUTH2_RS));
+            self.changed_oauth2 = commit_cand.iter().any(|e| {
+                e.attribute_equality(
+                    Attribute::Class.as_ref(),
+                    &EntryClass::OAuth2ResourceServer.into(),
+                )
+            });
         }
         if !self.changed_domain {
             self.changed_domain = commit_cand
                 .iter()
-                .any(|e| e.attribute_equality("uuid", &PVUUID_DOMAIN_INFO));
+                .any(|e| e.attribute_equality(Attribute::Uuid.as_ref(), &PVUUID_DOMAIN_INFO));
         }
         if !self.changed_sync_agreement {
-            self.changed_sync_agreement = commit_cand
-                .iter()
-                .any(|e| e.attribute_equality("class", &PVCLASS_SYNC_ACCOUNT));
+            self.changed_sync_agreement = commit_cand.iter().any(|e| {
+                e.attribute_equality(Attribute::Class.as_ref(), &EntryClass::SyncAccount.into())
+            });
         }
 
         self.changed_uuid
@@ -169,23 +178,32 @@ mod tests {
     #[qs_test]
     async fn test_create_user(server: &QueryServer) {
         let mut server_txn = server.write(duration_from_epoch_now()).await;
-        let filt = filter!(f_eq("name", PartialValue::new_iname("testperson")));
+        let filt = filter!(f_eq(Attribute::Name, PartialValue::new_iname("testperson")));
         let admin = server_txn.internal_search_uuid(UUID_ADMIN).expect("failed");
 
         let se1 = SearchEvent::new_impersonate_entry(admin, filt);
 
         let mut e = entry_init!(
-            ("class", Value::new_class("object")),
-            ("class", Value::new_class("person")),
-            ("class", Value::new_class("account")),
-            ("name", Value::new_iname("testperson")),
-            ("spn", Value::new_spn_str("testperson", "example.com")),
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
+            (Attribute::Name.as_ref(), Value::new_iname("testperson")),
             (
-                "uuid",
+                Attribute::Spn.as_ref(),
+                Value::new_spn_str("testperson", "example.com")
+            ),
+            (
+                Attribute::Uuid.as_ref(),
                 Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
             ),
-            ("description", Value::new_utf8s("testperson")),
-            ("displayname", Value::new_utf8s("testperson"))
+            (
+                Attribute::Description.as_ref(),
+                Value::new_utf8s("testperson")
+            ),
+            (
+                Attribute::DisplayName.as_ref(),
+                Value::new_utf8s("testperson")
+            )
         );
 
         let ce = CreateEvent::new_internal(vec![e.clone()]);
@@ -201,24 +219,24 @@ mod tests {
         assert!(r2.len() == 1);
 
         // We apply some member-of in the server now, so we add these before we seal.
-        e.add_ava("class", Value::new_class("memberof"));
+        e.add_ava(Attribute::Class.as_ref(), EntryClass::MemberOf.into());
         e.add_ava("memberof", Value::Refer(UUID_IDM_ALL_PERSONS));
         e.add_ava("directmemberof", Value::Refer(UUID_IDM_ALL_PERSONS));
         e.add_ava("memberof", Value::Refer(UUID_IDM_ALL_ACCOUNTS));
         e.add_ava("directmemberof", Value::Refer(UUID_IDM_ALL_ACCOUNTS));
         // we also add the name_history ava!
         e.add_ava(
-            "name_history",
+            Attribute::NameHistory.as_ref(),
             Value::AuditLogString(server_txn.get_txn_cid().clone(), "testperson".to_string()),
         );
         // this is kinda ugly but since ecdh keys are generated we don't have any other way
         let key = r2
             .first()
             .unwrap()
-            .get_ava_single_eckey_private("id_verification_eckey")
+            .get_ava_single_eckey_private(ATTR_ID_VERIFICATION_ECKEY)
             .unwrap();
 
-        e.add_ava("id_verification_eckey", Value::EcKeyPrivate(key.clone()));
+        e.add_ava(ATTR_ID_VERIFICATION_ECKEY, Value::EcKeyPrivate(key.clone()));
 
         let expected = vec![Arc::new(e.into_sealed_committed())];
 
@@ -233,7 +251,7 @@ mod tests {
         let mut server_b_txn = server_b.write(duration_from_epoch_now()).await;
 
         // Create on server a
-        let filt = filter!(f_eq("name", PartialValue::new_iname("testperson")));
+        let filt = filter!(f_eq(Attribute::Name, PartialValue::new_iname("testperson")));
 
         let admin = server_a_txn
             .internal_search_uuid(UUID_ADMIN)
@@ -246,11 +264,17 @@ mod tests {
         let se_b = SearchEvent::new_impersonate_entry(admin, filt);
 
         let e = entry_init!(
-            ("class", Value::new_class("person")),
-            ("class", Value::new_class("account")),
-            ("name", Value::new_iname("testperson")),
-            ("description", Value::new_utf8s("testperson")),
-            ("displayname", Value::new_utf8s("testperson"))
+            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
+            (Attribute::Name.as_ref(), Value::new_iname("testperson")),
+            (
+                Attribute::Description.as_ref(),
+                Value::new_utf8s("testperson")
+            ),
+            (
+                Attribute::DisplayName.as_ref(),
+                Value::new_utf8s("testperson")
+            )
         );
 
         let cr = server_a_txn.internal_create(vec![e.clone()]);

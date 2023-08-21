@@ -26,7 +26,10 @@ use kanidm_lib_crypto::CryptoPolicy;
 macro_rules! try_from_entry {
     ($value:expr, $groups:expr) => {{
         // Check the classes
-        if !$value.attribute_equality("class", &PVCLASS_ACCOUNT) {
+        if !$value.attribute_equality(
+            Attribute::Class.as_ref(),
+            &EntryClass::Account.to_partialvalue(),
+        ) {
             return Err(OperationError::InvalidAccountState(
                 "Missing class: account".to_string(),
             ));
@@ -34,14 +37,14 @@ macro_rules! try_from_entry {
 
         // Now extract our needed attributes
         let name = $value
-            .get_ava_single_iname("name")
+            .get_ava_single_iname(Attribute::Name.as_ref())
             .map(|s| s.to_string())
             .ok_or(OperationError::InvalidAccountState(
                 "Missing attribute: name".to_string(),
             ))?;
 
         let displayname = $value
-            .get_ava_single_utf8("displayname")
+            .get_ava_single_utf8(Attribute::DisplayName.as_ref())
             .map(|s| s.to_string())
             .ok_or(OperationError::InvalidAccountState(
                 "Missing attribute: displayname".to_string(),
@@ -101,15 +104,24 @@ macro_rules! try_from_entry {
             .collect();
 
         // For now disable cred updates on sync accounts too.
-        if $value.attribute_equality("class", &PVCLASS_PERSON) {
+        if $value.attribute_equality(
+            Attribute::Class.as_ref(),
+            &EntryClass::Person.to_partialvalue(),
+        ) {
             ui_hints.insert(UiHint::CredentialUpdate);
         }
 
-        if $value.attribute_equality("class", &PVCLASS_SYNC_OBJECT) {
+        if $value.attribute_equality(
+            Attribute::Class.as_ref(),
+            &EntryClass::SyncObject.to_partialvalue(),
+        ) {
             ui_hints.insert(UiHint::SynchronisedAccount);
         }
 
-        if $value.attribute_equality("class", &PVCLASS_POSIXACCOUNT) {
+        if $value.attribute_equality(
+            Attribute::Class.as_ref(),
+            &EntryClass::PosixAccount.to_partialvalue(),
+        ) {
             ui_hints.insert(UiHint::PosixAccount);
         }
 
@@ -619,13 +631,19 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             .impersonate_modify(
                 // Filter as executed
                 &filter!(f_and!([
-                    f_eq("uuid", PartialValue::Uuid(dte.target)),
-                    f_eq("user_auth_token_session", PartialValue::Refer(dte.token_id))
+                    f_eq(Attribute::Uuid, PartialValue::Uuid(dte.target)),
+                    f_eq(
+                        Attribute::UserAuthTokenSession,
+                        PartialValue::Refer(dte.token_id)
+                    )
                 ])),
                 // Filter as intended (acp)
                 &filter_all!(f_and!([
-                    f_eq("uuid", PartialValue::Uuid(dte.target)),
-                    f_eq("user_auth_token_session", PartialValue::Refer(dte.token_id))
+                    f_eq(Attribute::Uuid, PartialValue::Uuid(dte.target)),
+                    f_eq(
+                        Attribute::UserAuthTokenSession,
+                        PartialValue::Refer(dte.token_id)
+                    )
                 ])),
                 &modlist,
                 // Provide the event to impersonate. Notice how we project this with readwrite
@@ -657,9 +675,12 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         // Copy the current classes
         let prev_classes: BTreeSet<_> = account_entry
-            .get_ava_as_iutf8_iter("class")
+            .get_ava_as_iutf8_iter(Attribute::Class.as_ref())
             .ok_or_else(|| {
-                admin_error!("Invalid entry, class attribute is not present or not iutf8");
+                admin_error!(
+                    "Invalid entry, {} attribute is not present or not iutf8",
+                    Attribute::Class.as_ref()
+                );
                 OperationError::InvalidAccountState("Missing attribute: class".to_string())
             })?
             .collect();
@@ -667,8 +688,8 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         // Remove the service account class.
         // Add the person class.
         let mut new_classes = prev_classes.clone();
-        new_classes.remove("service_account");
-        new_classes.insert("person");
+        new_classes.remove(EntryClass::ServiceAccount.into());
+        new_classes.insert(EntryClass::Person.into());
 
         // diff the schema attrs, and remove the ones that are service_account only.
         let (_added, removed) = schema_ref
@@ -682,10 +703,15 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         // Now construct the modlist which:
         // removes service_account
-        let mut modlist =
-            ModifyList::new_remove("class", PartialValue::new_class("service_account"));
+        let mut modlist = ModifyList::new_remove(
+            Attribute::Class.as_ref(),
+            EntryClass::ServiceAccount.to_partialvalue(),
+        );
         // add person
-        modlist.push_mod(Modify::Present("class".into(), Value::new_class("person")));
+        modlist.push_mod(Modify::Present(
+            Attribute::Class.into(),
+            EntryClass::Person.to_value(),
+        ));
         // purge the other attrs that are SA only.
         removed
             .into_iter()
@@ -696,9 +722,9 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         self.qs_write
             .impersonate_modify(
                 // Filter as executed
-                &filter!(f_eq("uuid", PartialValue::Uuid(target_uuid))),
+                &filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(target_uuid))),
                 // Filter as intended (acp)
-                &filter_all!(f_eq("uuid", PartialValue::Uuid(target_uuid))),
+                &filter_all!(f_eq(Attribute::Uuid, PartialValue::Uuid(target_uuid))),
                 &modlist,
                 // Provide the entry to impersonate
                 ident,
@@ -796,13 +822,19 @@ mod tests {
         // Create a user. So far no ui hints.
         // Create a service account
         let e = entry_init!(
-            ("class", Value::new_class("object")),
-            ("class", Value::new_class("account")),
-            ("class", Value::new_class("person")),
-            ("name", Value::new_iname("testaccount")),
-            ("uuid", Value::Uuid(target_uuid)),
-            ("description", Value::new_utf8s("testaccount")),
-            ("displayname", Value::new_utf8s("Test Account"))
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
+            (Attribute::Name.as_ref(), Value::new_iname("testaccount")),
+            (Attribute::Uuid.as_ref(), Value::Uuid(target_uuid)),
+            (
+                Attribute::Description.as_ref(),
+                Value::new_utf8s("testaccount")
+            ),
+            (
+                Attribute::DisplayName.as_ref(),
+                Value::new_utf8s("Test Account")
+            )
         );
 
         let ce = CreateEvent::new_internal(vec![e]);
@@ -822,9 +854,12 @@ mod tests {
 
         // Modify the user to be a posix account, ensure they get the hint.
         let me_posix = ModifyEvent::new_internal_invalid(
-            filter!(f_eq("name", PartialValue::new_iname("testaccount"))),
+            filter!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("testaccount")
+            )),
             ModifyList::new_list(vec![
-                Modify::Present(AttrString::from("class"), Value::new_class("posixaccount")),
+                Modify::Present(Attribute::Class.into(), EntryClass::PosixAccount.into()),
                 Modify::Present(AttrString::from("gidnumber"), Value::new_uint32(2001)),
             ]),
         );
@@ -845,11 +880,17 @@ mod tests {
 
         // Add a group with a ui hint, and then check they get the hint.
         let e = entry_init!(
-            ("class", Value::new_class("object")),
-            ("class", Value::new_class("group")),
-            ("name", Value::new_iname("test_uihint_group")),
-            ("member", Value::Refer(target_uuid)),
-            ("grant_ui_hint", Value::UiHint(UiHint::ExperimentalFeatures))
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Group.to_value()),
+            (
+                Attribute::Name.as_ref(),
+                Value::new_iname("test_uihint_group")
+            ),
+            (Attribute::Member.as_ref(), Value::Refer(target_uuid)),
+            (
+                Attribute::GrantUiHint.as_ref(),
+                Value::UiHint(UiHint::ExperimentalFeatures)
+            )
         );
 
         let ce = CreateEvent::new_internal(vec![e]);
