@@ -405,7 +405,7 @@ class KanidmClient:
         if response.status_code != 200:
             raise ValueError(f"Failed to get groups: {response.content}")
         grouplist = GroupList.model_validate(json_lib.loads(response.content))
-        return [group.as_nice_object() for group in grouplist.root]
+        return [group.as_groupinfo() for group in grouplist.root]
 
     async def auth_as_anonymous(self) -> None:
         """authenticate as the anonymous user"""

@@ -210,6 +210,8 @@ class GroupInfo(BaseModel):
     member: List[str]
     spn: str
     uuid: str
+    # posix-enabled group
+    gidnumber: Optional[int]
 
     def has_member(self, member: str) -> bool:
         """check if a member is in the group"""
@@ -217,16 +219,19 @@ class GroupInfo(BaseModel):
 
 
 class RawGroupInfo(BaseModel):
-    """group information"""
+    """group information as it comes back from the API"""
 
     attrs: Dict[str, List[str]]
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    def as_nice_object(self) -> GroupInfo:
-        """ """
+    def as_groupinfo(self) -> GroupInfo:
+        """return it as the GroupInfo object which has nicer fields"""
         for field in "name", "uuid", "spn":
             if field not in self.attrs:
                 raise ValueError(f"Missing field {field} in {self.attrs}")
+        gidnumber = (self.attrs.get("gidnumber", [])[0],)
+        if len(gidnumber) == 0:
+            gidnumber = None
         return GroupInfo(
             name=self.attrs["name"][0],
             uuid=self.attrs["uuid"][0],
