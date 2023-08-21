@@ -34,7 +34,16 @@ impl Oauth2Opt {
             Oauth2Opt::List(copt) => {
                 let client = copt.to_client(OpType::Read).await;
                 match client.idm_oauth2_rs_list().await {
-                    Ok(r) => r.iter().for_each(|ent| println!("{}", ent)),
+                    Ok(r) => match copt.output_mode {
+                        OutputMode::Json => {
+                            let r_attrs: Vec<_> = r.iter().map(|entry| &entry.attrs).collect();
+                            println!(
+                                "{}",
+                                serde_json::to_string(&r_attrs).expect("Failed to serialise json")
+                            );
+                        }
+                        OutputMode::Text => r.iter().for_each(|ent| println!("{}", ent)),
+                    },
                     Err(e) => error!("Error -> {:?}", e),
                 }
             }

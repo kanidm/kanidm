@@ -21,7 +21,7 @@ use uuid::Uuid;
 use crate::webauthn::get_authenticator;
 use crate::{
     password_prompt, AccountCredential, AccountRadius, AccountSsh, AccountUserAuthToken,
-    AccountValidity, PersonOpt, PersonPosix,
+    AccountValidity, OutputMode, PersonOpt, PersonPosix,
 };
 
 impl PersonOpt {
@@ -256,7 +256,16 @@ impl PersonOpt {
             PersonOpt::List(copt) => {
                 let client = copt.to_client(OpType::Read).await;
                 match client.idm_person_account_list().await {
-                    Ok(r) => r.iter().for_each(|ent| println!("{}", ent)),
+                    Ok(r) => match copt.output_mode {
+                        OutputMode::Json => {
+                            let r_attrs: Vec<_> = r.iter().map(|entry| &entry.attrs).collect();
+                            println!(
+                                "{}",
+                                serde_json::to_string(&r_attrs).expect("Failed to serialise json")
+                            );
+                        }
+                        OutputMode::Text => r.iter().for_each(|ent| println!("{}", ent)),
+                    },
                     Err(e) => error!("Error -> {:?}", e),
                 }
             }
@@ -282,7 +291,15 @@ impl PersonOpt {
                     .idm_person_account_get(aopt.aopts.account_id.as_str())
                     .await
                 {
-                    Ok(Some(e)) => println!("{}", e),
+                    Ok(Some(e)) => match aopt.copt.output_mode {
+                        OutputMode::Json => {
+                            println!(
+                                "{}",
+                                serde_json::to_string(&e).expect("Failed to serialise json")
+                            );
+                        }
+                        OutputMode::Text => println!("{}", e),
+                    },
                     Ok(None) => println!("No matching entries"),
                     Err(e) => error!("Error -> {:?}", e),
                 }
