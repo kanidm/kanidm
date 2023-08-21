@@ -229,15 +229,20 @@ class RawGroupInfo(BaseModel):
         for field in "name", "uuid", "spn":
             if field not in self.attrs:
                 raise ValueError(f"Missing field {field} in {self.attrs}")
-        gidnumber = (self.attrs.get("gidnumber", [])[0],)
-        if len(gidnumber) == 0:
-            gidnumber = None
+
+        # we want either the first element of gidnumber_field, or None
+        gidnumber_field = self.attrs.get("gidnumber", [])
+        gidnumber: Optional[int] = None
+        if len(gidnumber_field) > 0:
+            gidnumber = int(gidnumber_field[0])
+
         return GroupInfo(
             name=self.attrs["name"][0],
             uuid=self.attrs["uuid"][0],
             spn=self.attrs["spn"][0],
             member=self.attrs.get("member", []),
             dynmember=self.attrs.get("dynmember", []),
+            gidnumber=gidnumber,
         )
 
 
