@@ -4,25 +4,16 @@ version = "0.0.3"
 description = "Kanidm client library"
 license = "MPL-2.0"
 
-authors = [
-    "James Hodgkinson <james@terminaloutcomes.com>"
-]
+authors = ["James Hodgkinson <james@terminaloutcomes.com>"]
 
 readme = "README.md"
 repository = "https://github.com/kanidm/kanidm"
 homepage = "https://kanidm.com/"
 
-packages = [
-    {include = "kanidm"},
-    {include = "tests"},
-]
+packages = [{ include = "kanidm" }, { include = "tests" }]
 
-keywords = [
-    "kanidm",
-    "idm",
-    "api",
-]
-classifiers=[
+keywords = ["kanidm", "idm", "api"]
+classifiers = [
     "Development Status :: 3 - Alpha",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.9",
@@ -32,9 +23,9 @@ classifiers=[
 [tool.poetry.dependencies]
 python = "^3.9"
 toml = "^0.10.2"
-pydantic = ">=1.9.2,<3.0.0"
+pydantic = ">=2.0.0,<3.0.0"
 aiohttp = "^3.8.1"
-Authlib = "^1.1.0"
+Authlib = "^1.2.0"
 
 [tool.poetry.dev-dependencies]
 mypy = "^1.5"
@@ -61,11 +52,11 @@ requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.pylint.MASTER]
-max-line-length=150
-disable="W0511,raise-missing-from"
-extension-pkg-allow-list="pydantic"
+max-line-length = 150
+disable = "W0511,raise-missing-from"
+extension-pkg-allow-list = "pydantic"
 # https://github.com/samuelcolvin/pydantic/issues/1961#issuecomment-759522422
-load-plugins="pylint_pydantic,pylint_pytest"
+load-plugins = "pylint_pydantic,pylint_pytest"
 
 [tool.ruff]
 line-length = 150
@@ -81,7 +72,7 @@ line-length = 150
 asyncio_mode = "auto"
 markers = [
     "network: Tests that require network access and a working backend server",
-    "interactive: Requires specific config and a working backend server"
+    "interactive: Requires specific config and a working backend server",
 ]
 
 [tool.coverage.run]
