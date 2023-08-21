@@ -120,7 +120,7 @@ pub enum Attribute {
     Rs256PrivateKeyDer,
     SourceUuid,
     Spn,
-    SshPublicKey,
+    LdapSshPublicKey,
     /// An LDAP-compatible sshpublickey
     SshUnderscorePublicKey,
     /// The Kanidm-local ssh_publickey
@@ -262,7 +262,7 @@ impl TryFrom<String> for Attribute {
             ATTR_SOURCE_UUID => Attribute::SourceUuid,
             ATTR_SPN => Attribute::Spn,
             ATTR_SSH_PUBLICKEY => Attribute::SshUnderscorePublicKey,
-            ATTR_SSHPUBLICKEY => Attribute::SshPublicKey,
+            ATTR_SSHPUBLICKEY => Attribute::LdapSshPublicKey,
             ATTR_SYNC_ALLOWED => Attribute::SyncAllowed,
             ATTR_SYNC_COOKIE => Attribute::SyncCookie,
             ATTR_SYNC_CREDENTIAL_PORTAL => Attribute::SyncCredentialPortal,
@@ -395,7 +395,7 @@ impl From<Attribute> for &'static str {
             Attribute::Replicated => ATTR_REPLICATED,
             Attribute::SourceUuid => ATTR_SOURCE_UUID,
             Attribute::Spn => ATTR_SPN,
-            Attribute::SshPublicKey => ATTR_SSHPUBLICKEY,
+            Attribute::LdapSshPublicKey => ATTR_SSHPUBLICKEY,
             Attribute::SshUnderscorePublicKey => ATTR_SSH_PUBLICKEY,
             Attribute::SyncAllowed => ATTR_SYNC_ALLOWED,
             Attribute::SyncParentUuid => ATTR_SYNC_PARENT_UUID,

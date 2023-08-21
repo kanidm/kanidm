@@ -1665,9 +1665,9 @@ impl<'a> SchemaWriteTransaction<'a> {
             },
         );
         self.attributes.insert(
-            Attribute::SshPublicKey.into(),
+            Attribute::LdapSshPublicKey.into(),
             SchemaAttribute {
-                name: Attribute::SshPublicKey.into(),
+                name: Attribute::LdapSshPublicKey.into(),
                 uuid: UUID_SCHEMA_ATTR_SSHPUBLICKEY,
                 description: String::from("An LDAP Compatible sshPublicKey"),
                 multivalue: true,
