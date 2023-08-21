@@ -7,6 +7,8 @@ See Sudo's documentation for how to use this plugin: https://www.sudo.ws/posts/2
 
 *** untested in a live environment, someone please test this ***
 
+- @yaleman
+
 Example running it on the CLI:
 
 ```shell
@@ -15,8 +17,6 @@ KANIDM_CONFIG=~/.config/kanidm kanidm_sudo.py \
 INFO:root:Checking if username@example.org is a member of krab_admins
 INFO:root:result: 1
 ```
-
-- @yaleman
 
 """
 import asyncio
