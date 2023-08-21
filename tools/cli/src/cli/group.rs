@@ -25,16 +25,16 @@ impl GroupOpt {
             GroupOpt::List(copt) => {
                 let client = copt.to_client(OpType::Read).await;
                 match client.idm_group_list().await {
-                    Ok(r) => r.iter().for_each(|ent| match copt.output_mode {
+                    Ok(r) => match copt.output_mode {
                         OutputMode::Json => {
+                            let r_attrs: Vec<_> = r.iter().map(|entry| &entry.attrs).collect();
                             println!(
                                 "{}",
-                                serde_json::to_string(&ent.attrs)
-                                    .expect("Failed to serialise json")
+                                serde_json::to_string(&r_attrs).expect("Failed to serialise json")
                             );
                         }
-                        OutputMode::Text => println!("{}", ent),
-                    }),
+                        OutputMode::Text => r.iter().for_each(|ent| println!("{}", ent)),
+                    },
                     Err(e) => error!("Error -> {:?}", e),
                 }
             }
