@@ -12,19 +12,19 @@ from pydantic import ValidationError
 
 from .exceptions import (
     AuthBeginFailed,
-    AuthInitFailed,
     AuthCredFailed,
+    AuthInitFailed,
     AuthMechUnknown,
     NoMatchingEntries,
 )
 from .types import (
     AuthBeginResponse,
-    AuthState,
     AuthInitResponse,
+    AuthState,
     ClientResponse,
     GroupInfo,
-    KanidmClientConfig,
     GroupList,
+    KanidmClientConfig,
 )
 from .utils import load_config
 
@@ -399,8 +399,7 @@ class KanidmClient:
     # TODO: write tests for get_groups
     async def get_groups(self) -> List[GroupInfo]:
         """does the call to the group endpoint"""
-        path = "/v1/group"
-        response = await self.call_get(path)
+        response = await self.call_get("/v1/group")
         if response.content is None:
             return []
         if response.status_code != 200:
@@ -425,7 +424,7 @@ class KanidmClient:
             headers["x-kanidm-auth-session-id"] = self.config.auth_token
 
         response = await self.call_post(
-            path="/v1/auth",
+            path=KANIDMURLS["auth"],
             json=cred_auth,
             headers=headers,
         )
