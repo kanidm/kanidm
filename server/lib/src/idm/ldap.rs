@@ -839,7 +839,7 @@ mod tests {
                 (Attribute::GidNumber.as_ref(), Value::new_uint32(12345678)),
                 (Attribute::LoginShell.as_ref(), Value::new_iutf8("/bin/zsh")),
                 (
-                    Attribute::SshUnderscorePublicKey.as_ref(),
+                    Attribute::SshPublicKey.as_ref(),
                     Value::new_sshkey_str("test", ssh_ed25519)
                 )
             );
@@ -885,7 +885,7 @@ mod tests {
                     (Attribute::Name.as_ref(), "testperson1"),
                     (Attribute::GidNumber.as_ref(), "12345678"),
                     (Attribute::LoginShell.as_ref(), "/bin/zsh"),
-                    (Attribute::SshUnderscorePublicKey.as_ref(), ssh_ed25519),
+                    (Attribute::SshPublicKey.as_ref(), ssh_ed25519),
                     (
                         Attribute::Uuid.as_ref(),
                         "cc8e95b4-c24f-4d68-ba54-8bed76f63930"
@@ -920,7 +920,7 @@ mod tests {
                     (Attribute::Name.as_ref(), "testperson1"),
                     (Attribute::GidNumber.as_ref(), "12345678"),
                     (Attribute::LoginShell.as_ref(), "/bin/zsh"),
-                    (Attribute::SshUnderscorePublicKey.as_ref(), ssh_ed25519),
+                    (Attribute::SshPublicKey.as_ref(), ssh_ed25519),
                     ("entryuuid", "cc8e95b4-c24f-4d68-ba54-8bed76f63930"),
                     ("entrydn", "spn=testperson1@example.com,dc=example,dc=com"),
                     ("uidnumber", "12345678"),

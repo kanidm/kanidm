@@ -2626,7 +2626,7 @@ mod tests {
         assert!(testuser.get_ava_single_iutf8("loginshell") == Some("/bin/sh"));
 
         let mut ssh_keyiter = testuser
-            .get_ava_iter_sshpubkeys(Attribute::SshUnderscorePublicKey.into())
+            .get_ava_iter_sshpubkeys(Attribute::SshPublicKey.into())
             .expect("Failed to access ssh pubkeys");
         assert_eq!(ssh_keyiter.next(), Some("sk-ecdsa-sha2-nistp256@openssh.com AAAAInNrLWVjZHNhLXNoYTItbmlzdHAyNTZAb3BlbnNzaC5jb20AAAAIbmlzdHAyNTYAAABBBENubZikrb8hu+HeVRdZ0pp/VAk2qv4JDbuJhvD0yNdWDL2e3cBbERiDeNPkWx58Q4rVnxkbV1fa8E2waRtT91wAAAAEc3NoOg== testuser@fidokey"));
         assert_eq!(ssh_keyiter.next(), None);

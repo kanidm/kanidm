@@ -831,7 +831,7 @@ pub async fn account_delete_id_ssh_pubkey_tag(
     Extension(kopid): Extension<KOpId>,
     Path((id, tag)): Path<(String, String)>,
 ) -> impl IntoResponse {
-    let attr = Attribute::SshUnderscorePublicKey.to_string();
+    let attr = Attribute::SshPublicKey.to_string();
     let values = vec![tag];
     let filter = filter_all!(f_eq(Attribute::Class, EntryClass::Account.into()));
     let res = state

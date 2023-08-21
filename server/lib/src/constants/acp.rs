@@ -170,7 +170,7 @@ lazy_static! {
         (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::LegalName.to_value()),
         (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::RadiusSecret.to_value()),
         (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::PrimaryCredential.to_value()),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::SshUnderscorePublicKey.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::SshPublicKey.to_value()),
         (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::UnixPassword.to_value()),
         (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::PassKeys.to_value()),
         (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::DeviceKeys.to_value()),
@@ -181,7 +181,7 @@ lazy_static! {
         (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::LegalName.to_value()),
         (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::RadiusSecret.to_value()),
         (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::PrimaryCredential.to_value()),
-        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::SshUnderscorePublicKey.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::SshPublicKey.to_value()),
         (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::UnixPassword.to_value()),
         (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::PassKeys.to_value()),
         (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::DeviceKeys.to_value())
@@ -308,7 +308,7 @@ lazy_static! {
         (ATTR_ACP_SEARCH_ATTR, Attribute::Uuid.to_value()),
         (ATTR_ACP_SEARCH_ATTR, Attribute::GidNumber.to_value()),
         (ATTR_ACP_SEARCH_ATTR, Attribute::LoginShell.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::SshUnderscorePublicKey.to_value())
+        (ATTR_ACP_SEARCH_ATTR, Attribute::SshPublicKey.to_value())
     );
 }
 
@@ -459,10 +459,7 @@ lazy_static! {
             ATTR_ACP_CREATE_ATTR,
             Attribute::PrimaryCredential.to_value()
         ),
-        (
-            ATTR_ACP_CREATE_ATTR,
-            Attribute::SshUnderscorePublicKey.to_value()
-        ),
+        (ATTR_ACP_CREATE_ATTR, Attribute::SshPublicKey.to_value()),
         (ATTR_ACP_CREATE_ATTR, Attribute::Mail.to_value()),
         (ATTR_ACP_CREATE_ATTR, Attribute::AccountExpire.to_value()),
         (ATTR_ACP_CREATE_ATTR, Attribute::AccountValidFrom.to_value()),
@@ -748,7 +745,7 @@ lazy_static! {
         (ATTR_ACP_SEARCH_ATTR, Attribute::Spn.to_value()),
         (ATTR_ACP_SEARCH_ATTR, Attribute::Uuid.to_value()),
         (ATTR_ACP_SEARCH_ATTR, Attribute::DisplayName.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::SshUnderscorePublicKey.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::SshPublicKey.to_value()),
         (ATTR_ACP_SEARCH_ATTR, Attribute::PrimaryCredential.to_value()),
         (ATTR_ACP_SEARCH_ATTR, Attribute::MemberOf.to_value()),
         (ATTR_ACP_SEARCH_ATTR, Attribute::Mail.to_value()),
@@ -786,7 +783,7 @@ lazy_static! {
         ),
         (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::Name.to_value()),
         (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::DisplayName.to_value()),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::SshUnderscorePublicKey.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::SshPublicKey.to_value()),
         (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::PrimaryCredential.to_value()),
         (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::Mail.to_value()),
         (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::AccountExpire.to_value()),
@@ -799,7 +796,7 @@ lazy_static! {
 
         (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::Name.to_value()),
         (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::DisplayName.to_value()),
-        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::SshUnderscorePublicKey.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::SshPublicKey.to_value()),
         (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::PrimaryCredential.to_value()),
         (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::Mail.to_value()),
         (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::AccountExpire.to_value()),
@@ -838,7 +835,7 @@ lazy_static! {
         (ATTR_ACP_CREATE_ATTR, Attribute::DisplayName.to_value()),
         (ATTR_ACP_CREATE_ATTR, Attribute::Description.to_value()),
         (ATTR_ACP_CREATE_ATTR, Attribute::PrimaryCredential.to_value()),
-        (ATTR_ACP_CREATE_ATTR, Attribute::SshUnderscorePublicKey.to_value()),
+        (ATTR_ACP_CREATE_ATTR, Attribute::SshPublicKey.to_value()),
         (ATTR_ACP_CREATE_ATTR, Attribute::Mail.to_value()),
         (ATTR_ACP_CREATE_ATTR, Attribute::AccountExpire.to_value()),
         (ATTR_ACP_CREATE_ATTR, Attribute::AccountValidFrom.to_value()),
@@ -966,7 +963,7 @@ lazy_static! {
         (ATTR_ACP_SEARCH_ATTR, Attribute::Spn.to_value()),
         (ATTR_ACP_SEARCH_ATTR, Attribute::Uuid.to_value()),
         (ATTR_ACP_SEARCH_ATTR, Attribute::DisplayName.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::SshUnderscorePublicKey.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::SshPublicKey.to_value()),
         (ATTR_ACP_SEARCH_ATTR, Attribute::PrimaryCredential.to_value()),
         (ATTR_ACP_SEARCH_ATTR, Attribute::MemberOf.to_value()),
         (ATTR_ACP_SEARCH_ATTR, Attribute::AccountExpire.to_value()),
@@ -1002,7 +999,7 @@ lazy_static! {
         ),
         (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::Name.to_value()),
         (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::DisplayName.to_value()),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::SshUnderscorePublicKey.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::SshPublicKey.to_value()),
         (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::PrimaryCredential.to_value()),
         (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::AccountExpire.to_value()),
         (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::AccountValidFrom.to_value()),
@@ -1014,7 +1011,7 @@ lazy_static! {
 
         (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::Name.to_value()),
         (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::DisplayName.to_value()),
-        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::SshUnderscorePublicKey.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::SshPublicKey.to_value()),
         (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::PrimaryCredential.to_value()),
         (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::AccountExpire.to_value()),
         (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::AccountValidFrom.to_value()),
@@ -1328,7 +1325,7 @@ lazy_static! {
         (ATTR_ACP_CREATE_ATTR, Attribute::DisplayName.to_value()),
         (ATTR_ACP_CREATE_ATTR, Attribute::Description.to_value()),
         (ATTR_ACP_CREATE_ATTR, Attribute::PrimaryCredential.to_value()),
-        (ATTR_ACP_CREATE_ATTR, Attribute::SshUnderscorePublicKey.to_value()),
+        (ATTR_ACP_CREATE_ATTR, Attribute::SshPublicKey.to_value()),
         (ATTR_ACP_CREATE_ATTR, Attribute::AccountExpire.to_value()),
         (ATTR_ACP_CREATE_ATTR, Attribute::AccountValidFrom.to_value()),
         (ATTR_ACP_CREATE_ATTR, Attribute::PassKeys.to_value()),

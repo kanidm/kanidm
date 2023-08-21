@@ -48,7 +48,7 @@ pub static ref SCHEMA_ATTR_EC_KEY_PRIVATE: SchemaAttribute = SchemaAttribute {
 
 pub static ref SCHEMA_ATTR_SSH_PUBLICKEY: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_SSH_PUBLICKEY,
-    name: Attribute::SshUnderscorePublicKey.into(),
+    name: Attribute::SshPublicKey.into(),
     description: "SSH public keys of the object".to_string(),
 
     multivalue: true,
