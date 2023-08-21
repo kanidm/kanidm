@@ -418,7 +418,7 @@ mod identify_user_no_tui {
                 .await;
             }
             IdentifyUserState::DisplayCodeSecond { self_totp, step } => {
-                println!("\r\rProvide the following code when asked: {}", self_totp);
+                println!("Provide the following code when asked: {}", self_totp);
                 let seconds_left = get_ms_left_from_now(step as u128) / 1000;
                 println!("This codes expires in {seconds_left} seconds!");
                 let _ = stdout().flush();
