@@ -79,7 +79,7 @@ service accounts should not be part of this group:
 
 ```bash
 kanidm group create --name idm_admin radius_access_allowed
-kanidm group add_members --name idm_admin radius_access_allowed william
+kanidm group add-members --name idm_admin radius_access_allowed william
 ```
 
 ## RADIUS Server Service Account
@@ -91,7 +91,7 @@ First, create the service account and add it to the group:
 
 ```bash
 kanidm service-account create --name admin radius_service_account "Radius Service Account"
-kanidm group add_members --name admin idm_radius_servers radius_service_account
+kanidm group add-members --name admin idm_radius_servers radius_service_account
 ```
 
 Now reset the account password, using the `admin` account:

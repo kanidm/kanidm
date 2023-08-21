@@ -30,6 +30,7 @@
 - Kenton Groombridge (0xC0ncord)
 - Martin Weinelt (hexa)
 - Samuel Cabrero (scabrero)
+- philipcristiano
 
 ## Acknowledgements
 
