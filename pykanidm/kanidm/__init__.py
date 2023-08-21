@@ -5,7 +5,6 @@ import json as json_lib  # because we're taking a field "json" at various points
 import logging
 from pathlib import Path
 import ssl
-import sys
 from typing import Any, Dict, List, Optional, Union
 
 import aiohttp
@@ -146,7 +145,6 @@ class KanidmClient:
             raise ValueError("Token is not set")
         return {
             "authorization": f"Bearer {self.config.auth_token}",
-            "X-KANIDM-AUTH-SESSION-ID": self.config.auth_token,
         }
 
     # pylint: disable=too-many-arguments
@@ -164,14 +162,10 @@ class KanidmClient:
         async with aiohttp.client.ClientSession() as session:
             # if we have a token set, we send it.
             if self.config.auth_token is not None:
-                logging.debug("Found a token internally %s", self.config.auth_token)
                 if headers is None:
-                    logging.debug("Using self._token_headers")
                     headers = self._token_headers
                 elif headers.get("authorization") is None:
-                    logging.debug("Setting auth headers as authorization not in keys")
                     headers.update(self._token_headers)
-                    logging.info("headers: %s", headers)
             logging.debug(
                 "_call method=%s to %s, headers=%s",
                 method,
@@ -276,9 +270,11 @@ class KanidmClient:
         }
 
         if sessionid is not None:
-            headers = self.session_header(sessionid)
+            headers = {"x-kanidm-auth-session-id": sessionid}
         else:
-            headers = None
+            if self.config.auth_token is not None:
+                headers = {"x-kanidm-auth-session-id": self.config.auth_token}
+
         response = await self.call_post(
             KANIDMURLS["auth"],
             json=begin_auth,
@@ -398,10 +394,12 @@ class KanidmClient:
     # TODO: write tests for get_groups
     async def get_groups(self) -> List[GroupInfo]:
         """does the call to the group endpoint"""
-        path = f"/v1/group"
+        path = "/v1/group"
         response = await self.call_get(path)
         if response.content is None:
             return []
+        if response.status_code != 200:
+            raise ValueError(f"Failed to get groups: {response.content}")
         grouplist = GroupList.model_validate(json_lib.loads(response.content))
         return [group.as_nice_object() for group in grouplist.root]
 
@@ -409,13 +407,23 @@ class KanidmClient:
         """authenticate as the anonymous user"""
 
         init = await self.auth_init("anonymous", update_internal_auth_token=True)
+        logging.debug("auth_init completed, moving onto cred step")
         await self.auth_begin(
             method=init.state.choose[0], update_internal_auth_token=True
         )
-        logging.debug(
-            "\n\n#######\n\nauth_begin completed, moving onto cred step\n\n#######\n\n"
-        )
+        logging.debug("auth_begin completed, moving onto cred step")
         cred_auth = {"step": {"cred": "anonymous"}}
-        response = await self.call_post(path="/v1/auth", json=cred_auth)
+        headers = {}
+        if self.config.auth_token is None:
+            raise ValueError("Auth token is not set, auth failure!")
+        else:
+            headers["x-kanidm-auth-session-id"] = self.config.auth_token
+
+        response = await self.call_post(
+            path="/v1/auth",
+            json=cred_auth,
+            headers=headers,
+        )
         state = AuthState.model_validate(response.data)
+        logging.debug("anonymous auth completed, setting token")
         self.config.auth_token = state.state.success
