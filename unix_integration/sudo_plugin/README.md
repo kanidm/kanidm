@@ -1,1 +1,0 @@
-Sudo plugin for Kanidm
