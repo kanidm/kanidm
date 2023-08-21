@@ -905,12 +905,54 @@ pub enum SynchOpt {
 }
 
 #[derive(Debug, Subcommand)]
+pub enum AuthSessionExpiryOpt {
+    #[clap[name = "get"]]
+    /// Show information about this system auth session expiry
+    Get(CommonOpt),
+    #[clap[name = "set"]]
+    /// Sets the system auth session expiry in seconds
+    Set {
+        #[clap(flatten)]
+        copt: CommonOpt,
+        #[clap(name = "expiry")]
+        expiry: u32,
+    },
+}
+
+#[derive(Debug, Subcommand)]
+pub enum PrivilegedSessionExpiryOpt {
+    #[clap[name = "get"]]
+    /// Show information about this system privileged session expiry
+    Get(CommonOpt),
+    #[clap[name = "set"]]
+    /// Sets the system auth privilege session expiry in seconds
+    Set {
+        #[clap(flatten)]
+        copt: CommonOpt,
+        #[clap(name = "expiry")]
+        expiry: u32,
+    },
+}
+
+#[derive(Debug, Subcommand)]
 pub enum SystemOpt {
     #[clap(name = "pw-badlist")]
     /// Configure and manage the password badlist entry
     PwBadlist {
         #[clap(subcommand)]
         commands: PwBadlistOpt,
+    },
+    /// Configure and display the system auth session expiry
+    #[clap(name = "auth-expiry")]
+    AuthSessionExpiry {
+        #[clap(subcommand)]
+        commands: AuthSessionExpiryOpt,
+    },
+    /// Configure and display the system auth privilege session expiry
+    #[clap(name = "privilege-expiry")]
+    PrivilegedSessionExpiry {
+        #[clap(subcommand)]
+        commands: PrivilegedSessionExpiryOpt,
     },
     #[clap(name = "oauth2")]
     /// Configure and display oauth2/oidc resource server configuration
