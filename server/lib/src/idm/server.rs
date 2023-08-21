@@ -2026,9 +2026,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         {
             // TODO: probably it would be more efficient to introduce a single check for each of the possible system configs
             // but that would require changing what uuid the operation is assigned
-            self.reload_password_badlist()?;
-            self.reload_authsession_expiry()?;
-            self.reload_privilege_expiry()?;
+            self.reload_system_account_policy()?;
         };
         if self.qs_write.get_changed_ouath2() {
             self.qs_write
@@ -2084,34 +2082,11 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         self.qs_write.commit()
     }
 
-    fn reload_password_badlist(&mut self) -> Result<(), OperationError> {
-        match self.qs_write.get_password_badlist() {
-            Ok(badlist_entry) => {
-                self.account_policy.pw_badlist_cache = badlist_entry;
-                Ok(())
-            }
-            Err(e) => Err(e),
-        }
-    }
-
-    fn reload_authsession_expiry(&mut self) -> Result<(), OperationError> {
-        match self.qs_write.get_authsession_expiry() {
-            Ok(expiry) => {
-                self.account_policy.authsession_expiry = expiry;
-                Ok(())
-            }
-            Err(e) => Err(e),
-        }
-    }
-
-    fn reload_privilege_expiry(&mut self) -> Result<(), OperationError> {
-        match self.qs_write.get_privilege_expiry() {
-            Ok(expiry) => {
-                self.account_policy.privilege_expiry = expiry;
-                Ok(())
-            }
-            Err(e) => Err(e),
-        }
+    fn reload_system_account_policy(&mut self) -> Result<(), OperationError> {
+        self.account_policy.pw_badlist_cache = self.qs_write.get_password_badlist()?;
+        self.account_policy.authsession_expiry = self.qs_write.get_authsession_expiry()?;
+        self.account_policy.privilege_expiry = self.qs_write.get_privilege_expiry()?;
+        Ok(())
     }
 }
 
@@ -3788,7 +3763,7 @@ mod tests {
         debug!(?uat);
 
         assert!(
-            matches!(uat.expiry, Some(x) if dbg!(x) == OffsetDateTime::UNIX_EPOCH + ct + Duration::from_secs(new_authsession_expiry as u64))
+            matches!(uat.expiry, Some(exp) if exp == OffsetDateTime::UNIX_EPOCH + ct + Duration::from_secs(new_authsession_expiry as u64))
         );
     }
 
