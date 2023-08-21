@@ -1225,7 +1225,7 @@ pub async fn system_put_attr(
     Extension(kopid): Extension<KOpId>,
     Json(values): Json<Vec<String>>,
 ) -> impl IntoResponse {
-    let filter = filter_all!(f_eq("class", PartialValue::new_class("system_config")));
+    let filter = filter_all!(f_eq(Attribute::Class, EntryClass::SystemConfig.into()));
     json_rest_event_put_attr(
         state,
         STR_UUID_SYSTEM_CONFIG.to_string(),

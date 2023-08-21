@@ -1449,37 +1449,37 @@ lazy_static! {
 
 lazy_static! {
     pub static ref E_IDM_ACP_SYSTEM_CONFIG_SESSION_EXP_PRIV_V1: EntryInitNew = entry_init!(
-        ("class", CLASS_OBJECT.clone()),
-        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_MODIFY.clone()),
-        ("class", CLASS_ACCESS_CONTROL_SEARCH.clone()),
-        ("name", Value::new_iname("idm_acp_system_config_session_exp_priv")),
-        ("uuid", Value::Uuid(UUID_IDM_ACP_SYSTEM_CONFIG_SESSION_EXP_PRIV_V1)),
+        (ATTR_CLASS, EntryClass::Object.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlProfile.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlModify.to_value()),
+        (ATTR_CLASS, EntryClass::AccessControlSearch.to_value()),
+        (ATTR_NAME, Value::new_iname("idm_acp_system_config_session_exp_priv")),
+        (ATTR_UUID, Value::Uuid(UUID_IDM_ACP_SYSTEM_CONFIG_SESSION_EXP_PRIV_V1)),
         (
-            "description",
+            Attribute::Description.as_ref(),
             Value::new_utf8s("Builtin IDM Control for granting session expiry configuration rights")
         ),
         (
-            "acp_receiver_group",
+            ATTR_ACP_RECEIVER_GROUP,
             Value::Refer(UUID_SYSTEM_ADMINS)
         ),
         (
-            "acp_targetscope",
+            ATTR_ACP_TARGET_SCOPE,
             Value::new_json_filter_s(
                 "{\"and\": [{\"eq\": [\"uuid\",\"00000000-0000-0000-0000-ffffff000027\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
             )
                 .expect("Invalid JSON filter")
         ),
-        ("acp_search_attr", Value::new_iutf8("class")),
-        ("acp_search_attr", Value::new_iutf8("name")),
-        ("acp_search_attr", Value::new_iutf8("uuid")),
-        ("acp_search_attr", Value::new_iutf8("description")),
-        ("acp_search_attr", Value::new_iutf8("authsession_expiry")),
-        ("acp_modify_presentattr", Value::new_iutf8("authsession_expiry")),
-        ("acp_modify_removedattr", Value::new_iutf8("authsession_expiry")),
-        ("acp_search_attr", Value::new_iutf8("privilege_expiry")),
-        ("acp_modify_presentattr", Value::new_iutf8("privilege_expiry")),
-        ("acp_modify_removedattr", Value::new_iutf8("privilege_expiry"))
+        (ATTR_ACP_SEARCH_ATTR, Value::new_iutf8("class")),
+        (ATTR_ACP_SEARCH_ATTR, Value::new_iutf8("name")),
+        (ATTR_ACP_SEARCH_ATTR, Value::new_iutf8("uuid")),
+        (ATTR_ACP_SEARCH_ATTR, Value::new_iutf8("description")),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::AuthSessionExpiry.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::AuthSessionExpiry.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::AuthSessionExpiry.to_value()),
+        (ATTR_ACP_SEARCH_ATTR, Attribute::PrivilegeExpiry.to_value()),
+        (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::PrivilegeExpiry.to_value()),
+        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::PrivilegeExpiry.to_value())
 
     );
 }

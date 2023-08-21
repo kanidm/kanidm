@@ -50,6 +50,7 @@ pub enum Attribute {
     ApiTokenSession,
     Attr,
     AttributeName,
+    AuthSessionExpiry,
     BadlistPassword,
     Claim,
     Class,
@@ -115,6 +116,7 @@ pub enum Attribute {
     Phantom,
     PrimaryCredential,
     PrivateCookieKey,
+    PrivilegeExpiry,
     RadiusSecret,
     Replicated,
     Rs256PrivateKeyDer,
@@ -189,6 +191,7 @@ impl TryFrom<String> for Attribute {
             ATTR_API_TOKEN_SESSION => Attribute::ApiTokenSession,
             ATTR_ATTR => Attribute::Attr,
             ATTR_ATTRIBUTENAME => Attribute::AttributeName,
+            ATTR_AUTH_SESSION_EXPIRY => Attribute::AuthSessionExpiry,
             ATTR_BADLIST_PASSWORD => Attribute::BadlistPassword,
             ATTR_CLAIM => Attribute::Claim,
             ATTR_CLASS => Attribute::Class,
@@ -256,6 +259,7 @@ impl TryFrom<String> for Attribute {
             ATTR_PHANTOM => Attribute::Phantom,
             ATTR_PRIMARY_CREDENTIAL => Attribute::PrimaryCredential,
             ATTR_PRIVATE_COOKIE_KEY => Attribute::PrivateCookieKey,
+            ATTR_PRIVILEGE_EXPIRY => Attribute::PrivilegeExpiry,
             ATTR_RADIUS_SECRET => Attribute::RadiusSecret,
             ATTR_REPLICATED => Attribute::Replicated,
             ATTR_RS256_PRIVATE_KEY_DER => Attribute::Rs256PrivateKeyDer,
@@ -416,6 +420,8 @@ impl From<Attribute> for &'static str {
             Attribute::TestAttr => TEST_ATTR_TEST_ATTR,
             #[cfg(any(debug_assertions, test))]
             Attribute::Extra => TEST_ATTR_EXTRA,
+            Attribute::AuthSessionExpiry => ATTR_AUTH_SESSION_EXPIRY,
+            Attribute::PrivilegeExpiry => ATTR_PRIVILEGE_EXPIRY,
         }
     }
 }
