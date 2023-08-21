@@ -1,0 +1,26 @@
+[tool.poetry]
+name = "kanidm-sudo"
+version = "0.0.1"
+description = "sudo plugin for Kanidm"
+authors = ["James Hodgkinson <james@terminaloutcomes.com>"]
+license = "MPL-2.0"
+readme = "README.md"
+# packages = [{include = "kanidm_sudo"}]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+
+[tool.poetry.dependencies.kanidm]
+path = "../../pykanidm/"
+develop = true
+# version = "^0.0.3"
+
+
+[tool.poetry.group.dev.dependencies]
+black = "^23.7.0"
+mypy = "^1.5.1"
+ruff = "^0.0.285"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

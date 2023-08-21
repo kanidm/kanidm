@@ -1,11 +1,12 @@
 """ Kanidm python module """
 
 from functools import lru_cache
-import json as json_lib
+import json as json_lib  # because we're taking a field "json" at various points
 import logging
 from pathlib import Path
 import ssl
-from typing import Any, Dict, Optional, Union
+import sys
+from typing import Any, Dict, List, Optional, Union
 
 import aiohttp
 from pydantic import ValidationError
@@ -19,10 +20,12 @@ from .exceptions import (
 )
 from .types import (
     AuthBeginResponse,
-    AuthStepPasswordResponse,
+    AuthState,
     AuthInitResponse,
     ClientResponse,
+    GroupInfo,
     KanidmClientConfig,
+    GroupList,
 )
 from .utils import load_config
 
@@ -141,7 +144,10 @@ class KanidmClient:
         """returns an auth header with the token in it"""
         if self.config.auth_token is None:
             raise ValueError("Token is not set")
-        return {"authorization": f"Bearer {self.config.auth_token}"}
+        return {
+            "authorization": f"Bearer {self.config.auth_token}",
+            "X-KANIDM-AUTH-SESSION-ID": self.config.auth_token,
+        }
 
     # pylint: disable=too-many-arguments
     async def _call(
@@ -153,19 +159,25 @@ class KanidmClient:
         json: Optional[Dict[str, str]] = None,
         params: Optional[Dict[str, str]] = None,
     ) -> ClientResponse:
-
         if timeout is None:
             timeout = self.config.connect_timeout
         async with aiohttp.client.ClientSession() as session:
             # if we have a token set, we send it.
             if self.config.auth_token is not None:
-                logging.debug("Found a token internally")
+                logging.debug("Found a token internally %s", self.config.auth_token)
                 if headers is None:
+                    logging.debug("Using self._token_headers")
                     headers = self._token_headers
-                elif "authorization" not in headers:
-                    logging.debug("Setting auth headers as Authorization not in keys")
+                elif headers.get("authorization") is None:
+                    logging.debug("Setting auth headers as authorization not in keys")
                     headers.update(self._token_headers)
-            logging.debug("_call method=%s to %s", method, self.get_path_uri(path))
+                    logging.info("headers: %s", headers)
+            logging.debug(
+                "_call method=%s to %s, headers=%s",
+                method,
+                self.get_path_uri(path),
+                json_lib.dumps(headers),
+            )
             async with session.request(
                 method=method,
                 url=self.get_path_uri(path),
@@ -217,7 +229,9 @@ class KanidmClient:
             method="POST", path=path, headers=headers, json=json, timeout=timeout
         )
 
-    async def auth_init(self, username: str) -> AuthInitResponse:
+    async def auth_init(
+        self, username: str, update_internal_auth_token: bool = False
+    ) -> AuthInitResponse:
         """init step, starts the auth session, sets the class-local session ID"""
         init_auth = {"step": {"init": username}}
 
@@ -239,11 +253,20 @@ class KanidmClient:
             raise ValueError(
                 f"Missing x-kanidm-auth-session-id header in init auth response: {response.headers}"
             )
-        retval = AuthInitResponse.model_validate(response.data)
-        retval.response = response
+        else:
+            self.config.auth_token = response.headers["x-kanidm-auth-session-id"]
+
+        data = getattr(response, "data", {})
+        data["response"] = response
+        retval = AuthInitResponse.model_validate(data)
         return retval
 
-    async def auth_begin(self, method: str, sessionid: str) -> ClientResponse:
+    async def auth_begin(
+        self,
+        method: str,
+        sessionid: Optional[str] = None,
+        update_internal_auth_token: bool = False,
+    ) -> ClientResponse:
         """the 'begin' step"""
 
         begin_auth = {
@@ -251,8 +274,11 @@ class KanidmClient:
                 "begin": method,
             },
         }
-        headers = self.session_header(sessionid)
 
+        if sessionid is not None:
+            headers = self.session_header(sessionid)
+        else:
+            headers = None
         response = await self.call_post(
             KANIDMURLS["auth"],
             json=begin_auth,
@@ -261,8 +287,24 @@ class KanidmClient:
         if response.status_code != 200:
             # TODO: mock test for auth_begin raises AuthBeginFailed
             raise AuthBeginFailed(response.content)
+        if response.data is not None:
+            response.data["sessionid"] = response.headers.get(
+                "x-kanidm-auth-session-id", ""
+            )
 
-        retobject = AuthBeginResponse.model_validate(response.data)
+        if update_internal_auth_token:
+            self.config.auth_token = response.headers.get(
+                "x-kanidm-auth-session-id", ""
+            )
+
+        logging.debug(json_lib.dumps(response.data, indent=4))
+
+        try:
+            retobject = AuthBeginResponse.model_validate(response.data)
+        except ValidationError as exc:
+            logging.debug(repr(exc.errors()[0]))
+            raise exc
+
         retobject.response = response
         return response
 
@@ -270,7 +312,7 @@ class KanidmClient:
         self,
         username: Optional[str] = None,
         password: Optional[str] = None,
-    ) -> AuthStepPasswordResponse:
+    ) -> AuthState:
         """authenticates with a username and password, returns the auth token"""
         if username is None and password is None:
             if self.config.username is None or self.config.password is None:
@@ -304,7 +346,7 @@ class KanidmClient:
         self,
         sessionid: str,
         password: Optional[str] = None,
-    ) -> AuthStepPasswordResponse:
+    ) -> AuthState:
         """does the password auth step"""
 
         if password is None:
@@ -315,16 +357,14 @@ class KanidmClient:
             )
 
         cred_auth = {"step": {"cred": {"password": password}}}
-        response = await self.call_post(
-            path="/v1/auth", json=cred_auth, headers=self.session_header(sessionid)
-        )
+        response = await self.call_post(path="/v1/auth", json=cred_auth)
 
         if response.status_code != 200:
             # TODO: write test coverage auth_step_password raises AuthCredFailed
             logging.debug("Failed to authenticate, response: %s", response.content)
             raise AuthCredFailed("Failed password authentication!")
 
-        result = AuthStepPasswordResponse.model_validate(response.data)
+        result = AuthState.model_validate(response.data)
         result.response = response
 
         # pull the token out and set it
@@ -341,9 +381,10 @@ class KanidmClient:
         """create a headers dict from a session id"""
         # TODO: perhaps allow session_header to take a dict and update it, too?
         return {
-            "X-KANIDM-AUTH-SESSION-ID": sessionid,
+            "authorization": f"bearer {sessionid}",
         }
 
+    # TODO: write tests for get_groups
     async def get_radius_token(self, username: str) -> ClientResponse:
         """does the call to the radius token endpoint"""
         path = f"/v1/account/{username}/_radius/_token"
@@ -353,3 +394,28 @@ class KanidmClient:
                 f"No user found: '{username}' {response.headers['x-kanidm-opid']}"
             )
         return response
+
+    # TODO: write tests for get_groups
+    async def get_groups(self) -> List[GroupInfo]:
+        """does the call to the group endpoint"""
+        path = f"/v1/group"
+        response = await self.call_get(path)
+        if response.content is None:
+            return []
+        grouplist = GroupList.model_validate(json_lib.loads(response.content))
+        return [group.as_nice_object() for group in grouplist.root]
+
+    async def auth_as_anonymous(self) -> None:
+        """authenticate as the anonymous user"""
+
+        init = await self.auth_init("anonymous", update_internal_auth_token=True)
+        await self.auth_begin(
+            method=init.state.choose[0], update_internal_auth_token=True
+        )
+        logging.debug(
+            "\n\n#######\n\nauth_begin completed, moving onto cred step\n\n#######\n\n"
+        )
+        cred_auth = {"step": {"cred": "anonymous"}}
+        response = await self.call_post(path="/v1/auth", json=cred_auth)
+        state = AuthState.model_validate(response.data)
+        self.config.auth_token = state.state.success

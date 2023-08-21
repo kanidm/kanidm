@@ -10,7 +10,7 @@ import sys
 from typing import Any, Dict, Optional, Union
 
 from kanidm.exceptions import NoMatchingEntries
-from kanidm.types import AuthStepPasswordResponse, RadiusTokenResponse
+from kanidm.types import AuthState, RadiusTokenResponse
 
 from .. import KanidmClient
 from . import radiusd
@@ -174,7 +174,7 @@ def authorize(
 def authenticate(
     acct: str,
     password: str,
-) -> Union[int, AuthStepPasswordResponse]:
+) -> Union[int, AuthState]:
     """authenticate the RADIUS service account to Kanidm"""
     kanidm_client = KanidmClient(config_file=os.environ["KANIDM_CONFIG_FILE"])
     logging.error("authenticate - %s:%s", acct, password)
