@@ -3,8 +3,8 @@ use std::collections::HashSet;
 
 use kanidm_client::KanidmClient;
 use kanidm_proto::constants::{
-    APPLICATION_JSON, ATTR_ACP_RECEIVER_GROUP, ATTR_ACP_TARGET_SCOPE, ATTR_DESCRIPTION, ATTR_NAME,
-    ATTR_SSH_PUBLICKEY,
+    APPLICATION_JSON, ATTR_ACP_RECEIVER_GROUP, ATTR_ACP_TARGET_SCOPE, ATTR_DESCRIPTION,
+    ATTR_LDAP_SSH_PUBLICKEY, ATTR_NAME,
 };
 use kanidmd_testkit::*;
 use reqwest::header::CONTENT_TYPE;
@@ -18,7 +18,7 @@ static USER_READABLE_ATTRS: [&str; 9] = [
     "uuid",
     "gidnumber",
     "loginshell",
-    ATTR_SSH_PUBLICKEY,
+    ATTR_LDAP_SSH_PUBLICKEY,
 ];
 static SELF_WRITEABLE_ATTRS: [&str; 7] = [
     "name",
@@ -26,7 +26,7 @@ static SELF_WRITEABLE_ATTRS: [&str; 7] = [
     "legalname",
     "radius_secret",
     "primary_credential",
-    ATTR_SSH_PUBLICKEY,
+    ATTR_LDAP_SSH_PUBLICKEY,
     "unix_password",
 ];
 static DEFAULT_HP_GROUP_NAMES: [&str; 24] = [
@@ -115,7 +115,7 @@ async fn test_default_entries_rbac_account_managers(rsclient: KanidmClient) {
         "name",
         "displayname",
         "primary_credential",
-        ATTR_SSH_PUBLICKEY,
+        ATTR_LDAP_SSH_PUBLICKEY,
         "mail",
     ];
     test_write_attrs(
@@ -314,7 +314,7 @@ async fn test_default_entries_rbac_admins_schema_entries(rsclient: KanidmClient)
         "displayname",
         "legalname",
         "mail",
-        ATTR_SSH_PUBLICKEY,
+        ATTR_LDAP_SSH_PUBLICKEY,
         "primary_credential",
         "radius_secret",
         "domain_name",

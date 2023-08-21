@@ -15,7 +15,7 @@ use webauthn_rs_proto::{
     RequestChallengeResponse,
 };
 
-use crate::constants::{ATTR_GROUP, ATTR_SSH_PUBLICKEY};
+use crate::constants::{ATTR_GROUP, ATTR_LDAP_SSH_PUBLICKEY};
 
 // These proto implementations are here because they have public definitions
 
@@ -599,7 +599,7 @@ impl fmt::Display for UnixUserToken {
         }
         self.sshkeys
             .iter()
-            .try_for_each(|s| writeln!(f, "{}: {}", ATTR_SSH_PUBLICKEY, s))?;
+            .try_for_each(|s| writeln!(f, "{}: {}", ATTR_LDAP_SSH_PUBLICKEY, s))?;
         self.groups
             .iter()
             .try_for_each(|g| writeln!(f, "{}: {}", ATTR_GROUP, g))

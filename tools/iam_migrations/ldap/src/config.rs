@@ -35,7 +35,7 @@ fn person_attr_mail() -> String {
 }
 
 fn person_attr_ssh_public_key() -> String {
-    "sshpublickey".to_string()
+    ATTR_LDAP_SSH_PUBLICKEY.to_string()
 }
 
 fn group_objectclass() -> String {
