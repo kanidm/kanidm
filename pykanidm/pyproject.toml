@@ -10,7 +10,7 @@ readme = "README.md"
 repository = "https://github.com/kanidm/kanidm"
 homepage = "https://kanidm.com/"
 
-packages = [{ include = "kanidm" }, { include = "tests" }]
+packages = [{ include = "kanidm" }]
 
 keywords = ["kanidm", "idm", "api"]
 classifiers = [
