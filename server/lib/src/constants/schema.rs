@@ -605,7 +605,7 @@ pub static ref SCHEMA_CLASS_ACCOUNT: SchemaClass = SchemaClass {
         Attribute::PassKeys.into(),
         Attribute::DeviceKeys.into(),
         Attribute::CredentialUpdateIntentToken.into(),
-        Attribute::SshUnderscorePublicKey.into(),
+        Attribute::SshPublicKey.into(),
         Attribute::RadiusSecret.into(),
         Attribute::AccountExpire.into(),
         Attribute::AccountValidFrom.into(),

@@ -31,11 +31,11 @@ fn person_attr_login_shell() -> String {
 }
 
 fn person_attr_mail() -> String {
-    "mail".to_string()
+    Attribute::Mail.to_string()
 }
 
 fn person_attr_ssh_public_key() -> String {
-    ATTR_LDAP_SSH_PUBLICKEY.to_string()
+    Attribute::LdapSshPublicKey.to_string()
 }
 
 fn group_objectclass() -> String {

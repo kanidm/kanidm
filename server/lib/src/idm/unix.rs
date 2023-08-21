@@ -81,7 +81,7 @@ macro_rules! try_from_entry {
             .map(|s| s.to_string());
 
         let sshkeys = $value
-            .get_ava_iter_sshpubkeys(ATTR_SSH_PUBLICKEY)
+            .get_ava_iter_sshpubkeys(ATTR_LDAP_SSH_PUBLICKEY)
             .map(|i| i.map(|s| s.to_string()).collect())
             .unwrap_or_else(Vec::new);
 
