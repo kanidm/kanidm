@@ -64,6 +64,16 @@ lazy_static::lazy_static! {
     };
 }
 
+#[test]
+fn totp_regex_test() {
+    assert!(VALIDATE_TOTP_RE.is_match("123456"));
+    assert!(VALIDATE_TOTP_RE.is_match("12345"));
+    assert!(!VALIDATE_TOTP_RE.is_match("1234567"));
+    assert!(!VALIDATE_TOTP_RE.is_match("1234"));
+    assert!(!VALIDATE_TOTP_RE.is_match("12345a"));
+    assert!(!VALIDATE_TOTP_RE.is_match("def not a totp"));
+}
+
 #[derive(Clone)]
 pub struct IdentityVerificationApp {
     other_id: String,
