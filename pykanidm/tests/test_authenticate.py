@@ -87,6 +87,17 @@ async def test_authenticate_flow(client_configfile: KanidmClient) -> None:
 
 @pytest.mark.network
 @pytest.mark.asyncio
+async def test_authenticate_anonymous(client_configfile: KanidmClient) -> None:
+    """tests the authenticate() flow"""
+
+    client_configfile.config.auth_token = None
+    print(f"Doing client.authenticate for {client_configfile.config.username}")
+    await client_configfile.auth_as_anonymous()
+    assert client_configfile.config.auth_token is not None
+
+
+@pytest.mark.network
+@pytest.mark.asyncio
 async def test_authenticate_flow_fail(client_configfile: KanidmClient) -> None:
     """tests the authenticate() flow with a valid (hopefully) username and invalid password"""
     if not bool(os.getenv("RUN_SCARY_TESTS", None)):
