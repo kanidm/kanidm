@@ -480,7 +480,6 @@ pub enum EntryClass {
     System,
     SystemInfo,
     SystemConfig,
-    SourceUuid,
     #[cfg(any(test, debug_assertions))]
     TestClass,
 }
@@ -514,7 +513,6 @@ impl From<EntryClass> for &'static str {
             EntryClass::Recycled => "recycled",
             EntryClass::Service => "service",
             EntryClass::ServiceAccount => "service_account",
-            EntryClass::SourceUuid => CLASS_SOURCEUUID,
             EntryClass::SyncAccount => "sync_account",
             EntryClass::SyncObject => "sync_object",
             EntryClass::System => "system",

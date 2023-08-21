@@ -120,11 +120,10 @@ pub const ATTR_USERPASSWORD: &str = "userpassword";
 pub const ATTR_UUID: &str = "uuid";
 pub const ATTR_VERSION: &str = "version";
 
+// TODO: rust can't deal with this being compiled out, don't try and #[cfg()] them
 pub const TEST_ATTR_NON_EXIST: &str = "non-exist";
 pub const TEST_ATTR_TEST_ATTR: &str = "testattr";
 pub const TEST_ATTR_EXTRA: &str = "extra";
-
-pub const CLASS_SOURCEUUID: &str = "source_uuid";
 
 pub const OAUTH2_SCOPE_EMAIL: &str = ATTR_EMAIL;
 pub const OAUTH2_SCOPE_GROUPS: &str = "groups";
@@ -132,18 +131,17 @@ pub const OAUTH2_SCOPE_OPENID: &str = "openid";
 pub const OAUTH2_SCOPE_READ: &str = "read";
 pub const OAUTH2_SCOPE_SUPPLEMENT: &str = "supplement";
 
-pub const LDAP_ATTR_OU: &str = "ou";
 pub const LDAP_ATTR_CN: &str = "cn";
-pub const LDAP_ATTR_OBJECT_CLASS: &str = "objectClass";
-pub const LDAP_ENTRYDN: &str = "entrydn";
-pub const LDAP_MAIL: &str = "mail";
-pub const LDAP_MEMBER: &str = "member";
-pub const LDAP_NAME: &str = "name";
-pub const LDAP_KEYS: &str = "keys";
-
-pub const LDAP_GROUPS: &str = "groups";
-pub const LDAP_MAIL_PRIMARY: &str = "mail;primary";
-pub const LDAP_MAIL_ALTERNATIVE: &str = "mail;alternative";
-pub const LDAP_EMAIL_PRIMARY: &str = "emailprimary";
-pub const LDAP_EMAIL_ALTERNATIVE: &str = "emailalternative";
-pub const LDAP_ENTRYUUID: &str = "entryuuid";
+pub const LDAP_ATTR_EMAIL_ALTERNATIVE: &str = "emailalternative";
+pub const LDAP_ATTR_EMAIL_PRIMARY: &str = "emailprimary";
+pub const LDAP_ATTR_ENTRYDN: &str = "entrydn";
+pub const LDAP_ATTR_ENTRYUUID: &str = "entryuuid";
+pub const LDAP_ATTR_GROUPS: &str = "groups";
+pub const LDAP_ATTR_KEYS: &str = "keys";
+pub const LDAP_ATTR_MAIL_ALTERNATIVE: &str = "mail;alternative";
+pub const LDAP_ATTR_MAIL_PRIMARY: &str = "mail;primary";
+pub const LDAP_ATTR_MAIL: &str = "mail";
+pub const LDAP_ATTR_MEMBER: &str = "member";
+pub const LDAP_ATTR_NAME: &str = "name";
+pub const LDAP_ATTR_OBJECTCLASS: &str = "objectClass";
+pub const LDAP_ATTR_OU: &str = "ou";
