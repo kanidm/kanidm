@@ -48,7 +48,11 @@ RUN \
     cargo build -p kanidm-ipa-sync ${KANIDM_BUILD_OPTIONS} \
         --target-dir="/usr/src/kanidm/target/" \
         --features="${KANIDM_FEATURES}" \
-        --release  && \
+        --release && \
+    cargo build -p kanidm-ldap-sync ${KANIDM_BUILD_OPTIONS} \
+        --target-dir="/usr/src/kanidm/target/" \
+        --features="${KANIDM_FEATURES}" \
+        --release && \
     sccache -s
 
 # == Construct the tools container
@@ -60,18 +64,16 @@ RUN \
     --mount=type=cache,id=zypp,target=/var/cache/zypp \
     zypper install -y \
         timezone \
-        busybox-adduser \
         openssl-3
 
 COPY --from=builder /usr/src/kanidm/target/release/kanidm /sbin/
 COPY --from=builder /usr/src/kanidm/target/release/kanidm-ipa-sync /sbin/
+COPY --from=builder /usr/src/kanidm/target/release/kanidm-ldap-sync /sbin/
 RUN chmod +x /sbin/kanidm
 RUN chmod +x /sbin/kanidm-ipa-sync
+RUN chmod +x /sbin/kanidm-ldap-sync
 
-RUN adduser -D -H kanidm && \
-    mkdir /etc/kanidm && \
+RUN mkdir /etc/kanidm && \
     touch /etc/kanidm/config
-
-USER kanidm
 
 CMD [ "/sbin/kanidm", "-h" ]

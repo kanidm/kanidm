@@ -52,7 +52,11 @@ RUN mkdir -p /pkg/pykanidm/
 COPY pykanidm/ /pkg/pykanidm/
 
 # install the package and its dependencies
-RUN python3 -m pip install --no-cache-dir --no-warn-script-location /pkg/pykanidm
+RUN python3 -m pip install \
+    --break-system-packages \
+    --no-cache-dir \
+    --no-warn-script-location \
+    /pkg/pykanidm
 
 COPY rlm_python/radius_entrypoint.py /radius_entrypoint.py
 
