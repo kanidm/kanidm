@@ -1,12 +1,13 @@
 ARG BASE_IMAGE=opensuse/tumbleweed:latest
-FROM ${BASE_IMAGE} AS repos
+ARG RADIUS_USER=radiusd
+FROM ${BASE_IMAGE}
+
+EXPOSE 1812 1813
+ENV KANIDM_CONFIG_FILE="/data/kanidm"
+
 ADD ../scripts/zypper_fixing.sh /zypper_fixing.sh
 RUN --mount=type=cache,id=zypp,target=/var/cache/zypp /zypper_fixing.sh
 
-# ======================
-FROM repos
-EXPOSE 1812 1813
-ARG RADIUS_USER=radiusd
 
 RUN \
     --mount=type=cache,id=zypp,target=/var/cache/zypp \
@@ -60,7 +61,6 @@ RUN python3 -m pip install \
 
 COPY rlm_python/radius_entrypoint.py /radius_entrypoint.py
 
-ENV KANIDM_CONFIG_FILE="/data/kanidm"
 
 RUN chmod a+r /etc/raddb/certs/ -R
 USER $RADIUS_USER
