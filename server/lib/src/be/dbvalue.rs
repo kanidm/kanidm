@@ -7,9 +7,7 @@ use serde_with::skip_serializing_none;
 use url::Url;
 use uuid::Uuid;
 use webauthn_rs::prelude::{
-    AttestedPasskey as DeviceKeyV4,
-    Passkey as PasskeyV4,
-    SecurityKey as SecurityKeyV4,
+    AttestedPasskey as DeviceKeyV4, Passkey as PasskeyV4, SecurityKey as SecurityKeyV4,
 };
 use webauthn_rs_core::proto::{COSEKey, UserVerificationPolicy};
 

@@ -134,7 +134,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
             session,
             session_cred_id,
             issue,
-            &self.webauthn,
+            self.webauthn,
             ct,
             source,
         );

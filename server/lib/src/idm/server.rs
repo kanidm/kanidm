@@ -86,7 +86,7 @@ pub struct IdmServer {
     async_tx: Sender<DelayedAction>,
     audit_tx: Sender<AuditEvent>,
     /// [Webauthn] verifier/config
-    webauthn: Arc<CowCell<Webauthn>>,
+    webauthn: Webauthn,
     pw_badlist_cache: Arc<CowCell<HashSet<String>>>,
     oauth2rs: Arc<Oauth2ResourceServers>,
     domain_keys: Arc<CowCell<DomainKeys>>,
@@ -104,7 +104,7 @@ pub struct IdmServerAuthTransaction<'a> {
     // For flagging eventual actions.
     pub(crate) async_tx: Sender<DelayedAction>,
     pub(crate) audit_tx: Sender<AuditEvent>,
-    pub(crate) webauthn: CowCellReadTxn<Webauthn>,
+    pub(crate) webauthn: &'a Webauthn,
     pub(crate) pw_badlist_cache: CowCellReadTxn<HashSet<String>>,
     pub(crate) domain_keys: CowCellReadTxn<DomainKeys>,
 }
@@ -112,7 +112,7 @@ pub struct IdmServerAuthTransaction<'a> {
 pub struct IdmServerCredUpdateTransaction<'a> {
     pub(crate) _qs_read: QueryServerReadTransaction<'a>,
     // sid: Sid,
-    pub(crate) webauthn: CowCellReadTxn<Webauthn>,
+    pub(crate) webauthn: &'a Webauthn,
     pub(crate) pw_badlist_cache: CowCellReadTxn<HashSet<String>>,
     pub(crate) cred_update_sessions: BptreeMapReadTxn<'a, Uuid, CredentialUpdateSessionMutex>,
     pub(crate) domain_keys: CowCellReadTxn<DomainKeys>,
@@ -134,7 +134,7 @@ pub struct IdmServerProxyWriteTransaction<'a> {
     pub(crate) cred_update_sessions: BptreeMapWriteTxn<'a, Uuid, CredentialUpdateSessionMutex>,
     pub(crate) sid: Sid,
     crypto_policy: &'a CryptoPolicy,
-    webauthn: CowCellWriteTxn<'a, Webauthn>,
+    webauthn: &'a Webauthn,
     pw_badlist_cache: CowCellWriteTxn<'a, HashSet<String>>,
     pub(crate) domain_keys: CowCellWriteTxn<'a, DomainKeys>,
     pub(crate) oauth2rs: Oauth2ResourceServersWriteTransaction<'a>,
@@ -213,8 +213,6 @@ impl IdmServer {
                 OperationError::InvalidState
             })?;
 
-        let webauthn = Arc::new(CowCell::new(webauthn));
-
         // Setup our auth token signing key.
         let token_enc_key = Fernet::new(&fernet_private_key).ok_or_else(|| {
             admin_error!("Unable to load Fernet encryption key");
@@ -284,7 +282,7 @@ impl IdmServer {
             sid,
             async_tx: self.async_tx.clone(),
             audit_tx: self.audit_tx.clone(),
-            webauthn: self.webauthn.read(),
+            webauthn: &self.webauthn,
             pw_badlist_cache: self.pw_badlist_cache.read(),
             domain_keys: self.domain_keys.read(),
         }
@@ -314,7 +312,7 @@ impl IdmServer {
             qs_write,
             sid,
             crypto_policy: &self.crypto_policy,
-            webauthn: self.webauthn.write(),
+            webauthn: &self.webauthn,
             pw_badlist_cache: self.pw_badlist_cache.write(),
             domain_keys: self.domain_keys.write(),
             oauth2rs: self.oauth2rs.write(),
@@ -325,7 +323,7 @@ impl IdmServer {
         IdmServerCredUpdateTransaction {
             _qs_read: self.qs.read().await,
             // sid: Sid,
-            webauthn: self.webauthn.read(),
+            webauthn: &self.webauthn,
             pw_badlist_cache: self.pw_badlist_cache.read(),
             cred_update_sessions: self.cred_update_sessions.read(),
             domain_keys: self.domain_keys.read(),
@@ -1005,7 +1003,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
                         });
 
                 let (auth_session, state) =
-                    AuthSession::new(account, init.issue, &self.webauthn, ct, source);
+                    AuthSession::new(account, init.issue, self.webauthn, ct, source);
 
                 match auth_session {
                     Some(auth_session) => {
@@ -1129,7 +1127,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
                             ct,
                             &self.async_tx,
                             &self.audit_tx,
-                            &self.webauthn,
+                            self.webauthn,
                             pw_badlist_cache,
                             &self.domain_keys.uat_jwt_signer,
                         )
@@ -2029,6 +2027,11 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 })?;
             // If the domain name has changed, we need to update rp-id in
             // webauthn rs
+            //
+            // TODO: I'm not sure actually. because on a domain rename we
+            // might need to update origin too. So this gets a bit tricky.
+            // we might actually need to *not* reload here, and then let the
+            // admin do it inline with their configs too.
         }
         // Commit everything.
         self.oauth2rs.commit();

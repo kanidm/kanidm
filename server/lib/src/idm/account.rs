@@ -7,7 +7,7 @@ use kanidm_proto::v1::{
 use time::OffsetDateTime;
 use uuid::Uuid;
 use webauthn_rs::prelude::{
-    AuthenticationResult, CredentialID, AttestedPasskey as DeviceKeyV4, Passkey as PasskeyV4,
+    AttestedPasskey as DeviceKeyV4, AuthenticationResult, CredentialID, Passkey as PasskeyV4,
 };
 
 use crate::constants::UUID_ANONYMOUS;

@@ -12,8 +12,8 @@ use kanidm_proto::v1::{
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 use webauthn_rs::prelude::{
-    CreationChallengeResponse, AttestedPasskey as DeviceKeyV4, Passkey as PasskeyV4, PasskeyRegistration,
-    RegisterPublicKeyCredential,
+    AttestedPasskey as DeviceKeyV4, CreationChallengeResponse, Passkey as PasskeyV4,
+    PasskeyRegistration, RegisterPublicKeyCredential,
 };
 
 use crate::credential::totp::{Totp, TOTP_DEFAULT_STEP};

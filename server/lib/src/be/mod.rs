@@ -1491,11 +1491,10 @@ impl<'a> BackendWriteTransaction<'a> {
                         match self.idlayer.get_idl(attr, itype, &idx_key)? {
                             Some(mut idl) => {
                                 idl.insert_id(e_id);
-                                if cfg!(debug_assertions) {
-                                    if attr == "uuid" && itype == IndexType::Equality {
+                                if cfg!(debug_assertions)
+                                    && attr == "uuid" && itype == IndexType::Equality {
                                         trace!("{:?}", idl);
                                         debug_assert!(idl.len() <= 1);
-                                    }
                                 }
                                 self.idlayer.write_idl(attr, itype, &idx_key, &idl)
                             }
@@ -1513,11 +1512,9 @@ impl<'a> BackendWriteTransaction<'a> {
                         match self.idlayer.get_idl(attr, itype, &idx_key)? {
                             Some(mut idl) => {
                                 idl.remove_id(e_id);
-                                if cfg!(debug_assertions) {
-                                    if attr == "uuid" && itype == IndexType::Equality {
+                                if cfg!(debug_assertions) && attr == "uuid" && itype == IndexType::Equality {
                                         trace!("{:?}", idl);
                                         debug_assert!(idl.len() <= 1);
-                                    }
                                 }
                                 self.idlayer.write_idl(attr, itype, &idx_key, &idl)
                             }
