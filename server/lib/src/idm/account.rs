@@ -219,6 +219,7 @@ impl Account {
         session_id: Uuid,
         scope: SessionScope,
         ct: Duration,
+        auth_session_expiry: u32,
     ) -> Option<UserAuthToken> {
         // TODO: Apply policy to this expiry time.
         // We have to remove the nanoseconds because when we transmit this / serialise it we drop
@@ -226,9 +227,8 @@ impl Account {
         // ns value which breaks some checks.
         let ct = ct - Duration::from_nanos(ct.subsec_nanos() as u64);
         let issued_at = OffsetDateTime::UNIX_EPOCH + ct;
-
         let expiry =
-            Some(OffsetDateTime::UNIX_EPOCH + ct + Duration::from_secs(AUTH_SESSION_EXPIRY));
+            Some(OffsetDateTime::UNIX_EPOCH + ct + Duration::from_secs(auth_session_expiry as u64));
 
         let (purpose, expiry) = match scope {
             // Issue an invalid/expired session.
@@ -279,6 +279,7 @@ impl Account {
         session_expiry: Option<OffsetDateTime>,
         scope: SessionScope,
         ct: Duration,
+        auth_privilege_expiry: u32,
     ) -> Option<UserAuthToken> {
         let issued_at = OffsetDateTime::UNIX_EPOCH + ct;
 
@@ -294,7 +295,9 @@ impl Account {
             // Return a ReadWrite session with an inner expiry for the privileges
             {
                 let expiry = Some(
-                    OffsetDateTime::UNIX_EPOCH + ct + Duration::from_secs(AUTH_PRIVILEGE_EXPIRY),
+                    OffsetDateTime::UNIX_EPOCH
+                        + ct
+                        + Duration::from_secs(auth_privilege_expiry.into()),
                 );
                 (
                     UatPurpose::ReadWrite { expiry },
@@ -327,6 +330,7 @@ impl Account {
         expire: Option<&OffsetDateTime>,
     ) -> bool {
         let cot = OffsetDateTime::UNIX_EPOCH + ct;
+        trace!("Checking within valid time: {:?} {:?}", valid_from, expire);
 
         let vmin = if let Some(vft) = valid_from {
             // If current time greater than start time window
@@ -539,7 +543,7 @@ impl Account {
     ) -> bool {
         // Remember, token expiry is checked by validate_and_parse_token_to_token.
         // If we wanted we could check other properties of the uat here?
-        // Alternatelly, we could always store LESS in the uat because of this?
+        // Alternatively, we could always store LESS in the uat because of this?
 
         let within_valid_window = Account::check_within_valid_time(
             ct,
@@ -554,6 +558,7 @@ impl Account {
 
         // Anonymous does NOT record it's sessions, so we simply check the expiry time
         // of the token. This is already done for us as noted above.
+        trace!("{}", &uat);
 
         if uat.uuid == UUID_ANONYMOUS {
             security_debug!("Anonymous sessions do not have session records, session is valid.");
@@ -845,7 +850,12 @@ mod tests {
             .expect("account must exist");
         let session_id = uuid::Uuid::new_v4();
         let uat = account
-            .to_userauthtoken(session_id, SessionScope::ReadWrite, ct)
+            .to_userauthtoken(
+                session_id,
+                SessionScope::ReadWrite,
+                ct,
+                DEFAULT_AUTH_SESSION_EXPIRY,
+            )
             .expect("Unable to create uat");
 
         // Check the ui hints are as expected.
@@ -871,7 +881,12 @@ mod tests {
             .expect("account must exist");
         let session_id = uuid::Uuid::new_v4();
         let uat = account
-            .to_userauthtoken(session_id, SessionScope::ReadWrite, ct)
+            .to_userauthtoken(
+                session_id,
+                SessionScope::ReadWrite,
+                ct,
+                DEFAULT_AUTH_PRIVILEGE_EXPIRY,
+            )
             .expect("Unable to create uat");
 
         assert!(uat.ui_hints.len() == 2);
@@ -902,7 +917,12 @@ mod tests {
             .expect("account must exist");
         let session_id = uuid::Uuid::new_v4();
         let uat = account
-            .to_userauthtoken(session_id, SessionScope::ReadWrite, ct)
+            .to_userauthtoken(
+                session_id,
+                SessionScope::ReadWrite,
+                ct,
+                DEFAULT_AUTH_SESSION_EXPIRY,
+            )
             .expect("Unable to create uat");
 
         assert!(uat.ui_hints.len() == 3);

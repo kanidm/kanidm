@@ -31,6 +31,7 @@ pub mod raw;
 pub mod recycle;
 pub mod serviceaccount;
 pub mod session;
+pub mod session_expiry;
 pub mod synch;
 mod webauthn;
 
@@ -72,6 +73,8 @@ impl SystemOpt {
             SystemOpt::Oauth2 { commands } => commands.debug(),
             SystemOpt::Domain { commands } => commands.debug(),
             SystemOpt::Synch { commands } => commands.debug(),
+            SystemOpt::AuthSessionExpiry { commands } => commands.debug(),
+            SystemOpt::PrivilegedSessionExpiry { commands } => commands.debug(),
         }
     }
 
@@ -81,6 +84,8 @@ impl SystemOpt {
             SystemOpt::Oauth2 { commands } => commands.exec().await,
             SystemOpt::Domain { commands } => commands.exec().await,
             SystemOpt::Synch { commands } => commands.exec().await,
+            SystemOpt::AuthSessionExpiry { commands } => commands.exec().await,
+            SystemOpt::PrivilegedSessionExpiry { commands } => commands.exec().await,
         }
     }
 }

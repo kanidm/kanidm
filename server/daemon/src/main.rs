@@ -341,7 +341,6 @@ async fn main() -> ExitCode {
             config.update_output_mode(opt.commands.commonopt().output_mode.to_owned().into());
             config.update_trust_x_forward_for(sconfig.trust_x_forward_for);
             config.update_admin_bind_path(&sconfig.adminbindpath);
-
             match &opt.commands  {
                 // we aren't going to touch the DB so we can carry on
                 KanidmdOpt::HealthCheck(_) => (),

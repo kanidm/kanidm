@@ -23,4 +23,40 @@ impl KanidmClient {
         self.perform_delete_request_with_body("/v1/system/_attr/badlist_password", list)
             .await
     }
+
+    pub async fn system_authsession_expiry_get(&self) -> Result<u32, ClientError> {
+        let list: Option<[String; 1]> = self
+            .perform_get_request("/v1/system/_attr/authsession_expiry")
+            .await?;
+        list.ok_or(ClientError::EmptyResponse).and_then(|s| {
+            s[0].parse::<u32>()
+                .map_err(|err| ClientError::InvalidResponseFormat(err.to_string()))
+        })
+    }
+
+    pub async fn system_authsession_expiry_set(&self, expiry: u32) -> Result<(), ClientError> {
+        self.perform_put_request(
+            "/v1/system/_attr/authsession_expiry",
+            vec![expiry.to_string()],
+        )
+        .await
+    }
+
+    pub async fn system_auth_privilege_expiry_get(&self) -> Result<u32, ClientError> {
+        let list: Option<[String; 1]> = self
+            .perform_get_request("/v1/system/_attr/privilege_expiry")
+            .await?;
+        list.ok_or(ClientError::EmptyResponse).and_then(|s| {
+            s[0].parse::<u32>()
+                .map_err(|err| ClientError::InvalidResponseFormat(err.to_string()))
+        })
+    }
+
+    pub async fn system_auth_privilege_expiry_set(&self, expiry: u32) -> Result<(), ClientError> {
+        self.perform_put_request(
+            "/v1/system/_attr/privilege_expiry",
+            vec![expiry.to_string()],
+        )
+        .await
+    }
 }

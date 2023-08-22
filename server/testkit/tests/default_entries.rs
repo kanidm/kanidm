@@ -323,6 +323,8 @@ async fn test_default_entries_rbac_admins_schema_entries(rsclient: KanidmClient)
         "domain_ssid",
         "gidnumber",
         "badlist_password",
+        "authsession_expiry",
+        "privilege_expiry",
         "loginshell",
         "unix_password",
         "nsuniqueid",

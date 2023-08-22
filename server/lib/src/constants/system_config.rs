@@ -2,6 +2,7 @@ use crate::constants::uuids::*;
 
 use crate::entry::{Entry, EntryInit, EntryInitNew, EntryNew};
 use crate::prelude::{Attribute, EntryClass};
+use crate::prelude::{DEFAULT_AUTH_PRIVILEGE_EXPIRY, DEFAULT_AUTH_SESSION_EXPIRY};
 use crate::value::Value;
 
 // Default entries for system_config
@@ -29,6 +30,14 @@ lazy_static! {
             Value::new_iutf8(
                 "demo_badlist_shohfie3aeci2oobur0aru9uushah6EiPi2woh4hohngoighaiRuepieN3ongoo1"
             )
+        ),
+        (
+            Attribute::AuthSessionExpiry.as_ref(),
+            Value::Uint32(DEFAULT_AUTH_SESSION_EXPIRY)
+        ),
+        (
+            Attribute::PrivilegeExpiry.as_ref(),
+            Value::Uint32(DEFAULT_AUTH_PRIVILEGE_EXPIRY)
         ),
         (
             Attribute::BadlistPassword.as_ref(),

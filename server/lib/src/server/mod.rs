@@ -820,6 +820,36 @@ pub trait QueryServerTransaction<'a> {
             })
     }
 
+    fn get_authsession_expiry(&mut self) -> Result<u32, OperationError> {
+        self.internal_search_uuid(UUID_SYSTEM_CONFIG)
+            .and_then(|e| {
+                if let Some(expiry_time) = e.get_ava_single_uint32("authsession_expiry") {
+                    Ok(expiry_time)
+                } else {
+                    Err(OperationError::NoMatchingAttributes)
+                }
+            })
+            .map_err(|e| {
+                admin_error!(?e, "Failed to retrieve authsession_expiry from system configuration");
+                e
+            })
+    }
+
+    fn get_privilege_expiry(&mut self) -> Result<u32, OperationError> {
+        self.internal_search_uuid(UUID_SYSTEM_CONFIG)
+            .and_then(|e| {
+                if let Some(expiry_time) = e.get_ava_single_uint32("privilege_expiry") {
+                    Ok(expiry_time)
+                } else {
+                    Err(OperationError::NoMatchingAttributes)
+                }
+            })
+            .map_err(|e| {
+                admin_error!(?e, "Failed to retrieve privilege_expiry from system configuration");
+                e
+            })
+    }
+
     fn get_oauth2rs_set(&mut self) -> Result<Vec<Arc<EntrySealedCommitted>>, OperationError> {
         self.internal_search(filter!(f_eq(
             Attribute::Class,

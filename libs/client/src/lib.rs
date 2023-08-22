@@ -61,6 +61,7 @@ pub enum ClientError {
     TotpVerifyFailed(Uuid, TotpSecret),
     TotpInvalidSha1(Uuid),
     JsonDecode(reqwest::Error, String),
+    InvalidResponseFormat(String),
     JsonEncode(SerdeJsonError),
     SystemError,
     ConfigParseIssue(String),
