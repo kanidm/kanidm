@@ -187,10 +187,16 @@ wasm-bindgen-test = "0.3.35"
 # webauthn-rs = "0.4.8"
 # webauthn-rs-core = "0.4.8"
 # webauthn-rs-proto = "0.4.8"
-webauthn-authenticator-rs = { path = "../webauthn-rs/webauthn-authenticator-rs", features = ["softpasskey", "softtoken", "mozilla"] }
-webauthn-rs = { path = "../webauthn-rs/webauthn-rs", features = ["preview-features"] }
-webauthn-rs-core = { path = "../webauthn-rs/webauthn-rs-core" }
-webauthn-rs-proto = { path = "../webauthn-rs/webauthn-rs-proto" }
+# webauthn-authenticator-rs = { path = "../webauthn-rs/webauthn-authenticator-rs", features = ["softpasskey", "softtoken", "mozilla"] }
+# webauthn-rs = { path = "../webauthn-rs/webauthn-rs", features = ["preview-features"] }
+# webauthn-rs-core = { path = "../webauthn-rs/webauthn-rs-core" }
+# webauthn-rs-proto = { path = "../webauthn-rs/webauthn-rs-proto" }
+
+webauthn-authenticator-rs = { git = "https://github.com/kanidm/webauthn-rs.git", rev = "429662e34d6e760af8cff68760567c6b56dbb2d5", features = ["softpasskey", "softtoken", "mozilla"] }
+webauthn-rs = { git = "https://github.com/kanidm/webauthn-rs.git", rev = "429662e34d6e760af8cff68760567c6b56dbb2d5", features = ["preview-features"] }
+webauthn-rs-core = { git = "https://github.com/kanidm/webauthn-rs.git", rev = "429662e34d6e760af8cff68760567c6b56dbb2d5" }
+webauthn-rs-proto = { git = "https://github.com/kanidm/webauthn-rs.git", rev = "429662e34d6e760af8cff68760567c6b56dbb2d5" }
+
 web-sys = "^0.3.62"
 whoami = "^1.4.1"
 walkdir = "2"
