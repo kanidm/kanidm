@@ -1774,6 +1774,165 @@ async fn test_repl_increment_consumer_lagging_attributes(
 }
 
 // Test change of a domain name over incremental.
+#[qs_pair_test]
+async fn test_repl_increment_domain_rename(server_a: &QueryServer, server_b: &QueryServer) {
+    let ct = duration_from_epoch_now();
+
+    let mut server_a_txn = server_a.write(ct).await;
+    let mut server_b_txn = server_b.read().await;
+
+    assert!(repl_initialise(&mut server_b_txn, &mut server_a_txn)
+        .and_then(|_| server_a_txn.commit())
+        .is_ok());
+    drop(server_b_txn);
+
+    // Rename the domain. We do this on server_a.
+    let mut server_a_txn = server_a.write(ct).await;
+    assert!(server_a_txn
+        .danger_domain_rename("new.example.com")
+        .and_then(|_| server_a_txn.commit())
+        .is_ok());
+
+    // Add an entry to server_b. This should have it's spn regenerated after
+    // the domain rename is replicated.
+    // - satifies:
+    // Test domain rename where the reciever of the rename has added entries, and
+    // they need spn regen to stabilise.
+
+    let mut server_b_txn = server_b.write(duration_from_epoch_now()).await;
+    let t_uuid = Uuid::new_v4();
+    assert!(server_b_txn
+        .internal_create(vec![entry_init!(
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
+            (Attribute::Name.as_ref(), Value::new_iname("testperson1")),
+            (Attribute::Uuid.as_ref(), Value::Uuid(t_uuid)),
+            (
+                Attribute::Description.as_ref(),
+                Value::new_utf8s("testperson1")
+            ),
+            (
+                Attribute::DisplayName.as_ref(),
+                Value::new_utf8s("testperson1")
+            )
+        ),])
+        .is_ok());
+    server_b_txn.commit().expect("Failed to commit");
+
+    // Now replicate from a to b. This will be fun won't it.
+    // This means A -> B - no change on B, it's the persisting tombstone.
+    let mut server_a_txn = server_a.read().await;
+    let mut server_b_txn = server_b.write(duration_from_epoch_now()).await;
+
+    trace!("========================================");
+    repl_incremental(&mut server_a_txn, &mut server_b_txn);
+
+    let e1 = server_a_txn
+        .internal_search_all_uuid(UUID_DOMAIN_INFO)
+        .expect("Unable to access new entry.");
+    let e2 = server_b_txn
+        .internal_search_all_uuid(UUID_DOMAIN_INFO)
+        .expect("Unable to access entry.");
+
+    assert!(e1 == e2);
+
+    let e1_cs = e1.get_changestate();
+    let e2_cs = e2.get_changestate();
+    assert!(e1_cs == e2_cs);
+
+    // Check that an existing user was updated properly.
+    let e1 = server_a_txn
+        .internal_search_all_uuid(UUID_ADMIN)
+        .expect("Unable to access new entry.");
+    let e2 = server_b_txn
+        .internal_search_all_uuid(UUID_ADMIN)
+        .expect("Unable to access entry.");
+
+    let vx1 = e1.get_ava_single("spn").expect("spn not present");
+    let ex1 = Value::new_spn_str("admin", "new.example.com");
+    assert!(vx1 == ex1);
+
+    trace!(?e1);
+    trace!(?e2);
+    assert!(e1 == e2);
+
+    // Due to the domain rename, the spn regens on everything. This only occurs
+    // once per-replica, and is not unlimited.
+    let e1_cs = e1.get_changestate();
+    let e2_cs = e2.get_changestate();
+
+    trace!(?e1_cs);
+    trace!(?e2_cs);
+    assert!(e1_cs != e2_cs);
+
+    // Check that the user on server_b had it's spn regenerated too.
+    assert_eq!(
+        server_a_txn.internal_search_uuid(t_uuid),
+        Err(OperationError::NoMatchingEntries)
+    );
+
+    let e2 = server_b_txn
+        .internal_search_all_uuid(t_uuid)
+        .expect("Unable to access entry.");
+
+    let vx2 = e2.get_ava_single("spn").expect("spn not present");
+    let ex2 = Value::new_spn_str("testperson1", "new.example.com");
+    assert!(vx2 == ex2);
+
+    server_b_txn.commit().expect("Failed to commit");
+    drop(server_a_txn);
+
+    // Now we have to check a bunch of things are correct after the domain
+    // rename has completed. Generally this is that the spn is now correct and
+    // our other configs have reloaded.
+    //
+    // Possible to check the webauthn rp_id?
+
+    let mut server_a_txn = server_a.write(duration_from_epoch_now()).await;
+    let mut server_b_txn = server_b.read().await;
+
+    trace!("========================================");
+    //               from               to
+    repl_incremental(&mut server_b_txn, &mut server_a_txn);
+
+    // Check the admin is now in sync
+    let e1 = server_a_txn
+        .internal_search_all_uuid(UUID_ADMIN)
+        .expect("Unable to access new entry.");
+    let e2 = server_b_txn
+        .internal_search_all_uuid(UUID_ADMIN)
+        .expect("Unable to access entry.");
+
+    let vx1 = e1.get_ava_single("spn").expect("spn not present");
+    let ex1 = Value::new_spn_str("admin", "new.example.com");
+    assert!(vx1 == ex1);
+    assert!(e1 == e2);
+
+    let e1_cs = e1.get_changestate();
+    let e2_cs = e2.get_changestate();
+    assert!(e1_cs == e2_cs);
+
+    // Check the test person is back over and now in sync.
+    let e1 = server_a_txn
+        .internal_search_all_uuid(t_uuid)
+        .expect("Unable to access entry.");
+    let e2 = server_b_txn
+        .internal_search_all_uuid(t_uuid)
+        .expect("Unable to access entry.");
+
+    let vx2 = e2.get_ava_single("spn").expect("spn not present");
+    let ex2 = Value::new_spn_str("testperson1", "new.example.com");
+    assert!(vx2 == ex2);
+    assert!(e1 == e2);
+
+    let e1_cs = e1.get_changestate();
+    let e2_cs = e2.get_changestate();
+    assert!(e1_cs == e2_cs);
+
+    server_a_txn.commit().expect("Failed to commit");
+    drop(server_b_txn);
+}
 
 // Test schema addition / change over incremental.
 

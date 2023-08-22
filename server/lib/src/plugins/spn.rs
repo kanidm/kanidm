@@ -73,6 +73,14 @@ impl Plugin for Spn {
         Self::post_modify_inner(qs, pre_cand, cand)
     }
 
+    fn post_repl_incremental(
+        qs: &mut QueryServerWriteTransaction,
+        pre_cand: &[Arc<EntrySealedCommitted>],
+        cand: &[EntrySealedCommitted],
+    ) -> Result<(), OperationError> {
+        Self::post_modify_inner(qs, pre_cand, cand)
+    }
+
     #[instrument(level = "debug", name = "spn::verify", skip_all)]
     fn verify(qs: &mut QueryServerReadTransaction) -> Vec<Result<(), ConsistencyError>> {
         // Verify that all items with spn's have valid spns.
@@ -164,9 +172,7 @@ impl Spn {
         pre_cand: &[Arc<Entry<EntrySealed, EntryCommitted>>],
         cand: &[Entry<EntrySealed, EntryCommitted>],
     ) -> Result<(), OperationError> {
-        // On modify, if changing domain_name on UUID_DOMAIN_INFO
-        //    trigger the spn regen ... which is expensive. Future
-        // TODO #157: will be improvements to modify on large txns.
+        // On modify, if changing domain_name on UUID_DOMAIN_INFO trigger the spn regen
 
         let domain_name_changed = cand.iter().zip(pre_cand.iter()).find_map(|(post, pre)| {
             let domain_name = post.get_ava_single("domain_name");
@@ -182,6 +188,12 @@ impl Spn {
         let Some(domain_name) = domain_name_changed else {
             return Ok(())
         };
+
+        // IMPORTANT - we have to *pre-emptively reload the domain info here*
+        //
+        // If we don't, we don't get the updated domain name in the txn, and then
+        // spn rename fails as we recurse and just populate the old name.
+        qs.reload_domain_info()?;
 
         admin_info!(
             "IMPORTANT!!! Changing domain name to \"{:?}\". THIS MAY TAKE A LONG TIME ...",

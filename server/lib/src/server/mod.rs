@@ -114,7 +114,7 @@ pub struct QueryServerWriteTransaction<'a> {
     pub(crate) changed_acp: bool,
     pub(crate) changed_oauth2: bool,
     pub(crate) changed_domain: bool,
-    changed_sync_agreement: bool,
+    pub(crate) changed_sync_agreement: bool,
     // Store the list of changed uuids for other invalidation needs?
     pub(crate) changed_uuid: HashSet<Uuid>,
     _db_ticket: SemaphorePermit<'a>,

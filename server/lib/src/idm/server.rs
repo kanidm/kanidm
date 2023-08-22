@@ -2025,6 +2025,8 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 .map(|new_cookie_key| {
                     self.domain_keys.cookie_key = new_cookie_key;
                 })?;
+            // If the domain name has changed, we need to update rp-id in
+            // webauthn rs
         }
         // Commit everything.
         self.oauth2rs.commit();
