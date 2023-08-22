@@ -25,7 +25,7 @@ use sshkeys::PublicKey as SshPublicKey;
 use time::OffsetDateTime;
 use url::Url;
 use uuid::Uuid;
-use webauthn_rs::prelude::{DeviceKey as DeviceKeyV4, Passkey as PasskeyV4};
+use webauthn_rs::prelude::{AttestedPasskey as DeviceKeyV4, Passkey as PasskeyV4};
 
 use crate::be::dbentry::DbIdentSpn;
 use crate::credential::{totp::Totp, Credential};

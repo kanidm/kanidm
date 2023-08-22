@@ -208,6 +208,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "async-stream"
+version = "0.3.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cd56dd203fef61ac097dd65721a419ddccb106b2d2b70ba60a6b529f03961a51"
+dependencies = [
+ "async-stream-impl",
+ "futures-core",
+ "pin-project-lite",
+]
+
+[[package]]
+name = "async-stream-impl"
+version = "0.3.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "16e62a023e7c117e27523144c5d2459f4397fcc3cab0085af8e2224f643a0193"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.29",
+]
+
+[[package]]
 name = "async-trait"
 version = "0.1.73"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -403,6 +425,15 @@ name = "base64ct"
 version = "1.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8c3c1a368f70d6cf7302d78f8f7093da241fb8e8807c05cc9e51a125895a6d5b"
+
+[[package]]
+name = "base64urlsafedata"
+version = "0.1.3"
+dependencies = [
+ "base64 0.21.2",
+ "serde",
+ "serde_json",
+]
 
 [[package]]
 name = "base64urlsafedata"
@@ -714,7 +745,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "51f9032b96a89dd79ffc5f62523d5351ebb40680cbdfc4029393b511b9e971aa"
 dependencies = [
  "base64 0.13.1",
- "base64urlsafedata",
+ "base64urlsafedata 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "hex",
  "openssl",
  "serde",
@@ -2165,7 +2196,7 @@ dependencies = [
 name = "kanidm-ipa-sync"
 version = "1.1.0-rc.14-dev"
 dependencies = [
- "base64urlsafedata",
+ "base64urlsafedata 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "chrono",
  "clap",
  "clap_complete",
@@ -2189,7 +2220,7 @@ dependencies = [
 name = "kanidm-ldap-sync"
 version = "1.1.0-rc.14-dev"
 dependencies = [
- "base64urlsafedata",
+ "base64urlsafedata 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "chrono",
  "clap",
  "clap_complete",
@@ -2242,7 +2273,7 @@ version = "0.1.0"
 dependencies = [
  "argon2",
  "base64 0.21.2",
- "base64urlsafedata",
+ "base64urlsafedata 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "hex",
  "kanidm_proto",
  "openssl",
@@ -2267,7 +2298,7 @@ name = "kanidm_proto"
 version = "1.1.0-rc.14-dev"
 dependencies = [
  "base32",
- "base64urlsafedata",
+ "base64urlsafedata 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "num_enum",
  "scim_proto",
  "serde",
@@ -2315,7 +2346,7 @@ name = "kanidm_unix_int"
 version = "1.1.0-rc.14-dev"
 dependencies = [
  "async-trait",
- "base64urlsafedata",
+ "base64urlsafedata 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "bytes",
  "clap",
  "clap_complete",
@@ -2404,7 +2435,7 @@ name = "kanidmd_lib"
 version = "1.1.0-rc.14-dev"
 dependencies = [
  "base64 0.21.2",
- "base64urlsafedata",
+ "base64urlsafedata 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "compact_jwt",
  "concread",
  "criterion",
@@ -2566,7 +2597,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7a229cd5ee2a4e5a1a279b6216494aa2a5053a189c5ce37bb31f9156b63b63de"
 dependencies = [
  "base64 0.13.1",
- "base64urlsafedata",
+ "base64urlsafedata 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "futures-util",
  "ldap3_proto",
  "openssl",
@@ -3871,7 +3902,7 @@ version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "38e53f2c444b72dd7410aa1cdc3c0942349262e84364dc7968dc7402525ea2ca"
 dependencies = [
- "base64urlsafedata",
+ "base64urlsafedata 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "peg",
  "serde",
  "serde_json",
@@ -4528,6 +4559,7 @@ dependencies = [
  "futures-core",
  "pin-project-lite",
  "tokio",
+ "tokio-util",
 ]
 
 [[package]]
@@ -5026,32 +5058,40 @@ dependencies = [
 
 [[package]]
 name = "webauthn-authenticator-rs"
-version = "0.4.9"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "603b8602cae2d6c3706b6195765ff582389494d10c442d84a1de2ed5a25679ef"
+version = "0.5.0-dev"
 dependencies = [
+ "async-stream",
+ "async-trait",
  "authenticator-ctap2-2021",
- "base64urlsafedata",
+ "base64urlsafedata 0.1.3",
+ "bitflags 1.3.2",
+ "futures",
+ "hex",
  "nom",
+ "num-derive",
+ "num-traits",
  "openssl",
  "rpassword 5.0.1",
  "serde",
+ "serde_bytes",
  "serde_cbor_2",
  "serde_json",
+ "tokio",
+ "tokio-stream",
  "tracing",
+ "unicode-normalization",
  "url",
  "uuid",
+ "webauthn-rs-core",
  "webauthn-rs-proto",
  "windows 0.41.0",
 ]
 
 [[package]]
 name = "webauthn-rs"
-version = "0.4.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2db00711c712414e93b019c4596315085792215bc2ac2d5872f9e8913b0a6316"
+version = "0.5.0-dev"
 dependencies = [
- "base64urlsafedata",
+ "base64urlsafedata 0.1.3",
  "serde",
  "tracing",
  "url",
@@ -5061,12 +5101,10 @@ dependencies = [
 
 [[package]]
 name = "webauthn-rs-core"
-version = "0.4.9"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "294c78c83f12153a51e1cf1e6970b5da1397645dada39033a9c3173a8fc4fc2b"
+version = "0.5.0-dev"
 dependencies = [
- "base64 0.13.1",
- "base64urlsafedata",
+ "base64 0.21.2",
+ "base64urlsafedata 0.1.3",
  "compact_jwt",
  "der-parser",
  "nom",
@@ -5085,11 +5123,9 @@ dependencies = [
 
 [[package]]
 name = "webauthn-rs-proto"
-version = "0.4.9"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d24e638361a63ba5c0a0be6a60229490fcdf33740ed63df5bb6bdb627b52a138"
+version = "0.5.0-dev"
 dependencies = [
- "base64urlsafedata",
+ "base64urlsafedata 0.1.3",
  "js-sys",
  "serde",
  "serde-wasm-bindgen 0.4.5",

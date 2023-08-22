@@ -1,7 +1,7 @@
 use std::collections::btree_map::Entry as BTreeEntry;
 use std::collections::BTreeMap;
 
-use webauthn_rs::prelude::{DeviceKey as DeviceKeyV4, Passkey as PasskeyV4};
+use webauthn_rs::prelude::{AttestedPasskey as DeviceKeyV4, Passkey as PasskeyV4};
 
 use crate::be::dbvalue::{
     DbValueCredV1, DbValueDeviceKeyV1, DbValueIntentTokenStateV1, DbValuePasskeyV1,
