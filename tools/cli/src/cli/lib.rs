@@ -198,7 +198,7 @@ mod identify_user_no_tui {
         CODE_FAILURE_ERROR_MESSAGE, IDENTITY_UNAVAILABLE_ERROR_MESSAGE,
         INVALID_STATE_ERROR_MESSAGE, INVALID_USER_ID_ERROR_MESSAGE,
     };
-    use async_recursion::async_recursion;
+
     use kanidm_client::{ClientError, KanidmClient};
     use kanidm_proto::internal::{IdentifyUserRequest, IdentifyUserResponse};
 
@@ -224,179 +224,159 @@ mod identify_user_no_tui {
         DisplayCodeSecond { self_totp: u32, step: u32 },
     }
 
-    fn server_error(e: ClientError) {
+    fn server_error(e: &ClientError) {
         eprintln!("Server error!"); // TODO: add an error ID (internal error, restart)
         eprintln!("{:?}", e);
         println!("Exiting...");
     }
 
-    #[async_recursion] // dear lord have mercy for I have sinned writing this function
     pub(super) async fn run_identity_verification_no_tui<'a>(
-        state: IdentifyUserState,
+        mut state: IdentifyUserState,
         client: KanidmClient,
         self_id: &'a str,
-        other_id: Option<&'a str>,
+        mut other_id: Option<String>,
     ) {
-        match state {
-            IdentifyUserState::Start => {
-                let res = match client
-                    .idm_person_identify_user(self_id, IdentifyUserRequest::Start)
-                    .await
-                {
-                    Ok(res) => res,
-                    Err(e) => {
-                        return server_error(e);
-                    }
-                };
-                match res {
-                    IdentifyUserResponse::IdentityVerificationUnavailable => {
-                        println!("{IDENTITY_UNAVAILABLE_ERROR_MESSAGE}");
-                        return;
-                    }
-                    IdentifyUserResponse::IdentityVerificationAvailable => {
-                        run_identity_verification_no_tui(
-                            IdentifyUserState::IdDisplayAndSubmit,
-                            client,
-                            self_id,
-                            other_id,
-                        )
+        loop {
+            match state {
+                IdentifyUserState::Start => {
+                    let res = match &client
+                        .idm_person_identify_user(self_id, IdentifyUserRequest::Start)
                         .await
-                    }
-                    _ => {
-                        eprintln!("{INVALID_STATE_ERROR_MESSAGE}");
-                        return;
-                    }
-                }
-            }
-            IdentifyUserState::IdDisplayAndSubmit => {
-                println!("When asked for your ID, provide the following: {self_id}");
-
-                // Display Prompt
-                let other_user_id: String = Input::new()
-                    .with_prompt("Ask for the other person's ID, and insert it here")
-                    .interact_text()
-                    .expect("Failed to interact with interactive session");
-                let _ = stdout().flush();
-
-                let res = match client
-                    .idm_person_identify_user(&other_user_id, IdentifyUserRequest::Start)
-                    .await
-                {
-                    Ok(res) => res,
-                    Err(e) => {
-                        return server_error(e);
-                    }
-                };
-                match res {
-                    IdentifyUserResponse::WaitForCode => {
-                        run_identity_verification_no_tui(
-                            IdentifyUserState::SubmitCode,
-                            client,
-                            self_id,
-                            Some(&other_user_id),
-                        )
-                        .await
-                    }
-                    IdentifyUserResponse::ProvideCode { step, totp } => {
-                        run_identity_verification_no_tui(
-                            IdentifyUserState::DisplayCodeFirst {
-                                self_totp: totp,
-                                step,
-                            },
-                            client,
-                            self_id,
-                            Some(&other_user_id),
-                        )
-                        .await
-                    }
-                    IdentifyUserResponse::InvalidUserId => {
-                        eprintln!("{other_user_id} {INVALID_USER_ID_ERROR_MESSAGE}");
-                        return;
-                    }
-                    _ => {
-                        eprintln!("{INVALID_STATE_ERROR_MESSAGE}");
-                        return;
-                    }
-                }
-            }
-            IdentifyUserState::SubmitCode => {
-                // Display Prompt
-                let other_totp: String = Input::new()
-                    .with_prompt("Insert here the other person code")
-                    .validate_with(|s: &String| -> Result<(), &str> {
-                        if VALIDATE_TOTP_RE.is_match(s) {
-                            Ok(())
-                        } else {
-                            Err("The code should be a 5 or 6 digit number")
+                    {
+                        Ok(res) => res.clone(),
+                        Err(e) => {
+                            return server_error(e);
                         }
-                    })
-                    .interact_text()
-                    .expect("Failed to interact with interactive session");
+                    };
+                    match res {
+                        IdentifyUserResponse::IdentityVerificationUnavailable => {
+                            println!("{IDENTITY_UNAVAILABLE_ERROR_MESSAGE}");
+                            return;
+                        }
+                        IdentifyUserResponse::IdentityVerificationAvailable => {
+                            state = IdentifyUserState::IdDisplayAndSubmit;
+                        }
+                        _ => {
+                            eprintln!("{INVALID_STATE_ERROR_MESSAGE}");
+                            return;
+                        }
+                    }
+                }
+                IdentifyUserState::IdDisplayAndSubmit => {
+                    println!("When asked for your ID, provide the following: {self_id}");
 
-                let res = match client
-                    .idm_person_identify_user(
-                        &other_id.unwrap_or_default(),
-                        IdentifyUserRequest::SubmitCode {
-                            other_totp: other_totp.parse().unwrap_or_default(),
-                        },
-                    )
-                    .await
-                {
-                    Ok(res) => res,
-                    Err(e) => {
-                        return server_error(e);
-                    }
-                };
-                match res {
-                    IdentifyUserResponse::CodeFailure => {
-                        eprintln!("{CODE_FAILURE_ERROR_MESSAGE}");
-                        return;
-                    }
-                    IdentifyUserResponse::Success => {
-                        println!(
-                            "{}'s identity has been successfully verified 🎉🎉",
-                            other_id.unwrap_or_default()
-                        );
-                        return;
-                    }
-                    IdentifyUserResponse::InvalidUserId => {
-                        eprintln!(
-                            "{} {INVALID_USER_ID_ERROR_MESSAGE}",
-                            other_id.unwrap_or_default()
-                        );
-                        return;
-                    }
-                    IdentifyUserResponse::ProvideCode { step, totp } => {
-                        run_identity_verification_no_tui(
-                            // since we have already inserted the code, we have to go to display code second,
-                            IdentifyUserState::DisplayCodeSecond {
+                    // Display Prompt
+                    let other_user_id: String = Input::new()
+                        .with_prompt("Ask for the other person's ID, and insert it here")
+                        .interact_text()
+                        .expect("Failed to interact with interactive session");
+                    let _ = stdout().flush();
+
+                    let res = match &client
+                        .idm_person_identify_user(&other_user_id, IdentifyUserRequest::Start)
+                        .await
+                    {
+                        Ok(res) => res.clone(),
+                        Err(e) => {
+                            return server_error(e);
+                        }
+                    };
+                    match res {
+                        IdentifyUserResponse::WaitForCode => {
+                            state = IdentifyUserState::SubmitCode;
+
+                            other_id = Some(other_user_id);
+                        }
+                        IdentifyUserResponse::ProvideCode { step, totp } => {
+                            state = IdentifyUserState::DisplayCodeFirst {
                                 self_totp: totp,
                                 step,
+                            };
+
+                            other_id = Some(other_user_id);
+                        }
+                        IdentifyUserResponse::InvalidUserId => {
+                            eprintln!("{other_user_id} {INVALID_USER_ID_ERROR_MESSAGE}");
+                            return;
+                        }
+                        _ => {
+                            eprintln!("{INVALID_STATE_ERROR_MESSAGE}");
+                            return;
+                        }
+                    }
+                }
+                IdentifyUserState::SubmitCode => {
+                    // Display Prompt
+                    let other_totp: String = Input::new()
+                        .with_prompt("Insert here the other person code")
+                        .validate_with(|s: &String| -> Result<(), &str> {
+                            if VALIDATE_TOTP_RE.is_match(s) {
+                                Ok(())
+                            } else {
+                                Err("The code should be a 5 or 6 digit number")
+                            }
+                        })
+                        .interact_text()
+                        .expect("Failed to interact with interactive session");
+
+                    let res = match &client
+                        .idm_person_identify_user(
+                            other_id.as_deref().unwrap_or_default(),
+                            IdentifyUserRequest::SubmitCode {
+                                other_totp: other_totp.parse().unwrap_or_default(),
                             },
-                            client,
-                            self_id,
-                            other_id,
                         )
                         .await
-                    }
+                    {
+                        Ok(res) => res.clone(),
+                        Err(e) => {
+                            return server_error(e);
+                        }
+                    };
+                    match res {
+                        IdentifyUserResponse::CodeFailure => {
+                            eprintln!("{CODE_FAILURE_ERROR_MESSAGE}");
+                            return;
+                        }
+                        IdentifyUserResponse::Success => {
+                            println!(
+                                "{}'s identity has been successfully verified 🎉🎉",
+                                other_id.as_deref().unwrap_or_default()
+                            );
+                            return;
+                        }
+                        IdentifyUserResponse::InvalidUserId => {
+                            eprintln!(
+                                "{} {INVALID_USER_ID_ERROR_MESSAGE}",
+                                other_id.as_deref().unwrap_or_default()
+                            );
+                            return;
+                        }
+                        IdentifyUserResponse::ProvideCode { step, totp } => {
+                            // since we have already inserted the code, we have to go to display code second,
+                            state = IdentifyUserState::DisplayCodeSecond {
+                                self_totp: totp,
+                                step,
+                            };
+                        }
 
-                    _ => {
-                        eprintln!("{INVALID_STATE_ERROR_MESSAGE}");
+                        _ => {
+                            eprintln!("{INVALID_STATE_ERROR_MESSAGE}");
+                            return;
+                        }
+                    }
+                }
+                IdentifyUserState::DisplayCodeFirst { self_totp, step } => {
+                    println!("Provide the following code when asked: {}", self_totp);
+                    let seconds_left = get_ms_left_from_now(step as u128) / 1000;
+                    println!("This codes expires in {seconds_left} seconds");
+                    let _ = stdout().flush();
+                    if !matches!(Confirm::new().with_prompt("Continue?").interact(), Ok(true)) {
+                        println!("Identity verification failed. Exiting...");
                         return;
                     }
-                }
-            }
-            IdentifyUserState::DisplayCodeFirst { self_totp, step } => {
-                println!("Provide the following code when asked: {}", self_totp);
-                let seconds_left = get_ms_left_from_now(step as u128) / 1000;
-                println!("This codes expires in {seconds_left} seconds!");
-                let _ = stdout().flush();
-                if !matches!(Confirm::new().with_prompt("Continue?").interact(), Ok(true)) {
-                    println!("Identity verification failed. Exiting...");
-                    return;
-                }
-                match Confirm::new()
-                    .with_prompt(format!("Did you confirm that {} correctly verified your code? If you proceed, you won't be able to go back.", other_id.unwrap_or_default()))
+                    match Confirm::new()
+                    .with_prompt(format!("Did you confirm that {} correctly verified your code? If you proceed, you won't be able to go back.", other_id.as_deref().unwrap_or_default()))
                     .interact() {
                         Ok(true) => {println!("Code confirmed, continuing...")}
                         Ok(false) => {
@@ -409,29 +389,24 @@ mod identify_user_no_tui {
                             return;
                         },
                         };
-                run_identity_verification_no_tui(
-                    IdentifyUserState::SubmitCode,
-                    client,
-                    self_id,
-                    other_id,
-                )
-                .await;
-            }
-            IdentifyUserState::DisplayCodeSecond { self_totp, step } => {
-                println!("Provide the following code when asked: {}", self_totp);
-                let seconds_left = get_ms_left_from_now(step as u128) / 1000;
-                println!("This codes expires in {seconds_left} seconds!");
-                let _ = stdout().flush();
-                if !matches!(Confirm::new().with_prompt("Continue?").interact(), Ok(true)) {
-                    println!("Identity verification failed. Exiting...");
-                    return;
+
+                    state = IdentifyUserState::SubmitCode;
                 }
-                match Confirm::new()
-                    .with_prompt(format!("Did you confirm that {} correctly verified your code? If you proceed, you won't be able to go back.", other_id.unwrap_or_default()))
+                IdentifyUserState::DisplayCodeSecond { self_totp, step } => {
+                    println!("Provide the following code when asked: {}", self_totp);
+                    let seconds_left = get_ms_left_from_now(step as u128) / 1000;
+                    println!("This codes expires in {seconds_left} seconds!");
+                    let _ = stdout().flush();
+                    if !matches!(Confirm::new().with_prompt("Continue?").interact(), Ok(true)) {
+                        println!("Identity verification failed. Exiting...");
+                        return;
+                    }
+                    match Confirm::new()
+                    .with_prompt(format!("Did you confirm that {} correctly verified your code? If you proceed, you won't be able to go back.", other_id.as_deref().unwrap_or_default()))
                     .interact() {
                         Ok(true) => {println!(
                             "{}'s identity has been successfully verified 🎉🎉",
-                            other_id.unwrap_or_default()
+                            other_id.take().unwrap_or_default()
                         );
                         return;}
                         Ok(false) => {
@@ -444,6 +419,7 @@ mod identify_user_no_tui {
                             return;
                         },
                         };
+                }
             }
         }
     }
@@ -458,24 +434,4 @@ mod identify_user_no_tui {
         let ms: u128 = dur.as_millis();
         (step * 1000 - ms % (step * 1000)) as u32
     }
-
-    // async fn print_ticks(step: u32) {
-    //     let time_left = get_ms_left_from_now(step as u128);
-    //     let _stdin = stdin();
-    //     let time_left_ms = time_left % 1000;
-    //     let mut ticks_left = ((time_left - time_left_ms) / 1000) as i32 + 1;
-    //     let mut sync_interval = interval(Duration::from_millis(time_left_ms as u64));
-
-    //     sync_interval.tick().await;
-    //     // wait for us to be synched to the second
-    //     let mut interval = interval(Duration::from_secs(1));
-    //     while ticks_left >= 0 {
-    //         print!("\rtime left: {ticks_left}s");
-    //         let _ = stdout().flush();
-    //         interval.tick().await;
-    //         ticks_left -= 1;
-    //     }
-    //     let _ = stdout().flush(); // we wait another second so the next function call
-    //                               // will never have a `ticks_left` == 0
-    // }
 }
