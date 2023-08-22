@@ -195,7 +195,7 @@ pub static ref SCHEMA_ATTR_BADLIST_PASSWORD: SchemaAttribute = SchemaAttribute {
 
 pub static ref SCHEMA_ATTR_AUTH_SESSION_EXPIRY: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_AUTH_SESSION_EXPIRY,
-    name: "authsession_expiry".into(),
+    name: Attribute::AuthSessionExpiry.into(),
 
     description: "An expiration time for an authentication session.".to_string(),
     syntax: SyntaxType::Uint32,
@@ -204,7 +204,7 @@ pub static ref SCHEMA_ATTR_AUTH_SESSION_EXPIRY: SchemaAttribute = SchemaAttribut
 
 pub static ref SCHEMA_ATTR_AUTH_PRIVILEGE_EXPIRY: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_AUTH_PRIVILEGE_EXPIRY,
-    name: "privilege_expiry".into(),
+    name: Attribute::PrivilegeExpiry.into(),
 
     description: "An expiration time for a privileged authentication session.".to_string(),
     syntax: SyntaxType::Uint32,
