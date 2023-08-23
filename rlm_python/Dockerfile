@@ -1,16 +1,17 @@
 ARG BASE_IMAGE=opensuse/tumbleweed:latest
-FROM ${BASE_IMAGE} AS repos
+# FROM ${BASE_IMAGE} as repos
+FROM ${BASE_IMAGE}
+
 ADD ../scripts/zypper_fixing.sh /zypper_fixing.sh
 RUN --mount=type=cache,id=zypp,target=/var/cache/zypp /zypper_fixing.sh
 
 # ======================
-FROM repos
-EXPOSE 1812 1813
+# FROM repos
 ARG RADIUS_USER=radiusd
+EXPOSE 1812 1813
+ENV KANIDM_CONFIG_FILE="/data/kanidm"
 
-RUN \
-    --mount=type=cache,id=zypp,target=/var/cache/zypp \
-    zypper install -y \
+RUN --mount=type=cache,id=zypp,target=/var/cache/zypp zypper install -y \
         freeradius-client \
         freeradius-server \
         freeradius-server-python3 \
@@ -52,11 +53,14 @@ RUN mkdir -p /pkg/pykanidm/
 COPY pykanidm/ /pkg/pykanidm/
 
 # install the package and its dependencies
-RUN python3 -m pip install --no-cache-dir --no-warn-script-location /pkg/pykanidm
+RUN python3 -m pip install \
+    --break-system-packages \
+    --no-cache-dir \
+    --no-warn-script-location \
+    /pkg/pykanidm
 
 COPY rlm_python/radius_entrypoint.py /radius_entrypoint.py
 
-ENV KANIDM_CONFIG_FILE="/data/kanidm"
 
 RUN chmod a+r /etc/raddb/certs/ -R
 USER $RADIUS_USER
