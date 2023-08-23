@@ -1,13 +1,17 @@
 ARG BASE_IMAGE=opensuse/tumbleweed:latest
-ARG RADIUS_USER=radiusd
-FROM ${BASE_IMAGE}
+FROM ${BASE_IMAGE} as repos
 
-EXPOSE 1812 1813
-ENV KANIDM_CONFIG_FILE="/data/kanidm"
 
 ADD ../scripts/zypper_fixing.sh /zypper_fixing.sh
 RUN --mount=type=cache,id=zypp,target=/var/cache/zypp /zypper_fixing.sh
 
+
+# ======================
+
+FROM repos
+ARG RADIUS_USER=radiusd
+EXPOSE 1812 1813
+ENV KANIDM_CONFIG_FILE="/data/kanidm"
 
 RUN \
     --mount=type=cache,id=zypp,target=/var/cache/zypp \
