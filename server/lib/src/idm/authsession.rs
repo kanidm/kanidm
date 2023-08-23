@@ -1237,11 +1237,14 @@ impl AuthSession {
 #[cfg(test)]
 mod tests {
     pub use std::collections::BTreeSet as Set;
+    use std::str::FromStr;
     use std::time::Duration;
 
-    use compact_jwt::JwsSigner;
+    use compact_jwt::{Jws, JwsSigner, JwsUnverified};
     use hashbrown::HashSet;
-    use kanidm_proto::v1::{AuthAllowed, AuthCredential, AuthIssueSession, AuthMech};
+    use kanidm_proto::v1::{
+        AuthAllowed, AuthCredential, AuthIssueSession, AuthMech, UatPurpose, UserAuthToken,
+    };
     use tokio::sync::mpsc::unbounded_channel as unbounded;
     use webauthn_authenticator_rs::softpasskey::SoftPasskey;
     use webauthn_authenticator_rs::WebauthnAuthenticator;
@@ -1355,7 +1358,7 @@ mod tests {
         }};
     }
 
-    fn start_session_simple_password_mech(privileged: bool) -> () {
+    fn start_session_simple_password_mech(privileged: bool) -> UserAuthToken {
         let webauthn = create_webauthn();
         // create the ent
         let mut account = entry_to_account!(E_ADMIN_V1.clone());
@@ -1397,7 +1400,7 @@ mod tests {
             start_password_session!(&mut audit, account, &webauthn, privileged);
 
         let attempt = AuthCredential::Password("test_password".to_string());
-        match session.validate_creds(
+        let uat: UserAuthToken = match session.validate_creds(
             &attempt,
             Duration::from_secs(0),
             &async_tx,
@@ -1406,7 +1409,12 @@ mod tests {
             &jws_signer,
             &AccountPolicy::from_pw_badlist_cache(pw_badlist_cache),
         ) {
-            Ok(AuthState::Success(_, AuthIssueSession::Token)) => {}
+            Ok(AuthState::Success(jwt, AuthIssueSession::Token)) => {
+                let uat = JwsUnverified::from_str(&jwt).expect("Failed to parse jwt");
+                let uat: Jws<UserAuthToken> =
+                    uat.validate_embeded().expect("Embedded uat not found");
+                uat.into_inner()
+            }
             _ => panic!(),
         };
 
@@ -1419,12 +1427,21 @@ mod tests {
         assert!(async_rx.blocking_recv().is_none());
         drop(audit_tx);
         assert!(audit_rx.blocking_recv().is_none());
+
+        uat
     }
 
     #[test]
     fn test_idm_authsession_simple_password_mech() {
         sketching::test_init();
-        start_session_simple_password_mech(false);
+        let uat = start_session_simple_password_mech(false);
+        match uat.purpose {
+            UatPurpose::ReadOnly => panic!("Unexpected UatPurpose::ReadOnly"),
+            UatPurpose::ReadWrite { expiry } => {
+                // Long lived RO session capable of reauth
+                assert!(expiry.is_none())
+            }
+        }
     }
 
     #[test]
