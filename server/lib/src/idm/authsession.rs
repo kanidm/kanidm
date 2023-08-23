@@ -77,7 +77,9 @@ impl fmt::Display for AuthType {
 
 #[derive(Debug, Clone)]
 enum AuthIntent {
-    InitialAuth,
+    InitialAuth {
+        privileged: bool,
+    },
     Reauth {
         session_id: Uuid,
         session_expiry: Option<OffsetDateTime>,
@@ -751,6 +753,7 @@ impl AuthSession {
     pub fn new(
         account: Account,
         issue: AuthIssueSession,
+        privileged: bool,
         webauthn: &Webauthn,
         ct: Duration,
         source: Source,
@@ -808,7 +811,7 @@ impl AuthSession {
                 account,
                 state,
                 issue,
-                intent: AuthIntent::InitialAuth,
+                intent: AuthIntent::InitialAuth { privileged },
                 source,
             };
             // Get the set of mechanisms that can proceed. This is tied
@@ -1109,7 +1112,7 @@ impl AuthSession {
     ) -> Result<UserAuthToken, OperationError> {
         security_debug!("Successful cred handling");
         match self.intent {
-            AuthIntent::InitialAuth => {
+            AuthIntent::InitialAuth { privileged } => {
                 let session_id = Uuid::new_v4();
                 // We need to actually work this out better, and then
                 // pass it to to_userauthtoken
@@ -1117,13 +1120,18 @@ impl AuthSession {
                     AuthType::UnixPassword | AuthType::Anonymous => SessionScope::ReadOnly,
                     AuthType::GeneratedPassword => SessionScope::ReadWrite,
                     AuthType::Password | AuthType::PasswordMfa | AuthType::Passkey => {
-                        SessionScope::PrivilegeCapable
+                        if privileged {
+                            SessionScope::ReadWrite
+                        } else {
+                            SessionScope::PrivilegeCapable
+                        }
                     }
                 };
 
                 security_info!(
-                    "Issuing {:?} session {} for {} {}",
+                    "Issuing {:?} session ({:?}) {} for {} {}",
                     self.issue,
+                    scope,
                     session_id,
                     self.account.spn,
                     self.account.uuid
@@ -1229,11 +1237,14 @@ impl AuthSession {
 #[cfg(test)]
 mod tests {
     pub use std::collections::BTreeSet as Set;
+    use std::str::FromStr;
     use std::time::Duration;
 
-    use compact_jwt::JwsSigner;
+    use compact_jwt::{Jws, JwsSigner, JwsUnverified};
     use hashbrown::HashSet;
-    use kanidm_proto::v1::{AuthAllowed, AuthCredential, AuthIssueSession, AuthMech};
+    use kanidm_proto::v1::{
+        AuthAllowed, AuthCredential, AuthIssueSession, AuthMech, UatPurpose, UserAuthToken,
+    };
     use tokio::sync::mpsc::unbounded_channel as unbounded;
     use webauthn_authenticator_rs::softpasskey::SoftPasskey;
     use webauthn_authenticator_rs::WebauthnAuthenticator;
@@ -1282,6 +1293,7 @@ mod tests {
         let (session, state) = AuthSession::new(
             anon_account,
             AuthIssueSession::Token,
+            false,
             &webauthn,
             duration_from_epoch_now(),
             Source::Internal,
@@ -1311,11 +1323,13 @@ mod tests {
         (
             $audit:expr,
             $account:expr,
-            $webauthn:expr
+            $webauthn:expr,
+            $privileged:expr
         ) => {{
             let (session, state) = AuthSession::new(
                 $account.clone(),
                 AuthIssueSession::Token,
+                $privileged,
                 $webauthn,
                 duration_from_epoch_now(),
                 Source::Internal,
@@ -1344,9 +1358,7 @@ mod tests {
         }};
     }
 
-    #[test]
-    fn test_idm_authsession_simple_password_mech() {
-        sketching::test_init();
+    fn start_session_simple_password_mech(privileged: bool) -> UserAuthToken {
         let webauthn = create_webauthn();
         // create the ent
         let mut account = entry_to_account!(E_ADMIN_V1.clone());
@@ -1360,7 +1372,7 @@ mod tests {
 
         // now check
         let (mut session, pw_badlist_cache) =
-            start_password_session!(&mut audit, account, &webauthn);
+            start_password_session!(&mut audit, account, &webauthn, false);
 
         let attempt = AuthCredential::Password("bad_password".to_string());
         let jws_signer = create_jwt_signer();
@@ -1385,10 +1397,10 @@ mod tests {
         // === Now begin a new session, and use a good pw.
 
         let (mut session, pw_badlist_cache) =
-            start_password_session!(&mut audit, account, &webauthn);
+            start_password_session!(&mut audit, account, &webauthn, privileged);
 
         let attempt = AuthCredential::Password("test_password".to_string());
-        match session.validate_creds(
+        let uat: UserAuthToken = match session.validate_creds(
             &attempt,
             Duration::from_secs(0),
             &async_tx,
@@ -1397,7 +1409,12 @@ mod tests {
             &jws_signer,
             &AccountPolicy::from_pw_badlist_cache(pw_badlist_cache),
         ) {
-            Ok(AuthState::Success(_, AuthIssueSession::Token)) => {}
+            Ok(AuthState::Success(jwt, AuthIssueSession::Token)) => {
+                let uat = JwsUnverified::from_str(&jwt).expect("Failed to parse jwt");
+                let uat: Jws<UserAuthToken> =
+                    uat.validate_embeded().expect("Embedded uat not found");
+                uat.into_inner()
+            }
             _ => panic!(),
         };
 
@@ -1410,6 +1427,34 @@ mod tests {
         assert!(async_rx.blocking_recv().is_none());
         drop(audit_tx);
         assert!(audit_rx.blocking_recv().is_none());
+
+        uat
+    }
+
+    #[test]
+    fn test_idm_authsession_simple_password_mech() {
+        sketching::test_init();
+        let uat = start_session_simple_password_mech(false);
+        match uat.purpose {
+            UatPurpose::ReadOnly => panic!("Unexpected UatPurpose::ReadOnly"),
+            UatPurpose::ReadWrite { expiry } => {
+                // Long lived RO session capable of reauth
+                assert!(expiry.is_none())
+            }
+        }
+    }
+
+    #[test]
+    fn test_idm_authsession_simple_password_mech_priv_shortcut() {
+        sketching::test_init();
+        let uat = start_session_simple_password_mech(true);
+        match uat.purpose {
+            UatPurpose::ReadOnly => panic!("Unexpected UatPurpose::ReadOnly"),
+            UatPurpose::ReadWrite { expiry } => {
+                // Short lived RW session
+                assert!(expiry.is_some())
+            }
+        }
     }
 
     #[test]
@@ -1429,7 +1474,7 @@ mod tests {
 
         // now check, even though the password is correct, Auth should be denied since it is in badlist
         let (mut session, pw_badlist_cache) =
-            start_password_session!(&mut audit, account, &webauthn);
+            start_password_session!(&mut audit, account, &webauthn, false);
 
         let attempt = AuthCredential::Password("list@no3IBTyqHu$bad".to_string());
         match session.validate_creds(
@@ -1464,6 +1509,7 @@ mod tests {
             let (session, state) = AuthSession::new(
                 $account.clone(),
                 AuthIssueSession::Token,
+                false,
                 $webauthn,
                 duration_from_epoch_now(),
                 Source::Internal,
@@ -1790,6 +1836,7 @@ mod tests {
             let (session, state) = AuthSession::new(
                 $account.clone(),
                 AuthIssueSession::Token,
+                false,
                 $webauthn,
                 duration_from_epoch_now(),
                 Source::Internal,

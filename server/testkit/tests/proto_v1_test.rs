@@ -2,7 +2,9 @@
 use std::time::SystemTime;
 
 use kanidm_proto::v1::{
-    ApiToken, CURegState, CredentialDetailType, Entry, Filter, Modify, ModifyList, UserAuthToken,
+    ApiToken, AuthCredential, AuthIssueSession, AuthMech, AuthRequest, AuthResponse, AuthState,
+    AuthStep, CURegState, CredentialDetailType, Entry, Filter, Modify, ModifyList, UatPurpose,
+    UserAuthToken,
 };
 use kanidmd_lib::credential::totp::Totp;
 use tracing::debug;
@@ -13,7 +15,7 @@ use compact_jwt::JwsUnverified;
 use webauthn_authenticator_rs::softpasskey::SoftPasskey;
 use webauthn_authenticator_rs::WebauthnAuthenticator;
 
-use kanidm_client::KanidmClient;
+use kanidm_client::{ClientError, KanidmClient};
 use kanidmd_testkit::ADMIN_TEST_PASSWORD;
 
 const UNIX_TEST_PASSWORD: &str = "unix test user password";
@@ -1221,6 +1223,67 @@ async fn setup_demo_account_passkey(rsclient: &KanidmClient) -> WebauthnAuthenti
     wa
 }
 
+async fn setup_demo_account_password(
+    rsclient: &KanidmClient,
+) -> Result<(String, String), ClientError> {
+    let account_name = String::from_str("demo_account").expect("Failed to parse string");
+
+    let account_pass = String::from_str("eicieY7ahchaoCh0eeTa").expect("Failed to parse string");
+
+    rsclient
+        .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
+        .await
+        .expect("Failed to authenticate as admin");
+
+    // Not recommended in production!
+    rsclient
+        .idm_group_add_members("idm_admins", &["admin"])
+        .await
+        .expect("Failed to add admin to idm_admins");
+
+    rsclient
+        .idm_person_account_create("demo_account", "Deeeeemo")
+        .await
+        .expect("Failed to create demo account");
+
+    // First, show there are no auth sessions.
+    let sessions = rsclient
+        .idm_account_list_user_auth_token("demo_account")
+        .await
+        .expect("Failed to list user auth tokens");
+    assert!(sessions.is_empty());
+
+    // Setup the credentials for the account
+    // Create an intent token for them
+    let intent_token = rsclient
+        .idm_person_account_credential_update_intent("demo_account", None)
+        .await
+        .expect("Failed to create intent token");
+
+    // Logout, we don't need any auth now.
+    rsclient.logout().await.expect("Failed to logout");
+
+    // Exchange the intent token
+    let (session_token, _status) = rsclient
+        .idm_account_credential_update_exchange(intent_token)
+        .await
+        .expect("Failed to exchange intent token");
+
+    // Setup and update the password
+    rsclient
+        .idm_account_credential_update_set_password(&session_token, account_pass.as_str())
+        .await
+        .expect("Failed to set password");
+
+    // Commit it
+    rsclient
+        .idm_account_credential_update_commit(&session_token)
+        .await
+        .expect("Failed to commit changes");
+
+    Ok((account_name, account_pass))
+}
+
 #[kanidmd_testkit::test]
 async fn test_server_credential_update_session_passkey(rsclient: KanidmClient) {
     let mut wa = setup_demo_account_passkey(&rsclient).await;
@@ -1490,4 +1553,132 @@ async fn test_privilege_expiry(rsclient: KanidmClient) {
         .unwrap();
     let result = rsclient.system_auth_privilege_expiry_get().await.unwrap();
     assert_eq!(authsession_expiry, result);
+}
+
+async fn start_password_session(
+    rsclient: &KanidmClient,
+    username: &str,
+    password: &str,
+    privileged: bool,
+) -> Result<UserAuthToken, ()> {
+    let client = reqwest::Client::new();
+
+    let authreq = AuthRequest {
+        step: AuthStep::Init2 {
+            username: username.to_string(),
+            issue: AuthIssueSession::Token,
+            privileged,
+        },
+    };
+    let authreq = serde_json::to_string(&authreq).expect("Failed to serialize AuthRequest");
+
+    let res = match client
+        .post(rsclient.make_url("/v1/auth"))
+        .header("Content-Type", "application/json")
+        .body(authreq)
+        .send()
+        .await
+    {
+        Ok(value) => value,
+        Err(error) => panic!("Failed to post: {:#?}", error),
+    };
+    assert_eq!(res.status(), 200);
+
+    let session_id = res.headers().get("x-kanidm-auth-session-id").unwrap();
+
+    let authreq = AuthRequest {
+        step: AuthStep::Begin(AuthMech::Password),
+    };
+    let authreq = serde_json::to_string(&authreq).expect("Failed to serialize AuthRequest");
+
+    let res = match client
+        .post(rsclient.make_url("/v1/auth"))
+        .header("Content-Type", "application/json")
+        .header("x-kanidm-auth-session-id", session_id)
+        .body(authreq)
+        .send()
+        .await
+    {
+        Ok(value) => value,
+        Err(error) => panic!("Failed to post: {:#?}", error),
+    };
+    assert_eq!(res.status(), 200);
+
+    let authreq = AuthRequest {
+        step: AuthStep::Cred(AuthCredential::Password(password.to_string())),
+    };
+    let authreq = serde_json::to_string(&authreq).expect("Failed to serialize AuthRequest");
+
+    let res = match client
+        .post(rsclient.make_url("/v1/auth"))
+        .header("Content-Type", "application/json")
+        .header("x-kanidm-auth-session-id", session_id)
+        .body(authreq)
+        .send()
+        .await
+    {
+        Ok(value) => value,
+        Err(error) => panic!("Failed to post: {:#?}", error),
+    };
+    assert_eq!(res.status(), 200);
+
+    let res: AuthResponse = res.json().await.expect("Failed to read JSON response");
+    let jwt = match res.state {
+        AuthState::Success(val) => val,
+        _ => panic!("Failed to extract jwt"),
+    };
+
+    let jwt = JwsUnverified::from_str(&jwt).expect("Failed to parse jwt");
+    let uat: UserAuthToken = jwt
+        .validate_embeded()
+        .map(|jws| jws.into_inner())
+        .expect("Unable extract uat");
+
+    Ok(uat)
+}
+
+#[kanidmd_testkit::test]
+async fn test_server_user_auth_unprivileged(rsclient: KanidmClient) {
+    let (account_name, account_pass) = setup_demo_account_password(&rsclient)
+        .await
+        .expect("Failed to setup demo_account");
+
+    let uat = start_password_session(
+        &rsclient,
+        account_name.as_str(),
+        account_pass.as_str(),
+        false,
+    )
+    .await
+    .expect("Failed to start session");
+
+    match uat.purpose {
+        UatPurpose::ReadOnly => panic!("Unexpected uat purpose"),
+        UatPurpose::ReadWrite { expiry } => {
+            assert!(expiry.is_none())
+        }
+    }
+}
+
+#[kanidmd_testkit::test]
+async fn test_server_user_auth_privileged_shortcut(rsclient: KanidmClient) {
+    let (account_name, account_pass) = setup_demo_account_password(&rsclient)
+        .await
+        .expect("Failed to setup demo_account");
+
+    let uat = start_password_session(
+        &rsclient,
+        account_name.as_str(),
+        account_pass.as_str(),
+        true,
+    )
+    .await
+    .expect("Failed to start session");
+
+    match uat.purpose {
+        UatPurpose::ReadOnly => panic!("Unexpected uat purpose"),
+        UatPurpose::ReadWrite { expiry } => {
+            assert!(expiry.is_some())
+        }
+    }
 }

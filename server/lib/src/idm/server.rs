@@ -1006,6 +1006,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
                 security_info!(
                     username = %init.username,
                     issue = ?init.issue,
+                    privileged = ?init.privileged,
                     uuid = %euuid,
                     "Initiating Authentication Session",
                 );
@@ -1048,8 +1049,14 @@ impl<'a> IdmServerAuthTransaction<'a> {
                             slock_ref
                         });
 
-                let (auth_session, state) =
-                    AuthSession::new(account, init.issue, self.webauthn, ct, source);
+                let (auth_session, state) = AuthSession::new(
+                    account,
+                    init.issue,
+                    init.privileged,
+                    self.webauthn,
+                    ct,
+                    source,
+                );
 
                 match auth_session {
                     Some(auth_session) => {

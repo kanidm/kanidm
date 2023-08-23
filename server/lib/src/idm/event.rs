@@ -280,6 +280,7 @@ impl LdapTokenAuthEvent {
 pub struct AuthEventStepInit {
     pub username: String,
     pub issue: AuthIssueSession,
+    pub privileged: bool,
 }
 
 #[derive(Debug)]
@@ -311,14 +312,23 @@ impl AuthEventStep {
                     Ok(AuthEventStep::Init(AuthEventStepInit {
                         username,
                         issue: AuthIssueSession::Token,
+                        privileged: false,
                     }))
                 }
             }
-            AuthStep::Init2 { username, issue } => {
+            AuthStep::Init2 {
+                username,
+                issue,
+                privileged,
+            } => {
                 if username.trim().is_empty() {
                     Err(OperationError::EmptyRequest)
                 } else {
-                    Ok(AuthEventStep::Init(AuthEventStepInit { username, issue }))
+                    Ok(AuthEventStep::Init(AuthEventStepInit {
+                        username,
+                        issue,
+                        privileged,
+                    }))
                 }
             }
 
@@ -342,6 +352,7 @@ impl AuthEventStep {
         AuthEventStep::Init(AuthEventStepInit {
             username: "anonymous".to_string(),
             issue: AuthIssueSession::Token,
+            privileged: false,
         })
     }
 
@@ -350,6 +361,7 @@ impl AuthEventStep {
         AuthEventStep::Init(AuthEventStepInit {
             username: name.to_string(),
             issue: AuthIssueSession::Token,
+            privileged: false,
         })
     }
 
