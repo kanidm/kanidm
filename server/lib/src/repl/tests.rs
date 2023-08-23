@@ -1795,8 +1795,8 @@ async fn test_repl_increment_domain_rename(server_a: &QueryServer, server_b: &Qu
 
     // Add an entry to server_b. This should have it's spn regenerated after
     // the domain rename is replicated.
-    // - satifies:
-    // Test domain rename where the reciever of the rename has added entries, and
+    // - satisfies:
+    // Test domain rename where the receiver of the rename has added entries, and
     // they need spn regen to stabilise.
 
     let mut server_b_txn = server_b.write(duration_from_epoch_now()).await;
