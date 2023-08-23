@@ -28,7 +28,7 @@ use kanidm_proto::constants::DEFAULT_CLIENT_CONFIG_PATH;
 use kanidm_unix_common::constants::DEFAULT_CONFIG_PATH;
 use kanidm_unix_common::db::Db;
 use kanidm_unix_common::idprovider::kanidm::KanidmProvider;
-use kanidm_unix_common::resolver::Resolver;
+use kanidm_unix_common::resolver::{AuthSession, Resolver};
 use kanidm_unix_common::unix_config::KanidmUnixdConfig;
 use kanidm_unix_common::unix_passwd::{parse_etc_group, parse_etc_passwd};
 use kanidm_unix_common::unix_proto::{
@@ -195,7 +195,7 @@ async fn handle_client(
     };
 
     let mut reqs = Framed::new(sock, ClientCodec);
-    let mut pam_state = PamState::Uninitialized;
+    let mut pam_auth_session_state = None;
 
     trace!("Waiting for requests ...");
     while let Some(Ok(req)) = reqs.next().await {
@@ -279,31 +279,49 @@ async fn handle_client(
             }
             ClientRequest::PamAuthenticateInit(account_id) => {
                 debug!("pam authenticate init");
-                pam_state = PamState::Step(account_id.clone());
-                cachelayer
-                    .pam_account_authenticate_step(account_id.as_str(), None, None)
-                    .await
-                    .unwrap_or(ClientResponse::Error)
+
+                match &pam_auth_session_state {
+                    Some(auth_session) => {
+                        // Invalid to init a request twice.
+                        warn!("Attempt to init auth session while current session is active");
+                        // Clean the former session, something is wrong.
+                        pam_state = None;
+                        ClientResponse::Error
+                    }
+                    None => {
+                        match cachelayer
+                            .pam_account_authenticate_init(account_id.as_str())
+                            .await
+                        {
+                            Ok((auth_session, pam_auth_response)) => {
+                                pam_auth_session_state = Some(auth_session);
+                                pam_auth_response.into()
+                            }
+                            Err(_) => ClientResponse::Error,
+                        }
+                    }
+                }
             }
-            ClientRequest::PamAuthenticateStep(cred, data) => {
+            ClientRequest::PamAuthenticateStep(pam_next_req) => {
                 debug!("pam authenticate step");
-                match &pam_state {
-                    PamState::Step(account_id) => match cachelayer
-                        .pam_account_authenticate_step(account_id.as_str(), cred, data)
-                        .await
-                        .unwrap_or(ClientResponse::Error)
-                    {
-                        ClientResponse::PamPrompt(prompt) => {
-                            // A pam_prompt response indicates the transaction isn't complete
-                            ClientResponse::PamPrompt(prompt)
+                match &mut pam_auth_session_state {
+                    Some(auth_session) => {
+                        match cachelayer
+                            .pam_account_authenticate_step(auth_session, pam_next_req)
+                            .await
+                            .unwrap_or(ClientResponse::Error)
+                        {
+                            Ok(pam_auth_response) => {
+                                // I think we send this as is?
+                                pam_auth_response.into()
+                            }
+                            Err(_) => ClientResponse::Error,
                         }
-                        other => {
-                            // Any other response terminates the transaction
-                            pam_state = PamState::Uninitialized;
-                            other
-                        }
-                    },
-                    PamState::Uninitialized => ClientResponse::Error,
+                    }
+                    None => {
+                        warn!("Attempt to continue auth session while current session is inactive");
+                        ClientResponse::Error
+                    }
                 }
             }
             ClientRequest::PamAccountAllowed(account_id) => {

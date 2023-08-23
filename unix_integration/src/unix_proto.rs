@@ -74,6 +74,28 @@ pub enum PamCred {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
+pub enum PamAuthResponse {
+    Unknown,
+    Success,
+    Deny,
+    Password,
+    /*
+    MFACode {
+    },
+    */
+    // CTAP2
+}
+
+pub enum PamAuthRequest {
+    Password { cred: Option<PamCred> },
+    /*
+    MFACode {
+        cred: Option<PamCred>
+    }
+    */
+}
+
+#[derive(Serialize, Deserialize, Debug)]
 pub enum ClientRequest {
     SshKey(String),
     NssAccounts,
@@ -98,10 +120,23 @@ pub enum ClientResponse {
     NssAccount(Option<NssUser>),
     NssGroups(Vec<NssGroup>),
     NssGroup(Option<NssGroup>),
+
     PamStatus(Option<bool>),
     PamPrompt(PamPrompt),
     Ok,
     Error,
+}
+
+impl From<PamAuthResponse> for ClientResponse {
+    fn from(par: PamAuthResponse) -> Self {
+        match par {
+            PamAuthResponse::Unknown => ClientResponse::PamStatus(None),
+            PamAuthResponse::Success => ClientResponse::PamStatus(Some(true)),
+            PamAuthResponse::Deny => ClientResponse::PamStatus(Some(false)),
+            // For now
+            PamAuthResponse::Password => ClientResponse::PamStatus(None),
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

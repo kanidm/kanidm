@@ -35,7 +35,7 @@ use std::collections::BTreeSet;
 use std::convert::TryFrom;
 use std::ffi::CStr;
 
-use kanidm_unix_common::client_sync::call_daemon_blocking;
+use kanidm_unix_common::client_sync::DaemonClientBlocking;
 use kanidm_unix_common::constants::DEFAULT_CONFIG_PATH;
 use kanidm_unix_common::unix_config::KanidmUnixdConfig;
 use kanidm_unix_common::unix_proto::{ClientRequest, ClientResponse, CredType, PamCred, PamPrompt};
@@ -118,7 +118,17 @@ impl PamHooks for PamKanidm {
         let req = ClientRequest::PamAccountAllowed(account_id);
         // PamResultCode::PAM_IGNORE
 
-        match call_daemon_blocking(cfg.sock_path.as_str(), &req, cfg.unix_sock_timeout) {
+        let mut daemon_client = match DaemonClientBlocking::new(cfg.sock_path.as_str(), cfg.unix_sock_timeout) {
+            Ok(dc) => dc,
+            Err(e) => {
+                if opts.debug {
+                    println!("Error DaemonClientBlocking::new() -> {:?}", e);
+                }
+                return PamResultCode::PAM_SERVICE_ERR
+            }
+        };
+
+        match daemon_client.call_and_wait(&req) {
             Ok(r) => match r {
                 ClientResponse::PamStatus(Some(true)) => {
                     if opts.debug {
@@ -195,6 +205,16 @@ impl PamHooks for PamKanidm {
         let mut req = ClientRequest::PamAuthenticateInit(account_id);
         let mut prompt: PamPrompt = Default::default();
 
+        let mut daemon_client = match DaemonClientBlocking::new(cfg.sock_path.as_str(), cfg.unix_sock_timeout) {
+            Ok(dc) => dc,
+            Err(e) => {
+                if opts.debug {
+                    println!("Error DaemonClientBlocking::new() -> {:?}", e);
+                }
+                return PamResultCode::PAM_SERVICE_ERR
+            }
+        };
+
         let mut authtok = match pamh.get_authtok() {
             Ok(Some(v)) => Some(v),
             Ok(None) => {
@@ -224,11 +244,13 @@ impl PamHooks for PamKanidm {
         };
 
         loop {
+            /*
             let timeout = match prompt.timeout {
                 Some(timeout) => timeout,
                 None => cfg.unix_sock_timeout,
             };
-            match call_daemon_blocking(cfg.sock_path.as_str(), &req, timeout) {
+            */
+            match daemon_client.call_and_wait(&req) {
                 Ok(r) => match r {
                     ClientResponse::PamPrompt(resp) => {
                         prompt = resp;
@@ -376,7 +398,17 @@ impl PamHooks for PamKanidm {
         };
         let req = ClientRequest::PamAccountBeginSession(account_id);
 
-        match call_daemon_blocking(cfg.sock_path.as_str(), &req, cfg.unix_sock_timeout) {
+        let mut daemon_client = match DaemonClientBlocking::new(cfg.sock_path.as_str(), cfg.unix_sock_timeout) {
+            Ok(dc) => dc,
+            Err(e) => {
+                if opts.debug {
+                    println!("Error DaemonClientBlocking::new() -> {:?}", e);
+                }
+                return PamResultCode::PAM_SERVICE_ERR
+            }
+        };
+
+        match daemon_client.call_and_wait(&req) {
             Ok(ClientResponse::Ok) => {
                 // println!("PAM_SUCCESS");
                 PamResultCode::PAM_SUCCESS

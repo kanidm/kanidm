@@ -12,12 +12,9 @@ use tokio::sync::Mutex;
 use uuid::Uuid;
 
 use crate::db::{Cache, CacheTxn, Db};
-use crate::idprovider::interface::{GroupToken, Id, IdProvider, IdpError, UserToken};
-use crate::pam_data::PamData;
+use crate::idprovider::interface::{AuthSession, GroupToken, Id, IdProvider, IdpError, UserToken};
 use crate::unix_config::{HomeAttr, UidAttr};
-use crate::unix_proto::{
-    ClientResponse, HomeDirectoryInfo, NssGroup, NssUser, PamCred, PamPrompt, ProviderResult,
-};
+use crate::unix_proto::{HomeDirectoryInfo, NssGroup, NssUser, PamAuthRequest, PamAuthResponse};
 
 // use crate::unix_passwd::{EtcUser, EtcGroup};
 
@@ -33,7 +30,7 @@ enum CacheState {
 #[derive(Debug)]
 pub struct Resolver<I>
 where
-    I: IdProvider,
+    I: IdProvider + Sync,
 {
     // Generic / modular types.
     db: Db,
@@ -64,7 +61,7 @@ impl ToString for Id {
 
 impl<I> Resolver<I>
 where
-    I: IdProvider,
+    I: IdProvider + Sync,
 {
     #[allow(clippy::too_many_arguments)]
     pub async fn new(
@@ -732,6 +729,7 @@ where
         self.get_nssgroup(Id::Gid(gid)).await
     }
 
+    /*
     async fn online_account_authenticate(
         &self,
         token: &Option<UserToken>,
@@ -856,6 +854,7 @@ where
             .transpose()
         */
     }
+    */
 
     pub async fn pam_account_allowed(&self, account_id: &str) -> Result<Option<bool>, ()> {
         let token = self.get_usertoken(Id::Name(account_id.to_string())).await?;
@@ -885,38 +884,84 @@ where
         }
     }
 
-    pub async fn pam_account_authenticate_step(
+    pub async fn pam_account_authenticate_init(
         &self,
         account_id: &str,
-        cred: Option<PamCred>,
-        data: Option<PamData>,
-    ) -> Result<ClientResponse, ()> {
-        let id = Id::Name(account_id.to_string());
+    ) -> Result<(AuthSession, PamAuthResponse), ()> {
+        // Setup an auth session. If possible bring the resolver online.
+        // Further steps won't attempt to bring the cache online to prevent
+        // weird interactions - they should assume online/offline only for
+        // the duration of their operation.
 
-        let state = self.get_cachestate().await;
+        let id = Id::Name(account_id.to_string());
         let (_expired, token) = self.get_cached_usertoken(&id).await?;
+        let state = self.get_cachestate().await;
+
+        let is_now_online = if !matches!(state, CacheState::Online) {
+            // Attempt a cache online.
+            self.test_connection().await
+        } else {
+            true
+        };
+
+        let auth_session = if is_now_online {
+            self.client.unix_user_online_auth_init(&id, token).await
+                .map_err(|_| ())?
+        } else {
+            // Can the auth proceed offline?
+            self.client.unix_user_offline_auth_init(&id, token).await
+                .map_err(|_| ())?
+        };
+
+        // Now identify what credentials are needed next. The auth session tells
+        // us this.
+        let init_cred = auth_session.next_credential();
+
+        Ok((auth_session, init_cred))
+    }
+
+    pub async fn pam_account_authenticate_step(
+        &self,
+        auth_session: &mut AuthSession,
+        pam_next_req: PamAuthRequest,
+    ) -> Result<PamAuthResponse, ()> {
+        let state = self.get_cachestate().await;
 
         match state {
             CacheState::Online => {
-                self.online_account_authenticate(&token, &id, cred, data)
+                let auth_cache_action = self.client
+                    .unix_user_online_auth_step(auth_session, pam_next_req)
                     .await
-            }
-            CacheState::OfflineNextCheck(_time) => {
-                // Always attempt to go online to attempt the authentication.
-                if self.test_connection().await {
-                    // Brought ourselves online, lets check.
-                    self.online_account_authenticate(&token, &id, cred, data)
-                        .await
-                } else {
-                    // We are offline, check from the cache if possible.
-                    self.offline_account_authenticate(&token, cred).await
+                    .map_err(|_| ())?;
+
+                match auth_cache_action {
+                    AuthCacheAction::None => {},
+                    AuthCacheAction::PasswordHashUpdate {
+                        a_uuid,
+                        cred
+                    } => {
+                        // Might need a rework with the tpm code.
+                        self.set_cache_userpassword(a_uuid, &cred)?;
+                    }
                 }
             }
             _ => {
-                // We are offline, check from the cache if possible.
-                self.offline_account_authenticate(&token, cred).await
+                // We are offline, continue. Remember, authsession should have
+                // *everything you need* to proceed here!
+                //
+                // Rather than calling client, should this actually be self
+                // contained to the resolver so that it has generic offline-paths
+                // that are possible?
+                self.client
+                    .unix_user_offline_auth_step(auth_session, pam_next_req)
+                    .await
+                    .map_err(|_| ())?;
             }
-        }
+        };
+
+        let next_cred = auth_session.next_credential();
+
+        Ok(next_cred)
     }
 
     pub async fn pam_account_beginsession(

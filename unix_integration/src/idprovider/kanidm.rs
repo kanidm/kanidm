@@ -4,8 +4,6 @@ use kanidm_proto::v1::{OperationError, UnixGroupToken, UnixUserToken};
 use tokio::sync::RwLock;
 
 use super::interface::{GroupToken, Id, IdProvider, IdpError, UserToken};
-use crate::pam_data::PamData;
-use crate::unix_proto::{PamPrompt, ProviderResult};
 
 pub struct KanidmProvider {
     client: RwLock<KanidmClient>,
@@ -143,6 +141,7 @@ impl IdProvider for KanidmProvider {
         }
     }
 
+    /*
     async fn unix_user_authenticate_step(
         &self,
         id: &Id,
@@ -213,6 +212,7 @@ impl IdProvider for KanidmProvider {
             }
         }
     }
+    */
 
     async fn unix_group_get(&self, id: &Id) -> Result<GroupToken, IdpError> {
         match self

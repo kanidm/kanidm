@@ -1,5 +1,4 @@
-use crate::pam_data::PamData;
-use crate::unix_proto::ProviderResult;
+use crate::unix_proto::{PamAuthRequest, PamAuthResponse};
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -53,6 +52,30 @@ pub struct UserToken {
     pub valid: bool,
 }
 
+#[derive(Debug)]
+pub enum AuthSession {
+    InProgress {
+        account_id: String,
+        id: Id,
+        token: Option<UserToken>,
+        online_at_init: bool,
+    },
+    Success,
+    Denied,
+    Unknown,
+}
+
+impl AuthSession {
+    pub fn next_credential(&self) -> PamAuthResponse {
+        todo!();
+    }
+}
+
+pub enum AuthCacheAction {
+    None,
+    PasswordHashUpdate,
+}
+
 #[async_trait]
 pub trait IdProvider {
     async fn provider_authenticate(&self) -> Result<(), IdpError>;
@@ -63,12 +86,37 @@ pub trait IdProvider {
         old_token: Option<UserToken>,
     ) -> Result<UserToken, IdpError>;
 
-    async fn unix_user_authenticate_step(
+    async fn unix_user_online_auth_init(
         &self,
-        id: &Id,
-        cred: Option<&str>,
-        data: Option<PamData>,
-    ) -> Result<ProviderResult, IdpError>;
+        _id: &Id,
+        _token: Option<UserToken>,
+    ) -> Result<AuthSession, IdpError> {
+        Ok(AuthSession::Unknown)
+    }
+
+    async fn unix_user_offline_auth_init(
+        &self,
+        _id: &Id,
+        _token: Option<UserToken>,
+    ) -> Result<AuthSession, IdpError> {
+        Ok(AuthSession::Unknown)
+    }
+
+    async fn unix_user_online_auth_step(
+        &self,
+        _auth_session: &mut AuthSession,
+        _pam_next_req: PamAuthRequest,
+    ) -> Result<AuthCacheAction, IdpError> {
+        Ok((AuthSession::Unknown, AuthCacheAction::None))
+    }
+
+    async fn unix_user_offline_auth_step(
+        &self,
+        _auth_session: &mut AuthSession,
+        _pam_next_req: PamAuthRequest,
+    ) -> Result<(), IdpError> {
+        Ok(AuthSession::Unknown)
+    }
 
     async fn unix_group_get(&self, id: &Id) -> Result<GroupToken, IdpError>;
 }
