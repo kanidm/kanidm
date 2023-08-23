@@ -1472,8 +1472,8 @@ async fn test_authsession_expiry(rsclient: KanidmClient) {
         .system_authsession_expiry_set(authsession_expiry)
         .await
         .unwrap();
-    let ans = rsclient.system_authsession_expiry_get().await.unwrap();
-    assert_eq!(authsession_expiry, ans);
+    let result = rsclient.system_authsession_expiry_get().await.unwrap();
+    assert_eq!(authsession_expiry, result);
 }
 
 #[kanidmd_testkit::test]
@@ -1488,6 +1488,6 @@ async fn test_privilege_expiry(rsclient: KanidmClient) {
         .system_auth_privilege_expiry_set(authsession_expiry)
         .await
         .unwrap();
-    let ans = rsclient.system_auth_privilege_expiry_get().await.unwrap();
-    assert_eq!(authsession_expiry, ans);
+    let result = rsclient.system_auth_privilege_expiry_get().await.unwrap();
+    assert_eq!(authsession_expiry, result);
 }
