@@ -13,9 +13,7 @@ ARG RADIUS_USER=radiusd
 EXPOSE 1812 1813
 ENV KANIDM_CONFIG_FILE="/data/kanidm"
 
-RUN \
-    --mount=type=cache,id=zypp,target=/var/cache/zypp \
-    zypper install -y \
+RUN --mount=type=cache,id=zypp,target=/var/cache/zypp zypper install -y \
         freeradius-client \
         freeradius-server \
         freeradius-server-python3 \
