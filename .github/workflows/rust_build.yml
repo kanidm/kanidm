@@ -36,4 +36,5 @@ jobs:
             libsqlite3-dev
 
       - run: cargo build --workspace
+      - run: cargo build --bin kanidm --features idv-tui
       - run: cargo test
