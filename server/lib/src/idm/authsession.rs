@@ -1445,6 +1445,19 @@ mod tests {
     }
 
     #[test]
+    fn test_idm_authsession_simple_password_mech_priv_shortcut() {
+        sketching::test_init();
+        let uat = start_session_simple_password_mech(true);
+        match uat.purpose {
+            UatPurpose::ReadOnly => panic!("Unexpected UatPurpose::ReadOnly"),
+            UatPurpose::ReadWrite { expiry } => {
+                // Short lived RW session
+                assert!(expiry.is_some())
+            }
+        }
+    }
+
+    #[test]
     fn test_idm_authsession_simple_password_badlist() {
         sketching::test_init();
         let jws_signer = create_jwt_signer();
