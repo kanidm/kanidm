@@ -348,7 +348,10 @@ pub trait IdlSqliteTransaction {
         // The table exists - lets now get the actual index itself.
         let mut stmt = self
             .get_conn()?
-            .prepare("SELECT rdn FROM idx_uuid2rdn WHERE uuid = :uuid")
+            .prepare(&format!(
+                "SELECT rdn FROM {}.idx_uuid2rdn WHERE uuid = :uuid",
+                self.get_db_name()
+            ))
             .map_err(sqlite_error)?;
         let rdn: Option<String> = stmt
             .query_row(&[(":uuid", &uuids)], |row| row.get(0))
@@ -363,7 +366,14 @@ pub trait IdlSqliteTransaction {
         // Try to get a value.
         let data: Option<Vec<u8>> = self
             .get_conn()?
-            .query_row("SELECT data FROM db_sid WHERE id = 2", [], |row| row.get(0))
+            .query_row(
+                &format!(
+                    "SELECT data FROM {}.db_sid WHERE id = 2",
+                    self.get_db_name()
+                ),
+                [],
+                |row| row.get(0),
+            )
             .optional()
             // this whole map call is useless
             .map(|e_opt| {
@@ -394,7 +404,14 @@ pub trait IdlSqliteTransaction {
         // Try to get a value.
         let data: Option<Vec<u8>> = self
             .get_conn()?
-            .query_row("SELECT data FROM db_did WHERE id = 2", [], |row| row.get(0))
+            .query_row(
+                &format!(
+                    "SELECT data FROM {}.db_did WHERE id = 2",
+                    self.get_db_name()
+                ),
+                [],
+                |row| row.get(0),
+            )
             .optional()
             // this whole map call is useless
             .map(|e_opt| {
@@ -425,9 +442,14 @@ pub trait IdlSqliteTransaction {
         // Try to get a value.
         let data: Option<Vec<u8>> = self
             .get_conn()?
-            .query_row("SELECT data FROM db_op_ts WHERE id = 1", [], |row| {
-                row.get(0)
-            })
+            .query_row(
+                &format!(
+                    "SELECT data FROM {}.db_op_ts WHERE id = 1",
+                    self.get_db_name()
+                ),
+                [],
+                |row| row.get(0),
+            )
             .optional()
             .map(|e_opt| {
                 // If we have a row, we try to make it a sid
@@ -457,7 +479,7 @@ pub trait IdlSqliteTransaction {
     fn get_allids(&self) -> Result<IDLBitRange, OperationError> {
         let mut stmt = self
             .get_conn()?
-            .prepare("SELECT id FROM id2entry")
+            .prepare(&format!("SELECT id FROM {}.id2entry", self.get_db_name()))
             .map_err(sqlite_error)?;
         let res = stmt.query_map([], |row| row.get(0)).map_err(sqlite_error)?;
         let mut ids: Result<IDLBitRange, _> = res
@@ -480,7 +502,10 @@ pub trait IdlSqliteTransaction {
     fn list_idxs(&self) -> Result<Vec<String>, OperationError> {
         let mut stmt = self
             .get_conn()?
-            .prepare("SELECT name from sqlite_master where type='table' and name GLOB 'idx_*'")
+            .prepare(&format!(
+                "SELECT name from {}.sqlite_master where type='table' and name GLOB 'idx_*'",
+                self.get_db_name()
+            ))
             .map_err(sqlite_error)?;
         let idx_table_iter = stmt.query_map([], |row| row.get(0)).map_err(sqlite_error)?;
 
@@ -547,7 +572,7 @@ pub trait IdlSqliteTransaction {
         // TODO: Once we have slopes we can add .exists_table, and assert
         // it's an idx table.
 
-        let query = format!("SELECT key, idl FROM {index_name}");
+        let query = format!("SELECT key, idl FROM {}.{}", self.get_db_name(), index_name);
         let mut stmt = self
             .get_conn()?
             .prepare(query.as_str())
@@ -1070,11 +1095,13 @@ impl IdlSqliteWriteTransaction {
     ///
     /// It should only be called internally by the backend in limited and
     /// specific situations.
+    #[instrument(level = "trace", skip_all)]
     pub fn danger_purge_idxs(&self) -> Result<(), OperationError> {
         let idx_table_list = self.list_idxs()?;
+        trace!(tables = ?idx_table_list);
 
         idx_table_list.iter().try_for_each(|idx_table| {
-            trace!(table = ?idx_table, "removing idx_table");
+            debug!(table = ?idx_table, "removing idx_table");
             self.get_conn()?
                 .prepare(format!("DROP TABLE {}.{}", self.get_db_name(), idx_table).as_str())
                 .and_then(|mut stmt| stmt.execute([]).map(|_| ()))
@@ -1238,6 +1265,7 @@ impl IdlSqliteWriteTransaction {
     ///
     /// It should only be called internally by the backend in limited and
     /// specific situations.
+    #[instrument(level = "trace", skip_all)]
     pub fn danger_purge_id2entry(&self) -> Result<(), OperationError> {
         self.get_conn()?
             .execute(&format!("DELETE FROM {}.id2entry", self.get_db_name()), [])

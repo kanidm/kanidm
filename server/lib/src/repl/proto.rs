@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 
 use webauthn_rs::prelude::{
-    DeviceKey as DeviceKeyV4, Passkey as PasskeyV4, SecurityKey as SecurityKeyV4,
+    AttestedPasskey as DeviceKeyV4, Passkey as PasskeyV4, SecurityKey as SecurityKeyV4,
 };
 
 // Re-export this for our own usage.

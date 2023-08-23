@@ -230,7 +230,7 @@ mod tests {
         let cutxn = idms.cred_update_transaction().await;
         let origin = cutxn.get_origin().clone();
 
-        let mut wa = WebauthnAuthenticator::new(SoftPasskey::new());
+        let mut wa = WebauthnAuthenticator::new(SoftPasskey::new(true));
 
         let c_status = cutxn
             .credential_passkey_init(&cust, ct)

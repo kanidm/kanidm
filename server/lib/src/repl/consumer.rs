@@ -127,13 +127,6 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 (sealed_ent, db_ent)
             })
             .collect::<Vec<_>>();
-        /*
-        .collect::<Result<Vec<_>, _>>()
-        .map_err(|e| {
-            error!(err = ?e, "Failed to validate schema of incremental entries");
-            OperationError::SchemaViolation(e)
-        })?;
-        */
 
         // We now have three sets!
         //
@@ -198,12 +191,21 @@ impl<'a> QueryServerWriteTransaction<'a> {
                     )
                 });
         }
+        if !self.changed_sync_agreement {
+            self.changed_sync_agreement = cand
+                .iter()
+                .chain(pre_cand.iter().map(|e| e.as_ref()))
+                .any(|e| {
+                    e.attribute_equality(Attribute::Class.as_ref(), &EntryClass::SyncAccount.into())
+                });
+        }
 
         trace!(
             schema_reload = ?self.changed_schema,
             acp_reload = ?self.changed_acp,
             oauth2_reload = ?self.changed_oauth2,
             domain_reload = ?self.changed_domain,
+            changed_sync_agreement = ?self.changed_sync_agreement
         );
 
         Ok(())

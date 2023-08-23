@@ -12,8 +12,8 @@ use kanidm_proto::v1::{
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 use webauthn_rs::prelude::{
-    CreationChallengeResponse, DeviceKey as DeviceKeyV4, Passkey as PasskeyV4, PasskeyRegistration,
-    RegisterPublicKeyCredential,
+    AttestedPasskey as DeviceKeyV4, CreationChallengeResponse, Passkey as PasskeyV4,
+    PasskeyRegistration, RegisterPublicKeyCredential,
 };
 
 use crate::credential::totp::{Totp, TOTP_DEFAULT_STEP};
@@ -2679,7 +2679,7 @@ mod tests {
         let origin = cutxn.get_origin().clone();
 
         // Create a soft passkey
-        let mut wa = WebauthnAuthenticator::new(SoftPasskey::new());
+        let mut wa = WebauthnAuthenticator::new(SoftPasskey::new(true));
 
         // Start the registration
         let c_status = cutxn

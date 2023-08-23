@@ -15,10 +15,9 @@ use kanidm_proto::v1::{
     AuthAllowed, AuthCredential, AuthIssueSession, AuthMech, OperationError, UserAuthToken,
 };
 // use crossbeam::channel::Sender;
+use nonempty::{nonempty, NonEmpty};
 use tokio::sync::mpsc::UnboundedSender as Sender;
 use uuid::Uuid;
-// use webauthn_rs::prelude::DeviceKey as DeviceKeyV4;
-use nonempty::{nonempty, NonEmpty};
 use webauthn_rs::prelude::Passkey as PasskeyV4;
 use webauthn_rs::prelude::{
     CredentialID, PasskeyAuthentication, RequestChallengeResponse, SecurityKeyAuthentication,
@@ -1833,7 +1832,7 @@ mod tests {
     ) {
         let webauthn = create_webauthn();
         // Setup a soft token
-        let mut wa = WebauthnAuthenticator::new(SoftPasskey::new());
+        let mut wa = WebauthnAuthenticator::new(SoftPasskey::new(true));
 
         let uuid = Uuid::new_v4();
 
@@ -1861,7 +1860,7 @@ mod tests {
     ) {
         let webauthn = create_webauthn();
         // Setup a soft token
-        let mut wa = WebauthnAuthenticator::new(SoftPasskey::new());
+        let mut wa = WebauthnAuthenticator::new(SoftPasskey::new(true));
 
         let uuid = Uuid::new_v4();
 
@@ -1986,7 +1985,7 @@ mod tests {
 
         // Use an incorrect softtoken.
         {
-            let mut inv_wa = WebauthnAuthenticator::new(SoftPasskey::new());
+            let mut inv_wa = WebauthnAuthenticator::new(SoftPasskey::new(true));
             let (chal, reg_state) = webauthn
                 .start_passkey_registration(account.uuid, &account.name, &account.displayname, None)
                 .expect("Failed to setup webauthn rego challenge");

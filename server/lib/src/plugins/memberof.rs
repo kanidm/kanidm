@@ -230,6 +230,18 @@ impl Plugin for MemberOf {
         Self::post_create_inner(qs, cand, &ident)
     }
 
+    #[instrument(level = "debug", name = "memberof_post_repl_incremental", skip_all)]
+    fn post_repl_incremental(
+        qs: &mut QueryServerWriteTransaction,
+        pre_cand: &[Arc<EntrySealedCommitted>],
+        cand: &[EntrySealedCommitted],
+    ) -> Result<(), OperationError> {
+        // IMPORTANT - we need this for now so that dyngroup doesn't error on us, since
+        // repl is internal and dyngroup has a safety check to prevent external triggers.
+        let ident_internal = Identity::from_internal();
+        Self::post_modify_inner(qs, pre_cand, cand, &ident_internal)
+    }
+
     #[instrument(level = "debug", name = "memberof_post_modify", skip_all)]
     fn post_modify(
         qs: &mut QueryServerWriteTransaction,
