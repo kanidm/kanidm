@@ -230,10 +230,10 @@ mod identify_user_no_tui {
         println!("Exiting...");
     }
 
-    pub(super) async fn run_identity_verification_no_tui<'a>(
+    pub(super) async fn run_identity_verification_no_tui(
         mut state: IdentifyUserState,
         client: KanidmClient,
-        self_id: &'a str,
+        self_id: &str,
         mut other_id: Option<String>,
     ) {
         loop {

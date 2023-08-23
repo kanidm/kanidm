@@ -830,7 +830,10 @@ pub trait QueryServerTransaction<'a> {
                 }
             })
             .map_err(|e| {
-                admin_error!(?e, "Failed to retrieve authsession_expiry from system configuration");
+                admin_error!(
+                    ?e,
+                    "Failed to retrieve authsession_expiry from system configuration"
+                );
                 e
             })
     }
@@ -845,7 +848,10 @@ pub trait QueryServerTransaction<'a> {
                 }
             })
             .map_err(|e| {
-                admin_error!(?e, "Failed to retrieve privilege_expiry from system configuration");
+                admin_error!(
+                    ?e,
+                    "Failed to retrieve privilege_expiry from system configuration"
+                );
                 e
             })
     }
