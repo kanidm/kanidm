@@ -13,6 +13,10 @@ use tokio::sync::{
     oneshot::{self, Receiver},
 };
 
+use crate::{
+    CODE_FAILURE_ERROR_MESSAGE, IDENTITY_UNAVAILABLE_ERROR_MESSAGE, INVALID_STATE_ERROR_MESSAGE,
+    INVALID_USER_ID_ERROR_MESSAGE,
+};
 // here I used a simple function instead of a struct because all the channel stuff requires ownership, so if we were to use a struct with a `run` method, it would have to take ownership of everything
 // so might as well just use a function
 pub async fn run_identity_verification_tui(self_id: &str, client: KanidmClient) {
