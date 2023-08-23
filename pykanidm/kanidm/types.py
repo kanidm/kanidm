@@ -7,7 +7,7 @@ import socket
 from typing import Any, Dict, List, Optional
 from urllib.parse import urlparse
 
-from pydantic import field_validator, ConfigDict, BaseModel, Field
+from pydantic import field_validator, ConfigDict, BaseModel, Field, RootModel
 import toml
 
 
@@ -31,6 +31,7 @@ class AuthInitResponse(BaseModel):
 
     class _AuthInitState(BaseModel):
         """sub-class for the AuthInitResponse model"""
+
         # TODO: can we add validation for AuthInitResponse.state.choose?
         choose: List[str]
 
@@ -53,23 +54,24 @@ class AuthBeginResponse(BaseModel):
         continue_list: List[str] = Field(..., title="continue", alias="continue")
 
     # TODO: can we add validation for AuthBeginResponse.state.continue_list?
-    sessionid: str
+    # this should be pulled from the response headers as x-kanidm-auth-session-id
+    sessionid: Optional[str]
     state: _AuthBeginState
-    response: Optional[ClientResponse]
+    response: Optional[ClientResponse] = None
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
-class AuthStepPasswordResponse(BaseModel):
-    """helps parse the response from the auth 'password' stage"""
+class AuthState(BaseModel):
+    """authstate struct"""
 
-    class _AuthStepPasswordState(BaseModel):
-        """subclass to help parse the response from the auth 'step password' stage"""
+    class _InternalState(BaseModel):
+        """subclass to help parse the response from the auth step stage"""
 
         success: Optional[str] = None
 
-    sessionid: str
-    state: _AuthStepPasswordState
-    response: Optional[ClientResponse]
+    state: _InternalState
+    sessionid: Optional[str] = None
+    response: Optional[ClientResponse] = None
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
@@ -198,3 +200,50 @@ class KanidmClientConfig(BaseModel):
                 value = f"{value}/"
 
         return value
+
+
+class GroupInfo(BaseModel):
+    """nicer"""
+
+    name: str
+    dynmember: List[str]
+    member: List[str]
+    spn: str
+    uuid: str
+    # posix-enabled group
+    gidnumber: Optional[int]
+
+    def has_member(self, member: str) -> bool:
+        """check if a member is in the group"""
+        return member in self.member or member in self.dynmember
+
+
+class RawGroupInfo(BaseModel):
+    """group information as it comes back from the API"""
+
+    attrs: Dict[str, List[str]]
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    def as_groupinfo(self) -> GroupInfo:
+        """return it as the GroupInfo object which has nicer fields"""
+        for field in "name", "uuid", "spn":
+            if field not in self.attrs:
+                raise ValueError(f"Missing field {field} in {self.attrs}")
+
+        # we want either the first element of gidnumber_field, or None
+        gidnumber_field = self.attrs.get("gidnumber", [])
+        gidnumber: Optional[int] = None
+        if len(gidnumber_field) > 0:
+            gidnumber = int(gidnumber_field[0])
+
+        return GroupInfo(
+            name=self.attrs["name"][0],
+            uuid=self.attrs["uuid"][0],
+            spn=self.attrs["spn"][0],
+            member=self.attrs.get("member", []),
+            dynmember=self.attrs.get("dynmember", []),
+            gidnumber=gidnumber,
+        )
+
+
+GroupList = RootModel[List[RawGroupInfo]]

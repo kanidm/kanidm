@@ -1011,6 +1011,7 @@ pub async fn person_post_identify_user(
     to_axum_response(res)
 }
 
+/// Returns all groups visible  to the user
 pub async fn group_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
