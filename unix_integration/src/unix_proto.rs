@@ -1,4 +1,3 @@
-use crate::idprovider::interface::UserToken;
 use crate::pam_data::PamData;
 use serde::{Deserialize, Serialize};
 
@@ -71,7 +70,7 @@ impl PamPrompt {
 pub enum PamAuthResponse {
     Unknown,
     Success,
-    Deny,
+    Denied,
     Password,
     /*
     MFACode {
@@ -82,7 +81,7 @@ pub enum PamAuthResponse {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub enum PamAuthRequest {
-    Password { cred: Option<String> },
+    Password { cred: String },
     /*
     MFACode {
         cred: Option<PamCred>
@@ -127,7 +126,7 @@ impl From<PamAuthResponse> for ClientResponse {
         match par {
             PamAuthResponse::Unknown => ClientResponse::PamStatus(None),
             PamAuthResponse::Success => ClientResponse::PamStatus(Some(true)),
-            PamAuthResponse::Deny => ClientResponse::PamStatus(Some(false)),
+            PamAuthResponse::Denied => ClientResponse::PamStatus(Some(false)),
             // For now
             PamAuthResponse::Password => ClientResponse::PamStatus(None),
         }
@@ -150,10 +149,4 @@ pub enum TaskRequest {
 pub enum TaskResponse {
     Success,
     Error(String),
-}
-
-#[derive(Debug)]
-pub enum ProviderResult {
-    PamPrompt(PamPrompt),
-    UserToken(Option<UserToken>),
 }

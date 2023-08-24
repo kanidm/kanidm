@@ -15,8 +15,8 @@ pub enum IdpError {
     /// the idp. After returning this error the operation will be retried after a
     /// successful authentication.
     ProviderUnauthorised,
-    /// The provider made an invalid request to the idp, and the result is not able to
-    /// be used by the resolver.
+    /// The provider made an invalid or illogical request to the idp, and a result
+    /// is not able to be provided to the resolver.
     BadRequest,
     /// The idp has indicated that the requested resource does not exist and should
     /// be considered deleted, removed, or not present.
@@ -53,27 +53,31 @@ pub struct UserToken {
 }
 
 #[derive(Debug)]
-pub enum AuthSession {
-    InProgress {
-        account_id: String,
-        id: Id,
-        token: Option<UserToken>,
-        online_at_init: bool,
-    },
-    Success,
-    Denied,
-    Unknown,
+pub enum AuthCredHandler {
+    Password,
 }
 
-impl AuthSession {
-    pub fn next_credential(&self) -> PamAuthResponse {
-        todo!();
+pub enum AuthRequest {
+    Password,
+}
+
+impl Into<PamAuthResponse> for AuthRequest {
+    fn into(self) -> PamAuthResponse {
+        match self {
+            AuthRequest::Password => PamAuthResponse::Password,
+        }
     }
+}
+
+pub enum AuthResult {
+    Success { token: UserToken },
+    Denied,
+    Next(AuthRequest),
 }
 
 pub enum AuthCacheAction {
     None,
-    PasswordHashUpdate { a_uuid: Uuid, cred: String },
+    PasswordHashUpdate { cred: String },
 }
 
 #[async_trait]
@@ -82,41 +86,35 @@ pub trait IdProvider {
 
     async fn unix_user_get(
         &self,
-        id: &Id,
-        old_token: Option<UserToken>,
+        _id: &Id,
+        _token: Option<&UserToken>,
     ) -> Result<UserToken, IdpError>;
 
     async fn unix_user_online_auth_init(
         &self,
-        _id: &Id,
-        _token: Option<UserToken>,
-    ) -> Result<AuthSession, IdpError> {
-        Ok(AuthSession::Unknown)
-    }
+        _account_id: &str,
+        _token: Option<&UserToken>,
+    ) -> Result<(AuthRequest, AuthCredHandler), IdpError>;
 
     async fn unix_user_offline_auth_init(
         &self,
-        _id: &Id,
-        _token: Option<UserToken>,
-    ) -> Result<AuthSession, IdpError> {
-        Ok(AuthSession::Unknown)
-    }
+        _account_id: &str,
+        _token: Option<&UserToken>,
+    ) -> Result<(AuthRequest, AuthCredHandler), IdpError>;
 
     async fn unix_user_online_auth_step(
         &self,
-        _auth_session: &mut AuthSession,
+        _account_id: &str,
+        _cred_handler: &mut AuthCredHandler,
         _pam_next_req: PamAuthRequest,
-    ) -> Result<AuthCacheAction, IdpError> {
-        Ok(AuthCacheAction::None)
-    }
+    ) -> Result<(AuthResult, AuthCacheAction), IdpError>;
 
     async fn unix_user_offline_auth_step(
         &self,
-        _auth_session: &mut AuthSession,
+        _account_id: &str,
+        _cred_handler: &mut AuthCredHandler,
         _pam_next_req: PamAuthRequest,
-    ) -> Result<(), IdpError> {
-        Ok(())
-    }
+    ) -> Result<AuthResult, IdpError>;
 
     async fn unix_group_get(&self, id: &Id) -> Result<GroupToken, IdpError>;
 }

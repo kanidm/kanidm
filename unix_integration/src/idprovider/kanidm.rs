@@ -4,7 +4,8 @@ use kanidm_proto::v1::{OperationError, UnixGroupToken, UnixUserToken};
 use tokio::sync::RwLock;
 
 use super::interface::{
-    AuthCacheAction, AuthSession, GroupToken, Id, IdProvider, IdpError, UserToken,
+    AuthCacheAction, AuthCredHandler, AuthRequest, AuthResult, GroupToken, Id, IdProvider,
+    IdpError, UserToken,
 };
 use crate::unix_proto::PamAuthRequest;
 
@@ -84,7 +85,7 @@ impl IdProvider for KanidmProvider {
     async fn unix_user_get(
         &self,
         id: &Id,
-        _old_token: Option<UserToken>,
+        _token: Option<&UserToken>,
     ) -> Result<UserToken, IdpError> {
         match self
             .client
@@ -145,33 +146,108 @@ impl IdProvider for KanidmProvider {
 
     async fn unix_user_online_auth_init(
         &self,
-        _id: &Id,
-        _token: Option<UserToken>,
-    ) -> Result<AuthSession, IdpError> {
-        todo!();
-    }
-
-    async fn unix_user_offline_auth_init(
-        &self,
-        _id: &Id,
-        _token: Option<UserToken>,
-    ) -> Result<AuthSession, IdpError> {
-        todo!();
+        _account_id: &str,
+        _token: Option<&UserToken>,
+    ) -> Result<(AuthRequest, AuthCredHandler), IdpError> {
+        // Not sure that I need to do much here?
+        Ok((AuthRequest::Password, AuthCredHandler::Password))
     }
 
     async fn unix_user_online_auth_step(
         &self,
-        _auth_session: &mut AuthSession,
-        _pam_next_req: PamAuthRequest,
-    ) -> Result<AuthCacheAction, IdpError> {
-        todo!();
+        account_id: &str,
+        cred_handler: &mut AuthCredHandler,
+        pam_next_req: PamAuthRequest,
+    ) -> Result<(AuthResult, AuthCacheAction), IdpError> {
+        match (cred_handler, pam_next_req) {
+            (AuthCredHandler::Password, PamAuthRequest::Password { cred }) => {
+                match self
+                    .client
+                    .read()
+                    .await
+                    .idm_account_unix_cred_verify(&account_id, &cred)
+                    .await
+                {
+                    Ok(Some(n_tok)) => Ok((
+                        AuthResult::Success {
+                            token: UserToken::from(n_tok),
+                        },
+                        AuthCacheAction::PasswordHashUpdate { cred },
+                    )),
+                    Ok(None) => Ok((AuthResult::Denied, AuthCacheAction::None)),
+                    Err(ClientError::Transport(err)) => {
+                        error!(?err);
+                        Err(IdpError::Transport)
+                    }
+                    Err(ClientError::Http(StatusCode::UNAUTHORIZED, reason, opid)) => {
+                        match reason {
+                            Some(OperationError::NotAuthenticated) => warn!(
+                                "session not authenticated - attempting reauthentication - eventid {}",
+                                opid
+                            ),
+                            Some(OperationError::SessionExpired) => warn!(
+                                "session expired - attempting reauthentication - eventid {}",
+                                opid
+                            ),
+                            e => error!(
+                                "authentication error {:?}, moving to offline - eventid {}",
+                                e, opid
+                            ),
+                        };
+                        Err(IdpError::ProviderUnauthorised)
+                    }
+                    Err(ClientError::Http(
+                        StatusCode::BAD_REQUEST,
+                        Some(OperationError::NoMatchingEntries),
+                        opid,
+                    ))
+                    | Err(ClientError::Http(
+                        StatusCode::NOT_FOUND,
+                        Some(OperationError::NoMatchingEntries),
+                        opid,
+                    ))
+                    | Err(ClientError::Http(
+                        StatusCode::BAD_REQUEST,
+                        Some(OperationError::InvalidAccountState(_)),
+                        opid,
+                    )) => {
+                        error!(
+                            "unknown account or is not a valid posix account - eventid {}",
+                            opid
+                        );
+                        Err(IdpError::NotFound)
+                    }
+                    Err(err) => {
+                        error!(?err, "client error");
+                        // Some other unknown processing error?
+                        Err(IdpError::BadRequest)
+                    }
+                }
+            } /*
+              _ => {
+                  error!("invalid authentication request state");
+                  Err(IdpError::BadRequest)
+              }
+              */
+        }
+    }
+
+    async fn unix_user_offline_auth_init(
+        &self,
+        _account_id: &str,
+        _token: Option<&UserToken>,
+    ) -> Result<(AuthRequest, AuthCredHandler), IdpError> {
+        // Not sure that I need to do much here?
+        Ok((AuthRequest::Password, AuthCredHandler::Password))
     }
 
     async fn unix_user_offline_auth_step(
         &self,
-        _auth_session: &mut AuthSession,
+        _account_id: &str,
+        _cred_handler: &mut AuthCredHandler,
         _pam_next_req: PamAuthRequest,
-    ) -> Result<(), IdpError> {
+    ) -> Result<AuthResult, IdpError> {
+        // We need any cached credentials here.
         todo!();
     }
 

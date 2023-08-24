@@ -13,7 +13,7 @@ use uuid::Uuid;
 
 use crate::db::{Cache, CacheTxn, Db};
 use crate::idprovider::interface::{
-    AuthCacheAction, AuthSession, GroupToken, Id, IdProvider, IdpError, UserToken,
+    AuthCacheAction, AuthCredHandler, AuthResult, GroupToken, Id, IdProvider, IdpError, UserToken,
 };
 use crate::unix_config::{HomeAttr, UidAttr};
 use crate::unix_proto::{HomeDirectoryInfo, NssGroup, NssUser, PamAuthRequest, PamAuthResponse};
@@ -27,6 +27,21 @@ enum CacheState {
     Online,
     Offline,
     OfflineNextCheck(SystemTime),
+}
+
+#[derive(Debug)]
+pub enum AuthSession {
+    InProgress {
+        account_id: String,
+        id: Id,
+        token: Option<UserToken>,
+        online_at_init: bool,
+        // cred_type: AuthCredType,
+        // next_cred: AuthNextCred,
+        cred_handler: AuthCredHandler,
+    },
+    Success,
+    Denied,
 }
 
 #[derive(Debug)]
@@ -397,7 +412,7 @@ where
         account_id: &Id,
         token: Option<UserToken>,
     ) -> Result<Option<UserToken>, ()> {
-        match self.client.unix_user_get(account_id, token.clone()).await {
+        match self.client.unix_user_get(account_id, token.as_ref()).await {
             Ok(mut n_tok) => {
                 if self.check_nxset(&n_tok.name, n_tok.gidnumber).await {
                     // Refuse to release the token, it's in the denied set.
@@ -799,7 +814,6 @@ where
                     None => Ok(ClientResponse::PamStatus(None)),
                 }
             }
-
             Err(IdpError::ProviderUnauthorised) => {
                 // Something went wrong, mark offline to force a re-auth ASAP.
                 let time = SystemTime::now().sub(Duration::from_secs(1));
@@ -895,37 +909,45 @@ where
         // Setup an auth session. If possible bring the resolver online.
         // Further steps won't attempt to bring the cache online to prevent
         // weird interactions - they should assume online/offline only for
-        // the duration of their operation.
+        // the duration of their operation. A failure of connectivity during
+        // an online operation will take the cache offline however.
 
         let id = Id::Name(account_id.to_string());
         let (_expired, token) = self.get_cached_usertoken(&id).await?;
         let state = self.get_cachestate().await;
 
-        let is_now_online = if !matches!(state, CacheState::Online) {
+        let online_at_init = if !matches!(state, CacheState::Online) {
             // Attempt a cache online.
             self.test_connection().await
         } else {
             true
         };
 
-        let auth_session = if is_now_online {
+        let (next_req, cred_handler) = if online_at_init {
             self.client
-                .unix_user_online_auth_init(&id, token)
+                .unix_user_online_auth_init(account_id, token.as_ref())
                 .await
                 .map_err(|_| ())?
         } else {
             // Can the auth proceed offline?
             self.client
-                .unix_user_offline_auth_init(&id, token)
+                .unix_user_offline_auth_init(account_id, token.as_ref())
                 .await
                 .map_err(|_| ())?
         };
 
+        let auth_session = AuthSession::InProgress {
+            account_id: account_id.to_string(),
+            id,
+            token,
+            online_at_init: true,
+            cred_handler,
+        };
+
         // Now identify what credentials are needed next. The auth session tells
         // us this.
-        let init_cred = auth_session.next_credential();
 
-        Ok((auth_session, init_cred))
+        Ok((auth_session, next_req.into()))
     }
 
     pub async fn pam_account_authenticate_step(
@@ -935,23 +957,65 @@ where
     ) -> Result<PamAuthResponse, ()> {
         let state = self.get_cachestate().await;
 
-        match state {
-            CacheState::Online => {
-                let auth_cache_action = self
+        let maybe_err = match (&mut *auth_session, state) {
+            (
+                &mut AuthSession::InProgress {
+                    ref account_id,
+                    id: _,
+                    token: _,
+                    online_at_init: true,
+                    ref mut cred_handler,
+                },
+                CacheState::Online,
+            ) => {
+                let maybe_cache_action = self
                     .client
-                    .unix_user_online_auth_step(auth_session, pam_next_req)
-                    .await
-                    .map_err(|_| ())?;
+                    .unix_user_online_auth_step(&account_id, cred_handler, pam_next_req)
+                    .await;
 
-                match auth_cache_action {
-                    AuthCacheAction::None => {}
-                    AuthCacheAction::PasswordHashUpdate { a_uuid, cred } => {
+                match maybe_cache_action {
+                    Ok((res, AuthCacheAction::None)) => Ok(res),
+                    Ok((
+                        AuthResult::Success { token },
+                        AuthCacheAction::PasswordHashUpdate { cred },
+                    )) => {
                         // Might need a rework with the tpm code.
-                        self.set_cache_userpassword(a_uuid, &cred).await?;
+                        self.set_cache_userpassword(token.uuid, &cred).await?;
+                        Ok(AuthResult::Success { token })
                     }
+                    // I think this state is actually invalid?
+                    Ok((_, AuthCacheAction::PasswordHashUpdate { .. })) => {
+                        // Ok(res)
+                        error!("provider gave back illogical password hash update with a nonsuccess condition");
+                        Err(IdpError::BadRequest)
+                    }
+                    Err(e) => Err(e),
                 }
             }
-            _ => {
+            (
+                &mut AuthSession::InProgress {
+                    account_id: _,
+                    id: _,
+                    token: _,
+                    online_at_init: true,
+                    cred_handler: _,
+                },
+                _,
+            ) => {
+                // Fail, we went offline.
+                error!("Unable to proceed with authentication, resolver has gone offline");
+                Err(IdpError::Transport)
+            }
+            (
+                &mut AuthSession::InProgress {
+                    ref account_id,
+                    id: _,
+                    token: _,
+                    online_at_init: _,
+                    ref mut cred_handler,
+                },
+                _,
+            ) => {
                 // We are offline, continue. Remember, authsession should have
                 // *everything you need* to proceed here!
                 //
@@ -959,15 +1023,49 @@ where
                 // contained to the resolver so that it has generic offline-paths
                 // that are possible?
                 self.client
-                    .unix_user_offline_auth_step(auth_session, pam_next_req)
+                    .unix_user_offline_auth_step(&account_id, cred_handler, pam_next_req)
                     .await
-                    .map_err(|_| ())?;
+            }
+            (&mut AuthSession::Success, _) | (&mut AuthSession::Denied, _) => {
+                Err(IdpError::BadRequest)
             }
         };
 
-        let next_cred = auth_session.next_credential();
+        match maybe_err {
+            // What did the provider direct us to do next?
+            Ok(AuthResult::Success { mut token }) => {
+                if self.check_nxset(&token.name, token.gidnumber).await {
+                    // Refuse to release the token, it's in the denied set.
+                    self.delete_cache_usertoken(token.uuid).await?;
+                    *auth_session = AuthSession::Denied;
 
-        Ok(next_cred)
+                    Ok(PamAuthResponse::Unknown)
+                } else {
+                    debug!("provider authentication success.");
+                    self.set_cache_usertoken(&mut token).await?;
+                    *auth_session = AuthSession::Success;
+
+                    Ok(PamAuthResponse::Success)
+                }
+            }
+            Ok(AuthResult::Denied) => {
+                *auth_session = AuthSession::Denied;
+                Ok(PamAuthResponse::Denied)
+            }
+            Ok(AuthResult::Next(req)) => Ok(req.into()),
+            Err(IdpError::NotFound) => Ok(PamAuthResponse::Unknown),
+            Err(IdpError::ProviderUnauthorised) | Err(IdpError::Transport) => {
+                error!("transport error, moving to offline");
+                // Something went wrong, mark offline.
+                let time = SystemTime::now().add(Duration::from_secs(15));
+                self.set_cachestate(CacheState::OfflineNextCheck(time))
+                    .await;
+                return Err(());
+            }
+            Err(IdpError::BadRequest) => {
+                return Err(());
+            }
+        }
     }
 
     // Can this be cfg debug/test?
@@ -982,7 +1080,7 @@ where
                 auth_session
             }
             (_, PamAuthResponse::Unknown) => return Ok(None),
-            (_, PamAuthResponse::Deny) => return Ok(Some(false)),
+            (_, PamAuthResponse::Denied) => return Ok(Some(false)),
             (_, PamAuthResponse::Success) => {
                 // Should never get here "off the rip".
                 debug_assert!(false);
@@ -992,14 +1090,14 @@ where
 
         // Now we can make the next step.
         let pam_next_req = PamAuthRequest::Password {
-            cred: Some(password.to_string()),
+            cred: password.to_string(),
         };
         match self
             .pam_account_authenticate_step(&mut auth_session, pam_next_req)
             .await?
         {
             PamAuthResponse::Success => Ok(Some(true)),
-            PamAuthResponse::Deny => Ok(Some(false)),
+            PamAuthResponse::Denied => Ok(Some(false)),
             _ => {
                 // Should not be able to get here, if the user was unknown they should
                 // be out. If it wants more mechanisms, we can't proceed here.
