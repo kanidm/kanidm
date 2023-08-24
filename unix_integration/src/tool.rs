@@ -20,9 +20,11 @@ use kanidm_unix_common::client::call_daemon;
 use kanidm_unix_common::constants::DEFAULT_CONFIG_PATH;
 use kanidm_unix_common::unix_config::KanidmUnixdConfig;
 use kanidm_unix_common::unix_proto::{
-    ClientRequest, ClientResponse, CredType, PamCred, PamMessageStyle, PamPrompt,
+    ClientRequest,
+    ClientResponse,
+    // CredType, PamCred, PamMessageStyle, PamPrompt,
 };
-use std::io;
+// use std::io;
 use std::path::PathBuf;
 
 include!("./opt/tool.rs");
@@ -61,19 +63,16 @@ async fn main() -> ExitCode {
             return ExitCode::FAILURE
         };
 
-            let mut req = ClientRequest::PamAuthenticateInit(account_id.clone());
+            let req = ClientRequest::PamAuthenticateInit(account_id.clone());
             let sereq = ClientRequest::PamAccountAllowed(account_id);
-            let mut prompt: PamPrompt = Default::default();
+            // let mut prompt: PamPrompt = Default::default();
 
             loop {
-                let timeout = match prompt.timeout {
-                    Some(timeout) => timeout,
-                    None => cfg.unix_sock_timeout,
-                };
-                match call_daemon(cfg.sock_path.as_str(), req, timeout).await {
+                match call_daemon(cfg.sock_path.as_str(), req, cfg.unix_sock_timeout).await {
                     Ok(r) => match r {
-                        ClientResponse::PamPrompt(resp) => {
-                            prompt = resp;
+                        ClientResponse::PamPrompt(_resp) => {
+                            // prompt = resp;
+                            todo!();
                         }
                         ClientResponse::PamStatus(Some(true)) => {
                             println!("auth success!");
@@ -99,6 +98,7 @@ async fn main() -> ExitCode {
                     }
                 }
 
+                /*
                 match prompt.style {
                     PamMessageStyle::PamPromptEchoOff => {
                         let password = match rpassword::prompt_password(prompt.msg) {
@@ -157,6 +157,7 @@ async fn main() -> ExitCode {
                         req = ClientRequest::PamAuthenticateStep(None, prompt.data);
                     }
                 }
+                */
             }
 
             match call_daemon(cfg.sock_path.as_str(), sereq, cfg.unix_sock_timeout).await {

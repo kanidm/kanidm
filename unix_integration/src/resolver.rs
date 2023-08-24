@@ -12,7 +12,9 @@ use tokio::sync::Mutex;
 use uuid::Uuid;
 
 use crate::db::{Cache, CacheTxn, Db};
-use crate::idprovider::interface::{AuthSession, GroupToken, Id, IdProvider, IdpError, UserToken};
+use crate::idprovider::interface::{
+    AuthCacheAction, AuthSession, GroupToken, Id, IdProvider, IdpError, UserToken,
+};
 use crate::unix_config::{HomeAttr, UidAttr};
 use crate::unix_proto::{HomeDirectoryInfo, NssGroup, NssUser, PamAuthRequest, PamAuthResponse};
 
@@ -380,6 +382,7 @@ where
             .map_err(|_| ())
     }
 
+    /*
     async fn check_cache_userpassword(&self, a_uuid: Uuid, cred: &str) -> Result<bool, ()> {
         let dbtxn = self.db.write().await;
         dbtxn
@@ -387,6 +390,7 @@ where
             .and_then(|x| dbtxn.commit().map(|_| x))
             .map_err(|_| ())
     }
+    */
 
     async fn refresh_usertoken(
         &self,
@@ -905,11 +909,15 @@ where
         };
 
         let auth_session = if is_now_online {
-            self.client.unix_user_online_auth_init(&id, token).await
+            self.client
+                .unix_user_online_auth_init(&id, token)
+                .await
                 .map_err(|_| ())?
         } else {
             // Can the auth proceed offline?
-            self.client.unix_user_offline_auth_init(&id, token).await
+            self.client
+                .unix_user_offline_auth_init(&id, token)
+                .await
                 .map_err(|_| ())?
         };
 
@@ -929,19 +937,17 @@ where
 
         match state {
             CacheState::Online => {
-                let auth_cache_action = self.client
+                let auth_cache_action = self
+                    .client
                     .unix_user_online_auth_step(auth_session, pam_next_req)
                     .await
                     .map_err(|_| ())?;
 
                 match auth_cache_action {
-                    AuthCacheAction::None => {},
-                    AuthCacheAction::PasswordHashUpdate {
-                        a_uuid,
-                        cred
-                    } => {
+                    AuthCacheAction::None => {}
+                    AuthCacheAction::PasswordHashUpdate { a_uuid, cred } => {
                         // Might need a rework with the tpm code.
-                        self.set_cache_userpassword(a_uuid, &cred)?;
+                        self.set_cache_userpassword(a_uuid, &cred).await?;
                     }
                 }
             }
@@ -962,6 +968,45 @@ where
         let next_cred = auth_session.next_credential();
 
         Ok(next_cred)
+    }
+
+    // Can this be cfg debug/test?
+    pub async fn pam_account_authenticate(
+        &self,
+        account_id: &str,
+        password: &str,
+    ) -> Result<Option<bool>, ()> {
+        let mut auth_session = match self.pam_account_authenticate_init(account_id).await? {
+            (auth_session, PamAuthResponse::Password) => {
+                // Can continue!
+                auth_session
+            }
+            (_, PamAuthResponse::Unknown) => return Ok(None),
+            (_, PamAuthResponse::Deny) => return Ok(Some(false)),
+            (_, PamAuthResponse::Success) => {
+                // Should never get here "off the rip".
+                debug_assert!(false);
+                return Ok(Some(true));
+            }
+        };
+
+        // Now we can make the next step.
+        let pam_next_req = PamAuthRequest::Password {
+            cred: Some(password.to_string()),
+        };
+        match self
+            .pam_account_authenticate_step(&mut auth_session, pam_next_req)
+            .await?
+        {
+            PamAuthResponse::Success => Ok(Some(true)),
+            PamAuthResponse::Deny => Ok(Some(false)),
+            _ => {
+                // Should not be able to get here, if the user was unknown they should
+                // be out. If it wants more mechanisms, we can't proceed here.
+                debug_assert!(false);
+                Ok(None)
+            }
+        }
     }
 
     pub async fn pam_account_beginsession(

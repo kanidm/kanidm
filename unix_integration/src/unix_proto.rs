@@ -68,12 +68,6 @@ impl PamPrompt {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub enum PamCred {
-    Password(String), // Will be stored in the cache
-    MFACode(String),
-}
-
-#[derive(Serialize, Deserialize, Debug)]
 pub enum PamAuthResponse {
     Unknown,
     Success,
@@ -86,8 +80,9 @@ pub enum PamAuthResponse {
     // CTAP2
 }
 
+#[derive(Serialize, Deserialize, Debug)]
 pub enum PamAuthRequest {
-    Password { cred: Option<PamCred> },
+    Password { cred: Option<String> },
     /*
     MFACode {
         cred: Option<PamCred>
@@ -105,7 +100,7 @@ pub enum ClientRequest {
     NssGroupByGid(u32),
     NssGroupByName(String),
     PamAuthenticateInit(String),
-    PamAuthenticateStep(Option<PamCred>, Option<PamData>),
+    PamAuthenticateStep(PamAuthRequest),
     PamAccountAllowed(String),
     PamAccountBeginSession(String),
     InvalidateCache,
@@ -161,9 +156,4 @@ pub enum TaskResponse {
 pub enum ProviderResult {
     PamPrompt(PamPrompt),
     UserToken(Option<UserToken>),
-}
-
-pub enum PamState {
-    Uninitialized,
-    Step(String),
 }

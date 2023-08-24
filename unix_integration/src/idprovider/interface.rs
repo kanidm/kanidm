@@ -73,7 +73,7 @@ impl AuthSession {
 
 pub enum AuthCacheAction {
     None,
-    PasswordHashUpdate,
+    PasswordHashUpdate { a_uuid: Uuid, cred: String },
 }
 
 #[async_trait]
@@ -107,7 +107,7 @@ pub trait IdProvider {
         _auth_session: &mut AuthSession,
         _pam_next_req: PamAuthRequest,
     ) -> Result<AuthCacheAction, IdpError> {
-        Ok((AuthSession::Unknown, AuthCacheAction::None))
+        Ok(AuthCacheAction::None)
     }
 
     async fn unix_user_offline_auth_step(
@@ -115,7 +115,7 @@ pub trait IdProvider {
         _auth_session: &mut AuthSession,
         _pam_next_req: PamAuthRequest,
     ) -> Result<(), IdpError> {
-        Ok(AuthSession::Unknown)
+        Ok(())
     }
 
     async fn unix_group_get(&self, id: &Id) -> Result<GroupToken, IdpError>;

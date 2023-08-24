@@ -3,7 +3,10 @@ use kanidm_client::{ClientError, KanidmClient, StatusCode};
 use kanidm_proto::v1::{OperationError, UnixGroupToken, UnixUserToken};
 use tokio::sync::RwLock;
 
-use super::interface::{GroupToken, Id, IdProvider, IdpError, UserToken};
+use super::interface::{
+    AuthCacheAction, AuthSession, GroupToken, Id, IdProvider, IdpError, UserToken,
+};
+use crate::unix_proto::PamAuthRequest;
 
 pub struct KanidmProvider {
     client: RwLock<KanidmClient>,
@@ -68,7 +71,6 @@ impl From<UnixGroupToken> for GroupToken {
 #[async_trait]
 impl IdProvider for KanidmProvider {
     // Needs .read on all types except re-auth.
-
     async fn provider_authenticate(&self) -> Result<(), IdpError> {
         match self.client.write().await.auth_anonymous().await {
             Ok(_uat) => Ok(()),
@@ -139,6 +141,38 @@ impl IdProvider for KanidmProvider {
                 Err(IdpError::BadRequest)
             }
         }
+    }
+
+    async fn unix_user_online_auth_init(
+        &self,
+        _id: &Id,
+        _token: Option<UserToken>,
+    ) -> Result<AuthSession, IdpError> {
+        todo!();
+    }
+
+    async fn unix_user_offline_auth_init(
+        &self,
+        _id: &Id,
+        _token: Option<UserToken>,
+    ) -> Result<AuthSession, IdpError> {
+        todo!();
+    }
+
+    async fn unix_user_online_auth_step(
+        &self,
+        _auth_session: &mut AuthSession,
+        _pam_next_req: PamAuthRequest,
+    ) -> Result<AuthCacheAction, IdpError> {
+        todo!();
+    }
+
+    async fn unix_user_offline_auth_step(
+        &self,
+        _auth_session: &mut AuthSession,
+        _pam_next_req: PamAuthRequest,
+    ) -> Result<(), IdpError> {
+        todo!();
     }
 
     /*
