@@ -949,7 +949,7 @@ where
 
                 Ok((auth_session, next_req.into()))
             }
-            Err(IdpError::NotFound) => Ok(PamAuthResponse::Unknown),
+            Err(IdpError::NotFound) => Ok((AuthSession::Denied, PamAuthResponse::Unknown)),
             Err(IdpError::ProviderUnauthorised) | Err(IdpError::Transport) => {
                 error!("transport error, moving to offline");
                 // Something went wrong, mark offline.
@@ -1039,7 +1039,12 @@ where
                 // contained to the resolver so that it has generic offline-paths
                 // that are possible?
                 self.client
-                    .unix_user_offline_auth_step(&account_id, cred_handler, pam_next_req, online_at_init)
+                    .unix_user_offline_auth_step(
+                        &account_id,
+                        cred_handler,
+                        pam_next_req,
+                        online_at_init,
+                    )
                     .await
             }
             (&mut AuthSession::Success, _) | (&mut AuthSession::Denied, _) => {
