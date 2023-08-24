@@ -246,6 +246,7 @@ impl IdProvider for KanidmProvider {
         _account_id: &str,
         _cred_handler: &mut AuthCredHandler,
         _pam_next_req: PamAuthRequest,
+        _online_at_init: bool,
     ) -> Result<AuthResult, IdpError> {
         // We need any cached credentials here.
         todo!();

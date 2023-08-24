@@ -923,31 +923,45 @@ where
             true
         };
 
-        let (next_req, cred_handler) = if online_at_init {
+        let maybe_err = if online_at_init {
             self.client
                 .unix_user_online_auth_init(account_id, token.as_ref())
                 .await
-                .map_err(|_| ())?
         } else {
             // Can the auth proceed offline?
             self.client
                 .unix_user_offline_auth_init(account_id, token.as_ref())
                 .await
-                .map_err(|_| ())?
         };
 
-        let auth_session = AuthSession::InProgress {
-            account_id: account_id.to_string(),
-            id,
-            token,
-            online_at_init: true,
-            cred_handler,
-        };
+        match maybe_err {
+            Ok((next_req, cred_handler)) => {
+                let auth_session = AuthSession::InProgress {
+                    account_id: account_id.to_string(),
+                    id,
+                    token,
+                    online_at_init,
+                    cred_handler,
+                };
 
-        // Now identify what credentials are needed next. The auth session tells
-        // us this.
+                // Now identify what credentials are needed next. The auth session tells
+                // us this.
 
-        Ok((auth_session, next_req.into()))
+                Ok((auth_session, next_req.into()))
+            }
+            Err(IdpError::NotFound) => Ok(PamAuthResponse::Unknown),
+            Err(IdpError::ProviderUnauthorised) | Err(IdpError::Transport) => {
+                error!("transport error, moving to offline");
+                // Something went wrong, mark offline.
+                let time = SystemTime::now().add(Duration::from_secs(15));
+                self.set_cachestate(CacheState::OfflineNextCheck(time))
+                    .await;
+                return Err(());
+            }
+            Err(IdpError::BadRequest) => {
+                return Err(());
+            }
+        }
     }
 
     pub async fn pam_account_authenticate_step(
@@ -992,6 +1006,7 @@ where
                     Err(e) => Err(e),
                 }
             }
+            /*
             (
                 &mut AuthSession::InProgress {
                     account_id: _,
@@ -1006,12 +1021,13 @@ where
                 error!("Unable to proceed with authentication, resolver has gone offline");
                 Err(IdpError::Transport)
             }
+            */
             (
                 &mut AuthSession::InProgress {
                     ref account_id,
                     id: _,
                     token: _,
-                    online_at_init: _,
+                    online_at_init,
                     ref mut cred_handler,
                 },
                 _,
@@ -1023,7 +1039,7 @@ where
                 // contained to the resolver so that it has generic offline-paths
                 // that are possible?
                 self.client
-                    .unix_user_offline_auth_step(&account_id, cred_handler, pam_next_req)
+                    .unix_user_offline_auth_step(&account_id, cred_handler, pam_next_req, online_at_init)
                     .await
             }
             (&mut AuthSession::Success, _) | (&mut AuthSession::Denied, _) => {

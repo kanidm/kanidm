@@ -114,6 +114,7 @@ pub trait IdProvider {
         _account_id: &str,
         _cred_handler: &mut AuthCredHandler,
         _pam_next_req: PamAuthRequest,
+        _online_at_init: bool,
     ) -> Result<AuthResult, IdpError>;
 
     async fn unix_group_get(&self, id: &Id) -> Result<GroupToken, IdpError>;
