@@ -34,7 +34,7 @@ pub enum AuthSession {
     InProgress {
         account_id: String,
         id: Id,
-        token: Option<UserToken>,
+        token: Option<Box<UserToken>>,
         online_at_init: bool,
         // cred_type: AuthCredType,
         // next_cred: AuthNextCred,
@@ -397,7 +397,6 @@ where
             .map_err(|_| ())
     }
 
-    /*
     async fn check_cache_userpassword(&self, a_uuid: Uuid, cred: &str) -> Result<bool, ()> {
         let dbtxn = self.db.write().await;
         dbtxn
@@ -405,7 +404,6 @@ where
             .and_then(|x| dbtxn.commit().map(|_| x))
             .map_err(|_| ())
     }
-    */
 
     async fn refresh_usertoken(
         &self,
@@ -939,7 +937,7 @@ where
                 let auth_session = AuthSession::InProgress {
                     account_id: account_id.to_string(),
                     id,
-                    token,
+                    token: token.map(Box::new),
                     online_at_init,
                     cred_handler,
                 };
@@ -956,11 +954,9 @@ where
                 let time = SystemTime::now().add(Duration::from_secs(15));
                 self.set_cachestate(CacheState::OfflineNextCheck(time))
                     .await;
-                return Err(());
+                Err(())
             }
-            Err(IdpError::BadRequest) => {
-                return Err(());
-            }
+            Err(IdpError::BadRequest) => Err(()),
         }
     }
 
@@ -984,7 +980,7 @@ where
             ) => {
                 let maybe_cache_action = self
                     .client
-                    .unix_user_online_auth_step(&account_id, cred_handler, pam_next_req)
+                    .unix_user_online_auth_step(account_id, cred_handler, pam_next_req)
                     .await;
 
                 match maybe_cache_action {
@@ -1024,10 +1020,10 @@ where
             */
             (
                 &mut AuthSession::InProgress {
-                    ref account_id,
+                    account_id: _,
                     id: _,
-                    token: _,
-                    online_at_init,
+                    token: Some(ref token),
+                    online_at_init: _,
                     ref mut cred_handler,
                 },
                 _,
@@ -1038,6 +1034,22 @@ where
                 // Rather than calling client, should this actually be self
                 // contained to the resolver so that it has generic offline-paths
                 // that are possible?
+                match (cred_handler, pam_next_req) {
+                    (AuthCredHandler::Password, PamAuthRequest::Password { cred }) => {
+                        match self.check_cache_userpassword(token.uuid, &cred).await {
+                            Ok(true) => Ok(AuthResult::Success {
+                                token: *token.clone(),
+                            }),
+                            Ok(false) => Ok(AuthResult::Denied),
+                            Err(()) => {
+                                // We had a genuine backend error of some description.
+                                return Err(());
+                            }
+                        }
+                    }
+                }
+
+                /*
                 self.client
                     .unix_user_offline_auth_step(
                         &account_id,
@@ -1046,6 +1058,12 @@ where
                         online_at_init,
                     )
                     .await
+                */
+            }
+            (&mut AuthSession::InProgress { token: None, .. }, _) => {
+                // Can't do much with offline auth when there is no token ...
+                warn!("Unable to proceed with offline auth, no token available");
+                Err(IdpError::NotFound)
             }
             (&mut AuthSession::Success, _) | (&mut AuthSession::Denied, _) => {
                 Err(IdpError::BadRequest)
@@ -1081,11 +1099,9 @@ where
                 let time = SystemTime::now().add(Duration::from_secs(15));
                 self.set_cachestate(CacheState::OfflineNextCheck(time))
                     .await;
-                return Err(());
+                Err(())
             }
-            Err(IdpError::BadRequest) => {
-                return Err(());
-            }
+            Err(IdpError::BadRequest) => Err(()),
         }
     }
 
@@ -1122,7 +1138,7 @@ where
             _ => {
                 // Should not be able to get here, if the user was unknown they should
                 // be out. If it wants more mechanisms, we can't proceed here.
-                debug_assert!(false);
+                // debug_assert!(false);
                 Ok(None)
             }
         }

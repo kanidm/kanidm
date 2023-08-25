@@ -165,7 +165,7 @@ impl IdProvider for KanidmProvider {
                     .client
                     .read()
                     .await
-                    .idm_account_unix_cred_verify(&account_id, &cred)
+                    .idm_account_unix_cred_verify(account_id, &cred)
                     .await
                 {
                     Ok(Some(n_tok)) => Ok((
@@ -223,11 +223,12 @@ impl IdProvider for KanidmProvider {
                         Err(IdpError::BadRequest)
                     }
                 }
-            } /*
-              _ => {
-                  error!("invalid authentication request state");
-                  Err(IdpError::BadRequest)
-              }
+            } // For future when we have different auth combos/types.
+              /*
+                _ => {
+                    error!("invalid authentication request state");
+                    Err(IdpError::BadRequest)
+                }
               */
         }
     }
@@ -241,6 +242,7 @@ impl IdProvider for KanidmProvider {
         Ok((AuthRequest::Password, AuthCredHandler::Password))
     }
 
+    /*
     async fn unix_user_offline_auth_step(
         &self,
         _account_id: &str,
@@ -250,78 +252,6 @@ impl IdProvider for KanidmProvider {
     ) -> Result<AuthResult, IdpError> {
         // We need any cached credentials here.
         todo!();
-    }
-
-    /*
-    async fn unix_user_authenticate_step(
-        &self,
-        id: &Id,
-        cred: Option<&str>,
-        _data: Option<PamData>,
-    ) -> Result<ProviderResult, IdpError> {
-        let cred = match cred {
-            Some(cred) => cred,
-            None => {
-                return Ok(ProviderResult::PamPrompt(PamPrompt::passwd_prompt()));
-            }
-        };
-        match self
-            .client
-            .read()
-            .await
-            .idm_account_unix_cred_verify(id.to_string().as_str(), cred)
-            .await
-        {
-            Ok(Some(n_tok)) => Ok(ProviderResult::UserToken(Some(UserToken::from(n_tok)))),
-            Ok(None) => Ok(ProviderResult::UserToken(None)),
-            Err(ClientError::Transport(err)) => {
-                error!(?err);
-                Err(IdpError::Transport)
-            }
-            Err(ClientError::Http(StatusCode::UNAUTHORIZED, reason, opid)) => {
-                match reason {
-                    Some(OperationError::NotAuthenticated) => warn!(
-                        "session not authenticated - attempting reauthentication - eventid {}",
-                        opid
-                    ),
-                    Some(OperationError::SessionExpired) => warn!(
-                        "session expired - attempting reauthentication - eventid {}",
-                        opid
-                    ),
-                    e => error!(
-                        "authentication error {:?}, moving to offline - eventid {}",
-                        e, opid
-                    ),
-                };
-                Err(IdpError::ProviderUnauthorised)
-            }
-            Err(ClientError::Http(
-                StatusCode::BAD_REQUEST,
-                Some(OperationError::NoMatchingEntries),
-                opid,
-            ))
-            | Err(ClientError::Http(
-                StatusCode::NOT_FOUND,
-                Some(OperationError::NoMatchingEntries),
-                opid,
-            ))
-            | Err(ClientError::Http(
-                StatusCode::BAD_REQUEST,
-                Some(OperationError::InvalidAccountState(_)),
-                opid,
-            )) => {
-                error!(
-                    "unknown account or is not a valid posix account - eventid {}",
-                    opid
-                );
-                Err(IdpError::NotFound)
-            }
-            Err(err) => {
-                error!(?err, "client error");
-                // Some other unknown processing error?
-                Err(IdpError::BadRequest)
-            }
-        }
     }
     */
 
