@@ -14,6 +14,8 @@ impl DaemonClientBlocking {
     pub fn new(path: &str, timeout: u64) -> Result<DaemonClientBlocking, Box<dyn Error>> {
         let timeout = Duration::from_secs(timeout);
 
+        debug!(%path, ?timeout);
+
         let stream = UnixStream::connect(path)
             .and_then(|socket| socket.set_read_timeout(Some(timeout)).map(|_| socket))
             .and_then(|socket| socket.set_write_timeout(Some(timeout)).map(|_| socket))

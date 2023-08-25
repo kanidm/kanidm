@@ -55,10 +55,9 @@ impl TotpDisplayApp {
     async fn renew_totp(other_id: String) -> Msg {
         let uri = format!("/v1/person/{}/_identify_user", other_id);
         let request = IdentifyUserRequest::DisplayCode;
-        let Ok(state_as_jsvalue) = serde_json::to_string(&request)
-            .map(|s| JsValue::from(&s))
-             else {
-            return Msg::Cancel
+        let Ok(state_as_jsvalue) = serde_json::to_string(&request).map(|s| JsValue::from(&s))
+        else {
+            return Msg::Cancel;
         };
         let response = match do_request(&uri, RequestMethod::POST, Some(state_as_jsvalue)).await {
             Ok((_, _, response, _)) => response,

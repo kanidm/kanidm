@@ -162,7 +162,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         trace!("internal_migrate_or_create operating on {:?}", e.get_uuid());
 
         let Some(filt) = e.filter_from_attrs(&[Attribute::Uuid.into()]) else {
-            return Err(OperationError::FilterGeneration)
+            return Err(OperationError::FilterGeneration);
         };
 
         trace!("internal_migrate_or_create search {:?}", filt);

@@ -48,10 +48,30 @@ use crate::pam::module::{PamHandle, PamHooks};
 use crate::pam_hooks;
 use constants::PamResultCode;
 
+use tracing::{debug, error};
+use tracing_subscriber::filter::LevelFilter;
+use tracing_subscriber::fmt;
+use tracing_subscriber::prelude::*;
+
 pub fn get_cfg() -> Result<KanidmUnixdConfig, PamResultCode> {
     KanidmUnixdConfig::new()
         .read_options_from_optional_config(DEFAULT_CONFIG_PATH)
         .map_err(|_| PamResultCode::PAM_SERVICE_ERR)
+}
+
+fn install_subscriber(debug: bool) {
+    let fmt_layer = fmt::layer().with_target(false);
+
+    let filter_layer = if debug {
+        LevelFilter::DEBUG
+    } else {
+        LevelFilter::ERROR
+    };
+
+    tracing_subscriber::registry()
+        .with(filter_layer)
+        .with(fmt_layer)
+        .init();
 }
 
 #[derive(Debug)]
@@ -93,22 +113,17 @@ impl PamHooks for PamKanidm {
             Err(_) => return PamResultCode::PAM_SERVICE_ERR,
         };
 
+        install_subscriber(opts.debug);
+
         let tty = pamh.get_tty();
         let rhost = pamh.get_rhost();
 
-        if opts.debug {
-            println!("acct_mgmt");
-            println!("args -> {:?}", args);
-            println!("opts -> {:?}", opts);
-            println!("tty -> {:?} rhost -> {:?}", tty, rhost);
-        }
+        debug!(?args, ?opts, ?tty, ?rhost, "acct_mgmt");
 
         let account_id = match pamh.get_user(None) {
             Ok(aid) => aid,
             Err(e) => {
-                if opts.debug {
-                    println!("Error get_user -> {:?}", e);
-                }
+                error!(err = ?e, "get_user");
                 return e;
             }
         };
@@ -124,9 +139,7 @@ impl PamHooks for PamKanidm {
             match DaemonClientBlocking::new(cfg.sock_path.as_str(), cfg.unix_sock_timeout) {
                 Ok(dc) => dc,
                 Err(e) => {
-                    if opts.debug {
-                        println!("Error DaemonClientBlocking::new() -> {:?}", e);
-                    }
+                    error!(err = ?e, "Error DaemonClientBlocking::new()");
                     return PamResultCode::PAM_SERVICE_ERR;
                 }
             };
@@ -134,43 +147,30 @@ impl PamHooks for PamKanidm {
         match daemon_client.call_and_wait(&req) {
             Ok(r) => match r {
                 ClientResponse::PamStatus(Some(true)) => {
-                    if opts.debug {
-                        println!("PamResultCode::PAM_SUCCESS");
-                    }
+                    debug!("PamResultCode::PAM_SUCCESS");
                     PamResultCode::PAM_SUCCESS
                 }
                 ClientResponse::PamStatus(Some(false)) => {
-                    // println!("PAM_IGNORE");
-                    if opts.debug {
-                        println!("PamResultCode::PAM_AUTH_ERR");
-                    }
+                    debug!("PamResultCode::PAM_AUTH_ERR");
                     PamResultCode::PAM_AUTH_ERR
                 }
                 ClientResponse::PamStatus(None) => {
                     if opts.ignore_unknown_user {
-                        if opts.debug {
-                            println!("PamResultCode::PAM_IGNORE");
-                        }
+                        debug!("PamResultCode::PAM_IGNORE");
                         PamResultCode::PAM_IGNORE
                     } else {
-                        if opts.debug {
-                            println!("PamResultCode::PAM_USER_UNKNOWN");
-                        }
+                        debug!("PamResultCode::PAM_USER_UNKNOWN");
                         PamResultCode::PAM_USER_UNKNOWN
                     }
                 }
                 _ => {
                     // unexpected response.
-                    if opts.debug {
-                        println!("PamResultCode::PAM_IGNORE -> {:?}", r);
-                    }
+                    error!(err = ?r, "PamResultCode::PAM_IGNORE");
                     PamResultCode::PAM_IGNORE
                 }
             },
             Err(e) => {
-                if opts.debug {
-                    println!("PamResultCode::PAM_IGNORE  -> {:?}", e);
-                }
+                error!(err = ?e, "PamResultCode::PAM_IGNORE");
                 PamResultCode::PAM_IGNORE
             }
         }
@@ -182,21 +182,18 @@ impl PamHooks for PamKanidm {
             Err(_) => return PamResultCode::PAM_SERVICE_ERR,
         };
 
+        install_subscriber(opts.debug);
+
         // This will == "Ok(Some("ssh"))" on remote auth.
         let tty = pamh.get_tty();
         let rhost = pamh.get_rhost();
 
-        if opts.debug {
-            println!("sm_authenticate");
-            println!("args -> {:?}", args);
-            println!("opts -> {:?}", opts);
-            println!("tty -> {:?} rhost -> {:?}", tty, rhost);
-        }
+        debug!(?args, ?opts, ?tty, ?rhost, "sm_authenticate");
 
         let account_id = match pamh.get_user(None) {
             Ok(aid) => aid,
             Err(e) => {
-                println!("Error get_user -> {:?}", e);
+                error!(err = ?e, "get_user");
                 return e;
             }
         };
@@ -210,9 +207,7 @@ impl PamHooks for PamKanidm {
             match DaemonClientBlocking::new(cfg.sock_path.as_str(), cfg.unix_sock_timeout) {
                 Ok(dc) => dc,
                 Err(e) => {
-                    if opts.debug {
-                        println!("Error DaemonClientBlocking::new() -> {:?}", e);
-                    }
+                    error!(err = ?e, "Error DaemonClientBlocking::new()");
                     return PamResultCode::PAM_SERVICE_ERR;
                 }
             };
@@ -225,17 +220,13 @@ impl PamHooks for PamKanidm {
             Ok(Some(v)) => Some(v),
             Ok(None) => {
                 if opts.use_first_pass {
-                    if opts.debug {
-                        println!("Don't have an authtok, returning PAM_AUTH_ERR");
-                    }
+                    debug!("Don't have an authtok, returning PAM_AUTH_ERR");
                     return PamResultCode::PAM_AUTH_ERR;
                 }
                 None
             }
             Err(e) => {
-                if opts.debug {
-                    println!("Error get_authtok -> {:?}", e);
-                }
+                error!(err = ?e, "get_authtok");
                 return e;
             }
         };
@@ -243,9 +234,7 @@ impl PamHooks for PamKanidm {
         let conv = match pamh.get_item::<PamConv>() {
             Ok(conv) => conv,
             Err(err) => {
-                if opts.debug {
-                    println!("Couldn't get pam_conv");
-                }
+                error!(?err, "pam_conv");
                 return err;
             }
         };
@@ -281,16 +270,12 @@ impl PamHooks for PamKanidm {
                                 Ok(password) => match password {
                                     Some(cred) => cred,
                                     None => {
-                                        if opts.debug {
-                                            println!("No password");
-                                        }
+                                        debug!("no password");
                                         return PamResultCode::PAM_CRED_INSUFFICIENT;
                                     }
                                 },
                                 Err(err) => {
-                                    if opts.debug {
-                                        println!("Couldn't get password");
-                                    }
+                                    debug!("unable to get password");
                                     return err;
                                 }
                             }
@@ -302,16 +287,12 @@ impl PamHooks for PamKanidm {
                     }
                     _ => {
                         // unexpected response.
-                        if opts.debug {
-                            println!("PAM_IGNORE -> {:?}", r);
-                        }
+                        error!(err = ?r, "PAM_IGNORE");
                         return PamResultCode::PAM_IGNORE;
                     }
                 },
-                Err(e) => {
-                    if opts.debug {
-                        println!("PAM_IGNORE -> {:?}", e);
-                    }
+                Err(err) => {
+                    error!(?err, "PAM_IGNORE");
                     return PamResultCode::PAM_IGNORE;
                 }
             }
@@ -324,11 +305,10 @@ impl PamHooks for PamKanidm {
             Err(_) => return PamResultCode::PAM_SERVICE_ERR,
         };
 
-        if opts.debug {
-            println!("sm_chauthtok");
-            println!("args -> {:?}", args);
-            println!("opts -> {:?}", opts);
-        }
+        install_subscriber(opts.debug);
+
+        debug!(?args, ?opts, "sm_chauthtok");
+
         PamResultCode::PAM_IGNORE
     }
 
@@ -338,11 +318,10 @@ impl PamHooks for PamKanidm {
             Err(_) => return PamResultCode::PAM_SERVICE_ERR,
         };
 
-        if opts.debug {
-            println!("sm_close_session");
-            println!("args -> {:?}", args);
-            println!("opts -> {:?}", opts);
-        }
+        install_subscriber(opts.debug);
+
+        debug!(?args, ?opts, "sm_close_session");
+
         PamResultCode::PAM_SUCCESS
     }
 
@@ -352,19 +331,15 @@ impl PamHooks for PamKanidm {
             Err(_) => return PamResultCode::PAM_SERVICE_ERR,
         };
 
-        if opts.debug {
-            println!("sm_open_session");
-            println!("args -> {:?}", args);
-            println!("opts -> {:?}", opts);
-        }
+        install_subscriber(opts.debug);
+
+        debug!(?args, ?opts, "sm_open_session");
 
         let account_id = match pamh.get_user(None) {
             Ok(aid) => aid,
-            Err(e) => {
-                if opts.debug {
-                    println!("Error get_user -> {:?}", e);
-                }
-                return e;
+            Err(err) => {
+                error!(?err, "get_user");
+                return err;
             }
         };
 
@@ -378,9 +353,7 @@ impl PamHooks for PamKanidm {
             match DaemonClientBlocking::new(cfg.sock_path.as_str(), cfg.unix_sock_timeout) {
                 Ok(dc) => dc,
                 Err(e) => {
-                    if opts.debug {
-                        println!("Error DaemonClientBlocking::new() -> {:?}", e);
-                    }
+                    error!(err = ?e, "Error DaemonClientBlocking::new()");
                     return PamResultCode::PAM_SERVICE_ERR;
                 }
             };
@@ -391,9 +364,7 @@ impl PamHooks for PamKanidm {
                 PamResultCode::PAM_SUCCESS
             }
             other => {
-                if opts.debug {
-                    println!("PAM_IGNORE  -> {:?}", other);
-                }
+                debug!(err = ?other, "PAM_IGNORE");
                 PamResultCode::PAM_IGNORE
             }
         }
@@ -405,11 +376,10 @@ impl PamHooks for PamKanidm {
             Err(_) => return PamResultCode::PAM_SERVICE_ERR,
         };
 
-        if opts.debug {
-            println!("sm_setcred");
-            println!("args -> {:?}", args);
-            println!("opts -> {:?}", opts);
-        }
+        install_subscriber(opts.debug);
+
+        debug!(?args, ?opts, "sm_setcred");
+
         PamResultCode::PAM_SUCCESS
     }
 }

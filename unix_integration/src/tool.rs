@@ -54,11 +54,11 @@ async fn main() -> ExitCode {
         } => {
             debug!("Starting PAM auth tester tool ...");
 
-            let Ok(cfg) = KanidmUnixdConfig::new()
-                .read_options_from_optional_config(DEFAULT_CONFIG_PATH)
+            let Ok(cfg) =
+                KanidmUnixdConfig::new().read_options_from_optional_config(DEFAULT_CONFIG_PATH)
             else {
                 error!("Failed to parse {}", DEFAULT_CONFIG_PATH);
-                return ExitCode::FAILURE
+                return ExitCode::FAILURE;
             };
 
             let mut req = ClientRequest::PamAuthenticateInit(account_id.clone());

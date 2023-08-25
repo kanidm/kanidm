@@ -190,7 +190,10 @@ async fn handle_client(
     debug!("Accepted connection");
 
     let Ok(ucred) = sock.peer_cred() else {
-        return Err(Box::new(IoError::new(ErrorKind::Other, "Unable to verify peer credentials.")));
+        return Err(Box::new(IoError::new(
+            ErrorKind::Other,
+            "Unable to verify peer credentials.",
+        )));
     };
 
     let mut reqs = Framed::new(sock, ClientCodec);

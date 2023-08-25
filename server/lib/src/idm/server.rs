@@ -3763,9 +3763,10 @@ mod tests {
             .proxy_read()
             .await
             .validate_and_parse_token_to_token(Some(&token), ct)
-            .expect("Must not fail") else {
+            .expect("Must not fail")
+        else {
             panic!("Unexpected auth token type for anonymous auth");
-            };
+        };
 
         debug!(?uat);
 
