@@ -68,10 +68,10 @@ fn install_subscriber(debug: bool) {
         LevelFilter::ERROR
     };
 
-    tracing_subscriber::registry()
+    let _ = tracing_subscriber::registry()
         .with(filter_layer)
         .with(fmt_layer)
-        .init();
+        .try_init();
 }
 
 #[derive(Debug)]
