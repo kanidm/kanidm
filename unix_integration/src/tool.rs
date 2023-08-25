@@ -20,9 +20,7 @@ use kanidm_unix_common::client::call_daemon;
 use kanidm_unix_common::constants::DEFAULT_CONFIG_PATH;
 use kanidm_unix_common::unix_config::KanidmUnixdConfig;
 use kanidm_unix_common::unix_proto::{
-    ClientRequest,
-    ClientResponse,
-    // CredType, PamCred, PamMessageStyle, PamPrompt,
+    ClientRequest, ClientResponse, PamAuthRequest, PamAuthResponse,
 };
 // use std::io;
 use std::path::PathBuf;
@@ -57,34 +55,46 @@ async fn main() -> ExitCode {
             debug!("Starting PAM auth tester tool ...");
 
             let Ok(cfg) = KanidmUnixdConfig::new()
-        .read_options_from_optional_config(DEFAULT_CONFIG_PATH)
-        else {
-            error!("Failed to parse {}", DEFAULT_CONFIG_PATH);
-            return ExitCode::FAILURE
-        };
+                .read_options_from_optional_config(DEFAULT_CONFIG_PATH)
+            else {
+                error!("Failed to parse {}", DEFAULT_CONFIG_PATH);
+                return ExitCode::FAILURE
+            };
 
-            let req = ClientRequest::PamAuthenticateInit(account_id.clone());
-            let sereq = ClientRequest::PamAccountAllowed(account_id);
-            // let mut prompt: PamPrompt = Default::default();
-
+            let mut req = ClientRequest::PamAuthenticateInit(account_id.clone());
             loop {
                 match call_daemon(cfg.sock_path.as_str(), req, cfg.unix_sock_timeout).await {
                     Ok(r) => match r {
-                        ClientResponse::PamPrompt(_resp) => {
-                            // prompt = resp;
-                            todo!();
-                        }
-                        ClientResponse::PamStatus(Some(true)) => {
+                        ClientResponse::PamAuthenticateStepResponse(PamAuthResponse::Success) => {
+                            // ClientResponse::PamStatus(Some(true)) => {
                             println!("auth success!");
                             break;
                         }
-                        ClientResponse::PamStatus(Some(false)) => {
+                        ClientResponse::PamAuthenticateStepResponse(PamAuthResponse::Denied) => {
+                            // ClientResponse::PamStatus(Some(false)) => {
                             println!("auth failed!");
                             break;
                         }
-                        ClientResponse::PamStatus(None) => {
+                        ClientResponse::PamAuthenticateStepResponse(PamAuthResponse::Unknown) => {
+                            // ClientResponse::PamStatus(None) => {
                             println!("auth user unknown");
                             break;
+                        }
+                        ClientResponse::PamAuthenticateStepResponse(PamAuthResponse::Password) => {
+                            // Prompt for and get the password
+                            let cred = match rpassword::prompt_password("Enter Unix password: ") {
+                                Ok(p) => p,
+                                Err(e) => {
+                                    error!("Problem getting input: {}", e);
+                                    return ExitCode::FAILURE;
+                                }
+                            };
+
+                            // Setup the req for the next loop.
+                            req = ClientRequest::PamAuthenticateStep(PamAuthRequest::Password {
+                                cred,
+                            });
+                            continue;
                         }
                         _ => {
                             // unexpected response.
@@ -97,68 +107,9 @@ async fn main() -> ExitCode {
                         break;
                     }
                 }
-
-                /*
-                match prompt.style {
-                    PamMessageStyle::PamPromptEchoOff => {
-                        let password = match rpassword::prompt_password(prompt.msg) {
-                            Ok(p) => p,
-                            Err(e) => {
-                                error!("Problem getting input: {}", e);
-                                return ExitCode::FAILURE;
-                            }
-                        };
-                        match prompt.cred_type {
-                            Some(CredType::Password) => {
-                                req = ClientRequest::PamAuthenticateStep(
-                                    Some(PamCred::Password(password)),
-                                    prompt.data,
-                                );
-                            }
-                            _ => {
-                                req = ClientRequest::PamAuthenticateStep(
-                                    Some(PamCred::MFACode(password)),
-                                    prompt.data,
-                                );
-                            }
-                        }
-                    }
-                    PamMessageStyle::PamPromptEchoOn => {
-                        let mut passcode = String::new();
-                        match io::stdin().read_line(&mut passcode) {
-                            Ok(_) => {}
-                            Err(e) => {
-                                error!("Problem getting input: {}", e);
-                                return ExitCode::FAILURE;
-                            }
-                        }
-                        passcode = passcode.trim_end_matches('\n').to_string();
-                        match prompt.cred_type {
-                            Some(CredType::Password) => {
-                                req = ClientRequest::PamAuthenticateStep(
-                                    Some(PamCred::Password(passcode)),
-                                    prompt.data,
-                                );
-                            }
-                            _ => {
-                                req = ClientRequest::PamAuthenticateStep(
-                                    Some(PamCred::MFACode(passcode)),
-                                    prompt.data,
-                                );
-                            }
-                        }
-                    }
-                    PamMessageStyle::PamErrorMsg => {
-                        error!(prompt.msg);
-                        req = ClientRequest::PamAuthenticateStep(None, prompt.data);
-                    }
-                    PamMessageStyle::PamTextInfo => {
-                        info!(prompt.msg);
-                        req = ClientRequest::PamAuthenticateStep(None, prompt.data);
-                    }
-                }
-                */
             }
+
+            let sereq = ClientRequest::PamAccountAllowed(account_id);
 
             match call_daemon(cfg.sock_path.as_str(), sereq, cfg.unix_sock_timeout).await {
                 Ok(r) => match r {

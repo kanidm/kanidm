@@ -38,7 +38,9 @@ use std::ffi::CStr;
 use kanidm_unix_common::client_sync::DaemonClientBlocking;
 use kanidm_unix_common::constants::DEFAULT_CONFIG_PATH;
 use kanidm_unix_common::unix_config::KanidmUnixdConfig;
-use kanidm_unix_common::unix_proto::{ClientRequest, ClientResponse, CredType, PamCred, PamPrompt};
+use kanidm_unix_common::unix_proto::{
+    ClientRequest, ClientResponse, PamAuthRequest, PamAuthResponse,
+};
 
 use crate::pam::constants::*;
 use crate::pam::conv::PamConv;
@@ -118,15 +120,16 @@ impl PamHooks for PamKanidm {
         let req = ClientRequest::PamAccountAllowed(account_id);
         // PamResultCode::PAM_IGNORE
 
-        let mut daemon_client = match DaemonClientBlocking::new(cfg.sock_path.as_str(), cfg.unix_sock_timeout) {
-            Ok(dc) => dc,
-            Err(e) => {
-                if opts.debug {
-                    println!("Error DaemonClientBlocking::new() -> {:?}", e);
+        let mut daemon_client =
+            match DaemonClientBlocking::new(cfg.sock_path.as_str(), cfg.unix_sock_timeout) {
+                Ok(dc) => dc,
+                Err(e) => {
+                    if opts.debug {
+                        println!("Error DaemonClientBlocking::new() -> {:?}", e);
+                    }
+                    return PamResultCode::PAM_SERVICE_ERR;
                 }
-                return PamResultCode::PAM_SERVICE_ERR
-            }
-        };
+            };
 
         match daemon_client.call_and_wait(&req) {
             Ok(r) => match r {
@@ -202,19 +205,22 @@ impl PamHooks for PamKanidm {
             Ok(cfg) => cfg,
             Err(e) => return e,
         };
-        let mut req = ClientRequest::PamAuthenticateInit(account_id);
-        let mut prompt: PamPrompt = Default::default();
 
-        let mut daemon_client = match DaemonClientBlocking::new(cfg.sock_path.as_str(), cfg.unix_sock_timeout) {
-            Ok(dc) => dc,
-            Err(e) => {
-                if opts.debug {
-                    println!("Error DaemonClientBlocking::new() -> {:?}", e);
+        let mut daemon_client =
+            match DaemonClientBlocking::new(cfg.sock_path.as_str(), cfg.unix_sock_timeout) {
+                Ok(dc) => dc,
+                Err(e) => {
+                    if opts.debug {
+                        println!("Error DaemonClientBlocking::new() -> {:?}", e);
+                    }
+                    return PamResultCode::PAM_SERVICE_ERR;
                 }
-                return PamResultCode::PAM_SERVICE_ERR
-            }
-        };
+            };
 
+        // Later we may need to move this to a function and call it as a oneshot for auth methods
+        // that don't require any authtoks at all. For example, imagine a user authed and they
+        // needed to follow a URL to continue. In that case, they would fail here because they
+        // didn't enter an authtok that they didn't need!
         let mut authtok = match pamh.get_authtok() {
             Ok(Some(v)) => Some(v),
             Ok(None) => {
@@ -233,6 +239,7 @@ impl PamHooks for PamKanidm {
                 return e;
             }
         };
+
         let conv = match pamh.get_item::<PamConv>() {
             Ok(conv) => conv,
             Err(err) => {
@@ -243,30 +250,55 @@ impl PamHooks for PamKanidm {
             }
         };
 
+        let mut req = ClientRequest::PamAuthenticateInit(account_id);
+
         loop {
-            /*
-            let timeout = match prompt.timeout {
-                Some(timeout) => timeout,
-                None => cfg.unix_sock_timeout,
-            };
-            */
             match daemon_client.call_and_wait(&req) {
                 Ok(r) => match r {
-                    ClientResponse::PamPrompt(resp) => {
-                        prompt = resp;
-                    }
-                    ClientResponse::PamStatus(Some(true)) => {
+                    ClientResponse::PamAuthenticateStepResponse(PamAuthResponse::Success) => {
                         return PamResultCode::PAM_SUCCESS;
                     }
-                    ClientResponse::PamStatus(Some(false)) => {
+                    ClientResponse::PamAuthenticateStepResponse(PamAuthResponse::Denied) => {
                         return PamResultCode::PAM_AUTH_ERR;
                     }
-                    ClientResponse::PamStatus(None) => {
+                    ClientResponse::PamAuthenticateStepResponse(PamAuthResponse::Unknown) => {
                         if opts.ignore_unknown_user {
                             return PamResultCode::PAM_IGNORE;
                         } else {
                             return PamResultCode::PAM_USER_UNKNOWN;
                         }
+                    }
+                    ClientResponse::PamAuthenticateStepResponse(PamAuthResponse::Password) => {
+                        let mut consume_authtok = None;
+                        // Swap the authtok out with a None, so it can only be consumed once.
+                        // If it's already been swapped, we are just swapping two null pointers
+                        // here effectively.
+                        std::mem::swap(&mut authtok, &mut consume_authtok);
+                        let cred = if let Some(cred) = consume_authtok {
+                            cred
+                        } else {
+                            match conv.send(PAM_PROMPT_ECHO_OFF, "Password: ") {
+                                Ok(password) => match password {
+                                    Some(cred) => cred,
+                                    None => {
+                                        if opts.debug {
+                                            println!("No password");
+                                        }
+                                        return PamResultCode::PAM_CRED_INSUFFICIENT;
+                                    }
+                                },
+                                Err(err) => {
+                                    if opts.debug {
+                                        println!("Couldn't get password");
+                                    }
+                                    return err;
+                                }
+                            }
+                        };
+
+                        // Now setup the request for the next loop.
+                        req = ClientRequest::PamAuthenticateStep(PamAuthRequest::Password { cred });
+                        continue;
                     }
                     _ => {
                         // unexpected response.
@@ -283,63 +315,7 @@ impl PamHooks for PamKanidm {
                     return PamResultCode::PAM_IGNORE;
                 }
             }
-
-            match prompt.style.value() {
-                PAM_PROMPT_ECHO_OFF | PAM_PROMPT_ECHO_ON => {
-                    let resp = match authtok {
-                        Some(authtok) => authtok,
-                        None => match conv.send(prompt.style.value(), &prompt.msg) {
-                            Ok(password) => match password {
-                                Some(pw) => pw,
-                                None => {
-                                    if opts.debug {
-                                        println!("No authentication token received");
-                                    }
-                                    return PamResultCode::PAM_CRED_INSUFFICIENT;
-                                }
-                            },
-                            Err(err) => {
-                                if opts.debug {
-                                    println!("Couldn't get password");
-                                }
-                                return err;
-                            }
-                        },
-                    };
-                    match prompt.cred_type {
-                        Some(CredType::Password) => {
-                            req = ClientRequest::PamAuthenticateStep(
-                                Some(PamCred::Password(resp)),
-                                prompt.data,
-                            );
-                        }
-                        _ => {
-                            req = ClientRequest::PamAuthenticateStep(
-                                Some(PamCred::MFACode(resp)),
-                                prompt.data,
-                            );
-                        }
-                    }
-                    // We've consumed any authtok, delete it
-                    authtok = None;
-                }
-                PAM_ERROR_MSG | PAM_TEXT_INFO => {
-                    match conv.send(prompt.style.value(), &prompt.msg) {
-                        Ok(_) => {}
-                        Err(err) => {
-                            if opts.debug {
-                                println!("Message prompt failed");
-                            }
-                            return err;
-                        }
-                    }
-                    req = ClientRequest::PamAuthenticateStep(None, prompt.data);
-                }
-                _ => {
-                    return PamResultCode::PAM_IGNORE;
-                }
-            }
-        } // while true, continue calling PamAuthenticateStep until receiving a PamStatus
+        } // while true, continue calling PamAuthenticateStep until we get a decision.
     }
 
     fn sm_chauthtok(_pamh: &PamHandle, args: Vec<&CStr>, _flags: PamFlag) -> PamResultCode {
@@ -398,15 +374,16 @@ impl PamHooks for PamKanidm {
         };
         let req = ClientRequest::PamAccountBeginSession(account_id);
 
-        let mut daemon_client = match DaemonClientBlocking::new(cfg.sock_path.as_str(), cfg.unix_sock_timeout) {
-            Ok(dc) => dc,
-            Err(e) => {
-                if opts.debug {
-                    println!("Error DaemonClientBlocking::new() -> {:?}", e);
+        let mut daemon_client =
+            match DaemonClientBlocking::new(cfg.sock_path.as_str(), cfg.unix_sock_timeout) {
+                Ok(dc) => dc,
+                Err(e) => {
+                    if opts.debug {
+                        println!("Error DaemonClientBlocking::new() -> {:?}", e);
+                    }
+                    return PamResultCode::PAM_SERVICE_ERR;
                 }
-                return PamResultCode::PAM_SERVICE_ERR
-            }
-        };
+            };
 
         match daemon_client.call_and_wait(&req) {
             Ok(ClientResponse::Ok) => {
