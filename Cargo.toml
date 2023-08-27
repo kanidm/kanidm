@@ -127,7 +127,7 @@ proc-macro2 = "1.0.66"
 qrcode = "^0.12.0"
 quote = "1"
 rand = "^0.8.5"
-regex = "1.9.3"
+regex = "1.9.4"
 reqwest = { version = "0.11.18", default-features = false, features = [
     "cookies",
     "json",
