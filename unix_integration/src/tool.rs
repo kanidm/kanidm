@@ -19,7 +19,10 @@ use clap::Parser;
 use kanidm_unix_common::client::call_daemon;
 use kanidm_unix_common::constants::DEFAULT_CONFIG_PATH;
 use kanidm_unix_common::unix_config::KanidmUnixdConfig;
-use kanidm_unix_common::unix_proto::{ClientRequest, ClientResponse};
+use kanidm_unix_common::unix_proto::{
+    ClientRequest, ClientResponse, PamAuthRequest, PamAuthResponse,
+};
+// use std::io;
 use std::path::PathBuf;
 
 include!("./opt/tool.rs");
@@ -51,44 +54,62 @@ async fn main() -> ExitCode {
         } => {
             debug!("Starting PAM auth tester tool ...");
 
-            let Ok(cfg) = KanidmUnixdConfig::new()
-        .read_options_from_optional_config(DEFAULT_CONFIG_PATH)
-        else {
-            error!("Failed to parse {}", DEFAULT_CONFIG_PATH);
-            return ExitCode::FAILURE
-        };
-
-            let password = match rpassword::prompt_password("Enter Unix password: ") {
-                Ok(p) => p,
-                Err(e) => {
-                    error!("Problem getting input password: {}", e);
-                    return ExitCode::FAILURE;
-                }
+            let Ok(cfg) =
+                KanidmUnixdConfig::new().read_options_from_optional_config(DEFAULT_CONFIG_PATH)
+            else {
+                error!("Failed to parse {}", DEFAULT_CONFIG_PATH);
+                return ExitCode::FAILURE;
             };
 
-            let req = ClientRequest::PamAuthenticate(account_id.clone(), password);
+            let mut req = ClientRequest::PamAuthenticateInit(account_id.clone());
+            loop {
+                match call_daemon(cfg.sock_path.as_str(), req, cfg.unix_sock_timeout).await {
+                    Ok(r) => match r {
+                        ClientResponse::PamAuthenticateStepResponse(PamAuthResponse::Success) => {
+                            // ClientResponse::PamStatus(Some(true)) => {
+                            println!("auth success!");
+                            break;
+                        }
+                        ClientResponse::PamAuthenticateStepResponse(PamAuthResponse::Denied) => {
+                            // ClientResponse::PamStatus(Some(false)) => {
+                            println!("auth failed!");
+                            break;
+                        }
+                        ClientResponse::PamAuthenticateStepResponse(PamAuthResponse::Unknown) => {
+                            // ClientResponse::PamStatus(None) => {
+                            println!("auth user unknown");
+                            break;
+                        }
+                        ClientResponse::PamAuthenticateStepResponse(PamAuthResponse::Password) => {
+                            // Prompt for and get the password
+                            let cred = match rpassword::prompt_password("Enter Unix password: ") {
+                                Ok(p) => p,
+                                Err(e) => {
+                                    error!("Problem getting input: {}", e);
+                                    return ExitCode::FAILURE;
+                                }
+                            };
+
+                            // Setup the req for the next loop.
+                            req = ClientRequest::PamAuthenticateStep(PamAuthRequest::Password {
+                                cred,
+                            });
+                            continue;
+                        }
+                        _ => {
+                            // unexpected response.
+                            error!("Error: unexpected response -> {:?}", r);
+                            break;
+                        }
+                    },
+                    Err(e) => {
+                        error!("Error -> {:?}", e);
+                        break;
+                    }
+                }
+            }
+
             let sereq = ClientRequest::PamAccountAllowed(account_id);
-
-            match call_daemon(cfg.sock_path.as_str(), req, cfg.unix_sock_timeout).await {
-                Ok(r) => match r {
-                    ClientResponse::PamStatus(Some(true)) => {
-                        println!("auth success!");
-                    }
-                    ClientResponse::PamStatus(Some(false)) => {
-                        println!("auth failed!");
-                    }
-                    ClientResponse::PamStatus(None) => {
-                        println!("auth user unknown");
-                    }
-                    _ => {
-                        // unexpected response.
-                        error!("Error: unexpected response -> {:?}", r);
-                    }
-                },
-                Err(e) => {
-                    error!("Error -> {:?}", e);
-                }
-            };
 
             match call_daemon(cfg.sock_path.as_str(), sereq, cfg.unix_sock_timeout).await {
                 Ok(r) => match r {

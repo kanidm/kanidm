@@ -28,6 +28,7 @@ use kanidm_proto::constants::DEFAULT_CLIENT_CONFIG_PATH;
 use kanidm_unix_common::constants::DEFAULT_CONFIG_PATH;
 use kanidm_unix_common::db::Db;
 use kanidm_unix_common::idprovider::kanidm::KanidmProvider;
+// use kanidm_unix_common::idprovider::interface::AuthSession;
 use kanidm_unix_common::resolver::Resolver;
 use kanidm_unix_common::unix_config::KanidmUnixdConfig;
 use kanidm_unix_common::unix_passwd::{parse_etc_group, parse_etc_passwd};
@@ -189,10 +190,14 @@ async fn handle_client(
     debug!("Accepted connection");
 
     let Ok(ucred) = sock.peer_cred() else {
-        return Err(Box::new(IoError::new(ErrorKind::Other, "Unable to verify peer credentials.")));
+        return Err(Box::new(IoError::new(
+            ErrorKind::Other,
+            "Unable to verify peer credentials.",
+        )));
     };
 
     let mut reqs = Framed::new(sock, ClientCodec);
+    let mut pam_auth_session_state = None;
 
     trace!("Waiting for requests ...");
     while let Some(Ok(req)) = reqs.next().await {
@@ -274,13 +279,44 @@ async fn handle_client(
                         ClientResponse::NssGroup(None)
                     })
             }
-            ClientRequest::PamAuthenticate(account_id, cred) => {
-                debug!("pam authenticate");
-                cachelayer
-                    .pam_account_authenticate(account_id.as_str(), cred.as_str())
-                    .await
-                    .map(ClientResponse::PamStatus)
-                    .unwrap_or(ClientResponse::Error)
+            ClientRequest::PamAuthenticateInit(account_id) => {
+                debug!("pam authenticate init");
+
+                match &pam_auth_session_state {
+                    Some(_auth_session) => {
+                        // Invalid to init a request twice.
+                        warn!("Attempt to init auth session while current session is active");
+                        // Clean the former session, something is wrong.
+                        pam_auth_session_state = None;
+                        ClientResponse::Error
+                    }
+                    None => {
+                        match cachelayer
+                            .pam_account_authenticate_init(account_id.as_str())
+                            .await
+                        {
+                            Ok((auth_session, pam_auth_response)) => {
+                                pam_auth_session_state = Some(auth_session);
+                                pam_auth_response.into()
+                            }
+                            Err(_) => ClientResponse::Error,
+                        }
+                    }
+                }
+            }
+            ClientRequest::PamAuthenticateStep(pam_next_req) => {
+                debug!("pam authenticate step");
+                match &mut pam_auth_session_state {
+                    Some(auth_session) => cachelayer
+                        .pam_account_authenticate_step(auth_session, pam_next_req)
+                        .await
+                        .map(|pam_auth_response| pam_auth_response.into())
+                        .unwrap_or(ClientResponse::Error),
+                    None => {
+                        warn!("Attempt to continue auth session while current session is inactive");
+                        ClientResponse::Error
+                    }
+                }
             }
             ClientRequest::PamAccountAllowed(account_id) => {
                 debug!("pam account allowed");

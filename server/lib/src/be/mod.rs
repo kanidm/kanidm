@@ -432,9 +432,7 @@ pub trait BackendTransaction {
                 for f in f_andnot.iter() {
                     f_rem_count -= 1;
                     let FilterResolved::AndNot(f_in, _) = f else {
-                        filter_error!(
-                            "Invalid server state, a cand filter leaked to andnot set!"
-                        );
+                        filter_error!("Invalid server state, a cand filter leaked to andnot set!");
                         return Err(OperationError::InvalidState);
                     };
                     let (inter, fp) = self.filter2idl(f_in, thres)?;

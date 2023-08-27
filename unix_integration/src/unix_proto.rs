@@ -17,6 +17,29 @@ pub struct NssGroup {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
+pub enum PamAuthResponse {
+    Unknown,
+    Success,
+    Denied,
+    Password,
+    /*
+    MFACode {
+    },
+    */
+    // CTAP2
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub enum PamAuthRequest {
+    Password { cred: String },
+    /*
+    MFACode {
+        cred: Option<PamCred>
+    }
+    */
+}
+
+#[derive(Serialize, Deserialize, Debug)]
 pub enum ClientRequest {
     SshKey(String),
     NssAccounts,
@@ -25,7 +48,8 @@ pub enum ClientRequest {
     NssGroups,
     NssGroupByGid(u32),
     NssGroupByName(String),
-    PamAuthenticate(String, String),
+    PamAuthenticateInit(String),
+    PamAuthenticateStep(PamAuthRequest),
     PamAccountAllowed(String),
     PamAccountBeginSession(String),
     InvalidateCache,
@@ -40,9 +64,18 @@ pub enum ClientResponse {
     NssAccount(Option<NssUser>),
     NssGroups(Vec<NssGroup>),
     NssGroup(Option<NssGroup>),
+
     PamStatus(Option<bool>),
+    PamAuthenticateStepResponse(PamAuthResponse),
+
     Ok,
     Error,
+}
+
+impl From<PamAuthResponse> for ClientResponse {
+    fn from(par: PamAuthResponse) -> Self {
+        ClientResponse::PamAuthenticateStepResponse(par)
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

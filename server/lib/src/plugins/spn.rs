@@ -186,7 +186,7 @@ impl Spn {
         });
 
         let Some(domain_name) = domain_name_changed else {
-            return Ok(())
+            return Ok(());
         };
 
         // IMPORTANT - we have to *pre-emptively reload the domain info here*

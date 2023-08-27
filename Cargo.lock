@@ -3366,6 +3366,8 @@ dependencies = [
  "kanidm_unix_int",
  "libc",
  "pkg-config",
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]

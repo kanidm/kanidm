@@ -266,7 +266,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
         let other_user_public_key = self.get_other_user_public_key(target, ident)?;
         let mut shared_key = self.derive_shared_key(self_private, other_user_public_key)?;
         let Some(self_uuid) = ident.get_uuid() else {
-            return Err(OperationError::NotAuthenticated)
+            return Err(OperationError::NotAuthenticated);
         };
         shared_key.extend_from_slice(self_uuid.as_bytes());
         Ok(shared_key)
@@ -509,8 +509,8 @@ mod test {
         );
 
         let Ok(IdentifyUserResponse::ProvideCode { totp, .. }) = res_higher_user else {
-                return assert!(false);
-            };
+            return assert!(false);
+        };
 
         let res_lower_user_wrong = idms_prox_read.handle_identify_user_submit_code(
             &IdentifyUserSubmitCodeEvent::new(higher_user_uuid, lower_user.clone(), totp + 1),
@@ -532,9 +532,9 @@ mod test {
 
         // now we need to get the code from the lower_user and submit it to the higher_user
 
-        let Ok(IdentifyUserResponse::ProvideCode{totp, ..}) = res_lower_user_correct else {
-                return assert!(false);
-            };
+        let Ok(IdentifyUserResponse::ProvideCode { totp, .. }) = res_lower_user_correct else {
+            return assert!(false);
+        };
 
         let res_higher_user_2_wrong = idms_prox_read.handle_identify_user_submit_code(
             &IdentifyUserSubmitCodeEvent::new(lower_user_uuid, higher_user.clone(), totp + 1),
@@ -596,9 +596,13 @@ mod test {
             &IdentifyUserStartEvent::new(lower_user_uuid, higher_user.clone()),
         );
 
-        let Ok(IdentifyUserResponse::ProvideCode { totp: higher_user_totp, .. }) = res_higher_user else {
-                return assert!(false);
-            };
+        let Ok(IdentifyUserResponse::ProvideCode {
+            totp: higher_user_totp,
+            ..
+        }) = res_higher_user
+        else {
+            return assert!(false);
+        };
 
         // then we get the lower user code
 
