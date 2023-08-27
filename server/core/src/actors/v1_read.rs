@@ -7,8 +7,9 @@ use std::sync::Arc;
 use kanidm_proto::internal::{AppLink, IdentifyUserRequest, IdentifyUserResponse};
 use kanidm_proto::v1::{
     ApiToken, AuthIssueSession, AuthRequest, BackupCodesView, CURequest, CUSessionToken, CUStatus,
-    CredentialStatus, Entry as ProtoEntry, OperationError, RadiusAuthToken, SearchRequest,
-    SearchResponse, UatStatus, UnixGroupToken, UnixUserToken, UserAuthToken, WhoamiResponse,
+    CredentialStatus, DebugIpInfoResponse, Entry as ProtoEntry, OperationError, RadiusAuthToken,
+    SearchRequest, SearchResponse, UatStatus, UnixGroupToken, UnixUserToken, UserAuthToken,
+    WhoamiResponse,
 };
 use kanidmd_lib::idm::identityverification::{
     IdentifyUserDisplayCodeEvent, IdentifyUserStartEvent, IdentifyUserSubmitCodeEvent,
@@ -1487,5 +1488,11 @@ impl QueryServerReadV1 {
             )),
         };
         Some(res)
+    }
+
+    #[cfg(debug_assertions)]
+    #[instrument(level = "info", skip_all)]
+    pub fn handle_debug_ipinfo(&self, ip_addr: IpAddr) -> DebugIpInfoResponse {
+        DebugIpInfoResponse::new(ip_addr)
     }
 }
