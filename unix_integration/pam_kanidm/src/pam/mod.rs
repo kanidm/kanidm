@@ -165,7 +165,7 @@ impl PamHooks for PamKanidm {
                 }
                 _ => {
                     // unexpected response.
-                    error!(err = ?r, "PamResultCode::PAM_IGNORE");
+                    error!(err = ?r, "PAM_IGNORE, unexpected resolver response");
                     PamResultCode::PAM_IGNORE
                 }
             },
@@ -287,7 +287,7 @@ impl PamHooks for PamKanidm {
                     }
                     _ => {
                         // unexpected response.
-                        error!(err = ?r, "PAM_IGNORE");
+                        error!(err = ?r, "PAM_IGNORE, unexpected resolver response");
                         return PamResultCode::PAM_IGNORE;
                     }
                 },
