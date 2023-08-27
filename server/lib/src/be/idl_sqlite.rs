@@ -8,6 +8,7 @@ use std::time::Duration;
 use hashbrown::HashMap;
 use idlset::v2::IDLBitRange;
 use kanidm_proto::v1::{ConsistencyError, OperationError};
+use rusqlite::vtab::array::Array;
 use rusqlite::{Connection, OpenFlags, OptionalExtension};
 use uuid::Uuid;
 
@@ -160,44 +161,55 @@ pub trait IdlSqliteTransaction {
                 let mut stmt = self
                     .get_conn()?
                     .prepare(&format!(
-                        "SELECT id, data FROM {}.id2entry WHERE id = :idl",
+                        "SELECT id, data FROM {}.id2entry
+                         WHERE id IN rarray(:idli)",
                         self.get_db_name()
                     ))
                     .map_err(sqlite_error)?;
 
-                // TODO #258: Can this actually just load in a single select?
                 // TODO #258: I have no idea how to make this an iterator chain ... so what
-                // I have now is probably really bad :(
-                let mut results = Vec::new();
 
-                // Faster to iterate over the compressed form believe it or not.
-                /*
-                let decompressed: Result<Vec<i64>, _> = idli.into_iter()
-                    .map(|u| i64::try_from(u).map_err(|_| OperationError::InvalidEntryId))
-                    .collect();
-                */
-
+                // turn them into i64's
+                let mut id_list: Vec<i64> = vec![];
                 for id in idli {
-                    let iid = i64::try_from(id).map_err(|_| OperationError::InvalidEntryId)?;
-                    let id2entry_iter = stmt
-                        .query_map([&iid], |row| {
-                            Ok(IdSqliteEntry {
-                                id: row.get(0)?,
-                                data: row.get(1)?,
-                            })
-                        })
-                        .map_err(sqlite_error)?;
+                    id_list.push(i64::try_from(id).map_err(|_| OperationError::InvalidEntryId)?);
+                }
+                // turn them into rusqlite values
+                let id_list: Array = std::rc::Rc::new(
+                    id_list
+                        .into_iter()
+                        .map(rusqlite::types::Value::from)
+                        .collect::<Vec<rusqlite::types::Value>>(),
+                );
 
-                    let r: Result<Vec<_>, _> = id2entry_iter
-                        .map(|v| {
-                            v.map_err(sqlite_error).and_then(|ise| {
-                                // Convert the idsqlite to id raw
-                                ise.try_into()
-                            })
-                        })
-                        .collect();
-                    let mut r = r?;
-                    results.append(&mut r);
+                let mut results: Vec<IdRawEntry> = vec![];
+
+                let rows = stmt.query_map(named_params! {":idli": &id_list}, |row| {
+                    Ok(IdSqliteEntry {
+                        id: row.get(0)?,
+                        data: row.get(1)?,
+                    })
+                });
+                let rows = match rows {
+                    Ok(rows) => rows,
+                    Err(e) => {
+                        error!("query failed in get_identry_raw: {:?}", e);
+                        return Err(OperationError::SqliteError);
+                    }
+                };
+
+                for row in rows {
+                    match row {
+                        Ok(ise) => {
+                            // Convert the idsqlite to id raw
+                            results.push(ise.try_into()?);
+                        }
+                        // TODO: make this a better error
+                        Err(e) => {
+                            admin_error!(?e, "SQLite Error");
+                            return Err(OperationError::SqliteError);
+                        }
+                    }
                 }
                 Ok(results)
             }
@@ -1695,13 +1707,45 @@ impl IdlSqlite {
         let pool = (0..cfg.pool_size)
             .map(|i| {
                 trace!("Opening Connection {}", i);
-                Connection::open_with_flags(cfg.path.as_str(), flags).map_err(sqlite_error)
+                let conn =
+                    Connection::open_with_flags(cfg.path.as_str(), flags).map_err(sqlite_error);
+                match conn {
+                    Ok(conn) => {
+                        rusqlite::vtab::array::load_module(&conn).map_err(|e| {
+                            panic!("Failed to load rarray virtual module: {:?}", e);
+                            // sqlite_error(e)
+                        })?;
+                        Ok(conn)
+                    }
+                    Err(err) => {
+                        panic!("Failed to open connection: {:?}", err);
+                        // Err(err)
+                    }
+                }
             })
             .collect::<Result<VecDeque<Connection>, OperationError>>()
             .map_err(|e| {
                 error!(err = ?e, "Failed to build connection pool");
                 e
             })?;
+
+        // // load the rarray virtual module for each pooled connection
+        // let pool = pool
+        //     .into_iter()
+        //     .map(
+        //         |p| match rusqlite::vtab::array::load_module(&p).map_err(sqlite_error) {
+        //             Ok(_) => Ok(p),
+        //             Err(_) => {
+        //                 error!("Failed to load rarray virtual module");
+        //                 Err(OperationError::SqliteError)
+        //             }
+        //         },
+        //     )
+        //     .collect::<Result<VecDeque<Connection>, OperationError>>()
+        //     .map_err(|e| {
+        //         error!(err = ?e, "Failed to build connection pool");
+        //         e
+        //     })?;
 
         let pool = Arc::new(Mutex::new(pool));
 
