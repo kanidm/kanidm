@@ -1220,6 +1220,14 @@ impl QueryServer {
         }
     }
 
+    #[cfg(debug_assertions)]
+    pub async fn clear_cache(&self) -> Result<(), OperationError> {
+        let ct = duration_from_epoch_now();
+        let mut w_txn = self.write(ct).await;
+        w_txn.clear_cache()?;
+        w_txn.commit()
+    }
+
     pub async fn verify(&self) -> Vec<Result<(), ConsistencyError>> {
         let mut r_txn = self.read().await;
         r_txn.verify()
@@ -1598,6 +1606,12 @@ impl<'a> QueryServerWriteTransaction<'a> {
         }
 
         Ok(())
+    }
+
+    #[cfg(debug_assertions)]
+    #[instrument(level = "debug", skip_all)]
+    pub fn clear_cache(&mut self) -> Result<(), OperationError> {
+        self.be_txn.clear_cache()
     }
 
     #[instrument(level = "info", skip_all)]

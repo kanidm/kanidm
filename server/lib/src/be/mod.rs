@@ -1786,6 +1786,11 @@ impl<'a> BackendWriteTransaction<'a> {
         self.set_db_index_version(0)
     }
 
+    #[cfg(debug_assertions)]
+    pub fn clear_cache(&mut self) -> Result<(), OperationError> {
+        self.get_idlayer().clear_cache()
+    }
+
     pub fn commit(self) -> Result<(), OperationError> {
         let BackendWriteTransaction {
             idlayer,
