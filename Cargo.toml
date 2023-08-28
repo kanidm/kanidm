@@ -73,7 +73,7 @@ base64 = "^0.21.3"
 # base64urlsafedata = "0.1.3"
 base64urlsafedata = { git = "https://github.com/Firstyear/webauthn-rs.git", rev = "35efca72e38116f5ed77cd8701cb3edf0458a243", version = "0.1.4" }
 bytes = "^1.3.0"
-clap = { version = "^4.4.0", features = ["derive"] }
+clap = { version = "^4.4.0", features = ["derive", "env"] }
 clap_complete = "^4.4.0"
 # Forced by saffron/cron
 chrono = "^0.4.26"
