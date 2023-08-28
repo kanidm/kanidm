@@ -408,7 +408,7 @@ impl MemberOf {
         let group_affect = cand
             .iter()
             .map(|e| e.get_uuid())
-            .chain(dyngroup_change.into_iter())
+            .chain(dyngroup_change)
             .chain(
                 cand.iter()
                     .filter_map(|e| {
@@ -441,7 +441,7 @@ impl MemberOf {
         let group_affect = cand
             .iter()
             .map(|post| post.get_uuid())
-            .chain(dyngroup_change.into_iter())
+            .chain(dyngroup_change)
             .chain(
                 pre_cand
                     .iter()

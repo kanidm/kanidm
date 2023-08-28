@@ -87,7 +87,7 @@ impl ServerState {
                 // Get the first header value.
                 hv.to_str().ok()
             })
-            .and_then(|s| Some(self.reinflate_uuid_from_bytes(s)).unwrap_or(None))
+            .and_then(|s| self.reinflate_uuid_from_bytes(s))
     }
 }
 

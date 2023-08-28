@@ -673,6 +673,79 @@ async fn test_repl_increment_basic_bidirectional_write(
     drop(server_a_txn);
 }
 
+// Create Entry on A
+// Delete an attr of the entry on A
+// Should send the empty attr + changestate state to B
+
+#[qs_pair_test]
+async fn test_repl_increment_basic_deleted_attr(server_a: &QueryServer, server_b: &QueryServer) {
+    let mut server_a_txn = server_a.write(duration_from_epoch_now()).await;
+    let mut server_b_txn = server_b.read().await;
+
+    assert!(repl_initialise(&mut server_b_txn, &mut server_a_txn)
+        .and_then(|_| server_a_txn.commit())
+        .is_ok());
+    drop(server_b_txn);
+
+    // Add an entry.
+    let mut server_a_txn = server_a.write(duration_from_epoch_now()).await;
+    let t_uuid = Uuid::new_v4();
+    assert!(server_a_txn
+        .internal_create(vec![entry_init!(
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
+            (Attribute::Name.as_ref(), Value::new_iname("testperson1")),
+            (Attribute::Uuid.as_ref(), Value::Uuid(t_uuid)),
+            (
+                Attribute::Description.as_ref(),
+                Value::new_utf8s("testperson1")
+            ),
+            (
+                Attribute::DisplayName.as_ref(),
+                Value::new_utf8s("testperson1")
+            )
+        ),])
+        .is_ok());
+    server_a_txn.commit().expect("Failed to commit");
+
+    // Delete an attribute so that the changestate doesn't reflect it's
+    // presence
+    let mut server_a_txn = server_a.write(duration_from_epoch_now()).await;
+    assert!(server_a_txn
+        .internal_modify_uuid(
+            t_uuid,
+            &ModifyList::new_purge(Attribute::Description.as_ref())
+        )
+        .is_ok());
+    server_a_txn.commit().expect("Failed to commit");
+
+    // Incremental repl in the reverse direction.
+    let mut server_a_txn = server_a.read().await;
+    let mut server_b_txn = server_b.write(duration_from_epoch_now()).await;
+
+    //               from               to
+    repl_incremental(&mut server_a_txn, &mut server_b_txn);
+
+    let e1 = server_a_txn
+        .internal_search_all_uuid(t_uuid)
+        .expect("Unable to access new entry.");
+    let e2 = server_b_txn
+        .internal_search_all_uuid(t_uuid)
+        .expect("Unable to access entry.");
+
+    // They are consistent again.
+    assert!(e1.get_ava_set(Attribute::Description.as_ref()).is_none());
+    assert!(e1 == e2);
+
+    let e1_cs = e1.get_changestate();
+    let e2_cs = e2.get_changestate();
+    assert!(e1_cs == e2_cs);
+    assert!(e1_cs.get_attr_cid(&Attribute::Description).is_some());
+
+    server_b_txn.commit().expect("Failed to commit");
+    drop(server_a_txn);
+}
+
 // Create Entry on A -> B
 // Write to both
 // B -> A and A -> B become consistent.
@@ -2007,17 +2080,12 @@ async fn test_repl_increment_schema_dynamic(server_a: &QueryServer, server_b: &Q
     drop(server_a_txn);
 }
 
-// Test change of domain version over incremental.
-
 // Test when a group has a member A, and then the group is conflicted, that when
 // group is moved to conflict the memberShip of A is removed.
-
-// Multiple tombstone states / directions.
 
 // Ref int deletes references when tombstone is replicated over. May need consumer
 // to have some extra groups that need cleanup
 
-// Test add then delete on an attribute, and that it replicates the empty state to
-// the other side.
-
 // Test memberof over replication boundaries.
+
+// Test change of domain version over incremental.

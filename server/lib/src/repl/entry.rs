@@ -142,6 +142,14 @@ impl EntryChangeState {
         self.cid_iter().pop().cloned().unwrap()
     }
 
+    #[cfg(test)]
+    pub(crate) fn get_attr_cid(&self, attr: &Attribute) -> Option<Cid> {
+        match &self.st {
+            State::Live { at: _, changes } => changes.get(attr.as_ref()).map(|cid| cid.clone()),
+            State::Tombstone { at: _ } => None,
+        }
+    }
+
     pub fn cid_iter(&self) -> Vec<&Cid> {
         match &self.st {
             State::Live { at: _, changes } => {
