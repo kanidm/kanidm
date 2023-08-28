@@ -6,7 +6,6 @@ use serde_with::skip_serializing_none;
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
-use std::net::IpAddr;
 use std::str::FromStr;
 use time::OffsetDateTime;
 use url::Url;
@@ -1196,18 +1195,6 @@ impl SingleStringRequest {
     }
 }
 // Use OperationResponse here ...
-
-#[cfg(debug_assertions)]
-#[derive(Serialize, Deserialize, Debug)]
-pub struct DebugIpInfoResponse {
-    pub your_ip: IpAddr,
-}
-#[cfg(debug_assertions)]
-impl DebugIpInfoResponse {
-    pub fn new(your_ip: IpAddr) -> Self {
-        DebugIpInfoResponse { your_ip }
-    }
-}
 
 #[cfg(test)]
 mod tests {

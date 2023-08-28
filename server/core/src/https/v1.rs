@@ -1427,11 +1427,10 @@ pub async fn auth_valid(
 
 #[cfg(debug_assertions)]
 pub async fn debug_ipinfo(
-    State(state): State<ServerState>,
+    State(_state): State<ServerState>,
     TrustedClientIp(ip_addr): TrustedClientIp,
 ) -> impl IntoResponse {
-    let res = state.qe_r_ref.handle_debug_ipinfo(ip_addr);
-    to_axum_response(Ok(res))
+    to_axum_response(Ok(vec![ip_addr]))
 }
 
 #[instrument(skip(state))]
