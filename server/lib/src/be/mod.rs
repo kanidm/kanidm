@@ -781,7 +781,8 @@ pub trait BackendTransaction {
                     }
                 }
                 r => {
-                    admin_error!(state = ?r, "Invalid uuid2spn state");
+                    admin_error!(state = ?r, ?e_uuid, "Invalid uuid2spn state");
+                    trace!(entry = ?e);
                     return Err(ConsistencyError::BackendIndexSync);
                 }
             };
@@ -1134,10 +1135,15 @@ impl<'a> BackendWriteTransaction<'a> {
                     // allocated.
                     id_max += 1;
 
-                    Arc::new(EntrySealedCommitted::stub_sealed_committed_id(
+                    let stub_entry = Arc::new(EntrySealedCommitted::stub_sealed_committed_id(
                         id_max, ctx_ent,
-                    ))
+                    ));
+                    // Now, the stub entry needs to be indexed. If not, uuid2spn
+                    // isn't created, so subsequent index diffs don't work correctly.
+                    self.entry_index(None, Some(stub_entry.as_ref()))?;
+
                     // Okay, entry ready to go.
+                    stub_entry
                 }
                 Some(idl) if idl.len() == 1 => {
                     // Get the entry from this idl.

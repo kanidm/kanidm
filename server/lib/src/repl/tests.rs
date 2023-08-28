@@ -1935,6 +1935,77 @@ async fn test_repl_increment_domain_rename(server_a: &QueryServer, server_b: &Qu
 }
 
 // Test schema addition / change over incremental.
+#[qs_pair_test]
+async fn test_repl_increment_schema_dynamic(server_a: &QueryServer, server_b: &QueryServer) {
+    let ct = duration_from_epoch_now();
+
+    let mut server_a_txn = server_a.write(ct).await;
+    let mut server_b_txn = server_b.read().await;
+
+    assert!(repl_initialise(&mut server_b_txn, &mut server_a_txn)
+        .and_then(|_| server_a_txn.commit())
+        .is_ok());
+    drop(server_b_txn);
+
+    let mut server_a_txn = server_a.write(ct).await;
+    // Add a new schema entry/item.
+    let s_uuid = Uuid::new_v4();
+    assert!(server_a_txn
+        .internal_create(vec![entry_init!(
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::ClassType.to_value()),
+            ("classname", EntryClass::TestClass.to_value()),
+            (Attribute::Uuid.as_ref(), Value::Uuid(s_uuid)),
+            ("description", Value::new_utf8s("Test Class")),
+            ("may", Value::new_iutf8("name"))
+        )])
+        .is_ok());
+    // Schema doesn't take effect til after a commit.
+    server_a_txn.commit().expect("Failed to commit");
+
+    // Now use the new schema in an entry.
+    let mut server_a_txn = server_a.write(ct).await;
+    let t_uuid = Uuid::new_v4();
+    assert!(server_a_txn
+        .internal_create(vec![entry_init!(
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::TestClass.to_value()),
+            (Attribute::Uuid.as_ref(), Value::Uuid(t_uuid))
+        )])
+        .is_ok());
+
+    server_a_txn.commit().expect("Failed to commit");
+
+    // Now replicate from A to B. B should not only get the new schema,
+    // but should accept the entry that was created.
+
+    let mut server_a_txn = server_a.read().await;
+    let mut server_b_txn = server_b.write(ct).await;
+
+    trace!("========================================");
+    repl_incremental(&mut server_a_txn, &mut server_b_txn);
+
+    let e1 = server_a_txn
+        .internal_search_all_uuid(s_uuid)
+        .expect("Unable to access new entry.");
+    let e2 = server_b_txn
+        .internal_search_all_uuid(s_uuid)
+        .expect("Unable to access entry.");
+
+    assert!(e1 == e2);
+
+    let e1 = server_a_txn
+        .internal_search_all_uuid(t_uuid)
+        .expect("Unable to access new entry.");
+    let e2 = server_b_txn
+        .internal_search_all_uuid(t_uuid)
+        .expect("Unable to access entry.");
+
+    assert!(e1 == e2);
+
+    server_b_txn.commit().expect("Failed to commit");
+    drop(server_a_txn);
+}
 
 // Test change of domain version over incremental.
 

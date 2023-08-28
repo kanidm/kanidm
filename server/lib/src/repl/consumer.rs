@@ -311,8 +311,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
         // Trigger for post commit hooks. Should we detect better in the entry
         // apply phases?
-        self.changed_schema = true;
-        self.changed_domain = true;
+        // self.changed_schema = true;
+        // self.changed_domain = true;
 
         debug!("Applying all context entries");
         // Update all other entries now.
