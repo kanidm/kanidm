@@ -106,7 +106,7 @@ clap = { version = "^4.4.0", features = ["derive", "env"] }
 clap_complete = "^4.4.0"
 # Forced by saffron/cron
 chrono = "^0.4.26"
-compact_jwt = { version = "^0.2.3", default-features = false }
+compact_jwt = { version = "^0.2.10", default-features = false }
 concread = "^0.4.1"
 cron = "0.12.0"
 crossbeam = "0.8.1"
