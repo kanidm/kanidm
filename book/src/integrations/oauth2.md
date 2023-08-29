@@ -295,7 +295,7 @@ Miniflux is a feedreader that supports OAuth 2.0 and OpenID connect. It automati
 match the `OAUTH2_PROVIDER` name.
 
 ```
-OAUTH2_PROVIDER = "kanidm";
+OAUTH2_PROVIDER = "oidc";
 OAUTH2_CLIENT_ID = "miniflux";
 OAUTH2_CLIENT_SECRET = "<oauth2_rs_basic_secret>";
 OAUTH2_REDIRECT_URL = "https://feeds.example.com/oauth2/kanidm/callback";
