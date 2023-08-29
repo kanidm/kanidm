@@ -1401,7 +1401,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
             })
             .flatten()
             .cloned()
-            .chain(req_scopes.into_iter())
+            .chain(req_scopes)
             .collect();
 
         let consent_previously_granted =

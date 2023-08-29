@@ -525,8 +525,8 @@ impl<'a> ReplicationUpdateVectorWriteTransaction<'a> {
             idl.maybe_compress();
         });
 
-        self.data.extend(rebuild_ruv.into_iter());
-        self.ranged.extend(rebuild_range.into_iter());
+        self.data.extend(rebuild_ruv);
+        self.ranged.extend(rebuild_range);
 
         Ok(())
     }

@@ -60,7 +60,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
         let (conflicts, proceed): (Vec<_>, Vec<_>) = ctx_entries
             .iter()
-            .zip(db_entries.into_iter())
+            .zip(db_entries)
             .partition(|(ctx_ent, db_ent)| ctx_ent.is_add_conflict(db_ent.as_ref()));
 
         // Now we have a set of conflicts and a set of entries to proceed.
@@ -100,7 +100,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // To be consistent to Modify, we need to run pre-modify here.
         let mut all_updates = conflict_update
             .into_iter()
-            .chain(proceed_update.into_iter())
+            .chain(proceed_update)
             .collect::<Vec<_>>();
 
         // Plugins can mark entries into a conflict status.
@@ -311,8 +311,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
         // Trigger for post commit hooks. Should we detect better in the entry
         // apply phases?
-        self.changed_schema = true;
-        self.changed_domain = true;
+        // self.changed_schema = true;
+        // self.changed_domain = true;
 
         debug!("Applying all context entries");
         // Update all other entries now.

@@ -789,7 +789,7 @@ impl AuthSession {
                     handlers.push(ch);
                 };
 
-                if let Some(non_empty_handlers) = NonEmpty::collect(handlers.into_iter()) {
+                if let Some(non_empty_handlers) = NonEmpty::collect(handlers) {
                     AuthSessionState::Init(non_empty_handlers)
                 } else {
                     security_info!("account has no available credentials");

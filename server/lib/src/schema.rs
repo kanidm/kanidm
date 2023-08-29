@@ -315,14 +315,11 @@ impl From<SchemaAttribute> for EntryInitNew {
         let mut entry = EntryInitNew::new();
 
         #[allow(clippy::expect_used)]
-        entry.set_ava(
-            "attributename",
-            vec![Value::new_iutf8(&value.name)].into_iter(),
-        );
+        entry.set_ava("attributename", vec![Value::new_iutf8(&value.name)]);
         entry.add_ava("multivalue", Value::Bool(value.multivalue));
         // syntax
         entry.set_ava("syntax", vec![Value::Syntax(value.syntax)]);
-        entry.set_ava("unique", vec![Value::Bool(value.unique)].into_iter());
+        entry.set_ava("unique", vec![Value::Bool(value.unique)]);
         // index
         entry.set_ava("index", value.index.into_iter().map(Value::Index));
 
@@ -338,19 +335,16 @@ impl From<SchemaAttribute> for EntryInitNew {
         // description
         entry.set_ava(
             Attribute::Description.as_ref(),
-            vec![Value::new_utf8s(&value.description)].into_iter(),
+            vec![Value::new_utf8s(&value.description)],
         );
         // unique
         // multivalue
 
         // sync_allowed
-        entry.set_ava(
-            "sync_allowed",
-            vec![Value::Bool(value.sync_allowed)].into_iter(),
-        );
+        entry.set_ava("sync_allowed", vec![Value::Bool(value.sync_allowed)]);
 
         // uid
-        entry.set_ava("uuid", vec![Value::Uuid(value.uuid)].into_iter());
+        entry.set_ava("uuid", vec![Value::Uuid(value.uuid)]);
 
         entry
     }
@@ -496,7 +490,7 @@ impl From<SchemaClass> for EntryInitNew {
         let mut entry = EntryInitNew::new();
 
         #[allow(clippy::expect_used)]
-        entry.set_ava("classname", vec![Value::new_iutf8(&value.name)].into_iter());
+        entry.set_ava("classname", vec![Value::new_iutf8(&value.name)]);
 
         // class
         entry.set_ava(
@@ -511,17 +505,14 @@ impl From<SchemaClass> for EntryInitNew {
         // description
         entry.set_ava(
             Attribute::Description.as_ref(),
-            vec![Value::new_utf8s(&value.description)].into_iter(),
+            vec![Value::new_utf8s(&value.description)],
         );
 
         // sync_allowed
-        entry.set_ava(
-            "sync_allowed",
-            vec![Value::Bool(value.sync_allowed)].into_iter(),
-        );
+        entry.set_ava("sync_allowed", vec![Value::Bool(value.sync_allowed)]);
 
         // uid
-        entry.set_ava("uuid", vec![Value::Uuid(value.uuid)].into_iter());
+        entry.set_ava("uuid", vec![Value::Uuid(value.uuid)]);
 
         // systemmay
         if !value.systemmay.is_empty() {
