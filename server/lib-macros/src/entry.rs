@@ -79,6 +79,8 @@ pub(crate) fn qs_test(_args: &TokenStream, item: TokenStream, with_init: bool) -
                 #test_fn(&test_server).await;
 
                 // Any needed teardown?
+                // Clear the cache before we verify.
+                assert!(test_server.clear_cache().await.is_ok());
                 // Make sure there are no errors.
                 let verifications = test_server.verify().await;
                 trace!("Verification result: {:?}", verifications);
@@ -172,6 +174,8 @@ pub(crate) fn qs_pair_test(_args: &TokenStream, item: TokenStream, with_init: bo
                 #test_fn(&server_a, &server_b).await;
 
                 // Any needed teardown?
+                assert!(server_a.clear_cache().await.is_ok());
+                assert!(server_b.clear_cache().await.is_ok());
                 // Make sure there are no errors.
                 let verifications_a = server_a.verify().await;
                 let verifications_b = server_b.verify().await;
@@ -263,6 +267,7 @@ pub(crate) fn idm_test(args: &TokenStream, item: TokenStream) -> TokenStream {
                 #test_fn(#test_fn_args).await;
 
                 // Any needed teardown?
+                // assert!(test_server.clear_cache().await.is_ok());
                 // Make sure there are no errors.
                 let mut idm_read_txn = test_server.proxy_read().await;
                 let verifications = idm_read_txn.qs_read.verify();

@@ -565,6 +565,24 @@ impl<'a> IdlArcSqliteTransaction for IdlArcSqliteWriteTransaction<'a> {
 }
 
 impl<'a> IdlArcSqliteWriteTransaction<'a> {
+    #[cfg(debug_assertions)]
+    #[instrument(level = "debug", name = "idl_arc_sqlite::clear_cache", skip_all)]
+    pub fn clear_cache(&mut self) -> Result<(), OperationError> {
+        // I'm not sure rn if I want to reload these? If we reload these we kind of
+        // prevent verifications of the cached value working, but we also should
+        // clear these to check the db version of the value. Perhaps some extra
+        // dedicated testing needed?
+        /*
+         *self.op_ts_max = self.db.get_db_ts_max()?;
+         *self.allids = self.db.get_allids()?;
+         *self.maxid = self.get_id2entry_max_id()?;
+         */
+        self.entry_cache.clear();
+        self.idl_cache.clear();
+        self.name_cache.clear();
+        Ok(())
+    }
+
     #[instrument(level = "debug", name = "idl_arc_sqlite::commit", skip_all)]
     pub fn commit(self) -> Result<(), OperationError> {
         let IdlArcSqliteWriteTransaction {
