@@ -206,7 +206,7 @@ pub trait IdlSqliteTransaction {
                         }
                         // TODO: make this a better error
                         Err(e) => {
-                            admin_error!(?e, "SQLite Error");
+                            admin_error!(?e, "SQLite Error in get_identry_raw");
                             return Err(OperationError::SqliteError);
                         }
                     }
@@ -1712,14 +1712,19 @@ impl IdlSqlite {
                 match conn {
                     Ok(conn) => {
                         rusqlite::vtab::array::load_module(&conn).map_err(|e| {
-                            panic!("Failed to load rarray virtual module: {:?}", e);
-                            // sqlite_error(e)
+                            admin_error!(
+                                "Failed to load rarray virtual module for sqlite, cannot start! {:?}", e
+                            );
+                            sqlite_error(e)
                         })?;
                         Ok(conn)
                     }
                     Err(err) => {
-                        panic!("Failed to open connection: {:?}", err);
-                        // Err(err)
+                        admin_error!(
+                            "Failed to start database connection, cannot start! {:?}",
+                            err
+                        );
+                        Err(err)
                     }
                 }
             })
