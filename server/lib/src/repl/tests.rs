@@ -2306,7 +2306,7 @@ async fn test_repl_increment_refint_tombstone(server_a: &QueryServer, server_b: 
     drop(server_b_txn);
 
     // Create a person / group on a. Don't add membership yet.
-    let mut server_a_txn = server_a.write(duration_from_epoch_now()).await;
+    let mut server_a_txn = server_a.write(ct).await;
     let t_uuid = Uuid::new_v4();
     assert!(server_a_txn
         .internal_create(vec![entry_init!(
@@ -2340,6 +2340,7 @@ async fn test_repl_increment_refint_tombstone(server_a: &QueryServer, server_b: 
     server_a_txn.commit().expect("Failed to commit");
 
     // A -> B repl.
+    let ct = duration_from_epoch_now();
     let mut server_a_txn = server_a.read().await;
     let mut server_b_txn = server_b.write(ct).await;
 
@@ -2350,11 +2351,13 @@ async fn test_repl_increment_refint_tombstone(server_a: &QueryServer, server_b: 
     drop(server_a_txn);
 
     // On B, delete the person.
+    let ct = duration_from_epoch_now();
     let mut server_b_txn = server_b.write(ct).await;
     assert!(server_b_txn.internal_delete_uuid(t_uuid).is_ok());
     server_b_txn.commit().expect("Failed to commit");
 
     // On A, add person to group.
+    let ct = duration_from_epoch_now();
     let mut server_a_txn = server_a.write(ct).await;
     assert!(server_a_txn
         .internal_modify_uuid(
@@ -2365,6 +2368,7 @@ async fn test_repl_increment_refint_tombstone(server_a: &QueryServer, server_b: 
     server_a_txn.commit().expect("Failed to commit");
 
     // A -> B - B should remove the reference.
+    let ct = duration_from_epoch_now();
     let mut server_a_txn = server_a.read().await;
     let mut server_b_txn = server_b.write(ct).await;
 
@@ -2375,13 +2379,13 @@ async fn test_repl_increment_refint_tombstone(server_a: &QueryServer, server_b: 
     let e = server_b_txn
         .internal_search_all_uuid(g_uuid)
         .expect("Unable to access entry.");
-
     assert!(!e.attribute_equality(Attribute::Member.as_ref(), &PartialValue::Refer(t_uuid)));
 
     server_b_txn.commit().expect("Failed to commit");
     drop(server_a_txn);
 
     // B -> A - A should remove the reference, everything is consistent again.
+    let ct = duration_from_epoch_now();
     let mut server_b_txn = server_b.read().await;
     let mut server_a_txn = server_a.write(ct).await;
 
@@ -2395,6 +2399,11 @@ async fn test_repl_increment_refint_tombstone(server_a: &QueryServer, server_b: 
         .internal_search_all_uuid(g_uuid)
         .expect("Unable to access entry.");
 
+    let e1_cs = e1.get_changestate();
+    let e2_cs = e2.get_changestate();
+
+    assert!(e1_cs == e2_cs);
+
     assert!(e1 == e2);
     assert!(!e1.attribute_equality(Attribute::Member.as_ref(), &PartialValue::Refer(t_uuid)));
 
@@ -2404,9 +2413,7 @@ async fn test_repl_increment_refint_tombstone(server_a: &QueryServer, server_b: 
 
 #[qs_pair_test]
 async fn test_repl_increment_refint_conflict(server_a: &QueryServer, server_b: &QueryServer) {
-    let ct = duration_from_epoch_now();
-
-    let mut server_a_txn = server_a.write(ct).await;
+    let mut server_a_txn = server_a.write(duration_from_epoch_now()).await;
     let mut server_b_txn = server_b.read().await;
 
     assert!(repl_initialise(&mut server_b_txn, &mut server_a_txn)
@@ -2472,31 +2479,53 @@ async fn test_repl_increment_refint_conflict(server_a: &QueryServer, server_b: &
 
     server_a_txn.commit().expect("Failed to commit");
 
-    // A -> B repl.
+    // A -> B - B should remove the reference.
     let mut server_a_txn = server_a.read().await;
-    let mut server_b_txn = server_b.write(ct).await;
+    let mut server_b_txn = server_b.write(duration_from_epoch_now()).await;
 
     trace!("========================================");
     repl_incremental(&mut server_a_txn, &mut server_b_txn);
 
-    // What do we do here?
-    // I think we can't delete the reference since some nodes won't percieve the
-    // change, then we need to trigger a second member update into the group.
-    // But then again, we have to update the CID to keep repl consistent. Is there
-    // a risk of repl storm here?
-    debug_assert!(false);
+    // Note that in the case an entry conflicts we remove references to the entry that
+    // had the collision. This is because we don't know if our references are reflecting
+    // the true intent of the situation now.
+    //
+    // In this example, the users created on server A was intended to be a member of
+    // the group, but the user on server B *was not* intended to be a member. Therfore
+    // it's wrong that we retain the user from Server B *while* also the membership
+    // that was intended for the user on A.
+    let e = server_b_txn
+        .internal_search_all_uuid(g_uuid)
+        .expect("Unable to access entry.");
+    assert!(!e.attribute_equality(Attribute::Member.as_ref(), &PartialValue::Refer(t_uuid)));
 
     server_b_txn.commit().expect("Failed to commit");
     drop(server_a_txn);
 
-    todo!();
-
-    // A -> B - B should remove the reference.
-
     // B -> A - A should remove the reference.
-}
+    let mut server_b_txn = server_b.read().await;
+    let mut server_a_txn = server_a.write(duration_from_epoch_now()).await;
 
-// Ref-int removes a group member, when the member is deleted over incremental
+    trace!("========================================");
+    repl_incremental(&mut server_b_txn, &mut server_a_txn);
+
+    let e1 = server_a_txn
+        .internal_search_all_uuid(g_uuid)
+        .expect("Unable to access entry.");
+    let e2 = server_b_txn
+        .internal_search_all_uuid(g_uuid)
+        .expect("Unable to access entry.");
+
+    let e1_cs = e1.get_changestate();
+    let e2_cs = e2.get_changestate();
+    assert!(e1_cs == e2_cs);
+
+    assert!(e1 == e2);
+    assert!(!e1.attribute_equality(Attribute::Member.as_ref(), &PartialValue::Refer(t_uuid)));
+
+    server_a_txn.commit().expect("Failed to commit");
+    drop(server_b_txn);
+}
 
 // Test attrunique conflictns
 

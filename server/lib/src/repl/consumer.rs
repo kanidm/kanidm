@@ -63,6 +63,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
             .zip(db_entries)
             .partition(|(ctx_ent, db_ent)| ctx_ent.is_add_conflict(db_ent.as_ref()));
 
+        debug!(conflicts = %conflicts.len(), proceed = %proceed.len());
+
         // Now we have a set of conflicts and a set of entries to proceed.
         //
         //    /- entries that need to be created as conflicts.
@@ -81,6 +83,15 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 },
             )
             .unzip();
+
+        // ⚠️  If we end up with pre-repl returning a list of conflict uuids, we DON'T need to
+        // add them to this list. This is just for uuid conflicts, not higher level ones!
+        //
+        // ⚠️  We need to collect this from conflict_update since we may NOT be the originator
+        // server for some conflicts, but we still need to know the UUID is IN the conflict
+        // state for plugins. We also need to do this here before the conflict_update
+        // set is consumed by later steps.
+        let conflict_uuids: Vec<_> = conflict_update.iter().map(|(_, e)| e.get_uuid()).collect();
 
         // Filter out None from conflict_create
         let conflict_create: Vec<EntrySealedNew> = conflict_create.into_iter().flatten().collect();
@@ -127,10 +138,6 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 (sealed_ent, db_ent)
             })
             .collect::<Vec<_>>();
-
-        // ⚠️  If we end up with pre-repl returning a list of conflict uuids, we DON'T need to
-        // add them to this list. This is just for uuid conflicts, not higher level ones!
-        let conflict_uuids: Vec<_> = conflict_create.iter().map(|e| e.get_uuid()).collect();
 
         // We now have three sets!
         //
