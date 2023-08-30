@@ -128,6 +128,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
             })
             .collect::<Vec<_>>();
 
+        // ⚠️  If we end up with pre-repl returning a list of conflict uuids, we DON'T need to
+        // add them to this list. This is just for uuid conflicts, not higher level ones!
+        let conflict_uuids: Vec<_> = conflict_create.iter().map(|e| e.get_uuid()).collect();
+
         // We now have three sets!
         //
         // * conflict_create - entries to be created that are conflicted via add statements (duplicate uuid)
@@ -139,11 +143,6 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // anything hits one of these states we need to have a way to handle this too in a consistent
         // manner.
         //
-
-        // Then similar to modify, we need the pre and post candidates.
-
-        // We need to unzip the schema_valid and invalid entries.
-
         self.be_txn
             .incremental_apply(&all_updates_valid, conflict_create)
             .map_err(|e| {
@@ -157,15 +156,19 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // We don't need to process conflict_creates here, since they are all conflicting
         // uuids which means that the uuids are all *here* so they will trigger anything
         // that requires processing anyway.
-        Plugins::run_post_repl_incremental(self, pre_cand.as_slice(), cand.as_slice()).map_err(
-            |e| {
-                admin_error!(
-                    "Refresh operation failed (post_repl_incremental plugin), {:?}",
-                    e
-                );
+        Plugins::run_post_repl_incremental(
+            self,
+            pre_cand.as_slice(),
+            cand.as_slice(),
+            conflict_uuids.as_slice(),
+        )
+        .map_err(|e| {
+            admin_error!(
+                "Refresh operation failed (post_repl_incremental plugin), {:?}",
                 e
-            },
-        )?;
+            );
+            e
+        })?;
 
         self.changed_uuid.extend(cand.iter().map(|e| e.get_uuid()));
 

@@ -235,6 +235,7 @@ impl Plugin for MemberOf {
         qs: &mut QueryServerWriteTransaction,
         pre_cand: &[Arc<EntrySealedCommitted>],
         cand: &[EntrySealedCommitted],
+        _conflict_uuids: &[Uuid],
     ) -> Result<(), OperationError> {
         // IMPORTANT - we need this for now so that dyngroup doesn't error on us, since
         // repl is internal and dyngroup has a safety check to prevent external triggers.

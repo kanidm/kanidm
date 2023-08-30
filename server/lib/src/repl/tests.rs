@@ -2243,6 +2243,10 @@ async fn test_repl_increment_memberof_conflict(server_a: &QueryServer, server_b:
         .internal_search_all_uuid(g_uuid)
         .expect("Unable to access entry.");
     assert!(!e.attribute_equality(Attribute::Member.as_ref(), &PartialValue::Refer(t_uuid)));
+    assert!(e.attribute_equality(
+        Attribute::Name.as_ref(),
+        &PartialValue::new_iname("testgroup_conflict")
+    ));
 
     let e = server_b_txn
         .internal_search_all_uuid(t_uuid)
@@ -2268,6 +2272,10 @@ async fn test_repl_increment_memberof_conflict(server_a: &QueryServer, server_b:
 
     assert!(e1 == e2);
     assert!(!e1.attribute_equality(Attribute::Member.as_ref(), &PartialValue::Refer(t_uuid)));
+    assert!(e1.attribute_equality(
+        Attribute::Name.as_ref(),
+        &PartialValue::new_iname("testgroup_conflict")
+    ));
 
     let e1 = server_a_txn
         .internal_search_all_uuid(t_uuid)
@@ -2285,5 +2293,215 @@ async fn test_repl_increment_memberof_conflict(server_a: &QueryServer, server_b:
 
 // Ref int deletes references when tombstone is replicated over. May need consumer
 // to have some extra groups that need cleanup
+#[qs_pair_test]
+async fn test_repl_increment_refint_tombstone(server_a: &QueryServer, server_b: &QueryServer) {
+    let ct = duration_from_epoch_now();
+
+    let mut server_a_txn = server_a.write(ct).await;
+    let mut server_b_txn = server_b.read().await;
+
+    assert!(repl_initialise(&mut server_b_txn, &mut server_a_txn)
+        .and_then(|_| server_a_txn.commit())
+        .is_ok());
+    drop(server_b_txn);
+
+    // Create a person / group on a. Don't add membership yet.
+    let mut server_a_txn = server_a.write(duration_from_epoch_now()).await;
+    let t_uuid = Uuid::new_v4();
+    assert!(server_a_txn
+        .internal_create(vec![entry_init!(
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
+            (Attribute::Name.as_ref(), Value::new_iname("testperson1")),
+            (Attribute::Uuid.as_ref(), Value::Uuid(t_uuid)),
+            (
+                Attribute::Description.as_ref(),
+                Value::new_utf8s("testperson1")
+            ),
+            (
+                Attribute::DisplayName.as_ref(),
+                Value::new_utf8s("testperson1")
+            )
+        ),])
+        .is_ok());
+
+    let g_uuid = Uuid::new_v4();
+    assert!(server_a_txn
+        .internal_create(vec![entry_init!(
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Group.to_value()),
+            (Attribute::Name.as_ref(), Value::new_iname("testgroup1")),
+            (Attribute::Uuid.as_ref(), Value::Uuid(g_uuid)) // Don't add the membership yet!
+                                                            // (Attribute::Member.as_ref(), Value::Refer(t_uuid))
+        ),])
+        .is_ok());
+
+    server_a_txn.commit().expect("Failed to commit");
+
+    // A -> B repl.
+    let mut server_a_txn = server_a.read().await;
+    let mut server_b_txn = server_b.write(ct).await;
+
+    trace!("========================================");
+    repl_incremental(&mut server_a_txn, &mut server_b_txn);
+
+    server_b_txn.commit().expect("Failed to commit");
+    drop(server_a_txn);
+
+    // On B, delete the person.
+    let mut server_b_txn = server_b.write(ct).await;
+    assert!(server_b_txn.internal_delete_uuid(t_uuid).is_ok());
+    server_b_txn.commit().expect("Failed to commit");
+
+    // On A, add person to group.
+    let mut server_a_txn = server_a.write(ct).await;
+    assert!(server_a_txn
+        .internal_modify_uuid(
+            g_uuid,
+            &ModifyList::new_purge_and_set(Attribute::Member.as_ref(), Value::Refer(t_uuid))
+        )
+        .is_ok());
+    server_a_txn.commit().expect("Failed to commit");
+
+    // A -> B - B should remove the reference.
+    let mut server_a_txn = server_a.read().await;
+    let mut server_b_txn = server_b.write(ct).await;
+
+    trace!("========================================");
+    repl_incremental(&mut server_a_txn, &mut server_b_txn);
+
+    // Assert on B that Member is now gone.
+    let e = server_b_txn
+        .internal_search_all_uuid(g_uuid)
+        .expect("Unable to access entry.");
+
+    assert!(!e.attribute_equality(Attribute::Member.as_ref(), &PartialValue::Refer(t_uuid)));
+
+    server_b_txn.commit().expect("Failed to commit");
+    drop(server_a_txn);
+
+    // B -> A - A should remove the reference, everything is consistent again.
+    let mut server_b_txn = server_b.read().await;
+    let mut server_a_txn = server_a.write(ct).await;
+
+    trace!("========================================");
+    repl_incremental(&mut server_b_txn, &mut server_a_txn);
+
+    let e1 = server_a_txn
+        .internal_search_all_uuid(g_uuid)
+        .expect("Unable to access entry.");
+    let e2 = server_b_txn
+        .internal_search_all_uuid(g_uuid)
+        .expect("Unable to access entry.");
+
+    assert!(e1 == e2);
+    assert!(!e1.attribute_equality(Attribute::Member.as_ref(), &PartialValue::Refer(t_uuid)));
+
+    server_a_txn.commit().expect("Failed to commit");
+    drop(server_b_txn);
+}
+
+#[qs_pair_test]
+async fn test_repl_increment_refint_conflict(server_a: &QueryServer, server_b: &QueryServer) {
+    let ct = duration_from_epoch_now();
+
+    let mut server_a_txn = server_a.write(ct).await;
+    let mut server_b_txn = server_b.read().await;
+
+    assert!(repl_initialise(&mut server_b_txn, &mut server_a_txn)
+        .and_then(|_| server_a_txn.commit())
+        .is_ok());
+    drop(server_b_txn);
+
+    // On B, create a conflicting person.
+    let mut server_b_txn = server_b.write(duration_from_epoch_now()).await;
+    let t_uuid = Uuid::new_v4();
+    assert!(server_b_txn
+        .internal_create(vec![entry_init!(
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
+            (
+                Attribute::Name.as_ref(),
+                Value::new_iname("testperson_conflict")
+            ),
+            (Attribute::Uuid.as_ref(), Value::Uuid(t_uuid)),
+            (
+                Attribute::Description.as_ref(),
+                Value::new_utf8s("testperson1")
+            ),
+            (
+                Attribute::DisplayName.as_ref(),
+                Value::new_utf8s("testperson1")
+            )
+        ),])
+        .is_ok());
+    server_b_txn.commit().expect("Failed to commit");
+
+    // Create a person / group on a. Add person to group.
+    let mut server_a_txn = server_a.write(duration_from_epoch_now()).await;
+    assert!(server_a_txn
+        .internal_create(vec![entry_init!(
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
+            (Attribute::Name.as_ref(), Value::new_iname("testperson1")),
+            (Attribute::Uuid.as_ref(), Value::Uuid(t_uuid)),
+            (
+                Attribute::Description.as_ref(),
+                Value::new_utf8s("testperson1")
+            ),
+            (
+                Attribute::DisplayName.as_ref(),
+                Value::new_utf8s("testperson1")
+            )
+        ),])
+        .is_ok());
+
+    let g_uuid = Uuid::new_v4();
+    assert!(server_a_txn
+        .internal_create(vec![entry_init!(
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Group.to_value()),
+            (Attribute::Name.as_ref(), Value::new_iname("testgroup1")),
+            (Attribute::Uuid.as_ref(), Value::Uuid(g_uuid)),
+            (Attribute::Member.as_ref(), Value::Refer(t_uuid))
+        ),])
+        .is_ok());
+
+    server_a_txn.commit().expect("Failed to commit");
+
+    // A -> B repl.
+    let mut server_a_txn = server_a.read().await;
+    let mut server_b_txn = server_b.write(ct).await;
+
+    trace!("========================================");
+    repl_incremental(&mut server_a_txn, &mut server_b_txn);
+
+    // What do we do here?
+    // I think we can't delete the reference since some nodes won't percieve the
+    // change, then we need to trigger a second member update into the group.
+    // But then again, we have to update the CID to keep repl consistent. Is there
+    // a risk of repl storm here?
+    debug_assert!(false);
+
+    server_b_txn.commit().expect("Failed to commit");
+    drop(server_a_txn);
+
+    todo!();
+
+    // A -> B - B should remove the reference.
+
+    // B -> A - A should remove the reference.
+}
+
+// Ref-int removes a group member, when the member is deleted over incremental
+
+// Test attrunique conflictns
+
+// Test ref-int when attrunique makes a conflict
 
 // Test change of domain version over incremental.
+//
+// todo when I have domain version migrations working.

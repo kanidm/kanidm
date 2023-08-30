@@ -13,7 +13,7 @@ use std::collections::BTreeSet;
 use std::sync::Arc;
 
 use hashbrown::HashSet as Set;
-use kanidm_proto::v1::{ConsistencyError, PluginError};
+use kanidm_proto::v1::ConsistencyError;
 
 use crate::event::{CreateEvent, DeleteEvent, ModifyEvent};
 use crate::filter::f_eq;
@@ -24,14 +24,14 @@ use crate::schema::SchemaTransaction;
 pub struct ReferentialIntegrity;
 
 impl ReferentialIntegrity {
-    fn check_uuids_exist(
+    fn check_uuids_exist_fast(
         qs: &mut QueryServerWriteTransaction,
         inner: Vec<PartialValue>,
-    ) -> Result<(), OperationError> {
+    ) -> Result<bool, OperationError> {
         if inner.is_empty() {
             // There is nothing to check! Move on.
             trace!("no reference types modified, skipping check");
-            return Ok(());
+            return Ok(true);
         }
 
         let inner = inner
@@ -50,14 +50,12 @@ impl ReferentialIntegrity {
 
         // Is the existence of all id's confirmed?
         if b {
-            Ok(())
+            Ok(true)
         } else {
             admin_error!(
                 "UUID reference set size differs from query result size <fast path, no uuid info available>"
             );
-            Err(OperationError::Plugin(PluginError::ReferentialIntegrity(
-                "Uuid referenced not found in database".to_string(),
-            )))
+            Ok(false)
         }
     }
 }
@@ -116,6 +114,37 @@ impl Plugin for ReferentialIntegrity {
         cand: &[EntrySealedCommitted],
     ) -> Result<(), OperationError> {
         Self::post_modify_inner(qs, cand)
+    }
+
+    fn post_repl_incremental(
+        _qs: &mut QueryServerWriteTransaction,
+        _pre_cand: &[Arc<EntrySealedCommitted>],
+        _cand: &[EntrySealedCommitted],
+        _conflict_uuids: &[Uuid],
+    ) -> Result<(), OperationError> {
+        admin_error!(
+            "plugin {} has an unimplemented post_repl_incremental!",
+            Self::id()
+        );
+        debug_assert!(false);
+
+        // I think we need to check that all values in the ref type values here
+        // exist, and if not, we *need to remove them*. We should probably rewrite
+        // how we do modify/create inner to actually return missing uuids, so that
+        // this fn can delete, and the other parts can report what's missing.
+
+        // This also becomes a path to a "ref int fixup" too?
+
+        // In a conflict case, we need to also add these uuids to the delete logic
+        // since on the originator node the original uuid will still persist
+        // meaning the member won't be removed.
+        // However, on a non-primary conflict handler it will remove the member
+        // as well. This is annoyingly a worst case, since then *every* node will
+        // attempt to update the cid of this group. But I think the potential cost
+        // in the short term will be worth consistent references.
+
+        // Err(OperationError::InvalidState)
+        Ok(())
     }
 
     #[instrument(level = "debug", name = "refint_post_delete", skip_all)]
@@ -273,7 +302,22 @@ impl ReferentialIntegrity {
             }
         })?;
 
-        Self::check_uuids_exist(qs, i)
+        let all_exist_fast = Self::check_uuids_exist_fast(qs, i)?;
+
+        if all_exist_fast {
+            // All good!
+            return Ok(());
+        }
+
+        // Okay taking the slow path now ...
+
+        /*
+        Err(OperationError::Plugin(PluginError::ReferentialIntegrity(
+            "Uuid referenced not found in database".to_string(),
+        )))
+        */
+
+        todo!();
     }
 }
 
