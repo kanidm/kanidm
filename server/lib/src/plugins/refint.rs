@@ -195,7 +195,7 @@ impl Plugin for ReferentialIntegrity {
 
     fn post_repl_incremental(
         qs: &mut QueryServerWriteTransaction,
-        _pre_cand: &[Arc<EntrySealedCommitted>],
+        pre_cand: &[Arc<EntrySealedCommitted>],
         cand: &[EntrySealedCommitted],
         conflict_uuids: &[Uuid],
     ) -> Result<(), OperationError> {
@@ -223,6 +223,31 @@ impl Plugin for ReferentialIntegrity {
             Vec::with_capacity(0)
         };
 
+        // If the entry has moved from a live to a deleted state we need to clean it's reference's
+        // that *may* have been added on this server - the same that other references would be
+        // deleted.
+        let inactive_entries: Vec<_> = std::iter::zip(pre_cand, cand)
+            .filter_map(|(pre, post)| {
+                let pre_live = pre.mask_recycled_ts().is_some();
+                let post_live = post.mask_recycled_ts().is_some();
+
+                if !post_live && (pre_live != post_live) {
+                    // We have moved from live to recycled/tombstoned. We need to
+                    // ensure that these references are masked.
+                    Some(post.get_uuid())
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        if event_enabled!(tracing::Level::DEBUG) {
+            debug!("Removing the following reference uuids for entries that have become recycled or tombstoned");
+            for missing in &inactive_entries {
+                debug!(?missing);
+            }
+        }
+
         // We can now combine this with the confict uuids from the incoming set.
 
         // In a conflict case, we need to also add these uuids to the delete logic
@@ -240,6 +265,7 @@ impl Plugin for ReferentialIntegrity {
         // Now, we need to find for each of the missing uuids, which values had them.
         // We could use a clever query to internal_search_writeable?
         missing_uuids.extend_from_slice(conflict_uuids);
+        missing_uuids.extend_from_slice(&inactive_entries);
 
         if missing_uuids.is_empty() {
             trace!("Nothing to do, shortcut");
