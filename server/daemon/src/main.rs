@@ -638,7 +638,7 @@ async fn main() -> ExitCode {
                     client = match &sconfig.tls_chain {
                         None => client,
                         Some(ca_cert) => {
-                            debug!("Trying to load {}", ca_cert);
+                            debug!("Trying to load {} to build a CA cert path", ca_cert);
                             // if the ca_cert file exists, then we'll use it
                             let ca_cert_path = PathBuf::from(ca_cert);
                             match ca_cert_path.exists() {
@@ -666,7 +666,7 @@ async fn main() -> ExitCode {
                                     let ca_cert_parsed = match reqwest::Certificate::from_pem(content.as_bytes()) {
                                         Ok(val) => val,
                                         Err(e) =>{
-                                            error!("Failed to parse {} as a valid certificate!\nError: {:?}", ca_cert, e);
+                                            error!("Failed to parse {} into CA certificate!\nError: {:?}", ca_cert, e);
                                         return ExitCode::FAILURE
                                         }
                                     };

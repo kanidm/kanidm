@@ -50,6 +50,8 @@ regex = { workspace = true, features = [
     "unicode",
     "unicode-gencat",
 ] }
+rusqlite = { workspace = true, features = ["array", "bundled"] }
+
 serde = { workspace = true, features = ["derive"] }
 serde_cbor = { workspace = true }
 serde_json = { workspace = true }
@@ -80,11 +82,9 @@ serde_with = { workspace = true }
 
 # because windows really can't build without the bundled one
 [target.'cfg(target_family = "windows")'.dependencies]
-rusqlite = { workspace = true, features = ["array", "bundled", "vtab"] }
 whoami = { workspace = true }
 
 [target.'cfg(not(target_family = "windows"))'.dependencies]
-rusqlite = { workspace = true }
 kanidm_utils_users = { workspace = true }
 
 [features]
