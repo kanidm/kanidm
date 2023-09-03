@@ -354,6 +354,7 @@ impl Entry<EntryInit, EntryNew> {
                 if vs.is_empty() {
                     None
                 } else {
+                    // TODO: this should be an "Attribute::from(k)"
                 let attr = AttrString::from(k.to_lowercase());
                 let vv: ValueSet = match attr.as_str() {
                     kanidm_proto::constants::ATTR_ATTRIBUTENAME | kanidm_proto::constants::ATTR_CLASSNAME | kanidm_proto::constants::ATTR_DOMAIN => {

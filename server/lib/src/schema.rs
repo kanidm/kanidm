@@ -427,25 +427,25 @@ impl SchemaClass {
 
         // These are all "optional" lists of strings.
         let systemmay = value
-            .get_ava_iter_iutf8("systemmay")
-            .map(|i| i.map(AttrString::from).collect())
+            .get_ava_iter_iutf8(Attribute::SystemMay.as_ref())
+            .map(|i| i.map(AttrString::from).collect()) // TOOD: this should probably just be an into?
             .unwrap_or_else(Vec::new);
         let systemmust = value
-            .get_ava_iter_iutf8("systemmust")
-            .map(|i| i.map(AttrString::from).collect())
+            .get_ava_iter_iutf8(Attribute::SystemMust.as_ref())
+            .map(|i| i.map(AttrString::from).collect()) // TOOD: this should probably just be an into?
             .unwrap_or_else(Vec::new);
         let may = value
-            .get_ava_iter_iutf8("may")
-            .map(|i| i.map(AttrString::from).collect())
+            .get_ava_iter_iutf8(Attribute::May.as_ref())
+            .map(|i| i.map(AttrString::from).collect()) // TOOD: this should probably just be an into?
             .unwrap_or_else(Vec::new);
         let must = value
-            .get_ava_iter_iutf8("must")
-            .map(|i| i.map(AttrString::from).collect())
+            .get_ava_iter_iutf8(Attribute::Must.as_ref())
+            .map(|i| i.map(AttrString::from).collect()) // TOOD: this should probably just be an into?
             .unwrap_or_else(Vec::new);
 
         let systemsupplements = value
-            .get_ava_iter_iutf8("systemsupplements")
-            .map(|i| i.map(AttrString::from).collect())
+            .get_ava_iter_iutf8(Attribute::SystemSupplements.as_ref())
+            .map(|i| i.map(AttrString::from).collect()) // TOOD: this should probably just be an into?
             .unwrap_or_else(Vec::new);
         let supplements = value
             .get_ava_iter_iutf8(Attribute::Supplements.as_ref())
@@ -492,7 +492,7 @@ impl From<SchemaClass> for EntryInitNew {
         let mut entry = EntryInitNew::new();
 
         #[allow(clippy::expect_used)]
-        entry.set_ava("classname", vec![Value::new_iutf8(&value.name)]);
+        entry.set_ava("classname", vec![Value::new_iutf8(&value.name)].into_iter());
 
         // class
         entry.set_ava(
@@ -511,36 +511,42 @@ impl From<SchemaClass> for EntryInitNew {
         );
 
         // sync_allowed
-        entry.set_ava("sync_allowed", vec![Value::Bool(value.sync_allowed)]);
+        entry.set_ava(
+            Attribute::SyncAllowed.as_ref(),
+            vec![Value::Bool(value.sync_allowed)].into_iter(),
+        );
 
         // uid
-        entry.set_ava("uuid", vec![Value::Uuid(value.uuid)]);
+        entry.set_ava(
+            Attribute::Uuid.as_ref(),
+            vec![Value::Uuid(value.uuid)].into_iter(),
+        );
 
         // systemmay
         if !value.systemmay.is_empty() {
             entry.set_ava(
-                "systemmay",
+                Attribute::SystemMay.as_ref(),
                 value.systemmay.iter().map(|s| Value::new_iutf8(s)),
             );
         }
         // systemexcludes
         if !value.systemexcludes.is_empty() {
             entry.set_ava(
-                "systemexcludes",
+                Attribute::SystemExcludes.as_ref(),
                 value.systemexcludes.iter().map(|s| Value::new_iutf8(s)),
             );
         }
         // systemmust
         if !value.systemmust.is_empty() {
             entry.set_ava(
-                "systemmust",
+                Attribute::SystemMust.as_ref(),
                 value.systemmust.iter().map(|s| Value::new_iutf8(s)),
             );
         }
         // systemsupplements
         if !value.systemsupplements.is_empty() {
             entry.set_ava(
-                "systemsupplements",
+                Attribute::SystemSupplements.as_ref(),
                 value.systemsupplements.iter().map(|s| Value::new_iutf8(s)),
             );
         }
@@ -1466,9 +1472,9 @@ impl<'a> SchemaWriteTransaction<'a> {
             },
         );
         self.attributes.insert(
-            AttrString::from("scope"),
+            Attribute::Scope.into(),
             SchemaAttribute {
-                name: AttrString::from("scope"),
+                name: Attribute::Scope.into(),
                 uuid: UUID_SCHEMA_ATTR_SCOPE,
                 description: String::from(
                     "The string identifier of a permission scope in a session",
@@ -1485,9 +1491,9 @@ impl<'a> SchemaWriteTransaction<'a> {
 
         // External Scim Sync
         self.attributes.insert(
-            AttrString::from("sync_external_id"),
+            Attribute::SyncExternalId.into(),
             SchemaAttribute {
-                name: AttrString::from("sync_external_id"),
+                name: Attribute::SyncExternalId.into(),
                 uuid: UUID_SCHEMA_ATTR_SYNC_EXTERNAL_ID,
                 description: String::from(
                     "An external string ID of an entry imported from a sync agreement",
@@ -1568,9 +1574,9 @@ impl<'a> SchemaWriteTransaction<'a> {
 
         // LDAP Masking Phantoms
         self.attributes.insert(
-            AttrString::from("dn"),
+            Attribute::Dn.into(),
             SchemaAttribute {
-                name: AttrString::from("dn"),
+                name: Attribute::Dn.into(),
                 uuid: UUID_SCHEMA_ATTR_DN,
                 description: String::from("An LDAP Compatible DN"),
                 multivalue: false,
@@ -1583,9 +1589,9 @@ impl<'a> SchemaWriteTransaction<'a> {
             },
         );
         self.attributes.insert(
-            AttrString::from("entrydn"),
+            Attribute::EntryDn.into(),
             SchemaAttribute {
-                name: AttrString::from("entrydn"),
+                name: Attribute::EntryDn.into(),
                 uuid: UUID_SCHEMA_ATTR_ENTRYDN,
                 description: String::from("An LDAP Compatible EntryDN"),
                 multivalue: false,
@@ -1598,9 +1604,9 @@ impl<'a> SchemaWriteTransaction<'a> {
             },
         );
         self.attributes.insert(
-            AttrString::from("entryuuid"),
+            Attribute::EntryUuid.into(),
             SchemaAttribute {
-                name: AttrString::from("entryuuid"),
+                name: Attribute::EntryUuid.into(),
                 uuid: UUID_SCHEMA_ATTR_ENTRYUUID,
                 description: String::from("An LDAP Compatible entryUUID"),
                 multivalue: false,
@@ -1613,9 +1619,9 @@ impl<'a> SchemaWriteTransaction<'a> {
             },
         );
         self.attributes.insert(
-            AttrString::from("objectclass"),
+            Attribute::ObjectClass.into(),
             SchemaAttribute {
-                name: AttrString::from("objectclass"),
+                name: Attribute::ObjectClass.into(),
                 uuid: UUID_SCHEMA_ATTR_OBJECTCLASS,
                 description: String::from("An LDAP Compatible objectClass"),
                 multivalue: true,
@@ -1628,9 +1634,9 @@ impl<'a> SchemaWriteTransaction<'a> {
             },
         );
         self.attributes.insert(
-            AttrString::from("cn"),
+            Attribute::Cn.into(),
             SchemaAttribute {
-                name: AttrString::from("cn"),
+                name: Attribute::Cn.into(),
                 uuid: UUID_SCHEMA_ATTR_CN,
                 description: String::from("An LDAP Compatible objectClass"),
                 multivalue: false,
@@ -1643,9 +1649,9 @@ impl<'a> SchemaWriteTransaction<'a> {
             },
         );
         self.attributes.insert(
-            AttrString::from("keys"),
+            Attribute::LdapKeys.into(), // keys
             SchemaAttribute {
-                name: AttrString::from("keys"),
+                name: Attribute::LdapKeys.into(), // keys
                 uuid: UUID_SCHEMA_ATTR_KEYS,
                 description: String::from("An LDAP Compatible keys (ssh)"),
                 multivalue: true,
@@ -1718,9 +1724,9 @@ impl<'a> SchemaWriteTransaction<'a> {
             },
         );
         self.attributes.insert(
-            AttrString::from("emailaddress"),
+            Attribute::LdapEmailAddress.into(),
             SchemaAttribute {
-                name: AttrString::from("emailaddress"),
+                name: Attribute::LdapEmailAddress.into(),
                 uuid: UUID_SCHEMA_ATTR_EMAILADDRESS,
                 description: String::from("An LDAP Compatible emailAddress"),
                 multivalue: true,
@@ -1769,7 +1775,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                     Attribute::Syntax.into(),
                     Attribute::Description.into(),
                 ],
-                systemexcludes: vec![AttrString::from("classtype")],
+                systemexcludes: vec![EntryClass::ClassType.into()],
                 ..Default::default()
             },
         );
@@ -1793,7 +1799,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 systemmust: vec![
                     Attribute::Class.into(),
                     Attribute::ClassName.into(),
-                    AttrString::from(Attribute::Description.as_ref()),
+                    Attribute::Description.into(),
                 ],
                 systemexcludes: vec![Attribute::AttributeType.into()],
                 ..Default::default()
@@ -1805,7 +1811,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 name: EntryClass::Object.into(),
                 uuid: UUID_SCHEMA_CLASS_OBJECT,
                 description: String::from("A system created class that all objects must contain"),
-                systemmay: vec![AttrString::from(Attribute::Description.as_ref())],
+                systemmay: vec![Attribute::Description.into()],
                 systemmust: vec![
                     Attribute::Class.into(),
                     Attribute::Uuid.into(),
@@ -1869,7 +1875,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                     "An entry representing conflicts that occurred during replication",
                 ),
                 systemmust: vec![Attribute::SourceUuid.into()],
-                systemsupplements: vec![AttrString::from("recycled")],
+                systemsupplements: vec![EntryClass::Recycled.into()],
                 ..Default::default()
             },
         );
@@ -1893,7 +1899,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 description: String::from("System Access Control Profile Class"),
                 systemmay: vec![
                     Attribute::AcpEnable.into(),
-                    AttrString::from(Attribute::Description.as_ref()),
+                    Attribute::Description.into(),
                     Attribute::AcpReceiver.into(),
                 ],
                 systemmust: vec![
@@ -1972,10 +1978,10 @@ impl<'a> SchemaWriteTransaction<'a> {
                 uuid: UUID_SCHEMA_CLASS_SYNC_OBJECT,
                 description: String::from("A class denoting that an entry is synchronised from an external source. This entry may not be modifiable."),
                 systemmust: vec![
-                    AttrString::from("sync_parent_uuid")
+                    Attribute::SyncParentUuid.into()
                 ],
                 systemmay: vec![
-                    AttrString::from("sync_external_id"),
+                    Attribute::SyncExternalId.into(),
                     Attribute::SyncClass.into(),
                 ],
                 .. Default::default()
