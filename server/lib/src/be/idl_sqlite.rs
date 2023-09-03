@@ -167,8 +167,6 @@ pub trait IdlSqliteTransaction {
                     ))
                     .map_err(sqlite_error)?;
 
-                // TODO #258: I have no idea how to make this an iterator chain ... so what
-
                 // turn them into i64's
                 let mut id_list: Vec<i64> = vec![];
                 for id in idli {
@@ -1711,6 +1709,7 @@ impl IdlSqlite {
                     Connection::open_with_flags(cfg.path.as_str(), flags).map_err(sqlite_error);
                 match conn {
                     Ok(conn) => {
+                        // load the rusqlite vtab module to allow for virtual tables
                         rusqlite::vtab::array::load_module(&conn).map_err(|e| {
                             admin_error!(
                                 "Failed to load rarray virtual module for sqlite, cannot start! {:?}", e
@@ -1733,24 +1732,6 @@ impl IdlSqlite {
                 error!(err = ?e, "Failed to build connection pool");
                 e
             })?;
-
-        // // load the rarray virtual module for each pooled connection
-        // let pool = pool
-        //     .into_iter()
-        //     .map(
-        //         |p| match rusqlite::vtab::array::load_module(&p).map_err(sqlite_error) {
-        //             Ok(_) => Ok(p),
-        //             Err(_) => {
-        //                 error!("Failed to load rarray virtual module");
-        //                 Err(OperationError::SqliteError)
-        //             }
-        //         },
-        //     )
-        //     .collect::<Result<VecDeque<Connection>, OperationError>>()
-        //     .map_err(|e| {
-        //         error!(err = ?e, "Failed to build connection pool");
-        //         e
-        //     })?;
 
         let pool = Arc::new(Mutex::new(pool));
 
