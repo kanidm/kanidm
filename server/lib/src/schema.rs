@@ -406,7 +406,7 @@ impl SchemaClass {
 
         // name
         let name = value
-            .get_ava_single_iutf8("classname")
+            .get_ava_single_iutf8(Attribute::ClassName.as_ref())
             .map(AttrString::from)
             .ok_or_else(|| {
                 admin_error!("missing classname - {:?}", uuid);
@@ -421,7 +421,9 @@ impl SchemaClass {
                 OperationError::InvalidSchemaState("missing description".to_string())
             })?;
 
-        let sync_allowed = value.get_ava_single_bool("sync_allowed").unwrap_or(false);
+        let sync_allowed = value
+            .get_ava_single_bool(Attribute::SyncAllowed.as_ref())
+            .unwrap_or(false);
 
         // These are all "optional" lists of strings.
         let systemmay = value
@@ -446,16 +448,16 @@ impl SchemaClass {
             .map(|i| i.map(AttrString::from).collect())
             .unwrap_or_else(Vec::new);
         let supplements = value
-            .get_ava_iter_iutf8("supplements")
-            .map(|i| i.map(AttrString::from).collect())
+            .get_ava_iter_iutf8(Attribute::Supplements.as_ref())
+            .map(|i| i.map(AttrString::from).collect()) // TOOD: this should probably just be an into?
             .unwrap_or_else(Vec::new);
         let systemexcludes = value
-            .get_ava_iter_iutf8("systemexcludes")
-            .map(|i| i.map(AttrString::from).collect())
+            .get_ava_iter_iutf8(Attribute::SystemExcludes.as_ref())
+            .map(|i| i.map(AttrString::from).collect()) // TOOD: this should probably just be an into?
             .unwrap_or_else(Vec::new);
         let excludes = value
-            .get_ava_iter_iutf8("excludes")
-            .map(|i| i.map(AttrString::from).collect())
+            .get_ava_iter_iutf8(Attribute::Excludes.as_ref())
+            .map(|i| i.map(AttrString::from).collect()) // TOOD: this should probably just be an into?
             .unwrap_or_else(Vec::new);
 
         Ok(SchemaClass {
@@ -1148,9 +1150,9 @@ impl<'a> SchemaWriteTransaction<'a> {
                 },
             );
         self.attributes.insert(
-            AttrString::from("systemexcludes"),
+            Attribute::SystemExcludes.into(),
             SchemaAttribute {
-                name: AttrString::from("systemexcludes"),
+                name: Attribute::SystemExcludes.into(),
                 uuid: UUID_SCHEMA_ATTR_SYSTEMEXCLUDES,
                 description: String::from(
                     "A set of classes that are denied presence in connection to this class",
@@ -1165,9 +1167,9 @@ impl<'a> SchemaWriteTransaction<'a> {
             },
         );
         self.attributes.insert(
-                AttrString::from("excludes"),
+                Attribute::Excludes.into(),
                 SchemaAttribute {
-                    name: AttrString::from("excludes"),
+                    name: Attribute::Excludes.into(),
                     uuid: UUID_SCHEMA_ATTR_EXCLUDES,
                     description: String::from(
                         "A set of user modifiable classes that are denied presence in connection to this class",
@@ -1398,9 +1400,9 @@ impl<'a> SchemaWriteTransaction<'a> {
             },
         );
         self.attributes.insert(
-            AttrString::from("dynmember"),
+            Attribute::DynMember.into(),
             SchemaAttribute {
-                name: AttrString::from("dynmember"),
+                name: Attribute::DynMember.into(),
                 uuid: UUID_SCHEMA_ATTR_DYNMEMBER,
                 description: String::from("List of dynamic members of the group"),
                 multivalue: true,
@@ -1414,9 +1416,9 @@ impl<'a> SchemaWriteTransaction<'a> {
         );
         // Migration related
         self.attributes.insert(
-            AttrString::from("version"),
+            Attribute::Version.into(),
             SchemaAttribute {
-                name: AttrString::from("version"),
+                name: Attribute::Version.into(),
                 uuid: UUID_SCHEMA_ATTR_VERSION,
                 description: String::from(
                     "The systems internal migration version for provided objects",
@@ -1432,9 +1434,9 @@ impl<'a> SchemaWriteTransaction<'a> {
         );
         // Domain for sysinfo
         self.attributes.insert(
-            AttrString::from("domain"),
+            Attribute::Domain.into(),
             SchemaAttribute {
-                name: AttrString::from("domain"),
+                name: Attribute::Domain.into(),
                 uuid: UUID_SCHEMA_ATTR_DOMAIN,
                 description: String::from("A DNS Domain name entry."),
                 multivalue: true,
@@ -1447,9 +1449,9 @@ impl<'a> SchemaWriteTransaction<'a> {
             },
         );
         self.attributes.insert(
-            AttrString::from("claim"),
+            Attribute::Claim.into(),
             SchemaAttribute {
-                name: AttrString::from("claim"),
+                name: Attribute::Claim.into(),
                 uuid: UUID_SCHEMA_ATTR_CLAIM,
                 description: String::from(
                     "The string identifier of an extracted claim that can be filtered",
@@ -1785,8 +1787,8 @@ impl<'a> SchemaWriteTransaction<'a> {
                     Attribute::Must.into(),
                     Attribute::SystemSupplements.into(),
                     Attribute::Supplements.into(),
-                    AttrString::from("systemexcludes"),
-                    AttrString::from("excludes"),
+                    Attribute::SystemExcludes.into(),
+                    Attribute::Excludes.into(),
                 ],
                 systemmust: vec![
                     Attribute::Class.into(),
@@ -1878,7 +1880,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 name: AttrString::from("system_info"),
                 uuid: UUID_SCHEMA_CLASS_SYSTEM_INFO,
                 description: String::from("System metadata object class"),
-                systemmust: vec![AttrString::from("version")],
+                systemmust: vec![Attribute::Version.into()],
                 ..Default::default()
             },
         );
@@ -2818,7 +2820,7 @@ mod tests {
             name: AttrString::from("testobject"),
             uuid: Uuid::new_v4(),
             description: String::from("test object"),
-            systemmay: vec![AttrString::from("claim")],
+            systemmay: vec![Attribute::Claim.into()],
             ..Default::default()
         };
 

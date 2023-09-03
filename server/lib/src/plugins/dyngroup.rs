@@ -582,7 +582,7 @@ mod tests {
             ModifyList::new_list(vec![
                 Modify::Purged("dyngroup_filter".into()),
                 Modify::Present(
-                    AttrString::from("dyngroup_filter"),
+                    Attribute::DynGroupFilter.into(),
                     Value::JsonFilt(ProtoFilter::Eq("name".to_string(), "testgroup".to_string()))
                 )
             ]),
@@ -637,7 +637,7 @@ mod tests {
             ModifyList::new_list(vec![
                 Modify::Purged("dyngroup_filter".into()),
                 Modify::Present(
-                    AttrString::from("dyngroup_filter"),
+                    Attribute::DynGroupFilter.into(),
                     Value::JsonFilt(ProtoFilter::Eq(
                         "name".to_string(),
                         "no_such_entry_exists".to_string()
@@ -689,7 +689,7 @@ mod tests {
                 PartialValue::new_iname("test_dyngroup")
             )),
             ModifyList::new_list(vec![Modify::Present(
-                AttrString::from("dynmember"),
+                Attribute::DynMember.into(),
                 Value::Refer(UUID_ADMIN)
             )]),
             None,
@@ -741,7 +741,7 @@ mod tests {
                 Attribute::Name,
                 PartialValue::new_iname("test_dyngroup")
             )),
-            ModifyList::new_list(vec![Modify::Purged(AttrString::from("dynmember"),)]),
+            ModifyList::new_list(vec![Modify::Purged(Attribute::DynMember.into(),)]),
             None,
             |_| {},
             |qs: &mut QueryServerWriteTransaction| {

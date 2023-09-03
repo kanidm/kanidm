@@ -796,7 +796,7 @@ impl Entry<EntryIncremental, EntryNew> {
                         // We need to make a random uuid in the conflict gen process.
                         let new_uuid = Uuid::new_v4();
                         cnf_ent.purge_ava("uuid");
-                        cnf_ent.add_ava("uuid", Value::Uuid(new_uuid));
+                        cnf_ent.add_ava(Attribute::Uuid.as_ref(), Value::Uuid(new_uuid));
                         cnf_ent.add_ava(Attribute::Class.as_ref(), EntryClass::Recycled.into());
                         cnf_ent.add_ava(Attribute::Class.as_ref(), EntryClass::Conflict.into());
 
@@ -3197,7 +3197,7 @@ mod tests {
     fn test_entry_basic() {
         let mut e: Entry<EntryInit, EntryNew> = Entry::new();
 
-        e.add_ava("userid", Value::from("william"));
+        e.add_ava(Attribute::UserId.as_ref(), Value::from("william"));
     }
 
     #[test]

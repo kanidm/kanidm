@@ -737,7 +737,7 @@ mod tests {
             ModifyList::new_list(vec![
                 Modify::Present(Attribute::Class.into(), EntryClass::SystemInfo.to_value()),
                 // Modify::Present("domain".to_string(), Value::new_iutf8("domain.name")),
-                Modify::Present(AttrString::from("version"), Value::new_uint32(1)),
+                Modify::Present(Attribute::Version.into(), Value::new_uint32(1)),
             ]),
         );
         assert!(server_txn.modify(&me_sin).is_ok());
