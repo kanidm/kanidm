@@ -2456,7 +2456,7 @@ mod tests {
                 search: Access::Allow(BTreeSet::new()),
                 modify_pres: Access::Allow(btreeset![Attribute::Name.into()]),
                 modify_rem: Access::Allow(btreeset![Attribute::Name.into()]),
-                modify_class: Access::Allow(btreeset![Attribute::Object.into()]),
+                modify_class: Access::Allow(btreeset![EntryClass::Object.into()]),
             }]
         )
     }

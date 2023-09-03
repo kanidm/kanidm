@@ -1502,9 +1502,9 @@ impl<'a> SchemaWriteTransaction<'a> {
             },
         );
         self.attributes.insert(
-            AttrString::from("sync_parent_uuid"),
+            Attribute::SyncParentUuid.into(),
             SchemaAttribute {
-                name: AttrString::from("sync_parent_uuid"),
+                name: Attribute::SyncParentUuid.into(),
                 uuid: UUID_SCHEMA_ATTR_SYNC_PARENT_UUID,
                 description: String::from(
                     "The UUID of the parent sync agreement that created this entry.",
@@ -1519,9 +1519,9 @@ impl<'a> SchemaWriteTransaction<'a> {
             },
         );
         self.attributes.insert(
-            AttrString::from("sync_class"),
+            Attribute::SyncClass.into(),
             SchemaAttribute {
-                name: AttrString::from("sync_class"),
+                name: Attribute::SyncClass.into(),
                 uuid: UUID_SCHEMA_ATTR_SYNC_CLASS,
                 description: String::from("The set of classes requested by the sync client."),
                 multivalue: true,
@@ -1535,9 +1535,9 @@ impl<'a> SchemaWriteTransaction<'a> {
         );
 
         self.attributes.insert(
-            AttrString::from("password_import"),
+            Attribute::PasswordImport.into(),
             SchemaAttribute {
-                name: AttrString::from("password_import"),
+                name: Attribute::PasswordImport.into(),
                 uuid: UUID_SCHEMA_ATTR_PASSWORD_IMPORT,
                 description: String::from("An imported password hash from an external system."),
                 multivalue: false,
@@ -1750,9 +1750,9 @@ impl<'a> SchemaWriteTransaction<'a> {
         // end LDAP masking phantoms
 
         self.classes.insert(
-            Attribute::AttributeType.into(),
+            EntryClass::AttributeType.into(),
             SchemaClass {
-                name: Attribute::AttributeType.into(),
+                name: EntryClass::AttributeType.into(),
                 uuid: UUID_SCHEMA_CLASS_ATTRIBUTETYPE,
                 description: String::from("Definition of a schema attribute"),
                 systemmay: vec![
@@ -1774,9 +1774,9 @@ impl<'a> SchemaWriteTransaction<'a> {
             },
         );
         self.classes.insert(
-            AttrString::from("classtype"),
+            EntryClass::ClassType.into(),
             SchemaClass {
-                name: AttrString::from("classtype"),
+                name: EntryClass::ClassType.into(),
                 uuid: UUID_SCHEMA_CLASS_CLASSTYPE,
                 description: String::from("Definition of a schema classtype"),
                 systemmay: vec![
@@ -1800,9 +1800,9 @@ impl<'a> SchemaWriteTransaction<'a> {
             },
         );
         self.classes.insert(
-            Attribute::Object.into(),
+            EntryClass::Object.into(),
             SchemaClass {
-                name: Attribute::Object.into(),
+                name: EntryClass::Object.into(),
                 uuid: UUID_SCHEMA_CLASS_OBJECT,
                 description: String::from("A system created class that all objects must contain"),
                 systemmay: vec![AttrString::from(Attribute::Description.as_ref())],
@@ -1815,9 +1815,9 @@ impl<'a> SchemaWriteTransaction<'a> {
             },
         );
         self.classes.insert(
-            Attribute::MemberOf.into(),
+            EntryClass::MemberOf.into(),
             SchemaClass {
-                name: Attribute::MemberOf.into(),
+                name: EntryClass::MemberOf.into(),
                 uuid: UUID_SCHEMA_CLASS_MEMBEROF,
                 description: String::from(
                     "Class that is dynamically added to recipients of memberof or directmemberof",
@@ -1827,9 +1827,9 @@ impl<'a> SchemaWriteTransaction<'a> {
             },
         );
         self.classes.insert(
-            AttrString::from("extensibleobject"),
+            EntryClass::ExtensibleObject.into(),
             SchemaClass {
-                name: AttrString::from("extensibleobject"),
+                name: EntryClass::ExtensibleObject.into(),
                 uuid: UUID_SCHEMA_CLASS_EXTENSIBLEOBJECT,
                 description: String::from(
                     "A class type that has green hair and turns off all rules ...",
@@ -1839,18 +1839,18 @@ impl<'a> SchemaWriteTransaction<'a> {
         );
         /* These two classes are core to the entry lifecycle for recycling and tombstoning */
         self.classes.insert(
-                AttrString::from("recycled"),
+                EntryClass::Recycled.into(),
                 SchemaClass {
-                    name: AttrString::from("recycled"),
+                    name: EntryClass::Recycled.into(),
                     uuid: UUID_SCHEMA_CLASS_RECYCLED,
                     description: String::from("An object that has been deleted, but still recoverable via the revive operation. Recycled objects are not modifiable, only revivable."),
                     .. Default::default()
                 },
             );
         self.classes.insert(
-                AttrString::from("tombstone"),
+                EntryClass::Tombstone.into(),
                 SchemaClass {
-                    name: AttrString::from("tombstone"),
+                    name: EntryClass::Tombstone.into(),
                     uuid: UUID_SCHEMA_CLASS_TOMBSTONE,
                     description: String::from("An object that is purged from the recycle bin. This is a system internal state. Tombstones have no attributes beside UUID."),
                     systemmust: vec![
@@ -1861,9 +1861,9 @@ impl<'a> SchemaWriteTransaction<'a> {
                 },
             );
         self.classes.insert(
-            AttrString::from("conflict"),
+            EntryClass::Conflict.into(),
             SchemaClass {
-                name: AttrString::from("conflict"),
+                name: EntryClass::Conflict.into(),
                 uuid: UUID_SCHEMA_CLASS_CONFLICT,
                 description: String::from(
                     "An entry representing conflicts that occurred during replication",
@@ -1875,9 +1875,9 @@ impl<'a> SchemaWriteTransaction<'a> {
         );
         // sysinfo
         self.classes.insert(
-            AttrString::from("system_info"),
+            EntryClass::SystemInfo.into(),
             SchemaClass {
-                name: AttrString::from("system_info"),
+                name: EntryClass::SystemInfo.into(),
                 uuid: UUID_SCHEMA_CLASS_SYSTEM_INFO,
                 description: String::from("System metadata object class"),
                 systemmust: vec![Attribute::Version.into()],
@@ -1886,9 +1886,9 @@ impl<'a> SchemaWriteTransaction<'a> {
         );
         // ACP
         self.classes.insert(
-            AttrString::from("access_control_profile"),
+            EntryClass::AccessControlProfile.into(),
             SchemaClass {
-                name: AttrString::from("access_control_profile"),
+                name: EntryClass::AccessControlProfile.into(),
                 uuid: UUID_SCHEMA_CLASS_ACCESS_CONTROL_PROFILE,
                 description: String::from("System Access Control Profile Class"),
                 systemmay: vec![
@@ -1902,18 +1902,18 @@ impl<'a> SchemaWriteTransaction<'a> {
                     Attribute::Name.into(),
                 ],
                 systemsupplements: vec![
-                    AttrString::from("access_control_search"),
-                    AttrString::from("access_control_delete"),
-                    AttrString::from("access_control_modify"),
-                    AttrString::from("access_control_create"),
+                    EntryClass::AccessControlSearch.into(),
+                    EntryClass::AccessControlDelete.into(),
+                    EntryClass::AccessControlModify.into(),
+                    EntryClass::AccessControlCreate.into(),
                 ],
                 ..Default::default()
             },
         );
         self.classes.insert(
-            AttrString::from("access_control_search"),
+            EntryClass::AccessControlSearch.into(),
             SchemaClass {
-                name: AttrString::from("access_control_search"),
+                name: EntryClass::AccessControlSearch.into(),
                 uuid: UUID_SCHEMA_CLASS_ACCESS_CONTROL_SEARCH,
                 description: String::from("System Access Control Search Class"),
                 systemmust: vec![Attribute::AcpSearchAttr.into()],
@@ -1921,18 +1921,18 @@ impl<'a> SchemaWriteTransaction<'a> {
             },
         );
         self.classes.insert(
-            AttrString::from("access_control_delete"),
+            EntryClass::AccessControlDelete.into(),
             SchemaClass {
-                name: AttrString::from("access_control_delete"),
+                name: EntryClass::AccessControlDelete.into(),
                 uuid: UUID_SCHEMA_CLASS_ACCESS_CONTROL_DELETE,
                 description: String::from("System Access Control DELETE Class"),
                 ..Default::default()
             },
         );
         self.classes.insert(
-            AttrString::from("access_control_modify"),
+            EntryClass::AccessControlModify.into(),
             SchemaClass {
-                name: AttrString::from("access_control_modify"),
+                name: EntryClass::AccessControlModify.into(),
                 uuid: UUID_SCHEMA_CLASS_ACCESS_CONTROL_MODIFY,
                 description: String::from("System Access Control Modify Class"),
                 systemmay: vec![
@@ -1944,9 +1944,9 @@ impl<'a> SchemaWriteTransaction<'a> {
             },
         );
         self.classes.insert(
-            AttrString::from("access_control_create"),
+            EntryClass::AccessControlCreate.into(),
             SchemaClass {
-                name: AttrString::from("access_control_create"),
+                name: EntryClass::AccessControlCreate.into(),
                 uuid: UUID_SCHEMA_CLASS_ACCESS_CONTROL_CREATE,
                 description: String::from("System Access Control Create Class"),
                 systemmay: vec![
@@ -1957,18 +1957,18 @@ impl<'a> SchemaWriteTransaction<'a> {
             },
         );
         self.classes.insert(
-            AttrString::from("system"),
+            EntryClass::System.into(),
             SchemaClass {
-                name: AttrString::from("system"),
+                name: EntryClass::System.into(),
                 uuid: UUID_SCHEMA_CLASS_SYSTEM,
                 description: String::from("A class denoting that a type is system generated and protected. It has special internal behaviour."),
                 .. Default::default()
             },
         );
         self.classes.insert(
-            AttrString::from("sync_object"),
+            EntryClass::SyncObject.into(),
             SchemaClass {
-                name: AttrString::from("sync_object"),
+                name: EntryClass::SyncObject.into(),
                 uuid: UUID_SCHEMA_CLASS_SYNC_OBJECT,
                 description: String::from("A class denoting that an entry is synchronised from an external source. This entry may not be modifiable."),
                 systemmust: vec![
@@ -1976,7 +1976,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 ],
                 systemmay: vec![
                     AttrString::from("sync_external_id"),
-                    AttrString::from("sync_class"),
+                    Attribute::SyncClass.into(),
                 ],
                 .. Default::default()
             },
@@ -2841,7 +2841,7 @@ mod tests {
         // We setup some classes that have requires and excludes and check that they
         // are enforced correctly.
         let class_account = SchemaClass {
-            name: AttrString::from("account"),
+            name: Attribute::Account.into(),
             uuid: Uuid::new_v4(),
             description: String::from("account object"),
             systemmust: vec![

@@ -249,7 +249,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         // modify the account to put the session onto it.
         let modlist = ModifyList::new_list(vec![Modify::Present(
-            AttrString::from("api_token_session"),
+            Attribute::ApiTokenSession.into(),
             session,
         )]);
 
@@ -286,7 +286,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
     ) -> Result<(), OperationError> {
         // Delete the attribute with uuid.
         let modlist = ModifyList::new_list(vec![Modify::Removed(
-            AttrString::from("api_token_session"),
+            Attribute::ApiTokenSession.into(),
             PartialValue::Refer(dte.token_id),
         )]);
 

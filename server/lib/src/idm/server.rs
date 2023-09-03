@@ -2112,7 +2112,6 @@ mod tests {
     use std::time::Duration;
 
     use kanidm_proto::v1::{AuthAllowed, AuthIssueSession, AuthMech, OperationError};
-    use smartstring::alias::String as AttrString;
     use time::OffsetDateTime;
     use uuid::Uuid;
 
@@ -2787,7 +2786,7 @@ mod tests {
         let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await;
         let me_purge_up = ModifyEvent::new_internal_invalid(
             filter!(f_eq(Attribute::Name, PartialValue::new_iname("admin"))),
-            ModifyList::new_list(vec![Modify::Purged(AttrString::from("unix_password"))]),
+            ModifyList::new_list(vec![Modify::Purged(Attribute::UnixPassword.into())]),
         );
         assert!(idms_prox_write.qs_write.modify(&me_purge_up).is_ok());
         assert!(idms_prox_write.commit().is_ok());
@@ -2820,7 +2819,7 @@ mod tests {
                 ModifyEvent::new_internal_invalid(
                         filter!(f_eq(Attribute::Name, PartialValue::new_iname("admin"))),
                         ModifyList::new_list(vec![Modify::Present(
-                            AttrString::from("password_import"),
+                            Attribute::PasswordImport.into(),
                             Value::from("{SSHA512}JwrSUHkI7FTAfHRVR6KoFlSN0E3dmaQWARjZ+/UsShYlENOqDtFVU77HJLLrY2MuSp0jve52+pwtdVl2QUAHukQ0XUf5LDtM")
                         )]),
                     );
@@ -2902,7 +2901,7 @@ mod tests {
             ModifyList::new_list(vec![
                 Modify::Present(Attribute::Class.into(), EntryClass::PosixAccount.into()),
                 Modify::Present(Attribute::GidNumber.into(), Value::new_uint32(2001)),
-                Modify::Present(AttrString::from("unix_password"), v_cred),
+                Modify::Present(Attribute::UnixPassword.into(), v_cred),
             ]),
         );
         assert!(idms_prox_write.qs_write.modify(&me_posix).is_ok());
@@ -2955,8 +2954,8 @@ mod tests {
         let me_inv_m = ModifyEvent::new_internal_invalid(
             filter!(f_eq(Attribute::Name, PartialValue::new_iname("admin"))),
             ModifyList::new_list(vec![
-                Modify::Present(AttrString::from("account_expire"), v_expire),
-                Modify::Present(AttrString::from("account_valid_from"), v_valid_from),
+                Modify::Present(Attribute::AccountExpire.into(), v_expire),
+                Modify::Present(Attribute::AccountValidFrom.into(), v_valid_from),
             ]),
         );
         // go!
@@ -3947,9 +3946,9 @@ mod tests {
         let me_reset_tokens = ModifyEvent::new_internal_invalid(
             filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(UUID_DOMAIN_INFO))),
             ModifyList::new_list(vec![
-                Modify::Purged(AttrString::from("fernet_private_key_str")),
-                Modify::Purged(AttrString::from("es256_private_key_der")),
-                Modify::Purged(AttrString::from("domain_token_key")),
+                Modify::Purged(Attribute::FernetPrivateKeyStr.into()),
+                Modify::Purged(Attribute::Es256PrivateKeyDer.into()),
+                Modify::Purged(Attribute::DomainTokenKey.into()),
             ]),
         );
         assert!(idms_prox_write.qs_write.modify(&me_reset_tokens).is_ok());

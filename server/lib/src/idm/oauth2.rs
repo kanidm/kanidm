@@ -558,7 +558,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 // and when replication converges the session is actually removed.
 
                 let modlist = ModifyList::new_list(vec![Modify::Removed(
-                    AttrString::from("oauth2_session"),
+                    Attribute::OAuth2Session.into(),
                     PartialValue::Refer(session_id),
                 )]);
 
@@ -729,11 +729,11 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         let modlist = ModifyList::new_list(vec![
             Modify::Removed(
-                AttrString::from("oauth2_consent_scope_map"),
+                Attribute::OAuth2ConsentScopeMap.into(),
                 PartialValue::Refer(o2rs.uuid),
             ),
             Modify::Present(
-                AttrString::from("oauth2_consent_scope_map"),
+                Attribute::OAuth2ConsentScopeMap.into(),
                 Value::OauthScopeMap(o2rs.uuid, consent_req.scopes.iter().cloned().collect()),
             ),
         ]);
@@ -931,7 +931,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
                     // Revoke it
                     let modlist = ModifyList::new_list(vec![Modify::Removed(
-                        AttrString::from("oauth2_session"),
+                        Attribute::OAuth2Session.into(),
                         PartialValue::Refer(session_id),
                     )]);
 
@@ -2955,7 +2955,7 @@ mod tests {
         let me_inv_m = ModifyEvent::new_internal_invalid(
             filter!(f_eq(Attribute::Name, PartialValue::new_iname("admin"))),
             ModifyList::new_list(vec![Modify::Present(
-                AttrString::from("account_expire"),
+                Attribute::AccountExpire.into(),
                 v_expire,
             )]),
         );

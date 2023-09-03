@@ -100,7 +100,7 @@ pub enum Attribute {
     NameHistory,
     NoIndex,
     NsUniqueId,
-    Object,
+    // Object,
     OAuth2AllowInsecureClientDisablePkce,
     OAuth2ConsentScopeMap,
     OAuth2JwtLegacyCryptoEnable,
@@ -134,6 +134,7 @@ pub enum Attribute {
     Supplements,
     SystemSupplements,
     SyncAllowed,
+    SyncClass,
     SyncCookie,
     SyncCredentialPortal,
     SyncParentUuid,
@@ -209,7 +210,7 @@ impl TryFrom<String> for Attribute {
             ATTR_CLASS => Attribute::Class,
             ATTR_CLASSNAME => Attribute::ClassName,
             ATTR_CN => Attribute::Cn,
-            ATTR_OBJECT => Attribute::Object,
+            // ATTR_OBJECT => Attribute::Object,
             ATTR_COOKIE_PRIVATE_KEY => Attribute::CookiePrivateKey,
             ATTR_CREDENTIAL_UPDATE_INTENT_TOKEN => Attribute::CredentialUpdateIntentToken,
             ATTR_DESCRIPTION => Attribute::Description,
@@ -284,6 +285,7 @@ impl TryFrom<String> for Attribute {
             ATTR_SSHPUBLICKEY => Attribute::LdapSshPublicKey,
             ATTR_SYNC_ALLOWED => Attribute::SyncAllowed,
             ATTR_SYNC_COOKIE => Attribute::SyncCookie,
+            ATTR_SYNC_CLASS => Attribute::SyncClass,
             ATTR_SYNC_CREDENTIAL_PORTAL => Attribute::SyncCredentialPortal,
             ATTR_SYNC_PARENT_UUID => Attribute::SyncParentUuid,
             ATTR_SYNC_TOKEN_SESSION => Attribute::SyncTokenSession,
@@ -329,6 +331,8 @@ impl From<Attribute> for &'static str {
             Attribute::DomainDisplayName => ATTR_DOMAIN_DISPLAY_NAME,
             Attribute::SyncCredentialPortal => ATTR_SYNC_CREDENTIAL_PORTAL,
             Attribute::SyncCookie => ATTR_SYNC_COOKIE,
+
+            Attribute::SyncClass => ATTR_SYNC_CLASS,
             Attribute::SyncYieldAuthority => ATTR_SYNC_YIELD_AUTHORITY,
             Attribute::SyncTokenSession => ATTR_SYNC_TOKEN_SESSION,
             Attribute::Es256PrivateKeyDer => ATTR_ES256_PRIVATE_KEY_DER,
@@ -397,7 +401,7 @@ impl From<Attribute> for &'static str {
             Attribute::Name => ATTR_NAME,
             Attribute::NoIndex => ATTR_NO_INDEX,
 
-            Attribute::Object => ATTR_OBJECT,
+            // Attribute::Object => ATTR_OBJECT,
             Attribute::OAuth2AllowInsecureClientDisablePkce => {
                 ATTR_OAUTH2_ALLOW_INSECURE_CLIENT_DISABLE_PKCE
             }

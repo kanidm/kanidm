@@ -193,7 +193,7 @@ mod tests {
             preload,
             filter!(f_eq(Attribute::Name, PartialValue::new_iutf8("testperson"))),
             ModifyList::new_list(vec![Modify::Present(
-                AttrString::from("password_import"),
+                Attribute::PasswordImport.into(),
                 Value::from(IMPORT_HASH)
             )]),
             None,
@@ -228,7 +228,7 @@ mod tests {
             preload,
             filter!(f_eq(Attribute::Name, PartialValue::new_iutf8("testperson"))),
             ModifyList::new_list(vec![Modify::Present(
-                AttrString::from("password_import"),
+                Attribute::PasswordImport.into(),
                 Value::from(IMPORT_HASH)
             )]),
             None,
@@ -266,7 +266,7 @@ mod tests {
             preload,
             filter!(f_eq(Attribute::Name, PartialValue::new_iutf8("testperson"))),
             ModifyList::new_list(vec![Modify::Present(
-                AttrString::from("password_import"),
+                Attribute::PasswordImport.into(),
                 Value::from(IMPORT_HASH)
             )]),
             None,
@@ -320,7 +320,7 @@ mod tests {
             filter!(f_eq(Attribute::Name, PartialValue::new_iutf8("testperson"))),
             ModifyList::new_list(vec![
                 Modify::Present(
-                    AttrString::from("password_import"),
+                    Attribute::PasswordImport.into(),
                     Value::Utf8(IMPORT_HASH.to_string())
                 ),
                 Modify::Present(

@@ -109,6 +109,7 @@ pub const ATTR_SUPPLEMENTS: &str = "supplements";
 pub const ATTR_LDAP_SSH_PUBLICKEY: &str = "ssh_publickey";
 pub const ATTR_SSHPUBLICKEY: &str = "sshpublickey";
 pub const ATTR_SYNC_ALLOWED: &str = "sync_allowed";
+pub const ATTR_SYNC_CLASS: &str = "sync_class";
 pub const ATTR_SYNC_COOKIE: &str = "sync_cookie";
 pub const ATTR_SYNC_CREDENTIAL_PORTAL: &str = "sync_credential_portal";
 pub const ATTR_SYNC_PARENT_UUID: &str = "sync_parent_uuid";
