@@ -44,6 +44,7 @@ pub enum Attribute {
     AcpModifyClass,
     AcpModifyPresentAttr,
     AcpModifyRemovedAttr,
+    AcpReceiver,
     AcpReceiverGroup,
     AcpSearchAttr,
     AcpTargetScope,
@@ -127,6 +128,8 @@ pub enum Attribute {
     LdapSshPublicKey,
     /// The Kanidm-local ssh_publickey
     SshPublicKey,
+    Supplements,
+    SystemSupplements,
     SyncAllowed,
     SyncCookie,
     SyncCredentialPortal,
@@ -186,6 +189,7 @@ impl TryFrom<String> for Attribute {
             ATTR_ACP_MODIFY_CLASS => Attribute::AcpModifyClass,
             ATTR_ACP_MODIFY_PRESENTATTR => Attribute::AcpModifyPresentAttr,
             ATTR_ACP_MODIFY_REMOVEDATTR => Attribute::AcpModifyRemovedAttr,
+            ATTR_ACP_RECEIVER => Attribute::AcpReceiver,
             ATTR_ACP_RECEIVER_GROUP => Attribute::AcpReceiverGroup,
             ATTR_ACP_SEARCH_ATTR => Attribute::AcpSearchAttr,
             ATTR_ACP_TARGET_SCOPE => Attribute::AcpTargetScope,
@@ -288,6 +292,8 @@ impl TryFrom<String> for Attribute {
             ATTR_USERPASSWORD => Attribute::UserPassword,
             ATTR_UUID => Attribute::Uuid,
             ATTR_VERSION => Attribute::Version,
+            ATTR_SYSTEMSUPPLEMENTS => Attribute::SystemSupplements,
+            ATTR_SUPPLEMENTS => Attribute::Supplements,
 
             #[cfg(any(debug_assertions, test))]
             TEST_ATTR_NON_EXIST => Attribute::NonExist,
@@ -305,6 +311,7 @@ impl From<Attribute> for &'static str {
     fn from(val: Attribute) -> Self {
         match val {
             Attribute::Account => ATTR_ACCOUNT,
+            Attribute::AcpReceiver => ATTR_ACP_RECEIVER,
             Attribute::Domain => ATTR_DOMAIN,
             Attribute::SystemMay => ATTR_SYSTEMMAY,
             Attribute::DynGroup => ATTR_DYNGROUP,
@@ -404,6 +411,8 @@ impl From<Attribute> for &'static str {
             Attribute::Spn => ATTR_SPN,
             Attribute::LdapSshPublicKey => ATTR_SSHPUBLICKEY,
             Attribute::SshPublicKey => ATTR_LDAP_SSH_PUBLICKEY,
+            Attribute::SystemSupplements => ATTR_SYSTEMSUPPLEMENTS,
+            Attribute::Supplements => ATTR_SUPPLEMENTS,
             Attribute::SyncAllowed => ATTR_SYNC_ALLOWED,
             Attribute::SyncParentUuid => ATTR_SYNC_PARENT_UUID,
             Attribute::Syntax => ATTR_SYNTAX,

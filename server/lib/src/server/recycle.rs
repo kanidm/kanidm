@@ -150,11 +150,11 @@ impl<'a> QueryServerWriteTransaction<'a> {
                     dm_mods
                         .entry(g_uuid)
                         .and_modify(|mlist| {
-                            let m = Modify::Present(AttrString::from("member"), Value::Refer(u));
+                            let m = Modify::Present(Attribute::Member.into(), Value::Refer(u));
                             mlist.push_mod(m);
                         })
                         .or_insert({
-                            let m = Modify::Present(AttrString::from("member"), Value::Refer(u));
+                            let m = Modify::Present(Attribute::Member.into(), Value::Refer(u));
                             ModifyList::new_list(vec![m])
                         });
                 }

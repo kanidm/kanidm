@@ -433,7 +433,7 @@ mod tests {
                 PartialValue::new_iname("testgroup_b")
             )),
             ModifyList::new_list(vec![Modify::Present(
-                AttrString::from("member"),
+                Attribute::Member.into(),
                 Value::new_refer_s("d2b496bd-8493-47b7-8142-f568b5cf47ee").unwrap()
             )]),
             None,
@@ -467,7 +467,7 @@ mod tests {
                 PartialValue::new_iname("testgroup_b")
             )),
             ModifyList::new_list(vec![Modify::Present(
-                AttrString::from("member"),
+                Attribute::Member.into(),
                 Value::new_refer_s("d2b496bd-8493-47b7-8142-f568b5cf47ee").unwrap()
             )]),
             None,
@@ -514,13 +514,10 @@ mod tests {
             )),
             ModifyList::new_list(vec![
                 Modify::Present(
-                    AttrString::from("member"),
+                    Attribute::Member.into(),
                     Value::Refer(uuid!("d2b496bd-8493-47b7-8142-f568b5cf47ee"))
                 ),
-                Modify::Present(
-                    AttrString::from("member"),
-                    Value::Refer(UUID_DOES_NOT_EXIST)
-                ),
+                Modify::Present(Attribute::Member.into(), Value::Refer(UUID_DOES_NOT_EXIST)),
             ]),
             None,
             |_| {},
@@ -562,7 +559,7 @@ mod tests {
                 Attribute::Name,
                 PartialValue::new_iname("testgroup_b")
             )),
-            ModifyList::new_list(vec![Modify::Purged(AttrString::from("member"))]),
+            ModifyList::new_list(vec![Modify::Purged(Attribute::Member.into())]),
             None,
             |_| {},
             |_| {}
@@ -593,7 +590,7 @@ mod tests {
                 PartialValue::new_iname("testgroup_a")
             )),
             ModifyList::new_list(vec![Modify::Present(
-                AttrString::from("member"),
+                Attribute::Member.into(),
                 Value::new_refer_s("d2b496bd-8493-47b7-8142-f568b5cf47ee").unwrap()
             )]),
             None,
@@ -638,7 +635,7 @@ mod tests {
                 PartialValue::new_iname("testgroup_b")
             )),
             ModifyList::new_list(vec![Modify::Present(
-                AttrString::from("member"),
+                Attribute::Member.into(),
                 Value::new_refer_s("d2b496bd-8493-47b7-8142-f568b5cf47ee").unwrap()
             )]),
             None,

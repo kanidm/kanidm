@@ -2058,11 +2058,11 @@ mod tests {
                     itype: IndexType::SubString,
                 },
                 IdxKey {
-                    attr: AttrString::from("uuid"),
+                    attr: Attribute::Uuid.into(),
                     itype: IndexType::Equality,
                 },
                 IdxKey {
-                    attr: AttrString::from("uuid"),
+                    attr: Attribute::Uuid.into(),
                     itype: IndexType::Presence,
                 },
                 IdxKey {
@@ -2091,7 +2091,7 @@ mod tests {
         ($be:expr, $ent:expr) => {{
             let ei = $ent.clone().into_sealed_committed();
             let filt = ei
-                .filter_from_attrs(&vec![AttrString::from("uuid")])
+                .filter_from_attrs(&vec![Attribute::Uuid.into()])
                 .expect("failed to generate filter")
                 .into_valid_resolved();
             let lims = Limits::unlimited();
@@ -3364,7 +3364,7 @@ mod tests {
 
         // This is a demo idxmeta, purely for testing.
         let idxmeta = vec![IdxKey {
-            attr: AttrString::from("uuid"),
+            attr: Attribute::Uuid.into(),
             itype: IndexType::Equality,
         }];
 

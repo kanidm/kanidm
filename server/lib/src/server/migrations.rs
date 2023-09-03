@@ -838,10 +838,10 @@ mod tests {
                 filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(UUID_DOMAIN_INFO))),
                 ModifyList::new_list(vec![
                     Modify::Purged(Attribute::Name.into()),
-                    Modify::Purged(AttrString::from("domain_name")),
+                    Modify::Purged(Attribute::DomainName.into()),
                     Modify::Present(Attribute::Name.into(), Value::new_iutf8("domain_local")),
                     Modify::Present(
-                        AttrString::from("domain_name"),
+                        Attribute::DomainName.into(),
                         Value::new_iutf8("example.com"),
                     ),
                 ]),

@@ -161,7 +161,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         });
 
         let modlist = ModifyList::new_list(vec![Modify::Present(
-            AttrString::from("sync_token_session"),
+            Attribute::SyncTokenSession.into(),
             session,
         )]);
 
@@ -199,7 +199,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         _ct: Duration,
     ) -> Result<(), OperationError> {
         let modlist =
-            ModifyList::new_list(vec![Modify::Purged(AttrString::from("sync_token_session"))]);
+            ModifyList::new_list(vec![Modify::Purged(Attribute::SyncTokenSession.into())]);
 
         self.qs_write
             .impersonate_modify(
@@ -1627,7 +1627,7 @@ mod tests {
                 Attribute::Name,
                 PartialValue::new_iname("test_scim_sync")
             )),
-            ModifyList::new_list(vec![Modify::Purged(AttrString::from("sync_token_session"))]),
+            ModifyList::new_list(vec![Modify::Purged(Attribute::SyncTokenSession.into())]),
         );
         assert!(idms_prox_write.qs_write.modify(&me_inv_m).is_ok());
         assert!(idms_prox_write.commit().is_ok());

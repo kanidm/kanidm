@@ -3116,15 +3116,15 @@ impl From<&SchemaAttribute> for Entry<EntryInit, EntryNew> {
         attrs.insert(Attribute::AttributeName.into(), name_v);
         attrs.insert(Attribute::Description.into(), desc_v);
         attrs.insert(Attribute::Uuid.into(), uuid_v);
-        attrs.insert(AttrString::from("multivalue"), multivalue_v);
-        attrs.insert(AttrString::from("phantom"), phantom_v);
-        attrs.insert(AttrString::from("sync_allowed"), sync_allowed_v);
-        attrs.insert(AttrString::from("replicated"), replicated_v);
-        attrs.insert(AttrString::from("unique"), unique_v);
+        attrs.insert(Attribute::MultiValue.into(), multivalue_v);
+        attrs.insert(Attribute::Phantom.into(), phantom_v);
+        attrs.insert(Attribute::SyncAllowed.into(), sync_allowed_v);
+        attrs.insert(Attribute::Replicated.into(), replicated_v);
+        attrs.insert(Attribute::Unique.into(), unique_v);
         if let Some(vs) = index_v {
-            attrs.insert(AttrString::from("index"), vs);
+            attrs.insert(Attribute::Index.into(), vs);
         }
-        attrs.insert(AttrString::from("syntax"), syntax_v);
+        attrs.insert(Attribute::Syntax.into(), syntax_v);
         attrs.insert(
             Attribute::Class.into(),
             vs_iutf8!["object", "system", "attributetype"],
@@ -3149,24 +3149,28 @@ impl From<&SchemaClass> for Entry<EntryInit, EntryNew> {
 
         // let mut attrs: Map<AttrString, Set<Value>> = Map::with_capacity(8);
         let mut attrs: Map<AttrString, ValueSet> = Map::new();
-        attrs.insert(AttrString::from("classname"), name_v);
-        attrs.insert(AttrString::from(Attribute::Description.as_ref()), desc_v);
-        attrs.insert(AttrString::from("sync_allowed"), sync_allowed_v);
+        attrs.insert(Attribute::ClassName.into(), name_v);
+        attrs.insert(Attribute::Description.into(), desc_v);
+        attrs.insert(Attribute::SyncAllowed.into(), sync_allowed_v);
         attrs.insert(Attribute::Uuid.into(), uuid_v);
         attrs.insert(
             Attribute::Class.into(),
-            vs_iutf8!["object", "system", "classtype"],
+            vs_iutf8![
+                EntryClass::Object.into(),
+                EntryClass::System.into(),
+                EntryClass::ClassType.into()
+            ],
         );
 
         let vs_systemmay = ValueSetIutf8::from_iter(s.systemmay.iter().map(|sm| sm.as_str()));
         if let Some(vs) = vs_systemmay {
-            attrs.insert(AttrString::from("systemmay"), vs);
+            attrs.insert(Attribute::SystemMay.into(), vs);
         }
 
         let vs_systemmust = ValueSetIutf8::from_iter(s.systemmust.iter().map(|sm| sm.as_str()));
 
         if let Some(vs) = vs_systemmust {
-            attrs.insert(AttrString::from("systemmust"), vs);
+            attrs.insert(Attribute::SystemMust.into(), vs);
         }
 
         Entry {
@@ -3183,7 +3187,6 @@ mod tests {
     use std::collections::BTreeSet as Set;
 
     use hashbrown::HashMap;
-    use smartstring::alias::String as AttrString;
 
     use crate::be::{IdxKey, IdxSlope};
     use crate::entry::{Entry, EntryInit, EntryInvalid, EntryNew};
@@ -3392,7 +3395,7 @@ mod tests {
         );
         idxmeta.insert(
             IdxKey {
-                attr: AttrString::from("extra"),
+                attr: Attribute::Extra.into(),
                 itype: IndexType::Equality,
             },
             IdxSlope::MAX,
@@ -3456,7 +3459,7 @@ mod tests {
         assert!(
             add_a_r[0]
                 == Ok((
-                    &AttrString::from("extra"),
+                    &Attribute::Extra.into(),
                     IndexType::Equality,
                     "test".to_string()
                 ))
@@ -3467,7 +3470,7 @@ mod tests {
         assert!(
             del_a_r[0]
                 == Err((
-                    &AttrString::from("extra"),
+                    &Attribute::Extra.into(),
                     IndexType::Equality,
                     "test".to_string()
                 ))

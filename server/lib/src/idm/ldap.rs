@@ -1057,7 +1057,7 @@ mod tests {
                     PartialValue::new_iname("idm_people_read_priv")
                 )),
                 ModifyList::new_list(vec![Modify::Present(
-                    AttrString::from("member"),
+                    Attribute::Member.into(),
                     Value::Refer(sa_uuid),
                 )]),
             );
