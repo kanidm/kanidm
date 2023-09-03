@@ -24,6 +24,7 @@ pub const ATTR_ACP_TARGET_SCOPE: &str = "acp_targetscope";
 pub const ATTR_API_TOKEN_SESSION: &str = "api_token_session";
 pub const ATTR_ATTR: &str = "attr";
 pub const ATTR_ATTRIBUTENAME: &str = "attributename";
+pub const ATTR_ATTRIBUTETYPE: &str = "attributetype";
 pub const ATTR_AUTH_SESSION_EXPIRY: &str = "authsession_expiry";
 pub const ATTR_BADLIST_PASSWORD: &str = "badlist_password";
 pub const ATTR_CLAIM: &str = "claim";
@@ -72,6 +73,8 @@ pub const ATTR_NAME_HISTORY: &str = "name_history";
 pub const ATTR_NAME: &str = "name";
 pub const ATTR_NO_INDEX: &str = "no-index";
 pub const ATTR_NSUNIQUEID: &str = "nsuniqueid";
+pub const ATTR_OBJECT: &str = "object";
+
 pub const ATTR_OAUTH2_ALLOW_INSECURE_CLIENT_DISABLE_PKCE: &str =
     "oauth2_allow_insecure_client_disable_pkce";
 pub const ATTR_OAUTH2_CONSENT_SCOPE_MAP: &str = "oauth2_consent_scope_map";
@@ -92,6 +95,7 @@ pub const ATTR_PASSKEYS: &str = "passkeys";
 pub const ATTR_PASSWORD_IMPORT: &str = "password_import";
 pub const ATTR_PHANTOM: &str = "phantom";
 pub const ATTR_PRIMARY_CREDENTIAL: &str = "primary_credential";
+pub const ATTR_TOTP_IMPORT: &str = "totp_import";
 pub const ATTR_PRIVATE_COOKIE_KEY: &str = "private_cookie_key";
 pub const ATTR_PRIVILEGE_EXPIRY: &str = "privilege_expiry";
 pub const ATTR_RADIUS_SECRET: &str = "radius_secret";

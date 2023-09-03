@@ -1551,9 +1551,9 @@ impl<'a> SchemaWriteTransaction<'a> {
         );
 
         self.attributes.insert(
-            AttrString::from("totp_import"),
+            Attribute::TotpImport.into(),
             SchemaAttribute {
-                name: AttrString::from("totp_import"),
+                name: Attribute::TotpImport.into(),
                 uuid: UUID_SCHEMA_ATTR_TOTP_IMPORT,
                 description: String::from("An imported totp secret from an external system."),
                 multivalue: true,
@@ -1750,9 +1750,9 @@ impl<'a> SchemaWriteTransaction<'a> {
         // end LDAP masking phantoms
 
         self.classes.insert(
-            AttrString::from("attributetype"),
+            Attribute::AttributeType.into(),
             SchemaClass {
-                name: AttrString::from("attributetype"),
+                name: Attribute::AttributeType.into(),
                 uuid: UUID_SCHEMA_CLASS_ATTRIBUTETYPE,
                 description: String::from("Definition of a schema attribute"),
                 systemmay: vec![
@@ -1795,14 +1795,14 @@ impl<'a> SchemaWriteTransaction<'a> {
                     Attribute::ClassName.into(),
                     AttrString::from(Attribute::Description.as_ref()),
                 ],
-                systemexcludes: vec![AttrString::from("attributetype")],
+                systemexcludes: vec![Attribute::AttributeType.into()],
                 ..Default::default()
             },
         );
         self.classes.insert(
-            AttrString::from("object"),
+            Attribute::Object.into(),
             SchemaClass {
-                name: AttrString::from("object"),
+                name: Attribute::Object.into(),
                 uuid: UUID_SCHEMA_CLASS_OBJECT,
                 description: String::from("A system created class that all objects must contain"),
                 systemmay: vec![AttrString::from(Attribute::Description.as_ref())],
@@ -2795,14 +2795,14 @@ mod tests {
         let f_or_ok = filter_all!(f_andnot(f_and!([
             f_eq(Attribute::Class, EntryClass::AttributeType.into()),
             f_sub(Attribute::Class.as_ref(), EntryClass::ClassType.into()),
-            f_pres(Attribute::Class.as_ref())
+            f_pres(Attribute::Class)
         ])));
         assert_eq!(
             f_or_ok.validate(&schema),
             Ok(filter_valid!(f_andnot(f_and!([
                 f_eq(Attribute::Class, EntryClass::AttributeType.into()),
                 f_sub(Attribute::Class.as_ref(), EntryClass::ClassType.into()),
-                f_pres(Attribute::Class.as_ref())
+                f_pres(Attribute::Class)
             ]))))
         );
     }

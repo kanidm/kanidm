@@ -991,7 +991,7 @@ impl<'a> QueryServerReadTransaction<'a> {
         // the entry changelogs are consistent to their entries.
         let schema = self.get_schema();
 
-        let filt_all = filter!(f_pres(Attribute::Class.as_ref()));
+        let filt_all = filter!(f_pres(Attribute::Class));
         let all_entries = match self.internal_search(filt_all) {
             Ok(a) => a,
             Err(_e) => return vec![Err(ConsistencyError::QueryServerSearchFailure)],

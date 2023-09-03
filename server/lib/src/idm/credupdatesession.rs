@@ -419,7 +419,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 .get_accesscontrols()
                 .effective_permission_check(
                     ident,
-                    Some(btreeset![AttrString::from("sync_credential_portal")]),
+                    Some(btreeset![Attribute::SyncCredentialPortal.into()]),
                     &[entry],
                 )?;
 

@@ -206,7 +206,7 @@ impl Plugin for Base {
     #[instrument(level = "debug", name = "base::verify", skip_all)]
     fn verify(qs: &mut QueryServerReadTransaction) -> Vec<Result<(), ConsistencyError>> {
         // Search for class = *
-        let entries = match qs.internal_search(filter!(f_pres(Attribute::Class.as_ref()))) {
+        let entries = match qs.internal_search(filter!(f_pres(Attribute::Class))) {
             Ok(v) => v,
             Err(e) => {
                 admin_error!("Internal Search Failure: {:?}", e);

@@ -2104,7 +2104,7 @@ mod tests {
         ($be:expr, $ent:expr, $attr:expr) => {{
             let ei = $ent.clone().into_sealed_committed();
             let filt = ei
-                .filter_from_attrs(&vec![AttrString::from("userid")])
+                .filter_from_attrs(&vec![Attribute::UserId.into()])
                 .expect("failed to generate filter")
                 .into_valid_resolved();
             let lims = Limits::unlimited();
@@ -2213,7 +2213,7 @@ mod tests {
 
             // You need to now retrieve the entries back out to get the entry id's
             let mut results = be
-                .search(&lims, &filter_resolved!(f_pres("userid")))
+                .search(&lims, &filter_resolved!(f_pres(Attribute::UserId)))
                 .expect("Failed to search");
 
             // Get these out to usable entries.
@@ -2303,7 +2303,7 @@ mod tests {
 
             // You need to now retrieve the entries back out to get the entry id's
             let mut results = be
-                .search(&lims, &filter_resolved!(f_pres("userid")))
+                .search(&lims, &filter_resolved!(f_pres(Attribute::UserId)))
                 .expect("Failed to search");
 
             // Get these out to usable entries.
@@ -3087,7 +3087,7 @@ mod tests {
             // test andnot in and (first) with name
             let f_and_andnot = filter_resolved!(f_and!([
                 f_andnot(f_eq(Attribute::Name, PartialValue::new_utf8s("claire"))),
-                f_pres("name")
+                f_pres(Attribute::Name)
             ]));
 
             let (r, _plan) = be.filter2idl(f_and_andnot.to_inner(), 0).unwrap();
@@ -3102,7 +3102,7 @@ mod tests {
             }
             // test andnot in and (last) with name
             let f_and_andnot = filter_resolved!(f_and!([
-                f_pres("name"),
+                f_pres(Attribute::Name),
                 f_andnot(f_eq(Attribute::Name, PartialValue::new_utf8s("claire")))
             ]));
 
@@ -3118,7 +3118,7 @@ mod tests {
             // test andnot in and (first) with no-index
             let f_and_andnot = filter_resolved!(f_and!([
                 f_andnot(f_eq(Attribute::Name, PartialValue::new_utf8s("claire"))),
-                f_pres("no-index")
+                f_pres(Attribute::NoIndex)
             ]));
 
             let (r, _plan) = be.filter2idl(f_and_andnot.to_inner(), 0).unwrap();
@@ -3130,7 +3130,7 @@ mod tests {
             }
             // test andnot in and (last) with no-index
             let f_and_andnot = filter_resolved!(f_and!([
-                f_pres("no-index"),
+                f_pres(Attribute::NoIndex),
                 f_andnot(f_eq(Attribute::Name, PartialValue::new_utf8s("claire")))
             ]));
 

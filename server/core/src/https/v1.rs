@@ -1242,7 +1242,7 @@ pub async fn recycle_bin_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
 ) -> impl IntoResponse {
-    let filter = filter_all!(f_pres(Attribute::Class.as_ref()));
+    let filter = filter_all!(f_pres(Attribute::Class));
     let attrs = None;
     let res = state
         .qe_r_ref

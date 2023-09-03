@@ -550,7 +550,7 @@ mod tests {
 
         // Empty Modlist (filter is valid)
         let me_emp = ModifyEvent::new_internal_invalid(
-            filter!(f_pres(Attribute::Class.as_ref())),
+            filter!(f_pres(Attribute::Class)),
             ModifyList::new_list(vec![]),
         );
         assert!(server_txn.modify(&me_emp) == Err(OperationError::EmptyRequest));
@@ -580,7 +580,7 @@ mod tests {
         //         PartialValue::new_iname("Flarbalgarble")
         //     )),
         //     &ModifyList::new_list(vec![Modify::Present(
-        //         AttrString::from("description"),
+        //         Attribute::Description.into(),
         //         Value::from("anusaosu"),
         //     )]),
         // );
@@ -593,7 +593,7 @@ mod tests {
 
         // Mod is invalid to schema
         let me_inv_m = ModifyEvent::new_internal_invalid(
-            filter!(f_pres(Attribute::Class.as_ref())),
+            filter!(f_pres(Attribute::Class)),
             ModifyList::new_list(vec![Modify::Present(
                 AttrString::from("htnaonu"),
                 Value::from("anusaosu"),

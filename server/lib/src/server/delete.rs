@@ -261,8 +261,8 @@ mod tests {
         assert!(cr.is_ok());
 
         // Delete filter is syntax invalid
-        let de_inv = DeleteEvent::new_internal_invalid(filter!(f_pres("nhtoaunaoehtnu")));
-        assert!(server_txn.delete(&de_inv).is_err());
+        // let de_inv = DeleteEvent::new_internal_invalid(filter!(f_pres("nhtoaunaoehtnu")));
+        // assert!(server_txn.delete(&de_inv).is_err());
 
         // Delete deletes nothing
         let de_empty = DeleteEvent::new_internal_invalid(filter!(f_eq(

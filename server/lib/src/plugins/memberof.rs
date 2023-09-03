@@ -305,7 +305,7 @@ impl Plugin for MemberOf {
     fn verify(qs: &mut QueryServerReadTransaction) -> Vec<Result<(), ConsistencyError>> {
         let mut r = Vec::new();
 
-        let filt_in = filter!(f_pres(Attribute::Class.as_ref()));
+        let filt_in = filter!(f_pres(Attribute::Class));
 
         let all_cand = match qs
             .internal_search(filt_in)

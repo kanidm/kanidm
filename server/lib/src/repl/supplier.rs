@@ -174,7 +174,7 @@ impl<'a> QueryServerReadTransaction<'a> {
 
         let entry_filter = filter_all!(f_or!([
             f_and!([
-                f_pres(Attribute::Class.as_ref()),
+                f_pres(Attribute::Class),
                 f_andnot(f_or(vec![
                     // These are from above!
                     f_eq(Attribute::Class, EntryClass::AttributeType.into()),

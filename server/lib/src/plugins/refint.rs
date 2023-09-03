@@ -184,7 +184,7 @@ impl Plugin for ReferentialIntegrity {
     fn verify(qs: &mut QueryServerReadTransaction) -> Vec<Result<(), ConsistencyError>> {
         // Get all entries as cand
         //      build a cand-uuid set
-        let filt_in = filter_all!(f_pres(Attribute::Class.as_ref()));
+        let filt_in = filter_all!(f_pres(Attribute::Class));
 
         let all_cand = match qs
             .internal_search(filt_in)

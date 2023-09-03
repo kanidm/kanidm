@@ -289,8 +289,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
     pub fn migrate_9_to_10(&mut self) -> Result<(), OperationError> {
         admin_warn!("starting 9 to 10 migration.");
         let filter = filter!(f_or!([
-            f_pres("primary_credential"),
-            f_pres("unix_password"),
+            f_pres(Attribute::PrimaryCredential),
+            f_pres(Attribute::UnixPassword),
         ]));
         // This "does nothing" since everything has object anyway, but it forces the entry to be
         // loaded and rewritten.
@@ -309,7 +309,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     #[instrument(level = "debug", skip_all)]
     pub fn migrate_10_to_11(&mut self) -> Result<(), OperationError> {
         admin_warn!("starting 9 to 10 migration.");
-        let filter = filter!(f_pres("primary_credential"));
+        let filter = filter!(f_pres(Attribute::PrimaryCredential));
 
         let pre_candidates = self.internal_search(filter).map_err(|e| {
             admin_error!(err = ?e, "migrate_10_to_11 internal search failure");
@@ -358,8 +358,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
         admin_warn!("starting 11 to 12 migration.");
         // sync_token_session
         let filter = filter!(f_or!([
-            f_pres("api_token_session"),
-            f_pres("sync_token_session"),
+            f_pres(Attribute::ApiTokenSession),
+            f_pres(Attribute::SyncTokenSession),
         ]));
 
         let mut mod_candidates = self.internal_search_writeable(&filter).map_err(|e| {
