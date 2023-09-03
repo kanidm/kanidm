@@ -86,9 +86,9 @@ pub fn f_self<'a>() -> FC<'a> {
 pub fn f_id(id: &str) -> FC<'static> {
     let uf = Uuid::parse_str(id)
         .ok()
-        .map(|u| FC::Eq("uuid", PartialValue::Uuid(u)));
+        .map(|u| FC::Eq(Attribute::Uuid.as_ref(), PartialValue::Uuid(u)));
     let spnf = PartialValue::new_spn_s(id).map(|spn| FC::Eq("spn", spn));
-    let nf = FC::Eq("name", PartialValue::new_iname(id));
+    let nf = FC::Eq(Attribute::Name.as_ref(), PartialValue::new_iname(id));
     let f: Vec<_> = iter::once(uf)
         .chain(iter::once(spnf))
         .flatten()
@@ -100,7 +100,7 @@ pub fn f_id(id: &str) -> FC<'static> {
 #[allow(dead_code)]
 pub fn f_spn_name(id: &str) -> FC<'static> {
     let spnf = PartialValue::new_spn_s(id).map(|spn| FC::Eq("spn", spn));
-    let nf = FC::Eq("name", PartialValue::new_iname(id));
+    let nf = FC::Eq(Attribute::Name.as_ref(), PartialValue::new_iname(id));
     let f: Vec<_> = iter::once(spnf).flatten().chain(iter::once(nf)).collect();
     FC::Or(f)
 }
@@ -1152,7 +1152,7 @@ impl FilterResolved {
                 // Since we have no index data, we manually configure a reasonable
                 // slope and indicate the presence of some expected basic
                 // indexes.
-                let idx = matches!(a.as_str(), "name" | "uuid");
+                let idx = matches!(a.as_str(), ATTR_NAME | ATTR_UUID);
                 let idx = NonZeroU8::new(idx as u8);
                 Some(FilterResolved::Eq(a, v, idx))
             }

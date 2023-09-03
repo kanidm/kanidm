@@ -1930,7 +1930,10 @@ mod tests {
                 "uuid",
                 Value::Uuid(uuid!("cfcae205-31c3-484b-8ced-667d1709c5e3"))
             ),
-            ("attributename", Value::new_iutf8("testattr")),
+            (
+                Attribute::AttributeName.as_ref(),
+                Value::new_iutf8("testattr")
+            ),
             ("description", Value::new_utf8s("Test Attribute")),
             ("multivalue", Value::new_bool(false)),
             ("unique", Value::new_bool(false)),

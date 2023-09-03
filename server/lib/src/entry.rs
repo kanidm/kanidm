@@ -255,7 +255,9 @@ where
 {
     /// Get the uuid of this entry.
     pub(crate) fn get_uuid(&self) -> Option<Uuid> {
-        self.attrs.get("uuid").and_then(|vs| vs.to_uuid_single())
+        self.attrs
+            .get(Attribute::Uuid.as_ref())
+            .and_then(|vs| vs.to_uuid_single())
     }
 }
 
@@ -1330,7 +1332,7 @@ impl Entry<EntrySealed, EntryCommitted> {
     /// Insert a claim to this entry. This claim can NOT be persisted to disk, this is only
     /// used during a single Event session.
     pub fn insert_claim(&mut self, value: &str) {
-        self.add_ava_int("claim", Value::new_iutf8(value));
+        self.add_ava_int(Attribute::Claim.as_ref(), Value::new_iutf8(value));
     }
 
     pub fn compare(&self, rhs: &Entry<EntrySealed, EntryCommitted>) -> bool {
@@ -1370,7 +1372,11 @@ impl Entry<EntrySealed, EntryCommitted> {
         // * name
         // * gidnumber
 
-        let cands = ["spn", "name", "gidnumber"];
+        let cands = [
+            Attribute::Spn.as_ref(),
+            Attribute::Name.as_ref(),
+            Attribute::GidNumber.as_ref(),
+        ];
         cands
             .iter()
             .filter_map(|c| self.attrs.get(*c).map(|vs| vs.to_proto_string_clone_iter()))
@@ -1394,7 +1400,11 @@ impl Entry<EntrySealed, EntryCommitted> {
         self.attrs
             .get("spn")
             .and_then(|vs| vs.to_value_single())
-            .or_else(|| self.attrs.get("name").and_then(|vs| vs.to_value_single()))
+            .or_else(|| {
+                self.attrs
+                    .get(Attribute::Name.as_ref())
+                    .and_then(|vs| vs.to_value_single())
+            })
             .unwrap_or_else(|| Value::Uuid(self.get_uuid()))
     }
 
@@ -1406,7 +1416,7 @@ impl Entry<EntrySealed, EntryCommitted> {
             .and_then(|vs| vs.to_proto_string_single().map(|v| format!("spn={v}")))
             .or_else(|| {
                 self.attrs
-                    .get("name")
+                    .get(Attribute::Name.as_ref())
                     .and_then(|vs| vs.to_proto_string_single().map(|v| format!("name={v}")))
             })
             .unwrap_or_else(|| format!("uuid={}", self.get_uuid().as_hyphenated()))
@@ -2393,10 +2403,18 @@ impl<VALID, STATE> Entry<VALID, STATE> {
 
     pub(crate) fn get_display_id(&self) -> String {
         self.attrs
-            .get("spn")
+            .get(Attribute::Spn.as_ref())
             .and_then(|vs| vs.to_value_single())
-            .or_else(|| self.attrs.get("name").and_then(|vs| vs.to_value_single()))
-            .or_else(|| self.attrs.get("uuid").and_then(|vs| vs.to_value_single()))
+            .or_else(|| {
+                self.attrs
+                    .get(Attribute::Name.as_ref())
+                    .and_then(|vs| vs.to_value_single())
+            })
+            .or_else(|| {
+                self.attrs
+                    .get(Attribute::Uuid.as_ref())
+                    .and_then(|vs| vs.to_value_single())
+            })
             .map(|value| value.to_proto_string_clone())
             .unwrap_or_else(|| "no entry id available".to_string())
     }
@@ -3095,8 +3113,8 @@ impl From<&SchemaAttribute> for Entry<EntryInit, EntryNew> {
         // Build the Map of the attributes relevant
         // let mut attrs: Map<AttrString, Set<Value>> = Map::with_capacity(8);
         let mut attrs: Map<AttrString, ValueSet> = Map::new();
-        attrs.insert(AttrString::from("attributename"), name_v);
-        attrs.insert(AttrString::from(Attribute::Description.as_ref()), desc_v);
+        attrs.insert(Attribute::AttributeName.into(), name_v);
+        attrs.insert(Attribute::Description.into(), desc_v);
         attrs.insert(Attribute::Uuid.into(), uuid_v);
         attrs.insert(AttrString::from("multivalue"), multivalue_v);
         attrs.insert(AttrString::from("phantom"), phantom_v);
@@ -3515,11 +3533,14 @@ mod tests {
         {
             let mut e: Entry<EntryInit, EntryNew> = Entry::new();
             e.add_ava(Attribute::Class.as_ref(), EntryClass::Person.to_value());
-            e.add_ava("gidnumber", Value::new_uint32(1300));
-            e.add_ava("name", Value::new_iname("testperson"));
-            e.add_ava("spn", Value::new_spn_str("testperson", "example.com"));
+            e.add_ava(Attribute::GidNumber.as_ref(), Value::new_uint32(1300));
+            e.add_ava(Attribute::Name.as_ref(), Value::new_iname("testperson"));
             e.add_ava(
-                "uuid",
+                Attribute::Spn.as_ref(),
+                Value::new_spn_str("testperson", "example.com"),
+            );
+            e.add_ava(
+                Attribute::Uuid.as_ref(),
                 Value::Uuid(uuid!("9fec0398-c46c-4df4-9df5-b0016f7d563f")),
             );
             let e = e.into_sealed_committed();
@@ -3561,13 +3582,19 @@ mod tests {
         {
             let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
             e1.add_ava(Attribute::Class.as_ref(), EntryClass::Person.to_value());
-            e1.add_ava("spn", Value::new_spn_str("testperson", "example.com"));
+            e1.add_ava(
+                Attribute::Spn.as_ref(),
+                Value::new_spn_str("testperson", "example.com"),
+            );
             let e1 = e1.into_sealed_committed();
 
             let mut e2: Entry<EntryInit, EntryNew> = Entry::new();
             e2.add_ava(Attribute::Class.as_ref(), EntryClass::Person.to_value());
-            e2.add_ava("name", Value::new_iname("testperson"));
-            e2.add_ava("spn", Value::new_spn_str("testperson", "example.com"));
+            e2.add_ava(Attribute::Name.as_ref(), Value::new_iname("testperson"));
+            e2.add_ava(
+                Attribute::Spn.as_ref(),
+                Value::new_spn_str("testperson", "example.com"),
+            );
             let e2 = e2.into_sealed_committed();
 
             // One attr added
@@ -3587,12 +3614,18 @@ mod tests {
         {
             let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
             e1.add_ava(Attribute::Class.as_ref(), EntryClass::Person.to_value());
-            e1.add_ava("spn", Value::new_spn_str("testperson", "example.com"));
+            e1.add_ava(
+                Attribute::Spn.as_ref(),
+                Value::new_spn_str("testperson", "example.com"),
+            );
             let e1 = e1.into_sealed_committed();
 
             let mut e2: Entry<EntryInit, EntryNew> = Entry::new();
             e2.add_ava(Attribute::Class.as_ref(), EntryClass::Person.to_value());
-            e2.add_ava("spn", Value::new_spn_str("renameperson", "example.com"));
+            e2.add_ava(
+                Attribute::Spn.as_ref(),
+                Value::new_spn_str("renameperson", "example.com"),
+            );
             let e2 = e2.into_sealed_committed();
 
             assert!(
@@ -3610,11 +3643,17 @@ mod tests {
         assert!(Entry::idx_uuid2spn_diff(None, None).is_none());
 
         let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
-        e1.add_ava("spn", Value::new_spn_str("testperson", "example.com"));
+        e1.add_ava(
+            Attribute::Spn.as_ref(),
+            Value::new_spn_str("testperson", "example.com"),
+        );
         let e1 = e1.into_sealed_committed();
 
         let mut e2: Entry<EntryInit, EntryNew> = Entry::new();
-        e2.add_ava("spn", Value::new_spn_str("renameperson", "example.com"));
+        e2.add_ava(
+            Attribute::Spn.as_ref(),
+            Value::new_spn_str("renameperson", "example.com"),
+        );
         let e2 = e2.into_sealed_committed();
 
         assert!(

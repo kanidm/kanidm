@@ -62,6 +62,7 @@ pub enum Attribute {
     DeviceKeys,
     DirectMemberOf,
     DisplayName,
+    Domain,
     DomainDisplayName,
     DomainLdapBasedn,
     DomainName,
@@ -203,6 +204,7 @@ impl TryFrom<String> for Attribute {
             ATTR_DEVICEKEYS => Attribute::DeviceKeys,
             ATTR_DIRECTMEMBEROF => Attribute::DirectMemberOf,
             ATTR_DISPLAYNAME => Attribute::DisplayName,
+            ATTR_DOMAIN => Attribute::Domain,
             ATTR_DOMAIN_DISPLAY_NAME => Attribute::DomainDisplayName,
             ATTR_DOMAIN_LDAP_BASEDN => Attribute::DomainLdapBasedn,
             ATTR_DOMAIN_NAME => Attribute::DomainName,
@@ -303,6 +305,7 @@ impl From<Attribute> for &'static str {
     fn from(val: Attribute) -> Self {
         match val {
             Attribute::Account => ATTR_ACCOUNT,
+            Attribute::Domain => ATTR_DOMAIN,
             Attribute::SystemMay => ATTR_SYSTEMMAY,
             Attribute::DynGroup => ATTR_DYNGROUP,
             Attribute::May => ATTR_MAY,

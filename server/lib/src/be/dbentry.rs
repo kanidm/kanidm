@@ -7,6 +7,7 @@ use smartstring::alias::String as AttrString;
 use uuid::Uuid;
 
 use crate::be::dbvalue::{DbValueEmailAddressV1, DbValuePhoneNumberV1, DbValueSetV2, DbValueV1};
+use crate::prelude::entries::Attribute;
 use crate::prelude::OperationError;
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -446,12 +447,12 @@ impl std::fmt::Display for DbEntry {
                     }
                     None => write!(f, "Uuid(INVALID), ")?,
                 };
-                if let Some(names) = dbe_v1.attrs.get("name") {
+                if let Some(names) = dbe_v1.attrs.get(Attribute::Name.as_ref()) {
                     for name in names {
                         write!(f, "{name:?}, ")?;
                     }
                 }
-                if let Some(names) = dbe_v1.attrs.get("attributename") {
+                if let Some(names) = dbe_v1.attrs.get(Attribute::AttributeName.as_ref()) {
                     for name in names {
                         write!(f, "{name:?}, ")?;
                     }
@@ -471,10 +472,10 @@ impl std::fmt::Display for DbEntry {
                     }
                     None => write!(f, "Uuid(INVALID), ")?,
                 };
-                if let Some(names) = dbe_v2.attrs.get("name") {
+                if let Some(names) = dbe_v2.attrs.get(Attribute::Name.as_ref()) {
                     write!(f, "{names:?}, ")?;
                 }
-                if let Some(names) = dbe_v2.attrs.get("attributename") {
+                if let Some(names) = dbe_v2.attrs.get(Attribute::AttributeName.as_ref()) {
                     write!(f, "{names:?}, ")?;
                 }
                 if let Some(names) = dbe_v2.attrs.get("classname") {

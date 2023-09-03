@@ -1829,7 +1829,7 @@ mod tests {
             )),
         );
         // the requested attrs here.
-        se_anon.attrs = Some(btreeset![AttrString::from("name")]);
+        se_anon.attrs = Some(btreeset![Attribute::Name.into()]);
 
         let acp = AccessControlSearch::from_raw(
             "test_acp",
@@ -2411,7 +2411,7 @@ mod tests {
             vec![AccessEffectivePermission {
                 delete: false,
                 target: uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"),
-                search: Access::Allow(btreeset![AttrString::from("name")]),
+                search: Access::Allow(btreeset![Attribute::Name.into()]),
                 modify_pres: Access::Allow(BTreeSet::new()),
                 modify_rem: Access::Allow(BTreeSet::new()),
                 modify_class: Access::Allow(BTreeSet::new()),
@@ -2454,8 +2454,8 @@ mod tests {
                 delete: false,
                 target: uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"),
                 search: Access::Allow(BTreeSet::new()),
-                modify_pres: Access::Allow(btreeset![AttrString::from("name")]),
-                modify_rem: Access::Allow(btreeset![AttrString::from("name")]),
+                modify_pres: Access::Allow(btreeset![Attribute::Name.into()]),
+                modify_rem: Access::Allow(btreeset![Attribute::Name.into()]),
                 modify_class: Access::Allow(btreeset![AttrString::from("object")]),
             }]
         )

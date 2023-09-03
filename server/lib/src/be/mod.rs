@@ -2046,15 +2046,15 @@ mod tests {
             // This is a demo idxmeta, purely for testing.
             let idxmeta = vec![
                 IdxKey {
-                    attr: AttrString::from("name"),
+                    attr: Attribute::Name.into(),
                     itype: IndexType::Equality,
                 },
                 IdxKey {
-                    attr: AttrString::from("name"),
+                    attr: Attribute::Name.into(),
                     itype: IndexType::Presence,
                 },
                 IdxKey {
-                    attr: AttrString::from("name"),
+                    attr: Attribute::Name.into(),
                     itype: IndexType::SubString,
                 },
                 IdxKey {

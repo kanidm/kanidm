@@ -870,9 +870,9 @@ impl<'a> SchemaWriteTransaction<'a> {
             },
         );
         self.attributes.insert(
-            AttrString::from("name"),
+            Attribute::Name.into(),
             SchemaAttribute {
-                name: AttrString::from("name"),
+                name: Attribute::Name.into(),
                 uuid: UUID_SCHEMA_ATTR_NAME,
                 description: String::from("The shortform name of an object"),
                 multivalue: false,
@@ -885,9 +885,9 @@ impl<'a> SchemaWriteTransaction<'a> {
             },
         );
         self.attributes.insert(
-            AttrString::from("spn"),
+            Attribute::Spn.into(),
             SchemaAttribute {
-                name: AttrString::from("spn"),
+                name: Attribute::Spn.into(),
                 uuid: UUID_SCHEMA_ATTR_SPN,
                 description: String::from(
                     "The Security Principal Name of an object, unique across all domain trusts",
@@ -902,9 +902,9 @@ impl<'a> SchemaWriteTransaction<'a> {
             },
         );
         self.attributes.insert(
-            AttrString::from("attributename"),
+            Attribute::AttributeName.into(),
             SchemaAttribute {
-                name: AttrString::from("attributename"),
+                name: Attribute::AttributeName.into(),
                 uuid: UUID_SCHEMA_ATTR_ATTRIBUTENAME,
                 description: String::from("The name of a schema attribute"),
                 multivalue: false,
@@ -917,9 +917,9 @@ impl<'a> SchemaWriteTransaction<'a> {
             },
         );
         self.attributes.insert(
-            AttrString::from("classname"),
+            Attribute::ClassName.into(),
             SchemaAttribute {
-                name: AttrString::from("classname"),
+                name: Attribute::ClassName.into(),
                 uuid: UUID_SCHEMA_ATTR_CLASSNAME,
                 description: String::from("The name of a schema class"),
                 multivalue: false,
@@ -932,9 +932,9 @@ impl<'a> SchemaWriteTransaction<'a> {
             },
         );
         self.attributes.insert(
-            AttrString::from(Attribute::Description.as_ref()),
+            Attribute::Description.into(),
             SchemaAttribute {
-                name: AttrString::from(Attribute::Description.as_ref()),
+                name: Attribute::Description.into(),
                 uuid: UUID_SCHEMA_ATTR_DESCRIPTION,
                 description: String::from("A description of an attribute, object or class"),
                 multivalue: false,
@@ -946,8 +946,8 @@ impl<'a> SchemaWriteTransaction<'a> {
                 syntax: SyntaxType::Utf8String,
             },
         );
-        self.attributes.insert(AttrString::from("multivalue"), SchemaAttribute {
-                name: AttrString::from("multivalue"),
+        self.attributes.insert(Attribute::MultiValue.into(), SchemaAttribute {
+                name: Attribute::MultiValue.into(),
                 uuid: UUID_SCHEMA_ATTR_MULTIVALUE,
                 description: String::from("If true, this attribute is able to store multiple values rather than just a single value."),
                 multivalue: false,
@@ -958,8 +958,8 @@ impl<'a> SchemaWriteTransaction<'a> {
                 index: vec![],
                 syntax: SyntaxType::Boolean,
             });
-        self.attributes.insert(AttrString::from("phantom"), SchemaAttribute {
-                name: AttrString::from("phantom"),
+        self.attributes.insert(Attribute::Phantom.into(), SchemaAttribute {
+                name: Attribute::Phantom.into(),
                 uuid: UUID_SCHEMA_ATTR_PHANTOM,
                 description: String::from("If true, this attribute must NOT be present in any may/must sets of a class as. This represents generated attributes."),
                 multivalue: false,
@@ -1761,7 +1761,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 ],
                 systemmust: vec![
                     Attribute::Class.into(),
-                    AttrString::from("attributename"),
+                    Attribute::AttributeName.into(),
                     AttrString::from("multivalue"),
                     AttrString::from("unique"),
                     AttrString::from("syntax"),
@@ -1900,7 +1900,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 systemmust: vec![
                     AttrString::from("acp_receiver_group"),
                     AttrString::from("acp_targetscope"),
-                    AttrString::from("name"),
+                    Attribute::Name.into(),
                 ],
                 systemsupplements: vec![
                     AttrString::from("access_control_search"),
@@ -2664,7 +2664,7 @@ mod tests {
             r#"{
             "attrs": {
                 "class": ["extensibleobject"],
-                "name": ["TestPerson"],
+                "attributename": ["TestPerson"],
                 "syntax": ["utf8string"],
                 "UUID": ["db237e8a-0079-4b8c-8a56-593b22aa44d1"],
                 "InDeX": ["equality"]
@@ -2677,7 +2677,7 @@ mod tests {
             r#"{
                 "attrs": {
                     "class": ["extensibleobject"],
-                    "name": ["testperson"],
+                    "attributename": ["testperson"],
                     "syntax": ["UTF8STRING"],
                     "uuid": ["db237e8a-0079-4b8c-8a56-593b22aa44d1"],
                     "index": ["EQUALITY"]
