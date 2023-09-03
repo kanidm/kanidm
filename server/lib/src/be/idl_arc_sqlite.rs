@@ -565,7 +565,7 @@ impl<'a> IdlArcSqliteTransaction for IdlArcSqliteWriteTransaction<'a> {
 }
 
 impl<'a> IdlArcSqliteWriteTransaction<'a> {
-    #[cfg(debug_assertions)]
+    #[cfg(any(test, debug_assertions))]
     #[instrument(level = "debug", name = "idl_arc_sqlite::clear_cache", skip_all)]
     pub fn clear_cache(&mut self) -> Result<(), OperationError> {
         // I'm not sure rn if I want to reload these? If we reload these we kind of
