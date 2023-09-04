@@ -107,7 +107,6 @@ pub enum Attribute {
     NameHistory,
     NoIndex,
     NsUniqueId,
-    // Object,
     OAuth2AllowInsecureClientDisablePkce,
     OAuth2ConsentScopeMap,
     OAuth2JwtLegacyCryptoEnable,
@@ -225,7 +224,6 @@ impl TryFrom<String> for Attribute {
             ATTR_CLASS => Attribute::Class,
             ATTR_CLASSNAME => Attribute::ClassName,
             ATTR_CN => Attribute::Cn,
-            // ATTR_OBJECT => Attribute::Object,
             ATTR_COOKIE_PRIVATE_KEY => Attribute::CookiePrivateKey,
             ATTR_CREDENTIAL_UPDATE_INTENT_TOKEN => Attribute::CredentialUpdateIntentToken,
             ATTR_DESCRIPTION => Attribute::Description,
@@ -432,7 +430,6 @@ impl From<Attribute> for &'static str {
             Attribute::Name => ATTR_NAME,
             Attribute::NoIndex => ATTR_NO_INDEX,
 
-            // Attribute::Object => ATTR_OBJECT,
             Attribute::OAuth2AllowInsecureClientDisablePkce => {
                 ATTR_OAUTH2_ALLOW_INSECURE_CLIENT_DISABLE_PKCE
             }
