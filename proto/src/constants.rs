@@ -78,7 +78,6 @@ pub const ATTR_NAME_HISTORY: &str = "name_history";
 pub const ATTR_NAME: &str = "name";
 pub const ATTR_NO_INDEX: &str = "no-index";
 pub const ATTR_NSUNIQUEID: &str = "nsuniqueid";
-pub const ATTR_OBJECT: &str = "object";
 
 pub const ATTR_OAUTH2_ALLOW_INSECURE_CLIENT_DISABLE_PKCE: &str =
     "oauth2_allow_insecure_client_disable_pkce";
