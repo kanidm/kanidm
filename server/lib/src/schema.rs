@@ -492,7 +492,10 @@ impl From<SchemaClass> for EntryInitNew {
         let mut entry = EntryInitNew::new();
 
         #[allow(clippy::expect_used)]
-        entry.set_ava("classname", vec![Value::new_iutf8(&value.name)].into_iter());
+        entry.set_ava(
+            Attribute::ClassName.as_ref(),
+            vec![Value::new_iutf8(&value.name)],
+        );
 
         // class
         entry.set_ava(
@@ -513,14 +516,11 @@ impl From<SchemaClass> for EntryInitNew {
         // sync_allowed
         entry.set_ava(
             Attribute::SyncAllowed.as_ref(),
-            vec![Value::Bool(value.sync_allowed)].into_iter(),
+            vec![Value::Bool(value.sync_allowed)],
         );
 
         // uid
-        entry.set_ava(
-            Attribute::Uuid.as_ref(),
-            vec![Value::Uuid(value.uuid)].into_iter(),
-        );
+        entry.set_ava(Attribute::Uuid.as_ref(), vec![Value::Uuid(value.uuid)]);
 
         // systemmay
         if !value.systemmay.is_empty() {
@@ -2488,7 +2488,7 @@ mod tests {
         );
 
         let e_no_class = entry_init!((
-            "uuid",
+            Attribute::Uuid.as_ref(),
             Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
         ))
         .into_invalid_new();
@@ -2497,7 +2497,7 @@ mod tests {
 
         let e_bad_class = entry_init!(
             (
-                "uuid",
+                Attribute::Uuid.as_ref(),
                 Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
             ),
             (Attribute::Class.as_ref(), Value::new_class("zzzzzz"))
@@ -2510,7 +2510,7 @@ mod tests {
 
         let e_attr_invalid = entry_init!(
             (
-                "uuid",
+                Attribute::Uuid.as_ref(),
                 Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
             ),
             (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
@@ -2550,13 +2550,18 @@ mod tests {
                 Attribute::Uuid.as_ref(),
                 Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
             ),
-            ("zzzzz", Value::Utf8("zzzz".to_string()))
+            (
+                Attribute::TestAttr.as_ref(),
+                Value::Utf8("zzzz".to_string())
+            )
         )
         .into_invalid_new();
 
         assert_eq!(
             e_attr_invalid_may.validate(&schema),
-            Err(SchemaError::AttributeNotValidForClass("zzzzz".to_string()))
+            Err(SchemaError::AttributeNotValidForClass(
+                Attribute::TestAttr.to_string()
+            ))
         );
 
         let e_attr_invalid_syn = entry_init!(
@@ -2583,7 +2588,7 @@ mod tests {
                 Value::Syntax(SyntaxType::Utf8String)
             ),
             (
-                "uuid",
+                Attribute::Uuid.as_ref(),
                 Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
             )
         )
@@ -2618,10 +2623,13 @@ mod tests {
                 Value::Syntax(SyntaxType::Utf8String)
             ),
             (
-                "uuid",
+                Attribute::Uuid.as_ref(),
                 Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
             ),
-            ("password_import", Value::Utf8("password".to_string()))
+            (
+                Attribute::PasswordImport.as_ref(),
+                Value::Utf8("password".to_string())
+            )
         )
         .into_invalid_new();
         assert!(e_phantom.validate(&schema).is_err());
@@ -2647,7 +2655,7 @@ mod tests {
                 Value::Syntax(SyntaxType::Utf8String)
             ),
             (
-                "uuid",
+                Attribute::Uuid.as_ref(),
                 Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
             )
         )

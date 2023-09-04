@@ -2066,11 +2066,11 @@ mod tests {
                     itype: IndexType::Presence,
                 },
                 IdxKey {
-                    attr: AttrString::from("ta"),
+                    attr: Attribute::TestAttr.into(),
                     itype: IndexType::Equality,
                 },
                 IdxKey {
-                    attr: AttrString::from("tb"),
+                    attr: Attribute::TestNumber.into(),
                     itype: IndexType::Equality,
                 },
             ];
@@ -2236,8 +2236,8 @@ mod tests {
             // Make some changes to r1, r2.
             let pre1 = Arc::new(r1.clone().into_sealed_committed());
             let pre2 = Arc::new(r2.clone().into_sealed_committed());
-            r1.add_ava("desc", Value::from("modified"));
-            r2.add_ava("desc", Value::from("modified"));
+            r1.add_ava("testattr", Value::from("modified"));
+            r2.add_ava("testattr", Value::from("modified"));
 
             // Now ... cheat.
 
@@ -2247,8 +2247,8 @@ mod tests {
             // Modify single
             assert!(be.modify(&CID_ZERO, &[pre1], &[vr1.clone()]).is_ok());
             // Assert no other changes
-            assert!(entry_attr_pres!(be, vr1, "desc"));
-            assert!(!entry_attr_pres!(be, vr2, "desc"));
+            assert!(entry_attr_pres!(be, vr1, "testattr"));
+            assert!(!entry_attr_pres!(be, vr2, "testattr"));
 
             // Modify both
             assert!(be
@@ -2259,8 +2259,8 @@ mod tests {
                 )
                 .is_ok());
 
-            assert!(entry_attr_pres!(be, vr1, "desc"));
-            assert!(entry_attr_pres!(be, vr2, "desc"));
+            assert!(entry_attr_pres!(be, vr1, "testattr"));
+            assert!(entry_attr_pres!(be, vr2, "testattr"));
         });
     }
 
@@ -2794,7 +2794,7 @@ mod tests {
                 Attribute::Uuid.as_ref(),
                 Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"),
             );
-            e1.add_ava("ta", Value::from("test"));
+            e1.add_ava("testattr", Value::from("test"));
             let e1 = e1.into_sealed_new();
 
             let rset = be.create(&CID_ZERO, vec![e1]).unwrap();
@@ -2802,9 +2802,9 @@ mod tests {
             // Now, alter the new entry.
             let mut ce1 = rset[0].as_ref().clone().into_invalid();
             // add something.
-            ce1.add_ava("tb", Value::from("test"));
+            ce1.add_ava("testattrnumber", Value::from("test"));
             // remove something.
-            ce1.purge_ava("ta");
+            ce1.purge_ava("testattr");
             // mod something.
             ce1.purge_ava("name");
             ce1.add_ava(Attribute::Name.as_ref(), Value::new_iname("claire"));
@@ -2818,9 +2818,15 @@ mod tests {
 
             idl_state!(be, "name", IndexType::Presence, "_", Some(vec![1]));
 
-            idl_state!(be, "tb", IndexType::Equality, "test", Some(vec![1]));
+            idl_state!(
+                be,
+                "testattrnumber",
+                IndexType::Equality,
+                "test",
+                Some(vec![1])
+            );
 
-            idl_state!(be, "ta", IndexType::Equality, "test", Some(vec![]));
+            idl_state!(be, "testattr", IndexType::Equality, "test", Some(vec![]));
 
             let william_uuid = uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1");
             assert!(be.name2uuid("william") == Ok(None));
@@ -3198,8 +3204,8 @@ mod tests {
                 Attribute::Uuid.as_ref(),
                 Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"),
             );
-            e1.add_ava("ta", Value::from("dupe"));
-            e1.add_ava("tb", Value::from("1"));
+            e1.add_ava("testattr", Value::from("dupe"));
+            e1.add_ava("testattrnumber", Value::from("1"));
             let e1 = e1.into_sealed_new();
 
             let mut e2: Entry<EntryInit, EntryNew> = Entry::new();
@@ -3208,8 +3214,8 @@ mod tests {
                 Attribute::Uuid.as_ref(),
                 Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d2"),
             );
-            e2.add_ava("ta", Value::from("dupe"));
-            e2.add_ava("tb", Value::from("1"));
+            e2.add_ava("testattr", Value::from("dupe"));
+            e2.add_ava("testattrnumber", Value::from("1"));
             let e2 = e2.into_sealed_new();
 
             let mut e3: Entry<EntryInit, EntryNew> = Entry::new();
@@ -3218,8 +3224,8 @@ mod tests {
                 Attribute::Uuid.as_ref(),
                 Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d3"),
             );
-            e3.add_ava("ta", Value::from("dupe"));
-            e3.add_ava("tb", Value::from("2"));
+            e3.add_ava("testattr", Value::from("dupe"));
+            e3.add_ava("testattrnumber", Value::from("2"));
             let e3 = e3.into_sealed_new();
 
             let _rset = be.create(&CID_ZERO, vec![e1, e2, e3]).unwrap();
@@ -3229,12 +3235,12 @@ mod tests {
             assert!(!be.is_idx_slopeyness_generated().unwrap());
 
             let ta_eq_slope = be
-                .get_idx_slope(&IdxKey::new("ta", IndexType::Equality))
+                .get_idx_slope(&IdxKey::new("testattr", IndexType::Equality))
                 .unwrap();
             assert_eq!(ta_eq_slope, 45);
 
             let tb_eq_slope = be
-                .get_idx_slope(&IdxKey::new("tb", IndexType::Equality))
+                .get_idx_slope(&IdxKey::new("testattrnumber", IndexType::Equality))
                 .unwrap();
             assert_eq!(tb_eq_slope, 45);
 
@@ -3263,12 +3269,12 @@ mod tests {
             assert!(be.is_idx_slopeyness_generated().unwrap());
 
             let ta_eq_slope = be
-                .get_idx_slope(&IdxKey::new("ta", IndexType::Equality))
+                .get_idx_slope(&IdxKey::new("testattr", IndexType::Equality))
                 .unwrap();
             assert_eq!(ta_eq_slope, 200);
 
             let tb_eq_slope = be
-                .get_idx_slope(&IdxKey::new("tb", IndexType::Equality))
+                .get_idx_slope(&IdxKey::new("testattrnumber", IndexType::Equality))
                 .unwrap();
             assert_eq!(tb_eq_slope, 133);
 

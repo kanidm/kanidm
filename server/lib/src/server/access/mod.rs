@@ -2122,15 +2122,18 @@ mod tests {
     fn test_access_enforce_create() {
         let ev1 = entry_init!(
             (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
-            ("name", Value::new_iname("testperson1")),
+            (Attribute::Name.as_ref(), Value::new_iname("testperson1")),
             (Attribute::Uuid.as_ref(), Value::Uuid(UUID_TEST_ACCOUNT_1))
         );
         let r1_set = vec![ev1];
 
         let ev2 = entry_init!(
             (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
-            ("notallowed", Value::new_class("notallowed")),
-            ("name", Value::new_iname("testperson1")),
+            (
+                Attribute::TestNotAllowed.as_ref(),
+                Value::new_class("notallowed")
+            ),
+            (Attribute::Name.as_ref(), Value::new_iname("testperson1")),
             (Attribute::Uuid.as_ref(), Value::Uuid(UUID_TEST_ACCOUNT_1))
         );
 
@@ -2138,8 +2141,8 @@ mod tests {
 
         let ev3 = entry_init!(
             (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
-            ("class", Value::new_class("notallowed")),
-            ("name", Value::new_iname("testperson1")),
+            (Attribute::Class.as_ref(), Value::new_class("notallowed")),
+            (Attribute::Name.as_ref(), Value::new_iname("testperson1")),
             (Attribute::Uuid.as_ref(), Value::Uuid(UUID_TEST_ACCOUNT_1))
         );
         let r3_set = vec![ev3];
@@ -2147,7 +2150,7 @@ mod tests {
         let ev4 = entry_init!(
             (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
             (Attribute::Class.as_ref(), EntryClass::Group.to_value()),
-            ("name", Value::new_iname("testperson1")),
+            (Attribute::Name.as_ref(), Value::new_iname("testperson1")),
             (Attribute::Uuid.as_ref(), Value::Uuid(UUID_TEST_ACCOUNT_1))
         );
         let r4_set = vec![ev4];

@@ -170,7 +170,11 @@ pub enum Attribute {
     #[cfg(any(debug_assertions, test))]
     TestAttr,
     #[cfg(any(debug_assertions, test))]
+    TestNumber,
+    #[cfg(any(debug_assertions, test))]
     Extra,
+    #[cfg(any(debug_assertions, test))]
+    TestNotAllowed,
 }
 
 impl AsRef<str> for Attribute {
@@ -179,15 +183,17 @@ impl AsRef<str> for Attribute {
     }
 }
 
-// impl Attribute {
-//     pub fn as_str(self) -> &'static str {
-//         self.into()
-//     }
-// }
-
 impl From<&Attribute> for &'static str {
     fn from(value: &Attribute) -> Self {
         (*value).into()
+    }
+}
+
+impl TryFrom<&str> for Attribute {
+    type Error = OperationError;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        Attribute::try_from(value.to_string())
     }
 }
 
@@ -302,7 +308,7 @@ impl TryFrom<String> for Attribute {
             ATTR_SYNC_COOKIE => Attribute::SyncCookie,
             ATTR_SYNC_CLASS => Attribute::SyncClass,
             ATTR_SYNC_CREDENTIAL_PORTAL => Attribute::SyncCredentialPortal,
-            ATTR_SYNC_EXTERNAL_UUID => Attribute::SyncExternalId,
+            ATTR_SYNC_EXTERNAL_ID => Attribute::SyncExternalId,
             ATTR_SYNC_PARENT_UUID => Attribute::SyncParentUuid,
             ATTR_SYNC_TOKEN_SESSION => Attribute::SyncTokenSession,
             ATTR_SYNC_YIELD_AUTHORITY => Attribute::SyncYieldAuthority,
@@ -329,6 +335,10 @@ impl TryFrom<String> for Attribute {
             TEST_ATTR_TEST_ATTR => Attribute::TestAttr,
             #[cfg(any(debug_assertions, test))]
             TEST_ATTR_EXTRA => Attribute::Extra,
+            #[cfg(any(debug_assertions, test))]
+            TEST_ATTR_NUMBER => Attribute::TestNumber,
+            #[cfg(any(debug_assertions, test))]
+            TEST_ATTR_NOTALLOWED => Attribute::TestNotAllowed,
             _ => return Err(OperationError::InvalidAttributeName(val)),
         };
         Ok(res)
@@ -455,7 +465,7 @@ impl From<Attribute> for &'static str {
             Attribute::SystemSupplements => ATTR_SYSTEMSUPPLEMENTS,
             Attribute::Supplements => ATTR_SUPPLEMENTS,
             Attribute::SyncAllowed => ATTR_SYNC_ALLOWED,
-            Attribute::SyncExternalId => ATTR_SYNC_EXTERNAL_UUID,
+            Attribute::SyncExternalId => ATTR_SYNC_EXTERNAL_ID,
             Attribute::SyncParentUuid => ATTR_SYNC_PARENT_UUID,
             Attribute::Syntax => ATTR_SYNTAX,
             Attribute::Term => ATTR_TERM,
@@ -468,6 +478,8 @@ impl From<Attribute> for &'static str {
             Attribute::UserPassword => ATTR_USERPASSWORD,
             Attribute::Uuid => ATTR_UUID,
             Attribute::Version => ATTR_VERSION,
+            Attribute::AuthSessionExpiry => ATTR_AUTH_SESSION_EXPIRY,
+            Attribute::PrivilegeExpiry => ATTR_PRIVILEGE_EXPIRY,
 
             #[cfg(any(debug_assertions, test))]
             Attribute::NonExist => TEST_ATTR_NON_EXIST,
@@ -475,8 +487,10 @@ impl From<Attribute> for &'static str {
             Attribute::TestAttr => TEST_ATTR_TEST_ATTR,
             #[cfg(any(debug_assertions, test))]
             Attribute::Extra => TEST_ATTR_EXTRA,
-            Attribute::AuthSessionExpiry => ATTR_AUTH_SESSION_EXPIRY,
-            Attribute::PrivilegeExpiry => ATTR_PRIVILEGE_EXPIRY,
+            #[cfg(any(debug_assertions, test))]
+            Attribute::TestNumber => TEST_ATTR_NUMBER,
+            #[cfg(any(debug_assertions, test))]
+            Attribute::TestNotAllowed => TEST_ATTR_NOTALLOWED,
         }
     }
 }

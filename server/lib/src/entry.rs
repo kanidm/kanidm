@@ -621,6 +621,10 @@ impl Entry<EntryInit, EntryNew> {
     // event for the attribute.
     /// Add an attribute-value-assertion to this Entry.
     pub fn add_ava(&mut self, attr: &str, value: Value) {
+        // TODO: attr can be replaced with Attribute and this can go away
+        #[allow(clippy::panic)]
+        let attr =
+            Attribute::try_from(attr).unwrap_or_else(|_| panic!("Invalid attribute {}", attr));
         self.add_ava_int(attr, value);
     }
 
@@ -1078,9 +1082,9 @@ impl Entry<EntryIncremental, EntryCommitted> {
 
         if let Err(e) = ne.validate(schema) {
             warn!(uuid = ?self.valid.uuid, err = ?e, "Entry failed schema check, moving to a conflict state");
-            ne.add_ava_int(Attribute::Class.as_ref(), EntryClass::Recycled.into());
-            ne.add_ava_int(Attribute::Class.as_ref(), EntryClass::Conflict.into());
-            ne.add_ava_int(Attribute::SourceUuid.as_ref(), Value::Uuid(self.valid.uuid));
+            ne.add_ava_int(Attribute::Class, EntryClass::Recycled.into());
+            ne.add_ava_int(Attribute::Class, EntryClass::Conflict.into());
+            ne.add_ava_int(Attribute::SourceUuid, Value::Uuid(self.valid.uuid));
         }
         ne
     }
@@ -1333,7 +1337,7 @@ impl Entry<EntrySealed, EntryCommitted> {
     /// Insert a claim to this entry. This claim can NOT be persisted to disk, this is only
     /// used during a single Event session.
     pub fn insert_claim(&mut self, value: &str) {
-        self.add_ava_int(Attribute::Claim.as_ref(), Value::new_iutf8(value));
+        self.add_ava_int(Attribute::Claim, Value::new_iutf8(value));
     }
 
     pub fn compare(&self, rhs: &Entry<EntrySealed, EntryCommitted>) -> bool {
@@ -2356,8 +2360,8 @@ impl<VALID, STATE> Entry<VALID, STATE> {
     /// If the value already existed, or was unable to be added, false is returned. Alternately,
     /// you can think of this boolean as "if a write occurred to the structure", true indicating that
     /// a change occurred.
-    fn add_ava_int(&mut self, attr: &str, value: Value) -> bool {
-        if let Some(vs) = self.attrs.get_mut(attr) {
+    fn add_ava_int(&mut self, attr: Attribute, value: Value) -> bool {
+        if let Some(vs) = self.attrs.get_mut(attr.as_ref()) {
             let r = vs.insert_checked(value);
             debug_assert!(r.is_ok());
             // Default to the value not being present if wrong typed.
@@ -2366,7 +2370,7 @@ impl<VALID, STATE> Entry<VALID, STATE> {
             #[allow(clippy::expect_used)]
             let vs = valueset::from_value_iter(std::iter::once(value))
                 .expect("Unable to fail - non-zero iter, and single value type!");
-            self.attrs.insert(AttrString::from(attr), vs);
+            self.attrs.insert(attr.into(), vs);
             // The attribute did not exist before.
             true
         }
@@ -2941,14 +2945,25 @@ where
     // we need this to be *state* based where we assert presence.
     pub fn add_ava(&mut self, attr: &str, value: Value) {
         self.valid.ecstate.change_ava(&self.valid.cid, attr);
+        // TODO: attr can be replaced with Attribute and this can go away
+        #[allow(clippy::panic)]
+        let attr =
+            Attribute::try_from(attr).unwrap_or_else(|_| panic!("Invalid attribute {}", attr));
         self.add_ava_int(attr, value);
     }
 
     pub fn add_ava_if_not_exist(&mut self, attr: &str, value: Value) {
         // This returns true if the value WAS changed! See add_ava_int.
+
+        // TODO: attr can be replaced with Attribute and this can go away
+        #[allow(clippy::panic)]
+        let attr =
+            Attribute::try_from(attr).unwrap_or_else(|_| panic!("Invalid attribute {}", attr));
         if self.add_ava_int(attr, value) {
             // In this case, we ONLY update the changestate if the value was already present!
-            self.valid.ecstate.change_ava(&self.valid.cid, attr);
+            self.valid
+                .ecstate
+                .change_ava(&self.valid.cid, attr.as_ref());
         }
     }
 
@@ -3278,19 +3293,19 @@ mod tests {
         let pv10 = PartialValue::new_uint32(10);
         let pv15 = PartialValue::new_uint32(15);
 
-        e1.add_ava("a", Value::new_uint32(10));
+        e1.add_ava("testattr", Value::new_uint32(10));
 
-        assert!(!e1.attribute_lessthan("a", &pv2));
-        assert!(!e1.attribute_lessthan("a", &pv8));
-        assert!(!e1.attribute_lessthan("a", &pv10));
-        assert!(e1.attribute_lessthan("a", &pv15));
+        assert!(!e1.attribute_lessthan("testattr", &pv2));
+        assert!(!e1.attribute_lessthan("testattr", &pv8));
+        assert!(!e1.attribute_lessthan("testattr", &pv10));
+        assert!(e1.attribute_lessthan("testattr", &pv15));
 
-        e1.add_ava("a", Value::new_uint32(8));
+        e1.add_ava("testattr", Value::new_uint32(8));
 
-        assert!(!e1.attribute_lessthan("a", &pv2));
-        assert!(!e1.attribute_lessthan("a", &pv8));
-        assert!(e1.attribute_lessthan("a", &pv10));
-        assert!(e1.attribute_lessthan("a", &pv15));
+        assert!(!e1.attribute_lessthan("testattr", &pv2));
+        assert!(!e1.attribute_lessthan("testattr", &pv8));
+        assert!(e1.attribute_lessthan("testattr", &pv10));
+        assert!(e1.attribute_lessthan("testattr", &pv15));
     }
 
     #[test]

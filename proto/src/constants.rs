@@ -118,6 +118,7 @@ pub const ATTR_SYNC_ALLOWED: &str = "sync_allowed";
 pub const ATTR_SYNC_CLASS: &str = "sync_class";
 pub const ATTR_SYNC_COOKIE: &str = "sync_cookie";
 pub const ATTR_SYNC_CREDENTIAL_PORTAL: &str = "sync_credential_portal";
+pub const ATTR_SYNC_EXTERNAL_ID: &str = "sync_external_id";
 pub const ATTR_SYNC_EXTERNAL_UUID: &str = "sync_external_uuid";
 pub const ATTR_SYNC_PARENT_UUID: &str = "sync_parent_uuid";
 pub const ATTR_SYNC_TOKEN_SESSION: &str = "sync_token_session";
@@ -142,6 +143,8 @@ pub const ATTR_VERSION: &str = "version";
 pub const TEST_ATTR_NON_EXIST: &str = "non-exist";
 pub const TEST_ATTR_TEST_ATTR: &str = "testattr";
 pub const TEST_ATTR_EXTRA: &str = "extra";
+pub const TEST_ATTR_NUMBER: &str = "testattrnumber";
+pub const TEST_ATTR_NOTALLOWED: &str = "notallowed";
 
 pub const OAUTH2_SCOPE_EMAIL: &str = ATTR_EMAIL;
 pub const OAUTH2_SCOPE_GROUPS: &str = "groups";

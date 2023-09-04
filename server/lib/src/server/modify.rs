@@ -512,7 +512,7 @@ mod tests {
             (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
             (Attribute::Name.as_ref(), Value::new_iname("testperson1")),
             (
-                "uuid",
+                Attribute::Uuid.as_ref(),
                 Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
             ),
             (
@@ -530,7 +530,7 @@ mod tests {
             (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
             (Attribute::Name.as_ref(), Value::new_iname("testperson2")),
             (
-                "uuid",
+                Attribute::Uuid.as_ref(),
                 Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63932"))
             ),
             (
@@ -595,14 +595,14 @@ mod tests {
         let me_inv_m = ModifyEvent::new_internal_invalid(
             filter!(f_pres(Attribute::Class)),
             ModifyList::new_list(vec![Modify::Present(
-                AttrString::from("htnaonu"),
+                Attribute::NonExist.into(),
                 Value::from("anusaosu"),
             )]),
         );
         assert!(
             server_txn.modify(&me_inv_m)
                 == Err(OperationError::SchemaViolation(
-                    SchemaError::InvalidAttribute("htnaonu".to_string())
+                    SchemaError::InvalidAttribute(Attribute::NonExist.to_string())
                 ))
         );
 
