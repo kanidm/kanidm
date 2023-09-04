@@ -1511,8 +1511,8 @@ mod tests {
         assert!(f_t2a != f_t2c);
         assert!(f_t2b != f_t2c);
 
-        // assert!(f_t2c != f_t1a);
-        // assert!(f_t2c != f_t1c);
+        assert!(f_t2c != f_t1a);
+        assert!(f_t2c != f_t1c);
     }
 
     #[test]

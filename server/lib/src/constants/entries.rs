@@ -271,7 +271,9 @@ impl TryFrom<String> for Attribute {
             ATTR_NAME_HISTORY => Attribute::NameHistory,
             ATTR_NO_INDEX => Attribute::NoIndex,
             ATTR_NSUNIQUEID => Attribute::NsUniqueId,
-            ATTR_OAUTH2_ALLOW_INSECURE_CLIENT_DISABLE_PKCE => Attribute::OAuth2AllowInsecureClientDisablePkce
+            ATTR_OAUTH2_ALLOW_INSECURE_CLIENT_DISABLE_PKCE => {
+                Attribute::OAuth2AllowInsecureClientDisablePkce
+            }
             ATTR_OAUTH2_CONSENT_SCOPE_MAP => Attribute::OAuth2ConsentScopeMap,
             ATTR_OAUTH2_JWT_LEGACY_CRYPTO_ENABLE => Attribute::OAuth2JwtLegacyCryptoEnable,
             ATTR_OAUTH2_PREFER_SHORT_USERNAME => Attribute::OAuth2PreferShortUsername,
