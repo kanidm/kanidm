@@ -77,6 +77,7 @@ impl Plugin for Spn {
         qs: &mut QueryServerWriteTransaction,
         pre_cand: &[Arc<EntrySealedCommitted>],
         cand: &[EntrySealedCommitted],
+        _conflict_uuids: &[Uuid],
     ) -> Result<(), OperationError> {
         Self::post_modify_inner(qs, pre_cand, cand)
     }

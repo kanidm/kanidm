@@ -12,11 +12,11 @@
 use std::collections::BTreeSet;
 use std::sync::Arc;
 
-use hashbrown::HashSet as Set;
-use kanidm_proto::v1::{ConsistencyError, PluginError};
+use hashbrown::HashSet;
+use kanidm_proto::v1::ConsistencyError;
 
 use crate::event::{CreateEvent, DeleteEvent, ModifyEvent};
-use crate::filter::f_eq;
+use crate::filter::{f_eq, FC};
 use crate::plugins::Plugin;
 use crate::prelude::*;
 use crate::schema::SchemaTransaction;
@@ -24,19 +24,19 @@ use crate::schema::SchemaTransaction;
 pub struct ReferentialIntegrity;
 
 impl ReferentialIntegrity {
-    fn check_uuids_exist(
+    fn check_uuids_exist_fast(
         qs: &mut QueryServerWriteTransaction,
-        inner: Vec<PartialValue>,
-    ) -> Result<(), OperationError> {
+        inner: &[Uuid],
+    ) -> Result<bool, OperationError> {
         if inner.is_empty() {
             // There is nothing to check! Move on.
             trace!("no reference types modified, skipping check");
-            return Ok(());
+            return Ok(true);
         }
 
-        let inner = inner
-            .into_iter()
-            .map(|pv| f_eq(Attribute::Uuid, pv))
+        let inner: Vec<_> = inner
+            .iter()
+            .map(|u| f_eq(Attribute::Uuid, PartialValue::Uuid(*u)))
             .collect();
 
         // F_inc(lusion). All items of inner must be 1 or more, or the filter
@@ -50,15 +50,90 @@ impl ReferentialIntegrity {
 
         // Is the existence of all id's confirmed?
         if b {
-            Ok(())
+            Ok(true)
         } else {
-            admin_error!(
-                "UUID reference set size differs from query result size <fast path, no uuid info available>"
-            );
-            Err(OperationError::Plugin(PluginError::ReferentialIntegrity(
-                "Uuid referenced not found in database".to_string(),
-            )))
+            Ok(false)
         }
+    }
+
+    fn check_uuids_exist_slow(
+        qs: &mut QueryServerWriteTransaction,
+        inner: &[Uuid],
+    ) -> Result<Vec<Uuid>, OperationError> {
+        if inner.is_empty() {
+            // There is nothing to check! Move on.
+            // Should be unreachable.
+            trace!("no reference types modified, skipping check");
+            return Ok(Vec::with_capacity(0));
+        }
+
+        let mut missing = Vec::with_capacity(inner.len());
+        for u in inner {
+            let filt_in = filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(*u)));
+            let b = qs.internal_exists(filt_in).map_err(|e| {
+                admin_error!(err = ?e, "internal exists failure");
+                e
+            })?;
+
+            // If it's missing, we push it to the missing set.
+            if !b {
+                missing.push(*u)
+            }
+        }
+
+        Ok(missing)
+    }
+
+    fn remove_references(
+        qs: &mut QueryServerWriteTransaction,
+        uuids: Vec<Uuid>,
+    ) -> Result<(), OperationError> {
+        trace!(?uuids);
+
+        // Find all reference types in the schema
+        let schema = qs.get_schema();
+        let ref_types = schema.get_reference_types();
+
+        let removed_ids: BTreeSet<_> = uuids.iter().map(|u| PartialValue::Refer(*u)).collect();
+
+        // Generate a filter which is the set of all schema reference types
+        // as EQ to all uuid of all entries in delete. - this INCLUDES recycled
+        // types too!
+        let filt = filter_all!(FC::Or(
+            uuids
+                .into_iter()
+                .flat_map(|u| ref_types.values().filter_map(move |r_type| {
+                    let value_attribute = r_type.name.to_string();
+                    // For everything that references the uuid's in the deleted set.
+                    let val: Result<Attribute, OperationError> = value_attribute.try_into();
+                    // error!("{:?}", val);
+                    let res = match val {
+                        Ok(val) => {
+                            let res = f_eq(val, PartialValue::Refer(u));
+                            Some(res)
+                        }
+                        Err(err) => {
+                            // we shouldn't be able to get here...
+                            admin_error!("post_delete invalid attribute specified - please log this as a bug! {:?}", err);
+                            None
+                        }
+                    };
+                    res
+                }))
+                .collect(),
+        ));
+
+        trace!("refint post_delete filter {:?}", filt);
+
+        let mut work_set = qs.internal_search_writeable(&filt)?;
+
+        work_set.iter_mut().for_each(|(_, post)| {
+            ref_types
+                .values()
+                .for_each(|attr| post.remove_avas(attr.name.as_str(), &removed_ids));
+        });
+
+        qs.internal_apply_writable(work_set)
     }
 }
 
@@ -118,6 +193,99 @@ impl Plugin for ReferentialIntegrity {
         Self::post_modify_inner(qs, cand)
     }
 
+    fn post_repl_incremental(
+        qs: &mut QueryServerWriteTransaction,
+        pre_cand: &[Arc<EntrySealedCommitted>],
+        cand: &[EntrySealedCommitted],
+        conflict_uuids: &[Uuid],
+    ) -> Result<(), OperationError> {
+        admin_error!(
+            "plugin {} has an unimplemented post_repl_incremental!",
+            Self::id()
+        );
+
+        // I think we need to check that all values in the ref type values here
+        // exist, and if not, we *need to remove them*. We should probably rewrite
+        // how we do modify/create inner to actually return missing uuids, so that
+        // this fn can delete, and the other parts can report what's missing.
+        //
+        // This also becomes a path to a "ref int fixup" too?
+
+        let uuids = Self::cand_references_to_uuid_filter(qs, cand)?;
+
+        let all_exist_fast = Self::check_uuids_exist_fast(qs, uuids.as_slice())?;
+
+        let mut missing_uuids = if !all_exist_fast {
+            debug!("Not all uuids referenced by these candidates exist. Slow path to remove them.");
+            Self::check_uuids_exist_slow(qs, uuids.as_slice())?
+        } else {
+            debug!("All references are valid!");
+            Vec::with_capacity(0)
+        };
+
+        // If the entry has moved from a live to a deleted state we need to clean it's reference's
+        // that *may* have been added on this server - the same that other references would be
+        // deleted.
+        let inactive_entries: Vec<_> = std::iter::zip(pre_cand, cand)
+            .filter_map(|(pre, post)| {
+                let pre_live = pre.mask_recycled_ts().is_some();
+                let post_live = post.mask_recycled_ts().is_some();
+
+                if !post_live && (pre_live != post_live) {
+                    // We have moved from live to recycled/tombstoned. We need to
+                    // ensure that these references are masked.
+                    Some(post.get_uuid())
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        if event_enabled!(tracing::Level::DEBUG) {
+            debug!("Removing the following reference uuids for entries that have become recycled or tombstoned");
+            for missing in &inactive_entries {
+                debug!(?missing);
+            }
+        }
+
+        // We can now combine this with the confict uuids from the incoming set.
+
+        // In a conflict case, we need to also add these uuids to the delete logic
+        // since on the originator node the original uuid will still persist
+        // meaning the member won't be removed.
+        // However, on a non-primary conflict handler it will remove the member
+        // as well. This is annoyingly a worst case, since then *every* node will
+        // attempt to update the cid of this group. But I think the potential cost
+        // in the short term will be worth consistent references.
+
+        if !conflict_uuids.is_empty() {
+            warn!("conflict uuids have been found, and must be cleaned from existing references. This is to prevent group memberships leaking to un-intended recipients.");
+        }
+
+        // Now, we need to find for each of the missing uuids, which values had them.
+        // We could use a clever query to internal_search_writeable?
+        missing_uuids.extend_from_slice(conflict_uuids);
+        missing_uuids.extend_from_slice(&inactive_entries);
+
+        if missing_uuids.is_empty() {
+            trace!("Nothing to do, shortcut");
+            return Ok(());
+        }
+
+        if event_enabled!(tracing::Level::DEBUG) {
+            debug!("Removing the following missing reference uuids");
+            for missing in &missing_uuids {
+                debug!(?missing);
+            }
+        }
+
+        // Now we have to look them up and clean it up. Turns out this is the
+        // same code path as "post delete" so we can share that!
+        Self::remove_references(qs, missing_uuids)
+
+        // Complete!
+    }
+
     #[instrument(level = "debug", name = "refint_post_delete", skip_all)]
     fn post_delete(
         qs: &mut QueryServerWriteTransaction,
@@ -128,56 +296,10 @@ impl Plugin for ReferentialIntegrity {
         // actually the bulk of the work we'll do to clean up references
         // when they are deleted.
 
-        // Find all reference types in the schema
-        let schema = qs.get_schema();
-        let ref_types = schema.get_reference_types();
-
         // Get the UUID of all entries we are deleting
         let uuids: Vec<Uuid> = cand.iter().map(|e| e.get_uuid()).collect();
 
-        // Generate a filter which is the set of all schema reference types
-        // as EQ to all uuid of all entries in delete. - this INCLUDES recycled
-        // types too!
-        let filt = filter_all!(FC::Or(
-            uuids
-                .into_iter()
-                .flat_map(|u| ref_types.values().filter_map(move |r_type| {
-                    let value_attribute = r_type.name.to_string();
-                    // For everything that references the uuid's in the deleted set.
-                    let val: Result<Attribute, OperationError> = value_attribute.try_into();
-                    // error!("{:?}", val);
-                    let res = match val {
-                        Ok(val) => {
-                            let res = f_eq(val, PartialValue::Refer(u));
-                            Some(res)
-                        }
-                        Err(err) => {
-                            // we shouldn't be able to get here...
-                            admin_error!("post_delete invalid attribute specified - please log this as a bug! {:?}", err);
-                            None
-                        }
-                    };
-                    res
-                }))
-                .collect(),
-        ));
-
-        trace!("refint post_delete filter {:?}", filt);
-
-        let removed_ids: BTreeSet<_> = cand
-            .iter()
-            .map(|e| PartialValue::Refer(e.get_uuid()))
-            .collect();
-
-        let mut work_set = qs.internal_search_writeable(&filt)?;
-
-        work_set.iter_mut().for_each(|(_, post)| {
-            ref_types
-                .values()
-                .for_each(|attr| post.remove_avas(attr.name.as_str(), &removed_ids));
-        });
-
-        qs.internal_apply_writable(work_set)
+        Self::remove_references(qs, uuids)
     }
 
     #[instrument(level = "debug", name = "refint::verify", skip_all)]
@@ -194,7 +316,7 @@ impl Plugin for ReferentialIntegrity {
             Err(e) => return vec![e],
         };
 
-        let acu_map: Set<Uuid> = all_cand.iter().map(|e| e.get_uuid()).collect();
+        let acu_map: HashSet<Uuid> = all_cand.iter().map(|e| e.get_uuid()).collect();
 
         let schema = qs.get_schema();
         let ref_types = schema.get_reference_types();
@@ -228,10 +350,10 @@ impl Plugin for ReferentialIntegrity {
 }
 
 impl ReferentialIntegrity {
-    fn post_modify_inner(
+    fn cand_references_to_uuid_filter(
         qs: &mut QueryServerWriteTransaction,
-        cand: &[Entry<EntrySealed, EntryCommitted>],
-    ) -> Result<(), OperationError> {
+        cand: &[EntrySealedCommitted],
+    ) -> Result<Vec<Uuid>, OperationError> {
         let schema = qs.get_schema();
         let ref_types = schema.get_reference_types();
 
@@ -242,9 +364,10 @@ impl ReferentialIntegrity {
                 c.attribute_equality(Attribute::Class.as_ref(), &EntryClass::DynGroup.into());
 
             ref_types.values().filter_map(move |rtype| {
-                // Skip dynamic members
+                // Skip dynamic members, these are recalculated by the
+                // memberof plugin.
                 let skip_mb = dyn_group && rtype.name == "dynmember";
-                // Skip memberOf.
+                // Skip memberOf, also recalculated.
                 let skip_mo = rtype.name == "memberof";
                 if skip_mb || skip_mo {
                     None
@@ -256,12 +379,16 @@ impl ReferentialIntegrity {
         });
 
         // Could check len first?
-        let mut i = Vec::with_capacity(cand.len() * 2);
+        let mut i = Vec::with_capacity(cand.len() * 4);
+        let mut dedup = HashSet::new();
 
         vsiter.try_for_each(|vs| {
             if let Some(uuid_iter) = vs.as_ref_uuid_iter() {
                 uuid_iter.for_each(|u| {
-                    i.push(PartialValue::Uuid(u))
+                    // Returns true if the item is NEW in the set
+                    if dedup.insert(u) {
+                        i.push(u)
+                    }
                 });
                 Ok(())
             } else {
@@ -273,7 +400,35 @@ impl ReferentialIntegrity {
             }
         })?;
 
-        Self::check_uuids_exist(qs, i)
+        Ok(i)
+    }
+
+    fn post_modify_inner(
+        qs: &mut QueryServerWriteTransaction,
+        cand: &[EntrySealedCommitted],
+    ) -> Result<(), OperationError> {
+        let uuids = Self::cand_references_to_uuid_filter(qs, cand)?;
+
+        let all_exist_fast = Self::check_uuids_exist_fast(qs, uuids.as_slice())?;
+
+        if all_exist_fast {
+            // All good!
+            return Ok(());
+        }
+
+        // Okay taking the slow path now ...
+        let missing_uuids = Self::check_uuids_exist_slow(qs, uuids.as_slice())?;
+
+        error!("some uuids that were referenced in this operation do not exist.");
+        for missing in missing_uuids {
+            error!(?missing);
+        }
+
+        Err(OperationError::Plugin(
+            kanidm_proto::v1::PluginError::ReferentialIntegrity(
+                "Uuid referenced not found in database".to_string(),
+            ),
+        ))
     }
 }
 

@@ -157,15 +157,15 @@ trait Plugin {
             "plugin {} has an unimplemented pre_repl_incremental!",
             Self::id()
         );
-        // debug_assert!(false);
-        // Err(OperationError::InvalidState)
-        Ok(())
+        debug_assert!(false);
+        Err(OperationError::InvalidState)
     }
 
     fn post_repl_incremental(
         _qs: &mut QueryServerWriteTransaction,
         _pre_cand: &[Arc<EntrySealedCommitted>],
         _cand: &[EntrySealedCommitted],
+        _conflict_uuids: &[Uuid],
     ) -> Result<(), OperationError> {
         admin_error!(
             "plugin {} has an unimplemented post_repl_incremental!",
@@ -352,11 +352,12 @@ impl Plugins {
         qs: &mut QueryServerWriteTransaction,
         pre_cand: &[Arc<EntrySealedCommitted>],
         cand: &[EntrySealedCommitted],
+        conflict_uuids: &[Uuid],
     ) -> Result<(), OperationError> {
-        domain::Domain::post_repl_incremental(qs, pre_cand, cand)?;
-        spn::Spn::post_repl_incremental(qs, pre_cand, cand)?;
-        refint::ReferentialIntegrity::post_repl_incremental(qs, pre_cand, cand)?;
-        memberof::MemberOf::post_repl_incremental(qs, pre_cand, cand)
+        domain::Domain::post_repl_incremental(qs, pre_cand, cand, conflict_uuids)?;
+        spn::Spn::post_repl_incremental(qs, pre_cand, cand, conflict_uuids)?;
+        refint::ReferentialIntegrity::post_repl_incremental(qs, pre_cand, cand, conflict_uuids)?;
+        memberof::MemberOf::post_repl_incremental(qs, pre_cand, cand, conflict_uuids)
     }
 
     #[instrument(level = "debug", name = "plugins::run_verify", skip_all)]
