@@ -206,7 +206,7 @@ mod tests {
             (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
             (Attribute::Name.as_ref(), Value::new_iname("testperson1")),
             (
-                "uuid",
+                Attribute::Uuid.as_ref(),
                 Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
             ),
             (
@@ -224,7 +224,7 @@ mod tests {
             (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
             (Attribute::Name.as_ref(), Value::new_iname("testperson2")),
             (
-                "uuid",
+                Attribute::Uuid.as_ref(),
                 Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63932"))
             ),
             (
@@ -242,7 +242,7 @@ mod tests {
             (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
             (Attribute::Name.as_ref(), Value::new_iname("testperson3")),
             (
-                "uuid",
+                Attribute::Uuid.as_ref(),
                 Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63933"))
             ),
             (
@@ -261,6 +261,7 @@ mod tests {
         assert!(cr.is_ok());
 
         // Delete filter is syntax invalid
+        // TODO: work out how to have an Attribute in the enum, but make sure we aren't building a "valid" schema object for it somewhere, so this can fail (at build/test time)
         // let de_inv = DeleteEvent::new_internal_invalid(filter!(f_pres("nhtoaunaoehtnu")));
         // assert!(server_txn.delete(&de_inv).is_err());
 
