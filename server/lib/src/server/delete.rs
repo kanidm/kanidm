@@ -261,9 +261,8 @@ mod tests {
         assert!(cr.is_ok());
 
         // Delete filter is syntax invalid
-        // TODO: work out how to have an Attribute in the enum, but make sure we aren't building a "valid" schema object for it somewhere, so this can fail (at build/test time)
-        // let de_inv = DeleteEvent::new_internal_invalid(filter!(f_pres("nhtoaunaoehtnu")));
-        // assert!(server_txn.delete(&de_inv).is_err());
+        let de_inv = DeleteEvent::new_internal_invalid(filter!(f_pres(Attribute::NonExist)));
+        assert!(server_txn.delete(&de_inv).is_err());
 
         // Delete deletes nothing
         let de_empty = DeleteEvent::new_internal_invalid(filter!(f_eq(
