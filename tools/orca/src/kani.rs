@@ -99,9 +99,16 @@ impl KaniHttpServer {
         all_entities: &HashMap<Uuid, Entity>,
     ) -> Result<(), ()> {
         // Create all the accounts and groups
-        for u in targets {
-            let e = all_entities.get(u).unwrap();
-            match e {
+        let num_uuids = targets.len();
+        let mut current_slice = 1;
+        info!("Have to do {} uuids", num_uuids);
+        for (index, uuid) in targets.iter().enumerate() {
+            if num_uuids / 10 * current_slice > index {
+                info!("{}% complete", current_slice * 10);
+                current_slice += 1;
+            }
+            let entity = all_entities.get(uuid).unwrap();
+            match entity {
                 Entity::Account(a) => {
                     self.client
                         .idm_person_account_create(&a.name, &a.display_name)
@@ -291,12 +298,11 @@ impl KaniHttpServer {
     }
 
     pub async fn close_connection(&self) {
-        assert!(self
-            .client
+        self.client
             .logout()
             .await
             .map_err(|e| error!("close_connection {:?}", e))
-            .is_ok());
+            .ok();
     }
 
     pub async fn search(
