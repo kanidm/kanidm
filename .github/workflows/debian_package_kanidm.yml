@@ -23,6 +23,7 @@ jobs:
           - ubuntu:18.04
           - debian:11
           - debian:10
+          - debian:12
     runs-on: ubuntu-latest
     container:
       image: ${{ matrix.image }}
@@ -43,24 +44,12 @@ jobs:
       - name: Install dependencies
         run: |
           scripts/install_ubuntu_dependencies.sh
-      #     apt-get update && \
-      #     apt-get install -y \
-      #       lsb-release \
-      #       libpam0g-dev \
-      #       libudev-dev \
-      #       libssl-dev \
-      #       libsqlite3-dev \
-      #       pkg-config \
-      #       make \
-      #       curl \
-      #       sudo \
-      #       build-essential \
-      #       rsync
       - name: Install wasm-pack
         run: cargo install wasm-pack
-      - name: Build packages
-        run: |
-          make -f platform/debian/Makefile debs/all
+      - name: Build packages (kanidm-unixd)
+        run: make -f platform/debian/Makefile debs/kanidm-unixd
+      - name: Build packages (kanidmd)
+        run: make -f platform/debian/Makefile debs/kanidmd
       - name: Upload debs
         uses: actions/upload-artifact@v3
         with:
