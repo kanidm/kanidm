@@ -19,11 +19,12 @@ jobs:
       matrix:
         image:
           - ubuntu:22.04
-          - ubuntu:20.04
-          - ubuntu:18.04
-          - debian:11
-          - debian:10
+          # - ubuntu:20.04
+          # - ubuntu:18.04
+          # - debian:11
+          # - debian:10
           - debian:12
+      fail-fast: false
     runs-on: ubuntu-latest
     container:
       image: ${{ matrix.image }}
@@ -48,8 +49,6 @@ jobs:
         run: cargo install wasm-pack
       - name: Build packages (kanidm-unixd)
         run: make -f platform/debian/Makefile debs/kanidm-unixd
-      - name: Build packages (kanidmd)
-        run: make -f platform/debian/Makefile debs/kanidmd
       - name: Upload debs
         uses: actions/upload-artifact@v3
         with:
