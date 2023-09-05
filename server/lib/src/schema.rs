@@ -428,36 +428,36 @@ impl SchemaClass {
         // These are all "optional" lists of strings.
         let systemmay = value
             .get_ava_iter_iutf8(Attribute::SystemMay.as_ref())
-            .map(|i| i.map(AttrString::from).collect()) // TODO: this should probably just be an into?
+            .map(|i| i.map(|v| v.into()).collect()) // TODO: this should probably just be an into?
             .unwrap_or_else(Vec::new);
         let systemmust = value
             .get_ava_iter_iutf8(Attribute::SystemMust.as_ref())
-            .map(|i| i.map(AttrString::from).collect()) // TODO: this should probably just be an into?
+            .map(|i| i.map(|v| v.into()).collect()) // TODO: this should probably just be an into?
             .unwrap_or_else(Vec::new);
         let may = value
             .get_ava_iter_iutf8(Attribute::May.as_ref())
-            .map(|i| i.map(AttrString::from).collect()) // TODO: this should probably just be an into?
+            .map(|i| i.map(|v| v.into()).collect()) // TODO: this should probably just be an into?
             .unwrap_or_else(Vec::new);
         let must = value
             .get_ava_iter_iutf8(Attribute::Must.as_ref())
-            .map(|i| i.map(AttrString::from).collect()) // TODO: this should probably just be an into?
+            .map(|i| i.map(|v| v.into()).collect()) // TODO: this should probably just be an into?
             .unwrap_or_else(Vec::new);
 
         let systemsupplements = value
             .get_ava_iter_iutf8(Attribute::SystemSupplements.as_ref())
-            .map(|i| i.map(AttrString::from).collect()) // TODO: this should probably just be an into?
+            .map(|i| i.map(|v| v.into()).collect()) // TODO: this should probably just be an into?
             .unwrap_or_else(Vec::new);
         let supplements = value
             .get_ava_iter_iutf8(Attribute::Supplements.as_ref())
-            .map(|i| i.map(AttrString::from).collect()) // TODO: this should probably just be an into?
+            .map(|i| i.map(|v| v.into()).collect()) // TODO: this should probably just be an into?
             .unwrap_or_else(Vec::new);
         let systemexcludes = value
             .get_ava_iter_iutf8(Attribute::SystemExcludes.as_ref())
-            .map(|i| i.map(AttrString::from).collect()) // TODO: this should probably just be an into?
+            .map(|i| i.map(|v| v.into()).collect()) // TODO: this should probably just be an into?
             .unwrap_or_else(Vec::new);
         let excludes = value
             .get_ava_iter_iutf8(Attribute::Excludes.as_ref())
-            .map(|i| i.map(AttrString::from).collect()) // TODO: this should probably just be an into?
+            .map(|i| i.map(|v| v.into()).collect()) // TODO: this should probably just be an into?
             .unwrap_or_else(Vec::new);
 
         Ok(SchemaClass {
