@@ -200,7 +200,10 @@ async fn do_passkey(
     pkr: RequestChallengeResponse,
 ) -> Result<AuthResponse, ClientError> {
     let mut wa = get_authenticator();
-    println!("Your authenticator will now flash for you to interact with it.");
+    println!("If your authenticator is not attached, attach it now.");
+    println!("Your authenticator will then flash/prompt for confirmation.");
+    #[cfg(target_os = "macos")]
+    println!("Note: TouchID is not currently supported on the CLI 🫤");
     let auth = wa
         .do_authentication(client.get_origin().clone(), pkr)
         .map(Box::new)
