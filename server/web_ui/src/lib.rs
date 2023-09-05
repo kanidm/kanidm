@@ -14,6 +14,7 @@
 #![allow(clippy::disallowed_types)]
 
 use error::FetchError;
+use gloo::console;
 use kanidm_proto::constants::APPLICATION_JSON;
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
@@ -113,5 +114,21 @@ pub async fn do_request(
 
     let kopid = headers.get("x-kanidm-opid").ok().flatten();
 
-    Ok((kopid, status, JsFuture::from(resp.json()?).await?, headers))
+    let body = match resp.json() {
+        Ok(json_future) => match JsFuture::from(json_future).await {
+            Ok(body) => body,
+            Err(e) => {
+                let e_msg = format!("future json error -> {:?}", e);
+                console::error!(e_msg.as_str());
+                JsValue::NULL
+            }
+        },
+        Err(e) => {
+            let e_msg = format!("response json error -> {:?}", e);
+            console::error!(e_msg.as_str());
+            JsValue::NULL
+        }
+    };
+
+    Ok((kopid, status, body, headers))
 }
