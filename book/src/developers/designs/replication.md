@@ -14,12 +14,12 @@ can be classified based on their data transit properties.
 NOTE: Historically many replication systems used the terms "master" and "slave". This has a number
 of negative cultural connotations, and is not used by this project.
 
-- Read-Write server
+### Read-Write server
 
 This is a server that is fully writable. It accepts external client writes, and these writes are
 propagated to the topology. Many read-write servers can be in a topology and written to in parallel.
 
-- Transport Hub
+### Transport Hub
 
 This is a server that is not writeable to clients, but can accept incoming replicated writes, and
 then propagates these to other servers. All servers that are directly after this server in the
@@ -31,7 +31,7 @@ following is invalid
 Note the replication direction in this, and that changes into HUB will not propagate back to RW 1 or
 RW 2.
 
-- Read-Only server
+### Read-Only server
 
 Also called a read-only replica, or in AD an RODC. This is a server that only accepts incoming
 replicated changes, and has no outbound replication agreements.
@@ -39,18 +39,18 @@ replicated changes, and has no outbound replication agreements.
 Replication systems are dictated by CAP theorem. This is a theory that states from "consistency,
 availability and partition tolerance" you may only have two of the three at any time.
 
-- Consistency
+### Consistency
 
 This is the property that a write to a server is guaranteed to be consistent and acknowledged to all
 servers in the replication topology. A change happens on all nodes or it does not happen at all, and
 clients contacting any server will always see the latest data.
 
-- Availability
+### Availability
 
 This is the property that every request will receive a non-error response without the guarantee that
 the data is "up to date".
 
-- Partition Tolerance
+### Partition Tolerance
 
 This is the property that your topology in the face of partition tolerance will continue to provide
 functional services (generally reads).
@@ -71,13 +71,13 @@ convenge to an identical state over time.
 
 There are two phases of replication
 
-- Refresh
+1. Refresh
 
-This is when the content of a node is completed removed, and has the content of another node applied
-to replace it. No conflicts or issues can occur in this, as the refreshed node is now a "perfect
-clone" of the source node.
+This is when the content of a node is completely removed, and has the content of another node
+applied to replace it. No conflicts or issues can occur in this, as the refreshed node is now a
+"perfect clone" of the source node.
 
-- Incremental
+2. Incremental
 
 This is when differentials of changes are sent between nodes in the topology. By sending small
 diffs, it saves bandwidth between nodes and allows changes on all nodes to be merged and combined
@@ -157,7 +157,7 @@ In attribute level resolution, the time of update for each attribute is tracked.
 written later, the content of that attribute wins over the other entries.
 
 For example if attr b was written last on node B, and attr c was written last on node A then the
-entry would resolve to.
+entry would resolve to:
 
     # AL Resolution
     attr_a: 1  <- from node A
@@ -167,12 +167,12 @@ entry would resolve to.
 
 - Value Level
 
-In value level resolution, each value of each attribute is tracked for it's writes. This allows
-values to be merged, depending on the type of attribute. This is the most "consistent" way to create
-an AP system, but it's also the most complex to implement, generally requiring a changelog of entry
-states and differentials for sequential reapplication.
+In value level resolution, the values of each attribute is tracked for changes. This allows values
+to be merged, depending on the type of attribute. This is the most "consistent" way to create an AP
+system, but it's also the most complex to implement, generally requiring a changelog of entry states
+and differentials for sequential reapplication.
 
-Using this, our entries would resolve to
+Using this, our entries would resolve to:
 
     # VL Resolution
     attr_a: 1
@@ -270,13 +270,13 @@ When the incremental occurs at time point 2, server A would consider these on a 
     Time 0: create entry X cid { time: 0, server: A }
     Time 1: create entry X cid { time: 1, server: B }
 
-When viewed like this, we can see that the second create had it been performed on the same server
-would have been rejected for a duplicate entry. In replication though, this means that the later
-entry will be moved to the conflict state.
+When viewed like this, we can see that if the second create had been performed on the same server,
+it would have been rejected as a duplicate entry. With replication enabled, this means that the
+latter entry will be moved to the conflict state instead.
 
 The same process occurs with the same results when the reverse incremental operation occurs to
 server B where it receives the entry with the earlier creation from A. It will order the events and
-conflict it's local copy of the entry.
+"conflict" it's local copy of the entry.
 
 ### Attribute
 
@@ -292,8 +292,8 @@ incremental replication occurs.
     Time 5:        -- incremental -->
 
 During an incremental operation, a modification to a live entry is allowed to apply provided the
-entries uuid and at match the servers metadata. This gives the servers assurance that an entry is
-not in a conflict state, and that the node applied the change to the same entry. Were the at values
+entries UUID and AT match the servers metadata. This gives the servers assurance that an entry is
+not in a conflict state, and that the node applied the change to the same entry. Were the AT values
 not the same, then the entry conflict process would be applied.
 
 We can expand the metadata of the modifications to help understand the process here for the
@@ -370,7 +370,7 @@ from a supplier to a consumer, replacing all database content on the consumer.
 Incremental replication however requires knowledge of the state of the consumer and supplier to
 determine a difference of the entries between the pair.
 
-To achieve this each server tracks a replication update vector, that describes the _range_ of
+To achieve this each server tracks a replication update vector (RUV), that describes the _range_ of
 changes organised per server that originated the change. For example, the RUV on server B may
 contain:
 
@@ -427,7 +427,7 @@ differences.
 
 Replication relies on each node periodically communicating for incremental updates. This is because
 of _deletes_. A delete event occurs by a Live entry becoming a Tombstone. A tombstone is replicated
-over the live entry. Tomestones are then _reaped_ by each node individually once the replication
+over the live entry. Tombstones are then _reaped_ by each node individually once the replication
 delay window has passed.
 
 This delay window is there to allow every node the chance to have the tombstone replicated to it, so
@@ -460,6 +460,6 @@ This will "freeze" B, where data will not be supplied to B, nor will data from B
 other nodes. This is to prevent the risk of data corruption / zombies.
 
 There is some harm to extending the RUV trim / tombstone reaping window. This window could be
-expanded even to values as long as years. It would however increase the risk of conflicting changes
-however, where nodes that are segregated for extended periods have been accepting changes that may
-conflict with the other side of the topology.
+expanded even to values as long as years. It would increase the risk of conflicting changes however,
+where nodes that are segregated for extended periods have been accepting changes that may conflict
+with the other side of the topology.

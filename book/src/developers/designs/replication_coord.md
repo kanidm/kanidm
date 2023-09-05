@@ -56,15 +56,15 @@ stateless deployments where nodes can be spun up and provided their replication 
 
 The node is provided with the KRC TLS CA, and a configuration token.
 
-The node when configured contacts the KRC with it's configuration token as bearer authentication.
-The KRC uses this to determine and issue a replication configuration. Because the configuration
-token is signed by the KRC, a fraudulent configuration token can _not_ be used by an attacker to
-fraudulently subscribe a kanidm node. Because the KRC is contacted over TLS this gives the node
-strong assurances of the legitimacy of the KRC due to TLS certificate validation and pinning.
+The node when configured contacts the KRC with its configuration token as bearer authentication. The
+KRC uses this to determine and issue a replication configuration. Because the configuration token is
+signed by the KRC, a fraudulent configuration token can _not_ be used by an attacker to fraudulently
+subscribe a kanidm node. Because the KRC is contacted over TLS this gives the node strong assurances
+of the legitimacy of the KRC due to TLS certificate validation and pinning.
 
 The KRC must be able to revoke replication configuration tokens in case of a token disclosure.
 
-The node sends it's KRC, server UUID, and server repl public key to the KRC.
+The node sends its KRC token, server UUID, and server repl public key to the KRC.
 
 The configuration token defines the replication group identifier of that node. The KRC uses the
 configuration token _and_ the servers UUID to assign replication metadata to the node. The KRC
@@ -120,10 +120,13 @@ There are two nodes, A and B.
 
 The administrator configures the kanidm server with replication urls
 
-[replication] node\_url = https://private.name.of.node
+```
+[replication]
+node_url = https://private.name.of.node
+```
 
 The administrator extracts their replication certificates with the kanidmd binary admin features.
-This will reflect the node\_url in the certificate.
+This will reflect the `node_url` in the certificate.
 
 kanidmd replication get-certificate
 
@@ -135,7 +138,7 @@ For each node, a replication configuration is created in json. For A pulling fro
     {
       url: "https://node-b.private-name",
       publiccert: "pem certificate from B",
-      automatic\_refresh: false
+      automatic_refresh: false
     }
   },
   { "allow-pull":
@@ -154,7 +157,7 @@ For B pulling from A.
     {
       url: "https://node-a.private-name",
       publiccert: "pem certificate from A",
-      automatic\_refresh: false
+      automatic_refresh: false
     }
   },
   { "allow-pull":
@@ -174,29 +177,33 @@ server to be "authoritative".
 
 The KRC is configured with it's URL and certificates.
 
-[krc\_config] origin = https://krc.example.com tls\_chain = /path/to/tls/chain tls\_key =
-/path/to/tls/key
+```
+[krc_config]
+origin = https://krc.example.com
+tls_chain = /path/to/tls/chain
+tls_key = /path/to/tls/key
+```
 
 The KRC is also configured with replication groups.
 
 ```
-  [origin\_nodes]
+  [origin_nodes]
   # This group never auto refreshes - they are authoritative.
   mesh = full
 
-  [replicas\_syd]
+  [replicas_syd]
   # Every node has two links inside of this group.
   mesh = 2
   # at least 2 nodes in this group link externally.
   linkcount = 2
-  linkto = [ "origin\_nodes" ]
+  linkto = [ "origin_nodes" ]
 
-  [replicas\_bne]
+  [replicas_bne]
   # Every node has one link inside of this group.
   mesh = 1
   # at least 1 node in this group link externally.
   linkcount = 1
-  linkto = [ "origin\_nodes" ]
+  linkto = [ "origin_nodes" ]
 ```
 
 This would yield the following arrangement.
@@ -255,16 +262,39 @@ their server uuid in the config?
 
 Auto-node groups need to check in with periodic elements, and missed checkins.
 
-Checkins need to send ruv?
+Checkins need to send ruv? This will allow the KRC to detect nodes that are stale.
 
 If a node misses checkins after a certain period they should be removed from the KRC knowledge?
 
-Should replication maps have "priorities" to make it a tree so that if nodes are offline then it can
-auto-re-route? Should they have multiple paths? Want to avoid loops.
+R/O nodes could removed after x days of failed checkins, without much consequence.
+
+R/W nodes on the other hand it's a bit trickier to know if they should be automatically removed.
 
 Or is delete of nodes a manual cleanup / triggers clean-ruv?
 
+Should replication maps have "priorities" to make it a tree so that if nodes are offline then it can
+auto-re-route? Should they have multiple paths? Want to avoid excess links/loops/disconnections of
+nodes.
+
 I think some more thought is needed here. Possibly a node state machine.
+
+I think for R/O nodes, we need to define how R/W will pass through. I can see a possibility like
+
+```
+                                No direct line
+       ┌ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ of sight─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┐
+
+       │                                                               ▼
+┌────────────┐                 ┌─────────────┐────OOB Write────▶┌─────────────┐
+│            │                 │ Remote Kani │                  │             │
+│   Client   │─────Write──────▶│   Server    │                  │    Main     │
+│            │                 │             │                  │             │
+└────────────┘                 └─────────────┘◀───Replication───└─────────────┘
+```
+
+This could potentially even have some filtering rules about what's allowed to proxy writes through.
+Generally though I think that RO will need a lot more thought, for now I want to focus on just
+simple cases like a pair / group of four replicas. 😅
 
 ### Requirements
 
