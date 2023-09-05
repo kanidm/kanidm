@@ -11,7 +11,7 @@ terminate_crab () {
 if [ -d '.git' ]; then
     echo "You're in the root dir, let's move you!"
     CURRENT_DIR="$(pwd)"
-    cd server/daemon/ && exit 1
+    cd server/daemon/ || exit 1
 fi
 
 if [ ! -f "run_insecure_dev_server.sh" ]; then

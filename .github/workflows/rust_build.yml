@@ -33,9 +33,12 @@ jobs:
             libssl-dev \
             libsqlite3-dev
 
-            - run: cargo build --workspace
-            - run: cargo build --bin kanidm --features idv-tui
-            - run: cargo test
+      - name: "Build the workspace"
+        run: cargo build --workspace
+      - name: "Build the idv-tui feature kanidm binary"
+        run: cargo build --bin kanidm --features idv-tui
+      - name: "Run cargo test"
+        run: cargo test
   run_release:
     runs-on: ubuntu-latest
     steps:
