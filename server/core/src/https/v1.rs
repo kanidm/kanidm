@@ -1434,7 +1434,7 @@ pub async fn debug_ipinfo(
 
 #[instrument(skip(state))]
 pub fn router(state: ServerState) -> Router<ServerState> {
-    let router = Router::new()
+    Router::new()
         .route("/v1/oauth2", get(super::oauth2::oauth2_get))
         .route("/v1/oauth2/_basic", post(super::oauth2::oauth2_basic_post))
         .route(
@@ -1735,15 +1735,6 @@ pub fn router(state: ServerState) -> Router<ServerState> {
             post(sync_account_token_post).delete(sync_account_token_delete),
         )
         .with_state(state)
-        .layer(from_fn(dont_cache_me));
-    if cfg!(debug_assertions) || cfg!(test) {
-        add_debug_info(router)
-    } else {
-        router
-    }
-}
-
-// #[cfg(any(debug_assertions, test))]
-fn add_debug_info(router: Router<ServerState>) -> Router<ServerState> {
-    router.route("/v1/debug/ipinfo", get(debug_ipinfo))
+        .layer(from_fn(dont_cache_me))
+        .route("/v1/debug/ipinfo", get(debug_ipinfo))
 }
