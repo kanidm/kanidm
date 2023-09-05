@@ -201,6 +201,8 @@ async fn do_passkey(
 ) -> Result<AuthResponse, ClientError> {
     let mut wa = get_authenticator();
     println!("Your authenticator will now flash for you to interact with it.");
+    println!("If your authenticator is not attached, attach it now.");
+    // TODO: Do we need to comment on touchid here? I don't want to over-load it ...
     let auth = wa
         .do_authentication(client.get_origin().clone(), pkr)
         .map(Box::new)
