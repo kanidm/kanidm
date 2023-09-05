@@ -170,7 +170,7 @@ impl ModifyList<ModifyInvalid> {
         let schema_attributes = schema.get_attributes();
         /*
         let schema_name = schema_attributes
-            .get("name")
+            .get(Attribute::Name.as_ref()")
             .expect("Critical: Core schema corrupt or missing. To initiate a core transfer, please deposit substitute core in receptacle.");
         */
 

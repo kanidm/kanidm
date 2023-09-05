@@ -991,7 +991,7 @@ impl<'a> QueryServerReadTransaction<'a> {
         // the entry changelogs are consistent to their entries.
         let schema = self.get_schema();
 
-        let filt_all = filter!(f_pres(Attribute::Class.as_ref()));
+        let filt_all = filter!(f_pres(Attribute::Class));
         let all_entries = match self.internal_search(filt_all) {
             Ok(a) => a,
             Err(_e) => return vec![Err(ConsistencyError::QueryServerSearchFailure)],
@@ -1930,7 +1930,10 @@ mod tests {
                 "uuid",
                 Value::Uuid(uuid!("cfcae205-31c3-484b-8ced-667d1709c5e3"))
             ),
-            ("attributename", Value::new_iutf8("testattr")),
+            (
+                Attribute::AttributeName.as_ref(),
+                Value::new_iutf8("testattr")
+            ),
             ("description", Value::new_utf8s("Test Attribute")),
             ("multivalue", Value::new_bool(false)),
             ("unique", Value::new_bool(false)),

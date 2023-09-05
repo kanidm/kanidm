@@ -419,7 +419,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 .get_accesscontrols()
                 .effective_permission_check(
                     ident,
-                    Some(btreeset![AttrString::from("sync_credential_portal")]),
+                    Some(btreeset![Attribute::SyncCredentialPortal.into()]),
                     &[entry],
                 )?;
 
@@ -607,7 +607,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
                 if ct >= max_ttl {
                     modlist.push_mod(Modify::Removed(
-                        AttrString::from("credential_update_intent_token"),
+                        Attribute::CredentialUpdateIntentToken.into(),
                         PartialValue::IntentToken(existing_intent_id.clone()),
                     ));
                 }
@@ -665,7 +665,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                     let mut modlist = ModifyList::new();
 
                     modlist.push_mod(Modify::Removed(
-                        AttrString::from("credential_update_intent_token"),
+                        Attribute::CredentialUpdateIntentToken.into(),
                         PartialValue::IntentToken(intent_id.clone()),
                     ));
 
@@ -779,11 +779,11 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         let mut modlist = ModifyList::new();
 
         modlist.push_mod(Modify::Removed(
-            AttrString::from("credential_update_intent_token"),
+            Attribute::CredentialUpdateIntentToken.into(),
             PartialValue::IntentToken(intent_id.clone()),
         ));
         modlist.push_mod(Modify::Present(
-            AttrString::from("credential_update_intent_token"),
+            Attribute::CredentialUpdateIntentToken.into(),
             Value::IntentToken(
                 intent_id.clone(),
                 IntentTokenState::InProgress {
@@ -949,11 +949,11 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             };
 
             modlist.push_mod(Modify::Removed(
-                AttrString::from("credential_update_intent_token"),
+                Attribute::CredentialUpdateIntentToken.into(),
                 PartialValue::IntentToken(intent_token_id.clone()),
             ));
             modlist.push_mod(Modify::Present(
-                AttrString::from("credential_update_intent_token"),
+                Attribute::CredentialUpdateIntentToken.into(),
                 Value::IntentToken(
                     intent_token_id.clone(),
                     IntentTokenState::Consumed { max_ttl },
@@ -1050,11 +1050,11 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             };
 
             modlist.push_mod(Modify::Removed(
-                AttrString::from("credential_update_intent_token"),
+                Attribute::CredentialUpdateIntentToken.into(),
                 PartialValue::IntentToken(intent_token_id.clone()),
             ));
             modlist.push_mod(Modify::Present(
-                AttrString::from("credential_update_intent_token"),
+                Attribute::CredentialUpdateIntentToken.into(),
                 Value::IntentToken(
                     intent_token_id.clone(),
                     IntentTokenState::Valid { max_ttl, perms },

@@ -512,7 +512,7 @@ mod tests {
             (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
             (Attribute::Name.as_ref(), Value::new_iname("testperson1")),
             (
-                "uuid",
+                Attribute::Uuid.as_ref(),
                 Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
             ),
             (
@@ -530,7 +530,7 @@ mod tests {
             (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
             (Attribute::Name.as_ref(), Value::new_iname("testperson2")),
             (
-                "uuid",
+                Attribute::Uuid.as_ref(),
                 Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63932"))
             ),
             (
@@ -550,7 +550,7 @@ mod tests {
 
         // Empty Modlist (filter is valid)
         let me_emp = ModifyEvent::new_internal_invalid(
-            filter!(f_pres(Attribute::Class.as_ref())),
+            filter!(f_pres(Attribute::Class)),
             ModifyList::new_list(vec![]),
         );
         assert!(server_txn.modify(&me_emp) == Err(OperationError::EmptyRequest));
@@ -580,7 +580,7 @@ mod tests {
         //         PartialValue::new_iname("Flarbalgarble")
         //     )),
         //     &ModifyList::new_list(vec![Modify::Present(
-        //         AttrString::from("description"),
+        //         Attribute::Description.into(),
         //         Value::from("anusaosu"),
         //     )]),
         // );
@@ -593,16 +593,16 @@ mod tests {
 
         // Mod is invalid to schema
         let me_inv_m = ModifyEvent::new_internal_invalid(
-            filter!(f_pres(Attribute::Class.as_ref())),
+            filter!(f_pres(Attribute::Class)),
             ModifyList::new_list(vec![Modify::Present(
-                AttrString::from("htnaonu"),
+                Attribute::NonExist.into(),
                 Value::from("anusaosu"),
             )]),
         );
         assert!(
             server_txn.modify(&me_inv_m)
                 == Err(OperationError::SchemaViolation(
-                    SchemaError::InvalidAttribute("htnaonu".to_string())
+                    SchemaError::InvalidAttribute(Attribute::NonExist.to_string())
                 ))
         );
 
@@ -737,7 +737,7 @@ mod tests {
             ModifyList::new_list(vec![
                 Modify::Present(Attribute::Class.into(), EntryClass::SystemInfo.to_value()),
                 // Modify::Present("domain".to_string(), Value::new_iutf8("domain.name")),
-                Modify::Present(AttrString::from("version"), Value::new_uint32(1)),
+                Modify::Present(Attribute::Version.into(), Value::new_uint32(1)),
             ]),
         );
         assert!(server_txn.modify(&me_sin).is_ok());

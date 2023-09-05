@@ -38,8 +38,7 @@ const FILTER_DEPTH_MAX: usize = 16;
 // This is &Value so we can lazy const then clone, but perhaps we can reconsider
 // later if this should just take Value.
 pub fn f_eq<'a>(a: Attribute, v: PartialValue) -> FC<'a> {
-    let a: &'static str = a.into();
-    FC::Eq(a, v)
+    FC::Eq(a.into(), v)
 }
 
 #[allow(dead_code)]
@@ -48,8 +47,8 @@ pub fn f_sub(a: &str, v: PartialValue) -> FC {
 }
 
 #[allow(dead_code)]
-pub fn f_pres(a: &str) -> FC {
-    FC::Pres(a)
+pub fn f_pres<'a>(a: Attribute) -> FC<'a> {
+    FC::Pres(a.into())
 }
 
 #[allow(dead_code)]
@@ -86,9 +85,9 @@ pub fn f_self<'a>() -> FC<'a> {
 pub fn f_id(id: &str) -> FC<'static> {
     let uf = Uuid::parse_str(id)
         .ok()
-        .map(|u| FC::Eq("uuid", PartialValue::Uuid(u)));
+        .map(|u| FC::Eq(Attribute::Uuid.as_ref(), PartialValue::Uuid(u)));
     let spnf = PartialValue::new_spn_s(id).map(|spn| FC::Eq("spn", spn));
-    let nf = FC::Eq("name", PartialValue::new_iname(id));
+    let nf = FC::Eq(Attribute::Name.as_ref(), PartialValue::new_iname(id));
     let f: Vec<_> = iter::once(uf)
         .chain(iter::once(spnf))
         .flatten()
@@ -99,8 +98,8 @@ pub fn f_id(id: &str) -> FC<'static> {
 
 #[allow(dead_code)]
 pub fn f_spn_name(id: &str) -> FC<'static> {
-    let spnf = PartialValue::new_spn_s(id).map(|spn| FC::Eq("spn", spn));
-    let nf = FC::Eq("name", PartialValue::new_iname(id));
+    let spnf = PartialValue::new_spn_s(id).map(|spn| FC::Eq(Attribute::Spn.as_ref(), spn));
+    let nf = FC::Eq(Attribute::Name.as_ref(), PartialValue::new_iname(id));
     let f: Vec<_> = iter::once(spnf).flatten().chain(iter::once(nf)).collect();
     FC::Or(f)
 }
@@ -1152,7 +1151,7 @@ impl FilterResolved {
                 // Since we have no index data, we manually configure a reasonable
                 // slope and indicate the presence of some expected basic
                 // indexes.
-                let idx = matches!(a.as_str(), "name" | "uuid");
+                let idx = matches!(a.as_str(), ATTR_NAME | ATTR_UUID);
                 let idx = NonZeroU8::new(idx as u8);
                 Some(FilterResolved::Eq(a, v, idx))
             }
@@ -1424,12 +1423,12 @@ mod tests {
                     EntryClass::TestClass.to_partialvalue()
                 )]),
                 f_sub(Attribute::Class.as_ref(), PartialValue::new_class("te")),
-                f_pres(Attribute::Class.as_ref()),
+                f_pres(Attribute::Class),
                 f_eq(Attribute::Class, EntryClass::TestClass.to_partialvalue())
             ]),
             f_and(vec![
                 f_eq(Attribute::Class, EntryClass::TestClass.to_partialvalue()),
-                f_pres(Attribute::Class.as_ref()),
+                f_pres(Attribute::Class),
                 f_sub(Attribute::Class.as_ref(), PartialValue::new_class("te")),
             ])
         );
@@ -1443,13 +1442,13 @@ mod tests {
                     f_eq(Attribute::Uid, PartialValue::new_class("bar")),
                 ]),
                 f_sub(Attribute::Class.as_ref(), PartialValue::new_class("te")),
-                f_pres(Attribute::Class.as_ref()),
+                f_pres(Attribute::Class),
                 f_eq(Attribute::Class, EntryClass::TestClass.to_partialvalue())
             ]),
             f_and(vec![
                 f_eq(Attribute::Class, PartialValue::new_class("foo")),
                 f_eq(Attribute::Class, EntryClass::TestClass.to_partialvalue()),
-                f_pres(Attribute::Class.as_ref()),
+                f_pres(Attribute::Class),
                 f_eq(Attribute::Uid, PartialValue::new_class("bar")),
                 f_sub(Attribute::Class.as_ref(), PartialValue::new_class("te")),
             ])
@@ -1458,7 +1457,7 @@ mod tests {
         filter_optimise_assert!(
             f_or(vec![
                 f_eq(Attribute::Class, EntryClass::TestClass.to_partialvalue()),
-                f_pres(Attribute::Class.as_ref()),
+                f_pres(Attribute::Class),
                 f_sub(Attribute::Class.as_ref(), PartialValue::new_class("te")),
                 f_or(vec![f_eq(
                     Attribute::Class,
@@ -1467,7 +1466,7 @@ mod tests {
             ]),
             f_or(vec![
                 f_sub(Attribute::Class.as_ref(), PartialValue::new_class("te")),
-                f_pres(Attribute::Class.as_ref()),
+                f_pres(Attribute::Class),
                 f_eq(Attribute::Class, EntryClass::TestClass.to_partialvalue())
             ])
         );
@@ -1497,17 +1496,17 @@ mod tests {
 
     #[test]
     fn test_filter_eq() {
-        let f_t1a = filter!(f_pres("userid"));
-        let f_t1b = filter!(f_pres("userid"));
-        let f_t1c = filter!(f_pres("zzzz"));
+        let f_t1a = filter!(f_pres(Attribute::UserId));
+        let f_t1b = filter!(f_pres(Attribute::UserId));
+        let f_t1c = filter!(f_pres(Attribute::NonExist));
 
         assert!(f_t1a == f_t1b);
         assert!(f_t1a != f_t1c);
         assert!(f_t1b != f_t1c);
 
-        let f_t2a = filter!(f_and!([f_pres("userid")]));
-        let f_t2b = filter!(f_and!([f_pres("userid")]));
-        let f_t2c = filter!(f_and!([f_pres("zzzz")]));
+        let f_t2a = filter!(f_and!([f_pres(Attribute::UserId)]));
+        let f_t2b = filter!(f_and!([f_pres(Attribute::UserId)]));
+        let f_t2c = filter!(f_and!([f_pres(Attribute::NonExist)]));
         assert!(f_t2a == f_t2b);
         assert!(f_t2a != f_t2c);
         assert!(f_t2b != f_t2c);
@@ -1521,8 +1520,8 @@ mod tests {
         // Test that we uphold the rules of partialOrd
         // Basic equality
         // Test the two major paths here (str vs list)
-        let f_t1a = filter_resolved!(f_pres("userid"));
-        let f_t1b = filter_resolved!(f_pres("userid"));
+        let f_t1a = filter_resolved!(f_pres(Attribute::UserId));
+        let f_t1b = filter_resolved!(f_pres(Attribute::UserId));
 
         assert_eq!(f_t1a.partial_cmp(&f_t1b), Some(Ordering::Equal));
         assert_eq!(f_t1b.partial_cmp(&f_t1a), Some(Ordering::Equal));
@@ -1551,16 +1550,16 @@ mod tests {
     fn test_filter_clone() {
         // Test that cloning filters yields the same result regardless of
         // complexity.
-        let f_t1a = filter_resolved!(f_pres("userid"));
+        let f_t1a = filter_resolved!(f_pres(Attribute::UserId));
         let f_t1b = f_t1a.clone();
-        let f_t1c = filter_resolved!(f_pres("zzzz"));
+        let f_t1c = filter_resolved!(f_pres(Attribute::NonExist));
 
         assert!(f_t1a == f_t1b);
         assert!(f_t1a != f_t1c);
 
-        let f_t2a = filter_resolved!(f_and!([f_pres("userid")]));
+        let f_t2a = filter_resolved!(f_and!([f_pres(Attribute::UserId)]));
         let f_t2b = f_t2a.clone();
-        let f_t2c = filter_resolved!(f_and!([f_pres("zzzz")]));
+        let f_t2c = filter_resolved!(f_and!([f_pres(Attribute::NonExist)]));
 
         assert!(f_t2a == f_t2b);
         assert!(f_t2a != f_t2c);

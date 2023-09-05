@@ -255,7 +255,9 @@ where
 {
     /// Get the uuid of this entry.
     pub(crate) fn get_uuid(&self) -> Option<Uuid> {
-        self.attrs.get("uuid").and_then(|vs| vs.to_uuid_single())
+        self.attrs
+            .get(Attribute::Uuid.as_ref())
+            .and_then(|vs| vs.to_uuid_single())
     }
 }
 
@@ -352,6 +354,7 @@ impl Entry<EntryInit, EntryNew> {
                 if vs.is_empty() {
                     None
                 } else {
+                    // TODO: this should be an "Attribute::from(k)"
                 let attr = AttrString::from(k.to_lowercase());
                 let vv: ValueSet = match attr.as_str() {
                     kanidm_proto::constants::ATTR_ATTRIBUTENAME | kanidm_proto::constants::ATTR_CLASSNAME | kanidm_proto::constants::ATTR_DOMAIN => {
@@ -618,6 +621,10 @@ impl Entry<EntryInit, EntryNew> {
     // event for the attribute.
     /// Add an attribute-value-assertion to this Entry.
     pub fn add_ava(&mut self, attr: &str, value: Value) {
+        // TODO: attr can be replaced with Attribute and this can go away
+        #[allow(clippy::panic)]
+        let attr =
+            Attribute::try_from(attr).unwrap_or_else(|_| panic!("Invalid attribute {}", attr));
         self.add_ava_int(attr, value);
     }
 
@@ -794,7 +801,7 @@ impl Entry<EntryIncremental, EntryNew> {
                         // We need to make a random uuid in the conflict gen process.
                         let new_uuid = Uuid::new_v4();
                         cnf_ent.purge_ava("uuid");
-                        cnf_ent.add_ava("uuid", Value::Uuid(new_uuid));
+                        cnf_ent.add_ava(Attribute::Uuid.as_ref(), Value::Uuid(new_uuid));
                         cnf_ent.add_ava(Attribute::Class.as_ref(), EntryClass::Recycled.into());
                         cnf_ent.add_ava(Attribute::Class.as_ref(), EntryClass::Conflict.into());
 
@@ -1075,9 +1082,9 @@ impl Entry<EntryIncremental, EntryCommitted> {
 
         if let Err(e) = ne.validate(schema) {
             warn!(uuid = ?self.valid.uuid, err = ?e, "Entry failed schema check, moving to a conflict state");
-            ne.add_ava_int(Attribute::Class.as_ref(), EntryClass::Recycled.into());
-            ne.add_ava_int(Attribute::Class.as_ref(), EntryClass::Conflict.into());
-            ne.add_ava_int(Attribute::SourceUuid.as_ref(), Value::Uuid(self.valid.uuid));
+            ne.add_ava_int(Attribute::Class, EntryClass::Recycled.into());
+            ne.add_ava_int(Attribute::Class, EntryClass::Conflict.into());
+            ne.add_ava_int(Attribute::SourceUuid, Value::Uuid(self.valid.uuid));
         }
         ne
     }
@@ -1330,7 +1337,7 @@ impl Entry<EntrySealed, EntryCommitted> {
     /// Insert a claim to this entry. This claim can NOT be persisted to disk, this is only
     /// used during a single Event session.
     pub fn insert_claim(&mut self, value: &str) {
-        self.add_ava_int("claim", Value::new_iutf8(value));
+        self.add_ava_int(Attribute::Claim, Value::new_iutf8(value));
     }
 
     pub fn compare(&self, rhs: &Entry<EntrySealed, EntryCommitted>) -> bool {
@@ -1370,7 +1377,11 @@ impl Entry<EntrySealed, EntryCommitted> {
         // * name
         // * gidnumber
 
-        let cands = ["spn", "name", "gidnumber"];
+        let cands = [
+            Attribute::Spn.as_ref(),
+            Attribute::Name.as_ref(),
+            Attribute::GidNumber.as_ref(),
+        ];
         cands
             .iter()
             .filter_map(|c| self.attrs.get(*c).map(|vs| vs.to_proto_string_clone_iter()))
@@ -1394,7 +1405,11 @@ impl Entry<EntrySealed, EntryCommitted> {
         self.attrs
             .get("spn")
             .and_then(|vs| vs.to_value_single())
-            .or_else(|| self.attrs.get("name").and_then(|vs| vs.to_value_single()))
+            .or_else(|| {
+                self.attrs
+                    .get(Attribute::Name.as_ref())
+                    .and_then(|vs| vs.to_value_single())
+            })
             .unwrap_or_else(|| Value::Uuid(self.get_uuid()))
     }
 
@@ -1406,7 +1421,7 @@ impl Entry<EntrySealed, EntryCommitted> {
             .and_then(|vs| vs.to_proto_string_single().map(|v| format!("spn={v}")))
             .or_else(|| {
                 self.attrs
-                    .get("name")
+                    .get(Attribute::Name.as_ref())
                     .and_then(|vs| vs.to_proto_string_single().map(|v| format!("name={v}")))
             })
             .unwrap_or_else(|| format!("uuid={}", self.get_uuid().as_hyphenated()))
@@ -2345,8 +2360,8 @@ impl<VALID, STATE> Entry<VALID, STATE> {
     /// If the value already existed, or was unable to be added, false is returned. Alternately,
     /// you can think of this boolean as "if a write occurred to the structure", true indicating that
     /// a change occurred.
-    fn add_ava_int(&mut self, attr: &str, value: Value) -> bool {
-        if let Some(vs) = self.attrs.get_mut(attr) {
+    fn add_ava_int(&mut self, attr: Attribute, value: Value) -> bool {
+        if let Some(vs) = self.attrs.get_mut(attr.as_ref()) {
             let r = vs.insert_checked(value);
             debug_assert!(r.is_ok());
             // Default to the value not being present if wrong typed.
@@ -2355,7 +2370,7 @@ impl<VALID, STATE> Entry<VALID, STATE> {
             #[allow(clippy::expect_used)]
             let vs = valueset::from_value_iter(std::iter::once(value))
                 .expect("Unable to fail - non-zero iter, and single value type!");
-            self.attrs.insert(AttrString::from(attr), vs);
+            self.attrs.insert(attr.into(), vs);
             // The attribute did not exist before.
             true
         }
@@ -2393,10 +2408,18 @@ impl<VALID, STATE> Entry<VALID, STATE> {
 
     pub(crate) fn get_display_id(&self) -> String {
         self.attrs
-            .get("spn")
+            .get(Attribute::Spn.as_ref())
             .and_then(|vs| vs.to_value_single())
-            .or_else(|| self.attrs.get("name").and_then(|vs| vs.to_value_single()))
-            .or_else(|| self.attrs.get("uuid").and_then(|vs| vs.to_value_single()))
+            .or_else(|| {
+                self.attrs
+                    .get(Attribute::Name.as_ref())
+                    .and_then(|vs| vs.to_value_single())
+            })
+            .or_else(|| {
+                self.attrs
+                    .get(Attribute::Uuid.as_ref())
+                    .and_then(|vs| vs.to_value_single())
+            })
             .map(|value| value.to_proto_string_clone())
             .unwrap_or_else(|| "no entry id available".to_string())
     }
@@ -2922,14 +2945,25 @@ where
     // we need this to be *state* based where we assert presence.
     pub fn add_ava(&mut self, attr: &str, value: Value) {
         self.valid.ecstate.change_ava(&self.valid.cid, attr);
+        // TODO: attr can be replaced with Attribute and this can go away
+        #[allow(clippy::panic)]
+        let attr =
+            Attribute::try_from(attr).unwrap_or_else(|_| panic!("Invalid attribute {}", attr));
         self.add_ava_int(attr, value);
     }
 
     pub fn add_ava_if_not_exist(&mut self, attr: &str, value: Value) {
         // This returns true if the value WAS changed! See add_ava_int.
+
+        // TODO: attr can be replaced with Attribute and this can go away
+        #[allow(clippy::panic)]
+        let attr =
+            Attribute::try_from(attr).unwrap_or_else(|_| panic!("Invalid attribute {}", attr));
         if self.add_ava_int(attr, value) {
             // In this case, we ONLY update the changestate if the value was already present!
-            self.valid.ecstate.change_ava(&self.valid.cid, attr);
+            self.valid
+                .ecstate
+                .change_ava(&self.valid.cid, attr.as_ref());
         }
     }
 
@@ -3095,18 +3129,18 @@ impl From<&SchemaAttribute> for Entry<EntryInit, EntryNew> {
         // Build the Map of the attributes relevant
         // let mut attrs: Map<AttrString, Set<Value>> = Map::with_capacity(8);
         let mut attrs: Map<AttrString, ValueSet> = Map::new();
-        attrs.insert(AttrString::from("attributename"), name_v);
-        attrs.insert(AttrString::from(Attribute::Description.as_ref()), desc_v);
+        attrs.insert(Attribute::AttributeName.into(), name_v);
+        attrs.insert(Attribute::Description.into(), desc_v);
         attrs.insert(Attribute::Uuid.into(), uuid_v);
-        attrs.insert(AttrString::from("multivalue"), multivalue_v);
-        attrs.insert(AttrString::from("phantom"), phantom_v);
-        attrs.insert(AttrString::from("sync_allowed"), sync_allowed_v);
-        attrs.insert(AttrString::from("replicated"), replicated_v);
-        attrs.insert(AttrString::from("unique"), unique_v);
+        attrs.insert(Attribute::MultiValue.into(), multivalue_v);
+        attrs.insert(Attribute::Phantom.into(), phantom_v);
+        attrs.insert(Attribute::SyncAllowed.into(), sync_allowed_v);
+        attrs.insert(Attribute::Replicated.into(), replicated_v);
+        attrs.insert(Attribute::Unique.into(), unique_v);
         if let Some(vs) = index_v {
-            attrs.insert(AttrString::from("index"), vs);
+            attrs.insert(Attribute::Index.into(), vs);
         }
-        attrs.insert(AttrString::from("syntax"), syntax_v);
+        attrs.insert(Attribute::Syntax.into(), syntax_v);
         attrs.insert(
             Attribute::Class.into(),
             vs_iutf8!["object", "system", "attributetype"],
@@ -3131,24 +3165,28 @@ impl From<&SchemaClass> for Entry<EntryInit, EntryNew> {
 
         // let mut attrs: Map<AttrString, Set<Value>> = Map::with_capacity(8);
         let mut attrs: Map<AttrString, ValueSet> = Map::new();
-        attrs.insert(AttrString::from("classname"), name_v);
-        attrs.insert(AttrString::from(Attribute::Description.as_ref()), desc_v);
-        attrs.insert(AttrString::from("sync_allowed"), sync_allowed_v);
+        attrs.insert(Attribute::ClassName.into(), name_v);
+        attrs.insert(Attribute::Description.into(), desc_v);
+        attrs.insert(Attribute::SyncAllowed.into(), sync_allowed_v);
         attrs.insert(Attribute::Uuid.into(), uuid_v);
         attrs.insert(
             Attribute::Class.into(),
-            vs_iutf8!["object", "system", "classtype"],
+            vs_iutf8![
+                EntryClass::Object.into(),
+                EntryClass::System.into(),
+                EntryClass::ClassType.into()
+            ],
         );
 
         let vs_systemmay = ValueSetIutf8::from_iter(s.systemmay.iter().map(|sm| sm.as_str()));
         if let Some(vs) = vs_systemmay {
-            attrs.insert(AttrString::from("systemmay"), vs);
+            attrs.insert(Attribute::SystemMay.into(), vs);
         }
 
         let vs_systemmust = ValueSetIutf8::from_iter(s.systemmust.iter().map(|sm| sm.as_str()));
 
         if let Some(vs) = vs_systemmust {
-            attrs.insert(AttrString::from("systemmust"), vs);
+            attrs.insert(Attribute::SystemMust.into(), vs);
         }
 
         Entry {
@@ -3165,7 +3203,6 @@ mod tests {
     use std::collections::BTreeSet as Set;
 
     use hashbrown::HashMap;
-    use smartstring::alias::String as AttrString;
 
     use crate::be::{IdxKey, IdxSlope};
     use crate::entry::{Entry, EntryInit, EntryInvalid, EntryNew};
@@ -3176,7 +3213,7 @@ mod tests {
     fn test_entry_basic() {
         let mut e: Entry<EntryInit, EntryNew> = Entry::new();
 
-        e.add_ava("userid", Value::from("william"));
+        e.add_ava(Attribute::UserId.as_ref(), Value::from("william"));
     }
 
     #[test]
@@ -3256,19 +3293,19 @@ mod tests {
         let pv10 = PartialValue::new_uint32(10);
         let pv15 = PartialValue::new_uint32(15);
 
-        e1.add_ava("a", Value::new_uint32(10));
+        e1.add_ava("testattr", Value::new_uint32(10));
 
-        assert!(!e1.attribute_lessthan("a", &pv2));
-        assert!(!e1.attribute_lessthan("a", &pv8));
-        assert!(!e1.attribute_lessthan("a", &pv10));
-        assert!(e1.attribute_lessthan("a", &pv15));
+        assert!(!e1.attribute_lessthan("testattr", &pv2));
+        assert!(!e1.attribute_lessthan("testattr", &pv8));
+        assert!(!e1.attribute_lessthan("testattr", &pv10));
+        assert!(e1.attribute_lessthan("testattr", &pv15));
 
-        e1.add_ava("a", Value::new_uint32(8));
+        e1.add_ava("testattr", Value::new_uint32(8));
 
-        assert!(!e1.attribute_lessthan("a", &pv2));
-        assert!(!e1.attribute_lessthan("a", &pv8));
-        assert!(e1.attribute_lessthan("a", &pv10));
-        assert!(e1.attribute_lessthan("a", &pv15));
+        assert!(!e1.attribute_lessthan("testattr", &pv2));
+        assert!(!e1.attribute_lessthan("testattr", &pv8));
+        assert!(e1.attribute_lessthan("testattr", &pv10));
+        assert!(e1.attribute_lessthan("testattr", &pv15));
     }
 
     #[test]
@@ -3374,7 +3411,7 @@ mod tests {
         );
         idxmeta.insert(
             IdxKey {
-                attr: AttrString::from("extra"),
+                attr: Attribute::Extra.into(),
                 itype: IndexType::Equality,
             },
             IdxSlope::MAX,
@@ -3438,7 +3475,7 @@ mod tests {
         assert!(
             add_a_r[0]
                 == Ok((
-                    &AttrString::from("extra"),
+                    &Attribute::Extra.into(),
                     IndexType::Equality,
                     "test".to_string()
                 ))
@@ -3449,7 +3486,7 @@ mod tests {
         assert!(
             del_a_r[0]
                 == Err((
-                    &AttrString::from("extra"),
+                    &Attribute::Extra.into(),
                     IndexType::Equality,
                     "test".to_string()
                 ))
@@ -3515,11 +3552,14 @@ mod tests {
         {
             let mut e: Entry<EntryInit, EntryNew> = Entry::new();
             e.add_ava(Attribute::Class.as_ref(), EntryClass::Person.to_value());
-            e.add_ava("gidnumber", Value::new_uint32(1300));
-            e.add_ava("name", Value::new_iname("testperson"));
-            e.add_ava("spn", Value::new_spn_str("testperson", "example.com"));
+            e.add_ava(Attribute::GidNumber.as_ref(), Value::new_uint32(1300));
+            e.add_ava(Attribute::Name.as_ref(), Value::new_iname("testperson"));
             e.add_ava(
-                "uuid",
+                Attribute::Spn.as_ref(),
+                Value::new_spn_str("testperson", "example.com"),
+            );
+            e.add_ava(
+                Attribute::Uuid.as_ref(),
                 Value::Uuid(uuid!("9fec0398-c46c-4df4-9df5-b0016f7d563f")),
             );
             let e = e.into_sealed_committed();
@@ -3561,13 +3601,19 @@ mod tests {
         {
             let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
             e1.add_ava(Attribute::Class.as_ref(), EntryClass::Person.to_value());
-            e1.add_ava("spn", Value::new_spn_str("testperson", "example.com"));
+            e1.add_ava(
+                Attribute::Spn.as_ref(),
+                Value::new_spn_str("testperson", "example.com"),
+            );
             let e1 = e1.into_sealed_committed();
 
             let mut e2: Entry<EntryInit, EntryNew> = Entry::new();
             e2.add_ava(Attribute::Class.as_ref(), EntryClass::Person.to_value());
-            e2.add_ava("name", Value::new_iname("testperson"));
-            e2.add_ava("spn", Value::new_spn_str("testperson", "example.com"));
+            e2.add_ava(Attribute::Name.as_ref(), Value::new_iname("testperson"));
+            e2.add_ava(
+                Attribute::Spn.as_ref(),
+                Value::new_spn_str("testperson", "example.com"),
+            );
             let e2 = e2.into_sealed_committed();
 
             // One attr added
@@ -3587,12 +3633,18 @@ mod tests {
         {
             let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
             e1.add_ava(Attribute::Class.as_ref(), EntryClass::Person.to_value());
-            e1.add_ava("spn", Value::new_spn_str("testperson", "example.com"));
+            e1.add_ava(
+                Attribute::Spn.as_ref(),
+                Value::new_spn_str("testperson", "example.com"),
+            );
             let e1 = e1.into_sealed_committed();
 
             let mut e2: Entry<EntryInit, EntryNew> = Entry::new();
             e2.add_ava(Attribute::Class.as_ref(), EntryClass::Person.to_value());
-            e2.add_ava("spn", Value::new_spn_str("renameperson", "example.com"));
+            e2.add_ava(
+                Attribute::Spn.as_ref(),
+                Value::new_spn_str("renameperson", "example.com"),
+            );
             let e2 = e2.into_sealed_committed();
 
             assert!(
@@ -3610,11 +3662,17 @@ mod tests {
         assert!(Entry::idx_uuid2spn_diff(None, None).is_none());
 
         let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
-        e1.add_ava("spn", Value::new_spn_str("testperson", "example.com"));
+        e1.add_ava(
+            Attribute::Spn.as_ref(),
+            Value::new_spn_str("testperson", "example.com"),
+        );
         let e1 = e1.into_sealed_committed();
 
         let mut e2: Entry<EntryInit, EntryNew> = Entry::new();
-        e2.add_ava("spn", Value::new_spn_str("renameperson", "example.com"));
+        e2.add_ava(
+            Attribute::Spn.as_ref(),
+            Value::new_spn_str("renameperson", "example.com"),
+        );
         let e2 = e2.into_sealed_committed();
 
         assert!(

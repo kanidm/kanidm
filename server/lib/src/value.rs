@@ -561,7 +561,7 @@ impl PartialValue {
 
     pub fn new_spn_s(s: &str) -> Option<Self> {
         SPN_RE.captures(s).and_then(|caps| {
-            let name = match caps.name("name") {
+            let name = match caps.name(Attribute::Name.as_ref()) {
                 Some(v) => v.as_str().to_string(),
                 None => return None,
             };
@@ -1222,7 +1222,7 @@ impl Value {
 
     pub fn new_spn_parse(s: &str) -> Option<Self> {
         SPN_RE.captures(s).and_then(|caps| {
-            let name = match caps.name("name") {
+            let name = match caps.name(Attribute::Name.as_ref()) {
                 Some(v) => v.as_str().to_string(),
                 None => return None,
             };

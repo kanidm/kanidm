@@ -305,7 +305,7 @@ impl Plugin for MemberOf {
     fn verify(qs: &mut QueryServerReadTransaction) -> Vec<Result<(), ConsistencyError>> {
         let mut r = Vec::new();
 
-        let filt_in = filter!(f_pres(Attribute::Class.as_ref()));
+        let filt_in = filter!(f_pres(Attribute::Class));
 
         let all_cand = match qs
             .internal_search(filt_in)
@@ -797,7 +797,7 @@ mod tests {
                 PartialValue::new_uuid_s(UUID_A).unwrap()
             )),
             ModifyList::new_list(vec![Modify::Present(
-                AttrString::from("member"),
+                Attribute::Member.into(),
                 Value::new_refer_s(UUID_B).unwrap()
             )]),
             None,
@@ -836,7 +836,7 @@ mod tests {
                 PartialValue::new_uuid_s(UUID_A).unwrap()
             )),
             ModifyList::new_list(vec![Modify::Present(
-                AttrString::from("member"),
+                Attribute::Member.into(),
                 Value::new_refer_s(UUID_B).unwrap()
             )]),
             None,
@@ -893,7 +893,7 @@ mod tests {
                 PartialValue::new_uuid_s(UUID_B).unwrap()
             )),
             ModifyList::new_list(vec![Modify::Present(
-                AttrString::from("member"),
+                Attribute::Member.into(),
                 Value::new_refer_s(UUID_C).unwrap()
             )]),
             None,
@@ -953,7 +953,7 @@ mod tests {
                 PartialValue::new_uuid_s(UUID_C).unwrap()
             )),
             ModifyList::new_list(vec![Modify::Present(
-                AttrString::from("member"),
+                Attribute::Member.into(),
                 Value::new_refer_s(UUID_A).unwrap()
             )]),
             None,
@@ -1020,7 +1020,7 @@ mod tests {
                 f_eq(Attribute::Uuid, PartialValue::new_uuid_s(UUID_D).unwrap()),
             ])),
             ModifyList::new_list(vec![Modify::Present(
-                AttrString::from("member"),
+                Attribute::Member.into(),
                 Value::new_refer_s(UUID_A).unwrap()
             )]),
             None,
@@ -1092,7 +1092,7 @@ mod tests {
                 PartialValue::new_uuid_s(UUID_A).unwrap()
             )),
             ModifyList::new_list(vec![Modify::Removed(
-                AttrString::from("member"),
+                Attribute::Member.into(),
                 PartialValue::new_refer_s(UUID_B).unwrap()
             )]),
             None,
@@ -1134,7 +1134,7 @@ mod tests {
                 PartialValue::new_uuid_s(UUID_A).unwrap()
             )),
             ModifyList::new_list(vec![Modify::Removed(
-                AttrString::from("member"),
+                Attribute::Member.into(),
                 PartialValue::new_refer_s(UUID_B).unwrap()
             )]),
             None,
@@ -1195,7 +1195,7 @@ mod tests {
                 PartialValue::new_uuid_s(UUID_B).unwrap()
             )),
             ModifyList::new_list(vec![Modify::Removed(
-                AttrString::from("member"),
+                Attribute::Member.into(),
                 PartialValue::new_refer_s(UUID_C).unwrap()
             )]),
             None,
@@ -1266,7 +1266,7 @@ mod tests {
                 PartialValue::new_uuid_s(UUID_C).unwrap()
             )),
             ModifyList::new_list(vec![Modify::Removed(
-                AttrString::from("member"),
+                Attribute::Member.into(),
                 PartialValue::new_refer_s(UUID_A).unwrap()
             )]),
             None,
@@ -1356,11 +1356,11 @@ mod tests {
             )),
             ModifyList::new_list(vec![
                 Modify::Removed(
-                    AttrString::from("member"),
+                    Attribute::Member.into(),
                     PartialValue::new_refer_s(UUID_A).unwrap()
                 ),
                 Modify::Removed(
-                    AttrString::from("member"),
+                    Attribute::Member.into(),
                     PartialValue::new_refer_s(UUID_D).unwrap()
                 ),
             ]),

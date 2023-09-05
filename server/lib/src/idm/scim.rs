@@ -161,7 +161,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         });
 
         let modlist = ModifyList::new_list(vec![Modify::Present(
-            AttrString::from("sync_token_session"),
+            Attribute::SyncTokenSession.into(),
             session,
         )]);
 
@@ -199,7 +199,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         _ct: Duration,
     ) -> Result<(), OperationError> {
         let modlist =
-            ModifyList::new_list(vec![Modify::Purged(AttrString::from("sync_token_session"))]);
+            ModifyList::new_list(vec![Modify::Purged(Attribute::SyncTokenSession.into())]);
 
         self.qs_write
             .impersonate_modify(
@@ -894,9 +894,9 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
                     let secret = complex
                         .attrs
-                        .get("secret")
+                        .get(SCIM_SECRET)
                         .ok_or_else(|| {
-                            error!("Invalid scim complex attr - missing required key secret");
+                            error!("Invalid SCIM complex attr - missing required key secret");
                             OperationError::InvalidAttribute(format!(
                                 "missing required key secret - {scim_attr_name}"
                             ))
@@ -920,7 +920,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                             }
                         })?;
 
-                    let algo = complex.attrs.get("algo")
+                    let algo = complex.attrs.get(SCIM_ALGO)
                         .ok_or_else(|| {
                             error!("Invalid scim complex attr - missing required key algo");
                             OperationError::InvalidAttribute(format!(
@@ -951,7 +951,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                             }
                         })?;
 
-                    let step = complex.attrs.get("step").ok_or_else(|| {
+                    let step = complex.attrs.get(SCIM_STEP).ok_or_else(|| {
                         error!("Invalid scim complex attr - missing required key step");
                         OperationError::InvalidAttribute(format!(
                             "missing required key step - {scim_attr_name}"
@@ -978,7 +978,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
                     let digits = complex
                         .attrs
-                        .get("digits")
+                        .get(SCIM_DIGITS)
                         .ok_or_else(|| {
                             error!("Invalid scim complex attr - missing required key digits");
                             OperationError::InvalidAttribute(format!(
@@ -1627,7 +1627,7 @@ mod tests {
                 Attribute::Name,
                 PartialValue::new_iname("test_scim_sync")
             )),
-            ModifyList::new_list(vec![Modify::Purged(AttrString::from("sync_token_session"))]),
+            ModifyList::new_list(vec![Modify::Purged(Attribute::SyncTokenSession.into())]),
         );
         assert!(idms_prox_write.qs_write.modify(&me_inv_m).is_ok());
         assert!(idms_prox_write.commit().is_ok());

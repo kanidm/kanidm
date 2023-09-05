@@ -154,7 +154,7 @@ async fn test_repl_refresh_basic(server_a: &QueryServer, server_b: &QueryServer)
     // Now assert everything else in the db matches.
 
     let entries_a = server_a_txn
-        .internal_search(filter_all!(f_pres(Attribute::Class.as_ref())))
+        .internal_search(filter_all!(f_pres(Attribute::Class)))
         .map(|ents| {
             ents.into_iter()
                 .map(|e| (e.get_uuid(), e))
@@ -163,7 +163,7 @@ async fn test_repl_refresh_basic(server_a: &QueryServer, server_b: &QueryServer)
         .expect("Failed to access all entries");
 
     let entries_b = server_a_txn
-        .internal_search(filter_all!(f_pres(Attribute::Class.as_ref())))
+        .internal_search(filter_all!(f_pres(Attribute::Class)))
         .map(|ents| {
             ents.into_iter()
                 .map(|e| (e.get_uuid(), e))

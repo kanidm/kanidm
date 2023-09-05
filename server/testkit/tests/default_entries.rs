@@ -6,6 +6,7 @@ use kanidm_proto::constants::{
     APPLICATION_JSON, ATTR_ACP_RECEIVER_GROUP, ATTR_ACP_TARGET_SCOPE, ATTR_DESCRIPTION,
     ATTR_LDAP_SSH_PUBLICKEY, ATTR_NAME,
 };
+use kanidmd_lib::prelude::Attribute;
 use kanidmd_testkit::*;
 use reqwest::header::CONTENT_TYPE;
 
@@ -270,74 +271,89 @@ async fn test_default_entries_rbac_admins_schema_entries(rsclient: KanidmClient)
     let classtype_entries = rsclient.idm_schema_classtype_list().await.unwrap();
     let classnames: HashSet<String> = classtype_entries
         .iter()
-        .map(|entry| entry.attrs.get("classname").unwrap().first().unwrap())
+        .map(|entry| {
+            entry
+                .attrs
+                .get(Attribute::ClassName.as_ref())
+                .unwrap()
+                .first()
+                .unwrap()
+        })
         .cloned()
         .collect();
     println!("{:?}", classnames);
 
     assert!(default_classnames.is_subset(&classnames));
 
+    // TODO: this could probably just iterate on the enum?
     let default_attributenames: HashSet<String> = [
-        "acp_create_attr",
-        "acp_create_class",
-        "acp_enable",
-        "acp_modify_class",
-        "acp_modify_presentattr",
-        "acp_modify_removedattr",
-        "acp_receiver_group",
-        "acp_search_attr",
-        "acp_targetscope",
-        "attributename",
-        "claim",
-        "class",
-        "classname",
-        ATTR_DESCRIPTION,
-        "directmemberof",
-        "domain",
-        "index",
-        "last_modified_cid",
-        "may",
-        "member",
-        "memberof",
-        "multivalue",
-        "must",
-        ATTR_NAME,
-        "password_import",
-        "phantom",
-        "spn",
-        "syntax",
-        "systemmay",
-        "systemmust",
-        "unique",
-        "uuid",
-        "version",
-        "displayname",
-        "legalname",
-        "mail",
-        ATTR_LDAP_SSH_PUBLICKEY,
-        "primary_credential",
-        "radius_secret",
-        "domain_name",
-        "domain_display_name",
-        "domain_uuid",
-        "domain_ssid",
-        "gidnumber",
-        "badlist_password",
-        "authsession_expiry",
-        "privilege_expiry",
-        "loginshell",
-        "unix_password",
-        "nsuniqueid",
+        Attribute::AcpCreateAttr,
+        Attribute::AcpCreateClass,
+        Attribute::AcpEnable,
+        Attribute::AcpModifyClass,
+        Attribute::AcpModifyPresentAttr,
+        Attribute::AcpModifyRemovedAttr,
+        Attribute::AcpReceiverGroup,
+        Attribute::AcpSearchAttr,
+        Attribute::AcpTargetScope,
+        Attribute::AttributeName,
+        Attribute::Claim,
+        Attribute::Class,
+        Attribute::ClassName,
+        Attribute::Description,
+        Attribute::DirectMemberOf,
+        Attribute::Domain,
+        Attribute::Index,
+        Attribute::LastModifiedCid,
+        Attribute::May,
+        Attribute::Member,
+        Attribute::MemberOf,
+        Attribute::MultiValue,
+        Attribute::Must,
+        Attribute::Name,
+        Attribute::PasswordImport,
+        Attribute::Phantom,
+        Attribute::Spn,
+        Attribute::Syntax,
+        Attribute::SystemMay,
+        Attribute::SystemMust,
+        Attribute::Unique,
+        Attribute::Uuid,
+        Attribute::Version,
+        Attribute::DisplayName,
+        Attribute::LegalName,
+        Attribute::Mail,
+        Attribute::LdapSshPublicKey,
+        Attribute::PrimaryCredential,
+        Attribute::RadiusSecret,
+        Attribute::DomainName,
+        Attribute::DomainDisplayName,
+        Attribute::DomainUuid,
+        Attribute::DomainSsid,
+        Attribute::GidNumber,
+        Attribute::BadlistPassword,
+        Attribute::AuthSessionExpiry,
+        Attribute::PrivilegeExpiry,
+        Attribute::LoginShell,
+        Attribute::UnixPassword,
+        Attribute::NsUniqueId,
     ]
     .iter()
-    .map(ToString::to_string)
+    .map(|a| a.as_ref().to_string())
     .collect();
 
     let attributename_entries = rsclient.idm_schema_attributetype_list().await.unwrap();
     println!("{:?}", attributename_entries);
     let attributenames = attributename_entries
         .iter()
-        .map(|entry| entry.attrs.get("attributename").unwrap().first().unwrap())
+        .map(|entry| {
+            entry
+                .attrs
+                .get(Attribute::AttributeName.as_ref())
+                .unwrap()
+                .first()
+                .unwrap()
+        })
         .cloned()
         .collect();
 

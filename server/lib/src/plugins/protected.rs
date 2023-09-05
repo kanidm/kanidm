@@ -339,7 +339,7 @@ mod tests {
             ),
             (
                 Attribute::AcpSearchAttr.as_ref(),
-                Value::new_iutf8("attributename")
+                Value::new_iutf8(Attribute::AttributeName.as_ref())
             ),
             (
                 Attribute::AcpModifyClass.as_ref(),

@@ -47,11 +47,14 @@ async fn dont_trust_xff_dont_send_header(rsclient: KanidmClient) {
         .send()
         .await
         .unwrap();
-    let ip_res: Vec<IpAddr> = res
-        .json()
-        .await
-        .expect("Failed to parse response as Vec<IpAddr>");
-
+    let body = res.bytes().await.unwrap();
+    let ip_res: Vec<IpAddr> = serde_json::from_slice(&body).unwrap_or_else(|op| {
+        panic!(
+            "Failed to parse response as Vec<IpAddr>: {:?} body: {:?}",
+            op, body,
+        )
+    });
+    eprintln!("Body: {:?}", body);
     assert_eq!(ip_res[0], DEFAULT_IP_ADDRESS);
 }
 

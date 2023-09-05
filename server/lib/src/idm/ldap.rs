@@ -635,7 +635,7 @@ mod tests {
             filter!(f_eq(Attribute::Name, PartialValue::new_iname("admin"))),
             ModifyList::new_list(vec![
                 Modify::Present(Attribute::Class.into(), EntryClass::PosixAccount.into()),
-                Modify::Present(AttrString::from("gidnumber"), Value::new_uint32(2001)),
+                Modify::Present(Attribute::GidNumber.into(), Value::new_uint32(2001)),
             ]),
         );
         assert!(idms_prox_write.qs_write.modify(&me_posix).is_ok());
@@ -1057,7 +1057,7 @@ mod tests {
                     PartialValue::new_iname("idm_people_read_priv")
                 )),
                 ModifyList::new_list(vec![Modify::Present(
-                    AttrString::from("member"),
+                    Attribute::Member.into(),
                     Value::Refer(sa_uuid),
                 )]),
             );

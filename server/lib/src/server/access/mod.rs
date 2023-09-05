@@ -1627,7 +1627,7 @@ mod tests {
     #[test]
     fn test_access_internal_search() {
         // Test that an internal search bypasses ACS
-        let se = SearchEvent::new_internal_invalid(filter!(f_pres(Attribute::Class.as_ref())));
+        let se = SearchEvent::new_internal_invalid(filter!(f_pres(Attribute::Class)));
 
         let expect = vec![E_TEST_ACCOUNT_1.clone()];
         let entries = vec![E_TEST_ACCOUNT_1.clone()];
@@ -1639,8 +1639,8 @@ mod tests {
                 "test_acp",
                 Uuid::new_v4(),
                 UUID_TEST_GROUP_1,
-                filter_valid!(f_pres("nomatchy")), // apply to none - ie no allowed results
-                "name",                            // allow to this attr, but we don't eval this.
+                filter_valid!(f_pres(Attribute::NonExist)), // apply to none - ie no allowed results
+                "name", // allow to this attr, but we don't eval this.
             )],
             entries,
             expect
@@ -1657,13 +1657,13 @@ mod tests {
 
         let se_a = SearchEvent::new_impersonate_entry(
             E_TEST_ACCOUNT_1.clone(),
-            filter_all!(f_pres("name")),
+            filter_all!(f_pres(Attribute::Name)),
         );
         let ex_a = vec![Arc::new(ev1)];
 
         let se_b = SearchEvent::new_impersonate_entry(
             E_TEST_ACCOUNT_2.clone(),
-            filter_all!(f_pres("name")),
+            filter_all!(f_pres(Attribute::Name)),
         );
         let ex_b = vec![];
 
@@ -1701,12 +1701,12 @@ mod tests {
 
         let se_ro = SearchEvent::new_impersonate_identity(
             Identity::from_impersonate_entry_readonly(E_TEST_ACCOUNT_1.clone()),
-            filter_all!(f_pres("name")),
+            filter_all!(f_pres(Attribute::Name)),
         );
 
         let se_rw = SearchEvent::new_impersonate_identity(
             Identity::from_impersonate_entry_readwrite(E_TEST_ACCOUNT_1.clone()),
-            filter_all!(f_pres("name")),
+            filter_all!(f_pres(Attribute::Name)),
         );
 
         let acp = AccessControlSearch::from_raw(
@@ -1744,7 +1744,7 @@ mod tests {
 
         let se_anon_ro = SearchEvent::new_impersonate_identity(
             Identity::from_impersonate_entry_readonly(E_TEST_ACCOUNT_1.clone()),
-            filter_all!(f_pres("name")),
+            filter_all!(f_pres(Attribute::Name)),
         );
 
         let acp = AccessControlSearch::from_raw(
@@ -1829,7 +1829,7 @@ mod tests {
             )),
         );
         // the requested attrs here.
-        se_anon.attrs = Some(btreeset![AttrString::from("name")]);
+        se_anon.attrs = Some(btreeset![Attribute::Name.into()]);
 
         let acp = AccessControlSearch::from_raw(
             "test_acp",
@@ -2122,15 +2122,18 @@ mod tests {
     fn test_access_enforce_create() {
         let ev1 = entry_init!(
             (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
-            ("name", Value::new_iname("testperson1")),
+            (Attribute::Name.as_ref(), Value::new_iname("testperson1")),
             (Attribute::Uuid.as_ref(), Value::Uuid(UUID_TEST_ACCOUNT_1))
         );
         let r1_set = vec![ev1];
 
         let ev2 = entry_init!(
             (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
-            ("notallowed", Value::new_class("notallowed")),
-            ("name", Value::new_iname("testperson1")),
+            (
+                Attribute::TestNotAllowed.as_ref(),
+                Value::new_class("notallowed")
+            ),
+            (Attribute::Name.as_ref(), Value::new_iname("testperson1")),
             (Attribute::Uuid.as_ref(), Value::Uuid(UUID_TEST_ACCOUNT_1))
         );
 
@@ -2138,8 +2141,8 @@ mod tests {
 
         let ev3 = entry_init!(
             (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
-            ("class", Value::new_class("notallowed")),
-            ("name", Value::new_iname("testperson1")),
+            (Attribute::Class.as_ref(), Value::new_class("notallowed")),
+            (Attribute::Name.as_ref(), Value::new_iname("testperson1")),
             (Attribute::Uuid.as_ref(), Value::Uuid(UUID_TEST_ACCOUNT_1))
         );
         let r3_set = vec![ev3];
@@ -2147,7 +2150,7 @@ mod tests {
         let ev4 = entry_init!(
             (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
             (Attribute::Class.as_ref(), EntryClass::Group.to_value()),
-            ("name", Value::new_iname("testperson1")),
+            (Attribute::Name.as_ref(), Value::new_iname("testperson1")),
             (Attribute::Uuid.as_ref(), Value::Uuid(UUID_TEST_ACCOUNT_1))
         );
         let r4_set = vec![ev4];
@@ -2411,7 +2414,7 @@ mod tests {
             vec![AccessEffectivePermission {
                 delete: false,
                 target: uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"),
-                search: Access::Allow(btreeset![AttrString::from("name")]),
+                search: Access::Allow(btreeset![Attribute::Name.into()]),
                 modify_pres: Access::Allow(BTreeSet::new()),
                 modify_rem: Access::Allow(BTreeSet::new()),
                 modify_class: Access::Allow(BTreeSet::new()),
@@ -2454,9 +2457,9 @@ mod tests {
                 delete: false,
                 target: uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"),
                 search: Access::Allow(BTreeSet::new()),
-                modify_pres: Access::Allow(btreeset![AttrString::from("name")]),
-                modify_rem: Access::Allow(btreeset![AttrString::from("name")]),
-                modify_class: Access::Allow(btreeset![AttrString::from("object")]),
+                modify_pres: Access::Allow(btreeset![Attribute::Name.into()]),
+                modify_rem: Access::Allow(btreeset![Attribute::Name.into()]),
+                modify_class: Access::Allow(btreeset![EntryClass::Object.into()]),
             }]
         )
     }
@@ -2814,14 +2817,14 @@ mod tests {
 
         let se_a = SearchEvent::new_impersonate_entry(
             E_TEST_ACCOUNT_1.clone(),
-            filter_all!(f_pres("oauth2_rs_name")),
+            filter_all!(f_pres(Attribute::OAuth2RsName)),
         );
         let ex_a = vec![Arc::new(ev1)];
         let ex_a_reduced = vec![ev1_reduced];
 
         let se_b = SearchEvent::new_impersonate_entry(
             E_TEST_ACCOUNT_2.clone(),
-            filter_all!(f_pres("oauth2_rs_name")),
+            filter_all!(f_pres(Attribute::OAuth2RsName)),
         );
         let ex_b = vec![];
 
@@ -2896,7 +2899,7 @@ mod tests {
 
         let se_a = SearchEvent::new_impersonate_entry(
             sync_test_account,
-            filter_all!(f_pres("sync_credential_portal")),
+            filter_all!(f_pres(Attribute::SyncCredentialPortal)),
         );
         let ex_a = vec![Arc::new(ev1)];
         let ex_a_reduced = vec![ev1_reduced];
@@ -2907,7 +2910,7 @@ mod tests {
         // Test a non-synced account aka the deny case
         let se_b = SearchEvent::new_impersonate_entry(
             E_TEST_ACCOUNT_2.clone(),
-            filter_all!(f_pres("sync_credential_portal")),
+            filter_all!(f_pres(Attribute::SyncCredentialPortal)),
         );
         let ex_b = vec![];
 
