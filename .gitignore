@@ -16,6 +16,8 @@ vendor.tar.*
 tools/orca/example_profiles/small/orca-edited.toml
 /docs/
 .vscode/
+# webui things we don't need
+*.d.ts
 
 # kanidm simple packaging
 deployment-config/

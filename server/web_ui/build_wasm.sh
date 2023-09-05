@@ -29,7 +29,7 @@ fi
 
 # we can disable this since we want it to expand
 # shellcheck disable=SC2086
-wasm-pack build ${BUILD_FLAGS} --target web --mode no-install --no-pack || exit 1
+wasm-pack build ${BUILD_FLAGS} --target web --mode no-install --no-pack
 
 touch ./pkg/ANYTHING_HERE_WILL_BE_DELETED_ADD_TO_SRC && \
     rsync --delete-after -r --copy-links -v ./static/* ./pkg/ && \
@@ -37,6 +37,8 @@ touch ./pkg/ANYTHING_HERE_WILL_BE_DELETED_ADD_TO_SRC && \
     cp ../../LICENSE.md ./pkg/
     rm ./pkg/.gitignore
 
-# updates the brotli-compressed files
-echo "brotli-compressing the WASM file..."
-find ./pkg -name '*.wasm' -exec ./find_best_brotli.sh "{}" \; || exit 1
+if [ -z "${SKIP_BROTLI}" ]; then
+    # updates the brotli-compressed files
+    echo "brotli-compressing the WASM file..."
+    find ./pkg -name '*.wasm' -exec ./find_best_brotli.sh "{}" \; || exit 1
+fi

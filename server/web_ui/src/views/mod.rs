@@ -1,3 +1,4 @@
+#![allow(non_camel_case_types)]
 use gloo::console;
 use kanidm_proto::v1::{UiHint, UserAuthToken};
 use serde::{Deserialize, Serialize};

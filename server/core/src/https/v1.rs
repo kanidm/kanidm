@@ -1425,7 +1425,6 @@ pub async fn auth_valid(
     to_axum_response(res)
 }
 
-#[cfg(debug_assertions)]
 pub async fn debug_ipinfo(
     State(_state): State<ServerState>,
     TrustedClientIp(ip_addr): TrustedClientIp,
@@ -1435,7 +1434,7 @@ pub async fn debug_ipinfo(
 
 #[instrument(skip(state))]
 pub fn router(state: ServerState) -> Router<ServerState> {
-    let mut router = Router::new()
+    let router = Router::new()
         .route("/v1/oauth2", get(super::oauth2::oauth2_get))
         .route("/v1/oauth2/_basic", post(super::oauth2::oauth2_basic_post))
         .route(
@@ -1737,8 +1736,14 @@ pub fn router(state: ServerState) -> Router<ServerState> {
         )
         .with_state(state)
         .layer(from_fn(dont_cache_me));
-    if cfg!(debug_assertions) {
-        router = router.route("/v1/debug/ipinfo", get(debug_ipinfo));
+    if cfg!(debug_assertions) || cfg!(test) {
+        add_debug_info(router)
+    } else {
+        router
     }
-    router
+}
+
+// #[cfg(any(debug_assertions, test))]
+fn add_debug_info(router: Router<ServerState>) -> Router<ServerState> {
+    router.route("/v1/debug/ipinfo", get(debug_ipinfo))
 }

@@ -1220,7 +1220,7 @@ impl QueryServer {
         }
     }
 
-    #[cfg(debug_assertions)]
+    #[cfg(any(test, debug_assertions))]
     pub async fn clear_cache(&self) -> Result<(), OperationError> {
         let ct = duration_from_epoch_now();
         let mut w_txn = self.write(ct).await;
@@ -1608,7 +1608,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         Ok(())
     }
 
-    #[cfg(debug_assertions)]
+    #[cfg(any(test, debug_assertions))]
     #[instrument(level = "debug", skip_all)]
     pub fn clear_cache(&mut self) -> Result<(), OperationError> {
         self.be_txn.clear_cache()
