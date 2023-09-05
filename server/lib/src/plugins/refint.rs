@@ -248,7 +248,7 @@ impl Plugin for ReferentialIntegrity {
             }
         }
 
-        // We can now combine this with the confict uuids from the incoming set.
+        // We can now combine this with the conflict uuids from the incoming set.
 
         // In a conflict case, we need to also add these uuids to the delete logic
         // since on the originator node the original uuid will still persist

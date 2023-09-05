@@ -2491,7 +2491,7 @@ async fn test_repl_increment_refint_conflict(server_a: &QueryServer, server_b: &
     // the true intent of the situation now.
     //
     // In this example, the users created on server A was intended to be a member of
-    // the group, but the user on server B *was not* intended to be a member. Therfore
+    // the group, but the user on server B *was not* intended to be a member. Therefore
     // it's wrong that we retain the user from Server B *while* also the membership
     // that was intended for the user on A.
     let e = server_b_txn
