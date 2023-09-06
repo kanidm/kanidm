@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -e
+# set -e
 
 WAIT_TIMER=30
 
@@ -8,6 +8,7 @@ terminate_crab () {
     echo "Waiting ${WAIT_TIMER} seconds and terminating Kanidmd"
     sleep "${WAIT_TIMER}"
     killall kanidmd
+    kill $(pgrep kanidmd)
 }
 
 
@@ -37,8 +38,8 @@ sleep 5
 
 terminate_crab &
 
-fg
+kill $(pgrep kanidmd)
 
 if [ -n "$CURRENT_DIR" ]; then
-    cd "$CURRENT_DIR"
+    cd "$CURRENT_DIR" || exit 1
 fi

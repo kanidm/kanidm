@@ -9,8 +9,10 @@
 
 set -e
 
-if [ -z "${BUILD_MODE}" ]; then
-    BUILD_MODE="debug"
+if [ -n "${BUILD_MODE}" ]; then
+    BUILD_MODE="--${BUILD_MODE}"
+else
+    BUILD_MODE=""
 fi
 
 # if they passed --help then output the help
@@ -69,22 +71,26 @@ OAUTH2_RP_ID="test_oauth2"
 OAUTH2_RP_DISPLAY="test_oauth2"
 
 # commands to run things
-KANIDM="cargo run --${BUILD_MODE} --manifest-path ../../Cargo.toml --bin kanidm -- "
-KANIDMD="cargo run --${BUILD_MODE} -p daemon --bin kanidmd -- "
+KANIDM="cargo run ${BUILD_MODE} --manifest-path ../../Cargo.toml --bin kanidm -- "
+KANIDMD="cargo run ${BUILD_MODE} -p daemon --bin kanidmd -- "
 
 if [ "${REMOVE_TEST_DB}" -eq 1 ]; then
     echo "Removing the existing DB!"
     rm /tmp/kanidm/kanidm.db || true
 fi
 
-echo "Reset the admin user"
-ADMIN_PASS=$(${KANIDMD} recover-account admin -o json 2>&1 | rg password | jq -r .password)
+echo "Resetting the admin user..."
+${KANIDMD} recover-account admin -o json 2>&1
+ADMIN_PASS_STR="$(${KANIDMD} recover-account admin -o json 2>&1)"
+ADMIN_PASS=$(echo "${ADMIN_PASS_STR}" | rg password | jq -r .password)
 if [ -z "${ADMIN_PASS}" ] || [ "${ADMIN_PASS}" == "null " ]; then
     echo "Failed to reset admin password!"
+    echo "${ADMIN_PASS_STR}"
     exit 1
 fi
+
 echo "admin pass: '${ADMIN_PASS}'"
-echo "Reset the idm_admin user"
+echo "Resetting the idm_admin user..."
 IDM_ADMIN_PASS=$(${KANIDMD} recover-account idm_admin -o json 2>&1 | rg password | jq -r .password)
 if [ -z "${IDM_ADMIN_PASS}" ] || [ "${IDM_ADMIN_PASS}" == "null " ]; then
     echo "Failed to reset admin password!"
