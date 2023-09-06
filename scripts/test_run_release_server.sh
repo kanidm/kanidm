@@ -21,6 +21,8 @@ fi
 
 cargo build --release --bin kanidmd
 
+mkdir -p /tmp/kanidm/
+
 cargo run --bin kanidmd cert-generate --config ../../examples/insecure_server.toml
 
 terminate_crab &
