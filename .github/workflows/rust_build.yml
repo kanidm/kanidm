@@ -59,4 +59,6 @@ jobs:
             libssl-dev \
             ripgrep
       - name: "Run the release build test script"
+        env:
+          BUILD_MODE: release
         run: ./scripts/test_run_release_server.sh
