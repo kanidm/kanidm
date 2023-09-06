@@ -89,6 +89,9 @@ async fn main() {
         .await
     {
         Ok(pkeys) => pkeys.iter().for_each(|pkey| println!("{}", pkey)),
-        Err(e) => error!("Failed to retrieve pubkeys - {:?}", e),
+        Err(e) => {
+            error!("Failed to retrieve pubkeys - {:?}", e);
+            std::process::exit(1);
+        }
     }
 }

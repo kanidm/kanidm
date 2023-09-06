@@ -21,6 +21,7 @@ use identify_user_no_tui::{run_identity_verification_no_tui, IdentifyUserState};
 #[cfg(feature = "idv-tui")]
 use identify_user_tui::run_identity_verification_tui;
 
+use kanidm_client::{ClientError, StatusCode};
 use url::Url;
 use uuid::Uuid;
 
@@ -41,6 +42,27 @@ pub mod session;
 pub mod session_expiry;
 pub mod synch;
 mod webauthn;
+
+/// Throws an error and exits the program when we get an error
+pub(crate) fn handle_client_error(response: ClientError, _output_mode: &OutputMode) {
+    match response {
+        ClientError::Http(status, error, message) => {
+            if status == StatusCode::INTERNAL_SERVER_ERROR {
+                error!(
+                    "Internal Server Error in response: {:?} {:?}",
+                    error, message
+                );
+            } else {
+                error!("HTTP Error: {} {:?} {:?}", status, error, message);
+            }
+            std::process::exit(exitcode::SOFTWARE)
+        }
+        _ => {
+            eprintln!("{:?}", response);
+            std::process::exit(exitcode::ExitCode::from(1))
+        }
+    };
+}
 
 impl SelfOpt {
     pub fn debug(&self) -> bool {

@@ -1,14 +1,16 @@
 #!/bin/bash
 
-# set -e
+set -e
 
 WAIT_TIMER=30
 
 terminate_crab () {
     echo "Waiting ${WAIT_TIMER} seconds and terminating Kanidmd"
     sleep "${WAIT_TIMER}"
-    killall kanidmd
-    kill $(pgrep kanidmd)
+    if [ "$(pgrep kanidmd | wc -l)" -gt 0 ]; then
+        killall kanidmd
+        kill $(pgrep kanidmd)
+    fi
 }
 
 
