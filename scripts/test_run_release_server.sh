@@ -10,6 +10,9 @@ terminate_crab () {
     killall kanidmd
 }
 
+
+cargo build --release --bin kanidm --bin kanidmd
+
 if [ -d '.git' ]; then
     echo "You're in the root dir, let's move you!"
     CURRENT_DIR="$(pwd)"
@@ -20,8 +23,6 @@ if [ ! -f "run_insecure_dev_server.sh" ]; then
     echo "I'm not sure where you are, please run this from the root of the repository or the server/daemon directory"
     exit 1
 fi
-
-cargo build --release --bin kanidm --bin kanidmd
 
 mkdir -p /tmp/kanidm/
 
