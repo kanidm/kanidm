@@ -27,7 +27,11 @@ cargo run --bin kanidmd cert-generate --config ../../examples/insecure_server.to
 
 terminate_crab &
 
-cargo run --bin kanidmd server --config ../../examples/insecure_server.toml
+cargo run --bin kanidmd server --config ../../examples/insecure_server.toml &
+
+cd server/daemon/ && ../../scripts/setup_dev_environment.sh
+
+fg
 
 if [ -n "$CURRENT_DIR" ]; then
     cd "$CURRENT_DIR"
