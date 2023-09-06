@@ -57,6 +57,6 @@ jobs:
             libpam0g-dev \
             libudev-dev \
             libssl-dev \
-            libsqlite3-dev
+            ripgrep
       - name: "Run the release build test script"
         run: ./scripts/test_run_release_server.sh
