@@ -21,7 +21,7 @@ if [ ! -f "run_insecure_dev_server.sh" ]; then
     exit 1
 fi
 
-cargo build --release --bin kanidm kanidmd
+cargo build --release --bin kanidm --bin kanidmd
 
 mkdir -p /tmp/kanidm/
 
