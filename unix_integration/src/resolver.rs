@@ -1047,6 +1047,14 @@ where
                             }
                         }
                     }
+                    (AuthCredHandler::Password, _) => {
+                        // AuthCredHandler::Password is only valid with a cred provided
+                        return Err(());
+                    }
+                    (AuthCredHandler::DeviceAuthorizationGrant, _) => {
+                        // AuthCredHandler::DeviceAuthorizationGrant is invalid for offline auth
+                        return Err(());
+                    }
                 }
 
                 /*
@@ -1113,6 +1121,10 @@ where
     ) -> Result<Option<bool>, ()> {
         let mut auth_session = match self.pam_account_authenticate_init(account_id).await? {
             (auth_session, PamAuthResponse::Password) => {
+                // Can continue!
+                auth_session
+            }
+            (auth_session, PamAuthResponse::DeviceAuthorizationGrant { .. }) => {
                 // Can continue!
                 auth_session
             }
