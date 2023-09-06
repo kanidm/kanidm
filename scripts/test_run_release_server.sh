@@ -33,7 +33,7 @@ cargo run --bin kanidmd server --config ../../examples/insecure_server.toml &
 
 sleep 5
 
-cd server/daemon/ && ../../scripts/setup_dev_environment.sh
+../../scripts/setup_dev_environment.sh
 
 fg
 
