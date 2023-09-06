@@ -28,13 +28,14 @@ mkdir -p /tmp/kanidm/
 
 cargo run --bin kanidmd cert-generate --config ../../examples/insecure_server.toml
 
-terminate_crab &
 
 cargo run --bin kanidmd server --config ../../examples/insecure_server.toml &
 
 sleep 5
 
 ../../scripts/setup_dev_environment.sh
+
+terminate_crab &
 
 fg
 
