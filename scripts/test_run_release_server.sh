@@ -2,9 +2,11 @@
 
 set -e
 
+WAIT_TIMER=30
+
 terminate_crab () {
-    echo "Waiting 10 seconds and terminating Kanidmd"
-    sleep 10
+    echo "Waiting ${WAIT_TIMER} seconds and terminating Kanidmd"
+    sleep "${WAIT_TIMER}"
     killall kanidmd
 }
 
@@ -28,6 +30,8 @@ cargo run --bin kanidmd cert-generate --config ../../examples/insecure_server.to
 terminate_crab &
 
 cargo run --bin kanidmd server --config ../../examples/insecure_server.toml &
+
+sleep 5
 
 cd server/daemon/ && ../../scripts/setup_dev_environment.sh
 
