@@ -61,12 +61,10 @@ pub(crate) fn handle_client_error(response: ClientError, _output_mode: &OutputMo
                 error!("Item not found:{:?} {:?}", error_msg, message)
             } else {
                 error!("HTTP Error: {}{} {:?}", status, error_msg, message);
-                std::process::exit(exitcode::SOFTWARE);
             }
         }
         _ => {
             eprintln!("{:?}", response);
-            // std::process::exit(exitcode::ExitCode::from(1))
         }
     };
 }
