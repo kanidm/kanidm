@@ -1864,6 +1864,7 @@ async fn test_repl_increment_consumer_ruv_trim_past_valid(
 
     // Add an entry. We need at least one change on B, else it won't have anything
     // to ship in it's RUV to A.
+    let ct = duration_from_epoch_now();
     let mut server_b_txn = server_b.write(ct).await;
     let t_uuid = Uuid::new_v4();
     assert!(server_b_txn
@@ -1887,6 +1888,7 @@ async fn test_repl_increment_consumer_ruv_trim_past_valid(
 
     // Now setup bidirectional replication. We only need to trigger B -> A
     // here because that's all that has changes.
+    let ct = duration_from_epoch_now();
     let mut server_a_txn = server_a.write(ct).await;
     let mut server_b_txn = server_b.read().await;
 
@@ -1910,7 +1912,7 @@ async fn test_repl_increment_consumer_ruv_trim_past_valid(
     // Compare RUV's
 
     // Push time ahead past a changelog max age.
-    let ct = ct + Duration::from_secs(CHANGELOG_MAX_AGE + 1);
+    let ct = ct + Duration::from_secs(CHANGELOG_MAX_AGE * 4);
 
     // And setup the ruv trim. This is triggered by purge/reap tombstones.
     // Apply this to both nodes so that they shift their RUV states.
@@ -1930,6 +1932,8 @@ async fn test_repl_increment_consumer_ruv_trim_past_valid(
     let a_ruv_range = server_a_txn
         .consumer_get_state()
         .expect("Unable to access RUV range");
+
+    trace!(?a_ruv_range);
 
     let changes = server_b_txn
         .supplier_provide_changes(a_ruv_range)
@@ -1956,6 +1960,8 @@ async fn test_repl_increment_consumer_ruv_trim_past_valid(
     let b_ruv_range = server_b_txn
         .consumer_get_state()
         .expect("Unable to access RUV range");
+
+    trace!(?b_ruv_range);
 
     let changes = server_a_txn
         .supplier_provide_changes(b_ruv_range)
