@@ -1,6 +1,6 @@
 #![deny(warnings)]
 #![warn(unused_extern_crates)]
-
+#![allow(non_snake_case)]
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use tracing_forest::util::*;
 use tracing_forest::Tag;
