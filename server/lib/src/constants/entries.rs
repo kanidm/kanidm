@@ -5,10 +5,11 @@ use std::fmt::Display;
 
 use crate::constants::uuids::*;
 use crate::entry::{Entry, EntryInit, EntryInitNew, EntryNew};
+use crate::idm::account::Account;
 use crate::value::PartialValue;
 use crate::value::Value;
 use kanidm_proto::constants::*;
-use kanidm_proto::v1::{OperationError, UiHint};
+use kanidm_proto::v1::{Filter, OperationError, UiHint};
 
 #[cfg(test)]
 use uuid::uuid;
@@ -642,14 +643,16 @@ impl EntryClass {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 /// Built-in group definitions
 pub struct BuiltinGroup {
     pub name: &'static str,
     description: &'static str,
-    classes: Vec<EntryClass>,
     uuid: uuid::Uuid,
-    member: uuid::Uuid,
+    members: Vec<uuid::Uuid>,
+    dyngroup: bool,
+    dyngroup_filter: Option<Filter>,
+    // TODO: additional attributes (for things like the uihint group)
 }
 
 impl From<BuiltinGroup> for EntryInitNew {
@@ -661,236 +664,265 @@ impl From<BuiltinGroup> for EntryInitNew {
             Attribute::Description.as_ref(),
             Value::new_utf8s(val.description),
         );
-        // classes
+        // classes for groups
         entry.set_ava(
             Attribute::Class.as_ref(),
-            val.classes
+            vec![EntryClass::Group.into(), EntryClass::Object.into()],
+        );
+        if val.dyngroup {
+            entry.add_ava(Attribute::Class.as_ref(), EntryClass::DynGroup.to_value());
+            match val.dyngroup_filter {
+                Some(filter) => {
+                    entry.add_ava(Attribute::DynGroupFilter.as_ref(), Value::JsonFilt(filter))
+                }
+                None => panic!("No filter specified for dyngroup name {}", val.name),
+            };
+        }
+        entry.add_ava(Attribute::Uuid.as_ref(), Value::Uuid(val.uuid));
+        entry.set_ava(
+            Attribute::Member.as_ref(),
+            val.members
                 .into_iter()
-                .map(|class| class.to_value())
+                .map(Value::Refer)
                 .collect::<Vec<Value>>(),
         );
-        entry.add_ava(Attribute::Uuid.as_ref(), Value::Uuid(val.uuid));
-        entry.add_ava(Attribute::Member.as_ref(), Value::Refer(val.member));
         entry
     }
 }
 
-/// Builtin System Admin account.
-pub const JSON_ADMIN_V1: &str = r#"{
-    "attrs": {
-        "class": ["account", "service_account", "memberof", "object"],
-        "name": ["admin"],
-        "uuid": ["00000000-0000-0000-0000-000000000000"],
-        "description": ["Builtin System Admin account."],
-        "displayname": ["System Administrator"]
-    }
-}"#;
-
 lazy_static! {
-    pub static ref E_ADMIN_V1: EntryInitNew = entry_init!(
-        (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
-        (Attribute::Class.as_ref(), EntryClass::MemberOf.to_value()),
-        (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-        (
-            Attribute::Class.as_ref(),
-            EntryClass::ServiceAccount.to_value()
-        ),
-        (Attribute::Name.as_ref(), Value::new_iname("admin")),
-        (Attribute::Uuid.as_ref(), Value::Uuid(UUID_ADMIN)),
-        (
-            Attribute::Description.as_ref(),
-            Value::new_utf8s("Builtin System Admin account.")
-        ),
-        (
-            Attribute::DisplayName.as_ref(),
-            Value::new_utf8s("System Administrator")
-        )
-    );
-}
-
-lazy_static! {
-    /// Builtin IDM Admin account.
-    pub static ref E_IDM_ADMIN_V1: EntryInitNew = entry_init!(
-        (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
-        (Attribute::Class.as_ref(), EntryClass::MemberOf.to_value()),
-        (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-        (Attribute::Class.as_ref(), EntryClass::ServiceAccount.to_value()),
-        (Attribute::Name.as_ref(), Value::new_iname("idm_admin")),
-        (Attribute::Uuid.as_ref(), Value::Uuid(UUID_IDM_ADMIN)),
-        (
-            Attribute::Description.as_ref(),
-            Value::new_utf8s("Builtin IDM Admin account.")
-        ),
-        (Attribute::DisplayName.as_ref(), Value::new_utf8s("IDM Administrator"))
-    );
-}
-
-lazy_static! {
-    pub static ref IDM_ADMINS_V1: BuiltinGroup = BuiltinGroup {
-        name: "idm_admins",
-        description: "Builtin IDM Administrators Group.",
+      /// Builtin System Admin account.
+      pub static ref BUILTIN_ACCOUNT_IDM_ADMIN: BuiltinAccount = BuiltinAccount {
+       // TODO: this really should be a "are you a service account or a person" enum
         classes: vec![
-            EntryClass::Group,
+            EntryClass::Account,
+            EntryClass::ServiceAccount,
+            EntryClass::MemberOf,
             EntryClass::Object,
         ],
-        uuid: UUID_IDM_ADMINS,
-        member: UUID_IDM_ADMIN,
+        name: "idm_admin",
+        uuid: UUID_IDM_ADMIN,
+        description: "Builtin IDM Admin account.",
+        displayname: "IDM Administrator",
     };
-    /// Builtin IDM Administrators Group.
-    pub static ref E_IDM_ADMINS_V1: EntryInitNew = IDM_ADMINS_V1.clone().into();
-    // pub static ref E_IDM_ADMINS_V1: EntryInitNew = entry_init!(
-    //     (Attribute::Class.as_ref(), EntryClass::Group.to_value()),
-    //     (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-    //     (Attribute::Name.as_ref(), Value::new_iname("idm_admins")),
-    //     (Attribute::Uuid.as_ref(), Value::Uuid(UUID_IDM_ADMINS)),
-    //     (
-    //         Attribute::Description.as_ref(),
-    //         Value::new_utf8s("Builtin IDM Administrators Group.")
-    //     ),
-    //     (Attribute::Member.as_ref(), Value::Refer(UUID_IDM_ADMIN))
-    // );
 }
 
 lazy_static! {
-    /// Builtin System Administrators Group.
-    pub static ref E_SYSTEM_ADMINS_V1: EntryInitNew = entry_init!(
-        (Attribute::Class.as_ref(), EntryClass::Group.to_value()),
-        (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-        (Attribute::Name.as_ref(), Value::new_iname("system_admins")),
-        (Attribute::Uuid.as_ref(), Value::Uuid(UUID_SYSTEM_ADMINS)),
-        (
-            Attribute::Description.as_ref(),
-            Value::new_utf8s("Builtin System Administrators Group.")
-        ),
-        (Attribute::Member.as_ref(), Value::Refer(UUID_ADMIN))
-    );
+    /// Builtin IDM Administrators Group.
+    pub static ref BUILTIN_GROUP_IDM_ADMINS_V1: BuiltinGroup = BuiltinGroup {
+        name: "idm_admins",
+        description: "Builtin IDM Administrators Group.",
+        uuid: UUID_IDM_ADMINS,
+        members: vec![UUID_IDM_ADMIN],
+        ..Default::default()
+    };
+
+    pub static ref BUILTIN_GROUP_SYSTEM_ADMINS_V1: BuiltinGroup = BuiltinGroup {
+        name: "system_admins",
+        description: "Builtin System Administrators Group.",
+        uuid: UUID_SYSTEM_ADMINS,
+        members: vec![BUILTIN_ACCOUNT_ADMIN.uuid],
+        ..Default::default()
+    };
+
 }
 
 // * People read managers
-/// Builtin IDM Group for granting elevated people (personal data) read permissions.
-pub const JSON_IDM_PEOPLE_READ_PRIV_V1: &str = r#"{
-    "attrs": {
-        "class": ["group", "object"],
-        "name": ["idm_people_read_priv"],
-        "uuid": ["00000000-0000-0000-0000-000000000002"],
-        "description": ["Builtin IDM Group for granting elevated people (personal data) read permissions."],
-        "member": ["00000000-0000-0000-0000-000000000003"]
-    }
-}"#;
 
-// * People write managers
-/// Builtin IDM Group for granting elevated people (personal data) write and lifecycle management permissions.
-pub const JSON_IDM_PEOPLE_MANAGE_PRIV_V1: &str = r#"{
-    "attrs": {
-        "class": ["group", "object"],
-        "name": ["idm_people_manage_priv"],
-        "uuid": ["00000000-0000-0000-0000-000000000013"],
-        "description": ["Builtin IDM Group for granting elevated people (personal data) write and lifecycle management permissions."],
-        "member": [
-            "00000000-0000-0000-0000-000000000001"
-        ]
-    }
-}"#;
+// pub const JSON_IDM_PEOPLE_READ_PRIV_V1: &str = r#"{
+//     "attrs": {
+//         "class": ["group", "object"],
+//         "name": ["idm_people_read_priv"],
+//         "uuid": ["00000000-0000-0000-0000-000000000002"],
+//         "description": ["Builtin IDM Group for granting elevated people (personal data) read permissions."],
+//         "member": ["00000000-0000-0000-0000-000000000003"]
+//     }
+// }"#;
+
+lazy_static! {
+
+    /// Builtin IDM Group for granting elevated people (personal data) read permissions.
+    pub static ref IDM_PEOPLE_READ_PRIV_V1: BuiltinGroup = BuiltinGroup {
+        name: "idm_people_read_priv",
+        description: "Builtin IDM Group for granting elevated people (personal data) read permissions.",
+        uuid: UUID_IDM_PEOPLE_READ_PRIV,
+        members: vec![UUID_IDM_PEOPLE_WRITE_PRIV],
+        ..Default::default()
+    };
+    pub static ref IDM_PEOPLE_WRITE_PRIV_V1: BuiltinGroup = BuiltinGroup {
+        name: "idm_people_write_priv",
+        description: "Builtin IDM Group for granting elevated people (personal data) write permissions.",
+        uuid: UUID_IDM_PEOPLE_WRITE_PRIV,
+        members: vec![UUID_IDM_PEOPLE_MANAGE_PRIV,UUID_IDM_PEOPLE_EXTEND_PRIV],
+        ..Default::default()
+    };
 
 /// Builtin IDM Group for granting elevated people (personal data) write permissions.
-pub const JSON_IDM_PEOPLE_WRITE_PRIV_V1: &str = r#"{
-    "attrs": {
-        "class": ["group", "object"],
-        "name": ["idm_people_write_priv"],
-        "uuid": ["00000000-0000-0000-0000-000000000003"],
-        "description": ["Builtin IDM Group for granting elevated people (personal data) write permissions."],
-        "member": [
-            "00000000-0000-0000-0000-000000000013",
-            "00000000-0000-0000-0000-000000000024"
-        ]
-    }
-}"#;
+// pub const JSON_IDM_PEOPLE_WRITE_PRIV_V1: &str = r#"{
+//     "attrs": {
+//         "class": ["group", "object"],
+//         "name": ["idm_people_write_priv"],
+//         "uuid": ["00000000-0000-0000-0000-000000000003"],
+//         "description": ["Builtin IDM Group for granting elevated people (personal data) write permissions."],
+//         "member": [
+//             "00000000-0000-0000-0000-000000000013",
+//             "00000000-0000-0000-0000-000000000024"
+//         ]
+//     }
+// }"#;
 
-/// Builtin IDM Group for importing passwords to person accounts - intended for service account membership only.
-pub const JSON_IDM_PEOPLE_ACCOUNT_PASSWORD_IMPORT_PRIV_V1: &str = r#"{
-    "attrs": {
-        "class": ["group", "object"],
-        "name": ["idm_people_account_password_import_priv"],
-        "uuid": ["00000000-0000-0000-0000-000000000023"],
-        "description": ["Builtin IDM Group for importing passwords to person accounts - intended for service account membership only."]
-    }
-}"#;
+    // * People write managers
+    /// Builtin IDM Group for granting elevated people (personal data) write and lifecycle management permissions.
+    pub static ref IDM_PEOPLE_MANAGE_PRIV_V1: BuiltinGroup = BuiltinGroup {
+        name: "idm_people_manage_priv",
+        description: "Builtin IDM Group for granting elevated people (personal data) write and lifecycle management permissions.",
+        uuid: UUID_IDM_PEOPLE_MANAGE_PRIV,
+        members: vec![UUID_IDM_ADMINS],
+        ..Default::default()
+    };
 
-/// Builtin IDM Group for allowing the ability to extend accounts to have the "person" flag set.
-pub const JSON_IDM_PEOPLE_EXTEND_PRIV_V1: &str = r#"{
-    "attrs": {
-        "class": ["group", "object"],
-        "name": ["idm_people_extend_priv"],
-        "uuid": ["00000000-0000-0000-0000-000000000024"],
-        "description": ["Builtin IDM Group for extending accounts to be people."],
-        "member": [
-            "00000000-0000-0000-0000-000000000001"
-        ]
-    }
-}"#;
+    /// Builtin IDM Group for importing passwords to person accounts - intended for service account membership only.
+    pub static ref IDM_PEOPLE_ACCOUNT_PASSWORD_IMPORT_PRIV_V1: BuiltinGroup = BuiltinGroup {
+        name: "idm_people_account_password_import_priv",
+        description: "Builtin IDM Group for importing passwords to person accounts - intended for service account membership only.",
+        uuid: UUID_IDM_PEOPLE_ACCOUNT_PASSWORD_IMPORT_PRIV,
+        members: vec![UUID_IDM_ADMINS],
+        ..Default::default()
+    };
+}
 
-// Self-write of mail
-pub const JSON_IDM_PEOPLE_SELF_WRITE_MAIL_PRIV_V1: &str = r#"{
-    "attrs": {
-        "class": ["group", "object"],
-        "name": ["idm_people_self_write_mail_priv"],
-        "uuid": ["00000000-0000-0000-0000-000000000033"],
-        "description": ["Builtin IDM Group for people accounts to update their own mail."]
-    }
-}"#;
+lazy_static! {
+    /// Builtin IDM Group for allowing the ability to extend accounts to have the "person" flag set.
+    pub static ref IDM_PEOPLE_EXTEND_PRIV_V1: BuiltinGroup = BuiltinGroup {
+        name: "idm_people_extend_priv",
+        description: "Builtin System Administrators Group.",
+        uuid: UUID_IDM_PEOPLE_EXTEND_PRIV,
+        members: vec![BUILTIN_ACCOUNT_ADMIN.uuid],
+        ..Default::default()
+    };
+}
 
-/// Builtin IDM Group for granting elevated high privilege people (personal data) read permissions.
-pub const JSON_IDM_HP_PEOPLE_READ_PRIV_V1: &str = r#"{
-    "attrs": {
-        "class": ["group", "object"],
-        "name": ["idm_hp_people_read_priv"],
-        "uuid": ["00000000-0000-0000-0000-000000000028"],
-        "description": ["Builtin IDM Group for granting elevated high privilege people (personal data) read permissions."],
-        "member": ["00000000-0000-0000-0000-000000000029"]
-    }
-}"#;
+// pub const JSON_IDM_PEOPLE_EXTEND_PRIV_V1: &str = r#"{
+//     "attrs": {
+//         "class": ["group", "object"],
+//         "name": ["idm_people_extend_priv"],
+//         "uuid": ["00000000-0000-0000-0000-000000000024"],
+//         "description": ["Builtin IDM Group for extending accounts to be people."],
+//         "member": [
+//             "00000000-0000-0000-0000-000000000001"
+//         ]
+//     }
+// }"#;
 
-/// Builtin IDM Group for granting elevated high privilege people (personal data) write permissions.
-pub const JSON_IDM_HP_PEOPLE_WRITE_PRIV_V1: &str = r#"{
-    "attrs": {
-        "class": ["group", "object"],
-        "name": ["idm_hp_people_write_priv"],
-        "uuid": ["00000000-0000-0000-0000-000000000029"],
-        "description": ["Builtin IDM Group for granting elevated high privilege people (personal data) write permissions."],
-        "member": [
-            "00000000-0000-0000-0000-000000000030"
-        ]
-    }
-}"#;
+lazy_static! {
+    /// Self-write of mail
+    pub static ref IDM_PEOPLE_SELF_WRITE_MAIL_PRIV_V1: BuiltinGroup = BuiltinGroup {
+        name: "idm_people_self_write_mail_priv",
+        description: "Builtin IDM Group for people accounts to update their own mail.",
+        uuid: UUID_IDM_PEOPLE_SELF_WRITE_MAIL_PRIV,
+        members: Vec::new(),
+        ..Default::default()
+    };
+}
 
-/// Builtin IDM Group for extending high privilege accounts to be people.
-pub const JSON_IDM_HP_PEOPLE_EXTEND_PRIV_V1: &str = r#"{
-    "attrs": {
-        "class": ["group", "object"],
-        "name": ["idm_hp_people_extend_priv"],
-        "uuid": ["00000000-0000-0000-0000-000000000030"],
-        "description": ["Builtin IDM Group for extending high privilege accounts to be people."],
-        "member": [
-            "00000000-0000-0000-0000-000000000000"
-        ]
-    }
-}"#;
+// pub const JSON_IDM_PEOPLE_SELF_WRITE_MAIL_PRIV_V1: &str = r#"{
+//     "attrs": {
+//         "class": ["group", "object"],
+//         "name": ["idm_people_self_write_mail_priv"],
+//         "uuid": ["00000000-0000-0000-0000-000000000033"],
+//         "description": ["Builtin IDM Group for people accounts to update their own mail."]
+//     }
+// }"#;
+
+lazy_static! {
+    /// Builtin IDM Group for granting elevated high privilege people (personal data) read permissions.
+    pub static ref IDM_HP_PEOPLE_READ_PRIV_V1: BuiltinGroup = BuiltinGroup {
+        name: "idm_hp_people_read_priv",
+        description: "Builtin IDM Group for granting elevated high privilege people (personal data) read permissions.",
+        uuid: UUID_IDM_HP_PEOPLE_READ_PRIV,
+        members: vec![UUID_IDM_HP_PEOPLE_WRITE_PRIV],
+        ..Default::default()
+    };
+}
+// pub const JSON_IDM_HP_PEOPLE_READ_PRIV_V1: &str = r#"{
+//     "attrs": {
+//         "class": ["group", "object"],
+//         "name": ["idm_hp_people_read_priv"],
+//         "uuid": ["00000000-0000-0000-0000-000000000028"],
+//         "description": ["Builtin IDM Group for granting elevated high privilege people (personal data) read permissions."],
+//         "member": ["00000000-0000-0000-0000-000000000029"]
+//     }
+// }"#;
+
+// pub const JSON_IDM_HP_PEOPLE_WRITE_PRIV_V1: &str = r#"{
+//     "attrs": {
+//         "class": ["group", "object"],
+//         "name": ["idm_hp_people_write_priv"],
+//         "uuid": ["00000000-0000-0000-0000-000000000029"],
+//         "description": ["Builtin IDM Group for granting elevated high privilege people (personal data) write permissions."],
+//         "member": [
+//             "00000000-0000-0000-0000-000000000030"
+//         ]
+//     }
+// }"#;
+
+lazy_static! {
+    /// Builtin IDM Group for granting elevated high privilege people (personal data) write permissions.
+    pub static ref IDM_HP_PEOPLE_WRITE_PRIV_V1: BuiltinGroup = BuiltinGroup {
+        name: "idm_hp_people_write_priv",
+        description: "Builtin IDM Group for granting elevated high privilege people (personal data) write permissions.",
+        uuid: UUID_IDM_HP_PEOPLE_WRITE_PRIV,
+        members: vec![UUID_IDM_HP_PEOPLE_EXTEND_PRIV],
+        ..Default::default()
+    };
+    /// Builtin IDM Group for extending high privilege accounts to be people.
+    pub static ref IDM_HP_PEOPLE_EXTEND_PRIV_V1: BuiltinGroup = BuiltinGroup {
+        name: "idm_hp_people_extend_priv",
+        description: "Builtin IDM Group for extending high privilege accounts to be people.",
+        uuid: UUID_IDM_HP_PEOPLE_EXTEND_PRIV,
+        members: vec![BUILTIN_ACCOUNT_ADMIN.uuid],
+        ..Default::default()
+    };
+}
+// pub const JSON_IDM_HP_PEOPLE_EXTEND_PRIV_V1: &str = r#"{
+//     "attrs": {
+//         "class": ["group", "object"],
+//         "name": ["idm_hp_people_extend_priv"],
+//         "uuid": ["00000000-0000-0000-0000-000000000030"],
+//         "description": ["Builtin IDM Group for extending high privilege accounts to be people."],
+//         "member": [
+//             "00000000-0000-0000-0000-000000000000"
+//         ]
+//     }
+// }"#;
 
 // * group write manager (no read, everyone has read via the anon, etc)
 // IDM_GROUP_CREATE_PRIV
-/// Builtin IDM Group for granting elevated group write and lifecycle permissions.
-pub const JSON_IDM_GROUP_MANAGE_PRIV_V1: &str = r#"{
-    "attrs": {
-        "class": ["group", "object"],
-        "name": ["idm_group_manage_priv"],
-        "uuid": ["00000000-0000-0000-0000-000000000015"],
-        "description": ["Builtin IDM Group for granting elevated group write and lifecycle permissions."],
-        "member": [
-            "00000000-0000-0000-0000-000000000001",
-            "00000000-0000-0000-0000-000000000019"
-        ]
-    }
-}"#;
+lazy_static! {
+    /// Builtin IDM Group for granting elevated group write and lifecycle permissions.
+    pub static ref IDM_GROUP_MANAGE_PRIV_V1: BuiltinGroup = BuiltinGroup {
+        name: "idm_group_manage_priv",
+        description: "Builtin IDM Group for granting elevated group write and lifecycle permissions.",
+        uuid: UUID_IDM_GROUP_MANAGE_PRIV,
+        members: vec![
+            BUILTIN_GROUP_IDM_ADMINS_V1.uuid,
+            BUILTIN_GROUP_SYSTEM_ADMINS_V1.uuid,
+        ],
+        ..Default::default()
+    };
+}
+// pub const JSON_IDM_GROUP_MANAGE_PRIV_V1: &str = r#"{
+//     "attrs": {
+//         "class": ["group", "object"],
+//         "name": ["idm_group_manage_priv"],
+//         "uuid": ["00000000-0000-0000-0000-000000000015"],
+//         "description": ["Builtin IDM Group for granting elevated group write and lifecycle permissions."],
+//         "member": [
+//             "00000000-0000-0000-0000-000000000001",
+//             "00000000-0000-0000-0000-000000000019"
+//         ]
+//     }
+// }"#;
 pub const JSON_IDM_GROUP_WRITE_PRIV_V1: &str = r#"{
     "attrs": {
         "class": ["group", "object"],
@@ -1152,29 +1184,60 @@ pub const JSON_IDM_HP_SYNC_ACCOUNT_MANAGE_PRIV: &str = r#"{
 
 // == dyn groups
 
-pub const JSON_IDM_ALL_PERSONS: &str = r#"{
-    "attrs": {
-        "class": ["dyngroup", "group", "object"],
-        "name": ["idm_all_persons"],
-        "uuid": ["00000000-0000-0000-0000-000000000035"],
-        "description": ["Builtin IDM dynamic group containing all persons that can authenticate"],
-        "dyngroup_filter": [
-            "{\"and\": [{\"eq\": [\"class\",\"person\"]}, {\"eq\": [\"class\",\"account\"]}]}"
-        ]
-    }
-}"#;
+lazy_static! {
+    /// Builtin IDM Group for extending high privilege accounts to be people.
+    pub static ref IDM_ALL_PERSONS: BuiltinGroup = BuiltinGroup {
+        name: "idm_all_persons",
+        description: "Builtin IDM Group for extending high privilege accounts to be people.",
+        uuid: UUID_IDM_ALL_PERSONS,
+        members: Vec::new(),
+        dyngroup: true,
+        dyngroup_filter: Some(
+            Filter::And(vec![
+                Filter::Eq(Attribute::Class.to_string(), EntryClass::Person.to_string()),
+                Filter::Eq(Attribute::Class.to_string(), EntryClass::Account.to_string()),
+            ])
+        )
+    };
+}
 
-pub const JSON_IDM_ALL_ACCOUNTS: &str = r#"{
-    "attrs": {
-        "class": ["dyngroup", "group", "object"],
-        "name": ["idm_all_accounts"],
-        "uuid": ["00000000-0000-0000-0000-000000000036"],
-        "description": ["Builtin IDM dynamic group containing all entries that can authenticate."],
-        "dyngroup_filter": [
-            "{\"eq\":[\"class\",\"account\"]}"
-        ]
-    }
-}"#;
+// pub const JSON_IDM_ALL_PERSONS: &str = r#"{
+//     "attrs": {
+//         "class": ["dyngroup", "group", "object"],
+//         "name": ["idm_all_persons"],
+//         "uuid": ["00000000-0000-0000-0000-000000000035"],
+//         "description": ["Builtin IDM dynamic group containing all persons that can authenticate"],
+//         "dyngroup_filter": [
+//             "{\"and\": [{\"eq\": [\"class\",\"person\"]}, {\"eq\": [\"class\",\"account\"]}]}"
+//         ]
+//     }
+// }"#;
+
+// pub const JSON_IDM_ALL_ACCOUNTS: &str = r#"{
+//     "attrs": {
+//         "class": ["dyngroup", "group", "object"],
+//         "name": ["idm_all_accounts"],
+//         "uuid": ["00000000-0000-0000-0000-000000000036"],
+//         "description": ["Builtin IDM dynamic group containing all entries that can authenticate."],
+//         "dyngroup_filter": [
+//             "{\"eq\":[\"class\",\"account\"]}"
+//         ]
+//     }
+// }"#;
+
+lazy_static! {
+    /// Builtin IDM Group for extending high privilege accounts to be people.
+    pub static ref IDM_ALL_ACCOUNTS: BuiltinGroup = BuiltinGroup {
+        name: "idm_all_accounts",
+        description: "Builtin IDM dynamic group containing all entries that can authenticate.",
+        uuid: UUID_IDM_ALL_ACCOUNTS,
+        members: Vec::new(),
+        dyngroup: true,
+        dyngroup_filter: Some(
+                Filter::Eq(Attribute::Class.to_string(), EntryClass::Account.to_string()),
+        )
+    };
+}
 
 lazy_static! {
     pub static ref E_IDM_UI_ENABLE_EXPERIMENTAL_FEATURES: EntryInitNew = entry_init!(
@@ -1300,6 +1363,7 @@ lazy_static! {
 #[derive(Debug, Clone)]
 /// Built in accounts such as anonymous, idm_admin and admin
 pub struct BuiltinAccount {
+    // TODO: this really should be a "are you a service account or a person" enum
     pub classes: Vec<EntryClass>,
     pub name: &'static str,
     pub uuid: Uuid,
@@ -1315,6 +1379,20 @@ impl Default for BuiltinAccount {
             uuid: Uuid::new_v4(),
             description: "<set description>",
             displayname: "<set displayname>",
+        }
+    }
+}
+
+impl From<BuiltinAccount> for Account {
+    fn from(value: BuiltinAccount) -> Self {
+        Account {
+            name: value.name.to_string(),
+            uuid: value.uuid,
+            displayname: value.displayname.to_string(),
+            spn: format!("{}@example.com", value.name),
+            mail_primary: None,
+            mail: Vec::new(),
+            ..Default::default()
         }
     }
 }
@@ -1349,36 +1427,32 @@ impl From<BuiltinAccount> for EntryInitNew {
 }
 
 lazy_static! {
-    // pub static ref E_ANONYMOUS_V1: EntryInitNew = entry_init!(
-    //     (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-    //     (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
-    //     (
-    //         Attribute::Class.as_ref(),
-    //         EntryClass::ServiceAccount.to_value()
-    //     ),
-    //     (Attribute::Name.as_ref(), Value::new_iname("anonymous")),
-    //     (Attribute::Uuid.as_ref(), Value::Uuid(UUID_ANONYMOUS)),
-    //     (
-    //         Attribute::Description.as_ref(),
-    //         Value::new_utf8s("Anonymous access account.")
-    //     ),
-    //     (
-    //         Attribute::DisplayName.as_ref(),
-    //         Value::new_utf8s("Anonymous")
-    //     )
-    // );
-    pub static ref ACCOUNT_ANONYMOUS_V1: BuiltinAccount = BuiltinAccount {
+
+    /// Builtin System Admin account.
+    pub static ref BUILTIN_ACCOUNT_ADMIN: BuiltinAccount = BuiltinAccount {
+        classes: vec![
+            EntryClass::Account,
+            EntryClass::ServiceAccount,
+            EntryClass::MemberOf,
+            EntryClass::Object,
+        ],
+        name: "admin",
+        uuid: UUID_ADMIN,
+        description: "Builtin System Admin account.",
+        displayname: "System Administrator",
+    };
+    pub static ref BUILTIN_ACCOUNT_ANONYMOUS_V1: BuiltinAccount = BuiltinAccount {
         classes: [
             EntryClass::Account,
             EntryClass::ServiceAccount,
             EntryClass::Object,
-        ].to_vec(),
+        ]
+        .to_vec(),
         name: "anonymous",
         uuid: UUID_ANONYMOUS,
         description: "Anonymous access account.",
         displayname: "Anonymous",
     };
-    pub static ref E_ANONYMOUS_V1: EntryInitNew = ACCOUNT_ANONYMOUS_V1.clone().into();
 }
 
 // ============ TEST DATA ============
