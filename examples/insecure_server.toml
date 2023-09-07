@@ -12,7 +12,7 @@ tls_key = "/tmp/kanidm/key.pem"
 #   Defaults to "info"
 #
 # log_level = "info"
-log_level = "info"
+log_level = "debug"
 # log_level = "trace"
 
 domain = "localhost"
