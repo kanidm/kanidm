@@ -120,9 +120,9 @@ echo "Creating the OAuth2 RP"
 ${KANIDM} system oauth2 create "${OAUTH2_RP_ID}" "${OAUTH2_RP_DISPLAY}" "https://kanidm.com" -D admin
 
 echo "Creating the OAuth2 RP Scope Map"
-${KANIDM} system oauth2 update-scope-map "${OAUTH2_RP_ID}" "${TEST_GROUP}" openid -D admin || exit 1
+${KANIDM} system oauth2 update-scope-map "${OAUTH2_RP_ID}" "${TEST_GROUP}" openid -D admin
 echo "Creating the OAuth2 RP Supplemental Scope Map"
-${KANIDM} system oauth2 update-sup-scope-map "${OAUTH2_RP_ID}" "${TEST_GROUP}" admin -D admin || exit 1
+${KANIDM} system oauth2 update-sup-scope-map "${OAUTH2_RP_ID}" "${TEST_GROUP}" admin -D admin
 echo "Creating the OAuth2 RP Secondary Supplemental Crab-baite Scope Map.... wait, no that's not a thing."
 
 echo "Checking the OAuth2 RP Exists"
