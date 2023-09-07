@@ -269,6 +269,7 @@ pub(crate) async fn basic(
             .await
         });
     }
+    info!("Starting the warmup...");
 
     // Tell the arbiter to start the warm up counter now.
     broadcast_tx
@@ -283,7 +284,7 @@ pub(crate) async fn basic(
     // Now signal the workers to stop. We don't care if this fails.
     let _ = broadcast_tx
         .send(TestPhase::Shutdown)
-        .map_err(|_| error!("Unable to broadcast stop state change"));
+        .map_err(|_| error!("Unable to broadcast stop state change, but that's OK."));
 
     // Now we can finalise our data, based on what analysis we can actually do here.
     process_raw_results(&raw_results);

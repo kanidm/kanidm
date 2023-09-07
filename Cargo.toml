@@ -120,7 +120,7 @@ fs2 = "^0.4.3"
 futures = "^0.3.28"
 futures-concurrency = "^3.1.0"
 futures-util = { version = "^0.3.21", features = ["sink"] }
-git2 = "0.17.2"
+git2 = { version = "0.17.2", default-features = false }
 gloo = "^0.8.1"
 hashbrown = { version = "0.14.0", features = ["serde", "inline-more", "ahash"] }
 hex = "^0.4.3"
@@ -185,7 +185,10 @@ tokio-util = "^0.7.8"
 
 toml = "^0.5.11"
 touch = "^0.0.1"
-tracing = { version = "^0.1.37", features = ["max_level_trace", "release_max_level_debug"] }
+tracing = { version = "^0.1.37", features = [
+    "max_level_trace",
+    "release_max_level_debug",
+] }
 # tracing = { version = "^0.1.37" }
 tracing-subscriber = { version = "^0.3.17", features = ["env-filter"] }
 tracing-forest = "^0.1.6"
@@ -201,7 +204,11 @@ wasm-bindgen = "^0.2.86"
 wasm-bindgen-futures = "^0.4.30"
 wasm-bindgen-test = "0.3.35"
 
-webauthn-authenticator-rs = { version = "0.5.0-dev", features = ["softpasskey", "softtoken", "mozilla"] }
+webauthn-authenticator-rs = { version = "0.5.0-dev", features = [
+    "softpasskey",
+    "softtoken",
+    "mozilla",
+] }
 webauthn-rs = { version = "0.5.0-dev", features = ["preview-features"] }
 webauthn-rs-core = "0.5.0-dev"
 webauthn-rs-proto = "0.5.0-dev"
