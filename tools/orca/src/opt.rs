@@ -45,7 +45,10 @@ struct RunOpt {
     pub copt: CommonOpt,
     #[clap(name = "target")]
     pub target: TargetOpt,
-    #[clap(name = "test-type")]
+    #[clap(
+        name = "test-type",
+        help = "Which type of test to run against this system: currently supports 'search-basic'"
+    )]
     /// Which type of test to run against this system
     pub test_type: TestTypeOpt,
     #[clap(value_parser, short, long = "profile")]
@@ -67,7 +70,7 @@ struct ConfigOpt {
     #[clap(value_parser, short, long)]
     /// Update the LDAP URI
     pub ldap_uri: Option<String>,
-    #[clap(value_parser, short = 'D', long)]
+    #[clap(value_parser, long)]
     /// Update the LDAP base DN
     pub ldap_base_dn: Option<String>,
 
@@ -75,7 +78,7 @@ struct ConfigOpt {
     /// Set the configuration name
     pub name: Option<String>,
 
-    #[clap(value_parser, short, long)]
+    #[clap(value_parser, long)]
     /// The data file path to update (or create)
     pub data_file: Option<String>,
 
