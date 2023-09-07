@@ -1846,6 +1846,142 @@ async fn test_repl_increment_consumer_lagging_attributes(
     drop(server_b_txn);
 }
 
+// Test two synchronised nodes where no changes occured in a TS/RUV window.
+#[qs_pair_test]
+async fn test_repl_increment_consumer_ruv_trim_past_valid(
+    server_a: &QueryServer,
+    server_b: &QueryServer,
+) {
+    let ct = duration_from_epoch_now();
+
+    let mut server_a_txn = server_a.write(ct).await;
+    let mut server_b_txn = server_b.read().await;
+
+    assert!(repl_initialise(&mut server_b_txn, &mut server_a_txn)
+        .and_then(|_| server_a_txn.commit())
+        .is_ok());
+    drop(server_b_txn);
+
+    // Add an entry. We need at least one change on B, else it won't have anything
+    // to ship in it's RUV to A.
+    let ct = duration_from_epoch_now();
+    let mut server_b_txn = server_b.write(ct).await;
+    let t_uuid = Uuid::new_v4();
+    assert!(server_b_txn
+        .internal_create(vec![entry_init!(
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
+            (Attribute::Name.as_ref(), Value::new_iname("testperson1")),
+            (Attribute::Uuid.as_ref(), Value::Uuid(t_uuid)),
+            (
+                Attribute::Description.as_ref(),
+                Value::new_utf8s("testperson1")
+            ),
+            (
+                Attribute::DisplayName.as_ref(),
+                Value::new_utf8s("testperson1")
+            )
+        ),])
+        .is_ok());
+
+    server_b_txn.commit().expect("Failed to commit");
+
+    // Now setup bidirectional replication. We only need to trigger B -> A
+    // here because that's all that has changes.
+    let ct = duration_from_epoch_now();
+    let mut server_a_txn = server_a.write(ct).await;
+    let mut server_b_txn = server_b.read().await;
+
+    trace!("========================================");
+    repl_incremental(&mut server_b_txn, &mut server_a_txn);
+
+    let e1 = server_a_txn
+        .internal_search_all_uuid(t_uuid)
+        .expect("Unable to access entry.");
+    let e2 = server_b_txn
+        .internal_search_all_uuid(t_uuid)
+        .expect("Unable to access entry.");
+
+    assert!(e1 == e2);
+
+    server_a_txn.commit().expect("Failed to commit");
+    drop(server_b_txn);
+
+    // Everything is consistent!
+
+    // Compare RUV's
+
+    // Push time ahead past a changelog max age.
+    let ct = ct + Duration::from_secs(CHANGELOG_MAX_AGE * 4);
+
+    // And setup the ruv trim. This is triggered by purge/reap tombstones.
+    // Apply this to both nodes so that they shift their RUV states.
+    let mut server_a_txn = server_a.write(ct).await;
+    assert!(server_a_txn.purge_tombstones().is_ok());
+    server_a_txn.commit().expect("Failed to commit");
+
+    let mut server_b_txn = server_b.write(ct).await;
+    assert!(server_b_txn.purge_tombstones().is_ok());
+    server_b_txn.commit().expect("Failed to commit");
+
+    // Now check incremental in both directions. Should show *no* changes
+    // needed (rather than an error/lagging).
+    let mut server_a_txn = server_a.write(ct).await;
+    let mut server_b_txn = server_b.read().await;
+
+    let a_ruv_range = server_a_txn
+        .consumer_get_state()
+        .expect("Unable to access RUV range");
+
+    trace!(?a_ruv_range);
+
+    let changes = server_b_txn
+        .supplier_provide_changes(a_ruv_range)
+        .expect("Unable to generate supplier changes");
+
+    assert!(matches!(
+        changes,
+        ReplIncrementalContext::NoChangesAvailable
+    ));
+
+    let result = server_a_txn
+        .consumer_apply_changes(&changes)
+        .expect("Unable to apply changes to consumer.");
+
+    assert!(matches!(result, ConsumerState::Ok));
+
+    drop(server_a_txn);
+    drop(server_b_txn);
+
+    // Reverse it!
+    let mut server_a_txn = server_a.read().await;
+    let mut server_b_txn = server_b.write(ct).await;
+
+    let b_ruv_range = server_b_txn
+        .consumer_get_state()
+        .expect("Unable to access RUV range");
+
+    trace!(?b_ruv_range);
+
+    let changes = server_a_txn
+        .supplier_provide_changes(b_ruv_range)
+        .expect("Unable to generate supplier changes");
+
+    assert!(matches!(
+        changes,
+        ReplIncrementalContext::NoChangesAvailable
+    ));
+
+    let result = server_b_txn
+        .consumer_apply_changes(&changes)
+        .expect("Unable to apply changes to consumer.");
+
+    assert!(matches!(result, ConsumerState::Ok));
+
+    drop(server_a_txn);
+    drop(server_b_txn);
+}
+
 // Test change of a domain name over incremental.
 #[qs_pair_test]
 async fn test_repl_increment_domain_rename(server_a: &QueryServer, server_b: &QueryServer) {
