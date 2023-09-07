@@ -89,7 +89,7 @@ impl SelfOpt {
                             }
                         }
                     }
-                    Err(e) => println!("Error: {:?}", e),
+                    Err(e) => handle_client_error(e, &copt.output_mode),
                 }
             }
             SelfOpt::IdentifyUser(copt) => {
