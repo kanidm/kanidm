@@ -47,19 +47,26 @@ mod webauthn;
 pub(crate) fn handle_client_error(response: ClientError, _output_mode: &OutputMode) {
     match response {
         ClientError::Http(status, error, message) => {
+            let error_msg = match error {
+                Some(msg) => format!(" {:?}", msg),
+                None => "".to_string(),
+            };
             if status == StatusCode::INTERNAL_SERVER_ERROR {
                 error!(
-                    "Internal Server Error in response: {:?} {:?}",
-                    error, message
+                    "Internal Server Error in response:{:?} {:?}",
+                    error_msg, message
                 );
+                std::process::exit(exitcode::SOFTWARE);
+            } else if status == StatusCode::NOT_FOUND {
+                error!("Item not found:{:?} {:?}", error_msg, message)
             } else {
-                error!("HTTP Error: {} {:?} {:?}", status, error, message);
+                error!("HTTP Error: {}{} {:?}", status, error_msg, message);
+                std::process::exit(exitcode::SOFTWARE);
             }
-            std::process::exit(exitcode::SOFTWARE)
         }
         _ => {
             eprintln!("{:?}", response);
-            std::process::exit(exitcode::ExitCode::from(1))
+            // std::process::exit(exitcode::ExitCode::from(1))
         }
     };
 }
