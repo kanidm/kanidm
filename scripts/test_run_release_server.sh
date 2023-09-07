@@ -1,19 +1,15 @@
 #!/bin/bash
 
+# this script runs the server in release mode and tries to set up a dev environment, which catches failures between the
+# server and CLI, and ensures clap/etc rules actually work
+#
+# you really really really really don't want to run this when an environment you like exists, it'll mess it up
+
 set -e
 
-WAIT_TIMER=30
+WAIT_TIMER=5
 
-terminate_crab () {
-    echo "Waiting ${WAIT_TIMER} seconds and terminating Kanidmd"
-    sleep "${WAIT_TIMER}"
-    if [ "$(pgrep kanidmd | wc -l)" -gt 0 ]; then
-        killall kanidmd
-        kill $(pgrep kanidmd)
-    fi
-}
-
-
+echo "Building release binaries..."
 cargo build --release --bin kanidm --bin kanidmd
 
 if [ -d '.git' ]; then
@@ -29,18 +25,23 @@ fi
 
 mkdir -p /tmp/kanidm/
 
-cargo run --bin kanidmd cert-generate --config ../../examples/insecure_server.toml
+echo "Generating certificates..."
+cargo run --bin kanidmd --release cert-generate --config ../../examples/insecure_server.toml
+echo "Running the server..."
+cargo run --bin kanidmd --release server --config ../../examples/insecure_server.toml &
 
-
-cargo run --bin kanidmd server --config ../../examples/insecure_server.toml &
-
+echo "Waiting ${WAIT_TIMER} seconds..."
 sleep 5
 
 ../../scripts/setup_dev_environment.sh
 
-terminate_crab &
 
-kill $(pgrep kanidmd)
+echo "Waiting ${WAIT_TIMER} seconds and terminating Kanidmd"
+sleep "${WAIT_TIMER}"
+if [ "$(pgrep kanidmd | wc -l)" -gt 0 ]; then
+    killall kanidmd
+    kill $(pgrep kanidm)
+fi
 
 if [ -n "$CURRENT_DIR" ]; then
     cd "$CURRENT_DIR" || exit 1
