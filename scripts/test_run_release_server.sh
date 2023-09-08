@@ -27,8 +27,12 @@ mkdir -p /tmp/kanidm/
 
 echo "Generating certificates..."
 cargo run --bin kanidmd --release cert-generate --config ../../examples/insecure_server.toml
+
+echo "Making sure it runs with the DB..."
+cargo run --bin kanidmd --release recover-account idm_admin -o json
+
 echo "Running the server..."
-cargo run --bin kanidmd --release server & #--config ../../examples/insecure_server.toml &
+cargo run --bin kanidmd --release server --config ../../examples/insecure_server.toml &
 KANIDMD_PID=$!
 echo "${KANIDMD_PID}"
 
