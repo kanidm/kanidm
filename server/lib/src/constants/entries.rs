@@ -653,10 +653,13 @@ pub struct BuiltinGroup {
     dyngroup: bool,
     dyngroup_filter: Option<Filter>,
     // TODO: additional attributes (for things like the uihint group)
+    extra_attributes: Vec<(Attribute, Value)>,
 }
 
-impl From<BuiltinGroup> for EntryInitNew {
-    fn from(val: BuiltinGroup) -> Self {
+impl TryFrom<BuiltinGroup> for EntryInitNew {
+    type Error = OperationError;
+
+    fn try_from(val: BuiltinGroup) -> Result<Self, OperationError> {
         let mut entry = EntryInitNew::new();
 
         entry.add_ava(Attribute::Name.as_ref(), Value::new_iname(val.name));
@@ -675,7 +678,13 @@ impl From<BuiltinGroup> for EntryInitNew {
                 Some(filter) => {
                     entry.add_ava(Attribute::DynGroupFilter.as_ref(), Value::JsonFilt(filter))
                 }
-                None => panic!("No filter specified for dyngroup name {}", val.name),
+                None => {
+                    error!(
+                        "No filter specified for dyngroup '{}' this is going to break things!",
+                        val.name
+                    );
+                    return Err(OperationError::FilterGeneration);
+                }
             };
         }
         entry.add_ava(Attribute::Uuid.as_ref(), Value::Uuid(val.uuid));
@@ -686,7 +695,12 @@ impl From<BuiltinGroup> for EntryInitNew {
                 .map(Value::Refer)
                 .collect::<Vec<Value>>(),
         );
-        entry
+        // add any extra attributes
+        val.extra_attributes
+            .into_iter()
+            .for_each(|(attr, val)| entry.add_ava(attr.as_ref(), val));
+        // all done!
+        Ok(entry)
     }
 }
 
@@ -923,268 +937,246 @@ lazy_static! {
 //         ]
 //     }
 // }"#;
-pub const JSON_IDM_GROUP_WRITE_PRIV_V1: &str = r#"{
-    "attrs": {
-        "class": ["group", "object"],
-        "name": ["idm_group_write_priv"],
-        "uuid": ["00000000-0000-0000-0000-000000000004"],
-        "description": ["Builtin IDM Group for granting elevated group write permissions."],
-        "member": [
-            "00000000-0000-0000-0000-000000000015"
-        ]
-    }
-}"#;
-pub const JSON_IDM_GROUP_UNIX_EXTEND_PRIV_V1: &str = r#"{
-    "attrs": {
-        "class": ["group", "object"],
-        "name": ["idm_group_unix_extend_priv"],
-        "uuid": ["00000000-0000-0000-0000-000000000022"],
-        "description": ["Builtin IDM Group for granting unix group extension permissions."],
-        "member": [
-            "00000000-0000-0000-0000-000000000001"
-        ]
-    }
-}"#;
-// * account read manager
-pub const JSON_IDM_ACCOUNT_READ_PRIV_V1: &str = r#"{
-    "attrs": {
-        "class": ["group", "object"],
-        "name": ["idm_account_read_priv"],
-        "uuid": ["00000000-0000-0000-0000-000000000005"],
-        "description": ["Builtin IDM Group for granting elevated account read permissions."],
-        "member": [
-            "00000000-0000-0000-0000-000000000006"
-        ]
-    }
-}"#;
-// * account write manager
-pub const JSON_IDM_ACCOUNT_MANAGE_PRIV_V1: &str = r#"{
-    "attrs": {
-        "class": ["group", "object"],
-        "name": ["idm_account_manage_priv"],
-        "uuid": ["00000000-0000-0000-0000-000000000014"],
-        "description": ["Builtin IDM Group for granting elevated account write and lifecycle permissions."],
-        "member": [
-            "00000000-0000-0000-0000-000000000001"
-        ]
-    }
-}"#;
-pub const JSON_IDM_ACCOUNT_WRITE_PRIV_V1: &str = r#"{
-    "attrs": {
-        "class": ["group", "object"],
-        "name": ["idm_account_write_priv"],
-        "uuid": ["00000000-0000-0000-0000-000000000006"],
-        "description": ["Builtin IDM Group for granting elevated account write permissions."],
-        "member": ["00000000-0000-0000-0000-000000000014"]
-    }
-}"#;
-pub const JSON_IDM_ACCOUNT_UNIX_EXTEND_PRIV_V1: &str = r#"{
-    "attrs": {
-        "class": ["group", "object"],
-        "name": ["idm_account_unix_extend_priv"],
-        "uuid": ["00000000-0000-0000-0000-000000000021"],
-        "description": ["Builtin IDM Group for granting account unix extend permissions."],
-        "member": ["00000000-0000-0000-0000-000000000001"]
-    }
-}"#;
-// * RADIUS servers
-
-/// Builtin IDM Group for RADIUS secret write for all non-hp accounts.
-pub const JSON_IDM_RADIUS_SECRET_WRITE_PRIV_V1: &str = r#"{
-    "attrs": {
-        "class": ["group", "object"],
-        "name": ["idm_radius_secret_write_priv"],
-        "uuid": ["00000000-0000-0000-0000-000000000031"],
-        "description": ["Builtin IDM Group for RADIUS secret write for all non-hp accounts."],
-        "member": ["00000000-0000-0000-0000-000000000001"]
-    }
-}"#;
-
-/// Builtin IDM Group for RADIUS secret reading for all non-hp accounts.
-pub const JSON_IDM_RADIUS_SECRET_READ_PRIV_V1: &str = r#"{
-    "attrs": {
-        "class": ["group", "object"],
-        "name": ["idm_radius_secret_read_priv"],
-        "uuid": ["00000000-0000-0000-0000-000000000032"],
-        "description": ["Builtin IDM Group for RADIUS secret reading for all non-hp accounts."],
-        "member": ["00000000-0000-0000-0000-000000000031"]
-    }
-}"#;
-
-/// Builtin IDM Group for RADIUS server access delegation.
-pub const JSON_IDM_RADIUS_SERVERS_V1: &str = r#"{
-    "attrs": {
-        "class": ["group", "object"],
-        "name": ["idm_radius_servers"],
-        "uuid": ["00000000-0000-0000-0000-000000000007"],
-        "description": ["Builtin IDM Group for RADIUS server access delegation."]
-    }
-}"#;
-
-// * high priv account read manager
-pub const JSON_IDM_HP_ACCOUNT_READ_PRIV_V1: &str = r#"{
-    "attrs": {
-        "class": ["group", "object"],
-        "name": ["idm_hp_account_read_priv"],
-        "uuid": ["00000000-0000-0000-0000-000000000008"],
-        "description": ["Builtin IDM Group for granting elevated account read permissions over high privilege accounts."],
-        "member": [
-            "00000000-0000-0000-0000-000000000009"
-        ]
-    }
-}"#;
-
-// * high priv account write manager
-pub const JSON_IDM_HP_ACCOUNT_MANAGE_PRIV_V1: &str = r#"{
-    "attrs": {
-        "class": ["group", "object"],
-        "name": ["idm_hp_account_manage_priv"],
-        "uuid": ["00000000-0000-0000-0000-000000000016"],
-        "description": ["Builtin IDM Group for granting elevated account write and lifecycle permissions over high privilege accounts."],
-        "member": [
-            "00000000-0000-0000-0000-000000000019"
-        ]
-    }
-}"#;
-
-/// Builtin IDM Group for granting elevated account write permissions over high privilege accounts.
-pub const JSON_IDM_HP_ACCOUNT_WRITE_PRIV_V1: &str = r#"{
-    "attrs": {
-        "class": ["group", "object"],
-        "name": ["idm_hp_account_write_priv"],
-        "uuid": ["00000000-0000-0000-0000-000000000009"],
-        "description": ["Builtin IDM Group for granting elevated account write permissions over high privilege accounts."],
-        "member": [
-            "00000000-0000-0000-0000-000000000016"
-        ]
-    }
-}"#;
-
-/// Builtin IDM Group for granting account unix extend permissions for high privilege accounts.
-pub const JSON_IDM_HP_ACCOUNT_UNIX_EXTEND_PRIV_V1: &str = r#"{
-    "attrs": {
-        "class": ["group", "object"],
-        "name": ["idm_hp_account_unix_extend_priv"],
-        "uuid": ["00000000-0000-0000-0000-000000000025"],
-        "description": ["Builtin IDM Group for granting account unix extend permissions for high privilege accounts."],
-        "member": ["00000000-0000-0000-0000-000000000019"]
-    }
-}"#;
-
-// * Schema write manager
-pub const JSON_IDM_SCHEMA_MANAGE_PRIV_V1: &str = r#"{
-    "attrs": {
-        "class": ["group", "object"],
-        "name": ["idm_schema_manage_priv"],
-        "uuid": ["00000000-0000-0000-0000-000000000010"],
-        "description": ["Builtin IDM Group for granting elevated schema write and management permissions."],
-        "member": [
-            "00000000-0000-0000-0000-000000000019"
-        ]
-    }
-}"#;
-
-// * ACP read/write manager
-pub const JSON_IDM_ACP_MANAGE_PRIV_V1: &str = r#"{
-    "attrs": {
-        "class": ["group", "object"],
-        "name": ["idm_acp_manage_priv"],
-        "uuid": ["00000000-0000-0000-0000-000000000011"],
-        "description": ["Builtin IDM Group for granting control over all access control profile modifications."],
-        "member": ["00000000-0000-0000-0000-000000000019"]
-    }
-}"#;
-
-// Builtin IDM Group for granting elevated group write and lifecycle privileges for high privilege groups.
-pub const JSON_IDM_HP_GROUP_MANAGE_PRIV_V1: &str = r#"{
-    "attrs": {
-        "class": ["group", "object"],
-        "name": ["idm_hp_group_manage_priv"],
-        "uuid": ["00000000-0000-0000-0000-000000000017"],
-        "description": ["Builtin IDM Group for granting elevated group write and lifecycle privileges for high privilege groups."],
-        "member": ["00000000-0000-0000-0000-000000000019"]
-    }
-}"#;
-
-/// Builtin IDM Group for granting elevated group write privileges for high privilege groups.
-pub const JSON_IDM_HP_GROUP_WRITE_PRIV_V1: &str = r#"{
-    "attrs": {
-        "class": ["group", "object"],
-        "name": ["idm_hp_group_write_priv"],
-        "uuid": ["00000000-0000-0000-0000-000000000012"],
-        "description": ["Builtin IDM Group for granting elevated group write privileges for high privilege groups."],
-        "member": [
-            "00000000-0000-0000-0000-000000000017"
-        ]
-    }
-}"#;
-
-/// Builtin IDM Group for granting unix group extension permissions for high privilege groups.
-pub const JSON_IDM_HP_GROUP_UNIX_EXTEND_PRIV_V1: &str = r#"{
-    "attrs": {
-        "class": ["group", "object"],
-        "name": ["idm_hp_group_unix_extend_priv"],
-        "uuid": ["00000000-0000-0000-0000-000000000026"],
-        "description": ["Builtin IDM Group for granting unix group extension permissions for high privilege groups."],
-        "member": [
-            "00000000-0000-0000-0000-000000000019"
-        ]
-    }
-}"#;
-
-/// Builtin IDM Group for granting local domain administration rights and trust administration rights
-pub const JSON_DOMAIN_ADMINS: &str = r#"{
-    "attrs": {
-        "class": ["group", "object"],
-        "name": ["domain_admins"],
-        "uuid": ["00000000-0000-0000-0000-000000000020"],
-        "description": ["Builtin IDM Group for granting local domain administration rights and trust administration rights."],
-        "member": [
-            "00000000-0000-0000-0000-000000000000"
-        ]
-    }
-}"#;
-
-pub const JSON_IDM_HP_OAUTH2_MANAGE_PRIV_V1: &str = r#"{
-    "attrs": {
-        "class": ["group", "object"],
-        "name": ["idm_hp_oauth2_manage_priv"],
-        "uuid": ["00000000-0000-0000-0000-000000000027"],
-        "description": ["Builtin IDM Group for managing oauth2 resource server integrations to this authentication domain."],
-        "member": [
-            "00000000-0000-0000-0000-000000000019"
-        ]
-    }
-}"#;
-
-pub const JSON_IDM_HP_SERVICE_ACCOUNT_INTO_PERSON_MIGRATE_PRIV: &str = r#"{
-    "attrs": {
-        "class": ["group", "object"],
-        "name": ["idm_hp_service_account_into_person_migrate_priv"],
-        "uuid": ["00000000-0000-0000-0000-000000000034"],
-        "description": ["Builtin IDM Group for allowing migrations of service accounts into persons"],
-        "member": [
-            "00000000-0000-0000-0000-000000000019"
-        ]
-    }
-}"#;
-
-/// Builtin System Admin account.
-pub const JSON_IDM_HP_SYNC_ACCOUNT_MANAGE_PRIV: &str = r#"{
-    "attrs": {
-        "class": ["group", "object"],
-        "name": ["idm_hp_sync_account_manage_priv"],
-        "uuid": ["00000000-0000-0000-0000-000000000037"],
-        "description": ["Builtin IDM Group for managing synchronisation from external identity sources"],
-        "member": [
-            "00000000-0000-0000-0000-000000000019"
-        ]
-    }
-}"#;
-
-// == dyn groups
 
 lazy_static! {
+    /// Builtin IDM Group for granting elevated group write and lifecycle permissions.
+    pub static ref IDM_GROUP_WRITE_PRIV_V1: BuiltinGroup = BuiltinGroup {
+        name: "idm_group_write_priv",
+        description: "Builtin IDM Group for granting elevated group write permissions.",
+        uuid: UUID_IDM_GROUP_WRITE_PRIV,
+        members: vec![
+            UUID_IDM_GROUP_MANAGE_PRIV
+        ],
+        ..Default::default()
+    };
+
+    /// Builtin IDM Group for granting unix group extension permissions.
+    pub static ref IDM_GROUP_UNIX_EXTEND_PRIV_V1: BuiltinGroup = BuiltinGroup {
+        name: "idm_group_unix_extend_priv",
+        description: "Builtin IDM Group for granting UNIX group extension permissions.",
+        uuid: UUID_IDM_GROUP_UNIX_EXTEND_PRIV,
+        members: vec![
+            UUID_IDM_ADMINS
+        ],
+        ..Default::default()
+    };
+
+    /// Account read manager
+    pub static ref IDM_ACCOUNT_READ_PRIV_V1: BuiltinGroup = BuiltinGroup {
+        name: "idm_account_read_priv",
+        description: "Builtin IDM Group for granting elevated account read permissions.",
+        uuid: UUID_IDM_ACCOUNT_READ_PRIV,
+        members: vec![
+            UUID_IDM_ACCOUNT_WRITE_PRIV,
+        ],
+        ..Default::default()
+    };
+
+    pub static ref IDM_ACCOUNT_MANAGE_PRIV_V1: BuiltinGroup = BuiltinGroup {
+        name: "idm_account_manage_priv",
+        description: "Builtin IDM Group for granting elevated account write and lifecycle permissions.",
+        uuid: UUID_IDM_ACCOUNT_MANAGE_PRIV,
+        members: vec![
+            UUID_IDM_ADMINS,
+        ],
+        ..Default::default()
+    };
+
+    pub static ref IDM_ACCOUNT_WRITE_PRIV_V1: BuiltinGroup = BuiltinGroup {
+        name: "idm_account_write_priv",
+        description: "Builtin IDM Group for granting elevated account write permissions.",
+        uuid: UUID_IDM_ACCOUNT_WRITE_PRIV,
+        members: vec![
+            UUID_IDM_ACCOUNT_MANAGE_PRIV,
+        ],
+        ..Default::default()
+    };
+
+    pub static ref IDM_ACCOUNT_UNIX_EXTEND_PRIV_V1: BuiltinGroup = BuiltinGroup {
+        name: "idm_account_unix_extend_priv",
+        description: "Builtin IDM Group for granting account unix extend permissions.",
+        uuid: UUID_IDM_ACCOUNT_UNIX_EXTEND_PRIV,
+        members: vec![
+            UUID_IDM_ADMINS,
+        ],
+        ..Default::default()
+    };
+
+    /// Builtin IDM Group for RADIUS secret write for all non-hp accounts.
+    pub static ref IDM_RADIUS_SECRET_WRITE_PRIV_V1: BuiltinGroup = BuiltinGroup {
+        name: "idm_radius_secret_write_priv",
+        description: "Builtin IDM Group for RADIUS secret write for all non-hp accounts.",
+        uuid: UUID_IDM_RADIUS_SECRET_WRITE_PRIV_V1,
+        members: vec![
+            UUID_IDM_ADMINS,
+        ],
+        ..Default::default()
+    };
+
+    /// Builtin IDM Group for RADIUS secret reading for all non-hp accounts.
+    pub static ref IDM_RADIUS_SECRET_READ_PRIV_V1: BuiltinGroup = BuiltinGroup {
+        name: "idm_radius_secret_read_priv",
+        description: "Builtin IDM Group for RADIUS secret reading for all non-hp accounts.",
+        uuid: UUID_IDM_RADIUS_SECRET_READ_PRIV_V1,
+        members: vec![
+            UUID_IDM_RADIUS_SECRET_WRITE_PRIV_V1,
+        ],
+        ..Default::default()
+    };
+
+    /// Builtin IDM Group for RADIUS server access delegation.
+    pub static ref IDM_RADIUS_SERVERS_V1: BuiltinGroup = BuiltinGroup {
+        name: "idm_radius_servers",
+        description: "Builtin IDM Group for RADIUS server access delegation.",
+        uuid: UUID_IDM_RADIUS_SERVERS,
+        members: vec![
+        ],
+        ..Default::default()
+    };
+
+    /// High privilege account read manager
+    pub static ref IDM_HP_ACCOUNT_READ_PRIV_V1: BuiltinGroup = BuiltinGroup {
+        name: "idm_hp_account_read_priv",
+        description: "Builtin IDM Group for granting elevated account read permissions over high privilege accounts.",
+        uuid: UUID_IDM_HP_ACCOUNT_READ_PRIV,
+        members: vec![
+            UUID_IDM_HP_ACCOUNT_WRITE_PRIV
+        ],
+        ..Default::default()
+    };
+
+    /// Builtin IDM Group for granting elevated account write permissions over high privilege accounts.
+    pub static ref IDM_HP_ACCOUNT_MANAGE_PRIV_V1: BuiltinGroup = BuiltinGroup {
+        name: "idm_hp_account_manage_priv",
+        description: "Builtin IDM Group for granting elevated account write and lifecycle permissions over high privilege accounts.",
+        uuid: UUID_IDM_HP_ACCOUNT_MANAGE_PRIV,
+        members: vec![
+            UUID_SYSTEM_ADMINS,
+        ],
+        ..Default::default()
+    };
+    /// Builtin IDM Group for granting elevated account write permissions over high privilege accounts.
+    pub static ref IDM_HP_ACCOUNT_WRITE_PRIV_V1: BuiltinGroup = BuiltinGroup {
+        name: "idm_hp_account_write_priv",
+        description: "Builtin IDM Group for granting elevated account write permissions over high privilege accounts.",
+        uuid: UUID_IDM_HP_ACCOUNT_WRITE_PRIV,
+        members: vec![
+            UUID_IDM_HP_ACCOUNT_MANAGE_PRIV,
+        ],
+        ..Default::default()
+    };
+
+    /// Builtin IDM Group for granting account unix extend permissions for high privilege accounts.
+    pub static ref IDM_HP_ACCOUNT_UNIX_EXTEND_PRIV_V1: BuiltinGroup = BuiltinGroup {
+        name: "idm_hp_account_unix_extend_priv",
+        description: "Builtin IDM Group for granting account UNIX extend permissions for high privilege accounts.",
+        uuid: UUID_IDM_HP_ACCOUNT_UNIX_EXTEND_PRIV,
+        members: vec![
+            UUID_SYSTEM_ADMINS,
+        ],
+        ..Default::default()
+    };
+
+    /// * Schema write manager
+    pub static ref IDM_SCHEMA_MANAGE_PRIV_V1: BuiltinGroup = BuiltinGroup {
+        name: "idm_schema_manage_priv",
+        description: "Builtin IDM Group for granting elevated schema write and management permissions.",
+        uuid: UUID_IDM_SCHEMA_MANAGE_PRIV,
+        members: vec![
+            UUID_SYSTEM_ADMINS,
+        ],
+        ..Default::default()
+    };
+
+    /// ACP read/write manager
+    pub static ref IDM_ACP_MANAGE_PRIV_V1: BuiltinGroup = BuiltinGroup {
+        name: "idm_acp_manage_priv",
+        description: "Builtin IDM Group for granting control over all access control profile modifications.",
+        uuid: UUID_IDM_ACP_MANAGE_PRIV,
+        members: vec![
+            UUID_SYSTEM_ADMINS,
+        ],
+        ..Default::default()
+    };
+
+    /// Builtin IDM Group for granting elevated group write and lifecycle privileges for high privilege groups.
+    pub static ref IDM_HP_GROUP_MANAGE_PRIV_V1: BuiltinGroup = BuiltinGroup {
+        name: "idm_hp_group_manage_priv",
+        description: "Builtin IDM Group for granting elevated group write and lifecycle privileges for high privilege groups.",
+        uuid: UUID_IDM_HP_GROUP_MANAGE_PRIV,
+        members: vec![
+            UUID_SYSTEM_ADMINS,
+        ],
+        ..Default::default()
+    };
+
+    /// Builtin IDM Group for granting elevated group write privileges for high privilege groups.
+    pub static ref IDM_HP_GROUP_WRITE_PRIV_V1: BuiltinGroup = BuiltinGroup {
+        name: "idm_hp_group_write_priv",
+        description: "Builtin IDM Group for granting elevated group write privileges for high privilege groups.",
+        uuid: UUID_IDM_HP_GROUP_WRITE_PRIV,
+        members: vec![
+            UUID_IDM_HP_GROUP_MANAGE_PRIV,
+        ],
+        ..Default::default()
+    };
+
+    /// Builtin IDM Group for granting unix group extension permissions for high privilege groups.
+    pub static ref IDM_HP_GROUP_UNIX_EXTEND_PRIV_V1: BuiltinGroup = BuiltinGroup {
+        name: "idm_hp_group_unix_extend_priv",
+        description: "Builtin IDM Group for granting unix group extension permissions for high privilege groups.",
+        uuid: UUID_IDM_HP_GROUP_UNIX_EXTEND_PRIV,
+        members: vec![
+            UUID_SYSTEM_ADMINS,
+        ],
+        ..Default::default()
+    };
+
+    /// Builtin IDM Group for granting local domain administration rights and trust administration rights
+    pub static ref DOMAIN_ADMINS: BuiltinGroup = BuiltinGroup {
+        name: "domain_admins",
+        description: "Builtin IDM Group for granting local domain administration rights and trust administration rights.",
+        uuid: UUID_DOMAIN_ADMINS,
+        members: vec![
+            UUID_ADMIN,
+        ],
+        ..Default::default()
+    };
+
+    /// Builtin IDM Group for managing oauth2 resource server integrations to this authentication domain.
+    pub static ref IDM_HP_OAUTH2_MANAGE_PRIV_V1: BuiltinGroup = BuiltinGroup {
+        name: "idm_hp_oauth2_manage_priv",
+        description: "Builtin IDM Group for managing oauth2 resource server integrations to this authentication domain.",
+        uuid: UUID_IDM_HP_OAUTH2_MANAGE_PRIV,
+        members: vec![
+            UUID_SYSTEM_ADMINS,
+        ],
+        ..Default::default()
+    };
+
+    /// Builtin IDM Group for allowing migrations of service accounts into persons
+    pub static ref IDM_HP_SERVICE_ACCOUNT_INTO_PERSON_MIGRATE_PRIV: BuiltinGroup = BuiltinGroup {
+        name: "idm_hp_service_account_into_person_migrate_priv",
+        description:"Builtin IDM Group for allowing migrations of service accounts into persons",
+        uuid: UUID_IDM_HP_SERVICE_ACCOUNT_INTO_PERSON_MIGRATE_PRIV,
+        members: vec![
+            UUID_SYSTEM_ADMINS,
+        ],
+        ..Default::default()
+    };
+
+
+    /// Builtin IDM Group for allowing migrations of service accounts into persons
+    pub static ref IDM_HP_SYNC_ACCOUNT_MANAGE_PRIV: BuiltinGroup = BuiltinGroup {
+        name: "idm_hp_sync_account_manage_priv",
+        description: "Builtin IDM Group for managing synchronisation from external identity sources",
+        uuid: UUID_IDM_HP_SYNC_ACCOUNT_MANAGE_PRIV,
+        members: vec![
+            UUID_SYSTEM_ADMINS,
+        ],
+        ..Default::default()
+    };
+
     /// Builtin IDM Group for extending high privilege accounts to be people.
     pub static ref IDM_ALL_PERSONS: BuiltinGroup = BuiltinGroup {
         name: "idm_all_persons",
@@ -1197,35 +1189,10 @@ lazy_static! {
                 Filter::Eq(Attribute::Class.to_string(), EntryClass::Person.to_string()),
                 Filter::Eq(Attribute::Class.to_string(), EntryClass::Account.to_string()),
             ])
-        )
+        ),
+        ..Default::default()
     };
-}
 
-// pub const JSON_IDM_ALL_PERSONS: &str = r#"{
-//     "attrs": {
-//         "class": ["dyngroup", "group", "object"],
-//         "name": ["idm_all_persons"],
-//         "uuid": ["00000000-0000-0000-0000-000000000035"],
-//         "description": ["Builtin IDM dynamic group containing all persons that can authenticate"],
-//         "dyngroup_filter": [
-//             "{\"and\": [{\"eq\": [\"class\",\"person\"]}, {\"eq\": [\"class\",\"account\"]}]}"
-//         ]
-//     }
-// }"#;
-
-// pub const JSON_IDM_ALL_ACCOUNTS: &str = r#"{
-//     "attrs": {
-//         "class": ["dyngroup", "group", "object"],
-//         "name": ["idm_all_accounts"],
-//         "uuid": ["00000000-0000-0000-0000-000000000036"],
-//         "description": ["Builtin IDM dynamic group containing all entries that can authenticate."],
-//         "dyngroup_filter": [
-//             "{\"eq\":[\"class\",\"account\"]}"
-//         ]
-//     }
-// }"#;
-
-lazy_static! {
     /// Builtin IDM Group for extending high privilege accounts to be people.
     pub static ref IDM_ALL_ACCOUNTS: BuiltinGroup = BuiltinGroup {
         name: "idm_all_accounts",
@@ -1235,52 +1202,71 @@ lazy_static! {
         dyngroup: true,
         dyngroup_filter: Some(
                 Filter::Eq(Attribute::Class.to_string(), EntryClass::Account.to_string()),
-        )
+        ),
+        ..Default::default()
+    };
+
+
+    pub static ref IDM_UI_ENABLE_EXPERIMENTAL_FEATURES: BuiltinGroup = BuiltinGroup {
+        name: "idm_ui_enable_experimental_features",
+        description: "Members of this group will have access to experimental web UI features.",
+        uuid: UUID_IDM_UI_ENABLE_EXPERIMENTAL_FEATURES,
+        extra_attributes: vec![
+            (Attribute::GrantUiHint, Value::UiHint(UiHint::ExperimentalFeatures))
+        ],
+        ..Default::default()
+    };
+
+    /// Members of this group will have access to read the mail attribute of all persons and service accounts.
+    pub static ref IDM_ACCOUNT_MAIL_READ_PRIV: BuiltinGroup = BuiltinGroup {
+        name: "idm_account_mail_read_priv",
+        description: "Members of this group will have access to read the mail attribute of all persons and service accounts.",
+        uuid: UUID_IDM_ACCOUNT_MAIL_READ_PRIV,
+        ..Default::default()
+    };
+
+    /// This must be the last group to init to include the UUID of the other high priv groups.
+    pub static ref IDM_HIGH_PRIVILEGE_V1: BuiltinGroup = BuiltinGroup {
+        name: "idm_high_privilege",
+        uuid: UUID_IDM_HIGH_PRIVILEGE,
+        description: "Builtin IDM provided groups with high levels of access that should be audited and limited in modification.",
+        members: vec![
+            UUID_IDM_ADMINS,
+            UUID_IDM_PEOPLE_READ_PRIV,
+            UUID_IDM_PEOPLE_WRITE_PRIV,
+            UUID_IDM_GROUP_WRITE_PRIV,
+            UUID_IDM_ACCOUNT_READ_PRIV,
+            UUID_IDM_ACCOUNT_WRITE_PRIV,
+            UUID_IDM_RADIUS_SERVERS,
+            UUID_IDM_HP_ACCOUNT_READ_PRIV,
+            UUID_IDM_HP_ACCOUNT_WRITE_PRIV,
+            UUID_IDM_SCHEMA_MANAGE_PRIV,
+            UUID_IDM_ACP_MANAGE_PRIV,
+            UUID_IDM_HP_GROUP_WRITE_PRIV,
+            UUID_IDM_PEOPLE_MANAGE_PRIV,
+            UUID_IDM_ACCOUNT_MANAGE_PRIV,
+            UUID_IDM_GROUP_MANAGE_PRIV,
+            UUID_IDM_HP_ACCOUNT_MANAGE_PRIV,
+            UUID_IDM_HP_GROUP_MANAGE_PRIV,
+            UUID_SYSTEM_ADMINS,
+            UUID_DOMAIN_ADMINS,
+            UUID_IDM_PEOPLE_ACCOUNT_PASSWORD_IMPORT_PRIV,
+            UUID_IDM_PEOPLE_EXTEND_PRIV,
+            UUID_IDM_HP_ACCOUNT_UNIX_EXTEND_PRIV,
+            UUID_IDM_HP_GROUP_UNIX_EXTEND_PRIV,
+            UUID_IDM_HP_OAUTH2_MANAGE_PRIV,
+            UUID_IDM_RADIUS_SECRET_WRITE_PRIV_V1,
+            UUID_IDM_RADIUS_SECRET_READ_PRIV_V1,
+            UUID_IDM_HP_SERVICE_ACCOUNT_INTO_PERSON_MIGRATE_PRIV,
+            UUID_IDM_HP_SYNC_ACCOUNT_MANAGE_PRIV,
+            UUID_IDM_HIGH_PRIVILEGE,
+        ],
+        dyngroup: false,
+        dyngroup_filter: None,
+        extra_attributes: Vec::new(),
     };
 }
 
-lazy_static! {
-    pub static ref E_IDM_UI_ENABLE_EXPERIMENTAL_FEATURES: EntryInitNew = entry_init!(
-        (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-        (Attribute::Class.as_ref(), EntryClass::Group.to_value()),
-        (
-            Attribute::Name.as_ref(),
-            Value::new_iname("idm_ui_enable_experimental_features")
-        ),
-        (
-            Attribute::Uuid.as_ref(),
-            Value::Uuid(UUID_IDM_UI_ENABLE_EXPERIMENTAL_FEATURES)
-        ),
-        (
-            Attribute::Description.as_ref(),
-            Value::new_utf8s(
-                "Members of this group will have access to experimental web UI features."
-            )
-        ),
-        (Attribute::GrantUiHint.as_ref(), Value::UiHint(UiHint::ExperimentalFeatures))
-    );
-
-    pub static ref E_IDM_ACCOUNT_MAIL_READ_PRIV: EntryInitNew = entry_init!(
-        (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-        (Attribute::Class.as_ref(), EntryClass::Group.to_value()),
-        (
-            Attribute::Name.as_ref(),
-            Value::new_iname("idm_account_mail_read_priv")
-        ),
-        (
-            Attribute::Uuid.as_ref(),
-            Value::Uuid(UUID_IDM_ACCOUNT_MAIL_READ_PRIV)
-        ),
-        (
-            Attribute::Description.as_ref(),
-            Value::new_utf8s(
-                "Members of this group will have access to read the mail attribute of all persons and service accounts."
-            )
-        )
-    );
-}
-
-/// This must be the last group to init to include the UUID of the other high priv groups.
 pub const JSON_IDM_HIGH_PRIVILEGE_V1: &str = r#"{
     "attrs": {
         "class": ["group", "object"],
@@ -1348,17 +1334,6 @@ lazy_static! {
         )
     );
 }
-
-// Anonymous should be the last object in the range here.
-// pub const JSON_ANONYMOUS_V1: &str = r#"{
-//     "attrs": {
-//         "class": ["account", "service_account", "object"],
-//         "name": ["anonymous"],
-//         "uuid": ["00000000-0000-0000-0000-ffffffffffff"],
-//         "description": ["Anonymous access account."],
-//         "displayname": ["Anonymous"]
-//     }
-// }"#;
 
 #[derive(Debug, Clone)]
 /// Built in accounts such as anonymous, idm_admin and admin
