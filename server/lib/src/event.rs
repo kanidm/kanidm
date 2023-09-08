@@ -666,11 +666,11 @@ impl ModifyEvent {
     /// This is a TEST ONLY method and will never be exposed in production.
     #[cfg(test)]
     pub fn new_impersonate_entry_ser(
-        e: &str,
+        e: BuiltinAccount,
         filter: Filter<FilterInvalid>,
         modlist: ModifyList<ModifyInvalid>,
     ) -> Self {
-        let ei: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(e);
+        let ei: EntryInitNew = e.into();
         ModifyEvent {
             ident: Identity::from_impersonate_entry_readwrite(Arc::new(ei.into_sealed_committed())),
             filter: filter.clone().into_valid(),

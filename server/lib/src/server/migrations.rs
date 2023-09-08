@@ -603,12 +603,12 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
         // Check the admin object exists (migrations).
         // Create the default idm_admin group.
-        let admin_entries = [
-            E_ANONYMOUS_V1.clone(),
-            E_ADMIN_V1.clone(),
-            E_IDM_ADMIN_V1.clone(),
-            E_IDM_ADMINS_V1.clone(),
-            E_SYSTEM_ADMINS_V1.clone(),
+        let admin_entries: Vec<EntryInitNew> = vec![
+            BUILTIN_ACCOUNT_ANONYMOUS_V1.clone().into(),
+            BUILTIN_ACCOUNT_ADMIN.clone().into(),
+            BUILTIN_ACCOUNT_IDM_ADMIN.clone().into(),
+            BUILTIN_GROUP_IDM_ADMINS_V1.clone().try_into()?,
+            BUILTIN_GROUP_SYSTEM_ADMINS_V1.clone().try_into()?,
         ];
         let res: Result<(), _> = admin_entries
             .into_iter()
@@ -621,53 +621,52 @@ impl<'a> QueryServerWriteTransaction<'a> {
         res?;
 
         // Create any system default schema entries.
-
-        // Create any system default access profile entries.
-        let idm_entries = [
-            // Builtin dyn groups,
-            JSON_IDM_ALL_PERSONS,
-            JSON_IDM_ALL_ACCOUNTS,
-            // Builtin groups
-            JSON_IDM_PEOPLE_MANAGE_PRIV_V1,
-            JSON_IDM_PEOPLE_ACCOUNT_PASSWORD_IMPORT_PRIV_V1,
-            JSON_IDM_PEOPLE_EXTEND_PRIV_V1,
-            JSON_IDM_PEOPLE_SELF_WRITE_MAIL_PRIV_V1,
-            JSON_IDM_PEOPLE_WRITE_PRIV_V1,
-            JSON_IDM_PEOPLE_READ_PRIV_V1,
-            JSON_IDM_HP_PEOPLE_EXTEND_PRIV_V1,
-            JSON_IDM_HP_PEOPLE_WRITE_PRIV_V1,
-            JSON_IDM_HP_PEOPLE_READ_PRIV_V1,
-            JSON_IDM_GROUP_MANAGE_PRIV_V1,
-            JSON_IDM_GROUP_WRITE_PRIV_V1,
-            JSON_IDM_GROUP_UNIX_EXTEND_PRIV_V1,
-            JSON_IDM_ACCOUNT_MANAGE_PRIV_V1,
-            JSON_IDM_ACCOUNT_WRITE_PRIV_V1,
-            JSON_IDM_ACCOUNT_UNIX_EXTEND_PRIV_V1,
-            JSON_IDM_ACCOUNT_READ_PRIV_V1,
-            JSON_IDM_RADIUS_SECRET_WRITE_PRIV_V1,
-            JSON_IDM_RADIUS_SECRET_READ_PRIV_V1,
-            JSON_IDM_RADIUS_SERVERS_V1,
+        let idm_entries: Vec<&BuiltinGroup> = vec![
+            &IDM_ALL_PERSONS,
+            &IDM_ALL_ACCOUNTS,
+            &IDM_PEOPLE_MANAGE_PRIV_V1,
+            &IDM_PEOPLE_ACCOUNT_PASSWORD_IMPORT_PRIV_V1,
+            &IDM_PEOPLE_EXTEND_PRIV_V1,
+            &IDM_PEOPLE_SELF_WRITE_MAIL_PRIV_V1,
+            &IDM_PEOPLE_WRITE_PRIV_V1,
+            &IDM_PEOPLE_READ_PRIV_V1,
+            &IDM_HP_PEOPLE_EXTEND_PRIV_V1,
+            &IDM_HP_PEOPLE_WRITE_PRIV_V1,
+            &IDM_HP_PEOPLE_READ_PRIV_V1,
+            &IDM_GROUP_MANAGE_PRIV_V1,
+            &IDM_GROUP_WRITE_PRIV_V1,
+            &IDM_GROUP_UNIX_EXTEND_PRIV_V1,
+            &IDM_ACCOUNT_MANAGE_PRIV_V1,
+            &IDM_ACCOUNT_WRITE_PRIV_V1,
+            &IDM_ACCOUNT_UNIX_EXTEND_PRIV_V1,
+            &IDM_ACCOUNT_READ_PRIV_V1,
+            &IDM_RADIUS_SECRET_WRITE_PRIV_V1,
+            &IDM_RADIUS_SECRET_READ_PRIV_V1,
+            &IDM_RADIUS_SERVERS_V1,
             // Write deps on read, so write must be added first.
-            JSON_IDM_HP_ACCOUNT_MANAGE_PRIV_V1,
-            JSON_IDM_HP_ACCOUNT_WRITE_PRIV_V1,
-            JSON_IDM_HP_ACCOUNT_READ_PRIV_V1,
-            JSON_IDM_HP_ACCOUNT_UNIX_EXTEND_PRIV_V1,
-            JSON_IDM_SCHEMA_MANAGE_PRIV_V1,
-            JSON_IDM_HP_GROUP_MANAGE_PRIV_V1,
-            JSON_IDM_HP_GROUP_WRITE_PRIV_V1,
-            JSON_IDM_HP_GROUP_UNIX_EXTEND_PRIV_V1,
-            JSON_IDM_ACP_MANAGE_PRIV_V1,
-            JSON_DOMAIN_ADMINS,
-            JSON_IDM_HP_OAUTH2_MANAGE_PRIV_V1,
-            JSON_IDM_HP_SERVICE_ACCOUNT_INTO_PERSON_MIGRATE_PRIV,
-            JSON_IDM_HP_SYNC_ACCOUNT_MANAGE_PRIV,
+            &IDM_HP_ACCOUNT_MANAGE_PRIV_V1,
+            &IDM_HP_ACCOUNT_WRITE_PRIV_V1,
+            &IDM_HP_ACCOUNT_READ_PRIV_V1,
+            &IDM_HP_ACCOUNT_UNIX_EXTEND_PRIV_V1,
+            &IDM_SCHEMA_MANAGE_PRIV_V1,
+            &IDM_HP_GROUP_MANAGE_PRIV_V1,
+            &IDM_HP_GROUP_WRITE_PRIV_V1,
+            &IDM_HP_GROUP_UNIX_EXTEND_PRIV_V1,
+            &IDM_ACP_MANAGE_PRIV_V1,
+            &DOMAIN_ADMINS,
+            &IDM_HP_OAUTH2_MANAGE_PRIV_V1,
+            &IDM_HP_SERVICE_ACCOUNT_INTO_PERSON_MIGRATE_PRIV,
+            &IDM_HP_SYNC_ACCOUNT_MANAGE_PRIV,
             // All members must exist before we write HP
-            JSON_IDM_HIGH_PRIVILEGE_V1,
+            &IDM_HIGH_PRIVILEGE_V1,
+            // other things
+            &IDM_UI_ENABLE_EXPERIMENTAL_FEATURES,
+            &IDM_ACCOUNT_MAIL_READ_PRIV,
         ];
 
         let res: Result<(), _> = idm_entries
-            .iter()
-            .try_for_each(|e_str| self.internal_migrate_or_create_str(e_str));
+            .into_iter()
+            .try_for_each(|e| self.internal_migrate_or_create(e.clone().try_into()?));
         if res.is_ok() {
             admin_debug!("initialise_idm -> result Ok!");
         } else {
@@ -679,7 +678,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         let idm_entries: Vec<EntryInitNew> = vec![
             // Built in access controls.
             IDM_ADMINS_ACP_RECYCLE_SEARCH_V1.clone().into(),
-            E_IDM_ADMINS_ACP_REVIVE_V1.clone(),
+            IDM_ADMINS_ACP_REVIVE_V1.clone().into(),
             E_IDM_ALL_ACP_READ_V1.clone(),
             E_IDM_SELF_ACP_READ_V1.clone(),
             E_IDM_SELF_ACP_WRITE_V1.clone(),
@@ -718,8 +717,6 @@ impl<'a> QueryServerWriteTransaction<'a> {
             E_IDM_ACP_RADIUS_SECRET_WRITE_PRIV_V1.clone(),
             E_IDM_HP_ACP_SERVICE_ACCOUNT_INTO_PERSON_MIGRATE_V1.clone(),
             E_IDM_HP_ACP_SYNC_ACCOUNT_MANAGE_PRIV_V1.clone(),
-            E_IDM_UI_ENABLE_EXPERIMENTAL_FEATURES.clone(),
-            E_IDM_ACCOUNT_MAIL_READ_PRIV.clone(),
             E_IDM_ACP_ACCOUNT_MAIL_READ_PRIV_V1.clone(),
             E_IDM_ACCOUNT_SELF_ACP_WRITE_V1.clone(),
         ];

@@ -146,7 +146,7 @@ macro_rules! try_from_entry {
     }};
 }
 
-#[derive(Debug, Clone)]
+#[derive(Default, Debug, Clone)]
 pub struct Account {
     // Later these could be &str if we cache entry here too ...
     // They can't because if we mod the entry, we'll lose the ref.
@@ -807,13 +807,14 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
 
 #[cfg(test)]
 mod tests {
+    use crate::idm::account::Account;
     use crate::prelude::*;
     use kanidm_proto::v1::UiHint;
 
     #[test]
     fn test_idm_account_from_anonymous() {
-        let anon_e = entry_to_account!(E_ANONYMOUS_V1.clone());
-        debug!("{:?}", anon_e);
+        let account: Account = BUILTIN_ACCOUNT_ANONYMOUS_V1.clone().into();
+        debug!("{:?}", account);
         // I think that's it? we may want to check anonymous mech ...
     }
 

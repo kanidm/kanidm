@@ -1846,7 +1846,7 @@ async fn test_repl_increment_consumer_lagging_attributes(
     drop(server_b_txn);
 }
 
-// Test two synchronised nodes where no changes occured in a TS/RUV window.
+// Test two synchronised nodes where no changes occurred in a TS/RUV window.
 #[qs_pair_test]
 async fn test_repl_increment_consumer_ruv_trim_past_valid(
     server_a: &QueryServer,
