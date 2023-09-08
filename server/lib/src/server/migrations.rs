@@ -603,7 +603,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
         // Check the admin object exists (migrations).
         // Create the default idm_admin group.
-        let admin_entries = [
+        let admin_entries: Vec<EntryInitNew> = vec![
             BUILTIN_ACCOUNT_ANONYMOUS_V1.clone().into(),
             BUILTIN_ACCOUNT_ADMIN.clone().into(),
             BUILTIN_ACCOUNT_IDM_ADMIN.clone().into(),
@@ -659,6 +659,9 @@ impl<'a> QueryServerWriteTransaction<'a> {
             &IDM_HP_SYNC_ACCOUNT_MANAGE_PRIV,
             // All members must exist before we write HP
             &IDM_HIGH_PRIVILEGE_V1,
+            // other things
+            &IDM_UI_ENABLE_EXPERIMENTAL_FEATURES,
+            &IDM_ACCOUNT_MAIL_READ_PRIV,
         ];
 
         let res: Result<(), _> = idm_entries
@@ -675,7 +678,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         let idm_entries: Vec<EntryInitNew> = vec![
             // Built in access controls.
             IDM_ADMINS_ACP_RECYCLE_SEARCH_V1.clone().into(),
-            E_IDM_ADMINS_ACP_REVIVE_V1.clone(),
+            IDM_ADMINS_ACP_REVIVE_V1.clone().into(),
             E_IDM_ALL_ACP_READ_V1.clone(),
             E_IDM_SELF_ACP_READ_V1.clone(),
             E_IDM_SELF_ACP_WRITE_V1.clone(),
@@ -714,8 +717,6 @@ impl<'a> QueryServerWriteTransaction<'a> {
             E_IDM_ACP_RADIUS_SECRET_WRITE_PRIV_V1.clone(),
             E_IDM_HP_ACP_SERVICE_ACCOUNT_INTO_PERSON_MIGRATE_V1.clone(),
             E_IDM_HP_ACP_SYNC_ACCOUNT_MANAGE_PRIV_V1.clone(),
-            IDM_UI_ENABLE_EXPERIMENTAL_FEATURES.clone().try_into()?,
-            IDM_ACCOUNT_MAIL_READ_PRIV.clone().try_into()?,
             E_IDM_ACP_ACCOUNT_MAIL_READ_PRIV_V1.clone(),
             E_IDM_ACCOUNT_SELF_ACP_WRITE_V1.clone(),
         ];

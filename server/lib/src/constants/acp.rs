@@ -17,6 +17,24 @@ pub struct BuiltinAcp {
     receiver_group: Uuid,
     target_scope: ProtoFilter,
     search_attrs: Vec<Attribute>,
+    modify_removed_attrs: Vec<Attribute>,
+    modify_classes: Vec<EntryClass>,
+}
+
+impl Default for BuiltinAcp {
+    fn default() -> Self {
+        Self {
+            classes: Default::default(),
+            name: Default::default(),
+            uuid: Default::default(),
+            description: Default::default(),
+            receiver_group: Default::default(),
+            search_attrs: Default::default(),
+            modify_removed_attrs: Default::default(),
+            modify_classes: Default::default(),
+            target_scope: ProtoFilter::SelfUuid,
+        }
+    }
 }
 
 impl From<BuiltinAcp> for EntryInitNew {
@@ -44,6 +62,12 @@ impl From<BuiltinAcp> for EntryInitNew {
                 .map(|sa| sa.to_value())
                 .collect::<Vec<Value>>(),
         );
+        value.modify_removed_attrs.into_iter().for_each(|attr| {
+            entry.add_ava(Attribute::AcpModifyRemovedAttr.as_ref(), attr.to_value());
+        });
+        value.modify_classes.into_iter().for_each(|class| {
+            entry.add_ava(Attribute::AcpModifyClass.as_ref(), class.to_value());
+        });
         entry
     }
 }
@@ -67,31 +91,26 @@ lazy_static! {
             Attribute::Uuid,
             Attribute::LastModifiedCid,
         ],
+        ..Default::default()
     };
 }
 
 lazy_static! {
-    pub static ref E_IDM_ADMINS_ACP_REVIVE_V1: EntryInitNew = entry_init!(
-        (ATTR_CLASS, EntryClass::Object.to_value()),
-        (ATTR_CLASS, EntryClass::AccessControlProfile.to_value()),
-        (ATTR_CLASS, EntryClass::AccessControlModify.to_value()),
-        (ATTR_NAME, Value::new_iname("idm_admins_acp_revive")),
-        (ATTR_UUID, Value::Uuid(UUID_IDM_ADMINS_ACP_REVIVE_V1)),
-        (
-            Attribute::Description.as_ref(),
-            Value::new_utf8s("Builtin IDM admin recycle bin revive permission.")
-        ),
-        (ATTR_ACP_RECEIVER_GROUP, Value::Refer(UUID_SYSTEM_ADMINS)),
-        (
-            ATTR_ACP_TARGET_SCOPE,
-            Value::JsonFilt(ProtoFilter::Eq(
-                ATTR_CLASS.to_string(),
-                ATTR_RECYCLED.to_string()
-            ))
-        ),
-        (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::Class.to_value()),
-        (ATTR_ACP_MODIFY_CLASS, EntryClass::Recycled.to_value())
-    );
+    pub static ref IDM_ADMINS_ACP_REVIVE_V1: BuiltinAcp = BuiltinAcp {
+        uuid: UUID_IDM_ADMINS_ACP_REVIVE_V1,
+        name: "idm_admins_acp_revive",
+        description: "Builtin IDM admin recycle bin revive permission.",
+        classes: vec![
+            EntryClass::Object,
+            EntryClass::AccessControlProfile,
+            EntryClass::AccessControlModify,
+        ],
+        receiver_group: UUID_SYSTEM_ADMINS,
+        target_scope: ProtoFilter::Eq(ATTR_CLASS.to_string(), ATTR_RECYCLED.to_string()),
+        modify_removed_attrs: vec![Attribute::Class],
+        search_attrs: vec![],
+        modify_classes: vec![EntryClass::Recycled],
+    };
 }
 
 lazy_static! {
