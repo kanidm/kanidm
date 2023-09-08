@@ -557,18 +557,18 @@ mod tests {
 
         // Mod changes no objects
         // TODO: @yaleman fix this because we don't have a way to do this anymore
-        // let me_nochg = ModifyEvent::new_impersonate_entry_ser(
-        //     JSON_ADMIN_V1 ,
-        //     filter!(f_eq(
-        //         Attribute::Name,
-        //         PartialValue::new_iname("flarbalgarble")
-        //     )),
-        //     ModifyList::new_list(vec![Modify::Present(
-        //         Attribute::Description.into(),
-        //         Value::from("anusaosu"),
-        //     )]),
-        // );
-        // assert!(server_txn.modify(&me_nochg) == Err(OperationError::NoMatchingEntries));
+        let me_nochg = ModifyEvent::new_impersonate_entry_ser(
+            BUILTIN_ACCOUNT_IDM_ADMIN.clone(),
+            filter!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("flarbalgarble")
+            )),
+            ModifyList::new_list(vec![Modify::Present(
+                Attribute::Description.into(),
+                Value::from("anusaosu"),
+            )]),
+        );
+        assert!(server_txn.modify(&me_nochg) == Err(OperationError::NoMatchingEntries));
 
         // TODO: can we can this, since the filter's defined as an enum now
         // Filter is invalid to schema - to check this due to changes in the way events are

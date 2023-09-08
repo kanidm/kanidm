@@ -7,7 +7,11 @@ use crate::prelude::*;
 use crate::value::Value;
 use kanidm_proto::v1::Filter as ProtoFilter;
 
-#[derive(Clone)]
+lazy_static! {
+    pub static ref DEFAULT_TARGET_SCOPE: ProtoFilter = ProtoFilter::And(Vec::with_capacity(0));
+}
+
+#[derive(Clone, Debug)]
 /// Built-in Access Control Profile definitions
 pub struct BuiltinAcp {
     classes: Vec<EntryClass>,
@@ -32,7 +36,7 @@ impl Default for BuiltinAcp {
             search_attrs: Default::default(),
             modify_removed_attrs: Default::default(),
             modify_classes: Default::default(),
-            target_scope: ProtoFilter::SelfUuid,
+            target_scope: DEFAULT_TARGET_SCOPE.clone(), // evals to matching nothing
         }
     }
 }
@@ -40,6 +44,16 @@ impl Default for BuiltinAcp {
 impl From<BuiltinAcp> for EntryInitNew {
     fn from(value: BuiltinAcp) -> Self {
         let mut entry = EntryInitNew::default();
+
+        if value.name.is_empty() {
+            panic!("Builtin ACP has no name! {:?}", value);
+        }
+        if value.classes.is_empty() {
+            panic!("Builtin ACP has no classes! {:?}", value);
+        }
+        if DEFAULT_TARGET_SCOPE.clone() == value.target_scope {
+            panic!("Builtin ACP has an invalid target_scope! {:?}", value);
+        }
 
         value.classes.into_iter().for_each(|class| {
             entry.add_ava(ATTR_CLASS, class.to_value());
