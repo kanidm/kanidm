@@ -719,9 +719,7 @@ lazy_static! {
         description: "Builtin IDM Admin account.",
         displayname: "IDM Administrator",
     };
-}
 
-lazy_static! {
     /// Builtin IDM Administrators Group.
     pub static ref BUILTIN_GROUP_IDM_ADMINS_V1: BuiltinGroup = BuiltinGroup {
         name: "idm_admins",
@@ -739,22 +737,7 @@ lazy_static! {
         ..Default::default()
     };
 
-}
-
 // * People read managers
-
-// pub const JSON_IDM_PEOPLE_READ_PRIV_V1: &str = r#"{
-//     "attrs": {
-//         "class": ["group", "object"],
-//         "name": ["idm_people_read_priv"],
-//         "uuid": ["00000000-0000-0000-0000-000000000002"],
-//         "description": ["Builtin IDM Group for granting elevated people (personal data) read permissions."],
-//         "member": ["00000000-0000-0000-0000-000000000003"]
-//     }
-// }"#;
-
-lazy_static! {
-
     /// Builtin IDM Group for granting elevated people (personal data) read permissions.
     pub static ref IDM_PEOPLE_READ_PRIV_V1: BuiltinGroup = BuiltinGroup {
         name: "idm_people_read_priv",
@@ -771,7 +754,7 @@ lazy_static! {
         ..Default::default()
     };
 
-    // * People write managers
+// * People write managers
     /// Builtin IDM Group for granting elevated people (personal data) write and lifecycle management permissions.
     pub static ref IDM_PEOPLE_MANAGE_PRIV_V1: BuiltinGroup = BuiltinGroup {
         name: "idm_people_manage_priv",
@@ -789,9 +772,7 @@ lazy_static! {
         members: vec![UUID_IDM_ADMINS],
         ..Default::default()
     };
-}
 
-lazy_static! {
     /// Builtin IDM Group for allowing the ability to extend accounts to have the "person" flag set.
     pub static ref IDM_PEOPLE_EXTEND_PRIV_V1: BuiltinGroup = BuiltinGroup {
         name: "idm_people_extend_priv",
@@ -1032,6 +1013,10 @@ lazy_static! {
         ..Default::default()
     };
 
+}
+// at some point vs code just gives up on syntax highlighting inside lazy_static...
+lazy_static! {
+
     /// Builtin IDM Group for granting unix group extension permissions for high privilege groups.
     pub static ref IDM_HP_GROUP_UNIX_EXTEND_PRIV_V1: BuiltinGroup = BuiltinGroup {
         name: "idm_hp_group_unix_extend_priv",
@@ -1053,6 +1038,7 @@ lazy_static! {
         ],
         ..Default::default()
     };
+
 
     /// Builtin IDM Group for managing oauth2 resource server integrations to this authentication domain.
     pub static ref IDM_HP_OAUTH2_MANAGE_PRIV_V1: BuiltinGroup = BuiltinGroup {
@@ -1127,9 +1113,6 @@ lazy_static! {
         ],
         ..Default::default()
     };
-}
-// at some point vs code just gives up on syntax highlighting inside lazy_static...
-lazy_static! {
 
     /// Members of this group will have access to read the mail attribute of all persons and service accounts.
     pub static ref IDM_ACCOUNT_MAIL_READ_PRIV: BuiltinGroup = BuiltinGroup {
