@@ -28,10 +28,31 @@ mkdir -p /tmp/kanidm/
 echo "Generating certificates..."
 cargo run --bin kanidmd --release cert-generate --config ../../examples/insecure_server.toml
 echo "Running the server..."
-cargo run --bin kanidmd --release server --config ../../examples/insecure_server.toml &
+cargo run --bin kanidmd --release server & #--config ../../examples/insecure_server.toml &
+KANIDMD_PID=$!
+echo "${KANIDMD_PID}"
 
-echo "Waiting ${WAIT_TIMER} seconds..."
-sleep 5
+if [ "$(jobs -p | wc -l)" -eq 0 ]; then
+    echo "Kanidmd failed to start!"
+    exit 1
+fi
+
+ATTEMPT=0
+
+KANIDM_CONFIG_FILE="../../examples/insecure_server.toml"
+KANIDM_URL="$(rg origin "${KANIDM_CONFIG_FILE}" | awk '{print $NF}' | tr -d '"')"
+KANIDM_CA_PATH="/tmp/kanidm/ca.pem"
+
+while true; do
+    echo "Waiting the server to start... testing ${KANIDM_URL}"
+    curl --cacert "${KANIDM_CA_PATH}" -fs "${KANIDM_URL}" >/dev/null && break
+    sleep 2
+    ATTEMPT="$((ATTEMPT + 1))"
+    if [ "${ATTEMPT}" -gt 3 ]; then
+        echo "Kanidmd failed to start!"
+        exit 1
+    fi
+done
 
 ../../scripts/setup_dev_environment.sh
 
