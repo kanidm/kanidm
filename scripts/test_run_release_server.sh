@@ -60,8 +60,7 @@ done
 echo "Waiting ${WAIT_TIMER} seconds and terminating Kanidmd"
 sleep "${WAIT_TIMER}"
 if [ "$(pgrep kanidmd | wc -l)" -gt 0 ]; then
-    killall kanidmd
-    kill $(pgrep kanidm)
+    kill $(pgrep kanidmd)
 fi
 
 if [ -n "$CURRENT_DIR" ]; then
