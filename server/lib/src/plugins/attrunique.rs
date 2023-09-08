@@ -260,23 +260,20 @@ impl Plugin for AttrUnique {
         _qs: &mut QueryServerWriteTransaction,
         _cand: &mut [(EntryIncrementalCommitted, Arc<EntrySealedCommitted>)],
     ) -> Result<(), OperationError> {
-        admin_error!(
-            "plugin {} has an unimplemented pre_repl_incremental!",
-            Self::id()
-        );
-
-        // Important! We need to also have a list of uuids that we conflicted AGAINST so that both
-        // this candidate *and* the existing item both move to conflict. This is because if we don't
-        // do it this way, then some nodes will conflict on potentially the inverse entries, which
-        // could end up pretty bad.
-
         // We also can't realllllyyyy rely on the cid here since it could have changed multiple times
         // and may not truly reflect the accurate change times, so we have to conflict on both
-        // itemsthat hit the attrunique.
+        // items that hit the attrunique. This makes all nodes consistent.
+        //
+        // It is *important* to note that this *can* be a pre plugin. This is because the entries that
+        // are coming from the supplier must *already* have passed attrunique, so anything in the
+        // incoming set must be unique relative to anything else in that set.
+        //
+        // The only
 
-        // debug_assert!(false);
-        // Err(OperationError::InvalidState)
-        Ok(())
+        // Test/debug only - check that all uuids in the conflict set are NOT in the cand set!
+
+        debug_assert!(false);
+        Err(OperationError::InvalidState)
     }
 
     #[instrument(level = "debug", name = "attrunique::verify", skip_all)]

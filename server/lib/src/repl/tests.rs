@@ -2786,8 +2786,12 @@ async fn test_repl_increment_refint_delete_to_member_holder(
 
 // Test attrunique conflicts
 // Test ref-int when attrunique makes a conflict
+// Test memberof when attrunique makes a conflict
 #[qs_pair_test]
-async fn test_repl_increment_attrunique_conflict(server_a: &QueryServer, server_b: &QueryServer) {
+async fn test_repl_increment_attrunique_conflict_basic(
+    server_a: &QueryServer,
+    server_b: &QueryServer,
+) {
     let ct = duration_from_epoch_now();
 
     let mut server_a_txn = server_a.write(ct).await;
@@ -2799,13 +2803,35 @@ async fn test_repl_increment_attrunique_conflict(server_a: &QueryServer, server_
     drop(server_b_txn);
 
     let mut server_a_txn = server_a.write(duration_from_epoch_now()).await;
+
+    // To test memberof, we add a user who is MO A/B
+    let t_uuid = Uuid::new_v4();
+    assert!(server_a_txn
+        .internal_create(vec![entry_init!(
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
+            (Attribute::Name.as_ref(), Value::new_iname("testperson1")),
+            (Attribute::Uuid.as_ref(), Value::Uuid(t_uuid)),
+            (
+                Attribute::Description.as_ref(),
+                Value::new_utf8s("testperson1")
+            ),
+            (
+                Attribute::DisplayName.as_ref(),
+                Value::new_utf8s("testperson1")
+            )
+        ),])
+        .is_ok());
+
     let g_a_uuid = Uuid::new_v4();
     assert!(server_a_txn
         .internal_create(vec![entry_init!(
             (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
             (Attribute::Class.as_ref(), EntryClass::Group.to_value()),
             (Attribute::Name.as_ref(), Value::new_iname("testgroup_a")),
-            (Attribute::Uuid.as_ref(), Value::Uuid(g_a_uuid))
+            (Attribute::Uuid.as_ref(), Value::Uuid(g_a_uuid)),
+            (Attribute::Member.as_ref(), Value::Refer(t_uuid))
         ),])
         .is_ok());
 
@@ -2815,7 +2841,21 @@ async fn test_repl_increment_attrunique_conflict(server_a: &QueryServer, server_
             (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
             (Attribute::Class.as_ref(), EntryClass::Group.to_value()),
             (Attribute::Name.as_ref(), Value::new_iname("testgroup_b")),
-            (Attribute::Uuid.as_ref(), Value::Uuid(g_b_uuid))
+            (Attribute::Uuid.as_ref(), Value::Uuid(g_b_uuid)),
+            (Attribute::Member.as_ref(), Value::Refer(t_uuid))
+        ),])
+        .is_ok());
+
+    // To test ref-int, we make a third group that has both a and b as members.
+    let g_c_uuid = Uuid::new_v4();
+    assert!(server_a_txn
+        .internal_create(vec![entry_init!(
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Group.to_value()),
+            (Attribute::Name.as_ref(), Value::new_iname("testgroup_c")),
+            (Attribute::Uuid.as_ref(), Value::Uuid(g_c_uuid)),
+            (Attribute::Member.as_ref(), Value::Refer(g_a_uuid)),
+            (Attribute::Member.as_ref(), Value::Refer(g_b_uuid))
         ),])
         .is_ok());
 
@@ -2888,6 +2928,8 @@ async fn test_repl_increment_attrunique_conflict(server_a: &QueryServer, server_
     trace!("========================================");
     repl_incremental(&mut server_b_txn, &mut server_a_txn);
 
+    // The conflict should now have occured.
+    // Check both groups are conflicts.
     let cnf_a = server_a_txn
         .internal_search_conflict_uuid(g_a_uuid)
         .expect("Unable to search conflict entries.")
@@ -2901,6 +2943,20 @@ async fn test_repl_increment_attrunique_conflict(server_a: &QueryServer, server_
         .pop()
         .expect("No conflict entries present");
     assert!(cnf_b.get_ava_single_iname("name") == Some("name_conflict"));
+
+    // Check the person has MO A/B removed.
+    let e = server_a_txn
+        .internal_search_all_uuid(t_uuid)
+        .expect("Unable to access entry.");
+    assert!(!e.attribute_equality(Attribute::MemberOf.as_ref(), &PartialValue::Refer(g_a_uuid)));
+    assert!(!e.attribute_equality(Attribute::MemberOf.as_ref(), &PartialValue::Refer(g_b_uuid)));
+
+    // Check the group has M A/B removed.
+    let e = server_a_txn
+        .internal_search_all_uuid(g_c_uuid)
+        .expect("Unable to access entry.");
+    assert!(!e.attribute_equality(Attribute::Member.as_ref(), &PartialValue::Refer(g_a_uuid)));
+    assert!(!e.attribute_equality(Attribute::Member.as_ref(), &PartialValue::Refer(g_b_uuid)));
 
     server_a_txn.commit().expect("Failed to commit");
     drop(server_b_txn);
@@ -2926,6 +2982,137 @@ async fn test_repl_increment_attrunique_conflict(server_a: &QueryServer, server_
         .pop()
         .expect("No conflict entries present");
     assert!(cnf_b.get_ava_single_iname("name") == Some("name_conflict"));
+
+    server_b_txn.commit().expect("Failed to commit");
+    drop(server_a_txn);
+}
+
+// Test a complex attr unique situation when the attrunique conflict would occur normally but is
+// skipped because the entry it is going to conflict against is actually a uuid conflict.
+
+#[qs_pair_test]
+async fn test_repl_increment_attrunique_conflict_complex(
+    server_a: &QueryServer,
+    server_b: &QueryServer,
+) {
+    let ct = duration_from_epoch_now();
+
+    let mut server_a_txn = server_a.write(ct).await;
+    let mut server_b_txn = server_b.read().await;
+
+    assert!(repl_initialise(&mut server_b_txn, &mut server_a_txn)
+        .and_then(|_| server_a_txn.commit())
+        .is_ok());
+    drop(server_b_txn);
+
+    let mut server_a_txn = server_a.write(duration_from_epoch_now()).await;
+
+    // Create two entries on A - The entry that will be an attrunique conflict
+    // and the entry that will UUID conflict to the second entry. The second entry
+    // should not attrunique conflict within server_a
+
+    let g_a_uuid = Uuid::new_v4();
+    assert!(server_a_txn
+        .internal_create(vec![entry_init!(
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Group.to_value()),
+            (Attribute::Name.as_ref(), Value::new_iname("name_conflict")),
+            (Attribute::Uuid.as_ref(), Value::Uuid(g_a_uuid))
+        ),])
+        .is_ok());
+
+    let g_b_uuid = Uuid::new_v4();
+    assert!(server_a_txn
+        .internal_create(vec![entry_init!(
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Group.to_value()),
+            (Attribute::Name.as_ref(), Value::new_iname("uuid_conflict")),
+            (Attribute::Uuid.as_ref(), Value::Uuid(g_b_uuid))
+        ),])
+        .is_ok());
+
+    server_a_txn.commit().expect("Failed to commit");
+
+    let mut server_b_txn = server_b.write(duration_from_epoch_now()).await;
+
+    // Create an entry on B that is a uuid conflict to the second entry on A. This entry
+    // should *also* have an attr conflict to name on the first entry from A.
+    assert!(server_b_txn
+        .internal_create(vec![entry_init!(
+            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+            (Attribute::Class.as_ref(), EntryClass::Group.to_value()),
+            // Conflicting name
+            (Attribute::Name.as_ref(), Value::new_iname("name_conflict")),
+            // Conflicting uuid
+            (Attribute::Uuid.as_ref(), Value::Uuid(g_b_uuid))
+        ),])
+        .is_ok());
+
+    server_b_txn.commit().expect("Failed to commit");
+
+    // We have to replicate B -> A first. This is so that A will not load the conflict
+    // entry, and the entrys g_a_uuid and g_b_uuid stay present.
+    let mut server_b_txn = server_b.read().await;
+    let mut server_a_txn = server_a.write(duration_from_epoch_now()).await;
+
+    trace!("========================================");
+    repl_incremental(&mut server_b_txn, &mut server_a_txn);
+
+    // Check these entries are still present and were NOT conflicted due to attrunique
+    let e = server_a_txn
+        .internal_search_all_uuid(g_a_uuid)
+        .expect("Unable to access entry.");
+    assert!(e.attribute_equality(
+        Attribute::Name.as_ref(),
+        &PartialValue::new_iname("name_conflict")
+    ));
+
+    let e = server_a_txn
+        .internal_search_all_uuid(g_b_uuid)
+        .expect("Unable to access entry.");
+    assert!(e.attribute_equality(
+        Attribute::Name.as_ref(),
+        &PartialValue::new_iname("uuid_conflict")
+    ));
+
+    // The other entry will not be conflicted here, since A is not the origin node.
+
+    server_a_txn.commit().expect("Failed to commit");
+    drop(server_b_txn);
+
+    // Replicate A -> B now. This will cause the entry to be persisted as a conflict
+    // as this is the origin node. We should end up with the two entries from
+    // server A remaining.
+    let mut server_a_txn = server_a.read().await;
+    let mut server_b_txn = server_b.write(duration_from_epoch_now()).await;
+
+    trace!("========================================");
+    repl_incremental(&mut server_a_txn, &mut server_b_txn);
+
+    // Check these entries are still present and were NOT conflicted due to attrunique
+    let e = server_b_txn
+        .internal_search_all_uuid(g_a_uuid)
+        .expect("Unable to access entry.");
+    assert!(e.attribute_equality(
+        Attribute::Name.as_ref(),
+        &PartialValue::new_iname("name_conflict")
+    ));
+
+    let e = server_b_txn
+        .internal_search_all_uuid(g_b_uuid)
+        .expect("Unable to access entry.");
+    assert!(e.attribute_equality(
+        Attribute::Name.as_ref(),
+        &PartialValue::new_iname("uuid_conflict")
+    ));
+
+    // Check the conflict was also now created.
+    let cnf_a = server_b_txn
+        .internal_search_conflict_uuid(g_b_uuid)
+        .expect("Unable to search conflict entries.")
+        .pop()
+        .expect("No conflict entries present");
+    assert!(cnf_a.get_ava_single_iname("name") == Some("name_conflict"));
 
     server_b_txn.commit().expect("Failed to commit");
     drop(server_a_txn);

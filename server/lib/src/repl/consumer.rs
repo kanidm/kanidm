@@ -114,7 +114,16 @@ impl<'a> QueryServerWriteTransaction<'a> {
             .chain(proceed_update)
             .collect::<Vec<_>>();
 
-        // Plugins can mark entries into a conflict status.
+        // ⚠️  This hook is probably not what you want to use for checking entries are consistent.
+        //
+        // The main issue is that at this point we have a set of entries that need to be
+        // modified into conflicts, and until that occurs it's hard to proceed with validations
+        // like attr unique because then we would need to walk the various sets to find cases where
+        // an attribute may not be unique "currently" but *would* be unique once the various entries
+        // have then been conflicted.
+        //
+        // Instead we treat this like refint - we allow the database to "temporarily" become
+        // inconsistent, then we fix it immediately.
         Plugins::run_pre_repl_incremental(self, all_updates.as_mut_slice()).map_err(|e| {
             admin_error!(
                 "Refresh operation failed (pre_repl_incremental plugin), {:?}",

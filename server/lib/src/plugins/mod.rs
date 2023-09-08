@@ -37,6 +37,7 @@ trait Plugin {
             "plugin {} has an unimplemented pre_create_transform!",
             Self::id()
         );
+        debug_assert!(false);
         Err(OperationError::InvalidState)
     }
 
@@ -47,6 +48,7 @@ trait Plugin {
         _ce: &CreateEvent,
     ) -> Result<(), OperationError> {
         admin_error!("plugin {} has an unimplemented pre_create!", Self::id());
+        debug_assert!(false);
         Err(OperationError::InvalidState)
     }
 
@@ -57,6 +59,7 @@ trait Plugin {
         _ce: &CreateEvent,
     ) -> Result<(), OperationError> {
         admin_error!("plugin {} has an unimplemented post_create!", Self::id());
+        debug_assert!(false);
         Err(OperationError::InvalidState)
     }
 
@@ -67,6 +70,7 @@ trait Plugin {
         _me: &ModifyEvent,
     ) -> Result<(), OperationError> {
         admin_error!("plugin {} has an unimplemented pre_modify!", Self::id());
+        debug_assert!(false);
         Err(OperationError::InvalidState)
     }
 
@@ -78,6 +82,7 @@ trait Plugin {
         _ce: &ModifyEvent,
     ) -> Result<(), OperationError> {
         admin_error!("plugin {} has an unimplemented post_modify!", Self::id());
+        debug_assert!(false);
         Err(OperationError::InvalidState)
     }
 
@@ -91,6 +96,7 @@ trait Plugin {
             "plugin {} has an unimplemented pre_batch_modify!",
             Self::id()
         );
+        debug_assert!(false);
         Err(OperationError::InvalidState)
     }
 
@@ -105,6 +111,7 @@ trait Plugin {
             "plugin {} has an unimplemented post_batch_modify!",
             Self::id()
         );
+        debug_assert!(false);
         Err(OperationError::InvalidState)
     }
 
@@ -114,6 +121,7 @@ trait Plugin {
         _de: &DeleteEvent,
     ) -> Result<(), OperationError> {
         admin_error!("plugin {} has an unimplemented pre_delete!", Self::id());
+        debug_assert!(false);
         Err(OperationError::InvalidState)
     }
 
@@ -124,6 +132,7 @@ trait Plugin {
         _ce: &DeleteEvent,
     ) -> Result<(), OperationError> {
         admin_error!("plugin {} has an unimplemented post_delete!", Self::id());
+        debug_assert!(false);
         Err(OperationError::InvalidState)
     }
 
@@ -135,6 +144,7 @@ trait Plugin {
             "plugin {} has an unimplemented pre_repl_refresh!",
             Self::id()
         );
+        debug_assert!(false);
         Err(OperationError::InvalidState)
     }
 
@@ -146,6 +156,7 @@ trait Plugin {
             "plugin {} has an unimplemented post_repl_refresh!",
             Self::id()
         );
+        debug_assert!(false);
         Err(OperationError::InvalidState)
     }
 
@@ -171,9 +182,8 @@ trait Plugin {
             "plugin {} has an unimplemented post_repl_incremental!",
             Self::id()
         );
-        // debug_assert!(false);
-        // Err(OperationError::InvalidState)
-        Ok(())
+        debug_assert!(false);
+        Err(OperationError::InvalidState)
     }
 
     fn verify(_qs: &mut QueryServerReadTransaction) -> Vec<Result<(), ConsistencyError>> {
@@ -337,14 +347,14 @@ impl Plugins {
 
     #[instrument(level = "debug", name = "plugins::run_pre_repl_incremental", skip_all)]
     pub fn run_pre_repl_incremental(
-        qs: &mut QueryServerWriteTransaction,
-        cand: &mut [(EntryIncrementalCommitted, Arc<EntrySealedCommitted>)],
+        _qs: &mut QueryServerWriteTransaction,
+        _cand: &mut [(EntryIncrementalCommitted, Arc<EntrySealedCommitted>)],
     ) -> Result<(), OperationError> {
         // Cleanup sessions on incoming replication? May not actually
-        // be needed ...
+        // be needed since each node will be session checking and replicating
+        // those cleanups as needed.
         // session::SessionConsistency::pre_repl_incremental(qs, cand)?;
-        // attr unique should always be last
-        attrunique::AttrUnique::pre_repl_incremental(qs, cand)
+        Ok(())
     }
 
     #[instrument(level = "debug", name = "plugins::run_post_repl_incremental", skip_all)]
@@ -354,9 +364,13 @@ impl Plugins {
         cand: &[EntrySealedCommitted],
         conflict_uuids: &[Uuid],
     ) -> Result<(), OperationError> {
+        // Attr unique MUST BE FIRST.
+        attrunique::AttrUnique::post_repl_incremental(qs, pre_cand, cand, conflict_uuids)?;
         domain::Domain::post_repl_incremental(qs, pre_cand, cand, conflict_uuids)?;
         spn::Spn::post_repl_incremental(qs, pre_cand, cand, conflict_uuids)?;
+        // refint MUST proceed memberof.
         refint::ReferentialIntegrity::post_repl_incremental(qs, pre_cand, cand, conflict_uuids)?;
+        // Memberof MUST BE LAST.
         memberof::MemberOf::post_repl_incremental(qs, pre_cand, cand, conflict_uuids)
     }
 
