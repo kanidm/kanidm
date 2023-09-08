@@ -1,6 +1,7 @@
 use crate::common::OpType;
-use crate::PwBadlistOpt;
+use crate::{handle_client_error, PwBadlistOpt};
 use futures_concurrency::prelude::*;
+
 // use std::thread;
 use std::fs::File;
 use std::io::Read;
@@ -29,7 +30,7 @@ impl PwBadlistOpt {
                         eprintln!("--");
                         eprintln!("Success");
                     }
-                    Err(e) => eprintln!("{:?}", e),
+                    Err(e) => crate::handle_client_error(e, &copt.output_mode),
                 }
             }
             PwBadlistOpt::Upload {
@@ -125,7 +126,7 @@ impl PwBadlistOpt {
                     let client = copt.to_client(OpType::Write).await;
                     match client.system_password_badlist_append(filt_pwset).await {
                         Ok(_) => println!("Success"),
-                        Err(e) => eprintln!("{:?}", e),
+                        Err(e) => handle_client_error(e, &copt.output_mode),
                     }
                 }
             } // End Upload
@@ -164,7 +165,7 @@ impl PwBadlistOpt {
 
                 match client.system_password_badlist_remove(pwset).await {
                     Ok(_) => println!("Success"),
-                    Err(e) => eprintln!("{:?}", e),
+                    Err(e) => handle_client_error(e, &copt.output_mode),
                 }
             } // End Remove
         }

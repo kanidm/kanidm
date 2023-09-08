@@ -20,8 +20,8 @@ use uuid::Uuid;
 
 use crate::webauthn::get_authenticator;
 use crate::{
-    password_prompt, AccountCredential, AccountRadius, AccountSsh, AccountUserAuthToken,
-    AccountValidity, OutputMode, PersonOpt, PersonPosix,
+    handle_client_error, password_prompt, AccountCredential, AccountRadius, AccountSsh,
+    AccountUserAuthToken, AccountValidity, OutputMode, PersonOpt, PersonPosix,
 };
 
 impl PersonOpt {
@@ -82,9 +82,7 @@ impl PersonOpt {
                             "No RADIUS secret set for user {}",
                             aopt.aopts.account_id.as_str(),
                         ),
-                        Err(e) => {
-                            error!("Error -> {:?}", e);
-                        }
+                        Err(e) => handle_client_error(e, &aopt.copt.output_mode),
                     }
                 }
                 AccountRadius::Generate(aopt) => {
@@ -134,9 +132,7 @@ impl PersonOpt {
                         .await
                     {
                         Ok(token) => println!("{}", token),
-                        Err(e) => {
-                            error!("Error -> {:?}", e);
-                        }
+                        Err(e) => handle_client_error(e, &aopt.copt.output_mode),
                     }
                 }
                 PersonPosix::Set(aopt) => {
@@ -149,7 +145,7 @@ impl PersonOpt {
                         )
                         .await
                     {
-                        error!("Error -> {:?}", e);
+                        handle_client_error(e, &aopt.copt.output_mode)
                     }
                 }
                 PersonPosix::SetPassword(aopt) => {
@@ -169,7 +165,7 @@ impl PersonOpt {
                         )
                         .await
                     {
-                        error!("Error -> {:?}", e);
+                        handle_client_error(e, &aopt.copt.output_mode)
                     }
                 }
             }, // end PersonOpt::Posix
@@ -189,9 +185,7 @@ impl PersonOpt {
                                 }
                             }
                         }
-                        Err(e) => {
-                            error!("Error listing sessions -> {:?}", e);
-                        }
+                        Err(e) => handle_client_error(e, &apo.copt.output_mode),
                     }
                 }
                 AccountUserAuthToken::Destroy {
@@ -208,7 +202,8 @@ impl PersonOpt {
                             println!("Success");
                         }
                         Err(e) => {
-                            error!("Error destroying account session -> {:?}", e);
+                            error!("Error destroying account session");
+                            handle_client_error(e, &copt.output_mode);
                         }
                     }
                 }
@@ -222,9 +217,7 @@ impl PersonOpt {
                         .await
                     {
                         Ok(pkeys) => pkeys.iter().for_each(|pkey| println!("{}", pkey)),
-                        Err(e) => {
-                            error!("Error -> {:?}", e);
-                        }
+                        Err(e) => handle_client_error(e, &aopt.copt.output_mode),
                     }
                 }
                 AccountSsh::Add(aopt) => {
@@ -237,7 +230,7 @@ impl PersonOpt {
                         )
                         .await
                     {
-                        error!("Error -> {:?}", e);
+                        handle_client_error(e, &aopt.copt.output_mode)
                     }
                 }
                 AccountSsh::Delete(aopt) => {
@@ -249,7 +242,7 @@ impl PersonOpt {
                         )
                         .await
                     {
-                        error!("Error -> {:?}", e);
+                        handle_client_error(e, &aopt.copt.output_mode)
                     }
                 }
             }, // end PersonOpt::Ssh
@@ -266,7 +259,7 @@ impl PersonOpt {
                         }
                         OutputMode::Text => r.iter().for_each(|ent| println!("{}", ent)),
                     },
-                    Err(e) => error!("Error -> {:?}", e),
+                    Err(e) => handle_client_error(e, &copt.output_mode),
                 }
             }
             PersonOpt::Update(aopt) => {
@@ -282,7 +275,7 @@ impl PersonOpt {
                     .await
                 {
                     Ok(()) => println!("Success"),
-                    Err(e) => error!("Error -> {:?}", e),
+                    Err(e) => handle_client_error(e, &aopt.copt.output_mode),
                 }
             }
             PersonOpt::Get(aopt) => {
@@ -301,7 +294,7 @@ impl PersonOpt {
                         OutputMode::Text => println!("{}", e),
                     },
                     Ok(None) => println!("No matching entries"),
-                    Err(e) => error!("Error -> {:?}", e),
+                    Err(e) => handle_client_error(e, &aopt.copt.output_mode),
                 }
             }
             PersonOpt::Delete(aopt) => {
@@ -326,6 +319,8 @@ impl PersonOpt {
                         modmessage.result = format!("Error -> {:?}", e);
                         modmessage.status = MessageStatus::Failure;
                         eprintln!("{}", modmessage);
+
+                        // handle_client_error(e, &aopt.copt.output_mode),
                     }
                     Ok(result) => {
                         debug!("{:?}", result);
@@ -349,9 +344,7 @@ impl PersonOpt {
                             acopt.aopts.account_id.as_str(),
                         )
                     }
-                    Err(err) => {
-                        error!("Error -> {:?}", err);
-                    }
+                    Err(e) => handle_client_error(e, &acopt.copt.output_mode),
                 }
             }
             PersonOpt::Validity { commands } => match commands {
@@ -367,10 +360,7 @@ impl PersonOpt {
                         .await
                     {
                         Ok(v) => v,
-                        Err(e) => {
-                            error!("Error -> {:?}", e);
-                            return;
-                        }
+                        Err(e) => return handle_client_error(e, &ano.copt.output_mode),
                     };
 
                     let vf = match client
@@ -381,10 +371,7 @@ impl PersonOpt {
                         .await
                     {
                         Ok(v) => v,
-                        Err(e) => {
-                            error!("Error -> {:?}", e);
-                            return;
-                        }
+                        Err(e) => return handle_client_error(e, &ano.copt.output_mode),
                     };
 
                     if let Some(t) = vf {
@@ -432,7 +419,7 @@ impl PersonOpt {
                             )
                             .await
                         {
-                            Err(e) => error!("Error -> {:?}", e),
+                            Err(e) => handle_client_error(e, &ano.copt.output_mode),
                             _ => println!("Success"),
                         }
                     } else if matches!(ano.datetime.as_str(), "now") {
@@ -491,7 +478,7 @@ impl PersonOpt {
                             )
                             .await
                         {
-                            Err(e) => error!("Error -> {:?}", e),
+                            Err(e) => handle_client_error(e, &ano.copt.output_mode),
                             _ => println!("Success"),
                         }
                     }

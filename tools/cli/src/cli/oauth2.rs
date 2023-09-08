@@ -1,5 +1,7 @@
+use std::process::exit;
+
 use crate::common::OpType;
-use crate::{Oauth2Opt, OutputMode};
+use crate::{handle_client_error, Oauth2Opt, OutputMode};
 
 impl Oauth2Opt {
     pub fn debug(&self) -> bool {
@@ -44,7 +46,7 @@ impl Oauth2Opt {
                         }
                         OutputMode::Text => r.iter().for_each(|ent| println!("{}", ent)),
                     },
-                    Err(e) => error!("Error -> {:?}", e),
+                    Err(e) => handle_client_error(e, &copt.output_mode),
                 }
             }
             Oauth2Opt::Get(nopt) => {
@@ -52,7 +54,7 @@ impl Oauth2Opt {
                 match client.idm_oauth2_rs_get(nopt.name.as_str()).await {
                     Ok(Some(e)) => println!("{}", e),
                     Ok(None) => println!("No matching entries"),
-                    Err(e) => error!("Error -> {:?}", e),
+                    Err(e) => handle_client_error(e, &nopt.copt.output_mode),
                 }
             }
             Oauth2Opt::CreateBasic {
@@ -71,7 +73,7 @@ impl Oauth2Opt {
                     .await
                 {
                     Ok(_) => println!("Success"),
-                    Err(e) => error!("Error -> {:?}", e),
+                    Err(e) => handle_client_error(e, &copt.output_mode),
                 }
             }
             Oauth2Opt::CreatePublic {
@@ -90,7 +92,7 @@ impl Oauth2Opt {
                     .await
                 {
                     Ok(_) => println!("Success"),
-                    Err(e) => error!("Error -> {:?}", e),
+                    Err(e) => handle_client_error(e, &copt.output_mode),
                 }
             }
             Oauth2Opt::UpdateScopeMap(cbopt) => {
@@ -104,7 +106,7 @@ impl Oauth2Opt {
                     .await
                 {
                     Ok(_) => println!("Success"),
-                    Err(e) => error!("Error -> {:?}", e),
+                    Err(e) => handle_client_error(e, &cbopt.nopt.copt.output_mode),
                 }
             }
             Oauth2Opt::DeleteScopeMap(cbopt) => {
@@ -114,7 +116,7 @@ impl Oauth2Opt {
                     .await
                 {
                     Ok(_) => println!("Success"),
-                    Err(e) => error!("Error -> {:?}", e),
+                    Err(e) => handle_client_error(e, &cbopt.nopt.copt.output_mode),
                 }
             }
             Oauth2Opt::UpdateSupScopeMap(cbopt) => {
@@ -128,7 +130,10 @@ impl Oauth2Opt {
                     .await
                 {
                     Ok(_) => println!("Success"),
-                    Err(e) => error!("Error -> {:?}", e),
+                    Err(e) => {
+                        error!("Error -> {:?}", e);
+                        exit(1)
+                    }
                 }
             }
             Oauth2Opt::DeleteSupScopeMap(cbopt) => {
@@ -141,7 +146,7 @@ impl Oauth2Opt {
                     .await
                 {
                     Ok(_) => println!("Success"),
-                    Err(e) => error!("Error -> {:?}", e),
+                    Err(e) => handle_client_error(e, &cbopt.nopt.copt.output_mode),
                 }
             }
             Oauth2Opt::ResetSecrets(cbopt) => {
@@ -160,7 +165,7 @@ impl Oauth2Opt {
                     .await
                 {
                     Ok(_) => println!("Success"),
-                    Err(e) => error!("Error -> {:?}", e),
+                    Err(e) => handle_client_error(e, &cbopt.copt.output_mode),
                 }
             }
             Oauth2Opt::ShowBasicSecret(nopt) => {
@@ -179,14 +184,14 @@ impl Oauth2Opt {
                     Ok(None) => {
                         eprintln!("No secret configured");
                     }
-                    Err(e) => error!("Error -> {:?}", e),
+                    Err(e) => handle_client_error(e, &nopt.copt.output_mode),
                 }
             }
             Oauth2Opt::Delete(nopt) => {
                 let client = nopt.copt.to_client(OpType::Write).await;
                 match client.idm_oauth2_rs_delete(nopt.name.as_str()).await {
                     Ok(_) => println!("Success"),
-                    Err(e) => error!("Error -> {:?}", e),
+                    Err(e) => handle_client_error(e, &nopt.copt.output_mode),
                 }
             }
             Oauth2Opt::SetDisplayname(cbopt) => {
@@ -205,7 +210,7 @@ impl Oauth2Opt {
                     .await
                 {
                     Ok(_) => println!("Success"),
-                    Err(e) => error!("Error -> {:?}", e),
+                    Err(e) => handle_client_error(e, &cbopt.nopt.copt.output_mode),
                 }
             }
             Oauth2Opt::SetName { nopt, name } => {
@@ -224,7 +229,7 @@ impl Oauth2Opt {
                     .await
                 {
                     Ok(_) => println!("Success"),
-                    Err(e) => error!("Error -> {:?}", e),
+                    Err(e) => handle_client_error(e, &nopt.copt.output_mode),
                 }
             }
             Oauth2Opt::SetLandingUrl { nopt, url } => {
@@ -243,21 +248,21 @@ impl Oauth2Opt {
                     .await
                 {
                     Ok(_) => println!("Success"),
-                    Err(e) => error!("Error -> {:?}", e),
+                    Err(e) => handle_client_error(e, &nopt.copt.output_mode),
                 }
             }
             Oauth2Opt::EnablePkce(nopt) => {
                 let client = nopt.copt.to_client(OpType::Write).await;
                 match client.idm_oauth2_rs_enable_pkce(nopt.name.as_str()).await {
                     Ok(_) => println!("Success"),
-                    Err(e) => error!("Error -> {:?}", e),
+                    Err(e) => handle_client_error(e, &nopt.copt.output_mode),
                 }
             }
             Oauth2Opt::DisablePkce(nopt) => {
                 let client = nopt.copt.to_client(OpType::Write).await;
                 match client.idm_oauth2_rs_disable_pkce(nopt.name.as_str()).await {
                     Ok(_) => println!("Success"),
-                    Err(e) => error!("Error -> {:?}", e),
+                    Err(e) => handle_client_error(e, &nopt.copt.output_mode),
                 }
             }
             Oauth2Opt::EnableLegacyCrypto(nopt) => {
@@ -267,7 +272,7 @@ impl Oauth2Opt {
                     .await
                 {
                     Ok(_) => println!("Success"),
-                    Err(e) => error!("Error -> {:?}", e),
+                    Err(e) => handle_client_error(e, &nopt.copt.output_mode),
                 }
             }
             Oauth2Opt::DisableLegacyCrypto(nopt) => {
@@ -277,7 +282,7 @@ impl Oauth2Opt {
                     .await
                 {
                     Ok(_) => println!("Success"),
-                    Err(e) => error!("Error -> {:?}", e),
+                    Err(e) => handle_client_error(e, &nopt.copt.output_mode),
                 }
             }
             Oauth2Opt::PreferShortUsername(nopt) => {
@@ -287,7 +292,7 @@ impl Oauth2Opt {
                     .await
                 {
                     Ok(_) => println!("Success"),
-                    Err(e) => error!("Error -> {:?}", e),
+                    Err(e) => handle_client_error(e, &nopt.copt.output_mode),
                 }
             }
             Oauth2Opt::PreferSPNUsername(nopt) => {
@@ -297,7 +302,7 @@ impl Oauth2Opt {
                     .await
                 {
                     Ok(_) => println!("Success"),
-                    Err(e) => error!("Error -> {:?}", e),
+                    Err(e) => handle_client_error(e, &nopt.copt.output_mode),
                 }
             }
         }
