@@ -673,6 +673,12 @@ impl TryFrom<BuiltinGroup> for EntryInitNew {
             vec![EntryClass::Group.into(), EntryClass::Object.into()],
         );
         if val.dyngroup {
+            if !val.members.is_empty() {
+                return Err(OperationError::InvalidSchemaState(format!(
+                    "Builtin dyngroup {} has members specified, this is not allowed",
+                    val.name
+                )));
+            }
             entry.add_ava(Attribute::Class.as_ref(), EntryClass::DynGroup.to_value());
             match val.dyngroup_filter {
                 Some(filter) => {
