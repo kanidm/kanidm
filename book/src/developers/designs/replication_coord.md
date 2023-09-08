@@ -171,6 +171,14 @@ For B pulling from A.
 Notice that automatic refresh only goes from A -> B and not the other way around. This allows one
 server to be "authoritative".
 
+TODO: The node configuration will also need to list nodes that can do certain tasks. An example
+of these tasks is that to prevent "update storms" a limited set of nodes should be responsible
+for recycling and tombstoning of entries. These should be defined as tasks in the replication
+configuration, so that the KRC can later issue out which nodes are responsible for those processes.
+
+These are analogous to the AD FSMO roles, but I think we need a different name for them. Single Node
+Origin Task? Single Node Operation Runner? Yes I'm trying to make silly acronyms.
+
 ### KRC Configuration
 
 > Still not fully sure about the KRC config yet. More thinking needed!
