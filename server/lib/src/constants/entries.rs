@@ -771,20 +771,6 @@ lazy_static! {
         ..Default::default()
     };
 
-/// Builtin IDM Group for granting elevated people (personal data) write permissions.
-// pub const JSON_IDM_PEOPLE_WRITE_PRIV_V1: &str = r#"{
-//     "attrs": {
-//         "class": ["group", "object"],
-//         "name": ["idm_people_write_priv"],
-//         "uuid": ["00000000-0000-0000-0000-000000000003"],
-//         "description": ["Builtin IDM Group for granting elevated people (personal data) write permissions."],
-//         "member": [
-//             "00000000-0000-0000-0000-000000000013",
-//             "00000000-0000-0000-0000-000000000024"
-//         ]
-//     }
-// }"#;
-
     // * People write managers
     /// Builtin IDM Group for granting elevated people (personal data) write and lifecycle management permissions.
     pub static ref IDM_PEOPLE_MANAGE_PRIV_V1: BuiltinGroup = BuiltinGroup {
@@ -814,21 +800,6 @@ lazy_static! {
         members: vec![BUILTIN_ACCOUNT_ADMIN.uuid],
         ..Default::default()
     };
-}
-
-// pub const JSON_IDM_PEOPLE_EXTEND_PRIV_V1: &str = r#"{
-//     "attrs": {
-//         "class": ["group", "object"],
-//         "name": ["idm_people_extend_priv"],
-//         "uuid": ["00000000-0000-0000-0000-000000000024"],
-//         "description": ["Builtin IDM Group for extending accounts to be people."],
-//         "member": [
-//             "00000000-0000-0000-0000-000000000001"
-//         ]
-//     }
-// }"#;
-
-lazy_static! {
     /// Self-write of mail
     pub static ref IDM_PEOPLE_SELF_WRITE_MAIL_PRIV_V1: BuiltinGroup = BuiltinGroup {
         name: "idm_people_self_write_mail_priv",
@@ -837,18 +808,7 @@ lazy_static! {
         members: Vec::new(),
         ..Default::default()
     };
-}
 
-// pub const JSON_IDM_PEOPLE_SELF_WRITE_MAIL_PRIV_V1: &str = r#"{
-//     "attrs": {
-//         "class": ["group", "object"],
-//         "name": ["idm_people_self_write_mail_priv"],
-//         "uuid": ["00000000-0000-0000-0000-000000000033"],
-//         "description": ["Builtin IDM Group for people accounts to update their own mail."]
-//     }
-// }"#;
-
-lazy_static! {
     /// Builtin IDM Group for granting elevated high privilege people (personal data) read permissions.
     pub static ref IDM_HP_PEOPLE_READ_PRIV_V1: BuiltinGroup = BuiltinGroup {
         name: "idm_hp_people_read_priv",
@@ -857,30 +817,7 @@ lazy_static! {
         members: vec![UUID_IDM_HP_PEOPLE_WRITE_PRIV],
         ..Default::default()
     };
-}
-// pub const JSON_IDM_HP_PEOPLE_READ_PRIV_V1: &str = r#"{
-//     "attrs": {
-//         "class": ["group", "object"],
-//         "name": ["idm_hp_people_read_priv"],
-//         "uuid": ["00000000-0000-0000-0000-000000000028"],
-//         "description": ["Builtin IDM Group for granting elevated high privilege people (personal data) read permissions."],
-//         "member": ["00000000-0000-0000-0000-000000000029"]
-//     }
-// }"#;
 
-// pub const JSON_IDM_HP_PEOPLE_WRITE_PRIV_V1: &str = r#"{
-//     "attrs": {
-//         "class": ["group", "object"],
-//         "name": ["idm_hp_people_write_priv"],
-//         "uuid": ["00000000-0000-0000-0000-000000000029"],
-//         "description": ["Builtin IDM Group for granting elevated high privilege people (personal data) write permissions."],
-//         "member": [
-//             "00000000-0000-0000-0000-000000000030"
-//         ]
-//     }
-// }"#;
-
-lazy_static! {
     /// Builtin IDM Group for granting elevated high privilege people (personal data) write permissions.
     pub static ref IDM_HP_PEOPLE_WRITE_PRIV_V1: BuiltinGroup = BuiltinGroup {
         name: "idm_hp_people_write_priv",
@@ -889,6 +826,7 @@ lazy_static! {
         members: vec![UUID_IDM_HP_PEOPLE_EXTEND_PRIV],
         ..Default::default()
     };
+
     /// Builtin IDM Group for extending high privilege accounts to be people.
     pub static ref IDM_HP_PEOPLE_EXTEND_PRIV_V1: BuiltinGroup = BuiltinGroup {
         name: "idm_hp_people_extend_priv",
@@ -897,22 +835,9 @@ lazy_static! {
         members: vec![BUILTIN_ACCOUNT_ADMIN.uuid],
         ..Default::default()
     };
-}
-// pub const JSON_IDM_HP_PEOPLE_EXTEND_PRIV_V1: &str = r#"{
-//     "attrs": {
-//         "class": ["group", "object"],
-//         "name": ["idm_hp_people_extend_priv"],
-//         "uuid": ["00000000-0000-0000-0000-000000000030"],
-//         "description": ["Builtin IDM Group for extending high privilege accounts to be people."],
-//         "member": [
-//             "00000000-0000-0000-0000-000000000000"
-//         ]
-//     }
-// }"#;
 
 // * group write manager (no read, everyone has read via the anon, etc)
-// IDM_GROUP_CREATE_PRIV
-lazy_static! {
+
     /// Builtin IDM Group for granting elevated group write and lifecycle permissions.
     pub static ref IDM_GROUP_MANAGE_PRIV_V1: BuiltinGroup = BuiltinGroup {
         name: "idm_group_manage_priv",
@@ -924,21 +849,7 @@ lazy_static! {
         ],
         ..Default::default()
     };
-}
-// pub const JSON_IDM_GROUP_MANAGE_PRIV_V1: &str = r#"{
-//     "attrs": {
-//         "class": ["group", "object"],
-//         "name": ["idm_group_manage_priv"],
-//         "uuid": ["00000000-0000-0000-0000-000000000015"],
-//         "description": ["Builtin IDM Group for granting elevated group write and lifecycle permissions."],
-//         "member": [
-//             "00000000-0000-0000-0000-000000000001",
-//             "00000000-0000-0000-0000-000000000019"
-//         ]
-//     }
-// }"#;
 
-lazy_static! {
     /// Builtin IDM Group for granting elevated group write and lifecycle permissions.
     pub static ref IDM_GROUP_WRITE_PRIV_V1: BuiltinGroup = BuiltinGroup {
         name: "idm_group_write_priv",

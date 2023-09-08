@@ -129,8 +129,8 @@ lazy_static! {
         (ATTR_ACP_RECEIVER_GROUP, Value::Refer(UUID_IDM_ALL_ACCOUNTS)),
         (
             ATTR_ACP_TARGET_SCOPE,
-            Value::new_json_filter_s("\"self\"").expect("Invalid JSON filter")
-            // Value::JsonFilt(ProtoFilter::SelfUuid)
+            // Value::new_json_filter_s("\"self\"").expect("Invalid JSON filter")
+            Value::JsonFilt(ProtoFilter::SelfUuid)
         ),
         (ATTR_ACP_SEARCH_ATTR, Attribute::Class.to_value()),
         (ATTR_ACP_SEARCH_ATTR, Attribute::Name.to_value()),
