@@ -652,7 +652,6 @@ pub struct BuiltinGroup {
     members: Vec<uuid::Uuid>,
     dyngroup: bool,
     dyngroup_filter: Option<Filter>,
-    // TODO: additional attributes (for things like the uihint group)
     extra_attributes: Vec<(Attribute, Value)>,
 }
 
@@ -711,9 +710,9 @@ impl TryFrom<BuiltinGroup> for EntryInitNew {
 }
 
 lazy_static! {
-      /// Builtin System Admin account.
-      pub static ref BUILTIN_ACCOUNT_IDM_ADMIN: BuiltinAccount = BuiltinAccount {
-       // TODO: this really should be a "are you a service account or a person" enum
+    /// Builtin System Admin account.
+    pub static ref BUILTIN_ACCOUNT_IDM_ADMIN: BuiltinAccount = BuiltinAccount {
+        // TODO: this really should be a "are you a service account or a person" enum
         classes: vec![
             EntryClass::Account,
             EntryClass::ServiceAccount,
@@ -1180,9 +1179,7 @@ lazy_static! {
         ),
         (Attribute::Version.as_ref(), Value::Uint32(14))
     );
-}
 
-lazy_static! {
     pub static ref E_DOMAIN_INFO_V1: EntryInitNew = entry_init!(
         (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
         (Attribute::Class.as_ref(), EntryClass::DomainInfo.to_value()),
