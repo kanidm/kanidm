@@ -1127,6 +1127,9 @@ lazy_static! {
         ],
         ..Default::default()
     };
+}
+// at some point vs code just gives up on syntax highlighting inside lazy_static...
+lazy_static! {
 
     /// Members of this group will have access to read the mail attribute of all persons and service accounts.
     pub static ref IDM_ACCOUNT_MAIL_READ_PRIV: BuiltinGroup = BuiltinGroup {
@@ -1176,49 +1179,7 @@ lazy_static! {
         dyngroup_filter: None,
         extra_attributes: Vec::new(),
     };
-}
 
-pub const JSON_IDM_HIGH_PRIVILEGE_V1: &str = r#"{
-    "attrs": {
-        "class": ["group", "object"],
-        "name": ["idm_high_privilege"],
-        "uuid": ["00000000-0000-0000-0000-000000001000"],
-        "description": ["Builtin IDM provided groups with high levels of access that should be audited and limited in modification."],
-        "member": [
-            "00000000-0000-0000-0000-000000000001",
-            "00000000-0000-0000-0000-000000000002",
-            "00000000-0000-0000-0000-000000000003",
-            "00000000-0000-0000-0000-000000000004",
-            "00000000-0000-0000-0000-000000000005",
-            "00000000-0000-0000-0000-000000000006",
-            "00000000-0000-0000-0000-000000000007",
-            "00000000-0000-0000-0000-000000000008",
-            "00000000-0000-0000-0000-000000000009",
-            "00000000-0000-0000-0000-000000000010",
-            "00000000-0000-0000-0000-000000000011",
-            "00000000-0000-0000-0000-000000000012",
-            "00000000-0000-0000-0000-000000000013",
-            "00000000-0000-0000-0000-000000000014",
-            "00000000-0000-0000-0000-000000000015",
-            "00000000-0000-0000-0000-000000000016",
-            "00000000-0000-0000-0000-000000000017",
-            "00000000-0000-0000-0000-000000000019",
-            "00000000-0000-0000-0000-000000000020",
-            "00000000-0000-0000-0000-000000000023",
-            "00000000-0000-0000-0000-000000000024",
-            "00000000-0000-0000-0000-000000000025",
-            "00000000-0000-0000-0000-000000000026",
-            "00000000-0000-0000-0000-000000000027",
-            "00000000-0000-0000-0000-000000000031",
-            "00000000-0000-0000-0000-000000000032",
-            "00000000-0000-0000-0000-000000000034",
-            "00000000-0000-0000-0000-000000000037",
-            "00000000-0000-0000-0000-000000001000"
-        ]
-    }
-}"#;
-
-lazy_static! {
     pub static ref E_SYSTEM_INFO_V1: EntryInitNew = entry_init!(
         (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
         (Attribute::Class.as_ref(), EntryClass::SystemInfo.to_value()),
