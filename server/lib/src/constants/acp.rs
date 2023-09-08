@@ -114,7 +114,8 @@ lazy_static! {
 }
 
 lazy_static! {
-    pub static ref E_IDM_SELF_ACP_READ_V1: EntryInitNew = entry_init!(
+    pub static ref E_IDM_SELF_ACP_READ_V1: EntryInitNew =
+        entry_init!(
         (ATTR_CLASS, EntryClass::Object.to_value()),
         (ATTR_CLASS, EntryClass::AccessControlProfile.to_value()),
         (ATTR_CLASS, EntryClass::AccessControlSearch.to_value()),
@@ -129,7 +130,6 @@ lazy_static! {
         (ATTR_ACP_RECEIVER_GROUP, Value::Refer(UUID_IDM_ALL_ACCOUNTS)),
         (
             ATTR_ACP_TARGET_SCOPE,
-            // Value::new_json_filter_s("\"self\"").expect("Invalid JSON filter")
             Value::JsonFilt(ProtoFilter::SelfUuid)
         ),
         (ATTR_ACP_SEARCH_ATTR, Attribute::Class.to_value()),
