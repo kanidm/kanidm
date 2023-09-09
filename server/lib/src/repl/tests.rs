@@ -1846,7 +1846,7 @@ async fn test_repl_increment_consumer_lagging_attributes(
     drop(server_b_txn);
 }
 
-// Test two synchronised nodes where no changes occured in a TS/RUV window.
+// Test two synchronised nodes where no changes occurred in a TS/RUV window.
 #[qs_pair_test]
 async fn test_repl_increment_consumer_ruv_trim_past_valid(
     server_a: &QueryServer,
@@ -2916,7 +2916,7 @@ async fn test_repl_increment_attrunique_conflict_basic(
         .is_ok());
     server_b_txn.commit().expect("Failed to commit");
 
-    // Now each node has an entry, seperate uuids, but a name that will violate attr
+    // Now each node has an entry, separate uuids, but a name that will violate attr
     // unique on the next replicate.
     //
     // Order of replication doesn't matter here! Which ever one see's it first will
@@ -2928,7 +2928,7 @@ async fn test_repl_increment_attrunique_conflict_basic(
     trace!("========================================");
     repl_incremental(&mut server_b_txn, &mut server_a_txn);
 
-    // The conflict should now have occured.
+    // The conflict should now have occurred.
     // Check both groups are conflicts.
     let cnf_a = server_a_txn
         .internal_search_conflict_uuid(g_a_uuid)
@@ -3051,7 +3051,7 @@ async fn test_repl_increment_attrunique_conflict_complex(
     server_b_txn.commit().expect("Failed to commit");
 
     // We have to replicate B -> A first. This is so that A will not load the conflict
-    // entry, and the entrys g_a_uuid and g_b_uuid stay present.
+    // entry, and the entries g_a_uuid and g_b_uuid stay present.
     let mut server_b_txn = server_b.read().await;
     let mut server_a_txn = server_a.write(duration_from_epoch_now()).await;
 

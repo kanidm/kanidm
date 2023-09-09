@@ -101,7 +101,7 @@ fn enforce_unique<VALID, STATE>(
             }
         } else {
             // Corrupt? How did we even get here?
-            warn!("datastructure corruption occured while processing candidate attribute set");
+            warn!("datastructure corruption occurred while processing candidate attribute set");
             debug_assert!(false);
             return Err(OperationError::Plugin(PluginError::AttrUnique(
                 "corruption detected".to_string(),
@@ -302,7 +302,7 @@ impl Plugin for AttrUnique {
             return Ok(());
         }
 
-        // HAPPY FAST PATH - we do the fast existance query and if it passes
+        // HAPPY FAST PATH - we do the fast existence query and if it passes
         // we can *proceed*, nothing has conflicted.
         let cand_filters: Vec<_> = cand_attr_set
             .iter()
