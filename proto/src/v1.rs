@@ -63,7 +63,7 @@ pub enum ConsistencyError {
     RefintNotUpheld(u64),
     MemberOfInvalid(u64),
     InvalidAttributeType(String),
-    DuplicateUniqueAttribute(String),
+    DuplicateUniqueAttribute,
     InvalidSpn(u64),
     SqliteIntegrityFailure,
     BackendAllIdsSync,

@@ -2879,7 +2879,7 @@ impl<VALID, STATE> Entry<VALID, STATE> {
     /// Determine if this entry is recycled or a tombstone, and map that to "None". This allows
     /// filter_map to effectively remove entries that should not be considered as "alive".
     pub fn mask_recycled_ts(&self) -> Option<&Self> {
-        // Only when cls has ts/rc then None, else lways Some(self).
+        // Only when cls has ts/rc then None, else always Some(self).
         match self.attrs.get(Attribute::Class.as_ref()) {
             Some(cls) => {
                 if cls.contains(&EntryClass::Tombstone.to_partialvalue())

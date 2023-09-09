@@ -20,39 +20,45 @@ pub struct AttrUnique;
 
 fn get_cand_attr_set<VALID, STATE>(
     cand: &[Entry<VALID, STATE>],
-    attr: &str,
-) -> Result<BTreeMap<PartialValue, Uuid>, OperationError> {
+    uniqueattrs: &[AttrString],
+) -> Result<BTreeMap<(AttrString, PartialValue), Uuid>, OperationError> {
     // This is building both the set of values to search for uniqueness, but ALSO
     // is detecting if any modified or current entries in the cand set also duplicated
     // do to the ennforcing that the PartialValue must be unique in the cand_attr set.
-    let mut cand_attr: BTreeMap<PartialValue, Uuid> = BTreeMap::new();
+    let mut cand_attr: BTreeMap<(AttrString, PartialValue), Uuid> = BTreeMap::new();
 
     cand.iter()
+        // We don't need to consider recycled or tombstoned entries
+        .filter_map(|e| e.mask_recycled_ts())
         .try_for_each(|e| {
             let uuid = e
                 .get_ava_single_uuid("uuid")
                 .ok_or(OperationError::InvalidEntryState)?;
-            // Get the value and uuid
-            //for each value in the ava.
-            e.get_ava_set(attr)
-                .map(|vs| {
-                    vs.to_partialvalue_iter()
-                        .try_for_each(|v| match cand_attr.insert(v, uuid) {
-                            None => Ok(()),
-                            Some(vr) => {
-                                admin_error!(
-                                    "ava already exists -> {:?}: {:?} conflicts to {:?}",
-                                    attr,
-                                    vr,
-                                    e.get_display_id()
-                                );
-                                Err(OperationError::Plugin(PluginError::AttrUnique(
-                                    "ava already exists".to_string(),
-                                )))
+
+            uniqueattrs.iter().try_for_each(|attr| {
+                // Get the value and uuid
+                //for each value in the ava.
+                e.get_ava_set(attr)
+                    .map(|vs| {
+                        vs.to_partialvalue_iter().try_for_each(|v| {
+                            match cand_attr.insert((attr.clone(), v), uuid) {
+                                None => Ok(()),
+                                Some(vr) => {
+                                    admin_error!(
+                                        "ava already exists -> {:?}: {:?} conflicts to {:?}",
+                                        attr,
+                                        vr,
+                                        e.get_display_id()
+                                    );
+                                    Err(OperationError::Plugin(PluginError::AttrUnique(
+                                        "ava already exists".to_string(),
+                                    )))
+                                }
                             }
                         })
-                })
-                .unwrap_or(Ok(()))
+                    })
+                    .unwrap_or(Ok(()))
+            })
         })
         .map(|()| cand_attr)
 }
@@ -60,12 +66,16 @@ fn get_cand_attr_set<VALID, STATE>(
 fn enforce_unique<VALID, STATE>(
     qs: &mut QueryServerWriteTransaction,
     cand: &[Entry<VALID, STATE>],
-    attr: &str,
 ) -> Result<(), OperationError> {
+    let uniqueattrs = {
+        let schema = qs.get_schema();
+        schema.get_attributes_unique()
+    };
+
     // Build a set of all the value -> uuid for the cands.
     // If already exist, reject due to dup.
-    let cand_attr = get_cand_attr_set(cand, attr).map_err(|e| {
-        admin_error!(err = ?e, ?attr, "failed to get cand attr set");
+    let cand_attr = get_cand_attr_set(cand, uniqueattrs).map_err(|e| {
+        error!(err = ?e, "failed to get cand attr set");
         e
     })?;
 
@@ -81,7 +91,7 @@ fn enforce_unique<VALID, STATE>(
         // for each cand_attr
         cand_attr
             .iter()
-            .map(|(v, uuid)| {
+            .map(|((attr, v), uuid)| {
                 // and[ attr eq k, andnot [ uuid eq v ]]
                 // Basically this says where name but also not self.
                 f_and(vec![
@@ -115,13 +125,13 @@ fn enforce_unique<VALID, STATE>(
 
         // First create the vec of filters.
         let mut cand_filters: Vec<_> = cand_attr
-            .into_iter()
-            .map(|(v, uuid)| {
+            .iter()
+            .map(|((attr, v), uuid)| {
                 // and[ attr eq k, andnot [ uuid eq v ]]
                 // Basically this says where name but also not self.
                 f_and(vec![
-                    FC::Eq(attr, v),
-                    f_andnot(FC::Eq(ATTR_UUID, PartialValue::Uuid(uuid))),
+                    FC::Eq(attr, v.clone()),
+                    f_andnot(FC::Eq(ATTR_UUID, PartialValue::Uuid(*uuid))),
                 ])
             })
             .collect();
@@ -184,25 +194,13 @@ impl Plugin for AttrUnique {
         "plugin_attrunique"
     }
 
-    #[instrument(
-        level = "debug",
-        name = "attrunique_pre_create_transform",
-        skip(qs, _ce)
-    )]
+    #[instrument(level = "debug", name = "attrunique_pre_create_transform", skip_all)]
     fn pre_create_transform(
         qs: &mut QueryServerWriteTransaction,
         cand: &mut Vec<Entry<EntryInvalid, EntryNew>>,
         _ce: &CreateEvent,
     ) -> Result<(), OperationError> {
-        let uniqueattrs = {
-            let schema = qs.get_schema();
-            schema.get_attributes_unique()
-        };
-
-        let r: Result<(), OperationError> = uniqueattrs
-            .iter()
-            .try_for_each(|attr| enforce_unique(qs, cand, attr.as_str()));
-        r
+        enforce_unique(qs, cand)
     }
 
     #[instrument(level = "debug", name = "attrunique_pre_modify", skip_all)]
@@ -212,15 +210,7 @@ impl Plugin for AttrUnique {
         cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         _me: &ModifyEvent,
     ) -> Result<(), OperationError> {
-        let uniqueattrs = {
-            let schema = qs.get_schema();
-            schema.get_attributes_unique()
-        };
-
-        let r: Result<(), OperationError> = uniqueattrs
-            .iter()
-            .try_for_each(|attr| enforce_unique(qs, cand, attr.as_str()));
-        r
+        enforce_unique(qs, cand)
     }
 
     #[instrument(level = "debug", name = "attrunique_pre_batch_modify", skip_all)]
@@ -230,50 +220,38 @@ impl Plugin for AttrUnique {
         cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         _me: &BatchModifyEvent,
     ) -> Result<(), OperationError> {
-        let uniqueattrs = {
-            let schema = qs.get_schema();
-            schema.get_attributes_unique()
-        };
-
-        let r: Result<(), OperationError> = uniqueattrs
-            .iter()
-            .try_for_each(|attr| enforce_unique(qs, cand, attr.as_str()));
-        r
+        enforce_unique(qs, cand)
     }
 
+    #[instrument(level = "debug", name = "attrunique_pre_repl_refresh", skip_all)]
     fn pre_repl_refresh(
         qs: &mut QueryServerWriteTransaction,
         cand: &[EntryRefreshNew],
     ) -> Result<(), OperationError> {
-        let uniqueattrs = {
-            let schema = qs.get_schema();
-            schema.get_attributes_unique()
-        };
-
-        let r: Result<(), OperationError> = uniqueattrs
-            .iter()
-            .try_for_each(|attr| enforce_unique(qs, cand, attr.as_str()));
-        r
+        enforce_unique(qs, cand)
     }
 
-    fn pre_repl_incremental(
+    #[instrument(level = "debug", name = "attrunique_post_repl_incremental", skip_all)]
+    fn post_repl_incremental(
         _qs: &mut QueryServerWriteTransaction,
-        _cand: &mut [(EntryIncrementalCommitted, Arc<EntrySealedCommitted>)],
+        _pre_cand: &[Arc<EntrySealedCommitted>],
+        _cand: &[EntrySealedCommitted],
+        _conflict_uuids: &[Uuid],
     ) -> Result<(), OperationError> {
         // We also can't realllllyyyy rely on the cid here since it could have changed multiple times
         // and may not truly reflect the accurate change times, so we have to conflict on both
-        // items that hit the attrunique. This makes all nodes consistent.
+        // entries that hit the attrunique. This makes all nodes consistent in how they will treat
+        // attrunique conflicts.
         //
-        // It is *important* to note that this *can* be a pre plugin. This is because the entries that
-        // are coming from the supplier must *already* have passed attrunique, so anything in the
-        // incoming set must be unique relative to anything else in that set.
+        // It is *important* to note that this *can not* be a pre plugin. This is because we have
+        // to wait for conflicts to be processed and written before we can proceed with what is
+        // live.
+
         //
-        // The only
 
         // Test/debug only - check that all uuids in the conflict set are NOT in the cand set!
 
-        debug_assert!(false);
-        Err(OperationError::InvalidState)
+        todo!();
     }
 
     #[instrument(level = "debug", name = "attrunique::verify", skip_all)]
@@ -298,13 +276,8 @@ impl Plugin for AttrUnique {
 
         let mut res: Vec<Result<(), ConsistencyError>> = Vec::new();
 
-        for attr in uniqueattrs.iter() {
-            // We do a fully in memory check.
-            if get_cand_attr_set(&all_cand, attr.as_str()).is_err() {
-                res.push(Err(ConsistencyError::DuplicateUniqueAttribute(
-                    attr.to_string(),
-                )))
-            }
+        if get_cand_attr_set(&all_cand, uniqueattrs).is_err() {
+            res.push(Err(ConsistencyError::DuplicateUniqueAttribute))
         }
 
         trace!(?res);
