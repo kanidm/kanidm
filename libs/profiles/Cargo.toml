@@ -24,4 +24,4 @@ base64 = { workspace = true }
 
 [build-dependencies]
 base64 = { workspace = true }
-git2 = { workspace = true }
+gix = { workspace = true }
