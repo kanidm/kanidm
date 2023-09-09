@@ -193,17 +193,13 @@ impl Plugin for ReferentialIntegrity {
         Self::post_modify_inner(qs, cand)
     }
 
+    #[instrument(level = "debug", name = "refint_post_repl_incremental", skip_all)]
     fn post_repl_incremental(
         qs: &mut QueryServerWriteTransaction,
         pre_cand: &[Arc<EntrySealedCommitted>],
         cand: &[EntrySealedCommitted],
-        conflict_uuids: &[Uuid],
+        conflict_uuids: &BTreeSet<Uuid>,
     ) -> Result<(), OperationError> {
-        admin_error!(
-            "plugin {} has an unimplemented post_repl_incremental!",
-            Self::id()
-        );
-
         // I think we need to check that all values in the ref type values here
         // exist, and if not, we *need to remove them*. We should probably rewrite
         // how we do modify/create inner to actually return missing uuids, so that
@@ -264,7 +260,7 @@ impl Plugin for ReferentialIntegrity {
 
         // Now, we need to find for each of the missing uuids, which values had them.
         // We could use a clever query to internal_search_writeable?
-        missing_uuids.extend_from_slice(conflict_uuids);
+        missing_uuids.extend(conflict_uuids.iter().copied());
         missing_uuids.extend_from_slice(&inactive_entries);
 
         if missing_uuids.is_empty() {

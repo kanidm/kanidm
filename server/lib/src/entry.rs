@@ -1172,7 +1172,20 @@ impl Entry<EntryInvalid, EntryCommitted> {
         }
     }
 
-    /// Convert this entry into a recycled entry, that is "in the recycle bin".
+    /// Convert this entry into a conflict, declaring what entries it conflicted against.
+    pub fn to_conflict<T>(&mut self, iter: T)
+    where
+        T: IntoIterator<Item = Uuid>,
+    {
+        self.add_ava(Attribute::Class.as_ref(), EntryClass::Recycled.into());
+        self.add_ava(Attribute::Class.as_ref(), EntryClass::Conflict.into());
+        // Add all the source uuids we conflicted against.
+        for source_uuid in iter {
+            self.add_ava(Attribute::SourceUuid.as_ref(), Value::Uuid(source_uuid));
+        }
+    }
+
+    /// Extract this entry from the recycle bin into a live state.
     pub fn to_revived(mut self) -> Self {
         // This will put the modify ahead of the revive transition.
         self.remove_ava(ATTR_CLASS, &EntryClass::Recycled.into());

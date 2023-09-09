@@ -1,7 +1,7 @@
 use super::proto::*;
 use crate::plugins::Plugins;
 use crate::prelude::*;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 
 pub enum ConsumerState {
@@ -91,7 +91,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // server for some conflicts, but we still need to know the UUID is IN the conflict
         // state for plugins. We also need to do this here before the conflict_update
         // set is consumed by later steps.
-        let conflict_uuids: Vec<_> = conflict_update.iter().map(|(_, e)| e.get_uuid()).collect();
+        let mut conflict_uuids: BTreeSet<_> =
+            conflict_update.iter().map(|(_, e)| e.get_uuid()).collect();
 
         // Filter out None from conflict_create
         let conflict_create: Vec<EntrySealedNew> = conflict_create.into_iter().flatten().collect();
@@ -171,8 +172,28 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 e
             })?;
 
+        Plugins::run_post_repl_incremental_conflict(
+            self,
+            all_updates_valid.as_slice(),
+            &mut conflict_uuids,
+        )
+        .map_err(|e| {
+            error!(
+                "Refresh operation failed (post_repl_incremental_conflict plugin), {:?}",
+                e
+            );
+            e
+        })?;
+
         // Plugins need these unzipped
-        let (cand, pre_cand): (Vec<_>, Vec<_>) = all_updates_valid.into_iter().unzip();
+        //
+        let (cand, pre_cand): (Vec<_>, Vec<_>) = all_updates_valid
+            .into_iter()
+            .filter(|(cand, _)| {
+                // Exclude anything that is conflicted as a result of the conflict plugins.
+                !conflict_uuids.contains(&cand.get_uuid())
+            })
+            .unzip();
 
         // We don't need to process conflict_creates here, since they are all conflicting
         // uuids which means that the conflict_uuids are all *here* so they will trigger anything
@@ -183,10 +204,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
             self,
             pre_cand.as_slice(),
             cand.as_slice(),
-            conflict_uuids.as_slice(),
+            &conflict_uuids,
         )
         .map_err(|e| {
-            admin_error!(
+            error!(
                 "Refresh operation failed (post_repl_incremental plugin), {:?}",
                 e
             );

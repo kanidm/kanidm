@@ -847,9 +847,9 @@ impl<'a> SchemaWriteTransaction<'a> {
                 name: Attribute::SourceUuid.into(),
                 uuid: UUID_SCHEMA_ATTR_SOURCE_UUID,
                 description: String::from(
-                    "The universal unique id of the source object where this conflict came from",
+                    "The universal unique id of the source object(s) which conflicted with this entry",
                 ),
-                multivalue: false,
+                multivalue: true,
                 // Uniqueness is handled by base.rs, not attrunique here due to
                 // needing to check recycled objects too.
                 unique: false,
