@@ -15,7 +15,6 @@ apt-get install -y \
           libpam0g-dev \
           libudev-dev \
           libssl-dev \
-          libsqlite3-dev \
           pkg-config \
           make \
           devscripts \
@@ -27,7 +26,6 @@ else
             libpam0g-dev \
             libudev-dev \
             libssl-dev \
-            libsqlite3-dev \
             pkg-config \
             make \
             devscripts \
