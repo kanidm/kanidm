@@ -45,12 +45,15 @@ impl From<BuiltinAcp> for EntryInitNew {
     fn from(value: BuiltinAcp) -> Self {
         let mut entry = EntryInitNew::default();
 
+        #[allow(clippy::panic)]
         if value.name.is_empty() {
             panic!("Builtin ACP has no name! {:?}", value);
         }
+        #[allow(clippy::panic)]
         if value.classes.is_empty() {
             panic!("Builtin ACP has no classes! {:?}", value);
         }
+        #[allow(clippy::panic)]
         if DEFAULT_TARGET_SCOPE.clone() == value.target_scope {
             panic!("Builtin ACP has an invalid target_scope! {:?}", value);
         }
@@ -69,7 +72,7 @@ impl From<BuiltinAcp> for EntryInitNew {
         entry.set_ava(ATTR_ACP_TARGET_SCOPE, [Value::JsonFilt(value.target_scope)]);
 
         entry.set_ava(
-            ATTR_ACP_SEARCH_ATTR,
+            Attribute::AcpSearchAttr.as_ref(),
             value
                 .search_attrs
                 .into_iter()
@@ -146,28 +149,28 @@ lazy_static! {
             ATTR_ACP_TARGET_SCOPE,
             Value::JsonFilt(ProtoFilter::SelfUuid)
         ),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::Class.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::Name.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::Spn.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::DisplayName.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::LegalName.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::Class.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::MemberOf.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::Mail.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::RadiusSecret.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::GidNumber.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::LoginShell.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::Uuid.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::SyncParentUuid.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::AccountExpire.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::AccountValidFrom.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::PrimaryCredential.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::Class.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::Name.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::Spn.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::DisplayName.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::LegalName.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::Class.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::MemberOf.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::Mail.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::RadiusSecret.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::GidNumber.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::LoginShell.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::Uuid.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::SyncParentUuid.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::AccountExpire.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::AccountValidFrom.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::PrimaryCredential.to_value()),
         (
-            ATTR_ACP_SEARCH_ATTR,
+            Attribute::AcpSearchAttr.as_ref(),
             Attribute::UserAuthTokenSession.to_value()
         ),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::PassKeys.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::DeviceKeys.to_value())
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::PassKeys.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::DeviceKeys.to_value())
     );
 }
 
@@ -330,18 +333,18 @@ lazy_static! {
             )
                 .expect("Invalid JSON filter")
         ),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::Class.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::Name.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::Spn.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::DisplayName.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::Class.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::MemberOf.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::Member.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::DynMember.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::Uuid.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::GidNumber.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::LoginShell.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::SshPublicKey.to_value())
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::Class.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::Name.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::Spn.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::DisplayName.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::Class.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::MemberOf.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::Member.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::DynMember.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::Uuid.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::GidNumber.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::LoginShell.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::SshPublicKey.to_value())
     );
 }
 
@@ -396,11 +399,11 @@ lazy_static! {
             // )
             // .expect("Invalid JSON filter")
         ),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::Class.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::Name.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::DisplayName.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::LegalName.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::Mail.to_value())
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::Class.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::Name.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::DisplayName.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::LegalName.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::Mail.to_value())
     );
 }
 
@@ -602,10 +605,22 @@ lazy_static! {
             )
             .expect("Invalid JSON filter")
         ),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::Name.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::DisplayName.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::LegalName.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::Mail.to_value())
+        (
+            Attribute::AcpSearchAttr.as_ref(),
+            Attribute::Name.to_value()
+        ),
+        (
+            Attribute::AcpSearchAttr.as_ref(),
+            Attribute::DisplayName.to_value()
+        ),
+        (
+            Attribute::AcpSearchAttr.as_ref(),
+            Attribute::LegalName.to_value()
+        ),
+        (
+            Attribute::AcpSearchAttr.as_ref(),
+            Attribute::Mail.to_value()
+        )
     );
 }
 
@@ -637,7 +652,7 @@ lazy_static! {
             Value::new_json_filter_s("{\"and\": [{\"eq\": [\"class\",\"account\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}")
                 .expect("Invalid JSON filter")
         ),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::Mail.to_value())
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::Mail.to_value())
     );
 }
 
@@ -734,14 +749,14 @@ lazy_static! {
             )
                 .expect("Invalid JSON filter")
         ),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::Class.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::Name.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::Uuid.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::Spn.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::Uuid.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::Description.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::Member.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::DynMember.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::Class.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::Name.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::Uuid.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::Spn.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::Uuid.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::Description.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::Member.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::DynMember.to_value()),
         (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::Name.to_value()),
         (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::Description.to_value()),
         (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::Member.to_value()),
@@ -773,22 +788,22 @@ lazy_static! {
             )
                 .expect("Invalid JSON filter")
         ),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::Class.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::Name.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::Spn.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::Uuid.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::DisplayName.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::SshPublicKey.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::PrimaryCredential.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::MemberOf.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::Mail.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::GidNumber.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::AccountExpire.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::AccountValidFrom.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::PassKeys.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::DeviceKeys.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::ApiTokenSession.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::UserAuthTokenSession.to_value())
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::Class.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::Name.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::Spn.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::Uuid.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::DisplayName.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::SshPublicKey.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::PrimaryCredential.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::MemberOf.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::Mail.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::GidNumber.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::AccountExpire.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::AccountValidFrom.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::PassKeys.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::DeviceKeys.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::ApiTokenSession.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::UserAuthTokenSession.to_value())
     );
 }
 
@@ -907,7 +922,7 @@ lazy_static! {
             )
                 .expect("Invalid JSON filter")
         ),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::RadiusSecret.to_value())
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::RadiusSecret.to_value())
     );
 }
 
@@ -961,11 +976,11 @@ lazy_static! {
             )
                 .expect("Invalid JSON filter")
         ),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::Class.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::Name.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::Spn.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::Uuid.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::RadiusSecret.to_value())
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::Class.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::Name.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::Spn.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::Uuid.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::RadiusSecret.to_value())
     );
 }
 
@@ -991,20 +1006,20 @@ lazy_static! {
             )
                 .expect("Invalid JSON filter")
         ),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::Class.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::Name.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::Spn.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::Uuid.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::DisplayName.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::SshPublicKey.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::PrimaryCredential.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::MemberOf.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::AccountExpire.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::AccountValidFrom.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::PassKeys.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::DeviceKeys.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::ApiTokenSession.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::UserAuthTokenSession.to_value())
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::Class.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::Name.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::Spn.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::Uuid.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::DisplayName.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::SshPublicKey.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::PrimaryCredential.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::MemberOf.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::AccountExpire.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::AccountValidFrom.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::PassKeys.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::DeviceKeys.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::ApiTokenSession.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::UserAuthTokenSession.to_value())
     );
 }
 
@@ -1077,14 +1092,14 @@ lazy_static! {
             )
                 .expect("Invalid JSON filter")
         ),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::Class.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::Name.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::Uuid.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::Spn.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::Uuid.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::Description.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::Member.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::DynMember.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::Class.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::Name.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::Uuid.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::Spn.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::Uuid.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::Description.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::Member.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::DynMember.to_value()),
         (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::Name.to_value()),
         (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::Description.to_value()),
         (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::Member.to_value()),
@@ -1118,14 +1133,14 @@ lazy_static! {
             )
                 .expect("Invalid JSON filter")
         ),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::Class.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::Description.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::Index.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::Unique.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::MultiValue.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::AttributeName.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::Syntax.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::Uuid.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::Class.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::Description.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::Index.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::Unique.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::MultiValue.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::AttributeName.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::Syntax.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::Uuid.to_value()),
 
         (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::Description.to_value()),
         (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::Index.to_value()),
@@ -1178,18 +1193,18 @@ lazy_static! {
             )
                 .expect("Invalid JSON filter")
         ),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::Class.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::Name.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::Description.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::AcpEnable.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::AcpReceiverGroup.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::AcpTargetScope.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::AcpSearchAttr.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::AcpModifyRemovedAttr.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::AcpModifyPresentAttr.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::AcpModifyClass.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::AcpCreateClass.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::AcpCreateAttr.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::Class.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::Name.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::Description.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::AcpEnable.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::AcpReceiverGroup.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::AcpTargetScope.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::AcpSearchAttr.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::AcpModifyRemovedAttr.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::AcpModifyPresentAttr.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::AcpModifyClass.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::AcpCreateClass.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::AcpCreateAttr.to_value()),
 
         (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::Class.to_value()),
         (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::Name.to_value()),
@@ -1269,14 +1284,14 @@ lazy_static! {
             )
                 .expect("Invalid JSON filter")
         ),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::Class.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::ClassName.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::Description.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::SystemMay.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::May.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::SystemMust.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::Must.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::Uuid.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::Class.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::ClassName.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::Description.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::SystemMay.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::May.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::SystemMust.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::Must.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::Uuid.to_value()),
         (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::Class.to_value()),
         (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::Description.to_value()),
         (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::May.to_value()),
@@ -1424,17 +1439,17 @@ lazy_static! {
             )
                 .expect("Invalid JSON filter")
         ),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::Class.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::Name.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::Uuid.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::DomainDisplayName.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::DomainName.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::DomainLdapBasedn.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::DomainSsid.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::DomainUuid.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::Es256PrivateKeyDer.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::FernetPrivateKeyStr.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::CookiePrivateKey.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::Class.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::Name.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::Uuid.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::DomainDisplayName.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::DomainName.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::DomainLdapBasedn.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::DomainSsid.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::DomainUuid.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::Es256PrivateKeyDer.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::FernetPrivateKeyStr.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::CookiePrivateKey.to_value()),
         (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::DomainDisplayName.to_value()),
         (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::DomainSsid.to_value()),
         (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::DomainLdapBasedn.to_value()),
@@ -1470,11 +1485,11 @@ lazy_static! {
             )
                 .expect("Invalid JSON filter")
         ),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::Class.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::Name.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::Uuid.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::Description.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::BadlistPassword.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::Class.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::Name.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::Uuid.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::Description.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::BadlistPassword.to_value()),
         (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::BadlistPassword.to_value()),
         (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::BadlistPassword.to_value())
     );
@@ -1503,14 +1518,14 @@ lazy_static! {
             )
                 .expect("Invalid JSON filter")
         ),
-        (ATTR_ACP_SEARCH_ATTR, Value::new_iutf8("class")),
-        (ATTR_ACP_SEARCH_ATTR, Value::new_iutf8("name")),
-        (ATTR_ACP_SEARCH_ATTR, Value::new_iutf8("uuid")),
-        (ATTR_ACP_SEARCH_ATTR, Value::new_iutf8("description")),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::AuthSessionExpiry.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Value::new_iutf8("class")),
+        (Attribute::AcpSearchAttr.as_ref(), Value::new_iutf8(Attribute::Name.as_ref())),
+        (Attribute::AcpSearchAttr.as_ref(), Value::new_iutf8("uuid")),
+        (Attribute::AcpSearchAttr.as_ref(), Value::new_iutf8("description")),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::AuthSessionExpiry.to_value()),
         (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::AuthSessionExpiry.to_value()),
         (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::AuthSessionExpiry.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::PrivilegeExpiry.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::PrivilegeExpiry.to_value()),
         (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::PrivilegeExpiry.to_value()),
         (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::PrivilegeExpiry.to_value())
 
@@ -1540,14 +1555,14 @@ lazy_static! {
             )
                 .expect("Invalid JSON filter")
         ),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::Class.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::Name.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::Uuid.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::Spn.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::Description.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::GidNumber.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::LoginShell.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::UnixPassword.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::Class.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::Name.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::Uuid.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::Spn.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::Description.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::GidNumber.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::LoginShell.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::UnixPassword.to_value()),
         (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::GidNumber.to_value()),
         (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::LoginShell.to_value()),
         (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::UnixPassword.to_value()),
@@ -1582,13 +1597,13 @@ lazy_static! {
             )
                 .expect("Invalid JSON filter")
         ),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::Class.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::Name.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::Uuid.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::Spn.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::Description.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::Member.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::GidNumber.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::Class.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::Name.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::Uuid.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::Spn.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::Description.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::Member.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::GidNumber.to_value()),
         (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::GidNumber.to_value()),
         (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::Class.to_value()),
         (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::GidNumber.to_value()),
@@ -1619,14 +1634,14 @@ lazy_static! {
             )
                 .expect("Invalid JSON filter")
         ),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::Class.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::Name.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::Uuid.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::Spn.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::Description.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::GidNumber.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::LoginShell.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::UnixPassword.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::Class.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::Name.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::Uuid.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::Spn.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::Description.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::GidNumber.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::LoginShell.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::UnixPassword.to_value()),
         (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::GidNumber.to_value()),
         (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::LoginShell.to_value()),
         (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::UnixPassword.to_value()),
@@ -1661,14 +1676,14 @@ lazy_static! {
             )
                 .expect("Invalid JSON filter")
         ),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::DynMember.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::Class.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::Name.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::Uuid.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::Spn.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::Description.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::Member.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::GidNumber.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::DynMember.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::Class.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::Name.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::Uuid.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::Spn.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::Description.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::Member.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::GidNumber.to_value()),
         (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::GidNumber.to_value()),
         (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::Class.to_value()),
         (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::GidNumber.to_value()),
@@ -1701,21 +1716,21 @@ lazy_static! {
             )
                 .expect("Invalid JSON filter")
         ),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::Class.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::Description.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::DisplayName.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::OAuth2RsName.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::OAuth2RsOrigin.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::OAuth2RsOriginLanding.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::OAuth2RsScopeMap.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::OAuth2RsSupScopeMap.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::OAuth2RsBasicSecret.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::OAuth2RsTokenKey.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::Es256PrivateKeyDer.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::OAuth2AllowInsecureClientDisablePkce.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::Rs256PrivateKeyDer.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::OAuth2JwtLegacyCryptoEnable.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::OAuth2PreferShortUsername.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::Class.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::Description.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::DisplayName.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::OAuth2RsName.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::OAuth2RsOrigin.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::OAuth2RsOriginLanding.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::OAuth2RsScopeMap.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::OAuth2RsSupScopeMap.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::OAuth2RsBasicSecret.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::OAuth2RsTokenKey.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::Es256PrivateKeyDer.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::OAuth2AllowInsecureClientDisablePkce.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::Rs256PrivateKeyDer.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::OAuth2JwtLegacyCryptoEnable.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::OAuth2PreferShortUsername.to_value()),
 
         (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::Description.to_value()),
         (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::DisplayName.to_value()),
@@ -1787,9 +1802,9 @@ lazy_static! {
             )
                 .expect("Invalid JSON filter")
         ),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::Class.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::Name.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::Uuid.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::Class.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::Name.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::Uuid.to_value()),
         (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::Class.to_value()),
         (ATTR_ACP_MODIFY_PRESENTATTR, Attribute::Class.to_value()),
         (ATTR_ACP_MODIFY_CLASS, EntryClass::ServiceAccount.to_value()),
@@ -1822,15 +1837,15 @@ lazy_static! {
             )
                 .expect("Invalid JSON filter")
         ),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::Class.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::Uuid.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::Name.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::Description.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::JwsEs256PrivateKey.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::SyncTokenSession.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::SyncCredentialPortal.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::SyncYieldAuthority.to_value()),
-        (ATTR_ACP_SEARCH_ATTR, Attribute::SyncCookie.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::Class.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::Uuid.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::Name.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::Description.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::JwsEs256PrivateKey.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::SyncTokenSession.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::SyncCredentialPortal.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::SyncYieldAuthority.to_value()),
+        (Attribute::AcpSearchAttr.as_ref(), Attribute::SyncCookie.to_value()),
         (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::Name.to_value()),
         (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::Description.to_value()),
         (ATTR_ACP_MODIFY_REMOVEDATTR, Attribute::JwsEs256PrivateKey.to_value()),

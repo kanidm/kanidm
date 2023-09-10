@@ -1666,7 +1666,7 @@ mod tests {
             .internal_create(vec![entry_init!(
                 (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
                 (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
-                ("name", Value::new_iname("testperson1")),
+                (Attribute::Name.as_ref(), Value::new_iname("testperson1")),
                 (Attribute::Uuid.as_ref(), Value::Uuid(t_uuid)),
                 ("description", Value::new_utf8s("testperson1")),
                 ("displayname", Value::new_utf8s("testperson1"))
@@ -1732,7 +1732,7 @@ mod tests {
             (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
             (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
             (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
-            ("name", Value::new_iname("testperson1")),
+            (Attribute::Name.as_ref(), Value::new_iname("testperson1")),
             (
                 "uuid",
                 Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
@@ -1765,7 +1765,7 @@ mod tests {
             (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
             (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
             (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
-            ("name", Value::new_iname("testperson1")),
+            (Attribute::Name.as_ref(), Value::new_iname("testperson1")),
             (
                 "uuid",
                 Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
@@ -1796,7 +1796,7 @@ mod tests {
         let e1 = entry_init!(
             (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
             (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
-            ("name", Value::new_iname("testperson1")),
+            (Attribute::Name.as_ref(), Value::new_iname("testperson1")),
             (
                 "uuid",
                 Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
@@ -1836,7 +1836,7 @@ mod tests {
         let e1 = entry_init!(
             (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
             (Attribute::Class.as_ref(), EntryClass::TestClass.to_value()),
-            ("name", Value::new_iname("testobj1")),
+            (Attribute::Name.as_ref(), Value::new_iname("testobj1")),
             (
                 "uuid",
                 Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
@@ -1853,7 +1853,7 @@ mod tests {
                 Value::Uuid(uuid!("cfcae205-31c3-484b-8ced-667d1709c5e3"))
             ),
             ("description", Value::new_utf8s("Test Class")),
-            ("may", Value::new_iutf8("name"))
+            ("may", Value::new_iutf8(Attribute::Name.as_ref()))
         );
         let mut server_txn = server.write(duration_from_epoch_now()).await;
         // Add a new class.
@@ -1911,7 +1911,7 @@ mod tests {
                 Attribute::Class.as_ref(),
                 EntryClass::ExtensibleObject.to_value()
             ),
-            ("name", Value::new_iname("testobj1")),
+            (Attribute::Name.as_ref(), Value::new_iname("testobj1")),
             (
                 "uuid",
                 Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))

@@ -66,9 +66,11 @@ macro_rules! try_from_entry {
             .cloned()
             .unwrap_or_default();
 
-        let spn = $value.get_ava_single_proto_string("spn").ok_or(
-            OperationError::InvalidAccountState("Missing attribute: spn".to_string()),
-        )?;
+        let spn = $value
+            .get_ava_single_proto_string(Attribute::Spn.as_ref())
+            .ok_or(OperationError::InvalidAccountState(
+                "Missing attribute: spn".to_string(),
+            ))?;
 
         let mail_primary = $value.get_ava_mail_primary("mail").map(str::to_string);
 

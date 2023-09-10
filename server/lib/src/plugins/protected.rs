@@ -327,7 +327,10 @@ mod tests {
                 "acp_targetscope",
                 Value::new_json_filter_s("{\"pres\":\"class\"}").expect("filter")
             ),
-            (Attribute::AcpSearchAttr.as_ref(), Value::new_iutf8("name")),
+            (
+                Attribute::AcpSearchAttr.as_ref(),
+                Value::new_iutf8(Attribute::Name.as_ref())
+            ),
             (
                 Attribute::AcpSearchAttr.as_ref(),
                 Attribute::Class.to_value()
@@ -588,8 +591,8 @@ mod tests {
             preload,
             filter!(f_eq(Attribute::ClassName, EntryClass::TestClass.into())),
             modlist!([
-                m_pres("may", &Value::new_iutf8("name")),
-                m_pres("must", &Value::new_iutf8("name")),
+                m_pres("may", &Value::new_iutf8(Attribute::Name.as_ref())),
+                m_pres("must", &Value::new_iutf8(Attribute::Name.as_ref())),
             ]),
             Some(E_TEST_ACCOUNT.clone()),
             |_| {},

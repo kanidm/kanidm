@@ -305,7 +305,10 @@ mod tests {
                 "acp_targetscope",
                 Value::new_json_filter_s("{\"pres\":\"class\"}").expect("filter")
             ),
-            (Attribute::AcpSearchAttr.as_ref(), Value::new_iutf8("name")),
+            (
+                Attribute::AcpSearchAttr.as_ref(),
+                Value::new_iutf8(Attribute::Name.as_ref())
+            ),
             (
                 Attribute::AcpSearchAttr.as_ref(),
                 Attribute::Class.to_value()
@@ -359,7 +362,10 @@ mod tests {
                 Attribute::AcpCreateClass.as_ref(),
                 EntryClass::System.to_value()
             ),
-            (Attribute::AcpCreateAttr.as_ref(), Value::new_iutf8("name")),
+            (
+                Attribute::AcpCreateAttr.as_ref(),
+                Value::new_iutf8(Attribute::Name.as_ref())
+            ),
             (
                 Attribute::AcpCreateAttr.as_ref(),
                 Attribute::Class.to_value()

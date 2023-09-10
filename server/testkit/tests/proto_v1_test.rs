@@ -139,7 +139,7 @@ async fn test_server_search(rsclient: KanidmClient) {
     let e = rset.first().unwrap();
     // Check it's admin.
     println!("{:?}", e);
-    let name = e.attrs.get("name").unwrap();
+    let name = e.attrs.get(Attribute::Name.as_ref()).unwrap();
     assert!(name == &vec!["admin".to_string()]);
 }
 

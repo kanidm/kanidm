@@ -38,7 +38,7 @@ impl RadiusAccount {
             .to_string();
 
         let name = value
-            .get_ava_single_iname("name")
+            .get_ava_single_iname(Attribute::Name.as_ref())
             .map(|s| s.to_string())
             .ok_or_else(|| {
                 OperationError::InvalidAccountState("Missing attribute: name".to_string())

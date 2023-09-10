@@ -20,7 +20,7 @@ macro_rules! try_from_account_e {
     ($value:expr, $qs:expr) => {{
         /*
         let name = $value
-            .get_ava_single_iname("name")
+            .get_ava_single_iname(Attribute::Name.as_ref())
             .map(str::to_string)
             .ok_or_else(|| {
                 OperationError::InvalidAccountState("Missing attribute: name".to_string())
@@ -28,9 +28,11 @@ macro_rules! try_from_account_e {
         */
 
         // Setup the user private group
-        let spn = $value.get_ava_single_proto_string("spn").ok_or(
-            OperationError::InvalidAccountState("Missing attribute: spn".to_string()),
-        )?;
+        let spn = $value
+            .get_ava_single_proto_string(Attribute::Spn.as_ref())
+            .ok_or(OperationError::InvalidAccountState(
+                "Missing attribute: spn".to_string(),
+            ))?;
 
         let uuid = $value.get_uuid();
 
@@ -111,15 +113,17 @@ impl Group {
         // Now extract our needed attributes
         /*
         let name = value
-            .get_ava_single_iname("name")
+            .get_ava_single_iname(Attribute::Name.as_ref())
             .map(|s| s.to_string())
             .ok_or_else(|| {
                 OperationError::InvalidAccountState("Missing attribute: name".to_string())
             })?;
         */
-        let spn = value.get_ava_single_proto_string("spn").ok_or_else(|| {
-            OperationError::InvalidAccountState("Missing attribute: spn".to_string())
-        })?;
+        let spn = value
+            .get_ava_single_proto_string(Attribute::Spn.as_ref())
+            .ok_or_else(|| {
+                OperationError::InvalidAccountState("Missing attribute: spn".to_string())
+            })?;
 
         let uuid = value.get_uuid();
 

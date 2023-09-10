@@ -16,7 +16,7 @@ lazy_static! {
     // it contains all the partialvalues used to match against an Entry's class,
     // we just need a partialvalue to match in order to target the entry
     static ref CLASSES_TO_UPDATE: [PartialValue; 1] = [PartialValue::new_iutf8(EntryClass::Account.into())];
-    static ref HISTORY_ATTRIBUTES: [&'static str;1] = ["name"];
+    static ref HISTORY_ATTRIBUTES: [&'static str;1] = [Attribute::Name.as_ref()];
 }
 
 impl NameHistory {
@@ -166,8 +166,8 @@ mod tests {
             preload,
             filter!(f_eq(Attribute::Name, PartialValue::new_iname("old_name"))),
             modlist!([
-                m_purge("name"),
-                m_pres("name", &Value::new_iname("new_name_1"))
+                m_purge(Attribute::Name.as_ref()),
+                m_pres(Attribute::Name.as_ref(), &Value::new_iname("new_name_1"))
             ]),
             None,
             |_| {},
@@ -275,8 +275,8 @@ mod tests {
             preload,
             filter!(f_eq(Attribute::Name, PartialValue::new_iname("old_name8"))),
             modlist!([
-                m_purge("name"),
-                m_pres("name", &Value::new_iname("new_name"))
+                m_purge(Attribute::Name.as_ref()),
+                m_pres(Attribute::Name.as_ref(), &Value::new_iname("new_name"))
             ]),
             None,
             |_| {},

@@ -1301,9 +1301,11 @@ impl<'a> IdmServerAuthTransaction<'a> {
                 }))
             }
             Token::ApiToken(apit, entry) => {
-                let spn = entry.get_ava_single_proto_string("spn").ok_or_else(|| {
-                    OperationError::InvalidAccountState("Missing attribute: spn".to_string())
-                })?;
+                let spn = entry
+                    .get_ava_single_proto_string(Attribute::Spn.as_ref())
+                    .ok_or_else(|| {
+                        OperationError::InvalidAccountState("Missing attribute: spn".to_string())
+                    })?;
 
                 Ok(Some(LdapBoundToken {
                     session_id: apit.token_id,

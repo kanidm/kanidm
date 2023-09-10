@@ -816,7 +816,7 @@ mod tests {
         let me_syn = unsafe {
             ModifyEvent::new_internal_invalid(
                 filter!(f_or!([
-                    f_eq(Attribute::AttributeName, PartialValue::new_iutf8("name")),
+                    f_eq(Attribute::AttributeName, PartialValue::new_iutf8(Attribute::Name.as_ref())),
                     f_eq(Attribute::AttributeName, PartialValue::new_iutf8("domain_name")),
                 ])),
                 ModifyList::new_purge_and_set(
@@ -859,7 +859,7 @@ mod tests {
         let me_syn = unsafe {
             ModifyEvent::new_internal_invalid(
                 filter!(f_or!([
-                    f_eq(Attribute::AttributeName, PartialValue::new_iutf8("name")),
+                    f_eq(Attribute::AttributeName, PartialValue::new_iutf8(Attribute::Name.as_ref())),
                     f_eq(Attribute::AttributeName, PartialValue::new_iutf8("domain_name")),
                 ])),
                 ModifyList::new_purge_and_set(
@@ -887,7 +887,7 @@ mod tests {
             .expect("failed");
         // ++ assert all names are iname
         assert!(
-            domain.get_ava_set("name").expect("no name?").syntax() == SyntaxType::Utf8StringIname
+            domain.get_ava_set(Attribute::Name.as_ref()).expect("no name?").syntax() == SyntaxType::Utf8StringIname
         );
         // ++ assert all domain/domain_name are iname
         assert!(

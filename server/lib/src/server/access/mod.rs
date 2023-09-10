@@ -1080,18 +1080,24 @@ mod tests {
         pub static ref E_TEST_ACCOUNT_1: Arc<EntrySealedCommitted> = Arc::new(
             entry_init!(
                 (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-                ("name", Value::new_iname("test_account_1")),
+                (Attribute::Name.as_ref(), Value::new_iname("test_account_1")),
                 (Attribute::Uuid.as_ref(), Value::Uuid(UUID_TEST_ACCOUNT_1)),
-                ("memberof", Value::Refer(UUID_TEST_GROUP_1))
+                (
+                    Attribute::MemberOf.as_ref(),
+                    Value::Refer(UUID_TEST_GROUP_1)
+                )
             )
             .into_sealed_committed()
         );
         pub static ref E_TEST_ACCOUNT_2: Arc<EntrySealedCommitted> = Arc::new(
             entry_init!(
                 (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-                ("name", Value::new_iname("test_account_1")),
+                (Attribute::Name.as_ref(), Value::new_iname("test_account_1")),
                 (Attribute::Uuid.as_ref(), Value::Uuid(UUID_TEST_ACCOUNT_2)),
-                ("memberof", Value::Refer(UUID_TEST_GROUP_2))
+                (
+                    Attribute::MemberOf.as_ref(),
+                    Value::Refer(UUID_TEST_GROUP_2)
+                )
             )
             .into_sealed_committed()
         );
@@ -1184,17 +1190,17 @@ mod tests {
                     Attribute::Class.as_ref(),
                     EntryClass::AccessControlProfile.to_value()
                 ),
-                ("name", Value::new_iname("acp_valid")),
+                (Attribute::Name.as_ref(), Value::new_iname("acp_valid")),
                 (
-                    "uuid",
+                    Attribute::Uuid.as_ref(),
                     Value::Uuid(uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
                 ),
                 (
-                    "acp_receiver_group",
+                    Attribute::AcpReceiverGroup.as_ref(),
                     Value::Refer(uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
                 ),
                 (
-                    "acp_targetscope",
+                    Attribute::AcpTargetScope.as_ref(),
                     Value::new_json_filter_s("{\"eq\":[\"name\",\"a\"]}").expect("filter")
                 )
             ),
@@ -1234,17 +1240,17 @@ mod tests {
                     Attribute::Class.as_ref(),
                     EntryClass::AccessControlDelete.to_value()
                 ),
-                ("name", Value::new_iname("acp_valid")),
+                (Attribute::Name.as_ref(), Value::new_iname("acp_valid")),
                 (
-                    "uuid",
+                    Attribute::Uuid.as_ref(),
                     Value::Uuid(uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
                 ),
                 (
-                    "acp_receiver_group",
+                    Attribute::AcpReceiverGroup.as_ref(),
                     Value::Refer(uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
                 ),
                 (
-                    "acp_targetscope",
+                    Attribute::AcpTargetScope.as_ref(),
                     Value::new_json_filter_s("{\"eq\":[\"name\",\"a\"]}").expect("filter")
                 )
             ),
@@ -1336,8 +1342,11 @@ mod tests {
                     Attribute::AcpTargetScope.as_ref(),
                     Value::new_json_filter_s("{\"eq\":[\"name\",\"a\"]}").expect("filter")
                 ),
-                ("acp_search_attr", Value::new_iutf8("name")),
-                ("acp_search_attr", Value::new_iutf8("class"))
+                (
+                    Attribute::AcpSearchAttr.as_ref(),
+                    Value::new_iutf8(Attribute::Name.as_ref())
+                ),
+                (Attribute::AcpSearchAttr.as_ref(), Value::new_iutf8("class"))
             ),
             AccessControlSearch
         );
@@ -1379,17 +1388,17 @@ mod tests {
                     Attribute::Class.as_ref(),
                     EntryClass::AccessControlModify.to_value()
                 ),
-                ("name", Value::new_iname("acp_valid")),
+                (Attribute::Name.as_ref(), Value::new_iname("acp_valid")),
                 (
-                    "uuid",
+                    Attribute::Uuid.as_ref(),
                     Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
                 ),
                 (
-                    "acp_receiver_group",
+                    Attribute::AcpReceiverGroup.as_ref(),
                     Value::Refer(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
                 ),
                 (
-                    "acp_targetscope",
+                    Attribute::AcpTargetScope.as_ref(),
                     Value::new_json_filter_s("{\"eq\":[\"name\",\"a\"]}").expect("filter")
                 )
             ),
@@ -1408,22 +1417,31 @@ mod tests {
                     Attribute::Class.as_ref(),
                     EntryClass::AccessControlModify.to_value()
                 ),
-                ("name", Value::new_iname("acp_valid")),
+                (Attribute::Name.as_ref(), Value::new_iname("acp_valid")),
                 (
-                    "uuid",
+                    Attribute::Uuid.as_ref(),
                     Value::Uuid(uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
                 ),
                 (
-                    "acp_receiver_group",
+                    Attribute::AcpReceiverGroup.as_ref(),
                     Value::Refer(uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
                 ),
                 (
-                    "acp_targetscope",
+                    Attribute::AcpTargetScope.as_ref(),
                     Value::new_json_filter_s("{\"eq\":[\"name\",\"a\"]}").expect("filter")
                 ),
-                ("acp_modify_removedattr", Value::new_iutf8("name")),
-                ("acp_modify_presentattr", Value::new_iutf8("name")),
-                ("acp_modify_class", Value::new_iutf8("object"))
+                (
+                    Attribute::AcpModifyRemovedAttr.as_ref(),
+                    Value::new_iutf8(Attribute::Name.as_ref())
+                ),
+                (
+                    Attribute::AcpModifyPresentAttr.as_ref(),
+                    Value::new_iutf8(Attribute::Name.as_ref())
+                ),
+                (
+                    Attribute::AcpModifyClass.as_ref(),
+                    Value::new_iutf8("object")
+                )
             ),
             AccessControlModify
         );
@@ -1464,17 +1482,17 @@ mod tests {
                     Attribute::Class.as_ref(),
                     EntryClass::AccessControlCreate.to_value()
                 ),
-                ("name", Value::new_iname("acp_valid")),
+                (Attribute::Name.as_ref(), Value::new_iname("acp_valid")),
                 (
-                    "uuid",
+                    Attribute::Uuid.as_ref(),
                     Value::Uuid(uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
                 ),
                 (
-                    "acp_receiver_group",
+                    Attribute::AcpReceiverGroup.as_ref(),
                     Value::Refer(uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
                 ),
                 (
-                    "acp_targetscope",
+                    Attribute::AcpTargetScope.as_ref(),
                     Value::new_json_filter_s("{\"eq\":[\"name\",\"a\"]}").expect("filter")
                 )
             ),
@@ -1493,21 +1511,27 @@ mod tests {
                     Attribute::Class.as_ref(),
                     EntryClass::AccessControlCreate.to_value()
                 ),
-                ("name", Value::new_iname("acp_valid")),
+                (Attribute::Name.as_ref(), Value::new_iname("acp_valid")),
                 (
-                    "uuid",
+                    Attribute::Uuid.as_ref(),
                     Value::Uuid(uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
                 ),
                 (
-                    "acp_receiver_group",
+                    Attribute::AcpReceiverGroup.as_ref(),
                     Value::Refer(uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
                 ),
                 (
-                    "acp_targetscope",
+                    Attribute::AcpTargetScope.as_ref(),
                     Value::new_json_filter_s("{\"eq\":[\"name\",\"a\"]}").expect("filter")
                 ),
-                ("acp_create_attr", Value::new_iutf8("name")),
-                ("acp_create_class", EntryClass::Object.to_value())
+                (
+                    Attribute::AcpCreateAttr.as_ref(),
+                    Value::new_iutf8(Attribute::Name.as_ref())
+                ),
+                (
+                    Attribute::AcpCreateClass.as_ref(),
+                    EntryClass::Object.to_value()
+                )
             ),
             AccessControlCreate
         );
@@ -1543,25 +1567,43 @@ mod tests {
                 Attribute::Class.as_ref(),
                 EntryClass::AccessControlSearch.to_value()
             ),
-            ("name", Value::new_iname("acp_valid")),
+            (Attribute::Name.as_ref(), Value::new_iname("acp_valid")),
             (
-                "uuid",
+                Attribute::Uuid.as_ref(),
                 Value::Uuid(uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
             ),
             (
-                "acp_receiver_group",
+                Attribute::AcpReceiverGroup.as_ref(),
                 Value::Refer(uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
             ),
             (
-                "acp_targetscope",
+                Attribute::AcpTargetScope.as_ref(),
                 Value::new_json_filter_s("{\"eq\":[\"name\",\"a\"]}").expect("filter")
             ),
-            ("acp_search_attr", Value::new_iutf8("name")),
-            ("acp_create_class", EntryClass::Class.to_value()),
-            ("acp_create_attr", Value::new_iutf8("name")),
-            ("acp_modify_removedattr", Value::new_iutf8("name")),
-            ("acp_modify_presentattr", Value::new_iutf8("name")),
-            ("acp_modify_class", Value::new_iutf8("object"))
+            (
+                Attribute::AcpSearchAttr.as_ref(),
+                Value::new_iutf8(Attribute::Name.as_ref())
+            ),
+            (
+                Attribute::AcpCreateClass.as_ref(),
+                EntryClass::Class.to_value()
+            ),
+            (
+                Attribute::AcpCreateAttr.as_ref(),
+                Value::new_iutf8(Attribute::Name.as_ref())
+            ),
+            (
+                Attribute::AcpModifyRemovedAttr.as_ref(),
+                Value::new_iutf8(Attribute::Name.as_ref())
+            ),
+            (
+                Attribute::AcpModifyPresentAttr.as_ref(),
+                Value::new_iutf8(Attribute::Name.as_ref())
+            ),
+            (
+                Attribute::AcpModifyClass.as_ref(),
+                Value::new_iutf8("object")
+            )
         );
 
         acp_from_entry_ok!(&mut qs_write, e.clone(), AccessControlCreate);
@@ -1640,7 +1682,7 @@ mod tests {
                 Uuid::new_v4(),
                 UUID_TEST_GROUP_1,
                 filter_valid!(f_pres(Attribute::NonExist)), // apply to none - ie no allowed results
-                "name", // allow to this attr, but we don't eval this.
+                Attribute::Name.as_ref(), // allow to this attr, but we don't eval this.
             )],
             entries,
             expect
@@ -1679,7 +1721,7 @@ mod tests {
             )),
             // In that read, admin may only view the "name" attribute, or query on
             // the name attribute. Any other query (should be) rejected.
-            "name",
+            Attribute::Name.as_ref(),
         );
 
         // Check the admin search event
@@ -1721,7 +1763,7 @@ mod tests {
             )),
             // In that read, admin may only view the "name" attribute, or query on
             // the name attribute. Any other query (should be) rejected.
-            "name",
+            Attribute::Name.as_ref(),
         );
 
         // Check the admin search event
@@ -1759,7 +1801,7 @@ mod tests {
             )),
             // In that read, admin may only view the "name" attribute, or query on
             // the name attribute. Any other query (should be) rejected.
-            "name",
+            Attribute::Name.as_ref(),
         );
 
         // Finally test it!
@@ -1768,7 +1810,7 @@ mod tests {
 
     lazy_static! {
         pub static ref E_TESTPERSON_1_REDUCED: EntryInitNew =
-            entry_init!(("name", Value::new_iname("testperson1")));
+            entry_init!((Attribute::Name.as_ref(), Value::new_iname("testperson1")));
     }
 
     #[test]
@@ -1802,7 +1844,7 @@ mod tests {
             )),
             // In that read, admin may only view the "name" attribute, or query on
             // the name attribute. Any other query (should be) rejected.
-            "name",
+            Attribute::Name.as_ref(),
         );
 
         // Finally test it!
@@ -1912,7 +1954,7 @@ mod tests {
                 Attribute::Name,
                 PartialValue::new_iname("testperson1")
             )),
-            modlist!([m_pres("name", &Value::new_iname("value"))]),
+            modlist!([m_pres(Attribute::Name.as_ref(), &Value::new_iname("value"))]),
         );
         // Name rem
         let me_rem = ModifyEvent::new_impersonate_entry(
@@ -1921,7 +1963,10 @@ mod tests {
                 Attribute::Name,
                 PartialValue::new_iname("testperson1")
             )),
-            modlist!([m_remove("name", &PartialValue::new_iname("value"))]),
+            modlist!([m_remove(
+                Attribute::Name.as_ref(),
+                &PartialValue::new_iname("value")
+            )]),
         );
         // Name purge
         let me_purge = ModifyEvent::new_impersonate_entry(
@@ -1977,7 +2022,7 @@ mod tests {
             // Allow rem name and class
             "name class",
             // And the class allowed is account
-            "account",
+            EntryClass::Account.into(),
         );
         // Allow member, class is group. IE not account
         let acp_deny = AccessControlModify::from_raw(
@@ -2059,7 +2104,7 @@ mod tests {
                 Attribute::Name,
                 PartialValue::new_iname("testperson1")
             )),
-            modlist!([m_pres("name", &Value::new_iname("value"))]),
+            modlist!([m_pres(Attribute::Name.as_ref(), &Value::new_iname("value"))]),
         );
 
         // Name present
@@ -2069,7 +2114,7 @@ mod tests {
                 Attribute::Name,
                 PartialValue::new_iname("testperson1")
             )),
-            modlist!([m_pres("name", &Value::new_iname("value"))]),
+            modlist!([m_pres(Attribute::Name.as_ref(), &Value::new_iname("value"))]),
         );
 
         let acp_allow = AccessControlModify::from_raw(
@@ -2087,7 +2132,7 @@ mod tests {
             // Allow rem name and class
             "name class",
             // And the class allowed is account
-            "account",
+            EntryClass::Account.into(),
         );
 
         test_acp_modify!(&me_pres_ro, vec![acp_allow.clone()], &r_set, false);
@@ -2178,7 +2223,7 @@ mod tests {
                 PartialValue::new_iname("testperson1")
             )),
             // classes
-            "account",
+            EntryClass::Account.into(),
             // attrs
             "class name uuid",
         );
@@ -2194,7 +2239,7 @@ mod tests {
                 PartialValue::new_iname("testperson1")
             )),
             // classes
-            "group",
+            EntryClass::Group.into(),
             // attrs
             "class name uuid",
         );
@@ -2213,7 +2258,7 @@ mod tests {
     fn test_access_enforce_scope_create() {
         let ev1 = entry_init!(
             (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
-            ("name", Value::new_iname("testperson1")),
+            (Attribute::Name.as_ref(), Value::new_iname("testperson1")),
             (Attribute::Uuid.as_ref(), Value::Uuid(UUID_TEST_ACCOUNT_1))
         );
         let r1_set = vec![ev1];
@@ -2242,7 +2287,7 @@ mod tests {
                 PartialValue::new_iname("testperson1")
             )),
             // classes
-            "account",
+            EntryClass::Account.into(),
             // attrs
             "class name uuid",
         );
@@ -2407,7 +2452,7 @@ mod tests {
                     PartialValue::new_iname("testperson1")
                 )),
                 // They can read "name".
-                "name",
+                Attribute::Name.as_ref(),
             )],
             vec![],
             &r_set,
@@ -2448,8 +2493,8 @@ mod tests {
                     PartialValue::new_iname("testperson1")
                 )),
                 // They can read "name".
-                "name",
-                "name",
+                Attribute::Name.as_ref(),
+                Attribute::Name.as_ref(),
                 "object",
             )],
             &r_set,
@@ -2476,7 +2521,7 @@ mod tests {
         // We can create without a sync class.
         let ev1 = entry_init!(
             (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
-            ("name", Value::new_iname("testperson1")),
+            (Attribute::Name.as_ref(), Value::new_iname("testperson1")),
             (Attribute::Uuid.as_ref(), Value::Uuid(UUID_TEST_ACCOUNT_1))
         );
         let r1_set = vec![ev1];
@@ -2484,7 +2529,7 @@ mod tests {
         let ev2 = entry_init!(
             (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
             (Attribute::Class.as_ref(), EntryClass::SyncObject.to_value()),
-            ("name", Value::new_iname("testperson1")),
+            (Attribute::Name.as_ref(), Value::new_iname("testperson1")),
             (Attribute::Uuid.as_ref(), Value::Uuid(UUID_TEST_ACCOUNT_1))
         );
         let r2_set = vec![ev2];
@@ -2518,7 +2563,7 @@ mod tests {
 
         let ev1 = entry_init!(
             (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
-            ("name", Value::new_iname("testperson1")),
+            (Attribute::Name.as_ref(), Value::new_iname("testperson1")),
             (Attribute::Uuid.as_ref(), Value::Uuid(UUID_TEST_ACCOUNT_1))
         )
         .into_sealed_committed();
@@ -2527,7 +2572,7 @@ mod tests {
         let ev2 = entry_init!(
             (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
             (Attribute::Class.as_ref(), EntryClass::SyncObject.to_value()),
-            ("name", Value::new_iname("testperson1")),
+            (Attribute::Name.as_ref(), Value::new_iname("testperson1")),
             (Attribute::Uuid.as_ref(), Value::Uuid(UUID_TEST_ACCOUNT_1))
         )
         .into_sealed_committed();
@@ -2565,7 +2610,7 @@ mod tests {
 
         let ev1 = entry_init!(
             (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
-            ("name", Value::new_iname("testperson1")),
+            (Attribute::Name.as_ref(), Value::new_iname("testperson1")),
             (Attribute::Uuid.as_ref(), Value::Uuid(UUID_TEST_ACCOUNT_1))
         )
         .into_sealed_committed();
@@ -2575,8 +2620,8 @@ mod tests {
         let ev2 = entry_init!(
             (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
             (Attribute::Class.as_ref(), EntryClass::SyncObject.to_value()),
-            ("sync_parent_uuid", Value::Refer(sync_uuid)),
-            ("name", Value::new_iname("testperson1")),
+            (Attribute::SyncParentUuid.as_ref(), Value::Refer(sync_uuid)),
+            (Attribute::Name.as_ref(), Value::new_iname("testperson1")),
             (Attribute::Uuid.as_ref(), Value::Uuid(UUID_TEST_ACCOUNT_1))
         )
         .into_sealed_committed();
@@ -2598,7 +2643,7 @@ mod tests {
             // Allow user_auth_token_session
             "user_auth_token_session name",
             // And the class allowed is account, we don't use it though.
-            "account",
+            EntryClass::Account.into(),
         );
 
         // NOTE! Syntax doesn't matter here, we just need to assert if the attr exists
@@ -2658,7 +2703,7 @@ mod tests {
                 Attribute::Name,
                 PartialValue::new_iname("testperson1")
             )),
-            modlist!([m_pres("name", &Value::new_iname("value"))]),
+            modlist!([m_pres(Attribute::Name.as_ref(), &Value::new_iname("value"))]),
         );
         // Name rem
         let me_rem = ModifyEvent::new_impersonate_entry(
@@ -2667,7 +2712,10 @@ mod tests {
                 Attribute::Name,
                 PartialValue::new_iname("testperson1")
             )),
-            modlist!([m_remove("name", &PartialValue::new_iname("value"))]),
+            modlist!([m_remove(
+                Attribute::Name.as_ref(),
+                &PartialValue::new_iname("value")
+            )]),
         );
         // Name purge
         let me_purge = ModifyEvent::new_impersonate_entry(
@@ -2694,7 +2742,7 @@ mod tests {
             &me_pres,
             vec![acp_allow.clone()],
             sync_uuid,
-            "name",
+            Attribute::Name.as_ref(),
             &r2_set,
             true
         );
@@ -2703,12 +2751,19 @@ mod tests {
             &me_rem,
             vec![acp_allow.clone()],
             sync_uuid,
-            "name",
+            Attribute::Name.as_ref(),
             &r2_set,
             true
         );
         // Test allow purge
-        test_acp_modify!(&me_purge, vec![acp_allow], sync_uuid, "name", &r2_set, true);
+        test_acp_modify!(
+            &me_purge,
+            vec![acp_allow],
+            sync_uuid,
+            Attribute::Name.as_ref(),
+            &r2_set,
+            true
+        );
     }
 
     #[test]
@@ -2728,28 +2783,40 @@ mod tests {
                 EntryClass::OAuth2ResourceServerBasic.to_value()
             ),
             (Attribute::Uuid.as_ref(), Value::Uuid(rs_uuid)),
-            ("oauth2_rs_name", Value::new_iname("test_resource_server")),
-            ("displayname", Value::new_utf8s("test_resource_server")),
             (
-                "oauth2_rs_origin",
+                Attribute::OAuth2RsName.as_ref(),
+                Value::new_iname("test_resource_server")
+            ),
+            (
+                Attribute::DisplayName.as_ref(),
+                Value::new_utf8s("test_resource_server")
+            ),
+            (
+                Attribute::OAuth2RsOrigin.as_ref(),
                 Value::new_url_s("https://demo.example.com").unwrap()
             ),
             (
-                "oauth2_rs_scope_map",
+                Attribute::OAuth2RsScopeMap.as_ref(),
                 Value::new_oauthscopemap(UUID_TEST_GROUP_1, btreeset!["groups".to_string()])
                     .expect("invalid oauthscope")
             ),
             (
-                "oauth2_rs_sup_scope_map",
+                Attribute::OAuth2RsSupScopeMap.as_ref(),
                 Value::new_oauthscopemap(UUID_TEST_GROUP_1, btreeset!["supplement".to_string()])
                     .expect("invalid oauthscope")
             ),
             (
-                "oauth2_allow_insecure_client_disable_pkce",
+                Attribute::OAuth2AllowInsecureClientDisablePkce.as_ref(),
                 Value::new_bool(true)
             ),
-            ("oauth2_jwt_legacy_crypto_enable", Value::new_bool(false)),
-            ("oauth2_prefer_short_username", Value::new_bool(false))
+            (
+                Attribute::OAuth2JwtLegacyCryptoEnable.as_ref(),
+                Value::new_bool(false)
+            ),
+            (
+                Attribute::OAuth2PreferShortUsername.as_ref(),
+                Value::new_bool(false)
+            )
         )
         .into_sealed_committed();
 
@@ -2764,10 +2831,16 @@ mod tests {
                 EntryClass::OAuth2ResourceServerBasic.to_value()
             ),
             (Attribute::Uuid.as_ref(), Value::Uuid(rs_uuid)),
-            ("oauth2_rs_name", Value::new_iname("test_resource_server")),
-            ("displayname", Value::new_utf8s("test_resource_server")),
             (
-                "oauth2_rs_origin",
+                Attribute::OAuth2RsName.as_ref(),
+                Value::new_iname("test_resource_server")
+            ),
+            (
+                Attribute::DisplayName.as_ref(),
+                Value::new_utf8s("test_resource_server")
+            ),
+            (
+                Attribute::OAuth2RsOrigin.as_ref(),
                 Value::new_url_s("https://demo.example.com").unwrap()
             )
         )
@@ -2784,19 +2857,25 @@ mod tests {
                 EntryClass::OAuth2ResourceServerBasic.to_value()
             ),
             (Attribute::Uuid.as_ref(), Value::Uuid(Uuid::new_v4())),
-            ("oauth2_rs_name", Value::new_iname("second_resource_server")),
-            ("displayname", Value::new_utf8s("second_resource_server")),
             (
-                "oauth2_rs_origin",
+                Attribute::OAuth2RsName.as_ref(),
+                Value::new_iname("second_resource_server")
+            ),
+            (
+                Attribute::DisplayName.as_ref(),
+                Value::new_utf8s("second_resource_server")
+            ),
+            (
+                Attribute::OAuth2RsOrigin.as_ref(),
                 Value::new_url_s("https://noaccess.example.com").unwrap()
             ),
             (
-                "oauth2_rs_scope_map",
+                Attribute::OAuth2RsScopeMap.as_ref(),
                 Value::new_oauthscopemap(UUID_SYSTEM_ADMINS, btreeset!["groups".to_string()])
                     .expect("invalid oauthscope")
             ),
             (
-                "oauth2_rs_sup_scope_map",
+                Attribute::OAuth2RsSupScopeMap.as_ref(),
                 Value::new_oauthscopemap(
                     // This is NOT the scope map that is access checked!
                     UUID_TEST_GROUP_1,
@@ -2805,11 +2884,17 @@ mod tests {
                 .expect("invalid oauthscope")
             ),
             (
-                "oauth2_allow_insecure_client_disable_pkce",
+                Attribute::OAuth2AllowInsecureClientDisablePkce.as_ref(),
                 Value::new_bool(true)
             ),
-            ("oauth2_jwt_legacy_crypto_enable", Value::new_bool(false)),
-            ("oauth2_prefer_short_username", Value::new_bool(false))
+            (
+                Attribute::OAuth2JwtLegacyCryptoEnable.as_ref(),
+                Value::new_bool(false)
+            ),
+            (
+                Attribute::OAuth2PreferShortUsername.as_ref(),
+                Value::new_bool(false)
+            )
         )
         .into_sealed_committed();
 
@@ -2853,8 +2938,14 @@ mod tests {
                 EntryClass::SyncAccount.to_value()
             ),
             (Attribute::Uuid.as_ref(), Value::Uuid(sync_uuid)),
-            ("name", Value::new_iname("test_sync_account")),
-            ("sync_credential_portal", Value::Url(portal_url.clone()))
+            (
+                Attribute::Name.as_ref(),
+                Value::new_iname("test_sync_account")
+            ),
+            (
+                Attribute::SyncCredentialPortal.as_ref(),
+                Value::Url(portal_url.clone())
+            )
         )
         .into_sealed_committed();
 
@@ -2865,7 +2956,10 @@ mod tests {
                 EntryClass::SyncAccount.to_value()
             ),
             (Attribute::Uuid.as_ref(), Value::Uuid(sync_uuid)),
-            ("sync_credential_portal", Value::Url(portal_url.clone()))
+            (
+                Attribute::SyncCredentialPortal.as_ref(),
+                Value::Url(portal_url.clone())
+            )
         )
         .into_sealed_committed();
 
@@ -2876,8 +2970,14 @@ mod tests {
                 EntryClass::SyncAccount.to_value()
             ),
             (Attribute::Uuid.as_ref(), Value::Uuid(Uuid::new_v4())),
-            ("name", Value::new_iname("test_sync_account")),
-            ("sync_credential_portal", Value::Url(portal_url.clone()))
+            (
+                Attribute::Name.as_ref(),
+                Value::new_iname("test_sync_account")
+            ),
+            (
+                Attribute::SyncCredentialPortal.as_ref(),
+                Value::Url(portal_url.clone())
+            )
         )
         .into_sealed_committed();
 
@@ -2886,10 +2986,13 @@ mod tests {
                 (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
                 (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
                 (Attribute::Class.as_ref(), EntryClass::SyncObject.to_value()),
-                ("name", Value::new_iname("test_account_1")),
+                (Attribute::Name.as_ref(), Value::new_iname("test_account_1")),
                 (Attribute::Uuid.as_ref(), Value::Uuid(UUID_TEST_ACCOUNT_1)),
-                ("memberof", Value::Refer(UUID_TEST_GROUP_1)),
-                ("sync_parent_uuid", Value::Refer(sync_uuid))
+                (
+                    Attribute::MemberOf.as_ref(),
+                    Value::Refer(UUID_TEST_GROUP_1)
+                ),
+                (Attribute::SyncParentUuid.as_ref(), Value::Refer(sync_uuid))
             )
             .into_sealed_committed(),
         );

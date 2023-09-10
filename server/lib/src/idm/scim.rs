@@ -35,7 +35,7 @@ macro_rules! try_from_entry {
         }
 
         let name = $value
-            .get_ava_single_iname("name")
+            .get_ava_single_iname(Attribute::Name.as_ref())
             .map(|s| s.to_string())
             .ok_or(OperationError::InvalidAccountState(
                 "Missing attribute: name".to_string(),
@@ -1942,7 +1942,7 @@ mod tests {
             .internal_search_uuid(user_sync_uuid)
             .expect("Unable to access entry");
 
-        assert!(ent.get_ava_single_iname("name") == Some("testgroup"));
+        assert!(ent.get_ava_single_iname(Attribute::Name.as_ref()) == Some("testgroup"));
         assert!(
             ent.get_ava_single_iutf8("sync_external_id") == Some("cn=testgroup,ou=people,dc=test")
         );
@@ -2500,7 +2500,7 @@ mod tests {
             .internal_search_uuid(sync_uuid_a)
             .expect("Unable to access entry");
 
-        assert!(ent.get_ava_single_iname("name") == Some("testgroup"));
+        assert!(ent.get_ava_single_iname(Attribute::Name.as_ref()) == Some("testgroup"));
 
         assert!(idms_prox_write.commit().is_ok());
     }

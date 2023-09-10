@@ -6,7 +6,7 @@ use kanidm_proto::constants::{
     APPLICATION_JSON, ATTR_ACP_RECEIVER_GROUP, ATTR_ACP_TARGET_SCOPE, ATTR_DESCRIPTION,
     ATTR_LDAP_SSH_PUBLICKEY, ATTR_NAME,
 };
-use kanidmd_lib::prelude::Attribute;
+use kanidmd_lib::prelude::{Attribute, EntryClass};
 use kanidmd_testkit::*;
 use reqwest::header::CONTENT_TYPE;
 
@@ -242,30 +242,30 @@ async fn test_default_entries_rbac_admins_schema_entries(rsclient: KanidmClient)
     login_put_admin_idm_admins(&rsclient).await;
 
     let default_classnames: HashSet<String> = [
-        "access_control_create",
-        "access_control_delete",
-        "access_control_modify",
-        "access_control_profile",
-        "access_control_search",
-        "attributetype",
-        "classtype",
-        "extensibleobject",
-        "memberof",
-        "object",
-        "recycled",
-        "system",
-        "system_info",
-        "tombstone",
-        "person",
-        "group",
-        "account",
-        "domain_info",
-        "posixaccount",
-        "posixgroup",
-        "system_config",
+        EntryClass::AccessControlCreate,
+        EntryClass::AccessControlDelete,
+        EntryClass::AccessControlModify,
+        EntryClass::AccessControlProfile,
+        EntryClass::AccessControlSearch,
+        EntryClass::AttributeType,
+        EntryClass::ClassType,
+        EntryClass::ExtensibleObject,
+        EntryClass::MemberOf,
+        EntryClass::Object,
+        EntryClass::Recycled,
+        EntryClass::System,
+        EntryClass::SystemInfo,
+        EntryClass::Tombstone,
+        EntryClass::Person,
+        EntryClass::Group,
+        EntryClass::Account,
+        EntryClass::DomainInfo,
+        EntryClass::PosixAccount,
+        EntryClass::PosixGroup,
+        EntryClass::SystemConfig,
     ]
-    .iter()
-    .map(ToString::to_string)
+    .into_iter()
+    .map(|e| e.into())
     .collect();
 
     let classtype_entries = rsclient.idm_schema_classtype_list().await.unwrap();

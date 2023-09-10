@@ -1356,7 +1356,7 @@ async fn test_repl_increment_creation_uuid_conflict(
         // Should be a vec.
         .pop()
         .expect("No conflict entries present");
-    assert!(cnf_a.get_ava_single_iname("name") == Some("testperson1"));
+    assert!(cnf_a.get_ava_single_iname(Attribute::Name.as_ref()) == Some("testperson1"));
 
     let cnf_b = server_b_txn
         .internal_search_conflict_uuid(t_uuid)
@@ -2166,7 +2166,7 @@ async fn test_repl_increment_schema_dynamic(server_a: &QueryServer, server_b: &Q
             ("classname", EntryClass::TestClass.to_value()),
             (Attribute::Uuid.as_ref(), Value::Uuid(s_uuid)),
             ("description", Value::new_utf8s("Test Class")),
-            ("may", Value::new_iutf8("name"))
+            ("may", Value::new_iutf8(Attribute::Name.as_ref()))
         )])
         .is_ok());
     // Schema doesn't take effect til after a commit.
