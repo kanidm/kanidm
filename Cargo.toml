@@ -83,7 +83,7 @@ kanidm_unix_int = { path = "./unix_integration" }
 kanidm_utils_users = { path = "./libs/users" }
 
 serde_with = "3.3.0"
-argon2 = { version = "0.5.1", features = ["alloc"] }
+argon2 = { version = "0.5.2", features = ["alloc"] }
 async-recursion = "1.0.5"
 async-trait = "^0.1.73"
 axum = { version = "0.6.20", features = [
