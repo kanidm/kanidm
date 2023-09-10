@@ -661,11 +661,12 @@ impl<STATE> Entry<EntryRefresh, STATE> {
     ) -> Result<Entry<EntryValid, STATE>, SchemaError> {
         let uuid: Uuid = self
             .attrs
-            .get("uuid")
-            .ok_or_else(|| SchemaError::MissingMustAttribute(vec!["uuid".to_string()]))
+            .get(Attribute::Uuid.as_ref())
+            .ok_or_else(|| SchemaError::MissingMustAttribute(vec![Attribute::Uuid.to_string()]))
             .and_then(|vs| {
-                vs.to_uuid_single()
-                    .ok_or_else(|| SchemaError::MissingMustAttribute(vec!["uuid".to_string()]))
+                vs.to_uuid_single().ok_or_else(|| {
+                    SchemaError::MissingMustAttribute(vec![Attribute::Uuid.to_string()])
+                })
             })?;
 
         // Build the new valid entry ...
@@ -800,7 +801,7 @@ impl Entry<EntryIncremental, EntryNew> {
 
                         // We need to make a random uuid in the conflict gen process.
                         let new_uuid = Uuid::new_v4();
-                        cnf_ent.purge_ava("uuid");
+                        cnf_ent.purge_ava(Attribute::Uuid.as_ref());
                         cnf_ent.add_ava(Attribute::Uuid.as_ref(), Value::Uuid(new_uuid));
                         cnf_ent.add_ava(Attribute::Class.as_ref(), EntryClass::Recycled.into());
                         cnf_ent.add_ava(Attribute::Class.as_ref(), EntryClass::Conflict.into());
@@ -1093,7 +1094,9 @@ impl Entry<EntryIncremental, EntryCommitted> {
 impl<STATE> Entry<EntryInvalid, STATE> {
     // This is only used in tests today, but I don't want to cfg test it.
     pub(crate) fn get_uuid(&self) -> Option<Uuid> {
-        self.attrs.get("uuid").and_then(|vs| vs.to_uuid_single())
+        self.attrs
+            .get(Attribute::Uuid.as_ref())
+            .and_then(|vs| vs.to_uuid_single())
     }
 
     /// Validate that this entry and its attribute-value sets are conformant to the system's'
@@ -1104,11 +1107,12 @@ impl<STATE> Entry<EntryInvalid, STATE> {
     ) -> Result<Entry<EntryValid, STATE>, SchemaError> {
         let uuid: Uuid = self
             .attrs
-            .get("uuid")
-            .ok_or_else(|| SchemaError::MissingMustAttribute(vec!["uuid".to_string()]))
+            .get(Attribute::Uuid.as_ref())
+            .ok_or_else(|| SchemaError::MissingMustAttribute(vec![Attribute::Uuid.to_string()]))
             .and_then(|vs| {
-                vs.to_uuid_single()
-                    .ok_or_else(|| SchemaError::MissingMustAttribute(vec!["uuid".to_string()]))
+                vs.to_uuid_single().ok_or_else(|| {
+                    SchemaError::MissingMustAttribute(vec![Attribute::Uuid.to_string()])
+                })
             })?;
 
         // Build the new valid entry ...
@@ -1810,7 +1814,9 @@ impl Entry<EntrySealed, EntryCommitted> {
 
         let attrs = r_attrs.ok()?;
 
-        let uuid = attrs.get("uuid").and_then(|vs| vs.to_uuid_single())?;
+        let uuid = attrs
+            .get(Attribute::Uuid.as_ref())
+            .and_then(|vs| vs.to_uuid_single())?;
 
         /*
          * ⚠️  ==== The Hack Zoen ==== ⚠️
@@ -2864,7 +2870,7 @@ impl<VALID, STATE> Entry<VALID, STATE> {
             // conversion - so what do? If we remove it here, we could have CSN issue with
             // repl on uuid conflict, but it probably shouldn't be an ava either ...
             // as a result, I think we need to keep this continue line to not cause issues.
-            if k == "uuid" {
+            if k == Attribute::Uuid.as_ref() {
                 continue;
             }
             // Get the schema attribute type out.

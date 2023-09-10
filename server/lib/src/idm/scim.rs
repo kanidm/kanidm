@@ -1792,7 +1792,7 @@ mod tests {
                 external_id: Some("dn=william,ou=people,dc=test".to_string()),
                 meta: None,
                 attrs: btreemap!((
-                    "name".to_string(),
+                    Attribute::Name.to_string(),
                     ScimAttr::SingleSimple(ScimSimpleAttr::String("william".to_string()))
                 ),),
             }],
@@ -1860,7 +1860,7 @@ mod tests {
                 external_id: Some("dn=william,ou=people,dc=test".to_string()),
                 meta: None,
                 attrs: btreemap!((
-                    "name".to_string(),
+                    Attribute::Name.to_string(),
                     ScimAttr::SingleSimple(ScimSimpleAttr::String("william".to_string()))
                 ),),
             }],
@@ -1926,7 +1926,7 @@ mod tests {
                 external_id: Some("cn=testgroup,ou=people,dc=test".to_string()),
                 meta: None,
                 attrs: btreemap!((
-                    "name".to_string(),
+                    Attribute::Name.to_string(),
                     ScimAttr::SingleSimple(ScimSimpleAttr::String("testgroup".to_string()))
                 ),),
             }]
@@ -1967,11 +1967,11 @@ mod tests {
                 meta: None,
                 attrs: btreemap!(
                     (
-                        "name".to_string(),
+                        Attribute::Name.to_string(),
                         ScimAttr::SingleSimple(ScimSimpleAttr::String("testgroup".to_string()))
                     ),
                     (
-                        "uuid".to_string(),
+                        Attribute::Uuid.to_string(),
                         ScimAttr::SingleSimple(ScimSimpleAttr::String(
                             "2c019619-f894-4a94-b356-05d371850e3d".to_string()
                         ))
@@ -2000,7 +2000,7 @@ mod tests {
                 meta: None,
                 attrs: btreemap!(
                     (
-                        "name".to_string(),
+                        Attribute::Name.to_string(),
                         ScimAttr::SingleSimple(ScimSimpleAttr::String("testgroup".to_string()))
                     ),
                     (
@@ -2033,7 +2033,7 @@ mod tests {
                 meta: None,
                 attrs: btreemap!(
                     (
-                        "name".to_string(),
+                        Attribute::Name.to_string(),
                         ScimAttr::SingleSimple(ScimSimpleAttr::String("testgroup".to_string()))
                     ),
                     (
@@ -2064,7 +2064,7 @@ mod tests {
                 external_id: Some("cn=testgroup,ou=people,dc=test".to_string()),
                 meta: None,
                 attrs: btreemap!((
-                    "name".to_string(),
+                    Attribute::Name.to_string(),
                     ScimAttr::SingleSimple(ScimSimpleAttr::String("testgroup".to_string()))
                 ),),
             }]
@@ -2102,7 +2102,7 @@ mod tests {
                 external_id: Some("cn=testgroup,ou=people,dc=test".to_string()),
                 meta: None,
                 attrs: btreemap!((
-                    "name".to_string(),
+                    Attribute::Name.to_string(),
                     ScimAttr::SingleSimple(ScimSimpleAttr::String("testgroup".to_string()))
                 ),),
             }],
@@ -2286,7 +2286,7 @@ mod tests {
                     external_id: Some("cn=testgroup,ou=people,dc=test".to_string()),
                     meta: None,
                     attrs: btreemap!((
-                        "name".to_string(),
+                        Attribute::Name.to_string(),
                         ScimAttr::SingleSimple(ScimSimpleAttr::String("testgroup".to_string()))
                     ),),
                 },
@@ -2296,7 +2296,7 @@ mod tests {
                     external_id: Some("cn=anothergroup,ou=people,dc=test".to_string()),
                     meta: None,
                     attrs: btreemap!((
-                        "name".to_string(),
+                        Attribute::Name.to_string(),
                         ScimAttr::SingleSimple(ScimSimpleAttr::String("anothergroup".to_string()))
                     ),),
                 },
@@ -2370,7 +2370,7 @@ mod tests {
                     external_id: Some("cn=testgroup,ou=people,dc=test".to_string()),
                     meta: None,
                     attrs: btreemap!((
-                        "name".to_string(),
+                        Attribute::Name.to_string(),
                         ScimAttr::SingleSimple(ScimSimpleAttr::String("testgroup".to_string()))
                     ),),
                 },
@@ -2380,7 +2380,7 @@ mod tests {
                     external_id: Some("cn=anothergroup,ou=people,dc=test".to_string()),
                     meta: None,
                     attrs: btreemap!((
-                        "name".to_string(),
+                        Attribute::Name.to_string(),
                         ScimAttr::SingleSimple(ScimSimpleAttr::String("anothergroup".to_string()))
                     ),),
                 },
@@ -2467,7 +2467,7 @@ mod tests {
                 external_id: Some("cn=testgroup,ou=people,dc=test".to_string()),
                 meta: None,
                 attrs: btreemap!((
-                    "name".to_string(),
+                    Attribute::Name.to_string(),
                     ScimAttr::SingleSimple(ScimSimpleAttr::String("testgroup".to_string()))
                 ),),
             }],

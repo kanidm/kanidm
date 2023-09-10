@@ -18,6 +18,7 @@ use kanidm_proto::constants::{ATTR_DESCRIPTION, ATTR_LDAP_SSH_PUBLICKEY, ATTR_MA
 use kanidm_proto::v1::{Filter, Modify, ModifyList};
 use kanidmd_core::config::{Configuration, IntegrationTestConfig};
 use kanidmd_core::{create_server_core, CoreHandle};
+use kanidmd_lib::prelude::Attribute;
 use tokio::task;
 
 pub const ADMIN_TEST_USER: &str = "admin";
@@ -238,7 +239,7 @@ pub async fn is_attr_writable(rsclient: &KanidmClient, id: &str, attr: &str) -> 
                 Modify::Purged(attr.to_string()),
                 Modify::Present(attr.to_string(), new_value),
             ]);
-            let f = Filter::Eq("name".to_string(), id.to_string());
+            let f = Filter::Eq(Attribute::Name.to_string(), id.to_string());
             Some(rsclient.modify(f.clone(), m.clone()).await.is_ok())
         }
     }
@@ -300,7 +301,7 @@ pub async fn test_read_attrs(rsclient: &KanidmClient, id: &str, attrs: &[&str], 
     println!("Test read to {}, is readable: {}", id, is_readable);
     #[allow(clippy::expect_used)]
     let rset = rsclient
-        .search(Filter::Eq("name".to_string(), id.to_string()))
+        .search(Filter::Eq(Attribute::Name.to_string(), id.to_string()))
         .await
         .expect("Can't get user from search");
 

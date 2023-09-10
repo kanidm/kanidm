@@ -1156,7 +1156,10 @@ mod tests {
             ("dynmember", Value::Refer(inv_mb_uuid)),
             (
                 "dyngroup_filter",
-                Value::JsonFilt(ProtoFilter::Eq("name".to_string(), "testgroup".to_string()))
+                Value::JsonFilt(ProtoFilter::Eq(
+                    Attribute::Name.to_string(),
+                    "testgroup".to_string()
+                ))
             )
         );
 

@@ -1570,20 +1570,29 @@ mod tests {
         let e = entry_init!(
             (Attribute::UserId.as_ref(), Value::new_iutf8("william")),
             (
-                "uuid",
+                Attribute::Uuid.as_ref(),
                 Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
             ),
             (Attribute::GidNumber.as_ref(), Value::Uint32(1000))
         )
         .into_sealed_new();
 
-        let f_t1a = filter_resolved!(f_lt("gidnumber", PartialValue::new_uint32(500)));
+        let f_t1a = filter_resolved!(f_lt(
+            Attribute::GidNumber.as_ref(),
+            PartialValue::new_uint32(500)
+        ));
         assert!(!e.entry_match_no_index(&f_t1a));
 
-        let f_t1b = filter_resolved!(f_lt("gidnumber", PartialValue::new_uint32(1000)));
+        let f_t1b = filter_resolved!(f_lt(
+            Attribute::GidNumber.as_ref(),
+            PartialValue::new_uint32(1000)
+        ));
         assert!(!e.entry_match_no_index(&f_t1b));
 
-        let f_t1c = filter_resolved!(f_lt("gidnumber", PartialValue::new_uint32(1001)));
+        let f_t1c = filter_resolved!(f_lt(
+            Attribute::GidNumber.as_ref(),
+            PartialValue::new_uint32(1001)
+        ));
         assert!(e.entry_match_no_index(&f_t1c));
     }
 

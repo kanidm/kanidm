@@ -373,7 +373,10 @@ mod tests {
             (Attribute::Name.as_ref(), Value::new_iname("test_dyngroup")),
             (
                 "dyngroup_filter",
-                Value::JsonFilt(ProtoFilter::Eq("name".to_string(), "testgroup".to_string()))
+                Value::JsonFilt(ProtoFilter::Eq(
+                    Attribute::Name.to_string(),
+                    "testgroup".to_string()
+                ))
             )
         );
 
@@ -419,7 +422,10 @@ mod tests {
             (Attribute::Name.as_ref(), Value::new_iname("test_dyngroup")),
             (
                 "dyngroup_filter",
-                Value::JsonFilt(ProtoFilter::Eq("name".to_string(), "testgroup".to_string()))
+                Value::JsonFilt(ProtoFilter::Eq(
+                    Attribute::Name.to_string(),
+                    "testgroup".to_string()
+                ))
             )
         );
 
@@ -466,7 +472,7 @@ mod tests {
             (
                 "dyngroup_filter",
                 Value::JsonFilt(ProtoFilter::Eq(
-                    "name".to_string(),
+                    Attribute::Name.to_string(),
                     "no_possible_match_to_be_found".to_string()
                 ))
             )
@@ -510,7 +516,10 @@ mod tests {
             (Attribute::Name.as_ref(), Value::new_iname("test_dyngroup")),
             (
                 "dyngroup_filter",
-                Value::JsonFilt(ProtoFilter::Eq("name".to_string(), "testgroup".to_string()))
+                Value::JsonFilt(ProtoFilter::Eq(
+                    Attribute::Name.to_string(),
+                    "testgroup".to_string()
+                ))
             )
         );
 
@@ -558,7 +567,7 @@ mod tests {
             (
                 "dyngroup_filter",
                 Value::JsonFilt(ProtoFilter::Eq(
-                    "name".to_string(),
+                    Attribute::Name.to_string(),
                     "no_such_entry_exists".to_string()
                 ))
             )
@@ -583,7 +592,10 @@ mod tests {
                 Modify::Purged("dyngroup_filter".into()),
                 Modify::Present(
                     Attribute::DynGroupFilter.into(),
-                    Value::JsonFilt(ProtoFilter::Eq("name".to_string(), "testgroup".to_string()))
+                    Value::JsonFilt(ProtoFilter::Eq(
+                        Attribute::Name.to_string(),
+                        "testgroup".to_string()
+                    ))
                 )
             ]),
             None,
@@ -615,7 +627,10 @@ mod tests {
             (Attribute::Name.as_ref(), Value::new_iname("test_dyngroup")),
             (
                 "dyngroup_filter",
-                Value::JsonFilt(ProtoFilter::Eq("name".to_string(), "testgroup".to_string()))
+                Value::JsonFilt(ProtoFilter::Eq(
+                    Attribute::Name.to_string(),
+                    "testgroup".to_string()
+                ))
             )
         );
 
@@ -639,7 +654,7 @@ mod tests {
                 Modify::Present(
                     Attribute::DynGroupFilter.into(),
                     Value::JsonFilt(ProtoFilter::Eq(
-                        "name".to_string(),
+                        Attribute::Name.to_string(),
                         "no_such_entry_exists".to_string()
                     ))
                 )
@@ -669,7 +684,10 @@ mod tests {
             (Attribute::Name.as_ref(), Value::new_iname("test_dyngroup")),
             (
                 "dyngroup_filter",
-                Value::JsonFilt(ProtoFilter::Eq("name".to_string(), "testgroup".to_string()))
+                Value::JsonFilt(ProtoFilter::Eq(
+                    Attribute::Name.to_string(),
+                    "testgroup".to_string()
+                ))
             )
         );
 
@@ -722,7 +740,10 @@ mod tests {
             (Attribute::Name.as_ref(), Value::new_iname("test_dyngroup")),
             (
                 "dyngroup_filter",
-                Value::JsonFilt(ProtoFilter::Eq("name".to_string(), "testgroup".to_string()))
+                Value::JsonFilt(ProtoFilter::Eq(
+                    Attribute::Name.to_string(),
+                    "testgroup".to_string()
+                ))
             )
         );
 
@@ -771,7 +792,10 @@ mod tests {
             (Attribute::Name.as_ref(), Value::new_iname("test_dyngroup")),
             (
                 "dyngroup_filter",
-                Value::JsonFilt(ProtoFilter::Eq("name".to_string(), "testgroup".to_string()))
+                Value::JsonFilt(ProtoFilter::Eq(
+                    Attribute::Name.to_string(),
+                    "testgroup".to_string()
+                ))
             )
         );
 
@@ -823,7 +847,10 @@ mod tests {
             (Attribute::Name.as_ref(), Value::new_iname("test_dyngroup")),
             (
                 "dyngroup_filter",
-                Value::JsonFilt(ProtoFilter::Eq("name".to_string(), "testgroup".to_string()))
+                Value::JsonFilt(ProtoFilter::Eq(
+                    Attribute::Name.to_string(),
+                    "testgroup".to_string()
+                ))
             )
         );
 
@@ -868,7 +895,10 @@ mod tests {
             (Attribute::Name.as_ref(), Value::new_iname("test_dyngroup")),
             (
                 "dyngroup_filter",
-                Value::JsonFilt(ProtoFilter::Eq("name".to_string(), "testgroup".to_string()))
+                Value::JsonFilt(ProtoFilter::Eq(
+                    Attribute::Name.to_string(),
+                    "testgroup".to_string()
+                ))
             )
         );
 
@@ -908,7 +938,10 @@ mod tests {
             (Attribute::Name.as_ref(), Value::new_iname("test_dyngroup")),
             (
                 "dyngroup_filter",
-                Value::JsonFilt(ProtoFilter::Eq("name".to_string(), "testgroup".to_string()))
+                Value::JsonFilt(ProtoFilter::Eq(
+                    Attribute::Name.to_string(),
+                    "testgroup".to_string()
+                ))
             )
         );
 

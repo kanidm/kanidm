@@ -7,6 +7,7 @@ use kanidm_proto::v1::{
     UserAuthToken,
 };
 use kanidmd_lib::credential::totp::Totp;
+use kanidmd_lib::prelude::Attribute;
 use tracing::debug;
 
 use std::str::FromStr;
@@ -131,7 +132,7 @@ async fn test_server_search(rsclient: KanidmClient) {
     assert!(res.is_ok());
 
     let rset = rsclient
-        .search(Filter::Eq("name".to_string(), "admin".to_string()))
+        .search(Filter::Eq(Attribute::Name.to_string(), "admin".to_string()))
         .await
         .unwrap();
     println!("{:?}", rset);

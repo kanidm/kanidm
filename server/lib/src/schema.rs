@@ -341,10 +341,13 @@ impl From<SchemaAttribute> for EntryInitNew {
         // multivalue
 
         // sync_allowed
-        entry.set_ava("sync_allowed", vec![Value::Bool(value.sync_allowed)]);
+        entry.set_ava(
+            Attribute::SyncAllowed.as_ref(),
+            vec![Value::Bool(value.sync_allowed)],
+        );
 
         // uid
-        entry.set_ava("uuid", vec![Value::Uuid(value.uuid)]);
+        entry.set_ava(Attribute::Uuid.as_ref(), vec![Value::Uuid(value.uuid)]);
 
         entry
     }
@@ -2484,7 +2487,9 @@ mod tests {
 
         assert_eq!(
             e_no_uuid.validate(&schema),
-            Err(SchemaError::MissingMustAttribute(vec!["uuid".to_string()]))
+            Err(SchemaError::MissingMustAttribute(vec![
+                Attribute::Uuid.to_string()
+            ]))
         );
 
         let e_no_class = entry_init!((

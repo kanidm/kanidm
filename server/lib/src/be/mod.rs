@@ -1125,9 +1125,11 @@ impl<'a> BackendWriteTransaction<'a> {
             let ctx_ent_uuid = ctx_ent.get_uuid();
             let idx_key = ctx_ent_uuid.as_hyphenated().to_string();
 
-            let idl = self
-                .get_idlayer()
-                .get_idl("uuid", IndexType::Equality, &idx_key)?;
+            let idl = self.get_idlayer().get_idl(
+                Attribute::Uuid.as_ref(),
+                IndexType::Equality,
+                &idx_key,
+            )?;
 
             let entry = match idl {
                 Some(idl) if idl.is_empty() => {
@@ -1496,7 +1498,7 @@ impl<'a> BackendWriteTransaction<'a> {
                             Some(mut idl) => {
                                 idl.insert_id(e_id);
                                 if cfg!(debug_assertions)
-                                    && attr == "uuid" && itype == IndexType::Equality {
+                                    && attr == Attribute::Uuid.as_ref() && itype == IndexType::Equality {
                                         trace!("{:?}", idl);
                                         debug_assert!(idl.len() <= 1);
                                 }
@@ -1516,7 +1518,7 @@ impl<'a> BackendWriteTransaction<'a> {
                         match self.idlayer.get_idl(attr, itype, &idx_key)? {
                             Some(mut idl) => {
                                 idl.remove_id(e_id);
-                                if cfg!(debug_assertions) && attr == "uuid" && itype == IndexType::Equality {
+                                if cfg!(debug_assertions) && attr == Attribute::Uuid.as_ref() && itype == IndexType::Equality {
                                         trace!("{:?}", idl);
                                         debug_assert!(idl.len() <= 1);
                                 }
@@ -2573,15 +2575,33 @@ mod tests {
             assert!(missing.is_empty());
             // check name and uuid ids on eq, sub, pres
 
-            idl_state!(be, "name", IndexType::Equality, "william", Some(vec![1]));
-
-            idl_state!(be, "name", IndexType::Equality, "claire", Some(vec![2]));
-
-            idl_state!(be, "name", IndexType::Presence, "_", Some(vec![1, 2]));
+            idl_state!(
+                be,
+                Attribute::Name.as_ref(),
+                IndexType::Equality,
+                "william",
+                Some(vec![1])
+            );
 
             idl_state!(
                 be,
-                "uuid",
+                Attribute::Name.as_ref(),
+                IndexType::Equality,
+                "claire",
+                Some(vec![2])
+            );
+
+            idl_state!(
+                be,
+                Attribute::Name.as_ref(),
+                IndexType::Presence,
+                "_",
+                Some(vec![1, 2])
+            );
+
+            idl_state!(
+                be,
+                Attribute::Uuid.as_ref(),
                 IndexType::Equality,
                 "db237e8a-0079-4b8c-8a56-593b22aa44d1",
                 Some(vec![1])
@@ -2589,19 +2609,25 @@ mod tests {
 
             idl_state!(
                 be,
-                "uuid",
+                Attribute::Uuid.as_ref(),
                 IndexType::Equality,
                 "bd651620-00dd-426b-aaa0-4494f7b7906f",
                 Some(vec![2])
             );
 
-            idl_state!(be, "uuid", IndexType::Presence, "_", Some(vec![1, 2]));
+            idl_state!(
+                be,
+                Attribute::Uuid.as_ref(),
+                IndexType::Presence,
+                "_",
+                Some(vec![1, 2])
+            );
 
             // Show what happens with empty
 
             idl_state!(
                 be,
-                "name",
+                Attribute::Name.as_ref(),
                 IndexType::Equality,
                 "not-exist",
                 Some(Vec::new())
@@ -2609,7 +2635,7 @@ mod tests {
 
             idl_state!(
                 be,
-                "uuid",
+                Attribute::Uuid.as_ref(),
                 IndexType::Equality,
                 "fake-0079-4b8c-8a56-593b22aa44d1",
                 Some(Vec::new())
@@ -2659,19 +2685,37 @@ mod tests {
             let mut rset: Vec<_> = rset.into_iter().map(Arc::new).collect();
             let e1 = rset.pop().unwrap();
 
-            idl_state!(be, "name", IndexType::Equality, "william", Some(vec![1]));
-
-            idl_state!(be, "name", IndexType::Presence, "_", Some(vec![1]));
+            idl_state!(
+                be,
+                Attribute::Name.as_ref(),
+                IndexType::Equality,
+                "william",
+                Some(vec![1])
+            );
 
             idl_state!(
                 be,
-                "uuid",
+                Attribute::Name.as_ref(),
+                IndexType::Presence,
+                "_",
+                Some(vec![1])
+            );
+
+            idl_state!(
+                be,
+                Attribute::Uuid.as_ref(),
                 IndexType::Equality,
                 "db237e8a-0079-4b8c-8a56-593b22aa44d1",
                 Some(vec![1])
             );
 
-            idl_state!(be, "uuid", IndexType::Presence, "_", Some(vec![1]));
+            idl_state!(
+                be,
+                Attribute::Uuid.as_ref(),
+                IndexType::Presence,
+                "_",
+                Some(vec![1])
+            );
 
             let william_uuid = uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1");
             assert!(be.name2uuid("william") == Ok(Some(william_uuid)));
@@ -2683,19 +2727,37 @@ mod tests {
             assert!(be.modify(&CID_ONE, &[e1], &[e1_ts]).is_ok());
             be.reap_tombstones(&CID_TWO).unwrap();
 
-            idl_state!(be, "name", IndexType::Equality, "william", Some(Vec::new()));
-
-            idl_state!(be, "name", IndexType::Presence, "_", Some(Vec::new()));
+            idl_state!(
+                be,
+                Attribute::Name.as_ref(),
+                IndexType::Equality,
+                "william",
+                Some(Vec::new())
+            );
 
             idl_state!(
                 be,
-                "uuid",
+                Attribute::Name.as_ref(),
+                IndexType::Presence,
+                "_",
+                Some(Vec::new())
+            );
+
+            idl_state!(
+                be,
+                Attribute::Uuid.as_ref(),
                 IndexType::Equality,
                 "db237e8a-0079-4b8c-8a56-593b22aa44d1",
                 Some(Vec::new())
             );
 
-            idl_state!(be, "uuid", IndexType::Presence, "_", Some(Vec::new()));
+            idl_state!(
+                be,
+                Attribute::Uuid.as_ref(),
+                IndexType::Presence,
+                "_",
+                Some(Vec::new())
+            );
 
             assert!(be.name2uuid("william") == Ok(None));
             assert!(be.uuid2spn(william_uuid) == Ok(None));
@@ -2747,19 +2809,37 @@ mod tests {
             assert!(be.modify(&CID_ONE, &[e1, e3], &[e1_ts, e3_ts]).is_ok());
             be.reap_tombstones(&CID_TWO).unwrap();
 
-            idl_state!(be, "name", IndexType::Equality, "claire", Some(vec![2]));
-
-            idl_state!(be, "name", IndexType::Presence, "_", Some(vec![2]));
+            idl_state!(
+                be,
+                Attribute::Name.as_ref(),
+                IndexType::Equality,
+                "claire",
+                Some(vec![2])
+            );
 
             idl_state!(
                 be,
-                "uuid",
+                Attribute::Name.as_ref(),
+                IndexType::Presence,
+                "_",
+                Some(vec![2])
+            );
+
+            idl_state!(
+                be,
+                Attribute::Uuid.as_ref(),
                 IndexType::Equality,
                 "bd651620-00dd-426b-aaa0-4494f7b7906f",
                 Some(vec![2])
             );
 
-            idl_state!(be, "uuid", IndexType::Presence, "_", Some(vec![2]));
+            idl_state!(
+                be,
+                Attribute::Uuid.as_ref(),
+                IndexType::Presence,
+                "_",
+                Some(vec![2])
+            );
 
             let claire_uuid = uuid!("bd651620-00dd-426b-aaa0-4494f7b7906f");
             let william_uuid = uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1");
@@ -2806,7 +2886,7 @@ mod tests {
             // remove something.
             ce1.purge_ava("testattr");
             // mod something.
-            ce1.purge_ava("name");
+            ce1.purge_ava(Attribute::Name.as_ref());
             ce1.add_ava(Attribute::Name.as_ref(), Value::new_iname("claire"));
 
             let ce1 = ce1.into_sealed_committed();
@@ -2814,9 +2894,21 @@ mod tests {
             be.modify(&CID_ZERO, &rset, &[ce1]).unwrap();
 
             // Now check the idls
-            idl_state!(be, "name", IndexType::Equality, "claire", Some(vec![1]));
+            idl_state!(
+                be,
+                Attribute::Name.as_ref(),
+                IndexType::Equality,
+                "claire",
+                Some(vec![1])
+            );
 
-            idl_state!(be, "name", IndexType::Presence, "_", Some(vec![1]));
+            idl_state!(
+                be,
+                Attribute::Name.as_ref(),
+                IndexType::Presence,
+                "_",
+                Some(vec![1])
+            );
 
             idl_state!(
                 be,
@@ -2855,8 +2947,8 @@ mod tests {
             let rset: Vec<_> = rset.into_iter().map(Arc::new).collect();
             // Now, alter the new entry.
             let mut ce1 = rset[0].as_ref().clone().into_invalid();
-            ce1.purge_ava("name");
-            ce1.purge_ava("uuid");
+            ce1.purge_ava(Attribute::Name.as_ref());
+            ce1.purge_ava(Attribute::Uuid.as_ref());
             ce1.add_ava(Attribute::Name.as_ref(), Value::new_iname("claire"));
             ce1.add_ava(
                 Attribute::Uuid.as_ref(),
@@ -2866,27 +2958,51 @@ mod tests {
 
             be.modify(&CID_ZERO, &rset, &[ce1]).unwrap();
 
-            idl_state!(be, "name", IndexType::Equality, "claire", Some(vec![1]));
+            idl_state!(
+                be,
+                Attribute::Name.as_ref(),
+                IndexType::Equality,
+                "claire",
+                Some(vec![1])
+            );
 
             idl_state!(
                 be,
-                "uuid",
+                Attribute::Uuid.as_ref(),
                 IndexType::Equality,
                 "04091a7a-6ce4-42d2-abf5-c2ce244ac9e8",
                 Some(vec![1])
             );
 
-            idl_state!(be, "name", IndexType::Presence, "_", Some(vec![1]));
-            idl_state!(be, "uuid", IndexType::Presence, "_", Some(vec![1]));
+            idl_state!(
+                be,
+                Attribute::Name.as_ref(),
+                IndexType::Presence,
+                "_",
+                Some(vec![1])
+            );
+            idl_state!(
+                be,
+                Attribute::Uuid.as_ref(),
+                IndexType::Presence,
+                "_",
+                Some(vec![1])
+            );
 
             idl_state!(
                 be,
-                "uuid",
+                Attribute::Uuid.as_ref(),
                 IndexType::Equality,
                 "db237e8a-0079-4b8c-8a56-593b22aa44d1",
                 Some(Vec::new())
             );
-            idl_state!(be, "name", IndexType::Equality, "william", Some(Vec::new()));
+            idl_state!(
+                be,
+                Attribute::Name.as_ref(),
+                IndexType::Equality,
+                "william",
+                Some(Vec::new())
+            );
 
             let claire_uuid = uuid!("04091a7a-6ce4-42d2-abf5-c2ce244ac9e8");
             let william_uuid = uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1");
@@ -3245,20 +3361,20 @@ mod tests {
             assert_eq!(tb_eq_slope, 45);
 
             let name_eq_slope = be
-                .get_idx_slope(&IdxKey::new("name", IndexType::Equality))
+                .get_idx_slope(&IdxKey::new(Attribute::Name.as_ref(), IndexType::Equality))
                 .unwrap();
             assert_eq!(name_eq_slope, 1);
             let uuid_eq_slope = be
-                .get_idx_slope(&IdxKey::new("uuid", IndexType::Equality))
+                .get_idx_slope(&IdxKey::new(Attribute::Uuid.as_ref(), IndexType::Equality))
                 .unwrap();
             assert_eq!(uuid_eq_slope, 1);
 
             let name_pres_slope = be
-                .get_idx_slope(&IdxKey::new("name", IndexType::Presence))
+                .get_idx_slope(&IdxKey::new(Attribute::Name.as_ref(), IndexType::Presence))
                 .unwrap();
             assert_eq!(name_pres_slope, 90);
             let uuid_pres_slope = be
-                .get_idx_slope(&IdxKey::new("uuid", IndexType::Presence))
+                .get_idx_slope(&IdxKey::new(Attribute::Uuid.as_ref(), IndexType::Presence))
                 .unwrap();
             assert_eq!(uuid_pres_slope, 90);
             // Check the slopes are what we expect for hardcoded values.
@@ -3279,20 +3395,20 @@ mod tests {
             assert_eq!(tb_eq_slope, 133);
 
             let name_eq_slope = be
-                .get_idx_slope(&IdxKey::new("name", IndexType::Equality))
+                .get_idx_slope(&IdxKey::new(Attribute::Name.as_ref(), IndexType::Equality))
                 .unwrap();
             assert_eq!(name_eq_slope, 51);
             let uuid_eq_slope = be
-                .get_idx_slope(&IdxKey::new("uuid", IndexType::Equality))
+                .get_idx_slope(&IdxKey::new(Attribute::Uuid.as_ref(), IndexType::Equality))
                 .unwrap();
             assert_eq!(uuid_eq_slope, 51);
 
             let name_pres_slope = be
-                .get_idx_slope(&IdxKey::new("name", IndexType::Presence))
+                .get_idx_slope(&IdxKey::new(Attribute::Name.as_ref(), IndexType::Presence))
                 .unwrap();
             assert_eq!(name_pres_slope, 200);
             let uuid_pres_slope = be
-                .get_idx_slope(&IdxKey::new("uuid", IndexType::Presence))
+                .get_idx_slope(&IdxKey::new(Attribute::Uuid.as_ref(), IndexType::Presence))
                 .unwrap();
             assert_eq!(uuid_pres_slope, 200);
         })

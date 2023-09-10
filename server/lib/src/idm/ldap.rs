@@ -182,7 +182,7 @@ impl LdapServer {
                 (LdapSearchScope::Children, None) | (LdapSearchScope::OneLevel, None) => {
                     // exclude domain_info
                     Some(LdapFilter::Not(Box::new(LdapFilter::Equality(
-                        "uuid".to_string(),
+                        Attribute::Uuid.to_string(),
                         STR_UUID_DOMAIN_INFO.to_string(),
                     ))))
                 }
@@ -193,7 +193,7 @@ impl LdapServer {
                 (LdapSearchScope::Base, None) => {
                     // domain_info
                     Some(LdapFilter::Equality(
-                        "uuid".to_string(),
+                        Attribute::Uuid.to_string(),
                         STR_UUID_DOMAIN_INFO.to_string(),
                     ))
                 }

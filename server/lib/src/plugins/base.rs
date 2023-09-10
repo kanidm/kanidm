@@ -76,7 +76,7 @@ impl Plugin for Base {
         for entry in cand.iter() {
             let uuid_ref: Uuid = entry
                 .get_ava_single_uuid("uuid")
-                .ok_or_else(|| OperationError::InvalidAttribute("uuid".to_string()))?;
+                .ok_or_else(|| OperationError::InvalidAttribute(Attribute::Uuid.to_string()))?;
             if !cand_uuid.insert(uuid_ref) {
                 trace!("uuid duplicate found in create set! {:?}", uuid_ref);
                 return Err(OperationError::Plugin(PluginError::Base(
@@ -436,7 +436,9 @@ mod tests {
         let create = vec![e];
 
         run_create_test!(
-            Err(OperationError::InvalidAttribute("uuid".to_string())),
+            Err(OperationError::InvalidAttribute(
+                Attribute::Uuid.to_string()
+            )),
             preload,
             create,
             None,
