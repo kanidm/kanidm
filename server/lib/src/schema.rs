@@ -321,13 +321,10 @@ impl From<SchemaAttribute> for EntryInitNew {
         );
         entry.add_ava(Attribute::MultiValue, Value::Bool(value.multivalue));
         // syntax
-        entry.set_ava(Attribute::Syntax.into(), vec![Value::Syntax(value.syntax)]);
-        entry.set_ava(Attribute::Unique.into(), vec![Value::Bool(value.unique)]);
+        entry.set_ava(Attribute::Syntax, vec![Value::Syntax(value.syntax)]);
+        entry.set_ava(Attribute::Unique, vec![Value::Bool(value.unique)]);
         // index
-        entry.set_ava(
-            Attribute::Index.into(),
-            value.index.into_iter().map(Value::Index),
-        );
+        entry.set_ava(Attribute::Index, value.index.into_iter().map(Value::Index));
 
         // class
         entry.set_ava(

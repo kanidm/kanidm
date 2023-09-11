@@ -1151,7 +1151,6 @@ lazy_static! {
             EntryClass::AccessControlCreate,
             EntryClass::AccessControlDelete,
         ],
-        ..Default::default()
     };
 
 
