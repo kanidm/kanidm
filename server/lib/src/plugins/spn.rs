@@ -1,5 +1,6 @@
 // Generate and manage spn's for all entries in the domain. Also deals with
 // the infrequent - but possible - case where a domain is renamed.
+use std::collections::BTreeSet;
 use std::iter::once;
 use std::sync::Arc;
 
@@ -77,7 +78,7 @@ impl Plugin for Spn {
         qs: &mut QueryServerWriteTransaction,
         pre_cand: &[Arc<EntrySealedCommitted>],
         cand: &[EntrySealedCommitted],
-        _conflict_uuids: &[Uuid],
+        _conflict_uuids: &BTreeSet<Uuid>,
     ) -> Result<(), OperationError> {
         Self::post_modify_inner(qs, pre_cand, cand)
     }
