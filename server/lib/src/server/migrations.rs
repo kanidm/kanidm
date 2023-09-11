@@ -675,11 +675,11 @@ impl<'a> QueryServerWriteTransaction<'a> {
         debug_assert!(res.is_ok());
         res?;
 
-        let idm_entries: Vec<EntryInitNew> = vec![
+        let idm_entries: Vec<BuiltinAcp> = vec![
             // Built in access controls.
             IDM_ADMINS_ACP_RECYCLE_SEARCH_V1.clone().into(),
             IDM_ADMINS_ACP_REVIVE_V1.clone().into(),
-            E_IDM_ALL_ACP_READ_V1.clone(),
+            E_IDM_ALL_ACP_READ_V1.clone().into(),
             IDM_SELF_ACP_READ_V1.clone().into(),
             IDM_SELF_ACP_WRITE_V1.clone().into(),
             E_IDM_PEOPLE_SELF_ACP_WRITE_MAIL_PRIV_V1.clone(),
@@ -723,7 +723,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
         let res: Result<(), _> = idm_entries
             .into_iter()
-            .try_for_each(|entry| self.internal_migrate_or_create(entry));
+            .try_for_each(|entry| self.internal_migrate_or_create(entry.into()));
         if res.is_ok() {
             admin_debug!("initialise_idm -> result Ok!");
         } else {
