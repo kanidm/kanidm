@@ -2138,9 +2138,9 @@ mod tests {
             assert_eq!(empty_result, Err(OperationError::EmptyRequest));
 
             let mut e: Entry<EntryInit, EntryNew> = Entry::new();
-            e.add_ava(Attribute::UserId.as_ref(), Value::from("william"));
+            e.add_ava(Attribute::UserId, Value::from("william"));
             e.add_ava(
-                Attribute::Uuid.as_ref(),
+                Attribute::Uuid,
                 Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"),
             );
             let e = e.into_sealed_new();
@@ -2160,9 +2160,9 @@ mod tests {
             trace!("Simple Search");
 
             let mut e: Entry<EntryInit, EntryNew> = Entry::new();
-            e.add_ava(Attribute::UserId.as_ref(), Value::from("claire"));
+            e.add_ava(Attribute::UserId, Value::from("claire"));
             e.add_ava(
-                Attribute::Uuid.as_ref(),
+                Attribute::Uuid,
                 Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"),
             );
             let e = e.into_sealed_new();
@@ -2193,16 +2193,16 @@ mod tests {
             let lims = Limits::unlimited();
             // First create some entries (3?)
             let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
-            e1.add_ava(Attribute::UserId.as_ref(), Value::from("william"));
+            e1.add_ava(Attribute::UserId, Value::from("william"));
             e1.add_ava(
-                Attribute::Uuid.as_ref(),
+                Attribute::Uuid,
                 Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"),
             );
 
             let mut e2: Entry<EntryInit, EntryNew> = Entry::new();
-            e2.add_ava(Attribute::UserId.as_ref(), Value::from("alice"));
+            e2.add_ava(Attribute::UserId, Value::from("alice"));
             e2.add_ava(
-                Attribute::Uuid.as_ref(),
+                Attribute::Uuid,
                 Value::from("4b6228ab-1dbe-42a4-a9f5-f6368222438e"),
             );
 
@@ -2238,8 +2238,8 @@ mod tests {
             // Make some changes to r1, r2.
             let pre1 = Arc::new(r1.clone().into_sealed_committed());
             let pre2 = Arc::new(r2.clone().into_sealed_committed());
-            r1.add_ava("testattr", Value::from("modified"));
-            r2.add_ava("testattr", Value::from("modified"));
+            r1.add_ava(Attribute::TestAttr, Value::from("modified"));
+            r2.add_ava(Attribute::TestAttr, Value::from("modified"));
 
             // Now ... cheat.
 
@@ -2249,8 +2249,8 @@ mod tests {
             // Modify single
             assert!(be.modify(&CID_ZERO, &[pre1], &[vr1.clone()]).is_ok());
             // Assert no other changes
-            assert!(entry_attr_pres!(be, vr1, "testattr"));
-            assert!(!entry_attr_pres!(be, vr2, "testattr"));
+            assert!(entry_attr_pres!(be, vr1, Attribute::TestAttr.as_ref()));
+            assert!(!entry_attr_pres!(be, vr2, Attribute::TestAttr.as_ref()));
 
             // Modify both
             assert!(be
@@ -2261,8 +2261,8 @@ mod tests {
                 )
                 .is_ok());
 
-            assert!(entry_attr_pres!(be, vr1, "testattr"));
-            assert!(entry_attr_pres!(be, vr2, "testattr"));
+            assert!(entry_attr_pres!(be, vr1, Attribute::TestAttr.as_ref()));
+            assert!(entry_attr_pres!(be, vr2, Attribute::TestAttr.as_ref()));
         });
     }
 
@@ -2274,23 +2274,23 @@ mod tests {
 
             // First create some entries (3?)
             let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
-            e1.add_ava(Attribute::UserId.as_ref(), Value::from("william"));
+            e1.add_ava(Attribute::UserId, Value::from("william"));
             e1.add_ava(
-                Attribute::Uuid.as_ref(),
+                Attribute::Uuid,
                 Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"),
             );
 
             let mut e2: Entry<EntryInit, EntryNew> = Entry::new();
-            e2.add_ava(Attribute::UserId.as_ref(), Value::from("alice"));
+            e2.add_ava(Attribute::UserId, Value::from("alice"));
             e2.add_ava(
-                Attribute::Uuid.as_ref(),
+                Attribute::Uuid,
                 Value::from("4b6228ab-1dbe-42a4-a9f5-f6368222438e"),
             );
 
             let mut e3: Entry<EntryInit, EntryNew> = Entry::new();
-            e3.add_ava(Attribute::UserId.as_ref(), Value::from("lucy"));
+            e3.add_ava(Attribute::UserId, Value::from("lucy"));
             e3.add_ava(
-                Attribute::Uuid.as_ref(),
+                Attribute::Uuid,
                 Value::from("7b23c99d-c06b-4a9a-a958-3afa56383e1d"),
             );
 
@@ -2379,23 +2379,23 @@ mod tests {
 
             // First create some entries (3?)
             let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
-            e1.add_ava(Attribute::UserId.as_ref(), Value::from("william"));
+            e1.add_ava(Attribute::UserId, Value::from("william"));
             e1.add_ava(
-                Attribute::Uuid.as_ref(),
+                Attribute::Uuid,
                 Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"),
             );
 
             let mut e2: Entry<EntryInit, EntryNew> = Entry::new();
-            e2.add_ava(Attribute::UserId.as_ref(), Value::from("alice"));
+            e2.add_ava(Attribute::UserId, Value::from("alice"));
             e2.add_ava(
-                Attribute::Uuid.as_ref(),
+                Attribute::Uuid,
                 Value::from("4b6228ab-1dbe-42a4-a9f5-f6368222438e"),
             );
 
             let mut e3: Entry<EntryInit, EntryNew> = Entry::new();
-            e3.add_ava(Attribute::UserId.as_ref(), Value::from("lucy"));
+            e3.add_ava(Attribute::UserId, Value::from("lucy"));
             e3.add_ava(
-                Attribute::Uuid.as_ref(),
+                Attribute::Uuid,
                 Value::from("7b23c99d-c06b-4a9a-a958-3afa56383e1d"),
             );
 
@@ -2443,23 +2443,23 @@ mod tests {
             be.set_db_ts_max(Duration::from_secs(1)).unwrap();
             // First create some entries (3?)
             let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
-            e1.add_ava(Attribute::UserId.as_ref(), Value::from("william"));
+            e1.add_ava(Attribute::UserId, Value::from("william"));
             e1.add_ava(
-                Attribute::Uuid.as_ref(),
+                Attribute::Uuid,
                 Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"),
             );
 
             let mut e2: Entry<EntryInit, EntryNew> = Entry::new();
-            e2.add_ava(Attribute::UserId.as_ref(), Value::from("alice"));
+            e2.add_ava(Attribute::UserId, Value::from("alice"));
             e2.add_ava(
-                Attribute::Uuid.as_ref(),
+                Attribute::Uuid,
                 Value::from("4b6228ab-1dbe-42a4-a9f5-f6368222438e"),
             );
 
             let mut e3: Entry<EntryInit, EntryNew> = Entry::new();
-            e3.add_ava(Attribute::UserId.as_ref(), Value::from("lucy"));
+            e3.add_ava(Attribute::UserId, Value::from("lucy"));
             e3.add_ava(
-                Attribute::Uuid.as_ref(),
+                Attribute::Uuid,
                 Value::from("7b23c99d-c06b-4a9a-a958-3afa56383e1d"),
             );
 
@@ -2547,17 +2547,17 @@ mod tests {
         run_test!(|be: &mut BackendWriteTransaction| {
             // Add some test data?
             let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
-            e1.add_ava(Attribute::Name.as_ref(), Value::new_iname("william"));
+            e1.add_ava(Attribute::Name, Value::new_iname("william"));
             e1.add_ava(
-                Attribute::Uuid.as_ref(),
+                Attribute::Uuid,
                 Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"),
             );
             let e1 = e1.into_sealed_new();
 
             let mut e2: Entry<EntryInit, EntryNew> = Entry::new();
-            e2.add_ava(Attribute::Name.as_ref(), Value::new_iname("claire"));
+            e2.add_ava(Attribute::Name, Value::new_iname("claire"));
             e2.add_ava(
-                Attribute::Uuid.as_ref(),
+                Attribute::Uuid,
                 Value::from("bd651620-00dd-426b-aaa0-4494f7b7906f"),
             );
             let e2 = e2.into_sealed_new();
@@ -2674,9 +2674,9 @@ mod tests {
             // Test that on entry create, the indexes are made correctly.
             // this is a similar case to reindex.
             let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
-            e1.add_ava(Attribute::Name.as_ref(), Value::from("william"));
+            e1.add_ava(Attribute::Name, Value::from("william"));
             e1.add_ava(
-                Attribute::Uuid.as_ref(),
+                Attribute::Uuid,
                 Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"),
             );
             let e1 = e1.into_sealed_new();
@@ -2774,25 +2774,25 @@ mod tests {
             // Test that on entry create, the indexes are made correctly.
             // this is a similar case to reindex.
             let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
-            e1.add_ava(Attribute::Name.as_ref(), Value::new_iname("william"));
+            e1.add_ava(Attribute::Name, Value::new_iname("william"));
             e1.add_ava(
-                Attribute::Uuid.as_ref(),
+                Attribute::Uuid,
                 Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"),
             );
             let e1 = e1.into_sealed_new();
 
             let mut e2: Entry<EntryInit, EntryNew> = Entry::new();
-            e2.add_ava(Attribute::Name.as_ref(), Value::new_iname("claire"));
+            e2.add_ava(Attribute::Name, Value::new_iname("claire"));
             e2.add_ava(
-                Attribute::Uuid.as_ref(),
+                Attribute::Uuid,
                 Value::from("bd651620-00dd-426b-aaa0-4494f7b7906f"),
             );
             let e2 = e2.into_sealed_new();
 
             let mut e3: Entry<EntryInit, EntryNew> = Entry::new();
-            e3.add_ava(Attribute::UserId.as_ref(), Value::new_iname("lucy"));
+            e3.add_ava(Attribute::UserId, Value::new_iname("lucy"));
             e3.add_ava(
-                Attribute::Uuid.as_ref(),
+                Attribute::Uuid,
                 Value::from("7b23c99d-c06b-4a9a-a958-3afa56383e1d"),
             );
             let e3 = e3.into_sealed_new();
@@ -2869,12 +2869,12 @@ mod tests {
             // us. For the test to be "accurate" we must add one attr, remove one attr
             // and change one attr.
             let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
-            e1.add_ava(Attribute::Name.as_ref(), Value::new_iname("william"));
+            e1.add_ava(Attribute::Name, Value::new_iname("william"));
             e1.add_ava(
-                Attribute::Uuid.as_ref(),
+                Attribute::Uuid,
                 Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"),
             );
-            e1.add_ava("testattr", Value::from("test"));
+            e1.add_ava(Attribute::TestAttr, Value::from("test"));
             let e1 = e1.into_sealed_new();
 
             let rset = be.create(&CID_ZERO, vec![e1]).unwrap();
@@ -2882,12 +2882,12 @@ mod tests {
             // Now, alter the new entry.
             let mut ce1 = rset[0].as_ref().clone().into_invalid();
             // add something.
-            ce1.add_ava("testattrnumber", Value::from("test"));
+            ce1.add_ava(Attribute::TestNumber, Value::from("test"));
             // remove something.
-            ce1.purge_ava("testattr");
+            ce1.purge_ava(Attribute::TestAttr.as_ref());
             // mod something.
             ce1.purge_ava(Attribute::Name.as_ref());
-            ce1.add_ava(Attribute::Name.as_ref(), Value::new_iname("claire"));
+            ce1.add_ava(Attribute::Name, Value::new_iname("claire"));
 
             let ce1 = ce1.into_sealed_committed();
 
@@ -2912,13 +2912,19 @@ mod tests {
 
             idl_state!(
                 be,
-                "testattrnumber",
+                Attribute::TestNumber.as_ref(),
                 IndexType::Equality,
                 "test",
                 Some(vec![1])
             );
 
-            idl_state!(be, "testattr", IndexType::Equality, "test", Some(vec![]));
+            idl_state!(
+                be,
+                Attribute::TestAttr,
+                IndexType::Equality,
+                "test",
+                Some(vec![])
+            );
 
             let william_uuid = uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1");
             assert!(be.name2uuid("william") == Ok(None));
@@ -2936,9 +2942,9 @@ mod tests {
             // This will be needing to be correct for conflicts when we add
             // replication support!
             let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
-            e1.add_ava(Attribute::Name.as_ref(), Value::new_iname("william"));
+            e1.add_ava(Attribute::Name, Value::new_iname("william"));
             e1.add_ava(
-                Attribute::Uuid.as_ref(),
+                Attribute::Uuid,
                 Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"),
             );
             let e1 = e1.into_sealed_new();
@@ -2949,9 +2955,9 @@ mod tests {
             let mut ce1 = rset[0].as_ref().clone().into_invalid();
             ce1.purge_ava(Attribute::Name.as_ref());
             ce1.purge_ava(Attribute::Uuid.as_ref());
-            ce1.add_ava(Attribute::Name.as_ref(), Value::new_iname("claire"));
+            ce1.add_ava(Attribute::Name, Value::new_iname("claire"));
             ce1.add_ava(
-                Attribute::Uuid.as_ref(),
+                Attribute::Uuid,
                 Value::from("04091a7a-6ce4-42d2-abf5-c2ce244ac9e8"),
             );
             let ce1 = ce1.into_sealed_committed();
@@ -3022,19 +3028,19 @@ mod tests {
 
             // Create a test entry with some indexed / unindexed values.
             let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
-            e1.add_ava(Attribute::Name.as_ref(), Value::new_iname("william"));
+            e1.add_ava(Attribute::Name, Value::new_iname("william"));
             e1.add_ava(
-                Attribute::Uuid.as_ref(),
+                Attribute::Uuid,
                 Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"),
             );
-            e1.add_ava("no-index", Value::from("william"));
-            e1.add_ava("other-no-index", Value::from("william"));
+            e1.add_ava(Attribute::NoIndex, Value::from("william"));
+            e1.add_ava(Attribute::OtherNoIndex, Value::from("william"));
             let e1 = e1.into_sealed_new();
 
             let mut e2: Entry<EntryInit, EntryNew> = Entry::new();
-            e2.add_ava(Attribute::Name.as_ref(), Value::new_iname("claire"));
+            e2.add_ava(Attribute::Name, Value::new_iname("claire"));
             e2.add_ava(
-                Attribute::Uuid.as_ref(),
+                Attribute::Uuid,
                 Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d2"),
             );
             let e2 = e2.into_sealed_new();
@@ -3315,33 +3321,33 @@ mod tests {
         run_test!(|be: &mut BackendWriteTransaction| {
             // Create some test entry with some indexed / unindexed values.
             let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
-            e1.add_ava(Attribute::Name.as_ref(), Value::new_iname("william"));
+            e1.add_ava(Attribute::Name, Value::new_iname("william"));
             e1.add_ava(
-                Attribute::Uuid.as_ref(),
+                Attribute::Uuid,
                 Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"),
             );
-            e1.add_ava("testattr", Value::from("dupe"));
-            e1.add_ava("testattrnumber", Value::from("1"));
+            e1.add_ava(Attribute::TestAttr, Value::from("dupe"));
+            e1.add_ava(Attribute::TestNumber, Value::from("1"));
             let e1 = e1.into_sealed_new();
 
             let mut e2: Entry<EntryInit, EntryNew> = Entry::new();
-            e2.add_ava(Attribute::Name.as_ref(), Value::new_iname("claire"));
+            e2.add_ava(Attribute::Name, Value::new_iname("claire"));
             e2.add_ava(
-                Attribute::Uuid.as_ref(),
+                Attribute::Uuid,
                 Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d2"),
             );
-            e2.add_ava("testattr", Value::from("dupe"));
-            e2.add_ava("testattrnumber", Value::from("1"));
+            e2.add_ava(Attribute::TestAttr, Value::from("dupe"));
+            e2.add_ava(Attribute::TestNumber, Value::from("1"));
             let e2 = e2.into_sealed_new();
 
             let mut e3: Entry<EntryInit, EntryNew> = Entry::new();
-            e3.add_ava(Attribute::Name.as_ref(), Value::new_iname("benny"));
+            e3.add_ava(Attribute::Name, Value::new_iname("benny"));
             e3.add_ava(
-                Attribute::Uuid.as_ref(),
+                Attribute::Uuid,
                 Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d3"),
             );
-            e3.add_ava("testattr", Value::from("dupe"));
-            e3.add_ava("testattrnumber", Value::from("2"));
+            e3.add_ava(Attribute::TestAttr, Value::from("dupe"));
+            e3.add_ava(Attribute::TestNumber, Value::from("2"));
             let e3 = e3.into_sealed_new();
 
             let _rset = be.create(&CID_ZERO, vec![e1, e2, e3]).unwrap();
@@ -3351,12 +3357,18 @@ mod tests {
             assert!(!be.is_idx_slopeyness_generated().unwrap());
 
             let ta_eq_slope = be
-                .get_idx_slope(&IdxKey::new("testattr", IndexType::Equality))
+                .get_idx_slope(&IdxKey::new(
+                    Attribute::TestAttr.as_ref(),
+                    IndexType::Equality,
+                ))
                 .unwrap();
             assert_eq!(ta_eq_slope, 45);
 
             let tb_eq_slope = be
-                .get_idx_slope(&IdxKey::new("testattrnumber", IndexType::Equality))
+                .get_idx_slope(&IdxKey::new(
+                    Attribute::TestNumber.as_ref(),
+                    IndexType::Equality,
+                ))
                 .unwrap();
             assert_eq!(tb_eq_slope, 45);
 
@@ -3385,12 +3397,18 @@ mod tests {
             assert!(be.is_idx_slopeyness_generated().unwrap());
 
             let ta_eq_slope = be
-                .get_idx_slope(&IdxKey::new("testattr", IndexType::Equality))
+                .get_idx_slope(&IdxKey::new(
+                    Attribute::TestAttr.as_ref(),
+                    IndexType::Equality,
+                ))
                 .unwrap();
             assert_eq!(ta_eq_slope, 200);
 
             let tb_eq_slope = be
-                .get_idx_slope(&IdxKey::new("testattrnumber", IndexType::Equality))
+                .get_idx_slope(&IdxKey::new(
+                    Attribute::TestNumber.as_ref(),
+                    IndexType::Equality,
+                ))
                 .unwrap();
             assert_eq!(tb_eq_slope, 133);
 
@@ -3424,12 +3442,12 @@ mod tests {
             lim_deny_allids.unindexed_allow = false;
 
             let mut e: Entry<EntryInit, EntryNew> = Entry::new();
-            e.add_ava(Attribute::UserId.as_ref(), Value::from("william"));
+            e.add_ava(Attribute::UserId, Value::from("william"));
             e.add_ava(
-                Attribute::Uuid.as_ref(),
+                Attribute::Uuid,
                 Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"),
             );
-            e.add_ava(Attribute::NonExist.as_ref(), Value::from("x"));
+            e.add_ava(Attribute::NonExist, Value::from("x"));
             let e = e.into_sealed_new();
             let single_result = be.create(&CID_ZERO, vec![e.clone()]);
 
@@ -3462,12 +3480,12 @@ mod tests {
             lim_deny.search_max_results = 0;
 
             let mut e: Entry<EntryInit, EntryNew> = Entry::new();
-            e.add_ava(Attribute::UserId.as_ref(), Value::from("william"));
+            e.add_ava(Attribute::UserId, Value::from("william"));
             e.add_ava(
-                Attribute::Uuid.as_ref(),
+                Attribute::Uuid,
                 Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"),
             );
-            e.add_ava(Attribute::NonExist.as_ref(), Value::from("x"));
+            e.add_ava(Attribute::NonExist, Value::from("x"));
             let e = e.into_sealed_new();
             let single_result = be.create(&CID_ZERO, vec![e.clone()]);
             assert!(single_result.is_ok());
@@ -3521,13 +3539,13 @@ mod tests {
             lim_deny.search_max_filter_test = 0;
 
             let mut e: Entry<EntryInit, EntryNew> = Entry::new();
-            e.add_ava(Attribute::Name.as_ref(), Value::new_iname("william"));
+            e.add_ava(Attribute::Name, Value::new_iname("william"));
             e.add_ava(
-                Attribute::Uuid.as_ref(),
+                Attribute::Uuid,
                 Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"),
             );
-            e.add_ava(Attribute::NonExist.as_ref(), Value::from("x"));
-            e.add_ava(Attribute::NonExist.as_ref(), Value::from("y"));
+            e.add_ava(Attribute::NonExist, Value::from("x"));
+            e.add_ava(Attribute::NonExist, Value::from("y"));
             let e = e.into_sealed_new();
             let single_result = be.create(&CID_ZERO, vec![e]);
             assert!(single_result.is_ok());
@@ -3593,9 +3611,9 @@ mod tests {
 
         // Create into A
         let mut e: Entry<EntryInit, EntryNew> = Entry::new();
-        e.add_ava(Attribute::UserId.as_ref(), Value::from("william"));
+        e.add_ava(Attribute::UserId, Value::from("william"));
         e.add_ava(
-            Attribute::Uuid.as_ref(),
+            Attribute::Uuid,
             Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"),
         );
         let e = e.into_sealed_new();
@@ -3617,9 +3635,9 @@ mod tests {
 
         // Create into B
         let mut e: Entry<EntryInit, EntryNew> = Entry::new();
-        e.add_ava(Attribute::UserId.as_ref(), Value::from("claire"));
+        e.add_ava(Attribute::UserId, Value::from("claire"));
         e.add_ava(
-            Attribute::Uuid.as_ref(),
+            Attribute::Uuid,
             Value::from("0c680959-0944-47d6-9dea-53304d124266"),
         );
         let e = e.into_sealed_new();

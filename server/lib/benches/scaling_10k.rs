@@ -40,15 +40,12 @@ pub fn scaling_user_create_single(c: &mut Criterion) {
                                 let mut idms_prox_write = idms.proxy_write(ct).await;
                                 let name = format!("testperson_{counter}");
                                 let e1 = entry_init!(
-                                    (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-                                    (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
-                                    (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
-                                    (Attribute::Name.as_ref(), Value::new_iname(&name)),
-                                    (
-                                        Attribute::Description.as_ref(),
-                                        Value::new_utf8s("criterion")
-                                    ),
-                                    (Attribute::DisplayName.as_ref(), Value::new_utf8s(&name))
+                                    (Attribute::Class, EntryClass::Object.to_value()),
+                                    (Attribute::Class, EntryClass::Person.to_value()),
+                                    (Attribute::Class, EntryClass::Account.to_value()),
+                                    (Attribute::Name, Value::new_iname(&name)),
+                                    (Attribute::Description, Value::new_utf8s("criterion")),
+                                    (Attribute::DisplayName, Value::new_utf8s(&name))
                                 );
 
                                 let cr = idms_prox_write.qs_write.internal_create(vec![e1]);
@@ -84,15 +81,12 @@ pub fn scaling_user_create_batched(c: &mut Criterion) {
                     .map(|i| {
                         let name = format!("testperson_{i}");
                         entry_init!(
-                            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-                            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
-                            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
-                            (Attribute::Name.as_ref(), Value::new_iname(&name)),
-                            (
-                                Attribute::Description.as_ref(),
-                                Value::new_utf8s("criterion")
-                            ),
-                            (Attribute::DisplayName.as_ref(), Value::new_utf8s(&name))
+                            (Attribute::Class, EntryClass::Object.to_value()),
+                            (Attribute::Class, EntryClass::Person.to_value()),
+                            (Attribute::Class, EntryClass::Account.to_value()),
+                            (Attribute::Name, Value::new_iname(&name)),
+                            (Attribute::Description, Value::new_utf8s("criterion")),
+                            (Attribute::DisplayName, Value::new_utf8s(&name))
                         )
                     })
                     .collect();

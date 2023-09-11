@@ -631,25 +631,25 @@ mod test {
         // and wonders to this line of code I'm sorry to have wasted your time
         name.truncate(14);
         entry_init!(
-            (ATTR_CLASS, EntryClass::Object.to_value()),
-            (ATTR_CLASS, EntryClass::Account.to_value()),
-            (ATTR_CLASS, EntryClass::Person.to_value()),
-            (ATTR_NAME, Value::new_iname(&name)),
-            (ATTR_UUID, Value::Uuid(uuid)),
-            (ATTR_DESCRIPTION, Value::new_utf8s("some valid user")),
-            (ATTR_DISPLAYNAME, Value::new_utf8s("Some valid user"))
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Name, Value::new_iname(&name)),
+            (Attribute::Uuid, Value::Uuid(uuid)),
+            (Attribute::Description, Value::new_utf8s("some valid user")),
+            (Attribute::DisplayName, Value::new_utf8s("Some valid user"))
         )
     }
 
     fn create_invalid_user_account(uuid: Uuid) -> EntryInitNew {
         entry_init!(
-            (ATTR_CLASS, EntryClass::Object.to_value()),
-            (ATTR_CLASS, EntryClass::Account.to_value()),
-            (ATTR_CLASS, EntryClass::ServiceAccount.to_value()),
-            (ATTR_NAME, Value::new_iname("invalid_user")),
-            (ATTR_UUID, Value::Uuid(uuid)),
-            (ATTR_DESCRIPTION, Value::new_utf8s("invalid_user")),
-            (ATTR_DISPLAYNAME, Value::new_utf8s("Invalid user"))
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::ServiceAccount.to_value()),
+            (Attribute::Name, Value::new_iname("invalid_user")),
+            (Attribute::Uuid, Value::Uuid(uuid)),
+            (Attribute::Description, Value::new_utf8s("invalid_user")),
+            (Attribute::DisplayName, Value::new_utf8s("Invalid user"))
         )
     }
 }

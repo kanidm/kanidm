@@ -654,8 +654,12 @@ pub trait IdmServerTransaction<'a> {
 
         let within_valid_window = Account::check_within_valid_time(
             ct,
-            entry.get_ava_single_datetime("account_valid_from").as_ref(),
-            entry.get_ava_single_datetime("account_expire").as_ref(),
+            entry
+                .get_ava_single_datetime(Attribute::AccountValidFrom.as_ref())
+                .as_ref(),
+            entry
+                .get_ava_single_datetime(Attribute::AccountExpire.as_ref())
+                .as_ref(),
         );
 
         if !within_valid_window {
@@ -668,11 +672,11 @@ pub trait IdmServerTransaction<'a> {
             // We enforce both sessions are present in case of inconsistency
             // that may occur with replication.
             let oauth2_session_valid = entry
-                .get_ava_as_oauth2session_map("oauth2_session")
+                .get_ava_as_oauth2session_map(Attribute::OAuth2Session.as_ref())
                 .map(|map| map.get(&session_id).is_some())
                 .unwrap_or(false);
             let uat_session_valid = entry
-                .get_ava_as_session_map("user_auth_token_session")
+                .get_ava_as_session_map(Attribute::UserAuthTokenSession.as_ref())
                 .map(|map| map.get(&parent_session_id).is_some())
                 .unwrap_or(false);
 
@@ -2673,20 +2677,17 @@ mod tests {
         assert!(idms_prox_write.qs_write.modify(&me_posix).is_ok());
         // Add a posix group that has the admin as a member.
         let e: Entry<EntryInit, EntryNew> = entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Group.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::PosixGroup.to_value()),
-            (Attribute::Name.as_ref(), Value::new_iname("testgroup")),
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Group.to_value()),
+            (Attribute::Class, EntryClass::PosixGroup.to_value()),
+            (Attribute::Name, Value::new_iname("testgroup")),
             (
-                "uuid",
+                Attribute::Uuid,
                 Value::Uuid(uuid::uuid!("01609135-a1c4-43d5-966b-a28227644445"))
             ),
+            (Attribute::Description, Value::new_utf8s("testgroup")),
             (
-                Attribute::Description.as_ref(),
-                Value::new_utf8s("testgroup")
-            ),
-            (
-                "member",
+                Attribute::Member,
                 Value::Refer(uuid::uuid!("00000000-0000-0000-0000-000000000000"))
             )
         );
@@ -3986,22 +3987,13 @@ mod tests {
 
         // Create a service account
         let e = entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
-            (
-                Attribute::Class.as_ref(),
-                EntryClass::ServiceAccount.to_value()
-            ),
-            (Attribute::Name.as_ref(), Value::new_iname("testaccount")),
-            (Attribute::Uuid.as_ref(), Value::Uuid(target_uuid)),
-            (
-                Attribute::Description.as_ref(),
-                Value::new_utf8s("testaccount")
-            ),
-            (
-                Attribute::DisplayName.as_ref(),
-                Value::new_utf8s("Test Account")
-            )
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::ServiceAccount.to_value()),
+            (Attribute::Name, Value::new_iname("testaccount")),
+            (Attribute::Uuid, Value::Uuid(target_uuid)),
+            (Attribute::Description, Value::new_utf8s("testaccount")),
+            (Attribute::DisplayName, Value::new_utf8s("Test Account"))
         );
 
         let ce = CreateEvent::new_internal(vec![e]);

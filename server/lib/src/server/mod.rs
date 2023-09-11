@@ -1664,12 +1664,12 @@ mod tests {
         let t_uuid = Uuid::new_v4();
         assert!(server_txn
             .internal_create(vec![entry_init!(
-                (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-                (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
-                (Attribute::Name.as_ref(), Value::new_iname("testperson1")),
-                (Attribute::Uuid.as_ref(), Value::Uuid(t_uuid)),
-                ("description", Value::new_utf8s("testperson1")),
-                ("displayname", Value::new_utf8s("testperson1"))
+                (Attribute::Class, EntryClass::Object.to_value()),
+                (Attribute::Class, EntryClass::Person.to_value()),
+                (Attribute::Name, Value::new_iname("testperson1")),
+                (Attribute::Uuid, Value::Uuid(t_uuid)),
+                (Attribute::Description, Value::new_utf8s("testperson1")),
+                (Attribute::DisplayName, Value::new_utf8s("testperson1"))
             ),])
             .is_ok());
 
@@ -1700,13 +1700,13 @@ mod tests {
         let t_uuid = Uuid::new_v4();
         assert!(server_txn
             .internal_create(vec![entry_init!(
-                (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+                (Attribute::Class, EntryClass::Object.to_value()),
+                (Attribute::Class, EntryClass::ExtensibleObject.to_value()),
+                (Attribute::Uuid, Value::Uuid(t_uuid)),
                 (
-                    Attribute::Class.as_ref(),
-                    EntryClass::ExtensibleObject.to_value()
-                ),
-                (Attribute::Uuid.as_ref(), Value::Uuid(t_uuid)),
-                ("sync_external_id", Value::new_iutf8("uid=testperson"))
+                    Attribute::SyncExternalId,
+                    Value::new_iutf8("uid=testperson")
+                )
             ),])
             .is_ok());
 
@@ -1729,16 +1729,16 @@ mod tests {
         let mut server_txn = server.write(duration_from_epoch_now()).await;
 
         let e1 = entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
-            (Attribute::Name.as_ref(), Value::new_iname("testperson1")),
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Name, Value::new_iname("testperson1")),
             (
-                "uuid",
+                Attribute::Uuid,
                 Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
             ),
-            ("description", Value::new_utf8s("testperson1")),
-            ("displayname", Value::new_utf8s("testperson1"))
+            (Attribute::Description, Value::new_utf8s("testperson1")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson1"))
         );
         let ce = CreateEvent::new_internal(vec![e1]);
         let cr = server_txn.create(&ce);
@@ -1762,16 +1762,16 @@ mod tests {
         let mut server_txn = server.write(duration_from_epoch_now()).await;
 
         let e1 = entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
-            (Attribute::Name.as_ref(), Value::new_iname("testperson1")),
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Name, Value::new_iname("testperson1")),
             (
-                "uuid",
+                Attribute::Uuid,
                 Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
             ),
-            ("description", Value::new_utf8s("testperson")),
-            ("displayname", Value::new_utf8s("testperson1"))
+            (Attribute::Description, Value::new_utf8s("testperson")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson1"))
         );
         let ce = CreateEvent::new_internal(vec![e1]);
         let cr = server_txn.create(&ce);
@@ -1794,15 +1794,15 @@ mod tests {
     async fn test_clone_value(server: &QueryServer) {
         let mut server_txn = server.write(duration_from_epoch_now()).await;
         let e1 = entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
-            (Attribute::Name.as_ref(), Value::new_iname("testperson1")),
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Name, Value::new_iname("testperson1")),
             (
-                "uuid",
+                Attribute::Uuid,
                 Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
             ),
-            ("description", Value::new_utf8s("testperson1")),
-            ("displayname", Value::new_utf8s("testperson1"))
+            (Attribute::Description, Value::new_utf8s("testperson1")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson1"))
         );
         let ce = CreateEvent::new_internal(vec![e1]);
         let cr = server_txn.create(&ce);
@@ -1834,26 +1834,26 @@ mod tests {
     #[qs_test]
     async fn test_dynamic_schema_class(server: &QueryServer) {
         let e1 = entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::TestClass.to_value()),
-            (Attribute::Name.as_ref(), Value::new_iname("testobj1")),
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::TestClass.to_value()),
+            (Attribute::Name, Value::new_iname("testobj1")),
             (
-                "uuid",
+                Attribute::Uuid,
                 Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
             )
         );
 
         // Class definition
         let e_cd = entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::ClassType.to_value()),
-            ("classname", EntryClass::TestClass.to_value()),
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::ClassType.to_value()),
+            (Attribute::ClassName, EntryClass::TestClass.to_value()),
             (
-                "uuid",
+                Attribute::Uuid,
                 Value::Uuid(uuid!("cfcae205-31c3-484b-8ced-667d1709c5e3"))
             ),
-            ("description", Value::new_utf8s("Test Class")),
-            ("may", Value::new_iutf8(Attribute::Name.as_ref()))
+            (Attribute::Description, Value::new_utf8s("Test Class")),
+            (Attribute::May, Attribute::Name.to_value())
         );
         let mut server_txn = server.write(duration_from_epoch_now()).await;
         // Add a new class.
@@ -1906,38 +1906,35 @@ mod tests {
     #[qs_test]
     async fn test_dynamic_schema_attr(server: &QueryServer) {
         let e1 = entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::ExtensibleObject.to_value()),
+            (Attribute::Name, Value::new_iname("testobj1")),
             (
-                Attribute::Class.as_ref(),
-                EntryClass::ExtensibleObject.to_value()
-            ),
-            (Attribute::Name.as_ref(), Value::new_iname("testobj1")),
-            (
-                "uuid",
+                Attribute::Uuid,
                 Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
             ),
-            ("testattr", Value::new_utf8s("test"))
+            (Attribute::TestAttr, Value::new_utf8s("test"))
         );
 
         // Attribute definition
         let e_ad = entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::AttributeType.to_value()),
             (
-                Attribute::Class.as_ref(),
-                EntryClass::AttributeType.to_value()
-            ),
-            (
-                "uuid",
+                Attribute::Uuid,
                 Value::Uuid(uuid!("cfcae205-31c3-484b-8ced-667d1709c5e3"))
             ),
             (
-                Attribute::AttributeName.as_ref(),
-                Value::new_iutf8("testattr")
+                Attribute::AttributeName,
+                Value::new_iutf8(Attribute::TestAttr.as_ref())
             ),
-            ("description", Value::new_utf8s("Test Attribute")),
-            ("multivalue", Value::new_bool(false)),
-            ("unique", Value::new_bool(false)),
-            ("syntax", Value::new_syntaxs("UTF8STRING").expect("syntax"))
+            (Attribute::Description, Value::new_utf8s("Test Attribute")),
+            (Attribute::MultiValue, Value::new_bool(false)),
+            (Attribute::Unique, Value::new_bool(false)),
+            (
+                Attribute::Syntax,
+                Value::new_syntaxs("UTF8STRING").expect("syntax")
+            )
         );
 
         let mut server_txn = server.write(duration_from_epoch_now()).await;
@@ -1966,7 +1963,7 @@ mod tests {
         // delete the attr
         let de_attr = DeleteEvent::new_internal_invalid(filter!(f_eq(
             Attribute::AttributeName,
-            PartialValue::new_iutf8("testattr")
+            Attribute::TestAttr.to_partialvalue()
         )));
         assert!(server_txn.delete(&de_attr).is_ok());
         // Commit
@@ -1985,7 +1982,10 @@ mod tests {
         let testobj1 = server_txn
             .internal_search_uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
             .expect("failed");
-        assert!(testobj1.attribute_equality("testattr", &PartialValue::new_utf8s("test")));
+        assert!(testobj1.attribute_equality(
+            Attribute::TestAttr.as_ref(),
+            &PartialValue::new_utf8s("test")
+        ));
 
         server_txn.commit().expect("should not fail");
         // Commit.

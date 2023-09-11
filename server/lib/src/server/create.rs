@@ -184,26 +184,20 @@ mod tests {
         let se1 = SearchEvent::new_impersonate_entry(admin, filt);
 
         let mut e = entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
-            (Attribute::Name.as_ref(), Value::new_iname("testperson")),
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Name, Value::new_iname("testperson")),
             (
-                Attribute::Spn.as_ref(),
+                Attribute::Spn,
                 Value::new_spn_str("testperson", "example.com")
             ),
             (
-                Attribute::Uuid.as_ref(),
+                Attribute::Uuid,
                 Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
             ),
-            (
-                Attribute::Description.as_ref(),
-                Value::new_utf8s("testperson")
-            ),
-            (
-                Attribute::DisplayName.as_ref(),
-                Value::new_utf8s("testperson")
-            )
+            (Attribute::Description, Value::new_utf8s("testperson")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson"))
         );
 
         let ce = CreateEvent::new_internal(vec![e.clone()]);
@@ -219,24 +213,33 @@ mod tests {
         assert!(r2.len() == 1);
 
         // We apply some member-of in the server now, so we add these before we seal.
-        e.add_ava(Attribute::Class.as_ref(), EntryClass::MemberOf.into());
-        e.add_ava("memberof", Value::Refer(UUID_IDM_ALL_PERSONS));
-        e.add_ava("directmemberof", Value::Refer(UUID_IDM_ALL_PERSONS));
-        e.add_ava("memberof", Value::Refer(UUID_IDM_ALL_ACCOUNTS));
-        e.add_ava("directmemberof", Value::Refer(UUID_IDM_ALL_ACCOUNTS));
+        e.add_ava(Attribute::Class, EntryClass::MemberOf.into());
+        e.add_ava(Attribute::MemberOf, Value::Refer(UUID_IDM_ALL_PERSONS));
+        e.add_ava(
+            Attribute::DirectMemberOf,
+            Value::Refer(UUID_IDM_ALL_PERSONS),
+        );
+        e.add_ava(Attribute::MemberOf, Value::Refer(UUID_IDM_ALL_ACCOUNTS));
+        e.add_ava(
+            Attribute::DirectMemberOf,
+            Value::Refer(UUID_IDM_ALL_ACCOUNTS),
+        );
         // we also add the name_history ava!
         e.add_ava(
-            Attribute::NameHistory.as_ref(),
+            Attribute::NameHistory,
             Value::AuditLogString(server_txn.get_txn_cid().clone(), "testperson".to_string()),
         );
         // this is kinda ugly but since ecdh keys are generated we don't have any other way
         let key = r2
             .first()
             .unwrap()
-            .get_ava_single_eckey_private(ATTR_ID_VERIFICATION_ECKEY)
+            .get_ava_single_eckey_private(Attribute::IdVerificationEcKey.as_ref())
             .unwrap();
 
-        e.add_ava(ATTR_ID_VERIFICATION_ECKEY, Value::EcKeyPrivate(key.clone()));
+        e.add_ava(
+            Attribute::IdVerificationEcKey,
+            Value::EcKeyPrivate(key.clone()),
+        );
 
         let expected = vec![Arc::new(e.into_sealed_committed())];
 
@@ -264,17 +267,11 @@ mod tests {
         let se_b = SearchEvent::new_impersonate_entry(admin, filt);
 
         let e = entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
-            (Attribute::Name.as_ref(), Value::new_iname("testperson")),
-            (
-                Attribute::Description.as_ref(),
-                Value::new_utf8s("testperson")
-            ),
-            (
-                Attribute::DisplayName.as_ref(),
-                Value::new_utf8s("testperson")
-            )
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Name, Value::new_iname("testperson")),
+            (Attribute::Description, Value::new_utf8s("testperson")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson"))
         );
 
         let cr = server_a_txn.internal_create(vec![e.clone()]);

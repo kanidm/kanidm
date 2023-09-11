@@ -10,6 +10,7 @@ use kanidmd_lib::prelude::{Attribute, EntryClass};
 use kanidmd_testkit::*;
 use reqwest::header::CONTENT_TYPE;
 
+// TODO: feed this off attrs
 static USER_READABLE_ATTRS: [&str; 9] = [
     "name",
     "spn",
@@ -21,6 +22,7 @@ static USER_READABLE_ATTRS: [&str; 9] = [
     "loginshell",
     ATTR_LDAP_SSH_PUBLICKEY,
 ];
+// TODO: feed this off attrs
 static SELF_WRITEABLE_ATTRS: [&str; 7] = [
     "name",
     "displayname",

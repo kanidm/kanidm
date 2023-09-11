@@ -277,12 +277,12 @@ mod tests {
         assert!(server_txn
             .internal_create(vec![
                 entry_init!(
-                    (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-                    (Attribute::Uuid.as_ref(), Value::Uuid(uuid_a))
+                    (Attribute::Class, EntryClass::Object.to_value()),
+                    (Attribute::Uuid, Value::Uuid(uuid_a))
                 ),
                 entry_init!(
-                    (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-                    (Attribute::Uuid.as_ref(), Value::Uuid(uuid_b))
+                    (Attribute::Class, EntryClass::Object.to_value()),
+                    (Attribute::Uuid, Value::Uuid(uuid_b))
                 ),
             ])
             .is_ok());

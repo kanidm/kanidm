@@ -245,18 +245,12 @@ async fn test_repl_increment_basic_entry_add(server_a: &QueryServer, server_b: &
     let t_uuid = Uuid::new_v4();
     assert!(server_b_txn
         .internal_create(vec![entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
-            (Attribute::Name.as_ref(), Value::new_iname("testperson1")),
-            (Attribute::Uuid.as_ref(), Value::Uuid(t_uuid)),
-            (
-                Attribute::Description.as_ref(),
-                Value::new_utf8s("testperson1")
-            ),
-            (
-                Attribute::DisplayName.as_ref(),
-                Value::new_utf8s("testperson1")
-            )
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Name, Value::new_iname("testperson1")),
+            (Attribute::Uuid, Value::Uuid(t_uuid)),
+            (Attribute::Description, Value::new_utf8s("testperson1")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson1"))
         ),])
         .is_ok());
     server_b_txn.commit().expect("Failed to commit");
@@ -354,18 +348,12 @@ async fn test_repl_increment_basic_entry_recycle(server_a: &QueryServer, server_
     let t_uuid = Uuid::new_v4();
     assert!(server_b_txn
         .internal_create(vec![entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
-            (Attribute::Name.as_ref(), Value::new_iname("testperson1")),
-            (Attribute::Uuid.as_ref(), Value::Uuid(t_uuid)),
-            (
-                Attribute::Description.as_ref(),
-                Value::new_utf8s("testperson1")
-            ),
-            (
-                Attribute::DisplayName.as_ref(),
-                Value::new_utf8s("testperson1")
-            )
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Name, Value::new_iname("testperson1")),
+            (Attribute::Uuid, Value::Uuid(t_uuid)),
+            (Attribute::Description, Value::new_utf8s("testperson1")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson1"))
         ),])
         .is_ok());
 
@@ -418,18 +406,12 @@ async fn test_repl_increment_basic_entry_tombstone(server_a: &QueryServer, serve
     let t_uuid = Uuid::new_v4();
     assert!(server_b_txn
         .internal_create(vec![entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
-            (Attribute::Name.as_ref(), Value::new_iname("testperson1")),
-            (Attribute::Uuid.as_ref(), Value::Uuid(t_uuid)),
-            (
-                Attribute::Description.as_ref(),
-                Value::new_utf8s("testperson1")
-            ),
-            (
-                Attribute::DisplayName.as_ref(),
-                Value::new_utf8s("testperson1")
-            )
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Name, Value::new_iname("testperson1")),
+            (Attribute::Uuid, Value::Uuid(t_uuid)),
+            (Attribute::Description, Value::new_utf8s("testperson1")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson1"))
         ),])
         .is_ok());
 
@@ -494,18 +476,12 @@ async fn test_repl_increment_consumer_lagging_tombstone(
     let t_uuid = Uuid::new_v4();
     assert!(server_b_txn
         .internal_create(vec![entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
-            (Attribute::Name.as_ref(), Value::new_iname("testperson1")),
-            (Attribute::Uuid.as_ref(), Value::Uuid(t_uuid)),
-            (
-                Attribute::Description.as_ref(),
-                Value::new_utf8s("testperson1")
-            ),
-            (
-                Attribute::DisplayName.as_ref(),
-                Value::new_utf8s("testperson1")
-            )
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Name, Value::new_iname("testperson1")),
+            (Attribute::Uuid, Value::Uuid(t_uuid)),
+            (Attribute::Description, Value::new_utf8s("testperson1")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson1"))
         ),])
         .is_ok());
 
@@ -603,18 +579,12 @@ async fn test_repl_increment_basic_bidirectional_write(
     let t_uuid = Uuid::new_v4();
     assert!(server_b_txn
         .internal_create(vec![entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
-            (Attribute::Name.as_ref(), Value::new_iname("testperson1")),
-            (Attribute::Uuid.as_ref(), Value::Uuid(t_uuid)),
-            (
-                Attribute::Description.as_ref(),
-                Value::new_utf8s("testperson1")
-            ),
-            (
-                Attribute::DisplayName.as_ref(),
-                Value::new_utf8s("testperson1")
-            )
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Name, Value::new_iname("testperson1")),
+            (Attribute::Uuid, Value::Uuid(t_uuid)),
+            (Attribute::Description, Value::new_utf8s("testperson1")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson1"))
         ),])
         .is_ok());
     server_b_txn.commit().expect("Failed to commit");
@@ -692,18 +662,12 @@ async fn test_repl_increment_basic_deleted_attr(server_a: &QueryServer, server_b
     let t_uuid = Uuid::new_v4();
     assert!(server_a_txn
         .internal_create(vec![entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
-            (Attribute::Name.as_ref(), Value::new_iname("testperson1")),
-            (Attribute::Uuid.as_ref(), Value::Uuid(t_uuid)),
-            (
-                Attribute::Description.as_ref(),
-                Value::new_utf8s("testperson1")
-            ),
-            (
-                Attribute::DisplayName.as_ref(),
-                Value::new_utf8s("testperson1")
-            )
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Name, Value::new_iname("testperson1")),
+            (Attribute::Uuid, Value::Uuid(t_uuid)),
+            (Attribute::Description, Value::new_utf8s("testperson1")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson1"))
         ),])
         .is_ok());
     server_a_txn.commit().expect("Failed to commit");
@@ -768,18 +732,12 @@ async fn test_repl_increment_simultaneous_bidirectional_write(
     let t_uuid = Uuid::new_v4();
     assert!(server_b_txn
         .internal_create(vec![entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
-            (Attribute::Name.as_ref(), Value::new_iname("testperson1")),
-            (Attribute::Uuid.as_ref(), Value::Uuid(t_uuid)),
-            (
-                Attribute::Description.as_ref(),
-                Value::new_utf8s("testperson1")
-            ),
-            (
-                Attribute::DisplayName.as_ref(),
-                Value::new_utf8s("testperson1")
-            )
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Name, Value::new_iname("testperson1")),
+            (Attribute::Uuid, Value::Uuid(t_uuid)),
+            (Attribute::Description, Value::new_utf8s("testperson1")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson1"))
         ),])
         .is_ok());
     server_b_txn.commit().expect("Failed to commit");
@@ -888,18 +846,12 @@ async fn test_repl_increment_basic_bidirectional_lifecycle(
     let t_uuid = Uuid::new_v4();
     assert!(server_b_txn
         .internal_create(vec![entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
-            (Attribute::Name.as_ref(), Value::new_iname("testperson1")),
-            (Attribute::Uuid.as_ref(), Value::Uuid(t_uuid)),
-            (
-                Attribute::Description.as_ref(),
-                Value::new_utf8s("testperson1")
-            ),
-            (
-                Attribute::DisplayName.as_ref(),
-                Value::new_utf8s("testperson1")
-            )
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Name, Value::new_iname("testperson1")),
+            (Attribute::Uuid, Value::Uuid(t_uuid)),
+            (Attribute::Description, Value::new_utf8s("testperson1")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson1"))
         ),])
         .is_ok());
     server_b_txn.commit().expect("Failed to commit");
@@ -1035,18 +987,12 @@ async fn test_repl_increment_basic_bidirectional_recycle(
     let t_uuid = Uuid::new_v4();
     assert!(server_b_txn
         .internal_create(vec![entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
-            (Attribute::Name.as_ref(), Value::new_iname("testperson1")),
-            (Attribute::Uuid.as_ref(), Value::Uuid(t_uuid)),
-            (
-                Attribute::Description.as_ref(),
-                Value::new_utf8s("testperson1")
-            ),
-            (
-                Attribute::DisplayName.as_ref(),
-                Value::new_utf8s("testperson1")
-            )
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Name, Value::new_iname("testperson1")),
+            (Attribute::Uuid, Value::Uuid(t_uuid)),
+            (Attribute::Description, Value::new_utf8s("testperson1")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson1"))
         ),])
         .is_ok());
     server_b_txn.commit().expect("Failed to commit");
@@ -1167,18 +1113,12 @@ async fn test_repl_increment_basic_bidirectional_tombstone(
     let t_uuid = Uuid::new_v4();
     assert!(server_b_txn
         .internal_create(vec![entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
-            (Attribute::Name.as_ref(), Value::new_iname("testperson1")),
-            (Attribute::Uuid.as_ref(), Value::Uuid(t_uuid)),
-            (
-                Attribute::Description.as_ref(),
-                Value::new_utf8s("testperson1")
-            ),
-            (
-                Attribute::DisplayName.as_ref(),
-                Value::new_utf8s("testperson1")
-            )
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Name, Value::new_iname("testperson1")),
+            (Attribute::Uuid, Value::Uuid(t_uuid)),
+            (Attribute::Description, Value::new_utf8s("testperson1")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson1"))
         ),])
         .is_ok());
     // And then recycle it.
@@ -1277,18 +1217,12 @@ async fn test_repl_increment_creation_uuid_conflict(
     // Now create the same entry on both servers.
     let t_uuid = Uuid::new_v4();
     let e_init = entry_init!(
-        (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-        (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
-        (Attribute::Name.as_ref(), Value::new_iname("testperson1")),
-        (Attribute::Uuid.as_ref(), Value::Uuid(t_uuid)),
-        (
-            Attribute::Description.as_ref(),
-            Value::new_utf8s("testperson1")
-        ),
-        (
-            Attribute::DisplayName.as_ref(),
-            Value::new_utf8s("testperson1")
-        )
+        (Attribute::Class, EntryClass::Object.to_value()),
+        (Attribute::Class, EntryClass::Person.to_value()),
+        (Attribute::Name, Value::new_iname("testperson1")),
+        (Attribute::Uuid, Value::Uuid(t_uuid)),
+        (Attribute::Description, Value::new_utf8s("testperson1")),
+        (Attribute::DisplayName, Value::new_utf8s("testperson1"))
     );
 
     let mut server_b_txn = server_b.write(ct).await;
@@ -1414,18 +1348,12 @@ async fn test_repl_increment_create_tombstone_uuid_conflict(
     // Now create the same entry on both servers.
     let t_uuid = Uuid::new_v4();
     let e_init = entry_init!(
-        (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-        (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
-        (Attribute::Name.as_ref(), Value::new_iname("testperson1")),
-        (Attribute::Uuid.as_ref(), Value::Uuid(t_uuid)),
-        (
-            Attribute::Description.as_ref(),
-            Value::new_utf8s("testperson1")
-        ),
-        (
-            Attribute::DisplayName.as_ref(),
-            Value::new_utf8s("testperson1")
-        )
+        (Attribute::Class, EntryClass::Object.to_value()),
+        (Attribute::Class, EntryClass::Person.to_value()),
+        (Attribute::Name, Value::new_iname("testperson1")),
+        (Attribute::Uuid, Value::Uuid(t_uuid)),
+        (Attribute::Description, Value::new_utf8s("testperson1")),
+        (Attribute::DisplayName, Value::new_utf8s("testperson1"))
     );
 
     let mut server_b_txn = server_b.write(ct).await;
@@ -1513,18 +1441,12 @@ async fn test_repl_increment_create_tombstone_conflict(
     // Now create the same entry on both servers.
     let t_uuid = Uuid::new_v4();
     let e_init = entry_init!(
-        (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-        (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
-        (Attribute::Name.as_ref(), Value::new_iname("testperson1")),
-        (Attribute::Uuid.as_ref(), Value::Uuid(t_uuid)),
-        (
-            Attribute::Description.as_ref(),
-            Value::new_utf8s("testperson1")
-        ),
-        (
-            Attribute::DisplayName.as_ref(),
-            Value::new_utf8s("testperson1")
-        )
+        (Attribute::Class, EntryClass::Object.to_value()),
+        (Attribute::Class, EntryClass::Person.to_value()),
+        (Attribute::Name, Value::new_iname("testperson1")),
+        (Attribute::Uuid, Value::Uuid(t_uuid)),
+        (Attribute::Description, Value::new_utf8s("testperson1")),
+        (Attribute::DisplayName, Value::new_utf8s("testperson1"))
     );
 
     let mut server_b_txn = server_b.write(ct).await;
@@ -1615,18 +1537,12 @@ async fn test_repl_increment_schema_conflict(server_a: &QueryServer, server_b: &
     let t_uuid = Uuid::new_v4();
     assert!(server_b_txn
         .internal_create(vec![entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
-            (Attribute::Name.as_ref(), Value::new_iname("testperson1")),
-            (Attribute::Uuid.as_ref(), Value::Uuid(t_uuid)),
-            (
-                Attribute::Description.as_ref(),
-                Value::new_utf8s("testperson1")
-            ),
-            (
-                Attribute::DisplayName.as_ref(),
-                Value::new_utf8s("testperson1")
-            )
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Name, Value::new_iname("testperson1")),
+            (Attribute::Uuid, Value::Uuid(t_uuid)),
+            (Attribute::Description, Value::new_utf8s("testperson1")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson1"))
         ),])
         .is_ok());
     server_b_txn.commit().expect("Failed to commit");
@@ -1738,18 +1654,12 @@ async fn test_repl_increment_consumer_lagging_attributes(
     let t_uuid = Uuid::new_v4();
     assert!(server_b_txn
         .internal_create(vec![entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
-            (Attribute::Name.as_ref(), Value::new_iname("testperson1")),
-            (Attribute::Uuid.as_ref(), Value::Uuid(t_uuid)),
-            (
-                Attribute::Description.as_ref(),
-                Value::new_utf8s("testperson1")
-            ),
-            (
-                Attribute::DisplayName.as_ref(),
-                Value::new_utf8s("testperson1")
-            )
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Name, Value::new_iname("testperson1")),
+            (Attribute::Uuid, Value::Uuid(t_uuid)),
+            (Attribute::Description, Value::new_utf8s("testperson1")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson1"))
         ),])
         .is_ok());
 
@@ -1869,18 +1779,12 @@ async fn test_repl_increment_consumer_ruv_trim_past_valid(
     let t_uuid = Uuid::new_v4();
     assert!(server_b_txn
         .internal_create(vec![entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
-            (Attribute::Name.as_ref(), Value::new_iname("testperson1")),
-            (Attribute::Uuid.as_ref(), Value::Uuid(t_uuid)),
-            (
-                Attribute::Description.as_ref(),
-                Value::new_utf8s("testperson1")
-            ),
-            (
-                Attribute::DisplayName.as_ref(),
-                Value::new_utf8s("testperson1")
-            )
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Name, Value::new_iname("testperson1")),
+            (Attribute::Uuid, Value::Uuid(t_uuid)),
+            (Attribute::Description, Value::new_utf8s("testperson1")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson1"))
         ),])
         .is_ok());
 
@@ -2012,19 +1916,13 @@ async fn test_repl_increment_domain_rename(server_a: &QueryServer, server_b: &Qu
     let t_uuid = Uuid::new_v4();
     assert!(server_b_txn
         .internal_create(vec![entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
-            (Attribute::Name.as_ref(), Value::new_iname("testperson1")),
-            (Attribute::Uuid.as_ref(), Value::Uuid(t_uuid)),
-            (
-                Attribute::Description.as_ref(),
-                Value::new_utf8s("testperson1")
-            ),
-            (
-                Attribute::DisplayName.as_ref(),
-                Value::new_utf8s("testperson1")
-            )
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Name, Value::new_iname("testperson1")),
+            (Attribute::Uuid, Value::Uuid(t_uuid)),
+            (Attribute::Description, Value::new_utf8s("testperson1")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson1"))
         ),])
         .is_ok());
     server_b_txn.commit().expect("Failed to commit");
@@ -2161,12 +2059,12 @@ async fn test_repl_increment_schema_dynamic(server_a: &QueryServer, server_b: &Q
     let s_uuid = Uuid::new_v4();
     assert!(server_a_txn
         .internal_create(vec![entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::ClassType.to_value()),
-            ("classname", EntryClass::TestClass.to_value()),
-            (Attribute::Uuid.as_ref(), Value::Uuid(s_uuid)),
-            ("description", Value::new_utf8s("Test Class")),
-            ("may", Value::new_iutf8(Attribute::Name.as_ref()))
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::ClassType.to_value()),
+            (Attribute::ClassName, EntryClass::TestClass.to_value()),
+            (Attribute::Uuid, Value::Uuid(s_uuid)),
+            (Attribute::Description, Value::new_utf8s("Test Class")),
+            (Attribute::May, Attribute::Name.to_value())
         )])
         .is_ok());
     // Schema doesn't take effect til after a commit.
@@ -2177,9 +2075,9 @@ async fn test_repl_increment_schema_dynamic(server_a: &QueryServer, server_b: &Q
     let t_uuid = Uuid::new_v4();
     assert!(server_a_txn
         .internal_create(vec![entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::TestClass.to_value()),
-            (Attribute::Uuid.as_ref(), Value::Uuid(t_uuid))
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::TestClass.to_value()),
+            (Attribute::Uuid, Value::Uuid(t_uuid))
         )])
         .is_ok());
 
@@ -2236,30 +2134,24 @@ async fn test_repl_increment_memberof_basic(server_a: &QueryServer, server_b: &Q
     let t_uuid = Uuid::new_v4();
     assert!(server_a_txn
         .internal_create(vec![entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
-            (Attribute::Name.as_ref(), Value::new_iname("testperson1")),
-            (Attribute::Uuid.as_ref(), Value::Uuid(t_uuid)),
-            (
-                Attribute::Description.as_ref(),
-                Value::new_utf8s("testperson1")
-            ),
-            (
-                Attribute::DisplayName.as_ref(),
-                Value::new_utf8s("testperson1")
-            )
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Name, Value::new_iname("testperson1")),
+            (Attribute::Uuid, Value::Uuid(t_uuid)),
+            (Attribute::Description, Value::new_utf8s("testperson1")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson1"))
         ),])
         .is_ok());
 
     let g_uuid = Uuid::new_v4();
     assert!(server_a_txn
         .internal_create(vec![entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Group.to_value()),
-            (Attribute::Name.as_ref(), Value::new_iname("testgroup1")),
-            (Attribute::Uuid.as_ref(), Value::Uuid(g_uuid)),
-            (Attribute::Member.as_ref(), Value::Refer(t_uuid))
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Group.to_value()),
+            (Attribute::Name, Value::new_iname("testgroup1")),
+            (Attribute::Uuid, Value::Uuid(g_uuid)),
+            (Attribute::Member, Value::Refer(t_uuid))
         ),])
         .is_ok());
 
@@ -2322,13 +2214,10 @@ async fn test_repl_increment_memberof_conflict(server_a: &QueryServer, server_b:
 
     assert!(server_b_txn
         .internal_create(vec![entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Group.to_value()),
-            (
-                Attribute::Name.as_ref(),
-                Value::new_iname("testgroup_conflict")
-            ),
-            (Attribute::Uuid.as_ref(), Value::Uuid(g_uuid))
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Group.to_value()),
+            (Attribute::Name, Value::new_iname("testgroup_conflict")),
+            (Attribute::Uuid, Value::Uuid(g_uuid))
         ),])
         .is_ok());
 
@@ -2339,29 +2228,23 @@ async fn test_repl_increment_memberof_conflict(server_a: &QueryServer, server_b:
     let t_uuid = Uuid::new_v4();
     assert!(server_a_txn
         .internal_create(vec![entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
-            (Attribute::Name.as_ref(), Value::new_iname("testperson1")),
-            (Attribute::Uuid.as_ref(), Value::Uuid(t_uuid)),
-            (
-                Attribute::Description.as_ref(),
-                Value::new_utf8s("testperson1")
-            ),
-            (
-                Attribute::DisplayName.as_ref(),
-                Value::new_utf8s("testperson1")
-            )
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Name, Value::new_iname("testperson1")),
+            (Attribute::Uuid, Value::Uuid(t_uuid)),
+            (Attribute::Description, Value::new_utf8s("testperson1")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson1"))
         ),])
         .is_ok());
 
     assert!(server_a_txn
         .internal_create(vec![entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Group.to_value()),
-            (Attribute::Name.as_ref(), Value::new_iname("testgroup1")),
-            (Attribute::Uuid.as_ref(), Value::Uuid(g_uuid)),
-            (Attribute::Member.as_ref(), Value::Refer(t_uuid))
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Group.to_value()),
+            (Attribute::Name, Value::new_iname("testgroup1")),
+            (Attribute::Uuid, Value::Uuid(g_uuid)),
+            (Attribute::Member, Value::Refer(t_uuid))
         ),])
         .is_ok());
 
@@ -2446,30 +2329,24 @@ async fn test_repl_increment_refint_tombstone(server_a: &QueryServer, server_b: 
     let t_uuid = Uuid::new_v4();
     assert!(server_a_txn
         .internal_create(vec![entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
-            (Attribute::Name.as_ref(), Value::new_iname("testperson1")),
-            (Attribute::Uuid.as_ref(), Value::Uuid(t_uuid)),
-            (
-                Attribute::Description.as_ref(),
-                Value::new_utf8s("testperson1")
-            ),
-            (
-                Attribute::DisplayName.as_ref(),
-                Value::new_utf8s("testperson1")
-            )
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Name, Value::new_iname("testperson1")),
+            (Attribute::Uuid, Value::Uuid(t_uuid)),
+            (Attribute::Description, Value::new_utf8s("testperson1")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson1"))
         ),])
         .is_ok());
 
     let g_uuid = Uuid::new_v4();
     assert!(server_a_txn
         .internal_create(vec![entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Group.to_value()),
-            (Attribute::Name.as_ref(), Value::new_iname("testgroup1")),
-            (Attribute::Uuid.as_ref(), Value::Uuid(g_uuid)) // Don't add the membership yet!
-                                                            // (Attribute::Member.as_ref(), Value::Refer(t_uuid))
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Group.to_value()),
+            (Attribute::Name, Value::new_iname("testgroup1")),
+            (Attribute::Uuid, Value::Uuid(g_uuid)) // Don't add the membership yet!
+                                                   // (Attribute::Member, Value::Refer(t_uuid))
         ),])
         .is_ok());
 
@@ -2562,22 +2439,13 @@ async fn test_repl_increment_refint_conflict(server_a: &QueryServer, server_b: &
     let t_uuid = Uuid::new_v4();
     assert!(server_b_txn
         .internal_create(vec![entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
-            (
-                Attribute::Name.as_ref(),
-                Value::new_iname("testperson_conflict")
-            ),
-            (Attribute::Uuid.as_ref(), Value::Uuid(t_uuid)),
-            (
-                Attribute::Description.as_ref(),
-                Value::new_utf8s("testperson1")
-            ),
-            (
-                Attribute::DisplayName.as_ref(),
-                Value::new_utf8s("testperson1")
-            )
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Name, Value::new_iname("testperson_conflict")),
+            (Attribute::Uuid, Value::Uuid(t_uuid)),
+            (Attribute::Description, Value::new_utf8s("testperson1")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson1"))
         ),])
         .is_ok());
     server_b_txn.commit().expect("Failed to commit");
@@ -2586,30 +2454,24 @@ async fn test_repl_increment_refint_conflict(server_a: &QueryServer, server_b: &
     let mut server_a_txn = server_a.write(duration_from_epoch_now()).await;
     assert!(server_a_txn
         .internal_create(vec![entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
-            (Attribute::Name.as_ref(), Value::new_iname("testperson1")),
-            (Attribute::Uuid.as_ref(), Value::Uuid(t_uuid)),
-            (
-                Attribute::Description.as_ref(),
-                Value::new_utf8s("testperson1")
-            ),
-            (
-                Attribute::DisplayName.as_ref(),
-                Value::new_utf8s("testperson1")
-            )
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Name, Value::new_iname("testperson1")),
+            (Attribute::Uuid, Value::Uuid(t_uuid)),
+            (Attribute::Description, Value::new_utf8s("testperson1")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson1"))
         ),])
         .is_ok());
 
     let g_uuid = Uuid::new_v4();
     assert!(server_a_txn
         .internal_create(vec![entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Group.to_value()),
-            (Attribute::Name.as_ref(), Value::new_iname("testgroup1")),
-            (Attribute::Uuid.as_ref(), Value::Uuid(g_uuid)),
-            (Attribute::Member.as_ref(), Value::Refer(t_uuid))
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Group.to_value()),
+            (Attribute::Name, Value::new_iname("testgroup1")),
+            (Attribute::Uuid, Value::Uuid(g_uuid)),
+            (Attribute::Member, Value::Refer(t_uuid))
         ),])
         .is_ok());
 
@@ -2685,30 +2547,24 @@ async fn test_repl_increment_refint_delete_to_member_holder(
     let t_uuid = Uuid::new_v4();
     assert!(server_a_txn
         .internal_create(vec![entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
-            (Attribute::Name.as_ref(), Value::new_iname("testperson1")),
-            (Attribute::Uuid.as_ref(), Value::Uuid(t_uuid)),
-            (
-                Attribute::Description.as_ref(),
-                Value::new_utf8s("testperson1")
-            ),
-            (
-                Attribute::DisplayName.as_ref(),
-                Value::new_utf8s("testperson1")
-            )
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Name, Value::new_iname("testperson1")),
+            (Attribute::Uuid, Value::Uuid(t_uuid)),
+            (Attribute::Description, Value::new_utf8s("testperson1")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson1"))
         ),])
         .is_ok());
 
     let g_uuid = Uuid::new_v4();
     assert!(server_a_txn
         .internal_create(vec![entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Group.to_value()),
-            (Attribute::Name.as_ref(), Value::new_iname("testgroup1")),
-            (Attribute::Uuid.as_ref(), Value::Uuid(g_uuid)) // Don't add the membership yet!
-                                                            // (Attribute::Member.as_ref(), Value::Refer(t_uuid))
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Group.to_value()),
+            (Attribute::Name, Value::new_iname("testgroup1")),
+            (Attribute::Uuid, Value::Uuid(g_uuid)) // Don't add the membership yet!
+                                                   // (Attribute::Member, Value::Refer(t_uuid))
         ),])
         .is_ok());
 

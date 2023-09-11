@@ -144,12 +144,12 @@ fn search_oauth2_filter_entry<'a>(
                 security_access!(entry = ?entry.get_uuid(), ident = ?iuser.entry.get_uuid2rdn(), "ident is a memberof a group granted an oauth2 scope by this entry");
 
                 return AccessResult::Allow(btreeset!(
-                    "class",
-                    "displayname",
-                    "uuid",
-                    "oauth2_rs_name",
-                    "oauth2_rs_origin",
-                    "oauth2_rs_origin_landing"
+                    ATTR_CLASS.clone(),
+                    ATTR_DISPLAYNAME.clone(),
+                    ATTR_UUID.clone(),
+                    ATTR_OAUTH2_RS_NAME.clone(),
+                    ATTR_OAUTH2_RS_ORIGIN.clone(),
+                    ATTR_OAUTH2_RS_ORIGIN_LANDING.clone()
                 ));
             }
             AccessResult::Ignore

@@ -663,10 +663,10 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             .copied()
             .map(|u| {
                 entry_init!(
-                    (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-                    (Attribute::Class.as_ref(), EntryClass::SyncObject.to_value()),
-                    (Attribute::SyncParentUuid.as_ref(), Value::Refer(sync_uuid)),
-                    (Attribute::Uuid.as_ref(), Value::Uuid(u))
+                    (Attribute::Class, EntryClass::Object.to_value()),
+                    (Attribute::Class, EntryClass::SyncObject.to_value()),
+                    (Attribute::SyncParentUuid, Value::Refer(sync_uuid)),
+                    (Attribute::Uuid, Value::Uuid(u))
                 )
             })
             .collect();
@@ -1513,15 +1513,12 @@ mod tests {
         let sync_uuid = Uuid::new_v4();
 
         let e1 = entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::SyncAccount.to_value()),
+            (Attribute::Name, Value::new_iname("test_scim_sync")),
+            (Attribute::Uuid, Value::Uuid(sync_uuid)),
             (
-                Attribute::Class.as_ref(),
-                EntryClass::SyncAccount.to_value()
-            ),
-            (Attribute::Name.as_ref(), Value::new_iname("test_scim_sync")),
-            (Attribute::Uuid.as_ref(), Value::Uuid(sync_uuid)),
-            (
-                Attribute::Description.as_ref(),
+                Attribute::Description,
                 Value::new_utf8s("A test sync agreement")
             )
         );
@@ -1586,15 +1583,12 @@ mod tests {
         let sync_uuid = Uuid::new_v4();
 
         let e1 = entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::SyncAccount.to_value()),
+            (Attribute::Name, Value::new_iname("test_scim_sync")),
+            (Attribute::Uuid, Value::Uuid(sync_uuid)),
             (
-                Attribute::Class.as_ref(),
-                EntryClass::SyncAccount.to_value()
-            ),
-            (Attribute::Name.as_ref(), Value::new_iname("test_scim_sync")),
-            (Attribute::Uuid.as_ref(), Value::Uuid(sync_uuid)),
-            (
-                Attribute::Description.as_ref(),
+                Attribute::Description,
                 Value::new_utf8s("A test sync agreement")
             )
         );
@@ -1713,15 +1707,12 @@ mod tests {
         let sync_uuid = Uuid::new_v4();
 
         let e1 = entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::SyncAccount.to_value()),
+            (Attribute::Name, Value::new_iname("test_scim_sync")),
+            (Attribute::Uuid, Value::Uuid(sync_uuid)),
             (
-                Attribute::Class.as_ref(),
-                EntryClass::SyncAccount.to_value()
-            ),
-            (Attribute::Name.as_ref(), Value::new_iname("test_scim_sync")),
-            (Attribute::Uuid.as_ref(), Value::Uuid(sync_uuid)),
-            (
-                Attribute::Description.as_ref(),
+                Attribute::Description,
                 Value::new_utf8s("A test sync agreement")
             )
         );
@@ -1835,8 +1826,8 @@ mod tests {
         assert!(idms_prox_write
             .qs_write
             .internal_create(vec![entry_init!(
-                (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-                (Attribute::Uuid.as_ref(), Value::Uuid(user_sync_uuid))
+                (Attribute::Class, EntryClass::Object.to_value()),
+                (Attribute::Uuid, Value::Uuid(user_sync_uuid))
             )])
             .is_ok());
 
@@ -2189,8 +2180,8 @@ mod tests {
         assert!(idms_prox_write
             .qs_write
             .internal_create(vec![entry_init!(
-                (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-                (Attribute::Uuid.as_ref(), Value::Uuid(user_sync_uuid))
+                (Attribute::Class, EntryClass::Object.to_value()),
+                (Attribute::Uuid, Value::Uuid(user_sync_uuid))
             )])
             .is_ok());
 
@@ -2226,8 +2217,8 @@ mod tests {
         assert!(idms_prox_write
             .qs_write
             .internal_create(vec![entry_init!(
-                (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-                (Attribute::Uuid.as_ref(), Value::Uuid(user_sync_uuid))
+                (Attribute::Class, EntryClass::Object.to_value()),
+                (Attribute::Uuid, Value::Uuid(user_sync_uuid))
             )])
             .is_ok());
 

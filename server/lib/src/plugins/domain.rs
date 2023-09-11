@@ -94,28 +94,28 @@ impl Domain {
                 }
 
                 // Setup the minimum functional level if one is not set already.
-                if !e.attribute_pres("version") {
+                if !e.attribute_pres(Attribute::Version.as_ref()) {
                     let n = Value::Uint32(DOMAIN_MIN_LEVEL);
-                    e.set_ava("version", once(n));
+                    e.set_ava(Attribute::Version.as_ref(), once(n));
                     trace!("plugin_domain: Applying domain version transform");
                 }
 
                 // create the domain_display_name if it's missing
-                if !e.attribute_pres("domain_display_name") {
+                if !e.attribute_pres(Attribute::DomainDisplayName.as_ref()) {
                     let domain_display_name = Value::new_utf8(format!("Kanidm {}", qs.get_domain_name()));
                     security_info!("plugin_domain: setting default domain_display_name to {:?}", domain_display_name);
 
-                    e.set_ava("domain_display_name", once(domain_display_name));
+                    e.set_ava(Attribute::DomainDisplayName.into(), once(domain_display_name));
                 }
 
-                if !e.attribute_pres("fernet_private_key_str") {
+                if !e.attribute_pres(Attribute::FernetPrivateKeyStr.as_ref()) {
                     security_info!("regenerating domain token encryption key");
                     let k = fernet::Fernet::generate_key();
                     let v = Value::new_secret_str(&k);
-                    e.add_ava("fernet_private_key_str", v);
+                    e.add_ava(Attribute::FernetPrivateKeyStr, v);
                 }
 
-                if !e.attribute_pres("es256_private_key_der") {
+                if !e.attribute_pres(Attribute::Es256PrivateKeyDer.as_ref()) {
                     security_info!("regenerating domain es256 private key");
                     let der = JwsSigner::generate_es256()
                         .and_then(|jws| jws.private_key_to_der())
@@ -124,16 +124,16 @@ impl Domain {
                             OperationError::CryptographyError
                         })?;
                     let v = Value::new_privatebinary(&der);
-                    e.add_ava("es256_private_key_der", v);
+                    e.add_ava(Attribute::Es256PrivateKeyDer, v);
                 }
 
-                if !e.attribute_pres(ATTR_PRIVATE_COOKIE_KEY) {
+                if !e.attribute_pres(Attribute::PrivateCookieKey.as_ref()) {
                     security_info!("regenerating domain cookie key");
                     let mut key = [0; 64];
                     let mut rng = StdRng::from_entropy();
                     rng.fill(&mut key);
                     let v = Value::new_privatebinary(&key);
-                    e.add_ava(ATTR_PRIVATE_COOKIE_KEY, v);
+                    e.add_ava(Attribute::PrivateCookieKey, v);
                 }
 
                 trace!(?e);

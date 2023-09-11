@@ -239,7 +239,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             }
 
             // Migrate implicit scopes if they exist.
-            let nv = if let Some(vs) = er.get_ava_set("oauth2_rs_implicit_scopes") {
+            let nv = if let Some(vs) = er.get_ava_set(Attribute::OAuth2RsImplicitScopes.as_ref()) {
                 vs.as_oauthscope_set()
                     .map(|v| Value::OauthScopeMap(UUID_IDM_ALL_PERSONS, v.clone()))
             } else {
@@ -247,9 +247,9 @@ impl<'a> QueryServerWriteTransaction<'a> {
             };
 
             if let Some(nv) = nv {
-                er.add_ava("oauth2_rs_scope_map", nv)
+                er.add_ava(Attribute::OAuth2RsScopeMap, nv)
             }
-            er.purge_ava("oauth2_rs_implicit_scopes");
+            er.purge_ava(Attribute::OAuth2RsImplicitScopes.as_ref());
 
             Ok(())
         })?;
@@ -816,7 +816,7 @@ mod tests {
         let me_syn = unsafe {
             ModifyEvent::new_internal_invalid(
                 filter!(f_or!([
-                    f_eq(Attribute::AttributeName, PartialValue::new_iutf8(Attribute::Name.as_ref())),
+                    f_eq(Attribute::AttributeName, Attribute::Name.to_partialvalue()),
                     f_eq(Attribute::AttributeName, PartialValue::new_iutf8("domain_name")),
                 ])),
                 ModifyList::new_purge_and_set(
@@ -859,7 +859,7 @@ mod tests {
         let me_syn = unsafe {
             ModifyEvent::new_internal_invalid(
                 filter!(f_or!([
-                    f_eq(Attribute::AttributeName, PartialValue::new_iutf8(Attribute::Name.as_ref())),
+                    f_eq(Attribute::AttributeName, Attribute::Name.to_partialvalue()),
                     f_eq(Attribute::AttributeName, PartialValue::new_iutf8("domain_name")),
                 ])),
                 ModifyList::new_purge_and_set(

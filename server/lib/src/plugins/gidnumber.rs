@@ -22,7 +22,7 @@ pub struct GidNumber {}
 fn apply_gidnumber<T: Clone>(e: &mut Entry<EntryInvalid, T>) -> Result<(), OperationError> {
     if (e.attribute_equality(Attribute::Class.as_ref(), &EntryClass::PosixGroup.into())
         || e.attribute_equality(Attribute::Class.into(), &EntryClass::PosixAccount.into()))
-        && !e.attribute_pres("gidnumber")
+        && !e.attribute_pres(Attribute::GidNumber.as_ref())
     {
         let u_ref = e
             .get_uuid()
@@ -42,9 +42,9 @@ fn apply_gidnumber<T: Clone>(e: &mut Entry<EntryInvalid, T>) -> Result<(), Opera
 
         let gid_v = Value::new_uint32(gid);
         admin_info!("Generated {} for {:?}", gid, u_ref);
-        e.set_ava("gidnumber", once(gid_v));
+        e.set_ava(Attribute::GidNumber.as_ref(), once(gid_v));
         Ok(())
-    } else if let Some(gid) = e.get_ava_single_uint32("gidnumber") {
+    } else if let Some(gid) = e.get_ava_single_uint32(Attribute::GidNumber.as_ref()) {
         // If they provided us with a gid number, ensure it's in a safe range.
         if gid <= GID_SAFETY_NUMBER_MIN {
             Err(OperationError::InvalidAttribute(format!(
@@ -100,7 +100,7 @@ mod tests {
     fn check_gid(qs_write: &mut QueryServerWriteTransaction, uuid: &str, gid: u32) {
         let u = Uuid::parse_str(uuid).unwrap();
         let e = qs_write.internal_search_uuid(u).unwrap();
-        let gidnumber = e.get_ava_single("gidnumber").unwrap();
+        let gidnumber = e.get_ava_single(Attribute::GidNumber.as_ref()).unwrap();
         let ex_gid = Value::new_uint32(gid);
         assert!(ex_gid == gidnumber);
     }
@@ -108,24 +108,15 @@ mod tests {
     #[test]
     fn test_gidnumber_create_generate() {
         let e = entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::PosixAccount.to_value()),
+            (Attribute::Name, Value::new_iname("testperson")),
             (
-                Attribute::Class.as_ref(),
-                EntryClass::PosixAccount.to_value()
-            ),
-            (Attribute::Name.as_ref(), Value::new_iname("testperson")),
-            (
-                "uuid",
+                Attribute::Uuid,
                 Value::Uuid(uuid!("83a0927f-3de1-45ec-bea0-2f7b997ef244"))
             ),
-            (
-                Attribute::Description.as_ref(),
-                Value::new_utf8s("testperson")
-            ),
-            (
-                Attribute::DisplayName.as_ref(),
-                Value::new_utf8s("testperson")
-            )
+            (Attribute::Description, Value::new_utf8s("testperson")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson"))
         );
 
         let create = vec![e];
@@ -148,25 +139,16 @@ mod tests {
     #[test]
     fn test_gidnumber_create_noaction() {
         let e = entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::PosixAccount.to_value()),
+            (Attribute::Name, Value::new_iname("testperson")),
+            (Attribute::GidNumber, Value::Uint32(10001)),
             (
-                Attribute::Class.as_ref(),
-                EntryClass::PosixAccount.to_value()
-            ),
-            (Attribute::Name.as_ref(), Value::new_iname("testperson")),
-            (Attribute::GidNumber.as_ref(), Value::Uint32(10001)),
-            (
-                "uuid",
+                Attribute::Uuid,
                 Value::Uuid(uuid!("83a0927f-3de1-45ec-bea0-2f7b997ef244"))
             ),
-            (
-                Attribute::Description.as_ref(),
-                Value::new_utf8s("testperson")
-            ),
-            (
-                Attribute::DisplayName.as_ref(),
-                Value::new_utf8s("testperson")
-            )
+            (Attribute::Description, Value::new_utf8s("testperson")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson"))
         );
 
         let create = vec![e];
@@ -189,24 +171,15 @@ mod tests {
     #[test]
     fn test_gidnumber_modify_generate() {
         let e = entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::PosixAccount.to_value()),
+            (Attribute::Name, Value::new_iname("testperson")),
             (
-                Attribute::Class.as_ref(),
-                EntryClass::PosixAccount.to_value()
-            ),
-            (Attribute::Name.as_ref(), Value::new_iname("testperson")),
-            (
-                "uuid",
+                Attribute::Uuid,
                 Value::Uuid(uuid!("83a0927f-3de1-45ec-bea0-2f7b997ef244"))
             ),
-            (
-                Attribute::Description.as_ref(),
-                Value::new_utf8s("testperson")
-            ),
-            (
-                Attribute::DisplayName.as_ref(),
-                Value::new_utf8s("testperson")
-            )
+            (Attribute::Description, Value::new_utf8s("testperson")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson"))
         );
 
         let preload = vec![e];
@@ -230,24 +203,15 @@ mod tests {
     #[test]
     fn test_gidnumber_modify_regenerate() {
         let e = entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::PosixAccount.to_value()),
+            (Attribute::Name, Value::new_iname("testperson")),
             (
-                Attribute::Class.as_ref(),
-                EntryClass::PosixAccount.to_value()
-            ),
-            (Attribute::Name.as_ref(), Value::new_iname("testperson")),
-            (
-                "uuid",
+                Attribute::Uuid,
                 Value::Uuid(uuid::uuid!("83a0927f-3de1-45ec-bea0-2f7b997ef244"))
             ),
-            (
-                Attribute::Description.as_ref(),
-                Value::new_utf8s("testperson")
-            ),
-            (
-                Attribute::DisplayName.as_ref(),
-                Value::new_utf8s("testperson")
-            )
+            (Attribute::Description, Value::new_utf8s("testperson")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson"))
         );
 
         let preload = vec![e];
@@ -256,7 +220,7 @@ mod tests {
             Ok(()),
             preload,
             filter!(f_eq(Attribute::Name, PartialValue::new_iname("testperson"))),
-            modlist!([m_purge("gidnumber")]),
+            modlist!([m_purge(Attribute::GidNumber.as_ref())]),
             None,
             |_| {},
             |qs_write: &mut QueryServerWriteTransaction| check_gid(
@@ -271,24 +235,15 @@ mod tests {
     #[test]
     fn test_gidnumber_modify_noregen() {
         let e = entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::PosixAccount.to_value()),
+            (Attribute::Name, Value::new_iname("testperson")),
             (
-                Attribute::Class.as_ref(),
-                EntryClass::PosixAccount.to_value()
-            ),
-            (Attribute::Name.as_ref(), Value::new_iname("testperson")),
-            (
-                "uuid",
+                Attribute::Uuid,
                 Value::Uuid(uuid::uuid!("83a0927f-3de1-45ec-bea0-2f7b997ef244"))
             ),
-            (
-                Attribute::Description.as_ref(),
-                Value::new_utf8s("testperson")
-            ),
-            (
-                Attribute::DisplayName.as_ref(),
-                Value::new_utf8s("testperson")
-            )
+            (Attribute::Description, Value::new_utf8s("testperson")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson"))
         );
 
         let preload = vec![e];
@@ -298,8 +253,8 @@ mod tests {
             preload,
             filter!(f_eq(Attribute::Name, PartialValue::new_iname("testperson"))),
             modlist!([
-                m_purge("gidnumber"),
-                m_pres("gidnumber", &Value::new_uint32(2000))
+                m_purge(Attribute::GidNumber.as_ref()),
+                m_pres(Attribute::GidNumber.as_ref(), &Value::new_uint32(2000))
             ]),
             None,
             |_| {},
@@ -314,24 +269,15 @@ mod tests {
     #[test]
     fn test_gidnumber_create_system_reject() {
         let e = entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::PosixAccount.to_value()),
+            (Attribute::Name, Value::new_iname("testperson")),
             (
-                Attribute::Class.as_ref(),
-                EntryClass::PosixAccount.to_value()
-            ),
-            (Attribute::Name.as_ref(), Value::new_iname("testperson")),
-            (
-                "uuid",
+                Attribute::Uuid,
                 Value::Uuid(uuid::uuid!("83a0927f-3de1-45ec-bea0-000000000244"))
             ),
-            (
-                Attribute::Description.as_ref(),
-                Value::new_utf8s("testperson")
-            ),
-            (
-                Attribute::DisplayName.as_ref(),
-                Value::new_utf8s("testperson")
-            )
+            (Attribute::Description, Value::new_utf8s("testperson")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson"))
         );
 
         let create = vec![e];
@@ -351,21 +297,12 @@ mod tests {
     #[test]
     fn test_gidnumber_create_secure_reject() {
         let e = entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
-            (
-                Attribute::Class.as_ref(),
-                EntryClass::PosixAccount.to_value()
-            ),
-            (Attribute::Name.as_ref(), Value::new_iname("testperson")),
-            (Attribute::GidNumber.as_ref(), Value::Uint32(500)),
-            (
-                Attribute::Description.as_ref(),
-                Value::new_utf8s("testperson")
-            ),
-            (
-                Attribute::DisplayName.as_ref(),
-                Value::new_utf8s("testperson")
-            )
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::PosixAccount.to_value()),
+            (Attribute::Name, Value::new_iname("testperson")),
+            (Attribute::GidNumber, Value::Uint32(500)),
+            (Attribute::Description, Value::new_utf8s("testperson")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson"))
         );
 
         let create = vec![e];
@@ -385,21 +322,12 @@ mod tests {
     #[test]
     fn test_gidnumber_create_secure_root_reject() {
         let e = entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
-            (
-                Attribute::Class.as_ref(),
-                EntryClass::PosixAccount.to_value()
-            ),
-            (Attribute::Name.as_ref(), Value::new_iname("testperson")),
-            (Attribute::GidNumber.as_ref(), Value::Uint32(0)),
-            (
-                Attribute::Description.as_ref(),
-                Value::new_utf8s("testperson")
-            ),
-            (
-                Attribute::DisplayName.as_ref(),
-                Value::new_utf8s("testperson")
-            )
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::PosixAccount.to_value()),
+            (Attribute::Name, Value::new_iname("testperson")),
+            (Attribute::GidNumber, Value::Uint32(0)),
+            (Attribute::Description, Value::new_utf8s("testperson")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson"))
         );
 
         let create = vec![e];

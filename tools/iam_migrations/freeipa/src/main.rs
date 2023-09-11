@@ -799,7 +799,7 @@ fn ipa_to_scim_entry(
             entry
                 .remove_ava_single(Attribute::Uid.as_ref())
                 .ok_or_else(|| {
-                    error!("Missing required attribute {}", Attribute::Uid.as_ref());
+                    error!("Missing required attribute {}", Attribute::Uid);
                 })?
         };
 
@@ -812,7 +812,7 @@ fn ipa_to_scim_entry(
         let display_name = entry
             .remove_ava_single(Attribute::Cn.as_ref())
             .ok_or_else(|| {
-                error!("Missing required attribute {}", Attribute::Cn.as_ref());
+                error!("Missing required attribute {}", Attribute::Cn);
             })?;
 
         let gidnumber = if let Some(number) = entry_config.map_gidnumber {
@@ -822,7 +822,7 @@ fn ipa_to_scim_entry(
                 .remove_ava_single(Attribute::GidNumber.as_ref())
                 .map(|gid| {
                     u32::from_str(&gid).map_err(|_| {
-                        error!("Invalid {}", Attribute::GidNumber.as_ref());
+                        error!("Invalid {}", Attribute::GidNumber);
                     })
                 })
                 .transpose()?

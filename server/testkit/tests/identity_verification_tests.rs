@@ -5,6 +5,7 @@ use kanidm_proto::{
     v1::Entry,
 };
 
+use kanidmd_lib::prelude::Attribute;
 use kanidmd_testkit::ADMIN_TEST_PASSWORD;
 use reqwest::StatusCode;
 
@@ -307,7 +308,7 @@ async fn create_user(rsclient: &KanidmClient, user: &str) -> String {
         .await
         .unwrap();
     let r = rsclient
-        .idm_person_account_get_attr(user, "uuid")
+        .idm_person_account_get_attr(user, Attribute::Uuid.as_ref())
         .await
         .unwrap();
     r.unwrap().first().unwrap().to_owned()
