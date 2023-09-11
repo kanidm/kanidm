@@ -35,7 +35,7 @@ where
             let uuid = e
                 .get_ava_single_uuid("uuid")
                 .ok_or_else(|| {
-                    error!("An entry is missing it's uuid. This should be impossible!");
+                    error!("An entry is missing its uuid. This should be impossible!");
                     OperationError::InvalidEntryState
                 })?;
 
