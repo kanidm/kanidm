@@ -680,8 +680,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
             IDM_ADMINS_ACP_RECYCLE_SEARCH_V1.clone().into(),
             IDM_ADMINS_ACP_REVIVE_V1.clone().into(),
             E_IDM_ALL_ACP_READ_V1.clone(),
-            E_IDM_SELF_ACP_READ_V1.clone(),
-            E_IDM_SELF_ACP_WRITE_V1.clone(),
+            IDM_SELF_ACP_READ_V1.clone().into(),
+            IDM_SELF_ACP_WRITE_V1.clone().into(),
             E_IDM_PEOPLE_SELF_ACP_WRITE_MAIL_PRIV_V1.clone(),
             E_IDM_ACP_PEOPLE_READ_PRIV_V1.clone(),
             E_IDM_ACP_PEOPLE_WRITE_PRIV_V1.clone(),
@@ -718,7 +718,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             E_IDM_HP_ACP_SERVICE_ACCOUNT_INTO_PERSON_MIGRATE_V1.clone(),
             E_IDM_HP_ACP_SYNC_ACCOUNT_MANAGE_PRIV_V1.clone(),
             E_IDM_ACP_ACCOUNT_MAIL_READ_PRIV_V1.clone(),
-            E_IDM_ACCOUNT_SELF_ACP_WRITE_V1.clone(),
+            IDM_ACCOUNT_SELF_ACP_WRITE_V1.clone().into(),
         ];
 
         let res: Result<(), _> = idm_entries

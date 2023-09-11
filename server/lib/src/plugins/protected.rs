@@ -345,7 +345,7 @@ mod tests {
             ),
             (
                 Attribute::AcpModifyRemovedAttr,
-                Value::new_iutf8("es256_private_key_der")
+                Attribute::Es256PrivateKeyDer.to_value()
             ),
             (
                 Attribute::AcpModifyRemovedAttr,
@@ -380,7 +380,7 @@ mod tests {
             ),
             (
                 Attribute::AcpModifyPresentAttr,
-                Value::new_iutf8("es256_private_key_der")
+                Attribute::Es256PrivateKeyDer.to_value()
             ),
             (
                 Attribute::AcpModifyPresentAttr,
@@ -408,7 +408,7 @@ mod tests {
             ),
             (
                 Attribute::AcpCreateAttr,
-                Value::new_iutf8("es256_private_key_der")
+                Attribute::Es256PrivateKeyDer.to_value()
             ),
             (
                 Attribute::AcpCreateAttr,
