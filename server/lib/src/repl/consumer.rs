@@ -1,7 +1,7 @@
 use super::proto::*;
 use crate::plugins::Plugins;
 use crate::prelude::*;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 
 pub enum ConsumerState {
@@ -84,14 +84,15 @@ impl<'a> QueryServerWriteTransaction<'a> {
             )
             .unzip();
 
-        // ⚠️  If we end up with pre-repl returning a list of conflict uuids, we DON'T need to
+        // ⚠️  If we end up with plugins triggering other entries to conflicts, we DON'T need to
         // add them to this list. This is just for uuid conflicts, not higher level ones!
         //
         // ⚠️  We need to collect this from conflict_update since we may NOT be the originator
         // server for some conflicts, but we still need to know the UUID is IN the conflict
         // state for plugins. We also need to do this here before the conflict_update
         // set is consumed by later steps.
-        let conflict_uuids: Vec<_> = conflict_update.iter().map(|(_, e)| e.get_uuid()).collect();
+        let mut conflict_uuids: BTreeSet<_> =
+            conflict_update.iter().map(|(_, e)| e.get_uuid()).collect();
 
         // Filter out None from conflict_create
         let conflict_create: Vec<EntrySealedNew> = conflict_create.into_iter().flatten().collect();
@@ -108,13 +109,26 @@ impl<'a> QueryServerWriteTransaction<'a> {
             })
             .collect();
 
-        // To be consistent to Modify, we need to run pre-modify here.
+        // We now merge the conflict updates and the updates that can proceed. This is correct
+        // since if an entry was conflicting by uuid then there is nothing for it to merge with
+        // so as a result we can just by pass that step. We now have all_updates which is
+        // the set of live entries to write back.
         let mut all_updates = conflict_update
             .into_iter()
             .chain(proceed_update)
             .collect::<Vec<_>>();
 
-        // Plugins can mark entries into a conflict status.
+        // ⚠️  This hook is probably not what you want to use for checking entries are consistent.
+        //
+        // The main issue is that at this point we have a set of entries that need to be
+        // created / marked into conflicts, and until that occurs it's hard to proceed with validations
+        // like attr unique because then we would need to walk the various sets to find cases where
+        // an attribute may not be unique "currently" but *would* be unique once the various entries
+        // have then been conflicted and updated.
+        //
+        // Instead we treat this like refint - we allow the database to "temporarily" become
+        // inconsistent, then we fix it immediately. This hook remains for cases in future
+        // where we may wish to have session cleanup performed for example.
         Plugins::run_pre_repl_incremental(self, all_updates.as_mut_slice()).map_err(|e| {
             admin_error!(
                 "Refresh operation failed (pre_repl_incremental plugin), {:?}",
@@ -123,8 +137,9 @@ impl<'a> QueryServerWriteTransaction<'a> {
             e
         })?;
 
-        // Now we have to schema check our data and separate to schema_valid and
-        // invalid.
+        // Now we have to schema check our entries. Remember, here because this is
+        // using into_iter it's possible that entries may be conflicted due to becoming
+        // schema invalid during the merge process.
         let all_updates_valid = all_updates
             .into_iter()
             .map(|(ctx_ent, db_ent)| {
@@ -139,17 +154,17 @@ impl<'a> QueryServerWriteTransaction<'a> {
             })
             .collect::<Vec<_>>();
 
-        // We now have three sets!
+        // We now have two sets!
         //
         // * conflict_create - entries to be created that are conflicted via add statements (duplicate uuid)
-        // * schema_invalid - entries that were merged and their attribute state has now become invalid to schema.
-        // * schema_valid - entries that were merged and are schema valid.
+        //                     these are only created on the entry origin node!
+        // * all_updates_valid - this has two types of entries
+        //   * entries that have survived a uuid conflict and need inplace write. Unlikely to become invalid.
+        //   * entries that were merged and are schema valid.
+        //   * entries that were merged and their attribute state has now become invalid and are conflicts.
         //
-        // From these sets, we will move conflict_create and schema_invalid into the replication masked
-        // state. However schema_valid needs to be processed to check for plugin rules as well. If
-        // anything hits one of these states we need to have a way to handle this too in a consistent
-        // manner.
-        //
+        // incremental_apply here handles both the creations and the update processes to ensure that
+        // everything is updated in a single consistent operation.
         self.be_txn
             .incremental_apply(&all_updates_valid, conflict_create)
             .map_err(|e| {
@@ -157,20 +172,42 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 e
             })?;
 
+        Plugins::run_post_repl_incremental_conflict(
+            self,
+            all_updates_valid.as_slice(),
+            &mut conflict_uuids,
+        )
+        .map_err(|e| {
+            error!(
+                "Refresh operation failed (post_repl_incremental_conflict plugin), {:?}",
+                e
+            );
+            e
+        })?;
+
         // Plugins need these unzipped
-        let (cand, pre_cand): (Vec<_>, Vec<_>) = all_updates_valid.into_iter().unzip();
+        //
+        let (cand, pre_cand): (Vec<_>, Vec<_>) = all_updates_valid
+            .into_iter()
+            .filter(|(cand, _)| {
+                // Exclude anything that is conflicted as a result of the conflict plugins.
+                !conflict_uuids.contains(&cand.get_uuid())
+            })
+            .unzip();
 
         // We don't need to process conflict_creates here, since they are all conflicting
-        // uuids which means that the uuids are all *here* so they will trigger anything
-        // that requires processing anyway.
+        // uuids which means that the conflict_uuids are all *here* so they will trigger anything
+        // that requires processing anyway. As well conflict_creates may not be the full
+        // set of conflict entries as we may not be the origin node! Conflict_creates is always
+        // a subset of the conflicts.
         Plugins::run_post_repl_incremental(
             self,
             pre_cand.as_slice(),
             cand.as_slice(),
-            conflict_uuids.as_slice(),
+            &conflict_uuids,
         )
         .map_err(|e| {
-            admin_error!(
+            error!(
                 "Refresh operation failed (post_repl_incremental plugin), {:?}",
                 e
             );
