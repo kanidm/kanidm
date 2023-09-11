@@ -299,7 +299,7 @@ lazy_static! {
 }
 
 lazy_static! {
-    pub static ref E_IDM_ALL_ACP_READ_V1: BuiltinAcp = BuiltinAcp {
+    pub static ref IDM_ALL_ACP_READ_V1: BuiltinAcp = BuiltinAcp {
         classes: vec![
             EntryClass::Object,
             EntryClass::AccessControlProfile,
@@ -355,7 +355,7 @@ lazy_static! {
 }
 
 lazy_static! {
-    pub static ref E_IDM_ACP_PEOPLE_READ_PRIV_V1: BuiltinAcp = BuiltinAcp {
+    pub static ref IDM_ACP_PEOPLE_READ_PRIV_V1: BuiltinAcp = BuiltinAcp {
         classes: vec![
             EntryClass::Object,
             EntryClass::AccessControlProfile,
@@ -381,7 +381,7 @@ lazy_static! {
 }
 
 lazy_static! {
-    pub static ref E_IDM_ACP_PEOPLE_WRITE_PRIV_V1: BuiltinAcp = BuiltinAcp {
+    pub static ref IDM_ACP_PEOPLE_WRITE_PRIV_V1: BuiltinAcp = BuiltinAcp {
         classes: vec![
             EntryClass::Object,
             EntryClass::AccessControlProfile,
@@ -414,7 +414,7 @@ lazy_static! {
 }
 
 lazy_static! {
-    pub static ref E_IDM_ACP_PEOPLE_MANAGE_PRIV_V1: BuiltinAcp = BuiltinAcp {
+    pub static ref IDM_ACP_PEOPLE_MANAGE_PRIV_V1: BuiltinAcp = BuiltinAcp {
         classes: vec![
             EntryClass::Object,
             EntryClass::AccessControlProfile,
@@ -454,7 +454,7 @@ lazy_static! {
 // so people will need to two step (create then import pw). Later we could add another
 // acp that allows the create here too? Should it be separate?
 lazy_static! {
-    pub static ref E_IDM_ACP_PEOPLE_ACCOUNT_PASSWORD_IMPORT_PRIV_V1: BuiltinAcp = BuiltinAcp {
+    pub static ref IDM_ACP_PEOPLE_ACCOUNT_PASSWORD_IMPORT_PRIV_V1: BuiltinAcp = BuiltinAcp {
         classes: vec![
             EntryClass::Object,
             EntryClass::AccessControlProfile,
@@ -478,7 +478,7 @@ lazy_static! {
 }
 
 lazy_static! {
-    pub static ref E_IDM_ACP_PEOPLE_EXTEND_PRIV_V1: BuiltinAcp = BuiltinAcp {
+    pub static ref IDM_ACP_PEOPLE_EXTEND_PRIV_V1: BuiltinAcp = BuiltinAcp {
         classes: vec![
             EntryClass::Object,
             EntryClass::AccessControlProfile,
@@ -508,7 +508,7 @@ lazy_static! {
         modify_classes: vec![EntryClass::Person,],
         ..Default::default()
     };
-    pub static ref E_IDM_ACP_HP_PEOPLE_READ_PRIV_V1: BuiltinAcp = BuiltinAcp {
+    pub static ref IDM_ACP_HP_PEOPLE_READ_PRIV_V1: BuiltinAcp = BuiltinAcp {
         classes: vec![
             EntryClass::Object,
             EntryClass::AccessControlProfile,
@@ -533,7 +533,7 @@ lazy_static! {
 }
 
 lazy_static! {
-    pub static ref E_IDM_ACP_ACCOUNT_MAIL_READ_PRIV_V1: BuiltinAcp = BuiltinAcp {
+    pub static ref IDM_ACP_ACCOUNT_MAIL_READ_PRIV_V1: BuiltinAcp = BuiltinAcp {
         classes: vec![
             EntryClass::Object,
             EntryClass::AccessControlProfile,
@@ -551,7 +551,7 @@ lazy_static! {
         search_attrs: vec![Attribute::Mail],
         ..Default::default()
     };
-    pub static ref E_IDM_ACP_HP_PEOPLE_WRITE_PRIV_V1: BuiltinAcp = BuiltinAcp {
+    pub static ref IDM_ACP_HP_PEOPLE_WRITE_PRIV_V1: BuiltinAcp = BuiltinAcp {
         classes: vec![
             EntryClass::Object,
             EntryClass::AccessControlProfile,
@@ -583,7 +583,7 @@ lazy_static! {
         ],
         ..Default::default()
     };
-    pub static ref E_IDM_ACP_HP_PEOPLE_EXTEND_PRIV_V1: BuiltinAcp = BuiltinAcp {
+    pub static ref IDM_ACP_HP_PEOPLE_EXTEND_PRIV_V1: BuiltinAcp = BuiltinAcp {
         classes: vec![
             EntryClass::Object,
             EntryClass::AccessControlProfile,
@@ -622,7 +622,7 @@ lazy_static! {
 // -- end people
 
 lazy_static! {
-    pub static ref E_IDM_ACP_GROUP_WRITE_PRIV_V1: BuiltinAcp = BuiltinAcp{
+    pub static ref IDM_ACP_GROUP_WRITE_PRIV_V1: BuiltinAcp = BuiltinAcp{
         classes: vec![
             EntryClass::Object,
             EntryClass::AccessControlProfile,
@@ -665,7 +665,7 @@ lazy_static! {
 }
 
 lazy_static! {
-    pub static ref E_IDM_ACP_ACCOUNT_READ_PRIV_V1: BuiltinAcp = BuiltinAcp{
+    pub static ref IDM_ACP_ACCOUNT_READ_PRIV_V1: BuiltinAcp = BuiltinAcp{
         classes: vec![
             EntryClass::Object,
             EntryClass::AccessControlProfile,
@@ -704,7 +704,7 @@ lazy_static! {
 }
 
 lazy_static! {
-    pub static ref E_IDM_ACP_ACCOUNT_WRITE_PRIV_V1: BuiltinAcp = BuiltinAcp{
+    pub static ref IDM_ACP_ACCOUNT_WRITE_PRIV_V1: BuiltinAcp = BuiltinAcp{
         classes: vec![
             EntryClass::Object,
             EntryClass::AccessControlProfile,
@@ -752,7 +752,7 @@ lazy_static! {
 }
 
 lazy_static! {
-    pub static ref E_IDM_ACP_ACCOUNT_MANAGE_PRIV_V1: BuiltinAcp = BuiltinAcp{
+    pub static ref IDM_ACP_ACCOUNT_MANAGE_PRIV_V1: BuiltinAcp = BuiltinAcp{
         classes: vec![
             EntryClass::Object,
             EntryClass::AccessControlProfile,
@@ -795,7 +795,7 @@ lazy_static! {
 //  users from having radius access easier.
 
 lazy_static! {
-    pub static ref E_IDM_ACP_RADIUS_SECRET_READ_PRIV_V1: BuiltinAcp = BuiltinAcp{
+    pub static ref IDM_ACP_RADIUS_SECRET_READ_PRIV_V1: BuiltinAcp = BuiltinAcp{
         classes: vec![
             EntryClass::Object,
             EntryClass::AccessControlProfile,
@@ -817,7 +817,7 @@ lazy_static! {
     };
 
 
-    pub static ref E_IDM_ACP_RADIUS_SECRET_WRITE_PRIV_V1: BuiltinAcp = BuiltinAcp{
+    pub static ref IDM_ACP_RADIUS_SECRET_WRITE_PRIV_V1: BuiltinAcp = BuiltinAcp{
         classes: vec![
             EntryClass::Object,
             EntryClass::AccessControlProfile,
@@ -840,7 +840,7 @@ lazy_static! {
     };
 
 
-    pub static ref E_IDM_ACP_RADIUS_SERVERS_V1: BuiltinAcp = BuiltinAcp{
+    pub static ref IDM_ACP_RADIUS_SERVERS_V1: BuiltinAcp = BuiltinAcp{
         classes: vec![
             EntryClass::Object,
             EntryClass::AccessControlProfile,
@@ -867,7 +867,7 @@ lazy_static! {
 }
 
 lazy_static! {
-    pub static ref E_IDM_ACP_HP_ACCOUNT_READ_PRIV_V1: BuiltinAcp = BuiltinAcp{
+    pub static ref IDM_ACP_HP_ACCOUNT_READ_PRIV_V1: BuiltinAcp = BuiltinAcp{
         classes: vec![
             EntryClass::Object,
             EntryClass::AccessControlProfile,
@@ -902,7 +902,7 @@ lazy_static! {
         ..Default::default()
     };
 
-    pub static ref E_IDM_ACP_HP_ACCOUNT_WRITE_PRIV_V1: BuiltinAcp = BuiltinAcp{
+    pub static ref IDM_ACP_HP_ACCOUNT_WRITE_PRIV_V1: BuiltinAcp = BuiltinAcp{
         classes: vec![
             EntryClass::Object,
             EntryClass::AccessControlProfile,
@@ -946,7 +946,7 @@ lazy_static! {
 }
 
 lazy_static! {
-    pub static ref E_IDM_ACP_HP_GROUP_WRITE_PRIV_V1: BuiltinAcp = BuiltinAcp{
+    pub static ref IDM_ACP_HP_GROUP_WRITE_PRIV_V1: BuiltinAcp = BuiltinAcp{
         classes: vec![
             EntryClass::Object,
         EntryClass::AccessControlProfile,
@@ -994,7 +994,7 @@ lazy_static! {
 }
 
 lazy_static! {
-    pub static ref E_IDM_ACP_SCHEMA_WRITE_ATTRS_PRIV_V1: BuiltinAcp = BuiltinAcp{
+    pub static ref IDM_ACP_SCHEMA_WRITE_ATTRS_PRIV_V1: BuiltinAcp = BuiltinAcp{
         classes: vec![
             EntryClass::Object,
             EntryClass::AccessControlProfile,
@@ -1059,7 +1059,7 @@ lazy_static! {
 }
 
 lazy_static! {
-    pub static ref E_IDM_ACP_ACP_MANAGE_PRIV_V1: BuiltinAcp = BuiltinAcp{
+    pub static ref IDM_ACP_ACP_MANAGE_PRIV_V1: BuiltinAcp = BuiltinAcp{
         classes: vec![
             EntryClass::Object,
             EntryClass::AccessControlProfile,
@@ -1154,7 +1154,7 @@ lazy_static! {
     };
 
 
-    pub static ref E_IDM_ACP_SCHEMA_WRITE_CLASSES_PRIV_V1: BuiltinAcp = BuiltinAcp{
+    pub static ref IDM_ACP_SCHEMA_WRITE_CLASSES_PRIV_V1: BuiltinAcp = BuiltinAcp{
         classes: vec![
             EntryClass::Object,
             EntryClass::AccessControlProfile,
@@ -1213,7 +1213,7 @@ lazy_static! {
     };
 
 
-    pub static ref E_IDM_ACP_GROUP_MANAGE_PRIV_V1: BuiltinAcp = BuiltinAcp{
+    pub static ref IDM_ACP_GROUP_MANAGE_PRIV_V1: BuiltinAcp = BuiltinAcp{
         classes: vec![
             EntryClass::Object,
             EntryClass::AccessControlProfile,
@@ -1249,7 +1249,7 @@ lazy_static! {
 }
 
 lazy_static! {
-    pub static ref E_IDM_ACP_HP_ACCOUNT_MANAGE_PRIV_V1: BuiltinAcp = BuiltinAcp{
+    pub static ref IDM_ACP_HP_ACCOUNT_MANAGE_PRIV_V1: BuiltinAcp = BuiltinAcp{
         classes: vec![
             EntryClass::Object,
             EntryClass::AccessControlProfile,
@@ -1286,7 +1286,7 @@ lazy_static! {
     };
 
 
-    pub static ref E_IDM_ACP_HP_GROUP_MANAGE_PRIV_V1: BuiltinAcp = BuiltinAcp{
+    pub static ref IDM_ACP_HP_GROUP_MANAGE_PRIV_V1: BuiltinAcp = BuiltinAcp{
         classes: vec![
             EntryClass::Object,
             EntryClass::AccessControlProfile,
@@ -1315,7 +1315,7 @@ lazy_static! {
         ..Default::default()
     };
 
-    pub static ref E_IDM_ACP_DOMAIN_ADMIN_PRIV_V1: BuiltinAcp = BuiltinAcp{
+    pub static ref IDM_ACP_DOMAIN_ADMIN_PRIV_V1: BuiltinAcp = BuiltinAcp{
         classes: vec![
             EntryClass::Object,
             EntryClass::AccessControlProfile,
@@ -1367,7 +1367,7 @@ lazy_static! {
 }
 
 lazy_static! {
-    pub static ref E_IDM_ACP_SYSTEM_CONFIG_PRIV_V1: BuiltinAcp = BuiltinAcp{
+    pub static ref IDM_ACP_SYSTEM_CONFIG_PRIV_V1: BuiltinAcp = BuiltinAcp{
         classes: vec![
             EntryClass::Object,
             EntryClass::AccessControlProfile,
@@ -1398,7 +1398,7 @@ lazy_static! {
         ..Default::default()
     };
 
-    pub static ref E_IDM_ACP_SYSTEM_CONFIG_SESSION_EXP_PRIV_V1: BuiltinAcp = BuiltinAcp{
+    pub static ref IDM_ACP_SYSTEM_CONFIG_SESSION_EXP_PRIV_V1: BuiltinAcp = BuiltinAcp{
         classes: vec![
             EntryClass::Object,
             EntryClass::AccessControlProfile,
@@ -1440,7 +1440,7 @@ lazy_static! {
 }
 
 lazy_static! {
-    pub static ref E_IDM_ACP_ACCOUNT_UNIX_EXTEND_PRIV_V1: BuiltinAcp = BuiltinAcp{
+    pub static ref IDM_ACP_ACCOUNT_UNIX_EXTEND_PRIV_V1: BuiltinAcp = BuiltinAcp{
         classes: vec![
             EntryClass::Object,
             EntryClass::AccessControlProfile,
@@ -1491,7 +1491,7 @@ lazy_static! {
         ..Default::default()
     };
 
-    pub static ref E_IDM_ACP_GROUP_UNIX_EXTEND_PRIV_V1: BuiltinAcp = BuiltinAcp{
+    pub static ref IDM_ACP_GROUP_UNIX_EXTEND_PRIV_V1: BuiltinAcp = BuiltinAcp{
         classes: vec![
             EntryClass::Object,
             EntryClass::AccessControlProfile,
