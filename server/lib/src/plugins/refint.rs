@@ -435,7 +435,7 @@ mod tests {
 
     use crate::event::CreateEvent;
     use crate::prelude::*;
-    use crate::value::{Oauth2Session, Session};
+    use crate::value::{Oauth2Session, Session, SessionState};
     use time::OffsetDateTime;
     use uuid::uuid;
 
@@ -1066,7 +1066,7 @@ mod tests {
                     Oauth2Session {
                         parent,
                         // Note we set the exp to None so we are not removing based on exp
-                        expiry: None,
+                        state: SessionState::NeverExpires,
                         issued_at,
                         rs_uuid,
                     },
@@ -1079,7 +1079,7 @@ mod tests {
                     Session {
                         label: "label".to_string(),
                         // Note we set the exp to None so we are not removing based on removal of the parent.
-                        expiry: None,
+                        state: SessionState::NeverExpires,
                         // Need the other inner bits?
                         // for the gracewindow.
                         issued_at,

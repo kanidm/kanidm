@@ -2,7 +2,8 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::time::Duration;
 
 use kanidm_proto::v1::{
-    BackupCodesView, CredentialStatus, OperationError, UatPurpose, UatStatus, UiHint, UserAuthToken,
+    BackupCodesView, CredentialStatus, OperationError, UatPurpose, UatStatus, UatStatusState,
+    UiHint, UserAuthToken,
 };
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -20,7 +21,7 @@ use crate::idm::server::{IdmServerProxyReadTransaction, IdmServerProxyWriteTrans
 use crate::modify::{ModifyInvalid, ModifyList};
 use crate::prelude::*;
 use crate::schema::SchemaTransaction;
-use crate::value::{IntentTokenState, PartialValue, Value};
+use crate::value::{IntentTokenState, PartialValue, SessionState, Value};
 use kanidm_lib_crypto::CryptoPolicy;
 
 macro_rules! try_from_entry {
@@ -573,13 +574,14 @@ impl Account {
 
             if let Some(session) = session_present {
                 security_info!("A valid session value exists for this token");
-
-                if session.expiry == uat.expiry {
-                    true
-                } else {
-                    security_info!("Session and uat expiry are not consistent, rejecting.");
-                    debug!(ses_exp = ?session.expiry, uat_exp = ?uat.expiry);
-                    false
+                match (&session.state, &uat.expiry) {
+                    (SessionState::ExpiresAt(s_exp), Some(u_exp)) if s_exp == u_exp => true,
+                    (SessionState::NeverExpires, None) => true,
+                    _ => {
+                        security_info!("Session and uat expiry are not consistent, rejecting.");
+                        debug!(ses_st = ?session.state, uat_exp = ?uat.expiry);
+                        false
+                    }
                 }
             } else {
                 let grace = uat.issued_at + GRACE_WINDOW;
@@ -780,12 +782,22 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
                             .map(|smap| {
                                 smap.iter()
                                     .map(|(u, s)| {
+                                        let state = match s.state {
+                                            SessionState::ExpiresAt(odt) => {
+                                                UatStatusState::ExpiresAt(odt)
+                                            }
+                                            SessionState::NeverExpires => {
+                                                UatStatusState::NeverExpires
+                                            }
+                                            SessionState::RevokedAt(_) => UatStatusState::Revoked,
+                                        };
+
                                         s.scope
                                             .try_into()
                                             .map(|purpose| UatStatus {
                                                 account_id,
                                                 session_id: *u,
-                                                expiry: s.expiry,
+                                                state,
                                                 issued_at: s.issued_at,
                                                 purpose,
                                             })

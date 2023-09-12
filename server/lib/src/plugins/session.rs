@@ -10,6 +10,7 @@
 use crate::event::ModifyEvent;
 use crate::plugins::Plugin;
 use crate::prelude::*;
+use crate::value::SessionState;
 use std::collections::BTreeSet;
 use std::sync::Arc;
 use time::OffsetDateTime;
@@ -87,8 +88,8 @@ impl SessionConsistency {
             let expired: Option<BTreeSet<_>> = entry.get_ava_as_session_map(Attribute::UserAuthTokenSession.into())
                 .map(|sessions| {
                     sessions.iter().filter_map(|(session_id, session)| {
-                        match &session.expiry {
-                            Some(exp) if exp <= &curtime_odt => {
+                        match &session.state {
+                            SessionState::ExpiresAt(exp) if exp <= &curtime_odt => {
                                 info!(%session_id, "Removing expired auth session");
                                 Some(PartialValue::Refer(*session_id))
                             }
@@ -109,8 +110,8 @@ impl SessionConsistency {
                 let sessions = entry.get_ava_as_session_map(Attribute::UserAuthTokenSession.into());
 
                 oauth2_sessions.iter().filter_map(|(o2_session_id, session)| {
-                    match &session.expiry {
-                        Some(exp) if exp <= &curtime_odt => {
+                    match &session.state {
+                        SessionState::ExpiresAt(exp) if exp <= &curtime_odt => {
                             info!(%o2_session_id, "Removing expired oauth2 session");
                             Some(PartialValue::Refer(*o2_session_id))
                         }
@@ -151,7 +152,7 @@ mod tests {
     use crate::prelude::*;
 
     use crate::event::CreateEvent;
-    use crate::value::{Oauth2Session, Session};
+    use crate::value::{Oauth2Session, Session, SessionState};
     use kanidm_proto::constants::OAUTH2_SCOPE_OPENID;
     use std::time::Duration;
     use time::OffsetDateTime;
@@ -199,7 +200,7 @@ mod tests {
         // Create a fake session.
         let session_id = Uuid::new_v4();
         let pv_session_id = PartialValue::Refer(session_id);
-        let expiry = Some(exp_curtime_odt);
+        let state = SessionState::ExpiresAt(exp_curtime_odt);
         let issued_at = curtime_odt;
         let issued_by = IdentityId::User(tuuid);
         let scope = SessionScope::ReadOnly;
@@ -208,7 +209,7 @@ mod tests {
             session_id,
             Session {
                 label: "label".to_string(),
-                expiry,
+                state,
                 // Need the other inner bits?
                 // for the gracewindow.
                 issued_at,
@@ -340,7 +341,7 @@ mod tests {
 
         let parent = Uuid::new_v4();
         let pv_parent_id = PartialValue::Refer(parent);
-        let expiry = Some(exp_curtime_odt);
+        let state = SessionState::ExpiresAt(exp_curtime_odt);
         let issued_at = curtime_odt;
         let issued_by = IdentityId::User(tuuid);
         let scope = SessionScope::ReadOnly;
@@ -354,7 +355,7 @@ mod tests {
                     Oauth2Session {
                         parent,
                         // Set to the exp window.
-                        expiry,
+                        state,
                         issued_at,
                         rs_uuid,
                     },
@@ -367,7 +368,7 @@ mod tests {
                     Session {
                         label: "label".to_string(),
                         // Note we set the exp to None so we are not removing based on removal of the parent.
-                        expiry: None,
+                        state: SessionState::NeverExpires,
                         // Need the other inner bits?
                         // for the gracewindow.
                         issued_at,
@@ -514,7 +515,7 @@ mod tests {
                     Oauth2Session {
                         parent,
                         // Note we set the exp to None so we are not removing based on exp
-                        expiry: None,
+                        state: SessionState::NeverExpires,
                         issued_at,
                         rs_uuid,
                     },
@@ -527,7 +528,7 @@ mod tests {
                     Session {
                         label: "label".to_string(),
                         // Note we set the exp to None so we are not removing based on removal of the parent.
-                        expiry: None,
+                        state: SessionState::NeverExpires,
                         // Need the other inner bits?
                         // for the gracewindow.
                         issued_at,
@@ -658,7 +659,7 @@ mod tests {
                 parent,
                 // Note we set the exp to None so we are asserting the removal is due to the lack
                 // of the parent session.
-                expiry: None,
+                state: SessionState::NeverExpires,
                 issued_at,
                 rs_uuid,
             },
@@ -743,7 +744,6 @@ mod tests {
         let session_id = Uuid::new_v4();
         let pv_session_id = PartialValue::Refer(session_id);
         // No expiry!
-        let expiry = None;
         let issued_at = curtime_odt;
         let issued_by = IdentityId::User(tuuid);
         let scope = SessionScope::ReadOnly;
@@ -752,7 +752,7 @@ mod tests {
             session_id,
             Session {
                 label: "label".to_string(),
-                expiry,
+                state: SessionState::NeverExpires,
                 // Need the other inner bits?
                 // for the gracewindow.
                 issued_at,

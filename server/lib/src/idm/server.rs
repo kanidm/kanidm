@@ -56,7 +56,7 @@ use crate::idm::unix::{UnixGroup, UnixUserAccount};
 use crate::idm::AuthState;
 use crate::prelude::*;
 use crate::utils::{password_from_random, readable_password_from_random, uuid_from_duration, Sid};
-use crate::value::Session;
+use crate::value::{Session, SessionState};
 
 pub(crate) type AuthSessionMutex = Arc<Mutex<AuthSession>>;
 pub(crate) type CredSoftLockMutex = Arc<Mutex<CredSoftLock>>;
@@ -1980,12 +1980,16 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         asr: &AuthSessionRecord,
     ) -> Result<(), OperationError> {
         // We have to get the entry so we can work out if we need to expire any of it's sessions.
+        let state = match asr.expiry {
+            Some(e) => SessionState::ExpiresAt(e),
+            None => SessionState::NeverExpires,
+        };
 
         let session = Value::Session(
             asr.session_id,
             Session {
                 label: asr.label.clone(),
-                expiry: asr.expiry,
+                state,
                 // Need the other inner bits?
                 // for the gracewindow.
                 issued_at: asr.issued_at,

@@ -817,10 +817,18 @@ impl TryInto<UatPurposeStatus> for SessionScope {
     }
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum SessionState {
+    ExpiresAt(OffsetDateTime),
+    NeverExpires,
+    RevokedAt(Cid),
+}
+
 #[derive(Clone, PartialEq, Eq)]
 pub struct Session {
     pub label: String,
-    pub expiry: Option<OffsetDateTime>,
+    // pub expiry: Option<OffsetDateTime>,
+    pub state: SessionState,
     pub issued_at: OffsetDateTime,
     pub issued_by: IdentityId,
     pub cred_id: Uuid,
@@ -834,13 +842,14 @@ impl fmt::Debug for Session {
             IdentityId::Synch(u) => format!("Synch - {}", uuid_to_proto_string(u)),
             IdentityId::Internal => "Internal".to_string(),
         };
-        let expiry = match self.expiry {
-            Some(e) => e.to_string(),
-            None => "never".to_string(),
+        let expiry = match self.state {
+            SessionState::ExpiresAt(e) => e.to_string(),
+            SessionState::NeverExpires => "never".to_string(),
+            SessionState::RevokedAt(_) => "revoked".to_string(),
         };
         write!(
             f,
-            "expiry: {}, issued at: {}, issued by: {}, credential id: {}, scope: {:?}",
+            "state: {}, issued at: {}, issued by: {}, credential id: {}, scope: {:?}",
             expiry, self.issued_at, issuer, self.cred_id, self.scope
         )
     }
@@ -849,7 +858,8 @@ impl fmt::Debug for Session {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Oauth2Session {
     pub parent: Uuid,
-    pub expiry: Option<OffsetDateTime>,
+    // pub expiry: Option<OffsetDateTime>,
+    pub state: SessionState,
     pub issued_at: OffsetDateTime,
     pub rs_uuid: Uuid,
 }

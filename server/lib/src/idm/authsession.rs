@@ -33,7 +33,7 @@ use crate::idm::delayed::{
 };
 use crate::idm::AuthState;
 use crate::prelude::*;
-use crate::value::Session;
+use crate::value::{Session, SessionState};
 use time::OffsetDateTime;
 
 use super::server::AccountPolicy;
@@ -893,6 +893,17 @@ impl AuthSession {
             State::Expired
         };
 
+        let session_expiry = match session.state {
+            SessionState::ExpiresAt(odt) => Some(odt),
+            SessionState::NeverExpires => None,
+            SessionState::RevokedAt(_) => {
+                security_error!(
+                    "Invalid State - Should not be possible to trigger re-auth on revoked session."
+                );
+                return (None, AuthState::Denied(ACCOUNT_EXPIRED.to_string()));
+            }
+        };
+
         match state {
             State::Proceed(handler) => {
                 let allow = handler.next_auth_allowed();
@@ -902,7 +913,7 @@ impl AuthSession {
                     issue,
                     intent: AuthIntent::Reauth {
                         session_id,
-                        session_expiry: session.expiry,
+                        session_expiry,
                     },
                     source,
                 };

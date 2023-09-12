@@ -40,7 +40,7 @@ use crate::idm::server::{
     IdmServerProxyReadTransaction, IdmServerProxyWriteTransaction, IdmServerTransaction,
 };
 use crate::prelude::*;
-use crate::value::{Oauth2Session, OAUTHSCOPE_RE};
+use crate::value::{Oauth2Session, SessionState, OAUTHSCOPE_RE};
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 #[serde(rename_all = "snake_case")]
@@ -1131,7 +1131,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             session_id,
             Oauth2Session {
                 parent: parent_session_id,
-                expiry: Some(refresh_expiry),
+                state: SessionState::ExpiresAt(refresh_expiry),
                 issued_at: odt_ct,
                 rs_uuid: o2rs.uuid,
             },
@@ -2127,7 +2127,10 @@ mod tests {
             .expect("Unable to create uat");
 
         // Need the uat first for expiry.
-        let expiry = uat.expiry;
+        let state = uat
+            .expiry
+            .map(crate::value::SessionState::ExpiresAt)
+            .unwrap_or(crate::value::SessionState::NeverExpires);
 
         let p = CryptoPolicy::minimum();
         let cred = Credential::new_password_only(&p, "test_password").unwrap();
@@ -2137,7 +2140,7 @@ mod tests {
             session_id,
             crate::value::Session {
                 label: "label".to_string(),
-                expiry,
+                state,
                 issued_at: time::OffsetDateTime::UNIX_EPOCH + ct,
                 issued_by: IdentityId::Internal,
                 cred_id,
@@ -2246,7 +2249,10 @@ mod tests {
             .expect("Unable to create uat");
 
         // Need the uat first for expiry.
-        let expiry = uat.expiry;
+        let state = uat
+            .expiry
+            .map(crate::value::SessionState::ExpiresAt)
+            .unwrap_or(crate::value::SessionState::NeverExpires);
 
         let p = CryptoPolicy::minimum();
         let cred = Credential::new_password_only(&p, "test_password").unwrap();
@@ -2256,7 +2262,7 @@ mod tests {
             session_id,
             crate::value::Session {
                 label: "label".to_string(),
-                expiry,
+                state,
                 issued_at: time::OffsetDateTime::UNIX_EPOCH + ct,
                 issued_by: IdentityId::Internal,
                 cred_id,

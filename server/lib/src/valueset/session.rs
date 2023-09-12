@@ -4,16 +4,17 @@ use std::collections::{BTreeMap, BTreeSet};
 use time::OffsetDateTime;
 
 use crate::be::dbvalue::{
-    DbValueAccessScopeV1, DbValueApiToken, DbValueApiTokenScopeV1, DbValueIdentityId,
-    DbValueOauth2Session, DbValueSession,
+    DbCidV1, DbValueAccessScopeV1, DbValueApiToken, DbValueApiTokenScopeV1, DbValueIdentityId,
+    DbValueOauth2Session, DbValueSession, DbValueSessionStateV1,
 };
 use crate::prelude::*;
+use crate::repl::cid::Cid;
 use crate::repl::proto::{
     ReplApiTokenScopeV1, ReplApiTokenV1, ReplAttrV1, ReplIdentityIdV1, ReplOauth2SessionV1,
-    ReplSessionScopeV1, ReplSessionV1,
+    ReplSessionScopeV1, ReplSessionStateV1, ReplSessionV1,
 };
 use crate::schema::SchemaAttribute;
-use crate::value::{ApiToken, ApiTokenScope, Oauth2Session, Session, SessionScope};
+use crate::value::{ApiToken, ApiTokenScope, Oauth2Session, Session, SessionScope, SessionState};
 use crate::valueset::{uuid_to_proto_string, DbValueSetV2, ValueSet};
 
 #[derive(Debug, Clone)]
@@ -86,6 +87,10 @@ impl ValueSetSession {
                                 // Option<Option<ODT>>
                                 .ok()?;
 
+                            let state = expiry
+                                .map(SessionState::ExpiresAt)
+                                .unwrap_or(SessionState::NeverExpires);
+
                             let issued_by = match issued_by {
                                 DbValueIdentityId::V1Internal => IdentityId::Internal,
                                 DbValueIdentityId::V1Uuid(u) => IdentityId::User(u),
@@ -106,7 +111,7 @@ impl ValueSetSession {
                                 refer,
                                 Session {
                                     label,
-                                    expiry,
+                                    state,
                                     issued_at,
                                     issued_by,
                                     cred_id,
@@ -158,6 +163,10 @@ impl ValueSetSession {
                                 // Option<Option<ODT>>
                                 .ok()?;
 
+                            let state = expiry
+                                .map(SessionState::ExpiresAt)
+                                .unwrap_or(SessionState::NeverExpires);
+
                             let issued_by = match issued_by {
                                 DbValueIdentityId::V1Internal => IdentityId::Internal,
                                 DbValueIdentityId::V1Uuid(u) => IdentityId::User(u),
@@ -178,7 +187,79 @@ impl ValueSetSession {
                                 refer,
                                 Session {
                                     label,
-                                    expiry,
+                                    state,
+                                    issued_at,
+                                    issued_by,
+                                    cred_id,
+                                    scope,
+                                },
+                            ))
+                        }
+                        DbValueSession::V3 {
+                            refer,
+                            label,
+                            state,
+                            issued_at,
+                            issued_by,
+                            cred_id,
+                            scope,
+                        } => {
+                            // Convert things.
+                            let issued_at = OffsetDateTime::parse(&issued_at, &Rfc3339)
+                                .map(|odt| odt.to_offset(time::UtcOffset::UTC))
+                                .map_err(|e| {
+                                    admin_error!(
+                                    ?e,
+                                    "Invalidating session {} due to invalid issued_at timestamp",
+                                    refer
+                                )
+                                })
+                                .ok()?;
+
+                            let state = match state {
+                                DbValueSessionStateV1::ExpiresAt(e_inner) => OffsetDateTime::parse(
+                                    &e_inner, &Rfc3339,
+                                )
+                                .map(|odt| odt.to_offset(time::UtcOffset::UTC))
+                                .map(SessionState::ExpiresAt)
+                                .map_err(|e| {
+                                    admin_error!(
+                                        ?e,
+                                        "Invalidating session {} due to invalid expiry timestamp",
+                                        refer
+                                    )
+                                })
+                                .ok()?,
+                                DbValueSessionStateV1::Never => SessionState::NeverExpires,
+                                DbValueSessionStateV1::RevokedAt(dc) => {
+                                    SessionState::RevokedAt(Cid {
+                                        s_uuid: dc.server_id,
+                                        ts: dc.timestamp,
+                                    })
+                                }
+                            };
+
+                            let issued_by = match issued_by {
+                                DbValueIdentityId::V1Internal => IdentityId::Internal,
+                                DbValueIdentityId::V1Uuid(u) => IdentityId::User(u),
+                                DbValueIdentityId::V1Sync(u) => IdentityId::Synch(u),
+                            };
+
+                            let scope = match scope {
+                                DbValueAccessScopeV1::IdentityOnly
+                                | DbValueAccessScopeV1::ReadOnly => SessionScope::ReadOnly,
+                                DbValueAccessScopeV1::ReadWrite => SessionScope::ReadWrite,
+                                DbValueAccessScopeV1::PrivilegeCapable => {
+                                    SessionScope::PrivilegeCapable
+                                }
+                                DbValueAccessScopeV1::Synchronise => SessionScope::Synchronise,
+                            };
+
+                            Some((
+                                refer,
+                                Session {
+                                    label,
+                                    state,
                                     issued_at,
                                     issued_by,
                                     cred_id,
@@ -199,7 +280,7 @@ impl ValueSetSession {
                 |ReplSessionV1 {
                      refer,
                      label,
-                     expiry,
+                     state,
                      issued_at,
                      issued_by,
                      cred_id,
@@ -221,25 +302,23 @@ impl ValueSetSession {
                     // expiry, we need to NOT return the session so that it's immediately
                     // invalidated. To do this we have to invert some of the options involved
                     // here.
-                    let expiry = expiry
-                        .as_ref()
-                        .map(|e_inner| {
+                    let state = match state {
+                        ReplSessionStateV1::ExpiresAt(e_inner) => {
                             OffsetDateTime::parse(e_inner, &Rfc3339)
                                 .map(|odt| odt.to_offset(time::UtcOffset::UTC))
-                            // We now have an
-                            // Option<Result<ODT, _>>
-                        })
-                        .transpose()
-                        // Result<Option<ODT>, _>
-                        .map_err(|e| {
-                            admin_error!(
-                                ?e,
-                                "Invalidating session {} due to invalid expiry timestamp",
-                                refer
-                            )
-                        })
-                        // Option<Option<ODT>>
-                        .ok()?;
+                                .map(SessionState::ExpiresAt)
+                                .map_err(|e| {
+                                    admin_error!(
+                                        ?e,
+                                        "Invalidating session {} due to invalid expiry timestamp",
+                                        refer
+                                    )
+                                })
+                                .ok()?
+                        }
+                        ReplSessionStateV1::Never => SessionState::NeverExpires,
+                        ReplSessionStateV1::RevokedAt(rc) => SessionState::RevokedAt(rc.into()),
+                    };
 
                     let issued_by = match issued_by {
                         ReplIdentityIdV1::Internal => IdentityId::Internal,
@@ -258,7 +337,7 @@ impl ValueSetSession {
                         *refer,
                         Session {
                             label: label.to_string(),
-                            expiry,
+                            state,
                             issued_at,
                             issued_by,
                             cred_id: *cred_id,
@@ -355,15 +434,25 @@ impl ValueSetT for ValueSetSession {
         DbValueSetV2::Session(
             self.map
                 .iter()
-                .map(|(u, m)| DbValueSession::V2 {
+                .map(|(u, m)| DbValueSession::V3 {
                     refer: *u,
                     label: m.label.clone(),
-                    expiry: m.expiry.map(|odt| {
-                        debug_assert!(odt.offset() == time::UtcOffset::UTC);
-                        #[allow(clippy::expect_used)]
-                        odt.format(&Rfc3339)
-                            .expect("Failed to format timestamp into RFC3339!")
-                    }),
+
+                    state: match &m.state {
+                        SessionState::ExpiresAt(odt) => {
+                            debug_assert!(odt.offset() == time::UtcOffset::UTC);
+                            #[allow(clippy::expect_used)]
+                            odt.format(&Rfc3339)
+                                .map(DbValueSessionStateV1::ExpiresAt)
+                                .expect("Failed to format timestamp into RFC3339!")
+                        }
+                        SessionState::NeverExpires => DbValueSessionStateV1::Never,
+                        SessionState::RevokedAt(c) => DbValueSessionStateV1::RevokedAt(DbCidV1 {
+                            server_id: c.s_uuid,
+                            timestamp: c.ts,
+                        }),
+                    },
+
                     issued_at: {
                         debug_assert!(m.issued_at.offset() == time::UtcOffset::UTC);
                         #[allow(clippy::expect_used)]
@@ -396,12 +485,19 @@ impl ValueSetT for ValueSetSession {
                 .map(|(u, m)| ReplSessionV1 {
                     refer: *u,
                     label: m.label.clone(),
-                    expiry: m.expiry.map(|odt| {
-                        debug_assert!(odt.offset() == time::UtcOffset::UTC);
-                        #[allow(clippy::expect_used)]
-                        odt.format(&Rfc3339)
-                            .expect("Failed to format timestamp to RFC3339")
-                    }),
+
+                    state: match &m.state {
+                        SessionState::ExpiresAt(odt) => {
+                            debug_assert!(odt.offset() == time::UtcOffset::UTC);
+                            #[allow(clippy::expect_used)]
+                            odt.format(&Rfc3339)
+                                .map(ReplSessionStateV1::ExpiresAt)
+                                .expect("Failed to format timestamp into RFC3339!")
+                        }
+                        SessionState::NeverExpires => ReplSessionStateV1::Never,
+                        SessionState::RevokedAt(c) => ReplSessionStateV1::RevokedAt(c.into()),
+                    },
+
                     issued_at: {
                         debug_assert!(m.issued_at.offset() == time::UtcOffset::UTC);
                         #[allow(clippy::expect_used)]
@@ -466,23 +562,29 @@ impl ValueSetT for ValueSetSession {
             .as_session_map()
             .iter()
             .flat_map(|m| m.iter())
-            .map(
+            .filter_map(
                 |(
                     u,
                     Session {
                         label,
-                        expiry,
+                        state,
                         issued_at,
                         issued_by,
                         cred_id: _,
                         scope,
                     },
                 )| {
-                    (
+                    let expiry = match state {
+                        SessionState::ExpiresAt(e) => Some(*e),
+                        SessionState::NeverExpires => None,
+                        SessionState::RevokedAt(_) => return None,
+                    };
+
+                    Some((
                         *u,
                         ApiToken {
                             label: label.clone(),
-                            expiry: *expiry,
+                            expiry: expiry,
                             issued_at: *issued_at,
                             issued_by: issued_by.clone(),
                             scope: match scope {
@@ -491,14 +593,13 @@ impl ValueSetT for ValueSetSession {
                                 _ => ApiTokenScope::ReadOnly,
                             },
                         },
-                    )
+                    ))
                 },
             )
             .collect();
         Ok(Box::new(ValueSetApiToken { map }))
     }
 
-    #[allow(clippy::todo)]
     fn repl_merge_valueset(&self, _older: &ValueSet) -> Option<ValueSet> {
         todo!();
     }
@@ -579,13 +680,69 @@ impl ValueSetOauth2Session {
                             // Option<Option<ODT>>
                             .ok()?;
 
+                        let state = expiry
+                            .map(SessionState::ExpiresAt)
+                            .unwrap_or(SessionState::NeverExpires);
+
                         // Insert to the rs_filter.
                         rs_filter.insert(rs_uuid);
                         Some((
                             refer,
                             Oauth2Session {
                                 parent,
-                                expiry,
+                                state,
+                                issued_at,
+                                rs_uuid,
+                            },
+                        ))
+                    }
+                    DbValueOauth2Session::V2 {
+                        refer,
+                        parent,
+                        state,
+                        issued_at,
+                        rs_uuid,
+                    } => {
+                        // Convert things.
+                        let issued_at = OffsetDateTime::parse(&issued_at, &Rfc3339)
+                            .map(|odt| odt.to_offset(time::UtcOffset::UTC))
+                            .map_err(|e| {
+                                admin_error!(
+                                    ?e,
+                                    "Invalidating session {} due to invalid issued_at timestamp",
+                                    refer
+                                )
+                            })
+                            .ok()?;
+
+                        let state = match state {
+                            DbValueSessionStateV1::ExpiresAt(e_inner) => OffsetDateTime::parse(
+                                &e_inner, &Rfc3339,
+                            )
+                            .map(|odt| odt.to_offset(time::UtcOffset::UTC))
+                            .map(SessionState::ExpiresAt)
+                            .map_err(|e| {
+                                admin_error!(
+                                    ?e,
+                                    "Invalidating session {} due to invalid expiry timestamp",
+                                    refer
+                                )
+                            })
+                            .ok()?,
+                            DbValueSessionStateV1::Never => SessionState::NeverExpires,
+                            DbValueSessionStateV1::RevokedAt(dc) => SessionState::RevokedAt(Cid {
+                                s_uuid: dc.server_id,
+                                ts: dc.timestamp,
+                            }),
+                        };
+
+                        // Insert to the rs_filter.
+                        rs_filter.insert(rs_uuid);
+                        Some((
+                            refer,
+                            Oauth2Session {
+                                parent,
+                                state,
                                 issued_at,
                                 rs_uuid,
                             },
@@ -605,7 +762,7 @@ impl ValueSetOauth2Session {
                 |ReplOauth2SessionV1 {
                      refer,
                      parent,
-                     expiry,
+                     state,
                      issued_at,
                      rs_uuid,
                  }| {
@@ -625,25 +782,23 @@ impl ValueSetOauth2Session {
                     // expiry, we need to NOT return the session so that it's immediately
                     // invalidated. To do this we have to invert some of the options involved
                     // here.
-                    let expiry = expiry
-                        .as_ref()
-                        .map(|e_inner| {
+                    let state = match state {
+                        ReplSessionStateV1::ExpiresAt(e_inner) => {
                             OffsetDateTime::parse(e_inner, &Rfc3339)
                                 .map(|odt| odt.to_offset(time::UtcOffset::UTC))
-                            // We now have an
-                            // Option<Result<ODT, _>>
-                        })
-                        .transpose()
-                        // Result<Option<ODT>, _>
-                        .map_err(|e| {
-                            admin_error!(
-                                ?e,
-                                "Invalidating session {} due to invalid expiry timestamp",
-                                refer
-                            )
-                        })
-                        // Option<Option<ODT>>
-                        .ok()?;
+                                .map(SessionState::ExpiresAt)
+                                .map_err(|e| {
+                                    admin_error!(
+                                        ?e,
+                                        "Invalidating session {} due to invalid expiry timestamp",
+                                        refer
+                                    )
+                                })
+                                .ok()?
+                        }
+                        ReplSessionStateV1::Never => SessionState::NeverExpires,
+                        ReplSessionStateV1::RevokedAt(rc) => SessionState::RevokedAt(rc.into()),
+                    };
 
                     // Insert to the rs_filter.
                     rs_filter.insert(*rs_uuid);
@@ -651,7 +806,7 @@ impl ValueSetOauth2Session {
                         *refer,
                         Oauth2Session {
                             parent: *parent,
-                            expiry,
+                            state,
                             issued_at,
                             rs_uuid: *rs_uuid,
                         },
@@ -775,15 +930,23 @@ impl ValueSetT for ValueSetOauth2Session {
         DbValueSetV2::Oauth2Session(
             self.map
                 .iter()
-                .map(|(u, m)| DbValueOauth2Session::V1 {
+                .map(|(u, m)| DbValueOauth2Session::V2 {
                     refer: *u,
                     parent: m.parent,
-                    expiry: m.expiry.map(|odt| {
-                        debug_assert!(odt.offset() == time::UtcOffset::UTC);
-                        #[allow(clippy::expect_used)]
-                        odt.format(&Rfc3339)
-                            .expect("Failed to format timestamp as RFC3339")
-                    }),
+                    state: match &m.state {
+                        SessionState::ExpiresAt(odt) => {
+                            debug_assert!(odt.offset() == time::UtcOffset::UTC);
+                            #[allow(clippy::expect_used)]
+                            odt.format(&Rfc3339)
+                                .map(DbValueSessionStateV1::ExpiresAt)
+                                .expect("Failed to format timestamp into RFC3339!")
+                        }
+                        SessionState::NeverExpires => DbValueSessionStateV1::Never,
+                        SessionState::RevokedAt(c) => DbValueSessionStateV1::RevokedAt(DbCidV1 {
+                            server_id: c.s_uuid,
+                            timestamp: c.ts,
+                        }),
+                    },
                     issued_at: {
                         debug_assert!(m.issued_at.offset() == time::UtcOffset::UTC);
                         #[allow(clippy::expect_used)]
@@ -805,12 +968,17 @@ impl ValueSetT for ValueSetOauth2Session {
                 .map(|(u, m)| ReplOauth2SessionV1 {
                     refer: *u,
                     parent: m.parent,
-                    expiry: m.expiry.map(|odt| {
-                        debug_assert!(odt.offset() == time::UtcOffset::UTC);
-                        #[allow(clippy::expect_used)]
-                        odt.format(&Rfc3339)
-                            .expect("Failed to format timestamp into RFC3339")
-                    }),
+                    state: match &m.state {
+                        SessionState::ExpiresAt(odt) => {
+                            debug_assert!(odt.offset() == time::UtcOffset::UTC);
+                            #[allow(clippy::expect_used)]
+                            odt.format(&Rfc3339)
+                                .map(ReplSessionStateV1::ExpiresAt)
+                                .expect("Failed to format timestamp into RFC3339!")
+                        }
+                        SessionState::NeverExpires => ReplSessionStateV1::Never,
+                        SessionState::RevokedAt(c) => ReplSessionStateV1::RevokedAt(c.into()),
+                    },
                     issued_at: {
                         debug_assert!(m.issued_at.offset() == time::UtcOffset::UTC);
                         #[allow(clippy::expect_used)]
@@ -873,7 +1041,6 @@ impl ValueSetT for ValueSetOauth2Session {
         Some(Box::new(self.map.values().map(|m| &m.rs_uuid).copied()))
     }
 
-    #[allow(clippy::todo)]
     fn repl_merge_valueset(&self, _older: &ValueSet) -> Option<ValueSet> {
         todo!();
     }
