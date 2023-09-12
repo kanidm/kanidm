@@ -1568,34 +1568,43 @@ mod tests {
     #[test]
     fn test_lessthan_entry_filter() {
         let e = entry_init!(
-            (Attribute::UserId.as_ref(), Value::new_iutf8("william")),
+            (Attribute::UserId, Value::new_iutf8("william")),
             (
-                "uuid",
+                Attribute::Uuid,
                 Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
             ),
-            (Attribute::GidNumber.as_ref(), Value::Uint32(1000))
+            (Attribute::GidNumber, Value::Uint32(1000))
         )
         .into_sealed_new();
 
-        let f_t1a = filter_resolved!(f_lt("gidnumber", PartialValue::new_uint32(500)));
+        let f_t1a = filter_resolved!(f_lt(
+            Attribute::GidNumber.as_ref(),
+            PartialValue::new_uint32(500)
+        ));
         assert!(!e.entry_match_no_index(&f_t1a));
 
-        let f_t1b = filter_resolved!(f_lt("gidnumber", PartialValue::new_uint32(1000)));
+        let f_t1b = filter_resolved!(f_lt(
+            Attribute::GidNumber.as_ref(),
+            PartialValue::new_uint32(1000)
+        ));
         assert!(!e.entry_match_no_index(&f_t1b));
 
-        let f_t1c = filter_resolved!(f_lt("gidnumber", PartialValue::new_uint32(1001)));
+        let f_t1c = filter_resolved!(f_lt(
+            Attribute::GidNumber.as_ref(),
+            PartialValue::new_uint32(1001)
+        ));
         assert!(e.entry_match_no_index(&f_t1c));
     }
 
     #[test]
     fn test_or_entry_filter() {
         let e = entry_init!(
-            (Attribute::UserId.as_ref(), Value::new_iutf8("william")),
+            (Attribute::UserId, Value::new_iutf8("william")),
             (
-                Attribute::Uuid.as_ref(),
+                Attribute::Uuid,
                 Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
             ),
-            (Attribute::GidNumber.as_ref(), Value::Uint32(1000))
+            (Attribute::GidNumber, Value::Uint32(1000))
         )
         .into_sealed_new();
 
@@ -1627,12 +1636,12 @@ mod tests {
     #[test]
     fn test_and_entry_filter() {
         let e = entry_init!(
-            (Attribute::UserId.as_ref(), Value::new_iutf8("william")),
+            (Attribute::UserId, Value::new_iutf8("william")),
             (
-                Attribute::Uuid.as_ref(),
+                Attribute::Uuid,
                 Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
             ),
-            (Attribute::GidNumber.as_ref(), Value::Uint32(1000))
+            (Attribute::GidNumber, Value::Uint32(1000))
         )
         .into_sealed_new();
 
@@ -1664,12 +1673,12 @@ mod tests {
     #[test]
     fn test_not_entry_filter() {
         let e1 = entry_init!(
-            (Attribute::UserId.as_ref(), Value::new_iutf8("william")),
+            (Attribute::UserId, Value::new_iutf8("william")),
             (
-                Attribute::Uuid.as_ref(),
+                Attribute::Uuid,
                 Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
             ),
-            (Attribute::GidNumber.as_ref(), Value::Uint32(1000))
+            (Attribute::GidNumber, Value::Uint32(1000))
         )
         .into_sealed_new();
 
@@ -1689,48 +1698,42 @@ mod tests {
     #[test]
     fn test_nested_entry_filter() {
         let e1 = entry_init!(
+            (Attribute::Class, EntryClass::Person.to_value().clone()),
             (
-                Attribute::Class.as_ref(),
-                EntryClass::Person.to_value().clone()
-            ),
-            (
-                Attribute::Uuid.as_ref(),
+                Attribute::Uuid,
                 Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
             ),
-            (Attribute::GidNumber.as_ref(), Value::Uint32(1000))
+            (Attribute::GidNumber, Value::Uint32(1000))
         )
         .into_sealed_new();
 
         let e2 = entry_init!(
+            (Attribute::Class, EntryClass::Person.to_value().clone()),
             (
-                Attribute::Class.as_ref(),
-                EntryClass::Person.to_value().clone()
-            ),
-            (
-                Attribute::Uuid.as_ref(),
+                Attribute::Uuid,
                 Value::Uuid(uuid::uuid!("4b6228ab-1dbe-42a4-a9f5-f6368222438e"))
             ),
-            (Attribute::GidNumber.as_ref(), Value::Uint32(1001))
+            (Attribute::GidNumber, Value::Uint32(1001))
         )
         .into_sealed_new();
 
         let e3 = entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
             (
-                Attribute::Uuid.as_ref(),
+                Attribute::Uuid,
                 Value::Uuid(uuid::uuid!("7b23c99d-c06b-4a9a-a958-3afa56383e1d"))
             ),
-            (Attribute::GidNumber.as_ref(), Value::Uint32(1002))
+            (Attribute::GidNumber, Value::Uint32(1002))
         )
         .into_sealed_new();
 
         let e4 = entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Group.to_value()),
+            (Attribute::Class, EntryClass::Group.to_value()),
             (
-                Attribute::Uuid.as_ref(),
+                Attribute::Uuid,
                 Value::Uuid(uuid::uuid!("21d816b5-1f6a-4696-b7c1-6ed06d22ed81"))
             ),
-            (Attribute::GidNumber.as_ref(), Value::Uint32(1000))
+            (Attribute::GidNumber, Value::Uint32(1000))
         )
         .into_sealed_new();
 
@@ -1780,65 +1783,41 @@ mod tests {
         let mut server_txn = server.write(time_p1).await;
 
         let e1 = entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
-            (Attribute::Name.as_ref(), Value::new_iname("testperson1")),
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Name, Value::new_iname("testperson1")),
             (
-                Attribute::Uuid.as_ref(),
+                Attribute::Uuid,
                 Value::Uuid(uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
             ),
-            (
-                Attribute::Description.as_ref(),
-                Value::new_utf8s("testperson1")
-            ),
-            (
-                Attribute::DisplayName.as_ref(),
-                Value::new_utf8s("testperson1")
-            )
+            (Attribute::Description, Value::new_utf8s("testperson1")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson1"))
         );
 
         let e2 = entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value().clone()),
+            (Attribute::Name, Value::new_iname("testperson2")),
             (
-                Attribute::Class.as_ref(),
-                EntryClass::Person.to_value().clone()
-            ),
-            (Attribute::Name.as_ref(), Value::new_iname("testperson2")),
-            (
-                Attribute::Uuid.as_ref(),
+                Attribute::Uuid,
                 Value::Uuid(uuid::uuid!("a67c0c71-0b35-4218-a6b0-22d23d131d27"))
             ),
-            (
-                Attribute::Description.as_ref(),
-                Value::new_utf8s("testperson2")
-            ),
-            (
-                Attribute::DisplayName.as_ref(),
-                Value::new_utf8s("testperson2")
-            )
+            (Attribute::Description, Value::new_utf8s("testperson2")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson2"))
         );
 
         // We need to add these and then push through the state machine.
         let e_ts = entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value().clone()),
+            (Attribute::Name, Value::new_iname("testperson3")),
             (
-                Attribute::Class.as_ref(),
-                EntryClass::Person.to_value().clone()
-            ),
-            (Attribute::Name.as_ref(), Value::new_iname("testperson3")),
-            (
-                Attribute::Uuid.as_ref(),
+                Attribute::Uuid,
                 Value::Uuid(uuid!("9557f49c-97a5-4277-a9a5-097d17eb8317"))
             ),
-            (
-                Attribute::Description.as_ref(),
-                Value::new_utf8s("testperson3")
-            ),
-            (
-                Attribute::DisplayName.as_ref(),
-                Value::new_utf8s("testperson3")
-            )
+            (Attribute::Description, Value::new_utf8s("testperson3")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson3"))
         );
 
         let ce = CreateEvent::new_internal(vec![e1, e2, e_ts]);

@@ -283,39 +283,27 @@ mod tests {
 
         // Create some recycled objects
         let e1 = entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
-            (Attribute::Name.as_ref(), Value::new_iname("testperson1")),
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Name, Value::new_iname("testperson1")),
             (
-                Attribute::Uuid.as_ref(),
+                Attribute::Uuid,
                 Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
             ),
-            (
-                Attribute::Description.as_ref(),
-                Value::new_utf8s("testperson1")
-            ),
-            (
-                Attribute::DisplayName.as_ref(),
-                Value::new_utf8s("testperson1")
-            )
+            (Attribute::Description, Value::new_utf8s("testperson1")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson1"))
         );
 
         let e2 = entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
-            (Attribute::Name.as_ref(), Value::new_iname("testperson2")),
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Name, Value::new_iname("testperson2")),
             (
-                Attribute::Uuid.as_ref(),
+                Attribute::Uuid,
                 Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63932"))
             ),
-            (
-                Attribute::Description.as_ref(),
-                Value::new_utf8s("testperson2")
-            ),
-            (
-                Attribute::DisplayName.as_ref(),
-                Value::new_utf8s("testperson2")
-            )
+            (Attribute::Description, Value::new_utf8s("testperson2")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson2"))
         );
 
         let ce = CreateEvent::new_internal(vec![e1, e2]);
@@ -401,21 +389,15 @@ mod tests {
         let admin = server_txn.internal_search_uuid(UUID_ADMIN).expect("failed");
 
         let e1 = entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
-            (Attribute::Name.as_ref(), Value::new_iname("testperson1")),
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Name, Value::new_iname("testperson1")),
             (
-                Attribute::Uuid.as_ref(),
+                Attribute::Uuid,
                 Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
             ),
-            (
-                Attribute::Description.as_ref(),
-                Value::new_utf8s("testperson1")
-            ),
-            (
-                Attribute::DisplayName.as_ref(),
-                Value::new_utf8s("testperson1")
-            )
+            (Attribute::Description, Value::new_utf8s("testperson1")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson1"))
         );
         let ce = CreateEvent::new_internal(vec![e1]);
 
@@ -446,22 +428,16 @@ mod tests {
         let mut server_txn = server.write(duration_from_epoch_now()).await;
 
         let e1 = entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
-            (Attribute::Name.as_ref(), Value::new_iname("testperson1")),
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Name, Value::new_iname("testperson1")),
             (
-                Attribute::Uuid.as_ref(),
+                Attribute::Uuid,
                 Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
             ),
-            (
-                Attribute::Description.as_ref(),
-                Value::new_utf8s("testperson1")
-            ),
-            (
-                Attribute::DisplayName.as_ref(),
-                Value::new_utf8s("testperson1")
-            )
+            (Attribute::Description, Value::new_utf8s("testperson1")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson1"))
         );
 
         let tuuid = uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930");
@@ -548,21 +524,15 @@ mod tests {
 
         // First, create an entry, then push it through the lifecycle.
         let e_ts = entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
-            (Attribute::Name.as_ref(), Value::new_iname("testperson1")),
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Name, Value::new_iname("testperson1")),
             (
-                Attribute::Uuid.as_ref(),
+                Attribute::Uuid,
                 Value::Uuid(uuid!("9557f49c-97a5-4277-a9a5-097d17eb8317"))
             ),
-            (
-                Attribute::Description.as_ref(),
-                Value::new_utf8s("testperson1")
-            ),
-            (
-                Attribute::DisplayName.as_ref(),
-                Value::new_utf8s("testperson1")
-            )
+            (Attribute::Description, Value::new_utf8s("testperson1")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson1"))
         );
 
         let ce = CreateEvent::new_internal(vec![e_ts]);
@@ -632,38 +602,32 @@ mod tests {
 
     fn create_user(name: &str, uuid: &str) -> Entry<EntryInit, EntryNew> {
         entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
-            (Attribute::Name.as_ref(), Value::new_iname(name)),
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Name, Value::new_iname(name)),
             (
-                Attribute::Uuid.as_ref(),
-                Value::new_uuid_s(uuid).expect("uuid")
+                Attribute::Uuid,
+                Value::new_uuid_s(uuid).expect(Attribute::Uuid.as_ref())
             ),
-            (
-                Attribute::Description.as_ref(),
-                Value::new_utf8s("testperson-entry")
-            ),
-            (Attribute::DisplayName.as_ref(), Value::new_utf8s(name))
+            (Attribute::Description, Value::new_utf8s("testperson-entry")),
+            (Attribute::DisplayName, Value::new_utf8s(name))
         )
     }
 
     fn create_group(name: &str, uuid: &str, members: &[&str]) -> Entry<EntryInit, EntryNew> {
         let mut e1 = entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Group.to_value()),
-            (Attribute::Name.as_ref(), Value::new_iname(name)),
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Group.to_value()),
+            (Attribute::Name, Value::new_iname(name)),
             (
-                Attribute::Uuid.as_ref(),
-                Value::new_uuid_s(uuid).expect("uuid")
+                Attribute::Uuid,
+                Value::new_uuid_s(uuid).expect(Attribute::Uuid.as_ref())
             ),
-            (
-                Attribute::Description.as_ref(),
-                Value::new_utf8s("testgroup-entry")
-            )
+            (Attribute::Description, Value::new_utf8s("testgroup-entry"))
         );
         members
             .iter()
-            .for_each(|m| e1.add_ava("member", Value::new_refer_s(m).unwrap()));
+            .for_each(|m| e1.add_ava(Attribute::Member, Value::new_refer_s(m).unwrap()));
         e1
     }
 

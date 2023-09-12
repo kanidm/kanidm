@@ -924,26 +924,26 @@ mod tests {
         // scope maps, so we need to check that when the group is deleted, that the
         // scope map is also appropriately affected.
         let ea: Entry<EntryInit, EntryNew> = entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Object.to_value()),
             (
-                Attribute::Class.as_ref(),
+                Attribute::Class,
                 EntryClass::OAuth2ResourceServer.to_value()
             ),
-            // (Attribute::Class.as_ref(), EntryClass::OAuth2ResourceServerBasic.into()),
+            // (Attribute::Class, EntryClass::OAuth2ResourceServerBasic.into()),
             (
-                Attribute::OAuth2RsName.as_ref(),
+                Attribute::OAuth2RsName,
                 Value::new_iname("test_resource_server")
             ),
             (
-                Attribute::DisplayName.as_ref(),
+                Attribute::DisplayName,
                 Value::new_utf8s("test_resource_server")
             ),
             (
-                "oauth2_rs_origin",
+                Attribute::OAuth2RsOrigin,
                 Value::new_url_s("https://demo.example.com").unwrap()
             ),
             (
-                "oauth2_rs_scope_map",
+                Attribute::OAuth2RsScopeMap,
                 Value::new_oauthscopemap(
                     uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"),
                     btreeset![OAUTH2_SCOPE_READ.to_string()]
@@ -953,16 +953,13 @@ mod tests {
         );
 
         let eb: Entry<EntryInit, EntryNew> = entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Group.to_value()),
-            (Attribute::Name.as_ref(), Value::new_iname("testgroup")),
+            (Attribute::Class, EntryClass::Group.to_value()),
+            (Attribute::Name, Value::new_iname("testgroup")),
             (
-                "uuid",
+                Attribute::Uuid,
                 Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
             ),
-            (
-                Attribute::Description.as_ref(),
-                Value::new_utf8s("testgroup")
-            )
+            (Attribute::Description, Value::new_utf8s("testgroup"))
         );
 
         let preload = vec![ea, eb];
@@ -1003,47 +1000,41 @@ mod tests {
         let rs_uuid = Uuid::new_v4();
 
         let e1 = entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
-            (Attribute::Name.as_ref(), Value::new_iname("testperson1")),
-            (Attribute::Uuid.as_ref(), Value::Uuid(tuuid)),
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Name, Value::new_iname("testperson1")),
+            (Attribute::Uuid, Value::Uuid(tuuid)),
+            (Attribute::Description, Value::new_utf8s("testperson1")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson1")),
             (
-                Attribute::Description.as_ref(),
-                Value::new_utf8s("testperson1")
-            ),
-            (
-                Attribute::DisplayName.as_ref(),
-                Value::new_utf8s("testperson1")
-            ),
-            (
-                "primary_credential",
+                Attribute::PrimaryCredential,
                 Value::Cred("primary".to_string(), cred.clone())
             )
         );
 
         let e2 = entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Object.to_value()),
             (
-                Attribute::Class.as_ref(),
+                Attribute::Class,
                 EntryClass::OAuth2ResourceServer.to_value()
             ),
-            (Attribute::Uuid.as_ref(), Value::Uuid(rs_uuid)),
+            (Attribute::Uuid, Value::Uuid(rs_uuid)),
             (
-                Attribute::OAuth2RsName.as_ref(),
+                Attribute::OAuth2RsName,
                 Value::new_iname("test_resource_server")
             ),
             (
-                Attribute::DisplayName.as_ref(),
+                Attribute::DisplayName,
                 Value::new_utf8s("test_resource_server")
             ),
             (
-                "oauth2_rs_origin",
+                Attribute::OAuth2RsOrigin,
                 Value::new_url_s("https://demo.example.com").unwrap()
             ),
             // System admins
             (
-                "oauth2_rs_scope_map",
+                Attribute::OAuth2RsScopeMap,
                 Value::new_oauthscopemap(
                     UUID_IDM_ALL_ACCOUNTS,
                     btreeset![OAUTH2_SCOPE_OPENID.to_string()]
@@ -1069,7 +1060,7 @@ mod tests {
         // Mod the user
         let modlist = modlist!([
             Modify::Present(
-                "oauth2_session".into(),
+                Attribute::OAuth2Session.into(),
                 Value::Oauth2Session(
                     session_id,
                     Oauth2Session {
@@ -1082,7 +1073,7 @@ mod tests {
                 )
             ),
             Modify::Present(
-                "user_auth_token_session".into(),
+                Attribute::UserAuthTokenSession.into(),
                 Value::Session(
                     parent,
                     Session {
@@ -1148,24 +1139,27 @@ mod tests {
         let inv_mb_uuid = Uuid::new_v4();
 
         let e_dyn = entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Group.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::DynGroup.to_value()),
-            (Attribute::Uuid.as_ref(), Value::Uuid(dyn_uuid)),
-            (Attribute::Name.as_ref(), Value::new_iname("test_dyngroup")),
-            ("dynmember", Value::Refer(inv_mb_uuid)),
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Group.to_value()),
+            (Attribute::Class, EntryClass::DynGroup.to_value()),
+            (Attribute::Uuid, Value::Uuid(dyn_uuid)),
+            (Attribute::Name, Value::new_iname("test_dyngroup")),
+            (Attribute::DynMember, Value::Refer(inv_mb_uuid)),
             (
-                "dyngroup_filter",
-                Value::JsonFilt(ProtoFilter::Eq("name".to_string(), "testgroup".to_string()))
+                Attribute::DynGroupFilter,
+                Value::JsonFilt(ProtoFilter::Eq(
+                    Attribute::Name.to_string(),
+                    "testgroup".to_string()
+                ))
             )
         );
 
         let e_group: Entry<EntryInit, EntryNew> = entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Group.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::MemberOf.to_value()),
-            (Attribute::Name.as_ref(), Value::new_iname("testgroup")),
-            (Attribute::Uuid.as_ref(), Value::Uuid(tgroup_uuid)),
-            (Attribute::MemberOf.as_ref(), Value::Refer(inv_mo_uuid))
+            (Attribute::Class, EntryClass::Group.to_value()),
+            (Attribute::Class, EntryClass::MemberOf.to_value()),
+            (Attribute::Name, Value::new_iname("testgroup")),
+            (Attribute::Uuid, Value::Uuid(tgroup_uuid)),
+            (Attribute::MemberOf, Value::Refer(inv_mo_uuid))
         );
 
         let ce = CreateEvent::new_internal(vec![e_dyn, e_group]);

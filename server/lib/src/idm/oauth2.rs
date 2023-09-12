@@ -413,7 +413,7 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
                 };
 
                 let prefer_short_username = ent
-                    .get_ava_single_bool("oauth2_prefer_short_username")
+                    .get_ava_single_bool(Attribute::OAuth2PreferShortUsername.as_ref())
                     .unwrap_or(false);
 
                 let mut authorization_endpoint = self.inner.origin.clone();
@@ -2037,31 +2037,31 @@ mod tests {
         let uuid = Uuid::new_v4();
 
         let e: Entry<EntryInit, EntryNew> = entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Object.to_value()),
             (
-                Attribute::Class.as_ref(),
+                Attribute::Class,
                 EntryClass::OAuth2ResourceServer.to_value()
             ),
             (
-                Attribute::Class.as_ref(),
+                Attribute::Class,
                 EntryClass::OAuth2ResourceServerBasic.to_value()
             ),
-            (Attribute::Uuid.as_ref(), Value::Uuid(uuid)),
+            (Attribute::Uuid, Value::Uuid(uuid)),
             (
-                Attribute::OAuth2RsName.as_ref(),
+                Attribute::OAuth2RsName,
                 Value::new_iname("test_resource_server")
             ),
             (
-                Attribute::DisplayName.as_ref(),
+                Attribute::DisplayName,
                 Value::new_utf8s("test_resource_server")
             ),
             (
-                Attribute::OAuth2RsOrigin.as_ref(),
+                Attribute::OAuth2RsOrigin,
                 Value::new_url_s("https://demo.example.com").unwrap()
             ),
             // System admins
             (
-                Attribute::OAuth2RsScopeMap.as_ref(),
+                Attribute::OAuth2RsScopeMap,
                 Value::new_oauthscopemap(
                     UUID_SYSTEM_ADMINS,
                     btreeset![OAUTH2_SCOPE_GROUPS.to_string()]
@@ -2069,7 +2069,7 @@ mod tests {
                 .expect("invalid oauthscope")
             ),
             (
-                Attribute::OAuth2RsScopeMap.as_ref(),
+                Attribute::OAuth2RsScopeMap,
                 Value::new_oauthscopemap(
                     UUID_IDM_ALL_ACCOUNTS,
                     btreeset![OAUTH2_SCOPE_OPENID.to_string()]
@@ -2077,7 +2077,7 @@ mod tests {
                 .expect("invalid oauthscope")
             ),
             (
-                Attribute::OAuth2RsSupScopeMap.as_ref(),
+                Attribute::OAuth2RsSupScopeMap,
                 Value::new_oauthscopemap(
                     UUID_IDM_ALL_ACCOUNTS,
                     btreeset!["supplement".to_string()]
@@ -2085,15 +2085,15 @@ mod tests {
                 .expect("invalid oauthscope")
             ),
             (
-                Attribute::OAuth2AllowInsecureClientDisablePkce.as_ref(),
+                Attribute::OAuth2AllowInsecureClientDisablePkce,
                 Value::new_bool(!enable_pkce)
             ),
             (
-                Attribute::OAuth2JwtLegacyCryptoEnable.as_ref(),
+                Attribute::OAuth2JwtLegacyCryptoEnable,
                 Value::new_bool(enable_legacy_crypto)
             ),
             (
-                "oauth2_prefer_short_username",
+                Attribute::OAuth2PreferShortUsername,
                 Value::new_bool(prefer_short_username)
             )
         );
@@ -2180,36 +2180,36 @@ mod tests {
         let uuid = Uuid::new_v4();
 
         let e: Entry<EntryInit, EntryNew> = entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Object.to_value()),
             (
-                Attribute::Class.as_ref(),
+                Attribute::Class,
                 EntryClass::OAuth2ResourceServer.to_value()
             ),
             (
-                Attribute::Class.as_ref(),
+                Attribute::Class,
                 EntryClass::OAuth2ResourceServerPublic.to_value()
             ),
-            (Attribute::Uuid.as_ref(), Value::Uuid(uuid)),
+            (Attribute::Uuid, Value::Uuid(uuid)),
             (
-                Attribute::OAuth2RsName.as_ref(),
+                Attribute::OAuth2RsName,
                 Value::new_iname("test_resource_server")
             ),
             (
-                Attribute::DisplayName.as_ref(),
+                Attribute::DisplayName,
                 Value::new_utf8s("test_resource_server")
             ),
             (
-                Attribute::OAuth2RsOrigin.as_ref(),
+                Attribute::OAuth2RsOrigin,
                 Value::new_url_s("https://demo.example.com").unwrap()
             ),
             // System admins
             (
-                Attribute::OAuth2RsScopeMap.as_ref(),
+                Attribute::OAuth2RsScopeMap,
                 Value::new_oauthscopemap(UUID_SYSTEM_ADMINS, btreeset!["groups".to_string()])
                     .expect("invalid oauthscope")
             ),
             (
-                Attribute::OAuth2RsScopeMap.as_ref(),
+                Attribute::OAuth2RsScopeMap,
                 Value::new_oauthscopemap(
                     UUID_IDM_ALL_ACCOUNTS,
                     btreeset![OAUTH2_SCOPE_OPENID.to_string()]
@@ -2217,7 +2217,7 @@ mod tests {
                 .expect("invalid oauthscope")
             ),
             (
-                Attribute::OAuth2RsSupScopeMap.as_ref(),
+                Attribute::OAuth2RsSupScopeMap,
                 Value::new_oauthscopemap(
                     UUID_IDM_ALL_ACCOUNTS,
                     btreeset!["supplement".to_string()]

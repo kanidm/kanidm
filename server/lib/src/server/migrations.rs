@@ -239,7 +239,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             }
 
             // Migrate implicit scopes if they exist.
-            let nv = if let Some(vs) = er.get_ava_set("oauth2_rs_implicit_scopes") {
+            let nv = if let Some(vs) = er.get_ava_set(Attribute::OAuth2RsImplicitScopes.as_ref()) {
                 vs.as_oauthscope_set()
                     .map(|v| Value::OauthScopeMap(UUID_IDM_ALL_PERSONS, v.clone()))
             } else {
@@ -247,9 +247,9 @@ impl<'a> QueryServerWriteTransaction<'a> {
             };
 
             if let Some(nv) = nv {
-                er.add_ava("oauth2_rs_scope_map", nv)
+                er.add_ava(Attribute::OAuth2RsScopeMap, nv)
             }
-            er.purge_ava("oauth2_rs_implicit_scopes");
+            er.purge_ava(Attribute::OAuth2RsImplicitScopes.as_ref());
 
             Ok(())
         })?;
@@ -675,55 +675,55 @@ impl<'a> QueryServerWriteTransaction<'a> {
         debug_assert!(res.is_ok());
         res?;
 
-        let idm_entries: Vec<EntryInitNew> = vec![
+        let idm_entries: Vec<BuiltinAcp> = vec![
             // Built in access controls.
-            IDM_ADMINS_ACP_RECYCLE_SEARCH_V1.clone().into(),
-            IDM_ADMINS_ACP_REVIVE_V1.clone().into(),
-            E_IDM_ALL_ACP_READ_V1.clone(),
-            E_IDM_SELF_ACP_READ_V1.clone(),
-            E_IDM_SELF_ACP_WRITE_V1.clone(),
+            IDM_ADMINS_ACP_RECYCLE_SEARCH_V1.clone(),
+            IDM_ADMINS_ACP_REVIVE_V1.clone(),
+            IDM_ALL_ACP_READ_V1.clone(),
+            IDM_SELF_ACP_READ_V1.clone(),
+            IDM_SELF_ACP_WRITE_V1.clone(),
             E_IDM_PEOPLE_SELF_ACP_WRITE_MAIL_PRIV_V1.clone(),
-            E_IDM_ACP_PEOPLE_READ_PRIV_V1.clone(),
-            E_IDM_ACP_PEOPLE_WRITE_PRIV_V1.clone(),
-            E_IDM_ACP_PEOPLE_MANAGE_PRIV_V1.clone(),
-            E_IDM_ACP_ACCOUNT_READ_PRIV_V1.clone(),
-            E_IDM_ACP_ACCOUNT_WRITE_PRIV_V1.clone(),
-            E_IDM_ACP_ACCOUNT_MANAGE_PRIV_V1.clone(),
-            E_IDM_ACP_HP_ACCOUNT_READ_PRIV_V1.clone(),
-            E_IDM_ACP_HP_ACCOUNT_WRITE_PRIV_V1.clone(),
-            E_IDM_ACP_HP_ACCOUNT_MANAGE_PRIV_V1.clone(),
-            E_IDM_ACP_GROUP_WRITE_PRIV_V1.clone(),
-            E_IDM_ACP_GROUP_MANAGE_PRIV_V1.clone(),
-            E_IDM_ACP_HP_GROUP_WRITE_PRIV_V1.clone(),
-            E_IDM_ACP_HP_GROUP_MANAGE_PRIV_V1.clone(),
-            E_IDM_ACP_SCHEMA_WRITE_ATTRS_PRIV_V1.clone(),
-            E_IDM_ACP_SCHEMA_WRITE_CLASSES_PRIV_V1.clone(),
-            E_IDM_ACP_ACP_MANAGE_PRIV_V1.clone(),
-            E_IDM_ACP_RADIUS_SERVERS_V1.clone(),
-            E_IDM_ACP_DOMAIN_ADMIN_PRIV_V1.clone(),
-            E_IDM_ACP_SYSTEM_CONFIG_PRIV_V1.clone(),
-            E_IDM_ACP_SYSTEM_CONFIG_SESSION_EXP_PRIV_V1.clone(),
-            E_IDM_ACP_PEOPLE_ACCOUNT_PASSWORD_IMPORT_PRIV_V1.clone(),
-            E_IDM_ACP_PEOPLE_EXTEND_PRIV_V1.clone(),
-            E_IDM_ACP_HP_PEOPLE_READ_PRIV_V1.clone(),
-            E_IDM_ACP_HP_PEOPLE_WRITE_PRIV_V1.clone(),
-            E_IDM_ACP_HP_PEOPLE_EXTEND_PRIV_V1.clone(),
-            E_IDM_ACP_ACCOUNT_UNIX_EXTEND_PRIV_V1.clone(),
+            IDM_ACP_PEOPLE_READ_PRIV_V1.clone(),
+            IDM_ACP_PEOPLE_WRITE_PRIV_V1.clone(),
+            IDM_ACP_PEOPLE_MANAGE_PRIV_V1.clone(),
+            IDM_ACP_ACCOUNT_READ_PRIV_V1.clone(),
+            IDM_ACP_ACCOUNT_WRITE_PRIV_V1.clone(),
+            IDM_ACP_ACCOUNT_MANAGE_PRIV_V1.clone(),
+            IDM_ACP_HP_ACCOUNT_READ_PRIV_V1.clone(),
+            IDM_ACP_HP_ACCOUNT_WRITE_PRIV_V1.clone(),
+            IDM_ACP_HP_ACCOUNT_MANAGE_PRIV_V1.clone(),
+            IDM_ACP_GROUP_WRITE_PRIV_V1.clone(),
+            IDM_ACP_GROUP_MANAGE_PRIV_V1.clone(),
+            IDM_ACP_HP_GROUP_WRITE_PRIV_V1.clone(),
+            IDM_ACP_HP_GROUP_MANAGE_PRIV_V1.clone(),
+            IDM_ACP_SCHEMA_WRITE_ATTRS_PRIV_V1.clone(),
+            IDM_ACP_SCHEMA_WRITE_CLASSES_PRIV_V1.clone(),
+            IDM_ACP_ACP_MANAGE_PRIV_V1.clone(),
+            IDM_ACP_RADIUS_SERVERS_V1.clone(),
+            IDM_ACP_DOMAIN_ADMIN_PRIV_V1.clone(),
+            IDM_ACP_SYSTEM_CONFIG_PRIV_V1.clone(),
+            IDM_ACP_SYSTEM_CONFIG_SESSION_EXP_PRIV_V1.clone(),
+            IDM_ACP_PEOPLE_ACCOUNT_PASSWORD_IMPORT_PRIV_V1.clone(),
+            IDM_ACP_PEOPLE_EXTEND_PRIV_V1.clone(),
+            IDM_ACP_HP_PEOPLE_READ_PRIV_V1.clone(),
+            IDM_ACP_HP_PEOPLE_WRITE_PRIV_V1.clone(),
+            IDM_ACP_HP_PEOPLE_EXTEND_PRIV_V1.clone(),
+            IDM_ACP_ACCOUNT_UNIX_EXTEND_PRIV_V1.clone(),
             E_IDM_HP_ACP_ACCOUNT_UNIX_EXTEND_PRIV_V1.clone(),
-            E_IDM_ACP_GROUP_UNIX_EXTEND_PRIV_V1.clone(),
+            IDM_ACP_GROUP_UNIX_EXTEND_PRIV_V1.clone(),
             E_IDM_HP_ACP_GROUP_UNIX_EXTEND_PRIV_V1.clone(),
             E_IDM_HP_ACP_OAUTH2_MANAGE_PRIV_V1.clone(),
-            E_IDM_ACP_RADIUS_SECRET_READ_PRIV_V1.clone(),
-            E_IDM_ACP_RADIUS_SECRET_WRITE_PRIV_V1.clone(),
+            IDM_ACP_RADIUS_SECRET_READ_PRIV_V1.clone(),
+            IDM_ACP_RADIUS_SECRET_WRITE_PRIV_V1.clone(),
             E_IDM_HP_ACP_SERVICE_ACCOUNT_INTO_PERSON_MIGRATE_V1.clone(),
             E_IDM_HP_ACP_SYNC_ACCOUNT_MANAGE_PRIV_V1.clone(),
-            E_IDM_ACP_ACCOUNT_MAIL_READ_PRIV_V1.clone(),
-            E_IDM_ACCOUNT_SELF_ACP_WRITE_V1.clone(),
+            IDM_ACP_ACCOUNT_MAIL_READ_PRIV_V1.clone(),
+            IDM_ACCOUNT_SELF_ACP_WRITE_V1.clone(),
         ];
 
         let res: Result<(), _> = idm_entries
             .into_iter()
-            .try_for_each(|entry| self.internal_migrate_or_create(entry));
+            .try_for_each(|entry| self.internal_migrate_or_create(entry.into()));
         if res.is_ok() {
             admin_debug!("initialise_idm -> result Ok!");
         } else {
@@ -816,7 +816,7 @@ mod tests {
         let me_syn = unsafe {
             ModifyEvent::new_internal_invalid(
                 filter!(f_or!([
-                    f_eq(Attribute::AttributeName, PartialValue::new_iutf8("name")),
+                    f_eq(Attribute::AttributeName, Attribute::Name.to_partialvalue()),
                     f_eq(Attribute::AttributeName, PartialValue::new_iutf8("domain_name")),
                 ])),
                 ModifyList::new_purge_and_set(
@@ -859,7 +859,7 @@ mod tests {
         let me_syn = unsafe {
             ModifyEvent::new_internal_invalid(
                 filter!(f_or!([
-                    f_eq(Attribute::AttributeName, PartialValue::new_iutf8("name")),
+                    f_eq(Attribute::AttributeName, Attribute::Name.to_partialvalue()),
                     f_eq(Attribute::AttributeName, PartialValue::new_iutf8("domain_name")),
                 ])),
                 ModifyList::new_purge_and_set(
@@ -887,7 +887,7 @@ mod tests {
             .expect("failed");
         // ++ assert all names are iname
         assert!(
-            domain.get_ava_set("name").expect("no name?").syntax() == SyntaxType::Utf8StringIname
+            domain.get_ava_set(Attribute::Name.as_ref()).expect("no name?").syntax() == SyntaxType::Utf8StringIname
         );
         // ++ assert all domain/domain_name are iname
         assert!(

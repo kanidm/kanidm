@@ -55,18 +55,18 @@ impl SessionConsistency {
             // * If the session's credential is no longer on the account, we remove the session.
             let cred_ids: BTreeSet<Uuid> =
                 entry
-                    .get_ava_single_credential("primary_credential")
+                    .get_ava_single_credential(Attribute::PrimaryCredential.into())
                         .iter()
                         .map(|c| c.uuid)
 
                 .chain(
-                    entry.get_ava_passkeys("passkeys")
+                    entry.get_ava_passkeys(Attribute::PassKeys.into())
                         .iter()
                         .flat_map(|pks| pks.keys().copied()  )
                 )
                 .collect();
 
-            let invalidate: Option<BTreeSet<_>> = entry.get_ava_as_session_map("user_auth_token_session")
+            let invalidate: Option<BTreeSet<_>> = entry.get_ava_as_session_map(Attribute::UserAuthTokenSession.into())
                 .map(|sessions| {
                     sessions.iter().filter_map(|(session_id, session)| {
                         if !cred_ids.contains(&session.cred_id) {
@@ -80,11 +80,11 @@ impl SessionConsistency {
                 });
 
             if let Some(invalidate) = invalidate.as_ref() {
-                entry.remove_avas("user_auth_token_session", invalidate);
+                entry.remove_avas(Attribute::UserAuthTokenSession.into(), invalidate);
             }
 
             // * If a UAT is past its expiry, remove it.
-            let expired: Option<BTreeSet<_>> = entry.get_ava_as_session_map("user_auth_token_session")
+            let expired: Option<BTreeSet<_>> = entry.get_ava_as_session_map(Attribute::UserAuthTokenSession.into())
                 .map(|sessions| {
                     sessions.iter().filter_map(|(session_id, session)| {
                         match &session.expiry {
@@ -99,14 +99,14 @@ impl SessionConsistency {
                 });
 
             if let Some(expired) = expired.as_ref() {
-                entry.remove_avas("user_auth_token_session", expired);
+                entry.remove_avas(Attribute::UserAuthTokenSession.into(), expired);
             }
 
             // * If an oauth2 session is past it's expiry, remove it.
             // * If an oauth2 session is past the grace window, and no parent session exists, remove it.
             let oauth2_remove: Option<BTreeSet<_>> = entry.get_ava_as_oauth2session_map("oauth2_session").map(|oauth2_sessions| {
                 // If we have oauth2 sessions, we need to be able to lookup if sessions exist in the uat.
-                let sessions = entry.get_ava_as_session_map("user_auth_token_session");
+                let sessions = entry.get_ava_as_session_map(Attribute::UserAuthTokenSession.into());
 
                 oauth2_sessions.iter().filter_map(|(o2_session_id, session)| {
                     match &session.expiry {
@@ -137,7 +137,7 @@ impl SessionConsistency {
             });
 
             if let Some(oauth2_remove) = oauth2_remove.as_ref() {
-                entry.remove_avas("oauth2_session", oauth2_remove);
+                entry.remove_avas(Attribute::OAuth2Session.as_ref(), oauth2_remove);
             }
 
             Ok(())
@@ -180,21 +180,15 @@ mod tests {
         let tuuid = uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930");
 
         let e1 = entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
-            (Attribute::Name.as_ref(), Value::new_iname("testperson1")),
-            (Attribute::Uuid.as_ref(), Value::Uuid(tuuid)),
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Name, Value::new_iname("testperson1")),
+            (Attribute::Uuid, Value::Uuid(tuuid)),
+            (Attribute::Description, Value::new_utf8s("testperson1")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson1")),
             (
-                Attribute::Description.as_ref(),
-                Value::new_utf8s("testperson1")
-            ),
-            (
-                Attribute::DisplayName.as_ref(),
-                Value::new_utf8s("testperson1")
-            ),
-            (
-                "primary_credential",
+                Attribute::PrimaryCredential,
                 Value::Cred("primary".to_string(), cred.clone())
             )
         );
@@ -228,7 +222,7 @@ mod tests {
         );
 
         // Mod the user
-        let modlist = ModifyList::new_append("user_auth_token_session", session);
+        let modlist = ModifyList::new_append(Attribute::UserAuthTokenSession.into(), session);
 
         server_txn
             .internal_modify(
@@ -289,51 +283,45 @@ mod tests {
         let rs_uuid = Uuid::new_v4();
 
         let e1 = entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
-            (Attribute::Name.as_ref(), Value::new_iname("testperson1")),
-            (Attribute::Uuid.as_ref(), Value::Uuid(tuuid)),
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Name, Value::new_iname("testperson1")),
+            (Attribute::Uuid, Value::Uuid(tuuid)),
+            (Attribute::Description, Value::new_utf8s("testperson1")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson1")),
             (
-                Attribute::Description.as_ref(),
-                Value::new_utf8s("testperson1")
-            ),
-            (
-                Attribute::DisplayName.as_ref(),
-                Value::new_utf8s("testperson1")
-            ),
-            (
-                "primary_credential",
+                Attribute::PrimaryCredential,
                 Value::Cred("primary".to_string(), cred.clone())
             )
         );
 
         let e2 = entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Object.to_value()),
             (
-                Attribute::Class.as_ref(),
+                Attribute::Class,
                 EntryClass::OAuth2ResourceServer.to_value()
             ),
             (
-                Attribute::Class.as_ref(),
+                Attribute::Class,
                 EntryClass::OAuth2ResourceServerBasic.to_value()
             ),
-            (Attribute::Uuid.as_ref(), Value::Uuid(rs_uuid)),
+            (Attribute::Uuid, Value::Uuid(rs_uuid)),
             (
-                Attribute::OAuth2RsName.as_ref(),
+                Attribute::OAuth2RsName,
                 Value::new_iname("test_resource_server")
             ),
             (
-                Attribute::DisplayName.as_ref(),
+                Attribute::DisplayName,
                 Value::new_utf8s("test_resource_server")
             ),
             (
-                "oauth2_rs_origin",
+                Attribute::OAuth2RsOrigin,
                 Value::new_url_s("https://demo.example.com").unwrap()
             ),
             // System admins
             (
-                "oauth2_rs_scope_map",
+                Attribute::OAuth2RsScopeMap,
                 Value::new_oauthscopemap(
                     UUID_IDM_ALL_ACCOUNTS,
                     btreeset![OAUTH2_SCOPE_OPENID.to_string()]
@@ -373,7 +361,7 @@ mod tests {
                 )
             ),
             Modify::Present(
-                "user_auth_token_session".into(),
+                Attribute::UserAuthTokenSession.into(),
                 Value::Session(
                     parent,
                     Session {
@@ -456,51 +444,45 @@ mod tests {
         let rs_uuid = Uuid::new_v4();
 
         let e1 = entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
-            (Attribute::Name.as_ref(), Value::new_iname("testperson1")),
-            (Attribute::Uuid.as_ref(), Value::Uuid(tuuid)),
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Name, Value::new_iname("testperson1")),
+            (Attribute::Uuid, Value::Uuid(tuuid)),
+            (Attribute::Description, Value::new_utf8s("testperson1")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson1")),
             (
-                Attribute::Description.as_ref(),
-                Value::new_utf8s("testperson1")
-            ),
-            (
-                Attribute::DisplayName.as_ref(),
-                Value::new_utf8s("testperson1")
-            ),
-            (
-                "primary_credential",
+                Attribute::PrimaryCredential,
                 Value::Cred("primary".to_string(), cred.clone())
             )
         );
 
         let e2 = entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Object.to_value()),
             (
-                Attribute::Class.as_ref(),
+                Attribute::Class,
                 EntryClass::OAuth2ResourceServer.to_value()
             ),
             (
-                Attribute::Class.as_ref(),
+                Attribute::Class,
                 EntryClass::OAuth2ResourceServerBasic.to_value()
             ),
-            (Attribute::Uuid.as_ref(), Value::Uuid(rs_uuid)),
+            (Attribute::Uuid, Value::Uuid(rs_uuid)),
             (
-                Attribute::OAuth2RsName.as_ref(),
+                Attribute::OAuth2RsName,
                 Value::new_iname("test_resource_server")
             ),
             (
-                Attribute::DisplayName.as_ref(),
+                Attribute::DisplayName,
                 Value::new_utf8s("test_resource_server")
             ),
             (
-                "oauth2_rs_origin",
+                Attribute::OAuth2RsOrigin,
                 Value::new_url_s("https://demo.example.com").unwrap()
             ),
             // System admins
             (
-                "oauth2_rs_scope_map",
+                Attribute::OAuth2RsScopeMap,
                 Value::new_oauthscopemap(
                     UUID_IDM_ALL_ACCOUNTS,
                     btreeset![OAUTH2_SCOPE_OPENID.to_string()]
@@ -539,7 +521,7 @@ mod tests {
                 )
             ),
             Modify::Present(
-                "user_auth_token_session".into(),
+                Attribute::UserAuthTokenSession.into(),
                 Value::Session(
                     parent,
                     Session {
@@ -579,7 +561,8 @@ mod tests {
         let mut server_txn = server.write(exp_curtime).await;
 
         // Mod again - remove the parent session.
-        let modlist = ModifyList::new_remove("user_auth_token_session", pv_parent_id.clone());
+        let modlist =
+            ModifyList::new_remove(Attribute::UserAuthTokenSession.into(), pv_parent_id.clone());
 
         server_txn
             .internal_modify(
@@ -616,47 +599,41 @@ mod tests {
         let rs_uuid = Uuid::new_v4();
 
         let e1 = entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
-            (Attribute::Name.as_ref(), Value::new_iname("testperson1")),
-            (Attribute::Uuid.as_ref(), Value::Uuid(tuuid)),
-            (
-                Attribute::Description.as_ref(),
-                Value::new_utf8s("testperson1")
-            ),
-            (
-                Attribute::DisplayName.as_ref(),
-                Value::new_utf8s("testperson1")
-            )
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Name, Value::new_iname("testperson1")),
+            (Attribute::Uuid, Value::Uuid(tuuid)),
+            (Attribute::Description, Value::new_utf8s("testperson1")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson1"))
         );
 
         let e2 = entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Object.to_value()),
             (
-                Attribute::Class.as_ref(),
+                Attribute::Class,
                 EntryClass::OAuth2ResourceServer.to_value()
             ),
             (
-                Attribute::Class.as_ref(),
+                Attribute::Class,
                 EntryClass::OAuth2ResourceServerBasic.to_value()
             ),
-            (Attribute::Uuid.as_ref(), Value::Uuid(rs_uuid)),
+            (Attribute::Uuid, Value::Uuid(rs_uuid)),
             (
-                Attribute::OAuth2RsName.as_ref(),
+                Attribute::OAuth2RsName,
                 Value::new_iname("test_resource_server")
             ),
             (
-                Attribute::DisplayName.as_ref(),
+                Attribute::DisplayName,
                 Value::new_utf8s("test_resource_server")
             ),
             (
-                Attribute::OAuth2RsOrigin.as_ref(),
+                Attribute::OAuth2RsOrigin,
                 Value::new_url_s("https://demo.example.com").unwrap()
             ),
             // System admins
             (
-                Attribute::OAuth2RsScopeMap.as_ref(),
+                Attribute::OAuth2RsScopeMap,
                 Value::new_oauthscopemap(
                     UUID_IDM_ALL_ACCOUNTS,
                     btreeset![OAUTH2_SCOPE_OPENID.to_string()]
@@ -746,21 +723,15 @@ mod tests {
         let tuuid = uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930");
 
         let e1 = entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
-            (Attribute::Name.as_ref(), Value::new_iname("testperson1")),
-            (Attribute::Uuid.as_ref(), Value::Uuid(tuuid)),
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Name, Value::new_iname("testperson1")),
+            (Attribute::Uuid, Value::Uuid(tuuid)),
+            (Attribute::Description, Value::new_utf8s("testperson1")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson1")),
             (
-                Attribute::Description.as_ref(),
-                Value::new_utf8s("testperson1")
-            ),
-            (
-                Attribute::DisplayName.as_ref(),
-                Value::new_utf8s("testperson1")
-            ),
-            (
-                Attribute::PrimaryCredential.as_ref(),
+                Attribute::PrimaryCredential,
                 Value::Cred("primary".to_string(), cred.clone())
             )
         );
@@ -795,7 +766,7 @@ mod tests {
         );
 
         // Mod the user
-        let modlist = ModifyList::new_append("user_auth_token_session", session);
+        let modlist = ModifyList::new_append(Attribute::UserAuthTokenSession.into(), session);
 
         server_txn
             .internal_modify(
@@ -816,7 +787,7 @@ mod tests {
         let mut server_txn = server.write(curtime).await;
 
         // Remove the primary credential
-        let modlist = ModifyList::new_purge("primary_credential");
+        let modlist = ModifyList::new_purge(Attribute::PrimaryCredential.into());
 
         server_txn
             .internal_modify(

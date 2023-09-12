@@ -1,6 +1,6 @@
 //! Constant Entries for the IDM
+use crate::prelude::AttrString;
 use enum_iterator::Sequence;
-
 use std::fmt::Display;
 
 use crate::constants::uuids::*;
@@ -34,7 +34,7 @@ fn test_valueattribute_round_trip() {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Sequence)]
+#[derive(Copy, Clone, Debug, PartialEq, Sequence, Hash)]
 pub enum Attribute {
     Account,
     AccountExpire,
@@ -193,6 +193,14 @@ impl TryFrom<&str> for Attribute {
     type Error = OperationError;
 
     fn try_from(value: &str) -> Result<Self, Self::Error> {
+        Attribute::try_from(value.to_string())
+    }
+}
+
+impl TryFrom<&AttrString> for Attribute {
+    type Error = OperationError;
+
+    fn try_from(value: &AttrString) -> Result<Self, Self::Error> {
         Attribute::try_from(value.to_string())
     }
 }
@@ -488,9 +496,9 @@ impl From<Attribute> for &'static str {
     }
 }
 
-impl From<Attribute> for crate::prelude::AttrString {
+impl From<Attribute> for AttrString {
     fn from(val: Attribute) -> Self {
-        crate::prelude::AttrString::from(val.to_string())
+        AttrString::from(val.to_string())
     }
 }
 
@@ -661,14 +669,11 @@ impl TryFrom<BuiltinGroup> for EntryInitNew {
     fn try_from(val: BuiltinGroup) -> Result<Self, OperationError> {
         let mut entry = EntryInitNew::new();
 
-        entry.add_ava(Attribute::Name.as_ref(), Value::new_iname(val.name));
-        entry.add_ava(
-            Attribute::Description.as_ref(),
-            Value::new_utf8s(val.description),
-        );
+        entry.add_ava(Attribute::Name, Value::new_iname(val.name));
+        entry.add_ava(Attribute::Description, Value::new_utf8s(val.description));
         // classes for groups
         entry.set_ava(
-            Attribute::Class.as_ref(),
+            Attribute::Class,
             vec![EntryClass::Group.into(), EntryClass::Object.into()],
         );
         if val.dyngroup {
@@ -678,11 +683,9 @@ impl TryFrom<BuiltinGroup> for EntryInitNew {
                     val.name
                 )));
             }
-            entry.add_ava(Attribute::Class.as_ref(), EntryClass::DynGroup.to_value());
+            entry.add_ava(Attribute::Class, EntryClass::DynGroup.to_value());
             match val.dyngroup_filter {
-                Some(filter) => {
-                    entry.add_ava(Attribute::DynGroupFilter.as_ref(), Value::JsonFilt(filter))
-                }
+                Some(filter) => entry.add_ava(Attribute::DynGroupFilter, Value::JsonFilt(filter)),
                 None => {
                     error!(
                         "No filter specified for dyngroup '{}' this is going to break things!",
@@ -692,9 +695,9 @@ impl TryFrom<BuiltinGroup> for EntryInitNew {
                 }
             };
         }
-        entry.add_ava(Attribute::Uuid.as_ref(), Value::Uuid(val.uuid));
+        entry.add_ava(Attribute::Uuid, Value::Uuid(val.uuid));
         entry.set_ava(
-            Attribute::Member.as_ref(),
+            Attribute::Member,
             val.members
                 .into_iter()
                 .map(Value::Refer)
@@ -703,7 +706,7 @@ impl TryFrom<BuiltinGroup> for EntryInitNew {
         // add any extra attributes
         val.extra_attributes
             .into_iter()
-            .for_each(|(attr, val)| entry.add_ava(attr.as_ref(), val));
+            .for_each(|(attr, val)| entry.add_ava(attr, val));
         // all done!
         Ok(entry)
     }
@@ -1169,25 +1172,25 @@ lazy_static! {
     };
 
     pub static ref E_SYSTEM_INFO_V1: EntryInitNew = entry_init!(
-        (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-        (Attribute::Class.as_ref(), EntryClass::SystemInfo.to_value()),
-        (Attribute::Class.as_ref(), EntryClass::System.to_value()),
-        (Attribute::Uuid.as_ref(), Value::Uuid(UUID_SYSTEM_INFO)),
+        (Attribute::Class, EntryClass::Object.to_value()),
+        (Attribute::Class, EntryClass::SystemInfo.to_value()),
+        (Attribute::Class, EntryClass::System.to_value()),
+        (Attribute::Uuid, Value::Uuid(UUID_SYSTEM_INFO)),
         (
-            Attribute::Description.as_ref(),
+Attribute::Description,
             Value::new_utf8s("System (local) info and metadata object.")
         ),
-        (Attribute::Version.as_ref(), Value::Uint32(14))
+        (Attribute::Version, Value::Uint32(14))
     );
 
     pub static ref E_DOMAIN_INFO_V1: EntryInitNew = entry_init!(
-        (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-        (Attribute::Class.as_ref(), EntryClass::DomainInfo.to_value()),
-        (Attribute::Class.as_ref(), EntryClass::System.to_value()),
-        (Attribute::Name.as_ref(), Value::new_iname("domain_local")),
-        (Attribute::Uuid.as_ref(), Value::Uuid(UUID_DOMAIN_INFO)),
+        (Attribute::Class, EntryClass::Object.to_value()),
+        (Attribute::Class, EntryClass::DomainInfo.to_value()),
+        (Attribute::Class, EntryClass::System.to_value()),
+        (Attribute::Name, Value::new_iname("domain_local")),
+        (Attribute::Uuid, Value::Uuid(UUID_DOMAIN_INFO)),
         (
-            Attribute::Description.as_ref(),
+Attribute::Description,
             Value::new_utf8s("This local domain's info and metadata object.")
         )
     );
@@ -1233,21 +1236,15 @@ impl From<BuiltinAccount> for Account {
 impl From<BuiltinAccount> for EntryInitNew {
     fn from(value: BuiltinAccount) -> Self {
         let mut entry = EntryInitNew::new();
-        entry.add_ava(Attribute::Name.as_ref(), Value::new_iname(value.name));
-        entry.add_ava(Attribute::Uuid.as_ref(), Value::Uuid(value.uuid));
-        entry.add_ava(
-            Attribute::Description.as_ref(),
-            Value::new_utf8s(value.description),
-        );
-        entry.add_ava(
-            Attribute::DisplayName.as_ref(),
-            Value::new_utf8s(value.displayname),
-        );
+        entry.add_ava(Attribute::Name, Value::new_iname(value.name));
+        entry.add_ava(Attribute::Uuid, Value::Uuid(value.uuid));
+        entry.add_ava(Attribute::Description, Value::new_utf8s(value.description));
+        entry.add_ava(Attribute::DisplayName, Value::new_utf8s(value.displayname));
 
-        entry.add_ava(Attribute::Class.as_ref(), EntryClass::Object.to_value());
-        entry.add_ava(Attribute::Class.as_ref(), EntryClass::Account.to_value());
+        entry.add_ava(Attribute::Class, EntryClass::Object.to_value());
+        entry.add_ava(Attribute::Class, EntryClass::Account.to_value());
         entry.set_ava(
-            Attribute::Class.as_ref(),
+            Attribute::Class,
             value
                 .classes
                 .into_iter()
@@ -1316,13 +1313,13 @@ pub const JSON_TESTPERSON2: &str = r#"{
 #[cfg(test)]
 lazy_static! {
     pub static ref E_TESTPERSON_1: EntryInitNew = entry_init!(
-        (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-        (Attribute::Name.as_ref(), Value::new_iname("testperson1")),
-        (Attribute::Uuid.as_ref(), Value::Uuid(UUID_TESTPERSON_1))
+        (Attribute::Class, EntryClass::Object.to_value()),
+        (Attribute::Name, Value::new_iname("testperson1")),
+        (Attribute::Uuid, Value::Uuid(UUID_TESTPERSON_1))
     );
     pub static ref E_TESTPERSON_2: EntryInitNew = entry_init!(
-        (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-        (Attribute::Name.as_ref(), Value::new_iname("testperson2")),
-        (Attribute::Uuid.as_ref(), Value::Uuid(UUID_TESTPERSON_2))
+        (Attribute::Class, EntryClass::Object.to_value()),
+        (Attribute::Name, Value::new_iname("testperson2")),
+        (Attribute::Uuid, Value::Uuid(UUID_TESTPERSON_2))
     );
 }

@@ -439,7 +439,7 @@ impl std::fmt::Display for DbEntry {
         match &self.ent {
             DbEntryVers::V1(dbe_v1) => {
                 write!(f, "v1 - {{ ")?;
-                match dbe_v1.attrs.get("uuid") {
+                match dbe_v1.attrs.get(Attribute::Uuid.as_ref()) {
                     Some(uuids) => {
                         for uuid in uuids {
                             write!(f, "{uuid:?}, ")?;
@@ -466,7 +466,7 @@ impl std::fmt::Display for DbEntry {
             }
             DbEntryVers::V2(dbe_v2) => {
                 write!(f, "v2 - {{ ")?;
-                match dbe_v2.attrs.get("uuid") {
+                match dbe_v2.attrs.get(Attribute::Uuid.as_ref()) {
                     Some(uuids) => {
                         write!(f, "{uuids:?}, ")?;
                     }
@@ -478,7 +478,7 @@ impl std::fmt::Display for DbEntry {
                 if let Some(names) = dbe_v2.attrs.get(Attribute::AttributeName.as_ref()) {
                     write!(f, "{names:?}, ")?;
                 }
-                if let Some(names) = dbe_v2.attrs.get("classname") {
+                if let Some(names) = dbe_v2.attrs.get(Attribute::ClassName.as_ref()) {
                     write!(f, "{names:?}, ")?;
                 }
                 write!(f, "}}")

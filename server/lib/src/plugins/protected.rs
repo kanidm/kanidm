@@ -272,236 +272,149 @@ mod tests {
 
     lazy_static! {
         pub static ref TEST_ACCOUNT: EntryInitNew = entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
-            (
-                Attribute::Class.as_ref(),
-                EntryClass::ServiceAccount.to_value()
-            ),
-            (Attribute::Class.as_ref(), EntryClass::MemberOf.to_value()),
-            (Attribute::Name.as_ref(), Value::new_iname("test_account_1")),
-            (
-                Attribute::DisplayName.as_ref(),
-                Value::new_utf8s("test_account_1")
-            ),
-            (Attribute::Uuid.as_ref(), Value::Uuid(UUID_TEST_ACCOUNT)),
-            (Attribute::MemberOf.as_ref(), Value::Refer(UUID_TEST_GROUP))
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::ServiceAccount.to_value()),
+            (Attribute::Class, EntryClass::MemberOf.to_value()),
+            (Attribute::Name, Value::new_iname("test_account_1")),
+            (Attribute::DisplayName, Value::new_utf8s("test_account_1")),
+            (Attribute::Uuid, Value::Uuid(UUID_TEST_ACCOUNT)),
+            (Attribute::MemberOf, Value::Refer(UUID_TEST_GROUP))
         );
         pub static ref TEST_GROUP: EntryInitNew = entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Group.to_value()),
-            (Attribute::Name.as_ref(), Value::new_iname("test_group_a")),
-            (Attribute::Uuid.as_ref(), Value::Uuid(UUID_TEST_GROUP)),
-            (Attribute::Member.as_ref(), Value::Refer(UUID_TEST_ACCOUNT))
+            (Attribute::Class, EntryClass::Group.to_value()),
+            (Attribute::Name, Value::new_iname("test_group_a")),
+            (Attribute::Uuid, Value::Uuid(UUID_TEST_GROUP)),
+            (Attribute::Member, Value::Refer(UUID_TEST_ACCOUNT))
         );
         pub static ref ALLOW_ALL: EntryInitNew = entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Object.to_value()),
             (
-                Attribute::Class.as_ref(),
+                Attribute::Class,
                 EntryClass::AccessControlProfile.to_value()
             ),
+            (Attribute::Class, EntryClass::AccessControlModify.to_value()),
+            (Attribute::Class, EntryClass::AccessControlCreate.to_value()),
+            (Attribute::Class, EntryClass::AccessControlDelete.to_value()),
+            (Attribute::Class, EntryClass::AccessControlSearch.to_value()),
             (
-                Attribute::Class.as_ref(),
-                EntryClass::AccessControlModify.to_value()
-            ),
-            (
-                Attribute::Class.as_ref(),
-                EntryClass::AccessControlCreate.to_value()
-            ),
-            (
-                Attribute::Class.as_ref(),
-                EntryClass::AccessControlDelete.to_value()
-            ),
-            (
-                Attribute::Class.as_ref(),
-                EntryClass::AccessControlSearch.to_value()
-            ),
-            (
-                Attribute::Name.as_ref(),
+                Attribute::Name,
                 Value::new_iname("idm_admins_acp_allow_all_test")
             ),
-            (Attribute::Uuid.as_ref(), Value::Uuid(UUID_TEST_ACP)),
+            (Attribute::Uuid, Value::Uuid(UUID_TEST_ACP)),
+            (Attribute::AcpReceiverGroup, Value::Refer(UUID_TEST_GROUP)),
             (
-                Attribute::AcpReceiverGroup.as_ref(),
-                Value::Refer(UUID_TEST_GROUP)
-            ),
-            (
-                "acp_targetscope",
+                Attribute::AcpTargetScope,
                 Value::new_json_filter_s("{\"pres\":\"class\"}").expect("filter")
             ),
-            (Attribute::AcpSearchAttr.as_ref(), Value::new_iutf8("name")),
+            (Attribute::AcpSearchAttr, Attribute::Name.to_value()),
+            (Attribute::AcpSearchAttr, Attribute::Class.to_value()),
+            (Attribute::AcpSearchAttr, Attribute::Uuid.to_value()),
+            (Attribute::AcpSearchAttr, Value::new_iutf8("classname")),
             (
-                Attribute::AcpSearchAttr.as_ref(),
-                Attribute::Class.to_value()
-            ),
-            (Attribute::AcpSearchAttr.as_ref(), Value::new_iutf8("uuid")),
-            (
-                Attribute::AcpSearchAttr.as_ref(),
-                Value::new_iutf8("classname")
-            ),
-            (
-                Attribute::AcpSearchAttr.as_ref(),
+                Attribute::AcpSearchAttr,
                 Value::new_iutf8(Attribute::AttributeName.as_ref())
             ),
+            (Attribute::AcpModifyClass, EntryClass::System.to_value()),
+            (Attribute::AcpModifyClass, Value::new_iutf8("domain_info")),
+            (Attribute::AcpModifyRemovedAttr, Attribute::Class.to_value()),
             (
-                Attribute::AcpModifyClass.as_ref(),
-                Value::new_iutf8("system")
+                Attribute::AcpModifyRemovedAttr,
+                Attribute::DisplayName.to_value()
+            ),
+            (Attribute::AcpModifyRemovedAttr, Attribute::May.to_value()),
+            (Attribute::AcpModifyRemovedAttr, Attribute::Must.to_value()),
+            (
+                Attribute::AcpModifyRemovedAttr,
+                Attribute::DomainName.to_value()
             ),
             (
-                Attribute::AcpModifyClass.as_ref(),
-                Value::new_iutf8("domain_info")
+                Attribute::AcpModifyRemovedAttr,
+                Value::new_iutf8("domain_display_name")
             ),
             (
-                Attribute::AcpModifyRemovedAttr.as_ref(),
-                Attribute::Class.to_value()
+                Attribute::AcpModifyRemovedAttr,
+                Value::new_iutf8("domain_uuid")
             ),
             (
-                Attribute::AcpModifyRemovedAttr.as_ref(),
-                Value::new_iutf8("displayname")
+                Attribute::AcpModifyRemovedAttr,
+                Value::new_iutf8("domain_ssid")
             ),
             (
-                Attribute::AcpModifyRemovedAttr.as_ref(),
-                Value::new_iutf8("may")
+                Attribute::AcpModifyRemovedAttr,
+                Value::new_iutf8("fernet_private_key_str")
             ),
             (
-                Attribute::AcpModifyRemovedAttr.as_ref(),
-                Value::new_iutf8("must")
+                Attribute::AcpModifyRemovedAttr,
+                Attribute::Es256PrivateKeyDer.to_value()
             ),
             (
-                Attribute::AcpModifyRemovedAttr.as_ref(),
+                Attribute::AcpModifyRemovedAttr,
+                Attribute::PrivateCookieKey.to_value()
+            ),
+            (Attribute::AcpModifyPresentAttr, Attribute::Class.to_value()),
+            (
+                Attribute::AcpModifyPresentAttr,
+                Attribute::DisplayName.to_value()
+            ),
+            (Attribute::AcpModifyPresentAttr, Attribute::May.to_value()),
+            (Attribute::AcpModifyPresentAttr, Attribute::Must.to_value()),
+            (
+                Attribute::AcpModifyPresentAttr,
                 Value::new_iutf8("domain_name")
             ),
             (
-                "acp_modify_removedattr",
+                Attribute::AcpModifyPresentAttr,
                 Value::new_iutf8("domain_display_name")
             ),
             (
-                Attribute::AcpModifyRemovedAttr.as_ref(),
+                Attribute::AcpModifyPresentAttr,
                 Value::new_iutf8("domain_uuid")
             ),
             (
-                Attribute::AcpModifyRemovedAttr.as_ref(),
+                Attribute::AcpModifyPresentAttr,
                 Value::new_iutf8("domain_ssid")
             ),
             (
-                "acp_modify_removedattr",
+                Attribute::AcpModifyPresentAttr,
                 Value::new_iutf8("fernet_private_key_str")
             ),
             (
-                "acp_modify_removedattr",
-                Value::new_iutf8("es256_private_key_der")
+                Attribute::AcpModifyPresentAttr,
+                Attribute::Es256PrivateKeyDer.to_value()
             ),
             (
-                "acp_modify_removedattr",
+                Attribute::AcpModifyPresentAttr,
                 Attribute::PrivateCookieKey.to_value()
             ),
+            (Attribute::AcpCreateClass, EntryClass::Object.to_value()),
+            (Attribute::AcpCreateClass, EntryClass::Person.to_value()),
+            (Attribute::AcpCreateClass, EntryClass::System.to_value()),
+            (Attribute::AcpCreateClass, EntryClass::DomainInfo.to_value()),
+            (Attribute::AcpCreateAttr, Attribute::Name.to_value()),
+            (Attribute::AcpCreateAttr, EntryClass::Class.to_value(),),
+            (Attribute::AcpCreateAttr, Attribute::Description.to_value(),),
+            (Attribute::AcpCreateAttr, Attribute::DisplayName.to_value(),),
+            (Attribute::AcpCreateAttr, Attribute::DomainName.to_value(),),
             (
-                Attribute::AcpModifyPresentAttr.as_ref(),
-                Attribute::Class.to_value()
-            ),
-            (
-                Attribute::AcpModifyPresentAttr.as_ref(),
-                Value::new_iutf8("displayname")
-            ),
-            (
-                Attribute::AcpModifyPresentAttr.as_ref(),
-                Value::new_iutf8("may")
-            ),
-            (
-                Attribute::AcpModifyPresentAttr.as_ref(),
-                Value::new_iutf8("must")
-            ),
-            (
-                Attribute::AcpModifyPresentAttr.as_ref(),
-                Value::new_iutf8("domain_name")
-            ),
-            (
-                "acp_modify_presentattr",
+                Attribute::AcpCreateAttr,
                 Value::new_iutf8("domain_display_name")
             ),
+            (Attribute::AcpCreateAttr, Value::new_iutf8("domain_uuid")),
+            (Attribute::AcpCreateAttr, Value::new_iutf8("domain_ssid")),
+            (Attribute::AcpCreateAttr, Attribute::Uuid.to_value()),
             (
-                Attribute::AcpModifyPresentAttr.as_ref(),
-                Value::new_iutf8("domain_uuid")
-            ),
-            (
-                Attribute::AcpModifyPresentAttr.as_ref(),
-                Value::new_iutf8("domain_ssid")
-            ),
-            (
-                "acp_modify_presentattr",
+                Attribute::AcpCreateAttr,
                 Value::new_iutf8("fernet_private_key_str")
             ),
             (
-                "acp_modify_presentattr",
-                Value::new_iutf8("es256_private_key_der")
+                Attribute::AcpCreateAttr,
+                Attribute::Es256PrivateKeyDer.to_value()
             ),
             (
-                "acp_modify_presentattr",
+                Attribute::AcpCreateAttr,
                 Attribute::PrivateCookieKey.to_value()
             ),
-            (
-                Attribute::AcpCreateClass.as_ref(),
-                EntryClass::Object.to_value()
-            ),
-            (
-                Attribute::AcpCreateClass.as_ref(),
-                EntryClass::Person.to_value()
-            ),
-            (
-                Attribute::AcpCreateClass.as_ref(),
-                EntryClass::System.to_value()
-            ),
-            (
-                Attribute::AcpCreateClass.as_ref(),
-                EntryClass::DomainInfo.to_value()
-            ),
-            (
-                Attribute::AcpCreateAttr.as_ref(),
-                Attribute::Name.to_value()
-            ),
-            (
-                Attribute::AcpCreateAttr.as_ref(),
-                EntryClass::Class.to_value(),
-            ),
-            (
-                Attribute::AcpCreateAttr.as_ref(),
-                Attribute::Description.to_value(),
-            ),
-            (
-                Attribute::AcpCreateAttr.as_ref(),
-                Attribute::DisplayName.to_value(),
-            ),
-            (
-                Attribute::AcpCreateAttr.as_ref(),
-                Attribute::DomainName.to_value(),
-            ),
-            (
-                Attribute::AcpCreateAttr.as_ref(),
-                Value::new_iutf8("domain_display_name")
-            ),
-            (
-                Attribute::AcpCreateAttr.as_ref(),
-                Value::new_iutf8("domain_uuid")
-            ),
-            (
-                Attribute::AcpCreateAttr.as_ref(),
-                Value::new_iutf8("domain_ssid")
-            ),
-            (Attribute::AcpCreateAttr.as_ref(), Value::new_iutf8("uuid")),
-            (
-                "acp_create_attr",
-                Value::new_iutf8("fernet_private_key_str")
-            ),
-            (
-                Attribute::AcpCreateAttr.as_ref(),
-                Value::new_iutf8("es256_private_key_der")
-            ),
-            (
-                Attribute::AcpCreateAttr.as_ref(),
-                Attribute::PrivateCookieKey.to_value()
-            ),
-            (
-                Attribute::AcpCreateAttr.as_ref(),
-                Value::new_iutf8("version")
-            )
+            (Attribute::AcpCreateAttr, Value::new_iutf8("version"))
         );
         pub static ref PRELOAD: Vec<EntryInitNew> =
             vec![TEST_ACCOUNT.clone(), TEST_GROUP.clone(), ALLOW_ALL.clone()];
@@ -588,8 +501,8 @@ mod tests {
             preload,
             filter!(f_eq(Attribute::ClassName, EntryClass::TestClass.into())),
             modlist!([
-                m_pres("may", &Value::new_iutf8("name")),
-                m_pres("must", &Value::new_iutf8("name")),
+                m_pres(Attribute::May.as_ref(), &Attribute::Name.to_value()),
+                m_pres(Attribute::Must.as_ref(), &Attribute::Name.to_value()),
             ]),
             Some(E_TEST_ACCOUNT.clone()),
             |_| {},

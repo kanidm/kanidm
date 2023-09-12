@@ -35,7 +35,7 @@ macro_rules! try_from_entry {
         }
 
         let name = $value
-            .get_ava_single_iname("name")
+            .get_ava_single_iname(Attribute::Name.as_ref())
             .map(|s| s.to_string())
             .ok_or(OperationError::InvalidAccountState(
                 "Missing attribute: name".to_string(),
@@ -663,10 +663,10 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             .copied()
             .map(|u| {
                 entry_init!(
-                    (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-                    (Attribute::Class.as_ref(), EntryClass::SyncObject.to_value()),
-                    (Attribute::SyncParentUuid.as_ref(), Value::Refer(sync_uuid)),
-                    (Attribute::Uuid.as_ref(), Value::Uuid(u))
+                    (Attribute::Class, EntryClass::Object.to_value()),
+                    (Attribute::Class, EntryClass::SyncObject.to_value()),
+                    (Attribute::SyncParentUuid, Value::Refer(sync_uuid)),
+                    (Attribute::Uuid, Value::Uuid(u))
                 )
             })
             .collect();
@@ -1513,15 +1513,12 @@ mod tests {
         let sync_uuid = Uuid::new_v4();
 
         let e1 = entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::SyncAccount.to_value()),
+            (Attribute::Name, Value::new_iname("test_scim_sync")),
+            (Attribute::Uuid, Value::Uuid(sync_uuid)),
             (
-                Attribute::Class.as_ref(),
-                EntryClass::SyncAccount.to_value()
-            ),
-            (Attribute::Name.as_ref(), Value::new_iname("test_scim_sync")),
-            (Attribute::Uuid.as_ref(), Value::Uuid(sync_uuid)),
-            (
-                Attribute::Description.as_ref(),
+                Attribute::Description,
                 Value::new_utf8s("A test sync agreement")
             )
         );
@@ -1586,15 +1583,12 @@ mod tests {
         let sync_uuid = Uuid::new_v4();
 
         let e1 = entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::SyncAccount.to_value()),
+            (Attribute::Name, Value::new_iname("test_scim_sync")),
+            (Attribute::Uuid, Value::Uuid(sync_uuid)),
             (
-                Attribute::Class.as_ref(),
-                EntryClass::SyncAccount.to_value()
-            ),
-            (Attribute::Name.as_ref(), Value::new_iname("test_scim_sync")),
-            (Attribute::Uuid.as_ref(), Value::Uuid(sync_uuid)),
-            (
-                Attribute::Description.as_ref(),
+                Attribute::Description,
                 Value::new_utf8s("A test sync agreement")
             )
         );
@@ -1713,15 +1707,12 @@ mod tests {
         let sync_uuid = Uuid::new_v4();
 
         let e1 = entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::SyncAccount.to_value()),
+            (Attribute::Name, Value::new_iname("test_scim_sync")),
+            (Attribute::Uuid, Value::Uuid(sync_uuid)),
             (
-                Attribute::Class.as_ref(),
-                EntryClass::SyncAccount.to_value()
-            ),
-            (Attribute::Name.as_ref(), Value::new_iname("test_scim_sync")),
-            (Attribute::Uuid.as_ref(), Value::Uuid(sync_uuid)),
-            (
-                Attribute::Description.as_ref(),
+                Attribute::Description,
                 Value::new_utf8s("A test sync agreement")
             )
         );
@@ -1792,7 +1783,7 @@ mod tests {
                 external_id: Some("dn=william,ou=people,dc=test".to_string()),
                 meta: None,
                 attrs: btreemap!((
-                    "name".to_string(),
+                    Attribute::Name.to_string(),
                     ScimAttr::SingleSimple(ScimSimpleAttr::String("william".to_string()))
                 ),),
             }],
@@ -1835,8 +1826,8 @@ mod tests {
         assert!(idms_prox_write
             .qs_write
             .internal_create(vec![entry_init!(
-                (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-                (Attribute::Uuid.as_ref(), Value::Uuid(user_sync_uuid))
+                (Attribute::Class, EntryClass::Object.to_value()),
+                (Attribute::Uuid, Value::Uuid(user_sync_uuid))
             )])
             .is_ok());
 
@@ -1860,7 +1851,7 @@ mod tests {
                 external_id: Some("dn=william,ou=people,dc=test".to_string()),
                 meta: None,
                 attrs: btreemap!((
-                    "name".to_string(),
+                    Attribute::Name.to_string(),
                     ScimAttr::SingleSimple(ScimSimpleAttr::String("william".to_string()))
                 ),),
             }],
@@ -1926,7 +1917,7 @@ mod tests {
                 external_id: Some("cn=testgroup,ou=people,dc=test".to_string()),
                 meta: None,
                 attrs: btreemap!((
-                    "name".to_string(),
+                    Attribute::Name.to_string(),
                     ScimAttr::SingleSimple(ScimSimpleAttr::String("testgroup".to_string()))
                 ),),
             }]
@@ -1942,7 +1933,7 @@ mod tests {
             .internal_search_uuid(user_sync_uuid)
             .expect("Unable to access entry");
 
-        assert!(ent.get_ava_single_iname("name") == Some("testgroup"));
+        assert!(ent.get_ava_single_iname(Attribute::Name.as_ref()) == Some("testgroup"));
         assert!(
             ent.get_ava_single_iutf8("sync_external_id") == Some("cn=testgroup,ou=people,dc=test")
         );
@@ -1967,11 +1958,11 @@ mod tests {
                 meta: None,
                 attrs: btreemap!(
                     (
-                        "name".to_string(),
+                        Attribute::Name.to_string(),
                         ScimAttr::SingleSimple(ScimSimpleAttr::String("testgroup".to_string()))
                     ),
                     (
-                        "uuid".to_string(),
+                        Attribute::Uuid.to_string(),
                         ScimAttr::SingleSimple(ScimSimpleAttr::String(
                             "2c019619-f894-4a94-b356-05d371850e3d".to_string()
                         ))
@@ -2000,7 +1991,7 @@ mod tests {
                 meta: None,
                 attrs: btreemap!(
                     (
-                        "name".to_string(),
+                        Attribute::Name.to_string(),
                         ScimAttr::SingleSimple(ScimSimpleAttr::String("testgroup".to_string()))
                     ),
                     (
@@ -2033,7 +2024,7 @@ mod tests {
                 meta: None,
                 attrs: btreemap!(
                     (
-                        "name".to_string(),
+                        Attribute::Name.to_string(),
                         ScimAttr::SingleSimple(ScimSimpleAttr::String("testgroup".to_string()))
                     ),
                     (
@@ -2064,7 +2055,7 @@ mod tests {
                 external_id: Some("cn=testgroup,ou=people,dc=test".to_string()),
                 meta: None,
                 attrs: btreemap!((
-                    "name".to_string(),
+                    Attribute::Name.to_string(),
                     ScimAttr::SingleSimple(ScimSimpleAttr::String("testgroup".to_string()))
                 ),),
             }]
@@ -2102,7 +2093,7 @@ mod tests {
                 external_id: Some("cn=testgroup,ou=people,dc=test".to_string()),
                 meta: None,
                 attrs: btreemap!((
-                    "name".to_string(),
+                    Attribute::Name.to_string(),
                     ScimAttr::SingleSimple(ScimSimpleAttr::String("testgroup".to_string()))
                 ),),
             }],
@@ -2189,8 +2180,8 @@ mod tests {
         assert!(idms_prox_write
             .qs_write
             .internal_create(vec![entry_init!(
-                (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-                (Attribute::Uuid.as_ref(), Value::Uuid(user_sync_uuid))
+                (Attribute::Class, EntryClass::Object.to_value()),
+                (Attribute::Uuid, Value::Uuid(user_sync_uuid))
             )])
             .is_ok());
 
@@ -2226,8 +2217,8 @@ mod tests {
         assert!(idms_prox_write
             .qs_write
             .internal_create(vec![entry_init!(
-                (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-                (Attribute::Uuid.as_ref(), Value::Uuid(user_sync_uuid))
+                (Attribute::Class, EntryClass::Object.to_value()),
+                (Attribute::Uuid, Value::Uuid(user_sync_uuid))
             )])
             .is_ok());
 
@@ -2286,7 +2277,7 @@ mod tests {
                     external_id: Some("cn=testgroup,ou=people,dc=test".to_string()),
                     meta: None,
                     attrs: btreemap!((
-                        "name".to_string(),
+                        Attribute::Name.to_string(),
                         ScimAttr::SingleSimple(ScimSimpleAttr::String("testgroup".to_string()))
                     ),),
                 },
@@ -2296,7 +2287,7 @@ mod tests {
                     external_id: Some("cn=anothergroup,ou=people,dc=test".to_string()),
                     meta: None,
                     attrs: btreemap!((
-                        "name".to_string(),
+                        Attribute::Name.to_string(),
                         ScimAttr::SingleSimple(ScimSimpleAttr::String("anothergroup".to_string()))
                     ),),
                 },
@@ -2370,7 +2361,7 @@ mod tests {
                     external_id: Some("cn=testgroup,ou=people,dc=test".to_string()),
                     meta: None,
                     attrs: btreemap!((
-                        "name".to_string(),
+                        Attribute::Name.to_string(),
                         ScimAttr::SingleSimple(ScimSimpleAttr::String("testgroup".to_string()))
                     ),),
                 },
@@ -2380,7 +2371,7 @@ mod tests {
                     external_id: Some("cn=anothergroup,ou=people,dc=test".to_string()),
                     meta: None,
                     attrs: btreemap!((
-                        "name".to_string(),
+                        Attribute::Name.to_string(),
                         ScimAttr::SingleSimple(ScimSimpleAttr::String("anothergroup".to_string()))
                     ),),
                 },
@@ -2467,7 +2458,7 @@ mod tests {
                 external_id: Some("cn=testgroup,ou=people,dc=test".to_string()),
                 meta: None,
                 attrs: btreemap!((
-                    "name".to_string(),
+                    Attribute::Name.to_string(),
                     ScimAttr::SingleSimple(ScimSimpleAttr::String("testgroup".to_string()))
                 ),),
             }],
@@ -2500,7 +2491,7 @@ mod tests {
             .internal_search_uuid(sync_uuid_a)
             .expect("Unable to access entry");
 
-        assert!(ent.get_ava_single_iname("name") == Some("testgroup"));
+        assert!(ent.get_ava_single_iname(Attribute::Name.as_ref()) == Some("testgroup"));
 
         assert!(idms_prox_write.commit().is_ok());
     }
