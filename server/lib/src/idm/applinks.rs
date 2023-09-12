@@ -40,16 +40,16 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
             .iter()
             .filter_map(|entry| {
                 let display_name = entry
-                    .get_ava_single_utf8(Attribute::DisplayName.as_ref())
+                    .get_ava_single_utf8(Attribute::DisplayName)
                     .map(str::to_string)?;
 
                 let redirect_url = entry
-                    .get_ava_single_url("oauth2_rs_origin_landing")
-                    .or_else(|| entry.get_ava_single_url(Attribute::OAuth2RsOrigin.as_ref()))
+                    .get_ava_single_url(Attribute::OAuth2RsOriginLanding)
+                    .or_else(|| entry.get_ava_single_url(Attribute::OAuth2RsOrigin))
                     .cloned()?;
 
                 let name = entry
-                    .get_ava_single_iname("oauth2_rs_name")
+                    .get_ava_single_iname(Attribute::OAuth2RsName)
                     .map(str::to_string)?;
 
                 Some(AppLink::Oauth2 {

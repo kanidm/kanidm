@@ -69,11 +69,11 @@ impl LdapServer {
             .internal_search_uuid(UUID_DOMAIN_INFO)?;
 
         let basedn = domain_entry
-            .get_ava_single_iutf8("domain_ldap_basedn")
+            .get_ava_single_iutf8(Attribute::DomainLdapBasedn)
             .map(|s| s.to_string())
             .or_else(|| {
                 domain_entry
-                    .get_ava_single_iname(Attribute::DomainName.as_ref())
+                    .get_ava_single_iname(Attribute::DomainName)
                     .map(ldap_domain_to_dc)
             })
             .ok_or(OperationError::InvalidEntryState)?;
@@ -1227,7 +1227,7 @@ mod tests {
         let me_posix = ModifyEvent::new_internal_invalid(
             filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(UUID_DOMAIN_INFO))),
             ModifyList::new_purge_and_set(
-                "domain_ldap_basedn",
+                Attribute::DomainLdapBasedn,
                 Value::new_iutf8("o=kanidmproject"),
             ),
         );

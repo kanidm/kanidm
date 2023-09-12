@@ -102,10 +102,10 @@ impl ModifyList<ModifyInvalid> {
         }
     }
 
-    pub fn new_purge_and_set(attr: &str, v: Value) -> Self {
+    pub fn new_purge_and_set(attr: Attribute, v: Value) -> Self {
         Self::new_list(vec![
-            m_purge(attr),
-            Modify::Present(AttrString::from(attr), v),
+            m_purge(attr.as_ref()),
+            Modify::Present(attr.into(), v),
         ])
     }
 

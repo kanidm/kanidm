@@ -181,7 +181,7 @@ impl Identity {
             IdentType::Internal | IdentType::Synch(_) => None,
             IdentType::User(u) => u
                 .entry
-                .get_ava_as_session_map("user_auth_token_session")
+                .get_ava_as_session_map(Attribute::UserAuthTokenSession)
                 .and_then(|sessions| sessions.get(&self.session_id)),
         }
     }
@@ -223,7 +223,7 @@ impl Identity {
             IdentType::Internal | IdentType::Synch(_) => false,
             IdentType::User(u) => u
                 .entry
-                .attribute_equality(Attribute::Claim.as_ref(), &PartialValue::new_iutf8(claim)),
+                .attribute_equality(Attribute::Claim, &PartialValue::new_iutf8(claim)),
         }
     }
 
@@ -232,14 +232,14 @@ impl Identity {
             IdentType::Internal | IdentType::Synch(_) => false,
             IdentType::User(u) => u
                 .entry
-                .attribute_equality(Attribute::MemberOf.as_ref(), &PartialValue::Refer(group)),
+                .attribute_equality(Attribute::MemberOf, &PartialValue::Refer(group)),
         }
     }
 
     pub fn get_memberof(&self) -> Option<&BTreeSet<Uuid>> {
         match &self.origin {
             IdentType::Internal | IdentType::Synch(_) => None,
-            IdentType::User(u) => u.entry.get_ava_refer("memberof"),
+            IdentType::User(u) => u.entry.get_ava_refer(Attribute::MemberOf),
         }
     }
 
@@ -248,7 +248,7 @@ impl Identity {
             IdentType::Internal | IdentType::Synch(_) => None,
             IdentType::User(u) => u
                 .entry
-                .get_ava_as_oauthscopemaps("oauth2_consent_scope_map")
+                .get_ava_as_oauthscopemaps(Attribute::OAuth2ConsentScopeMap)
                 .and_then(|scope_map| scope_map.get(&oauth2_rs)),
         }
     }

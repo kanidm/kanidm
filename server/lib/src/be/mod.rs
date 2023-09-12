@@ -2249,8 +2249,8 @@ mod tests {
             // Modify single
             assert!(be.modify(&CID_ZERO, &[pre1], &[vr1.clone()]).is_ok());
             // Assert no other changes
-            assert!(entry_attr_pres!(be, vr1, Attribute::TestAttr.as_ref()));
-            assert!(!entry_attr_pres!(be, vr2, Attribute::TestAttr.as_ref()));
+            assert!(entry_attr_pres!(be, vr1, Attribute::TestAttr));
+            assert!(!entry_attr_pres!(be, vr2, Attribute::TestAttr));
 
             // Modify both
             assert!(be
@@ -2261,8 +2261,8 @@ mod tests {
                 )
                 .is_ok());
 
-            assert!(entry_attr_pres!(be, vr1, Attribute::TestAttr.as_ref()));
-            assert!(entry_attr_pres!(be, vr2, Attribute::TestAttr.as_ref()));
+            assert!(entry_attr_pres!(be, vr1, Attribute::TestAttr));
+            assert!(entry_attr_pres!(be, vr2, Attribute::TestAttr));
         });
     }
 
@@ -2884,9 +2884,9 @@ mod tests {
             // add something.
             ce1.add_ava(Attribute::TestNumber, Value::from("test"));
             // remove something.
-            ce1.purge_ava(Attribute::TestAttr.as_ref());
+            ce1.purge_ava(Attribute::TestAttr);
             // mod something.
-            ce1.purge_ava(Attribute::Name.as_ref());
+            ce1.purge_ava(Attribute::Name);
             ce1.add_ava(Attribute::Name, Value::new_iname("claire"));
 
             let ce1 = ce1.into_sealed_committed();
@@ -2953,8 +2953,8 @@ mod tests {
             let rset: Vec<_> = rset.into_iter().map(Arc::new).collect();
             // Now, alter the new entry.
             let mut ce1 = rset[0].as_ref().clone().into_invalid();
-            ce1.purge_ava(Attribute::Name.as_ref());
-            ce1.purge_ava(Attribute::Uuid.as_ref());
+            ce1.purge_ava(Attribute::Name);
+            ce1.purge_ava(Attribute::Uuid);
             ce1.add_ava(Attribute::Name, Value::new_iname("claire"));
             ce1.add_ava(
                 Attribute::Uuid,

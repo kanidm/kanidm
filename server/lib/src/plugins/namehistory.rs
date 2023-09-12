@@ -23,7 +23,7 @@ impl NameHistory {
     fn is_entry_to_update<VALUE, STATE>(entry: &mut Entry<VALUE, STATE>) -> bool {
         CLASSES_TO_UPDATE
             .iter()
-            .any(|pv| entry.attribute_equality(Attribute::Class.as_ref(), pv))
+            .any(|pv| entry.attribute_equality(Attribute::Class, pv))
     }
 
     fn get_ava_name(history_attr: &str) -> String {
@@ -38,9 +38,10 @@ impl NameHistory {
         for (pre, post) in pre_cand.iter().zip(cand) {
             // here we check if the current entry has at least one of the classes we intend to target
             if Self::is_entry_to_update(post) {
-                for history_attr in HISTORY_ATTRIBUTES.iter() {
-                    let pre_name_option = pre.get_ava_single(history_attr);
-                    let post_name_option = post.get_ava_single(history_attr);
+                for history_attr in HISTORY_ATTRIBUTES.into_iter() {
+                    let attr: Attribute = history_attr.try_into()?;
+                    let pre_name_option = pre.get_ava_single(attr);
+                    let post_name_option = post.get_ava_single(attr);
                     if let (Some(pre_name), Some(post_name)) = (pre_name_option, post_name_option) {
                         if pre_name != post_name {
                             let ava_name = Self::get_ava_name(history_attr);
@@ -49,7 +50,7 @@ impl NameHistory {
                             // as of now we're interested just in the name so we use Iname
                             match post_name {
                                 Value::Iname(n) => post.add_ava_if_not_exist(
-                                    &ava_name,
+                                    ava_name.try_into()?,
                                     Value::AuditLogString(cid.clone(), n),
                                 ),
                                 _ => return Err(OperationError::InvalidValueState),
@@ -68,12 +69,13 @@ impl NameHistory {
     ) -> Result<(), OperationError> {
         for cand in cands.iter_mut() {
             if Self::is_entry_to_update(cand) {
-                for history_attr in HISTORY_ATTRIBUTES.iter() {
-                    if let Some(name) = cand.get_ava_single(history_attr) {
-                        let ava_name = Self::get_ava_name(history_attr);
+                for history_attr in HISTORY_ATTRIBUTES.into_iter() {
+                    let attribute: Attribute = Attribute::try_from(history_attr)?;
+                    if let Some(name) = cand.get_ava_single(attribute) {
+                        let ava_name = Self::get_ava_name(attribute.as_ref());
                         match name {
                             Value::Iname(n) => cand.add_ava_if_not_exist(
-                                &ava_name,
+                                ava_name.try_into()?,
                                 Value::AuditLogString(cid.clone(), n),
                             ),
                             _ => return Err(OperationError::InvalidValueState),
@@ -168,7 +170,7 @@ mod tests {
                     .internal_search_uuid(uuid!("d2b496bd-8493-47b7-8142-f568b5cf47ee"))
                     .expect("failed to get entry");
                 let c = e
-                    .get_ava_set(Attribute::NameHistory.as_ref())
+                    .get_ava_set(Attribute::NameHistory)
                     .expect("failed to get primary cred.");
                 trace!("{:?}", c.clone());
                 assert!(
@@ -206,7 +208,7 @@ mod tests {
                     .expect("failed to get entry");
                 trace!("{:?}", e.get_ava());
                 let name_history = e
-                    .get_ava_set(Attribute::NameHistory.as_ref())
+                    .get_ava_set(Attribute::NameHistory)
                     .expect("failed to get name_history ava");
 
                 assert!(name_history.contains(&PartialValue::new_utf8s("old_name")))
@@ -259,7 +261,7 @@ mod tests {
                     .internal_search_uuid(uuid!("d2b496bd-8493-47b7-8142-f568b5cf47ee"))
                     .expect("failed to get entry");
                 let c = e
-                    .get_ava_set(Attribute::NameHistory.as_ref())
+                    .get_ava_set(Attribute::NameHistory)
                     .expect("failed to get name_history ava :/");
                 trace!(?c);
                 assert!(

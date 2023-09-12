@@ -33,23 +33,23 @@ where
         .filter_map(|e| e.mask_recycled_ts())
         .try_for_each(|e| {
             let uuid = e
-                .get_ava_single_uuid("uuid")
+                .get_ava_single_uuid(Attribute::Uuid)
                 .ok_or_else(|| {
                     error!("An entry is missing its uuid. This should be impossible!");
                     OperationError::InvalidEntryState
                 })?;
 
             // Faster to iterate over the attr vec inside this loop.
-            for attr in uniqueattrs.iter() {
-                if let Some(vs) = e.get_ava_set(attr) {
+            for attrstr in uniqueattrs.iter() {
+                if let Some(vs) = e.get_ava_set(attrstr.try_into()?) {
                 for pv in vs.to_partialvalue_iter() {
-                    let key = (attr.clone(), pv);
+                    let key = (attrstr.clone(), pv);
                     cand_attr.entry(key)
                         // Must have conflicted, lets append.
                         .and_modify(|v| {
                             warn!(
                                 "ava already exists -> {:?} on entry {:?} has conflicts within change set",
-                                attr,
+                                attrstr,
                                 e.get_display_id()
                             );
                             v.push(uuid)

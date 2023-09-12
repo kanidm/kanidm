@@ -29,7 +29,7 @@ lazy_static! {
         m.insert("domain_ldap_basedn");
         m.insert("fernet_private_key_str");
         m.insert("es256_private_key_der");
-        m.insert("id_verification_eckey");
+        m.insert(Attribute::IdVerificationEcKey.as_ref());
         m.insert("badlist_password");
         m.insert("domain_display_name");
         m.insert("authsession_expiry");
@@ -56,14 +56,13 @@ impl Plugin for Protected {
         }
 
         cand.iter().try_fold((), |(), cand| {
-            if cand.attribute_equality(Attribute::Class.as_ref(), &EntryClass::System.into())
-                || cand.attribute_equality(Attribute::Class.into(), &EntryClass::DomainInfo.into())
-                || cand.attribute_equality(Attribute::Class.into(), &EntryClass::SystemInfo.into())
-                || cand
-                    .attribute_equality(Attribute::Class.into(), &EntryClass::SystemConfig.into())
-                || cand.attribute_equality(Attribute::Class.as_ref(), &EntryClass::Tombstone.into())
-                || cand.attribute_equality(Attribute::Class.as_ref(), &EntryClass::Recycled.into())
-                || cand.attribute_equality(Attribute::Class.as_ref(), &EntryClass::DynGroup.into())
+            if cand.attribute_equality(Attribute::Class, &EntryClass::System.into())
+                || cand.attribute_equality(Attribute::Class, &EntryClass::DomainInfo.into())
+                || cand.attribute_equality(Attribute::Class, &EntryClass::SystemInfo.into())
+                || cand.attribute_equality(Attribute::Class, &EntryClass::SystemConfig.into())
+                || cand.attribute_equality(Attribute::Class, &EntryClass::Tombstone.into())
+                || cand.attribute_equality(Attribute::Class, &EntryClass::Recycled.into())
+                || cand.attribute_equality(Attribute::Class, &EntryClass::DynGroup.into())
             {
                 Err(OperationError::SystemProtectedObject)
             } else {
@@ -107,9 +106,9 @@ impl Plugin for Protected {
         // HARD block mods on tombstone or recycle. We soft block on the rest as they may
         // have some allowed attrs.
         cand.iter().try_fold((), |(), cand| {
-            if cand.attribute_equality(Attribute::Class.as_ref(), &EntryClass::Tombstone.into())
-                || cand.attribute_equality(Attribute::Class.as_ref(), &EntryClass::Recycled.into())
-                || cand.attribute_equality(Attribute::Class.as_ref(), &EntryClass::DynGroup.into())
+            if cand.attribute_equality(Attribute::Class, &EntryClass::Tombstone.into())
+                || cand.attribute_equality(Attribute::Class, &EntryClass::Recycled.into())
+                || cand.attribute_equality(Attribute::Class, &EntryClass::DynGroup.into())
             {
                 Err(OperationError::SystemProtectedObject)
             } else {
@@ -121,7 +120,7 @@ impl Plugin for Protected {
         let system_pres = cand.iter().any(|c| {
             // We don't need to check for domain info here because domain_info has a class
             // system also. We just need to block it from being created.
-            c.attribute_equality(Attribute::Class.as_ref(), &EntryClass::System.into())
+            c.attribute_equality(Attribute::Class, &EntryClass::System.into())
         });
 
         trace!("class: system -> {}", system_pres);
@@ -186,9 +185,9 @@ impl Plugin for Protected {
         // HARD block mods on tombstone or recycle. We soft block on the rest as they may
         // have some allowed attrs.
         cand.iter().try_fold((), |(), cand| {
-            if cand.attribute_equality(Attribute::Class.as_ref(), &EntryClass::Tombstone.into())
-                || cand.attribute_equality(Attribute::Class.as_ref(), &EntryClass::Recycled.into())
-                || cand.attribute_equality(Attribute::Class.as_ref(), &EntryClass::DynGroup.into())
+            if cand.attribute_equality(Attribute::Class, &EntryClass::Tombstone.into())
+                || cand.attribute_equality(Attribute::Class, &EntryClass::Recycled.into())
+                || cand.attribute_equality(Attribute::Class, &EntryClass::DynGroup.into())
             {
                 Err(OperationError::SystemProtectedObject)
             } else {
@@ -200,7 +199,7 @@ impl Plugin for Protected {
         let system_pres = cand.iter().any(|c| {
             // We don't need to check for domain info here because domain_info has a class
             // system also. We just need to block it from being created.
-            c.attribute_equality(Attribute::Class.as_ref(), &EntryClass::System.into())
+            c.attribute_equality(Attribute::Class, &EntryClass::System.into())
         });
 
         trace!("class: system -> {}", system_pres);
@@ -244,14 +243,13 @@ impl Plugin for Protected {
         }
 
         cand.iter().try_fold((), |(), cand| {
-            if cand.attribute_equality(Attribute::Class.as_ref(), &EntryClass::System.into())
-                || cand.attribute_equality(Attribute::Class.into(), &EntryClass::DomainInfo.into())
-                || cand.attribute_equality(Attribute::Class.into(), &EntryClass::SystemInfo.into())
-                || cand
-                    .attribute_equality(Attribute::Class.into(), &EntryClass::SystemConfig.into())
-                || cand.attribute_equality(Attribute::Class.as_ref(), &EntryClass::Tombstone.into())
-                || cand.attribute_equality(Attribute::Class.as_ref(), &EntryClass::Recycled.into())
-                || cand.attribute_equality(Attribute::Class.as_ref(), &EntryClass::DynGroup.into())
+            if cand.attribute_equality(Attribute::Class, &EntryClass::System.into())
+                || cand.attribute_equality(Attribute::Class, &EntryClass::DomainInfo.into())
+                || cand.attribute_equality(Attribute::Class, &EntryClass::SystemInfo.into())
+                || cand.attribute_equality(Attribute::Class, &EntryClass::SystemConfig.into())
+                || cand.attribute_equality(Attribute::Class, &EntryClass::Tombstone.into())
+                || cand.attribute_equality(Attribute::Class, &EntryClass::Recycled.into())
+                || cand.attribute_equality(Attribute::Class, &EntryClass::DynGroup.into())
             {
                 Err(OperationError::SystemProtectedObject)
             } else {

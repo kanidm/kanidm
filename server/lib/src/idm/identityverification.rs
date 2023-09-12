@@ -1,6 +1,5 @@
 use std::time::SystemTime;
 
-use kanidm_proto::constants::ATTR_ID_VERIFICATION_ECKEY;
 use kanidm_proto::{internal::IdentifyUserResponse, v1::OperationError};
 use openssl::ec::EcKey;
 use openssl::pkey::{PKey, Private, Public};
@@ -9,7 +8,7 @@ use sketching::admin_error;
 use uuid::Uuid;
 
 use crate::credential::totp::{Totp, TotpAlgo, TotpDigits};
-use crate::prelude::{tagged_event, EventTag};
+use crate::prelude::{tagged_event, Attribute, EventTag};
 use crate::server::QueryServerTransaction;
 use crate::{event::SearchEvent, server::identity::Identity};
 
@@ -161,7 +160,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
             .search(&search)
             .and_then(|mut entries| entries.pop().ok_or(OperationError::NoMatchingEntries))
             .map(
-                |entry| match entry.get_ava_single_eckey_private(ATTR_ID_VERIFICATION_ECKEY) {
+                |entry| match entry.get_ava_single_eckey_private(Attribute::IdVerificationEcKey) {
                     Some(key) => key.check_key().is_ok(),
                     None => false,
                 },
@@ -187,7 +186,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
             .search(&search)
             .and_then(|mut entries| entries.pop().ok_or(OperationError::NoMatchingEntries))?;
 
-        match user_entry.get_ava_single_eckey_public(ATTR_ID_VERIFICATION_ECKEY) {
+        match user_entry.get_ava_single_eckey_public(Attribute::IdVerificationEcKey) {
             Some(key) => Ok(key.check_key().is_ok()),
             None => Ok(false),
         }
@@ -210,7 +209,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
             .search(&search)
             .and_then(|mut entries| entries.pop().ok_or(OperationError::NoMatchingEntries))
             .and_then(|entry| {
-                match entry.get_ava_single_eckey_private(ATTR_ID_VERIFICATION_ECKEY) {
+                match entry.get_ava_single_eckey_private(Attribute::IdVerificationEcKey) {
                     Some(key) => Ok(key.clone()),
                     None => Err(OperationError::InvalidAccountState(format!(
                         "{}'s private key is missing!",
@@ -240,14 +239,14 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
         self.qs_read
             .search(&search)
             .and_then(|mut entries| entries.pop().ok_or(OperationError::NoMatchingEntries))
-            .and_then(
-                |entry| match entry.get_ava_single_eckey_public(ATTR_ID_VERIFICATION_ECKEY) {
+            .and_then(|entry| {
+                match entry.get_ava_single_eckey_public(Attribute::IdVerificationEcKey) {
                     Some(key) => Ok(key.clone()),
                     None => Err(OperationError::InvalidAccountState(format!(
                         "{target}'s public key is missing!",
                     ))),
-                },
-            )
+                }
+            })
     }
 
     fn compute_totp(&mut self, totp_secret: Vec<u8>) -> Result<u32, OperationError> {

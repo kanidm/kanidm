@@ -64,6 +64,7 @@ pub const ATTR_GROUP: &str = "group";
 pub const ATTR_ID_VERIFICATION_ECKEY: &str = "id_verification_eckey";
 pub const ATTR_INDEX: &str = "index";
 pub const ATTR_IPANTHASH: &str = "ipanthash";
+pub const ATTR_IPASSHPUBKEY: &str = "ipasshpubkey";
 pub const ATTR_JWS_ES256_PRIVATE_KEY: &str = "jws_es256_private_key";
 pub const ATTR_LAST_MODIFIED_CID: &str = "last_modified_cid";
 pub const ATTR_LEGALNAME: &str = "legalname";

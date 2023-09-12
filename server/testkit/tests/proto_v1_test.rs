@@ -865,9 +865,13 @@ async fn test_server_rest_oauth2_basic_lifecycle(rsclient: KanidmClient) {
     eprintln!("{:?}", oauth2_config);
 
     // What can we see?
-    assert!(oauth2_config.attrs.contains_key("oauth2_rs_basic_secret"));
+    assert!(oauth2_config
+        .attrs
+        .contains_key(Attribute::OAuth2RsBasicSecret.as_ref()));
     // This is present, but redacted.
-    assert!(oauth2_config.attrs.contains_key("oauth2_rs_token_key"));
+    assert!(oauth2_config
+        .attrs
+        .contains_key(Attribute::OAuth2RsTokenKey.as_ref()));
 
     // Mod delete the secret/key and check them again.
     // Check we can patch the oauth2_rs_name / oauth2_rs_origin

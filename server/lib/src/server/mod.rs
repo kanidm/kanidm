@@ -757,7 +757,7 @@ pub trait QueryServerTransaction<'a> {
         self.internal_search_uuid(UUID_DOMAIN_INFO)
             .and_then(|e| {
                 trace!(?e);
-                e.get_ava_single_iname("domain_name")
+                e.get_ava_single_iname(Attribute::DomainName)
                     .map(str::to_string)
                     .ok_or(OperationError::InvalidEntryState)
             })
@@ -770,7 +770,7 @@ pub trait QueryServerTransaction<'a> {
     fn get_domain_fernet_private_key(&mut self) -> Result<String, OperationError> {
         self.internal_search_uuid(UUID_DOMAIN_INFO)
             .and_then(|e| {
-                e.get_ava_single_secret("fernet_private_key_str")
+                e.get_ava_single_secret(Attribute::FernetPrivateKeyStr)
                     .map(str::to_string)
                     .ok_or(OperationError::InvalidEntryState)
             })
@@ -783,7 +783,7 @@ pub trait QueryServerTransaction<'a> {
     fn get_domain_es256_private_key(&mut self) -> Result<Vec<u8>, OperationError> {
         self.internal_search_uuid(UUID_DOMAIN_INFO)
             .and_then(|e| {
-                e.get_ava_single_private_binary("es256_private_key_der")
+                e.get_ava_single_private_binary(Attribute::Es256PrivateKeyDer)
                     .map(|s| s.to_vec())
                     .ok_or(OperationError::InvalidEntryState)
             })
@@ -796,7 +796,7 @@ pub trait QueryServerTransaction<'a> {
     fn get_domain_cookie_key(&mut self) -> Result<[u8; 64], OperationError> {
         self.internal_search_uuid(UUID_DOMAIN_INFO)
             .and_then(|e| {
-                e.get_ava_single_private_binary(ATTR_PRIVATE_COOKIE_KEY)
+                e.get_ava_single_private_binary(Attribute::PrivateCookieKey)
                     .and_then(|s| {
                         let mut x = [0; 64];
                         if s.len() == x.len() {
@@ -817,7 +817,7 @@ pub trait QueryServerTransaction<'a> {
     // This is a helper to get password badlist.
     fn get_password_badlist(&mut self) -> Result<HashSet<String>, OperationError> {
         self.internal_search_uuid(UUID_SYSTEM_CONFIG)
-            .map(|e| match e.get_ava_iter_iutf8("badlist_password") {
+            .map(|e| match e.get_ava_iter_iutf8(Attribute::BadlistPassword) {
                 Some(vs_str_iter) => vs_str_iter.map(str::to_string).collect::<HashSet<_>>(),
                 None => HashSet::default(),
             })
@@ -830,7 +830,7 @@ pub trait QueryServerTransaction<'a> {
     fn get_authsession_expiry(&mut self) -> Result<u32, OperationError> {
         self.internal_search_uuid(UUID_SYSTEM_CONFIG)
             .and_then(|e| {
-                if let Some(expiry_time) = e.get_ava_single_uint32("authsession_expiry") {
+                if let Some(expiry_time) = e.get_ava_single_uint32(Attribute::AuthSessionExpiry) {
                     Ok(expiry_time)
                 } else {
                     Err(OperationError::NoMatchingAttributes)
@@ -848,7 +848,7 @@ pub trait QueryServerTransaction<'a> {
     fn get_privilege_expiry(&mut self) -> Result<u32, OperationError> {
         self.internal_search_uuid(UUID_SYSTEM_CONFIG)
             .and_then(|e| {
-                if let Some(expiry_time) = e.get_ava_single_uint32("privilege_expiry") {
+                if let Some(expiry_time) = e.get_ava_single_uint32(Attribute::PrivilegeExpiry) {
                     Ok(expiry_time)
                 } else {
                     Err(OperationError::NoMatchingAttributes)
@@ -1358,7 +1358,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         let sync_agreement_map: HashMap<Uuid, BTreeSet<String>> = res
             .iter()
             .filter_map(|e| {
-                e.get_ava_as_iutf8("sync_yield_authority")
+                e.get_ava_as_iutf8(Attribute::SyncYieldAuthority)
                     .cloned()
                     .map(|set| (e.get_uuid(), set))
             })
@@ -1485,7 +1485,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         self.internal_search_uuid(UUID_DOMAIN_INFO)
             .and_then(|e| {
                 trace!(?e);
-                e.get_ava_single_utf8("domain_display_name")
+                e.get_ava_single_utf8(Attribute::DomainDisplayName)
                     .map(str::to_string)
                     .ok_or(OperationError::InvalidEntryState)
             })
@@ -1530,7 +1530,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     /// activities (yet)
     pub fn set_domain_display_name(&mut self, new_domain_name: &str) -> Result<(), OperationError> {
         let modl = ModifyList::new_purge_and_set(
-            "domain_display_name",
+            Attribute::DomainDisplayName,
             Value::new_utf8(new_domain_name.to_string()),
         );
         let udi = PVUUID_DOMAIN_INFO.clone();
@@ -1551,7 +1551,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
     /// approached, especially if we have a domain re-name replicated to us. It could
     /// be that we end up needing to have this as a cow cell or similar?
     pub fn danger_domain_rename(&mut self, new_domain_name: &str) -> Result<(), OperationError> {
-        let modl = ModifyList::new_purge_and_set("domain_name", Value::new_iname(new_domain_name));
+        let modl =
+            ModifyList::new_purge_and_set(Attribute::DomainName, Value::new_iname(new_domain_name));
         let udi = PVUUID_DOMAIN_INFO.clone();
         let filt = filter_all!(f_eq(Attribute::Uuid, udi));
         self.internal_modify(&filt, &modl)
@@ -1908,7 +1909,7 @@ mod tests {
         let testobj1 = server_txn
             .internal_search_uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
             .expect("failed");
-        assert!(testobj1.attribute_equality("class", &EntryClass::TestClass.into()));
+        assert!(testobj1.attribute_equality(Attribute::Class, &EntryClass::TestClass.into()));
 
         // Should still be good
         server_txn.commit().expect("should not fail");
@@ -1936,10 +1937,7 @@ mod tests {
                 Attribute::Uuid,
                 Value::Uuid(uuid!("cfcae205-31c3-484b-8ced-667d1709c5e3"))
             ),
-            (
-                Attribute::AttributeName,
-                Value::new_iutf8(Attribute::TestAttr.as_ref())
-            ),
+            (Attribute::AttributeName, Attribute::TestAttr.to_value()),
             (Attribute::Description, Value::new_utf8s("Test Attribute")),
             (Attribute::MultiValue, Value::new_bool(false)),
             (Attribute::Unique, Value::new_bool(false)),
@@ -1994,10 +1992,7 @@ mod tests {
         let testobj1 = server_txn
             .internal_search_uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
             .expect("failed");
-        assert!(testobj1.attribute_equality(
-            Attribute::TestAttr.as_ref(),
-            &PartialValue::new_utf8s("test")
-        ));
+        assert!(testobj1.attribute_equality(Attribute::TestAttr, &PartialValue::new_utf8s("test")));
 
         server_txn.commit().expect("should not fail");
         // Commit.

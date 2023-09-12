@@ -487,7 +487,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             (Some(sync_parent_uuid), true) => {
                 let sync_entry = self.qs_write.internal_search_uuid(sync_parent_uuid)?;
                 sync_entry
-                    .get_ava_single_url("sync_credential_portal")
+                    .get_ava_single_url(Attribute::SyncCredentialPortal)
                     .cloned()
                     .map(CUExtPortal::Some)
                     .unwrap_or(CUExtPortal::Hidden)

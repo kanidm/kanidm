@@ -101,16 +101,21 @@ impl SchemaAttribute {
         let uuid = value.get_uuid();
 
         // class
-        if !value.attribute_equality(Attribute::Class.as_ref(), &EntryClass::AttributeType.into()) {
-            admin_error!("class attribute type not present - {:?}", uuid);
-            return Err(OperationError::InvalidSchemaState(
-                "missing attributetype".to_string(),
-            ));
+        if !value.attribute_equality(Attribute::Class, &EntryClass::AttributeType.into()) {
+            admin_error!(
+                "class {} not present - {:?}",
+                EntryClass::AttributeType,
+                uuid
+            );
+            return Err(OperationError::InvalidSchemaState(format!(
+                "missing {}",
+                EntryClass::AttributeType
+            )));
         }
 
         // name
         let name = value
-            .get_ava_single_iutf8(Attribute::AttributeName.into())
+            .get_ava_single_iutf8(Attribute::AttributeName)
             .map(|s| s.into())
             .ok_or_else(|| {
                 admin_error!("missing {} - {:?}", Attribute::AttributeName.as_ref(), uuid);
@@ -118,7 +123,7 @@ impl SchemaAttribute {
             })?;
         // description
         let description = value
-            .get_ava_single_utf8(Attribute::Description.as_ref())
+            .get_ava_single_utf8(Attribute::Description)
             .map(|s| s.to_string())
             .ok_or_else(|| {
                 admin_error!("missing {} - {}", Attribute::Description, name);
@@ -127,44 +132,46 @@ impl SchemaAttribute {
 
         // multivalue
         let multivalue = value
-            .get_ava_single_bool(Attribute::MultiValue.as_ref())
+            .get_ava_single_bool(Attribute::MultiValue)
             .ok_or_else(|| {
                 admin_error!("missing {} - {}", Attribute::MultiValue, name);
                 OperationError::InvalidSchemaState("missing multivalue".to_string())
             })?;
         let unique = value
-            .get_ava_single_bool(Attribute::Unique.as_ref())
+            .get_ava_single_bool(Attribute::Unique)
             .ok_or_else(|| {
                 admin_error!("missing {} - {}", Attribute::Unique, name);
                 OperationError::InvalidSchemaState("missing unique".to_string())
             })?;
 
         let phantom = value
-            .get_ava_single_bool(Attribute::Phantom.as_ref())
+            .get_ava_single_bool(Attribute::Phantom)
             .unwrap_or(false);
 
         let sync_allowed = value
-            .get_ava_single_bool(Attribute::SyncAllowed.as_ref())
+            .get_ava_single_bool(Attribute::SyncAllowed)
             .unwrap_or(false);
 
         // Default, all attributes are replicated unless you opt in for them to NOT be.
         // Generally this is internal to the server only, so we don't advertise it.
         let replicated = value
-            .get_ava_single_bool(Attribute::Replicated.as_ref())
+            .get_ava_single_bool(Attribute::Replicated)
             .unwrap_or(true);
 
         // index vec
         // even if empty, it SHOULD be present ... (is that valid to put an empty set?)
         // The get_ava_opt_index handles the optional case for us :)
-        let index = value.get_ava_opt_index(ATTR_INDEX).ok_or_else(|| {
+        let index = value.get_ava_opt_index(Attribute::Index).ok_or_else(|| {
             admin_error!("invalid {} - {}", Attribute::Index, name);
-            OperationError::InvalidSchemaState(format!("invalid {}", ATTR_INDEX))
+            OperationError::InvalidSchemaState(format!("invalid {}", Attribute::Index))
         })?;
         // syntax type
-        let syntax = value.get_ava_single_syntax(ATTR_SYNTAX).ok_or_else(|| {
-            admin_error!("missing {} - {}", Attribute::Syntax, name);
-            OperationError::InvalidSchemaState(format!("missing {}", ATTR_SYNTAX))
-        })?;
+        let syntax = value
+            .get_ava_single_syntax(Attribute::Syntax)
+            .ok_or_else(|| {
+                admin_error!("missing {} - {}", Attribute::Syntax, name);
+                OperationError::InvalidSchemaState(format!("missing {}", Attribute::Syntax))
+            })?;
 
         Ok(SchemaAttribute {
             name,
@@ -403,7 +410,7 @@ impl SchemaClass {
         // uuid
         let uuid = value.get_uuid();
         // Convert entry to a schema class.
-        if !value.attribute_equality(Attribute::Class.as_ref(), &EntryClass::ClassType.into()) {
+        if !value.attribute_equality(Attribute::Class, &EntryClass::ClassType.into()) {
             admin_error!("class classtype not present - {:?}", uuid);
             return Err(OperationError::InvalidSchemaState(
                 "missing classtype".to_string(),
@@ -412,57 +419,57 @@ impl SchemaClass {
 
         // name
         let name = value
-            .get_ava_single_iutf8(Attribute::ClassName.as_ref())
+            .get_ava_single_iutf8(Attribute::ClassName)
             .map(AttrString::from)
             .ok_or_else(|| {
-                admin_error!("missing classname - {:?}", uuid);
-                OperationError::InvalidSchemaState("missing classname".to_string())
+                admin_error!("missing {} - {:?}", Attribute::ClassName, uuid);
+                OperationError::InvalidSchemaState(format!("missing {}", Attribute::ClassName))
             })?;
         // description
         let description = value
-            .get_ava_single_utf8(Attribute::Description.as_ref())
+            .get_ava_single_utf8(Attribute::Description)
             .map(String::from)
             .ok_or_else(|| {
-                admin_error!("missing description - {}", name);
-                OperationError::InvalidSchemaState("missing description".to_string())
+                admin_error!("missing {} - {}", Attribute::Description, name);
+                OperationError::InvalidSchemaState(format!("missing {}", Attribute::Description))
             })?;
 
         let sync_allowed = value
-            .get_ava_single_bool(Attribute::SyncAllowed.as_ref())
+            .get_ava_single_bool(Attribute::SyncAllowed)
             .unwrap_or(false);
 
         // These are all "optional" lists of strings.
         let systemmay = value
-            .get_ava_iter_iutf8(Attribute::SystemMay.as_ref())
+            .get_ava_iter_iutf8(Attribute::SystemMay)
             .map(|i| i.map(|v| v.into()).collect())
             .unwrap_or_else(Vec::new);
         let systemmust = value
-            .get_ava_iter_iutf8(Attribute::SystemMust.as_ref())
+            .get_ava_iter_iutf8(Attribute::SystemMust)
             .map(|i| i.map(|v| v.into()).collect())
             .unwrap_or_else(Vec::new);
         let may = value
-            .get_ava_iter_iutf8(Attribute::May.as_ref())
+            .get_ava_iter_iutf8(Attribute::May)
             .map(|i| i.map(|v| v.into()).collect())
             .unwrap_or_else(Vec::new);
         let must = value
-            .get_ava_iter_iutf8(Attribute::Must.as_ref())
+            .get_ava_iter_iutf8(Attribute::Must)
             .map(|i| i.map(|v| v.into()).collect())
             .unwrap_or_else(Vec::new);
 
         let systemsupplements = value
-            .get_ava_iter_iutf8(Attribute::SystemSupplements.as_ref())
+            .get_ava_iter_iutf8(Attribute::SystemSupplements)
             .map(|i| i.map(|v| v.into()).collect())
             .unwrap_or_else(Vec::new);
         let supplements = value
-            .get_ava_iter_iutf8(Attribute::Supplements.as_ref())
+            .get_ava_iter_iutf8(Attribute::Supplements)
             .map(|i| i.map(|v| v.into()).collect())
             .unwrap_or_else(Vec::new);
         let systemexcludes = value
-            .get_ava_iter_iutf8(Attribute::SystemExcludes.as_ref())
+            .get_ava_iter_iutf8(Attribute::SystemExcludes)
             .map(|i| i.map(|v| v.into()).collect())
             .unwrap_or_else(Vec::new);
         let excludes = value
-            .get_ava_iter_iutf8(Attribute::Excludes.as_ref())
+            .get_ava_iter_iutf8(Attribute::Excludes)
             .map(|i| i.map(|v| v.into()).collect())
             .unwrap_or_else(Vec::new);
 

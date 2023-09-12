@@ -837,7 +837,7 @@ fn ipa_to_scim_entry(
             .or_else(|| entry.remove_ava_single(Attribute::UserPassword.as_ref()));
 
         let mail: Vec<_> = entry
-            .remove_ava("mail")
+            .remove_ava(Attribute::Mail.as_ref())
             .map(|set| {
                 set.into_iter()
                     .map(|addr| MultiValueAttr {
@@ -867,12 +867,12 @@ fn ipa_to_scim_entry(
         };
 
         let ssh_publickey = entry
-            .remove_ava("ipasshpubkey")
+            .remove_ava(Attribute::IpaSshPubKey.as_ref())
             .map(|set| {
                 set.into_iter()
                     .enumerate()
                     .map(|(i, value)| ScimSshPubKey {
-                        label: format!("ipasshpubkey-{}", i),
+                        label: format!("{}-{}", Attribute::IpaSshPubKey, i),
                         value,
                     })
                     .collect()
@@ -930,7 +930,7 @@ fn ipa_to_scim_entry(
             .transpose()?;
 
         let members: Vec<_> = entry
-            .remove_ava("member")
+            .remove_ava(Attribute::Member.as_ref())
             .map(|set| {
                 set.into_iter()
                     .map(|external_id| ScimExternalMember { external_id })

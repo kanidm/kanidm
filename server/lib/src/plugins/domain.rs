@@ -68,54 +68,54 @@ impl Domain {
         cand: &mut [Entry<EntryInvalid, T>],
     ) -> Result<(), OperationError> {
         cand.iter_mut().try_for_each(|e| {
-            if e.attribute_equality(Attribute::Class.as_ref(), &EntryClass::DomainInfo.into())
-                && e.attribute_equality(Attribute::Uuid.as_ref(), &PVUUID_DOMAIN_INFO)
+            if e.attribute_equality(Attribute::Class, &EntryClass::DomainInfo.into())
+                && e.attribute_equality(Attribute::Uuid, &PVUUID_DOMAIN_INFO)
             {
                 // Validate the domain ldap basedn syntax.
                 if let Some(basedn) = e
-                    .get_ava_single_iutf8("domain_ldap_basedn") {
+                    .get_ava_single_iutf8(Attribute::DomainLdapBasedn) {
 
                     if !DOMAIN_LDAP_BASEDN_RE.is_match(basedn) {
-                        error!("Invalid domain_ldap_basedn. Must pass regex \"{}\"", *DOMAIN_LDAP_BASEDN_RE);
+                        error!("Invalid {}. Must pass regex \"{}\"", Attribute::DomainLdapBasedn, *DOMAIN_LDAP_BASEDN_RE);
                         return Err(OperationError::InvalidState);
                     }
                 }
 
                 // We always set this, because the DB uuid is authoritative.
                 let u = Value::Uuid(qs.get_domain_uuid());
-                e.set_ava("domain_uuid", once(u));
+                e.set_ava(Attribute::DomainUuid, once(u));
                 trace!("plugin_domain: Applying uuid transform");
 
                 // We only apply this if one isn't provided.
-                if !e.attribute_pres("domain_name") {
+                if !e.attribute_pres(Attribute::DomainName) {
                     let n = Value::new_iname(qs.get_domain_name());
-                    e.set_ava("domain_name", once(n));
+                    e.set_ava(Attribute::DomainName, once(n));
                     trace!("plugin_domain: Applying domain_name transform");
                 }
 
                 // Setup the minimum functional level if one is not set already.
-                if !e.attribute_pres(Attribute::Version.as_ref()) {
+                if !e.attribute_pres(Attribute::Version) {
                     let n = Value::Uint32(DOMAIN_MIN_LEVEL);
-                    e.set_ava(Attribute::Version.as_ref(), once(n));
+                    e.set_ava(Attribute::Version, once(n));
                     trace!("plugin_domain: Applying domain version transform");
                 }
 
                 // create the domain_display_name if it's missing
-                if !e.attribute_pres(Attribute::DomainDisplayName.as_ref()) {
+                if !e.attribute_pres(Attribute::DomainDisplayName) {
                     let domain_display_name = Value::new_utf8(format!("Kanidm {}", qs.get_domain_name()));
                     security_info!("plugin_domain: setting default domain_display_name to {:?}", domain_display_name);
 
-                    e.set_ava(Attribute::DomainDisplayName.into(), once(domain_display_name));
+                    e.set_ava(Attribute::DomainDisplayName, once(domain_display_name));
                 }
 
-                if !e.attribute_pres(Attribute::FernetPrivateKeyStr.as_ref()) {
+                if !e.attribute_pres(Attribute::FernetPrivateKeyStr) {
                     security_info!("regenerating domain token encryption key");
                     let k = fernet::Fernet::generate_key();
                     let v = Value::new_secret_str(&k);
                     e.add_ava(Attribute::FernetPrivateKeyStr, v);
                 }
 
-                if !e.attribute_pres(Attribute::Es256PrivateKeyDer.as_ref()) {
+                if !e.attribute_pres(Attribute::Es256PrivateKeyDer) {
                     security_info!("regenerating domain es256 private key");
                     let der = JwsSigner::generate_es256()
                         .and_then(|jws| jws.private_key_to_der())
@@ -127,7 +127,7 @@ impl Domain {
                     e.add_ava(Attribute::Es256PrivateKeyDer, v);
                 }
 
-                if !e.attribute_pres(Attribute::PrivateCookieKey.as_ref()) {
+                if !e.attribute_pres(Attribute::PrivateCookieKey) {
                     security_info!("regenerating domain cookie key");
                     let mut key = [0; 64];
                     let mut rng = StdRng::from_entropy();
@@ -159,8 +159,6 @@ mod tests {
 
         let u_dom = server_txn.get_domain_uuid();
 
-        assert!(
-            e_dom.attribute_equality(Attribute::DomainUuid.as_ref(), &PartialValue::Uuid(u_dom))
-        );
+        assert!(e_dom.attribute_equality(Attribute::DomainUuid, &PartialValue::Uuid(u_dom)));
     }
 }

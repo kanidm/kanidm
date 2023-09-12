@@ -20,21 +20,19 @@ impl AccessControlSearch {
         qs: &mut QueryServerWriteTransaction,
         value: &Entry<EntrySealed, EntryCommitted>,
     ) -> Result<Self, OperationError> {
-        if !value.attribute_equality(
-            Attribute::Class.as_ref(),
-            &EntryClass::AccessControlSearch.into(),
-        ) {
-            admin_error!("class access_control_search not present.");
-            return Err(OperationError::InvalidAcpState(
-                "Missing access_control_search".to_string(),
-            ));
+        if !value.attribute_equality(Attribute::Class, &EntryClass::AccessControlSearch.into()) {
+            admin_error!("class {} not present.", EntryClass::AccessControlSearch);
+            return Err(OperationError::InvalidAcpState(format!(
+                "Missing {}",
+                EntryClass::AccessControlSearch
+            )));
         }
 
         let attrs = value
-            .get_ava_iter_iutf8("acp_search_attr")
+            .get_ava_iter_iutf8(Attribute::AcpSearchAttr)
             .ok_or_else(|| {
-                admin_error!("Missing acp_search_attr");
-                OperationError::InvalidAcpState("Missing acp_search_attr".to_string())
+                admin_error!("Missing {}", Attribute::AcpSearchAttr);
+                OperationError::InvalidAcpState(format!("Missing {}", Attribute::AcpSearchAttr))
             })?
             .map(AttrString::from)
             .collect();
@@ -76,10 +74,7 @@ impl AccessControlDelete {
         qs: &mut QueryServerWriteTransaction,
         value: &Entry<EntrySealed, EntryCommitted>,
     ) -> Result<Self, OperationError> {
-        if !value.attribute_equality(
-            Attribute::Class.as_ref(),
-            &EntryClass::AccessControlDelete.into(),
-        ) {
+        if !value.attribute_equality(Attribute::Class, &EntryClass::AccessControlDelete.into()) {
             admin_error!("class access_control_delete not present.");
             return Err(OperationError::InvalidAcpState(
                 "Missing access_control_delete".to_string(),
@@ -123,23 +118,21 @@ impl AccessControlCreate {
         qs: &mut QueryServerWriteTransaction,
         value: &Entry<EntrySealed, EntryCommitted>,
     ) -> Result<Self, OperationError> {
-        if !value.attribute_equality(
-            Attribute::Class.as_ref(),
-            &EntryClass::AccessControlCreate.into(),
-        ) {
-            admin_error!("class access_control_create not present.");
-            return Err(OperationError::InvalidAcpState(
-                "Missing access_control_create".to_string(),
-            ));
+        if !value.attribute_equality(Attribute::Class, &EntryClass::AccessControlCreate.into()) {
+            admin_error!("class {} not present.", EntryClass::AccessControlCreate);
+            return Err(OperationError::InvalidAcpState(format!(
+                "Missing {}",
+                EntryClass::AccessControlCreate
+            )));
         }
 
         let attrs = value
-            .get_ava_iter_iutf8("acp_create_attr")
+            .get_ava_iter_iutf8(Attribute::AcpCreateAttr)
             .map(|i| i.map(AttrString::from).collect())
             .unwrap_or_else(Vec::new);
 
         let classes = value
-            .get_ava_iter_iutf8("acp_create_class")
+            .get_ava_iter_iutf8(Attribute::AcpCreateClass)
             .map(|i| i.map(AttrString::from).collect())
             .unwrap_or_else(Vec::new);
 
@@ -187,10 +180,7 @@ impl AccessControlModify {
         qs: &mut QueryServerWriteTransaction,
         value: &Entry<EntrySealed, EntryCommitted>,
     ) -> Result<Self, OperationError> {
-        if !value.attribute_equality(
-            Attribute::Class.as_ref(),
-            &EntryClass::AccessControlModify.into(),
-        ) {
+        if !value.attribute_equality(Attribute::Class, &EntryClass::AccessControlModify.into()) {
             admin_error!("class access_control_modify not present.");
             return Err(OperationError::InvalidAcpState(
                 "Missing access_control_modify".to_string(),
@@ -198,17 +188,17 @@ impl AccessControlModify {
         }
 
         let presattrs = value
-            .get_ava_iter_iutf8("acp_modify_presentattr")
+            .get_ava_iter_iutf8(Attribute::AcpModifyPresentAttr)
             .map(|i| i.map(AttrString::from).collect())
             .unwrap_or_else(Vec::new);
 
         let remattrs = value
-            .get_ava_iter_iutf8("acp_modify_removedattr")
+            .get_ava_iter_iutf8(Attribute::AcpModifyRemovedAttr)
             .map(|i| i.map(AttrString::from).collect())
             .unwrap_or_else(Vec::new);
 
         let classes = value
-            .get_ava_iter_iutf8("acp_modify_class")
+            .get_ava_iter_iutf8(Attribute::AcpModifyClass)
             .map(|i| i.map(AttrString::from).collect())
             .unwrap_or_else(Vec::new);
 
@@ -278,10 +268,7 @@ impl AccessControlProfile {
         value: &Entry<EntrySealed, EntryCommitted>,
     ) -> Result<Self, OperationError> {
         // Assert we have class access_control_profile
-        if !value.attribute_equality(
-            Attribute::Class.as_ref(),
-            &EntryClass::AccessControlProfile.into(),
-        ) {
+        if !value.attribute_equality(Attribute::Class, &EntryClass::AccessControlProfile.into()) {
             admin_error!("class access_control_profile not present.");
             return Err(OperationError::InvalidAcpState(
                 "Missing access_control_profile".to_string(),
@@ -290,10 +277,10 @@ impl AccessControlProfile {
 
         // copy name
         let name = value
-            .get_ava_single_iname("name")
+            .get_ava_single_iname(Attribute::Name)
             .ok_or_else(|| {
-                admin_error!("Missing name");
-                OperationError::InvalidAcpState("Missing name".to_string())
+                admin_error!("Missing {}", Attribute::Name);
+                OperationError::InvalidAcpState(format!("Missing {}", Attribute::Name))
             })?
             .to_string();
         // copy uuid
@@ -302,7 +289,7 @@ impl AccessControlProfile {
 
         // === ⚠️   WARNING!!! ⚠️  ===
         // See struct ACP for details.
-        let receiver = value.get_ava_single_refer(ATTR_ACP_RECEIVER_GROUP);
+        let receiver = value.get_ava_single_refer(Attribute::AcpReceiverGroup);
         /*
         .ok_or_else(|| {
             admin_error!("Missing acp_receiver_group");
@@ -312,23 +299,23 @@ impl AccessControlProfile {
 
         // targetscope, and turn to real filter
         let targetscope_f: ProtoFilter = value
-            .get_ava_single_protofilter("acp_targetscope")
+            .get_ava_single_protofilter(Attribute::AcpTargetScope)
             // .map(|pf| pf.clone())
             .cloned()
             .ok_or_else(|| {
-                admin_error!("Missing acp_targetscope");
-                OperationError::InvalidAcpState("Missing acp_targetscope".to_string())
+                admin_error!("Missing {}", Attribute::AcpTargetScope);
+                OperationError::InvalidAcpState(format!("Missing {}", Attribute::AcpTargetScope))
             })?;
 
         let ident = Identity::from_internal();
 
         let targetscope_i = Filter::from_rw(&ident, &targetscope_f, qs).map_err(|e| {
-            admin_error!("Targetscope validation failed {:?}", e);
+            admin_error!("{} validation failed {:?}", Attribute::AcpTargetScope, e);
             e
         })?;
 
         let targetscope = targetscope_i.validate(qs.get_schema()).map_err(|e| {
-            admin_error!("acp_targetscope Schema Violation {:?}", e);
+            admin_error!("{} Schema Violation {:?}", Attribute::AcpTargetScope, e);
             OperationError::SchemaViolation(e)
         })?;
 

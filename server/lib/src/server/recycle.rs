@@ -142,7 +142,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             // Get this entries uuid.
             let u: Uuid = e.get_uuid();
 
-            if let Some(riter) = e.get_ava_as_refuuid("directmemberof") {
+            if let Some(riter) = e.get_ava_as_refuuid(Attribute::DirectMemberOf) {
                 for g_uuid in riter {
                     dm_mods
                         .entry(g_uuid)
@@ -642,10 +642,7 @@ mod tests {
             .pop()
             .unwrap();
 
-        e.attribute_equality(
-            Attribute::MemberOf.as_ref(),
-            &PartialValue::new_refer_s(mo).unwrap(),
-        )
+        e.attribute_equality(Attribute::MemberOf, &PartialValue::new_refer_s(mo).unwrap())
     }
 
     #[qs_test]

@@ -24,40 +24,49 @@ impl RadiusAccount {
         value: &Entry<EntryReduced, EntryCommitted>,
         qs: &mut QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
-        if !value.attribute_equality(Attribute::Class.as_ref(), &EntryClass::Account.into()) {
+        if !value.attribute_equality(Attribute::Class, &EntryClass::Account.into()) {
             return Err(OperationError::InvalidAccountState(
                 "Missing class: account".to_string(),
             ));
         }
 
         let radius_secret = value
-            .get_ava_single_secret("radius_secret")
+            .get_ava_single_secret(Attribute::RadiusSecret)
             .ok_or_else(|| {
-                OperationError::InvalidAccountState("Missing attribute: radius_secret".to_string())
+                OperationError::InvalidAccountState(format!(
+                    "Missing attribute: {}",
+                    Attribute::RadiusSecret
+                ))
             })?
             .to_string();
 
         let name = value
-            .get_ava_single_iname(Attribute::Name.as_ref())
+            .get_ava_single_iname(Attribute::Name)
             .map(|s| s.to_string())
             .ok_or_else(|| {
-                OperationError::InvalidAccountState("Missing attribute: name".to_string())
+                OperationError::InvalidAccountState(format!(
+                    "Missing attribute: {}",
+                    Attribute::Name
+                ))
             })?;
 
         let uuid = value.get_uuid();
 
         let displayname = value
-            .get_ava_single_utf8("displayname")
+            .get_ava_single_utf8(Attribute::DisplayName)
             .map(|s| s.to_string())
             .ok_or_else(|| {
-                OperationError::InvalidAccountState("Missing attribute: displayname".to_string())
+                OperationError::InvalidAccountState(format!(
+                    "Missing attribute: {}",
+                    Attribute::DisplayName
+                ))
             })?;
 
         let groups = Group::try_from_account_entry_red_ro(value, qs)?;
 
-        let valid_from = value.get_ava_single_datetime("account_valid_from");
+        let valid_from = value.get_ava_single_datetime(Attribute::AccountValidFrom);
 
-        let expire = value.get_ava_single_datetime("account_expire");
+        let expire = value.get_ava_single_datetime(Attribute::AccountExpire);
 
         Ok(RadiusAccount {
             name,

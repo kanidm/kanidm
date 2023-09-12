@@ -102,38 +102,29 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // schema or acp requires reload.
         if !self.changed_schema {
             self.changed_schema = del_cand.iter().any(|e| {
-                e.attribute_equality(Attribute::Class.as_ref(), &EntryClass::ClassType.into())
-                    || e.attribute_equality(
-                        Attribute::Class.as_ref(),
-                        &EntryClass::AttributeType.into(),
-                    )
+                e.attribute_equality(Attribute::Class, &EntryClass::ClassType.into())
+                    || e.attribute_equality(Attribute::Class, &EntryClass::AttributeType.into())
             });
         }
         if !self.changed_acp {
             self.changed_acp = del_cand.iter().any(|e| {
-                e.attribute_equality(
-                    Attribute::Class.as_ref(),
-                    &EntryClass::AccessControlProfile.into(),
-                )
+                e.attribute_equality(Attribute::Class, &EntryClass::AccessControlProfile.into())
             });
         }
         if !self.changed_oauth2 {
             self.changed_oauth2 = del_cand.iter().any(|e| {
-                e.attribute_equality(
-                    Attribute::Class.as_ref(),
-                    &EntryClass::OAuth2ResourceServer.into(),
-                )
+                e.attribute_equality(Attribute::Class, &EntryClass::OAuth2ResourceServer.into())
             });
         }
         if !self.changed_domain {
             self.changed_domain = del_cand
                 .iter()
-                .any(|e| e.attribute_equality(Attribute::Uuid.as_ref(), &PVUUID_DOMAIN_INFO));
+                .any(|e| e.attribute_equality(Attribute::Uuid, &PVUUID_DOMAIN_INFO));
         }
         if !self.changed_sync_agreement {
-            self.changed_sync_agreement = del_cand.iter().any(|e| {
-                e.attribute_equality(Attribute::Uuid.as_ref(), &EntryClass::SyncAccount.into())
-            });
+            self.changed_sync_agreement = del_cand
+                .iter()
+                .any(|e| e.attribute_equality(Attribute::Uuid, &EntryClass::SyncAccount.into()));
         }
 
         self.changed_uuid

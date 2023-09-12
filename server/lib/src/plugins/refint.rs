@@ -127,11 +127,12 @@ impl ReferentialIntegrity {
 
         let mut work_set = qs.internal_search_writeable(&filt)?;
 
-        work_set.iter_mut().for_each(|(_, post)| {
-            ref_types
-                .values()
-                .for_each(|attr| post.remove_avas(attr.name.as_str(), &removed_ids));
-        });
+        for (_, post) in work_set.iter_mut() {
+            for schema_attribute in ref_types.values() {
+                let attribute = (&schema_attribute.name).try_into()?;
+                post.remove_avas(attribute, &removed_ids);
+            }
+        }
 
         qs.internal_apply_writable(work_set)
     }
@@ -322,8 +323,19 @@ impl Plugin for ReferentialIntegrity {
         for c in &all_cand {
             // For all reference in each cand.
             for rtype in ref_types.values() {
+                let attr: Attribute = match (&rtype.name).try_into() {
+                    Ok(val) => val,
+                    Err(err) => {
+                        // we shouldn't be able to get here...
+                        admin_error!("verify referential integrity invalid attribute {} specified - please log this as a bug! {:?}", &rtype.name, err);
+                        res.push(Err(ConsistencyError::InvalidAttributeType(
+                            rtype.name.to_string(),
+                        )));
+                        continue;
+                    }
+                };
                 // If the attribute is present
-                if let Some(vs) = c.get_ava_set(&rtype.name) {
+                if let Some(vs) = c.get_ava_set(attr) {
                     // For each value in the set.
                     match vs.as_ref_uuid_iter() {
                         Some(uuid_iter) => {
@@ -356,8 +368,7 @@ impl ReferentialIntegrity {
         // Fast Path
         let mut vsiter = cand.iter().flat_map(|c| {
             // If it's dyngroup, skip member since this will be reset in the next step.
-            let dyn_group =
-                c.attribute_equality(Attribute::Class.as_ref(), &EntryClass::DynGroup.into());
+            let dyn_group = c.attribute_equality(Attribute::Class, &EntryClass::DynGroup.into());
 
             ref_types.values().filter_map(move |rtype| {
                 // Skip dynamic members, these are recalculated by the
@@ -369,7 +380,15 @@ impl ReferentialIntegrity {
                     None
                 } else {
                     trace!(rtype_name = ?rtype.name, "examining");
-                    c.get_ava_set(&rtype.name)
+                    c.get_ava_set(
+                        (&rtype.name)
+                            .try_into()
+                            .map_err(|e| {
+                                admin_error!(?e, "invalid attribute type {}", &rtype.name);
+                                None::<Attribute>
+                            })
+                            .ok()?,
+                    )
                 }
             })
         });
@@ -978,7 +997,7 @@ mod tests {
                     .expect("Internal search failure");
                 let ue = cands.first().expect("No entry");
                 assert!(ue
-                    .get_ava_as_oauthscopemaps("oauth2_rs_scope_map")
+                    .get_ava_as_oauthscopemaps(Attribute::OAuth2RsScopeMap)
                     .is_none())
             }
         );
@@ -1104,8 +1123,8 @@ mod tests {
         // Still there
 
         let entry = server_txn.internal_search_uuid(tuuid).expect("failed");
-        assert!(entry.attribute_equality(Attribute::UserAuthTokenSession.as_ref(), &pv_parent_id));
-        assert!(entry.attribute_equality(Attribute::OAuth2Session.as_ref(), &pv_session_id));
+        assert!(entry.attribute_equality(Attribute::UserAuthTokenSession, &pv_parent_id));
+        assert!(entry.attribute_equality(Attribute::OAuth2Session, &pv_session_id));
 
         // Delete the oauth2 resource server.
         assert!(server_txn.internal_delete_uuid(rs_uuid).is_ok());
@@ -1115,14 +1134,14 @@ mod tests {
 
         // Note the uat is present still.
         let session = entry
-            .get_ava_as_session_map(Attribute::UserAuthTokenSession.into())
+            .get_ava_as_session_map(Attribute::UserAuthTokenSession)
             .and_then(|sessions| sessions.get(&parent_id))
             .expect("No session map found");
         assert!(matches!(session.state, SessionState::NeverExpires));
 
         // The oauth2 session is revoked.
         let session = entry
-            .get_ava_as_oauth2session_map(Attribute::OAuth2Session.into())
+            .get_ava_as_oauth2session_map(Attribute::OAuth2Session)
             .and_then(|sessions| sessions.get(&session_id))
             .expect("No session map found");
         assert!(matches!(session.state, SessionState::RevokedAt(_)));
@@ -1177,8 +1196,8 @@ mod tests {
             .expect("Failed to access dyn group");
 
         let dyn_member = dyna
-            .get_ava_refer("dynmember")
-            .expect("Failed to get member attribute");
+            .get_ava_refer(Attribute::DynMember)
+            .expect("Failed to get dyn member attribute");
         assert!(dyn_member.len() == 1);
         assert!(dyn_member.contains(&tgroup_uuid));
 
@@ -1187,7 +1206,7 @@ mod tests {
             .expect("Failed to access mo group");
 
         let grp_member = group
-            .get_ava_refer("memberof")
+            .get_ava_refer(Attribute::MemberOf)
             .expect("Failed to get memberof attribute");
         assert!(grp_member.len() == 1);
         assert!(grp_member.contains(&dyn_uuid));

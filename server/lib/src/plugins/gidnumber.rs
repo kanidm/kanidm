@@ -20,9 +20,9 @@ const GID_SAFETY_NUMBER_MIN: u32 = 1000;
 pub struct GidNumber {}
 
 fn apply_gidnumber<T: Clone>(e: &mut Entry<EntryInvalid, T>) -> Result<(), OperationError> {
-    if (e.attribute_equality(Attribute::Class.as_ref(), &EntryClass::PosixGroup.into())
-        || e.attribute_equality(Attribute::Class.into(), &EntryClass::PosixAccount.into()))
-        && !e.attribute_pres(Attribute::GidNumber.as_ref())
+    if (e.attribute_equality(Attribute::Class, &EntryClass::PosixGroup.into())
+        || e.attribute_equality(Attribute::Class, &EntryClass::PosixAccount.into()))
+        && !e.attribute_pres(Attribute::GidNumber)
     {
         let u_ref = e
             .get_uuid()
@@ -36,19 +36,25 @@ fn apply_gidnumber<T: Clone>(e: &mut Entry<EntryInvalid, T>) -> Result<(), Opera
         // assert the value is greater than the system range.
         if gid < GID_SYSTEM_NUMBER_MIN {
             return Err(OperationError::InvalidAttribute(format!(
-                "gidnumber {gid} may overlap with system range {GID_SYSTEM_NUMBER_MIN}"
+                "{} {} may overlap with system range {}",
+                Attribute::GidNumber,
+                gid,
+                GID_SYSTEM_NUMBER_MIN
             )));
         }
 
         let gid_v = Value::new_uint32(gid);
         admin_info!("Generated {} for {:?}", gid, u_ref);
-        e.set_ava(Attribute::GidNumber.as_ref(), once(gid_v));
+        e.set_ava(Attribute::GidNumber, once(gid_v));
         Ok(())
-    } else if let Some(gid) = e.get_ava_single_uint32(Attribute::GidNumber.as_ref()) {
+    } else if let Some(gid) = e.get_ava_single_uint32(Attribute::GidNumber) {
         // If they provided us with a gid number, ensure it's in a safe range.
         if gid <= GID_SAFETY_NUMBER_MIN {
             Err(OperationError::InvalidAttribute(format!(
-                "gidnumber {gid} overlaps into system secure range {GID_SAFETY_NUMBER_MIN}"
+                "{} {} overlaps into system secure range {}",
+                Attribute::GidNumber,
+                gid,
+                GID_SAFETY_NUMBER_MIN
             )))
         } else {
             Ok(())
@@ -100,7 +106,7 @@ mod tests {
     fn check_gid(qs_write: &mut QueryServerWriteTransaction, uuid: &str, gid: u32) {
         let u = Uuid::parse_str(uuid).unwrap();
         let e = qs_write.internal_search_uuid(u).unwrap();
-        let gidnumber = e.get_ava_single(Attribute::GidNumber.as_ref()).unwrap();
+        let gidnumber = e.get_ava_single(Attribute::GidNumber).unwrap();
         let ex_gid = Value::new_uint32(gid);
         assert!(ex_gid == gidnumber);
     }

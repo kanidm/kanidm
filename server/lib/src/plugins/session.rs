@@ -57,18 +57,18 @@ impl SessionConsistency {
             // * If the session's credential is no longer on the account, we remove the session.
             let cred_ids: BTreeSet<Uuid> =
                 entry
-                    .get_ava_single_credential(Attribute::PrimaryCredential.into())
+                    .get_ava_single_credential(Attribute::PrimaryCredential)
                         .iter()
                         .map(|c| c.uuid)
 
                 .chain(
-                    entry.get_ava_passkeys(Attribute::PassKeys.into())
+                    entry.get_ava_passkeys(Attribute::PassKeys)
                         .iter()
                         .flat_map(|pks| pks.keys().copied()  )
                 )
                 .collect();
 
-            let invalidate: Option<BTreeSet<_>> = entry.get_ava_as_session_map(Attribute::UserAuthTokenSession.into())
+            let invalidate: Option<BTreeSet<_>> = entry.get_ava_as_session_map(Attribute::UserAuthTokenSession)
                 .map(|sessions| {
                     sessions.iter().filter_map(|(session_id, session)| {
                         if !cred_ids.contains(&session.cred_id) {
@@ -82,11 +82,11 @@ impl SessionConsistency {
                 });
 
             if let Some(invalidate) = invalidate.as_ref() {
-                entry.remove_avas(Attribute::UserAuthTokenSession.into(), invalidate);
+                entry.remove_avas(Attribute::UserAuthTokenSession, invalidate);
             }
 
             // * If a UAT is past its expiry, remove it.
-            let expired: Option<BTreeSet<_>> = entry.get_ava_as_session_map(Attribute::UserAuthTokenSession.into())
+            let expired: Option<BTreeSet<_>> = entry.get_ava_as_session_map(Attribute::UserAuthTokenSession)
                 .map(|sessions| {
                     sessions.iter().filter_map(|(session_id, session)| {
                         trace!(?session_id, ?session);
@@ -102,14 +102,14 @@ impl SessionConsistency {
                 });
 
             if let Some(expired) = expired.as_ref() {
-                entry.remove_avas(Attribute::UserAuthTokenSession.into(), expired);
+                entry.remove_avas(Attribute::UserAuthTokenSession, expired);
             }
 
             // * If an oauth2 session is past it's expiry, remove it.
             // * If an oauth2 session is past the grace window, and no parent session exists, remove it.
-            let oauth2_remove: Option<BTreeSet<_>> = entry.get_ava_as_oauth2session_map("oauth2_session").map(|oauth2_sessions| {
+            let oauth2_remove: Option<BTreeSet<_>> = entry.get_ava_as_oauth2session_map(Attribute::OAuth2Session).map(|oauth2_sessions| {
                 // If we have oauth2 sessions, we need to be able to lookup if sessions exist in the uat.
-                let sessions = entry.get_ava_as_session_map(Attribute::UserAuthTokenSession.into());
+                let sessions = entry.get_ava_as_session_map(Attribute::UserAuthTokenSession);
 
                 oauth2_sessions.iter().filter_map(|(o2_session_id, session)| {
                     trace!(?o2_session_id, ?session);
@@ -157,7 +157,7 @@ impl SessionConsistency {
             });
 
             if let Some(oauth2_remove) = oauth2_remove.as_ref() {
-                entry.remove_avas(Attribute::OAuth2Session.as_ref(), oauth2_remove);
+                entry.remove_avas(Attribute::OAuth2Session, oauth2_remove);
             }
 
             Ok(())
@@ -255,7 +255,7 @@ mod tests {
         let entry = server_txn.internal_search_uuid(tuuid).expect("failed");
 
         let session = entry
-            .get_ava_as_session_map(Attribute::UserAuthTokenSession.into())
+            .get_ava_as_session_map(Attribute::UserAuthTokenSession)
             .and_then(|sessions| sessions.get(&session_id))
             .expect("No session map found");
         assert!(matches!(session.state, SessionState::ExpiresAt(_)));
@@ -265,7 +265,7 @@ mod tests {
 
         // Mod again - anything will do.
         let modlist = ModifyList::new_purge_and_set(
-            Attribute::Description.as_ref(),
+            Attribute::Description,
             Value::new_utf8s("test person 1 change"),
         );
 
@@ -281,7 +281,7 @@ mod tests {
 
         // We get the attribute and have to check it's now in a revoked state.
         let session = entry
-            .get_ava_as_session_map(Attribute::UserAuthTokenSession.into())
+            .get_ava_as_session_map(Attribute::UserAuthTokenSession)
             .and_then(|sessions| sessions.get(&session_id))
             .expect("No session map found");
         assert!(matches!(session.state, SessionState::RevokedAt(_)));
@@ -418,13 +418,13 @@ mod tests {
         let entry = server_txn.internal_search_uuid(tuuid).expect("failed");
 
         let session = entry
-            .get_ava_as_session_map(Attribute::UserAuthTokenSession.into())
+            .get_ava_as_session_map(Attribute::UserAuthTokenSession)
             .and_then(|sessions| sessions.get(&parent_id))
             .expect("No session map found");
         assert!(matches!(session.state, SessionState::NeverExpires));
 
         let session = entry
-            .get_ava_as_oauth2session_map(Attribute::OAuth2Session.into())
+            .get_ava_as_oauth2session_map(Attribute::OAuth2Session)
             .and_then(|sessions| sessions.get(&session_id))
             .expect("No session map found");
         assert!(matches!(session.state, SessionState::ExpiresAt(_)));
@@ -437,7 +437,7 @@ mod tests {
 
         // Mod again - anything will do.
         let modlist = ModifyList::new_purge_and_set(
-            Attribute::Description.as_ref(),
+            Attribute::Description,
             Value::new_utf8s("test person 1 change"),
         );
 
@@ -453,13 +453,13 @@ mod tests {
 
         // Note the uat is still present
         let session = entry
-            .get_ava_as_session_map(Attribute::UserAuthTokenSession.into())
+            .get_ava_as_session_map(Attribute::UserAuthTokenSession)
             .and_then(|sessions| sessions.get(&parent_id))
             .expect("No session map found");
         assert!(matches!(session.state, SessionState::NeverExpires));
 
         let session = entry
-            .get_ava_as_oauth2session_map(Attribute::OAuth2Session.into())
+            .get_ava_as_oauth2session_map(Attribute::OAuth2Session)
             .and_then(|sessions| sessions.get(&session_id))
             .expect("No session map found");
         assert!(matches!(session.state, SessionState::RevokedAt(_)));
@@ -592,13 +592,13 @@ mod tests {
         let entry = server_txn.internal_search_uuid(tuuid).expect("failed");
 
         let session = entry
-            .get_ava_as_session_map(Attribute::UserAuthTokenSession.into())
+            .get_ava_as_session_map(Attribute::UserAuthTokenSession)
             .and_then(|sessions| sessions.get(&parent_id))
             .expect("No session map found");
         assert!(matches!(session.state, SessionState::NeverExpires));
 
         let session = entry
-            .get_ava_as_oauth2session_map(Attribute::OAuth2Session.into())
+            .get_ava_as_oauth2session_map(Attribute::OAuth2Session)
             .and_then(|sessions| sessions.get(&session_id))
             .expect("No session map found");
         assert!(matches!(session.state, SessionState::NeverExpires));
@@ -625,7 +625,7 @@ mod tests {
 
         // Note the uat is removed
         let session = entry
-            .get_ava_as_session_map(Attribute::UserAuthTokenSession.into())
+            .get_ava_as_session_map(Attribute::UserAuthTokenSession)
             .and_then(|sessions| sessions.get(&parent_id))
             .expect("No session map found");
         assert!(matches!(session.state, SessionState::RevokedAt(_)));
@@ -748,7 +748,7 @@ mod tests {
 
         // Mod again - anything will do.
         let modlist = ModifyList::new_purge_and_set(
-            Attribute::Description.as_ref(),
+            Attribute::Description,
             Value::new_utf8s("test person 1 change"),
         );
 
@@ -842,7 +842,7 @@ mod tests {
         let entry = server_txn.internal_search_uuid(tuuid).expect("failed");
 
         let session = entry
-            .get_ava_as_session_map(Attribute::UserAuthTokenSession.into())
+            .get_ava_as_session_map(Attribute::UserAuthTokenSession)
             .and_then(|sessions| sessions.get(&session_id))
             .expect("No session map found");
         assert!(matches!(session.state, SessionState::NeverExpires));
@@ -867,7 +867,7 @@ mod tests {
 
         // Note it's a not condition now.
         let session = entry
-            .get_ava_as_session_map(Attribute::UserAuthTokenSession.into())
+            .get_ava_as_session_map(Attribute::UserAuthTokenSession)
             .and_then(|sessions| sessions.get(&session_id))
             .expect("No session map found");
         assert!(matches!(session.state, SessionState::RevokedAt(_)));

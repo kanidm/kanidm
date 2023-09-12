@@ -90,6 +90,7 @@ pub enum Attribute {
     IdVerificationEcKey,
     Index,
     IpaNtHash,
+    IpaSshPubKey,
     JwsEs256PrivateKey,
     LastModifiedCid,
     /// An LDAP Compatible emailAddress
@@ -263,6 +264,7 @@ impl TryFrom<String> for Attribute {
             ATTR_ID_VERIFICATION_ECKEY => Attribute::IdVerificationEcKey,
             ATTR_INDEX => Attribute::Index,
             ATTR_IPANTHASH => Attribute::IpaNtHash,
+            ATTR_IPASSHPUBKEY => Attribute::IpaSshPubKey,
             ATTR_JWS_ES256_PRIVATE_KEY => Attribute::JwsEs256PrivateKey,
             ATTR_LAST_MODIFIED_CID => Attribute::LastModifiedCid,
             ATTR_LDAP_EMAIL_ADDRESS => Attribute::LdapEmailAddress,
@@ -346,7 +348,10 @@ impl TryFrom<String> for Attribute {
             TEST_ATTR_NUMBER => Attribute::TestNumber,
             #[cfg(any(debug_assertions, test))]
             TEST_ATTR_NOTALLOWED => Attribute::TestNotAllowed,
-            _ => return Err(OperationError::InvalidAttributeName(val)),
+            _ => {
+                trace!("Failed to convert {} to Attribute", val);
+                return Err(OperationError::InvalidAttributeName(val));
+            }
         };
         Ok(res)
     }
@@ -409,6 +414,7 @@ impl From<Attribute> for &'static str {
             Attribute::IdVerificationEcKey => ATTR_ID_VERIFICATION_ECKEY,
             Attribute::Index => ATTR_INDEX,
             Attribute::IpaNtHash => ATTR_IPANTHASH,
+            Attribute::IpaSshPubKey => ATTR_IPASSHPUBKEY,
             Attribute::JwsEs256PrivateKey => ATTR_JWS_ES256_PRIVATE_KEY,
             Attribute::LastModifiedCid => ATTR_LAST_MODIFIED_CID,
             Attribute::LdapEmailAddress => ATTR_LDAP_EMAIL_ADDRESS,

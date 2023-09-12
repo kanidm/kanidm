@@ -194,11 +194,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 .iter()
                 .chain(pre_candidates.iter().map(|e| e.as_ref()))
                 .any(|e| {
-                    e.attribute_equality(Attribute::Class.as_ref(), &EntryClass::ClassType.into())
-                        || e.attribute_equality(
-                            Attribute::Class.as_ref(),
-                            &EntryClass::AttributeType.into(),
-                        )
+                    e.attribute_equality(Attribute::Class, &EntryClass::ClassType.into())
+                        || e.attribute_equality(Attribute::Class, &EntryClass::AttributeType.into())
                 });
         }
         if !self.changed_acp {
@@ -206,10 +203,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 .iter()
                 .chain(pre_candidates.iter().map(|e| e.as_ref()))
                 .any(|e| {
-                    e.attribute_equality(
-                        Attribute::Class.as_ref(),
-                        &EntryClass::AccessControlProfile.into(),
-                    )
+                    e.attribute_equality(Attribute::Class, &EntryClass::AccessControlProfile.into())
                 })
         }
         if !self.changed_oauth2 {
@@ -217,25 +211,20 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 .iter()
                 .chain(pre_candidates.iter().map(|e| e.as_ref()))
                 .any(|e| {
-                    e.attribute_equality(
-                        Attribute::Class.as_ref(),
-                        &EntryClass::OAuth2ResourceServer.into(),
-                    )
+                    e.attribute_equality(Attribute::Class, &EntryClass::OAuth2ResourceServer.into())
                 });
         }
         if !self.changed_domain {
             self.changed_domain = norm_cand
                 .iter()
                 .chain(pre_candidates.iter().map(|e| e.as_ref()))
-                .any(|e| e.attribute_equality(Attribute::Uuid.as_ref(), &PVUUID_DOMAIN_INFO));
+                .any(|e| e.attribute_equality(Attribute::Uuid, &PVUUID_DOMAIN_INFO));
         }
         if !self.changed_sync_agreement {
             self.changed_sync_agreement = norm_cand
                 .iter()
                 .chain(pre_candidates.iter().map(|e| e.as_ref()))
-                .any(|e| {
-                    e.attribute_equality(Attribute::Class.as_ref(), &EntryClass::SyncAccount.into())
-                });
+                .any(|e| e.attribute_equality(Attribute::Class, &EntryClass::SyncAccount.into()));
         }
 
         self.changed_uuid.extend(
@@ -364,11 +353,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 .iter()
                 .chain(pre_candidates.iter().map(|e| e.as_ref()))
                 .any(|e| {
-                    e.attribute_equality(Attribute::Class.as_ref(), &EntryClass::ClassType.into())
-                        || e.attribute_equality(
-                            Attribute::Class.as_ref(),
-                            &EntryClass::AttributeType.into(),
-                        )
+                    e.attribute_equality(Attribute::Class, &EntryClass::ClassType.into())
+                        || e.attribute_equality(Attribute::Class, &EntryClass::AttributeType.into())
                 });
         }
         if !self.changed_acp {
@@ -376,24 +362,18 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 .iter()
                 .chain(pre_candidates.iter().map(|e| e.as_ref()))
                 .any(|e| {
-                    e.attribute_equality(
-                        Attribute::Class.as_ref(),
-                        &EntryClass::AccessControlProfile.into(),
-                    )
+                    e.attribute_equality(Attribute::Class, &EntryClass::AccessControlProfile.into())
                 });
         }
         if !self.changed_oauth2 {
             self.changed_oauth2 = norm_cand.iter().any(|e| {
-                e.attribute_equality(
-                    Attribute::Class.as_ref(),
-                    &EntryClass::OAuth2ResourceServer.into(),
-                )
+                e.attribute_equality(Attribute::Class, &EntryClass::OAuth2ResourceServer.into())
             });
         }
         if !self.changed_domain {
             self.changed_domain = norm_cand
                 .iter()
-                .any(|e| e.attribute_equality(Attribute::Uuid.into(), &PVUUID_DOMAIN_INFO));
+                .any(|e| e.attribute_equality(Attribute::Uuid, &PVUUID_DOMAIN_INFO));
         }
         self.changed_uuid.extend(
             norm_cand
@@ -795,7 +775,7 @@ mod tests {
             .expect("failed");
         // get the primary ava
         let cred_ref = test_ent
-            .get_ava_single_credential("primary_credential")
+            .get_ava_single_credential(Attribute::PrimaryCredential)
             .expect("Failed");
         // do a pw check.
         assert!(cred_ref.verify_password("test_password").unwrap());

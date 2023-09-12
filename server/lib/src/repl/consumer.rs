@@ -221,10 +221,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 .iter()
                 .chain(pre_cand.iter().map(|e| e.as_ref()))
                 .any(|e| {
-                    e.attribute_equality(
-                        Attribute::Class.into(),
-                        &EntryClass::AccessControlProfile.into(),
-                    )
+                    e.attribute_equality(Attribute::Class, &EntryClass::AccessControlProfile.into())
                 })
         }
         if !self.changed_oauth2 {
@@ -232,19 +229,14 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 .iter()
                 .chain(pre_cand.iter().map(|e| e.as_ref()))
                 .any(|e| {
-                    e.attribute_equality(
-                        Attribute::Class.into(),
-                        &EntryClass::OAuth2ResourceServer.into(),
-                    )
+                    e.attribute_equality(Attribute::Class, &EntryClass::OAuth2ResourceServer.into())
                 });
         }
         if !self.changed_sync_agreement {
             self.changed_sync_agreement = cand
                 .iter()
                 .chain(pre_cand.iter().map(|e| e.as_ref()))
-                .any(|e| {
-                    e.attribute_equality(Attribute::Class.as_ref(), &EntryClass::SyncAccount.into())
-                });
+                .any(|e| e.attribute_equality(Attribute::Class, &EntryClass::SyncAccount.into()));
         }
 
         trace!(

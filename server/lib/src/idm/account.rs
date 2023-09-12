@@ -27,65 +27,65 @@ use kanidm_lib_crypto::CryptoPolicy;
 macro_rules! try_from_entry {
     ($value:expr, $groups:expr) => {{
         // Check the classes
-        if !$value.attribute_equality(
-            Attribute::Class.as_ref(),
-            &EntryClass::Account.to_partialvalue(),
-        ) {
-            return Err(OperationError::InvalidAccountState(
-                "Missing class: account".to_string(),
-            ));
+        if !$value.attribute_equality(Attribute::Class, &EntryClass::Account.to_partialvalue()) {
+            return Err(OperationError::InvalidAccountState(format!(
+                "Missing class: {}",
+                EntryClass::Account
+            )));
         }
 
         // Now extract our needed attributes
         let name = $value
-            .get_ava_single_iname(Attribute::Name.as_ref())
+            .get_ava_single_iname(Attribute::Name)
             .map(|s| s.to_string())
-            .ok_or(OperationError::InvalidAccountState(
-                "Missing attribute: name".to_string(),
-            ))?;
+            .ok_or(OperationError::InvalidAccountState(format!(
+                "Missing attribute: {}",
+                Attribute::Name
+            )))?;
 
         let displayname = $value
-            .get_ava_single_utf8(Attribute::DisplayName.as_ref())
+            .get_ava_single_utf8(Attribute::DisplayName)
             .map(|s| s.to_string())
-            .ok_or(OperationError::InvalidAccountState(
-                "Missing attribute: displayname".to_string(),
-            ))?;
+            .ok_or(OperationError::InvalidAccountState(format!(
+                "Missing attribute: {}",
+                Attribute::DisplayName
+            )))?;
 
-        let sync_parent_uuid = $value.get_ava_single_refer("sync_parent_uuid");
+        let sync_parent_uuid = $value.get_ava_single_refer(Attribute::SyncParentUuid);
 
         let primary = $value
-            .get_ava_single_credential("primary_credential")
+            .get_ava_single_credential(Attribute::PrimaryCredential)
             .map(|v| v.clone());
 
         let passkeys = $value
-            .get_ava_passkeys("passkeys")
+            .get_ava_passkeys(Attribute::PassKeys)
             .cloned()
             .unwrap_or_default();
 
         let devicekeys = $value
-            .get_ava_devicekeys("devicekeys")
+            .get_ava_devicekeys(Attribute::DeviceKeys)
             .cloned()
             .unwrap_or_default();
 
-        let spn = $value
-            .get_ava_single_proto_string(Attribute::Spn.as_ref())
-            .ok_or(OperationError::InvalidAccountState(
-                "Missing attribute: spn".to_string(),
-            ))?;
+        let spn = $value.get_ava_single_proto_string(Attribute::Spn).ok_or(
+            OperationError::InvalidAccountState(format!("Missing attribute: {}", Attribute::Spn)),
+        )?;
 
-        let mail_primary = $value.get_ava_mail_primary("mail").map(str::to_string);
+        let mail_primary = $value
+            .get_ava_mail_primary(Attribute::Mail)
+            .map(str::to_string);
 
         let mail = $value
-            .get_ava_iter_mail("mail")
+            .get_ava_iter_mail(Attribute::Mail)
             .map(|i| i.map(str::to_string).collect())
             .unwrap_or_else(Vec::new);
 
-        let valid_from = $value.get_ava_single_datetime("account_valid_from");
+        let valid_from = $value.get_ava_single_datetime(Attribute::AccountValidFrom);
 
-        let expire = $value.get_ava_single_datetime("account_expire");
+        let expire = $value.get_ava_single_datetime(Attribute::AccountExpire);
 
         let radius_secret = $value
-            .get_ava_single_secret("radius_secret")
+            .get_ava_single_secret(Attribute::RadiusSecret)
             .map(str::to_string);
 
         // Resolved by the caller
@@ -94,7 +94,7 @@ macro_rules! try_from_entry {
         let uuid = $value.get_uuid().clone();
 
         let credential_update_intent_tokens = $value
-            .get_ava_as_intenttokens("credential_update_intent_token")
+            .get_ava_as_intenttokens(Attribute::CredentialUpdateIntentToken)
             .cloned()
             .unwrap_or_default();
 
@@ -107,22 +107,16 @@ macro_rules! try_from_entry {
             .collect();
 
         // For now disable cred updates on sync accounts too.
-        if $value.attribute_equality(
-            Attribute::Class.as_ref(),
-            &EntryClass::Person.to_partialvalue(),
-        ) {
+        if $value.attribute_equality(Attribute::Class, &EntryClass::Person.to_partialvalue()) {
             ui_hints.insert(UiHint::CredentialUpdate);
         }
 
-        if $value.attribute_equality(
-            Attribute::Class.as_ref(),
-            &EntryClass::SyncObject.to_partialvalue(),
-        ) {
+        if $value.attribute_equality(Attribute::Class, &EntryClass::SyncObject.to_partialvalue()) {
             ui_hints.insert(UiHint::SynchronisedAccount);
         }
 
         if $value.attribute_equality(
-            Attribute::Class.as_ref(),
+            Attribute::Class,
             &EntryClass::PosixAccount.to_partialvalue(),
         ) {
             ui_hints.insert(UiHint::PosixAccount);
@@ -408,13 +402,19 @@ impl Account {
             Some(primary) => {
                 let ncred = primary.set_password(crypto_policy, cleartext)?;
                 let vcred = Value::new_credential("primary", ncred);
-                Ok(ModifyList::new_purge_and_set("primary_credential", vcred))
+                Ok(ModifyList::new_purge_and_set(
+                    Attribute::PrimaryCredential,
+                    vcred,
+                ))
             }
             // Make a new credential instead
             None => {
                 let ncred = Credential::new_password_only(crypto_policy, cleartext)?;
                 let vcred = Value::new_credential("primary", ncred);
-                Ok(ModifyList::new_purge_and_set("primary_credential", vcred))
+                Ok(ModifyList::new_purge_and_set(
+                    Attribute::PrimaryCredential,
+                    vcred,
+                ))
             }
         }
     }
@@ -430,7 +430,7 @@ impl Account {
                 if let Some(ncred) = primary.upgrade_password(crypto_policy, cleartext)? {
                     let vcred = Value::new_credential("primary", ncred);
                     Ok(Some(ModifyList::new_purge_and_set(
-                        "primary_credential",
+                        Attribute::PrimaryCredential,
                         vcred,
                     )))
                 } else {
@@ -493,7 +493,10 @@ impl Account {
                 match r_ncred {
                     Ok(ncred) => {
                         let vcred = Value::new_credential("primary", ncred);
-                        Ok(ModifyList::new_purge_and_set("primary_credential", vcred))
+                        Ok(ModifyList::new_purge_and_set(
+                            Attribute::PrimaryCredential,
+                            vcred,
+                        ))
                     }
                     Err(e) => Err(e),
                 }
@@ -510,7 +513,10 @@ impl Account {
         cleartext: &str,
     ) -> Result<ModifyList<ModifyInvalid>, OperationError> {
         let vcred = Value::new_secret_str(cleartext);
-        Ok(ModifyList::new_purge_and_set("radius_secret", vcred))
+        Ok(ModifyList::new_purge_and_set(
+            Attribute::RadiusSecret,
+            vcred,
+        ))
     }
 
     pub(crate) fn to_credentialstatus(&self) -> Result<CredentialStatus, OperationError> {
@@ -548,8 +554,12 @@ impl Account {
 
         let within_valid_window = Account::check_within_valid_time(
             ct,
-            entry.get_ava_single_datetime("account_valid_from").as_ref(),
-            entry.get_ava_single_datetime("account_expire").as_ref(),
+            entry
+                .get_ava_single_datetime(Attribute::AccountValidFrom)
+                .as_ref(),
+            entry
+                .get_ava_single_datetime(Attribute::AccountExpire)
+                .as_ref(),
         );
 
         if !within_valid_window {
@@ -567,7 +577,7 @@ impl Account {
         } else {
             // Get the sessions.
             let session_present = entry
-                .get_ava_as_session_map("user_auth_token_session")
+                .get_ava_as_session_map(Attribute::UserAuthTokenSession)
                 .and_then(|session_map| session_map.get(&uat.session_id));
 
             // Important - we don't have to check the expiry time against ct here since it was
@@ -694,13 +704,16 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         // Copy the current classes
         let prev_classes: BTreeSet<_> = account_entry
-            .get_ava_as_iutf8_iter(Attribute::Class.as_ref())
+            .get_ava_as_iutf8_iter(Attribute::Class)
             .ok_or_else(|| {
                 admin_error!(
                     "Invalid entry, {} attribute is not present or not iutf8",
                     Attribute::Class.as_ref()
                 );
-                OperationError::InvalidAccountState("Missing attribute: class".to_string())
+                OperationError::InvalidAccountState(format!(
+                    "Missing attribute: {}",
+                    Attribute::Class
+                ))
             })?
             .collect();
 
@@ -788,7 +801,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
                     .and_then(|e| {
                         let account_id = e.get_uuid();
                         // From the entry, turn it into the value
-                        e.get_ava_as_session_map("user_auth_token_session")
+                        e.get_ava_as_session_map(Attribute::UserAuthTokenSession)
                             .map(|smap| {
                                 smap.iter()
                                     .map(|(u, s)| {

@@ -44,11 +44,11 @@ fn do_memberof(
         })?;
 
     // Ensure we are MO capable. We only add this if it's not already present.
-    tgte.add_ava_if_not_exist(Attribute::Class.as_ref(), EntryClass::MemberOf.into());
+    tgte.add_ava_if_not_exist(Attribute::Class, EntryClass::MemberOf.into());
     // Clear the dmo + mos, we will recreate them now.
     // This is how we handle deletes/etc.
-    tgte.purge_ava("memberof");
-    tgte.purge_ava("directmemberof");
+    tgte.purge_ava(Attribute::MemberOf);
+    tgte.purge_ava(Attribute::DirectMemberOf);
 
     // What are our direct and indirect mos?
     let dmo = ValueSetRefer::from_iter(groups.iter().map(|g| g.get_uuid()));
@@ -57,7 +57,7 @@ fn do_memberof(
         groups
             .iter()
             .filter_map(|g| {
-                g.get_ava_set("memberof")
+                g.get_ava_set(Attribute::MemberOf)
                     .and_then(|s| s.as_refer_set())
                     .map(|s| s.iter())
             })
@@ -68,7 +68,7 @@ fn do_memberof(
     // Add all the direct mo's and mos.
     if let Some(dmo) = dmo {
         // We need to clone this else type checker gets real sad.
-        tgte.set_ava_set("directmemberof", dmo.clone());
+        tgte.set_ava_set(Attribute::DirectMemberOf, dmo.clone());
 
         if let Some(mo) = &mut mo {
             let dmo = dmo as ValueSet;
@@ -81,18 +81,18 @@ fn do_memberof(
     };
 
     if let Some(mo) = mo {
-        tgte.set_ava_set("memberof", mo);
+        tgte.set_ava_set(Attribute::MemberOf, mo);
     }
 
     trace!(
         "Updating {:?} to be dir mo {:?}",
         uuid,
-        tgte.get_ava_set("directmemberof")
+        tgte.get_ava_set(Attribute::DirectMemberOf)
     );
     trace!(
         "Updating {:?} to be mo {:?}",
         uuid,
-        tgte.get_ava_set("memberof")
+        tgte.get_ava_set(Attribute::MemberOf)
     );
     Ok(())
 }
@@ -133,7 +133,7 @@ fn apply_memberof(
         for (pre, mut tgte) in work_set.into_iter() {
             let guuid = pre.get_uuid();
             // load the entry from the db.
-            if !tgte.attribute_equality(Attribute::Class.as_ref(), &EntryClass::Group.into()) {
+            if !tgte.attribute_equality(Attribute::Class, &EntryClass::Group.into()) {
                 // It's not a group, we'll deal with you later. We should NOT
                 // have seen this UUID before, as either we are on the first
                 // iteration OR the checks belowe should have filtered it out.
@@ -147,8 +147,9 @@ fn apply_memberof(
             do_memberof(qs, guuid, &mut tgte)?;
 
             // Did we change? Note we don't check if the class changed, only if mo changed.
-            if pre.get_ava_set("memberof") != tgte.get_ava_set("memberof")
-                || pre.get_ava_set("directmemberof") != tgte.get_ava_set("directmemberof")
+            if pre.get_ava_set(Attribute::MemberOf) != tgte.get_ava_set(Attribute::MemberOf)
+                || pre.get_ava_set(Attribute::DirectMemberOf)
+                    != tgte.get_ava_set(Attribute::DirectMemberOf)
             {
                 // Yes we changed - we now must process all our members, as they need to
                 // inherit changes. Some of these members COULD be non groups, but we
@@ -157,10 +158,10 @@ fn apply_memberof(
                     "{:?} changed, flagging members as groups to change. ",
                     guuid
                 );
-                if let Some(miter) = tgte.get_ava_as_refuuid("member") {
+                if let Some(miter) = tgte.get_ava_as_refuuid(Attribute::Member) {
                     group_affect.extend(miter.filter(|m| !other_cache.contains_key(m)));
                 };
-                if let Some(miter) = tgte.get_ava_as_refuuid("dynmember") {
+                if let Some(miter) = tgte.get_ava_as_refuuid(Attribute::DynMember) {
                     group_affect.extend(miter.filter(|m| !other_cache.contains_key(m)));
                 };
 
@@ -188,13 +189,12 @@ fn apply_memberof(
         .into_iter()
         .try_for_each(|(auuid, (pre, mut tgte))| {
             trace!("=> processing affected uuid {:?}", auuid);
-            debug_assert!(
-                !tgte.attribute_equality(Attribute::Class.as_ref(), &EntryClass::Group.into())
-            );
+            debug_assert!(!tgte.attribute_equality(Attribute::Class, &EntryClass::Group.into()));
             do_memberof(qs, auuid, &mut tgte)?;
             // Only write if a change occurred.
-            if pre.get_ava_set("memberof") != tgte.get_ava_set("memberof")
-                || pre.get_ava_set("directmemberof") != tgte.get_ava_set("directmemberof")
+            if pre.get_ava_set(Attribute::MemberOf) != tgte.get_ava_set(Attribute::MemberOf)
+                || pre.get_ava_set(Attribute::DirectMemberOf)
+                    != tgte.get_ava_set(Attribute::DirectMemberOf)
             {
                 changes.push((pre, tgte));
             }
@@ -209,7 +209,7 @@ fn apply_memberof(
 
 impl Plugin for MemberOf {
     fn id() -> &'static str {
-        "memberof"
+        Attribute::MemberOf.as_ref()
     }
 
     #[instrument(level = "debug", name = "memberof_post_create", skip(qs, cand, ce))]
@@ -275,8 +275,8 @@ impl Plugin for MemberOf {
             .iter()
             .filter_map(|e| {
                 // Is it a group?
-                if e.attribute_equality(Attribute::Class.as_ref(), &EntryClass::Group.into()) {
-                    e.get_ava_as_refuuid("member")
+                if e.attribute_equality(Attribute::Class, &EntryClass::Group.into()) {
+                    e.get_ava_as_refuuid(Attribute::Member)
                 } else {
                     None
                 }
@@ -286,11 +286,8 @@ impl Plugin for MemberOf {
                 // Or a dyn group?
                 cand.iter()
                     .filter_map(|post| {
-                        if post.attribute_equality(
-                            Attribute::Class.as_ref(),
-                            &EntryClass::DynGroup.into(),
-                        ) {
-                            post.get_ava_as_refuuid("dynmember")
+                        if post.attribute_equality(Attribute::Class, &EntryClass::DynGroup.into()) {
+                            post.get_ava_as_refuuid(Attribute::DynMember)
                         } else {
                             None
                         }
@@ -347,7 +344,7 @@ impl Plugin for MemberOf {
 
             trace!("DMO search groups {:?} -> {:?}", e.get_uuid(), d_groups_set);
 
-            match (e.get_ava_set("directmemberof"), d_groups_set) {
+            match (e.get_ava_set(Attribute::DirectMemberOf), d_groups_set) {
                 (Some(edmos), Some(b)) => {
                     // Can they both be reference sets?
                     match edmos.as_refer_set() {
@@ -414,11 +411,8 @@ impl MemberOf {
                 cand.iter()
                     .filter_map(|e| {
                         // Is it a group?
-                        if e.attribute_equality(
-                            Attribute::Class.as_ref(),
-                            &EntryClass::Group.into(),
-                        ) {
-                            e.get_ava_as_refuuid("member")
+                        if e.attribute_equality(Attribute::Class, &EntryClass::Group.into()) {
+                            e.get_ava_as_refuuid(Attribute::Member)
                         } else {
                             None
                         }
@@ -447,11 +441,8 @@ impl MemberOf {
                 pre_cand
                     .iter()
                     .filter_map(|pre| {
-                        if pre.attribute_equality(
-                            Attribute::Class.as_ref(),
-                            &EntryClass::Group.into(),
-                        ) {
-                            pre.get_ava_as_refuuid("member")
+                        if pre.attribute_equality(Attribute::Class, &EntryClass::Group.into()) {
+                            pre.get_ava_as_refuuid(Attribute::Member)
                         } else {
                             None
                         }
@@ -461,11 +452,8 @@ impl MemberOf {
             .chain(
                 cand.iter()
                     .filter_map(|post| {
-                        if post.attribute_equality(
-                            Attribute::Class.as_ref(),
-                            &EntryClass::Group.into(),
-                        ) {
-                            post.get_ava_as_refuuid("member")
+                        if post.attribute_equality(Attribute::Class, &EntryClass::Group.into()) {
+                            post.get_ava_as_refuuid(Attribute::Member)
                         } else {
                             None
                         }
