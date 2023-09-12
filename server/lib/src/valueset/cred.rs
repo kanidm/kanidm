@@ -511,6 +511,11 @@ impl ValueSetT for ValueSetIntentToken {
         }
     }
 
+    #[allow(clippy::todo)]
+    fn repl_merge_valueset(&self, _older: &ValueSet) -> Option<ValueSet> {
+        todo!();
+    }
+
     fn as_intenttoken_map(&self) -> Option<&BTreeMap<String, IntentTokenState>> {
         Some(&self.map)
     }

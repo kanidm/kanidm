@@ -146,6 +146,12 @@ impl ValueSetT for ValueSetAuditLogString {
             Err(OperationError::InvalidValueState)
         }
     }
+
+    #[allow(clippy::todo)]
+    fn repl_merge_valueset(&self, _older: &ValueSet) -> Option<ValueSet> {
+        todo!();
+    }
+
     fn as_audit_log_string(&self) -> Option<&SmolSet<[(Cid, String); 8]>> {
         Some(&self.set)
     }
