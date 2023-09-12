@@ -1174,20 +1174,20 @@ impl Entry<EntryInvalid, EntryCommitted> {
     where
         T: IntoIterator<Item = Uuid>,
     {
-        self.add_ava(Attribute::Class.as_ref(), EntryClass::Recycled.into());
-        self.add_ava(Attribute::Class.as_ref(), EntryClass::Conflict.into());
+        self.add_ava(Attribute::Class, EntryClass::Recycled.into());
+        self.add_ava(Attribute::Class, EntryClass::Conflict.into());
         // Add all the source uuids we conflicted against.
         for source_uuid in iter {
-            self.add_ava(Attribute::SourceUuid.as_ref(), Value::Uuid(source_uuid));
+            self.add_ava(Attribute::SourceUuid, Value::Uuid(source_uuid));
         }
     }
 
     /// Extract this entry from the recycle bin into a live state.
     pub fn to_revived(mut self) -> Self {
         // This will put the modify ahead of the revive transition.
-        self.remove_ava(ATTR_CLASS, &EntryClass::Recycled.into());
-        self.remove_ava(ATTR_CLASS, &EntryClass::Conflict.into());
-        self.purge_ava(ATTR_SOURCE_UUID);
+        self.remove_ava(Attribute::Class.as_ref(), &EntryClass::Recycled.into());
+        self.remove_ava(Attribute::Class.as_ref(), &EntryClass::Conflict.into());
+        self.purge_ava(Attribute::SourceUuid.as_ref());
 
         // Change state repl doesn't need this flag
         // self.valid.ecstate.revive(&self.valid.cid);

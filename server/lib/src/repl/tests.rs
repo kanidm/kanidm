@@ -2664,41 +2664,35 @@ async fn test_repl_increment_attrunique_conflict_basic(
     let t_uuid = Uuid::new_v4();
     assert!(server_a_txn
         .internal_create(vec![entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
-            (Attribute::Name.as_ref(), Value::new_iname("testperson1")),
-            (Attribute::Uuid.as_ref(), Value::Uuid(t_uuid)),
-            (
-                Attribute::Description.as_ref(),
-                Value::new_utf8s("testperson1")
-            ),
-            (
-                Attribute::DisplayName.as_ref(),
-                Value::new_utf8s("testperson1")
-            )
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Name, Value::new_iname("testperson1")),
+            (Attribute::Uuid, Value::Uuid(t_uuid)),
+            (Attribute::Description, Value::new_utf8s("testperson1")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson1"))
         ),])
         .is_ok());
 
     let g_a_uuid = Uuid::new_v4();
     assert!(server_a_txn
         .internal_create(vec![entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Group.to_value()),
-            (Attribute::Name.as_ref(), Value::new_iname("testgroup_a")),
-            (Attribute::Uuid.as_ref(), Value::Uuid(g_a_uuid)),
-            (Attribute::Member.as_ref(), Value::Refer(t_uuid))
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Group.to_value()),
+            (Attribute::Name, Value::new_iname("testgroup_a")),
+            (Attribute::Uuid, Value::Uuid(g_a_uuid)),
+            (Attribute::Member, Value::Refer(t_uuid))
         ),])
         .is_ok());
 
     let g_b_uuid = Uuid::new_v4();
     assert!(server_a_txn
         .internal_create(vec![entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Group.to_value()),
-            (Attribute::Name.as_ref(), Value::new_iname("testgroup_b")),
-            (Attribute::Uuid.as_ref(), Value::Uuid(g_b_uuid)),
-            (Attribute::Member.as_ref(), Value::Refer(t_uuid))
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Group.to_value()),
+            (Attribute::Name, Value::new_iname("testgroup_b")),
+            (Attribute::Uuid, Value::Uuid(g_b_uuid)),
+            (Attribute::Member, Value::Refer(t_uuid))
         ),])
         .is_ok());
 
@@ -2706,12 +2700,12 @@ async fn test_repl_increment_attrunique_conflict_basic(
     let g_c_uuid = Uuid::new_v4();
     assert!(server_a_txn
         .internal_create(vec![entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Group.to_value()),
-            (Attribute::Name.as_ref(), Value::new_iname("testgroup_c")),
-            (Attribute::Uuid.as_ref(), Value::Uuid(g_c_uuid)),
-            (Attribute::Member.as_ref(), Value::Refer(g_a_uuid)),
-            (Attribute::Member.as_ref(), Value::Refer(g_b_uuid))
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Group.to_value()),
+            (Attribute::Name, Value::new_iname("testgroup_c")),
+            (Attribute::Uuid, Value::Uuid(g_c_uuid)),
+            (Attribute::Member, Value::Refer(g_a_uuid)),
+            (Attribute::Member, Value::Refer(g_b_uuid))
         ),])
         .is_ok());
 
@@ -2870,20 +2864,20 @@ async fn test_repl_increment_attrunique_conflict_complex(
     let g_a_uuid = Uuid::new_v4();
     assert!(server_a_txn
         .internal_create(vec![entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Group.to_value()),
-            (Attribute::Name.as_ref(), Value::new_iname("name_conflict")),
-            (Attribute::Uuid.as_ref(), Value::Uuid(g_a_uuid))
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Group.to_value()),
+            (Attribute::Name, Value::new_iname("name_conflict")),
+            (Attribute::Uuid, Value::Uuid(g_a_uuid))
         ),])
         .is_ok());
 
     let g_b_uuid = Uuid::new_v4();
     assert!(server_a_txn
         .internal_create(vec![entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Group.to_value()),
-            (Attribute::Name.as_ref(), Value::new_iname("uuid_conflict")),
-            (Attribute::Uuid.as_ref(), Value::Uuid(g_b_uuid))
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Group.to_value()),
+            (Attribute::Name, Value::new_iname("uuid_conflict")),
+            (Attribute::Uuid, Value::Uuid(g_b_uuid))
         ),])
         .is_ok());
 
@@ -2895,12 +2889,12 @@ async fn test_repl_increment_attrunique_conflict_complex(
     // should *also* have an attr conflict to name on the first entry from A.
     assert!(server_b_txn
         .internal_create(vec![entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Group.to_value()),
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Group.to_value()),
             // Conflicting name
-            (Attribute::Name.as_ref(), Value::new_iname("name_conflict")),
+            (Attribute::Name, Value::new_iname("name_conflict")),
             // Conflicting uuid
-            (Attribute::Uuid.as_ref(), Value::Uuid(g_b_uuid))
+            (Attribute::Uuid, Value::Uuid(g_b_uuid))
         ),])
         .is_ok());
 
