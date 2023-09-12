@@ -223,13 +223,18 @@ impl IdProvider for KanidmProvider {
                         Err(IdpError::BadRequest)
                     }
                 }
-            } // For future when we have different auth combos/types.
-              /*
-                _ => {
-                    error!("invalid authentication request state");
-                    Err(IdpError::BadRequest)
-                }
-              */
+            }
+            (
+                AuthCredHandler::DeviceAuthorizationGrant,
+                PamAuthRequest::DeviceAuthorizationGrant { .. },
+            ) => {
+                error!("DeviceAuthorizationGrant not implemented!");
+                Err(IdpError::BadRequest)
+            }
+            _ => {
+                error!("invalid authentication request state");
+                Err(IdpError::BadRequest)
+            }
         }
     }
 
