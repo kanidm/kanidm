@@ -291,7 +291,7 @@ impl EntryChangelog {
             .for_each(|t| change.s.push(t));
     }
 
-    pub fn assert_ava(&mut self, cid: &Cid, attr: &str, value: PartialValue) {
+    pub fn assert_ava(&mut self, cid: &Cid, attr: Attribute, value: PartialValue) {
         if !self.changes.contains_key(cid) {
             self.changes.insert(cid.clone(), Change { s: Vec::new() });
         }
@@ -302,25 +302,22 @@ impl EntryChangelog {
             .get_mut(cid)
             .expect("Memory corruption, change must exist");
 
-        change.s.push(Transition::ModifyAssert(
-            AttrString::from(attr),
-            Box::new(value),
-        ))
-    }
-
-    pub fn purge_ava(&mut self, cid: &Cid, attr: &str) {
-        if !self.changes.contains_key(cid) {
-            self.changes.insert(cid.clone(), Change { s: Vec::new() });
-        }
-
-        #[allow(clippy::expect_used)]
-        let change = self
-            .changes
-            .get_mut(cid)
-            .expect("Memory corruption, change must exist");
         change
             .s
-            .push(Transition::ModifyPurge(AttrString::from(attr)));
+            .push(Transition::ModifyAssert(attr.into(), Box::new(value)))
+    }
+
+    pub fn purge_ava(&mut self, cid: &Cid, attr: Attribute) {
+        if !self.changes.contains_key(cid) {
+            self.changes.insert(cid.clone(), Change { s: Vec::new() });
+        }
+
+        #[allow(clippy::expect_used)]
+        let change = self
+            .changes
+            .get_mut(cid)
+            .expect("Memory corruption, change must exist");
+        change.s.push(Transition::ModifyPurge(attr.info()));
     }
 
     pub fn recycled(&mut self, cid: &Cid) {

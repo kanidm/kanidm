@@ -709,7 +709,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                         *u,
                         ModifyList::new_list(vec![
                             Modify::Assert(
-                                Attribute::SyncParentUuid.into(),
+                                Attribute::SyncParentUuid,
                                 PartialValue::Refer(sync_uuid),
                             ),
                             Modify::Purged(Attribute::SyncExternalId.into()),
@@ -1149,17 +1149,17 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         let mut mods = Vec::new();
 
         mods.push(Modify::Assert(
-            Attribute::SyncParentUuid.into(),
+            Attribute::SyncParentUuid,
             PartialValue::Refer(sync_uuid),
         ));
 
         for req_class in requested_classes.keys() {
             mods.push(Modify::Present(
-                "sync_class".into(),
+                Attribute::SyncClass.into(),
                 Value::new_iutf8(req_class),
             ));
             mods.push(Modify::Present(
-                EntryClass::Class.into(),
+                Attribute::Class.into(),
                 Value::new_iutf8(req_class),
             ));
         }

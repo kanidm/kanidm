@@ -33,7 +33,7 @@ pub enum Modify {
     // This attr *should not* exist.
     Purged(AttrString),
     // This attr and value must exist *in this state* for this change to proceed.
-    Assert(AttrString, PartialValue),
+    Assert(Attribute, PartialValue),
 }
 
 pub fn m_pres(attr: Attribute, v: &Value) -> Modify {
@@ -49,7 +49,7 @@ pub fn m_purge(attr: Attribute) -> Modify {
 }
 
 pub fn m_assert(attr: Attribute, v: &PartialValue) -> Modify {
-    Modify::Assert(attr.into(), v.clone())
+    Modify::Assert(attr, v.clone())
 }
 
 impl Modify {
@@ -190,15 +190,13 @@ impl ModifyList<ModifyInvalid> {
                         None => Err(SchemaError::InvalidAttribute(attr_norm.to_string())),
                     }
                 }
-                Modify::Assert(attr, value) => {
-                    let attr_norm = schema.normalise_attr_name(attr);
-                    match schema_attributes.get(&attr_norm) {
-                        Some(schema_a) => schema_a
-                            .validate_partialvalue(attr_norm.as_str(), value)
-                            .map(|_| Modify::Assert(attr_norm, value.clone())),
-                        None => Err(SchemaError::InvalidAttribute(attr_norm.to_string())),
-                    }
-                }
+                Modify::Assert(attr, value) => match schema_attributes.get(attr.as_ref()) {
+                    // TODO: given attr is an enum... you can't get this wrong anymore?
+                    Some(schema_a) => schema_a
+                        .validate_partialvalue(attr.as_ref(), value)
+                        .map(|_| Modify::Assert(attr.to_owned(), value.clone())),
+                    None => Err(SchemaError::InvalidAttribute(attr.to_string())),
+                },
                 Modify::Purged(attr) => {
                     let attr_norm = schema.normalise_attr_name(attr);
                     match schema_attributes.get(&attr_norm) {

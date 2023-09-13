@@ -159,6 +159,7 @@ pub struct EntryReduced {
     uuid: Uuid,
 }
 
+// One day this is going to be Map<Attribute, ValueSet> - @yaleman
 pub type Eattrs = Map<AttrString, ValueSet>;
 
 pub(crate) fn compare_attrs(left: &Eattrs, right: &Eattrs) -> bool {
@@ -3184,18 +3185,18 @@ where
     ) -> Result<(), OperationError> {
         for modify in modlist {
             match modify {
-                Modify::Present(a, v) => {
-                    self.add_ava(Attribute::try_from(a)?, v.clone());
+                Modify::Present(attr, value) => {
+                    self.add_ava(Attribute::try_from(attr)?, value.clone());
                 }
-                Modify::Removed(a, v) => {
-                    self.remove_ava(Attribute::try_from(a)?, v);
+                Modify::Removed(attr, value) => {
+                    self.remove_ava(Attribute::try_from(attr)?, value);
                 }
-                Modify::Purged(a) => {
-                    self.purge_ava(Attribute::try_from(a)?);
+                Modify::Purged(attr) => {
+                    self.purge_ava(Attribute::try_from(attr)?);
                 }
-                Modify::Assert(a, v) => {
-                    self.assert_ava(Attribute::try_from(a)?, v).map_err(|e| {
-                        error!("Modification assertion was not met. {} {:?}", a, v);
+                Modify::Assert(attr, value) => {
+                    self.assert_ava(attr.to_owned(), value).map_err(|e| {
+                        error!("Modification assertion was not met. {} {:?}", attr, value);
                         e
                     })?;
                 }
