@@ -44,6 +44,7 @@ use webauthn_rs_proto::{
     PublicKeyCredential, RegisterPublicKeyCredential, RequestChallengeResponse,
 };
 
+mod application;
 mod group;
 mod oauth;
 mod person;

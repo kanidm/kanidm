@@ -168,6 +168,7 @@ impl Modify for SecurityAddon {
         super::v1::auth_valid,
         super::v1::logout,
         super::v1::reauth,
+        super::v1::application_get,
         super::v1_scim::sync_account_get,
         super::v1_scim::sync_account_post,
         super::v1_scim::sync_account_id_get,

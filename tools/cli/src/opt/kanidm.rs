@@ -673,6 +673,13 @@ pub enum ServiceAccountOpt {
 }
 
 #[derive(Debug, Subcommand)]
+pub enum ApplicationOpt {
+    /// List all applications
+    #[clap(name = "list")]
+    List(CommonOpt),
+}
+
+#[derive(Debug, Subcommand)]
 pub enum RecycleOpt {
     #[clap(name = "list")]
     /// List objects that are in the recycle bin
@@ -1221,6 +1228,12 @@ pub enum KanidmClientOpt {
     ServiceAccount {
         #[clap(subcommand)]
         commands: ServiceAccountOpt,
+    },
+    /// Actions to manage and view applications
+    #[clap(name = "application")]
+    Application {
+        #[clap(subcommand)]
+        commands: ApplicationOpt,
     },
     /// System configuration operations
     System {

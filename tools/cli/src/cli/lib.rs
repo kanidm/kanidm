@@ -27,6 +27,7 @@ use uuid::Uuid;
 
 include!("../opt/kanidm.rs");
 
+mod application;
 mod common;
 mod domain;
 mod group;
@@ -176,6 +177,7 @@ impl KanidmClientOpt {
             KanidmClientOpt::Group { commands } => commands.debug(),
             KanidmClientOpt::Person { commands } => commands.debug(),
             KanidmClientOpt::ServiceAccount { commands } => commands.debug(),
+            KanidmClientOpt::Application { commands } => commands.debug(),
             KanidmClientOpt::System { commands } => commands.debug(),
             KanidmClientOpt::Recycle { commands } => commands.debug(),
             KanidmClientOpt::Version {} => {
@@ -195,6 +197,7 @@ impl KanidmClientOpt {
             KanidmClientOpt::CSelf { commands } => commands.exec().await,
             KanidmClientOpt::Person { commands } => commands.exec().await,
             KanidmClientOpt::ServiceAccount { commands } => commands.exec().await,
+            KanidmClientOpt::Application { commands } => commands.exec().await,
             KanidmClientOpt::Group { commands } => commands.exec().await,
             KanidmClientOpt::System { commands } => commands.exec().await,
             KanidmClientOpt::Recycle { commands } => commands.exec().await,
