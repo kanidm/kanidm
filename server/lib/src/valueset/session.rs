@@ -381,9 +381,20 @@ impl ValueSetT for ValueSetSession {
         self.map.clear();
     }
 
-    fn remove(&mut self, pv: &PartialValue, _cid: &Cid) -> bool {
+    fn remove(&mut self, pv: &PartialValue, cid: &Cid) -> bool {
         match pv {
-            PartialValue::Refer(u) => self.map.remove(u).is_some(),
+            PartialValue::Refer(u) => {
+                if let Some(session) = self.map.get_mut(u) {
+                    if !matches!(session.state, SessionState::RevokedAt(_)) {
+                        session.state = SessionState::RevokedAt(cid.clone())
+                        true
+                    } else {
+                        false
+                    }
+                } else {
+                    false
+                }
+            }
             _ => false,
         }
     }
@@ -1434,5 +1445,28 @@ impl ValueSetT for ValueSetApiToken {
     fn migrate_session_to_apitoken(&self) -> Result<ValueSet, OperationError> {
         // We are already in the api token format, don't do anything.
         Ok(Box::new(self.clone()))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::ValueSetSession;
+    use crate::repl::cid::Cid;
+    use crate::value::{Session, Value};
+    use crate::valueset::ValueSet;
+    use std::time::Duration;
+
+    #[test]
+    fn test_valueset_session_purge() {
+        let mut vs: ValueSet = ValueSetSession::new(
+            Uuid::new_v4(),
+            Session {
+            }
+        );
+
+        let zero_cid = Cid::new_zero();
+
+        // Simulate session revocation.
+        vs.purge(&zero_cid);
     }
 }
