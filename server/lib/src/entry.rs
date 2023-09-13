@@ -2378,7 +2378,7 @@ impl Entry<EntryReduced, EntryCommitted> {
                         atype: "entrydn".to_string(),
                         vals: vec![dn.as_bytes().to_vec()],
                     }),
-                    "mail;primary" | "emailprimary" => {
+                    LDAP_ATTR_MAIL_PRIMARY | LDAP_ATTR_EMAIL_PRIMARY => {
                         attr_map.get(kani_a).map(|pvs| LdapPartialAttribute {
                             atype: ldap_a.to_string(),
                             vals: pvs
@@ -2387,7 +2387,7 @@ impl Entry<EntryReduced, EntryCommitted> {
                                 .unwrap_or_default(),
                         })
                     }
-                    "mail;alternative" | "emailalternative" => {
+                    LDAP_ATTR_MAIL_ALTERNATIVE | LDAP_ATTR_EMAIL_ALTERNATIVE => {
                         attr_map.get(kani_a).map(|pvs| LdapPartialAttribute {
                             atype: ldap_a.to_string(),
                             vals: pvs

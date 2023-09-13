@@ -88,7 +88,7 @@ impl LdapServer {
             dn: "".to_string(),
             attributes: vec![
                 LdapPartialAttribute {
-                    atype: "objectclass".to_string(),
+                    atype: ATTR_OBJECTCLASS.to_string(),
                     vals: vec!["top".as_bytes().to_vec()],
                 },
                 LdapPartialAttribute {
@@ -563,15 +563,15 @@ pub(crate) fn ldap_all_vattrs() -> Vec<String> {
     vec![
         ATTR_CN.to_string(),
         ATTR_EMAIL.to_string(),
-        "emailaddress".to_string(),
-        "emailalternative".to_string(),
-        "emailprimary".to_string(),
+        ATTR_LDAP_EMAIL_ADDRESS.to_string(),
+        LDAP_ATTR_EMAIL_ALTERNATIVE.to_string(),
+        LDAP_ATTR_EMAIL_PRIMARY.to_string(),
         "entrydn".to_string(),
-        "entryuuid".to_string(),
-        "keys".to_string(),
-        "mail;alternative".to_string(),
-        "mail;primary".to_string(),
-        "objectclass".to_string(),
+        LDAP_ATTR_ENTRYUUID.to_string(),
+        LDAP_ATTR_KEYS.to_string(),
+        LDAP_ATTR_MAIL_ALTERNATIVE.to_string(),
+        LDAP_ATTR_MAIL_PRIMARY.to_string(),
+        ATTR_OBJECTCLASS.to_string(),
         ATTR_LDAP_SSHPUBLICKEY.to_string(),
         ATTR_UIDNUMBER.to_string(),
     ]
@@ -588,14 +588,14 @@ pub(crate) fn ldap_vattr_map(input: &str) -> Option<&str> {
     match input {
         ATTR_CN => Some(ATTR_NAME),
         ATTR_EMAIL => Some(ATTR_MAIL),
-        "emailaddress" => Some(ATTR_MAIL),
-        "emailalternative" => Some(ATTR_MAIL),
-        "emailprimary" => Some(ATTR_MAIL),
-        "entryuuid" => Some(ATTR_UUID),
-        "keys" => Some(ATTR_SSH_PUBLICKEY),
-        "mail;alternative" => Some(ATTR_MAIL),
-        "mail;primary" => Some(ATTR_MAIL),
-        "objectclass" => Some(ATTR_CLASS),
+        ATTR_LDAP_EMAIL_ADDRESS => Some(ATTR_MAIL),
+        LDAP_ATTR_EMAIL_ALTERNATIVE => Some(ATTR_MAIL),
+        LDAP_ATTR_EMAIL_PRIMARY => Some(ATTR_MAIL),
+        LDAP_ATTR_ENTRYUUID => Some(ATTR_UUID),
+        LDAP_ATTR_KEYS => Some(ATTR_SSH_PUBLICKEY),
+        LDAP_ATTR_MAIL_ALTERNATIVE => Some(ATTR_MAIL),
+        LDAP_ATTR_MAIL_PRIMARY => Some(ATTR_MAIL),
+        ATTR_OBJECTCLASS => Some(ATTR_CLASS),
         ATTR_LDAP_SSHPUBLICKEY => Some(ATTR_SSH_PUBLICKEY), // no-underscore -> underscore
         ATTR_UIDNUMBER => Some(ATTR_GIDNUMBER),             // yes this is intentional
         _ => None,
