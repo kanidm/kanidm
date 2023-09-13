@@ -1213,6 +1213,50 @@ pub async fn account_user_auth_token_delete(
         .map_err(WebError::from)
 }
 
+// Application
+#[utoipa::path(
+    get,
+    path = "/v1/application",
+    responses(
+        (status=200), // TODO: define response
+        ApiResponseWithout200,
+    ),
+    security(("token_jwt" = [])),
+    tag = "v1/application",
+)]
+pub async fn application_get(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+) -> Result<Json<Vec<ProtoEntry>>, WebError> {
+    let filter = filter_all!(f_eq(Attribute::Class, EntryClass::Application.into()));
+    json_rest_event_get(state, None, filter, kopid, client_auth_info).await
+}
+
+#[utoipa::path(
+    post,
+    path = "/v1/application",
+    request_body=Json, // TODO ProtoEntry can't be serialized, so we need to do this manually
+    responses(
+        DefaultApiResponse,
+    ),
+    security(("token_jwt" = [])),
+    tag = "v1/application",
+)]
+pub async fn application_post(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+    Json(obj): Json<ProtoEntry>,
+) -> impl IntoResponse {
+    let classes: Vec<String> = vec![
+        EntryClass::Application.into(),
+        EntryClass::Group.into(),
+        EntryClass::Object.into(),
+    ];
+    json_rest_event_post(state, classes, obj, kopid, client_auth_info).await
+}
+
 #[utoipa::path(
     get,
     path = "/v1/credential/_exchange_intent",
@@ -3022,6 +3066,15 @@ pub(crate) fn route_setup(state: ServerState) -> Router<ServerState> {
         .route(
             "/v1/service_account/:id/_unix",
             post(service_account_id_unix_post),
+        )
+        // applications
+        .route(
+            "/v1/application",
+            get(application_get).post(application_post),
+        )
+        .route(
+            "/v1/application/",
+            get(application_get).post(application_post),
         )
         .route(
             "/v1/account/:id/_unix/_auth",
