@@ -32,7 +32,7 @@ There are two builtin system administration accounts.
 
 `admin` is the default service account which has privileges to configure and administer kanidm as a
 whole. This account can manage access controls, schema, integrations and more. However the `admin`
-can not manage persons by default to separate the privileges. As this is a service account is is
+can not manage persons by default to separate the privileges. As this is a service account it is
 intended for limited use.
 
 `idm_admin` is the default service account which has privileges to create persons and to manage
