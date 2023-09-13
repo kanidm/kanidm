@@ -612,10 +612,7 @@ async fn test_repl_increment_basic_bidirectional_write(
 
     // Now perform a write on A
     assert!(server_a_txn
-        .internal_modify_uuid(
-            t_uuid,
-            &ModifyList::new_purge(Attribute::Description.as_ref())
-        )
+        .internal_modify_uuid(t_uuid, &ModifyList::new_purge(Attribute::Description))
         .is_ok());
 
     server_a_txn.commit().expect("Failed to commit");
@@ -676,10 +673,7 @@ async fn test_repl_increment_basic_deleted_attr(server_a: &QueryServer, server_b
     // presence
     let mut server_a_txn = server_a.write(duration_from_epoch_now()).await;
     assert!(server_a_txn
-        .internal_modify_uuid(
-            t_uuid,
-            &ModifyList::new_purge(Attribute::Description.as_ref())
-        )
+        .internal_modify_uuid(t_uuid, &ModifyList::new_purge(Attribute::Description))
         .is_ok());
     server_a_txn.commit().expect("Failed to commit");
 

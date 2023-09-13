@@ -882,10 +882,11 @@ impl QueryServerWriteV1 {
                 e
             })?;
 
+        let target_attr = Attribute::try_from(attr)?;
         let mdf = match ModifyEvent::from_target_uuid_attr_purge(
             ident,
             target_uuid,
-            &attr,
+            target_attr,
             filter,
             &idms_prox_write.qs_write,
         ) {

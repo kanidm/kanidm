@@ -417,7 +417,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             f_eq(Attribute::Uuid, PVUUID_DOMAIN_INFO.clone()),
         ]));
         // Delete the existing cookie key to trigger a regeneration.
-        let modlist = ModifyList::new_purge(ATTR_PRIVATE_COOKIE_KEY);
+        let modlist = ModifyList::new_purge(Attribute::PrivateCookieKey);
         self.internal_modify(&filter, &modlist)
         // Complete
     }
@@ -430,7 +430,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             EntryClass::DynGroup.to_partialvalue()
         ));
         // Delete the incorrectly added "member" attr.
-        let modlist = ModifyList::new_purge(Attribute::Member.as_ref());
+        let modlist = ModifyList::new_purge(Attribute::Member);
         self.internal_modify(&filter, &modlist)
         // Complete
     }
@@ -441,7 +441,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         let filter = filter!(f_eq(Attribute::Class, EntryClass::Person.into()));
         // Delete the non-existing attr for idv private key which triggers
         // it to regen.
-        let modlist = ModifyList::new_purge(Attribute::IdVerificationEcKey.as_ref());
+        let modlist = ModifyList::new_purge(Attribute::IdVerificationEcKey);
         self.internal_modify(&filter, &modlist)
         // Complete
     }

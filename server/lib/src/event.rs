@@ -614,7 +614,7 @@ impl ModifyEvent {
     pub fn from_target_uuid_attr_purge(
         ident: Identity,
         target_uuid: Uuid,
-        attr: &str,
+        attr: Attribute,
         filter: Filter<FilterInvalid>,
         qs: &QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {

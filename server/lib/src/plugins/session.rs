@@ -853,7 +853,7 @@ mod tests {
         let mut server_txn = server.write(curtime).await;
 
         // Remove the primary credential
-        let modlist = ModifyList::new_purge(Attribute::PrimaryCredential.into());
+        let modlist = ModifyList::new_purge(Attribute::PrimaryCredential);
 
         server_txn
             .internal_modify(

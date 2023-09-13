@@ -36,22 +36,18 @@ pub enum Modify {
     Assert(AttrString, PartialValue),
 }
 
-#[allow(dead_code)]
 pub fn m_pres(a: &str, v: &Value) -> Modify {
     Modify::Present(a.into(), v.clone())
 }
 
-#[allow(dead_code)]
 pub fn m_remove(a: &str, v: &PartialValue) -> Modify {
     Modify::Removed(a.into(), v.clone())
 }
 
-#[allow(dead_code)]
 pub fn m_purge(a: &str) -> Modify {
     Modify::Purged(AttrString::from(a))
 }
 
-#[allow(dead_code)]
 pub fn m_assert(a: &str, v: &PartialValue) -> Modify {
     Modify::Assert(a.into(), v.clone())
 }
@@ -117,8 +113,8 @@ impl ModifyList<ModifyInvalid> {
         Self::new_list(vec![Modify::Removed(attr.into(), pv)])
     }
 
-    pub fn new_purge(attr: &str) -> Self {
-        Self::new_list(vec![m_purge(attr)])
+    pub fn new_purge(attr: Attribute) -> Self {
+        Self::new_list(vec![m_purge(attr.as_ref())])
     }
 
     pub fn push_mod(&mut self, modify: Modify) {

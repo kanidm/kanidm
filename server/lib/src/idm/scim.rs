@@ -1439,7 +1439,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 Attribute::SyncCookie,
                 Value::PrivateBinary(cookie.0.clone()),
             ),
-            ScimSyncState::Refresh => ModifyList::new_purge(Attribute::SyncCookie.as_ref()),
+            ScimSyncState::Refresh => ModifyList::new_purge(Attribute::SyncCookie),
         };
 
         self.qs_write
