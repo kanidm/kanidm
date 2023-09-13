@@ -386,7 +386,7 @@ impl ValueSetT for ValueSetSession {
             PartialValue::Refer(u) => {
                 if let Some(session) = self.map.get_mut(u) {
                     if !matches!(session.state, SessionState::RevokedAt(_)) {
-                        session.state = SessionState::RevokedAt(cid.clone())
+                        session.state = SessionState::RevokedAt(cid.clone());
                         true
                     } else {
                         false
@@ -1450,17 +1450,24 @@ impl ValueSetT for ValueSetApiToken {
 
 #[cfg(test)]
 mod tests {
+    use time::OffsetDateTime;
     use super::ValueSetSession;
+    use crate::prelude::{Uuid, SessionScope, IdentityId};
     use crate::repl::cid::Cid;
-    use crate::value::{Session, Value};
+    use crate::value::{Session, SessionState};
     use crate::valueset::ValueSet;
-    use std::time::Duration;
 
     #[test]
     fn test_valueset_session_purge() {
         let mut vs: ValueSet = ValueSetSession::new(
             Uuid::new_v4(),
             Session {
+                label: "hacks".to_string(),
+                state: SessionState::NeverExpires,
+                issued_at: OffsetDateTime::now_utc(),
+                issued_by: IdentityId::Internal,
+                cred_id: Uuid::new_v4(),
+                scope: SessionScope::ReadOnly,
             }
         );
 
@@ -1468,5 +1475,41 @@ mod tests {
 
         // Simulate session revocation.
         vs.purge(&zero_cid);
+    }
+
+    #[test]
+    fn test_valueset_session_merge() {
+    }
+
+    #[test]
+    fn test_valueset_session_repl_merge() {
+    }
+
+    #[test]
+    fn test_valueset_oauth2_session_purge() {
+        let mut vs: ValueSet = ValueSetSession::new(
+            Uuid::new_v4(),
+            Session {
+                label: "hacks".to_string(),
+                state: SessionState::NeverExpires,
+                issued_at: OffsetDateTime::now_utc(),
+                issued_by: IdentityId::Internal,
+                cred_id: Uuid::new_v4(),
+                scope: SessionScope::ReadOnly,
+            }
+        );
+
+        let zero_cid = Cid::new_zero();
+
+        // Simulate session revocation.
+        vs.purge(&zero_cid);
+    }
+
+    #[test]
+    fn test_valueset_oauth2_session_merge() {
+    }
+
+    #[test]
+    fn test_valueset_oauth2_session_repl_merge() {
     }
 }
