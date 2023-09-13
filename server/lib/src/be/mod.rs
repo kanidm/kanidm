@@ -3357,36 +3357,30 @@ mod tests {
             assert!(!be.is_idx_slopeyness_generated().unwrap());
 
             let ta_eq_slope = be
-                .get_idx_slope(&IdxKey::new(
-                    Attribute::TestAttr.as_ref(),
-                    IndexType::Equality,
-                ))
+                .get_idx_slope(&IdxKey::new(Attribute::TestAttr, IndexType::Equality))
                 .unwrap();
             assert_eq!(ta_eq_slope, 45);
 
             let tb_eq_slope = be
-                .get_idx_slope(&IdxKey::new(
-                    Attribute::TestNumber.as_ref(),
-                    IndexType::Equality,
-                ))
+                .get_idx_slope(&IdxKey::new(Attribute::TestNumber, IndexType::Equality))
                 .unwrap();
             assert_eq!(tb_eq_slope, 45);
 
             let name_eq_slope = be
-                .get_idx_slope(&IdxKey::new(Attribute::Name.as_ref(), IndexType::Equality))
+                .get_idx_slope(&IdxKey::new(Attribute::Name, IndexType::Equality))
                 .unwrap();
             assert_eq!(name_eq_slope, 1);
             let uuid_eq_slope = be
-                .get_idx_slope(&IdxKey::new(Attribute::Uuid.as_ref(), IndexType::Equality))
+                .get_idx_slope(&IdxKey::new(Attribute::Uuid, IndexType::Equality))
                 .unwrap();
             assert_eq!(uuid_eq_slope, 1);
 
             let name_pres_slope = be
-                .get_idx_slope(&IdxKey::new(Attribute::Name.as_ref(), IndexType::Presence))
+                .get_idx_slope(&IdxKey::new(Attribute::Name, IndexType::Presence))
                 .unwrap();
             assert_eq!(name_pres_slope, 90);
             let uuid_pres_slope = be
-                .get_idx_slope(&IdxKey::new(Attribute::Uuid.as_ref(), IndexType::Presence))
+                .get_idx_slope(&IdxKey::new(Attribute::Uuid, IndexType::Presence))
                 .unwrap();
             assert_eq!(uuid_pres_slope, 90);
             // Check the slopes are what we expect for hardcoded values.
@@ -3397,36 +3391,30 @@ mod tests {
             assert!(be.is_idx_slopeyness_generated().unwrap());
 
             let ta_eq_slope = be
-                .get_idx_slope(&IdxKey::new(
-                    Attribute::TestAttr.as_ref(),
-                    IndexType::Equality,
-                ))
+                .get_idx_slope(&IdxKey::new(Attribute::TestAttr, IndexType::Equality))
                 .unwrap();
             assert_eq!(ta_eq_slope, 200);
 
             let tb_eq_slope = be
-                .get_idx_slope(&IdxKey::new(
-                    Attribute::TestNumber.as_ref(),
-                    IndexType::Equality,
-                ))
+                .get_idx_slope(&IdxKey::new(Attribute::TestNumber, IndexType::Equality))
                 .unwrap();
             assert_eq!(tb_eq_slope, 133);
 
             let name_eq_slope = be
-                .get_idx_slope(&IdxKey::new(Attribute::Name.as_ref(), IndexType::Equality))
+                .get_idx_slope(&IdxKey::new(Attribute::Name, IndexType::Equality))
                 .unwrap();
             assert_eq!(name_eq_slope, 51);
             let uuid_eq_slope = be
-                .get_idx_slope(&IdxKey::new(Attribute::Uuid.as_ref(), IndexType::Equality))
+                .get_idx_slope(&IdxKey::new(Attribute::Uuid, IndexType::Equality))
                 .unwrap();
             assert_eq!(uuid_eq_slope, 51);
 
             let name_pres_slope = be
-                .get_idx_slope(&IdxKey::new(Attribute::Name.as_ref(), IndexType::Presence))
+                .get_idx_slope(&IdxKey::new(Attribute::Name, IndexType::Presence))
                 .unwrap();
             assert_eq!(name_pres_slope, 200);
             let uuid_pres_slope = be
-                .get_idx_slope(&IdxKey::new(Attribute::Uuid.as_ref(), IndexType::Presence))
+                .get_idx_slope(&IdxKey::new(Attribute::Uuid, IndexType::Presence))
                 .unwrap();
             assert_eq!(uuid_pres_slope, 200);
         })
