@@ -40,7 +40,7 @@ lazy_static! {
 /// Built-in Access Control Profile definitions
 pub struct BuiltinAcp {
     classes: Vec<EntryClass>,
-    name: &'static str,
+    pub name: &'static str,
     uuid: Uuid,
     description: &'static str,
     receiver_group: Uuid,

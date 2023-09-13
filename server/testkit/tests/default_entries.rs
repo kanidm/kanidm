@@ -168,7 +168,7 @@ async fn test_default_entries_rbac_account_managers(rsclient: KanidmClient) {
 async fn test_default_entries_rbac_group_managers(rsclient: KanidmClient) {
     login_put_admin_idm_admins(&rsclient).await;
 
-    create_user(&rsclient, "group_manager", "idm_group_manage_priv").await;
+    create_user(&rsclient, "group_manager", IDM_GROUP_MANAGE_PRIV_V1.name).await;
     // create test user without creating new groups
     create_user(
         &rsclient,
@@ -228,40 +228,40 @@ async fn test_default_entries_rbac_admins_access_control_entries(rsclient: Kanid
         Attribute::AcpReceiverGroup,
         Attribute::AcpTargetScope,
     ];
-    static ACP_ENTRIES: [&str; 28] = [
-        "idm_admins_acp_recycle_search",
-        "idm_admins_acp_revive",
-        "idm_self_acp_read",
-        "idm_self_acp_write",
-        "idm_all_acp_read",
-        "idm_acp_people_read_priv",
-        "idm_acp_people_write_priv",
-        "idm_acp_people_manage",
-        "idm_acp_people_account_password_import_priv",
-        "idm_acp_people_extend_priv",
-        "idm_acp_group_write_priv",
-        "idm_acp_account_read_priv",
-        "idm_acp_account_write_priv",
-        "idm_acp_account_manage",
-        "idm_acp_radius_servers",
-        "idm_acp_hp_account_read_priv",
-        "idm_acp_hp_account_write_priv",
-        "idm_acp_hp_group_write_priv",
-        "idm_acp_schema_write_attrs_priv",
-        "idm_acp_acp_manage_priv",
-        "idm_acp_schema_write_classes_priv",
-        "idm_acp_group_manage",
-        "idm_acp_hp_account_manage",
-        "idm_acp_hp_group_manage",
-        "idm_acp_domain_admin_priv",
-        "idm_acp_system_config_priv",
-        "idm_acp_account_unix_extend_priv",
-        "idm_acp_group_unix_extend_priv",
+    let acp_entries = vec![
+        IDM_ADMINS_ACP_RECYCLE_SEARCH_V1.clone(),
+        IDM_ADMINS_ACP_REVIVE_V1.clone(),
+        IDM_SELF_ACP_READ_V1.clone(),
+        IDM_SELF_ACP_WRITE_V1.clone(),
+        IDM_ALL_ACP_READ_V1.clone(),
+        IDM_ACP_PEOPLE_READ_PRIV_V1.clone(),
+        IDM_ACP_PEOPLE_WRITE_PRIV_V1.clone(),
+        IDM_ACP_PEOPLE_MANAGE_PRIV_V1.clone(),
+        IDM_ACP_PEOPLE_ACCOUNT_PASSWORD_IMPORT_PRIV_V1.clone(),
+        IDM_ACP_PEOPLE_EXTEND_PRIV_V1.clone(),
+        IDM_ACP_GROUP_WRITE_PRIV_V1.clone(),
+        IDM_ACP_ACCOUNT_READ_PRIV_V1.clone(),
+        IDM_ACP_ACCOUNT_WRITE_PRIV_V1.clone(),
+        IDM_ACP_ACCOUNT_MANAGE_PRIV_V1.clone(),
+        IDM_ACP_RADIUS_SERVERS_V1.clone(),
+        IDM_ACP_HP_ACCOUNT_READ_PRIV_V1.clone(),
+        IDM_ACP_HP_ACCOUNT_WRITE_PRIV_V1.clone(),
+        IDM_ACP_HP_GROUP_WRITE_PRIV_V1.clone(),
+        IDM_ACP_SCHEMA_WRITE_ATTRS_PRIV_V1.clone(),
+        IDM_ACP_ACP_MANAGE_PRIV_V1.clone(),
+        IDM_ACP_SCHEMA_WRITE_CLASSES_PRIV_V1.clone(),
+        IDM_ACP_GROUP_MANAGE_PRIV_V1.clone(),
+        IDM_ACP_HP_ACCOUNT_MANAGE_PRIV_V1.clone(),
+        IDM_ACP_HP_GROUP_MANAGE_PRIV_V1.clone(),
+        IDM_ACP_DOMAIN_ADMIN_PRIV_V1.clone(),
+        IDM_ACP_SYSTEM_CONFIG_PRIV_V1.clone(),
+        IDM_ACP_ACCOUNT_UNIX_EXTEND_PRIV_V1.clone(),
+        IDM_ACP_GROUP_UNIX_EXTEND_PRIV_V1.clone(),
     ];
 
-    for entry in ACP_ENTRIES.iter() {
-        test_read_attrs(&rsclient, entry, &ACP_COMMON_ATTRS, true).await;
-        test_write_attrs(&rsclient, entry, &ACP_COMMON_ATTRS, true).await;
+    for entry in acp_entries.iter() {
+        test_read_attrs(&rsclient, entry.name, &ACP_COMMON_ATTRS, true).await;
+        test_write_attrs(&rsclient, entry.name, &ACP_COMMON_ATTRS, true).await;
     }
 }
 
