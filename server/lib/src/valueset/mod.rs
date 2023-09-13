@@ -548,7 +548,7 @@ pub trait ValueSetT: std::fmt::Debug + DynClone {
         None
     }
 
-    fn as_audit_log_string(&self) -> Option<&SmolSet<[(Cid, String); 8]>> {
+    fn as_audit_log_string(&self) -> Option<&BTreeMap<Cid, String>> {
         debug_assert!(false);
         None
     }
@@ -795,7 +795,7 @@ pub fn from_repl_v1(rv1: &ReplAttrV1) -> Result<ValueSet, OperationError> {
         ReplAttrV1::Session { set } => ValueSetSession::from_repl_v1(set),
         ReplAttrV1::ApiToken { set } => ValueSetApiToken::from_repl_v1(set),
         ReplAttrV1::TotpSecret { set } => ValueSetTotpSecret::from_repl_v1(set),
-        ReplAttrV1::AuditLogString { set } => ValueSetAuditLogString::from_repl_v1(set),
+        ReplAttrV1::AuditLogString { map } => ValueSetAuditLogString::from_repl_v1(map),
         ReplAttrV1::EcKeyPrivate { key } => ValueSetEcKeyPrivate::from_repl_v1(key),
     }
 }

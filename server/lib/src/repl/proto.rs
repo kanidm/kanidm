@@ -397,7 +397,7 @@ pub enum ReplAttrV1 {
         set: Vec<(String, ReplTotpV1)>,
     },
     AuditLogString {
-        set: Vec<(Cid, String)>,
+        map: Vec<(Cid, String)>,
     },
     EcKeyPrivate {
         key: Vec<u8>,
