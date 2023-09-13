@@ -164,7 +164,7 @@ mod tests {
             preload,
             filter!(f_eq(Attribute::Name, PartialValue::new_iname("old_name"))),
             modlist!([
-                m_purge(Attribute::Name.as_ref()),
+                m_purge(Attribute::Name),
                 m_pres(Attribute::Name, &Value::new_iname("new_name_1"))
             ]),
             None,
@@ -255,7 +255,7 @@ mod tests {
             preload,
             filter!(f_eq(Attribute::Name, PartialValue::new_iname("old_name8"))),
             modlist!([
-                m_purge(Attribute::Name.as_ref()),
+                m_purge(Attribute::Name),
                 m_pres(Attribute::Name, &Value::new_iname("new_name"))
             ]),
             None,

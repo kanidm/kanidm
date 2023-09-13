@@ -180,7 +180,7 @@ mod tests {
             Ok(()),
             preload,
             filter!(f_eq(Attribute::Name, PartialValue::new_iname("test_name"))),
-            modlist!([m_purge(Attribute::IdVerificationEcKey.into())]),
+            modlist!([m_purge(Attribute::IdVerificationEcKey)]),
             None,
             |_| {},
             |qs: &mut QueryServerWriteTransaction| {
@@ -220,10 +220,7 @@ mod tests {
             Ok(()),
             preload,
             filter!(f_eq(Attribute::Name, PartialValue::new_iname("test_name"))),
-            modlist!([m_remove(
-                Attribute::IdVerificationEcKey.into(),
-                &key_partialvalue
-            )]),
+            modlist!([m_remove(Attribute::IdVerificationEcKey, &key_partialvalue)]),
             None,
             |_| {},
             |qs: &mut QueryServerWriteTransaction| {

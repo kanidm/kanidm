@@ -214,7 +214,7 @@ impl Spn {
                 f_eq(Attribute::Class, EntryClass::Group.into()),
                 f_eq(Attribute::Class, EntryClass::Account.into()),
             ])),
-            &modlist!([m_purge(Attribute::Spn.as_ref())]),
+            &modlist!([m_purge(Attribute::Spn)]),
         )
     }
 }
@@ -270,7 +270,7 @@ mod tests {
             Ok(()),
             preload,
             filter!(f_eq(Attribute::Name, PartialValue::new_iname("testperson"))),
-            modlist!([m_purge(Attribute::Spn.as_ref())]),
+            modlist!([m_purge(Attribute::Spn)]),
             None,
             |_| {},
             |_| {}
@@ -325,7 +325,7 @@ mod tests {
             preload,
             filter!(f_eq(Attribute::Name, PartialValue::new_iname("testperson"))),
             modlist!([
-                m_purge(Attribute::Spn.as_ref()),
+                m_purge(Attribute::Spn),
                 m_pres(
                     Attribute::Spn,
                     &Value::new_spn_str("invalid", Attribute::Spn.as_ref())

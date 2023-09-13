@@ -226,7 +226,7 @@ mod tests {
             Ok(()),
             preload,
             filter!(f_eq(Attribute::Name, PartialValue::new_iname("testperson"))),
-            modlist!([m_purge(Attribute::GidNumber.as_ref())]),
+            modlist!([m_purge(Attribute::GidNumber)]),
             None,
             |_| {},
             |qs_write: &mut QueryServerWriteTransaction| check_gid(
@@ -259,7 +259,7 @@ mod tests {
             preload,
             filter!(f_eq(Attribute::Name, PartialValue::new_iname("testperson"))),
             modlist!([
-                m_purge(Attribute::GidNumber.as_ref()),
+                m_purge(Attribute::GidNumber),
                 m_pres(Attribute::GidNumber, &Value::new_uint32(2000))
             ]),
             None,

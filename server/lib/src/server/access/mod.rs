@@ -1891,10 +1891,7 @@ mod tests {
                 Attribute::Name,
                 PartialValue::new_iname("testperson1")
             )),
-            modlist!([m_remove(
-                Attribute::Name.as_ref(),
-                &PartialValue::new_iname("value")
-            )]),
+            modlist!([m_remove(Attribute::Name, &PartialValue::new_iname("value"))]),
         );
         // Name purge
         let me_purge = ModifyEvent::new_impersonate_entry(
@@ -1903,7 +1900,7 @@ mod tests {
                 Attribute::Name,
                 PartialValue::new_iname("testperson1")
             )),
-            modlist!([m_purge(Attribute::Name.as_ref())]),
+            modlist!([m_purge(Attribute::Name)]),
         );
 
         // Class account pres
@@ -1923,7 +1920,7 @@ mod tests {
                 PartialValue::new_iname("testperson1")
             )),
             modlist!([m_remove(
-                Attribute::Class.as_ref(),
+                Attribute::Class,
                 &EntryClass::Account.to_partialvalue()
             )]),
         );
@@ -1934,7 +1931,7 @@ mod tests {
                 Attribute::Name,
                 PartialValue::new_iname("testperson1")
             )),
-            modlist!([m_purge(Attribute::Class.as_ref())]),
+            modlist!([m_purge(Attribute::Class)]),
         );
 
         // Allow name and class, class is account
@@ -2596,7 +2593,7 @@ mod tests {
                 PartialValue::new_iname("testperson1")
             )),
             modlist!([m_remove(
-                Attribute::UserAuthTokenSession.as_ref(),
+                Attribute::UserAuthTokenSession,
                 &PartialValue::new_iname("value")
             )]),
         );
@@ -2607,7 +2604,7 @@ mod tests {
                 Attribute::Name,
                 PartialValue::new_iname("testperson1")
             )),
-            modlist!([m_purge(Attribute::UserAuthTokenSession.as_ref())]),
+            modlist!([m_purge(Attribute::UserAuthTokenSession)]),
         );
 
         // Test allowed pres
@@ -2640,10 +2637,7 @@ mod tests {
                 Attribute::Name,
                 PartialValue::new_iname("testperson1")
             )),
-            modlist!([m_remove(
-                Attribute::Name.as_ref(),
-                &PartialValue::new_iname("value")
-            )]),
+            modlist!([m_remove(Attribute::Name, &PartialValue::new_iname("value"))]),
         );
         // Name purge
         let me_purge = ModifyEvent::new_impersonate_entry(
@@ -2652,7 +2646,7 @@ mod tests {
                 Attribute::Name,
                 PartialValue::new_iname("testperson1")
             )),
-            modlist!([m_purge("name")]),
+            modlist!([m_purge(Attribute::Name)]),
         );
 
         // Test reject pres

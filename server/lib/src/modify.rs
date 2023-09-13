@@ -40,11 +40,11 @@ pub fn m_pres(a: Attribute, v: &Value) -> Modify {
     Modify::Present(a.into(), v.clone())
 }
 
-pub fn m_remove(a: &str, v: &PartialValue) -> Modify {
+pub fn m_remove(a: Attribute, v: &PartialValue) -> Modify {
     Modify::Removed(a.into(), v.clone())
 }
 
-pub fn m_purge(a: &str) -> Modify {
+pub fn m_purge(a: Attribute) -> Modify {
     Modify::Purged(AttrString::from(a))
 }
 
@@ -99,10 +99,7 @@ impl ModifyList<ModifyInvalid> {
     }
 
     pub fn new_purge_and_set(attr: Attribute, v: Value) -> Self {
-        Self::new_list(vec![
-            m_purge(attr.as_ref()),
-            Modify::Present(attr.into(), v),
-        ])
+        Self::new_list(vec![m_purge(attr), Modify::Present(attr.into(), v)])
     }
 
     pub fn new_append(attr: Attribute, v: Value) -> Self {
@@ -114,7 +111,7 @@ impl ModifyList<ModifyInvalid> {
     }
 
     pub fn new_purge(attr: Attribute) -> Self {
-        Self::new_list(vec![m_purge(attr.as_ref())])
+        Self::new_list(vec![m_purge(attr)])
     }
 
     pub fn push_mod(&mut self, modify: Modify) {
@@ -144,12 +141,13 @@ impl ModifyList<ModifyInvalid> {
 
         pe.attrs.iter().try_for_each(|(attr, vals)| {
             // Issue a purge to the attr.
+            let attr: Attribute = (attr.clone()).try_into()?;
             mods.push(m_purge(attr));
             // Now if there are vals, push those too.
             // For each value we want to now be present.
             vals.iter().try_for_each(|val| {
-                qs.clone_value(attr, val).map(|resolved_v| {
-                    mods.push(Modify::Present(attr.as_str().into(), resolved_v));
+                qs.clone_value(attr.as_ref(), val).map(|resolved_v| {
+                    mods.push(Modify::Present(attr.into(), resolved_v));
                 })
             })
         })?;

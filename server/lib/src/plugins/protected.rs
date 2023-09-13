@@ -468,7 +468,7 @@ mod tests {
             preload,
             filter!(f_eq(Attribute::Name, PartialValue::new_iname("testperson"))),
             modlist!([
-                m_purge("displayname"),
+                m_purge(Attribute::DisplayName),
                 m_pres(Attribute::DisplayName, &Value::new_utf8s("system test")),
             ]),
             Some(E_TEST_ACCOUNT.clone()),
@@ -568,7 +568,7 @@ mod tests {
                 PartialValue::new_iname("domain_example.net.au")
             )),
             modlist!([
-                m_purge("domain_ssid"),
+                m_purge(Attribute::DomainSsid),
                 m_pres(Attribute::DomainSsid, &Value::new_utf8s("NewExampleWifi")),
             ]),
             Some(E_TEST_ACCOUNT.clone()),

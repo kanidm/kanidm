@@ -335,7 +335,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                                     Value::Passkey(Uuid::new_v4(), t.clone(), k.clone()),
                                 )
                             })
-                            .chain(std::iter::once(m_purge("primary_credential")))
+                            .chain(std::iter::once(m_purge(Attribute::PrimaryCredential)))
                             .collect();
                         (ent.get_uuid(), ModifyList::new_list(modlist))
                     })
