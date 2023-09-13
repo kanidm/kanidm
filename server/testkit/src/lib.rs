@@ -321,7 +321,7 @@ pub async fn test_read_attrs(
     #[allow(clippy::expect_used)]
     let e = rset.first().expect("Failed to get first user from set");
 
-    for attr in attrs.into_iter() {
+    for attr in attrs.iter() {
         println!("Reading {}", attr);
         #[allow(clippy::unwrap_used)]
         let is_ok = match *attr {
@@ -344,7 +344,7 @@ pub async fn test_write_attrs(
     is_writeable: bool,
 ) {
     println!("Test write to {}, is writeable: {}", id, is_writeable);
-    for attr in attrs.into_iter() {
+    for attr in attrs.iter() {
         println!("Writing to {} - ex {}", attr, is_writeable);
         #[allow(clippy::unwrap_used)]
         let is_ok = is_attr_writable(rsclient, id, *attr).await.unwrap();

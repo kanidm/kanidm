@@ -633,7 +633,7 @@ mod tests {
                 t_uuid,
                 &ModifyList::new_list(vec![
                     m_assert(Attribute::Uuid.as_ref(), &PartialValue::Uuid(r_uuid)),
-                    m_pres(Attribute::Description.into(), &Value::Utf8("test".into()))
+                    m_pres(Attribute::Description, &Value::Utf8("test".into()))
                 ])
             ),
             Err(OperationError::ModifyAssertionFailed)
@@ -644,8 +644,8 @@ mod tests {
             .internal_modify_uuid(
                 t_uuid,
                 &ModifyList::new_list(vec![
-                    m_assert("uuid", &PartialValue::Uuid(t_uuid)),
-                    m_pres(Attribute::Description.into(), &Value::Utf8("test".into()))
+                    m_assert(Attribute::Uuid.as_ref(), &PartialValue::Uuid(t_uuid)),
+                    m_pres(Attribute::Description, &Value::Utf8("test".into()))
                 ])
             )
             .is_ok());

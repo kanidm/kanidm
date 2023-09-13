@@ -469,7 +469,7 @@ mod tests {
             filter!(f_eq(Attribute::Name, PartialValue::new_iname("testperson"))),
             modlist!([
                 m_purge("displayname"),
-                m_pres("displayname", &Value::new_utf8s("system test")),
+                m_pres(Attribute::DisplayName, &Value::new_utf8s("system test")),
             ]),
             Some(E_TEST_ACCOUNT.clone()),
             |_| {},
@@ -499,8 +499,8 @@ mod tests {
             preload,
             filter!(f_eq(Attribute::ClassName, EntryClass::TestClass.into())),
             modlist!([
-                m_pres(Attribute::May.as_ref(), &Attribute::Name.to_value()),
-                m_pres(Attribute::Must.as_ref(), &Attribute::Name.to_value()),
+                m_pres(Attribute::May, &Attribute::Name.to_value()),
+                m_pres(Attribute::Must, &Attribute::Name.to_value()),
             ]),
             Some(E_TEST_ACCOUNT.clone()),
             |_| {},
@@ -569,7 +569,7 @@ mod tests {
             )),
             modlist!([
                 m_purge("domain_ssid"),
-                m_pres("domain_ssid", &Value::new_utf8s("NewExampleWifi")),
+                m_pres(Attribute::DomainSsid, &Value::new_utf8s("NewExampleWifi")),
             ]),
             Some(E_TEST_ACCOUNT.clone()),
             |_| {},

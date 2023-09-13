@@ -165,7 +165,7 @@ mod tests {
             filter!(f_eq(Attribute::Name, PartialValue::new_iname("old_name"))),
             modlist!([
                 m_purge(Attribute::Name.as_ref()),
-                m_pres(Attribute::Name.as_ref(), &Value::new_iname("new_name_1"))
+                m_pres(Attribute::Name, &Value::new_iname("new_name_1"))
             ]),
             None,
             |_| {},
@@ -256,7 +256,7 @@ mod tests {
             filter!(f_eq(Attribute::Name, PartialValue::new_iname("old_name8"))),
             modlist!([
                 m_purge(Attribute::Name.as_ref()),
-                m_pres(Attribute::Name.as_ref(), &Value::new_iname("new_name"))
+                m_pres(Attribute::Name, &Value::new_iname("new_name"))
             ]),
             None,
             |_| {},

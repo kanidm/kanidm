@@ -36,7 +36,7 @@ pub enum Modify {
     Assert(AttrString, PartialValue),
 }
 
-pub fn m_pres(a: &str, v: &Value) -> Modify {
+pub fn m_pres(a: Attribute, v: &Value) -> Modify {
     Modify::Present(a.into(), v.clone())
 }
 

@@ -194,7 +194,7 @@ mod tests {
             Ok(()),
             preload,
             filter!(f_eq(Attribute::Name, PartialValue::new_iname("testperson"))),
-            modlist!([m_pres("class", &EntryClass::PosixGroup.into())]),
+            modlist!([m_pres(Attribute::Class, &EntryClass::PosixGroup.into())]),
             None,
             |_| {},
             |qs_write: &mut QueryServerWriteTransaction| check_gid(
@@ -260,7 +260,7 @@ mod tests {
             filter!(f_eq(Attribute::Name, PartialValue::new_iname("testperson"))),
             modlist!([
                 m_purge(Attribute::GidNumber.as_ref()),
-                m_pres(Attribute::GidNumber.as_ref(), &Value::new_uint32(2000))
+                m_pres(Attribute::GidNumber, &Value::new_uint32(2000))
             ]),
             None,
             |_| {},

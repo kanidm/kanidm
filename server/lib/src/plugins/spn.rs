@@ -327,7 +327,7 @@ mod tests {
             modlist!([
                 m_purge(Attribute::Spn.as_ref()),
                 m_pres(
-                    Attribute::Spn.as_ref(),
+                    Attribute::Spn,
                     &Value::new_spn_str("invalid", Attribute::Spn.as_ref())
                 )
             ]),
