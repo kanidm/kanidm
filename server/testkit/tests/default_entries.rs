@@ -116,7 +116,12 @@ async fn test_default_entries_rbac_users(rsclient: KanidmClient) {
 async fn test_default_entries_rbac_account_managers(rsclient: KanidmClient) {
     login_put_admin_idm_admins(&rsclient).await;
 
-    create_user(&rsclient, "account_manager", "idm_account_manage_priv").await;
+    create_user(
+        &rsclient,
+        "account_manager",
+        IDM_ACCOUNT_MANAGE_PRIV_V1.name,
+    )
+    .await;
     create_user_with_all_attrs(&rsclient, NOT_ADMIN_TEST_USERNAME, Some("test_group")).await;
 
     login_account(&rsclient, "account_manager").await;
@@ -414,7 +419,7 @@ async fn test_default_entries_rbac_admins_ha_accounts(rsclient: KanidmClient) {
         Attribute::DisplayName,
         Attribute::PrimaryCredential,
     ];
-    test_write_attrs(&rsclient, "idm_admin", &MAIN_ATTRS, true).await;
+    test_write_attrs(&rsclient, BUILTIN_ACCOUNT_IDM_ADMIN.name, &MAIN_ATTRS, true).await;
 }
 
 // recover from the recycle bin
@@ -561,7 +566,7 @@ async fn test_default_entries_rbac_anonymous_entry(rsclient: KanidmClient) {
 async fn test_default_entries_rbac_radius_servers(rsclient: KanidmClient) {
     login_put_admin_idm_admins(&rsclient).await;
 
-    create_user(&rsclient, "radius_server", "idm_radius_servers").await;
+    create_user(&rsclient, "radius_server", IDM_RADIUS_SERVERS_V1.name).await;
     create_user_with_all_attrs(&rsclient, NOT_ADMIN_TEST_USERNAME, Some("test_group")).await;
 
     login_account(&rsclient, "radius_server").await;
@@ -604,7 +609,7 @@ async fn test_self_write_mail_priv_people(rsclient: KanidmClient) {
     create_user_with_all_attrs(&rsclient, "other", None).await;
     rsclient
         .idm_group_add_members(
-            "idm_people_self_write_mail_priv",
+            IDM_PEOPLE_SELF_WRITE_MAIL_PRIV_V1.name,
             &["other", NOT_ADMIN_TEST_USERNAME],
         )
         .await

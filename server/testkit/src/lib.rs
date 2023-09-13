@@ -18,7 +18,10 @@ use kanidm_client::{KanidmClient, KanidmClientBuilder};
 use kanidm_proto::v1::{Filter, Modify, ModifyList};
 use kanidmd_core::config::{Configuration, IntegrationTestConfig};
 use kanidmd_core::{create_server_core, CoreHandle};
-use kanidmd_lib::prelude::{Attribute, BUILTIN_GROUP_IDM_ADMINS_V1};
+use kanidmd_lib::prelude::{
+    Attribute, BUILTIN_GROUP_IDM_ADMINS_V1, IDM_PEOPLE_ACCOUNT_PASSWORD_IMPORT_PRIV_V1,
+    IDM_PEOPLE_EXTEND_PRIV_V1,
+};
 use tokio::task;
 
 pub const ADMIN_TEST_USER: &str = "admin";
@@ -257,7 +260,7 @@ pub async fn login_account(rsclient: &KanidmClient, id: &str) {
     #[allow(clippy::expect_used)]
     rsclient
         .idm_group_add_members(
-            "idm_people_account_password_import_priv",
+            IDM_PEOPLE_ACCOUNT_PASSWORD_IMPORT_PRIV_V1.name,
             &[ADMIN_TEST_USER],
         )
         .await
@@ -265,7 +268,7 @@ pub async fn login_account(rsclient: &KanidmClient, id: &str) {
 
     #[allow(clippy::expect_used)]
     rsclient
-        .idm_group_add_members("idm_people_extend_priv", &[ADMIN_TEST_USER])
+        .idm_group_add_members(IDM_PEOPLE_EXTEND_PRIV_V1.name, &[ADMIN_TEST_USER])
         .await
         .expect("Failed to add user to idm_people_extend_priv");
 

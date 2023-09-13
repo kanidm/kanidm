@@ -9,6 +9,7 @@ use kanidm_proto::v1::{
 use kanidmd_lib::credential::totp::Totp;
 use kanidmd_lib::prelude::{
     Attribute, BUILTIN_GROUP_IDM_ADMINS_V1, BUILTIN_GROUP_SYSTEM_ADMINS_V1,
+    IDM_PEOPLE_ACCOUNT_PASSWORD_IMPORT_PRIV_V1,
 };
 use tracing::debug;
 
@@ -789,7 +790,7 @@ async fn test_server_rest_account_import_password(rsclient: KanidmClient) {
     // To enable the admin to actually make some of these changes, we have
     // to make them a password import admin. NOT recommended in production!
     rsclient
-        .idm_group_add_members("idm_people_account_password_import_priv", &["admin"])
+        .idm_group_add_members(IDM_PEOPLE_ACCOUNT_PASSWORD_IMPORT_PRIV_V1.name, &["admin"])
         .await
         .unwrap();
     rsclient

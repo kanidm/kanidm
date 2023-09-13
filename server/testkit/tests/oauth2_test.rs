@@ -9,7 +9,7 @@ use kanidm_proto::oauth2::{
     AccessTokenIntrospectRequest, AccessTokenIntrospectResponse, AccessTokenRequest,
     AccessTokenResponse, AuthorisationResponse, GrantTypeReq, OidcDiscoveryResponse,
 };
-use kanidmd_lib::prelude::{Attribute, BUILTIN_GROUP_IDM_ADMINS_V1};
+use kanidmd_lib::prelude::{Attribute, BUILTIN_GROUP_IDM_ADMINS_V1, IDM_ALL_ACCOUNTS};
 use oauth2_ext::PkceCodeChallenge;
 use reqwest::header::{HeaderValue, CONTENT_TYPE};
 use reqwest::StatusCode;
@@ -97,14 +97,18 @@ async fn test_oauth2_openid_basic_flow(rsclient: KanidmClient) {
     rsclient
         .idm_oauth2_rs_update_scope_map(
             "test_integration",
-            "idm_all_accounts",
+            IDM_ALL_ACCOUNTS.name,
             vec![OAUTH2_SCOPE_READ, OAUTH2_SCOPE_EMAIL, OAUTH2_SCOPE_OPENID],
         )
         .await
         .expect("Failed to update oauth2 scopes");
 
     rsclient
-        .idm_oauth2_rs_update_sup_scope_map("test_integration", "idm_all_accounts", vec!["admin"])
+        .idm_oauth2_rs_update_sup_scope_map(
+            "test_integration",
+            IDM_ALL_ACCOUNTS.name,
+            vec!["admin"],
+        )
         .await
         .expect("Failed to update oauth2 scopes");
 
@@ -453,14 +457,18 @@ async fn test_oauth2_openid_public_flow(rsclient: KanidmClient) {
     rsclient
         .idm_oauth2_rs_update_scope_map(
             "test_integration",
-            "idm_all_accounts",
+            IDM_ALL_ACCOUNTS.name,
             vec![OAUTH2_SCOPE_READ, OAUTH2_SCOPE_EMAIL, OAUTH2_SCOPE_OPENID],
         )
         .await
         .expect("Failed to update oauth2 scopes");
 
     rsclient
-        .idm_oauth2_rs_update_sup_scope_map("test_integration", "idm_all_accounts", vec!["admin"])
+        .idm_oauth2_rs_update_sup_scope_map(
+            "test_integration",
+            IDM_ALL_ACCOUNTS.name,
+            vec!["admin"],
+        )
         .await
         .expect("Failed to update oauth2 scopes");
 
