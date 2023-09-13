@@ -1451,10 +1451,10 @@ impl ValueSetT for ValueSetApiToken {
 #[cfg(test)]
 mod tests {
     use time::OffsetDateTime;
-    use super::ValueSetSession;
+    use super::{ValueSetSession, ValueSetOauth2Session};
     use crate::prelude::{Uuid, SessionScope, IdentityId};
     use crate::repl::cid::Cid;
-    use crate::value::{Session, SessionState};
+    use crate::value::{Oauth2Session, Session, SessionState};
     use crate::valueset::ValueSet;
 
     #[test]
@@ -1475,21 +1475,25 @@ mod tests {
 
         // Simulate session revocation.
         vs.purge(&zero_cid);
+
+        todo!();
     }
 
     #[test]
     fn test_valueset_session_merge() {
+        todo!();
     }
 
     #[test]
     fn test_valueset_session_repl_merge() {
+        todo!();
     }
 
     #[test]
     fn test_valueset_oauth2_session_purge() {
-        let mut vs: ValueSet = ValueSetSession::new(
+        let mut vs: ValueSet = ValueSetOauth2Session::new(
             Uuid::new_v4(),
-            Session {
+            Oauth2Session {
                 label: "hacks".to_string(),
                 state: SessionState::NeverExpires,
                 issued_at: OffsetDateTime::now_utc(),
@@ -1503,13 +1507,17 @@ mod tests {
 
         // Simulate session revocation.
         vs.purge(&zero_cid);
+
+        todo!();
     }
 
     #[test]
     fn test_valueset_oauth2_session_merge() {
+        todo!();
     }
 
     #[test]
     fn test_valueset_oauth2_session_repl_merge() {
+        todo!();
     }
 }
