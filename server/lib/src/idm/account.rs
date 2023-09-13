@@ -736,7 +736,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         // Now construct the modlist which:
         // removes service_account
         let mut modlist = ModifyList::new_remove(
-            Attribute::Class.as_ref(),
+            Attribute::Class,
             EntryClass::ServiceAccount.to_partialvalue(),
         );
         // add person

@@ -2045,7 +2045,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         info!(session_id = %asr.session_id, "Persisting auth session");
 
         // modify the account to put the session onto it.
-        let modlist = ModifyList::new_append("user_auth_token_session", session);
+        let modlist = ModifyList::new_append(Attribute::UserAuthTokenSession, session);
 
         self.qs_write
             .internal_modify(

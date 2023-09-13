@@ -287,17 +287,11 @@ mod tests {
                 [
                     (
                         uuid_a,
-                        ModifyList::new_append(
-                            Attribute::Description.as_ref(),
-                            Value::Utf8("a".into())
-                        )
+                        ModifyList::new_append(Attribute::Description, Value::Utf8("a".into()))
                     ),
                     (
                         uuid_b,
-                        ModifyList::new_append(
-                            Attribute::Description.as_ref(),
-                            Value::Utf8("b".into())
-                        )
+                        ModifyList::new_append(Attribute::Description, Value::Utf8("b".into()))
                     ),
                 ]
                 .into_iter()

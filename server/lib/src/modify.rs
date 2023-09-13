@@ -109,12 +109,12 @@ impl ModifyList<ModifyInvalid> {
         ])
     }
 
-    pub fn new_append(attr: &str, v: Value) -> Self {
-        Self::new_list(vec![Modify::Present(AttrString::from(attr), v)])
+    pub fn new_append(attr: Attribute, v: Value) -> Self {
+        Self::new_list(vec![Modify::Present(attr.into(), v)])
     }
 
-    pub fn new_remove(attr: &str, pv: PartialValue) -> Self {
-        Self::new_list(vec![Modify::Removed(AttrString::from(attr), pv)])
+    pub fn new_remove(attr: Attribute, pv: PartialValue) -> Self {
+        Self::new_list(vec![Modify::Removed(attr.into(), pv)])
     }
 
     pub fn new_purge(attr: &str) -> Self {

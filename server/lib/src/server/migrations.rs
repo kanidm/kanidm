@@ -298,8 +298,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         ]));
         // This "does nothing" since everything has object anyway, but it forces the entry to be
         // loaded and rewritten.
-        let modlist =
-            ModifyList::new_append(Attribute::Class.as_ref(), EntryClass::Object.to_value());
+        let modlist = ModifyList::new_append(Attribute::Class, EntryClass::Object.to_value());
         self.internal_modify(&filter, &modlist)
         // Complete
     }

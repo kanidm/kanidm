@@ -582,7 +582,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         //        write anyway, and instead on the intent access path we invalidate IF the collision
         //        occurs.
         let mut modlist = ModifyList::new_append(
-            "credential_update_intent_token",
+            Attribute::CredentialUpdateIntentToken,
             Value::IntentToken(
                 intent_id.clone(),
                 IntentTokenState::Valid { max_ttl, perms },

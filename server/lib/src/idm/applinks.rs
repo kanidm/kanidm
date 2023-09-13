@@ -160,7 +160,7 @@ mod tests {
         let mut idms_prox_write = idms.proxy_write(ct).await;
         let me_inv_m = ModifyEvent::new_internal_invalid(
             filter!(f_eq(Attribute::Uuid, PartialValue::Refer(grp_uuid))),
-            ModifyList::new_append("member", Value::Refer(usr_uuid)),
+            ModifyList::new_append(Attribute::Member, Value::Refer(usr_uuid)),
         );
         assert!(idms_prox_write.qs_write.modify(&me_inv_m).is_ok());
         assert!(idms_prox_write.commit().is_ok());

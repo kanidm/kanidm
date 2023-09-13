@@ -1037,10 +1037,7 @@ impl QueryServerWriteV1 {
     ) -> Result<(), OperationError> {
         // Because this is from internal, we can generate a real modlist, rather
         // than relying on the proto ones.
-        let ml = ModifyList::new_append(
-            Attribute::SshPublicKey.as_ref(),
-            Value::new_sshkey(tag, key),
-        );
+        let ml = ModifyList::new_append(Attribute::SshPublicKey, Value::new_sshkey(tag, key));
 
         self.modify_from_internal_parts(uat, &uuid_or_name, &ml, filter)
             .await
@@ -1212,7 +1209,7 @@ impl QueryServerWriteV1 {
             })?;
 
         let ml = ModifyList::new_append(
-            "oauth2_rs_scope_map",
+            Attribute::OAuth2RsScopeMap,
             Value::new_oauthscopemap(group_uuid, scopes.into_iter().collect()).ok_or_else(
                 || OperationError::InvalidAttribute("Invalid Oauth Scope Map syntax".to_string()),
             )?,
@@ -1269,7 +1266,8 @@ impl QueryServerWriteV1 {
                 e
             })?;
 
-        let ml = ModifyList::new_remove("oauth2_rs_scope_map", PartialValue::Refer(group_uuid));
+        let ml =
+            ModifyList::new_remove(Attribute::OAuth2RsScopeMap, PartialValue::Refer(group_uuid));
 
         let mdf = match ModifyEvent::from_internal_parts(
             ident,
@@ -1326,7 +1324,7 @@ impl QueryServerWriteV1 {
             })?;
 
         let ml = ModifyList::new_append(
-            "oauth2_rs_sup_scope_map",
+            Attribute::OAuth2RsSupScopeMap,
             Value::new_oauthscopemap(group_uuid, scopes.into_iter().collect()).ok_or_else(
                 || OperationError::InvalidAttribute("Invalid Oauth Scope Map syntax".to_string()),
             )?,
@@ -1383,7 +1381,10 @@ impl QueryServerWriteV1 {
                 e
             })?;
 
-        let ml = ModifyList::new_remove("oauth2_rs_sup_scope_map", PartialValue::Refer(group_uuid));
+        let ml = ModifyList::new_remove(
+            Attribute::OAuth2RsSupScopeMap,
+            PartialValue::Refer(group_uuid),
+        );
 
         let mdf = match ModifyEvent::from_internal_parts(
             ident,
