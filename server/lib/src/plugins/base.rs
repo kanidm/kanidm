@@ -170,8 +170,7 @@ impl Plugin for Base {
                 Modify::Purged(a) => Some(a),
                 Modify::Assert(_, _) => None,
             };
-            // TODO: this conversion to &str isn't needed?
-            if attr.map(|s| s.as_str()) == Some(Attribute::Uuid.as_ref()) {
+            if attr == Some(&AttrString::from(Attribute::Uuid)) {
                 debug!(?modify, "Modify in violation");
                 request_error!("Modifications to UUID's are NOT ALLOWED");
                 Err(OperationError::SystemProtectedAttribute)
@@ -198,7 +197,7 @@ impl Plugin for Base {
                     Modify::Purged(a) => Some(a),
                     Modify::Assert(_, _) => None,
                 };
-                if attr.map(|s| s.as_str()) == Some(Attribute::Uuid.as_ref()) {
+                if attr == Some(&AttrString::from(Attribute::Uuid)) {
                     debug!(?modify, "Modify in violation");
                     request_error!("Modifications to UUID's are NOT ALLOWED");
                     Err(OperationError::SystemProtectedAttribute)

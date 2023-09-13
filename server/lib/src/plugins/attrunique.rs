@@ -118,7 +118,6 @@ fn enforce_unique<VALID, STATE>(
     // Now do an internal search on name and !uuid for each
     let mut cand_filters = Vec::new();
     for ((attr, v), uuid) in cand_attr.iter() {
-        // let attr: Attribute = attr.try_into()?;
         // and[ attr eq k, andnot [ uuid eq v ]]
         // Basically this says where name but also not self.
         cand_filters.push(f_and(vec![
