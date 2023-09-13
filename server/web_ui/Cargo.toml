@@ -34,6 +34,13 @@ yew-router = { workspace = true }
 time = { workspace = true }
 gloo-timers = "0.3.0"
 wasm-timer = "0.2.5"
+i18n-embed = { version = "0.14.0", features = ["fluent-system", "web-sys-requester"]}
+i18n-embed-fl = "0.7.0"
+rust-embed = "8"
+unic-langid = "0.9.1"
+fluent = "0.16.0"
+fluent-bundle = "0.15.2"
+fluent-fallback = "0.7.0"
 regex.workspace = true
 lazy_static.workspace = true
 

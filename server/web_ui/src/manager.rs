@@ -4,7 +4,12 @@
 //! not authenticated, this will determine that and send you to authentication first, then
 //! will allow you to proceed with the oauth flow.
 
+use std::rc::Rc;
+
 use gloo::console;
+use i18n_embed::LanguageLoader;
+use i18n_embed::unic_langid::LanguageIdentifier;
+use i18n_embed_fl::fl;
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::UnwrapThrowExt;
 use yew::functional::*;
@@ -15,6 +20,15 @@ use crate::credential::reset::CredentialResetApp;
 use crate::login::{LoginApp, LoginWorkflow};
 use crate::oauth2::Oauth2App;
 use crate::views::{ViewRoute, ViewsApp};
+
+use i18n_embed::{WebLanguageRequester, fluent::{
+    FluentLanguageLoader, fluent_language_loader
+}};
+use rust_embed::RustEmbed;
+
+#[derive(RustEmbed)]
+#[folder = "i18n"]
+struct Localizations;
 
 // router to decide on state.
 #[derive(Routable, PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
@@ -53,6 +67,28 @@ fn landing() -> Html {
     html! { <main></main> }
 }
 
+#[function_component]
+fn NotFound() -> Html {
+    let i18n = use_context::<Rc<I18n>>().unwrap();
+
+    html! {
+        <>
+        <main class="flex-shrink-0 form-signin text-center">
+                <img src="/pkg/img/logo-square.svg" alt="Kanidm" class="kanidm_logo"/>
+                // TODO: replace this with a call to domain info
+                <h3>{ "404 - Page not found" }</h3>
+
+                <div class="container">
+                <Link<ViewRoute> to={ ViewRoute::Apps }>
+                { fl!(i18n.i18n, "women") }
+                </Link<ViewRoute>>
+                </div>
+        </main>
+        { crate::utils::do_footer() }
+        </>
+    }
+}
+
 // Needed for yew to pass by value
 #[allow(clippy::needless_pass_by_value)]
 fn switch(route: Route) -> Html {
@@ -74,27 +110,46 @@ fn switch(route: Route) -> Html {
         Route::NotFound => {
             add_body_form_classes!();
 
-            html! {
-                <>
-                <main class="flex-shrink-0 form-signin text-center">
-                        <img src="/pkg/img/logo-square.svg" alt="Kanidm" class="kanidm_logo"/>
-                        // TODO: replace this with a call to domain info
-                        <h3>{ "404 - Page not found" }</h3>
-
-                        <div class="container">
-                        <Link<ViewRoute> to={ ViewRoute::Apps }>
-                        { "Home" }
-                        </Link<ViewRoute>>
-                        </div>
-                </main>
-                { crate::utils::do_footer() }
-                </>
-            }
+            html! { <NotFound /> }
         }
     }
 }
 
-pub struct ManagerApp {}
+#[derive(Clone, Debug)]
+pub struct I18n {
+    pub i18n: Rc<FluentLanguageLoader>
+}
+
+impl I18n {
+    fn new() -> I18n {
+        let loader: FluentLanguageLoader = fluent_language_loader!();
+        let requested_languages = {
+            let mut it = WebLanguageRequester::requested_languages();
+            it.push(loader.fallback_language().clone());
+            it
+        };
+
+        let languages_vec = requested_languages.iter().map(|it| it).collect::<Vec<&LanguageIdentifier>>();
+        let languages = languages_vec.as_slice();
+        let _ = loader
+            .load_languages(&Localizations, &languages)
+            .map_err(|err| {
+                console::warn!("issue loading i18n: {}", err.to_string());
+            });
+
+        I18n { i18n: loader.into() }
+    }
+}
+
+impl PartialEq for I18n {
+    fn eq(&self, _rhs: &I18n) -> bool {
+        true
+    }
+}
+
+pub struct ManagerApp {
+    i18n: Rc<I18n>
+}
 
 impl Component for ManagerApp {
     type Message = ();
@@ -103,7 +158,7 @@ impl Component for ManagerApp {
     fn create(_ctx: &Context<Self>) -> Self {
         #[cfg(debug_assertions)]
         console::debug!("manager::create");
-        ManagerApp {}
+        ManagerApp { i18n: I18n::new().into() }
     }
 
     fn changed(&mut self, _ctx: &Context<Self>, _props: &Self::Properties) -> bool {
@@ -127,9 +182,11 @@ impl Component for ManagerApp {
 
     fn view(&self, _ctx: &Context<Self>) -> Html {
         html! {
-            <BrowserRouter>
-                <Switch<Route> render={ switch } />
-            </BrowserRouter>
+            <ContextProvider<Rc<I18n>> context={self.i18n.clone()}>
+                <BrowserRouter>
+                    <Switch<Route> render={ switch } />
+                </BrowserRouter>
+            </ContextProvider<Rc<I18n>>>
         }
     }
 }
