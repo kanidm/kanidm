@@ -2765,14 +2765,14 @@ mod tests {
         // Test mixed case attr name - this is a pass, due to normalisation
         let f_or_ok = filter_all!(f_andnot(f_and!([
             f_eq(Attribute::Class, EntryClass::AttributeType.into()),
-            f_sub(Attribute::Class.as_ref(), EntryClass::ClassType.into()),
+            f_sub(Attribute::Class, EntryClass::ClassType.into()),
             f_pres(Attribute::Class)
         ])));
         assert_eq!(
             f_or_ok.validate(&schema),
             Ok(filter_valid!(f_andnot(f_and!([
                 f_eq(Attribute::Class, EntryClass::AttributeType.into()),
-                f_sub(Attribute::Class.as_ref(), EntryClass::ClassType.into()),
+                f_sub(Attribute::Class, EntryClass::ClassType.into()),
                 f_pres(Attribute::Class)
             ]))))
         );

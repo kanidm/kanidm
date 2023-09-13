@@ -268,11 +268,17 @@ async fn test_server_rest_schema_read(rsclient: KanidmClient) {
     assert!(!c_list.is_empty());
 
     // Get an attr/class
-    let a = rsclient.idm_schema_attributetype_get("name").await.unwrap();
+    let a = rsclient
+        .idm_schema_attributetype_get(Attribute::Name.as_ref())
+        .await
+        .unwrap();
     assert!(a.is_some());
     println!("{:?}", a);
 
-    let c = rsclient.idm_schema_classtype_get("account").await.unwrap();
+    let c = rsclient
+        .idm_schema_classtype_get(Attribute::Account.as_ref())
+        .await
+        .unwrap();
     assert!(c.is_some());
     println!("{:?}", c);
 }
@@ -494,7 +500,7 @@ async fn test_server_rest_domain_lifecycle(rsclient: KanidmClient) {
     assert!(
         dlocal
             .attrs
-            .get("domain_display_name")
+            .get(Attribute::DomainDisplayName.as_ref())
             .and_then(|v| v.get(0))
             == Some(&"Super Cool Crabz".to_string())
     );

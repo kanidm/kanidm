@@ -533,7 +533,6 @@ mod tests {
         assert!(server_txn.modify(&me_emp) == Err(OperationError::EmptyRequest));
 
         // Mod changes no objects
-        // TODO: @yaleman fix this because we don't have a way to do this anymore
         let me_nochg = ModifyEvent::new_impersonate_entry_ser(
             BUILTIN_ACCOUNT_IDM_ADMIN.clone(),
             filter!(f_eq(

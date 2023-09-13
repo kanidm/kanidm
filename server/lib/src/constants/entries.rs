@@ -34,6 +34,16 @@ fn test_valueattribute_round_trip() {
     }
 }
 
+impl<'a> serde::Deserialize<'a> for Attribute {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'a>,
+    {
+        let s = String::deserialize(deserializer)?;
+        Attribute::try_from(s).map_err(|e| serde::de::Error::custom(format!("{:?}", e)))
+    }
+}
+
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Sequence, Hash)]
 pub enum Attribute {
     Account,

@@ -2874,7 +2874,7 @@ mod tests {
                 sync_uuid,
                 &ModifyList::new_purge_and_set(
                     Attribute::SyncYieldAuthority,
-                    Value::new_iutf8("legalname")
+                    Value::new_iutf8(Attribute::LegalName.as_ref())
                 )
             )
             .is_ok());

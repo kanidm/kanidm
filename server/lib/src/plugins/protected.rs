@@ -328,19 +328,19 @@ mod tests {
             ),
             (
                 Attribute::AcpModifyRemovedAttr,
-                Value::new_iutf8("domain_display_name")
+                Attribute::DomainDisplayName.to_value()
             ),
             (
                 Attribute::AcpModifyRemovedAttr,
-                Value::new_iutf8("domain_uuid")
+                Attribute::DomainUuid.to_value()
             ),
             (
                 Attribute::AcpModifyRemovedAttr,
-                Value::new_iutf8("domain_ssid")
+                Attribute::DomainSsid.to_value()
             ),
             (
                 Attribute::AcpModifyRemovedAttr,
-                Value::new_iutf8("fernet_private_key_str")
+                Attribute::FernetPrivateKeyStr.to_value()
             ),
             (
                 Attribute::AcpModifyRemovedAttr,
@@ -359,23 +359,23 @@ mod tests {
             (Attribute::AcpModifyPresentAttr, Attribute::Must.to_value()),
             (
                 Attribute::AcpModifyPresentAttr,
-                Value::new_iutf8("domain_name")
+                Attribute::DomainName.to_value()
             ),
             (
                 Attribute::AcpModifyPresentAttr,
-                Value::new_iutf8("domain_display_name")
+                Attribute::DomainDisplayName.to_value()
             ),
             (
                 Attribute::AcpModifyPresentAttr,
-                Value::new_iutf8("domain_uuid")
+                Attribute::DomainUuid.to_value()
             ),
             (
                 Attribute::AcpModifyPresentAttr,
-                Value::new_iutf8("domain_ssid")
+                Attribute::DomainSsid.to_value()
             ),
             (
                 Attribute::AcpModifyPresentAttr,
-                Value::new_iutf8("fernet_private_key_str")
+                Attribute::FernetPrivateKeyStr.to_value()
             ),
             (
                 Attribute::AcpModifyPresentAttr,
@@ -396,14 +396,14 @@ mod tests {
             (Attribute::AcpCreateAttr, Attribute::DomainName.to_value(),),
             (
                 Attribute::AcpCreateAttr,
-                Value::new_iutf8("domain_display_name")
+                Attribute::DomainDisplayName.to_value()
             ),
-            (Attribute::AcpCreateAttr, Value::new_iutf8("domain_uuid")),
-            (Attribute::AcpCreateAttr, Value::new_iutf8("domain_ssid")),
+            (Attribute::AcpCreateAttr, Attribute::DomainUuid.to_value()),
+            (Attribute::AcpCreateAttr, Attribute::DomainSsid.to_value()),
             (Attribute::AcpCreateAttr, Attribute::Uuid.to_value()),
             (
                 Attribute::AcpCreateAttr,
-                Value::new_iutf8("fernet_private_key_str")
+                Attribute::FernetPrivateKeyStr.to_value()
             ),
             (
                 Attribute::AcpCreateAttr,

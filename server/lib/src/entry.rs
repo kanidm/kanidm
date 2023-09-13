@@ -160,6 +160,7 @@ pub struct EntryReduced {
 }
 
 // One day this is going to be Map<Attribute, ValueSet> - @yaleman
+// pub type Eattrs = Map<Attribute, ValueSet>;
 pub type Eattrs = Map<AttrString, ValueSet>;
 
 pub(crate) fn compare_attrs(left: &Eattrs, right: &Eattrs) -> bool {
@@ -167,9 +168,13 @@ pub(crate) fn compare_attrs(left: &Eattrs, right: &Eattrs) -> bool {
     // Build the set of all keys between both.
     let allkeys: Set<&str> = left
         .keys()
-        .filter(|k| k != &"last_modified_cid")
-        .chain(right.keys().filter(|k| k != &"last_modified_cid"))
-        .map(|s| s.as_str())
+        .filter(|k| k != &Attribute::LastModifiedCid.as_ref())
+        .chain(
+            right
+                .keys()
+                .filter(|k| k != &Attribute::LastModifiedCid.as_ref()),
+        )
+        .map(|s| s.as_ref())
         .collect();
 
     allkeys.into_iter().all(|k| {
@@ -1856,7 +1861,7 @@ impl Entry<EntrySealed, EntryCommitted> {
          * and loaded from disk proper.
          */
         let cid = attrs
-            .get("last_modified_cid")
+            .get(Attribute::LastModifiedCid.as_ref())
             .and_then(|vs| vs.as_cid_set())
             .and_then(|set| set.iter().next().cloned())?;
 
@@ -2929,15 +2934,12 @@ impl<VALID, STATE> Entry<VALID, STATE> {
             }
         }
 
-        Some(filter_all!(f_and(
-            pairs
-                .into_iter()
-                .map(|(attr, pv)| {
-                    // We use FC directly here instead of f_eq to avoid an excess clone.
-                    FC::Eq(attr, pv)
-                })
-                .collect()
-        )))
+        let mut res = Vec::new();
+        for (attr, pv) in pairs.into_iter() {
+            // We use FC directly here instead of f_eq to avoid an excess clone.
+            res.push(FC::Eq(attr, pv)) // TODO: this is kinda terrible
+        }
+        Some(filter_all!(f_and(res)))
     }
 
     /// Given this entry, generate a modification list that would "assert"
@@ -3482,13 +3484,13 @@ mod tests {
         assert!(e.apply_modlist(&present_single_mods).is_ok());
         assert!(e.attribute_equality(Attribute::Attr, &PartialValue::new_iutf8("value")));
         assert!(e.apply_modlist(&remove_mods).is_ok());
-        assert!(e.attrs.get(Attribute::Attr.into()).is_none());
+        assert!(e.attrs.get(Attribute::Attr.as_ref()).is_none());
 
         let remove_empty_mods = remove_mods;
 
         assert!(e.apply_modlist(&remove_empty_mods).is_ok());
 
-        assert!(e.attrs.get(Attribute::Attr.into()).is_none());
+        assert!(e.attrs.get(Attribute::Attr.as_ref()).is_none());
     }
 
     #[test]

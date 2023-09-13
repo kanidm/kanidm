@@ -41,53 +41,44 @@ pub fn f_eq<'a>(a: Attribute, v: PartialValue) -> FC<'a> {
     FC::Eq(a.into(), v)
 }
 
-#[allow(dead_code)]
-pub fn f_sub(a: &str, v: PartialValue) -> FC {
-    FC::Sub(a, v)
+pub fn f_sub<'a>(a: Attribute, v: PartialValue) -> FC<'a> {
+    FC::Sub(a.into(), v)
 }
 
-#[allow(dead_code)]
 pub fn f_pres<'a>(a: Attribute) -> FC<'a> {
     FC::Pres(a.into())
 }
 
-#[allow(dead_code)]
-pub fn f_lt(a: &str, v: PartialValue) -> FC {
-    FC::LessThan(a, v)
+pub fn f_lt<'a>(a: Attribute, v: PartialValue) -> FC<'a> {
+    FC::LessThan(a.into(), v)
 }
 
-#[allow(dead_code)]
 pub fn f_or(vs: Vec<FC>) -> FC {
     FC::Or(vs)
 }
 
-#[allow(dead_code)]
 pub fn f_and(vs: Vec<FC>) -> FC {
     FC::And(vs)
 }
 
-#[allow(dead_code)]
 pub fn f_inc(vs: Vec<FC>) -> FC {
     FC::Inclusion(vs)
 }
 
-#[allow(dead_code)]
 pub fn f_andnot(fc: FC) -> FC {
     FC::AndNot(Box::new(fc))
 }
 
-#[allow(dead_code)]
 pub fn f_self<'a>() -> FC<'a> {
     FC::SelfUuid
 }
 
-#[allow(dead_code)]
-pub fn f_id(id: &str) -> FC<'static> {
-    let uf = Uuid::parse_str(id)
+pub fn f_id(uuid: &str) -> FC<'static> {
+    let uf = Uuid::parse_str(uuid)
         .ok()
         .map(|u| FC::Eq(Attribute::Uuid.as_ref(), PartialValue::Uuid(u)));
-    let spnf = PartialValue::new_spn_s(id).map(|spn| FC::Eq("spn", spn));
-    let nf = FC::Eq(Attribute::Name.as_ref(), PartialValue::new_iname(id));
+    let spnf = PartialValue::new_spn_s(uuid).map(|spn| FC::Eq(Attribute::Spn.as_ref(), spn));
+    let nf = FC::Eq(Attribute::Name.as_ref(), PartialValue::new_iname(uuid));
     let f: Vec<_> = iter::once(uf)
         .chain(iter::once(spnf))
         .flatten()
@@ -96,7 +87,6 @@ pub fn f_id(id: &str) -> FC<'static> {
     FC::Or(f)
 }
 
-#[allow(dead_code)]
 pub fn f_spn_name(id: &str) -> FC<'static> {
     let spnf = PartialValue::new_spn_s(id).map(|spn| FC::Eq(Attribute::Spn.as_ref(), spn));
     let nf = FC::Eq(Attribute::Name.as_ref(), PartialValue::new_iname(id));
@@ -1361,7 +1351,7 @@ mod tests {
                 f_eq(Attribute::UserId, PartialValue::new_iutf8("test_a")),
                 f_eq(Attribute::UserId, PartialValue::new_iutf8("test_b")),
             ]),
-            f_sub(Attribute::Class.as_ref(), EntryClass::User.into()),
+            f_sub(Attribute::Class, EntryClass::User.into()),
         ]));
     }
 
@@ -1422,14 +1412,14 @@ mod tests {
                     Attribute::Class,
                     EntryClass::TestClass.to_partialvalue()
                 )]),
-                f_sub(Attribute::Class.as_ref(), PartialValue::new_class("te")),
+                f_sub(Attribute::Class, PartialValue::new_class("te")),
                 f_pres(Attribute::Class),
                 f_eq(Attribute::Class, EntryClass::TestClass.to_partialvalue())
             ]),
             f_and(vec![
                 f_eq(Attribute::Class, EntryClass::TestClass.to_partialvalue()),
                 f_pres(Attribute::Class),
-                f_sub(Attribute::Class.as_ref(), PartialValue::new_class("te")),
+                f_sub(Attribute::Class, PartialValue::new_class("te")),
             ])
         );
 
@@ -1441,7 +1431,7 @@ mod tests {
                     f_eq(Attribute::Class, EntryClass::TestClass.to_partialvalue()),
                     f_eq(Attribute::Uid, PartialValue::new_class("bar")),
                 ]),
-                f_sub(Attribute::Class.as_ref(), PartialValue::new_class("te")),
+                f_sub(Attribute::Class, PartialValue::new_class("te")),
                 f_pres(Attribute::Class),
                 f_eq(Attribute::Class, EntryClass::TestClass.to_partialvalue())
             ]),
@@ -1450,7 +1440,7 @@ mod tests {
                 f_eq(Attribute::Class, EntryClass::TestClass.to_partialvalue()),
                 f_pres(Attribute::Class),
                 f_eq(Attribute::Uid, PartialValue::new_class("bar")),
-                f_sub(Attribute::Class.as_ref(), PartialValue::new_class("te")),
+                f_sub(Attribute::Class, PartialValue::new_class("te")),
             ])
         );
 
@@ -1458,14 +1448,14 @@ mod tests {
             f_or(vec![
                 f_eq(Attribute::Class, EntryClass::TestClass.to_partialvalue()),
                 f_pres(Attribute::Class),
-                f_sub(Attribute::Class.as_ref(), PartialValue::new_class("te")),
+                f_sub(Attribute::Class, PartialValue::new_class("te")),
                 f_or(vec![f_eq(
                     Attribute::Class,
                     EntryClass::TestClass.to_partialvalue()
                 )]),
             ]),
             f_or(vec![
-                f_sub(Attribute::Class.as_ref(), PartialValue::new_class("te")),
+                f_sub(Attribute::Class, PartialValue::new_class("te")),
                 f_pres(Attribute::Class),
                 f_eq(Attribute::Class, EntryClass::TestClass.to_partialvalue())
             ])
@@ -1538,7 +1528,7 @@ mod tests {
         assert_eq!(f_t3b.partial_cmp(&f_t1a), Some(Ordering::Less));
 
         // transitivity: a < b and b < c implies a < c. The same must hold for both == and >.
-        let f_t4b = filter_resolved!(f_sub("userid", PartialValue::new_iutf8("")));
+        let f_t4b = filter_resolved!(f_sub(Attribute::UserId, PartialValue::new_iutf8("")));
         assert_eq!(f_t1a.partial_cmp(&f_t4b), Some(Ordering::Less));
         assert_eq!(f_t3b.partial_cmp(&f_t4b), Some(Ordering::Less));
 
@@ -1577,22 +1567,13 @@ mod tests {
         )
         .into_sealed_new();
 
-        let f_t1a = filter_resolved!(f_lt(
-            Attribute::GidNumber.as_ref(),
-            PartialValue::new_uint32(500)
-        ));
+        let f_t1a = filter_resolved!(f_lt(Attribute::GidNumber, PartialValue::new_uint32(500)));
         assert!(!e.entry_match_no_index(&f_t1a));
 
-        let f_t1b = filter_resolved!(f_lt(
-            Attribute::GidNumber.as_ref(),
-            PartialValue::new_uint32(1000)
-        ));
+        let f_t1b = filter_resolved!(f_lt(Attribute::GidNumber, PartialValue::new_uint32(1000)));
         assert!(!e.entry_match_no_index(&f_t1b));
 
-        let f_t1c = filter_resolved!(f_lt(
-            Attribute::GidNumber.as_ref(),
-            PartialValue::new_uint32(1001)
-        ));
+        let f_t1c = filter_resolved!(f_lt(Attribute::GidNumber, PartialValue::new_uint32(1001)));
         assert!(e.entry_match_no_index(&f_t1c));
     }
 

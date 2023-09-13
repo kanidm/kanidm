@@ -32,7 +32,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         })?;
         let rc = self.internal_search(filter_all!(f_and!([
             f_eq(Attribute::Class, EntryClass::Recycled.into()),
-            f_lt("last_modified_cid", PartialValue::new_cid(cid)),
+            f_lt(Attribute::LastModifiedCid, PartialValue::new_cid(cid)),
         ])))?;
 
         if rc.is_empty() {
