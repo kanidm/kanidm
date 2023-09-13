@@ -1,64 +1,64 @@
 #![deny(warnings)]
+use lazy_static::lazy_static;
 use std::collections::HashSet;
 
 use kanidm_client::KanidmClient;
-use kanidm_proto::constants::{
-    APPLICATION_JSON, ATTR_ACP_RECEIVER_GROUP, ATTR_ACP_TARGET_SCOPE, ATTR_DESCRIPTION,
-    ATTR_LDAP_SSH_PUBLICKEY, ATTR_NAME,
-};
-use kanidmd_lib::prelude::{Attribute, EntryClass};
+use kanidm_proto::constants::APPLICATION_JSON;
+use kanidmd_lib::prelude::{Attribute, EntryClass, BUILTIN_GROUP_IDM_ADMINS_V1};
 use kanidmd_testkit::*;
 use reqwest::header::CONTENT_TYPE;
 
-// TODO: feed this off attrs
-static USER_READABLE_ATTRS: [&str; 9] = [
-    "name",
-    "spn",
-    "displayname",
-    "class",
-    "memberof",
-    "uuid",
-    "gidnumber",
-    "loginshell",
-    ATTR_LDAP_SSH_PUBLICKEY,
+static USER_READABLE_ATTRS: [Attribute; 9] = [
+    Attribute::Name,
+    Attribute::Spn,
+    Attribute::DisplayName,
+    Attribute::Class,
+    Attribute::MemberOf,
+    Attribute::Uuid,
+    Attribute::GidNumber,
+    Attribute::LoginShell,
+    Attribute::SshPublicKey,
 ];
-// TODO: feed this off attrs
-static SELF_WRITEABLE_ATTRS: [&str; 7] = [
-    "name",
-    "displayname",
-    "legalname",
-    "radius_secret",
-    ATTR_LDAP_SSH_PUBLICKEY,
-    "unix_password",
-    // Must be last - changing credential invalidates auth sessions!
-    "primary_credential",
+static SELF_WRITEABLE_ATTRS: [Attribute; 7] = [
+    Attribute::Name,
+    Attribute::DisplayName,
+    Attribute::LegalName,
+    Attribute::RadiusSecret,
+    Attribute::SshPublicKey,
+    Attribute::UnixPassword,
+    // needs to be last
+    Attribute::PrimaryCredential,
 ];
-static DEFAULT_HP_GROUP_NAMES: [&str; 24] = [
-    "idm_admins",
-    "system_admins",
-    "idm_people_manage_priv",
-    "idm_people_account_password_import_priv",
-    "idm_people_extend_priv",
-    "idm_people_write_priv",
-    "idm_people_read_priv",
-    "idm_group_manage_priv",
-    "idm_group_write_priv",
-    "idm_account_manage_priv",
-    "idm_account_write_priv",
-    "idm_account_read_priv",
-    "idm_radius_servers",
-    "idm_hp_account_manage_priv",
-    "idm_hp_account_write_priv",
-    "idm_hp_account_read_priv",
-    "idm_hp_account_unix_extend_priv",
-    "idm_schema_manage_priv",
-    "idm_hp_group_manage_priv",
-    "idm_hp_group_write_priv",
-    "idm_hp_group_unix_extend_priv",
-    "idm_acp_manage_priv",
-    "domain_admins",
-    "idm_high_privilege",
-];
+
+lazy_static! {
+    static ref DEFAULT_HP_GROUP_NAMES: [&'static str; 24] = [
+        (*BUILTIN_GROUP_IDM_ADMINS_V1).name,
+        "system_admins",
+        "idm_people_manage_priv",
+        "idm_people_account_password_import_priv",
+        "idm_people_extend_priv",
+        "idm_people_write_priv",
+        "idm_people_read_priv",
+        "idm_group_manage_priv",
+        "idm_group_write_priv",
+        "idm_account_manage_priv",
+        "idm_account_write_priv",
+        "idm_account_read_priv",
+        "idm_radius_servers",
+        "idm_hp_account_manage_priv",
+        "idm_hp_account_write_priv",
+        "idm_hp_account_read_priv",
+        "idm_hp_account_unix_extend_priv",
+        "idm_schema_manage_priv",
+        "idm_hp_group_manage_priv",
+        "idm_hp_group_write_priv",
+        "idm_hp_group_unix_extend_priv",
+        "idm_acp_manage_priv",
+        "domain_admins",
+        "idm_high_privilege",
+    ];
+}
+
 static DEFAULT_NOT_HP_GROUP_NAMES: [&str; 2] =
     ["idm_account_unix_extend_priv", "idm_group_unix_extend_priv"];
 
@@ -78,21 +78,33 @@ async fn test_default_entries_rbac_users(rsclient: KanidmClient) {
     test_read_attrs(&rsclient, "self_account", &USER_READABLE_ATTRS, true).await;
     test_read_attrs(&rsclient, "other_account", &USER_READABLE_ATTRS, true).await;
 
-    static GROUP_READABLE_ATTRS: [&str; 5] = ["class", "name", "spn", "uuid", "member"];
+    static GROUP_READABLE_ATTRS: [Attribute; 5] = [
+        Attribute::Class,
+        Attribute::Name,
+        Attribute::Spn,
+        Attribute::Uuid,
+        Attribute::Member,
+    ];
     test_read_attrs(&rsclient, "self_group", &GROUP_READABLE_ATTRS, true).await;
     test_read_attrs(&rsclient, "other_group", &GROUP_READABLE_ATTRS, true).await;
 
-    static USER_SENSITIVE_ATTRS: [&str; 2] = ["legalname", "mail"];
+    static USER_SENSITIVE_ATTRS: [Attribute; 2] = [Attribute::LegalName, Attribute::Mail];
     test_read_attrs(&rsclient, "other_account", &USER_SENSITIVE_ATTRS, false).await;
 
-    static SELF_READABLE_ATTRS: [&str; 1] = ["radius_secret"];
+    static SELF_READABLE_ATTRS: [Attribute; 1] = [Attribute::RadiusSecret];
     test_read_attrs(&rsclient, "self_account", &SELF_READABLE_ATTRS, true).await;
     test_read_attrs(&rsclient, "other_account", &SELF_READABLE_ATTRS, false).await;
 
     test_write_attrs(&rsclient, "self_account", &SELF_WRITEABLE_ATTRS, true).await;
     test_write_attrs(&rsclient, "other_account", &SELF_WRITEABLE_ATTRS, false).await;
 
-    static NON_SELF_WRITEABLE_ATTRS: [&str; 5] = ["spn", "class", "memberof", "gidnumber", "uuid"];
+    static NON_SELF_WRITEABLE_ATTRS: [Attribute; 5] = [
+        Attribute::Spn,
+        Attribute::Class,
+        Attribute::MemberOf,
+        Attribute::GidNumber,
+        Attribute::Uuid,
+    ];
     test_write_attrs(&rsclient, "self_account", &NON_SELF_WRITEABLE_ATTRS, false).await;
 }
 
@@ -115,13 +127,12 @@ async fn test_default_entries_rbac_account_managers(rsclient: KanidmClient) {
         true,
     )
     .await;
-    static ACCOUNT_MANAGER_ATTRS: [&str; 5] = [
-        "name",
-        "displayname",
-        ATTR_LDAP_SSH_PUBLICKEY,
-        "mail",
-        // Must be last, writing to this invalidates sessions.
-        "primary_credential",
+    static ACCOUNT_MANAGER_ATTRS: [Attribute; 5] = [
+        Attribute::Name,
+        Attribute::DisplayName,
+        Attribute::PrimaryCredential,
+        Attribute::SshPublicKey,
+        Attribute::Mail,
     ];
     test_write_attrs(
         &rsclient,
@@ -131,7 +142,7 @@ async fn test_default_entries_rbac_account_managers(rsclient: KanidmClient) {
     )
     .await;
 
-    static PRIVATE_DATA_ATTRS: [&str; 1] = ["legalname"];
+    static PRIVATE_DATA_ATTRS: [Attribute; 1] = [Attribute::LegalName];
     test_read_attrs(
         &rsclient,
         NOT_ADMIN_TEST_USERNAME,
@@ -172,12 +183,19 @@ async fn test_default_entries_rbac_group_managers(rsclient: KanidmClient) {
     let groups = rsclient.idm_group_list().await.unwrap();
     let group_names: HashSet<String> = groups
         .iter()
-        .map(|entry| entry.attrs.get("name").unwrap().first().unwrap())
+        .map(|entry| {
+            entry
+                .attrs
+                .get(Attribute::Name.as_ref())
+                .unwrap()
+                .first()
+                .unwrap()
+        })
         .cloned()
         .collect();
     assert!(default_group_names.is_subset(&group_names));
 
-    test_modify_group(&rsclient, &DEFAULT_HP_GROUP_NAMES, false).await;
+    test_modify_group(&rsclient, &(*DEFAULT_HP_GROUP_NAMES), false).await;
     test_modify_group(&rsclient, &DEFAULT_NOT_HP_GROUP_NAMES, true).await;
 
     rsclient.idm_group_create("test_group").await.unwrap();
@@ -185,9 +203,11 @@ async fn test_default_entries_rbac_group_managers(rsclient: KanidmClient) {
         .idm_group_add_members("test_group", &[NOT_ADMIN_TEST_USERNAME])
         .await
         .unwrap();
-    assert!(is_attr_writable(&rsclient, "test_group", ATTR_DESCRIPTION)
-        .await
-        .unwrap());
+    assert!(
+        is_attr_writable(&rsclient, "test_group", Attribute::Description)
+            .await
+            .unwrap()
+    );
 }
 
 // Admins
@@ -196,11 +216,11 @@ async fn test_default_entries_rbac_group_managers(rsclient: KanidmClient) {
 async fn test_default_entries_rbac_admins_access_control_entries(rsclient: KanidmClient) {
     login_put_admin_idm_admins(&rsclient).await;
 
-    static ACP_COMMON_ATTRS: [&str; 4] = [
-        ATTR_NAME,
-        ATTR_DESCRIPTION,
-        ATTR_ACP_RECEIVER_GROUP,
-        ATTR_ACP_TARGET_SCOPE,
+    static ACP_COMMON_ATTRS: [Attribute; 4] = [
+        Attribute::Name,
+        Attribute::Description,
+        Attribute::AcpReceiverGroup,
+        Attribute::AcpTargetScope,
     ];
     static ACP_ENTRIES: [&str; 28] = [
         "idm_admins_acp_recycle_search",
@@ -327,7 +347,7 @@ async fn test_default_entries_rbac_admins_schema_entries(rsclient: KanidmClient)
         Attribute::DisplayName,
         Attribute::LegalName,
         Attribute::Mail,
-        Attribute::LdapSshPublicKey,
+        Attribute::SshPublicKey,
         Attribute::PrimaryCredential,
         Attribute::RadiusSecret,
         Attribute::DomainName,
@@ -383,7 +403,11 @@ async fn test_default_entries_rbac_admins_group_entries(rsclient: KanidmClient) 
 async fn test_default_entries_rbac_admins_ha_accounts(rsclient: KanidmClient) {
     login_put_admin_idm_admins(&rsclient).await;
 
-    static MAIN_ATTRS: [&str; 3] = ["name", "displayname", "primary_credential"];
+    static MAIN_ATTRS: [Attribute; 3] = [
+        Attribute::Name,
+        Attribute::DisplayName,
+        Attribute::PrimaryCredential,
+    ];
     test_write_attrs(&rsclient, "idm_admin", &MAIN_ATTRS, true).await;
 }
 
@@ -420,9 +444,13 @@ async fn test_default_entries_rbac_people_managers(rsclient: KanidmClient) {
     create_user(&rsclient, "read_people_manager", "idm_people_read_priv").await;
     create_user_with_all_attrs(&rsclient, NOT_ADMIN_TEST_USERNAME, Some("test_group")).await;
 
-    static PEOPLE_MANAGER_ATTRS: [&str; 2] = ["legalname", "mail"];
+    static PEOPLE_MANAGER_ATTRS: [Attribute; 2] = [Attribute::LegalName, Attribute::Mail];
 
-    static TECHNICAL_ATTRS: [&str; 3] = ["radius_secret", "unix_password", "primary_credential"];
+    static TECHNICAL_ATTRS: [Attribute; 3] = [
+        Attribute::PrimaryCredential,
+        Attribute::RadiusSecret,
+        Attribute::UnixPassword,
+    ];
     test_read_attrs(
         &rsclient,
         NOT_ADMIN_TEST_USERNAME,
@@ -521,7 +549,12 @@ async fn test_default_entries_rbac_radius_servers(rsclient: KanidmClient) {
     create_user_with_all_attrs(&rsclient, NOT_ADMIN_TEST_USERNAME, Some("test_group")).await;
 
     login_account(&rsclient, "radius_server").await;
-    static RADIUS_NECESSARY_ATTRS: [&str; 4] = ["name", "spn", "uuid", "radius_secret"];
+    static RADIUS_NECESSARY_ATTRS: [Attribute; 4] = [
+        Attribute::Name,
+        Attribute::Spn,
+        Attribute::Uuid,
+        Attribute::RadiusSecret,
+    ];
 
     test_read_attrs(
         &rsclient,
@@ -565,15 +598,15 @@ async fn test_self_write_mail_priv_people(rsclient: KanidmClient) {
 
     login_account(&rsclient, NOT_ADMIN_TEST_USERNAME).await;
     // can write to own mail
-    test_write_attrs(&rsclient, NOT_ADMIN_TEST_USERNAME, &["mail"], true).await;
+    test_write_attrs(&rsclient, NOT_ADMIN_TEST_USERNAME, &[Attribute::Mail], true).await;
     // not someone elses
-    test_write_attrs(&rsclient, "other", &["mail"], false).await;
+    test_write_attrs(&rsclient, "other", &[Attribute::Mail], false).await;
 
     // but they can write to theirs
     login_account_via_admin(&rsclient, "other").await;
-    test_write_attrs(&rsclient, "other", &["mail"], true).await;
+    test_write_attrs(&rsclient, "other", &[Attribute::Mail], true).await;
     login_account_via_admin(&rsclient, "nonperson").await;
-    test_write_attrs(&rsclient, "nonperson", &["mail"], false).await;
+    test_write_attrs(&rsclient, "nonperson", &[Attribute::Mail], false).await;
 }
 
 #[kanidmd_testkit::test]

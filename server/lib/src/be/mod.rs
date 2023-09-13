@@ -1578,10 +1578,10 @@ impl<'a> BackendWriteTransaction<'a> {
         trace!("Creating index -> uuid2rdn");
         self.idlayer.create_uuid2rdn()?;
 
-        self.idxmeta_wr
-            .idxkeys
-            .keys()
-            .try_for_each(|ikey| self.idlayer.create_idx(&ikey.attr, ikey.itype))
+        self.idxmeta_wr.idxkeys.keys().try_for_each(|ikey| {
+            let attr: Attribute = (&ikey.attr).try_into()?;
+            self.idlayer.create_idx(attr, ikey.itype)
+        })
     }
 
     pub fn upgrade_reindex(&mut self, v: i64) -> Result<(), OperationError> {

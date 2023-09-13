@@ -572,7 +572,7 @@ pub(crate) fn ldap_all_vattrs() -> Vec<String> {
         "mail;alternative".to_string(),
         "mail;primary".to_string(),
         "objectclass".to_string(),
-        ATTR_LDAP_SSH_PUBLICKEY.to_string(),
+        ATTR_LDAP_SSHPUBLICKEY.to_string(),
         ATTR_UIDNUMBER.to_string(),
     ]
 }
@@ -592,12 +592,12 @@ pub(crate) fn ldap_vattr_map(input: &str) -> Option<&str> {
         "emailalternative" => Some(ATTR_MAIL),
         "emailprimary" => Some(ATTR_MAIL),
         "entryuuid" => Some(ATTR_UUID),
-        "keys" => Some(ATTR_LDAP_SSH_PUBLICKEY),
+        "keys" => Some(ATTR_SSH_PUBLICKEY),
         "mail;alternative" => Some(ATTR_MAIL),
         "mail;primary" => Some(ATTR_MAIL),
         "objectclass" => Some(ATTR_CLASS),
-        ATTR_LDAP_SSH_PUBLICKEY => Some(ATTR_LDAP_SSH_PUBLICKEY), // no-underscore -> underscore
-        "uidnumber" => Some(ATTR_GIDNUMBER),                      // yes this is intentional
+        ATTR_LDAP_SSHPUBLICKEY => Some(ATTR_SSH_PUBLICKEY), // no-underscore -> underscore
+        "uidnumber" => Some(ATTR_GIDNUMBER),                // yes this is intentional
         _ => None,
     }
 }

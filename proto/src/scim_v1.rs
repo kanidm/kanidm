@@ -8,8 +8,8 @@ pub use scim_proto::user::MultiValueAttr;
 use scim_proto::*;
 
 use crate::constants::{
-    ATTR_DESCRIPTION, ATTR_DISPLAYNAME, ATTR_GIDNUMBER, ATTR_LDAP_SSH_PUBLICKEY, ATTR_LOGINSHELL,
-    ATTR_MAIL, ATTR_MEMBER, ATTR_NAME,
+    ATTR_DESCRIPTION, ATTR_DISPLAYNAME, ATTR_GIDNUMBER, ATTR_LOGINSHELL, ATTR_MAIL, ATTR_MEMBER,
+    ATTR_NAME, ATTR_SSH_PUBLICKEY,
 };
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
@@ -183,7 +183,7 @@ impl Into<ScimEntry> for ScimSyncPerson {
         set_multi_complex!(attrs, "totp_import", totp_import);
         set_option_string!(attrs, ATTR_LOGINSHELL, login_shell);
         set_multi_complex!(attrs, ATTR_MAIL, mail);
-        set_multi_complex!(attrs, ATTR_LDAP_SSH_PUBLICKEY, ssh_publickey);
+        set_multi_complex!(attrs, ATTR_SSH_PUBLICKEY, ssh_publickey); // with the underscore
 
         ScimEntry {
             schemas,

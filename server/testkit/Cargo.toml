@@ -30,15 +30,14 @@ hyper-tls = { workspace = true }
 # used for webdriver testing
 fantoccini = { version = "0.19.3", optional = true }
 serde = { workspace = true }
-
-
 url = { workspace = true, features = ["serde"] }
 reqwest = { workspace = true, default-features = false, features = ["cookies"] }
 sketching = { workspace = true }
 testkit-macros = { workspace = true }
 tracing = { workspace = true, features = ["attributes"] }
 tokio = { workspace = true, features = ["net", "sync", "io-util", "macros"] }
-openssl.workspace = true
+openssl = { workspace = true }
+lazy_static = { workspace = true }
 
 
 [build-dependencies]

@@ -16,7 +16,13 @@ lazy_static! {
     // it contains all the partialvalues used to match against an Entry's class,
     // we just need a partialvalue to match in order to target the entry
     static ref CLASSES_TO_UPDATE: [PartialValue; 1] = [PartialValue::new_iutf8(EntryClass::Account.into())];
-    static ref HISTORY_ATTRIBUTES: [&'static str;1] = [Attribute::Name.as_ref()];
+}
+
+const HISTORY_ATTRIBUTES: [Attribute; 1] = [Attribute::Name];
+
+#[test]
+fn test_history_attribute() {
+    assert_eq!(NameHistory::get_ava_name(Attribute::Name), "name_history");
 }
 
 impl NameHistory {
@@ -26,7 +32,7 @@ impl NameHistory {
             .any(|pv| entry.attribute_equality(Attribute::Class, pv))
     }
 
-    fn get_ava_name(history_attr: &str) -> String {
+    fn get_ava_name(history_attr: Attribute) -> String {
         format!("{}_history", history_attr)
     }
 
@@ -39,9 +45,8 @@ impl NameHistory {
             // here we check if the current entry has at least one of the classes we intend to target
             if Self::is_entry_to_update(post) {
                 for history_attr in HISTORY_ATTRIBUTES.into_iter() {
-                    let attr: Attribute = history_attr.try_into()?;
-                    let pre_name_option = pre.get_ava_single(attr);
-                    let post_name_option = post.get_ava_single(attr);
+                    let pre_name_option = pre.get_ava_single(history_attr);
+                    let post_name_option = post.get_ava_single(history_attr);
                     if let (Some(pre_name), Some(post_name)) = (pre_name_option, post_name_option) {
                         if pre_name != post_name {
                             let ava_name = Self::get_ava_name(history_attr);
@@ -70,9 +75,8 @@ impl NameHistory {
         for cand in cands.iter_mut() {
             if Self::is_entry_to_update(cand) {
                 for history_attr in HISTORY_ATTRIBUTES.into_iter() {
-                    let attribute: Attribute = Attribute::try_from(history_attr)?;
-                    if let Some(name) = cand.get_ava_single(attribute) {
-                        let ava_name = Self::get_ava_name(attribute.as_ref());
+                    if let Some(name) = cand.get_ava_single(history_attr) {
+                        let ava_name = Self::get_ava_name(history_attr);
                         match name {
                             Value::Iname(n) => cand.add_ava_if_not_exist(
                                 ava_name.try_into()?,

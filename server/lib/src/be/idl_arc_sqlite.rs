@@ -1095,7 +1095,7 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
         Ok(())
     }
 
-    pub fn create_idx(&self, attr: &str, itype: IndexType) -> Result<(), OperationError> {
+    pub fn create_idx(&self, attr: Attribute, itype: IndexType) -> Result<(), OperationError> {
         // We don't need to affect this, so pass it down.
         self.db.create_idx(attr, itype)
     }
