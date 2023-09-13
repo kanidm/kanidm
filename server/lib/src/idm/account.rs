@@ -456,20 +456,20 @@ impl Account {
 
         if let Some(ncred) = opt_ncred {
             let vcred = Value::new_credential("primary", ncred);
-            ml.push(Modify::Purged("primary_credential".into()));
-            ml.push(Modify::Present("primary_credential".into(), vcred));
+            ml.push(Modify::Purged(Attribute::PrimaryCredential.into()));
+            ml.push(Modify::Present(Attribute::PrimaryCredential.into(), vcred));
         }
 
         // Is it a passkey?
         self.passkeys.iter_mut().for_each(|(u, (t, k))| {
             if let Some(true) = k.update_credential(auth_result) {
                 ml.push(Modify::Removed(
-                    "passkeys".into(),
+                    Attribute::PassKeys.into(),
                     PartialValue::Passkey(*u),
                 ));
 
                 ml.push(Modify::Present(
-                    "passkeys".into(),
+                    Attribute::PassKeys.into(),
                     Value::Passkey(*u, t.clone(), k.clone()),
                 ));
             }

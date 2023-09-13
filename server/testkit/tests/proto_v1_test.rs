@@ -52,8 +52,8 @@ async fn test_server_modify(rsclient: KanidmClient) {
     // Build a self mod.
     let f = Filter::SelfUuid;
     let m = ModifyList::new_list(vec![
-        Modify::Purged("displayname".to_string()),
-        Modify::Present("displayname".to_string(), "test".to_string()),
+        Modify::Purged(Attribute::DisplayName.to_string()),
+        Modify::Present(Attribute::DisplayName.to_string(), "test".to_string()),
     ]);
 
     // Not logged in - should fail!

@@ -227,7 +227,7 @@ lazy_static! {
         ProtoFilter::And(
             vec![
                 match_class_filter!(EntryClass::Person),
-                ProtoFilter::Eq("class".to_string(), "account".to_string()),
+                ProtoFilter::Eq(EntryClass::Class.to_string(), EntryClass::Account.to_string()),
                 match_class_filter!(EntryClass::Account),
                 ProtoFilter::SelfUuid,
             ]
@@ -268,7 +268,7 @@ lazy_static! {
             EntryClass::AccessControlModify
             ],
         receiver_group: UUID_IDM_ALL_ACCOUNTS,
-        target_scope: ProtoFilter::And(vec![ProtoFilter::Eq("class".to_string(), "account".to_string()), ProtoFilter::SelfUuid]),
+        target_scope: ProtoFilter::And(vec![ProtoFilter::Eq(Attribute::Class.to_string(), Attribute::Account.to_string()), ProtoFilter::SelfUuid]),
         modify_removed_attrs: vec![
             Attribute::UserAuthTokenSession
             ],
@@ -1763,10 +1763,10 @@ lazy_static! {
         description: "Builtin IDM Control for managing IDM synchronisation accounts / connections",
         receiver_group: UUID_IDM_HP_SYNC_ACCOUNT_MANAGE_PRIV,
         target_scope: ProtoFilter::And(vec![
-            ProtoFilter::Eq("class".to_string(), "sync_account".to_string()),
+            ProtoFilter::Eq(Attribute::Class.to_string(), "sync_account".to_string()),
             ProtoFilter::AndNot(Box::new(ProtoFilter::Or(vec![
-                ProtoFilter::Eq("class".to_string(), "tombstone".to_string()),
-                ProtoFilter::Eq("class".to_string(), "recycled".to_string()),
+                ProtoFilter::Eq(Attribute::Class.to_string(), "tombstone".to_string()),
+                ProtoFilter::Eq(Attribute::Class.to_string(), "recycled".to_string()),
             ]))),
         ]),
         search_attrs: vec![

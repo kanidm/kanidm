@@ -135,7 +135,7 @@ impl LdapServer {
         // eventid: &Uuid,
     ) -> Result<Vec<LdapMsg>, OperationError> {
         admin_info!("Attempt LDAP Search for {}", uat.spn);
-        // If the request is "", Base, Present("objectclass"), [], then we want the rootdse.
+        // If the request is "", Base, Present(Attribute::ObjectClass.into()), [], then we want the rootdse.
         if sr.base.is_empty() && sr.scope == LdapSearchScope::Base {
             admin_info!("LDAP Search success - RootDSE");
             Ok(vec![
@@ -853,7 +853,7 @@ mod tests {
             msgid: 1,
             base: "dc=example,dc=com".to_string(),
             scope: LdapSearchScope::Subtree,
-            filter: LdapFilter::Equality("name".to_string(), "testperson1".to_string()),
+            filter: LdapFilter::Equality(Attribute::Name.to_string(), "testperson1".to_string()),
             attrs: vec!["*".to_string()],
         };
         let r1 = ldaps.do_search(idms, &sr, &anon_t).await.unwrap();
@@ -885,7 +885,7 @@ mod tests {
             msgid: 1,
             base: "dc=example,dc=com".to_string(),
             scope: LdapSearchScope::Subtree,
-            filter: LdapFilter::Equality("name".to_string(), "testperson1".to_string()),
+            filter: LdapFilter::Equality(Attribute::Name.to_string(), "testperson1".to_string()),
             attrs: vec!["+".to_string()],
         };
         let r1 = ldaps.do_search(idms, &sr, &anon_t).await.unwrap();
@@ -924,9 +924,9 @@ mod tests {
             msgid: 1,
             base: "dc=example,dc=com".to_string(),
             scope: LdapSearchScope::Subtree,
-            filter: LdapFilter::Equality("name".to_string(), "testperson1".to_string()),
+            filter: LdapFilter::Equality(Attribute::Name.to_string(), "testperson1".to_string()),
             attrs: vec![
-                "name".to_string(),
+                LDAP_ATTR_NAME.to_string(),
                 "entrydn".to_string(),
                 "keys".to_string(),
                 "uidnumber".to_string(),
@@ -967,9 +967,9 @@ mod tests {
             msgid: 1,
             base: "dc=example,dc=com".to_string(),
             scope: LdapSearchScope::Subtree,
-            filter: LdapFilter::Equality("name".to_string(), "testperson1".to_string()),
+            filter: LdapFilter::Equality(Attribute::Name.to_string(), "testperson1".to_string()),
             attrs: vec![
-                "name".to_string(),
+                LDAP_ATTR_NAME.to_string(),
                 "mail".to_string(),
                 "mail;primary".to_string(),
                 "mail;alternative".to_string(),
@@ -1156,11 +1156,11 @@ mod tests {
             msgid: 1,
             base: "dc=example,dc=com".to_string(),
             scope: LdapSearchScope::Subtree,
-            filter: LdapFilter::Equality("name".to_string(), "testperson1".to_string()),
+            filter: LdapFilter::Equality(Attribute::Name.to_string(), "testperson1".to_string()),
             attrs: vec![
                 "*".to_string(),
                 // Already being returned
-                "name".to_string(),
+                LDAP_ATTR_NAME.to_string(),
                 // This is a virtual attribute
                 "entryuuid".to_string(),
             ],
@@ -1195,7 +1195,7 @@ mod tests {
             msgid: 1,
             base: "".to_string(),
             scope: LdapSearchScope::Base,
-            filter: LdapFilter::Present("objectclass".to_string()),
+            filter: LdapFilter::Present(Attribute::ObjectClass.to_string()),
             attrs: vec!["*".to_string()],
         };
         let r1 = ldaps.do_search(idms, &sr, &anon_t).await.unwrap();
@@ -1245,7 +1245,7 @@ mod tests {
             msgid: 1,
             base: "".to_string(),
             scope: LdapSearchScope::Base,
-            filter: LdapFilter::Present("objectclass".to_string()),
+            filter: LdapFilter::Present(Attribute::ObjectClass.to_string()),
             attrs: vec!["*".to_string()],
         };
         let r1 = ldaps.do_search(idms, &sr, &anon_t).await.unwrap();

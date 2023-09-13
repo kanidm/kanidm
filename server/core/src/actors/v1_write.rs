@@ -1067,16 +1067,18 @@ impl QueryServerWriteV1 {
         .chain(iter::once(
             gidnumber
                 .as_ref()
-                .map(|_| Modify::Purged("gidnumber".into())),
+                .map(|_| Modify::Purged(Attribute::GidNumber.into())),
         ))
         .chain(iter::once(gidnumber.map(|n| {
-            Modify::Present("gidnumber".into(), Value::new_uint32(n))
+            Modify::Present(Attribute::GidNumber.into(), Value::new_uint32(n))
         })))
         .chain(iter::once(
-            shell.as_ref().map(|_| Modify::Purged("loginshell".into())),
+            shell
+                .as_ref()
+                .map(|_| Modify::Purged(Attribute::LoginShell.into())),
         ))
         .chain(iter::once(shell.map(|s| {
-            Modify::Present("loginshell".into(), Value::new_iutf8(s.as_str()))
+            Modify::Present(Attribute::LoginShell.into(), Value::new_iutf8(s.as_str()))
         })))
         .flatten()
         .collect();
@@ -1107,8 +1109,11 @@ impl QueryServerWriteV1 {
 
         let gidnumber_mods = if let Some(gid) = gx.gidnumber {
             [
-                Some(Modify::Purged("gidnumber".into())),
-                Some(Modify::Present("gidnumber".into(), Value::new_uint32(gid))),
+                Some(Modify::Purged(Attribute::GidNumber.into())),
+                Some(Modify::Present(
+                    Attribute::GidNumber.into(),
+                    Value::new_uint32(gid),
+                )),
             ]
         } else {
             [None, None]

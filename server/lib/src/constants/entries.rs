@@ -34,7 +34,7 @@ fn test_valueattribute_round_trip() {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Sequence, Hash)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Sequence, Hash)]
 pub enum Attribute {
     Account,
     AccountExpire,

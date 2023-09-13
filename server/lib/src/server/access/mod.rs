@@ -378,10 +378,10 @@ pub trait AccessControlsTransaction<'a> {
         let disallow = me
             .modlist
             .iter()
-            .any(|m| matches!(m, Modify::Purged(a) if a == "class"));
+            .any(|m| matches!(m, Modify::Purged(a) if a == Attribute::Class.as_ref()));
 
         if disallow {
-            security_access!("Disallowing purge class in modification");
+            security_access!("Disallowing purge {} in modification", Attribute::Class);
             return Ok(false);
         }
 
@@ -417,7 +417,7 @@ pub trait AccessControlsTransaction<'a> {
             .iter()
             .filter_map(|m| match m {
                 Modify::Present(a, v) => {
-                    if a.as_str() == "class" {
+                    if a == Attribute::Class.as_ref() {
                         // Here we have an option<&str> which could mean there is a risk of
                         // a malicious entity attempting to trick us by masking class mods
                         // in non-iutf8 types. However, the server first won't respect their
@@ -430,7 +430,7 @@ pub trait AccessControlsTransaction<'a> {
                     }
                 }
                 Modify::Removed(a, v) => {
-                    if a.as_str() == "class" {
+                    if a == Attribute::Class.as_ref() {
                         v.to_str()
                     } else {
                         None
@@ -519,10 +519,10 @@ pub trait AccessControlsTransaction<'a> {
 
             let disallow = modlist
                 .iter()
-                .any(|m| matches!(m, Modify::Purged(a) if a == "class"));
+                .any(|m| matches!(m, Modify::Purged(a) if a == Attribute::Class.as_ref()));
 
             if disallow {
-                security_access!("Disallowing purge class in modification");
+                security_access!("Disallowing purge in modification");
                 return false;
             }
 
@@ -551,7 +551,7 @@ pub trait AccessControlsTransaction<'a> {
                 .iter()
                 .filter_map(|m| match m {
                     Modify::Present(a, v) => {
-                        if a.as_str() == "class" {
+                        if a == Attribute::Class.as_ref() {
                             // Here we have an option<&str> which could mean there is a risk of
                             // a malicious entity attempting to trick us by masking class mods
                             // in non-iutf8 types. However, the server first won't respect their
@@ -564,7 +564,7 @@ pub trait AccessControlsTransaction<'a> {
                         }
                     }
                     Modify::Removed(a, v) => {
-                        if a.as_str() == "class" {
+                        if a == Attribute::Class.as_ref() {
                             v.to_str()
                         } else {
                             None

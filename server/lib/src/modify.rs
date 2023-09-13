@@ -36,20 +36,20 @@ pub enum Modify {
     Assert(AttrString, PartialValue),
 }
 
-pub fn m_pres(a: Attribute, v: &Value) -> Modify {
-    Modify::Present(a.into(), v.clone())
+pub fn m_pres(attr: Attribute, v: &Value) -> Modify {
+    Modify::Present(attr.into(), v.clone())
 }
 
-pub fn m_remove(a: Attribute, v: &PartialValue) -> Modify {
-    Modify::Removed(a.into(), v.clone())
+pub fn m_remove(attr: Attribute, v: &PartialValue) -> Modify {
+    Modify::Removed(attr.into(), v.clone())
 }
 
-pub fn m_purge(a: Attribute) -> Modify {
-    Modify::Purged(AttrString::from(a))
+pub fn m_purge(attr: Attribute) -> Modify {
+    Modify::Purged(attr.into())
 }
 
-pub fn m_assert(a: &str, v: &PartialValue) -> Modify {
-    Modify::Assert(a.into(), v.clone())
+pub fn m_assert(attr: Attribute, v: &PartialValue) -> Modify {
+    Modify::Assert(attr.into(), v.clone())
 }
 
 impl Modify {

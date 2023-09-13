@@ -632,7 +632,7 @@ mod tests {
             server_txn.internal_modify_uuid(
                 t_uuid,
                 &ModifyList::new_list(vec![
-                    m_assert(Attribute::Uuid.as_ref(), &PartialValue::Uuid(r_uuid)),
+                    m_assert(Attribute::Uuid, &PartialValue::Uuid(r_uuid)),
                     m_pres(Attribute::Description, &Value::Utf8("test".into()))
                 ])
             ),
@@ -644,7 +644,7 @@ mod tests {
             .internal_modify_uuid(
                 t_uuid,
                 &ModifyList::new_list(vec![
-                    m_assert(Attribute::Uuid.as_ref(), &PartialValue::Uuid(t_uuid)),
+                    m_assert(Attribute::Uuid, &PartialValue::Uuid(t_uuid)),
                     m_pres(Attribute::Description, &Value::Utf8("test".into()))
                 ])
             )
@@ -708,7 +708,7 @@ mod tests {
             )),
             ModifyList::new_list(vec![
                 Modify::Present(Attribute::Class.into(), EntryClass::SystemInfo.to_value()),
-                // Modify::Present("domain".to_string(), Value::new_iutf8("domain.name")),
+                // Modify::Present(Attribute::Domain.into(), Value::new_iutf8("domain.name")),
                 Modify::Present(Attribute::Version.into(), Value::new_uint32(1)),
             ]),
         );

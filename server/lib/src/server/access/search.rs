@@ -170,7 +170,7 @@ fn search_sync_account_filter_entry<'a>(
                 .get_ava_as_iutf8(Attribute::Class)
                 .map(|set| {
                     trace!(?set);
-                    set.contains("sync_object") && set.contains("account")
+                    set.contains(&EntryClass::SyncObject.to_string()) && set.contains("account")
                 })
                 .unwrap_or(false);
 
@@ -179,7 +179,7 @@ fn search_sync_account_filter_entry<'a>(
                     .get_ava_as_iutf8(Attribute::Class)
                     .map(|set| {
                         trace!(?set);
-                        set.contains("sync_account")
+                        set.contains(&EntryClass::SyncAccount.to_string())
                     })
                     .unwrap_or(false);
 

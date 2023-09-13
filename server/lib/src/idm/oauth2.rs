@@ -1147,7 +1147,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             // NOTE: Oauth2_session has special handling that allows update in place without
             // the remove step needing to be carried out.
             // Modify::Removed("oauth2_session".into(), PartialValue::Refer(session_id)),
-            Modify::Present("oauth2_session".into(), session),
+            Modify::Present(Attribute::OAuth2Session.into(), session),
         ]);
 
         self.qs_write
@@ -2164,9 +2164,9 @@ mod tests {
 
         // Mod the user
         let modlist = ModifyList::new_list(vec![
-            Modify::Present("user_auth_token_session".into(), session),
+            Modify::Present(Attribute::UserAuthTokenSession.into(), session),
             Modify::Present(
-                "primary_credential".into(),
+                Attribute::PrimaryCredential.into(),
                 Value::Cred("primary".to_string(), cred),
             ),
         ]);
@@ -2286,9 +2286,9 @@ mod tests {
 
         // Mod the user
         let modlist = ModifyList::new_list(vec![
-            Modify::Present("user_auth_token_session".into(), session),
+            Modify::Present(Attribute::UserAuthTokenSession.into(), session),
             Modify::Present(
-                "primary_credential".into(),
+                Attribute::PrimaryCredential.into(),
                 Value::Cred("primary".to_string(), cred),
             ),
         ]);

@@ -2697,7 +2697,9 @@ mod tests {
 
         assert_eq!(
             e_extensible_phantom.validate(&schema),
-            Err(SchemaError::PhantomAttribute("password_import".to_string()))
+            Err(SchemaError::PhantomAttribute(
+                Attribute::PasswordImport.to_string()
+            ))
         );
 
         let e_extensible: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(

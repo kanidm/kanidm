@@ -372,19 +372,19 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         let eperm_search_primary_cred = match &eperm.search {
             Access::Denied => false,
             Access::Grant => true,
-            Access::Allow(attrs) => attrs.contains("primary_credential"),
+            Access::Allow(attrs) => attrs.contains(Attribute::PrimaryCredential.as_ref()),
         };
 
         let eperm_mod_primary_cred = match &eperm.modify_pres {
             Access::Denied => false,
             Access::Grant => true,
-            Access::Allow(attrs) => attrs.contains("primary_credential"),
+            Access::Allow(attrs) => attrs.contains(Attribute::PrimaryCredential.as_ref()),
         };
 
         let eperm_rem_primary_cred = match &eperm.modify_rem {
             Access::Denied => false,
             Access::Grant => true,
-            Access::Allow(attrs) => attrs.contains("primary_credential"),
+            Access::Allow(attrs) => attrs.contains(Attribute::PrimaryCredential.as_ref()),
         };
 
         let primary_can_edit =
@@ -393,19 +393,19 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         let eperm_search_passkeys = match &eperm.search {
             Access::Denied => false,
             Access::Grant => true,
-            Access::Allow(attrs) => attrs.contains("passkeys"),
+            Access::Allow(attrs) => attrs.contains(Attribute::PassKeys.as_ref()),
         };
 
         let eperm_mod_passkeys = match &eperm.modify_pres {
             Access::Denied => false,
             Access::Grant => true,
-            Access::Allow(attrs) => attrs.contains("passkeys"),
+            Access::Allow(attrs) => attrs.contains(Attribute::PassKeys.as_ref()),
         };
 
         let eperm_rem_passkeys = match &eperm.modify_rem {
             Access::Denied => false,
             Access::Grant => true,
-            Access::Allow(attrs) => attrs.contains("passkeys"),
+            Access::Allow(attrs) => attrs.contains(Attribute::PassKeys.as_ref()),
         };
 
         let passkeys_can_edit = eperm_search_passkeys && eperm_mod_passkeys && eperm_rem_passkeys;
@@ -431,7 +431,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             match &eperm.search {
                 Access::Denied => false,
                 Access::Grant => true,
-                Access::Allow(attrs) => attrs.contains("sync_credential_portal"),
+                Access::Allow(attrs) => attrs.contains(Attribute::SyncCredentialPortal.as_ref()),
             }
         } else {
             false

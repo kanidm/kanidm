@@ -311,13 +311,19 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         if existing_entries {
             // Now modify these to remove their sync related attributes.
             let schema = self.qs_write.get_schema();
-            let sync_class = schema.get_classes().get("sync_object").ok_or_else(|| {
-                error!("Failed to access sync_object class, schema corrupt");
-                OperationError::InvalidState
-            })?;
+            let sync_class = schema
+                .get_classes()
+                .get(EntryClass::SyncObject.into())
+                .ok_or_else(|| {
+                    error!(
+                        "Failed to access {} class, schema corrupt",
+                        EntryClass::SyncObject
+                    );
+                    OperationError::InvalidState
+                })?;
 
             let modlist = std::iter::once(Modify::Removed(
-                "class".into(),
+                Attribute::Class.into(),
                 EntryClass::SyncObject.into(),
             ))
             .chain(
@@ -434,13 +440,19 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
             // Now modify these to remove their sync related attributes.
             let schema = self.qs_write.get_schema();
-            let sync_class = schema.get_classes().get("sync_object").ok_or_else(|| {
-                error!("Failed to access sync_object class, schema corrupt");
-                OperationError::InvalidState
-            })?;
+            let sync_class = schema
+                .get_classes()
+                .get(EntryClass::SyncObject.into())
+                .ok_or_else(|| {
+                    error!(
+                        "Failed to access {} class, schema corrupt",
+                        EntryClass::SyncObject
+                    );
+                    OperationError::InvalidState
+                })?;
 
             let modlist = std::iter::once(Modify::Removed(
-                "class".into(),
+                Attribute::Class.into(),
                 EntryClass::SyncObject.into(),
             ))
             .chain(
@@ -2034,7 +2046,7 @@ mod tests {
                         ScimAttr::SingleSimple(ScimSimpleAttr::String("testgroup".to_string()))
                     ),
                     (
-                        "class".to_string(),
+                        Attribute::Class.to_string(),
                         ScimAttr::SingleSimple(ScimSimpleAttr::String("posixgroup".to_string()))
                     )
                 ),

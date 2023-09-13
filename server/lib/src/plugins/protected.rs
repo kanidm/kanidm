@@ -2,7 +2,6 @@
 // may only have certain modifications performed.
 
 use hashbrown::HashSet;
-use kanidm_proto::constants::{ATTR_MAY, ATTR_MUST};
 use std::sync::Arc;
 
 use crate::event::{CreateEvent, DeleteEvent, ModifyEvent};
@@ -17,23 +16,23 @@ pub struct Protected {}
 // schema will have checked this, and we don't allow class changes!
 
 lazy_static! {
-    static ref ALLOWED_ATTRS: HashSet<&'static str> = {
+    static ref ALLOWED_ATTRS: HashSet<Attribute> = {
         let mut m = HashSet::with_capacity(16);
         // Allow modification of some schema class types to allow local extension
         // of schema types.
         //
-        m.insert(ATTR_MUST);
-        m.insert(ATTR_MAY);
+        m.insert(Attribute::Must);
+        m.insert(Attribute::May);
         // Allow modification of some domain info types for local configuration.
-        m.insert("domain_ssid");
-        m.insert("domain_ldap_basedn");
-        m.insert("fernet_private_key_str");
-        m.insert("es256_private_key_der");
-        m.insert(Attribute::IdVerificationEcKey.as_ref());
-        m.insert("badlist_password");
-        m.insert("domain_display_name");
-        m.insert("authsession_expiry");
-        m.insert("privilege_expiry");
+        m.insert(Attribute::DomainSsid);
+        m.insert(Attribute::DomainLdapBasedn);
+        m.insert(Attribute::FernetPrivateKeyStr);
+        m.insert(Attribute::Es256PrivateKeyDer);
+        m.insert(Attribute::IdVerificationEcKey);
+        m.insert(Attribute::BadlistPassword);
+        m.insert(Attribute::DomainDisplayName);
+        m.insert(Attribute::AuthSessionExpiry);
+        m.insert(Attribute::PrivilegeExpiry);
         m
     };
 }
@@ -85,7 +84,7 @@ impl Plugin for Protected {
         // Prevent adding class: system, domain_info, tombstone, or recycled.
         me.modlist.iter().try_fold((), |(), m| match m {
             Modify::Present(a, v) => {
-                if a == "class"
+                if a == Attribute::Class.as_ref()
                     && (v == &EntryClass::System.to_value()
                         || v == &EntryClass::DomainInfo.to_value()
                         || v == &EntryClass::SystemInfo.into()
@@ -130,16 +129,17 @@ impl Plugin for Protected {
         }
 
         // Something altered is system, check if it's allowed.
-        me.modlist.iter().try_fold((), |(), m| {
+        me.modlist.into_iter().try_fold((), |(), m| {
             // Already hit an error, move on.
             let a = match m {
                 Modify::Present(a, _) | Modify::Removed(a, _) | Modify::Purged(a) => Some(a),
                 Modify::Assert(_, _) => None,
             };
             if let Some(a) = a {
-                match ALLOWED_ATTRS.get(a.as_str()) {
-                    Some(_) => Ok(()),
-                    None => Err(OperationError::SystemProtectedObject),
+                let attr: Attribute = a.try_into()?;
+                match ALLOWED_ATTRS.contains(&attr) {
+                    true => Ok(()),
+                    false => Err(OperationError::SystemProtectedObject),
                 }
             } else {
                 // Was not a mod needing checking
@@ -164,10 +164,10 @@ impl Plugin for Protected {
             .flat_map(|ml| ml.iter())
             .try_fold((), |(), m| match m {
                 Modify::Present(a, v) => {
-                    if a == "class"
+                    if a == Attribute::Class.as_ref()
                         && (v == &EntryClass::System.to_value()
                             || v == &EntryClass::DomainInfo.to_value()
-                            || v == &(EntryClass::SystemInfo.to_value())
+                            || v == &EntryClass::SystemInfo.to_value()
                             || v == &EntryClass::SystemConfig.to_value()
                             || v == &EntryClass::DynGroup.to_value()
                             || v == &EntryClass::SyncObject.to_value()
@@ -202,7 +202,7 @@ impl Plugin for Protected {
             c.attribute_equality(Attribute::Class, &EntryClass::System.into())
         });
 
-        trace!("class: system -> {}", system_pres);
+        trace!("{}: system -> {}", Attribute::Class, system_pres);
         // No system types being altered, return.
         if !system_pres {
             return Ok(());
@@ -219,9 +219,10 @@ impl Plugin for Protected {
                     Modify::Assert(_, _) => None,
                 };
                 if let Some(a) = a {
-                    match ALLOWED_ATTRS.get(a.as_str()) {
-                        Some(_) => Ok(()),
-                        None => Err(OperationError::SystemProtectedObject),
+                    let attr: Attribute = a.try_into()?;
+                    match ALLOWED_ATTRS.contains(&attr) {
+                        true => Ok(()),
+                        false => Err(OperationError::SystemProtectedObject),
                     }
                 } else {
                     // Was not a mod needing checking
