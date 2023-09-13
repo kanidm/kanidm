@@ -388,7 +388,14 @@ impl ValueSetT for ValueSetSession {
         }
     }
 
-    fn purge(&mut self, _cid: &Cid) -> bool {
+    fn purge(&mut self, cid: &Cid) -> bool {
+        for (_uuid, session) in self.map.iter_mut() {
+            // Send them all to the shadow realm
+            if !matches!(session.state, SessionState::RevokedAt(_)) {
+                session.state = SessionState::RevokedAt(cid.clone())
+            }
+        }
+        // Can't be purged since we need the cid's of revoked to persist.
         false
     }
 
@@ -886,7 +893,14 @@ impl ValueSetT for ValueSetOauth2Session {
         }
     }
 
-    fn purge(&mut self, _cid: &Cid) -> bool {
+    fn purge(&mut self, cid: &Cid) -> bool {
+        for (_uuid, session) in self.map.iter_mut() {
+            // Send them all to the shadow realm
+            if !matches!(session.state, SessionState::RevokedAt(_)) {
+                session.state = SessionState::RevokedAt(cid.clone())
+            }
+        }
+        // Can't be purged since we need the cid's of revoked to persist.
         false
     }
 

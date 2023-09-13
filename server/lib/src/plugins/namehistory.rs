@@ -128,6 +128,7 @@ mod tests {
     use crate::prelude::{uuid, EntryClass};
     use crate::repl::cid::Cid;
     use crate::value::Value;
+    use crate::valueset::AUDIT_LOG_STRING_CAPACITY;
 
     #[test]
     fn name_purge_and_set() {
@@ -216,10 +217,10 @@ mod tests {
     #[test]
     fn name_purge_and_set_with_filled_history() {
         let mut cids: Vec<Cid> = Vec::new();
-        for i in 1..8 {
+        for i in 1..AUDIT_LOG_STRING_CAPACITY {
             cids.push(Cid::new(
                 uuid!("d2b496bd-8493-47b7-8142-f568b5cf47e1"),
-                Duration::new(20 + i, 0),
+                Duration::new(20 + i as u64, 0),
             ))
         }
         // Add another uuid to a type
@@ -257,10 +258,10 @@ mod tests {
                 let e = qs
                     .internal_search_uuid(uuid!("d2b496bd-8493-47b7-8142-f568b5cf47ee"))
                     .expect("failed to get entry");
-                trace!("{:?}", e.get_ava());
                 let c = e
                     .get_ava_set(Attribute::NameHistory.as_ref())
                     .expect("failed to get name_history ava :/");
+                trace!(?c);
                 assert!(
                     !c.contains(&PartialValue::new_utf8s("old_name1"))
                         && c.contains(&PartialValue::new_utf8s("new_name"))

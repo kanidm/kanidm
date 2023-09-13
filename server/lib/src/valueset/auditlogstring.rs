@@ -7,7 +7,7 @@ use std::collections::BTreeMap;
 
 type AuditLogStringType = (Cid, String);
 
-const AUDIT_LOG_STRING_CAPACITY: usize = 9;
+pub const AUDIT_LOG_STRING_CAPACITY: usize = 9;
 
 #[derive(Debug, Clone)]
 pub struct ValueSetAuditLogString {

@@ -21,9 +21,9 @@ use crate::prelude::*;
 use crate::repl::{cid::Cid, proto::ReplAttrV1};
 use crate::schema::SchemaAttribute;
 use crate::value::{Address, ApiToken, IntentTokenState, Oauth2Session, Session};
-use crate::valueset::auditlogstring::ValueSetAuditLogString;
 
 pub use self::address::{ValueSetAddress, ValueSetEmailAddress};
+pub use self::auditlogstring::{ValueSetAuditLogString, AUDIT_LOG_STRING_CAPACITY};
 pub use self::binary::{ValueSetPrivateBinary, ValueSetPublicBinary};
 pub use self::bool::ValueSetBool;
 pub use self::cid::ValueSetCid;
