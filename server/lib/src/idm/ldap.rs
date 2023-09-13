@@ -586,7 +586,7 @@ pub(crate) fn ldap_vattr_map(input: &str) -> Option<&str> {
     //
     //   LDAP NAME     KANI ATTR SOURCE NAME
     match input {
-        "cn" => Some(ATTR_NAME),
+        ATTR_CN => Some(ATTR_NAME),
         ATTR_EMAIL => Some(ATTR_MAIL),
         "emailaddress" => Some(ATTR_MAIL),
         "emailalternative" => Some(ATTR_MAIL),
@@ -597,7 +597,7 @@ pub(crate) fn ldap_vattr_map(input: &str) -> Option<&str> {
         "mail;primary" => Some(ATTR_MAIL),
         "objectclass" => Some(ATTR_CLASS),
         ATTR_LDAP_SSHPUBLICKEY => Some(ATTR_SSH_PUBLICKEY), // no-underscore -> underscore
-        "uidnumber" => Some(ATTR_GIDNUMBER),                // yes this is intentional
+        ATTR_UIDNUMBER => Some(ATTR_GIDNUMBER),             // yes this is intentional
         _ => None,
     }
 }
@@ -927,9 +927,9 @@ mod tests {
             filter: LdapFilter::Equality(Attribute::Name.to_string(), "testperson1".to_string()),
             attrs: vec![
                 LDAP_ATTR_NAME.to_string(),
-                "entrydn".to_string(),
-                "keys".to_string(),
-                "uidnumber".to_string(),
+                Attribute::EntryDn.to_string(),
+                ATTR_LDAP_KEYS.to_string(),
+                Attribute::UidNumber.to_string(),
             ],
         };
         let r1 = ldaps.do_search(idms, &sr, &anon_t).await.unwrap();
@@ -969,13 +969,16 @@ mod tests {
             scope: LdapSearchScope::Subtree,
             filter: LdapFilter::Equality(Attribute::Name.to_string(), "testperson1".to_string()),
             attrs: vec![
-                LDAP_ATTR_NAME.to_string(),
-                LDAP_ATTR_MAIL.to_string(),
-                LDAP_ATTR_MAIL_PRIMARY.to_string(),
-                LDAP_ATTR_MAIL_ALTERNATIVE.to_string(),
-                LDAP_ATTR_EMAIL_PRIMARY.to_string(),
-                LDAP_ATTR_EMAIL_ALTERNATIVE.to_string(),
-            ],
+                LDAP_ATTR_NAME,
+                LDAP_ATTR_MAIL,
+                LDAP_ATTR_MAIL_PRIMARY,
+                LDAP_ATTR_MAIL_ALTERNATIVE,
+                LDAP_ATTR_EMAIL_PRIMARY,
+                LDAP_ATTR_EMAIL_ALTERNATIVE,
+            ]
+            .into_iter()
+            .map(|s| s.to_string())
+            .collect(),
         };
 
         let sa_uuid = uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930");
@@ -1109,10 +1112,16 @@ mod tests {
                         Attribute::Mail.as_ref(),
                         "testperson1.alternative@example.com"
                     ),
-                    ("mail;primary", "testperson1@example.com"),
-                    ("mail;alternative", "testperson1.alternative@example.com"),
-                    ("emailprimary", "testperson1@example.com"),
-                    ("emailalternative", "testperson1.alternative@example.com")
+                    (LDAP_ATTR_MAIL_PRIMARY, "testperson1@example.com"),
+                    (
+                        LDAP_ATTR_MAIL_ALTERNATIVE,
+                        "testperson1.alternative@example.com"
+                    ),
+                    (LDAP_ATTR_MAIL_PRIMARY, "testperson1@example.com"),
+                    (
+                        LDAP_ATTR_MAIL_ALTERNATIVE,
+                        "testperson1.alternative@example.com"
+                    )
                 );
             }
             _ => assert!(false),
@@ -1162,7 +1171,7 @@ mod tests {
                 // Already being returned
                 LDAP_ATTR_NAME.to_string(),
                 // This is a virtual attribute
-                "entryuuid".to_string(),
+                Attribute::EntryUuid.to_string(),
             ],
         };
         let r1 = ldaps.do_search(idms, &sr, &anon_t).await.unwrap();
@@ -1177,7 +1186,10 @@ mod tests {
                     (Attribute::Name, "testperson1"),
                     (Attribute::DisplayName, "testperson1"),
                     (Attribute::Uuid, "cc8e95b4-c24f-4d68-ba54-8bed76f63930"),
-                    ("entryuuid", "cc8e95b4-c24f-4d68-ba54-8bed76f63930")
+                    (
+                        Attribute::EntryUuid.as_ref(),
+                        "cc8e95b4-c24f-4d68-ba54-8bed76f63930"
+                    )
                 );
             }
             _ => assert!(false),
