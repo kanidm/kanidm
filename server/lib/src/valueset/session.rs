@@ -217,19 +217,19 @@ impl ValueSetSession {
                                 .ok()?;
 
                             let state = match state {
-                                DbValueSessionStateV1::ExpiresAt(e_inner) => OffsetDateTime::parse(
-                                    &e_inner, &Rfc3339,
-                                )
-                                .map(|odt| odt.to_offset(time::UtcOffset::UTC))
-                                .map(SessionState::ExpiresAt)
-                                .map_err(|e| {
-                                    admin_error!(
+                                DbValueSessionStateV1::ExpiresAt(e_inner) => {
+                                    OffsetDateTime::parse(&e_inner, &Rfc3339)
+                                        .map(|odt| odt.to_offset(time::UtcOffset::UTC))
+                                        .map(SessionState::ExpiresAt)
+                                        .map_err(|e| {
+                                            admin_error!(
                                         ?e,
                                         "Invalidating session {} due to invalid expiry timestamp",
                                         refer
                                     )
-                                })
-                                .ok()?,
+                                        })
+                                        .ok()?
+                                }
                                 DbValueSessionStateV1::Never => SessionState::NeverExpires,
                                 DbValueSessionStateV1::RevokedAt(dc) => {
                                     SessionState::RevokedAt(Cid {
@@ -381,11 +381,15 @@ impl ValueSetT for ValueSetSession {
         self.map.clear();
     }
 
-    fn remove(&mut self, pv: &PartialValue) -> bool {
+    fn remove(&mut self, pv: &PartialValue, _cid: &Cid) -> bool {
         match pv {
             PartialValue::Refer(u) => self.map.remove(u).is_some(),
             _ => false,
         }
+    }
+
+    fn purge(&mut self, _cid: &Cid) -> bool {
+        false
     }
 
     fn contains(&self, pv: &PartialValue) -> bool {
@@ -716,19 +720,19 @@ impl ValueSetOauth2Session {
                             .ok()?;
 
                         let state = match state {
-                            DbValueSessionStateV1::ExpiresAt(e_inner) => OffsetDateTime::parse(
-                                &e_inner, &Rfc3339,
-                            )
-                            .map(|odt| odt.to_offset(time::UtcOffset::UTC))
-                            .map(SessionState::ExpiresAt)
-                            .map_err(|e| {
-                                admin_error!(
+                            DbValueSessionStateV1::ExpiresAt(e_inner) => {
+                                OffsetDateTime::parse(&e_inner, &Rfc3339)
+                                    .map(|odt| odt.to_offset(time::UtcOffset::UTC))
+                                    .map(SessionState::ExpiresAt)
+                                    .map_err(|e| {
+                                        admin_error!(
                                     ?e,
                                     "Invalidating session {} due to invalid expiry timestamp",
                                     refer
                                 )
-                            })
-                            .ok()?,
+                                    })
+                                    .ok()?
+                            }
                             DbValueSessionStateV1::Never => SessionState::NeverExpires,
                             DbValueSessionStateV1::RevokedAt(dc) => SessionState::RevokedAt(Cid {
                                 s_uuid: dc.server_id,
@@ -857,7 +861,7 @@ impl ValueSetT for ValueSetOauth2Session {
         self.map.clear();
     }
 
-    fn remove(&mut self, pv: &PartialValue) -> bool {
+    fn remove(&mut self, pv: &PartialValue, _cid: &Cid) -> bool {
         match pv {
             PartialValue::Refer(u) => {
                 let found = self.map.remove(u).is_some();
@@ -880,6 +884,10 @@ impl ValueSetT for ValueSetOauth2Session {
             }
             _ => false,
         }
+    }
+
+    fn purge(&mut self, _cid: &Cid) -> bool {
+        false
     }
 
     fn contains(&self, pv: &PartialValue) -> bool {
@@ -1246,11 +1254,16 @@ impl ValueSetT for ValueSetApiToken {
         self.map.clear();
     }
 
-    fn remove(&mut self, pv: &PartialValue) -> bool {
+    fn remove(&mut self, pv: &PartialValue, _cid: &Cid) -> bool {
         match pv {
             PartialValue::Refer(u) => self.map.remove(u).is_some(),
             _ => false,
         }
+    }
+
+    fn purge(&mut self, _cid: &Cid) -> bool {
+        // Could consider making this a TS capable entry.
+        true
     }
 
     fn contains(&self, pv: &PartialValue) -> bool {

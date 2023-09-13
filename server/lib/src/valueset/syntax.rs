@@ -59,7 +59,7 @@ impl ValueSetT for ValueSetSyntax {
         self.set.clear();
     }
 
-    fn remove(&mut self, pv: &PartialValue) -> bool {
+    fn remove(&mut self, pv: &PartialValue, _cid: &Cid) -> bool {
         match pv {
             PartialValue::Syntax(u) => self.set.remove(u),
             _ => {

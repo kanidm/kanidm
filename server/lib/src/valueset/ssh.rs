@@ -69,7 +69,7 @@ impl ValueSetT for ValueSetSshKey {
         self.map.clear();
     }
 
-    fn remove(&mut self, pv: &PartialValue) -> bool {
+    fn remove(&mut self, pv: &PartialValue, _cid: &Cid) -> bool {
         match pv {
             PartialValue::SshKey(t) => self.map.remove(t.as_str()).is_some(),
             _ => false,

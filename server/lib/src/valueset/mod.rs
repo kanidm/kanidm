@@ -87,7 +87,12 @@ pub trait ValueSetT: std::fmt::Debug + DynClone {
 
     fn clear(&mut self);
 
-    fn remove(&mut self, pv: &PartialValue) -> bool;
+    fn remove(&mut self, pv: &PartialValue, cid: &Cid) -> bool;
+
+    fn purge(&mut self, _cid: &Cid) -> bool {
+        // Default handling is true.
+        true
+    }
 
     fn contains(&self, pv: &PartialValue) -> bool;
 
