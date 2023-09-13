@@ -18,7 +18,7 @@ use kanidm_client::{KanidmClient, KanidmClientBuilder};
 use kanidm_proto::v1::{Filter, Modify, ModifyList};
 use kanidmd_core::config::{Configuration, IntegrationTestConfig};
 use kanidmd_core::{create_server_core, CoreHandle};
-use kanidmd_lib::prelude::Attribute;
+use kanidmd_lib::prelude::{Attribute, BUILTIN_GROUP_IDM_ADMINS_V1};
 use tokio::task;
 
 pub const ADMIN_TEST_USER: &str = "admin";
@@ -386,7 +386,7 @@ pub async fn login_put_admin_idm_admins(rsclient: &KanidmClient) {
 
     #[allow(clippy::expect_used)]
     rsclient
-        .idm_group_add_members("idm_admins", &[ADMIN_TEST_USER])
+        .idm_group_add_members(BUILTIN_GROUP_IDM_ADMINS_V1.name, &[ADMIN_TEST_USER])
         .await
         .expect("Failed to add admin user to idm_admins")
 }

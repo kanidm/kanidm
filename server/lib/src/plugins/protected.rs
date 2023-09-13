@@ -413,7 +413,7 @@ mod tests {
                 Attribute::AcpCreateAttr,
                 Attribute::PrivateCookieKey.to_value()
             ),
-            (Attribute::AcpCreateAttr, Value::new_iutf8("version"))
+            (Attribute::AcpCreateAttr, Attribute::Version.to_value())
         );
         pub static ref PRELOAD: Vec<EntryInitNew> =
             vec![TEST_ACCOUNT.clone(), TEST_GROUP.clone(), ALLOW_ALL.clone()];

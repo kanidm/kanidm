@@ -368,7 +368,6 @@ impl Component for AdminViewPerson {
                     Some(value) => value.to_string(),
                     None => String::from("Display Name Unset"),
                 };
-                // let user_groups = userinfo.youare.attrs.get("memberof");
 
                 // let mail_primary = match userinfo.uat.mail_primary.as_ref() {
                 //     Some(email_address) => {

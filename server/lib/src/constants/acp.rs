@@ -1763,10 +1763,19 @@ lazy_static! {
         description: "Builtin IDM Control for managing IDM synchronisation accounts / connections",
         receiver_group: UUID_IDM_HP_SYNC_ACCOUNT_MANAGE_PRIV,
         target_scope: ProtoFilter::And(vec![
-            ProtoFilter::Eq(Attribute::Class.to_string(), "sync_account".to_string()),
+            ProtoFilter::Eq(
+                Attribute::Class.to_string(),
+                EntryClass::SyncAccount.to_string()
+            ),
             ProtoFilter::AndNot(Box::new(ProtoFilter::Or(vec![
-                ProtoFilter::Eq(Attribute::Class.to_string(), "tombstone".to_string()),
-                ProtoFilter::Eq(Attribute::Class.to_string(), "recycled".to_string()),
+                ProtoFilter::Eq(
+                    Attribute::Class.to_string(),
+                    EntryClass::Tombstone.to_string()
+                ),
+                ProtoFilter::Eq(
+                    Attribute::Class.to_string(),
+                    EntryClass::Tombstone.to_string()
+                ),
             ]))),
         ]),
         search_attrs: vec![

@@ -4,7 +4,7 @@ use std::collections::HashSet;
 
 use kanidm_client::KanidmClient;
 use kanidm_proto::constants::APPLICATION_JSON;
-use kanidmd_lib::prelude::{Attribute, EntryClass, BUILTIN_GROUP_IDM_ADMINS_V1};
+use kanidmd_lib::prelude::*;
 use kanidmd_testkit::*;
 use reqwest::header::CONTENT_TYPE;
 
@@ -32,35 +32,36 @@ static SELF_WRITEABLE_ATTRS: [Attribute; 7] = [
 
 lazy_static! {
     static ref DEFAULT_HP_GROUP_NAMES: [&'static str; 24] = [
-        (*BUILTIN_GROUP_IDM_ADMINS_V1).name,
-        "system_admins",
-        "idm_people_manage_priv",
-        "idm_people_account_password_import_priv",
-        "idm_people_extend_priv",
-        "idm_people_write_priv",
-        "idm_people_read_priv",
-        "idm_group_manage_priv",
-        "idm_group_write_priv",
-        "idm_account_manage_priv",
-        "idm_account_write_priv",
-        "idm_account_read_priv",
-        "idm_radius_servers",
-        "idm_hp_account_manage_priv",
-        "idm_hp_account_write_priv",
-        "idm_hp_account_read_priv",
-        "idm_hp_account_unix_extend_priv",
-        "idm_schema_manage_priv",
-        "idm_hp_group_manage_priv",
-        "idm_hp_group_write_priv",
-        "idm_hp_group_unix_extend_priv",
-        "idm_acp_manage_priv",
-        "domain_admins",
-        "idm_high_privilege",
+        BUILTIN_GROUP_IDM_ADMINS_V1.name,
+        BUILTIN_GROUP_SYSTEM_ADMINS_V1.name,
+        IDM_PEOPLE_MANAGE_PRIV_V1.name,
+        IDM_PEOPLE_ACCOUNT_PASSWORD_IMPORT_PRIV_V1.name,
+        IDM_PEOPLE_EXTEND_PRIV_V1.name,
+        IDM_PEOPLE_WRITE_PRIV_V1.name,
+        IDM_PEOPLE_READ_PRIV_V1.name,
+        IDM_GROUP_MANAGE_PRIV_V1.name,
+        IDM_GROUP_WRITE_PRIV_V1.name,
+        IDM_ACCOUNT_MANAGE_PRIV_V1.name,
+        IDM_ACCOUNT_WRITE_PRIV_V1.name,
+        IDM_ACCOUNT_READ_PRIV_V1.name,
+        IDM_RADIUS_SERVERS_V1.name,
+        IDM_HP_ACCOUNT_MANAGE_PRIV_V1.name,
+        IDM_HP_ACCOUNT_WRITE_PRIV_V1.name,
+        IDM_HP_ACCOUNT_READ_PRIV_V1.name,
+        IDM_HP_ACCOUNT_UNIX_EXTEND_PRIV_V1.name,
+        IDM_SCHEMA_MANAGE_PRIV_V1.name,
+        IDM_HP_GROUP_MANAGE_PRIV_V1.name,
+        IDM_HP_GROUP_WRITE_PRIV_V1.name,
+        IDM_HP_GROUP_UNIX_EXTEND_PRIV_V1.name,
+        IDM_ACP_MANAGE_PRIV_V1.name,
+        DOMAIN_ADMINS.name,
+        IDM_HIGH_PRIVILEGE_V1.name,
+    ];
+    static ref DEFAULT_NOT_HP_GROUP_NAMES: [&'static str; 2] = [
+        IDM_ACCOUNT_UNIX_EXTEND_PRIV_V1.name,
+        IDM_GROUP_UNIX_EXTEND_PRIV_V1.name,
     ];
 }
-
-static DEFAULT_NOT_HP_GROUP_NAMES: [&str; 2] =
-    ["idm_account_unix_extend_priv", "idm_group_unix_extend_priv"];
 
 // Users
 // - Read to all self attributes (within security constraints).
@@ -169,7 +170,12 @@ async fn test_default_entries_rbac_group_managers(rsclient: KanidmClient) {
 
     create_user(&rsclient, "group_manager", "idm_group_manage_priv").await;
     // create test user without creating new groups
-    create_user(&rsclient, NOT_ADMIN_TEST_USERNAME, "idm_admins").await;
+    create_user(
+        &rsclient,
+        NOT_ADMIN_TEST_USERNAME,
+        BUILTIN_GROUP_IDM_ADMINS_V1.name,
+    )
+    .await;
 
     login_account(&rsclient, "group_manager").await;
 
@@ -196,7 +202,7 @@ async fn test_default_entries_rbac_group_managers(rsclient: KanidmClient) {
     assert!(default_group_names.is_subset(&group_names));
 
     test_modify_group(&rsclient, &(*DEFAULT_HP_GROUP_NAMES), false).await;
-    test_modify_group(&rsclient, &DEFAULT_NOT_HP_GROUP_NAMES, true).await;
+    test_modify_group(&rsclient, &(*DEFAULT_NOT_HP_GROUP_NAMES), true).await;
 
     rsclient.idm_group_create("test_group").await.unwrap();
     rsclient
@@ -441,7 +447,12 @@ async fn test_default_entries_rbac_admins_recycle_accounts(rsclient: KanidmClien
 async fn test_default_entries_rbac_people_managers(rsclient: KanidmClient) {
     login_put_admin_idm_admins(&rsclient).await;
 
-    create_user(&rsclient, "read_people_manager", "idm_people_read_priv").await;
+    create_user(
+        &rsclient,
+        "read_people_manager",
+        IDM_PEOPLE_READ_PRIV_V1.name,
+    )
+    .await;
     create_user_with_all_attrs(&rsclient, NOT_ADMIN_TEST_USERNAME, Some("test_group")).await;
 
     static PEOPLE_MANAGER_ATTRS: [Attribute; 2] = [Attribute::LegalName, Attribute::Mail];
@@ -483,7 +494,12 @@ async fn test_default_entries_rbac_people_managers(rsclient: KanidmClient) {
         .auth_simple_password(ADMIN_TEST_USER, ADMIN_TEST_PASSWORD)
         .await
         .unwrap();
-    create_user(&rsclient, "write_people_manager", "idm_people_write_priv").await;
+    create_user(
+        &rsclient,
+        "write_people_manager",
+        IDM_PEOPLE_WRITE_PRIV_V1.name,
+    )
+    .await;
     login_account(&rsclient, "write_people_manager").await;
 
     test_read_attrs(

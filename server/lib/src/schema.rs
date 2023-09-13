@@ -2362,7 +2362,6 @@ mod tests {
 
         // Test single value string
         let single_value_string = SchemaAttribute {
-            // class: vec![String::from("attributetype")],
             name: AttrString::from("single_value"),
             uuid: Uuid::new_v4(),
             description: String::from(""),
@@ -2386,7 +2385,6 @@ mod tests {
         // test multivalue string, boolean
 
         let multi_value_string = SchemaAttribute {
-            // class: vec![String::from("attributetype")],
             name: AttrString::from("mv_string"),
             uuid: Uuid::new_v4(),
             description: String::from(""),
@@ -2401,7 +2399,6 @@ mod tests {
         assert_eq!(r5, Ok(()));
 
         let multi_value_boolean = SchemaAttribute {
-            // class: vec![String::from("attributetype")],
             name: AttrString::from("mv_bool"),
             uuid: Uuid::new_v4(),
             description: String::from(""),
@@ -2433,7 +2430,6 @@ mod tests {
 
         // syntax_id and index_type values
         let single_value_syntax = SchemaAttribute {
-            // class: vec![String::from("attributetype")],
             name: AttrString::from("sv_syntax"),
             uuid: Uuid::new_v4(),
             description: String::from(""),
@@ -2454,7 +2450,6 @@ mod tests {
         );
 
         let single_value_index = SchemaAttribute {
-            // class: vec![String::from("attributetype")],
             name: AttrString::from("sv_index"),
             uuid: Uuid::new_v4(),
             description: String::from(""),
@@ -2877,7 +2872,7 @@ mod tests {
 
         assert_eq!(
             e_service.validate(&schema),
-            Err(SchemaError::RequiresNotSatisfied(vec!["account".to_string()]))
+            Err(SchemaError::RequiresNotSatisfied(vec![Attribute::Account.to_string()]))
         );
         */
 

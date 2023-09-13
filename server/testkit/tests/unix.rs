@@ -1,4 +1,5 @@
 use kanidm_client::KanidmClient;
+use kanidmd_lib::prelude::BUILTIN_GROUP_IDM_ADMINS_V1;
 use kanidmd_testkit::*;
 
 #[kanidmd_testkit::test]
@@ -7,7 +8,12 @@ async fn account_id_unix_token(rsclient: KanidmClient) {
 
     create_user(&rsclient, "group_manager", "idm_group_manage_priv").await;
     // create test user without creating new groups
-    create_user(&rsclient, NOT_ADMIN_TEST_USERNAME, "idm_admins").await;
+    create_user(
+        &rsclient,
+        NOT_ADMIN_TEST_USERNAME,
+        BUILTIN_GROUP_IDM_ADMINS_V1.name,
+    )
+    .await;
     login_account(&rsclient, "group_manager").await;
 
     let response = rsclient

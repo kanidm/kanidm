@@ -373,9 +373,9 @@ impl ReferentialIntegrity {
             ref_types.values().filter_map(move |rtype| {
                 // Skip dynamic members, these are recalculated by the
                 // memberof plugin.
-                let skip_mb = dyn_group && rtype.name == "dynmember";
+                let skip_mb = dyn_group && rtype.name == Attribute::DynMember.as_ref();
                 // Skip memberOf, also recalculated.
-                let skip_mo = rtype.name == "memberof";
+                let skip_mo = rtype.name == Attribute::MemberOf.as_ref();
                 if skip_mb || skip_mo {
                     None
                 } else {

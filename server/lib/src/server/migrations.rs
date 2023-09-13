@@ -385,7 +385,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
                     api_token_session
                         .migrate_session_to_apitoken()
                         .map_err(|e| {
-                            error!("Failed to convert api_token_session from session -> apitoken");
+                            error!(
+                                "Failed to convert {} from session -> apitoken",
+                                Attribute::ApiTokenSession
+                            );
                             e
                         })?;
 
@@ -820,7 +823,7 @@ mod tests {
             ModifyEvent::new_internal_invalid(
                 filter!(f_or!([
                     f_eq(Attribute::AttributeName, Attribute::Name.to_partialvalue()),
-                    f_eq(Attribute::AttributeName, PartialValue::new_iutf8("domain_name")),
+                    f_eq(Attribute::AttributeName, Attribute::DomainName.into()),
                 ])),
                 ModifyList::new_purge_and_set(
                     "syntax",
@@ -863,7 +866,7 @@ mod tests {
             ModifyEvent::new_internal_invalid(
                 filter!(f_or!([
                     f_eq(Attribute::AttributeName, Attribute::Name.to_partialvalue()),
-                    f_eq(Attribute::AttributeName, PartialValue::new_iutf8("domain_name")),
+                    f_eq(Attribute::AttributeName, Attribute::DomainName.into()),
                 ])),
                 ModifyList::new_purge_and_set(
                     "syntax",
@@ -895,7 +898,7 @@ mod tests {
         // ++ assert all domain/domain_name are iname
         assert!(
             domain
-                .get_ava_set("domain_name")
+                .get_ava_set(Attribute::DomainName.as_ref())
                 .expect("no domain_name?")
                 .syntax()
                 == SyntaxType::Utf8StringIname

@@ -970,11 +970,11 @@ mod tests {
             filter: LdapFilter::Equality(Attribute::Name.to_string(), "testperson1".to_string()),
             attrs: vec![
                 LDAP_ATTR_NAME.to_string(),
-                "mail".to_string(),
-                "mail;primary".to_string(),
-                "mail;alternative".to_string(),
-                "emailprimary".to_string(),
-                "emailalternative".to_string(),
+                LDAP_ATTR_MAIL.to_string(),
+                LDAP_ATTR_MAIL_PRIMARY.to_string(),
+                LDAP_ATTR_MAIL_ALTERNATIVE.to_string(),
+                LDAP_ATTR_EMAIL_PRIMARY.to_string(),
+                LDAP_ATTR_EMAIL_ALTERNATIVE.to_string(),
             ],
         };
 
@@ -1030,7 +1030,7 @@ mod tests {
             let me = ModifyEvent::new_internal_invalid(
                 filter!(f_eq(
                     Attribute::Name,
-                    PartialValue::new_iname("idm_people_read_priv")
+                    PartialValue::new_iname(IDM_PEOPLE_READ_PRIV_V1.name)
                 )),
                 ModifyList::new_list(vec![Modify::Present(
                     Attribute::Member.into(),

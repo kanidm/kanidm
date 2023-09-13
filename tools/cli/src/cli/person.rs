@@ -6,6 +6,7 @@ use dialoguer::theme::ColorfulTheme;
 use dialoguer::{Confirm, Input, Password, Select};
 use kanidm_client::ClientError::Http as ClientErrorHttp;
 use kanidm_client::KanidmClient;
+use kanidm_proto::constants::{ATTR_ACCOUNT_EXPIRE, ATTR_ACCOUNT_VALID_FROM};
 use kanidm_proto::messages::{AccountChangeMessage, ConsoleOutputMode, MessageStatus};
 use kanidm_proto::v1::OperationError::PasswordQuality;
 use kanidm_proto::v1::{
@@ -355,7 +356,7 @@ impl PersonOpt {
                     let ex = match client
                         .idm_person_account_get_attr(
                             ano.aopts.account_id.as_str(),
-                            "account_expire",
+                            ATTR_ACCOUNT_EXPIRE,
                         )
                         .await
                     {
@@ -366,7 +367,7 @@ impl PersonOpt {
                     let vf = match client
                         .idm_person_account_get_attr(
                             ano.aopts.account_id.as_str(),
-                            "account_valid_from",
+                            ATTR_ACCOUNT_VALID_FROM,
                         )
                         .await
                     {
@@ -415,7 +416,7 @@ impl PersonOpt {
                         match client
                             .idm_person_account_purge_attr(
                                 ano.aopts.account_id.as_str(),
-                                "account_expire",
+                                ATTR_ACCOUNT_EXPIRE,
                             )
                             .await
                         {
@@ -435,7 +436,7 @@ impl PersonOpt {
                         match client
                             .idm_person_account_set_attr(
                                 ano.aopts.account_id.as_str(),
-                                "account_expire",
+                                ATTR_ACCOUNT_EXPIRE,
                                 &[&now],
                             )
                             .await
@@ -456,7 +457,7 @@ impl PersonOpt {
                         match client
                             .idm_person_account_set_attr(
                                 ano.aopts.account_id.as_str(),
-                                "account_expire",
+                                ATTR_ACCOUNT_EXPIRE,
                                 &[&epoch_str],
                             )
                             .await
@@ -473,7 +474,7 @@ impl PersonOpt {
                         match client
                             .idm_person_account_set_attr(
                                 ano.aopts.account_id.as_str(),
-                                "account_expire",
+                                ATTR_ACCOUNT_EXPIRE,
                                 &[ano.datetime.as_str()],
                             )
                             .await
@@ -490,7 +491,7 @@ impl PersonOpt {
                         match client
                             .idm_person_account_purge_attr(
                                 ano.aopts.account_id.as_str(),
-                                "account_valid_from",
+                                ATTR_ACCOUNT_VALID_FROM,
                             )
                             .await
                         {
@@ -511,7 +512,7 @@ impl PersonOpt {
                         match client
                             .idm_person_account_set_attr(
                                 ano.aopts.account_id.as_str(),
-                                "account_valid_from",
+                                ATTR_ACCOUNT_VALID_FROM,
                                 &[ano.datetime.as_str()],
                             )
                             .await

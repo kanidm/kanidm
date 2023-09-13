@@ -6,6 +6,7 @@ use std::sync::atomic::{AtomicU16, Ordering};
 use std::time::Duration;
 
 use kanidm_client::{KanidmClient, KanidmClientBuilder};
+use kanidm_proto::constants::ATTR_ACCOUNT_EXPIRE;
 use kanidm_unix_common::constants::{
     DEFAULT_GID_ATTR_MAP, DEFAULT_HOME_ALIAS, DEFAULT_HOME_ATTR, DEFAULT_HOME_PREFIX,
     DEFAULT_SHELL, DEFAULT_UID_ATTR_MAP,
@@ -594,7 +595,7 @@ async fn test_cache_account_expiry() {
         .await
         .expect("failed to auth as admin");
     adminclient
-        .idm_person_account_set_attr("testaccount1", "account_expire", &[ACCOUNT_EXPIRE])
+        .idm_person_account_set_attr("testaccount1", ATTR_ACCOUNT_EXPIRE, &[ACCOUNT_EXPIRE])
         .await
         .unwrap();
     // auth will fail

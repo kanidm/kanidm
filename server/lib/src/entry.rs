@@ -997,7 +997,7 @@ impl Entry<EntryIncremental, EntryNew> {
                 // we just send the tombstone ecstate rather than attrs. Our
                 // db stub also lacks these attributes too.
                 let mut attrs_new: Eattrs = Map::new();
-                let class_ava = vs_iutf8!["object", "tombstone"];
+                let class_ava = vs_iutf8![EntryClass::Object.into(), EntryClass::Tombstone.into()];
                 let last_mod_ava = vs_cid![left_at.clone()];
 
                 attrs_new.insert(Attribute::Uuid.into(), vs_uuid![self.valid.uuid]);
@@ -1046,7 +1046,7 @@ impl Entry<EntryIncremental, EntryNew> {
                 };
 
                 let mut attrs_new: Eattrs = Map::new();
-                let class_ava = vs_iutf8!["object", "tombstone"];
+                let class_ava = vs_iutf8![EntryClass::Object.into(), EntryClass::Tombstone.into()];
                 let last_mod_ava = vs_cid![at.clone()];
 
                 attrs_new.insert(Attribute::Uuid.into(), vs_uuid![db_ent.valid.uuid]);
@@ -1930,7 +1930,7 @@ impl Entry<EntrySealed, EntryCommitted> {
         // Duplicate this to a tombstone entry
         let mut attrs_new: Eattrs = Map::new();
 
-        let class_ava = vs_iutf8!["object", "tombstone"];
+        let class_ava = vs_iutf8![EntryClass::Object.into(), EntryClass::Tombstone.into()];
         let last_mod_ava = vs_cid![cid.clone()];
 
         attrs_new.insert(Attribute::Uuid.into(), vs_uuid![self.get_uuid()]);
@@ -3258,7 +3258,11 @@ impl From<&SchemaAttribute> for Entry<EntryInit, EntryNew> {
         attrs.insert(Attribute::Syntax.into(), syntax_v);
         attrs.insert(
             Attribute::Class.into(),
-            vs_iutf8!["object", "system", "attributetype"],
+            vs_iutf8![
+                EntryClass::Object.into(),
+                EntryClass::System.into(),
+                EntryClass::AttributeType.into()
+            ],
         );
 
         // Insert stuff.
