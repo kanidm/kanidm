@@ -118,8 +118,16 @@ impl SessionConsistency {
                         _ => {
                             // Okay, now check the issued / grace time for parent enforcement.
                             if session.issued_at + GRACE_WINDOW <= curtime_odt {
-                                if sessions.map(|s| s.contains_key(&session.parent)).unwrap_or(false) {
-                                    // The parent exists, go ahead
+                                if sessions.map(|session_map| {
+                                    if let Some(session) = session_map.get(&session.parent) {
+                                        // Only match non-revoked sessions
+                                        !matches!(session.state, SessionState::RevokedAt(_))
+                                    } else {
+                                        // not found
+                                        false
+                                    }
+                                }).unwrap_or(false) {
+                                    // The parent exists and is still valid, go ahead
                                     None
                                 } else {
                                     info!(%o2_session_id, parent_id = %session.parent, "Removing unbound oauth2 session");
@@ -199,7 +207,6 @@ mod tests {
 
         // Create a fake session.
         let session_id = Uuid::new_v4();
-        let pv_session_id = PartialValue::Refer(session_id);
         let state = SessionState::ExpiresAt(exp_curtime_odt);
         let issued_at = curtime_odt;
         let issued_by = IdentityId::User(tuuid);
@@ -236,7 +243,11 @@ mod tests {
 
         let entry = server_txn.internal_search_uuid(tuuid).expect("failed");
 
-        assert!(entry.attribute_equality(Attribute::UserAuthTokenSession.into(), &pv_session_id));
+        let session = entry
+            .get_ava_as_session_map(Attribute::UserAuthTokenSession.into())
+            .and_then(|sessions| sessions.get(&session_id))
+            .expect("No session map found");
+        assert!(matches!(session.state, SessionState::ExpiresAt(_)));
 
         assert!(server_txn.commit().is_ok());
         let mut server_txn = server.write(exp_curtime).await;
@@ -257,8 +268,12 @@ mod tests {
         // Session gone.
         let entry = server_txn.internal_search_uuid(tuuid).expect("failed");
 
-        // Note it's a not condition now.
-        assert!(!entry.attribute_equality(Attribute::UserAuthTokenSession.into(), &pv_session_id));
+        // We get the attribute and have to check it's now in a revoked state.
+        let session = entry
+            .get_ava_as_session_map(Attribute::UserAuthTokenSession.into())
+            .and_then(|sessions| sessions.get(&session_id))
+            .expect("No session map found");
+        assert!(matches!(session.state, SessionState::RevokedAt(_)));
 
         assert!(server_txn.commit().is_ok());
     }
@@ -337,10 +352,7 @@ mod tests {
         // Create a fake session and oauth2 session.
 
         let session_id = Uuid::new_v4();
-        let pv_session_id = PartialValue::Refer(session_id);
-
-        let parent = Uuid::new_v4();
-        let pv_parent_id = PartialValue::Refer(parent);
+        let parent_id = Uuid::new_v4();
         let state = SessionState::ExpiresAt(exp_curtime_odt);
         let issued_at = curtime_odt;
         let issued_by = IdentityId::User(tuuid);
@@ -353,7 +365,7 @@ mod tests {
                 Value::Oauth2Session(
                     session_id,
                     Oauth2Session {
-                        parent,
+                        parent: parent_id,
                         // Set to the exp window.
                         state,
                         issued_at,
@@ -364,7 +376,7 @@ mod tests {
             Modify::Present(
                 Attribute::UserAuthTokenSession.into(),
                 Value::Session(
-                    parent,
+                    parent_id,
                     Session {
                         label: "label".to_string(),
                         // Note we set the exp to None so we are not removing based on removal of the parent.
@@ -394,8 +406,17 @@ mod tests {
 
         let entry = server_txn.internal_search_uuid(tuuid).expect("failed");
 
-        assert!(entry.attribute_equality(Attribute::UserAuthTokenSession.into(), &pv_parent_id));
-        assert!(entry.attribute_equality(Attribute::OAuth2Session.into(), &pv_session_id));
+        let session = entry
+            .get_ava_as_session_map(Attribute::UserAuthTokenSession.into())
+            .and_then(|sessions| sessions.get(&parent_id))
+            .expect("No session map found");
+        assert!(matches!(session.state, SessionState::NeverExpires));
+
+        let session = entry
+            .get_ava_as_oauth2session_map(Attribute::OAuth2Session.into())
+            .and_then(|sessions| sessions.get(&session_id))
+            .expect("No session map found");
+        assert!(matches!(session.state, SessionState::ExpiresAt(_)));
 
         assert!(server_txn.commit().is_ok());
 
@@ -420,9 +441,17 @@ mod tests {
         let entry = server_txn.internal_search_uuid(tuuid).expect("failed");
 
         // Note the uat is still present
-        assert!(entry.attribute_equality(Attribute::UserAuthTokenSession.into(), &pv_parent_id));
-        // Note it's a not condition now.
-        assert!(!entry.attribute_equality(Attribute::OAuth2Session.into(), &pv_session_id));
+        let session = entry
+            .get_ava_as_session_map(Attribute::UserAuthTokenSession.into())
+            .and_then(|sessions| sessions.get(&parent_id))
+            .expect("No session map found");
+        assert!(matches!(session.state, SessionState::NeverExpires));
+
+        let session = entry
+            .get_ava_as_oauth2session_map(Attribute::OAuth2Session.into())
+            .and_then(|sessions| sessions.get(&session_id))
+            .expect("No session map found");
+        assert!(matches!(session.state, SessionState::RevokedAt(_)));
 
         assert!(server_txn.commit().is_ok());
     }
@@ -498,10 +527,7 @@ mod tests {
         // Create a fake session and oauth2 session.
 
         let session_id = Uuid::new_v4();
-        let pv_session_id = PartialValue::Refer(session_id);
-
-        let parent = Uuid::new_v4();
-        let pv_parent_id = PartialValue::Refer(parent);
+        let parent_id = Uuid::new_v4();
         let issued_at = curtime_odt;
         let issued_by = IdentityId::User(tuuid);
         let scope = SessionScope::ReadOnly;
@@ -513,7 +539,7 @@ mod tests {
                 Value::Oauth2Session(
                     session_id,
                     Oauth2Session {
-                        parent,
+                        parent: parent_id,
                         // Note we set the exp to None so we are not removing based on exp
                         state: SessionState::NeverExpires,
                         issued_at,
@@ -524,7 +550,7 @@ mod tests {
             Modify::Present(
                 Attribute::UserAuthTokenSession.into(),
                 Value::Session(
-                    parent,
+                    parent_id,
                     Session {
                         label: "label".to_string(),
                         // Note we set the exp to None so we are not removing based on removal of the parent.
@@ -554,16 +580,27 @@ mod tests {
 
         let entry = server_txn.internal_search_uuid(tuuid).expect("failed");
 
-        assert!(entry.attribute_equality(Attribute::UserAuthTokenSession.into(), &pv_parent_id));
-        assert!(entry.attribute_equality(Attribute::OAuth2Session.into(), &pv_session_id));
+        let session = entry
+            .get_ava_as_session_map(Attribute::UserAuthTokenSession.into())
+            .and_then(|sessions| sessions.get(&parent_id))
+            .expect("No session map found");
+        assert!(matches!(session.state, SessionState::NeverExpires));
+
+        let session = entry
+            .get_ava_as_oauth2session_map(Attribute::OAuth2Session.into())
+            .and_then(|sessions| sessions.get(&session_id))
+            .expect("No session map found");
+        assert!(matches!(session.state, SessionState::NeverExpires));
 
         // We need the time to be past grace_window.
         assert!(server_txn.commit().is_ok());
         let mut server_txn = server.write(exp_curtime).await;
 
         // Mod again - remove the parent session.
-        let modlist =
-            ModifyList::new_remove(Attribute::UserAuthTokenSession.into(), pv_parent_id.clone());
+        let modlist = ModifyList::new_remove(
+            Attribute::UserAuthTokenSession.into(),
+            PartialValue::Refer(parent_id),
+        );
 
         server_txn
             .internal_modify(
@@ -576,9 +613,18 @@ mod tests {
         let entry = server_txn.internal_search_uuid(tuuid).expect("failed");
 
         // Note the uat is removed
-        assert!(!entry.attribute_equality(Attribute::UserAuthTokenSession.into(), &pv_parent_id));
+        let session = entry
+            .get_ava_as_session_map(Attribute::UserAuthTokenSession.into())
+            .and_then(|sessions| sessions.get(&parent_id))
+            .expect("No session map found");
+        assert!(matches!(session.state, SessionState::RevokedAt(_)));
+
         // The oauth2 session is also removed.
-        assert!(!entry.attribute_equality(Attribute::OAuth2Session.into(), &pv_session_id));
+        let session = entry
+            .get_ava_as_oauth2session_map(Attribute::OAuth2Session.into())
+            .and_then(|sessions| sessions.get(&session_id))
+            .expect("No session map found");
+        assert!(matches!(session.state, SessionState::RevokedAt(_)));
 
         assert!(server_txn.commit().is_ok());
     }
@@ -648,8 +694,6 @@ mod tests {
 
         // Create a fake session.
         let session_id = Uuid::new_v4();
-        let pv_session_id = PartialValue::Refer(session_id);
-
         let parent = Uuid::new_v4();
         let issued_at = curtime_odt;
 
@@ -679,7 +723,11 @@ mod tests {
 
         let entry = server_txn.internal_search_uuid(tuuid).expect("failed");
 
-        assert!(entry.attribute_equality(Attribute::OAuth2Session.into(), &pv_session_id));
+        let session = entry
+            .get_ava_as_oauth2session_map(Attribute::OAuth2Session.into())
+            .and_then(|sessions| sessions.get(&session_id))
+            .expect("No session map found");
+        assert!(matches!(session.state, SessionState::NeverExpires));
 
         assert!(server_txn.commit().is_ok());
 
@@ -704,7 +752,11 @@ mod tests {
         let entry = server_txn.internal_search_uuid(tuuid).expect("failed");
 
         // Note it's a not condition now.
-        assert!(!entry.attribute_equality(Attribute::OAuth2Session.as_ref(), &pv_session_id));
+        let session = entry
+            .get_ava_as_oauth2session_map(Attribute::OAuth2Session.into())
+            .and_then(|sessions| sessions.get(&session_id))
+            .expect("No session map found");
+        assert!(matches!(session.state, SessionState::RevokedAt(_)));
 
         assert!(server_txn.commit().is_ok());
     }
@@ -742,7 +794,6 @@ mod tests {
 
         // Create a fake session.
         let session_id = Uuid::new_v4();
-        let pv_session_id = PartialValue::Refer(session_id);
         // No expiry!
         let issued_at = curtime_odt;
         let issued_by = IdentityId::User(tuuid);
@@ -779,7 +830,11 @@ mod tests {
 
         let entry = server_txn.internal_search_uuid(tuuid).expect("failed");
 
-        assert!(entry.attribute_equality(Attribute::UserAuthTokenSession.into(), &pv_session_id));
+        let session = entry
+            .get_ava_as_session_map(Attribute::UserAuthTokenSession.into())
+            .and_then(|sessions| sessions.get(&session_id))
+            .expect("No session map found");
+        assert!(matches!(session.state, SessionState::NeverExpires));
 
         assert!(server_txn.commit().is_ok());
 
@@ -800,7 +855,11 @@ mod tests {
         let entry = server_txn.internal_search_uuid(tuuid).expect("failed");
 
         // Note it's a not condition now.
-        assert!(!entry.attribute_equality(Attribute::UserAuthTokenSession.into(), &pv_session_id));
+        let session = entry
+            .get_ava_as_session_map(Attribute::UserAuthTokenSession.into())
+            .and_then(|sessions| sessions.get(&session_id))
+            .expect("No session map found");
+        assert!(matches!(session.state, SessionState::RevokedAt(_)));
 
         assert!(server_txn.commit().is_ok());
     }
