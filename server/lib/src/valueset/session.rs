@@ -1,5 +1,5 @@
 use std::collections::btree_map::Entry as BTreeEntry;
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 
 use time::OffsetDateTime;
 
@@ -563,7 +563,22 @@ impl ValueSetT for ValueSetSession {
 
     fn merge(&mut self, other: &ValueSet) -> Result<(), OperationError> {
         if let Some(b) = other.as_session_map() {
-            mergemaps!(self.map, b)
+            // We can't just do merge maps here, we have to be aware of the
+            // session.state value and what it currently is set to.
+            for (k_other, v_other) in b.iter() {
+                if let Some(v_self) = self.map.get_mut(k_other) {
+                    // We only update if lower. This is where RevokedAt
+                    // always proceeds other states, and lower revoked
+                    // cids will always take effect.
+                    if v_other.state < v_self.state {
+                        *v_self = v_other.clone();
+                    }
+                } else {
+                    // Not present, just insert.
+                    self.map.insert(k_other.clone(), v_other.clone());
+                }
+            }
+            Ok(())
         } else {
             debug_assert!(false);
             Err(OperationError::InvalidValueState)
@@ -622,8 +637,30 @@ impl ValueSetT for ValueSetSession {
         Ok(Box::new(ValueSetApiToken { map }))
     }
 
-    fn repl_merge_valueset(&self, _older: &ValueSet) -> Option<ValueSet> {
-        todo!();
+    fn repl_merge_valueset(&self, older: &ValueSet) -> Option<ValueSet> {
+        if let Some(b) = older.as_session_map() {
+            // We can't just do merge maps here, we have to be aware of the
+            // session.state value and what it currently is set to.
+            let mut map = self.map.clone();
+            for (k_other, v_other) in b.iter() {
+                if let Some(v_self) = map.get_mut(k_other) {
+                    // We only update if lower. This is where RevokedAt
+                    // always proceeds other states, and lower revoked
+                    // cids will always take effect.
+                    if v_other.state < v_self.state {
+                        *v_self = v_other.clone();
+                    }
+                } else {
+                    // Not present, just insert.
+                    map.insert(k_other.clone(), v_other.clone());
+                }
+            }
+            Some(Box::new(ValueSetSession { map }))
+        } else {
+            // The older value has a different type - return nothing, we
+            // just take the newer value.
+            None
+        }
     }
 }
 
@@ -637,25 +674,24 @@ pub struct ValueSetOauth2Session {
     // on a refer if it's not in this set. The alternate approach is
     // an index on these maps, but its more work to maintain for a rare
     // situation where we actually want to query rs_uuid -> sessions.
-    rs_filter: BTreeSet<Uuid>,
+    rs_filter: u128,
 }
 
 impl ValueSetOauth2Session {
     pub fn new(u: Uuid, m: Oauth2Session) -> Box<Self> {
         let mut map = BTreeMap::new();
-        let mut rs_filter = BTreeSet::new();
-        rs_filter.insert(m.rs_uuid);
+        let rs_filter = m.rs_uuid.as_u128();
         map.insert(u, m);
         Box::new(ValueSetOauth2Session { map, rs_filter })
     }
 
     pub fn push(&mut self, u: Uuid, m: Oauth2Session) -> bool {
-        self.rs_filter.insert(m.rs_uuid);
+        self.rs_filter |= m.rs_uuid.as_u128();
         self.map.insert(u, m).is_none()
     }
 
     pub fn from_dbvs2(data: Vec<DbValueOauth2Session>) -> Result<ValueSet, OperationError> {
-        let mut rs_filter = BTreeSet::new();
+        let mut rs_filter = u128::MIN;
         let map = data
             .into_iter()
             .filter_map(|dbv| {
@@ -707,7 +743,7 @@ impl ValueSetOauth2Session {
                             .unwrap_or(SessionState::NeverExpires);
 
                         // Insert to the rs_filter.
-                        rs_filter.insert(rs_uuid);
+                        rs_filter |= rs_uuid.as_u128();
                         Some((
                             refer,
                             Oauth2Session {
@@ -758,8 +794,8 @@ impl ValueSetOauth2Session {
                             }),
                         };
 
-                        // Insert to the rs_filter.
-                        rs_filter.insert(rs_uuid);
+                        rs_filter |= rs_uuid.as_u128();
+
                         Some((
                             refer,
                             Oauth2Session {
@@ -777,7 +813,7 @@ impl ValueSetOauth2Session {
     }
 
     pub fn from_repl_v1(data: &[ReplOauth2SessionV1]) -> Result<ValueSet, OperationError> {
-        let mut rs_filter = BTreeSet::new();
+        let mut rs_filter = u128::MIN;
         let map = data
             .iter()
             .filter_map(
@@ -822,8 +858,8 @@ impl ValueSetOauth2Session {
                         ReplSessionStateV1::RevokedAt(rc) => SessionState::RevokedAt(rc.into()),
                     };
 
-                    // Insert to the rs_filter.
-                    rs_filter.insert(*rs_uuid);
+                    rs_filter |= rs_uuid.as_u128();
+
                     Some((
                         *refer,
                         Oauth2Session {
@@ -846,11 +882,11 @@ impl ValueSetOauth2Session {
     where
         T: IntoIterator<Item = (Uuid, Oauth2Session)>,
     {
-        let mut rs_filter = BTreeSet::new();
+        let mut rs_filter = u128::MIN;
         let map = iter
             .into_iter()
             .map(|(u, m)| {
-                rs_filter.insert(m.rs_uuid);
+                rs_filter |= m.rs_uuid.as_u128();
                 (u, m)
             })
             .collect();
@@ -863,7 +899,7 @@ impl ValueSetT for ValueSetOauth2Session {
         match value {
             Value::Oauth2Session(u, m) => {
                 if let BTreeEntry::Vacant(e) = self.map.entry(u) {
-                    self.rs_filter.insert(m.rs_uuid);
+                    self.rs_filter |= m.rs_uuid.as_u128();
                     e.insert(m);
                     Ok(true)
                 } else {
@@ -875,29 +911,38 @@ impl ValueSetT for ValueSetOauth2Session {
     }
 
     fn clear(&mut self) {
-        self.rs_filter.clear();
+        self.rs_filter = u128::MIN;
         self.map.clear();
     }
 
-    fn remove(&mut self, pv: &PartialValue, _cid: &Cid) -> bool {
+    fn remove(&mut self, pv: &PartialValue, cid: &Cid) -> bool {
         match pv {
             PartialValue::Refer(u) => {
-                let found = self.map.remove(u).is_some();
-                if !found {
-                    // Perhaps the reference id is an rs_uuid?
-                    if self.rs_filter.contains(u) {
-                        // It's there, so we need to do a more costly retain operation over the values.
-                        self.map.retain(|_, m| m.rs_uuid != *u);
-                        self.rs_filter.remove(u);
-                        // We removed something, so yeeeet.
+                if let Some(session) = self.map.get_mut(u) {
+                    if !matches!(session.state, SessionState::RevokedAt(_)) {
+                        session.state = SessionState::RevokedAt(cid.clone());
                         true
+                    } else {
+                        false
+                    }
+                } else {
+                    // What if it's an rs_uuid?
+                    let u_int = u.as_u128();
+                    if self.rs_filter & u_int == u_int {
+                        // It's there, so we need to do a more costly revoke over the values
+                        // that are present.
+                        let mut removed = false;
+                        self.map.values_mut().for_each(|session| {
+                            if session.rs_uuid == *u {
+                                session.state = SessionState::RevokedAt(cid.clone());
+                                removed = true;
+                            }
+                        });
+                        removed
                     } else {
                         // It's not in the rs_filter or the map, false.
                         false
                     }
-                } else {
-                    // We found it in the map, true
-                    true
                 }
             }
             _ => false,
@@ -917,7 +962,19 @@ impl ValueSetT for ValueSetOauth2Session {
 
     fn contains(&self, pv: &PartialValue) -> bool {
         match pv {
-            PartialValue::Refer(u) => self.map.contains_key(u) || self.rs_filter.contains(u),
+            PartialValue::Refer(u) => {
+                self.map.contains_key(u) || {
+                    let u_int = u.as_u128();
+                    if self.rs_filter & u_int == u_int {
+                        self.map.values().any(|session| {
+                            session.rs_uuid == *u
+                                && !matches!(session.state, SessionState::RevokedAt(_))
+                        })
+                    } else {
+                        false
+                    }
+                }
+            }
             _ => false,
         }
     }
@@ -935,12 +992,16 @@ impl ValueSetT for ValueSetOauth2Session {
     }
 
     fn generate_idx_eq_keys(&self) -> Vec<String> {
-        self.map
-            .keys()
-            .map(|u| u.as_hyphenated().to_string())
-            // We also refer to our rs_uuid's.
-            .chain(self.rs_filter.iter().map(|u| u.as_hyphenated().to_string()))
-            .collect()
+        // Allocate twice as much for worst-case when every session is
+        // a unique rs-uuid to prevent re-allocs.
+        let mut idx_keys = Vec::with_capacity(self.map.len() * 2);
+        for (k, v) in self.map.iter() {
+            idx_keys.push(k.as_hyphenated().to_string());
+            idx_keys.push(v.rs_uuid.as_hyphenated().to_string());
+        }
+        idx_keys.sort_unstable();
+        idx_keys.dedup();
+        idx_keys
     }
 
     fn syntax(&self) -> SyntaxType {
@@ -1048,15 +1109,24 @@ impl ValueSetT for ValueSetOauth2Session {
 
     fn merge(&mut self, other: &ValueSet) -> Result<(), OperationError> {
         if let Some(b) = other.as_oauth2session_map() {
-            // Merge the rs_filters.
-            // We have to do this without the mergemap macro so that rs_filter
-            // is updated.
-            b.iter().for_each(|(k, v)| {
-                if !self.map.contains_key(k) {
-                    self.rs_filter.insert(v.rs_uuid);
-                    self.map.insert(*k, v.clone());
+            // We can't just do merge maps here, we have to be aware of the
+            // session.state value and what it currently is set to. We also
+            // need to make sure the rs_filter is updated too!
+            for (k_other, v_other) in b.iter() {
+                if let Some(v_self) = self.map.get_mut(k_other) {
+                    // We only update if lower. This is where RevokedAt
+                    // always proceeds other states, and lower revoked
+                    // cids will always take effect.
+                    if v_other.state < v_self.state {
+                        *v_self = v_other.clone();
+                    }
+                } else {
+                    // Update the rs_filter!
+                    self.rs_filter |= v_other.rs_uuid.as_u128();
+                    // Not present, just insert.
+                    self.map.insert(k_other.clone(), v_other.clone());
                 }
-            });
+            }
             Ok(())
         } else {
             debug_assert!(false);
@@ -1074,8 +1144,32 @@ impl ValueSetT for ValueSetOauth2Session {
         Some(Box::new(self.map.values().map(|m| &m.rs_uuid).copied()))
     }
 
-    fn repl_merge_valueset(&self, _older: &ValueSet) -> Option<ValueSet> {
-        todo!();
+    fn repl_merge_valueset(&self, older: &ValueSet) -> Option<ValueSet> {
+        if let Some(b) = older.as_oauth2session_map() {
+            // We can't just do merge maps here, we have to be aware of the
+            // session.state value and what it currently is set to.
+            let mut map = self.map.clone();
+            let mut rs_filter = self.rs_filter;
+            for (k_other, v_other) in b.iter() {
+                if let Some(v_self) = map.get_mut(k_other) {
+                    // We only update if lower. This is where RevokedAt
+                    // always proceeds other states, and lower revoked
+                    // cids will always take effect.
+                    if v_other.state < v_self.state {
+                        *v_self = v_other.clone();
+                    }
+                } else {
+                    // Not present, just insert.
+                    rs_filter |= v_other.rs_uuid.as_u128();
+                    map.insert(k_other.clone(), v_other.clone());
+                }
+            }
+            Some(Box::new(ValueSetOauth2Session { map, rs_filter }))
+        } else {
+            // The older value has a different type - return nothing, we
+            // just take the newer value.
+            None
+        }
     }
 }
 
@@ -1493,23 +1587,27 @@ mod tests {
         let s_uuid = Uuid::new_v4();
         let zero_cid = Cid::new_zero();
 
-        let mut vs_a: ValueSet = ValueSetOauth2Session::new(
+        let mut vs_a: ValueSet = ValueSetSession::new(
             s_uuid,
-            Oauth2Session {
+            Session {
+                label: "hacks".to_string(),
                 state: SessionState::NeverExpires,
                 issued_at: OffsetDateTime::now_utc(),
-                parent: Uuid::new_v4(),
-                rs_uuid: Uuid::new_v4(),
+                issued_by: IdentityId::Internal,
+                cred_id: Uuid::new_v4(),
+                scope: SessionScope::ReadOnly,
             },
         );
 
-        let vs_b: ValueSet = ValueSetOauth2Session::new(
+        let vs_b: ValueSet = ValueSetSession::new(
             s_uuid,
-            Oauth2Session {
+            Session {
+                label: "hacks".to_string(),
                 state: SessionState::RevokedAt(zero_cid.clone()),
                 issued_at: OffsetDateTime::now_utc(),
-                parent: Uuid::new_v4(),
-                rs_uuid: Uuid::new_v4(),
+                issued_by: IdentityId::Internal,
+                cred_id: Uuid::new_v4(),
+                scope: SessionScope::ReadOnly,
             },
         );
 
@@ -1528,23 +1626,27 @@ mod tests {
         let s_uuid = Uuid::new_v4();
         let zero_cid = Cid::new_zero();
 
-        let vs_a: ValueSet = ValueSetOauth2Session::new(
+        let vs_a: ValueSet = ValueSetSession::new(
             s_uuid,
-            Oauth2Session {
+            Session {
+                label: "hacks".to_string(),
                 state: SessionState::NeverExpires,
                 issued_at: OffsetDateTime::now_utc(),
-                parent: Uuid::new_v4(),
-                rs_uuid: Uuid::new_v4(),
+                issued_by: IdentityId::Internal,
+                cred_id: Uuid::new_v4(),
+                scope: SessionScope::ReadOnly,
             },
         );
 
-        let mut vs_b: ValueSet = ValueSetOauth2Session::new(
+        let mut vs_b: ValueSet = ValueSetSession::new(
             s_uuid,
-            Oauth2Session {
+            Session {
+                label: "hacks".to_string(),
                 state: SessionState::RevokedAt(zero_cid.clone()),
                 issued_at: OffsetDateTime::now_utc(),
-                parent: Uuid::new_v4(),
-                rs_uuid: Uuid::new_v4(),
+                issued_by: IdentityId::Internal,
+                cred_id: Uuid::new_v4(),
+                scope: SessionScope::ReadOnly,
             },
         );
 
@@ -1564,23 +1666,27 @@ mod tests {
         let s_uuid = Uuid::new_v4();
         let zero_cid = Cid::new_zero();
 
-        let vs_a: ValueSet = ValueSetOauth2Session::new(
+        let vs_a: ValueSet = ValueSetSession::new(
             s_uuid,
-            Oauth2Session {
+            Session {
+                label: "hacks".to_string(),
                 state: SessionState::NeverExpires,
                 issued_at: OffsetDateTime::now_utc(),
-                parent: Uuid::new_v4(),
-                rs_uuid: Uuid::new_v4(),
+                issued_by: IdentityId::Internal,
+                cred_id: Uuid::new_v4(),
+                scope: SessionScope::ReadOnly,
             },
         );
 
-        let vs_b: ValueSet = ValueSetOauth2Session::new(
+        let vs_b: ValueSet = ValueSetSession::new(
             s_uuid,
-            Oauth2Session {
+            Session {
+                label: "hacks".to_string(),
                 state: SessionState::RevokedAt(zero_cid.clone()),
                 issued_at: OffsetDateTime::now_utc(),
-                parent: Uuid::new_v4(),
-                rs_uuid: Uuid::new_v4(),
+                issued_by: IdentityId::Internal,
+                cred_id: Uuid::new_v4(),
+                scope: SessionScope::ReadOnly,
             },
         );
 
@@ -1599,23 +1705,27 @@ mod tests {
         let s_uuid = Uuid::new_v4();
         let zero_cid = Cid::new_zero();
 
-        let vs_a: ValueSet = ValueSetOauth2Session::new(
+        let vs_a: ValueSet = ValueSetSession::new(
             s_uuid,
-            Oauth2Session {
+            Session {
+                label: "hacks".to_string(),
                 state: SessionState::NeverExpires,
                 issued_at: OffsetDateTime::now_utc(),
-                parent: Uuid::new_v4(),
-                rs_uuid: Uuid::new_v4(),
+                issued_by: IdentityId::Internal,
+                cred_id: Uuid::new_v4(),
+                scope: SessionScope::ReadOnly,
             },
         );
 
-        let vs_b: ValueSet = ValueSetOauth2Session::new(
+        let vs_b: ValueSet = ValueSetSession::new(
             s_uuid,
-            Oauth2Session {
+            Session {
+                label: "hacks".to_string(),
                 state: SessionState::RevokedAt(zero_cid.clone()),
                 issued_at: OffsetDateTime::now_utc(),
-                parent: Uuid::new_v4(),
-                rs_uuid: Uuid::new_v4(),
+                issued_by: IdentityId::Internal,
+                cred_id: Uuid::new_v4(),
+                scope: SessionScope::ReadOnly,
             },
         );
 
@@ -1686,7 +1796,7 @@ mod tests {
         vs_a.merge(&vs_b).expect("failed to merge");
 
         let session = vs_a
-            .as_session_map()
+            .as_oauth2session_map()
             .and_then(|map| map.get(&s_uuid))
             .expect("Unable to locate session");
 
@@ -1721,8 +1831,8 @@ mod tests {
         // Note inverse order
         vs_b.merge(&vs_a).expect("failed to merge");
 
-        let session = vs_a
-            .as_session_map()
+        let session = vs_b
+            .as_oauth2session_map()
             .and_then(|map| map.get(&s_uuid))
             .expect("Unable to locate session");
 
@@ -1757,7 +1867,7 @@ mod tests {
         let r_vs = vs_a.repl_merge_valueset(&vs_b).expect("failed to merge");
 
         let session = r_vs
-            .as_session_map()
+            .as_oauth2session_map()
             .and_then(|map| map.get(&s_uuid))
             .expect("Unable to locate session");
 
@@ -1793,7 +1903,7 @@ mod tests {
         let r_vs = vs_b.repl_merge_valueset(&vs_a).expect("failed to merge");
 
         let session = r_vs
-            .as_session_map()
+            .as_oauth2session_map()
             .and_then(|map| map.get(&s_uuid))
             .expect("Unable to locate session");
 

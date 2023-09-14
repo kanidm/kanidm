@@ -817,11 +817,14 @@ impl TryInto<UatPurposeStatus> for SessionScope {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Ord, PartialOrd)]
 pub enum SessionState {
+    // IMPORTANT - this order allows sorting by
+    // lowest to highest, we always want to take
+    // the lowest value!
+    RevokedAt(Cid),
     ExpiresAt(OffsetDateTime),
     NeverExpires,
-    RevokedAt(Cid),
 }
 
 #[derive(Clone, PartialEq, Eq)]
