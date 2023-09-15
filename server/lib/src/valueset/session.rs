@@ -589,7 +589,7 @@ impl ValueSetT for ValueSetSession {
                     }
                 } else {
                     // Not present, just insert.
-                    self.map.insert(k_other.clone(), v_other.clone());
+                    self.map.insert(*k_other, v_other.clone());
                 }
             }
             Ok(())
@@ -635,7 +635,7 @@ impl ValueSetT for ValueSetSession {
                         *u,
                         ApiToken {
                             label: label.clone(),
-                            expiry: expiry,
+                            expiry,
                             issued_at: *issued_at,
                             issued_by: issued_by.clone(),
                             scope: match scope {
@@ -666,7 +666,7 @@ impl ValueSetT for ValueSetSession {
                     }
                 } else {
                     // Not present, just insert.
-                    map.insert(k_other.clone(), v_other.clone());
+                    map.insert(*k_other, v_other.clone());
                 }
             }
             // There might be a neater way to do this with less iterations. The problem
@@ -1180,7 +1180,7 @@ impl ValueSetT for ValueSetOauth2Session {
                     // Update the rs_filter!
                     self.rs_filter |= v_other.rs_uuid.as_u128();
                     // Not present, just insert.
-                    self.map.insert(k_other.clone(), v_other.clone());
+                    self.map.insert(*k_other, v_other.clone());
                 }
             }
             Ok(())
@@ -1217,7 +1217,7 @@ impl ValueSetT for ValueSetOauth2Session {
                 } else {
                     // Not present, just insert.
                     rs_filter |= v_other.rs_uuid.as_u128();
-                    map.insert(k_other.clone(), v_other.clone());
+                    map.insert(*k_other, v_other.clone());
                 }
             }
             // There might be a neater way to do this with less iterations. The problem

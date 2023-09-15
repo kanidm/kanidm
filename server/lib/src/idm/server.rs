@@ -701,23 +701,21 @@ pub trait IdmServerTransaction<'a> {
                     );
                     return Ok(None);
                 }
+            } else if grace_valid {
+                security_info!(
+                    "The token grace window is in effect. Assuming parent session valid."
+                );
             } else {
-                if grace_valid {
-                    security_info!(
-                        "The token grace window is in effect. Assuming parent session valid."
-                    );
-                } else {
-                    security_info!("The token grace window has passed and no entry parent sessions exist. Assuming invalid.");
-                    return Ok(None);
-                }
-            }
-        } else {
-            if grace_valid {
-                security_info!("The token grace window is in effect. Assuming valid.");
-            } else {
-                security_info!("The token grace window has passed and no entry sessions exist. Assuming invalid.");
+                security_info!("The token grace window has passed and no entry parent sessions exist. Assuming invalid.");
                 return Ok(None);
             }
+        } else if grace_valid {
+            security_info!("The token grace window is in effect. Assuming valid.");
+        } else {
+            security_info!(
+                "The token grace window has passed and no entry sessions exist. Assuming invalid."
+            );
+            return Ok(None);
         }
 
         Ok(Some(entry))
