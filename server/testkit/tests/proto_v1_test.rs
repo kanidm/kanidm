@@ -1447,6 +1447,12 @@ async fn test_server_user_auth_token_lifecycle(rsclient: KanidmClient) {
         .await
         .expect("Failed to destroy user auth token");
 
+    // Since the session is revoked, check with the admin.
+    let res = rsclient
+        .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
+        .await;
+    assert!(res.is_ok());
+
     let tokens = rsclient
         .idm_service_account_list_api_token("demo_account")
         .await

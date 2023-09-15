@@ -28,9 +28,10 @@ static SELF_WRITEABLE_ATTRS: [&str; 7] = [
     "displayname",
     "legalname",
     "radius_secret",
-    "primary_credential",
     ATTR_LDAP_SSH_PUBLICKEY,
     "unix_password",
+    // Must be last - changing credential invalidates auth sessions!
+    "primary_credential",
 ];
 static DEFAULT_HP_GROUP_NAMES: [&str; 24] = [
     "idm_admins",
@@ -117,9 +118,10 @@ async fn test_default_entries_rbac_account_managers(rsclient: KanidmClient) {
     static ACCOUNT_MANAGER_ATTRS: [&str; 5] = [
         "name",
         "displayname",
-        "primary_credential",
         ATTR_LDAP_SSH_PUBLICKEY,
         "mail",
+        // Must be last, writing to this invalidates sessions.
+        "primary_credential",
     ];
     test_write_attrs(
         &rsclient,
@@ -420,7 +422,7 @@ async fn test_default_entries_rbac_people_managers(rsclient: KanidmClient) {
 
     static PEOPLE_MANAGER_ATTRS: [&str; 2] = ["legalname", "mail"];
 
-    static TECHNICAL_ATTRS: [&str; 3] = ["primary_credential", "radius_secret", "unix_password"];
+    static TECHNICAL_ATTRS: [&str; 3] = ["radius_secret", "unix_password", "primary_credential"];
     test_read_attrs(
         &rsclient,
         NOT_ADMIN_TEST_USERNAME,
