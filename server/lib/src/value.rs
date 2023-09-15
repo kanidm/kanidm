@@ -5,6 +5,7 @@
 
 #![allow(non_upper_case_globals)]
 
+use std::cmp::Ordering;
 use std::collections::BTreeSet;
 use std::convert::TryFrom;
 use std::fmt;
@@ -817,7 +818,7 @@ impl TryInto<UatPurposeStatus> for SessionScope {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Ord, PartialOrd)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum SessionState {
     // IMPORTANT - this order allows sorting by
     // lowest to highest, we always want to take
@@ -825,6 +826,39 @@ pub enum SessionState {
     RevokedAt(Cid),
     ExpiresAt(OffsetDateTime),
     NeverExpires,
+}
+
+impl PartialOrd for SessionState {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for SessionState {
+    fn cmp(&self, other: &Self) -> Ordering {
+        // We need this to order by highest -> least which represents
+        // priority amongst these elements.
+        match (self, other) {
+            // RevokedAt with the earliest time = highest
+            (SessionState::RevokedAt(c_self), SessionState::RevokedAt(c_other)) => {
+                // We need to reverse this - we need the "lower value" to take priority.
+                // This is similar to tombstones where the earliest CID must be persisted
+                c_other.cmp(c_self)
+            }
+            (SessionState::RevokedAt(_), _) => Ordering::Greater,
+            (_, SessionState::RevokedAt(_)) => Ordering::Less,
+            // ExpiresAt with a greater time = higher
+            (SessionState::ExpiresAt(e_self), SessionState::ExpiresAt(e_other)) => {
+                // Keep the "newer" expiry. This can be because a session was extended
+                // by some mechanism, generally in oauth2.
+                e_self.cmp(e_other)
+            }
+            (SessionState::ExpiresAt(_), _) => Ordering::Greater,
+            (_, SessionState::ExpiresAt(_)) => Ordering::Less,
+            // NeverExpires = least.
+            (SessionState::NeverExpires, SessionState::NeverExpires) => Ordering::Equal,
+        }
+    }
 }
 
 #[derive(Clone, PartialEq, Eq)]

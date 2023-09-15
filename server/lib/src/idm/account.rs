@@ -232,6 +232,11 @@ impl Account {
         let issued_at = OffsetDateTime::UNIX_EPOCH + ct;
         let expiry =
             Some(OffsetDateTime::UNIX_EPOCH + ct + Duration::from_secs(auth_session_expiry as u64));
+        let limited_expiry = Some(
+            OffsetDateTime::UNIX_EPOCH
+                + ct
+                + Duration::from_secs(DEFAULT_AUTH_SESSION_LIMITED_EXPIRY as u64),
+        );
 
         let (purpose, expiry) = match scope {
             // Issue an invalid/expired session.
@@ -244,17 +249,14 @@ impl Account {
             SessionScope::ReadOnly => (UatPurpose::ReadOnly, expiry),
             SessionScope::ReadWrite => {
                 // These sessions are always rw, and so have limited life.
-                (UatPurpose::ReadWrite { expiry }, expiry)
+                (UatPurpose::ReadWrite { expiry }, limited_expiry)
             }
             SessionScope::PrivilegeCapable =>
             // Return a rw capable session with the expiry currently invalid.
             // These sessions COULD live forever since they can re-auth properly.
             // Today I'm setting this to 24hr though.
             {
-                (
-                    UatPurpose::ReadWrite { expiry: None },
-                    Some(OffsetDateTime::UNIX_EPOCH + ct + Duration::from_secs(86400)),
-                )
+                (UatPurpose::ReadWrite { expiry: None }, expiry)
             }
         };
 
@@ -572,11 +574,23 @@ impl Account {
                 .get_ava_as_session_map("user_auth_token_session")
                 .and_then(|session_map| session_map.get(&uat.session_id));
 
+            // Important - we don't have to check the expiry time against ct here since it was
+            // already checked in token_to_token. Here we just need to check it's consistent
+            // to our internal session knowledge.
             if let Some(session) = session_present {
-                security_info!("A valid session value exists for this token");
                 match (&session.state, &uat.expiry) {
-                    (SessionState::ExpiresAt(s_exp), Some(u_exp)) if s_exp == u_exp => true,
-                    (SessionState::NeverExpires, None) => true,
+                    (SessionState::ExpiresAt(s_exp), Some(u_exp)) if s_exp == u_exp => {
+                        security_info!("A valid limited session value exists for this token");
+                        true
+                    }
+                    (SessionState::NeverExpires, None) => {
+                        security_info!("A valid unbound session value exists for this token");
+                        true
+                    }
+                    (SessionState::RevokedAt(_), _) => {
+                        security_info!("Session has been revoked");
+                        false
+                    }
                     _ => {
                         security_info!("Session and uat expiry are not consistent, rejecting.");
                         debug!(ses_st = ?session.state, uat_exp = ?uat.expiry);

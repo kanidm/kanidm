@@ -50,6 +50,7 @@ impl SessionConsistency {
     ) -> Result<(), OperationError> {
         let curtime = qs.get_curtime();
         let curtime_odt = OffsetDateTime::UNIX_EPOCH + curtime;
+        trace!(%curtime_odt);
 
         // We need to assert a number of properties. We must do these *in order*.
         cand.iter_mut().try_for_each(|entry| {
@@ -88,6 +89,7 @@ impl SessionConsistency {
             let expired: Option<BTreeSet<_>> = entry.get_ava_as_session_map(Attribute::UserAuthTokenSession.into())
                 .map(|sessions| {
                     sessions.iter().filter_map(|(session_id, session)| {
+                        trace!(?session_id, ?session);
                         match &session.state {
                             SessionState::ExpiresAt(exp) if exp <= &curtime_odt => {
                                 info!(%session_id, "Removing expired auth session");
@@ -110,34 +112,43 @@ impl SessionConsistency {
                 let sessions = entry.get_ava_as_session_map(Attribute::UserAuthTokenSession.into());
 
                 oauth2_sessions.iter().filter_map(|(o2_session_id, session)| {
+                    trace!(?o2_session_id, ?session);
                     match &session.state {
                         SessionState::ExpiresAt(exp) if exp <= &curtime_odt => {
                             info!(%o2_session_id, "Removing expired oauth2 session");
                             Some(PartialValue::Refer(*o2_session_id))
                         }
+                        SessionState::RevokedAt(_) => {
+                            // no-op, it's already revoked.
+                            trace!("Skip already revoked session");
+                            None
+                        }
                         _ => {
                             // Okay, now check the issued / grace time for parent enforcement.
-                            if session.issued_at + GRACE_WINDOW <= curtime_odt {
                                 if sessions.map(|session_map| {
-                                    if let Some(session) = session_map.get(&session.parent) {
+                                    if let Some(parent_session) = session_map.get(&session.parent) {
                                         // Only match non-revoked sessions
-                                        !matches!(session.state, SessionState::RevokedAt(_))
+                                        !matches!(parent_session.state, SessionState::RevokedAt(_))
                                     } else {
                                         // not found
                                         false
                                     }
                                 }).unwrap_or(false) {
                                     // The parent exists and is still valid, go ahead
+                                    debug!("Parent session remains valid.");
                                     None
                                 } else {
-                                    info!(%o2_session_id, parent_id = %session.parent, "Removing unbound oauth2 session");
-                                    Some(PartialValue::Refer(*o2_session_id))
-                                }
-                            } else {
-                                // Grace window is still in effect
-                                None
-                            }
+                                    // Can't find the parent. Are we within grace window
+                                    if session.issued_at + GRACE_WINDOW <= curtime_odt {
+                                        info!(%o2_session_id, parent_id = %session.parent, "Removing orphaned oauth2 session");
+                                        Some(PartialValue::Refer(*o2_session_id))
+                                    } else {
+                                        // Grace window is still in effect
+                                        debug!("Not enforcing parent session consistency on session within grace window");
+                                        None
+                                    }
 
+                                }
                         }
                     }
 

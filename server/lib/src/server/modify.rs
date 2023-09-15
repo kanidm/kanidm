@@ -29,6 +29,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
         &mut self,
         me: &'x ModifyEvent,
     ) -> Result<Option<ModifyPartial<'x>>, OperationError> {
+        trace!(?me);
+
         // Get the candidates.
         // Modify applies a modlist to a filter, so we need to internal search
         // then apply.

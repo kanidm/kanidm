@@ -570,7 +570,7 @@ impl ValueSetT for ValueSetSession {
                     // We only update if lower. This is where RevokedAt
                     // always proceeds other states, and lower revoked
                     // cids will always take effect.
-                    if v_other.state < v_self.state {
+                    if v_other.state > v_self.state {
                         *v_self = v_other.clone();
                     }
                 } else {
@@ -647,7 +647,7 @@ impl ValueSetT for ValueSetSession {
                     // We only update if lower. This is where RevokedAt
                     // always proceeds other states, and lower revoked
                     // cids will always take effect.
-                    if v_other.state < v_self.state {
+                    if v_other.state > v_self.state {
                         *v_self = v_other.clone();
                     }
                 } else {
@@ -898,12 +898,25 @@ impl ValueSetT for ValueSetOauth2Session {
     fn insert_checked(&mut self, value: Value) -> Result<bool, OperationError> {
         match value {
             Value::Oauth2Session(u, m) => {
-                if let BTreeEntry::Vacant(e) = self.map.entry(u) {
-                    self.rs_filter |= m.rs_uuid.as_u128();
-                    e.insert(m);
-                    Ok(true)
-                } else {
-                    Ok(false)
+                // Unlike other types, this allows overwriting as oauth2 sessions
+                // can be *extended* in time length.
+                match self.map.entry(u) {
+                    BTreeEntry::Vacant(e) => {
+                        self.rs_filter |= m.rs_uuid.as_u128();
+                        e.insert(m);
+                        Ok(true)
+                    }
+                    BTreeEntry::Occupied(mut e) => {
+                        let e_v = e.get_mut();
+                        if m.state > e_v.state {
+                            // Replace if the state has higher priority.
+                            *e_v = m;
+                            Ok(true)
+                        } else {
+                            // Else take no action.
+                            Ok(false)
+                        }
+                    }
                 }
             }
             _ => Err(OperationError::InvalidValueState),
@@ -1117,7 +1130,7 @@ impl ValueSetT for ValueSetOauth2Session {
                     // We only update if lower. This is where RevokedAt
                     // always proceeds other states, and lower revoked
                     // cids will always take effect.
-                    if v_other.state < v_self.state {
+                    if v_other.state > v_self.state {
                         *v_self = v_other.clone();
                     }
                 } else {
@@ -1155,7 +1168,7 @@ impl ValueSetT for ValueSetOauth2Session {
                     // We only update if lower. This is where RevokedAt
                     // always proceeds other states, and lower revoked
                     // cids will always take effect.
-                    if v_other.state < v_self.state {
+                    if v_other.state > v_self.state {
                         *v_self = v_other.clone();
                     }
                 } else {

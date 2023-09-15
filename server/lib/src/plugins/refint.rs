@@ -1051,8 +1051,8 @@ mod tests {
         let session_id = Uuid::new_v4();
         let pv_session_id = PartialValue::Refer(session_id);
 
-        let parent = Uuid::new_v4();
-        let pv_parent_id = PartialValue::Refer(parent);
+        let parent_id = Uuid::new_v4();
+        let pv_parent_id = PartialValue::Refer(parent_id);
         let issued_at = curtime_odt;
         let issued_by = IdentityId::User(tuuid);
         let scope = SessionScope::ReadOnly;
@@ -1064,7 +1064,7 @@ mod tests {
                 Value::Oauth2Session(
                     session_id,
                     Oauth2Session {
-                        parent,
+                        parent: parent_id,
                         // Note we set the exp to None so we are not removing based on exp
                         state: SessionState::NeverExpires,
                         issued_at,
@@ -1075,7 +1075,7 @@ mod tests {
             Modify::Present(
                 Attribute::UserAuthTokenSession.into(),
                 Value::Session(
-                    parent,
+                    parent_id,
                     Session {
                         label: "label".to_string(),
                         // Note we set the exp to None so we are not removing based on removal of the parent.
@@ -1114,11 +1114,18 @@ mod tests {
         let entry = server_txn.internal_search_uuid(tuuid).expect("failed");
 
         // Note the uat is present still.
-        assert!(entry.attribute_equality(Attribute::UserAuthTokenSession.as_ref(), &pv_parent_id));
-        // The oauth2 session is removed.
-        dbg!(&entry);
-        dbg!(&pv_session_id);
-        assert!(!entry.attribute_equality(Attribute::OAuth2Session.as_ref(), &pv_session_id));
+        let session = entry
+            .get_ava_as_session_map(Attribute::UserAuthTokenSession.into())
+            .and_then(|sessions| sessions.get(&parent_id))
+            .expect("No session map found");
+        assert!(matches!(session.state, SessionState::NeverExpires));
+
+        // The oauth2 session is revoked.
+        let session = entry
+            .get_ava_as_oauth2session_map(Attribute::OAuth2Session.into())
+            .and_then(|sessions| sessions.get(&session_id))
+            .expect("No session map found");
+        assert!(matches!(session.state, SessionState::RevokedAt(_)));
 
         assert!(server_txn.commit().is_ok());
     }

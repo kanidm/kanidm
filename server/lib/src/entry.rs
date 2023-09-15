@@ -3047,6 +3047,16 @@ where
         }
     }
 
+    /// Unlike pop or purge, this does NOT respect the attributes purge settings, meaning
+    /// that this can break replication by force clearing the state of an attribute. It's
+    /// useful for things like "session" to test the grace window by removing the revoked
+    /// sessions from the value set that you otherwise, could not.
+    #[cfg(test)]
+    pub(crate) fn force_trim_ava(&mut self, attr: &str) -> Option<ValueSet> {
+        self.valid.ecstate.change_ava(&self.valid.cid, attr);
+        self.attrs.remove(attr)
+    }
+
     /// Replace the content of this attribute with the values from this
     /// iterator. If the iterator is empty, the attribute is purged.
     pub fn set_ava<T>(&mut self, attr: &str, iter: T)
