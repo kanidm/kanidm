@@ -104,7 +104,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 // their attribute sets/states per the change state rules.
 
                 // This must create an EntryInvalidCommitted
-                let merge_ent = ctx_ent.merge_state(db_ent.as_ref(), &self.schema);
+                let merge_ent =
+                    ctx_ent.merge_state(db_ent.as_ref(), &self.schema, &self.trim_cid());
                 (merge_ent, db_ent)
             })
             .collect();

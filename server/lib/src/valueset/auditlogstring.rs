@@ -163,7 +163,7 @@ impl ValueSetT for ValueSetAuditLogString {
     }
 
     #[allow(clippy::todo)]
-    fn repl_merge_valueset(&self, older: &ValueSet) -> Option<ValueSet> {
+    fn repl_merge_valueset(&self, older: &ValueSet, _trim_cid: &Cid) -> Option<ValueSet> {
         if let Some(mut map) = older.as_audit_log_string().cloned() {
             // Merge maps is right-preferencing, so this means that
             // newer content always wins over.
@@ -274,6 +274,7 @@ mod tests {
 
     #[test]
     fn test_valueset_auditlogstring_repl_merge() {
+        let zero_cid = Cid::new_zero();
         let mut vs: ValueSet = ValueSetAuditLogString::new((Cid::new_count(1), "A".to_string()));
         assert!(vs.len() == 1);
 
@@ -296,7 +297,7 @@ mod tests {
 
         // Merge. The content of other_vs should be dropped.
         let r_vs = vs
-            .repl_merge_valueset(&other_vs)
+            .repl_merge_valueset(&other_vs, &zero_cid)
             .expect("merge did not occur");
 
         // No change in the state of the set.
@@ -321,7 +322,7 @@ mod tests {
         assert!(other_vs.len() == 1);
 
         let r_vs = vs
-            .repl_merge_valueset(&other_vs)
+            .repl_merge_valueset(&other_vs, &zero_cid)
             .expect("merge did not occur");
 
         // New value has pushed out the next oldest.

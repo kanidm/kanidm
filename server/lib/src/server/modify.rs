@@ -97,7 +97,11 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // and the new modified ents.
         let mut candidates: Vec<Entry<EntryInvalid, EntryCommitted>> = pre_candidates
             .iter()
-            .map(|er| er.as_ref().clone().invalidate(self.cid.clone()))
+            .map(|er| {
+                er.as_ref()
+                    .clone()
+                    .invalidate(self.cid.clone(), &self.trim_cid)
+            })
             .collect();
 
         candidates.iter_mut().try_for_each(|er| {
@@ -275,7 +279,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
         self.search(&se).map(|vs| {
             vs.into_iter()
                 .map(|e| {
-                    let writeable = e.as_ref().clone().invalidate(self.cid.clone());
+                    let writeable = e
+                        .as_ref()
+                        .clone()
+                        .invalidate(self.cid.clone(), &self.trim_cid);
                     (e, writeable)
                 })
                 .collect()

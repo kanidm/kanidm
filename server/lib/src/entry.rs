@@ -846,6 +846,7 @@ impl Entry<EntryIncremental, EntryNew> {
         &self,
         db_ent: &EntrySealedCommitted,
         _schema: &dyn SchemaTransaction,
+        trim_cid: &Cid,
     ) -> EntryIncrementalCommitted {
         use crate::repl::entry::State;
 
@@ -897,7 +898,8 @@ impl Entry<EntryIncremental, EntryNew> {
                             match (self.attrs.get(attr_name), db_ent.attrs.get(attr_name)) {
                                 (Some(vs_left), Some(vs_right)) if take_left => {
                                     #[allow(clippy::todo)]
-                                    if let Some(_attr_state) = vs_left.repl_merge_valueset(vs_right)
+                                    if let Some(_attr_state) =
+                                        vs_left.repl_merge_valueset(vs_right, trim_cid)
                                     {
                                         // TODO note: This is for special attr types that need to merge
                                         // rather than choose content.
@@ -909,7 +911,8 @@ impl Entry<EntryIncremental, EntryNew> {
                                 }
                                 (Some(vs_left), Some(vs_right)) => {
                                     #[allow(clippy::todo)]
-                                    if let Some(_attr_state) = vs_right.repl_merge_valueset(vs_left)
+                                    if let Some(_attr_state) =
+                                        vs_right.repl_merge_valueset(vs_left, trim_cid)
                                     {
                                         // TODO note: This is for special attr types that need to merge
                                         // rather than choose content.
@@ -2181,14 +2184,6 @@ impl<STATE> Entry<EntryValid, STATE> {
         Ok(())
     }
 
-    pub fn invalidate(self, cid: Cid, ecstate: EntryChangeState) -> Entry<EntryInvalid, STATE> {
-        Entry {
-            valid: EntryInvalid { cid, ecstate },
-            state: self.state,
-            attrs: self.attrs,
-        }
-    }
-
     pub fn seal(self, schema: &dyn SchemaTransaction) -> Entry<EntrySealed, STATE> {
         let EntryValid { uuid, mut ecstate } = self.valid;
 
@@ -2213,7 +2208,12 @@ impl<STATE> Entry<EntrySealed, STATE>
 where
     STATE: Clone,
 {
-    pub fn invalidate(self, cid: Cid) -> Entry<EntryInvalid, STATE> {
+    pub fn invalidate(mut self, cid: Cid, trim_cid: &Cid) -> Entry<EntryInvalid, STATE> {
+        // Trim attributes that require it. For most this is a no-op.
+        for vs in self.attrs.values_mut() {
+            vs.trim(trim_cid);
+        }
+
         Entry {
             valid: EntryInvalid {
                 cid,

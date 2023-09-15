@@ -94,6 +94,10 @@ pub trait ValueSetT: std::fmt::Debug + DynClone {
         true
     }
 
+    fn trim(&mut self, _trim_cid: &Cid) {
+        // default to a no-op
+    }
+
     fn contains(&self, pv: &PartialValue) -> bool;
 
     fn substring(&self, pv: &PartialValue) -> bool;
@@ -561,7 +565,7 @@ pub trait ValueSetT: std::fmt::Debug + DynClone {
     fn repl_merge_valueset(
         &self,
         _older: &ValueSet,
-        // schema_attr: &SchemaAttribute
+        _trim_cid: &Cid, // schema_attr: &SchemaAttribute
     ) -> Option<ValueSet> {
         // Self is the "latest" content. Older contains the earlier
         // state of the attribute.

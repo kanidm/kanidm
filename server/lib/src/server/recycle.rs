@@ -8,14 +8,11 @@ impl<'a> QueryServerWriteTransaction<'a> {
     #[instrument(level = "debug", skip_all)]
     pub fn purge_tombstones(&mut self) -> Result<(), OperationError> {
         // purge everything that is a tombstone.
-        let cid = self.cid.sub_secs(CHANGELOG_MAX_AGE).map_err(|e| {
-            admin_error!("Unable to generate search cid {:?}", e);
-            e
-        })?;
+        let trim_cid = self.trim_cid().clone();
 
         // Delete them - this is a TRUE delete, no going back now!
         self.be_txn
-            .reap_tombstones(&cid)
+            .reap_tombstones(&trim_cid)
             .map_err(|e| {
                 admin_error!(err = ?e, "Tombstone purge operation failed (backend)");
                 e
@@ -164,7 +161,11 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // clone the writeable entries.
         let mut candidates: Vec<Entry<EntryInvalid, EntryCommitted>> = pre_candidates
             .iter()
-            .map(|er| er.as_ref().clone().invalidate(self.cid.clone()))
+            .map(|er| {
+                er.as_ref()
+                    .clone()
+                    .invalidate(self.cid.clone(), &self.trim_cid)
+            })
             // Mutate to apply the revive.
             .map(|er| er.to_revived())
             .collect();

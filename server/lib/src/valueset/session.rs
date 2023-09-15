@@ -410,6 +410,20 @@ impl ValueSetT for ValueSetSession {
         false
     }
 
+    fn trim(&mut self, trim_cid: &Cid) {
+        self.map.retain(|_, session| {
+            match &session.state {
+                SessionState::RevokedAt(cid) if cid < trim_cid => {
+                    // This value is past the replication trim window and can now safely
+                    // be removed
+                    false
+                }
+                // Retain all else
+                _ => true,
+            }
+        })
+    }
+
     fn contains(&self, pv: &PartialValue) -> bool {
         match pv {
             PartialValue::Refer(u) => self.map.contains_key(u),
@@ -637,7 +651,7 @@ impl ValueSetT for ValueSetSession {
         Ok(Box::new(ValueSetApiToken { map }))
     }
 
-    fn repl_merge_valueset(&self, older: &ValueSet) -> Option<ValueSet> {
+    fn repl_merge_valueset(&self, older: &ValueSet, trim_cid: &Cid) -> Option<ValueSet> {
         if let Some(b) = older.as_session_map() {
             // We can't just do merge maps here, we have to be aware of the
             // session.state value and what it currently is set to.
@@ -655,6 +669,21 @@ impl ValueSetT for ValueSetSession {
                     map.insert(k_other.clone(), v_other.clone());
                 }
             }
+            // There might be a neater way to do this with less iterations. The problem
+            // is we can't just check on what was in b/older, because then we miss
+            // trimmable content from the local map. So once the merge is complete we
+            // do a pass for trim.
+            map.retain(|_, session| {
+                match &session.state {
+                    SessionState::RevokedAt(cid) if cid < trim_cid => {
+                        // This value is past the replication trim window and can now safely
+                        // be removed
+                        false
+                    }
+                    // Retain all else
+                    _ => true,
+                }
+            });
             Some(Box::new(ValueSetSession { map }))
         } else {
             // The older value has a different type - return nothing, we
@@ -973,6 +1002,20 @@ impl ValueSetT for ValueSetOauth2Session {
         false
     }
 
+    fn trim(&mut self, trim_cid: &Cid) {
+        self.map.retain(|_, session| {
+            match &session.state {
+                SessionState::RevokedAt(cid) if cid < trim_cid => {
+                    // This value is past the replication trim window and can now safely
+                    // be removed
+                    false
+                }
+                // Retain all else
+                _ => true,
+            }
+        })
+    }
+
     fn contains(&self, pv: &PartialValue) -> bool {
         match pv {
             PartialValue::Refer(u) => {
@@ -1157,7 +1200,7 @@ impl ValueSetT for ValueSetOauth2Session {
         Some(Box::new(self.map.values().map(|m| &m.rs_uuid).copied()))
     }
 
-    fn repl_merge_valueset(&self, older: &ValueSet) -> Option<ValueSet> {
+    fn repl_merge_valueset(&self, older: &ValueSet, trim_cid: &Cid) -> Option<ValueSet> {
         if let Some(b) = older.as_oauth2session_map() {
             // We can't just do merge maps here, we have to be aware of the
             // session.state value and what it currently is set to.
@@ -1177,6 +1220,21 @@ impl ValueSetT for ValueSetOauth2Session {
                     map.insert(k_other.clone(), v_other.clone());
                 }
             }
+            // There might be a neater way to do this with less iterations. The problem
+            // is we can't just check on what was in b/older, because then we miss
+            // trimmable content from the local map. So once the merge is complete we
+            // do a pass for trim.
+            map.retain(|_, session| {
+                match &session.state {
+                    SessionState::RevokedAt(cid) if cid < trim_cid => {
+                        // This value is past the replication trim window and can now safely
+                        // be removed
+                        false
+                    }
+                    // Retain all else
+                    _ => true,
+                }
+            });
             Some(Box::new(ValueSetOauth2Session { map, rs_filter }))
         } else {
             // The older value has a different type - return nothing, we
@@ -1677,7 +1735,9 @@ mod tests {
     #[test]
     fn test_valueset_session_repl_merge_left() {
         let s_uuid = Uuid::new_v4();
+        let r_uuid = Uuid::new_v4();
         let zero_cid = Cid::new_zero();
+        let one_cid = Cid::new_count(1);
 
         let vs_a: ValueSet = ValueSetSession::new(
             s_uuid,
@@ -1691,32 +1751,51 @@ mod tests {
             },
         );
 
-        let vs_b: ValueSet = ValueSetSession::new(
-            s_uuid,
-            Session {
-                label: "hacks".to_string(),
-                state: SessionState::RevokedAt(zero_cid.clone()),
-                issued_at: OffsetDateTime::now_utc(),
-                issued_by: IdentityId::Internal,
-                cred_id: Uuid::new_v4(),
-                scope: SessionScope::ReadOnly,
-            },
-        );
+        let vs_b: ValueSet = ValueSetSession::from_iter([
+            (
+                s_uuid,
+                Session {
+                    label: "hacks".to_string(),
+                    state: SessionState::RevokedAt(one_cid.clone()),
+                    issued_at: OffsetDateTime::now_utc(),
+                    issued_by: IdentityId::Internal,
+                    cred_id: Uuid::new_v4(),
+                    scope: SessionScope::ReadOnly,
+                },
+            ),
+            (
+                r_uuid,
+                Session {
+                    label: "hacks".to_string(),
+                    state: SessionState::RevokedAt(zero_cid.clone()),
+                    issued_at: OffsetDateTime::now_utc(),
+                    issued_by: IdentityId::Internal,
+                    cred_id: Uuid::new_v4(),
+                    scope: SessionScope::ReadOnly,
+                },
+            ),
+        ])
+        .expect("Unable to build valueset session");
 
-        let r_vs = vs_a.repl_merge_valueset(&vs_b).expect("failed to merge");
+        let r_vs = vs_a
+            .repl_merge_valueset(&vs_b, &one_cid)
+            .expect("failed to merge");
 
-        let session = r_vs
-            .as_session_map()
-            .and_then(|map| map.get(&s_uuid))
-            .expect("Unable to locate session");
+        let sessions = r_vs.as_session_map().expect("Unable to locate sessions");
 
-        assert_eq!(session.state, SessionState::RevokedAt(zero_cid));
+        let session = sessions.get(&s_uuid).expect("Unable to locate session");
+
+        assert_eq!(session.state, SessionState::RevokedAt(one_cid));
+
+        assert!(!sessions.contains_key(&r_uuid));
     }
 
     #[test]
     fn test_valueset_session_repl_merge_right() {
         let s_uuid = Uuid::new_v4();
+        let r_uuid = Uuid::new_v4();
         let zero_cid = Cid::new_zero();
+        let one_cid = Cid::new_count(1);
 
         let vs_a: ValueSet = ValueSetSession::new(
             s_uuid,
@@ -1730,27 +1809,99 @@ mod tests {
             },
         );
 
-        let vs_b: ValueSet = ValueSetSession::new(
-            s_uuid,
-            Session {
-                label: "hacks".to_string(),
-                state: SessionState::RevokedAt(zero_cid.clone()),
-                issued_at: OffsetDateTime::now_utc(),
-                issued_by: IdentityId::Internal,
-                cred_id: Uuid::new_v4(),
-                scope: SessionScope::ReadOnly,
-            },
-        );
+        let vs_b: ValueSet = ValueSetSession::from_iter([
+            (
+                s_uuid,
+                Session {
+                    label: "hacks".to_string(),
+                    state: SessionState::RevokedAt(one_cid.clone()),
+                    issued_at: OffsetDateTime::now_utc(),
+                    issued_by: IdentityId::Internal,
+                    cred_id: Uuid::new_v4(),
+                    scope: SessionScope::ReadOnly,
+                },
+            ),
+            (
+                r_uuid,
+                Session {
+                    label: "hacks".to_string(),
+                    state: SessionState::RevokedAt(zero_cid.clone()),
+                    issued_at: OffsetDateTime::now_utc(),
+                    issued_by: IdentityId::Internal,
+                    cred_id: Uuid::new_v4(),
+                    scope: SessionScope::ReadOnly,
+                },
+            ),
+        ])
+        .expect("Unable to build valueset session");
 
         // Note - inverse order!
-        let r_vs = vs_b.repl_merge_valueset(&vs_a).expect("failed to merge");
+        let r_vs = vs_b
+            .repl_merge_valueset(&vs_a, &one_cid)
+            .expect("failed to merge");
 
-        let session = r_vs
-            .as_session_map()
-            .and_then(|map| map.get(&s_uuid))
-            .expect("Unable to locate session");
+        let sessions = r_vs.as_session_map().expect("Unable to locate sessions");
 
-        assert_eq!(session.state, SessionState::RevokedAt(zero_cid));
+        let session = sessions.get(&s_uuid).expect("Unable to locate session");
+
+        assert_eq!(session.state, SessionState::RevokedAt(one_cid));
+
+        assert!(!sessions.contains_key(&r_uuid));
+    }
+
+    #[test]
+    fn test_valueset_session_repl_trim() {
+        let zero_uuid = Uuid::new_v4();
+        let zero_cid = Cid::new_zero();
+        let one_uuid = Uuid::new_v4();
+        let one_cid = Cid::new_count(1);
+        let two_uuid = Uuid::new_v4();
+        let two_cid = Cid::new_count(2);
+
+        let mut vs_a: ValueSet = ValueSetSession::from_iter([
+            (
+                zero_uuid,
+                Session {
+                    state: SessionState::RevokedAt(zero_cid),
+                    label: "hacks".to_string(),
+                    issued_at: OffsetDateTime::now_utc(),
+                    issued_by: IdentityId::Internal,
+                    cred_id: Uuid::new_v4(),
+                    scope: SessionScope::ReadOnly,
+                },
+            ),
+            (
+                one_uuid,
+                Session {
+                    state: SessionState::RevokedAt(one_cid),
+                    label: "hacks".to_string(),
+                    issued_at: OffsetDateTime::now_utc(),
+                    issued_by: IdentityId::Internal,
+                    cred_id: Uuid::new_v4(),
+                    scope: SessionScope::ReadOnly,
+                },
+            ),
+            (
+                two_uuid,
+                Session {
+                    state: SessionState::RevokedAt(two_cid.clone()),
+                    label: "hacks".to_string(),
+                    issued_at: OffsetDateTime::now_utc(),
+                    issued_by: IdentityId::Internal,
+                    cred_id: Uuid::new_v4(),
+                    scope: SessionScope::ReadOnly,
+                },
+            ),
+        ])
+        .unwrap();
+
+        vs_a.trim(&two_cid);
+
+        let sessions = vs_a.as_session_map().expect("Unable to locate session");
+
+        assert!(!sessions.contains_key(&zero_uuid));
+        assert!(!sessions.contains_key(&one_uuid));
+        assert!(sessions.contains_key(&two_uuid));
     }
 
     #[test]
@@ -1855,7 +2006,9 @@ mod tests {
     #[test]
     fn test_valueset_oauth2_session_repl_merge_left() {
         let s_uuid = Uuid::new_v4();
+        let r_uuid = Uuid::new_v4();
         let zero_cid = Cid::new_zero();
+        let one_cid = Cid::new_count(1);
 
         let vs_a: ValueSet = ValueSetOauth2Session::new(
             s_uuid,
@@ -1867,30 +2020,49 @@ mod tests {
             },
         );
 
-        let vs_b: ValueSet = ValueSetOauth2Session::new(
-            s_uuid,
-            Oauth2Session {
-                state: SessionState::RevokedAt(zero_cid.clone()),
-                issued_at: OffsetDateTime::now_utc(),
-                parent: Uuid::new_v4(),
-                rs_uuid: Uuid::new_v4(),
-            },
-        );
+        let vs_b: ValueSet = ValueSetOauth2Session::from_iter([
+            (
+                s_uuid,
+                Oauth2Session {
+                    state: SessionState::RevokedAt(one_cid.clone()),
+                    issued_at: OffsetDateTime::now_utc(),
+                    parent: Uuid::new_v4(),
+                    rs_uuid: Uuid::new_v4(),
+                },
+            ),
+            (
+                r_uuid,
+                Oauth2Session {
+                    state: SessionState::RevokedAt(zero_cid.clone()),
+                    issued_at: OffsetDateTime::now_utc(),
+                    parent: Uuid::new_v4(),
+                    rs_uuid: Uuid::new_v4(),
+                },
+            ),
+        ])
+        .expect("Unable to build valueset oauth2 session");
 
-        let r_vs = vs_a.repl_merge_valueset(&vs_b).expect("failed to merge");
+        let r_vs = vs_a
+            .repl_merge_valueset(&vs_b, &one_cid)
+            .expect("failed to merge");
 
-        let session = r_vs
+        let sessions = r_vs
             .as_oauth2session_map()
-            .and_then(|map| map.get(&s_uuid))
-            .expect("Unable to locate session");
+            .expect("Unable to locate sessions");
 
-        assert_eq!(session.state, SessionState::RevokedAt(zero_cid));
+        let session = sessions.get(&s_uuid).expect("Unable to locate session");
+
+        assert_eq!(session.state, SessionState::RevokedAt(one_cid));
+
+        assert!(!sessions.contains_key(&r_uuid));
     }
 
     #[test]
     fn test_valueset_oauth2_session_repl_merge_right() {
         let s_uuid = Uuid::new_v4();
+        let r_uuid = Uuid::new_v4();
         let zero_cid = Cid::new_zero();
+        let one_cid = Cid::new_count(1);
 
         let vs_a: ValueSet = ValueSetOauth2Session::new(
             s_uuid,
@@ -1902,24 +2074,92 @@ mod tests {
             },
         );
 
-        let vs_b: ValueSet = ValueSetOauth2Session::new(
-            s_uuid,
-            Oauth2Session {
-                state: SessionState::RevokedAt(zero_cid.clone()),
-                issued_at: OffsetDateTime::now_utc(),
-                parent: Uuid::new_v4(),
-                rs_uuid: Uuid::new_v4(),
-            },
-        );
+        let vs_b: ValueSet = ValueSetOauth2Session::from_iter([
+            (
+                s_uuid,
+                Oauth2Session {
+                    state: SessionState::RevokedAt(one_cid.clone()),
+                    issued_at: OffsetDateTime::now_utc(),
+                    parent: Uuid::new_v4(),
+                    rs_uuid: Uuid::new_v4(),
+                },
+            ),
+            (
+                r_uuid,
+                Oauth2Session {
+                    state: SessionState::RevokedAt(zero_cid.clone()),
+                    issued_at: OffsetDateTime::now_utc(),
+                    parent: Uuid::new_v4(),
+                    rs_uuid: Uuid::new_v4(),
+                },
+            ),
+        ])
+        .expect("Unable to build valueset oauth2 session");
 
         // Note inverse order
-        let r_vs = vs_b.repl_merge_valueset(&vs_a).expect("failed to merge");
+        let r_vs = vs_b
+            .repl_merge_valueset(&vs_a, &one_cid)
+            .expect("failed to merge");
 
-        let session = r_vs
+        let sessions = r_vs
             .as_oauth2session_map()
-            .and_then(|map| map.get(&s_uuid))
+            .expect("Unable to locate sessions");
+
+        let session = sessions.get(&s_uuid).expect("Unable to locate session");
+
+        assert_eq!(session.state, SessionState::RevokedAt(one_cid));
+
+        assert!(!sessions.contains_key(&r_uuid));
+    }
+
+    #[test]
+    fn test_valueset_oauth2_session_repl_trim() {
+        let zero_uuid = Uuid::new_v4();
+        let zero_cid = Cid::new_zero();
+        let one_uuid = Uuid::new_v4();
+        let one_cid = Cid::new_count(1);
+        let two_uuid = Uuid::new_v4();
+        let two_cid = Cid::new_count(2);
+
+        let mut vs_a: ValueSet = ValueSetOauth2Session::from_iter([
+            (
+                zero_uuid,
+                Oauth2Session {
+                    state: SessionState::RevokedAt(zero_cid),
+                    issued_at: OffsetDateTime::now_utc(),
+                    parent: Uuid::new_v4(),
+                    rs_uuid: Uuid::new_v4(),
+                },
+            ),
+            (
+                one_uuid,
+                Oauth2Session {
+                    state: SessionState::RevokedAt(one_cid),
+                    issued_at: OffsetDateTime::now_utc(),
+                    parent: Uuid::new_v4(),
+                    rs_uuid: Uuid::new_v4(),
+                },
+            ),
+            (
+                two_uuid,
+                Oauth2Session {
+                    state: SessionState::RevokedAt(two_cid.clone()),
+                    issued_at: OffsetDateTime::now_utc(),
+                    parent: Uuid::new_v4(),
+                    rs_uuid: Uuid::new_v4(),
+                },
+            ),
+        ])
+        .unwrap();
+
+        vs_a.trim(&two_cid);
+
+        let sessions = vs_a
+            .as_oauth2session_map()
             .expect("Unable to locate session");
 
-        assert_eq!(session.state, SessionState::RevokedAt(zero_cid));
+        assert!(!sessions.contains_key(&zero_uuid));
+        assert!(!sessions.contains_key(&one_uuid));
+        assert!(sessions.contains_key(&two_uuid));
     }
 }
