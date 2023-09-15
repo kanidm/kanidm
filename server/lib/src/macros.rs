@@ -486,9 +486,11 @@ macro_rules! mergemaps {
         $b:expr
     ) => {{
         $b.iter().for_each(|(k, v)| {
-            if !$a.contains_key(k) {
-                $a.insert(k.clone(), v.clone());
-            }
+            // I think to be consistent, we need the content of b to always
+            // the content of a
+            // if !$a.contains_key(k) {
+            $a.insert(k.clone(), v.clone());
+            // }
         });
         Ok(())
     }};

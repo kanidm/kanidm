@@ -92,6 +92,7 @@ pub mod prelude {
     pub use crate::modify::{
         m_assert, m_pres, m_purge, m_remove, Modify, ModifyInvalid, ModifyList, ModifyValid,
     };
+    pub use crate::repl::cid::Cid;
     pub use crate::server::access::AccessControlsTransaction;
     pub use crate::server::batch_modify::BatchModifyEvent;
     pub use crate::server::identity::{

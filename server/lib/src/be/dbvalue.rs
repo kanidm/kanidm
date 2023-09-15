@@ -390,6 +390,16 @@ pub enum DbValueIdentityId {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
+pub enum DbValueSessionStateV1 {
+    #[serde(rename = "ea")]
+    ExpiresAt(String),
+    #[serde(rename = "nv")]
+    Never,
+    #[serde(rename = "ra")]
+    RevokedAt(DbCidV1),
+}
+
+#[derive(Serialize, Deserialize, Debug)]
 pub enum DbValueSession {
     V1 {
         #[serde(rename = "u")]
@@ -412,6 +422,22 @@ pub enum DbValueSession {
         label: String,
         #[serde(rename = "e")]
         expiry: Option<String>,
+        #[serde(rename = "i")]
+        issued_at: String,
+        #[serde(rename = "b")]
+        issued_by: DbValueIdentityId,
+        #[serde(rename = "c")]
+        cred_id: Uuid,
+        #[serde(rename = "s", default)]
+        scope: DbValueAccessScopeV1,
+    },
+    V3 {
+        #[serde(rename = "u")]
+        refer: Uuid,
+        #[serde(rename = "l")]
+        label: String,
+        #[serde(rename = "e")]
+        state: DbValueSessionStateV1,
         #[serde(rename = "i")]
         issued_at: String,
         #[serde(rename = "b")]
@@ -461,6 +487,18 @@ pub enum DbValueOauth2Session {
         parent: Uuid,
         #[serde(rename = "e")]
         expiry: Option<String>,
+        #[serde(rename = "i")]
+        issued_at: String,
+        #[serde(rename = "r")]
+        rs_uuid: Uuid,
+    },
+    V2 {
+        #[serde(rename = "u")]
+        refer: Uuid,
+        #[serde(rename = "p")]
+        parent: Uuid,
+        #[serde(rename = "e")]
+        state: DbValueSessionStateV1,
         #[serde(rename = "i")]
         issued_at: String,
         #[serde(rename = "r")]

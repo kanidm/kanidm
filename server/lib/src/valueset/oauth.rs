@@ -61,7 +61,7 @@ impl ValueSetT for ValueSetOauthScope {
         self.set.clear();
     }
 
-    fn remove(&mut self, pv: &PartialValue) -> bool {
+    fn remove(&mut self, pv: &PartialValue, _cid: &Cid) -> bool {
         match pv {
             PartialValue::OauthScope(s) => self.set.remove(s.as_str()),
             _ => {
@@ -233,7 +233,7 @@ impl ValueSetT for ValueSetOauthScopeMap {
         self.map.clear();
     }
 
-    fn remove(&mut self, pv: &PartialValue) -> bool {
+    fn remove(&mut self, pv: &PartialValue, _cid: &Cid) -> bool {
         match pv {
             PartialValue::Refer(u) => self.map.remove(u).is_some(),
             _ => false,

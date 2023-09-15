@@ -106,7 +106,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
             .iter()
             .map(|er| {
                 let u = er.get_uuid();
-                let mut ent_mut = er.as_ref().clone().invalidate(self.cid.clone());
+                let mut ent_mut = er
+                    .as_ref()
+                    .clone()
+                    .invalidate(self.cid.clone(), &self.trim_cid);
 
                 me.modset
                     .get(&u)

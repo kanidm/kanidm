@@ -344,11 +344,29 @@ pub enum UatPurposeStatus {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "lowercase")]
+pub enum UatStatusState {
+    #[serde(with = "time::serde::timestamp")]
+    ExpiresAt(time::OffsetDateTime),
+    NeverExpires,
+    Revoked,
+}
+
+impl fmt::Display for UatStatusState {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            UatStatusState::ExpiresAt(odt) => write!(f, "expires at {}", odt),
+            UatStatusState::NeverExpires => write!(f, "never expires"),
+            UatStatusState::Revoked => write!(f, "revoked"),
+        }
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "lowercase")]
 pub struct UatStatus {
     pub account_id: Uuid,
     pub session_id: Uuid,
-    #[serde(with = "time::serde::timestamp::option")]
-    pub expiry: Option<time::OffsetDateTime>,
+    pub state: UatStatusState,
     #[serde(with = "time::serde::timestamp")]
     pub issued_at: time::OffsetDateTime,
     pub purpose: UatPurposeStatus,
@@ -358,11 +376,7 @@ impl fmt::Display for UatStatus {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(f, "account_id: {}", self.account_id)?;
         writeln!(f, "session_id: {}", self.session_id)?;
-        if let Some(exp) = self.expiry {
-            writeln!(f, "expiry: {}", exp)?;
-        } else {
-            writeln!(f, "expiry: -")?;
-        }
+        writeln!(f, "state: {}", self.state)?;
         writeln!(f, "issued_at: {}", self.issued_at)?;
         match &self.purpose {
             UatPurposeStatus::ReadOnly => writeln!(f, "purpose: read only")?,

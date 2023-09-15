@@ -44,7 +44,7 @@ impl ValueSetT for ValueSetUtf8 {
         self.set.clear();
     }
 
-    fn remove(&mut self, pv: &PartialValue) -> bool {
+    fn remove(&mut self, pv: &PartialValue, _cid: &Cid) -> bool {
         match pv {
             PartialValue::Utf8(s) => self.set.remove(s),
             _ => {

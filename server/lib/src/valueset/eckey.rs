@@ -1,7 +1,7 @@
 use std::iter::{self};
 
 use crate::be::dbvalue::DbValueSetV2;
-use crate::prelude::ValueSetT;
+use crate::prelude::*;
 use crate::repl::proto::ReplAttrV1;
 use crate::value::{PartialValue, SyntaxType, Value};
 use kanidm_proto::v1::OperationError;
@@ -90,7 +90,7 @@ impl ValueSetT for ValueSetEcKeyPrivate {
         self.set = None;
     }
 
-    fn remove(&mut self, _pv: &crate::value::PartialValue) -> bool {
+    fn remove(&mut self, _pv: &crate::value::PartialValue, _cid: &Cid) -> bool {
         false
     }
 

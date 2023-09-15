@@ -229,7 +229,8 @@ pub struct ReplOauthScopeMapV1 {
 pub struct ReplOauth2SessionV1 {
     pub refer: Uuid,
     pub parent: Uuid,
-    pub expiry: Option<String>,
+    pub state: ReplSessionStateV1,
+    // pub expiry: Option<String>,
     pub issued_at: String,
     pub rs_uuid: Uuid,
 }
@@ -262,11 +263,19 @@ pub enum ReplIdentityIdV1 {
 pub struct ReplSessionV1 {
     pub refer: Uuid,
     pub label: String,
-    pub expiry: Option<String>,
+    pub state: ReplSessionStateV1,
+    // pub expiry: Option<String>,
     pub issued_at: String,
     pub issued_by: ReplIdentityIdV1,
     pub cred_id: Uuid,
     pub scope: ReplSessionScopeV1,
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
+pub enum ReplSessionStateV1 {
+    ExpiresAt(String),
+    Never,
+    RevokedAt(ReplCidV1),
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
@@ -388,7 +397,7 @@ pub enum ReplAttrV1 {
         set: Vec<(String, ReplTotpV1)>,
     },
     AuditLogString {
-        set: Vec<(Cid, String)>,
+        map: Vec<(Cid, String)>,
     },
     EcKeyPrivate {
         key: Vec<u8>,

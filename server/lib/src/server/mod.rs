@@ -104,6 +104,7 @@ pub struct QueryServerWriteTransaction<'a> {
     d_info: CowCellWriteTxn<'a, DomainInfo>,
     curtime: Duration,
     cid: Cid,
+    trim_cid: Cid,
     pub(crate) be_txn: BackendWriteTransaction<'a>,
     pub(crate) schema: SchemaWriteTransaction<'a>,
     accesscontrols: AccessControlsWriteTransaction<'a>,
@@ -122,6 +123,12 @@ pub struct QueryServerWriteTransaction<'a> {
     resolve_filter_cache:
         ARCacheReadTxn<'a, (IdentityId, Filter<FilterValid>), Filter<FilterValidResolved>, ()>,
     dyngroup_cache: CowCellWriteTxn<'a, DynGroupCache>,
+}
+
+impl<'a> QueryServerWriteTransaction<'a> {
+    pub(crate) fn trim_cid(&self) -> &Cid {
+        &self.trim_cid
+    }
 }
 
 /// The `QueryServerTransaction` trait provides a set of common read only operations to be
@@ -1191,6 +1198,10 @@ impl QueryServer {
             .get_db_ts_max(curtime)
             .expect("Unable to get db_ts_max");
         let cid = Cid::new_lamport(self.s_uuid, curtime, &ts_max);
+        #[allow(clippy::expect_used)]
+        let trim_cid = cid
+            .sub_secs(CHANGELOG_MAX_AGE)
+            .expect("unable to generate trim cid");
 
         QueryServerWriteTransaction {
             // I think this is *not* needed, because commit is mut self which should
@@ -1204,6 +1215,7 @@ impl QueryServer {
             d_info,
             curtime,
             cid,
+            trim_cid,
             be_txn,
             schema: schema_write,
             accesscontrols: self.accesscontrols.write(),

@@ -104,7 +104,7 @@ impl ValueSetT for ValueSetAddress {
         self.set.clear();
     }
 
-    fn remove(&mut self, pv: &PartialValue) -> bool {
+    fn remove(&mut self, pv: &PartialValue, _cid: &Cid) -> bool {
         match pv {
             PartialValue::Address(_) => {
                 unreachable!()
@@ -325,7 +325,7 @@ impl ValueSetT for ValueSetEmailAddress {
         self.set.clear();
     }
 
-    fn remove(&mut self, pv: &PartialValue) -> bool {
+    fn remove(&mut self, pv: &PartialValue, _cid: &Cid) -> bool {
         match pv {
             PartialValue::EmailAddress(a) => {
                 let r = self.set.remove(a);
@@ -463,6 +463,7 @@ pub struct ValueSetPhoneNumber {
 #[cfg(test)]
 mod tests {
     use super::ValueSetEmailAddress;
+    use crate::repl::cid::Cid;
     use crate::value::{PartialValue, Value};
     use crate::valueset::{self, ValueSet};
 
@@ -501,7 +502,10 @@ mod tests {
         assert!(vs.to_email_address_primary_str() == vs2.to_email_address_primary_str());
 
         // Remove primary, assert it's gone and that the "first" address is assigned.
-        assert!(vs.remove(&PartialValue::new_email_address_s("primary@example.com")));
+        assert!(vs.remove(
+            &PartialValue::new_email_address_s("primary@example.com"),
+            &Cid::new_zero()
+        ));
         assert!(vs.len() == 2);
         assert!(vs.to_email_address_primary_str() == Some("alice@example.com"));
 

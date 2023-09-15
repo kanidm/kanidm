@@ -629,7 +629,7 @@ impl Entry<EntryInit, EntryNew> {
     where
         T: IntoIterator<Item = Value>,
     {
-        self.set_ava_int(attr.as_ref(), iter)
+        self.set_ava_iter_int(attr.as_ref(), iter)
     }
 
     pub fn get_ava_mut(&mut self, attr: &str) -> Option<&mut ValueSet> {
@@ -846,6 +846,7 @@ impl Entry<EntryIncremental, EntryNew> {
         &self,
         db_ent: &EntrySealedCommitted,
         _schema: &dyn SchemaTransaction,
+        trim_cid: &Cid,
     ) -> EntryIncrementalCommitted {
         use crate::repl::entry::State;
 
@@ -897,7 +898,8 @@ impl Entry<EntryIncremental, EntryNew> {
                             match (self.attrs.get(attr_name), db_ent.attrs.get(attr_name)) {
                                 (Some(vs_left), Some(vs_right)) if take_left => {
                                     #[allow(clippy::todo)]
-                                    if let Some(_attr_state) = vs_left.repl_merge_valueset(vs_right)
+                                    if let Some(_attr_state) =
+                                        vs_left.repl_merge_valueset(vs_right, trim_cid)
                                     {
                                         // TODO note: This is for special attr types that need to merge
                                         // rather than choose content.
@@ -909,7 +911,8 @@ impl Entry<EntryIncremental, EntryNew> {
                                 }
                                 (Some(vs_left), Some(vs_right)) => {
                                     #[allow(clippy::todo)]
-                                    if let Some(_attr_state) = vs_right.repl_merge_valueset(vs_left)
+                                    if let Some(_attr_state) =
+                                        vs_right.repl_merge_valueset(vs_left, trim_cid)
                                     {
                                         // TODO note: This is for special attr types that need to merge
                                         // rather than choose content.
@@ -2181,14 +2184,6 @@ impl<STATE> Entry<EntryValid, STATE> {
         Ok(())
     }
 
-    pub fn invalidate(self, cid: Cid, ecstate: EntryChangeState) -> Entry<EntryInvalid, STATE> {
-        Entry {
-            valid: EntryInvalid { cid, ecstate },
-            state: self.state,
-            attrs: self.attrs,
-        }
-    }
-
     pub fn seal(self, schema: &dyn SchemaTransaction) -> Entry<EntrySealed, STATE> {
         let EntryValid { uuid, mut ecstate } = self.valid;
 
@@ -2213,7 +2208,12 @@ impl<STATE> Entry<EntrySealed, STATE>
 where
     STATE: Clone,
 {
-    pub fn invalidate(self, cid: Cid) -> Entry<EntryInvalid, STATE> {
+    pub fn invalidate(mut self, cid: Cid, trim_cid: &Cid) -> Entry<EntryInvalid, STATE> {
+        // Trim attributes that require it. For most this is a no-op.
+        for vs in self.attrs.values_mut() {
+            vs.trim(trim_cid);
+        }
+
         Entry {
             valid: EntryInvalid {
                 cid,
@@ -2390,24 +2390,21 @@ impl<VALID, STATE> Entry<VALID, STATE> {
     }
 
     /// Overwrite the current set of values for an attribute, with this new set.
-    fn set_ava_int<T>(&mut self, attr: &str, iter: T)
+    fn set_ava_iter_int<T>(&mut self, attr: &str, iter: T)
     where
         T: IntoIterator<Item = Value>,
     {
-        // Overwrite the existing value, build a tree from the list.
-        let values = valueset::from_value_iter(iter.into_iter());
-        match values {
-            Ok(vs) => {
-                let _ = self.attrs.insert(AttrString::from(attr), vs);
-            }
-            Err(e) => {
-                admin_warn!(
-                    "dropping content of {} due to invalid valueset {:?}",
-                    attr,
-                    e
-                );
-                self.attrs.remove(attr);
-            }
+        let Ok(vs) = valueset::from_value_iter(iter.into_iter()) else {
+            trace!("set_ava_iter_int - empty from_value_iter, skipping");
+            return;
+        };
+
+        if let Some(existing_vs) = self.attrs.get_mut(attr) {
+            // This is the suboptimal path. This can only exist in rare cases.
+            let _ = existing_vs.merge(&vs);
+        } else {
+            // Normally this is what's taken.
+            self.attrs.insert(AttrString::from(attr), vs);
         }
     }
 
@@ -2979,11 +2976,7 @@ where
 
     fn assert_ava(&mut self, attr: &str, value: &PartialValue) -> Result<(), OperationError> {
         self.valid.ecstate.change_ava(&self.valid.cid, attr);
-        /*
-        self.valid
-            .eclog
-            .assert_ava(&self.valid.cid, attr, value.clone());
-        */
+
         if self.attribute_equality(attr, value) {
             Ok(())
         } else {
@@ -2995,14 +2988,9 @@ where
     /// don't do anything else since we are asserting the absence of a value.
     pub(crate) fn remove_ava(&mut self, attr: &str, value: &PartialValue) {
         self.valid.ecstate.change_ava(&self.valid.cid, attr);
-        /*
-        self.valid
-            .eclog
-            .remove_ava_iter(&self.valid.cid, attr, std::iter::once(value.clone()));
-        */
 
         let rm = if let Some(vs) = self.attrs.get_mut(attr) {
-            vs.remove(value);
+            vs.remove(value, &self.valid.cid);
             vs.is_empty()
         } else {
             false
@@ -3014,15 +3002,10 @@ where
 
     pub(crate) fn remove_avas(&mut self, attr: &str, values: &BTreeSet<PartialValue>) {
         self.valid.ecstate.change_ava(&self.valid.cid, attr);
-        /*
-        self.valid
-            .eclog
-            .remove_ava_iter(&self.valid.cid, attr, values.iter().cloned());
-        */
 
         let rm = if let Some(vs) = self.attrs.get_mut(attr) {
             values.iter().for_each(|k| {
-                vs.remove(k);
+                vs.remove(k, &self.valid.cid);
             });
             vs.is_empty()
         } else {
@@ -3037,42 +3020,66 @@ where
     /// asserts that no content of that attribute exist.
     pub(crate) fn purge_ava(&mut self, attr: &str) {
         self.valid.ecstate.change_ava(&self.valid.cid, attr);
-        // self.valid.eclog.purge_ava(&self.valid.cid, attr);
-        self.attrs.remove(attr);
+        let can_remove = self
+            .attrs
+            .get_mut(attr)
+            .map(|vs| vs.purge(&self.valid.cid))
+            // Default to false since a missing attr can't be removed!
+            .unwrap_or_default();
+        if can_remove {
+            self.attrs.remove(attr);
+        }
     }
 
-    /// Remove all values of this attribute from the entry, and return their content.
+    /// Remove this value set from the entry, returning the value set at the time of removal.
     pub fn pop_ava(&mut self, attr: &str) -> Option<ValueSet> {
         self.valid.ecstate.change_ava(&self.valid.cid, attr);
-        // self.valid.eclog.purge_ava(&self.valid.cid, attr);
+
+        let mut vs = self.attrs.remove(attr)?;
+        if vs.purge(&self.valid.cid) {
+            // Can return as is.
+            Some(vs)
+        } else {
+            // This type may need special handling. Clone and reinsert.
+            let r_vs = vs.clone();
+            self.attrs.insert(attr.into(), vs);
+            Some(r_vs)
+        }
+    }
+
+    /// Unlike pop or purge, this does NOT respect the attributes purge settings, meaning
+    /// that this can break replication by force clearing the state of an attribute. It's
+    /// useful for things like "session" to test the grace window by removing the revoked
+    /// sessions from the value set that you otherwise, could not.
+    #[cfg(test)]
+    pub(crate) fn force_trim_ava(&mut self, attr: &str) -> Option<ValueSet> {
+        self.valid.ecstate.change_ava(&self.valid.cid, attr);
         self.attrs.remove(attr)
     }
 
-    /// Replace the content of this attribute with a new value set. Effectively this is
-    /// a a "purge and set".
+    /// Replace the content of this attribute with the values from this
+    /// iterator. If the iterator is empty, the attribute is purged.
     pub fn set_ava<T>(&mut self, attr: &str, iter: T)
     where
         T: Clone + IntoIterator<Item = Value>,
     {
-        self.valid.ecstate.change_ava(&self.valid.cid, attr);
-        /*
-        self.valid.eclog.purge_ava(&self.valid.cid, attr);
-        self.valid
-            .eclog
-            .add_ava_iter(&self.valid.cid, attr, iter.clone());
-        */
-        self.set_ava_int(attr, iter)
+        // self.valid.ecstate.change_ava(&self.valid.cid, attr);
+        // purge_ava triggers ecstate for us.
+        self.purge_ava(attr);
+        self.set_ava_iter_int(attr, iter)
     }
 
+    /// Replace the content of this attribute with a new value set. Effectively this is
+    /// a a "purge and set".
     pub fn set_ava_set(&mut self, attr: &str, vs: ValueSet) {
-        self.valid.ecstate.change_ava(&self.valid.cid, attr);
-        /*
-        self.valid.eclog.purge_ava(&self.valid.cid, attr);
-        self.valid
-            .eclog
-            .add_ava_iter(&self.valid.cid, attr, vs.to_value_iter());
-        */
-        self.attrs.insert(AttrString::from(attr), vs);
+        // self.valid.ecstate.change_ava(&self.valid.cid, attr);
+        // purge_ava triggers ecstate for us.
+        self.purge_ava(attr);
+        if let Some(existing_vs) = self.attrs.get_mut(attr) {
+            let _ = existing_vs.merge(&vs);
+        } else {
+            self.attrs.insert(AttrString::from(attr), vs);
+        }
     }
 
     /// Apply the content of this modlist to this entry, enforcing the expressed state.

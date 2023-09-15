@@ -51,7 +51,11 @@ impl<'a> QueryServerWriteTransaction<'a> {
         let mut candidates: Vec<Entry<EntryInvalid, EntryCommitted>> = pre_candidates
             .iter()
             // Invalidate and assign change id's
-            .map(|er| er.as_ref().clone().invalidate(self.cid.clone()))
+            .map(|er| {
+                er.as_ref()
+                    .clone()
+                    .invalidate(self.cid.clone(), &self.trim_cid)
+            })
             .collect();
 
         trace!(?candidates, "delete: candidates");

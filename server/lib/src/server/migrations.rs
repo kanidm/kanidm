@@ -223,7 +223,11 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // Change the value type.
         let mut candidates: Vec<Entry<EntryInvalid, EntryCommitted>> = pre_candidates
             .iter()
-            .map(|er| er.as_ref().clone().invalidate(self.cid.clone()))
+            .map(|er| {
+                er.as_ref()
+                    .clone()
+                    .invalidate(self.cid.clone(), &self.trim_cid)
+            })
             .collect();
 
         candidates.iter_mut().try_for_each(|er| {

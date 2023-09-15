@@ -40,7 +40,7 @@ use crate::idm::server::{
     IdmServerProxyReadTransaction, IdmServerProxyWriteTransaction, IdmServerTransaction,
 };
 use crate::prelude::*;
-use crate::value::{Oauth2Session, OAUTHSCOPE_RE};
+use crate::value::{Oauth2Session, SessionState, OAUTHSCOPE_RE};
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 #[serde(rename_all = "snake_case")]
@@ -484,6 +484,7 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
 }
 
 impl<'a> IdmServerProxyWriteTransaction<'a> {
+    #[instrument(level = "debug", skip_all)]
     pub fn oauth2_token_revoke(
         &mut self,
         client_authz: &str,
@@ -575,6 +576,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         }
     }
 
+    #[instrument(level = "debug", skip_all)]
     pub fn check_oauth2_token_exchange(
         &mut self,
         client_authz: Option<&str>,
@@ -659,6 +661,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         }
     }
 
+    #[instrument(level = "debug", skip_all)]
     pub fn check_oauth2_authorise_permit(
         &mut self,
         ident: &Identity,
@@ -750,6 +753,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         })
     }
 
+    #[instrument(level = "debug", skip_all)]
     fn check_oauth2_token_exchange_authorization_code(
         &mut self,
         o2rs: &Oauth2RS,
@@ -849,6 +853,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         )
     }
 
+    #[instrument(level = "debug", skip_all)]
     fn check_oauth2_token_refresh(
         &mut self,
         o2rs: &Oauth2RS,
@@ -1131,7 +1136,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             session_id,
             Oauth2Session {
                 parent: parent_session_id,
-                expiry: Some(refresh_expiry),
+                state: SessionState::ExpiresAt(refresh_expiry),
                 issued_at: odt_ct,
                 rs_uuid: o2rs.uuid,
             },
@@ -1139,7 +1144,9 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         // We need to update (replace) this session id if present.
         let modlist = ModifyList::new_list(vec![
-            Modify::Removed("oauth2_session".into(), PartialValue::Refer(session_id)),
+            // NOTE: Oauth2_session has special handling that allows update in place without
+            // the remove step needing to be carried out.
+            // Modify::Removed("oauth2_session".into(), PartialValue::Refer(session_id)),
             Modify::Present("oauth2_session".into(), session),
         ]);
 
@@ -1208,6 +1215,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 }
 
 impl<'a> IdmServerProxyReadTransaction<'a> {
+    #[instrument(level = "debug", skip_all)]
     pub fn check_oauth2_authorisation(
         &self,
         ident: &Identity,
@@ -1499,6 +1507,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
         }
     }
 
+    #[instrument(level = "debug", skip_all)]
     pub fn check_oauth2_authorise_reject(
         &self,
         ident: &Identity,
@@ -1550,6 +1559,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
         Ok(consent_req.redirect_uri)
     }
 
+    #[instrument(level = "debug", skip_all)]
     pub fn check_oauth2_token_introspect(
         &mut self,
         client_authz: &str,
@@ -1659,6 +1669,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
         }
     }
 
+    #[instrument(level = "debug", skip_all)]
     pub fn oauth2_openid_userinfo(
         &mut self,
         client_id: &str,
@@ -1765,6 +1776,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
         }
     }
 
+    #[instrument(level = "debug", skip_all)]
     pub fn oauth2_openid_discovery(
         &self,
         client_id: &str,
@@ -1848,6 +1860,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
         })
     }
 
+    #[instrument(level = "debug", skip_all)]
     pub fn oauth2_openid_publickey(&self, client_id: &str) -> Result<JwkKeySet, OperationError> {
         let o2rs = self.oauth2rs.inner.rs_set.get(client_id).ok_or_else(|| {
             admin_warn!(
@@ -1974,6 +1987,7 @@ mod tests {
     use crate::idm::oauth2::{AuthoriseResponse, Oauth2Error};
     use crate::idm::server::{IdmServer, IdmServerTransaction};
     use crate::prelude::*;
+    use crate::value::SessionState;
 
     use crate::credential::Credential;
     use kanidm_lib_crypto::CryptoPolicy;
@@ -2127,7 +2141,10 @@ mod tests {
             .expect("Unable to create uat");
 
         // Need the uat first for expiry.
-        let expiry = uat.expiry;
+        let state = uat
+            .expiry
+            .map(SessionState::ExpiresAt)
+            .unwrap_or(SessionState::NeverExpires);
 
         let p = CryptoPolicy::minimum();
         let cred = Credential::new_password_only(&p, "test_password").unwrap();
@@ -2137,7 +2154,7 @@ mod tests {
             session_id,
             crate::value::Session {
                 label: "label".to_string(),
-                expiry,
+                state,
                 issued_at: time::OffsetDateTime::UNIX_EPOCH + ct,
                 issued_by: IdentityId::Internal,
                 cred_id,
@@ -2246,7 +2263,10 @@ mod tests {
             .expect("Unable to create uat");
 
         // Need the uat first for expiry.
-        let expiry = uat.expiry;
+        let state = uat
+            .expiry
+            .map(SessionState::ExpiresAt)
+            .unwrap_or(SessionState::NeverExpires);
 
         let p = CryptoPolicy::minimum();
         let cred = Credential::new_password_only(&p, "test_password").unwrap();
@@ -2256,7 +2276,7 @@ mod tests {
             session_id,
             crate::value::Session {
                 label: "label".to_string(),
-                expiry,
+                state,
                 issued_at: time::OffsetDateTime::UNIX_EPOCH + ct,
                 issued_by: IdentityId::Internal,
                 cred_id,
@@ -3083,18 +3103,6 @@ mod tests {
             .is_ok());
         assert!(idms_prox_write.commit().is_ok());
 
-        // Check it is still valid - this is because we are still in the GRACE window.
-        let mut idms_prox_read = idms.proxy_read().await;
-        let intr_response = idms_prox_read
-            .check_oauth2_token_introspect(client_authz.as_deref().unwrap(), &intr_request, ct)
-            .expect("Failed to inspect token");
-
-        assert!(intr_response.active);
-        drop(idms_prox_read);
-
-        // Check after the grace window, it will be invalid.
-        let ct = ct + GRACE_WINDOW;
-
         // Assert it is now invalid.
         let mut idms_prox_read = idms.proxy_read().await;
         let intr_response = idms_prox_read
@@ -3102,6 +3110,39 @@ mod tests {
             .expect("Failed to inspect token");
 
         assert!(!intr_response.active);
+        drop(idms_prox_read);
+
+        // Force trim the session and wait for the grace window to pass. The token will be invalidated
+        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let filt = filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(uat.uuid)));
+        let mut work_set = idms_prox_write
+            .qs_write
+            .internal_search_writeable(&filt)
+            .expect("Failed to perform internal search writeable");
+        for (_, entry) in work_set.iter_mut() {
+            let _ = entry.force_trim_ava(Attribute::OAuth2Session.into());
+        }
+        assert!(idms_prox_write
+            .qs_write
+            .internal_apply_writable(work_set)
+            .is_ok());
+
+        assert!(idms_prox_write.commit().is_ok());
+
+        let mut idms_prox_read = idms.proxy_read().await;
+        // Grace window in effect.
+        let intr_response = idms_prox_read
+            .check_oauth2_token_introspect(client_authz.as_deref().unwrap(), &intr_request, ct)
+            .expect("Failed to inspect token");
+        assert!(intr_response.active);
+
+        // Grace window passed, it will now be invalid.
+        let ct = ct + GRACE_WINDOW;
+        let intr_response = idms_prox_read
+            .check_oauth2_token_introspect(client_authz.as_deref().unwrap(), &intr_request, ct)
+            .expect("Failed to inspect token");
+        assert!(!intr_response.active);
+
         drop(idms_prox_read);
 
         // A second invalidation of the token "does nothing".
@@ -3201,17 +3242,19 @@ mod tests {
 
         assert!(idms_prox_write.qs_write.delete(&de).is_ok());
 
-        // Assert the session is gone. This is cleaned up as an artifact of the referential
-        // integrity plugin.
+        // Assert the session is revoked. This is cleaned up as an artifact of the referential
+        // integrity plugin. Remember, refint doesn't consider revoked sessions once they are
+        // revoked.
         let entry = idms_prox_write
             .qs_write
             .internal_search_uuid(UUID_ADMIN)
             .expect("failed");
-        let valid = entry
+        let revoked = entry
             .get_ava_as_oauth2session_map("oauth2_session")
-            .map(|map| map.get(&session_id).is_some())
+            .and_then(|sessions| sessions.get(&session_id))
+            .map(|session| matches!(session.state, SessionState::RevokedAt(_)))
             .unwrap_or(false);
-        assert!(!valid);
+        assert!(revoked);
 
         assert!(idms_prox_write.commit().is_ok());
     }
@@ -4763,13 +4806,12 @@ mod tests {
             .expect("failed");
         let valid = entry
             .get_ava_as_oauth2session_map("oauth2_session")
-            .map(|map| {
-                trace!(?map);
-                map.is_empty()
-            })
-            // If there is no map, it must be empty
-            .unwrap_or(true);
-        assert!(valid);
+            .and_then(|sessions| sessions.first_key_value())
+            .map(|(_, session)| !matches!(session.state, SessionState::RevokedAt(_)))
+            // If there is no map, then something is wrong.
+            .unwrap();
+        // The session should be invalid at this point.
+        assert!(!valid);
 
         assert!(idms_prox_write.commit().is_ok());
     }
@@ -4840,8 +4882,10 @@ mod tests {
 
         // Success!
     }
-    #[test] // I know this looks kinda dumb but at some point someone pointed out that our scope syntax wasn't compliant with rfc6749
-            //(https://datatracker.ietf.org/doc/html/rfc6749#section-3.3), so I'm just making sure that we don't break it again.
+
+    #[test]
+    // I know this looks kinda dumb but at some point someone pointed out that our scope syntax wasn't compliant with rfc6749
+    //(https://datatracker.ietf.org/doc/html/rfc6749#section-3.3), so I'm just making sure that we don't break it again.
     fn compliant_serialization_test() {
         let token_req: Result<AccessTokenRequest, serde_json::Error> = serde_json::from_str(
             r#"
