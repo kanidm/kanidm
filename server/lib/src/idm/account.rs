@@ -230,6 +230,8 @@ impl Account {
         // ns value which breaks some checks.
         let ct = ct - Duration::from_nanos(ct.subsec_nanos() as u64);
         let issued_at = OffsetDateTime::UNIX_EPOCH + ct;
+        // Note that currently the auth_session time comes from policy, but the already-privileged
+        // session bound is hardcoded.
         let expiry =
             Some(OffsetDateTime::UNIX_EPOCH + ct + Duration::from_secs(auth_session_expiry as u64));
         let limited_expiry = Some(
@@ -251,13 +253,7 @@ impl Account {
                 // These sessions are always rw, and so have limited life.
                 (UatPurpose::ReadWrite { expiry }, limited_expiry)
             }
-            SessionScope::PrivilegeCapable =>
-            // Return a rw capable session with the expiry currently invalid.
-            // These sessions COULD live forever since they can re-auth properly.
-            // Today I'm setting this to 24hr though.
-            {
-                (UatPurpose::ReadWrite { expiry: None }, expiry)
-            }
+            SessionScope::PrivilegeCapable => (UatPurpose::ReadWrite { expiry: None }, expiry),
         };
 
         Some(UserAuthToken {
