@@ -267,6 +267,19 @@ async fn main() -> ExitCode {
     let ceuid = get_effective_uid();
     let cegid = get_effective_gid();
 
+    for arg in std::env::args() {
+        if arg.contains("--version") {
+            println!("kanidm_unixd_tasks {}", env!("CARGO_PKG_VERSION"));
+            return ExitCode::SUCCESS;
+        } else if arg.contains("--help") {
+            println!("kanidm_unixd_tasks {}", env!("CARGO_PKG_VERSION"));
+            println!("Usage: kanidm_unixd_tasks");
+            println!("  --version");
+            println!("  --help");
+            return ExitCode::SUCCESS;
+        }
+    }
+
     #[allow(clippy::expect_used)]
     tracing_forest::worker_task()
         .set_global(true)

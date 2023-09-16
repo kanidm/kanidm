@@ -1,4 +1,5 @@
 #[derive(Debug, Parser)]
+#[command(version)]
 struct SshAuthorizedOpt {
     #[clap(short, long = "debug")]
     debug: bool,
