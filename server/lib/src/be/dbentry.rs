@@ -457,7 +457,7 @@ impl std::fmt::Display for DbEntry {
                         write!(f, "{name:?}, ")?;
                     }
                 }
-                if let Some(names) = dbe_v1.attrs.get("classname") {
+                if let Some(names) = dbe_v1.attrs.get(Attribute::ClassName.as_ref()) {
                     for name in names {
                         write!(f, "{name:?}, ")?;
                     }

@@ -23,19 +23,21 @@ impl EcdhKeyGen {
         cands: &mut [Entry<EntryInvalid, STATE>],
     ) -> Result<(), OperationError> {
         for cand in cands.iter_mut() {
-            if cand.attribute_equality(
-                Attribute::Class.as_ref(),
-                &EntryClass::Person.to_partialvalue(),
-            ) && !cand.attribute_pres(Attribute::IdVerificationEcKey.into())
+            if cand.attribute_equality(Attribute::Class, &EntryClass::Person.to_partialvalue())
+                && !cand.attribute_pres(Attribute::IdVerificationEcKey)
             {
-                debug!("Generating idv_eckey for {}", cand.get_display_id());
+                debug!(
+                    "Generating {} for {}",
+                    Attribute::IdVerificationEcKey,
+                    cand.get_display_id()
+                );
 
                 let new_private_key = EcKey::generate(&DEFAULT_KEY_GROUP).map_err(|e| {
                     error!(err = ?e, "Unable to generate id verification ECDH private key");
                     OperationError::CryptographyError
                 })?;
                 cand.add_ava_if_not_exist(
-                    Attribute::IdVerificationEcKey.into(),
+                    Attribute::IdVerificationEcKey,
                     crate::value::Value::EcKeyPrivate(new_private_key),
                 )
             }
@@ -113,7 +115,7 @@ mod tests {
                 let e = qs.internal_search_uuid(uuid).expect("failed to get entry");
 
                 let key = e
-                    .get_ava_single_eckey_private(Attribute::IdVerificationEcKey.into())
+                    .get_ava_single_eckey_private(Attribute::IdVerificationEcKey)
                     .expect("unable to retrieve the ecdh key");
 
                 assert!(key.check_key().is_ok())
@@ -178,15 +180,15 @@ mod tests {
             Ok(()),
             preload,
             filter!(f_eq(Attribute::Name, PartialValue::new_iname("test_name"))),
-            modlist!([m_purge(Attribute::IdVerificationEcKey.into())]),
+            modlist!([m_purge(Attribute::IdVerificationEcKey)]),
             None,
             |_| {},
             |qs: &mut QueryServerWriteTransaction| {
                 let e = qs.internal_search_uuid(uuid).expect("failed to get entry");
 
                 assert!(
-                    !e.attribute_equality(Attribute::IdVerificationEcKey.into(), &key_partialvalue)
-                        && e.attribute_pres(Attribute::IdVerificationEcKey.into())
+                    !e.attribute_equality(Attribute::IdVerificationEcKey, &key_partialvalue)
+                        && e.attribute_pres(Attribute::IdVerificationEcKey)
                 )
             }
         );
@@ -218,18 +220,15 @@ mod tests {
             Ok(()),
             preload,
             filter!(f_eq(Attribute::Name, PartialValue::new_iname("test_name"))),
-            modlist!([m_remove(
-                Attribute::IdVerificationEcKey.into(),
-                &key_partialvalue
-            )]),
+            modlist!([m_remove(Attribute::IdVerificationEcKey, &key_partialvalue)]),
             None,
             |_| {},
             |qs: &mut QueryServerWriteTransaction| {
                 let e = qs.internal_search_uuid(uuid).expect("failed to get entry");
 
                 assert!(
-                    !e.attribute_equality(Attribute::IdVerificationEcKey.into(), &key_partialvalue)
-                        && e.attribute_pres(Attribute::IdVerificationEcKey.into())
+                    !e.attribute_equality(Attribute::IdVerificationEcKey, &key_partialvalue)
+                        && e.attribute_pres(Attribute::IdVerificationEcKey)
                 )
             }
         );

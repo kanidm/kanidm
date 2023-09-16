@@ -34,7 +34,7 @@ fn test_valueattribute_round_trip() {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Sequence, Hash)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Sequence, Hash)]
 pub enum Attribute {
     Account,
     AccountExpire,
@@ -90,6 +90,7 @@ pub enum Attribute {
     IdVerificationEcKey,
     Index,
     IpaNtHash,
+    IpaSshPubKey,
     JwsEs256PrivateKey,
     LastModifiedCid,
     /// An LDAP Compatible emailAddress
@@ -263,11 +264,12 @@ impl TryFrom<String> for Attribute {
             ATTR_ID_VERIFICATION_ECKEY => Attribute::IdVerificationEcKey,
             ATTR_INDEX => Attribute::Index,
             ATTR_IPANTHASH => Attribute::IpaNtHash,
+            ATTR_IPASSHPUBKEY => Attribute::IpaSshPubKey,
             ATTR_JWS_ES256_PRIVATE_KEY => Attribute::JwsEs256PrivateKey,
             ATTR_LAST_MODIFIED_CID => Attribute::LastModifiedCid,
             ATTR_LDAP_EMAIL_ADDRESS => Attribute::LdapEmailAddress,
             ATTR_LDAP_KEYS => Attribute::LdapKeys,
-            ATTR_LDAP_SSH_PUBLICKEY => Attribute::SshPublicKey,
+            ATTR_SSH_PUBLICKEY => Attribute::SshPublicKey,
             ATTR_LEGALNAME => Attribute::LegalName,
             ATTR_LOGINSHELL => Attribute::LoginShell,
             ATTR_MAIL => Attribute::Mail,
@@ -309,7 +311,7 @@ impl TryFrom<String> for Attribute {
             ATTR_SCOPE => Attribute::Scope,
             ATTR_SOURCE_UUID => Attribute::SourceUuid,
             ATTR_SPN => Attribute::Spn,
-            ATTR_SSHPUBLICKEY => Attribute::LdapSshPublicKey,
+            ATTR_LDAP_SSHPUBLICKEY => Attribute::LdapSshPublicKey,
             ATTR_SUPPLEMENTS => Attribute::Supplements,
             ATTR_SYNC_ALLOWED => Attribute::SyncAllowed,
             ATTR_SYNC_CLASS => Attribute::SyncClass,
@@ -346,7 +348,10 @@ impl TryFrom<String> for Attribute {
             TEST_ATTR_NUMBER => Attribute::TestNumber,
             #[cfg(any(debug_assertions, test))]
             TEST_ATTR_NOTALLOWED => Attribute::TestNotAllowed,
-            _ => return Err(OperationError::InvalidAttributeName(val)),
+            _ => {
+                trace!("Failed to convert {} to Attribute", val);
+                return Err(OperationError::InvalidAttributeName(val));
+            }
         };
         Ok(res)
     }
@@ -409,11 +414,12 @@ impl From<Attribute> for &'static str {
             Attribute::IdVerificationEcKey => ATTR_ID_VERIFICATION_ECKEY,
             Attribute::Index => ATTR_INDEX,
             Attribute::IpaNtHash => ATTR_IPANTHASH,
+            Attribute::IpaSshPubKey => ATTR_IPASSHPUBKEY,
             Attribute::JwsEs256PrivateKey => ATTR_JWS_ES256_PRIVATE_KEY,
             Attribute::LastModifiedCid => ATTR_LAST_MODIFIED_CID,
             Attribute::LdapEmailAddress => ATTR_LDAP_EMAIL_ADDRESS,
             Attribute::LdapKeys => ATTR_LDAP_KEYS,
-            Attribute::LdapSshPublicKey => ATTR_SSHPUBLICKEY,
+            Attribute::LdapSshPublicKey => ATTR_LDAP_SSHPUBLICKEY,
             Attribute::LegalName => ATTR_LEGALNAME,
             Attribute::LoginShell => ATTR_LOGINSHELL,
             Attribute::Mail => ATTR_MAIL,
@@ -455,7 +461,7 @@ impl From<Attribute> for &'static str {
             Attribute::Scope => ATTR_SCOPE,
             Attribute::SourceUuid => ATTR_SOURCE_UUID,
             Attribute::Spn => ATTR_SPN,
-            Attribute::SshPublicKey => ATTR_LDAP_SSH_PUBLICKEY,
+            Attribute::SshPublicKey => ATTR_SSH_PUBLICKEY,
             Attribute::Supplements => ATTR_SUPPLEMENTS,
             Attribute::SyncAllowed => ATTR_SYNC_ALLOWED,
             Attribute::SyncClass => ATTR_SYNC_CLASS,
@@ -518,6 +524,16 @@ impl Attribute {
     pub fn to_partialvalue(self) -> PartialValue {
         let s: &'static str = self.into();
         PartialValue::new_iutf8(s)
+    }
+}
+
+impl<'a> serde::Deserialize<'a> for Attribute {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'a>,
+    {
+        let s = String::deserialize(deserializer)?;
+        Attribute::try_from(s).map_err(|e| serde::de::Error::custom(format!("{:?}", e)))
     }
 }
 

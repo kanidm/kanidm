@@ -20,7 +20,7 @@ macro_rules! try_from_account_e {
     ($value:expr, $qs:expr) => {{
         /*
         let name = $value
-            .get_ava_single_iname(Attribute::Name.as_ref())
+            .get_ava_single_iname(Attribute::Name)
             .map(str::to_string)
             .ok_or_else(|| {
                 OperationError::InvalidAccountState("Missing attribute: name".to_string())
@@ -28,11 +28,9 @@ macro_rules! try_from_account_e {
         */
 
         // Setup the user private group
-        let spn = $value
-            .get_ava_single_proto_string(Attribute::Spn.as_ref())
-            .ok_or(OperationError::InvalidAccountState(
-                "Missing attribute: spn".to_string(),
-            ))?;
+        let spn = $value.get_ava_single_proto_string(Attribute::Spn).ok_or(
+            OperationError::InvalidAccountState(format!("Missing attribute: {}", Attribute::Spn)),
+        )?;
 
         let uuid = $value.get_uuid();
 
@@ -45,7 +43,7 @@ macro_rules! try_from_account_e {
             ui_hints,
         };
 
-        let mut groups: Vec<Group> = match $value.get_ava_as_refuuid("memberof") {
+        let mut groups: Vec<Group> = match $value.get_ava_as_refuuid(Attribute::MemberOf) {
             Some(riter) => {
                 // given a list of uuid, make a filter: even if this is empty, the be will
                 // just give and empty result set.
@@ -104,7 +102,7 @@ impl Group {
     pub fn try_from_entry(
         value: &Entry<EntrySealed, EntryCommitted>,
     ) -> Result<Self, OperationError> {
-        if !value.attribute_equality(Attribute::Class.as_ref(), &EntryClass::Group.into()) {
+        if !value.attribute_equality(Attribute::Class, &EntryClass::Group.into()) {
             return Err(OperationError::InvalidAccountState(
                 "Missing class: group".to_string(),
             ));
@@ -113,14 +111,14 @@ impl Group {
         // Now extract our needed attributes
         /*
         let name = value
-            .get_ava_single_iname(Attribute::Name.as_ref())
+            .get_ava_single_iname(Attribute::Name)
             .map(|s| s.to_string())
             .ok_or_else(|| {
                 OperationError::InvalidAccountState("Missing attribute: name".to_string())
             })?;
         */
         let spn = value
-            .get_ava_single_proto_string(Attribute::Spn.as_ref())
+            .get_ava_single_proto_string(Attribute::Spn)
             .ok_or_else(|| {
                 OperationError::InvalidAccountState("Missing attribute: spn".to_string())
             })?;
@@ -128,7 +126,7 @@ impl Group {
         let uuid = value.get_uuid();
 
         let ui_hints = value
-            .get_ava_uihint("grant_ui_hint")
+            .get_ava_uihint(Attribute::GrantUiHint)
             .cloned()
             .unwrap_or_default();
 

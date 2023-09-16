@@ -45,19 +45,23 @@ impl Plugin for Base {
             entry.add_ava(Attribute::Class, EntryClass::Object.to_value());
 
             // if they don't have uuid, create it.
-            match entry.get_ava_set("uuid").map(|s| s.len()) {
+            match entry.get_ava_set(Attribute::Uuid).map(|s| s.len()) {
                 None => {
                     // Generate
                     let ava_uuid = Value::Uuid(Uuid::new_v4());
                     trace!("Setting temporary UUID {:?} to entry", ava_uuid);
-                    entry.set_ava("uuid", once(ava_uuid));
+                    entry.set_ava(Attribute::Uuid, once(ava_uuid));
                 }
                 Some(1) => {
                     // Do nothing
                 }
                 Some(x) => {
                     // If we get some it MUST be 2 +
-                    admin_error!("Entry defines uuid attr, but has multiple ({}) values.", x);
+                    admin_error!(
+                        "Entry defines {} attr, but has multiple ({}) values.",
+                        Attribute::Uuid,
+                        x
+                    );
                     return Err(OperationError::Plugin(PluginError::Base(
                         "Uuid has multiple values".to_string(),
                     )));
@@ -75,7 +79,7 @@ impl Plugin for Base {
         // we may not have filled in the uuid field yet.
         for entry in cand.iter() {
             let uuid_ref: Uuid = entry
-                .get_ava_single_uuid("uuid")
+                .get_ava_single_uuid(Attribute::Uuid)
                 .ok_or_else(|| OperationError::InvalidAttribute(Attribute::Uuid.to_string()))?;
             if !cand_uuid.insert(uuid_ref) {
                 trace!("uuid duplicate found in create set! {:?}", uuid_ref);
@@ -121,7 +125,7 @@ impl Plugin for Base {
         let filt_in = filter_all!(FC::Or(
             cand_uuid
                 .into_iter()
-                .map(|u| FC::Eq("uuid", PartialValue::Uuid(u)))
+                .map(|u| FC::Eq(Attribute::Uuid.as_ref(), PartialValue::Uuid(u)))
                 .collect(),
         ));
 
@@ -166,7 +170,7 @@ impl Plugin for Base {
                 Modify::Purged(a) => Some(a),
                 Modify::Assert(_, _) => None,
             };
-            if attr.map(|s| s.as_str()) == Some("uuid") {
+            if attr == Some(&AttrString::from(Attribute::Uuid)) {
                 debug!(?modify, "Modify in violation");
                 request_error!("Modifications to UUID's are NOT ALLOWED");
                 Err(OperationError::SystemProtectedAttribute)
@@ -193,7 +197,7 @@ impl Plugin for Base {
                     Modify::Purged(a) => Some(a),
                     Modify::Assert(_, _) => None,
                 };
-                if attr.map(|s| s.as_str()) == Some("uuid") {
+                if attr == Some(&AttrString::from(Attribute::Uuid)) {
                     debug!(?modify, "Modify in violation");
                     request_error!("Modifications to UUID's are NOT ALLOWED");
                     Err(OperationError::SystemProtectedAttribute)
@@ -348,7 +352,7 @@ mod tests {
                     )))
                     .expect("Internal search failure");
                 let ue = cands.first().expect("No cand");
-                assert!(ue.attribute_pres("uuid"));
+                assert!(ue.attribute_pres(Attribute::Uuid));
             }
         );
     }
@@ -400,7 +404,7 @@ mod tests {
         }"#,
         );
 
-        let vs = e.get_ava_mut("uuid").unwrap();
+        let vs = e.get_ava_mut(Attribute::Uuid).unwrap();
         vs.clear();
 
         let create = vec![e.clone()];

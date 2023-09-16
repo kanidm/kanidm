@@ -3,7 +3,7 @@ ARG BASE_IMAGE=opensuse/tumbleweed:latest
 FROM ${BASE_IMAGE}
 
 ADD ../scripts/zypper_fixing.sh /zypper_fixing.sh
-RUN --mount=type=cache,id=zypp,target=/var/cache/zypp /zypper_fixing.sh
+RUN /zypper_fixing.sh
 
 # ======================
 # FROM repos
@@ -11,7 +11,7 @@ ARG RADIUS_USER=radiusd
 EXPOSE 1812 1813
 ENV KANIDM_CONFIG_FILE="/data/kanidm"
 
-RUN --mount=type=cache,id=zypp,target=/var/cache/zypp zypper install -y \
+RUN zypper install -y \
         freeradius-client \
         freeradius-server \
         freeradius-server-python3 \

@@ -2,7 +2,6 @@
 // may only have certain modifications performed.
 
 use hashbrown::HashSet;
-use kanidm_proto::constants::{ATTR_MAY, ATTR_MUST};
 use std::sync::Arc;
 
 use crate::event::{CreateEvent, DeleteEvent, ModifyEvent};
@@ -17,23 +16,23 @@ pub struct Protected {}
 // schema will have checked this, and we don't allow class changes!
 
 lazy_static! {
-    static ref ALLOWED_ATTRS: HashSet<&'static str> = {
+    static ref ALLOWED_ATTRS: HashSet<Attribute> = {
         let mut m = HashSet::with_capacity(16);
         // Allow modification of some schema class types to allow local extension
         // of schema types.
         //
-        m.insert(ATTR_MUST);
-        m.insert(ATTR_MAY);
+        m.insert(Attribute::Must);
+        m.insert(Attribute::May);
         // Allow modification of some domain info types for local configuration.
-        m.insert("domain_ssid");
-        m.insert("domain_ldap_basedn");
-        m.insert("fernet_private_key_str");
-        m.insert("es256_private_key_der");
-        m.insert("id_verification_eckey");
-        m.insert("badlist_password");
-        m.insert("domain_display_name");
-        m.insert("authsession_expiry");
-        m.insert("privilege_expiry");
+        m.insert(Attribute::DomainSsid);
+        m.insert(Attribute::DomainLdapBasedn);
+        m.insert(Attribute::FernetPrivateKeyStr);
+        m.insert(Attribute::Es256PrivateKeyDer);
+        m.insert(Attribute::IdVerificationEcKey);
+        m.insert(Attribute::BadlistPassword);
+        m.insert(Attribute::DomainDisplayName);
+        m.insert(Attribute::AuthSessionExpiry);
+        m.insert(Attribute::PrivilegeExpiry);
         m
     };
 }
@@ -56,14 +55,13 @@ impl Plugin for Protected {
         }
 
         cand.iter().try_fold((), |(), cand| {
-            if cand.attribute_equality(Attribute::Class.as_ref(), &EntryClass::System.into())
-                || cand.attribute_equality(Attribute::Class.into(), &EntryClass::DomainInfo.into())
-                || cand.attribute_equality(Attribute::Class.into(), &EntryClass::SystemInfo.into())
-                || cand
-                    .attribute_equality(Attribute::Class.into(), &EntryClass::SystemConfig.into())
-                || cand.attribute_equality(Attribute::Class.as_ref(), &EntryClass::Tombstone.into())
-                || cand.attribute_equality(Attribute::Class.as_ref(), &EntryClass::Recycled.into())
-                || cand.attribute_equality(Attribute::Class.as_ref(), &EntryClass::DynGroup.into())
+            if cand.attribute_equality(Attribute::Class, &EntryClass::System.into())
+                || cand.attribute_equality(Attribute::Class, &EntryClass::DomainInfo.into())
+                || cand.attribute_equality(Attribute::Class, &EntryClass::SystemInfo.into())
+                || cand.attribute_equality(Attribute::Class, &EntryClass::SystemConfig.into())
+                || cand.attribute_equality(Attribute::Class, &EntryClass::Tombstone.into())
+                || cand.attribute_equality(Attribute::Class, &EntryClass::Recycled.into())
+                || cand.attribute_equality(Attribute::Class, &EntryClass::DynGroup.into())
             {
                 Err(OperationError::SystemProtectedObject)
             } else {
@@ -86,7 +84,7 @@ impl Plugin for Protected {
         // Prevent adding class: system, domain_info, tombstone, or recycled.
         me.modlist.iter().try_fold((), |(), m| match m {
             Modify::Present(a, v) => {
-                if a == "class"
+                if a == Attribute::Class.as_ref()
                     && (v == &EntryClass::System.to_value()
                         || v == &EntryClass::DomainInfo.to_value()
                         || v == &EntryClass::SystemInfo.into()
@@ -107,9 +105,9 @@ impl Plugin for Protected {
         // HARD block mods on tombstone or recycle. We soft block on the rest as they may
         // have some allowed attrs.
         cand.iter().try_fold((), |(), cand| {
-            if cand.attribute_equality(Attribute::Class.as_ref(), &EntryClass::Tombstone.into())
-                || cand.attribute_equality(Attribute::Class.as_ref(), &EntryClass::Recycled.into())
-                || cand.attribute_equality(Attribute::Class.as_ref(), &EntryClass::DynGroup.into())
+            if cand.attribute_equality(Attribute::Class, &EntryClass::Tombstone.into())
+                || cand.attribute_equality(Attribute::Class, &EntryClass::Recycled.into())
+                || cand.attribute_equality(Attribute::Class, &EntryClass::DynGroup.into())
             {
                 Err(OperationError::SystemProtectedObject)
             } else {
@@ -121,7 +119,7 @@ impl Plugin for Protected {
         let system_pres = cand.iter().any(|c| {
             // We don't need to check for domain info here because domain_info has a class
             // system also. We just need to block it from being created.
-            c.attribute_equality(Attribute::Class.as_ref(), &EntryClass::System.into())
+            c.attribute_equality(Attribute::Class, &EntryClass::System.into())
         });
 
         trace!("class: system -> {}", system_pres);
@@ -131,16 +129,17 @@ impl Plugin for Protected {
         }
 
         // Something altered is system, check if it's allowed.
-        me.modlist.iter().try_fold((), |(), m| {
+        me.modlist.into_iter().try_fold((), |(), m| {
             // Already hit an error, move on.
             let a = match m {
                 Modify::Present(a, _) | Modify::Removed(a, _) | Modify::Purged(a) => Some(a),
                 Modify::Assert(_, _) => None,
             };
             if let Some(a) = a {
-                match ALLOWED_ATTRS.get(a.as_str()) {
-                    Some(_) => Ok(()),
-                    None => Err(OperationError::SystemProtectedObject),
+                let attr: Attribute = a.try_into()?;
+                match ALLOWED_ATTRS.contains(&attr) {
+                    true => Ok(()),
+                    false => Err(OperationError::SystemProtectedObject),
                 }
             } else {
                 // Was not a mod needing checking
@@ -165,10 +164,10 @@ impl Plugin for Protected {
             .flat_map(|ml| ml.iter())
             .try_fold((), |(), m| match m {
                 Modify::Present(a, v) => {
-                    if a == "class"
+                    if a == Attribute::Class.as_ref()
                         && (v == &EntryClass::System.to_value()
                             || v == &EntryClass::DomainInfo.to_value()
-                            || v == &(EntryClass::SystemInfo.to_value())
+                            || v == &EntryClass::SystemInfo.to_value()
                             || v == &EntryClass::SystemConfig.to_value()
                             || v == &EntryClass::DynGroup.to_value()
                             || v == &EntryClass::SyncObject.to_value()
@@ -186,9 +185,9 @@ impl Plugin for Protected {
         // HARD block mods on tombstone or recycle. We soft block on the rest as they may
         // have some allowed attrs.
         cand.iter().try_fold((), |(), cand| {
-            if cand.attribute_equality(Attribute::Class.as_ref(), &EntryClass::Tombstone.into())
-                || cand.attribute_equality(Attribute::Class.as_ref(), &EntryClass::Recycled.into())
-                || cand.attribute_equality(Attribute::Class.as_ref(), &EntryClass::DynGroup.into())
+            if cand.attribute_equality(Attribute::Class, &EntryClass::Tombstone.into())
+                || cand.attribute_equality(Attribute::Class, &EntryClass::Recycled.into())
+                || cand.attribute_equality(Attribute::Class, &EntryClass::DynGroup.into())
             {
                 Err(OperationError::SystemProtectedObject)
             } else {
@@ -200,10 +199,10 @@ impl Plugin for Protected {
         let system_pres = cand.iter().any(|c| {
             // We don't need to check for domain info here because domain_info has a class
             // system also. We just need to block it from being created.
-            c.attribute_equality(Attribute::Class.as_ref(), &EntryClass::System.into())
+            c.attribute_equality(Attribute::Class, &EntryClass::System.into())
         });
 
-        trace!("class: system -> {}", system_pres);
+        trace!("{}: system -> {}", Attribute::Class, system_pres);
         // No system types being altered, return.
         if !system_pres {
             return Ok(());
@@ -220,9 +219,10 @@ impl Plugin for Protected {
                     Modify::Assert(_, _) => None,
                 };
                 if let Some(a) = a {
-                    match ALLOWED_ATTRS.get(a.as_str()) {
-                        Some(_) => Ok(()),
-                        None => Err(OperationError::SystemProtectedObject),
+                    let attr: Attribute = a.try_into()?;
+                    match ALLOWED_ATTRS.contains(&attr) {
+                        true => Ok(()),
+                        false => Err(OperationError::SystemProtectedObject),
                     }
                 } else {
                     // Was not a mod needing checking
@@ -244,14 +244,13 @@ impl Plugin for Protected {
         }
 
         cand.iter().try_fold((), |(), cand| {
-            if cand.attribute_equality(Attribute::Class.as_ref(), &EntryClass::System.into())
-                || cand.attribute_equality(Attribute::Class.into(), &EntryClass::DomainInfo.into())
-                || cand.attribute_equality(Attribute::Class.into(), &EntryClass::SystemInfo.into())
-                || cand
-                    .attribute_equality(Attribute::Class.into(), &EntryClass::SystemConfig.into())
-                || cand.attribute_equality(Attribute::Class.as_ref(), &EntryClass::Tombstone.into())
-                || cand.attribute_equality(Attribute::Class.as_ref(), &EntryClass::Recycled.into())
-                || cand.attribute_equality(Attribute::Class.as_ref(), &EntryClass::DynGroup.into())
+            if cand.attribute_equality(Attribute::Class, &EntryClass::System.into())
+                || cand.attribute_equality(Attribute::Class, &EntryClass::DomainInfo.into())
+                || cand.attribute_equality(Attribute::Class, &EntryClass::SystemInfo.into())
+                || cand.attribute_equality(Attribute::Class, &EntryClass::SystemConfig.into())
+                || cand.attribute_equality(Attribute::Class, &EntryClass::Tombstone.into())
+                || cand.attribute_equality(Attribute::Class, &EntryClass::Recycled.into())
+                || cand.attribute_equality(Attribute::Class, &EntryClass::DynGroup.into())
             {
                 Err(OperationError::SystemProtectedObject)
             } else {
@@ -329,19 +328,19 @@ mod tests {
             ),
             (
                 Attribute::AcpModifyRemovedAttr,
-                Value::new_iutf8("domain_display_name")
+                Attribute::DomainDisplayName.to_value()
             ),
             (
                 Attribute::AcpModifyRemovedAttr,
-                Value::new_iutf8("domain_uuid")
+                Attribute::DomainUuid.to_value()
             ),
             (
                 Attribute::AcpModifyRemovedAttr,
-                Value::new_iutf8("domain_ssid")
+                Attribute::DomainSsid.to_value()
             ),
             (
                 Attribute::AcpModifyRemovedAttr,
-                Value::new_iutf8("fernet_private_key_str")
+                Attribute::FernetPrivateKeyStr.to_value()
             ),
             (
                 Attribute::AcpModifyRemovedAttr,
@@ -360,23 +359,23 @@ mod tests {
             (Attribute::AcpModifyPresentAttr, Attribute::Must.to_value()),
             (
                 Attribute::AcpModifyPresentAttr,
-                Value::new_iutf8("domain_name")
+                Attribute::DomainName.to_value()
             ),
             (
                 Attribute::AcpModifyPresentAttr,
-                Value::new_iutf8("domain_display_name")
+                Attribute::DomainDisplayName.to_value()
             ),
             (
                 Attribute::AcpModifyPresentAttr,
-                Value::new_iutf8("domain_uuid")
+                Attribute::DomainUuid.to_value()
             ),
             (
                 Attribute::AcpModifyPresentAttr,
-                Value::new_iutf8("domain_ssid")
+                Attribute::DomainSsid.to_value()
             ),
             (
                 Attribute::AcpModifyPresentAttr,
-                Value::new_iutf8("fernet_private_key_str")
+                Attribute::FernetPrivateKeyStr.to_value()
             ),
             (
                 Attribute::AcpModifyPresentAttr,
@@ -397,14 +396,14 @@ mod tests {
             (Attribute::AcpCreateAttr, Attribute::DomainName.to_value(),),
             (
                 Attribute::AcpCreateAttr,
-                Value::new_iutf8("domain_display_name")
+                Attribute::DomainDisplayName.to_value()
             ),
-            (Attribute::AcpCreateAttr, Value::new_iutf8("domain_uuid")),
-            (Attribute::AcpCreateAttr, Value::new_iutf8("domain_ssid")),
+            (Attribute::AcpCreateAttr, Attribute::DomainUuid.to_value()),
+            (Attribute::AcpCreateAttr, Attribute::DomainSsid.to_value()),
             (Attribute::AcpCreateAttr, Attribute::Uuid.to_value()),
             (
                 Attribute::AcpCreateAttr,
-                Value::new_iutf8("fernet_private_key_str")
+                Attribute::FernetPrivateKeyStr.to_value()
             ),
             (
                 Attribute::AcpCreateAttr,
@@ -414,7 +413,7 @@ mod tests {
                 Attribute::AcpCreateAttr,
                 Attribute::PrivateCookieKey.to_value()
             ),
-            (Attribute::AcpCreateAttr, Value::new_iutf8("version"))
+            (Attribute::AcpCreateAttr, Attribute::Version.to_value())
         );
         pub static ref PRELOAD: Vec<EntryInitNew> =
             vec![TEST_ACCOUNT.clone(), TEST_GROUP.clone(), ALLOW_ALL.clone()];
@@ -470,8 +469,8 @@ mod tests {
             preload,
             filter!(f_eq(Attribute::Name, PartialValue::new_iname("testperson"))),
             modlist!([
-                m_purge("displayname"),
-                m_pres("displayname", &Value::new_utf8s("system test")),
+                m_purge(Attribute::DisplayName),
+                m_pres(Attribute::DisplayName, &Value::new_utf8s("system test")),
             ]),
             Some(E_TEST_ACCOUNT.clone()),
             |_| {},
@@ -501,8 +500,8 @@ mod tests {
             preload,
             filter!(f_eq(Attribute::ClassName, EntryClass::TestClass.into())),
             modlist!([
-                m_pres(Attribute::May.as_ref(), &Attribute::Name.to_value()),
-                m_pres(Attribute::Must.as_ref(), &Attribute::Name.to_value()),
+                m_pres(Attribute::May, &Attribute::Name.to_value()),
+                m_pres(Attribute::Must, &Attribute::Name.to_value()),
             ]),
             Some(E_TEST_ACCOUNT.clone()),
             |_| {},
@@ -570,8 +569,8 @@ mod tests {
                 PartialValue::new_iname("domain_example.net.au")
             )),
             modlist!([
-                m_purge("domain_ssid"),
-                m_pres("domain_ssid", &Value::new_utf8s("NewExampleWifi")),
+                m_purge(Attribute::DomainSsid),
+                m_pres(Attribute::DomainSsid, &Value::new_utf8s("NewExampleWifi")),
             ]),
             Some(E_TEST_ACCOUNT.clone()),
             |_| {},

@@ -84,9 +84,9 @@ pub async fn oauth2_basic_post(
     Json(obj): Json<ProtoEntry>,
 ) -> impl IntoResponse {
     let classes = vec![
-        "oauth2_resource_server".to_string(),
-        "oauth2_resource_server_basic".to_string(),
-        "object".to_string(),
+        EntryClass::OAuth2ResourceServer.to_string(),
+        EntryClass::OAuth2ResourceServerBasic.to_string(),
+        EntryClass::Object.to_string(),
     ];
     json_rest_event_post(state, classes, obj, kopid).await
 }
@@ -97,9 +97,9 @@ pub async fn oauth2_public_post(
     Json(obj): Json<ProtoEntry>,
 ) -> impl IntoResponse {
     let classes = vec![
-        "oauth2_resource_server".to_string(),
-        "oauth2_resource_server_public".to_string(),
-        "object".to_string(),
+        EntryClass::OAuth2ResourceServer.to_string(),
+        EntryClass::OAuth2ResourceServerPublic.to_string(),
+        EntryClass::Object.to_string(),
     ];
     json_rest_event_post(state, classes, obj, kopid).await
 }

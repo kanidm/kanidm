@@ -28,28 +28,29 @@ pub(crate) struct SyncAccount {
 macro_rules! try_from_entry {
     ($value:expr) => {{
         // Check the classes
-        if !$value.attribute_equality(Attribute::Class.into(), &EntryClass::SyncAccount.into()) {
+        if !$value.attribute_equality(Attribute::Class, &EntryClass::SyncAccount.into()) {
             return Err(OperationError::InvalidAccountState(
                 "Missing class: sync account".to_string(),
             ));
         }
 
         let name = $value
-            .get_ava_single_iname(Attribute::Name.as_ref())
+            .get_ava_single_iname(Attribute::Name)
             .map(|s| s.to_string())
             .ok_or(OperationError::InvalidAccountState(
                 "Missing attribute: name".to_string(),
             ))?;
 
         let jws_key = $value
-            .get_ava_single_jws_key_es256("jws_es256_private_key")
+            .get_ava_single_jws_key_es256(Attribute::JwsEs256PrivateKey)
             .cloned()
-            .ok_or(OperationError::InvalidAccountState(
-                "Missing attribute: jws_es256_private_key".to_string(),
-            ))?;
+            .ok_or(OperationError::InvalidAccountState(format!(
+                "Missing attribute: {}",
+                Attribute::JwsEs256PrivateKey
+            )))?;
 
         let sync_tokens = $value
-            .get_ava_as_apitoken_map("sync_token_session")
+            .get_ava_as_apitoken_map(Attribute::SyncTokenSession)
             .cloned()
             .unwrap_or_default();
 
@@ -83,7 +84,7 @@ impl SyncAccount {
 
         // Get the sessions. There are no gracewindows on sync, we are much stricter.
         let session_present = entry
-            .get_ava_as_apitoken_map("sync_token_session")
+            .get_ava_as_apitoken_map(Attribute::SyncTokenSession)
             .map(|session_map| session_map.get(&sst.token_id).is_some())
             .unwrap_or(false);
 
@@ -310,13 +311,19 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         if existing_entries {
             // Now modify these to remove their sync related attributes.
             let schema = self.qs_write.get_schema();
-            let sync_class = schema.get_classes().get("sync_object").ok_or_else(|| {
-                error!("Failed to access sync_object class, schema corrupt");
-                OperationError::InvalidState
-            })?;
+            let sync_class = schema
+                .get_classes()
+                .get(EntryClass::SyncObject.into())
+                .ok_or_else(|| {
+                    error!(
+                        "Failed to access {} class, schema corrupt",
+                        EntryClass::SyncObject
+                    );
+                    OperationError::InvalidState
+                })?;
 
             let modlist = std::iter::once(Modify::Removed(
-                "class".into(),
+                Attribute::Class.into(),
                 EntryClass::SyncObject.into(),
             ))
             .chain(
@@ -433,13 +440,19 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
             // Now modify these to remove their sync related attributes.
             let schema = self.qs_write.get_schema();
-            let sync_class = schema.get_classes().get("sync_object").ok_or_else(|| {
-                error!("Failed to access sync_object class, schema corrupt");
-                OperationError::InvalidState
-            })?;
+            let sync_class = schema
+                .get_classes()
+                .get(EntryClass::SyncObject.into())
+                .ok_or_else(|| {
+                    error!(
+                        "Failed to access {} class, schema corrupt",
+                        EntryClass::SyncObject
+                    );
+                    OperationError::InvalidState
+                })?;
 
             let modlist = std::iter::once(Modify::Removed(
-                "class".into(),
+                Attribute::Class.into(),
                 EntryClass::SyncObject.into(),
             ))
             .chain(
@@ -552,7 +565,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         match (
             &changes.from_state,
-            sync_entry.get_ava_single_private_binary("sync_cookie"),
+            sync_entry.get_ava_single_private_binary(Attribute::SyncCookie),
         ) {
             (ScimSyncState::Refresh, _) => {
                 // valid
@@ -581,7 +594,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         // Get the sync authority set from the entry.
         let sync_authority_set = sync_entry
-            .get_ava_as_iutf8("sync_yield_authority")
+            .get_ava_as_iutf8(Attribute::SyncYieldAuthority)
             .cloned()
             .unwrap_or_default();
 
@@ -696,11 +709,14 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                         *u,
                         ModifyList::new_list(vec![
                             Modify::Assert(
-                                "sync_parent_uuid".into(),
+                                Attribute::SyncParentUuid,
                                 PartialValue::Refer(sync_uuid),
                             ),
-                            Modify::Purged("sync_external_id".into()),
-                            Modify::Present("sync_external_id".into(), Value::new_iutf8(ext_id)),
+                            Modify::Purged(Attribute::SyncExternalId.into()),
+                            Modify::Present(
+                                Attribute::SyncExternalId.into(),
+                                Value::new_iutf8(ext_id),
+                            ),
                         ]),
                     )
                 })
@@ -1133,17 +1149,17 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         let mut mods = Vec::new();
 
         mods.push(Modify::Assert(
-            "sync_parent_uuid".into(),
+            Attribute::SyncParentUuid,
             PartialValue::Refer(sync_uuid),
         ));
 
         for req_class in requested_classes.keys() {
             mods.push(Modify::Present(
-                "sync_class".into(),
+                Attribute::SyncClass.into(),
                 Value::new_iutf8(req_class),
             ));
             mods.push(Modify::Present(
-                EntryClass::Class.into(),
+                Attribute::Class.into(),
                 Value::new_iutf8(req_class),
             ));
         }
@@ -1376,7 +1392,9 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                         if ent.mask_recycled_ts().is_none() {
                             debug!("Skipping already deleted entry {}", ent.get_uuid());
                             None
-                        } else if ent.get_ava_single_refer("sync_parent_uuid") != Some(sync_uuid) {
+                        } else if ent.get_ava_single_refer(Attribute::SyncParentUuid)
+                            != Some(sync_uuid)
+                        {
                             warn!(
                                 "Skipping entry that is not within sync control {}",
                                 ent.get_uuid()
@@ -1429,10 +1447,11 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         // to reflect the new sync state.
 
         let modlist = match to_state {
-            ScimSyncState::Active { cookie } => {
-                ModifyList::new_purge_and_set("sync_cookie", Value::PrivateBinary(cookie.0.clone()))
-            }
-            ScimSyncState::Refresh => ModifyList::new_purge("sync_cookie"),
+            ScimSyncState::Active { cookie } => ModifyList::new_purge_and_set(
+                Attribute::SyncCookie,
+                Value::PrivateBinary(cookie.0.clone()),
+            ),
+            ScimSyncState::Refresh => ModifyList::new_purge(Attribute::SyncCookie),
         };
 
         self.qs_write
@@ -1478,7 +1497,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
         let sync_entry = self.qs_read.internal_search_uuid(sync_uuid)?;
 
         Ok(
-            match sync_entry.get_ava_single_private_binary("sync_cookie") {
+            match sync_entry.get_ava_single_private_binary(Attribute::SyncCookie) {
                 Some(b) => ScimSyncState::Active {
                     cookie: Base64UrlSafeData(b.to_vec()),
                 },
@@ -1646,9 +1665,7 @@ mod tests {
                 Attribute::Name,
                 PartialValue::new_iname("test_scim_sync")
             )),
-            ModifyList::new_list(vec![Modify::Purged(AttrString::from(
-                "jws_es256_private_key",
-            ))]),
+            ModifyList::new_list(vec![Modify::Purged(Attribute::JwsEs256PrivateKey.into())]),
         );
         assert!(idms_prox_write.qs_write.modify(&me_inv_m).is_ok());
         assert!(idms_prox_write.commit().is_ok());
@@ -1666,12 +1683,12 @@ mod tests {
             .expect("Unable to access sync entry");
 
         let jws_key = sync_entry
-            .get_ava_single_jws_key_es256("jws_es256_private_key")
+            .get_ava_single_jws_key_es256(Attribute::JwsEs256PrivateKey)
             .cloned()
             .expect("Missing attribute: jws_es256_private_key");
 
         let sync_tokens = sync_entry
-            .get_ava_as_apitoken_map("sync_token_session")
+            .get_ava_as_apitoken_map(Attribute::SyncTokenSession)
             .cloned()
             .unwrap_or_default();
 
@@ -1804,7 +1821,7 @@ mod tests {
             .expect("Failed to access sync stub entry");
 
         assert!(
-            synced_entry.get_ava_single_iutf8("sync_external_id")
+            synced_entry.get_ava_single_iutf8(Attribute::SyncExternalId)
                 == Some("dn=william,ou=people,dc=test")
         );
         assert!(synced_entry.get_uuid() == user_sync_uuid);
@@ -1933,9 +1950,10 @@ mod tests {
             .internal_search_uuid(user_sync_uuid)
             .expect("Unable to access entry");
 
-        assert!(ent.get_ava_single_iname(Attribute::Name.as_ref()) == Some("testgroup"));
+        assert!(ent.get_ava_single_iname(Attribute::Name) == Some("testgroup"));
         assert!(
-            ent.get_ava_single_iutf8("sync_external_id") == Some("cn=testgroup,ou=people,dc=test")
+            ent.get_ava_single_iutf8(Attribute::SyncExternalId)
+                == Some("cn=testgroup,ou=people,dc=test")
         );
 
         assert!(idms_prox_write.commit().is_ok());
@@ -2028,7 +2046,7 @@ mod tests {
                         ScimAttr::SingleSimple(ScimSimpleAttr::String("testgroup".to_string()))
                     ),
                     (
-                        "class".to_string(),
+                        Attribute::Class.to_string(),
                         ScimAttr::SingleSimple(ScimSimpleAttr::String("posixgroup".to_string()))
                     )
                 ),
@@ -2491,7 +2509,7 @@ mod tests {
             .internal_search_uuid(sync_uuid_a)
             .expect("Unable to access entry");
 
-        assert!(ent.get_ava_single_iname(Attribute::Name.as_ref()) == Some("testgroup"));
+        assert!(ent.get_ava_single_iname(Attribute::Name) == Some("testgroup"));
 
         assert!(idms_prox_write.commit().is_ok());
     }
@@ -2588,48 +2606,58 @@ mod tests {
 
         let testgroup = get_single_entry("testgroup", &mut idms_prox_write);
         assert!(
-            testgroup.get_ava_single_iutf8("sync_external_id")
+            testgroup.get_ava_single_iutf8(Attribute::SyncExternalId)
                 == Some("cn=testgroup,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au")
         );
-        assert!(testgroup.get_ava_single_uint32("gidnumber").is_none());
+        assert!(testgroup
+            .get_ava_single_uint32(Attribute::GidNumber)
+            .is_none());
 
         let testposix = get_single_entry("testposix", &mut idms_prox_write);
         assert!(
-            testposix.get_ava_single_iutf8("sync_external_id")
+            testposix.get_ava_single_iutf8(Attribute::SyncExternalId)
                 == Some("cn=testposix,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au")
         );
-        assert!(testposix.get_ava_single_uint32("gidnumber") == Some(1234567));
+        assert!(testposix.get_ava_single_uint32(Attribute::GidNumber) == Some(1234567));
 
         let testexternal = get_single_entry("testexternal", &mut idms_prox_write);
         assert!(
-            testexternal.get_ava_single_iutf8("sync_external_id")
+            testexternal.get_ava_single_iutf8(Attribute::SyncExternalId)
                 == Some("cn=testexternal,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au")
         );
-        assert!(testexternal.get_ava_single_uint32("gidnumber").is_none());
+        assert!(testexternal
+            .get_ava_single_uint32(Attribute::GidNumber)
+            .is_none());
 
         let testuser = get_single_entry("testuser", &mut idms_prox_write);
         assert!(
-            testuser.get_ava_single_iutf8("sync_external_id")
+            testuser.get_ava_single_iutf8(Attribute::SyncExternalId)
                 == Some("uid=testuser,cn=users,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au")
         );
-        assert!(testuser.get_ava_single_uint32("gidnumber") == Some(12345));
-        assert!(testuser.get_ava_single_utf8("displayname") == Some("Test User"));
-        assert!(testuser.get_ava_single_iutf8("loginshell") == Some("/bin/sh"));
+        assert!(testuser.get_ava_single_uint32(Attribute::GidNumber) == Some(12345));
+        assert!(testuser.get_ava_single_utf8(Attribute::DisplayName) == Some("Test User"));
+        assert!(testuser.get_ava_single_iutf8(Attribute::LoginShell) == Some("/bin/sh"));
 
         let mut ssh_keyiter = testuser
-            .get_ava_iter_sshpubkeys(Attribute::SshPublicKey.into())
+            .get_ava_iter_sshpubkeys(Attribute::SshPublicKey)
             .expect("Failed to access ssh pubkeys");
         assert_eq!(ssh_keyiter.next(), Some("sk-ecdsa-sha2-nistp256@openssh.com AAAAInNrLWVjZHNhLXNoYTItbmlzdHAyNTZAb3BlbnNzaC5jb20AAAAIbmlzdHAyNTYAAABBBENubZikrb8hu+HeVRdZ0pp/VAk2qv4JDbuJhvD0yNdWDL2e3cBbERiDeNPkWx58Q4rVnxkbV1fa8E2waRtT91wAAAAEc3NoOg== testuser@fidokey"));
         assert_eq!(ssh_keyiter.next(), None);
 
         // Check memberof works.
-        let testgroup_mb = testgroup.get_ava_refer("member").expect("No members!");
+        let testgroup_mb = testgroup
+            .get_ava_refer(Attribute::Member)
+            .expect("No members!");
         assert!(testgroup_mb.contains(&testuser.get_uuid()));
 
-        let testposix_mb = testposix.get_ava_refer("member").expect("No members!");
+        let testposix_mb = testposix
+            .get_ava_refer(Attribute::Member)
+            .expect("No members!");
         assert!(testposix_mb.contains(&testuser.get_uuid()));
 
-        let testuser_mo = testuser.get_ava_refer("memberof").expect("No memberof!");
+        let testuser_mo = testuser
+            .get_ava_refer(Attribute::MemberOf)
+            .expect("No memberof!");
         assert!(testuser_mo.contains(&testposix.get_uuid()));
         assert!(testuser_mo.contains(&testgroup.get_uuid()));
 
@@ -2659,28 +2687,34 @@ mod tests {
         let testposix = get_single_entry("testposix", &mut idms_prox_write);
         info!("{:?}", testposix);
         assert!(
-            testposix.get_ava_single_iutf8("sync_external_id")
+            testposix.get_ava_single_iutf8(Attribute::SyncExternalId)
                 == Some("cn=testposix,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au")
         );
-        assert!(testposix.get_ava_single_uint32("gidnumber") == Some(1234567));
+        assert!(testposix.get_ava_single_uint32(Attribute::GidNumber) == Some(1234567));
 
         let testexternal = get_single_entry("testexternal2", &mut idms_prox_write);
         info!("{:?}", testexternal);
         assert!(
-            testexternal.get_ava_single_iutf8("sync_external_id")
+            testexternal.get_ava_single_iutf8(Attribute::SyncExternalId)
                 == Some("cn=testexternal2,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au")
         );
-        assert!(testexternal.get_ava_single_uint32("gidnumber").is_none());
+        assert!(testexternal
+            .get_ava_single_uint32(Attribute::GidNumber)
+            .is_none());
 
         let testuser = get_single_entry("testuser", &mut idms_prox_write);
 
         // Check memberof works.
-        let testexternal_mb = testexternal.get_ava_refer("member").expect("No members!");
+        let testexternal_mb = testexternal
+            .get_ava_refer(Attribute::Member)
+            .expect("No members!");
         assert!(testexternal_mb.contains(&testuser.get_uuid()));
 
-        assert!(testposix.get_ava_refer("member").is_none());
+        assert!(testposix.get_ava_refer(Attribute::Member).is_none());
 
-        let testuser_mo = testuser.get_ava_refer("memberof").expect("No memberof!");
+        let testuser_mo = testuser
+            .get_ava_refer(Attribute::MemberOf)
+            .expect("No memberof!");
         assert!(testuser_mo.contains(&testexternal.get_uuid()));
 
         assert!(idms_prox_write.commit().is_ok());
@@ -2712,42 +2746,52 @@ mod tests {
         // Check entries still remain as expected.
         let testgroup = get_single_entry("testgroup", &mut idms_prox_write);
         assert!(
-            testgroup.get_ava_single_iutf8("sync_external_id")
+            testgroup.get_ava_single_iutf8(Attribute::SyncExternalId)
                 == Some("cn=testgroup,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au")
         );
-        assert!(testgroup.get_ava_single_uint32("gidnumber").is_none());
+        assert!(testgroup
+            .get_ava_single_uint32(Attribute::GidNumber)
+            .is_none());
 
         let testposix = get_single_entry("testposix", &mut idms_prox_write);
         assert!(
-            testposix.get_ava_single_iutf8("sync_external_id")
+            testposix.get_ava_single_iutf8(Attribute::SyncExternalId)
                 == Some("cn=testposix,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au")
         );
-        assert!(testposix.get_ava_single_uint32("gidnumber") == Some(1234567));
+        assert!(testposix.get_ava_single_uint32(Attribute::GidNumber) == Some(1234567));
 
         let testexternal = get_single_entry("testexternal", &mut idms_prox_write);
         assert!(
-            testexternal.get_ava_single_iutf8("sync_external_id")
+            testexternal.get_ava_single_iutf8(Attribute::SyncExternalId)
                 == Some("cn=testexternal,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au")
         );
-        assert!(testexternal.get_ava_single_uint32("gidnumber").is_none());
+        assert!(testexternal
+            .get_ava_single_uint32(Attribute::GidNumber)
+            .is_none());
 
         let testuser = get_single_entry("testuser", &mut idms_prox_write);
         assert!(
-            testuser.get_ava_single_iutf8("sync_external_id")
+            testuser.get_ava_single_iutf8(Attribute::SyncExternalId)
                 == Some("uid=testuser,cn=users,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au")
         );
-        assert!(testuser.get_ava_single_uint32("gidnumber") == Some(12345));
-        assert!(testuser.get_ava_single_utf8("displayname") == Some("Test User"));
-        assert!(testuser.get_ava_single_iutf8("loginshell") == Some("/bin/sh"));
+        assert!(testuser.get_ava_single_uint32(Attribute::GidNumber) == Some(12345));
+        assert!(testuser.get_ava_single_utf8(Attribute::DisplayName) == Some("Test User"));
+        assert!(testuser.get_ava_single_iutf8(Attribute::LoginShell) == Some("/bin/sh"));
 
         // Check memberof works.
-        let testgroup_mb = testgroup.get_ava_refer("member").expect("No members!");
+        let testgroup_mb = testgroup
+            .get_ava_refer(Attribute::Member)
+            .expect("No members!");
         assert!(testgroup_mb.contains(&testuser.get_uuid()));
 
-        let testposix_mb = testposix.get_ava_refer("member").expect("No members!");
+        let testposix_mb = testposix
+            .get_ava_refer(Attribute::Member)
+            .expect("No members!");
         assert!(testposix_mb.contains(&testuser.get_uuid()));
 
-        let testuser_mo = testuser.get_ava_refer("memberof").expect("No memberof!");
+        let testuser_mo = testuser
+            .get_ava_refer(Attribute::MemberOf)
+            .expect("No memberof!");
         assert!(testuser_mo.contains(&testposix.get_uuid()));
         assert!(testuser_mo.contains(&testgroup.get_uuid()));
 
@@ -2778,25 +2822,31 @@ mod tests {
 
         let testgroup = get_single_entry("testgroup", &mut idms_prox_write);
         assert!(
-            testgroup.get_ava_single_iutf8("sync_external_id")
+            testgroup.get_ava_single_iutf8(Attribute::SyncExternalId)
                 == Some("cn=testgroup,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au")
         );
-        assert!(testgroup.get_ava_single_uint32("gidnumber").is_none());
+        assert!(testgroup
+            .get_ava_single_uint32(Attribute::GidNumber)
+            .is_none());
 
         let testuser = get_single_entry("testuser", &mut idms_prox_write);
         assert!(
-            testuser.get_ava_single_iutf8("sync_external_id")
+            testuser.get_ava_single_iutf8(Attribute::SyncExternalId)
                 == Some("uid=testuser,cn=users,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au")
         );
-        assert!(testuser.get_ava_single_uint32("gidnumber") == Some(12345));
-        assert!(testuser.get_ava_single_utf8("displayname") == Some("Test User"));
-        assert!(testuser.get_ava_single_iutf8("loginshell") == Some("/bin/sh"));
+        assert!(testuser.get_ava_single_uint32(Attribute::GidNumber) == Some(12345));
+        assert!(testuser.get_ava_single_utf8(Attribute::DisplayName) == Some("Test User"));
+        assert!(testuser.get_ava_single_iutf8(Attribute::LoginShell) == Some("/bin/sh"));
 
         // Check memberof works.
-        let testgroup_mb = testgroup.get_ava_refer("member").expect("No members!");
+        let testgroup_mb = testgroup
+            .get_ava_refer(Attribute::Member)
+            .expect("No members!");
         assert!(testgroup_mb.contains(&testuser.get_uuid()));
 
-        let testuser_mo = testuser.get_ava_refer("memberof").expect("No memberof!");
+        let testuser_mo = testuser
+            .get_ava_refer(Attribute::MemberOf)
+            .expect("No memberof!");
         assert!(testuser_mo.contains(&testgroup.get_uuid()));
 
         assert!(idms_prox_write.commit().is_ok());
@@ -2823,8 +2873,8 @@ mod tests {
             .internal_modify_uuid(
                 sync_uuid,
                 &ModifyList::new_purge_and_set(
-                    "sync_yield_authority",
-                    Value::new_iutf8("legalname")
+                    Attribute::SyncYieldAuthority,
+                    Value::new_iutf8(Attribute::LegalName.as_ref())
                 )
             )
             .is_ok());
@@ -2837,7 +2887,7 @@ mod tests {
             .internal_modify(
                 &testuser_filter,
                 &ModifyList::new_purge_and_set(
-                    "legalname",
+                    Attribute::LegalName,
                     Value::Utf8("Test Userington the First".to_string())
                 )
             )
@@ -2855,7 +2905,9 @@ mod tests {
             .map(|mut results| results.pop().expect("Empty result set"))
             .expect("Failed to access testuser");
 
-        assert!(testuser.get_ava_single_utf8("legalname") == Some("Test Userington the First"));
+        assert!(
+            testuser.get_ava_single_utf8(Attribute::LegalName) == Some("Test Userington the First")
+        );
 
         assert!(idms_prox_write.commit().is_ok());
     }
@@ -2894,21 +2946,16 @@ mod tests {
 
         // Check that the entries still exists but now have no sync_object attached.
         let testgroup = get_single_entry("testgroup", &mut idms_prox_write);
-        assert!(!testgroup
-            .attribute_equality(Attribute::Class.as_ref(), &EntryClass::SyncObject.into()));
+        assert!(!testgroup.attribute_equality(Attribute::Class, &EntryClass::SyncObject.into()));
 
         let testposix = get_single_entry("testposix", &mut idms_prox_write);
-        assert!(!testposix
-            .attribute_equality(Attribute::Class.as_ref(), &EntryClass::SyncObject.into()));
+        assert!(!testposix.attribute_equality(Attribute::Class, &EntryClass::SyncObject.into()));
 
         let testexternal = get_single_entry("testexternal", &mut idms_prox_write);
-        assert!(!testexternal
-            .attribute_equality(Attribute::Class.as_ref(), &EntryClass::SyncObject.into()));
+        assert!(!testexternal.attribute_equality(Attribute::Class, &EntryClass::SyncObject.into()));
 
         let testuser = get_single_entry("testuser", &mut idms_prox_write);
-        assert!(
-            !testuser.attribute_equality(Attribute::Class.as_ref(), &EntryClass::SyncObject.into())
-        );
+        assert!(!testuser.attribute_equality(Attribute::Class, &EntryClass::SyncObject.into()));
 
         assert!(idms_prox_write.commit().is_ok());
     }
@@ -2954,13 +3001,10 @@ mod tests {
 
         // Check that the entries still exists but now have no sync_object attached.
         let testgroup = get_single_entry("testgroup", &mut idms_prox_write);
-        assert!(!testgroup
-            .attribute_equality(Attribute::Class.as_ref(), &EntryClass::SyncObject.into()));
+        assert!(!testgroup.attribute_equality(Attribute::Class, &EntryClass::SyncObject.into()));
 
         let testuser = get_single_entry("testuser", &mut idms_prox_write);
-        assert!(
-            !testuser.attribute_equality(Attribute::Class.as_ref(), &EntryClass::SyncObject.into())
-        );
+        assert!(!testuser.attribute_equality(Attribute::Class, &EntryClass::SyncObject.into()));
 
         for iname in ["testposix", "testexternal"] {
             trace!(%iname);

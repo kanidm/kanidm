@@ -378,10 +378,10 @@ pub trait AccessControlsTransaction<'a> {
         let disallow = me
             .modlist
             .iter()
-            .any(|m| matches!(m, Modify::Purged(a) if a == "class"));
+            .any(|m| matches!(m, Modify::Purged(a) if a == Attribute::Class.as_ref()));
 
         if disallow {
-            security_access!("Disallowing purge class in modification");
+            security_access!("Disallowing purge {} in modification", Attribute::Class);
             return Ok(false);
         }
 
@@ -417,7 +417,7 @@ pub trait AccessControlsTransaction<'a> {
             .iter()
             .filter_map(|m| match m {
                 Modify::Present(a, v) => {
-                    if a.as_str() == "class" {
+                    if a == Attribute::Class.as_ref() {
                         // Here we have an option<&str> which could mean there is a risk of
                         // a malicious entity attempting to trick us by masking class mods
                         // in non-iutf8 types. However, the server first won't respect their
@@ -430,7 +430,7 @@ pub trait AccessControlsTransaction<'a> {
                     }
                 }
                 Modify::Removed(a, v) => {
-                    if a.as_str() == "class" {
+                    if a == Attribute::Class.as_ref() {
                         v.to_str()
                     } else {
                         None
@@ -519,10 +519,10 @@ pub trait AccessControlsTransaction<'a> {
 
             let disallow = modlist
                 .iter()
-                .any(|m| matches!(m, Modify::Purged(a) if a == "class"));
+                .any(|m| matches!(m, Modify::Purged(a) if a == Attribute::Class.as_ref()));
 
             if disallow {
-                security_access!("Disallowing purge class in modification");
+                security_access!("Disallowing purge in modification");
                 return false;
             }
 
@@ -551,7 +551,7 @@ pub trait AccessControlsTransaction<'a> {
                 .iter()
                 .filter_map(|m| match m {
                     Modify::Present(a, v) => {
-                        if a.as_str() == "class" {
+                        if a == Attribute::Class.as_ref() {
                             // Here we have an option<&str> which could mean there is a risk of
                             // a malicious entity attempting to trick us by masking class mods
                             // in non-iutf8 types. However, the server first won't respect their
@@ -564,7 +564,7 @@ pub trait AccessControlsTransaction<'a> {
                         }
                     }
                     Modify::Removed(a, v) => {
-                        if a.as_str() == "class" {
+                        if a == Attribute::Class.as_ref() {
                             v.to_str()
                         } else {
                             None
@@ -1882,7 +1882,7 @@ mod tests {
                 Attribute::Name,
                 PartialValue::new_iname("testperson1")
             )),
-            modlist!([m_pres(Attribute::Name.as_ref(), &Value::new_iname("value"))]),
+            modlist!([m_pres(Attribute::Name, &Value::new_iname("value"))]),
         );
         // Name rem
         let me_rem = ModifyEvent::new_impersonate_entry(
@@ -1891,10 +1891,7 @@ mod tests {
                 Attribute::Name,
                 PartialValue::new_iname("testperson1")
             )),
-            modlist!([m_remove(
-                Attribute::Name.as_ref(),
-                &PartialValue::new_iname("value")
-            )]),
+            modlist!([m_remove(Attribute::Name, &PartialValue::new_iname("value"))]),
         );
         // Name purge
         let me_purge = ModifyEvent::new_impersonate_entry(
@@ -1903,7 +1900,7 @@ mod tests {
                 Attribute::Name,
                 PartialValue::new_iname("testperson1")
             )),
-            modlist!([m_purge("name")]),
+            modlist!([m_purge(Attribute::Name)]),
         );
 
         // Class account pres
@@ -1913,7 +1910,7 @@ mod tests {
                 Attribute::Name,
                 PartialValue::new_iname("testperson1")
             )),
-            modlist!([m_pres("class", &EntryClass::Account.to_value())]),
+            modlist!([m_pres(Attribute::Class, &EntryClass::Account.to_value())]),
         );
         // Class account rem
         let me_rem_class = ModifyEvent::new_impersonate_entry(
@@ -1922,7 +1919,10 @@ mod tests {
                 Attribute::Name,
                 PartialValue::new_iname("testperson1")
             )),
-            modlist!([m_remove("class", &EntryClass::Account.to_partialvalue())]),
+            modlist!([m_remove(
+                Attribute::Class,
+                &EntryClass::Account.to_partialvalue()
+            )]),
         );
         // Class purge
         let me_purge_class = ModifyEvent::new_impersonate_entry(
@@ -1931,7 +1931,7 @@ mod tests {
                 Attribute::Name,
                 PartialValue::new_iname("testperson1")
             )),
-            modlist!([m_purge("class")]),
+            modlist!([m_purge(Attribute::Class)]),
         );
 
         // Allow name and class, class is account
@@ -2032,7 +2032,7 @@ mod tests {
                 Attribute::Name,
                 PartialValue::new_iname("testperson1")
             )),
-            modlist!([m_pres(Attribute::Name.as_ref(), &Value::new_iname("value"))]),
+            modlist!([m_pres(Attribute::Name, &Value::new_iname("value"))]),
         );
 
         // Name present
@@ -2042,7 +2042,7 @@ mod tests {
                 Attribute::Name,
                 PartialValue::new_iname("testperson1")
             )),
-            modlist!([m_pres(Attribute::Name.as_ref(), &Value::new_iname("value"))]),
+            modlist!([m_pres(Attribute::Name, &Value::new_iname("value"))]),
         );
 
         let acp_allow = AccessControlModify::from_raw(
@@ -2564,9 +2564,9 @@ mod tests {
                 PartialValue::new_iname("testperson1")
             )),
             // Allow pres user_auth_token_session
-            "user_auth_token_session name",
+            &format!("{} {}", Attribute::UserAuthTokenSession, Attribute::Name),
             // Allow user_auth_token_session
-            "user_auth_token_session name",
+            &format!("{} {}", Attribute::UserAuthTokenSession, Attribute::Name),
             // And the class allowed is account, we don't use it though.
             EntryClass::Account.into(),
         );
@@ -2581,7 +2581,7 @@ mod tests {
                 PartialValue::new_iname("testperson1")
             )),
             modlist!([m_pres(
-                "user_auth_token_session",
+                Attribute::UserAuthTokenSession,
                 &Value::new_iname("value")
             )]),
         );
@@ -2593,7 +2593,7 @@ mod tests {
                 PartialValue::new_iname("testperson1")
             )),
             modlist!([m_remove(
-                "user_auth_token_session",
+                Attribute::UserAuthTokenSession,
                 &PartialValue::new_iname("value")
             )]),
         );
@@ -2604,7 +2604,7 @@ mod tests {
                 Attribute::Name,
                 PartialValue::new_iname("testperson1")
             )),
-            modlist!([m_purge("user_auth_token_session")]),
+            modlist!([m_purge(Attribute::UserAuthTokenSession)]),
         );
 
         // Test allowed pres
@@ -2628,7 +2628,7 @@ mod tests {
                 Attribute::Name,
                 PartialValue::new_iname("testperson1")
             )),
-            modlist!([m_pres(Attribute::Name.as_ref(), &Value::new_iname("value"))]),
+            modlist!([m_pres(Attribute::Name, &Value::new_iname("value"))]),
         );
         // Name rem
         let me_rem = ModifyEvent::new_impersonate_entry(
@@ -2637,10 +2637,7 @@ mod tests {
                 Attribute::Name,
                 PartialValue::new_iname("testperson1")
             )),
-            modlist!([m_remove(
-                Attribute::Name.as_ref(),
-                &PartialValue::new_iname("value")
-            )]),
+            modlist!([m_remove(Attribute::Name, &PartialValue::new_iname("value"))]),
         );
         // Name purge
         let me_purge = ModifyEvent::new_impersonate_entry(
@@ -2649,7 +2646,7 @@ mod tests {
                 Attribute::Name,
                 PartialValue::new_iname("testperson1")
             )),
-            modlist!([m_purge("name")]),
+            modlist!([m_purge(Attribute::Name)]),
         );
 
         // Test reject pres

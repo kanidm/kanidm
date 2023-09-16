@@ -14,11 +14,14 @@ use std::net::TcpStream;
 use std::sync::atomic::{AtomicU16, Ordering};
 
 use kanidm_client::{KanidmClient, KanidmClientBuilder};
-use kanidm_proto::constants::{ATTR_DESCRIPTION, ATTR_LDAP_SSH_PUBLICKEY, ATTR_MAIL, ATTR_NAME};
+
 use kanidm_proto::v1::{Filter, Modify, ModifyList};
 use kanidmd_core::config::{Configuration, IntegrationTestConfig};
 use kanidmd_core::{create_server_core, CoreHandle};
-use kanidmd_lib::prelude::Attribute;
+use kanidmd_lib::prelude::{
+    Attribute, BUILTIN_GROUP_IDM_ADMINS_V1, IDM_PEOPLE_ACCOUNT_PASSWORD_IMPORT_PRIV_V1,
+    IDM_PEOPLE_EXTEND_PRIV_V1,
+};
 use tokio::task;
 
 pub const ADMIN_TEST_USER: &str = "admin";
@@ -151,18 +154,18 @@ pub async fn add_all_attrs(
         .await
         .expect("Failed to extend user group");
 
-    for attr in [ATTR_LDAP_SSH_PUBLICKEY, ATTR_MAIL].iter() {
+    for attr in [Attribute::SshPublicKey, Attribute::Mail].into_iter() {
         println!("Checking writable for {}", attr);
         #[allow(clippy::expect_used)]
         let res = is_attr_writable(rsclient, id, attr)
             .await
-            .expect("Failed to get wriable status for attribute");
+            .expect("Failed to get writable status for attribute");
         assert!(res);
     }
 
     if let Some(legalname) = legalname {
         #[allow(clippy::expect_used)]
-        let res = is_attr_writable(rsclient, legalname, "legalname")
+        let res = is_attr_writable(rsclient, legalname, Attribute::LegalName)
             .await
             .expect("Failed to get writable status for legalname field");
         assert!(res);
@@ -185,22 +188,22 @@ pub async fn add_all_attrs(
     }
 }
 
-pub async fn is_attr_writable(rsclient: &KanidmClient, id: &str, attr: &str) -> Option<bool> {
+pub async fn is_attr_writable(rsclient: &KanidmClient, id: &str, attr: Attribute) -> Option<bool> {
     println!("writing to attribute: {}", attr);
     match attr {
-        "radius_secret" => Some(
+        Attribute::RadiusSecret => Some(
             rsclient
                 .idm_account_radius_credential_regenerate(id)
                 .await
                 .is_ok(),
         ),
-        "primary_credential" => Some(
+        Attribute::PrimaryCredential => Some(
             rsclient
                 .idm_person_account_primary_credential_set_password(id, "dsadjasiodqwjk12asdl")
                 .await
                 .is_ok(),
         ),
-        kanidm_proto::constants::ATTR_LDAP_SSH_PUBLICKEY => Some(
+        Attribute::SshPublicKey => Some(
             rsclient
                 .idm_person_account_post_ssh_pubkey(
                     id,
@@ -211,28 +214,36 @@ pub async fn is_attr_writable(rsclient: &KanidmClient, id: &str, attr: &str) -> 
                 .await
                 .is_ok(),
         ),
-        "unix_password" => Some(
+        Attribute::UnixPassword => Some(
             rsclient
                 .idm_person_account_unix_cred_put(id, "dsadjasiodqwjk12asdl")
                 .await
                 .is_ok(),
         ),
-        "legalname" => Some(
+        Attribute::LegalName => Some(
             rsclient
-                .idm_person_account_set_attr(id, "legalname", &["test legal name"])
+                .idm_person_account_set_attr(
+                    id,
+                    Attribute::LegalName.as_ref(),
+                    &["test legal name"],
+                )
                 .await
                 .is_ok(),
         ),
-        "mail" => Some(
+        Attribute::Mail => Some(
             rsclient
-                .idm_person_account_set_attr(id, "mail", &[&format!("{}@example.com", id)])
+                .idm_person_account_set_attr(
+                    id,
+                    Attribute::Mail.as_ref(),
+                    &[&format!("{}@example.com", id)],
+                )
                 .await
                 .is_ok(),
         ),
         entry => {
             let new_value = match entry {
-                "acp_receiver_group" => "00000000-0000-0000-0000-000000000011".to_string(),
-                "acp_targetscope" => "{\"and\": [{\"eq\": [\"class\",\"access_control_profile\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}".to_string(),
+                Attribute::AcpReceiverGroup => "00000000-0000-0000-0000-000000000011".to_string(),
+                Attribute::AcpTargetScope => "{\"and\": [{\"eq\": [\"class\",\"access_control_profile\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}".to_string(),
                  _ => id.to_string(),
             };
             let m = ModifyList::new_list(vec![
@@ -249,7 +260,7 @@ pub async fn login_account(rsclient: &KanidmClient, id: &str) {
     #[allow(clippy::expect_used)]
     rsclient
         .idm_group_add_members(
-            "idm_people_account_password_import_priv",
+            IDM_PEOPLE_ACCOUNT_PASSWORD_IMPORT_PRIV_V1.name,
             &[ADMIN_TEST_USER],
         )
         .await
@@ -257,7 +268,7 @@ pub async fn login_account(rsclient: &KanidmClient, id: &str) {
 
     #[allow(clippy::expect_used)]
     rsclient
-        .idm_group_add_members("idm_people_extend_priv", &[ADMIN_TEST_USER])
+        .idm_group_add_members(IDM_PEOPLE_EXTEND_PRIV_V1.name, &[ADMIN_TEST_USER])
         .await
         .expect("Failed to add user to idm_people_extend_priv");
 
@@ -297,7 +308,12 @@ pub async fn login_account_via_admin(rsclient: &KanidmClient, id: &str) {
     login_account(rsclient, id).await
 }
 
-pub async fn test_read_attrs(rsclient: &KanidmClient, id: &str, attrs: &[&str], is_readable: bool) {
+pub async fn test_read_attrs(
+    rsclient: &KanidmClient,
+    id: &str,
+    attrs: &[Attribute],
+    is_readable: bool,
+) {
     println!("Test read to {}, is readable: {}", id, is_readable);
     #[allow(clippy::expect_used)]
     let rset = rsclient
@@ -312,14 +328,14 @@ pub async fn test_read_attrs(rsclient: &KanidmClient, id: &str, attrs: &[&str], 
         println!("Reading {}", attr);
         #[allow(clippy::unwrap_used)]
         let is_ok = match *attr {
-            "radius_secret" => rsclient
+            Attribute::RadiusSecret => rsclient
                 .idm_account_radius_credential_get(id)
                 .await
                 .unwrap()
                 .is_some(),
-            _ => e.attrs.get(*attr).is_some(),
+            _ => e.attrs.get(attr.as_ref()).is_some(),
         };
-
+        dbg!(is_ok, is_readable);
         assert!(is_ok == is_readable)
     }
 }
@@ -327,14 +343,14 @@ pub async fn test_read_attrs(rsclient: &KanidmClient, id: &str, attrs: &[&str], 
 pub async fn test_write_attrs(
     rsclient: &KanidmClient,
     id: &str,
-    attrs: &[&str],
+    attrs: &[Attribute],
     is_writeable: bool,
 ) {
     println!("Test write to {}, is writeable: {}", id, is_writeable);
     for attr in attrs.iter() {
         println!("Writing to {} - ex {}", attr, is_writeable);
         #[allow(clippy::unwrap_used)]
-        let is_ok = is_attr_writable(rsclient, id, attr).await.unwrap();
+        let is_ok = is_attr_writable(rsclient, id, *attr).await.unwrap();
         assert!(is_ok == is_writeable)
     }
 }
@@ -347,7 +363,7 @@ pub async fn test_modify_group(
     // need user test created to be added as test part
     for group in group_names.iter() {
         println!("Testing group: {}", group);
-        for attr in [ATTR_DESCRIPTION, ATTR_NAME].iter() {
+        for attr in [Attribute::Description, Attribute::Name].into_iter() {
             #[allow(clippy::unwrap_used)]
             let is_writable = is_attr_writable(rsclient, group, attr).await.unwrap();
             dbg!(group, attr, is_writable, can_be_modified);
@@ -373,7 +389,7 @@ pub async fn login_put_admin_idm_admins(rsclient: &KanidmClient) {
 
     #[allow(clippy::expect_used)]
     rsclient
-        .idm_group_add_members("idm_admins", &[ADMIN_TEST_USER])
+        .idm_group_add_members(BUILTIN_GROUP_IDM_ADMINS_V1.name, &[ADMIN_TEST_USER])
         .await
         .expect("Failed to add admin user to idm_admins")
 }

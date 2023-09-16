@@ -59,12 +59,11 @@ impl CredImport {
     fn modify_inner<T: Clone>(cand: &mut [Entry<EntryInvalid, T>]) -> Result<(), OperationError> {
         cand.iter_mut().try_for_each(|e| {
             // PASSWORD IMPORT
-            if let Some(vs) = e.pop_ava("password_import") {
+            if let Some(vs) = e.pop_ava(Attribute::PasswordImport) {
                 // if there are multiple, fail.
                 let im_pw = vs.to_utf8_single().ok_or_else(|| {
                     OperationError::Plugin(PluginError::CredImport(
-                        "password_import has incorrect value type - should be a single utf8 string"
-                            .to_string(),
+                        format!("{} has incorrect value type - should be a single utf8 string", Attribute::PasswordImport),
                     ))
                 })?;
 
@@ -86,11 +85,11 @@ impl CredImport {
                 })?;
 
                 // does the entry have a primary cred?
-                match e.get_ava_single_credential(Attribute::PrimaryCredential.into()) {
+                match e.get_ava_single_credential(Attribute::PrimaryCredential) {
                     Some(c) => {
                         let c = c.update_password(pw);
                         e.set_ava(
-                            Attribute::PrimaryCredential.into(),
+                            Attribute::PrimaryCredential,
                             once(Value::new_credential("primary", c)),
                         );
                     }
@@ -98,7 +97,7 @@ impl CredImport {
                         // just set it then!
                         let c = Credential::new_from_password(pw);
                         e.set_ava(
-                            Attribute::PrimaryCredential.into(),
+                            Attribute::PrimaryCredential,
                             once(Value::new_credential("primary", c)),
                         );
                     }
@@ -107,7 +106,7 @@ impl CredImport {
 
             // TOTP IMPORT - Must be subsequent to password import to allow primary cred to
             // be created.
-            if let Some(vs) = e.pop_ava(Attribute::TotpImport.as_ref()) {
+            if let Some(vs) = e.pop_ava(Attribute::TotpImport) {
                 // Get the map.
                 let totps = vs.as_totp_map().ok_or_else(|| {
                     OperationError::Plugin(PluginError::CredImport(
@@ -115,12 +114,12 @@ impl CredImport {
                     ))
                 })?;
 
-                if let Some(c) = e.get_ava_single_credential(Attribute::PrimaryCredential.as_ref()) {
+                if let Some(c) = e.get_ava_single_credential(Attribute::PrimaryCredential) {
                     let c = totps.iter().fold(c.clone(), |acc, (label, totp)| {
                         acc.append_totp(label.clone(), totp.clone())
                     });
                     e.set_ava(
-                        Attribute::PrimaryCredential.as_ref(),
+                        Attribute::PrimaryCredential,
                         once(Value::new_credential("primary", c)),
                     );
                 } else {
@@ -281,7 +280,7 @@ mod tests {
                     .internal_search_uuid(uuid!("d2b496bd-8493-47b7-8142-f568b5cf47ee"))
                     .expect("failed to get entry");
                 let c = e
-                    .get_ava_single_credential(Attribute::PrimaryCredential.as_ref())
+                    .get_ava_single_credential(Attribute::PrimaryCredential)
                     .expect("failed to get primary cred.");
                 match &c.type_ {
                     CredentialType::PasswordMfa(_pw, totp, webauthn, backup_code) => {
@@ -342,7 +341,7 @@ mod tests {
             |qs: &mut QueryServerWriteTransaction| {
                 let e = qs.internal_search_uuid(euuid).expect("failed to get entry");
                 let c = e
-                    .get_ava_single_credential(Attribute::PrimaryCredential.as_ref())
+                    .get_ava_single_credential(Attribute::PrimaryCredential)
                     .expect("failed to get primary cred.");
                 match &c.type_ {
                     CredentialType::PasswordMfa(_pw, totp, webauthn, backup_code) => {

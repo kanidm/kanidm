@@ -317,20 +317,20 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
                 let uuid = ent.get_uuid();
                 admin_info!(?uuid, "Checking oauth2 configuration");
                 // From each entry, attempt to make an oauth2 configuration.
-                if !ent.attribute_equality(Attribute::Class.as_ref(), &EntryClass::OAuth2ResourceServer.into()) {
+                if !ent.attribute_equality(Attribute::Class, &EntryClass::OAuth2ResourceServer.into()) {
                     admin_error!("Missing class oauth2_resource_server");
                     // Check we have oauth2_resource_server class
                     return Err(OperationError::InvalidEntryState);
                 }
 
-                let type_ = if ent.attribute_equality(Attribute::Class.as_ref(), &EntryClass::OAuth2ResourceServerBasic.into()) {
+                let type_ = if ent.attribute_equality(Attribute::Class, &EntryClass::OAuth2ResourceServerBasic.into()) {
                     let authz_secret = ent
-                        .get_ava_single_secret(ATTR_OAUTH2_RS_BASIC_SECRET)
+                        .get_ava_single_secret(Attribute::OAuth2RsBasicSecret)
                         .map(str::to_string)
                         .ok_or(OperationError::InvalidValueState)?;
 
                     let enable_pkce = ent
-                        .get_ava_single_bool(Attribute::OAuth2AllowInsecureClientDisablePkce.as_ref())
+                        .get_ava_single_bool(Attribute::OAuth2AllowInsecureClientDisablePkce)
                         .map(|e| !e)
                         .unwrap_or(true);
 
@@ -338,7 +338,7 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
                         authz_secret,
                         enable_pkce,
                     }
-                } else if ent.attribute_equality(Attribute::Class.as_ref(), &EntryClass::OAuth2ResourceServerPublic.into()) {
+                } else if ent.attribute_equality(Attribute::Class, &EntryClass::OAuth2ResourceServerPublic.into()) {
                     OauthRSType::Public
                 } else {
                     error!("Missing class determining oauth2 rs type");
@@ -347,22 +347,22 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
 
                 // Now we know we can load the shared attrs.
                 let name = ent
-                    .get_ava_single_iname("oauth2_rs_name")
+                    .get_ava_single_iname(Attribute::OAuth2RsName)
                     .map(str::to_string)
                     .ok_or(OperationError::InvalidValueState)?;
 
                 let displayname = ent
-                    .get_ava_single_utf8("displayname")
+                    .get_ava_single_utf8(Attribute::DisplayName)
                     .map(str::to_string)
                     .ok_or(OperationError::InvalidValueState)?;
 
                 let (origin, origin_https) = ent
-                    .get_ava_single_url(Attribute::OAuth2RsOrigin.as_ref())
+                    .get_ava_single_url(Attribute::OAuth2RsOrigin)
                     .map(|url| (url.origin(), url.scheme() == "https"))
                     .ok_or(OperationError::InvalidValueState)?;
 
                 let landing_valid = ent
-                    .get_ava_single_url("oauth2_rs_origin_landing")
+                    .get_ava_single_url(Attribute::OAuth2RsOriginLanding)
                     .map(|url| url.origin() == origin).
                     unwrap_or(true);
 
@@ -371,27 +371,27 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
                 }
 
                 let token_fernet = ent
-                    .get_ava_single_secret("oauth2_rs_token_key")
+                    .get_ava_single_secret(Attribute::OAuth2RsTokenKey)
                     .ok_or(OperationError::InvalidValueState)
                     .and_then(|key| {
                         Fernet::new(key).ok_or(OperationError::CryptographyError)
                     })?;
 
                 let scope_maps = ent
-                    .get_ava_as_oauthscopemaps(Attribute::OAuth2RsScopeMap.as_ref())
+                    .get_ava_as_oauthscopemaps(Attribute::OAuth2RsScopeMap)
                     .cloned()
                     .unwrap_or_default();
 
                 let sup_scope_maps = ent
-                    .get_ava_as_oauthscopemaps(Attribute::OAuth2RsSupScopeMap.as_ref())
+                    .get_ava_as_oauthscopemaps(Attribute::OAuth2RsSupScopeMap)
                     .cloned()
                     .unwrap_or_default();
 
                 trace!("{}", Attribute::OAuth2JwtLegacyCryptoEnable.as_ref());
-                let jws_signer = if ent.get_ava_single_bool(Attribute::OAuth2JwtLegacyCryptoEnable.as_ref()).unwrap_or(false) {
-                    trace!("rs256_private_key_der");
+                let jws_signer = if ent.get_ava_single_bool(Attribute::OAuth2JwtLegacyCryptoEnable).unwrap_or(false) {
+                    trace!("{}", Attribute::Rs256PrivateKeyDer);
                     ent
-                        .get_ava_single_private_binary("rs256_private_key_der")
+                        .get_ava_single_private_binary(Attribute::Rs256PrivateKeyDer)
                         .ok_or(OperationError::InvalidValueState)
                         .and_then(|key_der| {
                             JwsSigner::from_rs256_der(key_der).map_err(|e| {
@@ -400,9 +400,9 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
                             })
                         })?
                 } else {
-                    trace!("es256_private_key_der");
+                    trace!("{}", Attribute::Es256PrivateKeyDer);
                     ent
-                        .get_ava_single_private_binary("es256_private_key_der")
+                        .get_ava_single_private_binary(Attribute::Es256PrivateKeyDer)
                         .ok_or(OperationError::InvalidValueState)
                         .and_then(|key_der| {
                             JwsSigner::from_es256_der(key_der).map_err(|e| {
@@ -413,7 +413,7 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
                 };
 
                 let prefer_short_username = ent
-                    .get_ava_single_bool(Attribute::OAuth2PreferShortUsername.as_ref())
+                    .get_ava_single_bool(Attribute::OAuth2PreferShortUsername)
                     .unwrap_or(false);
 
                 let mut authorization_endpoint = self.inner.origin.clone();
@@ -914,7 +914,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
                 // Check the not issued before of the session relative to this refresh iat
                 let oauth2_session = entry
-                    .get_ava_as_oauth2session_map("oauth2_session")
+                    .get_ava_as_oauth2session_map(Attribute::OAuth2Session)
                     .and_then(|map| map.get(&session_id))
                     .ok_or_else(|| {
                         security_info!(
@@ -1147,7 +1147,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             // NOTE: Oauth2_session has special handling that allows update in place without
             // the remove step needing to be carried out.
             // Modify::Removed("oauth2_session".into(), PartialValue::Refer(session_id)),
-            Modify::Present("oauth2_session".into(), session),
+            Modify::Present(Attribute::OAuth2Session.into(), session),
         ]);
 
         self.qs_write
@@ -2119,7 +2119,7 @@ mod tests {
             .internal_search_uuid(uuid)
             .expect("Failed to retrieve oauth2 resource entry ");
         let secret = entry
-            .get_ava_single_secret("oauth2_rs_basic_secret")
+            .get_ava_single_secret(Attribute::OAuth2RsBasicSecret)
             .map(str::to_string)
             .expect("No oauth2_rs_basic_secret found");
 
@@ -2164,9 +2164,9 @@ mod tests {
 
         // Mod the user
         let modlist = ModifyList::new_list(vec![
-            Modify::Present("user_auth_token_session".into(), session),
+            Modify::Present(Attribute::UserAuthTokenSession.into(), session),
             Modify::Present(
-                "primary_credential".into(),
+                Attribute::PrimaryCredential.into(),
                 Value::Cred("primary".to_string(), cred),
             ),
         ]);
@@ -2286,9 +2286,9 @@ mod tests {
 
         // Mod the user
         let modlist = ModifyList::new_list(vec![
-            Modify::Present("user_auth_token_session".into(), session),
+            Modify::Present(Attribute::UserAuthTokenSession.into(), session),
             Modify::Present(
-                "primary_credential".into(),
+                Attribute::PrimaryCredential.into(),
                 Value::Cred("primary".to_string(), cred),
             ),
         ]);
@@ -3228,7 +3228,7 @@ mod tests {
             .internal_search_uuid(UUID_ADMIN)
             .expect("failed");
         let valid = entry
-            .get_ava_as_oauth2session_map("oauth2_session")
+            .get_ava_as_oauth2session_map(Attribute::OAuth2Session)
             .map(|map| map.get(&session_id).is_some())
             .unwrap_or(false);
         assert!(valid);
@@ -3250,7 +3250,7 @@ mod tests {
             .internal_search_uuid(UUID_ADMIN)
             .expect("failed");
         let revoked = entry
-            .get_ava_as_oauth2session_map("oauth2_session")
+            .get_ava_as_oauth2session_map(Attribute::OAuth2Session)
             .and_then(|sessions| sessions.get(&session_id))
             .map(|session| matches!(session.state, SessionState::RevokedAt(_)))
             .unwrap_or(false);
@@ -4805,7 +4805,7 @@ mod tests {
             .internal_search_uuid(UUID_ADMIN)
             .expect("failed");
         let valid = entry
-            .get_ava_as_oauth2session_map("oauth2_session")
+            .get_ava_as_oauth2session_map(Attribute::OAuth2Session)
             .and_then(|sessions| sessions.first_key_value())
             .map(|(_, session)| !matches!(session.state, SessionState::RevokedAt(_)))
             // If there is no map, then something is wrong.

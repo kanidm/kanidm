@@ -1,4 +1,5 @@
 use crate::common::OpType;
+use kanidm_proto::constants::{ATTR_ACCOUNT_EXPIRE, ATTR_ACCOUNT_VALID_FROM};
 use kanidm_proto::messages::{AccountChangeMessage, ConsoleOutputMode, MessageStatus};
 use time::OffsetDateTime;
 
@@ -368,7 +369,7 @@ impl ServiceAccountOpt {
                     let ex = match client
                         .idm_service_account_get_attr(
                             ano.aopts.account_id.as_str(),
-                            "account_expire",
+                            ATTR_ACCOUNT_EXPIRE,
                         )
                         .await
                     {
@@ -382,7 +383,7 @@ impl ServiceAccountOpt {
                     let vf = match client
                         .idm_service_account_get_attr(
                             ano.aopts.account_id.as_str(),
-                            "account_valid_from",
+                            ATTR_ACCOUNT_VALID_FROM,
                         )
                         .await
                     {
@@ -434,7 +435,7 @@ impl ServiceAccountOpt {
                         match client
                             .idm_service_account_purge_attr(
                                 ano.aopts.account_id.as_str(),
-                                "account_expire",
+                                ATTR_ACCOUNT_EXPIRE,
                             )
                             .await
                         {
@@ -450,7 +451,7 @@ impl ServiceAccountOpt {
                         match client
                             .idm_service_account_set_attr(
                                 ano.aopts.account_id.as_str(),
-                                "account_expire",
+                                ATTR_ACCOUNT_EXPIRE,
                                 &[ano.datetime.as_str()],
                             )
                             .await
@@ -467,7 +468,7 @@ impl ServiceAccountOpt {
                         match client
                             .idm_service_account_purge_attr(
                                 ano.aopts.account_id.as_str(),
-                                "account_valid_from",
+                                ATTR_ACCOUNT_VALID_FROM,
                             )
                             .await
                         {
@@ -484,7 +485,7 @@ impl ServiceAccountOpt {
                         match client
                             .idm_service_account_set_attr(
                                 ano.aopts.account_id.as_str(),
-                                "account_valid_from",
+                                ATTR_ACCOUNT_VALID_FROM,
                                 &[ano.datetime.as_str()],
                             )
                             .await

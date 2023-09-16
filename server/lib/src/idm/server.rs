@@ -568,7 +568,7 @@ pub trait IdmServerTransaction<'a> {
                 })?;
 
             let user_signer = entry
-                .get_ava_single_jws_key_es256("jws_es256_private_key")
+                .get_ava_single_jws_key_es256(Attribute::JwsEs256PrivateKey)
                 .ok_or_else(|| {
                     admin_error!(
                         ?kid,
@@ -657,10 +657,10 @@ pub trait IdmServerTransaction<'a> {
         let within_valid_window = Account::check_within_valid_time(
             ct,
             entry
-                .get_ava_single_datetime(Attribute::AccountValidFrom.as_ref())
+                .get_ava_single_datetime(Attribute::AccountValidFrom)
                 .as_ref(),
             entry
-                .get_ava_single_datetime(Attribute::AccountExpire.as_ref())
+                .get_ava_single_datetime(Attribute::AccountExpire)
                 .as_ref(),
         );
 
@@ -676,10 +676,10 @@ pub trait IdmServerTransaction<'a> {
         let grace_valid = ct < (Duration::from_secs(iat as u64) + GRACE_WINDOW);
 
         let oauth2_session = entry
-            .get_ava_as_oauth2session_map(Attribute::OAuth2Session.as_ref())
+            .get_ava_as_oauth2session_map(Attribute::OAuth2Session)
             .and_then(|sessions| sessions.get(&session_id));
         let uat_session = entry
-            .get_ava_as_session_map(Attribute::UserAuthTokenSession.as_ref())
+            .get_ava_as_session_map(Attribute::UserAuthTokenSession)
             .and_then(|sessions| sessions.get(&parent_session_id));
 
         if let Some(oauth2_session) = oauth2_session {
@@ -848,8 +848,12 @@ pub trait IdmServerTransaction<'a> {
 
                 if Account::check_within_valid_time(
                     ct,
-                    entry.get_ava_single_datetime("account_valid_from").as_ref(),
-                    entry.get_ava_single_datetime("account_expire").as_ref(),
+                    entry
+                        .get_ava_single_datetime(Attribute::AccountValidFrom)
+                        .as_ref(),
+                    entry
+                        .get_ava_single_datetime(Attribute::AccountExpire)
+                        .as_ref(),
                 ) {
                     // Good to go
                     let limits = Limits::default();
@@ -922,7 +926,7 @@ pub trait IdmServerTransaction<'a> {
             })?;
 
         let user_signer = entry
-            .get_ava_single_jws_key_es256("jws_es256_private_key")
+            .get_ava_single_jws_key_es256(Attribute::JwsEs256PrivateKey)
             .ok_or_else(|| {
                 admin_error!(
                     ?kid,
@@ -1334,7 +1338,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
             }
             Token::ApiToken(apit, entry) => {
                 let spn = entry
-                    .get_ava_single_proto_string(Attribute::Spn.as_ref())
+                    .get_ava_single_proto_string(Attribute::Spn)
                     .ok_or_else(|| {
                         OperationError::InvalidAccountState("Missing attribute: spn".to_string())
                     })?;
@@ -1844,9 +1848,9 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         let vcred = Value::new_credential("primary", ncred);
         // We need to remove other credentials too.
         let modlist = ModifyList::new_list(vec![
-            m_purge("passkeys"),
-            m_purge("primary_credential"),
-            Modify::Present("primary_credential".into(), vcred),
+            m_purge(Attribute::PassKeys),
+            m_purge(Attribute::PrimaryCredential),
+            Modify::Present(Attribute::PrimaryCredential.into(), vcred),
         ]);
 
         trace!(?modlist, "processing change");
@@ -2041,7 +2045,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         info!(session_id = %asr.session_id, "Persisting auth session");
 
         // modify the account to put the session onto it.
-        let modlist = ModifyList::new_append("user_auth_token_session", session);
+        let modlist = ModifyList::new_append(Attribute::UserAuthTokenSession, session);
 
         self.qs_write
             .internal_modify(
@@ -2880,7 +2884,7 @@ mod tests {
             .internal_search_uuid(UUID_ADMIN)
             .expect("Can't access admin entry.");
         let cred_before = admin_entry
-            .get_ava_single_credential("primary_credential")
+            .get_ava_single_credential(Attribute::PrimaryCredential)
             .expect("No credential present")
             .clone();
         drop(idms_prox_read);
@@ -2911,7 +2915,7 @@ mod tests {
             .internal_search_uuid(UUID_ADMIN)
             .expect("Can't access admin entry.");
         let cred_after = admin_entry
-            .get_ava_single_credential("primary_credential")
+            .get_ava_single_credential(Attribute::PrimaryCredential)
             .expect("No credential present")
             .clone();
         drop(idms_prox_read);
@@ -3549,7 +3553,7 @@ mod tests {
             .qs_read
             .internal_search_uuid(UUID_ADMIN)
             .expect("failed");
-        let sessions = admin.get_ava_as_session_map("user_auth_token_session");
+        let sessions = admin.get_ava_as_session_map(Attribute::UserAuthTokenSession);
         assert!(sessions.is_none());
         drop(idms_prox_read);
 
@@ -3574,7 +3578,7 @@ mod tests {
             .internal_search_uuid(UUID_ADMIN)
             .expect("failed");
         let sessions = admin
-            .get_ava_as_session_map("user_auth_token_session")
+            .get_ava_as_session_map(Attribute::UserAuthTokenSession)
             .expect("Sessions must be present!");
         assert!(sessions.len() == 1);
         let session_data_a = sessions.get(&session_a).expect("Session A is missing!");
@@ -3604,7 +3608,7 @@ mod tests {
             .internal_search_uuid(UUID_ADMIN)
             .expect("failed");
         let sessions = admin
-            .get_ava_as_session_map("user_auth_token_session")
+            .get_ava_as_session_map(Attribute::UserAuthTokenSession)
             .expect("Sessions must be present!");
         trace!(?sessions);
         assert!(sessions.len() == 2);

@@ -43,15 +43,15 @@ impl DynGroup {
         // Go through them all and update the new groups.
         for (pre, mut nd_group) in work_set.into_iter() {
             let scope_f: ProtoFilter = nd_group
-                .get_ava_single_protofilter("dyngroup_filter")
+                .get_ava_single_protofilter(Attribute::DynGroupFilter)
                 .cloned()
                 .ok_or_else(|| {
-                    admin_error!("Missing dyngroup_filter");
+                    admin_error!("Missing {}", Attribute::DynGroupFilter);
                     OperationError::InvalidEntryState
                 })?;
 
             let scope_i = Filter::from_rw(ident_internal, &scope_f, qs).map_err(|e| {
-                admin_error!("dyngroup_filter validation failed {:?}", e);
+                admin_error!("{} validation failed {:?}", Attribute::DynGroupFilter, e);
                 e
             })?;
 
@@ -72,23 +72,23 @@ impl DynGroup {
             }
 
             // Mark the former members as being affected also.
-            if let Some(uuid_iter) = pre.get_ava_as_refuuid("dynmember") {
+            if let Some(uuid_iter) = pre.get_ava_as_refuuid(Attribute::DynMember) {
                 affected_uuids.extend(uuid_iter);
             }
 
             if let Some(members) = members {
                 // Only set something if there is actually something to do!
-                nd_group.set_ava_set("dynmember", members);
+                nd_group.set_ava_set(Attribute::DynMember, members);
                 // push the entries to pre/cand
             } else {
-                nd_group.purge_ava("dynmember");
+                nd_group.purge_ava(Attribute::DynMember);
             }
 
             candidate_tuples.push((pre, nd_group));
 
             // Insert to our new instances
             if dyn_groups.insts.insert(uuid, scope_i).is_none() == expect {
-                admin_error!("dyngroup cache uuid conflict {}", uuid);
+                admin_error!("{} cache uuid conflict {}", Attribute::DynGroup, uuid);
                 return Err(OperationError::InvalidState);
             }
         }
@@ -109,10 +109,10 @@ impl DynGroup {
 
         for nd_group in entries.into_iter() {
             let scope_f: ProtoFilter = nd_group
-                .get_ava_single_protofilter("dyngroup_filter")
+                .get_ava_single_protofilter(Attribute::DynGroupFilter)
                 .cloned()
                 .ok_or_else(|| {
-                    admin_error!("Missing dyngroup_filter");
+                    admin_error!("Missing {}", Attribute::DynGroupFilter);
                     OperationError::InvalidEntryState
                 })?;
 
@@ -146,7 +146,7 @@ impl DynGroup {
         let ident_internal = Identity::from_internal();
 
         let (n_dyn_groups, entries): (Vec<&Entry<_, _>>, Vec<_>) = cand.iter().partition(|entry| {
-            entry.attribute_equality(Attribute::Class.as_ref(), &EntryClass::DynGroup.into())
+            entry.attribute_equality(Attribute::Class, &EntryClass::DynGroup.into())
         });
 
         // DANGER: Why do we have to do this? During the use of qs for internal search
@@ -249,12 +249,12 @@ impl DynGroup {
         // Probably should be filter here instead.
         let (_, pre_entries): (Vec<&Arc<Entry<_, _>>>, Vec<_>) =
             pre_cand.iter().partition(|entry| {
-                entry.attribute_equality(Attribute::Class.as_ref(), &EntryClass::DynGroup.into())
+                entry.attribute_equality(Attribute::Class, &EntryClass::DynGroup.into())
             });
 
         let (n_dyn_groups, post_entries): (Vec<&Entry<_, _>>, Vec<_>) =
             cand.iter().partition(|entry| {
-                entry.attribute_equality(Attribute::Class.as_ref(), &EntryClass::DynGroup.into())
+                entry.attribute_equality(Attribute::Class, &EntryClass::DynGroup.into())
             });
 
         // DANGER: Why do we have to do this? During the use of qs for internal search
@@ -323,8 +323,7 @@ impl DynGroup {
                 if let Some((pre, mut d_group)) = work_set.pop() {
                     matches.iter().copied().for_each(|choice| match choice {
                         Ok(u) => d_group.add_ava(Attribute::DynMember, Value::Refer(u)),
-                        Err(u) => d_group
-                            .remove_ava(Attribute::DynMember.as_ref(), &PartialValue::Refer(u)),
+                        Err(u) => d_group.remove_ava(Attribute::DynMember, &PartialValue::Refer(u)),
                     });
 
                     affected_uuids.extend(matches.into_iter().map(|choice| match choice {
@@ -406,7 +405,7 @@ mod tests {
 
                 let d_group = cands.get(0).expect("Unable to access group.");
                 let members = d_group
-                    .get_ava_set("dynmember")
+                    .get_ava_set(Attribute::DynMember)
                     .expect("No members on dyn group");
 
                 assert!(members.to_refer_single() == Some(UUID_TEST_GROUP));
@@ -455,7 +454,7 @@ mod tests {
 
                 let d_group = cands.get(0).expect("Unable to access group.");
                 let members = d_group
-                    .get_ava_set("dynmember")
+                    .get_ava_set(Attribute::DynMember)
                     .expect("No members on dyn group");
 
                 assert!(members.to_refer_single() == Some(UUID_TEST_GROUP));
@@ -503,7 +502,7 @@ mod tests {
                     .expect("Internal search failure");
 
                 let d_group = cands.get(0).expect("Unable to access group.");
-                assert!(d_group.get_ava_set("dynmember").is_none());
+                assert!(d_group.get_ava_set(Attribute::DynMember).is_none());
             }
         );
     }
@@ -549,11 +548,11 @@ mod tests {
 
                 let d_group = cands.get(0).expect("Unable to access group.");
                 let members = d_group
-                    .get_ava_set("dynmember")
+                    .get_ava_set(Attribute::DynMember)
                     .expect("No members on dyn group");
 
                 assert!(members.to_refer_single() == Some(UUID_TEST_GROUP));
-                assert!(d_group.get_ava_set("member").is_none());
+                assert!(d_group.get_ava_set(Attribute::Member).is_none());
             }
         );
     }
@@ -611,7 +610,7 @@ mod tests {
 
                 let d_group = cands.get(0).expect("Unable to access group.");
                 let members = d_group
-                    .get_ava_set("dynmember")
+                    .get_ava_set(Attribute::DynMember)
                     .expect("No members on dyn group");
 
                 assert!(members.to_refer_single() == Some(UUID_TEST_GROUP));
@@ -671,7 +670,7 @@ mod tests {
                     .expect("Internal search failure");
 
                 let d_group = cands.get(0).expect("Unable to access group.");
-                assert!(d_group.get_ava_set("dynmember").is_none());
+                assert!(d_group.get_ava_set(Attribute::DynMember).is_none());
             }
         );
     }
@@ -723,7 +722,7 @@ mod tests {
 
                 let d_group = cands.get(0).expect("Unable to access group.");
                 let members = d_group
-                    .get_ava_set("dynmember")
+                    .get_ava_set(Attribute::DynMember)
                     .expect("No members on dyn group");
                 // We assert to refer single here because we should have "removed" uuid_admin being added
                 // at all.
@@ -776,7 +775,7 @@ mod tests {
 
                 let d_group = cands.get(0).expect("Unable to access group.");
                 let members = d_group
-                    .get_ava_set("dynmember")
+                    .get_ava_set(Attribute::DynMember)
                     .expect("No members on dyn group");
                 // We assert to refer single here because we should have re-added the members
                 assert!(members.to_refer_single() == Some(UUID_TEST_GROUP));
@@ -831,7 +830,7 @@ mod tests {
 
                 let d_group = cands.get(0).expect("Unable to access group.");
                 let members = d_group
-                    .get_ava_set("dynmember")
+                    .get_ava_set(Attribute::DynMember)
                     .expect("No members on dyn group");
 
                 assert!(members.to_refer_single() == Some(UUID_TEST_GROUP));
@@ -882,7 +881,7 @@ mod tests {
                     .expect("Internal search failure");
 
                 let d_group = cands.get(0).expect("Unable to access group.");
-                assert!(d_group.get_ava_set("dynmember").is_none());
+                assert!(d_group.get_ava_set(Attribute::DynMember).is_none());
             }
         );
     }
@@ -925,7 +924,7 @@ mod tests {
                     .expect("Internal search failure");
 
                 let d_group = cands.get(0).expect("Unable to access group.");
-                assert!(d_group.get_ava_set("dynmember").is_none());
+                assert!(d_group.get_ava_set(Attribute::DynMember).is_none());
             }
         );
     }
@@ -972,7 +971,7 @@ mod tests {
                     .expect("Internal search failure");
 
                 let d_group = cands.get(0).expect("Unable to access group.");
-                assert!(d_group.get_ava_set("memberof").is_none());
+                assert!(d_group.get_ava_set(Attribute::MemberOf).is_none());
             }
         );
     }

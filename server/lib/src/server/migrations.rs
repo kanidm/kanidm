@@ -71,7 +71,7 @@ impl QueryServer {
         // effect as ... there is nothing to migrate! It allows reset of the version to 0 to force
         // db migrations to take place.
         let system_info_version = match write_txn.internal_search_uuid(UUID_SYSTEM_INFO) {
-            Ok(e) => Ok(e.get_ava_single_uint32("version").unwrap_or(0)),
+            Ok(e) => Ok(e.get_ava_single_uint32(Attribute::Version).unwrap_or(0)),
             Err(OperationError::NoMatchingEntries) => Ok(0),
             Err(r) => Err(r),
         }?;
@@ -233,17 +233,17 @@ impl<'a> QueryServerWriteTransaction<'a> {
         candidates.iter_mut().try_for_each(|er| {
             // Migrate basic secrets if they exist.
             let nvs = er
-                .get_ava_set("oauth2_rs_basic_secret")
+                .get_ava_set(Attribute::OAuth2RsBasicSecret)
                 .and_then(|vs| vs.as_utf8_iter())
                 .and_then(|vs_iter| {
                     ValueSetSecret::from_iter(vs_iter.map(|s: &str| s.to_string()))
                 });
             if let Some(nvs) = nvs {
-                er.set_ava_set("oauth2_rs_basic_secret", nvs)
+                er.set_ava_set(Attribute::OAuth2RsBasicSecret, nvs)
             }
 
             // Migrate implicit scopes if they exist.
-            let nv = if let Some(vs) = er.get_ava_set(Attribute::OAuth2RsImplicitScopes.as_ref()) {
+            let nv = if let Some(vs) = er.get_ava_set(Attribute::OAuth2RsImplicitScopes) {
                 vs.as_oauthscope_set()
                     .map(|v| Value::OauthScopeMap(UUID_IDM_ALL_PERSONS, v.clone()))
             } else {
@@ -253,7 +253,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             if let Some(nv) = nv {
                 er.add_ava(Attribute::OAuth2RsScopeMap, nv)
             }
-            er.purge_ava(Attribute::OAuth2RsImplicitScopes.as_ref());
+            er.purge_ava(Attribute::OAuth2RsImplicitScopes);
 
             Ok(())
         })?;
@@ -298,8 +298,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         ]));
         // This "does nothing" since everything has object anyway, but it forces the entry to be
         // loaded and rewritten.
-        let modlist =
-            ModifyList::new_append(Attribute::Class.as_ref(), EntryClass::Object.to_value());
+        let modlist = ModifyList::new_append(Attribute::Class, EntryClass::Object.to_value());
         self.internal_modify(&filter, &modlist)
         // Complete
     }
@@ -325,7 +324,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         let modset: Vec<_> = pre_candidates
             .into_iter()
             .filter_map(|ent| {
-                ent.get_ava_single_credential("primary_credential")
+                ent.get_ava_single_credential(Attribute::PrimaryCredential)
                     .and_then(|cred| cred.passkey_ref().ok())
                     .map(|pk_map| {
                         let modlist = pk_map
@@ -336,7 +335,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                                     Value::Passkey(Uuid::new_v4(), t.clone(), k.clone()),
                                 )
                             })
-                            .chain(std::iter::once(m_purge("primary_credential")))
+                            .chain(std::iter::once(m_purge(Attribute::PrimaryCredential)))
                             .collect();
                         (ent.get_uuid(), ModifyList::new_list(modlist))
                     })
@@ -381,19 +380,22 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // webauthn type.
 
         for (_, ent) in mod_candidates.iter_mut() {
-            if let Some(api_token_session) = ent.pop_ava("api_token_session") {
+            if let Some(api_token_session) = ent.pop_ava(Attribute::ApiTokenSession) {
                 let api_token_session =
                     api_token_session
                         .migrate_session_to_apitoken()
                         .map_err(|e| {
-                            error!("Failed to convert api_token_session from session -> apitoken");
+                            error!(
+                                "Failed to convert {} from session -> apitoken",
+                                Attribute::ApiTokenSession
+                            );
                             e
                         })?;
 
-                ent.set_ava_set("api_token_session", api_token_session);
+                ent.set_ava_set(Attribute::ApiTokenSession, api_token_session);
             }
 
-            if let Some(sync_token_session) = ent.pop_ava("sync_token_session") {
+            if let Some(sync_token_session) = ent.pop_ava(Attribute::SyncTokenSession) {
                 let sync_token_session =
                     sync_token_session
                         .migrate_session_to_apitoken()
@@ -402,7 +404,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                             e
                         })?;
 
-                ent.set_ava_set("sync_token_session", sync_token_session);
+                ent.set_ava_set(Attribute::SyncTokenSession, sync_token_session);
             }
         }
 
@@ -418,7 +420,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             f_eq(Attribute::Uuid, PVUUID_DOMAIN_INFO.clone()),
         ]));
         // Delete the existing cookie key to trigger a regeneration.
-        let modlist = ModifyList::new_purge(ATTR_PRIVATE_COOKIE_KEY);
+        let modlist = ModifyList::new_purge(Attribute::PrivateCookieKey);
         self.internal_modify(&filter, &modlist)
         // Complete
     }
@@ -431,7 +433,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             EntryClass::DynGroup.to_partialvalue()
         ));
         // Delete the incorrectly added "member" attr.
-        let modlist = ModifyList::new_purge("member");
+        let modlist = ModifyList::new_purge(Attribute::Member);
         self.internal_modify(&filter, &modlist)
         // Complete
     }
@@ -442,7 +444,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         let filter = filter!(f_eq(Attribute::Class, EntryClass::Person.into()));
         // Delete the non-existing attr for idv private key which triggers
         // it to regen.
-        let modlist = ModifyList::new_purge("id_verification_eckey");
+        let modlist = ModifyList::new_purge(Attribute::IdVerificationEcKey);
         self.internal_modify(&filter, &modlist)
         // Complete
     }
@@ -821,7 +823,7 @@ mod tests {
             ModifyEvent::new_internal_invalid(
                 filter!(f_or!([
                     f_eq(Attribute::AttributeName, Attribute::Name.to_partialvalue()),
-                    f_eq(Attribute::AttributeName, PartialValue::new_iutf8("domain_name")),
+                    f_eq(Attribute::AttributeName, Attribute::DomainName.into()),
                 ])),
                 ModifyList::new_purge_and_set(
                     "syntax",
@@ -864,7 +866,7 @@ mod tests {
             ModifyEvent::new_internal_invalid(
                 filter!(f_or!([
                     f_eq(Attribute::AttributeName, Attribute::Name.to_partialvalue()),
-                    f_eq(Attribute::AttributeName, PartialValue::new_iutf8("domain_name")),
+                    f_eq(Attribute::AttributeName, Attribute::DomainName.into()),
                 ])),
                 ModifyList::new_purge_and_set(
                     "syntax",
@@ -891,12 +893,12 @@ mod tests {
             .expect("failed");
         // ++ assert all names are iname
         assert!(
-            domain.get_ava_set(Attribute::Name.as_ref()).expect("no name?").syntax() == SyntaxType::Utf8StringIname
+            domain.get_ava_set(Attribute::Name).expect("no name?").syntax() == SyntaxType::Utf8StringIname
         );
         // ++ assert all domain/domain_name are iname
         assert!(
             domain
-                .get_ava_set("domain_name")
+                .get_ava_set(Attribute::DomainName.as_ref())
                 .expect("no domain_name?")
                 .syntax()
                 == SyntaxType::Utf8StringIname

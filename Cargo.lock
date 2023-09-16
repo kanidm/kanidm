@@ -3108,6 +3108,7 @@ dependencies = [
  "kanidm_proto",
  "kanidmd_core",
  "kanidmd_lib",
+ "lazy_static",
  "oauth2",
  "openssl",
  "reqwest",

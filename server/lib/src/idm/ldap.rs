@@ -69,11 +69,11 @@ impl LdapServer {
             .internal_search_uuid(UUID_DOMAIN_INFO)?;
 
         let basedn = domain_entry
-            .get_ava_single_iutf8("domain_ldap_basedn")
+            .get_ava_single_iutf8(Attribute::DomainLdapBasedn)
             .map(|s| s.to_string())
             .or_else(|| {
                 domain_entry
-                    .get_ava_single_iname(Attribute::DomainName.as_ref())
+                    .get_ava_single_iname(Attribute::DomainName)
                     .map(ldap_domain_to_dc)
             })
             .ok_or(OperationError::InvalidEntryState)?;
@@ -88,7 +88,7 @@ impl LdapServer {
             dn: "".to_string(),
             attributes: vec![
                 LdapPartialAttribute {
-                    atype: "objectclass".to_string(),
+                    atype: ATTR_OBJECTCLASS.to_string(),
                     vals: vec!["top".as_bytes().to_vec()],
                 },
                 LdapPartialAttribute {
@@ -135,7 +135,7 @@ impl LdapServer {
         // eventid: &Uuid,
     ) -> Result<Vec<LdapMsg>, OperationError> {
         admin_info!("Attempt LDAP Search for {}", uat.spn);
-        // If the request is "", Base, Present("objectclass"), [], then we want the rootdse.
+        // If the request is "", Base, Present(Attribute::ObjectClass.into()), [], then we want the rootdse.
         if sr.base.is_empty() && sr.scope == LdapSearchScope::Base {
             admin_info!("LDAP Search success - RootDSE");
             Ok(vec![
@@ -563,16 +563,16 @@ pub(crate) fn ldap_all_vattrs() -> Vec<String> {
     vec![
         ATTR_CN.to_string(),
         ATTR_EMAIL.to_string(),
-        "emailaddress".to_string(),
-        "emailalternative".to_string(),
-        "emailprimary".to_string(),
+        ATTR_LDAP_EMAIL_ADDRESS.to_string(),
+        LDAP_ATTR_EMAIL_ALTERNATIVE.to_string(),
+        LDAP_ATTR_EMAIL_PRIMARY.to_string(),
         "entrydn".to_string(),
-        "entryuuid".to_string(),
-        "keys".to_string(),
-        "mail;alternative".to_string(),
-        "mail;primary".to_string(),
-        "objectclass".to_string(),
-        ATTR_LDAP_SSH_PUBLICKEY.to_string(),
+        LDAP_ATTR_ENTRYUUID.to_string(),
+        LDAP_ATTR_KEYS.to_string(),
+        LDAP_ATTR_MAIL_ALTERNATIVE.to_string(),
+        LDAP_ATTR_MAIL_PRIMARY.to_string(),
+        ATTR_OBJECTCLASS.to_string(),
+        ATTR_LDAP_SSHPUBLICKEY.to_string(),
         ATTR_UIDNUMBER.to_string(),
     ]
 }
@@ -586,18 +586,18 @@ pub(crate) fn ldap_vattr_map(input: &str) -> Option<&str> {
     //
     //   LDAP NAME     KANI ATTR SOURCE NAME
     match input {
-        "cn" => Some(ATTR_NAME),
+        ATTR_CN => Some(ATTR_NAME),
         ATTR_EMAIL => Some(ATTR_MAIL),
-        "emailaddress" => Some(ATTR_MAIL),
-        "emailalternative" => Some(ATTR_MAIL),
-        "emailprimary" => Some(ATTR_MAIL),
-        "entryuuid" => Some(ATTR_UUID),
-        "keys" => Some(ATTR_LDAP_SSH_PUBLICKEY),
-        "mail;alternative" => Some(ATTR_MAIL),
-        "mail;primary" => Some(ATTR_MAIL),
-        "objectclass" => Some(ATTR_CLASS),
-        ATTR_LDAP_SSH_PUBLICKEY => Some(ATTR_LDAP_SSH_PUBLICKEY), // no-underscore -> underscore
-        "uidnumber" => Some(ATTR_GIDNUMBER),                      // yes this is intentional
+        ATTR_LDAP_EMAIL_ADDRESS => Some(ATTR_MAIL),
+        LDAP_ATTR_EMAIL_ALTERNATIVE => Some(ATTR_MAIL),
+        LDAP_ATTR_EMAIL_PRIMARY => Some(ATTR_MAIL),
+        LDAP_ATTR_ENTRYUUID => Some(ATTR_UUID),
+        LDAP_ATTR_KEYS => Some(ATTR_SSH_PUBLICKEY),
+        LDAP_ATTR_MAIL_ALTERNATIVE => Some(ATTR_MAIL),
+        LDAP_ATTR_MAIL_PRIMARY => Some(ATTR_MAIL),
+        ATTR_OBJECTCLASS => Some(ATTR_CLASS),
+        ATTR_LDAP_SSHPUBLICKEY => Some(ATTR_SSH_PUBLICKEY), // no-underscore -> underscore
+        ATTR_UIDNUMBER => Some(ATTR_GIDNUMBER),             // yes this is intentional
         _ => None,
     }
 }
@@ -853,7 +853,7 @@ mod tests {
             msgid: 1,
             base: "dc=example,dc=com".to_string(),
             scope: LdapSearchScope::Subtree,
-            filter: LdapFilter::Equality("name".to_string(), "testperson1".to_string()),
+            filter: LdapFilter::Equality(Attribute::Name.to_string(), "testperson1".to_string()),
             attrs: vec!["*".to_string()],
         };
         let r1 = ldaps.do_search(idms, &sr, &anon_t).await.unwrap();
@@ -885,7 +885,7 @@ mod tests {
             msgid: 1,
             base: "dc=example,dc=com".to_string(),
             scope: LdapSearchScope::Subtree,
-            filter: LdapFilter::Equality("name".to_string(), "testperson1".to_string()),
+            filter: LdapFilter::Equality(Attribute::Name.to_string(), "testperson1".to_string()),
             attrs: vec!["+".to_string()],
         };
         let r1 = ldaps.do_search(idms, &sr, &anon_t).await.unwrap();
@@ -924,12 +924,12 @@ mod tests {
             msgid: 1,
             base: "dc=example,dc=com".to_string(),
             scope: LdapSearchScope::Subtree,
-            filter: LdapFilter::Equality("name".to_string(), "testperson1".to_string()),
+            filter: LdapFilter::Equality(Attribute::Name.to_string(), "testperson1".to_string()),
             attrs: vec![
-                "name".to_string(),
-                "entrydn".to_string(),
-                "keys".to_string(),
-                "uidnumber".to_string(),
+                LDAP_ATTR_NAME.to_string(),
+                Attribute::EntryDn.to_string(),
+                ATTR_LDAP_KEYS.to_string(),
+                Attribute::UidNumber.to_string(),
             ],
         };
         let r1 = ldaps.do_search(idms, &sr, &anon_t).await.unwrap();
@@ -967,15 +967,18 @@ mod tests {
             msgid: 1,
             base: "dc=example,dc=com".to_string(),
             scope: LdapSearchScope::Subtree,
-            filter: LdapFilter::Equality("name".to_string(), "testperson1".to_string()),
+            filter: LdapFilter::Equality(Attribute::Name.to_string(), "testperson1".to_string()),
             attrs: vec![
-                "name".to_string(),
-                "mail".to_string(),
-                "mail;primary".to_string(),
-                "mail;alternative".to_string(),
-                "emailprimary".to_string(),
-                "emailalternative".to_string(),
-            ],
+                LDAP_ATTR_NAME,
+                LDAP_ATTR_MAIL,
+                LDAP_ATTR_MAIL_PRIMARY,
+                LDAP_ATTR_MAIL_ALTERNATIVE,
+                LDAP_ATTR_EMAIL_PRIMARY,
+                LDAP_ATTR_EMAIL_ALTERNATIVE,
+            ]
+            .into_iter()
+            .map(|s| s.to_string())
+            .collect(),
         };
 
         let sa_uuid = uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930");
@@ -1030,7 +1033,7 @@ mod tests {
             let me = ModifyEvent::new_internal_invalid(
                 filter!(f_eq(
                     Attribute::Name,
-                    PartialValue::new_iname("idm_people_read_priv")
+                    PartialValue::new_iname(IDM_PEOPLE_READ_PRIV_V1.name)
                 )),
                 ModifyList::new_list(vec![Modify::Present(
                     Attribute::Member.into(),
@@ -1109,10 +1112,16 @@ mod tests {
                         Attribute::Mail.as_ref(),
                         "testperson1.alternative@example.com"
                     ),
-                    ("mail;primary", "testperson1@example.com"),
-                    ("mail;alternative", "testperson1.alternative@example.com"),
-                    ("emailprimary", "testperson1@example.com"),
-                    ("emailalternative", "testperson1.alternative@example.com")
+                    (LDAP_ATTR_MAIL_PRIMARY, "testperson1@example.com"),
+                    (
+                        LDAP_ATTR_MAIL_ALTERNATIVE,
+                        "testperson1.alternative@example.com"
+                    ),
+                    (LDAP_ATTR_MAIL_PRIMARY, "testperson1@example.com"),
+                    (
+                        LDAP_ATTR_MAIL_ALTERNATIVE,
+                        "testperson1.alternative@example.com"
+                    )
                 );
             }
             _ => assert!(false),
@@ -1156,13 +1165,13 @@ mod tests {
             msgid: 1,
             base: "dc=example,dc=com".to_string(),
             scope: LdapSearchScope::Subtree,
-            filter: LdapFilter::Equality("name".to_string(), "testperson1".to_string()),
+            filter: LdapFilter::Equality(Attribute::Name.to_string(), "testperson1".to_string()),
             attrs: vec![
                 "*".to_string(),
                 // Already being returned
-                "name".to_string(),
+                LDAP_ATTR_NAME.to_string(),
                 // This is a virtual attribute
-                "entryuuid".to_string(),
+                Attribute::EntryUuid.to_string(),
             ],
         };
         let r1 = ldaps.do_search(idms, &sr, &anon_t).await.unwrap();
@@ -1177,7 +1186,10 @@ mod tests {
                     (Attribute::Name, "testperson1"),
                     (Attribute::DisplayName, "testperson1"),
                     (Attribute::Uuid, "cc8e95b4-c24f-4d68-ba54-8bed76f63930"),
-                    ("entryuuid", "cc8e95b4-c24f-4d68-ba54-8bed76f63930")
+                    (
+                        Attribute::EntryUuid.as_ref(),
+                        "cc8e95b4-c24f-4d68-ba54-8bed76f63930"
+                    )
                 );
             }
             _ => assert!(false),
@@ -1195,7 +1207,7 @@ mod tests {
             msgid: 1,
             base: "".to_string(),
             scope: LdapSearchScope::Base,
-            filter: LdapFilter::Present("objectclass".to_string()),
+            filter: LdapFilter::Present(Attribute::ObjectClass.to_string()),
             attrs: vec!["*".to_string()],
         };
         let r1 = ldaps.do_search(idms, &sr, &anon_t).await.unwrap();
@@ -1227,7 +1239,7 @@ mod tests {
         let me_posix = ModifyEvent::new_internal_invalid(
             filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(UUID_DOMAIN_INFO))),
             ModifyList::new_purge_and_set(
-                "domain_ldap_basedn",
+                Attribute::DomainLdapBasedn,
                 Value::new_iutf8("o=kanidmproject"),
             ),
         );
@@ -1245,7 +1257,7 @@ mod tests {
             msgid: 1,
             base: "".to_string(),
             scope: LdapSearchScope::Base,
-            filter: LdapFilter::Present("objectclass".to_string()),
+            filter: LdapFilter::Present(Attribute::ObjectClass.to_string()),
             attrs: vec!["*".to_string()],
         };
         let r1 = ldaps.do_search(idms, &sr, &anon_t).await.unwrap();

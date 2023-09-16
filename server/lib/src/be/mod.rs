@@ -1578,10 +1578,10 @@ impl<'a> BackendWriteTransaction<'a> {
         trace!("Creating index -> uuid2rdn");
         self.idlayer.create_uuid2rdn()?;
 
-        self.idxmeta_wr
-            .idxkeys
-            .keys()
-            .try_for_each(|ikey| self.idlayer.create_idx(&ikey.attr, ikey.itype))
+        self.idxmeta_wr.idxkeys.keys().try_for_each(|ikey| {
+            let attr: Attribute = (&ikey.attr).try_into()?;
+            self.idlayer.create_idx(attr, ikey.itype)
+        })
     }
 
     pub fn upgrade_reindex(&mut self, v: i64) -> Result<(), OperationError> {
@@ -2249,8 +2249,8 @@ mod tests {
             // Modify single
             assert!(be.modify(&CID_ZERO, &[pre1], &[vr1.clone()]).is_ok());
             // Assert no other changes
-            assert!(entry_attr_pres!(be, vr1, Attribute::TestAttr.as_ref()));
-            assert!(!entry_attr_pres!(be, vr2, Attribute::TestAttr.as_ref()));
+            assert!(entry_attr_pres!(be, vr1, Attribute::TestAttr));
+            assert!(!entry_attr_pres!(be, vr2, Attribute::TestAttr));
 
             // Modify both
             assert!(be
@@ -2261,8 +2261,8 @@ mod tests {
                 )
                 .is_ok());
 
-            assert!(entry_attr_pres!(be, vr1, Attribute::TestAttr.as_ref()));
-            assert!(entry_attr_pres!(be, vr2, Attribute::TestAttr.as_ref()));
+            assert!(entry_attr_pres!(be, vr1, Attribute::TestAttr));
+            assert!(entry_attr_pres!(be, vr2, Attribute::TestAttr));
         });
     }
 
@@ -2884,9 +2884,9 @@ mod tests {
             // add something.
             ce1.add_ava(Attribute::TestNumber, Value::from("test"));
             // remove something.
-            ce1.purge_ava(Attribute::TestAttr.as_ref());
+            ce1.purge_ava(Attribute::TestAttr);
             // mod something.
-            ce1.purge_ava(Attribute::Name.as_ref());
+            ce1.purge_ava(Attribute::Name);
             ce1.add_ava(Attribute::Name, Value::new_iname("claire"));
 
             let ce1 = ce1.into_sealed_committed();
@@ -2953,8 +2953,8 @@ mod tests {
             let rset: Vec<_> = rset.into_iter().map(Arc::new).collect();
             // Now, alter the new entry.
             let mut ce1 = rset[0].as_ref().clone().into_invalid();
-            ce1.purge_ava(Attribute::Name.as_ref());
-            ce1.purge_ava(Attribute::Uuid.as_ref());
+            ce1.purge_ava(Attribute::Name);
+            ce1.purge_ava(Attribute::Uuid);
             ce1.add_ava(Attribute::Name, Value::new_iname("claire"));
             ce1.add_ava(
                 Attribute::Uuid,
@@ -3357,36 +3357,30 @@ mod tests {
             assert!(!be.is_idx_slopeyness_generated().unwrap());
 
             let ta_eq_slope = be
-                .get_idx_slope(&IdxKey::new(
-                    Attribute::TestAttr.as_ref(),
-                    IndexType::Equality,
-                ))
+                .get_idx_slope(&IdxKey::new(Attribute::TestAttr, IndexType::Equality))
                 .unwrap();
             assert_eq!(ta_eq_slope, 45);
 
             let tb_eq_slope = be
-                .get_idx_slope(&IdxKey::new(
-                    Attribute::TestNumber.as_ref(),
-                    IndexType::Equality,
-                ))
+                .get_idx_slope(&IdxKey::new(Attribute::TestNumber, IndexType::Equality))
                 .unwrap();
             assert_eq!(tb_eq_slope, 45);
 
             let name_eq_slope = be
-                .get_idx_slope(&IdxKey::new(Attribute::Name.as_ref(), IndexType::Equality))
+                .get_idx_slope(&IdxKey::new(Attribute::Name, IndexType::Equality))
                 .unwrap();
             assert_eq!(name_eq_slope, 1);
             let uuid_eq_slope = be
-                .get_idx_slope(&IdxKey::new(Attribute::Uuid.as_ref(), IndexType::Equality))
+                .get_idx_slope(&IdxKey::new(Attribute::Uuid, IndexType::Equality))
                 .unwrap();
             assert_eq!(uuid_eq_slope, 1);
 
             let name_pres_slope = be
-                .get_idx_slope(&IdxKey::new(Attribute::Name.as_ref(), IndexType::Presence))
+                .get_idx_slope(&IdxKey::new(Attribute::Name, IndexType::Presence))
                 .unwrap();
             assert_eq!(name_pres_slope, 90);
             let uuid_pres_slope = be
-                .get_idx_slope(&IdxKey::new(Attribute::Uuid.as_ref(), IndexType::Presence))
+                .get_idx_slope(&IdxKey::new(Attribute::Uuid, IndexType::Presence))
                 .unwrap();
             assert_eq!(uuid_pres_slope, 90);
             // Check the slopes are what we expect for hardcoded values.
@@ -3397,36 +3391,30 @@ mod tests {
             assert!(be.is_idx_slopeyness_generated().unwrap());
 
             let ta_eq_slope = be
-                .get_idx_slope(&IdxKey::new(
-                    Attribute::TestAttr.as_ref(),
-                    IndexType::Equality,
-                ))
+                .get_idx_slope(&IdxKey::new(Attribute::TestAttr, IndexType::Equality))
                 .unwrap();
             assert_eq!(ta_eq_slope, 200);
 
             let tb_eq_slope = be
-                .get_idx_slope(&IdxKey::new(
-                    Attribute::TestNumber.as_ref(),
-                    IndexType::Equality,
-                ))
+                .get_idx_slope(&IdxKey::new(Attribute::TestNumber, IndexType::Equality))
                 .unwrap();
             assert_eq!(tb_eq_slope, 133);
 
             let name_eq_slope = be
-                .get_idx_slope(&IdxKey::new(Attribute::Name.as_ref(), IndexType::Equality))
+                .get_idx_slope(&IdxKey::new(Attribute::Name, IndexType::Equality))
                 .unwrap();
             assert_eq!(name_eq_slope, 51);
             let uuid_eq_slope = be
-                .get_idx_slope(&IdxKey::new(Attribute::Uuid.as_ref(), IndexType::Equality))
+                .get_idx_slope(&IdxKey::new(Attribute::Uuid, IndexType::Equality))
                 .unwrap();
             assert_eq!(uuid_eq_slope, 51);
 
             let name_pres_slope = be
-                .get_idx_slope(&IdxKey::new(Attribute::Name.as_ref(), IndexType::Presence))
+                .get_idx_slope(&IdxKey::new(Attribute::Name, IndexType::Presence))
                 .unwrap();
             assert_eq!(name_pres_slope, 200);
             let uuid_pres_slope = be
-                .get_idx_slope(&IdxKey::new(Attribute::Uuid.as_ref(), IndexType::Presence))
+                .get_idx_slope(&IdxKey::new(Attribute::Uuid, IndexType::Presence))
                 .unwrap();
             assert_eq!(uuid_pres_slope, 200);
         })

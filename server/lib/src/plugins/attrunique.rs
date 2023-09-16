@@ -33,23 +33,23 @@ where
         .filter_map(|e| e.mask_recycled_ts())
         .try_for_each(|e| {
             let uuid = e
-                .get_ava_single_uuid("uuid")
+                .get_ava_single_uuid(Attribute::Uuid)
                 .ok_or_else(|| {
                     error!("An entry is missing its uuid. This should be impossible!");
                     OperationError::InvalidEntryState
                 })?;
 
             // Faster to iterate over the attr vec inside this loop.
-            for attr in uniqueattrs.iter() {
-                if let Some(vs) = e.get_ava_set(attr) {
+            for attrstr in uniqueattrs.iter() {
+                if let Some(vs) = e.get_ava_set(attrstr.try_into()?) {
                 for pv in vs.to_partialvalue_iter() {
-                    let key = (attr.clone(), pv);
+                    let key = (attrstr.clone(), pv);
                     cand_attr.entry(key)
                         // Must have conflicted, lets append.
                         .and_modify(|v| {
                             warn!(
                                 "ava already exists -> {:?} on entry {:?} has conflicts within change set",
-                                attr,
+                                attrstr,
                                 e.get_display_id()
                             );
                             v.push(uuid)
@@ -116,17 +116,15 @@ fn enforce_unique<VALID, STATE>(
     }
 
     // Now do an internal search on name and !uuid for each
-    let cand_filters: Vec<_> = cand_attr
-        .iter()
-        .map(|((attr, v), uuid)| {
-            // and[ attr eq k, andnot [ uuid eq v ]]
-            // Basically this says where name but also not self.
-            f_and(vec![
-                FC::Eq(attr, v.clone()),
-                f_andnot(FC::Eq(ATTR_UUID, PartialValue::Uuid(*uuid))),
-            ])
-        })
-        .collect();
+    let mut cand_filters = Vec::new();
+    for ((attr, v), uuid) in cand_attr.iter() {
+        // and[ attr eq k, andnot [ uuid eq v ]]
+        // Basically this says where name but also not self.
+        cand_filters.push(f_and(vec![
+            FC::Eq(attr, v.clone()),
+            f_andnot(FC::Eq(Attribute::Uuid.as_ref(), PartialValue::Uuid(*uuid))),
+        ]));
+    }
 
     // Or
     let filt_in = filter!(f_or(cand_filters.clone()));
@@ -312,7 +310,7 @@ impl Plugin for AttrUnique {
                     // Basically this says where name but also not self.
                     f_and(vec![
                         FC::Eq(attr, v.clone()),
-                        f_andnot(FC::Eq(ATTR_UUID, PartialValue::Uuid(*uuid))),
+                        f_andnot(FC::Eq(Attribute::Uuid.as_ref(), PartialValue::Uuid(*uuid))),
                     ])
                 })
             })
@@ -368,7 +366,7 @@ impl Plugin for AttrUnique {
                     .map(|(attr, pv)| {
                         f_and(vec![
                             FC::Eq(attr, pv.clone()),
-                            f_andnot(FC::Eq(ATTR_UUID, PartialValue::Uuid(uuid))),
+                            f_andnot(FC::Eq(Attribute::Uuid.as_ref(), PartialValue::Uuid(uuid))),
                         ])
                     })
                     .collect();

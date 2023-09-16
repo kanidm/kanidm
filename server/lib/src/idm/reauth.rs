@@ -44,7 +44,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
 
         // Check that the entry/session can be re-authed.
         let session = entry
-            .get_ava_as_session_map("user_auth_token_session")
+            .get_ava_as_session_map(Attribute::UserAuthTokenSession)
             .and_then(|sessions| sessions.get(&ident.session_id))
             .ok_or_else(|| {
                 error!("Ident session is not present in entry. Perhaps replication is delayed?");

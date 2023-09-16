@@ -19,6 +19,7 @@ use crate::error::SyncError;
 use chrono::Utc;
 use clap::Parser;
 use cron::Schedule;
+use kanidm_proto::constants::ATTR_OBJECTCLASS;
 use std::fs::metadata;
 use std::fs::File;
 use std::io::Read;
@@ -472,9 +473,13 @@ fn ldap_to_scim_entry(
         return Ok(None);
     }
 
-    let oc = sync_entry.entry.attrs.get("objectclass").ok_or_else(|| {
-        error!("Invalid entry - no object class {}", dn);
-    })?;
+    let oc = sync_entry
+        .entry
+        .attrs
+        .get(ATTR_OBJECTCLASS)
+        .ok_or_else(|| {
+            error!("Invalid entry - no object class {}", dn);
+        })?;
 
     if oc.contains(&sync_config.person_objectclass) {
         let LdapSyncReplEntry {

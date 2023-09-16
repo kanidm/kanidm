@@ -194,11 +194,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 .iter()
                 .chain(pre_candidates.iter().map(|e| e.as_ref()))
                 .any(|e| {
-                    e.attribute_equality(Attribute::Class.as_ref(), &EntryClass::ClassType.into())
-                        || e.attribute_equality(
-                            Attribute::Class.as_ref(),
-                            &EntryClass::AttributeType.into(),
-                        )
+                    e.attribute_equality(Attribute::Class, &EntryClass::ClassType.into())
+                        || e.attribute_equality(Attribute::Class, &EntryClass::AttributeType.into())
                 });
         }
         if !self.changed_acp {
@@ -206,10 +203,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 .iter()
                 .chain(pre_candidates.iter().map(|e| e.as_ref()))
                 .any(|e| {
-                    e.attribute_equality(
-                        Attribute::Class.as_ref(),
-                        &EntryClass::AccessControlProfile.into(),
-                    )
+                    e.attribute_equality(Attribute::Class, &EntryClass::AccessControlProfile.into())
                 })
         }
         if !self.changed_oauth2 {
@@ -217,25 +211,20 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 .iter()
                 .chain(pre_candidates.iter().map(|e| e.as_ref()))
                 .any(|e| {
-                    e.attribute_equality(
-                        Attribute::Class.as_ref(),
-                        &EntryClass::OAuth2ResourceServer.into(),
-                    )
+                    e.attribute_equality(Attribute::Class, &EntryClass::OAuth2ResourceServer.into())
                 });
         }
         if !self.changed_domain {
             self.changed_domain = norm_cand
                 .iter()
                 .chain(pre_candidates.iter().map(|e| e.as_ref()))
-                .any(|e| e.attribute_equality(Attribute::Uuid.as_ref(), &PVUUID_DOMAIN_INFO));
+                .any(|e| e.attribute_equality(Attribute::Uuid, &PVUUID_DOMAIN_INFO));
         }
         if !self.changed_sync_agreement {
             self.changed_sync_agreement = norm_cand
                 .iter()
                 .chain(pre_candidates.iter().map(|e| e.as_ref()))
-                .any(|e| {
-                    e.attribute_equality(Attribute::Class.as_ref(), &EntryClass::SyncAccount.into())
-                });
+                .any(|e| e.attribute_equality(Attribute::Class, &EntryClass::SyncAccount.into()));
         }
 
         self.changed_uuid.extend(
@@ -364,11 +353,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 .iter()
                 .chain(pre_candidates.iter().map(|e| e.as_ref()))
                 .any(|e| {
-                    e.attribute_equality(Attribute::Class.as_ref(), &EntryClass::ClassType.into())
-                        || e.attribute_equality(
-                            Attribute::Class.as_ref(),
-                            &EntryClass::AttributeType.into(),
-                        )
+                    e.attribute_equality(Attribute::Class, &EntryClass::ClassType.into())
+                        || e.attribute_equality(Attribute::Class, &EntryClass::AttributeType.into())
                 });
         }
         if !self.changed_acp {
@@ -376,24 +362,18 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 .iter()
                 .chain(pre_candidates.iter().map(|e| e.as_ref()))
                 .any(|e| {
-                    e.attribute_equality(
-                        Attribute::Class.as_ref(),
-                        &EntryClass::AccessControlProfile.into(),
-                    )
+                    e.attribute_equality(Attribute::Class, &EntryClass::AccessControlProfile.into())
                 });
         }
         if !self.changed_oauth2 {
             self.changed_oauth2 = norm_cand.iter().any(|e| {
-                e.attribute_equality(
-                    Attribute::Class.as_ref(),
-                    &EntryClass::OAuth2ResourceServer.into(),
-                )
+                e.attribute_equality(Attribute::Class, &EntryClass::OAuth2ResourceServer.into())
             });
         }
         if !self.changed_domain {
             self.changed_domain = norm_cand
                 .iter()
-                .any(|e| e.attribute_equality(Attribute::Uuid.into(), &PVUUID_DOMAIN_INFO));
+                .any(|e| e.attribute_equality(Attribute::Uuid, &PVUUID_DOMAIN_INFO));
         }
         self.changed_uuid.extend(
             norm_cand
@@ -553,7 +533,6 @@ mod tests {
         assert!(server_txn.modify(&me_emp) == Err(OperationError::EmptyRequest));
 
         // Mod changes no objects
-        // TODO: @yaleman fix this because we don't have a way to do this anymore
         let me_nochg = ModifyEvent::new_impersonate_entry_ser(
             BUILTIN_ACCOUNT_IDM_ADMIN.clone(),
             filter!(f_eq(
@@ -652,8 +631,8 @@ mod tests {
             server_txn.internal_modify_uuid(
                 t_uuid,
                 &ModifyList::new_list(vec![
-                    m_assert(Attribute::Uuid.as_ref(), &PartialValue::Uuid(r_uuid)),
-                    m_pres(Attribute::Description.into(), &Value::Utf8("test".into()))
+                    m_assert(Attribute::Uuid, &PartialValue::Uuid(r_uuid)),
+                    m_pres(Attribute::Description, &Value::Utf8("test".into()))
                 ])
             ),
             Err(OperationError::ModifyAssertionFailed)
@@ -664,8 +643,8 @@ mod tests {
             .internal_modify_uuid(
                 t_uuid,
                 &ModifyList::new_list(vec![
-                    m_assert("uuid", &PartialValue::Uuid(t_uuid)),
-                    m_pres(Attribute::Description.into(), &Value::Utf8("test".into()))
+                    m_assert(Attribute::Uuid, &PartialValue::Uuid(t_uuid)),
+                    m_pres(Attribute::Description, &Value::Utf8("test".into()))
                 ])
             )
             .is_ok());
@@ -728,7 +707,7 @@ mod tests {
             )),
             ModifyList::new_list(vec![
                 Modify::Present(Attribute::Class.into(), EntryClass::SystemInfo.to_value()),
-                // Modify::Present("domain".to_string(), Value::new_iutf8("domain.name")),
+                // Modify::Present(Attribute::Domain.into(), Value::new_iutf8("domain.name")),
                 Modify::Present(Attribute::Version.into(), Value::new_uint32(1)),
             ]),
         );
@@ -795,7 +774,7 @@ mod tests {
             .expect("failed");
         // get the primary ava
         let cred_ref = test_ent
-            .get_ava_single_credential("primary_credential")
+            .get_ava_single_credential(Attribute::PrimaryCredential)
             .expect("Failed");
         // do a pw check.
         assert!(cred_ref.verify_password("test_password").unwrap());

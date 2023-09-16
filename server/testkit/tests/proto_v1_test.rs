@@ -7,7 +7,10 @@ use kanidm_proto::v1::{
     UserAuthToken,
 };
 use kanidmd_lib::credential::totp::Totp;
-use kanidmd_lib::prelude::Attribute;
+use kanidmd_lib::prelude::{
+    Attribute, BUILTIN_GROUP_IDM_ADMINS_V1, BUILTIN_GROUP_SYSTEM_ADMINS_V1,
+    IDM_PEOPLE_ACCOUNT_PASSWORD_IMPORT_PRIV_V1,
+};
 use tracing::debug;
 
 use std::str::FromStr;
@@ -52,8 +55,8 @@ async fn test_server_modify(rsclient: KanidmClient) {
     // Build a self mod.
     let f = Filter::SelfUuid;
     let m = ModifyList::new_list(vec![
-        Modify::Purged("displayname".to_string()),
-        Modify::Present("displayname".to_string(), "test".to_string()),
+        Modify::Purged(Attribute::DisplayName.to_string()),
+        Modify::Present(Attribute::DisplayName.to_string(), "test".to_string()),
     ]);
 
     // Not logged in - should fail!
@@ -155,7 +158,10 @@ async fn test_server_rest_group_read(rsclient: KanidmClient) {
     let g_list = rsclient.idm_group_list().await.unwrap();
     assert!(!g_list.is_empty());
 
-    let g = rsclient.idm_group_get("idm_admins").await.unwrap();
+    let g = rsclient
+        .idm_group_get(BUILTIN_GROUP_IDM_ADMINS_V1.name)
+        .await
+        .unwrap();
     assert!(g.is_some());
     println!("{:?}", g);
 }
@@ -224,12 +230,18 @@ async fn test_server_rest_group_lifecycle(rsclient: KanidmClient) {
     assert!(g_list_3.len() == g_list.len());
 
     // Check we can get an exact group
-    let g = rsclient.idm_group_get("idm_admins").await.unwrap();
+    let g = rsclient
+        .idm_group_get(BUILTIN_GROUP_IDM_ADMINS_V1.name)
+        .await
+        .unwrap();
     assert!(g.is_some());
     println!("{:?}", g);
 
     // They should have members
-    let members = rsclient.idm_group_get_members("idm_admins").await.unwrap();
+    let members = rsclient
+        .idm_group_get_members(BUILTIN_GROUP_IDM_ADMINS_V1.name)
+        .await
+        .unwrap();
     println!("{:?}", members);
     assert!(members == Some(vec!["idm_admin@localhost".to_string()]));
 }
@@ -268,11 +280,17 @@ async fn test_server_rest_schema_read(rsclient: KanidmClient) {
     assert!(!c_list.is_empty());
 
     // Get an attr/class
-    let a = rsclient.idm_schema_attributetype_get("name").await.unwrap();
+    let a = rsclient
+        .idm_schema_attributetype_get(Attribute::Name.as_ref())
+        .await
+        .unwrap();
     assert!(a.is_some());
     println!("{:?}", a);
 
-    let c = rsclient.idm_schema_classtype_get("account").await.unwrap();
+    let c = rsclient
+        .idm_schema_classtype_get(Attribute::Account.as_ref())
+        .await
+        .unwrap();
     assert!(c.is_some());
     println!("{:?}", c);
 }
@@ -287,7 +305,7 @@ async fn test_server_radius_credential_lifecycle(rsclient: KanidmClient) {
 
     // All admin to create persons.
     rsclient
-        .idm_group_add_members("idm_admins", &["admin"])
+        .idm_group_add_members(BUILTIN_GROUP_IDM_ADMINS_V1.name, &["admin"])
         .await
         .unwrap();
 
@@ -358,7 +376,7 @@ async fn test_server_rest_person_account_lifecycle(rsclient: KanidmClient) {
     // To enable the admin to actually make some of these changes, we have
     // to make them a people admin. NOT recommended in production!
     rsclient
-        .idm_group_add_members("idm_admins", &["admin"])
+        .idm_group_add_members(BUILTIN_GROUP_IDM_ADMINS_V1.name, &["admin"])
         .await
         .unwrap();
 
@@ -382,12 +400,16 @@ async fn test_server_rest_person_account_lifecycle(rsclient: KanidmClient) {
 
     // Test adding some mail addrs
     rsclient
-        .idm_person_account_add_attr("demo_account", "mail", &["demo@idm.example.com"])
+        .idm_person_account_add_attr(
+            "demo_account",
+            Attribute::Mail.as_ref(),
+            &["demo@idm.example.com"],
+        )
         .await
         .unwrap();
 
     let r = rsclient
-        .idm_person_account_get_attr("demo_account", "mail")
+        .idm_person_account_get_attr("demo_account", Attribute::Mail.as_ref())
         .await
         .unwrap();
 
@@ -494,7 +516,7 @@ async fn test_server_rest_domain_lifecycle(rsclient: KanidmClient) {
     assert!(
         dlocal
             .attrs
-            .get("domain_display_name")
+            .get(Attribute::DomainDisplayName.as_ref())
             .and_then(|v| v.get(0))
             == Some(&"Super Cool Crabz".to_string())
     );
@@ -508,7 +530,7 @@ async fn test_server_rest_posix_lifecycle(rsclient: KanidmClient) {
     assert!(res.is_ok());
     // Not recommended in production!
     rsclient
-        .idm_group_add_members("idm_admins", &["admin"])
+        .idm_group_add_members(BUILTIN_GROUP_IDM_ADMINS_V1.name, &["admin"])
         .await
         .unwrap();
 
@@ -617,7 +639,7 @@ async fn test_server_rest_posix_auth_lifecycle(rsclient: KanidmClient) {
 
     // Not recommended in production!
     rsclient
-        .idm_group_add_members("idm_admins", &["admin"])
+        .idm_group_add_members(BUILTIN_GROUP_IDM_ADMINS_V1.name, &["admin"])
         .await
         .unwrap();
 
@@ -714,7 +736,7 @@ async fn test_server_rest_recycle_lifecycle(rsclient: KanidmClient) {
 
     // Not recommended in production!
     rsclient
-        .idm_group_add_members("idm_admins", &["admin"])
+        .idm_group_add_members(BUILTIN_GROUP_IDM_ADMINS_V1.name, &["admin"])
         .await
         .unwrap();
 
@@ -768,11 +790,11 @@ async fn test_server_rest_account_import_password(rsclient: KanidmClient) {
     // To enable the admin to actually make some of these changes, we have
     // to make them a password import admin. NOT recommended in production!
     rsclient
-        .idm_group_add_members("idm_people_account_password_import_priv", &["admin"])
+        .idm_group_add_members(IDM_PEOPLE_ACCOUNT_PASSWORD_IMPORT_PRIV_V1.name, &["admin"])
         .await
         .unwrap();
     rsclient
-        .idm_group_add_members("idm_admins", &["admin"])
+        .idm_group_add_members(BUILTIN_GROUP_IDM_ADMINS_V1.name, &["admin"])
         .await
         .unwrap();
 
@@ -865,9 +887,13 @@ async fn test_server_rest_oauth2_basic_lifecycle(rsclient: KanidmClient) {
     eprintln!("{:?}", oauth2_config);
 
     // What can we see?
-    assert!(oauth2_config.attrs.contains_key("oauth2_rs_basic_secret"));
+    assert!(oauth2_config
+        .attrs
+        .contains_key(Attribute::OAuth2RsBasicSecret.as_ref()));
     // This is present, but redacted.
-    assert!(oauth2_config.attrs.contains_key("oauth2_rs_token_key"));
+    assert!(oauth2_config
+        .attrs
+        .contains_key(Attribute::OAuth2RsTokenKey.as_ref()));
 
     // Mod delete the secret/key and check them again.
     // Check we can patch the oauth2_rs_name / oauth2_rs_origin
@@ -896,7 +922,11 @@ async fn test_server_rest_oauth2_basic_lifecycle(rsclient: KanidmClient) {
 
     // Check that we can add scope maps and delete them.
     rsclient
-        .idm_oauth2_rs_update_scope_map("test_integration", "system_admins", vec!["a", "b"])
+        .idm_oauth2_rs_update_scope_map(
+            "test_integration",
+            BUILTIN_GROUP_SYSTEM_ADMINS_V1.name,
+            vec!["a", "b"],
+        )
         .await
         .expect("Failed to create scope map");
 
@@ -911,7 +941,11 @@ async fn test_server_rest_oauth2_basic_lifecycle(rsclient: KanidmClient) {
 
     // Check we can update a scope map
     rsclient
-        .idm_oauth2_rs_update_scope_map("test_integration", "system_admins", vec!["a", "b", "c"])
+        .idm_oauth2_rs_update_scope_map(
+            "test_integration",
+            BUILTIN_GROUP_SYSTEM_ADMINS_V1.name,
+            vec!["a", "b", "c"],
+        )
         .await
         .expect("Failed to create scope map");
 
@@ -927,7 +961,7 @@ async fn test_server_rest_oauth2_basic_lifecycle(rsclient: KanidmClient) {
     // Check we can delete a scope map.
 
     rsclient
-        .idm_oauth2_rs_delete_scope_map("test_integration", "system_admins")
+        .idm_oauth2_rs_delete_scope_map("test_integration", BUILTIN_GROUP_SYSTEM_ADMINS_V1.name)
         .await
         .expect("Failed to delete scope map");
 
@@ -967,7 +1001,7 @@ async fn test_server_credential_update_session_pw(rsclient: KanidmClient) {
 
     // Not recommended in production!
     rsclient
-        .idm_group_add_members("idm_admins", &["admin"])
+        .idm_group_add_members(BUILTIN_GROUP_IDM_ADMINS_V1.name, &["admin"])
         .await
         .unwrap();
 
@@ -1025,7 +1059,7 @@ async fn test_server_credential_update_session_totp_pw(rsclient: KanidmClient) {
 
     // Not recommended in production!
     rsclient
-        .idm_group_add_members("idm_admins", &["admin"])
+        .idm_group_add_members(BUILTIN_GROUP_IDM_ADMINS_V1.name, &["admin"])
         .await
         .unwrap();
 
@@ -1154,7 +1188,7 @@ async fn setup_demo_account_passkey(rsclient: &KanidmClient) -> WebauthnAuthenti
 
     // Not recommended in production!
     rsclient
-        .idm_group_add_members("idm_admins", &["admin"])
+        .idm_group_add_members(BUILTIN_GROUP_IDM_ADMINS_V1.name, &["admin"])
         .await
         .unwrap();
 
@@ -1238,7 +1272,7 @@ async fn setup_demo_account_password(
 
     // Not recommended in production!
     rsclient
-        .idm_group_add_members("idm_admins", &["admin"])
+        .idm_group_add_members(BUILTIN_GROUP_IDM_ADMINS_V1.name, &["admin"])
         .await
         .expect("Failed to add admin to idm_admins");
 
@@ -1312,7 +1346,7 @@ async fn test_server_api_token_lifecycle(rsclient: KanidmClient) {
 
     // Not recommended in production!
     rsclient
-        .idm_group_add_members("idm_admins", &["admin"])
+        .idm_group_add_members(BUILTIN_GROUP_IDM_ADMINS_V1.name, &["admin"])
         .await
         .unwrap();
 
@@ -1370,7 +1404,7 @@ async fn test_server_user_auth_token_lifecycle(rsclient: KanidmClient) {
 
     // Not recommended in production!
     rsclient
-        .idm_group_add_members("idm_admins", &["admin"])
+        .idm_group_add_members(BUILTIN_GROUP_IDM_ADMINS_V1.name, &["admin"])
         .await
         .unwrap();
 

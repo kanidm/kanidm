@@ -259,10 +259,7 @@ pub trait IdlSqliteTransaction {
             itype.as_idx_str(),
             attr
         );
-        let mut stmt = self
-            .get_conn()?
-            .prepare(query.as_str())
-            .map_err(sqlite_error)?;
+        let mut stmt = self.get_conn()?.prepare(&query).map_err(sqlite_error)?;
         let idl_raw: Option<Vec<u8>> = stmt
             .query_row(&[(":idx_key", &idx_key)], |row| row.get(0))
             // We don't mind if it doesn't exist
@@ -1082,7 +1079,7 @@ impl IdlSqliteWriteTransaction {
         }
     }
 
-    pub fn create_idx(&self, attr: &str, itype: IndexType) -> Result<(), OperationError> {
+    pub fn create_idx(&self, attr: Attribute, itype: IndexType) -> Result<(), OperationError> {
         // Is there a better way than formatting this? I can't seem
         // to template into the str.
         //

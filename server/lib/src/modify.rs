@@ -33,27 +33,23 @@ pub enum Modify {
     // This attr *should not* exist.
     Purged(AttrString),
     // This attr and value must exist *in this state* for this change to proceed.
-    Assert(AttrString, PartialValue),
+    Assert(Attribute, PartialValue),
 }
 
-#[allow(dead_code)]
-pub fn m_pres(a: &str, v: &Value) -> Modify {
-    Modify::Present(a.into(), v.clone())
+pub fn m_pres(attr: Attribute, v: &Value) -> Modify {
+    Modify::Present(attr.into(), v.clone())
 }
 
-#[allow(dead_code)]
-pub fn m_remove(a: &str, v: &PartialValue) -> Modify {
-    Modify::Removed(a.into(), v.clone())
+pub fn m_remove(attr: Attribute, v: &PartialValue) -> Modify {
+    Modify::Removed(attr.into(), v.clone())
 }
 
-#[allow(dead_code)]
-pub fn m_purge(a: &str) -> Modify {
-    Modify::Purged(AttrString::from(a))
+pub fn m_purge(attr: Attribute) -> Modify {
+    Modify::Purged(attr.into())
 }
 
-#[allow(dead_code)]
-pub fn m_assert(a: &str, v: &PartialValue) -> Modify {
-    Modify::Assert(a.into(), v.clone())
+pub fn m_assert(attr: Attribute, v: &PartialValue) -> Modify {
+    Modify::Assert(attr, v.clone())
 }
 
 impl Modify {
@@ -102,22 +98,19 @@ impl ModifyList<ModifyInvalid> {
         }
     }
 
-    pub fn new_purge_and_set(attr: &str, v: Value) -> Self {
-        Self::new_list(vec![
-            m_purge(attr),
-            Modify::Present(AttrString::from(attr), v),
-        ])
+    pub fn new_purge_and_set(attr: Attribute, v: Value) -> Self {
+        Self::new_list(vec![m_purge(attr), Modify::Present(attr.into(), v)])
     }
 
-    pub fn new_append(attr: &str, v: Value) -> Self {
-        Self::new_list(vec![Modify::Present(AttrString::from(attr), v)])
+    pub fn new_append(attr: Attribute, v: Value) -> Self {
+        Self::new_list(vec![Modify::Present(attr.into(), v)])
     }
 
-    pub fn new_remove(attr: &str, pv: PartialValue) -> Self {
-        Self::new_list(vec![Modify::Removed(AttrString::from(attr), pv)])
+    pub fn new_remove(attr: Attribute, pv: PartialValue) -> Self {
+        Self::new_list(vec![Modify::Removed(attr.into(), pv)])
     }
 
-    pub fn new_purge(attr: &str) -> Self {
+    pub fn new_purge(attr: Attribute) -> Self {
         Self::new_list(vec![m_purge(attr)])
     }
 
@@ -148,12 +141,13 @@ impl ModifyList<ModifyInvalid> {
 
         pe.attrs.iter().try_for_each(|(attr, vals)| {
             // Issue a purge to the attr.
+            let attr: Attribute = (attr.clone()).try_into()?;
             mods.push(m_purge(attr));
             // Now if there are vals, push those too.
             // For each value we want to now be present.
             vals.iter().try_for_each(|val| {
-                qs.clone_value(attr, val).map(|resolved_v| {
-                    mods.push(Modify::Present(attr.as_str().into(), resolved_v));
+                qs.clone_value(attr.as_ref(), val).map(|resolved_v| {
+                    mods.push(Modify::Present(attr.into(), resolved_v));
                 })
             })
         })?;
@@ -196,15 +190,13 @@ impl ModifyList<ModifyInvalid> {
                         None => Err(SchemaError::InvalidAttribute(attr_norm.to_string())),
                     }
                 }
-                Modify::Assert(attr, value) => {
-                    let attr_norm = schema.normalise_attr_name(attr);
-                    match schema_attributes.get(&attr_norm) {
-                        Some(schema_a) => schema_a
-                            .validate_partialvalue(attr_norm.as_str(), value)
-                            .map(|_| Modify::Assert(attr_norm, value.clone())),
-                        None => Err(SchemaError::InvalidAttribute(attr_norm.to_string())),
-                    }
-                }
+                Modify::Assert(attr, value) => match schema_attributes.get(attr.as_ref()) {
+                    // TODO: given attr is an enum... you can't get this wrong anymore?
+                    Some(schema_a) => schema_a
+                        .validate_partialvalue(attr.as_ref(), value)
+                        .map(|_| Modify::Assert(attr.to_owned(), value.clone())),
+                    None => Err(SchemaError::InvalidAttribute(attr.to_string())),
+                },
                 Modify::Purged(attr) => {
                     let attr_norm = schema.normalise_attr_name(attr);
                     match schema_attributes.get(&attr_norm) {
