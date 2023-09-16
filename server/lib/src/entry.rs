@@ -3090,7 +3090,7 @@ where
         self.valid.ecstate.change_ava(&self.valid.cid, attr);
 
         let rm = if let Some(vs) = self.attrs.get_mut(attr.as_ref()) {
-            vs.remove(value.into(), &self.valid.cid);
+            vs.remove(value, &self.valid.cid);
             vs.is_empty()
         } else {
             false
