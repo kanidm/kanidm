@@ -41,7 +41,7 @@ black = "^23.9.0"
 mkdocs = "^1.5.2"
 mkdocs-material = "^9.2.8"
 mkdocstrings = "^0.23.0"
-mkdocstrings-python = "^1.6.2"
+mkdocstrings-python = "^1.7.0"
 pook = "^1.1.1"
 
 [tool.poetry.group.dev.dependencies]
