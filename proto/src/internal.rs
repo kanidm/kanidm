@@ -45,3 +45,60 @@ pub enum IdentifyUserResponse {
     CodeFailure,
     InvalidUserId,
 }
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Hash, Ord, PartialOrd)]
+#[serde(rename_all = "lowercase")]
+pub enum ImageType {
+    Png = 0,
+    Jpg = 1,
+    Gif = 2,
+    Svg = 3,
+    Webp = 4,
+}
+
+impl From<&str> for ImageType {
+    fn from(value: &str) -> Self {
+        #[allow(clippy::panic)]
+        match value {
+            "png" => Self::Png,
+            "jpg" => Self::Jpg,
+            "gif" => Self::Gif,
+            "svg" => Self::Svg,
+            "webp" => Self::Webp,
+            _ => panic!("Invalid image type!"),
+        }
+    }
+}
+
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize, Debug, PartialOrd, Ord)]
+pub struct ImageValue {
+    pub filename: String,
+    pub filetype: ImageType,
+    pub contents: Vec<u8>,
+}
+
+impl TryFrom<&str> for ImageValue {
+    type Error = String;
+    fn try_from(s: &str) -> Result<Self, String> {
+        serde_json::from_str(s)
+            .map_err(|e| format!("Failed to decode ImageValue from {} - {:?}", s, e))
+    }
+}
+
+impl core::hash::Hash for ImageValue {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.filename.hash(state);
+        self.filetype.hash(state);
+        self.contents.hash(state);
+    }
+}
+
+impl ImageValue {
+    pub fn new(filename: String, filetype: ImageType, contents: Vec<u8>) -> Self {
+        Self {
+            filename,
+            filetype,
+            contents,
+        }
+    }
+}

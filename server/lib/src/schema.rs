@@ -229,6 +229,7 @@ impl SchemaAttribute {
             // Comparing on the label.
             SyntaxType::TotpSecret => matches!(v, PartialValue::Utf8(_)),
             SyntaxType::AuditLogString => matches!(v, PartialValue::Utf8(_)),
+            SyntaxType::Image => matches!(v, PartialValue::Utf8(_)),
         };
         if r {
             Ok(())
@@ -280,6 +281,7 @@ impl SchemaAttribute {
                 SyntaxType::TotpSecret => matches!(v, Value::TotpSecret(_, _)),
                 SyntaxType::AuditLogString => matches!(v, Value::Utf8(_)),
                 SyntaxType::EcKeyPrivate => matches!(v, Value::EcKeyPrivate(_)),
+                SyntaxType::Image => matches!(v, Value::Image(_)),
             };
         if r {
             Ok(())
@@ -374,7 +376,7 @@ impl From<SchemaAttribute> for EntryInitNew {
 /// takes precedence. It is not possible to combine classes in an incompatible way due to these
 /// rules.
 ///
-/// That in mind, and entry that has one of every possible class would probably be nonsensical,
+/// That in mind, an entry that has one of every possible class would probably be nonsensical,
 /// but the addition rules make it easy to construct and understand with concepts like [`access`]
 /// controls or accounts and posix extensions.
 ///
@@ -1753,7 +1755,7 @@ impl<'a> SchemaWriteTransaction<'a> {
             SchemaAttribute {
                 name: Attribute::UidNumber.into(),
                 uuid: UUID_SCHEMA_ATTR_UIDNUMBER,
-                description: String::from("An LDAP Compatible uidNumber"),
+                description: String::from("An LDAP Compatible uidNumber."),
                 multivalue: false,
                 unique: false,
                 phantom: true,
@@ -1761,6 +1763,21 @@ impl<'a> SchemaWriteTransaction<'a> {
                 replicated: false,
                 index: vec![],
                 syntax: SyntaxType::Uint32,
+            },
+        );
+        self.attributes.insert(
+            Attribute::Image.into(),
+            SchemaAttribute {
+                name: Attribute::Image.into(),
+                uuid: UUID_SCHEMA_ATTR_IMAGE,
+                description: String::from("An image for display to end users."),
+                multivalue: false,
+                unique: false,
+                phantom: false,
+                sync_allowed: true,
+                replicated: true,
+                index: vec![],
+                syntax: SyntaxType::Image,
             },
         );
         // end LDAP masking phantoms

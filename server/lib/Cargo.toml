@@ -79,6 +79,14 @@ webauthn-rs = { workspace = true, features = [
 webauthn-rs-core = { workspace = true }
 zxcvbn = { workspace = true }
 serde_with = { workspace = true }
+hex.workspace = true
+lodepng = { workspace = true }
+image = { workspace = true, default-features = false, features = [
+    "gif",
+    "jpeg",
+    "webp",
+] }
+svg = { workspace = true }
 
 # because windows really can't build without the bundled one
 [target.'cfg(target_family = "windows")'.dependencies]

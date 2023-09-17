@@ -2,6 +2,7 @@ use std::fmt;
 use std::time::Duration;
 
 use hashbrown::HashSet;
+use kanidm_proto::internal::ImageValue;
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use url::Url;
@@ -651,6 +652,8 @@ pub enum DbValueSetV2 {
     AuditLogString(Vec<(Cid, String)>),
     #[serde(rename = "EK")]
     EcKeyPrivate(Vec<u8>),
+    #[serde(rename = "IM")]
+    Image(Vec<ImageValue>),
 }
 
 impl DbValueSetV2 {
@@ -694,6 +697,7 @@ impl DbValueSetV2 {
             DbValueSetV2::UiHint(set) => set.len(),
             DbValueSetV2::TotpSecret(set) => set.len(),
             DbValueSetV2::AuditLogString(set) => set.len(),
+            DbValueSetV2::Image(set) => set.len(),
             DbValueSetV2::EcKeyPrivate(_key) => 1, // here we have to hard code it because the Vec<u8>
                                                    // represents the bytes of  SINGLE(!) key
         }

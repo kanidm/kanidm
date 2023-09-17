@@ -238,6 +238,9 @@ pub struct Oauth2RS {
     scopes_supported: BTreeSet<String>,
     prefer_short_username: bool,
     type_: OauthRSType,
+    /// the display image for the OAuth2 Resource
+    #[allow(dead_code)]
+    display_image: Option<Uuid>,
 }
 
 impl std::fmt::Debug for Oauth2RS {
@@ -250,6 +253,7 @@ impl std::fmt::Debug for Oauth2RS {
             .field("origin", &self.origin)
             .field("scope_maps", &self.scope_maps)
             .field("sup_scope_maps", &self.sup_scope_maps)
+            .field("display_image_set", &self.display_image.is_some())
             .finish()
     }
 }
@@ -464,6 +468,7 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
                     scopes_supported,
                     prefer_short_username,
                     type_,
+                    display_image: None, // todo: load this from the value
                 };
 
                 Ok((client_id, rscfg))

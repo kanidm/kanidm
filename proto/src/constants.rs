@@ -68,6 +68,7 @@ pub const ATTR_GIDNUMBER: &str = "gidnumber";
 pub const ATTR_GRANT_UI_HINT: &str = "grant_ui_hint";
 pub const ATTR_GROUP: &str = "group";
 pub const ATTR_ID_VERIFICATION_ECKEY: &str = "id_verification_eckey";
+pub const ATTR_IMAGE: &str = "image";
 pub const ATTR_INDEX: &str = "index";
 pub const ATTR_IPANTHASH: &str = "ipanthash";
 pub const ATTR_IPASSHPUBKEY: &str = "ipasshpubkey";
