@@ -134,7 +134,7 @@ lazy_static = "^1.4.0"
 ldap3_client = "^0.3.5"
 ldap3_proto = { version = "^0.3.5", features = ["serde"] }
 
-libc = "^0.2.147"
+libc = "^0.2.148"
 libnss = "^0.4.0"
 libsqlite3-sys = "^0.25.0"
 lru = "^0.8.0"
