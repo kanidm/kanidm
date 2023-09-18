@@ -88,15 +88,16 @@ argon2 = { version = "0.5.2", features = ["alloc"] }
 async-recursion = "1.0.5"
 async-trait = "^0.1.73"
 axum = { version = "0.6.20", features = [
-    "json",
-    "http2",
-    "macros",
-    "tracing",
+    "form",
     "headers",
+    "http2",
+    "http2",
+    "json",
+    "macros",
+    "multipart",
     "original-uri",
     "query",
-    "form",
-    "http2",
+    "tracing",
 ] }
 axum-csp = { version = "0.0.5" }
 base32 = "^0.4.0"
