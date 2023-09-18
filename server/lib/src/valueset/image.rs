@@ -23,7 +23,7 @@ pub(crate) const MAX_IMAGE_WIDTH: u32 = 1024;
 /// 128kb should be enough for anyone... right? :D
 pub(crate) const MAX_FILE_SIZE: u32 = 1024 * 128;
 
-pub(crate) trait ImageValueThings {
+pub trait ImageValueThings {
     fn validate_image(&self) -> Result<(), ImageValidationError>;
     fn validate_is_png(&self) -> Result<(), ImageValidationError>;
     fn validate_is_gif(&self) -> Result<(), ImageValidationError>;
@@ -41,6 +41,8 @@ pub(crate) trait ImageValueThings {
         limits
     }
 }
+
+#[derive(Debug)]
 pub enum ImageValidationError {
     ExceedsMaxWidth,
     ExceedsMaxHeight,

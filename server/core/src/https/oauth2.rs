@@ -14,6 +14,7 @@ use http::header::{
 use http::{HeaderMap, HeaderValue, StatusCode};
 use hyper::Body;
 use kanidm_proto::constants::APPLICATION_JSON;
+use kanidm_proto::internal::{ImageType, ImageValue};
 use kanidm_proto::oauth2::{AuthorisationResponse, OidcDiscoveryResponse};
 use kanidm_proto::v1::Entry as ProtoEntry;
 use kanidmd_lib::idm::oauth2::{
@@ -23,6 +24,7 @@ use kanidmd_lib::idm::oauth2::{
 use kanidmd_lib::prelude::f_eq;
 use kanidmd_lib::prelude::*;
 use kanidmd_lib::value::PartialValue;
+use kanidmd_lib::valueset::image::ImageValueThings;
 use serde::{Deserialize, Serialize};
 
 pub struct HTTPOauth2Error(Oauth2Error);
@@ -104,6 +106,7 @@ pub async fn oauth2_public_post(
     json_rest_event_post(state, classes, obj, kopid).await
 }
 
+/// Get a filter matching a given OAuth2 Resource Server
 fn oauth2_id(rs_name: &str) -> Filter<FilterInvalid> {
     filter_all!(f_and!([
         f_eq(Attribute::Class, EntryClass::OAuth2ResourceServer.into()),
@@ -220,6 +223,73 @@ pub async fn oauth2_id_delete(
         .handle_internaldelete(kopid.uat, filter, kopid.eventid)
         .await;
     to_axum_response(res)
+}
+
+pub async fn oauth2_id_image_post(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    Path(rs_name): Path<String>,
+    mut multipart: axum::extract::Multipart,
+) -> Response<String> {
+    let mut headers = HeaderMap::new();
+    headers.insert(CONTENT_TYPE, HeaderValue::from_static(APPLICATION_JSON));
+    println!("Got RS {}", rs_name);
+    let mut image: Option<ImageValue> = None;
+
+    while let Some(field) = multipart.next_field().await.unwrap() {
+        // this needs to match the field form, I think?
+        let name = field.name().unwrap_or("<no name>").to_string();
+
+        let filename = field.file_name().unwrap_or("<no filename>").to_string();
+        let content_type = match field.content_type() {
+            Some(val) => {
+                if VALID_IMAGE_UPLOAD_CONTENT_TYPES.contains(&val) {
+                    val.to_string()
+                } else {
+                    println!("Invalid content type: {}", val);
+                    let mut res = Response::new("Invalid content type".to_string());
+                    res.headers_mut().extend(headers);
+                    return res;
+                }
+            }
+            None => "<none>".to_string(),
+        };
+        let data = field.bytes().await.unwrap();
+
+        println!(
+            "Length of `{}` (`{}`: `{}`) is {} bytes",
+            name,
+            &filename,
+            content_type,
+            data.len()
+        );
+
+        image = Some(ImageValue {
+            filetype: ImageType::from(filename.split('.').last().unwrap()), // TODO, this is dumb
+            filename,
+            contents: data.into(),
+        });
+
+        println!(
+            " valid image? {:?}",
+            image.clone().unwrap().validate_image()
+        );
+    }
+
+    if let Some(image) = image {
+        let rs_id = oauth2_id(&rs_name);
+        match state
+            .qe_w_ref
+            .handle_oauth2_rs_image_update(kopid.uat, rs_id, image)
+            .await
+        {
+            Ok(_) => todo!(),
+            Err(err) => eprintln!("Failed to store image: {:?}", err),
+        };
+    }
+    let mut res = Response::new("done!".to_string());
+    res.headers_mut().extend(headers);
+    res
 }
 
 // == OAUTH2 PROTOCOL FLOW HANDLERS ==

@@ -1,6 +1,7 @@
 use std::time::Duration;
 use std::{iter, sync::Arc};
 
+use kanidm_proto::internal::ImageValue;
 use kanidm_proto::v1::{
     AccountUnixExtend, CUIntentToken, CUSessionToken, CUStatus, CreateRequest, DeleteRequest,
     Entry as ProtoEntry, GroupUnixExtend, Modify as ProtoModify, ModifyList as ProtoModifyList,
@@ -1179,6 +1180,19 @@ impl QueryServerWriteV1 {
             .set_unix_account_password(&upce)
             .and_then(|_| idms_prox_write.commit())
             .map(|_| ())
+    }
+
+    #[instrument(level = "debug", skip_all)]
+    pub async fn handle_oauth2_rs_image_update(
+        &self,
+        _uat: Option<String>,
+        rs: Filter<FilterInvalid>,
+        _image: ImageValue,
+    ) -> Result<(), OperationError> {
+        println!("RS Name: {:?}", rs);
+        // let mut idms_prox_write = self.idms.proxy_write(duration_from_epoch_now()).await;
+
+        unimplemented!()
     }
 
     #[instrument(
