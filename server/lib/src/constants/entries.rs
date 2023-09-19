@@ -70,6 +70,7 @@ pub enum Attribute {
     DomainDisplayName,
     DomainLdapBasedn,
     DomainName,
+    DomainLdapAllowUnixPwBind,
     DomainSsid,
     DomainTokenKey,
     DomainUuid,
@@ -244,6 +245,7 @@ impl TryFrom<String> for Attribute {
             ATTR_DOMAIN_DISPLAY_NAME => Attribute::DomainDisplayName,
             ATTR_DOMAIN_LDAP_BASEDN => Attribute::DomainLdapBasedn,
             ATTR_DOMAIN_NAME => Attribute::DomainName,
+            ATTR_DOMAIN_LDAP_ALLOW_UNIX_PW_BIND => Attribute::DomainLdapAllowUnixPwBind,
             ATTR_DOMAIN_SSID => Attribute::DomainSsid,
             ATTR_DOMAIN_TOKEN_KEY => Attribute::DomainTokenKey,
             ATTR_DOMAIN_UUID => Attribute::DomainUuid,
@@ -361,6 +363,7 @@ impl From<Attribute> for &'static str {
     fn from(val: Attribute) -> Self {
         match val {
             Attribute::Account => ATTR_ACCOUNT,
+            Attribute::DomainLdapAllowUnixPwBind => ATTR_DOMAIN_LDAP_ALLOW_UNIX_PW_BIND,
             Attribute::AccountExpire => ATTR_ACCOUNT_EXPIRE,
             Attribute::AccountValidFrom => ATTR_ACCOUNT_VALID_FROM,
             Attribute::AcpCreateAttr => ATTR_ACP_CREATE_ATTR,

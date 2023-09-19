@@ -167,7 +167,6 @@ impl ModifyList<ModifyInvalid> {
             .get(Attribute::Name.as_ref()")
             .expect("Critical: Core schema corrupt or missing. To initiate a core transfer, please deposit substitute core in receptacle.");
         */
-
         let res: Result<Vec<Modify>, _> = self
             .mods
             .iter()

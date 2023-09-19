@@ -1,4 +1,4 @@
-//! LDAP specific operations handling components. This is where LDAP operations
+//! LDAP specific operations handling components. This is where LDAP operationsldap.rs
 //! are sent to for processing.
 
 use std::collections::BTreeSet;
@@ -445,18 +445,36 @@ impl LdapServer {
                 e
             })?
         };
-
-        let lae = LdapAuthEvent::from_parts(target_uuid, pw.to_string())?;
-        idm_auth.auth_ldap(&lae, ct).await.and_then(|r| {
-            idm_auth.commit().map(|_| {
-                if r.is_some() {
-                    security_info!(%dn, "✅ LDAP Bind success");
-                } else {
-                    security_info!(%dn, "❌ LDAP Bind failure");
-                };
-                r
+        if idms
+            .proxy_read()
+            .await
+            .qs_read
+            .d_info
+            .d_ldap_allow_unix_pw_bind
+        {
+            debug!(
+                "here {:?}",
+                idms.proxy_read()
+                    .await
+                    .qs_read
+                    .d_info
+                    .d_ldap_allow_unix_pw_bind
+            );
+            let lae = LdapAuthEvent::from_parts(target_uuid, pw.to_string())?;
+            idm_auth.auth_ldap(&lae, ct).await.and_then(|r| {
+                idm_auth.commit().map(|_| {
+                    if r.is_some() {
+                        security_info!(%dn, "✅ LDAP Bind success");
+                    } else {
+                        security_info!(%dn, "❌ LDAP Bind failure");
+                    };
+                    r
+                })
             })
-        })
+        } else {
+            security_info!(%dn, "❌ LDAP Bind failure. Using of Unix pw for ldap binds is forbidden.");
+            Err(OperationError::AccessDenied)
+        }
     }
 
     pub async fn do_op(
@@ -643,8 +661,11 @@ mod tests {
         let pce = UnixPasswordChangeEvent::new_internal(UUID_ADMIN, TEST_PASSWORD);
 
         assert!(idms_prox_write.set_unix_account_password(&pce).is_ok());
+        assert!(idms_prox_write
+            .qs_write
+            .set_domain_ldap_allow_unix_pw_bind(true)
+            .is_ok());
         assert!(idms_prox_write.commit().is_ok());
-
         let anon_t = ldaps.do_bind(idms, "", "").await.unwrap().unwrap();
         assert!(anon_t.effective_session == LdapSession::UnixBind(UUID_ANONYMOUS));
         assert!(
@@ -652,6 +673,7 @@ mod tests {
         );
 
         // Now test the admin and various DN's
+        // Writing test for optional use of POSIX password for bind
         let admin_t = ldaps
             .do_bind(idms, "admin", TEST_PASSWORD)
             .await

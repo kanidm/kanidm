@@ -110,6 +110,16 @@ pub static ref SCHEMA_ATTR_DOMAIN_NAME: SchemaAttribute = SchemaAttribute {
     syntax: SyntaxType::Utf8StringIname,
     ..Default::default()
 };
+pub static ref SCHEMA_ATTR_DOMAIN_LDAP_ALLOW_UNIX_PW_BIND: SchemaAttribute = SchemaAttribute {
+    uuid: UUID_SCHEMA_ATTR_DOMAIN_LDAP_ALLOW_UNIX_PW_BIND,
+    name: Attribute::DomainLdapAllowUnixPwBind.into(),
+    description: "Configuration to allow binds to LDAP objects using UNIX passwords.".to_string(),
+
+    index: vec![IndexType::Equality, IndexType::Presence],
+    unique: true,
+    syntax: SyntaxType::Boolean,
+    ..Default::default()
+};
 
 pub static ref SCHEMA_ATTR_DOMAIN_LDAP_BASEDN: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_DOMAIN_LDAP_BASEDN,
@@ -687,7 +697,7 @@ pub static ref SCHEMA_CLASS_DOMAIN_INFO: SchemaClass = SchemaClass {
     name: EntryClass::DomainInfo.into(),
     description: "Local domain information and partial configuration.to_string().".to_string(),
 
-    systemmay: vec![Attribute::DomainSsid.into(), Attribute::DomainLdapBasedn.into()],
+    systemmay: vec![Attribute::DomainSsid.into(), Attribute::DomainLdapBasedn.into(), Attribute::DomainLdapAllowUnixPwBind.into()],
     systemmust: vec![
         Attribute::Name.into(),
         Attribute::DomainUuid.into(),

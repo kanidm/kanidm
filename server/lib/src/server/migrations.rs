@@ -505,6 +505,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             SCHEMA_ATTR_DOMAIN_DISPLAY_NAME.clone().into(),
             SCHEMA_ATTR_DOMAIN_LDAP_BASEDN.clone().into(),
             SCHEMA_ATTR_DOMAIN_NAME.clone().into(),
+            SCHEMA_ATTR_DOMAIN_LDAP_ALLOW_UNIX_PW_BIND.clone().into(),
             SCHEMA_ATTR_DOMAIN_SSID.clone().into(),
             SCHEMA_ATTR_DOMAIN_TOKEN_KEY.clone().into(),
             SCHEMA_ATTR_DOMAIN_UUID.clone().into(),
@@ -594,6 +595,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // First, check the system_info object. This stores some server information
         // and details. It's a pretty const thing. Also check anonymous, important to many
         // concepts.
+
+        // The below only check if the UUID of the classes exists (Should exists from migrations)
         let res = self
             .internal_migrate_or_create(E_SYSTEM_INFO_V1.clone())
             .and_then(|_| self.internal_migrate_or_create(E_DOMAIN_INFO_V1.clone()))
