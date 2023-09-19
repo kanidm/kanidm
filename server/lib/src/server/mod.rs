@@ -65,6 +65,7 @@ pub struct DomainInfo {
     pub(crate) d_name: String,
     pub(crate) d_display: String,
     pub(crate) d_vers: DomainVersion,
+    pub(crate) d_ldap_allow_unix_pw_bind: bool,
 }
 
 #[derive(Clone)]
@@ -786,6 +787,14 @@ pub trait QueryServerTransaction<'a> {
             })
     }
 
+    fn get_domain_ldap_allow_unix_pw_bind(&mut self) -> Result<bool, OperationError> {
+        let res = self.internal_search_uuid(UUID_DOMAIN_INFO);
+        match res.unwrap().get_ava_single("domain_ldap_allow_unix_pw_bind"){
+           Some(v) => Ok(v.to_bool().is_some()),
+           None => Err(OperationError::MissingEntries)
+        }
+    }
+
     fn get_domain_cookie_key(&mut self) -> Result<[u8; 64], OperationError> {
         self.internal_search_uuid(UUID_DOMAIN_INFO)
             .and_then(|e| {
@@ -1095,6 +1104,7 @@ impl QueryServer {
             // we set the domain_display_name to the configuration file's domain_name
             // here because the database is not started, so we cannot pull it from there.
             d_display: domain_name,
+            d_ldap_allow_unix_pw_bind : false
         }));
 
         let dyngroup_cache = Arc::new(CowCell::new(DynGroupCache::default()));
@@ -1488,8 +1498,20 @@ impl<'a> QueryServerWriteTransaction<'a> {
     pub(crate) fn reload_domain_info(&mut self) -> Result<(), OperationError> {
         let domain_name = self.get_db_domain_name()?;
         let display_name = self.get_db_domain_display_name()?;
+        let domain_ldap_allow_unix_pw_bind = match self.get_domain_ldap_allow_unix_pw_bind(){
+            Ok(v) => v,
+            _ => {
+                admin_warn!("Defaulting ldap_allow_unix_pw_bind to false");
+                self.set_domain_ldap_allow_unix_pw_bind(false)?;
+                false
+            }
+        };
         let domain_uuid = self.be_txn.get_db_d_uuid();
         let mut_d_info = self.d_info.get_mut();
+        if mut_d_info.d_ldap_allow_unix_pw_bind != domain_ldap_allow_unix_pw_bind{
+            admin_warn!("Using of unix pw for ldap bind is now allowed : {}", domain_ldap_allow_unix_pw_bind);
+            mut_d_info.d_ldap_allow_unix_pw_bind = domain_ldap_allow_unix_pw_bind;
+        }
         if mut_d_info.d_uuid != domain_uuid {
             admin_warn!(
                 "Using domain uuid from the database {} - was {} in memory",
@@ -1525,7 +1547,15 @@ impl<'a> QueryServerWriteTransaction<'a> {
         let filt = filter_all!(f_eq(Attribute::Uuid, udi));
         self.internal_modify(&filt, &modl)
     }
-
+    pub fn set_domain_ldap_allow_unix_pw_bind(
+        &mut self,
+        new_state: bool,
+    ) -> Result<(), OperationError> {
+        let modl = ModifyList::new_purge_and_set("domain_ldap_allow_unix_pw_bind", Value::Bool(new_state));
+        let udi = PVUUID_DOMAIN_INFO.clone();
+        let filt = filter_all!(f_eq(Attribute::Uuid, udi));
+        self.internal_modify(&filt, &modl)
+    }
     /// Initiate a domain rename process. This is generally an internal function but it's
     /// exposed to the cli for admins to be able to initiate the process.
     ///
