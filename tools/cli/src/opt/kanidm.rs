@@ -49,6 +49,13 @@ pub struct CommonOpt {
     /// Log format (still in very early development)
     #[clap(short, long = "output", env = "KANIDM_OUTPUT", default_value = "text")]
     output_mode: OutputMode,
+    /// Skip hostname verification
+    #[clap(
+        long = "skip-hostname-verification",
+        env = "KANIDM_SKIP_HOSTNAME_VERIFICATION",
+        default_value_t = false
+    )]
+    skip_hostname_verification: bool,
 }
 
 #[derive(Debug, Args)]

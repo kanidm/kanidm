@@ -56,12 +56,20 @@ pub(crate) fn handle_client_error(response: ClientError, _output_mode: &OutputMo
                     "Internal Server Error in response:{:?} {:?}",
                     error_msg, message
                 );
-                std::process::exit(exitcode::SOFTWARE);
+                std::process::exit(1);
             } else if status == StatusCode::NOT_FOUND {
                 error!("Item not found:{:?} {:?}", error_msg, message)
             } else {
                 error!("HTTP Error: {}{} {:?}", status, error_msg, message);
             }
+        }
+        ClientError::Transport(e) => {
+            error!("HTTP-Transport Related Error: {:?}", e);
+            std::process::exit(1);
+        }
+        ClientError::UntrustedCertificate(e) => {
+            error!("Untrusted Certificate Error: {:?}", e);
+            std::process::exit(1);
         }
         _ => {
             eprintln!("{:?}", response);
