@@ -45,12 +45,15 @@ pub trait ImageValueThings {
 
 #[derive(Debug)]
 pub enum ImageValidationError {
+    Acropalypse(String),
     ExceedsMaxWidth,
     ExceedsMaxHeight,
     ExceedsMaxDimensions,
     ExceedsMaxFileSize,
     InvalidImage(String),
 }
+
+const PNG_PRELUDE: &[u8] = &[0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
 
 impl Display for ImageValidationError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -78,8 +81,24 @@ impl Display for ImageValidationError {
                 "Image exceeds max dimensions of {}x{}",
                 MAX_IMAGE_WIDTH, MAX_IMAGE_HEIGHT
             )),
+            ImageValidationError::Acropalypse(message) => {
+                if !message.is_empty() {
+                    f.write_fmt(format_args!(
+                        "Image has extra data, is vulnerable to Acropalypse: {}",
+                        message
+                    ))
+                } else {
+                    f.write_str("Image has extra data, is vulnerable to Acropalypse")
+                }
+            }
         }
     }
+}
+
+#[derive(Debug)]
+enum ChunkStatus {
+    SeenEnd { has_trailer: bool },
+    MoreChunks,
 }
 
 impl ImageValueThings for ImageValue {
@@ -104,6 +123,83 @@ impl ImageValueThings for ImageValue {
 
     /// validate the PNG file contents, and that it's actually a PNG
     fn validate_is_png(&self) -> Result<(), ImageValidationError> {
+        // based on code here: https://blog.cloudflare.com/how-cloudflare-images-addressed-the-acropalypse-vulnerability/
+        fn consume_chunks_until_iend(buf: Vec<u8>) -> Result<(ChunkStatus, Vec<u8>), &'static str> {
+            if buf.len() <= 8 {
+                return Err("oh no");
+            } else {
+                println!("input buflen: {}", buf.len());
+            }
+            let (length_bytes, buf) = buf.split_at(4);
+            let (chunk_type, buf) = buf.split_at(4);
+
+            // Infallible: We've definitely consumed 4 bytes
+            let length = u32::from_be_bytes(length_bytes.clone().try_into().unwrap());
+            println!(
+                "length_bytes: {:?} length: {} chunk_type: {:?} buflen: {}",
+                length_bytes,
+                &length,
+                &chunk_type,
+                &buf.len()
+            );
+
+            let (_, buf) = buf.split_at(length as usize);
+            println!("new buflen: {}", &buf.len());
+
+            let (_checksum, buf) = buf.split_at(4);
+            println!("post-checksum buflen: {}", &buf.len());
+            let buf = buf.to_vec();
+
+            if chunk_type == b"IEND" && buf.is_empty() {
+                Ok((ChunkStatus::SeenEnd { has_trailer: false }, buf))
+            } else if chunk_type == b"IEND" && !buf.is_empty() {
+                Ok((ChunkStatus::SeenEnd { has_trailer: true }, buf))
+            } else {
+                Ok((ChunkStatus::MoreChunks, buf))
+            }
+        }
+
+        fn has_trailer(png_data: &Vec<u8>) -> Result<bool, &'static str> {
+            let buf = png_data.clone();
+            // let magic = buf.split_off(PNG_PRELUDE.len());
+            let (magic, buf) = buf.split_at(PNG_PRELUDE.len());
+
+            dbg!(&magic, &PNG_PRELUDE);
+
+            if magic != PNG_PRELUDE {
+                return Err("expected prelude");
+            }
+
+            let buf = buf.to_vec();
+
+            loop {
+                let (status, tmp_buf) = consume_chunks_until_iend(buf.clone())?;
+                let buf = tmp_buf;
+                println!("buflen after consume: {}\n", buf.len());
+                if let ChunkStatus::SeenEnd { has_trailer } = status {
+                    return Ok(has_trailer);
+                } else {
+                    println!("{:?}", status);
+                }
+            }
+        }
+        match has_trailer(&self.contents) {
+            Ok(val) => {
+                if val {
+                    return Err(ImageValidationError::Acropalypse(
+                        "PNG file has a trailer which might indicate acropalypse vulnerability!"
+                            .to_string(),
+                    ));
+                }
+            }
+            Err(err) => {
+                return Err(ImageValidationError::InvalidImage(format!(
+                    "PNG validation failed for {} {:?}",
+                    self.filename, err
+                )));
+            }
+        }
+
         match lodepng::decode32(&self.contents) {
             Ok(val) => {
                 if val.width > MAX_IMAGE_WIDTH as usize || val.height > MAX_IMAGE_HEIGHT as usize {
@@ -231,7 +327,9 @@ fn test_imagevalue_things() {
                 filetype: ImageType::from(extension),
                 contents: std::fs::read(filename).unwrap(),
             };
-            assert!(image.validate_image().is_err());
+            let res = image.validate_image();
+            dbg!(&res);
+            assert!(res.is_err());
 
             // test should-be-good images
             let filename = format!(
@@ -244,7 +342,9 @@ fn test_imagevalue_things() {
                 filetype: ImageType::from(extension),
                 contents: std::fs::read(filename).unwrap(),
             };
-            assert!(image.validate_image().is_ok());
+            let res = image.validate_image();
+            dbg!(&res);
+            assert!(res.is_ok());
         })
 }
 
