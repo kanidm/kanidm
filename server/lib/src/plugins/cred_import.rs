@@ -59,12 +59,11 @@ impl CredImport {
     fn modify_inner<T: Clone>(cand: &mut [Entry<EntryInvalid, T>]) -> Result<(), OperationError> {
         cand.iter_mut().try_for_each(|e| {
             // PASSWORD IMPORT
-            if let Some(vs) = e.pop_ava("password_import") {
+            if let Some(vs) = e.pop_ava(Attribute::PasswordImport) {
                 // if there are multiple, fail.
                 let im_pw = vs.to_utf8_single().ok_or_else(|| {
                     OperationError::Plugin(PluginError::CredImport(
-                        "password_import has incorrect value type - should be a single utf8 string"
-                            .to_string(),
+                        format!("{} has incorrect value type - should be a single utf8 string", Attribute::PasswordImport),
                     ))
                 })?;
 
@@ -86,11 +85,11 @@ impl CredImport {
                 })?;
 
                 // does the entry have a primary cred?
-                match e.get_ava_single_credential("primary_credential") {
+                match e.get_ava_single_credential(Attribute::PrimaryCredential) {
                     Some(c) => {
                         let c = c.update_password(pw);
                         e.set_ava(
-                            "primary_credential",
+                            Attribute::PrimaryCredential,
                             once(Value::new_credential("primary", c)),
                         );
                     }
@@ -98,7 +97,7 @@ impl CredImport {
                         // just set it then!
                         let c = Credential::new_from_password(pw);
                         e.set_ava(
-                            "primary_credential",
+                            Attribute::PrimaryCredential,
                             once(Value::new_credential("primary", c)),
                         );
                     }
@@ -107,27 +106,26 @@ impl CredImport {
 
             // TOTP IMPORT - Must be subsequent to password import to allow primary cred to
             // be created.
-            if let Some(vs) = e.pop_ava("totp_import") {
+            if let Some(vs) = e.pop_ava(Attribute::TotpImport) {
                 // Get the map.
                 let totps = vs.as_totp_map().ok_or_else(|| {
                     OperationError::Plugin(PluginError::CredImport(
-                        "totp_import has incorrect value type - should be a map of totp"
-                            .to_string(),
+                        format!("{} has incorrect value type - should be a map of totp", Attribute::TotpImport)
                     ))
                 })?;
 
-                if let Some(c) = e.get_ava_single_credential("primary_credential") {
+                if let Some(c) = e.get_ava_single_credential(Attribute::PrimaryCredential) {
                     let c = totps.iter().fold(c.clone(), |acc, (label, totp)| {
                         acc.append_totp(label.clone(), totp.clone())
                     });
                     e.set_ava(
-                        "primary_credential",
+                        Attribute::PrimaryCredential,
                         once(Value::new_credential("primary", c)),
                     );
                 } else {
                     return Err(OperationError::Plugin(PluginError::CredImport(
-                        "totp_import can not be used if primary_credential (password) is missing"
-                            .to_string(),
+                        format!("{} can not be used if {} (password) is missing"
+                            ,Attribute::TotpImport, Attribute::PrimaryCredential),
                     )));
                 }
             }
@@ -193,7 +191,7 @@ mod tests {
             preload,
             filter!(f_eq(Attribute::Name, PartialValue::new_iutf8("testperson"))),
             ModifyList::new_list(vec![Modify::Present(
-                AttrString::from("password_import"),
+                Attribute::PasswordImport.into(),
                 Value::from(IMPORT_HASH)
             )]),
             None,
@@ -219,7 +217,10 @@ mod tests {
 
         let p = CryptoPolicy::minimum();
         let c = Credential::new_password_only(&p, "password").unwrap();
-        ea.add_ava("primary_credential", Value::new_credential("primary", c));
+        ea.add_ava(
+            Attribute::PrimaryCredential,
+            Value::new_credential("primary", c),
+        );
 
         let preload = vec![ea];
 
@@ -228,7 +229,7 @@ mod tests {
             preload,
             filter!(f_eq(Attribute::Name, PartialValue::new_iutf8("testperson"))),
             ModifyList::new_list(vec![Modify::Present(
-                AttrString::from("password_import"),
+                Attribute::PasswordImport.into(),
                 Value::from(IMPORT_HASH)
             )]),
             None,
@@ -257,7 +258,10 @@ mod tests {
         let c = Credential::new_password_only(&p, "password")
             .unwrap()
             .append_totp("totp".to_string(), totp);
-        ea.add_ava("primary_credential", Value::new_credential("primary", c));
+        ea.add_ava(
+            Attribute::PrimaryCredential,
+            Value::new_credential("primary", c),
+        );
 
         let preload = vec![ea];
 
@@ -266,7 +270,7 @@ mod tests {
             preload,
             filter!(f_eq(Attribute::Name, PartialValue::new_iutf8("testperson"))),
             ModifyList::new_list(vec![Modify::Present(
-                AttrString::from("password_import"),
+                Attribute::PasswordImport.into(),
                 Value::from(IMPORT_HASH)
             )]),
             None,
@@ -276,7 +280,7 @@ mod tests {
                     .internal_search_uuid(uuid!("d2b496bd-8493-47b7-8142-f568b5cf47ee"))
                     .expect("failed to get entry");
                 let c = e
-                    .get_ava_single_credential("primary_credential")
+                    .get_ava_single_credential(Attribute::PrimaryCredential)
                     .expect("failed to get primary cred.");
                 match &c.type_ {
                     CredentialType::PasswordMfa(_pw, totp, webauthn, backup_code) => {
@@ -295,18 +299,18 @@ mod tests {
         let euuid = Uuid::new_v4();
 
         let ea = entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
-            (Attribute::Name.as_ref(), Value::new_iname("testperson")),
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Name, Value::new_iname("testperson")),
             (
-                Attribute::Description.as_ref(),
+                Attribute::Description,
                 Value::Utf8("testperson".to_string())
             ),
             (
-                Attribute::DisplayName.as_ref(),
+                Attribute::DisplayName,
                 Value::Utf8("testperson".to_string())
             ),
-            (Attribute::Uuid.as_ref(), Value::Uuid(euuid))
+            (Attribute::Uuid, Value::Uuid(euuid))
         );
 
         let preload = vec![ea];
@@ -320,15 +324,15 @@ mod tests {
             filter!(f_eq(Attribute::Name, PartialValue::new_iutf8("testperson"))),
             ModifyList::new_list(vec![
                 Modify::Present(
-                    AttrString::from("password_import"),
+                    Attribute::PasswordImport.into(),
                     Value::Utf8(IMPORT_HASH.to_string())
                 ),
                 Modify::Present(
-                    AttrString::from("totp_import"),
+                    Attribute::TotpImport.into(),
                     Value::TotpSecret("a".to_string(), totp_a.clone())
                 ),
                 Modify::Present(
-                    AttrString::from("totp_import"),
+                    Attribute::TotpImport.into(),
                     Value::TotpSecret("b".to_string(), totp_b.clone())
                 )
             ]),
@@ -337,7 +341,7 @@ mod tests {
             |qs: &mut QueryServerWriteTransaction| {
                 let e = qs.internal_search_uuid(euuid).expect("failed to get entry");
                 let c = e
-                    .get_ava_single_credential("primary_credential")
+                    .get_ava_single_credential(Attribute::PrimaryCredential)
                     .expect("failed to get primary cred.");
                 match &c.type_ {
                     CredentialType::PasswordMfa(_pw, totp, webauthn, backup_code) => {
@@ -359,18 +363,18 @@ mod tests {
         let euuid = Uuid::new_v4();
 
         let ea = entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
-            (Attribute::Name.as_ref(), Value::new_iname("testperson")),
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Name, Value::new_iname("testperson")),
             (
-                Attribute::Description.as_ref(),
+                Attribute::Description,
                 Value::Utf8("testperson".to_string())
             ),
             (
-                Attribute::DisplayName.as_ref(),
+                Attribute::DisplayName,
                 Value::Utf8("testperson".to_string())
             ),
-            (Attribute::Uuid.as_ref(), Value::Uuid(euuid))
+            (Attribute::Uuid, Value::Uuid(euuid))
         );
 
         let preload = vec![ea];
@@ -385,7 +389,7 @@ mod tests {
             preload,
             filter!(f_eq(Attribute::Name, PartialValue::new_iutf8("testperson"))),
             ModifyList::new_list(vec![Modify::Present(
-                AttrString::from("totp_import"),
+                Attribute::TotpImport.into(),
                 Value::TotpSecret("a".to_string(), totp_a)
             )]),
             None,

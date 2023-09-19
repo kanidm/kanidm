@@ -56,7 +56,7 @@ use crate::idm::unix::{UnixGroup, UnixUserAccount};
 use crate::idm::AuthState;
 use crate::prelude::*;
 use crate::utils::{password_from_random, readable_password_from_random, uuid_from_duration, Sid};
-use crate::value::Session;
+use crate::value::{Session, SessionState};
 
 pub(crate) type AuthSessionMutex = Arc<Mutex<AuthSession>>;
 pub(crate) type CredSoftLockMutex = Arc<Mutex<CredSoftLock>>;
@@ -536,10 +536,12 @@ pub trait IdmServerTransaction<'a> {
                 .map(|t: Jws<UserAuthToken>| t.into_inner())?;
 
             if let Some(exp) = uat.expiry {
-                if time::OffsetDateTime::UNIX_EPOCH + ct >= exp {
-                    security_info!("Session expired");
+                let ct_odt = time::OffsetDateTime::UNIX_EPOCH + ct;
+                if ct_odt >= exp {
+                    security_info!(?ct_odt, ?exp, "Session expired");
                     Err(OperationError::SessionExpired)
                 } else {
+                    trace!(?ct_odt, ?exp, "Session not yet expired");
                     Ok(Token::UserAuthToken(uat))
                 }
             } else {
@@ -566,7 +568,7 @@ pub trait IdmServerTransaction<'a> {
                 })?;
 
             let user_signer = entry
-                .get_ava_single_jws_key_es256("jws_es256_private_key")
+                .get_ava_single_jws_key_es256(Attribute::JwsEs256PrivateKey)
                 .ok_or_else(|| {
                     admin_error!(
                         ?kid,
@@ -654,8 +656,12 @@ pub trait IdmServerTransaction<'a> {
 
         let within_valid_window = Account::check_within_valid_time(
             ct,
-            entry.get_ava_single_datetime("account_valid_from").as_ref(),
-            entry.get_ava_single_datetime("account_expire").as_ref(),
+            entry
+                .get_ava_single_datetime(Attribute::AccountValidFrom)
+                .as_ref(),
+            entry
+                .get_ava_single_datetime(Attribute::AccountExpire)
+                .as_ref(),
         );
 
         if !within_valid_window {
@@ -663,28 +669,54 @@ pub trait IdmServerTransaction<'a> {
             return Ok(None);
         }
 
-        if ct >= Duration::from_secs(iat as u64) + GRACE_WINDOW {
-            // We are past the grace window. Enforce session presence.
-            // We enforce both sessions are present in case of inconsistency
-            // that may occur with replication.
-            let oauth2_session_valid = entry
-                .get_ava_as_oauth2session_map("oauth2_session")
-                .map(|map| map.get(&session_id).is_some())
-                .unwrap_or(false);
-            let uat_session_valid = entry
-                .get_ava_as_session_map("user_auth_token_session")
-                .map(|map| map.get(&parent_session_id).is_some())
-                .unwrap_or(false);
+        // We are past the grace window. Enforce session presence.
+        // We enforce both sessions are present in case of inconsistency
+        // that may occur with replication.
 
-            if oauth2_session_valid && uat_session_valid {
-                security_info!("A valid session value exists for this token");
-            } else {
-                security_info!(%uat_session_valid, %oauth2_session_valid, "The token grace window has passed and no sessions exist. Assuming invalid.");
+        let grace_valid = ct < (Duration::from_secs(iat as u64) + GRACE_WINDOW);
+
+        let oauth2_session = entry
+            .get_ava_as_oauth2session_map(Attribute::OAuth2Session)
+            .and_then(|sessions| sessions.get(&session_id));
+        let uat_session = entry
+            .get_ava_as_session_map(Attribute::UserAuthTokenSession)
+            .and_then(|sessions| sessions.get(&parent_session_id));
+
+        if let Some(oauth2_session) = oauth2_session {
+            // We have the oauth2 session, lets check it.
+            let oauth2_session_valid = !matches!(oauth2_session.state, SessionState::RevokedAt(_));
+
+            if !oauth2_session_valid {
+                security_info!("The oauth2 session associated to this token is revoked.");
                 return Ok(None);
             }
-        } else {
+
+            if let Some(uat_session) = uat_session {
+                let parent_session_valid = !matches!(uat_session.state, SessionState::RevokedAt(_));
+                if parent_session_valid {
+                    security_info!("A valid parent and oauth2 session value exists for this token");
+                } else {
+                    security_info!(
+                        "The parent oauth2 session associated to this token is revoked."
+                    );
+                    return Ok(None);
+                }
+            } else if grace_valid {
+                security_info!(
+                    "The token grace window is in effect. Assuming parent session valid."
+                );
+            } else {
+                security_info!("The token grace window has passed and no entry parent sessions exist. Assuming invalid.");
+                return Ok(None);
+            }
+        } else if grace_valid {
             security_info!("The token grace window is in effect. Assuming valid.");
-        };
+        } else {
+            security_info!(
+                "The token grace window has passed and no entry sessions exist. Assuming invalid."
+            );
+            return Ok(None);
+        }
 
         Ok(Some(entry))
     }
@@ -816,8 +848,12 @@ pub trait IdmServerTransaction<'a> {
 
                 if Account::check_within_valid_time(
                     ct,
-                    entry.get_ava_single_datetime("account_valid_from").as_ref(),
-                    entry.get_ava_single_datetime("account_expire").as_ref(),
+                    entry
+                        .get_ava_single_datetime(Attribute::AccountValidFrom)
+                        .as_ref(),
+                    entry
+                        .get_ava_single_datetime(Attribute::AccountExpire)
+                        .as_ref(),
                 ) {
                     // Good to go
                     let limits = Limits::default();
@@ -890,7 +926,7 @@ pub trait IdmServerTransaction<'a> {
             })?;
 
         let user_signer = entry
-            .get_ava_single_jws_key_es256("jws_es256_private_key")
+            .get_ava_single_jws_key_es256(Attribute::JwsEs256PrivateKey)
             .ok_or_else(|| {
                 admin_error!(
                     ?kid,
@@ -1301,9 +1337,11 @@ impl<'a> IdmServerAuthTransaction<'a> {
                 }))
             }
             Token::ApiToken(apit, entry) => {
-                let spn = entry.get_ava_single_proto_string("spn").ok_or_else(|| {
-                    OperationError::InvalidAccountState("Missing attribute: spn".to_string())
-                })?;
+                let spn = entry
+                    .get_ava_single_proto_string(Attribute::Spn)
+                    .ok_or_else(|| {
+                        OperationError::InvalidAccountState("Missing attribute: spn".to_string())
+                    })?;
 
                 Ok(Some(LdapBoundToken {
                     session_id: apit.token_id,
@@ -1786,6 +1824,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         Ok(())
     }
 
+    #[instrument(level = "debug", skip_all)]
     pub fn recover_account(
         &mut self,
         name: &str,
@@ -1809,9 +1848,9 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         let vcred = Value::new_credential("primary", ncred);
         // We need to remove other credentials too.
         let modlist = ModifyList::new_list(vec![
-            m_purge("passkeys"),
-            m_purge("primary_credential"),
-            Modify::Present("primary_credential".into(), vcred),
+            m_purge(Attribute::PassKeys),
+            m_purge(Attribute::PrimaryCredential),
+            Modify::Present(Attribute::PrimaryCredential.into(), vcred),
         ]);
 
         trace!(?modlist, "processing change");
@@ -1830,6 +1869,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         Ok(cleartext)
     }
 
+    #[instrument(level = "debug", skip_all)]
     pub fn regenerate_radius_secret(
         &mut self,
         rrse: &RegenerateRadiusSecretEvent,
@@ -1868,6 +1908,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
     }
 
     // -- delayed action processing --
+    #[instrument(level = "debug", skip_all)]
     fn process_pwupgrade(&mut self, pwu: &PasswordUpgrade) -> Result<(), OperationError> {
         // get the account
         let account = self.target_to_account(pwu.target_uuid)?;
@@ -1892,6 +1933,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         }
     }
 
+    #[instrument(level = "debug", skip_all)]
     fn process_unixpwupgrade(&mut self, pwu: &UnixPasswordUpgrade) -> Result<(), OperationError> {
         info!(session_id = %pwu.target_uuid, "Processing unix password hash upgrade");
 
@@ -1920,6 +1962,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         }
     }
 
+    #[instrument(level = "debug", skip_all)]
     pub(crate) fn process_webauthncounterinc(
         &mut self,
         wci: &WebauthnCounterIncrement,
@@ -1948,6 +1991,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         }
     }
 
+    #[instrument(level = "debug", skip_all)]
     pub(crate) fn process_backupcoderemoval(
         &mut self,
         bcr: &BackupCodeRemoval,
@@ -1969,17 +2013,22 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         )
     }
 
+    #[instrument(level = "debug", skip_all)]
     pub(crate) fn process_authsessionrecord(
         &mut self,
         asr: &AuthSessionRecord,
     ) -> Result<(), OperationError> {
         // We have to get the entry so we can work out if we need to expire any of it's sessions.
+        let state = match asr.expiry {
+            Some(e) => SessionState::ExpiresAt(e),
+            None => SessionState::NeverExpires,
+        };
 
         let session = Value::Session(
             asr.session_id,
             Session {
                 label: asr.label.clone(),
-                expiry: asr.expiry,
+                state,
                 // Need the other inner bits?
                 // for the gracewindow.
                 issued_at: asr.issued_at,
@@ -1996,7 +2045,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         info!(session_id = %asr.session_id, "Persisting auth session");
 
         // modify the account to put the session onto it.
-        let modlist = ModifyList::new_append("user_auth_token_session", session);
+        let modlist = ModifyList::new_append(Attribute::UserAuthTokenSession, session);
 
         self.qs_write
             .internal_modify(
@@ -2010,6 +2059,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         // Done!
     }
 
+    #[instrument(level = "debug", skip_all)]
     pub fn process_delayedaction(
         &mut self,
         da: DelayedAction,
@@ -2112,7 +2162,6 @@ mod tests {
     use std::time::Duration;
 
     use kanidm_proto::v1::{AuthAllowed, AuthIssueSession, AuthMech, OperationError};
-    use smartstring::alias::String as AttrString;
     use time::OffsetDateTime;
     use uuid::Uuid;
 
@@ -2130,6 +2179,7 @@ mod tests {
     use crate::modify::{Modify, ModifyList};
     use crate::prelude::*;
     use crate::utils::duration_from_epoch_now;
+    use crate::value::SessionState;
     use kanidm_lib_crypto::CryptoPolicy;
 
     const TEST_PASSWORD: &str = "ntaoeuntnaoeuhraohuercahu😍";
@@ -2666,26 +2716,23 @@ mod tests {
             filter!(f_eq(Attribute::Name, PartialValue::new_iname("admin"))),
             ModifyList::new_list(vec![
                 Modify::Present(Attribute::Class.into(), EntryClass::PosixAccount.into()),
-                Modify::Present(AttrString::from("gidnumber"), Value::new_uint32(2001)),
+                Modify::Present(Attribute::GidNumber.into(), Value::new_uint32(2001)),
             ]),
         );
         assert!(idms_prox_write.qs_write.modify(&me_posix).is_ok());
         // Add a posix group that has the admin as a member.
         let e: Entry<EntryInit, EntryNew> = entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Group.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::PosixGroup.to_value()),
-            (Attribute::Name.as_ref(), Value::new_iname("testgroup")),
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Group.to_value()),
+            (Attribute::Class, EntryClass::PosixGroup.to_value()),
+            (Attribute::Name, Value::new_iname("testgroup")),
             (
-                "uuid",
+                Attribute::Uuid,
                 Value::Uuid(uuid::uuid!("01609135-a1c4-43d5-966b-a28227644445"))
             ),
+            (Attribute::Description, Value::new_utf8s("testgroup")),
             (
-                Attribute::Description.as_ref(),
-                Value::new_utf8s("testgroup")
-            ),
-            (
-                "member",
+                Attribute::Member,
                 Value::Refer(uuid::uuid!("00000000-0000-0000-0000-000000000000"))
             )
         );
@@ -2751,7 +2798,7 @@ mod tests {
             filter!(f_eq(Attribute::Name, PartialValue::new_iname("admin"))),
             ModifyList::new_list(vec![
                 Modify::Present(Attribute::Class.into(), EntryClass::PosixAccount.into()),
-                Modify::Present(AttrString::from("gidnumber"), Value::new_uint32(2001)),
+                Modify::Present(Attribute::GidNumber.into(), Value::new_uint32(2001)),
             ]),
         );
         assert!(idms_prox_write.qs_write.modify(&me_posix).is_ok());
@@ -2787,7 +2834,7 @@ mod tests {
         let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await;
         let me_purge_up = ModifyEvent::new_internal_invalid(
             filter!(f_eq(Attribute::Name, PartialValue::new_iname("admin"))),
-            ModifyList::new_list(vec![Modify::Purged(AttrString::from("unix_password"))]),
+            ModifyList::new_list(vec![Modify::Purged(Attribute::UnixPassword.into())]),
         );
         assert!(idms_prox_write.qs_write.modify(&me_purge_up).is_ok());
         assert!(idms_prox_write.commit().is_ok());
@@ -2820,7 +2867,7 @@ mod tests {
                 ModifyEvent::new_internal_invalid(
                         filter!(f_eq(Attribute::Name, PartialValue::new_iname("admin"))),
                         ModifyList::new_list(vec![Modify::Present(
-                            AttrString::from("password_import"),
+                            Attribute::PasswordImport.into(),
                             Value::from("{SSHA512}JwrSUHkI7FTAfHRVR6KoFlSN0E3dmaQWARjZ+/UsShYlENOqDtFVU77HJLLrY2MuSp0jve52+pwtdVl2QUAHukQ0XUf5LDtM")
                         )]),
                     );
@@ -2837,7 +2884,7 @@ mod tests {
             .internal_search_uuid(UUID_ADMIN)
             .expect("Can't access admin entry.");
         let cred_before = admin_entry
-            .get_ava_single_credential("primary_credential")
+            .get_ava_single_credential(Attribute::PrimaryCredential)
             .expect("No credential present")
             .clone();
         drop(idms_prox_read);
@@ -2868,7 +2915,7 @@ mod tests {
             .internal_search_uuid(UUID_ADMIN)
             .expect("Can't access admin entry.");
         let cred_after = admin_entry
-            .get_ava_single_credential("primary_credential")
+            .get_ava_single_credential(Attribute::PrimaryCredential)
             .expect("No credential present")
             .clone();
         drop(idms_prox_read);
@@ -2901,8 +2948,8 @@ mod tests {
             filter!(f_eq(Attribute::Name, PartialValue::new_iname("admin"))),
             ModifyList::new_list(vec![
                 Modify::Present(Attribute::Class.into(), EntryClass::PosixAccount.into()),
-                Modify::Present(AttrString::from("gidnumber"), Value::new_uint32(2001)),
-                Modify::Present(AttrString::from("unix_password"), v_cred),
+                Modify::Present(Attribute::GidNumber.into(), Value::new_uint32(2001)),
+                Modify::Present(Attribute::UnixPassword.into(), v_cred),
             ]),
         );
         assert!(idms_prox_write.qs_write.modify(&me_posix).is_ok());
@@ -2955,8 +3002,8 @@ mod tests {
         let me_inv_m = ModifyEvent::new_internal_invalid(
             filter!(f_eq(Attribute::Name, PartialValue::new_iname("admin"))),
             ModifyList::new_list(vec![
-                Modify::Present(AttrString::from("account_expire"), v_expire),
-                Modify::Present(AttrString::from("account_valid_from"), v_valid_from),
+                Modify::Present(Attribute::AccountExpire.into(), v_expire),
+                Modify::Present(Attribute::AccountValidFrom.into(), v_valid_from),
             ]),
         );
         // go!
@@ -3046,7 +3093,7 @@ mod tests {
             filter!(f_eq(Attribute::Name, PartialValue::new_iname("admin"))),
             ModifyList::new_list(vec![
                 Modify::Present(Attribute::Class.into(), EntryClass::PosixAccount.into()),
-                Modify::Present(AttrString::from("gidnumber"), Value::new_uint32(2001)),
+                Modify::Present(Attribute::GidNumber.into(), Value::new_uint32(2001)),
             ]),
         );
         assert!(idms_prox_write.qs_write.modify(&me_posix).is_ok());
@@ -3409,7 +3456,7 @@ mod tests {
             filter!(f_eq(Attribute::Name, PartialValue::new_iname("admin"))),
             ModifyList::new_list(vec![
                 Modify::Present(Attribute::Class.into(), EntryClass::PosixAccount.into()),
-                Modify::Present(AttrString::from("gidnumber"), Value::new_uint32(2001)),
+                Modify::Present(Attribute::GidNumber.into(), Value::new_uint32(2001)),
             ]),
         );
         assert!(idms_prox_write.qs_write.modify(&me_posix).is_ok());
@@ -3465,13 +3512,13 @@ mod tests {
         let da = idms_delayed.try_recv().expect("invalid");
         assert!(matches!(da, DelayedAction::AuthSessionRecord(_)));
         // Persist it.
-        let r = idms.delayed_action(duration_from_epoch_now(), da).await;
+        let r = idms.delayed_action(ct, da).await;
         assert!(Ok(true) == r);
         idms_delayed.check_is_empty_or_panic();
 
         let mut idms_prox_read = idms.proxy_read().await;
 
-        // Check it's valid.
+        // Check it's valid - This is within the time window so will pass.
         idms_prox_read
             .validate_and_parse_token_to_ident(Some(token.as_str()), ct)
             .expect("Failed to validate");
@@ -3506,7 +3553,7 @@ mod tests {
             .qs_read
             .internal_search_uuid(UUID_ADMIN)
             .expect("failed");
-        let sessions = admin.get_ava_as_session_map("user_auth_token_session");
+        let sessions = admin.get_ava_as_session_map(Attribute::UserAuthTokenSession);
         assert!(sessions.is_none());
         drop(idms_prox_read);
 
@@ -3531,19 +3578,15 @@ mod tests {
             .internal_search_uuid(UUID_ADMIN)
             .expect("failed");
         let sessions = admin
-            .get_ava_as_session_map("user_auth_token_session")
+            .get_ava_as_session_map(Attribute::UserAuthTokenSession)
             .expect("Sessions must be present!");
         assert!(sessions.len() == 1);
-        let session_id_a = sessions
-            .keys()
-            .copied()
-            .next()
-            .expect("Could not access session id");
-        assert!(session_id_a == session_a);
+        let session_data_a = sessions.get(&session_a).expect("Session A is missing!");
+        assert!(matches!(session_data_a.state, SessionState::ExpiresAt(_)));
 
         drop(idms_prox_read);
 
-        // When we re-auth, this is what triggers the session cleanup via the delayed action.
+        // When we re-auth, this is what triggers the session revoke via the delayed action.
 
         let da = DelayedAction::AuthSessionRecord(AuthSessionRecord {
             target_uuid: UUID_ADMIN,
@@ -3565,18 +3608,17 @@ mod tests {
             .internal_search_uuid(UUID_ADMIN)
             .expect("failed");
         let sessions = admin
-            .get_ava_as_session_map("user_auth_token_session")
+            .get_ava_as_session_map(Attribute::UserAuthTokenSession)
             .expect("Sessions must be present!");
         trace!(?sessions);
-        assert!(sessions.len() == 1);
-        let session_id_b = sessions
-            .keys()
-            .copied()
-            .next()
-            .expect("Could not access session id");
-        assert!(session_id_b == session_b);
+        assert!(sessions.len() == 2);
 
-        assert!(session_id_a != session_id_b);
+        let session_data_a = sessions.get(&session_a).expect("Session A is missing!");
+        assert!(matches!(session_data_a.state, SessionState::RevokedAt(_)));
+
+        let session_data_b = sessions.get(&session_b).expect("Session B is missing!");
+        assert!(matches!(session_data_b.state, SessionState::ExpiresAt(_)));
+        // Now show that sessions trim!
     }
 
     #[idm_test]
@@ -3638,7 +3680,32 @@ mod tests {
         // Now check again with the session destroyed.
         let mut idms_prox_read = idms.proxy_read().await;
 
-        // Now, within gracewindow, it's still valid.
+        // Now, within gracewindow, it's NOT valid because the session entry exists and is in
+        // the revoked state!
+        match idms_prox_read.validate_and_parse_token_to_ident(Some(token.as_str()), post_grace) {
+            Err(OperationError::SessionExpired) => {}
+            _ => assert!(false),
+        }
+        drop(idms_prox_read);
+
+        // Force trim the session out so that we can check the grate handling.
+        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let filt = filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(uat_inner.uuid)));
+        let mut work_set = idms_prox_write
+            .qs_write
+            .internal_search_writeable(&filt)
+            .expect("Failed to perform internal search writeable");
+        for (_, entry) in work_set.iter_mut() {
+            let _ = entry.force_trim_ava(Attribute::UserAuthTokenSession.into());
+        }
+        assert!(idms_prox_write
+            .qs_write
+            .internal_apply_writable(work_set)
+            .is_ok());
+
+        assert!(idms_prox_write.commit().is_ok());
+
+        let mut idms_prox_read = idms.proxy_read().await;
         idms_prox_read
             .validate_and_parse_token_to_ident(Some(token.as_str()), ct)
             .expect("Failed to validate");
@@ -3947,9 +4014,9 @@ mod tests {
         let me_reset_tokens = ModifyEvent::new_internal_invalid(
             filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(UUID_DOMAIN_INFO))),
             ModifyList::new_list(vec![
-                Modify::Purged(AttrString::from("fernet_private_key_str")),
-                Modify::Purged(AttrString::from("es256_private_key_der")),
-                Modify::Purged(AttrString::from("domain_token_key")),
+                Modify::Purged(Attribute::FernetPrivateKeyStr.into()),
+                Modify::Purged(Attribute::Es256PrivateKeyDer.into()),
+                Modify::Purged(Attribute::DomainTokenKey.into()),
             ]),
         );
         assert!(idms_prox_write.qs_write.modify(&me_reset_tokens).is_ok());
@@ -3985,22 +4052,13 @@ mod tests {
 
         // Create a service account
         let e = entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
-            (
-                Attribute::Class.as_ref(),
-                EntryClass::ServiceAccount.to_value()
-            ),
-            (Attribute::Name.as_ref(), Value::new_iname("testaccount")),
-            (Attribute::Uuid.as_ref(), Value::Uuid(target_uuid)),
-            (
-                Attribute::Description.as_ref(),
-                Value::new_utf8s("testaccount")
-            ),
-            (
-                Attribute::DisplayName.as_ref(),
-                Value::new_utf8s("Test Account")
-            )
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::ServiceAccount.to_value()),
+            (Attribute::Name, Value::new_iname("testaccount")),
+            (Attribute::Uuid, Value::Uuid(target_uuid)),
+            (Attribute::Description, Value::new_utf8s("testaccount")),
+            (Attribute::DisplayName, Value::new_utf8s("Test Account"))
         );
 
         let ce = CreateEvent::new_internal(vec![e]);

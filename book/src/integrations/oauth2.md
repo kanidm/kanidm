@@ -251,7 +251,7 @@ To create an OAuth2 public resource server:
 
 ```bash
 kanidm system oauth2 create-public <name> <displayname> <origin>
-kanidm system oauth2 create mywebapp "My Web App" https://webapp.example.com
+kanidm system oauth2 create-public mywebapp "My Web App" https://webapp.example.com
 ```
 
 ## Example Integrations

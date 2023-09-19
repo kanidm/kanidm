@@ -154,7 +154,7 @@ async fn test_repl_refresh_basic(server_a: &QueryServer, server_b: &QueryServer)
     // Now assert everything else in the db matches.
 
     let entries_a = server_a_txn
-        .internal_search(filter_all!(f_pres(Attribute::Class.as_ref())))
+        .internal_search(filter_all!(f_pres(Attribute::Class)))
         .map(|ents| {
             ents.into_iter()
                 .map(|e| (e.get_uuid(), e))
@@ -163,7 +163,7 @@ async fn test_repl_refresh_basic(server_a: &QueryServer, server_b: &QueryServer)
         .expect("Failed to access all entries");
 
     let entries_b = server_a_txn
-        .internal_search(filter_all!(f_pres(Attribute::Class.as_ref())))
+        .internal_search(filter_all!(f_pres(Attribute::Class)))
         .map(|ents| {
             ents.into_iter()
                 .map(|e| (e.get_uuid(), e))
@@ -245,18 +245,12 @@ async fn test_repl_increment_basic_entry_add(server_a: &QueryServer, server_b: &
     let t_uuid = Uuid::new_v4();
     assert!(server_b_txn
         .internal_create(vec![entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
-            (Attribute::Name.as_ref(), Value::new_iname("testperson1")),
-            (Attribute::Uuid.as_ref(), Value::Uuid(t_uuid)),
-            (
-                Attribute::Description.as_ref(),
-                Value::new_utf8s("testperson1")
-            ),
-            (
-                Attribute::DisplayName.as_ref(),
-                Value::new_utf8s("testperson1")
-            )
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Name, Value::new_iname("testperson1")),
+            (Attribute::Uuid, Value::Uuid(t_uuid)),
+            (Attribute::Description, Value::new_utf8s("testperson1")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson1"))
         ),])
         .is_ok());
     server_b_txn.commit().expect("Failed to commit");
@@ -354,18 +348,12 @@ async fn test_repl_increment_basic_entry_recycle(server_a: &QueryServer, server_
     let t_uuid = Uuid::new_v4();
     assert!(server_b_txn
         .internal_create(vec![entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
-            (Attribute::Name.as_ref(), Value::new_iname("testperson1")),
-            (Attribute::Uuid.as_ref(), Value::Uuid(t_uuid)),
-            (
-                Attribute::Description.as_ref(),
-                Value::new_utf8s("testperson1")
-            ),
-            (
-                Attribute::DisplayName.as_ref(),
-                Value::new_utf8s("testperson1")
-            )
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Name, Value::new_iname("testperson1")),
+            (Attribute::Uuid, Value::Uuid(t_uuid)),
+            (Attribute::Description, Value::new_utf8s("testperson1")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson1"))
         ),])
         .is_ok());
 
@@ -418,18 +406,12 @@ async fn test_repl_increment_basic_entry_tombstone(server_a: &QueryServer, serve
     let t_uuid = Uuid::new_v4();
     assert!(server_b_txn
         .internal_create(vec![entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
-            (Attribute::Name.as_ref(), Value::new_iname("testperson1")),
-            (Attribute::Uuid.as_ref(), Value::Uuid(t_uuid)),
-            (
-                Attribute::Description.as_ref(),
-                Value::new_utf8s("testperson1")
-            ),
-            (
-                Attribute::DisplayName.as_ref(),
-                Value::new_utf8s("testperson1")
-            )
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Name, Value::new_iname("testperson1")),
+            (Attribute::Uuid, Value::Uuid(t_uuid)),
+            (Attribute::Description, Value::new_utf8s("testperson1")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson1"))
         ),])
         .is_ok());
 
@@ -464,7 +446,7 @@ async fn test_repl_increment_basic_entry_tombstone(server_a: &QueryServer, serve
         .internal_search_all_uuid(t_uuid)
         .expect("Unable to access entry.");
 
-    assert!(e1.attribute_equality(Attribute::Class.as_ref(), &EntryClass::Tombstone.into()));
+    assert!(e1.attribute_equality(Attribute::Class, &EntryClass::Tombstone.into()));
 
     assert!(e1 == e2);
 
@@ -494,18 +476,12 @@ async fn test_repl_increment_consumer_lagging_tombstone(
     let t_uuid = Uuid::new_v4();
     assert!(server_b_txn
         .internal_create(vec![entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
-            (Attribute::Name.as_ref(), Value::new_iname("testperson1")),
-            (Attribute::Uuid.as_ref(), Value::Uuid(t_uuid)),
-            (
-                Attribute::Description.as_ref(),
-                Value::new_utf8s("testperson1")
-            ),
-            (
-                Attribute::DisplayName.as_ref(),
-                Value::new_utf8s("testperson1")
-            )
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Name, Value::new_iname("testperson1")),
+            (Attribute::Uuid, Value::Uuid(t_uuid)),
+            (Attribute::Description, Value::new_utf8s("testperson1")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson1"))
         ),])
         .is_ok());
 
@@ -603,18 +579,12 @@ async fn test_repl_increment_basic_bidirectional_write(
     let t_uuid = Uuid::new_v4();
     assert!(server_b_txn
         .internal_create(vec![entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
-            (Attribute::Name.as_ref(), Value::new_iname("testperson1")),
-            (Attribute::Uuid.as_ref(), Value::Uuid(t_uuid)),
-            (
-                Attribute::Description.as_ref(),
-                Value::new_utf8s("testperson1")
-            ),
-            (
-                Attribute::DisplayName.as_ref(),
-                Value::new_utf8s("testperson1")
-            )
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Name, Value::new_iname("testperson1")),
+            (Attribute::Uuid, Value::Uuid(t_uuid)),
+            (Attribute::Description, Value::new_utf8s("testperson1")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson1"))
         ),])
         .is_ok());
     server_b_txn.commit().expect("Failed to commit");
@@ -642,10 +612,7 @@ async fn test_repl_increment_basic_bidirectional_write(
 
     // Now perform a write on A
     assert!(server_a_txn
-        .internal_modify_uuid(
-            t_uuid,
-            &ModifyList::new_purge(Attribute::Description.as_ref())
-        )
+        .internal_modify_uuid(t_uuid, &ModifyList::new_purge(Attribute::Description))
         .is_ok());
 
     server_a_txn.commit().expect("Failed to commit");
@@ -667,7 +634,7 @@ async fn test_repl_increment_basic_bidirectional_write(
 
     // They are consistent again.
     assert!(e1 == e2);
-    assert!(e1.get_ava_set(Attribute::Description.as_ref()).is_none());
+    assert!(e1.get_ava_set(Attribute::Description).is_none());
 
     server_b_txn.commit().expect("Failed to commit");
     drop(server_a_txn);
@@ -692,18 +659,12 @@ async fn test_repl_increment_basic_deleted_attr(server_a: &QueryServer, server_b
     let t_uuid = Uuid::new_v4();
     assert!(server_a_txn
         .internal_create(vec![entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
-            (Attribute::Name.as_ref(), Value::new_iname("testperson1")),
-            (Attribute::Uuid.as_ref(), Value::Uuid(t_uuid)),
-            (
-                Attribute::Description.as_ref(),
-                Value::new_utf8s("testperson1")
-            ),
-            (
-                Attribute::DisplayName.as_ref(),
-                Value::new_utf8s("testperson1")
-            )
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Name, Value::new_iname("testperson1")),
+            (Attribute::Uuid, Value::Uuid(t_uuid)),
+            (Attribute::Description, Value::new_utf8s("testperson1")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson1"))
         ),])
         .is_ok());
     server_a_txn.commit().expect("Failed to commit");
@@ -712,10 +673,7 @@ async fn test_repl_increment_basic_deleted_attr(server_a: &QueryServer, server_b
     // presence
     let mut server_a_txn = server_a.write(duration_from_epoch_now()).await;
     assert!(server_a_txn
-        .internal_modify_uuid(
-            t_uuid,
-            &ModifyList::new_purge(Attribute::Description.as_ref())
-        )
+        .internal_modify_uuid(t_uuid, &ModifyList::new_purge(Attribute::Description))
         .is_ok());
     server_a_txn.commit().expect("Failed to commit");
 
@@ -734,7 +692,7 @@ async fn test_repl_increment_basic_deleted_attr(server_a: &QueryServer, server_b
         .expect("Unable to access entry.");
 
     // They are consistent again.
-    assert!(e1.get_ava_set(Attribute::Description.as_ref()).is_none());
+    assert!(e1.get_ava_set(Attribute::Description).is_none());
     assert!(e1 == e2);
 
     let e1_cs = e1.get_changestate();
@@ -768,18 +726,12 @@ async fn test_repl_increment_simultaneous_bidirectional_write(
     let t_uuid = Uuid::new_v4();
     assert!(server_b_txn
         .internal_create(vec![entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
-            (Attribute::Name.as_ref(), Value::new_iname("testperson1")),
-            (Attribute::Uuid.as_ref(), Value::Uuid(t_uuid)),
-            (
-                Attribute::Description.as_ref(),
-                Value::new_utf8s("testperson1")
-            ),
-            (
-                Attribute::DisplayName.as_ref(),
-                Value::new_utf8s("testperson1")
-            )
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Name, Value::new_iname("testperson1")),
+            (Attribute::Uuid, Value::Uuid(t_uuid)),
+            (Attribute::Description, Value::new_utf8s("testperson1")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson1"))
         ),])
         .is_ok());
     server_b_txn.commit().expect("Failed to commit");
@@ -809,10 +761,7 @@ async fn test_repl_increment_simultaneous_bidirectional_write(
     assert!(server_a_txn
         .internal_modify_uuid(
             t_uuid,
-            &ModifyList::new_purge_and_set(
-                Attribute::Description.as_ref(),
-                Value::new_utf8s("repl_test")
-            )
+            &ModifyList::new_purge_and_set(Attribute::Description, Value::new_utf8s("repl_test"))
         )
         .is_ok());
 
@@ -824,7 +773,7 @@ async fn test_repl_increment_simultaneous_bidirectional_write(
     assert!(server_b_txn
         .internal_modify_uuid(
             t_uuid,
-            &ModifyList::new_purge_and_set("displayname", Value::new_utf8s("repl_test"))
+            &ModifyList::new_purge_and_set(Attribute::DisplayName, Value::new_utf8s("repl_test"))
         )
         .is_ok());
 
@@ -858,8 +807,8 @@ async fn test_repl_increment_simultaneous_bidirectional_write(
 
     // They are consistent again.
     assert!(e1 == e2);
-    assert!(e1.get_ava_single_utf8(Attribute::Description.as_ref()) == Some("repl_test"));
-    assert!(e1.get_ava_single_utf8("displayname") == Some("repl_test"));
+    assert!(e1.get_ava_single_utf8(Attribute::Description) == Some("repl_test"));
+    assert!(e1.get_ava_single_utf8(Attribute::DisplayName) == Some("repl_test"));
 }
 
 // Create entry on A -> B
@@ -888,18 +837,12 @@ async fn test_repl_increment_basic_bidirectional_lifecycle(
     let t_uuid = Uuid::new_v4();
     assert!(server_b_txn
         .internal_create(vec![entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
-            (Attribute::Name.as_ref(), Value::new_iname("testperson1")),
-            (Attribute::Uuid.as_ref(), Value::Uuid(t_uuid)),
-            (
-                Attribute::Description.as_ref(),
-                Value::new_utf8s("testperson1")
-            ),
-            (
-                Attribute::DisplayName.as_ref(),
-                Value::new_utf8s("testperson1")
-            )
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Name, Value::new_iname("testperson1")),
+            (Attribute::Uuid, Value::Uuid(t_uuid)),
+            (Attribute::Description, Value::new_utf8s("testperson1")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson1"))
         ),])
         .is_ok());
     server_b_txn.commit().expect("Failed to commit");
@@ -948,7 +891,7 @@ async fn test_repl_increment_basic_bidirectional_lifecycle(
 
     // They are consistent again.
     assert!(e1 == e2);
-    assert!(e1.attribute_equality(Attribute::Class.as_ref(), &EntryClass::Recycled.into()));
+    assert!(e1.attribute_equality(Attribute::Class, &EntryClass::Recycled.into()));
 
     server_b_txn.commit().expect("Failed to commit");
     drop(server_a_txn);
@@ -982,9 +925,9 @@ async fn test_repl_increment_basic_bidirectional_lifecycle(
     // They are NOT consistent.
     assert!(e1 != e2);
     // E1 from A is NOT a tombstone ... yet.
-    assert!(!e1.attribute_equality(Attribute::Class.as_ref(), &EntryClass::Tombstone.into()));
+    assert!(!e1.attribute_equality(Attribute::Class, &EntryClass::Tombstone.into()));
     // E2 from B is a tombstone!
-    assert!(e2.attribute_equality(Attribute::Class.as_ref(), &EntryClass::Tombstone.into()));
+    assert!(e2.attribute_equality(Attribute::Class, &EntryClass::Tombstone.into()));
 
     server_b_txn.commit().expect("Failed to commit");
     drop(server_a_txn);
@@ -1003,7 +946,7 @@ async fn test_repl_increment_basic_bidirectional_lifecycle(
         .expect("Unable to access entry.");
 
     // Ts on both.
-    assert!(e1.attribute_equality(Attribute::Class.as_ref(), &EntryClass::Tombstone.into()));
+    assert!(e1.attribute_equality(Attribute::Class, &EntryClass::Tombstone.into()));
     assert!(e1 == e2);
 
     server_a_txn.commit().expect("Failed to commit");
@@ -1035,18 +978,12 @@ async fn test_repl_increment_basic_bidirectional_recycle(
     let t_uuid = Uuid::new_v4();
     assert!(server_b_txn
         .internal_create(vec![entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
-            (Attribute::Name.as_ref(), Value::new_iname("testperson1")),
-            (Attribute::Uuid.as_ref(), Value::Uuid(t_uuid)),
-            (
-                Attribute::Description.as_ref(),
-                Value::new_utf8s("testperson1")
-            ),
-            (
-                Attribute::DisplayName.as_ref(),
-                Value::new_utf8s("testperson1")
-            )
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Name, Value::new_iname("testperson1")),
+            (Attribute::Uuid, Value::Uuid(t_uuid)),
+            (Attribute::Description, Value::new_utf8s("testperson1")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson1"))
         ),])
         .is_ok());
     server_b_txn.commit().expect("Failed to commit");
@@ -1100,7 +1037,7 @@ async fn test_repl_increment_basic_bidirectional_recycle(
     // They are equal, but their CL states are not. e2 should have been
     // retained due to being the latest!
     assert!(e1 == e2);
-    assert!(e1.attribute_equality(Attribute::Class.as_ref(), &EntryClass::Recycled.into()));
+    assert!(e1.attribute_equality(Attribute::Class, &EntryClass::Recycled.into()));
 
     // Remember entry comparison doesn't compare last_mod_cid.
     assert!(e1.get_last_changed() < e2.get_last_changed());
@@ -1167,18 +1104,12 @@ async fn test_repl_increment_basic_bidirectional_tombstone(
     let t_uuid = Uuid::new_v4();
     assert!(server_b_txn
         .internal_create(vec![entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
-            (Attribute::Name.as_ref(), Value::new_iname("testperson1")),
-            (Attribute::Uuid.as_ref(), Value::Uuid(t_uuid)),
-            (
-                Attribute::Description.as_ref(),
-                Value::new_utf8s("testperson1")
-            ),
-            (
-                Attribute::DisplayName.as_ref(),
-                Value::new_utf8s("testperson1")
-            )
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Name, Value::new_iname("testperson1")),
+            (Attribute::Uuid, Value::Uuid(t_uuid)),
+            (Attribute::Description, Value::new_utf8s("testperson1")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson1"))
         ),])
         .is_ok());
     // And then recycle it.
@@ -1227,8 +1158,8 @@ async fn test_repl_increment_basic_bidirectional_tombstone(
         .internal_search_all_uuid(t_uuid)
         .expect("Unable to access entry.");
 
-    assert!(e1.attribute_equality(Attribute::Class.as_ref(), &EntryClass::Tombstone.into()));
-    assert!(e2.attribute_equality(Attribute::Class.as_ref(), &EntryClass::Tombstone.into()));
+    assert!(e1.attribute_equality(Attribute::Class, &EntryClass::Tombstone.into()));
+    assert!(e2.attribute_equality(Attribute::Class, &EntryClass::Tombstone.into()));
     trace!("{:?}", e1.get_last_changed());
     trace!("{:?}", e2.get_last_changed());
     assert!(e1.get_last_changed() < e2.get_last_changed());
@@ -1249,8 +1180,8 @@ async fn test_repl_increment_basic_bidirectional_tombstone(
         .internal_search_all_uuid(t_uuid)
         .expect("Unable to access entry.");
 
-    assert!(e1.attribute_equality(Attribute::Class.as_ref(), &EntryClass::Tombstone.into()));
-    assert!(e2.attribute_equality(Attribute::Class.as_ref(), &EntryClass::Tombstone.into()));
+    assert!(e1.attribute_equality(Attribute::Class, &EntryClass::Tombstone.into()));
+    assert!(e2.attribute_equality(Attribute::Class, &EntryClass::Tombstone.into()));
     assert!(e1.get_last_changed() == e2.get_last_changed());
 
     server_b_txn.commit().expect("Failed to commit");
@@ -1277,18 +1208,12 @@ async fn test_repl_increment_creation_uuid_conflict(
     // Now create the same entry on both servers.
     let t_uuid = Uuid::new_v4();
     let e_init = entry_init!(
-        (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-        (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
-        (Attribute::Name.as_ref(), Value::new_iname("testperson1")),
-        (Attribute::Uuid.as_ref(), Value::Uuid(t_uuid)),
-        (
-            Attribute::Description.as_ref(),
-            Value::new_utf8s("testperson1")
-        ),
-        (
-            Attribute::DisplayName.as_ref(),
-            Value::new_utf8s("testperson1")
-        )
+        (Attribute::Class, EntryClass::Object.to_value()),
+        (Attribute::Class, EntryClass::Person.to_value()),
+        (Attribute::Name, Value::new_iname("testperson1")),
+        (Attribute::Uuid, Value::Uuid(t_uuid)),
+        (Attribute::Description, Value::new_utf8s("testperson1")),
+        (Attribute::DisplayName, Value::new_utf8s("testperson1"))
     );
 
     let mut server_b_txn = server_b.write(ct).await;
@@ -1356,7 +1281,7 @@ async fn test_repl_increment_creation_uuid_conflict(
         // Should be a vec.
         .pop()
         .expect("No conflict entries present");
-    assert!(cnf_a.get_ava_single_iname("name") == Some("testperson1"));
+    assert!(cnf_a.get_ava_single_iname(Attribute::Name) == Some("testperson1"));
 
     let cnf_b = server_b_txn
         .internal_search_conflict_uuid(t_uuid)
@@ -1414,18 +1339,12 @@ async fn test_repl_increment_create_tombstone_uuid_conflict(
     // Now create the same entry on both servers.
     let t_uuid = Uuid::new_v4();
     let e_init = entry_init!(
-        (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-        (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
-        (Attribute::Name.as_ref(), Value::new_iname("testperson1")),
-        (Attribute::Uuid.as_ref(), Value::Uuid(t_uuid)),
-        (
-            Attribute::Description.as_ref(),
-            Value::new_utf8s("testperson1")
-        ),
-        (
-            Attribute::DisplayName.as_ref(),
-            Value::new_utf8s("testperson1")
-        )
+        (Attribute::Class, EntryClass::Object.to_value()),
+        (Attribute::Class, EntryClass::Person.to_value()),
+        (Attribute::Name, Value::new_iname("testperson1")),
+        (Attribute::Uuid, Value::Uuid(t_uuid)),
+        (Attribute::Description, Value::new_utf8s("testperson1")),
+        (Attribute::DisplayName, Value::new_utf8s("testperson1"))
     );
 
     let mut server_b_txn = server_b.write(ct).await;
@@ -1467,9 +1386,9 @@ async fn test_repl_increment_create_tombstone_uuid_conflict(
         .expect("Unable to access entry.");
     assert!(e1 != e2);
     // E1 from A is a ts
-    assert!(e1.attribute_equality(Attribute::Class.as_ref(), &EntryClass::Tombstone.into()));
+    assert!(e1.attribute_equality(Attribute::Class, &EntryClass::Tombstone.into()));
     // E2 from B is not a TS
-    assert!(!e2.attribute_equality(Attribute::Class.as_ref(), &EntryClass::Tombstone.into()));
+    assert!(!e2.attribute_equality(Attribute::Class, &EntryClass::Tombstone.into()));
 
     server_a_txn.commit().expect("Failed to commit");
     drop(server_b_txn);
@@ -1489,7 +1408,7 @@ async fn test_repl_increment_create_tombstone_uuid_conflict(
         .internal_search_all_uuid(t_uuid)
         .expect("Unable to access entry.");
     assert!(e1 == e2);
-    assert!(e1.attribute_equality(Attribute::Class.as_ref(), &EntryClass::Tombstone.into()));
+    assert!(e1.attribute_equality(Attribute::Class, &EntryClass::Tombstone.into()));
 
     server_b_txn.commit().expect("Failed to commit");
     drop(server_a_txn);
@@ -1513,18 +1432,12 @@ async fn test_repl_increment_create_tombstone_conflict(
     // Now create the same entry on both servers.
     let t_uuid = Uuid::new_v4();
     let e_init = entry_init!(
-        (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-        (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
-        (Attribute::Name.as_ref(), Value::new_iname("testperson1")),
-        (Attribute::Uuid.as_ref(), Value::Uuid(t_uuid)),
-        (
-            Attribute::Description.as_ref(),
-            Value::new_utf8s("testperson1")
-        ),
-        (
-            Attribute::DisplayName.as_ref(),
-            Value::new_utf8s("testperson1")
-        )
+        (Attribute::Class, EntryClass::Object.to_value()),
+        (Attribute::Class, EntryClass::Person.to_value()),
+        (Attribute::Name, Value::new_iname("testperson1")),
+        (Attribute::Uuid, Value::Uuid(t_uuid)),
+        (Attribute::Description, Value::new_utf8s("testperson1")),
+        (Attribute::DisplayName, Value::new_utf8s("testperson1"))
     );
 
     let mut server_b_txn = server_b.write(ct).await;
@@ -1570,8 +1483,8 @@ async fn test_repl_increment_create_tombstone_conflict(
 
     assert!(e1.get_last_changed() > e2.get_last_changed());
     // Yet, they are both TS. Curious.
-    assert!(e1.attribute_equality(Attribute::Class.as_ref(), &EntryClass::Tombstone.into()));
-    assert!(e2.attribute_equality(Attribute::Class.as_ref(), &EntryClass::Tombstone.into()));
+    assert!(e1.attribute_equality(Attribute::Class, &EntryClass::Tombstone.into()));
+    assert!(e2.attribute_equality(Attribute::Class, &EntryClass::Tombstone.into()));
 
     server_b_txn.commit().expect("Failed to commit");
     drop(server_a_txn);
@@ -1591,7 +1504,7 @@ async fn test_repl_increment_create_tombstone_conflict(
         .expect("Unable to access entry.");
 
     assert!(e1 == e2);
-    assert!(e1.attribute_equality(Attribute::Class.as_ref(), &EntryClass::Tombstone.into()));
+    assert!(e1.attribute_equality(Attribute::Class, &EntryClass::Tombstone.into()));
 
     server_a_txn.commit().expect("Failed to commit");
     drop(server_b_txn);
@@ -1615,18 +1528,12 @@ async fn test_repl_increment_schema_conflict(server_a: &QueryServer, server_b: &
     let t_uuid = Uuid::new_v4();
     assert!(server_b_txn
         .internal_create(vec![entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
-            (Attribute::Name.as_ref(), Value::new_iname("testperson1")),
-            (Attribute::Uuid.as_ref(), Value::Uuid(t_uuid)),
-            (
-                Attribute::Description.as_ref(),
-                Value::new_utf8s("testperson1")
-            ),
-            (
-                Attribute::DisplayName.as_ref(),
-                Value::new_utf8s("testperson1")
-            )
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Name, Value::new_iname("testperson1")),
+            (Attribute::Uuid, Value::Uuid(t_uuid)),
+            (Attribute::Description, Value::new_utf8s("testperson1")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson1"))
         ),])
         .is_ok());
     server_b_txn.commit().expect("Failed to commit");
@@ -1658,10 +1565,10 @@ async fn test_repl_increment_schema_conflict(server_a: &QueryServer, server_b: &
     let ct = ct + Duration::from_secs(1);
     let mut server_b_txn = server_b.write(ct).await;
     let modlist = ModifyList::new_list(vec![
-        Modify::Removed("class".into(), EntryClass::Person.into()),
-        Modify::Present("class".into(), EntryClass::Group.into()),
-        Modify::Purged("id_verification_eckey".into()),
-        Modify::Purged("displayname".into()),
+        Modify::Removed(Attribute::Class.into(), EntryClass::Person.into()),
+        Modify::Present(Attribute::Class.into(), EntryClass::Group.into()),
+        Modify::Purged(Attribute::IdVerificationEcKey.into()),
+        Modify::Purged(Attribute::DisplayName.into()),
     ]);
     assert!(server_b_txn.internal_modify_uuid(t_uuid, &modlist).is_ok());
     server_b_txn.commit().expect("Failed to commit");
@@ -1673,7 +1580,7 @@ async fn test_repl_increment_schema_conflict(server_a: &QueryServer, server_b: &
         .internal_modify_uuid(
             t_uuid,
             &ModifyList::new_purge_and_set(
-                "displayname",
+                Attribute::DisplayName,
                 Value::Utf8("Updated displayname".to_string())
             )
         )
@@ -1694,7 +1601,7 @@ async fn test_repl_increment_schema_conflict(server_a: &QueryServer, server_b: &
         .internal_search_all_uuid(t_uuid)
         .expect("Unable to access new entry.");
 
-    assert!(e1.attribute_equality(Attribute::Class.as_ref(), &EntryClass::Conflict.into()));
+    assert!(e1.attribute_equality(Attribute::Class, &EntryClass::Conflict.into()));
 
     server_a_txn.commit().expect("Failed to commit");
     drop(server_b_txn);
@@ -1710,7 +1617,7 @@ async fn test_repl_increment_schema_conflict(server_a: &QueryServer, server_b: &
         .internal_search_all_uuid(t_uuid)
         .expect("Unable to access entry.");
 
-    assert!(e2.attribute_equality(Attribute::Class.as_ref(), &EntryClass::Conflict.into()));
+    assert!(e2.attribute_equality(Attribute::Class, &EntryClass::Conflict.into()));
 
     server_b_txn.commit().expect("Failed to commit");
     drop(server_a_txn);
@@ -1738,18 +1645,12 @@ async fn test_repl_increment_consumer_lagging_attributes(
     let t_uuid = Uuid::new_v4();
     assert!(server_b_txn
         .internal_create(vec![entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
-            (Attribute::Name.as_ref(), Value::new_iname("testperson1")),
-            (Attribute::Uuid.as_ref(), Value::Uuid(t_uuid)),
-            (
-                Attribute::Description.as_ref(),
-                Value::new_utf8s("testperson1")
-            ),
-            (
-                Attribute::DisplayName.as_ref(),
-                Value::new_utf8s("testperson1")
-            )
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Name, Value::new_iname("testperson1")),
+            (Attribute::Uuid, Value::Uuid(t_uuid)),
+            (Attribute::Description, Value::new_utf8s("testperson1")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson1"))
         ),])
         .is_ok());
 
@@ -1783,7 +1684,7 @@ async fn test_repl_increment_consumer_lagging_attributes(
         .internal_modify_uuid(
             t_uuid,
             &ModifyList::new_purge_and_set(
-                "displayname",
+                Attribute::DisplayName,
                 Value::Utf8("Updated displayname".to_string())
             )
         )
@@ -1846,6 +1747,136 @@ async fn test_repl_increment_consumer_lagging_attributes(
     drop(server_b_txn);
 }
 
+// Test two synchronised nodes where no changes occurred in a TS/RUV window.
+#[qs_pair_test]
+async fn test_repl_increment_consumer_ruv_trim_past_valid(
+    server_a: &QueryServer,
+    server_b: &QueryServer,
+) {
+    let ct = duration_from_epoch_now();
+
+    let mut server_a_txn = server_a.write(ct).await;
+    let mut server_b_txn = server_b.read().await;
+
+    assert!(repl_initialise(&mut server_b_txn, &mut server_a_txn)
+        .and_then(|_| server_a_txn.commit())
+        .is_ok());
+    drop(server_b_txn);
+
+    // Add an entry. We need at least one change on B, else it won't have anything
+    // to ship in it's RUV to A.
+    let ct = duration_from_epoch_now();
+    let mut server_b_txn = server_b.write(ct).await;
+    let t_uuid = Uuid::new_v4();
+    assert!(server_b_txn
+        .internal_create(vec![entry_init!(
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Name, Value::new_iname("testperson1")),
+            (Attribute::Uuid, Value::Uuid(t_uuid)),
+            (Attribute::Description, Value::new_utf8s("testperson1")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson1"))
+        ),])
+        .is_ok());
+
+    server_b_txn.commit().expect("Failed to commit");
+
+    // Now setup bidirectional replication. We only need to trigger B -> A
+    // here because that's all that has changes.
+    let ct = duration_from_epoch_now();
+    let mut server_a_txn = server_a.write(ct).await;
+    let mut server_b_txn = server_b.read().await;
+
+    trace!("========================================");
+    repl_incremental(&mut server_b_txn, &mut server_a_txn);
+
+    let e1 = server_a_txn
+        .internal_search_all_uuid(t_uuid)
+        .expect("Unable to access entry.");
+    let e2 = server_b_txn
+        .internal_search_all_uuid(t_uuid)
+        .expect("Unable to access entry.");
+
+    assert!(e1 == e2);
+
+    server_a_txn.commit().expect("Failed to commit");
+    drop(server_b_txn);
+
+    // Everything is consistent!
+
+    // Compare RUV's
+
+    // Push time ahead past a changelog max age.
+    let ct = ct + Duration::from_secs(CHANGELOG_MAX_AGE * 4);
+
+    // And setup the ruv trim. This is triggered by purge/reap tombstones.
+    // Apply this to both nodes so that they shift their RUV states.
+    let mut server_a_txn = server_a.write(ct).await;
+    assert!(server_a_txn.purge_tombstones().is_ok());
+    server_a_txn.commit().expect("Failed to commit");
+
+    let mut server_b_txn = server_b.write(ct).await;
+    assert!(server_b_txn.purge_tombstones().is_ok());
+    server_b_txn.commit().expect("Failed to commit");
+
+    // Now check incremental in both directions. Should show *no* changes
+    // needed (rather than an error/lagging).
+    let mut server_a_txn = server_a.write(ct).await;
+    let mut server_b_txn = server_b.read().await;
+
+    let a_ruv_range = server_a_txn
+        .consumer_get_state()
+        .expect("Unable to access RUV range");
+
+    trace!(?a_ruv_range);
+
+    let changes = server_b_txn
+        .supplier_provide_changes(a_ruv_range)
+        .expect("Unable to generate supplier changes");
+
+    assert!(matches!(
+        changes,
+        ReplIncrementalContext::NoChangesAvailable
+    ));
+
+    let result = server_a_txn
+        .consumer_apply_changes(&changes)
+        .expect("Unable to apply changes to consumer.");
+
+    assert!(matches!(result, ConsumerState::Ok));
+
+    drop(server_a_txn);
+    drop(server_b_txn);
+
+    // Reverse it!
+    let mut server_a_txn = server_a.read().await;
+    let mut server_b_txn = server_b.write(ct).await;
+
+    let b_ruv_range = server_b_txn
+        .consumer_get_state()
+        .expect("Unable to access RUV range");
+
+    trace!(?b_ruv_range);
+
+    let changes = server_a_txn
+        .supplier_provide_changes(b_ruv_range)
+        .expect("Unable to generate supplier changes");
+
+    assert!(matches!(
+        changes,
+        ReplIncrementalContext::NoChangesAvailable
+    ));
+
+    let result = server_b_txn
+        .consumer_apply_changes(&changes)
+        .expect("Unable to apply changes to consumer.");
+
+    assert!(matches!(result, ConsumerState::Ok));
+
+    drop(server_a_txn);
+    drop(server_b_txn);
+}
+
 // Test change of a domain name over incremental.
 #[qs_pair_test]
 async fn test_repl_increment_domain_rename(server_a: &QueryServer, server_b: &QueryServer) {
@@ -1876,19 +1907,13 @@ async fn test_repl_increment_domain_rename(server_a: &QueryServer, server_b: &Qu
     let t_uuid = Uuid::new_v4();
     assert!(server_b_txn
         .internal_create(vec![entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
-            (Attribute::Name.as_ref(), Value::new_iname("testperson1")),
-            (Attribute::Uuid.as_ref(), Value::Uuid(t_uuid)),
-            (
-                Attribute::Description.as_ref(),
-                Value::new_utf8s("testperson1")
-            ),
-            (
-                Attribute::DisplayName.as_ref(),
-                Value::new_utf8s("testperson1")
-            )
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Name, Value::new_iname("testperson1")),
+            (Attribute::Uuid, Value::Uuid(t_uuid)),
+            (Attribute::Description, Value::new_utf8s("testperson1")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson1"))
         ),])
         .is_ok());
     server_b_txn.commit().expect("Failed to commit");
@@ -1922,7 +1947,7 @@ async fn test_repl_increment_domain_rename(server_a: &QueryServer, server_b: &Qu
         .internal_search_all_uuid(UUID_ADMIN)
         .expect("Unable to access entry.");
 
-    let vx1 = e1.get_ava_single("spn").expect("spn not present");
+    let vx1 = e1.get_ava_single(Attribute::Spn).expect("spn not present");
     let ex1 = Value::new_spn_str("admin", "new.example.com");
     assert!(vx1 == ex1);
 
@@ -1949,7 +1974,7 @@ async fn test_repl_increment_domain_rename(server_a: &QueryServer, server_b: &Qu
         .internal_search_all_uuid(t_uuid)
         .expect("Unable to access entry.");
 
-    let vx2 = e2.get_ava_single("spn").expect("spn not present");
+    let vx2 = e2.get_ava_single(Attribute::Spn).expect("spn not present");
     let ex2 = Value::new_spn_str("testperson1", "new.example.com");
     assert!(vx2 == ex2);
 
@@ -1975,9 +2000,9 @@ async fn test_repl_increment_domain_rename(server_a: &QueryServer, server_b: &Qu
         .expect("Unable to access new entry.");
     let e2 = server_b_txn
         .internal_search_all_uuid(UUID_ADMIN)
-        .expect("Unable to access entry.");
+        .expect("get_ava_single(spn).");
 
-    let vx1 = e1.get_ava_single("spn").expect("spn not present");
+    let vx1 = e1.get_ava_single(Attribute::Spn).expect("spn not present");
     let ex1 = Value::new_spn_str("admin", "new.example.com");
     assert!(vx1 == ex1);
     assert!(e1 == e2);
@@ -1994,7 +2019,7 @@ async fn test_repl_increment_domain_rename(server_a: &QueryServer, server_b: &Qu
         .internal_search_all_uuid(t_uuid)
         .expect("Unable to access entry.");
 
-    let vx2 = e2.get_ava_single("spn").expect("spn not present");
+    let vx2 = e2.get_ava_single(Attribute::Spn).expect("spn not present");
     let ex2 = Value::new_spn_str("testperson1", "new.example.com");
     assert!(vx2 == ex2);
     assert!(e1 == e2);
@@ -2025,12 +2050,12 @@ async fn test_repl_increment_schema_dynamic(server_a: &QueryServer, server_b: &Q
     let s_uuid = Uuid::new_v4();
     assert!(server_a_txn
         .internal_create(vec![entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::ClassType.to_value()),
-            ("classname", EntryClass::TestClass.to_value()),
-            (Attribute::Uuid.as_ref(), Value::Uuid(s_uuid)),
-            ("description", Value::new_utf8s("Test Class")),
-            ("may", Value::new_iutf8("name"))
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::ClassType.to_value()),
+            (Attribute::ClassName, EntryClass::TestClass.to_value()),
+            (Attribute::Uuid, Value::Uuid(s_uuid)),
+            (Attribute::Description, Value::new_utf8s("Test Class")),
+            (Attribute::May, Attribute::Name.to_value())
         )])
         .is_ok());
     // Schema doesn't take effect til after a commit.
@@ -2041,9 +2066,9 @@ async fn test_repl_increment_schema_dynamic(server_a: &QueryServer, server_b: &Q
     let t_uuid = Uuid::new_v4();
     assert!(server_a_txn
         .internal_create(vec![entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::TestClass.to_value()),
-            (Attribute::Uuid.as_ref(), Value::Uuid(t_uuid))
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::TestClass.to_value()),
+            (Attribute::Uuid, Value::Uuid(t_uuid))
         )])
         .is_ok());
 
@@ -2080,12 +2105,842 @@ async fn test_repl_increment_schema_dynamic(server_a: &QueryServer, server_b: &Q
     drop(server_a_txn);
 }
 
+// Test memberof over replication boundaries.
+#[qs_pair_test]
+async fn test_repl_increment_memberof_basic(server_a: &QueryServer, server_b: &QueryServer) {
+    let ct = duration_from_epoch_now();
+
+    let mut server_a_txn = server_a.write(ct).await;
+    let mut server_b_txn = server_b.read().await;
+
+    assert!(repl_initialise(&mut server_b_txn, &mut server_a_txn)
+        .and_then(|_| server_a_txn.commit())
+        .is_ok());
+    drop(server_b_txn);
+
+    // Since memberof isn't replicated, we have to check that when a group with
+    // a member is sent over, it's re-calced on the other side.
+
+    let mut server_a_txn = server_a.write(duration_from_epoch_now()).await;
+    let t_uuid = Uuid::new_v4();
+    assert!(server_a_txn
+        .internal_create(vec![entry_init!(
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Name, Value::new_iname("testperson1")),
+            (Attribute::Uuid, Value::Uuid(t_uuid)),
+            (Attribute::Description, Value::new_utf8s("testperson1")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson1"))
+        ),])
+        .is_ok());
+
+    let g_uuid = Uuid::new_v4();
+    assert!(server_a_txn
+        .internal_create(vec![entry_init!(
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Group.to_value()),
+            (Attribute::Name, Value::new_iname("testgroup1")),
+            (Attribute::Uuid, Value::Uuid(g_uuid)),
+            (Attribute::Member, Value::Refer(t_uuid))
+        ),])
+        .is_ok());
+
+    server_a_txn.commit().expect("Failed to commit");
+
+    // Now replicated A -> B
+
+    let mut server_a_txn = server_a.read().await;
+    let mut server_b_txn = server_b.write(ct).await;
+
+    trace!("========================================");
+    repl_incremental(&mut server_a_txn, &mut server_b_txn);
+
+    let e1 = server_a_txn
+        .internal_search_all_uuid(g_uuid)
+        .expect("Unable to access new entry.");
+    let e2 = server_b_txn
+        .internal_search_all_uuid(g_uuid)
+        .expect("Unable to access entry.");
+
+    assert!(e1 == e2);
+
+    let e1 = server_a_txn
+        .internal_search_all_uuid(t_uuid)
+        .expect("Unable to access new entry.");
+    let e2 = server_b_txn
+        .internal_search_all_uuid(t_uuid)
+        .expect("Unable to access entry.");
+
+    assert!(e1 == e2);
+    assert!(e1.attribute_equality(Attribute::MemberOf, &PartialValue::Refer(g_uuid)));
+    // We should also check dyngroups too here :)
+    assert!(e1.attribute_equality(
+        Attribute::MemberOf,
+        &PartialValue::Refer(UUID_IDM_ALL_ACCOUNTS)
+    ));
+
+    server_b_txn.commit().expect("Failed to commit");
+    drop(server_a_txn);
+}
+
 // Test when a group has a member A, and then the group is conflicted, that when
-// group is moved to conflict the memberShip of A is removed.
+// group is moved to conflict the memberShip of A is removed. The conflict must be
+// a non group, or a group that doesn't have the member A.
+#[qs_pair_test]
+async fn test_repl_increment_memberof_conflict(server_a: &QueryServer, server_b: &QueryServer) {
+    let ct = duration_from_epoch_now();
+
+    let mut server_a_txn = server_a.write(ct).await;
+    let mut server_b_txn = server_b.read().await;
+
+    assert!(repl_initialise(&mut server_b_txn, &mut server_a_txn)
+        .and_then(|_| server_a_txn.commit())
+        .is_ok());
+    drop(server_b_txn);
+
+    // First, we need to create a group on b that will conflict
+    let mut server_b_txn = server_b.write(duration_from_epoch_now()).await;
+    let g_uuid = Uuid::new_v4();
+
+    assert!(server_b_txn
+        .internal_create(vec![entry_init!(
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Group.to_value()),
+            (Attribute::Name, Value::new_iname("testgroup_conflict")),
+            (Attribute::Uuid, Value::Uuid(g_uuid))
+        ),])
+        .is_ok());
+
+    server_b_txn.commit().expect("Failed to commit");
+
+    // Now on a, use the same uuid, make the user and a group as it's member.
+    let mut server_a_txn = server_a.write(duration_from_epoch_now()).await;
+    let t_uuid = Uuid::new_v4();
+    assert!(server_a_txn
+        .internal_create(vec![entry_init!(
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Name, Value::new_iname("testperson1")),
+            (Attribute::Uuid, Value::Uuid(t_uuid)),
+            (Attribute::Description, Value::new_utf8s("testperson1")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson1"))
+        ),])
+        .is_ok());
+
+    assert!(server_a_txn
+        .internal_create(vec![entry_init!(
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Group.to_value()),
+            (Attribute::Name, Value::new_iname("testgroup1")),
+            (Attribute::Uuid, Value::Uuid(g_uuid)),
+            (Attribute::Member, Value::Refer(t_uuid))
+        ),])
+        .is_ok());
+
+    server_a_txn.commit().expect("Failed to commit");
+
+    // Now do A -> B. B should show that the second group was a conflict and
+    // the membership drops.
+    let mut server_a_txn = server_a.read().await;
+    let mut server_b_txn = server_b.write(ct).await;
+
+    trace!("========================================");
+    repl_incremental(&mut server_a_txn, &mut server_b_txn);
+
+    let e = server_b_txn
+        .internal_search_all_uuid(g_uuid)
+        .expect("Unable to access entry.");
+    assert!(!e.attribute_equality(Attribute::Member, &PartialValue::Refer(t_uuid)));
+    assert!(e.attribute_equality(
+        Attribute::Name,
+        &PartialValue::new_iname("testgroup_conflict")
+    ));
+
+    let e = server_b_txn
+        .internal_search_all_uuid(t_uuid)
+        .expect("Unable to access entry.");
+    assert!(!e.attribute_equality(Attribute::MemberOf, &PartialValue::Refer(g_uuid)));
+
+    server_b_txn.commit().expect("Failed to commit");
+    drop(server_a_txn);
+
+    // Now B -> A. A will now reflect the conflict as well.
+    let mut server_b_txn = server_b.read().await;
+    let mut server_a_txn = server_a.write(ct).await;
+
+    trace!("========================================");
+    repl_incremental(&mut server_b_txn, &mut server_a_txn);
+
+    let e1 = server_a_txn
+        .internal_search_all_uuid(g_uuid)
+        .expect("Unable to access entry.");
+    let e2 = server_b_txn
+        .internal_search_all_uuid(g_uuid)
+        .expect("Unable to access entry.");
+
+    assert!(e1 == e2);
+    assert!(!e1.attribute_equality(Attribute::Member, &PartialValue::Refer(t_uuid)));
+    assert!(e1.attribute_equality(
+        Attribute::Name,
+        &PartialValue::new_iname("testgroup_conflict")
+    ));
+
+    let e1 = server_a_txn
+        .internal_search_all_uuid(t_uuid)
+        .expect("Unable to access entry.");
+    let e2 = server_b_txn
+        .internal_search_all_uuid(t_uuid)
+        .expect("Unable to access entry.");
+
+    assert!(e1 == e2);
+    assert!(!e1.attribute_equality(Attribute::MemberOf, &PartialValue::Refer(g_uuid)));
+
+    server_a_txn.commit().expect("Failed to commit");
+    drop(server_b_txn);
+}
 
 // Ref int deletes references when tombstone is replicated over. May need consumer
 // to have some extra groups that need cleanup
+#[qs_pair_test]
+async fn test_repl_increment_refint_tombstone(server_a: &QueryServer, server_b: &QueryServer) {
+    let ct = duration_from_epoch_now();
 
-// Test memberof over replication boundaries.
+    let mut server_a_txn = server_a.write(ct).await;
+    let mut server_b_txn = server_b.read().await;
+
+    assert!(repl_initialise(&mut server_b_txn, &mut server_a_txn)
+        .and_then(|_| server_a_txn.commit())
+        .is_ok());
+    drop(server_b_txn);
+
+    // Create a person / group on a. Don't add membership yet.
+    let mut server_a_txn = server_a.write(ct).await;
+    let t_uuid = Uuid::new_v4();
+    assert!(server_a_txn
+        .internal_create(vec![entry_init!(
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Name, Value::new_iname("testperson1")),
+            (Attribute::Uuid, Value::Uuid(t_uuid)),
+            (Attribute::Description, Value::new_utf8s("testperson1")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson1"))
+        ),])
+        .is_ok());
+
+    let g_uuid = Uuid::new_v4();
+    assert!(server_a_txn
+        .internal_create(vec![entry_init!(
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Group.to_value()),
+            (Attribute::Name, Value::new_iname("testgroup1")),
+            (Attribute::Uuid, Value::Uuid(g_uuid)) // Don't add the membership yet!
+                                                   // (Attribute::Member, Value::Refer(t_uuid))
+        ),])
+        .is_ok());
+
+    server_a_txn.commit().expect("Failed to commit");
+
+    // A -> B repl.
+    let ct = duration_from_epoch_now();
+    let mut server_a_txn = server_a.read().await;
+    let mut server_b_txn = server_b.write(ct).await;
+
+    trace!("========================================");
+    repl_incremental(&mut server_a_txn, &mut server_b_txn);
+
+    server_b_txn.commit().expect("Failed to commit");
+    drop(server_a_txn);
+
+    // On B, delete the person.
+    let ct = duration_from_epoch_now();
+    let mut server_b_txn = server_b.write(ct).await;
+    assert!(server_b_txn.internal_delete_uuid(t_uuid).is_ok());
+    server_b_txn.commit().expect("Failed to commit");
+
+    // On A, add person to group.
+    let ct = duration_from_epoch_now();
+    let mut server_a_txn = server_a.write(ct).await;
+    assert!(server_a_txn
+        .internal_modify_uuid(
+            g_uuid,
+            &ModifyList::new_purge_and_set(Attribute::Member, Value::Refer(t_uuid))
+        )
+        .is_ok());
+    server_a_txn.commit().expect("Failed to commit");
+
+    // A -> B - B should remove the reference.
+    let ct = duration_from_epoch_now();
+    let mut server_a_txn = server_a.read().await;
+    let mut server_b_txn = server_b.write(ct).await;
+
+    trace!("========================================");
+    repl_incremental(&mut server_a_txn, &mut server_b_txn);
+
+    // Assert on B that Member is now gone.
+    let e = server_b_txn
+        .internal_search_all_uuid(g_uuid)
+        .expect("Unable to access entry.");
+    assert!(!e.attribute_equality(Attribute::Member, &PartialValue::Refer(t_uuid)));
+
+    server_b_txn.commit().expect("Failed to commit");
+    drop(server_a_txn);
+
+    // B -> A - A should remove the reference, everything is consistent again.
+    let ct = duration_from_epoch_now();
+    let mut server_b_txn = server_b.read().await;
+    let mut server_a_txn = server_a.write(ct).await;
+
+    trace!("========================================");
+    repl_incremental(&mut server_b_txn, &mut server_a_txn);
+
+    let e1 = server_a_txn
+        .internal_search_all_uuid(g_uuid)
+        .expect("Unable to access entry.");
+    let e2 = server_b_txn
+        .internal_search_all_uuid(g_uuid)
+        .expect("Unable to access entry.");
+
+    let e1_cs = e1.get_changestate();
+    let e2_cs = e2.get_changestate();
+
+    assert!(e1_cs == e2_cs);
+
+    assert!(e1 == e2);
+    assert!(!e1.attribute_equality(Attribute::Member, &PartialValue::Refer(t_uuid)));
+
+    server_a_txn.commit().expect("Failed to commit");
+    drop(server_b_txn);
+}
+
+#[qs_pair_test]
+async fn test_repl_increment_refint_conflict(server_a: &QueryServer, server_b: &QueryServer) {
+    let mut server_a_txn = server_a.write(duration_from_epoch_now()).await;
+    let mut server_b_txn = server_b.read().await;
+
+    assert!(repl_initialise(&mut server_b_txn, &mut server_a_txn)
+        .and_then(|_| server_a_txn.commit())
+        .is_ok());
+    drop(server_b_txn);
+
+    // On B, create a conflicting person.
+    let mut server_b_txn = server_b.write(duration_from_epoch_now()).await;
+    let t_uuid = Uuid::new_v4();
+    assert!(server_b_txn
+        .internal_create(vec![entry_init!(
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Name, Value::new_iname("testperson_conflict")),
+            (Attribute::Uuid, Value::Uuid(t_uuid)),
+            (Attribute::Description, Value::new_utf8s("testperson1")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson1"))
+        ),])
+        .is_ok());
+    server_b_txn.commit().expect("Failed to commit");
+
+    // Create a person / group on a. Add person to group.
+    let mut server_a_txn = server_a.write(duration_from_epoch_now()).await;
+    assert!(server_a_txn
+        .internal_create(vec![entry_init!(
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Name, Value::new_iname("testperson1")),
+            (Attribute::Uuid, Value::Uuid(t_uuid)),
+            (Attribute::Description, Value::new_utf8s("testperson1")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson1"))
+        ),])
+        .is_ok());
+
+    let g_uuid = Uuid::new_v4();
+    assert!(server_a_txn
+        .internal_create(vec![entry_init!(
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Group.to_value()),
+            (Attribute::Name, Value::new_iname("testgroup1")),
+            (Attribute::Uuid, Value::Uuid(g_uuid)),
+            (Attribute::Member, Value::Refer(t_uuid))
+        ),])
+        .is_ok());
+
+    server_a_txn.commit().expect("Failed to commit");
+
+    // A -> B - B should remove the reference.
+    let mut server_a_txn = server_a.read().await;
+    let mut server_b_txn = server_b.write(duration_from_epoch_now()).await;
+
+    trace!("========================================");
+    repl_incremental(&mut server_a_txn, &mut server_b_txn);
+
+    // Note that in the case an entry conflicts we remove references to the entry that
+    // had the collision. This is because we don't know if our references are reflecting
+    // the true intent of the situation now.
+    //
+    // In this example, the users created on server A was intended to be a member of
+    // the group, but the user on server B *was not* intended to be a member. Therefore
+    // it's wrong that we retain the user from Server B *while* also the membership
+    // that was intended for the user on A.
+    let e = server_b_txn
+        .internal_search_all_uuid(g_uuid)
+        .expect("Unable to access entry.");
+    assert!(!e.attribute_equality(Attribute::Member, &PartialValue::Refer(t_uuid)));
+
+    server_b_txn.commit().expect("Failed to commit");
+    drop(server_a_txn);
+
+    // B -> A - A should remove the reference.
+    let mut server_b_txn = server_b.read().await;
+    let mut server_a_txn = server_a.write(duration_from_epoch_now()).await;
+
+    trace!("========================================");
+    repl_incremental(&mut server_b_txn, &mut server_a_txn);
+
+    let e1 = server_a_txn
+        .internal_search_all_uuid(g_uuid)
+        .expect("Unable to access entry.");
+    let e2 = server_b_txn
+        .internal_search_all_uuid(g_uuid)
+        .expect("Unable to access entry.");
+
+    let e1_cs = e1.get_changestate();
+    let e2_cs = e2.get_changestate();
+    assert!(e1_cs == e2_cs);
+
+    assert!(e1 == e2);
+    assert!(!e1.attribute_equality(Attribute::Member, &PartialValue::Refer(t_uuid)));
+
+    server_a_txn.commit().expect("Failed to commit");
+    drop(server_b_txn);
+}
+
+// Ref int when we transmit a delete over the boundary. This is the opposite order to
+// a previous test, where the delete is sent to the member holder first.
+#[qs_pair_test]
+async fn test_repl_increment_refint_delete_to_member_holder(
+    server_a: &QueryServer,
+    server_b: &QueryServer,
+) {
+    let ct = duration_from_epoch_now();
+
+    let mut server_a_txn = server_a.write(ct).await;
+    let mut server_b_txn = server_b.read().await;
+
+    assert!(repl_initialise(&mut server_b_txn, &mut server_a_txn)
+        .and_then(|_| server_a_txn.commit())
+        .is_ok());
+    drop(server_b_txn);
+
+    // Create a person / group on a. Don't add membership yet.
+    let mut server_a_txn = server_a.write(ct).await;
+    let t_uuid = Uuid::new_v4();
+    assert!(server_a_txn
+        .internal_create(vec![entry_init!(
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Name, Value::new_iname("testperson1")),
+            (Attribute::Uuid, Value::Uuid(t_uuid)),
+            (Attribute::Description, Value::new_utf8s("testperson1")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson1"))
+        ),])
+        .is_ok());
+
+    let g_uuid = Uuid::new_v4();
+    assert!(server_a_txn
+        .internal_create(vec![entry_init!(
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Group.to_value()),
+            (Attribute::Name, Value::new_iname("testgroup1")),
+            (Attribute::Uuid, Value::Uuid(g_uuid)) // Don't add the membership yet!
+                                                   // (Attribute::Member, Value::Refer(t_uuid))
+        ),])
+        .is_ok());
+
+    server_a_txn.commit().expect("Failed to commit");
+
+    // A -> B repl.
+    let ct = duration_from_epoch_now();
+    let mut server_a_txn = server_a.read().await;
+    let mut server_b_txn = server_b.write(ct).await;
+
+    trace!("========================================");
+    repl_incremental(&mut server_a_txn, &mut server_b_txn);
+
+    server_b_txn.commit().expect("Failed to commit");
+    drop(server_a_txn);
+
+    // On A, add person to group.
+    let ct = duration_from_epoch_now();
+    let mut server_a_txn = server_a.write(ct).await;
+    assert!(server_a_txn
+        .internal_modify_uuid(
+            g_uuid,
+            &ModifyList::new_purge_and_set(Attribute::Member, Value::Refer(t_uuid))
+        )
+        .is_ok());
+    server_a_txn.commit().expect("Failed to commit");
+
+    // On B, delete the person.
+    let ct = duration_from_epoch_now();
+    let mut server_b_txn = server_b.write(ct).await;
+    assert!(server_b_txn.internal_delete_uuid(t_uuid).is_ok());
+    server_b_txn.commit().expect("Failed to commit");
+
+    // B -> A - A should remove the reference, everything is consistent again.
+    let ct = duration_from_epoch_now();
+    let mut server_b_txn = server_b.read().await;
+    let mut server_a_txn = server_a.write(ct).await;
+
+    trace!("========================================");
+    repl_incremental(&mut server_b_txn, &mut server_a_txn);
+
+    let e = server_a_txn
+        .internal_search_all_uuid(g_uuid)
+        .expect("Unable to access entry.");
+    assert!(!e.attribute_equality(Attribute::Member, &PartialValue::Refer(t_uuid)));
+
+    server_a_txn.commit().expect("Failed to commit");
+    drop(server_b_txn);
+
+    // A -> B - Should just reflect what happened on A.
+    let ct = duration_from_epoch_now();
+    let mut server_a_txn = server_a.read().await;
+    let mut server_b_txn = server_b.write(ct).await;
+
+    trace!("========================================");
+    repl_incremental(&mut server_a_txn, &mut server_b_txn);
+
+    let e1 = server_a_txn
+        .internal_search_all_uuid(g_uuid)
+        .expect("Unable to access entry.");
+    let e2 = server_b_txn
+        .internal_search_all_uuid(g_uuid)
+        .expect("Unable to access entry.");
+
+    let e1_cs = e1.get_changestate();
+    let e2_cs = e2.get_changestate();
+
+    assert!(e1_cs == e2_cs);
+    assert!(e1 == e2);
+    assert!(!e1.attribute_equality(Attribute::Member, &PartialValue::Refer(t_uuid)));
+
+    server_b_txn.commit().expect("Failed to commit");
+    drop(server_a_txn);
+}
+
+// Test attrunique conflicts
+// Test ref-int when attrunique makes a conflict
+// Test memberof when attrunique makes a conflict
+#[qs_pair_test]
+async fn test_repl_increment_attrunique_conflict_basic(
+    server_a: &QueryServer,
+    server_b: &QueryServer,
+) {
+    let ct = duration_from_epoch_now();
+
+    let mut server_a_txn = server_a.write(ct).await;
+    let mut server_b_txn = server_b.read().await;
+
+    assert!(repl_initialise(&mut server_b_txn, &mut server_a_txn)
+        .and_then(|_| server_a_txn.commit())
+        .is_ok());
+    drop(server_b_txn);
+
+    let mut server_a_txn = server_a.write(duration_from_epoch_now()).await;
+
+    // To test memberof, we add a user who is MO A/B
+    let t_uuid = Uuid::new_v4();
+    assert!(server_a_txn
+        .internal_create(vec![entry_init!(
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Name, Value::new_iname("testperson1")),
+            (Attribute::Uuid, Value::Uuid(t_uuid)),
+            (Attribute::Description, Value::new_utf8s("testperson1")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson1"))
+        ),])
+        .is_ok());
+
+    let g_a_uuid = Uuid::new_v4();
+    assert!(server_a_txn
+        .internal_create(vec![entry_init!(
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Group.to_value()),
+            (Attribute::Name, Value::new_iname("testgroup_a")),
+            (Attribute::Uuid, Value::Uuid(g_a_uuid)),
+            (Attribute::Member, Value::Refer(t_uuid))
+        ),])
+        .is_ok());
+
+    let g_b_uuid = Uuid::new_v4();
+    assert!(server_a_txn
+        .internal_create(vec![entry_init!(
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Group.to_value()),
+            (Attribute::Name, Value::new_iname("testgroup_b")),
+            (Attribute::Uuid, Value::Uuid(g_b_uuid)),
+            (Attribute::Member, Value::Refer(t_uuid))
+        ),])
+        .is_ok());
+
+    // To test ref-int, we make a third group that has both a and b as members.
+    let g_c_uuid = Uuid::new_v4();
+    assert!(server_a_txn
+        .internal_create(vec![entry_init!(
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Group.to_value()),
+            (Attribute::Name, Value::new_iname("testgroup_c")),
+            (Attribute::Uuid, Value::Uuid(g_c_uuid)),
+            (Attribute::Member, Value::Refer(g_a_uuid)),
+            (Attribute::Member, Value::Refer(g_b_uuid))
+        ),])
+        .is_ok());
+
+    server_a_txn.commit().expect("Failed to commit");
+
+    // Now replicated A -> B
+
+    let mut server_a_txn = server_a.read().await;
+    let mut server_b_txn = server_b.write(duration_from_epoch_now()).await;
+
+    trace!("========================================");
+    repl_incremental(&mut server_a_txn, &mut server_b_txn);
+
+    let e1 = server_a_txn
+        .internal_search_all_uuid(g_a_uuid)
+        .expect("Unable to access new entry.");
+    let e2 = server_b_txn
+        .internal_search_all_uuid(g_a_uuid)
+        .expect("Unable to access entry.");
+
+    assert!(e1 == e2);
+
+    let e1 = server_a_txn
+        .internal_search_all_uuid(g_b_uuid)
+        .expect("Unable to access new entry.");
+    let e2 = server_b_txn
+        .internal_search_all_uuid(g_b_uuid)
+        .expect("Unable to access entry.");
+
+    assert!(e1 == e2);
+    server_b_txn.commit().expect("Failed to commit");
+    drop(server_a_txn);
+
+    // At this point both sides now have the groups. Now on each node we will rename them
+    // so that they conflict.
+
+    let mut server_a_txn = server_a.write(duration_from_epoch_now()).await;
+    assert!(server_a_txn
+        .internal_modify_uuid(
+            g_a_uuid,
+            &ModifyList::new_purge_and_set(Attribute::Name, Value::new_iname("name_conflict"))
+        )
+        .is_ok());
+    server_a_txn.commit().expect("Failed to commit");
+
+    let mut server_b_txn = server_b.write(duration_from_epoch_now()).await;
+    assert!(server_b_txn
+        .internal_modify_uuid(
+            g_b_uuid,
+            &ModifyList::new_purge_and_set(Attribute::Name, Value::new_iname("name_conflict"))
+        )
+        .is_ok());
+    server_b_txn.commit().expect("Failed to commit");
+
+    // Now each node has an entry, separate uuids, but a name that will violate attr
+    // unique on the next replicate.
+    //
+    // Order of replication doesn't matter here! Which ever one see's it first will
+    // conflict the entries. In this case, A will detect the attr unique violation
+    // and create the conflicts.
+    let mut server_b_txn = server_b.read().await;
+    let mut server_a_txn = server_a.write(duration_from_epoch_now()).await;
+
+    trace!("========================================");
+    repl_incremental(&mut server_b_txn, &mut server_a_txn);
+
+    // The conflict should now have occurred.
+    // Check both groups are conflicts.
+    let cnf_a = server_a_txn
+        .internal_search_conflict_uuid(g_a_uuid)
+        .expect("Unable to search conflict entries.")
+        .pop()
+        .expect("No conflict entries present");
+    assert!(cnf_a.get_ava_single_iname(Attribute::Name) == Some("name_conflict"));
+
+    let cnf_b = server_a_txn
+        .internal_search_conflict_uuid(g_b_uuid)
+        .expect("Unable to search conflict entries.")
+        .pop()
+        .expect("No conflict entries present");
+    assert!(cnf_b.get_ava_single_iname(Attribute::Name) == Some("name_conflict"));
+
+    // Check the person has MO A/B removed.
+    let e = server_a_txn
+        .internal_search_all_uuid(t_uuid)
+        .expect("Unable to access entry.");
+    assert!(!e.attribute_equality(Attribute::MemberOf, &PartialValue::Refer(g_a_uuid)));
+    assert!(!e.attribute_equality(Attribute::MemberOf, &PartialValue::Refer(g_b_uuid)));
+
+    // Check the group has M A/B removed.
+    let e = server_a_txn
+        .internal_search_all_uuid(g_c_uuid)
+        .expect("Unable to access entry.");
+    assert!(!e.attribute_equality(Attribute::Member, &PartialValue::Refer(g_a_uuid)));
+    assert!(!e.attribute_equality(Attribute::Member, &PartialValue::Refer(g_b_uuid)));
+
+    server_a_txn.commit().expect("Failed to commit");
+    drop(server_b_txn);
+
+    // Reverse it - The conflicts will now be sent back A -> B, meaning that
+    // everything is consistent once more.
+    let mut server_a_txn = server_a.read().await;
+    let mut server_b_txn = server_b.write(duration_from_epoch_now()).await;
+
+    trace!("========================================");
+    repl_incremental(&mut server_a_txn, &mut server_b_txn);
+
+    let cnf_a = server_b_txn
+        .internal_search_conflict_uuid(g_a_uuid)
+        .expect("Unable to search conflict entries.")
+        .pop()
+        .expect("No conflict entries present");
+    assert!(cnf_a.get_ava_single_iname(Attribute::Name) == Some("name_conflict"));
+
+    let cnf_b = server_b_txn
+        .internal_search_conflict_uuid(g_b_uuid)
+        .expect("Unable to search conflict entries.")
+        .pop()
+        .expect("No conflict entries present");
+    assert!(cnf_b.get_ava_single_iname(Attribute::Name) == Some("name_conflict"));
+
+    server_b_txn.commit().expect("Failed to commit");
+    drop(server_a_txn);
+}
+
+// Test a complex attr unique situation when the attrunique conflict would occur normally but is
+// skipped because the entry it is going to conflict against is actually a uuid conflict.
+
+#[qs_pair_test]
+async fn test_repl_increment_attrunique_conflict_complex(
+    server_a: &QueryServer,
+    server_b: &QueryServer,
+) {
+    let ct = duration_from_epoch_now();
+
+    let mut server_a_txn = server_a.write(ct).await;
+    let mut server_b_txn = server_b.read().await;
+
+    assert!(repl_initialise(&mut server_b_txn, &mut server_a_txn)
+        .and_then(|_| server_a_txn.commit())
+        .is_ok());
+    drop(server_b_txn);
+
+    let mut server_a_txn = server_a.write(duration_from_epoch_now()).await;
+
+    // Create two entries on A - The entry that will be an attrunique conflict
+    // and the entry that will UUID conflict to the second entry. The second entry
+    // should not attrunique conflict within server_a
+
+    let g_a_uuid = Uuid::new_v4();
+    assert!(server_a_txn
+        .internal_create(vec![entry_init!(
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Group.to_value()),
+            (Attribute::Name, Value::new_iname("name_conflict")),
+            (Attribute::Uuid, Value::Uuid(g_a_uuid))
+        ),])
+        .is_ok());
+
+    let g_b_uuid = Uuid::new_v4();
+    assert!(server_a_txn
+        .internal_create(vec![entry_init!(
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Group.to_value()),
+            (Attribute::Name, Value::new_iname("uuid_conflict")),
+            (Attribute::Uuid, Value::Uuid(g_b_uuid))
+        ),])
+        .is_ok());
+
+    server_a_txn.commit().expect("Failed to commit");
+
+    let mut server_b_txn = server_b.write(duration_from_epoch_now()).await;
+
+    // Create an entry on B that is a uuid conflict to the second entry on A. This entry
+    // should *also* have an attr conflict to name on the first entry from A.
+    assert!(server_b_txn
+        .internal_create(vec![entry_init!(
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Group.to_value()),
+            // Conflicting name
+            (Attribute::Name, Value::new_iname("name_conflict")),
+            // Conflicting uuid
+            (Attribute::Uuid, Value::Uuid(g_b_uuid))
+        ),])
+        .is_ok());
+
+    server_b_txn.commit().expect("Failed to commit");
+
+    // We have to replicate B -> A first. This is so that A will not load the conflict
+    // entry, and the entries g_a_uuid and g_b_uuid stay present.
+    let mut server_b_txn = server_b.read().await;
+    let mut server_a_txn = server_a.write(duration_from_epoch_now()).await;
+
+    trace!("========================================");
+    repl_incremental(&mut server_b_txn, &mut server_a_txn);
+
+    // Check these entries are still present and were NOT conflicted due to attrunique
+    let e = server_a_txn
+        .internal_search_all_uuid(g_a_uuid)
+        .expect("Unable to access entry.");
+    assert!(e.attribute_equality(Attribute::Name, &PartialValue::new_iname("name_conflict")));
+
+    let e = server_a_txn
+        .internal_search_all_uuid(g_b_uuid)
+        .expect("Unable to access entry.");
+    assert!(e.attribute_equality(Attribute::Name, &PartialValue::new_iname("uuid_conflict")));
+
+    // The other entry will not be conflicted here, since A is not the origin node.
+
+    server_a_txn.commit().expect("Failed to commit");
+    drop(server_b_txn);
+
+    // Replicate A -> B now. This will cause the entry to be persisted as a conflict
+    // as this is the origin node. We should end up with the two entries from
+    // server A remaining.
+    let mut server_a_txn = server_a.read().await;
+    let mut server_b_txn = server_b.write(duration_from_epoch_now()).await;
+
+    trace!("========================================");
+    repl_incremental(&mut server_a_txn, &mut server_b_txn);
+
+    // Check these entries are still present and were NOT conflicted due to attrunique
+    let e = server_b_txn
+        .internal_search_all_uuid(g_a_uuid)
+        .expect("Unable to access entry.");
+    assert!(e.attribute_equality(Attribute::Name, &PartialValue::new_iname("name_conflict")));
+
+    let e = server_b_txn
+        .internal_search_all_uuid(g_b_uuid)
+        .expect("Unable to access entry.");
+    assert!(e.attribute_equality(Attribute::Name, &PartialValue::new_iname("uuid_conflict")));
+
+    // Check the conflict was also now created.
+    let cnf_a = server_b_txn
+        .internal_search_conflict_uuid(g_b_uuid)
+        .expect("Unable to search conflict entries.")
+        .pop()
+        .expect("No conflict entries present");
+    assert!(cnf_a.get_ava_single_iname(Attribute::Name) == Some("name_conflict"));
+
+    server_b_txn.commit().expect("Failed to commit");
+    drop(server_a_txn);
+}
 
 // Test change of domain version over incremental.
+//
+// todo when I have domain version migrations working.

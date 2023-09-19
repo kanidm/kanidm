@@ -565,7 +565,7 @@ impl<'a> IdlArcSqliteTransaction for IdlArcSqliteWriteTransaction<'a> {
 }
 
 impl<'a> IdlArcSqliteWriteTransaction<'a> {
-    #[cfg(debug_assertions)]
+    #[cfg(any(test, debug_assertions))]
     #[instrument(level = "debug", name = "idl_arc_sqlite::clear_cache", skip_all)]
     pub fn clear_cache(&mut self) -> Result<(), OperationError> {
         // I'm not sure rn if I want to reload these? If we reload these we kind of
@@ -1095,7 +1095,7 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
         Ok(())
     }
 
-    pub fn create_idx(&self, attr: &str, itype: IndexType) -> Result<(), OperationError> {
+    pub fn create_idx(&self, attr: Attribute, itype: IndexType) -> Result<(), OperationError> {
         // We don't need to affect this, so pass it down.
         self.db.create_idx(attr, itype)
     }
@@ -1106,7 +1106,7 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
     /// specific situations.
     #[instrument(level = "trace", skip_all)]
     pub fn danger_purge_idxs(&mut self) -> Result<(), OperationError> {
-        error!("CLEARING CACHE");
+        warn!("CLEARING CACHE");
         self.db.danger_purge_idxs().map(|()| {
             self.idl_cache.clear();
             self.name_cache.clear();

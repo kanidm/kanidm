@@ -127,15 +127,15 @@ fn search_oauth2_filter_entry<'a>(
         IdentType::Internal | IdentType::Synch(_) => AccessResult::Ignore,
         IdentType::User(iuser) => {
             let contains_o2_rs = entry
-                .get_ava_as_iutf8(Attribute::Class.as_ref())
+                .get_ava_as_iutf8(Attribute::Class)
                 .map(|set| {
                     trace!(?set);
-                    set.contains("oauth2_resource_server")
+                    set.contains(&EntryClass::OAuth2ResourceServer.to_string())
                 })
                 .unwrap_or(false);
 
             let contains_o2_scope_member = entry
-                .get_ava_as_oauthscopemaps("oauth2_rs_scope_map")
+                .get_ava_as_oauthscopemaps(Attribute::OAuth2RsScopeMap)
                 .and_then(|maps| ident.get_memberof().map(|mo| (maps, mo)))
                 .map(|(maps, mo)| maps.keys().any(|k| mo.contains(k)))
                 .unwrap_or(false);
@@ -144,12 +144,12 @@ fn search_oauth2_filter_entry<'a>(
                 security_access!(entry = ?entry.get_uuid(), ident = ?iuser.entry.get_uuid2rdn(), "ident is a memberof a group granted an oauth2 scope by this entry");
 
                 return AccessResult::Allow(btreeset!(
-                    "class",
-                    "displayname",
-                    "uuid",
-                    "oauth2_rs_name",
-                    "oauth2_rs_origin",
-                    "oauth2_rs_origin_landing"
+                    ATTR_CLASS.clone(),
+                    ATTR_DISPLAYNAME.clone(),
+                    ATTR_UUID.clone(),
+                    ATTR_OAUTH2_RS_NAME.clone(),
+                    ATTR_OAUTH2_RS_ORIGIN.clone(),
+                    ATTR_OAUTH2_RS_ORIGIN_LANDING.clone()
                 ));
             }
             AccessResult::Ignore
@@ -167,19 +167,20 @@ fn search_sync_account_filter_entry<'a>(
             // Is the user a synced object?
             let is_user_sync_account = iuser
                 .entry
-                .get_ava_as_iutf8(Attribute::Class.as_ref())
+                .get_ava_as_iutf8(Attribute::Class)
                 .map(|set| {
                     trace!(?set);
-                    set.contains("sync_object") && set.contains("account")
+                    set.contains(&EntryClass::SyncObject.to_string())
+                        && set.contains(EntryClass::Account.into())
                 })
                 .unwrap_or(false);
 
             if is_user_sync_account {
                 let is_target_sync_account = entry
-                    .get_ava_as_iutf8(Attribute::Class.as_ref())
+                    .get_ava_as_iutf8(Attribute::Class)
                     .map(|set| {
                         trace!(?set);
-                        set.contains("sync_account")
+                        set.contains(&EntryClass::SyncAccount.to_string())
                     })
                     .unwrap_or(false);
 
@@ -188,7 +189,7 @@ fn search_sync_account_filter_entry<'a>(
                     let sync_uuid = entry.get_uuid();
                     let sync_source_match = iuser
                         .entry
-                        .get_ava_single_refer("sync_parent_uuid")
+                        .get_ava_single_refer(Attribute::SyncParentUuid)
                         .map(|sync_parent_uuid| sync_parent_uuid == sync_uuid)
                         .unwrap_or(false);
 
@@ -197,9 +198,9 @@ fn search_sync_account_filter_entry<'a>(
                         security_access!(entry = ?entry.get_uuid(), ident = ?iuser.entry.get_uuid2rdn(), "ident is a synchronsied account from this sync account");
 
                         return AccessResult::Allow(btreeset!(
-                            "class",
-                            "uuid",
-                            "sync_credential_portal"
+                            Attribute::Class.as_ref(),
+                            Attribute::Uuid.as_ref(),
+                            Attribute::SyncCredentialPortal.as_ref()
                         ));
                     }
                 }

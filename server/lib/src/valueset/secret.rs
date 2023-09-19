@@ -58,7 +58,7 @@ impl ValueSetT for ValueSetSecret {
         self.set.clear();
     }
 
-    fn remove(&mut self, _pv: &PartialValue) -> bool {
+    fn remove(&mut self, _pv: &PartialValue, _cid: &Cid) -> bool {
         false
     }
 

@@ -33,7 +33,7 @@ use crate::idm::delayed::{
 };
 use crate::idm::AuthState;
 use crate::prelude::*;
-use crate::value::Session;
+use crate::value::{Session, SessionState};
 use time::OffsetDateTime;
 
 use super::server::AccountPolicy;
@@ -893,6 +893,17 @@ impl AuthSession {
             State::Expired
         };
 
+        let session_expiry = match session.state {
+            SessionState::ExpiresAt(odt) => Some(odt),
+            SessionState::NeverExpires => None,
+            SessionState::RevokedAt(_) => {
+                security_error!(
+                    "Invalid State - Should not be possible to trigger re-auth on revoked session."
+                );
+                return (None, AuthState::Denied(ACCOUNT_EXPIRED.to_string()));
+            }
+        };
+
         match state {
             State::Proceed(handler) => {
                 let allow = handler.next_auth_allowed();
@@ -902,7 +913,7 @@ impl AuthSession {
                     issue,
                     intent: AuthIntent::Reauth {
                         session_id,
-                        session_expiry: session.expiry,
+                        session_expiry,
                     },
                     source,
                 };
@@ -1251,6 +1262,7 @@ mod tests {
 
     use crate::credential::totp::{Totp, TOTP_DEFAULT_STEP};
     use crate::credential::{BackupCodes, Credential};
+    use crate::idm::account::Account;
     use crate::idm::audit::AuditEvent;
     use crate::idm::authsession::{
         AuthSession, BAD_AUTH_TYPE_MSG, BAD_BACKUPCODE_MSG, BAD_PASSWORD_MSG, BAD_TOTP_MSG,
@@ -1288,7 +1300,7 @@ mod tests {
 
         let webauthn = create_webauthn();
 
-        let anon_account = entry_to_account!(E_ANONYMOUS_V1.clone());
+        let anon_account: Account = BUILTIN_ACCOUNT_ANONYMOUS_V1.clone().into();
 
         let (session, state) = AuthSession::new(
             anon_account,
@@ -1361,7 +1373,7 @@ mod tests {
     fn start_session_simple_password_mech(privileged: bool) -> UserAuthToken {
         let webauthn = create_webauthn();
         // create the ent
-        let mut account = entry_to_account!(E_ADMIN_V1.clone());
+        let mut account: Account = BUILTIN_ACCOUNT_ADMIN.clone().into();
         // manually load in a cred
         let p = CryptoPolicy::minimum();
         let cred = Credential::new_password_only(&p, "test_password").unwrap();
@@ -1463,7 +1475,7 @@ mod tests {
         let jws_signer = create_jwt_signer();
         let webauthn = create_webauthn();
         // create the ent
-        let mut account = entry_to_account!(E_ADMIN_V1.clone());
+        let mut account: Account = BUILTIN_ACCOUNT_ADMIN.clone().into();
         // manually load in a cred
         let p = CryptoPolicy::minimum();
         let cred = Credential::new_password_only(&p, "list@no3IBTyqHu$bad").unwrap();
@@ -1566,7 +1578,7 @@ mod tests {
         let webauthn = create_webauthn();
         let jws_signer = create_jwt_signer();
         // create the ent
-        let mut account = entry_to_account!(E_ADMIN_V1);
+        let mut account: Account = BUILTIN_ACCOUNT_ADMIN.clone().into();
 
         // Setup a fake time stamp for consistency.
         let ts = Duration::from_secs(12345);
@@ -1756,7 +1768,7 @@ mod tests {
         let webauthn = create_webauthn();
         let jws_signer = create_jwt_signer();
         // create the ent
-        let mut account = entry_to_account!(E_ADMIN_V1);
+        let mut account: Account = BUILTIN_ACCOUNT_ADMIN.clone().into();
 
         // Setup a fake time stamp for consistency.
         let ts = Duration::from_secs(12345);
@@ -1933,7 +1945,7 @@ mod tests {
         let (audit_tx, mut audit_rx) = unbounded();
         let ts = duration_from_epoch_now();
         // create the ent
-        let mut account = entry_to_account!(E_ADMIN_V1.clone());
+        let mut account: Account = BUILTIN_ACCOUNT_ADMIN.clone().into();
 
         let (webauthn, mut wa, wan_cred) = setup_webauthn_passkey(account.name.as_str());
         let jws_signer = create_jwt_signer();
@@ -2092,7 +2104,7 @@ mod tests {
         let (audit_tx, mut audit_rx) = unbounded();
         let ts = duration_from_epoch_now();
         // create the ent
-        let mut account = entry_to_account!(E_ADMIN_V1);
+        let mut account: Account = BUILTIN_ACCOUNT_ADMIN.clone().into();
 
         let (webauthn, mut wa, wan_cred) = setup_webauthn_securitykey(account.name.as_str());
         let jws_signer = create_jwt_signer();
@@ -2299,7 +2311,7 @@ mod tests {
         let (audit_tx, mut audit_rx) = unbounded();
         let ts = duration_from_epoch_now();
         // create the ent
-        let mut account = entry_to_account!(E_ADMIN_V1);
+        let mut account: Account = BUILTIN_ACCOUNT_ADMIN.clone().into();
 
         let (webauthn, mut wa, wan_cred) = setup_webauthn_securitykey(account.name.as_str());
         let jws_signer = create_jwt_signer();
@@ -2586,7 +2598,7 @@ mod tests {
         let jws_signer = create_jwt_signer();
         let webauthn = create_webauthn();
         // create the ent
-        let mut account = entry_to_account!(E_ADMIN_V1);
+        let mut account: Account = BUILTIN_ACCOUNT_ADMIN.clone().into();
 
         // Setup a fake time stamp for consistency.
         let ts = Duration::from_secs(12345);
@@ -2809,7 +2821,7 @@ mod tests {
         let webauthn = create_webauthn();
         let jws_signer = create_jwt_signer();
         // create the ent
-        let mut account = entry_to_account!(E_ADMIN_V1);
+        let mut account: Account = BUILTIN_ACCOUNT_ADMIN.clone().into();
 
         // Setup a fake time stamp for consistency.
         let ts = Duration::from_secs(12345);

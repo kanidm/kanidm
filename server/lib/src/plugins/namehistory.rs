@@ -16,17 +16,23 @@ lazy_static! {
     // it contains all the partialvalues used to match against an Entry's class,
     // we just need a partialvalue to match in order to target the entry
     static ref CLASSES_TO_UPDATE: [PartialValue; 1] = [PartialValue::new_iutf8(EntryClass::Account.into())];
-    static ref HISTORY_ATTRIBUTES: [&'static str;1] = ["name"];
+}
+
+const HISTORY_ATTRIBUTES: [Attribute; 1] = [Attribute::Name];
+
+#[test]
+fn test_history_attribute() {
+    assert_eq!(NameHistory::get_ava_name(Attribute::Name), "name_history");
 }
 
 impl NameHistory {
     fn is_entry_to_update<VALUE, STATE>(entry: &mut Entry<VALUE, STATE>) -> bool {
         CLASSES_TO_UPDATE
             .iter()
-            .any(|pv| entry.attribute_equality(Attribute::Class.as_ref(), pv))
+            .any(|pv| entry.attribute_equality(Attribute::Class, pv))
     }
 
-    fn get_ava_name(history_attr: &str) -> String {
+    fn get_ava_name(history_attr: Attribute) -> String {
         format!("{}_history", history_attr)
     }
 
@@ -38,7 +44,7 @@ impl NameHistory {
         for (pre, post) in pre_cand.iter().zip(cand) {
             // here we check if the current entry has at least one of the classes we intend to target
             if Self::is_entry_to_update(post) {
-                for history_attr in HISTORY_ATTRIBUTES.iter() {
+                for history_attr in HISTORY_ATTRIBUTES.into_iter() {
                     let pre_name_option = pre.get_ava_single(history_attr);
                     let post_name_option = post.get_ava_single(history_attr);
                     if let (Some(pre_name), Some(post_name)) = (pre_name_option, post_name_option) {
@@ -49,7 +55,7 @@ impl NameHistory {
                             // as of now we're interested just in the name so we use Iname
                             match post_name {
                                 Value::Iname(n) => post.add_ava_if_not_exist(
-                                    &ava_name,
+                                    ava_name.try_into()?,
                                     Value::AuditLogString(cid.clone(), n),
                                 ),
                                 _ => return Err(OperationError::InvalidValueState),
@@ -68,12 +74,12 @@ impl NameHistory {
     ) -> Result<(), OperationError> {
         for cand in cands.iter_mut() {
             if Self::is_entry_to_update(cand) {
-                for history_attr in HISTORY_ATTRIBUTES.iter() {
+                for history_attr in HISTORY_ATTRIBUTES.into_iter() {
                     if let Some(name) = cand.get_ava_single(history_attr) {
                         let ava_name = Self::get_ava_name(history_attr);
                         match name {
                             Value::Iname(n) => cand.add_ava_if_not_exist(
-                                &ava_name,
+                                ava_name.try_into()?,
                                 Value::AuditLogString(cid.clone(), n),
                             ),
                             _ => return Err(OperationError::InvalidValueState),
@@ -128,6 +134,7 @@ mod tests {
     use crate::prelude::{uuid, EntryClass};
     use crate::repl::cid::Cid;
     use crate::value::Value;
+    use crate::valueset::AUDIT_LOG_STRING_CAPACITY;
 
     #[test]
     fn name_purge_and_set() {
@@ -137,28 +144,19 @@ mod tests {
             Duration::new(20, 2),
         );
         let ea = entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::PosixAccount.to_value()),
+            (Attribute::Name, Value::new_iname("old_name")),
             (
-                Attribute::Class.as_ref(),
-                EntryClass::PosixAccount.to_value()
-            ),
-            (Attribute::Name.as_ref(), Value::new_iname("old_name")),
-            (
-                Attribute::Uuid.as_ref(),
+                Attribute::Uuid,
                 Value::Uuid(uuid!("d2b496bd-8493-47b7-8142-f568b5cf47ee"))
             ),
             (
-                Attribute::NameHistory.as_ref(),
+                Attribute::NameHistory,
                 Value::new_audit_log_string((cid.clone(), "old_name".to_string())).unwrap()
             ),
-            (
-                Attribute::Description.as_ref(),
-                Value::new_utf8s("testperson")
-            ),
-            (
-                Attribute::DisplayName.as_ref(),
-                Value::new_utf8s("old name person")
-            )
+            (Attribute::Description, Value::new_utf8s("testperson")),
+            (Attribute::DisplayName, Value::new_utf8s("old name person"))
         );
         let preload = vec![ea];
         run_modify_test!(
@@ -166,8 +164,8 @@ mod tests {
             preload,
             filter!(f_eq(Attribute::Name, PartialValue::new_iname("old_name"))),
             modlist!([
-                m_purge("name"),
-                m_pres("name", &Value::new_iname("new_name_1"))
+                m_purge(Attribute::Name),
+                m_pres(Attribute::Name, &Value::new_iname("new_name_1"))
             ]),
             None,
             |_| {},
@@ -176,7 +174,7 @@ mod tests {
                     .internal_search_uuid(uuid!("d2b496bd-8493-47b7-8142-f568b5cf47ee"))
                     .expect("failed to get entry");
                 let c = e
-                    .get_ava_set(Attribute::NameHistory.as_ref())
+                    .get_ava_set(Attribute::NameHistory)
                     .expect("failed to get primary cred.");
                 trace!("{:?}", c.clone());
                 assert!(
@@ -191,24 +189,15 @@ mod tests {
     fn name_creation() {
         // Add another uuid to a type
         let ea = entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::PosixAccount.to_value()),
+            (Attribute::Name, Value::new_iname("old_name")),
             (
-                Attribute::Class.as_ref(),
-                EntryClass::PosixAccount.to_value()
-            ),
-            (Attribute::Name.as_ref(), Value::new_iname("old_name")),
-            (
-                "uuid",
+                Attribute::Uuid,
                 Value::Uuid(uuid!("d2b496bd-8493-47b7-8142-f568b5cf47e1"))
             ),
-            (
-                Attribute::Description.as_ref(),
-                Value::new_utf8s("testperson")
-            ),
-            (
-                Attribute::DisplayName.as_ref(),
-                Value::new_utf8s("old name person")
-            )
+            (Attribute::Description, Value::new_utf8s("testperson")),
+            (Attribute::DisplayName, Value::new_utf8s("old name person"))
         );
         let preload = Vec::new();
         let create = vec![ea];
@@ -223,7 +212,7 @@ mod tests {
                     .expect("failed to get entry");
                 trace!("{:?}", e.get_ava());
                 let name_history = e
-                    .get_ava_set(Attribute::NameHistory.as_ref())
+                    .get_ava_set(Attribute::NameHistory)
                     .expect("failed to get name_history ava");
 
                 assert!(name_history.contains(&PartialValue::new_utf8s("old_name")))
@@ -234,38 +223,29 @@ mod tests {
     #[test]
     fn name_purge_and_set_with_filled_history() {
         let mut cids: Vec<Cid> = Vec::new();
-        for i in 1..8 {
+        for i in 1..AUDIT_LOG_STRING_CAPACITY {
             cids.push(Cid::new(
                 uuid!("d2b496bd-8493-47b7-8142-f568b5cf47e1"),
-                Duration::new(20 + i, 0),
+                Duration::new(20 + i as u64, 0),
             ))
         }
         // Add another uuid to a type
         let mut ea = entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::PosixAccount.to_value()),
+            (Attribute::Name, Value::new_iname("old_name8")),
             (
-                Attribute::Class.as_ref(),
-                EntryClass::PosixAccount.to_value()
-            ),
-            (Attribute::Name.as_ref(), Value::new_iname("old_name8")),
-            (
-                "uuid",
+                Attribute::Uuid,
                 Value::Uuid(uuid!("d2b496bd-8493-47b7-8142-f568b5cf47ee"))
             ),
-            (
-                Attribute::Description.as_ref(),
-                Value::new_utf8s("testperson")
-            ),
-            (
-                Attribute::DisplayName.as_ref(),
-                Value::new_utf8s("old name person")
-            )
+            (Attribute::Description, Value::new_utf8s("testperson")),
+            (Attribute::DisplayName, Value::new_utf8s("old name person"))
         );
         for (i, cid) in cids.iter().enumerate() {
             let index = 1 + i;
             let name = format!("old_name{index}");
             ea.add_ava(
-                Attribute::NameHistory.as_ref(),
+                Attribute::NameHistory,
                 Value::AuditLogString(cid.clone(), name),
             )
         }
@@ -275,8 +255,8 @@ mod tests {
             preload,
             filter!(f_eq(Attribute::Name, PartialValue::new_iname("old_name8"))),
             modlist!([
-                m_purge("name"),
-                m_pres("name", &Value::new_iname("new_name"))
+                m_purge(Attribute::Name),
+                m_pres(Attribute::Name, &Value::new_iname("new_name"))
             ]),
             None,
             |_| {},
@@ -284,10 +264,10 @@ mod tests {
                 let e = qs
                     .internal_search_uuid(uuid!("d2b496bd-8493-47b7-8142-f568b5cf47ee"))
                     .expect("failed to get entry");
-                trace!("{:?}", e.get_ava());
                 let c = e
-                    .get_ava_set(Attribute::NameHistory.as_ref())
+                    .get_ava_set(Attribute::NameHistory)
                     .expect("failed to get name_history ava :/");
+                trace!(?c);
                 assert!(
                     !c.contains(&PartialValue::new_utf8s("old_name1"))
                         && c.contains(&PartialValue::new_utf8s("new_name"))

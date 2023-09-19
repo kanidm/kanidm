@@ -34,7 +34,13 @@ async fn main() -> ExitCode {
         println!("ssh_authorizedkeys {}", env!("KANIDM_PKG_VERSION"));
         return ExitCode::SUCCESS;
     }
+
     sketching::tracing_subscriber::fmt::init();
+
+    if opt.account_id.is_none() {
+        error!("No account specified, quitting!");
+        return ExitCode::FAILURE;
+    }
 
     debug!("Starting authorized keys tool ...");
 
@@ -60,7 +66,8 @@ async fn main() -> ExitCode {
         );
         return ExitCode::FAILURE;
     }
-    let req = ClientRequest::SshKey(opt.account_id);
+    // safe because we've already thrown an error if it's not there
+    let req = ClientRequest::SshKey(opt.account_id.unwrap_or("".to_string()));
 
     match call_daemon(cfg.sock_path.as_str(), req, cfg.unix_sock_timeout).await {
         Ok(r) => match r {

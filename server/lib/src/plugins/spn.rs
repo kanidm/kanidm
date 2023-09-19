@@ -1,5 +1,6 @@
 // Generate and manage spn's for all entries in the domain. Also deals with
 // the infrequent - but possible - case where a domain is renamed.
+use std::collections::BTreeSet;
 use std::iter::once;
 use std::sync::Arc;
 
@@ -77,6 +78,7 @@ impl Plugin for Spn {
         qs: &mut QueryServerWriteTransaction,
         pre_cand: &[Arc<EntrySealedCommitted>],
         cand: &[EntrySealedCommitted],
+        _conflict_uuids: &BTreeSet<Uuid>,
     ) -> Result<(), OperationError> {
         Self::post_modify_inner(qs, pre_cand, cand)
     }
@@ -115,7 +117,7 @@ impl Plugin for Spn {
                 r.push(Err(ConsistencyError::InvalidSpn(e.get_id())));
                 continue;
             };
-            match e.get_ava_single("spn") {
+            match e.get_ava_single(Attribute::Spn) {
                 Some(r_spn) => {
                     trace!("verify spn: s {:?} == ex {:?} ?", r_spn, g_spn);
                     if r_spn != g_spn {
@@ -147,8 +149,8 @@ impl Spn {
         let domain_name = qs.get_domain_name();
 
         for ent in cand.iter_mut() {
-            if ent.attribute_equality(Attribute::Class.as_ref(), &EntryClass::Group.into())
-                || ent.attribute_equality(Attribute::Class.as_ref(), &EntryClass::Account.into())
+            if ent.attribute_equality(Attribute::Class, &EntryClass::Group.into())
+                || ent.attribute_equality(Attribute::Class, &EntryClass::Account.into())
             {
                 let spn = ent
                     .generate_spn(domain_name)
@@ -160,8 +162,13 @@ impl Spn {
                         );
                         e
                     })?;
-                trace!("plugin_spn: set spn to {:?}", spn);
-                ent.set_ava("spn", once(spn));
+                trace!(
+                    "plugin_{}: set {} to {:?}",
+                    Attribute::Spn,
+                    Attribute::Spn,
+                    spn
+                );
+                ent.set_ava(Attribute::Spn, once(spn));
             }
         }
         Ok(())
@@ -175,9 +182,9 @@ impl Spn {
         // On modify, if changing domain_name on UUID_DOMAIN_INFO trigger the spn regen
 
         let domain_name_changed = cand.iter().zip(pre_cand.iter()).find_map(|(post, pre)| {
-            let domain_name = post.get_ava_single("domain_name");
-            if post.attribute_equality(Attribute::Uuid.as_ref(), &PVUUID_DOMAIN_INFO)
-                && domain_name != pre.get_ava_single("domain_name")
+            let domain_name = post.get_ava_single(Attribute::DomainName);
+            if post.attribute_equality(Attribute::Uuid, &PVUUID_DOMAIN_INFO)
+                && domain_name != pre.get_ava_single(Attribute::DomainName)
             {
                 domain_name
             } else {
@@ -207,7 +214,7 @@ impl Spn {
                 f_eq(Attribute::Class, EntryClass::Group.into()),
                 f_eq(Attribute::Class, EntryClass::Account.into()),
             ])),
-            &modlist!([m_purge("spn")]),
+            &modlist!([m_purge(Attribute::Spn)]),
         )
     }
 }
@@ -263,7 +270,7 @@ mod tests {
             Ok(()),
             preload,
             filter!(f_eq(Attribute::Name, PartialValue::new_iname("testperson"))),
-            modlist!([m_purge("spn")]),
+            modlist!([m_purge(Attribute::Spn)]),
             None,
             |_| {},
             |_| {}
@@ -318,8 +325,11 @@ mod tests {
             preload,
             filter!(f_eq(Attribute::Name, PartialValue::new_iname("testperson"))),
             modlist!([
-                m_purge("spn"),
-                m_pres("spn", &Value::new_spn_str("invalid", "spn"))
+                m_purge(Attribute::Spn),
+                m_pres(
+                    Attribute::Spn,
+                    &Value::new_spn_str("invalid", Attribute::Spn.as_ref())
+                )
             ]),
             None,
             |_| {},
@@ -339,7 +349,7 @@ mod tests {
             .internal_search_uuid(UUID_ADMIN)
             .expect("must not fail");
 
-        let e_pre_spn = e_pre.get_ava_single("spn").expect("must not fail");
+        let e_pre_spn = e_pre.get_ava_single(Attribute::Spn).expect("must not fail");
         assert!(e_pre_spn == ex1);
 
         // trigger the domain_name change (this will be a cli option to the server
@@ -354,7 +364,9 @@ mod tests {
             .internal_search_uuid(UUID_ADMIN)
             .expect("must not fail");
 
-        let e_post_spn = e_post.get_ava_single("spn").expect("must not fail");
+        let e_post_spn = e_post
+            .get_ava_single(Attribute::Spn)
+            .expect("must not fail");
         debug!("{:?}", e_post_spn);
         debug!("{:?}", ex2);
         assert!(e_post_spn == ex2);

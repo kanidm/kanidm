@@ -5,6 +5,7 @@
 
 #![allow(non_upper_case_globals)]
 
+use std::cmp::Ordering;
 use std::collections::BTreeSet;
 use std::convert::TryFrom;
 use std::fmt;
@@ -561,7 +562,7 @@ impl PartialValue {
 
     pub fn new_spn_s(s: &str) -> Option<Self> {
         SPN_RE.captures(s).and_then(|caps| {
-            let name = match caps.name("name") {
+            let name = match caps.name(Attribute::Name.as_ref()) {
                 Some(v) => v.as_str().to_string(),
                 None => return None,
             };
@@ -817,10 +818,54 @@ impl TryInto<UatPurposeStatus> for SessionScope {
     }
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum SessionState {
+    // IMPORTANT - this order allows sorting by
+    // lowest to highest, we always want to take
+    // the lowest value!
+    RevokedAt(Cid),
+    ExpiresAt(OffsetDateTime),
+    NeverExpires,
+}
+
+impl PartialOrd for SessionState {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for SessionState {
+    fn cmp(&self, other: &Self) -> Ordering {
+        // We need this to order by highest -> least which represents
+        // priority amongst these elements.
+        match (self, other) {
+            // RevokedAt with the earliest time = highest
+            (SessionState::RevokedAt(c_self), SessionState::RevokedAt(c_other)) => {
+                // We need to reverse this - we need the "lower value" to take priority.
+                // This is similar to tombstones where the earliest CID must be persisted
+                c_other.cmp(c_self)
+            }
+            (SessionState::RevokedAt(_), _) => Ordering::Greater,
+            (_, SessionState::RevokedAt(_)) => Ordering::Less,
+            // ExpiresAt with a greater time = higher
+            (SessionState::ExpiresAt(e_self), SessionState::ExpiresAt(e_other)) => {
+                // Keep the "newer" expiry. This can be because a session was extended
+                // by some mechanism, generally in oauth2.
+                e_self.cmp(e_other)
+            }
+            (SessionState::ExpiresAt(_), _) => Ordering::Greater,
+            (_, SessionState::ExpiresAt(_)) => Ordering::Less,
+            // NeverExpires = least.
+            (SessionState::NeverExpires, SessionState::NeverExpires) => Ordering::Equal,
+        }
+    }
+}
+
 #[derive(Clone, PartialEq, Eq)]
 pub struct Session {
     pub label: String,
-    pub expiry: Option<OffsetDateTime>,
+    // pub expiry: Option<OffsetDateTime>,
+    pub state: SessionState,
     pub issued_at: OffsetDateTime,
     pub issued_by: IdentityId,
     pub cred_id: Uuid,
@@ -834,13 +879,14 @@ impl fmt::Debug for Session {
             IdentityId::Synch(u) => format!("Synch - {}", uuid_to_proto_string(u)),
             IdentityId::Internal => "Internal".to_string(),
         };
-        let expiry = match self.expiry {
-            Some(e) => e.to_string(),
-            None => "never".to_string(),
+        let expiry = match self.state {
+            SessionState::ExpiresAt(e) => e.to_string(),
+            SessionState::NeverExpires => "never".to_string(),
+            SessionState::RevokedAt(_) => "revoked".to_string(),
         };
         write!(
             f,
-            "expiry: {}, issued at: {}, issued by: {}, credential id: {}, scope: {:?}",
+            "state: {}, issued at: {}, issued by: {}, credential id: {}, scope: {:?}",
             expiry, self.issued_at, issuer, self.cred_id, self.scope
         )
     }
@@ -849,7 +895,8 @@ impl fmt::Debug for Session {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Oauth2Session {
     pub parent: Uuid,
-    pub expiry: Option<OffsetDateTime>,
+    // pub expiry: Option<OffsetDateTime>,
+    pub state: SessionState,
     pub issued_at: OffsetDateTime,
     pub rs_uuid: Uuid,
 }
@@ -1222,7 +1269,7 @@ impl Value {
 
     pub fn new_spn_parse(s: &str) -> Option<Self> {
         SPN_RE.captures(s).and_then(|caps| {
-            let name = match caps.name("name") {
+            let name = match caps.name(Attribute::Name.as_ref()) {
                 Some(v) => v.as_str().to_string(),
                 None => return None,
             };

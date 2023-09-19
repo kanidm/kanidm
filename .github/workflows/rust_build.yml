@@ -18,7 +18,32 @@ jobs:
   rust_build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+      - name: Setup sccache
+        uses: mozilla-actions/sccache-action@v0.0.3
+        with:
+          version: "v0.4.2"
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update && \
+          sudo apt-get install -y \
+            libpam0g-dev \
+            libudev-dev \
+            libssl-dev
+
+      - name: "Build the workspace"
+        run: cargo build --workspace
+      - name: "Build the idv-tui feature kanidm binary"
+        run: cargo build --bin kanidm --features idv-tui
+      - name: "Run cargo test"
+        run: cargo test
+  run_release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
       - name: Setup sccache
@@ -33,8 +58,8 @@ jobs:
             libpam0g-dev \
             libudev-dev \
             libssl-dev \
-            libsqlite3-dev
-
-      - run: cargo build --workspace
-      - run: cargo build --bin kanidm --features idv-tui
-      - run: cargo test
+            ripgrep
+      - name: "Run the release build test script"
+        env:
+          BUILD_MODE: release
+        run: ./scripts/test_run_release_server.sh

@@ -38,6 +38,7 @@ pub struct Oauth2App {
     state: State,
 }
 
+#[derive(Debug)]
 pub enum Oauth2Msg {
     LoginRequired,
     LoginProceed,
@@ -95,6 +96,9 @@ impl Oauth2App {
             Some(authreq_jsvalue),
         )
         .await?;
+
+        #[cfg(debug_assertions)]
+        console::debug!(&format!("fetch_authreq {}", status));
 
         if status == 200 {
             let state: AuthorisationResponse = serde_wasm_bindgen::from_value(value)
@@ -260,7 +264,7 @@ impl Component for Oauth2App {
 
     fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
         #[cfg(debug_assertions)]
-        console::debug!("oauth2::update");
+        console::debug!(&format!("oauth2::update {:?}", msg));
 
         match msg {
             Oauth2Msg::LoginRequired => {
@@ -343,14 +347,13 @@ impl Component for Oauth2App {
                 true
             }
             Oauth2Msg::AccessDenied { kopid } => {
-                console::error!(format!("{:?}", kopid).as_str());
+                console::error!(format!("opid - {:?}", kopid).as_str());
                 self.state = State::AccessDenied(kopid);
                 true
             }
             Oauth2Msg::Error { emsg, kopid } => {
                 self.state = State::ErrInvalidRequest;
-                console::error!(format!("{:?}", kopid).as_str());
-                console::error!(emsg.as_str());
+                console::error!(format!("opid - {:?}, msg - {}", kopid, emsg).as_str());
                 true
             }
             Oauth2Msg::Redirect(loc) => {

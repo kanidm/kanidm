@@ -1,6 +1,6 @@
 use crate::common::OpType;
 
-use crate::{AuthSessionExpiryOpt, PrivilegedSessionExpiryOpt};
+use crate::{handle_client_error, AuthSessionExpiryOpt, PrivilegedSessionExpiryOpt};
 
 impl AuthSessionExpiryOpt {
     pub fn debug(&self) -> bool {
@@ -20,7 +20,7 @@ impl AuthSessionExpiryOpt {
                             "The current system auth session expiry time is: {exp_time} seconds."
                         );
                     }
-                    Err(e) => eprintln!("{:?}", e),
+                    Err(e) => handle_client_error(e, &copt.output_mode),
                 }
             }
             AuthSessionExpiryOpt::Set { copt, expiry } => {
@@ -30,7 +30,7 @@ impl AuthSessionExpiryOpt {
                         println!("The system auth session expiry has been successfully updated.")
                     }
 
-                    Err(e) => eprintln!("{:?}", e),
+                    Err(e) => handle_client_error(e, &copt.output_mode),
                 }
             }
         }
@@ -55,7 +55,7 @@ impl PrivilegedSessionExpiryOpt {
                             "The current system auth privilege expiry time is: {exp_time} seconds."
                         );
                     }
-                    Err(e) => eprintln!("{:?}", e),
+                    Err(e) => handle_client_error(e, &copt.output_mode),
                 }
             }
             PrivilegedSessionExpiryOpt::Set { copt, expiry } => {
@@ -65,7 +65,7 @@ impl PrivilegedSessionExpiryOpt {
                         println!("The system auth privilege expiry has been successfully updated.")
                     }
 
-                    Err(e) => eprintln!("{:?}", e),
+                    Err(e) => handle_client_error(e, &copt.output_mode),
                 }
             }
         }

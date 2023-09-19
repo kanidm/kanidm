@@ -8,8 +8,8 @@ pub use scim_proto::user::MultiValueAttr;
 use scim_proto::*;
 
 use crate::constants::{
-    ATTR_DESCRIPTION, ATTR_DISPLAYNAME, ATTR_GIDNUMBER, ATTR_LDAP_SSH_PUBLICKEY, ATTR_LOGINSHELL,
-    ATTR_MAIL, ATTR_MEMBER, ATTR_NAME,
+    ATTR_DESCRIPTION, ATTR_DISPLAYNAME, ATTR_GIDNUMBER, ATTR_LOGINSHELL, ATTR_MAIL, ATTR_MEMBER,
+    ATTR_NAME, ATTR_SSH_PUBLICKEY,
 };
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
@@ -53,6 +53,11 @@ impl ScimSyncRequest {
     }
 }
 
+pub const SCIM_ALGO: &str = "algo";
+pub const SCIM_DIGITS: &str = "digits";
+pub const SCIM_SECRET: &str = "secret";
+pub const SCIM_STEP: &str = "step";
+
 pub const SCIM_SCHEMA_SYNC: &str = "urn:ietf:params:scim:schemas:kanidm:1.0:";
 pub const SCIM_SCHEMA_SYNC_PERSON: &str = "urn:ietf:params:scim:schemas:kanidm:1.0:person";
 pub const SCIM_SCHEMA_SYNC_ACCOUNT: &str = "urn:ietf:params:scim:schemas:kanidm:1.0:account";
@@ -88,13 +93,16 @@ impl Into<ScimComplexAttr> for ScimTotp {
             ScimSimpleAttr::String(external_id),
         );
 
-        attrs.insert("secret".to_string(), ScimSimpleAttr::String(secret));
+        attrs.insert(SCIM_SECRET.to_string(), ScimSimpleAttr::String(secret));
 
-        attrs.insert("algo".to_string(), ScimSimpleAttr::String(algo));
+        attrs.insert(SCIM_ALGO.to_string(), ScimSimpleAttr::String(algo));
 
-        attrs.insert("step".to_string(), ScimSimpleAttr::Number(step.into()));
+        attrs.insert(SCIM_STEP.to_string(), ScimSimpleAttr::Number(step.into()));
 
-        attrs.insert("digits".to_string(), ScimSimpleAttr::Number(digits.into()));
+        attrs.insert(
+            SCIM_DIGITS.to_string(),
+            ScimSimpleAttr::Number(digits.into()),
+        );
 
         ScimComplexAttr { attrs }
     }
@@ -175,7 +183,7 @@ impl Into<ScimEntry> for ScimSyncPerson {
         set_multi_complex!(attrs, "totp_import", totp_import);
         set_option_string!(attrs, ATTR_LOGINSHELL, login_shell);
         set_multi_complex!(attrs, ATTR_MAIL, mail);
-        set_multi_complex!(attrs, ATTR_LDAP_SSH_PUBLICKEY, ssh_publickey);
+        set_multi_complex!(attrs, ATTR_SSH_PUBLICKEY, ssh_publickey); // with the underscore
 
         ScimEntry {
             schemas,

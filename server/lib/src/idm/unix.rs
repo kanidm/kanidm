@@ -34,17 +34,14 @@ pub(crate) struct UnixUserAccount {
 
 macro_rules! try_from_entry {
     ($value:expr, $groups:expr) => {{
-        if !$value.attribute_equality(
-            Attribute::Class.as_ref(),
-            &EntryClass::Account.to_partialvalue(),
-        ) {
+        if !$value.attribute_equality(Attribute::Class, &EntryClass::Account.to_partialvalue()) {
             return Err(OperationError::InvalidAccountState(
                 "Missing class: account".to_string(),
             ));
         }
 
         if !$value.attribute_equality(
-            Attribute::Class.as_ref(),
+            Attribute::Class,
             &EntryClass::PosixAccount.to_partialvalue(),
         ) {
             return Err(OperationError::InvalidAccountState(
@@ -53,54 +50,70 @@ macro_rules! try_from_entry {
         }
 
         let name = $value
-            .get_ava_single_iname("name")
+            .get_ava_single_iname(Attribute::Name)
             .map(|s| s.to_string())
             .ok_or_else(|| {
-                OperationError::InvalidAccountState("Missing attribute: name".to_string())
+                OperationError::InvalidAccountState(format!(
+                    "Missing attribute: {}",
+                    Attribute::Name
+                ))
             })?;
 
-        let spn = $value.get_ava_single_proto_string("spn").ok_or_else(|| {
-            OperationError::InvalidAccountState("Missing attribute: spn".to_string())
-        })?;
+        let spn = $value
+            .get_ava_single_proto_string(Attribute::Spn)
+            .ok_or_else(|| {
+                OperationError::InvalidAccountState(format!(
+                    "Missing attribute: {}",
+                    Attribute::Spn
+                ))
+            })?;
 
         let uuid = $value.get_uuid();
 
         let displayname = $value
-            .get_ava_single_utf8("displayname")
+            .get_ava_single_utf8(Attribute::DisplayName)
             .map(|s| s.to_string())
             .ok_or_else(|| {
-                OperationError::InvalidAccountState("Missing attribute: displayname".to_string())
+                OperationError::InvalidAccountState(format!(
+                    "Missing attribute: {}",
+                    Attribute::DisplayName
+                ))
             })?;
 
-        let gidnumber = $value.get_ava_single_uint32("gidnumber").ok_or_else(|| {
-            OperationError::InvalidAccountState("Missing attribute: gidnumber".to_string())
-        })?;
+        let gidnumber = $value
+            .get_ava_single_uint32(Attribute::GidNumber)
+            .ok_or_else(|| {
+                OperationError::InvalidAccountState(format!(
+                    "Missing attribute: {}",
+                    Attribute::GidNumber
+                ))
+            })?;
 
         let shell = $value
-            .get_ava_single_iutf8(ATTR_LOGINSHELL)
+            .get_ava_single_iutf8(Attribute::LoginShell)
             .map(|s| s.to_string());
 
         let sshkeys = $value
-            .get_ava_iter_sshpubkeys(ATTR_LDAP_SSH_PUBLICKEY)
+            .get_ava_iter_sshpubkeys(Attribute::SshPublicKey)
             .map(|i| i.map(|s| s.to_string()).collect())
             .unwrap_or_else(Vec::new);
 
         let cred = $value
-            .get_ava_single_credential("unix_password")
+            .get_ava_single_credential(Attribute::UnixPassword)
             .map(|v| v.clone());
 
         let radius_secret = $value
-            .get_ava_single_secret("radius_secret")
+            .get_ava_single_secret(Attribute::RadiusSecret)
             .map(str::to_string);
 
         let mail = $value
-            .get_ava_iter_mail("mail")
+            .get_ava_iter_mail(Attribute::Mail)
             .map(|i| i.map(str::to_string).collect())
             .unwrap_or_else(Vec::new);
 
-        let valid_from = $value.get_ava_single_datetime("account_valid_from");
+        let valid_from = $value.get_ava_single_datetime(Attribute::AccountValidFrom);
 
-        let expire = $value.get_ava_single_datetime("account_expire");
+        let expire = $value.get_ava_single_datetime(Attribute::AccountExpire);
 
         Ok(UnixUserAccount {
             name,
@@ -181,7 +194,10 @@ impl UnixUserAccount {
     ) -> Result<ModifyList<ModifyInvalid>, OperationError> {
         let ncred = Credential::new_password_only(crypto_policy, cleartext)?;
         let vcred = Value::new_credential("unix", ncred);
-        Ok(ModifyList::new_purge_and_set("unix_password", vcred))
+        Ok(ModifyList::new_purge_and_set(
+            Attribute::UnixPassword,
+            vcred,
+        ))
     }
 
     pub(crate) fn gen_password_upgrade_mod(
@@ -194,7 +210,10 @@ impl UnixUserAccount {
             Some(ucred) => {
                 if let Some(ncred) = ucred.upgrade_password(crypto_policy, cleartext)? {
                     let vcred = Value::new_credential("primary", ncred);
-                    Ok(Some(ModifyList::new_purge_and_set("unix_password", vcred)))
+                    Ok(Some(ModifyList::new_purge_and_set(
+                        Attribute::UnixPassword,
+                        vcred,
+                    )))
                 } else {
                     // No action, not the same pw
                     Ok(None)
@@ -312,40 +331,56 @@ macro_rules! try_from_group_e {
     ($value:expr) => {{
         // We could be looking at a user for their UPG, OR a true group.
 
-        if !(($value.attribute_equality(
-            Attribute::Class.as_ref(),
-            &EntryClass::Account.to_partialvalue(),
-        ) && $value.attribute_equality(
-            Attribute::Class.as_ref(),
-            &EntryClass::PosixAccount.to_partialvalue(),
-        )) || ($value.attribute_equality(
-            Attribute::Class.as_ref(),
-            &EntryClass::Group.to_partialvalue(),
-        ) && $value.attribute_equality(
-            Attribute::Class.as_ref(),
-            &EntryClass::PosixGroup.to_partialvalue(),
-        ))) {
-            return Err(OperationError::InvalidAccountState(
-                "Missing class: account && posixaccount OR group && posixgroup".to_string(),
-            ));
+        if !(($value.attribute_equality(Attribute::Class, &EntryClass::Account.to_partialvalue())
+            && $value.attribute_equality(
+                Attribute::Class,
+                &EntryClass::PosixAccount.to_partialvalue(),
+            ))
+            || ($value.attribute_equality(Attribute::Class, &EntryClass::Group.to_partialvalue())
+                && $value.attribute_equality(
+                    Attribute::Class,
+                    &EntryClass::PosixGroup.to_partialvalue(),
+                )))
+        {
+            return Err(OperationError::InvalidAccountState(format!(
+                "Missing {}: {} && {} OR {} && {}",
+                Attribute::Class,
+                Attribute::Account,
+                EntryClass::PosixAccount,
+                Attribute::Group,
+                EntryClass::PosixGroup,
+            )));
         }
 
         let name = $value
-            .get_ava_single_iname("name")
+            .get_ava_single_iname(Attribute::Name)
             .map(|s| s.to_string())
             .ok_or_else(|| {
-                OperationError::InvalidAccountState("Missing attribute: name".to_string())
+                OperationError::InvalidAccountState(format!(
+                    "Missing attribute: {}",
+                    Attribute::Name
+                ))
             })?;
 
-        let spn = $value.get_ava_single_proto_string("spn").ok_or_else(|| {
-            OperationError::InvalidAccountState("Missing attribute: spn".to_string())
-        })?;
+        let spn = $value
+            .get_ava_single_proto_string(Attribute::Spn)
+            .ok_or_else(|| {
+                OperationError::InvalidAccountState(format!(
+                    "Missing attribute: {}",
+                    Attribute::Spn
+                ))
+            })?;
 
         let uuid = $value.get_uuid();
 
-        let gidnumber = $value.get_ava_single_uint32("gidnumber").ok_or_else(|| {
-            OperationError::InvalidAccountState("Missing attribute: gidnumber".to_string())
-        })?;
+        let gidnumber = $value
+            .get_ava_single_uint32(Attribute::GidNumber)
+            .ok_or_else(|| {
+                OperationError::InvalidAccountState(format!(
+                    "Missing attribute: {}",
+                    Attribute::GidNumber
+                ))
+            })?;
 
         Ok(UnixGroup {
             name,
@@ -361,40 +396,52 @@ macro_rules! try_from_account_group_e {
         // First synthesise the self-group from the account.
         // We have already checked these, but paranoia is better than
         // complacency.
-        if !$value.attribute_equality(
-            Attribute::Class.as_ref(),
-            &EntryClass::Account.to_partialvalue(),
-        ) {
-            return Err(OperationError::InvalidAccountState(
-                "Missing class: account".to_string(),
-            ));
+        if !$value.attribute_equality(Attribute::Class, &EntryClass::Account.to_partialvalue()) {
+            return Err(OperationError::InvalidAccountState(format!(
+                "Missing class: {}",
+                EntryClass::Account
+            )));
         }
 
         if !$value.attribute_equality(
-            Attribute::Class.as_ref(),
+            Attribute::Class,
             &EntryClass::PosixAccount.to_partialvalue(),
         ) {
-            return Err(OperationError::InvalidAccountState(
-                "Missing class: posixaccount".to_string(),
-            ));
+            return Err(OperationError::InvalidAccountState(format!(
+                "Missing class: {}",
+                EntryClass::PosixAccount
+            )));
         }
 
         let name = $value
-            .get_ava_single_iname("name")
+            .get_ava_single_iname(Attribute::Name)
             .map(|s| s.to_string())
             .ok_or_else(|| {
-                OperationError::InvalidAccountState("Missing attribute: name".to_string())
+                OperationError::InvalidAccountState(format!(
+                    "Missing attribute: {}",
+                    Attribute::Name
+                ))
             })?;
 
-        let spn = $value.get_ava_single_proto_string("spn").ok_or_else(|| {
-            OperationError::InvalidAccountState("Missing attribute: spn".to_string())
-        })?;
+        let spn = $value
+            .get_ava_single_proto_string(Attribute::Spn)
+            .ok_or_else(|| {
+                OperationError::InvalidAccountState(format!(
+                    "Missing attribute: {}",
+                    Attribute::Spn
+                ))
+            })?;
 
         let uuid = $value.get_uuid();
 
-        let gidnumber = $value.get_ava_single_uint32("gidnumber").ok_or_else(|| {
-            OperationError::InvalidAccountState("Missing attribute: gidnumber".to_string())
-        })?;
+        let gidnumber = $value
+            .get_ava_single_uint32(Attribute::GidNumber)
+            .ok_or_else(|| {
+                OperationError::InvalidAccountState(format!(
+                    "Missing attribute: {}",
+                    Attribute::GidNumber
+                ))
+            })?;
 
         // This is the user private group.
         let upg = UnixGroup {
@@ -404,7 +451,7 @@ macro_rules! try_from_account_group_e {
             uuid,
         };
 
-        match $value.get_ava_as_refuuid("memberof") {
+        match $value.get_ava_as_refuuid(Attribute::MemberOf) {
             Some(riter) => {
                 let f = filter!(f_and!([
                     f_eq(Attribute::Class, EntryClass::PosixGroup.into()),

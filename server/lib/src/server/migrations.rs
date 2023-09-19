@@ -71,7 +71,7 @@ impl QueryServer {
         // effect as ... there is nothing to migrate! It allows reset of the version to 0 to force
         // db migrations to take place.
         let system_info_version = match write_txn.internal_search_uuid(UUID_SYSTEM_INFO) {
-            Ok(e) => Ok(e.get_ava_single_uint32("version").unwrap_or(0)),
+            Ok(e) => Ok(e.get_ava_single_uint32(Attribute::Version).unwrap_or(0)),
             Err(OperationError::NoMatchingEntries) => Ok(0),
             Err(r) => Err(r),
         }?;
@@ -223,23 +223,27 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // Change the value type.
         let mut candidates: Vec<Entry<EntryInvalid, EntryCommitted>> = pre_candidates
             .iter()
-            .map(|er| er.as_ref().clone().invalidate(self.cid.clone()))
+            .map(|er| {
+                er.as_ref()
+                    .clone()
+                    .invalidate(self.cid.clone(), &self.trim_cid)
+            })
             .collect();
 
         candidates.iter_mut().try_for_each(|er| {
             // Migrate basic secrets if they exist.
             let nvs = er
-                .get_ava_set("oauth2_rs_basic_secret")
+                .get_ava_set(Attribute::OAuth2RsBasicSecret)
                 .and_then(|vs| vs.as_utf8_iter())
                 .and_then(|vs_iter| {
                     ValueSetSecret::from_iter(vs_iter.map(|s: &str| s.to_string()))
                 });
             if let Some(nvs) = nvs {
-                er.set_ava_set("oauth2_rs_basic_secret", nvs)
+                er.set_ava_set(Attribute::OAuth2RsBasicSecret, nvs)
             }
 
             // Migrate implicit scopes if they exist.
-            let nv = if let Some(vs) = er.get_ava_set("oauth2_rs_implicit_scopes") {
+            let nv = if let Some(vs) = er.get_ava_set(Attribute::OAuth2RsImplicitScopes) {
                 vs.as_oauthscope_set()
                     .map(|v| Value::OauthScopeMap(UUID_IDM_ALL_PERSONS, v.clone()))
             } else {
@@ -247,9 +251,9 @@ impl<'a> QueryServerWriteTransaction<'a> {
             };
 
             if let Some(nv) = nv {
-                er.add_ava("oauth2_rs_scope_map", nv)
+                er.add_ava(Attribute::OAuth2RsScopeMap, nv)
             }
-            er.purge_ava("oauth2_rs_implicit_scopes");
+            er.purge_ava(Attribute::OAuth2RsImplicitScopes);
 
             Ok(())
         })?;
@@ -289,13 +293,12 @@ impl<'a> QueryServerWriteTransaction<'a> {
     pub fn migrate_9_to_10(&mut self) -> Result<(), OperationError> {
         admin_warn!("starting 9 to 10 migration.");
         let filter = filter!(f_or!([
-            f_pres("primary_credential"),
-            f_pres("unix_password"),
+            f_pres(Attribute::PrimaryCredential),
+            f_pres(Attribute::UnixPassword),
         ]));
         // This "does nothing" since everything has object anyway, but it forces the entry to be
         // loaded and rewritten.
-        let modlist =
-            ModifyList::new_append(Attribute::Class.as_ref(), EntryClass::Object.to_value());
+        let modlist = ModifyList::new_append(Attribute::Class, EntryClass::Object.to_value());
         self.internal_modify(&filter, &modlist)
         // Complete
     }
@@ -309,7 +312,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     #[instrument(level = "debug", skip_all)]
     pub fn migrate_10_to_11(&mut self) -> Result<(), OperationError> {
         admin_warn!("starting 9 to 10 migration.");
-        let filter = filter!(f_pres("primary_credential"));
+        let filter = filter!(f_pres(Attribute::PrimaryCredential));
 
         let pre_candidates = self.internal_search(filter).map_err(|e| {
             admin_error!(err = ?e, "migrate_10_to_11 internal search failure");
@@ -321,7 +324,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         let modset: Vec<_> = pre_candidates
             .into_iter()
             .filter_map(|ent| {
-                ent.get_ava_single_credential("primary_credential")
+                ent.get_ava_single_credential(Attribute::PrimaryCredential)
                     .and_then(|cred| cred.passkey_ref().ok())
                     .map(|pk_map| {
                         let modlist = pk_map
@@ -332,7 +335,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                                     Value::Passkey(Uuid::new_v4(), t.clone(), k.clone()),
                                 )
                             })
-                            .chain(std::iter::once(m_purge("primary_credential")))
+                            .chain(std::iter::once(m_purge(Attribute::PrimaryCredential)))
                             .collect();
                         (ent.get_uuid(), ModifyList::new_list(modlist))
                     })
@@ -358,8 +361,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
         admin_warn!("starting 11 to 12 migration.");
         // sync_token_session
         let filter = filter!(f_or!([
-            f_pres("api_token_session"),
-            f_pres("sync_token_session"),
+            f_pres(Attribute::ApiTokenSession),
+            f_pres(Attribute::SyncTokenSession),
         ]));
 
         let mut mod_candidates = self.internal_search_writeable(&filter).map_err(|e| {
@@ -377,19 +380,22 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // webauthn type.
 
         for (_, ent) in mod_candidates.iter_mut() {
-            if let Some(api_token_session) = ent.pop_ava("api_token_session") {
+            if let Some(api_token_session) = ent.pop_ava(Attribute::ApiTokenSession) {
                 let api_token_session =
                     api_token_session
                         .migrate_session_to_apitoken()
                         .map_err(|e| {
-                            error!("Failed to convert api_token_session from session -> apitoken");
+                            error!(
+                                "Failed to convert {} from session -> apitoken",
+                                Attribute::ApiTokenSession
+                            );
                             e
                         })?;
 
-                ent.set_ava_set("api_token_session", api_token_session);
+                ent.set_ava_set(Attribute::ApiTokenSession, api_token_session);
             }
 
-            if let Some(sync_token_session) = ent.pop_ava("sync_token_session") {
+            if let Some(sync_token_session) = ent.pop_ava(Attribute::SyncTokenSession) {
                 let sync_token_session =
                     sync_token_session
                         .migrate_session_to_apitoken()
@@ -398,7 +404,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                             e
                         })?;
 
-                ent.set_ava_set("sync_token_session", sync_token_session);
+                ent.set_ava_set(Attribute::SyncTokenSession, sync_token_session);
             }
         }
 
@@ -414,7 +420,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             f_eq(Attribute::Uuid, PVUUID_DOMAIN_INFO.clone()),
         ]));
         // Delete the existing cookie key to trigger a regeneration.
-        let modlist = ModifyList::new_purge(ATTR_PRIVATE_COOKIE_KEY);
+        let modlist = ModifyList::new_purge(Attribute::PrivateCookieKey);
         self.internal_modify(&filter, &modlist)
         // Complete
     }
@@ -427,7 +433,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             EntryClass::DynGroup.to_partialvalue()
         ));
         // Delete the incorrectly added "member" attr.
-        let modlist = ModifyList::new_purge("member");
+        let modlist = ModifyList::new_purge(Attribute::Member);
         self.internal_modify(&filter, &modlist)
         // Complete
     }
@@ -438,7 +444,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         let filter = filter!(f_eq(Attribute::Class, EntryClass::Person.into()));
         // Delete the non-existing attr for idv private key which triggers
         // it to regen.
-        let modlist = ModifyList::new_purge("id_verification_eckey");
+        let modlist = ModifyList::new_purge(Attribute::IdVerificationEcKey);
         self.internal_modify(&filter, &modlist)
         // Complete
     }
@@ -606,12 +612,12 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
         // Check the admin object exists (migrations).
         // Create the default idm_admin group.
-        let admin_entries = [
-            E_ANONYMOUS_V1.clone(),
-            E_ADMIN_V1.clone(),
-            E_IDM_ADMIN_V1.clone(),
-            E_IDM_ADMINS_V1.clone(),
-            E_SYSTEM_ADMINS_V1.clone(),
+        let admin_entries: Vec<EntryInitNew> = vec![
+            BUILTIN_ACCOUNT_ANONYMOUS_V1.clone().into(),
+            BUILTIN_ACCOUNT_ADMIN.clone().into(),
+            BUILTIN_ACCOUNT_IDM_ADMIN.clone().into(),
+            BUILTIN_GROUP_IDM_ADMINS_V1.clone().try_into()?,
+            BUILTIN_GROUP_SYSTEM_ADMINS_V1.clone().try_into()?,
         ];
         let res: Result<(), _> = admin_entries
             .into_iter()
@@ -624,53 +630,52 @@ impl<'a> QueryServerWriteTransaction<'a> {
         res?;
 
         // Create any system default schema entries.
-
-        // Create any system default access profile entries.
-        let idm_entries = [
-            // Builtin dyn groups,
-            JSON_IDM_ALL_PERSONS,
-            JSON_IDM_ALL_ACCOUNTS,
-            // Builtin groups
-            JSON_IDM_PEOPLE_MANAGE_PRIV_V1,
-            JSON_IDM_PEOPLE_ACCOUNT_PASSWORD_IMPORT_PRIV_V1,
-            JSON_IDM_PEOPLE_EXTEND_PRIV_V1,
-            JSON_IDM_PEOPLE_SELF_WRITE_MAIL_PRIV_V1,
-            JSON_IDM_PEOPLE_WRITE_PRIV_V1,
-            JSON_IDM_PEOPLE_READ_PRIV_V1,
-            JSON_IDM_HP_PEOPLE_EXTEND_PRIV_V1,
-            JSON_IDM_HP_PEOPLE_WRITE_PRIV_V1,
-            JSON_IDM_HP_PEOPLE_READ_PRIV_V1,
-            JSON_IDM_GROUP_MANAGE_PRIV_V1,
-            JSON_IDM_GROUP_WRITE_PRIV_V1,
-            JSON_IDM_GROUP_UNIX_EXTEND_PRIV_V1,
-            JSON_IDM_ACCOUNT_MANAGE_PRIV_V1,
-            JSON_IDM_ACCOUNT_WRITE_PRIV_V1,
-            JSON_IDM_ACCOUNT_UNIX_EXTEND_PRIV_V1,
-            JSON_IDM_ACCOUNT_READ_PRIV_V1,
-            JSON_IDM_RADIUS_SECRET_WRITE_PRIV_V1,
-            JSON_IDM_RADIUS_SECRET_READ_PRIV_V1,
-            JSON_IDM_RADIUS_SERVERS_V1,
+        let idm_entries: Vec<&BuiltinGroup> = vec![
+            &IDM_ALL_PERSONS,
+            &IDM_ALL_ACCOUNTS,
+            &IDM_PEOPLE_MANAGE_PRIV_V1,
+            &IDM_PEOPLE_ACCOUNT_PASSWORD_IMPORT_PRIV_V1,
+            &IDM_PEOPLE_EXTEND_PRIV_V1,
+            &IDM_PEOPLE_SELF_WRITE_MAIL_PRIV_V1,
+            &IDM_PEOPLE_WRITE_PRIV_V1,
+            &IDM_PEOPLE_READ_PRIV_V1,
+            &IDM_HP_PEOPLE_EXTEND_PRIV_V1,
+            &IDM_HP_PEOPLE_WRITE_PRIV_V1,
+            &IDM_HP_PEOPLE_READ_PRIV_V1,
+            &IDM_GROUP_MANAGE_PRIV_V1,
+            &IDM_GROUP_WRITE_PRIV_V1,
+            &IDM_GROUP_UNIX_EXTEND_PRIV_V1,
+            &IDM_ACCOUNT_MANAGE_PRIV_V1,
+            &IDM_ACCOUNT_WRITE_PRIV_V1,
+            &IDM_ACCOUNT_UNIX_EXTEND_PRIV_V1,
+            &IDM_ACCOUNT_READ_PRIV_V1,
+            &IDM_RADIUS_SECRET_WRITE_PRIV_V1,
+            &IDM_RADIUS_SECRET_READ_PRIV_V1,
+            &IDM_RADIUS_SERVERS_V1,
             // Write deps on read, so write must be added first.
-            JSON_IDM_HP_ACCOUNT_MANAGE_PRIV_V1,
-            JSON_IDM_HP_ACCOUNT_WRITE_PRIV_V1,
-            JSON_IDM_HP_ACCOUNT_READ_PRIV_V1,
-            JSON_IDM_HP_ACCOUNT_UNIX_EXTEND_PRIV_V1,
-            JSON_IDM_SCHEMA_MANAGE_PRIV_V1,
-            JSON_IDM_HP_GROUP_MANAGE_PRIV_V1,
-            JSON_IDM_HP_GROUP_WRITE_PRIV_V1,
-            JSON_IDM_HP_GROUP_UNIX_EXTEND_PRIV_V1,
-            JSON_IDM_ACP_MANAGE_PRIV_V1,
-            JSON_DOMAIN_ADMINS,
-            JSON_IDM_HP_OAUTH2_MANAGE_PRIV_V1,
-            JSON_IDM_HP_SERVICE_ACCOUNT_INTO_PERSON_MIGRATE_PRIV,
-            JSON_IDM_HP_SYNC_ACCOUNT_MANAGE_PRIV,
+            &IDM_HP_ACCOUNT_MANAGE_PRIV_V1,
+            &IDM_HP_ACCOUNT_WRITE_PRIV_V1,
+            &IDM_HP_ACCOUNT_READ_PRIV_V1,
+            &IDM_HP_ACCOUNT_UNIX_EXTEND_PRIV_V1,
+            &IDM_SCHEMA_MANAGE_PRIV_V1,
+            &IDM_HP_GROUP_MANAGE_PRIV_V1,
+            &IDM_HP_GROUP_WRITE_PRIV_V1,
+            &IDM_HP_GROUP_UNIX_EXTEND_PRIV_V1,
+            &IDM_ACP_MANAGE_PRIV_V1,
+            &DOMAIN_ADMINS,
+            &IDM_HP_OAUTH2_MANAGE_PRIV_V1,
+            &IDM_HP_SERVICE_ACCOUNT_INTO_PERSON_MIGRATE_PRIV,
+            &IDM_HP_SYNC_ACCOUNT_MANAGE_PRIV,
             // All members must exist before we write HP
-            JSON_IDM_HIGH_PRIVILEGE_V1,
+            &IDM_HIGH_PRIVILEGE_V1,
+            // other things
+            &IDM_UI_ENABLE_EXPERIMENTAL_FEATURES,
+            &IDM_ACCOUNT_MAIL_READ_PRIV,
         ];
 
         let res: Result<(), _> = idm_entries
-            .iter()
-            .try_for_each(|e_str| self.internal_migrate_or_create_str(e_str));
+            .into_iter()
+            .try_for_each(|e| self.internal_migrate_or_create(e.clone().try_into()?));
         if res.is_ok() {
             admin_debug!("initialise_idm -> result Ok!");
         } else {
@@ -679,57 +684,55 @@ impl<'a> QueryServerWriteTransaction<'a> {
         debug_assert!(res.is_ok());
         res?;
 
-        let idm_entries: Vec<EntryInitNew> = vec![
+        let idm_entries: Vec<BuiltinAcp> = vec![
             // Built in access controls.
-            IDM_ADMINS_ACP_RECYCLE_SEARCH_V1.clone().into(),
-            E_IDM_ADMINS_ACP_REVIVE_V1.clone(),
-            E_IDM_ALL_ACP_READ_V1.clone(),
-            E_IDM_SELF_ACP_READ_V1.clone(),
-            E_IDM_SELF_ACP_WRITE_V1.clone(),
+            IDM_ADMINS_ACP_RECYCLE_SEARCH_V1.clone(),
+            IDM_ADMINS_ACP_REVIVE_V1.clone(),
+            IDM_ALL_ACP_READ_V1.clone(),
+            IDM_SELF_ACP_READ_V1.clone(),
+            IDM_SELF_ACP_WRITE_V1.clone(),
             E_IDM_PEOPLE_SELF_ACP_WRITE_MAIL_PRIV_V1.clone(),
-            E_IDM_ACP_PEOPLE_READ_PRIV_V1.clone(),
-            E_IDM_ACP_PEOPLE_WRITE_PRIV_V1.clone(),
-            E_IDM_ACP_PEOPLE_MANAGE_PRIV_V1.clone(),
-            E_IDM_ACP_ACCOUNT_READ_PRIV_V1.clone(),
-            E_IDM_ACP_ACCOUNT_WRITE_PRIV_V1.clone(),
-            E_IDM_ACP_ACCOUNT_MANAGE_PRIV_V1.clone(),
-            E_IDM_ACP_HP_ACCOUNT_READ_PRIV_V1.clone(),
-            E_IDM_ACP_HP_ACCOUNT_WRITE_PRIV_V1.clone(),
-            E_IDM_ACP_HP_ACCOUNT_MANAGE_PRIV_V1.clone(),
-            E_IDM_ACP_GROUP_WRITE_PRIV_V1.clone(),
-            E_IDM_ACP_GROUP_MANAGE_PRIV_V1.clone(),
-            E_IDM_ACP_HP_GROUP_WRITE_PRIV_V1.clone(),
-            E_IDM_ACP_HP_GROUP_MANAGE_PRIV_V1.clone(),
-            E_IDM_ACP_SCHEMA_WRITE_ATTRS_PRIV_V1.clone(),
-            E_IDM_ACP_SCHEMA_WRITE_CLASSES_PRIV_V1.clone(),
-            E_IDM_ACP_ACP_MANAGE_PRIV_V1.clone(),
-            E_IDM_ACP_RADIUS_SERVERS_V1.clone(),
-            E_IDM_ACP_DOMAIN_ADMIN_PRIV_V1.clone(),
-            E_IDM_ACP_SYSTEM_CONFIG_PRIV_V1.clone(),
-            E_IDM_ACP_SYSTEM_CONFIG_SESSION_EXP_PRIV_V1.clone(),
-            E_IDM_ACP_PEOPLE_ACCOUNT_PASSWORD_IMPORT_PRIV_V1.clone(),
-            E_IDM_ACP_PEOPLE_EXTEND_PRIV_V1.clone(),
-            E_IDM_ACP_HP_PEOPLE_READ_PRIV_V1.clone(),
-            E_IDM_ACP_HP_PEOPLE_WRITE_PRIV_V1.clone(),
-            E_IDM_ACP_HP_PEOPLE_EXTEND_PRIV_V1.clone(),
-            E_IDM_ACP_ACCOUNT_UNIX_EXTEND_PRIV_V1.clone(),
+            IDM_ACP_PEOPLE_READ_PRIV_V1.clone(),
+            IDM_ACP_PEOPLE_WRITE_PRIV_V1.clone(),
+            IDM_ACP_PEOPLE_MANAGE_PRIV_V1.clone(),
+            IDM_ACP_ACCOUNT_READ_PRIV_V1.clone(),
+            IDM_ACP_ACCOUNT_WRITE_PRIV_V1.clone(),
+            IDM_ACP_ACCOUNT_MANAGE_PRIV_V1.clone(),
+            IDM_ACP_HP_ACCOUNT_READ_PRIV_V1.clone(),
+            IDM_ACP_HP_ACCOUNT_WRITE_PRIV_V1.clone(),
+            IDM_ACP_HP_ACCOUNT_MANAGE_PRIV_V1.clone(),
+            IDM_ACP_GROUP_WRITE_PRIV_V1.clone(),
+            IDM_ACP_GROUP_MANAGE_PRIV_V1.clone(),
+            IDM_ACP_HP_GROUP_WRITE_PRIV_V1.clone(),
+            IDM_ACP_HP_GROUP_MANAGE_PRIV_V1.clone(),
+            IDM_ACP_SCHEMA_WRITE_ATTRS_PRIV_V1.clone(),
+            IDM_ACP_SCHEMA_WRITE_CLASSES_PRIV_V1.clone(),
+            IDM_ACP_ACP_MANAGE_PRIV_V1.clone(),
+            IDM_ACP_RADIUS_SERVERS_V1.clone(),
+            IDM_ACP_DOMAIN_ADMIN_PRIV_V1.clone(),
+            IDM_ACP_SYSTEM_CONFIG_PRIV_V1.clone(),
+            IDM_ACP_SYSTEM_CONFIG_SESSION_EXP_PRIV_V1.clone(),
+            IDM_ACP_PEOPLE_ACCOUNT_PASSWORD_IMPORT_PRIV_V1.clone(),
+            IDM_ACP_PEOPLE_EXTEND_PRIV_V1.clone(),
+            IDM_ACP_HP_PEOPLE_READ_PRIV_V1.clone(),
+            IDM_ACP_HP_PEOPLE_WRITE_PRIV_V1.clone(),
+            IDM_ACP_HP_PEOPLE_EXTEND_PRIV_V1.clone(),
+            IDM_ACP_ACCOUNT_UNIX_EXTEND_PRIV_V1.clone(),
             E_IDM_HP_ACP_ACCOUNT_UNIX_EXTEND_PRIV_V1.clone(),
-            E_IDM_ACP_GROUP_UNIX_EXTEND_PRIV_V1.clone(),
+            IDM_ACP_GROUP_UNIX_EXTEND_PRIV_V1.clone(),
             E_IDM_HP_ACP_GROUP_UNIX_EXTEND_PRIV_V1.clone(),
             E_IDM_HP_ACP_OAUTH2_MANAGE_PRIV_V1.clone(),
-            E_IDM_ACP_RADIUS_SECRET_READ_PRIV_V1.clone(),
-            E_IDM_ACP_RADIUS_SECRET_WRITE_PRIV_V1.clone(),
+            IDM_ACP_RADIUS_SECRET_READ_PRIV_V1.clone(),
+            IDM_ACP_RADIUS_SECRET_WRITE_PRIV_V1.clone(),
             E_IDM_HP_ACP_SERVICE_ACCOUNT_INTO_PERSON_MIGRATE_V1.clone(),
             E_IDM_HP_ACP_SYNC_ACCOUNT_MANAGE_PRIV_V1.clone(),
-            E_IDM_UI_ENABLE_EXPERIMENTAL_FEATURES.clone(),
-            E_IDM_ACCOUNT_MAIL_READ_PRIV.clone(),
-            E_IDM_ACP_ACCOUNT_MAIL_READ_PRIV_V1.clone(),
-            E_IDM_ACCOUNT_SELF_ACP_WRITE_V1.clone(),
+            IDM_ACP_ACCOUNT_MAIL_READ_PRIV_V1.clone(),
+            IDM_ACCOUNT_SELF_ACP_WRITE_V1.clone(),
         ];
 
         let res: Result<(), _> = idm_entries
             .into_iter()
-            .try_for_each(|entry| self.internal_migrate_or_create(entry));
+            .try_for_each(|entry| self.internal_migrate_or_create(entry.into()));
         if res.is_ok() {
             admin_debug!("initialise_idm -> result Ok!");
         } else {
@@ -822,8 +825,8 @@ mod tests {
         let me_syn = unsafe {
             ModifyEvent::new_internal_invalid(
                 filter!(f_or!([
-                    f_eq(Attribute::AttributeName, PartialValue::new_iutf8("name")),
-                    f_eq(Attribute::AttributeName, PartialValue::new_iutf8("domain_name")),
+                    f_eq(Attribute::AttributeName, Attribute::Name.to_partialvalue()),
+                    f_eq(Attribute::AttributeName, Attribute::DomainName.into()),
                 ])),
                 ModifyList::new_purge_and_set(
                     "syntax",
@@ -841,10 +844,10 @@ mod tests {
                 filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(UUID_DOMAIN_INFO))),
                 ModifyList::new_list(vec![
                     Modify::Purged(Attribute::Name.into()),
-                    Modify::Purged(AttrString::from("domain_name")),
+                    Modify::Purged(Attribute::DomainName.into()),
                     Modify::Present(Attribute::Name.into(), Value::new_iutf8("domain_local")),
                     Modify::Present(
-                        AttrString::from("domain_name"),
+                        Attribute::DomainName.into(),
                         Value::new_iutf8("example.com"),
                     ),
                 ]),
@@ -865,8 +868,8 @@ mod tests {
         let me_syn = unsafe {
             ModifyEvent::new_internal_invalid(
                 filter!(f_or!([
-                    f_eq(Attribute::AttributeName, PartialValue::new_iutf8("name")),
-                    f_eq(Attribute::AttributeName, PartialValue::new_iutf8("domain_name")),
+                    f_eq(Attribute::AttributeName, Attribute::Name.to_partialvalue()),
+                    f_eq(Attribute::AttributeName, Attribute::DomainName.into()),
                 ])),
                 ModifyList::new_purge_and_set(
                     "syntax",
@@ -893,12 +896,12 @@ mod tests {
             .expect("failed");
         // ++ assert all names are iname
         assert!(
-            domain.get_ava_set("name").expect("no name?").syntax() == SyntaxType::Utf8StringIname
+            domain.get_ava_set(Attribute::Name).expect("no name?").syntax() == SyntaxType::Utf8StringIname
         );
         // ++ assert all domain/domain_name are iname
         assert!(
             domain
-                .get_ava_set("domain_name")
+                .get_ava_set(Attribute::DomainName.as_ref())
                 .expect("no domain_name?")
                 .syntax()
                 == SyntaxType::Utf8StringIname

@@ -1125,9 +1125,11 @@ impl<'a> BackendWriteTransaction<'a> {
             let ctx_ent_uuid = ctx_ent.get_uuid();
             let idx_key = ctx_ent_uuid.as_hyphenated().to_string();
 
-            let idl = self
-                .get_idlayer()
-                .get_idl("uuid", IndexType::Equality, &idx_key)?;
+            let idl = self.get_idlayer().get_idl(
+                Attribute::Uuid.as_ref(),
+                IndexType::Equality,
+                &idx_key,
+            )?;
 
             let entry = match idl {
                 Some(idl) if idl.is_empty() => {
@@ -1496,7 +1498,7 @@ impl<'a> BackendWriteTransaction<'a> {
                             Some(mut idl) => {
                                 idl.insert_id(e_id);
                                 if cfg!(debug_assertions)
-                                    && attr == "uuid" && itype == IndexType::Equality {
+                                    && attr == Attribute::Uuid.as_ref() && itype == IndexType::Equality {
                                         trace!("{:?}", idl);
                                         debug_assert!(idl.len() <= 1);
                                 }
@@ -1516,7 +1518,7 @@ impl<'a> BackendWriteTransaction<'a> {
                         match self.idlayer.get_idl(attr, itype, &idx_key)? {
                             Some(mut idl) => {
                                 idl.remove_id(e_id);
-                                if cfg!(debug_assertions) && attr == "uuid" && itype == IndexType::Equality {
+                                if cfg!(debug_assertions) && attr == Attribute::Uuid.as_ref() && itype == IndexType::Equality {
                                         trace!("{:?}", idl);
                                         debug_assert!(idl.len() <= 1);
                                 }
@@ -1576,10 +1578,10 @@ impl<'a> BackendWriteTransaction<'a> {
         trace!("Creating index -> uuid2rdn");
         self.idlayer.create_uuid2rdn()?;
 
-        self.idxmeta_wr
-            .idxkeys
-            .keys()
-            .try_for_each(|ikey| self.idlayer.create_idx(&ikey.attr, ikey.itype))
+        self.idxmeta_wr.idxkeys.keys().try_for_each(|ikey| {
+            let attr: Attribute = (&ikey.attr).try_into()?;
+            self.idlayer.create_idx(attr, ikey.itype)
+        })
     }
 
     pub fn upgrade_reindex(&mut self, v: i64) -> Result<(), OperationError> {
@@ -1792,7 +1794,7 @@ impl<'a> BackendWriteTransaction<'a> {
         self.set_db_index_version(0)
     }
 
-    #[cfg(debug_assertions)]
+    #[cfg(any(test, debug_assertions))]
     pub fn clear_cache(&mut self) -> Result<(), OperationError> {
         self.get_idlayer().clear_cache()
     }
@@ -2046,31 +2048,31 @@ mod tests {
             // This is a demo idxmeta, purely for testing.
             let idxmeta = vec![
                 IdxKey {
-                    attr: AttrString::from("name"),
+                    attr: Attribute::Name.into(),
                     itype: IndexType::Equality,
                 },
                 IdxKey {
-                    attr: AttrString::from("name"),
+                    attr: Attribute::Name.into(),
                     itype: IndexType::Presence,
                 },
                 IdxKey {
-                    attr: AttrString::from("name"),
+                    attr: Attribute::Name.into(),
                     itype: IndexType::SubString,
                 },
                 IdxKey {
-                    attr: AttrString::from("uuid"),
+                    attr: Attribute::Uuid.into(),
                     itype: IndexType::Equality,
                 },
                 IdxKey {
-                    attr: AttrString::from("uuid"),
+                    attr: Attribute::Uuid.into(),
                     itype: IndexType::Presence,
                 },
                 IdxKey {
-                    attr: AttrString::from("ta"),
+                    attr: Attribute::TestAttr.into(),
                     itype: IndexType::Equality,
                 },
                 IdxKey {
-                    attr: AttrString::from("tb"),
+                    attr: Attribute::TestNumber.into(),
                     itype: IndexType::Equality,
                 },
             ];
@@ -2091,7 +2093,7 @@ mod tests {
         ($be:expr, $ent:expr) => {{
             let ei = $ent.clone().into_sealed_committed();
             let filt = ei
-                .filter_from_attrs(&vec![AttrString::from("uuid")])
+                .filter_from_attrs(&vec![Attribute::Uuid.into()])
                 .expect("failed to generate filter")
                 .into_valid_resolved();
             let lims = Limits::unlimited();
@@ -2104,7 +2106,7 @@ mod tests {
         ($be:expr, $ent:expr, $attr:expr) => {{
             let ei = $ent.clone().into_sealed_committed();
             let filt = ei
-                .filter_from_attrs(&vec![AttrString::from("userid")])
+                .filter_from_attrs(&vec![Attribute::UserId.into()])
                 .expect("failed to generate filter")
                 .into_valid_resolved();
             let lims = Limits::unlimited();
@@ -2136,8 +2138,11 @@ mod tests {
             assert_eq!(empty_result, Err(OperationError::EmptyRequest));
 
             let mut e: Entry<EntryInit, EntryNew> = Entry::new();
-            e.add_ava("userid", Value::from("william"));
-            e.add_ava("uuid", Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
+            e.add_ava(Attribute::UserId, Value::from("william"));
+            e.add_ava(
+                Attribute::Uuid,
+                Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"),
+            );
             let e = e.into_sealed_new();
 
             let single_result = be.create(&CID_ZERO, vec![e.clone()]);
@@ -2155,8 +2160,11 @@ mod tests {
             trace!("Simple Search");
 
             let mut e: Entry<EntryInit, EntryNew> = Entry::new();
-            e.add_ava("userid", Value::from("claire"));
-            e.add_ava("uuid", Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
+            e.add_ava(Attribute::UserId, Value::from("claire"));
+            e.add_ava(
+                Attribute::Uuid,
+                Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"),
+            );
             let e = e.into_sealed_new();
 
             let single_result = be.create(&CID_ZERO, vec![e]);
@@ -2185,12 +2193,18 @@ mod tests {
             let lims = Limits::unlimited();
             // First create some entries (3?)
             let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
-            e1.add_ava("userid", Value::from("william"));
-            e1.add_ava("uuid", Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
+            e1.add_ava(Attribute::UserId, Value::from("william"));
+            e1.add_ava(
+                Attribute::Uuid,
+                Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"),
+            );
 
             let mut e2: Entry<EntryInit, EntryNew> = Entry::new();
-            e2.add_ava("userid", Value::from("alice"));
-            e2.add_ava("uuid", Value::from("4b6228ab-1dbe-42a4-a9f5-f6368222438e"));
+            e2.add_ava(Attribute::UserId, Value::from("alice"));
+            e2.add_ava(
+                Attribute::Uuid,
+                Value::from("4b6228ab-1dbe-42a4-a9f5-f6368222438e"),
+            );
 
             let ve1 = e1.clone().into_sealed_new();
             let ve2 = e2.clone().into_sealed_new();
@@ -2201,7 +2215,7 @@ mod tests {
 
             // You need to now retrieve the entries back out to get the entry id's
             let mut results = be
-                .search(&lims, &filter_resolved!(f_pres("userid")))
+                .search(&lims, &filter_resolved!(f_pres(Attribute::UserId)))
                 .expect("Failed to search");
 
             // Get these out to usable entries.
@@ -2224,8 +2238,8 @@ mod tests {
             // Make some changes to r1, r2.
             let pre1 = Arc::new(r1.clone().into_sealed_committed());
             let pre2 = Arc::new(r2.clone().into_sealed_committed());
-            r1.add_ava("desc", Value::from("modified"));
-            r2.add_ava("desc", Value::from("modified"));
+            r1.add_ava(Attribute::TestAttr, Value::from("modified"));
+            r2.add_ava(Attribute::TestAttr, Value::from("modified"));
 
             // Now ... cheat.
 
@@ -2235,8 +2249,8 @@ mod tests {
             // Modify single
             assert!(be.modify(&CID_ZERO, &[pre1], &[vr1.clone()]).is_ok());
             // Assert no other changes
-            assert!(entry_attr_pres!(be, vr1, "desc"));
-            assert!(!entry_attr_pres!(be, vr2, "desc"));
+            assert!(entry_attr_pres!(be, vr1, Attribute::TestAttr));
+            assert!(!entry_attr_pres!(be, vr2, Attribute::TestAttr));
 
             // Modify both
             assert!(be
@@ -2247,8 +2261,8 @@ mod tests {
                 )
                 .is_ok());
 
-            assert!(entry_attr_pres!(be, vr1, "desc"));
-            assert!(entry_attr_pres!(be, vr2, "desc"));
+            assert!(entry_attr_pres!(be, vr1, Attribute::TestAttr));
+            assert!(entry_attr_pres!(be, vr2, Attribute::TestAttr));
         });
     }
 
@@ -2260,16 +2274,25 @@ mod tests {
 
             // First create some entries (3?)
             let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
-            e1.add_ava("userid", Value::from("william"));
-            e1.add_ava("uuid", Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
+            e1.add_ava(Attribute::UserId, Value::from("william"));
+            e1.add_ava(
+                Attribute::Uuid,
+                Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"),
+            );
 
             let mut e2: Entry<EntryInit, EntryNew> = Entry::new();
-            e2.add_ava("userid", Value::from("alice"));
-            e2.add_ava("uuid", Value::from("4b6228ab-1dbe-42a4-a9f5-f6368222438e"));
+            e2.add_ava(Attribute::UserId, Value::from("alice"));
+            e2.add_ava(
+                Attribute::Uuid,
+                Value::from("4b6228ab-1dbe-42a4-a9f5-f6368222438e"),
+            );
 
             let mut e3: Entry<EntryInit, EntryNew> = Entry::new();
-            e3.add_ava("userid", Value::from("lucy"));
-            e3.add_ava("uuid", Value::from("7b23c99d-c06b-4a9a-a958-3afa56383e1d"));
+            e3.add_ava(Attribute::UserId, Value::from("lucy"));
+            e3.add_ava(
+                Attribute::Uuid,
+                Value::from("7b23c99d-c06b-4a9a-a958-3afa56383e1d"),
+            );
 
             let ve1 = e1.clone().into_sealed_new();
             let ve2 = e2.clone().into_sealed_new();
@@ -2282,7 +2305,7 @@ mod tests {
 
             // You need to now retrieve the entries back out to get the entry id's
             let mut results = be
-                .search(&lims, &filter_resolved!(f_pres("userid")))
+                .search(&lims, &filter_resolved!(f_pres(Attribute::UserId)))
                 .expect("Failed to search");
 
             // Get these out to usable entries.
@@ -2356,16 +2379,25 @@ mod tests {
 
             // First create some entries (3?)
             let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
-            e1.add_ava("userid", Value::from("william"));
-            e1.add_ava("uuid", Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
+            e1.add_ava(Attribute::UserId, Value::from("william"));
+            e1.add_ava(
+                Attribute::Uuid,
+                Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"),
+            );
 
             let mut e2: Entry<EntryInit, EntryNew> = Entry::new();
-            e2.add_ava("userid", Value::from("alice"));
-            e2.add_ava("uuid", Value::from("4b6228ab-1dbe-42a4-a9f5-f6368222438e"));
+            e2.add_ava(Attribute::UserId, Value::from("alice"));
+            e2.add_ava(
+                Attribute::Uuid,
+                Value::from("4b6228ab-1dbe-42a4-a9f5-f6368222438e"),
+            );
 
             let mut e3: Entry<EntryInit, EntryNew> = Entry::new();
-            e3.add_ava("userid", Value::from("lucy"));
-            e3.add_ava("uuid", Value::from("7b23c99d-c06b-4a9a-a958-3afa56383e1d"));
+            e3.add_ava(Attribute::UserId, Value::from("lucy"));
+            e3.add_ava(
+                Attribute::Uuid,
+                Value::from("7b23c99d-c06b-4a9a-a958-3afa56383e1d"),
+            );
 
             let ve1 = e1.clone().into_sealed_new();
             let ve2 = e2.clone().into_sealed_new();
@@ -2411,16 +2443,25 @@ mod tests {
             be.set_db_ts_max(Duration::from_secs(1)).unwrap();
             // First create some entries (3?)
             let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
-            e1.add_ava("userid", Value::from("william"));
-            e1.add_ava("uuid", Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
+            e1.add_ava(Attribute::UserId, Value::from("william"));
+            e1.add_ava(
+                Attribute::Uuid,
+                Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"),
+            );
 
             let mut e2: Entry<EntryInit, EntryNew> = Entry::new();
-            e2.add_ava("userid", Value::from("alice"));
-            e2.add_ava("uuid", Value::from("4b6228ab-1dbe-42a4-a9f5-f6368222438e"));
+            e2.add_ava(Attribute::UserId, Value::from("alice"));
+            e2.add_ava(
+                Attribute::Uuid,
+                Value::from("4b6228ab-1dbe-42a4-a9f5-f6368222438e"),
+            );
 
             let mut e3: Entry<EntryInit, EntryNew> = Entry::new();
-            e3.add_ava("userid", Value::from("lucy"));
-            e3.add_ava("uuid", Value::from("7b23c99d-c06b-4a9a-a958-3afa56383e1d"));
+            e3.add_ava(Attribute::UserId, Value::from("lucy"));
+            e3.add_ava(
+                Attribute::Uuid,
+                Value::from("7b23c99d-c06b-4a9a-a958-3afa56383e1d"),
+            );
 
             let ve1 = e1.clone().into_sealed_new();
             let ve2 = e2.clone().into_sealed_new();
@@ -2506,13 +2547,19 @@ mod tests {
         run_test!(|be: &mut BackendWriteTransaction| {
             // Add some test data?
             let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
-            e1.add_ava("name", Value::new_iname("william"));
-            e1.add_ava("uuid", Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
+            e1.add_ava(Attribute::Name, Value::new_iname("william"));
+            e1.add_ava(
+                Attribute::Uuid,
+                Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"),
+            );
             let e1 = e1.into_sealed_new();
 
             let mut e2: Entry<EntryInit, EntryNew> = Entry::new();
-            e2.add_ava("name", Value::new_iname("claire"));
-            e2.add_ava("uuid", Value::from("bd651620-00dd-426b-aaa0-4494f7b7906f"));
+            e2.add_ava(Attribute::Name, Value::new_iname("claire"));
+            e2.add_ava(
+                Attribute::Uuid,
+                Value::from("bd651620-00dd-426b-aaa0-4494f7b7906f"),
+            );
             let e2 = e2.into_sealed_new();
 
             be.create(&CID_ZERO, vec![e1, e2]).unwrap();
@@ -2528,15 +2575,33 @@ mod tests {
             assert!(missing.is_empty());
             // check name and uuid ids on eq, sub, pres
 
-            idl_state!(be, "name", IndexType::Equality, "william", Some(vec![1]));
-
-            idl_state!(be, "name", IndexType::Equality, "claire", Some(vec![2]));
-
-            idl_state!(be, "name", IndexType::Presence, "_", Some(vec![1, 2]));
+            idl_state!(
+                be,
+                Attribute::Name.as_ref(),
+                IndexType::Equality,
+                "william",
+                Some(vec![1])
+            );
 
             idl_state!(
                 be,
-                "uuid",
+                Attribute::Name.as_ref(),
+                IndexType::Equality,
+                "claire",
+                Some(vec![2])
+            );
+
+            idl_state!(
+                be,
+                Attribute::Name.as_ref(),
+                IndexType::Presence,
+                "_",
+                Some(vec![1, 2])
+            );
+
+            idl_state!(
+                be,
+                Attribute::Uuid.as_ref(),
                 IndexType::Equality,
                 "db237e8a-0079-4b8c-8a56-593b22aa44d1",
                 Some(vec![1])
@@ -2544,19 +2609,25 @@ mod tests {
 
             idl_state!(
                 be,
-                "uuid",
+                Attribute::Uuid.as_ref(),
                 IndexType::Equality,
                 "bd651620-00dd-426b-aaa0-4494f7b7906f",
                 Some(vec![2])
             );
 
-            idl_state!(be, "uuid", IndexType::Presence, "_", Some(vec![1, 2]));
+            idl_state!(
+                be,
+                Attribute::Uuid.as_ref(),
+                IndexType::Presence,
+                "_",
+                Some(vec![1, 2])
+            );
 
             // Show what happens with empty
 
             idl_state!(
                 be,
-                "name",
+                Attribute::Name.as_ref(),
                 IndexType::Equality,
                 "not-exist",
                 Some(Vec::new())
@@ -2564,7 +2635,7 @@ mod tests {
 
             idl_state!(
                 be,
-                "uuid",
+                Attribute::Uuid.as_ref(),
                 IndexType::Equality,
                 "fake-0079-4b8c-8a56-593b22aa44d1",
                 Some(Vec::new())
@@ -2603,27 +2674,48 @@ mod tests {
             // Test that on entry create, the indexes are made correctly.
             // this is a similar case to reindex.
             let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
-            e1.add_ava("name", Value::from("william"));
-            e1.add_ava("uuid", Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
+            e1.add_ava(Attribute::Name, Value::from("william"));
+            e1.add_ava(
+                Attribute::Uuid,
+                Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"),
+            );
             let e1 = e1.into_sealed_new();
 
             let rset = be.create(&CID_ZERO, vec![e1]).unwrap();
             let mut rset: Vec<_> = rset.into_iter().map(Arc::new).collect();
             let e1 = rset.pop().unwrap();
 
-            idl_state!(be, "name", IndexType::Equality, "william", Some(vec![1]));
-
-            idl_state!(be, "name", IndexType::Presence, "_", Some(vec![1]));
+            idl_state!(
+                be,
+                Attribute::Name.as_ref(),
+                IndexType::Equality,
+                "william",
+                Some(vec![1])
+            );
 
             idl_state!(
                 be,
-                "uuid",
+                Attribute::Name.as_ref(),
+                IndexType::Presence,
+                "_",
+                Some(vec![1])
+            );
+
+            idl_state!(
+                be,
+                Attribute::Uuid.as_ref(),
                 IndexType::Equality,
                 "db237e8a-0079-4b8c-8a56-593b22aa44d1",
                 Some(vec![1])
             );
 
-            idl_state!(be, "uuid", IndexType::Presence, "_", Some(vec![1]));
+            idl_state!(
+                be,
+                Attribute::Uuid.as_ref(),
+                IndexType::Presence,
+                "_",
+                Some(vec![1])
+            );
 
             let william_uuid = uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1");
             assert!(be.name2uuid("william") == Ok(Some(william_uuid)));
@@ -2635,19 +2727,37 @@ mod tests {
             assert!(be.modify(&CID_ONE, &[e1], &[e1_ts]).is_ok());
             be.reap_tombstones(&CID_TWO).unwrap();
 
-            idl_state!(be, "name", IndexType::Equality, "william", Some(Vec::new()));
-
-            idl_state!(be, "name", IndexType::Presence, "_", Some(Vec::new()));
+            idl_state!(
+                be,
+                Attribute::Name.as_ref(),
+                IndexType::Equality,
+                "william",
+                Some(Vec::new())
+            );
 
             idl_state!(
                 be,
-                "uuid",
+                Attribute::Name.as_ref(),
+                IndexType::Presence,
+                "_",
+                Some(Vec::new())
+            );
+
+            idl_state!(
+                be,
+                Attribute::Uuid.as_ref(),
                 IndexType::Equality,
                 "db237e8a-0079-4b8c-8a56-593b22aa44d1",
                 Some(Vec::new())
             );
 
-            idl_state!(be, "uuid", IndexType::Presence, "_", Some(Vec::new()));
+            idl_state!(
+                be,
+                Attribute::Uuid.as_ref(),
+                IndexType::Presence,
+                "_",
+                Some(Vec::new())
+            );
 
             assert!(be.name2uuid("william") == Ok(None));
             assert!(be.uuid2spn(william_uuid) == Ok(None));
@@ -2664,18 +2774,27 @@ mod tests {
             // Test that on entry create, the indexes are made correctly.
             // this is a similar case to reindex.
             let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
-            e1.add_ava("name", Value::new_iname("william"));
-            e1.add_ava("uuid", Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
+            e1.add_ava(Attribute::Name, Value::new_iname("william"));
+            e1.add_ava(
+                Attribute::Uuid,
+                Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"),
+            );
             let e1 = e1.into_sealed_new();
 
             let mut e2: Entry<EntryInit, EntryNew> = Entry::new();
-            e2.add_ava("name", Value::new_iname("claire"));
-            e2.add_ava("uuid", Value::from("bd651620-00dd-426b-aaa0-4494f7b7906f"));
+            e2.add_ava(Attribute::Name, Value::new_iname("claire"));
+            e2.add_ava(
+                Attribute::Uuid,
+                Value::from("bd651620-00dd-426b-aaa0-4494f7b7906f"),
+            );
             let e2 = e2.into_sealed_new();
 
             let mut e3: Entry<EntryInit, EntryNew> = Entry::new();
-            e3.add_ava("userid", Value::new_iname("lucy"));
-            e3.add_ava("uuid", Value::from("7b23c99d-c06b-4a9a-a958-3afa56383e1d"));
+            e3.add_ava(Attribute::UserId, Value::new_iname("lucy"));
+            e3.add_ava(
+                Attribute::Uuid,
+                Value::from("7b23c99d-c06b-4a9a-a958-3afa56383e1d"),
+            );
             let e3 = e3.into_sealed_new();
 
             let mut rset = be.create(&CID_ZERO, vec![e1, e2, e3]).unwrap();
@@ -2690,19 +2809,37 @@ mod tests {
             assert!(be.modify(&CID_ONE, &[e1, e3], &[e1_ts, e3_ts]).is_ok());
             be.reap_tombstones(&CID_TWO).unwrap();
 
-            idl_state!(be, "name", IndexType::Equality, "claire", Some(vec![2]));
-
-            idl_state!(be, "name", IndexType::Presence, "_", Some(vec![2]));
+            idl_state!(
+                be,
+                Attribute::Name.as_ref(),
+                IndexType::Equality,
+                "claire",
+                Some(vec![2])
+            );
 
             idl_state!(
                 be,
-                "uuid",
+                Attribute::Name.as_ref(),
+                IndexType::Presence,
+                "_",
+                Some(vec![2])
+            );
+
+            idl_state!(
+                be,
+                Attribute::Uuid.as_ref(),
                 IndexType::Equality,
                 "bd651620-00dd-426b-aaa0-4494f7b7906f",
                 Some(vec![2])
             );
 
-            idl_state!(be, "uuid", IndexType::Presence, "_", Some(vec![2]));
+            idl_state!(
+                be,
+                Attribute::Uuid.as_ref(),
+                IndexType::Presence,
+                "_",
+                Some(vec![2])
+            );
 
             let claire_uuid = uuid!("bd651620-00dd-426b-aaa0-4494f7b7906f");
             let william_uuid = uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1");
@@ -2732,9 +2869,12 @@ mod tests {
             // us. For the test to be "accurate" we must add one attr, remove one attr
             // and change one attr.
             let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
-            e1.add_ava("name", Value::new_iname("william"));
-            e1.add_ava("uuid", Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
-            e1.add_ava("ta", Value::from("test"));
+            e1.add_ava(Attribute::Name, Value::new_iname("william"));
+            e1.add_ava(
+                Attribute::Uuid,
+                Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"),
+            );
+            e1.add_ava(Attribute::TestAttr, Value::from("test"));
             let e1 = e1.into_sealed_new();
 
             let rset = be.create(&CID_ZERO, vec![e1]).unwrap();
@@ -2742,25 +2882,49 @@ mod tests {
             // Now, alter the new entry.
             let mut ce1 = rset[0].as_ref().clone().into_invalid();
             // add something.
-            ce1.add_ava("tb", Value::from("test"));
+            ce1.add_ava(Attribute::TestNumber, Value::from("test"));
             // remove something.
-            ce1.purge_ava("ta");
+            ce1.purge_ava(Attribute::TestAttr);
             // mod something.
-            ce1.purge_ava("name");
-            ce1.add_ava("name", Value::new_iname("claire"));
+            ce1.purge_ava(Attribute::Name);
+            ce1.add_ava(Attribute::Name, Value::new_iname("claire"));
 
             let ce1 = ce1.into_sealed_committed();
 
             be.modify(&CID_ZERO, &rset, &[ce1]).unwrap();
 
             // Now check the idls
-            idl_state!(be, "name", IndexType::Equality, "claire", Some(vec![1]));
+            idl_state!(
+                be,
+                Attribute::Name.as_ref(),
+                IndexType::Equality,
+                "claire",
+                Some(vec![1])
+            );
 
-            idl_state!(be, "name", IndexType::Presence, "_", Some(vec![1]));
+            idl_state!(
+                be,
+                Attribute::Name.as_ref(),
+                IndexType::Presence,
+                "_",
+                Some(vec![1])
+            );
 
-            idl_state!(be, "tb", IndexType::Equality, "test", Some(vec![1]));
+            idl_state!(
+                be,
+                Attribute::TestNumber.as_ref(),
+                IndexType::Equality,
+                "test",
+                Some(vec![1])
+            );
 
-            idl_state!(be, "ta", IndexType::Equality, "test", Some(vec![]));
+            idl_state!(
+                be,
+                Attribute::TestAttr,
+                IndexType::Equality,
+                "test",
+                Some(vec![])
+            );
 
             let william_uuid = uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1");
             assert!(be.name2uuid("william") == Ok(None));
@@ -2778,43 +2942,73 @@ mod tests {
             // This will be needing to be correct for conflicts when we add
             // replication support!
             let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
-            e1.add_ava("name", Value::new_iname("william"));
-            e1.add_ava("uuid", Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
+            e1.add_ava(Attribute::Name, Value::new_iname("william"));
+            e1.add_ava(
+                Attribute::Uuid,
+                Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"),
+            );
             let e1 = e1.into_sealed_new();
 
             let rset = be.create(&CID_ZERO, vec![e1]).unwrap();
             let rset: Vec<_> = rset.into_iter().map(Arc::new).collect();
             // Now, alter the new entry.
             let mut ce1 = rset[0].as_ref().clone().into_invalid();
-            ce1.purge_ava("name");
-            ce1.purge_ava("uuid");
-            ce1.add_ava("name", Value::new_iname("claire"));
-            ce1.add_ava("uuid", Value::from("04091a7a-6ce4-42d2-abf5-c2ce244ac9e8"));
+            ce1.purge_ava(Attribute::Name);
+            ce1.purge_ava(Attribute::Uuid);
+            ce1.add_ava(Attribute::Name, Value::new_iname("claire"));
+            ce1.add_ava(
+                Attribute::Uuid,
+                Value::from("04091a7a-6ce4-42d2-abf5-c2ce244ac9e8"),
+            );
             let ce1 = ce1.into_sealed_committed();
 
             be.modify(&CID_ZERO, &rset, &[ce1]).unwrap();
 
-            idl_state!(be, "name", IndexType::Equality, "claire", Some(vec![1]));
+            idl_state!(
+                be,
+                Attribute::Name.as_ref(),
+                IndexType::Equality,
+                "claire",
+                Some(vec![1])
+            );
 
             idl_state!(
                 be,
-                "uuid",
+                Attribute::Uuid.as_ref(),
                 IndexType::Equality,
                 "04091a7a-6ce4-42d2-abf5-c2ce244ac9e8",
                 Some(vec![1])
             );
 
-            idl_state!(be, "name", IndexType::Presence, "_", Some(vec![1]));
-            idl_state!(be, "uuid", IndexType::Presence, "_", Some(vec![1]));
+            idl_state!(
+                be,
+                Attribute::Name.as_ref(),
+                IndexType::Presence,
+                "_",
+                Some(vec![1])
+            );
+            idl_state!(
+                be,
+                Attribute::Uuid.as_ref(),
+                IndexType::Presence,
+                "_",
+                Some(vec![1])
+            );
 
             idl_state!(
                 be,
-                "uuid",
+                Attribute::Uuid.as_ref(),
                 IndexType::Equality,
                 "db237e8a-0079-4b8c-8a56-593b22aa44d1",
                 Some(Vec::new())
             );
-            idl_state!(be, "name", IndexType::Equality, "william", Some(Vec::new()));
+            idl_state!(
+                be,
+                Attribute::Name.as_ref(),
+                IndexType::Equality,
+                "william",
+                Some(Vec::new())
+            );
 
             let claire_uuid = uuid!("04091a7a-6ce4-42d2-abf5-c2ce244ac9e8");
             let william_uuid = uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1");
@@ -2834,15 +3028,21 @@ mod tests {
 
             // Create a test entry with some indexed / unindexed values.
             let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
-            e1.add_ava("name", Value::new_iname("william"));
-            e1.add_ava("uuid", Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
-            e1.add_ava("no-index", Value::from("william"));
-            e1.add_ava("other-no-index", Value::from("william"));
+            e1.add_ava(Attribute::Name, Value::new_iname("william"));
+            e1.add_ava(
+                Attribute::Uuid,
+                Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"),
+            );
+            e1.add_ava(Attribute::NoIndex, Value::from("william"));
+            e1.add_ava(Attribute::OtherNoIndex, Value::from("william"));
             let e1 = e1.into_sealed_new();
 
             let mut e2: Entry<EntryInit, EntryNew> = Entry::new();
-            e2.add_ava("name", Value::new_iname("claire"));
-            e2.add_ava("uuid", Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d2"));
+            e2.add_ava(Attribute::Name, Value::new_iname("claire"));
+            e2.add_ava(
+                Attribute::Uuid,
+                Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d2"),
+            );
             let e2 = e2.into_sealed_new();
 
             let _rset = be.create(&CID_ZERO, vec![e1, e2]).unwrap();
@@ -3015,7 +3215,7 @@ mod tests {
             // test andnot in and (first) with name
             let f_and_andnot = filter_resolved!(f_and!([
                 f_andnot(f_eq(Attribute::Name, PartialValue::new_utf8s("claire"))),
-                f_pres("name")
+                f_pres(Attribute::Name)
             ]));
 
             let (r, _plan) = be.filter2idl(f_and_andnot.to_inner(), 0).unwrap();
@@ -3030,7 +3230,7 @@ mod tests {
             }
             // test andnot in and (last) with name
             let f_and_andnot = filter_resolved!(f_and!([
-                f_pres("name"),
+                f_pres(Attribute::Name),
                 f_andnot(f_eq(Attribute::Name, PartialValue::new_utf8s("claire")))
             ]));
 
@@ -3046,7 +3246,7 @@ mod tests {
             // test andnot in and (first) with no-index
             let f_and_andnot = filter_resolved!(f_and!([
                 f_andnot(f_eq(Attribute::Name, PartialValue::new_utf8s("claire"))),
-                f_pres("no-index")
+                f_pres(Attribute::NoIndex)
             ]));
 
             let (r, _plan) = be.filter2idl(f_and_andnot.to_inner(), 0).unwrap();
@@ -3058,7 +3258,7 @@ mod tests {
             }
             // test andnot in and (last) with no-index
             let f_and_andnot = filter_resolved!(f_and!([
-                f_pres("no-index"),
+                f_pres(Attribute::NoIndex),
                 f_andnot(f_eq(Attribute::Name, PartialValue::new_utf8s("claire")))
             ]));
 
@@ -3121,24 +3321,33 @@ mod tests {
         run_test!(|be: &mut BackendWriteTransaction| {
             // Create some test entry with some indexed / unindexed values.
             let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
-            e1.add_ava("name", Value::new_iname("william"));
-            e1.add_ava("uuid", Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
-            e1.add_ava("ta", Value::from("dupe"));
-            e1.add_ava("tb", Value::from("1"));
+            e1.add_ava(Attribute::Name, Value::new_iname("william"));
+            e1.add_ava(
+                Attribute::Uuid,
+                Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"),
+            );
+            e1.add_ava(Attribute::TestAttr, Value::from("dupe"));
+            e1.add_ava(Attribute::TestNumber, Value::from("1"));
             let e1 = e1.into_sealed_new();
 
             let mut e2: Entry<EntryInit, EntryNew> = Entry::new();
-            e2.add_ava("name", Value::new_iname("claire"));
-            e2.add_ava("uuid", Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d2"));
-            e2.add_ava("ta", Value::from("dupe"));
-            e2.add_ava("tb", Value::from("1"));
+            e2.add_ava(Attribute::Name, Value::new_iname("claire"));
+            e2.add_ava(
+                Attribute::Uuid,
+                Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d2"),
+            );
+            e2.add_ava(Attribute::TestAttr, Value::from("dupe"));
+            e2.add_ava(Attribute::TestNumber, Value::from("1"));
             let e2 = e2.into_sealed_new();
 
             let mut e3: Entry<EntryInit, EntryNew> = Entry::new();
-            e3.add_ava("name", Value::new_iname("benny"));
-            e3.add_ava("uuid", Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d3"));
-            e3.add_ava("ta", Value::from("dupe"));
-            e3.add_ava("tb", Value::from("2"));
+            e3.add_ava(Attribute::Name, Value::new_iname("benny"));
+            e3.add_ava(
+                Attribute::Uuid,
+                Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d3"),
+            );
+            e3.add_ava(Attribute::TestAttr, Value::from("dupe"));
+            e3.add_ava(Attribute::TestNumber, Value::from("2"));
             let e3 = e3.into_sealed_new();
 
             let _rset = be.create(&CID_ZERO, vec![e1, e2, e3]).unwrap();
@@ -3148,30 +3357,30 @@ mod tests {
             assert!(!be.is_idx_slopeyness_generated().unwrap());
 
             let ta_eq_slope = be
-                .get_idx_slope(&IdxKey::new("ta", IndexType::Equality))
+                .get_idx_slope(&IdxKey::new(Attribute::TestAttr, IndexType::Equality))
                 .unwrap();
             assert_eq!(ta_eq_slope, 45);
 
             let tb_eq_slope = be
-                .get_idx_slope(&IdxKey::new("tb", IndexType::Equality))
+                .get_idx_slope(&IdxKey::new(Attribute::TestNumber, IndexType::Equality))
                 .unwrap();
             assert_eq!(tb_eq_slope, 45);
 
             let name_eq_slope = be
-                .get_idx_slope(&IdxKey::new("name", IndexType::Equality))
+                .get_idx_slope(&IdxKey::new(Attribute::Name, IndexType::Equality))
                 .unwrap();
             assert_eq!(name_eq_slope, 1);
             let uuid_eq_slope = be
-                .get_idx_slope(&IdxKey::new("uuid", IndexType::Equality))
+                .get_idx_slope(&IdxKey::new(Attribute::Uuid, IndexType::Equality))
                 .unwrap();
             assert_eq!(uuid_eq_slope, 1);
 
             let name_pres_slope = be
-                .get_idx_slope(&IdxKey::new("name", IndexType::Presence))
+                .get_idx_slope(&IdxKey::new(Attribute::Name, IndexType::Presence))
                 .unwrap();
             assert_eq!(name_pres_slope, 90);
             let uuid_pres_slope = be
-                .get_idx_slope(&IdxKey::new("uuid", IndexType::Presence))
+                .get_idx_slope(&IdxKey::new(Attribute::Uuid, IndexType::Presence))
                 .unwrap();
             assert_eq!(uuid_pres_slope, 90);
             // Check the slopes are what we expect for hardcoded values.
@@ -3182,30 +3391,30 @@ mod tests {
             assert!(be.is_idx_slopeyness_generated().unwrap());
 
             let ta_eq_slope = be
-                .get_idx_slope(&IdxKey::new("ta", IndexType::Equality))
+                .get_idx_slope(&IdxKey::new(Attribute::TestAttr, IndexType::Equality))
                 .unwrap();
             assert_eq!(ta_eq_slope, 200);
 
             let tb_eq_slope = be
-                .get_idx_slope(&IdxKey::new("tb", IndexType::Equality))
+                .get_idx_slope(&IdxKey::new(Attribute::TestNumber, IndexType::Equality))
                 .unwrap();
             assert_eq!(tb_eq_slope, 133);
 
             let name_eq_slope = be
-                .get_idx_slope(&IdxKey::new("name", IndexType::Equality))
+                .get_idx_slope(&IdxKey::new(Attribute::Name, IndexType::Equality))
                 .unwrap();
             assert_eq!(name_eq_slope, 51);
             let uuid_eq_slope = be
-                .get_idx_slope(&IdxKey::new("uuid", IndexType::Equality))
+                .get_idx_slope(&IdxKey::new(Attribute::Uuid, IndexType::Equality))
                 .unwrap();
             assert_eq!(uuid_eq_slope, 51);
 
             let name_pres_slope = be
-                .get_idx_slope(&IdxKey::new("name", IndexType::Presence))
+                .get_idx_slope(&IdxKey::new(Attribute::Name, IndexType::Presence))
                 .unwrap();
             assert_eq!(name_pres_slope, 200);
             let uuid_pres_slope = be
-                .get_idx_slope(&IdxKey::new("uuid", IndexType::Presence))
+                .get_idx_slope(&IdxKey::new(Attribute::Uuid, IndexType::Presence))
                 .unwrap();
             assert_eq!(uuid_pres_slope, 200);
         })
@@ -3221,15 +3430,18 @@ mod tests {
             lim_deny_allids.unindexed_allow = false;
 
             let mut e: Entry<EntryInit, EntryNew> = Entry::new();
-            e.add_ava("userid", Value::from("william"));
-            e.add_ava("uuid", Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
-            e.add_ava("nonexist", Value::from("x"));
+            e.add_ava(Attribute::UserId, Value::from("william"));
+            e.add_ava(
+                Attribute::Uuid,
+                Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"),
+            );
+            e.add_ava(Attribute::NonExist, Value::from("x"));
             let e = e.into_sealed_new();
             let single_result = be.create(&CID_ZERO, vec![e.clone()]);
 
             assert!(single_result.is_ok());
             let filt = e
-                .filter_from_attrs(&[AttrString::from("nonexist")])
+                .filter_from_attrs(&[Attribute::NonExist.into()])
                 .expect("failed to generate filter")
                 .into_valid_resolved();
             // check allow on allids
@@ -3256,15 +3468,18 @@ mod tests {
             lim_deny.search_max_results = 0;
 
             let mut e: Entry<EntryInit, EntryNew> = Entry::new();
-            e.add_ava("userid", Value::from("william"));
-            e.add_ava("uuid", Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
-            e.add_ava("nonexist", Value::from("x"));
+            e.add_ava(Attribute::UserId, Value::from("william"));
+            e.add_ava(
+                Attribute::Uuid,
+                Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"),
+            );
+            e.add_ava(Attribute::NonExist, Value::from("x"));
             let e = e.into_sealed_new();
             let single_result = be.create(&CID_ZERO, vec![e.clone()]);
             assert!(single_result.is_ok());
 
             let filt = e
-                .filter_from_attrs(&[AttrString::from("nonexist")])
+                .filter_from_attrs(&[Attribute::NonExist.into()])
                 .expect("failed to generate filter")
                 .into_valid_resolved();
 
@@ -3312,10 +3527,13 @@ mod tests {
             lim_deny.search_max_filter_test = 0;
 
             let mut e: Entry<EntryInit, EntryNew> = Entry::new();
-            e.add_ava("name", Value::new_iname("william"));
-            e.add_ava("uuid", Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
-            e.add_ava("nonexist", Value::from("x"));
-            e.add_ava("nonexist", Value::from("y"));
+            e.add_ava(Attribute::Name, Value::new_iname("william"));
+            e.add_ava(
+                Attribute::Uuid,
+                Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"),
+            );
+            e.add_ava(Attribute::NonExist, Value::from("x"));
+            e.add_ava(Attribute::NonExist, Value::from("y"));
             let e = e.into_sealed_new();
             let single_result = be.create(&CID_ZERO, vec![e]);
             assert!(single_result.is_ok());
@@ -3364,7 +3582,7 @@ mod tests {
 
         // This is a demo idxmeta, purely for testing.
         let idxmeta = vec![IdxKey {
-            attr: AttrString::from("uuid"),
+            attr: Attribute::Uuid.into(),
             itype: IndexType::Equality,
         }];
 
@@ -3381,8 +3599,11 @@ mod tests {
 
         // Create into A
         let mut e: Entry<EntryInit, EntryNew> = Entry::new();
-        e.add_ava("userid", Value::from("william"));
-        e.add_ava("uuid", Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
+        e.add_ava(Attribute::UserId, Value::from("william"));
+        e.add_ava(
+            Attribute::Uuid,
+            Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"),
+        );
         let e = e.into_sealed_new();
 
         let single_result = be_a_txn.create(&CID_ZERO, vec![e]);
@@ -3402,8 +3623,11 @@ mod tests {
 
         // Create into B
         let mut e: Entry<EntryInit, EntryNew> = Entry::new();
-        e.add_ava("userid", Value::from("claire"));
-        e.add_ava("uuid", Value::from("0c680959-0944-47d6-9dea-53304d124266"));
+        e.add_ava(Attribute::UserId, Value::from("claire"));
+        e.add_ava(
+            Attribute::Uuid,
+            Value::from("0c680959-0944-47d6-9dea-53304d124266"),
+        );
         let e = e.into_sealed_new();
 
         let single_result = be_b_txn.create(&CID_ZERO, vec![e]);

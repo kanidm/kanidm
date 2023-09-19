@@ -23,17 +23,21 @@ impl EcdhKeyGen {
         cands: &mut [Entry<EntryInvalid, STATE>],
     ) -> Result<(), OperationError> {
         for cand in cands.iter_mut() {
-            if cand.attribute_equality("class", &EntryClass::Person.to_partialvalue())
-                && !cand.attribute_pres("id_verification_eckey")
+            if cand.attribute_equality(Attribute::Class, &EntryClass::Person.to_partialvalue())
+                && !cand.attribute_pres(Attribute::IdVerificationEcKey)
             {
-                debug!("Generating idv_eckey for {}", cand.get_display_id());
+                debug!(
+                    "Generating {} for {}",
+                    Attribute::IdVerificationEcKey,
+                    cand.get_display_id()
+                );
 
                 let new_private_key = EcKey::generate(&DEFAULT_KEY_GROUP).map_err(|e| {
                     error!(err = ?e, "Unable to generate id verification ECDH private key");
                     OperationError::CryptographyError
                 })?;
                 cand.add_ava_if_not_exist(
-                    ATTR_ID_VERIFICATION_ECKEY,
+                    Attribute::IdVerificationEcKey,
                     crate::value::Value::EcKeyPrivate(new_private_key),
                 )
             }
@@ -79,7 +83,6 @@ impl Plugin for EcdhKeyGen {
 
 #[cfg(test)]
 mod tests {
-    use kanidm_proto::constants::*;
     use openssl::ec::EcKey;
     use uuid::Uuid;
 
@@ -92,13 +95,13 @@ mod tests {
     fn test_new_user_generate_key() {
         let uuid = Uuid::new_v4();
         let ea = entry_init!(
-            (ATTR_CLASS, EntryClass::Account.to_value()),
-            (ATTR_CLASS, EntryClass::Person.to_value()),
-            (ATTR_CLASS, EntryClass::Object.to_value()),
-            (ATTR_NAME, Value::new_iname("test_name")),
-            (ATTR_UUID, Value::Uuid(uuid)),
-            (ATTR_DESCRIPTION, Value::new_utf8s("testperson")),
-            (ATTR_DISPLAYNAME, Value::new_utf8s("Test Person"))
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Name, Value::new_iname("test_name")),
+            (Attribute::Uuid, Value::Uuid(uuid)),
+            (Attribute::Description, Value::new_utf8s("testperson")),
+            (Attribute::DisplayName, Value::new_utf8s("Test Person"))
         );
         let preload: Vec<Entry<EntryInit, EntryNew>> = Vec::new();
 
@@ -112,7 +115,7 @@ mod tests {
                 let e = qs.internal_search_uuid(uuid).expect("failed to get entry");
 
                 let key = e
-                    .get_ava_single_eckey_private(ATTR_ID_VERIFICATION_ECKEY)
+                    .get_ava_single_eckey_private(Attribute::IdVerificationEcKey)
                     .expect("unable to retrieve the ecdh key");
 
                 assert!(key.check_key().is_ok())
@@ -126,12 +129,12 @@ mod tests {
     #[test]
     fn test_modify_present_ecdkey() {
         let ea = entry_init!(
-            (ATTR_CLASS, EntryClass::Account.to_value()),
-            (ATTR_CLASS, EntryClass::Person.to_value()),
-            (ATTR_CLASS, EntryClass::Object.to_value()),
-            (ATTR_NAME, Value::new_iname("test_name")),
-            (ATTR_DESCRIPTION, Value::new_utf8s("testperson")),
-            ("displayname", Value::new_utf8s("Test person!"))
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Name, Value::new_iname("test_name")),
+            (Attribute::Description, Value::new_utf8s("testperson")),
+            (Attribute::DisplayName, Value::new_utf8s("Test person!"))
         );
         let preload = vec![ea];
         let new_private_key = EcKey::generate(&DEFAULT_KEY_GROUP).unwrap();
@@ -140,7 +143,7 @@ mod tests {
             preload,
             filter!(f_eq(Attribute::Name, PartialValue::new_iname("test_name"))),
             modlist!([m_pres(
-                ATTR_ID_VERIFICATION_ECKEY,
+                Attribute::IdVerificationEcKey.into(),
                 &Value::EcKeyPrivate(new_private_key)
             )]),
             None,
@@ -158,14 +161,14 @@ mod tests {
         let uuid = Uuid::new_v4();
 
         let ea = entry_init!(
-            (ATTR_CLASS, EntryClass::Account.to_value()),
-            (ATTR_CLASS, EntryClass::Person.to_value()),
-            (ATTR_CLASS, EntryClass::Object.to_value()),
-            (ATTR_NAME, Value::new_iname("test_name")),
-            (ATTR_UUID, Value::Uuid(uuid)),
-            (ATTR_ID_VERIFICATION_ECKEY, private_key_value.clone()),
-            (ATTR_DESCRIPTION, Value::new_utf8s("testperson")),
-            ("displayname", Value::new_utf8s("Test person!"))
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Name, Value::new_iname("test_name")),
+            (Attribute::Uuid, Value::Uuid(uuid)),
+            (Attribute::IdVerificationEcKey, private_key_value.clone()),
+            (Attribute::Description, Value::new_utf8s("testperson")),
+            (Attribute::DisplayName, Value::new_utf8s("Test person!"))
         );
         let key_partialvalue = valueset::from_value_iter(std::iter::once(private_key_value))
             .unwrap()
@@ -177,15 +180,15 @@ mod tests {
             Ok(()),
             preload,
             filter!(f_eq(Attribute::Name, PartialValue::new_iname("test_name"))),
-            modlist!([m_purge("id_verification_eckey")]),
+            modlist!([m_purge(Attribute::IdVerificationEcKey)]),
             None,
             |_| {},
             |qs: &mut QueryServerWriteTransaction| {
                 let e = qs.internal_search_uuid(uuid).expect("failed to get entry");
 
                 assert!(
-                    !e.attribute_equality(ATTR_ID_VERIFICATION_ECKEY, &key_partialvalue)
-                        && e.attribute_pres(ATTR_ID_VERIFICATION_ECKEY)
+                    !e.attribute_equality(Attribute::IdVerificationEcKey, &key_partialvalue)
+                        && e.attribute_pres(Attribute::IdVerificationEcKey)
                 )
             }
         );
@@ -198,14 +201,14 @@ mod tests {
         let uuid = Uuid::new_v4();
 
         let ea = entry_init!(
-            (ATTR_CLASS, EntryClass::Account.to_value()),
-            (ATTR_CLASS, EntryClass::Person.to_value()),
-            (ATTR_CLASS, EntryClass::Object.to_value()),
-            (ATTR_NAME, Value::new_iname("test_name")),
-            (ATTR_UUID, Value::Uuid(uuid)),
-            (ATTR_ID_VERIFICATION_ECKEY, private_key_value.clone()),
-            (ATTR_DESCRIPTION, Value::new_utf8s("testperson")),
-            ("displayname", Value::new_utf8s("Test person!"))
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Name, Value::new_iname("test_name")),
+            (Attribute::Uuid, Value::Uuid(uuid)),
+            (Attribute::IdVerificationEcKey, private_key_value.clone()),
+            (Attribute::Description, Value::new_utf8s("testperson")),
+            (Attribute::DisplayName, Value::new_utf8s("Test person!"))
         );
         let key_partialvalue = valueset::from_value_iter(std::iter::once(private_key_value))
             .unwrap()
@@ -217,15 +220,15 @@ mod tests {
             Ok(()),
             preload,
             filter!(f_eq(Attribute::Name, PartialValue::new_iname("test_name"))),
-            modlist!([m_remove("id_verification_eckey", &key_partialvalue)]),
+            modlist!([m_remove(Attribute::IdVerificationEcKey, &key_partialvalue)]),
             None,
             |_| {},
             |qs: &mut QueryServerWriteTransaction| {
                 let e = qs.internal_search_uuid(uuid).expect("failed to get entry");
 
                 assert!(
-                    !e.attribute_equality(ATTR_ID_VERIFICATION_ECKEY, &key_partialvalue)
-                        && e.attribute_pres(ATTR_ID_VERIFICATION_ECKEY)
+                    !e.attribute_equality(Attribute::IdVerificationEcKey, &key_partialvalue)
+                        && e.attribute_pres(Attribute::IdVerificationEcKey)
                 )
             }
         );

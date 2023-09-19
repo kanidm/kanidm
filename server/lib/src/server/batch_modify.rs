@@ -106,7 +106,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
             .iter()
             .map(|er| {
                 let u = er.get_uuid();
-                let mut ent_mut = er.as_ref().clone().invalidate(self.cid.clone());
+                let mut ent_mut = er
+                    .as_ref()
+                    .clone()
+                    .invalidate(self.cid.clone(), &self.trim_cid);
 
                 me.modset
                     .get(&u)
@@ -186,11 +189,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 .iter()
                 .chain(pre_candidates.iter().map(|e| e.as_ref()))
                 .any(|e| {
-                    e.attribute_equality(Attribute::Class.as_ref(), &EntryClass::ClassType.into())
-                        || e.attribute_equality(
-                            Attribute::Class.as_ref(),
-                            &EntryClass::AttributeType.into(),
-                        )
+                    e.attribute_equality(Attribute::Class, &EntryClass::ClassType.into())
+                        || e.attribute_equality(Attribute::Class, &EntryClass::AttributeType.into())
                 });
         }
         if !self.changed_acp {
@@ -198,10 +198,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 .iter()
                 .chain(pre_candidates.iter().map(|e| e.as_ref()))
                 .any(|e| {
-                    e.attribute_equality(
-                        Attribute::Class.as_ref(),
-                        &EntryClass::AccessControlProfile.into(),
-                    )
+                    e.attribute_equality(Attribute::Class, &EntryClass::AccessControlProfile.into())
                 });
         }
         if !self.changed_oauth2 {
@@ -209,17 +206,14 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 .iter()
                 .chain(pre_candidates.iter().map(|e| e.as_ref()))
                 .any(|e| {
-                    e.attribute_equality(
-                        Attribute::Class.as_ref(),
-                        &EntryClass::OAuth2ResourceServer.into(),
-                    )
+                    e.attribute_equality(Attribute::Class, &EntryClass::OAuth2ResourceServer.into())
                 });
         }
         if !self.changed_domain {
             self.changed_domain = norm_cand
                 .iter()
                 .chain(pre_candidates.iter().map(|e| e.as_ref()))
-                .any(|e| e.attribute_equality(Attribute::Uuid.as_ref(), &PVUUID_DOMAIN_INFO));
+                .any(|e| e.attribute_equality(Attribute::Uuid, &PVUUID_DOMAIN_INFO));
         }
 
         self.changed_uuid.extend(
@@ -277,12 +271,12 @@ mod tests {
         assert!(server_txn
             .internal_create(vec![
                 entry_init!(
-                    (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-                    (Attribute::Uuid.as_ref(), Value::Uuid(uuid_a))
+                    (Attribute::Class, EntryClass::Object.to_value()),
+                    (Attribute::Uuid, Value::Uuid(uuid_a))
                 ),
                 entry_init!(
-                    (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-                    (Attribute::Uuid.as_ref(), Value::Uuid(uuid_b))
+                    (Attribute::Class, EntryClass::Object.to_value()),
+                    (Attribute::Uuid, Value::Uuid(uuid_b))
                 ),
             ])
             .is_ok());
@@ -293,17 +287,11 @@ mod tests {
                 [
                     (
                         uuid_a,
-                        ModifyList::new_append(
-                            Attribute::Description.as_ref(),
-                            Value::Utf8("a".into())
-                        )
+                        ModifyList::new_append(Attribute::Description, Value::Utf8("a".into()))
                     ),
                     (
                         uuid_b,
-                        ModifyList::new_append(
-                            Attribute::Description.as_ref(),
-                            Value::Utf8("b".into())
-                        )
+                        ModifyList::new_append(Attribute::Description, Value::Utf8("b".into()))
                     ),
                 ]
                 .into_iter()
@@ -318,7 +306,7 @@ mod tests {
             .internal_search_uuid(uuid_b)
             .expect("Failed to get entry.");
 
-        assert!(ent_a.get_ava_single_utf8(Attribute::Description.as_ref()) == Some("a"));
-        assert!(ent_b.get_ava_single_utf8(Attribute::Description.as_ref()) == Some("b"));
+        assert!(ent_a.get_ava_single_utf8(Attribute::Description) == Some("a"));
+        assert!(ent_b.get_ava_single_utf8(Attribute::Description) == Some("b"));
     }
 }

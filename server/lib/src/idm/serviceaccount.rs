@@ -32,34 +32,32 @@ use crate::value::ApiToken;
 macro_rules! try_from_entry {
     ($value:expr) => {{
         // Check the classes
-        if !$value.attribute_equality(
-            Attribute::Class.as_ref(),
-            &EntryClass::ServiceAccount.into(),
-        ) {
+        if !$value.attribute_equality(Attribute::Class, &EntryClass::ServiceAccount.into()) {
             return Err(OperationError::InvalidAccountState(
                 "Missing class: service account".to_string(),
             ));
         }
 
-        let spn = $value.get_ava_single_proto_string("spn").ok_or(
-            OperationError::InvalidAccountState("Missing attribute: spn".to_string()),
+        let spn = $value.get_ava_single_proto_string(Attribute::Spn).ok_or(
+            OperationError::InvalidAccountState(format!("Missing attribute: {}", Attribute::Spn)),
         )?;
 
         let jws_key = $value
-            .get_ava_single_jws_key_es256("jws_es256_private_key")
+            .get_ava_single_jws_key_es256(Attribute::JwsEs256PrivateKey)
             .cloned()
-            .ok_or(OperationError::InvalidAccountState(
-                "Missing attribute: jws_es256_private_key".to_string(),
-            ))?;
+            .ok_or(OperationError::InvalidAccountState(format!(
+                "Missing attribute: {}",
+                Attribute::JwsEs256PrivateKey
+            )))?;
 
         let api_tokens = $value
-            .get_ava_as_apitoken_map("api_token_session")
+            .get_ava_as_apitoken_map(Attribute::ApiTokenSession)
             .cloned()
             .unwrap_or_default();
 
-        let valid_from = $value.get_ava_single_datetime("account_valid_from");
+        let valid_from = $value.get_ava_single_datetime(Attribute::AccountValidFrom);
 
-        let expire = $value.get_ava_single_datetime("account_expire");
+        let expire = $value.get_ava_single_datetime(Attribute::AccountExpire);
 
         let uuid = $value.get_uuid().clone();
 
@@ -103,8 +101,12 @@ impl ServiceAccount {
     ) -> bool {
         let within_valid_window = Account::check_within_valid_time(
             ct,
-            entry.get_ava_single_datetime("account_valid_from").as_ref(),
-            entry.get_ava_single_datetime("account_expire").as_ref(),
+            entry
+                .get_ava_single_datetime(Attribute::AccountValidFrom)
+                .as_ref(),
+            entry
+                .get_ava_single_datetime(Attribute::AccountExpire)
+                .as_ref(),
         );
 
         if !within_valid_window {
@@ -114,7 +116,7 @@ impl ServiceAccount {
 
         // Get the sessions.
         let session_present = entry
-            .get_ava_as_apitoken_map("api_token_session")
+            .get_ava_as_apitoken_map(Attribute::ApiTokenSession)
             .map(|session_map| session_map.get(&apit.token_id).is_some())
             .unwrap_or(false);
 
@@ -249,7 +251,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         // modify the account to put the session onto it.
         let modlist = ModifyList::new_list(vec![Modify::Present(
-            AttrString::from("api_token_session"),
+            Attribute::ApiTokenSession.into(),
             session,
         )]);
 
@@ -286,7 +288,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
     ) -> Result<(), OperationError> {
         // Delete the attribute with uuid.
         let modlist = ModifyList::new_list(vec![Modify::Removed(
-            AttrString::from("api_token_session"),
+            Attribute::ApiTokenSession.into(),
             PartialValue::Refer(dte.token_id),
         )]);
 
@@ -333,9 +335,9 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         let vcred = Value::new_credential("primary", ncred);
         // We need to remove other credentials too.
         let modlist = ModifyList::new_list(vec![
-            m_purge("passkeys"),
-            m_purge("primary_credential"),
-            Modify::Present("primary_credential".into(), vcred),
+            m_purge(Attribute::PassKeys),
+            m_purge(Attribute::PrimaryCredential),
+            Modify::Present(Attribute::PrimaryCredential.into(), vcred),
         ]);
 
         trace!(?modlist, "processing change");
@@ -385,26 +387,27 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
                     .and_then(|e| {
                         let account_id = e.get_uuid();
                         // From the entry, turn it into the value
-                        e.get_ava_as_apitoken_map("api_token_session").map(|smap| {
-                            smap.iter()
-                                .map(|(u, s)| {
-                                    s.scope
-                                        .try_into()
-                                        .map(|purpose| ProtoApiToken {
-                                            account_id,
-                                            token_id: *u,
-                                            label: s.label.clone(),
-                                            expiry: s.expiry,
-                                            issued_at: s.issued_at,
-                                            purpose,
-                                        })
-                                        .map_err(|e| {
-                                            admin_error!("Invalid api_token {}", u);
-                                            e
-                                        })
-                                })
-                                .collect::<Result<Vec<_>, _>>()
-                        })
+                        e.get_ava_as_apitoken_map(Attribute::ApiTokenSession)
+                            .map(|smap| {
+                                smap.iter()
+                                    .map(|(u, s)| {
+                                        s.scope
+                                            .try_into()
+                                            .map(|purpose| ProtoApiToken {
+                                                account_id,
+                                                token_id: *u,
+                                                label: s.label.clone(),
+                                                expiry: s.expiry,
+                                                issued_at: s.issued_at,
+                                                purpose,
+                                            })
+                                            .map_err(|e| {
+                                                admin_error!("Invalid api_token {}", u);
+                                                e
+                                            })
+                                    })
+                                    .collect::<Result<Vec<_>, _>>()
+                            })
                     })
                     .unwrap_or_else(|| {
                         // No matching entry? Return none.
@@ -445,25 +448,13 @@ mod tests {
         let testaccount_uuid = Uuid::new_v4();
 
         let e1 = entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
-            (
-                Attribute::Class.as_ref(),
-                EntryClass::ServiceAccount.to_value()
-            ),
-            (
-                Attribute::Name.as_ref(),
-                Value::new_iname("test_account_only")
-            ),
-            (Attribute::Uuid.as_ref(), Value::Uuid(testaccount_uuid)),
-            (
-                Attribute::Description.as_ref(),
-                Value::new_utf8s("testaccount")
-            ),
-            (
-                Attribute::DisplayName.as_ref(),
-                Value::new_utf8s("testaccount")
-            )
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::ServiceAccount.to_value()),
+            (Attribute::Name, Value::new_iname("test_account_only")),
+            (Attribute::Uuid, Value::Uuid(testaccount_uuid)),
+            (Attribute::Description, Value::new_utf8s("testaccount")),
+            (Attribute::DisplayName, Value::new_utf8s("testaccount"))
         );
 
         let ce = CreateEvent::new_internal(vec![e1]);

@@ -203,7 +203,7 @@ fn modify_sync_constrain<'a>(
             // * We are a sync object
             // * We have a sync_parent_uuid
             let is_sync = entry
-                .get_ava_set(Attribute::Class.as_ref())
+                .get_ava_set(Attribute::Class)
                 .map(|classes| classes.contains(&EntryClass::SyncObject.into()))
                 .unwrap_or(false);
 
@@ -211,12 +211,12 @@ fn modify_sync_constrain<'a>(
                 return AccessResult::Ignore;
             }
 
-            if let Some(sync_uuid) = entry.get_ava_single_refer("sync_parent_uuid") {
+            if let Some(sync_uuid) = entry.get_ava_single_refer(Attribute::SyncParentUuid) {
                 let mut set = btreeset![
-                    "user_auth_token_session",
-                    "oauth2_session",
-                    "oauth2_consent_scope_map",
-                    "credential_update_intent_token"
+                    Attribute::UserAuthTokenSession.as_ref(),
+                    Attribute::OAuth2Session.as_ref(),
+                    Attribute::OAuth2ConsentScopeMap.as_ref(),
+                    Attribute::CredentialUpdateIntentToken.as_ref()
                 ];
 
                 if let Some(sync_yield_authority) = sync_agreements.get(&sync_uuid) {

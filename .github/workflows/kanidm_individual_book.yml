@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.tag }}
       - name: Setup sccache
@@ -30,9 +30,12 @@ jobs:
       - name: Install deps
         run: |
           sudo apt-get update
-          sudo apt-get install -y clang build-essential \
-            librust-openssl-dev libssl-dev \
-            libsqlite3-dev libudev-dev \
+          sudo apt-get install -y \
+            clang \
+            build-essential \
+            librust-openssl-dev \
+            libssl-dev \
+            libudev-dev \
             libpam0g-dev
       - name: Setup mdBook
         uses: peaceiris/actions-mdbook@v1

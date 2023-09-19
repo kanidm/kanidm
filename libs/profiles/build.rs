@@ -6,9 +6,12 @@ use base64::{engine::general_purpose, Engine as _};
 // We do this here so it's only actually run and checked once.
 fn determine_git_rev() -> Option<String> {
     let path = PathBuf::from("../../");
-    let repo = git2::Repository::open(path).ok()?;
-    let head = repo.head().ok()?;
-    let commit = head.peel_to_commit().ok()?;
+    let repo = match gix::open(path) {
+        Ok(repo) => repo,
+        Err(_) => return None,
+    };
+    let mut head = repo.head().ok()?;
+    let commit = head.peel_to_commit_in_place().ok()?;
     let mut commit_id = commit.id().to_string();
     // Now we actually want to trim this to only 10 chars?
     commit_id.truncate(10);

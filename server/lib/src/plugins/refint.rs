@@ -12,11 +12,11 @@
 use std::collections::BTreeSet;
 use std::sync::Arc;
 
-use hashbrown::HashSet as Set;
-use kanidm_proto::v1::{ConsistencyError, PluginError};
+use hashbrown::HashSet;
+use kanidm_proto::v1::ConsistencyError;
 
 use crate::event::{CreateEvent, DeleteEvent, ModifyEvent};
-use crate::filter::f_eq;
+use crate::filter::{f_eq, FC};
 use crate::plugins::Plugin;
 use crate::prelude::*;
 use crate::schema::SchemaTransaction;
@@ -24,19 +24,19 @@ use crate::schema::SchemaTransaction;
 pub struct ReferentialIntegrity;
 
 impl ReferentialIntegrity {
-    fn check_uuids_exist(
+    fn check_uuids_exist_fast(
         qs: &mut QueryServerWriteTransaction,
-        inner: Vec<PartialValue>,
-    ) -> Result<(), OperationError> {
+        inner: &[Uuid],
+    ) -> Result<bool, OperationError> {
         if inner.is_empty() {
             // There is nothing to check! Move on.
             trace!("no reference types modified, skipping check");
-            return Ok(());
+            return Ok(true);
         }
 
-        let inner = inner
-            .into_iter()
-            .map(|pv| f_eq(Attribute::Uuid, pv))
+        let inner: Vec<_> = inner
+            .iter()
+            .map(|u| f_eq(Attribute::Uuid, PartialValue::Uuid(*u)))
             .collect();
 
         // F_inc(lusion). All items of inner must be 1 or more, or the filter
@@ -50,15 +50,91 @@ impl ReferentialIntegrity {
 
         // Is the existence of all id's confirmed?
         if b {
-            Ok(())
+            Ok(true)
         } else {
-            admin_error!(
-                "UUID reference set size differs from query result size <fast path, no uuid info available>"
-            );
-            Err(OperationError::Plugin(PluginError::ReferentialIntegrity(
-                "Uuid referenced not found in database".to_string(),
-            )))
+            Ok(false)
         }
+    }
+
+    fn check_uuids_exist_slow(
+        qs: &mut QueryServerWriteTransaction,
+        inner: &[Uuid],
+    ) -> Result<Vec<Uuid>, OperationError> {
+        if inner.is_empty() {
+            // There is nothing to check! Move on.
+            // Should be unreachable.
+            trace!("no reference types modified, skipping check");
+            return Ok(Vec::with_capacity(0));
+        }
+
+        let mut missing = Vec::with_capacity(inner.len());
+        for u in inner {
+            let filt_in = filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(*u)));
+            let b = qs.internal_exists(filt_in).map_err(|e| {
+                admin_error!(err = ?e, "internal exists failure");
+                e
+            })?;
+
+            // If it's missing, we push it to the missing set.
+            if !b {
+                missing.push(*u)
+            }
+        }
+
+        Ok(missing)
+    }
+
+    fn remove_references(
+        qs: &mut QueryServerWriteTransaction,
+        uuids: Vec<Uuid>,
+    ) -> Result<(), OperationError> {
+        trace!(?uuids);
+
+        // Find all reference types in the schema
+        let schema = qs.get_schema();
+        let ref_types = schema.get_reference_types();
+
+        let removed_ids: BTreeSet<_> = uuids.iter().map(|u| PartialValue::Refer(*u)).collect();
+
+        // Generate a filter which is the set of all schema reference types
+        // as EQ to all uuid of all entries in delete. - this INCLUDES recycled
+        // types too!
+        let filt = filter_all!(FC::Or(
+            uuids
+                .into_iter()
+                .flat_map(|u| ref_types.values().filter_map(move |r_type| {
+                    let value_attribute = r_type.name.to_string();
+                    // For everything that references the uuid's in the deleted set.
+                    let val: Result<Attribute, OperationError> = value_attribute.try_into();
+                    // error!("{:?}", val);
+                    let res = match val {
+                        Ok(val) => {
+                            let res = f_eq(val, PartialValue::Refer(u));
+                            Some(res)
+                        }
+                        Err(err) => {
+                            // we shouldn't be able to get here...
+                            admin_error!("post_delete invalid attribute specified - please log this as a bug! {:?}", err);
+                            None
+                        }
+                    };
+                    res
+                }))
+                .collect(),
+        ));
+
+        trace!("refint post_delete filter {:?}", filt);
+
+        let mut work_set = qs.internal_search_writeable(&filt)?;
+
+        for (_, post) in work_set.iter_mut() {
+            for schema_attribute in ref_types.values() {
+                let attribute = (&schema_attribute.name).try_into()?;
+                post.remove_avas(attribute, &removed_ids);
+            }
+        }
+
+        qs.internal_apply_writable(work_set)
     }
 }
 
@@ -118,6 +194,95 @@ impl Plugin for ReferentialIntegrity {
         Self::post_modify_inner(qs, cand)
     }
 
+    #[instrument(level = "debug", name = "refint_post_repl_incremental", skip_all)]
+    fn post_repl_incremental(
+        qs: &mut QueryServerWriteTransaction,
+        pre_cand: &[Arc<EntrySealedCommitted>],
+        cand: &[EntrySealedCommitted],
+        conflict_uuids: &BTreeSet<Uuid>,
+    ) -> Result<(), OperationError> {
+        // I think we need to check that all values in the ref type values here
+        // exist, and if not, we *need to remove them*. We should probably rewrite
+        // how we do modify/create inner to actually return missing uuids, so that
+        // this fn can delete, and the other parts can report what's missing.
+        //
+        // This also becomes a path to a "ref int fixup" too?
+
+        let uuids = Self::cand_references_to_uuid_filter(qs, cand)?;
+
+        let all_exist_fast = Self::check_uuids_exist_fast(qs, uuids.as_slice())?;
+
+        let mut missing_uuids = if !all_exist_fast {
+            debug!("Not all uuids referenced by these candidates exist. Slow path to remove them.");
+            Self::check_uuids_exist_slow(qs, uuids.as_slice())?
+        } else {
+            debug!("All references are valid!");
+            Vec::with_capacity(0)
+        };
+
+        // If the entry has moved from a live to a deleted state we need to clean it's reference's
+        // that *may* have been added on this server - the same that other references would be
+        // deleted.
+        let inactive_entries: Vec<_> = std::iter::zip(pre_cand, cand)
+            .filter_map(|(pre, post)| {
+                let pre_live = pre.mask_recycled_ts().is_some();
+                let post_live = post.mask_recycled_ts().is_some();
+
+                if !post_live && (pre_live != post_live) {
+                    // We have moved from live to recycled/tombstoned. We need to
+                    // ensure that these references are masked.
+                    Some(post.get_uuid())
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        if event_enabled!(tracing::Level::DEBUG) {
+            debug!("Removing the following reference uuids for entries that have become recycled or tombstoned");
+            for missing in &inactive_entries {
+                debug!(?missing);
+            }
+        }
+
+        // We can now combine this with the conflict uuids from the incoming set.
+
+        // In a conflict case, we need to also add these uuids to the delete logic
+        // since on the originator node the original uuid will still persist
+        // meaning the member won't be removed.
+        // However, on a non-primary conflict handler it will remove the member
+        // as well. This is annoyingly a worst case, since then *every* node will
+        // attempt to update the cid of this group. But I think the potential cost
+        // in the short term will be worth consistent references.
+
+        if !conflict_uuids.is_empty() {
+            warn!("conflict uuids have been found, and must be cleaned from existing references. This is to prevent group memberships leaking to un-intended recipients.");
+        }
+
+        // Now, we need to find for each of the missing uuids, which values had them.
+        // We could use a clever query to internal_search_writeable?
+        missing_uuids.extend(conflict_uuids.iter().copied());
+        missing_uuids.extend_from_slice(&inactive_entries);
+
+        if missing_uuids.is_empty() {
+            trace!("Nothing to do, shortcut");
+            return Ok(());
+        }
+
+        if event_enabled!(tracing::Level::DEBUG) {
+            debug!("Removing the following missing reference uuids");
+            for missing in &missing_uuids {
+                debug!(?missing);
+            }
+        }
+
+        // Now we have to look them up and clean it up. Turns out this is the
+        // same code path as "post delete" so we can share that!
+        Self::remove_references(qs, missing_uuids)
+
+        // Complete!
+    }
+
     #[instrument(level = "debug", name = "refint_post_delete", skip_all)]
     fn post_delete(
         qs: &mut QueryServerWriteTransaction,
@@ -128,63 +293,17 @@ impl Plugin for ReferentialIntegrity {
         // actually the bulk of the work we'll do to clean up references
         // when they are deleted.
 
-        // Find all reference types in the schema
-        let schema = qs.get_schema();
-        let ref_types = schema.get_reference_types();
-
         // Get the UUID of all entries we are deleting
         let uuids: Vec<Uuid> = cand.iter().map(|e| e.get_uuid()).collect();
 
-        // Generate a filter which is the set of all schema reference types
-        // as EQ to all uuid of all entries in delete. - this INCLUDES recycled
-        // types too!
-        let filt = filter_all!(FC::Or(
-            uuids
-                .into_iter()
-                .flat_map(|u| ref_types.values().filter_map(move |r_type| {
-                    let value_attribute = r_type.name.to_string();
-                    // For everything that references the uuid's in the deleted set.
-                    let val: Result<Attribute, OperationError> = value_attribute.try_into();
-                    // error!("{:?}", val);
-                    let res = match val {
-                        Ok(val) => {
-                            let res = f_eq(val, PartialValue::Refer(u));
-                            Some(res)
-                        }
-                        Err(err) => {
-                            // we shouldn't be able to get here...
-                            admin_error!("post_delete invalid attribute specified - please log this as a bug! {:?}", err);
-                            None
-                        }
-                    };
-                    res
-                }))
-                .collect(),
-        ));
-
-        trace!("refint post_delete filter {:?}", filt);
-
-        let removed_ids: BTreeSet<_> = cand
-            .iter()
-            .map(|e| PartialValue::Refer(e.get_uuid()))
-            .collect();
-
-        let mut work_set = qs.internal_search_writeable(&filt)?;
-
-        work_set.iter_mut().for_each(|(_, post)| {
-            ref_types
-                .values()
-                .for_each(|attr| post.remove_avas(attr.name.as_str(), &removed_ids));
-        });
-
-        qs.internal_apply_writable(work_set)
+        Self::remove_references(qs, uuids)
     }
 
     #[instrument(level = "debug", name = "refint::verify", skip_all)]
     fn verify(qs: &mut QueryServerReadTransaction) -> Vec<Result<(), ConsistencyError>> {
         // Get all entries as cand
         //      build a cand-uuid set
-        let filt_in = filter_all!(f_pres(Attribute::Class.as_ref()));
+        let filt_in = filter_all!(f_pres(Attribute::Class));
 
         let all_cand = match qs
             .internal_search(filt_in)
@@ -194,7 +313,7 @@ impl Plugin for ReferentialIntegrity {
             Err(e) => return vec![e],
         };
 
-        let acu_map: Set<Uuid> = all_cand.iter().map(|e| e.get_uuid()).collect();
+        let acu_map: HashSet<Uuid> = all_cand.iter().map(|e| e.get_uuid()).collect();
 
         let schema = qs.get_schema();
         let ref_types = schema.get_reference_types();
@@ -204,8 +323,19 @@ impl Plugin for ReferentialIntegrity {
         for c in &all_cand {
             // For all reference in each cand.
             for rtype in ref_types.values() {
+                let attr: Attribute = match (&rtype.name).try_into() {
+                    Ok(val) => val,
+                    Err(err) => {
+                        // we shouldn't be able to get here...
+                        admin_error!("verify referential integrity invalid attribute {} specified - please log this as a bug! {:?}", &rtype.name, err);
+                        res.push(Err(ConsistencyError::InvalidAttributeType(
+                            rtype.name.to_string(),
+                        )));
+                        continue;
+                    }
+                };
                 // If the attribute is present
-                if let Some(vs) = c.get_ava_set(&rtype.name) {
+                if let Some(vs) = c.get_ava_set(attr) {
                     // For each value in the set.
                     match vs.as_ref_uuid_iter() {
                         Some(uuid_iter) => {
@@ -228,40 +358,52 @@ impl Plugin for ReferentialIntegrity {
 }
 
 impl ReferentialIntegrity {
-    fn post_modify_inner(
+    fn cand_references_to_uuid_filter(
         qs: &mut QueryServerWriteTransaction,
-        cand: &[Entry<EntrySealed, EntryCommitted>],
-    ) -> Result<(), OperationError> {
+        cand: &[EntrySealedCommitted],
+    ) -> Result<Vec<Uuid>, OperationError> {
         let schema = qs.get_schema();
         let ref_types = schema.get_reference_types();
 
         // Fast Path
         let mut vsiter = cand.iter().flat_map(|c| {
             // If it's dyngroup, skip member since this will be reset in the next step.
-            let dyn_group =
-                c.attribute_equality(Attribute::Class.as_ref(), &EntryClass::DynGroup.into());
+            let dyn_group = c.attribute_equality(Attribute::Class, &EntryClass::DynGroup.into());
 
             ref_types.values().filter_map(move |rtype| {
-                // Skip dynamic members
-                let skip_mb = dyn_group && rtype.name == "dynmember";
-                // Skip memberOf.
-                let skip_mo = rtype.name == "memberof";
+                // Skip dynamic members, these are recalculated by the
+                // memberof plugin.
+                let skip_mb = dyn_group && rtype.name == Attribute::DynMember.as_ref();
+                // Skip memberOf, also recalculated.
+                let skip_mo = rtype.name == Attribute::MemberOf.as_ref();
                 if skip_mb || skip_mo {
                     None
                 } else {
                     trace!(rtype_name = ?rtype.name, "examining");
-                    c.get_ava_set(&rtype.name)
+                    c.get_ava_set(
+                        (&rtype.name)
+                            .try_into()
+                            .map_err(|e| {
+                                admin_error!(?e, "invalid attribute type {}", &rtype.name);
+                                None::<Attribute>
+                            })
+                            .ok()?,
+                    )
                 }
             })
         });
 
         // Could check len first?
-        let mut i = Vec::with_capacity(cand.len() * 2);
+        let mut i = Vec::with_capacity(cand.len() * 4);
+        let mut dedup = HashSet::new();
 
         vsiter.try_for_each(|vs| {
             if let Some(uuid_iter) = vs.as_ref_uuid_iter() {
                 uuid_iter.for_each(|u| {
-                    i.push(PartialValue::Uuid(u))
+                    // Returns true if the item is NEW in the set
+                    if dedup.insert(u) {
+                        i.push(u)
+                    }
                 });
                 Ok(())
             } else {
@@ -273,7 +415,35 @@ impl ReferentialIntegrity {
             }
         })?;
 
-        Self::check_uuids_exist(qs, i)
+        Ok(i)
+    }
+
+    fn post_modify_inner(
+        qs: &mut QueryServerWriteTransaction,
+        cand: &[EntrySealedCommitted],
+    ) -> Result<(), OperationError> {
+        let uuids = Self::cand_references_to_uuid_filter(qs, cand)?;
+
+        let all_exist_fast = Self::check_uuids_exist_fast(qs, uuids.as_slice())?;
+
+        if all_exist_fast {
+            // All good!
+            return Ok(());
+        }
+
+        // Okay taking the slow path now ...
+        let missing_uuids = Self::check_uuids_exist_slow(qs, uuids.as_slice())?;
+
+        error!("some uuids that were referenced in this operation do not exist.");
+        for missing in missing_uuids {
+            error!(?missing);
+        }
+
+        Err(OperationError::Plugin(
+            kanidm_proto::v1::PluginError::ReferentialIntegrity(
+                "Uuid referenced not found in database".to_string(),
+            ),
+        ))
     }
 }
 
@@ -284,7 +454,7 @@ mod tests {
 
     use crate::event::CreateEvent;
     use crate::prelude::*;
-    use crate::value::{Oauth2Session, Session};
+    use crate::value::{Oauth2Session, Session, SessionState};
     use time::OffsetDateTime;
     use uuid::uuid;
 
@@ -433,7 +603,7 @@ mod tests {
                 PartialValue::new_iname("testgroup_b")
             )),
             ModifyList::new_list(vec![Modify::Present(
-                AttrString::from("member"),
+                Attribute::Member.into(),
                 Value::new_refer_s("d2b496bd-8493-47b7-8142-f568b5cf47ee").unwrap()
             )]),
             None,
@@ -467,7 +637,7 @@ mod tests {
                 PartialValue::new_iname("testgroup_b")
             )),
             ModifyList::new_list(vec![Modify::Present(
-                AttrString::from("member"),
+                Attribute::Member.into(),
                 Value::new_refer_s("d2b496bd-8493-47b7-8142-f568b5cf47ee").unwrap()
             )]),
             None,
@@ -514,13 +684,10 @@ mod tests {
             )),
             ModifyList::new_list(vec![
                 Modify::Present(
-                    AttrString::from("member"),
+                    Attribute::Member.into(),
                     Value::Refer(uuid!("d2b496bd-8493-47b7-8142-f568b5cf47ee"))
                 ),
-                Modify::Present(
-                    AttrString::from("member"),
-                    Value::Refer(UUID_DOES_NOT_EXIST)
-                ),
+                Modify::Present(Attribute::Member.into(), Value::Refer(UUID_DOES_NOT_EXIST)),
             ]),
             None,
             |_| {},
@@ -562,7 +729,7 @@ mod tests {
                 Attribute::Name,
                 PartialValue::new_iname("testgroup_b")
             )),
-            ModifyList::new_list(vec![Modify::Purged(AttrString::from("member"))]),
+            ModifyList::new_list(vec![Modify::Purged(Attribute::Member.into())]),
             None,
             |_| {},
             |_| {}
@@ -593,7 +760,7 @@ mod tests {
                 PartialValue::new_iname("testgroup_a")
             )),
             ModifyList::new_list(vec![Modify::Present(
-                AttrString::from("member"),
+                Attribute::Member.into(),
                 Value::new_refer_s("d2b496bd-8493-47b7-8142-f568b5cf47ee").unwrap()
             )]),
             None,
@@ -638,7 +805,7 @@ mod tests {
                 PartialValue::new_iname("testgroup_b")
             )),
             ModifyList::new_list(vec![Modify::Present(
-                AttrString::from("member"),
+                Attribute::Member.into(),
                 Value::new_refer_s("d2b496bd-8493-47b7-8142-f568b5cf47ee").unwrap()
             )]),
             None,
@@ -776,26 +943,26 @@ mod tests {
         // scope maps, so we need to check that when the group is deleted, that the
         // scope map is also appropriately affected.
         let ea: Entry<EntryInit, EntryNew> = entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Object.to_value()),
             (
-                Attribute::Class.as_ref(),
+                Attribute::Class,
                 EntryClass::OAuth2ResourceServer.to_value()
             ),
-            // (Attribute::Class.as_ref(), EntryClass::OAuth2ResourceServerBasic.into()),
+            // (Attribute::Class, EntryClass::OAuth2ResourceServerBasic.into()),
             (
-                Attribute::OAuth2RsName.as_ref(),
+                Attribute::OAuth2RsName,
                 Value::new_iname("test_resource_server")
             ),
             (
-                Attribute::DisplayName.as_ref(),
+                Attribute::DisplayName,
                 Value::new_utf8s("test_resource_server")
             ),
             (
-                "oauth2_rs_origin",
+                Attribute::OAuth2RsOrigin,
                 Value::new_url_s("https://demo.example.com").unwrap()
             ),
             (
-                "oauth2_rs_scope_map",
+                Attribute::OAuth2RsScopeMap,
                 Value::new_oauthscopemap(
                     uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"),
                     btreeset![OAUTH2_SCOPE_READ.to_string()]
@@ -805,16 +972,13 @@ mod tests {
         );
 
         let eb: Entry<EntryInit, EntryNew> = entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Group.to_value()),
-            (Attribute::Name.as_ref(), Value::new_iname("testgroup")),
+            (Attribute::Class, EntryClass::Group.to_value()),
+            (Attribute::Name, Value::new_iname("testgroup")),
             (
-                "uuid",
+                Attribute::Uuid,
                 Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
             ),
-            (
-                Attribute::Description.as_ref(),
-                Value::new_utf8s("testgroup")
-            )
+            (Attribute::Description, Value::new_utf8s("testgroup"))
         );
 
         let preload = vec![ea, eb];
@@ -833,7 +997,7 @@ mod tests {
                     .expect("Internal search failure");
                 let ue = cands.first().expect("No entry");
                 assert!(ue
-                    .get_ava_as_oauthscopemaps("oauth2_rs_scope_map")
+                    .get_ava_as_oauthscopemaps(Attribute::OAuth2RsScopeMap)
                     .is_none())
             }
         );
@@ -855,47 +1019,41 @@ mod tests {
         let rs_uuid = Uuid::new_v4();
 
         let e1 = entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
-            (Attribute::Name.as_ref(), Value::new_iname("testperson1")),
-            (Attribute::Uuid.as_ref(), Value::Uuid(tuuid)),
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Name, Value::new_iname("testperson1")),
+            (Attribute::Uuid, Value::Uuid(tuuid)),
+            (Attribute::Description, Value::new_utf8s("testperson1")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson1")),
             (
-                Attribute::Description.as_ref(),
-                Value::new_utf8s("testperson1")
-            ),
-            (
-                Attribute::DisplayName.as_ref(),
-                Value::new_utf8s("testperson1")
-            ),
-            (
-                "primary_credential",
+                Attribute::PrimaryCredential,
                 Value::Cred("primary".to_string(), cred.clone())
             )
         );
 
         let e2 = entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Object.to_value()),
             (
-                Attribute::Class.as_ref(),
+                Attribute::Class,
                 EntryClass::OAuth2ResourceServer.to_value()
             ),
-            (Attribute::Uuid.as_ref(), Value::Uuid(rs_uuid)),
+            (Attribute::Uuid, Value::Uuid(rs_uuid)),
             (
-                Attribute::OAuth2RsName.as_ref(),
+                Attribute::OAuth2RsName,
                 Value::new_iname("test_resource_server")
             ),
             (
-                Attribute::DisplayName.as_ref(),
+                Attribute::DisplayName,
                 Value::new_utf8s("test_resource_server")
             ),
             (
-                "oauth2_rs_origin",
+                Attribute::OAuth2RsOrigin,
                 Value::new_url_s("https://demo.example.com").unwrap()
             ),
             // System admins
             (
-                "oauth2_rs_scope_map",
+                Attribute::OAuth2RsScopeMap,
                 Value::new_oauthscopemap(
                     UUID_IDM_ALL_ACCOUNTS,
                     btreeset![OAUTH2_SCOPE_OPENID.to_string()]
@@ -912,8 +1070,8 @@ mod tests {
         let session_id = Uuid::new_v4();
         let pv_session_id = PartialValue::Refer(session_id);
 
-        let parent = Uuid::new_v4();
-        let pv_parent_id = PartialValue::Refer(parent);
+        let parent_id = Uuid::new_v4();
+        let pv_parent_id = PartialValue::Refer(parent_id);
         let issued_at = curtime_odt;
         let issued_by = IdentityId::User(tuuid);
         let scope = SessionScope::ReadOnly;
@@ -921,26 +1079,26 @@ mod tests {
         // Mod the user
         let modlist = modlist!([
             Modify::Present(
-                "oauth2_session".into(),
+                Attribute::OAuth2Session.into(),
                 Value::Oauth2Session(
                     session_id,
                     Oauth2Session {
-                        parent,
+                        parent: parent_id,
                         // Note we set the exp to None so we are not removing based on exp
-                        expiry: None,
+                        state: SessionState::NeverExpires,
                         issued_at,
                         rs_uuid,
                     },
                 )
             ),
             Modify::Present(
-                "user_auth_token_session".into(),
+                Attribute::UserAuthTokenSession.into(),
                 Value::Session(
-                    parent,
+                    parent_id,
                     Session {
                         label: "label".to_string(),
                         // Note we set the exp to None so we are not removing based on removal of the parent.
-                        expiry: None,
+                        state: SessionState::NeverExpires,
                         // Need the other inner bits?
                         // for the gracewindow.
                         issued_at,
@@ -965,8 +1123,8 @@ mod tests {
         // Still there
 
         let entry = server_txn.internal_search_uuid(tuuid).expect("failed");
-        assert!(entry.attribute_equality(Attribute::UserAuthTokenSession.as_ref(), &pv_parent_id));
-        assert!(entry.attribute_equality(Attribute::OAuth2Session.as_ref(), &pv_session_id));
+        assert!(entry.attribute_equality(Attribute::UserAuthTokenSession, &pv_parent_id));
+        assert!(entry.attribute_equality(Attribute::OAuth2Session, &pv_session_id));
 
         // Delete the oauth2 resource server.
         assert!(server_txn.internal_delete_uuid(rs_uuid).is_ok());
@@ -975,11 +1133,18 @@ mod tests {
         let entry = server_txn.internal_search_uuid(tuuid).expect("failed");
 
         // Note the uat is present still.
-        assert!(entry.attribute_equality(Attribute::UserAuthTokenSession.as_ref(), &pv_parent_id));
-        // The oauth2 session is removed.
-        dbg!(&entry);
-        dbg!(&pv_session_id);
-        assert!(!entry.attribute_equality(Attribute::OAuth2Session.as_ref(), &pv_session_id));
+        let session = entry
+            .get_ava_as_session_map(Attribute::UserAuthTokenSession)
+            .and_then(|sessions| sessions.get(&parent_id))
+            .expect("No session map found");
+        assert!(matches!(session.state, SessionState::NeverExpires));
+
+        // The oauth2 session is revoked.
+        let session = entry
+            .get_ava_as_oauth2session_map(Attribute::OAuth2Session)
+            .and_then(|sessions| sessions.get(&session_id))
+            .expect("No session map found");
+        assert!(matches!(session.state, SessionState::RevokedAt(_)));
 
         assert!(server_txn.commit().is_ok());
     }
@@ -1000,24 +1165,27 @@ mod tests {
         let inv_mb_uuid = Uuid::new_v4();
 
         let e_dyn = entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Group.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::DynGroup.to_value()),
-            (Attribute::Uuid.as_ref(), Value::Uuid(dyn_uuid)),
-            (Attribute::Name.as_ref(), Value::new_iname("test_dyngroup")),
-            ("dynmember", Value::Refer(inv_mb_uuid)),
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Group.to_value()),
+            (Attribute::Class, EntryClass::DynGroup.to_value()),
+            (Attribute::Uuid, Value::Uuid(dyn_uuid)),
+            (Attribute::Name, Value::new_iname("test_dyngroup")),
+            (Attribute::DynMember, Value::Refer(inv_mb_uuid)),
             (
-                "dyngroup_filter",
-                Value::JsonFilt(ProtoFilter::Eq("name".to_string(), "testgroup".to_string()))
+                Attribute::DynGroupFilter,
+                Value::JsonFilt(ProtoFilter::Eq(
+                    Attribute::Name.to_string(),
+                    "testgroup".to_string()
+                ))
             )
         );
 
         let e_group: Entry<EntryInit, EntryNew> = entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Group.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::MemberOf.to_value()),
-            (Attribute::Name.as_ref(), Value::new_iname("testgroup")),
-            (Attribute::Uuid.as_ref(), Value::Uuid(tgroup_uuid)),
-            (Attribute::MemberOf.as_ref(), Value::Refer(inv_mo_uuid))
+            (Attribute::Class, EntryClass::Group.to_value()),
+            (Attribute::Class, EntryClass::MemberOf.to_value()),
+            (Attribute::Name, Value::new_iname("testgroup")),
+            (Attribute::Uuid, Value::Uuid(tgroup_uuid)),
+            (Attribute::MemberOf, Value::Refer(inv_mo_uuid))
         );
 
         let ce = CreateEvent::new_internal(vec![e_dyn, e_group]);
@@ -1028,8 +1196,8 @@ mod tests {
             .expect("Failed to access dyn group");
 
         let dyn_member = dyna
-            .get_ava_refer("dynmember")
-            .expect("Failed to get member attribute");
+            .get_ava_refer(Attribute::DynMember)
+            .expect("Failed to get dyn member attribute");
         assert!(dyn_member.len() == 1);
         assert!(dyn_member.contains(&tgroup_uuid));
 
@@ -1038,7 +1206,7 @@ mod tests {
             .expect("Failed to access mo group");
 
         let grp_member = group
-            .get_ava_refer("memberof")
+            .get_ava_refer(Attribute::MemberOf)
             .expect("Failed to get memberof attribute");
         assert!(grp_member.len() == 1);
         assert!(grp_member.contains(&dyn_uuid));

@@ -4,8 +4,8 @@
 // both change approaches.
 //
 //
-use std::collections::BTreeMap;
 use std::collections::VecDeque;
+use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 
 use kanidm_proto::v1::{ConsistencyError, PluginError};
@@ -18,41 +18,49 @@ use crate::schema::SchemaTransaction;
 
 pub struct AttrUnique;
 
-fn get_cand_attr_set<VALID, STATE>(
-    cand: &[Entry<VALID, STATE>],
-    attr: &str,
-) -> Result<BTreeMap<PartialValue, Uuid>, OperationError> {
-    // This is building both the set of values to search for uniqueness, but ALSO
-    // is detecting if any modified or current entries in the cand set also duplicated
-    // do to the ennforcing that the PartialValue must be unique in the cand_attr set.
-    let mut cand_attr: BTreeMap<PartialValue, Uuid> = BTreeMap::new();
+fn get_cand_attr_set<'a, VALID: 'a, STATE: 'a, T>(
+    // cand: &[Entry<VALID, STATE>],
+    cand: T,
+    uniqueattrs: &[AttrString],
+) -> Result<BTreeMap<(AttrString, PartialValue), Vec<Uuid>>, OperationError>
+where
+    T: IntoIterator<Item = &'a Entry<VALID, STATE>>,
+{
+    let mut cand_attr: BTreeMap<(AttrString, PartialValue), Vec<Uuid>> = BTreeMap::new();
 
-    cand.iter()
+    cand.into_iter()
+        // We don't need to consider recycled or tombstoned entries
+        .filter_map(|e| e.mask_recycled_ts())
         .try_for_each(|e| {
             let uuid = e
-                .get_ava_single_uuid("uuid")
-                .ok_or(OperationError::InvalidEntryState)?;
-            // Get the value and uuid
-            //for each value in the ava.
-            e.get_ava_set(attr)
-                .map(|vs| {
-                    vs.to_partialvalue_iter()
-                        .try_for_each(|v| match cand_attr.insert(v, uuid) {
-                            None => Ok(()),
-                            Some(vr) => {
-                                admin_error!(
-                                    "ava already exists -> {:?}: {:?} conflicts to {:?}",
-                                    attr,
-                                    vr,
-                                    e.get_display_id()
-                                );
-                                Err(OperationError::Plugin(PluginError::AttrUnique(
-                                    "ava already exists".to_string(),
-                                )))
-                            }
+                .get_ava_single_uuid(Attribute::Uuid)
+                .ok_or_else(|| {
+                    error!("An entry is missing its uuid. This should be impossible!");
+                    OperationError::InvalidEntryState
+                })?;
+
+            // Faster to iterate over the attr vec inside this loop.
+            for attrstr in uniqueattrs.iter() {
+                if let Some(vs) = e.get_ava_set(attrstr.try_into()?) {
+                for pv in vs.to_partialvalue_iter() {
+                    let key = (attrstr.clone(), pv);
+                    cand_attr.entry(key)
+                        // Must have conflicted, lets append.
+                        .and_modify(|v| {
+                            warn!(
+                                "ava already exists -> {:?} on entry {:?} has conflicts within change set",
+                                attrstr,
+                                e.get_display_id()
+                            );
+                            v.push(uuid)
                         })
-                })
-                .unwrap_or(Ok(()))
+                        // Not found, lets setup.
+                        .or_insert_with(|| vec![uuid]);
+                    }
+                }
+            }
+
+            Ok(())
         })
         .map(|()| cand_attr)
 }
@@ -60,37 +68,66 @@ fn get_cand_attr_set<VALID, STATE>(
 fn enforce_unique<VALID, STATE>(
     qs: &mut QueryServerWriteTransaction,
     cand: &[Entry<VALID, STATE>],
-    attr: &str,
 ) -> Result<(), OperationError> {
+    let uniqueattrs = {
+        let schema = qs.get_schema();
+        schema.get_attributes_unique()
+    };
+
     // Build a set of all the value -> uuid for the cands.
     // If already exist, reject due to dup.
-    let cand_attr = get_cand_attr_set(cand, attr).map_err(|e| {
-        admin_error!(err = ?e, ?attr, "failed to get cand attr set");
+    let cand_attr_set = get_cand_attr_set(cand, uniqueattrs).map_err(|e| {
+        error!(err = ?e, "failed to get cand attr set");
         e
     })?;
 
     // No candidates to check!
-    if cand_attr.is_empty() {
+    if cand_attr_set.is_empty() {
         return Ok(());
     }
 
+    // Now we have to identify and error on anything that has multiple items.
+    let mut cand_attr = Vec::with_capacity(cand_attr_set.len());
+    let mut err = false;
+    for (key, mut uuid_set) in cand_attr_set.into_iter() {
+        if let Some(uuid) = uuid_set.pop() {
+            if uuid_set.is_empty() {
+                // Good, only single uuid, this can proceed.
+                cand_attr.push((key, uuid));
+            } else {
+                // Multiple uuid(s) may remain, this is a conflict. We already warned on it
+                // before in the processing. Do we need to warn again?
+                err = true;
+            }
+        } else {
+            // Corrupt? How did we even get here?
+            warn!("datastructure corruption occurred while processing candidate attribute set");
+            debug_assert!(false);
+            return Err(OperationError::Plugin(PluginError::AttrUnique(
+                "corruption detected".to_string(),
+            )));
+        }
+    }
+
+    if err {
+        return Err(OperationError::Plugin(PluginError::AttrUnique(
+            "duplicate value detected".to_string(),
+        )));
+    }
+
     // Now do an internal search on name and !uuid for each
+    let mut cand_filters = Vec::new();
+    for ((attr, v), uuid) in cand_attr.iter() {
+        // and[ attr eq k, andnot [ uuid eq v ]]
+        // Basically this says where name but also not self.
+        cand_filters.push(f_and(vec![
+            FC::Eq(attr, v.clone()),
+            f_andnot(FC::Eq(Attribute::Uuid.as_ref(), PartialValue::Uuid(*uuid))),
+        ]));
+    }
 
     // Or
-    let filt_in = filter!(f_or(
-        // for each cand_attr
-        cand_attr
-            .iter()
-            .map(|(v, uuid)| {
-                // and[ attr eq k, andnot [ uuid eq v ]]
-                // Basically this says where name but also not self.
-                f_and(vec![
-                    FC::Eq(attr, v.clone()),
-                    f_andnot(FC::Eq("uuid", PartialValue::Uuid(*uuid))),
-                ])
-            })
-            .collect()
-    ));
+    let filt_in = filter!(f_or(cand_filters.clone()));
 
     trace!(?filt_in);
 
@@ -113,19 +150,6 @@ fn enforce_unique<VALID, STATE>(
         // We do a bisect rather than a linear one-at-a-time search because we want to try to somewhat minimise calls
         // through internal exists since that has a filter resolve and validate step.
 
-        // First create the vec of filters.
-        let mut cand_filters: Vec<_> = cand_attr
-            .into_iter()
-            .map(|(v, uuid)| {
-                // and[ attr eq k, andnot [ uuid eq v ]]
-                // Basically this says where name but also not self.
-                f_and(vec![
-                    FC::Eq(attr, v),
-                    f_andnot(FC::Eq(ATTR_UUID, PartialValue::Uuid(uuid))),
-                ])
-            })
-            .collect();
-
         // Fast-ish path. There is 0 or 1 element, so we just fast return.
         if cand_filters.len() < 2 {
             error!(
@@ -137,16 +161,16 @@ fn enforce_unique<VALID, STATE>(
             // chunks here.
 
             let mid = cand_filters.len() / 2;
-            let right = cand_filters.split_off(mid);
+            let (left, right) = cand_filters.split_at(mid);
 
             let mut queue = VecDeque::new();
-            queue.push_back(cand_filters);
+            queue.push_back(left);
             queue.push_back(right);
 
             // Ok! We are setup to go
 
-            while let Some(mut cand_query) = queue.pop_front() {
-                let filt_in = filter!(f_or(cand_query.clone()));
+            while let Some(cand_query) = queue.pop_front() {
+                let filt_in = filter!(f_or(cand_query.to_vec()));
                 let conflict_cand = qs.internal_exists(filt_in).map_err(|e| {
                     admin_error!("internal exists error {:?}", e);
                     e
@@ -157,8 +181,8 @@ fn enforce_unique<VALID, STATE>(
                     if cand_query.len() >= 2 {
                         // Continue to split to isolate.
                         let mid = cand_query.len() / 2;
-                        let right = cand_query.split_off(mid);
-                        queue.push_back(cand_query);
+                        let (left, right) = cand_query.split_at(mid);
+                        queue.push_back(left);
                         queue.push_back(right);
                         // Continue!
                     } else {
@@ -184,25 +208,13 @@ impl Plugin for AttrUnique {
         "plugin_attrunique"
     }
 
-    #[instrument(
-        level = "debug",
-        name = "attrunique_pre_create_transform",
-        skip(qs, _ce)
-    )]
+    #[instrument(level = "debug", name = "attrunique_pre_create_transform", skip_all)]
     fn pre_create_transform(
         qs: &mut QueryServerWriteTransaction,
         cand: &mut Vec<Entry<EntryInvalid, EntryNew>>,
         _ce: &CreateEvent,
     ) -> Result<(), OperationError> {
-        let uniqueattrs = {
-            let schema = qs.get_schema();
-            schema.get_attributes_unique()
-        };
-
-        let r: Result<(), OperationError> = uniqueattrs
-            .iter()
-            .try_for_each(|attr| enforce_unique(qs, cand, attr.as_str()));
-        r
+        enforce_unique(qs, cand)
     }
 
     #[instrument(level = "debug", name = "attrunique_pre_modify", skip_all)]
@@ -212,15 +224,7 @@ impl Plugin for AttrUnique {
         cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         _me: &ModifyEvent,
     ) -> Result<(), OperationError> {
-        let uniqueattrs = {
-            let schema = qs.get_schema();
-            schema.get_attributes_unique()
-        };
-
-        let r: Result<(), OperationError> = uniqueattrs
-            .iter()
-            .try_for_each(|attr| enforce_unique(qs, cand, attr.as_str()));
-        r
+        enforce_unique(qs, cand)
     }
 
     #[instrument(level = "debug", name = "attrunique_pre_batch_modify", skip_all)]
@@ -230,36 +234,233 @@ impl Plugin for AttrUnique {
         cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         _me: &BatchModifyEvent,
     ) -> Result<(), OperationError> {
-        let uniqueattrs = {
-            let schema = qs.get_schema();
-            schema.get_attributes_unique()
-        };
-
-        let r: Result<(), OperationError> = uniqueattrs
-            .iter()
-            .try_for_each(|attr| enforce_unique(qs, cand, attr.as_str()));
-        r
+        enforce_unique(qs, cand)
     }
 
+    #[instrument(level = "debug", name = "attrunique_pre_repl_refresh", skip_all)]
     fn pre_repl_refresh(
         qs: &mut QueryServerWriteTransaction,
         cand: &[EntryRefreshNew],
     ) -> Result<(), OperationError> {
+        enforce_unique(qs, cand)
+    }
+
+    #[instrument(level = "debug", name = "attrunique_post_repl_incremental", skip_all)]
+    fn post_repl_incremental_conflict(
+        qs: &mut QueryServerWriteTransaction,
+        cand: &[(EntrySealedCommitted, Arc<EntrySealedCommitted>)],
+        conflict_uuids: &mut BTreeSet<Uuid>,
+    ) -> Result<(), OperationError> {
+        // We need to detect attribute unique violations here. This can *easily* happen in
+        // replication since we have two nodes where different entries can modify an attribute
+        // and on the next incremental replication the uniqueness violation occurs.
+        //
+        // Because of this we have some key properties that we can observe.
+        //
+        // Every node when it makes a change with regard to it's own content is already compliant
+        // to attribute uniqueness. This means the consumers db content before we begin is
+        // fully consistent.
+        //
+        // As attributes can be updated multiple times before it is replicated the cid of the
+        // attribute may not be a true reflection of order of events when considering which
+        // attribute-value should survive/conflict.
+        //
+        // Attribute uniqueness constraints can *only* be violated on entries that have been
+        // replicated or are involved in replication (e.g. a conflict survivor entry).
+        //
+        // The content of the cand set may contain both replicated entries and conflict survivors
+        // that are in the process of being updated. Entries within the cand set *may* be in
+        // a conflict state with each other.
+        //
+        // Since this is a post operation, the content of these cand entries is *also* current
+        // in the database.
+        //
+        // This means that:
+        // * We can build a set of attr unique queries from the cand set.
+        // * We can ignore conflicts while building that set.
+        // * Any conflicts detected in the DB on executing that filter would be a super set of the
+        //   conflicts that exist in reality.
+        // * All entries that are involved in the attr unique collision must become conflicts.
+
         let uniqueattrs = {
             let schema = qs.get_schema();
             schema.get_attributes_unique()
         };
 
-        let r: Result<(), OperationError> = uniqueattrs
+        // Build a set of all the value -> uuid for the cands.
+        // If already exist, reject due to dup.
+        let cand_attr_set =
+            get_cand_attr_set(cand.iter().map(|(e, _)| e), uniqueattrs).map_err(|e| {
+                error!(err = ?e, "failed to get cand attr set");
+                e
+            })?;
+
+        // No candidates to check!
+        if cand_attr_set.is_empty() {
+            return Ok(());
+        }
+
+        // HAPPY FAST PATH - we do the fast existence query and if it passes
+        // we can *proceed*, nothing has conflicted.
+        let cand_filters: Vec<_> = cand_attr_set
             .iter()
-            .try_for_each(|attr| enforce_unique(qs, cand, attr.as_str()));
-        r
+            .flat_map(|((attr, v), uuids)| {
+                uuids.iter().map(|uuid| {
+                    // and[ attr eq k, andnot [ uuid eq v ]]
+                    // Basically this says where name but also not self.
+                    f_and(vec![
+                        FC::Eq(attr, v.clone()),
+                        f_andnot(FC::Eq(Attribute::Uuid.as_ref(), PartialValue::Uuid(*uuid))),
+                    ])
+                })
+            })
+            .collect();
+
+        let filt_in = filter!(f_or(cand_filters));
+
+        trace!(?filt_in);
+
+        // If any results, reject.
+        let conflict_cand = qs.internal_exists(filt_in).map_err(|e| {
+            admin_error!("internal exists error {:?}", e);
+            e
+        })?;
+
+        if conflict_cand {
+            // Unlike enforce unique, we need to be more thorough here. Enforce unique
+            // just has to block the whole operation. We *can't* fail the operation
+            // in the same way, we need to individually isolate each collision to
+            // turn all the involved entries into conflicts. Because of this, rather
+            // than bisection like we do in enforce_unique to find violating entries
+            // for admins to read, we need to actually isolate each and every conflicting
+            // uuid. To achieve this we need to change the structure of the query we perform
+            // to actually get everything that has a conflict now.
+
+            // For each uuid, show the set of uuids this conflicts with.
+            let mut conflict_uuid_map: BTreeMap<Uuid, BTreeSet<Uuid>> = BTreeMap::new();
+
+            // We need to invert this now to have a set of uuid: Vec<(attr, pv)>
+            // rather than the other direction which was optimised for the detection of
+            // candidate conflicts during updates.
+
+            let mut cand_attr_map: BTreeMap<Uuid, BTreeSet<_>> = BTreeMap::new();
+
+            cand_attr_set.into_iter().for_each(|(key, uuids)| {
+                uuids.into_iter().for_each(|uuid| {
+                    cand_attr_map
+                        .entry(uuid)
+                        .and_modify(|set| {
+                            set.insert(key.clone());
+                        })
+                        .or_insert_with(|| {
+                            let mut set = BTreeSet::new();
+                            set.insert(key.clone());
+                            set
+                        });
+                })
+            });
+
+            for (uuid, ava_set) in cand_attr_map.into_iter() {
+                let cand_filters: Vec<_> = ava_set
+                    .iter()
+                    .map(|(attr, pv)| {
+                        f_and(vec![
+                            FC::Eq(attr, pv.clone()),
+                            f_andnot(FC::Eq(Attribute::Uuid.as_ref(), PartialValue::Uuid(uuid))),
+                        ])
+                    })
+                    .collect();
+
+                let filt_in = filter!(f_or(cand_filters.clone()));
+
+                let filt_conflicts = qs.internal_search(filt_in).map_err(|e| {
+                    admin_error!("internal search error {:?}", e);
+                    e
+                })?;
+
+                // Important! This needs to conflict in *both directions*. We have to
+                // indicate that uuid has been conflicted by the entries in filt_conflicts,
+                // but also that the entries in filt_conflicts now conflict on us! Also remember
+                // that entries in either direction *may already* be in the conflict map, so we
+                // need to be very careful here not to stomp anything - append only!
+                if !filt_conflicts.is_empty() {
+                    let mut conflict_uuid_set = BTreeSet::new();
+
+                    for e in filt_conflicts {
+                        // Mark that this entry conflicted to us.
+                        conflict_uuid_set.insert(e.get_uuid());
+                        // Mark that the entry needs to conflict against us.
+                        conflict_uuid_map
+                            .entry(e.get_uuid())
+                            .and_modify(|set| {
+                                set.insert(uuid);
+                            })
+                            .or_insert_with(|| {
+                                let mut set = BTreeSet::new();
+                                set.insert(uuid);
+                                set
+                            });
+                    }
+
+                    conflict_uuid_map
+                        .entry(uuid)
+                        .and_modify(|set| set.append(&mut conflict_uuid_set))
+                        .or_insert_with(|| conflict_uuid_set);
+                }
+            }
+
+            trace!(?conflict_uuid_map);
+
+            if conflict_uuid_map.is_empty() {
+                error!("Impossible state. Attribute unique conflicts were detected in fast path, but were not found in slow path.");
+                return Err(OperationError::InvalidState);
+            }
+
+            // Now get all these values out with modify writable
+
+            let filt = filter!(FC::Or(
+                conflict_uuid_map
+                    .keys()
+                    .map(|u| f_eq(Attribute::Uuid, PartialValue::Uuid(*u)))
+                    .collect()
+            ));
+
+            let mut work_set = qs.internal_search_writeable(&filt)?;
+
+            for (_, entry) in work_set.iter_mut() {
+                let Some(uuid) = entry.get_uuid() else {
+                    error!("Impossible state. Entry that was declared in conflict map does not have a uuid.");
+                    return Err(OperationError::InvalidState);
+                };
+
+                // Add the uuid to the conflict uuids now.
+                conflict_uuids.insert(uuid);
+
+                if let Some(conflict_uuid_set) = conflict_uuid_map.get(&uuid) {
+                    entry.to_conflict(conflict_uuid_set.iter().copied())
+                } else {
+                    error!("Impossible state. Entry that was declared in conflict map was not present in work set.");
+                    return Err(OperationError::InvalidState);
+                }
+            }
+
+            qs.internal_apply_writable(work_set).map_err(|e| {
+                admin_error!("Failed to commit memberof group set {:?}", e);
+                e
+            })?;
+
+            // Okay we *finally got here. We are done!
+            Ok(())
+        } else {
+            // 🎉
+            Ok(())
+        }
     }
 
     #[instrument(level = "debug", name = "attrunique::verify", skip_all)]
     fn verify(qs: &mut QueryServerReadTransaction) -> Vec<Result<(), ConsistencyError>> {
         // Only check live entries, not recycled.
-        let filt_in = filter!(f_pres(Attribute::Class.as_ref()));
+        let filt_in = filter!(f_pres(Attribute::Class));
 
         let all_cand = match qs
             .internal_search(filt_in)
@@ -278,13 +479,8 @@ impl Plugin for AttrUnique {
 
         let mut res: Vec<Result<(), ConsistencyError>> = Vec::new();
 
-        for attr in uniqueattrs.iter() {
-            // We do a fully in memory check.
-            if get_cand_attr_set(&all_cand, attr.as_str()).is_err() {
-                res.push(Err(ConsistencyError::DuplicateUniqueAttribute(
-                    attr.to_string(),
-                )))
-            }
+        if get_cand_attr_set(&all_cand, uniqueattrs).is_err() {
+            res.push(Err(ConsistencyError::DuplicateUniqueAttribute))
         }
 
         trace!(?res);

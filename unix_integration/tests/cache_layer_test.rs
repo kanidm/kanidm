@@ -6,6 +6,7 @@ use std::sync::atomic::{AtomicU16, Ordering};
 use std::time::Duration;
 
 use kanidm_client::{KanidmClient, KanidmClientBuilder};
+use kanidm_proto::constants::ATTR_ACCOUNT_EXPIRE;
 use kanidm_unix_common::constants::{
     DEFAULT_GID_ATTR_MAP, DEFAULT_HOME_ALIAS, DEFAULT_HOME_ATTR, DEFAULT_HOME_PREFIX,
     DEFAULT_SHELL, DEFAULT_UID_ATTR_MAP,
@@ -132,6 +133,15 @@ async fn setup_test(fix_fn: Fixture) -> (Resolver<KanidmProvider>, KanidmClient)
     // let the tables hit the floor
 }
 
+/// This is the test fixture. It sets up the following:
+/// - adds admin to idm_admins
+/// - creates a test account (testaccount1)
+/// - extends the test account with posix attrs
+/// - adds a ssh public key to the test account
+/// - sets a posix password for the test account
+/// - creates a test group (testgroup1) and adds the test account to the test group
+/// - extends testgroup1 with posix attrs
+/// - creates two more groups with unix perms (allowed_group, masked_group)
 async fn test_fixture(rsclient: KanidmClient) {
     let res = rsclient
         .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
@@ -585,7 +595,7 @@ async fn test_cache_account_expiry() {
         .await
         .expect("failed to auth as admin");
     adminclient
-        .idm_person_account_set_attr("testaccount1", "account_expire", &[ACCOUNT_EXPIRE])
+        .idm_person_account_set_attr("testaccount1", ATTR_ACCOUNT_EXPIRE, &[ACCOUNT_EXPIRE])
         .await
         .unwrap();
     // auth will fail

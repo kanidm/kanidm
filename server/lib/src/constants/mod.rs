@@ -77,7 +77,8 @@ pub const MFAREG_SESSION_TIMEOUT: u64 = 300;
 pub const PW_MIN_LENGTH: usize = 10;
 
 // Default - sessions last for 1 hour.
-pub const DEFAULT_AUTH_SESSION_EXPIRY: u32 = 3600;
+pub const DEFAULT_AUTH_SESSION_EXPIRY: u32 = 86400;
+pub const DEFAULT_AUTH_SESSION_LIMITED_EXPIRY: u32 = 3600;
 // Default - privileges last for 10 minutes.
 pub const DEFAULT_AUTH_PRIVILEGE_EXPIRY: u32 = 600;
 // Default - oauth refresh tokens last for 16 hours.

@@ -135,16 +135,15 @@ impl PamHooks for PamKanidm {
         let req = ClientRequest::PamAccountAllowed(account_id);
         // PamResultCode::PAM_IGNORE
 
-        let mut daemon_client =
-            match DaemonClientBlocking::new(cfg.sock_path.as_str(), cfg.unix_sock_timeout) {
-                Ok(dc) => dc,
-                Err(e) => {
-                    error!(err = ?e, "Error DaemonClientBlocking::new()");
-                    return PamResultCode::PAM_SERVICE_ERR;
-                }
-            };
+        let mut daemon_client = match DaemonClientBlocking::new(cfg.sock_path.as_str()) {
+            Ok(dc) => dc,
+            Err(e) => {
+                error!(err = ?e, "Error DaemonClientBlocking::new()");
+                return PamResultCode::PAM_SERVICE_ERR;
+            }
+        };
 
-        match daemon_client.call_and_wait(&req) {
+        match daemon_client.call_and_wait(&req, cfg.unix_sock_timeout) {
             Ok(r) => match r {
                 ClientResponse::PamStatus(Some(true)) => {
                     debug!("PamResultCode::PAM_SUCCESS");
@@ -203,14 +202,14 @@ impl PamHooks for PamKanidm {
             Err(e) => return e,
         };
 
-        let mut daemon_client =
-            match DaemonClientBlocking::new(cfg.sock_path.as_str(), cfg.unix_sock_timeout) {
-                Ok(dc) => dc,
-                Err(e) => {
-                    error!(err = ?e, "Error DaemonClientBlocking::new()");
-                    return PamResultCode::PAM_SERVICE_ERR;
-                }
-            };
+        let mut timeout = cfg.unix_sock_timeout;
+        let mut daemon_client = match DaemonClientBlocking::new(cfg.sock_path.as_str()) {
+            Ok(dc) => dc,
+            Err(e) => {
+                error!(err = ?e, "Error DaemonClientBlocking::new()");
+                return PamResultCode::PAM_SERVICE_ERR;
+            }
+        };
 
         // Later we may need to move this to a function and call it as a oneshot for auth methods
         // that don't require any authtoks at all. For example, imagine a user authed and they
@@ -242,7 +241,7 @@ impl PamHooks for PamKanidm {
         let mut req = ClientRequest::PamAuthenticateInit(account_id);
 
         loop {
-            match daemon_client.call_and_wait(&req) {
+            match daemon_client.call_and_wait(&req, timeout) {
                 Ok(r) => match r {
                     ClientResponse::PamAuthenticateStepResponse(PamAuthResponse::Success) => {
                         return PamResultCode::PAM_SUCCESS;
@@ -282,7 +281,32 @@ impl PamHooks for PamKanidm {
                         };
 
                         // Now setup the request for the next loop.
+                        timeout = cfg.unix_sock_timeout;
                         req = ClientRequest::PamAuthenticateStep(PamAuthRequest::Password { cred });
+                        continue;
+                    }
+                    ClientResponse::PamAuthenticateStepResponse(
+                        PamAuthResponse::DeviceAuthorizationGrant { data },
+                    ) => {
+                        let msg = match &data.message {
+                            Some(msg) => msg.clone(),
+                            None => format!("Using a browser on another device, visit:\n{}\nAnd enter the code:\n{}",
+                                            data.verification_uri, data.user_code)
+                        };
+                        match conv.send(PAM_TEXT_INFO, &msg) {
+                            Ok(_) => {}
+                            Err(err) => {
+                                if opts.debug {
+                                    println!("Message prompt failed");
+                                }
+                                return err;
+                            }
+                        }
+
+                        timeout = u64::from(data.expires_in);
+                        req = ClientRequest::PamAuthenticateStep(
+                            PamAuthRequest::DeviceAuthorizationGrant { data },
+                        );
                         continue;
                     }
                     _ => {
@@ -349,16 +373,15 @@ impl PamHooks for PamKanidm {
         };
         let req = ClientRequest::PamAccountBeginSession(account_id);
 
-        let mut daemon_client =
-            match DaemonClientBlocking::new(cfg.sock_path.as_str(), cfg.unix_sock_timeout) {
-                Ok(dc) => dc,
-                Err(e) => {
-                    error!(err = ?e, "Error DaemonClientBlocking::new()");
-                    return PamResultCode::PAM_SERVICE_ERR;
-                }
-            };
+        let mut daemon_client = match DaemonClientBlocking::new(cfg.sock_path.as_str()) {
+            Ok(dc) => dc,
+            Err(e) => {
+                error!(err = ?e, "Error DaemonClientBlocking::new()");
+                return PamResultCode::PAM_SERVICE_ERR;
+            }
+        };
 
-        match daemon_client.call_and_wait(&req) {
+        match daemon_client.call_and_wait(&req, cfg.unix_sock_timeout) {
             Ok(ClientResponse::Ok) => {
                 // println!("PAM_SUCCESS");
                 PamResultCode::PAM_SUCCESS

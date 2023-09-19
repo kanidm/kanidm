@@ -21,6 +21,7 @@ use identify_user_no_tui::{run_identity_verification_no_tui, IdentifyUserState};
 #[cfg(feature = "idv-tui")]
 use identify_user_tui::run_identity_verification_tui;
 
+use kanidm_client::{ClientError, StatusCode};
 use url::Url;
 use uuid::Uuid;
 
@@ -41,6 +42,40 @@ pub mod session;
 pub mod session_expiry;
 pub mod synch;
 mod webauthn;
+
+/// Throws an error and exits the program when we get an error
+pub(crate) fn handle_client_error(response: ClientError, _output_mode: &OutputMode) {
+    match response {
+        ClientError::Http(status, error, message) => {
+            let error_msg = match error {
+                Some(msg) => format!(" {:?}", msg),
+                None => "".to_string(),
+            };
+            if status == StatusCode::INTERNAL_SERVER_ERROR {
+                error!(
+                    "Internal Server Error in response:{:?} {:?}",
+                    error_msg, message
+                );
+                std::process::exit(1);
+            } else if status == StatusCode::NOT_FOUND {
+                error!("Item not found:{:?} {:?}", error_msg, message)
+            } else {
+                error!("HTTP Error: {}{} {:?}", status, error_msg, message);
+            }
+        }
+        ClientError::Transport(e) => {
+            error!("HTTP-Transport Related Error: {:?}", e);
+            std::process::exit(1);
+        }
+        ClientError::UntrustedCertificate(e) => {
+            error!("Untrusted Certificate Error: {:?}", e);
+            std::process::exit(1);
+        }
+        _ => {
+            eprintln!("{:?}", response);
+        }
+    };
+}
 
 impl SelfOpt {
     pub fn debug(&self) -> bool {
@@ -67,7 +102,7 @@ impl SelfOpt {
                             }
                         }
                     }
-                    Err(e) => println!("Error: {:?}", e),
+                    Err(e) => handle_client_error(e, &copt.output_mode),
                 }
             }
             SelfOpt::IdentifyUser(copt) => {

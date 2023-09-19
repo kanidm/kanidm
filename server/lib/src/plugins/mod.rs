@@ -3,6 +3,7 @@
 //! helps to ensure that data is always in specific known states within the
 //! `QueryServer`
 
+use std::collections::BTreeSet;
 use std::sync::Arc;
 
 use kanidm_proto::v1::{ConsistencyError, OperationError};
@@ -37,6 +38,7 @@ trait Plugin {
             "plugin {} has an unimplemented pre_create_transform!",
             Self::id()
         );
+        debug_assert!(false);
         Err(OperationError::InvalidState)
     }
 
@@ -47,6 +49,7 @@ trait Plugin {
         _ce: &CreateEvent,
     ) -> Result<(), OperationError> {
         admin_error!("plugin {} has an unimplemented pre_create!", Self::id());
+        debug_assert!(false);
         Err(OperationError::InvalidState)
     }
 
@@ -57,6 +60,7 @@ trait Plugin {
         _ce: &CreateEvent,
     ) -> Result<(), OperationError> {
         admin_error!("plugin {} has an unimplemented post_create!", Self::id());
+        debug_assert!(false);
         Err(OperationError::InvalidState)
     }
 
@@ -67,6 +71,7 @@ trait Plugin {
         _me: &ModifyEvent,
     ) -> Result<(), OperationError> {
         admin_error!("plugin {} has an unimplemented pre_modify!", Self::id());
+        debug_assert!(false);
         Err(OperationError::InvalidState)
     }
 
@@ -78,6 +83,7 @@ trait Plugin {
         _ce: &ModifyEvent,
     ) -> Result<(), OperationError> {
         admin_error!("plugin {} has an unimplemented post_modify!", Self::id());
+        debug_assert!(false);
         Err(OperationError::InvalidState)
     }
 
@@ -91,6 +97,7 @@ trait Plugin {
             "plugin {} has an unimplemented pre_batch_modify!",
             Self::id()
         );
+        debug_assert!(false);
         Err(OperationError::InvalidState)
     }
 
@@ -105,6 +112,7 @@ trait Plugin {
             "plugin {} has an unimplemented post_batch_modify!",
             Self::id()
         );
+        debug_assert!(false);
         Err(OperationError::InvalidState)
     }
 
@@ -114,6 +122,7 @@ trait Plugin {
         _de: &DeleteEvent,
     ) -> Result<(), OperationError> {
         admin_error!("plugin {} has an unimplemented pre_delete!", Self::id());
+        debug_assert!(false);
         Err(OperationError::InvalidState)
     }
 
@@ -124,6 +133,7 @@ trait Plugin {
         _ce: &DeleteEvent,
     ) -> Result<(), OperationError> {
         admin_error!("plugin {} has an unimplemented post_delete!", Self::id());
+        debug_assert!(false);
         Err(OperationError::InvalidState)
     }
 
@@ -135,6 +145,7 @@ trait Plugin {
             "plugin {} has an unimplemented pre_repl_refresh!",
             Self::id()
         );
+        debug_assert!(false);
         Err(OperationError::InvalidState)
     }
 
@@ -146,6 +157,7 @@ trait Plugin {
             "plugin {} has an unimplemented post_repl_refresh!",
             Self::id()
         );
+        debug_assert!(false);
         Err(OperationError::InvalidState)
     }
 
@@ -157,23 +169,35 @@ trait Plugin {
             "plugin {} has an unimplemented pre_repl_incremental!",
             Self::id()
         );
-        // debug_assert!(false);
-        // Err(OperationError::InvalidState)
-        Ok(())
+        debug_assert!(false);
+        Err(OperationError::InvalidState)
+    }
+
+    fn post_repl_incremental_conflict(
+        _qs: &mut QueryServerWriteTransaction,
+        _cand: &[(EntrySealedCommitted, Arc<EntrySealedCommitted>)],
+        _conflict_uuids: &mut BTreeSet<Uuid>,
+    ) -> Result<(), OperationError> {
+        admin_error!(
+            "plugin {} has an unimplemented post_repl_incremental_conflict!",
+            Self::id()
+        );
+        debug_assert!(false);
+        Err(OperationError::InvalidState)
     }
 
     fn post_repl_incremental(
         _qs: &mut QueryServerWriteTransaction,
         _pre_cand: &[Arc<EntrySealedCommitted>],
         _cand: &[EntrySealedCommitted],
+        _conflict_uuids: &BTreeSet<Uuid>,
     ) -> Result<(), OperationError> {
         admin_error!(
             "plugin {} has an unimplemented post_repl_incremental!",
             Self::id()
         );
-        // debug_assert!(false);
-        // Err(OperationError::InvalidState)
-        Ok(())
+        debug_assert!(false);
+        Err(OperationError::InvalidState)
     }
 
     fn verify(_qs: &mut QueryServerReadTransaction) -> Vec<Result<(), ConsistencyError>> {
@@ -337,14 +361,28 @@ impl Plugins {
 
     #[instrument(level = "debug", name = "plugins::run_pre_repl_incremental", skip_all)]
     pub fn run_pre_repl_incremental(
-        qs: &mut QueryServerWriteTransaction,
-        cand: &mut [(EntryIncrementalCommitted, Arc<EntrySealedCommitted>)],
+        _qs: &mut QueryServerWriteTransaction,
+        _cand: &mut [(EntryIncrementalCommitted, Arc<EntrySealedCommitted>)],
     ) -> Result<(), OperationError> {
         // Cleanup sessions on incoming replication? May not actually
-        // be needed ...
+        // be needed since each node will be session checking and replicating
+        // those cleanups as needed.
         // session::SessionConsistency::pre_repl_incremental(qs, cand)?;
-        // attr unique should always be last
-        attrunique::AttrUnique::pre_repl_incremental(qs, cand)
+        Ok(())
+    }
+
+    #[instrument(
+        level = "debug",
+        name = "plugins::run_post_repl_incremental_conflict",
+        skip_all
+    )]
+    pub fn run_post_repl_incremental_conflict(
+        qs: &mut QueryServerWriteTransaction,
+        cand: &[(EntrySealedCommitted, Arc<EntrySealedCommitted>)],
+        conflict_uuids: &mut BTreeSet<Uuid>,
+    ) -> Result<(), OperationError> {
+        // Attr unique MUST BE FIRST.
+        attrunique::AttrUnique::post_repl_incremental_conflict(qs, cand, conflict_uuids)
     }
 
     #[instrument(level = "debug", name = "plugins::run_post_repl_incremental", skip_all)]
@@ -352,11 +390,15 @@ impl Plugins {
         qs: &mut QueryServerWriteTransaction,
         pre_cand: &[Arc<EntrySealedCommitted>],
         cand: &[EntrySealedCommitted],
+        conflict_uuids: &BTreeSet<Uuid>,
     ) -> Result<(), OperationError> {
-        domain::Domain::post_repl_incremental(qs, pre_cand, cand)?;
-        spn::Spn::post_repl_incremental(qs, pre_cand, cand)?;
-        refint::ReferentialIntegrity::post_repl_incremental(qs, pre_cand, cand)?;
-        memberof::MemberOf::post_repl_incremental(qs, pre_cand, cand)
+        // Nothing to do yet.
+        // domain::Domain::post_repl_incremental(qs, pre_cand, cand, conflict_uuids)?;
+        spn::Spn::post_repl_incremental(qs, pre_cand, cand, conflict_uuids)?;
+        // refint MUST proceed memberof.
+        refint::ReferentialIntegrity::post_repl_incremental(qs, pre_cand, cand, conflict_uuids)?;
+        // Memberof MUST BE LAST.
+        memberof::MemberOf::post_repl_incremental(qs, pre_cand, cand, conflict_uuids)
     }
 
     #[instrument(level = "debug", name = "plugins::run_verify", skip_all)]

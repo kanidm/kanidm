@@ -372,19 +372,19 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         let eperm_search_primary_cred = match &eperm.search {
             Access::Denied => false,
             Access::Grant => true,
-            Access::Allow(attrs) => attrs.contains("primary_credential"),
+            Access::Allow(attrs) => attrs.contains(Attribute::PrimaryCredential.as_ref()),
         };
 
         let eperm_mod_primary_cred = match &eperm.modify_pres {
             Access::Denied => false,
             Access::Grant => true,
-            Access::Allow(attrs) => attrs.contains("primary_credential"),
+            Access::Allow(attrs) => attrs.contains(Attribute::PrimaryCredential.as_ref()),
         };
 
         let eperm_rem_primary_cred = match &eperm.modify_rem {
             Access::Denied => false,
             Access::Grant => true,
-            Access::Allow(attrs) => attrs.contains("primary_credential"),
+            Access::Allow(attrs) => attrs.contains(Attribute::PrimaryCredential.as_ref()),
         };
 
         let primary_can_edit =
@@ -393,19 +393,19 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         let eperm_search_passkeys = match &eperm.search {
             Access::Denied => false,
             Access::Grant => true,
-            Access::Allow(attrs) => attrs.contains("passkeys"),
+            Access::Allow(attrs) => attrs.contains(Attribute::PassKeys.as_ref()),
         };
 
         let eperm_mod_passkeys = match &eperm.modify_pres {
             Access::Denied => false,
             Access::Grant => true,
-            Access::Allow(attrs) => attrs.contains("passkeys"),
+            Access::Allow(attrs) => attrs.contains(Attribute::PassKeys.as_ref()),
         };
 
         let eperm_rem_passkeys = match &eperm.modify_rem {
             Access::Denied => false,
             Access::Grant => true,
-            Access::Allow(attrs) => attrs.contains("passkeys"),
+            Access::Allow(attrs) => attrs.contains(Attribute::PassKeys.as_ref()),
         };
 
         let passkeys_can_edit = eperm_search_passkeys && eperm_mod_passkeys && eperm_rem_passkeys;
@@ -419,7 +419,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 .get_accesscontrols()
                 .effective_permission_check(
                     ident,
-                    Some(btreeset![AttrString::from("sync_credential_portal")]),
+                    Some(btreeset![Attribute::SyncCredentialPortal.into()]),
                     &[entry],
                 )?;
 
@@ -431,7 +431,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             match &eperm.search {
                 Access::Denied => false,
                 Access::Grant => true,
-                Access::Allow(attrs) => attrs.contains("sync_credential_portal"),
+                Access::Allow(attrs) => attrs.contains(Attribute::SyncCredentialPortal.as_ref()),
             }
         } else {
             false
@@ -487,7 +487,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             (Some(sync_parent_uuid), true) => {
                 let sync_entry = self.qs_write.internal_search_uuid(sync_parent_uuid)?;
                 sync_entry
-                    .get_ava_single_url("sync_credential_portal")
+                    .get_ava_single_url(Attribute::SyncCredentialPortal)
                     .cloned()
                     .map(CUExtPortal::Some)
                     .unwrap_or(CUExtPortal::Hidden)
@@ -582,7 +582,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         //        write anyway, and instead on the intent access path we invalidate IF the collision
         //        occurs.
         let mut modlist = ModifyList::new_append(
-            "credential_update_intent_token",
+            Attribute::CredentialUpdateIntentToken,
             Value::IntentToken(
                 intent_id.clone(),
                 IntentTokenState::Valid { max_ttl, perms },
@@ -607,7 +607,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
                 if ct >= max_ttl {
                     modlist.push_mod(Modify::Removed(
-                        AttrString::from("credential_update_intent_token"),
+                        Attribute::CredentialUpdateIntentToken.into(),
                         PartialValue::IntentToken(existing_intent_id.clone()),
                     ));
                 }
@@ -665,7 +665,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                     let mut modlist = ModifyList::new();
 
                     modlist.push_mod(Modify::Removed(
-                        AttrString::from("credential_update_intent_token"),
+                        Attribute::CredentialUpdateIntentToken.into(),
                         PartialValue::IntentToken(intent_id.clone()),
                     ));
 
@@ -779,11 +779,11 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         let mut modlist = ModifyList::new();
 
         modlist.push_mod(Modify::Removed(
-            AttrString::from("credential_update_intent_token"),
+            Attribute::CredentialUpdateIntentToken.into(),
             PartialValue::IntentToken(intent_id.clone()),
         ));
         modlist.push_mod(Modify::Present(
-            AttrString::from("credential_update_intent_token"),
+            Attribute::CredentialUpdateIntentToken.into(),
             Value::IntentToken(
                 intent_id.clone(),
                 IntentTokenState::InProgress {
@@ -949,11 +949,11 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             };
 
             modlist.push_mod(Modify::Removed(
-                AttrString::from("credential_update_intent_token"),
+                Attribute::CredentialUpdateIntentToken.into(),
                 PartialValue::IntentToken(intent_token_id.clone()),
             ));
             modlist.push_mod(Modify::Present(
-                AttrString::from("credential_update_intent_token"),
+                Attribute::CredentialUpdateIntentToken.into(),
                 Value::IntentToken(
                     intent_token_id.clone(),
                     IntentTokenState::Consumed { max_ttl },
@@ -1050,11 +1050,11 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             };
 
             modlist.push_mod(Modify::Removed(
-                AttrString::from("credential_update_intent_token"),
+                Attribute::CredentialUpdateIntentToken.into(),
                 PartialValue::IntentToken(intent_token_id.clone()),
             ));
             modlist.push_mod(Modify::Present(
-                AttrString::from("credential_update_intent_token"),
+                Attribute::CredentialUpdateIntentToken.into(),
                 Value::IntentToken(
                     intent_token_id.clone(),
                     IntentTokenState::Valid { max_ttl, perms },
@@ -1774,41 +1774,23 @@ mod tests {
         let testaccount_uuid = Uuid::new_v4();
 
         let e1 = entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
-            (
-                Attribute::Class.as_ref(),
-                EntryClass::ServiceAccount.to_value()
-            ),
-            (
-                Attribute::Name.as_ref(),
-                Value::new_iname("user_account_only")
-            ),
-            (Attribute::Uuid.as_ref(), Value::Uuid(testaccount_uuid)),
-            (
-                Attribute::Description.as_ref(),
-                Value::new_utf8s("testaccount")
-            ),
-            (
-                Attribute::DisplayName.as_ref(),
-                Value::new_utf8s("testaccount")
-            )
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::ServiceAccount.to_value()),
+            (Attribute::Name, Value::new_iname("user_account_only")),
+            (Attribute::Uuid, Value::Uuid(testaccount_uuid)),
+            (Attribute::Description, Value::new_utf8s("testaccount")),
+            (Attribute::DisplayName, Value::new_utf8s("testaccount"))
         );
 
         let e2 = entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
-            (Attribute::Name.as_ref(), Value::new_iname("testperson")),
-            (Attribute::Uuid.as_ref(), Value::Uuid(TESTPERSON_UUID)),
-            (
-                Attribute::Description.as_ref(),
-                Value::new_utf8s("testperson")
-            ),
-            (
-                Attribute::DisplayName.as_ref(),
-                Value::new_utf8s("testperson")
-            )
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Name, Value::new_iname("testperson")),
+            (Attribute::Uuid, Value::Uuid(TESTPERSON_UUID)),
+            (Attribute::Description, Value::new_utf8s("testperson")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson"))
         );
 
         let ce = CreateEvent::new_internal(vec![e1, e2]);
@@ -1907,19 +1889,13 @@ mod tests {
         let mut idms_prox_write = idms.proxy_write(ct).await;
 
         let e2 = entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
-            (Attribute::Name.as_ref(), Value::new_iname("testperson")),
-            (Attribute::Uuid.as_ref(), Value::Uuid(TESTPERSON_UUID)),
-            (
-                Attribute::Description.as_ref(),
-                Value::new_utf8s("testperson")
-            ),
-            (
-                Attribute::DisplayName.as_ref(),
-                Value::new_utf8s("testperson")
-            )
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Name, Value::new_iname("testperson")),
+            (Attribute::Uuid, Value::Uuid(TESTPERSON_UUID)),
+            (Attribute::Description, Value::new_utf8s("testperson")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson"))
         );
 
         let ce = CreateEvent::new_internal(vec![e2]);
@@ -2771,35 +2747,26 @@ mod tests {
         let sync_uuid = Uuid::new_v4();
 
         let e1 = entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::SyncAccount.to_value()),
+            (Attribute::Name, Value::new_iname("test_scim_sync")),
+            (Attribute::Uuid, Value::Uuid(sync_uuid)),
             (
-                Attribute::Class.as_ref(),
-                EntryClass::SyncAccount.to_value()
-            ),
-            (Attribute::Name.as_ref(), Value::new_iname("test_scim_sync")),
-            (Attribute::Uuid.as_ref(), Value::Uuid(sync_uuid)),
-            (
-                Attribute::Description.as_ref(),
+                Attribute::Description,
                 Value::new_utf8s("A test sync agreement")
             )
         );
 
         let e2 = entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::SyncObject.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
-            (Attribute::SyncParentUuid.as_ref(), Value::Refer(sync_uuid)),
-            (Attribute::Name.as_ref(), Value::new_iname("testperson")),
-            (Attribute::Uuid.as_ref(), Value::Uuid(TESTPERSON_UUID)),
-            (
-                Attribute::Description.as_ref(),
-                Value::new_utf8s("testperson")
-            ),
-            (
-                Attribute::DisplayName.as_ref(),
-                Value::new_utf8s("testperson")
-            )
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::SyncObject.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::SyncParentUuid, Value::Refer(sync_uuid)),
+            (Attribute::Name, Value::new_iname("testperson")),
+            (Attribute::Uuid, Value::Uuid(TESTPERSON_UUID)),
+            (Attribute::Description, Value::new_utf8s("testperson")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson"))
         );
 
         let ce = CreateEvent::new_internal(vec![e1, e2]);

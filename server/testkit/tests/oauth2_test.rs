@@ -9,6 +9,7 @@ use kanidm_proto::oauth2::{
     AccessTokenIntrospectRequest, AccessTokenIntrospectResponse, AccessTokenRequest,
     AccessTokenResponse, AuthorisationResponse, GrantTypeReq, OidcDiscoveryResponse,
 };
+use kanidmd_lib::prelude::{Attribute, BUILTIN_GROUP_IDM_ADMINS_V1, IDM_ALL_ACCOUNTS};
 use oauth2_ext::PkceCodeChallenge;
 use reqwest::header::{HeaderValue, CONTENT_TYPE};
 use reqwest::StatusCode;
@@ -65,7 +66,7 @@ async fn test_oauth2_openid_basic_flow(rsclient: KanidmClient) {
 
     // Extend the admin account with extended details for openid claims.
     rsclient
-        .idm_group_add_members("idm_admins", &["admin"])
+        .idm_group_add_members(BUILTIN_GROUP_IDM_ADMINS_V1.name, &["admin"])
         .await
         .unwrap();
 
@@ -75,7 +76,11 @@ async fn test_oauth2_openid_basic_flow(rsclient: KanidmClient) {
         .expect("Failed to create account details");
 
     rsclient
-        .idm_person_account_set_attr("oauth_test", "mail", &["oauth_test@localhost"])
+        .idm_person_account_set_attr(
+            "oauth_test",
+            Attribute::Mail.as_ref(),
+            &["oauth_test@localhost"],
+        )
         .await
         .expect("Failed to create account mail");
 
@@ -92,14 +97,18 @@ async fn test_oauth2_openid_basic_flow(rsclient: KanidmClient) {
     rsclient
         .idm_oauth2_rs_update_scope_map(
             "test_integration",
-            "idm_all_accounts",
+            IDM_ALL_ACCOUNTS.name,
             vec![OAUTH2_SCOPE_READ, OAUTH2_SCOPE_EMAIL, OAUTH2_SCOPE_OPENID],
         )
         .await
         .expect("Failed to update oauth2 scopes");
 
     rsclient
-        .idm_oauth2_rs_update_sup_scope_map("test_integration", "idm_all_accounts", vec!["admin"])
+        .idm_oauth2_rs_update_sup_scope_map(
+            "test_integration",
+            IDM_ALL_ACCOUNTS.name,
+            vec!["admin"],
+        )
         .await
         .expect("Failed to update oauth2 scopes");
 
@@ -417,7 +426,7 @@ async fn test_oauth2_openid_public_flow(rsclient: KanidmClient) {
 
     // Extend the admin account with extended details for openid claims.
     rsclient
-        .idm_group_add_members("idm_admins", &["admin"])
+        .idm_group_add_members(BUILTIN_GROUP_IDM_ADMINS_V1.name, &["admin"])
         .await
         .unwrap();
 
@@ -427,7 +436,11 @@ async fn test_oauth2_openid_public_flow(rsclient: KanidmClient) {
         .expect("Failed to create account details");
 
     rsclient
-        .idm_person_account_set_attr("oauth_test", "mail", &["oauth_test@localhost"])
+        .idm_person_account_set_attr(
+            "oauth_test",
+            Attribute::Mail.as_ref(),
+            &["oauth_test@localhost"],
+        )
         .await
         .expect("Failed to create account mail");
 
@@ -444,14 +457,18 @@ async fn test_oauth2_openid_public_flow(rsclient: KanidmClient) {
     rsclient
         .idm_oauth2_rs_update_scope_map(
             "test_integration",
-            "idm_all_accounts",
+            IDM_ALL_ACCOUNTS.name,
             vec![OAUTH2_SCOPE_READ, OAUTH2_SCOPE_EMAIL, OAUTH2_SCOPE_OPENID],
         )
         .await
         .expect("Failed to update oauth2 scopes");
 
     rsclient
-        .idm_oauth2_rs_update_sup_scope_map("test_integration", "idm_all_accounts", vec!["admin"])
+        .idm_oauth2_rs_update_sup_scope_map(
+            "test_integration",
+            IDM_ALL_ACCOUNTS.name,
+            vec!["admin"],
+        )
         .await
         .expect("Failed to update oauth2 scopes");
 

@@ -62,20 +62,32 @@ impl CommonOpt {
         let client_builder = match ca_path {
             Some(p) => {
                 debug!("Adding trusted CA cert {:?}", p);
-                client_builder
+                let client_builder = client_builder
                     .add_root_certificate_filepath(p)
                     .unwrap_or_else(|e| {
                         error!("Failed to add ca certificate -- {:?}", e);
                         std::process::exit(1);
-                    })
+                    });
+
+                debug!(
+                    "After attempting to add trusted CA cert, client builder state: {:?}",
+                    client_builder
+                );
+                client_builder
             }
             None => client_builder,
         };
 
-        debug!(
-            "Post attempting to add trusted CA cert, client builder state: {:?}",
-            client_builder
-        );
+        let client_builder = match self.skip_hostname_verification {
+            true => {
+                warn!(
+                    "Accepting invalid hostnames on the certificate for {:?}",
+                    &self.addr
+                );
+                client_builder.danger_accept_invalid_hostnames(true)
+            }
+            false => client_builder,
+        };
 
         client_builder.build().unwrap_or_else(|e| {
             error!("Failed to build client instance -- {:?}", e);
@@ -176,7 +188,7 @@ impl CommonOpt {
                     match prompt_for_username_get_values() {
                         Ok(tuple) => tuple,
                         Err(msg) => {
-                            error!("{}", msg);
+                            error!("Error: {}", msg);
                             std::process::exit(1);
                         }
                     }

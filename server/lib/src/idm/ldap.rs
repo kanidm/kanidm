@@ -69,11 +69,11 @@ impl LdapServer {
             .internal_search_uuid(UUID_DOMAIN_INFO)?;
 
         let basedn = domain_entry
-            .get_ava_single_iutf8("domain_ldap_basedn")
+            .get_ava_single_iutf8(Attribute::DomainLdapBasedn)
             .map(|s| s.to_string())
             .or_else(|| {
                 domain_entry
-                    .get_ava_single_iname(Attribute::DomainName.as_ref())
+                    .get_ava_single_iname(Attribute::DomainName)
                     .map(ldap_domain_to_dc)
             })
             .ok_or(OperationError::InvalidEntryState)?;
@@ -88,7 +88,7 @@ impl LdapServer {
             dn: "".to_string(),
             attributes: vec![
                 LdapPartialAttribute {
-                    atype: "objectclass".to_string(),
+                    atype: ATTR_OBJECTCLASS.to_string(),
                     vals: vec!["top".as_bytes().to_vec()],
                 },
                 LdapPartialAttribute {
@@ -135,7 +135,7 @@ impl LdapServer {
         // eventid: &Uuid,
     ) -> Result<Vec<LdapMsg>, OperationError> {
         admin_info!("Attempt LDAP Search for {}", uat.spn);
-        // If the request is "", Base, Present("objectclass"), [], then we want the rootdse.
+        // If the request is "", Base, Present(Attribute::ObjectClass.into()), [], then we want the rootdse.
         if sr.base.is_empty() && sr.scope == LdapSearchScope::Base {
             admin_info!("LDAP Search success - RootDSE");
             Ok(vec![
@@ -182,7 +182,7 @@ impl LdapServer {
                 (LdapSearchScope::Children, None) | (LdapSearchScope::OneLevel, None) => {
                     // exclude domain_info
                     Some(LdapFilter::Not(Box::new(LdapFilter::Equality(
-                        "uuid".to_string(),
+                        Attribute::Uuid.to_string(),
                         STR_UUID_DOMAIN_INFO.to_string(),
                     ))))
                 }
@@ -193,7 +193,7 @@ impl LdapServer {
                 (LdapSearchScope::Base, None) => {
                     // domain_info
                     Some(LdapFilter::Equality(
-                        "uuid".to_string(),
+                        Attribute::Uuid.to_string(),
                         STR_UUID_DOMAIN_INFO.to_string(),
                     ))
                 }
@@ -581,16 +581,16 @@ pub(crate) fn ldap_all_vattrs() -> Vec<String> {
     vec![
         ATTR_CN.to_string(),
         ATTR_EMAIL.to_string(),
-        "emailaddress".to_string(),
-        "emailalternative".to_string(),
-        "emailprimary".to_string(),
+        ATTR_LDAP_EMAIL_ADDRESS.to_string(),
+        LDAP_ATTR_EMAIL_ALTERNATIVE.to_string(),
+        LDAP_ATTR_EMAIL_PRIMARY.to_string(),
         "entrydn".to_string(),
-        "entryuuid".to_string(),
-        "keys".to_string(),
-        "mail;alternative".to_string(),
-        "mail;primary".to_string(),
-        "objectclass".to_string(),
-        ATTR_LDAP_SSH_PUBLICKEY.to_string(),
+        LDAP_ATTR_ENTRYUUID.to_string(),
+        LDAP_ATTR_KEYS.to_string(),
+        LDAP_ATTR_MAIL_ALTERNATIVE.to_string(),
+        LDAP_ATTR_MAIL_PRIMARY.to_string(),
+        ATTR_OBJECTCLASS.to_string(),
+        ATTR_LDAP_SSHPUBLICKEY.to_string(),
         ATTR_UIDNUMBER.to_string(),
     ]
 }
@@ -604,18 +604,18 @@ pub(crate) fn ldap_vattr_map(input: &str) -> Option<&str> {
     //
     //   LDAP NAME     KANI ATTR SOURCE NAME
     match input {
-        "cn" => Some(ATTR_NAME),
+        ATTR_CN => Some(ATTR_NAME),
         ATTR_EMAIL => Some(ATTR_MAIL),
-        "emailaddress" => Some(ATTR_MAIL),
-        "emailalternative" => Some(ATTR_MAIL),
-        "emailprimary" => Some(ATTR_MAIL),
-        "entryuuid" => Some(ATTR_UUID),
-        "keys" => Some(ATTR_LDAP_SSH_PUBLICKEY),
-        "mail;alternative" => Some(ATTR_MAIL),
-        "mail;primary" => Some(ATTR_MAIL),
-        "objectclass" => Some(ATTR_CLASS),
-        ATTR_LDAP_SSH_PUBLICKEY => Some(ATTR_LDAP_SSH_PUBLICKEY), // no-underscore -> underscore
-        "uidnumber" => Some(ATTR_GIDNUMBER),                      // yes this is intentional
+        ATTR_LDAP_EMAIL_ADDRESS => Some(ATTR_MAIL),
+        LDAP_ATTR_EMAIL_ALTERNATIVE => Some(ATTR_MAIL),
+        LDAP_ATTR_EMAIL_PRIMARY => Some(ATTR_MAIL),
+        LDAP_ATTR_ENTRYUUID => Some(ATTR_UUID),
+        LDAP_ATTR_KEYS => Some(ATTR_SSH_PUBLICKEY),
+        LDAP_ATTR_MAIL_ALTERNATIVE => Some(ATTR_MAIL),
+        LDAP_ATTR_MAIL_PRIMARY => Some(ATTR_MAIL),
+        ATTR_OBJECTCLASS => Some(ATTR_CLASS),
+        ATTR_LDAP_SSHPUBLICKEY => Some(ATTR_SSH_PUBLICKEY), // no-underscore -> underscore
+        ATTR_UIDNUMBER => Some(ATTR_GIDNUMBER),             // yes this is intentional
         _ => None,
     }
 }
@@ -653,7 +653,7 @@ mod tests {
             filter!(f_eq(Attribute::Name, PartialValue::new_iname("admin"))),
             ModifyList::new_list(vec![
                 Modify::Present(Attribute::Class.into(), EntryClass::PosixAccount.into()),
-                Modify::Present(AttrString::from("gidnumber"), Value::new_uint32(2001)),
+                Modify::Present(Attribute::GidNumber.into(), Value::new_uint32(2001)),
             ]),
         );
         assert!(idms_prox_write.qs_write.modify(&me_posix).is_ok());
@@ -803,14 +803,14 @@ mod tests {
 
     macro_rules! assert_entry_contains {
         (
-            $e:expr,
+            $entry:expr,
             $dn:expr,
             $($item:expr),*
         ) => {{
-            assert!($e.dn == $dn);
+            assert!($entry.dn == $dn);
             // Build a set from the attrs.
             let mut attrs = HashSet::new();
-            for a in $e.attributes.iter() {
+            for a in $entry.attributes.iter() {
                 for v in a.vals.iter() {
                     attrs.insert((a.atype.as_str(), v.as_slice()));
                 }
@@ -819,7 +819,7 @@ mod tests {
             $(
                 warn!("{}", $item.0);
                 assert!(attrs.contains(&(
-                    $item.0, $item.1.as_bytes()
+                    $item.0.as_ref(), $item.1.as_bytes()
                 )));
             )*
 
@@ -838,30 +838,21 @@ mod tests {
         // Setup a user we want to check.
         {
             let e1 = entry_init!(
-                (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-                (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
-                (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
+                (Attribute::Class, EntryClass::Object.to_value()),
+                (Attribute::Class, EntryClass::Person.to_value()),
+                (Attribute::Class, EntryClass::Account.to_value()),
+                (Attribute::Class, EntryClass::PosixAccount.to_value()),
+                (Attribute::Name, Value::new_iname("testperson1")),
                 (
-                    Attribute::Class.as_ref(),
-                    EntryClass::PosixAccount.to_value()
-                ),
-                (Attribute::Name.as_ref(), Value::new_iname("testperson1")),
-                (
-                    "uuid",
+                    Attribute::Uuid,
                     Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
                 ),
+                (Attribute::Description, Value::new_utf8s("testperson1")),
+                (Attribute::DisplayName, Value::new_utf8s("testperson1")),
+                (Attribute::GidNumber, Value::new_uint32(12345678)),
+                (Attribute::LoginShell, Value::new_iutf8("/bin/zsh")),
                 (
-                    Attribute::Description.as_ref(),
-                    Value::new_utf8s("testperson1")
-                ),
-                (
-                    Attribute::DisplayName.as_ref(),
-                    Value::new_utf8s("testperson1")
-                ),
-                (Attribute::GidNumber.as_ref(), Value::new_uint32(12345678)),
-                (Attribute::LoginShell.as_ref(), Value::new_iutf8("/bin/zsh")),
-                (
-                    Attribute::SshPublicKey.as_ref(),
+                    Attribute::SshPublicKey,
                     Value::new_sshkey_str("test", ssh_ed25519)
                 )
             );
@@ -884,7 +875,7 @@ mod tests {
             msgid: 1,
             base: "dc=example,dc=com".to_string(),
             scope: LdapSearchScope::Subtree,
-            filter: LdapFilter::Equality("name".to_string(), "testperson1".to_string()),
+            filter: LdapFilter::Equality(Attribute::Name.to_string(), "testperson1".to_string()),
             attrs: vec!["*".to_string()],
         };
         let r1 = ldaps.do_search(idms, &sr, &anon_t).await.unwrap();
@@ -896,22 +887,16 @@ mod tests {
                 assert_entry_contains!(
                     lsre,
                     "spn=testperson1@example.com,dc=example,dc=com",
-                    (Attribute::Class.as_ref(), EntryClass::Object.to_string()),
-                    (Attribute::Class.as_ref(), EntryClass::Person.to_string()),
-                    (Attribute::Class.as_ref(), EntryClass::Account.to_string()),
-                    (
-                        Attribute::Class.as_ref(),
-                        EntryClass::PosixAccount.to_string()
-                    ),
-                    (Attribute::DisplayName.as_ref(), "testperson1"),
-                    (Attribute::Name.as_ref(), "testperson1"),
-                    (Attribute::GidNumber.as_ref(), "12345678"),
-                    (Attribute::LoginShell.as_ref(), "/bin/zsh"),
-                    (Attribute::SshPublicKey.as_ref(), ssh_ed25519),
-                    (
-                        Attribute::Uuid.as_ref(),
-                        "cc8e95b4-c24f-4d68-ba54-8bed76f63930"
-                    )
+                    (Attribute::Class, EntryClass::Object.to_string()),
+                    (Attribute::Class, EntryClass::Person.to_string()),
+                    (Attribute::Class, EntryClass::Account.to_string()),
+                    (Attribute::Class, EntryClass::PosixAccount.to_string()),
+                    (Attribute::DisplayName, "testperson1"),
+                    (Attribute::Name, "testperson1"),
+                    (Attribute::GidNumber, "12345678"),
+                    (Attribute::LoginShell, "/bin/zsh"),
+                    (Attribute::SshPublicKey, ssh_ed25519),
+                    (Attribute::Uuid, "cc8e95b4-c24f-4d68-ba54-8bed76f63930")
                 );
             }
             _ => assert!(false),
@@ -922,7 +907,7 @@ mod tests {
             msgid: 1,
             base: "dc=example,dc=com".to_string(),
             scope: LdapSearchScope::Subtree,
-            filter: LdapFilter::Equality("name".to_string(), "testperson1".to_string()),
+            filter: LdapFilter::Equality(Attribute::Name.to_string(), "testperson1".to_string()),
             attrs: vec!["+".to_string()],
         };
         let r1 = ldaps.do_search(idms, &sr, &anon_t).await.unwrap();
@@ -934,20 +919,23 @@ mod tests {
                 assert_entry_contains!(
                     lsre,
                     "spn=testperson1@example.com,dc=example,dc=com",
-                    (Attribute::ObjectClass.as_ref(), "object"),
-                    (Attribute::ObjectClass.as_ref(), "person"),
-                    (Attribute::ObjectClass.as_ref(), "account"),
-                    (Attribute::ObjectClass.as_ref(), "posixaccount"),
-                    (Attribute::DisplayName.as_ref(), "testperson1"),
-                    (Attribute::Name.as_ref(), "testperson1"),
-                    (Attribute::GidNumber.as_ref(), "12345678"),
-                    (Attribute::LoginShell.as_ref(), "/bin/zsh"),
-                    (Attribute::SshPublicKey.as_ref(), ssh_ed25519),
-                    ("entryuuid", "cc8e95b4-c24f-4d68-ba54-8bed76f63930"),
-                    ("entrydn", "spn=testperson1@example.com,dc=example,dc=com"),
-                    ("uidnumber", "12345678"),
-                    ("cn", "testperson1"),
-                    ("keys", ssh_ed25519)
+                    (Attribute::ObjectClass, "object"),
+                    (Attribute::ObjectClass, "person"),
+                    (Attribute::ObjectClass, "account"),
+                    (Attribute::ObjectClass, "posixaccount"),
+                    (Attribute::DisplayName, "testperson1"),
+                    (Attribute::Name, "testperson1"),
+                    (Attribute::GidNumber, "12345678"),
+                    (Attribute::LoginShell, "/bin/zsh"),
+                    (Attribute::SshPublicKey, ssh_ed25519),
+                    (Attribute::EntryUuid, "cc8e95b4-c24f-4d68-ba54-8bed76f63930"),
+                    (
+                        Attribute::EntryDn,
+                        "spn=testperson1@example.com,dc=example,dc=com"
+                    ),
+                    (Attribute::UidNumber, "12345678"),
+                    (Attribute::Cn, "testperson1"),
+                    (Attribute::LdapKeys, ssh_ed25519)
                 );
             }
             _ => assert!(false),
@@ -958,12 +946,12 @@ mod tests {
             msgid: 1,
             base: "dc=example,dc=com".to_string(),
             scope: LdapSearchScope::Subtree,
-            filter: LdapFilter::Equality("name".to_string(), "testperson1".to_string()),
+            filter: LdapFilter::Equality(Attribute::Name.to_string(), "testperson1".to_string()),
             attrs: vec![
-                "name".to_string(),
-                "entrydn".to_string(),
-                "keys".to_string(),
-                "uidnumber".to_string(),
+                LDAP_ATTR_NAME.to_string(),
+                Attribute::EntryDn.to_string(),
+                ATTR_LDAP_KEYS.to_string(),
+                Attribute::UidNumber.to_string(),
             ],
         };
         let r1 = ldaps.do_search(idms, &sr, &anon_t).await.unwrap();
@@ -975,10 +963,13 @@ mod tests {
                 assert_entry_contains!(
                     lsre,
                     "spn=testperson1@example.com,dc=example,dc=com",
-                    (Attribute::Name.as_ref(), "testperson1"),
-                    ("entrydn", "spn=testperson1@example.com,dc=example,dc=com"),
-                    ("uidnumber", "12345678"),
-                    ("keys", ssh_ed25519)
+                    (Attribute::Name, "testperson1"),
+                    (
+                        Attribute::EntryDn,
+                        "spn=testperson1@example.com,dc=example,dc=com"
+                    ),
+                    (Attribute::UidNumber, "12345678"),
+                    (Attribute::LdapKeys, ssh_ed25519)
                 );
             }
             _ => assert!(false),
@@ -998,15 +989,18 @@ mod tests {
             msgid: 1,
             base: "dc=example,dc=com".to_string(),
             scope: LdapSearchScope::Subtree,
-            filter: LdapFilter::Equality("name".to_string(), "testperson1".to_string()),
+            filter: LdapFilter::Equality(Attribute::Name.to_string(), "testperson1".to_string()),
             attrs: vec![
-                "name".to_string(),
-                "mail".to_string(),
-                "mail;primary".to_string(),
-                "mail;alternative".to_string(),
-                "emailprimary".to_string(),
-                "emailalternative".to_string(),
-            ],
+                LDAP_ATTR_NAME,
+                LDAP_ATTR_MAIL,
+                LDAP_ATTR_MAIL_PRIMARY,
+                LDAP_ATTR_MAIL_ALTERNATIVE,
+                LDAP_ATTR_EMAIL_PRIMARY,
+                LDAP_ATTR_EMAIL_ALTERNATIVE,
+            ]
+            .into_iter()
+            .map(|s| s.to_string())
+            .collect(),
         };
 
         let sa_uuid = uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930");
@@ -1017,51 +1011,36 @@ mod tests {
             // Create a service account,
 
             let e1 = entry_init!(
-                (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+                (Attribute::Class, EntryClass::Object.to_value()),
+                (Attribute::Class, EntryClass::ServiceAccount.to_value()),
+                (Attribute::Class, EntryClass::Account.to_value()),
+                (Attribute::Uuid, Value::Uuid(sa_uuid)),
+                (Attribute::Name, Value::new_iname("service_permission_test")),
                 (
-                    Attribute::Class.as_ref(),
-                    EntryClass::ServiceAccount.to_value()
-                ),
-                (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
-                (Attribute::Uuid.as_ref(), Value::Uuid(sa_uuid)),
-                (
-                    Attribute::Name.as_ref(),
-                    Value::new_iname("service_permission_test")
-                ),
-                (
-                    Attribute::DisplayName.as_ref(),
+                    Attribute::DisplayName,
                     Value::new_utf8s("service_permission_test")
                 )
             );
 
             // Setup a person with an email
             let e2 = entry_init!(
-                (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-                (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
-                (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
+                (Attribute::Class, EntryClass::Object.to_value()),
+                (Attribute::Class, EntryClass::Person.to_value()),
+                (Attribute::Class, EntryClass::Account.to_value()),
+                (Attribute::Class, EntryClass::PosixAccount.to_value()),
+                (Attribute::Name, Value::new_iname("testperson1")),
                 (
-                    Attribute::Class.as_ref(),
-                    EntryClass::PosixAccount.to_value()
-                ),
-                (Attribute::Name.as_ref(), Value::new_iname("testperson1")),
-                (
-                    "mail",
+                    Attribute::Mail,
                     Value::EmailAddress("testperson1@example.com".to_string(), true)
                 ),
                 (
-                    "mail",
+                    Attribute::Mail,
                     Value::EmailAddress("testperson1.alternative@example.com".to_string(), false)
                 ),
-                (
-                    Attribute::Description.as_ref(),
-                    Value::new_utf8s("testperson1")
-                ),
-                (
-                    Attribute::DisplayName.as_ref(),
-                    Value::new_utf8s("testperson1")
-                ),
-                (Attribute::GidNumber.as_ref(), Value::new_uint32(12345678)),
-                (Attribute::LoginShell.as_ref(), Value::new_iutf8("/bin/zsh"))
+                (Attribute::Description, Value::new_utf8s("testperson1")),
+                (Attribute::DisplayName, Value::new_utf8s("testperson1")),
+                (Attribute::GidNumber, Value::new_uint32(12345678)),
+                (Attribute::LoginShell, Value::new_iutf8("/bin/zsh"))
             );
 
             // Setup an access control for the service account to view mail attrs.
@@ -1076,10 +1055,10 @@ mod tests {
             let me = ModifyEvent::new_internal_invalid(
                 filter!(f_eq(
                     Attribute::Name,
-                    PartialValue::new_iname("idm_people_read_priv")
+                    PartialValue::new_iname(IDM_PEOPLE_READ_PRIV_V1.name)
                 )),
                 ModifyList::new_list(vec![Modify::Present(
-                    AttrString::from("member"),
+                    Attribute::Member.into(),
                     Value::Refer(sa_uuid),
                 )]),
             );
@@ -1113,7 +1092,7 @@ mod tests {
                 assert_entry_contains!(
                     lsre,
                     "spn=testperson1@example.com,dc=example,dc=com",
-                    (Attribute::Name.as_ref(), "testperson1")
+                    (Attribute::Name, "testperson1")
                 );
             }
             _ => assert!(false),
@@ -1150,12 +1129,21 @@ mod tests {
                     lsre,
                     "spn=testperson1@example.com,dc=example,dc=com",
                     (Attribute::Name.as_ref(), "testperson1"),
-                    ("mail", "testperson1@example.com"),
-                    ("mail", "testperson1.alternative@example.com"),
-                    ("mail;primary", "testperson1@example.com"),
-                    ("mail;alternative", "testperson1.alternative@example.com"),
-                    ("emailprimary", "testperson1@example.com"),
-                    ("emailalternative", "testperson1.alternative@example.com")
+                    (Attribute::Mail.as_ref(), "testperson1@example.com"),
+                    (
+                        Attribute::Mail.as_ref(),
+                        "testperson1.alternative@example.com"
+                    ),
+                    (LDAP_ATTR_MAIL_PRIMARY, "testperson1@example.com"),
+                    (
+                        LDAP_ATTR_MAIL_ALTERNATIVE,
+                        "testperson1.alternative@example.com"
+                    ),
+                    (LDAP_ATTR_MAIL_PRIMARY, "testperson1@example.com"),
+                    (
+                        LDAP_ATTR_MAIL_ALTERNATIVE,
+                        "testperson1.alternative@example.com"
+                    )
                 );
             }
             _ => assert!(false),
@@ -1174,18 +1162,12 @@ mod tests {
         // Setup a user we want to check.
         {
             let e1 = entry_init!(
-                (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
-                (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
-                (Attribute::Name.as_ref(), Value::new_iname("testperson1")),
-                (Attribute::Uuid.as_ref(), Value::Uuid(acct_uuid)),
-                (
-                    Attribute::Description.as_ref(),
-                    Value::new_utf8s("testperson1")
-                ),
-                (
-                    Attribute::DisplayName.as_ref(),
-                    Value::new_utf8s("testperson1")
-                )
+                (Attribute::Class, EntryClass::Person.to_value()),
+                (Attribute::Class, EntryClass::Account.to_value()),
+                (Attribute::Name, Value::new_iname("testperson1")),
+                (Attribute::Uuid, Value::Uuid(acct_uuid)),
+                (Attribute::Description, Value::new_utf8s("testperson1")),
+                (Attribute::DisplayName, Value::new_utf8s("testperson1"))
             );
 
             let mut server_txn = idms.proxy_write(duration_from_epoch_now()).await;
@@ -1205,13 +1187,13 @@ mod tests {
             msgid: 1,
             base: "dc=example,dc=com".to_string(),
             scope: LdapSearchScope::Subtree,
-            filter: LdapFilter::Equality("name".to_string(), "testperson1".to_string()),
+            filter: LdapFilter::Equality(Attribute::Name.to_string(), "testperson1".to_string()),
             attrs: vec![
                 "*".to_string(),
                 // Already being returned
-                "name".to_string(),
+                LDAP_ATTR_NAME.to_string(),
                 // This is a virtual attribute
-                "entryuuid".to_string(),
+                Attribute::EntryUuid.to_string(),
             ],
         };
         let r1 = ldaps.do_search(idms, &sr, &anon_t).await.unwrap();
@@ -1223,13 +1205,13 @@ mod tests {
                 assert_entry_contains!(
                     lsre,
                     "spn=testperson1@example.com,dc=example,dc=com",
-                    (Attribute::Name.as_ref(), "testperson1"),
-                    (Attribute::DisplayName.as_ref(), "testperson1"),
+                    (Attribute::Name, "testperson1"),
+                    (Attribute::DisplayName, "testperson1"),
+                    (Attribute::Uuid, "cc8e95b4-c24f-4d68-ba54-8bed76f63930"),
                     (
-                        Attribute::Uuid.as_ref(),
+                        Attribute::EntryUuid.as_ref(),
                         "cc8e95b4-c24f-4d68-ba54-8bed76f63930"
-                    ),
-                    ("entryuuid", "cc8e95b4-c24f-4d68-ba54-8bed76f63930")
+                    )
                 );
             }
             _ => assert!(false),
@@ -1247,7 +1229,7 @@ mod tests {
             msgid: 1,
             base: "".to_string(),
             scope: LdapSearchScope::Base,
-            filter: LdapFilter::Present("objectclass".to_string()),
+            filter: LdapFilter::Present(Attribute::ObjectClass.to_string()),
             attrs: vec!["*".to_string()],
         };
         let r1 = ldaps.do_search(idms, &sr, &anon_t).await.unwrap();
@@ -1261,7 +1243,7 @@ mod tests {
                 assert_entry_contains!(
                     lsre,
                     "",
-                    (Attribute::ObjectClass.as_ref(), "top"),
+                    (Attribute::ObjectClass, "top"),
                     ("vendorname", "Kanidm Project"),
                     ("supportedldapversion", "3"),
                     ("defaultnamingcontext", "dc=example,dc=com")
@@ -1279,7 +1261,7 @@ mod tests {
         let me_posix = ModifyEvent::new_internal_invalid(
             filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(UUID_DOMAIN_INFO))),
             ModifyList::new_purge_and_set(
-                "domain_ldap_basedn",
+                Attribute::DomainLdapBasedn,
                 Value::new_iutf8("o=kanidmproject"),
             ),
         );
@@ -1297,7 +1279,7 @@ mod tests {
             msgid: 1,
             base: "".to_string(),
             scope: LdapSearchScope::Base,
-            filter: LdapFilter::Present("objectclass".to_string()),
+            filter: LdapFilter::Present(Attribute::ObjectClass.to_string()),
             attrs: vec!["*".to_string()],
         };
         let r1 = ldaps.do_search(idms, &sr, &anon_t).await.unwrap();
@@ -1311,7 +1293,7 @@ mod tests {
                 assert_entry_contains!(
                     lsre,
                     "",
-                    (Attribute::ObjectClass.as_ref(), "top"),
+                    (Attribute::ObjectClass, "top"),
                     ("vendorname", "Kanidm Project"),
                     ("supportedldapversion", "3"),
                     ("defaultnamingcontext", "o=kanidmproject")

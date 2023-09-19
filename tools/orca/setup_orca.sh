@@ -16,7 +16,7 @@ echo "Also, you'll need to start the server in another tab."
 echo ""
 echo "Hit ctrl-c to quit now if that's not what you intend!"
 
-# read -rp "Press Enter to continue"
+read -rp "Press Enter to continue"
 
 cd ../../server/daemon/ || exit 1
 
@@ -45,9 +45,26 @@ cd "$MYDIR" || exit 1
 
 LDAP_DN="DN=$(grep domain "${KANIDM_CONFIG}" | awk '{print $NF}' | tr -d '"' | sed -E 's/\./,DN=/g')"
 
+PROFILE_PATH="/tmp/kanidm/orca.toml"
+
 cargo run --bin orca -- configure \
-    --profile /tmp/kanidm/orca.toml \
+    --profile "${PROFILE_PATH}" \
     --admin-password "${ADMIN_PW}" \
     --kanidm-uri "$(grep origin "${KANIDM_CONFIG}" | awk '{print $NF}' | tr -d '"')" \
     --ldap-uri "ldaps://$(grep domain "${KANIDM_CONFIG}" | awk '{print $NF}' | tr -d '"'):636" \
     --ldap-base-dn "${LDAP_DN}"
+
+echo "Generating data..."
+
+cargo run --bin orca -- generate --output /tmp/kanidm/orcatest
+
+echo "Running connection test..."
+
+cargo run --bin orca -- conntest --profile "${PROFILE_PATH}" kanidm
+
+echo "Now you can run things!"
+
+echo "To set up the environment, run:"
+echo "cargo run --bin orca --release -- setup --profile /tmp/kanidm/orca.toml kanidm"
+echo "cargo run --bin orca --release -- run --profile /tmp/kanidm/orca.toml kanidm search-basic"
+

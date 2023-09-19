@@ -60,29 +60,6 @@ macro_rules! setup_test {
     }};
 }
 
-#[cfg(test)]
-macro_rules! entry_to_account {
-    ($entry:expr) => {{
-        use std::iter::once;
-
-        use crate::entry::{Entry, EntryInvalid, EntryNew};
-        use crate::idm::account::Account;
-        use crate::value::Value;
-
-        let mut e: Entry<EntryInvalid, EntryNew> = $entry.clone().into_invalid_new();
-        // Add spn, because normally this is generated but in tests we can't.
-        let spn = e
-            .get_ava_single_iname(Attribute::Name.as_ref())
-            .map(|s| Value::new_spn_str(s, "example.com"))
-            .expect("Failed to munge spn from name!");
-        e.set_ava(Attribute::Spn.as_ref(), once(spn));
-
-        let e = e.into_sealed_committed();
-
-        Account::try_from_entry_no_groups(&e).expect("Account conversion failure")
-    }};
-}
-
 // Test helpers for all plugins.
 // #[macro_export]
 #[cfg(test)]
@@ -509,9 +486,11 @@ macro_rules! mergemaps {
         $b:expr
     ) => {{
         $b.iter().for_each(|(k, v)| {
-            if !$a.contains_key(k) {
-                $a.insert(k.clone(), v.clone());
-            }
+            // I think to be consistent, we need the content of b to always
+            // the content of a
+            // if !$a.contains_key(k) {
+            $a.insert(k.clone(), v.clone());
+            // }
         });
         Ok(())
     }};
@@ -535,6 +514,7 @@ macro_rules! vs_utf8 {
 
 #[allow(unused_macros)]
 #[macro_export]
+/// Takes EntryClass objects and makes  a VaueSetIutf8
 macro_rules! vs_iutf8 {
     () => (
         compile_error!("ValueSetIutf8 needs at least 1 element")

@@ -21,9 +21,9 @@ use crate::prelude::*;
 use crate::repl::{cid::Cid, proto::ReplAttrV1};
 use crate::schema::SchemaAttribute;
 use crate::value::{Address, ApiToken, IntentTokenState, Oauth2Session, Session};
-use crate::valueset::auditlogstring::ValueSetAuditLogString;
 
 pub use self::address::{ValueSetAddress, ValueSetEmailAddress};
+pub use self::auditlogstring::{ValueSetAuditLogString, AUDIT_LOG_STRING_CAPACITY};
 pub use self::binary::{ValueSetPrivateBinary, ValueSetPublicBinary};
 pub use self::bool::ValueSetBool;
 pub use self::cid::ValueSetCid;
@@ -87,7 +87,16 @@ pub trait ValueSetT: std::fmt::Debug + DynClone {
 
     fn clear(&mut self);
 
-    fn remove(&mut self, pv: &PartialValue) -> bool;
+    fn remove(&mut self, pv: &PartialValue, cid: &Cid) -> bool;
+
+    fn purge(&mut self, _cid: &Cid) -> bool {
+        // Default handling is true.
+        true
+    }
+
+    fn trim(&mut self, _trim_cid: &Cid) {
+        // default to a no-op
+    }
 
     fn contains(&self, pv: &PartialValue) -> bool;
 
@@ -543,7 +552,7 @@ pub trait ValueSetT: std::fmt::Debug + DynClone {
         None
     }
 
-    fn as_audit_log_string(&self) -> Option<&SmolSet<[(Cid, String); 8]>> {
+    fn as_audit_log_string(&self) -> Option<&BTreeMap<Cid, String>> {
         debug_assert!(false);
         None
     }
@@ -556,7 +565,7 @@ pub trait ValueSetT: std::fmt::Debug + DynClone {
     fn repl_merge_valueset(
         &self,
         _older: &ValueSet,
-        // schema_attr: &SchemaAttribute
+        _trim_cid: &Cid, // schema_attr: &SchemaAttribute
     ) -> Option<ValueSet> {
         // Self is the "latest" content. Older contains the earlier
         // state of the attribute.
@@ -790,7 +799,7 @@ pub fn from_repl_v1(rv1: &ReplAttrV1) -> Result<ValueSet, OperationError> {
         ReplAttrV1::Session { set } => ValueSetSession::from_repl_v1(set),
         ReplAttrV1::ApiToken { set } => ValueSetApiToken::from_repl_v1(set),
         ReplAttrV1::TotpSecret { set } => ValueSetTotpSecret::from_repl_v1(set),
-        ReplAttrV1::AuditLogString { set } => ValueSetAuditLogString::from_repl_v1(set),
+        ReplAttrV1::AuditLogString { map } => ValueSetAuditLogString::from_repl_v1(map),
         ReplAttrV1::EcKeyPrivate { key } => ValueSetEcKeyPrivate::from_repl_v1(key),
     }
 }

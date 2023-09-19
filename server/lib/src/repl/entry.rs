@@ -87,13 +87,13 @@ impl EntryChangeState {
         EntryChangeState { st }
     }
 
-    pub fn change_ava(&mut self, cid: &Cid, attr: &str) {
+    pub fn change_ava(&mut self, cid: &Cid, attr: Attribute) {
         match &mut self.st {
             State::Live {
                 at: _,
                 ref mut changes,
             } => {
-                if let Some(change) = changes.get_mut(attr) {
+                if let Some(change) = changes.get_mut(attr.as_ref()) {
                     // Update the cid.
                     if change != cid {
                         *change = cid.clone()

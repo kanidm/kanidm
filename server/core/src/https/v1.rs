@@ -1242,7 +1242,7 @@ pub async fn recycle_bin_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
 ) -> impl IntoResponse {
-    let filter = filter_all!(f_pres(Attribute::Class.as_ref()));
+    let filter = filter_all!(f_pres(Attribute::Class));
     let attrs = None;
     let res = state
         .qe_r_ref
@@ -1425,7 +1425,6 @@ pub async fn auth_valid(
     to_axum_response(res)
 }
 
-#[cfg(debug_assertions)]
 pub async fn debug_ipinfo(
     State(_state): State<ServerState>,
     TrustedClientIp(ip_addr): TrustedClientIp,
@@ -1435,7 +1434,7 @@ pub async fn debug_ipinfo(
 
 #[instrument(skip(state))]
 pub fn router(state: ServerState) -> Router<ServerState> {
-    let mut router = Router::new()
+    Router::new()
         .route("/v1/oauth2", get(super::oauth2::oauth2_get))
         .route("/v1/oauth2/_basic", post(super::oauth2::oauth2_basic_post))
         .route(
@@ -1736,9 +1735,6 @@ pub fn router(state: ServerState) -> Router<ServerState> {
             post(sync_account_token_post).delete(sync_account_token_delete),
         )
         .with_state(state)
-        .layer(from_fn(dont_cache_me));
-    if cfg!(debug_assertions) {
-        router = router.route("/v1/debug/ipinfo", get(debug_ipinfo));
-    }
-    router
+        .layer(from_fn(dont_cache_me))
+        .route("/v1/debug/ipinfo", get(debug_ipinfo))
 }

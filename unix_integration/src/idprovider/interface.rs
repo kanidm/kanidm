@@ -1,4 +1,4 @@
-use crate::unix_proto::{PamAuthRequest, PamAuthResponse};
+use crate::unix_proto::{DeviceAuthorizationResponse, PamAuthRequest, PamAuthResponse};
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -55,10 +55,12 @@ pub struct UserToken {
 #[derive(Debug)]
 pub enum AuthCredHandler {
     Password,
+    DeviceAuthorizationGrant,
 }
 
 pub enum AuthRequest {
     Password,
+    DeviceAuthorizationGrant { data: DeviceAuthorizationResponse },
 }
 
 #[allow(clippy::from_over_into)]
@@ -66,6 +68,9 @@ impl Into<PamAuthResponse> for AuthRequest {
     fn into(self) -> PamAuthResponse {
         match self {
             AuthRequest::Password => PamAuthResponse::Password,
+            AuthRequest::DeviceAuthorizationGrant { data } => {
+                PamAuthResponse::DeviceAuthorizationGrant { data }
+            }
         }
     }
 }

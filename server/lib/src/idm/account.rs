@@ -2,7 +2,8 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::time::Duration;
 
 use kanidm_proto::v1::{
-    BackupCodesView, CredentialStatus, OperationError, UatPurpose, UatStatus, UiHint, UserAuthToken,
+    BackupCodesView, CredentialStatus, OperationError, UatPurpose, UatStatus, UatStatusState,
+    UiHint, UserAuthToken,
 };
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -20,69 +21,71 @@ use crate::idm::server::{IdmServerProxyReadTransaction, IdmServerProxyWriteTrans
 use crate::modify::{ModifyInvalid, ModifyList};
 use crate::prelude::*;
 use crate::schema::SchemaTransaction;
-use crate::value::{IntentTokenState, PartialValue, Value};
+use crate::value::{IntentTokenState, PartialValue, SessionState, Value};
 use kanidm_lib_crypto::CryptoPolicy;
 
 macro_rules! try_from_entry {
     ($value:expr, $groups:expr) => {{
         // Check the classes
-        if !$value.attribute_equality(
-            Attribute::Class.as_ref(),
-            &EntryClass::Account.to_partialvalue(),
-        ) {
-            return Err(OperationError::InvalidAccountState(
-                "Missing class: account".to_string(),
-            ));
+        if !$value.attribute_equality(Attribute::Class, &EntryClass::Account.to_partialvalue()) {
+            return Err(OperationError::InvalidAccountState(format!(
+                "Missing class: {}",
+                EntryClass::Account
+            )));
         }
 
         // Now extract our needed attributes
         let name = $value
-            .get_ava_single_iname(Attribute::Name.as_ref())
+            .get_ava_single_iname(Attribute::Name)
             .map(|s| s.to_string())
-            .ok_or(OperationError::InvalidAccountState(
-                "Missing attribute: name".to_string(),
-            ))?;
+            .ok_or(OperationError::InvalidAccountState(format!(
+                "Missing attribute: {}",
+                Attribute::Name
+            )))?;
 
         let displayname = $value
-            .get_ava_single_utf8(Attribute::DisplayName.as_ref())
+            .get_ava_single_utf8(Attribute::DisplayName)
             .map(|s| s.to_string())
-            .ok_or(OperationError::InvalidAccountState(
-                "Missing attribute: displayname".to_string(),
-            ))?;
+            .ok_or(OperationError::InvalidAccountState(format!(
+                "Missing attribute: {}",
+                Attribute::DisplayName
+            )))?;
 
-        let sync_parent_uuid = $value.get_ava_single_refer("sync_parent_uuid");
+        let sync_parent_uuid = $value.get_ava_single_refer(Attribute::SyncParentUuid);
 
         let primary = $value
-            .get_ava_single_credential("primary_credential")
+            .get_ava_single_credential(Attribute::PrimaryCredential)
             .map(|v| v.clone());
 
         let passkeys = $value
-            .get_ava_passkeys("passkeys")
+            .get_ava_passkeys(Attribute::PassKeys)
             .cloned()
             .unwrap_or_default();
 
         let devicekeys = $value
-            .get_ava_devicekeys("devicekeys")
+            .get_ava_devicekeys(Attribute::DeviceKeys)
             .cloned()
             .unwrap_or_default();
 
-        let spn = $value.get_ava_single_proto_string("spn").ok_or(
-            OperationError::InvalidAccountState("Missing attribute: spn".to_string()),
+        let spn = $value.get_ava_single_proto_string(Attribute::Spn).ok_or(
+            OperationError::InvalidAccountState(format!("Missing attribute: {}", Attribute::Spn)),
         )?;
 
-        let mail_primary = $value.get_ava_mail_primary("mail").map(str::to_string);
+        let mail_primary = $value
+            .get_ava_mail_primary(Attribute::Mail)
+            .map(str::to_string);
 
         let mail = $value
-            .get_ava_iter_mail("mail")
+            .get_ava_iter_mail(Attribute::Mail)
             .map(|i| i.map(str::to_string).collect())
             .unwrap_or_else(Vec::new);
 
-        let valid_from = $value.get_ava_single_datetime("account_valid_from");
+        let valid_from = $value.get_ava_single_datetime(Attribute::AccountValidFrom);
 
-        let expire = $value.get_ava_single_datetime("account_expire");
+        let expire = $value.get_ava_single_datetime(Attribute::AccountExpire);
 
         let radius_secret = $value
-            .get_ava_single_secret("radius_secret")
+            .get_ava_single_secret(Attribute::RadiusSecret)
             .map(str::to_string);
 
         // Resolved by the caller
@@ -91,7 +94,7 @@ macro_rules! try_from_entry {
         let uuid = $value.get_uuid().clone();
 
         let credential_update_intent_tokens = $value
-            .get_ava_as_intenttokens("credential_update_intent_token")
+            .get_ava_as_intenttokens(Attribute::CredentialUpdateIntentToken)
             .cloned()
             .unwrap_or_default();
 
@@ -104,22 +107,16 @@ macro_rules! try_from_entry {
             .collect();
 
         // For now disable cred updates on sync accounts too.
-        if $value.attribute_equality(
-            Attribute::Class.as_ref(),
-            &EntryClass::Person.to_partialvalue(),
-        ) {
+        if $value.attribute_equality(Attribute::Class, &EntryClass::Person.to_partialvalue()) {
             ui_hints.insert(UiHint::CredentialUpdate);
         }
 
-        if $value.attribute_equality(
-            Attribute::Class.as_ref(),
-            &EntryClass::SyncObject.to_partialvalue(),
-        ) {
+        if $value.attribute_equality(Attribute::Class, &EntryClass::SyncObject.to_partialvalue()) {
             ui_hints.insert(UiHint::SynchronisedAccount);
         }
 
         if $value.attribute_equality(
-            Attribute::Class.as_ref(),
+            Attribute::Class,
             &EntryClass::PosixAccount.to_partialvalue(),
         ) {
             ui_hints.insert(UiHint::PosixAccount);
@@ -146,7 +143,7 @@ macro_rules! try_from_entry {
     }};
 }
 
-#[derive(Debug, Clone)]
+#[derive(Default, Debug, Clone)]
 pub struct Account {
     // Later these could be &str if we cache entry here too ...
     // They can't because if we mod the entry, we'll lose the ref.
@@ -227,8 +224,15 @@ impl Account {
         // ns value which breaks some checks.
         let ct = ct - Duration::from_nanos(ct.subsec_nanos() as u64);
         let issued_at = OffsetDateTime::UNIX_EPOCH + ct;
+        // Note that currently the auth_session time comes from policy, but the already-privileged
+        // session bound is hardcoded.
         let expiry =
             Some(OffsetDateTime::UNIX_EPOCH + ct + Duration::from_secs(auth_session_expiry as u64));
+        let limited_expiry = Some(
+            OffsetDateTime::UNIX_EPOCH
+                + ct
+                + Duration::from_secs(DEFAULT_AUTH_SESSION_LIMITED_EXPIRY as u64),
+        );
 
         let (purpose, expiry) = match scope {
             // Issue an invalid/expired session.
@@ -241,18 +245,9 @@ impl Account {
             SessionScope::ReadOnly => (UatPurpose::ReadOnly, expiry),
             SessionScope::ReadWrite => {
                 // These sessions are always rw, and so have limited life.
-                (UatPurpose::ReadWrite { expiry }, expiry)
+                (UatPurpose::ReadWrite { expiry }, limited_expiry)
             }
-            SessionScope::PrivilegeCapable =>
-            // Return a rw capable session with the expiry currently invalid.
-            // These sessions COULD live forever since they can re-auth properly.
-            // Today I'm setting this to 24hr though.
-            {
-                (
-                    UatPurpose::ReadWrite { expiry: None },
-                    Some(OffsetDateTime::UNIX_EPOCH + ct + Duration::from_secs(86400)),
-                )
-            }
+            SessionScope::PrivilegeCapable => (UatPurpose::ReadWrite { expiry: None }, expiry),
         };
 
         Some(UserAuthToken {
@@ -407,13 +402,19 @@ impl Account {
             Some(primary) => {
                 let ncred = primary.set_password(crypto_policy, cleartext)?;
                 let vcred = Value::new_credential("primary", ncred);
-                Ok(ModifyList::new_purge_and_set("primary_credential", vcred))
+                Ok(ModifyList::new_purge_and_set(
+                    Attribute::PrimaryCredential,
+                    vcred,
+                ))
             }
             // Make a new credential instead
             None => {
                 let ncred = Credential::new_password_only(crypto_policy, cleartext)?;
                 let vcred = Value::new_credential("primary", ncred);
-                Ok(ModifyList::new_purge_and_set("primary_credential", vcred))
+                Ok(ModifyList::new_purge_and_set(
+                    Attribute::PrimaryCredential,
+                    vcred,
+                ))
             }
         }
     }
@@ -429,7 +430,7 @@ impl Account {
                 if let Some(ncred) = primary.upgrade_password(crypto_policy, cleartext)? {
                     let vcred = Value::new_credential("primary", ncred);
                     Ok(Some(ModifyList::new_purge_and_set(
-                        "primary_credential",
+                        Attribute::PrimaryCredential,
                         vcred,
                     )))
                 } else {
@@ -455,20 +456,20 @@ impl Account {
 
         if let Some(ncred) = opt_ncred {
             let vcred = Value::new_credential("primary", ncred);
-            ml.push(Modify::Purged("primary_credential".into()));
-            ml.push(Modify::Present("primary_credential".into(), vcred));
+            ml.push(Modify::Purged(Attribute::PrimaryCredential.into()));
+            ml.push(Modify::Present(Attribute::PrimaryCredential.into(), vcred));
         }
 
         // Is it a passkey?
         self.passkeys.iter_mut().for_each(|(u, (t, k))| {
             if let Some(true) = k.update_credential(auth_result) {
                 ml.push(Modify::Removed(
-                    "passkeys".into(),
+                    Attribute::PassKeys.into(),
                     PartialValue::Passkey(*u),
                 ));
 
                 ml.push(Modify::Present(
-                    "passkeys".into(),
+                    Attribute::PassKeys.into(),
                     Value::Passkey(*u, t.clone(), k.clone()),
                 ));
             }
@@ -492,7 +493,10 @@ impl Account {
                 match r_ncred {
                     Ok(ncred) => {
                         let vcred = Value::new_credential("primary", ncred);
-                        Ok(ModifyList::new_purge_and_set("primary_credential", vcred))
+                        Ok(ModifyList::new_purge_and_set(
+                            Attribute::PrimaryCredential,
+                            vcred,
+                        ))
                     }
                     Err(e) => Err(e),
                 }
@@ -509,7 +513,10 @@ impl Account {
         cleartext: &str,
     ) -> Result<ModifyList<ModifyInvalid>, OperationError> {
         let vcred = Value::new_secret_str(cleartext);
-        Ok(ModifyList::new_purge_and_set("radius_secret", vcred))
+        Ok(ModifyList::new_purge_and_set(
+            Attribute::RadiusSecret,
+            vcred,
+        ))
     }
 
     pub(crate) fn to_credentialstatus(&self) -> Result<CredentialStatus, OperationError> {
@@ -547,8 +554,12 @@ impl Account {
 
         let within_valid_window = Account::check_within_valid_time(
             ct,
-            entry.get_ava_single_datetime("account_valid_from").as_ref(),
-            entry.get_ava_single_datetime("account_expire").as_ref(),
+            entry
+                .get_ava_single_datetime(Attribute::AccountValidFrom)
+                .as_ref(),
+            entry
+                .get_ava_single_datetime(Attribute::AccountExpire)
+                .as_ref(),
         );
 
         if !within_valid_window {
@@ -566,18 +577,31 @@ impl Account {
         } else {
             // Get the sessions.
             let session_present = entry
-                .get_ava_as_session_map("user_auth_token_session")
+                .get_ava_as_session_map(Attribute::UserAuthTokenSession)
                 .and_then(|session_map| session_map.get(&uat.session_id));
 
+            // Important - we don't have to check the expiry time against ct here since it was
+            // already checked in token_to_token. Here we just need to check it's consistent
+            // to our internal session knowledge.
             if let Some(session) = session_present {
-                security_info!("A valid session value exists for this token");
-
-                if session.expiry == uat.expiry {
-                    true
-                } else {
-                    security_info!("Session and uat expiry are not consistent, rejecting.");
-                    debug!(ses_exp = ?session.expiry, uat_exp = ?uat.expiry);
-                    false
+                match (&session.state, &uat.expiry) {
+                    (SessionState::ExpiresAt(s_exp), Some(u_exp)) if s_exp == u_exp => {
+                        security_info!("A valid limited session value exists for this token");
+                        true
+                    }
+                    (SessionState::NeverExpires, None) => {
+                        security_info!("A valid unbound session value exists for this token");
+                        true
+                    }
+                    (SessionState::RevokedAt(_), _) => {
+                        security_info!("Session has been revoked");
+                        false
+                    }
+                    _ => {
+                        security_info!("Session and uat expiry are not consistent, rejecting.");
+                        debug!(ses_st = ?session.state, uat_exp = ?uat.expiry);
+                        false
+                    }
                 }
             } else {
                 let grace = uat.issued_at + GRACE_WINDOW;
@@ -628,7 +652,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
     ) -> Result<(), OperationError> {
         // Delete the attribute with uuid.
         let modlist = ModifyList::new_list(vec![Modify::Removed(
-            AttrString::from("user_auth_token_session"),
+            Attribute::UserAuthTokenSession.into(),
             PartialValue::Refer(dte.token_id),
         )]);
 
@@ -680,13 +704,16 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         // Copy the current classes
         let prev_classes: BTreeSet<_> = account_entry
-            .get_ava_as_iutf8_iter(Attribute::Class.as_ref())
+            .get_ava_as_iutf8_iter(Attribute::Class)
             .ok_or_else(|| {
                 admin_error!(
                     "Invalid entry, {} attribute is not present or not iutf8",
                     Attribute::Class.as_ref()
                 );
-                OperationError::InvalidAccountState("Missing attribute: class".to_string())
+                OperationError::InvalidAccountState(format!(
+                    "Missing attribute: {}",
+                    Attribute::Class
+                ))
             })?
             .collect();
 
@@ -709,7 +736,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         // Now construct the modlist which:
         // removes service_account
         let mut modlist = ModifyList::new_remove(
-            Attribute::Class.as_ref(),
+            Attribute::Class,
             EntryClass::ServiceAccount.to_partialvalue(),
         );
         // add person
@@ -774,16 +801,26 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
                     .and_then(|e| {
                         let account_id = e.get_uuid();
                         // From the entry, turn it into the value
-                        e.get_ava_as_session_map("user_auth_token_session")
+                        e.get_ava_as_session_map(Attribute::UserAuthTokenSession)
                             .map(|smap| {
                                 smap.iter()
                                     .map(|(u, s)| {
+                                        let state = match s.state {
+                                            SessionState::ExpiresAt(odt) => {
+                                                UatStatusState::ExpiresAt(odt)
+                                            }
+                                            SessionState::NeverExpires => {
+                                                UatStatusState::NeverExpires
+                                            }
+                                            SessionState::RevokedAt(_) => UatStatusState::Revoked,
+                                        };
+
                                         s.scope
                                             .try_into()
                                             .map(|purpose| UatStatus {
                                                 account_id,
                                                 session_id: *u,
-                                                expiry: s.expiry,
+                                                state,
                                                 issued_at: s.issued_at,
                                                 purpose,
                                             })
@@ -807,13 +844,14 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
 
 #[cfg(test)]
 mod tests {
+    use crate::idm::account::Account;
     use crate::prelude::*;
     use kanidm_proto::v1::UiHint;
 
     #[test]
     fn test_idm_account_from_anonymous() {
-        let anon_e = entry_to_account!(E_ANONYMOUS_V1.clone());
-        debug!("{:?}", anon_e);
+        let account: Account = BUILTIN_ACCOUNT_ANONYMOUS_V1.clone().into();
+        debug!("{:?}", account);
         // I think that's it? we may want to check anonymous mech ...
     }
 
@@ -827,19 +865,13 @@ mod tests {
         // Create a user. So far no ui hints.
         // Create a service account
         let e = entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
-            (Attribute::Name.as_ref(), Value::new_iname("testaccount")),
-            (Attribute::Uuid.as_ref(), Value::Uuid(target_uuid)),
-            (
-                Attribute::Description.as_ref(),
-                Value::new_utf8s("testaccount")
-            ),
-            (
-                Attribute::DisplayName.as_ref(),
-                Value::new_utf8s("Test Account")
-            )
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Name, Value::new_iname("testaccount")),
+            (Attribute::Uuid, Value::Uuid(target_uuid)),
+            (Attribute::Description, Value::new_utf8s("testaccount")),
+            (Attribute::DisplayName, Value::new_utf8s("Test Account"))
         );
 
         let ce = CreateEvent::new_internal(vec![e]);
@@ -870,7 +902,7 @@ mod tests {
             )),
             ModifyList::new_list(vec![
                 Modify::Present(Attribute::Class.into(), EntryClass::PosixAccount.into()),
-                Modify::Present(AttrString::from("gidnumber"), Value::new_uint32(2001)),
+                Modify::Present(Attribute::GidNumber.into(), Value::new_uint32(2001)),
             ]),
         );
         assert!(idms_prox_write.qs_write.modify(&me_posix).is_ok());
@@ -895,15 +927,12 @@ mod tests {
 
         // Add a group with a ui hint, and then check they get the hint.
         let e = entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Group.to_value()),
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Group.to_value()),
+            (Attribute::Name, Value::new_iname("test_uihint_group")),
+            (Attribute::Member, Value::Refer(target_uuid)),
             (
-                Attribute::Name.as_ref(),
-                Value::new_iname("test_uihint_group")
-            ),
-            (Attribute::Member.as_ref(), Value::Refer(target_uuid)),
-            (
-                Attribute::GrantUiHint.as_ref(),
+                Attribute::GrantUiHint,
                 Value::UiHint(UiHint::ExperimentalFeatures)
             )
         );

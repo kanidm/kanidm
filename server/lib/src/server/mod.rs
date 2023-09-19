@@ -105,6 +105,7 @@ pub struct QueryServerWriteTransaction<'a> {
     d_info: CowCellWriteTxn<'a, DomainInfo>,
     curtime: Duration,
     cid: Cid,
+    trim_cid: Cid,
     pub(crate) be_txn: BackendWriteTransaction<'a>,
     pub(crate) schema: SchemaWriteTransaction<'a>,
     accesscontrols: AccessControlsWriteTransaction<'a>,
@@ -123,6 +124,12 @@ pub struct QueryServerWriteTransaction<'a> {
     resolve_filter_cache:
         ARCacheReadTxn<'a, (IdentityId, Filter<FilterValid>), Filter<FilterValidResolved>, ()>,
     dyngroup_cache: CowCellWriteTxn<'a, DynGroupCache>,
+}
+
+impl<'a> QueryServerWriteTransaction<'a> {
+    pub(crate) fn trim_cid(&self) -> &Cid {
+        &self.trim_cid
+    }
 }
 
 /// The `QueryServerTransaction` trait provides a set of common read only operations to be
@@ -751,7 +758,7 @@ pub trait QueryServerTransaction<'a> {
         self.internal_search_uuid(UUID_DOMAIN_INFO)
             .and_then(|e| {
                 trace!(?e);
-                e.get_ava_single_iname("domain_name")
+                e.get_ava_single_iname(Attribute::DomainName)
                     .map(str::to_string)
                     .ok_or(OperationError::InvalidEntryState)
             })
@@ -764,7 +771,7 @@ pub trait QueryServerTransaction<'a> {
     fn get_domain_fernet_private_key(&mut self) -> Result<String, OperationError> {
         self.internal_search_uuid(UUID_DOMAIN_INFO)
             .and_then(|e| {
-                e.get_ava_single_secret("fernet_private_key_str")
+                e.get_ava_single_secret(Attribute::FernetPrivateKeyStr)
                     .map(str::to_string)
                     .ok_or(OperationError::InvalidEntryState)
             })
@@ -777,7 +784,7 @@ pub trait QueryServerTransaction<'a> {
     fn get_domain_es256_private_key(&mut self) -> Result<Vec<u8>, OperationError> {
         self.internal_search_uuid(UUID_DOMAIN_INFO)
             .and_then(|e| {
-                e.get_ava_single_private_binary("es256_private_key_der")
+                e.get_ava_single_private_binary(Attribute::Es256PrivateKeyDer)
                     .map(|s| s.to_vec())
                     .ok_or(OperationError::InvalidEntryState)
             })
@@ -798,7 +805,7 @@ pub trait QueryServerTransaction<'a> {
     fn get_domain_cookie_key(&mut self) -> Result<[u8; 64], OperationError> {
         self.internal_search_uuid(UUID_DOMAIN_INFO)
             .and_then(|e| {
-                e.get_ava_single_private_binary(ATTR_PRIVATE_COOKIE_KEY)
+                e.get_ava_single_private_binary(Attribute::PrivateCookieKey)
                     .and_then(|s| {
                         let mut x = [0; 64];
                         if s.len() == x.len() {
@@ -819,7 +826,7 @@ pub trait QueryServerTransaction<'a> {
     // This is a helper to get password badlist.
     fn get_password_badlist(&mut self) -> Result<HashSet<String>, OperationError> {
         self.internal_search_uuid(UUID_SYSTEM_CONFIG)
-            .map(|e| match e.get_ava_iter_iutf8("badlist_password") {
+            .map(|e| match e.get_ava_iter_iutf8(Attribute::BadlistPassword) {
                 Some(vs_str_iter) => vs_str_iter.map(str::to_string).collect::<HashSet<_>>(),
                 None => HashSet::default(),
             })
@@ -832,7 +839,7 @@ pub trait QueryServerTransaction<'a> {
     fn get_authsession_expiry(&mut self) -> Result<u32, OperationError> {
         self.internal_search_uuid(UUID_SYSTEM_CONFIG)
             .and_then(|e| {
-                if let Some(expiry_time) = e.get_ava_single_uint32("authsession_expiry") {
+                if let Some(expiry_time) = e.get_ava_single_uint32(Attribute::AuthSessionExpiry) {
                     Ok(expiry_time)
                 } else {
                     Err(OperationError::NoMatchingAttributes)
@@ -850,7 +857,7 @@ pub trait QueryServerTransaction<'a> {
     fn get_privilege_expiry(&mut self) -> Result<u32, OperationError> {
         self.internal_search_uuid(UUID_SYSTEM_CONFIG)
             .and_then(|e| {
-                if let Some(expiry_time) = e.get_ava_single_uint32("privilege_expiry") {
+                if let Some(expiry_time) = e.get_ava_single_uint32(Attribute::PrivilegeExpiry) {
                     Ok(expiry_time)
                 } else {
                     Err(OperationError::NoMatchingAttributes)
@@ -1000,7 +1007,7 @@ impl<'a> QueryServerReadTransaction<'a> {
         // the entry changelogs are consistent to their entries.
         let schema = self.get_schema();
 
-        let filt_all = filter!(f_pres(Attribute::Class.as_ref()));
+        let filt_all = filter!(f_pres(Attribute::Class));
         let all_entries = match self.internal_search(filt_all) {
             Ok(a) => a,
             Err(_e) => return vec![Err(ConsistencyError::QueryServerSearchFailure)],
@@ -1201,6 +1208,10 @@ impl QueryServer {
             .get_db_ts_max(curtime)
             .expect("Unable to get db_ts_max");
         let cid = Cid::new_lamport(self.s_uuid, curtime, &ts_max);
+        #[allow(clippy::expect_used)]
+        let trim_cid = cid
+            .sub_secs(CHANGELOG_MAX_AGE)
+            .expect("unable to generate trim cid");
 
         QueryServerWriteTransaction {
             // I think this is *not* needed, because commit is mut self which should
@@ -1214,6 +1225,7 @@ impl QueryServer {
             d_info,
             curtime,
             cid,
+            trim_cid,
             be_txn,
             schema: schema_write,
             accesscontrols: self.accesscontrols.write(),
@@ -1230,7 +1242,7 @@ impl QueryServer {
         }
     }
 
-    #[cfg(debug_assertions)]
+    #[cfg(any(test, debug_assertions))]
     pub async fn clear_cache(&self) -> Result<(), OperationError> {
         let ct = duration_from_epoch_now();
         let mut w_txn = self.write(ct).await;
@@ -1356,7 +1368,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         let sync_agreement_map: HashMap<Uuid, BTreeSet<String>> = res
             .iter()
             .filter_map(|e| {
-                e.get_ava_as_iutf8("sync_yield_authority")
+                e.get_ava_as_iutf8(Attribute::SyncYieldAuthority)
                     .cloned()
                     .map(|set| (e.get_uuid(), set))
             })
@@ -1483,7 +1495,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         self.internal_search_uuid(UUID_DOMAIN_INFO)
             .and_then(|e| {
                 trace!(?e);
-                e.get_ava_single_utf8("domain_display_name")
+                e.get_ava_single_utf8(Attribute::DomainDisplayName)
                     .map(str::to_string)
                     .ok_or(OperationError::InvalidEntryState)
             })
@@ -1540,7 +1552,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     /// activities (yet)
     pub fn set_domain_display_name(&mut self, new_domain_name: &str) -> Result<(), OperationError> {
         let modl = ModifyList::new_purge_and_set(
-            "domain_display_name",
+            Attribute::DomainDisplayName,
             Value::new_utf8(new_domain_name.to_string()),
         );
         let udi = PVUUID_DOMAIN_INFO.clone();
@@ -1569,7 +1581,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
     /// approached, especially if we have a domain re-name replicated to us. It could
     /// be that we end up needing to have this as a cow cell or similar?
     pub fn danger_domain_rename(&mut self, new_domain_name: &str) -> Result<(), OperationError> {
-        let modl = ModifyList::new_purge_and_set("domain_name", Value::new_iname(new_domain_name));
+        let modl =
+            ModifyList::new_purge_and_set(Attribute::DomainName, Value::new_iname(new_domain_name));
         let udi = PVUUID_DOMAIN_INFO.clone();
         let filt = filter_all!(f_eq(Attribute::Uuid, udi));
         self.internal_modify(&filt, &modl)
@@ -1638,7 +1651,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         Ok(())
     }
 
-    #[cfg(debug_assertions)]
+    #[cfg(any(test, debug_assertions))]
     #[instrument(level = "debug", skip_all)]
     pub fn clear_cache(&mut self) -> Result<(), OperationError> {
         self.be_txn.clear_cache()
@@ -1694,12 +1707,12 @@ mod tests {
         let t_uuid = Uuid::new_v4();
         assert!(server_txn
             .internal_create(vec![entry_init!(
-                (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-                (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
-                ("name", Value::new_iname("testperson1")),
-                (Attribute::Uuid.as_ref(), Value::Uuid(t_uuid)),
-                ("description", Value::new_utf8s("testperson1")),
-                ("displayname", Value::new_utf8s("testperson1"))
+                (Attribute::Class, EntryClass::Object.to_value()),
+                (Attribute::Class, EntryClass::Person.to_value()),
+                (Attribute::Name, Value::new_iname("testperson1")),
+                (Attribute::Uuid, Value::Uuid(t_uuid)),
+                (Attribute::Description, Value::new_utf8s("testperson1")),
+                (Attribute::DisplayName, Value::new_utf8s("testperson1"))
             ),])
             .is_ok());
 
@@ -1730,13 +1743,13 @@ mod tests {
         let t_uuid = Uuid::new_v4();
         assert!(server_txn
             .internal_create(vec![entry_init!(
-                (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+                (Attribute::Class, EntryClass::Object.to_value()),
+                (Attribute::Class, EntryClass::ExtensibleObject.to_value()),
+                (Attribute::Uuid, Value::Uuid(t_uuid)),
                 (
-                    Attribute::Class.as_ref(),
-                    EntryClass::ExtensibleObject.to_value()
-                ),
-                (Attribute::Uuid.as_ref(), Value::Uuid(t_uuid)),
-                ("sync_external_id", Value::new_iutf8("uid=testperson"))
+                    Attribute::SyncExternalId,
+                    Value::new_iutf8("uid=testperson")
+                )
             ),])
             .is_ok());
 
@@ -1759,16 +1772,16 @@ mod tests {
         let mut server_txn = server.write(duration_from_epoch_now()).await;
 
         let e1 = entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
-            ("name", Value::new_iname("testperson1")),
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Name, Value::new_iname("testperson1")),
             (
-                "uuid",
+                Attribute::Uuid,
                 Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
             ),
-            ("description", Value::new_utf8s("testperson1")),
-            ("displayname", Value::new_utf8s("testperson1"))
+            (Attribute::Description, Value::new_utf8s("testperson1")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson1"))
         );
         let ce = CreateEvent::new_internal(vec![e1]);
         let cr = server_txn.create(&ce);
@@ -1792,16 +1805,16 @@ mod tests {
         let mut server_txn = server.write(duration_from_epoch_now()).await;
 
         let e1 = entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Account.to_value()),
-            ("name", Value::new_iname("testperson1")),
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Name, Value::new_iname("testperson1")),
             (
-                "uuid",
+                Attribute::Uuid,
                 Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
             ),
-            ("description", Value::new_utf8s("testperson")),
-            ("displayname", Value::new_utf8s("testperson1"))
+            (Attribute::Description, Value::new_utf8s("testperson")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson1"))
         );
         let ce = CreateEvent::new_internal(vec![e1]);
         let cr = server_txn.create(&ce);
@@ -1824,15 +1837,15 @@ mod tests {
     async fn test_clone_value(server: &QueryServer) {
         let mut server_txn = server.write(duration_from_epoch_now()).await;
         let e1 = entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::Person.to_value()),
-            ("name", Value::new_iname("testperson1")),
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Name, Value::new_iname("testperson1")),
             (
-                "uuid",
+                Attribute::Uuid,
                 Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
             ),
-            ("description", Value::new_utf8s("testperson1")),
-            ("displayname", Value::new_utf8s("testperson1"))
+            (Attribute::Description, Value::new_utf8s("testperson1")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson1"))
         );
         let ce = CreateEvent::new_internal(vec![e1]);
         let cr = server_txn.create(&ce);
@@ -1864,26 +1877,26 @@ mod tests {
     #[qs_test]
     async fn test_dynamic_schema_class(server: &QueryServer) {
         let e1 = entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::TestClass.to_value()),
-            ("name", Value::new_iname("testobj1")),
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::TestClass.to_value()),
+            (Attribute::Name, Value::new_iname("testobj1")),
             (
-                "uuid",
+                Attribute::Uuid,
                 Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
             )
         );
 
         // Class definition
         let e_cd = entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
-            (Attribute::Class.as_ref(), EntryClass::ClassType.to_value()),
-            ("classname", EntryClass::TestClass.to_value()),
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::ClassType.to_value()),
+            (Attribute::ClassName, EntryClass::TestClass.to_value()),
             (
-                "uuid",
+                Attribute::Uuid,
                 Value::Uuid(uuid!("cfcae205-31c3-484b-8ced-667d1709c5e3"))
             ),
-            ("description", Value::new_utf8s("Test Class")),
-            ("may", Value::new_iutf8("name"))
+            (Attribute::Description, Value::new_utf8s("Test Class")),
+            (Attribute::May, Attribute::Name.to_value())
         );
         let mut server_txn = server.write(duration_from_epoch_now()).await;
         // Add a new class.
@@ -1926,7 +1939,7 @@ mod tests {
         let testobj1 = server_txn
             .internal_search_uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
             .expect("failed");
-        assert!(testobj1.attribute_equality("class", &EntryClass::TestClass.into()));
+        assert!(testobj1.attribute_equality(Attribute::Class, &EntryClass::TestClass.into()));
 
         // Should still be good
         server_txn.commit().expect("should not fail");
@@ -1936,35 +1949,32 @@ mod tests {
     #[qs_test]
     async fn test_dynamic_schema_attr(server: &QueryServer) {
         let e1 = entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::ExtensibleObject.to_value()),
+            (Attribute::Name, Value::new_iname("testobj1")),
             (
-                Attribute::Class.as_ref(),
-                EntryClass::ExtensibleObject.to_value()
-            ),
-            ("name", Value::new_iname("testobj1")),
-            (
-                "uuid",
+                Attribute::Uuid,
                 Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
             ),
-            ("testattr", Value::new_utf8s("test"))
+            (Attribute::TestAttr, Value::new_utf8s("test"))
         );
 
         // Attribute definition
         let e_ad = entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::AttributeType.to_value()),
             (
-                Attribute::Class.as_ref(),
-                EntryClass::AttributeType.to_value()
-            ),
-            (
-                "uuid",
+                Attribute::Uuid,
                 Value::Uuid(uuid!("cfcae205-31c3-484b-8ced-667d1709c5e3"))
             ),
-            ("attributename", Value::new_iutf8("testattr")),
-            ("description", Value::new_utf8s("Test Attribute")),
-            ("multivalue", Value::new_bool(false)),
-            ("unique", Value::new_bool(false)),
-            ("syntax", Value::new_syntaxs("UTF8STRING").expect("syntax"))
+            (Attribute::AttributeName, Attribute::TestAttr.to_value()),
+            (Attribute::Description, Value::new_utf8s("Test Attribute")),
+            (Attribute::MultiValue, Value::new_bool(false)),
+            (Attribute::Unique, Value::new_bool(false)),
+            (
+                Attribute::Syntax,
+                Value::new_syntaxs("UTF8STRING").expect("syntax")
+            )
         );
 
         let mut server_txn = server.write(duration_from_epoch_now()).await;
@@ -1993,7 +2003,7 @@ mod tests {
         // delete the attr
         let de_attr = DeleteEvent::new_internal_invalid(filter!(f_eq(
             Attribute::AttributeName,
-            PartialValue::new_iutf8("testattr")
+            Attribute::TestAttr.to_partialvalue()
         )));
         assert!(server_txn.delete(&de_attr).is_ok());
         // Commit
@@ -2012,7 +2022,7 @@ mod tests {
         let testobj1 = server_txn
             .internal_search_uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
             .expect("failed");
-        assert!(testobj1.attribute_equality("testattr", &PartialValue::new_utf8s("test")));
+        assert!(testobj1.attribute_equality(Attribute::TestAttr, &PartialValue::new_utf8s("test")));
 
         server_txn.commit().expect("should not fail");
         // Commit.

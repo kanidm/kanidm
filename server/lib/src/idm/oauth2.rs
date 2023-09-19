@@ -40,7 +40,7 @@ use crate::idm::server::{
     IdmServerProxyReadTransaction, IdmServerProxyWriteTransaction, IdmServerTransaction,
 };
 use crate::prelude::*;
-use crate::value::{Oauth2Session, OAUTHSCOPE_RE};
+use crate::value::{Oauth2Session, SessionState, OAUTHSCOPE_RE};
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 #[serde(rename_all = "snake_case")]
@@ -317,20 +317,20 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
                 let uuid = ent.get_uuid();
                 admin_info!(?uuid, "Checking oauth2 configuration");
                 // From each entry, attempt to make an oauth2 configuration.
-                if !ent.attribute_equality(Attribute::Class.as_ref(), &EntryClass::OAuth2ResourceServer.into()) {
+                if !ent.attribute_equality(Attribute::Class, &EntryClass::OAuth2ResourceServer.into()) {
                     admin_error!("Missing class oauth2_resource_server");
                     // Check we have oauth2_resource_server class
                     return Err(OperationError::InvalidEntryState);
                 }
 
-                let type_ = if ent.attribute_equality(Attribute::Class.as_ref(), &EntryClass::OAuth2ResourceServerBasic.into()) {
+                let type_ = if ent.attribute_equality(Attribute::Class, &EntryClass::OAuth2ResourceServerBasic.into()) {
                     let authz_secret = ent
-                        .get_ava_single_secret(ATTR_OAUTH2_RS_BASIC_SECRET)
+                        .get_ava_single_secret(Attribute::OAuth2RsBasicSecret)
                         .map(str::to_string)
                         .ok_or(OperationError::InvalidValueState)?;
 
                     let enable_pkce = ent
-                        .get_ava_single_bool(Attribute::OAuth2AllowInsecureClientDisablePkce.as_ref())
+                        .get_ava_single_bool(Attribute::OAuth2AllowInsecureClientDisablePkce)
                         .map(|e| !e)
                         .unwrap_or(true);
 
@@ -338,7 +338,7 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
                         authz_secret,
                         enable_pkce,
                     }
-                } else if ent.attribute_equality(Attribute::Class.as_ref(), &EntryClass::OAuth2ResourceServerPublic.into()) {
+                } else if ent.attribute_equality(Attribute::Class, &EntryClass::OAuth2ResourceServerPublic.into()) {
                     OauthRSType::Public
                 } else {
                     error!("Missing class determining oauth2 rs type");
@@ -347,22 +347,22 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
 
                 // Now we know we can load the shared attrs.
                 let name = ent
-                    .get_ava_single_iname("oauth2_rs_name")
+                    .get_ava_single_iname(Attribute::OAuth2RsName)
                     .map(str::to_string)
                     .ok_or(OperationError::InvalidValueState)?;
 
                 let displayname = ent
-                    .get_ava_single_utf8("displayname")
+                    .get_ava_single_utf8(Attribute::DisplayName)
                     .map(str::to_string)
                     .ok_or(OperationError::InvalidValueState)?;
 
                 let (origin, origin_https) = ent
-                    .get_ava_single_url(Attribute::OAuth2RsOrigin.as_ref())
+                    .get_ava_single_url(Attribute::OAuth2RsOrigin)
                     .map(|url| (url.origin(), url.scheme() == "https"))
                     .ok_or(OperationError::InvalidValueState)?;
 
                 let landing_valid = ent
-                    .get_ava_single_url("oauth2_rs_origin_landing")
+                    .get_ava_single_url(Attribute::OAuth2RsOriginLanding)
                     .map(|url| url.origin() == origin).
                     unwrap_or(true);
 
@@ -371,27 +371,27 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
                 }
 
                 let token_fernet = ent
-                    .get_ava_single_secret("oauth2_rs_token_key")
+                    .get_ava_single_secret(Attribute::OAuth2RsTokenKey)
                     .ok_or(OperationError::InvalidValueState)
                     .and_then(|key| {
                         Fernet::new(key).ok_or(OperationError::CryptographyError)
                     })?;
 
                 let scope_maps = ent
-                    .get_ava_as_oauthscopemaps(Attribute::OAuth2RsScopeMap.as_ref())
+                    .get_ava_as_oauthscopemaps(Attribute::OAuth2RsScopeMap)
                     .cloned()
                     .unwrap_or_default();
 
                 let sup_scope_maps = ent
-                    .get_ava_as_oauthscopemaps(Attribute::OAuth2RsSupScopeMap.as_ref())
+                    .get_ava_as_oauthscopemaps(Attribute::OAuth2RsSupScopeMap)
                     .cloned()
                     .unwrap_or_default();
 
                 trace!("{}", Attribute::OAuth2JwtLegacyCryptoEnable.as_ref());
-                let jws_signer = if ent.get_ava_single_bool(Attribute::OAuth2JwtLegacyCryptoEnable.as_ref()).unwrap_or(false) {
-                    trace!("rs256_private_key_der");
+                let jws_signer = if ent.get_ava_single_bool(Attribute::OAuth2JwtLegacyCryptoEnable).unwrap_or(false) {
+                    trace!("{}", Attribute::Rs256PrivateKeyDer);
                     ent
-                        .get_ava_single_private_binary("rs256_private_key_der")
+                        .get_ava_single_private_binary(Attribute::Rs256PrivateKeyDer)
                         .ok_or(OperationError::InvalidValueState)
                         .and_then(|key_der| {
                             JwsSigner::from_rs256_der(key_der).map_err(|e| {
@@ -400,9 +400,9 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
                             })
                         })?
                 } else {
-                    trace!("es256_private_key_der");
+                    trace!("{}", Attribute::Es256PrivateKeyDer);
                     ent
-                        .get_ava_single_private_binary("es256_private_key_der")
+                        .get_ava_single_private_binary(Attribute::Es256PrivateKeyDer)
                         .ok_or(OperationError::InvalidValueState)
                         .and_then(|key_der| {
                             JwsSigner::from_es256_der(key_der).map_err(|e| {
@@ -413,7 +413,7 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
                 };
 
                 let prefer_short_username = ent
-                    .get_ava_single_bool("oauth2_prefer_short_username")
+                    .get_ava_single_bool(Attribute::OAuth2PreferShortUsername)
                     .unwrap_or(false);
 
                 let mut authorization_endpoint = self.inner.origin.clone();
@@ -484,6 +484,7 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
 }
 
 impl<'a> IdmServerProxyWriteTransaction<'a> {
+    #[instrument(level = "debug", skip_all)]
     pub fn oauth2_token_revoke(
         &mut self,
         client_authz: &str,
@@ -558,7 +559,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 // and when replication converges the session is actually removed.
 
                 let modlist = ModifyList::new_list(vec![Modify::Removed(
-                    AttrString::from("oauth2_session"),
+                    Attribute::OAuth2Session.into(),
                     PartialValue::Refer(session_id),
                 )]);
 
@@ -575,6 +576,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         }
     }
 
+    #[instrument(level = "debug", skip_all)]
     pub fn check_oauth2_token_exchange(
         &mut self,
         client_authz: Option<&str>,
@@ -659,6 +661,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         }
     }
 
+    #[instrument(level = "debug", skip_all)]
     pub fn check_oauth2_authorise_permit(
         &mut self,
         ident: &Identity,
@@ -729,11 +732,11 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         let modlist = ModifyList::new_list(vec![
             Modify::Removed(
-                AttrString::from("oauth2_consent_scope_map"),
+                Attribute::OAuth2ConsentScopeMap.into(),
                 PartialValue::Refer(o2rs.uuid),
             ),
             Modify::Present(
-                AttrString::from("oauth2_consent_scope_map"),
+                Attribute::OAuth2ConsentScopeMap.into(),
                 Value::OauthScopeMap(o2rs.uuid, consent_req.scopes.iter().cloned().collect()),
             ),
         ]);
@@ -750,6 +753,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         })
     }
 
+    #[instrument(level = "debug", skip_all)]
     fn check_oauth2_token_exchange_authorization_code(
         &mut self,
         o2rs: &Oauth2RS,
@@ -849,6 +853,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         )
     }
 
+    #[instrument(level = "debug", skip_all)]
     fn check_oauth2_token_refresh(
         &mut self,
         o2rs: &Oauth2RS,
@@ -909,7 +914,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
                 // Check the not issued before of the session relative to this refresh iat
                 let oauth2_session = entry
-                    .get_ava_as_oauth2session_map("oauth2_session")
+                    .get_ava_as_oauth2session_map(Attribute::OAuth2Session)
                     .and_then(|map| map.get(&session_id))
                     .ok_or_else(|| {
                         security_info!(
@@ -931,7 +936,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
                     // Revoke it
                     let modlist = ModifyList::new_list(vec![Modify::Removed(
-                        AttrString::from("oauth2_session"),
+                        Attribute::OAuth2Session.into(),
                         PartialValue::Refer(session_id),
                     )]);
 
@@ -1131,7 +1136,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             session_id,
             Oauth2Session {
                 parent: parent_session_id,
-                expiry: Some(refresh_expiry),
+                state: SessionState::ExpiresAt(refresh_expiry),
                 issued_at: odt_ct,
                 rs_uuid: o2rs.uuid,
             },
@@ -1139,8 +1144,10 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         // We need to update (replace) this session id if present.
         let modlist = ModifyList::new_list(vec![
-            Modify::Removed("oauth2_session".into(), PartialValue::Refer(session_id)),
-            Modify::Present("oauth2_session".into(), session),
+            // NOTE: Oauth2_session has special handling that allows update in place without
+            // the remove step needing to be carried out.
+            // Modify::Removed("oauth2_session".into(), PartialValue::Refer(session_id)),
+            Modify::Present(Attribute::OAuth2Session.into(), session),
         ]);
 
         self.qs_write
@@ -1208,6 +1215,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 }
 
 impl<'a> IdmServerProxyReadTransaction<'a> {
+    #[instrument(level = "debug", skip_all)]
     pub fn check_oauth2_authorisation(
         &self,
         ident: &Identity,
@@ -1499,6 +1507,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
         }
     }
 
+    #[instrument(level = "debug", skip_all)]
     pub fn check_oauth2_authorise_reject(
         &self,
         ident: &Identity,
@@ -1550,6 +1559,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
         Ok(consent_req.redirect_uri)
     }
 
+    #[instrument(level = "debug", skip_all)]
     pub fn check_oauth2_token_introspect(
         &mut self,
         client_authz: &str,
@@ -1659,6 +1669,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
         }
     }
 
+    #[instrument(level = "debug", skip_all)]
     pub fn oauth2_openid_userinfo(
         &mut self,
         client_id: &str,
@@ -1765,6 +1776,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
         }
     }
 
+    #[instrument(level = "debug", skip_all)]
     pub fn oauth2_openid_discovery(
         &self,
         client_id: &str,
@@ -1848,6 +1860,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
         })
     }
 
+    #[instrument(level = "debug", skip_all)]
     pub fn oauth2_openid_publickey(&self, client_id: &str) -> Result<JwkKeySet, OperationError> {
         let o2rs = self.oauth2rs.inner.rs_set.get(client_id).ok_or_else(|| {
             admin_warn!(
@@ -1974,6 +1987,7 @@ mod tests {
     use crate::idm::oauth2::{AuthoriseResponse, Oauth2Error};
     use crate::idm::server::{IdmServer, IdmServerTransaction};
     use crate::prelude::*;
+    use crate::value::SessionState;
 
     use crate::credential::Credential;
     use kanidm_lib_crypto::CryptoPolicy;
@@ -2037,31 +2051,31 @@ mod tests {
         let uuid = Uuid::new_v4();
 
         let e: Entry<EntryInit, EntryNew> = entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Object.to_value()),
             (
-                Attribute::Class.as_ref(),
+                Attribute::Class,
                 EntryClass::OAuth2ResourceServer.to_value()
             ),
             (
-                Attribute::Class.as_ref(),
+                Attribute::Class,
                 EntryClass::OAuth2ResourceServerBasic.to_value()
             ),
-            (Attribute::Uuid.as_ref(), Value::Uuid(uuid)),
+            (Attribute::Uuid, Value::Uuid(uuid)),
             (
-                Attribute::OAuth2RsName.as_ref(),
+                Attribute::OAuth2RsName,
                 Value::new_iname("test_resource_server")
             ),
             (
-                Attribute::DisplayName.as_ref(),
+                Attribute::DisplayName,
                 Value::new_utf8s("test_resource_server")
             ),
             (
-                Attribute::OAuth2RsOrigin.as_ref(),
+                Attribute::OAuth2RsOrigin,
                 Value::new_url_s("https://demo.example.com").unwrap()
             ),
             // System admins
             (
-                Attribute::OAuth2RsScopeMap.as_ref(),
+                Attribute::OAuth2RsScopeMap,
                 Value::new_oauthscopemap(
                     UUID_SYSTEM_ADMINS,
                     btreeset![OAUTH2_SCOPE_GROUPS.to_string()]
@@ -2069,7 +2083,7 @@ mod tests {
                 .expect("invalid oauthscope")
             ),
             (
-                Attribute::OAuth2RsScopeMap.as_ref(),
+                Attribute::OAuth2RsScopeMap,
                 Value::new_oauthscopemap(
                     UUID_IDM_ALL_ACCOUNTS,
                     btreeset![OAUTH2_SCOPE_OPENID.to_string()]
@@ -2077,7 +2091,7 @@ mod tests {
                 .expect("invalid oauthscope")
             ),
             (
-                Attribute::OAuth2RsSupScopeMap.as_ref(),
+                Attribute::OAuth2RsSupScopeMap,
                 Value::new_oauthscopemap(
                     UUID_IDM_ALL_ACCOUNTS,
                     btreeset!["supplement".to_string()]
@@ -2085,15 +2099,15 @@ mod tests {
                 .expect("invalid oauthscope")
             ),
             (
-                Attribute::OAuth2AllowInsecureClientDisablePkce.as_ref(),
+                Attribute::OAuth2AllowInsecureClientDisablePkce,
                 Value::new_bool(!enable_pkce)
             ),
             (
-                Attribute::OAuth2JwtLegacyCryptoEnable.as_ref(),
+                Attribute::OAuth2JwtLegacyCryptoEnable,
                 Value::new_bool(enable_legacy_crypto)
             ),
             (
-                "oauth2_prefer_short_username",
+                Attribute::OAuth2PreferShortUsername,
                 Value::new_bool(prefer_short_username)
             )
         );
@@ -2105,7 +2119,7 @@ mod tests {
             .internal_search_uuid(uuid)
             .expect("Failed to retrieve oauth2 resource entry ");
         let secret = entry
-            .get_ava_single_secret("oauth2_rs_basic_secret")
+            .get_ava_single_secret(Attribute::OAuth2RsBasicSecret)
             .map(str::to_string)
             .expect("No oauth2_rs_basic_secret found");
 
@@ -2127,7 +2141,10 @@ mod tests {
             .expect("Unable to create uat");
 
         // Need the uat first for expiry.
-        let expiry = uat.expiry;
+        let state = uat
+            .expiry
+            .map(SessionState::ExpiresAt)
+            .unwrap_or(SessionState::NeverExpires);
 
         let p = CryptoPolicy::minimum();
         let cred = Credential::new_password_only(&p, "test_password").unwrap();
@@ -2137,7 +2154,7 @@ mod tests {
             session_id,
             crate::value::Session {
                 label: "label".to_string(),
-                expiry,
+                state,
                 issued_at: time::OffsetDateTime::UNIX_EPOCH + ct,
                 issued_by: IdentityId::Internal,
                 cred_id,
@@ -2147,9 +2164,9 @@ mod tests {
 
         // Mod the user
         let modlist = ModifyList::new_list(vec![
-            Modify::Present("user_auth_token_session".into(), session),
+            Modify::Present(Attribute::UserAuthTokenSession.into(), session),
             Modify::Present(
-                "primary_credential".into(),
+                Attribute::PrimaryCredential.into(),
                 Value::Cred("primary".to_string(), cred),
             ),
         ]);
@@ -2180,36 +2197,36 @@ mod tests {
         let uuid = Uuid::new_v4();
 
         let e: Entry<EntryInit, EntryNew> = entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Object.to_value()),
             (
-                Attribute::Class.as_ref(),
+                Attribute::Class,
                 EntryClass::OAuth2ResourceServer.to_value()
             ),
             (
-                Attribute::Class.as_ref(),
+                Attribute::Class,
                 EntryClass::OAuth2ResourceServerPublic.to_value()
             ),
-            (Attribute::Uuid.as_ref(), Value::Uuid(uuid)),
+            (Attribute::Uuid, Value::Uuid(uuid)),
             (
-                Attribute::OAuth2RsName.as_ref(),
+                Attribute::OAuth2RsName,
                 Value::new_iname("test_resource_server")
             ),
             (
-                Attribute::DisplayName.as_ref(),
+                Attribute::DisplayName,
                 Value::new_utf8s("test_resource_server")
             ),
             (
-                Attribute::OAuth2RsOrigin.as_ref(),
+                Attribute::OAuth2RsOrigin,
                 Value::new_url_s("https://demo.example.com").unwrap()
             ),
             // System admins
             (
-                Attribute::OAuth2RsScopeMap.as_ref(),
+                Attribute::OAuth2RsScopeMap,
                 Value::new_oauthscopemap(UUID_SYSTEM_ADMINS, btreeset!["groups".to_string()])
                     .expect("invalid oauthscope")
             ),
             (
-                Attribute::OAuth2RsScopeMap.as_ref(),
+                Attribute::OAuth2RsScopeMap,
                 Value::new_oauthscopemap(
                     UUID_IDM_ALL_ACCOUNTS,
                     btreeset![OAUTH2_SCOPE_OPENID.to_string()]
@@ -2217,7 +2234,7 @@ mod tests {
                 .expect("invalid oauthscope")
             ),
             (
-                Attribute::OAuth2RsSupScopeMap.as_ref(),
+                Attribute::OAuth2RsSupScopeMap,
                 Value::new_oauthscopemap(
                     UUID_IDM_ALL_ACCOUNTS,
                     btreeset!["supplement".to_string()]
@@ -2246,7 +2263,10 @@ mod tests {
             .expect("Unable to create uat");
 
         // Need the uat first for expiry.
-        let expiry = uat.expiry;
+        let state = uat
+            .expiry
+            .map(SessionState::ExpiresAt)
+            .unwrap_or(SessionState::NeverExpires);
 
         let p = CryptoPolicy::minimum();
         let cred = Credential::new_password_only(&p, "test_password").unwrap();
@@ -2256,7 +2276,7 @@ mod tests {
             session_id,
             crate::value::Session {
                 label: "label".to_string(),
-                expiry,
+                state,
                 issued_at: time::OffsetDateTime::UNIX_EPOCH + ct,
                 issued_by: IdentityId::Internal,
                 cred_id,
@@ -2266,9 +2286,9 @@ mod tests {
 
         // Mod the user
         let modlist = ModifyList::new_list(vec![
-            Modify::Present("user_auth_token_session".into(), session),
+            Modify::Present(Attribute::UserAuthTokenSession.into(), session),
             Modify::Present(
-                "primary_credential".into(),
+                Attribute::PrimaryCredential.into(),
                 Value::Cred("primary".to_string(), cred),
             ),
         ]);
@@ -2955,7 +2975,7 @@ mod tests {
         let me_inv_m = ModifyEvent::new_internal_invalid(
             filter!(f_eq(Attribute::Name, PartialValue::new_iname("admin"))),
             ModifyList::new_list(vec![Modify::Present(
-                AttrString::from("account_expire"),
+                Attribute::AccountExpire.into(),
                 v_expire,
             )]),
         );
@@ -3083,18 +3103,6 @@ mod tests {
             .is_ok());
         assert!(idms_prox_write.commit().is_ok());
 
-        // Check it is still valid - this is because we are still in the GRACE window.
-        let mut idms_prox_read = idms.proxy_read().await;
-        let intr_response = idms_prox_read
-            .check_oauth2_token_introspect(client_authz.as_deref().unwrap(), &intr_request, ct)
-            .expect("Failed to inspect token");
-
-        assert!(intr_response.active);
-        drop(idms_prox_read);
-
-        // Check after the grace window, it will be invalid.
-        let ct = ct + GRACE_WINDOW;
-
         // Assert it is now invalid.
         let mut idms_prox_read = idms.proxy_read().await;
         let intr_response = idms_prox_read
@@ -3102,6 +3110,39 @@ mod tests {
             .expect("Failed to inspect token");
 
         assert!(!intr_response.active);
+        drop(idms_prox_read);
+
+        // Force trim the session and wait for the grace window to pass. The token will be invalidated
+        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let filt = filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(uat.uuid)));
+        let mut work_set = idms_prox_write
+            .qs_write
+            .internal_search_writeable(&filt)
+            .expect("Failed to perform internal search writeable");
+        for (_, entry) in work_set.iter_mut() {
+            let _ = entry.force_trim_ava(Attribute::OAuth2Session.into());
+        }
+        assert!(idms_prox_write
+            .qs_write
+            .internal_apply_writable(work_set)
+            .is_ok());
+
+        assert!(idms_prox_write.commit().is_ok());
+
+        let mut idms_prox_read = idms.proxy_read().await;
+        // Grace window in effect.
+        let intr_response = idms_prox_read
+            .check_oauth2_token_introspect(client_authz.as_deref().unwrap(), &intr_request, ct)
+            .expect("Failed to inspect token");
+        assert!(intr_response.active);
+
+        // Grace window passed, it will now be invalid.
+        let ct = ct + GRACE_WINDOW;
+        let intr_response = idms_prox_read
+            .check_oauth2_token_introspect(client_authz.as_deref().unwrap(), &intr_request, ct)
+            .expect("Failed to inspect token");
+        assert!(!intr_response.active);
+
         drop(idms_prox_read);
 
         // A second invalidation of the token "does nothing".
@@ -3187,7 +3228,7 @@ mod tests {
             .internal_search_uuid(UUID_ADMIN)
             .expect("failed");
         let valid = entry
-            .get_ava_as_oauth2session_map("oauth2_session")
+            .get_ava_as_oauth2session_map(Attribute::OAuth2Session)
             .map(|map| map.get(&session_id).is_some())
             .unwrap_or(false);
         assert!(valid);
@@ -3201,17 +3242,19 @@ mod tests {
 
         assert!(idms_prox_write.qs_write.delete(&de).is_ok());
 
-        // Assert the session is gone. This is cleaned up as an artifact of the referential
-        // integrity plugin.
+        // Assert the session is revoked. This is cleaned up as an artifact of the referential
+        // integrity plugin. Remember, refint doesn't consider revoked sessions once they are
+        // revoked.
         let entry = idms_prox_write
             .qs_write
             .internal_search_uuid(UUID_ADMIN)
             .expect("failed");
-        let valid = entry
-            .get_ava_as_oauth2session_map("oauth2_session")
-            .map(|map| map.get(&session_id).is_some())
+        let revoked = entry
+            .get_ava_as_oauth2session_map(Attribute::OAuth2Session)
+            .and_then(|sessions| sessions.get(&session_id))
+            .map(|session| matches!(session.state, SessionState::RevokedAt(_)))
             .unwrap_or(false);
-        assert!(!valid);
+        assert!(revoked);
 
         assert!(idms_prox_write.commit().is_ok());
     }
@@ -4762,14 +4805,13 @@ mod tests {
             .internal_search_uuid(UUID_ADMIN)
             .expect("failed");
         let valid = entry
-            .get_ava_as_oauth2session_map("oauth2_session")
-            .map(|map| {
-                trace!(?map);
-                map.is_empty()
-            })
-            // If there is no map, it must be empty
-            .unwrap_or(true);
-        assert!(valid);
+            .get_ava_as_oauth2session_map(Attribute::OAuth2Session)
+            .and_then(|sessions| sessions.first_key_value())
+            .map(|(_, session)| !matches!(session.state, SessionState::RevokedAt(_)))
+            // If there is no map, then something is wrong.
+            .unwrap();
+        // The session should be invalid at this point.
+        assert!(!valid);
 
         assert!(idms_prox_write.commit().is_ok());
     }
@@ -4840,8 +4882,10 @@ mod tests {
 
         // Success!
     }
-    #[test] // I know this looks kinda dumb but at some point someone pointed out that our scope syntax wasn't compliant with rfc6749
-            //(https://datatracker.ietf.org/doc/html/rfc6749#section-3.3), so I'm just making sure that we don't break it again.
+
+    #[test]
+    // I know this looks kinda dumb but at some point someone pointed out that our scope syntax wasn't compliant with rfc6749
+    //(https://datatracker.ietf.org/doc/html/rfc6749#section-3.3), so I'm just making sure that we don't break it again.
     fn compliant_serialization_test() {
         let token_req: Result<AccessTokenRequest, serde_json::Error> = serde_json::from_str(
             r#"

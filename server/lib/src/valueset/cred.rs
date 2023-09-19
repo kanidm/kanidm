@@ -83,7 +83,7 @@ impl ValueSetT for ValueSetCredential {
         self.map.clear();
     }
 
-    fn remove(&mut self, pv: &PartialValue) -> bool {
+    fn remove(&mut self, pv: &PartialValue, _cid: &Cid) -> bool {
         match pv {
             PartialValue::Cred(t) => self.map.remove(t.as_str()).is_some(),
             _ => false,
@@ -338,11 +338,16 @@ impl ValueSetT for ValueSetIntentToken {
         self.map.clear();
     }
 
-    fn remove(&mut self, pv: &PartialValue) -> bool {
+    fn remove(&mut self, pv: &PartialValue, _cid: &Cid) -> bool {
         match pv {
             PartialValue::IntentToken(u) => self.map.remove(u).is_some(),
             _ => false,
         }
+    }
+
+    fn purge(&mut self, _cid: &Cid) -> bool {
+        // Could consider making this a TS capable entry.
+        true
     }
 
     fn contains(&self, pv: &PartialValue) -> bool {
@@ -511,6 +516,11 @@ impl ValueSetT for ValueSetIntentToken {
         }
     }
 
+    fn repl_merge_valueset(&self, _older: &ValueSet, _trim_cid: &Cid) -> Option<ValueSet> {
+        // Im not sure this actually needs repl handling ...
+        None
+    }
+
     fn as_intenttoken_map(&self) -> Option<&BTreeMap<String, IntentTokenState>> {
         Some(&self.map)
     }
@@ -582,7 +592,7 @@ impl ValueSetT for ValueSetPasskey {
         self.map.clear();
     }
 
-    fn remove(&mut self, pv: &PartialValue) -> bool {
+    fn remove(&mut self, pv: &PartialValue, _cid: &Cid) -> bool {
         match pv {
             PartialValue::Passkey(u) => self.map.remove(u).is_some(),
             _ => false,
@@ -766,7 +776,7 @@ impl ValueSetT for ValueSetDeviceKey {
         self.map.clear();
     }
 
-    fn remove(&mut self, pv: &PartialValue) -> bool {
+    fn remove(&mut self, pv: &PartialValue, _cid: &Cid) -> bool {
         match pv {
             PartialValue::DeviceKey(u) => self.map.remove(u).is_some(),
             _ => false,

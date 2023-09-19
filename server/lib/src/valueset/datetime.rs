@@ -73,7 +73,7 @@ impl ValueSetT for ValueSetDateTime {
         self.set.clear();
     }
 
-    fn remove(&mut self, pv: &PartialValue) -> bool {
+    fn remove(&mut self, pv: &PartialValue, _cid: &Cid) -> bool {
         match pv {
             PartialValue::DateTime(u) => self.set.remove(u),
             _ => false,

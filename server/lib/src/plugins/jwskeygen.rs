@@ -46,21 +46,21 @@ impl Plugin for JwsKeygen {
 impl JwsKeygen {
     fn modify_inner<T: Clone>(cand: &mut [Entry<EntryInvalid, T>]) -> Result<(), OperationError> {
         cand.iter_mut().try_for_each(|e| {
-        if e.attribute_equality(Attribute::Class.as_ref(), &EntryClass::OAuth2ResourceServerBasic.into()) &&
-            !e.attribute_pres("oauth2_rs_basic_secret") {
+        if e.attribute_equality(Attribute::Class, &EntryClass::OAuth2ResourceServerBasic.into()) &&
+            !e.attribute_pres(Attribute::OAuth2RsBasicSecret) {
                 security_info!("regenerating oauth2 basic secret");
                 let v = Value::SecretValue(password_from_random());
-                e.add_ava("oauth2_rs_basic_secret", v);
+                e.add_ava(Attribute::OAuth2RsBasicSecret, v);
         }
 
-        if e.attribute_equality(Attribute::Class.as_ref(), &EntryClass::OAuth2ResourceServer.into()) {
-            if !e.attribute_pres("oauth2_rs_token_key") {
+        if e.attribute_equality(Attribute::Class, &EntryClass::OAuth2ResourceServer.into()) {
+            if !e.attribute_pres(Attribute::OAuth2RsTokenKey) {
                 security_info!("regenerating oauth2 token key");
                 let k = fernet::Fernet::generate_key();
                 let v = Value::new_secret_str(&k);
-                e.add_ava("oauth2_rs_token_key", v);
+                e.add_ava(Attribute::OAuth2RsTokenKey, v);
             }
-            if !e.attribute_pres("es256_private_key_der") {
+            if !e.attribute_pres(Attribute::Es256PrivateKeyDer) {
                 security_info!("regenerating oauth2 es256 private key");
                 let der = JwsSigner::generate_es256()
                     .and_then(|jws| jws.private_key_to_der())
@@ -69,10 +69,10 @@ impl JwsKeygen {
                         OperationError::CryptographyError
                     })?;
                 let v = Value::new_privatebinary(&der);
-                e.add_ava("es256_private_key_der", v);
+                e.add_ava(Attribute::Es256PrivateKeyDer, v);
             }
-            if e.get_ava_single_bool("oauth2_jwt_legacy_crypto_enable").unwrap_or(false)
-                && !e.attribute_pres("rs256_private_key_der") {
+            if e.get_ava_single_bool(Attribute::OAuth2JwtLegacyCryptoEnable).unwrap_or(false)
+                && !e.attribute_pres(Attribute::Rs256PrivateKeyDer) {
                 security_info!("regenerating oauth2 legacy rs256 private key");
                 let der = JwsSigner::generate_legacy_rs256()
                     .and_then(|jws| jws.private_key_to_der())
@@ -81,13 +81,13 @@ impl JwsKeygen {
                         OperationError::CryptographyError
                     })?;
                 let v = Value::new_privatebinary(&der);
-                e.add_ava("rs256_private_key_der", v);
+                e.add_ava(Attribute::Rs256PrivateKeyDer, v);
             }
         }
 
-        if (e.attribute_equality(Attribute::Class.as_ref(), &EntryClass::ServiceAccount.into()) ||
-            e.attribute_equality(Attribute::Class.as_ref(), &EntryClass::SyncAccount.into())) &&
-            !e.attribute_pres("jws_es256_private_key") {
+        if (e.attribute_equality(Attribute::Class, &EntryClass::ServiceAccount.into()) ||
+            e.attribute_equality(Attribute::Class, &EntryClass::SyncAccount.into())) &&
+            !e.attribute_pres(Attribute::JwsEs256PrivateKey) {
                 security_info!("regenerating jws es256 private key");
                 let jwssigner = JwsSigner::generate_es256()
                     .map_err(|e| {
@@ -95,7 +95,7 @@ impl JwsKeygen {
                         OperationError::CryptographyError
                     })?;
                 let v = Value::JwsKeyEs256(jwssigner);
-                e.add_ava("jws_es256_private_key", v);
+                e.add_ava(Attribute::JwsEs256PrivateKey, v);
         }
 
         Ok(())
@@ -113,30 +113,30 @@ mod tests {
 
         let uuid = Uuid::new_v4();
         let e: Entry<EntryInit, EntryNew> = entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Object.to_value()),
             (
-                Attribute::Class.as_ref(),
+                Attribute::Class,
                 EntryClass::OAuth2ResourceServer.to_value()
             ),
             (
-                Attribute::Class.as_ref(),
+                Attribute::Class,
                 EntryClass::OAuth2ResourceServerBasic.to_value()
             ),
-            (Attribute::Uuid.as_ref(), Value::Uuid(uuid)),
+            (Attribute::Uuid, Value::Uuid(uuid)),
             (
-                Attribute::DisplayName.as_ref(),
+                Attribute::DisplayName,
                 Value::new_utf8s("test_resource_server")
             ),
             (
-                Attribute::OAuth2RsName.as_ref(),
+                Attribute::OAuth2RsName,
                 Value::new_iname("test_resource_server")
             ),
             (
-                "oauth2_rs_origin",
+                Attribute::OAuth2RsOrigin,
                 Value::new_url_s("https://demo.example.com").unwrap()
             ),
             (
-                "oauth2_rs_scope_map",
+                Attribute::OAuth2RsScopeMap,
                 Value::new_oauthscopemap(
                     UUID_IDM_ALL_ACCOUNTS,
                     btreeset![OAUTH2_SCOPE_READ.to_string()]
@@ -156,8 +156,8 @@ mod tests {
                 let e = qs
                     .internal_search_uuid(uuid)
                     .expect("failed to get oauth2 config");
-                assert!(e.attribute_pres("oauth2_rs_basic_secret"));
-                assert!(e.attribute_pres("oauth2_rs_token_key"));
+                assert!(e.attribute_pres(Attribute::OAuth2RsBasicSecret));
+                assert!(e.attribute_pres(Attribute::OAuth2RsTokenKey));
             }
         );
     }
@@ -167,30 +167,30 @@ mod tests {
         let uuid = Uuid::new_v4();
 
         let e: Entry<EntryInit, EntryNew> = entry_init!(
-            (Attribute::Class.as_ref(), EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Object.to_value()),
             (
-                Attribute::Class.as_ref(),
+                Attribute::Class,
                 EntryClass::OAuth2ResourceServer.to_value()
             ),
             (
-                Attribute::Class.as_ref(),
+                Attribute::Class,
                 EntryClass::OAuth2ResourceServerBasic.to_value()
             ),
-            (Attribute::Uuid.as_ref(), Value::Uuid(uuid)),
+            (Attribute::Uuid, Value::Uuid(uuid)),
             (
-                Attribute::OAuth2RsName.as_ref(),
+                Attribute::OAuth2RsName,
                 Value::new_iname("test_resource_server")
             ),
             (
-                Attribute::DisplayName.as_ref(),
+                Attribute::DisplayName,
                 Value::new_utf8s("test_resource_server")
             ),
             (
-                "oauth2_rs_origin",
+                Attribute::OAuth2RsOrigin,
                 Value::new_url_s("https://demo.example.com").unwrap()
             ),
             (
-                "oauth2_rs_scope_map",
+                Attribute::OAuth2RsScopeMap,
                 Value::new_oauthscopemap(
                     UUID_IDM_ALL_ACCOUNTS,
                     btreeset![OAUTH2_SCOPE_READ.to_string()]
@@ -198,13 +198,10 @@ mod tests {
                 .expect("invalid oauthscope")
             ),
             (
-                Attribute::OAuth2RsBasicSecret.as_ref(),
+                Attribute::OAuth2RsBasicSecret,
                 Value::new_secret_str("12345")
             ),
-            (
-                Attribute::OAuth2RsTokenKey.as_ref(),
-                Value::new_secret_str("12345")
-            )
+            (Attribute::OAuth2RsTokenKey, Value::new_secret_str("12345"))
         );
 
         let preload = vec![e];
@@ -214,8 +211,8 @@ mod tests {
             preload,
             filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(uuid))),
             ModifyList::new_list(vec![
-                Modify::Purged(AttrString::from("oauth2_rs_basic_secret"),),
-                Modify::Purged(AttrString::from("oauth2_rs_token_key"),)
+                Modify::Purged(Attribute::OAuth2RsBasicSecret.into(),),
+                Modify::Purged(Attribute::OAuth2RsTokenKey.into(),)
             ]),
             None,
             |_| {},
@@ -223,11 +220,11 @@ mod tests {
                 let e = qs
                     .internal_search_uuid(uuid)
                     .expect("failed to get oauth2 config");
-                assert!(e.attribute_pres("oauth2_rs_basic_secret"));
-                assert!(e.attribute_pres("oauth2_rs_token_key"));
+                assert!(e.attribute_pres(Attribute::OAuth2RsBasicSecret));
+                assert!(e.attribute_pres(Attribute::OAuth2RsTokenKey));
                 // Check the values are different.
-                assert!(e.get_ava_single_secret("oauth2_rs_basic_secret") != Some("12345"));
-                assert!(e.get_ava_single_secret("oauth2_rs_token_key") != Some("12345"));
+                assert!(e.get_ava_single_secret(Attribute::OAuth2RsBasicSecret) != Some("12345"));
+                assert!(e.get_ava_single_secret(Attribute::OAuth2RsTokenKey) != Some("12345"));
             }
         );
     }

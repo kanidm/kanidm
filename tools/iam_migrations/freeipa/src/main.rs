@@ -23,6 +23,7 @@ use base64urlsafedata::Base64UrlSafeData;
 use chrono::Utc;
 use clap::Parser;
 use cron::Schedule;
+use kanidm_proto::constants::{LDAP_ATTR_CN, LDAP_ATTR_OBJECTCLASS};
 use kanidmd_lib::prelude::Attribute;
 use std::collections::BTreeMap;
 use std::fs::metadata;
@@ -354,35 +355,35 @@ async fn run_sync(
     let is_initialise = cookie.is_none();
 
     let filter = LdapFilter::Or(vec![
-        // LdapFilter::Equality("objectclass".to_string(), "domain".to_string()),
+        // LdapFilter::Equality(LDAP_ATTR_OBJECTCLASS.into(), "domain".to_string()),
         LdapFilter::And(vec![
-            LdapFilter::Equality("objectclass".to_string(), "person".to_string()),
-            LdapFilter::Equality("objectclass".to_string(), "ipantuserattrs".to_string()),
-            LdapFilter::Equality("objectclass".to_string(), "posixaccount".to_string()),
+            LdapFilter::Equality(LDAP_ATTR_OBJECTCLASS.into(), "person".to_string()),
+            LdapFilter::Equality(LDAP_ATTR_OBJECTCLASS.into(), "ipantuserattrs".to_string()),
+            LdapFilter::Equality(LDAP_ATTR_OBJECTCLASS.into(), "posixaccount".to_string()),
         ]),
         LdapFilter::And(vec![
-            LdapFilter::Equality("objectclass".to_string(), "groupofnames".to_string()),
-            LdapFilter::Equality("objectclass".to_string(), "ipausergroup".to_string()),
+            LdapFilter::Equality(LDAP_ATTR_OBJECTCLASS.into(), "groupofnames".to_string()),
+            LdapFilter::Equality(LDAP_ATTR_OBJECTCLASS.into(), "ipausergroup".to_string()),
             // Ignore user private groups, kani generates these internally.
             LdapFilter::Not(Box::new(LdapFilter::Equality(
-                "objectclass".to_string(),
+                LDAP_ATTR_OBJECTCLASS.into(),
                 "mepmanagedentry".to_string(),
             ))),
             // Need to exclude the admins group as it gid conflicts to admin.
             LdapFilter::Not(Box::new(LdapFilter::Equality(
-                "cn".to_string(),
+                LDAP_ATTR_CN.into(),
                 "admins".to_string(),
             ))),
             // Kani internally has an all persons group.
             LdapFilter::Not(Box::new(LdapFilter::Equality(
-                "cn".to_string(),
+                LDAP_ATTR_CN.into(),
                 "ipausers".to_string(),
             ))),
         ]),
         // Fetch TOTP's so we know when/if they change.
         LdapFilter::And(vec![
-            LdapFilter::Equality("objectclass".to_string(), "ipatoken".to_string()),
-            LdapFilter::Equality("objectclass".to_string(), "ipatokentotp".to_string()),
+            LdapFilter::Equality(LDAP_ATTR_OBJECTCLASS.into(), "ipatoken".to_string()),
+            LdapFilter::Equality(LDAP_ATTR_OBJECTCLASS.into(), "ipatokentotp".to_string()),
         ]),
     ]);
 
@@ -549,7 +550,7 @@ async fn process_ipa_sync_result(
         if lentry
             .entry
             .attrs
-            .get("objectclass")
+            .get(LDAP_ATTR_OBJECTCLASS)
             .map(|oc| oc.contains("ipatokentotp"))
             .unwrap_or_default()
         {
@@ -580,7 +581,7 @@ async fn process_ipa_sync_result(
             if lentry
                 .entry
                 .attrs
-                .get("objectclass")
+                .get(LDAP_ATTR_OBJECTCLASS)
                 .map(|oc| oc.contains("person"))
                 .unwrap_or_default()
             {
@@ -624,8 +625,8 @@ async fn process_ipa_sync_result(
 
         if !totp_conditions.is_empty() {
             or_filter.push(LdapFilter::And(vec![
-                LdapFilter::Equality("objectclass".to_string(), "ipatoken".to_string()),
-                LdapFilter::Equality("objectclass".to_string(), "ipatokentotp".to_string()),
+                LdapFilter::Equality(LDAP_ATTR_OBJECTCLASS.into(), "ipatoken".to_string()),
+                LdapFilter::Equality(LDAP_ATTR_OBJECTCLASS.into(), "ipatokentotp".to_string()),
                 LdapFilter::Or(totp_conditions),
             ]));
         }
@@ -642,9 +643,9 @@ async fn process_ipa_sync_result(
 
         if !user_conditions.is_empty() {
             or_filter.push(LdapFilter::And(vec![
-                LdapFilter::Equality("objectclass".to_string(), "person".to_string()),
-                LdapFilter::Equality("objectclass".to_string(), "ipantuserattrs".to_string()),
-                LdapFilter::Equality("objectclass".to_string(), "posixaccount".to_string()),
+                LdapFilter::Equality(LDAP_ATTR_OBJECTCLASS.into(), "person".to_string()),
+                LdapFilter::Equality(LDAP_ATTR_OBJECTCLASS.into(), "ipantuserattrs".to_string()),
+                LdapFilter::Equality(LDAP_ATTR_OBJECTCLASS.into(), "posixaccount".to_string()),
                 LdapFilter::Or(user_conditions),
             ]));
         }
@@ -681,7 +682,7 @@ async fn process_ipa_sync_result(
                     if lentry
                         .entry
                         .attrs
-                        .get("objectclass")
+                        .get(LDAP_ATTR_OBJECTCLASS)
                         .map(|oc| oc.contains("ipatokentotp"))
                         .unwrap_or_default()
                     {
@@ -776,9 +777,13 @@ fn ipa_to_scim_entry(
         return Ok(None);
     }
 
-    let oc = sync_entry.entry.attrs.get("objectclass").ok_or_else(|| {
-        error!("Invalid entry - no object class {}", dn);
-    })?;
+    let oc = sync_entry
+        .entry
+        .attrs
+        .get(LDAP_ATTR_OBJECTCLASS)
+        .ok_or_else(|| {
+            error!("Invalid entry - no object class {}", dn);
+        })?;
 
     if oc.contains("person") {
         let LdapSyncReplEntry {
@@ -799,7 +804,7 @@ fn ipa_to_scim_entry(
             entry
                 .remove_ava_single(Attribute::Uid.as_ref())
                 .ok_or_else(|| {
-                    error!("Missing required attribute {}", Attribute::Uid.as_ref());
+                    error!("Missing required attribute {}", Attribute::Uid);
                 })?
         };
 
@@ -812,7 +817,7 @@ fn ipa_to_scim_entry(
         let display_name = entry
             .remove_ava_single(Attribute::Cn.as_ref())
             .ok_or_else(|| {
-                error!("Missing required attribute {}", Attribute::Cn.as_ref());
+                error!("Missing required attribute {}", Attribute::Cn);
             })?;
 
         let gidnumber = if let Some(number) = entry_config.map_gidnumber {
@@ -822,7 +827,7 @@ fn ipa_to_scim_entry(
                 .remove_ava_single(Attribute::GidNumber.as_ref())
                 .map(|gid| {
                     u32::from_str(&gid).map_err(|_| {
-                        error!("Invalid {}", Attribute::GidNumber.as_ref());
+                        error!("Invalid {}", Attribute::GidNumber);
                     })
                 })
                 .transpose()?
@@ -837,7 +842,7 @@ fn ipa_to_scim_entry(
             .or_else(|| entry.remove_ava_single(Attribute::UserPassword.as_ref()));
 
         let mail: Vec<_> = entry
-            .remove_ava("mail")
+            .remove_ava(Attribute::Mail.as_ref())
             .map(|set| {
                 set.into_iter()
                     .map(|addr| MultiValueAttr {
@@ -867,12 +872,12 @@ fn ipa_to_scim_entry(
         };
 
         let ssh_publickey = entry
-            .remove_ava("ipasshpubkey")
+            .remove_ava(Attribute::IpaSshPubKey.as_ref())
             .map(|set| {
                 set.into_iter()
                     .enumerate()
                     .map(|(i, value)| ScimSshPubKey {
-                        label: format!("ipasshpubkey-{}", i),
+                        label: format!("{}-{}", Attribute::IpaSshPubKey, i),
                         value,
                     })
                     .collect()
@@ -930,7 +935,7 @@ fn ipa_to_scim_entry(
             .transpose()?;
 
         let members: Vec<_> = entry
-            .remove_ava("member")
+            .remove_ava(Attribute::Member.as_ref())
             .map(|set| {
                 set.into_iter()
                     .map(|external_id| ScimExternalMember { external_id })
