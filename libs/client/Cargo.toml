@@ -18,9 +18,16 @@ kanidm_proto = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 time = { workspace = true, features = ["serde", "std"] }
-tokio = { workspace = true, features = ["rt", "net", "time", "macros", "sync", "signal"] }
+tokio = { workspace = true, features = [
+    "rt",
+    "net",
+    "time",
+    "macros",
+    "sync",
+    "signal",
+] }
 toml = { workspace = true }
 uuid = { workspace = true, features = ["serde", "v4"] }
 url = { workspace = true, features = ["serde"] }
 webauthn-rs-proto = { workspace = true, features = ["wasm"] }
-
+hyper = { workspace = true }
