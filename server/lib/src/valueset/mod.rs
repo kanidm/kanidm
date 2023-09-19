@@ -86,7 +86,10 @@ pub type ValueSet = Box<dyn ValueSetT + Send + Sync + 'static>;
 dyn_clone::clone_trait_object!(ValueSetT);
 
 pub trait ValueSetT: std::fmt::Debug + DynClone {
-    // TODO: uuhhhh.... is the bool a "yeah, it worked?" or a "yeah, it was already there?"
+    /// Returns whether the value was newly inserted. That is:
+    /// * If the set did not previously contain an equal value, true is returned.
+    /// * If the set already contained an equal value, false is returned, and the entry is not updated.
+    ///
     fn insert_checked(&mut self, value: Value) -> Result<bool, OperationError>;
 
     fn clear(&mut self);
@@ -566,7 +569,6 @@ pub trait ValueSetT: std::fmt::Debug + DynClone {
         None
     }
 
-    // TODO: not sure if I really need this
     fn as_imageset(&self) -> Option<&HashSet<ImageValue>> {
         debug_assert!(false);
         None

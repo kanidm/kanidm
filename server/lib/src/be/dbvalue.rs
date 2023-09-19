@@ -2,7 +2,7 @@ use std::fmt;
 use std::time::Duration;
 
 use hashbrown::HashSet;
-use kanidm_proto::internal::ImageValue;
+use kanidm_proto::internal::ImageType;
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use url::Url;
@@ -507,6 +507,16 @@ pub enum DbValueOauth2Session {
     },
 }
 
+// Internal representation of an image
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+pub enum DbValueImage {
+    V1 {
+        filename: String,
+        filetype: ImageType,
+        contents: Vec<u8>,
+    },
+}
+
 #[derive(Serialize, Deserialize, Debug)]
 pub enum DbValueV1 {
     #[serde(rename = "U8")]
@@ -653,7 +663,7 @@ pub enum DbValueSetV2 {
     #[serde(rename = "EK")]
     EcKeyPrivate(Vec<u8>),
     #[serde(rename = "IM")]
-    Image(Vec<ImageValue>),
+    Image(Vec<DbValueImage>),
 }
 
 impl DbValueSetV2 {

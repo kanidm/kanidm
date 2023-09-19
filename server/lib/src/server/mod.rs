@@ -683,7 +683,7 @@ pub trait QueryServerTransaction<'a> {
                         }),
                     SyntaxType::AuditLogString => Ok(PartialValue::new_utf8s(value)),
                     SyntaxType::EcKeyPrivate => Ok(PartialValue::SecretValue),
-                    SyntaxType::Image => Ok(PartialValue::new_image(value)),
+                    SyntaxType::Image => Ok(PartialValue::new_utf8s(value)),
                 }
             }
             None => {

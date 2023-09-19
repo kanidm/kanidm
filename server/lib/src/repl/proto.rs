@@ -1,12 +1,12 @@
 use super::cid::Cid;
 use super::entry::EntryChangeState;
 use super::entry::State;
+use crate::be::dbvalue::DbValueImage;
 use crate::entry::Eattrs;
 use crate::prelude::*;
 use crate::schema::{SchemaReadTransaction, SchemaTransaction};
 use crate::valueset;
 use base64urlsafedata::Base64UrlSafeData;
-use kanidm_proto::internal::ImageValue;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -402,7 +402,7 @@ pub enum ReplAttrV1 {
         key: Vec<u8>,
     },
     Image {
-        set: Vec<ImageValue>,
+        set: Vec<DbValueImage>,
     },
 }
 

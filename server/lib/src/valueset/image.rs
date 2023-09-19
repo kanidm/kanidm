@@ -8,6 +8,7 @@ use image::codecs::webp::WebPDecoder;
 use image::ImageDecoder;
 use kanidm_proto::internal::{ImageType, ImageValue};
 
+use crate::be::dbvalue::DbValueImage;
 use crate::prelude::*;
 use crate::repl::proto::ReplAttrV1;
 use crate::schema::SchemaAttribute;
@@ -269,15 +270,32 @@ impl ValueSetImage {
         }
     }
 
-    pub fn from_dbvs2(data: &[ImageValue]) -> Result<ValueSet, OperationError> {
+    pub fn from_dbvs2(data: &[DbValueImage]) -> Result<ValueSet, OperationError> {
         Ok(Box::new(ValueSetImage {
-            set: data.iter().cloned().collect(),
+            set: data
+                .iter()
+                .cloned()
+                .map(|e| match e {
+                    DbValueImage::V1 {
+                        filename,
+                        filetype,
+                        contents,
+                    } => ImageValue::new(filename, filetype, contents),
+                })
+                .collect(),
         }))
     }
 
-    pub fn from_repl_v1(data: &[ImageValue]) -> Result<ValueSet, OperationError> {
+    pub fn from_repl_v1(data: &[DbValueImage]) -> Result<ValueSet, OperationError> {
         let mut set: HashSet<ImageValue> = HashSet::new();
         for image in data {
+            let image = match image.clone() {
+                DbValueImage::V1 {
+                    filename,
+                    filetype,
+                    contents,
+                } => ImageValue::new(filename, filetype, contents),
+            };
             if image.validate_image().is_ok() {
                 set.insert(image.clone());
             } else {
@@ -421,12 +439,31 @@ impl ValueSetT for ValueSetImage {
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
-        DbValueSetV2::Image(self.set.iter().map(|e| e.to_owned()).collect())
+        DbValueSetV2::Image(
+            self.set
+                .iter()
+                .cloned()
+                .map(|e| crate::be::dbvalue::DbValueImage::V1 {
+                    filename: e.filename,
+                    filetype: e.filetype,
+                    contents: e.contents,
+                })
+                .collect(),
+        )
     }
 
     fn to_repl_v1(&self) -> ReplAttrV1 {
         ReplAttrV1::Image {
-            set: self.set.iter().cloned().collect(),
+            set: self
+                .set
+                .iter()
+                .cloned()
+                .map(|e| DbValueImage::V1 {
+                    filename: e.filename,
+                    filetype: e.filetype,
+                    contents: e.contents,
+                })
+                .collect(),
         }
     }
 
