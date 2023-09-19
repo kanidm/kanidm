@@ -66,6 +66,7 @@ pub enum ClientError {
     SystemError,
     ConfigParseIssue(String),
     CertParseIssue(String),
+    UntrustedCertificate(String),
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -468,6 +469,23 @@ fn test_make_url() {
     );
 }
 
+/// This is probably pretty jank but it works and was pulled from here:
+/// <https://github.com/seanmonstar/reqwest/issues/1602#issuecomment-1220996681>
+fn find_reqwest_error_source<E: std::error::Error + 'static>(
+    orig: &dyn std::error::Error,
+) -> Option<&E> {
+    let mut cause = orig.source();
+    while let Some(err) = cause {
+        if let Some(typed) = err.downcast_ref::<E>() {
+            return Some(typed);
+        }
+        cause = err.source();
+    }
+
+    // else
+    None
+}
+
 impl KanidmClient {
     pub fn get_origin(&self) -> &Url {
         &self.origin
@@ -541,6 +559,28 @@ impl KanidmClient {
         *guard = false;
     }
 
+    /// You've got the response from a reqwest and you want to turn it into a `ClientError`
+    fn handle_response_error(&self, error: reqwest::Error) -> ClientError {
+        if error.is_connect() {
+            if find_reqwest_error_source::<std::io::Error>(&error).is_some() {
+                // TODO: one day handle IO errors better
+                trace!("Got an IO error! {:?}", &error);
+                return ClientError::Transport(error);
+            }
+            if let Some(hyper_error) = find_reqwest_error_source::<hyper::Error>(&error) {
+                // hyper errors can be *anything* depending on the underlying client libraries
+                // ref: https://github.com/hyperium/hyper/blob/9feb70e9249d9fb99634ec96f83566e6bb3b3128/src/error.rs#L26C2-L26C2
+                if format!("{:?}", hyper_error)
+                    .to_lowercase()
+                    .contains("certificate")
+                {
+                    return ClientError::UntrustedCertificate(format!("{}", hyper_error));
+                }
+            }
+        }
+        ClientError::Transport(error)
+    }
+
     async fn perform_simple_post_request<R: Serialize, T: DeserializeOwned>(
         &self,
         dest: &str,
@@ -554,7 +594,10 @@ impl KanidmClient {
             .body(req_string)
             .header(CONTENT_TYPE, APPLICATION_JSON);
 
-        let response = response.send().await.map_err(ClientError::Transport)?;
+        let response = response
+            .send()
+            .await
+            .map_err(|err| self.handle_response_error(err))?;
 
         self.expect_version(&response).await;
 
@@ -617,7 +660,10 @@ impl KanidmClient {
             }
         };
 
-        let response = response.send().await.map_err(ClientError::Transport)?;
+        let response = response
+            .send()
+            .await
+            .map_err(|err| self.handle_response_error(err))?;
 
         self.expect_version(&response).await;
 
@@ -677,7 +723,10 @@ impl KanidmClient {
             }
         };
 
-        let response = response.send().await.map_err(ClientError::Transport)?;
+        let response = response
+            .send()
+            .await
+            .map_err(|err| self.handle_response_error(err))?;
 
         self.expect_version(&response).await;
 
@@ -730,7 +779,7 @@ impl KanidmClient {
             .body(req_string)
             .send()
             .await
-            .map_err(ClientError::Transport)?;
+            .map_err(|err| self.handle_response_error(err))?;
 
         self.expect_version(&response).await;
 
@@ -781,7 +830,10 @@ impl KanidmClient {
             }
         };
 
-        let response = response.send().await.map_err(ClientError::Transport)?;
+        let response = response
+            .send()
+            .await
+            .map_err(|err| self.handle_response_error(err))?;
 
         self.expect_version(&response).await;
 
@@ -825,7 +877,10 @@ impl KanidmClient {
             }
         };
 
-        let response = response.send().await.map_err(ClientError::Transport)?;
+        let response = response
+            .send()
+            .await
+            .map_err(|err| self.handle_response_error(err))?;
 
         self.expect_version(&response).await;
 
@@ -870,7 +925,10 @@ impl KanidmClient {
             }
         };
 
-        let response = response.send().await.map_err(ClientError::Transport)?;
+        let response = response
+            .send()
+            .await
+            .map_err(|err| self.handle_response_error(err))?;
 
         self.expect_version(&response).await;
 
@@ -920,7 +978,10 @@ impl KanidmClient {
             }
         };
 
-        let response = response.send().await.map_err(ClientError::Transport)?;
+        let response = response
+            .send()
+            .await
+            .map_err(|err| self.handle_response_error(err))?;
 
         self.expect_version(&response).await;
 
@@ -1390,7 +1451,10 @@ impl KanidmClient {
             }
         };
 
-        let response = response.send().await.map_err(ClientError::Transport)?;
+        let response = response
+            .send()
+            .await
+            .map_err(|err| self.handle_response_error(err))?;
 
         self.expect_version(&response).await;
 
