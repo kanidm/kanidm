@@ -50,3 +50,4 @@ webauthn-authenticator-rs = { workspace = true }
 oauth2_ext = { workspace = true, default-features = false }
 futures = { workspace = true }
 time = { workspace = true }
+openssl = { workspace = true }

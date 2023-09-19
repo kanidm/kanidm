@@ -4,9 +4,11 @@
 //! These components should be "per server". Any "per domain" config should be in the system
 //! or domain entries that are able to be replicated.
 
+use std::collections::BTreeMap;
 use std::fmt;
 use std::fs::File;
 use std::io::Read;
+use std::net::SocketAddr;
 use std::path::Path;
 
 use std::str::FromStr;
@@ -15,14 +17,9 @@ use kanidm_proto::constants::DEFAULT_SERVER_ADDRESS;
 use kanidm_proto::messages::ConsoleOutputMode;
 use serde::{Deserialize, Serialize};
 use sketching::tracing_subscriber::EnvFilter;
+use url::Url;
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct IntegrationTestConfig {
-    pub admin_user: String,
-    pub admin_password: String,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct OnlineBackup {
     pub path: String,
     #[serde(default = "default_online_backup_schedule")]
@@ -39,13 +36,44 @@ fn default_online_backup_versions() -> usize {
     7
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct TlsConfiguration {
     pub chain: String,
     pub key: String,
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(tag = "type")]
+pub enum RepNodeConfig {
+    #[serde(rename = "allow-pull")]
+    AllowPull { consumer_cert: String },
+    #[serde(rename = "pull")]
+    Pull {
+        supplier_cert: String,
+        automatic_refresh: bool,
+    },
+    /*
+    AllowPush {
+    },
+    Push {
+    },
+    */
+}
+
+#[derive(Deserialize, Debug, Clone)]
+pub struct ReplicationConfiguration {
+    pub origin: Url,
+    pub address: SocketAddr,
+
+    #[serde(flatten)]
+    pub manual: BTreeMap<Url, RepNodeConfig>,
+}
+
+/// This is the Server Configuration as read from server.toml. Important to note
+/// is that not all flags or values from Configuration are exposed via this structure
+/// to prevent certain settings being set (e.g. integration test modes)
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct ServerConfig {
     pub bindaddress: Option<String>,
     pub ldapbindaddress: Option<String>,
@@ -59,10 +87,13 @@ pub struct ServerConfig {
     pub tls_key: Option<String>,
     pub online_backup: Option<OnlineBackup>,
     pub domain: String,
+    // TODO  -this should be URL
     pub origin: String,
+    pub log_level: Option<LogLevel>,
     #[serde(default)]
     pub role: ServerRole,
-    pub log_level: Option<LogLevel>,
+    #[serde(rename = "replication")]
+    pub repl_config: Option<ReplicationConfiguration>,
 }
 
 impl ServerConfig {
@@ -85,7 +116,7 @@ impl ServerConfig {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, Copy, Default, Eq, PartialEq)]
+#[derive(Debug, Deserialize, Clone, Copy, Default, Eq, PartialEq)]
 pub enum ServerRole {
     #[default]
     WriteReplica,
@@ -116,7 +147,7 @@ impl FromStr for ServerRole {
     }
 }
 
-#[derive(Clone, Serialize, Deserialize, Debug, Default)]
+#[derive(Clone, Deserialize, Debug, Default)]
 pub enum LogLevel {
     #[default]
     #[serde(rename = "info")]
@@ -160,7 +191,22 @@ impl From<LogLevel> for EnvFilter {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Default, Clone)]
+#[derive(Debug, Clone)]
+pub struct IntegrationTestConfig {
+    pub admin_user: String,
+    pub admin_password: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct IntegrationReplConfig {
+    // We can bake in a private key for mTLS here.
+    // pub private_key: PKey
+
+    // We might need some condition variables / timers to force replication
+    // events? Or a channel to submit with oneshot responses.
+}
+
+#[derive(Debug, Clone)]
 pub struct Configuration {
     pub address: String,
     pub ldapaddress: Option<String>,
@@ -180,41 +226,64 @@ pub struct Configuration {
     pub role: ServerRole,
     pub output_mode: ConsoleOutputMode,
     pub log_level: LogLevel,
+
+    /// Replication settings.
+    pub repl_config: Option<ReplicationConfiguration>,
+    /// This allows interally setting some unsafe options for replication.
+    pub integration_repl_config: Option<Box<IntegrationReplConfig>>,
 }
 
 impl fmt::Display for Configuration {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "address: {}, ", self.address)?;
-        write!(f, "domain: {}, ", self.domain)
-            .and_then(|_| match &self.ldapaddress {
-                Some(la) => write!(f, "ldap address: {}, ", la),
-                None => write!(f, "ldap address: disabled, "),
-            })
-            .and_then(|_| write!(f, "admin bind path: {}, ", self.adminbindpath))
-            .and_then(|_| write!(f, "thread count: {}, ", self.threads))
-            .and_then(|_| write!(f, "dbpath: {}, ", self.db_path))
-            .and_then(|_| match self.db_arc_size {
-                Some(v) => write!(f, "arcsize: {}, ", v),
-                None => write!(f, "arcsize: AUTO, "),
-            })
-            .and_then(|_| write!(f, "max request size: {}b, ", self.maximum_request))
-            .and_then(|_| write!(f, "trust X-Forwarded-For: {}, ", self.trust_x_forward_for))
-            .and_then(|_| write!(f, "with TLS: {}, ", self.tls_config.is_some()))
-            // TODO: include the backup timings
-            .and_then(|_| match &self.online_backup {
-                Some(_) => write!(f, "online_backup: enabled, "),
-                None => write!(f, "online_backup: disabled, "),
-            })
-            .and_then(|_| write!(f, "role: {}, ", self.role.to_string()))
-            .and_then(|_| {
+        write!(f, "domain: {}, ", self.domain)?;
+        match &self.ldapaddress {
+            Some(la) => write!(f, "ldap address: {}, ", la),
+            None => write!(f, "ldap address: disabled, "),
+        }?;
+        write!(f, "origin: {} ", self.origin)?;
+        write!(f, "admin bind path: {}, ", self.adminbindpath)?;
+        write!(f, "thread count: {}, ", self.threads)?;
+        write!(f, "dbpath: {}, ", self.db_path)?;
+        match self.db_arc_size {
+            Some(v) => write!(f, "arcsize: {}, ", v),
+            None => write!(f, "arcsize: AUTO, "),
+        }?;
+        write!(f, "max request size: {}b, ", self.maximum_request)?;
+        write!(f, "trust X-Forwarded-For: {}, ", self.trust_x_forward_for)?;
+        write!(f, "with TLS: {}, ", self.tls_config.is_some())?;
+        match &self.online_backup {
+            Some(bck) => write!(
+                f,
+                "online_backup: enabled - schedule: {} versions: {}, ",
+                bck.schedule, bck.versions
+            ),
+            None => write!(f, "online_backup: disabled, "),
+        }?;
+        write!(
+            f,
+            "integration mode: {}, ",
+            self.integration_test_config.is_some()
+        )?;
+        write!(f, "console output format: {:?} ", self.output_mode)?;
+        write!(f, "log_level: {}", self.log_level.clone().to_string())?;
+        write!(f, "role: {}, ", self.role.to_string())?;
+        match &self.repl_config {
+            Some(repl) => {
+                write!(f, "replication: enabled")?;
+                write!(f, "repl_origin: {} ", repl.origin)?;
+                write!(f, "repl_address: {} ", repl.address)?;
                 write!(
                     f,
-                    "integration mode: {}, ",
-                    self.integration_test_config.is_some()
-                )
-            })
-            .and_then(|_| write!(f, "console output format: {:?} ", self.output_mode))
-            .and_then(|_| write!(f, "log_level: {}", self.log_level.clone().to_string()))
+                    "integration repl config mode: {}, ",
+                    self.integration_repl_config.is_some()
+                )?;
+            }
+            None => {
+                write!(f, "replication: disabled, ")?;
+            }
+        }
+        Ok(())
     }
 }
 
@@ -240,9 +309,11 @@ impl Configuration {
             online_backup: None,
             domain: "idm.example.com".to_string(),
             origin: "https://idm.example.com".to_string(),
-            role: ServerRole::WriteReplica,
             output_mode: ConsoleOutputMode::default(),
             log_level: Default::default(),
+            role: ServerRole::WriteReplica,
+            repl_config: None,
+            integration_repl_config: None,
         }
     }
 

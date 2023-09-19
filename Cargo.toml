@@ -74,10 +74,11 @@ webauthn-rs-proto = { git = "https://github.com/kanidm/webauthn-rs.git", rev = "
 kanidmd_core = { path = "./server/core" }
 kanidmd_lib = { path = "./server/lib" }
 kanidmd_lib_macros = { path = "./server/lib-macros" }
+kanidmd_testkit = { path = "./server/testkit" }
 kanidm_build_profiles = { path = "./libs/profiles", version = "1.1.0-rc.14-dev" }
+kanidm_client = { path = "./libs/client", version = "1.1.0-rc.14-dev" }
 kanidm_lib_crypto = { path = "./libs/crypto" }
 kanidm_lib_file_permissions = { path = "./libs/file_permissions" }
-kanidm_client = { path = "./libs/client", version = "1.1.0-rc.14-dev" }
 kanidm_proto = { path = "./proto", version = "1.1.0-rc.14-dev" }
 kanidm_unix_int = { path = "./unix_integration" }
 kanidm_utils_users = { path = "./libs/users" }
