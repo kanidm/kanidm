@@ -1,7 +1,7 @@
-///! Because consistency is great!
+//! Because consistency is great!
 
 // for when the user uploads things to the various image endpoints
-pub const VALID_IMAGE_UPLOAD_CONTENT_TYPES: [&'static str; 4] =
+pub const VALID_IMAGE_UPLOAD_CONTENT_TYPES: [&str; 4] =
     ["image/jpeg", "image/png", "image/gif", "image/webp"];
 
 pub const APPLICATION_JSON: &str = "application/json";
