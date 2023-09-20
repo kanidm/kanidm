@@ -3115,6 +3115,7 @@ dependencies = [
  "testkit-macros",
  "time",
  "tokio",
+ "tokio-openssl",
  "tracing",
  "url",
  "webauthn-authenticator-rs",
