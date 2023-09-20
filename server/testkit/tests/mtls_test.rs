@@ -170,7 +170,11 @@ async fn test_mtls_basic_auth() {
     ssl_builder.set_certificate(&client_cert).unwrap();
     ssl_builder.set_private_key(&client_key).unwrap();
     ssl_builder.check_private_key().unwrap();
-    ssl_builder.set_verify(SslVerifyMode::NONE);
+    // Add the server cert
+    let cert_store = tls_parms.cert_store_mut();
+    cert_store.add_cert(server_cert).unwrap();
+
+    ssl_builder.set_verify(SslVerifyMode::PEER);
     let tls_parms = ssl_builder.build();
     let mut tlsstream = Ssl::new(tls_parms.context())
         .and_then(|tls_obj| SslStream::new(tls_obj, tcpclient))
