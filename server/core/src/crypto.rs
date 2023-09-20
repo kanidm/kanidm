@@ -460,7 +460,6 @@ pub(crate) fn build_cert(
     cert_builder.append_extension(
         KeyUsage::new()
             .critical()
-            // .non_repudiation()
             .digital_signature()
             .key_encipherment()
             .build()?,

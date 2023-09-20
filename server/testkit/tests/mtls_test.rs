@@ -15,10 +15,12 @@ use openssl::ec;
 use openssl::hash;
 use openssl::nid::Nid;
 use openssl::pkey;
-use openssl::ssl::{Ssl, SslAcceptor, SslMethod};
+use openssl::ssl::{Ssl, SslAcceptor, SslMethod, SslRef};
 use openssl::ssl::{SslConnector, SslVerifyMode};
 use openssl::x509::extension::BasicConstraints;
+use openssl::x509::extension::ExtendedKeyUsage;
 use openssl::x509::extension::KeyUsage;
+use openssl::x509::extension::SubjectAlternativeName;
 use openssl::x509::extension::SubjectKeyIdentifier;
 use openssl::x509::X509NameBuilder;
 use openssl::x509::X509;
@@ -31,7 +33,13 @@ pub fn get_group() -> Result<ec::EcGroup, OpenSSLError> {
     ec::EcGroup::from_curve_name(Nid::X9_62_PRIME256V1)
 }
 
-fn build_self_signed_client_server() -> Result<(pkey::PKey<pkey::Private>, X509), OpenSSLError> {
+fn keylog_cb(_ssl_ref: &SslRef, key: &str) {
+    trace!(?key);
+}
+
+fn build_self_signed_client_server(
+    domain_name: &str,
+) -> Result<(pkey::PKey<pkey::Private>, X509), OpenSSLError> {
     let ecgroup = get_group()?;
     let eckey = ec::EcKey::generate(&ecgroup)?;
     let ca_key = pkey::PKey::from_ec_key(eckey)?;
@@ -39,8 +47,8 @@ fn build_self_signed_client_server() -> Result<(pkey::PKey<pkey::Private>, X509)
 
     x509_name.append_entry_by_text("C", "AU")?;
     x509_name.append_entry_by_text("ST", "QLD")?;
-    x509_name.append_entry_by_text("O", "Webauthn Authenticator RS")?;
-    x509_name.append_entry_by_text("CN", "Dynamic Softtoken CA")?;
+    x509_name.append_entry_by_text("O", "Kanidm")?;
+    x509_name.append_entry_by_text("CN", "MTLS Test")?;
     let x509_name = x509_name.build();
 
     let mut cert_builder = X509::builder()?;
@@ -58,18 +66,31 @@ fn build_self_signed_client_server() -> Result<(pkey::PKey<pkey::Private>, X509)
     let not_after = asn1::Asn1Time::days_from_now(1)?;
     cert_builder.set_not_after(&not_after)?;
 
-    cert_builder.append_extension(BasicConstraints::new().critical().ca().build()?)?;
+    cert_builder.append_extension(BasicConstraints::new().build()?)?;
     cert_builder.append_extension(
         KeyUsage::new()
             .critical()
-            .key_cert_sign()
-            .crl_sign()
+            .digital_signature()
+            .key_encipherment()
+            .build()?,
+    )?;
+
+    cert_builder.append_extension(
+        ExtendedKeyUsage::new()
+            .server_auth()
+            .client_auth()
             .build()?,
     )?;
 
     let subject_key_identifier =
         SubjectKeyIdentifier::new().build(&cert_builder.x509v3_context(None, None))?;
     cert_builder.append_extension(subject_key_identifier)?;
+
+    let subject_alt_name = SubjectAlternativeName::new()
+        .dns(domain_name)
+        .build(&cert_builder.x509v3_context(None, None))?;
+
+    cert_builder.append_extension(subject_alt_name)?;
 
     cert_builder.set_pubkey(&ca_key)?;
 
@@ -100,9 +121,9 @@ async fn test_mtls_basic_auth() {
     trace!("{:?}", port);
 
     // First we need the two certificates.
-    let (client_key, client_cert) = build_self_signed_client_server().unwrap();
+    let (client_key, client_cert) = build_self_signed_client_server("localhost").unwrap();
 
-    let (server_key, server_cert) = build_self_signed_client_server().unwrap();
+    let (server_key, server_cert) = build_self_signed_client_server("localhost").unwrap();
     let server_addr = SocketAddr::new(IpAddr::V6(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1)), port);
 
     let listener = TcpListener::bind(&server_addr)
@@ -113,9 +134,20 @@ async fn test_mtls_basic_auth() {
     let (tx, mut rx) = oneshot::channel();
 
     let mut ssl_builder = SslAcceptor::mozilla_modern_v5(SslMethod::tls()).unwrap();
+    ssl_builder.set_keylog_callback(keylog_cb);
+
     ssl_builder.set_certificate(&server_cert).unwrap();
     ssl_builder.set_private_key(&server_key).unwrap();
     ssl_builder.check_private_key().unwrap();
+
+    let cert_store = ssl_builder.cert_store_mut();
+    cert_store.add_cert(client_cert.clone()).unwrap();
+    // Request a client cert.
+    let mut verify = SslVerifyMode::PEER;
+    verify.insert(SslVerifyMode::FAIL_IF_NO_PEER_CERT);
+    ssl_builder.set_verify(verify);
+    // Setup the client cert store.
+
     let tls_parms = ssl_builder.build();
 
     // Start the server in a task.
@@ -171,7 +203,7 @@ async fn test_mtls_basic_auth() {
     ssl_builder.set_private_key(&client_key).unwrap();
     ssl_builder.check_private_key().unwrap();
     // Add the server cert
-    let cert_store = tls_parms.cert_store_mut();
+    let cert_store = ssl_builder.cert_store_mut();
     cert_store.add_cert(server_cert).unwrap();
 
     ssl_builder.set_verify(SslVerifyMode::PEER);
