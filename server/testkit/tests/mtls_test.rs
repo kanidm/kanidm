@@ -206,6 +206,9 @@ async fn test_mtls_basic_auth() {
     let cert_store = ssl_builder.cert_store_mut();
     cert_store.add_cert(server_cert).unwrap();
 
+    let verify_param = ssl_builder.verify_param_mut();
+    verify_param.set_host("localhost").unwrap();
+
     ssl_builder.set_verify(SslVerifyMode::PEER);
     let tls_parms = ssl_builder.build();
     let mut tlsstream = Ssl::new(tls_parms.context())
