@@ -1,6 +1,7 @@
 use kanidmd_testkit::{is_free_port, PORT_ALLOC};
 use std::sync::atomic::Ordering;
 
+use std::error::Error;
 use std::net::{IpAddr, Ipv6Addr, SocketAddr};
 use std::pin::Pin;
 use std::time::Duration;
@@ -66,7 +67,8 @@ fn build_self_signed_client_server(
     let not_after = asn1::Asn1Time::days_from_now(1)?;
     cert_builder.set_not_after(&not_after)?;
 
-    cert_builder.append_extension(BasicConstraints::new().build()?)?;
+    // Do we need pathlen 0?
+    cert_builder.append_extension(BasicConstraints::new().critical().build()?)?;
     cert_builder.append_extension(
         KeyUsage::new()
             .critical()
@@ -100,8 +102,13 @@ fn build_self_signed_client_server(
     Ok((ca_key, ca_cert))
 }
 
-#[tokio::test]
-async fn test_mtls_basic_auth() {
+async fn setup_mtls_test(
+    testcase: TestCase,
+) -> (
+    SslStream<TcpStream>,
+    tokio::task::JoinHandle<Result<(), u64>>,
+    oneshot::Sender<()>,
+) {
     sketching::test_init();
 
     let mut counter = 0;
@@ -123,7 +130,12 @@ async fn test_mtls_basic_auth() {
     // First we need the two certificates.
     let (client_key, client_cert) = build_self_signed_client_server("localhost").unwrap();
 
-    let (server_key, server_cert) = build_self_signed_client_server("localhost").unwrap();
+    let server_san = if testcase == TestCase::ServerCertSanInvalid {
+        "evilcorp.com"
+    } else {
+        "localhost"
+    };
+    let (server_key, server_cert) = build_self_signed_client_server(server_san).unwrap();
     let server_addr = SocketAddr::new(IpAddr::V6(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1)), port);
 
     let listener = TcpListener::bind(&server_addr)
@@ -140,8 +152,10 @@ async fn test_mtls_basic_auth() {
     ssl_builder.set_private_key(&server_key).unwrap();
     ssl_builder.check_private_key().unwrap();
 
-    let cert_store = ssl_builder.cert_store_mut();
-    cert_store.add_cert(client_cert.clone()).unwrap();
+    if testcase != TestCase::ServerWithoutClientCa {
+        let cert_store = ssl_builder.cert_store_mut();
+        cert_store.add_cert(client_cert.clone()).unwrap();
+    }
     // Request a client cert.
     let mut verify = SslVerifyMode::PEER;
     verify.insert(SslVerifyMode::FAIL_IF_NO_PEER_CERT);
@@ -164,32 +178,52 @@ async fn test_mtls_basic_auth() {
                     .and_then(|tls_obj| SslStream::new(tls_obj, tcpstream))
                 {
                     Ok(ta) => ta,
-                    Err(e) => {
-                        error!("LDAP TLS setup error, continuing -> {:?}", e);
-                        return false;
+                    Err(err) => {
+                        error!("LDAP TLS setup error, continuing -> {:?}", err);
+                        let ossl_err = err.errors().get(0).unwrap();
+
+                    return Err(
+                        ossl_err.code()
+                    );
                     }
                 };
 
-                if let Err(e) = SslStream::accept(Pin::new(&mut tlsstream)).await {
-                    error!("LDAP TLS accept error, continuing -> {:?}", e);
-                    return false;
+                if let Err(err) = SslStream::accept(Pin::new(&mut tlsstream)).await {
+                    error!("LDAP TLS accept error, continuing -> {:?}", err);
+
+                    let ossl_err = err.ssl_error().and_then(|e| e.errors().get(0)).unwrap();
+
+                    return Err(
+                        ossl_err.code()
+                    );
                 };
 
                 trace!("Got connection. {:?}", client_socket_addr);
 
-                true
+                let tlsstream_ref = tlsstream.ssl();
+
+                match tlsstream_ref.peer_certificate() {
+                    Some(peer_cert) => {
+                        trace!("{:?}", peer_cert.subject_name());
+                    }
+                    None => {
+                        return Err(2);
+                    }
+                }
+
+                Ok(())
             }
             Ok(()) = &mut rx => {
                 trace!("stopping listener");
-                false
+                Err(1)
             }
             _ = &mut sleep => {
                 error!("timeout");
-                false
+                Err(1)
             }
             else => {
                 trace!("error condition in accept");
-                false
+                Err(1)
             }
         }
     });
@@ -199,21 +233,41 @@ async fn test_mtls_basic_auth() {
     trace!("connection established");
 
     let mut ssl_builder = SslConnector::builder(SslMethod::tls_client()).unwrap();
-    ssl_builder.set_certificate(&client_cert).unwrap();
-    ssl_builder.set_private_key(&client_key).unwrap();
-    ssl_builder.check_private_key().unwrap();
+    if testcase != TestCase::ClientWithoutClientCert {
+        ssl_builder.set_certificate(&client_cert).unwrap();
+        ssl_builder.set_private_key(&client_key).unwrap();
+        ssl_builder.check_private_key().unwrap();
+    }
     // Add the server cert
-    let cert_store = ssl_builder.cert_store_mut();
-    cert_store.add_cert(server_cert).unwrap();
+    if testcase != TestCase::ClientWithoutServerCa {
+        let cert_store = ssl_builder.cert_store_mut();
+        cert_store.add_cert(server_cert).unwrap();
+    }
 
     let verify_param = ssl_builder.verify_param_mut();
     verify_param.set_host("localhost").unwrap();
 
     ssl_builder.set_verify(SslVerifyMode::PEER);
     let tls_parms = ssl_builder.build();
-    let mut tlsstream = Ssl::new(tls_parms.context())
+    let tlsstream = Ssl::new(tls_parms.context())
         .and_then(|tls_obj| SslStream::new(tls_obj, tcpclient))
         .unwrap();
+
+    (tlsstream, handle, tx)
+}
+
+#[derive(PartialEq, Eq, Debug)]
+enum TestCase {
+    Valid,
+    ServerCertSanInvalid,
+    ServerWithoutClientCa,
+    ClientWithoutClientCert,
+    ClientWithoutServerCa,
+}
+
+#[tokio::test]
+async fn test_mtls_basic_auth() {
+    let (mut tlsstream, handle, _tx) = setup_mtls_test(TestCase::Valid).await;
 
     SslStream::connect(Pin::new(&mut tlsstream)).await.unwrap();
 
@@ -221,5 +275,79 @@ async fn test_mtls_basic_auth() {
     let result = handle.await.expect("Failed to stop task.");
 
     // If this isn't true, it means something failed in the server accept process.
-    assert!(result);
+    assert!(result.is_ok());
+}
+
+#[tokio::test]
+async fn test_mtls_server_san_invalid() {
+    let (mut tlsstream, handle, _tx) = setup_mtls_test(TestCase::ServerCertSanInvalid).await;
+
+    let err: openssl::ssl::Error = SslStream::connect(Pin::new(&mut tlsstream))
+        .await
+        .unwrap_err();
+    trace!(?err);
+    // Certification Verification Failure
+    let ossl_err = err.ssl_error().and_then(|e| e.errors().get(0)).unwrap();
+    assert!(ossl_err.code() == 167772294);
+
+    trace!("Waiting on listener ...");
+    let result = handle.await.expect("Failed to stop task.");
+
+    // Must be FALSE server should not have accepted the connection.
+    trace!(?result);
+    // SSL Read bytes (client disconnected)
+    assert!(matches!(result, Err(167773202)));
+}
+
+#[tokio::test]
+async fn test_mtls_server_without_client_ca() {
+    let (mut tlsstream, handle, _tx) = setup_mtls_test(TestCase::ServerWithoutClientCa).await;
+
+    // The client isn't the one that errors, the server does.
+    SslStream::connect(Pin::new(&mut tlsstream)).await.unwrap();
+
+    trace!("Waiting on listener ...");
+    let result = handle.await.expect("Failed to stop task.");
+
+    // Must be FALSE server should not have accepted the connection.
+    trace!(?result);
+    // Certification Verification Failure
+    assert!(matches!(result, Err(167772294)));
+}
+
+#[tokio::test]
+async fn test_mtls_client_without_client_cert() {
+    let (mut tlsstream, handle, _tx) = setup_mtls_test(TestCase::ClientWithoutClientCert).await;
+
+    // The client isn't the one that errors, the server does.
+    SslStream::connect(Pin::new(&mut tlsstream)).await.unwrap();
+
+    trace!("Waiting on listener ...");
+    let result = handle.await.expect("Failed to stop task.");
+
+    // Must be FALSE server should not have accepted the connection.
+    trace!(?result);
+    // Peer Did Not Provide Certificate
+    assert!(matches!(result, Err(167772359)));
+}
+
+#[tokio::test]
+async fn test_mtls_client_without_server_ca() {
+    let (mut tlsstream, handle, _tx) = setup_mtls_test(TestCase::ClientWithoutServerCa).await;
+
+    let err: openssl::ssl::Error = SslStream::connect(Pin::new(&mut tlsstream))
+        .await
+        .unwrap_err();
+    trace!(?err);
+    // Tls Post Process Certificate (Certficate Verify Failed)
+    let ossl_err = err.ssl_error().and_then(|e| e.errors().get(0)).unwrap();
+    assert!(ossl_err.code() == 2147483650);
+
+    trace!("Waiting on listener ...");
+    let result = handle.await.expect("Failed to stop task.");
+
+    // Must be FALSE server should not have accepted the connection.
+    trace!(?result);
+    // SSL Read bytes (client disconnected)
+    assert!(matches!(result, Err(167773208)));
 }
