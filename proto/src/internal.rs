@@ -70,6 +70,19 @@ impl From<&str> for ImageType {
     }
 }
 
+impl ImageType {
+    pub fn try_from_content_type(content_type: &str) -> Result<Self, String> {
+        let content_type = content_type.to_lowercase();
+        match content_type.as_str() {
+            "image/jpeg" => Ok(ImageType::Jpg),
+            "image/png" => Ok(ImageType::Png),
+            "image/gif" => Ok(ImageType::Gif),
+            "image/webp" => Ok(ImageType::Webp),
+            _ => Err(format!("Invalid content type: {}", content_type)),
+        }
+    }
+}
+
 #[derive(Clone, PartialEq, Eq, Serialize, Deserialize, Debug, PartialOrd, Ord)]
 pub struct ImageValue {
     pub filename: String,

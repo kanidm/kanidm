@@ -24,6 +24,7 @@ pub(crate) const MAX_IMAGE_WIDTH: u32 = 1024;
 /// 128kb should be enough for anyone... right? :D
 pub(crate) const MAX_FILE_SIZE: u32 = 1024 * 128;
 
+static PNG_PRELUDE: &[u8] = &[0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
 static PNG_CHUNK_END: &[u8; 4] = b"IEND";
 
 pub trait ImageValueThings {
@@ -55,8 +56,6 @@ pub enum ImageValidationError {
     InvalidImage(String),
     InvalidPngPrelude,
 }
-
-const PNG_PRELUDE: &[u8] = &[0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
 
 impl Display for ImageValidationError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -106,10 +105,45 @@ enum ChunkStatus {
     SeenEnd { has_trailer: bool },
     MoreChunks,
 }
+#[test]
+/// this tests a variety of input options for `png_consume_chunks_until_iend`
+fn test_png_consume_chunks_until_iend() {
+    let mut foo = vec![0, 0, 0, 1]; // the length
 
+    foo.extend(PNG_CHUNK_END); // ... the type of chunk we're looking at!
+    foo.push(1); // the data
+    foo.extend([0, 0, 0, 1]); // the 4-byte checksum which we ignore
+    let expected: [u8; 0] = [];
+    let foo = foo.as_slice();
+    let res = png_consume_chunks_until_iend(&foo);
+
+    // simple, valid image works
+    match res {
+        Ok((result, buf)) => {
+            if let ChunkStatus::MoreChunks = result {
+                panic!("Shouldn't have more chunks!");
+            }
+            assert_eq!(buf, &expected);
+        }
+        Err(err) => panic!("Error: {:?}", err),
+    };
+
+    // let's make sure it works with a bunch of different length inputs
+    let mut x = 11;
+    while x > 0 {
+        let foo = &foo[0..=x];
+        let res = png_consume_chunks_until_iend(&foo);
+        dbg!(&res);
+        assert!(res.is_err());
+        x = x - 1;
+    }
+}
+
+/// Loop over this to find out if we've got valid chunks
+///
 fn png_consume_chunks_until_iend(buf: &[u8]) -> Result<(ChunkStatus, &[u8]), ImageValidationError> {
     // length[u8;4] + chunk_type[u8;4] + checksum[u8;4] + minimum size
-    if buf.len() <= 8 {
+    if buf.len() < 12 {
         return Err(ImageValidationError::InvalidImage(
             "PNG file is too short to be valid".to_string(),
         ));
@@ -136,6 +170,12 @@ fn png_consume_chunks_until_iend(buf: &[u8]) -> Result<(ChunkStatus, &[u8]), Ima
         &buf.len()
     );
 
+    if buf.len() < (length + 4) as usize {
+        return Err(ImageValidationError::InvalidImage(format!(
+            "PNG file is too short to be valid, failed to split at the chunk length {}",
+            length
+        )));
+    }
     let (_, buf) = buf.split_at(length as usize);
     #[cfg(any(debug_assertions, test))]
     trace!("new buflen: {}", &buf.len());

@@ -24,7 +24,6 @@ use kanidmd_lib::idm::oauth2::{
 use kanidmd_lib::prelude::f_eq;
 use kanidmd_lib::prelude::*;
 use kanidmd_lib::value::PartialValue;
-use kanidmd_lib::valueset::image::ImageValueThings;
 use serde::{Deserialize, Serialize};
 
 pub struct HTTPOauth2Error(Oauth2Error);
@@ -230,66 +229,73 @@ pub async fn oauth2_id_image_post(
     Extension(kopid): Extension<KOpId>,
     Path(rs_name): Path<String>,
     mut multipart: axum::extract::Multipart,
-) -> Response<String> {
+) -> Response<Body> {
     let mut headers = HeaderMap::new();
     headers.insert(CONTENT_TYPE, HeaderValue::from_static(APPLICATION_JSON));
     println!("Got RS {}", rs_name);
+    // because we might not get an image
     let mut image: Option<ImageValue> = None;
 
-    while let Some(field) = multipart.next_field().await.unwrap() {
-        // this needs to match the field form, I think?
-        let name = field.name().unwrap_or("<no name>").to_string();
+    while let Some(field) = multipart.next_field().await.unwrap_or(None) {
+        let filename = field.file_name().map(|f| f.to_string()).clone();
+        if let Some(filename) = filename {
+            let content_type = field.content_type().map(|f| f.to_string()).clone();
 
-        let filename = field.file_name().unwrap_or("<no filename>").to_string();
-        let content_type = match field.content_type() {
-            Some(val) => {
-                if VALID_IMAGE_UPLOAD_CONTENT_TYPES.contains(&val) {
-                    val.to_string()
-                } else {
-                    println!("Invalid content type: {}", val);
-                    let mut res = Response::new("Invalid content type".to_string());
-                    res.headers_mut().extend(headers);
+            let content_type = match content_type {
+                Some(val) => {
+                    if VALID_IMAGE_UPLOAD_CONTENT_TYPES.contains(&val.as_str()) {
+                        val
+                    } else {
+                        println!("Invalid content type: {}", val);
+                        let res =
+                            to_axum_response::<String>(Err(OperationError::InvalidRequestState)); // Response::new("Invalid content type".to_string());
+                                                                                                  // res.headers_mut().extend(headers);
+                        return res;
+                    }
+                }
+                None => "<none>".to_string(),
+            };
+
+            let data = match field.bytes().await {
+                Ok(val) => val,
+                Err(_e) => {
+                    let res = to_axum_response::<String>(Err(OperationError::InvalidRequestState));
+                    return res;
+                    // let mut res = Response::new(format!("Error reading field: {}", e));
+                    // res.headers_mut().extend(headers);
+                    // return res;
+                }
+            };
+
+            let filetype = match ImageType::try_from_content_type(&content_type) {
+                Ok(val) => val,
+                Err(_err) => {
+                    let res = to_axum_response::<String>(Err(OperationError::InvalidRequestState));
                     return res;
                 }
-            }
-            None => "<none>".to_string(),
-        };
-        let data = field.bytes().await.unwrap();
+            };
 
-        println!(
-            "Length of `{}` (`{}`: `{}`) is {} bytes",
-            name,
-            &filename,
-            content_type,
-            data.len()
-        );
-
-        image = Some(ImageValue {
-            filetype: ImageType::from(filename.split('.').last().unwrap()), // TODO, this is dumb
-            filename,
-            contents: data.into(),
-        });
-
-        println!(
-            " valid image? {:?}",
-            image.clone().unwrap().validate_image()
-        );
-    }
-
-    if let Some(image) = image {
-        let rs_id = oauth2_id(&rs_name);
-        match state
-            .qe_w_ref
-            .handle_oauth2_rs_image_update(kopid.uat, rs_id, image)
-            .await
-        {
-            Ok(_) => todo!(),
-            Err(err) => eprintln!("Failed to store image: {:?}", err),
+            image = Some(ImageValue {
+                filetype,
+                filename: filename.to_string(),
+                contents: data.to_vec(),
+            });
         };
     }
-    let mut res = Response::new("done!".to_string());
-    res.headers_mut().extend(headers);
-    res
+
+    let res = match image {
+        Some(image) => {
+            let rs_id = oauth2_id(&rs_name);
+            state
+                .qe_w_ref
+                .handle_oauth2_rs_image_update(kopid.uat, rs_id, image)
+                .await
+        }
+        None => Err(OperationError::InvalidAttribute(
+            "No image included, did you mean to use the DELETE method?".to_string(),
+        )),
+    };
+    to_axum_response(res)
 }
 
 // == OAUTH2 PROTOCOL FLOW HANDLERS ==

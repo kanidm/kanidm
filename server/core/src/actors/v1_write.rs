@@ -1185,14 +1185,38 @@ impl QueryServerWriteV1 {
     #[instrument(level = "debug", skip_all)]
     pub async fn handle_oauth2_rs_image_update(
         &self,
-        _uat: Option<String>,
+        uat: Option<String>,
         rs: Filter<FilterInvalid>,
-        _image: ImageValue,
+        image: ImageValue,
     ) -> Result<(), OperationError> {
         println!("RS Name: {:?}", rs);
-        // let mut idms_prox_write = self.idms.proxy_write(duration_from_epoch_now()).await;
+        let mut idms_prox_write = self.idms.proxy_write(duration_from_epoch_now()).await;
+        let ct = duration_from_epoch_now();
 
-        unimplemented!()
+        let ident = idms_prox_write
+            .validate_and_parse_token_to_ident(uat.as_deref(), ct)
+            .map_err(|e| {
+                admin_error!(err = ?e, "Invalid identity in handle_oauth2_rs_image_update {:?}", uat);
+                e
+            })?;
+
+        let ml = ModifyList::new_append(Attribute::Image, Value::Image(image));
+
+        let mdf = match ModifyEvent::from_internal_parts(ident, &ml, &rs, &idms_prox_write.qs_write)
+        {
+            Ok(m) => m,
+            Err(e) => {
+                admin_error!(err = ?e, "Failed to begin modify");
+                return Err(e);
+            }
+        };
+
+        trace!(?mdf, "Begin modify event");
+
+        idms_prox_write
+            .qs_write
+            .modify(&mdf)
+            .and_then(|_| idms_prox_write.commit().map(|_| ()))
     }
 
     #[instrument(
