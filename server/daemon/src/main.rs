@@ -258,6 +258,13 @@ async fn main() -> ExitCode {
                 }
             };
 
+            // Stop early if replication was found
+            if sconfig.repl_config.is_some() &&
+                !sconfig.i_acknowledge_that_replication_is_in_development
+            {
+                error!("Unable to proceed. Replication should not be configured manually.");
+                return ExitCode::FAILURE
+            }
 
             #[cfg(target_family = "unix")]
             {
@@ -341,6 +348,11 @@ async fn main() -> ExitCode {
             config.update_output_mode(opt.commands.commonopt().output_mode.to_owned().into());
             config.update_trust_x_forward_for(sconfig.trust_x_forward_for);
             config.update_admin_bind_path(&sconfig.adminbindpath);
+
+            config.update_replication_config(
+                sconfig.repl_config.clone()
+            );
+
             match &opt.commands  {
                 // we aren't going to touch the DB so we can carry on
                 KanidmdOpt::HealthCheck(_) => (),

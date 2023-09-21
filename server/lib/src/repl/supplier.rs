@@ -4,6 +4,14 @@ use super::proto::{
 use super::ruv::{RangeDiffStatus, ReplicationUpdateVector, ReplicationUpdateVectorTransaction};
 use crate::be::BackendTransaction;
 use crate::prelude::*;
+use openssl::pkey::{PKey, Private};
+use openssl::x509::X509;
+
+impl<'a> QueryServerWriteTransaction<'a> {
+    pub fn supplier_get_key_cert(&mut self) -> Result<(PKey<Private>, X509), OperationError> {
+        todo!();
+    }
+}
 
 impl<'a> QueryServerReadTransaction<'a> {
     // Given a consumers state, calculate the differential of changes they

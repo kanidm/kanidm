@@ -10,12 +10,15 @@ use std::fs::File;
 use std::io::Read;
 use std::net::SocketAddr;
 use std::path::Path;
-
 use std::str::FromStr;
 
 use kanidm_proto::constants::DEFAULT_SERVER_ADDRESS;
 use kanidm_proto::messages::ConsoleOutputMode;
-use serde::{Deserialize, Serialize};
+
+use openssl::x509::X509;
+
+use serde::Deserialize;
+use serde::Deserializer;
 use sketching::tracing_subscriber::EnvFilter;
 use url::Url;
 
@@ -42,14 +45,25 @@ pub struct TlsConfiguration {
     pub key: String,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+fn b64_der_to_x509<'de, D>(_des: D) -> Result<X509, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    todo!();
+}
+
+#[derive(Deserialize, Debug, Clone)]
 #[serde(tag = "type")]
 pub enum RepNodeConfig {
     #[serde(rename = "allow-pull")]
-    AllowPull { consumer_cert: String },
+    AllowPull {
+        #[serde(deserialize_with = "b64_der_to_x509")]
+        consumer_cert: X509,
+    },
     #[serde(rename = "pull")]
     Pull {
-        supplier_cert: String,
+        #[serde(deserialize_with = "b64_der_to_x509")]
+        supplier_cert: X509,
         automatic_refresh: bool,
     },
     /*
@@ -63,7 +77,7 @@ pub enum RepNodeConfig {
 #[derive(Deserialize, Debug, Clone)]
 pub struct ReplicationConfiguration {
     pub origin: Url,
-    pub address: SocketAddr,
+    pub bindaddress: SocketAddr,
 
     #[serde(flatten)]
     pub manual: BTreeMap<Url, RepNodeConfig>,
@@ -92,6 +106,8 @@ pub struct ServerConfig {
     pub log_level: Option<LogLevel>,
     #[serde(default)]
     pub role: ServerRole,
+    #[serde(default)]
+    pub i_acknowledge_that_replication_is_in_development: bool,
     #[serde(rename = "replication")]
     pub repl_config: Option<ReplicationConfiguration>,
 }
@@ -272,7 +288,7 @@ impl fmt::Display for Configuration {
             Some(repl) => {
                 write!(f, "replication: enabled")?;
                 write!(f, "repl_origin: {} ", repl.origin)?;
-                write!(f, "repl_address: {} ", repl.address)?;
+                write!(f, "repl_address: {} ", repl.bindaddress)?;
                 write!(
                     f,
                     "integration repl config mode: {}, ",
@@ -404,6 +420,10 @@ impl Configuration {
     /// Sets the output mode for writing to the console
     pub fn update_output_mode(&mut self, om: ConsoleOutputMode) {
         self.output_mode = om;
+    }
+
+    pub fn update_replication_config(&mut self, repl_config: Option<ReplicationConfiguration>) {
+        self.repl_config = repl_config;
     }
 
     pub fn update_tls(&mut self, chain: &Option<String>, key: &Option<String>) {

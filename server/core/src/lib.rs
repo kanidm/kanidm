@@ -32,6 +32,7 @@ mod crypto;
 mod https;
 mod interval;
 mod ldaps;
+mod repl;
 
 use std::path::Path;
 use std::sync::Arc;
@@ -913,6 +914,26 @@ pub async fn create_server_core(
         }
     };
 
+    // If we have replication configured, setup the listener with it's initial replication
+    // map (if any).
+
+    let maybe_repl_handle = match &config.repl_config {
+        Some(rc) => {
+            if !config_test {
+                // ⚠️  only start the sockets and listeners in non-config-test modes.
+                let h = repl::create_repl_server(idms_arc.clone(), rc, broadcast_tx.subscribe())
+                    .await?;
+                Some(h)
+            } else {
+                None
+            }
+        }
+        None => {
+            debug!("Replication not requested, skipping");
+            None
+        }
+    };
+
     let maybe_http_acceptor_handle = if config_test {
         admin_info!("this config rocks! 🪨 ");
         None
@@ -957,6 +978,10 @@ pub async fn create_server_core(
 
     if let Some(http_handle) = maybe_http_acceptor_handle {
         handles.push(http_handle)
+    }
+
+    if let Some(repl_handle) = maybe_repl_handle {
+        handles.push(repl_handle)
     }
 
     Ok(CoreHandle {

@@ -1,7 +1,6 @@
 use kanidmd_testkit::{is_free_port, PORT_ALLOC};
 use std::sync::atomic::Ordering;
 
-use std::error::Error;
 use std::net::{IpAddr, Ipv6Addr, SocketAddr};
 use std::pin::Pin;
 use std::time::Duration;
