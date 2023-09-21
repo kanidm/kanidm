@@ -115,22 +115,23 @@ async fn repl_acceptor(
     // For now we just design it to reload ssl if the map changes internally.
     'event: loop {
         // Get the private key / cert.
-        let (server_key, server_cert) = {
+        let res = {
             // Does this actually need to be a read incase we need to write
             // to sqlite?
             let ct = duration_from_epoch_now();
             let mut idms_prox_write = idms.proxy_write(ct).await;
-            let res = idms_prox_write
+            idms_prox_write
                 .qs_write
                 .supplier_get_key_cert()
-                .and_then(|res| idms_prox_write.commit().map(|()| res));
+                .and_then(|res| idms_prox_write.commit().map(|()| res))
+        };
 
-            match res {
-                Ok(r) => r,
-                Err(err) => {
-                    error!(?err, "CRITICAL: Unable to access supplier certificate/key.");
-                    continue;
-                }
+        let (server_key, server_cert) = match res {
+            Ok(r) => r,
+            Err(err) => {
+                error!(?err, "CRITICAL: Unable to access supplier certificate/key.");
+                sleep(retry_timeout).await;
+                continue;
             }
         };
 
