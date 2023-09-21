@@ -54,7 +54,7 @@ pub(crate) async fn create_repl_server(
         .await
         .map_err(|e| {
             error!(
-                "Could not bind to LDAP server address {} -> {:?}",
+                "Could not bind to replication address {} -> {:?}",
                 repl_config.bindaddress, e
             );
         })?;
