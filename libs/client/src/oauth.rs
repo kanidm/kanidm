@@ -181,11 +181,13 @@ impl KanidmClient {
             .await
     }
 
+    /// Want to delete the image associated with a resource server? Here's your thing!
     pub async fn idm_oauth2_rs_delete_image(&self, id: &str) -> Result<(), ClientError> {
         self.perform_delete_request(format!("/v1/oauth2/{}/_image", id).as_str())
             .await
     }
 
+    /// Want to add/update the image associated with a resource server? Here's your thing!
     pub async fn idm_oauth2_rs_update_image(
         &self,
         id: &str,

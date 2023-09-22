@@ -369,7 +369,7 @@ fn test_imagevalue_things() {
             dbg!("testing", &filename);
             let image = ImageValue {
                 filename: format!("oversize_dimensions.{extension}"),
-                filetype: ImageType::from(extension),
+                filetype: ImageType::try_from(extension).unwrap(),
                 contents: std::fs::read(filename).unwrap(),
             };
             let res = image.validate_image();
@@ -384,7 +384,7 @@ fn test_imagevalue_things() {
             dbg!("testing", &filename);
             let image = ImageValue {
                 filename: format!("ok.{extension}"),
-                filetype: ImageType::from(extension),
+                filetype: ImageType::try_from(extension).unwrap(),
                 contents: std::fs::read(filename).unwrap(),
             };
             let res = image.validate_image();

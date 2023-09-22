@@ -59,28 +59,22 @@ pub enum ImageType {
     Webp,
 }
 
-// impl From<&ImageType> for u8 {
-//     fn from(input: &ImageType) -> u8 {
-//         match input {
-//             ImageType::Png => 0,
-//             ImageType::Jpg => 1,
-//             ImageType::Gif => 2,
-//             ImageType::Svg => 3,
-//             ImageType::Webp => 4,
-//         }
-//     }
-// }
-
-impl From<&str> for ImageType {
-    fn from(value: &str) -> Self {
+impl TryFrom<&str> for ImageType {
+    type Error = &'static str;
+    /// ```
+    /// use kanidm_proto::internal::ImageType;
+    /// assert_eq!(ImageType::try_from("png").unwrap(), ImageType::Png);
+    /// ```
+    fn try_from(value: &str) -> Result<Self, &'static str> {
         #[allow(clippy::panic)]
         match value {
-            "png" => Self::Png,
-            "jpg" => Self::Jpg,
-            "gif" => Self::Gif,
-            "svg" => Self::Svg,
-            "webp" => Self::Webp,
-            _ => panic!("Invalid image type!"),
+            "png" => Ok(Self::Png),
+            "jpg" => Ok(Self::Jpg),
+            "jpeg" => Ok(Self::Jpg), // ugh I hate this
+            "gif" => Ok(Self::Gif),
+            "svg" => Ok(Self::Svg),
+            "webp" => Ok(Self::Webp),
+            _ => return Err("Invalid image type!"),
         }
     }
 }
