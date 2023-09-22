@@ -420,6 +420,8 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
                     .get_ava_single_bool(Attribute::OAuth2PreferShortUsername)
                     .unwrap_or(false);
 
+                let display_image = ent.get_ava_single_image(Attribute::Image);
+
                 let mut authorization_endpoint = self.inner.origin.clone();
                 authorization_endpoint.set_path("/ui/oauth2");
 
@@ -468,7 +470,7 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
                     scopes_supported,
                     prefer_short_username,
                     type_,
-                    display_image: None, // todo: load this from the value
+                    display_image,
                 };
 
                 Ok((client_id, rscfg))

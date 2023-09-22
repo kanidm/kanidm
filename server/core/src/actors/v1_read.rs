@@ -440,17 +440,12 @@ impl QueryServerReadV1 {
         if entries.is_empty() {
             return Err(OperationError::NoMatchingEntries);
         }
-        let image = match entries.first() {
+        let entry = match entries.first() {
             Some(entry) => entry,
             None => return Err(OperationError::NoMatchingEntries),
         };
-        let image = match image.get_ava_as_image(Attribute::Image) {
-            Some(image) => image,
-            None => return Err(OperationError::NoMatchingEntries),
-        };
-
-        match image.into_iter().next() {
-            Some(image) => Ok(image.to_owned()),
+        match entry.get_ava_single_image(Attribute::Image) {
+            Some(image) => Ok(image),
             None => Err(OperationError::NoMatchingEntries),
         }
     }

@@ -390,6 +390,20 @@ fn test_imagevalue_things() {
             let res = image.validate_image();
             dbg!(&res);
             assert!(res.is_ok());
+
+            let filename = format!(
+                "{}/src/valueset/test_images/ok.svg",
+                env!("CARGO_MANIFEST_DIR")
+            );
+            let image = ImageValue {
+                filename: format!("ok.svg"),
+                filetype: ImageType::Svg,
+                contents: std::fs::read(filename).unwrap(),
+            };
+            let res = image.validate_image();
+            dbg!(&res);
+            assert!(res.is_ok());
+            assert_eq!(image.hash_imagevalue().is_empty(), false);
         })
 }
 

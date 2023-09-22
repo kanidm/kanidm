@@ -2528,6 +2528,15 @@ impl<VALID, STATE> Entry<VALID, STATE> {
     }
 
     #[inline(always)]
+    pub fn get_ava_single_image(&self, attr: Attribute) -> Option<ImageValue> {
+        let images = self
+            .attrs
+            .get(attr.as_ref())
+            .and_then(|vs| vs.as_imageset())?;
+        images.iter().next().cloned()
+    }
+
+    #[inline(always)]
     pub fn get_ava_as_oauthscopes(&self, attr: Attribute) -> Option<impl Iterator<Item = &str>> {
         self.attrs
             .get(attr.as_ref())
