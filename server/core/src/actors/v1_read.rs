@@ -1,10 +1,11 @@
+use std::collections::BTreeSet;
 use std::convert::TryFrom;
 use std::fs;
 use std::net::IpAddr;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use kanidm_proto::internal::{AppLink, IdentifyUserRequest, IdentifyUserResponse};
+use kanidm_proto::internal::{AppLink, IdentifyUserRequest, IdentifyUserResponse, ImageValue};
 use kanidm_proto::v1::{
     ApiToken, AuthIssueSession, AuthRequest, BackupCodesView, CURequest, CUSessionToken, CUStatus,
     CredentialStatus, Entry as ProtoEntry, OperationError, RadiusAuthToken, SearchRequest,
@@ -400,6 +401,58 @@ impl QueryServerReadV1 {
                 admin_error!(?e, "Invalid identity");
                 e
             })
+    }
+
+    #[instrument(level = "debug", skip_all)]
+    /// pull an image so we can present it to the user
+    pub async fn handle_oauth2_rs_image_get_image(
+        &self,
+        uat: Option<String>,
+        rs: Filter<FilterInvalid>,
+    ) -> Result<ImageValue, OperationError> {
+        let mut idms_prox_read = self.idms.proxy_read().await;
+        let ct = duration_from_epoch_now();
+
+        let ident = idms_prox_read
+                .validate_and_parse_token_to_ident(uat.as_deref(), ct)
+                .map_err(|e| {
+                    admin_error!(err = ?e, "Invalid identity in handle_oauth2_rs_image_get_image {:?}", uat);
+                    e
+                })?;
+
+        let attrs: BTreeSet<AttrString> = vec![Attribute::Image.into()].into_iter().collect();
+
+        let filter_orig = filter_all!(f_self())
+            .validate(idms_prox_read.qs_read.get_schema())
+            .map_err(OperationError::SchemaViolation)?;
+        let filter = rs
+            .clone()
+            .validate(idms_prox_read.qs_read.get_schema())
+            .map_err(OperationError::SchemaViolation)?;
+
+        let search = SearchEvent {
+            ident,
+            filter,
+            filter_orig,
+            attrs: Some(attrs),
+        };
+        let entries = idms_prox_read.qs_read.search(&search)?;
+        if entries.len() == 0 {
+            return Err(OperationError::NoMatchingEntries);
+        }
+        let image = match entries.first() {
+            Some(entry) => entry,
+            None => return Err(OperationError::NoMatchingEntries),
+        };
+        let image = match image.get_ava_as_image(Attribute::Image) {
+            Some(image) => image,
+            None => return Err(OperationError::NoMatchingEntries),
+        };
+
+        match image.into_iter().next() {
+            Some(image) => Ok(image.to_owned()),
+            None => Err(OperationError::NoMatchingEntries),
+        }
     }
 
     #[instrument(

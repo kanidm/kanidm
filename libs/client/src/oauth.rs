@@ -181,13 +181,16 @@ impl KanidmClient {
             .await
     }
 
+    pub async fn idm_oauth2_rs_delete_image(&self, id: &str) -> Result<(), ClientError> {
+        self.perform_delete_request(&format!("/v1/oauth2/{}/_image", id).as_str())
+            .await
+    }
+
     pub async fn idm_oauth2_rs_update_image(
         &self,
         id: &str,
         image: ImageValue,
     ) -> Result<(), ClientError> {
-        let url = self.make_url(&format!("/v1/oauth2/{}/_image", id));
-
         let file_content_type = image.filetype.as_content_type_str();
 
         let file_data = multipart::Part::bytes(image.contents.clone())
@@ -198,7 +201,10 @@ impl KanidmClient {
         let form = multipart::Form::new().part("image", file_data);
 
         // send it
-        let response = self.client.post(url).multipart(form);
+        let response = self
+            .client
+            .post(self.make_url(&format!("/v1/oauth2/{}/_image", id)))
+            .multipart(form);
 
         let response = {
             let tguard = self.bearer_token.read().await;
@@ -212,10 +218,24 @@ impl KanidmClient {
             .send()
             .await
             .map_err(|err| self.handle_response_error(err))?;
-
         self.expect_version(&response).await;
 
-        Ok(())
+        let opid = self.get_kopid_from_response(&response);
+
+        match response.status() {
+            reqwest::StatusCode::OK => {}
+            unexpect => {
+                return Err(ClientError::Http(
+                    unexpect,
+                    response.json().await.ok(),
+                    opid,
+                ))
+            }
+        }
+        response
+            .json()
+            .await
+            .map_err(|e| ClientError::JsonDecode(e, opid))
     }
 
     pub async fn idm_oauth2_rs_enable_pkce(&self, id: &str) -> Result<(), ClientError> {

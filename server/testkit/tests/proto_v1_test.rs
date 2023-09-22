@@ -970,22 +970,38 @@ async fn test_server_rest_oauth2_basic_lifecycle(rsclient: KanidmClient) {
         kanidm_proto::internal::ImageType::Png,
         image_contents,
     );
+
     let res = rsclient
         .idm_oauth2_rs_update_image("test_integration", image)
         .await;
     dbg!(&res);
     assert!(res.is_ok());
 
+    //test getting the image
+    let client = reqwest::Client::new();
+
+    let response = client
+        .get(rsclient.make_url("/ui/images/oauth2/test_integration"))
+        .bearer_auth(rsclient.get_token().await.unwrap());
+
+    let response = response
+        .send()
+        .await
+        .map_err(|err| rsclient.handle_response_error(err))
+        .unwrap();
+
+    assert!(response.status().is_success());
+
     // check we can upload a *replacement* image
 
     let image_path = Path::new("../../server/lib/src/valueset/test_images/ok.jpg");
     dbg!(&image_path.canonicalize());
     assert!(image_path.exists());
-    let image_contents = std::fs::read(image_path).unwrap();
+    let jpg_file_contents = std::fs::read(image_path).unwrap();
     let image = ImageValue::new(
         "test".to_string(),
         kanidm_proto::internal::ImageType::Jpg,
-        image_contents.clone(),
+        jpg_file_contents.clone(),
     );
     let res = rsclient
         .idm_oauth2_rs_update_image("test_integration", image)
@@ -993,11 +1009,11 @@ async fn test_server_rest_oauth2_basic_lifecycle(rsclient: KanidmClient) {
     dbg!(&res);
     assert!(res.is_ok());
 
-    // check it fails when we upload a derp
+    // check it fails when we upload a jpg and say it's an
     let image = ImageValue::new(
         "test".to_string(),
         kanidm_proto::internal::ImageType::Webp,
-        image_contents,
+        jpg_file_contents,
     );
     let res = rsclient
         .idm_oauth2_rs_update_image("test_integration", image)
@@ -1006,6 +1022,12 @@ async fn test_server_rest_oauth2_basic_lifecycle(rsclient: KanidmClient) {
     assert!(res.is_err());
 
     // check we can remove an image
+
+    let res = rsclient
+        .idm_oauth2_rs_delete_image("test_integration")
+        .await;
+    dbg!(&res);
+    assert!(res.is_ok());
 
     // Check we can delete a scope map.
 

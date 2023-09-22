@@ -24,6 +24,7 @@ use kanidmd_lib::idm::oauth2::{
 use kanidmd_lib::prelude::f_eq;
 use kanidmd_lib::prelude::*;
 use kanidmd_lib::value::PartialValue;
+use kanidmd_lib::valueset::image::ImageValueThings;
 use serde::{Deserialize, Serialize};
 
 pub struct HTTPOauth2Error(Oauth2Error);
@@ -224,15 +225,49 @@ pub async fn oauth2_id_delete(
     to_axum_response(res)
 }
 
+/// this returns the image for the user if the user has permissions
+pub async fn oauth2_image_get(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    Path(rs_name): Path<String>,
+) -> Response<Body> {
+    let rs_filter = oauth2_id(&rs_name);
+    let res = state
+        .qe_r_ref
+        .handle_oauth2_rs_image_get_image(kopid.uat, rs_filter)
+        .await;
+
+    let image = match res {
+        Ok(image) => image,
+        Err(_err) => todo!(),
+    };
+
+    Response::builder()
+        .header(CONTENT_TYPE, image.filetype.as_content_type_str())
+        .body(Body::from(image.contents))
+        .unwrap()
+}
+
+pub async fn oauth2_id_image_delete(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    Path(rs_name): Path<String>,
+) -> Response<Body> {
+    let rs_filter = oauth2_id(&rs_name);
+    let res = state
+        .qe_w_ref
+        .handle_oauth2_rs_image_delete(kopid.uat, rs_filter)
+        .await;
+
+    to_axum_response(res)
+}
+
 pub async fn oauth2_id_image_post(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     Path(rs_name): Path<String>,
     mut multipart: axum::extract::Multipart,
 ) -> Response<Body> {
-    let mut headers = HeaderMap::new();
-    headers.insert(CONTENT_TYPE, HeaderValue::from_static(APPLICATION_JSON));
-    println!("Got RS {}", rs_name);
     // because we might not get an image
     let mut image: Option<ImageValue> = None;
 
@@ -248,8 +283,7 @@ pub async fn oauth2_id_image_post(
                     } else {
                         println!("Invalid content type: {}", val);
                         let res =
-                            to_axum_response::<String>(Err(OperationError::InvalidRequestState)); // Response::new("Invalid content type".to_string());
-                                                                                                  // res.headers_mut().extend(headers);
+                            to_axum_response::<String>(Err(OperationError::InvalidRequestState));
                         return res;
                     }
                 }
@@ -261,9 +295,6 @@ pub async fn oauth2_id_image_post(
                 Err(_e) => {
                     let res = to_axum_response::<String>(Err(OperationError::InvalidRequestState));
                     return res;
-                    // let mut res = Response::new(format!("Error reading field: {}", e));
-                    // res.headers_mut().extend(headers);
-                    // return res;
                 }
             };
 
@@ -285,10 +316,16 @@ pub async fn oauth2_id_image_post(
 
     let res = match image {
         Some(image) => {
-            let rs_id = oauth2_id(&rs_name);
+            let image_validation_result = image.validate_image();
+            if let Err(err) = image_validation_result {
+                admin_error!("Invalid image uploaded: {:?}", err);
+                return to_axum_response::<String>(Err(OperationError::InvalidRequestState));
+            }
+
+            let rs_name = oauth2_id(&rs_name);
             state
                 .qe_w_ref
-                .handle_oauth2_rs_image_update(kopid.uat, rs_id, image)
+                .handle_oauth2_rs_image_update(kopid.uat, rs_name, image)
                 .await
         }
         None => Err(OperationError::InvalidAttribute(

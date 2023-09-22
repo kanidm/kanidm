@@ -1449,7 +1449,7 @@ pub fn router(state: ServerState) -> Router<ServerState> {
         )
         .route(
             "/v1/oauth2/:rs_name/_image",
-            post(super::oauth2::oauth2_id_image_post),
+            post(super::oauth2::oauth2_id_image_post).delete(super::oauth2::oauth2_id_image_delete),
         )
         .route(
             "/v1/oauth2/:rs_name/_basic_secret",

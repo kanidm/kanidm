@@ -27,6 +27,7 @@ use std::time::Duration;
 use kanidm_proto::constants::{APPLICATION_JSON, ATTR_NAME};
 use kanidm_proto::v1::*;
 use reqwest::header::CONTENT_TYPE;
+use reqwest::Response;
 pub use reqwest::StatusCode;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
@@ -561,7 +562,7 @@ impl KanidmClient {
     }
 
     /// You've got the response from a reqwest and you want to turn it into a `ClientError`
-    fn handle_response_error(&self, error: reqwest::Error) -> ClientError {
+    pub fn handle_response_error(&self, error: reqwest::Error) -> ClientError {
         if error.is_connect() {
             if find_reqwest_error_source::<std::io::Error>(&error).is_some() {
                 // TODO: one day handle IO errors better
@@ -580,6 +581,18 @@ impl KanidmClient {
             }
         }
         ClientError::Transport(error)
+    }
+
+    fn get_kopid_from_response(&self, response: &Response) -> String {
+        let opid = response
+            .headers()
+            .get(KOPID)
+            .and_then(|hv| hv.to_str().ok())
+            .unwrap_or("missing_kopid")
+            .to_string();
+
+        debug!("opid -> {:?}", opid);
+        opid
     }
 
     async fn perform_simple_post_request<R: Serialize, T: DeserializeOwned>(
@@ -602,13 +615,7 @@ impl KanidmClient {
 
         self.expect_version(&response).await;
 
-        let opid = response
-            .headers()
-            .get(KOPID)
-            .and_then(|hv| hv.to_str().ok())
-            .unwrap_or("missing_kopid")
-            .to_string();
-        debug!("opid -> {:?}", opid);
+        let opid = self.get_kopid_from_response(&response);
 
         match response.status() {
             reqwest::StatusCode::OK => {}
@@ -679,12 +686,7 @@ impl KanidmClient {
                 .and_then(|hv| hv.to_str().ok().map(str::to_string));
         }
 
-        let opid = headers
-            .get(KOPID)
-            .and_then(|hv| hv.to_str().ok())
-            .unwrap_or("missing_kopid")
-            .to_string();
-        debug!("opid -> {:?}", opid);
+        let opid = self.get_kopid_from_response(&response);
 
         match response.status() {
             reqwest::StatusCode::OK => {}
@@ -731,13 +733,7 @@ impl KanidmClient {
 
         self.expect_version(&response).await;
 
-        let opid = response
-            .headers()
-            .get(KOPID)
-            .and_then(|hv| hv.to_str().ok())
-            .unwrap_or("missing_kopid")
-            .to_string();
-        debug!("opid -> {:?}", opid);
+        let opid = self.get_kopid_from_response(&response);
 
         match response.status() {
             reqwest::StatusCode::OK => {}
@@ -784,14 +780,7 @@ impl KanidmClient {
 
         self.expect_version(&response).await;
 
-        let opid = response
-            .headers()
-            .get(KOPID)
-            .and_then(|hv| hv.to_str().ok())
-            .unwrap_or("missing_kopid")
-            .to_string();
-
-        debug!("opid -> {:?}", opid);
+        let opid = self.get_kopid_from_response(&response);
 
         match response.status() {
             reqwest::StatusCode::OK => {}
@@ -838,13 +827,7 @@ impl KanidmClient {
 
         self.expect_version(&response).await;
 
-        let opid = response
-            .headers()
-            .get(KOPID)
-            .and_then(|hv| hv.to_str().ok())
-            .unwrap_or("missing_kopid")
-            .to_string();
-        debug!("opid -> {:?}", opid);
+        let opid = self.get_kopid_from_response(&response);
 
         match response.status() {
             reqwest::StatusCode::OK => {}
@@ -885,14 +868,7 @@ impl KanidmClient {
 
         self.expect_version(&response).await;
 
-        let opid = response
-            .headers()
-            .get(KOPID)
-            .and_then(|hv| hv.to_str().ok())
-            .unwrap_or("missing_kopid")
-            .to_string();
-
-        debug!("opid -> {:?}", opid);
+        let opid = self.get_kopid_from_response(&response);
 
         match response.status() {
             reqwest::StatusCode::OK => {}
@@ -933,13 +909,7 @@ impl KanidmClient {
 
         self.expect_version(&response).await;
 
-        let opid = response
-            .headers()
-            .get(KOPID)
-            .and_then(|hv| hv.to_str().ok())
-            .unwrap_or("missing_kopid")
-            .to_string();
-        debug!("opid -> {:?}", opid);
+        let opid = self.get_kopid_from_response(&response);
 
         match response.status() {
             reqwest::StatusCode::OK => {}
@@ -986,13 +956,7 @@ impl KanidmClient {
 
         self.expect_version(&response).await;
 
-        let opid = response
-            .headers()
-            .get(KOPID)
-            .and_then(|hv| hv.to_str().ok())
-            .unwrap_or("missing_kopid")
-            .to_string();
-        debug!("opid -> {:?}", opid);
+        let opid = self.get_kopid_from_response(&response);
 
         match response.status() {
             reqwest::StatusCode::OK => {}
@@ -1459,14 +1423,7 @@ impl KanidmClient {
 
         self.expect_version(&response).await;
 
-        let opid = response
-            .headers()
-            .get(KOPID)
-            .and_then(|hv| hv.to_str().ok())
-            .unwrap_or("missing_kopid")
-            .to_string();
-        debug!("opid -> {:?}", opid);
-
+        let opid = self.get_kopid_from_response(&response);
         match response.status() {
             // Continue to process.
             reqwest::StatusCode::OK => {}

@@ -208,7 +208,8 @@ pub async fn create_https_server(
                 .route("/", get(|| async { Redirect::temporary("/ui") }))
                 .route("/manifest.webmanifest", get(manifest::manifest))
                 .nest("/ui", spa_router)
-                .layer(middleware::compression::new()) // TODO: this needs to be configured properly
+                .layer(middleware::compression::new())
+                .route("/ui/images/oauth2/:rs_name", get(oauth2::oauth2_image_get))
         }
         ServerRole::WriteReplicaNoUI => Router::new(),
     };
