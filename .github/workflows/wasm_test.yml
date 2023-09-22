@@ -50,6 +50,6 @@ jobs:
       - name: "Run webdriver tests"
         run: |
           chromedriver &
-          cargo test -p kanidmd_testkit --features webdriver
+          cargo test -p kanidmd_testkit --features webdriver test_webdriver
         env:
           DISPLAY: ":99"
