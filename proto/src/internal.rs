@@ -64,6 +64,7 @@ impl TryFrom<&str> for ImageType {
     /// ```
     /// use kanidm_proto::internal::ImageType;
     /// assert_eq!(ImageType::try_from("png").unwrap(), ImageType::Png);
+    /// assert!(ImageType::try_from("krabs").is_err());
     /// ```
     fn try_from(value: &str) -> Result<Self, &'static str> {
         #[allow(clippy::panic)]
