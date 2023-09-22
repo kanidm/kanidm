@@ -1009,7 +1009,7 @@ async fn test_server_rest_oauth2_basic_lifecycle(rsclient: KanidmClient) {
     dbg!(&res);
     assert!(res.is_ok());
 
-    // check it fails when we upload a jpg and say it's an
+    // check it fails when we upload a jpg and say it's a webp
     let image = ImageValue::new(
         "test".to_string(),
         kanidm_proto::internal::ImageType::Webp,

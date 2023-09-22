@@ -437,7 +437,7 @@ impl QueryServerReadV1 {
             attrs: Some(attrs),
         };
         let entries = idms_prox_read.qs_read.search(&search)?;
-        if entries.len() == 0 {
+        if entries.is_empty() {
             return Err(OperationError::NoMatchingEntries);
         }
         let image = match entries.first() {

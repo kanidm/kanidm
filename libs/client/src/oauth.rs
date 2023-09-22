@@ -182,7 +182,7 @@ impl KanidmClient {
     }
 
     pub async fn idm_oauth2_rs_delete_image(&self, id: &str) -> Result<(), ClientError> {
-        self.perform_delete_request(&format!("/v1/oauth2/{}/_image", id).as_str())
+        self.perform_delete_request(format!("/v1/oauth2/{}/_image", id).as_str())
             .await
     }
 
@@ -193,10 +193,19 @@ impl KanidmClient {
     ) -> Result<(), ClientError> {
         let file_content_type = image.filetype.as_content_type_str();
 
-        let file_data = multipart::Part::bytes(image.contents.clone())
+        let file_data = match multipart::Part::bytes(image.contents.clone())
             .file_name(image.filename)
             .mime_str(file_content_type)
-            .unwrap();
+        {
+            Ok(part) => part,
+            Err(err) => {
+                error!(
+                    "Failed to generate multipart body from image data: {:}",
+                    err
+                );
+                return Err(ClientError::SystemError);
+            }
+        };
 
         let form = multipart::Form::new().part("image", file_data);
 

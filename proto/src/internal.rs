@@ -59,17 +59,17 @@ pub enum ImageType {
     Webp,
 }
 
-impl Into<u8> for &ImageType {
-    fn into(self) -> u8 {
-        match self {
-            ImageType::Png => 0,
-            ImageType::Jpg => 1,
-            ImageType::Gif => 2,
-            ImageType::Svg => 3,
-            ImageType::Webp => 4,
-        }
-    }
-}
+// impl From<&ImageType> for u8 {
+//     fn from(input: &ImageType) -> u8 {
+//         match input {
+//             ImageType::Png => 0,
+//             ImageType::Jpg => 1,
+//             ImageType::Gif => 2,
+//             ImageType::Svg => 3,
+//             ImageType::Webp => 4,
+//         }
+//     }
+// }
 
 impl From<&str> for ImageType {
     fn from(value: &str) -> Self {

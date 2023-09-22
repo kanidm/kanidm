@@ -239,13 +239,24 @@ pub async fn oauth2_image_get(
 
     let image = match res {
         Ok(image) => image,
-        Err(_err) => todo!(),
+        Err(_err) => {
+            admin_error!(
+                "Unable to get image for oauth2 resource server: {}",
+                rs_name
+            );
+            #[allow(clippy::unwrap_used)]
+            return Response::builder()
+                .status(StatusCode::NOT_FOUND)
+                .body(Body::empty())
+                .unwrap();
+        }
     };
 
+    #[allow(clippy::expect_used)]
     Response::builder()
         .header(CONTENT_TYPE, image.filetype.as_content_type_str())
         .body(Body::from(image.contents))
-        .unwrap()
+        .expect("Somehow failed to turn an image into a response!")
 }
 
 pub async fn oauth2_id_image_delete(
