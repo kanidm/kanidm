@@ -89,7 +89,7 @@ impl QueryServerWriteV1 {
         ) {
             Ok(m) => m,
             Err(e) => {
-                admin_error!(err=?e, "Failed to begin modify");
+                admin_error!(err=?e, "Failed to begin modify during modify_from_parts");
                 return Err(e);
             }
         };
@@ -140,7 +140,7 @@ impl QueryServerWriteV1 {
         ) {
             Ok(m) => m,
             Err(e) => {
-                admin_error!(err = ?e, "Failed to begin modify");
+                admin_error!(err = ?e, "Failed to begin modify during modify_from_internal_parts");
                 return Err(e);
             }
         };
@@ -213,7 +213,7 @@ impl QueryServerWriteV1 {
         let mdf = match ModifyEvent::from_message(ident, &req, &mut idms_prox_write.qs_write) {
             Ok(m) => m,
             Err(e) => {
-                admin_error!(err = ?e, "Failed to begin modify");
+                admin_error!(err = ?e, "Failed to begin modify during handle_modify");
                 return Err(e);
             }
         };
@@ -293,7 +293,7 @@ impl QueryServerWriteV1 {
         let mdf =
             ModifyEvent::from_internal_parts(ident, &modlist, &filter, &idms_prox_write.qs_write)
                 .map_err(|e| {
-                admin_error!(err = ?e, "Failed to begin modify");
+                admin_error!(err = ?e, "Failed to begin modify during handle_internalpatch");
                 e
             })?;
 
@@ -893,7 +893,7 @@ impl QueryServerWriteV1 {
         ) {
             Ok(m) => m,
             Err(e) => {
-                admin_error!(err = ?e, "Failed to begin modify");
+                admin_error!(err = ?e, "Failed to begin modify during purge attribute");
                 return Err(e);
             }
         };
@@ -1189,7 +1189,6 @@ impl QueryServerWriteV1 {
         rs: Filter<FilterInvalid>,
         image: ImageValue,
     ) -> Result<(), OperationError> {
-        println!("RS Name: {:?}", rs);
         let mut idms_prox_write = self.idms.proxy_write(duration_from_epoch_now()).await;
         let ct = duration_from_epoch_now();
 
@@ -1206,7 +1205,7 @@ impl QueryServerWriteV1 {
         {
             Ok(m) => m,
             Err(e) => {
-                admin_error!(err = ?e, "Failed to begin modify");
+                admin_error!(err = ?e, "Failed to begin modify during handle_oauth2_rs_image_update");
                 return Err(e);
             }
         };

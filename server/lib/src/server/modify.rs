@@ -63,7 +63,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         if pre_candidates.is_empty() {
             if me.ident.is_internal() {
                 trace!(
-                    "modify: no candidates match filter ... continuing {:?}",
+                    "modify_pre_apply: no candidates match filter ... continuing {:?}",
                     me.filter
                 );
                 return Ok(None);
@@ -76,8 +76,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
             }
         };
 
-        trace!("modify: pre_candidates -> {:?}", pre_candidates);
-        trace!("modify: modlist -> {:?}", me.modlist);
+        trace!("modify_pre_apply: pre_candidates -> {:?}", pre_candidates);
+        trace!("modify_pre_apply: modlist -> {:?}", me.modlist);
 
         // Are we allowed to make the changes we want to?
         // modify_allow_operation

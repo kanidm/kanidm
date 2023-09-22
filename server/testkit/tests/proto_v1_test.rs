@@ -1,6 +1,8 @@
 #![deny(warnings)]
+use std::path::Path;
 use std::time::SystemTime;
 
+use kanidm_proto::internal::ImageValue;
 use kanidm_proto::v1::{
     ApiToken, AuthCredential, AuthIssueSession, AuthMech, AuthRequest, AuthResponse, AuthState,
     AuthStep, CURegState, CredentialDetailType, Entry, Filter, Modify, ModifyList, UatPurpose,
@@ -957,6 +959,53 @@ async fn test_server_rest_oauth2_basic_lifecycle(rsclient: KanidmClient) {
         .expect("Failed to retrieve test_integration config");
 
     assert!(oauth2_config_updated2 != oauth2_config_updated3);
+
+    // Check we can upload an image
+    let image_path = Path::new("../../server/lib/src/valueset/test_images/ok.png");
+    dbg!(&image_path.canonicalize());
+    assert!(image_path.exists());
+    let image_contents = std::fs::read(image_path).unwrap();
+    let image = ImageValue::new(
+        "test".to_string(),
+        kanidm_proto::internal::ImageType::Png,
+        image_contents,
+    );
+    let res = rsclient
+        .idm_oauth2_rs_update_image("test_integration", image)
+        .await;
+    dbg!(&res);
+    assert!(res.is_ok());
+
+    // check we can upload a *replacement* image
+
+    let image_path = Path::new("../../server/lib/src/valueset/test_images/ok.jpg");
+    dbg!(&image_path.canonicalize());
+    assert!(image_path.exists());
+    let image_contents = std::fs::read(image_path).unwrap();
+    let image = ImageValue::new(
+        "test".to_string(),
+        kanidm_proto::internal::ImageType::Jpg,
+        image_contents.clone(),
+    );
+    let res = rsclient
+        .idm_oauth2_rs_update_image("test_integration", image)
+        .await;
+    dbg!(&res);
+    assert!(res.is_ok());
+
+    // check it fails when we upload a derp
+    let image = ImageValue::new(
+        "test".to_string(),
+        kanidm_proto::internal::ImageType::Webp,
+        image_contents,
+    );
+    let res = rsclient
+        .idm_oauth2_rs_update_image("test_integration", image)
+        .await;
+    dbg!(&res);
+    assert!(res.is_err());
+
+    // check we can remove an image
 
     // Check we can delete a scope map.
 

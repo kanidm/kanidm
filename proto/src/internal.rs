@@ -1,3 +1,6 @@
+use crate::constants::{
+    CONTENT_TYPE_GIF, CONTENT_TYPE_JPG, CONTENT_TYPE_PNG, CONTENT_TYPE_SVG, CONTENT_TYPE_WEBP,
+};
 use crate::v1::ApiTokenPurpose;
 use serde::{Deserialize, Serialize};
 use url::Url;
@@ -49,11 +52,23 @@ pub enum IdentifyUserResponse {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Hash, Ord, PartialOrd)]
 #[serde(rename_all = "lowercase")]
 pub enum ImageType {
-    Png = 0,
-    Jpg = 1,
-    Gif = 2,
-    Svg = 3,
-    Webp = 4,
+    Png,
+    Jpg,
+    Gif,
+    Svg,
+    Webp,
+}
+
+impl Into<u8> for &ImageType {
+    fn into(self) -> u8 {
+        match self {
+            ImageType::Png => 0,
+            ImageType::Jpg => 1,
+            ImageType::Gif => 2,
+            ImageType::Svg => 3,
+            ImageType::Webp => 4,
+        }
+    }
 }
 
 impl From<&str> for ImageType {
@@ -74,11 +89,22 @@ impl ImageType {
     pub fn try_from_content_type(content_type: &str) -> Result<Self, String> {
         let content_type = content_type.to_lowercase();
         match content_type.as_str() {
-            "image/jpeg" => Ok(ImageType::Jpg),
-            "image/png" => Ok(ImageType::Png),
-            "image/gif" => Ok(ImageType::Gif),
-            "image/webp" => Ok(ImageType::Webp),
+            CONTENT_TYPE_JPG => Ok(ImageType::Jpg),
+            CONTENT_TYPE_PNG => Ok(ImageType::Png),
+            CONTENT_TYPE_GIF => Ok(ImageType::Gif),
+            CONTENT_TYPE_WEBP => Ok(ImageType::Webp),
+            CONTENT_TYPE_SVG => Ok(ImageType::Svg),
             _ => Err(format!("Invalid content type: {}", content_type)),
+        }
+    }
+
+    pub fn as_content_type_str(&self) -> &'static str {
+        match &self {
+            ImageType::Jpg => CONTENT_TYPE_JPG,
+            ImageType::Png => CONTENT_TYPE_PNG,
+            ImageType::Gif => CONTENT_TYPE_GIF,
+            ImageType::Webp => CONTENT_TYPE_WEBP,
+            ImageType::Svg => CONTENT_TYPE_SVG,
         }
     }
 }
