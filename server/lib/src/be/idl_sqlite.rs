@@ -1079,6 +1079,19 @@ impl IdlSqliteWriteTransaction {
         }
     }
 
+    pub(crate) fn create_keyhandles(&self) -> Result<(), OperationError> {
+        self.get_conn()?
+            .execute(
+                &format!(
+                    "CREATE TABLE IF NOT EXISTS {}.keyhandles (id TEXT PRIMARY KEY, data TEXT)",
+                    self.get_db_name()
+                ),
+                [],
+            )
+            .map(|_| ())
+            .map_err(sqlite_error)
+    }
+
     pub fn create_idx(&self, attr: Attribute, itype: IndexType) -> Result<(), OperationError> {
         // Is there a better way than formatting this? I can't seem
         // to template into the str.
@@ -1565,7 +1578,7 @@ impl IdlSqliteWriteTransaction {
             dbv_id2entry = 6;
             info!(entry = %dbv_id2entry, "dbv_id2entry migrated (externalid2uuid)");
         }
-        //   * if v6 -> complete.
+        //   * if v6 -> create id2entry_quarantine.
         if dbv_id2entry == 6 {
             self.get_conn()?
                 .execute(
@@ -1584,7 +1597,13 @@ impl IdlSqliteWriteTransaction {
             dbv_id2entry = 7;
             info!(entry = %dbv_id2entry, "dbv_id2entry migrated (quarantine)");
         }
-        //   * if v7 -> complete.
+        //   * if v7 -> create keyhandles storage.
+        if dbv_id2entry == 7 {
+            self.create_keyhandles()?;
+            dbv_id2entry = 8;
+            info!(entry = %dbv_id2entry, "dbv_id2entry migrated (keyhandles)");
+        }
+        //   * if v8 -> complete
 
         self.set_db_version_key(DBV_ID2ENTRY, dbv_id2entry)?;
 
