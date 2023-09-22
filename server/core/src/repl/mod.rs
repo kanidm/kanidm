@@ -36,19 +36,6 @@ pub(crate) async fn create_repl_server(
     repl_config: &ReplicationConfiguration,
     rx: broadcast::Receiver<CoreAction>,
 ) -> Result<tokio::task::JoinHandle<()>, ()> {
-    /*
-    let address = repl_config.bindaddress.as_str();
-    if address.starts_with(":::") {
-        // takes :::xxxx to xxxx
-        let port = address.replacen(":::", "", 1);
-        error!("Address '{}' looks like an attempt to wildcard bind with IPv6 on port {} - please try using ldapbindaddress = '[::]:{}'", address, port, port);
-    };
-
-    let addr = net::SocketAddr::from_str(address).map_err(|e| {
-        error!("Could not parse LDAP server address {} -> {:?}", address, e);
-    })?;
-    */
-
     // We need to start the tcp listener. This will persist over ssl reloads!
     let listener = TcpListener::bind(&repl_config.bindaddress)
         .await
