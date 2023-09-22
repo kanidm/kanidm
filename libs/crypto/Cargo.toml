@@ -21,6 +21,7 @@ rand = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 tracing = { workspace = true }
 tss-esapi = { workspace = true, optional = true }
+uuid = { workspace = true }
 
 [dev-dependencies]
 sketching = { workspace = true }

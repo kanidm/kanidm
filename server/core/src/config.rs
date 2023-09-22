@@ -15,10 +15,10 @@ use std::str::FromStr;
 use kanidm_proto::constants::DEFAULT_SERVER_ADDRESS;
 use kanidm_proto::messages::ConsoleOutputMode;
 
-use openssl::x509::X509;
+use kanidm_lib_crypto::prelude::X509;
+use kanidm_lib_crypto::serialise::x509b64;
 
 use serde::Deserialize;
-use serde::Deserializer;
 use sketching::tracing_subscriber::EnvFilter;
 use url::Url;
 
@@ -45,24 +45,17 @@ pub struct TlsConfiguration {
     pub key: String,
 }
 
-fn b64_der_to_x509<'de, D>(_des: D) -> Result<X509, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    todo!();
-}
-
 #[derive(Deserialize, Debug, Clone)]
 #[serde(tag = "type")]
 pub enum RepNodeConfig {
     #[serde(rename = "allow-pull")]
     AllowPull {
-        #[serde(deserialize_with = "b64_der_to_x509")]
+        #[serde(with = "x509b64")]
         consumer_cert: X509,
     },
     #[serde(rename = "pull")]
     Pull {
-        #[serde(deserialize_with = "b64_der_to_x509")]
+        #[serde(with = "x509b64")]
         supplier_cert: X509,
         automatic_refresh: bool,
     },

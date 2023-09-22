@@ -29,6 +29,7 @@ hyper = { workspace = true }
 kanidm_proto = { workspace = true }
 kanidm_utils_users = { workspace = true }
 kanidmd_lib = { workspace = true }
+kanidm_lib_crypto = { workspace = true }
 ldap3_proto = { workspace = true }
 libc = { workspace = true }
 openssl = { workspace = true }

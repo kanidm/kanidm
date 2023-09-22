@@ -1247,6 +1247,11 @@ impl QueryServer {
 }
 
 impl<'a> QueryServerWriteTransaction<'a> {
+    pub(crate) fn get_server_uuid(&self) -> Uuid {
+        // Cid has our server id within
+        self.cid.s_uuid
+    }
+
     pub(crate) fn get_curtime(&self) -> Duration {
         self.curtime
     }

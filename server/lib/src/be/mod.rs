@@ -36,6 +36,7 @@ pub mod dbvalue;
 mod idl_arc_sqlite;
 mod idl_sqlite;
 pub(crate) mod idxkey;
+pub(crate) mod keystorage;
 
 pub(crate) use self::idxkey::{IdxKey, IdxKeyRef, IdxKeyToRef, IdxSlope};
 use crate::be::idl_arc_sqlite::{

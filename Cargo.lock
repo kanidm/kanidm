@@ -2873,6 +2873,7 @@ dependencies = [
  "sketching",
  "tracing",
  "tss-esapi",
+ "uuid",
 ]
 
 [[package]]
@@ -3000,6 +3001,7 @@ dependencies = [
  "http",
  "hyper",
  "kanidm_build_profiles",
+ "kanidm_lib_crypto",
  "kanidm_proto",
  "kanidm_utils_users",
  "kanidmd_lib",
@@ -3102,6 +3104,7 @@ dependencies = [
  "hyper-tls",
  "kanidm_build_profiles",
  "kanidm_client",
+ "kanidm_lib_crypto",
  "kanidm_proto",
  "kanidmd_core",
  "kanidmd_lib",
@@ -3118,6 +3121,7 @@ dependencies = [
  "tokio-openssl",
  "tracing",
  "url",
+ "uuid",
  "webauthn-authenticator-rs",
 ]
 

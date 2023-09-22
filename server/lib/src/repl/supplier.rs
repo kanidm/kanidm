@@ -4,12 +4,68 @@ use super::proto::{
 use super::ruv::{RangeDiffStatus, ReplicationUpdateVector, ReplicationUpdateVectorTransaction};
 use crate::be::BackendTransaction;
 use crate::prelude::*;
-use openssl::pkey::{PKey, Private};
-use openssl::x509::X509;
+
+use crate::be::keystorage::{KeyHandle, KeyHandleId};
+use kanidm_lib_crypto::mtls::build_self_signed_server_and_client_identity;
+use kanidm_lib_crypto::prelude::{PKey, Private, X509};
 
 impl<'a> QueryServerWriteTransaction<'a> {
     pub fn supplier_get_key_cert(&mut self) -> Result<(PKey<Private>, X509), OperationError> {
-        todo!();
+        // Later we need to put this through a HSM or similar, but we will always need a way
+        // to persist a handle, so we still need the db write and load components.
+
+        // Does the handle exist?
+        let maybe_key_handle = self
+            .get_be_txn()
+            .get_key_handle(KeyHandleId::ReplicationKey)
+            .map_err(|err| {
+                error!(?err, "Unable to access replication key");
+                err
+            })?;
+
+        // Can you process the keyhande?
+        let key_cert = match maybe_key_handle {
+            Some(KeyHandle::X509Key { private, x509 }) => (private, x509),
+            /*
+            Some(Keyhandle::...) => {
+                // invalid key
+                // error? regenerate?
+            }
+            */
+            None => {
+                // Invalid, must need to re-generate.
+                let domain_name = "localhost";
+                let expiration_days = 1;
+                let s_uuid = self.get_server_uuid();
+
+                let (private, x509) = build_self_signed_server_and_client_identity(
+                    s_uuid,
+                    domain_name,
+                    expiration_days,
+                )
+                .map_err(|err| {
+                    error!(?err, "Unable to generate self signed key/cert");
+                    // What error?
+                    OperationError::CryptographyError
+                })?;
+
+                let kh = KeyHandle::X509Key {
+                    private: private.clone(),
+                    x509: x509.clone(),
+                };
+
+                self.get_be_txn()
+                    .set_key_handle(KeyHandleId::ReplicationKey, kh)
+                    .map_err(|err| {
+                        error!(?err, "Unable to persist replication key");
+                        err
+                    })?;
+
+                (private, x509)
+            }
+        };
+
+        Ok(key_cert)
     }
 }
 

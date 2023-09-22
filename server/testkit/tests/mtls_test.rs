@@ -1,3 +1,5 @@
+use kanidm_lib_crypto::mtls::build_self_signed_server_and_client_identity;
+
 use kanidmd_testkit::{is_free_port, PORT_ALLOC};
 use std::sync::atomic::Ordering;
 
@@ -9,96 +11,15 @@ use tokio::sync::oneshot;
 use tokio::time;
 use tracing::{error, trace};
 
-use openssl::asn1;
-use openssl::bn;
-use openssl::ec;
-use openssl::hash;
-use openssl::nid::Nid;
-use openssl::pkey;
 use openssl::ssl::{Ssl, SslAcceptor, SslMethod, SslRef};
 use openssl::ssl::{SslConnector, SslVerifyMode};
-use openssl::x509::extension::BasicConstraints;
-use openssl::x509::extension::ExtendedKeyUsage;
-use openssl::x509::extension::KeyUsage;
-use openssl::x509::extension::SubjectAlternativeName;
-use openssl::x509::extension::SubjectKeyIdentifier;
-use openssl::x509::X509NameBuilder;
 use openssl::x509::X509;
 use tokio_openssl::SslStream;
 
-use openssl::error::ErrorStack as OpenSSLError;
-
-/// Gets an [EcGroup] for P-256
-pub fn get_group() -> Result<ec::EcGroup, OpenSSLError> {
-    ec::EcGroup::from_curve_name(Nid::X9_62_PRIME256V1)
-}
+use uuid::Uuid;
 
 fn keylog_cb(_ssl_ref: &SslRef, key: &str) {
     trace!(?key);
-}
-
-fn build_self_signed_client_server(
-    domain_name: &str,
-) -> Result<(pkey::PKey<pkey::Private>, X509), OpenSSLError> {
-    let ecgroup = get_group()?;
-    let eckey = ec::EcKey::generate(&ecgroup)?;
-    let ca_key = pkey::PKey::from_ec_key(eckey)?;
-    let mut x509_name = X509NameBuilder::new()?;
-
-    x509_name.append_entry_by_text("C", "AU")?;
-    x509_name.append_entry_by_text("ST", "QLD")?;
-    x509_name.append_entry_by_text("O", "Kanidm")?;
-    x509_name.append_entry_by_text("CN", "MTLS Test")?;
-    let x509_name = x509_name.build();
-
-    let mut cert_builder = X509::builder()?;
-    // Yes, 2 actually means 3 here ...
-    cert_builder.set_version(2)?;
-
-    let serial_number = bn::BigNum::from_u32(1).and_then(|serial| serial.to_asn1_integer())?;
-
-    cert_builder.set_serial_number(&serial_number)?;
-    cert_builder.set_subject_name(&x509_name)?;
-    cert_builder.set_issuer_name(&x509_name)?;
-
-    let not_before = asn1::Asn1Time::days_from_now(0)?;
-    cert_builder.set_not_before(&not_before)?;
-    let not_after = asn1::Asn1Time::days_from_now(1)?;
-    cert_builder.set_not_after(&not_after)?;
-
-    // Do we need pathlen 0?
-    cert_builder.append_extension(BasicConstraints::new().critical().build()?)?;
-    cert_builder.append_extension(
-        KeyUsage::new()
-            .critical()
-            .digital_signature()
-            .key_encipherment()
-            .build()?,
-    )?;
-
-    cert_builder.append_extension(
-        ExtendedKeyUsage::new()
-            .server_auth()
-            .client_auth()
-            .build()?,
-    )?;
-
-    let subject_key_identifier =
-        SubjectKeyIdentifier::new().build(&cert_builder.x509v3_context(None, None))?;
-    cert_builder.append_extension(subject_key_identifier)?;
-
-    let subject_alt_name = SubjectAlternativeName::new()
-        .dns(domain_name)
-        .build(&cert_builder.x509v3_context(None, None))?;
-
-    cert_builder.append_extension(subject_alt_name)?;
-
-    cert_builder.set_pubkey(&ca_key)?;
-
-    cert_builder.sign(&ca_key, hash::MessageDigest::sha256())?;
-    let ca_cert = cert_builder.build();
-
-    Ok((ca_key, ca_cert))
 }
 
 async fn setup_mtls_test(
@@ -127,14 +48,18 @@ async fn setup_mtls_test(
     trace!("{:?}", port);
 
     // First we need the two certificates.
-    let (client_key, client_cert) = build_self_signed_client_server("localhost").unwrap();
+    let client_uuid = Uuid::new_v4();
+    let (client_key, client_cert) =
+        build_self_signed_server_and_client_identity(client_uuid, "localhost", 1).unwrap();
 
     let server_san = if testcase == TestCase::ServerCertSanInvalid {
         "evilcorp.com"
     } else {
         "localhost"
     };
-    let (server_key, server_cert) = build_self_signed_client_server(server_san).unwrap();
+    let server_uuid = Uuid::new_v4();
+    let (server_key, server_cert): (_, X509) =
+        build_self_signed_server_and_client_identity(server_uuid, server_san, 1).unwrap();
     let server_addr = SocketAddr::new(IpAddr::V6(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1)), port);
 
     let listener = TcpListener::bind(&server_addr)
