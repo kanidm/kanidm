@@ -240,7 +240,6 @@ pub struct Oauth2RS {
     prefer_short_username: bool,
     type_: OauthRSType,
     /// the display image for the OAuth2 Resource
-    #[allow(dead_code)]
     display_image: Option<ImageValue>,
 }
 
