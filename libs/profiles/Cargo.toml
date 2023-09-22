@@ -5,7 +5,7 @@ documentation = "https://docs.rs/kanidm/latest/kanidm/"
 # We do not have tests in this pkg
 autotests = false
 # because it makes coverage break
-doctest = false
+# doctests = false
 
 version = { workspace = true }
 authors = { workspace = true }
