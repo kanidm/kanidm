@@ -409,7 +409,6 @@ fn test_imagevalue_things() {
 
 impl ValueSetImage {
     pub fn new(image: ImageValue) -> Box<Self> {
-        // TODO: add tests for on-creation validation
         let mut set = HashSet::new();
         set.insert(image);
         Box::new(ValueSetImage { set })
