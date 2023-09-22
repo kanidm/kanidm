@@ -1004,7 +1004,6 @@ impl PartialEq for Value {
             (Value::OauthScopeMap(a, c), Value::OauthScopeMap(b, d)) => a.eq(b) && c.eq(d),
 
             (Value::Image(image1), Value::Image(image2)) => {
-                // TODO: do we want to compare file contents too?
                 image1.hash_imagevalue().eq(&image2.hash_imagevalue())
             }
             (Value::Address(_), Value::Address(_))
