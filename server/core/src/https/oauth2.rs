@@ -292,15 +292,18 @@ pub async fn oauth2_id_image_post(
                     if VALID_IMAGE_UPLOAD_CONTENT_TYPES.contains(&val.as_str()) {
                         val
                     } else {
-                        println!("Invalid content type: {}", val);
+                        debug!("Invalid content type: {}", val);
                         let res =
                             to_axum_response::<String>(Err(OperationError::InvalidRequestState));
                         return res;
                     }
                 }
-                None => "<none>".to_string(),
+                None => {
+                    debug!("No content type header provided");
+                    let res = to_axum_response::<String>(Err(OperationError::InvalidRequestState));
+                    return res;
+                }
             };
-
             let data = match field.bytes().await {
                 Ok(val) => val,
                 Err(_e) => {

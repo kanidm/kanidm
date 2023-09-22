@@ -19,6 +19,7 @@ use concread::cowcell::*;
 use fernet::Fernet;
 use hashbrown::HashMap;
 use kanidm_proto::constants::*;
+use kanidm_proto::internal::ImageValue;
 pub use kanidm_proto::oauth2::{
     AccessTokenIntrospectRequest, AccessTokenIntrospectResponse, AccessTokenRequest,
     AccessTokenResponse, AuthorisationRequest, CodeChallengeMethod, ErrorResponse, GrantTypeReq,
@@ -240,7 +241,7 @@ pub struct Oauth2RS {
     type_: OauthRSType,
     /// the display image for the OAuth2 Resource
     #[allow(dead_code)]
-    display_image: Option<Uuid>,
+    display_image: Option<ImageValue>,
 }
 
 impl std::fmt::Debug for Oauth2RS {

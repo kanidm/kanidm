@@ -74,7 +74,7 @@ impl TryFrom<&str> for ImageType {
             "gif" => Ok(Self::Gif),
             "svg" => Ok(Self::Svg),
             "webp" => Ok(Self::Webp),
-            _ => return Err("Invalid image type!"),
+            _ => Err("Invalid image type!"),
         }
     }
 }
