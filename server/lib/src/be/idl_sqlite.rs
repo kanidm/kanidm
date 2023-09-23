@@ -1,8 +1,11 @@
+use std::collections::BTreeMap;
 use std::collections::VecDeque;
 use std::convert::{TryFrom, TryInto};
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::time::Duration;
+
+use super::keystorage::{KeyHandle, KeyHandleId};
 
 // use crate::valueset;
 use hashbrown::HashMap;
@@ -24,13 +27,13 @@ const DBV_ID2ENTRY: &str = "id2entry";
 const DBV_INDEXV: &str = "indexv";
 
 #[allow(clippy::needless_pass_by_value)] // needs to accept value from `map_err`
-fn sqlite_error(e: rusqlite::Error) -> OperationError {
+pub(super) fn sqlite_error(e: rusqlite::Error) -> OperationError {
     admin_error!(?e, "SQLite Error");
     OperationError::SqliteError
 }
 
 #[allow(clippy::needless_pass_by_value)] // needs to accept value from `map_err`
-fn serde_json_error(e: serde_json::Error) -> OperationError {
+pub(super) fn serde_json_error(e: serde_json::Error) -> OperationError {
     admin_error!(?e, "Serde JSON Error");
     OperationError::SerdeJsonError
 }
@@ -480,6 +483,29 @@ pub trait IdlSqliteTransaction {
             ),
             None => None,
         })
+    }
+
+    fn get_key_handles(&mut self) -> Result<BTreeMap<KeyHandleId, KeyHandle>, OperationError> {
+        let mut stmt = self
+            .get_conn()?
+            .prepare(&format!(
+                "SELECT id, data FROM {}.keyhandles",
+                self.get_db_name()
+            ))
+            .map_err(sqlite_error)?;
+
+        let kh_iter = stmt
+            .query_map([], |row| Ok((row.get(0)?, row.get(1)?)))
+            .map_err(sqlite_error)?;
+
+        kh_iter
+            .map(|v| {
+                let (id, data): (Vec<u8>, Vec<u8>) = v.map_err(sqlite_error)?;
+                let id = serde_json::from_slice(id.as_slice()).map_err(serde_json_error)?;
+                let data = serde_json::from_slice(data.as_slice()).map_err(serde_json_error)?;
+                Ok((id, data))
+            })
+            .collect()
     }
 
     #[instrument(level = "debug", name = "idl_sqlite::get_allids", skip_all)]

@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use std::collections::BTreeSet;
 use std::convert::TryInto;
 use std::ops::DerefMut;
@@ -356,6 +357,8 @@ pub trait IdlArcSqliteTransaction {
 
     fn get_db_ts_max(&self) -> Result<Option<Duration>, OperationError>;
 
+    fn get_key_handles(&mut self) -> Result<BTreeMap<KeyHandleId, KeyHandle>, OperationError>;
+
     fn verify(&self) -> Vec<Result<(), ConsistencyError>>;
 
     fn is_dirty(&self) -> bool;
@@ -418,6 +421,10 @@ impl<'a> IdlArcSqliteTransaction for IdlArcSqliteReadTransaction<'a> {
 
     fn get_db_ts_max(&self) -> Result<Option<Duration>, OperationError> {
         self.db.get_db_ts_max()
+    }
+
+    fn get_key_handles(&mut self) -> Result<BTreeMap<KeyHandleId, KeyHandle>, OperationError> {
+        self.db.get_key_handles()
     }
 
     fn verify(&self) -> Vec<Result<(), ConsistencyError>> {
@@ -512,6 +519,10 @@ impl<'a> IdlArcSqliteTransaction for IdlArcSqliteWriteTransaction<'a> {
             Some(ts) => Ok(Some(ts)),
             None => self.db.get_db_ts_max(),
         }
+    }
+
+    fn get_key_handles(&mut self) -> Result<BTreeMap<KeyHandleId, KeyHandle>, OperationError> {
+        self.db.get_key_handles()
     }
 
     fn verify(&self) -> Vec<Result<(), ConsistencyError>> {

@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 use smartstring::alias::String as AttrString;
 use uuid::Uuid;
 
+use super::keystorage::{KeyHandle, KeyHandleId};
 use crate::be::dbvalue::{DbValueEmailAddressV1, DbValuePhoneNumberV1, DbValueSetV2, DbValueV1};
 use crate::prelude::entries::Attribute;
 use crate::prelude::OperationError;
@@ -55,6 +56,13 @@ pub enum DbBackup {
         db_s_uuid: Uuid,
         db_d_uuid: Uuid,
         db_ts_max: Duration,
+        entries: Vec<DbEntry>,
+    },
+    V3 {
+        db_s_uuid: Uuid,
+        db_d_uuid: Uuid,
+        db_ts_max: Duration,
+        keyhandles: BTreeMap<KeyHandleId, KeyHandle>,
         entries: Vec<DbEntry>,
     },
 }

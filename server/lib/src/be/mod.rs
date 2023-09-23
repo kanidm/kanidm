@@ -873,10 +873,13 @@ pub trait BackendTransaction {
             .get_db_ts_max()
             .and_then(|u| u.ok_or(OperationError::InvalidDbState))?;
 
-        let bak = DbBackup::V2 {
+        let keyhandles = idlayer.get_key_handles()?;
+
+        let bak = DbBackup::V3 {
             db_s_uuid,
             db_d_uuid,
             db_ts_max,
+            keyhandles,
             entries,
         };
 
@@ -1725,6 +1728,20 @@ impl<'a> BackendWriteTransaction<'a> {
                 idlayer.set_db_ts_max(db_ts_max)?;
                 entries
             }
+            DbBackup::V3 {
+                db_s_uuid,
+                db_d_uuid,
+                db_ts_max,
+                keyhandles,
+                entries,
+            } => {
+                // Do stuff.
+                idlayer.write_db_s_uuid(db_s_uuid)?;
+                idlayer.write_db_d_uuid(db_d_uuid)?;
+                idlayer.set_db_ts_max(db_ts_max)?;
+                idlayer.set_key_handles(keyhandles)?;
+                entries
+            }
         };
 
         info!("Restoring {} entries ...", dbentries.len());
@@ -2502,6 +2519,15 @@ mod tests {
                     db_s_uuid: _,
                     db_d_uuid: _,
                     db_ts_max: _,
+                    entries,
+                } => {
+                    let _ = entries.pop();
+                }
+                DbBackup::V3 {
+                    db_s_uuid: _,
+                    db_d_uuid: _,
+                    db_ts_max: _,
+                    keyhandles: _,
                     entries,
                 } => {
                     let _ = entries.pop();
