@@ -14,10 +14,13 @@ use tokio::net::TcpListener;
 use tokio::sync::broadcast;
 use tokio::sync::mpsc;
 use tokio::sync::oneshot;
-use tokio::time::{interval, sleep};
+use tokio::time::{timeout, interval, sleep};
 use tracing::error;
 use url::Url;
 use uuid::Uuid;
+
+use http::{Request, StatusCode};
+use hyper::{client::conn, Body};
 
 use crate::https::trace;
 use tower_http::trace::{DefaultOnRequest, TraceLayer};
@@ -82,17 +85,41 @@ pub(crate) async fn create_repl_server(
 async fn repl_run_consumer(
     sock_addrs: &[SocketAddr],
     tls_connector: &SslConnector,
-    automatic_refresh: bool,
-    idms: &IdmServer,
+    _automatic_refresh: bool,
+    _idms: &IdmServer,
 ) {
+    let replica_connect_timeout = Duration::from_secs(2);
 
-    /*
-    let tcpclient = TcpStream::connect(server_addr).await.unwrap();
-    trace!("connection established");
-    let tlsstream = Ssl::new(tls_parms.context())
-        .and_then(|tls_obj| SslStream::new(tls_obj, tcpclient))
-        .unwrap();
-    */
+    // This is pretty gnarly, but we need to loop to try out each socket addr.
+
+    for sock_addr in sock_addrs {
+
+        let tcpclient = match TcpStream::connect(server_addr).await 
+        {
+            Ok(tc) => tc,
+            Err(err) => {
+                error!("Failed to connect to {}", server_addr);
+                continue;
+            }
+        }
+
+        trace!("connection established");
+
+        let tlsstream = Ssl::new(tls_connector.context())
+            .and_then(|tls_obj| SslStream::new(tls_obj, tcpclient))
+            .unwrap();
+
+        let (mut request_sender, connection) = conn::handshake(target_stream).await?;
+
+        // Now we can do requests.
+
+
+
+        return;
+    }
+
+    error!("Unable to complete replication successfully.");
+
 }
 
 async fn repl_task(
