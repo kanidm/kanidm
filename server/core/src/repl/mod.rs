@@ -10,6 +10,8 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::net::TcpListener;
 use tokio::sync::broadcast;
+use tokio::sync::mpsc;
+use tokio::sync::oneshot;
 use tokio::time::sleep;
 use tracing::error;
 
@@ -31,11 +33,15 @@ use axum::response::IntoResponse;
 use axum::routing::get;
 use axum::Router;
 
+pub(crate) enum ReplCtrl {
+    GetCertificate { respond: oneshot::Sender<X509> },
+}
+
 pub(crate) async fn create_repl_server(
     idms: Arc<IdmServer>,
     repl_config: &ReplicationConfiguration,
     rx: broadcast::Receiver<CoreAction>,
-) -> Result<tokio::task::JoinHandle<()>, ()> {
+) -> Result<(tokio::task::JoinHandle<()>, mpsc::Sender<ReplCtrl>), ()> {
     // We need to start the tcp listener. This will persist over ssl reloads!
     let listener = TcpListener::bind(&repl_config.bindaddress)
         .await
@@ -49,15 +55,24 @@ pub(crate) async fn create_repl_server(
     let listener = hyper::server::conn::AddrIncoming::from_listener(listener)
         .map_err(|err| error!(?err, "Unable to spawn hyper server from listener"))?;
 
+    // Create the control channel. Use a low msg count, there won't be that much going on.
+    let (ctrl_tx, ctrl_rx) = mpsc::channel(4);
+
     // We need to start the tcp listener. This will persist over ssl reloads!
     info!(
         "Starting replication interface https://{} ...",
         repl_config.bindaddress
     );
-    let repl_handle = tokio::spawn(repl_acceptor(listener, idms, repl_config.clone(), rx));
+    let repl_handle = tokio::spawn(repl_acceptor(
+        listener,
+        idms,
+        repl_config.clone(),
+        rx,
+        ctrl_rx,
+    ));
 
     info!("Created replication interface");
-    Ok(repl_handle)
+    Ok((repl_handle, ctrl_tx))
 }
 
 async fn repl_acceptor(
@@ -65,6 +80,7 @@ async fn repl_acceptor(
     idms: Arc<IdmServer>,
     repl_config: ReplicationConfiguration,
     mut rx: broadcast::Receiver<CoreAction>,
+    mut ctrl_rx: mpsc::Receiver<ReplCtrl>,
 ) {
     // Setup the routes for the replication app
 
@@ -185,6 +201,19 @@ async fn repl_acceptor(
                         CoreAction::Shutdown => break 'event,
                     }
                 }
+                Some(ctrl_msg) = ctrl_rx.recv() => {
+                    match ctrl_msg {
+                        ReplCtrl::GetCertificate {
+                            respond
+                        } => {
+                            if let Err(_) = respond.send(server_cert.clone()) {
+                                warn!("Server certificate was requested, but requsetor disconnected");
+                            } else {
+                                trace!("Sent server certificate via control channel");
+                            }
+                        }
+                    }
+                }
                 // Handle accepts.
                 // Handle *reloads*
                 /*
@@ -207,9 +236,5 @@ async fn repl_acceptor(
 }
 
 async fn test() -> impl IntoResponse {
-    axum::response::Html(
-        r#"
-Testing!
-"#,
-    )
+    axum::response::Html("Ok")
 }

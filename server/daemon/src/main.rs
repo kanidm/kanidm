@@ -77,7 +77,8 @@ impl KanidmdOpt {
             | KanidmdOpt::DbScan {
                 commands: DbScanOpt::RestoreQuarantined { commonopts, .. },
             }
-            | KanidmdOpt::RecoverAccount { commonopts, .. } => commonopts,
+            | KanidmdOpt::ShowReplicationCertificate { commonopts } => commonopts,
+            KanidmdOpt::RecoverAccount { commonopts, .. } => commonopts,
             KanidmdOpt::DbScan {
                 commands: DbScanOpt::ListIndex(dopt),
             } => &dopt.commonopts,
@@ -143,6 +144,14 @@ async fn submit_admin_req(path: &str, req: AdminTaskRequest, output_mode: Consol
             }
             ConsoleOutputMode::Text => {
                 info!(new_password = ?password)
+            }
+        },
+        Some(Ok(AdminTaskResponse::ShowReplicationCertificate { cert })) => match output_mode {
+            ConsoleOutputMode::JSON => {
+                eprintln!("{{\"certificate\":\"{}\"}}", cert)
+            }
+            ConsoleOutputMode::Text => {
+                info!(certificate = ?cert)
             }
         },
         _ => {
@@ -542,6 +551,16 @@ async fn main() -> ExitCode {
                 } => {
                     info!("Running in db verification mode ...");
                     verify_server_core(&config).await;
+                }
+                KanidmdOpt::ShowReplicationCertificate {
+                    commonopts
+                } => {
+                    info!("Running show replication certificate ...");
+                    let output_mode: ConsoleOutputMode = commonopts.output_mode.to_owned().into();
+                    submit_admin_req(config.adminbindpath.as_str(),
+                        AdminTaskRequest::ShowReplicationCertificate,
+                        output_mode,
+                    ).await;
                 }
                 KanidmdOpt::RecoverAccount {
                     name, commonopts

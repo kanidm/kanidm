@@ -154,6 +154,11 @@ enum KanidmdOpt {
         #[clap(flatten)]
         commonopts: CommonOpt,
     },
+    /// Display this servers replication certificate
+    ShowReplicationCertificate {
+        #[clap(flatten)]
+        commonopts: CommonOpt,
+    },
     // #[clap(name = "reset_server_id")]
     // ResetServerId(CommonOpt),
     #[clap(name = "db-scan")]
