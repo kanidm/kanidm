@@ -105,40 +105,6 @@ enum ChunkStatus {
     SeenEnd { has_trailer: bool },
     MoreChunks,
 }
-#[test]
-/// this tests a variety of input options for `png_consume_chunks_until_iend`
-fn test_png_consume_chunks_until_iend() {
-    let mut foo = vec![0, 0, 0, 1]; // the length
-
-    foo.extend(PNG_CHUNK_END); // ... the type of chunk we're looking at!
-    foo.push(1); // the data
-    foo.extend([0, 0, 0, 1]); // the 4-byte checksum which we ignore
-    let expected: [u8; 0] = [];
-    let foo = foo.as_slice();
-    let res = png_consume_chunks_until_iend(&foo);
-
-    // simple, valid image works
-    match res {
-        Ok((result, buf)) => {
-            if let ChunkStatus::MoreChunks = result {
-                panic!("Shouldn't have more chunks!");
-            }
-            assert_eq!(buf, &expected);
-        }
-        Err(err) => panic!("Error: {:?}", err),
-    };
-
-    // let's make sure it works with a bunch of different length inputs
-    let mut x = 11;
-    while x > 0 {
-        let foo = &foo[0..=x];
-        let res = png_consume_chunks_until_iend(&foo);
-        dbg!(&res);
-        assert!(res.is_err());
-        x = x - 1;
-    }
-}
-
 /// Loop over this to find out if we've got valid chunks
 ///
 fn png_consume_chunks_until_iend(buf: &[u8]) -> Result<(ChunkStatus, &[u8]), ImageValidationError> {
@@ -202,8 +168,6 @@ fn png_has_trailer(png_data: &Vec<u8>) -> Result<bool, ImageValidationError> {
 
     let buf = buf.to_owned();
     let mut buf = buf.as_slice();
-
-    dbg!(&magic, &PNG_PRELUDE);
 
     if magic != PNG_PRELUDE {
         return Err(ImageValidationError::InvalidPngPrelude);
@@ -366,14 +330,14 @@ fn test_imagevalue_things() {
                 "{}/src/valueset/test_images/oversize_dimensions.{extension}",
                 env!("CARGO_MANIFEST_DIR")
             );
-            dbg!("testing", &filename);
+            trace!("testing {}", &filename);
             let image = ImageValue {
                 filename: format!("oversize_dimensions.{extension}"),
                 filetype: ImageType::try_from(extension).unwrap(),
                 contents: std::fs::read(filename).unwrap(),
             };
             let res = image.validate_image();
-            dbg!(&res);
+            trace!("{:?}", &res);
             assert!(res.is_err());
 
             // test should-be-good images
@@ -381,14 +345,14 @@ fn test_imagevalue_things() {
                 "{}/src/valueset/test_images/ok.{extension}",
                 env!("CARGO_MANIFEST_DIR")
             );
-            dbg!("testing", &filename);
+            trace!("testing {}", &filename);
             let image = ImageValue {
-                filename: format!("ok.{extension}"),
+                filename: filename.clone(),
                 filetype: ImageType::try_from(extension).unwrap(),
                 contents: std::fs::read(filename).unwrap(),
             };
             let res = image.validate_image();
-            dbg!(&res);
+            trace!("validation result of {}: {:?}", image.filename, &res);
             assert!(res.is_ok());
 
             let filename = format!(
@@ -396,12 +360,12 @@ fn test_imagevalue_things() {
                 env!("CARGO_MANIFEST_DIR")
             );
             let image = ImageValue {
-                filename: format!("ok.svg"),
+                filename: filename.clone(),
                 filetype: ImageType::Svg,
-                contents: std::fs::read(filename).unwrap(),
+                contents: std::fs::read(&filename).unwrap(),
             };
             let res = image.validate_image();
-            dbg!(&res);
+            trace!("SVG Validation result of {}: {:?}", filename, &res);
             assert!(res.is_ok());
             assert_eq!(image.hash_imagevalue().is_empty(), false);
         })
@@ -513,21 +477,13 @@ impl ValueSetT for ValueSetImage {
         self.set.clear();
     }
 
-    fn remove(&mut self, pv: &PartialValue, _cid: &Cid) -> bool {
-        match pv {
-            PartialValue::Image(pvhash) => {
-                if let Some(image) = self.set.iter().take(1).next() {
-                    if &image.hash_imagevalue() == pvhash {
-                        self.clear();
-                        true
-                    } else {
-                        false
-                    }
-                } else {
-                    false
-                }
-            }
-            _ => false,
+    fn remove(&mut self, _pv: &PartialValue, _cid: &Cid) -> bool {
+        // there's only one thing to remove, so clear it
+        if self.set.is_empty() {
+            false
+        } else {
+            self.clear();
+            true
         }
     }
 
@@ -659,5 +615,39 @@ impl ValueSetT for ValueSetImage {
     // this seems dumb
     fn as_imageset(&self) -> Option<&HashSet<ImageValue>> {
         Some(&self.set)
+    }
+}
+
+#[test]
+/// this tests a variety of input options for `png_consume_chunks_until_iend`
+fn test_png_consume_chunks_until_iend() {
+    let mut foo = vec![0, 0, 0, 1]; // the length
+
+    foo.extend(PNG_CHUNK_END); // ... the type of chunk we're looking at!
+    foo.push(1); // the data
+    foo.extend([0, 0, 0, 1]); // the 4-byte checksum which we ignore
+    let expected: [u8; 0] = [];
+    let foo = foo.as_slice();
+    let res = png_consume_chunks_until_iend(&foo);
+
+    // simple, valid image works
+    match res {
+        Ok((result, buf)) => {
+            if let ChunkStatus::MoreChunks = result {
+                panic!("Shouldn't have more chunks!");
+            }
+            assert_eq!(buf, &expected);
+        }
+        Err(err) => panic!("Error: {:?}", err),
+    };
+
+    // let's make sure it works with a bunch of different length inputs
+    let mut x = 11;
+    while x > 0 {
+        let foo = &foo[0..=x];
+        let res = png_consume_chunks_until_iend(&foo);
+        trace!("chunkstatus at size {} {:?}", x, &res);
+        assert!(res.is_err());
+        x = x - 1;
     }
 }

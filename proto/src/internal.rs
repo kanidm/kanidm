@@ -104,7 +104,7 @@ impl ImageType {
     }
 }
 
-#[derive(Clone, PartialEq, Eq, Serialize, Deserialize, Debug, PartialOrd, Ord)]
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize, Debug, PartialOrd, Ord, Hash)]
 pub struct ImageValue {
     pub filename: String,
     pub filetype: ImageType,
@@ -116,14 +116,6 @@ impl TryFrom<&str> for ImageValue {
     fn try_from(s: &str) -> Result<Self, String> {
         serde_json::from_str(s)
             .map_err(|e| format!("Failed to decode ImageValue from {} - {:?}", s, e))
-    }
-}
-
-impl core::hash::Hash for ImageValue {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.filename.hash(state);
-        self.filetype.hash(state);
-        self.contents.hash(state);
     }
 }
 

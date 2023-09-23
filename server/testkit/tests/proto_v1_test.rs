@@ -13,7 +13,7 @@ use kanidmd_lib::prelude::{
     Attribute, BUILTIN_GROUP_IDM_ADMINS_V1, BUILTIN_GROUP_SYSTEM_ADMINS_V1,
     IDM_PEOPLE_ACCOUNT_PASSWORD_IMPORT_PRIV_V1,
 };
-use tracing::debug;
+use tracing::{debug, trace};
 
 use std::str::FromStr;
 
@@ -962,7 +962,6 @@ async fn test_server_rest_oauth2_basic_lifecycle(rsclient: KanidmClient) {
 
     // Check we can upload an image
     let image_path = Path::new("../../server/lib/src/valueset/test_images/ok.png");
-    dbg!(&image_path.canonicalize());
     assert!(image_path.exists());
     let image_contents = std::fs::read(image_path).unwrap();
     let image = ImageValue::new(
@@ -974,7 +973,7 @@ async fn test_server_rest_oauth2_basic_lifecycle(rsclient: KanidmClient) {
     let res = rsclient
         .idm_oauth2_rs_update_image("test_integration", image)
         .await;
-    dbg!(&res);
+    trace!("update image result: {:?}", &res);
     assert!(res.is_ok());
 
     //test getting the image
@@ -995,7 +994,7 @@ async fn test_server_rest_oauth2_basic_lifecycle(rsclient: KanidmClient) {
     // check we can upload a *replacement* image
 
     let image_path = Path::new("../../server/lib/src/valueset/test_images/ok.jpg");
-    dbg!(&image_path.canonicalize());
+    trace!("image path {:?}", &image_path.canonicalize());
     assert!(image_path.exists());
     let jpg_file_contents = std::fs::read(image_path).unwrap();
     let image = ImageValue::new(
@@ -1006,7 +1005,7 @@ async fn test_server_rest_oauth2_basic_lifecycle(rsclient: KanidmClient) {
     let res = rsclient
         .idm_oauth2_rs_update_image("test_integration", image)
         .await;
-    dbg!(&res);
+    trace!("idm_oauth2_rs_update_image result: {:?}", &res);
     assert!(res.is_ok());
 
     // check it fails when we upload a jpg and say it's a webp
@@ -1018,7 +1017,7 @@ async fn test_server_rest_oauth2_basic_lifecycle(rsclient: KanidmClient) {
     let res = rsclient
         .idm_oauth2_rs_update_image("test_integration", image)
         .await;
-    dbg!(&res);
+    trace!("idm_oauth2_rs_update_image result: {:?}", &res);
     assert!(res.is_err());
 
     // check we can remove an image
@@ -1026,7 +1025,7 @@ async fn test_server_rest_oauth2_basic_lifecycle(rsclient: KanidmClient) {
     let res = rsclient
         .idm_oauth2_rs_delete_image("test_integration")
         .await;
-    dbg!(&res);
+    trace!("idm_oauth2_rs_delete_image result: {:?}", &res);
     assert!(res.is_ok());
 
     // Check we can delete a scope map.

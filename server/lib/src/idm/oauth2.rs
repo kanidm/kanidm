@@ -19,7 +19,7 @@ use concread::cowcell::*;
 use fernet::Fernet;
 use hashbrown::HashMap;
 use kanidm_proto::constants::*;
-use kanidm_proto::internal::ImageValue;
+
 pub use kanidm_proto::oauth2::{
     AccessTokenIntrospectRequest, AccessTokenIntrospectResponse, AccessTokenRequest,
     AccessTokenResponse, AuthorisationRequest, CodeChallengeMethod, ErrorResponse, GrantTypeReq,
@@ -239,8 +239,8 @@ pub struct Oauth2RS {
     scopes_supported: BTreeSet<String>,
     prefer_short_username: bool,
     type_: OauthRSType,
-    /// the display image for the OAuth2 Resource
-    display_image: Option<ImageValue>,
+    /// Does the RS have a custom image set? If not, we use the default.
+    has_custom_image: bool,
 }
 
 impl std::fmt::Debug for Oauth2RS {
@@ -253,7 +253,7 @@ impl std::fmt::Debug for Oauth2RS {
             .field("origin", &self.origin)
             .field("scope_maps", &self.scope_maps)
             .field("sup_scope_maps", &self.sup_scope_maps)
-            .field("display_image_set", &self.display_image.is_some())
+            .field("has_custom_image", &self.has_custom_image)
             .finish()
     }
 }
@@ -420,7 +420,7 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
                     .get_ava_single_bool(Attribute::OAuth2PreferShortUsername)
                     .unwrap_or(false);
 
-                let display_image = ent.get_ava_single_image(Attribute::Image);
+                let has_custom_image = ent.get_ava_single_image(Attribute::Image).is_some();
 
                 let mut authorization_endpoint = self.inner.origin.clone();
                 authorization_endpoint.set_path("/ui/oauth2");
@@ -470,7 +470,7 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
                     scopes_supported,
                     prefer_short_username,
                     type_,
-                    display_image,
+                    has_custom_image,
                 };
 
                 Ok((client_id, rscfg))

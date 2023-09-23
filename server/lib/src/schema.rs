@@ -229,10 +229,7 @@ impl SchemaAttribute {
             // Comparing on the label.
             SyntaxType::TotpSecret => matches!(v, PartialValue::Utf8(_)),
             SyntaxType::AuditLogString => matches!(v, PartialValue::Utf8(_)),
-            SyntaxType::Image => {
-                dbg!("validate_partialvalue_image {}", v);
-                matches!(v, PartialValue::Utf8(_))
-            }
+            SyntaxType::Image => matches!(v, PartialValue::Utf8(_)),
         };
         if r {
             Ok(())
