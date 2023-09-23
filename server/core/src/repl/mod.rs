@@ -2,9 +2,11 @@ use futures_util::future::poll_fn;
 use hyper::server::accept::Accept;
 use hyper::server::conn::{AddrIncoming, Http};
 use openssl::{
-    ssl::{SslAcceptor, SslMethod, SslVerifyMode},
-    x509::X509,
+    pkey::{PKey, Private},
+    ssl::{SslAcceptor, SslConnector, SslMethod, SslVerifyMode},
+    x509::{store::X509StoreBuilder, X509},
 };
+use std::collections::VecDeque;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::Duration;
@@ -12,8 +14,10 @@ use tokio::net::TcpListener;
 use tokio::sync::broadcast;
 use tokio::sync::mpsc;
 use tokio::sync::oneshot;
-use tokio::time::sleep;
+use tokio::time::{interval, sleep};
 use tracing::error;
+use url::Url;
+use uuid::Uuid;
 
 use crate::https::trace;
 use tower_http::trace::{DefaultOnRequest, TraceLayer};
@@ -75,6 +79,130 @@ pub(crate) async fn create_repl_server(
     Ok((repl_handle, ctrl_tx))
 }
 
+async fn repl_run_consumer(
+    sock_addrs: &[SocketAddr],
+    tls_connector: &SslConnector,
+    automatic_refresh: bool,
+    idms: &IdmServer,
+) {
+
+    /*
+    let tcpclient = TcpStream::connect(server_addr).await.unwrap();
+    trace!("connection established");
+    let tlsstream = Ssl::new(tls_parms.context())
+        .and_then(|tls_obj| SslStream::new(tls_obj, tcpclient))
+        .unwrap();
+    */
+}
+
+async fn repl_task(
+    origin: Url,
+    client_key: PKey<Private>,
+    client_cert: X509,
+    supplier_cert: X509,
+    task_poll_interval: Duration,
+    mut task_rx: broadcast::Receiver<()>,
+    automatic_refresh: bool,
+    idms: Arc<IdmServer>,
+) {
+    if origin.scheme() != "https" {
+        error!("Replica origin is not https - refusing to proceed.");
+        return;
+    }
+
+    let domain = match origin.domain() {
+        Some(d) => d,
+        None => {
+            error!("Replica origin does not have a valid domain name, unable to proceed. Perhaps you tried to use an ip address?");
+            return;
+        }
+    };
+
+    let socket_addrs = match origin.socket_addrs(|| Some(443)) {
+        Ok(sa) => sa,
+        Err(err) => {
+            error!(?err, "Replica origin could not resolve to ip:port");
+            return;
+        }
+    };
+
+    // Setup our tls connector.
+    let mut ssl_builder = match SslConnector::builder(SslMethod::tls_client()) {
+        Ok(sb) => sb,
+        Err(err) => {
+            error!(?err, "Unable to configure tls connector");
+            return;
+        }
+    };
+
+    let setup_client_cert = ssl_builder
+        .set_certificate(&client_cert)
+        .and_then(|_| ssl_builder.set_private_key(&client_key))
+        .and_then(|_| ssl_builder.check_private_key());
+    if let Err(err) = setup_client_cert {
+        error!(?err, "Unable to configure client certificate/key");
+        return;
+    }
+
+    // Add the supplier cert.
+    // ⚠️  note that here we need to build a new cert store. This is because
+    // openssl SslConnector adds the default system cert locations with
+    // the call to ::builder and we *don't* want this. We want our certstore
+    // to pin a single certificate!
+    let mut cert_store = match X509StoreBuilder::new() {
+        Ok(csb) => csb,
+        Err(err) => {
+            error!(?err, "Unable to configure certificate store builder.");
+            return;
+        }
+    };
+
+    if let Err(err) = cert_store.add_cert(supplier_cert) {
+        error!(?err, "Unable to add supplier certificate to cert store");
+        return;
+    }
+
+    let cert_store = cert_store.build();
+    ssl_builder.set_cert_store(cert_store);
+
+    // Configure the expected hostname of the remote.
+    let verify_param = ssl_builder.verify_param_mut();
+    if let Err(err) = verify_param.set_host(domain) {
+        error!(?err, "Unable to set domain name for tls peer verification");
+        return;
+    }
+
+    ssl_builder.set_verify(SslVerifyMode::PEER);
+    let tls_connector = ssl_builder.build();
+
+    let mut repl_interval = interval(task_poll_interval);
+
+    info!("Replica task for {} has started.", origin);
+
+    // Okay, all the parameters are setup. Now we wait on our interval.
+    loop {
+        tokio::select! {
+            Ok(()) = task_rx.recv() => {
+                break;
+            }
+            _ = repl_interval.tick() => {
+                // Interval passed, attempt a replication run.
+                let eventid = Uuid::new_v4();
+                let span = info_span!("replication_run_consumer", uuid = ?eventid);
+                let _enter = span.enter();
+                repl_run_consumer(
+                    &socket_addrs,
+                    &tls_connector,
+                    automatic_refresh,
+                    &idms
+                ).await;
+            }
+        }
+    }
+
+    info!("Replica task for {} has stopped.", origin);
+}
+
 async fn repl_acceptor(
     mut listener: AddrIncoming,
     idms: Arc<IdmServer>,
@@ -103,8 +231,16 @@ async fn repl_acceptor(
         .into_make_service_with_connect_info::<SocketAddr>();
 
     // Persistent parts
+    let task_poll_interval = Duration::from_secs(30);
     let retry_timeout = Duration::from_secs(60);
     let protocol = Arc::new(Http::new());
+
+    // Setup a broadcast to control our tasks.
+    let (task_tx, task_rx1) = broadcast::channel(2);
+    // Note, we drop this task here since each task will re-subscribe. That way the
+    // broadcast doesn't jam up because we aren't draining this task.
+    drop(task_rx1);
+    let mut task_handles = VecDeque::new();
 
     // Create another broadcast to control the replication tasks and their need to reload.
 
@@ -117,6 +253,22 @@ async fn repl_acceptor(
     // This needs to have an event loop that can respond to changes.
     // For now we just design it to reload ssl if the map changes internally.
     'event: loop {
+        // Tell existing tasks to shutdown.
+        // Note: We ignore the result here since an err can occur *if* there are
+        // no tasks currently listening on the channel.
+        debug_assert!(task_handles.len() == task_tx.receiver_count());
+        let _ = task_tx.send(());
+        for task_handle in task_handles.drain(..) {
+            // Let each task join.
+            let res: Result<(), _> = task_handle.await;
+            if res.is_err() {
+                warn!("Failed to join replication task, continuing ...");
+            }
+        }
+
+        // Now we can start to re-load configurations and setup our client tasks
+        // as well.
+
         // Get the private key / cert.
         let res = {
             // Does this actually need to be a read incase we need to write
@@ -138,15 +290,37 @@ async fn repl_acceptor(
             }
         };
 
-        // Filter and get the list of certs that are allowed in the client
-        // list.
-        let client_certs: Vec<X509> = replication_node_map
-            .values()
-            .filter_map(|node| match node {
-                RepNodeConfig::AllowPull { consumer_cert } => Some(consumer_cert.clone()),
-                RepNodeConfig::Pull { .. } => None,
-            })
-            .collect();
+        let mut client_certs = Vec::new();
+
+        // For each node in the map, either spawn a task to pull from that node,
+        // or setup the node as allowed to pull from us.
+        for (origin, node) in replication_node_map.iter() {
+            match node {
+                RepNodeConfig::AllowPull { consumer_cert } => {
+                    client_certs.push(consumer_cert.clone())
+                }
+                RepNodeConfig::Pull {
+                    supplier_cert,
+                    automatic_refresh,
+                } => {
+                    let task_rx = task_tx.subscribe();
+
+                    let handle = tokio::spawn(repl_task(
+                        origin.clone(),
+                        server_key.clone(),
+                        server_cert.clone(),
+                        supplier_cert.clone(),
+                        task_poll_interval,
+                        task_rx,
+                        *automatic_refresh,
+                        idms.clone(),
+                    ));
+
+                    task_handles.push_back(handle);
+                    debug_assert!(task_handles.len() == task_tx.receiver_count());
+                }
+            }
+        }
 
         // ⚠️  This section is critical to the security of replication
         //    Since replication relies on mTLS we MUST ensure these options
@@ -232,6 +406,18 @@ async fn repl_acceptor(
             // Continue to poll/loop
         }
     }
+    // Shutdown child tasks.
+    info!("Stopping {} Replication Tasks ...", task_handles.len());
+    debug_assert!(task_handles.len() == task_tx.receiver_count());
+    let _ = task_tx.send(());
+    for task_handle in task_handles.drain(..) {
+        // Let each task join.
+        let res: Result<(), _> = task_handle.await;
+        if res.is_err() {
+            warn!("Failed to join replication task, continuing ...");
+        }
+    }
+
     info!("Stopped Replication Acceptor");
 }
 
