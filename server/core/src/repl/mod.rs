@@ -3,24 +3,26 @@ use hyper::server::accept::Accept;
 use hyper::server::conn::{AddrIncoming, Http};
 use openssl::{
     pkey::{PKey, Private},
-    ssl::{SslAcceptor, SslConnector, SslMethod, SslVerifyMode},
+    ssl::{Ssl, SslAcceptor, SslConnector, SslMethod, SslVerifyMode},
     x509::{store::X509StoreBuilder, X509},
 };
 use std::collections::VecDeque;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::Duration;
-use tokio::net::TcpListener;
+use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::broadcast;
 use tokio::sync::mpsc;
 use tokio::sync::oneshot;
-use tokio::time::{timeout, interval, sleep};
+use tokio::time::{interval, sleep, timeout};
+use tokio_openssl::SslStream;
 use tracing::error;
 use url::Url;
 use uuid::Uuid;
 
 use http::{Request, StatusCode};
-use hyper::{client::conn, Body};
+use hyper::client::conn;
+use hyper::Body;
 
 use crate::https::trace;
 use tower_http::trace::{DefaultOnRequest, TraceLayer};
@@ -83,6 +85,7 @@ pub(crate) async fn create_repl_server(
 }
 
 async fn repl_run_consumer(
+    domain: &str,
     sock_addrs: &[SocketAddr],
     tls_connector: &SslConnector,
     _automatic_refresh: bool,
@@ -93,15 +96,20 @@ async fn repl_run_consumer(
     // This is pretty gnarly, but we need to loop to try out each socket addr.
 
     for sock_addr in sock_addrs {
+        debug!("Connecting to {} replica via {}", domain, sock_addr);
 
-        let tcpclient = match TcpStream::connect(server_addr).await 
+        let tcpclient = match timeout(replica_connect_timeout, TcpStream::connect(sock_addr)).await
         {
-            Ok(tc) => tc,
-            Err(err) => {
-                error!("Failed to connect to {}", server_addr);
+            Ok(Ok(tc)) => tc,
+            Ok(Err(err)) => {
+                error!(?err, "Failed to connect to {}", sock_addr);
                 continue;
             }
-        }
+            Err(_) => {
+                error!("Timeout connecting to {}", sock_addr);
+                continue;
+            }
+        };
 
         trace!("connection established");
 
@@ -109,17 +117,67 @@ async fn repl_run_consumer(
             .and_then(|tls_obj| SslStream::new(tls_obj, tcpclient))
             .unwrap();
 
-        let (mut request_sender, connection) = conn::handshake(target_stream).await?;
+        let (mut request_sender, connection) = match conn::handshake(tlsstream).await {
+            Ok(r) => r,
+            Err(err) => {
+                error!(?err, "Unable to complete http handshake");
+                continue;
+            }
+        };
+
+        // Spawn the bg task that actually drives the work.
+        tokio::spawn(async move {
+            if let Err(err) = connection.await {
+                error!(?err, "Error in connection");
+            }
+            // It does appear this drops of it's own accord, no need for
+            // us to select on it.
+            trace!("Stopped connection bg task");
+        });
 
         // Now we can do requests.
+        info!("Connection to replication peer successful");
 
+        let request = Request::builder()
+            // We need to manually add the host header because SendRequest does not
+            .uri("/test")
+            .header("Host", domain)
+            .method("GET")
+            .body(Body::from(""));
 
+        let request = match request {
+            Ok(r) => r,
+            Err(err) => {
+                error!(?err, "Unable to build request");
+                break;
+            }
+        };
 
+        let response = match timeout(
+            replica_connect_timeout,
+            request_sender.send_request(request),
+        )
+        .await
+        {
+            Ok(Ok(res)) => res,
+            Ok(Err(err)) => {
+                error!(?err, "Unable to execute GET to {}", domain);
+                break;
+            }
+            Err(_) => {
+                error!("Timeout for HTTPS request to {}", domain);
+                break;
+            }
+        };
+
+        debug!(status = %response.status());
+        assert!(response.status() == StatusCode::OK);
+
+        // Success - return to bypass the error message.
         return;
     }
 
     error!("Unable to complete replication successfully.");
-
 }
 
 async fn repl_task(
@@ -199,6 +257,7 @@ async fn repl_task(
         return;
     }
 
+    // Assert the expected supplier certificate is correct and has a valid domain san
     ssl_builder.set_verify(SslVerifyMode::PEER);
     let tls_connector = ssl_builder.build();
 
@@ -218,6 +277,7 @@ async fn repl_task(
                 let span = info_span!("replication_run_consumer", uuid = ?eventid);
                 let _enter = span.enter();
                 repl_run_consumer(
+                    domain,
                     &socket_addrs,
                     &tls_connector,
                     automatic_refresh,
@@ -258,7 +318,7 @@ async fn repl_acceptor(
         .into_make_service_with_connect_info::<SocketAddr>();
 
     // Persistent parts
-    let task_poll_interval = Duration::from_secs(30);
+    let task_poll_interval = Duration::from_secs(10);
     let retry_timeout = Duration::from_secs(60);
     let protocol = Arc::new(Http::new());
 
