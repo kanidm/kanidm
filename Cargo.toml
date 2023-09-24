@@ -193,7 +193,7 @@ tracing = { version = "^0.1.37", features = [
 tracing-subscriber = { version = "^0.3.17", features = ["env-filter"] }
 tracing-forest = "^0.1.6"
 
-tss-esapi = "^7.2.0"
+tss-esapi = "^7.3.0"
 
 url = "^2.4.1"
 urlencoding = "2.1.3"
