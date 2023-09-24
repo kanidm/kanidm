@@ -19,6 +19,10 @@ path = "src/lib.rs"
 name = "scaling_10k"
 harness = false
 
+[[bench]]
+name = "image_benches"
+harness = false
+
 [dependencies]
 base64 = { workspace = true }
 base64urlsafedata = { workspace = true }

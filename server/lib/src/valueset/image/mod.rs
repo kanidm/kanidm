@@ -3,7 +3,6 @@ use std::fmt::Display;
 
 use hashbrown::HashSet;
 use image::codecs::gif::GifDecoder;
-use image::codecs::jpeg::JpegDecoder;
 use image::codecs::webp::WebPDecoder;
 use image::ImageDecoder;
 use kanidm_proto::internal::{ImageType, ImageValue};
@@ -24,8 +23,10 @@ pub(crate) const MAX_IMAGE_WIDTH: u32 = 1024;
 /// 128kb should be enough for anyone... right? :D
 pub(crate) const MAX_FILE_SIZE: u32 = 1024 * 128;
 
-static PNG_PRELUDE: &[u8] = &[0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
-static PNG_CHUNK_END: &[u8; 4] = b"IEND";
+const WEBP_MAGIC: &[u8; 4] = b"RIFF";
+
+pub mod jpg;
+pub mod png;
 
 pub trait ImageValueThings {
     fn validate_image(&self) -> Result<(), ImageValidationError>;
@@ -100,88 +101,6 @@ impl Display for ImageValidationError {
     }
 }
 
-#[derive(Debug)]
-enum ChunkStatus {
-    SeenEnd { has_trailer: bool },
-    MoreChunks,
-}
-/// Loop over this to find out if we've got valid chunks
-///
-fn png_consume_chunks_until_iend(buf: &[u8]) -> Result<(ChunkStatus, &[u8]), ImageValidationError> {
-    // length[u8;4] + chunk_type[u8;4] + checksum[u8;4] + minimum size
-    if buf.len() < 12 {
-        return Err(ImageValidationError::InvalidImage(
-            "PNG file is too short to be valid".to_string(),
-        ));
-    } else {
-        #[cfg(any(debug_assertions, test))]
-        trace!("input buflen: {}", buf.len());
-    }
-    let (length_bytes, buf) = buf.split_at(4);
-    let (chunk_type, buf) = buf.split_at(4);
-
-    // Infallible: We've definitely consumed 4 bytes
-    let length = u32::from_be_bytes(
-        length_bytes
-            .clone()
-            .try_into()
-            .map_err(|_| ImageValidationError::InvalidImage("PNG corrupt!".to_string()))?,
-    );
-    #[cfg(any(debug_assertions, test))]
-    trace!(
-        "length_bytes: {:?} length: {} chunk_type: {:?} buflen: {}",
-        length_bytes,
-        &length,
-        &chunk_type,
-        &buf.len()
-    );
-
-    if buf.len() < (length + 4) as usize {
-        return Err(ImageValidationError::InvalidImage(format!(
-            "PNG file is too short to be valid, failed to split at the chunk length {}",
-            length
-        )));
-    }
-    let (_, buf) = buf.split_at(length as usize);
-    #[cfg(any(debug_assertions, test))]
-    trace!("new buflen: {}", &buf.len());
-
-    let (_checksum, buf) = buf.split_at(4);
-    #[cfg(any(debug_assertions, test))]
-    trace!("post-checksum buflen: {}", &buf.len());
-
-    if chunk_type == PNG_CHUNK_END {
-        if buf.is_empty() {
-            Ok((ChunkStatus::SeenEnd { has_trailer: false }, buf))
-        } else {
-            Ok((ChunkStatus::SeenEnd { has_trailer: true }, buf))
-        }
-    } else {
-        Ok((ChunkStatus::MoreChunks, buf))
-    }
-}
-
-fn png_has_trailer(png_data: &Vec<u8>) -> Result<bool, ImageValidationError> {
-    let buf = png_data.as_slice();
-    // let magic = buf.split_off(PNG_PRELUDE.len());
-    let (magic, buf) = buf.split_at(PNG_PRELUDE.len());
-
-    let buf = buf.to_owned();
-    let mut buf = buf.as_slice();
-
-    if magic != PNG_PRELUDE {
-        return Err(ImageValidationError::InvalidPngPrelude);
-    }
-
-    loop {
-        let (status, new_buf) = png_consume_chunks_until_iend(buf)?;
-        buf = match status {
-            ChunkStatus::SeenEnd { has_trailer } => return Ok(has_trailer),
-            ChunkStatus::MoreChunks => new_buf,
-        };
-    }
-}
-
 impl ImageValueThings for ImageValue {
     fn validate_image(&self) -> Result<(), ImageValidationError> {
         if self.contents.len() > MAX_FILE_SIZE as usize {
@@ -197,57 +116,33 @@ impl ImageValueThings for ImageValue {
         }
     }
 
-    /// validate the PNG file contents, and that it's actually a PNG
+    /// Validate the PNG file contents, and that it's actually a PNG
     fn validate_is_png(&self) -> Result<(), ImageValidationError> {
         // based on code here: https://blog.cloudflare.com/how-cloudflare-images-addressed-the-acropalypse-vulnerability/
 
-        let has_trailer = png_has_trailer(&self.contents)?;
-        if has_trailer {
+        // this takes µs to run, where lodepng takes ms, so it comes first
+        if png::png_has_trailer(&self.contents)? {
             return Err(ImageValidationError::Acropalypse(
-                "PNG file has a trailer which likely has the acropalypse vulnerability!"
+                "PNG file has a trailer which likely indicates the acropalypse vulnerability!"
                     .to_string(),
             ));
         }
 
-        match lodepng::decode32(&self.contents) {
-            Ok(val) => {
-                if val.width > MAX_IMAGE_WIDTH as usize || val.height > MAX_IMAGE_HEIGHT as usize {
-                    admin_debug!(
-                        "PNG validation failed for {} {}",
-                        self.filename,
-                        ImageValidationError::ExceedsMaxWidth
-                    );
-                    Err(ImageValidationError::ExceedsMaxWidth)
-                } else if val.height > MAX_IMAGE_HEIGHT as usize {
-                    admin_debug!(
-                        "PNG validation failed for {} {}",
-                        self.filename,
-                        ImageValidationError::ExceedsMaxHeight
-                    );
-                    Err(ImageValidationError::ExceedsMaxHeight)
-                } else {
-                    Ok(())
-                }
-            }
-            Err(err) => {
-                // admin_debug!("PNG validation failed for {} {:?}", self.filename, err);
-                Err(ImageValidationError::InvalidImage(format!("{:?}", err)))
-            }
-        }
+        png::png_lodepng_validate(&self.contents, &self.filename)
     }
 
     /// validate the JPG file contents, and that it's actually a JPG
     fn validate_is_jpg(&self) -> Result<(), ImageValidationError> {
-        let Ok(mut decoder) = JpegDecoder::new(&self.contents[..]) else {
-            return Err(ImageValidationError::InvalidImage(
-                "Failed to parse JPG".to_string(),
-            ));
-        };
-        let limit_result = decoder.set_limits(self.get_limits());
-        if limit_result.is_err() {
-            #[cfg(any(test, debug_assertions))]
-            println!("Image result: {:?}", limit_result);
-            Err(ImageValidationError::ExceedsMaxDimensions)
+        // check it starts with a valid header
+        jpg::check_jpg_header(&self.contents)?;
+
+        jpg::use_decoder(&self.filename, &self.contents, self.get_limits())?;
+
+        if jpg::has_trailer(&self.contents)? {
+            Err(ImageValidationError::Acropalypse(
+                "File has a trailer which likely indicates the acropalypse vulnerability!"
+                    .to_string(),
+            ))
         } else {
             Ok(())
         }
@@ -292,6 +187,12 @@ impl ImageValueThings for ImageValue {
 
     /// validate the WebP file contents, and that it's actually a WebP file (as far as we can tell)
     fn validate_is_webp(&self) -> Result<(), ImageValidationError> {
+        if !self.contents.starts_with(WEBP_MAGIC) {
+            return Err(ImageValidationError::InvalidImage(
+                "Failed to parse WebP file, invalid magic bytes".to_string(),
+            ));
+        }
+
         let Ok(mut decoder) = WebPDecoder::new(&self.contents[..]) else {
             return Err(ImageValidationError::InvalidImage(
                 "Failed to parse WebP file".to_string(),
@@ -319,66 +220,25 @@ impl ImageValueThings for ImageValue {
     }
 }
 
-#[test]
-/// tests that we can load a bunch of test images and it'll throw errors in a way we expect
-fn test_imagevalue_things() {
-    ["gif", "png", "jpg", "webp"]
-        .into_iter()
-        .for_each(|extension| {
-            // test should-be-bad images
-            let filename = format!(
-                "{}/src/valueset/test_images/oversize_dimensions.{extension}",
-                env!("CARGO_MANIFEST_DIR")
-            );
-            trace!("testing {}", &filename);
-            let image = ImageValue {
-                filename: format!("oversize_dimensions.{extension}"),
-                filetype: ImageType::try_from(extension).unwrap(),
-                contents: std::fs::read(filename).unwrap(),
-            };
-            let res = image.validate_image();
-            trace!("{:?}", &res);
-            assert!(res.is_err());
-
-            // test should-be-good images
-            let filename = format!(
-                "{}/src/valueset/test_images/ok.{extension}",
-                env!("CARGO_MANIFEST_DIR")
-            );
-            trace!("testing {}", &filename);
-            let image = ImageValue {
-                filename: filename.clone(),
-                filetype: ImageType::try_from(extension).unwrap(),
-                contents: std::fs::read(filename).unwrap(),
-            };
-            let res = image.validate_image();
-            trace!("validation result of {}: {:?}", image.filename, &res);
-            assert!(res.is_ok());
-
-            let filename = format!(
-                "{}/src/valueset/test_images/ok.svg",
-                env!("CARGO_MANIFEST_DIR")
-            );
-            let image = ImageValue {
-                filename: filename.clone(),
-                filetype: ImageType::Svg,
-                contents: std::fs::read(&filename).unwrap(),
-            };
-            let res = image.validate_image();
-            trace!("SVG Validation result of {}: {:?}", filename, &res);
-            assert!(res.is_ok());
-            assert_eq!(image.hash_imagevalue().is_empty(), false);
-        })
-}
-
 impl ValueSetImage {
     pub fn new(image: ImageValue) -> Box<Self> {
         let mut set = HashSet::new();
-        set.insert(image);
+        match image.validate_image() {
+            Ok(_) => {
+                set.insert(image);
+            }
+            Err(err) => {
+                admin_error!(
+                    "Image {} didn't pass validation, not adding to value! Error: {:?}",
+                    image.filename,
+                    err
+                );
+            }
+        };
         Box::new(ValueSetImage { set })
     }
 
-    // pushing
+    // add the image, return a bool if there was a change
     pub fn push(&mut self, image: ImageValue) -> bool {
         match image.validate_image() {
             Ok(_) => self.set.insert(image),
@@ -418,11 +278,17 @@ impl ValueSetImage {
                     contents,
                 } => ImageValue::new(filename, filetype, contents),
             };
-            if image.validate_image().is_ok() {
-                set.insert(image.clone());
-            } else {
-                admin_error!("Image didn't pass validation, not adding to value!");
-                return Err(OperationError::InvalidValueState);
+            match image.validate_image() {
+                Ok(_) => {
+                    set.insert(image.clone());
+                }
+                Err(err) => {
+                    admin_error!(
+                        "Image didn't pass validation, not adding to value! Error: {:?}",
+                        err
+                    );
+                    return Err(OperationError::InvalidValueState);
+                }
             }
         }
 
@@ -456,15 +322,9 @@ impl ValueSetImage {
 impl ValueSetT for ValueSetImage {
     fn insert_checked(&mut self, value: Value) -> Result<bool, OperationError> {
         match value {
-            Value::Image(image) => match image.validate_image() {
-                Ok(_) => Ok(self.set.insert(image)),
-                Err(err) => {
-                    admin_error!(
-                        "Image didn't pass validation, not adding to value! Error: {}",
-                        err
-                    );
-                    Err(OperationError::InvalidValueState)
-                }
+            Value::Image(image) => match self.set.contains(&image) {
+                true => Ok(false),             // image exists, no change, return false
+                false => Ok(self.push(image)), // this masks the operationerror
             },
             _ => {
                 debug_assert!(false);
@@ -477,13 +337,28 @@ impl ValueSetT for ValueSetImage {
         self.set.clear();
     }
 
-    fn remove(&mut self, _pv: &PartialValue, _cid: &Cid) -> bool {
-        // there's only one thing to remove, so clear it
-        if self.set.is_empty() {
-            false
-        } else {
-            self.clear();
-            true
+    fn remove(&mut self, pv: &PartialValue, _cid: &Cid) -> bool {
+        match pv {
+            PartialValue::Image(pv) => {
+                let imgset = self.set.clone();
+
+                let res: Vec<bool> = imgset
+                    .iter()
+                    .filter_map(|image| {
+                        if &image.hash_imagevalue() == pv {
+                            Some(image)
+                        } else {
+                            None
+                        }
+                    })
+                    .map(|image| self.set.remove(image))
+                    .collect();
+                res.into_iter().any(|e| e)
+            }
+            _ => {
+                debug_assert!(false);
+                false
+            }
         }
     }
 
@@ -515,14 +390,7 @@ impl ValueSetT for ValueSetImage {
     fn generate_idx_eq_keys(&self) -> Vec<String> {
         self.set
             .iter()
-            .map(|image| {
-                let filetype_repr = [image.filetype.clone() as u8];
-                let mut hasher = openssl::sha::Sha256::new();
-                hasher.update(image.filename.as_bytes());
-                hasher.update(&filetype_repr);
-                hasher.update(&image.contents);
-                hex::encode(hasher.finish())
-            })
+            .map(|image| image.hash_imagevalue())
             .collect()
     }
 
@@ -537,13 +405,7 @@ impl ValueSetT for ValueSetImage {
         self.set.iter().all(|image| {
             image
                 .validate_image()
-                .map_err(|err| {
-                    debug!(
-                        "Image {} failed validation: {}",
-                        image.hash_imagevalue(),
-                        err
-                    )
-                })
+                .map_err(|err| error!("Image {} failed validation: {}", image.filename, err))
                 .is_ok()
         })
     }
@@ -619,35 +481,53 @@ impl ValueSetT for ValueSetImage {
 }
 
 #[test]
-/// this tests a variety of input options for `png_consume_chunks_until_iend`
-fn test_png_consume_chunks_until_iend() {
-    let mut foo = vec![0, 0, 0, 1]; // the length
+/// tests that we can load a bunch of test images and it'll throw errors in a way we expect
+fn test_imagevalue_things() {
+    ["gif", "png", "jpg", "webp"]
+        .into_iter()
+        .for_each(|extension| {
+            // test should-be-bad images
+            let filename = format!(
+                "{}/src/valueset/image/test_images/oversize_dimensions.{extension}",
+                env!("CARGO_MANIFEST_DIR")
+            );
+            trace!("testing {}", &filename);
+            let image = ImageValue {
+                filename: format!("oversize_dimensions.{extension}"),
+                filetype: ImageType::try_from(extension).unwrap(),
+                contents: std::fs::read(filename).unwrap(),
+            };
+            let res = image.validate_image();
+            trace!("{:?}", &res);
+            assert!(res.is_err());
 
-    foo.extend(PNG_CHUNK_END); // ... the type of chunk we're looking at!
-    foo.push(1); // the data
-    foo.extend([0, 0, 0, 1]); // the 4-byte checksum which we ignore
-    let expected: [u8; 0] = [];
-    let foo = foo.as_slice();
-    let res = png_consume_chunks_until_iend(&foo);
+            // test should-be-good images
+            let filename = format!(
+                "{}/src/valueset/image/test_images/ok.{extension}",
+                env!("CARGO_MANIFEST_DIR")
+            );
+            trace!("testing {}", &filename);
+            let image = ImageValue {
+                filename: filename.clone(),
+                filetype: ImageType::try_from(extension).unwrap(),
+                contents: std::fs::read(filename).unwrap(),
+            };
+            let res = image.validate_image();
+            trace!("validation result of {}: {:?}", image.filename, &res);
+            assert!(res.is_ok());
 
-    // simple, valid image works
-    match res {
-        Ok((result, buf)) => {
-            if let ChunkStatus::MoreChunks = result {
-                panic!("Shouldn't have more chunks!");
-            }
-            assert_eq!(buf, &expected);
-        }
-        Err(err) => panic!("Error: {:?}", err),
-    };
-
-    // let's make sure it works with a bunch of different length inputs
-    let mut x = 11;
-    while x > 0 {
-        let foo = &foo[0..=x];
-        let res = png_consume_chunks_until_iend(&foo);
-        trace!("chunkstatus at size {} {:?}", x, &res);
-        assert!(res.is_err());
-        x = x - 1;
-    }
+            let filename = format!(
+                "{}/src/valueset/image/test_images/ok.svg",
+                env!("CARGO_MANIFEST_DIR")
+            );
+            let image = ImageValue {
+                filename: filename.clone(),
+                filetype: ImageType::Svg,
+                contents: std::fs::read(&filename).unwrap(),
+            };
+            let res = image.validate_image();
+            trace!("SVG Validation result of {}: {:?}", filename, &res);
+            assert!(res.is_ok());
+            assert_eq!(image.hash_imagevalue().is_empty(), false);
+        })
 }

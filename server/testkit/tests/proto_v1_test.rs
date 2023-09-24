@@ -961,7 +961,7 @@ async fn test_server_rest_oauth2_basic_lifecycle(rsclient: KanidmClient) {
     assert!(oauth2_config_updated2 != oauth2_config_updated3);
 
     // Check we can upload an image
-    let image_path = Path::new("../../server/lib/src/valueset/test_images/ok.png");
+    let image_path = Path::new("../../server/lib/src/valueset/image/test_images/ok.png");
     assert!(image_path.exists());
     let image_contents = std::fs::read(image_path).unwrap();
     let image = ImageValue::new(
@@ -993,7 +993,7 @@ async fn test_server_rest_oauth2_basic_lifecycle(rsclient: KanidmClient) {
 
     // check we can upload a *replacement* image
 
-    let image_path = Path::new("../../server/lib/src/valueset/test_images/ok.jpg");
+    let image_path = Path::new("../../server/lib/src/valueset/image/test_images/ok.jpg");
     trace!("image path {:?}", &image_path.canonicalize());
     assert!(image_path.exists());
     let jpg_file_contents = std::fs::read(image_path).unwrap();
