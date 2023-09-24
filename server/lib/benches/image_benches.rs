@@ -75,7 +75,7 @@ pub fn bench_jpg(c: &mut Criterion) {
             env!("CARGO_MANIFEST_DIR")
         ));
         let contents = black_box(std::fs::read(&filename).unwrap());
-        b.iter(|| jpg::use_decoder(&filename, &contents, image::io::Limits::default()));
+        b.iter(|| jpg::validate_decoding(&filename, &contents, image::io::Limits::default()));
     });
     group.finish();
 }
@@ -91,7 +91,9 @@ pub fn compare_jpg(c: &mut Criterion) {
         b.iter(|| {
             assert!(jpg::check_jpg_header(&contents).is_ok());
             assert!(jpg::has_trailer(&contents).is_ok());
-            assert!(jpg::use_decoder(&filename, &contents, image::io::Limits::default()).is_ok());
+            assert!(
+                jpg::validate_decoding(&filename, &contents, image::io::Limits::default()).is_ok()
+            );
         });
     });
     group.bench_function("trailer, header, decoder", |b| {
@@ -103,7 +105,9 @@ pub fn compare_jpg(c: &mut Criterion) {
         b.iter(|| {
             assert!(jpg::has_trailer(&contents).is_ok());
             assert!(jpg::check_jpg_header(&contents).is_ok());
-            assert!(jpg::use_decoder(&filename, &contents, image::io::Limits::default()).is_ok());
+            assert!(
+                jpg::validate_decoding(&filename, &contents, image::io::Limits::default()).is_ok()
+            );
         });
     });
     group.bench_function("decoder, trailer, header", |b| {
@@ -113,7 +117,9 @@ pub fn compare_jpg(c: &mut Criterion) {
         ));
         let contents = black_box(std::fs::read(&filename).unwrap());
         b.iter(|| {
-            assert!(jpg::use_decoder(&filename, &contents, image::io::Limits::default()).is_ok());
+            assert!(
+                jpg::validate_decoding(&filename, &contents, image::io::Limits::default()).is_ok()
+            );
             assert!(jpg::has_trailer(&contents).is_ok());
             assert!(jpg::check_jpg_header(&contents).is_ok());
         });

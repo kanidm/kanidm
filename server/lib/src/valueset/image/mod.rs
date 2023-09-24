@@ -136,7 +136,7 @@ impl ImageValueThings for ImageValue {
         // check it starts with a valid header
         jpg::check_jpg_header(&self.contents)?;
 
-        jpg::use_decoder(&self.filename, &self.contents, self.get_limits())?;
+        jpg::validate_decoding(&self.filename, &self.contents, self.get_limits())?;
 
         if jpg::has_trailer(&self.contents)? {
             Err(ImageValidationError::Acropalypse(
@@ -157,8 +157,6 @@ impl ImageValueThings for ImageValue {
         };
         let limit_result = decoder.set_limits(self.get_limits());
         if limit_result.is_err() {
-            #[cfg(any(test, debug_assertions))]
-            println!("Image result: {:?}", limit_result);
             Err(ImageValidationError::ExceedsMaxDimensions)
         } else {
             Ok(())
@@ -198,13 +196,16 @@ impl ImageValueThings for ImageValue {
                 "Failed to parse WebP file".to_string(),
             ));
         };
-        let limit_result = decoder.set_limits(self.get_limits());
-        if limit_result.is_err() {
-            #[cfg(any(test, debug_assertions))]
-            println!("Image result: {:?}", limit_result);
-            Err(ImageValidationError::ExceedsMaxDimensions)
-        } else {
-            Ok(())
+        match decoder.set_limits(self.get_limits()) {
+            Err(err) => {
+                sketching::admin_warn!(
+                    "Image validation failed while validating {}: {:?}",
+                    self.filename,
+                    err
+                );
+                Err(ImageValidationError::ExceedsMaxDimensions)
+            }
+            Ok(_) => Ok(()),
         }
     }
 

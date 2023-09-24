@@ -1,5 +1,6 @@
 use image::codecs::jpeg::JpegDecoder;
 use image::ImageDecoder;
+use sketching::*;
 
 use super::ImageValidationError;
 
@@ -7,7 +8,7 @@ const JPEG_MAGIC: [u8; 2] = [0xff, 0xd8];
 const EOI_MAGIC: [u8; 2] = [0xff, 0xd9];
 const SOS_MARKER: [u8; 2] = [0xff, 0xda];
 
-/// just checks to see if it has a valid JPEG magic bytes header
+/// Checks to see if it has a valid JPEG magic bytes header
 pub fn check_jpg_header(contents: &[u8]) -> Result<(), ImageValidationError> {
     if !contents.starts_with(&JPEG_MAGIC) {
         return Err(ImageValidationError::InvalidImage(
@@ -17,31 +18,7 @@ pub fn check_jpg_header(contents: &[u8]) -> Result<(), ImageValidationError> {
     Ok(())
 }
 
-#[test]
-fn test_jpg_has_trailer() {
-    let file_contents = std::fs::read(format!(
-        "{}/src/valueset/image/test_images/oversize_dimensions.jpg",
-        env!("CARGO_MANIFEST_DIR")
-    ))
-    .unwrap();
-    assert!(!has_trailer(&file_contents).unwrap());
-
-    // checking a known bad imagee
-    let file_contents = std::fs::read(format!(
-        "{}/src/valueset/image/test_images/windows11_3_cropped.jpg",
-        env!("CARGO_MANIFEST_DIR")
-    ))
-    .unwrap();
-    // let test_bytes = vec![0xff, 0xd8, 0xff, 0xda, 0xff, 0xd9];
-    assert!(has_trailer(&file_contents).unwrap());
-}
-
-enum JpgChunkStatus {
-    SeenEnd,
-    MoreChunks,
-}
-
-// public for benches
+// It's public so we can use it in benchmarking
 /// Check to see if JPG is affected by acropalypse issues, returns `Ok(true)` if it is
 /// based on <https://github.com/lordofpipes/acropadetect/blob/main/src/detect.ts>
 pub fn has_trailer(contents: &Vec<u8>) -> Result<bool, ImageValidationError> {
@@ -51,7 +28,6 @@ pub fn has_trailer(contents: &Vec<u8>) -> Result<bool, ImageValidationError> {
 
     while pos < buf.len() {
         let marker = &buf[pos..pos + 2];
-
         pos += 2;
 
         let segment_size_bytes: &[u8] = &buf[pos..pos + 2];
@@ -62,24 +38,16 @@ pub fn has_trailer(contents: &Vec<u8>) -> Result<bool, ImageValidationError> {
         pos += segment_size as usize;
 
         if marker == SOS_MARKER {
-            // this will be the last segment before entropy coded segment
             break;
         }
     }
 
-    // setting this long so we can see if we don't find the EOI marker
+    // setting this to a big value so we can see if we don't find the EOI marker
     let mut eoi_index = buf.len() * 2;
     trace!("buffer length: {}", buf.len());
 
+    // iterate through the file looking for the EOI_MAGIC bytes
     for i in pos..=(buf.len() - EOI_MAGIC.len()) {
-        // #[cfg(any(test, debug_assertions))]
-        // println!(
-        //     "checking: {}-{} {:?} {:?}",
-        //     i,
-        //     (i + EOI_MAGIC.len()),
-        //     &buf[i..(i + EOI_MAGIC.len())],
-        //     EOI_MAGIC
-        // );
         if buf[i..(i + EOI_MAGIC.len())] == EOI_MAGIC {
             eoi_index = i;
             break;
@@ -108,16 +76,9 @@ pub fn has_trailer(contents: &Vec<u8>) -> Result<bool, ImageValidationError> {
         );
         Ok(false)
     }
-
-    // if (eoiMarkerPos === -1) throw new Error("No EOI marker found!");
-
-    // let trailer = uint8Array.slice(eoiMarkerPos + 2);
-
-    // // check if there is any trailing data that has a valid EOI chunk
-    // return trailer.byteLength > 0 && trailer.slice(-2).every((v, i) => v == EOI_MAGIC[i]) ? trailer.byteLength : 0;
 }
 
-pub fn use_decoder(
+pub fn validate_decoding(
     filename: &str,
     contents: &[u8],
     limits: image::io::Limits,
@@ -132,14 +93,34 @@ pub fn use_decoder(
         }
     };
 
-    let limit_result = decoder.set_limits(limits);
-    if limit_result.is_err() {
-        debug!(
-            "Image validation result while validating {}: {:?}",
-            filename, limit_result
-        );
-        Err(ImageValidationError::ExceedsMaxDimensions)
-    } else {
-        Ok(())
+    match decoder.set_limits(limits) {
+        Err(err) => {
+            sketching::admin_warn!(
+                "Image validation failed while validating {}: {:?}",
+                filename,
+                err
+            );
+            Err(ImageValidationError::ExceedsMaxDimensions)
+        }
+        Ok(_) => Ok(()),
     }
+}
+
+#[test]
+fn test_jpg_has_trailer() {
+    let file_contents = std::fs::read(format!(
+        "{}/src/valueset/image/test_images/oversize_dimensions.jpg",
+        env!("CARGO_MANIFEST_DIR")
+    ))
+    .unwrap();
+    assert!(!has_trailer(&file_contents).unwrap());
+
+    // checking a known bad imagee
+    let file_contents = std::fs::read(format!(
+        "{}/src/valueset/image/test_images/windows11_3_cropped.jpg",
+        env!("CARGO_MANIFEST_DIR")
+    ))
+    .unwrap();
+    // let test_bytes = vec![0xff, 0xd8, 0xff, 0xda, 0xff, 0xd9];
+    assert!(has_trailer(&file_contents).unwrap());
 }
