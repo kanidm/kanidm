@@ -1,3 +1,4 @@
+use kanidm_proto::constants::{DEFAULT_LDAP_LOCALHOST, DEFAULT_SERVER_LOCALHOST};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -60,13 +61,13 @@ pub struct Profile {
 impl Default for Profile {
     fn default() -> Self {
         let kani_http_config = KaniHttpConfig {
-            uri: "https://localhost:8443".to_string(),
+            uri: format!("https://{}", DEFAULT_SERVER_LOCALHOST),
             admin_pw: "".to_string(),
         };
 
         let kani_ldap_config = KaniLdapConfig {
-            uri: "https://localhost:8443".to_string(),
-            ldap_uri: "ldaps://localhost:636".to_string(),
+            uri: format!("https://{}", DEFAULT_SERVER_LOCALHOST),
+            ldap_uri: format!("ldaps://{}", DEFAULT_LDAP_LOCALHOST),
             admin_pw: "".to_string(),
             base_dn: "dn=localhost".to_string(),
         };
