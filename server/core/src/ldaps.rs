@@ -9,7 +9,7 @@ use kanidmd_lib::idm::ldap::{LdapBoundToken, LdapResponseState};
 use kanidmd_lib::prelude::*;
 use ldap3_proto::proto::LdapMsg;
 use ldap3_proto::LdapCodec;
-use openssl::ssl::{Ssl, SslAcceptor, SslAcceptorBuilder};
+use openssl::ssl::{Ssl, SslAcceptor};
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::net::TcpListener;
 use tokio_openssl::SslStream;
@@ -108,7 +108,7 @@ async fn client_process<W: AsyncWrite + Unpin, R: AsyncRead + Unpin>(
 /// TLS LDAP Listener, hands off to [client_process]
 async fn tls_acceptor(
     listener: TcpListener,
-    tls_parms: SslAcceptor,
+    ssl_acceptor: SslAcceptor,
     qe_r_ref: &'static QueryServerReadV1,
     mut rx: broadcast::Receiver<CoreAction>,
 ) {
@@ -124,7 +124,7 @@ async fn tls_acceptor(
                     Ok((tcpstream, client_socket_addr)) => {
                         // Start the event
                         // From the parameters we need to create an SslContext.
-                        let mut tlsstream = match Ssl::new(tls_parms.context())
+                        let mut tlsstream = match Ssl::new(ssl_acceptor.context())
                             .and_then(|tls_obj| SslStream::new(tls_obj, tcpstream))
                         {
                             Ok(ta) => ta,
@@ -154,7 +154,7 @@ async fn tls_acceptor(
 
 pub(crate) async fn create_ldap_server(
     address: &str,
-    opt_tls_params: Option<SslAcceptorBuilder>,
+    opt_ssl_acceptor: Option<SslAcceptor>,
     qe_r_ref: &'static QueryServerReadV1,
     rx: broadcast::Receiver<CoreAction>,
 ) -> Result<tokio::task::JoinHandle<()>, ()> {
@@ -175,11 +175,11 @@ pub(crate) async fn create_ldap_server(
         );
     })?;
 
-    let ldap_acceptor_handle = match opt_tls_params {
-        Some(tls_params) => {
+    let ldap_acceptor_handle = match opt_ssl_acceptor {
+        Some(ssl_acceptor) => {
             info!("Starting LDAPS interface ldaps://{} ...", address);
-            let tls_parms = tls_params.build();
-            tokio::spawn(tls_acceptor(listener, tls_parms, qe_r_ref, rx))
+
+            tokio::spawn(tls_acceptor(listener, ssl_acceptor, qe_r_ref, rx))
         }
         None => {
             error!("The server won't run without TLS!");
