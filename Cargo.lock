@@ -5020,7 +5020,6 @@ dependencies = [
 name = "testkit-macros"
 version = "0.1.0"
 dependencies = [
- "kanidmd_core",
  "proc-macro2",
  "quote",
  "syn 2.0.37",
