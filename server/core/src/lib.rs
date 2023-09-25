@@ -599,7 +599,7 @@ pub fn cert_generate_core(config: &Configuration) {
 
     let ca_handle = if !ca_cert.exists() || !ca_key.exists() {
         // Generate the CA again.
-        let ca_handle = match crypto::build_ca() {
+        let ca_handle = match crypto::build_ca(None) {
             Ok(ca_handle) => ca_handle,
             Err(e) => {
                 error!(err = ?e, "Failed to build CA");
@@ -625,7 +625,7 @@ pub fn cert_generate_core(config: &Configuration) {
 
     if !tls_key_path.exists() || !tls_chain_path.exists() || !tls_cert_path.exists() {
         // Generate the cert from the ca.
-        let cert_handle = match crypto::build_cert(origin_domain, &ca_handle) {
+        let cert_handle = match crypto::build_cert(origin_domain, &ca_handle, None, None) {
             Ok(cert_handle) => cert_handle,
             Err(e) => {
                 error!(err = ?e, "Failed to build certificate");
@@ -886,7 +886,7 @@ pub async fn create_server_core(
     // If we have been requested to init LDAP, configure it now.
     let maybe_ldap_acceptor_handle = match &config.ldapaddress {
         Some(la) => {
-            let opt_ldap_tls_params = match crypto::setup_tls(&config) {
+            let opt_ldap_ssl_acceptor = match crypto::setup_tls(&config) {
                 Ok(t) => t,
                 Err(e) => {
                     error!("Failed to configure LDAP TLS parameters -> {:?}", e);
@@ -897,7 +897,7 @@ pub async fn create_server_core(
                 // ⚠️  only start the sockets and listeners in non-config-test modes.
                 let h = ldaps::create_ldap_server(
                     la.as_str(),
-                    opt_ldap_tls_params,
+                    opt_ldap_ssl_acceptor,
                     server_read_ref,
                     broadcast_tx.subscribe(),
                 )
