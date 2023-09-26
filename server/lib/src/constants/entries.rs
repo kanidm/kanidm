@@ -363,18 +363,7 @@ impl From<Attribute> for &'static str {
     fn from(val: Attribute) -> Self {
         match val {
             Attribute::Account => ATTR_ACCOUNT,
-            Attribute::SystemMay => ATTR_SYSTEMMAY,
-            Attribute::DynGroup => ATTR_DYNGROUP,
-            Attribute::May => ATTR_MAY,
-            Attribute::DomainDisplayName => ATTR_DOMAIN_DISPLAY_NAME,
             Attribute::DomainLdapAllowUnixPwBind => ATTR_DOMAIN_LDAP_ALLOW_UNIX_PW_BIND,
-            Attribute::SyncCredentialPortal => ATTR_SYNC_CREDENTIAL_PORTAL,
-            Attribute::SyncCookie => ATTR_SYNC_COOKIE,
-            Attribute::SyncYieldAuthority => ATTR_SYNC_YIELD_AUTHORITY,
-            Attribute::SyncTokenSession => ATTR_SYNC_TOKEN_SESSION,
-            Attribute::Es256PrivateKeyDer => ATTR_ES256_PRIVATE_KEY_DER,
-            Attribute::Rs256PrivateKeyDer => ATTR_RS256_PRIVATE_KEY_DER,
-            Attribute::SystemMust => ATTR_SYSTEMMUST,
             Attribute::AccountExpire => ATTR_ACCOUNT_EXPIRE,
             Attribute::AccountValidFrom => ATTR_ACCOUNT_VALID_FROM,
             Attribute::AcpCreateAttr => ATTR_ACP_CREATE_ATTR,

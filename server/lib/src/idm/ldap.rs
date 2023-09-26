@@ -445,31 +445,16 @@ impl LdapServer {
                 e
             })?
         };
-        if idms
-            .proxy_read()
-            .await
-            .qs_read
-            .d_info
-            .d_ldap_allow_unix_pw_bind
-        {
-            debug!(
-                "here {:?}",
-                idms.proxy_read()
-                    .await
-                    .qs_read
-                    .d_info
-                    .d_ldap_allow_unix_pw_bind
-            );
-            let lae = LdapAuthEvent::from_parts(target_uuid, pw.to_string())?;
-            idm_auth.auth_ldap(&lae, ct).await.and_then(|r| {
-                idm_auth.commit().map(|_| {
-                    if r.is_some() {
-                        security_info!(%dn, "✅ LDAP Bind success");
-                    } else {
-                        security_info!(%dn, "❌ LDAP Bind failure");
-                    };
-                    r
-                })
+
+        let lae = LdapAuthEvent::from_parts(target_uuid, pw.to_string())?;
+        idm_auth.auth_ldap(&lae, ct).await.and_then(|r| {
+            idm_auth.commit().map(|_| {
+                if r.is_some() {
+                    security_info!(%dn, "✅ LDAP Bind success pw");
+                } else {
+                    security_info!(%dn, "❌ LDAP Bind failure");
+                };
+                r
             })
         } else {
             security_info!(%dn, "❌ LDAP Bind failure. Using of Unix pw for ldap binds is forbidden.");
@@ -660,11 +645,11 @@ mod tests {
 
         let pce = UnixPasswordChangeEvent::new_internal(UUID_ADMIN, TEST_PASSWORD);
 
-        assert!(idms_prox_write.set_unix_account_password(&pce).is_ok());
-        assert!(idms_prox_write
-            .qs_write
-            .set_domain_ldap_allow_unix_pw_bind(true)
-            .is_ok());
+        let allow_unix_pw_flag = ModifyEvent::new_internal_invalid(
+            filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(UUID_DOMAIN_INFO))),
+            ModifyList::new_purge_and_set(Attribute::DomainLdapAllowUnixPwBind, Value::Bool(false)),
+        );
+        assert!(idms_prox_write.qs_write.modify(&allow_unix_pw_flag).is_ok());
         assert!(idms_prox_write.commit().is_ok());
         let anon_t = ldaps.do_bind(idms, "", "").await.unwrap().unwrap();
         assert!(anon_t.effective_session == LdapSession::UnixBind(UUID_ANONYMOUS));
@@ -673,7 +658,22 @@ mod tests {
         );
 
         // Now test the admin and various DN's
+
+
         // Writing test for optional use of POSIX password for bind
+        // NOT ALLOWING UNIX_PW FOR BIND :
+        let admin_t = ldaps.do_bind(idms, "admin", TEST_PASSWORD).await.unwrap(); // Cannot unwrap futher as on disallowed unix_pw_bind it will return Ok(None)
+        assert!(admin_t.is_none() == true);
+
+        // ALLOWING UNIX_PW FOR BIND :
+        let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await;
+        let allow_unix_pw_flag = ModifyEvent::new_internal_invalid(
+            filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(UUID_DOMAIN_INFO))),
+            ModifyList::new_purge_and_set(Attribute::DomainLdapAllowUnixPwBind, Value::Bool(true)),
+        );
+        assert!(idms_prox_write.qs_write.modify(&allow_unix_pw_flag).is_ok());
+        assert!(idms_prox_write.commit().is_ok());
+
         let admin_t = ldaps
             .do_bind(idms, "admin", TEST_PASSWORD)
             .await

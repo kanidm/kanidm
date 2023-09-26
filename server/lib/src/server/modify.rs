@@ -112,7 +112,6 @@ impl<'a> QueryServerWriteTransaction<'a> {
         })?;
 
         trace!("modify: candidates -> {:?}", candidates);
-
         // Did any of the candidates now become masked?
         if std::iter::zip(
             pre_candidates

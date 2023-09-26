@@ -114,9 +114,7 @@ pub static ref SCHEMA_ATTR_DOMAIN_LDAP_ALLOW_UNIX_PW_BIND: SchemaAttribute = Sch
     uuid: UUID_SCHEMA_ATTR_DOMAIN_LDAP_ALLOW_UNIX_PW_BIND,
     name: Attribute::DomainLdapAllowUnixPwBind.into(),
     description: "Configuration to allow binds to LDAP objects using UNIX passwords.".to_string(),
-
-    index: vec![IndexType::Equality, IndexType::Presence],
-    unique: true,
+    unique: false,
     syntax: SyntaxType::Boolean,
     ..Default::default()
 };
