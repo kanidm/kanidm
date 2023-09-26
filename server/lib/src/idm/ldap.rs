@@ -1,4 +1,4 @@
-//! LDAP specific operations handling components. This is where LDAP operations
+//! LDAP specific operations handling components. This is where LDAP operationsldap.rs
 //! are sent to for processing.
 
 use std::collections::BTreeSet;
@@ -445,6 +445,7 @@ impl LdapServer {
                 e
             })?
         };
+
         let lae = LdapAuthEvent::from_parts(target_uuid, pw.to_string())?;
         idm_auth.auth_ldap(&lae, ct).await.and_then(|r| {
             idm_auth.commit().map(|_| {
@@ -455,7 +456,10 @@ impl LdapServer {
                 };
                 r
             })
-        })
+        } else {
+            security_info!(%dn, "❌ LDAP Bind failure. Using of Unix pw for ldap binds is forbidden.");
+            Err(OperationError::AccessDenied)
+        }
     }
 
     pub async fn do_op(
@@ -641,7 +645,6 @@ mod tests {
 
         let pce = UnixPasswordChangeEvent::new_internal(UUID_ADMIN, TEST_PASSWORD);
 
-        assert!(idms_prox_write.set_unix_account_password(&pce).is_ok());
         let allow_unix_pw_flag = ModifyEvent::new_internal_invalid(
             filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(UUID_DOMAIN_INFO))),
             ModifyList::new_purge_and_set(Attribute::DomainLdapAllowUnixPwBind, Value::Bool(false)),
@@ -655,6 +658,7 @@ mod tests {
         );
 
         // Now test the admin and various DN's
+
 
         // Writing test for optional use of POSIX password for bind
         // NOT ALLOWING UNIX_PW FOR BIND :

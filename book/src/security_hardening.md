@@ -158,3 +158,7 @@ docker run --rm -i -t -u 1000:1000 -v kanidmd:/data kanidm/server:latest /sbin/k
 
 > **HINT** You need to use the UID or GID number with the `-u` argument, as the container can't
 > resolve usernames from the host system.
+
+## Minimum TLS key lengths
+
+We enforce a minimum RSA key length of 2048 bits, and EC keys need 224 bits.

@@ -446,26 +446,27 @@ impl KanidmClientBuilder {
 
 #[test]
 fn test_make_url() {
+    use kanidm_proto::constants::DEFAULT_SERVER_ADDRESS;
     let client: KanidmClient = KanidmClientBuilder::new()
-        .address("https://localhost:8080".to_string())
+        .address(format!("https://{}", DEFAULT_SERVER_ADDRESS))
         .build()
         .unwrap();
     assert_eq!(
         client.get_url(),
-        Url::parse("https://localhost:8080").unwrap()
+        Url::parse(&format!("https://{}", DEFAULT_SERVER_ADDRESS)).unwrap()
     );
     assert_eq!(
         client.make_url("/hello"),
-        Url::parse("https://localhost:8080/hello").unwrap()
+        Url::parse(&format!("https://{}/hello", DEFAULT_SERVER_ADDRESS)).unwrap()
     );
 
     let client: KanidmClient = KanidmClientBuilder::new()
-        .address("https://localhost:8080/cheese/".to_string())
+        .address(format!("https://{}/cheese/", DEFAULT_SERVER_ADDRESS))
         .build()
         .unwrap();
     assert_eq!(
         client.make_url("hello"),
-        Url::parse("https://localhost:8080/cheese/hello").unwrap()
+        Url::parse(&format!("https://{}/cheese/hello", DEFAULT_SERVER_ADDRESS)).unwrap()
     );
 }
 

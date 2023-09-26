@@ -7,6 +7,12 @@ pub const DEFAULT_CLIENT_CONFIG_PATH: &str = "/etc/kanidm/config";
 /// The user-owned path for Kanidm client config
 pub const DEFAULT_CLIENT_CONFIG_PATH_HOME: &str = "~/.config/kanidm";
 
+/// The default bind address for the Kanidm server
+pub const DEFAULT_SERVER_ADDRESS: &str = "127.0.0.1:8443";
+pub const DEFAULT_SERVER_LOCALHOST: &str = "localhost:8443";
+pub const DEFAULT_LDAP_ADDRESS: &str = "127.0.0.1:636";
+pub const DEFAULT_LDAP_LOCALHOST: &str = "localhost:636";
+
 /// IF YOU CHANGE THESE VALUES YOU BREAK EVERYTHING
 pub const ATTR_ACCOUNT_EXPIRE: &str = "account_expire";
 pub const ATTR_ACCOUNT_VALID_FROM: &str = "account_valid_from";

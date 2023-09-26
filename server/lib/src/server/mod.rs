@@ -1575,6 +1575,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         let filt = filter_all!(f_eq(Attribute::Uuid, udi));
         self.internal_modify(&filt, &modl)
     }
+
     /// Initiate a domain rename process. This is generally an internal function but it's
     /// exposed to the cli for admins to be able to initiate the process.
     ///
