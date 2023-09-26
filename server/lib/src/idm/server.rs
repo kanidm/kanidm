@@ -1361,6 +1361,10 @@ impl<'a> IdmServerAuthTransaction<'a> {
             admin_error!("Failed to start auth ldap -> {:?}", e);
             e
         })?;
+        if self.qs_read.d_info.d_ldap_allow_unix_pw_bind == false {
+            security_info!("Bind not allowed through Unix passwords.");
+            return Ok(None);
+        }
 
         // if anonymous
         if lae.target == UUID_ANONYMOUS {
