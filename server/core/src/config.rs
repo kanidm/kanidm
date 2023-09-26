@@ -11,6 +11,7 @@ use std::path::Path;
 
 use std::str::FromStr;
 
+use kanidm_proto::constants::DEFAULT_SERVER_ADDRESS;
 use kanidm_proto::messages::ConsoleOutputMode;
 use serde::{Deserialize, Serialize};
 use sketching::tracing_subscriber::EnvFilter;
@@ -220,7 +221,7 @@ impl fmt::Display for Configuration {
 impl Configuration {
     pub fn new() -> Self {
         Configuration {
-            address: String::from("127.0.0.1:8080"),
+            address: DEFAULT_SERVER_ADDRESS.to_string(),
             ldapaddress: None,
             adminbindpath: env!("KANIDM_ADMIN_BIND_PATH").to_string(),
             threads: std::thread::available_parallelism()
@@ -304,7 +305,7 @@ impl Configuration {
         self.address = b
             .as_ref()
             .cloned()
-            .unwrap_or_else(|| String::from("127.0.0.1:8080"));
+            .unwrap_or_else(|| DEFAULT_SERVER_ADDRESS.to_string());
     }
 
     pub fn update_ldapbind(&mut self, l: &Option<String>) {
