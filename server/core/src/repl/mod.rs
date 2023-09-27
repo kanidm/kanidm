@@ -1,6 +1,3 @@
-use futures_util::future::poll_fn;
-use hyper::server::accept::Accept;
-use hyper::server::conn::{AddrIncoming, Http};
 use openssl::{
     pkey::{PKey, Private},
     ssl::{Ssl, SslAcceptor, SslConnector, SslMethod, SslVerifyMode},
@@ -8,6 +5,7 @@ use openssl::{
 };
 use std::collections::VecDeque;
 use std::net::SocketAddr;
+use std::pin::Pin;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::net::{TcpListener, TcpStream};
@@ -16,31 +14,17 @@ use tokio::sync::mpsc;
 use tokio::sync::oneshot;
 use tokio::time::{interval, sleep, timeout};
 use tokio_openssl::SslStream;
+use tokio_util::codec::{FramedRead, FramedWrite};
 use tracing::error;
 use url::Url;
 use uuid::Uuid;
-
-use http::{Request, StatusCode};
-use hyper::client::conn;
-use hyper::Body;
-
-use crate::https::trace;
-use tower_http::trace::{DefaultOnRequest, TraceLayer};
-use tracing::Level;
 
 use kanidmd_lib::prelude::duration_from_epoch_now;
 use kanidmd_lib::prelude::IdmServer;
 
 use crate::config::RepNodeConfig;
 use crate::config::ReplicationConfiguration;
-use crate::https::handle_conn;
-use crate::https::middleware;
 use crate::CoreAction;
-
-use axum::middleware::from_fn;
-use axum::response::IntoResponse;
-use axum::routing::get;
-use axum::Router;
 
 mod codec;
 
@@ -63,9 +47,6 @@ pub(crate) async fn create_repl_server(
             );
         })?;
 
-    let listener = hyper::server::conn::AddrIncoming::from_listener(listener)
-        .map_err(|err| error!(?err, "Unable to spawn hyper server from listener"))?;
-
     // Create the control channel. Use a low msg count, there won't be that much going on.
     let (ctrl_tx, ctrl_rx) = mpsc::channel(4);
 
@@ -87,6 +68,7 @@ pub(crate) async fn create_repl_server(
 }
 
 async fn repl_run_consumer(
+    max_frame_bytes: usize,
     domain: &str,
     sock_addrs: &[SocketAddr],
     tls_connector: &SslConnector,
@@ -96,11 +78,10 @@ async fn repl_run_consumer(
     let replica_connect_timeout = Duration::from_secs(2);
 
     // This is pretty gnarly, but we need to loop to try out each socket addr.
-
     for sock_addr in sock_addrs {
         debug!("Connecting to {} replica via {}", domain, sock_addr);
 
-        let tcpclient = match timeout(replica_connect_timeout, TcpStream::connect(sock_addr)).await
+        let tcpstream = match timeout(replica_connect_timeout, TcpStream::connect(sock_addr)).await
         {
             Ok(Ok(tc)) => tc,
             Ok(Err(err)) => {
@@ -115,65 +96,25 @@ async fn repl_run_consumer(
 
         trace!("connection established");
 
-        let tlsstream = Ssl::new(tls_connector.context())
-            .and_then(|tls_obj| SslStream::new(tls_obj, tcpclient))
-            .unwrap();
-
-        let (mut request_sender, connection) = match conn::handshake(tlsstream).await {
-            Ok(r) => r,
-            Err(err) => {
-                error!(?err, "Unable to complete http handshake");
+        let mut tlsstream = match Ssl::new(tls_connector.context())
+            .and_then(|tls_obj| SslStream::new(tls_obj, tcpstream))
+        {
+            Ok(ta) => ta,
+            Err(e) => {
+                error!("replication client TLS setup error, continuing -> {:?}", e);
                 continue;
             }
         };
 
-        // Spawn the bg task that actually drives the work.
-        tokio::spawn(async move {
-            if let Err(err) = connection.await {
-                error!(?err, "Error in connection");
-            }
-            // It does appear this drops of it's own accord, no need for
-            // us to select on it.
-            trace!("Stopped connection bg task");
-        });
-
-        // Now we can do requests.
-        info!("Connection to replication peer successful");
-
-        let request = Request::builder()
-            // We need to manually add the host header because SendRequest does not
-            .uri("/test")
-            .header("Host", domain)
-            .method("GET")
-            .body(Body::from(""));
-
-        let request = match request {
-            Ok(r) => r,
-            Err(err) => {
-                error!(?err, "Unable to build request");
-                break;
-            }
+        if let Err(e) = SslStream::connect(Pin::new(&mut tlsstream)).await {
+            error!("replication client TLS accept error, continuing -> {:?}", e);
+            continue;
         };
+        let (r, w) = tokio::io::split(tlsstream);
+        let mut _r = FramedRead::new(r, codec::ConsumerCodec::new(max_frame_bytes));
+        let mut _w = FramedWrite::new(w, codec::ConsumerCodec::new(max_frame_bytes));
 
-        let response = match timeout(
-            replica_connect_timeout,
-            request_sender.send_request(request),
-        )
-        .await
-        {
-            Ok(Ok(res)) => res,
-            Ok(Err(err)) => {
-                error!(?err, "Unable to execute GET to {}", domain);
-                break;
-            }
-            Err(_) => {
-                error!("Timeout for HTTPS request to {}", domain);
-                break;
-            }
-        };
-
-        debug!(status = %response.status());
-        assert!(response.status() == StatusCode::OK);
+        assert!(false);
 
         // Success - return to bypass the error message.
         return;
@@ -187,13 +128,14 @@ async fn repl_task(
     client_key: PKey<Private>,
     client_cert: X509,
     supplier_cert: X509,
+    max_frame_bytes: usize,
     task_poll_interval: Duration,
     mut task_rx: broadcast::Receiver<()>,
     automatic_refresh: bool,
     idms: Arc<IdmServer>,
 ) {
-    if origin.scheme() != "https" {
-        error!("Replica origin is not https - refusing to proceed.");
+    if origin.scheme() != "repl" {
+        error!("Replica origin is not repl:// - refusing to proceed.");
         return;
     }
 
@@ -279,6 +221,7 @@ async fn repl_task(
                 let span = info_span!("replication_run_consumer", uuid = ?eventid);
                 let _enter = span.enter();
                 repl_run_consumer(
+                    max_frame_bytes,
                     domain,
                     &socket_addrs,
                     &tls_connector,
@@ -292,37 +235,45 @@ async fn repl_task(
     info!("Replica task for {} has stopped.", origin);
 }
 
+async fn handle_repl_conn(
+    max_frame_bytes: usize,
+    tcpstream: TcpStream,
+    client_address: SocketAddr,
+    tls_parms: SslAcceptor,
+    _idms: Arc<IdmServer>,
+) {
+    debug!(?client_address);
+
+    let mut tlsstream = match Ssl::new(tls_parms.context())
+        .and_then(|tls_obj| SslStream::new(tls_obj, tcpstream))
+    {
+        Ok(ta) => ta,
+        Err(e) => {
+            error!("LDAP TLS setup error, continuing -> {:?}", e);
+            return;
+        }
+    };
+    if let Err(e) = SslStream::accept(Pin::new(&mut tlsstream)).await {
+        error!("LDAP TLS accept error, continuing -> {:?}", e);
+        return;
+    };
+    let (r, w) = tokio::io::split(tlsstream);
+    let mut _r = FramedRead::new(r, codec::SupplierCodec::new(max_frame_bytes));
+    let mut _w = FramedWrite::new(w, codec::SupplierCodec::new(max_frame_bytes));
+}
+
 async fn repl_acceptor(
-    mut listener: AddrIncoming,
+    listener: TcpListener,
     idms: Arc<IdmServer>,
     repl_config: ReplicationConfiguration,
     mut rx: broadcast::Receiver<CoreAction>,
     mut ctrl_rx: mpsc::Receiver<ReplCtrl>,
 ) {
-    // Setup the routes for the replication app
-
-    let trace_layer = TraceLayer::new_for_http()
-        .make_span_with(trace::DefaultMakeSpanKanidmd::new())
-        // setting these to trace because all they do is print "started processing request", and we are already doing that enough!
-        .on_request(DefaultOnRequest::new().level(Level::TRACE));
-
-    let mut app = Router::new()
-        .route("/test", get(test))
-        // This must be the LAST middleware.
-        // This is because the last middleware here is the first to be entered and the last
-        // to be exited, and this middleware sets up ids' and other bits for for logging
-        // coherence to be maintained.
-        .layer(from_fn(middleware::kopid_middleware))
-        // this MUST be the last layer before with_state else the span never starts and everything breaks.
-        .layer(trace_layer)
-        // .with_state(state)
-        // the connect_info bit here lets us pick up the remote address of the client
-        .into_make_service_with_connect_info::<SocketAddr>();
-
     // Persistent parts
+    // These all probably need changes later ...
     let task_poll_interval = Duration::from_secs(10);
     let retry_timeout = Duration::from_secs(60);
-    let protocol = Arc::new(Http::new());
+    let max_frame_bytes = 128;
 
     // Setup a broadcast to control our tasks.
     let (task_tx, task_rx1) = broadcast::channel(2);
@@ -399,6 +350,7 @@ async fn repl_acceptor(
                         server_key.clone(),
                         server_cert.clone(),
                         supplier_cert.clone(),
+                        max_frame_bytes,
                         task_poll_interval,
                         task_rx,
                         *automatic_refresh,
@@ -485,11 +437,21 @@ async fn repl_acceptor(
                     continue
                 }
                 */
-
-                Some(Ok(stream)) = poll_fn(|cx| Pin::new(&mut listener).poll_accept(cx)) => {
-                    let acceptor = tls_acceptor.clone();
-                    let svc = tower::MakeService::make_service(&mut app, &stream);
-                    tokio::spawn(handle_conn(acceptor, stream, svc, protocol.clone()));
+                accept_result = listener.accept() => {
+                    match accept_result {
+                        Ok((tcpstream, client_socket_addr)) => {
+                            let clone_idms = idms.clone();
+                            let clone_tls_acceptor = tls_acceptor.clone();
+                            // We don't care about the join handle here - once a client connects
+                            // it sticks to whatever ssl settings it had at launch.
+                            let _ = tokio::spawn(
+                                handle_repl_conn(max_frame_bytes, tcpstream, client_socket_addr, clone_tls_acceptor, clone_idms)
+                            );
+                        }
+                        Err(e) => {
+                            error!("replication acceptor error, continuing -> {:?}", e);
+                        }
+                    }
                 }
             }
             // Continue to poll/loop
@@ -508,8 +470,4 @@ async fn repl_acceptor(
     }
 
     info!("Stopped Replication Acceptor");
-}
-
-async fn test() -> impl IntoResponse {
-    axum::response::Html("Ok")
 }
