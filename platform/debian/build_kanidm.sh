@@ -26,11 +26,7 @@ fi
 BUILD_DIR="$HOME/build"
 
 if [ -z "${SKIP_DEPS}" ]; then
-    if [ "$(whoami)" != "root" ]; then
-        sudo ./platform/debian/install_deps.sh
-    else
-        ./platform/debian/install_deps.sh
-    fi
+    PACKAGING=1 ./scripts/install_ubuntu_dependencies.sh
 else
     echo "SKIP_DEPS configured, skipping install of rust and packages"
 fi
