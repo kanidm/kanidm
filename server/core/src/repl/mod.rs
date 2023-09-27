@@ -42,6 +42,8 @@ use axum::response::IntoResponse;
 use axum::routing::get;
 use axum::Router;
 
+mod codec;
+
 pub(crate) enum ReplCtrl {
     GetCertificate { respond: oneshot::Sender<X509> },
 }
