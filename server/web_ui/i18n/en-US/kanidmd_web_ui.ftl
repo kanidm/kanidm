@@ -1,1 +1,13 @@
-women = i have committed 40 counts of arson to get to this point
+page-not-found = 404 — Page Not Found
+goto-home = Home
+breadcrumb-admin = Admin
+breadcrumb-admin-accounts = Accounts
+header-account-admin = Account Administration
+accounts-list-load-waiting = Waiting on the accounts list to load...
+th-accounts-display-name = Display Name
+th-accounts-username = Username
+th-accounts-description = Description
+account-type-service = Service Account
+account-type-person = Person
+alert-failed-to-query-accounts = Failed to query accounts
+alert-unauthorized = You're not authorized to see this page

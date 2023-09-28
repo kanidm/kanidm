@@ -76,11 +76,11 @@ fn NotFound() -> Html {
         <main class="flex-shrink-0 form-signin text-center">
                 <img src="/pkg/img/logo-square.svg" alt="Kanidm" class="kanidm_logo"/>
                 // TODO: replace this with a call to domain info
-                <h3>{ "404 - Page not found" }</h3>
+                <h3>{ fl!(i18n.i18n, "page-not-found") }</h3>
 
                 <div class="container">
                 <Link<ViewRoute> to={ ViewRoute::Apps }>
-                { fl!(i18n.i18n, "women") }
+                { fl!(i18n.i18n, "goto-home") }
                 </Link<ViewRoute>>
                 </div>
         </main>

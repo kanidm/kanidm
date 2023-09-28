@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 
 use gloo::console;
+use i18n_embed_fl::fl;
 use yew::{html, Component, Context, Html, Properties};
 use yew_router::prelude::Link;
 
@@ -9,6 +10,7 @@ use crate::components::alpha_warning_banner;
 use crate::constants::{
     CSS_BREADCRUMB_ITEM, CSS_BREADCRUMB_ITEM_ACTIVE, CSS_CELL, CSS_DT, CSS_TABLE,
 };
+use crate::manager::I18n;
 use crate::utils::{do_alert_error, do_page_header};
 use crate::views::AdminRoute;
 use crate::{do_request, RequestMethod};
@@ -24,6 +26,8 @@ impl From<GetError> for AdminListAccountsMsg {
 
 pub struct AdminListAccounts {
     state: ViewState,
+    i18n: Rc<I18n>,
+    _context_listener: ContextHandle<Rc<I18n>>,
 }
 
 // callback messaging for this confused pile of crab-bait
@@ -36,6 +40,7 @@ pub enum AdminListAccountsMsg {
         emsg: String,
         kopid: Option<String>,
     },
+    I18n(I18n),
 }
 
 enum ViewState {
@@ -143,6 +148,10 @@ impl Component for AdminListAccounts {
     fn create(ctx: &Context<Self>) -> Self {
         // TODO: work out the querystring thing so we can just show x number of elements
         // console::log!("query: {:?}", location().query);
+        let (i18n, context_listener) = ctx
+            .link()
+            .context(ctx.link().callback(Self::Message::I18n))
+            .unwrap();
 
         // start pulling the account data on startup
         ctx.link().send_future(async move {
@@ -153,6 +162,8 @@ impl Component for AdminListAccounts {
         });
         AdminListAccounts {
             state: ViewState::Loading,
+            i18n,
+            _context_listener: context_listener,
         }
     }
 
@@ -178,6 +189,10 @@ impl Component for AdminListAccounts {
                 console::log!("emsg: {:?}", emsg);
                 console::log!("kopid: {:?}", kopid);
             }
+            AdminListAccountsMsg::I18n(i18n) => {
+                self.i18n = i18n;
+                return true;
+            }
         }
         false
     }
@@ -187,15 +202,15 @@ impl Component for AdminListAccounts {
             <>
 
             <ol class="breadcrumb">
-            <li class={CSS_BREADCRUMB_ITEM}><Link<AdminRoute> to={AdminRoute::AdminMenu}>{"Admin"}</Link<AdminRoute>></li>
-            <li class={CSS_BREADCRUMB_ITEM_ACTIVE} aria-current="page">{"Accounts"}</li>
+            <li class={CSS_BREADCRUMB_ITEM}><Link<AdminRoute> to={AdminRoute::AdminMenu}>{fl!(self.i18n.i18n, "breadcrumb-admin")}</Link<AdminRoute>></li>
+            <li class={CSS_BREADCRUMB_ITEM_ACTIVE} aria-current="page">{fl!(self.i18n.i18n, "breadcrumb-admin-accounts")}</li>
             </ol>
-            {do_page_header("Account Administration")}
+            {do_page_header(fl!(self.i18n.i18n, "header-account-admin"))}
             { alpha_warning_banner() }
         <div id={"accountlist"}>
         {match &self.state {
             ViewState::Loading => {
-                html! {"Waiting on the accounts list to load..."}
+                html! {fl!(self.i18n.i18n, "accounts-list-load-waiting")}
             }
 
             ViewState::Responded { response } => {
@@ -206,9 +221,9 @@ impl Component for AdminListAccounts {
                   <thead>
                     <tr>
                       <th scope={scope_col}></th>
-                      <th scope={scope_col}>{"Display Name"}</th>
-                      <th scope={scope_col}>{"Username"}</th>
-                      <th scope={scope_col}>{"Description"}</th>
+                      <th scope={scope_col}>{fl!(self.i18n.i18n, "th-accounts-display-name")}</th>
+                      <th scope={scope_col}>{fl!(self.i18n.i18n, "th-accounts-username")}</th>
+                      <th scope={scope_col}>{fl!(self.i18n.i18n, "th-accounts-description")}</th>
                     </tr>
                   </thead>
 
@@ -227,8 +242,8 @@ impl Component for AdminListAccounts {
                           None => String::from(""),
                         };
                         let account_type: Html = match account.object_type {
-                            EntityType::ServiceAccount => html!{<img src={"/pkg/img/icon-robot.svg"}  alt={"Service Account"} class={"p-0"} />},
-                            EntityType::Person => html!{<img src={"/pkg/img/icon-person.svg"} alt={"Person"} class={"p-0"} />},
+                            EntityType::ServiceAccount => html!{<img src={"/pkg/img/icon-robot.svg"}  alt={fl!(self.i18n.i18n, "account-type-service")} class={"p-0"} />},
+                            EntityType::Person => html!{<img src={"/pkg/img/icon-person.svg"} alt={fl!(self.i18n.i18n, "account-type-person")} class={"p-0"} />},
                             _ => html!("x"),
                         };
 
@@ -269,12 +284,12 @@ impl Component for AdminListAccounts {
                 console::error!("Failed to pull details", format!("{:?}", kopid));
                 html!(
                     <>
-                    {do_alert_error("Failed to Query Accounts", Some(emsg))}
+                    {do_alert_error(fl!(self.i18n.i18n, "alert-failed-to-query-accounts"), Some(emsg))}
                     </>
                 )
             }
             ViewState::NotAuthorized {} => {
-                do_alert_error("You're not authorized to see this page!", None)
+                do_alert_error(fl!(self.i18n.i18n, "alert-unauthorized"), None)
             }
         }}
         </div>
