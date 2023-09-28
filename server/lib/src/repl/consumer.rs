@@ -4,11 +4,6 @@ use crate::prelude::*;
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 
-pub enum ConsumerState {
-    Ok,
-    RefreshRequired,
-}
-
 impl<'a> QueryServerWriteTransaction<'a> {
     // Apply the state changes if they are valid.
 
@@ -255,6 +250,11 @@ impl<'a> QueryServerWriteTransaction<'a> {
         ctx: &ReplIncrementalContext,
     ) -> Result<ConsumerState, OperationError> {
         match ctx {
+            ReplIncrementalContext::DomainMismatch => {
+                error!("Unable to proceed with consumer incremental - the supplier has indicated that our domain_uuid's are not equivalent. This can occur when adding a new consumer to an existing topology.");
+                error!("This server's content must be refreshed to proceed. If you have configured automatic refresh, this will occur shortly.");
+                Ok(ConsumerState::RefreshRequired)
+            }
             ReplIncrementalContext::NoChangesAvailable => {
                 info!("no changes are available");
                 Ok(ConsumerState::Ok)

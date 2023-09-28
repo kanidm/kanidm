@@ -896,6 +896,8 @@ pub trait QueryServerTransaction<'a> {
         //
         // ...
 
+        let domain_uuid = self.get_domain_uuid();
+
         // Which then the supplier will use to actually retrieve the set of entries.
         // and the needed attributes we need.
         let ruv_snapshot = self.get_be_txn().get_ruv();
@@ -903,7 +905,10 @@ pub trait QueryServerTransaction<'a> {
         // What's the current set of ranges?
         ruv_snapshot
             .current_ruv_range()
-            .map(|ranges| ReplRuvRange::V1 { ranges })
+            .map(|ranges| ReplRuvRange::V1 {
+                domain_uuid,
+                ranges,
+            })
     }
 }
 

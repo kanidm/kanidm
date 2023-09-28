@@ -3,14 +3,20 @@ use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::io;
 use tokio_util::codec::{Decoder, Encoder};
 
+use kanidmd_lib::repl::proto::{ReplIncrementalContext, ReplRefreshContext, ReplRuvRange};
+
 #[derive(Serialize, Deserialize, Debug)]
 pub enum ConsumerRequest {
     Ping,
+    Incremental(ReplRuvRange),
+    Refresh,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub enum SupplierResponse {
     Pong,
+    Incremental(ReplIncrementalContext),
+    Refresh(ReplRefreshContext),
 }
 
 #[derive(Default)]

@@ -24,6 +24,8 @@ use futures_util::stream::StreamExt;
 
 use kanidmd_lib::prelude::duration_from_epoch_now;
 use kanidmd_lib::prelude::IdmServer;
+use kanidmd_lib::repl::proto::ConsumerState;
+use kanidmd_lib::server::QueryServerTransaction;
 
 use crate::config::RepNodeConfig;
 use crate::config::ReplicationConfiguration;
@@ -78,8 +80,8 @@ async fn repl_run_consumer(
     domain: &str,
     sock_addrs: &[SocketAddr],
     tls_connector: &SslConnector,
-    _automatic_refresh: bool,
-    _idms: &IdmServer,
+    automatic_refresh: bool,
+    idms: &IdmServer,
 ) {
     let replica_connect_timeout = Duration::from_secs(2);
 
@@ -127,24 +129,148 @@ async fn repl_run_consumer(
         }
 
         // Wait for a response
-        while let Some(codec_msg) = r.next().await {
+        if let Some(codec_msg) = r.next().await {
             match codec_msg {
                 Ok(SupplierResponse::Pong) => {
                     debug!("Ping Success!");
                     // Success - return to bypass the error message.
-                    return;
+                    // return;
+                }
+                Ok(SupplierResponse::Incremental(_)) | Ok(SupplierResponse::Refresh(_)) => {
+                    error!("Supplier Response contains invalid State");
+                    break;
                 }
                 Err(err) => {
                     error!(?err, "consumer decode error, unable to continue.");
                     break;
                 }
             }
+        } else {
+            error!("Connection closed");
+            break;
         }
+
+        // Perform incremental.
+        let consumer_ruv_range = {
+            let mut read_txn = idms.proxy_read().await;
+            match read_txn.qs_read.consumer_get_state() {
+                Ok(ruv_range) => ruv_range,
+                Err(err) => {
+                    error!(
+                        ?err,
+                        "consumer ruv range could not be accessed, unable to continue."
+                    );
+                    break;
+                }
+            }
+        };
+
+        if let Err(err) = w
+            .send(ConsumerRequest::Incremental(consumer_ruv_range))
+            .await
+        {
+            error!(?err, "consumer encode error, unable to continue.");
+            break;
+        }
+
+        let changes = if let Some(codec_msg) = r.next().await {
+            match codec_msg {
+                Ok(SupplierResponse::Incremental(changes)) => {
+                    // Success - return to bypass the error message.
+                    changes
+                }
+                Ok(SupplierResponse::Pong) | Ok(SupplierResponse::Refresh(_)) => {
+                    error!("Supplier Response contains invalid State");
+                    break;
+                }
+                Err(err) => {
+                    error!(?err, "consumer decode error, unable to continue.");
+                    break;
+                }
+            }
+        } else {
+            error!("Connection closed");
+            break;
+        };
+
+        // Now apply the changes if possible
+        let consumer_state = {
+            let ct = duration_from_epoch_now();
+            let mut write_txn = idms.proxy_write(ct).await;
+            match write_txn
+                .qs_write
+                .consumer_apply_changes(&changes)
+                .and_then(|cs| write_txn.commit().map(|()| cs))
+            {
+                Ok(state) => state,
+                Err(err) => {
+                    error!(?err, "consumer was not able to apply changes.");
+                    break;
+                }
+            }
+        };
+
+        match consumer_state {
+            ConsumerState::Ok => {
+                info!("Incremental Replication Success");
+                // return to bypass the failure message.
+                return;
+            }
+            ConsumerState::RefreshRequired => {
+                if automatic_refresh {
+                    warn!("Consumer is out of date and must be refreshed. This will happen *now*.");
+                } else {
+                    error!("Consumer is out of date and must be refreshed. You must manually resolve this situation.");
+                    return;
+                };
+            }
+        }
+
+        if let Err(err) = w.send(ConsumerRequest::Refresh).await {
+            error!(?err, "consumer encode error, unable to continue.");
+            break;
+        }
+
+        let refresh = if let Some(codec_msg) = r.next().await {
+            match codec_msg {
+                Ok(SupplierResponse::Refresh(changes)) => {
+                    // Success - return to bypass the error message.
+                    changes
+                }
+                Ok(SupplierResponse::Pong) | Ok(SupplierResponse::Incremental(_)) => {
+                    error!("Supplier Response contains invalid State");
+                    break;
+                }
+                Err(err) => {
+                    error!(?err, "consumer decode error, unable to continue.");
+                    break;
+                }
+            }
+        } else {
+            error!("Connection closed");
+            break;
+        };
+
+        // Now apply the refresh if possible
+        let ct = duration_from_epoch_now();
+        let mut write_txn = idms.proxy_write(ct).await;
+        if let Err(err) = write_txn
+            .qs_write
+            .consumer_apply_refresh(&refresh)
+            .and_then(|cs| write_txn.commit().map(|()| cs))
+        {
+            error!(?err, "consumer was not able to apply refresh.");
+            break;
+        }
+
+        warn!("Replication refresh was successful.");
+        return;
     }
 
     error!("Unable to complete replication successfully.");
 }
 
+#[instrument(level = "info", skip_all)]
 async fn repl_task(
     origin: Url,
     client_key: PKey<Private>,
@@ -257,12 +383,13 @@ async fn repl_task(
     info!("Replica task for {} has stopped.", origin);
 }
 
+#[instrument(level = "info", skip_all)]
 async fn handle_repl_conn(
     max_frame_bytes: usize,
     tcpstream: TcpStream,
     client_address: SocketAddr,
     tls_parms: SslAcceptor,
-    _idms: Arc<IdmServer>,
+    idms: Arc<IdmServer>,
 ) {
     debug!(?client_address, "replication client connected 🛫");
 
@@ -288,6 +415,41 @@ async fn handle_repl_conn(
             Ok(ConsumerRequest::Ping) => {
                 debug!("consumer requested ping");
                 if let Err(err) = w.send(SupplierResponse::Pong).await {
+                    error!(?err, "supplier encode error, unable to continue.");
+                    break;
+                }
+            }
+            Ok(ConsumerRequest::Incremental(consumer_ruv_range)) => {
+                let mut read_txn = idms.proxy_read().await;
+
+                let changes = match read_txn
+                    .qs_read
+                    .supplier_provide_changes(consumer_ruv_range)
+                {
+                    Ok(changes) => changes,
+                    Err(err) => {
+                        error!(?err, "supplier provide changes failed.");
+                        break;
+                    }
+                };
+
+                if let Err(err) = w.send(SupplierResponse::Incremental(changes)).await {
+                    error!(?err, "supplier encode error, unable to continue.");
+                    break;
+                }
+            }
+            Ok(ConsumerRequest::Refresh) => {
+                let mut read_txn = idms.proxy_read().await;
+
+                let changes = match read_txn.qs_read.supplier_provide_refresh() {
+                    Ok(changes) => changes,
+                    Err(err) => {
+                        error!(?err, "supplier provide refresh failed.");
+                        break;
+                    }
+                };
+
+                if let Err(err) = w.send(SupplierResponse::Refresh(changes)).await {
                     error!(?err, "supplier encode error, unable to continue.");
                     break;
                 }

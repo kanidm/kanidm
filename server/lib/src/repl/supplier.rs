@@ -87,9 +87,18 @@ impl<'a> QueryServerReadTransaction<'a> {
         ctx_ruv: ReplRuvRange,
     ) -> Result<ReplIncrementalContext, OperationError> {
         // Convert types if needed. This way we can compare ruv's correctly.
-        let ctx_ranges = match ctx_ruv {
-            ReplRuvRange::V1 { ranges } => ranges,
+        let (ctx_domain_uuid, ctx_ranges) = match ctx_ruv {
+            ReplRuvRange::V1 {
+                domain_uuid,
+                ranges,
+            } => (domain_uuid, ranges),
         };
+
+        if ctx_domain_uuid != self.d_info.d_uuid {
+            error!("Replication - Consumer Domain UUID does not match our local domain uuid.");
+            debug!(consumer_domain_uuid = ?ctx_domain_uuid, supplier_domain_uuid = ?self.d_info.d_uuid);
+            return Ok(ReplIncrementalContext::DomainMismatch);
+        }
 
         let our_ranges = self
             .get_be_txn()
