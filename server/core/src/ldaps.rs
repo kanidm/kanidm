@@ -9,7 +9,7 @@ use kanidmd_lib::idm::ldap::{LdapBoundToken, LdapResponseState};
 use kanidmd_lib::prelude::*;
 use ldap3_proto::proto::LdapMsg;
 use ldap3_proto::LdapCodec;
-use openssl::ssl::{Ssl, SslAcceptor, SslAcceptorBuilder};
+use openssl::ssl::{Ssl, SslAcceptor};
 use tokio::net::{TcpListener, TcpStream};
 use tokio_openssl::SslStream;
 use tokio_util::codec::{FramedRead, FramedWrite};
