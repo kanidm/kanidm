@@ -59,6 +59,12 @@ pub enum RepNodeConfig {
         supplier_cert: X509,
         automatic_refresh: bool,
     },
+    #[serde(rename = "mutual-pull")]
+    MutualPull {
+        #[serde(with = "x509b64")]
+        partner_cert: X509,
+        automatic_refresh: bool,
+    },
     /*
     AllowPush {
     },

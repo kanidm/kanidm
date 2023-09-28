@@ -75,6 +75,7 @@ pub(crate) async fn create_repl_server(
     Ok((repl_handle, ctrl_tx))
 }
 
+#[instrument(level = "info", skip_all)]
 async fn repl_run_consumer(
     max_frame_bytes: usize,
     domain: &str,
@@ -121,34 +122,6 @@ async fn repl_run_consumer(
         let (r, w) = tokio::io::split(tlsstream);
         let mut r = FramedRead::new(r, codec::ConsumerCodec::new(max_frame_bytes));
         let mut w = FramedWrite::new(w, codec::ConsumerCodec::new(max_frame_bytes));
-
-        // We have setup now - lets try communicating!
-        if let Err(err) = w.send(ConsumerRequest::Ping).await {
-            error!(?err, "consumer encode error, unable to continue.");
-            break;
-        }
-
-        // Wait for a response
-        if let Some(codec_msg) = r.next().await {
-            match codec_msg {
-                Ok(SupplierResponse::Pong) => {
-                    debug!("Ping Success!");
-                    // Success - return to bypass the error message.
-                    // return;
-                }
-                Ok(SupplierResponse::Incremental(_)) | Ok(SupplierResponse::Refresh(_)) => {
-                    error!("Supplier Response contains invalid State");
-                    break;
-                }
-                Err(err) => {
-                    error!(?err, "consumer decode error, unable to continue.");
-                    break;
-                }
-            }
-        } else {
-            error!("Connection closed");
-            break;
-        }
 
         // Perform incremental.
         let consumer_ruv_range = {
@@ -270,7 +243,6 @@ async fn repl_run_consumer(
     error!("Unable to complete replication successfully.");
 }
 
-#[instrument(level = "info", skip_all)]
 async fn repl_task(
     origin: Url,
     client_key: PKey<Private>,
@@ -476,7 +448,7 @@ async fn repl_acceptor(
     // These all probably need changes later ...
     let task_poll_interval = Duration::from_secs(10);
     let retry_timeout = Duration::from_secs(60);
-    let max_frame_bytes = 128;
+    let max_frame_bytes = 268435456;
 
     // Setup a broadcast to control our tasks.
     let (task_tx, task_rx1) = broadcast::channel(2);
@@ -545,11 +517,27 @@ async fn repl_acceptor(
         // For each node in the map, either spawn a task to pull from that node,
         // or setup the node as allowed to pull from us.
         for (origin, node) in replication_node_map.iter() {
+            // Setup client certs
             match node {
-                RepNodeConfig::AllowPull { consumer_cert } => {
+                RepNodeConfig::MutualPull {
+                    partner_cert: consumer_cert,
+                    automatic_refresh: _,
+                }
+                | RepNodeConfig::AllowPull { consumer_cert } => {
                     client_certs.push(consumer_cert.clone())
                 }
                 RepNodeConfig::Pull {
+                    supplier_cert: _,
+                    automatic_refresh: _,
+                } => {}
+            };
+
+            match node {
+                RepNodeConfig::MutualPull {
+                    partner_cert: supplier_cert,
+                    automatic_refresh,
+                }
+                | RepNodeConfig::Pull {
                     supplier_cert,
                     automatic_refresh,
                 } => {
@@ -570,7 +558,8 @@ async fn repl_acceptor(
                     task_handles.push_back(handle);
                     debug_assert!(task_handles.len() == task_tx.receiver_count());
                 }
-            }
+                RepNodeConfig::AllowPull { consumer_cert: _ } => {}
+            };
         }
 
         // ⚠️  This section is critical to the security of replication
