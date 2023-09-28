@@ -17,7 +17,7 @@ use openssl::x509::X509;
 
 use uuid::Uuid;
 
-/// Gets an [EcGroup] for P-256
+/// Gets an [ec::EcGroup] for P-256
 pub fn get_group() -> Result<ec::EcGroup, OpenSSLError> {
     ec::EcGroup::from_curve_name(Nid::X9_62_PRIME256V1)
 }

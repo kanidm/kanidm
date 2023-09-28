@@ -15,9 +15,12 @@ use tokio::sync::oneshot;
 use tokio::time::{interval, sleep, timeout};
 use tokio_openssl::SslStream;
 use tokio_util::codec::{FramedRead, FramedWrite};
-use tracing::error;
+use tracing::{error, Instrument};
 use url::Url;
 use uuid::Uuid;
+
+use futures_util::sink::SinkExt;
+use futures_util::stream::StreamExt;
 
 use kanidmd_lib::prelude::duration_from_epoch_now;
 use kanidmd_lib::prelude::IdmServer;
@@ -26,10 +29,13 @@ use crate::config::RepNodeConfig;
 use crate::config::ReplicationConfiguration;
 use crate::CoreAction;
 
+use self::codec::{ConsumerRequest, SupplierResponse};
+
 mod codec;
 
 pub(crate) enum ReplCtrl {
     GetCertificate { respond: oneshot::Sender<X509> },
+    RenewCertificate { respond: oneshot::Sender<bool> },
 }
 
 pub(crate) async fn create_repl_server(
@@ -111,13 +117,29 @@ async fn repl_run_consumer(
             continue;
         };
         let (r, w) = tokio::io::split(tlsstream);
-        let mut _r = FramedRead::new(r, codec::ConsumerCodec::new(max_frame_bytes));
-        let mut _w = FramedWrite::new(w, codec::ConsumerCodec::new(max_frame_bytes));
+        let mut r = FramedRead::new(r, codec::ConsumerCodec::new(max_frame_bytes));
+        let mut w = FramedWrite::new(w, codec::ConsumerCodec::new(max_frame_bytes));
 
-        assert!(false);
+        // We have setup now - lets try communicating!
+        if let Err(err) = w.send(ConsumerRequest::Ping).await {
+            error!(?err, "consumer encode error, unable to continue.");
+            break;
+        }
 
-        // Success - return to bypass the error message.
-        return;
+        // Wait for a response
+        while let Some(codec_msg) = r.next().await {
+            match codec_msg {
+                Ok(SupplierResponse::Pong) => {
+                    debug!("Ping Success!");
+                    // Success - return to bypass the error message.
+                    return;
+                }
+                Err(err) => {
+                    error!(?err, "consumer decode error, unable to continue.");
+                    break;
+                }
+            }
+        }
     }
 
     error!("Unable to complete replication successfully.");
@@ -242,24 +264,42 @@ async fn handle_repl_conn(
     tls_parms: SslAcceptor,
     _idms: Arc<IdmServer>,
 ) {
-    debug!(?client_address);
+    debug!(?client_address, "replication client connected 🛫");
 
     let mut tlsstream = match Ssl::new(tls_parms.context())
         .and_then(|tls_obj| SslStream::new(tls_obj, tcpstream))
     {
         Ok(ta) => ta,
-        Err(e) => {
-            error!("LDAP TLS setup error, continuing -> {:?}", e);
+        Err(err) => {
+            error!(?err, "LDAP TLS setup error, disconnecting client");
             return;
         }
     };
-    if let Err(e) = SslStream::accept(Pin::new(&mut tlsstream)).await {
-        error!("LDAP TLS accept error, continuing -> {:?}", e);
+    if let Err(err) = SslStream::accept(Pin::new(&mut tlsstream)).await {
+        error!(?err, "LDAP TLS accept error, disconnecting client");
         return;
     };
     let (r, w) = tokio::io::split(tlsstream);
-    let mut _r = FramedRead::new(r, codec::SupplierCodec::new(max_frame_bytes));
-    let mut _w = FramedWrite::new(w, codec::SupplierCodec::new(max_frame_bytes));
+    let mut r = FramedRead::new(r, codec::SupplierCodec::new(max_frame_bytes));
+    let mut w = FramedWrite::new(w, codec::SupplierCodec::new(max_frame_bytes));
+
+    while let Some(codec_msg) = r.next().await {
+        match codec_msg {
+            Ok(ConsumerRequest::Ping) => {
+                debug!("consumer requested ping");
+                if let Err(err) = w.send(SupplierResponse::Pong).await {
+                    error!(?err, "supplier encode error, unable to continue.");
+                    break;
+                }
+            }
+            Err(err) => {
+                error!(?err, "supplier decode error, unable to continue.");
+                break;
+            }
+        }
+    }
+
+    debug!(?client_address, "replication client disconnected 🛬");
 }
 
 async fn repl_acceptor(
@@ -269,6 +309,7 @@ async fn repl_acceptor(
     mut rx: broadcast::Receiver<CoreAction>,
     mut ctrl_rx: mpsc::Receiver<ReplCtrl>,
 ) {
+    info!("Starting Replication Acceptor ...");
     // Persistent parts
     // These all probably need changes later ...
     let task_poll_interval = Duration::from_secs(10);
@@ -293,10 +334,12 @@ async fn repl_acceptor(
     // This needs to have an event loop that can respond to changes.
     // For now we just design it to reload ssl if the map changes internally.
     'event: loop {
+        info!("Starting replication reload ...");
         // Tell existing tasks to shutdown.
         // Note: We ignore the result here since an err can occur *if* there are
         // no tasks currently listening on the channel.
-        debug_assert!(task_handles.len() == task_tx.receiver_count());
+        info!("Stopping {} Replication Tasks ...", task_handles.len());
+        debug_assert!(task_handles.len() >= task_tx.receiver_count());
         let _ = task_tx.send(());
         for task_handle in task_handles.drain(..) {
             // Let each task join.
@@ -329,6 +372,11 @@ async fn repl_acceptor(
                 continue;
             }
         };
+
+        info!(
+            replication_cert_not_before = ?server_cert.not_before(),
+            replication_cert_not_after = ?server_cert.not_after(),
+        );
 
         let mut client_certs = Vec::new();
 
@@ -410,6 +458,11 @@ async fn repl_acceptor(
         let tls_acceptor = tls_builder.build();
 
         loop {
+            // This is great to diagnose when spans are entered or present and they capture
+            // things incorrectly.
+            // eprintln!("🔥 C ---> {:?}", tracing::Span::current());
+            let eventid = Uuid::new_v4();
+
             tokio::select! {
                 Ok(action) = rx.recv() => {
                     match action {
@@ -421,11 +474,46 @@ async fn repl_acceptor(
                         ReplCtrl::GetCertificate {
                             respond
                         } => {
+                            let _span = debug_span!("supplier_accept_loop", uuid = ?eventid).entered();
                             if let Err(_) = respond.send(server_cert.clone()) {
                                 warn!("Server certificate was requested, but requsetor disconnected");
                             } else {
                                 trace!("Sent server certificate via control channel");
                             }
+                        }
+                        ReplCtrl::RenewCertificate {
+                            respond
+                        } => {
+                            let span = debug_span!("supplier_accept_loop", uuid = ?eventid);
+                            async {
+                                debug!("renewing replication certificate ...");
+                                // Renew the cert.
+                                let res = {
+                                    let ct = duration_from_epoch_now();
+                                    let mut idms_prox_write = idms.proxy_write(ct).await;
+                                    idms_prox_write
+                                        .qs_write
+                                        .supplier_renew_key_cert()
+                                        .and_then(|res| idms_prox_write.commit().map(|()| res))
+                                };
+
+                                let success = res.is_ok();
+
+                                if let Err(err) = res {
+                                    error!(?err, "failed to renew server certificate");
+                                }
+
+                                if let Err(_) = respond.send(success) {
+                                    warn!("Server certificate renewal was requested, but requsetor disconnected");
+                                } else {
+                                    trace!("Sent server certificate renewal status via control channel");
+                                }
+                            }
+                            .instrument(span)
+                            .await;
+
+                            // Start a reload.
+                            continue 'event;
                         }
                     }
                 }
@@ -453,13 +541,13 @@ async fn repl_acceptor(
                         }
                     }
                 }
-            }
-            // Continue to poll/loop
+            } // end select
+              // Continue to poll/loop
         }
     }
     // Shutdown child tasks.
     info!("Stopping {} Replication Tasks ...", task_handles.len());
-    debug_assert!(task_handles.len() == task_tx.receiver_count());
+    debug_assert!(task_handles.len() >= task_tx.receiver_count());
     let _ = task_tx.send(());
     for task_handle in task_handles.drain(..) {
         // Let each task join.

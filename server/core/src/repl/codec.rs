@@ -70,13 +70,9 @@ impl Encoder<SupplierResponse> for SupplierCodec {
 }
 
 fn encode_length_checked_json<R: Serialize>(msg: R, dst: &mut BytesMut) -> Result<(), io::Error> {
-    trace!(?dst);
-
     // Null the head of the buffer.
     let zero_len = u64::MIN.to_be_bytes();
     dst.extend_from_slice(&zero_len);
-
-    trace!(?dst);
 
     // skip the buffer ahead 8 bytes.
     // Remember, this split returns the *already set* bytes.
@@ -104,13 +100,8 @@ fn encode_length_checked_json<R: Serialize>(msg: R, dst: &mut BytesMut) -> Resul
 
     dst.copy_from_slice(&final_len_bytes);
 
-    trace!(?dst);
-    trace!(?json_buf);
-
     // Now stitch them back together.
     dst.unsplit(json_buf);
-
-    trace!(?dst);
 
     Ok(())
 }

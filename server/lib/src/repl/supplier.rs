@@ -10,6 +10,40 @@ use kanidm_lib_crypto::mtls::build_self_signed_server_and_client_identity;
 use kanidm_lib_crypto::prelude::{PKey, Private, X509};
 
 impl<'a> QueryServerWriteTransaction<'a> {
+    fn supplier_generate_key_cert(&mut self) -> Result<(PKey<Private>, X509), OperationError> {
+        // Invalid, must need to re-generate.
+        let domain_name = "localhost";
+        let expiration_days = 1;
+        let s_uuid = self.get_server_uuid();
+
+        let (private, x509) =
+            build_self_signed_server_and_client_identity(s_uuid, domain_name, expiration_days)
+                .map_err(|err| {
+                    error!(?err, "Unable to generate self signed key/cert");
+                    // What error?
+                    OperationError::CryptographyError
+                })?;
+
+        let kh = KeyHandle::X509Key {
+            private: private.clone(),
+            x509: x509.clone(),
+        };
+
+        self.get_be_txn()
+            .set_key_handle(KeyHandleId::ReplicationKey, kh)
+            .map_err(|err| {
+                error!(?err, "Unable to persist replication key");
+                err
+            })
+            .map(|()| (private, x509))
+    }
+
+    #[instrument(level = "info", skip_all)]
+    pub fn supplier_renew_key_cert(&mut self) -> Result<(), OperationError> {
+        self.supplier_generate_key_cert().map(|_| ())
+    }
+
+    #[instrument(level = "info", skip_all)]
     pub fn supplier_get_key_cert(&mut self) -> Result<(PKey<Private>, X509), OperationError> {
         // Later we need to put this through a HSM or similar, but we will always need a way
         // to persist a handle, so we still need the db write and load components.
@@ -32,37 +66,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 // error? regenerate?
             }
             */
-            None => {
-                // Invalid, must need to re-generate.
-                let domain_name = "localhost";
-                let expiration_days = 1;
-                let s_uuid = self.get_server_uuid();
-
-                let (private, x509) = build_self_signed_server_and_client_identity(
-                    s_uuid,
-                    domain_name,
-                    expiration_days,
-                )
-                .map_err(|err| {
-                    error!(?err, "Unable to generate self signed key/cert");
-                    // What error?
-                    OperationError::CryptographyError
-                })?;
-
-                let kh = KeyHandle::X509Key {
-                    private: private.clone(),
-                    x509: x509.clone(),
-                };
-
-                self.get_be_txn()
-                    .set_key_handle(KeyHandleId::ReplicationKey, kh)
-                    .map_err(|err| {
-                        error!(?err, "Unable to persist replication key");
-                        err
-                    })?;
-
-                (private, x509)
-            }
+            None => self.supplier_generate_key_cert()?,
         };
 
         Ok(key_cert)

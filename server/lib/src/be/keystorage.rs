@@ -74,6 +74,7 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
     }
 
     /// Update the content of a keyhandle with this new data.
+    #[instrument(level = "debug", skip(self, data))]
     pub(crate) fn set_key_handle(
         &mut self,
         handle: KeyHandleId,
@@ -151,6 +152,7 @@ impl IdlSqliteWriteTransaction {
     }
 
     /// Update the content of a keyhandle with this new data.
+    #[instrument(level = "debug", skip(self, data))]
     pub(crate) fn set_key_handle(
         &mut self,
         handle: KeyHandleId,

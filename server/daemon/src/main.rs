@@ -77,7 +77,8 @@ impl KanidmdOpt {
             | KanidmdOpt::DbScan {
                 commands: DbScanOpt::RestoreQuarantined { commonopts, .. },
             }
-            | KanidmdOpt::ShowReplicationCertificate { commonopts } => commonopts,
+            | KanidmdOpt::ShowReplicationCertificate { commonopts }
+            | KanidmdOpt::RenewReplicationCertificate { commonopts } => commonopts,
             KanidmdOpt::RecoverAccount { commonopts, .. } => commonopts,
             KanidmdOpt::DbScan {
                 commands: DbScanOpt::ListIndex(dopt),
@@ -152,6 +153,14 @@ async fn submit_admin_req(path: &str, req: AdminTaskRequest, output_mode: Consol
             }
             ConsoleOutputMode::Text => {
                 info!(certificate = ?cert)
+            }
+        },
+        Some(Ok(AdminTaskResponse::RenewReplicationCertificate { success })) => match output_mode {
+            ConsoleOutputMode::JSON => {
+                eprintln!("{{\"success\":\"{}\"}}", success)
+            }
+            ConsoleOutputMode::Text => {
+                info!(%success)
             }
         },
         _ => {
@@ -559,6 +568,16 @@ async fn main() -> ExitCode {
                     let output_mode: ConsoleOutputMode = commonopts.output_mode.to_owned().into();
                     submit_admin_req(config.adminbindpath.as_str(),
                         AdminTaskRequest::ShowReplicationCertificate,
+                        output_mode,
+                    ).await;
+                }
+                KanidmdOpt::RenewReplicationCertificate {
+                    commonopts
+                } => {
+                    info!("Running show replication certificate ...");
+                    let output_mode: ConsoleOutputMode = commonopts.output_mode.to_owned().into();
+                    submit_admin_req(config.adminbindpath.as_str(),
+                        AdminTaskRequest::RenewReplicationCertificate,
                         output_mode,
                     ).await;
                 }
