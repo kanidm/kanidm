@@ -263,7 +263,7 @@ async fn test_mtls_client_without_server_ca() {
         .await
         .unwrap_err();
     trace!(?err);
-    // Tls Post Process Certificate (Certficate Verify Failed)
+    // Tls Post Process Certificate (Certificate Verify Failed)
     let ossl_err = err.ssl_error().and_then(|e| e.errors().get(0)).unwrap();
     assert!(ossl_err.code() == 2147483650);
 

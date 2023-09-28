@@ -488,7 +488,7 @@ async fn repl_acceptor(
 
         // Get the private key / cert.
         let res = {
-            // Does this actually need to be a read incase we need to write
+            // Does this actually need to be a read in case we need to write
             // to sqlite?
             let ct = duration_from_epoch_now();
             let mut idms_prox_write = idms.proxy_write(ct).await;

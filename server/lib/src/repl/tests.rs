@@ -2942,7 +2942,7 @@ async fn test_repl_increment_attrunique_conflict_complex(
 }
 
 // Test the behaviour of a "new server join". This will have the supplier and
-// consumer mis-match on the domain_uuid, leading to the consumer with a
+// consumer mismatch on the domain_uuid, leading to the consumer with a
 // refresh required message. This should then be refreshed and succeed
 
 #[qs_pair_test]

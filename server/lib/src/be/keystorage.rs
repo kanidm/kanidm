@@ -12,7 +12,7 @@ use super::idl_sqlite::{serde_json_error, sqlite_error};
 use super::BackendWriteTransaction;
 use crate::prelude::OperationError;
 
-/// These are key handles for storing keys related to various cryptograhic components
+/// These are key handles for storing keys related to various cryptographic components
 /// within Kanidm. Generally these are for keys that are "static", as in have known
 /// long term uses. This could be the servers private replication key, a TPM Storage
 /// Root Key, or the Duplicable Storage Key. In future these may end up being in

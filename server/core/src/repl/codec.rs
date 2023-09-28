@@ -120,7 +120,7 @@ fn decode_length_checked_json<T: DeserializeOwned>(
 
     if src.len() < 8 {
         // Not enough for the length header.
-        trace!("Insufficent bytes for length header.");
+        trace!("Insufficient bytes for length header.");
         return Ok(None);
     }
 

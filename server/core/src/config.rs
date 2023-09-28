@@ -244,7 +244,7 @@ pub struct Configuration {
 
     /// Replication settings.
     pub repl_config: Option<ReplicationConfiguration>,
-    /// This allows interally setting some unsafe options for replication.
+    /// This allows internally setting some unsafe options for replication.
     pub integration_repl_config: Option<Box<IntegrationReplConfig>>,
 }
 
