@@ -155,14 +155,6 @@ async fn submit_admin_req(path: &str, req: AdminTaskRequest, output_mode: Consol
                 info!(certificate = ?cert)
             }
         },
-        Some(Ok(AdminTaskResponse::RenewReplicationCertificate { success })) => match output_mode {
-            ConsoleOutputMode::JSON => {
-                eprintln!("{{\"success\":\"{}\"}}", success)
-            }
-            ConsoleOutputMode::Text => {
-                info!(%success)
-            }
-        },
         _ => {
             error!("Error making request to admin socket");
         }
@@ -574,7 +566,7 @@ async fn main() -> ExitCode {
                 KanidmdOpt::RenewReplicationCertificate {
                     commonopts
                 } => {
-                    info!("Running show replication certificate ...");
+                    info!("Running renew replication certificate ...");
                     let output_mode: ConsoleOutputMode = commonopts.output_mode.to_owned().into();
                     submit_admin_req(config.adminbindpath.as_str(),
                         AdminTaskRequest::RenewReplicationCertificate,

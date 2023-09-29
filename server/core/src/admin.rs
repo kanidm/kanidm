@@ -28,7 +28,6 @@ pub enum AdminTaskRequest {
 pub enum AdminTaskResponse {
     RecoverAccount { password: String },
     ShowReplicationCertificate { cert: String },
-    RenewReplicationCertificate { success: bool },
     Error,
 }
 
@@ -223,7 +222,14 @@ async fn renew_replication_certificate(ctrl_tx: &mut mpsc::Sender<ReplCtrl>) -> 
     }
 
     match rx.await {
-        Ok(success) => AdminTaskResponse::RenewReplicationCertificate { success },
+        Ok(success) => {
+            if success {
+                show_replication_certificate(ctrl_tx).await
+            } else {
+                error!("replication control channel indicated that certificate renewal failed.");
+                AdminTaskResponse::Error
+            }
+        }
         Err(_) => {
             error!("replication control channel did not respond with renewal status.");
             AdminTaskResponse::Error

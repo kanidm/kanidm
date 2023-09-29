@@ -154,12 +154,12 @@ enum KanidmdOpt {
         #[clap(flatten)]
         commonopts: CommonOpt,
     },
-    /// Display this servers replication certificate
+    /// Display this server's replication certificate
     ShowReplicationCertificate {
         #[clap(flatten)]
         commonopts: CommonOpt,
     },
-    /// Renew this servers replication certificate
+    /// Renew this server's replication certificate
     RenewReplicationCertificate {
         #[clap(flatten)]
         commonopts: CommonOpt,
