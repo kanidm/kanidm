@@ -904,28 +904,28 @@ impl Entry<EntryIncremental, EntryNew> {
 
                             match (self.attrs.get(attr_name), db_ent.attrs.get(attr_name)) {
                                 (Some(vs_left), Some(vs_right)) if take_left => {
+                                    changes.insert(attr_name.clone(), cid_left.clone());
                                     #[allow(clippy::todo)]
-                                    if let Some(_attr_state) =
+                                    if let Some(merged_attr_state) =
                                         vs_left.repl_merge_valueset(vs_right, trim_cid)
                                     {
-                                        // TODO note: This is for special attr types that need to merge
+                                        // NOTE: This is for special attr types that need to merge
                                         // rather than choose content.
-                                        todo!();
+                                        eattrs.insert(attr_name.clone(), merged_attr_state);
                                     } else {
-                                        changes.insert(attr_name.clone(), cid_left.clone());
                                         eattrs.insert(attr_name.clone(), vs_left.clone());
                                     }
                                 }
                                 (Some(vs_left), Some(vs_right)) => {
+                                    changes.insert(attr_name.clone(), cid_right.clone());
                                     #[allow(clippy::todo)]
-                                    if let Some(_attr_state) =
+                                    if let Some(merged_attr_state) =
                                         vs_right.repl_merge_valueset(vs_left, trim_cid)
                                     {
-                                        // TODO note: This is for special attr types that need to merge
+                                        // NOTE: This is for special attr types that need to merge
                                         // rather than choose content.
-                                        todo!();
+                                        eattrs.insert(attr_name.clone(), merged_attr_state);
                                     } else {
-                                        changes.insert(attr_name.clone(), cid_right.clone());
                                         eattrs.insert(attr_name.clone(), vs_right.clone());
                                     }
                                 }
