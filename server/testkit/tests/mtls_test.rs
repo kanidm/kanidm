@@ -104,7 +104,7 @@ async fn setup_mtls_test(
                     Ok(ta) => ta,
                     Err(err) => {
                         error!("LDAP TLS setup error, continuing -> {:?}", err);
-                        let ossl_err = err.errors().get(0).unwrap();
+                        let ossl_err = err.errors().last().unwrap();
 
                     return Err(
                         ossl_err.code()
@@ -115,7 +115,7 @@ async fn setup_mtls_test(
                 if let Err(err) = SslStream::accept(Pin::new(&mut tlsstream)).await {
                     error!("LDAP TLS accept error, continuing -> {:?}", err);
 
-                    let ossl_err = err.ssl_error().and_then(|e| e.errors().get(0)).unwrap();
+                    let ossl_err = err.ssl_error().and_then(|e| e.errors().last()).unwrap();
 
                     return Err(
                         ossl_err.code()
@@ -211,8 +211,8 @@ async fn test_mtls_server_san_invalid() {
         .unwrap_err();
     trace!(?err);
     // Certification Verification Failure
-    let ossl_err = err.ssl_error().and_then(|e| e.errors().get(0)).unwrap();
-    assert!(ossl_err.code() == 167772294);
+    let ossl_err = err.ssl_error().and_then(|e| e.errors().last()).unwrap();
+    assert_eq!(ossl_err.code(), 167772294);
 
     trace!("Waiting on listener ...");
     let result = handle.await.expect("Failed to stop task.");
@@ -220,7 +220,7 @@ async fn test_mtls_server_san_invalid() {
     // Must be FALSE server should not have accepted the connection.
     trace!(?result);
     // SSL Read bytes (client disconnected)
-    assert!(matches!(result, Err(167773202)));
+    assert_eq!(result, Err(167773202));
 }
 
 #[tokio::test]
@@ -236,7 +236,7 @@ async fn test_mtls_server_without_client_ca() {
     // Must be FALSE server should not have accepted the connection.
     trace!(?result);
     // Certification Verification Failure
-    assert!(matches!(result, Err(167772294)));
+    assert_eq!(result, Err(167772294));
 }
 
 #[tokio::test]
@@ -252,7 +252,7 @@ async fn test_mtls_client_without_client_cert() {
     // Must be FALSE server should not have accepted the connection.
     trace!(?result);
     // Peer Did Not Provide Certificate
-    assert!(matches!(result, Err(167772359)));
+    assert_eq!(result, Err(167772359));
 }
 
 #[tokio::test]
@@ -264,8 +264,8 @@ async fn test_mtls_client_without_server_ca() {
         .unwrap_err();
     trace!(?err);
     // Tls Post Process Certificate (Certificate Verify Failed)
-    let ossl_err = err.ssl_error().and_then(|e| e.errors().get(0)).unwrap();
-    assert!(ossl_err.code() == 2147483650);
+    let ossl_err = err.ssl_error().and_then(|e| e.errors().last()).unwrap();
+    assert_eq!(ossl_err.code(), 167772294);
 
     trace!("Waiting on listener ...");
     let result = handle.await.expect("Failed to stop task.");
@@ -273,5 +273,5 @@ async fn test_mtls_client_without_server_ca() {
     // Must be FALSE server should not have accepted the connection.
     trace!(?result);
     // SSL Read bytes (client disconnected)
-    assert!(matches!(result, Err(167773208)));
+    assert_eq!(result, Err(167773208));
 }
