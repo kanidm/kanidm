@@ -3068,6 +3068,7 @@ async fn test_repl_increment_session_new(server_a: &QueryServer, server_b: &Quer
 
     // And a session on B.
 
+    let ct = duration_from_epoch_now();
     let mut server_b_txn = server_b.write(ct).await;
 
     let curtime_odt = OffsetDateTime::UNIX_EPOCH + ct;
@@ -3158,6 +3159,8 @@ async fn test_repl_increment_session_new(server_a: &QueryServer, server_b: &Quer
     let e2_cs = e2.get_changestate();
 
     assert!(e1_cs == e2_cs);
+    trace!(?e1);
+    trace!(?e2);
     assert!(e1 == e2);
 
     server_a_txn.commit().expect("Failed to commit");
