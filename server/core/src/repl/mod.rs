@@ -464,6 +464,13 @@ async fn repl_acceptor(
     // In future we need to update this from the KRC if configured, and we default this
     // to "empty". But if this map exists in the config, we have to always use that.
     let replication_node_map = repl_config.manual.clone();
+    let domain_name = match repl_config.origin.domain() {
+        Some(n) => n.to_string(),
+        None => {
+            error!("Unable to start replication, replication origin does not contain a valid domain name.");
+            return;
+        }
+    };
 
     // This needs to have an event loop that can respond to changes.
     // For now we just design it to reload ssl if the map changes internally.
@@ -494,7 +501,7 @@ async fn repl_acceptor(
             let mut idms_prox_write = idms.proxy_write(ct).await;
             idms_prox_write
                 .qs_write
-                .supplier_get_key_cert()
+                .supplier_get_key_cert(&domain_name)
                 .and_then(|res| idms_prox_write.commit().map(|()| res))
         };
 
@@ -644,7 +651,7 @@ async fn repl_acceptor(
                                     let mut idms_prox_write = idms.proxy_write(ct).await;
                                     idms_prox_write
                                         .qs_write
-                                        .supplier_renew_key_cert()
+                                        .supplier_renew_key_cert(&domain_name)
                                         .and_then(|res| idms_prox_write.commit().map(|()| res))
                                 };
 
