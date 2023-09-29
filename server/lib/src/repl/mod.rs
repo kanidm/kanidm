@@ -1,10 +1,10 @@
-pub mod cid;
-pub mod entry;
-pub mod ruv;
+pub(crate) mod cid;
+pub(crate) mod entry;
+pub(crate) mod ruv;
 
-pub mod consumer;
+pub(crate) mod consumer;
 pub mod proto;
-pub mod supplier;
+pub(crate) mod supplier;
 
 #[cfg(test)]
 mod tests;

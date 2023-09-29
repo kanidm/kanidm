@@ -32,6 +32,7 @@ mod crypto;
 mod https;
 mod interval;
 mod ldaps;
+mod repl;
 
 use std::path::Path;
 use std::sync::Arc;
@@ -867,22 +868,6 @@ pub async fn create_server_core(
         }
     };
 
-    // If we are NOT in integration test mode, start the admin socket now
-    let maybe_admin_sock_handle = if config.integration_test_config.is_none() {
-        let broadcast_rx = broadcast_tx.subscribe();
-
-        let admin_handle = AdminActor::create_admin_sock(
-            config.adminbindpath.as_str(),
-            server_write_ref,
-            broadcast_rx,
-        )
-        .await?;
-
-        Some(admin_handle)
-    } else {
-        None
-    };
-
     // If we have been requested to init LDAP, configure it now.
     let maybe_ldap_acceptor_handle = match &config.ldapaddress {
         Some(la) => {
@@ -910,6 +895,26 @@ pub async fn create_server_core(
         None => {
             debug!("LDAP not requested, skipping");
             None
+        }
+    };
+
+    // If we have replication configured, setup the listener with it's initial replication
+    // map (if any).
+    let (maybe_repl_handle, maybe_repl_ctrl_tx) = match &config.repl_config {
+        Some(rc) => {
+            if !config_test {
+                // ⚠️  only start the sockets and listeners in non-config-test modes.
+                let (h, repl_ctrl_tx) =
+                    repl::create_repl_server(idms_arc.clone(), rc, broadcast_tx.subscribe())
+                        .await?;
+                (Some(h), Some(repl_ctrl_tx))
+            } else {
+                (None, None)
+            }
+        }
+        None => {
+            debug!("Replication not requested, skipping");
+            (None, None)
         }
     };
 
@@ -941,6 +946,23 @@ pub async fn create_server_core(
         Some(h)
     };
 
+    // If we are NOT in integration test mode, start the admin socket now
+    let maybe_admin_sock_handle = if config.integration_test_config.is_none() {
+        let broadcast_rx = broadcast_tx.subscribe();
+
+        let admin_handle = AdminActor::create_admin_sock(
+            config.adminbindpath.as_str(),
+            server_write_ref,
+            broadcast_rx,
+            maybe_repl_ctrl_tx,
+        )
+        .await?;
+
+        Some(admin_handle)
+    } else {
+        None
+    };
+
     let mut handles = vec![interval_handle, delayed_handle, auditd_handle];
 
     if let Some(backup_handle) = maybe_backup_handle {
@@ -957,6 +979,10 @@ pub async fn create_server_core(
 
     if let Some(http_handle) = maybe_http_acceptor_handle {
         handles.push(http_handle)
+    }
+
+    if let Some(repl_handle) = maybe_repl_handle {
+        handles.push(repl_handle)
     }
 
     Ok(CoreHandle {

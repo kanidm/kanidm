@@ -1,7 +1,9 @@
 use crate::actors::v1_write::QueryServerWriteV1;
+use crate::repl::ReplCtrl;
 use crate::CoreAction;
 use bytes::{BufMut, BytesMut};
 use futures::{SinkExt, StreamExt};
+use kanidm_lib_crypto::serialise::x509b64;
 use kanidm_utils_users::get_current_uid;
 use serde::{Deserialize, Serialize};
 use std::error::Error;
@@ -9,18 +11,23 @@ use std::io;
 use std::path::Path;
 use tokio::net::{UnixListener, UnixStream};
 use tokio::sync::broadcast;
+use tokio::sync::mpsc;
+use tokio::sync::oneshot;
 use tokio_util::codec::{Decoder, Encoder, Framed};
-use tracing::{span, Level};
+use tracing::{span, Instrument, Level};
 use uuid::Uuid;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub enum AdminTaskRequest {
     RecoverAccount { name: String },
+    ShowReplicationCertificate,
+    RenewReplicationCertificate,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub enum AdminTaskResponse {
     RecoverAccount { password: String },
+    ShowReplicationCertificate { cert: String },
     Error,
 }
 
@@ -99,6 +106,7 @@ impl AdminActor {
         sock_path: &str,
         server: &'static QueryServerWriteV1,
         mut broadcast_rx: broadcast::Receiver<CoreAction>,
+        repl_ctrl_tx: Option<mpsc::Sender<ReplCtrl>>,
     ) -> Result<tokio::task::JoinHandle<()>, ()> {
         debug!("🧹 Cleaning up sockets from previous invocations");
         rm_if_exist(sock_path);
@@ -144,8 +152,9 @@ impl AdminActor {
                                 };
 
                                 // spawn the worker.
+                                let task_repl_ctrl_tx = repl_ctrl_tx.clone();
                                 tokio::spawn(async move {
-                                    if let Err(e) = handle_client(socket, server).await {
+                                    if let Err(e) = handle_client(socket, server, task_repl_ctrl_tx).await {
                                         error!(err = ?e, "admin client error");
                                     }
                                 });
@@ -177,9 +186,61 @@ fn rm_if_exist(p: &str) {
     }
 }
 
+async fn show_replication_certificate(ctrl_tx: &mut mpsc::Sender<ReplCtrl>) -> AdminTaskResponse {
+    let (tx, rx) = oneshot::channel();
+
+    if ctrl_tx
+        .send(ReplCtrl::GetCertificate { respond: tx })
+        .await
+        .is_err()
+    {
+        error!("replication control channel has shutdown");
+        return AdminTaskResponse::Error;
+    }
+
+    match rx.await {
+        Ok(cert) => x509b64::cert_to_string(&cert)
+            .map(|cert| AdminTaskResponse::ShowReplicationCertificate { cert })
+            .unwrap_or(AdminTaskResponse::Error),
+        Err(_) => {
+            error!("replication control channel did not respond with certificate.");
+            AdminTaskResponse::Error
+        }
+    }
+}
+
+async fn renew_replication_certificate(ctrl_tx: &mut mpsc::Sender<ReplCtrl>) -> AdminTaskResponse {
+    let (tx, rx) = oneshot::channel();
+
+    if ctrl_tx
+        .send(ReplCtrl::RenewCertificate { respond: tx })
+        .await
+        .is_err()
+    {
+        error!("replication control channel has shutdown");
+        return AdminTaskResponse::Error;
+    }
+
+    match rx.await {
+        Ok(success) => {
+            if success {
+                show_replication_certificate(ctrl_tx).await
+            } else {
+                error!("replication control channel indicated that certificate renewal failed.");
+                AdminTaskResponse::Error
+            }
+        }
+        Err(_) => {
+            error!("replication control channel did not respond with renewal status.");
+            AdminTaskResponse::Error
+        }
+    }
+}
+
 async fn handle_client(
     sock: UnixStream,
     server: &'static QueryServerWriteV1,
+    mut repl_ctrl_tx: Option<mpsc::Sender<ReplCtrl>>,
 ) -> Result<(), Box<dyn Error>> {
     debug!("Accepted admin socket connection");
 
@@ -190,22 +251,40 @@ async fn handle_client(
         // Setup the logging span
         let eventid = Uuid::new_v4();
         let nspan = span!(Level::INFO, "handle_admin_client_request", uuid = ?eventid);
-        let _span = nspan.enter();
+        // let _span = nspan.enter();
 
-        let resp = match req {
-            AdminTaskRequest::RecoverAccount { name } => {
-                match server.handle_admin_recover_account(name, eventid).await {
-                    Ok(password) => AdminTaskResponse::RecoverAccount { password },
-                    Err(e) => {
-                        error!(err = ?e, "error during recover-account");
-                        AdminTaskResponse::Error
+        let resp = async {
+            match req {
+                AdminTaskRequest::RecoverAccount { name } => {
+                    match server.handle_admin_recover_account(name, eventid).await {
+                        Ok(password) => AdminTaskResponse::RecoverAccount { password },
+                        Err(e) => {
+                            error!(err = ?e, "error during recover-account");
+                            AdminTaskResponse::Error
+                        }
                     }
                 }
+                AdminTaskRequest::ShowReplicationCertificate => match repl_ctrl_tx.as_mut() {
+                    Some(ctrl_tx) => show_replication_certificate(ctrl_tx).await,
+                    None => {
+                        error!("replication not configured, unable to display certificate.");
+                        AdminTaskResponse::Error
+                    }
+                },
+                AdminTaskRequest::RenewReplicationCertificate => match repl_ctrl_tx.as_mut() {
+                    Some(ctrl_tx) => renew_replication_certificate(ctrl_tx).await,
+                    None => {
+                        error!("replication not configured, unable to renew certificate.");
+                        AdminTaskResponse::Error
+                    }
+                },
             }
-        };
+        }
+        .instrument(nspan)
+        .await;
+
         reqs.send(resp).await?;
         reqs.flush().await?;
-        trace!("flushed response!");
     }
 
     debug!("Disconnecting client ...");

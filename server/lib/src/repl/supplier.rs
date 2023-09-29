@@ -5,6 +5,74 @@ use super::ruv::{RangeDiffStatus, ReplicationUpdateVector, ReplicationUpdateVect
 use crate::be::BackendTransaction;
 use crate::prelude::*;
 
+use crate::be::keystorage::{KeyHandle, KeyHandleId};
+use kanidm_lib_crypto::mtls::build_self_signed_server_and_client_identity;
+use kanidm_lib_crypto::prelude::{PKey, Private, X509};
+
+impl<'a> QueryServerWriteTransaction<'a> {
+    fn supplier_generate_key_cert(&mut self) -> Result<(PKey<Private>, X509), OperationError> {
+        // Invalid, must need to re-generate.
+        let domain_name = "localhost";
+        let expiration_days = 1;
+        let s_uuid = self.get_server_uuid();
+
+        let (private, x509) =
+            build_self_signed_server_and_client_identity(s_uuid, domain_name, expiration_days)
+                .map_err(|err| {
+                    error!(?err, "Unable to generate self signed key/cert");
+                    // What error?
+                    OperationError::CryptographyError
+                })?;
+
+        let kh = KeyHandle::X509Key {
+            private: private.clone(),
+            x509: x509.clone(),
+        };
+
+        self.get_be_txn()
+            .set_key_handle(KeyHandleId::ReplicationKey, kh)
+            .map_err(|err| {
+                error!(?err, "Unable to persist replication key");
+                err
+            })
+            .map(|()| (private, x509))
+    }
+
+    #[instrument(level = "info", skip_all)]
+    pub fn supplier_renew_key_cert(&mut self) -> Result<(), OperationError> {
+        self.supplier_generate_key_cert().map(|_| ())
+    }
+
+    #[instrument(level = "info", skip_all)]
+    pub fn supplier_get_key_cert(&mut self) -> Result<(PKey<Private>, X509), OperationError> {
+        // Later we need to put this through a HSM or similar, but we will always need a way
+        // to persist a handle, so we still need the db write and load components.
+
+        // Does the handle exist?
+        let maybe_key_handle = self
+            .get_be_txn()
+            .get_key_handle(KeyHandleId::ReplicationKey)
+            .map_err(|err| {
+                error!(?err, "Unable to access replication key");
+                err
+            })?;
+
+        // Can you process the keyhande?
+        let key_cert = match maybe_key_handle {
+            Some(KeyHandle::X509Key { private, x509 }) => (private, x509),
+            /*
+            Some(Keyhandle::...) => {
+                // invalid key
+                // error? regenerate?
+            }
+            */
+            None => self.supplier_generate_key_cert()?,
+        };
+
+        Ok(key_cert)
+    }
+}
+
 impl<'a> QueryServerReadTransaction<'a> {
     // Given a consumers state, calculate the differential of changes they
     // need to be sent to bring them to the equivalent state.
@@ -19,9 +87,18 @@ impl<'a> QueryServerReadTransaction<'a> {
         ctx_ruv: ReplRuvRange,
     ) -> Result<ReplIncrementalContext, OperationError> {
         // Convert types if needed. This way we can compare ruv's correctly.
-        let ctx_ranges = match ctx_ruv {
-            ReplRuvRange::V1 { ranges } => ranges,
+        let (ctx_domain_uuid, ctx_ranges) = match ctx_ruv {
+            ReplRuvRange::V1 {
+                domain_uuid,
+                ranges,
+            } => (domain_uuid, ranges),
         };
+
+        if ctx_domain_uuid != self.d_info.d_uuid {
+            error!("Replication - Consumer Domain UUID does not match our local domain uuid.");
+            debug!(consumer_domain_uuid = ?ctx_domain_uuid, supplier_domain_uuid = ?self.d_info.d_uuid);
+            return Ok(ReplIncrementalContext::DomainMismatch);
+        }
 
         let our_ranges = self
             .get_be_txn()

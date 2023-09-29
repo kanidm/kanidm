@@ -133,7 +133,7 @@ install-tools:
 codespell: ## spell-check things.
 codespell:
 	codespell -c \
-	-L 'crate,unexpect,Pres,pres,ACI,aci,te,ue,unx,aNULL' \
+	-L 'crate,unexpect,Pres,pres,ACI,aci,ser,te,ue,unx,aNULL' \
 	--skip='./target,./pykanidm/.venv,./pykanidm/.mypy_cache,./.mypy_cache,./pykanidm/poetry.lock' \
 	--skip='./book/book/*' \
 	--skip='./book/src/images/*' \

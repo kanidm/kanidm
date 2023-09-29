@@ -1,8 +1,7 @@
 #![deny(warnings)]
 use std::future::Future;
-use std::net::TcpStream;
 use std::pin::Pin;
-use std::sync::atomic::{AtomicU16, Ordering};
+use std::sync::atomic::Ordering;
 use std::time::Duration;
 
 use kanidm_client::{KanidmClient, KanidmClientBuilder};
@@ -18,23 +17,16 @@ use kanidm_unix_common::resolver::Resolver;
 use kanidm_unix_common::unix_config::TpmPolicy;
 use kanidmd_core::config::{Configuration, IntegrationTestConfig, ServerRole};
 use kanidmd_core::create_server_core;
+use kanidmd_testkit::{is_free_port, PORT_ALLOC};
 use tokio::task;
 use tracing::log::{debug, trace};
 
-static PORT_ALLOC: AtomicU16 = AtomicU16::new(28080);
 const ADMIN_TEST_USER: &str = "admin";
 const ADMIN_TEST_PASSWORD: &str = "integration test admin password";
 const TESTACCOUNT1_PASSWORD_A: &str = "password a for account1 test";
 const TESTACCOUNT1_PASSWORD_B: &str = "password b for account1 test";
 const TESTACCOUNT1_PASSWORD_INC: &str = "never going to work";
 const ACCOUNT_EXPIRE: &str = "1970-01-01T00:00:00+00:00";
-
-fn is_free_port(port: u16) -> bool {
-    match TcpStream::connect(("0.0.0.0", port)) {
-        Ok(_) => false,
-        Err(_) => true,
-    }
-}
 
 type Fixture = Box<dyn FnOnce(KanidmClient) -> Pin<Box<dyn Future<Output = ()>>>>;
 

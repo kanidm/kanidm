@@ -1,7 +1,7 @@
 use crate::be::BackendTransaction;
 use crate::prelude::*;
-use crate::repl::consumer::ConsumerState;
 use crate::repl::entry::State;
+use crate::repl::proto::ConsumerState;
 use crate::repl::proto::ReplIncrementalContext;
 use crate::repl::ruv::ReplicationUpdateVectorTransaction;
 use crate::repl::ruv::{RangeDiffStatus, ReplicationUpdateVector};
@@ -2939,6 +2939,46 @@ async fn test_repl_increment_attrunique_conflict_complex(
 
     server_b_txn.commit().expect("Failed to commit");
     drop(server_a_txn);
+}
+
+// Test the behaviour of a "new server join". This will have the supplier and
+// consumer mismatch on the domain_uuid, leading to the consumer with a
+// refresh required message. This should then be refreshed and succeed
+
+#[qs_pair_test]
+async fn test_repl_initial_consumer_join(server_a: &QueryServer, server_b: &QueryServer) {
+    let ct = duration_from_epoch_now();
+
+    let mut server_a_txn = server_a.write(ct).await;
+    let mut server_b_txn = server_b.read().await;
+
+    let a_ruv_range = server_a_txn
+        .consumer_get_state()
+        .expect("Unable to access RUV range");
+
+    let changes = server_b_txn
+        .supplier_provide_changes(a_ruv_range)
+        .expect("Unable to generate supplier changes");
+
+    assert!(matches!(changes, ReplIncrementalContext::DomainMismatch));
+
+    let result = server_a_txn
+        .consumer_apply_changes(&changes)
+        .expect("Unable to apply changes to consumer.");
+
+    assert!(matches!(result, ConsumerState::RefreshRequired));
+
+    drop(server_a_txn);
+    drop(server_b_txn);
+
+    // Then a refresh resolves.
+    let mut server_a_txn = server_a.write(ct).await;
+    let mut server_b_txn = server_b.read().await;
+
+    assert!(repl_initialise(&mut server_b_txn, &mut server_a_txn)
+        .and_then(|_| server_a_txn.commit())
+        .is_ok());
+    drop(server_b_txn);
 }
 
 // Test change of domain version over incremental.

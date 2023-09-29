@@ -2,14 +2,16 @@ mod extractors;
 mod generic;
 mod javascript;
 mod manifest;
-mod middleware;
+pub(crate) mod middleware;
 mod oauth2;
 mod tests;
-mod trace;
+pub(crate) mod trace;
 mod ui;
 mod v1;
 mod v1_scim;
 
+use self::generic::*;
+use self::javascript::*;
 use crate::actors::v1_read::QueryServerReadV1;
 use crate::actors::v1_write::QueryServerWriteV1;
 use crate::config::{Configuration, ServerRole, TlsConfiguration};
@@ -21,13 +23,11 @@ use axum::Router;
 use axum_csp::{CspDirectiveType, CspValue};
 use axum_macros::FromRef;
 use compact_jwt::{Jws, JwsSigner, JwsUnverified};
-use generic::*;
 use http::header::{ACCESS_CONTROL_ALLOW_ORIGIN, CONTENT_TYPE};
 use http::{HeaderMap, HeaderValue, StatusCode};
 use hyper::server::accept::Accept;
 use hyper::server::conn::{AddrStream, Http};
 use hyper::Body;
-use javascript::*;
 use kanidm_proto::constants::APPLICATION_JSON;
 use kanidm_proto::v1::OperationError;
 use kanidmd_lib::status::StatusActor;
@@ -288,7 +288,17 @@ pub async fn create_https_server(
             }
             res = match config.tls_config {
                 Some(tls_param) => {
-                    tokio::spawn(server_loop(tls_param, addr, app))
+                    // This isn't optimal, but we can't share this with the
+                    // other path for integration tests because that doesn't
+                    // do tls (yet?)
+                    let listener = match TcpListener::bind(addr).await {
+                        Ok(l) => l,
+                        Err(err) => {
+                            error!(?err, "Failed to bind tcp listener");
+                            return
+                        }
+                    };
+                    tokio::spawn(server_loop(tls_param, listener, app))
                 },
                 None => {
                     tokio::spawn(axum_server::bind(addr).serve(app))
@@ -307,7 +317,7 @@ pub async fn create_https_server(
 
 async fn server_loop(
     tls_param: TlsConfiguration,
-    addr: SocketAddr,
+    listener: TcpListener,
     app: IntoMakeServiceWithConnectInfo<Router, SocketAddr>,
 ) -> Result<(), std::io::Error> {
     let mut tls_builder = SslAcceptor::mozilla_intermediate_v5(SslMethod::tls())?;
@@ -335,7 +345,6 @@ async fn server_loop(
         )
     })?;
     let acceptor = tls_builder.build();
-    let listener = TcpListener::bind(addr).await?;
 
     let protocol = Arc::new(Http::new());
     let mut listener =
@@ -355,7 +364,7 @@ async fn server_loop(
 }
 
 /// This handles an individual connection.
-async fn handle_conn(
+pub(crate) async fn handle_conn(
     acceptor: SslAcceptor,
     stream: AddrStream,
     svc: ResponseFuture<Router, SocketAddr>,

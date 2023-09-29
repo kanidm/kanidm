@@ -50,3 +50,7 @@ webauthn-authenticator-rs = { workspace = true }
 oauth2_ext = { workspace = true, default-features = false }
 futures = { workspace = true }
 time = { workspace = true }
+openssl = { workspace = true }
+tokio-openssl = { workspace = true }
+kanidm_lib_crypto = { workspace = true }
+uuid = { workspace = true }

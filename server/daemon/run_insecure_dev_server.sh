@@ -18,7 +18,7 @@ if [ ! -d "${KANI_TMP}" ]; then
     mkdir -p "${KANI_TMP}"
 fi
 
-CONFIG_FILE="../../examples/insecure_server.toml"
+CONFIG_FILE=${CONFIG_FILE:="../../examples/insecure_server.toml"}
 
 if [ ! -f "${CONFIG_FILE}" ]; then
     SCRIPT_DIR="$(dirname -a "$0")"

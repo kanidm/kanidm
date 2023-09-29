@@ -2873,6 +2873,7 @@ dependencies = [
  "sketching",
  "tracing",
  "tss-esapi",
+ "uuid",
 ]
 
 [[package]]
@@ -2953,6 +2954,7 @@ dependencies = [
  "kanidm_proto",
  "kanidm_utils_users",
  "kanidmd_core",
+ "kanidmd_testkit",
  "libc",
  "libsqlite3-sys",
  "lru 0.8.1",
@@ -2999,6 +3001,7 @@ dependencies = [
  "http",
  "hyper",
  "kanidm_build_profiles",
+ "kanidm_lib_crypto",
  "kanidm_proto",
  "kanidm_utils_users",
  "kanidmd_lib",
@@ -3021,6 +3024,7 @@ dependencies = [
  "tower-http",
  "tracing",
  "tracing-subscriber",
+ "url",
  "urlencoding",
  "uuid",
 ]
@@ -3100,6 +3104,7 @@ dependencies = [
  "hyper-tls",
  "kanidm_build_profiles",
  "kanidm_client",
+ "kanidm_lib_crypto",
  "kanidm_proto",
  "kanidmd_core",
  "kanidmd_lib",
@@ -3113,8 +3118,10 @@ dependencies = [
  "testkit-macros",
  "time",
  "tokio",
+ "tokio-openssl",
  "tracing",
  "url",
+ "uuid",
  "webauthn-authenticator-rs",
 ]
 

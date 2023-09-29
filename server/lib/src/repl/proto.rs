@@ -16,6 +16,11 @@ use webauthn_rs::prelude::{
 // Re-export this for our own usage.
 pub use kanidm_lib_crypto::ReplPasswordV1;
 
+pub enum ConsumerState {
+    Ok,
+    RefreshRequired,
+}
+
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub struct ReplCidV1 {
     #[serde(rename = "t")]
@@ -63,22 +68,15 @@ pub struct ReplCidRange {
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub enum ReplRuvRange {
     V1 {
+        domain_uuid: Uuid,
         ranges: BTreeMap<Uuid, ReplCidRange>,
     },
-}
-
-impl Default for ReplRuvRange {
-    fn default() -> Self {
-        ReplRuvRange::V1 {
-            ranges: BTreeMap::default(),
-        }
-    }
 }
 
 impl ReplRuvRange {
     pub fn is_empty(&self) -> bool {
         match self {
-            ReplRuvRange::V1 { ranges } => ranges.is_empty(),
+            ReplRuvRange::V1 { ranges, .. } => ranges.is_empty(),
         }
     }
 }
@@ -689,6 +687,7 @@ pub enum ReplRefreshContext {
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum ReplIncrementalContext {
+    DomainMismatch,
     NoChangesAvailable,
     RefreshRequired,
     UnwillingToSupply,

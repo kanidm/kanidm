@@ -77,7 +77,9 @@ impl KanidmdOpt {
             | KanidmdOpt::DbScan {
                 commands: DbScanOpt::RestoreQuarantined { commonopts, .. },
             }
-            | KanidmdOpt::RecoverAccount { commonopts, .. } => commonopts,
+            | KanidmdOpt::ShowReplicationCertificate { commonopts }
+            | KanidmdOpt::RenewReplicationCertificate { commonopts } => commonopts,
+            KanidmdOpt::RecoverAccount { commonopts, .. } => commonopts,
             KanidmdOpt::DbScan {
                 commands: DbScanOpt::ListIndex(dopt),
             } => &dopt.commonopts,
@@ -143,6 +145,14 @@ async fn submit_admin_req(path: &str, req: AdminTaskRequest, output_mode: Consol
             }
             ConsoleOutputMode::Text => {
                 info!(new_password = ?password)
+            }
+        },
+        Some(Ok(AdminTaskResponse::ShowReplicationCertificate { cert })) => match output_mode {
+            ConsoleOutputMode::JSON => {
+                eprintln!("{{\"certificate\":\"{}\"}}", cert)
+            }
+            ConsoleOutputMode::Text => {
+                info!(certificate = ?cert)
             }
         },
         _ => {
@@ -258,6 +268,13 @@ async fn main() -> ExitCode {
                 }
             };
 
+            // Stop early if replication was found
+            if sconfig.repl_config.is_some() &&
+                !sconfig.i_acknowledge_that_replication_is_in_development
+            {
+                error!("Unable to proceed. Replication should not be configured manually.");
+                return ExitCode::FAILURE
+            }
 
             #[cfg(target_family = "unix")]
             {
@@ -341,6 +358,11 @@ async fn main() -> ExitCode {
             config.update_output_mode(opt.commands.commonopt().output_mode.to_owned().into());
             config.update_trust_x_forward_for(sconfig.trust_x_forward_for);
             config.update_admin_bind_path(&sconfig.adminbindpath);
+
+            config.update_replication_config(
+                sconfig.repl_config.clone()
+            );
+
             match &opt.commands  {
                 // we aren't going to touch the DB so we can carry on
                 KanidmdOpt::HealthCheck(_) => (),
@@ -530,6 +552,26 @@ async fn main() -> ExitCode {
                 } => {
                     info!("Running in db verification mode ...");
                     verify_server_core(&config).await;
+                }
+                KanidmdOpt::ShowReplicationCertificate {
+                    commonopts
+                } => {
+                    info!("Running show replication certificate ...");
+                    let output_mode: ConsoleOutputMode = commonopts.output_mode.to_owned().into();
+                    submit_admin_req(config.adminbindpath.as_str(),
+                        AdminTaskRequest::ShowReplicationCertificate,
+                        output_mode,
+                    ).await;
+                }
+                KanidmdOpt::RenewReplicationCertificate {
+                    commonopts
+                } => {
+                    info!("Running renew replication certificate ...");
+                    let output_mode: ConsoleOutputMode = commonopts.output_mode.to_owned().into();
+                    submit_admin_req(config.adminbindpath.as_str(),
+                        AdminTaskRequest::RenewReplicationCertificate,
+                        output_mode,
+                    ).await;
                 }
                 KanidmdOpt::RecoverAccount {
                     name, commonopts

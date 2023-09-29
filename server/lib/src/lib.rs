@@ -53,7 +53,7 @@ pub mod valueset;
 #[macro_use]
 mod plugins;
 pub mod idm;
-mod repl;
+pub mod repl;
 pub mod schema;
 pub mod server;
 pub mod status;

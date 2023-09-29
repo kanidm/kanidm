@@ -54,7 +54,7 @@ pub async fn setup_async_test(mut config: Configuration) -> (KanidmClient, CoreH
         counter += 1;
         #[allow(clippy::panic)]
         if counter >= 5 {
-            eprintln!("Unable to allocate port!");
+            tracing::error!("Unable to allocate port!");
             panic!();
         }
     };
