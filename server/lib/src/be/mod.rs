@@ -32,7 +32,9 @@ use crate::repl::ruv::{
 use crate::value::{IndexType, Value};
 
 pub mod dbentry;
+pub mod dbrepl;
 pub mod dbvalue;
+
 mod idl_arc_sqlite;
 mod idl_sqlite;
 pub(crate) mod idxkey;

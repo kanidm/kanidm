@@ -24,6 +24,12 @@ pub struct DbCidV1 {
     pub timestamp: Duration,
 }
 
+impl fmt::Display for DbCidV1 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:032}-{}", self.timestamp.as_nanos(), self.server_id)
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug)]
 pub enum DbValueIntentTokenStateV1 {
     #[serde(rename = "v")]

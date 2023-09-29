@@ -1011,7 +1011,7 @@ impl IdlSqliteWriteTransaction {
             .map_err(sqlite_error)
     }
 
-    pub fn migrate_dbentryv1_to_dbentryv2(&self) -> Result<(), OperationError> {
+    fn migrate_dbentryv1_to_dbentryv2(&self) -> Result<(), OperationError> {
         let allids = self.get_identry_raw(&IdList::AllIds)?;
         let raw_entries: Result<Vec<IdRawEntry>, _> = allids
             .into_iter()
@@ -1034,6 +1034,18 @@ impl IdlSqliteWriteTransaction {
             .collect();
 
         self.write_identries_raw(raw_entries?.into_iter())
+    }
+
+    fn migrate_dbentryv2_to_dbentryv3(&self) -> Result<(), OperationError> {
+        // To perform this migration we have to load everything to a valid entry, then
+        // write them all back down once their change states are created.
+        let all_entries = self.get_identry(&IdList::AllIds)?;
+
+        for entry in all_entries {
+            self.write_identry(&entry)?;
+        }
+
+        Ok(())
     }
 
     pub fn write_uuid2spn(&self, uuid: Uuid, k: Option<&Value>) -> Result<(), OperationError> {
@@ -1629,7 +1641,13 @@ impl IdlSqliteWriteTransaction {
             dbv_id2entry = 8;
             info!(entry = %dbv_id2entry, "dbv_id2entry migrated (keyhandles)");
         }
-        //   * if v8 -> complete
+        //   * if v8 -> migrate all entries to have a change state
+        if dbv_id2entry == 8 {
+            self.migrate_dbentryv2_to_dbentryv3()?;
+            dbv_id2entry = 9;
+            info!(entry = %dbv_id2entry, "dbv_id2entry migrated (dbentryv2 -> dbentryv3)");
+        }
+        //   * if v9 -> complete
 
         self.set_db_version_key(DBV_ID2ENTRY, dbv_id2entry)?;
 
