@@ -56,7 +56,7 @@ limitation for the consuming applications.
 
 StartTLS is _not_ supported due to security risks such as credential leakage and MITM attacks that
 are fundamental in how StartTLS works. StartTLS can not be repaired to prevent this. LDAPS is the
-only secure method of communicating to any LDAP server. Kanidm will use it's certificates for both
+only secure method of communicating to any LDAP server. Kanidm will use its certificates for both
 HTTPS and LDAPS.
 
 ### Writes
