@@ -14,7 +14,7 @@ pub mod pkeyb64 {
             error!(?err, "openssl private_key_to_der");
             S::Error::custom("openssl private_key_to_der")
         })?;
-        let s = general_purpose::URL_SAFE.encode(&der);
+        let s = general_purpose::URL_SAFE.encode(der);
 
         ser.serialize_str(&s)
     }
@@ -51,7 +51,7 @@ pub mod x509b64 {
                 error!(?err, "openssl cert to_der");
                 err.into()
             })
-            .map(|der| general_purpose::URL_SAFE.encode(&der))
+            .map(|der| general_purpose::URL_SAFE.encode(der))
     }
 
     pub fn serialize<S>(cert: &X509, ser: S) -> Result<S::Ok, S::Error>
@@ -62,7 +62,7 @@ pub mod x509b64 {
             error!(?err, "openssl cert to_der");
             S::Error::custom("openssl private_key_to_der")
         })?;
-        let s = general_purpose::URL_SAFE.encode(&der);
+        let s = general_purpose::URL_SAFE.encode(der);
 
         ser.serialize_str(&s)
     }

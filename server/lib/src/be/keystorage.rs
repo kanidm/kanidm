@@ -91,7 +91,7 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
     ) -> Result<(), OperationError> {
         self.db.set_key_handles(&keyhandles)?;
         self.keyhandles.clear();
-        self.keyhandles.extend(keyhandles.into_iter());
+        self.keyhandles.extend(keyhandles);
         Ok(())
     }
 }

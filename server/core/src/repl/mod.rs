@@ -94,13 +94,17 @@ async fn repl_consumer_connect_supplier(
     domain: &str,
     sock_addrs: &[SocketAddr],
     tls_connector: &SslConnector,
-    replica_connect_timeout: Duration,
-) -> Option<SslStream<TcpStream>> {
+    consumer_conn_settings: &ConsumerConnSettings,
+) -> Option<Framed<SslStream<TcpStream>, codec::ConsumerCodec>> {
     // This is pretty gnarly, but we need to loop to try out each socket addr.
     for sock_addr in sock_addrs {
         debug!("Connecting to {} replica via {}", domain, sock_addr);
 
-        let tcpstream = match timeout(replica_connect_timeout, TcpStream::connect(sock_addr)).await
+        let tcpstream = match timeout(
+            consumer_conn_settings.replica_connect_timeout,
+            TcpStream::connect(sock_addr),
+        )
+        .await
         {
             Ok(Ok(tc)) => tc,
             Ok(Err(err)) => {
@@ -130,7 +134,12 @@ async fn repl_consumer_connect_supplier(
             continue;
         };
 
-        return Some(tlsstream);
+        let supplier_conn = Framed::new(
+            tlsstream,
+            codec::ConsumerCodec::new(consumer_conn_settings.max_frame_bytes),
+        );
+
+        return Some(supplier_conn);
     }
 
     error!("Unable to connect to supplier.");
@@ -140,12 +149,11 @@ async fn repl_consumer_connect_supplier(
 #[instrument(level = "info", skip_all)]
 async fn repl_run_consumer_refresh(
     refresh_coord: Arc<Mutex<(bool, mpsc::Sender<()>)>>,
-    max_frame_bytes: usize,
     domain: &str,
     sock_addrs: &[SocketAddr],
     tls_connector: &SslConnector,
     idms: &IdmServer,
-    replica_connect_timeout: Duration,
+    consumer_conn_settings: &ConsumerConnSettings,
 ) {
     // Take the refresh lock. Note that every replication consumer *should* end up here
     // behind this lock, but only one can proceed. This is what we want!
@@ -159,13 +167,12 @@ async fn repl_run_consumer_refresh(
     }
 
     // okay, we need to proceed.
-    let Some(tlsstream) =
-        repl_consumer_connect_supplier(domain, sock_addrs, tls_connector, replica_connect_timeout)
+    let Some(mut supplier_conn) =
+        repl_consumer_connect_supplier(domain, sock_addrs, tls_connector, consumer_conn_settings)
             .await
     else {
         return;
     };
-    let mut supplier_conn = Framed::new(tlsstream, codec::ConsumerCodec::new(max_frame_bytes));
 
     // If we fail at anypoint, just RETURN because this leaves the next task to attempt, or
     // the channel drops and that tells the caller this failed.
@@ -212,34 +219,30 @@ async fn repl_run_consumer_refresh(
 
     // Now mark the refresh as complete AND indicate it to the channel.
     refresh_coord_guard.0 = true;
-    if let Err(_) = refresh_coord_guard.1.send(()).await {
+    if refresh_coord_guard.1.send(()).await.is_err() {
         warn!("Unable to signal to caller that refresh has completed.");
     }
 
     // Here the coord guard will drop and every other task proceeds.
 
     warn!("Replication refresh was successful.");
-    return;
 }
 
 #[instrument(level = "info", skip_all)]
 async fn repl_run_consumer(
-    max_frame_bytes: usize,
     domain: &str,
     sock_addrs: &[SocketAddr],
     tls_connector: &SslConnector,
     automatic_refresh: bool,
     idms: &IdmServer,
-    replica_connect_timeout: Duration,
+    consumer_conn_settings: &ConsumerConnSettings,
 ) {
-    let Some(tlsstream) =
-        repl_consumer_connect_supplier(domain, sock_addrs, tls_connector, replica_connect_timeout)
+    let Some(mut supplier_conn) =
+        repl_consumer_connect_supplier(domain, sock_addrs, tls_connector, consumer_conn_settings)
             .await
     else {
         return;
     };
-
-    let mut supplier_conn = Framed::new(tlsstream, codec::ConsumerCodec::new(max_frame_bytes));
 
     // Perform incremental.
     let consumer_ruv_range = {
@@ -355,7 +358,13 @@ async fn repl_run_consumer(
     }
 
     warn!("Replication refresh was successful.");
-    return;
+}
+
+#[derive(Debug, Clone)]
+struct ConsumerConnSettings {
+    max_frame_bytes: usize,
+    task_poll_interval: Duration,
+    replica_connect_timeout: Duration,
 }
 
 async fn repl_task(
@@ -363,9 +372,7 @@ async fn repl_task(
     client_key: PKey<Private>,
     client_cert: X509,
     supplier_cert: X509,
-    max_frame_bytes: usize,
-    task_poll_interval: Duration,
-    replica_connect_timeout: Duration,
+    consumer_conn_settings: ConsumerConnSettings,
     mut task_rx: broadcast::Receiver<ReplConsumerCtrl>,
     automatic_refresh: bool,
     idms: Arc<IdmServer>,
@@ -441,7 +448,7 @@ async fn repl_task(
     ssl_builder.set_verify(SslVerifyMode::PEER);
     let tls_connector = ssl_builder.build();
 
-    let mut repl_interval = interval(task_poll_interval);
+    let mut repl_interval = interval(consumer_conn_settings.task_poll_interval);
 
     info!("Replica task for {} has started.", origin);
 
@@ -457,12 +464,11 @@ async fn repl_task(
                         let _enter = span.enter();
                         repl_run_consumer_refresh(
                             refresh_coord,
-                            max_frame_bytes,
                             domain,
                             &socket_addrs,
                             &tls_connector,
                             &idms,
-                            replica_connect_timeout
+                            &consumer_conn_settings
                         )
                         .await
                     }
@@ -474,13 +480,12 @@ async fn repl_task(
                 let span = info_span!("replication_run_consumer", uuid = ?eventid);
                 let _enter = span.enter();
                 repl_run_consumer(
-                    max_frame_bytes,
                     domain,
                     &socket_addrs,
                     &tls_connector,
                     automatic_refresh,
                     &idms,
-                    replica_connect_timeout
+                    &consumer_conn_settings
                 ).await;
             }
         }
@@ -584,6 +589,12 @@ async fn repl_acceptor(
     let replica_connect_timeout = Duration::from_secs(2);
     let retry_timeout = Duration::from_secs(60);
     let max_frame_bytes = 268435456;
+
+    let consumer_conn_settings = ConsumerConnSettings {
+        max_frame_bytes,
+        task_poll_interval,
+        replica_connect_timeout,
+    };
 
     // Setup a broadcast to control our tasks.
     let (task_tx, task_rx1) = broadcast::channel(2);
@@ -690,9 +701,7 @@ async fn repl_acceptor(
                         server_key.clone(),
                         server_cert.clone(),
                         supplier_cert.clone(),
-                        max_frame_bytes,
-                        task_poll_interval,
-                        replica_connect_timeout,
+                        consumer_conn_settings.clone(),
                         task_rx,
                         *automatic_refresh,
                         idms.clone(),
@@ -769,7 +778,7 @@ async fn repl_acceptor(
                             respond
                         } => {
                             let _span = debug_span!("supplier_accept_loop", uuid = ?eventid).entered();
-                            if let Err(_) = respond.send(server_cert.clone()) {
+                            if respond.send(server_cert.clone()).is_err() {
                                 warn!("Server certificate was requested, but requsetor disconnected");
                             } else {
                                 trace!("Sent server certificate via control channel");
@@ -797,7 +806,7 @@ async fn repl_acceptor(
                                     error!(?err, "failed to renew server certificate");
                                 }
 
-                                if let Err(_) = respond.send(success) {
+                                if respond.send(success).is_err() {
                                     warn!("Server certificate renewal was requested, but requsetor disconnected");
                                 } else {
                                     trace!("Sent server certificate renewal status via control channel");
@@ -823,11 +832,11 @@ async fn repl_acceptor(
                                 )
                             );
 
-                            if let Err(_) = task_tx.send(ReplConsumerCtrl::Refresh(refresh_coord)) {
+                            if task_tx.send(ReplConsumerCtrl::Refresh(refresh_coord)).is_err() {
                                 error!("Unable to begin replication consumer refresh, tasks are unable to be notified.");
                             }
 
-                            if let Err(_) = respond.send(rx) {
+                            if respond.send(rx).is_err() {
                                 warn!("Replication consumer refresh was requested, but requsetor disconnected");
                             } else {
                                 trace!("Sent refresh comms channel to requestor");
@@ -850,7 +859,7 @@ async fn repl_acceptor(
                             let clone_tls_acceptor = tls_acceptor.clone();
                             // We don't care about the join handle here - once a client connects
                             // it sticks to whatever ssl settings it had at launch.
-                            let _ = tokio::spawn(
+                            tokio::spawn(
                                 handle_repl_conn(max_frame_bytes, tcpstream, client_socket_addr, clone_tls_acceptor, clone_idms)
                             );
                         }
