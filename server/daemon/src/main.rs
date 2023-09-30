@@ -78,7 +78,8 @@ impl KanidmdOpt {
                 commands: DbScanOpt::RestoreQuarantined { commonopts, .. },
             }
             | KanidmdOpt::ShowReplicationCertificate { commonopts }
-            | KanidmdOpt::RenewReplicationCertificate { commonopts } => commonopts,
+            | KanidmdOpt::RenewReplicationCertificate { commonopts }
+            | KanidmdOpt::RefreshReplicationConsumer { commonopts, .. } => commonopts,
             KanidmdOpt::RecoverAccount { commonopts, .. } => commonopts,
             KanidmdOpt::DbScan {
                 commands: DbScanOpt::ListIndex(dopt),
@@ -153,6 +154,14 @@ async fn submit_admin_req(path: &str, req: AdminTaskRequest, output_mode: Consol
             }
             ConsoleOutputMode::Text => {
                 info!(certificate = ?cert)
+            }
+        },
+        Some(Ok(AdminTaskResponse::Success)) => match output_mode {
+            ConsoleOutputMode::JSON => {
+                eprintln!("\"success\"")
+            }
+            ConsoleOutputMode::Text => {
+                info!("success")
             }
         },
         _ => {
@@ -572,6 +581,22 @@ async fn main() -> ExitCode {
                         AdminTaskRequest::RenewReplicationCertificate,
                         output_mode,
                     ).await;
+                }
+                KanidmdOpt::RefreshReplicationConsumer {
+                    commonopts,
+                    proceed
+                } => {
+                    info!("Running refresh replication consumer ...");
+                    if !proceed {
+                        error!("Unwilling to proceed. Check --help.");
+
+                    } else {
+                        let output_mode: ConsoleOutputMode = commonopts.output_mode.to_owned().into();
+                        submit_admin_req(config.adminbindpath.as_str(),
+                            AdminTaskRequest::RefreshReplicationConsumer,
+                            output_mode,
+                        ).await;
+                    }
                 }
                 KanidmdOpt::RecoverAccount {
                     name, commonopts
