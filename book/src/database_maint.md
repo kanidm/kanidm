@@ -6,7 +6,7 @@ In some (rare) cases you may need to reindex. Please note the server will someti
 startup as a result of the project changing its internal schema definitions. This is normal and
 expected - you may never need to start a reindex yourself as a result!
 
-You only need to reindex if you add custome schema elements and you see a message in your logs such
+You only need to reindex if you add custom schema elements and you see a message in your logs such
 as:
 
 ```

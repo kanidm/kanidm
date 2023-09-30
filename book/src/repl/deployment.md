@@ -104,7 +104,7 @@ partner server is the "secondary". This means that if database issues occur the 
 primary will take precedence over the secondary. For our example we will define A as the primary and
 B as the secondary.
 
-First display the identity certific
+First display the identity certificate
 
 ```bash
 # Server A
