@@ -1,4 +1,4 @@
-use bytes::{BufMut, BytesMut};
+use bytes::{Buf, BufMut, BytesMut};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::io;
 use tokio_util::codec::{Decoder, Encoder};
@@ -76,16 +76,19 @@ impl Encoder<SupplierResponse> for SupplierCodec {
 }
 
 fn encode_length_checked_json<R: Serialize>(msg: R, dst: &mut BytesMut) -> Result<(), io::Error> {
+    // First, if there is anything already in dst, we should split past it.
+    let mut work = dst.split_off(dst.len());
+
     // Null the head of the buffer.
     let zero_len = u64::MIN.to_be_bytes();
-    dst.extend_from_slice(&zero_len);
+    work.extend_from_slice(&zero_len);
 
     // skip the buffer ahead 8 bytes.
     // Remember, this split returns the *already set* bytes.
     // ⚠️  Can't use split or split_at - these return the
     // len bytes into a new bytes mut which confuses unsplit
     // by appending the value when we need to append our json.
-    let json_buf = dst.split_off(zero_len.len());
+    let json_buf = work.split_off(zero_len.len());
 
     let mut json_writer = json_buf.writer();
 
@@ -99,15 +102,17 @@ fn encode_length_checked_json<R: Serialize>(msg: R, dst: &mut BytesMut) -> Resul
     let final_len = json_buf.len() as u64;
     let final_len_bytes = final_len.to_be_bytes();
 
-    if final_len_bytes.len() != dst.len() {
+    if final_len_bytes.len() != work.len() {
         error!("consumer buffer size error");
         return Err(io::Error::new(io::ErrorKind::Other, "buffer length error"));
     }
 
-    dst.copy_from_slice(&final_len_bytes);
+    work.copy_from_slice(&final_len_bytes);
 
     // Now stitch them back together.
-    dst.unsplit(json_buf);
+    work.unsplit(json_buf);
+
+    dst.unsplit(work);
 
     Ok(())
 }
@@ -147,7 +152,7 @@ fn decode_length_checked_json<T: DeserializeOwned>(
         ));
     }
 
-    if (src.len() as u64) < req_len {
+    if (json_bytes.len() as u64) < req_len {
         trace!(
             "Insufficient bytes for json, need: {} have: {}",
             req_len,
@@ -155,6 +160,10 @@ fn decode_length_checked_json<T: DeserializeOwned>(
         );
         return Ok(None);
     }
+
+    // If there are excess bytes, we need to limit our slice to that view.
+    debug_assert!(req_len as usize <= json_bytes.len());
+    let (json_bytes, _remainder) = json_bytes.split_at(req_len as usize);
 
     // Okay, we have enough. Lets go.
     let res = serde_json::from_slice(json_bytes)
@@ -169,8 +178,7 @@ fn decode_length_checked_json<T: DeserializeOwned>(
     if src.len() as u64 == req_len {
         src.clear();
     } else {
-        let mut rem = src.split_off((8 + req_len) as usize);
-        std::mem::swap(&mut rem, src);
+        src.advance((8 + req_len) as usize);
     };
 
     res
@@ -245,6 +253,30 @@ mod tests {
             consumer_codec.decode(&mut buf),
             Ok(Some(SupplierResponse::Pong))
         ));
+        assert!(buf.is_empty());
+
+        // Make two requests in a row.
+        buf.clear();
+        let mut supplier_codec = SupplierCodec::new(32);
+
+        assert!(consumer_codec
+            .encode(ConsumerRequest::Ping, &mut buf)
+            .is_ok());
+        assert!(consumer_codec
+            .encode(ConsumerRequest::Ping, &mut buf)
+            .is_ok());
+
+        assert!(matches!(
+            supplier_codec.decode(&mut buf),
+            Ok(Some(ConsumerRequest::Ping))
+        ));
+        assert!(!buf.is_empty());
+        assert!(matches!(
+            supplier_codec.decode(&mut buf),
+            Ok(Some(ConsumerRequest::Ping))
+        ));
+
+        // The buf will have been cleared by the supplier codec here.
         assert!(buf.is_empty());
     }
 }
