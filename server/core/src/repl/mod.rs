@@ -837,9 +837,9 @@ async fn repl_acceptor(
                             }
 
                             if respond.send(rx).is_err() {
-                                warn!("Replication consumer refresh was requested, but requsetor disconnected");
+                                warn!("Replication consumer refresh was requested, but requester disconnected");
                             } else {
-                                trace!("Sent refresh comms channel to requestor");
+                                trace!("Sent refresh comms channel to requester");
                             }
                         }
                     }
