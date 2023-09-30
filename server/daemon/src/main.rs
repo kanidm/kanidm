@@ -164,7 +164,18 @@ async fn submit_admin_req(path: &str, req: AdminTaskRequest, output_mode: Consol
                 info!("success")
             }
         },
-        _ => {
+        Some(Ok(AdminTaskResponse::Error)) => match output_mode {
+            ConsoleOutputMode::JSON => {
+                eprintln!("\"error\"")
+            }
+            ConsoleOutputMode::Text => {
+                info!("Error - you should inspect the logs.")
+            }
+        },
+        Some(Err(err)) => {
+            error!(?err, "Error during admin task operation");
+        }
+        None => {
             error!("Error making request to admin socket");
         }
     }
@@ -374,7 +385,11 @@ async fn main() -> ExitCode {
 
             match &opt.commands  {
                 // we aren't going to touch the DB so we can carry on
-                KanidmdOpt::HealthCheck(_) => (),
+                KanidmdOpt::ShowReplicationCertificate { .. }
+                | KanidmdOpt::RenewReplicationCertificate { .. }
+                | KanidmdOpt::RefreshReplicationConsumer { .. }
+                | KanidmdOpt::RecoverAccount { .. }
+                | KanidmdOpt::HealthCheck(_) => (),
                 _ => {
                     // Okay - Lets now create our lock and go.
                     let klock_path = format!("{}.klock" ,sconfig.db_path.as_str());
