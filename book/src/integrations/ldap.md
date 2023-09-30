@@ -11,7 +11,7 @@ interface for these legacy applications and services.
 {{#template ../templates/kani-warning.md
 imagepath=../images
 title=Warning!
-text=The LDAP server in Kanidm is not a fully RFC-compliant LDAP server. This is intentional, as Kanidm wants to cover the common use cases - simple bind and search.
+text=The LDAP server in Kanidm is not a full LDAP server. This is intentional, as Kanidm wants to cover the common use cases - simple bind and search. The parts we do support are RFC compliant however.
 }}
 
 <!-- deno-fmt-ignore-end -->
@@ -26,10 +26,10 @@ IDM just like Kanidm!
 
 ## Data Mapping
 
-Kanidm cannot be mapped 100% to LDAP's objects. This is because LDAP types are simple key-values on
-objects which are all UTF8 strings (or subsets thereof) based on validation (matching) rules. Kanidm
-internally implements complex data types such as tagging on SSH keys, or multi-value credentials.
-These can not be represented in LDAP.
+Kanidm entries cannot be mapped 100% to LDAP's objects. This is because LDAP types are simple
+key-values on objects which are all UTF8 strings (or subsets thereof) based on validation (matching)
+rules. Kanidm internally implements complex structured data types such as tagging on SSH keys, or
+multi-value credentials. These can not be represented in LDAP.
 
 Many of the structures in Kanidm do not correlate closely to LDAP. For example Kanidm only has a GID
 number, where LDAP's schemas define both a UID number and a GID number.
@@ -52,11 +52,12 @@ limitation for the consuming applications.
 
 ## Security
 
-### TLS
+### LDAPS vs StartTLS
 
-StartTLS is not supported due to security risks such as credential leakage and MITM attacks that are
-fundamental in how StartTLS works and can not be repaired. LDAPS is the only secure method of
-communicating to any LDAP server. Kanidm will use it's certificates for both HTTPS and LDAPS.
+StartTLS is _not_ supported due to security risks such as credential leakage and MITM attacks that
+are fundamental in how StartTLS works. StartTLS can not be repaired to prevent this. LDAPS is the
+only secure method of communicating to any LDAP server. Kanidm will use it's certificates for both
+HTTPS and LDAPS.
 
 ### Writes
 

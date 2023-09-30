@@ -1,15 +1,15 @@
 # Installing Client Tools
 
-> **NOTE** As this project is in a rapid development phase, running different release versions will
-> likely present incompatibilities. Ensure you're running matching release versions of client and
-> server binaries. If you have any issues, check that you are running the latest software.
+> **NOTE** Running different release versions will likely present incompatibilities. Ensure you're
+> running matching release versions of client and server binaries. If you have any issues, check
+> that you are running the latest version of Kanidm.
 
 ## From packages
 
 Kanidm currently is packaged for the following systems:
 
 - OpenSUSE Tumbleweed
-- OpenSUSE Leap 15.4
+- OpenSUSE Leap 15.4/15.5/15.6
 - MacOS
 - Arch Linux
 - NixOS
@@ -18,16 +18,16 @@ Kanidm currently is packaged for the following systems:
 
 The `kanidm` client has been built and tested from Windows, but is not (yet) packaged routinely.
 
-### OpenSUSE Tumbleweed
+### OpenSUSE Tumbleweed / Leap 15.6
 
-Kanidm has been part of OpenSUSE Tumbleweed since October 2020. You can install the clients with:
+Kanidm is available in Tumbleweed and Leap 15.6. You can install the clients with:
 
 ```bash
 zypper ref
 zypper in kanidm-clients
 ```
 
-### OpenSUSE Leap 15.3/15.4
+### OpenSUSE Leap 15.4/15.5
 
 Using zypper you can add the Kanidm leap repository with:
 
@@ -88,22 +88,12 @@ You can then install with:
 dnf install kanidm-clients
 ```
 
-## Cargo
-
-The tools are available as a cargo download if you have a rust tool chain available. To install rust
-you should follow the documentation for [rustup](https://rustup.rs/). These will be installed into
-your home directory. To update these, re-run the install command.
-
-```bash
-cargo install kanidm_tools
-```
-
 ## Tools Container
 
 In some cases if your distribution does not have native kanidm-client support, and you can't access
 cargo for the install for some reason, you can use the cli tools from a docker container instead.
 
-This really is a "last resort" and we don't really recommend this for day to day usage.
+This is a "last resort" and we don't really recommend this for day to day usage.
 
 ```bash
 echo '{}' > ~/.cache/kanidm_tokens
@@ -124,6 +114,16 @@ If you have a ca.pem you may need to bind mount this in as required as well.
 
 ```bash
 alias kanidm="docker run ..."
+```
+
+## Cargo
+
+The tools are available as a cargo download if you have a rust tool chain available. To install rust
+you should follow the documentation for [rustup](https://rustup.rs/). These will be installed into
+your home directory. To update these, re-run the install command.
+
+```bash
+cargo install kanidm_tools
 ```
 
 ## Initializing the configuration

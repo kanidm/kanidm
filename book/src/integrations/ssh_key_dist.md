@@ -98,7 +98,7 @@ The kanidm\_ssh\_authorizedkeys\_direct command is part of the kanidm-clients pa
 installed on the servers.
 
 To configure the tool, you should edit /etc/kanidm/config, as documented in
-[clients](./client_tools.md)
+[clients](../client_tools.md)
 
 You can test this is configured correctly by running:
 

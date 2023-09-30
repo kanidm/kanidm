@@ -20,7 +20,7 @@ understand how to connect to Kanidm.
 
 The sync tool specific components are configured in it's own configuration file.
 
-```rust
+```toml
 {{#rustdoc_include ../../../examples/kanidm-ldap-sync}}
 ```
 
@@ -113,6 +113,18 @@ option "--schedule" on the cli
 
 ```bash
 kanidm-ldap-sync [-c /path/to/kanidm/config] -i /path/to/kanidm-ldap-sync --schedule
+kanidm-ldap-sync -i /etc/kanidm/ldap-sync --schedule
+```
+
+As the sync tool is part of the tools container, you can run this with:
+
+```bash
+docker create --name kanidm-ldap-sync \
+  --user uid:gid \
+  -p 12345:12345 \
+  -v /etc/kanidm/config:/etc/kanidm/config:ro \
+  -v /path/to/ldap-sync:/etc/kanidm/ldap-sync:ro \
+  kanidm-ipa-sync -i /etc/kanidm/ldap-sync --schedule
 ```
 
 ## Monitoring the Sync Tool
@@ -131,4 +143,4 @@ Ok
 ```
 
 It's important to note no details are revealed via the status socket, and is purely for Ok or Err
-status of the last sync.
+status of the last sync. This status socket is suitable for monitoring from tools such as Nagios.

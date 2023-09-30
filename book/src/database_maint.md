@@ -6,21 +6,21 @@ In some (rare) cases you may need to reindex. Please note the server will someti
 startup as a result of the project changing its internal schema definitions. This is normal and
 expected - you may never need to start a reindex yourself as a result!
 
-You'll likely notice a need to reindex if you add indexes to schema and you see a message in your
-logs such as:
+You only need to reindex if you add custome schema elements and you see a message in your logs such
+as:
 
 ```
 Index EQUALITY name not found
 Index {type} {attribute} not found
 ```
 
-This indicates that an index of type equality has been added for name, but the indexing process has
-not been run. The server will continue to operate and the query execution code will correctly
+This indicates that an index of type equality has been added for `name`, but the indexing process
+has not been run. The server will continue to operate and the query execution code will correctly
 process the query - however it will not be the optimal method of delivering the results as we need
 to disregard this part of the query and act as though it's un-indexed.
 
 Reindexing will resolve this by forcing all indexes to be recreated based on their schema
-definitions (this works even though the schema is in the same database!)
+definitions.
 
 ```bash
 docker stop <container name>
@@ -28,8 +28,6 @@ docker run --rm -i -t -v kanidmd:/data \
     kanidm/server:latest /sbin/kanidmd reindex -c /data/server.toml
 docker start <container name>
 ```
-
-Generally, reindexing is a rare action and should not normally be required.
 
 ## Vacuum
 

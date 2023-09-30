@@ -7,7 +7,8 @@ Kanidm is able to synchronise from FreeIPA for the purposes of coexistence or mi
 
 ## Installing the FreeIPA Sync Tool
 
-See [installing the client tools](../installing_client_tools.md).
+See [installing the client tools](../installing_client_tools.md). The ipa sync tool is part of the
+[tools container](../installing_client_tools.md#tools-container).
 
 ## Configure the FreeIPA Sync Tool
 
@@ -19,7 +20,7 @@ to understand how to connect to Kanidm.
 
 The sync tool specific components are configured in it's own configuration file.
 
-```rust
+```toml
 {{#rustdoc_include ../../../examples/kanidm-ipa-sync}}
 ```
 
@@ -31,6 +32,7 @@ In addition to this, you must make some configuration changes to FreeIPA to enab
 You can find the name of your 389 Directory Server instance with:
 
 ```bash
+# Run on the FreeIPA server
 dsconf --list
 ```
 
@@ -38,6 +40,7 @@ Using this you can show the current status of the retro changelog plugin to see 
 change it's configuration.
 
 ```bash
+# Run on the FreeIPA server
 dsconf <instance name> plugin retro-changelog show
 dsconf slapd-DEV-KANIDM-COM plugin retro-changelog show
 ```
@@ -87,6 +90,18 @@ option "--schedule" on the cli
 
 ```bash
 kanidm-ipa-sync [-c /path/to/kanidm/config] -i /path/to/kanidm-ipa-sync --schedule
+kanidm-ipa-sync -i /etc/kanidm/ipa-sync --schedule
+```
+
+As the sync tool is part of the tools container, you can run this with:
+
+```bash
+docker create --name kanidm-ipa-sync \
+  --user uid:gid \
+  -p 12345:12345 \
+  -v /etc/kanidm/config:/etc/kanidm/config:ro \
+  -v /path/to/ipa-sync:/etc/kanidm/ipa-sync:ro \
+  kanidm-ipa-sync -i /etc/kanidm/ipa-sync --schedule
 ```
 
 ## Monitoring the Sync Tool
@@ -105,4 +120,4 @@ Ok
 ```
 
 It's important to note no details are revealed via the status socket, and is purely for Ok or Err
-status of the last sync.
+status of the last sync. This status socket is suitable for monitoring from tools such as Nagios.

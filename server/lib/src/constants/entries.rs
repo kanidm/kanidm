@@ -805,7 +805,7 @@ lazy_static! {
         name: "idm_people_extend_priv",
         description: "Builtin System Administrators Group.",
         uuid: UUID_IDM_PEOPLE_EXTEND_PRIV,
-        members: vec![BUILTIN_ACCOUNT_ADMIN.uuid],
+        members: vec![UUID_SYSTEM_ADMINS],
         ..Default::default()
     };
     /// Self-write of mail
@@ -840,7 +840,7 @@ lazy_static! {
         name: "idm_hp_people_extend_priv",
         description: "Builtin IDM Group for extending high privilege accounts to be people.",
         uuid: UUID_IDM_HP_PEOPLE_EXTEND_PRIV,
-        members: vec![BUILTIN_ACCOUNT_ADMIN.uuid],
+        members: vec![UUID_SYSTEM_ADMINS],
         ..Default::default()
     };
 
