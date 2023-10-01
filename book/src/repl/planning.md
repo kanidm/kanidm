@@ -57,7 +57,7 @@ You should _NOT_ use DNS based failover mechanisms as clients can cache DNS reco
 
 ## Maximum Downtime of a Server
 
-Kanidm's replication protocol enforces limits on how long a server can be offline for. This is due
+Kanidm's replication protocol enforces limits on how long a server can be offline. This is due
 to how tombstones are handled. By default the maximum is 7 days. If a server is offline for more
 than 7 days a refresh will be required for that server to continue participation in the topology.
 
