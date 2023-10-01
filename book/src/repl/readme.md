@@ -49,7 +49,7 @@ The act of supplying data to a remote server.
 
 A descriptor that allows a node to pull from another node.
 
-### Convergy
+### Converge
 
 To approach the same database state.
 
