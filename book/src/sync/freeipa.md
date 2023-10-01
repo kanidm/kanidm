@@ -18,7 +18,7 @@ communicate to both sides.
 Like other components of Kanidm, the FreeIPA sync tool will read your /etc/kanidm/config if present
 to understand how to connect to Kanidm.
 
-The sync tool specific components are configured in it's own configuration file.
+The sync tool specific components are configured in its own configuration file.
 
 ```toml
 {{#rustdoc_include ../../../examples/kanidm-ipa-sync}}
