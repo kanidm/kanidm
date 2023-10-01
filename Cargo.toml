@@ -123,7 +123,7 @@ futures-concurrency = "^3.1.0"
 futures-util = { version = "^0.3.21", features = ["sink"] }
 gix = { version = "0.53.1", default-features = false }
 gloo = "^0.8.1"
-hashbrown = { version = "0.14.0", features = ["serde", "inline-more", "ahash"] }
+hashbrown = { version = "0.14.1", features = ["serde", "inline-more", "ahash"] }
 hex = "^0.4.3"
 hyper = { version = "0.14.27", features = ["full"] }
 hyper-tls = "0.5.0"
