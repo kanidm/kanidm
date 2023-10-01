@@ -72,7 +72,7 @@ The node that is replicating content from a supplier.
 
 ### Refresh
 
-Deleting all of a consumers database content, and replacing it with the content of a supplier.
+Deleting all of a consumer's database content, and replacing it with the content of a supplier.
 
 ### Incremental Replication
 
