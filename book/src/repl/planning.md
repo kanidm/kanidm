@@ -29,7 +29,7 @@ nearby nodes experience outages. It also allows for absorption of load spikes or
 events.
 
 It is important to note however that as you add replicas the _write_ throughput does not increase in
-the same way as read throughput. This is because for each write that occurs on a node, it must bet
+the same way as read throughput. This is because for each write that occurs on a node, it must be
 replicated and written to every other node. Therefore your write throughput is always bounded by the
 _slowest_ server in your topology. In reality there is a "slight" improvement in writes due to
 coalescing that occurs as part of replication, but you should assume that writes are not improved
