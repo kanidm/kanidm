@@ -5,7 +5,7 @@
 {{#template ../templates/kani-warning.md
 imagepath=../images
 title=WARNING
-text=Replication is a newely developed feature. This means it requires manual configuration and careful monitoring. You should keep backups if you choose to proceed.
+text=Replication is a newely developed feature. This means it requires manual configuration and careful monitoring. You should take regular backups if you choose to proceed.
 }}
 
 <!-- deno-fmt-ignore-end -->
