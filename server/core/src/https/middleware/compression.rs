@@ -23,7 +23,7 @@ use tower_http::compression::CompressionLayer;
 // TODO: this should skip compression on responses smaller than ~256 bytes because gzip can make them bigger.
 /// This builds a compression layer with the following configuration:
 ///
-/// * No brotli compression - becuase that's *very* slow to compress dynamically
+/// * No brotli compression - because that's *very* slow to compress dynamically
 /// * "Best" quality of compression, usually produces the smallest size.
 ///
 pub fn new() -> CompressionLayer {
