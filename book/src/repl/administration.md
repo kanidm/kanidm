@@ -19,7 +19,7 @@ You must then copy the new certificate to other nodes in the topology.
 
 ## Refresh a Lagging Consumer
 
-If a consumer has been offline for more than 7 days, it's error log will display that it requires a
+If a consumer has been offline for more than 7 days, its error log will display that it requires a
 refresh.
 
 You can manually perform this on the affected node.
