@@ -24,7 +24,8 @@ compact_jwt = { workspace = true }
 cron = { workspace = true }
 futures = { workspace = true }
 futures-util = { workspace = true }
-http = "0.2.9"
+http = { workspace = true }
+
 hyper = { workspace = true }
 kanidm_proto = { workspace = true }
 kanidm_utils_users = { workspace = true }

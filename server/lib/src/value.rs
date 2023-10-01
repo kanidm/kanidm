@@ -1133,7 +1133,6 @@ impl Value {
         matches!(self, Value::Iutf8(_))
     }
 
-    // TODO: take this away
     #[inline(always)]
     pub fn new_class(s: &str) -> Self {
         Value::Iutf8(s.to_lowercase())

@@ -161,13 +161,6 @@ pub const ATTR_USERPASSWORD: &str = "userpassword";
 pub const ATTR_UUID: &str = "uuid";
 pub const ATTR_VERSION: &str = "version";
 
-// TODO: rust can't deal with this being compiled out, don't try and #[cfg()] them
-pub const TEST_ATTR_NON_EXIST: &str = "non-exist";
-pub const TEST_ATTR_TEST_ATTR: &str = "testattr";
-pub const TEST_ATTR_EXTRA: &str = "extra";
-pub const TEST_ATTR_NUMBER: &str = "testattrnumber";
-pub const TEST_ATTR_NOTALLOWED: &str = "notallowed";
-
 pub const OAUTH2_SCOPE_EMAIL: &str = ATTR_EMAIL;
 pub const OAUTH2_SCOPE_GROUPS: &str = "groups";
 pub const OAUTH2_SCOPE_OPENID: &str = "openid";
@@ -188,3 +181,10 @@ pub const LDAP_ATTR_MEMBER: &str = "member";
 pub const LDAP_ATTR_NAME: &str = "name";
 pub const LDAP_ATTR_OBJECTCLASS: &str = "objectClass";
 pub const LDAP_ATTR_OU: &str = "ou";
+
+// rust can't deal with this being compiled out, don't try and #[cfg()] them
+pub const TEST_ATTR_NON_EXIST: &str = "non-exist";
+pub const TEST_ATTR_TEST_ATTR: &str = "testattr";
+pub const TEST_ATTR_EXTRA: &str = "extra";
+pub const TEST_ATTR_NUMBER: &str = "testattrnumber";
+pub const TEST_ATTR_NOTALLOWED: &str = "notallowed";

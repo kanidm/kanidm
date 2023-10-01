@@ -2971,11 +2971,10 @@ impl<VALID, STATE> Entry<VALID, STATE> {
             }
         }
 
-        let mut res = Vec::new();
-        for (attr, pv) in pairs.into_iter() {
-            // We use FC directly here instead of f_eq to avoid an excess clone.
-            res.push(FC::Eq(attr, pv)) // TODO: this is kinda terrible
-        }
+        let res: Vec<FC<'_>> = pairs
+            .into_iter()
+            .map(|(attr, pv)| FC::Eq(attr, pv))
+            .collect();
         Some(filter_all!(f_and(res)))
     }
 

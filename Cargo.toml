@@ -126,6 +126,7 @@ gix = { version = "0.53.1", default-features = false }
 gloo = "^0.8.1"
 hashbrown = { version = "0.14.1", features = ["serde", "inline-more", "ahash"] }
 hex = "^0.4.3"
+http = "0.2.9"
 hyper = { version = "0.14.27", features = ["full"] }
 hyper-tls = "0.5.0"
 idlset = "^0.2.4"

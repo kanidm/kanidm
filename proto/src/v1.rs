@@ -19,8 +19,22 @@ use crate::constants::{ATTR_GROUP, ATTR_LDAP_SSHPUBLICKEY};
 
 // These proto implementations are here because they have public definitions
 
-/* ===== errors ===== */
+#[derive(Clone, Copy, Debug)]
+pub enum AccountType {
+    Person,
+    ServiceAccount,
+}
 
+impl ToString for AccountType {
+    fn to_string(&self) -> String {
+        match self {
+            AccountType::Person => "person".to_string(),
+            AccountType::ServiceAccount => "service_account".to_string(),
+        }
+    }
+}
+
+/* ===== errors ===== */
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum SchemaError {
