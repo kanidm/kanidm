@@ -18,8 +18,8 @@ To minimise this, it's recommended that when you operate replication in a highly
 deployment that you have a load balancer that uses sticky sessions so that users are redirected to
 the same server unless a failover event occurs. This will help to minimise discrepancies.
 Alternately you can treat replication and "active-passive" and have your load balancer failover
-between the two nodes. Since replication is eventually consistent, there is no failover or failback
-procedure.
+between the two nodes. Since replication is eventually consistent, there is no need for a 
+failover or failback procedure.
 
 In this chapter we will cover the details of planning, deploying and maintaining replication between
 Kanidm servers.
