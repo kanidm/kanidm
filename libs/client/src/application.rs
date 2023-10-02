@@ -17,4 +17,9 @@ impl KanidmClient {
             .insert(ATTR_NAME.to_string(), vec![name.to_string()]);
         self.perform_post_request("/v1/application", new_app).await
     }
+
+    pub async fn idm_application_delete(&self, name: &str) -> Result<(), ClientError> {
+        self.perform_delete_request(["/v1/application/", name].concat().as_str())
+            .await
+    }
 }

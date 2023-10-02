@@ -680,6 +680,9 @@ pub enum ApplicationOpt {
     /// Create a new application
     #[clap(name = "create")]
     Create(Named),
+    /// Delete an application
+    #[clap(name = "delete")]
+    Delete(Named),
 }
 
 #[derive(Debug, Subcommand)]

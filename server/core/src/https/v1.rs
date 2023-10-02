@@ -1259,6 +1259,43 @@ pub async fn application_post(
 
 #[utoipa::path(
     get,
+    path = "/v1/application/{id}",
+    responses(
+        (status=200), // TODO: define response
+        ApiResponseWithout200,
+    ),
+    security(("token_jwt" = [])),
+    tag = "v1/application",
+)]
+pub async fn application_id_get(
+    State(state): State<ServerState>,
+    Path(id): Path<String>,
+    Extension(kopid): Extension<KOpId>,
+) -> impl IntoResponse {
+    let filter = filter_all!(f_eq(Attribute::Class, EntryClass::Application.into()));
+    json_rest_event_get_id(state, id, filter, None, kopid).await
+}
+
+#[utoipa::path(
+    delete,
+    path = "/v1/application/{id}",
+    responses(
+        DefaultApiResponse,
+    ),
+    security(("token_jwt" = [])),
+    tag = "v1/application",
+)]
+pub async fn application_id_delete(
+    State(state): State<ServerState>,
+    Path(id): Path<String>,
+    Extension(kopid): Extension<KOpId>,
+) -> impl IntoResponse {
+    let filter = filter_all!(f_eq(Attribute::Class, EntryClass::Application.into()));
+    json_rest_event_delete_id(state, id, filter, kopid).await
+}
+
+#[utoipa::path(
+    get,
     path = "/v1/credential/_exchange_intent",
     params(
     ),
@@ -3075,6 +3112,10 @@ pub(crate) fn route_setup(state: ServerState) -> Router<ServerState> {
         .route(
             "/v1/application/",
             get(application_get).post(application_post),
+        )
+        .route(
+            "/v1/application/:id",
+            get(application_id_get).delete(application_id_delete),
         )
         .route(
             "/v1/account/:id/_unix/_auth",
