@@ -14,7 +14,7 @@ pub mod pkeyb64 {
             error!(?err, "openssl private_key_to_der");
             S::Error::custom("openssl private_key_to_der")
         })?;
-        let s = general_purpose::URL_SAFE.encode(der);
+        let s = general_purpose::URL_SAFE_NO_PAD.encode(der);
 
         ser.serialize_str(&s)
     }
@@ -24,10 +24,12 @@ pub mod pkeyb64 {
         D: Deserializer<'de>,
     {
         let raw = <&str>::deserialize(des)?;
-        let s = general_purpose::URL_SAFE.decode(raw).map_err(|err| {
-            error!(?err, "base64 url-safe invalid");
-            D::Error::custom("base64 url-safe invalid")
-        })?;
+        let s = general_purpose::URL_SAFE_NO_PAD.decode(raw)
+            .or_else(|_| general_purpose::URL_SAFE.decode(raw))
+            .map_err(|err| {
+                error!(?err, "base64 url-safe invalid");
+                D::Error::custom("base64 url-safe invalid")
+            })?;
 
         PKey::private_key_from_der(&s).map_err(|err| {
             error!(?err, "openssl pkey invalid der");
@@ -62,7 +64,7 @@ pub mod x509b64 {
             error!(?err, "openssl cert to_der");
             S::Error::custom("openssl private_key_to_der")
         })?;
-        let s = general_purpose::URL_SAFE.encode(der);
+        let s = general_purpose::URL_SAFE_NO_PAD.encode(der);
 
         ser.serialize_str(&s)
     }
@@ -72,10 +74,12 @@ pub mod x509b64 {
         D: Deserializer<'de>,
     {
         let raw = <&str>::deserialize(des)?;
-        let s = general_purpose::URL_SAFE.decode(raw).map_err(|err| {
-            error!(?err, "base64 url-safe invalid");
-            D::Error::custom("base64 url-safe invalid")
-        })?;
+        let s = general_purpose::URL_SAFE_NO_PAD.decode(raw)
+            .or_else(|_| general_purpose::URL_SAFE.decode(raw))
+            .map_err(|err| {
+                error!(?err, "base64 url-safe invalid");
+                D::Error::custom("base64 url-safe invalid")
+            })?;
 
         X509::from_der(&s).map_err(|err| {
             error!(?err, "openssl x509 invalid der");

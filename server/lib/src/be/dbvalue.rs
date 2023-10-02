@@ -16,7 +16,7 @@ use webauthn_rs_core::proto::{COSEKey, UserVerificationPolicy};
 use crate::repl::cid::Cid;
 pub use kanidm_lib_crypto::DbPasswordV1;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Ord, PartialOrd, PartialEq, Eq)]
 pub struct DbCidV1 {
     #[serde(rename = "s")]
     pub server_id: Uuid,

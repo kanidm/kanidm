@@ -105,14 +105,12 @@ impl<'a> QueryServerReadTransaction<'a> {
             return Ok(ReplIncrementalContext::DomainMismatch);
         }
 
-        let our_ranges = self
-            .get_be_txn()
-            .get_ruv()
-            .current_ruv_range()
-            .map_err(|e| {
-                error!(err = ?e, "Unable to access supplier RUV range");
-                e
-            })?;
+        let supplier_ruv = self.get_be_txn().get_ruv();
+
+        let our_ranges = supplier_ruv.current_ruv_range().map_err(|e| {
+            error!(err = ?e, "Unable to access supplier RUV range");
+            e
+        })?;
 
         // Compare this to our internal ranges - work out the list of entry
         // id's that are now different.
@@ -125,21 +123,27 @@ impl<'a> QueryServerReadTransaction<'a> {
             RangeDiffStatus::Ok(ranges) => ranges,
             RangeDiffStatus::Refresh { lag_range } => {
                 error!("Replication - Consumer is lagging and must be refreshed.");
-                debug!(?lag_range);
+                info!(?lag_range);
+                debug!(consumer_ranges = ?ctx_ranges);
+                debug!(supplier_ranges = ?our_ranges);
                 return Ok(ReplIncrementalContext::RefreshRequired);
             }
             RangeDiffStatus::Unwilling { adv_range } => {
                 error!("Replication - Supplier is lagging and must be investigated.");
-                debug!(?adv_range);
+                info!(?adv_range);
+                debug!(consumer_ranges = ?ctx_ranges);
+                debug!(supplier_ranges = ?our_ranges);
                 return Ok(ReplIncrementalContext::UnwillingToSupply);
             }
             RangeDiffStatus::Critical {
                 lag_range,
                 adv_range,
             } => {
-                error!("Replication Critical - Servers are advanced of us, and also lagging! This must be immediately investigated!");
-                debug!(?lag_range);
-                debug!(?adv_range);
+                error!("Replication Critical - Consumers are advanced of us, and also lagging! This must be immediately investigated!");
+                info!(?lag_range);
+                info!(?adv_range);
+                debug!(consumer_ranges = ?ctx_ranges);
+                debug!(supplier_ranges = ?our_ranges);
                 return Ok(ReplIncrementalContext::UnwillingToSupply);
             }
         };

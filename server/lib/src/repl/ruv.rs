@@ -218,16 +218,33 @@ pub struct ReplicationUpdateVectorWriteTransaction<'a> {
 
 impl<'a> fmt::Debug for ReplicationUpdateVectorWriteTransaction<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        writeln!(f, "RUV DUMP")?;
+        writeln!(f, "RUV DATA DUMP")?;
         self.data
             .iter()
-            .try_for_each(|(cid, idl)| writeln!(f, "* [{cid} {idl:?}]"))
+            .try_for_each(|(cid, idl)| writeln!(f, "* [{cid} {idl:?}]"))?;
+        writeln!(f, "RUV RANGE DUMP")?;
+        self.ranged
+            .iter()
+            .try_for_each(|(s_uuid, ts)| writeln!(f, "* [{s_uuid} {ts:?}]"))
     }
 }
 
 pub struct ReplicationUpdateVectorReadTransaction<'a> {
     data: BptreeMapReadTxn<'a, Cid, IDLBitRange>,
     ranged: BptreeMapReadTxn<'a, Uuid, BTreeSet<Duration>>,
+}
+
+impl<'a> fmt::Debug for ReplicationUpdateVectorReadTransaction<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(f, "RUV DATA DUMP")?;
+        self.data
+            .iter()
+            .try_for_each(|(cid, idl)| writeln!(f, "* [{cid} {idl:?}]"))?;
+        writeln!(f, "RUV RANGE DUMP")?;
+        self.ranged
+            .iter()
+            .try_for_each(|(s_uuid, ts)| writeln!(f, "* [{s_uuid} {ts:?}]"))
+    }
 }
 
 pub trait ReplicationUpdateVectorTransaction {
