@@ -52,8 +52,7 @@ pub struct LdapBoundToken {
     pub effective_session: LdapSession,
 }
 
-pub struct LdapServer {
-    rootdse: LdapSearchResultEntry,
+struct LdapNamingContext {
     basedn: String,
     dnre: Regex,
     binddnre: Regex,
@@ -63,6 +62,11 @@ pub struct LdapServer {
 enum LdapBindTarget {
     Account(Uuid),
     ApiToken,
+}
+
+pub struct LdapServer {
+    rootdse: LdapSearchResultEntry,
+    default_naming_context: LdapNamingContext,
 }
 
 impl LdapServer {
@@ -127,9 +131,11 @@ impl LdapServer {
 
         Ok(LdapServer {
             rootdse,
-            basedn,
-            dnre,
-            binddnre,
+            default_naming_context: LdapNamingContext {
+                basedn,
+                dnre,
+                binddnre,
+            },
         })
     }
 
@@ -156,7 +162,9 @@ impl LdapServer {
 
             // This scoping returns an extra filter component.
 
-            let (opt_attr, opt_value) = match self.dnre.captures(sr.base.as_str()) {
+            let nc = self.naming_context_from_base_dn(sr.base.as_str())?;
+
+            let (opt_attr, opt_value) = match nc.dnre.captures(sr.base.as_str()) {
                 Some(caps) => (
                     caps.name("attr").map(|v| v.as_str().to_string()),
                     caps.name("val").map(|v| v.as_str().to_string()),
@@ -351,7 +359,7 @@ impl LdapServer {
                 .map(|e| {
                     e.to_ldap(
                         &mut idm_read.qs_read,
-                        self.basedn.as_str(),
+                        nc.basedn.as_str(),
                         all_attrs,
                         &l_attrs,
                     )
@@ -404,6 +412,7 @@ impl LdapServer {
             LdapBindTarget::ApiToken
         } else {
             let rdn = self
+                .naming_context_from_bind_dn(dn)?
                 .binddnre
                 .captures(dn)
                 .and_then(|caps| caps.name("val"))
@@ -524,6 +533,14 @@ impl LdapServer {
                 )),
             },
         } // end match server op
+    }
+
+    fn naming_context_from_base_dn(&self, _dn: &str) -> Result<&LdapNamingContext, OperationError> {
+        Ok(&self.default_naming_context)
+    }
+
+    fn naming_context_from_bind_dn(&self, _dn: &str) -> Result<&LdapNamingContext, OperationError> {
+        Ok(&self.default_naming_context)
     }
 }
 
