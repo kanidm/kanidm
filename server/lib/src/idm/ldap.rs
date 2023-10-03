@@ -152,10 +152,31 @@ impl LdapServer {
         // If the request is "", Base, Present(Attribute::ObjectClass.into()), [], then we want the rootdse.
         if sr.base.is_empty() && sr.scope == LdapSearchScope::Base {
             admin_info!("LDAP Search success - RootDSE");
-            Ok(vec![
-                sr.gen_result_entry(self.rootdse.clone()),
-                sr.gen_success(),
-            ])
+
+            let mut rootdse = self.rootdse.clone();
+            let mut idms_prox_read = idms.proxy_read().await;
+
+            // Add applications naming contexts
+            let app_entries = idms_prox_read.qs_read.internal_search(filter!(f_eq(
+                Attribute::Class,
+                EntryClass::Application.into()
+            )))?;
+            for app_entry in &app_entries {
+                let app_nc = app_entry
+                    .get_ava_single_iname(Attribute::Name)
+                    .map(|s| s.to_string())
+                    .ok_or(OperationError::InvalidEntryState)?;
+                rootdse.attributes.push(LdapPartialAttribute {
+                    atype: "namingcontexts".to_string(),
+                    vals: vec![
+                        format!("app={},{}", app_nc, self.default_naming_context.basedn)
+                            .as_bytes()
+                            .to_vec(),
+                    ],
+                })
+            }
+
+            Ok(vec![sr.gen_result_entry(rootdse), sr.gen_success()])
         } else {
             // We want something else apparently. Need to do some more work ...
             // Parse the operation and make sure it's sane before we start the txn.
