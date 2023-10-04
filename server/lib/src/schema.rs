@@ -2753,10 +2753,7 @@ mod tests {
         );
         // Test the recursive structures validate
         let f_or_empty = filter_all!(f_or!([]));
-        assert_eq!(
-            f_or_empty.validate(&schema),
-            Ok(filter_valid!(f_or(vec![])))
-        );
+        assert_eq!(f_or_empty.validate(&schema), Err(SchemaError::EmptyFilter));
         let f_or = filter_all!(f_or!([f_eq(
             Attribute::MultiValue,
             PartialValue::new_iutf8("zzzz")
