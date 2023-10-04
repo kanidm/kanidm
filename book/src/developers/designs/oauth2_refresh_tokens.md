@@ -149,7 +149,7 @@ consistency plugin that already exists.
 Since the act of refreshing a token is implied activity then we do not require other signaling
 mechanisms.
 
-# Questions
+## Questions
 
 Currently with authorisation code grants and sessions we issue these where the sessions are recorded
 in an async manner. For consistency I believe the same should be true here but is there a concern
