@@ -373,6 +373,7 @@ struct ConsumerConnSettings {
     replica_connect_timeout: Duration,
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn repl_task(
     origin: Url,
     client_key: PKey<Private>,
@@ -827,7 +828,7 @@ async fn repl_acceptor(
                                 }
 
                                 if respond.send(success).is_err() {
-                                    warn!("Server certificate renewal was requested, but requsetor disconnected");
+                                    warn!("Server certificate renewal was requested, but requestor disconnected!");
                                 } else {
                                     trace!("Sent server certificate renewal status via control channel");
                                 }
