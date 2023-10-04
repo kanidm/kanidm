@@ -24,6 +24,33 @@ pub struct DbCidV1 {
     pub timestamp: Duration,
 }
 
+impl From<Cid> for DbCidV1 {
+    fn from(
+    Cid {
+        s_uuid, ts
+    }: Cid
+    ) -> Self {
+        DbCidV1 {
+            timestamp: ts,
+            server_id: s_uuid
+        }
+    }
+}
+
+impl From<&Cid> for DbCidV1 {
+    fn from(
+    &Cid {
+        s_uuid, ts
+    }: &Cid
+    ) -> Self {
+        DbCidV1 {
+            timestamp: ts,
+            server_id: s_uuid
+        }
+    }
+}
+
+
 impl fmt::Display for DbCidV1 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:032}-{}", self.timestamp.as_nanos(), self.server_id)

@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use smartstring::alias::String as AttrString;
 use uuid::Uuid;
 
-use super::dbrepl::DbEntryChangeState;
+use super::dbrepl::{DbEntryChangeState, DbReplMeta};
 use super::dbvalue::{DbValueEmailAddressV1, DbValuePhoneNumberV1, DbValueSetV2, DbValueV1};
 use super::keystorage::{KeyHandle, KeyHandleId};
 use crate::prelude::entries::Attribute;
@@ -70,6 +70,15 @@ pub enum DbBackup {
         keyhandles: BTreeMap<KeyHandleId, KeyHandle>,
         entries: Vec<DbEntry>,
     },
+    V4 {
+        db_s_uuid: Uuid,
+        db_d_uuid: Uuid,
+        db_ts_max: Duration,
+        keyhandles: BTreeMap<KeyHandleId, KeyHandle>,
+        repl_meta: DbReplMeta,
+        entries: Vec<DbEntry>,
+    },
+
 }
 
 fn from_vec_dbval1(attr_val: NonEmpty<DbValueV1>) -> Result<DbValueSetV2, OperationError> {

@@ -4,7 +4,7 @@
 //! is to persist content safely to disk, load that content, and execute queries
 //! utilising indexes in the most effective way possible.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::ops::DerefMut;
 use std::sync::Arc;
@@ -20,6 +20,8 @@ use tracing::{trace, trace_span};
 use uuid::Uuid;
 
 use crate::be::dbentry::{DbBackup, DbEntry};
+use crate::be::dbrepl::DbReplMeta;
+use crate::be::dbvalue::DbCidV1;
 use crate::entry::Entry;
 use crate::filter::{Filter, FilterPlan, FilterResolved, FilterValidResolved};
 use crate::prelude::*;
@@ -849,6 +851,9 @@ pub trait BackendTransaction {
     }
 
     fn backup(&mut self, dst_path: &str) -> Result<(), OperationError> {
+
+        let repl_meta = self.get_ruv().to_db_backup_ruv();
+
         // load all entries into RAM, may need to change this later
         // if the size of the database compared to RAM is an issue
         let idl = IdList::AllIds;
@@ -877,11 +882,12 @@ pub trait BackendTransaction {
 
         let keyhandles = idlayer.get_key_handles()?;
 
-        let bak = DbBackup::V3 {
+        let bak = DbBackup::V4 {
             db_s_uuid,
             db_d_uuid,
             db_ts_max,
             keyhandles,
+            repl_meta,
             entries,
         };
 
@@ -1695,18 +1701,19 @@ impl<'a> BackendWriteTransaction<'a> {
     }
 
     pub fn restore(&mut self, src_path: &str) -> Result<(), OperationError> {
-        let idlayer = self.get_idlayer();
-        // load all entries into RAM, may need to change this later
-        // if the size of the database compared to RAM is an issue
         let serialized_string = fs::read_to_string(src_path).map_err(|e| {
             admin_error!("fs::read_to_string {:?}", e);
             OperationError::FsError
         })?;
 
-        idlayer.danger_purge_id2entry().map_err(|e| {
-            admin_error!("purge_id2entry failed {:?}", e);
+        self.danger_delete_all_db_content().map_err(|e| {
+            admin_error!("delete_all_db_content failed {:?}", e);
             e
         })?;
+
+        let idlayer = self.get_idlayer();
+        // load all entries into RAM, may need to change this later
+        // if the size of the database compared to RAM is an issue
 
         let dbbak_option: Result<DbBackup, serde_json::Error> =
             serde_json::from_str(&serialized_string);
@@ -1716,8 +1723,8 @@ impl<'a> BackendWriteTransaction<'a> {
             OperationError::SerdeJsonError
         })?;
 
-        let dbentries = match dbbak {
-            DbBackup::V1(dbentries) => dbentries,
+        let (dbentries, repl_meta) = match dbbak {
+            DbBackup::V1(dbentries) => (dbentries, None),
             DbBackup::V2 {
                 db_s_uuid,
                 db_d_uuid,
@@ -1728,7 +1735,7 @@ impl<'a> BackendWriteTransaction<'a> {
                 idlayer.write_db_s_uuid(db_s_uuid)?;
                 idlayer.write_db_d_uuid(db_d_uuid)?;
                 idlayer.set_db_ts_max(db_ts_max)?;
-                entries
+                (entries, None)
             }
             DbBackup::V3 {
                 db_s_uuid,
@@ -1742,9 +1749,34 @@ impl<'a> BackendWriteTransaction<'a> {
                 idlayer.write_db_d_uuid(db_d_uuid)?;
                 idlayer.set_db_ts_max(db_ts_max)?;
                 idlayer.set_key_handles(keyhandles)?;
-                entries
+                (entries, None)
+            }
+            DbBackup::V4 {
+                db_s_uuid,
+                db_d_uuid,
+                db_ts_max,
+                keyhandles,
+                repl_meta,
+                entries,
+            } => {
+                // Do stuff.
+                idlayer.write_db_s_uuid(db_s_uuid)?;
+                idlayer.write_db_d_uuid(db_d_uuid)?;
+                idlayer.set_db_ts_max(db_ts_max)?;
+                idlayer.set_key_handles(keyhandles)?;
+                (entries, Some(repl_meta))
             }
         };
+
+        // Rebuild the RUV from the backup.
+        match repl_meta {
+            Some(DbReplMeta::V1 { ruv } ) => {
+                self.ruv_restore_v1(ruv)?;
+            }
+            None => {
+                warn!("Unable to restore replication metadata, this server may need a refresh.");
+            }
+        }
 
         info!("Restoring {} entries ...", dbentries.len());
 
@@ -1765,6 +1797,8 @@ impl<'a> BackendWriteTransaction<'a> {
             })
             .collect();
 
+        let idlayer = self.get_idlayer();
+
         idlayer.write_identries_raw(identries?.into_iter())?;
 
         info!("Restored {} entries", dbentries.len());
@@ -1778,6 +1812,23 @@ impl<'a> BackendWriteTransaction<'a> {
         } else {
             Err(OperationError::ConsistencyError(vr))
         }
+    }
+
+    /// Restore the ruv from a DB backup. It's important to note here that
+    /// we don't actually need to restore and of the IDL's in the process. we only
+    /// needs the CID's of the changes/points in time. This is because when the
+    /// db entries are restored, their changesets will re-populate the data that we
+    /// need in the RUV at these points. The reason we need these ranges without IDL
+    /// is so that trim and replication works properly.
+    fn ruv_restore_v1(&mut self, db_ruv: BTreeSet<DbCidV1>) -> Result<(), OperationError> {
+        self.get_ruv().restore(db_ruv.into_iter().map(|db_cid| db_cid.into()))
+    }
+
+    #[instrument(level = "debug", name = "be::ruv_rebuild", skip_all)]
+    pub fn ruv_reload(&mut self) -> Result<(), OperationError> {
+        // Get the RUV from the DB. Create an empty ruv if missing.
+
+        Ok(())
     }
 
     #[instrument(level = "debug", name = "be::ruv_rebuild", skip_all)]
@@ -1977,7 +2028,7 @@ impl Backend {
         // Now rebuild the ruv.
         let mut be_write = be.write();
         be_write
-            .ruv_rebuild()
+            .ruv_reload()
             .and_then(|_| be_write.commit())
             .map_err(|e| {
                 admin_error!(?e, "Failed to reload ruv");
@@ -2530,6 +2581,16 @@ mod tests {
                     db_d_uuid: _,
                     db_ts_max: _,
                     keyhandles: _,
+                    entries,
+                } => {
+                    let _ = entries.pop();
+                }
+                DbBackup::V4 {
+                    db_s_uuid: _,
+                    db_d_uuid: _,
+                    db_ts_max: _,
+                    keyhandles: _,
+                    repl_meta: _,
                     entries,
                 } => {
                     let _ = entries.pop();

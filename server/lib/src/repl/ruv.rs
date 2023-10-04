@@ -3,6 +3,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::ops::Bound::*;
 use std::sync::Arc;
 use std::time::Duration;
+use crate::be::dbrepl::DbReplMeta;
 
 use concread::bptree::{BptreeMap, BptreeMapReadSnapshot, BptreeMapReadTxn, BptreeMapWriteTxn};
 use idlset::v2::IDLBitRange;
@@ -251,6 +252,12 @@ pub trait ReplicationUpdateVectorTransaction {
     fn ruv_snapshot(&self) -> BptreeMapReadSnapshot<'_, Cid, IDLBitRange>;
 
     fn range_snapshot(&self) -> BptreeMapReadSnapshot<'_, Uuid, BTreeSet<Duration>>;
+
+    fn to_db_backup_ruv(&self) -> DbReplMeta {
+        DbReplMeta::V1 {
+            ruv: self.ruv_snapshot().keys().map(|cid| cid.into()).collect()
+        }
+    }
 
     fn current_ruv_range(&self) -> Result<BTreeMap<Uuid, ReplCidRange>, OperationError> {
         self.range_snapshot()
@@ -538,6 +545,33 @@ impl<'a> ReplicationUpdateVectorWriteTransaction<'a> {
                 self.ranged.insert(*ctx_s_uuid, s_range);
             }
         }
+        Ok(())
+    }
+
+    pub(crate) fn restore<I>(&mut self, iter: I) -> Result<(), OperationError>
+        where I: IntoIterator<Item = Cid> {
+
+        let mut rebuild_ruv: BTreeMap<Cid, IDLBitRange> = BTreeMap::new();
+        let mut rebuild_range: BTreeMap<Uuid, BTreeSet<Duration>> = BTreeMap::default();
+
+        for cid in iter {
+            if !rebuild_ruv.contains_key(&cid) {
+                let idl = IDLBitRange::new();
+                rebuild_ruv.insert(cid.clone(), idl);
+            }
+
+            if let Some(server_range) = rebuild_range.get_mut(&cid.s_uuid) {
+                server_range.insert(cid.ts);
+            } else {
+                let mut ts_range = BTreeSet::default();
+                ts_range.insert(cid.ts);
+                rebuild_range.insert(cid.s_uuid, ts_range);
+            }
+        }
+
+        self.data.extend(rebuild_ruv);
+        self.ranged.extend(rebuild_range);
+
         Ok(())
     }
 
