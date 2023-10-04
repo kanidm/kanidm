@@ -850,7 +850,6 @@ pub trait BackendTransaction {
     }
 
     fn backup(&mut self, dst_path: &str) -> Result<(), OperationError> {
-
         let repl_meta = self.get_ruv().to_db_backup_ruv();
 
         // load all entries into RAM, may need to change this later
@@ -1769,8 +1768,9 @@ impl<'a> BackendWriteTransaction<'a> {
 
         // Rebuild the RUV from the backup.
         match repl_meta {
-            Some(DbReplMeta::V1 { ruv: db_ruv } ) => {
-                self.get_ruv().restore(db_ruv.into_iter().map(|db_cid| db_cid.into()))?;
+            Some(DbReplMeta::V1 { ruv: db_ruv }) => {
+                self.get_ruv()
+                    .restore(db_ruv.into_iter().map(|db_cid| db_cid.into()))?;
             }
             None => {
                 warn!("Unable to restore replication metadata, this server may need a refresh.");
@@ -1885,10 +1885,7 @@ impl<'a> BackendWriteTransaction<'a> {
         } = self;
 
         // write the ruv content back to the db.
-        idlayer.write_db_ruv(
-            ruv.added(),
-            ruv.removed()
-        )?;
+        idlayer.write_db_ruv(ruv.added(), ruv.removed())?;
 
         idlayer.commit().map(|()| {
             ruv.commit();

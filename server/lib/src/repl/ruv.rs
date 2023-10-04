@@ -842,12 +842,10 @@ impl<'a> ReplicationUpdateVectorWriteTransaction<'a> {
 
         // Starting from the previous max, iterate through our data to find what
         // has been added.
-        self.data
-            .range((prev_bound, Unbounded))
-            .map(|(cid, _)| {
-                trace!(added_cid = ?cid);
-                cid.clone()
-            })
+        self.data.range((prev_bound, Unbounded)).map(|(cid, _)| {
+            trace!(added_cid = ?cid);
+            cid.clone()
+        })
     }
 
     pub fn removed(&self) -> impl Iterator<Item = Cid> + '_ {
