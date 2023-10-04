@@ -6,7 +6,6 @@ use axum::middleware::from_fn;
 use axum::response::{IntoResponse, Response};
 use axum::routing::{delete, get, post, put};
 use axum::{Extension, Json, Router};
-use axum_macros::debug_handler;
 use compact_jwt::Jws;
 use http::{HeaderMap, HeaderValue, StatusCode};
 use hyper::Body;
@@ -38,7 +37,22 @@ pub(crate) struct SessionId {
     pub sessionid: Uuid,
 }
 
-// /v1/raw/create
+#[utoipa::path(
+    post,
+    path = "/v1/raw/create",
+    params(
+        // TODO: params
+    ),
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "api/v1/raw",
+)]
 pub async fn raw_create(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
@@ -54,7 +68,22 @@ pub async fn raw_create(
     to_axum_response(res)
 }
 
-// /v1/raw/modify
+#[utoipa::path(
+    post,
+    path = "/v1/raw/modify",
+    params(
+        // TODO: params
+    ),
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "api/v1/raw",
+)]
 pub async fn raw_modify(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
@@ -67,7 +96,22 @@ pub async fn raw_modify(
     to_axum_response(res)
 }
 
-// /v1/raw/delete
+#[utoipa::path(
+    post,
+    path = "/v1/raw/delete",
+    params(
+        // TODO: params
+    ),
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "api/v1/raw",
+)]
 pub async fn raw_delete(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
@@ -80,7 +124,22 @@ pub async fn raw_delete(
     to_axum_response(res)
 }
 
-// /v1/raw/search
+#[utoipa::path(
+    post,
+    path = "/v1/raw/searc",
+    params(
+        // TODO: params
+    ),
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "api/v1/raw",
+)]
 pub async fn raw_search(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
@@ -93,7 +152,23 @@ pub async fn raw_search(
     to_axum_response(res)
 }
 
-#[debug_handler]
+#[utoipa::path(
+    get,
+    path = "/v1/self",
+    params(
+        // TODO: params
+    ),
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "api/v1/self",
+)]
+// Whoami?
 pub async fn whoami(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
@@ -103,6 +178,22 @@ pub async fn whoami(
     to_axum_response(res)
 }
 
+#[utoipa::path(
+    get,
+    path = "/v1/self/_uat",
+    params(
+        // TODO: params
+    ),
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "api/v1/self",
+)]
 pub async fn whoami_uat(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
@@ -332,7 +423,23 @@ pub async fn json_rest_event_delete_attr(
     }
 }
 
-// /v1/schema
+#[utoipa::path(
+    get,
+    path = "/v1/schema",
+    params(
+        // TODO: params
+    ),
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "api/v1",
+)]
+// Whoami?
 pub async fn schema_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
@@ -348,6 +455,7 @@ pub async fn schema_get(
     json_rest_event_get(state, None, filter, kopid).await
 }
 
+// /v1/schema/attributetype
 pub async fn schema_attributetype_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
@@ -404,7 +512,7 @@ pub async fn schema_classtype_get_id(
     to_axum_response(res)
 }
 
-// // == person ==
+// /v1/person
 pub async fn person_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
@@ -413,8 +521,8 @@ pub async fn person_get(
     json_rest_event_get(state, None, filter, kopid).await
 }
 
+// /v1/person
 // expects the following fields in the attrs field of the req: [name, displayname]
-#[debug_handler]
 pub async fn person_post(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
@@ -428,6 +536,7 @@ pub async fn person_post(
     json_rest_event_post(state, classes, obj, kopid).await
 }
 
+// /v1/person/:id
 pub async fn person_id_get(
     State(state): State<ServerState>,
     Path(id): Path<String>,
@@ -437,6 +546,7 @@ pub async fn person_id_get(
     json_rest_event_get_id(state, id, filter, None, kopid).await
 }
 
+// /v1/person/:id
 pub async fn person_account_id_delete(
     State(state): State<ServerState>,
     Path(id): Path<String>,
@@ -448,6 +558,7 @@ pub async fn person_account_id_delete(
 
 // // == account ==
 
+// /v1/service_account
 pub async fn service_account_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
@@ -456,6 +567,7 @@ pub async fn service_account_get(
     json_rest_event_get(state, None, filter, kopid).await
 }
 
+// /v1/service_account
 pub async fn service_account_post(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
@@ -468,7 +580,7 @@ pub async fn service_account_post(
     ];
     json_rest_event_post(state, classes, obj, kopid).await
 }
-
+// /v1/service_account/{id}
 pub async fn service_account_id_get(
     State(state): State<ServerState>,
     Path(id): Path<String>,
@@ -478,6 +590,7 @@ pub async fn service_account_id_get(
     json_rest_event_get_id(state, id, filter, None, kopid).await
 }
 
+// // /v1/service_account/{id}
 pub async fn service_account_id_delete(
     State(state): State<ServerState>,
     Path(id): Path<String>,
@@ -487,6 +600,7 @@ pub async fn service_account_id_delete(
     json_rest_event_delete_id(state, id, filter, kopid).await
 }
 
+// /v1/service_account/:id/_credential/_generate
 pub async fn service_account_credential_generate(
     State(state): State<ServerState>,
     Path(id): Path<String>,
@@ -499,11 +613,13 @@ pub async fn service_account_credential_generate(
     to_axum_response(res)
 }
 
-// // Due to how the migrations work in 6 -> 7, we can accidentally
-// // mark "accounts" as service accounts when they are persons. This
-// // allows migrating them to the person type due to it's similarities.
-// //
-// // In the future this will be REMOVED!
+// Due to how the migrations work in 6 -> 7, we can accidentally
+// mark "accounts" as service accounts when they are persons. This
+// allows migrating them to the person type due to its similarities.
+//
+// In the future this will be REMOVED!
+// /v1/service_account/:id/_into_person
+#[deprecated]
 pub async fn service_account_into_person(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
@@ -517,6 +633,7 @@ pub async fn service_account_into_person(
 }
 
 // // Api Token
+// /v1/service_account/:id/_api_token
 pub async fn service_account_api_token_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
@@ -529,6 +646,7 @@ pub async fn service_account_api_token_get(
     to_axum_response(res)
 }
 
+// /v1/service_account/:id/_api_token
 pub async fn service_account_api_token_post(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
@@ -549,6 +667,7 @@ pub async fn service_account_api_token_post(
     to_axum_response(res)
 }
 
+// /v1/service_account/:id/_api_token/:token_id"
 pub async fn service_account_api_token_delete(
     State(state): State<ServerState>,
     Path((id, token_id)): Path<(String, Uuid)>,
@@ -563,6 +682,8 @@ pub async fn service_account_api_token_delete(
 
 // // Account stuff
 // TODO: shouldn't this be service_account?
+// /v1/person/:id/_attr/:attr
+// /v1/service_account/:id/_attr/:attr
 pub async fn account_id_get_attr(
     State(state): State<ServerState>,
     Path((id, attr)): Path<(String, String)>,
@@ -572,6 +693,8 @@ pub async fn account_id_get_attr(
     json_rest_event_get_attr(state, id.as_str(), attr, filter, kopid).await
 }
 
+// /v1/person/:id/_attr/:attr
+// /v1/service_account/:id/_attr/:attr
 pub async fn account_id_post_attr(
     State(state): State<ServerState>,
     Path((id, attr)): Path<(String, String)>,
@@ -582,6 +705,8 @@ pub async fn account_id_post_attr(
     json_rest_event_post_id_attr(state, id, attr, filter, values, kopid).await
 }
 
+// /v1/person/:id/_attr/:attr
+// /v1/service_account/:id/_attr/:attr
 pub async fn account_id_delete_attr(
     State(state): State<ServerState>,
     Path((id, attr)): Path<(String, String)>,
@@ -591,6 +716,8 @@ pub async fn account_id_delete_attr(
     json_rest_event_delete_id_attr(state, id, attr, filter, None, kopid).await
 }
 
+// /v1/person/:id/_attr/:attr
+// /v1/service_account/:id/_attr/:attr
 pub async fn account_id_put_attr(
     State(state): State<ServerState>,
     Path((id, attr)): Path<(String, String)>,
@@ -601,6 +728,7 @@ pub async fn account_id_put_attr(
     json_rest_event_put_attr(state, id, attr, filter, values, kopid).await
 }
 
+// /v1/person/:id
 pub async fn account_id_patch(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
@@ -618,6 +746,7 @@ pub async fn account_id_patch(
     to_axum_response(res)
 }
 
+// /v1/person/:id/_credential/_update
 pub async fn account_get_id_credential_update(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
@@ -630,6 +759,7 @@ pub async fn account_get_id_credential_update(
     to_axum_response(res)
 }
 
+// /v1/person/:id/_credential/_update_intent/:ttl
 #[instrument(level = "trace", skip(state, kopid))]
 pub async fn account_get_id_credential_update_intent_ttl(
     State(state): State<ServerState>,
@@ -649,6 +779,7 @@ pub async fn account_get_id_credential_update_intent_ttl(
     to_axum_response(res)
 }
 
+// /v1/person/:id/_credential/_update_intent
 #[instrument(level = "trace", skip(state, kopid))]
 pub async fn account_get_id_credential_update_intent(
     State(state): State<ServerState>,
@@ -659,7 +790,6 @@ pub async fn account_get_id_credential_update_intent(
         .qe_w_ref
         .handle_idmcredentialupdateintent(kopid.uat, id, None, kopid.eventid)
         .await;
-    // panic!("res: {:?}", res);
     to_axum_response(res)
 }
 
@@ -777,7 +907,21 @@ pub async fn credential_update_cancel(
     to_axum_response(res)
 }
 
-pub async fn account_get_id_credential_status(
+// /v1/service_account/:id/_credential/_status
+pub async fn service_account_get_id_credential_status(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    Path(id): Path<String>,
+) -> impl IntoResponse {
+    let res = state
+        .qe_r_ref
+        .handle_idmcredentialstatus(kopid.uat, id, kopid.eventid)
+        .await;
+    to_axum_response(res)
+}
+
+// /v1/person/:id/_credential/_status
+pub async fn person_get_id_credential_status(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     Path(id): Path<String>,
@@ -790,6 +934,9 @@ pub async fn account_get_id_credential_status(
 }
 
 // // Return a vec of str
+// /v1/person/:id/_ssh_pubkeys
+// /v1/service_account/:id/_ssh_pubkeys
+// /v1/account/:id/_ssh_pubkeys
 pub async fn account_get_id_ssh_pubkeys(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
@@ -802,6 +949,8 @@ pub async fn account_get_id_ssh_pubkeys(
     to_axum_response(res)
 }
 
+// /v1/person/:id/_ssh_pubkeys
+// /v1/service_account/:id/_ssh_pubkeys
 pub async fn account_post_id_ssh_pubkey(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
@@ -817,6 +966,8 @@ pub async fn account_post_id_ssh_pubkey(
     to_axum_response(res)
 }
 
+// /v1/person/:id/_ssh_pubkeys/:tag
+// /v1/service_account/:id/_ssh_pubkeys/:tag
 pub async fn account_get_id_ssh_pubkey_tag(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
@@ -829,6 +980,8 @@ pub async fn account_get_id_ssh_pubkey_tag(
     to_axum_response(res)
 }
 
+// /v1/person/:id/_ssh_pubkeys/:tag
+// /v1/service_account/:id/_ssh_pubkeys/:tag
 pub async fn account_delete_id_ssh_pubkey_tag(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
@@ -845,7 +998,8 @@ pub async fn account_delete_id_ssh_pubkey_tag(
 }
 
 // // Get and return a single str
-pub async fn account_get_id_radius(
+// /v1/person/:id/_radius
+pub async fn person_id_radius_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     Path(id): Path<String>,
@@ -857,7 +1011,8 @@ pub async fn account_get_id_radius(
     to_axum_response(res)
 }
 
-pub async fn account_post_id_radius_regenerate(
+// /v1/person/:id/_radius
+pub async fn person_id_radius_post(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     Path(id): Path<String>,
@@ -870,7 +1025,8 @@ pub async fn account_post_id_radius_regenerate(
     to_axum_response(res)
 }
 
-pub async fn account_delete_id_radius(
+// /v1/person/:id/_radius
+pub async fn person_id_radius_delete(
     State(state): State<ServerState>,
     Path(id): Path<String>,
     Extension(kopid): Extension<KOpId>,
@@ -880,10 +1036,37 @@ pub async fn account_delete_id_radius(
     json_rest_event_delete_id_attr(state, id, attr, filter, None, kopid).await
 }
 
-pub async fn account_id_radius_token(
+// /v1/person/:id/_radius/_token
+
+pub async fn person_id_radius_token_get(
     State(state): State<ServerState>,
     Path(id): Path<String>,
     Extension(kopid): Extension<KOpId>,
+) -> impl IntoResponse {
+    person_id_radius_handler(state, id, kopid).await
+}
+
+// /v1/account/:id/_radius/_token
+pub async fn account_id_radius_token_get(
+    State(state): State<ServerState>,
+    Path(id): Path<String>,
+    Extension(kopid): Extension<KOpId>,
+) -> impl IntoResponse {
+    person_id_radius_handler(state, id, kopid).await
+}
+// /v1/account/:id/_radius/_token
+pub async fn account_id_radius_token_post(
+    State(state): State<ServerState>,
+    Path(id): Path<String>,
+    Extension(kopid): Extension<KOpId>,
+) -> impl IntoResponse {
+    person_id_radius_handler(state, id, kopid).await
+}
+
+async fn person_id_radius_handler(
+    state: ServerState,
+    id: String,
+    kopid: KOpId,
 ) -> impl IntoResponse {
     let res = state
         .qe_r_ref
@@ -898,6 +1081,8 @@ pub async fn account_id_radius_token(
     res
 }
 
+// /v1/person/:id/_unix
+// /v1/service_account/:id/_unix
 /// Expects an `AccountUnixExtend` object
 ///
 #[instrument(name = "account_post_id_unix", level = "INFO", skip(id, state, kopid))]
@@ -915,6 +1100,7 @@ pub async fn account_post_id_unix(
 }
 
 #[instrument(name = "account_id_unix_token", level = "INFO", skip_all)]
+// /v1/account/:id/_unix/_token
 pub async fn account_id_unix_token(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
@@ -957,6 +1143,7 @@ pub async fn account_id_unix_token(
     to_axum_response(res)
 }
 
+// /v1/account/:id/_unix/_auth
 pub async fn account_post_id_unix_auth(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
@@ -970,7 +1157,8 @@ pub async fn account_post_id_unix_auth(
     to_axum_response(res)
 }
 
-pub async fn account_put_id_unix_credential(
+// /v1/person/:id/_unix/_credential
+pub async fn account_id_unix_credential_put(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     Path(id): Path<String>,
@@ -983,7 +1171,8 @@ pub async fn account_put_id_unix_credential(
     to_axum_response(res)
 }
 
-pub async fn account_delete_id_unix_credential(
+// /v1/person/:id/_unix/_credential
+pub async fn account_id_unix_credential_delete(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     Path(id): Path<String>,
@@ -1002,6 +1191,7 @@ pub async fn account_delete_id_unix_credential(
     to_axum_response(res)
 }
 
+// /v1/person/:id/_identify_user
 pub async fn person_post_identify_user(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
@@ -1285,6 +1475,7 @@ pub async fn recycle_bin_revive_id_post(
     to_axum_response(res)
 }
 
+// /v1/self/_applinks"
 pub async fn applinks_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
@@ -1295,11 +1486,6 @@ pub async fn applinks_get(
         .await;
     to_axum_response(res)
 }
-
-// TODO: routemap things
-// pub async fn do_routemap(State(state): State<RouteMap>) -> impl IntoResponse {
-//     Json(state.do_map())
-// }
 
 pub async fn reauth(
     State(state): State<ServerState>,
@@ -1516,12 +1702,11 @@ pub fn router(state: ServerState) -> Router<ServerState> {
         // Applinks are the list of apps this account can access.
         .route("/v1/self/_applinks", get(applinks_get))
         // Person routes
-        .route("/v1/person", get(person_get))
-        .route("/v1/person", post(person_post))
+        .route("/v1/person", get(person_get).post(person_post))
         .route(
             "/v1/person/:id",
             get(person_id_get)
-                .patch(account_id_patch)
+                .patch(account_id_patch) // TOOD: should this be person_id_patch?
                 .delete(person_account_id_delete),
         )
         .route(
@@ -1535,7 +1720,7 @@ pub fn router(state: ServerState) -> Router<ServerState> {
         // .route("/v1/person/:id/_credential", get(|| async { "TODO" }))
         .route(
             "/v1/person/:id/_credential/_status",
-            get(account_get_id_credential_status),
+            get(person_get_id_credential_status),
         )
         // .route(
         //     "/v1/person/:id/_credential/:cid/_lock",
@@ -1563,18 +1748,18 @@ pub fn router(state: ServerState) -> Router<ServerState> {
         )
         .route(
             "/v1/person/:id/_radius",
-            get(account_get_id_radius)
-                .post(account_post_id_radius_regenerate)
-                .delete(account_delete_id_radius),
+            get(person_id_radius_get)
+                .post(person_id_radius_post)
+                .delete(person_id_radius_delete),
         )
         .route(
             "/v1/person/:id/_radius/_token",
-            get(account_id_radius_token),
+            get(person_id_radius_token_get),
         ) // TODO: make this cacheable
         .route("/v1/person/:id/_unix", post(account_post_id_unix))
         .route(
             "/v1/person/:id/_unix/_credential",
-            put(account_put_id_unix_credential).delete(account_delete_id_unix_credential),
+            put(account_id_unix_credential_put).delete(account_id_unix_credential_delete),
         )
         .route(
             "/v1/person/:id/_identify_user",
@@ -1603,6 +1788,7 @@ pub fn router(state: ServerState) -> Router<ServerState> {
         // .route("/v1/service_account/:id/_lock", get(|| async { "TODO" }))
         .route(
             "/v1/service_account/:id/_into_person",
+            #[allow(deprecated)]
             post(service_account_into_person),
         )
         .route(
@@ -1623,7 +1809,7 @@ pub fn router(state: ServerState) -> Router<ServerState> {
         )
         .route(
             "/v1/service_account/:id/_credential/_status",
-            get(account_get_id_credential_status),
+            get(service_account_get_id_credential_status),
         )
         // .route(
         //     "/v1/service_account/:id/_credential/:cid/_lock",
@@ -1648,7 +1834,7 @@ pub fn router(state: ServerState) -> Router<ServerState> {
         )
         .route(
             "/v1/account/:id/_radius/_token",
-            post(account_id_radius_token).get(account_id_radius_token), // TODO: make this cacheable
+            post(account_id_radius_token_post).get(account_id_radius_token_get), // TODO: make this cacheable
         )
         .route(
             "/v1/account/:id/_ssh_pubkeys",

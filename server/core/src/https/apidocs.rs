@@ -9,10 +9,6 @@ struct SecurityAddon;
 impl Modify for SecurityAddon {
     fn modify(&self, openapi: &mut utoipa::openapi::OpenApi) {
         if let Some(components) = openapi.components.as_mut() {
-            // components.add_security_scheme(
-            //     "bearer",
-            //     SecurityScheme::ApiKey(ApiKey::Header(ApiKeyValue::new("todo_apikey"))),
-            // );
             components.add_security_scheme(
                 "token_jwt",
                 SecurityScheme::Http(
@@ -47,11 +43,20 @@ impl Modify for SecurityAddon {
         super::v1_oauth2::oauth2_id_scopemap_delete,
         super::v1_oauth2::oauth2_id_sup_scopemap_post,
         super::v1_oauth2::oauth2_id_sup_scopemap_delete,
-        // super::v1::raw_create,
-        // super::v1::raw_modify,
-        // super::v1::raw_delete,
-        // super::v1::raw_search,
-        // super::v1::schema_get,
+        super::v1_scim::scim_sync_post,
+        super::v1_scim::scim_sync_get,
+        super::v1_scim::scim_sink_get,
+
+        super::v1::raw_create,
+        super::v1::raw_modify,
+        super::v1::raw_delete,
+        super::v1::raw_search,
+        super::v1::schema_get,
+        super::v1::whoami,
+        // super::v1::schema_attributetype_get,
+        // super::v1::schema_attributetype_get_id,
+        // super::v1::schema_classtype_get,
+        // super::v1::schema_classtype_get_id,
     ),
     components(
         // TODO: can't add ProtoEntry to schema as this was only recently supported utoipa v3.5.0 doesn't support it - ref <https://github.com/juhaku/utoipa/pull/756/files>

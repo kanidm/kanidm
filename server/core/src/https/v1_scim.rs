@@ -105,6 +105,22 @@ pub async fn sync_account_token_delete(
     to_axum_response(res)
 }
 
+#[utoipa::path(
+    post,
+    path = "/scim/v1/Sync",
+    params(
+        // TODO: params
+    ),
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "scim",
+)]
 async fn scim_sync_post(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
@@ -118,6 +134,22 @@ async fn scim_sync_post(
     to_axum_response(res)
 }
 
+#[utoipa::path(
+    get,
+    path = "/scim/v1/Sync",
+    params(
+        // TODO: params
+    ),
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "scim",
+)]
 async fn scim_sync_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
@@ -151,6 +183,23 @@ pub async fn sync_account_id_put_attr(
     json_rest_event_put_id_attr(state, id, attr, filter, values, kopid).await
 }
 
+#[utoipa::path(
+    get,
+    path = "/scim/v1/Sink",
+    params(
+        // TODO: params
+    ),
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "scim",
+)]
+/// When you want the kitchen Sink
 async fn scim_sink_get() -> impl IntoResponse {
     r#"
     <!DOCTYPE html>
