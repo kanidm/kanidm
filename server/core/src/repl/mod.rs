@@ -146,7 +146,6 @@ async fn repl_consumer_connect_supplier(
     None
 }
 
-#[instrument(level = "info", skip_all)]
 async fn repl_run_consumer_refresh(
     refresh_coord: Arc<Mutex<(bool, mpsc::Sender<()>)>>,
     domain: &str,
@@ -228,7 +227,6 @@ async fn repl_run_consumer_refresh(
     warn!("Replication refresh was successful.");
 }
 
-#[instrument(level = "info", skip_all)]
 async fn repl_run_consumer(
     domain: &str,
     sock_addrs: &[SocketAddr],
@@ -461,7 +459,7 @@ async fn repl_task(
                     ReplConsumerCtrl::Refresh ( refresh_coord ) => {
                         let eventid = Uuid::new_v4();
                         let span = info_span!("replication_run_consumer_refresh", uuid = ?eventid);
-                        let _enter = span.enter();
+                        // let _enter = span.enter();
                         repl_run_consumer_refresh(
                             refresh_coord,
                             domain,
@@ -470,6 +468,7 @@ async fn repl_task(
                             &idms,
                             &consumer_conn_settings
                         )
+                        .instrument(span)
                         .await
                     }
                 }
@@ -478,7 +477,7 @@ async fn repl_task(
                 // Interval passed, attempt a replication run.
                 let eventid = Uuid::new_v4();
                 let span = info_span!("replication_run_consumer", uuid = ?eventid);
-                let _enter = span.enter();
+                // let _enter = span.enter();
                 repl_run_consumer(
                     domain,
                     &socket_addrs,
@@ -486,7 +485,9 @@ async fn repl_task(
                     automatic_refresh,
                     &idms,
                     &consumer_conn_settings
-                ).await;
+                )
+                .instrument(span)
+                .await;
             }
         }
     }

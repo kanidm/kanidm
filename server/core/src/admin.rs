@@ -282,7 +282,6 @@ async fn handle_client(
         // Setup the logging span
         let eventid = Uuid::new_v4();
         let nspan = span!(Level::INFO, "handle_admin_client_request", uuid = ?eventid);
-        // let _span = nspan.enter();
 
         let resp = async {
             match req {

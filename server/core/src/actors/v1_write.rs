@@ -7,7 +7,7 @@ use kanidm_proto::v1::{
     ModifyRequest, OperationError,
 };
 use time::OffsetDateTime;
-use tracing::{info, instrument, span, trace, Level};
+use tracing::{info, instrument, span, trace, Instrument, Level};
 use uuid::Uuid;
 
 use kanidmd_lib::{
@@ -1593,18 +1593,21 @@ impl QueryServerWriteV1 {
 
     pub(crate) async fn handle_delayedaction(&self, da: DelayedAction) {
         let eventid = Uuid::new_v4();
-        let nspan = span!(Level::INFO, "process_delayed_action", uuid = ?eventid);
-        let _span = nspan.enter();
+        let span = span!(Level::INFO, "process_delayed_action", uuid = ?eventid);
 
-        trace!("Begin delayed action ...");
-        let ct = duration_from_epoch_now();
-        let mut idms_prox_write = self.idms.proxy_write(ct).await;
-        if let Err(res) = idms_prox_write
-            .process_delayedaction(da, ct)
-            .and_then(|_| idms_prox_write.commit())
-        {
-            admin_info!(?res, "delayed action error");
+        async {
+            trace!("Begin delayed action ...");
+            let ct = duration_from_epoch_now();
+            let mut idms_prox_write = self.idms.proxy_write(ct).await;
+            if let Err(res) = idms_prox_write
+                .process_delayedaction(da, ct)
+                .and_then(|_| idms_prox_write.commit())
+            {
+                info!(?res, "delayed action error");
+            }
         }
+        .instrument(span)
+        .await
     }
 
     #[instrument(
