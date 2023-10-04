@@ -1,3 +1,4 @@
+mod apidocs;
 mod extractors;
 mod generic;
 mod javascript;
@@ -8,6 +9,7 @@ mod tests;
 pub(crate) mod trace;
 mod ui;
 mod v1;
+mod v1_oauth2;
 mod v1_scim;
 
 use self::generic::*;
@@ -265,6 +267,7 @@ pub async fn create_https_server(
         // to be exited, and this middleware sets up ids' and other bits for for logging
         // coherence to be maintained.
         .layer(from_fn(middleware::kopid_middleware))
+        .merge(apidocs::router())
         // this MUST be the last layer before with_state else the span never starts and everything breaks.
         .layer(trace_layer)
         .with_state(state)

@@ -63,6 +63,13 @@ urlencoding = { workspace = true }
 tempfile = { workspace = true }
 url = { workspace = true, features = ["serde"] }
 uuid = { workspace = true, features = ["serde", "v4"] }
+utoipa = { version = "3.5.0", features = [
+    "axum_extras",
+    "openapi_extensions",
+    "preserve_order",     #  Preserve order of properties when serializing the schema for a component.
+    # "uuid",
+] }
+utoipa-swagger-ui = { version = "3.1.5", features = ["axum"] }
 
 [build-dependencies]
 kanidm_build_profiles = { workspace = true }

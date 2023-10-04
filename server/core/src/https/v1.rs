@@ -38,8 +38,8 @@ pub(crate) struct SessionId {
     pub sessionid: Uuid,
 }
 
-#[debug_handler]
-pub async fn create(
+// /v1/raw/create
+pub async fn raw_create(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     Json(msg): Json<CreateRequest>,
@@ -54,7 +54,8 @@ pub async fn create(
     to_axum_response(res)
 }
 
-pub async fn v1_modify(
+// /v1/raw/modify
+pub async fn raw_modify(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     Json(msg): Json<ModifyRequest>,
@@ -66,7 +67,8 @@ pub async fn v1_modify(
     to_axum_response(res)
 }
 
-pub async fn v1_delete(
+// /v1/raw/delete
+pub async fn raw_delete(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     Json(msg): Json<DeleteRequest>,
@@ -78,7 +80,8 @@ pub async fn v1_delete(
     to_axum_response(res)
 }
 
-pub async fn search(
+// /v1/raw/search
+pub async fn raw_search(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     Json(msg): Json<SearchRequest>,
@@ -262,6 +265,16 @@ pub async fn json_rest_event_post_attr(
     to_axum_response(res)
 }
 
+// Okay, so a put normally needs
+//  * filter of what we are working on (id + class)
+//  * a Map<String, Vec<String>> that we turn into a modlist.
+//
+// OR
+//  * filter of what we are working on (id + class)
+//  * a Vec<String> that we are changing
+//  * the attr name  (as a param to this in path)
+//
+// json_rest_event_put_id(path, req, state
 pub async fn json_rest_event_put_id_attr(
     state: ServerState,
     id: String,
@@ -319,17 +332,7 @@ pub async fn json_rest_event_delete_attr(
     }
 }
 
-// // Okay, so a put normally needs
-// //  * filter of what we are working on (id + class)
-// //  * a Map<String, Vec<String>> that we turn into a modlist.
-// //
-// // OR
-// //  * filter of what we are working on (id + class)
-// //  * a Vec<String> that we are changing
-// //  * the attr name  (as a param to this in path)
-// //
-// // json_rest_event_put_id(path, req, state
-
+// /v1/schema
 pub async fn schema_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
@@ -1436,40 +1439,44 @@ pub async fn debug_ipinfo(
 #[instrument(skip(state))]
 pub fn router(state: ServerState) -> Router<ServerState> {
     Router::new()
-        .route("/v1/oauth2", get(super::oauth2::oauth2_get))
-        .route("/v1/oauth2/_basic", post(super::oauth2::oauth2_basic_post))
+        .route("/v1/oauth2", get(super::v1_oauth2::oauth2_get))
+        .route(
+            "/v1/oauth2/_basic",
+            post(super::v1_oauth2::oauth2_basic_post),
+        )
         .route(
             "/v1/oauth2/_public",
-            post(super::oauth2::oauth2_public_post),
+            post(super::v1_oauth2::oauth2_public_post),
         )
         .route(
             "/v1/oauth2/:rs_name",
-            get(super::oauth2::oauth2_id_get)
-                .patch(super::oauth2::oauth2_id_patch)
-                .delete(super::oauth2::oauth2_id_delete),
+            get(super::v1_oauth2::oauth2_id_get)
+                .patch(super::v1_oauth2::oauth2_id_patch)
+                .delete(super::v1_oauth2::oauth2_id_delete),
         )
         .route(
             "/v1/oauth2/:rs_name/_image",
-            post(super::oauth2::oauth2_id_image_post).delete(super::oauth2::oauth2_id_image_delete),
+            post(super::v1_oauth2::oauth2_id_image_post)
+                .delete(super::v1_oauth2::oauth2_id_image_delete),
         )
         .route(
             "/v1/oauth2/:rs_name/_basic_secret",
-            get(super::oauth2::oauth2_id_get_basic_secret),
+            get(super::v1_oauth2::oauth2_id_get_basic_secret),
         )
         .route(
             "/v1/oauth2/:rs_name/_scopemap/:group",
-            post(super::oauth2::oauth2_id_scopemap_post)
-                .delete(super::oauth2::oauth2_id_scopemap_delete),
+            post(super::v1_oauth2::oauth2_id_scopemap_post)
+                .delete(super::v1_oauth2::oauth2_id_scopemap_delete),
         )
         .route(
             "/v1/oauth2/:rs_name/_sup_scopemap/:group",
-            post(super::oauth2::oauth2_id_sup_scopemap_post)
-                .delete(super::oauth2::oauth2_id_sup_scopemap_delete),
+            post(super::v1_oauth2::oauth2_id_sup_scopemap_post)
+                .delete(super::v1_oauth2::oauth2_id_sup_scopemap_delete),
         )
-        .route("/v1/raw/create", post(create))
-        .route("/v1/raw/modify", post(v1_modify))
-        .route("/v1/raw/delete", post(v1_delete))
-        .route("/v1/raw/search", post(search))
+        .route("/v1/raw/create", post(raw_create))
+        .route("/v1/raw/modify", post(raw_modify))
+        .route("/v1/raw/delete", post(raw_delete))
+        .route("/v1/raw/search", post(raw_search))
         .route("/v1/schema", get(schema_get))
         .route(
             "/v1/schema/attributetype",
