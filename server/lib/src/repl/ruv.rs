@@ -544,7 +544,7 @@ impl<'a> ReplicationUpdateVectorWriteTransaction<'a> {
     pub fn rebuild(&mut self, entries: &[Arc<EntrySealedCommitted>]) -> Result<(), OperationError> {
         // Drop everything.
         self.clear();
-        // Entries and their internal changelogs are the "source of truth" for all changes
+        // Entries and their internal changestates are the "source of truth" for all changes
         // that have ever occurred and are stored on this server. So we use them to rebuild our RUV
         // here!
         let mut rebuild_ruv: BTreeMap<Cid, IDLBitRange> = BTreeMap::new();
@@ -766,6 +766,8 @@ impl<'a> ReplicationUpdateVectorWriteTransaction<'a> {
         }
 
         /*
+        // For now, we can't actually remove any server_id's because we would break range
+        // comparisons in this case. We likely need a way to clean-ruv here.
         for s_uuid in remove_suuid {
             let x = self.ranged.remove(&s_uuid);
             assert!(x.map(|y| y.is_empty()).unwrap_or(false))
