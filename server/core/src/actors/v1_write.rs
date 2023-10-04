@@ -1,6 +1,6 @@
-use std::time::Duration;
 use std::{iter, sync::Arc};
 
+use kanidm_proto::internal::ImageValue;
 use kanidm_proto::v1::{
     AccountUnixExtend, CUIntentToken, CUSessionToken, CUStatus, CreateRequest, DeleteRequest,
     Entry as ProtoEntry, GroupUnixExtend, Modify as ProtoModify, ModifyList as ProtoModifyList,
@@ -88,7 +88,7 @@ impl QueryServerWriteV1 {
         ) {
             Ok(m) => m,
             Err(e) => {
-                admin_error!(err=?e, "Failed to begin modify");
+                admin_error!(err=?e, "Failed to begin modify during modify_from_parts");
                 return Err(e);
             }
         };
@@ -139,7 +139,7 @@ impl QueryServerWriteV1 {
         ) {
             Ok(m) => m,
             Err(e) => {
-                admin_error!(err = ?e, "Failed to begin modify");
+                admin_error!(err = ?e, "Failed to begin modify during modify_from_internal_parts");
                 return Err(e);
             }
         };
@@ -212,7 +212,7 @@ impl QueryServerWriteV1 {
         let mdf = match ModifyEvent::from_message(ident, &req, &mut idms_prox_write.qs_write) {
             Ok(m) => m,
             Err(e) => {
-                admin_error!(err = ?e, "Failed to begin modify");
+                admin_error!(err = ?e, "Failed to begin modify during handle_modify");
                 return Err(e);
             }
         };
@@ -292,7 +292,7 @@ impl QueryServerWriteV1 {
         let mdf =
             ModifyEvent::from_internal_parts(ident, &modlist, &filter, &idms_prox_write.qs_write)
                 .map_err(|e| {
-                admin_error!(err = ?e, "Failed to begin modify");
+                admin_error!(err = ?e, "Failed to begin modify during handle_internalpatch");
                 e
             })?;
 
@@ -892,7 +892,7 @@ impl QueryServerWriteV1 {
         ) {
             Ok(m) => m,
             Err(e) => {
-                admin_error!(err = ?e, "Failed to begin modify");
+                admin_error!(err = ?e, "Failed to begin modify during purge attribute");
                 return Err(e);
             }
         };
@@ -1179,6 +1179,72 @@ impl QueryServerWriteV1 {
             .set_unix_account_password(&upce)
             .and_then(|_| idms_prox_write.commit())
             .map(|_| ())
+    }
+
+    #[instrument(level = "debug", skip_all)]
+    pub async fn handle_oauth2_rs_image_delete(
+        &self,
+        uat: Option<String>,
+        rs: Filter<FilterInvalid>,
+    ) -> Result<(), OperationError> {
+        let mut idms_prox_write = self.idms.proxy_write(duration_from_epoch_now()).await;
+        let ct = duration_from_epoch_now();
+
+        let ident = idms_prox_write
+                .validate_and_parse_token_to_ident(uat.as_deref(), ct)
+                .map_err(|e| {
+                    admin_error!(err = ?e, "Invalid identity in handle_oauth2_rs_image_delete {:?}", uat);
+                    e
+                })?;
+        let ml = ModifyList::new_purge(Attribute::Image);
+        let mdf = match ModifyEvent::from_internal_parts(ident, &ml, &rs, &idms_prox_write.qs_write)
+        {
+            Ok(m) => m,
+            Err(e) => {
+                admin_error!(err = ?e, "Failed to begin modify during handle_oauth2_rs_image_delete");
+                return Err(e);
+            }
+        };
+        idms_prox_write
+            .qs_write
+            .modify(&mdf)
+            .and_then(|_| idms_prox_write.commit().map(|_| ()))
+    }
+
+    #[instrument(level = "debug", skip_all)]
+    pub async fn handle_oauth2_rs_image_update(
+        &self,
+        uat: Option<String>,
+        rs: Filter<FilterInvalid>,
+        image: ImageValue,
+    ) -> Result<(), OperationError> {
+        let mut idms_prox_write = self.idms.proxy_write(duration_from_epoch_now()).await;
+        let ct = duration_from_epoch_now();
+
+        let ident = idms_prox_write
+            .validate_and_parse_token_to_ident(uat.as_deref(), ct)
+            .map_err(|e| {
+                admin_error!(err = ?e, "Invalid identity in handle_oauth2_rs_image_update {:?}", uat);
+                e
+            })?;
+
+        let ml = ModifyList::new_purge_and_set(Attribute::Image, Value::Image(image));
+
+        let mdf = match ModifyEvent::from_internal_parts(ident, &ml, &rs, &idms_prox_write.qs_write)
+        {
+            Ok(m) => m,
+            Err(e) => {
+                admin_error!(err = ?e, "Failed to begin modify during handle_oauth2_rs_image_update");
+                return Err(e);
+            }
+        };
+
+        trace!(?mdf, "Begin modify event");
+
+        idms_prox_write
+            .qs_write
+            .modify(&mdf)
+            .and_then(|_| idms_prox_write.commit().map(|_| ()))
     }
 
     #[instrument(

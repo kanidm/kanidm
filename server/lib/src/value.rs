@@ -17,6 +17,7 @@ use std::time::Duration;
 use base64::{engine::general_purpose, Engine as _};
 use compact_jwt::JwsSigner;
 use hashbrown::HashSet;
+use kanidm_proto::internal::ImageValue;
 use num_enum::TryFromPrimitive;
 use openssl::ec::EcKey;
 use openssl::pkey::Private;
@@ -33,6 +34,7 @@ use crate::credential::{totp::Totp, Credential};
 use crate::prelude::*;
 use crate::repl::cid::Cid;
 use crate::server::identity::IdentityId;
+use crate::valueset::image::ImageValueThings;
 use crate::valueset::uuid_to_proto_string;
 use kanidm_proto::v1::ApiTokenPurpose;
 use kanidm_proto::v1::Filter as ProtoFilter;
@@ -254,6 +256,7 @@ pub enum SyntaxType {
     ApiToken = 31,
     AuditLogString = 32,
     EcKeyPrivate = 33,
+    Image = 34,
 }
 
 impl TryFrom<&str> for SyntaxType {
@@ -339,6 +342,7 @@ impl fmt::Display for SyntaxType {
             SyntaxType::ApiToken => "APITOKEN",
             SyntaxType::AuditLogString => "AUDIT_LOG_STRING",
             SyntaxType::EcKeyPrivate => "EC_KEY_PRIVATE",
+            SyntaxType::Image => "IMAGE",
         })
     }
 }
@@ -347,7 +351,7 @@ impl fmt::Display for SyntaxType {
 /// against a complete Value within a set in an Entry.
 ///
 /// A partialValue is typically used when you need to match against a value, but without
-/// requiring all of it's data or expression. This is common in Filters or other direct
+/// requiring all of its data or expression. This is common in Filters or other direct
 /// lookups and requests.
 #[derive(Hash, Debug, Clone, Eq, Ord, PartialOrd, PartialEq, Deserialize, Serialize)]
 pub enum PartialValue {
@@ -387,6 +391,8 @@ pub enum PartialValue {
     UiHint(UiHint),
     Passkey(Uuid),
     DeviceKey(Uuid),
+    /// We compare on the value hash
+    Image(String),
 }
 
 impl From<SyntaxType> for PartialValue {
@@ -702,6 +708,10 @@ impl PartialValue {
         Uuid::parse_str(us).map(PartialValue::DeviceKey).ok()
     }
 
+    pub fn new_image(input: &str) -> Self {
+        PartialValue::Image(input.to_string())
+    }
+
     pub fn to_str(&self) -> Option<&str> {
         match self {
             PartialValue::Utf8(s) => Some(s.as_str()),
@@ -759,6 +769,7 @@ impl PartialValue {
             PartialValue::PhoneNumber(a) => a.to_string(),
             PartialValue::IntentToken(u) => u.clone(),
             PartialValue::UiHint(u) => (*u as u16).to_string(),
+            PartialValue::Image(imagehash) => imagehash.to_owned(),
         }
     }
 
@@ -910,9 +921,9 @@ pub struct Oauth2Session {
 #[derive(Clone, Debug)]
 pub enum Value {
     Utf8(String),
-    // Case insensitive string
+    /// Case insensitive string
     Iutf8(String),
-    /// Case insensitive Name for a thing?
+    /// Case insensitive Name for a thing
     Iname(String),
     Uuid(Uuid),
     Bool(bool),
@@ -936,8 +947,6 @@ pub enum Value {
     OauthScopeMap(Uuid, BTreeSet<String>),
     PrivateBinary(Vec<u8>),
     PublicBinary(String, Vec<u8>),
-    // Enumeration(String),
-    // Float64(f64),
     RestrictedString(String),
     IntentToken(String, IntentTokenState),
     Passkey(Uuid, String, PasskeyV4),
@@ -954,6 +963,8 @@ pub enum Value {
     TotpSecret(String, Totp),
     AuditLogString(Cid, String),
     EcKeyPrivate(EcKey<Private>),
+
+    Image(ImageValue),
 }
 
 impl PartialEq for Value {
@@ -992,6 +1003,9 @@ impl PartialEq for Value {
             // OauthScopeMap
             (Value::OauthScopeMap(a, c), Value::OauthScopeMap(b, d)) => a.eq(b) && c.eq(d),
 
+            (Value::Image(image1), Value::Image(image2)) => {
+                image1.hash_imagevalue().eq(&image2.hash_imagevalue())
+            }
             (Value::Address(_), Value::Address(_))
             | (Value::PrivateBinary(_), Value::PrivateBinary(_))
             | (Value::SecretValue(_), Value::SecretValue(_)) => false,
@@ -1231,6 +1245,13 @@ impl Value {
             Value::Cred(_, cred) => Some(cred),
             _ => None,
         }
+    }
+
+    /// Want a `Value::Image`? use this!
+    pub fn new_image(input: &str) -> Result<Self, OperationError> {
+        serde_json::from_str::<ImageValue>(input)
+            .map(Value::Image)
+            .map_err(|_e| OperationError::InvalidValueState)
     }
 
     pub fn new_secret_str(cleartext: &str) -> Self {
@@ -1710,7 +1731,7 @@ impl Value {
                     && Value::validate_singleline(a)
                     && Value::validate_singleline(b)
             }
-
+            Value::Image(image) => image.validate_image().is_ok(),
             Value::Iname(s) => {
                 Value::validate_str_escapes(s)
                     && Value::validate_iname(s)

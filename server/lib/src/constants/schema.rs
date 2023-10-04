@@ -751,6 +751,7 @@ pub static ref SCHEMA_CLASS_OAUTH2_RS: SchemaClass = SchemaClass {
         Attribute::OAuth2JwtLegacyCryptoEnable.into(),
         Attribute::OAuth2PreferShortUsername.into(),
         Attribute::OAuth2RsOriginLanding.into(),
+        Attribute::Image.into(),
     ],
     systemmust: vec![
         Attribute::OAuth2RsName.into(),

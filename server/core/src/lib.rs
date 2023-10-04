@@ -767,7 +767,7 @@ pub async fn create_server_core(
                 Ok(_) => {}
                 Err(e) => {
                     error!(
-                        "Unable to configure INTERGATION TEST admin account -> {:?}",
+                        "Unable to configure INTEGRATION TEST admin account -> {:?}",
                         e
                     );
                     return Err(());
@@ -776,7 +776,7 @@ pub async fn create_server_core(
             match idms_prox_write.commit() {
                 Ok(_) => {}
                 Err(e) => {
-                    error!("Unable to commit INTERGATION TEST setup -> {:?}", e);
+                    error!("Unable to commit INTEGRATION TEST setup -> {:?}", e);
                     return Err(());
                 }
             }

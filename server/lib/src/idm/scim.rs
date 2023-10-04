@@ -642,7 +642,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         // Refuse to proceed if any entries are in the recycled or tombstone state, since subsequent
         // operations WOULD fail.
         //
-        // I'm still a bit not sure what to do here though, because if we have uuid re-use from the
+        // I'm still a bit not sure what to do here though, because if we have uuid reuse from the
         // external system, that would be a pain, but I think we have to do this. This would be an
         // exceedingly rare situation though since 389-ds doesn't allow external uuid to be set, nor
         // does openldap. It would break both of their replication models for it to occur.

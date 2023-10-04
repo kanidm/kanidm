@@ -1,4 +1,19 @@
-/// Because consistency is great!
+//! Because consistency is great!
+
+pub const CONTENT_TYPE_JPG: &str = "image/jpeg";
+pub const CONTENT_TYPE_PNG: &str = "image/png";
+pub const CONTENT_TYPE_GIF: &str = "image/gif";
+pub const CONTENT_TYPE_SVG: &str = "image/svg+xml";
+pub const CONTENT_TYPE_WEBP: &str = "image/webp";
+
+// for when the user uploads things to the various image endpoints
+pub const VALID_IMAGE_UPLOAD_CONTENT_TYPES: [&str; 5] = [
+    CONTENT_TYPE_JPG,
+    CONTENT_TYPE_PNG,
+    CONTENT_TYPE_GIF,
+    CONTENT_TYPE_SVG,
+    CONTENT_TYPE_WEBP,
+];
 
 pub const APPLICATION_JSON: &str = "application/json";
 
@@ -68,6 +83,7 @@ pub const ATTR_GIDNUMBER: &str = "gidnumber";
 pub const ATTR_GRANT_UI_HINT: &str = "grant_ui_hint";
 pub const ATTR_GROUP: &str = "group";
 pub const ATTR_ID_VERIFICATION_ECKEY: &str = "id_verification_eckey";
+pub const ATTR_IMAGE: &str = "image";
 pub const ATTR_INDEX: &str = "index";
 pub const ATTR_IPANTHASH: &str = "ipanthash";
 pub const ATTR_IPASSHPUBKEY: &str = "ipasshpubkey";

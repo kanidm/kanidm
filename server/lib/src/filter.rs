@@ -1135,7 +1135,7 @@ impl FilterResolved {
     fn resolve_no_idx(fc: FilterComp, ev: &Identity) -> Option<Self> {
         // ⚠️  ⚠️  ⚠️  ⚠️
         // Remember, this function means we have NO INDEX METADATA so we can only
-        // asssign slopes to values we can GUARANTEE will EXIST.
+        // assign slopes to values we can GUARANTEE will EXIST.
         match fc {
             FilterComp::Eq(a, v) => {
                 // Since we have no index data, we manually configure a reasonable

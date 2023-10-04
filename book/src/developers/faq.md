@@ -1,4 +1,4 @@
-## Frequently Asked Questions
+# Frequently Asked Questions
 
 This is a list of common questions that are generally raised by developers or technical users.
 
@@ -28,7 +28,7 @@ parts. This creates production fragility and issues such as:
 This last point is key. It is a critical part of kanidm that the following must work on all
 machines, and run every single test in the suite.
 
-```
+```shell
 git clone https://github.com/kanidm/kanidm.git
 cd kanidm
 cargo test
@@ -46,7 +46,7 @@ where it would not be possible to effectively test for all developers.
 ## Why don't you use Raft/Etcd/MongoDB/Other to solve replication?
 
 There are a number of reasons why these are generally not compatible. Generally these databases or
-technolgies do solve problems, but they are not the problems in Kanidm.
+technologies do solve problems, but they are not the problems in Kanidm.
 
 ## CAP theorem
 
@@ -105,7 +105,7 @@ Name Service Switch (NSS) is used for connecting the computers with different da
 resolve name-service information. By adding the nsswitch libraries to /etc/nsswitch.conf, we are
 telling NSS to lookup password info and group identities in Kanidm:
 
-```
+```text
 passwd: compat kanidm
 group: compat kanidm
 ```

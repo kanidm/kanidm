@@ -9,7 +9,7 @@ pub struct Named {
 
 #[derive(Debug, Args)]
 pub struct DebugOpt {
-    /// Enable debbuging of the kanidm tool
+    /// Enable debugging of the kanidm tool
     #[clap(short, long, env = "KANIDM_DEBUG")]
     pub debug: bool,
 }
@@ -34,7 +34,7 @@ impl std::str::FromStr for OutputMode {
 
 #[derive(Debug, Args, Clone)]
 pub struct CommonOpt {
-    /// Enable debbuging of the kanidm tool
+    /// Enable debugging of the kanidm tool
     #[clap(short, long, env = "KANIDM_DEBUG")]
     pub debug: bool,
     /// The URL of the kanidm instance

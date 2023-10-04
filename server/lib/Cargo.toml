@@ -19,6 +19,10 @@ path = "src/lib.rs"
 name = "scaling_10k"
 harness = false
 
+[[bench]]
+name = "image_benches"
+harness = false
+
 [dependencies]
 base64 = { workspace = true }
 base64urlsafedata = { workspace = true }
@@ -79,6 +83,14 @@ webauthn-rs = { workspace = true, features = [
 webauthn-rs-core = { workspace = true }
 zxcvbn = { workspace = true }
 serde_with = { workspace = true }
+hex.workspace = true
+lodepng = { workspace = true }
+image = { workspace = true, default-features = false, features = [
+    "gif",
+    "jpeg",
+    "webp",
+] }
+svg = { workspace = true }
 
 # because windows really can't build without the bundled one
 [target.'cfg(target_family = "windows")'.dependencies]

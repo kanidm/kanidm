@@ -761,7 +761,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         // Store the intent id in the session (if needed) so that we can check the state at the
         // end of the update.
 
-        // We need to pin the id from the intent token into the credential to ensure it's not re-used
+        // We need to pin the id from the intent token into the credential to ensure it's not reused
 
         // Need to change this to the expiry time, so we can purge up to.
         let session_id = uuid_from_duration(current_time + MAXIMUM_CRED_UPDATE_TTL, self.sid);

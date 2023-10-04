@@ -2,6 +2,7 @@ use std::fmt;
 use std::time::Duration;
 
 use hashbrown::HashSet;
+use kanidm_proto::internal::ImageType;
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use url::Url;
@@ -506,6 +507,16 @@ pub enum DbValueOauth2Session {
     },
 }
 
+// Internal representation of an image
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+pub enum DbValueImage {
+    V1 {
+        filename: String,
+        filetype: ImageType,
+        contents: Vec<u8>,
+    },
+}
+
 #[derive(Serialize, Deserialize, Debug)]
 pub enum DbValueV1 {
     #[serde(rename = "U8")]
@@ -651,6 +662,8 @@ pub enum DbValueSetV2 {
     AuditLogString(Vec<(Cid, String)>),
     #[serde(rename = "EK")]
     EcKeyPrivate(Vec<u8>),
+    #[serde(rename = "IM")]
+    Image(Vec<DbValueImage>),
 }
 
 impl DbValueSetV2 {
@@ -694,6 +707,7 @@ impl DbValueSetV2 {
             DbValueSetV2::UiHint(set) => set.len(),
             DbValueSetV2::TotpSecret(set) => set.len(),
             DbValueSetV2::AuditLogString(set) => set.len(),
+            DbValueSetV2::Image(set) => set.len(),
             DbValueSetV2::EcKeyPrivate(_key) => 1, // here we have to hard code it because the Vec<u8>
                                                    // represents the bytes of  SINGLE(!) key
         }

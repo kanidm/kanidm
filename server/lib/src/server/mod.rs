@@ -540,6 +540,8 @@ pub trait QueryServerTransaction<'a> {
                     }
                     SyntaxType::JsonFilter => Value::new_json_filter_s(value)
                         .ok_or_else(|| OperationError::InvalidAttribute("Invalid Filter syntax".to_string())),
+                    SyntaxType::Image => Value::new_image(value),
+
                     SyntaxType::Credential => Err(OperationError::InvalidAttribute("Credentials can not be supplied through modification - please use the IDM api".to_string())),
                     SyntaxType::SecretUtf8String => Err(OperationError::InvalidAttribute("Radius secrets can not be supplied through modification - please use the IDM api".to_string())),
                     SyntaxType::SshKey => Err(OperationError::InvalidAttribute("SSH public keys can not be supplied through modification - please use the IDM api".to_string())),
@@ -681,6 +683,7 @@ pub trait QueryServerTransaction<'a> {
                         }),
                     SyntaxType::AuditLogString => Ok(PartialValue::new_utf8s(value)),
                     SyntaxType::EcKeyPrivate => Ok(PartialValue::SecretValue),
+                    SyntaxType::Image => Ok(PartialValue::new_utf8s(value)),
                 }
             }
             None => {

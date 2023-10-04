@@ -189,7 +189,7 @@ or to provide the required information to the remote domain.
 We would do a normal auth process, but on determining this is a trust account, we have to return
 a response to the core.rs layer. This should then trigger an async request to domain B which
 contains the request. When this is returned, we then complete the request to the client. This does
-increase the liklihood of issues or delays in processing in the domain A IO layers if many requests
+increase the likelihood of issues or delays in processing in the domain A IO layers if many requests
 exist at the same time.
 
 if multiple urls exist in the trustanchor, we should choose randomly which to contact for

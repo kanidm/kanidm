@@ -30,7 +30,8 @@ use std::collections::{BTreeMap as Map, BTreeMap, BTreeSet};
 use std::sync::Arc;
 
 use compact_jwt::JwsSigner;
-use hashbrown::HashMap;
+use hashbrown::{HashMap, HashSet};
+use kanidm_proto::internal::ImageValue;
 use kanidm_proto::v1::{
     ConsistencyError, Entry as ProtoEntry, Filter as ProtoFilter, OperationError, SchemaError,
     UiHint,
@@ -2517,6 +2518,22 @@ impl<VALID, STATE> Entry<VALID, STATE> {
         self.attrs
             .get(attr.as_ref())
             .and_then(|vs| vs.as_iutf8_set())
+    }
+
+    #[inline(always)]
+    pub fn get_ava_as_image(&self, attr: Attribute) -> Option<&HashSet<ImageValue>> {
+        self.attrs
+            .get(attr.as_ref())
+            .and_then(|vs| vs.as_imageset())
+    }
+
+    #[inline(always)]
+    pub fn get_ava_single_image(&self, attr: Attribute) -> Option<ImageValue> {
+        let images = self
+            .attrs
+            .get(attr.as_ref())
+            .and_then(|vs| vs.as_imageset())?;
+        images.iter().next().cloned()
     }
 
     #[inline(always)]

@@ -88,7 +88,7 @@ To configure Kanidm to provide LDAP, add the argument to the `server.toml` confi
 ldapbindaddress = "127.0.0.1:3636"
 ```
 
-You should configure TLS certificates and keys as usual - LDAP will re-use the Web server TLS
+You should configure TLS certificates and keys as usual - LDAP will reuse the Web server TLS
 material.
 
 ## Showing LDAP Entries and Attribute Maps
