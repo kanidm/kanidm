@@ -1,4 +1,3 @@
-use std::collections::BTreeSet;
 use std::convert::TryFrom;
 use std::fs;
 use std::net::IpAddr;
@@ -419,23 +418,15 @@ impl QueryServerReadV1 {
                     admin_error!(err = ?e, "Invalid identity in handle_oauth2_rs_image_get_image {:?}", uat);
                     e
                 })?;
+        let attrs = vec![Attribute::Image.to_string()];
 
-        let attrs: BTreeSet<AttrString> = vec![Attribute::Image.into()].into_iter().collect();
-
-        let filter_orig = filter_all!(f_self())
-            .validate(idms_prox_read.qs_read.get_schema())
-            .map_err(OperationError::SchemaViolation)?;
-        let filter = rs
-            .clone()
-            .validate(idms_prox_read.qs_read.get_schema())
-            .map_err(OperationError::SchemaViolation)?;
-
-        let search = SearchEvent {
+        let search = SearchEvent::from_internal_message(
             ident,
-            filter,
-            filter_orig,
-            attrs: Some(attrs),
-        };
+            &rs,
+            Some(attrs.as_slice()),
+            &mut idms_prox_read.qs_read,
+        )?;
+
         let entries = idms_prox_read.qs_read.search(&search)?;
         if entries.is_empty() {
             return Err(OperationError::NoMatchingEntries);
