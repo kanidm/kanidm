@@ -46,7 +46,7 @@ where it would not be possible to effectively test for all developers.
 ## Why don't you use Raft/Etcd/MongoDB/Other to solve replication?
 
 There are a number of reasons why these are generally not compatible. Generally these databases or
-technolgies do solve problems, but they are not the problems in Kanidm.
+technologies do solve problems, but they are not the problems in Kanidm.
 
 ## CAP theorem
 

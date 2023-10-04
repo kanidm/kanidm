@@ -18,7 +18,7 @@ pub(super) fn apply_search_access<'a>(
     entry: &'a Arc<EntrySealedCommitted>,
 ) -> SearchResult<'a> {
     // This could be considered "slow" due to allocs each iter with the entry. We
-    // could move these out of the loop and re-use, but there are likely risks to
+    // could move these out of the loop and reuse, but there are likely risks to
     // that.
     let mut denied = false;
     let mut grant = false;

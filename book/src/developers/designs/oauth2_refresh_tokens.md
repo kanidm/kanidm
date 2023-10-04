@@ -76,7 +76,7 @@ already with our client authorisation checks. This is discussed in
 In this design we associate a "not issued before" (NIB) timestamp to our sessions. For a refresh
 token to be valid for issuance, the refresh tokens IAT must be greater than or equal to the NIB.
 
-In this example were the refresh token with IAT 1 re-used after the second token was issued, then
+In this example were the refresh token with IAT 1 reused after the second token was issued, then
 this condition would fail as the NIB has advanced to 2. Since IAT 1 is not greater or equal to NIB 2
 then the refresh token _must_ have previously been used for access token exchange.
 
@@ -132,7 +132,7 @@ hinders the ability to attack this for very little gain.
 ## Attack Detection
 
 [draft oauth security topics section 4.14.2](https://datatracker.ietf.org/doc/html/draft-ietf-oauth-security-topics#section-4.14.2)
-specifically calls out that when refresh token re-use is detected then all tokens of the session
+specifically calls out that when refresh token reuse is detected then all tokens of the session
 should be canceled to cause a new authorisation code flow to be initiated.
 
 ## Inactive Refresh Tokens

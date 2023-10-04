@@ -26,7 +26,7 @@ An option is to scan the filter for and Eq(class, deleted) terms, and if present
 and operation.
 
 A possibly better option is that filter constructors should have two constructors. One that
-adds the wrapping AndNot term, and one that does not. This way the plugin implementor only
+adds the wrapping AndNot term, and one that does not. This way the plugin implementer only
 needs to construct from the correct call, and they would exclude / include recycled items. This
 also would allow externally supplied filters to be correctly wrapped. The main consideration here
 is that it would require another api endpoint allowing recycle-bin searches. This is probably not

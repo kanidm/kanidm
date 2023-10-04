@@ -4748,7 +4748,7 @@ mod tests {
         assert!(idms_prox_write.commit().is_ok());
     }
 
-    // Test that re-use of a refresh token is denied + terminates the session.
+    // Test that reuse of a refresh token is denied + terminates the session.
     //
     // https://www.ietf.org/archive/id/draft-ietf-oauth-security-topics-18.html#refresh_token_protection
     #[idm_test]
