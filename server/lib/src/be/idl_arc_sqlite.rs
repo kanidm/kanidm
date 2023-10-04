@@ -687,6 +687,18 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
         Ok(())
     }
 
+    pub fn get_db_ruv(&self) -> Result<BTreeSet<Cid>, OperationError> {
+        self.db.get_db_ruv()
+    }
+
+    pub fn write_db_ruv<I, J>(&mut self, added: I, removed: J) -> Result<(), OperationError>
+    where
+        I: Iterator<Item = Cid>,
+        J: Iterator<Item = Cid>,
+    {
+        self.db.write_db_ruv(added, removed)
+    }
+
     pub fn get_id2entry_max_id(&self) -> Result<u64, OperationError> {
         Ok(*self.maxid)
     }

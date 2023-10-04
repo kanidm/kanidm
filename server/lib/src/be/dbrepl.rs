@@ -16,7 +16,5 @@ pub enum DbEntryChangeState {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub enum DbReplMeta {
-    V1 {
-        ruv: BTreeSet<DbCidV1>
-    }
+    V1 { ruv: BTreeSet<DbCidV1> },
 }

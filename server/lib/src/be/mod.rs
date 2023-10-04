@@ -4,7 +4,7 @@
 //! is to persist content safely to disk, load that content, and execute queries
 //! utilising indexes in the most effective way possible.
 
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 use std::fs;
 use std::ops::DerefMut;
 use std::sync::Arc;
@@ -21,7 +21,6 @@ use uuid::Uuid;
 
 use crate::be::dbentry::{DbBackup, DbEntry};
 use crate::be::dbrepl::DbReplMeta;
-use crate::be::dbvalue::DbCidV1;
 use crate::entry::Entry;
 use crate::filter::{Filter, FilterPlan, FilterResolved, FilterValidResolved};
 use crate::prelude::*;
@@ -1770,8 +1769,8 @@ impl<'a> BackendWriteTransaction<'a> {
 
         // Rebuild the RUV from the backup.
         match repl_meta {
-            Some(DbReplMeta::V1 { ruv } ) => {
-                self.ruv_restore_v1(ruv)?;
+            Some(DbReplMeta::V1 { ruv: db_ruv } ) => {
+                self.get_ruv().restore(db_ruv.into_iter().map(|db_cid| db_cid.into()))?;
             }
             None => {
                 warn!("Unable to restore replication metadata, this server may need a refresh.");
@@ -1814,25 +1813,33 @@ impl<'a> BackendWriteTransaction<'a> {
         }
     }
 
-    /// Restore the ruv from a DB backup. It's important to note here that
-    /// we don't actually need to restore and of the IDL's in the process. we only
-    /// needs the CID's of the changes/points in time. This is because when the
-    /// db entries are restored, their changesets will re-populate the data that we
-    /// need in the RUV at these points. The reason we need these ranges without IDL
-    /// is so that trim and replication works properly.
-    fn ruv_restore_v1(&mut self, db_ruv: BTreeSet<DbCidV1>) -> Result<(), OperationError> {
-        self.get_ruv().restore(db_ruv.into_iter().map(|db_cid| db_cid.into()))
+    /// If any RUV elements are present in the DB, load them now. This provides us with
+    /// the RUV boundaries and change points from previous operations of the server, so
+    /// that ruv_rebuild can "fill in" the gaps.
+    ///
+    /// # SAFETY
+    ///
+    /// Note that you should only call this function during the server startup
+    /// to reload the RUV data from the entries of the database.
+    ///
+    /// Before calling this, the in memory ruv MUST be clear.
+    #[instrument(level = "debug", name = "be::ruv_rebuild", skip_all)]
+    fn ruv_reload(&mut self) -> Result<(), OperationError> {
+        let idlayer = self.get_idlayer();
+
+        let db_ruv = idlayer.get_db_ruv()?;
+
+        // Setup the CID's that existed previously. We don't need to know what entries
+        // they affect, we just need them to ensure that we have ranges for replication
+        // comparison to take effect properly.
+        self.get_ruv().restore(db_ruv)?;
+
+        // Then populate the RUV with the data from the entries.
+        self.ruv_rebuild()
     }
 
     #[instrument(level = "debug", name = "be::ruv_rebuild", skip_all)]
-    pub fn ruv_reload(&mut self) -> Result<(), OperationError> {
-        // Get the RUV from the DB. Create an empty ruv if missing.
-
-        Ok(())
-    }
-
-    #[instrument(level = "debug", name = "be::ruv_rebuild", skip_all)]
-    pub fn ruv_rebuild(&mut self) -> Result<(), OperationError> {
+    fn ruv_rebuild(&mut self) -> Result<(), OperationError> {
         // Rebuild the ruv!
         // For now this has to read from all the entries in the DB, but in the future
         // we'll actually store this properly (?). If it turns out this is really fast
@@ -1872,10 +1879,16 @@ impl<'a> BackendWriteTransaction<'a> {
 
     pub fn commit(self) -> Result<(), OperationError> {
         let BackendWriteTransaction {
-            idlayer,
+            mut idlayer,
             idxmeta_wr,
             ruv,
         } = self;
+
+        // write the ruv content back to the db.
+        idlayer.write_db_ruv(
+            ruv.added(),
+            ruv.removed()
+        )?;
 
         idlayer.commit().map(|()| {
             ruv.commit();

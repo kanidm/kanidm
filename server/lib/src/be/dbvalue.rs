@@ -18,38 +18,29 @@ pub use kanidm_lib_crypto::DbPasswordV1;
 
 #[derive(Serialize, Deserialize, Debug, Ord, PartialOrd, PartialEq, Eq)]
 pub struct DbCidV1 {
-    #[serde(rename = "s")]
-    pub server_id: Uuid,
     #[serde(rename = "t")]
     pub timestamp: Duration,
+    #[serde(rename = "s")]
+    pub server_id: Uuid,
 }
 
 impl From<Cid> for DbCidV1 {
-    fn from(
-    Cid {
-        s_uuid, ts
-    }: Cid
-    ) -> Self {
+    fn from(Cid { s_uuid, ts }: Cid) -> Self {
         DbCidV1 {
             timestamp: ts,
-            server_id: s_uuid
+            server_id: s_uuid,
         }
     }
 }
 
 impl From<&Cid> for DbCidV1 {
-    fn from(
-    &Cid {
-        s_uuid, ts
-    }: &Cid
-    ) -> Self {
+    fn from(&Cid { s_uuid, ts }: &Cid) -> Self {
         DbCidV1 {
             timestamp: ts,
-            server_id: s_uuid
+            server_id: s_uuid,
         }
     }
 }
-
 
 impl fmt::Display for DbCidV1 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

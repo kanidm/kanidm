@@ -1,10 +1,10 @@
 use std::fmt;
 use std::time::Duration;
 
+use crate::be::dbvalue::DbCidV1;
 use crate::prelude::*;
 use kanidm_proto::v1::OperationError;
 use serde::{Deserialize, Serialize};
-use crate::be::dbvalue::DbCidV1;
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone, Eq, PartialOrd, Ord, Hash)]
 pub struct Cid {
@@ -15,13 +15,14 @@ pub struct Cid {
 
 impl From<DbCidV1> for Cid {
     fn from(
-    DbCidV1 {
-        server_id, timestamp
-    }: DbCidV1
+        DbCidV1 {
+            server_id,
+            timestamp,
+        }: DbCidV1,
     ) -> Self {
         Cid {
             ts: timestamp,
-            s_uuid: server_id
+            s_uuid: server_id,
         }
     }
 }

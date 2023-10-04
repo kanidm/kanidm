@@ -24,7 +24,8 @@ pub mod pkeyb64 {
         D: Deserializer<'de>,
     {
         let raw = <&str>::deserialize(des)?;
-        let s = general_purpose::URL_SAFE_NO_PAD.decode(raw)
+        let s = general_purpose::URL_SAFE_NO_PAD
+            .decode(raw)
             .or_else(|_| general_purpose::URL_SAFE.decode(raw))
             .map_err(|err| {
                 error!(?err, "base64 url-safe invalid");
@@ -74,7 +75,8 @@ pub mod x509b64 {
         D: Deserializer<'de>,
     {
         let raw = <&str>::deserialize(des)?;
-        let s = general_purpose::URL_SAFE_NO_PAD.decode(raw)
+        let s = general_purpose::URL_SAFE_NO_PAD
+            .decode(raw)
             .or_else(|_| general_purpose::URL_SAFE.decode(raw))
             .map_err(|err| {
                 error!(?err, "base64 url-safe invalid");

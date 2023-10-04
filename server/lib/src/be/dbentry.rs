@@ -78,7 +78,6 @@ pub enum DbBackup {
         repl_meta: DbReplMeta,
         entries: Vec<DbEntry>,
     },
-
 }
 
 fn from_vec_dbval1(attr_val: NonEmpty<DbValueV1>) -> Result<DbValueSetV2, OperationError> {
