@@ -658,12 +658,12 @@ impl FilterComp {
                 }
             }
             FilterComp::Or(filters) => {
-                // If all filters are okay, return Ok(Filter::Or())
-                // If any is invalid, return the error.
-                // @ftweedal says an empty or is a valid filter
-                // in mathematical terms.
+                // * If all filters are okay, return Ok(Filter::Or())
+                // * Any filter is invalid, return the error.
+                // * An empty "or" is a valid filter in mathematical terms, but we throw an
+                //   error to warn the user because it's super unlikey they want that
                 if filters.is_empty() {
-                    return Ok(FilterComp::Or(vec![]));
+                    return Err(SchemaError::EmptyFilter);
                 };
                 let x: Result<Vec<_>, _> = filters
                     .iter()
@@ -673,10 +673,12 @@ impl FilterComp {
                 x.map(FilterComp::Or)
             }
             FilterComp::And(filters) => {
-                // @ftweedal says an empty or is a valid filter
-                // in mathematical terms.
+                // * If all filters are okay, return Ok(Filter::Or())
+                // * Any filter is invalid, return the error.
+                // * An empty "and" is a valid filter in mathematical terms, but we throw an
+                //   error to warn the user because it's super unlikey they want that
                 if filters.is_empty() {
-                    return Ok(FilterComp::And(vec![]));
+                    return Err(SchemaError::EmptyFilter);
                 };
                 let x: Result<Vec<_>, _> = filters
                     .iter()
