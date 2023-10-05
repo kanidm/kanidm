@@ -3084,6 +3084,7 @@ dependencies = [
  "utoipa",
  "utoipa-swagger-ui",
  "uuid",
+ "walkdir",
 ]
 
 [[package]]
@@ -3160,6 +3161,7 @@ dependencies = [
  "compact_jwt",
  "fantoccini",
  "futures",
+ "http",
  "hyper-tls",
  "kanidm_build_profiles",
  "kanidm_client",
@@ -4567,7 +4569,7 @@ dependencies = [
  "quote",
  "rust-embed-utils",
  "shellexpand",
- "syn 2.0.37",
+ "syn 2.0.38",
  "walkdir",
 ]
 
@@ -5715,7 +5717,7 @@ dependencies = [
  "proc-macro2",
  "quote",
  "regex",
- "syn 2.0.37",
+ "syn 2.0.38",
 ]
 
 [[package]]

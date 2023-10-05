@@ -828,7 +828,7 @@ async fn repl_acceptor(
                                 }
 
                                 if respond.send(success).is_err() {
-                                    warn!("Server certificate renewal was requested, but requestor disconnected!");
+                                    warn!("Server certificate renewal was requested, but requester disconnected!");
                                 } else {
                                     trace!("Sent server certificate renewal status via control channel");
                                 }

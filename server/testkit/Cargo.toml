@@ -27,6 +27,7 @@ kanidmd_core = { workspace = true }
 kanidmd_lib = { workspace = true }
 # used for webdriver testing
 hyper-tls = { workspace = true }
+http = { workspace = true }
 # used for webdriver testing
 fantoccini = { version = "0.19.3", optional = true }
 serde = { workspace = true }

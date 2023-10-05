@@ -12,7 +12,6 @@ mod v1;
 mod v1_oauth2;
 mod v1_scim;
 
-use self::generic::*;
 use self::javascript::*;
 use crate::actors::v1_read::QueryServerReadV1;
 use crate::actors::v1_write::QueryServerWriteV1;
@@ -30,7 +29,7 @@ use http::{HeaderMap, HeaderValue, StatusCode};
 use hyper::server::accept::Accept;
 use hyper::server::conn::{AddrStream, Http};
 use hyper::Body;
-use kanidm_proto::constants::APPLICATION_JSON;
+use kanidm_proto::constants::{APPLICATION_JSON, KSESSIONID};
 use kanidm_proto::v1::OperationError;
 use kanidmd_lib::status::StatusActor;
 use openssl::ssl::{Ssl, SslAcceptor, SslFiletype, SslMethod};
@@ -84,7 +83,7 @@ impl ServerState {
     fn get_current_auth_session_id(&self, headers: &HeaderMap) -> Option<Uuid> {
         // We see if there is a signed header copy first.
         headers
-            .get("X-KANIDM-AUTH-SESSION-ID")
+            .get(KSESSIONID)
             .and_then(|hv| {
                 // Get the first header value.
                 hv.to_str().ok()
@@ -199,28 +198,25 @@ pub async fn create_https_server(
     let static_routes = match config.role {
         ServerRole::WriteReplica | ServerRole::ReadOnlyReplica => {
             // Create a spa router that captures everything at ui without key extraction.
-            let spa_router = Router::new()
-                .route("/", get(crate::https::ui::ui_handler))
-                .fallback(crate::https::ui::ui_handler);
 
             Router::new()
                 // direct users to the base app page. If a login is required,
                 // then views will take care of redirection. We shouldn't redir
                 // to login because that force clears previous sessions!
                 .route("/", get(|| async { Redirect::temporary("/ui") }))
-                .route("/manifest.webmanifest", get(manifest::manifest))
-                .nest("/ui", spa_router)
+                .route("/manifest.webmanifest", get(manifest::manifest)) // skip_route_check
+                .nest("/ui", ui::spa_router())
                 .layer(middleware::compression::new())
                 .route("/ui/images/oauth2/:rs_name", get(oauth2::oauth2_image_get))
+            // skip_route_check
         }
         ServerRole::WriteReplicaNoUI => Router::new(),
     };
     let app = Router::new()
-        .route("/robots.txt", get(robots_txt))
-        .route("/status", get(status))
-        .merge(oauth2::oauth2_route_setup(state.clone()))
-        .merge(v1_scim::scim_route_setup())
-        .merge(v1::router(state.clone()));
+        .merge(generic::route_setup())
+        .merge(oauth2::route_setup(state.clone()))
+        .merge(v1_scim::route_setup())
+        .merge(v1::route_setup(state.clone()));
 
     let app = match config.role {
         ServerRole::WriteReplicaNoUI => app,

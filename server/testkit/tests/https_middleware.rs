@@ -19,9 +19,16 @@ async fn test_https_middleware_headers(rsclient: KanidmClient) {
     assert_eq!(response.status(), 200);
     eprintln!(
         "csp headers: {:#?}",
-        response.headers().get("content-security-policy")
+        response
+            .headers()
+            .get(http::header::CONTENT_SECURITY_POLICY)
     );
-    assert_ne!(response.headers().get("content-security-policy"), None);
+    assert_ne!(
+        response
+            .headers()
+            .get(http::header::CONTENT_SECURITY_POLICY),
+        None
+    );
 
     // here we test the /ui/login endpoint which should have the headers
     let response = match reqwest::get(rsclient.make_url("/ui/login")).await {
@@ -39,7 +46,14 @@ async fn test_https_middleware_headers(rsclient: KanidmClient) {
 
     eprintln!(
         "csp headers: {:#?}",
-        response.headers().get("content-security-policy")
+        response
+            .headers()
+            .get(http::header::CONTENT_SECURITY_POLICY)
     );
-    assert_ne!(response.headers().get("content-security-policy"), None);
+    assert_ne!(
+        response
+            .headers()
+            .get(http::header::CONTENT_SECURITY_POLICY),
+        None
+    );
 }

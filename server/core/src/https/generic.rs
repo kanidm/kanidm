@@ -1,6 +1,7 @@
 use axum::extract::State;
 use axum::response::IntoResponse;
-use axum::Extension;
+use axum::routing::get;
+use axum::{Extension, Router};
 use http::header::CONTENT_TYPE;
 use kanidmd_lib::status::StatusRequestEvent;
 
@@ -30,6 +31,15 @@ pub async fn status(
     format!("{}", r)
 }
 
+#[utoipa::path(
+    get,
+    path = "/robots.txt",
+    responses(
+        (status = 200, description = "Ok"),
+    ),
+    tag = "ui",
+
+)]
 pub async fn robots_txt() -> impl IntoResponse {
     (
         [(CONTENT_TYPE, "text/plain;charset=utf-8")],
@@ -39,4 +49,10 @@ pub async fn robots_txt() -> impl IntoResponse {
 "#,
         ),
     )
+}
+
+pub(crate) fn route_setup() -> Router<ServerState> {
+    Router::new()
+        .route("/robots.txt", get(robots_txt))
+        .route("/status", get(status))
 }

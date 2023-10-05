@@ -29,7 +29,6 @@ use crate::https::to_axum_response;
 
 use super::middleware::caching::dont_cache_me;
 use super::middleware::KOpId;
-use super::v1_scim::*;
 use super::ServerState;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -205,12 +204,27 @@ pub async fn whoami_uat(
     to_axum_response(res)
 }
 
+#[utoipa::path(
+    post,
+    path = "/v1/logout",
+    params(
+        // TODO: params
+    ),
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "api/v1/auth",
+)]
 pub async fn logout(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
 ) -> impl IntoResponse {
     let res = state.qe_w_ref.handle_logout(kopid.uat, kopid.eventid).await;
-
     to_axum_response(res)
 }
 
@@ -455,7 +469,22 @@ pub async fn schema_get(
     json_rest_event_get(state, None, filter, kopid).await
 }
 
-// /v1/schema/attributetype
+#[utoipa::path(
+    get,
+    path = "/v1/schema/attributetype",
+    params(
+        // TODO: params
+    ),
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "api/v1/attributetype",
+)]
 pub async fn schema_attributetype_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
@@ -464,6 +493,22 @@ pub async fn schema_attributetype_get(
     json_rest_event_get(state, None, filter, kopid).await
 }
 
+#[utoipa::path(
+    get,
+    path = "/v1/schema/attributetype/{id}",
+    params(
+        // TODO: params
+    ),
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "api/v1/attributetype",
+)]
 pub async fn schema_attributetype_get_id(
     State(state): State<ServerState>,
     Path(id): Path<String>,
@@ -486,6 +531,19 @@ pub async fn schema_attributetype_get_id(
     to_axum_response(res)
 }
 
+#[utoipa::path(
+    get,
+    path = "/v1/schema/classtype",
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "api/v1/schema",
+)]
 pub async fn schema_classtype_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
@@ -494,6 +552,22 @@ pub async fn schema_classtype_get(
     json_rest_event_get(state, None, filter, kopid).await
 }
 
+#[utoipa::path(
+    get,
+    path = "/v1/schema/classtype/{id}",
+    params(
+        ("id" = String, description="The ClassType to query.")
+    ),
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "api/v1/schema",
+)]
 pub async fn schema_classtype_get_id(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
@@ -512,7 +586,23 @@ pub async fn schema_classtype_get_id(
     to_axum_response(res)
 }
 
-// /v1/person
+#[utoipa::path(
+    get,
+    path = "/v1/person",
+    params(
+        // ("id" = String, description="The ClassType to query.")
+
+    ),
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "api/v1/person",
+)]
 pub async fn person_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
@@ -521,7 +611,24 @@ pub async fn person_get(
     json_rest_event_get(state, None, filter, kopid).await
 }
 
-// /v1/person
+#[utoipa::path(
+    post,
+    path = "/v1/person",
+    params(
+        // TODO: this is totes wrong
+        ("name" = String, description="The username to set."),
+        ("displayname" = String, description="The display name to set."),
+    ),
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "api/v1/person",
+)]
 // expects the following fields in the attrs field of the req: [name, displayname]
 pub async fn person_post(
     State(state): State<ServerState>,
@@ -536,7 +643,24 @@ pub async fn person_post(
     json_rest_event_post(state, classes, obj, kopid).await
 }
 
-// /v1/person/:id
+#[utoipa::path(
+    get,
+    path = "/v1/person/{id}",
+    params(
+        // TODO: this is totes wrong
+        ("id" = String, description="SPN?"),
+        // ("displayname" = String, description="The display name to set."),
+    ),
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "api/v1/person",
+)]
 pub async fn person_id_get(
     State(state): State<ServerState>,
     Path(id): Path<String>,
@@ -546,8 +670,25 @@ pub async fn person_id_get(
     json_rest_event_get_id(state, id, filter, None, kopid).await
 }
 
-// /v1/person/:id
-pub async fn person_account_id_delete(
+#[utoipa::path(
+    delete,
+    path = "/v1/person/{id}",
+    params(
+        // TODO: this is totes wrong
+        ("id" = String, description="SPN?"),
+        // ("displayname" = String, description="The display name to set."),
+    ),
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "api/v1/person",
+)]
+pub async fn person_id_delete(
     State(state): State<ServerState>,
     Path(id): Path<String>,
     Extension(kopid): Extension<KOpId>,
@@ -558,7 +699,24 @@ pub async fn person_account_id_delete(
 
 // // == account ==
 
-// /v1/service_account
+#[utoipa::path(
+    get,
+    path = "/v1/service_account",
+    params(
+        // TODO: this is totes wrong
+        ("id" = String, description="SPN?"),
+        // ("displayname" = String, description="The display name to set."),
+    ),
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "api/v1/service_account",
+)]
 pub async fn service_account_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
@@ -567,7 +725,24 @@ pub async fn service_account_get(
     json_rest_event_get(state, None, filter, kopid).await
 }
 
-// /v1/service_account
+#[utoipa::path(
+    post,
+    path = "/v1/service_account",
+    params(
+        // TODO: this is totes wrong
+        // ("id" = String, description="SPN?"),
+        // ("displayname" = String, description="The display name to set."),
+    ),
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "api/v1/service_account",
+)]
 pub async fn service_account_post(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
@@ -580,7 +755,25 @@ pub async fn service_account_post(
     ];
     json_rest_event_post(state, classes, obj, kopid).await
 }
-// /v1/service_account/{id}
+
+#[utoipa::path(
+    get,
+    path = "/v1/service_account/{id}",
+    params(
+        // TODO: this is totes wrong
+        ("id" = String, description="SPN?"),
+        // ("displayname" = String, description="The display name to set."),
+    ),
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "api/v1/service_account",
+)]
 pub async fn service_account_id_get(
     State(state): State<ServerState>,
     Path(id): Path<String>,
@@ -590,7 +783,24 @@ pub async fn service_account_id_get(
     json_rest_event_get_id(state, id, filter, None, kopid).await
 }
 
-// // /v1/service_account/{id}
+#[utoipa::path(
+    delete,
+    path = "/v1/service_account/{id}",
+    params(
+        // TODO: this is totes wrong
+        ("id" = String, description="SPN?"),
+        // ("displayname" = String, description="The display name to set."),
+    ),
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "api/v1/service_account",
+)]
 pub async fn service_account_id_delete(
     State(state): State<ServerState>,
     Path(id): Path<String>,
@@ -600,7 +810,24 @@ pub async fn service_account_id_delete(
     json_rest_event_delete_id(state, id, filter, kopid).await
 }
 
-// /v1/service_account/:id/_credential/_generate
+#[utoipa::path(
+    get,
+    path = "/v1/service_account/{id}/_credential/_generate",
+    params(
+        // TODO: this is totes wrong
+        ("id" = String, description="SPN?"),
+        // ("displayname" = String, description="The display name to set."),
+    ),
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "api/v1/service_account",
+)]
 pub async fn service_account_credential_generate(
     State(state): State<ServerState>,
     Path(id): Path<String>,
@@ -613,12 +840,29 @@ pub async fn service_account_credential_generate(
     to_axum_response(res)
 }
 
-// Due to how the migrations work in 6 -> 7, we can accidentally
-// mark "accounts" as service accounts when they are persons. This
-// allows migrating them to the person type due to its similarities.
-//
-// In the future this will be REMOVED!
-// /v1/service_account/:id/_into_person
+#[utoipa::path(
+    get,
+    path = "/v1/service_account/{id}/_into_person",
+    params(
+        // TODO: this is totes wrong
+        ("id" = String, description="SPN?"),
+        // ("displayname" = String, description="The display name to set."),
+    ),
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "api/v1/service_account",
+)]
+/// Due to how the migrations work in 6 -> 7, we can accidentally
+/// mark "accounts" as service accounts when they are persons. This
+/// allows migrating them to the person type due to its similarities.
+///
+/// In the future this will be REMOVED!
 #[deprecated]
 pub async fn service_account_into_person(
     State(state): State<ServerState>,
@@ -632,8 +876,24 @@ pub async fn service_account_into_person(
     to_axum_response(res)
 }
 
-// // Api Token
-// /v1/service_account/:id/_api_token
+#[utoipa::path(
+    get,
+    path = "/v1/service_account/{id}/_spi_token",
+    params(
+        // TODO: this is totes wrong
+        ("id" = String, description="SPN?"),
+        // ("displayname" = String, description="The display name to set."),
+    ),
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "api/v1/service_account",
+)]
 pub async fn service_account_api_token_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
@@ -646,7 +906,24 @@ pub async fn service_account_api_token_get(
     to_axum_response(res)
 }
 
-// /v1/service_account/:id/_api_token
+#[utoipa::path(
+    post,
+    path = "/v1/service_account/{id}/_spi_token",
+    params(
+        // TODO: this is totes wrong
+        ("id" = String, description="SPN?"),
+        // ("displayname" = String, description="The display name to set."),
+    ),
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "api/v1/service_account",
+)]
 pub async fn service_account_api_token_post(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
@@ -667,7 +944,24 @@ pub async fn service_account_api_token_post(
     to_axum_response(res)
 }
 
-// /v1/service_account/:id/_api_token/:token_id"
+#[utoipa::path(
+    delete,
+    path = "/v1/service_account/{id}/_spi_token/{token_id}",
+    params(
+        // TODO: this is totes wrong
+        ("token_id" = Uuid, description="The ID of the token to delete, a uuid?"),
+        // ("displayname" = String, description="The display name to set."),
+    ),
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "api/v1/service_account",
+)]
 pub async fn service_account_api_token_delete(
     State(state): State<ServerState>,
     Path((id, token_id)): Path<(String, Uuid)>,
@@ -680,11 +974,25 @@ pub async fn service_account_api_token_delete(
     to_axum_response(res)
 }
 
-// // Account stuff
-// TODO: shouldn't this be service_account?
-// /v1/person/:id/_attr/:attr
-// /v1/service_account/:id/_attr/:attr
-pub async fn account_id_get_attr(
+#[utoipa::path(
+    get,
+    path = "/v1/person/{id}/_attr/{attr}",
+    params(
+        // TODO: this is totes wrong
+        ("id" = Uuid, description="The ID of the account, a uuid?"),
+        ("attr" = String, description="The attribute?"),
+    ),
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "api/v1/person",
+)]
+pub async fn person_id_get_attr(
     State(state): State<ServerState>,
     Path((id, attr)): Path<(String, String)>,
     Extension(kopid): Extension<KOpId>,
@@ -693,9 +1001,54 @@ pub async fn account_id_get_attr(
     json_rest_event_get_attr(state, id.as_str(), attr, filter, kopid).await
 }
 
-// /v1/person/:id/_attr/:attr
-// /v1/service_account/:id/_attr/:attr
-pub async fn account_id_post_attr(
+#[utoipa::path(
+    get,
+    path = "/v1/service_account/{id}/_attr/{attr}",
+    params(
+        // TODO: this is totes wrong
+        ("id" = Uuid, description="The ID of the account, a uuid?"),
+        ("attr" = String, description="The attribute?"),
+        // ("displayname" = String, description="The display name to set."),
+    ),
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "api/v1/service_account",
+)]
+pub async fn service_account_id_get_attr(
+    State(state): State<ServerState>,
+    Path((id, attr)): Path<(String, String)>,
+    Extension(kopid): Extension<KOpId>,
+) -> impl IntoResponse {
+    let filter = filter_all!(f_eq(Attribute::Class, EntryClass::Account.into()));
+    json_rest_event_get_attr(state, id.as_str(), attr, filter, kopid).await
+}
+
+#[utoipa::path(
+    post,
+    path = "/v1/person/{id}/_attr/{attr}",
+    params(
+        // TODO: this is totes wrong
+        // ("id" = Uuid, description="The ID of the account, a uuid?"),
+        // ("attr" = String, description="The attribute?"),
+        // ("displayname" = String, description="The display name to set."),
+    ),
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "api/v1/person",
+)]
+pub async fn person_id_post_attr(
     State(state): State<ServerState>,
     Path((id, attr)): Path<(String, String)>,
     Extension(kopid): Extension<KOpId>,
@@ -705,9 +1058,53 @@ pub async fn account_id_post_attr(
     json_rest_event_post_id_attr(state, id, attr, filter, values, kopid).await
 }
 
-// /v1/person/:id/_attr/:attr
-// /v1/service_account/:id/_attr/:attr
-pub async fn account_id_delete_attr(
+#[utoipa::path(
+    post,
+    path = "/v1/service_account/{id}/_attr/{attr}",
+    params(
+        // TODO: this is totes wrong
+        ("id" = Uuid, description="The ID of the account, a uuid?"),
+        ("attr" = String, description="The attribute?"),
+    ),
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "api/v1/service_account",
+)]
+pub async fn service_account_id_post_attr(
+    State(state): State<ServerState>,
+    Path((id, attr)): Path<(String, String)>,
+    Extension(kopid): Extension<KOpId>,
+    Json(values): Json<Vec<String>>,
+) -> impl IntoResponse {
+    let filter = filter_all!(f_eq(Attribute::Class, EntryClass::Account.into()));
+    json_rest_event_post_id_attr(state, id, attr, filter, values, kopid).await
+}
+
+#[utoipa::path(
+    delete,
+    path = "/v1/person/{id}/_attr/{attr}",
+    params(
+        // TODO: this is totes wrong
+        ("id" = Uuid, description="The ID of the account, a uuid?"),
+        ("attr" = String, description="The attribute?"),
+    ),
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "api/v1/person",
+)]
+pub async fn person_id_delete_attr(
     State(state): State<ServerState>,
     Path((id, attr)): Path<(String, String)>,
     Extension(kopid): Extension<KOpId>,
@@ -716,9 +1113,52 @@ pub async fn account_id_delete_attr(
     json_rest_event_delete_id_attr(state, id, attr, filter, None, kopid).await
 }
 
-// /v1/person/:id/_attr/:attr
-// /v1/service_account/:id/_attr/:attr
-pub async fn account_id_put_attr(
+#[utoipa::path(
+    delete,
+    path = "/v1/service_account/{id}/_attr/{attr}",
+    params(
+        // TODO: this is totes wrong
+        ("id" = Uuid, description="The ID of the account, a uuid?"),
+        ("attr" = String, description="The attribute?"),
+    ),
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "api/v1/service_account",
+)]
+pub async fn service_account_id_delete_attr(
+    State(state): State<ServerState>,
+    Path((id, attr)): Path<(String, String)>,
+    Extension(kopid): Extension<KOpId>,
+) -> impl IntoResponse {
+    let filter = filter_all!(f_eq(Attribute::Class, EntryClass::Account.into()));
+    json_rest_event_delete_id_attr(state, id, attr, filter, None, kopid).await
+}
+
+#[utoipa::path(
+    put,
+    path = "/v1/person/{id}/_attr/{attr}",
+    params(
+        // TODO: this is totes wrong
+        ("id" = Uuid, description="The ID of the account, a uuid?"),
+        ("attr" = String, description="The attribute?"),
+    ),
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "api/v1/person",
+)]
+pub async fn person_id_put_attr(
     State(state): State<ServerState>,
     Path((id, attr)): Path<(String, String)>,
     Extension(kopid): Extension<KOpId>,
@@ -728,15 +1168,58 @@ pub async fn account_id_put_attr(
     json_rest_event_put_attr(state, id, attr, filter, values, kopid).await
 }
 
-// /v1/person/:id
-pub async fn account_id_patch(
+#[utoipa::path(
+    put,
+    path = "/v1/service_account/{id}/_attr/{attr}",
+    params(
+        // TODO: this is totes wrong
+        ("id" = Uuid, description="The ID of the account, a uuid?"),
+        ("attr" = String, description="The attribute?"),
+    ),
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "api/v1/service_account",
+)]
+pub async fn service_account_id_put_attr(
+    State(state): State<ServerState>,
+    Path((id, attr)): Path<(String, String)>,
+    Extension(kopid): Extension<KOpId>,
+    Json(values): Json<Vec<String>>,
+) -> impl IntoResponse {
+    let filter = filter_all!(f_eq(Attribute::Class, EntryClass::Account.into()));
+    json_rest_event_put_attr(state, id, attr, filter, values, kopid).await
+}
+
+#[utoipa::path(
+    patch,
+    path = "/v1/person/{id}",
+    params(
+        // TODO: this is totes wrong
+        ("id" = Uuid, description="The ID of the account, a uuid?"),
+    ),
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "api/v1/person",
+)]
+pub async fn person_id_patch(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     Path(id): Path<String>,
     Json(obj): Json<ProtoEntry>,
 ) -> impl IntoResponse {
     // Update a value / attrs
-
     let filter = filter_all!(f_eq(Attribute::Class, EntryClass::Account.into()));
     let filter = Filter::join_parts_and(filter, filter_all!(f_id(id.as_str())));
     let res = state
@@ -746,8 +1229,24 @@ pub async fn account_id_patch(
     to_axum_response(res)
 }
 
-// /v1/person/:id/_credential/_update
-pub async fn account_get_id_credential_update(
+#[utoipa::path(
+    get,
+    path = "/v1/person/{id}/_credential/_update",
+    params(
+        // TODO: this is totes wrong
+        ("id" = Uuid, description="The ID of the account, a uuid?"),
+    ),
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "api/v1/person",
+)]
+pub async fn person_id_credential_update_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     Path(id): Path<String>,
@@ -759,9 +1258,28 @@ pub async fn account_get_id_credential_update(
     to_axum_response(res)
 }
 
-// /v1/person/:id/_credential/_update_intent/:ttl
+#[utoipa::path(
+    get,
+    path = "/v1/person/{id}/_credential/_update_intent/?ttl={ttl}",
+    params(
+        // TODO: this is totes wrong
+        ("id" = Uuid, Path, description="The ID of the account, a uuid?"),
+        ("ttl" = u32, Query, description="The new TTL for the credential?") // TODO: this is a query param?
+    ),
+
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "api/v1/person",
+)]
+// TODO: this shouldn't be a get, we're making changes!
 #[instrument(level = "trace", skip(state, kopid))]
-pub async fn account_get_id_credential_update_intent_ttl(
+pub async fn person_id_credential_update_intent_ttl_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     Path(id): Path<String>,
@@ -779,9 +1297,25 @@ pub async fn account_get_id_credential_update_intent_ttl(
     to_axum_response(res)
 }
 
-// /v1/person/:id/_credential/_update_intent
+#[utoipa::path(
+    get,
+    path = "/v1/person/{id}/_credential/_update_intent",
+    params(
+        ("id" = String, Path, description="The ID of the account, a username, SPN or UUID"),
+    ),
+
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "api/v1/person",
+)]
 #[instrument(level = "trace", skip(state, kopid))]
-pub async fn account_get_id_credential_update_intent(
+pub async fn person_id_credential_update_intent_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     Path(id): Path<String>,
@@ -793,7 +1327,24 @@ pub async fn account_get_id_credential_update_intent(
     to_axum_response(res)
 }
 
-pub async fn account_get_id_user_auth_token(
+#[utoipa::path(
+    get,
+    path = "/v1/account/{id}/_user_auth_token",
+    params(
+        ("id" = String, Path, description="The ID of the account, a username, SPN or UUID"),
+    ),
+
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "api/v1/account",
+)]
+pub async fn account_id_user_auth_token_get(
     State(state): State<ServerState>,
     Path(id): Path<String>,
     Extension(kopid): Extension<KOpId>,
@@ -805,6 +1356,24 @@ pub async fn account_get_id_user_auth_token(
     to_axum_response(res)
 }
 
+#[utoipa::path(
+    get,
+    path = "/v1/account/{id}/_user_auth_token/{token_id}",
+    params(
+        ("id" = String, Path, description="The ID of the account, a username, SPN or UUID"),
+        ("token_id" = String, Path, description="The ID of the token, a username, SPN or UUID"),
+    ),
+
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "api/v1/account",
+)]
 pub async fn account_user_auth_token_delete(
     State(state): State<ServerState>,
     Path((id, token_id)): Path<(String, Uuid)>,
@@ -817,6 +1386,22 @@ pub async fn account_user_auth_token_delete(
     to_axum_response(res)
 }
 
+#[utoipa::path(
+    get,
+    path = "/v1/credential/_exchange_intent",
+    params(
+    ),
+
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "api/v1/credential",
+)] // TODO: post body
 pub async fn credential_update_exchange_intent(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
@@ -829,6 +1414,22 @@ pub async fn credential_update_exchange_intent(
     to_axum_response(res)
 }
 
+#[utoipa::path(
+    get,
+    path = "/v1/credential/_status",
+    params(
+    ),
+
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "api/v1/credential",
+)] // TODO: post body
 pub async fn credential_update_status(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
@@ -846,6 +1447,23 @@ pub async fn credential_update_status(
 //     pub session_token: CUSessionToken,
 //     pub scr: CURequest,
 // }
+
+#[utoipa::path(
+    post,
+    path = "/v1/credential/_update",
+    params(
+    ),
+
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "api/v1/credential",
+)] // TODO: post body
 #[instrument(level = "debug", skip(state, kopid))]
 pub async fn credential_update_update(
     State(state): State<ServerState>,
@@ -883,6 +1501,24 @@ pub async fn credential_update_update(
     to_axum_response(res)
 }
 
+// /v1/credential/_commit
+
+#[utoipa::path(
+    post,
+    path = "/v1/credential/_commit",
+    params(
+    ),
+
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "api/v1/credential",
+)] // TODO: post body
 pub async fn credential_update_commit(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
@@ -895,6 +1531,22 @@ pub async fn credential_update_commit(
     to_axum_response(res)
 }
 
+#[utoipa::path(
+    post,
+    path = "/v1/credential/_cancel",
+    params(
+    ),
+
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "api/v1/credential",
+)] // TODO: post body
 pub async fn credential_update_cancel(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
@@ -907,8 +1559,24 @@ pub async fn credential_update_cancel(
     to_axum_response(res)
 }
 
-// /v1/service_account/:id/_credential/_status
-pub async fn service_account_get_id_credential_status(
+#[utoipa::path(
+    get,
+    path = "/v1/service_account/{id}/_credential/_status",
+    params(
+        // TODO: this is totes wrong
+        ("id" = Uuid, description="The ID of the account, a uuid?"),
+    ),
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "api/v1/service_account",
+)]
+pub async fn service_account_id_credential_status_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     Path(id): Path<String>,
@@ -920,7 +1588,23 @@ pub async fn service_account_get_id_credential_status(
     to_axum_response(res)
 }
 
-// /v1/person/:id/_credential/_status
+#[utoipa::path(
+    delete,
+    path = "/v1/person/{id}/_credential/_status",
+    params(
+        // TODO: this is totes wrong
+        ("id" = Uuid, description="The ID of the account, a uuid?"),
+    ),
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "api/v1/person",
+)]
 pub async fn person_get_id_credential_status(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
@@ -933,11 +1617,53 @@ pub async fn person_get_id_credential_status(
     to_axum_response(res)
 }
 
-// // Return a vec of str
-// /v1/person/:id/_ssh_pubkeys
-// /v1/service_account/:id/_ssh_pubkeys
-// /v1/account/:id/_ssh_pubkeys
-pub async fn account_get_id_ssh_pubkeys(
+#[utoipa::path(
+    get,
+    path = "/v1/person/{id}/_ssh_pubkeys",
+    params(
+        // TODO: this is totes wrong
+        ("id" = Uuid, description="The ID of the account, a uuid?"),
+    ),
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "api/v1/person",
+)]
+pub async fn person_id_ssh_pubkeys_get(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    Path(id): Path<String>,
+) -> impl IntoResponse {
+    let res = state
+        .qe_r_ref
+        .handle_internalsshkeyread(kopid.uat, id, kopid.eventid)
+        .await;
+    to_axum_response(res)
+}
+#[utoipa::path(
+    get,
+    path = "/v1/account/{id}/_ssh_pubkeys",
+    params(
+        // TODO: this is totes wrong
+        ("id" = Uuid, description="The ID of the account, a uuid?"),
+    ),
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "api/v1/account",
+)]
+#[deprecated]
+pub async fn account_id_ssh_pubkeys_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     Path(id): Path<String>,
@@ -949,9 +1675,53 @@ pub async fn account_get_id_ssh_pubkeys(
     to_axum_response(res)
 }
 
-// /v1/person/:id/_ssh_pubkeys
-// /v1/service_account/:id/_ssh_pubkeys
-pub async fn account_post_id_ssh_pubkey(
+#[utoipa::path(
+    get,
+    path = "/v1/service_account/{id}/_ssh_pubkeys",
+    params(
+        // TODO: this is totes wrong
+        ("id" = Uuid, description="The ID of the account, a uuid?"),
+    ),
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "api/v1/service_account",
+)]
+pub async fn service_account_id_ssh_pubkeys_get(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    Path(id): Path<String>,
+) -> impl IntoResponse {
+    let res = state
+        .qe_r_ref
+        .handle_internalsshkeyread(kopid.uat, id, kopid.eventid)
+        .await;
+    to_axum_response(res)
+}
+
+#[utoipa::path(
+    post,
+    path = "/v1/person/{id}/_ssh_pubkeys",
+    params(
+        // TODO: this is totes wrong
+        ("id" = Uuid, description="The ID of the account, a uuid?"),
+    ),
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "api/v1/person",
+)]
+pub async fn person_id_ssh_pubkeys_post(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     Path(id): Path<String>,
@@ -966,9 +1736,86 @@ pub async fn account_post_id_ssh_pubkey(
     to_axum_response(res)
 }
 
-// /v1/person/:id/_ssh_pubkeys/:tag
-// /v1/service_account/:id/_ssh_pubkeys/:tag
-pub async fn account_get_id_ssh_pubkey_tag(
+#[utoipa::path(
+    post,
+    path = "/v1/service_account/{id}/_ssh_pubkeys",
+    params(
+        // TODO: this is totes wrong
+        ("id" = Uuid, description="The ID of the account, a uuid?"),
+    ),
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "api/v1/service_account",
+)]
+pub async fn service_account_id_ssh_pubkeys_post(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    Path(id): Path<String>,
+    Json((tag, key)): Json<(String, String)>,
+) -> impl IntoResponse {
+    let filter = filter_all!(f_eq(Attribute::Class, EntryClass::Account.into()));
+    // Add a msg here
+    let res = state
+        .qe_w_ref
+        .handle_sshkeycreate(kopid.uat, id, tag, key, filter, kopid.eventid)
+        .await;
+    to_axum_response(res)
+}
+
+#[utoipa::path(
+    get,
+    path = "/v1/person/{id}/_ssh_pubkeys/{tag}",
+    params(
+        // TODO: this is totes wrong
+        ("id" = String, description="The ID of the account, a uuid?"),
+        ("tag" = String, description="The tag of the SSH key"),
+    ),
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "api/v1/person",
+)]
+pub async fn person_id_ssh_pubkeys_tag_get(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    Path((id, tag)): Path<(String, String)>,
+) -> impl IntoResponse {
+    let res = state
+        .qe_r_ref
+        .handle_internalsshkeytagread(kopid.uat, id, tag, kopid.eventid)
+        .await;
+    to_axum_response(res)
+}
+#[utoipa::path(
+    get,
+    path = "/v1/account/{id}/_ssh_pubkeys/{tag}",
+    params(
+        // TODO: this is totes wrong
+        ("id" = String, description="The ID of the account, a uuid?"),
+        ("tag" = String, description="The tag of the SSH key"),
+    ),
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "api/v1/account",
+)]
+pub async fn account_id_ssh_pubkeys_tag_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     Path((id, tag)): Path<(String, String)>,
@@ -980,30 +1827,137 @@ pub async fn account_get_id_ssh_pubkey_tag(
     to_axum_response(res)
 }
 
-// /v1/person/:id/_ssh_pubkeys/:tag
-// /v1/service_account/:id/_ssh_pubkeys/:tag
-pub async fn account_delete_id_ssh_pubkey_tag(
+#[utoipa::path(
+    get,
+    path = "/v1/service_account/{id}/_ssh_pubkeys/{tag}",
+    params(
+        // TODO: this is totes wrong
+        ("id" = String, description="The ID of the account, a uuid?"),
+        ("tag" = String, description="The tag of the SSH key"),
+    ),
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "api/v1/service_account",
+)]
+pub async fn service_account_id_ssh_pubkeys_tag_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     Path((id, tag)): Path<(String, String)>,
 ) -> impl IntoResponse {
-    let attr = Attribute::SshPublicKey.to_string();
+    let res = state
+        .qe_r_ref
+        .handle_internalsshkeytagread(kopid.uat, id, tag, kopid.eventid)
+        .await;
+    to_axum_response(res)
+}
+
+#[utoipa::path(
+    delete,
+    path = "/v1/person/{id}/_ssh_pubkeys/{tag}",
+    params(
+        // TODO: this is totes wrong
+        ("id" = String, description="The ID of the account, a uuid?"),
+        ("tag" = String, description="The tag of the SSH key"),
+    ),
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "api/v1/person",
+)]
+pub async fn person_id_ssh_pubkeys_tag_delete(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    Path((id, tag)): Path<(String, String)>,
+) -> impl IntoResponse {
     let values = vec![tag];
     let filter = filter_all!(f_eq(Attribute::Class, EntryClass::Account.into()));
     let res = state
         .qe_w_ref
-        .handle_removeattributevalues(kopid.uat, id, attr, values, filter, kopid.eventid)
+        .handle_removeattributevalues(
+            kopid.uat,
+            id,
+            Attribute::SshPublicKey.to_string(),
+            values,
+            filter,
+            kopid.eventid,
+        )
+        .await;
+    to_axum_response(res)
+}
+
+#[utoipa::path(
+    delete,
+    path = "/v1/service_account/{id}/_ssh_pubkeys/{tag}",
+    params(
+        // TODO: this is totes wrong
+        ("id" = String, description="The ID of the account, a uuid?"),
+        ("tag" = String, description="The tag of the SSH key"),
+    ),
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "api/v1/person",
+)]
+pub async fn service_account_id_ssh_pubkeys_tag_delete(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    Path((id, tag)): Path<(String, String)>,
+) -> impl IntoResponse {
+    let values = vec![tag];
+    let filter = filter_all!(f_eq(Attribute::Class, EntryClass::Account.into()));
+    let res = state
+        .qe_w_ref
+        .handle_removeattributevalues(
+            kopid.uat,
+            id,
+            Attribute::SshPublicKey.to_string(),
+            values,
+            filter,
+            kopid.eventid,
+        )
         .await;
     to_axum_response(res)
 }
 
 // // Get and return a single str
-// /v1/person/:id/_radius
+#[utoipa::path(
+    get,
+    path = "/v1/person/{id}/_radius",
+    params(
+        ("id" = String, description="The ID of the account, a username/UUID"),
+    ),
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "api/v1/person",
+)]
 pub async fn person_id_radius_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     Path(id): Path<String>,
 ) -> impl IntoResponse {
+    // TODO: string
     let res = state
         .qe_r_ref
         .handle_internalradiusread(kopid.uat, id, kopid.eventid)
@@ -1011,7 +1965,23 @@ pub async fn person_id_radius_get(
     to_axum_response(res)
 }
 
-// /v1/person/:id/_radius
+#[utoipa::path(
+    post,
+    path = "/v1/person/{id}/_radius",
+    params(
+        ("id" = String, description="The ID of the account, a username/UUID"),
+    ),
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "api/v1/person",
+)]
+// TODO: what body do we take here?
 pub async fn person_id_radius_post(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
@@ -1025,7 +1995,22 @@ pub async fn person_id_radius_post(
     to_axum_response(res)
 }
 
-// /v1/person/:id/_radius
+#[utoipa::path(
+    delete,
+    path = "/v1/person/{id}/_radius",
+    params(
+        ("id" = String, Path, description="The ID of the account, a username/UUID"),
+    ),
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "api/v1/person",
+)]
 pub async fn person_id_radius_delete(
     State(state): State<ServerState>,
     Path(id): Path<String>,
@@ -1037,7 +2022,22 @@ pub async fn person_id_radius_delete(
 }
 
 // /v1/person/:id/_radius/_token
-
+#[utoipa::path(
+    get,
+    path = "/v1/person/{id}/_radius/_token",
+    params(
+        ("id" = String, Path, description="The ID of the account, a username/UUID"),
+    ),
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "api/v1/person",
+)]
 pub async fn person_id_radius_token_get(
     State(state): State<ServerState>,
     Path(id): Path<String>,
@@ -1047,6 +2047,22 @@ pub async fn person_id_radius_token_get(
 }
 
 // /v1/account/:id/_radius/_token
+#[utoipa::path(
+    get,
+    path = "/v1/account/{id}/_radius/_token",
+    params(
+        ("id" = String, Path, description="The ID of the account, a username/UUID"),
+    ),
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "api/v1/account",
+)]
 pub async fn account_id_radius_token_get(
     State(state): State<ServerState>,
     Path(id): Path<String>,
@@ -1054,7 +2070,23 @@ pub async fn account_id_radius_token_get(
 ) -> impl IntoResponse {
     person_id_radius_handler(state, id, kopid).await
 }
-// /v1/account/:id/_radius/_token
+
+#[utoipa::path(
+    post,
+    path = "/v1/account/{id}/_radius/_token",
+    params(
+        ("id" = String, Path, description="The ID of the account, a username/UUID"),
+    ),
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "api/v1/person",
+)] // TODO: what body do we expect here?
 pub async fn account_id_radius_token_post(
     State(state): State<ServerState>,
     Path(id): Path<String>,
@@ -1081,12 +2113,24 @@ async fn person_id_radius_handler(
     res
 }
 
-// /v1/person/:id/_unix
-// /v1/service_account/:id/_unix
-/// Expects an `AccountUnixExtend` object
-///
+#[utoipa::path(
+    post,
+    path = " /v1/person/{id}/_unix",
+    params(
+        ("id" = String, Path, description="The ID of the account, a username/UUID"),
+    ),
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "api/v1/person",
+)]
 #[instrument(name = "account_post_id_unix", level = "INFO", skip(id, state, kopid))]
-pub async fn account_post_id_unix(
+pub async fn person_id_unix_post(
     State(state): State<ServerState>,
     Path(id): Path<String>,
     Extension(kopid): Extension<KOpId>,
@@ -1099,8 +2143,85 @@ pub async fn account_post_id_unix(
     to_axum_response(res)
 }
 
-#[instrument(name = "account_id_unix_token", level = "INFO", skip_all)]
-// /v1/account/:id/_unix/_token
+#[utoipa::path(
+    post,
+    path = " /v1/service_account/{id}/_unix",
+    params(
+        ("id" = String, Path, description="The ID of the account, a username/UUID"),
+    ),
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "api/v1/service_account",
+)] // TODO: what body do we expect here?
+/// Expects an `AccountUnixExtend` object
+#[instrument(, level = "INFO", skip(id, state, kopid))]
+pub async fn service_account_id_unix_post(
+    State(state): State<ServerState>,
+    Path(id): Path<String>,
+    Extension(kopid): Extension<KOpId>,
+    Json(obj): Json<AccountUnixExtend>,
+) -> impl IntoResponse {
+    let res = state
+        .qe_w_ref
+        .handle_idmaccountunixextend(kopid.uat, id, obj, kopid.eventid)
+        .await;
+    to_axum_response(res)
+}
+
+#[utoipa::path(
+    post,
+    path = " /v1/account/{id}/_unix",
+    params(
+        ("id" = String, Path, description="The ID of the account, a username/UUID"),
+    ),
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "api/v1/account",
+)] // TODO: what body do we expect here?
+/// Expects an `AccountUnixExtend` object
+#[instrument(, level = "INFO", skip(id, state, kopid))]
+pub async fn account_id_unix_post(
+    State(state): State<ServerState>,
+    Path(id): Path<String>,
+    Extension(kopid): Extension<KOpId>,
+    Json(obj): Json<AccountUnixExtend>,
+) -> impl IntoResponse {
+    let res = state
+        .qe_w_ref
+        .handle_idmaccountunixextend(kopid.uat, id, obj, kopid.eventid)
+        .await;
+    to_axum_response(res)
+}
+
+#[utoipa::path(
+    get,post,
+    path = " /v1/account/{id}/_unix/_token",
+    params(
+        ("id" = String, Path, description="The ID of the account, a username/UUID"),
+    ),
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "api/v1/account",
+)] // TODO: what body do we expect here?
+#[instrument(level = "INFO", skip_all)]
 pub async fn account_id_unix_token(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
@@ -1143,8 +2264,24 @@ pub async fn account_id_unix_token(
     to_axum_response(res)
 }
 
-// /v1/account/:id/_unix/_auth
-pub async fn account_post_id_unix_auth(
+#[utoipa::path(
+    post,
+    path = "/v1/account/{id}/_unix/_auth",
+    params(
+        ("id" = String, Path, description="The ID of the account, a username/UUID"),
+        // ("obj" = Json<SingleStringRequest>, Body, description="The auth string"), // TODO: post bdy
+    ),
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "api/v1/account",
+)] // TODO: what body do we expect here?
+pub async fn account_id_unix_auth_post(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     Path(id): Path<String>,
@@ -1157,8 +2294,24 @@ pub async fn account_post_id_unix_auth(
     to_axum_response(res)
 }
 
-// /v1/person/:id/_unix/_credential
-pub async fn account_id_unix_credential_put(
+#[utoipa::path(
+    post,
+    path = "/v1/person/{id}/_unix/_credential",
+    params(
+        ("id" = String, Path, description="The ID of the account, a username/UUID"),
+        ("obj" = Json<SingleStringRequest>, description="The auth string"), // TODO this is a post body?
+    ),
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "api/v1/person",
+)] // TODO: what body do we expect here?
+pub async fn person_id_unix_credential_put(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     Path(id): Path<String>,
@@ -1171,8 +2324,24 @@ pub async fn account_id_unix_credential_put(
     to_axum_response(res)
 }
 
-// /v1/person/:id/_unix/_credential
-pub async fn account_id_unix_credential_delete(
+#[utoipa::path(
+    delete,
+    path = "/v1/person/{id}/_unix/_credential",
+    params(
+        ("id" = String, Path, description="The ID of the account, a username/UUID"),
+        ("obj" = Json<SingleStringRequest>, description="The auth string"), // TODO this is a post body?
+    ),
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "api/v1/person",
+)] // TODO: what body do we expect here?
+pub async fn person_id_unix_credential_delete(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     Path(id): Path<String>,
@@ -1191,8 +2360,23 @@ pub async fn account_id_unix_credential_delete(
     to_axum_response(res)
 }
 
-// /v1/person/:id/_identify_user
-pub async fn person_post_identify_user(
+#[utoipa::path(
+    post,
+    path = "/v1/person/{id}/_identify/_user",
+    params(
+        ("id" = String, Path, description="The ID of the account, a username/UUID"),
+    ),
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "api/v1/person",
+)] // TODO: what body do we expect here?
+pub async fn person_identify_user_post(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     Path(id): Path<String>,
@@ -1205,6 +2389,22 @@ pub async fn person_post_identify_user(
     to_axum_response(res)
 }
 
+#[utoipa::path(
+    get,
+    path = "/v1/group",
+    params(
+        ("id" = String, Path, description="The group to target"),
+    ),
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "api/v1/group",
+)]
 /// Returns all groups visible  to the user
 pub async fn group_get(
     State(state): State<ServerState>,
@@ -1214,6 +2414,22 @@ pub async fn group_get(
     json_rest_event_get(state, None, filter, kopid).await
 }
 
+#[utoipa::path(
+    post,
+    path = "/v1/group/{id}",
+    params(
+        ("id" = String, Path, description="The group to target"),
+    ),
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "api/v1/group",
+)] // TODO: post body
 pub async fn group_post(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
@@ -1223,6 +2439,22 @@ pub async fn group_post(
     json_rest_event_post(state, classes, obj, kopid).await
 }
 
+#[utoipa::path(
+    get,
+    path = "/v1/group/{id}",
+    params(
+        ("id" = String, Path, description="The group to target"),
+    ),
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "api/v1/group",
+)]
 pub async fn group_id_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
@@ -1232,7 +2464,49 @@ pub async fn group_id_get(
     json_rest_event_get_id(state, id, filter, None, kopid).await
 }
 
-pub async fn group_id_get_attr(
+#[utoipa::path(
+    delete,
+    path = "/v1/group/{id}",
+    params(
+        ("id" = String, Path, description="The group to target"),
+    ),
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "api/v1/group",
+)]
+pub async fn group_id_delete(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    Path(id): Path<String>,
+) -> impl IntoResponse {
+    let filter = filter_all!(f_eq(Attribute::Class, EntryClass::Group.into()));
+    json_rest_event_delete_id(state, id, filter, kopid).await
+}
+
+#[utoipa::path(
+    get,
+    path = "/v1/group/{id}/_attr/{attr}",
+    params(
+        ("id" = String, Path, description="The group to target"),
+        ("attr" = String, Path, description="The attribute to target"),
+    ),
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "api/v1/group",
+)]
+pub async fn group_id_attr_get(
     State(state): State<ServerState>,
     Path((id, attr)): Path<(String, String)>,
     Extension(kopid): Extension<KOpId>,
@@ -1241,7 +2515,24 @@ pub async fn group_id_get_attr(
     json_rest_event_get_id_attr(state, id, attr, filter, kopid).await
 }
 
-pub async fn group_id_post_attr(
+#[utoipa::path(
+    post,
+    path = "/v1/group/{id}/_attr/{attr}",
+    params(
+        ("id" = String, Path, description="The group to target"),
+        ("attr" = String, Path, description="The attribute to target"),
+    ),
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "api/v1/group",
+)]
+pub async fn group_id_attr_post(
     Path((id, attr)): Path<(String, String)>,
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
@@ -1251,7 +2542,24 @@ pub async fn group_id_post_attr(
     json_rest_event_post_id_attr(state, id, attr, filter, values, kopid).await
 }
 
-pub async fn group_id_delete_attr(
+#[utoipa::path(
+    delete,
+    path = "/v1/group/{id}/_attr/{attr}",
+    params(
+        ("id" = String, Path, description="The group to target"),
+        ("attr" = String, Path, description="The attribute to target"),
+    ),
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "api/v1/group",
+)]
+pub async fn group_id_attr_delete(
     Path((id, attr)): Path<(String, String)>,
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
@@ -1262,7 +2570,24 @@ pub async fn group_id_delete_attr(
     json_rest_event_delete_id_attr(state, id, attr, filter, values, kopid).await
 }
 
-pub async fn group_id_put_attr(
+#[utoipa::path(
+    put,
+    path = "/v1/group/{id}/_attr/{attr}",
+    params(
+        ("id" = String, Path, description="The group to target"),
+        ("attr" = String, Path, description="The attribute to target"),
+    ),
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "api/v1/group",
+)]
+pub async fn group_id_attr_put(
     Path((id, attr)): Path<(String, String)>,
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
@@ -1271,16 +2596,24 @@ pub async fn group_id_put_attr(
     let filter = filter_all!(f_eq(Attribute::Class, EntryClass::Group.into()));
     json_rest_event_put_id_attr(state, id, attr, filter, values, kopid).await
 }
-pub async fn group_id_delete(
-    State(state): State<ServerState>,
-    Extension(kopid): Extension<KOpId>,
-    Path(id): Path<String>,
-) -> impl IntoResponse {
-    let filter = filter_all!(f_eq(Attribute::Class, EntryClass::Group.into()));
-    json_rest_event_delete_id(state, id, filter, kopid).await
-}
 
-pub async fn group_post_id_unix(
+#[utoipa::path(
+    put,
+    path = "/v1/group/{id}/_unix",
+    params(
+        ("id" = String, Path, description="The group to target"),
+    ),
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "api/v1/group",
+)]
+pub async fn group_id_unix_post(
     State(state): State<ServerState>,
     Path(id): Path<String>,
     Extension(kopid): Extension<KOpId>,
@@ -1293,7 +2626,23 @@ pub async fn group_post_id_unix(
     to_axum_response(res)
 }
 
-pub async fn group_get_id_unix_token(
+#[utoipa::path(
+    get,
+    path = "/v1/group/{id}/_unix/_token",
+    params(
+        ("id" = String, Path, description="The group to target"),
+    ),
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "api/v1/group",
+)]
+pub async fn group_id_unix_token_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     Path(id): Path<String>,
@@ -1305,6 +2654,21 @@ pub async fn group_get_id_unix_token(
     to_axum_response(res)
 }
 
+#[utoipa::path(
+    get,
+    path = "/v1/domain",
+    params(
+    ),
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "api/v1/domain",
+)]
 pub async fn domain_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
@@ -1313,7 +2677,23 @@ pub async fn domain_get(
     json_rest_event_get(state, None, filter, kopid).await
 }
 
-pub async fn domain_get_attr(
+#[utoipa::path(
+    get,
+    path = "/v1/domain/_attr/{attr}",
+    params(
+        ("attr" = String, Path, description="The attribute to target"),
+    ),
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "api/v1/domain",
+)]
+pub async fn domain_attr_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     Path(attr): Path<String>,
@@ -1322,7 +2702,23 @@ pub async fn domain_get_attr(
     json_rest_event_get_attr(state, STR_UUID_DOMAIN_INFO, attr, filter, kopid).await
 }
 
-pub async fn domain_put_attr(
+#[utoipa::path(
+    put,
+    path = "/v1/domain/_attr/{attr}",
+    params(
+        ("attr" = String, Path, description="The attribute to target"),
+    ),
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "api/v1/domain",
+)]
+pub async fn domain_attr_put(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     Path(attr): Path<String>,
@@ -1340,7 +2736,23 @@ pub async fn domain_put_attr(
     .await
 }
 
-pub async fn domain_delete_attr(
+#[utoipa::path(
+    delete,
+    path = "/v1/domain/_attr/{attr}",
+    params(
+        ("attr" = String, Path, description="The attribute to target"),
+    ),
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "api/v1/domain",
+)]
+pub async fn domain_attr_delete(
     State(state): State<ServerState>,
     Path(attr): Path<String>,
     Extension(kopid): Extension<KOpId>,
@@ -1358,6 +2770,21 @@ pub async fn domain_delete_attr(
     .await
 }
 
+#[utoipa::path(
+    get,
+    path = "/v1/system",
+    params(
+    ),
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "api/v1/system",
+)]
 pub async fn system_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
@@ -1369,7 +2796,23 @@ pub async fn system_get(
     json_rest_event_get(state, None, filter, kopid).await
 }
 
-pub async fn system_get_attr(
+#[utoipa::path(
+    get,
+    path = "/v1/system/_attr/{attr}",
+    params(
+        ("attr" = String, Path, description="The attribute to target"),
+    ),
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "api/v1/system",
+)]
+pub async fn system_attr_get(
     State(state): State<ServerState>,
     Path(attr): Path<String>,
     Extension(kopid): Extension<KOpId>,
@@ -1378,7 +2821,23 @@ pub async fn system_get_attr(
     json_rest_event_get_attr(state, STR_UUID_SYSTEM_CONFIG, attr, filter, kopid).await
 }
 
-pub async fn system_post_attr(
+#[utoipa::path(
+    post,
+    path = "/v1/system/_attr/{attr}",
+    params(
+        ("attr" = String, Path, description="The attribute to target"),
+    ),
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "api/v1/system",
+)]
+pub async fn system_attr_post(
     State(state): State<ServerState>,
     Path(attr): Path<String>,
     Extension(kopid): Extension<KOpId>,
@@ -1396,7 +2855,23 @@ pub async fn system_post_attr(
     .await
 }
 
-pub async fn system_delete_attr(
+#[utoipa::path(
+    delete,
+    path = "/v1/system/_attr/{attr}",
+    params(
+        ("attr" = String, Path, description="The attribute to target"),
+    ),
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "api/v1/system",
+)]
+pub async fn system_attr_delete(
     State(state): State<ServerState>,
     Path(attr): Path<String>,
     Extension(kopid): Extension<KOpId>,
@@ -1414,7 +2889,23 @@ pub async fn system_delete_attr(
     .await
 }
 
-pub async fn system_put_attr(
+#[utoipa::path(
+    put,
+    path = "/v1/system/_attr/{attr}",
+    params(
+        ("attr" = String, Path, description="The attribute to target"),
+    ),
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "api/v1/system",
+)]
+pub async fn system_attr_put(
     State(state): State<ServerState>,
     Path(attr): Path<String>,
     Extension(kopid): Extension<KOpId>,
@@ -1432,6 +2923,21 @@ pub async fn system_put_attr(
     .await
 }
 
+#[utoipa::path(
+    post,
+    path = "/v1/recycle_bin",
+    params(
+    ),
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "api/v1/recycle_bin",
+)]
 pub async fn recycle_bin_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
@@ -1445,6 +2951,22 @@ pub async fn recycle_bin_get(
     to_axum_response(res)
 }
 
+#[utoipa::path(
+    get,
+    path = "/v1/recycle_bin/{id}",
+    params(
+        ("id" = Uuid, description="The item ID to get")
+    ),
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "api/v1/recycle_bin",
+)]
 pub async fn recycle_bin_id_get(
     State(state): State<ServerState>,
 
@@ -1462,6 +2984,22 @@ pub async fn recycle_bin_id_get(
     to_axum_response(res)
 }
 
+#[utoipa::path(
+    post,
+    path = "/v1/recycle_bin/{id}/_revive",
+    params(
+        ("id" = Uuid, description="The item ID to revive")
+    ),
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "api/v1/recycle_bin",
+)]
 pub async fn recycle_bin_revive_id_post(
     State(state): State<ServerState>,
     Path(id): Path<String>,
@@ -1475,7 +3013,22 @@ pub async fn recycle_bin_revive_id_post(
     to_axum_response(res)
 }
 
-// /v1/self/_applinks"
+#[utoipa::path(
+    delete,
+    path = "/v1/self/_applinks",
+    params(
+    ),
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "api/v1/self",
+)]
+/// Returns your applinks for the Web UI
 pub async fn applinks_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
@@ -1487,6 +3040,22 @@ pub async fn applinks_get(
     to_axum_response(res)
 }
 
+#[utoipa::path(
+    post,
+    path = "/v1/reauth",
+    params(
+
+    ),
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "api/v1/auth",
+)] // TODO: post body stuff
 pub async fn reauth(
     State(state): State<ServerState>,
     TrustedClientIp(ip_addr): TrustedClientIp,
@@ -1502,6 +3071,22 @@ pub async fn reauth(
     auth_session_state_management(state, inter)
 }
 
+#[utoipa::path(
+    post,
+    path = "/v1/auth",
+    params(
+        // TODO: params
+    ),
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "api/v1/auth",
+)]
 pub async fn auth(
     State(state): State<ServerState>,
     TrustedClientIp(ip_addr): TrustedClientIp,
@@ -1594,16 +3179,29 @@ fn auth_session_state_management(
     match auth_session_id_tok {
         Some(tok) => {
             #[allow(clippy::unwrap_used)]
-            res.headers_mut().insert(
-                "X-KANIDM-AUTH-SESSION-ID",
-                HeaderValue::from_str(&tok).unwrap(),
-            );
+            res.headers_mut()
+                .insert(KSESSIONID, HeaderValue::from_str(&tok).unwrap());
             res
         }
         None => res,
     }
 }
 
+#[utoipa::path(
+    get,
+    path = "/v1/auth/valid",
+    params(
+    ),
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "api/v1/auth",
+)]
 pub async fn auth_valid(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
@@ -1615,6 +3213,21 @@ pub async fn auth_valid(
     to_axum_response(res)
 }
 
+#[utoipa::path(
+    get,
+    path = "/v1/debug/ipinfo",
+    params(
+    ),
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        // (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "api/v1/debug",
+)]
 pub async fn debug_ipinfo(
     State(_state): State<ServerState>,
     TrustedClientIp(ip_addr): TrustedClientIp,
@@ -1623,7 +3236,7 @@ pub async fn debug_ipinfo(
 }
 
 #[instrument(skip(state))]
-pub fn router(state: ServerState) -> Router<ServerState> {
+pub fn route_setup(state: ServerState) -> Router<ServerState> {
     Router::new()
         .route("/v1/oauth2", get(super::v1_oauth2::oauth2_get))
         .route(
@@ -1659,10 +3272,10 @@ pub fn router(state: ServerState) -> Router<ServerState> {
             post(super::v1_oauth2::oauth2_id_sup_scopemap_post)
                 .delete(super::v1_oauth2::oauth2_id_sup_scopemap_delete),
         )
-        .route("/v1/raw/create", post(raw_create))
-        .route("/v1/raw/modify", post(raw_modify))
-        .route("/v1/raw/delete", post(raw_delete))
-        .route("/v1/raw/search", post(raw_search))
+        .route("/v1/raw/create", post(raw_create)) // skip_route_check
+        .route("/v1/raw/modify", post(raw_modify)) // skip_route_check
+        .route("/v1/raw/delete", post(raw_delete)) // skip_route_check
+        .route("/v1/raw/search", post(raw_search)) // skip_route_check
         .route("/v1/schema", get(schema_get))
         .route(
             "/v1/schema/attributetype",
@@ -1706,15 +3319,15 @@ pub fn router(state: ServerState) -> Router<ServerState> {
         .route(
             "/v1/person/:id",
             get(person_id_get)
-                .patch(account_id_patch) // TOOD: should this be person_id_patch?
-                .delete(person_account_id_delete),
+                .patch(person_id_patch)
+                .delete(person_id_delete),
         )
         .route(
             "/v1/person/:id/_attr/:attr",
-            get(account_id_get_attr)
-                .put(account_id_put_attr)
-                .post(account_id_post_attr)
-                .delete(account_id_delete_attr),
+            get(person_id_get_attr)
+                .put(person_id_put_attr)
+                .post(person_id_post_attr)
+                .delete(person_id_delete_attr),
         )
         // .route("/v1/person/:id/_lock", get(|| async { "TODO" }))
         // .route("/v1/person/:id/_credential", get(|| async { "TODO" }))
@@ -1728,23 +3341,23 @@ pub fn router(state: ServerState) -> Router<ServerState> {
         // )
         .route(
             "/v1/person/:id/_credential/_update",
-            get(account_get_id_credential_update),
+            get(person_id_credential_update_get),
         )
         .route(
-            "/v1/person/:id/_credential/_update_intent/:ttl",
-            get(account_get_id_credential_update_intent_ttl),
+            "/v1/person/:id/_credential/_update_intent/:ttl", // TODO: I'm pretty sure this route is wrong, because we match the query not the path
+            get(person_id_credential_update_intent_ttl_get),
         )
         .route(
             "/v1/person/:id/_credential/_update_intent",
-            get(account_get_id_credential_update_intent),
+            get(person_id_credential_update_intent_get),
         )
         .route(
             "/v1/person/:id/_ssh_pubkeys",
-            get(account_get_id_ssh_pubkeys).post(account_post_id_ssh_pubkey),
+            get(person_id_ssh_pubkeys_get).post(person_id_ssh_pubkeys_post),
         )
         .route(
             "/v1/person/:id/_ssh_pubkeys/:tag",
-            get(account_get_id_ssh_pubkey_tag).delete(account_delete_id_ssh_pubkey_tag),
+            get(person_id_ssh_pubkeys_tag_get).delete(person_id_ssh_pubkeys_tag_delete),
         )
         .route(
             "/v1/person/:id/_radius",
@@ -1756,14 +3369,14 @@ pub fn router(state: ServerState) -> Router<ServerState> {
             "/v1/person/:id/_radius/_token",
             get(person_id_radius_token_get),
         ) // TODO: make this cacheable
-        .route("/v1/person/:id/_unix", post(account_post_id_unix))
+        .route("/v1/person/:id/_unix", post(service_account_id_unix_post))
         .route(
             "/v1/person/:id/_unix/_credential",
-            put(account_id_unix_credential_put).delete(account_id_unix_credential_delete),
+            put(person_id_unix_credential_put).delete(person_id_unix_credential_delete),
         )
         .route(
             "/v1/person/:id/_identify_user",
-            post(person_post_identify_user),
+            post(person_identify_user_post),
         )
         // Service accounts
         .route(
@@ -1780,10 +3393,10 @@ pub fn router(state: ServerState) -> Router<ServerState> {
         )
         .route(
             "/v1/service_account/:id/_attr/:attr",
-            get(account_id_get_attr)
-                .put(account_id_put_attr)
-                .post(account_id_post_attr)
-                .delete(account_id_delete_attr),
+            get(service_account_id_get_attr)
+                .put(service_account_id_put_attr)
+                .post(service_account_id_post_attr)
+                .delete(service_account_id_delete_attr),
         )
         // .route("/v1/service_account/:id/_lock", get(|| async { "TODO" }))
         .route(
@@ -1809,7 +3422,7 @@ pub fn router(state: ServerState) -> Router<ServerState> {
         )
         .route(
             "/v1/service_account/:id/_credential/_status",
-            get(service_account_get_id_credential_status),
+            get(service_account_id_credential_status_get),
         )
         // .route(
         //     "/v1/service_account/:id/_credential/:cid/_lock",
@@ -1817,16 +3430,20 @@ pub fn router(state: ServerState) -> Router<ServerState> {
         // )
         .route(
             "/v1/service_account/:id/_ssh_pubkeys",
-            get(account_get_id_ssh_pubkeys).post(account_post_id_ssh_pubkey),
+            get(service_account_id_ssh_pubkeys_get).post(service_account_id_ssh_pubkeys_post),
         )
         .route(
             "/v1/service_account/:id/_ssh_pubkeys/:tag",
-            get(account_get_id_ssh_pubkey_tag).delete(account_delete_id_ssh_pubkey_tag),
+            get(service_account_id_ssh_pubkeys_tag_get)
+                .delete(service_account_id_ssh_pubkeys_tag_delete),
         )
-        .route("/v1/service_account/:id/_unix", post(account_post_id_unix))
+        .route(
+            "/v1/service_account/:id/_unix",
+            post(service_account_id_unix_post),
+        )
         .route(
             "/v1/account/:id/_unix/_auth",
-            post(account_post_id_unix_auth),
+            post(account_id_unix_auth_post),
         )
         .route(
             "/v1/account/:id/_unix/_token",
@@ -1838,15 +3455,16 @@ pub fn router(state: ServerState) -> Router<ServerState> {
         )
         .route(
             "/v1/account/:id/_ssh_pubkeys",
-            get(account_get_id_ssh_pubkeys),
+            #[allow(deprecated)]
+            get(account_id_ssh_pubkeys_get),
         )
         .route(
             "/v1/account/:id/_ssh_pubkeys/:tag",
-            get(account_get_id_ssh_pubkey_tag),
+            get(account_id_ssh_pubkeys_tag_get),
         )
         .route(
             "/v1/account/:id/_user_auth_token",
-            get(account_get_id_user_auth_token),
+            get(account_id_user_auth_token_get),
         )
         .route(
             "/v1/account/:id/_user_auth_token/:token_id",
@@ -1864,29 +3482,29 @@ pub fn router(state: ServerState) -> Router<ServerState> {
         .route("/v1/domain", get(domain_get))
         .route(
             "/v1/domain/_attr/:attr",
-            get(domain_get_attr)
-                .put(domain_put_attr)
-                .delete(domain_delete_attr),
+            get(domain_attr_get)
+                .put(domain_attr_put)
+                .delete(domain_attr_delete),
         )
-        .route("/v1/group/:id/_unix/_token", get(group_get_id_unix_token))
-        .route("/v1/group/:id/_unix", post(group_post_id_unix))
+        .route("/v1/group/:id/_unix/_token", get(group_id_unix_token_get))
+        .route("/v1/group/:id/_unix", post(group_id_unix_post))
         .route("/v1/group", get(group_get).post(group_post))
         .route("/v1/group/:id", get(group_id_get).delete(group_id_delete))
         .route(
             "/v1/group/:id/_attr/:attr",
-            delete(group_id_delete_attr)
-                .get(group_id_get_attr)
-                .put(group_id_put_attr)
-                .post(group_id_post_attr),
+            delete(group_id_attr_delete)
+                .get(group_id_attr_get)
+                .put(group_id_attr_put)
+                .post(group_id_attr_post),
         )
         .with_state(state.clone())
         .route("/v1/system", get(system_get))
         .route(
             "/v1/system/_attr/:attr",
-            get(system_get_attr)
-                .post(system_post_attr)
-                .put(system_put_attr)
-                .delete(system_delete_attr),
+            get(system_attr_get)
+                .post(system_attr_post)
+                .put(system_attr_put)
+                .delete(system_attr_delete),
         )
         .route("/v1/recycle_bin", get(recycle_bin_get))
         .route("/v1/recycle_bin/:id", get(recycle_bin_id_get))
@@ -1904,34 +3522,6 @@ pub fn router(state: ServerState) -> Router<ServerState> {
         .route("/v1/auth/valid", get(auth_valid))
         .route("/v1/logout", get(logout))
         .route("/v1/reauth", post(reauth))
-        .route(
-            "/v1/sync_account",
-            get(sync_account_get).post(sync_account_post),
-        )
-        .route(
-            "/v1/sync_account/",
-            get(sync_account_get).post(sync_account_post),
-        )
-        .route(
-            "/v1/sync_account/:id",
-            get(sync_account_id_get).patch(sync_account_id_patch),
-        )
-        .route(
-            "/v1/sync_account/:id/_attr/:attr",
-            get(sync_account_id_get_attr).put(sync_account_id_put_attr),
-        )
-        .route(
-            "/v1/sync_account/:id/_finalise",
-            get(sync_account_id_get_finalise),
-        )
-        .route(
-            "/v1/sync_account/:id/_terminate",
-            get(sync_account_id_get_terminate),
-        )
-        .route(
-            "/v1/sync_account/:id/_sync_token",
-            post(sync_account_token_post).delete(sync_account_token_delete),
-        )
         .with_state(state)
         .layer(from_fn(dont_cache_me))
         .route("/v1/debug/ipinfo", get(debug_ipinfo))

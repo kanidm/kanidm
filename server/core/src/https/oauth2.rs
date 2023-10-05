@@ -724,7 +724,7 @@ pub async fn oauth2_preflight_options() -> Response<Body> {
         .unwrap()
 }
 
-pub fn oauth2_route_setup(state: ServerState) -> Router<ServerState> {
+pub fn route_setup(state: ServerState) -> Router<ServerState> {
     // this has all the openid-related routes
     let openid_router = Router::new()
         // // ⚠️  ⚠️   WARNING  ⚠️  ⚠️

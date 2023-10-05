@@ -190,3 +190,9 @@ pub const TEST_ATTR_TEST_ATTR: &str = "testattr";
 pub const TEST_ATTR_EXTRA: &str = "extra";
 pub const TEST_ATTR_NUMBER: &str = "testattrnumber";
 pub const TEST_ATTR_NOTALLOWED: &str = "notallowed";
+
+pub const KSESSIONID: &str = "X-KANIDM-AUTH-SESSION-ID";
+pub const KOPID: &str = "X-KANIDM-OPID";
+pub const KVERSION: &str = "X-KANIDM-VERSION";
+
+pub const X_FORWARDED_FOR: &str = "x-forwarded-for";

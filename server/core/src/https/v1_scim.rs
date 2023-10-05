@@ -14,6 +14,22 @@ use super::v1::{
     json_rest_event_put_id_attr,
 };
 
+#[utoipa::path(
+    get,
+    path = "/v1/sync_account/",
+    params(
+        ("id" = String, Path, description="SPN?"),
+    ),
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "api/v1/sync_account",
+)] // TODO: what body do we take here
 pub async fn sync_account_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
@@ -22,6 +38,22 @@ pub async fn sync_account_get(
     json_rest_event_get(state, None, filter, kopid).await
 }
 
+#[utoipa::path(
+    post,
+    path = "/v1/sync_account/{id}",
+    params(
+        ("id" = String, Path, description="SPN?"),
+    ),
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "api/v1/sync_account",
+)] // TODO: what body do we take here
 pub async fn sync_account_post(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
@@ -31,6 +63,21 @@ pub async fn sync_account_post(
     json_rest_event_post(state, classes, obj, kopid).await
 }
 
+#[utoipa::path(
+    get,
+    path = "/v1/sync_account/{id}",
+    params(
+        ("id" = String, Path, description="SPN?"),
+    ),
+    responses(
+        (status = 200, description = "Ok"),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "api/v1/sync_account",
+)]
 pub async fn sync_account_id_get(
     State(state): State<ServerState>,
     Path(id): Path<String>,
@@ -40,6 +87,22 @@ pub async fn sync_account_id_get(
     json_rest_event_get_id(state, id, filter, None, kopid).await
 }
 
+#[utoipa::path(
+    patch,
+    path = "/v1/sync_account/{id}",
+    params(
+        ("id" = String, Path, description="SPN?"),
+    ),
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "api/v1/sync_account",
+)] // TODO: what body do we take here
 pub async fn sync_account_id_patch(
     State(state): State<ServerState>,
     Path(id): Path<String>,
@@ -56,7 +119,23 @@ pub async fn sync_account_id_patch(
     to_axum_response(res)
 }
 
-pub async fn sync_account_id_get_finalise(
+#[utoipa::path(
+    get,
+    path = "/v1/sync_account/{id}/_finalise",
+    params(
+        ("id" = String, Path, description="SPN?"),
+    ),
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "api/v1/sync_account",
+)]
+pub async fn sync_account_id_finalise_get(
     State(state): State<ServerState>,
     Path(id): Path<String>,
     Extension(kopid): Extension<KOpId>,
@@ -68,7 +147,23 @@ pub async fn sync_account_id_get_finalise(
     to_axum_response(res)
 }
 
-pub async fn sync_account_id_get_terminate(
+#[utoipa::path(
+    get,
+    path = "/v1/sync_account/{id}/_terminate",
+    params(
+        ("id" = String, Path, description="SPN?"),
+    ),
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "api/v1/sync_account",
+)]
+pub async fn sync_account_id_terminate_get(
     State(state): State<ServerState>,
     Path(id): Path<String>,
     Extension(kopid): Extension<KOpId>,
@@ -80,6 +175,22 @@ pub async fn sync_account_id_get_terminate(
     to_axum_response(res)
 }
 
+#[utoipa::path(
+    post,
+    path = "/v1/sync_account/{id}/_sync_token",
+    params(
+        ("id" = String, Path, description="SPN?"),
+    ),
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "api/v1/sync_account",
+)]
 pub async fn sync_account_token_post(
     State(state): State<ServerState>,
     Path(id): Path<String>,
@@ -93,6 +204,22 @@ pub async fn sync_account_token_post(
     to_axum_response(res)
 }
 
+#[utoipa::path(
+    delete,
+    path = "/v1/sync_account/{id}/_sync_token",
+    params(
+        ("id" = String, Path, description="SPN?"),
+    ),
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "api/v1/sync_account",
+)]
 pub async fn sync_account_token_delete(
     State(state): State<ServerState>,
     Path(id): Path<String>,
@@ -163,8 +290,23 @@ async fn scim_sync_get(
         .await;
     to_axum_response(res)
 }
-
-pub async fn sync_account_id_get_attr(
+#[utoipa::path(
+    get,
+    path = "/v1/sync_account",
+    params(
+        // TODO: params
+    ),
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "v1/sync_account",
+)]
+pub async fn sync_account_id_attr_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     Path((id, attr)): Path<(String, String)>,
@@ -173,7 +315,23 @@ pub async fn sync_account_id_get_attr(
     json_rest_event_get_id_attr(state, id, attr, filter, kopid).await
 }
 
-pub async fn sync_account_id_put_attr(
+#[utoipa::path(
+    post,
+    path = "/v1/sync_account",
+    params(
+        // TODO: params
+    ),
+    responses(
+        (status = 200, description = "Ok"),
+        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 403, description = "Authorzation refused"),
+    ),
+    security(
+        ("token_jwt" = [])
+    ),
+    tag = "v1/sync_account",
+)]
+pub async fn sync_account_id_attr_put(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     Path((id, attr)): Path<(String, String)>,
@@ -233,7 +391,7 @@ async fn scim_sink_get() -> impl IntoResponse {
     </html>"#
 }
 
-pub fn scim_route_setup() -> Router<ServerState> {
+pub fn route_setup() -> Router<ServerState> {
     Router::new()
         // https://datatracker.ietf.org/doc/html/rfc7644#section-3.2
         //
@@ -303,6 +461,30 @@ pub fn scim_route_setup() -> Router<ServerState> {
         //
         //                            POST                   Send a sync update
         //
+        .route(
+            "/v1/sync_account",
+            get(sync_account_get).post(sync_account_post),
+        )
+        .route(
+            "/v1/sync_account/:id",
+            get(sync_account_id_get).patch(sync_account_id_patch),
+        )
+        .route(
+            "/v1/sync_account/:id/_attr/:attr",
+            get(sync_account_id_attr_get).put(sync_account_id_attr_put),
+        )
+        .route(
+            "/v1/sync_account/:id/_finalise",
+            get(sync_account_id_finalise_get),
+        )
+        .route(
+            "/v1/sync_account/:id/_terminate",
+            get(sync_account_id_terminate_get),
+        )
+        .route(
+            "/v1/sync_account/:id/_sync_token",
+            post(sync_account_token_post).delete(sync_account_token_delete),
+        )
         .route("/scim/v1/Sync", post(scim_sync_post).get(scim_sync_get))
-        .route("/scim/v1/Sink", get(scim_sink_get))
+        .route("/scim/v1/Sink", get(scim_sink_get)) // skip_route_check
 }

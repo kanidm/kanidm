@@ -6,6 +6,7 @@ use axum::{
     TypedHeader,
 };
 use http::HeaderValue;
+use kanidm_proto::constants::{KOPID, KVERSION};
 use uuid::Uuid;
 
 pub(crate) mod caching;
@@ -21,7 +22,7 @@ pub async fn version_middleware<B>(request: Request<B>, next: Next<B>) -> Respon
     let mut response = next.run(request).await;
     response
         .headers_mut()
-        .insert("X-KANIDM-VERSION", HeaderValue::from_static(KANIDM_VERSION));
+        .insert(KVERSION, HeaderValue::from_static(KANIDM_VERSION));
     response
 }
 

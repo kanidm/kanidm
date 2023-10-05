@@ -121,8 +121,8 @@ async fn test_scim_sync_get(rsclient: KanidmClient) {
 
     // eprintln!(
     //     "csp headers: {:#?}",
-    //     response.headers().get("content-security-policy")
+    //     response.headers().get(http::header::CONTENT_SECURITY_POLICY)
     // );
-    // assert_ne!(response.headers().get("content-security-policy"), None);
+    // assert_ne!(response.headers().get(http::header::CONTENT_SECURITY_POLICY), None);
     // eprintln!("{}", response.text().await.unwrap());
 }

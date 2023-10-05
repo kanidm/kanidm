@@ -26,7 +26,6 @@ filetime = { workspace = true }
 futures = { workspace = true }
 futures-util = { workspace = true }
 http = { workspace = true }
-
 hyper = { workspace = true }
 kanidm_proto = { workspace = true }
 kanidm_utils_users = { workspace = true }
@@ -70,6 +69,9 @@ utoipa = { version = "3.5.0", features = [
     # "uuid",
 ] }
 utoipa-swagger-ui = { version = "3.1.5", features = ["axum"] }
+
+[dev-dependencies]
+walkdir = { workspace = true }
 
 [build-dependencies]
 kanidm_build_profiles = { workspace = true }
