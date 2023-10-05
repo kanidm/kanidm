@@ -45,12 +45,11 @@ decisions to Kanidm.
 
 It's important for you to know _how_ your resource server supports OAuth2. For example, does it
 support RFC 7662 token introspection or does it rely on OpenID connect for identity information?
-Does the resource server support PKCE S256?
 
 In general Kanidm requires that your resource server supports:
 
 - HTTP basic authentication to the authorisation server
-- PKCE S256 code verification to prevent certain token attack classes
+- PKCE S256 code verification
 - OIDC only - JWT ES256 for token signatures
 
 Kanidm will expose its OAuth2 APIs at the following URLs:
@@ -61,16 +60,16 @@ Kanidm will expose its OAuth2 APIs at the following URLs:
 - rfc7662 token introspection url: `https://idm.example.com/oauth2/token/introspect`
 - rfc7009 token revoke url: `https://idm.example.com/oauth2/token/revoke`
 
-OpenID Connect discovery - you need to substitute your OAuth2 client id in the following urls:
+OpenID Connect discovery - you need to substitute your OAuth2 `:client_id:` in the following urls:
 
-- OpenID connect issuer uri: `https://idm.example.com/oauth2/openid/:client\_id:/`
+- OpenID connect issuer uri: `https://idm.example.com/oauth2/openid/:client_id:/`
 - OpenID connect discovery:
-  `https://idm.example.com/oauth2/openid/:client\_id:/.well-known/openid-configuration`
+  `https://idm.example.com/oauth2/openid/:client_id:/.well-known/openid-configuration`
 
 For manual OpenID configuration:
 
-- OpenID connect userinfo: `https://idm.example.com/oauth2/openid/:client\_id:/userinfo`
-- token signing public key: `https://idm.example.com/oauth2/openid/:client\_id:/public\_key.jwk`
+- OpenID connect userinfo: `https://idm.example.com/oauth2/openid/:client_id:/userinfo`
+- token signing public key: `https://idm.example.com/oauth2/openid/:client_id:/public_key.jwk`
 
 ### Scope Relationships
 
@@ -112,7 +111,7 @@ the resource server.
 ### Create the Kanidm Configuration
 
 After you have understood your resource server requirements you first need to configure Kanidm. By
-default members of "system\_admins" or "idm\_hp\_oauth2\_manage\_priv" are able to create or manage
+default members of `system_admins` or `idm_hp_oauth2_manage_priv` are able to create or manage
 OAuth2 resource server integrations.
 
 You can create a new resource server with:
@@ -134,7 +133,7 @@ kanidm system oauth2 update-scope-map nextcloud nextcloud_admins admin
 {{#template ../templates/kani-warning.md
 imagepath=../images
 title=WARNING
-text=If you are creating an OpenID Connect (OIDC) resource server you <b>MUST</b> provide a scope map named <code>openid</code>. Without this, OpenID clients <b>WILL NOT WORK</b>!
+text=If you are creating an OpenID Connect (OIDC) resource server you <b>MUST</b> provide a scope map named <code>openid</code>. Without this, OpenID Connect clients <b>WILL NOT WORK</b>!
 }}
 
 <!-- deno-fmt-ignore-end -->
@@ -182,8 +181,8 @@ kanidm system oauth2 show-basic-secret nextcloud
 
 ### Configure the Resource Server
 
-On your resource server, you should configure the client ID as the "oauth2\_rs\_name" from Kanidm,
-and the password to be the value shown in "oauth2\_rs\_basic\_secret". Ensure that the code
+On your resource server, you should configure the client ID as the `oauth2_rs_name` from Kanidm, and
+the password to be the value shown in `oauth2_rs_basic_secret`. Ensure that the code
 challenge/verification method is set to S256.
 
 You should now be able to test authorisation.
@@ -211,7 +210,8 @@ will not affect others.
 
 {{#template ../templates/kani-warning.md
 imagepath=../images
-title=WARNING text=Changing these settings MAY have serious consequences on the security of your resource server. You should avoid changing these if at all possible!
+title=WARNING
+text=Changing these settings MAY have serious consequences on the security of your resource server. You should avoid changing these if at all possible!
 }}
 
 <!-- deno-fmt-ignore-end -->
@@ -242,7 +242,8 @@ exchange. PKCE can not be disabled for public clients for this reason.
 
 {{#template ../templates/kani-warning.md
 imagepath=../images
-title=WARNING text=Public clients have many limitations compared to confidential clients. You should avoid them if possible.
+title=WARNING
+text=Public clients have many limitations compared to confidential clients. You should avoid them if possible.
 }}
 
 <!-- deno-fmt-ignore-end -->

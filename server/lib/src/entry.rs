@@ -45,7 +45,7 @@ use tracing::trace;
 use uuid::Uuid;
 use webauthn_rs::prelude::{AttestedPasskey as DeviceKeyV4, Passkey as PasskeyV4};
 
-use crate::be::dbentry::{DbEntry, DbEntryV2, DbEntryVers};
+use crate::be::dbentry::{DbEntry, DbEntryVers};
 use crate::be::dbvalue::DbValueSetV2;
 use crate::be::{IdxKey, IdxSlope};
 use crate::credential::Credential;
@@ -904,28 +904,28 @@ impl Entry<EntryIncremental, EntryNew> {
 
                             match (self.attrs.get(attr_name), db_ent.attrs.get(attr_name)) {
                                 (Some(vs_left), Some(vs_right)) if take_left => {
+                                    changes.insert(attr_name.clone(), cid_left.clone());
                                     #[allow(clippy::todo)]
-                                    if let Some(_attr_state) =
+                                    if let Some(merged_attr_state) =
                                         vs_left.repl_merge_valueset(vs_right, trim_cid)
                                     {
-                                        // TODO note: This is for special attr types that need to merge
+                                        // NOTE: This is for special attr types that need to merge
                                         // rather than choose content.
-                                        todo!();
+                                        eattrs.insert(attr_name.clone(), merged_attr_state);
                                     } else {
-                                        changes.insert(attr_name.clone(), cid_left.clone());
                                         eattrs.insert(attr_name.clone(), vs_left.clone());
                                     }
                                 }
                                 (Some(vs_left), Some(vs_right)) => {
+                                    changes.insert(attr_name.clone(), cid_right.clone());
                                     #[allow(clippy::todo)]
-                                    if let Some(_attr_state) =
+                                    if let Some(merged_attr_state) =
                                         vs_right.repl_merge_valueset(vs_left, trim_cid)
                                     {
-                                        // TODO note: This is for special attr types that need to merge
+                                        // NOTE: This is for special attr types that need to merge
                                         // rather than choose content.
-                                        todo!();
+                                        eattrs.insert(attr_name.clone(), merged_attr_state);
                                     } else {
-                                        changes.insert(attr_name.clone(), cid_right.clone());
                                         eattrs.insert(attr_name.clone(), vs_right.clone());
                                     }
                                 }
@@ -1368,14 +1368,9 @@ impl Entry<EntrySealed, EntryCommitted> {
     pub fn to_dbentry(&self) -> DbEntry {
         // In the future this will do extra work to process uuid
         // into "attributes" suitable for dbentry storage.
-
-        // How will this work with replication?
-        //
-        // Alternately, we may have higher-level types that translate entry
-        // into proper structures, and they themself emit/modify entries?
-
         DbEntry {
-            ent: DbEntryVers::V2(DbEntryV2 {
+            ent: DbEntryVers::V3 {
+                changestate: self.valid.ecstate.to_db_changestate(),
                 attrs: self
                     .attrs
                     .iter()
@@ -1384,7 +1379,7 @@ impl Entry<EntrySealed, EntryCommitted> {
                         (k.clone(), dbvs)
                     })
                     .collect(),
-            }),
+            },
         }
     }
 
@@ -1825,49 +1820,74 @@ impl Entry<EntrySealed, EntryCommitted> {
 
     pub fn from_dbentry(db_e: DbEntry, id: u64) -> Option<Self> {
         // Convert attrs from db format to value
-        let r_attrs: Result<Eattrs, ()> = match db_e.ent {
-            DbEntryVers::V1(_) => {
-                admin_error!("Db V1 entry should have been migrated!");
-                Err(())
-            }
-            DbEntryVers::V2(v2) => v2
-                .attrs
-                .into_iter()
-                // Skip anything empty as new VS can't deal with it.
-                .filter(|(_k, vs)| !vs.is_empty())
-                .map(|(k, dbvs)| {
-                    valueset::from_db_valueset_v2(dbvs)
-                        .map(|vs: ValueSet| (k, vs))
-                        .map_err(|e| {
-                            admin_error!(?e, "from_dbentry failed");
-                        })
-                })
-                .collect(),
-        };
 
-        let attrs = r_attrs.ok()?;
+        let (attrs, ecstate) = match db_e.ent {
+            DbEntryVers::V1(_) => {
+                error!("Db V1 entry should have been migrated!");
+                return None;
+            }
+            DbEntryVers::V2(v2) => {
+                let r_attrs = v2
+                    .attrs
+                    .into_iter()
+                    // Skip anything empty as new VS can't deal with it.
+                    .filter(|(_k, vs)| !vs.is_empty())
+                    .map(|(k, dbvs)| {
+                        valueset::from_db_valueset_v2(dbvs)
+                            .map(|vs: ValueSet| (k, vs))
+                            .map_err(|e| {
+                                error!(?e, "from_dbentry failed");
+                            })
+                    })
+                    .collect::<Result<Eattrs, ()>>()
+                    .ok()?;
+
+                /*
+                 * ⚠️  ==== The Hack Zoen ==== ⚠️
+                 *
+                 * For now to make replication work, we are synthesising an in-memory change
+                 * log, pinned to "the last time the entry was modified" as it's "create time".
+                 *
+                 * This should only be done *once* on entry load.
+                 */
+                let cid = r_attrs
+                    .get(Attribute::LastModifiedCid.as_ref())
+                    .and_then(|vs| vs.as_cid_set())
+                    .and_then(|set| set.iter().next().cloned())
+                    .or_else(|| {
+                        error!("Unable to access last modified cid of entry, unable to proceed");
+                        None
+                    })?;
+
+                let ecstate = EntryChangeState::new_without_schema(&cid, &r_attrs);
+
+                (r_attrs, ecstate)
+            }
+
+            DbEntryVers::V3 { changestate, attrs } => {
+                let ecstate = EntryChangeState::from_db_changestate(changestate);
+
+                let r_attrs = attrs
+                    .into_iter()
+                    // Skip anything empty as new VS can't deal with it.
+                    .filter(|(_k, vs)| !vs.is_empty())
+                    .map(|(k, dbvs)| {
+                        valueset::from_db_valueset_v2(dbvs)
+                            .map(|vs: ValueSet| (k, vs))
+                            .map_err(|e| {
+                                error!(?e, "from_dbentry failed");
+                            })
+                    })
+                    .collect::<Result<Eattrs, ()>>()
+                    .ok()?;
+
+                (r_attrs, ecstate)
+            }
+        };
 
         let uuid = attrs
             .get(Attribute::Uuid.as_ref())
             .and_then(|vs| vs.to_uuid_single())?;
-
-        /*
-         * ⚠️  ==== The Hack Zoen ==== ⚠️
-         *
-         * For now to make replication work, we are synthesising an in-memory change
-         * log, pinned to "the last time the entry was modified" as it's "create time".
-         *
-         * This means that a simple restart of the server flushes and resets the cl
-         * content. In the future though, this will actually be "part of" the entry
-         * and loaded from disk proper.
-         */
-        let cid = attrs
-            .get(Attribute::LastModifiedCid.as_ref())
-            .and_then(|vs| vs.as_cid_set())
-            .and_then(|set| set.iter().next().cloned())?;
-
-        // let eclog = EntryChangelog::new_without_schema(cid, attrs.clone());
-        let ecstate = EntryChangeState::new_without_schema(&cid, &attrs);
 
         Some(Entry {
             valid: EntrySealed { uuid, ecstate },

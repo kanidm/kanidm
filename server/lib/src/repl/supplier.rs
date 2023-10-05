@@ -10,10 +10,12 @@ use kanidm_lib_crypto::mtls::build_self_signed_server_and_client_identity;
 use kanidm_lib_crypto::prelude::{PKey, Private, X509};
 
 impl<'a> QueryServerWriteTransaction<'a> {
-    fn supplier_generate_key_cert(&mut self) -> Result<(PKey<Private>, X509), OperationError> {
+    fn supplier_generate_key_cert(
+        &mut self,
+        domain_name: &str,
+    ) -> Result<(PKey<Private>, X509), OperationError> {
         // Invalid, must need to re-generate.
-        let domain_name = "localhost";
-        let expiration_days = 1;
+        let expiration_days = 180;
         let s_uuid = self.get_server_uuid();
 
         let (private, x509) =
@@ -39,12 +41,15 @@ impl<'a> QueryServerWriteTransaction<'a> {
     }
 
     #[instrument(level = "info", skip_all)]
-    pub fn supplier_renew_key_cert(&mut self) -> Result<(), OperationError> {
-        self.supplier_generate_key_cert().map(|_| ())
+    pub fn supplier_renew_key_cert(&mut self, domain_name: &str) -> Result<(), OperationError> {
+        self.supplier_generate_key_cert(domain_name).map(|_| ())
     }
 
     #[instrument(level = "info", skip_all)]
-    pub fn supplier_get_key_cert(&mut self) -> Result<(PKey<Private>, X509), OperationError> {
+    pub fn supplier_get_key_cert(
+        &mut self,
+        domain_name: &str,
+    ) -> Result<(PKey<Private>, X509), OperationError> {
         // Later we need to put this through a HSM or similar, but we will always need a way
         // to persist a handle, so we still need the db write and load components.
 
@@ -66,7 +71,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 // error? regenerate?
             }
             */
-            None => self.supplier_generate_key_cert()?,
+            None => self.supplier_generate_key_cert(domain_name)?,
         };
 
         Ok(key_cert)
@@ -100,14 +105,12 @@ impl<'a> QueryServerReadTransaction<'a> {
             return Ok(ReplIncrementalContext::DomainMismatch);
         }
 
-        let our_ranges = self
-            .get_be_txn()
-            .get_ruv()
-            .current_ruv_range()
-            .map_err(|e| {
-                error!(err = ?e, "Unable to access supplier RUV range");
-                e
-            })?;
+        let supplier_ruv = self.get_be_txn().get_ruv();
+
+        let our_ranges = supplier_ruv.current_ruv_range().map_err(|e| {
+            error!(err = ?e, "Unable to access supplier RUV range");
+            e
+        })?;
 
         // Compare this to our internal ranges - work out the list of entry
         // id's that are now different.
@@ -120,21 +123,27 @@ impl<'a> QueryServerReadTransaction<'a> {
             RangeDiffStatus::Ok(ranges) => ranges,
             RangeDiffStatus::Refresh { lag_range } => {
                 error!("Replication - Consumer is lagging and must be refreshed.");
-                debug!(?lag_range);
+                info!(?lag_range);
+                debug!(consumer_ranges = ?ctx_ranges);
+                debug!(supplier_ranges = ?our_ranges);
                 return Ok(ReplIncrementalContext::RefreshRequired);
             }
             RangeDiffStatus::Unwilling { adv_range } => {
                 error!("Replication - Supplier is lagging and must be investigated.");
-                debug!(?adv_range);
+                info!(?adv_range);
+                debug!(consumer_ranges = ?ctx_ranges);
+                debug!(supplier_ranges = ?our_ranges);
                 return Ok(ReplIncrementalContext::UnwillingToSupply);
             }
             RangeDiffStatus::Critical {
                 lag_range,
                 adv_range,
             } => {
-                error!("Replication Critical - Servers are advanced of us, and also lagging! This must be immediately investigated!");
-                debug!(?lag_range);
-                debug!(?adv_range);
+                error!("Replication Critical - Consumers are advanced of us, and also lagging! This must be immediately investigated!");
+                info!(?lag_range);
+                info!(?adv_range);
+                debug!(consumer_ranges = ?ctx_ranges);
+                debug!(supplier_ranges = ?our_ranges);
                 return Ok(ReplIncrementalContext::UnwillingToSupply);
             }
         };

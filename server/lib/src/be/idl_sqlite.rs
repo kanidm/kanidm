@@ -1,5 +1,4 @@
-use std::collections::BTreeMap;
-use std::collections::VecDeque;
+use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::convert::{TryFrom, TryInto};
 use std::sync::Arc;
 use std::sync::Mutex;
@@ -16,6 +15,7 @@ use rusqlite::{Connection, OpenFlags, OptionalExtension};
 use uuid::Uuid;
 
 use crate::be::dbentry::{DbEntry, DbIdentSpn};
+use crate::be::dbvalue::DbCidV1;
 use crate::be::{BackendConfig, IdList, IdRawEntry, IdxKey, IdxSlope};
 use crate::entry::{Entry, EntryCommitted, EntrySealed};
 use crate::prelude::*;
@@ -1011,7 +1011,7 @@ impl IdlSqliteWriteTransaction {
             .map_err(sqlite_error)
     }
 
-    pub fn migrate_dbentryv1_to_dbentryv2(&self) -> Result<(), OperationError> {
+    fn migrate_dbentryv1_to_dbentryv2(&self) -> Result<(), OperationError> {
         let allids = self.get_identry_raw(&IdList::AllIds)?;
         let raw_entries: Result<Vec<IdRawEntry>, _> = allids
             .into_iter()
@@ -1034,6 +1034,18 @@ impl IdlSqliteWriteTransaction {
             .collect();
 
         self.write_identries_raw(raw_entries?.into_iter())
+    }
+
+    fn migrate_dbentryv2_to_dbentryv3(&self) -> Result<(), OperationError> {
+        // To perform this migration we have to load everything to a valid entry, then
+        // write them all back down once their change states are created.
+        let all_entries = self.get_identry(&IdList::AllIds)?;
+
+        for entry in all_entries {
+            self.write_identry(&entry)?;
+        }
+
+        Ok(())
     }
 
     pub fn write_uuid2spn(&self, uuid: Uuid, k: Option<&Value>) -> Result<(), OperationError> {
@@ -1116,6 +1128,90 @@ impl IdlSqliteWriteTransaction {
             )
             .map(|_| ())
             .map_err(sqlite_error)
+    }
+
+    pub(crate) fn create_db_ruv(&self) -> Result<(), OperationError> {
+        self.get_conn()?
+            .execute(
+                &format!(
+                    "CREATE TABLE IF NOT EXISTS {}.ruv (cid TEXT PRIMARY KEY)",
+                    self.get_db_name()
+                ),
+                [],
+            )
+            .map(|_| ())
+            .map_err(sqlite_error)
+    }
+
+    pub fn get_db_ruv(&self) -> Result<BTreeSet<Cid>, OperationError> {
+        let mut stmt = self
+            .get_conn()?
+            .prepare(&format!("SELECT cid FROM {}.ruv", self.get_db_name()))
+            .map_err(sqlite_error)?;
+
+        let kh_iter = stmt
+            .query_map([], |row| Ok(row.get(0)?))
+            .map_err(sqlite_error)?;
+
+        kh_iter
+            .map(|v| {
+                let ser_cid: String = v.map_err(sqlite_error)?;
+                let db_cid: DbCidV1 = serde_json::from_str(&ser_cid).map_err(serde_json_error)?;
+                Ok(db_cid.into())
+            })
+            .collect()
+    }
+
+    pub fn write_db_ruv<I, J>(&mut self, mut added: I, mut removed: J) -> Result<(), OperationError>
+    where
+        I: Iterator<Item = Cid>,
+        J: Iterator<Item = Cid>,
+    {
+        let mut stmt = self
+            .get_conn()?
+            .prepare(&format!(
+                "DELETE FROM {}.ruv WHERE cid = :cid",
+                self.get_db_name()
+            ))
+            .map_err(sqlite_error)?;
+
+        removed.try_for_each(|cid| {
+            let db_cid: DbCidV1 = cid.into();
+
+            serde_json::to_string(&db_cid)
+                .map_err(serde_json_error)
+                .and_then(|ser_cid| {
+                    stmt.execute(named_params! {
+                        ":cid": &ser_cid
+                    })
+                    // remove the updated usize
+                    .map(|_| ())
+                    .map_err(sqlite_error)
+                })
+        })?;
+
+        let mut stmt = self
+            .get_conn()?
+            .prepare(&format!(
+                "INSERT OR REPLACE INTO {}.ruv (cid) VALUES(:cid)",
+                self.get_db_name()
+            ))
+            .map_err(sqlite_error)?;
+
+        added.try_for_each(|cid| {
+            let db_cid: DbCidV1 = cid.into();
+
+            serde_json::to_string(&db_cid)
+                .map_err(serde_json_error)
+                .and_then(|ser_cid| {
+                    stmt.execute(named_params! {
+                        ":cid": &ser_cid
+                    })
+                    // remove the updated usize
+                    .map(|_| ())
+                    .map_err(sqlite_error)
+                })
+        })
     }
 
     pub fn create_idx(&self, attr: Attribute, itype: IndexType) -> Result<(), OperationError> {
@@ -1629,7 +1725,19 @@ impl IdlSqliteWriteTransaction {
             dbv_id2entry = 8;
             info!(entry = %dbv_id2entry, "dbv_id2entry migrated (keyhandles)");
         }
-        //   * if v8 -> complete
+        //   * if v8 -> migrate all entries to have a change state
+        if dbv_id2entry == 8 {
+            self.migrate_dbentryv2_to_dbentryv3()?;
+            dbv_id2entry = 9;
+            info!(entry = %dbv_id2entry, "dbv_id2entry migrated (dbentryv2 -> dbentryv3)");
+        }
+        //   * if v9 -> complete
+        if dbv_id2entry == 9 {
+            self.create_db_ruv()?;
+            dbv_id2entry = 10;
+            info!(entry = %dbv_id2entry, "dbv_id2entry migrated (db_ruv)");
+        }
+        //   * if v10 -> complete
 
         self.set_db_version_key(DBV_ID2ENTRY, dbv_id2entry)?;
 

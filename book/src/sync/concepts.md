@@ -4,7 +4,7 @@
 
 In some environments Kanidm may be the first Identity Management system introduced. However many
 existing environments have existing IDM systems that are well established and in use. To allow
-Kanidm to work with these, it is possible to synchronised data between these IDM systems.
+Kanidm to work with these, it is possible to synchronise data between these IDM systems.
 
 Currently Kanidm can consume (import) data from another IDM system. There are two major use cases
 for this:
@@ -13,7 +13,7 @@ for this:
 - Migrating from an existing IDM to Kanidm
 
 An incoming IDM data source is bound to Kanidm by a sync account. All synchronised entries will have
-a reference to the sync account that they came from defined by their "sync parent uuid". While an
+a reference to the sync account that they came from defined by their `sync_parent_uuid`. While an
 entry is owned by a sync account we refer to the sync account as having authority over the content
 of that entry.
 

@@ -40,11 +40,13 @@ william:x:654401105:
 
 Other systems like FreeIPA use a plugin that generates a UPG as a separate group entry on creation
 of the account. This means there are two entries for an account, and they must be kept in lock-step.
+This poses a risk of desynchronisation that can and will happen on these systems leading to possible
+issues.
 
 Kanidm does neither of these. As the GID number of the user must be unique, and a user implies the
-UPG must exist, we can generate UPG's on-demand from the account. This has a single side effect -
-that you are unable to add any members to a UPG - given the nature of a user private group, this is
-the point.
+UPG must exist, we can generate UPG's on-demand from the account. This has an important side
+effect - that you are unable to add any members to a UPG - given the nature of a user private group,
+this is the point.
 
 ### GID Number Generation
 

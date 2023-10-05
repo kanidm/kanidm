@@ -2,10 +2,6 @@
 
 ## Software Installation Method
 
-> **NOTE** Our preferred deployment method is in containers, and this documentation assumes you're
-> running in docker. Kanidm will alternately run as a daemon/service, and server builds are
-> available for multiple platforms if you prefer this option. You will
-
 We provide docker images for the server components. They can be found at:
 
 - <https://hub.docker.com/r/kanidm/server>
@@ -20,15 +16,18 @@ docker pull kanidm/radius:latest
 docker pull kanidm/tools:latest
 ```
 
-You may need to adjust your example commands throughout this document to suit your desired server
-type if you choose not to use docker.
+> **NOTE** Our preferred deployment method is in containers, and this documentation assumes you're
+> running in docker. Kanidm will alternately run as a daemon/service, and server builds are
+> available for multiple platforms if you prefer this option. You may need to adjust the example
+> commands throughout this document to suit your desired server type if you choose not to use
+> containers.
 
 ## Development Version
 
 If you are interested in running the latest code from development, you can do this by changing the
-docker tag to `kanidm/server:devel` or `kanidm/server:x86_64_v3_devel` instead. Many people run the
-development version, and it is extremely reliable, but occasional rough patches may occur. If you
-report issues, we will make every effort to help resolve them.
+docker tag to `kanidm/server:devel` instead. Many people run the development version, and it is
+extremely reliable, but occasional rough patches may occur. If you report issues, we will make every
+effort to help resolve them.
 
 ## System Requirements
 
@@ -39,8 +38,8 @@ Kanidm relies on modern CPU optimisations for many operations. As a result your 
 - `x86_64` supporting `x86_64_v2` operations.
 - `aarch64` supporting `neon_v8` operations.
 
-Older or unsupported CPUs may raise a SIGIL (Illegal Instruction) on hardware that is not supported
-by the project.
+Older or unsupported CPUs may raise a `SIGILL` (Illegal Instruction) on hardware that is not
+supported by the project.
 
 <!-- deno-fmt-ignore-start -->
 
@@ -83,9 +82,9 @@ The key.pem should be a single PEM private key, with no encryption. The file con
 similar to:
 
 ```bash
------BEGIN RSA PRIVATE KEY-----
+-----BEGIN PRIVATE KEY-----
 MII...<base64>
------END RSA PRIVATE KEY-----
+-----END PRIVATE KEY-----
 ```
 
 The chain.pem is a series of PEM formatted certificates. The leaf certificate, or the certificate

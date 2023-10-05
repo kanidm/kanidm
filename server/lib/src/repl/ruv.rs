@@ -1,3 +1,4 @@
+use crate::be::dbrepl::DbReplMeta;
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet};
 use std::ops::Bound::*;
@@ -5,6 +6,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use concread::bptree::{BptreeMap, BptreeMapReadSnapshot, BptreeMapReadTxn, BptreeMapWriteTxn};
+
 use idlset::v2::IDLBitRange;
 use kanidm_proto::v1::ConsistencyError;
 
@@ -60,7 +62,10 @@ pub(crate) enum RangeDiffStatus {
 impl ReplicationUpdateVector {
     pub fn write(&self) -> ReplicationUpdateVectorWriteTransaction<'_> {
         ReplicationUpdateVectorWriteTransaction {
+            // Need to take the write first.
+            cleared: false,
             data: self.data.write(),
+            data_pre: self.data.read(),
             ranged: self.ranged.write(),
         }
     }
@@ -212,16 +217,22 @@ impl ReplicationUpdateVector {
 }
 
 pub struct ReplicationUpdateVectorWriteTransaction<'a> {
+    cleared: bool,
     data: BptreeMapWriteTxn<'a, Cid, IDLBitRange>,
+    data_pre: BptreeMapReadTxn<'a, Cid, IDLBitRange>,
     ranged: BptreeMapWriteTxn<'a, Uuid, BTreeSet<Duration>>,
 }
 
 impl<'a> fmt::Debug for ReplicationUpdateVectorWriteTransaction<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        writeln!(f, "RUV DUMP")?;
+        writeln!(f, "RUV DATA DUMP")?;
         self.data
             .iter()
-            .try_for_each(|(cid, idl)| writeln!(f, "* [{cid} {idl:?}]"))
+            .try_for_each(|(cid, idl)| writeln!(f, "* [{cid} {idl:?}]"))?;
+        writeln!(f, "RUV RANGE DUMP")?;
+        self.ranged
+            .iter()
+            .try_for_each(|(s_uuid, ts)| writeln!(f, "* [{s_uuid} {ts:?}]"))
     }
 }
 
@@ -230,10 +241,29 @@ pub struct ReplicationUpdateVectorReadTransaction<'a> {
     ranged: BptreeMapReadTxn<'a, Uuid, BTreeSet<Duration>>,
 }
 
+impl<'a> fmt::Debug for ReplicationUpdateVectorReadTransaction<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(f, "RUV DATA DUMP")?;
+        self.data
+            .iter()
+            .try_for_each(|(cid, idl)| writeln!(f, "* [{cid} {idl:?}]"))?;
+        writeln!(f, "RUV RANGE DUMP")?;
+        self.ranged
+            .iter()
+            .try_for_each(|(s_uuid, ts)| writeln!(f, "* [{s_uuid} {ts:?}]"))
+    }
+}
+
 pub trait ReplicationUpdateVectorTransaction {
     fn ruv_snapshot(&self) -> BptreeMapReadSnapshot<'_, Cid, IDLBitRange>;
 
     fn range_snapshot(&self) -> BptreeMapReadSnapshot<'_, Uuid, BTreeSet<Duration>>;
+
+    fn to_db_backup_ruv(&self) -> DbReplMeta {
+        DbReplMeta::V1 {
+            ruv: self.ruv_snapshot().keys().map(|cid| cid.into()).collect(),
+        }
+    }
 
     fn current_ruv_range(&self) -> Result<BTreeMap<Uuid, ReplCidRange>, OperationError> {
         self.range_snapshot()
@@ -447,6 +477,7 @@ impl<'a> ReplicationUpdateVectorTransaction for ReplicationUpdateVectorReadTrans
 
 impl<'a> ReplicationUpdateVectorWriteTransaction<'a> {
     pub fn clear(&mut self) {
+        self.cleared = true;
         self.data.clear();
         self.ranged.clear();
     }
@@ -524,10 +555,42 @@ impl<'a> ReplicationUpdateVectorWriteTransaction<'a> {
         Ok(())
     }
 
+    /// Restore the ruv from a DB backup. It's important to note here that
+    /// we don't actually need to restore and of the IDL's in the process. we only
+    /// needs the CID's of the changes/points in time. This is because when the
+    /// db entries are restored, their changesets will re-populate the data that we
+    /// need in the RUV at these points. The reason we need these ranges without IDL
+    /// is so that trim and replication works properly.
+    pub(crate) fn restore<I>(&mut self, iter: I) -> Result<(), OperationError>
+    where
+        I: IntoIterator<Item = Cid>,
+    {
+        let mut rebuild_ruv: BTreeMap<Cid, IDLBitRange> = BTreeMap::new();
+        let mut rebuild_range: BTreeMap<Uuid, BTreeSet<Duration>> = BTreeMap::default();
+
+        for cid in iter {
+            if !rebuild_ruv.contains_key(&cid) {
+                let idl = IDLBitRange::new();
+                rebuild_ruv.insert(cid.clone(), idl);
+            }
+
+            if let Some(server_range) = rebuild_range.get_mut(&cid.s_uuid) {
+                server_range.insert(cid.ts);
+            } else {
+                let mut ts_range = BTreeSet::default();
+                ts_range.insert(cid.ts);
+                rebuild_range.insert(cid.s_uuid, ts_range);
+            }
+        }
+
+        self.data.extend(rebuild_ruv);
+        self.ranged.extend(rebuild_range);
+
+        Ok(())
+    }
+
     pub fn rebuild(&mut self, entries: &[Arc<EntrySealedCommitted>]) -> Result<(), OperationError> {
-        // Drop everything.
-        self.clear();
-        // Entries and their internal changelogs are the "source of truth" for all changes
+        // Entries and their internal changestates are the "source of truth" for all changes
         // that have ever occurred and are stored on this server. So we use them to rebuild our RUV
         // here!
         let mut rebuild_ruv: BTreeMap<Cid, IDLBitRange> = BTreeMap::new();
@@ -749,6 +812,8 @@ impl<'a> ReplicationUpdateVectorWriteTransaction<'a> {
         }
 
         /*
+        // For now, we can't actually remove any server_id's because we would break range
+        // comparisons in this case. We likely need a way to clean-ruv here.
         for s_uuid in remove_suuid {
             let x = self.ranged.remove(&s_uuid);
             assert!(x.map(|y| y.is_empty()).unwrap_or(false))
@@ -760,6 +825,49 @@ impl<'a> ReplicationUpdateVectorWriteTransaction<'a> {
         self.data.split_off_lt(cid);
 
         Ok(idl)
+    }
+
+    pub fn added(&self) -> impl Iterator<Item = Cid> + '_ {
+        // Find the max from the previous dataset.
+        let prev_bound = if self.cleared {
+            // We have been cleared during this txn, so everything in data is
+            // added.
+            Unbounded
+        } else if let Some((max, _)) = self.data_pre.last_key_value() {
+            Excluded(max.clone())
+        } else {
+            // If empty, assume everything is new.
+            Unbounded
+        };
+
+        // Starting from the previous max, iterate through our data to find what
+        // has been added.
+        self.data.range((prev_bound, Unbounded)).map(|(cid, _)| {
+            trace!(added_cid = ?cid);
+            cid.clone()
+        })
+    }
+
+    pub fn removed(&self) -> impl Iterator<Item = Cid> + '_ {
+        let prev_bound = if self.cleared {
+            // We have been cleared during this txn, so everything in pre is
+            // removed.
+            Unbounded
+        } else if let Some((min, _)) = self.data.first_key_value() {
+            Excluded(min.clone())
+        } else {
+            // If empty, assume everything is new.
+            Unbounded
+        };
+
+        // iterate through our previous data to find what has been removed given
+        // the ranges determined above.
+        self.data_pre
+            .range((Unbounded, prev_bound))
+            .map(|(cid, _)| {
+                trace!(removed_cid = ?cid);
+                cid.clone()
+            })
     }
 
     pub fn commit(self) {

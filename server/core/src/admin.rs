@@ -22,12 +22,14 @@ pub enum AdminTaskRequest {
     RecoverAccount { name: String },
     ShowReplicationCertificate,
     RenewReplicationCertificate,
+    RefreshReplicationConsumer,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub enum AdminTaskResponse {
     RecoverAccount { password: String },
     ShowReplicationCertificate { cert: String },
+    Success,
     Error,
 }
 
@@ -237,6 +239,35 @@ async fn renew_replication_certificate(ctrl_tx: &mut mpsc::Sender<ReplCtrl>) -> 
     }
 }
 
+async fn replication_consumer_refresh(ctrl_tx: &mut mpsc::Sender<ReplCtrl>) -> AdminTaskResponse {
+    let (tx, rx) = oneshot::channel();
+
+    if ctrl_tx
+        .send(ReplCtrl::RefreshConsumer { respond: tx })
+        .await
+        .is_err()
+    {
+        error!("replication control channel has shutdown");
+        return AdminTaskResponse::Error;
+    }
+
+    match rx.await {
+        Ok(mut refresh_rx) => {
+            if let Some(()) = refresh_rx.recv().await {
+                info!("Replication refresh success");
+                AdminTaskResponse::Success
+            } else {
+                error!("Replication refresh failed. Please inspect the logs.");
+                AdminTaskResponse::Error
+            }
+        }
+        Err(_) => {
+            error!("replication control channel did not respond with refresh status.");
+            AdminTaskResponse::Error
+        }
+    }
+}
+
 async fn handle_client(
     sock: UnixStream,
     server: &'static QueryServerWriteV1,
@@ -251,7 +282,6 @@ async fn handle_client(
         // Setup the logging span
         let eventid = Uuid::new_v4();
         let nspan = span!(Level::INFO, "handle_admin_client_request", uuid = ?eventid);
-        // let _span = nspan.enter();
 
         let resp = async {
             match req {
@@ -275,6 +305,13 @@ async fn handle_client(
                     Some(ctrl_tx) => renew_replication_certificate(ctrl_tx).await,
                     None => {
                         error!("replication not configured, unable to renew certificate.");
+                        AdminTaskResponse::Error
+                    }
+                },
+                AdminTaskRequest::RefreshReplicationConsumer => match repl_ctrl_tx.as_mut() {
+                    Some(ctrl_tx) => replication_consumer_refresh(ctrl_tx).await,
+                    None => {
+                        error!("replication not configured, unable to refresh consumer.");
                         AdminTaskResponse::Error
                     }
                 },

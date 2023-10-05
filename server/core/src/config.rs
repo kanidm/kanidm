@@ -302,8 +302,8 @@ impl fmt::Display for Configuration {
     }
 }
 
-impl Configuration {
-    pub fn new() -> Self {
+impl Default for Configuration {
+    fn default() -> Self {
         Configuration {
             address: DEFAULT_SERVER_ADDRESS.to_string(),
             ldapaddress: None,
@@ -330,6 +330,12 @@ impl Configuration {
             repl_config: None,
             integration_repl_config: None,
         }
+    }
+}
+
+impl Configuration {
+    pub fn new() -> Self {
+        Self::default()
     }
 
     pub fn new_for_test() -> Self {

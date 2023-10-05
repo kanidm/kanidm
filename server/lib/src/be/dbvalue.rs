@@ -16,12 +16,36 @@ use webauthn_rs_core::proto::{COSEKey, UserVerificationPolicy};
 use crate::repl::cid::Cid;
 pub use kanidm_lib_crypto::DbPasswordV1;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Ord, PartialOrd, PartialEq, Eq)]
 pub struct DbCidV1 {
-    #[serde(rename = "s")]
-    pub server_id: Uuid,
     #[serde(rename = "t")]
     pub timestamp: Duration,
+    #[serde(rename = "s")]
+    pub server_id: Uuid,
+}
+
+impl From<Cid> for DbCidV1 {
+    fn from(Cid { s_uuid, ts }: Cid) -> Self {
+        DbCidV1 {
+            timestamp: ts,
+            server_id: s_uuid,
+        }
+    }
+}
+
+impl From<&Cid> for DbCidV1 {
+    fn from(&Cid { s_uuid, ts }: &Cid) -> Self {
+        DbCidV1 {
+            timestamp: ts,
+            server_id: s_uuid,
+        }
+    }
+}
+
+impl fmt::Display for DbCidV1 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:032}-{}", self.timestamp.as_nanos(), self.server_id)
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug)]

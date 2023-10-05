@@ -1,4 +1,6 @@
 use super::cid::Cid;
+use crate::be::dbrepl::DbEntryChangeState;
+use crate::be::dbvalue::DbCidV1;
 use crate::entry::Eattrs;
 use crate::prelude::*;
 use crate::schema::SchemaTransaction;
@@ -59,6 +61,76 @@ impl EntryChangeState {
         };
 
         EntryChangeState { st }
+    }
+
+    pub(crate) fn to_db_changestate(&self) -> DbEntryChangeState {
+        match &self.st {
+            State::Live { at, changes } => {
+                let at = DbCidV1 {
+                    server_id: at.s_uuid,
+                    timestamp: at.ts,
+                };
+
+                let changes = changes
+                    .iter()
+                    .map(|(attr, cid)| {
+                        (
+                            attr.to_string(),
+                            DbCidV1 {
+                                server_id: cid.s_uuid,
+                                timestamp: cid.ts,
+                            },
+                        )
+                    })
+                    .collect();
+
+                DbEntryChangeState::V1Live { at, changes }
+            }
+            State::Tombstone { at } => {
+                let at = DbCidV1 {
+                    server_id: at.s_uuid,
+                    timestamp: at.ts,
+                };
+
+                DbEntryChangeState::V1Tombstone { at }
+            }
+        }
+    }
+
+    pub(crate) fn from_db_changestate(db_ecstate: DbEntryChangeState) -> Self {
+        match db_ecstate {
+            DbEntryChangeState::V1Live { at, changes } => {
+                let at = Cid {
+                    s_uuid: at.server_id,
+                    ts: at.timestamp,
+                };
+
+                let changes = changes
+                    .iter()
+                    .map(|(attr, cid)| {
+                        (
+                            attr.into(),
+                            Cid {
+                                s_uuid: cid.server_id,
+                                ts: cid.timestamp,
+                            },
+                        )
+                    })
+                    .collect();
+
+                EntryChangeState {
+                    st: State::Live { at, changes },
+                }
+            }
+            DbEntryChangeState::V1Tombstone { at } => EntryChangeState {
+                st: State::Tombstone {
+                    at: Cid {
+                        s_uuid: at.server_id,
+                        ts: at.timestamp,
+                    },
+                },
+            },
+        }
     }
 
     pub(crate) fn build(st: State) -> Self {

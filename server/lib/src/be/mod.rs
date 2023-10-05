@@ -20,6 +20,7 @@ use tracing::{trace, trace_span};
 use uuid::Uuid;
 
 use crate::be::dbentry::{DbBackup, DbEntry};
+use crate::be::dbrepl::DbReplMeta;
 use crate::entry::Entry;
 use crate::filter::{Filter, FilterPlan, FilterResolved, FilterValidResolved};
 use crate::prelude::*;
@@ -32,7 +33,9 @@ use crate::repl::ruv::{
 use crate::value::{IndexType, Value};
 
 pub mod dbentry;
+pub mod dbrepl;
 pub mod dbvalue;
+
 mod idl_arc_sqlite;
 mod idl_sqlite;
 pub(crate) mod idxkey;
@@ -847,6 +850,8 @@ pub trait BackendTransaction {
     }
 
     fn backup(&mut self, dst_path: &str) -> Result<(), OperationError> {
+        let repl_meta = self.get_ruv().to_db_backup_ruv();
+
         // load all entries into RAM, may need to change this later
         // if the size of the database compared to RAM is an issue
         let idl = IdList::AllIds;
@@ -875,11 +880,12 @@ pub trait BackendTransaction {
 
         let keyhandles = idlayer.get_key_handles()?;
 
-        let bak = DbBackup::V3 {
+        let bak = DbBackup::V4 {
             db_s_uuid,
             db_d_uuid,
             db_ts_max,
             keyhandles,
+            repl_meta,
             entries,
         };
 
@@ -1693,18 +1699,19 @@ impl<'a> BackendWriteTransaction<'a> {
     }
 
     pub fn restore(&mut self, src_path: &str) -> Result<(), OperationError> {
-        let idlayer = self.get_idlayer();
-        // load all entries into RAM, may need to change this later
-        // if the size of the database compared to RAM is an issue
         let serialized_string = fs::read_to_string(src_path).map_err(|e| {
             admin_error!("fs::read_to_string {:?}", e);
             OperationError::FsError
         })?;
 
-        idlayer.danger_purge_id2entry().map_err(|e| {
-            admin_error!("purge_id2entry failed {:?}", e);
+        self.danger_delete_all_db_content().map_err(|e| {
+            admin_error!("delete_all_db_content failed {:?}", e);
             e
         })?;
+
+        let idlayer = self.get_idlayer();
+        // load all entries into RAM, may need to change this later
+        // if the size of the database compared to RAM is an issue
 
         let dbbak_option: Result<DbBackup, serde_json::Error> =
             serde_json::from_str(&serialized_string);
@@ -1714,8 +1721,8 @@ impl<'a> BackendWriteTransaction<'a> {
             OperationError::SerdeJsonError
         })?;
 
-        let dbentries = match dbbak {
-            DbBackup::V1(dbentries) => dbentries,
+        let (dbentries, repl_meta) = match dbbak {
+            DbBackup::V1(dbentries) => (dbentries, None),
             DbBackup::V2 {
                 db_s_uuid,
                 db_d_uuid,
@@ -1726,7 +1733,7 @@ impl<'a> BackendWriteTransaction<'a> {
                 idlayer.write_db_s_uuid(db_s_uuid)?;
                 idlayer.write_db_d_uuid(db_d_uuid)?;
                 idlayer.set_db_ts_max(db_ts_max)?;
-                entries
+                (entries, None)
             }
             DbBackup::V3 {
                 db_s_uuid,
@@ -1740,9 +1747,35 @@ impl<'a> BackendWriteTransaction<'a> {
                 idlayer.write_db_d_uuid(db_d_uuid)?;
                 idlayer.set_db_ts_max(db_ts_max)?;
                 idlayer.set_key_handles(keyhandles)?;
-                entries
+                (entries, None)
+            }
+            DbBackup::V4 {
+                db_s_uuid,
+                db_d_uuid,
+                db_ts_max,
+                keyhandles,
+                repl_meta,
+                entries,
+            } => {
+                // Do stuff.
+                idlayer.write_db_s_uuid(db_s_uuid)?;
+                idlayer.write_db_d_uuid(db_d_uuid)?;
+                idlayer.set_db_ts_max(db_ts_max)?;
+                idlayer.set_key_handles(keyhandles)?;
+                (entries, Some(repl_meta))
             }
         };
+
+        // Rebuild the RUV from the backup.
+        match repl_meta {
+            Some(DbReplMeta::V1 { ruv: db_ruv }) => {
+                self.get_ruv()
+                    .restore(db_ruv.into_iter().map(|db_cid| db_cid.into()))?;
+            }
+            None => {
+                warn!("Unable to restore replication metadata, this server may need a refresh.");
+            }
+        }
 
         info!("Restoring {} entries ...", dbentries.len());
 
@@ -1763,6 +1796,8 @@ impl<'a> BackendWriteTransaction<'a> {
             })
             .collect();
 
+        let idlayer = self.get_idlayer();
+
         idlayer.write_identries_raw(identries?.into_iter())?;
 
         info!("Restored {} entries", dbentries.len());
@@ -1778,8 +1813,33 @@ impl<'a> BackendWriteTransaction<'a> {
         }
     }
 
+    /// If any RUV elements are present in the DB, load them now. This provides us with
+    /// the RUV boundaries and change points from previous operations of the server, so
+    /// that ruv_rebuild can "fill in" the gaps.
+    ///
+    /// # SAFETY
+    ///
+    /// Note that you should only call this function during the server startup
+    /// to reload the RUV data from the entries of the database.
+    ///
+    /// Before calling this, the in memory ruv MUST be clear.
     #[instrument(level = "debug", name = "be::ruv_rebuild", skip_all)]
-    pub fn ruv_rebuild(&mut self) -> Result<(), OperationError> {
+    fn ruv_reload(&mut self) -> Result<(), OperationError> {
+        let idlayer = self.get_idlayer();
+
+        let db_ruv = idlayer.get_db_ruv()?;
+
+        // Setup the CID's that existed previously. We don't need to know what entries
+        // they affect, we just need them to ensure that we have ranges for replication
+        // comparison to take effect properly.
+        self.get_ruv().restore(db_ruv)?;
+
+        // Then populate the RUV with the data from the entries.
+        self.ruv_rebuild()
+    }
+
+    #[instrument(level = "debug", name = "be::ruv_rebuild", skip_all)]
+    fn ruv_rebuild(&mut self) -> Result<(), OperationError> {
         // Rebuild the ruv!
         // For now this has to read from all the entries in the DB, but in the future
         // we'll actually store this properly (?). If it turns out this is really fast
@@ -1819,10 +1879,13 @@ impl<'a> BackendWriteTransaction<'a> {
 
     pub fn commit(self) -> Result<(), OperationError> {
         let BackendWriteTransaction {
-            idlayer,
+            mut idlayer,
             idxmeta_wr,
             ruv,
         } = self;
+
+        // write the ruv content back to the db.
+        idlayer.write_db_ruv(ruv.added(), ruv.removed())?;
 
         idlayer.commit().map(|()| {
             ruv.commit();
@@ -1975,7 +2038,7 @@ impl Backend {
         // Now rebuild the ruv.
         let mut be_write = be.write();
         be_write
-            .ruv_rebuild()
+            .ruv_reload()
             .and_then(|_| be_write.commit())
             .map_err(|e| {
                 admin_error!(?e, "Failed to reload ruv");
@@ -2528,6 +2591,16 @@ mod tests {
                     db_d_uuid: _,
                     db_ts_max: _,
                     keyhandles: _,
+                    entries,
+                } => {
+                    let _ = entries.pop();
+                }
+                DbBackup::V4 {
+                    db_s_uuid: _,
+                    db_d_uuid: _,
+                    db_ts_max: _,
+                    keyhandles: _,
+                    repl_meta: _,
                     entries,
                 } => {
                     let _ = entries.pop();

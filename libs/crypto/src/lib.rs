@@ -823,7 +823,6 @@ impl Password {
             })
             .map_err(|_| CryptoError::Argon2)
             .map(|material| Password { material })
-            .map_err(|e| e.into())
     }
 
     pub fn new_argon2id_tpm(
@@ -857,7 +856,6 @@ impl Password {
                 key,
             })
             .map(|material| Password { material })
-            .map_err(|e| e.into())
     }
 
     #[inline]

@@ -12,9 +12,10 @@ use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::broadcast;
 use tokio::sync::mpsc;
 use tokio::sync::oneshot;
+use tokio::sync::Mutex;
 use tokio::time::{interval, sleep, timeout};
 use tokio_openssl::SslStream;
-use tokio_util::codec::{FramedRead, FramedWrite};
+use tokio_util::codec::{Framed, FramedRead, FramedWrite};
 use tracing::{error, Instrument};
 use url::Url;
 use uuid::Uuid;
@@ -36,8 +37,21 @@ use self::codec::{ConsumerRequest, SupplierResponse};
 mod codec;
 
 pub(crate) enum ReplCtrl {
-    GetCertificate { respond: oneshot::Sender<X509> },
-    RenewCertificate { respond: oneshot::Sender<bool> },
+    GetCertificate {
+        respond: oneshot::Sender<X509>,
+    },
+    RenewCertificate {
+        respond: oneshot::Sender<bool>,
+    },
+    RefreshConsumer {
+        respond: oneshot::Sender<mpsc::Receiver<()>>,
+    },
+}
+
+#[derive(Debug, Clone)]
+enum ReplConsumerCtrl {
+    Stop,
+    Refresh(Arc<Mutex<(bool, mpsc::Sender<()>)>>),
 }
 
 pub(crate) async fn create_repl_server(
@@ -76,21 +90,21 @@ pub(crate) async fn create_repl_server(
 }
 
 #[instrument(level = "info", skip_all)]
-async fn repl_run_consumer(
-    max_frame_bytes: usize,
+async fn repl_consumer_connect_supplier(
     domain: &str,
     sock_addrs: &[SocketAddr],
     tls_connector: &SslConnector,
-    automatic_refresh: bool,
-    idms: &IdmServer,
-) {
-    let replica_connect_timeout = Duration::from_secs(2);
-
+    consumer_conn_settings: &ConsumerConnSettings,
+) -> Option<Framed<SslStream<TcpStream>, codec::ConsumerCodec>> {
     // This is pretty gnarly, but we need to loop to try out each socket addr.
     for sock_addr in sock_addrs {
         debug!("Connecting to {} replica via {}", domain, sock_addr);
 
-        let tcpstream = match timeout(replica_connect_timeout, TcpStream::connect(sock_addr)).await
+        let tcpstream = match timeout(
+            consumer_conn_settings.replica_connect_timeout,
+            TcpStream::connect(sock_addr),
+        )
+        .await
         {
             Ok(Ok(tc)) => tc,
             Ok(Err(err)) => {
@@ -119,112 +133,77 @@ async fn repl_run_consumer(
             error!("replication client TLS accept error, continuing -> {:?}", e);
             continue;
         };
-        let (r, w) = tokio::io::split(tlsstream);
-        let mut r = FramedRead::new(r, codec::ConsumerCodec::new(max_frame_bytes));
-        let mut w = FramedWrite::new(w, codec::ConsumerCodec::new(max_frame_bytes));
 
-        // Perform incremental.
-        let consumer_ruv_range = {
-            let mut read_txn = idms.proxy_read().await;
-            match read_txn.qs_read.consumer_get_state() {
-                Ok(ruv_range) => ruv_range,
-                Err(err) => {
-                    error!(
-                        ?err,
-                        "consumer ruv range could not be accessed, unable to continue."
-                    );
-                    break;
-                }
-            }
-        };
+        let supplier_conn = Framed::new(
+            tlsstream,
+            codec::ConsumerCodec::new(consumer_conn_settings.max_frame_bytes),
+        );
 
-        if let Err(err) = w
-            .send(ConsumerRequest::Incremental(consumer_ruv_range))
+        return Some(supplier_conn);
+    }
+
+    error!("Unable to connect to supplier.");
+    None
+}
+
+async fn repl_run_consumer_refresh(
+    refresh_coord: Arc<Mutex<(bool, mpsc::Sender<()>)>>,
+    domain: &str,
+    sock_addrs: &[SocketAddr],
+    tls_connector: &SslConnector,
+    idms: &IdmServer,
+    consumer_conn_settings: &ConsumerConnSettings,
+) {
+    // Take the refresh lock. Note that every replication consumer *should* end up here
+    // behind this lock, but only one can proceed. This is what we want!
+
+    let mut refresh_coord_guard = refresh_coord.lock().await;
+
+    // Simple case - task is already done.
+    if refresh_coord_guard.0 {
+        trace!("refresh already completed by another task, return.");
+        return;
+    }
+
+    // okay, we need to proceed.
+    let Some(mut supplier_conn) =
+        repl_consumer_connect_supplier(domain, sock_addrs, tls_connector, consumer_conn_settings)
             .await
-        {
-            error!(?err, "consumer encode error, unable to continue.");
-            break;
-        }
+    else {
+        return;
+    };
 
-        let changes = if let Some(codec_msg) = r.next().await {
-            match codec_msg {
-                Ok(SupplierResponse::Incremental(changes)) => {
-                    // Success - return to bypass the error message.
-                    changes
-                }
-                Ok(SupplierResponse::Pong) | Ok(SupplierResponse::Refresh(_)) => {
-                    error!("Supplier Response contains invalid State");
-                    break;
-                }
-                Err(err) => {
-                    error!(?err, "consumer decode error, unable to continue.");
-                    break;
-                }
+    // If we fail at anypoint, just RETURN because this leaves the next task to attempt, or
+    // the channel drops and that tells the caller this failed.
+
+    if let Err(err) = supplier_conn.send(ConsumerRequest::Refresh).await {
+        error!(?err, "consumer encode error, unable to continue.");
+        return;
+    }
+
+    let refresh = if let Some(codec_msg) = supplier_conn.next().await {
+        match codec_msg {
+            Ok(SupplierResponse::Refresh(changes)) => {
+                // Success - return to bypass the error message.
+                changes
             }
-        } else {
-            error!("Connection closed");
-            break;
-        };
-
-        // Now apply the changes if possible
-        let consumer_state = {
-            let ct = duration_from_epoch_now();
-            let mut write_txn = idms.proxy_write(ct).await;
-            match write_txn
-                .qs_write
-                .consumer_apply_changes(&changes)
-                .and_then(|cs| write_txn.commit().map(|()| cs))
-            {
-                Ok(state) => state,
-                Err(err) => {
-                    error!(?err, "consumer was not able to apply changes.");
-                    break;
-                }
-            }
-        };
-
-        match consumer_state {
-            ConsumerState::Ok => {
-                info!("Incremental Replication Success");
-                // return to bypass the failure message.
+            Ok(SupplierResponse::Pong) | Ok(SupplierResponse::Incremental(_)) => {
+                error!("Supplier Response contains invalid State");
                 return;
             }
-            ConsumerState::RefreshRequired => {
-                if automatic_refresh {
-                    warn!("Consumer is out of date and must be refreshed. This will happen *now*.");
-                } else {
-                    error!("Consumer is out of date and must be refreshed. You must manually resolve this situation.");
-                    return;
-                };
+            Err(err) => {
+                error!(?err, "consumer decode error, unable to continue.");
+                return;
             }
         }
+    } else {
+        error!("Connection closed");
+        return;
+    };
 
-        if let Err(err) = w.send(ConsumerRequest::Refresh).await {
-            error!(?err, "consumer encode error, unable to continue.");
-            break;
-        }
-
-        let refresh = if let Some(codec_msg) = r.next().await {
-            match codec_msg {
-                Ok(SupplierResponse::Refresh(changes)) => {
-                    // Success - return to bypass the error message.
-                    changes
-                }
-                Ok(SupplierResponse::Pong) | Ok(SupplierResponse::Incremental(_)) => {
-                    error!("Supplier Response contains invalid State");
-                    break;
-                }
-                Err(err) => {
-                    error!(?err, "consumer decode error, unable to continue.");
-                    break;
-                }
-            }
-        } else {
-            error!("Connection closed");
-            break;
-        };
-
-        // Now apply the refresh if possible
+    // Now apply the refresh if possible
+    {
+        // Scope the transaction.
         let ct = duration_from_epoch_now();
         let mut write_txn = idms.proxy_write(ct).await;
         if let Err(err) = write_txn
@@ -233,14 +212,157 @@ async fn repl_run_consumer(
             .and_then(|cs| write_txn.commit().map(|()| cs))
         {
             error!(?err, "consumer was not able to apply refresh.");
-            break;
+            return;
         }
+    }
 
-        warn!("Replication refresh was successful.");
+    // Now mark the refresh as complete AND indicate it to the channel.
+    refresh_coord_guard.0 = true;
+    if refresh_coord_guard.1.send(()).await.is_err() {
+        warn!("Unable to signal to caller that refresh has completed.");
+    }
+
+    // Here the coord guard will drop and every other task proceeds.
+
+    warn!("Replication refresh was successful.");
+}
+
+async fn repl_run_consumer(
+    domain: &str,
+    sock_addrs: &[SocketAddr],
+    tls_connector: &SslConnector,
+    automatic_refresh: bool,
+    idms: &IdmServer,
+    consumer_conn_settings: &ConsumerConnSettings,
+) {
+    let Some(mut supplier_conn) =
+        repl_consumer_connect_supplier(domain, sock_addrs, tls_connector, consumer_conn_settings)
+            .await
+    else {
+        return;
+    };
+
+    // Perform incremental.
+    let consumer_ruv_range = {
+        let mut read_txn = idms.proxy_read().await;
+        match read_txn.qs_read.consumer_get_state() {
+            Ok(ruv_range) => ruv_range,
+            Err(err) => {
+                error!(
+                    ?err,
+                    "consumer ruv range could not be accessed, unable to continue."
+                );
+                return;
+            }
+        }
+    };
+
+    if let Err(err) = supplier_conn
+        .send(ConsumerRequest::Incremental(consumer_ruv_range))
+        .await
+    {
+        error!(?err, "consumer encode error, unable to continue.");
         return;
     }
 
-    error!("Unable to complete replication successfully.");
+    let changes = if let Some(codec_msg) = supplier_conn.next().await {
+        match codec_msg {
+            Ok(SupplierResponse::Incremental(changes)) => {
+                // Success - return to bypass the error message.
+                changes
+            }
+            Ok(SupplierResponse::Pong) | Ok(SupplierResponse::Refresh(_)) => {
+                error!("Supplier Response contains invalid State");
+                return;
+            }
+            Err(err) => {
+                error!(?err, "consumer decode error, unable to continue.");
+                return;
+            }
+        }
+    } else {
+        error!("Connection closed");
+        return;
+    };
+
+    // Now apply the changes if possible
+    let consumer_state = {
+        let ct = duration_from_epoch_now();
+        let mut write_txn = idms.proxy_write(ct).await;
+        match write_txn
+            .qs_write
+            .consumer_apply_changes(&changes)
+            .and_then(|cs| write_txn.commit().map(|()| cs))
+        {
+            Ok(state) => state,
+            Err(err) => {
+                error!(?err, "consumer was not able to apply changes.");
+                return;
+            }
+        }
+    };
+
+    match consumer_state {
+        ConsumerState::Ok => {
+            info!("Incremental Replication Success");
+            // return to bypass the failure message.
+            return;
+        }
+        ConsumerState::RefreshRequired => {
+            if automatic_refresh {
+                warn!("Consumer is out of date and must be refreshed. This will happen *now*.");
+            } else {
+                error!("Consumer is out of date and must be refreshed. You must manually resolve this situation.");
+                return;
+            };
+        }
+    }
+
+    if let Err(err) = supplier_conn.send(ConsumerRequest::Refresh).await {
+        error!(?err, "consumer encode error, unable to continue.");
+        return;
+    }
+
+    let refresh = if let Some(codec_msg) = supplier_conn.next().await {
+        match codec_msg {
+            Ok(SupplierResponse::Refresh(changes)) => {
+                // Success - return to bypass the error message.
+                changes
+            }
+            Ok(SupplierResponse::Pong) | Ok(SupplierResponse::Incremental(_)) => {
+                error!("Supplier Response contains invalid State");
+                return;
+            }
+            Err(err) => {
+                error!(?err, "consumer decode error, unable to continue.");
+                return;
+            }
+        }
+    } else {
+        error!("Connection closed");
+        return;
+    };
+
+    // Now apply the refresh if possible
+    let ct = duration_from_epoch_now();
+    let mut write_txn = idms.proxy_write(ct).await;
+    if let Err(err) = write_txn
+        .qs_write
+        .consumer_apply_refresh(&refresh)
+        .and_then(|cs| write_txn.commit().map(|()| cs))
+    {
+        error!(?err, "consumer was not able to apply refresh.");
+        return;
+    }
+
+    warn!("Replication refresh was successful.");
+}
+
+#[derive(Debug, Clone)]
+struct ConsumerConnSettings {
+    max_frame_bytes: usize,
+    task_poll_interval: Duration,
+    replica_connect_timeout: Duration,
 }
 
 async fn repl_task(
@@ -248,9 +370,8 @@ async fn repl_task(
     client_key: PKey<Private>,
     client_cert: X509,
     supplier_cert: X509,
-    max_frame_bytes: usize,
-    task_poll_interval: Duration,
-    mut task_rx: broadcast::Receiver<()>,
+    consumer_conn_settings: ConsumerConnSettings,
+    mut task_rx: broadcast::Receiver<ReplConsumerCtrl>,
     automatic_refresh: bool,
     idms: Arc<IdmServer>,
 ) {
@@ -325,29 +446,48 @@ async fn repl_task(
     ssl_builder.set_verify(SslVerifyMode::PEER);
     let tls_connector = ssl_builder.build();
 
-    let mut repl_interval = interval(task_poll_interval);
+    let mut repl_interval = interval(consumer_conn_settings.task_poll_interval);
 
     info!("Replica task for {} has started.", origin);
 
     // Okay, all the parameters are setup. Now we wait on our interval.
     loop {
         tokio::select! {
-            Ok(()) = task_rx.recv() => {
-                break;
+            Ok(task) = task_rx.recv() => {
+                match task {
+                    ReplConsumerCtrl::Stop => break,
+                    ReplConsumerCtrl::Refresh ( refresh_coord ) => {
+                        let eventid = Uuid::new_v4();
+                        let span = info_span!("replication_run_consumer_refresh", uuid = ?eventid);
+                        // let _enter = span.enter();
+                        repl_run_consumer_refresh(
+                            refresh_coord,
+                            domain,
+                            &socket_addrs,
+                            &tls_connector,
+                            &idms,
+                            &consumer_conn_settings
+                        )
+                        .instrument(span)
+                        .await
+                    }
+                }
             }
             _ = repl_interval.tick() => {
                 // Interval passed, attempt a replication run.
                 let eventid = Uuid::new_v4();
                 let span = info_span!("replication_run_consumer", uuid = ?eventid);
-                let _enter = span.enter();
+                // let _enter = span.enter();
                 repl_run_consumer(
-                    max_frame_bytes,
                     domain,
                     &socket_addrs,
                     &tls_connector,
                     automatic_refresh,
-                    &idms
-                ).await;
+                    &idms,
+                    &consumer_conn_settings
+                )
+                .instrument(span)
+                .await;
             }
         }
     }
@@ -447,8 +587,15 @@ async fn repl_acceptor(
     // Persistent parts
     // These all probably need changes later ...
     let task_poll_interval = Duration::from_secs(10);
+    let replica_connect_timeout = Duration::from_secs(2);
     let retry_timeout = Duration::from_secs(60);
     let max_frame_bytes = 268435456;
+
+    let consumer_conn_settings = ConsumerConnSettings {
+        max_frame_bytes,
+        task_poll_interval,
+        replica_connect_timeout,
+    };
 
     // Setup a broadcast to control our tasks.
     let (task_tx, task_rx1) = broadcast::channel(2);
@@ -464,6 +611,13 @@ async fn repl_acceptor(
     // In future we need to update this from the KRC if configured, and we default this
     // to "empty". But if this map exists in the config, we have to always use that.
     let replication_node_map = repl_config.manual.clone();
+    let domain_name = match repl_config.origin.domain() {
+        Some(n) => n.to_string(),
+        None => {
+            error!("Unable to start replication, replication origin does not contain a valid domain name.");
+            return;
+        }
+    };
 
     // This needs to have an event loop that can respond to changes.
     // For now we just design it to reload ssl if the map changes internally.
@@ -474,7 +628,7 @@ async fn repl_acceptor(
         // no tasks currently listening on the channel.
         info!("Stopping {} Replication Tasks ...", task_handles.len());
         debug_assert!(task_handles.len() >= task_tx.receiver_count());
-        let _ = task_tx.send(());
+        let _ = task_tx.send(ReplConsumerCtrl::Stop);
         for task_handle in task_handles.drain(..) {
             // Let each task join.
             let res: Result<(), _> = task_handle.await;
@@ -494,7 +648,7 @@ async fn repl_acceptor(
             let mut idms_prox_write = idms.proxy_write(ct).await;
             idms_prox_write
                 .qs_write
-                .supplier_get_key_cert()
+                .supplier_get_key_cert(&domain_name)
                 .and_then(|res| idms_prox_write.commit().map(|()| res))
         };
 
@@ -548,8 +702,7 @@ async fn repl_acceptor(
                         server_key.clone(),
                         server_cert.clone(),
                         supplier_cert.clone(),
-                        max_frame_bytes,
-                        task_poll_interval,
+                        consumer_conn_settings.clone(),
                         task_rx,
                         *automatic_refresh,
                         idms.clone(),
@@ -626,7 +779,7 @@ async fn repl_acceptor(
                             respond
                         } => {
                             let _span = debug_span!("supplier_accept_loop", uuid = ?eventid).entered();
-                            if let Err(_) = respond.send(server_cert.clone()) {
+                            if respond.send(server_cert.clone()).is_err() {
                                 warn!("Server certificate was requested, but requsetor disconnected");
                             } else {
                                 trace!("Sent server certificate via control channel");
@@ -644,7 +797,7 @@ async fn repl_acceptor(
                                     let mut idms_prox_write = idms.proxy_write(ct).await;
                                     idms_prox_write
                                         .qs_write
-                                        .supplier_renew_key_cert()
+                                        .supplier_renew_key_cert(&domain_name)
                                         .and_then(|res| idms_prox_write.commit().map(|()| res))
                                 };
 
@@ -654,7 +807,7 @@ async fn repl_acceptor(
                                     error!(?err, "failed to renew server certificate");
                                 }
 
-                                if let Err(_) = respond.send(success) {
+                                if respond.send(success).is_err() {
                                     warn!("Server certificate renewal was requested, but requsetor disconnected");
                                 } else {
                                     trace!("Sent server certificate renewal status via control channel");
@@ -665,6 +818,30 @@ async fn repl_acceptor(
 
                             // Start a reload.
                             continue 'event;
+                        }
+                        ReplCtrl::RefreshConsumer {
+                            respond
+                        } => {
+                            // Indicate to consumer tasks that they should do a refresh.
+                            let (tx, rx) = mpsc::channel(1);
+
+                            let refresh_coord = Arc::new(
+                                Mutex::new(
+                                (
+                                    false, tx
+                                )
+                                )
+                            );
+
+                            if task_tx.send(ReplConsumerCtrl::Refresh(refresh_coord)).is_err() {
+                                error!("Unable to begin replication consumer refresh, tasks are unable to be notified.");
+                            }
+
+                            if respond.send(rx).is_err() {
+                                warn!("Replication consumer refresh was requested, but requester disconnected");
+                            } else {
+                                trace!("Sent refresh comms channel to requester");
+                            }
                         }
                     }
                 }
@@ -683,7 +860,7 @@ async fn repl_acceptor(
                             let clone_tls_acceptor = tls_acceptor.clone();
                             // We don't care about the join handle here - once a client connects
                             // it sticks to whatever ssl settings it had at launch.
-                            let _ = tokio::spawn(
+                            tokio::spawn(
                                 handle_repl_conn(max_frame_bytes, tcpstream, client_socket_addr, clone_tls_acceptor, clone_idms)
                             );
                         }
@@ -699,7 +876,7 @@ async fn repl_acceptor(
     // Shutdown child tasks.
     info!("Stopping {} Replication Tasks ...", task_handles.len());
     debug_assert!(task_handles.len() >= task_tx.receiver_count());
-    let _ = task_tx.send(());
+    let _ = task_tx.send(ReplConsumerCtrl::Stop);
     for task_handle in task_handles.drain(..) {
         // Let each task join.
         let res: Result<(), _> = task_handle.await;

@@ -9,17 +9,6 @@ This happens in Docker currently, and here's some instructions for doing it for 
    repository in `~/kanidm/`.
 3. Install the required dependencies by running `./scripts/install_ubuntu_dependencies.sh`.
 4. Building packages uses make, get a list by running `make -f ./platform/debian/Makefile help`
-
-   ➜ make -f platform/debian/Makefile help
-   debs/kanidm:
-      build a .deb for the Kanidm CLI
-   debs/kanidmd:
-      build a .deb for the Kanidm daemon
-   debs/kanidm-unixd:
-      build a .deb for the Kanidm UNIX tools (PAM/NSS, unixd and related tools) and SSH tools
-   debs/all:
-      build all the debs
-
 5. So if you wanted to build the package for the Kanidm CLI, run
    `make -f ./platform/debian/Makefile debs/kanidm`.
 6. The package will be copied into the `target` directory of the repository on the docker host - not

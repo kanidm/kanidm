@@ -1,11 +1,15 @@
 use crate::be::BackendTransaction;
+use crate::credential::Credential;
 use crate::prelude::*;
 use crate::repl::entry::State;
 use crate::repl::proto::ConsumerState;
 use crate::repl::proto::ReplIncrementalContext;
 use crate::repl::ruv::ReplicationUpdateVectorTransaction;
 use crate::repl::ruv::{RangeDiffStatus, ReplicationUpdateVector};
+use crate::value::{Session, SessionState};
+use kanidm_lib_crypto::CryptoPolicy;
 use std::collections::BTreeMap;
+use time::OffsetDateTime;
 
 fn repl_initialise(
     from: &mut QueryServerReadTransaction<'_>,
@@ -2978,6 +2982,188 @@ async fn test_repl_initial_consumer_join(server_a: &QueryServer, server_b: &Quer
     assert!(repl_initialise(&mut server_b_txn, &mut server_a_txn)
         .and_then(|_| server_a_txn.commit())
         .is_ok());
+    drop(server_b_txn);
+}
+
+// Test handling of sessions over replication
+
+#[qs_pair_test]
+async fn test_repl_increment_session_new(server_a: &QueryServer, server_b: &QueryServer) {
+    let ct = duration_from_epoch_now();
+
+    // First create a user.
+
+    let mut server_b_txn = server_b.write(ct).await;
+
+    let t_uuid = Uuid::new_v4();
+
+    let p = CryptoPolicy::minimum();
+    let cred = Credential::new_password_only(&p, "test_password").unwrap();
+    let cred_id = cred.uuid;
+
+    let e1 = entry_init!(
+        (Attribute::Class, EntryClass::Object.to_value()),
+        (Attribute::Class, EntryClass::Person.to_value()),
+        (Attribute::Class, EntryClass::Account.to_value()),
+        (Attribute::Name, Value::new_iname("testperson1")),
+        (Attribute::Uuid, Value::Uuid(t_uuid)),
+        (Attribute::Description, Value::new_utf8s("testperson1")),
+        (Attribute::DisplayName, Value::new_utf8s("testperson1")),
+        (
+            Attribute::PrimaryCredential,
+            Value::Cred("primary".to_string(), cred.clone())
+        )
+    );
+
+    let ce = CreateEvent::new_internal(vec![e1]);
+    assert!(server_b_txn.create(&ce).is_ok());
+
+    server_b_txn.commit().expect("Failed to commit");
+
+    let mut server_a_txn = server_a.write(ct).await;
+    let mut server_b_txn = server_b.read().await;
+
+    assert!(repl_initialise(&mut server_b_txn, &mut server_a_txn)
+        .and_then(|_| server_a_txn.commit())
+        .is_ok());
+    drop(server_b_txn);
+
+    // Update a session on A.
+
+    let mut server_a_txn = server_a.write(ct).await;
+
+    let curtime_odt = OffsetDateTime::UNIX_EPOCH + ct;
+    let exp_curtime = ct + Duration::from_secs(60);
+    let exp_curtime_odt = OffsetDateTime::UNIX_EPOCH + exp_curtime;
+
+    // Create a fake session.
+    let session_id_a = Uuid::new_v4();
+    let state = SessionState::ExpiresAt(exp_curtime_odt);
+    let issued_at = curtime_odt;
+    let issued_by = IdentityId::User(t_uuid);
+    let scope = SessionScope::ReadOnly;
+
+    let session = Value::Session(
+        session_id_a,
+        Session {
+            label: "label".to_string(),
+            state,
+            issued_at,
+            issued_by,
+            cred_id,
+            scope,
+        },
+    );
+
+    let modlist = ModifyList::new_append(Attribute::UserAuthTokenSession.into(), session);
+
+    server_a_txn
+        .internal_modify(
+            &filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(t_uuid))),
+            &modlist,
+        )
+        .expect("Failed to modify user");
+
+    server_a_txn.commit().expect("Failed to commit");
+
+    // And a session on B.
+
+    let ct = duration_from_epoch_now();
+    let mut server_b_txn = server_b.write(ct).await;
+
+    let curtime_odt = OffsetDateTime::UNIX_EPOCH + ct;
+    let exp_curtime = ct + Duration::from_secs(60);
+    let exp_curtime_odt = OffsetDateTime::UNIX_EPOCH + exp_curtime;
+
+    // Create a fake session.
+    let session_id_b = Uuid::new_v4();
+    let state = SessionState::ExpiresAt(exp_curtime_odt);
+    let issued_at = curtime_odt;
+    let issued_by = IdentityId::User(t_uuid);
+    let scope = SessionScope::ReadOnly;
+
+    let session = Value::Session(
+        session_id_b,
+        Session {
+            label: "label".to_string(),
+            state,
+            issued_at,
+            issued_by,
+            cred_id,
+            scope,
+        },
+    );
+
+    let modlist = ModifyList::new_append(Attribute::UserAuthTokenSession.into(), session);
+
+    server_b_txn
+        .internal_modify(
+            &filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(t_uuid))),
+            &modlist,
+        )
+        .expect("Failed to modify user");
+
+    server_b_txn.commit().expect("Failed to commit");
+
+    // Now incremental in both directions.
+
+    let ct = duration_from_epoch_now();
+    let mut server_a_txn = server_a.read().await;
+    let mut server_b_txn = server_b.write(ct).await;
+
+    trace!("========================================");
+    repl_incremental(&mut server_a_txn, &mut server_b_txn);
+
+    let e1 = server_a_txn
+        .internal_search_all_uuid(t_uuid)
+        .expect("Unable to access entry.");
+    let e2 = server_b_txn
+        .internal_search_all_uuid(t_uuid)
+        .expect("Unable to access entry.");
+
+    // Here, A's session should have merged with B.
+    let sessions_a = e1
+        .get_ava_as_session_map(Attribute::UserAuthTokenSession)
+        .unwrap();
+
+    assert!(sessions_a.len() == 1);
+    assert!(sessions_a.get(&session_id_a).is_some());
+    assert!(sessions_a.get(&session_id_b).is_none());
+
+    let sessions_b = e2
+        .get_ava_as_session_map(Attribute::UserAuthTokenSession)
+        .unwrap();
+
+    assert!(sessions_b.len() == 2);
+    assert!(sessions_b.get(&session_id_a).is_some());
+    assert!(sessions_b.get(&session_id_b).is_some());
+
+    server_b_txn.commit().expect("Failed to commit");
+    drop(server_a_txn);
+
+    let ct = duration_from_epoch_now();
+    let mut server_b_txn = server_b.read().await;
+    let mut server_a_txn = server_a.write(ct).await;
+
+    trace!("========================================");
+    repl_incremental(&mut server_b_txn, &mut server_a_txn);
+
+    let e1 = server_a_txn
+        .internal_search_all_uuid(t_uuid)
+        .expect("Unable to access entry.");
+    let e2 = server_b_txn
+        .internal_search_all_uuid(t_uuid)
+        .expect("Unable to access entry.");
+
+    let e1_cs = e1.get_changestate();
+    let e2_cs = e2.get_changestate();
+
+    assert!(e1_cs == e2_cs);
+    trace!(?e1);
+    trace!(?e2);
+    assert!(e1 == e2);
+
+    server_a_txn.commit().expect("Failed to commit");
     drop(server_b_txn);
 }
 

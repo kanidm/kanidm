@@ -78,7 +78,8 @@ impl KanidmdOpt {
                 commands: DbScanOpt::RestoreQuarantined { commonopts, .. },
             }
             | KanidmdOpt::ShowReplicationCertificate { commonopts }
-            | KanidmdOpt::RenewReplicationCertificate { commonopts } => commonopts,
+            | KanidmdOpt::RenewReplicationCertificate { commonopts }
+            | KanidmdOpt::RefreshReplicationConsumer { commonopts, .. } => commonopts,
             KanidmdOpt::RecoverAccount { commonopts, .. } => commonopts,
             KanidmdOpt::DbScan {
                 commands: DbScanOpt::ListIndex(dopt),
@@ -155,7 +156,26 @@ async fn submit_admin_req(path: &str, req: AdminTaskRequest, output_mode: Consol
                 info!(certificate = ?cert)
             }
         },
-        _ => {
+        Some(Ok(AdminTaskResponse::Success)) => match output_mode {
+            ConsoleOutputMode::JSON => {
+                eprintln!("\"success\"")
+            }
+            ConsoleOutputMode::Text => {
+                info!("success")
+            }
+        },
+        Some(Ok(AdminTaskResponse::Error)) => match output_mode {
+            ConsoleOutputMode::JSON => {
+                eprintln!("\"error\"")
+            }
+            ConsoleOutputMode::Text => {
+                info!("Error - you should inspect the logs.")
+            }
+        },
+        Some(Err(err)) => {
+            error!(?err, "Error during admin task operation");
+        }
+        None => {
             error!("Error making request to admin socket");
         }
     }
@@ -365,7 +385,11 @@ async fn main() -> ExitCode {
 
             match &opt.commands  {
                 // we aren't going to touch the DB so we can carry on
-                KanidmdOpt::HealthCheck(_) => (),
+                KanidmdOpt::ShowReplicationCertificate { .. }
+                | KanidmdOpt::RenewReplicationCertificate { .. }
+                | KanidmdOpt::RefreshReplicationConsumer { .. }
+                | KanidmdOpt::RecoverAccount { .. }
+                | KanidmdOpt::HealthCheck(_) => (),
                 _ => {
                     // Okay - Lets now create our lock and go.
                     let klock_path = format!("{}.klock" ,sconfig.db_path.as_str());
@@ -572,6 +596,22 @@ async fn main() -> ExitCode {
                         AdminTaskRequest::RenewReplicationCertificate,
                         output_mode,
                     ).await;
+                }
+                KanidmdOpt::RefreshReplicationConsumer {
+                    commonopts,
+                    proceed
+                } => {
+                    info!("Running refresh replication consumer ...");
+                    if !proceed {
+                        error!("Unwilling to proceed. Check --help.");
+
+                    } else {
+                        let output_mode: ConsoleOutputMode = commonopts.output_mode.to_owned().into();
+                        submit_admin_req(config.adminbindpath.as_str(),
+                            AdminTaskRequest::RefreshReplicationConsumer,
+                            output_mode,
+                        ).await;
+                    }
                 }
                 KanidmdOpt::RecoverAccount {
                     name, commonopts
