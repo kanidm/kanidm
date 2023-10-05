@@ -1149,9 +1149,7 @@ impl IdlSqliteWriteTransaction {
             .prepare(&format!("SELECT cid FROM {}.ruv", self.get_db_name()))
             .map_err(sqlite_error)?;
 
-        let kh_iter = stmt
-            .query_map([], |row| Ok(row.get(0)?))
-            .map_err(sqlite_error)?;
+        let kh_iter = stmt.query_map([], |row| row.get(0)).map_err(sqlite_error)?;
 
         kh_iter
             .map(|v| {
