@@ -172,7 +172,6 @@ impl KanidmClientBuilder {
             }
         }
 
-        // TODO #725: Handle these errors better, or at least provide diagnostics - this currently fails silently
         let mut f = File::open(ca_path).map_err(|e| {
             error!("{:?}", e);
             ClientError::ConfigParseIssue(format!("{:?}", e))

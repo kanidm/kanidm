@@ -345,13 +345,7 @@ impl ValueSetT for ValueSetImage {
 
                 let res: Vec<bool> = imgset
                     .iter()
-                    .filter_map(|image| {
-                        if &image.hash_imagevalue() == pv {
-                            Some(image)
-                        } else {
-                            None
-                        }
-                    })
+                    .filter(|image| &image.hash_imagevalue() == pv)
                     .map(|image| self.set.remove(image))
                     .collect();
                 res.into_iter().any(|e| e)

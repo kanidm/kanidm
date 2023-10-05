@@ -658,10 +658,10 @@ impl FilterComp {
                 }
             }
             FilterComp::Or(filters) => {
-                // If all filters are okay, return Ok(Filter::Or())
-                // If any is invalid, return the error.
-                // TODO: ftweedal says an empty or is a valid filter
-                // in mathematical terms.
+                // * If all filters are okay, return Ok(Filter::Or())
+                // * Any filter is invalid, return the error.
+                // * An empty "or" is a valid filter in mathematical terms, but we throw an
+                //   error to warn the user because it's super unlikey they want that
                 if filters.is_empty() {
                     return Err(SchemaError::EmptyFilter);
                 };
@@ -673,8 +673,10 @@ impl FilterComp {
                 x.map(FilterComp::Or)
             }
             FilterComp::And(filters) => {
-                // TODO: ftweedal says an empty or is a valid filter
-                // in mathematical terms.
+                // * If all filters are okay, return Ok(Filter::Or())
+                // * Any filter is invalid, return the error.
+                // * An empty "and" is a valid filter in mathematical terms, but we throw an
+                //   error to warn the user because it's super unlikey they want that
                 if filters.is_empty() {
                     return Err(SchemaError::EmptyFilter);
                 };
@@ -1013,14 +1015,12 @@ impl FilterResolved {
             }
             FilterComp::Pres(a) => {
                 let idx = idxmeta.contains(&(&a, &IndexType::Presence));
-                let idx = NonZeroU8::new(idx as u8);
-                FilterResolved::Pres(a, idx)
+                FilterResolved::Pres(a, NonZeroU8::new(idx as u8))
             }
             FilterComp::LessThan(a, v) => {
                 // let idx = idxmeta.contains(&(&a, &IndexType::ORDERING));
                 // TODO: For now, don't emit ordering indexes.
-                let idx = None;
-                FilterResolved::LessThan(a, v, idx)
+                FilterResolved::LessThan(a, v, None)
             }
             FilterComp::Or(vs) => FilterResolved::Or(
                 vs.into_iter()

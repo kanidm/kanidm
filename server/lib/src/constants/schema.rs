@@ -770,7 +770,6 @@ pub static ref SCHEMA_CLASS_OAUTH2_RS_BASIC: SchemaClass = SchemaClass {
 
     systemmay: vec![ Attribute::OAuth2AllowInsecureClientDisablePkce.into()],
     systemmust: vec![ Attribute::OAuth2RsBasicSecret.into()],
-    // TODO: is this a class exclude or an attribute exclude?
     systemexcludes: vec![ EntryClass::OAuth2ResourceServerPublic.into()],
     ..Default::default()
 };
@@ -781,7 +780,6 @@ pub static ref SCHEMA_CLASS_OAUTH2_RS_PUBLIC: SchemaClass = SchemaClass {
     name: EntryClass::OAuth2ResourceServerPublic.into(),
 
     description: "The class representing a configured Oauth2 Resource Server with public clients and pkce verification".to_string(),
-    // TODO: is this a class exclude or an attribute exclude, or both?
     systemexcludes: vec![EntryClass::OAuth2ResourceServerBasic.into()],
     ..Default::default()
 };

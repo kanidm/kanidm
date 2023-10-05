@@ -9,7 +9,7 @@ use crate::idm::account::Account;
 use crate::value::PartialValue;
 use crate::value::Value;
 use kanidm_proto::constants::*;
-use kanidm_proto::v1::{Filter, OperationError, UiHint};
+use kanidm_proto::v1::{AccountType, Filter, OperationError, UiHint};
 
 #[cfg(test)]
 use uuid::uuid;
@@ -734,13 +734,7 @@ impl TryFrom<BuiltinGroup> for EntryInitNew {
 lazy_static! {
     /// Builtin System Admin account.
     pub static ref BUILTIN_ACCOUNT_IDM_ADMIN: BuiltinAccount = BuiltinAccount {
-        // TODO: this really should be a "are you a service account or a person" enum
-        classes: vec![
-            EntryClass::Account,
-            EntryClass::ServiceAccount,
-            EntryClass::MemberOf,
-            EntryClass::Object,
-        ],
+        account_type: AccountType::ServiceAccount,
         name: "idm_admin",
         uuid: UUID_IDM_ADMIN,
         description: "Builtin IDM Admin account.",
@@ -1218,8 +1212,7 @@ Attribute::Description,
 #[derive(Debug, Clone)]
 /// Built in accounts such as anonymous, idm_admin and admin
 pub struct BuiltinAccount {
-    // TODO: this really should be a "are you a service account or a person" enum
-    pub classes: Vec<EntryClass>,
+    pub account_type: kanidm_proto::v1::AccountType,
     pub name: &'static str,
     pub uuid: Uuid,
     pub description: &'static str,
@@ -1229,7 +1222,7 @@ pub struct BuiltinAccount {
 impl Default for BuiltinAccount {
     fn default() -> Self {
         BuiltinAccount {
-            classes: [EntryClass::Object].to_vec(),
+            account_type: AccountType::ServiceAccount,
             name: "",
             uuid: Uuid::new_v4(),
             description: "<set description>",
@@ -1260,17 +1253,20 @@ impl From<BuiltinAccount> for EntryInitNew {
         entry.add_ava(Attribute::Description, Value::new_utf8s(value.description));
         entry.add_ava(Attribute::DisplayName, Value::new_utf8s(value.displayname));
 
-        entry.add_ava(Attribute::Class, EntryClass::Object.to_value());
-        entry.add_ava(Attribute::Class, EntryClass::Account.to_value());
         entry.set_ava(
             Attribute::Class,
-            value
-                .classes
-                .into_iter()
-                .map(|c| c.to_value())
-                .collect::<Vec<Value>>(),
+            vec![
+                EntryClass::Account.to_value(),
+                EntryClass::MemberOf.to_value(),
+                EntryClass::Object.to_value(),
+            ],
         );
-
+        match value.account_type {
+            AccountType::Person => entry.add_ava(Attribute::Class, EntryClass::Person.to_value()),
+            AccountType::ServiceAccount => {
+                entry.add_ava(Attribute::Class, EntryClass::ServiceAccount.to_value())
+            }
+        }
         entry
     }
 }
@@ -1279,24 +1275,14 @@ lazy_static! {
 
     /// Builtin System Admin account.
     pub static ref BUILTIN_ACCOUNT_ADMIN: BuiltinAccount = BuiltinAccount {
-        classes: vec![
-            EntryClass::Account,
-            EntryClass::ServiceAccount,
-            EntryClass::MemberOf,
-            EntryClass::Object,
-        ],
+        account_type: AccountType::ServiceAccount,
         name: "admin",
         uuid: UUID_ADMIN,
         description: "Builtin System Admin account.",
         displayname: "System Administrator",
     };
     pub static ref BUILTIN_ACCOUNT_ANONYMOUS_V1: BuiltinAccount = BuiltinAccount {
-        classes: [
-            EntryClass::Account,
-            EntryClass::ServiceAccount,
-            EntryClass::Object,
-        ]
-        .to_vec(),
+        account_type: AccountType::ServiceAccount,
         name: "anonymous",
         uuid: UUID_ANONYMOUS,
         description: "Anonymous access account.",

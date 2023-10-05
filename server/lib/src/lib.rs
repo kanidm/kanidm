@@ -8,9 +8,7 @@
 #![deny(clippy::suspicious)]
 #![deny(clippy::perf)]
 // Specific lints to enforce.
-// TODO: can't use this until we have a better way to handle the 'todo' lint?
-// #![deny(clippy::todo)]
-#![warn(clippy::todo)]
+#![deny(clippy::todo)]
 #![deny(clippy::unimplemented)]
 #![deny(clippy::unwrap_used)]
 #![deny(clippy::expect_used)]
