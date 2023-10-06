@@ -468,7 +468,11 @@ async fn repl_task(
             Some(addr) => vec![addr],
             None => vec![],
         };
-        sorted_socket_addrs.extend(socket_addrs.iter().cloned());
+        socket_addrs.iter().cloned().for_each(|addr| {
+            if !sorted_socket_addrs.contains(&addr) {
+                sorted_socket_addrs.push(addr);
+            }
+        });
 
         tokio::select! {
             Ok(task) = task_rx.recv() => {
