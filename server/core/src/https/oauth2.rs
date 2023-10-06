@@ -76,15 +76,13 @@ pub(crate) fn oauth2_id(rs_name: &str) -> Filter<FilterInvalid> {
     get,
     path = "/ui/images/oauth2/{rs_name}",
     params(
-        ("rs_name" = String,Path, description="The ID of the OAuth2 resource server to get the image for")
+        super::apidocs::path_schema::RsName
     ),
     responses(
-        (status = 200, description = "Ok"),
+        (status = 200, description = "Ok", body=&[u8]),
         (status = 403, description = "Authorization refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
+    security(("token_jwt" = [])),
     tag = "ui",
 )]
 /// This returns the image for the OAuth2 Resource Server if the user has permissions

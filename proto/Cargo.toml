@@ -11,11 +11,13 @@ license = { workspace = true }
 homepage = { workspace = true }
 repository = { workspace = true }
 
+
 [features]
 wasm = ["webauthn-rs-proto/wasm"]
 
 
 [dependencies]
+
 base32 = { workspace = true }
 base64urlsafedata = { workspace = true }
 num_enum = { workspace = true }
@@ -27,6 +29,6 @@ time = { workspace = true, features = ["serde", "std"] }
 tracing = { workspace = true }
 url = { workspace = true, features = ["serde"] }
 urlencoding = { workspace = true }
+utoipa = { workspace = true }
 uuid = { workspace = true, features = ["serde"] }
 webauthn-rs-proto = { workspace = true }
-

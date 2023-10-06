@@ -25,9 +25,7 @@ use sketching::admin_error;
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
+    security(("token_jwt" = [])),
     tag = "api/v1/oauth2",
 )]
 /// Lists all the OAuth2 Resource Servers
@@ -53,9 +51,7 @@ pub(crate) async fn oauth2_get(
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
+    security(("token_jwt" = [])),
     tag = "api/v1/oauth2",
 )]
 // TODO: what does this actually do? :D
@@ -83,9 +79,7 @@ pub(crate) async fn oauth2_basic_post(
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
+    security(("token_jwt" = [])),
     tag = "api/v1/oauth2",
 )]
 // TODO: what does this actually do? :D
@@ -105,17 +99,13 @@ pub(crate) async fn oauth2_public_post(
 #[utoipa::path(
     get,
     path = "/v1/oauth2/{rs_name}",
-    params(
-        ("rs_name" = String, description="The ID of the OAuth2 resource server you wish to query")
-    ),
+    params(super::apidocs::path_schema::RsName),
     responses(
         (status = 200, description = "Ok"),
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
+    security(("token_jwt" = [])),
     tag = "api/v1/oauth2",
 )]
 /// Get the details of a given OAuth2 Resource Server.
@@ -137,17 +127,13 @@ pub(crate) async fn oauth2_id_get(
 #[utoipa::path(
     get,
     path = "/v1/oauth2/{rs_name}/_basic_secret",
-    params(
-        ("rs_name" = String, description="The ID of the OAuth2 resource server you wish to query")
-    ),
+    params(super::apidocs::path_schema::RsName),
     responses(
         (status = 200, description = "Ok"),
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
+    security(("token_jwt" = [])),
     tag = "api/v1/oauth2",
 )]
 /// Get the basic secret for a given OAuth2 Resource Server. This is used for authentication.
@@ -168,17 +154,13 @@ pub(crate) async fn oauth2_id_get_basic_secret(
 #[utoipa::path(
     patch,
     path = "/v1/oauth2/{rs_name}",
-    params(
-        // TODO: params
-    ),
+    params(super::apidocs::path_schema::RsName),
     responses(
         (status = 200, description = "Ok"),
         (status = 400, description = "Invalid request, check the field format/values."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
+    security(("token_jwt" = [])),
     tag = "api/v1/oauth2",
 )]
 /// Modify an OAuth2 Resource Server
@@ -201,18 +183,15 @@ pub(crate) async fn oauth2_id_patch(
     patch,
     path = "/v1/oauth2/{rs_name}/_scopemap/{group}",
     params(
-        ( "rs_name" = String, description="The ID of the OAuth2 resource server you wish to query"),
-        ( "group" = String, description=""),
-        // TODO: scopes params
+        super::apidocs::path_schema::RsName,
+        super::apidocs::path_schema::GroupName,
     ),
     responses(
         (status = 200, description = "Ok"),
         (status = 400, description = "Invalid request, check the field format/values."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
+    security(("token_jwt" = [])),
     tag = "api/v1/oauth2",
 )]
 /// Modify the scope map for a given OAuth2 Resource Server
@@ -234,17 +213,15 @@ pub(crate) async fn oauth2_id_scopemap_post(
     delete,
     path = "/v1/oauth2/{rs_name}/_scopemap/{group}",
     params(
-        ( "rs_name" = String, description="The ID of the OAuth2 resource server you wish to query"),
-        ( "group" = String, description="Group to remove"),
+        super::apidocs::path_schema::RsName,
+        super::apidocs::path_schema::GroupName,
     ),
     responses(
         (status = 200, description = "Ok"),
         (status = 400, description = "Invalid request, check the field format/values."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
+    security(("token_jwt" = [])),
     tag = "api/v1/oauth2",
 )]
 // Delete a scope map for a given OAuth2 Resource Server
@@ -265,17 +242,15 @@ pub(crate) async fn oauth2_id_scopemap_delete(
     post,
     path = "/v1/oauth2/{rs_name}/_sup_scopemap/{group}",
     params(
-        ( "rs_name" = String, description="The ID of the OAuth2 resource server you wish to modify"),
-        ( "group" = String, description="Group to modify"),
+        super::apidocs::path_schema::RsName,
+        super::apidocs::path_schema::GroupName,
     ),
     responses(
         (status = 200, description = "Ok"),
         (status = 400, description = "Invalid request, check the field format/values."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
+    security(("token_jwt" = [])),
     tag = "api/v1/oauth2",
 )]
 /// Create a supplemental scope map for a given OAuth2 Resource Server
@@ -297,17 +272,15 @@ pub(crate) async fn oauth2_id_sup_scopemap_post(
     delete,
     path = "/v1/oauth2/{rs_name}/_sup_scopemap/{group}",
     params(
-        ( "rs_name" = String, description="The ID of the OAuth2 resource server you wish to modify"),
-        ( "group" = String, description="Group to modify"),
+        super::apidocs::path_schema::RsName,
+        super::apidocs::path_schema::GroupName,
     ),
     responses(
         (status = 200, description = "Ok"),
         (status = 400, description = "Invalid request, check the field format/values."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
+    security(("token_jwt" = [])),
     tag = "api/v1/oauth2",
 )]
 // Delete a supplemental scope map configuration.
@@ -328,16 +301,14 @@ pub(crate) async fn oauth2_id_sup_scopemap_delete(
     delete,
     path = "/v1/oauth2/{rs_name}",
     params(
-        ( "rs_name" = String, description="The ID of the OAuth2 resource server you wish to modify"),
+        super::apidocs::path_schema::RsName,
     ),
     responses(
         (status = 200),
         (status = 403),
         (status = 404),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
+    security(("token_jwt" = [])),
     tag = "api/v1/oauth2",
 )]
 /// Delete an OAuth2 Resource Server
@@ -358,15 +329,13 @@ pub(crate) async fn oauth2_id_delete(
     delete,
     path = "/v1/oauth2/{rs_name}/_image",
     params(
-        ("rs_name" = String,Path, description="The ID of the OAuth2 resource server to get the image for")
+        super::apidocs::path_schema::RsName,
     ),
     responses(
         (status = 200, description = "Ok"),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
+    security(("token_jwt" = [])),
     tag = "api/v1/oauth2",
 )]
 // API endpoint for deleting the image associated with an OAuth2 Resource Server.
@@ -388,17 +357,14 @@ pub(crate) async fn oauth2_id_image_delete(
     post,
     path = "/v1/oauth2/{rs_name}/_image",
     params(
-        ("rs_name" = String,Path, description="The ID of the OAuth2 resource server to get the image for")
-        // TODO identify this takes a multipart form for file uploads?
+        super::apidocs::path_schema::RsName,
     ),
     responses(
         (status = 200, description = "Ok"),
         (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
+    security(("token_jwt" = [])),
     tag = "api/v1/oauth2",
 )]
 // API endpoint for creating/replacing the image associated with an OAuth2 Resource Server.

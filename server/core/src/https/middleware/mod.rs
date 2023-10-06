@@ -29,7 +29,9 @@ pub async fn version_middleware<B>(request: Request<B>, next: Next<B>) -> Respon
 #[derive(Clone, Debug)]
 /// For holding onto the event ID and other handy request-based things
 pub struct KOpId {
+    /// The event correlation ID
     pub eventid: Uuid,
+    /// The User Access Token, if present
     pub uat: Option<String>,
 }
 

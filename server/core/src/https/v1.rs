@@ -24,12 +24,13 @@ use kanidmd_lib::idm::AuthState;
 use kanidmd_lib::prelude::*;
 use kanidmd_lib::value::PartialValue;
 
-use crate::https::extractors::TrustedClientIp;
-use crate::https::to_axum_response;
-
+use super::apidocs::{path_schema, response_schema};
+use super::errors::WebError;
 use super::middleware::caching::dont_cache_me;
 use super::middleware::KOpId;
 use super::ServerState;
+use crate::https::extractors::TrustedClientIp;
+use crate::https::to_axum_response;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub(crate) struct SessionId {
@@ -39,17 +40,9 @@ pub(crate) struct SessionId {
 #[utoipa::path(
     post,
     path = "/v1/raw/create",
-    params(
-        // TODO: params
-    ),
-    responses(
-        (status = 200, description = "Ok"),
-        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
-        (status = 403, description = "Authorzation refused"),
-    ),
-    security(
-        ("token_jwt" = [])
-    ),
+    responses(response_schema::DefaultApiResponse),
+    request_body=CreateRequest,
+    security(("token_jwt" = [])),
     tag = "api/v1/raw",
 )]
 pub async fn raw_create(
@@ -57,9 +50,6 @@ pub async fn raw_create(
     Extension(kopid): Extension<KOpId>,
     Json(msg): Json<CreateRequest>,
 ) -> Response<Body> {
-    // parse the req to a CreateRequest
-    // let msg: CreateRequest = req.body_json().await?;
-
     let res = state
         .qe_w_ref
         .handle_create(kopid.uat, msg, kopid.eventid)
@@ -70,17 +60,13 @@ pub async fn raw_create(
 #[utoipa::path(
     post,
     path = "/v1/raw/modify",
-    params(
-        // TODO: params
-    ),
     responses(
         (status = 200, description = "Ok"),
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
+    request_body=ModifyRequest,
+    security(("token_jwt" = [])),
     tag = "api/v1/raw",
 )]
 pub async fn raw_modify(
@@ -98,17 +84,13 @@ pub async fn raw_modify(
 #[utoipa::path(
     post,
     path = "/v1/raw/delete",
-    params(
-        // TODO: params
-    ),
     responses(
-        (status = 200, description = "Ok"),
+        (status = 200),
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
+    request_body=DeleteRequest,
+    security(("token_jwt" = [])),
     tag = "api/v1/raw",
 )]
 pub async fn raw_delete(
@@ -126,17 +108,13 @@ pub async fn raw_delete(
 #[utoipa::path(
     post,
     path = "/v1/raw/searc",
-    params(
-        // TODO: params
-    ),
     responses(
         (status = 200, description = "Ok"),
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
+    request_body=SearchRequest,
+    security(("token_jwt" = [])),
     tag = "api/v1/raw",
 )]
 pub async fn raw_search(
@@ -154,17 +132,8 @@ pub async fn raw_search(
 #[utoipa::path(
     get,
     path = "/v1/self",
-    params(
-        // TODO: params
-    ),
-    responses(
-        (status = 200, description = "Ok"),
-        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
-        (status = 403, description = "Authorzation refused"),
-    ),
-    security(
-        ("token_jwt" = [])
-    ),
+    responses(response_schema::DefaultApiResponse),
+    security(("token_jwt" = [])),
     tag = "api/v1/self",
 )]
 // Whoami?
@@ -180,17 +149,12 @@ pub async fn whoami(
 #[utoipa::path(
     get,
     path = "/v1/self/_uat",
-    params(
-        // TODO: params
-    ),
     responses(
         (status = 200, description = "Ok"),
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
+    security(("token_jwt" = [])),
     tag = "api/v1/self",
 )]
 pub async fn whoami_uat(
@@ -207,17 +171,12 @@ pub async fn whoami_uat(
 #[utoipa::path(
     post,
     path = "/v1/logout",
-    params(
-        // TODO: params
-    ),
     responses(
         (status = 200, description = "Ok"),
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
+    security(("token_jwt" = [])),
     tag = "api/v1/auth",
 )]
 pub async fn logout(
@@ -236,13 +195,13 @@ pub async fn json_rest_event_get(
     attrs: Option<Vec<String>>,
     filter: Filter<FilterInvalid>,
     kopid: KOpId,
-) -> impl IntoResponse {
-    let res = state
+) -> Result<Json<Vec<ProtoEntry>>, WebError> {
+    state
         .qe_r_ref
         .handle_internalsearch(kopid.uat, filter, attrs, kopid.eventid)
-        .await;
-
-    to_axum_response(res)
+        .await
+        .map(|r| Json::from(r))
+        .map_err(|e| e.into())
 }
 
 pub async fn json_rest_event_get_id(
@@ -251,15 +210,16 @@ pub async fn json_rest_event_get_id(
     filter: Filter<FilterInvalid>,
     attrs: Option<Vec<String>>,
     kopid: KOpId,
-) -> impl IntoResponse {
+) -> Result<Json<Option<ProtoEntry>>, WebError> {
     let filter = Filter::join_parts_and(filter, filter_all!(f_id(id.as_str())));
 
-    let res = state
+    state
         .qe_r_ref
         .handle_internalsearch(kopid.uat, filter, attrs, kopid.eventid)
         .await
-        .map(|mut r| r.pop());
-    to_axum_response(res)
+        .map(|mut r| r.pop())
+        .map(Json::from)
+        .map_err(WebError::from)
 }
 
 pub async fn json_rest_event_delete_id(
@@ -267,13 +227,14 @@ pub async fn json_rest_event_delete_id(
     id: String,
     filter: Filter<FilterInvalid>,
     kopid: KOpId,
-) -> impl IntoResponse {
+) -> Result<Json<()>, WebError> {
     let filter = Filter::join_parts_and(filter, filter_all!(f_id(id.as_str())));
-    let res = state
+    state
         .qe_w_ref
         .handle_internaldelete(kopid.uat, filter, kopid.eventid)
-        .await;
-    to_axum_response(res)
+        .await
+        .map(Json::from)
+        .map_err(WebError::from)
 }
 
 pub async fn json_rest_event_get_attr(
@@ -409,20 +370,19 @@ pub async fn json_rest_event_delete_attr(
     filter: Filter<FilterInvalid>,
     values: Option<Vec<String>>,
     kopid: KOpId,
-) -> impl IntoResponse {
+) -> Result<Json<()>, WebError> {
     let values = match values {
         Some(val) => val,
         None => vec![],
     };
 
     if values.is_empty() {
-        let res = state
+        state
             .qe_w_ref
             .handle_purgeattribute(kopid.uat, uuid_or_name, attr, filter, kopid.eventid)
-            .await;
-        to_axum_response(res)
+            .await
     } else {
-        let res = state
+        state
             .qe_w_ref
             .handle_removeattributevalues(
                 kopid.uat,
@@ -432,32 +392,28 @@ pub async fn json_rest_event_delete_attr(
                 filter,
                 kopid.eventid,
             )
-            .await;
-        to_axum_response(res)
+            .await
     }
+    .map(Json::from)
+    .map_err(WebError::from)
 }
 
 #[utoipa::path(
     get,
     path = "/v1/schema",
-    params(
-        // TODO: params
-    ),
     responses(
         (status = 200, description = "Ok"),
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
-    tag = "api/v1",
+    security(("token_jwt" = [])),
+    tag = "api/v1/schema",
 )]
 // Whoami?
 pub async fn schema_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
-) -> impl IntoResponse {
+) -> Result<Json<Vec<ProtoEntry>>, WebError> {
     // NOTE: This is filter_all, because from_internal_message will still do the alterations
     // needed to make it safe. This is needed because there may be aci's that block access
     // to the recycle/ts types in the filter, and we need the aci to only eval on this
@@ -472,18 +428,13 @@ pub async fn schema_get(
 #[utoipa::path(
     get,
     path = "/v1/schema/attributetype",
-    params(
-        // TODO: params
-    ),
     responses(
         (status = 200, description = "Ok"),
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
-    tag = "api/v1/attributetype",
+    security(("token_jwt" = [])),
+    tag = "api/v1/schema",
 )]
 pub async fn schema_attributetype_get(
     State(state): State<ServerState>,
@@ -496,18 +447,13 @@ pub async fn schema_attributetype_get(
 #[utoipa::path(
     get,
     path = "/v1/schema/attributetype/{id}",
-    params(
-        // TODO: params
-    ),
     responses(
         (status = 200, description = "Ok"),
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
-    tag = "api/v1/attributetype",
+    security(("token_jwt" = [])),
+    tag = "api/v1/schema",
 )]
 pub async fn schema_attributetype_get_id(
     State(state): State<ServerState>,
@@ -539,9 +485,7 @@ pub async fn schema_attributetype_get_id(
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
+    security(("token_jwt" = [])),
     tag = "api/v1/schema",
 )]
 pub async fn schema_classtype_get(
@@ -555,17 +499,12 @@ pub async fn schema_classtype_get(
 #[utoipa::path(
     get,
     path = "/v1/schema/classtype/{id}",
-    params(
-        ("id" = String, description="The ClassType to query.")
-    ),
     responses(
         (status = 200, description = "Ok"),
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
+    security(("token_jwt" = [])),
     tag = "api/v1/schema",
 )]
 pub async fn schema_classtype_get_id(
@@ -589,18 +528,12 @@ pub async fn schema_classtype_get_id(
 #[utoipa::path(
     get,
     path = "/v1/person",
-    params(
-        // ("id" = String, description="The ClassType to query.")
-
-    ),
     responses(
         (status = 200, description = "Ok"),
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
+    security(("token_jwt" = [])),
     tag = "api/v1/person",
 )]
 pub async fn person_get(
@@ -619,14 +552,9 @@ pub async fn person_get(
         ("name" = String, description="The username to set."),
         ("displayname" = String, description="The display name to set."),
     ),
-    responses(
-        (status = 200, description = "Ok"),
-        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
-        (status = 403, description = "Authorzation refused"),
-    ),
-    security(
-        ("token_jwt" = [])
-    ),
+    request_body=Json, // TODO: ProtoEntry can't be serialized, so we need to do this manually
+    // TODO Responses
+    security(("token_jwt" = [])),
     tag = "api/v1/person",
 )]
 // expects the following fields in the attrs field of the req: [name, displayname]
@@ -646,19 +574,12 @@ pub async fn person_post(
 #[utoipa::path(
     get,
     path = "/v1/person/{id}",
-    params(
-        // TODO: this is totes wrong
-        ("id" = String, description="SPN?"),
-        // ("displayname" = String, description="The display name to set."),
-    ),
     responses(
         (status = 200, description = "Ok"),
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
+    security(("token_jwt" = [])),
     tag = "api/v1/person",
 )]
 pub async fn person_id_get(
@@ -673,19 +594,12 @@ pub async fn person_id_get(
 #[utoipa::path(
     delete,
     path = "/v1/person/{id}",
-    params(
-        // TODO: this is totes wrong
-        ("id" = String, description="SPN?"),
-        // ("displayname" = String, description="The display name to set."),
-    ),
     responses(
         (status = 200, description = "Ok"),
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
+    security(("token_jwt" = [])),
     tag = "api/v1/person",
 )]
 pub async fn person_id_delete(
@@ -702,19 +616,12 @@ pub async fn person_id_delete(
 #[utoipa::path(
     get,
     path = "/v1/service_account",
-    params(
-        // TODO: this is totes wrong
-        ("id" = String, description="SPN?"),
-        // ("displayname" = String, description="The display name to set."),
-    ),
     responses(
         (status = 200, description = "Ok"),
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
+    security(("token_jwt" = [])),
     tag = "api/v1/service_account",
 )]
 pub async fn service_account_get(
@@ -728,19 +635,13 @@ pub async fn service_account_get(
 #[utoipa::path(
     post,
     path = "/v1/service_account",
-    params(
-        // TODO: this is totes wrong
-        // ("id" = String, description="SPN?"),
-        // ("displayname" = String, description="The display name to set."),
-    ),
+    request_body=Json, // TODO ProtoEntry can't be serialized, so we need to do this manually
     responses(
         (status = 200, description = "Ok"),
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
+    security(("token_jwt" = [])),
     tag = "api/v1/service_account",
 )]
 pub async fn service_account_post(
@@ -759,19 +660,12 @@ pub async fn service_account_post(
 #[utoipa::path(
     get,
     path = "/v1/service_account/{id}",
-    params(
-        // TODO: this is totes wrong
-        ("id" = String, description="SPN?"),
-        // ("displayname" = String, description="The display name to set."),
-    ),
     responses(
         (status = 200, description = "Ok"),
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
+    security(("token_jwt" = [])),
     tag = "api/v1/service_account",
 )]
 pub async fn service_account_id_get(
@@ -786,19 +680,12 @@ pub async fn service_account_id_get(
 #[utoipa::path(
     delete,
     path = "/v1/service_account/{id}",
-    params(
-        // TODO: this is totes wrong
-        ("id" = String, description="SPN?"),
-        // ("displayname" = String, description="The display name to set."),
-    ),
     responses(
         (status = 200, description = "Ok"),
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
+    security(("token_jwt" = [])),
     tag = "api/v1/service_account",
 )]
 pub async fn service_account_id_delete(
@@ -813,19 +700,12 @@ pub async fn service_account_id_delete(
 #[utoipa::path(
     get,
     path = "/v1/service_account/{id}/_credential/_generate",
-    params(
-        // TODO: this is totes wrong
-        ("id" = String, description="SPN?"),
-        // ("displayname" = String, description="The display name to set."),
-    ),
     responses(
         (status = 200, description = "Ok"),
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
+    security(("token_jwt" = [])),
     tag = "api/v1/service_account",
 )]
 pub async fn service_account_credential_generate(
@@ -843,21 +723,15 @@ pub async fn service_account_credential_generate(
 #[utoipa::path(
     get,
     path = "/v1/service_account/{id}/_into_person",
-    params(
-        // TODO: this is totes wrong
-        ("id" = String, description="SPN?"),
-        // ("displayname" = String, description="The display name to set."),
-    ),
     responses(
         (status = 200, description = "Ok"),
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
+    security(("token_jwt" = [])),
     tag = "api/v1/service_account",
 )]
+
 /// Due to how the migrations work in 6 -> 7, we can accidentally
 /// mark "accounts" as service accounts when they are persons. This
 /// allows migrating them to the person type due to its similarities.
@@ -879,19 +753,12 @@ pub async fn service_account_into_person(
 #[utoipa::path(
     get,
     path = "/v1/service_account/{id}/_spi_token",
-    params(
-        // TODO: this is totes wrong
-        ("id" = String, description="SPN?"),
-        // ("displayname" = String, description="The display name to set."),
-    ),
     responses(
         (status = 200, description = "Ok"),
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
+    security(("token_jwt" = [])),
     tag = "api/v1/service_account",
 )]
 pub async fn service_account_api_token_get(
@@ -909,19 +776,13 @@ pub async fn service_account_api_token_get(
 #[utoipa::path(
     post,
     path = "/v1/service_account/{id}/_spi_token",
-    params(
-        // TODO: this is totes wrong
-        ("id" = String, description="SPN?"),
-        // ("displayname" = String, description="The display name to set."),
-    ),
+    request_body = ApiTokenGenerate,
     responses(
         (status = 200, description = "Ok"),
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
+    security(("token_jwt" = [])),
     tag = "api/v1/service_account",
 )]
 pub async fn service_account_api_token_post(
@@ -948,18 +809,15 @@ pub async fn service_account_api_token_post(
     delete,
     path = "/v1/service_account/{id}/_spi_token/{token_id}",
     params(
-        // TODO: this is totes wrong
-        ("token_id" = Uuid, description="The ID of the token to delete, a uuid?"),
-        // ("displayname" = String, description="The display name to set."),
+        path_schema::Id,
+        path_schema::TokenId,
     ),
     responses(
         (status = 200, description = "Ok"),
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
+    security(("token_jwt" = [])),
     tag = "api/v1/service_account",
 )]
 pub async fn service_account_api_token_delete(
@@ -977,20 +835,13 @@ pub async fn service_account_api_token_delete(
 #[utoipa::path(
     get,
     path = "/v1/person/{id}/_attr/{attr}",
-    params(
-        // TODO: this is totes wrong
-        ("id" = Uuid, description="The ID of the account, a uuid?"),
-        ("attr" = String, description="The attribute?"),
-    ),
     responses(
         (status = 200, description = "Ok"),
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
-    tag = "api/v1/person",
+    security(("token_jwt" = [])),
+    tag = "api/v1/person/attr",
 )]
 pub async fn person_id_get_attr(
     State(state): State<ServerState>,
@@ -1004,20 +855,12 @@ pub async fn person_id_get_attr(
 #[utoipa::path(
     get,
     path = "/v1/service_account/{id}/_attr/{attr}",
-    params(
-        // TODO: this is totes wrong
-        ("id" = Uuid, description="The ID of the account, a uuid?"),
-        ("attr" = String, description="The attribute?"),
-        // ("displayname" = String, description="The display name to set."),
-    ),
     responses(
         (status = 200, description = "Ok"),
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
+    security(("token_jwt" = [])),
     tag = "api/v1/service_account",
 )]
 pub async fn service_account_id_get_attr(
@@ -1032,21 +875,15 @@ pub async fn service_account_id_get_attr(
 #[utoipa::path(
     post,
     path = "/v1/person/{id}/_attr/{attr}",
-    params(
-        // TODO: this is totes wrong
-        // ("id" = Uuid, description="The ID of the account, a uuid?"),
-        // ("attr" = String, description="The attribute?"),
-        // ("displayname" = String, description="The display name to set."),
-    ),
+    // Attributes to set
+    request_body= Json<Vec<String>>,
     responses(
         (status = 200, description = "Ok"),
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
-    tag = "api/v1/person",
+    security(("token_jwt" = [])),
+    tag = "api/v1/person/attr",
 )]
 pub async fn person_id_post_attr(
     State(state): State<ServerState>,
@@ -1061,19 +898,13 @@ pub async fn person_id_post_attr(
 #[utoipa::path(
     post,
     path = "/v1/service_account/{id}/_attr/{attr}",
-    params(
-        // TODO: this is totes wrong
-        ("id" = Uuid, description="The ID of the account, a uuid?"),
-        ("attr" = String, description="The attribute?"),
-    ),
+    request_body=Json<Vec<String>>,
     responses(
         (status = 200, description = "Ok"),
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
+    security(("token_jwt" = [])),
     tag = "api/v1/service_account",
 )]
 pub async fn service_account_id_post_attr(
@@ -1089,20 +920,13 @@ pub async fn service_account_id_post_attr(
 #[utoipa::path(
     delete,
     path = "/v1/person/{id}/_attr/{attr}",
-    params(
-        // TODO: this is totes wrong
-        ("id" = Uuid, description="The ID of the account, a uuid?"),
-        ("attr" = String, description="The attribute?"),
-    ),
     responses(
         (status = 200, description = "Ok"),
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
-    tag = "api/v1/person",
+    security(("token_jwt" = [])),
+    tag = "api/v1/person/attr",
 )]
 pub async fn person_id_delete_attr(
     State(state): State<ServerState>,
@@ -1116,19 +940,12 @@ pub async fn person_id_delete_attr(
 #[utoipa::path(
     delete,
     path = "/v1/service_account/{id}/_attr/{attr}",
-    params(
-        // TODO: this is totes wrong
-        ("id" = Uuid, description="The ID of the account, a uuid?"),
-        ("attr" = String, description="The attribute?"),
-    ),
     responses(
         (status = 200, description = "Ok"),
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
+    security(("token_jwt" = [])),
     tag = "api/v1/service_account",
 )]
 pub async fn service_account_id_delete_attr(
@@ -1143,20 +960,13 @@ pub async fn service_account_id_delete_attr(
 #[utoipa::path(
     put,
     path = "/v1/person/{id}/_attr/{attr}",
-    params(
-        // TODO: this is totes wrong
-        ("id" = Uuid, description="The ID of the account, a uuid?"),
-        ("attr" = String, description="The attribute?"),
-    ),
     responses(
         (status = 200, description = "Ok"),
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
-    tag = "api/v1/person",
+    security(("token_jwt" = [])),
+    tag = "api/v1/person/attr",
 )]
 pub async fn person_id_put_attr(
     State(state): State<ServerState>,
@@ -1171,19 +981,13 @@ pub async fn person_id_put_attr(
 #[utoipa::path(
     put,
     path = "/v1/service_account/{id}/_attr/{attr}",
-    params(
-        // TODO: this is totes wrong
-        ("id" = Uuid, description="The ID of the account, a uuid?"),
-        ("attr" = String, description="The attribute?"),
-    ),
+    request_body=Vec<String>,
     responses(
         (status = 200, description = "Ok"),
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
+    security(("token_jwt" = [])),
     tag = "api/v1/service_account",
 )]
 pub async fn service_account_id_put_attr(
@@ -1199,18 +1003,13 @@ pub async fn service_account_id_put_attr(
 #[utoipa::path(
     patch,
     path = "/v1/person/{id}",
-    params(
-        // TODO: this is totes wrong
-        ("id" = Uuid, description="The ID of the account, a uuid?"),
-    ),
     responses(
         (status = 200, description = "Ok"),
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
+    // request_body=ProtoEntry, // TODO: can't deal with a HashMap in the attr
+    security(("token_jwt" = [])),
     tag = "api/v1/person",
 )]
 pub async fn person_id_patch(
@@ -1232,19 +1031,9 @@ pub async fn person_id_patch(
 #[utoipa::path(
     get,
     path = "/v1/person/{id}/_credential/_update",
-    params(
-        // TODO: this is totes wrong
-        ("id" = Uuid, description="The ID of the account, a uuid?"),
-    ),
-    responses(
-        (status = 200, description = "Ok"),
-        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
-        (status = 403, description = "Authorzation refused"),
-    ),
-    security(
-        ("token_jwt" = [])
-    ),
-    tag = "api/v1/person",
+    responses((status = 200),(status = 403),),
+    security(("token_jwt" = [])),
+    tag = "api/v1/person/credential",
 )]
 pub async fn person_id_credential_update_get(
     State(state): State<ServerState>,
@@ -1262,20 +1051,15 @@ pub async fn person_id_credential_update_get(
     get,
     path = "/v1/person/{id}/_credential/_update_intent/?ttl={ttl}",
     params(
-        // TODO: this is totes wrong
-        ("id" = Uuid, Path, description="The ID of the account, a uuid?"),
         ("ttl" = u32, Query, description="The new TTL for the credential?") // TODO: this is a query param?
     ),
-
     responses(
         (status = 200, description = "Ok"),
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
-    tag = "api/v1/person",
+    security(("token_jwt" = [])),
+    tag = "api/v1/person/credential",
 )]
 // TODO: this shouldn't be a get, we're making changes!
 #[instrument(level = "trace", skip(state, kopid))]
@@ -1300,18 +1084,13 @@ pub async fn person_id_credential_update_intent_ttl_get(
 #[utoipa::path(
     get,
     path = "/v1/person/{id}/_credential/_update_intent",
-    params(
-        ("id" = String, Path, description="The ID of the account, a username, SPN or UUID"),
-    ),
 
     responses(
         (status = 200, description = "Ok"),
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
+    security(("token_jwt" = [])),
     tag = "api/v1/person",
 )]
 #[instrument(level = "trace", skip(state, kopid))]
@@ -1330,18 +1109,13 @@ pub async fn person_id_credential_update_intent_get(
 #[utoipa::path(
     get,
     path = "/v1/account/{id}/_user_auth_token",
-    params(
-        ("id" = String, Path, description="The ID of the account, a username, SPN or UUID"),
-    ),
 
     responses(
         (status = 200, description = "Ok"),
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
+    security(("token_jwt" = [])),
     tag = "api/v1/account",
 )]
 pub async fn account_id_user_auth_token_get(
@@ -1360,8 +1134,7 @@ pub async fn account_id_user_auth_token_get(
     get,
     path = "/v1/account/{id}/_user_auth_token/{token_id}",
     params(
-        ("id" = String, Path, description="The ID of the account, a username, SPN or UUID"),
-        ("token_id" = String, Path, description="The ID of the token, a username, SPN or UUID"),
+        ("token_id" = Uuid, Path, description="The ID of the token, a username, SPN or UUID"),
     ),
 
     responses(
@@ -1369,9 +1142,7 @@ pub async fn account_id_user_auth_token_get(
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
+    security(("token_jwt" = [])),
     tag = "api/v1/account",
 )]
 pub async fn account_user_auth_token_delete(
@@ -1397,9 +1168,7 @@ pub async fn account_user_auth_token_delete(
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
+    security(("token_jwt" = [])),
     tag = "api/v1/credential",
 )] // TODO: post body
 pub async fn credential_update_exchange_intent(
@@ -1425,9 +1194,7 @@ pub async fn credential_update_exchange_intent(
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
+    security(("token_jwt" = [])),
     tag = "api/v1/credential",
 )] // TODO: post body
 pub async fn credential_update_status(
@@ -1459,9 +1226,7 @@ pub async fn credential_update_status(
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
+    security(("token_jwt" = [])),
     tag = "api/v1/credential",
 )] // TODO: post body
 #[instrument(level = "debug", skip(state, kopid))]
@@ -1514,9 +1279,7 @@ pub async fn credential_update_update(
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
+    security(("token_jwt" = [])),
     tag = "api/v1/credential",
 )] // TODO: post body
 pub async fn credential_update_commit(
@@ -1542,9 +1305,7 @@ pub async fn credential_update_commit(
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
+    security(("token_jwt" = [])),
     tag = "api/v1/credential",
 )] // TODO: post body
 pub async fn credential_update_cancel(
@@ -1562,18 +1323,12 @@ pub async fn credential_update_cancel(
 #[utoipa::path(
     get,
     path = "/v1/service_account/{id}/_credential/_status",
-    params(
-        // TODO: this is totes wrong
-        ("id" = Uuid, description="The ID of the account, a uuid?"),
-    ),
     responses(
         (status = 200, description = "Ok"),
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
+    security(("token_jwt" = [])),
     tag = "api/v1/service_account",
 )]
 pub async fn service_account_id_credential_status_get(
@@ -1591,19 +1346,13 @@ pub async fn service_account_id_credential_status_get(
 #[utoipa::path(
     delete,
     path = "/v1/person/{id}/_credential/_status",
-    params(
-        // TODO: this is totes wrong
-        ("id" = Uuid, description="The ID of the account, a uuid?"),
-    ),
     responses(
         (status = 200, description = "Ok"),
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
-    tag = "api/v1/person",
+    security(("token_jwt" = [])),
+    tag = "api/v1/person/credential",
 )]
 pub async fn person_get_id_credential_status(
     State(state): State<ServerState>,
@@ -1620,19 +1369,13 @@ pub async fn person_get_id_credential_status(
 #[utoipa::path(
     get,
     path = "/v1/person/{id}/_ssh_pubkeys",
-    params(
-        // TODO: this is totes wrong
-        ("id" = Uuid, description="The ID of the account, a uuid?"),
-    ),
     responses(
         (status = 200, description = "Ok"),
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
-    tag = "api/v1/person",
+    security(("token_jwt" = [])),
+    tag = "api/v1/person/ssh_pubkeys",
 )]
 pub async fn person_id_ssh_pubkeys_get(
     State(state): State<ServerState>,
@@ -1648,18 +1391,12 @@ pub async fn person_id_ssh_pubkeys_get(
 #[utoipa::path(
     get,
     path = "/v1/account/{id}/_ssh_pubkeys",
-    params(
-        // TODO: this is totes wrong
-        ("id" = Uuid, description="The ID of the account, a uuid?"),
-    ),
     responses(
         (status = 200, description = "Ok"),
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
+    security(("token_jwt" = [])),
     tag = "api/v1/account",
 )]
 #[deprecated]
@@ -1678,18 +1415,12 @@ pub async fn account_id_ssh_pubkeys_get(
 #[utoipa::path(
     get,
     path = "/v1/service_account/{id}/_ssh_pubkeys",
-    params(
-        // TODO: this is totes wrong
-        ("id" = Uuid, description="The ID of the account, a uuid?"),
-    ),
     responses(
         (status = 200, description = "Ok"),
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
+    security(("token_jwt" = [])),
     tag = "api/v1/service_account",
 )]
 pub async fn service_account_id_ssh_pubkeys_get(
@@ -1707,19 +1438,13 @@ pub async fn service_account_id_ssh_pubkeys_get(
 #[utoipa::path(
     post,
     path = "/v1/person/{id}/_ssh_pubkeys",
-    params(
-        // TODO: this is totes wrong
-        ("id" = Uuid, description="The ID of the account, a uuid?"),
-    ),
     responses(
         (status = 200, description = "Ok"),
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
-    tag = "api/v1/person",
+    security(("token_jwt" = [])),
+    tag = "api/v1/person/ssh_pubkeys",
 )]
 pub async fn person_id_ssh_pubkeys_post(
     State(state): State<ServerState>,
@@ -1739,18 +1464,13 @@ pub async fn person_id_ssh_pubkeys_post(
 #[utoipa::path(
     post,
     path = "/v1/service_account/{id}/_ssh_pubkeys",
-    params(
-        // TODO: this is totes wrong
-        ("id" = Uuid, description="The ID of the account, a uuid?"),
-    ),
+    request_body = (String, String),
     responses(
         (status = 200, description = "Ok"),
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
+    security(("token_jwt" = [])),
     tag = "api/v1/service_account",
 )]
 pub async fn service_account_id_ssh_pubkeys_post(
@@ -1781,10 +1501,8 @@ pub async fn service_account_id_ssh_pubkeys_post(
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
-    tag = "api/v1/person",
+    security(("token_jwt" = [])),
+    tag = "api/v1/person/ssh_pubkeys/tag",
 )]
 pub async fn person_id_ssh_pubkeys_tag_get(
     State(state): State<ServerState>,
@@ -1810,9 +1528,7 @@ pub async fn person_id_ssh_pubkeys_tag_get(
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
+    security(("token_jwt" = [])),
     tag = "api/v1/account",
 )]
 pub async fn account_id_ssh_pubkeys_tag_get(
@@ -1840,9 +1556,7 @@ pub async fn account_id_ssh_pubkeys_tag_get(
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
+    security(("token_jwt" = [])),
     tag = "api/v1/service_account",
 )]
 pub async fn service_account_id_ssh_pubkeys_tag_get(
@@ -1870,10 +1584,8 @@ pub async fn service_account_id_ssh_pubkeys_tag_get(
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
-    tag = "api/v1/person",
+    security(("token_jwt" = [])),
+    tag = "api/v1/person/ssh_pubkeys/tag",
 )]
 pub async fn person_id_ssh_pubkeys_tag_delete(
     State(state): State<ServerState>,
@@ -1909,9 +1621,7 @@ pub async fn person_id_ssh_pubkeys_tag_delete(
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
+    security(("token_jwt" = [])),
     tag = "api/v1/person",
 )]
 pub async fn service_account_id_ssh_pubkeys_tag_delete(
@@ -1939,18 +1649,13 @@ pub async fn service_account_id_ssh_pubkeys_tag_delete(
 #[utoipa::path(
     get,
     path = "/v1/person/{id}/_radius",
-    params(
-        ("id" = String, description="The ID of the account, a username/UUID"),
-    ),
     responses(
         (status = 200, description = "Ok"),
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
-    tag = "api/v1/person",
+    security(("token_jwt" = [])),
+    tag = "api/v1/person/radius",
 )]
 pub async fn person_id_radius_get(
     State(state): State<ServerState>,
@@ -1968,18 +1673,13 @@ pub async fn person_id_radius_get(
 #[utoipa::path(
     post,
     path = "/v1/person/{id}/_radius",
-    params(
-        ("id" = String, description="The ID of the account, a username/UUID"),
-    ),
     responses(
         (status = 200, description = "Ok"),
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
-    tag = "api/v1/person",
+    security(("token_jwt" = [])),
+    tag = "api/v1/person/radius",
 )]
 // TODO: what body do we take here?
 pub async fn person_id_radius_post(
@@ -1998,17 +1698,12 @@ pub async fn person_id_radius_post(
 #[utoipa::path(
     delete,
     path = "/v1/person/{id}/_radius",
-    params(
-        ("id" = String, Path, description="The ID of the account, a username/UUID"),
-    ),
     responses(
         (status = 200, description = "Ok"),
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
+    security(("token_jwt" = [])),
     tag = "api/v1/person",
 )]
 pub async fn person_id_radius_delete(
@@ -2025,18 +1720,13 @@ pub async fn person_id_radius_delete(
 #[utoipa::path(
     get,
     path = "/v1/person/{id}/_radius/_token",
-    params(
-        ("id" = String, Path, description="The ID of the account, a username/UUID"),
-    ),
     responses(
         (status = 200, description = "Ok"),
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
-    tag = "api/v1/person",
+    security(("token_jwt" = [])),
+    tag = "api/v1/person/radius",
 )]
 pub async fn person_id_radius_token_get(
     State(state): State<ServerState>,
@@ -2050,17 +1740,12 @@ pub async fn person_id_radius_token_get(
 #[utoipa::path(
     get,
     path = "/v1/account/{id}/_radius/_token",
-    params(
-        ("id" = String, Path, description="The ID of the account, a username/UUID"),
-    ),
     responses(
         (status = 200, description = "Ok"),
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
+    security(("token_jwt" = [])),
     tag = "api/v1/account",
 )]
 pub async fn account_id_radius_token_get(
@@ -2074,17 +1759,12 @@ pub async fn account_id_radius_token_get(
 #[utoipa::path(
     post,
     path = "/v1/account/{id}/_radius/_token",
-    params(
-        ("id" = String, Path, description="The ID of the account, a username/UUID"),
-    ),
     responses(
         (status = 200, description = "Ok"),
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
+    security(("token_jwt" = [])),
     tag = "api/v1/person",
 )] // TODO: what body do we expect here?
 pub async fn account_id_radius_token_post(
@@ -2115,10 +1795,8 @@ async fn person_id_radius_handler(
 
 #[utoipa::path(
     post,
-    path = " /v1/person/{id}/_unix",
-    params(
-        ("id" = String, Path, description="The ID of the account, a username/UUID"),
-    ),
+    path = "/v1/person/{id}/_unix",
+    request_body=Jaon<AccountUnixExtend>,
     responses(
         (status = 200, description = "Ok"),
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
@@ -2145,21 +1823,17 @@ pub async fn person_id_unix_post(
 
 #[utoipa::path(
     post,
-    path = " /v1/service_account/{id}/_unix",
-    params(
-        ("id" = String, Path, description="The ID of the account, a username/UUID"),
-    ),
+    path = "/v1/service_account/{id}/_unix",
+    request_body = AccountUnixExtend,
     responses(
-        (status = 200, description = "Ok"),
-        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
-        (status = 403, description = "Authorzation refused"),
+        (status = 200),
+        (status = 400),
+        (status = 403),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
+    security(("token_jwt" = [])),
     tag = "api/v1/service_account",
 )] // TODO: what body do we expect here?
-/// Expects an `AccountUnixExtend` object
+///
 #[instrument(, level = "INFO", skip(id, state, kopid))]
 pub async fn service_account_id_unix_post(
     State(state): State<ServerState>,
@@ -2176,18 +1850,13 @@ pub async fn service_account_id_unix_post(
 
 #[utoipa::path(
     post,
-    path = " /v1/account/{id}/_unix",
-    params(
-        ("id" = String, Path, description="The ID of the account, a username/UUID"),
-    ),
+    path = "/v1/account/{id}/_unix",
     responses(
         (status = 200, description = "Ok"),
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
+    security(("token_jwt" = [])),
     tag = "api/v1/account",
 )] // TODO: what body do we expect here?
 /// Expects an `AccountUnixExtend` object
@@ -2207,18 +1876,13 @@ pub async fn account_id_unix_post(
 
 #[utoipa::path(
     get,post,
-    path = " /v1/account/{id}/_unix/_token",
-    params(
-        ("id" = String, Path, description="The ID of the account, a username/UUID"),
-    ),
+    path = "/v1/account/{id}/_unix/_token",
     responses(
         (status = 200, description = "Ok"),
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
+    security(("token_jwt" = [])),
     tag = "api/v1/account",
 )] // TODO: what body do we expect here?
 #[instrument(level = "INFO", skip_all)]
@@ -2269,16 +1933,13 @@ pub async fn account_id_unix_token(
     path = "/v1/account/{id}/_unix/_auth",
     params(
         ("id" = String, Path, description="The ID of the account, a username/UUID"),
-        // ("obj" = Json<SingleStringRequest>, Body, description="The auth string"), // TODO: post bdy
     ),
     responses(
         (status = 200, description = "Ok"),
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
+    security(("token_jwt" = [])),
     tag = "api/v1/account",
 )] // TODO: what body do we expect here?
 pub async fn account_id_unix_auth_post(
@@ -2297,19 +1958,14 @@ pub async fn account_id_unix_auth_post(
 #[utoipa::path(
     post,
     path = "/v1/person/{id}/_unix/_credential",
-    params(
-        ("id" = String, Path, description="The ID of the account, a username/UUID"),
-        ("obj" = Json<SingleStringRequest>, description="The auth string"), // TODO this is a post body?
-    ),
+    request_body = SingleStringRequest,
     responses(
         (status = 200, description = "Ok"),
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
-    tag = "api/v1/person",
+    security(("token_jwt" = [])),
+    tag = "api/v1/person/unix",
 )] // TODO: what body do we expect here?
 pub async fn person_id_unix_credential_put(
     State(state): State<ServerState>,
@@ -2327,20 +1983,14 @@ pub async fn person_id_unix_credential_put(
 #[utoipa::path(
     delete,
     path = "/v1/person/{id}/_unix/_credential",
-    params(
-        ("id" = String, Path, description="The ID of the account, a username/UUID"),
-        ("obj" = Json<SingleStringRequest>, description="The auth string"), // TODO this is a post body?
-    ),
     responses(
         (status = 200, description = "Ok"),
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
-    tag = "api/v1/person",
-)] // TODO: what body do we expect here?
+    security(("token_jwt" = [])),
+    tag = "api/v1/person/unix",
+)]
 pub async fn person_id_unix_credential_delete(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
@@ -2363,17 +2013,12 @@ pub async fn person_id_unix_credential_delete(
 #[utoipa::path(
     post,
     path = "/v1/person/{id}/_identify/_user",
-    params(
-        ("id" = String, Path, description="The ID of the account, a username/UUID"),
-    ),
     responses(
         (status = 200, description = "Ok"),
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
+    security(("token_jwt" = [])),
     tag = "api/v1/person",
 )] // TODO: what body do we expect here?
 pub async fn person_identify_user_post(
@@ -2392,17 +2037,12 @@ pub async fn person_identify_user_post(
 #[utoipa::path(
     get,
     path = "/v1/group",
-    params(
-        ("id" = String, Path, description="The group to target"),
-    ),
     responses(
         (status = 200, description = "Ok"),
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
+    security(("token_jwt" = [])),
     tag = "api/v1/group",
 )]
 /// Returns all groups visible  to the user
@@ -2417,17 +2057,12 @@ pub async fn group_get(
 #[utoipa::path(
     post,
     path = "/v1/group/{id}",
-    params(
-        ("id" = String, Path, description="The group to target"),
-    ),
     responses(
         (status = 200, description = "Ok"),
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
+    security(("token_jwt" = [])),
     tag = "api/v1/group",
 )] // TODO: post body
 pub async fn group_post(
@@ -2442,17 +2077,12 @@ pub async fn group_post(
 #[utoipa::path(
     get,
     path = "/v1/group/{id}",
-    params(
-        ("id" = String, Path, description="The group to target"),
-    ),
     responses(
         (status = 200, description = "Ok"),
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
+    security(("token_jwt" = [])),
     tag = "api/v1/group",
 )]
 pub async fn group_id_get(
@@ -2467,17 +2097,12 @@ pub async fn group_id_get(
 #[utoipa::path(
     delete,
     path = "/v1/group/{id}",
-    params(
-        ("id" = String, Path, description="The group to target"),
-    ),
     responses(
         (status = 200, description = "Ok"),
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
+    security(("token_jwt" = [])),
     tag = "api/v1/group",
 )]
 pub async fn group_id_delete(
@@ -2493,18 +2118,16 @@ pub async fn group_id_delete(
     get,
     path = "/v1/group/{id}/_attr/{attr}",
     params(
-        ("id" = String, Path, description="The group to target"),
-        ("attr" = String, Path, description="The attribute to target"),
+        path_schema::Id,
+        path_schema::Attr,
     ),
     responses(
         (status = 200, description = "Ok"),
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
-    tag = "api/v1/group",
+    security(("token_jwt" = [])),
+    tag = "api/v1/group/attr",
 )]
 pub async fn group_id_attr_get(
     State(state): State<ServerState>,
@@ -2519,18 +2142,17 @@ pub async fn group_id_attr_get(
     post,
     path = "/v1/group/{id}/_attr/{attr}",
     params(
-        ("id" = String, Path, description="The group to target"),
-        ("attr" = String, Path, description="The attribute to target"),
+        path_schema::Id,
+        path_schema::Attr,
     ),
+    request_body=Json<Vec<String>>,
     responses(
         (status = 200, description = "Ok"),
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
-    tag = "api/v1/group",
+    security(("token_jwt" = [])),
+    tag = "api/v1/group/attr",
 )]
 pub async fn group_id_attr_post(
     Path((id, attr)): Path<(String, String)>,
@@ -2546,18 +2168,17 @@ pub async fn group_id_attr_post(
     delete,
     path = "/v1/group/{id}/_attr/{attr}",
     params(
-        ("id" = String, Path, description="The group to target"),
-        ("attr" = String, Path, description="The attribute to target"),
+        path_schema::Id,
+        path_schema::Attr,
     ),
+    request_body=Option<Json<Vec<String>>>,
     responses(
         (status = 200, description = "Ok"),
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
-    tag = "api/v1/group",
+    security(("token_jwt" = [])),
+    tag = "api/v1/group/attr",
 )]
 pub async fn group_id_attr_delete(
     Path((id, attr)): Path<(String, String)>,
@@ -2574,18 +2195,17 @@ pub async fn group_id_attr_delete(
     put,
     path = "/v1/group/{id}/_attr/{attr}",
     params(
-        ("id" = String, Path, description="The group to target"),
-        ("attr" = String, Path, description="The attribute to target"),
+        path_schema::Id,
+        path_schema::Attr,
     ),
+    request_body=Json<Vec<String>>,
     responses(
         (status = 200, description = "Ok"),
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
-    tag = "api/v1/group",
+    security(("token_jwt" = [])),
+    tag = "api/v1/group/attr",
 )]
 pub async fn group_id_attr_put(
     Path((id, attr)): Path<(String, String)>,
@@ -2600,18 +2220,14 @@ pub async fn group_id_attr_put(
 #[utoipa::path(
     put,
     path = "/v1/group/{id}/_unix",
-    params(
-        ("id" = String, Path, description="The group to target"),
-    ),
+    request_body = GroupUnixExtend,
     responses(
         (status = 200, description = "Ok"),
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
-    tag = "api/v1/group",
+    security(("token_jwt" = [])),
+    tag = "api/v1/group/unix",
 )]
 pub async fn group_id_unix_post(
     State(state): State<ServerState>,
@@ -2629,18 +2245,13 @@ pub async fn group_id_unix_post(
 #[utoipa::path(
     get,
     path = "/v1/group/{id}/_unix/_token",
-    params(
-        ("id" = String, Path, description="The group to target"),
-    ),
     responses(
         (status = 200, description = "Ok"),
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
-    tag = "api/v1/group",
+    security(("token_jwt" = [])),
+    tag = "api/v1/group/unix",
 )]
 pub async fn group_id_unix_token_get(
     State(state): State<ServerState>,
@@ -2657,16 +2268,12 @@ pub async fn group_id_unix_token_get(
 #[utoipa::path(
     get,
     path = "/v1/domain",
-    params(
-    ),
     responses(
         (status = 200, description = "Ok"),
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
+    security(("token_jwt" = [])),
     tag = "api/v1/domain",
 )]
 pub async fn domain_get(
@@ -2681,16 +2288,14 @@ pub async fn domain_get(
     get,
     path = "/v1/domain/_attr/{attr}",
     params(
-        ("attr" = String, Path, description="The attribute to target"),
+        path_schema::Attr,
     ),
     responses(
         (status = 200, description = "Ok"),
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
+    security(("token_jwt" = [])),
     tag = "api/v1/domain",
 )]
 pub async fn domain_attr_get(
@@ -2706,16 +2311,15 @@ pub async fn domain_attr_get(
     put,
     path = "/v1/domain/_attr/{attr}",
     params(
-        ("attr" = String, Path, description="The attribute to target"),
+        path_schema::Attr,
     ),
+    request_body=Json<Vec<String>>,
     responses(
         (status = 200, description = "Ok"),
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
+    security(("token_jwt" = [])),
     tag = "api/v1/domain",
 )]
 pub async fn domain_attr_put(
@@ -2740,16 +2344,15 @@ pub async fn domain_attr_put(
     delete,
     path = "/v1/domain/_attr/{attr}",
     params(
-        ("attr" = String, Path, description="The attribute to target"),
+        path_schema::Attr,
     ),
+    request_body=Json<Option<Vec<String>>>,
     responses(
         (status = 200, description = "Ok"),
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
+    security(("token_jwt" = [])),
     tag = "api/v1/domain",
 )]
 pub async fn domain_attr_delete(
@@ -2773,16 +2376,12 @@ pub async fn domain_attr_delete(
 #[utoipa::path(
     get,
     path = "/v1/system",
-    params(
-    ),
     responses(
         (status = 200, description = "Ok"),
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
+    security(("token_jwt" = [])),
     tag = "api/v1/system",
 )]
 pub async fn system_get(
@@ -2800,16 +2399,14 @@ pub async fn system_get(
     get,
     path = "/v1/system/_attr/{attr}",
     params(
-        ("attr" = String, Path, description="The attribute to target"),
+        path_schema::Attr,
     ),
     responses(
         (status = 200, description = "Ok"),
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
+    security(("token_jwt" = [])),
     tag = "api/v1/system",
 )]
 pub async fn system_attr_get(
@@ -2825,16 +2422,15 @@ pub async fn system_attr_get(
     post,
     path = "/v1/system/_attr/{attr}",
     params(
-        ("attr" = String, Path, description="The attribute to target"),
+        path_schema::Attr,
     ),
+    request_body=Json<Vec<String>>,
     responses(
         (status = 200, description = "Ok"),
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
+    security(("token_jwt" = [])),
     tag = "api/v1/system",
 )]
 pub async fn system_attr_post(
@@ -2859,16 +2455,15 @@ pub async fn system_attr_post(
     delete,
     path = "/v1/system/_attr/{attr}",
     params(
-        ("attr" = String, Path, description="The attribute to target"),
+        path_schema::Attr,
     ),
+    request_body=Json<Option<Vec<String>>>,
     responses(
         (status = 200, description = "Ok"),
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
+    security(("token_jwt" = [])),
     tag = "api/v1/system",
 )]
 pub async fn system_attr_delete(
@@ -2893,16 +2488,15 @@ pub async fn system_attr_delete(
     put,
     path = "/v1/system/_attr/{attr}",
     params(
-        ("attr" = String, Path, description="The attribute to target"),
+        path_schema::Attr,
     ),
+    request_body=Json<Vec<String>>,
     responses(
         (status = 200, description = "Ok"),
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
+    security(("token_jwt" = [])),
     tag = "api/v1/system",
 )]
 pub async fn system_attr_put(
@@ -2926,16 +2520,12 @@ pub async fn system_attr_put(
 #[utoipa::path(
     post,
     path = "/v1/recycle_bin",
-    params(
-    ),
     responses(
         (status = 200, description = "Ok"),
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
+    security(("token_jwt" = [])),
     tag = "api/v1/recycle_bin",
 )]
 pub async fn recycle_bin_get(
@@ -2954,22 +2544,16 @@ pub async fn recycle_bin_get(
 #[utoipa::path(
     get,
     path = "/v1/recycle_bin/{id}",
-    params(
-        ("id" = Uuid, description="The item ID to get")
-    ),
     responses(
         (status = 200, description = "Ok"),
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
+    security(("token_jwt" = [])),
     tag = "api/v1/recycle_bin",
 )]
 pub async fn recycle_bin_id_get(
     State(state): State<ServerState>,
-
     Path(id): Path<String>,
     Extension(kopid): Extension<KOpId>,
 ) -> impl IntoResponse {
@@ -2987,17 +2571,12 @@ pub async fn recycle_bin_id_get(
 #[utoipa::path(
     post,
     path = "/v1/recycle_bin/{id}/_revive",
-    params(
-        ("id" = Uuid, description="The item ID to revive")
-    ),
     responses(
         (status = 200, description = "Ok"),
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
+    security(("token_jwt" = [])),
     tag = "api/v1/recycle_bin",
 )]
 pub async fn recycle_bin_revive_id_post(
@@ -3014,7 +2593,7 @@ pub async fn recycle_bin_revive_id_post(
 }
 
 #[utoipa::path(
-    delete,
+    get,
     path = "/v1/self/_applinks",
     params(
     ),
@@ -3023,9 +2602,7 @@ pub async fn recycle_bin_revive_id_post(
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
+    security(("token_jwt" = [])),
     tag = "api/v1/self",
 )]
 /// Returns your applinks for the Web UI
@@ -3043,17 +2620,13 @@ pub async fn applinks_get(
 #[utoipa::path(
     post,
     path = "/v1/reauth",
-    params(
-
-    ),
     responses(
-        (status = 200, description = "Ok"),
+        (status = 200, body=Json<AuthResponse>, description = "Ok"),
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
+    request_body = AuthIssueSession,
+    security(("token_jwt" = [])),
     tag = "api/v1/auth",
 )] // TODO: post body stuff
 pub async fn reauth(
@@ -3061,30 +2634,26 @@ pub async fn reauth(
     TrustedClientIp(ip_addr): TrustedClientIp,
     Extension(kopid): Extension<KOpId>,
     Json(obj): Json<AuthIssueSession>,
-) -> impl IntoResponse {
+) -> Result<Response, WebError> {
     // This may change in the future ...
     let inter = state
         .qe_r_ref
         .handle_reauth(kopid.uat, obj, kopid.eventid, ip_addr)
         .await;
-    debug!("REAuth result: {:?}", inter);
+    debug!("ReAuth result: {:?}", inter);
     auth_session_state_management(state, inter)
 }
 
 #[utoipa::path(
     post,
     path = "/v1/auth",
-    params(
-        // TODO: params
-    ),
     responses(
         (status = 200, description = "Ok"),
-        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
+        (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
+    request_body = AuthRequest,
+    security(("token_jwt" = [])),
     tag = "api/v1/auth",
 )]
 pub async fn auth(
@@ -3093,7 +2662,7 @@ pub async fn auth(
     headers: HeaderMap,
     Extension(kopid): Extension<KOpId>,
     Json(obj): Json<AuthRequest>,
-) -> impl IntoResponse {
+) -> Result<Response, WebError> {
     // First, deal with some state management.
     // Do anything here first that's needed like getting the session details
     // out of the req cookie.
@@ -3115,7 +2684,7 @@ pub async fn auth(
 fn auth_session_state_management(
     state: ServerState,
     inter: Result<AuthResult, OperationError>,
-) -> impl IntoResponse {
+) -> Result<Response, WebError> {
     let mut auth_session_id_tok = None;
 
     let res: Result<AuthResponse, _> = match inter {
@@ -3173,33 +2742,31 @@ fn auth_session_state_management(
         Err(e) => Err(e),
     };
 
-    let mut res = to_axum_response(res);
-
     // if the sessionid was injected into our cookie, set it in the header too.
-    match auth_session_id_tok {
-        Some(tok) => {
-            #[allow(clippy::unwrap_used)]
-            res.headers_mut()
-                .insert(KSESSIONID, HeaderValue::from_str(&tok).unwrap());
-            res
+    res.map(|response| {
+        let mut res = Json::from(response).into_response();
+        match auth_session_id_tok {
+            Some(tok) => {
+                #[allow(clippy::unwrap_used)]
+                res.headers_mut()
+                    .insert(KSESSIONID, HeaderValue::from_str(&tok).unwrap());
+                res
+            }
+            None => res,
         }
-        None => res,
-    }
+    })
+    .map_err(WebError::from)
 }
 
 #[utoipa::path(
     get,
     path = "/v1/auth/valid",
-    params(
-    ),
     responses(
         (status = 200, description = "Ok"),
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
+    security(("token_jwt" = [])),
     tag = "api/v1/auth",
 )]
 pub async fn auth_valid(
@@ -3216,16 +2783,12 @@ pub async fn auth_valid(
 #[utoipa::path(
     get,
     path = "/v1/debug/ipinfo",
-    params(
-    ),
     responses(
         (status = 200, description = "Ok"),
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         // (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
+    security(("token_jwt" = [])),
     tag = "api/v1/debug",
 )]
 pub async fn debug_ipinfo(

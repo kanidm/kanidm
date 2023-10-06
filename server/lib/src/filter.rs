@@ -260,11 +260,13 @@ impl fmt::Debug for FilterResolved {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+/// A filter before it's gone through schema validation
 pub struct FilterInvalid {
     inner: FilterComp,
 }
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
+/// A filter after it's gone through schema validation
 pub struct FilterValid {
     inner: FilterComp,
 }

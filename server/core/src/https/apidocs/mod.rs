@@ -1,8 +1,14 @@
+use kanidm_proto::v1;
 use utoipa::{
     openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme},
     Modify, OpenApi,
 };
 use utoipa_swagger_ui::SwaggerUi;
+
+use super::errors::WebError;
+
+pub(crate) mod path_schema;
+pub(crate) mod response_schema;
 
 struct SecurityAddon;
 
@@ -151,7 +157,6 @@ impl Modify for SecurityAddon {
         super::v1::auth_valid,
         super::v1::logout,
         super::v1::reauth,
-        super::v1_scim::sync_account_post,
         super::v1_scim::sync_account_get,
         super::v1_scim::sync_account_post,
         super::v1_scim::sync_account_id_get,
@@ -166,9 +171,44 @@ impl Modify for SecurityAddon {
 
     ),
     components(
-        // TODO: can't add ProtoEntry to schema as this was only recently supported utoipa v3.5.0 doesn't support it - ref <https://github.com/juhaku/utoipa/pull/756/files>
-        // schemas(ProtoEntry)
+        schemas(
+            // TODO: can't add Entry/ProtoEntry to schema as this was only recently supported utoipa v3.5.0 doesn't support it - ref <https://github.com/juhaku/utoipa/pull/756/files>
+            // v1::Entry,
+            v1::AccountUnixExtend,
+            v1::ApiToken,
+            v1::ApiTokenGenerate,
+            v1::AuthRequest,
+            v1::AuthResponse,
+            v1::AuthState,
+            v1::BackupCodesView,
+            v1::Claim,
+            v1::CreateRequest,
+            v1::CredentialDetail,
+            v1::CredentialStatus,
+            v1::CUIntentToken,
+            v1::CUSessionToken,
+            v1::CUStatus,
+            v1::DeleteRequest,
+            v1::Group,
+            v1::GroupUnixExtend,
+            v1::ModifyList,
+            v1::ModifyRequest,
+            v1::PasskeyDetail,
+            v1::RadiusAuthToken,
+            v1::SearchRequest,
+            v1::SearchResponse,
+            v1::SingleStringRequest,
+            v1::TotpSecret,
+            v1::TotpAlgo,
+            v1::UatStatus,
+            v1::UnixGroupToken,
+            v1::UnixUserToken,
+            v1::UserAuthToken,
+            v1::WhoamiResponse,
 
+            WebError,
+
+        )
     ),
     modifiers(&SecurityAddon),
     tags(
@@ -200,9 +240,8 @@ fn figure_out_if_we_have_all_the_routes() {
     use std::collections::HashMap;
 
     // load this file
-    let my_filename = format!("{}/src/https/apidocs.rs", env!("CARGO_MANIFEST_DIR"));
-    // println!("trying to load apidocs source file: {}", my_filename);
-
+    let my_filename = format!("{}/src/https/apidocs/mod.rs", env!("CARGO_MANIFEST_DIR"));
+    println!("trying to load apidocs source file: {}", my_filename);
     let file = std::fs::read_to_string(&my_filename).unwrap();
 
     // find all the lines that start with super::v1:: and end with a comma

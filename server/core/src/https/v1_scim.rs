@@ -1,4 +1,9 @@
+use super::apidocs::path_schema;
 use super::middleware::KOpId;
+use super::v1::{
+    json_rest_event_get, json_rest_event_get_id, json_rest_event_get_id_attr, json_rest_event_post,
+    json_rest_event_put_id_attr,
+};
 use super::{to_axum_response, ServerState};
 use axum::extract::{Path, State};
 use axum::response::IntoResponse;
@@ -9,25 +14,15 @@ use kanidm_proto::scim_v1::ScimSyncRequest;
 use kanidm_proto::v1::Entry as ProtoEntry;
 use kanidmd_lib::prelude::*;
 
-use super::v1::{
-    json_rest_event_get, json_rest_event_get_id, json_rest_event_get_id_attr, json_rest_event_post,
-    json_rest_event_put_id_attr,
-};
-
 #[utoipa::path(
     get,
-    path = "/v1/sync_account/",
-    params(
-        ("id" = String, Path, description="SPN?"),
-    ),
+    path = "/v1/sync_account",
     responses(
         (status = 200, description = "Ok"),
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
+    security(("token_jwt" = [])),
     tag = "api/v1/sync_account",
 )] // TODO: what body do we take here
 pub async fn sync_account_get(
@@ -40,18 +35,13 @@ pub async fn sync_account_get(
 
 #[utoipa::path(
     post,
-    path = "/v1/sync_account/{id}",
-    params(
-        ("id" = String, Path, description="SPN?"),
-    ),
+    path = "/v1/sync_account",
     responses(
         (status = 200, description = "Ok"),
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
+    security(("token_jwt" = [])),
     tag = "api/v1/sync_account",
 )] // TODO: what body do we take here
 pub async fn sync_account_post(
@@ -67,15 +57,13 @@ pub async fn sync_account_post(
     get,
     path = "/v1/sync_account/{id}",
     params(
-        ("id" = String, Path, description="SPN?"),
+        path_schema::Id
     ),
     responses(
         (status = 200, description = "Ok"),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
+    security(("token_jwt" = [])),
     tag = "api/v1/sync_account",
 )]
 pub async fn sync_account_id_get(
@@ -91,16 +79,14 @@ pub async fn sync_account_id_get(
     patch,
     path = "/v1/sync_account/{id}",
     params(
-        ("id" = String, Path, description="SPN?"),
+        path_schema::UuidOrName
     ),
     responses(
         (status = 200, description = "Ok"),
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
+    security(("token_jwt" = [])),
     tag = "api/v1/sync_account",
 )] // TODO: what body do we take here
 pub async fn sync_account_id_patch(
@@ -123,16 +109,14 @@ pub async fn sync_account_id_patch(
     get,
     path = "/v1/sync_account/{id}/_finalise",
     params(
-        ("id" = String, Path, description="SPN?"),
+        path_schema::UuidOrName
     ),
     responses(
         (status = 200, description = "Ok"),
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
+    security(("token_jwt" = [])),
     tag = "api/v1/sync_account",
 )]
 pub async fn sync_account_id_finalise_get(
@@ -151,16 +135,14 @@ pub async fn sync_account_id_finalise_get(
     get,
     path = "/v1/sync_account/{id}/_terminate",
     params(
-        ("id" = String, Path, description="SPN?"),
+        path_schema::UuidOrName
     ),
     responses(
         (status = 200, description = "Ok"),
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
+    security(("token_jwt" = [])),
     tag = "api/v1/sync_account",
 )]
 pub async fn sync_account_id_terminate_get(
@@ -179,16 +161,14 @@ pub async fn sync_account_id_terminate_get(
     post,
     path = "/v1/sync_account/{id}/_sync_token",
     params(
-        ("id" = String, Path, description="SPN?"),
+        path_schema::UuidOrName
     ),
     responses(
         (status = 200, description = "Ok"),
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
+    security(("token_jwt" = [])),
     tag = "api/v1/sync_account",
 )]
 pub async fn sync_account_token_post(
@@ -207,17 +187,12 @@ pub async fn sync_account_token_post(
 #[utoipa::path(
     delete,
     path = "/v1/sync_account/{id}/_sync_token",
-    params(
-        ("id" = String, Path, description="SPN?"),
-    ),
     responses(
         (status = 200, description = "Ok"),
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
+    security(("token_jwt" = [])),
     tag = "api/v1/sync_account",
 )]
 pub async fn sync_account_token_delete(
@@ -235,17 +210,13 @@ pub async fn sync_account_token_delete(
 #[utoipa::path(
     post,
     path = "/scim/v1/Sync",
-    params(
-        // TODO: params
-    ),
+    request_body = ScimSyncRequest,
     responses(
         (status = 200, description = "Ok"),
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
+    security(("token_jwt" = [])),
     tag = "scim",
 )]
 async fn scim_sync_post(
@@ -272,9 +243,7 @@ async fn scim_sync_post(
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
+    security(("token_jwt" = [])),
     tag = "scim",
 )]
 async fn scim_sync_get(
@@ -301,9 +270,7 @@ async fn scim_sync_get(
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
+    security(("token_jwt" = [])),
     tag = "v1/sync_account",
 )]
 pub async fn sync_account_id_attr_get(
@@ -326,9 +293,7 @@ pub async fn sync_account_id_attr_get(
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
+    security(("token_jwt" = [])),
     tag = "v1/sync_account",
 )]
 pub async fn sync_account_id_attr_put(
@@ -352,9 +317,7 @@ pub async fn sync_account_id_attr_put(
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
+    security(("token_jwt" = [])),
     tag = "scim",
 )]
 /// When you want the kitchen Sink

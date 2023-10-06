@@ -1,4 +1,6 @@
 mod apidocs;
+pub(crate) mod errors;
+
 mod extractors;
 mod generic;
 mod javascript;
