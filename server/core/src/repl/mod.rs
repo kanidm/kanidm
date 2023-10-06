@@ -180,12 +180,10 @@ async fn repl_run_consumer_refresh(
     }
 
     // okay, we need to proceed.
-    let Some((addr, mut supplier_conn)) =
+    let (addr, mut supplier_conn) =
         repl_consumer_connect_supplier(domain, sock_addrs, tls_connector, consumer_conn_settings)
             .await
-    else {
-        return Err(());
-    };
+            .ok_or(())?;
 
     // If we fail at any point, just RETURN because this leaves the next task to attempt, or
     // the channel drops and that tells the caller this failed.
