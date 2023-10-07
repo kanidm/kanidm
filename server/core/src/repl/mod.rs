@@ -160,6 +160,7 @@ async fn repl_consumer_connect_supplier(
 }
 
 /// This returns the socket address that worked, so you can try that first next time
+#[instrument(level="info", skip(refresh_coord, tls_connector, idms), fields(uuid=Uuid::new_v4().to_string()))]
 async fn repl_run_consumer_refresh(
     refresh_coord: Arc<Mutex<(bool, mpsc::Sender<()>)>>,
     domain: &str,
@@ -232,6 +233,7 @@ async fn repl_run_consumer_refresh(
     Ok(Some(addr))
 }
 
+#[instrument(level="info", skip(tls_connector, idms), fields(eventid=Uuid::new_v4().to_string()))]
 async fn repl_run_consumer(
     domain: &str,
     sock_addrs: &[SocketAddr],
@@ -456,19 +458,21 @@ async fn repl_task(
 
     info!("Replica task for {} has started.", origin);
 
+    // we keep track of the "last known good" socketaddr so we can try that first next time.
     let mut last_working_address: Option<SocketAddr> = None;
 
     // Okay, all the parameters are setup. Now we wait on our interval.
     loop {
-        // if it worked last time, then let's use it this time!
-        // I sure hope this works. - @yaleman
-        let mut sorted_socket_addrs = match last_working_address {
-            Some(addr) => vec![addr],
-            None => vec![],
+        // if the target address worked last time, then let's use it this time!
+        let mut sorted_socket_addrs = vec![];
+
+        if let Some(addr) = last_working_address {
+            sorted_socket_addrs.push(addr);
         };
-        socket_addrs.iter().cloned().for_each(|addr| {
-            if !sorted_socket_addrs.contains(&addr) {
-                sorted_socket_addrs.push(addr);
+        // this is O(2^n) but we *should* be talking about a small number of addresses for a given hostname
+        socket_addrs.iter().for_each(|addr| {
+            if !sorted_socket_addrs.contains(addr) {
+                sorted_socket_addrs.push(addr.to_owned());
             }
         });
 
@@ -477,9 +481,6 @@ async fn repl_task(
                 match task {
                     ReplConsumerCtrl::Stop => break,
                     ReplConsumerCtrl::Refresh ( refresh_coord ) => {
-                        let eventid = Uuid::new_v4();
-                        let span = info_span!("replication_run_consumer_refresh", uuid = ?eventid);
-                        // let _enter = span.enter();
                         last_working_address = match repl_run_consumer_refresh(
                             refresh_coord,
                             domain,
@@ -488,7 +489,6 @@ async fn repl_task(
                             &idms,
                             &consumer_conn_settings
                         )
-                        .instrument(span)
                         .await {
                             Ok(val) => val,
                             Err(_) => None
@@ -498,9 +498,6 @@ async fn repl_task(
             }
             _ = repl_interval.tick() => {
                 // Interval passed, attempt a replication run.
-                let eventid = Uuid::new_v4();
-                let span = info_span!("replication_run_consumer", uuid = ?eventid);
-                // let _enter = span.enter();
                 repl_run_consumer(
                     domain,
                     &sorted_socket_addrs,
@@ -509,7 +506,6 @@ async fn repl_task(
                     &idms,
                     &consumer_conn_settings
                 )
-                .instrument(span)
                 .await;
             }
         }
