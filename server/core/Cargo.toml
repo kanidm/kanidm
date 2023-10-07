@@ -72,6 +72,8 @@ utoipa-swagger-ui = { version = "3.1.5", features = ["axum"] }
 utoipa-redoc = { version = "0.1.0", features = ["axum"] }
 
 [dev-dependencies]
+tree-sitter = "0.20.10"
+tree-sitter-rust = "0.20.4"
 walkdir = { workspace = true }
 
 [build-dependencies]
