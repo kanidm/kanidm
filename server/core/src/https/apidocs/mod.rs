@@ -1,4 +1,4 @@
-use kanidm_proto::v1;
+use kanidm_proto::{scim_v1::ScimSyncState, v1};
 use utoipa::{
     openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme},
     Modify, OpenApi,
@@ -207,6 +207,7 @@ impl Modify for SecurityAddon {
             v1::UnixUserToken,
             v1::UserAuthToken,
             v1::WhoamiResponse,
+            ScimSyncState,
 
             WebError,
 

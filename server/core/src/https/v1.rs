@@ -1,5 +1,7 @@
 //! The V1 API things!
 
+use std::net::IpAddr;
+
 use axum::extract::{Path, Query, State};
 use axum::headers::{CacheControl, HeaderMapExt};
 use axum::middleware::from_fn;
@@ -7,17 +9,18 @@ use axum::response::{IntoResponse, Response};
 use axum::routing::{delete, get, post, put};
 use axum::{Extension, Json, Router};
 use compact_jwt::Jws;
-use http::{HeaderMap, HeaderValue, StatusCode};
+use http::{HeaderMap, HeaderValue};
 use hyper::Body;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use kanidm_proto::internal::IdentifyUserRequest;
+use kanidm_proto::internal::{AppLink, IdentifyUserRequest, IdentifyUserResponse};
 use kanidm_proto::v1::{
-    AccountUnixExtend, ApiTokenGenerate, AuthIssueSession, AuthRequest, AuthResponse,
-    AuthState as ProtoAuthState, CUIntentToken, CURequest, CUSessionToken, CreateRequest,
-    DeleteRequest, Entry as ProtoEntry, GroupUnixExtend, ModifyRequest, SearchRequest,
-    SingleStringRequest,
+    AccountUnixExtend, ApiToken, ApiTokenGenerate, AuthIssueSession, AuthRequest, AuthResponse,
+    AuthState as ProtoAuthState, CUIntentToken, CURequest, CUSessionToken, CUStatus, CreateRequest,
+    CredentialStatus, DeleteRequest, Entry as ProtoEntry, GroupUnixExtend, ModifyRequest,
+    SearchRequest, SearchResponse, SingleStringRequest, UatStatus, UnixGroupToken, UnixUserToken,
+    UserAuthToken, WhoamiResponse,
 };
 use kanidmd_lib::idm::event::AuthResult;
 use kanidmd_lib::idm::AuthState;
@@ -49,12 +52,13 @@ pub async fn raw_create(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     Json(msg): Json<CreateRequest>,
-) -> Response<Body> {
-    let res = state
+) -> Result<Json<()>, WebError> {
+    state
         .qe_w_ref
         .handle_create(kopid.uat, msg, kopid.eventid)
-        .await;
-    to_axum_response(res)
+        .await
+        .map(Json::from)
+        .map_err(WebError::from)
 }
 
 #[utoipa::path(
@@ -73,12 +77,13 @@ pub async fn raw_modify(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     Json(msg): Json<ModifyRequest>,
-) -> Response<Body> {
-    let res = state
+) -> Result<Json<()>, WebError> {
+    state
         .qe_w_ref
         .handle_modify(kopid.uat, msg, kopid.eventid)
-        .await;
-    to_axum_response(res)
+        .await
+        .map(Json::from)
+        .map_err(WebError::from)
 }
 
 #[utoipa::path(
@@ -97,17 +102,18 @@ pub async fn raw_delete(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     Json(msg): Json<DeleteRequest>,
-) -> Response<Body> {
-    let res = state
+) -> Result<Json<()>, WebError> {
+    state
         .qe_w_ref
         .handle_delete(kopid.uat, msg, kopid.eventid)
-        .await;
-    to_axum_response(res)
+        .await
+        .map(Json::from)
+        .map_err(WebError::from)
 }
 
 #[utoipa::path(
     post,
-    path = "/v1/raw/searc",
+    path = "/v1/raw/search",
     responses(
         (status = 200, description = "Ok"),
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
@@ -121,12 +127,13 @@ pub async fn raw_search(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     Json(msg): Json<SearchRequest>,
-) -> Response<Body> {
-    let res = state
+) -> Result<Json<SearchResponse>, WebError> {
+    state
         .qe_r_ref
         .handle_search(kopid.uat, msg, kopid.eventid)
-        .await;
-    to_axum_response(res)
+        .await
+        .map(Json::from)
+        .map_err(WebError::from)
 }
 
 #[utoipa::path(
@@ -140,10 +147,14 @@ pub async fn raw_search(
 pub async fn whoami(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
-) -> Response<Body> {
+) -> Result<Json<WhoamiResponse>, WebError> {
     // New event, feed current auth data from the token to it.
-    let res = state.qe_r_ref.handle_whoami(kopid.uat, kopid.eventid).await;
-    to_axum_response(res)
+    state
+        .qe_r_ref
+        .handle_whoami(kopid.uat, kopid.eventid)
+        .await
+        .map(Json::from)
+        .map_err(WebError::from)
 }
 
 #[utoipa::path(
@@ -160,12 +171,13 @@ pub async fn whoami(
 pub async fn whoami_uat(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
-) -> impl IntoResponse {
-    let res = state
+) -> Result<Json<UserAuthToken>, WebError> {
+    state
         .qe_r_ref
         .handle_whoami_uat(kopid.uat, kopid.eventid)
-        .await;
-    to_axum_response(res)
+        .await
+        .map(Json::from)
+        .map_err(WebError::from)
 }
 
 #[utoipa::path(
@@ -182,9 +194,13 @@ pub async fn whoami_uat(
 pub async fn logout(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
-) -> impl IntoResponse {
-    let res = state.qe_w_ref.handle_logout(kopid.uat, kopid.eventid).await;
-    to_axum_response(res)
+) -> Result<Json<()>, WebError> {
+    state
+        .qe_w_ref
+        .handle_logout(kopid.uat, kopid.eventid)
+        .await
+        .map(Json::from)
+        .map_err(WebError::from)
 }
 
 // // =============== REST generics ========================
@@ -243,15 +259,16 @@ pub async fn json_rest_event_get_attr(
     attr: String,
     filter: Filter<FilterInvalid>,
     kopid: KOpId,
-) -> impl IntoResponse {
+) -> Result<Json<Option<Vec<String>>>, WebError> {
     let filter = Filter::join_parts_and(filter, filter_all!(f_id(id)));
     let attrs = Some(vec![attr.clone()]);
-    let res: Result<Option<_>, _> = state
+    state
         .qe_r_ref
         .handle_internalsearch(kopid.uat, filter, attrs, kopid.eventid)
         .await
-        .map(|mut event_result| event_result.pop().and_then(|mut e| e.attrs.remove(&attr)));
-    to_axum_response(res)
+        .map(|mut event_result| event_result.pop().and_then(|mut e| e.attrs.remove(&attr)))
+        .map(Json::from)
+        .map_err(WebError::from)
 }
 
 pub async fn json_rest_event_get_id_attr(
@@ -260,7 +277,7 @@ pub async fn json_rest_event_get_id_attr(
     attr: String,
     filter: Filter<FilterInvalid>,
     kopid: KOpId,
-) -> impl IntoResponse {
+) -> Result<Json<Option<Vec<String>>>, WebError> {
     json_rest_event_get_attr(state, id.as_str(), attr, filter, kopid).await
 }
 
@@ -269,7 +286,7 @@ pub async fn json_rest_event_post(
     classes: Vec<String>,
     obj: ProtoEntry,
     kopid: KOpId,
-) -> impl IntoResponse {
+) -> Result<Json<()>, WebError> {
     debug_assert!(!classes.is_empty());
 
     let mut obj = obj;
@@ -278,11 +295,12 @@ pub async fn json_rest_event_post(
         entries: vec![obj.to_owned()],
     };
 
-    let res = state
+    state
         .qe_w_ref
         .handle_create(kopid.uat, msg, kopid.eventid)
-        .await;
-    to_axum_response(res)
+        .await
+        .map(Json::from)
+        .map_err(WebError::from)
 }
 
 pub async fn json_rest_event_post_id_attr(
@@ -292,12 +310,13 @@ pub async fn json_rest_event_post_id_attr(
     filter: Filter<FilterInvalid>,
     values: Vec<String>,
     kopid: KOpId,
-) -> impl IntoResponse {
-    let res = state
+) -> Result<Json<()>, WebError> {
+    state
         .qe_w_ref
         .handle_appendattribute(kopid.uat, id, attr, values, filter, kopid.eventid)
-        .await;
-    to_axum_response(res)
+        .await
+        .map(Json::from)
+        .map_err(WebError::from)
 }
 
 pub async fn json_rest_event_put_attr(
@@ -307,12 +326,13 @@ pub async fn json_rest_event_put_attr(
     filter: Filter<FilterInvalid>,
     values: Vec<String>,
     kopid: KOpId,
-) -> impl IntoResponse {
-    let res = state
+) -> Result<Json<()>, WebError> {
+    state
         .qe_w_ref
         .handle_setattribute(kopid.uat, id, attr, values, filter, kopid.eventid)
-        .await;
-    to_axum_response(res)
+        .await
+        .map_err(WebError::from)
+        .map(Json::from)
 }
 
 pub async fn json_rest_event_post_attr(
@@ -322,25 +342,24 @@ pub async fn json_rest_event_post_attr(
     filter: Filter<FilterInvalid>,
     values: Vec<String>,
     kopid: KOpId,
-) -> impl IntoResponse {
-    let uuid_or_name = id;
-    let res = state
+) -> Result<Json<()>, WebError> {
+    state
         .qe_w_ref
-        .handle_appendattribute(kopid.uat, uuid_or_name, attr, values, filter, kopid.eventid)
-        .await;
-    to_axum_response(res)
+        .handle_appendattribute(kopid.uat, id, attr, values, filter, kopid.eventid)
+        .await
+        .map(Json::from)
+        .map_err(WebError::from)
 }
 
 // Okay, so a put normally needs
-//  * filter of what we are working on (id + class)
-//  * a Map<String, Vec<String>> that we turn into a modlist.
-//
-// OR
-//  * filter of what we are working on (id + class)
-//  * a Vec<String> that we are changing
-//  * the attr name  (as a param to this in path)
-//
-// json_rest_event_put_id(path, req, state
+///  * filter of what we are working on (id + class)
+///  * a Map<String, Vec<String>> that we turn into a modlist.
+///
+/// OR
+///  * filter of what we are working on (id + class)
+///  * a Vec<String> that we are changing
+///  * the attr name  (as a param to this in path)
+///
 pub async fn json_rest_event_put_id_attr(
     state: ServerState,
     id: String,
@@ -348,7 +367,7 @@ pub async fn json_rest_event_put_id_attr(
     filter: Filter<FilterInvalid>,
     values: Vec<String>,
     kopid: KOpId,
-) -> impl IntoResponse {
+) -> Result<Json<()>, WebError> {
     json_rest_event_put_attr(state, id, attr, filter, values, kopid).await
 }
 
@@ -359,7 +378,7 @@ pub async fn json_rest_event_delete_id_attr(
     filter: Filter<FilterInvalid>,
     values: Option<Vec<String>>,
     kopid: KOpId,
-) -> impl IntoResponse {
+) -> Result<Json<()>, WebError> {
     json_rest_event_delete_attr(state, id, attr, filter, values, kopid).await
 }
 
@@ -439,7 +458,7 @@ pub async fn schema_get(
 pub async fn schema_attributetype_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
-) -> impl IntoResponse {
+) -> Result<Json<Vec<ProtoEntry>>, WebError> {
     let filter = filter_all!(f_eq(Attribute::Class, EntryClass::AttributeType.into()));
     json_rest_event_get(state, None, filter, kopid).await
 }
@@ -459,7 +478,7 @@ pub async fn schema_attributetype_get_id(
     State(state): State<ServerState>,
     Path(id): Path<String>,
     Extension(kopid): Extension<KOpId>,
-) -> impl IntoResponse {
+) -> Result<Json<Option<ProtoEntry>>, WebError> {
     // These can't use get_id because the attribute name and class name aren't ... well name.
     let filter = filter_all!(f_and!([
         f_eq(Attribute::Class, EntryClass::AttributeType.into()),
@@ -469,12 +488,13 @@ pub async fn schema_attributetype_get_id(
         )
     ]));
 
-    let res = state
+    state
         .qe_r_ref
         .handle_internalsearch(kopid.uat, filter, None, kopid.eventid)
         .await
-        .map(|mut r| r.pop());
-    to_axum_response(res)
+        .map(|mut r| r.pop())
+        .map(Json::from)
+        .map_err(WebError::from)
 }
 
 #[utoipa::path(
@@ -491,7 +511,7 @@ pub async fn schema_attributetype_get_id(
 pub async fn schema_classtype_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
-) -> impl IntoResponse {
+) -> Result<Json<Vec<ProtoEntry>>, WebError> {
     let filter = filter_all!(f_eq(Attribute::Class, EntryClass::ClassType.into()));
     json_rest_event_get(state, None, filter, kopid).await
 }
@@ -511,18 +531,19 @@ pub async fn schema_classtype_get_id(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     Path(id): Path<String>,
-) -> impl IntoResponse {
+) -> Result<Json<Option<ProtoEntry>>, WebError> {
     // These can't use get_id because they attribute name and class name aren't ... well name.
     let filter = filter_all!(f_and!([
         f_eq(Attribute::Class, EntryClass::ClassType.into()),
         f_eq(Attribute::ClassName, PartialValue::new_iutf8(id.as_str()))
     ]));
-    let res = state
+    state
         .qe_r_ref
         .handle_internalsearch(kopid.uat, filter, None, kopid.eventid)
         .await
-        .map(|mut r| r.pop());
-    to_axum_response(res)
+        .map(|mut r| r.pop())
+        .map(Json::from)
+        .map_err(WebError::from)
 }
 
 #[utoipa::path(
@@ -539,7 +560,7 @@ pub async fn schema_classtype_get_id(
 pub async fn person_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
-) -> impl IntoResponse {
+) -> Result<Json<Vec<ProtoEntry>>, WebError> {
     let filter = filter_all!(f_eq(Attribute::Class, EntryClass::Person.into()));
     json_rest_event_get(state, None, filter, kopid).await
 }
@@ -547,22 +568,16 @@ pub async fn person_get(
 #[utoipa::path(
     post,
     path = "/v1/person",
-    params(
-        // TODO: this is totes wrong
-        ("name" = String, description="The username to set."),
-        ("displayname" = String, description="The display name to set."),
-    ),
     request_body=Json, // TODO: ProtoEntry can't be serialized, so we need to do this manually
-    // TODO Responses
     security(("token_jwt" = [])),
     tag = "api/v1/person",
 )]
-// expects the following fields in the attrs field of the req: [name, displayname]
+/// Expects the following fields in the attrs field of the req: [name, displayname]
 pub async fn person_post(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     Json(obj): Json<ProtoEntry>,
-) -> impl IntoResponse {
+) -> Result<Json<()>, WebError> {
     let classes: Vec<String> = vec![
         EntryClass::Person.into(),
         EntryClass::Account.into(),
@@ -576,7 +591,6 @@ pub async fn person_post(
     path = "/v1/person/{id}",
     responses(
         (status = 200, description = "Ok"),
-        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
     security(("token_jwt" = [])),
@@ -586,7 +600,7 @@ pub async fn person_id_get(
     State(state): State<ServerState>,
     Path(id): Path<String>,
     Extension(kopid): Extension<KOpId>,
-) -> impl IntoResponse {
+) -> Result<Json<Option<ProtoEntry>>, WebError> {
     let filter = filter_all!(f_eq(Attribute::Class, EntryClass::Person.into()));
     json_rest_event_get_id(state, id, filter, None, kopid).await
 }
@@ -606,7 +620,7 @@ pub async fn person_id_delete(
     State(state): State<ServerState>,
     Path(id): Path<String>,
     Extension(kopid): Extension<KOpId>,
-) -> impl IntoResponse {
+) -> Result<Json<()>, WebError> {
     let filter = filter_all!(f_eq(Attribute::Class, EntryClass::Person.into()));
     json_rest_event_delete_id(state, id, filter, kopid).await
 }
@@ -627,7 +641,7 @@ pub async fn person_id_delete(
 pub async fn service_account_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
-) -> impl IntoResponse {
+) -> Result<Json<Vec<ProtoEntry>>, WebError> {
     let filter = filter_all!(f_eq(Attribute::Class, EntryClass::ServiceAccount.into()));
     json_rest_event_get(state, None, filter, kopid).await
 }
@@ -648,7 +662,7 @@ pub async fn service_account_post(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     Json(obj): Json<ProtoEntry>,
-) -> impl IntoResponse {
+) -> Result<Json<()>, WebError> {
     let classes: Vec<String> = vec![
         EntryClass::ServiceAccount.into(),
         EntryClass::Account.into(),
@@ -672,7 +686,7 @@ pub async fn service_account_id_get(
     State(state): State<ServerState>,
     Path(id): Path<String>,
     Extension(kopid): Extension<KOpId>,
-) -> impl IntoResponse {
+) -> Result<Json<Option<ProtoEntry>>, WebError> {
     let filter = filter_all!(f_eq(Attribute::Class, EntryClass::ServiceAccount.into()));
     json_rest_event_get_id(state, id, filter, None, kopid).await
 }
@@ -692,7 +706,7 @@ pub async fn service_account_id_delete(
     State(state): State<ServerState>,
     Path(id): Path<String>,
     Extension(kopid): Extension<KOpId>,
-) -> impl IntoResponse {
+) -> Result<Json<()>, WebError> {
     let filter = filter_all!(f_eq(Attribute::Class, EntryClass::ServiceAccount.into()));
     json_rest_event_delete_id(state, id, filter, kopid).await
 }
@@ -712,12 +726,13 @@ pub async fn service_account_credential_generate(
     State(state): State<ServerState>,
     Path(id): Path<String>,
     Extension(kopid): Extension<KOpId>,
-) -> impl IntoResponse {
-    let res = state
+) -> Result<Json<String>, WebError> {
+    state
         .qe_w_ref
         .handle_service_account_credential_generate(kopid.uat, id, kopid.eventid)
-        .await;
-    to_axum_response(res)
+        .await
+        .map(Json::from)
+        .map_err(WebError::from)
 }
 
 #[utoipa::path(
@@ -742,12 +757,13 @@ pub async fn service_account_into_person(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     Path(id): Path<String>,
-) -> impl IntoResponse {
-    let res = state
+) -> Result<Json<()>, WebError> {
+    state
         .qe_w_ref
         .handle_service_account_into_person(kopid.uat, id, kopid.eventid)
-        .await;
-    to_axum_response(res)
+        .await
+        .map(Json::from)
+        .map_err(WebError::from)
 }
 
 #[utoipa::path(
@@ -765,12 +781,13 @@ pub async fn service_account_api_token_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     Path(id): Path<String>,
-) -> impl IntoResponse {
-    let res = state
+) -> Result<Json<Vec<ApiToken>>, WebError> {
+    state
         .qe_r_ref
         .handle_service_account_api_token_get(kopid.uat, id, kopid.eventid)
-        .await;
-    to_axum_response(res)
+        .await
+        .map(Json::from)
+        .map_err(WebError::from)
 }
 
 #[utoipa::path(
@@ -789,9 +806,9 @@ pub async fn service_account_api_token_post(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     Path(id): Path<String>,
-    Json(obj): Json<ApiTokenGenerate>, // TODO work out if this limits the fields?
-) -> impl IntoResponse {
-    let res = state
+    Json(obj): Json<ApiTokenGenerate>,
+) -> Result<Json<String>, WebError> {
+    state
         .qe_w_ref
         .handle_service_account_api_token_generate(
             kopid.uat,
@@ -801,8 +818,9 @@ pub async fn service_account_api_token_post(
             obj.read_write,
             kopid.eventid,
         )
-        .await;
-    to_axum_response(res)
+        .await
+        .map(Json::from)
+        .map_err(WebError::from)
 }
 
 #[utoipa::path(
@@ -824,12 +842,13 @@ pub async fn service_account_api_token_delete(
     State(state): State<ServerState>,
     Path((id, token_id)): Path<(String, Uuid)>,
     Extension(kopid): Extension<KOpId>,
-) -> impl IntoResponse {
-    let res = state
+) -> Result<Json<()>, WebError> {
+    state
         .qe_w_ref
         .handle_service_account_api_token_destroy(kopid.uat, id, token_id, kopid.eventid)
-        .await;
-    to_axum_response(res)
+        .await
+        .map(Json::from)
+        .map_err(WebError::from)
 }
 
 #[utoipa::path(
@@ -847,7 +866,7 @@ pub async fn person_id_get_attr(
     State(state): State<ServerState>,
     Path((id, attr)): Path<(String, String)>,
     Extension(kopid): Extension<KOpId>,
-) -> impl IntoResponse {
+) -> Result<Json<Option<Vec<String>>>, WebError> {
     let filter = filter_all!(f_eq(Attribute::Class, EntryClass::Account.into()));
     json_rest_event_get_attr(state, id.as_str(), attr, filter, kopid).await
 }
@@ -867,7 +886,7 @@ pub async fn service_account_id_get_attr(
     State(state): State<ServerState>,
     Path((id, attr)): Path<(String, String)>,
     Extension(kopid): Extension<KOpId>,
-) -> impl IntoResponse {
+) -> Result<Json<Option<Vec<String>>>, WebError> {
     let filter = filter_all!(f_eq(Attribute::Class, EntryClass::Account.into()));
     json_rest_event_get_attr(state, id.as_str(), attr, filter, kopid).await
 }
@@ -875,7 +894,10 @@ pub async fn service_account_id_get_attr(
 #[utoipa::path(
     post,
     path = "/v1/person/{id}/_attr/{attr}",
-    // Attributes to set
+    params(
+        path_schema::Id,
+        path_schema::Attr,
+    ),
     request_body= Json<Vec<String>>,
     responses(
         (status = 200, description = "Ok"),
@@ -890,7 +912,7 @@ pub async fn person_id_post_attr(
     Path((id, attr)): Path<(String, String)>,
     Extension(kopid): Extension<KOpId>,
     Json(values): Json<Vec<String>>,
-) -> impl IntoResponse {
+) -> Result<Json<()>, WebError> {
     let filter = filter_all!(f_eq(Attribute::Class, EntryClass::Account.into()));
     json_rest_event_post_id_attr(state, id, attr, filter, values, kopid).await
 }
@@ -912,7 +934,7 @@ pub async fn service_account_id_post_attr(
     Path((id, attr)): Path<(String, String)>,
     Extension(kopid): Extension<KOpId>,
     Json(values): Json<Vec<String>>,
-) -> impl IntoResponse {
+) -> Result<Json<()>, WebError> {
     let filter = filter_all!(f_eq(Attribute::Class, EntryClass::Account.into()));
     json_rest_event_post_id_attr(state, id, attr, filter, values, kopid).await
 }
@@ -932,7 +954,7 @@ pub async fn person_id_delete_attr(
     State(state): State<ServerState>,
     Path((id, attr)): Path<(String, String)>,
     Extension(kopid): Extension<KOpId>,
-) -> impl IntoResponse {
+) -> Result<Json<()>, WebError> {
     let filter = filter_all!(f_eq(Attribute::Class, EntryClass::Account.into()));
     json_rest_event_delete_id_attr(state, id, attr, filter, None, kopid).await
 }
@@ -952,7 +974,7 @@ pub async fn service_account_id_delete_attr(
     State(state): State<ServerState>,
     Path((id, attr)): Path<(String, String)>,
     Extension(kopid): Extension<KOpId>,
-) -> impl IntoResponse {
+) -> Result<Json<()>, WebError> {
     let filter = filter_all!(f_eq(Attribute::Class, EntryClass::Account.into()));
     json_rest_event_delete_id_attr(state, id, attr, filter, None, kopid).await
 }
@@ -973,7 +995,7 @@ pub async fn person_id_put_attr(
     Path((id, attr)): Path<(String, String)>,
     Extension(kopid): Extension<KOpId>,
     Json(values): Json<Vec<String>>,
-) -> impl IntoResponse {
+) -> Result<Json<()>, WebError> {
     let filter = filter_all!(f_eq(Attribute::Class, EntryClass::Account.into()));
     json_rest_event_put_attr(state, id, attr, filter, values, kopid).await
 }
@@ -995,7 +1017,7 @@ pub async fn service_account_id_put_attr(
     Path((id, attr)): Path<(String, String)>,
     Extension(kopid): Extension<KOpId>,
     Json(values): Json<Vec<String>>,
-) -> impl IntoResponse {
+) -> Result<Json<()>, WebError> {
     let filter = filter_all!(f_eq(Attribute::Class, EntryClass::Account.into()));
     json_rest_event_put_attr(state, id, attr, filter, values, kopid).await
 }
@@ -1017,15 +1039,16 @@ pub async fn person_id_patch(
     Extension(kopid): Extension<KOpId>,
     Path(id): Path<String>,
     Json(obj): Json<ProtoEntry>,
-) -> impl IntoResponse {
+) -> Result<Json<()>, WebError> {
     // Update a value / attrs
     let filter = filter_all!(f_eq(Attribute::Class, EntryClass::Account.into()));
     let filter = Filter::join_parts_and(filter, filter_all!(f_id(id.as_str())));
-    let res = state
+    state
         .qe_w_ref
         .handle_internalpatch(kopid.uat, filter, obj, kopid.eventid)
-        .await;
-    to_axum_response(res)
+        .await
+        .map(Json::from)
+        .map_err(WebError::from)
 }
 
 #[utoipa::path(
@@ -1039,12 +1062,13 @@ pub async fn person_id_credential_update_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     Path(id): Path<String>,
-) -> impl IntoResponse {
-    let res = state
+) -> Result<Json<(CUSessionToken, CUStatus)>, WebError> {
+    state
         .qe_w_ref
         .handle_idmcredentialupdate(kopid.uat, id, kopid.eventid)
-        .await;
-    to_axum_response(res)
+        .await
+        .map(Json::from)
+        .map_err(WebError::from)
 }
 
 #[utoipa::path(
@@ -1068,8 +1092,8 @@ pub async fn person_id_credential_update_intent_ttl_get(
     Extension(kopid): Extension<KOpId>,
     Path(id): Path<String>,
     Query(ttl): Query<u64>,
-) -> impl IntoResponse {
-    let res = state
+) -> Result<Json<CUIntentToken>, WebError> {
+    state
         .qe_w_ref
         .handle_idmcredentialupdateintent(
             kopid.uat,
@@ -1077,14 +1101,17 @@ pub async fn person_id_credential_update_intent_ttl_get(
             Some(Duration::from_secs(ttl)),
             kopid.eventid,
         )
-        .await;
-    to_axum_response(res)
+        .await
+        .map(Json::from)
+        .map_err(WebError::from)
 }
 
 #[utoipa::path(
     get,
     path = "/v1/person/{id}/_credential/_update_intent",
-
+    params(
+        path_schema::Id,
+    ),
     responses(
         (status = 200, description = "Ok"),
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
@@ -1098,18 +1125,21 @@ pub async fn person_id_credential_update_intent_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     Path(id): Path<String>,
-) -> impl IntoResponse {
-    let res = state
+) -> Result<Json<CUIntentToken>, WebError> {
+    state
         .qe_w_ref
         .handle_idmcredentialupdateintent(kopid.uat, id, None, kopid.eventid)
-        .await;
-    to_axum_response(res)
+        .await
+        .map(Json::from)
+        .map_err(WebError::from)
 }
 
 #[utoipa::path(
     get,
     path = "/v1/account/{id}/_user_auth_token",
-
+    params(
+        path_schema::Id,
+    ),
     responses(
         (status = 200, description = "Ok"),
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
@@ -1122,19 +1152,21 @@ pub async fn account_id_user_auth_token_get(
     State(state): State<ServerState>,
     Path(id): Path<String>,
     Extension(kopid): Extension<KOpId>,
-) -> impl IntoResponse {
-    let res = state
+) -> Result<Json<Vec<UatStatus>>, WebError> {
+    state
         .qe_r_ref
         .handle_account_user_auth_token_get(kopid.uat, id, kopid.eventid)
-        .await;
-    to_axum_response(res)
+        .await
+        .map(Json::from)
+        .map_err(WebError::from)
 }
 
 #[utoipa::path(
     get,
     path = "/v1/account/{id}/_user_auth_token/{token_id}",
     params(
-        ("token_id" = Uuid, Path, description="The ID of the token, a username, SPN or UUID"),
+        path_schema::Id,
+        path_schema::TokenId,
     ),
 
     responses(
@@ -1149,12 +1181,13 @@ pub async fn account_user_auth_token_delete(
     State(state): State<ServerState>,
     Path((id, token_id)): Path<(String, Uuid)>,
     Extension(kopid): Extension<KOpId>,
-) -> impl IntoResponse {
-    let res = state
+) -> Result<Json<()>, WebError> {
+    state
         .qe_w_ref
         .handle_account_user_auth_token_destroy(kopid.uat, id, token_id, kopid.eventid)
-        .await;
-    to_axum_response(res)
+        .await
+        .map(Json::from)
+        .map_err(WebError::from)
 }
 
 #[utoipa::path(
@@ -1175,12 +1208,13 @@ pub async fn credential_update_exchange_intent(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     Json(intent_token): Json<CUIntentToken>,
-) -> impl IntoResponse {
-    let res = state
+) -> Result<Json<(CUSessionToken, CUStatus)>, WebError> {
+    state
         .qe_w_ref
         .handle_idmcredentialexchangeintent(intent_token, kopid.eventid)
-        .await;
-    to_axum_response(res)
+        .await
+        .map(Json::from)
+        .map_err(WebError::from)
 }
 
 #[utoipa::path(
@@ -1201,12 +1235,13 @@ pub async fn credential_update_status(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     Json(session_token): Json<CUSessionToken>,
-) -> impl IntoResponse {
-    let res = state
+) -> Result<Json<CUStatus>, WebError> {
+    state
         .qe_r_ref
         .handle_idmcredentialupdatestatus(session_token, kopid.eventid)
-        .await;
-    to_axum_response(res)
+        .await
+        .map(Json::from)
+        .map_err(WebError::from)
 }
 
 // #[derive(Deserialize, Debug, Clone)]
@@ -1234,36 +1269,31 @@ pub async fn credential_update_update(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     Json(cubody): Json<Vec<serde_json::Value>>,
-) -> impl IntoResponse {
+) -> Result<Json<CUStatus>, WebError> {
     let scr: CURequest = match serde_json::from_value(cubody[0].clone()) {
         Ok(val) => val,
         Err(err) => {
-            error!("Failed to deserialize CURequest: {:?}", err);
-            #[allow(clippy::unwrap_used)]
-            return Response::builder()
-                .status(StatusCode::INTERNAL_SERVER_ERROR)
-                .body(Body::empty())
-                .unwrap();
+            let errmsg = format!("Failed to deserialize CURequest: {:?}", err);
+            error!("{}", errmsg);
+            return Err(WebError::InternalServerError(errmsg));
         }
     };
     let session_token = match serde_json::from_value(cubody[1].clone()) {
         Ok(val) => val,
         Err(err) => {
-            error!("Failed to deserialize session token: {:?}", err);
-            #[allow(clippy::unwrap_used)]
-            return Response::builder()
-                .status(StatusCode::INTERNAL_SERVER_ERROR)
-                .body(Body::empty())
-                .unwrap();
+            let errmsg = format!("Failed to deserialize session token: {:?}", err);
+            error!("{}", errmsg);
+            return Err(WebError::InternalServerError(errmsg));
         }
     };
     debug!("session_token: {:?}", session_token);
     debug!("scr: {:?}", scr);
-    let res = state
+    state
         .qe_r_ref
         .handle_idmcredentialupdate(session_token, scr, kopid.eventid)
-        .await;
-    to_axum_response(res)
+        .await
+        .map(Json::from)
+        .map_err(WebError::from)
 }
 
 // /v1/credential/_commit
@@ -1286,12 +1316,13 @@ pub async fn credential_update_commit(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     Json(session_token): Json<CUSessionToken>,
-) -> impl IntoResponse {
-    let res = state
+) -> Result<Json<()>, WebError> {
+    state
         .qe_w_ref
         .handle_idmcredentialupdatecommit(session_token, kopid.eventid)
-        .await;
-    to_axum_response(res)
+        .await
+        .map(Json::from)
+        .map_err(WebError::from)
 }
 
 #[utoipa::path(
@@ -1312,12 +1343,13 @@ pub async fn credential_update_cancel(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     Json(session_token): Json<CUSessionToken>,
-) -> impl IntoResponse {
-    let res = state
+) -> Result<Json<()>, WebError> {
+    state
         .qe_w_ref
         .handle_idmcredentialupdatecancel(session_token, kopid.eventid)
-        .await;
-    to_axum_response(res)
+        .await
+        .map(Json::from)
+        .map_err(WebError::from)
 }
 
 #[utoipa::path(
@@ -1335,12 +1367,13 @@ pub async fn service_account_id_credential_status_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     Path(id): Path<String>,
-) -> impl IntoResponse {
-    let res = state
+) -> Result<Json<CredentialStatus>, WebError> {
+    state
         .qe_r_ref
         .handle_idmcredentialstatus(kopid.uat, id, kopid.eventid)
-        .await;
-    to_axum_response(res)
+        .await
+        .map(Json::from)
+        .map_err(WebError::from)
 }
 
 #[utoipa::path(
@@ -1358,12 +1391,13 @@ pub async fn person_get_id_credential_status(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     Path(id): Path<String>,
-) -> impl IntoResponse {
-    let res = state
+) -> Result<Json<CredentialStatus>, WebError> {
+    state
         .qe_r_ref
         .handle_idmcredentialstatus(kopid.uat, id, kopid.eventid)
-        .await;
-    to_axum_response(res)
+        .await
+        .map(Json::from)
+        .map_err(WebError::from)
 }
 
 #[utoipa::path(
@@ -1381,12 +1415,13 @@ pub async fn person_id_ssh_pubkeys_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     Path(id): Path<String>,
-) -> impl IntoResponse {
-    let res = state
+) -> Result<Json<Vec<String>>, WebError> {
+    state
         .qe_r_ref
         .handle_internalsshkeyread(kopid.uat, id, kopid.eventid)
-        .await;
-    to_axum_response(res)
+        .await
+        .map(Json::from)
+        .map_err(WebError::from)
 }
 #[utoipa::path(
     get,
@@ -1404,12 +1439,13 @@ pub async fn account_id_ssh_pubkeys_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     Path(id): Path<String>,
-) -> impl IntoResponse {
-    let res = state
+) -> Result<Json<Vec<String>>, WebError> {
+    state
         .qe_r_ref
         .handle_internalsshkeyread(kopid.uat, id, kopid.eventid)
-        .await;
-    to_axum_response(res)
+        .await
+        .map(Json::from)
+        .map_err(WebError::from)
 }
 
 #[utoipa::path(
@@ -1427,12 +1463,13 @@ pub async fn service_account_id_ssh_pubkeys_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     Path(id): Path<String>,
-) -> impl IntoResponse {
-    let res = state
+) -> Result<Json<Vec<String>>, WebError> {
+    state
         .qe_r_ref
         .handle_internalsshkeyread(kopid.uat, id, kopid.eventid)
-        .await;
-    to_axum_response(res)
+        .await
+        .map(Json::from)
+        .map_err(WebError::from)
 }
 
 #[utoipa::path(
@@ -1451,14 +1488,15 @@ pub async fn person_id_ssh_pubkeys_post(
     Extension(kopid): Extension<KOpId>,
     Path(id): Path<String>,
     Json((tag, key)): Json<(String, String)>,
-) -> impl IntoResponse {
+) -> Result<Json<()>, WebError> {
     let filter = filter_all!(f_eq(Attribute::Class, EntryClass::Account.into()));
     // Add a msg here
-    let res = state
+    state
         .qe_w_ref
         .handle_sshkeycreate(kopid.uat, id, tag, key, filter, kopid.eventid)
-        .await;
-    to_axum_response(res)
+        .await
+        .map(Json::from)
+        .map_err(WebError::from)
 }
 
 #[utoipa::path(
@@ -1478,14 +1516,15 @@ pub async fn service_account_id_ssh_pubkeys_post(
     Extension(kopid): Extension<KOpId>,
     Path(id): Path<String>,
     Json((tag, key)): Json<(String, String)>,
-) -> impl IntoResponse {
+) -> Result<Json<()>, WebError> {
     let filter = filter_all!(f_eq(Attribute::Class, EntryClass::Account.into()));
     // Add a msg here
-    let res = state
+    state
         .qe_w_ref
         .handle_sshkeycreate(kopid.uat, id, tag, key, filter, kopid.eventid)
-        .await;
-    to_axum_response(res)
+        .await
+        .map(Json::from)
+        .map_err(WebError::from)
 }
 
 #[utoipa::path(
@@ -1508,12 +1547,13 @@ pub async fn person_id_ssh_pubkeys_tag_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     Path((id, tag)): Path<(String, String)>,
-) -> impl IntoResponse {
-    let res = state
+) -> Result<Json<Option<String>>, WebError> {
+    state
         .qe_r_ref
         .handle_internalsshkeytagread(kopid.uat, id, tag, kopid.eventid)
-        .await;
-    to_axum_response(res)
+        .await
+        .map(Json::from)
+        .map_err(WebError::from)
 }
 #[utoipa::path(
     get,
@@ -1535,12 +1575,13 @@ pub async fn account_id_ssh_pubkeys_tag_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     Path((id, tag)): Path<(String, String)>,
-) -> impl IntoResponse {
-    let res = state
+) -> Result<Json<Option<String>>, WebError> {
+    state
         .qe_r_ref
         .handle_internalsshkeytagread(kopid.uat, id, tag, kopid.eventid)
-        .await;
-    to_axum_response(res)
+        .await
+        .map(Json::from)
+        .map_err(WebError::from)
 }
 
 #[utoipa::path(
@@ -1563,12 +1604,13 @@ pub async fn service_account_id_ssh_pubkeys_tag_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     Path((id, tag)): Path<(String, String)>,
-) -> impl IntoResponse {
-    let res = state
+) -> Result<Json<Option<String>>, WebError> {
+    state
         .qe_r_ref
         .handle_internalsshkeytagread(kopid.uat, id, tag, kopid.eventid)
-        .await;
-    to_axum_response(res)
+        .await
+        .map(Json::from)
+        .map_err(WebError::from)
 }
 
 #[utoipa::path(
@@ -1591,10 +1633,10 @@ pub async fn person_id_ssh_pubkeys_tag_delete(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     Path((id, tag)): Path<(String, String)>,
-) -> impl IntoResponse {
+) -> Result<Json<()>, WebError> {
     let values = vec![tag];
     let filter = filter_all!(f_eq(Attribute::Class, EntryClass::Account.into()));
-    let res = state
+    state
         .qe_w_ref
         .handle_removeattributevalues(
             kopid.uat,
@@ -1604,8 +1646,9 @@ pub async fn person_id_ssh_pubkeys_tag_delete(
             filter,
             kopid.eventid,
         )
-        .await;
-    to_axum_response(res)
+        .await
+        .map(Json::from)
+        .map_err(WebError::from)
 }
 
 #[utoipa::path(
@@ -1628,10 +1671,10 @@ pub async fn service_account_id_ssh_pubkeys_tag_delete(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     Path((id, tag)): Path<(String, String)>,
-) -> impl IntoResponse {
+) -> Result<Json<()>, WebError> {
     let values = vec![tag];
     let filter = filter_all!(f_eq(Attribute::Class, EntryClass::Account.into()));
-    let res = state
+    state
         .qe_w_ref
         .handle_removeattributevalues(
             kopid.uat,
@@ -1641,8 +1684,9 @@ pub async fn service_account_id_ssh_pubkeys_tag_delete(
             filter,
             kopid.eventid,
         )
-        .await;
-    to_axum_response(res)
+        .await
+        .map(Json::from)
+        .map_err(WebError::from)
 }
 
 // // Get and return a single str
@@ -1661,13 +1705,14 @@ pub async fn person_id_radius_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     Path(id): Path<String>,
-) -> impl IntoResponse {
+) -> Result<Json<Option<String>>, WebError> {
     // TODO: string
-    let res = state
+    state
         .qe_r_ref
         .handle_internalradiusread(kopid.uat, id, kopid.eventid)
-        .await;
-    to_axum_response(res)
+        .await
+        .map(Json::from)
+        .map_err(WebError::from)
 }
 
 #[utoipa::path(
@@ -1686,13 +1731,14 @@ pub async fn person_id_radius_post(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     Path(id): Path<String>,
-) -> impl IntoResponse {
+) -> Result<Json<String>, WebError> {
     // Need to to send the regen msg
-    let res = state
+    state
         .qe_w_ref
         .handle_regenerateradius(kopid.uat, id, kopid.eventid)
-        .await;
-    to_axum_response(res)
+        .await
+        .map(Json::from)
+        .map_err(WebError::from)
 }
 
 #[utoipa::path(
@@ -1710,7 +1756,7 @@ pub async fn person_id_radius_delete(
     State(state): State<ServerState>,
     Path(id): Path<String>,
     Extension(kopid): Extension<KOpId>,
-) -> impl IntoResponse {
+) -> Result<Json<()>, WebError> {
     let attr = "radius_secret".to_string();
     let filter = filter_all!(f_eq(Attribute::Class, EntryClass::Account.into()));
     json_rest_event_delete_id_attr(state, id, attr, filter, None, kopid).await
@@ -1732,7 +1778,7 @@ pub async fn person_id_radius_token_get(
     State(state): State<ServerState>,
     Path(id): Path<String>,
     Extension(kopid): Extension<KOpId>,
-) -> impl IntoResponse {
+) -> Response<Body> {
     person_id_radius_handler(state, id, kopid).await
 }
 
@@ -1752,7 +1798,7 @@ pub async fn account_id_radius_token_get(
     State(state): State<ServerState>,
     Path(id): Path<String>,
     Extension(kopid): Extension<KOpId>,
-) -> impl IntoResponse {
+) -> Response<Body> {
     person_id_radius_handler(state, id, kopid).await
 }
 
@@ -1771,7 +1817,7 @@ pub async fn account_id_radius_token_post(
     State(state): State<ServerState>,
     Path(id): Path<String>,
     Extension(kopid): Extension<KOpId>,
-) -> impl IntoResponse {
+) -> Response<hyper::Body> {
     person_id_radius_handler(state, id, kopid).await
 }
 
@@ -1779,7 +1825,7 @@ async fn person_id_radius_handler(
     state: ServerState,
     id: String,
     kopid: KOpId,
-) -> impl IntoResponse {
+) -> Response<hyper::Body> {
     let res = state
         .qe_r_ref
         .handle_internalradiustokenread(kopid.uat, id, kopid.eventid)
@@ -1813,12 +1859,13 @@ pub async fn person_id_unix_post(
     Path(id): Path<String>,
     Extension(kopid): Extension<KOpId>,
     Json(obj): Json<AccountUnixExtend>,
-) -> impl IntoResponse {
-    let res = state
+) -> Result<Json<()>, WebError> {
+    state
         .qe_w_ref
         .handle_idmaccountunixextend(kopid.uat, id, obj, kopid.eventid)
-        .await;
-    to_axum_response(res)
+        .await
+        .map(Json::from)
+        .map_err(WebError::from)
 }
 
 #[utoipa::path(
@@ -1840,12 +1887,13 @@ pub async fn service_account_id_unix_post(
     Path(id): Path<String>,
     Extension(kopid): Extension<KOpId>,
     Json(obj): Json<AccountUnixExtend>,
-) -> impl IntoResponse {
-    let res = state
+) -> Result<Json<()>, WebError> {
+    state
         .qe_w_ref
         .handle_idmaccountunixextend(kopid.uat, id, obj, kopid.eventid)
-        .await;
-    to_axum_response(res)
+        .await
+        .map(Json::from)
+        .map_err(WebError::from)
 }
 
 #[utoipa::path(
@@ -1866,12 +1914,13 @@ pub async fn account_id_unix_post(
     Path(id): Path<String>,
     Extension(kopid): Extension<KOpId>,
     Json(obj): Json<AccountUnixExtend>,
-) -> impl IntoResponse {
-    let res = state
+) -> Result<Json<()>, WebError> {
+    state
         .qe_w_ref
         .handle_idmaccountunixextend(kopid.uat, id, obj, kopid.eventid)
-        .await;
-    to_axum_response(res)
+        .await
+        .map(Json::from)
+        .map_err(WebError::from)
 }
 
 #[utoipa::path(
@@ -1890,42 +1939,29 @@ pub async fn account_id_unix_token(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     Path(id): Path<String>,
-) -> impl IntoResponse {
+) -> Result<Json<UnixUserToken>, WebError> {
     // no point asking for an empty id
     if id.is_empty() {
-        #[allow(clippy::unwrap_used)]
-        return Response::builder()
-            .status(StatusCode::BAD_REQUEST)
-            .body(Body::empty())
-            .unwrap();
+        return Err(OperationError::EmptyRequest.into());
     }
 
     let res = state
         .qe_r_ref
         .handle_internalunixusertokenread(kopid.uat, id, kopid.eventid)
-        .await;
+        .await
+        .map(Json::from);
 
     if let Err(OperationError::InvalidAccountState(val)) = &res {
         // if they're not a posix user we should just hide them
         if *val == format!("Missing class: {}", "posixaccount") {
-            #[allow(clippy::unwrap_used)]
-            return Response::builder()
-                .status(StatusCode::NOT_FOUND)
-                .body(Body::empty())
-                .unwrap();
+            return Err(OperationError::NoMatchingEntries.into());
         }
     };
-
     // the was returning a 500 error which wasn't right
     if let Err(OperationError::InvalidValueState) = &res {
-        #[allow(clippy::unwrap_used)]
-        return Response::builder()
-            .status(StatusCode::NOT_FOUND)
-            .body(Body::empty())
-            .unwrap();
+        return Err(OperationError::NoMatchingEntries.into());
     };
-
-    to_axum_response(res)
+    res.map_err(WebError::from)
 }
 
 #[utoipa::path(
@@ -1947,12 +1983,13 @@ pub async fn account_id_unix_auth_post(
     Extension(kopid): Extension<KOpId>,
     Path(id): Path<String>,
     Json(obj): Json<SingleStringRequest>,
-) -> impl IntoResponse {
-    let res = state
+) -> Result<Json<Option<UnixUserToken>>, WebError> {
+    state
         .qe_r_ref
         .handle_idmaccountunixauth(kopid.uat, id, obj.value, kopid.eventid)
-        .await;
-    to_axum_response(res)
+        .await
+        .map(Json::from)
+        .map_err(WebError::from)
 }
 
 #[utoipa::path(
@@ -1972,12 +2009,13 @@ pub async fn person_id_unix_credential_put(
     Extension(kopid): Extension<KOpId>,
     Path(id): Path<String>,
     Json(obj): Json<SingleStringRequest>,
-) -> impl IntoResponse {
-    let res = state
+) -> Result<Json<()>, WebError> {
+    state
         .qe_w_ref
         .handle_idmaccountunixsetcred(kopid.uat, id, obj.value, kopid.eventid)
-        .await;
-    to_axum_response(res)
+        .await
+        .map(Json::from)
+        .map_err(WebError::from)
 }
 
 #[utoipa::path(
@@ -1995,9 +2033,9 @@ pub async fn person_id_unix_credential_delete(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     Path(id): Path<String>,
-) -> impl IntoResponse {
+) -> Result<Json<()>, WebError> {
     let filter = filter_all!(f_eq(Attribute::Class, EntryClass::PosixAccount.into()));
-    let res = state
+    state
         .qe_w_ref
         .handle_purgeattribute(
             kopid.uat,
@@ -2006,8 +2044,9 @@ pub async fn person_id_unix_credential_delete(
             filter,
             kopid.eventid,
         )
-        .await;
-    to_axum_response(res)
+        .await
+        .map(Json::from)
+        .map_err(WebError::from)
 }
 
 #[utoipa::path(
@@ -2026,12 +2065,13 @@ pub async fn person_identify_user_post(
     Extension(kopid): Extension<KOpId>,
     Path(id): Path<String>,
     Json(user_request): Json<IdentifyUserRequest>,
-) -> impl IntoResponse {
-    let res = state
+) -> Result<Json<IdentifyUserResponse>, WebError> {
+    state
         .qe_r_ref
         .handle_user_identity_verification(kopid.uat, kopid.eventid, user_request, id)
-        .await;
-    to_axum_response(res)
+        .await
+        .map(Json::from)
+        .map_err(WebError::from)
 }
 
 #[utoipa::path(
@@ -2049,7 +2089,7 @@ pub async fn person_identify_user_post(
 pub async fn group_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
-) -> impl IntoResponse {
+) -> Result<Json<Vec<ProtoEntry>>, WebError> {
     let filter = filter_all!(f_eq(Attribute::Class, EntryClass::Group.into()));
     json_rest_event_get(state, None, filter, kopid).await
 }
@@ -2069,7 +2109,7 @@ pub async fn group_post(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     Json(obj): Json<ProtoEntry>,
-) -> impl IntoResponse {
+) -> Result<Json<()>, WebError> {
     let classes = vec!["group".to_string(), "object".to_string()];
     json_rest_event_post(state, classes, obj, kopid).await
 }
@@ -2089,7 +2129,7 @@ pub async fn group_id_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     Path(id): Path<String>,
-) -> impl IntoResponse {
+) -> Result<Json<Option<ProtoEntry>>, WebError> {
     let filter = filter_all!(f_eq(Attribute::Class, EntryClass::Group.into()));
     json_rest_event_get_id(state, id, filter, None, kopid).await
 }
@@ -2109,7 +2149,7 @@ pub async fn group_id_delete(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     Path(id): Path<String>,
-) -> impl IntoResponse {
+) -> Result<Json<()>, WebError> {
     let filter = filter_all!(f_eq(Attribute::Class, EntryClass::Group.into()));
     json_rest_event_delete_id(state, id, filter, kopid).await
 }
@@ -2133,7 +2173,7 @@ pub async fn group_id_attr_get(
     State(state): State<ServerState>,
     Path((id, attr)): Path<(String, String)>,
     Extension(kopid): Extension<KOpId>,
-) -> impl IntoResponse {
+) -> Result<Json<Option<Vec<String>>>, WebError> {
     let filter = filter_all!(f_eq(Attribute::Class, EntryClass::Group.into()));
     json_rest_event_get_id_attr(state, id, attr, filter, kopid).await
 }
@@ -2159,7 +2199,7 @@ pub async fn group_id_attr_post(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     Json(values): Json<Vec<String>>,
-) -> impl IntoResponse {
+) -> Result<Json<()>, WebError> {
     let filter = filter_all!(f_eq(Attribute::Class, EntryClass::Group.into()));
     json_rest_event_post_id_attr(state, id, attr, filter, values, kopid).await
 }
@@ -2185,7 +2225,7 @@ pub async fn group_id_attr_delete(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     values: Option<Json<Vec<String>>>,
-) -> impl IntoResponse {
+) -> Result<Json<()>, WebError> {
     let filter = filter_all!(f_eq(Attribute::Class, EntryClass::Group.into()));
     let values = values.map(|v| v.0);
     json_rest_event_delete_id_attr(state, id, attr, filter, values, kopid).await
@@ -2212,7 +2252,7 @@ pub async fn group_id_attr_put(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     Json(values): Json<Vec<String>>,
-) -> impl IntoResponse {
+) -> Result<Json<()>, WebError> {
     let filter = filter_all!(f_eq(Attribute::Class, EntryClass::Group.into()));
     json_rest_event_put_id_attr(state, id, attr, filter, values, kopid).await
 }
@@ -2234,12 +2274,13 @@ pub async fn group_id_unix_post(
     Path(id): Path<String>,
     Extension(kopid): Extension<KOpId>,
     Json(obj): Json<GroupUnixExtend>,
-) -> impl IntoResponse {
-    let res = state
+) -> Result<Json<()>, WebError> {
+    state
         .qe_w_ref
         .handle_idmgroupunixextend(kopid.uat, id, obj, kopid.eventid)
-        .await;
-    to_axum_response(res)
+        .await
+        .map(Json::from)
+        .map_err(WebError::from)
 }
 
 #[utoipa::path(
@@ -2257,12 +2298,13 @@ pub async fn group_id_unix_token_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     Path(id): Path<String>,
-) -> impl IntoResponse {
-    let res = state
+) -> Result<Json<UnixGroupToken>, WebError> {
+    state
         .qe_r_ref
         .handle_internalunixgrouptokenread(kopid.uat, id, kopid.eventid)
-        .await;
-    to_axum_response(res)
+        .await
+        .map(Json::from)
+        .map_err(WebError::from)
 }
 
 #[utoipa::path(
@@ -2279,7 +2321,7 @@ pub async fn group_id_unix_token_get(
 pub async fn domain_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
-) -> impl IntoResponse {
+) -> Result<Json<Vec<ProtoEntry>>, WebError> {
     let filter = filter_all!(f_eq(Attribute::Uuid, PartialValue::Uuid(UUID_DOMAIN_INFO)));
     json_rest_event_get(state, None, filter, kopid).await
 }
@@ -2302,7 +2344,7 @@ pub async fn domain_attr_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     Path(attr): Path<String>,
-) -> impl IntoResponse {
+) -> Result<Json<Option<Vec<String>>>, WebError> {
     let filter = filter_all!(f_eq(Attribute::Class, EntryClass::DomainInfo.into()));
     json_rest_event_get_attr(state, STR_UUID_DOMAIN_INFO, attr, filter, kopid).await
 }
@@ -2327,7 +2369,7 @@ pub async fn domain_attr_put(
     Extension(kopid): Extension<KOpId>,
     Path(attr): Path<String>,
     Json(values): Json<Vec<String>>,
-) -> impl IntoResponse {
+) -> Result<Json<()>, WebError> {
     let filter = filter_all!(f_eq(Attribute::Class, EntryClass::DomainInfo.into()));
     json_rest_event_put_attr(
         state,
@@ -2360,7 +2402,7 @@ pub async fn domain_attr_delete(
     Path(attr): Path<String>,
     Extension(kopid): Extension<KOpId>,
     Json(values): Json<Option<Vec<String>>>,
-) -> impl IntoResponse {
+) -> Result<Json<()>, WebError> {
     let filter = filter_all!(f_eq(Attribute::Class, EntryClass::DomainInfo.into()));
     json_rest_event_delete_attr(
         state,
@@ -2387,7 +2429,7 @@ pub async fn domain_attr_delete(
 pub async fn system_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
-) -> impl IntoResponse {
+) -> Result<Json<Vec<ProtoEntry>>, WebError> {
     let filter = filter_all!(f_eq(
         Attribute::Uuid,
         PartialValue::Uuid(UUID_SYSTEM_CONFIG)
@@ -2413,7 +2455,7 @@ pub async fn system_attr_get(
     State(state): State<ServerState>,
     Path(attr): Path<String>,
     Extension(kopid): Extension<KOpId>,
-) -> impl IntoResponse {
+) -> Result<Json<Option<Vec<String>>>, WebError> {
     let filter = filter_all!(f_eq(Attribute::Class, EntryClass::SystemConfig.into()));
     json_rest_event_get_attr(state, STR_UUID_SYSTEM_CONFIG, attr, filter, kopid).await
 }
@@ -2438,7 +2480,7 @@ pub async fn system_attr_post(
     Path(attr): Path<String>,
     Extension(kopid): Extension<KOpId>,
     Json(values): Json<Vec<String>>,
-) -> impl IntoResponse {
+) -> Result<Json<()>, WebError> {
     let filter = filter_all!(f_eq(Attribute::Class, EntryClass::SystemConfig.into()));
     json_rest_event_post_attr(
         state,
@@ -2471,7 +2513,7 @@ pub async fn system_attr_delete(
     Path(attr): Path<String>,
     Extension(kopid): Extension<KOpId>,
     Json(values): Json<Option<Vec<String>>>,
-) -> impl IntoResponse {
+) -> Result<Json<()>, WebError> {
     let filter = filter_all!(f_eq(Attribute::Class, EntryClass::SystemConfig.into()));
     json_rest_event_delete_attr(
         state,
@@ -2504,7 +2546,7 @@ pub async fn system_attr_put(
     Path(attr): Path<String>,
     Extension(kopid): Extension<KOpId>,
     Json(values): Json<Vec<String>>,
-) -> impl IntoResponse {
+) -> Result<Json<()>, WebError> {
     let filter = filter_all!(f_eq(Attribute::Class, EntryClass::SystemConfig.into()));
     json_rest_event_put_attr(
         state,
@@ -2531,14 +2573,15 @@ pub async fn system_attr_put(
 pub async fn recycle_bin_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
-) -> impl IntoResponse {
+) -> Result<Json<Vec<ProtoEntry>>, WebError> {
     let filter = filter_all!(f_pres(Attribute::Class));
     let attrs = None;
-    let res = state
+    state
         .qe_r_ref
         .handle_internalsearchrecycled(kopid.uat, filter, attrs, kopid.eventid)
-        .await;
-    to_axum_response(res)
+        .await
+        .map(Json::from)
+        .map_err(WebError::from)
 }
 
 #[utoipa::path(
@@ -2556,16 +2599,17 @@ pub async fn recycle_bin_id_get(
     State(state): State<ServerState>,
     Path(id): Path<String>,
     Extension(kopid): Extension<KOpId>,
-) -> impl IntoResponse {
+) -> Result<Json<Option<ProtoEntry>>, WebError> {
     let filter = filter_all!(f_id(id.as_str()));
     let attrs = None;
 
-    let res = state
+    state
         .qe_r_ref
         .handle_internalsearchrecycled(kopid.uat, filter, attrs, kopid.eventid)
         .await
-        .map(|mut r| r.pop());
-    to_axum_response(res)
+        .map(|mut r| r.pop())
+        .map(Json::from)
+        .map_err(WebError::from)
 }
 
 #[utoipa::path(
@@ -2583,13 +2627,14 @@ pub async fn recycle_bin_revive_id_post(
     State(state): State<ServerState>,
     Path(id): Path<String>,
     Extension(kopid): Extension<KOpId>,
-) -> impl IntoResponse {
+) -> Result<Json<()>, WebError> {
     let filter = filter_all!(f_id(id.as_str()));
-    let res = state
+    state
         .qe_w_ref
         .handle_reviverecycled(kopid.uat, filter, kopid.eventid)
-        .await;
-    to_axum_response(res)
+        .await
+        .map(Json::from)
+        .map_err(WebError::from)
 }
 
 #[utoipa::path(
@@ -2605,16 +2650,17 @@ pub async fn recycle_bin_revive_id_post(
     security(("token_jwt" = [])),
     tag = "api/v1/self",
 )]
-/// Returns your applinks for the Web UI
+/// Returns your OAuth2 app links for the Web UI
 pub async fn applinks_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
-) -> impl IntoResponse {
-    let res = state
+) -> Result<Json<Vec<AppLink>>, WebError> {
+    state
         .qe_r_ref
         .handle_list_applinks(kopid.uat, kopid.eventid)
-        .await;
-    to_axum_response(res)
+        .await
+        .map(Json::from)
+        .map_err(WebError::from)
 }
 
 #[utoipa::path(
@@ -2772,12 +2818,13 @@ fn auth_session_state_management(
 pub async fn auth_valid(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
-) -> impl IntoResponse {
-    let res = state
+) -> Result<Json<()>, WebError> {
+    state
         .qe_r_ref
         .handle_auth_valid(kopid.uat, kopid.eventid)
-        .await;
-    to_axum_response(res)
+        .await
+        .map(Json::from)
+        .map_err(WebError::from)
 }
 
 #[utoipa::path(
@@ -2785,8 +2832,6 @@ pub async fn auth_valid(
     path = "/v1/debug/ipinfo",
     responses(
         (status = 200, description = "Ok"),
-        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
-        // (status = 403, description = "Authorzation refused"),
     ),
     security(("token_jwt" = [])),
     tag = "api/v1/debug",
@@ -2794,8 +2839,8 @@ pub async fn auth_valid(
 pub async fn debug_ipinfo(
     State(_state): State<ServerState>,
     TrustedClientIp(ip_addr): TrustedClientIp,
-) -> impl IntoResponse {
-    to_axum_response(Ok(vec![ip_addr]))
+) -> Result<Json<Vec<IpAddr>>, ()> {
+    Ok(Json::from(vec![ip_addr]))
 }
 
 #[instrument(skip(state))]

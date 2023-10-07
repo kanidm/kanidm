@@ -1,11 +1,13 @@
+use super::errors::WebError;
 use super::middleware::KOpId;
-use super::{to_axum_response, HttpOperationError, ServerState};
+use super::{HttpOperationError, ServerState};
 use axum::extract::{Path, Query, State};
 use axum::middleware::from_fn;
 use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::{Extension, Form, Json, Router};
 use axum_macros::debug_handler;
+use compact_jwt::JwkKeySet;
 use http::header::{
     ACCESS_CONTROL_ALLOW_HEADERS, ACCESS_CONTROL_ALLOW_ORIGIN, AUTHORIZATION, CONTENT_TYPE,
     LOCATION, WWW_AUTHENTICATE,
@@ -549,13 +551,13 @@ pub async fn oauth2_openid_publickey_get(
     State(state): State<ServerState>,
     Path(client_id): Path<String>,
     Extension(kopid): Extension<KOpId>,
-) -> Response<Body> {
-    to_axum_response(
-        state
-            .qe_r_ref
-            .handle_oauth2_openid_publickey(client_id, kopid.eventid)
-            .await,
-    )
+) -> Result<Json<JwkKeySet>, WebError> {
+    state
+        .qe_r_ref
+        .handle_oauth2_openid_publickey(client_id, kopid.eventid)
+        .await
+        .map(Json::from)
+        .map_err(WebError::from)
 }
 
 /// This is called directly by the resource server, where we then issue

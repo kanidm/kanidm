@@ -1,6 +1,7 @@
 use base64urlsafedata::Base64UrlSafeData;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
+use utoipa::ToSchema;
 use uuid::Uuid;
 
 pub use scim_proto::prelude::{ScimAttr, ScimComplexAttr, ScimEntry, ScimError, ScimSimpleAttr};
@@ -12,7 +13,7 @@ use crate::constants::{
     ATTR_NAME, ATTR_SSH_PUBLICKEY,
 };
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, ToSchema)]
 pub enum ScimSyncState {
     Refresh,
     Active { cookie: Base64UrlSafeData },

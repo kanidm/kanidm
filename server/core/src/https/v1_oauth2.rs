@@ -1,13 +1,12 @@
+use super::errors::WebError;
 use super::middleware::KOpId;
 use super::oauth2::oauth2_id;
 use super::v1::{json_rest_event_get, json_rest_event_post};
 use super::ServerState;
-use crate::https::to_axum_response;
 
 use axum::extract::{Path, State};
-use axum::response::{IntoResponse, Response};
+use axum::response::IntoResponse;
 use axum::{Extension, Json};
-use hyper::Body;
 use kanidm_proto::internal::{ImageType, ImageValue};
 use kanidm_proto::v1::Entry as ProtoEntry;
 use kanidmd_lib::prelude::*;
@@ -113,15 +112,16 @@ pub(crate) async fn oauth2_id_get(
     State(state): State<ServerState>,
     Path(rs_name): Path<String>,
     Extension(kopid): Extension<KOpId>,
-) -> Response<Body> {
+) -> Result<Json<Option<ProtoEntry>>, WebError> {
     let filter = oauth2_id(&rs_name);
 
-    let res = state
+    state
         .qe_r_ref
         .handle_internalsearch(kopid.uat, filter, None, kopid.eventid)
         .await
-        .map(|mut r| r.pop());
-    to_axum_response(res)
+        .map(|mut r| r.pop())
+        .map(Json::from)
+        .map_err(WebError::from)
 }
 
 #[utoipa::path(
@@ -142,13 +142,14 @@ pub(crate) async fn oauth2_id_get_basic_secret(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     Path(rs_name): Path<String>,
-) -> Response<Body> {
+) -> Result<Json<Option<String>>, WebError> {
     let filter = oauth2_id(&rs_name);
-    let res = state
+    state
         .qe_r_ref
         .handle_oauth2_basic_secret_read(kopid.uat, filter, kopid.eventid)
-        .await;
-    to_axum_response(res)
+        .await
+        .map(Json::from)
+        .map_err(WebError::from)
 }
 
 #[utoipa::path(
@@ -169,14 +170,15 @@ pub(crate) async fn oauth2_id_patch(
     Path(rs_name): Path<String>,
     Extension(kopid): Extension<KOpId>,
     Json(obj): Json<ProtoEntry>,
-) -> Response<Body> {
+) -> Result<Json<()>, WebError> {
     let filter = oauth2_id(&rs_name);
 
-    let res = state
+    state
         .qe_w_ref
         .handle_internalpatch(kopid.uat, filter, obj, kopid.eventid)
-        .await;
-    to_axum_response(res)
+        .await
+        .map(Json::from)
+        .map_err(WebError::from)
 }
 
 #[utoipa::path(
@@ -200,13 +202,14 @@ pub(crate) async fn oauth2_id_scopemap_post(
     Extension(kopid): Extension<KOpId>,
     Path((rs_name, group)): Path<(String, String)>,
     Json(scopes): Json<Vec<String>>,
-) -> Response<Body> {
+) -> Result<Json<()>, WebError> {
     let filter = oauth2_id(&rs_name);
-    let res = state
+    state
         .qe_w_ref
         .handle_oauth2_scopemap_update(kopid.uat, group, scopes, filter, kopid.eventid)
-        .await;
-    to_axum_response(res)
+        .await
+        .map(Json::from)
+        .map_err(WebError::from)
 }
 
 #[utoipa::path(
@@ -229,13 +232,14 @@ pub(crate) async fn oauth2_id_scopemap_delete(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     Path((rs_name, group)): Path<(String, String)>,
-) -> Response<Body> {
+) -> Result<Json<()>, WebError> {
     let filter = oauth2_id(&rs_name);
-    let res = state
+    state
         .qe_w_ref
         .handle_oauth2_scopemap_delete(kopid.uat, group, filter, kopid.eventid)
-        .await;
-    to_axum_response(res)
+        .await
+        .map(Json::from)
+        .map_err(WebError::from)
 }
 
 #[utoipa::path(
@@ -259,13 +263,14 @@ pub(crate) async fn oauth2_id_sup_scopemap_post(
     Extension(kopid): Extension<KOpId>,
     Path((rs_name, group)): Path<(String, String)>,
     Json(scopes): Json<Vec<String>>,
-) -> Response<Body> {
+) -> Result<Json<()>, WebError> {
     let filter = oauth2_id(&rs_name);
-    let res = state
+    state
         .qe_w_ref
         .handle_oauth2_sup_scopemap_update(kopid.uat, group, scopes, filter, kopid.eventid)
-        .await;
-    to_axum_response(res)
+        .await
+        .map(Json::from)
+        .map_err(WebError::from)
 }
 
 #[utoipa::path(
@@ -288,13 +293,14 @@ pub(crate) async fn oauth2_id_sup_scopemap_delete(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     Path((rs_name, group)): Path<(String, String)>,
-) -> Response<Body> {
+) -> Result<Json<()>, WebError> {
     let filter = oauth2_id(&rs_name);
-    let res = state
+    state
         .qe_w_ref
         .handle_oauth2_sup_scopemap_delete(kopid.uat, group, filter, kopid.eventid)
-        .await;
-    to_axum_response(res)
+        .await
+        .map(Json::from)
+        .map_err(WebError::from)
 }
 
 #[utoipa::path(
@@ -316,13 +322,14 @@ pub(crate) async fn oauth2_id_delete(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     Path(rs_name): Path<String>,
-) -> Response<Body> {
+) -> Result<Json<()>, WebError> {
     let filter = oauth2_id(&rs_name);
-    let res = state
+    state
         .qe_w_ref
         .handle_internaldelete(kopid.uat, filter, kopid.eventid)
-        .await;
-    to_axum_response(res)
+        .await
+        .map(Json::from)
+        .map_err(WebError::from)
 }
 
 #[utoipa::path(
@@ -343,14 +350,13 @@ pub(crate) async fn oauth2_id_image_delete(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     Path(rs_name): Path<String>,
-) -> Response<Body> {
-    let rs_filter = oauth2_id(&rs_name);
-    let res = state
+) -> Result<Json<()>, WebError> {
+    state
         .qe_w_ref
-        .handle_oauth2_rs_image_delete(kopid.uat, rs_filter)
-        .await;
-
-    to_axum_response(res)
+        .handle_oauth2_rs_image_delete(kopid.uat, oauth2_id(&rs_name))
+        .await
+        .map(Json::from)
+        .map_err(WebError::from)
 }
 
 #[utoipa::path(
@@ -373,7 +379,7 @@ pub(crate) async fn oauth2_id_image_post(
     Extension(kopid): Extension<KOpId>,
     Path(rs_name): Path<String>,
     mut multipart: axum::extract::Multipart,
-) -> Response<Body> {
+) -> Result<Json<()>, WebError> {
     // because we might not get an image
     let mut image: Option<ImageValue> = None;
 
@@ -388,31 +394,22 @@ pub(crate) async fn oauth2_id_image_post(
                         val
                     } else {
                         debug!("Invalid content type: {}", val);
-                        let res =
-                            to_axum_response::<String>(Err(OperationError::InvalidRequestState));
-                        return res;
+                        return Err(OperationError::InvalidRequestState.into());
                     }
                 }
                 None => {
                     debug!("No content type header provided");
-                    let res = to_axum_response::<String>(Err(OperationError::InvalidRequestState));
-                    return res;
+                    return Err(OperationError::InvalidRequestState.into());
                 }
             };
             let data = match field.bytes().await {
                 Ok(val) => val,
-                Err(_e) => {
-                    let res = to_axum_response::<String>(Err(OperationError::InvalidRequestState));
-                    return res;
-                }
+                Err(_e) => return Err(OperationError::InvalidRequestState.into()),
             };
 
             let filetype = match ImageType::try_from_content_type(&content_type) {
                 Ok(val) => val,
-                Err(_err) => {
-                    let res = to_axum_response::<String>(Err(OperationError::InvalidRequestState));
-                    return res;
-                }
+                Err(_err) => return Err(OperationError::InvalidRequestState.into()),
             };
 
             image = Some(ImageValue {
@@ -423,23 +420,28 @@ pub(crate) async fn oauth2_id_image_post(
         };
     }
 
-    let res = match image {
+    match image {
         Some(image) => {
             let image_validation_result = image.validate_image();
-            if let Err(err) = image_validation_result {
-                admin_error!("Invalid image uploaded: {:?}", err);
-                return to_axum_response::<String>(Err(OperationError::InvalidRequestState));
+            match image_validation_result {
+                Err(err) => {
+                    admin_error!("Invalid image uploaded: {:?}", err);
+                    // to_axum_response::<String>(Err(OperationError::InvalidRequestState));
+                    Err(WebError::from(OperationError::InvalidRequestState))
+                }
+                Ok(_) => {
+                    let rs_name = oauth2_id(&rs_name);
+                    state
+                        .qe_w_ref
+                        .handle_oauth2_rs_image_update(kopid.uat, rs_name, image)
+                        .await
+                        .map(Json::from)
+                        .map_err(WebError::from)
+                }
             }
-
-            let rs_name = oauth2_id(&rs_name);
-            state
-                .qe_w_ref
-                .handle_oauth2_rs_image_update(kopid.uat, rs_name, image)
-                .await
         }
-        None => Err(OperationError::InvalidAttribute(
+        None => Err(WebError::from(OperationError::InvalidAttribute(
             "No image included, did you mean to use the DELETE method?".to_string(),
-        )),
-    };
-    to_axum_response(res)
+        ))),
+    }
 }
