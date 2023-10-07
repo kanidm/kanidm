@@ -216,8 +216,8 @@ pub async fn json_rest_event_get(
         .qe_r_ref
         .handle_internalsearch(kopid.uat, filter, attrs, kopid.eventid)
         .await
-        .map(|r| Json::from(r))
-        .map_err(|e| e.into())
+        .map(Json::from)
+        .map_err(WebError::from)
 }
 
 pub async fn json_rest_event_get_id(
