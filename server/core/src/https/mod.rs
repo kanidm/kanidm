@@ -26,7 +26,7 @@ use axum::Router;
 use axum_csp::{CspDirectiveType, CspValue};
 use axum_macros::FromRef;
 use compact_jwt::{Jws, JwsSigner, JwsUnverified};
-use http::header::{ACCESS_CONTROL_ALLOW_ORIGIN, CONTENT_TYPE};
+use http::header::ACCESS_CONTROL_ALLOW_ORIGIN;
 use http::{HeaderMap, HeaderValue, StatusCode};
 use hyper::server::accept::Accept;
 use hyper::server::conn::{AddrStream, Http};
@@ -39,7 +39,6 @@ use sketching::*;
 use tokio_openssl::SslStream;
 
 use futures_util::future::poll_fn;
-use serde::Serialize;
 use tokio::net::TcpListener;
 use tracing::Level;
 
@@ -401,87 +400,5 @@ pub(crate) async fn handle_conn(
             trace!("Failed to handle connection: {:?}", error);
             Ok(())
         }
-    }
-}
-
-/// Convert any kind of Result<T, OperationError> into an axum response with a stable type
-/// by JSON-encoding the body.
-#[instrument(name = "to_axum_response", level = "debug")]
-pub fn to_axum_response<T: Serialize + core::fmt::Debug>(
-    v: Result<T, OperationError>,
-) -> Response<Body> {
-    match v {
-        Ok(iv) => {
-            let body = match serde_json::to_string(&iv) {
-                Ok(val) => val,
-                Err(err) => {
-                    error!("Failed to serialise response: {:?}", err);
-                    format!("{:?}", iv)
-                }
-            };
-            trace!("Response Body: {:?}", body);
-            #[allow(clippy::unwrap_used)]
-            Response::builder()
-                .header(CONTENT_TYPE, APPLICATION_JSON)
-                .body(Body::from(body))
-                .unwrap()
-        }
-        Err(e) => {
-            debug!("OperationError: {:?}", e);
-            let res = match &e {
-                OperationError::NotAuthenticated | OperationError::SessionExpired => {
-                    // https://datatracker.ietf.org/doc/html/rfc7235#section-4.1
-                    Response::builder()
-                        .status(http::StatusCode::UNAUTHORIZED)
-                        .header("WWW-Authenticate", "Bearer")
-                }
-                OperationError::SystemProtectedObject | OperationError::AccessDenied => {
-                    Response::builder().status(http::StatusCode::FORBIDDEN)
-                }
-                OperationError::NoMatchingEntries => {
-                    Response::builder().status(http::StatusCode::NOT_FOUND)
-                }
-                OperationError::PasswordQuality(_)
-                | OperationError::EmptyRequest
-                | OperationError::SchemaViolation(_) => {
-                    Response::builder().status(http::StatusCode::BAD_REQUEST)
-                }
-                _ => Response::builder().status(http::StatusCode::INTERNAL_SERVER_ERROR),
-            };
-            match serde_json::to_string(&e) {
-                #[allow(clippy::expect_used)]
-                Ok(val) => res
-                    .body(Body::from(val))
-                    .expect("Failed to build response!"),
-                #[allow(clippy::expect_used)]
-                Err(_) => res
-                    .body(Body::from(format!("{:?}", e)))
-                    .expect("Failed to build response!"),
-            }
-        }
-    }
-}
-
-/// Wrapper for the externally-defined error type from the protocol
-pub struct HttpOperationError(OperationError);
-
-impl IntoResponse for HttpOperationError {
-    fn into_response(self) -> Response {
-        let HttpOperationError(error) = self;
-
-        let body = match serde_json::to_string(&error) {
-            Ok(val) => val,
-            Err(e) => {
-                admin_warn!("Failed to serialize error response: original_error=\"{:?}\" serialization_error=\"{:?}\"", error , e);
-                format!("{:?}", error)
-            }
-        };
-        #[allow(clippy::unwrap_used)]
-        Response::builder()
-            .status(StatusCode::BAD_REQUEST)
-            .header(ACCESS_CONTROL_ALLOW_ORIGIN, "*")
-            .body(Body::from(body))
-            .unwrap()
-            .into_response()
     }
 }

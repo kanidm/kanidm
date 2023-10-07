@@ -3,14 +3,12 @@
 use std::net::IpAddr;
 
 use axum::extract::{Path, Query, State};
-use axum::headers::{CacheControl, HeaderMapExt};
 use axum::middleware::from_fn;
 use axum::response::{IntoResponse, Response};
 use axum::routing::{delete, get, post, put};
 use axum::{Extension, Json, Router};
 use compact_jwt::Jws;
 use http::{HeaderMap, HeaderValue};
-use hyper::Body;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -19,8 +17,8 @@ use kanidm_proto::v1::{
     AccountUnixExtend, ApiToken, ApiTokenGenerate, AuthIssueSession, AuthRequest, AuthResponse,
     AuthState as ProtoAuthState, CUIntentToken, CURequest, CUSessionToken, CUStatus, CreateRequest,
     CredentialStatus, DeleteRequest, Entry as ProtoEntry, GroupUnixExtend, ModifyRequest,
-    SearchRequest, SearchResponse, SingleStringRequest, UatStatus, UnixGroupToken, UnixUserToken,
-    UserAuthToken, WhoamiResponse,
+    RadiusAuthToken, SearchRequest, SearchResponse, SingleStringRequest, UatStatus, UnixGroupToken,
+    UnixUserToken, UserAuthToken, WhoamiResponse,
 };
 use kanidmd_lib::idm::event::AuthResult;
 use kanidmd_lib::idm::AuthState;
@@ -29,11 +27,10 @@ use kanidmd_lib::value::PartialValue;
 
 use super::apidocs::{path_schema, response_schema};
 use super::errors::WebError;
-use super::middleware::caching::dont_cache_me;
+use super::middleware::caching::{cache_me, dont_cache_me};
 use super::middleware::KOpId;
 use super::ServerState;
 use crate::https::extractors::TrustedClientIp;
-use crate::https::to_axum_response;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub(crate) struct SessionId {
@@ -1778,7 +1775,7 @@ pub async fn person_id_radius_token_get(
     State(state): State<ServerState>,
     Path(id): Path<String>,
     Extension(kopid): Extension<KOpId>,
-) -> Response<Body> {
+) -> Result<Json<RadiusAuthToken>, WebError> {
     person_id_radius_handler(state, id, kopid).await
 }
 
@@ -1798,7 +1795,7 @@ pub async fn account_id_radius_token_get(
     State(state): State<ServerState>,
     Path(id): Path<String>,
     Extension(kopid): Extension<KOpId>,
-) -> Response<Body> {
+) -> Result<Json<RadiusAuthToken>, WebError> {
     person_id_radius_handler(state, id, kopid).await
 }
 
@@ -1817,7 +1814,7 @@ pub async fn account_id_radius_token_post(
     State(state): State<ServerState>,
     Path(id): Path<String>,
     Extension(kopid): Extension<KOpId>,
-) -> Response<hyper::Body> {
+) -> Result<Json<RadiusAuthToken>, WebError> {
     person_id_radius_handler(state, id, kopid).await
 }
 
@@ -1825,18 +1822,13 @@ async fn person_id_radius_handler(
     state: ServerState,
     id: String,
     kopid: KOpId,
-) -> Response<hyper::Body> {
-    let res = state
+) -> Result<Json<RadiusAuthToken>, WebError> {
+    state
         .qe_r_ref
         .handle_internalradiustokenread(kopid.uat, id, kopid.eventid)
-        .await;
-    let mut res = to_axum_response(res);
-    debug!("Response: {:?}", res);
-    let cache_header = CacheControl::new()
-        .with_max_age(Duration::from_secs(300))
-        .with_private();
-    res.headers_mut().typed_insert(cache_header);
-    res
+        .await
+        .map(Json::from)
+        .map_err(WebError::from)
 }
 
 #[utoipa::path(
@@ -2843,8 +2835,23 @@ pub async fn debug_ipinfo(
     Ok(Json::from(vec![ip_addr]))
 }
 
+fn cacheable_routes(state: ServerState) -> Router<ServerState> {
+    Router::new()
+        .route(
+            "/v1/person/:id/_radius/_token",
+            get(person_id_radius_token_get),
+        )
+        .route("/v1/account/:id/_unix/_token", get(account_id_unix_token))
+        .route(
+            "/v1/account/:id/_radius/_token",
+            get(account_id_radius_token_get),
+        )
+        .layer(from_fn(cache_me))
+        .with_state(state)
+}
+
 #[instrument(skip(state))]
-pub fn route_setup(state: ServerState) -> Router<ServerState> {
+pub(crate) fn route_setup(state: ServerState) -> Router<ServerState> {
     Router::new()
         .route("/v1/oauth2", get(super::v1_oauth2::oauth2_get))
         .route(
@@ -2973,10 +2980,6 @@ pub fn route_setup(state: ServerState) -> Router<ServerState> {
                 .post(person_id_radius_post)
                 .delete(person_id_radius_delete),
         )
-        .route(
-            "/v1/person/:id/_radius/_token",
-            get(person_id_radius_token_get),
-        ) // TODO: make this cacheable
         .route("/v1/person/:id/_unix", post(service_account_id_unix_post))
         .route(
             "/v1/person/:id/_unix/_credential",
@@ -3053,13 +3056,10 @@ pub fn route_setup(state: ServerState) -> Router<ServerState> {
             "/v1/account/:id/_unix/_auth",
             post(account_id_unix_auth_post),
         )
-        .route(
-            "/v1/account/:id/_unix/_token",
-            post(account_id_unix_token).get(account_id_unix_token), // TODO: make this cacheable
-        )
+        .route("/v1/account/:id/_unix/_token", post(account_id_unix_token))
         .route(
             "/v1/account/:id/_radius/_token",
-            post(account_id_radius_token_post).get(account_id_radius_token_get), // TODO: make this cacheable
+            post(account_id_radius_token_post),
         )
         .route(
             "/v1/account/:id/_ssh_pubkeys",
@@ -3130,7 +3130,8 @@ pub fn route_setup(state: ServerState) -> Router<ServerState> {
         .route("/v1/auth/valid", get(auth_valid))
         .route("/v1/logout", get(logout))
         .route("/v1/reauth", post(reauth))
-        .with_state(state)
+        .with_state(state.clone())
         .layer(from_fn(dont_cache_me))
+        .merge(cacheable_routes(state))
         .route("/v1/debug/ipinfo", get(debug_ipinfo))
 }

@@ -426,7 +426,6 @@ pub(crate) async fn oauth2_id_image_post(
             match image_validation_result {
                 Err(err) => {
                     admin_error!("Invalid image uploaded: {:?}", err);
-                    // to_axum_response::<String>(Err(OperationError::InvalidRequestState));
                     Err(WebError::from(OperationError::InvalidRequestState))
                 }
                 Ok(_) => {

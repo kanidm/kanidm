@@ -1,6 +1,6 @@
 use super::errors::WebError;
 use super::middleware::KOpId;
-use super::{HttpOperationError, ServerState};
+use super::ServerState;
 use axum::extract::{Path, Query, State};
 use axum::middleware::from_fn;
 use axum::response::{IntoResponse, Response};
@@ -504,7 +504,7 @@ pub async fn oauth2_openid_discovery_get(
     State(state): State<ServerState>,
     Path(client_id): Path<String>,
     Extension(kopid): Extension<KOpId>,
-) -> Result<Json<OidcDiscoveryResponse>, HttpOperationError> {
+) -> Result<Json<OidcDiscoveryResponse>, Response> {
     // let client_id = req.get_url_param("client_id")?;
 
     let res = state
@@ -516,7 +516,7 @@ pub async fn oauth2_openid_discovery_get(
         Ok(dsc) => Ok(Json(dsc)),
         Err(e) => {
             error!(err = ?e, "Unable to access discovery info");
-            Err(HttpOperationError(e))
+            Err(WebError::from(e).response_with_access_control_origin_header())
         }
     }
 }

@@ -2,7 +2,8 @@
 //!
 
 use axum::response::{IntoResponse, Response};
-use http::StatusCode;
+use http::header::ACCESS_CONTROL_ALLOW_ORIGIN;
+use http::{HeaderValue, StatusCode};
 use kanidm_proto::v1::OperationError;
 use utoipa::ToSchema;
 
@@ -17,6 +18,17 @@ pub enum WebError {
 impl From<OperationError> for WebError {
     fn from(inner: OperationError) -> Self {
         WebError::OperationError(inner)
+    }
+}
+
+impl WebError {
+    pub(crate) fn response_with_access_control_origin_header(self) -> Response {
+        let mut res = self.into_response();
+        res.headers_mut().insert(
+            ACCESS_CONTROL_ALLOW_ORIGIN,
+            HeaderValue::from_str("*").expect("Header generation failed, this is weird."),
+        );
+        res
     }
 }
 
