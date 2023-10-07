@@ -115,8 +115,15 @@ kanidm login --name demo_user
 kanidm self whoami --name demo_user
 ```
 
-{{#template templates/kani-warning.md imagepath=images title=Warning! text=Don't use the direct
-credential reset to lock or invalidate an account. You should expire the account instead. }}
+<!-- deno-fmt-ignore-start -->
+
+{{#template templates/kani-warning.md
+imagepath=images
+title=Warning!
+text=Don't use the direct credential reset to lock or invalidate an account. You should expire the account instead.
+}}
+
+<!-- deno-fmt-ignore-end -->
 
 ## Reauthentication / Privilege Access Mode
 

@@ -392,7 +392,7 @@ pub(crate) async fn handle_conn(
                 .serve_connection(tls_stream, svc)
                 .await
                 .map_err(|e| {
-                    error!("Failed to complete connection: {:?}", e);
+                    debug!("Failed to complete connection: {:?}", e);
                     std::io::Error::from(ErrorKind::ConnectionAborted)
                 })
         }
