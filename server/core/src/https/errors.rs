@@ -7,15 +7,13 @@ use utoipa::ToSchema;
 
 use super::to_axum_response;
 
-/// The web app's top level error type.
+/// The web app's top level error type, this takes an `OperationError` and converts it into a HTTP response.
 #[derive(Debug, ToSchema)]
 pub enum WebError {
     /// Something went wrong when doing things.
     OperationError(OperationError),
 }
 
-/// This makes it possible to use `?` to automatically convert a `OperationError`
-/// into an `WebError`.
 impl From<OperationError> for WebError {
     fn from(inner: OperationError) -> Self {
         WebError::OperationError(inner)
