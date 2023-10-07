@@ -8,7 +8,6 @@ use axum::{
 use http::HeaderValue;
 use kanidm_proto::constants::{KOPID, KVERSION};
 use uuid::Uuid;
-
 pub(crate) mod caching;
 pub(crate) mod compression;
 pub(crate) mod hsts_header;
@@ -48,7 +47,9 @@ pub async fn are_we_json_yet<B>(request: Request<B>, next: Next<B>) -> Response 
         assert!(headers.contains_key(http::header::CONTENT_TYPE));
         assert!(
             headers.get(http::header::CONTENT_TYPE)
-                == Some(&HeaderValue::from_static(crate::https::APPLICATION_JSON))
+                == Some(&HeaderValue::from_static(
+                    kanidm_proto::constants::APPLICATION_JSON
+                ))
         );
     }
 
