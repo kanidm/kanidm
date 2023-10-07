@@ -661,7 +661,7 @@ impl FilterComp {
                 // * If all filters are okay, return Ok(Filter::Or())
                 // * Any filter is invalid, return the error.
                 // * An empty "or" is a valid filter in mathematical terms, but we throw an
-                //   error to warn the user because it's super unlikey they want that
+                //   error to warn the user because it's super unlikely they want that
                 if filters.is_empty() {
                     return Err(SchemaError::EmptyFilter);
                 };
@@ -676,7 +676,7 @@ impl FilterComp {
                 // * If all filters are okay, return Ok(Filter::Or())
                 // * Any filter is invalid, return the error.
                 // * An empty "and" is a valid filter in mathematical terms, but we throw an
-                //   error to warn the user because it's super unlikey they want that
+                //   error to warn the user because it's super unlikely they want that
                 if filters.is_empty() {
                     return Err(SchemaError::EmptyFilter);
                 };
