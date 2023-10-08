@@ -1167,7 +1167,7 @@ where
             aliases: self
                 .token_homedirectory_alias(tok)
                 .map(|s| vec![s])
-                .unwrap_or_else(Vec::new),
+                .unwrap_or_default(),
         }))
     }
 

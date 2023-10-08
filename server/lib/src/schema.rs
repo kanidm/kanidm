@@ -444,36 +444,36 @@ impl SchemaClass {
         let systemmay = value
             .get_ava_iter_iutf8(Attribute::SystemMay)
             .map(|i| i.map(|v| v.into()).collect())
-            .unwrap_or_else(Vec::new);
+            .unwrap_or_default();
         let systemmust = value
             .get_ava_iter_iutf8(Attribute::SystemMust)
             .map(|i| i.map(|v| v.into()).collect())
-            .unwrap_or_else(Vec::new);
+            .unwrap_or_default();
         let may = value
             .get_ava_iter_iutf8(Attribute::May)
             .map(|i| i.map(|v| v.into()).collect())
-            .unwrap_or_else(Vec::new);
+            .unwrap_or_default();
         let must = value
             .get_ava_iter_iutf8(Attribute::Must)
             .map(|i| i.map(|v| v.into()).collect())
-            .unwrap_or_else(Vec::new);
+            .unwrap_or_default();
 
         let systemsupplements = value
             .get_ava_iter_iutf8(Attribute::SystemSupplements)
             .map(|i| i.map(|v| v.into()).collect())
-            .unwrap_or_else(Vec::new);
+            .unwrap_or_default();
         let supplements = value
             .get_ava_iter_iutf8(Attribute::Supplements)
             .map(|i| i.map(|v| v.into()).collect())
-            .unwrap_or_else(Vec::new);
+            .unwrap_or_default();
         let systemexcludes = value
             .get_ava_iter_iutf8(Attribute::SystemExcludes)
             .map(|i| i.map(|v| v.into()).collect())
-            .unwrap_or_else(Vec::new);
+            .unwrap_or_default();
         let excludes = value
             .get_ava_iter_iutf8(Attribute::Excludes)
             .map(|i| i.map(|v| v.into()).collect())
-            .unwrap_or_else(Vec::new);
+            .unwrap_or_default();
 
         Ok(SchemaClass {
             name,
