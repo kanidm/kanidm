@@ -46,7 +46,7 @@ pub(crate) struct SessionId {
     ),
     request_body=CreateRequest,
     security(("token_jwt" = [])),
-    tag = "api/v1/raw",
+    tag = "v1/raw",
 )]
 /// Raw request to the system, be warned this can be dangerous!
 pub async fn raw_create(
@@ -70,7 +70,7 @@ pub async fn raw_create(
     ),
     request_body=ModifyRequest,
     security(("token_jwt" = [])),
-    tag = "api/v1/raw",
+    tag = "v1/raw",
 )]
 /// Raw request to the system, be warned this can be dangerous!
 pub async fn raw_modify(
@@ -94,7 +94,7 @@ pub async fn raw_modify(
     ),
     request_body=DeleteRequest,
     security(("token_jwt" = [])),
-    tag = "api/v1/raw",
+    tag = "v1/raw",
 )]
 /// Raw request to the system, be warned this can be dangerous!
 pub async fn raw_delete(
@@ -118,7 +118,7 @@ pub async fn raw_delete(
     ),
     request_body=SearchRequest,
     security(("token_jwt" = [])),
-    tag = "api/v1/raw",
+    tag = "v1/raw",
 )]
 /// Raw request to the system, be warned this can be dangerous!
 pub async fn raw_search(
@@ -139,7 +139,7 @@ pub async fn raw_search(
     path = "/v1/self",
     responses(DefaultApiResponse),
     security(("token_jwt" = [])),
-    tag = "api/v1/self",
+    tag = "v1/self",
 )]
 // Whoami?
 pub async fn whoami(
@@ -164,7 +164,7 @@ pub async fn whoami(
         (status = 403, description = "Authorzation refused"),
     ),
     security(("token_jwt" = [])),
-    tag = "api/v1/self",
+    tag = "v1/self",
 )]
 pub async fn whoami_uat(
     State(state): State<ServerState>,
@@ -187,7 +187,7 @@ pub async fn whoami_uat(
         (status = 403, description = "Authorzation refused"),
     ),
     security(("token_jwt" = [])),
-    tag = "api/v1/auth",
+    tag = "v1/auth",
 )]
 pub async fn logout(
     State(state): State<ServerState>,
@@ -424,7 +424,7 @@ pub async fn json_rest_event_delete_attr(
         (status = 403, description = "Authorzation refused"),
     ),
     security(("token_jwt" = [])),
-    tag = "api/v1/schema",
+    tag = "v1/schema",
 )]
 // Whoami?
 pub async fn schema_get(
@@ -451,7 +451,7 @@ pub async fn schema_get(
         (status = 403, description = "Authorzation refused"),
     ),
     security(("token_jwt" = [])),
-    tag = "api/v1/schema",
+    tag = "v1/schema",
 )]
 pub async fn schema_attributetype_get(
     State(state): State<ServerState>,
@@ -470,7 +470,7 @@ pub async fn schema_attributetype_get(
         (status = 403, description = "Authorzation refused"),
     ),
     security(("token_jwt" = [])),
-    tag = "api/v1/schema",
+    tag = "v1/schema",
 )]
 pub async fn schema_attributetype_get_id(
     State(state): State<ServerState>,
@@ -504,7 +504,7 @@ pub async fn schema_attributetype_get_id(
         (status = 403, description = "Authorzation refused"),
     ),
     security(("token_jwt" = [])),
-    tag = "api/v1/schema",
+    tag = "v1/schema",
 )]
 pub async fn schema_classtype_get(
     State(state): State<ServerState>,
@@ -523,7 +523,7 @@ pub async fn schema_classtype_get(
         (status = 403, description = "Authorzation refused"),
     ),
     security(("token_jwt" = [])),
-    tag = "api/v1/schema",
+    tag = "v1/schema",
 )]
 pub async fn schema_classtype_get_id(
     State(state): State<ServerState>,
@@ -553,7 +553,7 @@ pub async fn schema_classtype_get_id(
         (status = 403, description = "Authorzation refused"),
     ),
     security(("token_jwt" = [])),
-    tag = "api/v1/person",
+    tag = "v1/person",
 )]
 pub async fn person_get(
     State(state): State<ServerState>,
@@ -568,7 +568,7 @@ pub async fn person_get(
     path = "/v1/person",
     request_body=Json, // TODO: ProtoEntry can't be serialized, so we need to do this manually
     security(("token_jwt" = [])),
-    tag = "api/v1/person",
+    tag = "v1/person",
 )]
 /// Expects the following fields in the attrs field of the req: [name, displayname]
 pub async fn person_post(
@@ -592,7 +592,7 @@ pub async fn person_post(
         (status = 403, description = "Authorzation refused"),
     ),
     security(("token_jwt" = [])),
-    tag = "api/v1/person",
+    tag = "v1/person",
 )]
 pub async fn person_id_get(
     State(state): State<ServerState>,
@@ -612,7 +612,7 @@ pub async fn person_id_get(
         (status = 403, description = "Authorzation refused"),
     ),
     security(("token_jwt" = [])),
-    tag = "api/v1/person",
+    tag = "v1/person",
 )]
 pub async fn person_id_delete(
     State(state): State<ServerState>,
@@ -634,7 +634,7 @@ pub async fn person_id_delete(
         (status = 403, description = "Authorzation refused"),
     ),
     security(("token_jwt" = [])),
-    tag = "api/v1/service_account",
+    tag = "v1/service_account",
 )]
 pub async fn service_account_get(
     State(state): State<ServerState>,
@@ -654,7 +654,7 @@ pub async fn service_account_get(
         (status = 403, description = "Authorzation refused"),
     ),
     security(("token_jwt" = [])),
-    tag = "api/v1/service_account",
+    tag = "v1/service_account",
 )]
 pub async fn service_account_post(
     State(state): State<ServerState>,
@@ -678,7 +678,7 @@ pub async fn service_account_post(
         (status = 403, description = "Authorzation refused"),
     ),
     security(("token_jwt" = [])),
-    tag = "api/v1/service_account",
+    tag = "v1/service_account",
 )]
 pub async fn service_account_id_get(
     State(state): State<ServerState>,
@@ -698,7 +698,7 @@ pub async fn service_account_id_get(
         (status = 403, description = "Authorzation refused"),
     ),
     security(("token_jwt" = [])),
-    tag = "api/v1/service_account",
+    tag = "v1/service_account",
 )]
 pub async fn service_account_id_delete(
     State(state): State<ServerState>,
@@ -718,7 +718,7 @@ pub async fn service_account_id_delete(
         (status = 403, description = "Authorzation refused"),
     ),
     security(("token_jwt" = [])),
-    tag = "api/v1/service_account",
+    tag = "v1/service_account",
 )]
 pub async fn service_account_credential_generate(
     State(state): State<ServerState>,
@@ -742,7 +742,7 @@ pub async fn service_account_credential_generate(
         (status = 403, description = "Authorzation refused"),
     ),
     security(("token_jwt" = [])),
-    tag = "api/v1/service_account",
+    tag = "v1/service_account",
 )]
 /// Due to how the migrations work in 6 -> 7, we can accidentally
 /// mark "accounts" as service accounts when they are persons. This
@@ -772,7 +772,7 @@ pub async fn service_account_into_person(
         (status = 403, description = "Authorzation refused"),
     ),
     security(("token_jwt" = [])),
-    tag = "api/v1/service_account",
+    tag = "v1/service_account",
 )]
 pub async fn service_account_api_token_get(
     State(state): State<ServerState>,
@@ -798,7 +798,7 @@ pub async fn service_account_api_token_get(
         DefaultApiResponse,
     ),
     security(("token_jwt" = [])),
-    tag = "api/v1/service_account",
+    tag = "v1/service_account",
 )]
 pub async fn service_account_api_token_post(
     State(state): State<ServerState>,
@@ -834,7 +834,7 @@ pub async fn service_account_api_token_post(
         (status = 403, description = "Authorzation refused"),
     ),
     security(("token_jwt" = [])),
-    tag = "api/v1/service_account",
+    tag = "v1/service_account",
 )]
 pub async fn service_account_api_token_delete(
     State(state): State<ServerState>,
@@ -858,7 +858,7 @@ pub async fn service_account_api_token_delete(
         (status = 403, description = "Authorzation refused"),
     ),
     security(("token_jwt" = [])),
-    tag = "api/v1/person/attr",
+    tag = "v1/person/attr",
 )]
 pub async fn person_id_get_attr(
     State(state): State<ServerState>,
@@ -878,7 +878,7 @@ pub async fn person_id_get_attr(
         (status = 403, description = "Authorzation refused"),
     ),
     security(("token_jwt" = [])),
-    tag = "api/v1/service_account",
+    tag = "v1/service_account",
 )]
 pub async fn service_account_id_get_attr(
     State(state): State<ServerState>,
@@ -903,7 +903,7 @@ pub async fn service_account_id_get_attr(
         (status = 403, description = "Authorzation refused"),
     ),
     security(("token_jwt" = [])),
-    tag = "api/v1/person/attr",
+    tag = "v1/person/attr",
 )]
 pub async fn person_id_post_attr(
     State(state): State<ServerState>,
@@ -925,7 +925,7 @@ pub async fn person_id_post_attr(
         (status = 403, description = "Authorzation refused"),
     ),
     security(("token_jwt" = [])),
-    tag = "api/v1/service_account",
+    tag = "v1/service_account",
 )]
 pub async fn service_account_id_post_attr(
     State(state): State<ServerState>,
@@ -946,7 +946,7 @@ pub async fn service_account_id_post_attr(
         (status = 403, description = "Authorzation refused"),
     ),
     security(("token_jwt" = [])),
-    tag = "api/v1/person/attr",
+    tag = "v1/person/attr",
 )]
 pub async fn person_id_delete_attr(
     State(state): State<ServerState>,
@@ -966,7 +966,7 @@ pub async fn person_id_delete_attr(
         (status = 403, description = "Authorzation refused"),
     ),
     security(("token_jwt" = [])),
-    tag = "api/v1/service_account",
+    tag = "v1/service_account",
 )]
 pub async fn service_account_id_delete_attr(
     State(state): State<ServerState>,
@@ -986,7 +986,7 @@ pub async fn service_account_id_delete_attr(
         (status = 403, description = "Authorzation refused"),
     ),
     security(("token_jwt" = [])),
-    tag = "api/v1/person/attr",
+    tag = "v1/person/attr",
 )]
 pub async fn person_id_put_attr(
     State(state): State<ServerState>,
@@ -1008,7 +1008,7 @@ pub async fn person_id_put_attr(
         (status = 403, description = "Authorzation refused"),
     ),
     security(("token_jwt" = [])),
-    tag = "api/v1/service_account",
+    tag = "v1/service_account",
 )]
 pub async fn service_account_id_put_attr(
     State(state): State<ServerState>,
@@ -1030,7 +1030,7 @@ pub async fn service_account_id_put_attr(
     ),
     // request_body=ProtoEntry, // TODO: can't deal with a HashMap in the attr
     security(("token_jwt" = [])),
-    tag = "api/v1/person",
+    tag = "v1/person",
 )]
 pub async fn person_id_patch(
     State(state): State<ServerState>,
@@ -1054,7 +1054,7 @@ pub async fn person_id_patch(
     path = "/v1/person/{id}/_credential/_update",
     responses((status = 200),(status = 403),),
     security(("token_jwt" = [])),
-    tag = "api/v1/person/credential",
+    tag = "v1/person/credential",
 )]
 pub async fn person_id_credential_update_get(
     State(state): State<ServerState>,
@@ -1081,7 +1081,7 @@ pub async fn person_id_credential_update_get(
         (status = 403, description = "Authorzation refused"),
     ),
     security(("token_jwt" = [])),
-    tag = "api/v1/person/credential",
+    tag = "v1/person/credential",
 )]
 // TODO: this shouldn't be a get, we're making changes!
 #[instrument(level = "trace", skip(state, kopid))]
@@ -1116,7 +1116,7 @@ pub async fn person_id_credential_update_intent_ttl_get(
         (status = 403, description = "Authorzation refused"),
     ),
     security(("token_jwt" = [])),
-    tag = "api/v1/person",
+    tag = "v1/person",
 )]
 #[instrument(level = "trace", skip(state, kopid))]
 pub async fn person_id_credential_update_intent_get(
@@ -1144,7 +1144,7 @@ pub async fn person_id_credential_update_intent_get(
         (status = 403, description = "Authorzation refused"),
     ),
     security(("token_jwt" = [])),
-    tag = "api/v1/account",
+    tag = "v1/account",
 )]
 pub async fn account_id_user_auth_token_get(
     State(state): State<ServerState>,
@@ -1173,7 +1173,7 @@ pub async fn account_id_user_auth_token_get(
         (status = 403, description = "Authorzation refused"),
     ),
     security(("token_jwt" = [])),
-    tag = "api/v1/account",
+    tag = "v1/account",
 )]
 pub async fn account_user_auth_token_delete(
     State(state): State<ServerState>,
@@ -1200,7 +1200,7 @@ pub async fn account_user_auth_token_delete(
         (status = 403, description = "Authorzation refused"),
     ),
     security(("token_jwt" = [])),
-    tag = "api/v1/credential",
+    tag = "v1/credential",
 )] // TODO: post body
 pub async fn credential_update_exchange_intent(
     State(state): State<ServerState>,
@@ -1227,7 +1227,7 @@ pub async fn credential_update_exchange_intent(
         (status = 403, description = "Authorzation refused"),
     ),
     security(("token_jwt" = [])),
-    tag = "api/v1/credential",
+    tag = "v1/credential",
 )] // TODO: post body
 pub async fn credential_update_status(
     State(state): State<ServerState>,
@@ -1260,7 +1260,7 @@ pub async fn credential_update_status(
         (status = 403, description = "Authorzation refused"),
     ),
     security(("token_jwt" = [])),
-    tag = "api/v1/credential",
+    tag = "v1/credential",
 )] // TODO: post body
 #[instrument(level = "debug", skip(state, kopid))]
 pub async fn credential_update_update(
@@ -1308,7 +1308,7 @@ pub async fn credential_update_update(
         (status = 403, description = "Authorzation refused"),
     ),
     security(("token_jwt" = [])),
-    tag = "api/v1/credential",
+    tag = "v1/credential",
 )] // TODO: post body
 pub async fn credential_update_commit(
     State(state): State<ServerState>,
@@ -1335,7 +1335,7 @@ pub async fn credential_update_commit(
         (status = 403, description = "Authorzation refused"),
     ),
     security(("token_jwt" = [])),
-    tag = "api/v1/credential",
+    tag = "v1/credential",
 )] // TODO: post body
 pub async fn credential_update_cancel(
     State(state): State<ServerState>,
@@ -1359,7 +1359,7 @@ pub async fn credential_update_cancel(
         (status = 403, description = "Authorzation refused"),
     ),
     security(("token_jwt" = [])),
-    tag = "api/v1/service_account",
+    tag = "v1/service_account",
 )]
 pub async fn service_account_id_credential_status_get(
     State(state): State<ServerState>,
@@ -1383,7 +1383,7 @@ pub async fn service_account_id_credential_status_get(
         (status = 403, description = "Authorzation refused"),
     ),
     security(("token_jwt" = [])),
-    tag = "api/v1/person/credential",
+    tag = "v1/person/credential",
 )]
 pub async fn person_get_id_credential_status(
     State(state): State<ServerState>,
@@ -1407,7 +1407,7 @@ pub async fn person_get_id_credential_status(
         (status = 403, description = "Authorzation refused"),
     ),
     security(("token_jwt" = [])),
-    tag = "api/v1/person/ssh_pubkeys",
+    tag = "v1/person/ssh_pubkeys",
 )]
 pub async fn person_id_ssh_pubkeys_get(
     State(state): State<ServerState>,
@@ -1430,7 +1430,7 @@ pub async fn person_id_ssh_pubkeys_get(
         (status = 403, description = "Authorzation refused"),
     ),
     security(("token_jwt" = [])),
-    tag = "api/v1/account",
+    tag = "v1/account",
 )]
 #[deprecated]
 pub async fn account_id_ssh_pubkeys_get(
@@ -1455,7 +1455,7 @@ pub async fn account_id_ssh_pubkeys_get(
         (status = 403, description = "Authorzation refused"),
     ),
     security(("token_jwt" = [])),
-    tag = "api/v1/service_account",
+    tag = "v1/service_account",
 )]
 pub async fn service_account_id_ssh_pubkeys_get(
     State(state): State<ServerState>,
@@ -1479,7 +1479,7 @@ pub async fn service_account_id_ssh_pubkeys_get(
         (status = 403, description = "Authorzation refused"),
     ),
     security(("token_jwt" = [])),
-    tag = "api/v1/person/ssh_pubkeys",
+    tag = "v1/person/ssh_pubkeys",
 )]
 pub async fn person_id_ssh_pubkeys_post(
     State(state): State<ServerState>,
@@ -1507,7 +1507,7 @@ pub async fn person_id_ssh_pubkeys_post(
         (status = 403, description = "Authorzation refused"),
     ),
     security(("token_jwt" = [])),
-    tag = "api/v1/service_account",
+    tag = "v1/service_account",
 )]
 pub async fn service_account_id_ssh_pubkeys_post(
     State(state): State<ServerState>,
@@ -1539,7 +1539,7 @@ pub async fn service_account_id_ssh_pubkeys_post(
         (status = 403, description = "Authorzation refused"),
     ),
     security(("token_jwt" = [])),
-    tag = "api/v1/person/ssh_pubkeys/tag",
+    tag = "v1/person/ssh_pubkeys/tag",
 )]
 pub async fn person_id_ssh_pubkeys_tag_get(
     State(state): State<ServerState>,
@@ -1567,7 +1567,7 @@ pub async fn person_id_ssh_pubkeys_tag_get(
         (status = 403, description = "Authorzation refused"),
     ),
     security(("token_jwt" = [])),
-    tag = "api/v1/account",
+    tag = "v1/account",
 )]
 pub async fn account_id_ssh_pubkeys_tag_get(
     State(state): State<ServerState>,
@@ -1596,7 +1596,7 @@ pub async fn account_id_ssh_pubkeys_tag_get(
         (status = 403, description = "Authorzation refused"),
     ),
     security(("token_jwt" = [])),
-    tag = "api/v1/service_account",
+    tag = "v1/service_account",
 )]
 pub async fn service_account_id_ssh_pubkeys_tag_get(
     State(state): State<ServerState>,
@@ -1625,7 +1625,7 @@ pub async fn service_account_id_ssh_pubkeys_tag_get(
         (status = 403, description = "Authorzation refused"),
     ),
     security(("token_jwt" = [])),
-    tag = "api/v1/person/ssh_pubkeys/tag",
+    tag = "v1/person/ssh_pubkeys/tag",
 )]
 pub async fn person_id_ssh_pubkeys_tag_delete(
     State(state): State<ServerState>,
@@ -1663,7 +1663,7 @@ pub async fn person_id_ssh_pubkeys_tag_delete(
         (status = 403, description = "Authorzation refused"),
     ),
     security(("token_jwt" = [])),
-    tag = "api/v1/person",
+    tag = "v1/person",
 )]
 pub async fn service_account_id_ssh_pubkeys_tag_delete(
     State(state): State<ServerState>,
@@ -1697,7 +1697,7 @@ pub async fn service_account_id_ssh_pubkeys_tag_delete(
         (status = 403, description = "Authorzation refused"),
     ),
     security(("token_jwt" = [])),
-    tag = "api/v1/person/radius",
+    tag = "v1/person/radius",
 )]
 pub async fn person_id_radius_get(
     State(state): State<ServerState>,
@@ -1722,7 +1722,7 @@ pub async fn person_id_radius_get(
         (status = 403, description = "Authorzation refused"),
     ),
     security(("token_jwt" = [])),
-    tag = "api/v1/person/radius",
+    tag = "v1/person/radius",
 )]
 // TODO: what body do we take here?
 pub async fn person_id_radius_post(
@@ -1748,7 +1748,7 @@ pub async fn person_id_radius_post(
         (status = 403, description = "Authorzation refused"),
     ),
     security(("token_jwt" = [])),
-    tag = "api/v1/person",
+    tag = "v1/person",
 )]
 pub async fn person_id_radius_delete(
     State(state): State<ServerState>,
@@ -1770,7 +1770,7 @@ pub async fn person_id_radius_delete(
         (status = 403, description = "Authorzation refused"),
     ),
     security(("token_jwt" = [])),
-    tag = "api/v1/person/radius",
+    tag = "v1/person/radius",
 )]
 pub async fn person_id_radius_token_get(
     State(state): State<ServerState>,
@@ -1790,7 +1790,7 @@ pub async fn person_id_radius_token_get(
         (status = 403, description = "Authorzation refused"),
     ),
     security(("token_jwt" = [])),
-    tag = "api/v1/account",
+    tag = "v1/account",
 )]
 pub async fn account_id_radius_token_get(
     State(state): State<ServerState>,
@@ -1809,7 +1809,7 @@ pub async fn account_id_radius_token_get(
         (status = 403, description = "Authorzation refused"),
     ),
     security(("token_jwt" = [])),
-    tag = "api/v1/person",
+    tag = "v1/person",
 )] // TODO: what body do we expect here?
 pub async fn account_id_radius_token_post(
     State(state): State<ServerState>,
@@ -1841,10 +1841,8 @@ async fn person_id_radius_handler(
         // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
         (status = 403, description = "Authorzation refused"),
     ),
-    security(
-        ("token_jwt" = [])
-    ),
-    tag = "api/v1/person",
+    security(("token_jwt" = [])),
+    tag = "v1/person/unix",
 )]
 #[instrument(name = "account_post_id_unix", level = "INFO", skip(id, state, kopid))]
 pub async fn person_id_unix_post(
@@ -1871,7 +1869,7 @@ pub async fn person_id_unix_post(
         (status = 403),
     ),
     security(("token_jwt" = [])),
-    tag = "api/v1/service_account",
+    tag = "v1/service_account",
 )] // TODO: what body do we expect here?
 ///
 #[instrument(, level = "INFO", skip(id, state, kopid))]
@@ -1898,7 +1896,7 @@ pub async fn service_account_id_unix_post(
         (status = 403, description = "Authorzation refused"),
     ),
     security(("token_jwt" = [])),
-    tag = "api/v1/account",
+    tag = "v1/account",
 )] // TODO: what body do we expect here?
 /// Expects an `AccountUnixExtend` object
 #[instrument(, level = "INFO", skip(id, state, kopid))]
@@ -1925,7 +1923,7 @@ pub async fn account_id_unix_post(
         (status = 403, description = "Authorzation refused"),
     ),
     security(("token_jwt" = [])),
-    tag = "api/v1/account",
+    tag = "v1/account",
 )] // TODO: what body do we expect here?
 #[instrument(level = "INFO", skip_all)]
 pub async fn account_id_unix_token(
@@ -1969,7 +1967,7 @@ pub async fn account_id_unix_token(
         (status = 403, description = "Authorzation refused"),
     ),
     security(("token_jwt" = [])),
-    tag = "api/v1/account",
+    tag = "v1/account",
 )] // TODO: what body do we expect here?
 pub async fn account_id_unix_auth_post(
     State(state): State<ServerState>,
@@ -1995,7 +1993,7 @@ pub async fn account_id_unix_auth_post(
         (status = 403, description = "Authorzation refused"),
     ),
     security(("token_jwt" = [])),
-    tag = "api/v1/person/unix",
+    tag = "v1/person/unix",
 )] // TODO: what body do we expect here?
 pub async fn person_id_unix_credential_put(
     State(state): State<ServerState>,
@@ -2020,7 +2018,7 @@ pub async fn person_id_unix_credential_put(
         (status = 403, description = "Authorzation refused"),
     ),
     security(("token_jwt" = [])),
-    tag = "api/v1/person/unix",
+    tag = "v1/person/unix",
 )]
 pub async fn person_id_unix_credential_delete(
     State(state): State<ServerState>,
@@ -2051,7 +2049,7 @@ pub async fn person_id_unix_credential_delete(
         (status = 403, description = "Authorzation refused"),
     ),
     security(("token_jwt" = [])),
-    tag = "api/v1/person",
+    tag = "v1/person",
 )] // TODO: what body do we expect here?
 pub async fn person_identify_user_post(
     State(state): State<ServerState>,
@@ -2076,7 +2074,7 @@ pub async fn person_identify_user_post(
         (status = 403, description = "Authorzation refused"),
     ),
     security(("token_jwt" = [])),
-    tag = "api/v1/group",
+    tag = "v1/group",
 )]
 /// Returns all groups visible  to the user
 pub async fn group_get(
@@ -2096,7 +2094,7 @@ pub async fn group_get(
         (status = 403, description = "Authorzation refused"),
     ),
     security(("token_jwt" = [])),
-    tag = "api/v1/group",
+    tag = "v1/group",
 )] // TODO: post body
 pub async fn group_post(
     State(state): State<ServerState>,
@@ -2116,7 +2114,7 @@ pub async fn group_post(
         (status = 403, description = "Authorzation refused"),
     ),
     security(("token_jwt" = [])),
-    tag = "api/v1/group",
+    tag = "v1/group",
 )]
 pub async fn group_id_get(
     State(state): State<ServerState>,
@@ -2136,7 +2134,7 @@ pub async fn group_id_get(
         (status = 403, description = "Authorzation refused"),
     ),
     security(("token_jwt" = [])),
-    tag = "api/v1/group",
+    tag = "v1/group",
 )]
 pub async fn group_id_delete(
     State(state): State<ServerState>,
@@ -2160,7 +2158,7 @@ pub async fn group_id_delete(
         (status = 403, description = "Authorzation refused"),
     ),
     security(("token_jwt" = [])),
-    tag = "api/v1/group/attr",
+    tag = "v1/group/attr",
 )]
 pub async fn group_id_attr_get(
     State(state): State<ServerState>,
@@ -2185,7 +2183,7 @@ pub async fn group_id_attr_get(
         (status = 403, description = "Authorzation refused"),
     ),
     security(("token_jwt" = [])),
-    tag = "api/v1/group/attr",
+    tag = "v1/group/attr",
 )]
 pub async fn group_id_attr_post(
     Path((id, attr)): Path<(String, String)>,
@@ -2211,7 +2209,7 @@ pub async fn group_id_attr_post(
         (status = 403, description = "Authorzation refused"),
     ),
     security(("token_jwt" = [])),
-    tag = "api/v1/group/attr",
+    tag = "v1/group/attr",
 )]
 pub async fn group_id_attr_delete(
     Path((id, attr)): Path<(String, String)>,
@@ -2238,7 +2236,7 @@ pub async fn group_id_attr_delete(
         (status = 403, description = "Authorzation refused"),
     ),
     security(("token_jwt" = [])),
-    tag = "api/v1/group/attr",
+    tag = "v1/group/attr",
 )]
 pub async fn group_id_attr_put(
     Path((id, attr)): Path<(String, String)>,
@@ -2260,7 +2258,7 @@ pub async fn group_id_attr_put(
         (status = 403, description = "Authorzation refused"),
     ),
     security(("token_jwt" = [])),
-    tag = "api/v1/group/unix",
+    tag = "v1/group/unix",
 )]
 pub async fn group_id_unix_post(
     State(state): State<ServerState>,
@@ -2285,7 +2283,7 @@ pub async fn group_id_unix_post(
         (status = 403, description = "Authorzation refused"),
     ),
     security(("token_jwt" = [])),
-    tag = "api/v1/group/unix",
+    tag = "v1/group/unix",
 )]
 pub async fn group_id_unix_token_get(
     State(state): State<ServerState>,
@@ -2309,7 +2307,7 @@ pub async fn group_id_unix_token_get(
         (status = 403, description = "Authorzation refused"),
     ),
     security(("token_jwt" = [])),
-    tag = "api/v1/domain",
+    tag = "v1/domain",
 )]
 pub async fn domain_get(
     State(state): State<ServerState>,
@@ -2331,7 +2329,7 @@ pub async fn domain_get(
         (status = 403, description = "Authorzation refused"),
     ),
     security(("token_jwt" = [])),
-    tag = "api/v1/domain",
+    tag = "v1/domain",
 )]
 pub async fn domain_attr_get(
     State(state): State<ServerState>,
@@ -2355,7 +2353,7 @@ pub async fn domain_attr_get(
         (status = 403, description = "Authorzation refused"),
     ),
     security(("token_jwt" = [])),
-    tag = "api/v1/domain",
+    tag = "v1/domain",
 )]
 pub async fn domain_attr_put(
     State(state): State<ServerState>,
@@ -2388,7 +2386,7 @@ pub async fn domain_attr_put(
         (status = 403, description = "Authorzation refused"),
     ),
     security(("token_jwt" = [])),
-    tag = "api/v1/domain",
+    tag = "v1/domain",
 )]
 pub async fn domain_attr_delete(
     State(state): State<ServerState>,
@@ -2417,7 +2415,7 @@ pub async fn domain_attr_delete(
         (status = 403, description = "Authorzation refused"),
     ),
     security(("token_jwt" = [])),
-    tag = "api/v1/system",
+    tag = "v1/system",
 )]
 pub async fn system_get(
     State(state): State<ServerState>,
@@ -2442,7 +2440,7 @@ pub async fn system_get(
         (status = 403, description = "Authorzation refused"),
     ),
     security(("token_jwt" = [])),
-    tag = "api/v1/system",
+    tag = "v1/system",
 )]
 pub async fn system_attr_get(
     State(state): State<ServerState>,
@@ -2466,7 +2464,7 @@ pub async fn system_attr_get(
         (status = 403, description = "Authorzation refused"),
     ),
     security(("token_jwt" = [])),
-    tag = "api/v1/system",
+    tag = "v1/system",
 )]
 pub async fn system_attr_post(
     State(state): State<ServerState>,
@@ -2499,7 +2497,7 @@ pub async fn system_attr_post(
         (status = 403, description = "Authorzation refused"),
     ),
     security(("token_jwt" = [])),
-    tag = "api/v1/system",
+    tag = "v1/system",
 )]
 pub async fn system_attr_delete(
     State(state): State<ServerState>,
@@ -2532,7 +2530,7 @@ pub async fn system_attr_delete(
         (status = 403, description = "Authorzation refused"),
     ),
     security(("token_jwt" = [])),
-    tag = "api/v1/system",
+    tag = "v1/system",
 )]
 pub async fn system_attr_put(
     State(state): State<ServerState>,
@@ -2561,7 +2559,7 @@ pub async fn system_attr_put(
         (status = 403, description = "Authorzation refused"),
     ),
     security(("token_jwt" = [])),
-    tag = "api/v1/recycle_bin",
+    tag = "v1/recycle_bin",
 )]
 pub async fn recycle_bin_get(
     State(state): State<ServerState>,
@@ -2586,7 +2584,7 @@ pub async fn recycle_bin_get(
         (status = 403, description = "Authorzation refused"),
     ),
     security(("token_jwt" = [])),
-    tag = "api/v1/recycle_bin",
+    tag = "v1/recycle_bin",
 )]
 pub async fn recycle_bin_id_get(
     State(state): State<ServerState>,
@@ -2614,7 +2612,7 @@ pub async fn recycle_bin_id_get(
         (status = 403, description = "Authorzation refused"),
     ),
     security(("token_jwt" = [])),
-    tag = "api/v1/recycle_bin",
+    tag = "v1/recycle_bin",
 )]
 pub async fn recycle_bin_revive_id_post(
     State(state): State<ServerState>,
@@ -2641,7 +2639,7 @@ pub async fn recycle_bin_revive_id_post(
         (status = 403, description = "Authorzation refused"),
     ),
     security(("token_jwt" = [])),
-    tag = "api/v1/self",
+    tag = "v1/self",
 )]
 /// Returns your OAuth2 app links for the Web UI
 pub async fn applinks_get(
@@ -2666,7 +2664,7 @@ pub async fn applinks_get(
     ),
     request_body = AuthIssueSession,
     security(("token_jwt" = [])),
-    tag = "api/v1/auth",
+    tag = "v1/auth",
 )] // TODO: post body stuff
 pub async fn reauth(
     State(state): State<ServerState>,
@@ -2693,7 +2691,7 @@ pub async fn reauth(
     ),
     request_body = AuthRequest,
     security(("token_jwt" = [])),
-    tag = "api/v1/auth",
+    tag = "v1/auth",
 )]
 pub async fn auth(
     State(state): State<ServerState>,
@@ -2806,7 +2804,7 @@ fn auth_session_state_management(
         (status = 403, description = "Authorzation refused"),
     ),
     security(("token_jwt" = [])),
-    tag = "api/v1/auth",
+    tag = "v1/auth",
 )]
 pub async fn auth_valid(
     State(state): State<ServerState>,
@@ -2827,7 +2825,7 @@ pub async fn auth_valid(
         (status = 200, description = "Ok"),
     ),
     security(("token_jwt" = [])),
-    tag = "api/v1/debug",
+    tag = "v1/debug",
 )]
 pub async fn debug_ipinfo(
     State(_state): State<ServerState>,

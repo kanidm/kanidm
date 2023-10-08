@@ -24,7 +24,7 @@ use kanidmd_lib::prelude::*;
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
-    tag = "api/v1/sync_account",
+    tag = "v1/sync_account",
 )]
 /// Get all? the sync accounts.
 pub async fn sync_account_get(
@@ -43,7 +43,7 @@ pub async fn sync_account_get(
         DefaultApiResponse,
     ),
     security(("token_jwt" = [])),
-    tag = "api/v1/sync_account",
+    tag = "v1/sync_account",
 )]
 pub async fn sync_account_post(
     State(state): State<ServerState>,
@@ -65,7 +65,7 @@ pub async fn sync_account_post(
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
-    tag = "api/v1/sync_account",
+    tag = "v1/sync_account",
 )]
 /// Get the details of a sync account
 pub async fn sync_account_id_get(
@@ -88,7 +88,7 @@ pub async fn sync_account_id_get(
         DefaultApiResponse,
     ),
     security(("token_jwt" = [])),
-    tag = "api/v1/sync_account",
+    tag = "v1/sync_account",
 )]
 /// Modify a sync account in-place
 pub async fn sync_account_id_patch(
@@ -118,7 +118,7 @@ pub async fn sync_account_id_patch(
         DefaultApiResponse,
     ),
     security(("token_jwt" = [])),
-    tag = "api/v1/sync_account",
+    tag = "v1/sync_account",
 )]
 // TODO: why is this a get and not a post?
 pub async fn sync_account_id_finalise_get(
@@ -144,7 +144,7 @@ pub async fn sync_account_id_finalise_get(
         DefaultApiResponse,
     ),
     security(("token_jwt" = [])),
-    tag = "api/v1/sync_account",
+    tag = "v1/sync_account",
 )]
 // TODO: why is this a get if it's a terminate?
 pub async fn sync_account_id_terminate_get(
@@ -174,7 +174,7 @@ pub async fn sync_account_id_terminate_get(
         (status = 404),
     ),
     security(("token_jwt" = [])),
-    tag = "api/v1/sync_account",
+    tag = "v1/sync_account",
 )]
 pub async fn sync_account_token_post(
     State(state): State<ServerState>,
@@ -197,7 +197,7 @@ pub async fn sync_account_token_post(
         DefaultApiResponse,
     ),
     security(("token_jwt" = [])),
-    tag = "api/v1/sync_account",
+    tag = "v1/sync_account",
 )]
 pub async fn sync_account_token_delete(
     State(state): State<ServerState>,
@@ -261,7 +261,7 @@ async fn scim_sync_get(
 }
 #[utoipa::path(
     get,
-    path = "/v1/sync_account/:id/_attr/:attr",
+    path = "/v1/sync_account/{id}/_attr/{attr}",
     params(
         path_schema::UuidOrName,
         path_schema::Attr,
@@ -283,7 +283,7 @@ pub async fn sync_account_id_attr_get(
 
 #[utoipa::path(
     post,
-    path = "/v1/sync_account/:id/_attr/:attr",
+    path = "/v1/sync_account/{id}/_attr/{attr}",
     params(
         path_schema::UuidOrName,
         path_schema::Attr,

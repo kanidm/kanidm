@@ -6,7 +6,7 @@ use axum::{
     TypedHeader,
 };
 use http::HeaderValue;
-use kanidm_proto::constants::{KOPID, KVERSION};
+use kanidm_proto::constants::KVERSION;
 use uuid::Uuid;
 pub(crate) mod caching;
 pub(crate) mod compression;
