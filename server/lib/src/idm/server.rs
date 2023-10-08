@@ -70,14 +70,14 @@ pub struct DomainKeys {
 }
 
 #[derive(Clone)]
-pub struct AccountPolicy {
-    pub(crate) privilege_expiry: u32,
-    pub(crate) authsession_expiry: u32,
-    pub(crate) pw_badlist_cache: HashSet<String>,
+pub(crate) struct AccountPolicy {
+    privilege_expiry: u32,
+    authsession_expiry: u32,
+    pw_badlist_cache: HashSet<String>,
 }
 
 impl AccountPolicy {
-    pub fn new(
+    pub(crate) fn new(
         privilege_expiry: u32,
         authsession_expiry: u32,
         pw_badlist_cache: HashSet<String>,
@@ -89,11 +89,16 @@ impl AccountPolicy {
         }
     }
 
-    pub fn from_pw_badlist_cache(pw_badlist_cache: HashSet<String>) -> Self {
-        Self {
-            pw_badlist_cache,
-            ..Default::default()
-        }
+    pub(crate) fn privilege_expiry(&self) -> u32 {
+        self.privilege_expiry
+    }
+
+    pub(crate) fn authsession_expiry(&self) -> u32 {
+        self.authsession_expiry
+    }
+
+    pub(crate) fn pw_badlist_cache(&self) -> &HashSet<String> {
+        &self.pw_badlist_cache
     }
 }
 

@@ -1036,7 +1036,7 @@ impl AuthSession {
                     self.account.uuid,
                     async_tx,
                     webauthn,
-                    Some(&account_policy.pw_badlist_cache),
+                    Some(account_policy.pw_badlist_cache()),
                 ) {
                     CredState::Success { auth_type, cred_id } => {
                         // Issue the uat based on a set of factors.
@@ -1045,8 +1045,8 @@ impl AuthSession {
                             time,
                             async_tx,
                             cred_id,
-                            account_policy.authsession_expiry,
-                            account_policy.privilege_expiry,
+                            account_policy.authsession_expiry(),
+                            account_policy.privilege_expiry(),
                         )?;
                         let jwt = Jws::new(uat);
 

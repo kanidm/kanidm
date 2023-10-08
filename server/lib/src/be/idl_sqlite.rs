@@ -120,7 +120,7 @@ pub struct IdlSqliteWriteTransaction {
     db_name: &'static str,
 }
 
-pub trait IdlSqliteTransaction {
+pub(crate) trait IdlSqliteTransaction {
     fn get_db_name(&self) -> &str;
 
     fn get_conn(&self) -> Result<&Connection, OperationError>;
