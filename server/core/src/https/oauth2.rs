@@ -7,7 +7,7 @@ use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::{Extension, Form, Json, Router};
 use axum_macros::debug_handler;
-use compact_jwt::JwkKeySet;
+use compact_jwt::{JwkKeySet, OidcToken};
 use http::header::{
     ACCESS_CONTROL_ALLOW_HEADERS, ACCESS_CONTROL_ALLOW_ORIGIN, AUTHORIZATION, CONTENT_TYPE,
     LOCATION, WWW_AUTHENTICATE,
@@ -15,7 +15,7 @@ use http::header::{
 use http::{HeaderMap, HeaderValue, StatusCode};
 use hyper::Body;
 use kanidm_proto::constants::APPLICATION_JSON;
-use kanidm_proto::oauth2::{AuthorisationResponse, OidcDiscoveryResponse};
+use kanidm_proto::oauth2::{AuthorisationResponse, OidcDiscoveryResponse, AccessTokenResponse};
 use kanidmd_lib::idm::oauth2::{
     AccessTokenIntrospectRequest, AccessTokenRequest, AuthorisationRequest, AuthorisePermitSuccess,
     AuthoriseResponse, ErrorResponse, Oauth2Error, TokenRevokeRequest,
@@ -473,7 +473,7 @@ pub async fn oauth2_token_post(
     Extension(kopid): Extension<KOpId>,
     headers: HeaderMap,
     Form(tok_req): Form<AccessTokenRequest>,
-) -> Result<Json<kanidm_proto::oauth2::AccessTokenResponse>, HTTPOauth2Error> {
+) -> Result<Json<AccessTokenResponse>, HTTPOauth2Error> {
     // This is called directly by the resource server, where we then issue
     // the token to the caller.
 
@@ -525,7 +525,7 @@ pub async fn oauth2_openid_userinfo_get(
     State(state): State<ServerState>,
     Path(client_id): Path<String>,
     Extension(kopid): Extension<KOpId>,
-) -> impl IntoResponse {
+) -> Result<Json<OidcToken>, HTTPOauth2Error> {
     // The token we want to inspect is in the authorisation header.
     let client_token = match kopid.uat {
         Some(val) => val,
@@ -659,12 +659,12 @@ pub async fn oauth2_token_revoke_post(
         Some(val) => val,
         None =>
         {
-            #[allow(clippy::unwrap_used)]
-            return Response::builder()
-                .status(StatusCode::UNAUTHORIZED)
-                .header(ACCESS_CONTROL_ALLOW_ORIGIN, "*")
-                .body(Body::empty())
-                .unwrap()
+            return (
+                StatusCode::UNAUTHORIZED,
+                [(ACCESS_CONTROL_ALLOW_ORIGIN, "*")],
+                ""
+            )
+            .into_response();
         }
     };
 
@@ -678,21 +678,17 @@ pub async fn oauth2_token_revoke_post(
     match res {
         Ok(()) =>
         {
-            #[allow(clippy::unwrap_used)]
-            Response::builder()
-                .status(StatusCode::OK)
-                .header(ACCESS_CONTROL_ALLOW_ORIGIN, "*")
-                .body(Body::empty())
-                .unwrap()
+            (StatusCode::OK,
+                [(ACCESS_CONTROL_ALLOW_ORIGIN, "*")],
+                ""
+            ).into_response()
         }
         Err(Oauth2Error::AuthenticationRequired) => {
             // This will trigger our ui to auth and retry.
-            #[allow(clippy::unwrap_used)]
-            Response::builder()
-                .status(StatusCode::UNAUTHORIZED)
-                .header(ACCESS_CONTROL_ALLOW_ORIGIN, "*")
-                .body(Body::empty())
-                .unwrap()
+            (StatusCode::UNAUTHORIZED,
+                [(ACCESS_CONTROL_ALLOW_ORIGIN, "*"),],
+                ""
+            ).into_response()
         }
         Err(e) => {
             // https://datatracker.ietf.org/doc/html/rfc6749#section-5.2
@@ -700,27 +696,24 @@ pub async fn oauth2_token_revoke_post(
                 error: e.to_string(),
                 ..Default::default()
             };
-            #[allow(clippy::unwrap_used)]
-            Response::builder()
-                .status(StatusCode::BAD_REQUEST)
-                .header(ACCESS_CONTROL_ALLOW_ORIGIN, "*")
-                .body(Body::from(
-                    serde_json::to_string(&err).unwrap_or("".to_string()),
-                ))
-                .unwrap()
+            (StatusCode::BAD_REQUEST,
+                [(ACCESS_CONTROL_ALLOW_ORIGIN, "*"),],
+                serde_json::to_string(&err).unwrap_or("".to_string()),
+            ).into_response()
         }
     }
 }
 
 // Some requests from browsers require preflight so that CORS works.
-pub async fn oauth2_preflight_options() -> Response<Body> {
-    #[allow(clippy::unwrap_used)]
-    Response::builder()
-        .status(StatusCode::OK)
-        .header(ACCESS_CONTROL_ALLOW_ORIGIN, "*")
-        .header(ACCESS_CONTROL_ALLOW_HEADERS, "Authorization")
-        .body(Body::empty())
-        .unwrap()
+pub async fn oauth2_preflight_options() -> Response {
+    (
+        StatusCode::OK,
+        [
+            (ACCESS_CONTROL_ALLOW_ORIGIN, "*"),
+            (ACCESS_CONTROL_ALLOW_HEADERS, "Authorization"),
+        ],
+        String::new(),
+    ).into_response()
 }
 
 pub fn route_setup(state: ServerState) -> Router<ServerState> {
