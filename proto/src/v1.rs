@@ -1051,10 +1051,6 @@ pub enum AuthState {
     // Everything is good, your bearer token has been issued and is within
     // the result.
     Success(String),
-    // Everything is good, your cookie has been issued.
-    // Cookies no longer supported. Left as a comment as an example of alternate
-    // issue types.
-    // SuccessCookie,
 }
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]

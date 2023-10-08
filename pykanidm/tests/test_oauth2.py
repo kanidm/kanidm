@@ -1,0 +1,30 @@
+import json
+import logging
+
+from kanidm import KanidmClient
+
+import pytest
+
+@pytest.fixture(scope="function")
+async def client() -> KanidmClient:
+    """sets up a client with a basic thing"""
+    return KanidmClient(config_file="../examples/config_localhost")
+
+@pytest.mark.network
+@pytest.mark.asyncio
+async def test_idm_oauth2_rs_list(client: KanidmClient) -> None:
+    """tests getting the list of oauth2 resource servers"""
+    logging.basicConfig(level=logging.DEBUG)
+    print(f"config: {client.config}")
+
+    username = "admin"
+    # change this to be your admin password.
+    password = "Ek7A0fShLsCTXgK2xDqC9TNUgPYQdVFB6RMGKXLyNtGL5cER"
+
+    auth_resp = await client.authenticate_password(username, password, update_internal_auth_token=True)
+    assert auth_resp.state.success is not None
+
+    resp = await client.idm_oauth2_rs_list()
+    print("content:")
+    print(json.dumps(resp.data, indent=4))
+    assert resp.status_code == 200
