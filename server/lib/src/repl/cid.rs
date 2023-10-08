@@ -65,7 +65,6 @@ impl Cid {
         }
     }
 
-    #[allow(clippy::expect_used)]
     pub fn sub_secs(&self, secs: u64) -> Result<Self, OperationError> {
         self.ts
             .checked_sub(Duration::from_secs(secs))

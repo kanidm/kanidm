@@ -1568,9 +1568,15 @@ impl QueryServerWriteV1 {
             .qs_write
             .purge_tombstones()
             .and_then(|_| idms_prox_write.commit());
-        admin_info!(?res, "Purge tombstones result");
-        #[allow(clippy::expect_used)]
-        res.expect("Invalid Server State");
+
+        match res {
+            Ok(()) => {
+                debug!("Purge tombstone success");
+            }
+            Err(err) => {
+                error!(?err, "Unable to purge tombstones");
+            }
+        }
     }
 
     #[instrument(
@@ -1586,9 +1592,15 @@ impl QueryServerWriteV1 {
             .qs_write
             .purge_recycled()
             .and_then(|_| idms_prox_write.commit());
-        admin_info!(?res, "Purge recycled result");
-        #[allow(clippy::expect_used)]
-        res.expect("Invalid Server State");
+
+        match res {
+            Ok(()) => {
+                debug!("Purge recyclebin success");
+            }
+            Err(err) => {
+                error!(?err, "Unable to purge recyclebin");
+            }
+        }
     }
 
     pub(crate) async fn handle_delayedaction(&self, da: DelayedAction) {
