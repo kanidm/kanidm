@@ -1256,14 +1256,14 @@ impl FilterResolved {
 
                 // If the f_list_and only has one element, pop it and return.
                 if f_list_new.len() == 1 {
-                    #[allow(clippy::expect_used)]
-                    f_list_new.pop().expect("corrupt?")
+                    f_list_new.remove(0)
                 } else {
                     // finally, optimise this list by sorting.
                     f_list_new.sort_unstable();
                     f_list_new.dedup();
                     // Which ever element as the head is first must be the min SF
-                    // so we use this in our And to represent us.
+                    // so we use this in our And to represent the "best possible" value
+                    // of how indexes will perform.
                     let sf = f_list_new.first().and_then(|f| f.get_slopeyness_factor());
                     //
                     // return!
@@ -1287,8 +1287,7 @@ impl FilterResolved {
 
                 // If the f_list_or only has one element, pop it and return.
                 if f_list_new.len() == 1 {
-                    #[allow(clippy::expect_used)]
-                    f_list_new.pop().expect("corrupt?")
+                    f_list_new.remove(0)
                 } else {
                     // sort, but reverse so that sub-optimal elements are earlier
                     // to promote fast-failure.

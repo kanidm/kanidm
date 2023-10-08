@@ -1595,7 +1595,7 @@ impl<'a> BackendWriteTransaction<'a> {
     }
 
     pub fn upgrade_reindex(&mut self, v: i64) -> Result<(), OperationError> {
-        let dbv = self.get_db_index_version();
+        let dbv = self.get_db_index_version()?;
         admin_debug!(?dbv, ?v, "upgrade_reindex");
         if dbv < v {
             limmediate_warning!(
@@ -1896,19 +1896,20 @@ impl<'a> BackendWriteTransaction<'a> {
     fn reset_db_s_uuid(&mut self) -> Result<Uuid, OperationError> {
         // The value is missing. Generate a new one and store it.
         let nsid = Uuid::new_v4();
-        self.get_idlayer().write_db_s_uuid(nsid)?;
+        self.get_idlayer().write_db_s_uuid(nsid).map_err(|err| {
+            error!(?err, "Unable to persist server uuid");
+            err
+        })?;
         Ok(nsid)
     }
 
-    pub fn get_db_s_uuid(&mut self) -> Uuid {
-        #[allow(clippy::expect_used)]
-        match self
-            .get_idlayer()
-            .get_db_s_uuid()
-            .expect("DBLayer Error!!!")
-        {
-            Some(s_uuid) => s_uuid,
-            None => self.reset_db_s_uuid().expect("Failed to regenerate S_UUID"),
+    pub fn get_db_s_uuid(&mut self) -> Result<Uuid, OperationError> {
+        match self.get_idlayer().get_db_s_uuid().map_err(|err| {
+            error!(?err, "Failed to read server uuid");
+            err
+        })? {
+            Some(s_uuid) => Ok(s_uuid),
+            None => self.reset_db_s_uuid(),
         }
     }
 
@@ -1916,7 +1917,10 @@ impl<'a> BackendWriteTransaction<'a> {
     /// returning the new UUID
     fn reset_db_d_uuid(&mut self) -> Result<Uuid, OperationError> {
         let nsid = Uuid::new_v4();
-        self.get_idlayer().write_db_d_uuid(nsid)?;
+        self.get_idlayer().write_db_d_uuid(nsid).map_err(|err| {
+            error!(?err, "Unable to persist domain uuid");
+            err
+        })?;
         Ok(nsid)
     }
 
@@ -1927,15 +1931,13 @@ impl<'a> BackendWriteTransaction<'a> {
     }
 
     /// This pulls the domain UUID from the database
-    pub fn get_db_d_uuid(&mut self) -> Uuid {
-        #[allow(clippy::expect_used)]
-        match self
-            .get_idlayer()
-            .get_db_d_uuid()
-            .expect("DBLayer Error retrieving Domain UUID!!!")
-        {
-            Some(d_uuid) => d_uuid,
-            None => self.reset_db_d_uuid().expect("Failed to regenerate D_UUID"),
+    pub fn get_db_d_uuid(&mut self) -> Result<Uuid, OperationError> {
+        match self.get_idlayer().get_db_d_uuid().map_err(|err| {
+            error!(?err, "Failed to read domain uuid");
+            err
+        })? {
+            Some(d_uuid) => Ok(d_uuid),
+            None => self.reset_db_d_uuid(),
         }
     }
 
@@ -1951,7 +1953,7 @@ impl<'a> BackendWriteTransaction<'a> {
         }
     }
 
-    fn get_db_index_version(&mut self) -> i64 {
+    fn get_db_index_version(&mut self) -> Result<i64, OperationError> {
         self.get_idlayer().get_db_index_version()
     }
 
@@ -2619,12 +2621,12 @@ mod tests {
     #[test]
     fn test_be_sid_generation_and_reset() {
         run_test!(|be: &mut BackendWriteTransaction| {
-            let sid1 = be.get_db_s_uuid();
-            let sid2 = be.get_db_s_uuid();
+            let sid1 = be.get_db_s_uuid().unwrap();
+            let sid2 = be.get_db_s_uuid().unwrap();
             assert!(sid1 == sid2);
             let sid3 = be.reset_db_s_uuid().unwrap();
             assert!(sid1 != sid3);
-            let sid4 = be.get_db_s_uuid();
+            let sid4 = be.get_db_s_uuid().unwrap();
             assert!(sid3 == sid4);
         });
     }

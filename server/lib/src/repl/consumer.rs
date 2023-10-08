@@ -306,7 +306,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
         };
 
         // Assert that the d_uuid matches the repl domain uuid.
-        let db_uuid = self.be_txn.get_db_d_uuid();
+        let db_uuid = self.be_txn.get_db_d_uuid()?;
+
         if db_uuid != ctx_domain_uuid {
             error!("Unable to proceed with consumer incremental - incoming domain uuid does not match our database uuid. You must investigate this situation. {:?} != {:?}", db_uuid, ctx_domain_uuid);
             return Err(OperationError::ReplDomainUuidMismatch);

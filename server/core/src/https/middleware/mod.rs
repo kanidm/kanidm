@@ -69,12 +69,13 @@ pub async fn kopid_middleware<B>(
     request.extensions_mut().insert(KOpId { eventid, uat });
     let mut response = next.run(request).await;
 
-    #[allow(clippy::expect_used)]
-    response.headers_mut().insert(
-        "X-KANIDM-OPID",
-        HeaderValue::from_str(&eventid.as_hyphenated().to_string())
-            .expect("Failed to set X-KANIDM-OPID header in response!"),
-    );
+    // This conversion *should never* fail. If it does, rather than panic, we warn and
+    // just don't put the id in the response.
+    let _ = HeaderValue::from_str(&eventid.as_hyphenated().to_string())
+        .map(|hv| response.headers_mut().insert("X-KANIDM-OPID", hv))
+        .map_err(|err| {
+            warn!(?err, "An invalid operation id was encountered");
+        });
 
     response
 }

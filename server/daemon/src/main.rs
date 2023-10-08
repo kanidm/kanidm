@@ -181,8 +181,29 @@ async fn submit_admin_req(path: &str, req: AdminTaskRequest, output_mode: Consol
     }
 }
 
-#[tokio::main(flavor = "multi_thread")]
-async fn main() -> ExitCode {
+fn main() -> ExitCode {
+    let maybe_rt = tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .thread_name("kanidmd-thread-pool")
+        // .thread_stack_size(8 * 1024 * 1024)
+        // If we want a hook for thread start.
+        // .on_thread_start()
+        // In future, we can stop the whole process if a panic occurs.
+        // .unhandled_panic(tokio::runtime::UnhandledPanic::ShutdownRuntime)
+        .build();
+
+    let rt = match maybe_rt {
+        Ok(rt) => rt,
+        Err(err) => {
+            eprintln!("CRITICAL: Unable to start runtime! {:?}", err);
+            return ExitCode::FAILURE;
+        }
+    };
+
+    rt.block_on(kanidm_main())
+}
+
+async fn kanidm_main() -> ExitCode {
     // Read CLI args, determine what the user has asked us to do.
     let opt = KanidmdParser::parse();
 

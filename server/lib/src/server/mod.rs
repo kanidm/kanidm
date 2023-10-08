@@ -1088,11 +1088,12 @@ impl QueryServer {
     pub fn new(be: Backend, schema: Schema, domain_name: String) -> Self {
         let (s_uuid, d_uuid) = {
             let mut wr = be.write();
-            let res = (wr.get_db_s_uuid(), wr.get_db_d_uuid());
+            let s_uuid = wr.get_db_s_uuid().unwrap();
+            let d_uuid = wr.get_db_d_uuid().unwrap();
             #[allow(clippy::expect_used)]
             wr.commit()
                 .expect("Critical - unable to commit db_s_uuid or db_d_uuid");
-            res
+            (s_uuid, d_uuid)
         };
 
         let pool_size = be.get_pool_size();
@@ -1513,7 +1514,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     pub(crate) fn reload_domain_info(&mut self) -> Result<(), OperationError> {
         let domain_name = self.get_db_domain_name()?;
         let display_name = self.get_db_domain_display_name()?;
-        let domain_uuid = self.be_txn.get_db_d_uuid();
+        let domain_uuid = self.be_txn.get_db_d_uuid()?;
         let mut_d_info = self.d_info.get_mut();
         if mut_d_info.d_uuid != domain_uuid {
             admin_warn!(

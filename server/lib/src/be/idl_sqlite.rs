@@ -1513,11 +1513,9 @@ impl IdlSqliteWriteTransaction {
 
     // ===== inner helpers =====
     // Some of these are not self due to use in new()
-    fn get_db_version_key(&self, key: &str) -> i64 {
-        #[allow(clippy::expect_used)]
-        self.get_conn()
-            .expect("Unable to access transaction connection")
-            .query_row(
+    fn get_db_version_key(&self, key: &str) -> Result<i64, OperationError> {
+        self.get_conn().map(|conn| {
+            conn.query_row(
                 &format!(
                     "SELECT version FROM {}.db_version WHERE id = :id",
                     self.get_db_name()
@@ -1529,6 +1527,7 @@ impl IdlSqliteWriteTransaction {
                 // The value is missing, default to 0.
                 0
             })
+        })
     }
 
     fn set_db_version_key(&self, key: &str, v: i64) -> Result<(), OperationError> {
@@ -1555,7 +1554,7 @@ impl IdlSqliteWriteTransaction {
             })
     }
 
-    pub(crate) fn get_db_index_version(&self) -> i64 {
+    pub(crate) fn get_db_index_version(&self) -> Result<i64, OperationError> {
         self.get_db_version_key(DBV_INDEXV)
     }
 
@@ -1602,7 +1601,7 @@ impl IdlSqliteWriteTransaction {
             .map_err(sqlite_error)?;
 
         // If the table is empty, populate the versions as 0.
-        let mut dbv_id2entry = self.get_db_version_key(DBV_ID2ENTRY);
+        let mut dbv_id2entry = self.get_db_version_key(DBV_ID2ENTRY)?;
 
         trace!(%dbv_id2entry);
 

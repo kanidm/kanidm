@@ -1172,7 +1172,7 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
         self.db.set_db_ts_max(ts)
     }
 
-    pub(crate) fn get_db_index_version(&self) -> i64 {
+    pub(crate) fn get_db_index_version(&self) -> Result<i64, OperationError> {
         self.db.get_db_index_version()
     }
 

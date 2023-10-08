@@ -323,7 +323,6 @@ impl From<SchemaAttribute> for EntryInitNew {
     fn from(value: SchemaAttribute) -> Self {
         let mut entry = EntryInitNew::new();
 
-        #[allow(clippy::expect_used)]
         entry.set_ava(
             Attribute::AttributeName,
             vec![Value::new_iutf8(&value.name)],
@@ -506,7 +505,6 @@ impl From<SchemaClass> for EntryInitNew {
     fn from(value: SchemaClass) -> Self {
         let mut entry = EntryInitNew::new();
 
-        #[allow(clippy::expect_used)]
         entry.set_ava(Attribute::ClassName, vec![Value::new_iutf8(&value.name)]);
 
         // class
