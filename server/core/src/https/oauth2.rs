@@ -25,6 +25,7 @@ use kanidmd_lib::prelude::*;
 use kanidmd_lib::value::PartialValue;
 use serde::{Deserialize, Serialize};
 
+// TODO: merge this into a value in WebError later
 pub struct HTTPOauth2Error(Oauth2Error);
 
 impl IntoResponse for HTTPOauth2Error {
@@ -32,17 +33,18 @@ impl IntoResponse for HTTPOauth2Error {
         let HTTPOauth2Error(error) = self;
 
         if let Oauth2Error::AuthenticationRequired = error {
-            #[allow(clippy::unwrap_used)]
-            Response::builder()
-                .status(StatusCode::UNAUTHORIZED)
-                .header(WWW_AUTHENTICATE, "Bearer")
-                .header(ACCESS_CONTROL_ALLOW_ORIGIN, "*")
-                .body(Body::empty())
-                .unwrap()
+            (
+                StatusCode::UNAUTHORIZED,
+                [
+                    (WWW_AUTHENTICATE, "Bearer"),
+                    (ACCESS_CONTROL_ALLOW_ORIGIN, "*"),
+                ],
+            )
+                .into_response()
         } else {
             let err = ErrorResponse {
                 error: error.to_string(),
-               ..Default::default()
+                ..Default::default()
             };
 
             let body = match serde_json::to_string(&err) {
@@ -52,15 +54,14 @@ impl IntoResponse for HTTPOauth2Error {
                     format!("{:?}", err)
                 }
             };
-            #[allow(clippy::unwrap_used)]
-            Response::builder()
-                .status(StatusCode::BAD_REQUEST)
-                .header(ACCESS_CONTROL_ALLOW_ORIGIN, "*")
-                .body(Body::from(body))
-                .unwrap()
 
+            (
+                StatusCode::BAD_REQUEST,
+                [(ACCESS_CONTROL_ALLOW_ORIGIN, "*")],
+                body,
+            )
+                .into_response()
         }
-            .into_response()
     }
 }
 
@@ -83,6 +84,7 @@ pub(crate) fn oauth2_id(rs_name: &str) -> Filter<FilterInvalid> {
     responses(
         (status = 200, description = "Ok", body=&[u8]),
         (status = 403, description = "Authorization refused"),
+        (status = 403, description = "Authorization refused"),
     ),
     security(("token_jwt" = [])),
     tag = "ui",
@@ -93,33 +95,30 @@ pub(crate) async fn oauth2_image_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     Path(rs_name): Path<String>,
-) -> Response<Body> {
+) -> Response {
     let rs_filter = oauth2_id(&rs_name);
     let res = state
         .qe_r_ref
         .handle_oauth2_rs_image_get_image(kopid.uat, rs_filter)
         .await;
 
-    let image = match res {
-        Ok(image) => image,
-        Err(_err) => {
-            admin_error!(
-                "Unable to get image for oauth2 resource server: {}",
-                rs_name
+    match res {
+        Ok(image) => (
+            StatusCode::OK,
+            [(CONTENT_TYPE, image.filetype.as_content_type_str())],
+            image.contents,
+        )
+            .into_response(),
+        Err(err) => {
+            admin_debug!(
+                "Unable to get image for oauth2 resource server {}: {:?}",
+                rs_name,
+                err
             );
-            #[allow(clippy::unwrap_used)]
-            return Response::builder()
-                .status(StatusCode::NOT_FOUND)
-                .body(Body::empty())
-                .unwrap();
+            // TODO: a 404 probably isn't perfect but it's not the worst
+            (StatusCode::NOT_FOUND, "").into_response()
         }
-    };
-
-    #[allow(clippy::expect_used)]
-    Response::builder()
-        .header(CONTENT_TYPE, image.filetype.as_content_type_str())
-        .body(Body::from(image.contents))
-        .expect("Somehow failed to turn an image into a response!")
+    }
 }
 
 // == OAUTH2 PROTOCOL FLOW HANDLERS ==
