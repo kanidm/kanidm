@@ -364,16 +364,6 @@ impl Account {
         inputs
     }
 
-    pub fn primary_cred_uuid(&self) -> Option<Uuid> {
-        self.primary.as_ref().map(|cred| cred.uuid).or_else(|| {
-            if self.is_anonymous() {
-                Some(UUID_ANONYMOUS)
-            } else {
-                None
-            }
-        })
-    }
-
     pub fn primary_cred_uuid_and_policy(&self) -> Option<(Uuid, CredSoftLockPolicy)> {
         self.primary
             .as_ref()

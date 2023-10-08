@@ -33,11 +33,13 @@ mod https;
 mod interval;
 mod ldaps;
 mod repl;
+mod utils;
 
 use std::fmt::{Display, Formatter};
 use std::path::Path;
 use std::sync::Arc;
 
+use crate::utils::touch_file_or_quit;
 use compact_jwt::JwsSigner;
 use kanidm_proto::v1::OperationError;
 use kanidmd_lib::be::{Backend, BackendConfig, BackendTransaction, FsType};
@@ -45,7 +47,6 @@ use kanidmd_lib::idm::ldap::LdapServer;
 use kanidmd_lib::prelude::*;
 use kanidmd_lib::schema::Schema;
 use kanidmd_lib::status::StatusActor;
-use kanidmd_lib::utils::{duration_from_epoch_now, touch_file_or_quit};
 #[cfg(not(target_family = "windows"))]
 use libc::umask;
 
@@ -106,7 +107,7 @@ async fn setup_qs_idms(
     config: &Configuration,
 ) -> Result<(QueryServer, IdmServer, IdmServerDelayed, IdmServerAudit), OperationError> {
     // Create a query_server implementation
-    let query_server = QueryServer::new(be, schema, config.domain.clone());
+    let query_server = QueryServer::new(be, schema, config.domain.clone())?;
 
     // TODO #62: Should the IDM parts be broken out to the IdmServer?
     // What's important about this initial setup here is that it also triggers
@@ -134,7 +135,7 @@ async fn setup_qs(
     config: &Configuration,
 ) -> Result<QueryServer, OperationError> {
     // Create a query_server implementation
-    let query_server = QueryServer::new(be, schema, config.domain.clone());
+    let query_server = QueryServer::new(be, schema, config.domain.clone())?;
 
     // TODO #62: Should the IDM parts be broken out to the IdmServer?
     // What's important about this initial setup here is that it also triggers
@@ -175,7 +176,13 @@ macro_rules! dbscan_setup_be {
 
 pub fn dbscan_list_indexes_core(config: &Configuration) {
     let be = dbscan_setup_be!(config);
-    let mut be_rotxn = be.read();
+    let mut be_rotxn = match be.read() {
+        Ok(txn) => txn,
+        Err(err) => {
+            error!(?err, "Unable to proceed, backend read transaction failure.");
+            return;
+        }
+    };
 
     match be_rotxn.list_indexes() {
         Ok(mut idx_list) => {
@@ -192,7 +199,13 @@ pub fn dbscan_list_indexes_core(config: &Configuration) {
 
 pub fn dbscan_list_id2entry_core(config: &Configuration) {
     let be = dbscan_setup_be!(config);
-    let mut be_rotxn = be.read();
+    let mut be_rotxn = match be.read() {
+        Ok(txn) => txn,
+        Err(err) => {
+            error!(?err, "Unable to proceed, backend read transaction failure.");
+            return;
+        }
+    };
 
     match be_rotxn.list_id2entry() {
         Ok(mut id_list) => {
@@ -214,7 +227,13 @@ pub fn dbscan_list_index_analysis_core(config: &Configuration) {
 
 pub fn dbscan_list_index_core(config: &Configuration, index_name: &str) {
     let be = dbscan_setup_be!(config);
-    let mut be_rotxn = be.read();
+    let mut be_rotxn = match be.read() {
+        Ok(txn) => txn,
+        Err(err) => {
+            error!(?err, "Unable to proceed, backend read transaction failure.");
+            return;
+        }
+    };
 
     match be_rotxn.list_index_content(index_name) {
         Ok(mut idx_list) => {
@@ -231,7 +250,13 @@ pub fn dbscan_list_index_core(config: &Configuration, index_name: &str) {
 
 pub fn dbscan_get_id2entry_core(config: &Configuration, id: u64) {
     let be = dbscan_setup_be!(config);
-    let mut be_rotxn = be.read();
+    let mut be_rotxn = match be.read() {
+        Ok(txn) => txn,
+        Err(err) => {
+            error!(?err, "Unable to proceed, backend read transaction failure.");
+            return;
+        }
+    };
 
     match be_rotxn.get_id2entry(id) {
         Ok((id, value)) => println!("{:>8}: {}", id, value),
@@ -243,7 +268,16 @@ pub fn dbscan_get_id2entry_core(config: &Configuration, id: u64) {
 
 pub fn dbscan_quarantine_id2entry_core(config: &Configuration, id: u64) {
     let be = dbscan_setup_be!(config);
-    let mut be_wrtxn = be.write();
+    let mut be_wrtxn = match be.write() {
+        Ok(txn) => txn,
+        Err(err) => {
+            error!(
+                ?err,
+                "Unable to proceed, backend write transaction failure."
+            );
+            return;
+        }
+    };
 
     match be_wrtxn
         .quarantine_entry(id)
@@ -260,7 +294,13 @@ pub fn dbscan_quarantine_id2entry_core(config: &Configuration, id: u64) {
 
 pub fn dbscan_list_quarantined_core(config: &Configuration) {
     let be = dbscan_setup_be!(config);
-    let mut be_rotxn = be.read();
+    let mut be_rotxn = match be.read() {
+        Ok(txn) => txn,
+        Err(err) => {
+            error!(?err, "Unable to proceed, backend read transaction failure.");
+            return;
+        }
+    };
 
     match be_rotxn.list_quarantined() {
         Ok(mut id_list) => {
@@ -277,7 +317,16 @@ pub fn dbscan_list_quarantined_core(config: &Configuration) {
 
 pub fn dbscan_restore_quarantined_core(config: &Configuration, id: u64) {
     let be = dbscan_setup_be!(config);
-    let mut be_wrtxn = be.write();
+    let mut be_wrtxn = match be.write() {
+        Ok(txn) => txn,
+        Err(err) => {
+            error!(
+                ?err,
+                "Unable to proceed, backend write transaction failure."
+            );
+            return;
+        }
+    };
 
     match be_wrtxn
         .restore_quarantined(id)
@@ -309,7 +358,14 @@ pub fn backup_server_core(config: &Configuration, dst_path: &str) {
         }
     };
 
-    let mut be_ro_txn = be.read();
+    let mut be_ro_txn = match be.read() {
+        Ok(txn) => txn,
+        Err(err) => {
+            error!(?err, "Unable to proceed, backend read transaction failure.");
+            return;
+        }
+    };
+
     let r = be_ro_txn.backup(dst_path);
     match r {
         Ok(_) => info!("Backup success!"),
@@ -341,7 +397,16 @@ pub async fn restore_server_core(config: &Configuration, dst_path: &str) {
         }
     };
 
-    let mut be_wr_txn = be.write();
+    let mut be_wr_txn = match be.write() {
+        Ok(txn) => txn,
+        Err(err) => {
+            error!(
+                ?err,
+                "Unable to proceed, backend write transaction failure."
+            );
+            return;
+        }
+    };
     let r = be_wr_txn.restore(dst_path).and_then(|_| be_wr_txn.commit());
 
     if r.is_err() {
@@ -397,7 +462,16 @@ pub async fn reindex_server_core(config: &Configuration) {
     };
 
     // Reindex only the core schema attributes to bootstrap the process.
-    let mut be_wr_txn = be.write();
+    let mut be_wr_txn = match be.write() {
+        Ok(txn) => txn,
+        Err(err) => {
+            error!(
+                ?err,
+                "Unable to proceed, backend write transaction failure."
+            );
+            return;
+        }
+    };
     let r = be_wr_txn.reindex().and_then(|_| be_wr_txn.commit());
 
     // Now that's done, setup a minimal qs and reindex from that.
@@ -534,7 +608,14 @@ pub async fn verify_server_core(config: &Configuration) {
             return;
         }
     };
-    let server = QueryServer::new(be, schema_mem, config.domain.clone());
+
+    let server = match QueryServer::new(be, schema_mem, config.domain.clone()) {
+        Ok(qs) => qs,
+        Err(err) => {
+            error!(?err, "Failed to setup query server");
+            return;
+        }
+    };
 
     // Run verifications.
     let r = server.verify().await;

@@ -120,7 +120,7 @@ pub struct IdlSqliteWriteTransaction {
     db_name: &'static str,
 }
 
-pub trait IdlSqliteTransaction {
+pub(crate) trait IdlSqliteTransaction {
     fn get_db_name(&self) -> &str;
 
     fn get_conn(&self) -> Result<&Connection, OperationError>;
@@ -692,7 +692,11 @@ impl Drop for IdlSqliteReadTransaction {
 }
 
 impl IdlSqliteReadTransaction {
-    pub fn new(pool: ConnPool, conn: Connection, db_name: &'static str) -> Self {
+    pub fn new(
+        pool: ConnPool,
+        conn: Connection,
+        db_name: &'static str,
+    ) -> Result<Self, OperationError> {
         // Start the transaction
         //
         // I'm happy for this to be an expect, because this is a huge failure
@@ -700,14 +704,14 @@ impl IdlSqliteReadTransaction {
         // this a Result<>
         //
         // There is no way to flag this is an RO operation.
-        #[allow(clippy::expect_used)]
         conn.execute("BEGIN DEFERRED TRANSACTION", [])
-            .expect("Unable to begin transaction!");
-        IdlSqliteReadTransaction {
+            .map_err(sqlite_error)?;
+
+        Ok(IdlSqliteReadTransaction {
             pool,
             conn: Some(conn),
             db_name,
-        }
+        })
     }
 }
 
@@ -744,16 +748,19 @@ impl Drop for IdlSqliteWriteTransaction {
 }
 
 impl IdlSqliteWriteTransaction {
-    pub fn new(pool: ConnPool, conn: Connection, db_name: &'static str) -> Self {
+    pub fn new(
+        pool: ConnPool,
+        conn: Connection,
+        db_name: &'static str,
+    ) -> Result<Self, OperationError> {
         // Start the transaction
-        #[allow(clippy::expect_used)]
         conn.execute("BEGIN EXCLUSIVE TRANSACTION", [])
-            .expect("Unable to begin transaction!");
-        IdlSqliteWriteTransaction {
+            .map_err(sqlite_error)?;
+        Ok(IdlSqliteWriteTransaction {
             pool,
             conn: Some(conn),
             db_name,
-        }
+        })
     }
 
     #[instrument(level = "debug", name = "idl_sqlite::commit", skip_all)]
@@ -764,7 +771,6 @@ impl IdlSqliteWriteTransaction {
         std::mem::swap(&mut dropping, &mut self.conn);
 
         if let Some(conn) = dropping {
-            #[allow(clippy::expect_used)]
             conn.execute("COMMIT TRANSACTION", [])
                 .map(|_| ())
                 .map_err(|e| {
@@ -772,10 +778,12 @@ impl IdlSqliteWriteTransaction {
                     OperationError::BackendEngine
                 })?;
 
-            #[allow(clippy::expect_used)]
             self.pool
                 .lock()
-                .expect("Unable to access db pool")
+                .map_err(|err| {
+                    error!(?err, "Unable to return connection to pool");
+                    OperationError::BackendEngine
+                })?
                 .push_back(conn);
 
             Ok(())
@@ -1513,11 +1521,9 @@ impl IdlSqliteWriteTransaction {
 
     // ===== inner helpers =====
     // Some of these are not self due to use in new()
-    fn get_db_version_key(&self, key: &str) -> i64 {
-        #[allow(clippy::expect_used)]
-        self.get_conn()
-            .expect("Unable to access transaction connection")
-            .query_row(
+    fn get_db_version_key(&self, key: &str) -> Result<i64, OperationError> {
+        self.get_conn().map(|conn| {
+            conn.query_row(
                 &format!(
                     "SELECT version FROM {}.db_version WHERE id = :id",
                     self.get_db_name()
@@ -1529,6 +1535,7 @@ impl IdlSqliteWriteTransaction {
                 // The value is missing, default to 0.
                 0
             })
+        })
     }
 
     fn set_db_version_key(&self, key: &str, v: i64) -> Result<(), OperationError> {
@@ -1555,7 +1562,7 @@ impl IdlSqliteWriteTransaction {
             })
     }
 
-    pub(crate) fn get_db_index_version(&self) -> i64 {
+    pub(crate) fn get_db_index_version(&self) -> Result<i64, OperationError> {
         self.get_db_version_key(DBV_INDEXV)
     }
 
@@ -1602,7 +1609,7 @@ impl IdlSqliteWriteTransaction {
             .map_err(sqlite_error)?;
 
         // If the table is empty, populate the versions as 0.
-        let mut dbv_id2entry = self.get_db_version_key(DBV_ID2ENTRY);
+        let mut dbv_id2entry = self.get_db_version_key(DBV_ID2ENTRY)?;
 
         trace!(%dbv_id2entry);
 
@@ -1890,51 +1897,47 @@ impl IdlSqlite {
     }
 
     pub(crate) fn get_allids_count(&self) -> Result<u64, OperationError> {
-        #[allow(clippy::expect_used)]
-        let guard = self.pool.lock().expect("Unable to lock connection pool.");
+        let guard = self.pool.lock().map_err(|err| {
+            error!(?err, "Unable to access connection to pool");
+            OperationError::BackendEngine
+        })?;
         // Get not pop here
-        #[allow(clippy::expect_used)]
-        let conn = guard
-            .get(0)
-            .expect("Unable to retrieve connection from pool.");
+        let conn = guard.get(0).ok_or_else(|| {
+            error!("Unable to retrieve connection from pool");
+            OperationError::BackendEngine
+        })?;
 
         conn.query_row("select count(id) from id2entry", [], |row| row.get(0))
             .map_err(sqlite_error)
     }
 
-    pub fn read(&self) -> IdlSqliteReadTransaction {
-        // When we make this async, this will allow us to backoff
-        // when we miss-grabbing from the conn-pool.
-        #[allow(clippy::expect_used)]
-        let conn = self
-            .pool
-            .lock()
-            .map_err(|e| {
-                error!(err = ?e, "Unable to lock connection pool.");
-            })
-            .ok()
-            .and_then(|mut q| {
-                trace!(?q);
-                q.pop_front()
-            })
-            .expect("Unable to retrieve connection from pool.");
+    pub fn read(&self) -> Result<IdlSqliteReadTransaction, OperationError> {
+        // This can't fail because we should only get here if a pool conn is available.
+        let mut guard = self.pool.lock().map_err(|e| {
+            error!(err = ?e, "Unable to lock connection pool.");
+            OperationError::BackendEngine
+        })?;
+
+        let conn = guard.pop_front().ok_or_else(|| {
+            error!("Unable to retrieve connection from pool.");
+            OperationError::BackendEngine
+        })?;
+
         IdlSqliteReadTransaction::new(self.pool.clone(), conn, self.db_name)
     }
 
-    pub fn write(&self) -> IdlSqliteWriteTransaction {
-        #[allow(clippy::expect_used)]
-        let conn = self
-            .pool
-            .lock()
-            .map_err(|e| {
-                error!(err = ?e, "Unable to lock connection pool.");
-            })
-            .ok()
-            .and_then(|mut q| {
-                trace!(?q);
-                q.pop_front()
-            })
-            .expect("Unable to retrieve connection from pool.");
+    pub fn write(&self) -> Result<IdlSqliteWriteTransaction, OperationError> {
+        // This can't fail because we should only get here if a pool conn is available.
+        let mut guard = self.pool.lock().map_err(|e| {
+            error!(err = ?e, "Unable to lock connection pool.");
+            OperationError::BackendEngine
+        })?;
+
+        let conn = guard.pop_front().ok_or_else(|| {
+            error!("Unable to retrieve connection from pool.");
+            OperationError::BackendEngine
+        })?;
+
         IdlSqliteWriteTransaction::new(self.pool.clone(), conn, self.db_name)
     }
 }
@@ -1949,7 +1952,7 @@ mod tests {
         sketching::test_init();
         let cfg = BackendConfig::new_test("main");
         let be = IdlSqlite::new(&cfg, false).unwrap();
-        let be_w = be.write();
+        let be_w = be.write().unwrap();
         let r = be_w.verify();
         assert!(r.is_empty());
     }

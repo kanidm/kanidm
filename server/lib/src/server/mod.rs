@@ -37,14 +37,14 @@ use self::access::{
     AccessControlsWriteTransaction,
 };
 
-pub mod access;
+pub(crate) mod access;
 pub mod batch_modify;
 pub mod create;
 pub mod delete;
 pub mod identity;
-pub mod migrations;
+pub(crate) mod migrations;
 pub mod modify;
-pub mod recycle;
+pub(crate) mod recycle;
 
 const RESOLVE_FILTER_CACHE_MAX: usize = 4096;
 const RESOLVE_FILTER_CACHE_LOCAL: usize = 0;
@@ -1085,14 +1085,15 @@ impl<'a> QueryServerTransaction<'a> for QueryServerWriteTransaction<'a> {
 }
 
 impl QueryServer {
-    pub fn new(be: Backend, schema: Schema, domain_name: String) -> Self {
+    pub fn new(be: Backend, schema: Schema, domain_name: String) -> Result<Self, OperationError> {
         let (s_uuid, d_uuid) = {
-            let mut wr = be.write();
-            let res = (wr.get_db_s_uuid(), wr.get_db_d_uuid());
+            let mut wr = be.write().unwrap();
+            let s_uuid = wr.get_db_s_uuid().unwrap();
+            let d_uuid = wr.get_db_d_uuid().unwrap();
             #[allow(clippy::expect_used)]
             wr.commit()
                 .expect("Critical - unable to commit db_s_uuid or db_d_uuid");
-            res
+            (s_uuid, d_uuid)
         };
 
         let pool_size = be.get_pool_size();
@@ -1117,7 +1118,15 @@ impl QueryServer {
         let phase = Arc::new(CowCell::new(ServerPhase::Bootstrap));
 
         #[allow(clippy::expect_used)]
-        QueryServer {
+        let resolve_filter_cache = Arc::new(
+            ARCacheBuilder::new()
+                .set_size(RESOLVE_FILTER_CACHE_MAX, RESOLVE_FILTER_CACHE_LOCAL)
+                .set_reader_quiesce(true)
+                .build()
+                .expect("Failed to build resolve_filter_cache"),
+        );
+
+        Ok(QueryServer {
             phase,
             s_uuid,
             d_info,
@@ -1126,15 +1135,9 @@ impl QueryServer {
             accesscontrols: Arc::new(AccessControls::default()),
             db_tickets: Arc::new(Semaphore::new(pool_size as usize)),
             write_ticket: Arc::new(Semaphore::new(1)),
-            resolve_filter_cache: Arc::new(
-                ARCacheBuilder::new()
-                    .set_size(RESOLVE_FILTER_CACHE_MAX, RESOLVE_FILTER_CACHE_LOCAL)
-                    .set_reader_quiesce(true)
-                    .build()
-                    .expect("Failed to build resolve_filter_cache"),
-            ),
+            resolve_filter_cache,
             dyngroup_cache,
-        }
+        })
     }
 
     pub fn try_quiesce(&self) {
@@ -1159,7 +1162,7 @@ impl QueryServer {
         };
 
         QueryServerReadTransaction {
-            be_txn: self.be.read(),
+            be_txn: self.be.read().unwrap(),
             schema: self.schema.read(),
             d_info: self.d_info.read(),
             accesscontrols: self.accesscontrols.read(),
@@ -1197,7 +1200,7 @@ impl QueryServer {
         };
 
         let schema_write = self.schema.write();
-        let mut be_txn = self.be.write();
+        let mut be_txn = self.be.write().unwrap();
         let d_info = self.d_info.write();
         let phase = self.phase.write();
 
@@ -1513,7 +1516,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     pub(crate) fn reload_domain_info(&mut self) -> Result<(), OperationError> {
         let domain_name = self.get_db_domain_name()?;
         let display_name = self.get_db_domain_display_name()?;
-        let domain_uuid = self.be_txn.get_db_d_uuid();
+        let domain_uuid = self.be_txn.get_db_d_uuid()?;
         let mut_d_info = self.d_info.get_mut();
         if mut_d_info.d_uuid != domain_uuid {
             admin_warn!(

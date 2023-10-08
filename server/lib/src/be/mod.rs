@@ -32,9 +32,9 @@ use crate::repl::ruv::{
 };
 use crate::value::{IndexType, Value};
 
-pub mod dbentry;
-pub mod dbrepl;
-pub mod dbvalue;
+pub(crate) mod dbentry;
+pub(crate) mod dbrepl;
+pub(crate) mod dbvalue;
 
 mod idl_arc_sqlite;
 mod idl_sqlite;
@@ -1595,7 +1595,7 @@ impl<'a> BackendWriteTransaction<'a> {
     }
 
     pub fn upgrade_reindex(&mut self, v: i64) -> Result<(), OperationError> {
-        let dbv = self.get_db_index_version();
+        let dbv = self.get_db_index_version()?;
         admin_debug!(?dbv, ?v, "upgrade_reindex");
         if dbv < v {
             limmediate_warning!(
@@ -1896,19 +1896,20 @@ impl<'a> BackendWriteTransaction<'a> {
     fn reset_db_s_uuid(&mut self) -> Result<Uuid, OperationError> {
         // The value is missing. Generate a new one and store it.
         let nsid = Uuid::new_v4();
-        self.get_idlayer().write_db_s_uuid(nsid)?;
+        self.get_idlayer().write_db_s_uuid(nsid).map_err(|err| {
+            error!(?err, "Unable to persist server uuid");
+            err
+        })?;
         Ok(nsid)
     }
 
-    pub fn get_db_s_uuid(&mut self) -> Uuid {
-        #[allow(clippy::expect_used)]
-        match self
-            .get_idlayer()
-            .get_db_s_uuid()
-            .expect("DBLayer Error!!!")
-        {
-            Some(s_uuid) => s_uuid,
-            None => self.reset_db_s_uuid().expect("Failed to regenerate S_UUID"),
+    pub fn get_db_s_uuid(&mut self) -> Result<Uuid, OperationError> {
+        match self.get_idlayer().get_db_s_uuid().map_err(|err| {
+            error!(?err, "Failed to read server uuid");
+            err
+        })? {
+            Some(s_uuid) => Ok(s_uuid),
+            None => self.reset_db_s_uuid(),
         }
     }
 
@@ -1916,7 +1917,10 @@ impl<'a> BackendWriteTransaction<'a> {
     /// returning the new UUID
     fn reset_db_d_uuid(&mut self) -> Result<Uuid, OperationError> {
         let nsid = Uuid::new_v4();
-        self.get_idlayer().write_db_d_uuid(nsid)?;
+        self.get_idlayer().write_db_d_uuid(nsid).map_err(|err| {
+            error!(?err, "Unable to persist domain uuid");
+            err
+        })?;
         Ok(nsid)
     }
 
@@ -1927,15 +1931,13 @@ impl<'a> BackendWriteTransaction<'a> {
     }
 
     /// This pulls the domain UUID from the database
-    pub fn get_db_d_uuid(&mut self) -> Uuid {
-        #[allow(clippy::expect_used)]
-        match self
-            .get_idlayer()
-            .get_db_d_uuid()
-            .expect("DBLayer Error retrieving Domain UUID!!!")
-        {
-            Some(d_uuid) => d_uuid,
-            None => self.reset_db_d_uuid().expect("Failed to regenerate D_UUID"),
+    pub fn get_db_d_uuid(&mut self) -> Result<Uuid, OperationError> {
+        match self.get_idlayer().get_db_d_uuid().map_err(|err| {
+            error!(?err, "Failed to read domain uuid");
+            err
+        })? {
+            Some(d_uuid) => Ok(d_uuid),
+            None => self.reset_db_d_uuid(),
         }
     }
 
@@ -1951,7 +1953,7 @@ impl<'a> BackendWriteTransaction<'a> {
         }
     }
 
-    fn get_db_index_version(&mut self) -> i64 {
+    fn get_db_index_version(&mut self) -> Result<i64, OperationError> {
         self.get_idlayer().get_db_index_version()
     }
 
@@ -2026,7 +2028,7 @@ impl Backend {
         // In this case we can use an empty idx meta because we don't
         // access any parts of
         // the indexing subsystem here.
-        let mut idl_write = be.idlayer.write();
+        let mut idl_write = be.idlayer.write()?;
         idl_write
             .setup()
             .and_then(|_| idl_write.commit())
@@ -2036,7 +2038,7 @@ impl Backend {
             })?;
 
         // Now rebuild the ruv.
-        let mut be_write = be.write();
+        let mut be_write = be.write()?;
         be_write
             .ruv_reload()
             .and_then(|_| be_write.commit())
@@ -2057,41 +2059,21 @@ impl Backend {
         self.idlayer.try_quiesce();
     }
 
-    pub fn read(&self) -> BackendReadTransaction {
-        BackendReadTransaction {
-            idlayer: self.idlayer.read(),
+    pub fn read(&self) -> Result<BackendReadTransaction, OperationError> {
+        Ok(BackendReadTransaction {
+            idlayer: self.idlayer.read()?,
             idxmeta: self.idxmeta.read(),
             ruv: self.ruv.read(),
-        }
+        })
     }
 
-    pub fn write(&self) -> BackendWriteTransaction {
-        BackendWriteTransaction {
-            idlayer: self.idlayer.write(),
+    pub fn write(&self) -> Result<BackendWriteTransaction, OperationError> {
+        Ok(BackendWriteTransaction {
+            idlayer: self.idlayer.write()?,
             idxmeta_wr: self.idxmeta.write(),
             ruv: self.ruv.write(),
-        }
+        })
     }
-
-    // Should this actually call the idlayer directly?
-    pub fn reset_db_s_uuid(&self) -> Uuid {
-        let mut wr = self.write();
-        #[allow(clippy::expect_used)]
-        let sid = wr
-            .reset_db_s_uuid()
-            .expect("unable to reset db server uuid");
-        #[allow(clippy::expect_used)]
-        wr.commit()
-            .expect("Unable to commit to backend, can not proceed");
-        sid
-    }
-
-    /*
-    pub fn get_db_s_uuid(&self) -> Uuid {
-        let wr = self.write(Set::new());
-        wr.reset_db_s_uuid().unwrap()
-    }
-    */
 }
 
 // What are the possible actions we'll receive here?
@@ -2161,7 +2143,7 @@ mod tests {
             let be = Backend::new(BackendConfig::new_test("main"), idxmeta, false)
                 .expect("Failed to setup backend");
 
-            let mut be_txn = be.write();
+            let mut be_txn = be.write().unwrap();
 
             let r = $test_fn(&mut be_txn);
             // Commit, to guarantee it worked.
@@ -2619,12 +2601,12 @@ mod tests {
     #[test]
     fn test_be_sid_generation_and_reset() {
         run_test!(|be: &mut BackendWriteTransaction| {
-            let sid1 = be.get_db_s_uuid();
-            let sid2 = be.get_db_s_uuid();
+            let sid1 = be.get_db_s_uuid().unwrap();
+            let sid2 = be.get_db_s_uuid().unwrap();
             assert!(sid1 == sid2);
             let sid3 = be.reset_db_s_uuid().unwrap();
             assert!(sid1 != sid3);
-            let sid4 = be.get_db_s_uuid();
+            let sid4 = be.get_db_s_uuid().unwrap();
             assert!(sid3 == sid4);
         });
     }
@@ -3692,8 +3674,8 @@ mod tests {
         let be_b = Backend::new(BackendConfig::new_test("db_2"), idxmeta, false)
             .expect("Failed to setup backend");
 
-        let mut be_a_txn = be_a.write();
-        let mut be_b_txn = be_b.write();
+        let mut be_a_txn = be_a.write().unwrap();
+        let mut be_b_txn = be_b.write().unwrap();
 
         assert!(be_a_txn.get_db_s_uuid() != be_b_txn.get_db_s_uuid());
 

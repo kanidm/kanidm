@@ -26,6 +26,7 @@ static ALLOC: jemallocator::Jemalloc = jemallocator::Jemalloc;
 
 #[macro_use]
 extern crate rusqlite;
+
 #[macro_use]
 extern crate tracing;
 #[macro_use]
@@ -45,7 +46,8 @@ pub mod entry;
 pub mod event;
 pub mod filter;
 pub mod modify;
-pub mod utils;
+pub mod time;
+pub(crate) mod utils;
 pub mod value;
 pub mod valueset;
 #[macro_use]
@@ -100,7 +102,7 @@ pub mod prelude {
         QueryServer, QueryServerReadTransaction, QueryServerTransaction,
         QueryServerWriteTransaction,
     };
-    pub use crate::utils::duration_from_epoch_now;
+    pub use crate::time::duration_from_epoch_now;
     pub use crate::value::{
         ApiTokenScope, IndexType, PartialValue, SessionScope, SyntaxType, Value,
     };
