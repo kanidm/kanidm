@@ -11,13 +11,10 @@ license = { workspace = true }
 homepage = { workspace = true }
 repository = { workspace = true }
 
-
 [features]
 wasm = ["webauthn-rs-proto/wasm"]
 
-
 [dependencies]
-
 base32 = { workspace = true }
 base64urlsafedata = { workspace = true }
 num_enum = { workspace = true }

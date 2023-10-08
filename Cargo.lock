@@ -3083,7 +3083,6 @@ dependencies = [
  "url",
  "urlencoding",
  "utoipa",
- "utoipa-redoc",
  "utoipa-swagger-ui",
  "uuid",
  "walkdir",
@@ -5720,18 +5719,6 @@ dependencies = [
  "quote",
  "regex",
  "syn 2.0.38",
-]
-
-[[package]]
-name = "utoipa-redoc"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2d0ecce4acc6580d87b052a48fb142b1ddaf4d6d70e547d25012a4387f3cf3bd"
-dependencies = [
- "axum",
- "serde",
- "serde_json",
- "utoipa",
 ]
 
 [[package]]

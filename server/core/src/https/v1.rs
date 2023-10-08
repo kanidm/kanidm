@@ -115,6 +115,7 @@ pub async fn raw_delete(
     post,
     path = "/v1/raw/search",
     responses(
+        (status = 200), // TODO: response content
         ApiResponseWithout200,
     ),
     request_body=SearchRequest,
@@ -139,6 +140,7 @@ pub async fn raw_search(
     get,
     path = "/v1/self",
     responses(
+        (status = 200), // TODO: response content
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
@@ -2830,10 +2832,10 @@ pub(crate) fn route_setup(state: ServerState) -> Router<ServerState> {
             post(super::v1_oauth2::oauth2_id_sup_scopemap_post)
                 .delete(super::v1_oauth2::oauth2_id_sup_scopemap_delete),
         )
-        .route("/v1/raw/create", post(raw_create)) // skip_route_check
-        .route("/v1/raw/modify", post(raw_modify)) // skip_route_check
-        .route("/v1/raw/delete", post(raw_delete)) // skip_route_check
-        .route("/v1/raw/search", post(raw_search)) // skip_route_check
+        .route("/v1/raw/create", post(raw_create))
+        .route("/v1/raw/modify", post(raw_modify))
+        .route("/v1/raw/delete", post(raw_delete))
+        .route("/v1/raw/search", post(raw_search))
         .route("/v1/schema", get(schema_get))
         .route(
             "/v1/schema/attributetype",

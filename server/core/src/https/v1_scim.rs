@@ -237,7 +237,8 @@ async fn scim_sync_post(
     get,
     path = "/scim/v1/Sync",
     responses(
-        DefaultApiResponse,
+        (status = 200), // TODO: response content
+        ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
     tag = "scim",
@@ -264,7 +265,8 @@ async fn scim_sync_get(
         path_schema::Attr,
     ),
     responses(
-        DefaultApiResponse,
+        (status = 200), // TODO: response content
+        ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
     tag = "v1/sync_account",

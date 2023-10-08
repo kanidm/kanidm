@@ -13,6 +13,7 @@ use utoipa::{
 /// An empty response with `application/json` content type - use [ApiResponseWithout200] if you want to do everything but a 200
 pub(crate) enum DefaultApiResponse {
     Ok,
+    InvalidRequest,
     NeedsAuthorization,
     NotAuthorized,
 }
@@ -29,16 +30,15 @@ impl IntoResponses for DefaultApiResponse {
             .response("400", ResponseBuilder::new().description("Invalid Request"))
             .response("401", ResponseBuilder::new().description("Authorization required"))
             .response("403", ResponseBuilder::new().description("Not Authorized"))
-            // .response("404", ResponseBuilder::new().description("Not Found"))
             .build()
             .into()
     }
 }
 
 #[allow(dead_code)] // because this is used for the OpenAPI schema gen
-/// An empty response without the 200 response so the "defaults" can be handled.
+/// A response set without the 200 status so the "defaults" can be handled.
 pub(crate) enum ApiResponseWithout200 {
-    Ok,
+    InvalidRequest,
     NeedsAuthorization,
     NotAuthorized,
 }
