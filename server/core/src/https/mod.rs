@@ -97,32 +97,39 @@ pub fn get_js_files(role: ServerRole) -> Vec<JavaScriptFile> {
         // let's set up the list of js module hashes
         {
             let filepath = "wasmloader.js";
-            #[allow(clippy::unwrap_used)]
-            js_files.push(JavaScriptFile {
+            match generate_integrity_hash(format!(
+                "{}/{}",
+                env!("KANIDM_WEB_UI_PKG_PATH").to_owned(),
                 filepath,
-                hash: generate_integrity_hash(format!(
-                    "{}/{}",
-                    env!("KANIDM_WEB_UI_PKG_PATH").to_owned(),
+            )) {
+                Ok(hash) => js_files.push(JavaScriptFile {
                     filepath,
-                ))
-                .unwrap(),
-                filetype: Some("module".to_string()),
-            });
+                    hash,
+                    filetype: Some("module".to_string()),
+                }),
+                Err(err) => {
+                    admin_error!(?err, "Failed to generate integrity hash for wasmloader.js")
+                }
+            };
         }
         // let's set up the list of non-module hashes
         {
             let filepath = "external/bootstrap.bundle.min.js";
-            #[allow(clippy::unwrap_used)]
-            js_files.push(JavaScriptFile {
+            match generate_integrity_hash(format!(
+                "{}/{}",
+                env!("KANIDM_WEB_UI_PKG_PATH").to_owned(),
                 filepath,
-                hash: generate_integrity_hash(format!(
-                    "{}/{}",
-                    env!("KANIDM_WEB_UI_PKG_PATH").to_owned(),
+            )) {
+                Ok(hash) =>
+                js_files.push(JavaScriptFile {
                     filepath,
-                ))
-                .unwrap(),
-                filetype: None,
-            });
+                    hash,
+                    filetype: None,
+                }),
+                Err(err) => {
+                    admin_error!(?err, "Failed to generate integrity hash for bootstrap.bundle.min.js")
+                }
+            }
         }
     };
     js_files

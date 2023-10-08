@@ -31,7 +31,7 @@ use super::errors::WebError;
 use super::middleware::caching::{cache_me, dont_cache_me};
 use super::middleware::KOpId;
 use super::ServerState;
-use crate::https::apidocs::response_schema::{DefaultApiResponse, ApiResponseWithout200};
+use crate::https::apidocs::response_schema::{ApiResponseWithout200, DefaultApiResponse};
 use crate::https::extractors::TrustedClientIp;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -1243,7 +1243,6 @@ pub async fn credential_update_update(
         .map(Json::from)
         .map_err(WebError::from)
 }
-
 
 #[utoipa::path(
     post,
@@ -2726,9 +2725,14 @@ fn auth_session_state_management(
         let mut res = Json::from(response).into_response();
         match auth_session_id_tok {
             Some(tok) => {
-                #[allow(clippy::unwrap_used)]
-                res.headers_mut()
-                    .insert(KSESSIONID, HeaderValue::from_str(&tok).unwrap());
+                match HeaderValue::from_str(&tok) {
+                    Ok(val) => {
+                        res.headers_mut().insert(KSESSIONID, val);
+                    }
+                    Err(err) => {
+                        admin_error!(?err, "Failed to add sessionid {} to header", tok);
+                    }
+                }
                 res
             }
             None => res,
