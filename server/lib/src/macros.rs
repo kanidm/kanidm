@@ -25,7 +25,7 @@ macro_rules! setup_test {
     (
         $preload_entries:expr
     ) => {{
-        use crate::utils::duration_from_epoch_now;
+        use crate::prelude::duration_from_epoch_now;
 
         let _ = sketching::test_init();
 
@@ -77,7 +77,6 @@ macro_rules! run_create_test {
         use crate::event::CreateEvent;
         use crate::prelude::*;
         use crate::schema::Schema;
-        use crate::utils::duration_from_epoch_now;
 
         let qs = setup_test!($preload_entries);
 
@@ -199,7 +198,6 @@ macro_rules! run_delete_test {
         use crate::event::DeleteEvent;
         use crate::prelude::*;
         use crate::schema::Schema;
-        use crate::utils::duration_from_epoch_now;
 
         let qs = setup_test!($preload_entries);
 

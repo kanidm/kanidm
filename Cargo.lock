@@ -2840,6 +2840,7 @@ dependencies = [
  "clap_complete",
  "cron",
  "kanidm_client",
+ "kanidm_lib_file_permissions",
  "kanidm_proto",
  "kanidm_utils_users",
  "kanidmd_lib",
@@ -2864,6 +2865,7 @@ dependencies = [
  "clap_complete",
  "cron",
  "kanidm_client",
+ "kanidm_lib_file_permissions",
  "kanidm_proto",
  "kanidm_utils_users",
  "kanidmd_lib",
@@ -3045,6 +3047,7 @@ dependencies = [
  "chrono",
  "compact_jwt",
  "cron",
+ "filetime",
  "futures",
  "futures-util",
  "http",
@@ -3090,7 +3093,6 @@ dependencies = [
  "dyn-clone",
  "enum-iterator",
  "fernet",
- "filetime",
  "futures",
  "hashbrown 0.14.1",
  "hex",
@@ -3126,7 +3128,6 @@ dependencies = [
  "tokio",
  "tokio-util",
  "toml",
- "touch",
  "tracing",
  "url",
  "urlencoding",
@@ -5365,15 +5366,6 @@ dependencies = [
  "indexmap 2.0.2",
  "toml_datetime",
  "winnow",
-]
-
-[[package]]
-name = "touch"
-version = "0.0.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c0ff985ccaedc537018a1b6c7f377d25e16d08aa1fcc5f8f4fba984c7e69cf09"
-dependencies = [
- "log",
 ]
 
 [[package]]

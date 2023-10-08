@@ -100,6 +100,14 @@ impl AccountPolicy {
     pub(crate) fn pw_badlist_cache(&self) -> &HashSet<String> {
         &self.pw_badlist_cache
     }
+
+    #[cfg(test)]
+    pub(crate) fn from_pw_badlist_cache(pw_badlist_cache: HashSet<String>) -> Self {
+        Self {
+            pw_badlist_cache,
+            ..Default::default()
+        }
+    }
 }
 
 impl Default for AccountPolicy {
@@ -2183,7 +2191,6 @@ mod tests {
     use crate::idm::AuthState;
     use crate::modify::{Modify, ModifyList};
     use crate::prelude::*;
-    use crate::utils::duration_from_epoch_now;
     use crate::value::SessionState;
     use kanidm_lib_crypto::CryptoPolicy;
 

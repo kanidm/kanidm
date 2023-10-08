@@ -37,14 +37,14 @@ use self::access::{
     AccessControlsWriteTransaction,
 };
 
-pub mod access;
+pub(crate) mod access;
 pub mod batch_modify;
 pub mod create;
 pub mod delete;
 pub mod identity;
-pub mod migrations;
+pub(crate) mod migrations;
 pub mod modify;
-pub mod recycle;
+pub(crate) mod recycle;
 
 const RESOLVE_FILTER_CACHE_MAX: usize = 4096;
 const RESOLVE_FILTER_CACHE_LOCAL: usize = 0;

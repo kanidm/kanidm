@@ -31,7 +31,6 @@ concread = { workspace = true }
 dyn-clone = { workspace = true }
 enum-iterator = { workspace = true }
 fernet = { workspace = true, features = ["fernet_danger_timestamps"] }
-filetime = { workspace = true }
 # futures-util = { workspace = true }
 hashbrown = { workspace = true }
 idlset = { workspace = true }
@@ -67,7 +66,6 @@ time = { workspace = true, features = ["serde", "std"] }
 tokio = { workspace = true, features = ["net", "sync", "time", "rt"] }
 tokio-util = { workspace = true, features = ["codec"] }
 toml = { workspace = true }
-touch = { workspace = true }
 nonempty = { workspace = true, features = ["serialize"] }
 
 tracing = { workspace = true, features = ["attributes"] }

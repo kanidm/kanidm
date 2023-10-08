@@ -43,11 +43,11 @@ use tracing_subscriber::prelude::*;
 use tracing_subscriber::{fmt, EnvFilter};
 
 use kanidm_client::KanidmClientBuilder;
+use kanidm_lib_file_permissions::readonly as file_permissions_readonly;
 use kanidm_proto::scim_v1::{
     MultiValueAttr, ScimEntry, ScimExternalMember, ScimSshPubKey, ScimSyncGroup, ScimSyncPerson,
     ScimSyncRequest, ScimSyncRetentionMode, ScimSyncState,
 };
-use kanidmd_lib::utils::file_permissions_readonly;
 
 #[cfg(target_family = "unix")]
 use kanidm_utils_users::{get_current_gid, get_current_uid, get_effective_gid, get_effective_uid};

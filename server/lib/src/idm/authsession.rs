@@ -55,7 +55,6 @@ const PW_BADLIST_MSG: &str = "password is in badlist";
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
 pub enum AuthType {
     Anonymous,
-    UnixPassword,
     Password,
     GeneratedPassword,
     PasswordMfa,
@@ -66,7 +65,6 @@ impl fmt::Display for AuthType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             AuthType::Anonymous => write!(f, "anonymous"),
-            AuthType::UnixPassword => write!(f, "unixpassword"),
             AuthType::Password => write!(f, "password"),
             AuthType::GeneratedPassword => write!(f, "generatedpassword"),
             AuthType::PasswordMfa => write!(f, "passwordmfa"),
@@ -1128,7 +1126,7 @@ impl AuthSession {
                 // We need to actually work this out better, and then
                 // pass it to to_userauthtoken
                 let scope = match auth_type {
-                    AuthType::UnixPassword | AuthType::Anonymous => SessionScope::ReadOnly,
+                    AuthType::Anonymous => SessionScope::ReadOnly,
                     AuthType::GeneratedPassword => SessionScope::ReadWrite,
                     AuthType::Password | AuthType::PasswordMfa | AuthType::Passkey => {
                         if privileged {
@@ -1162,11 +1160,6 @@ impl AuthSession {
                     AuthType::Anonymous => {
                         // Skip - these sessions are not validated by session id.
                     }
-                    AuthType::UnixPassword => {
-                        // Impossibru!
-                        admin_error!("Impossible auth type (UnixPassword) found");
-                        return Err(OperationError::InvalidState);
-                    }
                     AuthType::Password
                     | AuthType::GeneratedPassword
                     | AuthType::PasswordMfa
@@ -1199,7 +1192,7 @@ impl AuthSession {
                 // Sanity check - We have already been really strict about what session types
                 // can actually trigger a re-auth, but we recheck here for paranoia!
                 let scope = match auth_type {
-                    AuthType::UnixPassword | AuthType::Anonymous | AuthType::GeneratedPassword => {
+                    AuthType::Anonymous | AuthType::GeneratedPassword => {
                         error!("AuthType used in Reauth is not valid for session re-issuance. Rejecting");
                         return Err(OperationError::InvalidState);
                     }
@@ -1272,7 +1265,7 @@ mod tests {
     use crate::idm::server::AccountPolicy;
     use crate::idm::AuthState;
     use crate::prelude::*;
-    use crate::utils::{duration_from_epoch_now, readable_password_from_random};
+    use crate::utils::readable_password_from_random;
     use kanidm_lib_crypto::CryptoPolicy;
 
     fn create_pw_badlist_cache() -> HashSet<String> {

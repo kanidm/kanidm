@@ -33,10 +33,12 @@ mod https;
 mod interval;
 mod ldaps;
 mod repl;
+mod utils;
 
 use std::path::Path;
 use std::sync::Arc;
 
+use crate::utils::touch_file_or_quit;
 use compact_jwt::JwsSigner;
 use kanidm_proto::v1::OperationError;
 use kanidmd_lib::be::{Backend, BackendConfig, BackendTransaction, FsType};
@@ -44,7 +46,6 @@ use kanidmd_lib::idm::ldap::LdapServer;
 use kanidmd_lib::prelude::*;
 use kanidmd_lib::schema::Schema;
 use kanidmd_lib::status::StatusActor;
-use kanidmd_lib::utils::{duration_from_epoch_now, touch_file_or_quit};
 #[cfg(not(target_family = "windows"))]
 use libc::umask;
 

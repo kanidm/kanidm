@@ -1,8 +1,6 @@
 use crate::be::{Backend, BackendConfig};
 use crate::prelude::*;
 use crate::schema::Schema;
-#[allow(unused_imports)]
-use crate::utils::duration_from_epoch_now;
 
 #[allow(clippy::expect_used)]
 pub async fn setup_test() -> QueryServer {

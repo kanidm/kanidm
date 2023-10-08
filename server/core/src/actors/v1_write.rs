@@ -30,7 +30,6 @@ use kanidmd_lib::{
     idm::server::{IdmServer, IdmServerTransaction},
     idm::serviceaccount::{DestroyApiTokenEvent, GenerateApiTokenEvent},
     modify::{Modify, ModifyInvalid, ModifyList},
-    utils::duration_from_epoch_now,
     value::{PartialValue, Value},
 };
 
