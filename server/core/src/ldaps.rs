@@ -150,7 +150,7 @@ async fn tls_acceptor(
             }
         }
     }
-    info!("Stopped LdapAcceptorActor");
+    info!("Stopped {}", super::TaskName::LdapActor);
 }
 
 pub(crate) async fn create_ldap_server(

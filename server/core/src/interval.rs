@@ -47,7 +47,7 @@ impl IntervalActor {
                 }
             }
 
-            info!("Stopped IntervalActor");
+            info!("Stopped {}", super::TaskName::IntervalActor);
         })
     }
 
@@ -149,7 +149,7 @@ impl IntervalActor {
                     }
                 }
             }
-            info!("Stopped OnlineBackupActor");
+            info!("Stopped {}", super::TaskName::BackupActor);
         });
 
         Ok(handle)

@@ -312,7 +312,7 @@ pub async fn create_https_server(
         };
         #[cfg(feature = "otel")]
         opentelemetry::global::shutdown_tracer_provider();
-        info!("Stopped WebAcceptorActor");
+        info!("Stopped {}", super::TaskName::HttpsServer);
     }))
 }
 

@@ -34,6 +34,7 @@ mod interval;
 mod ldaps;
 mod repl;
 
+use std::fmt::{Display, Formatter};
 use std::path::Path;
 use std::sync::Arc;
 
@@ -648,11 +649,42 @@ pub enum CoreAction {
     Shutdown,
 }
 
+pub(crate) enum TaskName {
+    AdminSocket,
+    AuditdActor,
+    BackupActor,
+    DelayedActionActor,
+    HttpsServer,
+    IntervalActor,
+    LdapActor,
+    Replication,
+}
+
+impl Display for TaskName {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                TaskName::AdminSocket => "Admin Socket",
+                TaskName::AuditdActor => "Auditd Actor",
+                TaskName::BackupActor => "Backup Actor",
+                TaskName::DelayedActionActor => "Delayed Action Actor",
+                TaskName::HttpsServer => "HTTPS Server",
+                TaskName::IntervalActor => "Interval Actor",
+                TaskName::LdapActor => "LDAP Acceptor Actor",
+                TaskName::Replication => "Replication",
+            }
+            .to_string()
+        )
+    }
+}
+
 pub struct CoreHandle {
     clean_shutdown: bool,
     tx: broadcast::Sender<CoreAction>,
     /// This stores a name for the handle, and the handle itself so we can tell which failed/succeeded at the end.
-    handles: Vec<(String, tokio::task::JoinHandle<()>)>,
+    handles: Vec<(TaskName, tokio::task::JoinHandle<()>)>,
 }
 
 impl CoreHandle {
@@ -665,7 +697,11 @@ impl CoreHandle {
         // Wait on the handles.
         while let Some((handle_name, handle)) = self.handles.pop() {
             if let Err(error) = handle.await {
-                eprintln!("Task {} failed to finish: {:?}", handle_name, error);
+                eprintln!(
+                    "Task {} failed to finish: {:?}",
+                    handle_name,
+                    error
+                );
             }
         }
 
@@ -820,7 +856,7 @@ pub async fn create_server_core(
                 }
             }
         }
-        info!("Stopped DelayedActionActor");
+        info!("Stopped {}", TaskName::DelayedActionActor);
     });
 
     let mut broadcast_rx = broadcast_tx.subscribe();
@@ -847,7 +883,7 @@ pub async fn create_server_core(
                 }
             }
         }
-        info!("Stopped AuditdActor");
+        info!("Stopped {}", TaskName::AuditdActor);
     });
 
     // Setup timed events associated to the write thread
@@ -963,38 +999,35 @@ pub async fn create_server_core(
         None
     };
 
-    let mut handles: Vec<(&str, JoinHandle<()>)> = vec![
-        ("Interval", interval_handle),
-        ("Delayed Action", delayed_handle),
-        ("Auditd", auditd_handle),
+    let mut handles: Vec<(TaskName, JoinHandle<()>)> = vec![
+        (TaskName::IntervalActor, interval_handle),
+        (TaskName::DelayedActionActor, delayed_handle),
+        (TaskName::AuditdActor, auditd_handle),
     ];
 
     if let Some(backup_handle) = maybe_backup_handle {
-        handles.push(("Backup", backup_handle))
+        handles.push((TaskName::BackupActor, backup_handle))
     }
 
     if let Some(admin_sock_handle) = maybe_admin_sock_handle {
-        handles.push(("Admin Socket", admin_sock_handle))
+        handles.push((TaskName::AdminSocket, admin_sock_handle))
     }
 
     if let Some(ldap_handle) = maybe_ldap_acceptor_handle {
-        handles.push(("LDAP", ldap_handle))
+        handles.push((TaskName::LdapActor, ldap_handle))
     }
 
     if let Some(http_handle) = maybe_http_acceptor_handle {
-        handles.push(("HTTP", http_handle))
+        handles.push((TaskName::HttpsServer, http_handle))
     }
 
     if let Some(repl_handle) = maybe_repl_handle {
-        handles.push(("Replication", repl_handle))
+        handles.push((TaskName::Replication, repl_handle))
     }
 
     Ok(CoreHandle {
         clean_shutdown: false,
         tx: broadcast_tx,
-        handles: handles
-            .into_iter()
-            .map(|(name, handle)| (name.to_string(), handle))
-            .collect(),
+        handles,
     })
 }
