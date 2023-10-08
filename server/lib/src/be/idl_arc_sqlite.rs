@@ -1292,34 +1292,35 @@ impl IdlArcSqlite {
         self.name_cache.try_quiesce();
     }
 
-    pub fn read(&self) -> IdlArcSqliteReadTransaction {
+    pub fn read(&self) -> Result<IdlArcSqliteReadTransaction, OperationError> {
         // IMPORTANT! Always take entrycache FIRST
         let entry_cache_read = self.entry_cache.read();
+        let db_read = self.db.read()?;
         let idl_cache_read = self.idl_cache.read();
         let name_cache_read = self.name_cache.read();
         let allids_read = self.allids.read();
-        let db_read = self.db.read();
 
-        IdlArcSqliteReadTransaction {
+        Ok(IdlArcSqliteReadTransaction {
             db: db_read,
             entry_cache: entry_cache_read,
             idl_cache: idl_cache_read,
             name_cache: name_cache_read,
             allids: allids_read,
-        }
+        })
     }
 
-    pub fn write(&self) -> IdlArcSqliteWriteTransaction {
+    pub fn write(&self) -> Result<IdlArcSqliteWriteTransaction, OperationError> {
         // IMPORTANT! Always take entrycache FIRST
         let entry_cache_write = self.entry_cache.write();
+        let db_write = self.db.write()?;
         let idl_cache_write = self.idl_cache.write();
         let name_cache_write = self.name_cache.write();
         let op_ts_max_write = self.op_ts_max.write();
         let allids_write = self.allids.write();
         let maxid_write = self.maxid.write();
-        let db_write = self.db.write();
         let keyhandles_write = self.keyhandles.write();
-        IdlArcSqliteWriteTransaction {
+
+        Ok(IdlArcSqliteWriteTransaction {
             db: db_write,
             entry_cache: entry_cache_write,
             idl_cache: idl_cache_write,
@@ -1328,7 +1329,7 @@ impl IdlArcSqlite {
             allids: allids_write,
             maxid: maxid_write,
             keyhandles: keyhandles_write,
-        }
+        })
     }
 
     /*

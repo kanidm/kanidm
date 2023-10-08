@@ -173,7 +173,13 @@ macro_rules! dbscan_setup_be {
 
 pub fn dbscan_list_indexes_core(config: &Configuration) {
     let be = dbscan_setup_be!(config);
-    let mut be_rotxn = be.read();
+    let mut be_rotxn = match be.read() {
+        Ok(txn) => txn,
+        Err(err) => {
+            error!(?err, "Unable to proceed, backend read transaction failure.");
+            return;
+        }
+    };
 
     match be_rotxn.list_indexes() {
         Ok(mut idx_list) => {
@@ -190,7 +196,13 @@ pub fn dbscan_list_indexes_core(config: &Configuration) {
 
 pub fn dbscan_list_id2entry_core(config: &Configuration) {
     let be = dbscan_setup_be!(config);
-    let mut be_rotxn = be.read();
+    let mut be_rotxn = match be.read() {
+        Ok(txn) => txn,
+        Err(err) => {
+            error!(?err, "Unable to proceed, backend read transaction failure.");
+            return;
+        }
+    };
 
     match be_rotxn.list_id2entry() {
         Ok(mut id_list) => {
@@ -212,7 +224,13 @@ pub fn dbscan_list_index_analysis_core(config: &Configuration) {
 
 pub fn dbscan_list_index_core(config: &Configuration, index_name: &str) {
     let be = dbscan_setup_be!(config);
-    let mut be_rotxn = be.read();
+    let mut be_rotxn = match be.read() {
+        Ok(txn) => txn,
+        Err(err) => {
+            error!(?err, "Unable to proceed, backend read transaction failure.");
+            return;
+        }
+    };
 
     match be_rotxn.list_index_content(index_name) {
         Ok(mut idx_list) => {
@@ -229,7 +247,13 @@ pub fn dbscan_list_index_core(config: &Configuration, index_name: &str) {
 
 pub fn dbscan_get_id2entry_core(config: &Configuration, id: u64) {
     let be = dbscan_setup_be!(config);
-    let mut be_rotxn = be.read();
+    let mut be_rotxn = match be.read() {
+        Ok(txn) => txn,
+        Err(err) => {
+            error!(?err, "Unable to proceed, backend read transaction failure.");
+            return;
+        }
+    };
 
     match be_rotxn.get_id2entry(id) {
         Ok((id, value)) => println!("{:>8}: {}", id, value),
@@ -241,7 +265,16 @@ pub fn dbscan_get_id2entry_core(config: &Configuration, id: u64) {
 
 pub fn dbscan_quarantine_id2entry_core(config: &Configuration, id: u64) {
     let be = dbscan_setup_be!(config);
-    let mut be_wrtxn = be.write();
+    let mut be_wrtxn = match be.write() {
+        Ok(txn) => txn,
+        Err(err) => {
+            error!(
+                ?err,
+                "Unable to proceed, backend write transaction failure."
+            );
+            return;
+        }
+    };
 
     match be_wrtxn
         .quarantine_entry(id)
@@ -258,7 +291,13 @@ pub fn dbscan_quarantine_id2entry_core(config: &Configuration, id: u64) {
 
 pub fn dbscan_list_quarantined_core(config: &Configuration) {
     let be = dbscan_setup_be!(config);
-    let mut be_rotxn = be.read();
+    let mut be_rotxn = match be.read() {
+        Ok(txn) => txn,
+        Err(err) => {
+            error!(?err, "Unable to proceed, backend read transaction failure.");
+            return;
+        }
+    };
 
     match be_rotxn.list_quarantined() {
         Ok(mut id_list) => {
@@ -275,7 +314,16 @@ pub fn dbscan_list_quarantined_core(config: &Configuration) {
 
 pub fn dbscan_restore_quarantined_core(config: &Configuration, id: u64) {
     let be = dbscan_setup_be!(config);
-    let mut be_wrtxn = be.write();
+    let mut be_wrtxn = match be.write() {
+        Ok(txn) => txn,
+        Err(err) => {
+            error!(
+                ?err,
+                "Unable to proceed, backend write transaction failure."
+            );
+            return;
+        }
+    };
 
     match be_wrtxn
         .restore_quarantined(id)
@@ -307,7 +355,14 @@ pub fn backup_server_core(config: &Configuration, dst_path: &str) {
         }
     };
 
-    let mut be_ro_txn = be.read();
+    let mut be_ro_txn = match be.read() {
+        Ok(txn) => txn,
+        Err(err) => {
+            error!(?err, "Unable to proceed, backend read transaction failure.");
+            return;
+        }
+    };
+
     let r = be_ro_txn.backup(dst_path);
     match r {
         Ok(_) => info!("Backup success!"),
@@ -339,7 +394,16 @@ pub async fn restore_server_core(config: &Configuration, dst_path: &str) {
         }
     };
 
-    let mut be_wr_txn = be.write();
+    let mut be_wr_txn = match be.write() {
+        Ok(txn) => txn,
+        Err(err) => {
+            error!(
+                ?err,
+                "Unable to proceed, backend write transaction failure."
+            );
+            return;
+        }
+    };
     let r = be_wr_txn.restore(dst_path).and_then(|_| be_wr_txn.commit());
 
     if r.is_err() {
@@ -395,7 +459,16 @@ pub async fn reindex_server_core(config: &Configuration) {
     };
 
     // Reindex only the core schema attributes to bootstrap the process.
-    let mut be_wr_txn = be.write();
+    let mut be_wr_txn = match be.write() {
+        Ok(txn) => txn,
+        Err(err) => {
+            error!(
+                ?err,
+                "Unable to proceed, backend write transaction failure."
+            );
+            return;
+        }
+    };
     let r = be_wr_txn.reindex().and_then(|_| be_wr_txn.commit());
 
     // Now that's done, setup a minimal qs and reindex from that.

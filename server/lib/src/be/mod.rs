@@ -2028,7 +2028,7 @@ impl Backend {
         // In this case we can use an empty idx meta because we don't
         // access any parts of
         // the indexing subsystem here.
-        let mut idl_write = be.idlayer.write();
+        let mut idl_write = be.idlayer.write()?;
         idl_write
             .setup()
             .and_then(|_| idl_write.commit())
@@ -2038,7 +2038,7 @@ impl Backend {
             })?;
 
         // Now rebuild the ruv.
-        let mut be_write = be.write();
+        let mut be_write = be.write()?;
         be_write
             .ruv_reload()
             .and_then(|_| be_write.commit())
@@ -2059,41 +2059,21 @@ impl Backend {
         self.idlayer.try_quiesce();
     }
 
-    pub fn read(&self) -> BackendReadTransaction {
-        BackendReadTransaction {
-            idlayer: self.idlayer.read(),
+    pub fn read(&self) -> Result<BackendReadTransaction, OperationError> {
+        Ok(BackendReadTransaction {
+            idlayer: self.idlayer.read()?,
             idxmeta: self.idxmeta.read(),
             ruv: self.ruv.read(),
-        }
+        })
     }
 
-    pub fn write(&self) -> BackendWriteTransaction {
-        BackendWriteTransaction {
-            idlayer: self.idlayer.write(),
+    pub fn write(&self) -> Result<BackendWriteTransaction, OperationError> {
+        Ok(BackendWriteTransaction {
+            idlayer: self.idlayer.write()?,
             idxmeta_wr: self.idxmeta.write(),
             ruv: self.ruv.write(),
-        }
+        })
     }
-
-    // Should this actually call the idlayer directly?
-    pub fn reset_db_s_uuid(&self) -> Uuid {
-        let mut wr = self.write();
-        #[allow(clippy::expect_used)]
-        let sid = wr
-            .reset_db_s_uuid()
-            .expect("unable to reset db server uuid");
-        #[allow(clippy::expect_used)]
-        wr.commit()
-            .expect("Unable to commit to backend, can not proceed");
-        sid
-    }
-
-    /*
-    pub fn get_db_s_uuid(&self) -> Uuid {
-        let wr = self.write(Set::new());
-        wr.reset_db_s_uuid().unwrap()
-    }
-    */
 }
 
 // What are the possible actions we'll receive here?
@@ -2163,7 +2143,7 @@ mod tests {
             let be = Backend::new(BackendConfig::new_test("main"), idxmeta, false)
                 .expect("Failed to setup backend");
 
-            let mut be_txn = be.write();
+            let mut be_txn = be.write().unwrap();
 
             let r = $test_fn(&mut be_txn);
             // Commit, to guarantee it worked.
@@ -3694,8 +3674,8 @@ mod tests {
         let be_b = Backend::new(BackendConfig::new_test("db_2"), idxmeta, false)
             .expect("Failed to setup backend");
 
-        let mut be_a_txn = be_a.write();
-        let mut be_b_txn = be_b.write();
+        let mut be_a_txn = be_a.write().unwrap();
+        let mut be_b_txn = be_b.write().unwrap();
 
         assert!(be_a_txn.get_db_s_uuid() != be_b_txn.get_db_s_uuid());
 

@@ -1087,7 +1087,7 @@ impl<'a> QueryServerTransaction<'a> for QueryServerWriteTransaction<'a> {
 impl QueryServer {
     pub fn new(be: Backend, schema: Schema, domain_name: String) -> Self {
         let (s_uuid, d_uuid) = {
-            let mut wr = be.write();
+            let mut wr = be.write().unwrap();
             let s_uuid = wr.get_db_s_uuid().unwrap();
             let d_uuid = wr.get_db_d_uuid().unwrap();
             #[allow(clippy::expect_used)]
@@ -1160,7 +1160,7 @@ impl QueryServer {
         };
 
         QueryServerReadTransaction {
-            be_txn: self.be.read(),
+            be_txn: self.be.read().unwrap(),
             schema: self.schema.read(),
             d_info: self.d_info.read(),
             accesscontrols: self.accesscontrols.read(),
@@ -1198,7 +1198,7 @@ impl QueryServer {
         };
 
         let schema_write = self.schema.write();
-        let mut be_txn = self.be.write();
+        let mut be_txn = self.be.write().unwrap();
         let d_info = self.d_info.write();
         let phase = self.phase.write();
 
