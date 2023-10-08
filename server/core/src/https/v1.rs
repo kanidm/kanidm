@@ -25,11 +25,12 @@ use kanidmd_lib::idm::AuthState;
 use kanidmd_lib::prelude::*;
 use kanidmd_lib::value::PartialValue;
 
-use super::apidocs::{path_schema, response_schema};
+use super::apidocs::path_schema;
 use super::errors::WebError;
 use super::middleware::caching::{cache_me, dont_cache_me};
 use super::middleware::KOpId;
 use super::ServerState;
+use crate::https::apidocs::response_schema::{DefaultApiResponse, ApiResponseWithout200};
 use crate::https::extractors::TrustedClientIp;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -40,11 +41,14 @@ pub(crate) struct SessionId {
 #[utoipa::path(
     post,
     path = "/v1/raw/create",
-    responses(response_schema::DefaultApiResponse),
+    responses(
+        DefaultApiResponse,
+    ),
     request_body=CreateRequest,
     security(("token_jwt" = [])),
     tag = "api/v1/raw",
 )]
+/// Raw request to the system, be warned this can be dangerous!
 pub async fn raw_create(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
@@ -62,14 +66,13 @@ pub async fn raw_create(
     post,
     path = "/v1/raw/modify",
     responses(
-        (status = 200, description = "Ok"),
-        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
-        (status = 403, description = "Authorzation refused"),
+        DefaultApiResponse,
     ),
     request_body=ModifyRequest,
     security(("token_jwt" = [])),
     tag = "api/v1/raw",
 )]
+/// Raw request to the system, be warned this can be dangerous!
 pub async fn raw_modify(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
@@ -87,14 +90,13 @@ pub async fn raw_modify(
     post,
     path = "/v1/raw/delete",
     responses(
-        (status = 200),
-        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
-        (status = 403, description = "Authorzation refused"),
+        DefaultApiResponse,
     ),
     request_body=DeleteRequest,
     security(("token_jwt" = [])),
     tag = "api/v1/raw",
 )]
+/// Raw request to the system, be warned this can be dangerous!
 pub async fn raw_delete(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
@@ -112,14 +114,13 @@ pub async fn raw_delete(
     post,
     path = "/v1/raw/search",
     responses(
-        (status = 200, description = "Ok"),
-        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
-        (status = 403, description = "Authorzation refused"),
+        ApiResponseWithout200,
     ),
     request_body=SearchRequest,
     security(("token_jwt" = [])),
     tag = "api/v1/raw",
 )]
+/// Raw request to the system, be warned this can be dangerous!
 pub async fn raw_search(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
@@ -136,7 +137,7 @@ pub async fn raw_search(
 #[utoipa::path(
     get,
     path = "/v1/self",
-    responses(response_schema::DefaultApiResponse),
+    responses(DefaultApiResponse),
     security(("token_jwt" = [])),
     tag = "api/v1/self",
 )]
@@ -350,11 +351,11 @@ pub async fn json_rest_event_post_attr(
 
 // Okay, so a put normally needs
 ///  * filter of what we are working on (id + class)
-///  * a Map<String, Vec<String>> that we turn into a modlist.
+///  * a `Map<String, Vec<String>>` that we turn into a modlist.
 ///
 /// OR
 ///  * filter of what we are working on (id + class)
-///  * a Vec<String> that we are changing
+///  * a `Vec<String>` that we are changing
 ///  * the attr name  (as a param to this in path)
 ///
 pub async fn json_rest_event_put_id_attr(
@@ -733,7 +734,7 @@ pub async fn service_account_credential_generate(
 }
 
 #[utoipa::path(
-    get,
+    post,
     path = "/v1/service_account/{id}/_into_person",
     responses(
         (status = 200, description = "Ok"),
@@ -743,7 +744,6 @@ pub async fn service_account_credential_generate(
     security(("token_jwt" = [])),
     tag = "api/v1/service_account",
 )]
-
 /// Due to how the migrations work in 6 -> 7, we can accidentally
 /// mark "accounts" as service accounts when they are persons. This
 /// allows migrating them to the person type due to its similarities.
@@ -790,11 +790,12 @@ pub async fn service_account_api_token_get(
 #[utoipa::path(
     post,
     path = "/v1/service_account/{id}/_spi_token",
+    params(
+        path_schema::Id,
+    ),
     request_body = ApiTokenGenerate,
     responses(
-        (status = 200, description = "Ok"),
-        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
-        (status = 403, description = "Authorzation refused"),
+        DefaultApiResponse,
     ),
     security(("token_jwt" = [])),
     tag = "api/v1/service_account",

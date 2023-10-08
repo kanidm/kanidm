@@ -1,4 +1,5 @@
 use super::apidocs::path_schema;
+use super::apidocs::response_schema::{ApiResponseWithout200,DefaultApiResponse};
 use super::errors::WebError;
 use super::middleware::KOpId;
 use super::v1::{
@@ -7,7 +8,7 @@ use super::v1::{
 };
 use super::ServerState;
 use axum::extract::{Path, State};
-use axum::response::IntoResponse;
+use axum::response::Html;
 use axum::routing::{get, post};
 use axum::{Extension, Json, Router};
 use axum_auth::AuthBearer;
@@ -19,13 +20,13 @@ use kanidmd_lib::prelude::*;
     get,
     path = "/v1/sync_account",
     responses(
-        (status = 200, description = "Ok"),
-        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
-        (status = 403, description = "Authorzation refused"),
+        (status = 200,content_type="application/json", body=Vec<ProtoEntry>),
+        ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
     tag = "api/v1/sync_account",
 )]
+/// Get all? the sync accounts.
 pub async fn sync_account_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
@@ -37,19 +38,18 @@ pub async fn sync_account_get(
 #[utoipa::path(
     post,
     path = "/v1/sync_account",
+    // request_body=ProtoEntry,
     responses(
-        (status = 200, description = "Ok"),
-        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
-        (status = 403, description = "Authorzation refused"),
+        DefaultApiResponse,
     ),
     security(("token_jwt" = [])),
     tag = "api/v1/sync_account",
-)] // TODO: what body do we take here
+)]
 pub async fn sync_account_post(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     Json(obj): Json<ProtoEntry>,
-) -> impl IntoResponse {
+) -> Result<Json<()>, WebError> {
     let classes: Vec<String> = vec![EntryClass::SyncAccount.into(), EntryClass::Object.into()];
     json_rest_event_post(state, classes, obj, kopid).await
 }
@@ -61,17 +61,18 @@ pub async fn sync_account_post(
         path_schema::Id
     ),
     responses(
-        (status = 200, description = "Ok"),
-        (status = 403, description = "Authorzation refused"),
+        (status = 200,content_type="application/json", body=Option<ProtoEntry>),
+        ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
     tag = "api/v1/sync_account",
 )]
+/// Get the details of a sync account
 pub async fn sync_account_id_get(
     State(state): State<ServerState>,
     Path(id): Path<String>,
     Extension(kopid): Extension<KOpId>,
-) -> impl IntoResponse {
+) -> Result<Json<Option<ProtoEntry>>, WebError> {
     let filter = filter_all!(f_eq(Attribute::Class, EntryClass::SyncAccount.into()));
     json_rest_event_get_id(state, id, filter, None, kopid).await
 }
@@ -82,14 +83,14 @@ pub async fn sync_account_id_get(
     params(
         path_schema::UuidOrName
     ),
+    request_body=ProtoEntry,
     responses(
-        (status = 200, description = "Ok"),
-        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
-        (status = 403, description = "Authorzation refused"),
+        DefaultApiResponse,
     ),
     security(("token_jwt" = [])),
     tag = "api/v1/sync_account",
-)] // TODO: what body do we take here
+)]
+/// Modify a sync account in-place
 pub async fn sync_account_id_patch(
     State(state): State<ServerState>,
     Path(id): Path<String>,
@@ -114,13 +115,12 @@ pub async fn sync_account_id_patch(
         path_schema::UuidOrName
     ),
     responses(
-        (status = 200, description = "Ok"),
-        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
-        (status = 403, description = "Authorzation refused"),
+        DefaultApiResponse,
     ),
     security(("token_jwt" = [])),
     tag = "api/v1/sync_account",
 )]
+// TODO: why is this a get and not a post?
 pub async fn sync_account_id_finalise_get(
     State(state): State<ServerState>,
     Path(id): Path<String>,
@@ -141,13 +141,12 @@ pub async fn sync_account_id_finalise_get(
         path_schema::UuidOrName
     ),
     responses(
-        (status = 200, description = "Ok"),
-        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
-        (status = 403, description = "Authorzation refused"),
+        DefaultApiResponse,
     ),
     security(("token_jwt" = [])),
     tag = "api/v1/sync_account",
 )]
+// TODO: why is this a get if it's a terminate?
 pub async fn sync_account_id_terminate_get(
     State(state): State<ServerState>,
     Path(id): Path<String>,
@@ -168,9 +167,11 @@ pub async fn sync_account_id_terminate_get(
         path_schema::UuidOrName
     ),
     responses(
-        (status = 200, description = "Ok"),
-        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
-        (status = 403, description = "Authorzation refused"),
+        (status = 200),
+        (status = 400),
+        (status = 401),
+        (status = 403),
+        (status = 404),
     ),
     security(("token_jwt" = [])),
     tag = "api/v1/sync_account",
@@ -193,9 +194,7 @@ pub async fn sync_account_token_post(
     delete,
     path = "/v1/sync_account/{id}/_sync_token",
     responses(
-        (status = 200, description = "Ok"),
-        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
-        (status = 403, description = "Authorzation refused"),
+        DefaultApiResponse,
     ),
     security(("token_jwt" = [])),
     tag = "api/v1/sync_account",
@@ -218,9 +217,7 @@ pub async fn sync_account_token_delete(
     path = "/scim/v1/Sync",
     request_body = ScimSyncRequest,
     responses(
-        (status = 200, description = "Ok"),
-        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
-        (status = 403, description = "Authorzation refused"),
+        DefaultApiResponse,
     ),
     security(("token_jwt" = [])),
     tag = "scim",
@@ -242,13 +239,8 @@ async fn scim_sync_post(
 #[utoipa::path(
     get,
     path = "/scim/v1/Sync",
-    params(
-        // TODO: params
-    ),
     responses(
-        (status = 200, description = "Ok"),
-        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
-        (status = 403, description = "Authorzation refused"),
+        DefaultApiResponse,
     ),
     security(("token_jwt" = [])),
     tag = "scim",
@@ -269,14 +261,13 @@ async fn scim_sync_get(
 }
 #[utoipa::path(
     get,
-    path = "/v1/sync_account",
+    path = "/v1/sync_account/:id/_attr/:attr",
     params(
-        // TODO: params
+        path_schema::UuidOrName,
+        path_schema::Attr,
     ),
     responses(
-        (status = 200, description = "Ok"),
-        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
-        (status = 403, description = "Authorzation refused"),
+        DefaultApiResponse,
     ),
     security(("token_jwt" = [])),
     tag = "v1/sync_account",
@@ -292,15 +283,14 @@ pub async fn sync_account_id_attr_get(
 
 #[utoipa::path(
     post,
-    path = "/v1/sync_account",
+    path = "/v1/sync_account/:id/_attr/:attr",
     params(
-        // TODO: params
+        path_schema::UuidOrName,
+        path_schema::Attr,
     ),
+    request_body=Vec<String>,
     responses(
-        (status = 200, description = "Ok"),
-        (status = 400, description = "Invalid request, check the data you sent."),
-        (status = 401, description = "Authorization required"),
-        (status = 403, description = "Authorzation refused"),
+        DefaultApiResponse,
     ),
     security(("token_jwt" = [])),
     tag = "v1/sync_account",
@@ -316,38 +306,8 @@ pub async fn sync_account_id_attr_put(
 }
 
 /// When you want the kitchen Sink
-async fn scim_sink_get() -> String {
-    r#"
-    <!DOCTYPE html>
-    <html lang="en">
-        <head>
-            <meta charset="utf-8"/>
-            <meta name="theme-color" content="white" />
-            <meta name="viewport" content="width=device-width" />
-            <title>Sink!</title>
-            <link rel="icon" href="/pkg/img/favicon.png" />
-            <link rel="manifest" href="/manifest.webmanifest" />
-        </head>
-        <body>
-            <pre>
-                        ___
-                      .' _ '.
-                     / /` `\ \
-                     | |   [__]
-                     | |    {{
-                     | |    }}
-                  _  | |  _ {{
-      ___________<_>_| |_<_>}}________
-          .=======^=(___)=^={{====.
-         / .----------------}}---. \
-        / /                 {{    \ \
-       / /                  }}     \ \
-      (  '========================='  )
-       '-----------------------------'
-            </pre>
-        </body>
-    </html>"#
-        .to_string()
+async fn scim_sink_get() -> Html<&'static str> {
+    Html::from(include_str!("scim/sink.html"))
 }
 
 pub fn route_setup() -> Router<ServerState> {

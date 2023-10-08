@@ -1,3 +1,4 @@
+use axum::{response::Redirect, routing::get, Router};
 use kanidm_proto::{scim_v1::ScimSyncState, v1};
 use utoipa::{
     openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme},
@@ -5,7 +6,7 @@ use utoipa::{
 };
 use utoipa_swagger_ui::SwaggerUi;
 
-use super::errors::WebError;
+use super::{errors::WebError, ServerState};
 
 pub(crate) mod path_schema;
 pub(crate) mod response_schema;
@@ -36,7 +37,14 @@ impl Modify for SecurityAddon {
     paths(
         super::generic::status,
         super::generic::robots_txt,
+
         super::oauth2::oauth2_image_get,
+
+        super::v1::raw_create,
+        super::v1::raw_delete,
+        super::v1::raw_modify,
+        super::v1::raw_search,
+
         super::v1_oauth2::oauth2_id_image_delete,
         super::v1_oauth2::oauth2_id_image_post,
         super::v1_oauth2::oauth2_get,
@@ -228,9 +236,14 @@ impl Modify for SecurityAddon {
 )]
 pub(crate) struct ApiDoc;
 
-pub(crate) fn router() -> SwaggerUi {
-    SwaggerUi::new("/docs/swagger-ui").url(
-        "/docs/v1/openapi.json",
-        <ApiDoc as utoipa::OpenApi>::openapi(),
+pub(crate) fn router() -> Router<ServerState> {
+    Router::new()
+    .route("/docs", get(Redirect::temporary("/docs/swagger-ui")))
+    .route("/docs/", get(Redirect::temporary("/docs/swagger-ui")))
+    .merge(
+        SwaggerUi::new("/docs/swagger-ui").url(
+            "/docs/v1/openapi.json",
+            <ApiDoc as utoipa::OpenApi>::openapi(),
+        )
     )
 }

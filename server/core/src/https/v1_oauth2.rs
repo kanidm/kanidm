@@ -1,3 +1,5 @@
+use super::apidocs::path_schema;
+use super::apidocs::response_schema::{DefaultApiResponse, ApiResponseWithout200};
 use super::errors::WebError;
 use super::middleware::KOpId;
 use super::oauth2::oauth2_id;
@@ -5,7 +7,6 @@ use super::v1::{json_rest_event_get, json_rest_event_post};
 use super::ServerState;
 
 use axum::extract::{Path, State};
-use axum::response::IntoResponse;
 use axum::{Extension, Json};
 use kanidm_proto::internal::{ImageType, ImageValue};
 use kanidm_proto::v1::Entry as ProtoEntry;
@@ -16,13 +17,9 @@ use sketching::admin_error;
 #[utoipa::path(
     get,
     path = "/v1/oauth2",
-    params(
-        // TODO: params
-    ),
     responses(
-        (status = 200, description = "Ok"),
-        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
-        (status = 403, description = "Authorzation refused"),
+        (status = 200,content_type="application/json", body=Vec<ProtoEntry>),
+        ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
     tag = "api/v1/oauth2",
@@ -31,7 +28,7 @@ use sketching::admin_error;
 pub(crate) async fn oauth2_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
-) -> impl IntoResponse {
+) -> Result<Json<Vec<ProtoEntry>>, WebError> {
     let filter = filter_all!(f_eq(
         Attribute::Class,
         EntryClass::OAuth2ResourceServer.into()
@@ -42,13 +39,9 @@ pub(crate) async fn oauth2_get(
 #[utoipa::path(
     post,
     path = "/v1/oauth2/basic",
-    params(
-        // TODO: params
-    ),
+    request_body=ProtoEntry,
     responses(
-        (status = 200, description = "Ok"),
-        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
-        (status = 403, description = "Authorzation refused"),
+        DefaultApiResponse,
     ),
     security(("token_jwt" = [])),
     tag = "api/v1/oauth2",
@@ -58,7 +51,7 @@ pub(crate) async fn oauth2_basic_post(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     Json(obj): Json<ProtoEntry>,
-) -> impl IntoResponse {
+) -> Result<Json<()>, WebError> {
     let classes = vec![
         EntryClass::OAuth2ResourceServer.to_string(),
         EntryClass::OAuth2ResourceServerBasic.to_string(),
@@ -70,13 +63,9 @@ pub(crate) async fn oauth2_basic_post(
 #[utoipa::path(
     post,
     path = "/v1/oauth2/_public",
-    params(
-        // TODO: params
-    ),
+    request_body=ProtoEntry,
     responses(
-        (status = 200, description = "Ok"),
-        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
-        (status = 403, description = "Authorzation refused"),
+        DefaultApiResponse,
     ),
     security(("token_jwt" = [])),
     tag = "api/v1/oauth2",
@@ -86,7 +75,7 @@ pub(crate) async fn oauth2_public_post(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     Json(obj): Json<ProtoEntry>,
-) -> impl IntoResponse {
+) -> Result<Json<()>, WebError> {
     let classes = vec![
         EntryClass::OAuth2ResourceServer.to_string(),
         EntryClass::OAuth2ResourceServerPublic.to_string(),
@@ -98,11 +87,12 @@ pub(crate) async fn oauth2_public_post(
 #[utoipa::path(
     get,
     path = "/v1/oauth2/{rs_name}",
-    params(super::apidocs::path_schema::RsName),
+    params(
+        path_schema::RsName
+    ),
     responses(
-        (status = 200, description = "Ok"),
-        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
-        (status = 403, description = "Authorzation refused"),
+        (status = 200, /* TODO response=Option<ProtoEntry>*/),
+        ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
     tag = "api/v1/oauth2",
@@ -114,7 +104,6 @@ pub(crate) async fn oauth2_id_get(
     Extension(kopid): Extension<KOpId>,
 ) -> Result<Json<Option<ProtoEntry>>, WebError> {
     let filter = oauth2_id(&rs_name);
-
     state
         .qe_r_ref
         .handle_internalsearch(kopid.uat, filter, None, kopid.eventid)
@@ -127,11 +116,12 @@ pub(crate) async fn oauth2_id_get(
 #[utoipa::path(
     get,
     path = "/v1/oauth2/{rs_name}/_basic_secret",
-    params(super::apidocs::path_schema::RsName),
+    params(
+        path_schema::RsName,
+    ),
     responses(
-        (status = 200, description = "Ok"),
-        // (status = 400, description = "Invalid request, things like invalid image size/format etc."),
-        (status = 403, description = "Authorzation refused"),
+        (status = 200,content_type="application/json", body=Option<String>),
+        ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
     tag = "api/v1/oauth2",
@@ -155,11 +145,12 @@ pub(crate) async fn oauth2_id_get_basic_secret(
 #[utoipa::path(
     patch,
     path = "/v1/oauth2/{rs_name}",
-    params(super::apidocs::path_schema::RsName),
+    params(
+        path_schema::RsName,
+    ),
+    request_body=ProtoEntry,
     responses(
-        (status = 200, description = "Ok"),
-        (status = 400, description = "Invalid request, check the field format/values."),
-        (status = 403, description = "Authorzation refused"),
+        DefaultApiResponse,
     ),
     security(("token_jwt" = [])),
     tag = "api/v1/oauth2",
@@ -185,13 +176,12 @@ pub(crate) async fn oauth2_id_patch(
     patch,
     path = "/v1/oauth2/{rs_name}/_scopemap/{group}",
     params(
-        super::apidocs::path_schema::RsName,
-        super::apidocs::path_schema::GroupName,
+        path_schema::RsName,
+        path_schema::GroupName,
     ),
+    request_body=Vec<String>,
     responses(
-        (status = 200, description = "Ok"),
-        (status = 400, description = "Invalid request, check the field format/values."),
-        (status = 403, description = "Authorzation refused"),
+        DefaultApiResponse,
     ),
     security(("token_jwt" = [])),
     tag = "api/v1/oauth2",
@@ -216,13 +206,11 @@ pub(crate) async fn oauth2_id_scopemap_post(
     delete,
     path = "/v1/oauth2/{rs_name}/_scopemap/{group}",
     params(
-        super::apidocs::path_schema::RsName,
-        super::apidocs::path_schema::GroupName,
+        path_schema::RsName,
+        path_schema::GroupName,
     ),
     responses(
-        (status = 200, description = "Ok"),
-        (status = 400, description = "Invalid request, check the field format/values."),
-        (status = 403, description = "Authorzation refused"),
+        DefaultApiResponse,
     ),
     security(("token_jwt" = [])),
     tag = "api/v1/oauth2",
@@ -246,13 +234,11 @@ pub(crate) async fn oauth2_id_scopemap_delete(
     post,
     path = "/v1/oauth2/{rs_name}/_sup_scopemap/{group}",
     params(
-        super::apidocs::path_schema::RsName,
-        super::apidocs::path_schema::GroupName,
+        path_schema::RsName,
+        path_schema::GroupName,
     ),
     responses(
-        (status = 200, description = "Ok"),
-        (status = 400, description = "Invalid request, check the field format/values."),
-        (status = 403, description = "Authorzation refused"),
+        DefaultApiResponse,
     ),
     security(("token_jwt" = [])),
     tag = "api/v1/oauth2",
@@ -277,13 +263,11 @@ pub(crate) async fn oauth2_id_sup_scopemap_post(
     delete,
     path = "/v1/oauth2/{rs_name}/_sup_scopemap/{group}",
     params(
-        super::apidocs::path_schema::RsName,
-        super::apidocs::path_schema::GroupName,
+        path_schema::RsName,
+        path_schema::GroupName,
     ),
     responses(
-        (status = 200, description = "Ok"),
-        (status = 400, description = "Invalid request, check the field format/values."),
-        (status = 403, description = "Authorzation refused"),
+        DefaultApiResponse,
     ),
     security(("token_jwt" = [])),
     tag = "api/v1/oauth2",
@@ -307,10 +291,12 @@ pub(crate) async fn oauth2_id_sup_scopemap_delete(
     delete,
     path = "/v1/oauth2/{rs_name}",
     params(
-        super::apidocs::path_schema::RsName,
+        path_schema::RsName,
     ),
     responses(
         (status = 200),
+        (status = 400),
+        (status = 401),
         (status = 403),
         (status = 404),
     ),
@@ -336,11 +322,10 @@ pub(crate) async fn oauth2_id_delete(
     delete,
     path = "/v1/oauth2/{rs_name}/_image",
     params(
-        super::apidocs::path_schema::RsName,
+        path_schema::RsName,
     ),
     responses(
-        (status = 200, description = "Ok"),
-        (status = 403, description = "Authorzation refused"),
+        DefaultApiResponse,
     ),
     security(("token_jwt" = [])),
     tag = "api/v1/oauth2",
@@ -363,17 +348,18 @@ pub(crate) async fn oauth2_id_image_delete(
     post,
     path = "/v1/oauth2/{rs_name}/_image",
     params(
-        super::apidocs::path_schema::RsName,
+        path_schema::RsName,
     ),
     responses(
-        (status = 200, description = "Ok"),
-        (status = 400, description = "Invalid request, things like invalid image size/format etc."),
-        (status = 403, description = "Authorzation refused"),
+        DefaultApiResponse,
     ),
     security(("token_jwt" = [])),
     tag = "api/v1/oauth2",
 )]
-// API endpoint for creating/replacing the image associated with an OAuth2 Resource Server.
+/// API endpoint for creating/replacing the image associated with an OAuth2 Resource Server.
+///
+/// It requires a multipart form with the image file, and the content type must be one of the
+/// [VALID_IMAGE_UPLOAD_CONTENT_TYPES].
 pub(crate) async fn oauth2_id_image_post(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,

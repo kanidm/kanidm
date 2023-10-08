@@ -8,9 +8,10 @@ use utoipa::{
 };
 
 #[allow(dead_code)] // because this is used for the OpenAPI schema gen
+/// An empty response with `application/json` content type - use [ApiResponseWithout200] if you want to do everything but a 200
 pub(crate) enum DefaultApiResponse {
     Ok,
-    NotFound,
+    NeedsAuthorization,
     NotAuthorized,
 }
 
@@ -23,9 +24,31 @@ impl IntoResponses for DefaultApiResponse {
                     .content(APPLICATION_JSON, Content::default())
                     .description("Ok"),
             )
-            .response("404", ResponseBuilder::new().description("Not Found"))
+            .response("400", ResponseBuilder::new().description("Invalid Request"))
+            .response("401", ResponseBuilder::new().description("Authorization required"))
+            .response("403", ResponseBuilder::new().description("Not Authorized"))
+            // .response("404", ResponseBuilder::new().description("Not Found"))
+            .build()
+            .into()
+    }
+}
+
+#[allow(dead_code)] // because this is used for the OpenAPI schema gen
+/// An empty response without the 200 response so the "defaults" can be handled.
+pub(crate) enum ApiResponseWithout200 {
+    Ok,
+    NeedsAuthorization,
+    NotAuthorized,
+}
+
+impl IntoResponses for ApiResponseWithout200 {
+    fn responses() -> BTreeMap<String, RefOr<Response>> {
+        ResponsesBuilder::new()
+            .response("400", ResponseBuilder::new().description("Invalid Request"))
+            .response("401", ResponseBuilder::new().description("Authorization required"))
             .response("403", ResponseBuilder::new().description("Not Authorized"))
             .build()
             .into()
     }
 }
+
