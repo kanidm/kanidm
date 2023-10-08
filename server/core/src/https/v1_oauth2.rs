@@ -294,10 +294,7 @@ pub(crate) async fn oauth2_id_sup_scopemap_delete(
         path_schema::RsName,
     ),
     responses(
-        (status = 200),
-        (status = 400),
-        (status = 401),
-        (status = 403),
+        DefaultApiResponse,
         (status = 404),
     ),
     security(("token_jwt" = [])),

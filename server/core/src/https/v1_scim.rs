@@ -167,11 +167,8 @@ pub async fn sync_account_id_terminate_get(
         path_schema::UuidOrName
     ),
     responses(
-        (status = 200),
-        (status = 400),
-        (status = 401),
-        (status = 403),
-        (status = 404),
+        (status = 200), // TODO: response content
+        ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
     tag = "v1/sync_account",

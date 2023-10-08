@@ -6,7 +6,7 @@ use axum::{
     TypedHeader,
 };
 use http::HeaderValue;
-use kanidm_proto::constants::KVERSION;
+use kanidm_proto::constants::{KOPID, KVERSION};
 use uuid::Uuid;
 pub(crate) mod caching;
 pub(crate) mod compression;
@@ -76,7 +76,7 @@ pub async fn kopid_middleware<B>(
     // This conversion *should never* fail. If it does, rather than panic, we warn and
     // just don't put the id in the response.
     let _ = HeaderValue::from_str(&eventid.as_hyphenated().to_string())
-        .map(|hv| response.headers_mut().insert("X-KANIDM-OPID", hv))
+        .map(|hv| response.headers_mut().insert(KOPID, hv))
         .map_err(|err| {
             warn!(?err, "An invalid operation id was encountered");
         });

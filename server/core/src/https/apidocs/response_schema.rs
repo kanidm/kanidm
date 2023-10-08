@@ -1,5 +1,7 @@
-// TODO: this should/could be a macro, or we could stop using IntoResponse :D
-
+//! This file contains the default response schemas for the API.
+//!
+//! These are used to generate the OpenAPI schema definitions.
+//!
 use kanidm_proto::constants::APPLICATION_JSON;
 use std::collections::BTreeMap;
 use utoipa::{
