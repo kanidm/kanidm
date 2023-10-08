@@ -168,7 +168,7 @@ impl AdminActor {
                     }
                 }
             }
-            info!("Stopped AdminActor");
+            info!("Stopped {}", super::TaskName::AdminSocket);
         });
         Ok(handle)
     }

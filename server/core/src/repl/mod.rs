@@ -904,5 +904,5 @@ async fn repl_acceptor(
         }
     }
 
-    info!("Stopped Replication Acceptor");
+    info!("Stopped {}", super::TaskName::Replication);
 }

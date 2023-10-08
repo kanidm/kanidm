@@ -96,7 +96,7 @@ macro_rules! try_from_entry {
         let sshkeys = $value
             .get_ava_iter_sshpubkeys(Attribute::SshPublicKey)
             .map(|i| i.map(|s| s.to_string()).collect())
-            .unwrap_or_else(Vec::new);
+            .unwrap_or_default();
 
         let cred = $value
             .get_ava_single_credential(Attribute::UnixPassword)
@@ -109,7 +109,7 @@ macro_rules! try_from_entry {
         let mail = $value
             .get_ava_iter_mail(Attribute::Mail)
             .map(|i| i.map(str::to_string).collect())
-            .unwrap_or_else(Vec::new);
+            .unwrap_or_default();
 
         let valid_from = $value.get_ava_single_datetime(Attribute::AccountValidFrom);
 

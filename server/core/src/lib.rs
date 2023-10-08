@@ -34,6 +34,7 @@ mod interval;
 mod ldaps;
 mod repl;
 
+use std::fmt::{Display, Formatter};
 use std::path::Path;
 use std::sync::Arc;
 
@@ -49,6 +50,7 @@ use kanidmd_lib::utils::{duration_from_epoch_now, touch_file_or_quit};
 use libc::umask;
 
 use tokio::sync::broadcast;
+use tokio::task::JoinHandle;
 
 use crate::actors::v1_read::QueryServerReadV1;
 use crate::actors::v1_write::QueryServerWriteV1;
@@ -647,12 +649,42 @@ pub enum CoreAction {
     Shutdown,
 }
 
+pub(crate) enum TaskName {
+    AdminSocket,
+    AuditdActor,
+    BackupActor,
+    DelayedActionActor,
+    HttpsServer,
+    IntervalActor,
+    LdapActor,
+    Replication,
+}
+
+impl Display for TaskName {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                TaskName::AdminSocket => "Admin Socket",
+                TaskName::AuditdActor => "Auditd Actor",
+                TaskName::BackupActor => "Backup Actor",
+                TaskName::DelayedActionActor => "Delayed Action Actor",
+                TaskName::HttpsServer => "HTTPS Server",
+                TaskName::IntervalActor => "Interval Actor",
+                TaskName::LdapActor => "LDAP Acceptor Actor",
+                TaskName::Replication => "Replication",
+            }
+            .to_string()
+        )
+    }
+}
+
 pub struct CoreHandle {
     clean_shutdown: bool,
     tx: broadcast::Sender<CoreAction>,
-
-    handles: Vec<tokio::task::JoinHandle<()>>,
-    // interval_handle: tokio::task::JoinHandle<()>,
+    /// This stores a name for the handle, and the handle itself so we can tell which failed/succeeded at the end.
+    handles: Vec<(TaskName, tokio::task::JoinHandle<()>)>,
 }
 
 impl CoreHandle {
@@ -663,9 +695,13 @@ impl CoreHandle {
         }
 
         // Wait on the handles.
-        while let Some(handle) = self.handles.pop() {
-            if handle.await.is_err() {
-                eprintln!("A task failed to join");
+        while let Some((handle_name, handle)) = self.handles.pop() {
+            if let Err(error) = handle.await {
+                eprintln!(
+                    "Task {} failed to finish: {:?}",
+                    handle_name,
+                    error
+                );
             }
         }
 
@@ -700,8 +736,8 @@ pub async fn create_server_core(
     }
 
     info!(
-        "Starting kanidm with configuration: {} {}",
-        if config_test { "TEST" } else { "" },
+        "Starting kanidm with {}configuration: {}",
+        if config_test { "TEST " } else { "" },
         config
     );
     // Setup umask, so that every we touch or create is secure.
@@ -820,7 +856,7 @@ pub async fn create_server_core(
                 }
             }
         }
-        info!("Stopped DelayedActionActor");
+        info!("Stopped {}", TaskName::DelayedActionActor);
     });
 
     let mut broadcast_rx = broadcast_tx.subscribe();
@@ -847,7 +883,7 @@ pub async fn create_server_core(
                 }
             }
         }
-        info!("Stopped AuditdActor");
+        info!("Stopped {}", TaskName::AuditdActor);
     });
 
     // Setup timed events associated to the write thread
@@ -919,7 +955,7 @@ pub async fn create_server_core(
     };
 
     let maybe_http_acceptor_handle = if config_test {
-        admin_info!("this config rocks! 🪨 ");
+        admin_info!("This config rocks! 🪨 ");
         None
     } else {
         let h: tokio::task::JoinHandle<()> = match https::create_https_server(
@@ -963,26 +999,30 @@ pub async fn create_server_core(
         None
     };
 
-    let mut handles = vec![interval_handle, delayed_handle, auditd_handle];
+    let mut handles: Vec<(TaskName, JoinHandle<()>)> = vec![
+        (TaskName::IntervalActor, interval_handle),
+        (TaskName::DelayedActionActor, delayed_handle),
+        (TaskName::AuditdActor, auditd_handle),
+    ];
 
     if let Some(backup_handle) = maybe_backup_handle {
-        handles.push(backup_handle)
+        handles.push((TaskName::BackupActor, backup_handle))
     }
 
     if let Some(admin_sock_handle) = maybe_admin_sock_handle {
-        handles.push(admin_sock_handle)
+        handles.push((TaskName::AdminSocket, admin_sock_handle))
     }
 
     if let Some(ldap_handle) = maybe_ldap_acceptor_handle {
-        handles.push(ldap_handle)
+        handles.push((TaskName::LdapActor, ldap_handle))
     }
 
     if let Some(http_handle) = maybe_http_acceptor_handle {
-        handles.push(http_handle)
+        handles.push((TaskName::HttpsServer, http_handle))
     }
 
     if let Some(repl_handle) = maybe_repl_handle {
-        handles.push(repl_handle)
+        handles.push((TaskName::Replication, repl_handle))
     }
 
     Ok(CoreHandle {

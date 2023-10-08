@@ -129,12 +129,12 @@ impl AccessControlCreate {
         let attrs = value
             .get_ava_iter_iutf8(Attribute::AcpCreateAttr)
             .map(|i| i.map(AttrString::from).collect())
-            .unwrap_or_else(Vec::new);
+            .unwrap_or_default();
 
         let classes = value
             .get_ava_iter_iutf8(Attribute::AcpCreateClass)
             .map(|i| i.map(AttrString::from).collect())
-            .unwrap_or_else(Vec::new);
+            .unwrap_or_default();
 
         Ok(AccessControlCreate {
             acp: AccessControlProfile::try_from(qs, value)?,
@@ -190,17 +190,17 @@ impl AccessControlModify {
         let presattrs = value
             .get_ava_iter_iutf8(Attribute::AcpModifyPresentAttr)
             .map(|i| i.map(AttrString::from).collect())
-            .unwrap_or_else(Vec::new);
+            .unwrap_or_default();
 
         let remattrs = value
             .get_ava_iter_iutf8(Attribute::AcpModifyRemovedAttr)
             .map(|i| i.map(AttrString::from).collect())
-            .unwrap_or_else(Vec::new);
+            .unwrap_or_default();
 
         let classes = value
             .get_ava_iter_iutf8(Attribute::AcpModifyClass)
             .map(|i| i.map(AttrString::from).collect())
-            .unwrap_or_else(Vec::new);
+            .unwrap_or_default();
 
         Ok(AccessControlModify {
             acp: AccessControlProfile::try_from(qs, value)?,
