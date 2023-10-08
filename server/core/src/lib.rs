@@ -104,7 +104,7 @@ async fn setup_qs_idms(
     config: &Configuration,
 ) -> Result<(QueryServer, IdmServer, IdmServerDelayed, IdmServerAudit), OperationError> {
     // Create a query_server implementation
-    let query_server = QueryServer::new(be, schema, config.domain.clone());
+    let query_server = QueryServer::new(be, schema, config.domain.clone())?;
 
     // TODO #62: Should the IDM parts be broken out to the IdmServer?
     // What's important about this initial setup here is that it also triggers
@@ -132,7 +132,7 @@ async fn setup_qs(
     config: &Configuration,
 ) -> Result<QueryServer, OperationError> {
     // Create a query_server implementation
-    let query_server = QueryServer::new(be, schema, config.domain.clone());
+    let query_server = QueryServer::new(be, schema, config.domain.clone())?;
 
     // TODO #62: Should the IDM parts be broken out to the IdmServer?
     // What's important about this initial setup here is that it also triggers
@@ -605,7 +605,14 @@ pub async fn verify_server_core(config: &Configuration) {
             return;
         }
     };
-    let server = QueryServer::new(be, schema_mem, config.domain.clone());
+
+    let server = match QueryServer::new(be, schema_mem, config.domain.clone()) {
+        Ok(qs) => qs,
+        Err(err) => {
+            error!(?err, "Failed to setup query server");
+            return;
+        }
+    };
 
     // Run verifications.
     let r = server.verify().await;

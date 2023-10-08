@@ -19,6 +19,7 @@ pub async fn setup_test() -> QueryServer {
 
     // Init is called via the proc macro
     QueryServer::new(be, schema_outer, "example.com".to_string())
+        .expect("Failed to setup Query Server")
 }
 
 #[allow(clippy::expect_used)]
@@ -37,6 +38,7 @@ pub async fn setup_pair_test() -> (QueryServer, QueryServer) {
 
         // Init is called via the proc macro
         QueryServer::new(be, schema_outer, "example.com".to_string())
+            .expect("Failed to setup Query Server")
     };
 
     let qs_b = {
@@ -51,6 +53,7 @@ pub async fn setup_pair_test() -> (QueryServer, QueryServer) {
 
         // Init is called via the proc macro
         QueryServer::new(be, schema_outer, "example.com".to_string())
+            .expect("Failed to setup Query Server")
     };
 
     (qs_a, qs_b)

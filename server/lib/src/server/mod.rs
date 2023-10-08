@@ -1085,7 +1085,7 @@ impl<'a> QueryServerTransaction<'a> for QueryServerWriteTransaction<'a> {
 }
 
 impl QueryServer {
-    pub fn new(be: Backend, schema: Schema, domain_name: String) -> Self {
+    pub fn new(be: Backend, schema: Schema, domain_name: String) -> Result<Self, OperationError> {
         let (s_uuid, d_uuid) = {
             let mut wr = be.write().unwrap();
             let s_uuid = wr.get_db_s_uuid().unwrap();
@@ -1118,7 +1118,15 @@ impl QueryServer {
         let phase = Arc::new(CowCell::new(ServerPhase::Bootstrap));
 
         #[allow(clippy::expect_used)]
-        QueryServer {
+        let resolve_filter_cache = Arc::new(
+            ARCacheBuilder::new()
+                .set_size(RESOLVE_FILTER_CACHE_MAX, RESOLVE_FILTER_CACHE_LOCAL)
+                .set_reader_quiesce(true)
+                .build()
+                .expect("Failed to build resolve_filter_cache"),
+        );
+
+        Ok(QueryServer {
             phase,
             s_uuid,
             d_info,
@@ -1127,15 +1135,9 @@ impl QueryServer {
             accesscontrols: Arc::new(AccessControls::default()),
             db_tickets: Arc::new(Semaphore::new(pool_size as usize)),
             write_ticket: Arc::new(Semaphore::new(1)),
-            resolve_filter_cache: Arc::new(
-                ARCacheBuilder::new()
-                    .set_size(RESOLVE_FILTER_CACHE_MAX, RESOLVE_FILTER_CACHE_LOCAL)
-                    .set_reader_quiesce(true)
-                    .build()
-                    .expect("Failed to build resolve_filter_cache"),
-            ),
+            resolve_filter_cache,
             dyngroup_cache,
-        }
+        })
     }
 
     pub fn try_quiesce(&self) {
