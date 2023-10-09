@@ -29,13 +29,14 @@ async def test_idm_oauth2_rs_list(client: KanidmClient) -> None:
     print(json.dumps(resp.data, indent=4))
     assert resp.status_code == 200
 
-    for oauth_rs in resp.data:
-        oauth2_rs_sup_scope_map = oauth_rs.get("attrs", {}).get("oauth2_rs_sup_scope_map", {})
-        for mapping in oauth2_rs_sup_scope_map:
-            print(f"oauth2_rs_sup_scope_map: {mapping}")
-            user, scopes = mapping.split(":")
-            scopes = scopes.replace("{", "[").replace("}", "]")
-            scopes = json.loads(scopes)
-            print(f"{user=} {scopes=}")
+    if resp.data is not None:
+        for oauth_rs in resp.data:
+            oauth2_rs_sup_scope_map = oauth_rs.get("attrs", {}).get("oauth2_rs_sup_scope_map", {})
+            for mapping in oauth2_rs_sup_scope_map:
+                print(f"oauth2_rs_sup_scope_map: {mapping}")
+                user, scopes = mapping.split(":")
+                scopes = scopes.replace("{", "[").replace("}", "]")
+                scopes = json.loads(scopes)
+                print(f"{user=} {scopes=}")
 
 
