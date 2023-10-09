@@ -1,7 +1,7 @@
 use kanidm_proto::constants::DEFAULT_CLIENT_CONFIG_PATH;
 pub const DEFAULT_LDAP_CONFIG_PATH: &str = "/etc/kanidm/ldap-sync";
 
-#[derive(Debug, clap::Parser)]
+#[derive(Debug, clap::Parser, Clone)]
 #[clap(about = "Kanidm LDAP Sync Driver")]
 pub struct Opt {
     /// Enable debugging of the sync driver

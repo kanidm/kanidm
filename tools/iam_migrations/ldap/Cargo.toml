@@ -40,3 +40,6 @@ kanidm_utils_users = { workspace = true }
 [build-dependencies]
 clap = { workspace = true, features = ["derive"] }
 clap_complete = { workspace = true }
+
+[dev-dependencies]
+tracing-forest = "0.1.6"

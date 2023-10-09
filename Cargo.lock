@@ -2875,6 +2875,7 @@ dependencies = [
  "tokio",
  "toml",
  "tracing",
+ "tracing-forest",
  "tracing-subscriber",
  "url",
  "uuid",

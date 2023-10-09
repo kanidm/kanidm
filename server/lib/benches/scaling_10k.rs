@@ -1,4 +1,4 @@
-use std::time::{Duration, Instant};
+use std::time::{Duration, Instant, SystemTime};
 
 use criterion::{
     criterion_group, criterion_main, BenchmarkId, Criterion, SamplingMode, Throughput,
@@ -7,8 +7,14 @@ use criterion::{
 use kanidmd_lib::entry::{Entry, EntryInit, EntryNew};
 use kanidmd_lib::entry_init;
 use kanidmd_lib::prelude::{Attribute, EntryClass};
-use kanidmd_lib::utils::duration_from_epoch_now;
 use kanidmd_lib::value::Value;
+
+pub fn duration_from_epoch_now() -> Duration {
+    #[allow(clippy::expect_used)]
+    SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .expect("invalid duration from epoch now")
+}
 
 pub fn scaling_user_create_single(c: &mut Criterion) {
     let mut group = c.benchmark_group("user_create_single");
