@@ -34,7 +34,8 @@ async def test_idm_oauth2_rs_list(client: KanidmClient) -> None:
         for mapping in oauth2_rs_sup_scope_map:
             print(f"oauth2_rs_sup_scope_map: {mapping}")
             user, scopes = mapping.split(":")
-            # scopes = json.loads(scopes)
+            scopes = scopes.replace("{", "[").replace("}", "]")
+            scopes = json.loads(scopes)
             print(f"{user=} {scopes=}")
 
 

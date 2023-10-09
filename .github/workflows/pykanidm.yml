@@ -38,4 +38,4 @@ jobs:
         run: |
           cd pykanidm
           poetry install
-          poetry run pytest -v
+          poetry run pytest -v -m 'not network'
