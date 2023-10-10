@@ -1510,6 +1510,9 @@ async fn test_server_api_token_lifecycle(rsclient: KanidmClient) {
 
     assert!(rsclient.idm_service_account_unix_extend(test_service_account_username, Some(58008), Some("/bin/vim")).await.is_ok());
 
+    assert!(rsclient.idm_service_account_unix_extend(test_service_account_username, Some(1000), Some("/bin/vim")).await.is_err());
+
+
 
     println!(
         "testing deletion of service account {}",
