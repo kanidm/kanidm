@@ -1480,7 +1480,7 @@ async fn test_server_api_token_lifecycle(rsclient: KanidmClient) {
         .is_ok());
 
     // test we can overwrite an attribute
-    let new_displayname =vec![ "testing displayname 1235"];
+    let new_displayname = vec!["testing displayname 1235"];
     assert!(rsclient
         .idm_service_account_set_attr(
             test_service_account_username,
@@ -1495,24 +1495,54 @@ async fn test_server_api_token_lifecycle(rsclient: KanidmClient) {
             test_service_account_username,
             Attribute::DisplayName.as_ref(),
         )
-        .await.expect("Failed to get displayname").expect("Failed to unwrap displayname");
-    assert!( new_displayname==displayname);
+        .await
+        .expect("Failed to get displayname")
+        .expect("Failed to unwrap displayname");
+    assert!(new_displayname == displayname);
 
-    rsclient.idm_service_account_purge_attr(test_service_account_username, Attribute::Mail.as_ref()).await.expect("Failed to purge displayname");
+    rsclient
+        .idm_service_account_purge_attr(test_service_account_username, Attribute::Mail.as_ref())
+        .await
+        .expect("Failed to purge displayname");
 
     assert!(rsclient
-        .idm_service_account_get_attr(
+        .idm_service_account_get_attr(test_service_account_username, Attribute::Mail.as_ref(),)
+        .await
+        .expect("Failed to check mail attr")
+        .is_none());
+
+    assert!(rsclient
+        .idm_service_account_unix_extend(
             test_service_account_username,
-            Attribute::Mail.as_ref(),
+            Some(58008),
+            Some("/bin/vim")
         )
-        .await.expect("Failed to check mail attr").is_none());
+        .await
+        .is_ok());
 
+    assert!(rsclient
+        .idm_service_account_unix_extend(
+            test_service_account_username,
+            Some(1000),
+            Some("/bin/vim")
+        )
+        .await
+        .is_err());
 
-    assert!(rsclient.idm_service_account_unix_extend(test_service_account_username, Some(58008), Some("/bin/vim")).await.is_ok());
-
-    assert!(rsclient.idm_service_account_unix_extend(test_service_account_username, Some(1000), Some("/bin/vim")).await.is_err());
-
-
+    // because you have to set *something*
+    assert!(rsclient
+        .idm_service_account_update(test_service_account_username, None, None, None)
+        .await
+        .is_err());
+    assert!(rsclient
+        .idm_service_account_update(
+            test_service_account_username,
+            Some(&format!("{}lol", test_service_account_username)),
+            Some(&format!("{}displayzzzz", test_service_account_username)),
+            Some(&[format!("{}@example.crabs", test_service_account_username)]),
+        )
+        .await
+        .is_err());
 
     println!(
         "testing deletion of service account {}",
@@ -1522,6 +1552,21 @@ async fn test_server_api_token_lifecycle(rsclient: KanidmClient) {
         .idm_service_account_delete(test_service_account_username)
         .await
         .is_ok());
+
+
+    // let's create one and just yolo it into a person
+    // TODO: Turns out this doesn't work because admin doesn't have the right perms to remove `jws_es256_private_key` from the account?
+    // rsclient
+    // .idm_service_account_create(test_service_account_username, "Test Service")
+    // .await
+    // .expect("Failed to create service account");
+
+    // rsclient.idm_service_account_into_person(test_service_account_username).await.expect("Failed to convert service account into person");
+
+    // assert!(rsclient
+    //     .idm_person_account_delete(test_service_account_username)
+    //     .await
+    //     .is_ok());
 
     // No need to test expiry, that's validated in the server internal tests.
 }
@@ -1866,3 +1911,20 @@ async fn test_server_user_auth_privileged_shortcut(rsclient: KanidmClient) {
         }
     }
 }
+
+// wanna test how long it takes for testkit to start up? here's your biz.
+// #[kanidmd_testkit::test]
+// fn test_teskit_test_test() {
+//     #[allow(unnameable_test_items)]
+
+//     for _ in 0..15 {
+//         #[kanidmd_testkit::test]
+//         #[allow(dead_code)]
+//         async fn test_teskit_test(rsclient: KanidmClient){
+//             assert!(rsclient.auth_anonymous().await.is_ok());
+//         }
+
+//         tk_test_teskit_test();
+//     }
+
+// }

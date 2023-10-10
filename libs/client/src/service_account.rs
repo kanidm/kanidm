@@ -143,11 +143,14 @@ impl KanidmClient {
         )
         .await
     }
-    // TODO: this needs to throw a better error when they ask for a gidnumber that overlaps system - currently the server throws a 500 because of `OperationError: InvalidAttribute("gidnumber 1000 overlaps into system secure range 1000")`
+
     pub async fn idm_service_account_unix_extend(
         &self,
+        // The username or uuid of the account
         id: &str,
+        // The GID number to set for the account
         gidnumber: Option<u32>,
+        // Set a default login shell
         shell: Option<&str>,
     ) -> Result<(), ClientError> {
         let ux = AccountUnixExtend {
