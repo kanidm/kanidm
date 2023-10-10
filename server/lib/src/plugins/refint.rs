@@ -466,12 +466,12 @@ mod tests {
     // The create references a uuid that doesn't exist - reject
     #[test]
     fn test_create_uuid_reference_not_exist() {
-
         let e = entry_init!(
             (Attribute::Class, EntryClass::Group.to_value()),
             (Attribute::Name, Value::new_iname("testgroup")),
             (Attribute::Description, Value::new_utf8s("testgroup")),
-            (Attribute::Member,
+            (
+                Attribute::Member,
                 Value::Refer(Uuid::parse_str(TEST_TESTGROUP_B_UUID).unwrap())
             )
         );
@@ -492,12 +492,12 @@ mod tests {
     // The create references a uuid that does exist - validate
     #[test]
     fn test_create_uuid_reference_exist() {
-
         let ea = entry_init!(
             (Attribute::Class, EntryClass::Group.to_value()),
             (Attribute::Name, Value::new_iname("testgroup_a")),
             (Attribute::Description, Value::new_utf8s("testgroup")),
-            (Attribute::Uuid,
+            (
+                Attribute::Uuid,
                 Value::Uuid(Uuid::parse_str(TEST_TESTGROUP_A_UUID).unwrap())
             )
         );
@@ -505,7 +505,8 @@ mod tests {
             (Attribute::Class, EntryClass::Group.to_value()),
             (Attribute::Name, Value::new_iname("testgroup_b")),
             (Attribute::Description, Value::new_utf8s("testgroup")),
-            (Attribute::Member,
+            (
+                Attribute::Member,
                 Value::Refer(Uuid::parse_str(TEST_TESTGROUP_A_UUID).unwrap())
             )
         );
@@ -846,22 +847,24 @@ mod tests {
     // This is the valid case, where the reference is MAY.
     #[test]
     fn test_delete_remove_referent_valid() {
-
-
-
         let ea: Entry<EntryInit, EntryNew> = entry_init!(
             (Attribute::Class, EntryClass::Group.to_value()),
             (Attribute::Name, Value::new_iname("testgroup_a")),
             (Attribute::Description, Value::new_utf8s("testgroup")),
-            (Attribute::Uuid, Value::Uuid(Uuid::parse_str(TEST_TESTGROUP_A_UUID).unwrap()))
+            (
+                Attribute::Uuid,
+                Value::Uuid(Uuid::parse_str(TEST_TESTGROUP_A_UUID).unwrap())
+            )
         );
         let eb: Entry<EntryInit, EntryNew> = entry_init!(
             (Attribute::Class, EntryClass::Group.to_value()),
             (Attribute::Name, Value::new_iname("testgroup_b")),
             (Attribute::Description, Value::new_utf8s("testgroup")),
-            (Attribute::Member, Value::Refer(Uuid::parse_str(TEST_TESTGROUP_A_UUID).unwrap()))
+            (
+                Attribute::Member,
+                Value::Refer(Uuid::parse_str(TEST_TESTGROUP_A_UUID).unwrap())
+            )
         );
-
 
         let preload = vec![ea, eb];
 
@@ -892,13 +895,19 @@ mod tests {
             (Attribute::Class, EntryClass::Group.to_value()),
             (Attribute::Name, Value::new_iname("testgroup_a")),
             (Attribute::Description, Value::new_utf8s("testgroup")),
-            (Attribute::Uuid, Value::Uuid(Uuid::parse_str(TEST_TESTGROUP_A_UUID).unwrap()))
+            (
+                Attribute::Uuid,
+                Value::Uuid(Uuid::parse_str(TEST_TESTGROUP_A_UUID).unwrap())
+            )
         );
         let eb: Entry<EntryInit, EntryNew> = entry_init!(
             (Attribute::Class, EntryClass::Group.to_value()),
             (Attribute::Name, Value::new_iname("testgroup_b")),
             (Attribute::Description, Value::new_utf8s("testgroup")),
-            (Attribute::Member, Value::Refer(Uuid::parse_str(TEST_TESTGROUP_A_UUID).unwrap()))
+            (
+                Attribute::Member,
+                Value::Refer(Uuid::parse_str(TEST_TESTGROUP_A_UUID).unwrap())
+            )
         );
 
         let preload = vec![ea, eb];
@@ -922,8 +931,14 @@ mod tests {
             (Attribute::Class, EntryClass::Group.to_value()),
             (Attribute::Name, Value::new_iname("testgroup_b")),
             (Attribute::Description, Value::new_utf8s("testgroup")),
-            (Attribute::Uuid, Value::Uuid(Uuid::parse_str(TEST_TESTGROUP_A_UUID).unwrap())),
-            (Attribute::Member, Value::Refer(Uuid::parse_str(TEST_TESTGROUP_A_UUID).unwrap()))
+            (
+                Attribute::Uuid,
+                Value::Uuid(Uuid::parse_str(TEST_TESTGROUP_A_UUID).unwrap())
+            ),
+            (
+                Attribute::Member,
+                Value::Refer(Uuid::parse_str(TEST_TESTGROUP_A_UUID).unwrap())
+            )
         );
         let preload = vec![eb];
 
