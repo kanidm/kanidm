@@ -460,8 +460,8 @@ mod tests {
     use crate::credential::Credential;
     use kanidm_lib_crypto::CryptoPolicy;
 
-    const TEST_CONST_TESTGROUP_A_UUID: &str = "d2b496bd-8493-47b7-8142-f568b5cf47ee";
-    const TEST_CONST_TESTGROUP_B_UUID: &str = "8cef42bc-2cac-43e4-96b3-8f54561885ca";
+    const TEST_TESTGROUP_A_UUID: &str = "d2b496bd-8493-47b7-8142-f568b5cf47ee";
+    const TEST_TESTGROUP_B_UUID: &str = "8cef42bc-2cac-43e4-96b3-8f54561885ca";
 
     // The create references a uuid that doesn't exist - reject
     #[test]
@@ -472,7 +472,7 @@ mod tests {
             (Attribute::Name, Value::new_iname("testgroup")),
             (Attribute::Description, Value::new_utf8s("testgroup")),
             (Attribute::Member,
-                Value::Refer(Uuid::parse_str(TEST_CONST_TESTGROUP_B_UUID).unwrap())
+                Value::Refer(Uuid::parse_str(TEST_TESTGROUP_B_UUID).unwrap())
             )
         );
 
@@ -498,7 +498,7 @@ mod tests {
             (Attribute::Name, Value::new_iname("testgroup_a")),
             (Attribute::Description, Value::new_utf8s("testgroup")),
             (Attribute::Uuid,
-                Value::Uuid(Uuid::parse_str(TEST_CONST_TESTGROUP_A_UUID).unwrap())
+                Value::Uuid(Uuid::parse_str(TEST_TESTGROUP_A_UUID).unwrap())
             )
         );
         let eb = entry_init!(
@@ -506,7 +506,7 @@ mod tests {
             (Attribute::Name, Value::new_iname("testgroup_b")),
             (Attribute::Description, Value::new_utf8s("testgroup")),
             (Attribute::Member,
-                Value::Refer(Uuid::parse_str(TEST_CONST_TESTGROUP_A_UUID).unwrap())
+                Value::Refer(Uuid::parse_str(TEST_TESTGROUP_A_UUID).unwrap())
             )
         );
 
@@ -623,7 +623,7 @@ mod tests {
             )),
             ModifyList::new_list(vec![Modify::Present(
                 Attribute::Member.into(),
-                Value::new_refer_s(TEST_CONST_TESTGROUP_A_UUID).unwrap()
+                Value::new_refer_s(TEST_TESTGROUP_A_UUID).unwrap()
             )]),
             None,
             |_| {},
@@ -657,7 +657,7 @@ mod tests {
             )),
             ModifyList::new_list(vec![Modify::Present(
                 Attribute::Member.into(),
-                Value::new_refer_s(TEST_CONST_TESTGROUP_A_UUID).unwrap()
+                Value::new_refer_s(TEST_TESTGROUP_A_UUID).unwrap()
             )]),
             None,
             |_| {},
@@ -704,7 +704,7 @@ mod tests {
             ModifyList::new_list(vec![
                 Modify::Present(
                     Attribute::Member.into(),
-                    Value::Refer(Uuid::parse_str(TEST_CONST_TESTGROUP_A_UUID).unwrap())
+                    Value::Refer(Uuid::parse_str(TEST_TESTGROUP_A_UUID).unwrap())
                 ),
                 Modify::Present(Attribute::Member.into(), Value::Refer(UUID_DOES_NOT_EXIST)),
             ]),
@@ -780,7 +780,7 @@ mod tests {
             )),
             ModifyList::new_list(vec![Modify::Present(
                 Attribute::Member.into(),
-                Value::new_refer_s(TEST_CONST_TESTGROUP_A_UUID).unwrap()
+                Value::new_refer_s(TEST_TESTGROUP_A_UUID).unwrap()
             )]),
             None,
             |_| {},
@@ -825,7 +825,7 @@ mod tests {
             )),
             ModifyList::new_list(vec![Modify::Present(
                 Attribute::Member.into(),
-                Value::new_refer_s(TEST_CONST_TESTGROUP_A_UUID).unwrap()
+                Value::new_refer_s(TEST_TESTGROUP_A_UUID).unwrap()
             )]),
             None,
             |qs: &mut QueryServerWriteTransaction| {
@@ -853,13 +853,13 @@ mod tests {
             (Attribute::Class, EntryClass::Group.to_value()),
             (Attribute::Name, Value::new_iname("testgroup_a")),
             (Attribute::Description, Value::new_utf8s("testgroup")),
-            (Attribute::Uuid, Value::Uuid(Uuid::parse_str(TEST_CONST_TESTGROUP_A_UUID).unwrap()))
+            (Attribute::Uuid, Value::Uuid(Uuid::parse_str(TEST_TESTGROUP_A_UUID).unwrap()))
         );
         let eb: Entry<EntryInit, EntryNew> = entry_init!(
             (Attribute::Class, EntryClass::Group.to_value()),
             (Attribute::Name, Value::new_iname("testgroup_b")),
             (Attribute::Description, Value::new_utf8s("testgroup")),
-            (Attribute::Member, Value::Refer(Uuid::parse_str(TEST_CONST_TESTGROUP_A_UUID).unwrap()))
+            (Attribute::Member, Value::Refer(Uuid::parse_str(TEST_TESTGROUP_A_UUID).unwrap()))
         );
 
 
@@ -892,13 +892,13 @@ mod tests {
             (Attribute::Class, EntryClass::Group.to_value()),
             (Attribute::Name, Value::new_iname("testgroup_a")),
             (Attribute::Description, Value::new_utf8s("testgroup")),
-            (Attribute::Uuid, Value::Uuid(Uuid::parse_str(TEST_CONST_TESTGROUP_A_UUID).unwrap()))
+            (Attribute::Uuid, Value::Uuid(Uuid::parse_str(TEST_TESTGROUP_A_UUID).unwrap()))
         );
         let eb: Entry<EntryInit, EntryNew> = entry_init!(
             (Attribute::Class, EntryClass::Group.to_value()),
             (Attribute::Name, Value::new_iname("testgroup_b")),
             (Attribute::Description, Value::new_utf8s("testgroup")),
-            (Attribute::Member, Value::Refer(Uuid::parse_str(TEST_CONST_TESTGROUP_A_UUID).unwrap()))
+            (Attribute::Member, Value::Refer(Uuid::parse_str(TEST_TESTGROUP_A_UUID).unwrap()))
         );
 
         let preload = vec![ea, eb];
@@ -922,8 +922,8 @@ mod tests {
             (Attribute::Class, EntryClass::Group.to_value()),
             (Attribute::Name, Value::new_iname("testgroup_b")),
             (Attribute::Description, Value::new_utf8s("testgroup")),
-            (Attribute::Uuid, Value::Uuid(Uuid::parse_str(TEST_CONST_TESTGROUP_A_UUID).unwrap())),
-            (Attribute::Member, Value::Refer(Uuid::parse_str(TEST_CONST_TESTGROUP_A_UUID).unwrap()))
+            (Attribute::Uuid, Value::Uuid(Uuid::parse_str(TEST_TESTGROUP_A_UUID).unwrap())),
+            (Attribute::Member, Value::Refer(Uuid::parse_str(TEST_TESTGROUP_A_UUID).unwrap()))
         );
         let preload = vec![eb];
 
@@ -966,7 +966,7 @@ mod tests {
             (
                 Attribute::OAuth2RsScopeMap,
                 Value::new_oauthscopemap(
-                    Uuid::parse_str(TEST_CONST_TESTGROUP_B_UUID).unwrap(),
+                    Uuid::parse_str(TEST_TESTGROUP_B_UUID).unwrap(),
                     btreeset![OAUTH2_SCOPE_READ.to_string()]
                 )
                 .expect("Invalid scope")
@@ -978,7 +978,7 @@ mod tests {
             (Attribute::Name, Value::new_iname("testgroup")),
             (
                 Attribute::Uuid,
-                Value::Uuid(Uuid::parse_str(TEST_CONST_TESTGROUP_B_UUID).unwrap())
+                Value::Uuid(Uuid::parse_str(TEST_TESTGROUP_B_UUID).unwrap())
             ),
             (Attribute::Description, Value::new_utf8s("testgroup"))
         );
@@ -1017,7 +1017,7 @@ mod tests {
         // Create a user
         let mut server_txn = server.write(curtime).await;
 
-        let tuuid = Uuid::parse_str(TEST_CONST_TESTGROUP_B_UUID).unwrap();
+        let tuuid = Uuid::parse_str(TEST_TESTGROUP_B_UUID).unwrap();
         let rs_uuid = Uuid::new_v4();
 
         let e1 = entry_init!(
