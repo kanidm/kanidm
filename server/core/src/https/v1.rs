@@ -897,7 +897,6 @@ pub async fn account_id_radius_token(
 
 /// Expects an `AccountUnixExtend` object
 ///
-/// TODO: throw a better error when they ask for a GID overlapping with system, should get a OperationError::GidOverlapsSystemMin(u32) now where u32 is the lowest safe value.
 #[instrument(name = "account_post_id_unix", level = "INFO", skip(id, state, kopid))]
 pub async fn account_post_id_unix(
     State(state): State<ServerState>,
