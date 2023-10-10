@@ -1,4 +1,5 @@
-use kanidmd_lib::prelude::Attribute;
+use kanidm_proto::constants::{ATTR_UID, LDAP_ATTR_CN, LDAP_CLASS_GROUPOFNAMES};
+use kanidmd_lib::prelude::{Attribute, EntryClass};
 use serde::Deserialize;
 use std::collections::BTreeMap;
 use url::Url;
@@ -7,15 +8,15 @@ use uuid::Uuid;
 use ldap3_client::proto::LdapFilter;
 
 fn person_objectclass() -> String {
-    "person".to_string()
+    EntryClass::Person.to_string()
 }
 
 fn person_attr_user_name() -> String {
-    "uid".to_string()
+    ATTR_UID.to_string()
 }
 
 fn person_attr_display_name() -> String {
-    "cn".to_string()
+    LDAP_ATTR_CN.to_string()
 }
 
 fn person_attr_gidnumber() -> String {
@@ -39,7 +40,7 @@ fn person_attr_ssh_public_key() -> String {
 }
 
 fn group_objectclass() -> String {
-    "groupofnames".to_string()
+    LDAP_CLASS_GROUPOFNAMES.to_string()
 }
 
 fn group_attr_name() -> String {

@@ -2903,7 +2903,7 @@ mod tests {
         assert_eq!(
             e_service_person.validate(&schema),
             Err(SchemaError::ExcludesNotSatisfied(
-                vec!["person".to_string()]
+                vec![EntryClass::Person.to_string()]
             ))
         );
 

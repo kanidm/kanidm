@@ -182,6 +182,7 @@ pub const LDAP_ATTR_MEMBER: &str = "member";
 pub const LDAP_ATTR_NAME: &str = "name";
 pub const LDAP_ATTR_OBJECTCLASS: &str = "objectClass";
 pub const LDAP_ATTR_OU: &str = "ou";
+pub const LDAP_CLASS_GROUPOFNAMES: &str = "groupofnames";
 
 // rust can't deal with this being compiled out, don't try and #[cfg()] them
 pub const TEST_ATTR_NON_EXIST: &str = "non-exist";

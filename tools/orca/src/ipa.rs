@@ -1,5 +1,5 @@
 use hashbrown::{HashMap, HashSet};
-use kanidm_proto::constants::{ATTR_UID, LDAP_ATTR_DISPLAY_NAME};
+use kanidm_proto::constants::{ATTR_UID, LDAP_ATTR_DISPLAY_NAME, LDAP_CLASS_GROUPOFNAMES, LDAP_ATTR_OBJECTCLASS, LDAP_ATTR_CN};
 use ldap3_proto::proto::*;
 use std::time::{Duration, Instant};
 use uuid::Uuid;
@@ -94,7 +94,7 @@ impl IpaServer {
                         dn,
                         attributes: vec![
                             LdapAttribute {
-                                atype: "objectClass".to_string(),
+                                atype: LDAP_ATTR_OBJECTCLASS.to_string(),
                                 vals: vec![
                                     "ipaobject".as_bytes().into(),
                                     "person".as_bytes().into(),
@@ -118,7 +118,7 @@ impl IpaServer {
                                 vals: vec![a.name.as_bytes().into()],
                             },
                             LdapAttribute {
-                                atype: "cn".to_string(),
+                                atype: LDAP_ATTR_CN.to_string(),
                                 vals: vec![a.name.as_bytes().into()],
                             },
                             LdapAttribute {
@@ -201,7 +201,7 @@ impl IpaServer {
                                 atype: "objectClass".to_string(),
                                 vals: vec![
                                     "top".as_bytes().into(),
-                                    "groupofnames".as_bytes().into(),
+                                    LDAP_CLASS_GROUPOFNAMES.as_bytes().into(),
                                     "nestedgroup".as_bytes().into(),
                                     "ipausergroup".as_bytes().into(),
                                     "ipaobject".as_bytes().into(),

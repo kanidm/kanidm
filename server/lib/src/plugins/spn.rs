@@ -225,16 +225,13 @@ mod tests {
 
     #[test]
     fn test_spn_generate_create() {
-        // on create don't provide
-        let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-            "attrs": {
-                "class": ["account", "service_account"],
-                "name": ["testperson"],
-                "description": ["testperson"],
-                "displayname": ["testperson"]
-            }
-        }"#,
+        // on create don't provide the spn, we generate it.
+        let e: Entry<EntryInit,EntryNew> = entry_init!(
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::ServiceAccount.to_value()),
+            (Attribute::Name, Value::new_iname("testperson")),
+            (Attribute::Description, Value::new_utf8s("testperson")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson"))
         );
 
         let create = vec![e];
@@ -252,16 +249,13 @@ mod tests {
 
     #[test]
     fn test_spn_generate_modify() {
-        // on a purge of the spen, generate it.
-        let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-            "attrs": {
-                "class": ["account", "service_account"],
-                "name": ["testperson"],
-                "description": ["testperson"],
-                "displayname": ["testperson"]
-            }
-        }"#,
+        // on a purge of the spn, generate it.
+        let e: Entry<EntryInit,EntryNew> = entry_init!(
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::ServiceAccount.to_value()),
+            (Attribute::Name, Value::new_iname("testperson")),
+            (Attribute::Description, Value::new_utf8s("testperson")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson"))
         );
 
         let preload = vec![e];
@@ -280,16 +274,14 @@ mod tests {
     #[test]
     fn test_spn_validate_create() {
         // on create providing invalid spn, we over-write it.
-        let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-            "attrs": {
-                "class": ["account", "service_account"],
-                "spn": ["testperson@invalid_domain.com"],
-                "name": ["testperson"],
-                "description": ["testperson"],
-                "displayname": ["testperson"]
-            }
-        }"#,
+
+        let e: Entry<EntryInit,EntryNew> = entry_init!(
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::ServiceAccount.to_value()),
+            (Attribute::Spn, Value::new_utf8s("testperson@invalid_domain.com")),
+            (Attribute::Name, Value::new_iname("testperson")),
+            (Attribute::Description, Value::new_utf8s("testperson")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson"))
         );
 
         let create = vec![e];
@@ -307,15 +299,13 @@ mod tests {
     #[test]
     fn test_spn_validate_modify() {
         // On modify (removed/present) of the spn, just regenerate it.
-        let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-            "attrs": {
-                "class": ["account", "service_account"],
-                "name": ["testperson"],
-                "description": ["testperson"],
-                "displayname": ["testperson"]
-            }
-        }"#,
+
+        let e: Entry<EntryInit,EntryNew> = entry_init!(
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::ServiceAccount.to_value()),
+            (Attribute::Name, Value::new_iname("testperson")),
+            (Attribute::Description, Value::new_utf8s("testperson")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson"))
         );
 
         let preload = vec![e];

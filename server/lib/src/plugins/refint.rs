@@ -456,10 +456,12 @@ mod tests {
     use crate::prelude::*;
     use crate::value::{Oauth2Session, Session, SessionState};
     use time::OffsetDateTime;
-    use uuid::uuid;
 
     use crate::credential::Credential;
     use kanidm_lib_crypto::CryptoPolicy;
+
+    const TEST_CONST_TESTGROUP_A_UUID: &str = "d2b496bd-8493-47b7-8142-f568b5cf47ee";
+    const TEST_CONST_TESTGROUP_B_UUID: &str = "8cef42bc-2cac-43e4-96b3-8f54561885ca";
 
     // The create references a uuid that doesn't exist - reject
     #[test]
@@ -604,7 +606,7 @@ mod tests {
             )),
             ModifyList::new_list(vec![Modify::Present(
                 Attribute::Member.into(),
-                Value::new_refer_s("d2b496bd-8493-47b7-8142-f568b5cf47ee").unwrap()
+                Value::new_refer_s(TEST_CONST_TESTGROUP_A_UUID).unwrap()
             )]),
             None,
             |_| {},
@@ -638,7 +640,7 @@ mod tests {
             )),
             ModifyList::new_list(vec![Modify::Present(
                 Attribute::Member.into(),
-                Value::new_refer_s("d2b496bd-8493-47b7-8142-f568b5cf47ee").unwrap()
+                Value::new_refer_s(TEST_CONST_TESTGROUP_A_UUID).unwrap()
             )]),
             None,
             |_| {},
@@ -685,7 +687,7 @@ mod tests {
             ModifyList::new_list(vec![
                 Modify::Present(
                     Attribute::Member.into(),
-                    Value::Refer(uuid!("d2b496bd-8493-47b7-8142-f568b5cf47ee"))
+                    Value::Refer(Uuid::parse_str(TEST_CONST_TESTGROUP_A_UUID).unwrap())
                 ),
                 Modify::Present(Attribute::Member.into(), Value::Refer(UUID_DOES_NOT_EXIST)),
             ]),
@@ -761,7 +763,7 @@ mod tests {
             )),
             ModifyList::new_list(vec![Modify::Present(
                 Attribute::Member.into(),
-                Value::new_refer_s("d2b496bd-8493-47b7-8142-f568b5cf47ee").unwrap()
+                Value::new_refer_s(TEST_CONST_TESTGROUP_A_UUID).unwrap()
             )]),
             None,
             |_| {},
@@ -806,7 +808,7 @@ mod tests {
             )),
             ModifyList::new_list(vec![Modify::Present(
                 Attribute::Member.into(),
-                Value::new_refer_s("d2b496bd-8493-47b7-8142-f568b5cf47ee").unwrap()
+                Value::new_refer_s(TEST_CONST_TESTGROUP_A_UUID).unwrap()
             )]),
             None,
             |qs: &mut QueryServerWriteTransaction| {
@@ -827,27 +829,22 @@ mod tests {
     // This is the valid case, where the reference is MAY.
     #[test]
     fn test_delete_remove_referent_valid() {
-        let ea: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-            "attrs": {
-                "class": ["group"],
-                "name": ["testgroup_a"],
-                "description": ["testgroup"],
-                "uuid": ["d2b496bd-8493-47b7-8142-f568b5cf47ee"]
-            }
-        }"#,
+
+
+
+        let ea: Entry<EntryInit, EntryNew> = entry_init!(
+            (Attribute::Class, EntryClass::Group.to_value()),
+            (Attribute::Name, Value::new_iname("testgroup_a")),
+            (Attribute::Description, Value::new_utf8s("testgroup")),
+            (Attribute::Uuid, Value::Uuid(Uuid::parse_str(TEST_CONST_TESTGROUP_A_UUID).unwrap()))
+        );
+        let eb: Entry<EntryInit, EntryNew> = entry_init!(
+            (Attribute::Class, EntryClass::Group.to_value()),
+            (Attribute::Name, Value::new_iname("testgroup_b")),
+            (Attribute::Description, Value::new_utf8s("testgroup")),
+            (Attribute::Member, Value::Refer(Uuid::parse_str(TEST_CONST_TESTGROUP_A_UUID).unwrap()))
         );
 
-        let eb: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-            "attrs": {
-                "class": ["group"],
-                "name": ["testgroup_b"],
-                "description": ["testgroup"],
-                "member": ["d2b496bd-8493-47b7-8142-f568b5cf47ee"]
-            }
-        }"#,
-        );
 
         let preload = vec![ea, eb];
 
@@ -867,31 +864,24 @@ mod tests {
     //
     // this is the invalid case, where the reference is MUST.
     #[test]
-    fn test_delete_remove_referent_invalid() {}
+    fn test_delete_remove_referent_invalid() {
+        // TODO: uh.. wot
+    }
 
     // Delete of something that holds references.
     #[test]
     fn test_delete_remove_referee() {
-        let ea: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-            "attrs": {
-                "class": ["group"],
-                "name": ["testgroup_a"],
-                "description": ["testgroup"],
-                "uuid": ["d2b496bd-8493-47b7-8142-f568b5cf47ee"]
-            }
-        }"#,
+        let ea: Entry<EntryInit, EntryNew> = entry_init!(
+            (Attribute::Class, EntryClass::Group.to_value()),
+            (Attribute::Name, Value::new_iname("testgroup_a")),
+            (Attribute::Description, Value::new_utf8s("testgroup")),
+            (Attribute::Uuid, Value::Uuid(Uuid::parse_str(TEST_CONST_TESTGROUP_A_UUID).unwrap()))
         );
-
-        let eb: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-            "attrs": {
-                "class": ["group"],
-                "name": ["testgroup_b"],
-                "description": ["testgroup"],
-                "member": ["d2b496bd-8493-47b7-8142-f568b5cf47ee"]
-            }
-        }"#,
+        let eb: Entry<EntryInit, EntryNew> = entry_init!(
+            (Attribute::Class, EntryClass::Group.to_value()),
+            (Attribute::Name, Value::new_iname("testgroup_b")),
+            (Attribute::Description, Value::new_utf8s("testgroup")),
+            (Attribute::Member, Value::Refer(Uuid::parse_str(TEST_CONST_TESTGROUP_A_UUID).unwrap()))
         );
 
         let preload = vec![ea, eb];
@@ -911,18 +901,13 @@ mod tests {
     // Delete something that has a self reference.
     #[test]
     fn test_delete_remove_reference_self() {
-        let eb: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-            "attrs": {
-                "class": ["group"],
-                "name": ["testgroup_b"],
-                "description": ["testgroup"],
-                "uuid": ["d2b496bd-8493-47b7-8142-f568b5cf47ee"],
-                "member": ["d2b496bd-8493-47b7-8142-f568b5cf47ee"]
-            }
-        }"#,
+        let eb: Entry<EntryInit, EntryNew> = entry_init!(
+            (Attribute::Class, EntryClass::Group.to_value()),
+            (Attribute::Name, Value::new_iname("testgroup_b")),
+            (Attribute::Description, Value::new_utf8s("testgroup")),
+            (Attribute::Uuid, Value::Uuid(Uuid::parse_str(TEST_CONST_TESTGROUP_A_UUID).unwrap())),
+            (Attribute::Member, Value::Refer(Uuid::parse_str(TEST_CONST_TESTGROUP_A_UUID).unwrap()))
         );
-
         let preload = vec![eb];
 
         run_delete_test!(
@@ -964,7 +949,7 @@ mod tests {
             (
                 Attribute::OAuth2RsScopeMap,
                 Value::new_oauthscopemap(
-                    uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"),
+                    Uuid::parse_str(TEST_CONST_TESTGROUP_B_UUID).unwrap(),
                     btreeset![OAUTH2_SCOPE_READ.to_string()]
                 )
                 .expect("Invalid scope")
@@ -976,7 +961,7 @@ mod tests {
             (Attribute::Name, Value::new_iname("testgroup")),
             (
                 Attribute::Uuid,
-                Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
+                Value::Uuid(Uuid::parse_str(TEST_CONST_TESTGROUP_B_UUID).unwrap())
             ),
             (Attribute::Description, Value::new_utf8s("testgroup"))
         );
@@ -1015,7 +1000,7 @@ mod tests {
         // Create a user
         let mut server_txn = server.write(curtime).await;
 
-        let tuuid = uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930");
+        let tuuid = Uuid::parse_str(TEST_CONST_TESTGROUP_B_UUID).unwrap();
         let rs_uuid = Uuid::new_v4();
 
         let e1 = entry_init!(
