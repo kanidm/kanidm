@@ -1924,6 +1924,7 @@ async fn test_server_user_auth_privileged_shortcut(rsclient: KanidmClient) {
 }
 
 // wanna test how long it takes for testkit to start up? here's your biz.
+// turns out  as of 2023-10-11 on my M2 Max, it's about 1.0 seconds per iteration
 // #[kanidmd_testkit::test]
 // fn test_teskit_test_test() {
 //     #[allow(unnameable_test_items)]
