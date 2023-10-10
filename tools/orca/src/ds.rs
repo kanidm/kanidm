@@ -1,4 +1,5 @@
 use hashbrown::{HashMap, HashSet};
+use kanidm_proto::constants::{ATTR_UID, LDAP_ATTR_DISPLAY_NAME};
 use std::time::{Duration, Instant};
 
 use ldap3_proto::proto::*;
@@ -173,11 +174,11 @@ impl DirectoryServer {
                                 vals: vec![a.uuid.as_bytes().to_vec()],
                             },
                             LdapAttribute {
-                                atype: "uid".to_string(),
+                                atype: ATTR_UID.to_string(),
                                 vals: vec![a.name.as_bytes().into()],
                             },
                             LdapAttribute {
-                                atype: "displayName".to_string(),
+                                atype: LDAP_ATTR_DISPLAY_NAME.to_string(),
                                 vals: vec![a.display_name.as_bytes().into()],
                             },
                             LdapAttribute {

@@ -108,6 +108,32 @@ impl Display for KanidmClientBuilder {
     }
 }
 
+#[test]
+fn test_kanidmclientbuilder_display() {
+    let foo = KanidmClientBuilder::default();
+    println!("{}", foo.to_string());
+    assert!(foo.to_string().contains("verify_ca"));
+
+    let foo = KanidmClientBuilder {
+        address: Some("https://example.com".to_string()),
+        verify_ca: true,
+        verify_hostnames: true,
+        ca: None,
+        connect_timeout: Some(420),
+        use_system_proxies: true,
+    };
+    println!("foo {}", foo.to_string());
+    assert!(foo.to_string().contains("verify_ca: true"));
+    assert!(foo.to_string().contains("verify_hostnames: true"));
+
+    let badness = foo.danger_accept_invalid_hostnames(true);
+    let badness = badness.danger_accept_invalid_certs(true);
+    println!("badness: {}", badness.to_string());
+    assert!(badness.to_string().contains("verify_ca: false"));
+    assert!(badness.to_string().contains("verify_hostnames: false"));
+
+}
+
 #[derive(Debug)]
 pub struct KanidmClient {
     pub(crate) client: reqwest::Client,
