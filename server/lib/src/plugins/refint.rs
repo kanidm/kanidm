@@ -466,15 +466,14 @@ mod tests {
     // The create references a uuid that doesn't exist - reject
     #[test]
     fn test_create_uuid_reference_not_exist() {
-        let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-            "attrs": {
-                "class": ["group"],
-                "name": ["testgroup"],
-                "description": ["testperson"],
-                "member": ["ca85168c-91b7-49a8-b7bb-a3d5bb40e97e"]
-            }
-        }"#,
+
+        let e = entry_init!(
+            (Attribute::Class, EntryClass::Group.to_value()),
+            (Attribute::Name, Value::new_iname("testgroup")),
+            (Attribute::Description, Value::new_utf8s("testgroup")),
+            (Attribute::Member,
+                Value::Refer(Uuid::parse_str(TEST_CONST_TESTGROUP_B_UUID).unwrap())
+            )
         );
 
         let create = vec![e];
@@ -493,27 +492,45 @@ mod tests {
     // The create references a uuid that does exist - validate
     #[test]
     fn test_create_uuid_reference_exist() {
-        let ea: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-            "attrs": {
-                "class": ["group"],
-                "name": ["testgroup_a"],
-                "description": ["testgroup"],
-                "uuid": ["d2b496bd-8493-47b7-8142-f568b5cf47ee"]
-            }
-        }"#,
+
+        let ea = entry_init!(
+            (Attribute::Class, EntryClass::Group.to_value()),
+            (Attribute::Name, Value::new_iname("testgroup_a")),
+            (Attribute::Description, Value::new_utf8s("testgroup")),
+            (Attribute::Uuid,
+                Value::Uuid(Uuid::parse_str(TEST_CONST_TESTGROUP_A_UUID).unwrap())
+            )
+        );
+        let eb = entry_init!(
+            (Attribute::Class, EntryClass::Group.to_value()),
+            (Attribute::Name, Value::new_iname("testgroup_b")),
+            (Attribute::Description, Value::new_utf8s("testgroup")),
+            (Attribute::Member,
+                Value::Refer(Uuid::parse_str(TEST_CONST_TESTGROUP_A_UUID).unwrap())
+            )
         );
 
-        let eb: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-            "attrs": {
-                "class": ["group"],
-                "name": ["testgroup_b"],
-                "description": ["testgroup"],
-                "member": ["d2b496bd-8493-47b7-8142-f568b5cf47ee"]
-            }
-        }"#,
-        );
+        // let ea: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
+        //     r#"{
+        //     "attrs": {
+        //         "class": ["group"],
+        //         "name": ["testgroup_a"],
+        //         "description": ["testgroup"],
+        //         "uuid": ["d2b496bd-8493-47b7-8142-f568b5cf47ee"]
+        //     }
+        // }"#,
+        // );
+
+        // let eb: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
+        //     r#"{
+        //     "attrs": {
+        //         "class": ["group"],
+        //         "name": ["testgroup_b"],
+        //         "description": ["testgroup"],
+        //         "member": ["d2b496bd-8493-47b7-8142-f568b5cf47ee"]
+        //     }
+        // }"#,
+        // );
 
         let preload = vec![ea];
         let create = vec![eb];
