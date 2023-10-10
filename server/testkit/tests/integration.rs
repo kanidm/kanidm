@@ -1,5 +1,8 @@
 //! Integration tests using browser automation
 
+use kanidm_client::KanidmClient;
+use kanidmd_testkit::login_put_admin_idm_admins;
+
 /// Tries to handle closing the webdriver session if there's an error
 #[allow(unused_macros)]
 macro_rules! handle_error {
@@ -196,4 +199,17 @@ async fn test_webdriver_user_login(rsclient: kanidm_client::KanidmClient) {
         }
     }
     // tokio::time::sleep(Duration::from_millis(3000)).await;
+}
+
+#[kanidmd_testkit::test]
+async fn test_domain_reset_token_key(rsclient: KanidmClient) {
+    login_put_admin_idm_admins(&rsclient).await;
+    assert!(rsclient.idm_domain_reset_token_key().await.is_ok());
+}
+
+#[kanidmd_testkit::test]
+async fn test_idm_domain_set_ldap_basedn(rsclient: KanidmClient) {
+    login_put_admin_idm_admins(&rsclient).await;
+    assert!(rsclient.idm_domain_set_ldap_basedn("dc=krabsarekool,dc=example,dc=com").await.is_ok());
+    assert!(rsclient.idm_domain_set_ldap_basedn("krabsarekool").await.is_err());
 }

@@ -32,6 +32,7 @@ pub use reqwest::StatusCode;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use serde_json::error::Error as SerdeJsonError;
+use serde_json::json;
 use tokio::sync::{Mutex, RwLock};
 use url::Url;
 use uuid::Uuid;
@@ -916,7 +917,8 @@ impl KanidmClient {
         let response = self
             .client
             .delete(self.make_url(dest))
-            .header(CONTENT_TYPE, APPLICATION_JSON);
+            // empty-ish body taht makes the parser happy
+            .json(&json!([]));
 
         let response = {
             let tguard = self.bearer_token.read().await;
@@ -958,12 +960,10 @@ impl KanidmClient {
         dest: &str,
         request: R,
     ) -> Result<(), ClientError> {
-        let req_string = serde_json::to_string(&request).map_err(ClientError::JsonEncode)?;
         let response = self
             .client
             .delete(self.make_url(dest))
-            .body(req_string)
-            .header(CONTENT_TYPE, APPLICATION_JSON);
+            .json(&request);
 
         let response = {
             let tguard = self.bearer_token.read().await;
