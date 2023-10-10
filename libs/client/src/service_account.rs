@@ -161,6 +161,7 @@ impl KanidmClient {
             .await
     }
 
+    // TODO: test coverage for this, but there's a weird issue with ACPs on apply
     pub async fn idm_service_account_into_person(&self, id: &str) -> Result<(), ClientError> {
         self.perform_post_request(
             format!("/v1/service_account/{}/_into_person", id).as_str(),

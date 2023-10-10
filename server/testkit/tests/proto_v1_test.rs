@@ -1544,6 +1544,15 @@ async fn test_server_api_token_lifecycle(rsclient: KanidmClient) {
         .await
         .is_err());
 
+    let pw = rsclient.idm_service_account_generate_password(test_service_account_username).await.expect("Failed to get a pw for the service account");
+
+    assert!(!pw.is_empty());
+    assert!(pw.is_ascii());
+
+    let res = rsclient.idm_service_account_get_credential_status(test_service_account_username).await;
+    dbg!(&res);
+    assert!(res.is_ok());
+
     println!(
         "testing deletion of service account {}",
         test_service_account_username
@@ -1552,6 +1561,8 @@ async fn test_server_api_token_lifecycle(rsclient: KanidmClient) {
         .idm_service_account_delete(test_service_account_username)
         .await
         .is_ok());
+
+
 
 
     // let's create one and just yolo it into a person
