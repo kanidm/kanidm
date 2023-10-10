@@ -1673,6 +1673,7 @@ impl KanidmClient {
             .await
     }
 
+    // TODO: add test coverage
     pub async fn idm_account_credential_update_accept_sha1_totp(
         &self,
         session_token: &CUSessionToken,
@@ -1692,6 +1693,7 @@ impl KanidmClient {
             .await
     }
 
+    // TODO: add test coverage
     pub async fn idm_account_credential_update_backup_codes_generate(
         &self,
         session_token: &CUSessionToken,
@@ -1701,6 +1703,7 @@ impl KanidmClient {
             .await
     }
 
+    // TODO: add test coverage
     pub async fn idm_account_credential_update_primary_remove(
         &self,
         session_token: &CUSessionToken,
@@ -1730,6 +1733,7 @@ impl KanidmClient {
             .await
     }
 
+    // TODO: add test coverage
     pub async fn idm_account_credential_update_passkey_remove(
         &self,
         session_token: &CUSessionToken,

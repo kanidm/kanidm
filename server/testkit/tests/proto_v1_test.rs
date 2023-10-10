@@ -22,7 +22,7 @@ use webauthn_authenticator_rs::softpasskey::SoftPasskey;
 use webauthn_authenticator_rs::WebauthnAuthenticator;
 
 use kanidm_client::{ClientError, KanidmClient};
-use kanidmd_testkit::ADMIN_TEST_PASSWORD;
+use kanidmd_testkit::{ADMIN_TEST_PASSWORD, ADMIN_TEST_USER};
 
 const UNIX_TEST_PASSWORD: &str = "unix test user password";
 
@@ -1468,13 +1468,13 @@ async fn test_server_api_token_lifecycle(rsclient: KanidmClient) {
 #[kanidmd_testkit::test]
 async fn test_server_user_auth_token_lifecycle(rsclient: KanidmClient) {
     let res = rsclient
-        .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
+        .auth_simple_password(ADMIN_TEST_USER, ADMIN_TEST_PASSWORD)
         .await;
     assert!(res.is_ok());
 
     // Not recommended in production!
     rsclient
-        .idm_group_add_members(BUILTIN_GROUP_IDM_ADMINS_V1.name, &["admin"])
+        .idm_group_add_members(BUILTIN_GROUP_IDM_ADMINS_V1.name, &[ADMIN_TEST_USER])
         .await
         .unwrap();
 
@@ -1553,7 +1553,7 @@ async fn test_server_user_auth_token_lifecycle(rsclient: KanidmClient) {
 
     // Since the session is revoked, check with the admin.
     let res = rsclient
-        .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
+        .auth_simple_password(ADMIN_TEST_USER, ADMIN_TEST_PASSWORD)
         .await;
     assert!(res.is_ok());
 
@@ -1564,6 +1564,14 @@ async fn test_server_user_auth_token_lifecycle(rsclient: KanidmClient) {
     assert!(tokens.is_empty());
 
     // No need to test expiry, that's validated in the server internal tests.
+
+    // testing cancel mfareg
+    let (token, _status) = rsclient.idm_account_credential_update_begin("demo_account").await.expect("Failed to get token for demo_account");
+
+    println!("trying to cancel the token we just got");
+    assert!(rsclient.idm_account_credential_update_cancel_mfareg(&token).await.is_ok());
+
+
 }
 
 #[kanidmd_testkit::test]
