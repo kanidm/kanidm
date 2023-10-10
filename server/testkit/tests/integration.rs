@@ -210,6 +210,12 @@ async fn test_domain_reset_token_key(rsclient: KanidmClient) {
 #[kanidmd_testkit::test]
 async fn test_idm_domain_set_ldap_basedn(rsclient: KanidmClient) {
     login_put_admin_idm_admins(&rsclient).await;
-    assert!(rsclient.idm_domain_set_ldap_basedn("dc=krabsarekool,dc=example,dc=com").await.is_ok());
-    assert!(rsclient.idm_domain_set_ldap_basedn("krabsarekool").await.is_err());
+    assert!(rsclient
+        .idm_domain_set_ldap_basedn("dc=krabsarekool,dc=example,dc=com")
+        .await
+        .is_ok());
+    assert!(rsclient
+        .idm_domain_set_ldap_basedn("krabsarekool")
+        .await
+        .is_err());
 }

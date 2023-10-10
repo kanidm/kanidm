@@ -917,7 +917,7 @@ impl KanidmClient {
         let response = self
             .client
             .delete(self.make_url(dest))
-            // empty-ish body taht makes the parser happy
+            // empty-ish body that makes the parser happy
             .json(&json!([]));
 
         let response = {
