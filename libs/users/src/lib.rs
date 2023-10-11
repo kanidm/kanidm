@@ -57,3 +57,16 @@ pub fn get_user_name_by_uid(uid: uid_t) -> Option<OsString> {
 
     Some(name)
 }
+
+
+#[test]
+/// just testing these literally don't panic
+fn test_get_effective_uid() {
+    let euid = get_effective_uid();
+    assert!(euid > 0);
+    let egid = get_effective_gid();
+    assert!(egid > 0);
+
+    let username = get_user_name_by_uid(get_current_uid());
+    assert!(username.is_some());
+}
