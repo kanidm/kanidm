@@ -75,9 +75,9 @@ impl fmt::Display for Diagnosis {
                 writeln!(f, "canonicalised to: {}", abs_str)?;
                 abs_str.len() + 1
             }
-            Err(err) => {
-                writeln!(f, "unable to canonicalise path {:?}", err)?;
-                0
+            Err(_) => {
+                writeln!(f, "unable to canonicalise path")?;
+                self.path.to_string_lossy().len() + 1
             }
         };
 
@@ -164,7 +164,7 @@ pub fn diagnose_path(path: &Path) -> Diagnosis {
     //      or show that we have permission denied.
     let mut all_ancestors: Vec<_> = match &abs_path {
         Ok(ap) => ap.ancestors().collect(),
-        Err(_) => Vec::with_capacity(0),
+        Err(_) => path.ancestors().collect(),
     };
 
     let mut ancestors = Vec::with_capacity(all_ancestors.len());

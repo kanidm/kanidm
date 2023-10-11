@@ -123,6 +123,8 @@ impl ServerConfig {
         let mut contents = String::new();
         f.read_to_string(&mut contents).map_err(|e| {
             eprintln!("unable to read contents {:?}", e);
+            let diag = kanidm_lib_file_permissions::diagnose_path(config_path.as_ref());
+            eprintln!("{}", diag);
             e
         })?;
 
