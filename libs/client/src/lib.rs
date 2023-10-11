@@ -32,6 +32,7 @@ pub use reqwest::StatusCode;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use serde_json::error::Error as SerdeJsonError;
+use serde_json::json;
 use tokio::sync::{Mutex, RwLock};
 use url::Url;
 use uuid::Uuid;
@@ -106,6 +107,32 @@ impl Display for KanidmClientBuilder {
         }
         writeln!(f, "use_system_proxies: {}", self.use_system_proxies)
     }
+}
+
+#[test]
+fn test_kanidmclientbuilder_display() {
+    let foo = KanidmClientBuilder::default();
+    println!("{}", foo.to_string());
+    assert!(foo.to_string().contains("verify_ca"));
+
+    let foo = KanidmClientBuilder {
+        address: Some("https://example.com".to_string()),
+        verify_ca: true,
+        verify_hostnames: true,
+        ca: None,
+        connect_timeout: Some(420),
+        use_system_proxies: true,
+    };
+    println!("foo {}", foo.to_string());
+    assert!(foo.to_string().contains("verify_ca: true"));
+    assert!(foo.to_string().contains("verify_hostnames: true"));
+
+    let badness = foo.danger_accept_invalid_hostnames(true);
+    let badness = badness.danger_accept_invalid_certs(true);
+    println!("badness: {}", badness.to_string());
+    assert!(badness.to_string().contains("verify_ca: false"));
+    assert!(badness.to_string().contains("verify_hostnames: false"));
+
 }
 
 #[derive(Debug)]
@@ -890,7 +917,8 @@ impl KanidmClient {
         let response = self
             .client
             .delete(self.make_url(dest))
-            .header(CONTENT_TYPE, APPLICATION_JSON);
+            // empty-ish body that makes the parser happy
+            .json(&json!([]));
 
         let response = {
             let tguard = self.bearer_token.read().await;
@@ -932,12 +960,10 @@ impl KanidmClient {
         dest: &str,
         request: R,
     ) -> Result<(), ClientError> {
-        let req_string = serde_json::to_string(&request).map_err(ClientError::JsonEncode)?;
         let response = self
             .client
             .delete(self.make_url(dest))
-            .body(req_string)
-            .header(CONTENT_TYPE, APPLICATION_JSON);
+            .json(&request);
 
         let response = {
             let tguard = self.bearer_token.read().await;
@@ -1647,6 +1673,7 @@ impl KanidmClient {
             .await
     }
 
+    // TODO: add test coverage
     pub async fn idm_account_credential_update_accept_sha1_totp(
         &self,
         session_token: &CUSessionToken,
@@ -1666,6 +1693,7 @@ impl KanidmClient {
             .await
     }
 
+    // TODO: add test coverage
     pub async fn idm_account_credential_update_backup_codes_generate(
         &self,
         session_token: &CUSessionToken,
@@ -1675,6 +1703,7 @@ impl KanidmClient {
             .await
     }
 
+    // TODO: add test coverage
     pub async fn idm_account_credential_update_primary_remove(
         &self,
         session_token: &CUSessionToken,
@@ -1704,6 +1733,7 @@ impl KanidmClient {
             .await
     }
 
+    // TODO: add test coverage
     pub async fn idm_account_credential_update_passkey_remove(
         &self,
         session_token: &CUSessionToken,

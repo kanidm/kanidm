@@ -621,6 +621,18 @@ impl From<EntryClass> for &'static str {
     }
 }
 
+impl AsRef<str> for EntryClass {
+    fn as_ref(&self) -> &str {
+        self.into()
+    }
+}
+
+impl From<&EntryClass> for &'static str {
+    fn from(value: &EntryClass) -> Self {
+        (*value).into()
+    }
+}
+
 impl From<EntryClass> for String {
     fn from(val: EntryClass) -> Self {
         let s: &'static str = val.into();

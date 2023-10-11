@@ -2872,6 +2872,7 @@ dependencies = [
  "ldap3_client",
  "serde",
  "serde_json",
+ "sketching",
  "tokio",
  "toml",
  "tracing",

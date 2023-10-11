@@ -273,6 +273,8 @@ pub enum OperationError {
     ReplDomainLevelUnsatisfiable,
     ReplDomainUuidMismatch,
     TransactionAlreadyCommitted,
+    /// when you ask for a gid that's lower than a safe minimum
+    GidOverlapsSystemMin(u32),
 }
 
 impl PartialEq for OperationError {

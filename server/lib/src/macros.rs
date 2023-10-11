@@ -119,16 +119,22 @@ macro_rules! run_create_test {
     }};
 }
 
-// #[macro_export]
 #[cfg(test)]
+/// Runs a test with preloaded entries, then modifies based on a filter/list, then runs a given check
 macro_rules! run_modify_test {
     (
+        // expected outcome
         $expect:expr,
+        // things to preload
         $preload_entries:ident,
+        // the targets to modify
         $modify_filter:expr,
+        // changes to make
         $modify_list:expr,
         $internal:expr,
+        // something to run after the preload but before the modification, takes `&mut qs_write`
         $pre_hook:expr,
+        // the result we expect
         $check:expr
     ) => {{
         use crate::be::{Backend, BackendConfig};

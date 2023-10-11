@@ -497,6 +497,7 @@ impl ServiceAccountOpt {
                 }
             }, // end ServiceAccountOpt::Validity
             ServiceAccountOpt::IntoPerson(aopt) => {
+                warn!("This command is deprecated and will be removed in a future release");
                 let client = aopt.copt.to_client(OpType::Write).await;
                 match client
                     .idm_service_account_into_person(aopt.aopts.account_id.as_str())

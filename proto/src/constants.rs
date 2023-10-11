@@ -168,6 +168,7 @@ pub const OAUTH2_SCOPE_READ: &str = "read";
 pub const OAUTH2_SCOPE_SUPPLEMENT: &str = "supplement";
 
 pub const LDAP_ATTR_CN: &str = "cn";
+pub const LDAP_ATTR_DISPLAY_NAME: &str = "displayName";
 pub const LDAP_ATTR_EMAIL_ALTERNATIVE: &str = "emailalternative";
 pub const LDAP_ATTR_EMAIL_PRIMARY: &str = "emailprimary";
 pub const LDAP_ATTR_ENTRYDN: &str = "entrydn";
@@ -181,6 +182,7 @@ pub const LDAP_ATTR_MEMBER: &str = "member";
 pub const LDAP_ATTR_NAME: &str = "name";
 pub const LDAP_ATTR_OBJECTCLASS: &str = "objectClass";
 pub const LDAP_ATTR_OU: &str = "ou";
+pub const LDAP_CLASS_GROUPOFNAMES: &str = "groupofnames";
 
 // rust can't deal with this being compiled out, don't try and #[cfg()] them
 pub const TEST_ATTR_NON_EXIST: &str = "non-exist";

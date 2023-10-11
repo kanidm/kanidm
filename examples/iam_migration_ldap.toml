@@ -1,0 +1,11 @@
+debug = false
+dry_run = true
+schedule = "* * * * *"
+skip_root_check = false
+sync_token="cheesemonkey"
+ldap_uri="ldaps://example.com:636"
+ldap_ca=""
+ldap_sync_dn=""
+ldap_sync_pw=""
+ldap_sync_base_dn=""
+ldap_filter="(objectClass=posixAccount)"

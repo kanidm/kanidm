@@ -22,7 +22,7 @@ use webauthn_authenticator_rs::softpasskey::SoftPasskey;
 use webauthn_authenticator_rs::WebauthnAuthenticator;
 
 use kanidm_client::{ClientError, KanidmClient};
-use kanidmd_testkit::ADMIN_TEST_PASSWORD;
+use kanidmd_testkit::{ADMIN_TEST_PASSWORD, ADMIN_TEST_USER};
 
 const UNIX_TEST_PASSWORD: &str = "unix test user password";
 
@@ -1410,29 +1410,36 @@ async fn test_server_credential_update_session_passkey(rsclient: KanidmClient) {
 #[kanidmd_testkit::test]
 async fn test_server_api_token_lifecycle(rsclient: KanidmClient) {
     let res = rsclient
-        .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
+        .auth_simple_password(ADMIN_TEST_USER, ADMIN_TEST_PASSWORD)
         .await;
     assert!(res.is_ok());
 
+    let test_service_account_username = "test_service";
+
     // Not recommended in production!
     rsclient
-        .idm_group_add_members(BUILTIN_GROUP_IDM_ADMINS_V1.name, &["admin"])
+        .idm_group_add_members(BUILTIN_GROUP_IDM_ADMINS_V1.name, &[ADMIN_TEST_USER])
         .await
         .unwrap();
 
     rsclient
-        .idm_service_account_create("test_service", "Test Service")
+        .idm_service_account_create(test_service_account_username, "Test Service")
         .await
         .expect("Failed to create service account");
 
     let tokens = rsclient
-        .idm_service_account_list_api_token("test_service")
+        .idm_service_account_list_api_token(test_service_account_username)
         .await
         .expect("Failed to list service account api tokens");
     assert!(tokens.is_empty());
 
     let token = rsclient
-        .idm_service_account_generate_api_token("test_service", "test token", None, false)
+        .idm_service_account_generate_api_token(
+            test_service_account_username,
+            "test token",
+            None,
+            false,
+        )
         .await
         .expect("Failed to create service account api token");
 
@@ -1445,7 +1452,7 @@ async fn test_server_api_token_lifecycle(rsclient: KanidmClient) {
         .expect("Embedded jwk not found");
 
     let tokens = rsclient
-        .idm_service_account_list_api_token("test_service")
+        .idm_service_account_list_api_token(test_service_account_username)
         .await
         .expect("Failed to list service account api tokens");
 
@@ -1457,10 +1464,120 @@ async fn test_server_api_token_lifecycle(rsclient: KanidmClient) {
         .expect("Failed to destroy service account api token");
 
     let tokens = rsclient
-        .idm_service_account_list_api_token("test_service")
+        .idm_service_account_list_api_token(test_service_account_username)
         .await
         .expect("Failed to list service account api tokens");
     assert!(tokens.is_empty());
+
+    // test we can add an attribute
+    assert!(rsclient
+        .idm_service_account_add_attr(
+            test_service_account_username,
+            Attribute::Mail.as_ref(),
+            &vec!["test@example.com"]
+        )
+        .await
+        .is_ok());
+
+    // test we can overwrite an attribute
+    let new_displayname = vec!["testing displayname 1235"];
+    assert!(rsclient
+        .idm_service_account_set_attr(
+            test_service_account_username,
+            Attribute::DisplayName.as_ref(),
+            &new_displayname
+        )
+        .await
+        .is_ok());
+    // check it actually set
+    let displayname = rsclient
+        .idm_service_account_get_attr(
+            test_service_account_username,
+            Attribute::DisplayName.as_ref(),
+        )
+        .await
+        .expect("Failed to get displayname")
+        .expect("Failed to unwrap displayname");
+    assert!(new_displayname == displayname);
+
+    rsclient
+        .idm_service_account_purge_attr(test_service_account_username, Attribute::Mail.as_ref())
+        .await
+        .expect("Failed to purge displayname");
+
+    assert!(rsclient
+        .idm_service_account_get_attr(test_service_account_username, Attribute::Mail.as_ref(),)
+        .await
+        .expect("Failed to check mail attr")
+        .is_none());
+
+    assert!(rsclient
+        .idm_service_account_unix_extend(
+            test_service_account_username,
+            Some(58008),
+            Some("/bin/vim")
+        )
+        .await
+        .is_ok());
+
+    assert!(rsclient
+        .idm_service_account_unix_extend(
+            test_service_account_username,
+            Some(1000),
+            Some("/bin/vim")
+        )
+        .await
+        .is_err());
+
+    // because you have to set *something*
+    assert!(rsclient
+        .idm_service_account_update(test_service_account_username, None, None, None)
+        .await
+        .is_err());
+    assert!(rsclient
+        .idm_service_account_update(
+            test_service_account_username,
+            Some(&format!("{}lol", test_service_account_username)),
+            Some(&format!("{}displayzzzz", test_service_account_username)),
+            Some(&[format!("{}@example.crabs", test_service_account_username)]),
+        )
+        .await
+        .is_err());
+
+    let pw = rsclient.idm_service_account_generate_password(test_service_account_username).await.expect("Failed to get a pw for the service account");
+
+    assert!(!pw.is_empty());
+    assert!(pw.is_ascii());
+
+    let res = rsclient.idm_service_account_get_credential_status(test_service_account_username).await;
+    dbg!(&res);
+    assert!(res.is_ok());
+
+    println!(
+        "testing deletion of service account {}",
+        test_service_account_username
+    );
+    assert!(rsclient
+        .idm_service_account_delete(test_service_account_username)
+        .await
+        .is_ok());
+
+
+
+
+    // let's create one and just yolo it into a person
+    // TODO: Turns out this doesn't work because admin doesn't have the right perms to remove `jws_es256_private_key` from the account?
+    // rsclient
+    // .idm_service_account_create(test_service_account_username, "Test Service")
+    // .await
+    // .expect("Failed to create service account");
+
+    // rsclient.idm_service_account_into_person(test_service_account_username).await.expect("Failed to convert service account into person");
+
+    // assert!(rsclient
+    //     .idm_person_account_delete(test_service_account_username)
+    //     .await
+    //     .is_ok());
 
     // No need to test expiry, that's validated in the server internal tests.
 }
@@ -1468,13 +1585,13 @@ async fn test_server_api_token_lifecycle(rsclient: KanidmClient) {
 #[kanidmd_testkit::test]
 async fn test_server_user_auth_token_lifecycle(rsclient: KanidmClient) {
     let res = rsclient
-        .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
+        .auth_simple_password(ADMIN_TEST_USER, ADMIN_TEST_PASSWORD)
         .await;
     assert!(res.is_ok());
 
     // Not recommended in production!
     rsclient
-        .idm_group_add_members(BUILTIN_GROUP_IDM_ADMINS_V1.name, &["admin"])
+        .idm_group_add_members(BUILTIN_GROUP_IDM_ADMINS_V1.name, &[ADMIN_TEST_USER])
         .await
         .unwrap();
 
@@ -1553,7 +1670,7 @@ async fn test_server_user_auth_token_lifecycle(rsclient: KanidmClient) {
 
     // Since the session is revoked, check with the admin.
     let res = rsclient
-        .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
+        .auth_simple_password(ADMIN_TEST_USER, ADMIN_TEST_PASSWORD)
         .await;
     assert!(res.is_ok());
 
@@ -1564,6 +1681,18 @@ async fn test_server_user_auth_token_lifecycle(rsclient: KanidmClient) {
     assert!(tokens.is_empty());
 
     // No need to test expiry, that's validated in the server internal tests.
+
+    // testing idm_account_credential_update_cancel_mfareg
+    let (token, _status) = rsclient
+        .idm_account_credential_update_begin("demo_account")
+        .await
+        .expect("Failed to get token for demo_account");
+
+    println!("trying to cancel the token we just got");
+    assert!(rsclient
+        .idm_account_credential_update_cancel_mfareg(&token)
+        .await
+        .is_ok());
 }
 
 #[kanidmd_testkit::test]
@@ -1793,3 +1922,21 @@ async fn test_server_user_auth_privileged_shortcut(rsclient: KanidmClient) {
         }
     }
 }
+
+// wanna test how long it takes for testkit to start up? here's your biz.
+// turns out  as of 2023-10-11 on my M2 Max, it's about 1.0 seconds per iteration
+// #[kanidmd_testkit::test]
+// fn test_teskit_test_test() {
+//     #[allow(unnameable_test_items)]
+
+//     for _ in 0..15 {
+//         #[kanidmd_testkit::test]
+//         #[allow(dead_code)]
+//         async fn test_teskit_test(rsclient: KanidmClient){
+//             assert!(rsclient.auth_anonymous().await.is_ok());
+//         }
+
+//         tk_test_teskit_test();
+//     }
+
+// }
