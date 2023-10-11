@@ -319,10 +319,10 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
             .into_iter()
             .map(|ent| {
                 let uuid = ent.get_uuid();
-                admin_info!(?uuid, "Checking oauth2 configuration");
+                trace!(?uuid, "Checking oauth2 configuration");
                 // From each entry, attempt to make an oauth2 configuration.
                 if !ent.attribute_equality(Attribute::Class, &EntryClass::OAuth2ResourceServer.into()) {
-                    admin_error!("Missing class oauth2_resource_server");
+                    error!("Missing class oauth2_resource_server");
                     // Check we have oauth2_resource_server class
                     return Err(OperationError::InvalidEntryState);
                 }

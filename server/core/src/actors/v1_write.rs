@@ -41,7 +41,7 @@ pub struct QueryServerWriteV1 {
 
 impl QueryServerWriteV1 {
     pub fn new(idms: Arc<IdmServer>) -> Self {
-        info!("Starting query server v1 worker ...");
+        debug!("Starting a query server v1 worker ...");
         QueryServerWriteV1 { idms }
     }
 

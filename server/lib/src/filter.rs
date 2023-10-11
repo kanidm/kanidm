@@ -10,6 +10,7 @@
 
 use std::cmp::{Ordering, PartialOrd};
 use std::collections::BTreeSet;
+use std::fmt;
 use std::hash::Hash;
 use std::iter;
 use std::num::NonZeroU8;
@@ -111,7 +112,7 @@ pub enum FC<'a> {
 }
 
 /// This is the filters internal representation
-#[derive(Debug, Clone, Hash, PartialEq, PartialOrd, Ord, Eq)]
+#[derive(Clone, Hash, PartialEq, PartialOrd, Ord, Eq)]
 enum FilterComp {
     // This is attr - value
     Eq(AttrString, PartialValue),
@@ -127,6 +128,61 @@ enum FilterComp {
     // Not(Box<FilterComp>),
 }
 
+impl fmt::Debug for FilterComp {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            FilterComp::Eq(attr, pv) => {
+                write!(f, "{} eq {:?}", attr, pv)
+            }
+            FilterComp::Sub(attr, pv) => {
+                write!(f, "{} sub {:?}", attr, pv)
+            }
+            FilterComp::Pres(attr) => {
+                write!(f, "{} pres", attr)
+            }
+            FilterComp::LessThan(attr, pv) => {
+                write!(f, "{} lt {:?}", attr, pv)
+            }
+            FilterComp::And(list) => {
+                write!(f, "(")?;
+                for (i, fc) in list.iter().enumerate() {
+                    write!(f, "{:?}", fc)?;
+                    if i != list.len() - 1 {
+                        write!(f, " and ")?;
+                    }
+                }
+                write!(f, ")")
+            }
+            FilterComp::Or(list) => {
+                write!(f, "(")?;
+                for (i, fc) in list.iter().enumerate() {
+                    write!(f, "{:?}", fc)?;
+                    if i != list.len() - 1 {
+                        write!(f, " or ")?;
+                    }
+                }
+                write!(f, ")")
+            }
+            FilterComp::Inclusion(list) => {
+                write!(f, "(")?;
+                for (i, fc) in list.iter().enumerate() {
+                    write!(f, "{:?}", fc)?;
+                    if i != list.len() - 1 {
+                        write!(f, " inc ")?;
+                    }
+                }
+                write!(f, ")")
+            }
+            FilterComp::AndNot(inner) => {
+                write!(f, "and not ( {:?} )", inner)
+            }
+            FilterComp::SelfUuid => {
+                write!(f, "uuid eq self")
+            }
+        }
+    }
+}
+
 /// This is the fully resolved internal representation. Note the lack of Not and selfUUID
 /// because these are resolved into And(Pres(class), AndNot(term)) and Eq(uuid, ...).
 /// Importantly, we make this accessible to Entry so that it can then match on filters
@@ -137,7 +193,7 @@ enum FilterComp {
 /// where small value - faster index, larger value - slower index. This metadata is extremely
 /// important for the query optimiser to make decisions about how to re-arrange queries
 /// correctly.
-#[derive(Debug, Clone, Eq)]
+#[derive(Clone, Eq)]
 pub enum FilterResolved {
     // This is attr - value - indexed slope factor
     Eq(AttrString, PartialValue, Option<NonZeroU8>),
@@ -151,6 +207,58 @@ pub enum FilterResolved {
     AndNot(Box<FilterResolved>, Option<NonZeroU8>),
 }
 
+impl fmt::Debug for FilterResolved {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            FilterResolved::Eq(attr, pv, idx) => {
+                write!(f, "{} ({:?}) eq {:?}", attr, idx, pv)
+            }
+            FilterResolved::Sub(attr, pv, idx) => {
+                write!(f, "{} ({:?}) sub {:?}", attr, idx, pv)
+            }
+            FilterResolved::Pres(attr, idx) => {
+                write!(f, "{} ({:?}) pres", attr, idx)
+            }
+            FilterResolved::LessThan(attr, pv, idx) => {
+                write!(f, "{} ({:?}) lt {:?}", attr, idx, pv)
+            }
+            FilterResolved::And(list, idx) => {
+                write!(f, "({:?} ", idx)?;
+                for (i, fc) in list.iter().enumerate() {
+                    write!(f, "{:?}", fc)?;
+                    if i != list.len() - 1 {
+                        write!(f, " and ")?;
+                    }
+                }
+                write!(f, ")")
+            }
+            FilterResolved::Or(list, idx) => {
+                write!(f, "({:?} ", idx)?;
+                for (i, fc) in list.iter().enumerate() {
+                    write!(f, "{:?}", fc)?;
+                    if i != list.len() - 1 {
+                        write!(f, " or ")?;
+                    }
+                }
+                write!(f, ")")
+            }
+            FilterResolved::Inclusion(list, idx) => {
+                write!(f, "({:?} ", idx)?;
+                for (i, fc) in list.iter().enumerate() {
+                    write!(f, "{:?}", fc)?;
+                    if i != list.len() - 1 {
+                        write!(f, " inc ")?;
+                    }
+                }
+                write!(f, ")")
+            }
+            FilterResolved::AndNot(inner, idx) => {
+                write!(f, "and not ({:?} {:?} )", idx, inner)
+            }
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FilterInvalid {
     inner: FilterComp,
@@ -161,7 +269,7 @@ pub struct FilterValid {
     inner: FilterComp,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct FilterValidResolved {
     inner: FilterResolved,
 }
@@ -214,9 +322,27 @@ pub enum FilterPlan {
 /// helps to prevent errors at compile time to assert `Filters` are secuerly. checked
 ///
 /// [`Entry`]: ../entry/struct.Entry.html
-#[derive(Debug, Clone, Hash, Ord, Eq, PartialOrd, PartialEq)]
+#[derive(Clone, Hash, Ord, Eq, PartialOrd, PartialEq)]
 pub struct Filter<STATE> {
     state: STATE,
+}
+
+impl fmt::Debug for Filter<FilterValidResolved> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(f, "Filter(Valid) {:?}", self.state.inner)
+    }
+}
+
+impl fmt::Debug for Filter<FilterValid> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(f, "Filter(Valid) {:?}", self.state.inner)
+    }
+}
+
+impl fmt::Debug for Filter<FilterInvalid> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(f, "Filter(Invalid) {:?}", self.state.inner)
+    }
 }
 
 impl Filter<FilterValidResolved> {

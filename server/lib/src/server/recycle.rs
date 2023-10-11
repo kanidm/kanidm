@@ -14,7 +14,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         self.be_txn
             .reap_tombstones(&trim_cid)
             .map_err(|e| {
-                admin_error!(err = ?e, "Tombstone purge operation failed (backend)");
+                error!(err = ?e, "Tombstone purge operation failed (backend)");
                 e
             })
             .map(|_| {

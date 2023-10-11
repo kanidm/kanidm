@@ -778,11 +778,7 @@ impl CoreHandle {
         // Wait on the handles.
         while let Some((handle_name, handle)) = self.handles.pop() {
             if let Err(error) = handle.await {
-                eprintln!(
-                    "Task {} failed to finish: {:?}",
-                    handle_name,
-                    error
-                );
+                eprintln!("Task {} failed to finish: {:?}", handle_name, error);
             }
         }
 
