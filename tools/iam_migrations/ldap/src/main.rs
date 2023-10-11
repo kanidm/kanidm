@@ -793,7 +793,7 @@ async fn test_driver_main() {
         dry_run: false,
         skip_root_check: true,
     };
-    let _ = tracing_forest::test_init();
+    let _ = sketching::test_init();
 
     println!("testing config");
     // because it can't find the profile file it'll just stop

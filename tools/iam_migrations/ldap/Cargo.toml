@@ -42,4 +42,4 @@ clap = { workspace = true, features = ["derive"] }
 clap_complete = { workspace = true }
 
 [dev-dependencies]
-tracing-forest = "0.1.6"
+sketching = { workspace = true }

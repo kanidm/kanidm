@@ -78,7 +78,7 @@ impl KanidmClient {
             .await
     }
 
-    /// Creates a sync token for a given username
+    /// Creates a sync token for a given sync account
     pub async fn idm_sync_account_generate_token(
         &self,
         id: &str,

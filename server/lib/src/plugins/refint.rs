@@ -511,28 +511,6 @@ mod tests {
             )
         );
 
-        // let ea: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-        //     r#"{
-        //     "attrs": {
-        //         "class": ["group"],
-        //         "name": ["testgroup_a"],
-        //         "description": ["testgroup"],
-        //         "uuid": ["d2b496bd-8493-47b7-8142-f568b5cf47ee"]
-        //     }
-        // }"#,
-        // );
-
-        // let eb: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-        //     r#"{
-        //     "attrs": {
-        //         "class": ["group"],
-        //         "name": ["testgroup_b"],
-        //         "description": ["testgroup"],
-        //         "member": ["d2b496bd-8493-47b7-8142-f568b5cf47ee"]
-        //     }
-        // }"#,
-        // );
-
         let preload = vec![ea];
         let create = vec![eb];
 
