@@ -515,7 +515,7 @@ pub enum ServiceAccountOpt {
         #[clap(subcommand)]
         commands: AccountValidity,
     },
-    /// Convert a service account into a person. This is used during the alpha.9
+    /// (Deprecated - due for removal in v1.1.0-15) - Convert a service account into a person. This is used during the alpha.9
     /// to alpha.10 migration to "fix up" accounts that were not previously marked
     /// as persons.
     #[clap(name = "into-person")]
