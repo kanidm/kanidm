@@ -612,7 +612,7 @@ pub fn from_result_value_iter(
     mut iter: impl Iterator<Item = Result<Value, OperationError>>,
 ) -> Result<ValueSet, OperationError> {
     let Some(init) = iter.next() else {
-        admin_error!("Empty value iterator");
+        trace!("Empty value iterator");
         return Err(OperationError::InvalidValueState);
     };
 
@@ -673,7 +673,7 @@ pub fn from_result_value_iter(
 
 pub fn from_value_iter(mut iter: impl Iterator<Item = Value>) -> Result<ValueSet, OperationError> {
     let Some(init) = iter.next() else {
-        admin_error!("Empty value iterator");
+        trace!("Empty value iterator");
         return Err(OperationError::InvalidValueState);
     };
 

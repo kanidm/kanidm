@@ -6,7 +6,7 @@ use crate::prelude::*;
 use kanidm_proto::v1::OperationError;
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone, Eq, PartialOrd, Ord, Hash)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Eq, PartialOrd, Ord, Hash)]
 pub struct Cid {
     // Mental note: Derive ord always checks in order of struct fields.
     pub ts: Duration,
@@ -27,6 +27,12 @@ impl From<DbCidV1> for Cid {
     }
 }
 
+impl fmt::Debug for Cid {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:032}-{}", self.ts.as_nanos(), self.s_uuid)
+    }
+}
+
 impl fmt::Display for Cid {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:032}-{}", self.ts.as_nanos(), self.s_uuid)
@@ -34,7 +40,6 @@ impl fmt::Display for Cid {
 }
 
 impl Cid {
-    #[cfg(test)]
     pub(crate) fn new(s_uuid: Uuid, ts: Duration) -> Self {
         Cid { s_uuid, ts }
     }

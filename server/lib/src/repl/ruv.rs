@@ -232,7 +232,8 @@ impl<'a> fmt::Debug for ReplicationUpdateVectorWriteTransaction<'a> {
         writeln!(f, "RUV RANGE DUMP")?;
         self.ranged
             .iter()
-            .try_for_each(|(s_uuid, ts)| writeln!(f, "* [{s_uuid} {ts:?}]"))
+            .flat_map(|(s_uuid, ts_set)| ts_set.iter().map(|ts| Cid::new(*s_uuid, *ts)))
+            .try_for_each(|cid| writeln!(f, "[{cid}]"))
     }
 }
 
@@ -561,6 +562,7 @@ impl<'a> ReplicationUpdateVectorWriteTransaction<'a> {
     /// db entries are restored, their changesets will re-populate the data that we
     /// need in the RUV at these points. The reason we need these ranges without IDL
     /// is so that trim and replication works properly.
+    #[instrument(level = "debug", name = "ruv::restore", skip_all)]
     pub(crate) fn restore<I>(&mut self, iter: I) -> Result<(), OperationError>
     where
         I: IntoIterator<Item = Cid>,
@@ -589,6 +591,7 @@ impl<'a> ReplicationUpdateVectorWriteTransaction<'a> {
         Ok(())
     }
 
+    #[instrument(level = "debug", name = "ruv::rebuild", skip_all)]
     pub fn rebuild(&mut self, entries: &[Arc<EntrySealedCommitted>]) -> Result<(), OperationError> {
         // Entries and their internal changestates are the "source of truth" for all changes
         // that have ever occurred and are stored on this server. So we use them to rebuild our RUV
@@ -628,7 +631,16 @@ impl<'a> ReplicationUpdateVectorWriteTransaction<'a> {
         });
 
         self.data.extend(rebuild_ruv);
-        self.ranged.extend(rebuild_range);
+
+        // Warning - you can't extend here because this is keyed by UUID. You need
+        // to go through each key and then merge the sets.
+        rebuild_range.into_iter().for_each(|(s_uuid, ts_set)| {
+            if let Some(ex_ts_set) = self.ranged.get_mut(&s_uuid) {
+                ex_ts_set.extend(ts_set)
+            } else {
+                self.ranged.insert(s_uuid, ts_set);
+            }
+        });
 
         Ok(())
     }
@@ -786,6 +798,8 @@ impl<'a> ReplicationUpdateVectorWriteTransaction<'a> {
                         Some(l) => *l,
                         None => {
                             error!("Impossible State - The RUV should not be empty");
+                            error!(ruv = ?self);
+                            error!(?cid);
                             return Err(OperationError::InvalidState);
                         }
                     };
@@ -793,19 +807,25 @@ impl<'a> ReplicationUpdateVectorWriteTransaction<'a> {
                     if cid.ts != last {
                         if !server_range.remove(&cid.ts) {
                             error!("Impossible State - The RUV is corrupted due to missing sid:ts pair in ranged index");
+                            error!(ruv = ?self);
+                            error!(?cid);
                             return Err(OperationError::InvalidState);
                         }
                     } else {
-                        trace!("skip trimming maximum cid for s_uuid {}", cid.s_uuid);
+                        debug!("skip trimming maximum cid for s_uuid {}", cid.s_uuid);
                     }
                     if server_range.is_empty() {
                         // remove_suuid.push(cid.s_uuid);
                         error!("Impossible State - The RUV should not be cleared for a s_uuid!");
+                        error!(ruv = ?self);
+                        error!(?cid);
                         return Err(OperationError::InvalidState);
                     }
                 }
                 None => {
                     error!("Impossible State - The RUV is corrupted due to missing sid in ranged index");
+                    error!(ruv = ?self);
+                    error!(?cid);
                     return Err(OperationError::InvalidState);
                 }
             }
