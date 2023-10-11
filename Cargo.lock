@@ -2895,6 +2895,7 @@ name = "kanidm_client"
 version = "1.1.0-rc.14-dev"
 dependencies = [
  "hyper",
+ "kanidm_lib_file_permissions",
  "kanidm_proto",
  "reqwest",
  "serde",
@@ -3054,6 +3055,7 @@ dependencies = [
  "hyper",
  "kanidm_build_profiles",
  "kanidm_lib_crypto",
+ "kanidm_lib_file_permissions",
  "kanidm_proto",
  "kanidm_utils_users",
  "kanidmd_lib",

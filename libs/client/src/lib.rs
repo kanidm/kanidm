@@ -233,6 +233,8 @@ impl KanidmClientBuilder {
         // error. This check enforces that we get the CORRECT error message instead.
         if !config_path.as_ref().exists() {
             debug!("{:?} does not exist", config_path);
+            let diag = kanidm_lib_file_permissions::diagnose_path(config_path.as_ref());
+            info!(%diag);
             return Ok(self);
         };
 
@@ -263,6 +265,9 @@ impl KanidmClientBuilder {
                         );
                     }
                 };
+                let diag = kanidm_lib_file_permissions::diagnose_path(config_path.as_ref());
+                info!(%diag);
+
                 return Ok(self);
             }
         };

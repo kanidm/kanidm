@@ -121,6 +121,8 @@ async fn submit_admin_req(path: &str, req: AdminTaskRequest, output_mode: Consol
         Ok(s) => s,
         Err(e) => {
             error!(err = ?e, %path, "Unable to connect to socket path");
+            let diag = kanidm_lib_file_permissions::diagnose_path(path.as_ref());
+            info!(%diag);
             return;
         }
     };
@@ -228,21 +230,12 @@ async fn kanidm_main() -> ExitCode {
         return ExitCode::FAILURE;
     };
 
-    let sconfig = match cfg_path.exists() {
-        false => {
-            config_error.push(format!(
-                "Refusing to run - config file {} does not exist",
-                cfg_path.to_str().unwrap_or("<invalid filename>")
-            ));
-            None
+    let sconfig = match ServerConfig::new(&cfg_path) {
+        Ok(c) => Some(c),
+        Err(e) => {
+            config_error.push(format!("Config Parse failure {:?}", e));
+            return ExitCode::FAILURE;
         }
-        true => match ServerConfig::new(&cfg_path) {
-            Ok(c) => Some(c),
-            Err(e) => {
-                config_error.push(format!("Config Parse failure {:?}", e));
-                return ExitCode::FAILURE;
-            }
-        },
     };
 
     // We only allow config file for log level now.
@@ -359,6 +352,8 @@ async fn kanidm_main() -> ExitCode {
                         "DB folder {} may not exist, server startup may FAIL!",
                         db_parent_path.to_str().unwrap_or("invalid file path")
                     );
+                    let diag = kanidm_lib_file_permissions::diagnose_path(&db_path);
+                    info!(%diag);
                 }
 
                 let db_par_path_buf = db_parent_path.to_path_buf();
@@ -455,6 +450,8 @@ async fn kanidm_main() -> ExitCode {
                                     &i_path.to_str().unwrap_or("invalid file path"),
                                     e
                                 );
+                                let diag = kanidm_lib_file_permissions::diagnose_path(&i_path);
+                                info!(%diag);
                                 return ExitCode::FAILURE
                             }
                         };
@@ -474,6 +471,8 @@ async fn kanidm_main() -> ExitCode {
                                     &i_path.to_str().unwrap_or("invalid file path"),
                                     e
                                 );
+                                let diag = kanidm_lib_file_permissions::diagnose_path(&i_path);
+                                info!(%diag);
                                 return ExitCode::FAILURE
                             }
                         };

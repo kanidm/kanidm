@@ -524,12 +524,16 @@ async fn main() -> ExitCode {
                     "Client config missing from {} - cannot start up. Quitting.",
                     cfg_path_str
                 );
+                let diag = kanidm_lib_file_permissions::diagnose_path(cfg_path.as_ref());
+                info!(%diag);
                 return ExitCode::FAILURE
             } else {
                 let cfg_meta = match metadata(&cfg_path) {
                     Ok(v) => v,
                     Err(e) => {
                         error!("Unable to read metadata for {} - {:?}", cfg_path_str, e);
+                        let diag = kanidm_lib_file_permissions::diagnose_path(cfg_path.as_ref());
+                        info!(%diag);
                         return ExitCode::FAILURE
                     }
                 };
@@ -558,12 +562,16 @@ async fn main() -> ExitCode {
                     "unixd config missing from {} - cannot start up. Quitting.",
                     unixd_path_str
                 );
+                let diag = kanidm_lib_file_permissions::diagnose_path(unixd_path.as_ref());
+                info!(%diag);
                 return ExitCode::FAILURE
             } else {
                 let unixd_meta = match metadata(&unixd_path) {
                     Ok(v) => v,
                     Err(e) => {
                         error!("Unable to read metadata for {} - {:?}", unixd_path_str, e);
+                        let diag = kanidm_lib_file_permissions::diagnose_path(unixd_path.as_ref());
+                        info!(%diag);
                         return ExitCode::FAILURE
                     }
                 };
@@ -624,6 +632,8 @@ async fn main() -> ExitCode {
                                 .to_str()
                                 .unwrap_or("<db_parent_path invalid>")
                         );
+            let diag = kanidm_lib_file_permissions::diagnose_path(db_path.as_ref());
+            info!(%diag);
                         return ExitCode::FAILURE
                     }
 
@@ -672,6 +682,8 @@ async fn main() -> ExitCode {
                             "Refusing to run - DB path {} already exists and is not a file.",
                             db_path.to_str().unwrap_or("<db_path invalid>")
                         );
+            let diag = kanidm_lib_file_permissions::diagnose_path(db_path.as_ref());
+            info!(%diag);
                         return ExitCode::FAILURE
                     };
 
@@ -683,6 +695,8 @@ async fn main() -> ExitCode {
                                 db_path.to_str().unwrap_or("<db_path invalid>"),
                                 e
                             );
+            let diag = kanidm_lib_file_permissions::diagnose_path(db_path.as_ref());
+            info!(%diag);
                             return ExitCode::FAILURE
                         }
                     };
