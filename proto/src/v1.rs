@@ -85,6 +85,7 @@ pub enum ConsistencyError {
     ChangelogDesynchronised(u64),
     ChangeStateDesynchronised(u64),
     RuvInconsistent(String),
+    DeniedName(Uuid),
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -275,6 +276,8 @@ pub enum OperationError {
     TransactionAlreadyCommitted,
     /// when you ask for a gid that's lower than a safe minimum
     GidOverlapsSystemMin(u32),
+    /// When a name is denied by the system config
+    ValueDenyName,
 }
 
 impl PartialEq for OperationError {

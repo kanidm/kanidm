@@ -69,7 +69,7 @@ pub struct DomainInfo {
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct SystemConfig {
-    pub(crate) denied_name: HashSet<String>,
+    pub(crate) denied_names: HashSet<String>,
     pub(crate) pw_badlist: HashSet<String>,
 }
 
@@ -161,6 +161,8 @@ pub trait QueryServerTransaction<'a> {
     fn get_accesscontrols(&self) -> &Self::AccessControlsTransactionType;
 
     fn pw_badlist(&self) -> &HashSet<String>;
+
+    fn denied_names(&self) -> &HashSet<String>;
 
     fn get_domain_uuid(&self) -> Uuid;
 
@@ -850,7 +852,7 @@ pub trait QueryServerTransaction<'a> {
     /// as this value is cached in the system_config() value.
     fn get_sc_denied_names(&mut self) -> Result<HashSet<String>, OperationError> {
         self.internal_search_uuid(UUID_SYSTEM_CONFIG)
-            .map(|e| match e.get_ava_iter_iutf8(Attribute::DeniedName) {
+            .map(|e| match e.get_ava_iter_iname(Attribute::DeniedName) {
                 Some(vs_str_iter) => vs_str_iter.map(str::to_string).collect::<HashSet<_>>(),
                 None => HashSet::default(),
             })
@@ -994,6 +996,10 @@ impl<'a> QueryServerTransaction<'a> for QueryServerReadTransaction<'a> {
         &self.system_config.pw_badlist
     }
 
+    fn denied_names(&self) -> &HashSet<String> {
+        &self.system_config.denied_names
+    }
+
     fn get_domain_uuid(&self) -> Uuid {
         self.d_info.d_uuid
     }
@@ -1109,6 +1115,10 @@ impl<'a> QueryServerTransaction<'a> for QueryServerWriteTransaction<'a> {
 
     fn pw_badlist(&self) -> &HashSet<String> {
         &self.system_config.pw_badlist
+    }
+
+    fn denied_names(&self) -> &HashSet<String> {
+        &self.system_config.denied_names
     }
 
     fn get_domain_uuid(&self) -> Uuid {
@@ -1562,11 +1572,11 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
     #[instrument(level = "debug", skip_all)]
     pub(crate) fn reload_system_config(&mut self) -> Result<(), OperationError> {
-        let denied_name = self.get_sc_denied_names()?;
+        let denied_names = self.get_sc_denied_names()?;
         let pw_badlist = self.get_sc_password_badlist()?;
 
         let mut_system_config = self.system_config.get_mut();
-        mut_system_config.denied_name = denied_name;
+        mut_system_config.denied_names = denied_names;
         mut_system_config.pw_badlist = pw_badlist;
         Ok(())
     }
