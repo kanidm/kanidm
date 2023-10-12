@@ -30,6 +30,7 @@ lazy_static! {
         m.insert(Attribute::Es256PrivateKeyDer);
         m.insert(Attribute::IdVerificationEcKey);
         m.insert(Attribute::BadlistPassword);
+        m.insert(Attribute::DeniedName);
         m.insert(Attribute::DomainDisplayName);
         m.insert(Attribute::AuthSessionExpiry);
         m.insert(Attribute::PrivilegeExpiry);
@@ -42,7 +43,7 @@ impl Plugin for Protected {
         "plugin_protected"
     }
 
-    #[instrument(level = "debug", name = "protected_pre_create", skip(_qs, cand, ce))]
+    #[instrument(level = "debug", name = "protected_pre_create", skip_all)]
     fn pre_create(
         _qs: &mut QueryServerWriteTransaction,
         // List of what we will commit that is valid?
@@ -70,7 +71,7 @@ impl Plugin for Protected {
         })
     }
 
-    #[instrument(level = "debug", name = "protected_pre_modify", skip(_qs, cand, me))]
+    #[instrument(level = "debug", name = "protected_pre_modify", skip_all)]
     fn pre_modify(
         _qs: &mut QueryServerWriteTransaction,
         _pre_cand: &[Arc<EntrySealedCommitted>],
@@ -148,6 +149,7 @@ impl Plugin for Protected {
         })
     }
 
+    #[instrument(level = "debug", name = "protected_pre_batch_modify", skip_all)]
     fn pre_batch_modify(
         _qs: &mut QueryServerWriteTransaction,
         _pre_cand: &[Arc<EntrySealedCommitted>],
@@ -231,7 +233,7 @@ impl Plugin for Protected {
             })
     }
 
-    #[instrument(level = "debug", name = "protected_pre_delete", skip(_qs, cand, de))]
+    #[instrument(level = "debug", name = "protected_pre_delete", skip_all)]
     fn pre_delete(
         _qs: &mut QueryServerWriteTransaction,
         // Should these be EntrySealed

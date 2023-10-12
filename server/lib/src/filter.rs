@@ -174,7 +174,7 @@ impl fmt::Debug for FilterComp {
                 write!(f, ")")
             }
             FilterComp::AndNot(inner) => {
-                write!(f, "and not ( {:?} )", inner)
+                write!(f, "not ( {:?} )", inner)
             }
             FilterComp::SelfUuid => {
                 write!(f, "uuid eq self")
@@ -211,19 +211,37 @@ impl fmt::Debug for FilterResolved {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             FilterResolved::Eq(attr, pv, idx) => {
-                write!(f, "{} ({:?}) eq {:?}", attr, idx, pv)
+                write!(
+                    f,
+                    "(s{} {} eq {:?})",
+                    idx.unwrap_or(NonZeroU8::MAX),
+                    attr,
+                    pv
+                )
             }
             FilterResolved::Sub(attr, pv, idx) => {
-                write!(f, "{} ({:?}) sub {:?}", attr, idx, pv)
+                write!(
+                    f,
+                    "(s{} {} sub {:?})",
+                    idx.unwrap_or(NonZeroU8::MAX),
+                    attr,
+                    pv
+                )
             }
             FilterResolved::Pres(attr, idx) => {
-                write!(f, "{} ({:?}) pres", attr, idx)
+                write!(f, "(s{} {} pres)", idx.unwrap_or(NonZeroU8::MAX), attr)
             }
             FilterResolved::LessThan(attr, pv, idx) => {
-                write!(f, "{} ({:?}) lt {:?}", attr, idx, pv)
+                write!(
+                    f,
+                    "(s{} {} lt {:?})",
+                    idx.unwrap_or(NonZeroU8::MAX),
+                    attr,
+                    pv
+                )
             }
             FilterResolved::And(list, idx) => {
-                write!(f, "({:?} ", idx)?;
+                write!(f, "(s{} ", idx.unwrap_or(NonZeroU8::MAX))?;
                 for (i, fc) in list.iter().enumerate() {
                     write!(f, "{:?}", fc)?;
                     if i != list.len() - 1 {
@@ -233,7 +251,7 @@ impl fmt::Debug for FilterResolved {
                 write!(f, ")")
             }
             FilterResolved::Or(list, idx) => {
-                write!(f, "({:?} ", idx)?;
+                write!(f, "(s{} ", idx.unwrap_or(NonZeroU8::MAX))?;
                 for (i, fc) in list.iter().enumerate() {
                     write!(f, "{:?}", fc)?;
                     if i != list.len() - 1 {
@@ -243,7 +261,7 @@ impl fmt::Debug for FilterResolved {
                 write!(f, ")")
             }
             FilterResolved::Inclusion(list, idx) => {
-                write!(f, "({:?} ", idx)?;
+                write!(f, "(s{} ", idx.unwrap_or(NonZeroU8::MAX))?;
                 for (i, fc) in list.iter().enumerate() {
                     write!(f, "{:?}", fc)?;
                     if i != list.len() - 1 {
@@ -253,7 +271,7 @@ impl fmt::Debug for FilterResolved {
                 write!(f, ")")
             }
             FilterResolved::AndNot(inner, idx) => {
-                write!(f, "and not ({:?} {:?} )", idx, inner)
+                write!(f, "not (s{} {:?})", idx.unwrap_or(NonZeroU8::MAX), inner)
             }
         }
     }

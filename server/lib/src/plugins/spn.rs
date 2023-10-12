@@ -74,6 +74,7 @@ impl Plugin for Spn {
         Self::post_modify_inner(qs, pre_cand, cand)
     }
 
+    #[instrument(level = "debug", name = "spn_post_repl_incremental", skip_all)]
     fn post_repl_incremental(
         qs: &mut QueryServerWriteTransaction,
         pre_cand: &[Arc<EntrySealedCommitted>],

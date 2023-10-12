@@ -95,7 +95,7 @@ impl DynGroup {
         Ok(())
     }
 
-    #[instrument(level = "debug", name = "dyngroup_reload", skip(qs))]
+    #[instrument(level = "debug", name = "dyngroup_reload", skip_all)]
     pub fn reload(qs: &mut QueryServerWriteTransaction) -> Result<(), OperationError> {
         let ident_internal = Identity::from_internal();
         // Internal search all our definitions.

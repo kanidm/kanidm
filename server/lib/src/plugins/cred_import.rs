@@ -20,7 +20,7 @@ impl Plugin for CredImport {
     #[instrument(
         level = "debug",
         name = "password_import_pre_create_transform",
-        skip(_qs, cand, _ce)
+        skip_all
     )]
     fn pre_create_transform(
         _qs: &mut QueryServerWriteTransaction,
@@ -30,11 +30,7 @@ impl Plugin for CredImport {
         Self::modify_inner(cand)
     }
 
-    #[instrument(
-        level = "debug",
-        name = "password_import_pre_modify",
-        skip(_qs, cand, _me)
-    )]
+    #[instrument(level = "debug", name = "password_import_pre_modify", skip_all)]
     fn pre_modify(
         _qs: &mut QueryServerWriteTransaction,
         _pre_cand: &[Arc<EntrySealedCommitted>],

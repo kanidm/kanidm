@@ -1988,9 +1988,7 @@ impl Backend {
         idxkeys: Vec<IdxKey>,
         vacuum: bool,
     ) -> Result<Self, OperationError> {
-        info!("DB tickets -> {:?}", cfg.pool_size);
-        info!("Profile -> {}", env!("KANIDM_PROFILE_NAME"));
-        info!("CPU Flags -> {}", env!("KANIDM_CPU_FLAGS"));
+        debug!(db_tickets = ?cfg.pool_size, profile = %env!("KANIDM_PROFILE_NAME"), cpu_flags = %env!("KANIDM_CPU_FLAGS"));
 
         // If in memory, reduce pool to 1
         if cfg.path.is_empty() {

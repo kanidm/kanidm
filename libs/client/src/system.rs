@@ -31,18 +31,12 @@ impl KanidmClient {
         Ok(list.unwrap_or_default())
     }
 
-    pub async fn system_denied_names_append(
-        &self,
-        list: &Vec<String>,
-    ) -> Result<(), ClientError> {
+    pub async fn system_denied_names_append(&self, list: &Vec<String>) -> Result<(), ClientError> {
         self.perform_post_request("/v1/system/_attr/denied_name", list)
             .await
     }
 
-    pub async fn system_denied_names_remove(
-        &self,
-        list: &Vec<String>,
-    ) -> Result<(), ClientError> {
+    pub async fn system_denied_names_remove(&self, list: &Vec<String>) -> Result<(), ClientError> {
         self.perform_delete_request_with_body("/v1/system/_attr/denied_name", list)
             .await
     }
