@@ -1138,9 +1138,9 @@ impl<'a> QueryServerTransaction<'a> for QueryServerWriteTransaction<'a> {
 impl QueryServer {
     pub fn new(be: Backend, schema: Schema, domain_name: String) -> Result<Self, OperationError> {
         let (s_uuid, d_uuid) = {
-            let mut wr = be.write().unwrap();
-            let s_uuid = wr.get_db_s_uuid().unwrap();
-            let d_uuid = wr.get_db_d_uuid().unwrap();
+            let mut wr = be.write()?;
+            let s_uuid = wr.get_db_s_uuid()?;
+            let d_uuid = wr.get_db_d_uuid()?;
             #[allow(clippy::expect_used)]
             wr.commit()
                 .expect("Critical - unable to commit db_s_uuid or db_d_uuid");

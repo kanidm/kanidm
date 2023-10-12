@@ -1,6 +1,5 @@
-// #[cfg(target_os = "windows")]
-// use std::os::windows::fs::MetadataExt;
-
+use core::fmt;
+use std::{path::Path, fs::Metadata};
 /// Check a given file's metadata is read-only for the current user (true = read-only) Stub function if you're building for windows!
 pub fn readonly(meta: &Metadata) -> bool {
     eprintln!(

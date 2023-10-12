@@ -3,7 +3,6 @@ name = "kanidm_tools"
 default-run = "kanidm"
 description = "Kanidm Client Tools"
 documentation = "https://kanidm.github.io/kanidm/stable/"
-
 version = { workspace = true }
 authors = { workspace = true }
 rust-version = { workspace = true }
