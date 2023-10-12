@@ -113,14 +113,18 @@ pub struct ServerConfig {
 
 impl ServerConfig {
     pub fn new<P: AsRef<Path>>(config_path: P) -> Result<Self, std::io::Error> {
-        let mut f = File::open(config_path).map_err(|e| {
+        let mut f = File::open(config_path.as_ref()).map_err(|e| {
             eprintln!("Unable to open config file [{:?}] 🥺", e);
+            let diag = kanidm_lib_file_permissions::diagnose_path(config_path.as_ref());
+            eprintln!("{}", diag);
             e
         })?;
 
         let mut contents = String::new();
         f.read_to_string(&mut contents).map_err(|e| {
             eprintln!("unable to read contents {:?}", e);
+            let diag = kanidm_lib_file_permissions::diagnose_path(config_path.as_ref());
+            eprintln!("{}", diag);
             e
         })?;
 
