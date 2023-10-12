@@ -212,7 +212,7 @@ impl Plugin for MemberOf {
         Attribute::MemberOf.as_ref()
     }
 
-    #[instrument(level = "debug", name = "memberof_post_create", skip(qs, cand, ce))]
+    #[instrument(level = "debug", name = "memberof_post_create", skip_all)]
     fn post_create(
         qs: &mut QueryServerWriteTransaction,
         cand: &[Entry<EntrySealed, EntryCommitted>],
@@ -263,7 +263,7 @@ impl Plugin for MemberOf {
         Self::post_modify_inner(qs, pre_cand, cand, &me.ident)
     }
 
-    #[instrument(level = "debug", name = "memberof_post_delete", skip(qs, cand, _de))]
+    #[instrument(level = "debug", name = "memberof_post_delete", skip_all)]
     fn post_delete(
         qs: &mut QueryServerWriteTransaction,
         cand: &[Entry<EntrySealed, EntryCommitted>],

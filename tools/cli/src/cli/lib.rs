@@ -27,7 +27,6 @@ use uuid::Uuid;
 
 include!("../opt/kanidm.rs");
 
-pub mod badlist;
 pub mod common;
 pub mod domain;
 pub mod group;
@@ -39,8 +38,8 @@ pub mod raw;
 pub mod recycle;
 pub mod serviceaccount;
 pub mod session;
-pub mod session_expiry;
 pub mod synch;
+pub mod system_config;
 mod webauthn;
 
 /// Throws an error and exits the program when we get an error
@@ -145,6 +144,7 @@ impl SystemOpt {
     pub fn debug(&self) -> bool {
         match self {
             SystemOpt::PwBadlist { commands } => commands.debug(),
+            SystemOpt::DeniedNames { commands } => commands.debug(),
             SystemOpt::Oauth2 { commands } => commands.debug(),
             SystemOpt::Domain { commands } => commands.debug(),
             SystemOpt::Synch { commands } => commands.debug(),
@@ -156,6 +156,7 @@ impl SystemOpt {
     pub async fn exec(&self) {
         match self {
             SystemOpt::PwBadlist { commands } => commands.exec().await,
+            SystemOpt::DeniedNames { commands } => commands.exec().await,
             SystemOpt::Oauth2 { commands } => commands.exec().await,
             SystemOpt::Domain { commands } => commands.exec().await,
             SystemOpt::Synch { commands } => commands.exec().await,

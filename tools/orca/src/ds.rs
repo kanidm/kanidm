@@ -1,5 +1,8 @@
 use hashbrown::{HashMap, HashSet};
-use kanidm_proto::constants::{ATTR_UID, LDAP_ATTR_DISPLAY_NAME, LDAP_ATTR_CN, LDAP_ATTR_OBJECTCLASS, LDAP_ATTR_OU, LDAP_ATTR_GROUPS};
+use kanidm_proto::constants::{
+    ATTR_UID, LDAP_ATTR_CN, LDAP_ATTR_DISPLAY_NAME, LDAP_ATTR_GROUPS, LDAP_ATTR_OBJECTCLASS,
+    LDAP_ATTR_OU,
+};
 use std::time::{Duration, Instant};
 
 use ldap3_proto::proto::*;
@@ -87,7 +90,10 @@ impl DirectoryServer {
         // Check if ou=people and ou=group exist
         let res = self
             .ldap
-            .search(LdapFilter::Equality(LDAP_ATTR_OU.to_string(), "people".to_string()))
+            .search(LdapFilter::Equality(
+                LDAP_ATTR_OU.to_string(),
+                "people".to_string(),
+            ))
             .await?;
 
         if res.is_empty() {
@@ -114,7 +120,10 @@ impl DirectoryServer {
 
         let res = self
             .ldap
-            .search(LdapFilter::Equality(LDAP_ATTR_OU.to_string(),LDAP_ATTR_GROUPS.to_string()))
+            .search(LdapFilter::Equality(
+                LDAP_ATTR_OU.to_string(),
+                LDAP_ATTR_GROUPS.to_string(),
+            ))
             .await?;
 
         if res.is_empty() {
@@ -145,7 +154,10 @@ impl DirectoryServer {
             // does it already exist?
             let res = self
                 .ldap
-                .search(LdapFilter::Equality(LDAP_ATTR_CN.to_string(), u.to_string()))
+                .search(LdapFilter::Equality(
+                    LDAP_ATTR_CN.to_string(),
+                    u.to_string(),
+                ))
                 .await?;
 
             if !res.is_empty() {

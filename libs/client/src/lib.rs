@@ -132,7 +132,6 @@ fn test_kanidmclientbuilder_display() {
     println!("badness: {}", badness.to_string());
     assert!(badness.to_string().contains("verify_ca: false"));
     assert!(badness.to_string().contains("verify_hostnames: false"));
-
 }
 
 #[derive(Debug)]
@@ -965,10 +964,7 @@ impl KanidmClient {
         dest: &str,
         request: R,
     ) -> Result<(), ClientError> {
-        let response = self
-            .client
-            .delete(self.make_url(dest))
-            .json(&request);
+        let response = self.client.delete(self.make_url(dest)).json(&request);
 
         let response = {
             let tguard = self.bearer_token.read().await;

@@ -152,7 +152,7 @@ impl<'a> Hash for (dyn IdlCacheKeyToRef + 'a) {
 
 impl<'a> PartialOrd for (dyn IdlCacheKeyToRef + 'a) {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        self.keyref().partial_cmp(&other.keyref())
+        Some(self.cmp(&other.keyref()))
     }
 }
 

@@ -121,6 +121,11 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 .iter()
                 .any(|e| e.attribute_equality(Attribute::Uuid, &PVUUID_DOMAIN_INFO));
         }
+        if !self.changed_system_config {
+            self.changed_system_config = del_cand
+                .iter()
+                .any(|e| e.attribute_equality(Attribute::Uuid, &PVUUID_SYSTEM_CONFIG));
+        }
         if !self.changed_sync_agreement {
             self.changed_sync_agreement = del_cand
                 .iter()
@@ -135,6 +140,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             acp_reload = ?self.changed_acp,
             oauth2_reload = ?self.changed_oauth2,
             domain_reload = ?self.changed_domain,
+            system_config_reload = ?self.changed_system_config,
             changed_sync_agreement = ?self.changed_sync_agreement
         );
 

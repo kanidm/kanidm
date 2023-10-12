@@ -1703,7 +1703,10 @@ impl Value {
                 }
             }
             Value::Spn(n, r) => format!("{n}@{r}"),
-            _ => unreachable!("You've specified the wrong type for the attribute, got: {:?}", self),
+            _ => unreachable!(
+                "You've specified the wrong type for the attribute, got: {:?}",
+                self
+            ),
         }
     }
 

@@ -142,6 +142,7 @@ pub static ref SCHEMA_ATTR_DOMAIN_UUID: SchemaAttribute = SchemaAttribute {
     syntax: SyntaxType::Uuid,
     ..Default::default()
 };
+
 pub static ref SCHEMA_ATTR_DOMAIN_SSID: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_DOMAIN_SSID,
     name: Attribute::DomainSsid.into(),
@@ -150,6 +151,14 @@ pub static ref SCHEMA_ATTR_DOMAIN_SSID: SchemaAttribute = SchemaAttribute {
     index: vec![IndexType::Equality],
     unique: true,
     syntax: SyntaxType::Utf8String,
+    ..Default::default()
+};
+
+pub static ref SCHEMA_ATTR_DENIED_NAME: SchemaAttribute = SchemaAttribute {
+    uuid: UUID_SCHEMA_ATTR_DENIED_NAME,
+    name: Attribute::DeniedName.into(),
+    description: "Iname values that are not allowed to be used in 'name'.".to_string(),
+    syntax: SyntaxType::Utf8StringIname,
     ..Default::default()
 };
 
@@ -733,7 +742,8 @@ pub static ref SCHEMA_CLASS_SYSTEM_CONFIG: SchemaClass = SchemaClass {
         Attribute::Description.into(),
         Attribute::BadlistPassword.into(),
         Attribute::AuthSessionExpiry.into(),
-        Attribute::PrivilegeExpiry.into()
+        Attribute::PrivilegeExpiry.into(),
+        Attribute::DeniedName.into()
         ],
     ..Default::default()
 };

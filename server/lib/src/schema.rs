@@ -2902,9 +2902,9 @@ mod tests {
 
         assert_eq!(
             e_service_person.validate(&schema),
-            Err(SchemaError::ExcludesNotSatisfied(
-                vec![EntryClass::Person.to_string()]
-            ))
+            Err(SchemaError::ExcludesNotSatisfied(vec![
+                EntryClass::Person.to_string()
+            ]))
         );
 
         // These are valid configurations.

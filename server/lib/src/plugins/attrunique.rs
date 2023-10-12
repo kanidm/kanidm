@@ -498,8 +498,7 @@ mod tests {
     // Test entry in db, and same name, reject.
     #[test]
     fn test_pre_create_name_unique() {
-
-        let e: Entry<EntryInit,EntryNew> = entry_init!(
+        let e: Entry<EntryInit, EntryNew> = entry_init!(
             (Attribute::Class, EntryClass::Person.to_value()),
             (Attribute::Name, Value::new_iname("testperson")),
             (Attribute::Description, Value::new_utf8s("testperson")),
@@ -523,7 +522,7 @@ mod tests {
     // Test two entries in create that would have same name, reject.
     #[test]
     fn test_pre_create_name_unique_2() {
-          let e: Entry<EntryInit,EntryNew> = entry_init!(
+        let e: Entry<EntryInit, EntryNew> = entry_init!(
             (Attribute::Class, EntryClass::Person.to_value()),
             (Attribute::Name, Value::new_iname("testperson")),
             (Attribute::Description, Value::new_utf8s("testperson")),
@@ -550,12 +549,12 @@ mod tests {
     // A mod to something that exists, reject.
     #[test]
     fn test_pre_modify_name_unique() {
-        let ea: Entry<EntryInit,EntryNew> = entry_init!(
+        let ea: Entry<EntryInit, EntryNew> = entry_init!(
             (Attribute::Class, EntryClass::Group.to_value()),
             (Attribute::Name, Value::new_iname("testgroup_a")),
             (Attribute::Description, Value::new_utf8s("testgroup"))
         );
-        let eb: Entry<EntryInit,EntryNew> = entry_init!(
+        let eb: Entry<EntryInit, EntryNew> = entry_init!(
             (Attribute::Class, EntryClass::Group.to_value()),
             (Attribute::Name, Value::new_iname("testgroup_b")),
             (Attribute::Description, Value::new_utf8s("testgroup"))
@@ -585,12 +584,12 @@ mod tests {
     // Two items modded to have the same value, reject.
     #[test]
     fn test_pre_modify_name_unique_2() {
-        let ea: Entry<EntryInit,EntryNew> = entry_init!(
+        let ea: Entry<EntryInit, EntryNew> = entry_init!(
             (Attribute::Class, EntryClass::Group.to_value()),
             (Attribute::Name, Value::new_iname("testgroup_a")),
             (Attribute::Description, Value::new_utf8s("testgroup"))
         );
-        let eb: Entry<EntryInit,EntryNew> = entry_init!(
+        let eb: Entry<EntryInit, EntryNew> = entry_init!(
             (Attribute::Class, EntryClass::Group.to_value()),
             (Attribute::Name, Value::new_iname("testgroup_b")),
             (Attribute::Description, Value::new_utf8s("testgroup"))

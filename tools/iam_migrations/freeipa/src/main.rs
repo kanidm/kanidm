@@ -23,7 +23,9 @@ use base64urlsafedata::Base64UrlSafeData;
 use chrono::Utc;
 use clap::Parser;
 use cron::Schedule;
-use kanidm_proto::constants::{ATTR_UID, LDAP_ATTR_CN, LDAP_ATTR_OBJECTCLASS, LDAP_CLASS_GROUPOFNAMES};
+use kanidm_proto::constants::{
+    ATTR_UID, LDAP_ATTR_CN, LDAP_ATTR_OBJECTCLASS, LDAP_CLASS_GROUPOFNAMES,
+};
 use kanidmd_lib::prelude::{Attribute, EntryClass};
 use std::collections::BTreeMap;
 use std::fs::metadata;

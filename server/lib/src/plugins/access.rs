@@ -31,7 +31,7 @@ impl Plugin for AccessExtract {
     ) -> Result<(), OperationError> {
     }
 
-    #[instrument(level = "debug", name = "accessextract_pre_modify", skip(_qs, cand, _me))]
+    #[instrument(level = "debug", name = "accessextract_pre_modify", skip_all)]
     fn pre_modify(
         _qs: &mut QueryServerWriteTransaction,
         _cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
@@ -39,7 +39,7 @@ impl Plugin for AccessExtract {
     ) -> Result<(), OperationError> {
     }
 
-    #[instrument(level = "debug", name = "accessextract_pre_delete", skip(_qs, cand, de))]
+    #[instrument(level = "debug", name = "accessextract_pre_delete", skip_all)]
     fn pre_delete(
         _qs: &mut QueryServerWriteTransaction,
         // Should these be EntrySealed

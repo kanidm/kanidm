@@ -1392,9 +1392,10 @@ lazy_static! {
             Attribute::Uuid,
             Attribute::Description,
             Attribute::BadlistPassword,
+            Attribute::DeniedName,
         ],
-        modify_removed_attrs: vec![Attribute::BadlistPassword],
-        modify_present_attrs: vec![Attribute::BadlistPassword],
+        modify_removed_attrs: vec![Attribute::BadlistPassword, Attribute::DeniedName],
+        modify_present_attrs: vec![Attribute::BadlistPassword, Attribute::DeniedName],
         ..Default::default()
     };
 

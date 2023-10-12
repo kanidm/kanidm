@@ -284,6 +284,29 @@ their own mail.
 kanidm group add-members idm_people_self_write_mail_priv demo_user --name idm_admin
 ```
 
+### Denied Names
+
+Users of Kanidm can change their name at any time. However, there are some cases where you may wish
+to deny some name values from being usable.
+
+To achieve this you can set names to be in the denied-name list:
+
+```bash
+kanidm system denied-names append <name> [<name> ...]
+```
+
+You can display the currently denied names with:
+
+```bash
+kanidm system denied-names show
+```
+
+To allow a name to be used again it can be removed from the list:
+
+```
+kanidm system denied-names remove <name> [<name> ...]
+```
+
 ## Why Can't I Change admin With idm\_admin?
 
 As a security mechanism there is a distinction between "accounts" and "high permission accounts".

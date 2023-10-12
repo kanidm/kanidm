@@ -98,6 +98,7 @@ impl Plugin for NameHistory {
         "plugin_name_history"
     }
 
+    #[instrument(level = "debug", name = "name_history::pre_create_transform", skip_all)]
     fn pre_create_transform(
         qs: &mut QueryServerWriteTransaction,
         cand: &mut Vec<EntryInvalidNew>,
@@ -106,6 +107,7 @@ impl Plugin for NameHistory {
         Self::handle_name_creation(cand, qs.get_txn_cid())
     }
 
+    #[instrument(level = "debug", name = "name_history::pre_modify", skip_all)]
     fn pre_modify(
         qs: &mut QueryServerWriteTransaction,
         pre_cand: &[Arc<EntrySealedCommitted>],
@@ -115,6 +117,7 @@ impl Plugin for NameHistory {
         Self::handle_name_updates(pre_cand, cand, qs.get_txn_cid())
     }
 
+    #[instrument(level = "debug", name = "name_history::pre_batch_modify", skip_all)]
     fn pre_batch_modify(
         qs: &mut QueryServerWriteTransaction,
         pre_cand: &[Arc<EntrySealedCommitted>],

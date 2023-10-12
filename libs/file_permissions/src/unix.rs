@@ -142,7 +142,7 @@ impl fmt::Display for Diagnosis {
 
         writeln!(
             f,
-            "\n  note that accesibility does not account for ACL's or MAC"
+            "\n  note that accessibility does not account for ACL's or MAC"
         )?;
         writeln!(f, "-- end diagnosis")
     }

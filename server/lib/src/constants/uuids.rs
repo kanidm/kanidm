@@ -237,8 +237,8 @@ pub const UUID_SCHEMA_ATTR_AUTH_SESSION_EXPIRY: Uuid =
     uuid!("00000000-0000-0000-0000-ffff00000141");
 pub const UUID_SCHEMA_ATTR_AUTH_PRIVILEGE_EXPIRY: Uuid =
     uuid!("00000000-0000-0000-0000-ffff00000142");
-
 pub const UUID_SCHEMA_ATTR_IMAGE: Uuid = uuid!("00000000-0000-0000-0000-ffff00000143");
+pub const UUID_SCHEMA_ATTR_DENIED_NAME: Uuid = uuid!("00000000-0000-0000-0000-ffff00000144");
 
 // System and domain infos
 // I'd like to strongly criticise william of the past for making poor choices about these allocations.
