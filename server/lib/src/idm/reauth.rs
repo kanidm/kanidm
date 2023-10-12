@@ -35,6 +35,8 @@ impl<'a> IdmServerAuthTransaction<'a> {
         // Setup the account record.
         let account = Account::try_from_entry_ro(entry.as_ref(), &mut self.qs_read)?;
 
+        let account_policy = (*self.account_policy).clone();
+
         security_info!(
             username = %account.name,
             issue = ?issue,
@@ -130,6 +132,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
         // Create a re-auth session
         let (auth_session, state) = AuthSession::new_reauth(
             account,
+            account_policy,
             ident.session_id,
             session,
             session_cred_id,

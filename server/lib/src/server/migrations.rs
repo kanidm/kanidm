@@ -113,13 +113,18 @@ impl QueryServer {
             }
         }
 
+        // Reload if anything in migrations requires it.
         write_txn.reload()?;
         // Migrations complete. Init idm will now set the version as needed.
+        write_txn.initialise_idm()?;
 
-        write_txn.initialise_idm().and_then(|_| {
-            write_txn.set_phase(ServerPhase::Running);
-            write_txn.commit()
-        })?;
+        // Now force everything to reload.
+        write_txn.force_all_reload();
+        // We are read to run
+        write_txn.set_phase(ServerPhase::Running);
+
+        // Commit all changes, this also triggers the reload.
+        write_txn.commit()?;
 
         // Here is where in the future we will need to apply domain version increments.
         // The actually migrations are done in a transaction though, this just needs to
@@ -544,6 +549,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             SCHEMA_ATTR_SYNC_TOKEN_SESSION.clone().into(),
             SCHEMA_ATTR_UNIX_PASSWORD.clone().into(),
             SCHEMA_ATTR_USER_AUTH_TOKEN_SESSION.clone().into(),
+            SCHEMA_ATTR_DENIED_NAME.clone().into(),
         ];
 
         let r = idm_schema

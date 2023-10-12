@@ -1,5 +1,7 @@
 use hashbrown::{HashMap, HashSet};
-use kanidm_proto::constants::{ATTR_UID, LDAP_ATTR_DISPLAY_NAME, LDAP_CLASS_GROUPOFNAMES, LDAP_ATTR_OBJECTCLASS, LDAP_ATTR_CN};
+use kanidm_proto::constants::{
+    ATTR_UID, LDAP_ATTR_CN, LDAP_ATTR_DISPLAY_NAME, LDAP_ATTR_OBJECTCLASS, LDAP_CLASS_GROUPOFNAMES,
+};
 use ldap3_proto::proto::*;
 use std::time::{Duration, Instant};
 use uuid::Uuid;

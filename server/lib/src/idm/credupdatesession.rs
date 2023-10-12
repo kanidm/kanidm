@@ -1271,8 +1271,8 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
         // we check the password as "lower case" to help eliminate possibilities
         // also, when pw_badlist_cache is read from DB, it is read as Value (iutf8 lowercase)
         if self
-            .account_policy
-            .pw_badlist_cache()
+            .qs_read
+            .pw_badlist()
             .contains(&cleartext.to_lowercase())
         {
             security_info!("Password found in badlist, rejecting");

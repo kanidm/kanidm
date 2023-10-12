@@ -62,21 +62,33 @@ async fn driver_main(opt: Opt) {
     let mut f = match File::open(&opt.ldap_sync_config) {
         Ok(f) => f,
         Err(e) => {
-            error!("Unable to open ldap sync config from '{}' [{:?}] 🥺", &opt.ldap_sync_config.display(), e);
+            error!(
+                "Unable to open ldap sync config from '{}' [{:?}] 🥺",
+                &opt.ldap_sync_config.display(),
+                e
+            );
             return;
         }
     };
 
     let mut contents = String::new();
     if let Err(e) = f.read_to_string(&mut contents) {
-        error!("unable to read file '{}': {:?}", &opt.ldap_sync_config.display(), e);
+        error!(
+            "unable to read file '{}': {:?}",
+            &opt.ldap_sync_config.display(),
+            e
+        );
         return;
     };
 
     let sync_config: Config = match toml::from_str(contents.as_str()) {
         Ok(c) => c,
         Err(e) => {
-            eprintln!("Unable to parse config from '{}' error: {:?}", &opt.ldap_sync_config.display(), e);
+            eprintln!(
+                "Unable to parse config from '{}' error: {:?}",
+                &opt.ldap_sync_config.display(),
+                e
+            );
             return;
         }
     };
@@ -800,7 +812,7 @@ async fn test_driver_main() {
     assert_eq!(driver_main(testopt.clone()).await, ());
     println!("done testing missing config");
 
-    let testopt = Opt{
+    let testopt = Opt {
         client_config: PathBuf::from(format!("{}/Cargo.toml", env!("CARGO_MANIFEST_DIR"))),
         ldap_sync_config: PathBuf::from(format!("{}/Cargo.toml", env!("CARGO_MANIFEST_DIR"))),
         ..testopt
@@ -809,9 +821,15 @@ async fn test_driver_main() {
     println!("valid file path, invalid contents");
     assert_eq!(driver_main(testopt.clone()).await, ());
     println!("done with valid file path, invalid contents");
-    let testopt = Opt{
-        client_config: PathBuf::from(format!("{}/../../../examples/iam_migration_ldap.toml", env!("CARGO_MANIFEST_DIR"))),
-        ldap_sync_config: PathBuf::from(format!("{}/../../../examples/iam_migration_ldap.toml", env!("CARGO_MANIFEST_DIR"))),
+    let testopt = Opt {
+        client_config: PathBuf::from(format!(
+            "{}/../../../examples/iam_migration_ldap.toml",
+            env!("CARGO_MANIFEST_DIR")
+        )),
+        ldap_sync_config: PathBuf::from(format!(
+            "{}/../../../examples/iam_migration_ldap.toml",
+            env!("CARGO_MANIFEST_DIR")
+        )),
         ..testopt
     };
 
