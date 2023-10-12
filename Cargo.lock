@@ -2985,6 +2985,7 @@ dependencies = [
  "serde",
  "serde_json",
  "shellexpand",
+ "sketching",
  "time",
  "tokio",
  "tracing",

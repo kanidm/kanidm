@@ -52,7 +52,8 @@ url = { workspace = true, features = ["serde"] }
 uuid = { workspace = true }
 zxcvbn = { workspace = true }
 lazy_static.workspace = true
-regex.workspace = true
+regex = { workspace = true }
+sketching = { workspace = true }
 
 [dependencies.cursive]
 version = "0.20.0"
