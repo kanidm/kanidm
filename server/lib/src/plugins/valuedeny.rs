@@ -73,7 +73,7 @@ impl Plugin for ValueDeny {
                 }
                 Err(err) => {
                     error!(?err);
-                    panic!();
+                    results.push(Err(ConsistencyError::QueryServerSearchFailure))
                 }
             }
         }

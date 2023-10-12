@@ -386,39 +386,36 @@ pub trait ReplicationUpdateVectorTransaction {
                     if *cv == &intersect {
                         trace!("{:?} is consistent!", ck);
                     } else {
-                        admin_warn!("{:?} is NOT consistent! IDL's differ", ck);
+                        error!("{:?} is NOT consistent! IDL's differ", ck);
                         debug_assert!(false);
                         results.push(Err(ConsistencyError::RuvInconsistent(ck.to_string())));
                     }
                     check_next = check_iter.next();
                     snap_next = snap_iter.next();
                 }
+                // Because we are zipping between these two sets, we only need to compare when
+                // the CID's are equal. Otherwise we need the other iter to "catch up"
                 Ordering::Less => {
-                    // Due to deletes, it can be that the check ruv is missing whole entries
-                    // in a rebuild.
-                    admin_warn!("{:?} is NOT consistent! CID missing from RUV", ck);
-                    // debug_assert!(false);
-                    // results.push(Err(ConsistencyError::RuvInconsistent(ck.to_string())));
                     check_next = check_iter.next();
                 }
                 Ordering::Greater => {
-                    admin_warn!("{:?} is NOT consistent! CID should not exist in RUV", sk);
-                    // debug_assert!(false);
-                    // results.push(Err(ConsistencyError::RuvInconsistent(sk.to_string())));
                     snap_next = snap_iter.next();
                 }
             }
         }
 
         while let Some((ck, _cv)) = &check_next {
-            admin_warn!("{:?} is NOT consistent! CID missing from RUV", ck);
+            debug!("{:?} may not be consistent! CID missing from RUV", ck);
             // debug_assert!(false);
             // results.push(Err(ConsistencyError::RuvInconsistent(ck.to_string())));
             check_next = check_iter.next();
         }
 
         while let Some((sk, _sv)) = &snap_next {
-            admin_warn!("{:?} is NOT consistent! CID should not exist in RUV", sk);
+            debug!(
+                "{:?} may not be consistent! CID should not exist in RUV",
+                sk
+            );
             // debug_assert!(false);
             // results.push(Err(ConsistencyError::RuvInconsistent(sk.to_string())));
             snap_next = snap_iter.next();
@@ -431,7 +428,7 @@ pub trait ReplicationUpdateVectorTransaction {
         for cid in snapshot_ruv.keys() {
             if let Some(server_range) = snapshot_range.get(&cid.s_uuid) {
                 if !server_range.contains(&cid.ts) {
-                    admin_warn!(
+                    warn!(
                         "{:?} is NOT consistent! server range is missing cid in index",
                         cid
                     );
@@ -441,7 +438,7 @@ pub trait ReplicationUpdateVectorTransaction {
                     )));
                 }
             } else {
-                admin_warn!(
+                warn!(
                     "{:?} is NOT consistent! server range is not present",
                     cid.s_uuid
                 );

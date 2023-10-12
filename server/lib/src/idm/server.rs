@@ -1210,7 +1210,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
                             &self.audit_tx,
                             self.webauthn,
                             &self.domain_keys.uat_jwt_signer,
-                            &self.qs_read.pw_badlist(),
+                            self.qs_read.pw_badlist(),
                         )
                         .map(|aus| {
                             // Inspect the result:
