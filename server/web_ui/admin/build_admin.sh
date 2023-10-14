@@ -9,9 +9,9 @@ if [ ! -f build_admin.sh ]; then
 fi
 
 if [ -z "${BUILD_FLAGS}" ]; then
-    # BUILD_FLAGS="--release"
+    BUILD_FLAGS="--release"
     # DURING DEV
-    BUILD_FLAGS="--dev"
+    # BUILD_FLAGS="--dev"
 fi
 
 if [ -z "$(which rsync)" ]; then
