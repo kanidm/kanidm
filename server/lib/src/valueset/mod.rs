@@ -10,6 +10,7 @@ use openssl::pkey::Public;
 use smolset::SmolSet;
 use time::OffsetDateTime;
 // use std::fmt::Debug;
+use sshkey_attest::proto::PublicKey as SshPublicKey;
 use webauthn_rs::prelude::AttestedPasskey as DeviceKeyV4;
 use webauthn_rs::prelude::Passkey as PasskeyV4;
 
@@ -147,7 +148,7 @@ pub trait ValueSetT: std::fmt::Debug + DynClone {
         Err(OperationError::InvalidValueState)
     }
 
-    fn get_ssh_tag(&self, _tag: &str) -> Option<&str> {
+    fn get_ssh_tag(&self, _tag: &str) -> Option<&SshPublicKey> {
         None
     }
 
@@ -197,7 +198,7 @@ pub trait ValueSetT: std::fmt::Debug + DynClone {
         None
     }
 
-    fn as_sshpubkey_str_iter(&self) -> Option<Box<dyn Iterator<Item = &str> + '_>> {
+    fn as_sshpubkey_string_iter(&self) -> Option<Box<dyn Iterator<Item = String> + '_>> {
         None
     }
 
@@ -318,7 +319,7 @@ pub trait ValueSetT: std::fmt::Debug + DynClone {
         None
     }
 
-    fn as_sshkey_map(&self) -> Option<&BTreeMap<String, String>> {
+    fn as_sshkey_map(&self) -> Option<&BTreeMap<String, SshPublicKey>> {
         None
     }
 

@@ -784,7 +784,7 @@ impl QueryServerReadV1 {
                     .and_then(|e| {
                         // From the entry, turn it into the value
                         e.get_ava_iter_sshpubkeys(Attribute::SshPublicKey)
-                            .map(|i| i.map(|s| s.to_string()).collect())
+                            .map(|i| i.collect())
                     })
                     .unwrap_or_else(|| {
                         // No matching entry? Return none.
@@ -848,7 +848,7 @@ impl QueryServerReadV1 {
                         // From the entry, turn it into the value
                         e.get_ava_set(Attribute::SshPublicKey).and_then(|vs| {
                             // Get the one tagged value
-                            vs.get_ssh_tag(&tag).map(str::to_string)
+                            vs.get_ssh_tag(&tag).map(|pk| pk.to_string())
                         })
                     })
                     .unwrap_or_else(|| {

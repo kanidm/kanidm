@@ -1023,21 +1023,23 @@ impl QueryServerWriteV1 {
     #[instrument(
         level = "info",
         name = "ssh_key_create",
-        skip(self, uat, uuid_or_name, tag, key, filter, eventid)
+        skip_all,
         fields(uuid = ?eventid)
     )]
     pub async fn handle_sshkeycreate(
         &self,
         uat: Option<String>,
         uuid_or_name: String,
-        tag: String,
-        key: String,
+        tag: &str,
+        key: &str,
         filter: Filter<FilterInvalid>,
         eventid: Uuid,
     ) -> Result<(), OperationError> {
+        let v_sk = Value::new_sshkey_str(tag, key)?;
+
         // Because this is from internal, we can generate a real modlist, rather
         // than relying on the proto ones.
-        let ml = ModifyList::new_append(Attribute::SshPublicKey, Value::new_sshkey(tag, key));
+        let ml = ModifyList::new_append(Attribute::SshPublicKey, v_sk);
 
         self.modify_from_internal_parts(uat, &uuid_or_name, &ml, filter)
             .await
@@ -1046,7 +1048,7 @@ impl QueryServerWriteV1 {
     #[instrument(
         level = "info",
         name = "idm_account_unix_extend",
-        skip(self, uat, uuid_or_name, ux, eventid)
+        skip_all,
         fields(uuid = ?eventid)
     )]
     pub async fn handle_idmaccountunixextend(

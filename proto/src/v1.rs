@@ -279,6 +279,12 @@ pub enum OperationError {
     GidOverlapsSystemMin(u32),
     /// When a name is denied by the system config
     ValueDenyName,
+    // What about something like this for unique errors?
+    // ValueSet errors
+    VS0001IncomingReplSshPublicKey,
+    // Value Errors
+    VL0001ValueSshPublicKeyString,
+    SC0001IncomingSshPublicKey,
 }
 
 impl PartialEq for OperationError {

@@ -4,6 +4,8 @@ use std::fmt;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
+use sshkey_attest::proto::PublicKey as SshPublicKey;
+
 use hashbrown::HashSet;
 use kanidm_proto::v1::{
     CUExtPortal, CURegState, CUStatus, CredentialDetail, PasskeyDetail, PasswordFeedback,
@@ -100,6 +102,7 @@ pub(crate) struct CredentialUpdateSession {
     unixcred_can_edit: bool,
 
     // Ssh Keys
+    sshkeys: BTreeMap<String, SshPublicKey>,
     sshpubkey_can_edit: bool,
 
     // Passkeys that have been configured.
@@ -441,7 +444,10 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             Access::Allow(attrs) => attrs.contains(Attribute::UnixPassword.as_ref()),
         };
 
-        let unixcred_can_edit = eperm_search_unixcred && eperm_mod_unixcred && eperm_rem_unixcred;
+        let unixcred_can_edit = account.unix_extn().is_some()
+            && eperm_search_unixcred
+            && eperm_mod_unixcred
+            && eperm_rem_unixcred;
 
         let eperm_search_sshpubkey = match &eperm.search {
             Access::Denied => false,
@@ -461,8 +467,10 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             Access::Allow(attrs) => attrs.contains(Attribute::SshPublicKey.as_ref()),
         };
 
-        let sshpubkey_can_edit =
-            eperm_search_sshpubkey && eperm_mod_sshpubkey && eperm_rem_sshpubkey;
+        let sshpubkey_can_edit = account.unix_extn().is_some()
+            && eperm_search_sshpubkey
+            && eperm_mod_sshpubkey
+            && eperm_rem_sshpubkey;
 
         let ext_cred_portal_can_view = if let Some(sync_parent_uuid) = account.sync_parent_uuid {
             // In theory this is always granted due to how access controls work, but we check anyway.
@@ -548,6 +556,15 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             None
         };
 
+        let sshkeys = if sshpubkey_can_edit {
+            account
+                .unix_extn()
+                .map(|uext| uext.sshkeys().clone())
+                .unwrap_or_default()
+        } else {
+            BTreeMap::default()
+        };
+
         // let devicekeys = account.devicekeys.clone();
         let devicekeys = BTreeMap::default();
 
@@ -578,6 +595,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             primary_can_edit,
             unixcred,
             unixcred_can_edit,
+            sshkeys,
             sshpubkey_can_edit,
             passkeys,
             passkeys_can_edit,
@@ -1020,15 +1038,10 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         };
 
         if session.primary_can_edit {
-            match &session.primary {
-                Some(ncred) => {
-                    modlist.push_mod(Modify::Purged(Attribute::PrimaryCredential.into()));
-                    let vcred = Value::new_credential("primary", ncred.clone());
-                    modlist.push_mod(Modify::Present(Attribute::PrimaryCredential.into(), vcred));
-                }
-                None => {
-                    modlist.push_mod(Modify::Purged(Attribute::PrimaryCredential.into()));
-                }
+            modlist.push_mod(Modify::Purged(Attribute::PrimaryCredential.into()));
+            if let Some(ncred) = &session.primary {
+                let vcred = Value::new_credential("primary", ncred.clone());
+                modlist.push_mod(Modify::Present(Attribute::PrimaryCredential.into(), vcred));
             };
         };
 
@@ -1042,6 +1055,22 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 modlist.push_mod(Modify::Present(Attribute::PassKeys.into(), v_pk));
             });
         };
+
+        if session.unixcred_can_edit {
+            modlist.push_mod(Modify::Purged(Attribute::UnixPassword.into()));
+            if let Some(ncred) = &session.unixcred {
+                let vcred = Value::new_credential("unix", ncred.clone());
+                modlist.push_mod(Modify::Present(Attribute::UnixPassword.into(), vcred));
+            }
+        }
+
+        if session.sshpubkey_can_edit {
+            modlist.push_mod(Modify::Purged(Attribute::SshPublicKey.into()));
+            for (tag, pk) in &session.sshkeys {
+                let v_sk = Value::SshKey(tag.clone(), pk.clone());
+                modlist.push_mod(Modify::Present(Attribute::SshPublicKey.into(), v_sk));
+            }
+        }
 
         // Apply to the account!
         trace!(?modlist, "processing change");

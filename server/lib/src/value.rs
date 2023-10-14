@@ -23,7 +23,7 @@ use openssl::ec::EcKey;
 use openssl::pkey::Private;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
-use sshkeys::PublicKey as SshPublicKey;
+use sshkey_attest::proto::PublicKey as SshPublicKey;
 use time::OffsetDateTime;
 use url::Url;
 use uuid::Uuid;
@@ -934,7 +934,7 @@ pub enum Value {
     Refer(Uuid),
     JsonFilt(ProtoFilter),
     Cred(String, Credential),
-    SshKey(String, String),
+    SshKey(String, SshPublicKey),
     SecretValue(String),
     Spn(String, String),
     Uint32(u32),
@@ -1270,21 +1270,22 @@ impl Value {
         }
     }
 
-    pub fn new_sshkey_str(tag: &str, key: &str) -> Self {
-        Value::SshKey(tag.to_string(), key.to_string())
-    }
-
-    pub fn new_sshkey(tag: String, key: String) -> Self {
-        Value::SshKey(tag, key)
+    pub fn new_sshkey_str(tag: &str, key: &str) -> Result<Self, OperationError> {
+        SshPublicKey::from_string(key)
+            .map(|pk| Value::SshKey(tag.to_string(), pk))
+            .map_err(|err| {
+                error!(?err, "value sshkey failed to parse string");
+                OperationError::VL0001ValueSshPublicKeyString
+            })
     }
 
     pub fn is_sshkey(&self) -> bool {
         matches!(&self, Value::SshKey(_, _))
     }
 
-    pub fn get_sshkey(&self) -> Option<&str> {
+    pub fn get_sshkey(&self) -> Option<String> {
         match &self {
-            Value::SshKey(_, key) => Some(key.as_str()),
+            Value::SshKey(_, key) => Some(key.to_string()),
             _ => None,
         }
     }
@@ -1587,12 +1588,14 @@ impl Value {
         }
     }
 
-    pub fn to_sshkey(self) -> Option<(String, String)> {
+    /*
+    pub(crate) fn to_sshkey(self) -> Option<(String, SshPublicKey)> {
         match self {
             Value::SshKey(tag, k) => Some((tag, k)),
             _ => None,
         }
     }
+    */
 
     pub fn to_spn(self) -> Option<(String, String)> {
         match self {
@@ -1692,18 +1695,7 @@ impl Value {
             Value::Iname(s) => s.clone(),
             Value::Uuid(u) => u.as_hyphenated().to_string(),
             // We display the tag and fingerprint.
-            Value::SshKey(tag, key) =>
-            // Check it's really an sshkey in the
-            // supplemental data.
-            {
-                match SshPublicKey::from_string(key) {
-                    Ok(spk) => {
-                        let fp = spk.fingerprint();
-                        format!("{}: {}", tag, fp.hash)
-                    }
-                    Err(_) => format!("{tag}: corrupted ssh public key"),
-                }
-            }
+            Value::SshKey(tag, key) => format!("{}: {}", tag, key.to_string()),
             Value::Spn(n, r) => format!("{n}@{r}"),
             _ => unreachable!(
                 "You've specified the wrong type for the attribute, got: {:?}",
@@ -1742,9 +1734,9 @@ impl Value {
                     && Value::validate_singleline(s)
             }
 
-            Value::SshKey(s, key) => {
-                SshPublicKey::from_string(key).is_ok()
-                    && Value::validate_str_escapes(s)
+            Value::SshKey(s, _key) => {
+                Value::validate_str_escapes(s)
+                    // && Value::validate_iname(s)
                     && Value::validate_singleline(s)
             }
 
@@ -1886,30 +1878,30 @@ mod tests {
         "QK1JSAQqVfGhA8lLbJHmnQ/b/KMl2lzzp7SXej0wPUfvI/IP3NGb8irLzq8+JssAzXGJ+HMql+mNHiSuPaktbFzZ6y",
         "ikMR6Rx/psU07nAkxKZDEYpNVv william@amethyst");
 
-        let sk1 = Value::new_sshkey_str("tag", ecdsa);
+        let sk1 = Value::new_sshkey_str("tag", ecdsa).expect("Invalid ssh key");
         assert!(sk1.validate());
         // to proto them
         let psk1 = sk1.to_proto_string_clone();
-        assert_eq!(psk1, "tag: oMh0SibdRGV2APapEdVojzSySx9PuhcklWny5LP0Mg4");
+        assert_eq!(psk1, format!("tag: {}", ecdsa));
 
-        let sk2 = Value::new_sshkey_str("tag", ed25519);
+        let sk2 = Value::new_sshkey_str("tag", ed25519).expect("Invalid ssh key");
         assert!(sk2.validate());
         let psk2 = sk2.to_proto_string_clone();
-        assert_eq!(psk2, "tag: UR7mRCLLXmZNsun+F2lWO3hG3PORk/0JyjxPQxDUcdc");
+        assert_eq!(psk2, format!("tag: {}", ed25519));
 
-        let sk3 = Value::new_sshkey_str("tag", rsa);
+        let sk3 = Value::new_sshkey_str("tag", rsa).expect("Invalid ssh key");
         assert!(sk3.validate());
         let psk3 = sk3.to_proto_string_clone();
-        assert_eq!(psk3, "tag: sWugDdWeE4LkmKer8hz7ERf+6VttYPIqD0ULXR3EUcU");
+        assert_eq!(psk3, format!("tag: {}", rsa));
 
         let sk4 = Value::new_sshkey_str("tag", "ntaouhtnhtnuehtnuhotnuhtneouhtneouh");
-        assert!(!sk4.validate());
+        assert!(sk4.is_err());
 
         let sk5 = Value::new_sshkey_str(
             "tag",
             "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAeGW1P6Pc2rPq0XqbRaDKBcXZUPRklo",
         );
-        assert!(!sk5.validate());
+        assert!(sk5.is_err());
     }
 
     /*

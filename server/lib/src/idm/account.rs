@@ -24,17 +24,23 @@ use crate::schema::SchemaTransaction;
 use crate::value::{IntentTokenState, PartialValue, SessionState, Value};
 use kanidm_lib_crypto::CryptoPolicy;
 
+use sshkey_attest::proto::PublicKey as SshPublicKey;
+
 #[derive(Debug, Clone)]
 pub struct UnixExtensions {
     ucred: Option<Credential>,
     _shell: Option<String>,
-    sshkeys: Vec<String>,
+    sshkeys: BTreeMap<String, SshPublicKey>,
     _gidnumber: u32,
 }
 
 impl UnixExtensions {
     pub(crate) fn ucred(&self) -> Option<&Credential> {
         self.ucred.as_ref()
+    }
+
+    pub(crate) fn sshkeys(&self) -> &BTreeMap<String, SshPublicKey> {
+        &self.sshkeys
     }
 }
 
@@ -159,8 +165,9 @@ macro_rules! try_from_entry {
             ui_hints.insert(UiHint::PosixAccount);
 
             let sshkeys = $value
-                .get_ava_iter_sshpubkeys(Attribute::SshPublicKey)
-                .map(|i| i.map(|s| s.to_string()).collect())
+                .get_ava_set(Attribute::SshPublicKey)
+                .and_then(|vs| vs.as_sshkey_map())
+                .cloned()
                 .unwrap_or_default();
 
             let ucred = $value

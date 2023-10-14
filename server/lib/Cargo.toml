@@ -61,7 +61,7 @@ serde_json = { workspace = true }
 sketching = { workspace = true }
 smartstring = { workspace = true, features = ["serde"] }
 smolset = { workspace = true }
-sshkeys = { workspace = true }
+sshkey-attest = { workspace = true }
 time = { workspace = true, features = ["serde", "std"] }
 tokio = { workspace = true, features = ["net", "sync", "time", "rt"] }
 tokio-util = { workspace = true, features = ["codec"] }
