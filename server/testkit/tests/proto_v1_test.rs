@@ -2,6 +2,7 @@
 use std::path::Path;
 use std::time::SystemTime;
 
+use kanidm_proto::constants::KSESSIONID;
 use kanidm_proto::internal::ImageValue;
 use kanidm_proto::v1::{
     ApiToken, AuthCredential, AuthIssueSession, AuthMech, AuthRequest, AuthResponse, AuthState,
@@ -1826,7 +1827,7 @@ async fn start_password_session(
     };
     assert_eq!(res.status(), 200);
 
-    let session_id = res.headers().get("x-kanidm-auth-session-id").unwrap();
+    let session_id = res.headers().get(KSESSIONID).unwrap();
 
     let authreq = AuthRequest {
         step: AuthStep::Begin(AuthMech::Password),
@@ -1836,7 +1837,7 @@ async fn start_password_session(
     let res = match client
         .post(rsclient.make_url("/v1/auth"))
         .header("Content-Type", "application/json")
-        .header("x-kanidm-auth-session-id", session_id)
+        .header(KSESSIONID, session_id)
         .body(authreq)
         .send()
         .await
@@ -1854,7 +1855,7 @@ async fn start_password_session(
     let res = match client
         .post(rsclient.make_url("/v1/auth"))
         .header("Content-Type", "application/json")
-        .header("x-kanidm-auth-session-id", session_id)
+        .header(KSESSIONID, session_id)
         .body(authreq)
         .send()
         .await

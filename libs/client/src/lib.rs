@@ -24,7 +24,7 @@ use std::os::unix::fs::MetadataExt;
 use std::path::Path;
 use std::time::Duration;
 
-use kanidm_proto::constants::{APPLICATION_JSON, ATTR_NAME};
+use kanidm_proto::constants::{APPLICATION_JSON, ATTR_NAME, KOPID, KSESSIONID, KVERSION};
 use kanidm_proto::v1::*;
 use reqwest::header::CONTENT_TYPE;
 use reqwest::Response;
@@ -47,10 +47,6 @@ mod service_account;
 mod sync_account;
 mod system;
 
-pub const KOPID: &str = "X-KANIDM-OPID";
-pub const KSESSIONID: &str = "X-KANIDM-AUTH-SESSION-ID";
-
-const KVERSION: &str = "X-KANIDM-VERSION";
 const EXPECT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[derive(Debug)]

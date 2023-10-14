@@ -23,7 +23,7 @@ macro_rules! assert_no_cache {
         // Check we have correct nocache headers.
         let cache_header: &str = $response
             .headers()
-            .get("cache-control")
+            .get(http::header::CACHE_CONTROL)
             .expect("missing cache-control header")
             .to_str()
             .expect("invalid cache-control header");
@@ -151,9 +151,10 @@ async fn test_oauth2_openid_basic_flow(rsclient: KanidmClient) {
         .expect("Failed to send discovery preflight request.");
 
     assert!(response.status() == reqwest::StatusCode::OK);
+
     let cors_header: &str = response
         .headers()
-        .get("access-control-allow-origin")
+        .get(http::header::ACCESS_CONTROL_ALLOW_ORIGIN)
         .expect("missing access-control-allow-origin header")
         .to_str()
         .expect("invalid access-control-allow-origin header");
@@ -646,7 +647,7 @@ async fn test_oauth2_openid_public_flow(rsclient: KanidmClient) {
     assert!(response.status() == reqwest::StatusCode::OK);
     let cors_header: &str = response
         .headers()
-        .get("access-control-allow-origin")
+        .get(http::header::ACCESS_CONTROL_ALLOW_ORIGIN)
         .expect("missing access-control-allow-origin header")
         .to_str()
         .expect("invalid access-control-allow-origin header");

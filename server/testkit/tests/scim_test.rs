@@ -105,6 +105,7 @@ async fn test_scim_sync_get(rsclient: KanidmClient) {
         .default_headers(headers)
         .build()
         .unwrap();
+
     // here we test the /ui/ endpoint which should have the headers
     let response = match client.get(rsclient.make_url("/scim/v1/Sync")).send().await {
         Ok(value) => value,
@@ -117,12 +118,30 @@ async fn test_scim_sync_get(rsclient: KanidmClient) {
         }
     };
     eprintln!("response: {:#?}", response);
-    // assert_eq!(response.status(), 200);
+    assert!(response.status().is_client_error());
 
-    // eprintln!(
-    //     "csp headers: {:#?}",
-    //     response.headers().get("content-security-policy")
-    // );
-    // assert_ne!(response.headers().get("content-security-policy"), None);
-    // eprintln!("{}", response.text().await.unwrap());
+    // check that the CSP headers are coming back
+    eprintln!(
+        "csp headers: {:#?}",
+        response.headers().get(http::header::CONTENT_SECURITY_POLICY)
+    );
+    assert_ne!(response.headers().get(http::header::CONTENT_SECURITY_POLICY), None);
+
+    // test that the proper content type comes back
+    let url = rsclient.make_url("/scim/v1/Sink");
+    let response = match client.get(url.clone()).send().await  {
+        Ok(value) => value,
+        Err(error) => {
+            panic!(
+                "Failed to query {:?} : {:#?}",
+                url,
+                error
+            );
+        }
+    };
+    assert!( response.status().is_success());
+    let content_type = response.headers().get(http::header::CONTENT_TYPE).unwrap();
+    assert!(content_type.to_str().unwrap().contains("text/html"));
+    assert!(response.text().await.unwrap().contains("Sink"));
+
 }

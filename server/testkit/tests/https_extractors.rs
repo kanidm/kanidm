@@ -4,6 +4,7 @@ use std::{
 };
 
 use kanidm_client::KanidmClient;
+use kanidm_proto::constants::X_FORWARDED_FOR;
 
 const DEFAULT_IP_ADDRESS: IpAddr = IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1));
 
@@ -18,7 +19,7 @@ async fn dont_trust_xff_send_header(rsclient: KanidmClient) {
     let res = client
         .get(rsclient.make_url("/v1/debug/ipinfo"))
         .header(
-            "X-Forwarded-For",
+            X_FORWARDED_FOR,
             "An invalid header that will get through!!!",
         )
         .send()
@@ -41,7 +42,7 @@ async fn dont_trust_xff_dont_send_header(rsclient: KanidmClient) {
     let res = client
         .get(rsclient.make_url("/v1/debug/ipinfo"))
         .header(
-            "X-Forwarded-For",
+            X_FORWARDED_FOR,
             "An invalid header that will get through!!!",
         )
         .send()
@@ -69,7 +70,7 @@ async fn trust_xff_send_invalid_header_single_value(rsclient: KanidmClient) {
     let res = client
         .get(rsclient.make_url("/v1/debug/ipinfo"))
         .header(
-            "X-Forwarded-For",
+            X_FORWARDED_FOR,
             "An invalid header that will get through!!!",
         )
         .send()
@@ -91,7 +92,7 @@ async fn trust_xff_send_invalid_header_multiple_values(rsclient: KanidmClient) {
     let res = client
         .get(rsclient.make_url("/v1/debug/ipinfo"))
         .header(
-            "X-Forwarded-For",
+            X_FORWARDED_FOR,
             "203.0.113.195_noooo_my_ip_address, 2001:db8:85a3:8d3:1319:8a2e:370:7348",
         )
         .send()
@@ -111,7 +112,7 @@ async fn trust_xff_send_valid_header_single_ipv4_address(rsclient: KanidmClient)
         .unwrap();
     let res = client
         .get(rsclient.make_url("/v1/debug/ipinfo"))
-        .header("X-Forwarded-For", ip_addr)
+        .header(X_FORWARDED_FOR, ip_addr)
         .send()
         .await
         .unwrap();
@@ -133,7 +134,7 @@ async fn trust_xff_send_valid_header_single_ipv6_address(rsclient: KanidmClient)
         .unwrap();
     let res = client
         .get(rsclient.make_url("/v1/debug/ipinfo"))
-        .header("X-Forwarded-For", ip_addr)
+        .header(X_FORWARDED_FOR, ip_addr)
         .send()
         .await
         .unwrap();
@@ -155,7 +156,7 @@ async fn trust_xff_send_valid_header_multiple_address(rsclient: KanidmClient) {
         .unwrap();
     let res = client
         .get(rsclient.make_url("/v1/debug/ipinfo"))
-        .header("X-Forwarded-For", first_ip_addr)
+        .header(X_FORWARDED_FOR, first_ip_addr)
         .send()
         .await
         .unwrap();
@@ -177,7 +178,7 @@ async fn trust_xff_send_valid_header_multiple_address(rsclient: KanidmClient) {
         .unwrap();
     let res = client
         .get(rsclient.make_url("/v1/debug/ipinfo"))
-        .header("X-Forwarded-For", second_ip_addr)
+        .header(X_FORWARDED_FOR, second_ip_addr)
         .send()
         .await
         .unwrap();

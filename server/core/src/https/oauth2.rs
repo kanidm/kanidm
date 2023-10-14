@@ -1,12 +1,13 @@
+use super::errors::WebError;
 use super::middleware::KOpId;
-use super::v1::{json_rest_event_get, json_rest_event_post};
-use super::{to_axum_response, HttpOperationError, ServerState};
+use super::ServerState;
 use axum::extract::{Path, Query, State};
 use axum::middleware::from_fn;
 use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::{Extension, Form, Json, Router};
 use axum_macros::debug_handler;
+use compact_jwt::{JwkKeySet, OidcToken};
 use http::header::{
     ACCESS_CONTROL_ALLOW_HEADERS, ACCESS_CONTROL_ALLOW_ORIGIN, AUTHORIZATION, CONTENT_TYPE,
     LOCATION, WWW_AUTHENTICATE,
@@ -14,9 +15,7 @@ use http::header::{
 use http::{HeaderMap, HeaderValue, StatusCode};
 use hyper::Body;
 use kanidm_proto::constants::APPLICATION_JSON;
-use kanidm_proto::internal::{ImageType, ImageValue};
-use kanidm_proto::oauth2::{AuthorisationResponse, OidcDiscoveryResponse};
-use kanidm_proto::v1::Entry as ProtoEntry;
+use kanidm_proto::oauth2::{AuthorisationResponse, OidcDiscoveryResponse, AccessTokenResponse};
 use kanidmd_lib::idm::oauth2::{
     AccessTokenIntrospectRequest, AccessTokenRequest, AuthorisationRequest, AuthorisePermitSuccess,
     AuthoriseResponse, ErrorResponse, Oauth2Error, TokenRevokeRequest,
@@ -24,9 +23,9 @@ use kanidmd_lib::idm::oauth2::{
 use kanidmd_lib::prelude::f_eq;
 use kanidmd_lib::prelude::*;
 use kanidmd_lib::value::PartialValue;
-use kanidmd_lib::valueset::image::ImageValueThings;
 use serde::{Deserialize, Serialize};
 
+// TODO: merge this into a value in WebError later
 pub struct HTTPOauth2Error(Oauth2Error);
 
 impl IntoResponse for HTTPOauth2Error {
@@ -34,17 +33,18 @@ impl IntoResponse for HTTPOauth2Error {
         let HTTPOauth2Error(error) = self;
 
         if let Oauth2Error::AuthenticationRequired = error {
-            #[allow(clippy::unwrap_used)]
-            Response::builder()
-                .status(StatusCode::UNAUTHORIZED)
-                .header(WWW_AUTHENTICATE, "Bearer")
-                .header(ACCESS_CONTROL_ALLOW_ORIGIN, "*")
-                .body(Body::empty())
-                .unwrap()
+            (
+                StatusCode::UNAUTHORIZED,
+                [
+                    (WWW_AUTHENTICATE, "Bearer"),
+                    (ACCESS_CONTROL_ALLOW_ORIGIN, "*"),
+                ],
+            )
+                .into_response()
         } else {
             let err = ErrorResponse {
                 error: error.to_string(),
-               ..Default::default()
+                ..Default::default()
             };
 
             let body = match serde_json::to_string(&err) {
@@ -54,299 +54,71 @@ impl IntoResponse for HTTPOauth2Error {
                     format!("{:?}", err)
                 }
             };
-            #[allow(clippy::unwrap_used)]
-            Response::builder()
-                .status(StatusCode::BAD_REQUEST)
-                .header(ACCESS_CONTROL_ALLOW_ORIGIN, "*")
-                .body(Body::from(body))
-                .unwrap()
 
+            (
+                StatusCode::BAD_REQUEST,
+                [(ACCESS_CONTROL_ALLOW_ORIGIN, "*")],
+                body,
+            )
+                .into_response()
         }
-            .into_response()
     }
 }
 
 // == Oauth2 Configuration Endpoints ==
 
-/// List all the OAuth2 Resource Servers
-pub async fn oauth2_get(
-    State(state): State<ServerState>,
-    Extension(kopid): Extension<KOpId>,
-) -> impl IntoResponse {
-    let filter = filter_all!(f_eq(
-        Attribute::Class,
-        EntryClass::OAuth2ResourceServer.into()
-    ));
-    json_rest_event_get(state, None, filter, kopid).await
-}
-
-pub async fn oauth2_basic_post(
-    State(state): State<ServerState>,
-    Extension(kopid): Extension<KOpId>,
-    Json(obj): Json<ProtoEntry>,
-) -> impl IntoResponse {
-    let classes = vec![
-        EntryClass::OAuth2ResourceServer.to_string(),
-        EntryClass::OAuth2ResourceServerBasic.to_string(),
-        EntryClass::Object.to_string(),
-    ];
-    json_rest_event_post(state, classes, obj, kopid).await
-}
-
-pub async fn oauth2_public_post(
-    State(state): State<ServerState>,
-    Extension(kopid): Extension<KOpId>,
-    Json(obj): Json<ProtoEntry>,
-) -> impl IntoResponse {
-    let classes = vec![
-        EntryClass::OAuth2ResourceServer.to_string(),
-        EntryClass::OAuth2ResourceServerPublic.to_string(),
-        EntryClass::Object.to_string(),
-    ];
-    json_rest_event_post(state, classes, obj, kopid).await
-}
-
 /// Get a filter matching a given OAuth2 Resource Server
-fn oauth2_id(rs_name: &str) -> Filter<FilterInvalid> {
+pub(crate) fn oauth2_id(rs_name: &str) -> Filter<FilterInvalid> {
     filter_all!(f_and!([
         f_eq(Attribute::Class, EntryClass::OAuth2ResourceServer.into()),
         f_eq(Attribute::OAuth2RsName, PartialValue::new_iname(rs_name))
     ]))
 }
 
-pub async fn oauth2_id_get(
-    State(state): State<ServerState>,
-    Path(rs_name): Path<String>,
-    Extension(kopid): Extension<KOpId>,
-) -> Response<Body> {
-    let filter = oauth2_id(&rs_name);
-
-    let res = state
-        .qe_r_ref
-        .handle_internalsearch(kopid.uat, filter, None, kopid.eventid)
-        .await
-        .map(|mut r| r.pop());
-    to_axum_response(res)
-}
-
-#[instrument(level = "info", skip(state))]
-pub async fn oauth2_id_get_basic_secret(
-    State(state): State<ServerState>,
-    Extension(kopid): Extension<KOpId>,
-    Path(rs_name): Path<String>,
-) -> Response<Body> {
-    let filter = oauth2_id(&rs_name);
-    let res = state
-        .qe_r_ref
-        .handle_oauth2_basic_secret_read(kopid.uat, filter, kopid.eventid)
-        .await;
-    to_axum_response(res)
-}
-
-pub async fn oauth2_id_patch(
-    State(state): State<ServerState>,
-    Path(rs_name): Path<String>,
-    Extension(kopid): Extension<KOpId>,
-    Json(obj): Json<ProtoEntry>,
-) -> Response<Body> {
-    let filter = oauth2_id(&rs_name);
-
-    let res = state
-        .qe_w_ref
-        .handle_internalpatch(kopid.uat, filter, obj, kopid.eventid)
-        .await;
-    to_axum_response(res)
-}
-
-pub async fn oauth2_id_scopemap_post(
-    State(state): State<ServerState>,
-    Extension(kopid): Extension<KOpId>,
-    Path((rs_name, group)): Path<(String, String)>,
-    Json(scopes): Json<Vec<String>>,
-) -> Response<Body> {
-    let filter = oauth2_id(&rs_name);
-    let res = state
-        .qe_w_ref
-        .handle_oauth2_scopemap_update(kopid.uat, group, scopes, filter, kopid.eventid)
-        .await;
-    to_axum_response(res)
-}
-
-pub async fn oauth2_id_scopemap_delete(
-    State(state): State<ServerState>,
-    Extension(kopid): Extension<KOpId>,
-    Path((rs_name, group)): Path<(String, String)>,
-) -> Response<Body> {
-    let filter = oauth2_id(&rs_name);
-    let res = state
-        .qe_w_ref
-        .handle_oauth2_scopemap_delete(kopid.uat, group, filter, kopid.eventid)
-        .await;
-    to_axum_response(res)
-}
-
-pub async fn oauth2_id_sup_scopemap_post(
-    State(state): State<ServerState>,
-    Extension(kopid): Extension<KOpId>,
-    Path((rs_name, group)): Path<(String, String)>,
-    Json(scopes): Json<Vec<String>>,
-) -> Response<Body> {
-    let filter = oauth2_id(&rs_name);
-    let res = state
-        .qe_w_ref
-        .handle_oauth2_sup_scopemap_update(kopid.uat, group, scopes, filter, kopid.eventid)
-        .await;
-    to_axum_response(res)
-}
-
-pub async fn oauth2_id_sup_scopemap_delete(
-    State(state): State<ServerState>,
-    Extension(kopid): Extension<KOpId>,
-    Path((rs_name, group)): Path<(String, String)>,
-) -> Response<Body> {
-    let filter = oauth2_id(&rs_name);
-    let res = state
-        .qe_w_ref
-        .handle_oauth2_sup_scopemap_delete(kopid.uat, group, filter, kopid.eventid)
-        .await;
-    to_axum_response(res)
-}
-
-pub async fn oauth2_id_delete(
+#[utoipa::path(
+    get,
+    path = "/ui/images/oauth2/{rs_name}",
+    params(
+        super::apidocs::path_schema::RsName
+    ),
+    responses(
+        (status = 200, description = "Ok", body=&[u8]),
+        (status = 403, description = "Authorization refused"),
+        (status = 403, description = "Authorization refused"),
+    ),
+    security(("token_jwt" = [])),
+    tag = "ui",
+)]
+/// This returns the image for the OAuth2 Resource Server if the user has permissions
+///
+pub(crate) async fn oauth2_image_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     Path(rs_name): Path<String>,
-) -> Response<Body> {
-    let filter = oauth2_id(&rs_name);
-    let res = state
-        .qe_w_ref
-        .handle_internaldelete(kopid.uat, filter, kopid.eventid)
-        .await;
-    to_axum_response(res)
-}
-
-/// this returns the image for the user if the user has permissions
-pub async fn oauth2_image_get(
-    State(state): State<ServerState>,
-    Extension(kopid): Extension<KOpId>,
-    Path(rs_name): Path<String>,
-) -> Response<Body> {
+) -> Response {
     let rs_filter = oauth2_id(&rs_name);
     let res = state
         .qe_r_ref
         .handle_oauth2_rs_image_get_image(kopid.uat, rs_filter)
         .await;
 
-    let image = match res {
-        Ok(image) => image,
-        Err(_err) => {
-            admin_error!(
-                "Unable to get image for oauth2 resource server: {}",
-                rs_name
+    match res {
+        Ok(image) => (
+            StatusCode::OK,
+            [(CONTENT_TYPE, image.filetype.as_content_type_str())],
+            image.contents,
+        )
+            .into_response(),
+        Err(err) => {
+            admin_debug!(
+                "Unable to get image for oauth2 resource server {}: {:?}",
+                rs_name,
+                err
             );
-            #[allow(clippy::unwrap_used)]
-            return Response::builder()
-                .status(StatusCode::NOT_FOUND)
-                .body(Body::empty())
-                .unwrap();
+            // TODO: a 404 probably isn't perfect but it's not the worst
+            (StatusCode::NOT_FOUND, "").into_response()
         }
-    };
-
-    #[allow(clippy::expect_used)]
-    Response::builder()
-        .header(CONTENT_TYPE, image.filetype.as_content_type_str())
-        .body(Body::from(image.contents))
-        .expect("Somehow failed to turn an image into a response!")
-}
-
-pub async fn oauth2_id_image_delete(
-    State(state): State<ServerState>,
-    Extension(kopid): Extension<KOpId>,
-    Path(rs_name): Path<String>,
-) -> Response<Body> {
-    let rs_filter = oauth2_id(&rs_name);
-    let res = state
-        .qe_w_ref
-        .handle_oauth2_rs_image_delete(kopid.uat, rs_filter)
-        .await;
-
-    to_axum_response(res)
-}
-
-pub async fn oauth2_id_image_post(
-    State(state): State<ServerState>,
-    Extension(kopid): Extension<KOpId>,
-    Path(rs_name): Path<String>,
-    mut multipart: axum::extract::Multipart,
-) -> Response<Body> {
-    // because we might not get an image
-    let mut image: Option<ImageValue> = None;
-
-    while let Some(field) = multipart.next_field().await.unwrap_or(None) {
-        let filename = field.file_name().map(|f| f.to_string()).clone();
-        if let Some(filename) = filename {
-            let content_type = field.content_type().map(|f| f.to_string()).clone();
-
-            let content_type = match content_type {
-                Some(val) => {
-                    if VALID_IMAGE_UPLOAD_CONTENT_TYPES.contains(&val.as_str()) {
-                        val
-                    } else {
-                        debug!("Invalid content type: {}", val);
-                        let res =
-                            to_axum_response::<String>(Err(OperationError::InvalidRequestState));
-                        return res;
-                    }
-                }
-                None => {
-                    debug!("No content type header provided");
-                    let res = to_axum_response::<String>(Err(OperationError::InvalidRequestState));
-                    return res;
-                }
-            };
-            let data = match field.bytes().await {
-                Ok(val) => val,
-                Err(_e) => {
-                    let res = to_axum_response::<String>(Err(OperationError::InvalidRequestState));
-                    return res;
-                }
-            };
-
-            let filetype = match ImageType::try_from_content_type(&content_type) {
-                Ok(val) => val,
-                Err(_err) => {
-                    let res = to_axum_response::<String>(Err(OperationError::InvalidRequestState));
-                    return res;
-                }
-            };
-
-            image = Some(ImageValue {
-                filetype,
-                filename: filename.to_string(),
-                contents: data.to_vec(),
-            });
-        };
     }
-
-    let res = match image {
-        Some(image) => {
-            let image_validation_result = image.validate_image();
-            if let Err(err) = image_validation_result {
-                admin_error!("Invalid image uploaded: {:?}", err);
-                return to_axum_response::<String>(Err(OperationError::InvalidRequestState));
-            }
-
-            let rs_name = oauth2_id(&rs_name);
-            state
-                .qe_w_ref
-                .handle_oauth2_rs_image_update(kopid.uat, rs_name, image)
-                .await
-        }
-        None => Err(OperationError::InvalidAttribute(
-            "No image included, did you mean to use the DELETE method?".to_string(),
-        )),
-    };
-    to_axum_response(res)
 }
 
 // == OAUTH2 PROTOCOL FLOW HANDLERS ==
@@ -701,7 +473,7 @@ pub async fn oauth2_token_post(
     Extension(kopid): Extension<KOpId>,
     headers: HeaderMap,
     Form(tok_req): Form<AccessTokenRequest>,
-) -> Result<Json<kanidm_proto::oauth2::AccessTokenResponse>, HTTPOauth2Error> {
+) -> Result<Json<AccessTokenResponse>, HTTPOauth2Error> {
     // This is called directly by the resource server, where we then issue
     // the token to the caller.
 
@@ -731,7 +503,7 @@ pub async fn oauth2_openid_discovery_get(
     State(state): State<ServerState>,
     Path(client_id): Path<String>,
     Extension(kopid): Extension<KOpId>,
-) -> Result<Json<OidcDiscoveryResponse>, HttpOperationError> {
+) -> Result<Json<OidcDiscoveryResponse>, Response> {
     // let client_id = req.get_url_param("client_id")?;
 
     let res = state
@@ -743,7 +515,7 @@ pub async fn oauth2_openid_discovery_get(
         Ok(dsc) => Ok(Json(dsc)),
         Err(e) => {
             error!(err = ?e, "Unable to access discovery info");
-            Err(HttpOperationError(e))
+            Err(WebError::from(e).response_with_access_control_origin_header())
         }
     }
 }
@@ -753,7 +525,7 @@ pub async fn oauth2_openid_userinfo_get(
     State(state): State<ServerState>,
     Path(client_id): Path<String>,
     Extension(kopid): Extension<KOpId>,
-) -> impl IntoResponse {
+) -> Result<Json<OidcToken>, HTTPOauth2Error> {
     // The token we want to inspect is in the authorisation header.
     let client_token = match kopid.uat {
         Some(val) => val,
@@ -778,13 +550,13 @@ pub async fn oauth2_openid_publickey_get(
     State(state): State<ServerState>,
     Path(client_id): Path<String>,
     Extension(kopid): Extension<KOpId>,
-) -> Response<Body> {
-    to_axum_response(
-        state
-            .qe_r_ref
-            .handle_oauth2_openid_publickey(client_id, kopid.eventid)
-            .await,
-    )
+) -> Result<Json<JwkKeySet>, WebError> {
+    state
+        .qe_r_ref
+        .handle_oauth2_openid_publickey(client_id, kopid.eventid)
+        .await
+        .map(Json::from)
+        .map_err(WebError::from)
 }
 
 /// This is called directly by the resource server, where we then issue
@@ -887,12 +659,12 @@ pub async fn oauth2_token_revoke_post(
         Some(val) => val,
         None =>
         {
-            #[allow(clippy::unwrap_used)]
-            return Response::builder()
-                .status(StatusCode::UNAUTHORIZED)
-                .header(ACCESS_CONTROL_ALLOW_ORIGIN, "*")
-                .body(Body::empty())
-                .unwrap()
+            return (
+                StatusCode::UNAUTHORIZED,
+                [(ACCESS_CONTROL_ALLOW_ORIGIN, "*")],
+                ""
+            )
+            .into_response();
         }
     };
 
@@ -906,21 +678,17 @@ pub async fn oauth2_token_revoke_post(
     match res {
         Ok(()) =>
         {
-            #[allow(clippy::unwrap_used)]
-            Response::builder()
-                .status(StatusCode::OK)
-                .header(ACCESS_CONTROL_ALLOW_ORIGIN, "*")
-                .body(Body::empty())
-                .unwrap()
+            (StatusCode::OK,
+                [(ACCESS_CONTROL_ALLOW_ORIGIN, "*")],
+                ""
+            ).into_response()
         }
         Err(Oauth2Error::AuthenticationRequired) => {
             // This will trigger our ui to auth and retry.
-            #[allow(clippy::unwrap_used)]
-            Response::builder()
-                .status(StatusCode::UNAUTHORIZED)
-                .header(ACCESS_CONTROL_ALLOW_ORIGIN, "*")
-                .body(Body::empty())
-                .unwrap()
+            (StatusCode::UNAUTHORIZED,
+                [(ACCESS_CONTROL_ALLOW_ORIGIN, "*"),],
+                ""
+            ).into_response()
         }
         Err(e) => {
             // https://datatracker.ietf.org/doc/html/rfc6749#section-5.2
@@ -928,30 +696,27 @@ pub async fn oauth2_token_revoke_post(
                 error: e.to_string(),
                 ..Default::default()
             };
-            #[allow(clippy::unwrap_used)]
-            Response::builder()
-                .status(StatusCode::BAD_REQUEST)
-                .header(ACCESS_CONTROL_ALLOW_ORIGIN, "*")
-                .body(Body::from(
-                    serde_json::to_string(&err).unwrap_or("".to_string()),
-                ))
-                .unwrap()
+            (StatusCode::BAD_REQUEST,
+                [(ACCESS_CONTROL_ALLOW_ORIGIN, "*"),],
+                serde_json::to_string(&err).unwrap_or("".to_string()),
+            ).into_response()
         }
     }
 }
 
 // Some requests from browsers require preflight so that CORS works.
-pub async fn oauth2_preflight_options() -> Response<Body> {
-    #[allow(clippy::unwrap_used)]
-    Response::builder()
-        .status(StatusCode::OK)
-        .header(ACCESS_CONTROL_ALLOW_ORIGIN, "*")
-        .header(ACCESS_CONTROL_ALLOW_HEADERS, "Authorization")
-        .body(Body::empty())
-        .unwrap()
+pub async fn oauth2_preflight_options() -> Response {
+    (
+        StatusCode::OK,
+        [
+            (ACCESS_CONTROL_ALLOW_ORIGIN, "*"),
+            (ACCESS_CONTROL_ALLOW_HEADERS, "Authorization"),
+        ],
+        String::new(),
+    ).into_response()
 }
 
-pub fn oauth2_route_setup(state: ServerState) -> Router<ServerState> {
+pub fn route_setup(state: ServerState) -> Router<ServerState> {
     // this has all the openid-related routes
     let openid_router = Router::new()
         // // ⚠️  ⚠️   WARNING  ⚠️  ⚠️
@@ -975,7 +740,7 @@ pub fn oauth2_route_setup(state: ServerState) -> Router<ServerState> {
         .with_state(state.clone());
 
     Router::new()
-        .route("/oauth2", get(oauth2_get))
+        .route("/oauth2", get(super::v1_oauth2::oauth2_get))
         // ⚠️  ⚠️   WARNING  ⚠️  ⚠️
         // IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS
         .route(

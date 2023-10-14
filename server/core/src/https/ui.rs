@@ -1,13 +1,20 @@
 use axum::extract::State;
 use axum::http::HeaderValue;
 use axum::response::Response;
-use axum::Extension;
+use axum::routing::get;
+use axum::{Extension, Router};
 use http::header::CONTENT_TYPE;
 
 use super::middleware::KOpId;
 use super::ServerState;
 
-pub async fn ui_handler(
+pub(crate) fn spa_router() -> Router<ServerState> {
+    Router::new()
+        .route("/", get(ui_handler))
+        .fallback(ui_handler)
+}
+
+pub(crate) async fn ui_handler(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
 ) -> Response<String> {

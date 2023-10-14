@@ -4,13 +4,14 @@ use axum::{
     http::{header::HeaderName, request::Parts, StatusCode},
     RequestPartsExt,
 };
+use kanidm_proto::constants::X_FORWARDED_FOR;
 
 use std::net::{IpAddr, SocketAddr};
 
 use crate::https::ServerState;
 
 #[allow(clippy::declare_interior_mutable_const)]
-const X_FORWARDED_FOR: HeaderName = HeaderName::from_static("x-forwarded-for");
+const X_FORWARDED_FOR_HEADER: HeaderName = HeaderName::from_static(X_FORWARDED_FOR);
 
 pub struct TrustedClientIp(pub IpAddr);
 
@@ -24,7 +25,7 @@ impl FromRequestParts<ServerState> for TrustedClientIp {
         state: &ServerState,
     ) -> Result<Self, Self::Rejection> {
         if state.trust_x_forward_for {
-            if let Some(x_forward_for) = parts.headers.get(X_FORWARDED_FOR) {
+            if let Some(x_forward_for) = parts.headers.get(X_FORWARDED_FOR_HEADER) {
                 // X forward for may be comma separate.
                 let first = x_forward_for
                     .to_str()

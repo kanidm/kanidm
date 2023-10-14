@@ -135,14 +135,14 @@ reauthenticate for short periods to access higher levels of privilege.
 
 When using a user command that requires these privileges you will be warned:
 
-```
+```shell
 kanidm person credential update william
 # Privileges have expired for william@idm.example.com - you need to re-authenticate again.
 ```
 
 To reauthenticate
 
-```
+```shell
 kanidm reauth -D william
 ```
 

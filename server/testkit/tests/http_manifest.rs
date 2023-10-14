@@ -20,6 +20,8 @@ async fn test_https_manifest(rsclient: KanidmClient) {
 
     eprintln!(
         "csp headers: {:#?}",
-        response.headers().get("content-security-policy")
+        response
+            .headers()
+            .get(http::header::CONTENT_SECURITY_POLICY)
     );
 }

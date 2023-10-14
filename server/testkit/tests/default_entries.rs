@@ -649,30 +649,18 @@ async fn test_https_robots_txt(rsclient: KanidmClient) {
 
     eprintln!(
         "csp headers: {:#?}",
-        response.headers().get("content-security-policy")
+        response
+            .headers()
+            .get(http::header::CONTENT_SECURITY_POLICY)
     );
-    assert_ne!(response.headers().get("content-security-policy"), None);
+    assert_ne!(
+        response
+            .headers()
+            .get(http::header::CONTENT_SECURITY_POLICY),
+        None
+    );
     eprintln!("{}", response.text().await.unwrap());
 }
-
-// TODO: #1787 when the routemap comes back
-// #[kanidmd_testkit::test]
-// async fn test_https_routemap(rsclient: KanidmClient) {
-//     // We need to do manual reqwests here.
-//     let response = match reqwest::get(rsclient.make_url("/v1/routemap")).await {
-//         Ok(value) => value,
-//         Err(error) => {
-//             panic!("Failed to query {:?} : {:#?}", addr, error);
-//         }
-//     };
-//     eprintln!("response: {:#?}", response);
-//     assert_eq!(response.status(), 200);
-
-//     let body = response.text().await.unwrap();
-//     eprintln!("{}", body);
-//     assert!(body.contains("/scim/v1/Sync"));
-//     assert!(body.contains(r#""path": "/v1/routemap""#));
-// }
 
 /// This literally tests that the thing exists and responds in a way we expect, probably worth testing it better...
 #[kanidmd_testkit::test]

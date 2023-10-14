@@ -9,6 +9,7 @@ use std::fmt;
 use std::str::FromStr;
 use time::OffsetDateTime;
 use url::Url;
+use utoipa::ToSchema;
 use uuid::Uuid;
 use webauthn_rs_proto::{
     CreationChallengeResponse, PublicKeyCredential, RegisterPublicKeyCredential,
@@ -19,7 +20,7 @@ use crate::constants::{ATTR_GROUP, ATTR_LDAP_SSHPUBLICKEY};
 
 // These proto implementations are here because they have public definitions
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, ToSchema)]
 pub enum AccountType {
     Person,
     ServiceAccount,
@@ -35,7 +36,7 @@ impl ToString for AccountType {
 }
 
 /* ===== errors ===== */
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, ToSchema)]
 #[serde(rename_all = "lowercase")]
 pub enum SchemaError {
     NotImplemented,
@@ -52,7 +53,7 @@ pub enum SchemaError {
     PhantomAttribute(String),
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, ToSchema)]
 #[serde(rename_all = "lowercase")]
 pub enum PluginError {
     AttrUnique(String),
@@ -62,7 +63,7 @@ pub enum PluginError {
     Oauth2Secrets,
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, ToSchema)]
 #[serde(rename_all = "lowercase")]
 pub enum ConsistencyError {
     Unknown,
@@ -88,7 +89,7 @@ pub enum ConsistencyError {
     DeniedName(Uuid),
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, ToSchema)]
 #[serde(rename_all = "lowercase")]
 pub enum PasswordFeedback {
     // https://docs.rs/zxcvbn/latest/zxcvbn/feedback/enum.Suggestion.html
@@ -217,7 +218,7 @@ impl fmt::Display for PasswordFeedback {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, ToSchema)]
 #[serde(rename_all = "lowercase")]
 pub enum OperationError {
     SessionExpired,
@@ -295,7 +296,7 @@ impl PartialEq for OperationError {
 // domain specific fields for the purposes of IDM, over the normal
 // entry/ava/filter types. These related deeply to schema.
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, ToSchema)]
 pub struct Group {
     pub spn: String,
     pub uuid: String,
@@ -308,7 +309,7 @@ impl fmt::Display for Group {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, ToSchema)]
 pub struct Claim {
     pub name: String,
     pub uuid: String,
@@ -380,7 +381,7 @@ impl fmt::Display for UatStatusState {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, ToSchema)]
 #[serde(rename_all = "lowercase")]
 pub struct UatStatus {
     pub account_id: Uuid,
@@ -426,7 +427,7 @@ pub enum UatPurpose {
 /// This structure and how it works will *very much* change over time from this
 /// point onward! This means on updates, that sessions will invalidate in many
 /// cases.
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, ToSchema)]
 #[serde(rename_all = "lowercase")]
 pub struct UserAuthToken {
     pub session_id: Uuid,
@@ -499,7 +500,7 @@ pub enum ApiTokenPurpose {
     Synchronise,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, ToSchema)]
 #[serde(rename_all = "lowercase")]
 pub struct ApiToken {
     // The account this is associated with.
@@ -546,7 +547,7 @@ impl PartialEq for ApiToken {
 
 impl Eq for ApiToken {}
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, ToSchema)]
 #[serde(rename_all = "lowercase")]
 pub struct ApiTokenGenerate {
     pub label: String,
@@ -560,7 +561,7 @@ pub struct ApiTokenGenerate {
 
 // This is similar to uat, but omits claims (they have no role in radius), and adds
 // the radius secret field.
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, ToSchema)]
 pub struct RadiusAuthToken {
     pub name: String,
     pub displayname: String,
@@ -581,7 +582,7 @@ impl fmt::Display for RadiusAuthToken {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, ToSchema)]
 pub struct UnixGroupToken {
     pub name: String,
     pub spn: String,
@@ -598,13 +599,13 @@ impl fmt::Display for UnixGroupToken {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, ToSchema)]
 pub struct GroupUnixExtend {
     pub gidnumber: Option<u32>,
 }
 
 #[skip_serializing_none]
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, ToSchema)]
 pub struct UnixUserToken {
     pub name: String,
     pub spn: String,
@@ -639,7 +640,7 @@ impl fmt::Display for UnixUserToken {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, ToSchema)]
 #[serde(deny_unknown_fields)]
 pub struct AccountUnixExtend {
     pub gidnumber: Option<u32>,
@@ -665,7 +666,7 @@ pub enum CredentialDetailType {
     PasswordMfa(Vec<String>, Vec<String>, usize),
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, ToSchema)]
 pub struct CredentialDetail {
     pub uuid: Uuid,
     pub type_: CredentialDetailType,
@@ -729,13 +730,13 @@ impl fmt::Display for CredentialDetail {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, ToSchema)]
 pub struct PasskeyDetail {
     pub uuid: Uuid,
     pub tag: String,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, ToSchema)]
 pub struct CredentialStatus {
     pub creds: Vec<CredentialDetail>,
 }
@@ -750,7 +751,7 @@ impl fmt::Display for CredentialStatus {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, ToSchema)]
 pub struct BackupCodesView {
     pub backup_codes: Vec<String>,
 }
@@ -776,7 +777,7 @@ impl fmt::Display for Entry {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
+#[derive(Debug, Serialize, Deserialize, Clone, Ord, PartialOrd, Eq, PartialEq, Hash, ToSchema)]
 #[serde(rename_all = "lowercase")]
 pub enum Filter {
     // This is attr - value
@@ -804,7 +805,7 @@ pub enum Modify {
     Purged(String),
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, ToSchema)]
 pub struct ModifyList {
     pub mods: Vec<Modify>,
 }
@@ -815,7 +816,7 @@ impl ModifyList {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct SearchRequest {
     pub filter: Filter,
 }
@@ -826,7 +827,7 @@ impl SearchRequest {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct SearchResponse {
     pub entries: Vec<Entry>,
 }
@@ -837,7 +838,7 @@ impl SearchResponse {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct CreateRequest {
     pub entries: Vec<Entry>,
 }
@@ -848,7 +849,7 @@ impl CreateRequest {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct DeleteRequest {
     pub filter: Filter,
 }
@@ -859,7 +860,7 @@ impl DeleteRequest {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct ModifyRequest {
     // Probably needs a modlist?
     pub filter: Filter,
@@ -884,7 +885,7 @@ impl ModifyRequest {
 //
 // On loginSuccess, we send a cookie, and that allows the token to be
 // generated. The cookie can be shared between servers.
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "lowercase")]
 pub enum AuthCredential {
     Anonymous,
@@ -909,7 +910,7 @@ impl fmt::Debug for AuthCredential {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialOrd, Ord)]
+#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialOrd, Ord, ToSchema)]
 #[serde(rename_all = "lowercase")]
 pub enum AuthMech {
     Anonymous,
@@ -935,13 +936,13 @@ impl fmt::Display for AuthMech {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Copy, Clone)]
+#[derive(Debug, Serialize, Deserialize, Copy, Clone, ToSchema)]
 #[serde(rename_all = "lowercase")]
 pub enum AuthIssueSession {
     Token,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "lowercase")]
 pub enum AuthStep {
     // name
@@ -962,14 +963,14 @@ pub enum AuthStep {
 }
 
 // Request auth for identity X with roles Y?
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct AuthRequest {
     pub step: AuthStep,
 }
 
 // Respond with the list of auth types and nonce, etc.
 // It can also contain a denied, or success.
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, ToSchema)]
 #[serde(rename_all = "lowercase")]
 pub enum AuthAllowed {
     Anonymous,
@@ -1032,7 +1033,7 @@ impl fmt::Display for AuthAllowed {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "lowercase")]
 pub enum AuthState {
     // You need to select how you want to talk to me.
@@ -1050,7 +1051,7 @@ pub enum AuthState {
     // SuccessCookie,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct AuthResponse {
     pub sessionid: Uuid,
     pub state: AuthState,
@@ -1072,7 +1073,7 @@ pub enum SetCredentialRequest {
 }
 */
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "lowercase")]
 pub enum TotpAlgo {
     Sha1,
@@ -1090,7 +1091,7 @@ impl fmt::Display for TotpAlgo {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct TotpSecret {
     pub accountname: String,
     /// User-facing name of the system, issuer of the TOTP
@@ -1123,12 +1124,12 @@ impl TotpSecret {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct CUIntentToken {
     pub token: String,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
 pub struct CUSessionToken {
     pub token: String,
 }
@@ -1170,7 +1171,7 @@ impl fmt::Debug for CURequest {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub enum CURegState {
     // Nothing in progress.
     None,
@@ -1181,14 +1182,14 @@ pub enum CURegState {
     Passkey(CreationChallengeResponse),
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub enum CUExtPortal {
     None,
     Hidden,
     Some(Url),
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct CUStatus {
     // Display values
     pub spn: String,
@@ -1204,7 +1205,7 @@ pub struct CUStatus {
     pub passkeys_can_edit: bool,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, ToSchema)]
 pub struct WhoamiResponse {
     // Should we just embed the entry? Or destructure it?
     pub youare: Entry,
@@ -1217,7 +1218,7 @@ impl WhoamiResponse {
 }
 
 // Simple string value provision.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct SingleStringRequest {
     pub value: String,
 }

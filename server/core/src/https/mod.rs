@@ -1,3 +1,6 @@
+mod apidocs;
+pub(crate) mod errors;
+
 mod extractors;
 mod generic;
 mod javascript;
@@ -8,35 +11,31 @@ mod tests;
 pub(crate) mod trace;
 mod ui;
 mod v1;
+mod v1_oauth2;
 mod v1_scim;
 
-use self::generic::*;
 use self::javascript::*;
 use crate::actors::v1_read::QueryServerReadV1;
 use crate::actors::v1_write::QueryServerWriteV1;
 use crate::config::{Configuration, ServerRole, TlsConfiguration};
 use axum::extract::connect_info::{IntoMakeServiceWithConnectInfo, ResponseFuture};
 use axum::middleware::{from_fn, from_fn_with_state};
-use axum::response::{IntoResponse, Redirect, Response};
+use axum::response::Redirect;
 use axum::routing::*;
 use axum::Router;
 use axum_csp::{CspDirectiveType, CspValue};
 use axum_macros::FromRef;
 use compact_jwt::{Jws, JwsSigner, JwsUnverified};
-use http::header::{ACCESS_CONTROL_ALLOW_ORIGIN, CONTENT_TYPE};
-use http::{HeaderMap, HeaderValue, StatusCode};
+use http::{HeaderMap, HeaderValue};
 use hyper::server::accept::Accept;
 use hyper::server::conn::{AddrStream, Http};
-use hyper::Body;
-use kanidm_proto::constants::APPLICATION_JSON;
-use kanidm_proto::v1::OperationError;
+use kanidm_proto::constants::KSESSIONID;
 use kanidmd_lib::status::StatusActor;
 use openssl::ssl::{Ssl, SslAcceptor, SslFiletype, SslMethod};
 use sketching::*;
 use tokio_openssl::SslStream;
 
 use futures_util::future::poll_fn;
-use serde::Serialize;
 use tokio::net::TcpListener;
 use tracing::Level;
 
@@ -82,7 +81,7 @@ impl ServerState {
     fn get_current_auth_session_id(&self, headers: &HeaderMap) -> Option<Uuid> {
         // We see if there is a signed header copy first.
         headers
-            .get("X-KANIDM-AUTH-SESSION-ID")
+            .get(KSESSIONID)
             .and_then(|hv| {
                 // Get the first header value.
                 hv.to_str().ok()
@@ -98,32 +97,39 @@ pub fn get_js_files(role: ServerRole) -> Vec<JavaScriptFile> {
         // let's set up the list of js module hashes
         {
             let filepath = "wasmloader.js";
-            #[allow(clippy::unwrap_used)]
-            js_files.push(JavaScriptFile {
+            match generate_integrity_hash(format!(
+                "{}/{}",
+                env!("KANIDM_WEB_UI_PKG_PATH").to_owned(),
                 filepath,
-                hash: generate_integrity_hash(format!(
-                    "{}/{}",
-                    env!("KANIDM_WEB_UI_PKG_PATH").to_owned(),
+            )) {
+                Ok(hash) => js_files.push(JavaScriptFile {
                     filepath,
-                ))
-                .unwrap(),
-                filetype: Some("module".to_string()),
-            });
+                    hash,
+                    filetype: Some("module".to_string()),
+                }),
+                Err(err) => {
+                    admin_error!(?err, "Failed to generate integrity hash for wasmloader.js")
+                }
+            };
         }
         // let's set up the list of non-module hashes
         {
             let filepath = "external/bootstrap.bundle.min.js";
-            #[allow(clippy::unwrap_used)]
-            js_files.push(JavaScriptFile {
+            match generate_integrity_hash(format!(
+                "{}/{}",
+                env!("KANIDM_WEB_UI_PKG_PATH").to_owned(),
                 filepath,
-                hash: generate_integrity_hash(format!(
-                    "{}/{}",
-                    env!("KANIDM_WEB_UI_PKG_PATH").to_owned(),
+            )) {
+                Ok(hash) =>
+                js_files.push(JavaScriptFile {
                     filepath,
-                ))
-                .unwrap(),
-                filetype: None,
-            });
+                    hash,
+                    filetype: None,
+                }),
+                Err(err) => {
+                    admin_error!(?err, "Failed to generate integrity hash for bootstrap.bundle.min.js")
+                }
+            }
         }
     };
     js_files
@@ -197,28 +203,25 @@ pub async fn create_https_server(
     let static_routes = match config.role {
         ServerRole::WriteReplica | ServerRole::ReadOnlyReplica => {
             // Create a spa router that captures everything at ui without key extraction.
-            let spa_router = Router::new()
-                .route("/", get(crate::https::ui::ui_handler))
-                .fallback(crate::https::ui::ui_handler);
 
             Router::new()
                 // direct users to the base app page. If a login is required,
                 // then views will take care of redirection. We shouldn't redir
                 // to login because that force clears previous sessions!
                 .route("/", get(|| async { Redirect::temporary("/ui") }))
-                .route("/manifest.webmanifest", get(manifest::manifest))
-                .nest("/ui", spa_router)
+                .route("/manifest.webmanifest", get(manifest::manifest)) // skip_route_check
+                .nest("/ui", ui::spa_router())
                 .layer(middleware::compression::new())
                 .route("/ui/images/oauth2/:rs_name", get(oauth2::oauth2_image_get))
+            // skip_route_check
         }
         ServerRole::WriteReplicaNoUI => Router::new(),
     };
     let app = Router::new()
-        .route("/robots.txt", get(robots_txt))
-        .route("/status", get(status))
-        .merge(oauth2::oauth2_route_setup(state.clone()))
-        .merge(v1_scim::scim_route_setup())
-        .merge(v1::router(state.clone()));
+        .merge(generic::route_setup())
+        .merge(oauth2::route_setup(state.clone()))
+        .merge(v1_scim::route_setup())
+        .merge(v1::route_setup(state.clone()));
 
     let app = match config.role {
         ServerRole::WriteReplicaNoUI => app,
@@ -265,6 +268,7 @@ pub async fn create_https_server(
         // to be exited, and this middleware sets up ids' and other bits for for logging
         // coherence to be maintained.
         .layer(from_fn(middleware::kopid_middleware))
+        .merge(apidocs::router())
         // this MUST be the last layer before with_state else the span never starts and everything breaks.
         .layer(trace_layer)
         .with_state(state)
@@ -400,87 +404,5 @@ pub(crate) async fn handle_conn(
             trace!("Failed to handle connection: {:?}", error);
             Ok(())
         }
-    }
-}
-
-/// Convert any kind of Result<T, OperationError> into an axum response with a stable type
-/// by JSON-encoding the body.
-#[instrument(name = "to_axum_response", level = "debug")]
-pub fn to_axum_response<T: Serialize + core::fmt::Debug>(
-    v: Result<T, OperationError>,
-) -> Response<Body> {
-    match v {
-        Ok(iv) => {
-            let body = match serde_json::to_string(&iv) {
-                Ok(val) => val,
-                Err(err) => {
-                    error!("Failed to serialise response: {:?}", err);
-                    format!("{:?}", iv)
-                }
-            };
-            trace!("Response Body: {:?}", body);
-            #[allow(clippy::unwrap_used)]
-            Response::builder()
-                .header(CONTENT_TYPE, APPLICATION_JSON)
-                .body(Body::from(body))
-                .unwrap()
-        }
-        Err(e) => {
-            debug!("OperationError: {:?}", e);
-            let res = match &e {
-                OperationError::NotAuthenticated | OperationError::SessionExpired => {
-                    // https://datatracker.ietf.org/doc/html/rfc7235#section-4.1
-                    Response::builder()
-                        .status(http::StatusCode::UNAUTHORIZED)
-                        .header("WWW-Authenticate", "Bearer")
-                }
-                OperationError::SystemProtectedObject | OperationError::AccessDenied => {
-                    Response::builder().status(http::StatusCode::FORBIDDEN)
-                }
-                OperationError::NoMatchingEntries => {
-                    Response::builder().status(http::StatusCode::NOT_FOUND)
-                }
-                OperationError::PasswordQuality(_)
-                | OperationError::EmptyRequest
-                | OperationError::SchemaViolation(_) => {
-                    Response::builder().status(http::StatusCode::BAD_REQUEST)
-                }
-                _ => Response::builder().status(http::StatusCode::INTERNAL_SERVER_ERROR),
-            };
-            match serde_json::to_string(&e) {
-                #[allow(clippy::expect_used)]
-                Ok(val) => res
-                    .body(Body::from(val))
-                    .expect("Failed to build response!"),
-                #[allow(clippy::expect_used)]
-                Err(_) => res
-                    .body(Body::from(format!("{:?}", e)))
-                    .expect("Failed to build response!"),
-            }
-        }
-    }
-}
-
-/// Wrapper for the externally-defined error type from the protocol
-pub struct HttpOperationError(OperationError);
-
-impl IntoResponse for HttpOperationError {
-    fn into_response(self) -> Response {
-        let HttpOperationError(error) = self;
-
-        let body = match serde_json::to_string(&error) {
-            Ok(val) => val,
-            Err(e) => {
-                admin_warn!("Failed to serialize error response: original_error=\"{:?}\" serialization_error=\"{:?}\"", error , e);
-                format!("{:?}", error)
-            }
-        };
-        #[allow(clippy::unwrap_used)]
-        Response::builder()
-            .status(StatusCode::BAD_REQUEST)
-            .header(ACCESS_CONTROL_ALLOW_ORIGIN, "*")
-            .body(Body::from(body))
-            .unwrap()
-            .into_response()
     }
 }
