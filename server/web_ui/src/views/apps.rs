@@ -2,9 +2,8 @@
 use gloo::console;
 use yew::prelude::*;
 
-use crate::constants::{CSS_CARD, CSS_LINK_DARK_STRETCHED, CSS_PAGE_HEADER};
-use crate::error::FetchError;
-use crate::{do_request, RequestMethod};
+use kanidmd_web_ui_shared::constants::{CSS_CARD, CSS_LINK_DARK_STRETCHED, CSS_PAGE_HEADER};
+use kanidmd_web_ui_shared::{do_request, error::FetchError, RequestMethod};
 use wasm_bindgen::prelude::*;
 
 use kanidm_proto::internal::AppLink;

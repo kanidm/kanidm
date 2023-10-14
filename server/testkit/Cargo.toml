@@ -41,7 +41,7 @@ tracing = { workspace = true, features = ["attributes"] }
 tokio = { workspace = true, features = ["net", "sync", "io-util", "macros"] }
 openssl = { workspace = true }
 lazy_static = { workspace = true }
-petgraph = { version = "0.6.4", features = ["serde"] }
+petgraph = { version = "0.6.4", features = ["serde", "serde-1"] }
 regex.workspace = true
 
 

@@ -1,11 +1,14 @@
 use kanidm_proto::v1::{SingleStringRequest, UserAuthToken};
+use kanidmd_web_ui_shared::constants::ID_UNIX_PASSWORDCHANGE;
+use kanidmd_web_ui_shared::do_request;
+use kanidmd_web_ui_shared::error::FetchError;
+use kanidmd_web_ui_shared::RequestMethod;
 use uuid::Uuid;
 use wasm_bindgen::{JsCast, JsValue, UnwrapThrowExt};
 use web_sys::{FormData, HtmlFormElement};
 use yew::prelude::*;
 
-use crate::error::*;
-use crate::utils;
+use kanidmd_web_ui_shared::utils::{self, modal_hide_by_id};
 
 #[derive(PartialEq)]
 enum PwCheck {
@@ -100,7 +103,7 @@ impl Component for ChangeUnixPassword {
             }
             Msg::Success => {
                 self.reset();
-                utils::modal_hide_by_id(crate::constants::ID_UNIX_PASSWORDCHANGE);
+                modal_hide_by_id(ID_UNIX_PASSWORDCHANGE);
                 self.state = State::Init;
                 true
             }
@@ -157,11 +160,11 @@ impl Component for ChangeUnixPassword {
             <button type="button" class="btn btn-primary"
               disabled={ !button_enabled }
               data-bs-toggle="modal"
-              data-bs-target={format!("#{}", crate::constants::ID_UNIX_PASSWORDCHANGE)}
+              data-bs-target={format!("#{}", ID_UNIX_PASSWORDCHANGE)}
             >
               { "Update your Unix Password" }
             </button>
-            <div class="modal" tabindex="-1" role="dialog" id={crate::constants::ID_UNIX_PASSWORDCHANGE}>
+            <div class="modal" tabindex="-1" role="dialog" id={ID_UNIX_PASSWORDCHANGE}>
               <div class="modal-dialog" role="document">
                   <form
                       onsubmit={
@@ -251,7 +254,7 @@ impl ChangeUnixPassword {
         .expect_throw("Failed to change request");
         let uri = format!("/v1/person/{}/_unix/_credential", id);
         let (kopid, status, value, _) =
-            crate::do_request(&uri, crate::RequestMethod::PUT, Some(changereq_jsvalue)).await?;
+            do_request(&uri, RequestMethod::PUT, Some(changereq_jsvalue)).await?;
 
         if status == 200 {
             Ok(Msg::Success)

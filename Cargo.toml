@@ -14,6 +14,8 @@ members = [
     "unix_integration/nss_kanidm",
     "unix_integration/pam_kanidm",
     "server/web_ui",
+    "server/web_ui/admin",
+    "server/web_ui/shared",
     "server/daemon",
     "server/lib",
     "server/lib-macros",
@@ -138,6 +140,7 @@ image = { version = "0.24.7", default-features = false, features = [
 ] }
 enum-iterator = "1.4.0"
 js-sys = "^0.3.63"
+kanidmd_web_ui_shared = { path = "./server/web_ui/shared" }
 # REMOVE this
 lazy_static = "^1.4.0"
 ldap3_client = "^0.3.5"

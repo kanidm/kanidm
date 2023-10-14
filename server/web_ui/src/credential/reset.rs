@@ -3,10 +3,16 @@ use kanidm_proto::v1::{
     CUExtPortal, CUIntentToken, CUSessionToken, CUStatus, CredentialDetail, CredentialDetailType,
     PasskeyDetail,
 };
+
+use kanidmd_web_ui_shared::models::get_cred_update_session;
+use kanidmd_web_ui_shared::utils::{autofocus, do_footer};
+use kanidmd_web_ui_shared::{add_body_form_classes, remove_body_form_classes};
 use uuid::Uuid;
 use wasm_bindgen::{JsValue, UnwrapThrowExt};
 use yew::prelude::*;
 use yew_router::prelude::*;
+
+use crate::models;
 
 use super::delete::DeleteApp;
 use super::passkey::PasskeyModalApp;
@@ -14,8 +20,7 @@ use super::passkeyremove::PasskeyRemoveModalApp;
 use super::pwmodal::PwModalApp;
 use super::totpmodal::TotpModalApp;
 use super::totpremove::TotpRemoveComp;
-use crate::{do_request, error::*, RequestMethod};
-use crate::{models, utils};
+use kanidmd_web_ui_shared::{do_request, error::FetchError, utils, RequestMethod};
 
 // use std::rc::Rc;
 
@@ -133,7 +138,7 @@ impl Component for CredentialResetApp {
             })
             .ok();
 
-        let m_session = models::get_cred_update_session();
+        let m_session = get_cred_update_session();
 
         let state = match (query, m_session) {
             (Some(cu_intent), None) => {
@@ -265,7 +270,7 @@ impl Component for CredentialResetApp {
         #[cfg(debug_assertions)]
         console::debug!("credential::reset::rendered");
         // because sometimes bootstrap doesn't catch it, which is annoying.
-        crate::utils::autofocus("token");
+        autofocus("token");
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
@@ -434,7 +439,7 @@ impl CredentialResetApp {
             <DeleteApp token= { token.clone() } cb={ cb.clone() }/>
 
           </div>
-          { crate::utils::do_footer() }
+          { do_footer() }
           </>
         }
     }

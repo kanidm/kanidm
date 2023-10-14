@@ -4,6 +4,9 @@ pub use kanidm_proto::oauth2::{
     AccessTokenRequest, AccessTokenResponse, AuthorisationRequest, AuthorisationResponse,
     CodeChallengeMethod, ErrorResponse,
 };
+use kanidmd_web_ui_shared::constants::CONTENT_TYPE;
+use kanidmd_web_ui_shared::utils::do_footer;
+use kanidmd_web_ui_shared::{add_body_form_classes, remove_body_form_classes};
 use wasm_bindgen::{JsCast, JsValue, UnwrapThrowExt};
 use wasm_bindgen_futures::JsFuture;
 use web_sys::{Request, RequestInit, RequestMode, RequestRedirect, Response};
@@ -11,14 +14,14 @@ use yew::prelude::*;
 use yew_router::prelude::*;
 
 use crate::manager::Route;
-use crate::{do_request, error::*, RequestMethod};
-use crate::{models, utils};
+use crate::models;
+use kanidmd_web_ui_shared::{do_request, error::FetchError, utils, RequestMethod};
 
 use std::collections::BTreeSet;
 
 enum State {
     LoginRequired,
-    // We are in the process of check the auth token to be sure we can proceed.
+    // We are in the process of checking the auth token to be sure we can proceed.
     TokenCheck,
     // Token check done, lets do it.
     SubmitAuthReq,
@@ -154,7 +157,7 @@ impl Oauth2App {
 
         request
             .headers()
-            .set(crate::constants::CONTENT_TYPE, APPLICATION_JSON)
+            .set(CONTENT_TYPE, APPLICATION_JSON)
             .expect_throw("failed to set header");
 
         if let Some(bearer_token) = models::get_bearer_token() {
@@ -513,7 +516,7 @@ impl Component for Oauth2App {
             { body_content }
             </div>
             </main>
-            { crate::utils::do_footer() }
+            { do_footer() }
         </>
         }
     }

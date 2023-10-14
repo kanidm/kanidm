@@ -4,12 +4,12 @@ use gloo::console;
 use yew::{html, Component, Context, Html, Properties};
 use yew_router::prelude::Link;
 
+use super::prelude::*;
 use crate::components::admin_menu::{Entity, EntityType, GetError};
-use crate::components::alpha_warning_banner;
-use crate::constants::{CSS_BREADCRUMB_ITEM, CSS_BREADCRUMB_ITEM_ACTIVE, CSS_CELL, CSS_TABLE};
-use crate::utils::{do_alert_error, do_page_header};
-use crate::views::AdminRoute;
-use crate::{do_request, RequestMethod};
+use crate::router::AdminRoute;
+use kanidmd_web_ui_shared::constants::{
+    CSS_BREADCRUMB_ITEM, CSS_BREADCRUMB_ITEM_ACTIVE, CSS_CELL, CSS_TABLE,
+};
 
 impl From<GetError> for AdminListOAuth2Msg {
     fn from(ge: GetError) -> Self {

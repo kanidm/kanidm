@@ -1,15 +1,17 @@
 use std::collections::BTreeMap;
 
 use gloo::console;
+use kanidmd_web_ui_shared::utils::do_page_header;
 use yew::{html, Component, Context, Html, Properties};
 use yew_router::prelude::Link;
 
 use crate::components::admin_menu::{Entity, EntityType, GetError};
-use crate::components::alpha_warning_banner;
-use crate::constants::{CSS_BREADCRUMB_ITEM, CSS_BREADCRUMB_ITEM_ACTIVE, CSS_CELL, CSS_TABLE};
-use crate::utils::{do_alert_error, do_page_header};
-use crate::views::AdminRoute;
-use crate::{do_request, RequestMethod};
+use crate::router::AdminRoute;
+use kanidmd_web_ui_shared::constants::{
+    CSS_BREADCRUMB_ITEM, CSS_BREADCRUMB_ITEM_ACTIVE, CSS_CELL, CSS_TABLE,
+};
+use kanidmd_web_ui_shared::{alpha_warning_banner, do_alert_error};
+use kanidmd_web_ui_shared::{do_request, RequestMethod};
 
 impl From<GetError> for AdminListGroupsMsg {
     fn from(ge: GetError) -> Self {

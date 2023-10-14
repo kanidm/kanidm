@@ -1,11 +1,13 @@
+use kanidmd_web_ui_shared::alpha_warning_banner;
 use serde::{Deserialize, Serialize};
 use yew::{html, Component, Context, Html, Properties};
 use yew_router::prelude::Link;
 
-use crate::components::alpha_warning_banner;
-use crate::constants::{CSS_CARD, CSS_CARD_BODY, CSS_LINK_DARK_STRETCHED, CSS_PAGE_HEADER};
+use kanidmd_web_ui_shared::constants::{
+    CSS_CARD, CSS_CARD_BODY, CSS_LINK_DARK_STRETCHED, CSS_PAGE_HEADER,
+};
 // use crate::error::FetchError;
-use crate::views::AdminRoute;
+use crate::router::AdminRoute;
 
 #[derive(Eq, PartialEq, Properties)]
 pub struct Props;

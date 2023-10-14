@@ -1,6 +1,7 @@
 #[cfg(debug_assertions)]
 use gloo::console;
 use kanidm_proto::v1::{CUSessionToken, CUStatus, UiHint, UserAuthToken};
+use kanidmd_web_ui_shared::{do_request, error::FetchError, RequestMethod};
 use time::format_description::well_known::Rfc3339;
 use wasm_bindgen::UnwrapThrowExt;
 use yew::prelude::*;
@@ -8,11 +9,10 @@ use yew_router::prelude::*;
 
 use crate::components::change_unix_password::ChangeUnixPassword;
 use crate::components::create_reset_code::CreateResetCode;
-use crate::constants::CSS_PAGE_HEADER;
-use crate::error::*;
 use crate::manager::Route;
 use crate::models;
 use crate::views::{ViewProps, ViewRoute};
+use kanidmd_web_ui_shared::constants::CSS_PAGE_HEADER;
 
 #[allow(clippy::large_enum_variant)]
 // Page state
@@ -250,8 +250,7 @@ impl ProfileApp {
 
     async fn request_credential_update(id: String) -> Result<Msg, FetchError> {
         let uri = format!("/v1/person/{}/_credential/_update", id);
-        let (kopid, status, value, _headers) =
-            crate::do_request(&uri, crate::RequestMethod::GET, None).await?;
+        let (kopid, status, value, _headers) = do_request(&uri, RequestMethod::GET, None).await?;
 
         if status == 200 {
             let (token, status): (CUSessionToken, CUStatus) =

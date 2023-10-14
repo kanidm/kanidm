@@ -6,11 +6,10 @@ use wasm_bindgen::JsValue;
 use yew::prelude::*;
 
 use crate::components::totpdisplay::TotpDisplayApp;
-use crate::constants::{CLASS_DIV_LOGIN_BUTTON, CLASS_DIV_LOGIN_FIELD};
-use crate::error::FetchError;
-use crate::utils::{self};
+use kanidmd_web_ui_shared::constants::{CLASS_DIV_LOGIN_BUTTON, CLASS_DIV_LOGIN_FIELD};
+
 use crate::views::ViewProps;
-use crate::{do_request, RequestMethod};
+use kanidmd_web_ui_shared::{do_request, error::FetchError, utils, RequestMethod};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum IdentifyUserState {

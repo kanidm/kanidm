@@ -2,15 +2,15 @@
 use gloo::console;
 use gloo_timers::callback::{Interval, Timeout};
 use kanidm_proto::internal::{IdentifyUserRequest, IdentifyUserResponse};
+use kanidmd_web_ui_shared::constants::ID_IDENTITY_VERIFICATION_SYSTEM_TOTP_MODAL;
 use wasm_bindgen::JsValue;
 use wasm_timer::SystemTime;
 use yew::prelude::*;
 
-use crate::constants::ID_IDENTITY_VERIFICATION_SYSTEM_TOTP_MODAL;
 use crate::views::identityverification::{
     IdentifyUserState, IdentifyUserTransition, CORRUPT_STATE_ERROR,
 };
-use crate::{do_request, utils, RequestMethod};
+use kanidmd_web_ui_shared::{do_request, utils, RequestMethod};
 
 static DASH_ARRAY_SIZE: u16 = 188;
 

@@ -5,6 +5,8 @@ use kanidm_proto::v1::{
     AuthStep,
 };
 use kanidm_proto::webauthn::PublicKeyCredential;
+use kanidmd_web_ui_shared::utils::{autofocus, do_footer};
+use kanidmd_web_ui_shared::{add_body_form_classes, remove_body_form_classes};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::{spawn_local, JsFuture};
 use web_sys::CredentialRequestOptions;
@@ -12,9 +14,11 @@ use yew::prelude::*;
 use yew::virtual_dom::VNode;
 use yew_router::prelude::*;
 
-use crate::constants::{CLASS_BUTTON_DARK, CLASS_DIV_LOGIN_BUTTON, CLASS_DIV_LOGIN_FIELD};
-use crate::error::FetchError;
-use crate::{do_request, models, utils, RequestMethod};
+use crate::models;
+use kanidmd_web_ui_shared::constants::{
+    CLASS_BUTTON_DARK, CLASS_DIV_LOGIN_BUTTON, CLASS_DIV_LOGIN_FIELD,
+};
+use kanidmd_web_ui_shared::{do_request, error::FetchError, utils, RequestMethod};
 
 pub struct LoginApp {
     state: LoginState,
@@ -1049,7 +1053,7 @@ impl Component for LoginApp {
             </center>
             { self.view_state(ctx) }
         </main>
-        { crate::utils::do_footer() }
+        { do_footer() }
         </>
         }
     }
@@ -1068,10 +1072,10 @@ impl Component for LoginApp {
         #[cfg(debug_assertions)]
         console::debug!("login::rendered".to_string());
         // Force autofocus on elements that need it if present.
-        crate::utils::autofocus("username");
-        crate::utils::autofocus("password");
-        crate::utils::autofocus("backup_code");
-        crate::utils::autofocus("otp");
-        crate::utils::autofocus("begin");
+        autofocus("username");
+        autofocus("password");
+        autofocus("backup_code");
+        autofocus("otp");
+        autofocus("begin");
     }
 }

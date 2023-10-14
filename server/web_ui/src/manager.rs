@@ -5,6 +5,9 @@
 //! will allow you to proceed with the oauth flow.
 
 use gloo::console;
+
+use kanidmd_web_ui_shared::add_body_form_classes;
+use kanidmd_web_ui_shared::utils::do_footer;
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::UnwrapThrowExt;
 use yew::functional::*;
@@ -87,7 +90,7 @@ fn switch(route: Route) -> Html {
                         </Link<ViewRoute>>
                         </div>
                 </main>
-                { crate::utils::do_footer() }
+                { do_footer() }
                 </>
             }
         }

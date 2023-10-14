@@ -6,9 +6,7 @@ use wasm_bindgen::{JsValue, UnwrapThrowExt};
 use yew::prelude::*;
 
 use super::reset::{EventBusMsg, PasskeyRemoveModalProps};
-use crate::error::*;
-use crate::utils;
-use crate::{do_request, RequestMethod};
+use kanidmd_web_ui_shared::{do_request, error::FetchError, utils, RequestMethod};
 
 pub struct PasskeyRemoveModalApp {
     state: State,

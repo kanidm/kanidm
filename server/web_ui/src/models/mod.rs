@@ -31,18 +31,18 @@ pub fn clear_bearer_token() {
     PersistentStorage::delete("bearer_token");
 }
 
-pub fn push_auth_session_id(r: String) {
-    TemporaryStorage::set("auth_session_id", r)
-        .expect_throw("failed to set auth_session_id in temporary storage");
-}
+// pub fn push_auth_session_id(r: String) {
+//     TemporaryStorage::set("auth_session_id", r)
+//         .expect_throw("failed to set auth_session_id in temporary storage");
+// }
 
-pub fn pop_auth_session_id() -> Option<String> {
-    let l: Result<String, _> = TemporaryStorage::get("auth_session_id");
-    #[cfg(debug_assertions)]
-    console::debug!(format!("auth_session_id -> {:?}", l).as_str());
-    TemporaryStorage::delete("auth_session_id");
-    l.ok()
-}
+// pub fn pop_auth_session_id() -> Option<String> {
+//     let l: Result<String, _> = TemporaryStorage::get("auth_session_id");
+//     #[cfg(debug_assertions)]
+//     console::debug!(format!("auth_session_id -> {:?}", l).as_str());
+//     TemporaryStorage::delete("auth_session_id");
+//     l.ok()
+// }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub enum Location {
@@ -127,12 +127,6 @@ pub fn pop_login_remember_me() -> Option<String> {
 pub fn push_cred_update_session(s: (CUSessionToken, CUStatus)) {
     TemporaryStorage::set("cred_update_session", s)
         .expect_throw("failed to set cred session token");
-}
-
-/// Pulls the "cred_update_session" element from the browser's temporary storage
-pub fn get_cred_update_session() -> Option<(CUSessionToken, CUStatus)> {
-    let l: Result<(CUSessionToken, CUStatus), _> = TemporaryStorage::get("cred_update_session");
-    l.ok()
 }
 
 /*

@@ -23,6 +23,7 @@ doctest = false
 gloo = { workspace = true }
 js-sys = { workspace = true }
 kanidm_proto = { workspace = true, features = ["wasm"] }
+kanidmd_web_ui_shared = { workspace = true }
 qrcode = { workspace = true, features = ["svg"] }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }

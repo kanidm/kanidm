@@ -1,15 +1,16 @@
-use crate::utils;
 #[cfg(debug_assertions)]
 use gloo::console;
 use kanidm_proto::v1::{CUIntentToken, UserAuthToken};
+use kanidmd_web_ui_shared::constants::ID_CRED_RESET_CODE;
+use kanidmd_web_ui_shared::error::FetchError;
+use kanidmd_web_ui_shared::utils::{document, modal_hide_by_id, origin};
+use kanidmd_web_ui_shared::{do_request, RequestMethod};
 use yew::prelude::*;
 
 use qrcode::render::svg;
 use qrcode::QrCode;
 use wasm_bindgen::UnwrapThrowExt;
 use web_sys::Node;
-
-use crate::error::*;
 
 enum State {
     Valid,
@@ -87,7 +88,7 @@ impl Component for CreateResetCode {
             Msg::Dismiss => {
                 self.code_state = CodeState::Waiting;
                 self.state = State::Valid;
-                utils::modal_hide_by_id(crate::constants::ID_CRED_RESET_CODE);
+                modal_hide_by_id(ID_CRED_RESET_CODE);
                 true
             }
             Msg::Ready { token } => {
@@ -124,7 +125,7 @@ impl Component for CreateResetCode {
                 </div>
             },
             CodeState::Ready { token } => {
-                let mut url = utils::origin();
+                let mut url = origin();
 
                 url.set_path("/ui/reset");
                 let reset_link = html! {
@@ -140,7 +141,7 @@ impl Component for CreateResetCode {
                 let svg = qr.render::<svg::Color>().build();
 
                 #[allow(clippy::unwrap_used)]
-                let div = utils::document().create_element("div").unwrap();
+                let div = document().create_element("div").unwrap();
 
                 div.set_inner_html(svg.as_str());
 
@@ -168,7 +169,7 @@ impl Component for CreateResetCode {
             <button type="button" class="btn btn-primary"
               disabled={ !button_enabled }
               data-bs-toggle="modal"
-              data-bs-target={format!("#{}", crate::constants::ID_CRED_RESET_CODE)}
+              data-bs-target={format!("#{}", ID_CRED_RESET_CODE)}
               onclick={
                   ctx.link()
                       .callback(move |_| {
@@ -178,7 +179,7 @@ impl Component for CreateResetCode {
             >
               { "Update your Authentication Settings on Another Device" }
             </button>
-            <div class="modal" tabindex="-1" role="dialog" id={crate::constants::ID_CRED_RESET_CODE}>
+            <div class="modal" tabindex="-1" role="dialog" id={ID_CRED_RESET_CODE}>
               <div class="modal-dialog modal-lg" role="document">
                     <div class="modal-content">
                     <div class="modal-header">
@@ -236,8 +237,7 @@ impl CreateResetCode {
     async fn credential_get_update_intent_token(id: String) -> Result<Msg, FetchError> {
         let uri = format!("/v1/person/{}/_credential/_update_intent?ttl=0", id);
 
-        let (kopid, status, value, _) =
-            crate::do_request(&uri, crate::RequestMethod::GET, None).await?;
+        let (kopid, status, value, _) = do_request(&uri, RequestMethod::GET, None).await?;
 
         if status == 200 {
             let token: CUIntentToken =

@@ -4,14 +4,12 @@ use gloo::console;
 use yew::{html, Component, Context, Html, Properties};
 use yew_router::prelude::Link;
 
+use super::prelude::*;
 use crate::components::admin_menu::{Entity, EntityType, GetError};
-use crate::components::alpha_warning_banner;
-use crate::constants::{
+use crate::router::AdminRoute;
+use kanidmd_web_ui_shared::constants::{
     CSS_BREADCRUMB_ITEM, CSS_BREADCRUMB_ITEM_ACTIVE, CSS_CELL, CSS_DT, CSS_TABLE,
 };
-use crate::utils::{do_alert_error, do_page_header};
-use crate::views::AdminRoute;
-use crate::{do_request, RequestMethod};
 
 impl From<GetError> for AdminListAccountsMsg {
     fn from(ge: GetError) -> Self {
@@ -187,7 +185,7 @@ impl Component for AdminListAccounts {
             <>
 
             <ol class="breadcrumb">
-            <li class={CSS_BREADCRUMB_ITEM}><Link<AdminRoute> to={AdminRoute::AdminMenu}>{"Admin"}</Link<AdminRoute>></li>
+            <li class={CSS_BREADCRUMB_ITEM}><a href="/ui/admin/">{"Admin"}</a></li>
             <li class={CSS_BREADCRUMB_ITEM_ACTIVE} aria-current="page">{"Accounts"}</li>
             </ol>
             {do_page_header("Account Administration")}

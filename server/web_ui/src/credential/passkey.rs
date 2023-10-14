@@ -1,14 +1,15 @@
 use gloo::console;
 use kanidm_proto::v1::{CURegState, CURequest, CUSessionToken, CUStatus};
 use kanidm_proto::webauthn::{CreationChallengeResponse, RegisterPublicKeyCredential};
+use kanidmd_web_ui_shared::constants::CLASS_BUTTON_SUCCESS;
+use kanidmd_web_ui_shared::error::FetchError;
 use wasm_bindgen::{JsValue, UnwrapThrowExt};
 use wasm_bindgen_futures::JsFuture;
 use yew::prelude::*;
 
 use super::reset::{EventBusMsg, ModalProps};
-use crate::utils;
-use crate::{do_request, error::*, RequestMethod};
 
+use kanidmd_web_ui_shared::{do_request, utils, RequestMethod};
 pub struct PasskeyModalApp {
     state: State,
     label_val: String,
@@ -298,7 +299,7 @@ impl Component for PasskeyModalApp {
                         }
                       />
                     </form>
-                    <button id="passkey-submit" type="button" class={crate::constants::CLASS_BUTTON_SUCCESS}
+                    <button id="passkey-submit" type="button" class={CLASS_BUTTON_SUCCESS}
                         disabled={ !submit_enabled }
                         onclick={
                             ctx.link()

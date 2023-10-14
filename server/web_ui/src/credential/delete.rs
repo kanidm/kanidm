@@ -1,13 +1,14 @@
 #[cfg(debug_assertions)]
 use gloo::console;
 use kanidm_proto::v1::{CURequest, CUSessionToken, CUStatus};
+use kanidmd_web_ui_shared::error::FetchError;
+use kanidmd_web_ui_shared::utils::modal_hide_by_id;
 use wasm_bindgen::{JsValue, UnwrapThrowExt};
 use yew::prelude::*;
 
 use super::reset::{EventBusMsg, ModalProps};
-use crate::do_request;
-use crate::error::*;
-use crate::utils;
+use kanidmd_web_ui_shared::do_request;
+
 use crate::RequestMethod;
 
 enum State {
@@ -37,7 +38,7 @@ impl From<FetchError> for Msg {
 
 impl DeleteApp {
     fn reset_and_hide(&mut self) {
-        utils::modal_hide_by_id("staticDeletePrimaryCred");
+        modal_hide_by_id("staticDeletePrimaryCred");
         self.state = State::Init;
     }
 

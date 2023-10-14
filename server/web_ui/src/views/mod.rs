@@ -1,15 +1,15 @@
 #![allow(non_camel_case_types)]
 use gloo::console;
 use kanidm_proto::v1::{UiHint, UserAuthToken};
+use kanidmd_web_ui_shared::constants::ID_SIGNOUTMODAL;
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::UnwrapThrowExt;
 use yew::prelude::*;
 use yew_router::prelude::*;
 
-use crate::components::{admin_accounts, admin_groups, admin_menu, admin_oauth2};
 use crate::manager::Route;
 use crate::models;
-use crate::{do_request, error::*, RequestMethod};
+use kanidmd_web_ui_shared::{do_request, error::FetchError, RequestMethod};
 
 mod apps;
 pub mod identityverification;
@@ -21,9 +21,8 @@ use profile::ProfileApp;
 
 #[derive(Routable, PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
 pub enum ViewRoute {
-    #[at("/ui/admin/*")]
-    Admin,
-
+    // #[at("/ui/admin/*")]
+    // Admin,
     #[at("/ui/apps")]
     Apps,
 
@@ -32,32 +31,6 @@ pub enum ViewRoute {
 
     #[at("/ui/identity-verification")]
     IdentityVerification,
-
-    #[not_found]
-    #[at("/ui/404")]
-    NotFound,
-}
-
-#[derive(Routable, PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
-pub enum AdminRoute {
-    #[at("/ui/admin/menu")]
-    AdminMenu,
-
-    #[at("/ui/admin/groups")]
-    AdminListGroups,
-    #[at("/ui/admin/accounts")]
-    AdminListAccounts,
-    #[at("/ui/admin/oauth2")]
-    AdminListOAuth2,
-
-    #[at("/ui/admin/group/:uuid")]
-    ViewGroup { uuid: String },
-    #[at("/ui/admin/person/:uuid")]
-    ViewPerson { uuid: String },
-    #[at("/ui/admin/service_account/:uuid")]
-    ViewServiceAccount { uuid: String },
-    #[at("/ui/admin/oauth2/:rs_name")]
-    ViewOAuth2RP { rs_name: String },
 
     #[not_found]
     #[at("/ui/404")]
@@ -272,29 +245,28 @@ impl ViewsApp {
 
                     if ui_hint_experimental {
                       <li class="mb-1">
-                        <Link<AdminRoute> classes="nav-link" to={AdminRoute::AdminMenu}>
+                        // <Link<AdminRoute> classes="nav-link" to={AdminRoute::AdminMenu}>
+                        <a href="/ui/admin/">
                           <span data-feather="file"></span>
                           { "Admin" }
-                        </Link<AdminRoute>>
+                          </a>
+                        // </Link<AdminRoute>>
                       </li>
                     }
 
                     <li class="mb-1">
                       <a class="nav-link" href="#"
                         data-bs-toggle="modal"
-                        data-bs-target={format!("#{}", crate::constants::ID_SIGNOUTMODAL)}
+                        data-bs-target={format!("#{}", ID_SIGNOUTMODAL)}
                         >{"Sign out"}</a>
                     </li>
                   </ul>
-                  // <form class="d-flex">
-                  //   <input class="form-control me-2" type="search" placeholder="Search" aria-label="Search" />
-                  //   <button class="btn btn-outline-light" type="submit">{"Search"}</button>
-                  // </form>
+
                 </div>
               </div>
             </nav>
         // sign out modal dialogue box
-        <div class="modal" tabindex="-1" role="dialog" id={crate::constants::ID_SIGNOUTMODAL}>
+        <div class="modal" tabindex="-1" role="dialog" id={ID_SIGNOUTMODAL}>
           <div class="modal-dialog" role="document">
             <div class="modal-content">
               <div class="modal-header">
@@ -307,7 +279,7 @@ impl ViewsApp {
               <div class="modal-footer">
                 <button type="button" class="btn btn-success"
                   data-bs-toggle="modal"
-                  data-bs-target={format!("#{}", crate::constants::ID_SIGNOUTMODAL)}
+                  data-bs-target={format!("#{}", ID_SIGNOUTMODAL)}
                   onclick={ ctx.link().callback(|_| ViewsMsg::Logout) }>{ "Sign out" }</button>
                 <button type="button" class="btn btn-secondary"
                   data-bs-dismiss="modal"
@@ -320,9 +292,7 @@ impl ViewsApp {
               <Switch<ViewRoute> render={ move |route: ViewRoute| {
                     // safety - can't panic because to get to this location we MUST be authenticated!
                     match route {
-                        ViewRoute::Admin => html!{
-                            <Switch<AdminRoute> render={ admin_routes } />
-                        },
+
                         #[allow(clippy::let_unit_value)]
                         ViewRoute::IdentityVerification => html! { <IdentityVerificationApp current_user_uat={ current_user_uat.clone() } />},
                         ViewRoute::Apps => html! { <AppsApp /> },
@@ -385,37 +355,5 @@ impl ViewsApp {
             let emsg = value.as_string().unwrap_or_default();
             Ok(ViewsMsg::Error { emsg, kopid })
         }
-    }
-}
-
-fn admin_routes(route: AdminRoute) -> Html {
-    match route {
-        AdminRoute::AdminMenu => html! {
-          <admin_menu::AdminMenu />
-        },
-        AdminRoute::AdminListAccounts => html!(
-          <admin_accounts::AdminListAccounts />
-        ),
-        AdminRoute::AdminListGroups => html!(
-          <admin_groups::AdminListGroups />
-        ),
-        AdminRoute::AdminListOAuth2 => html!(
-          <admin_oauth2::AdminListOAuth2 />
-        ),
-        AdminRoute::NotFound => html! (
-          <Redirect<Route> to={Route::NotFound}/>
-        ),
-        AdminRoute::ViewGroup { uuid } => {
-            html!(<admin_groups::AdminViewGroup uuid={uuid} />)
-        }
-        AdminRoute::ViewPerson { uuid } => html!(
-          <admin_accounts::AdminViewPerson uuid={uuid} />
-        ),
-        AdminRoute::ViewServiceAccount { uuid } => html!(
-          <admin_accounts::AdminViewServiceAccount uuid={uuid} />
-        ),
-        AdminRoute::ViewOAuth2RP { rs_name } => html! {
-          <admin_oauth2::AdminViewOAuth2 rs_name={rs_name} />
-        },
     }
 }
