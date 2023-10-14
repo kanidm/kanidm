@@ -124,6 +124,8 @@ pub struct CredUpdateSessionPerms {
     pub ext_cred_portal_can_view: bool,
     pub primary_can_edit: bool,
     pub passkeys_can_edit: bool,
+    pub unixcred_can_edit: bool,
+    pub sshpubkey_can_edit: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

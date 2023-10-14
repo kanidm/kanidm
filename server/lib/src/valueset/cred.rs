@@ -221,12 +221,16 @@ impl ValueSetIntentToken {
                         ext_cred_portal_can_view,
                         primary_can_edit,
                         passkeys_can_edit,
+                        unixcred_can_edit,
+                        sshpubkey_can_edit,
                     } => IntentTokenState::Valid {
                         max_ttl,
                         perms: CredUpdateSessionPerms {
                             ext_cred_portal_can_view,
                             primary_can_edit,
                             passkeys_can_edit,
+                            unixcred_can_edit,
+                            sshpubkey_can_edit,
                         },
                     },
                     DbValueIntentTokenStateV1::InProgress {
@@ -236,6 +240,8 @@ impl ValueSetIntentToken {
                         ext_cred_portal_can_view,
                         primary_can_edit,
                         passkeys_can_edit,
+                        unixcred_can_edit,
+                        sshpubkey_can_edit,
                     } => IntentTokenState::InProgress {
                         max_ttl,
                         session_id,
@@ -244,6 +250,8 @@ impl ValueSetIntentToken {
                             ext_cred_portal_can_view,
                             primary_can_edit,
                             passkeys_can_edit,
+                            unixcred_can_edit,
+                            sshpubkey_can_edit,
                         },
                     },
                     DbValueIntentTokenStateV1::Consumed { max_ttl } => {
@@ -266,6 +274,8 @@ impl ValueSetIntentToken {
                     ext_cred_portal_can_view,
                     primary_can_edit,
                     passkeys_can_edit,
+                    unixcred_can_edit,
+                    sshpubkey_can_edit,
                 } => (
                     token_id.clone(),
                     IntentTokenState::Valid {
@@ -274,6 +284,8 @@ impl ValueSetIntentToken {
                             ext_cred_portal_can_view: *ext_cred_portal_can_view,
                             primary_can_edit: *primary_can_edit,
                             passkeys_can_edit: *passkeys_can_edit,
+                            unixcred_can_edit: *unixcred_can_edit,
+                            sshpubkey_can_edit: *sshpubkey_can_edit,
                         },
                     },
                 ),
@@ -285,6 +297,8 @@ impl ValueSetIntentToken {
                     ext_cred_portal_can_view,
                     primary_can_edit,
                     passkeys_can_edit,
+                    unixcred_can_edit,
+                    sshpubkey_can_edit,
                 } => (
                     token_id.clone(),
                     IntentTokenState::InProgress {
@@ -295,6 +309,8 @@ impl ValueSetIntentToken {
                             ext_cred_portal_can_view: *ext_cred_portal_can_view,
                             primary_can_edit: *primary_can_edit,
                             passkeys_can_edit: *passkeys_can_edit,
+                            unixcred_can_edit: *unixcred_can_edit,
+                            sshpubkey_can_edit: *sshpubkey_can_edit,
                         },
                     },
                 ),
@@ -402,12 +418,16 @@ impl ValueSetT for ValueSetIntentToken {
                                         ext_cred_portal_can_view,
                                         primary_can_edit,
                                         passkeys_can_edit,
+                                        unixcred_can_edit,
+                                        sshpubkey_can_edit,
                                     },
                             } => DbValueIntentTokenStateV1::Valid {
                                 max_ttl: *max_ttl,
                                 ext_cred_portal_can_view: *ext_cred_portal_can_view,
                                 primary_can_edit: *primary_can_edit,
                                 passkeys_can_edit: *passkeys_can_edit,
+                                unixcred_can_edit: *unixcred_can_edit,
+                                sshpubkey_can_edit: *sshpubkey_can_edit,
                             },
                             IntentTokenState::InProgress {
                                 max_ttl,
@@ -418,6 +438,8 @@ impl ValueSetT for ValueSetIntentToken {
                                         ext_cred_portal_can_view,
                                         primary_can_edit,
                                         passkeys_can_edit,
+                                        unixcred_can_edit,
+                                        sshpubkey_can_edit,
                                     },
                             } => DbValueIntentTokenStateV1::InProgress {
                                 max_ttl: *max_ttl,
@@ -426,6 +448,8 @@ impl ValueSetT for ValueSetIntentToken {
                                 ext_cred_portal_can_view: *ext_cred_portal_can_view,
                                 primary_can_edit: *primary_can_edit,
                                 passkeys_can_edit: *passkeys_can_edit,
+                                unixcred_can_edit: *unixcred_can_edit,
+                                sshpubkey_can_edit: *sshpubkey_can_edit,
                             },
                             IntentTokenState::Consumed { max_ttl } => {
                                 DbValueIntentTokenStateV1::Consumed { max_ttl: *max_ttl }
@@ -450,6 +474,8 @@ impl ValueSetT for ValueSetIntentToken {
                                 ext_cred_portal_can_view,
                                 primary_can_edit,
                                 passkeys_can_edit,
+                                unixcred_can_edit,
+                                sshpubkey_can_edit,
                             },
                     } => ReplIntentTokenV1::Valid {
                         token_id: u.clone(),
@@ -457,6 +483,8 @@ impl ValueSetT for ValueSetIntentToken {
                         ext_cred_portal_can_view: *ext_cred_portal_can_view,
                         primary_can_edit: *primary_can_edit,
                         passkeys_can_edit: *passkeys_can_edit,
+                        unixcred_can_edit: *unixcred_can_edit,
+                        sshpubkey_can_edit: *sshpubkey_can_edit,
                     },
                     IntentTokenState::InProgress {
                         max_ttl,
@@ -467,6 +495,8 @@ impl ValueSetT for ValueSetIntentToken {
                                 ext_cred_portal_can_view,
                                 primary_can_edit,
                                 passkeys_can_edit,
+                                unixcred_can_edit,
+                                sshpubkey_can_edit,
                             },
                     } => ReplIntentTokenV1::InProgress {
                         token_id: u.clone(),
@@ -476,6 +506,8 @@ impl ValueSetT for ValueSetIntentToken {
                         ext_cred_portal_can_view: *ext_cred_portal_can_view,
                         primary_can_edit: *primary_can_edit,
                         passkeys_can_edit: *passkeys_can_edit,
+                        unixcred_can_edit: *unixcred_can_edit,
+                        sshpubkey_can_edit: *sshpubkey_can_edit,
                     },
                     IntentTokenState::Consumed { max_ttl } => ReplIntentTokenV1::Consumed {
                         token_id: u.clone(),

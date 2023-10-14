@@ -20,16 +20,17 @@ pub(crate) struct UnixUserAccount {
     pub name: String,
     pub spn: String,
     pub displayname: String,
-    pub gidnumber: u32,
     pub uuid: Uuid,
-    pub shell: Option<String>,
-    pub sshkeys: Vec<String>,
-    pub groups: Vec<UnixGroup>,
-    cred: Option<Credential>,
     pub valid_from: Option<OffsetDateTime>,
     pub expire: Option<OffsetDateTime>,
     pub radius_secret: Option<String>,
     pub mail: Vec<String>,
+
+    cred: Option<Credential>,
+    pub shell: Option<String>,
+    pub sshkeys: Vec<String>,
+    pub gidnumber: u32,
+    pub groups: Vec<UnixGroup>,
 }
 
 macro_rules! try_from_entry {
@@ -149,16 +150,6 @@ impl UnixUserAccount {
         let groups = UnixGroup::try_from_account_entry_ro(value, qs)?;
         try_from_entry!(value, groups)
     }
-
-    /*
-    pub(crate) fn try_from_entry_reduced(
-        value: &Entry<EntryReduced, EntryCommitted>,
-        qs: &mut QueryServerReadTransaction,
-    ) -> Result<Self, OperationError> {
-        let groups = UnixGroup::try_from_account_entry_red_ro(au, value, qs)?;
-        try_from_entry!(value, groups)
-    }
-    */
 
     pub(crate) fn to_unixusertoken(&self, ct: Duration) -> Result<UnixUserToken, OperationError> {
         let groups: Result<Vec<_>, _> = self.groups.iter().map(|g| g.to_unixgrouptoken()).collect();

@@ -59,6 +59,10 @@ pub enum DbValueIntentTokenStateV1 {
         primary_can_edit: bool,
         #[serde(default)]
         passkeys_can_edit: bool,
+        #[serde(default)]
+        unixcred_can_edit: bool,
+        #[serde(default)]
+        sshpubkey_can_edit: bool,
     },
     #[serde(rename = "p")]
     InProgress {
@@ -71,6 +75,10 @@ pub enum DbValueIntentTokenStateV1 {
         primary_can_edit: bool,
         #[serde(default)]
         passkeys_can_edit: bool,
+        #[serde(default)]
+        unixcred_can_edit: bool,
+        #[serde(default)]
+        sshpubkey_can_edit: bool,
     },
     #[serde(rename = "c")]
     Consumed { max_ttl: Duration },
