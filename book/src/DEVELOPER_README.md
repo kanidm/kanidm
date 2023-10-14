@@ -276,7 +276,7 @@ cd server/web_ui/
 ./build_wasm_dev.sh
 ```
 
-To build for release, run `build_wasm_release.sh`.
+To build for release, run `build_wasm.sh`, or `make webui` from the project root.
 
 The "developer" profile for kanidmd will automatically use the pkg output in this folder.
 
