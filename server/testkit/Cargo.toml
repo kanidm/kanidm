@@ -16,9 +16,11 @@ name = "kanidmd_testkit"
 path = "src/lib.rs"
 
 [features]
-default = []
+default = ["enumeration"] # TODO: disable this
 # Enables webdriver tests, you need to be running a webdriver server
 webdriver = ["fantoccini"]
+# Enables @yaleman's weird tests for mapping out the access landscape
+enumeration = []
 
 [dependencies]
 kanidm_client = { workspace = true }
@@ -39,6 +41,8 @@ tracing = { workspace = true, features = ["attributes"] }
 tokio = { workspace = true, features = ["net", "sync", "io-util", "macros"] }
 openssl = { workspace = true }
 lazy_static = { workspace = true }
+petgraph = { version = "0.6.4", features = ["serde"] }
+regex.workspace = true
 
 
 [build-dependencies]
