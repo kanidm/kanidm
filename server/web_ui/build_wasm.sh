@@ -42,7 +42,7 @@ cd admin && ./build_admin.sh && cd ..
 
 if [ -z "${SKIP_BROTLI}" ]; then
     # updates the brotli-compressed files
-    echo "brotli-compressing the WASM file..."
-    find ./pkg -name '*.wasm' -exec ./find_best_brotli.sh "{}" \; || exit 1
+    echo "brotli-compressing compressible files..."
+    find ./pkg -size +16k -type f -not -name '*.png' -exec ./find_best_brotli.sh "{}" \; || exit 1
 fi
 

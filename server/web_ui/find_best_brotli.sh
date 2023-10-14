@@ -14,6 +14,7 @@ if [ $# -eq 0 ]; then
 fi
 
 filename=$1
+echo "#####################################"
 echo "Compressing $1"
 
 # Exit if the file doesn't exist
