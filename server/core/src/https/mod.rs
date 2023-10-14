@@ -120,14 +120,16 @@ pub fn get_js_files(role: ServerRole) -> Vec<JavaScriptFile> {
                 env!("KANIDM_WEB_UI_PKG_PATH").to_owned(),
                 filepath,
             )) {
-                Ok(hash) =>
-                js_files.push(JavaScriptFile {
+                Ok(hash) => js_files.push(JavaScriptFile {
                     filepath,
                     hash,
                     filetype: None,
                 }),
                 Err(err) => {
-                    admin_error!(?err, "Failed to generate integrity hash for bootstrap.bundle.min.js")
+                    admin_error!(
+                        ?err,
+                        "Failed to generate integrity hash for bootstrap.bundle.min.js"
+                    )
                 }
             }
         }

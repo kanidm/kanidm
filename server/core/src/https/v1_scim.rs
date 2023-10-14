@@ -1,5 +1,5 @@
 use super::apidocs::path_schema;
-use super::apidocs::response_schema::{ApiResponseWithout200,DefaultApiResponse};
+use super::apidocs::response_schema::{ApiResponseWithout200, DefaultApiResponse};
 use super::errors::WebError;
 use super::middleware::KOpId;
 use super::v1::{

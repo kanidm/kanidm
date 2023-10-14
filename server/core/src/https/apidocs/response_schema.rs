@@ -28,7 +28,10 @@ impl IntoResponses for DefaultApiResponse {
                     .description("Ok"),
             )
             .response("400", ResponseBuilder::new().description("Invalid Request"))
-            .response("401", ResponseBuilder::new().description("Authorization required"))
+            .response(
+                "401",
+                ResponseBuilder::new().description("Authorization required"),
+            )
             .response("403", ResponseBuilder::new().description("Not Authorized"))
             .build()
             .into()
@@ -47,10 +50,12 @@ impl IntoResponses for ApiResponseWithout200 {
     fn responses() -> BTreeMap<String, RefOr<Response>> {
         ResponsesBuilder::new()
             .response("400", ResponseBuilder::new().description("Invalid Request"))
-            .response("401", ResponseBuilder::new().description("Authorization required"))
+            .response(
+                "401",
+                ResponseBuilder::new().description("Authorization required"),
+            )
             .response("403", ResponseBuilder::new().description("Not Authorized"))
             .build()
             .into()
     }
 }
-

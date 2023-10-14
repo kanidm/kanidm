@@ -1473,7 +1473,7 @@ pub async fn service_account_id_ssh_pubkeys_post(
     // Add a msg here
     state
         .qe_w_ref
-        .handle_sshkeycreate(kopid.uat, id, tag, key, filter, kopid.eventid)
+        .handle_sshkeycreate(kopid.uat, id, &tag, &key, filter, kopid.eventid)
         .await
         .map(Json::from)
         .map_err(WebError::from)

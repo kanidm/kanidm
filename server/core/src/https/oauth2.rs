@@ -15,7 +15,7 @@ use http::header::{
 use http::{HeaderMap, HeaderValue, StatusCode};
 use hyper::Body;
 use kanidm_proto::constants::APPLICATION_JSON;
-use kanidm_proto::oauth2::{AuthorisationResponse, OidcDiscoveryResponse, AccessTokenResponse};
+use kanidm_proto::oauth2::{AccessTokenResponse, AuthorisationResponse, OidcDiscoveryResponse};
 use kanidmd_lib::idm::oauth2::{
     AccessTokenIntrospectRequest, AccessTokenRequest, AuthorisationRequest, AuthorisePermitSuccess,
     AuthoriseResponse, ErrorResponse, Oauth2Error, TokenRevokeRequest,
@@ -657,14 +657,13 @@ pub async fn oauth2_token_revoke_post(
     // TODO: we should handle the session-based auth bit here I think maybe possibly there's no tests
     let client_authz = match kopid.uat {
         Some(val) => val,
-        None =>
-        {
+        None => {
             return (
                 StatusCode::UNAUTHORIZED,
                 [(ACCESS_CONTROL_ALLOW_ORIGIN, "*")],
-                ""
+                "",
             )
-            .into_response();
+                .into_response();
         }
     };
 
@@ -676,19 +675,15 @@ pub async fn oauth2_token_revoke_post(
         .await;
 
     match res {
-        Ok(()) =>
-        {
-            (StatusCode::OK,
-                [(ACCESS_CONTROL_ALLOW_ORIGIN, "*")],
-                ""
-            ).into_response()
-        }
+        Ok(()) => (StatusCode::OK, [(ACCESS_CONTROL_ALLOW_ORIGIN, "*")], "").into_response(),
         Err(Oauth2Error::AuthenticationRequired) => {
             // This will trigger our ui to auth and retry.
-            (StatusCode::UNAUTHORIZED,
-                [(ACCESS_CONTROL_ALLOW_ORIGIN, "*"),],
-                ""
-            ).into_response()
+            (
+                StatusCode::UNAUTHORIZED,
+                [(ACCESS_CONTROL_ALLOW_ORIGIN, "*")],
+                "",
+            )
+                .into_response()
         }
         Err(e) => {
             // https://datatracker.ietf.org/doc/html/rfc6749#section-5.2
@@ -696,10 +691,12 @@ pub async fn oauth2_token_revoke_post(
                 error: e.to_string(),
                 ..Default::default()
             };
-            (StatusCode::BAD_REQUEST,
-                [(ACCESS_CONTROL_ALLOW_ORIGIN, "*"),],
+            (
+                StatusCode::BAD_REQUEST,
+                [(ACCESS_CONTROL_ALLOW_ORIGIN, "*")],
                 serde_json::to_string(&err).unwrap_or("".to_string()),
-            ).into_response()
+            )
+                .into_response()
         }
     }
 }
@@ -713,7 +710,8 @@ pub async fn oauth2_preflight_options() -> Response {
             (ACCESS_CONTROL_ALLOW_HEADERS, "Authorization"),
         ],
         String::new(),
-    ).into_response()
+    )
+        .into_response()
 }
 
 pub fn route_setup(state: ServerState) -> Router<ServerState> {
