@@ -5,11 +5,9 @@ use std::collections::{BTreeSet, HashMap};
 use kanidmd_lib::constants::entries::Attribute;
 use kanidmd_lib::constants::groups::{idm_builtin_admin_groups, idm_builtin_non_admin_groups};
 use kanidmd_lib::prelude::{builtin_accounts, EntryInitNew};
-use petgraph::dot::{Config, Dot};
 use petgraph::graphmap::GraphMap;
 use uuid::Uuid;
 
-#[tokio::test]
 async fn enumerate_default_groups(/*_client: KanidmClient*/) {
     let mut uuidmap: HashMap<Uuid, EntryInitNew> = HashMap::new();
 
@@ -110,4 +108,9 @@ async fn enumerate_default_groups(/*_client: KanidmClient*/) {
             EntryType::from(right.clone()).as_mermaid_tag(),
         );
     }
+}
+
+#[tokio::main]
+async fn main() {
+    enumerate_default_groups().await;
 }
