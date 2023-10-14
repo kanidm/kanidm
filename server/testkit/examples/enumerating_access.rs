@@ -1,4 +1,7 @@
-// #[cfg(target_feature = "enumeration")]
+//! I'm working towards making this a proper enumeration/discovery toolkit for access things in Kanidm.
+//!
+//! - @yaleman
+//!
 
 use std::collections::{BTreeSet, HashMap};
 // use kanidm_client::KanidmClient;
