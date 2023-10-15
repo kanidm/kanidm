@@ -415,13 +415,15 @@ impl KanidmClientBuilder {
     */
 
     /// Build the client ready for usage.
-    pub fn build(self) -> Result<KanidmClient, reqwest::Error> {
+    pub fn build(self) -> Result<KanidmClient, ClientError> {
         // Errghh, how to handle this cleaner.
         let address = match &self.address {
             Some(a) => a.clone(),
             None => {
                 error!("Configuration option 'uri' missing from client configuration, cannot continue client startup without specifying a server to connect to. 🤔");
-                std::process::exit(1);
+                return Err(ClientError::ConfigParseIssue(
+                    "Configuration option 'uri' missing from client configuration, cannot continue client startup without specifying a server to connect to. 🤔".to_string(),
+                ));
             }
         };
 
@@ -449,7 +451,9 @@ impl KanidmClientBuilder {
             None => client_builder,
         };
 
-        let client = client_builder.build()?;
+        let client = client_builder
+            .build()
+            .map_err(|err| ClientError::Transport(err))?;
 
         // Now get the origin.
         #[allow(clippy::expect_used)]
@@ -544,7 +548,7 @@ impl KanidmClient {
         (*tguard).as_ref().cloned()
     }
 
-    pub fn new_session(&self) -> Result<Self, reqwest::Error> {
+    pub fn new_session(&self) -> Result<Self, ClientError> {
         // Copy our builder, and then just process it.
         let builder = self.builder.clone();
         builder.build()

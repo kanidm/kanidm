@@ -15,7 +15,6 @@ use kanidm_client::{ClientError, KanidmClient, KanidmClientBuilder};
 use kanidm_proto::constants::{DEFAULT_CLIENT_CONFIG_PATH, DEFAULT_CLIENT_CONFIG_PATH_HOME};
 use tracing::{debug, error};
 
-
 include!("opt/ssh_authorizedkeys.rs");
 
 pub(crate) fn build_configured_client(opt: &SshAuthorizedOpt) -> Result<KanidmClient, ()> {
@@ -105,13 +104,13 @@ mod tests {
 
     use std::path::PathBuf;
 
-    use crate::SshAuthorizedOpt;
     use crate::build_configured_client;
+    use crate::SshAuthorizedOpt;
     #[test]
     fn test_build_configured_client() {
         let opt = SshAuthorizedOpt {
             debug: false,
-            addr: None,
+            addr: Some("https://example.com:8443".to_string()),
             ca_path: None,
             username: "anonymous".to_string(),
             account_id: "anonymous".to_string(),
