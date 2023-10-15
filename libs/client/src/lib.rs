@@ -451,9 +451,7 @@ impl KanidmClientBuilder {
             None => client_builder,
         };
 
-        let client = client_builder
-            .build()
-            .map_err(|err| ClientError::Transport(err))?;
+        let client = client_builder.build().map_err(ClientError::Transport)?;
 
         // Now get the origin.
         #[allow(clippy::expect_used)]
