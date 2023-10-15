@@ -492,9 +492,9 @@ checksum = "349f9b6a179ed607305526ca489b34ad0a41aed5f7980fa90eb03160b69598fb"
 
 [[package]]
 name = "bitfield"
-version = "0.13.2"
+version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "46afbd2983a5d5a7bd740ccb198caf5b82f45c40c09c0eed36052d91cb92e719"
+checksum = "2d7e60934ceec538daadb9d8432424ed043a904d8e0243f3c6446bce549a46ac"
 
 [[package]]
 name = "bitflags"
@@ -3672,6 +3672,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "num-derive"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cfb77679af88f8b125209d354a202862602672222e7f2313fdd6dc349bad4712"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.38",
+]
+
+[[package]]
 name = "num-integer"
 version = "0.1.45"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4062,9 +4073,9 @@ dependencies = [
 
 [[package]]
 name = "picky-asn1"
-version = "0.5.0"
+version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1088a7f82ee21e534da0f62b074b559d2a0717b0d5104ba7a47c1f5bc6c83f69"
+checksum = "295eea0f33c16be21e2a98b908fdd4d73c04dd48c8480991b76dbcf0cb58b212"
 dependencies = [
  "oid",
  "serde",
@@ -4073,9 +4084,9 @@ dependencies = [
 
 [[package]]
 name = "picky-asn1-der"
-version = "0.3.1"
+version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "de76bf631e2f2064f78d7f1ea8a57cb0445d83138cd5fac67274d50b0f6053c2"
+checksum = "5df7873a9e36d42dadb393bea5e211fe83d793c172afad5fb4ec846ec582793f"
 dependencies = [
  "picky-asn1",
  "serde",
@@ -4084,11 +4095,11 @@ dependencies = [
 
 [[package]]
 name = "picky-asn1-x509"
-version = "0.7.1"
+version = "0.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "43aa17ded8046e4809d21f0a007439ebcd1aa23e88003a6d68ba9992b26c96f7"
+checksum = "2c5f20f71a68499ff32310f418a6fad8816eac1a2859ed3f0c5c741389dd6208"
 dependencies = [
- "base64 0.13.1",
+ "base64 0.21.4",
  "oid",
  "picky-asn1",
  "picky-asn1-der",
@@ -5566,16 +5577,16 @@ checksum = "3528ecfd12c466c6f163363caf2d02a71161dd5e1cc6ae7b34207ea2d42d81ed"
 
 [[package]]
 name = "tss-esapi"
-version = "7.3.0"
+version = "7.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "40d158588eb8f815ca311b56a0bce5d775b0cb1a54640339ea2820bf636cdea5"
+checksum = "de234df360c349f78ecd33f0816ab3842db635732212b5cfad67f2638336864e"
 dependencies = [
  "bitfield",
  "enumflags2",
  "hostname-validator",
  "log",
  "mbox",
- "num-derive",
+ "num-derive 0.4.1",
  "num-traits",
  "oid",
  "picky-asn1",
@@ -5588,9 +5599,9 @@ dependencies = [
 
 [[package]]
 name = "tss-esapi-sys"
-version = "0.4.0"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e7b8be553262e0924410fe96404830252477f175f228081f21cb0bd87f2ccebe"
+checksum = "535cd192581c2ec4d5f82e670b1d3fbba6a23ccce8c85de387642051d7cad5b5"
 dependencies = [
  "pkg-config",
  "target-lexicon",
@@ -5920,7 +5931,7 @@ dependencies = [
  "futures",
  "hex",
  "nom",
- "num-derive",
+ "num-derive 0.3.3",
  "num-traits",
  "openssl",
  "rpassword 5.0.1",
