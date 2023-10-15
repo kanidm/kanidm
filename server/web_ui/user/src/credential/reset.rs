@@ -4,15 +4,13 @@ use kanidm_proto::v1::{
     PasskeyDetail,
 };
 
-use kanidmd_web_ui_shared::models::get_cred_update_session;
+use kanidmd_web_ui_shared::models::{get_cred_update_session, pop_return_location};
 use kanidmd_web_ui_shared::utils::{autofocus, do_footer};
 use kanidmd_web_ui_shared::{add_body_form_classes, remove_body_form_classes};
 use uuid::Uuid;
 use wasm_bindgen::{JsValue, UnwrapThrowExt};
 use yew::prelude::*;
 use yew_router::prelude::*;
-
-use crate::models;
 
 use super::delete::DeleteApp;
 use super::passkey::PasskeyModalApp;
@@ -240,16 +238,16 @@ impl Component for CredentialResetApp {
                 Some(State::WaitingForCommit)
             }
             (Msg::Success, State::WaitingForCommit) => {
-                let loc = models::pop_return_location();
+                let loc = pop_return_location();
                 #[cfg(debug_assertions)]
                 console::debug!(format!("Going to -> {:?}", loc));
-                loc.goto(
-                    &ctx.link()
-                        .navigator()
-                        .expect_throw("failed to read history"),
-                );
-
-                None
+                // loc.goto(
+                //     &ctx.link()
+                //         .navigator()
+                //         .expect_throw("failed to read history"),
+                // );
+                // None
+                todo!("what's this goto?");
             }
             (Msg::Error { emsg, kopid }, _) => Some(State::Error { emsg, kopid }),
             (_, _) => {

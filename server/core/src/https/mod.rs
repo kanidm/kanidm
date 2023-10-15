@@ -97,13 +97,18 @@ pub struct JavaScriptFiles {
     selected: HashMap<String, JavaScriptFile>,
 }
 
-pub fn get_js_files(role: ServerRole) -> JavaScriptFiles {
+pub fn get_js_files(role: ServerRole) -> Result<JavaScriptFiles, ()> {
     let mut all_pages: Vec<JavaScriptFile> = Vec::new();
     let mut selected: HashMap<String, JavaScriptFile> = HashMap::new();
 
     if !matches!(role, ServerRole::WriteReplicaNoUI) {
         // let's set up the list of js module hashes
-        for filepath in ["wasmloader.js", "wasmloader_admin.js"] {
+        for filepath in [
+            "wasmloader.js", // TODO: deprecate this
+            "wasmloader_admin.js",
+            "wasmloader_login_flows.js",
+            "wasmloader_user.js",
+        ] {
             match generate_integrity_hash(format!(
                 "{}/{}",
                 env!("KANIDM_WEB_UI_PKG_PATH").to_owned(),
@@ -120,13 +125,19 @@ pub fn get_js_files(role: ServerRole) -> JavaScriptFiles {
                     );
                 }
                 Err(err) => {
-                    admin_error!(?err, "Failed to generate integrity hash for wasmloader.js");
+                    admin_error!(
+                        ?err,
+                        "Failed to generate integrity hash for {} THIS IS GOING TO CAUSE PROBLEMS",
+                        filepath
+                    );
+                    return Err(());
                 }
             };
         }
-        // let's set up the list of non-module hashes
-        {
-            let filepath = "external/bootstrap.bundle.min.js";
+
+        for filepath in ["shared.js", "external/bootstrap.bundle.min.js"] {
+            // let's set up the list of non-wasm-module js files we want to serve
+            // for filepath in ["external/bootstrap.bundle.min.js", "shared.js"] {
             match generate_integrity_hash(format!(
                 "{}/{}",
                 env!("KANIDM_WEB_UI_PKG_PATH").to_owned(),
@@ -140,16 +151,18 @@ pub fn get_js_files(role: ServerRole) -> JavaScriptFiles {
                 Err(err) => {
                     admin_error!(
                         ?err,
-                        "Failed to generate integrity hash for bootstrap.bundle.min.js"
-                    )
+                        "Failed to generate integrity hash for {} THIS IS GOING TO CAUSE PROBLEMS!",
+                        filepath
+                    );
+                    return Err(());
                 }
             }
         }
-    };
-    JavaScriptFiles {
+    }
+    Ok(JavaScriptFiles {
         all_pages,
         selected,
-    }
+    })
 }
 
 pub async fn create_https_server(
@@ -164,7 +177,7 @@ pub async fn create_https_server(
         error!(?e, "Failed to get jws validator");
     })?;
 
-    let js_files = get_js_files(config.role);
+    let js_files = get_js_files(config.role)?;
     // set up the CSP headers
     // script-src 'self'
     //      'sha384-Zao7ExRXVZOJobzS/uMp0P1jtJz3TTqJU4nYXkdmsjpiVD+/wcwCyX7FGqRIqvIz'
@@ -229,9 +242,13 @@ pub async fn create_https_server(
                 // direct users to the base app page. If a login is required,
                 // then views will take care of redirection. We shouldn't redir
                 // to login because that force clears previous sessions!
+                // ^ TODO: this is dumb and we should stop that.
                 .route("/", get(|| async { Redirect::temporary("/ui") }))
                 .route("/manifest.webmanifest", get(manifest::manifest)) // skip_route_check
                 .nest("/ui", ui::spa_router())
+                .nest("/ui/login", ui::spa_router_login_flows())
+                .nest("/ui/reauth", ui::spa_router_login_flows())
+                .nest("/ui/oauth2", ui::spa_router_login_flows())
                 .nest("/ui/admin", ui::spa_router_admin())
                 .layer(middleware::compression::new())
                 .route("/ui/images/oauth2/:rs_name", get(oauth2::oauth2_image_get))

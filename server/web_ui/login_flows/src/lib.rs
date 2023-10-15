@@ -1,3 +1,14 @@
+//! This handles the login/auth flows, and is designed to be smol and snappy
+//! so it laods fast and gets the user to where they need to go!
+//!
+//! - /ui/login
+//! - /ui/oauth2
+//! - /ui/reauth
+
+mod components;
+mod oauth2;
+pub mod router;
+
 #[allow(unused_imports)] // because it's needed to compile wasm things
 use wasm_bindgen::prelude::wasm_bindgen;
 
@@ -7,6 +18,6 @@ use wasm_bindgen::JsValue;
 /// it's event loop.
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
 pub fn run_app() -> Result<(), JsValue> {
-    // yew::Renderer::<AdminApp>::new().render();
+    yew::Renderer::<components::LoginApp>::new().render();
     Ok(())
 }

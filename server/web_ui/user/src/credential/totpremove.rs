@@ -1,8 +1,8 @@
 use super::reset::{EventBusMsg, TotpRemoveProps};
-use crate::RequestMethod;
 #[cfg(debug_assertions)]
 use gloo::console;
 use kanidm_proto::v1::{CURequest, CUSessionToken, CUStatus};
+use kanidmd_web_ui_shared::RequestMethod;
 use kanidmd_web_ui_shared::{do_request, error::FetchError};
 use wasm_bindgen::{JsValue, UnwrapThrowExt};
 use yew::prelude::*;

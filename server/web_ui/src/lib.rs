@@ -20,7 +20,7 @@ mod credential;
 mod login;
 mod manager;
 mod models;
-mod oauth2;
+// mod oauth2;
 // mod utils;
 mod views;
 

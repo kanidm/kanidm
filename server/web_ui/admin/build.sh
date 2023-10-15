@@ -1,9 +1,11 @@
 #!/bin/bash
 
+MODULE="admin"
+
 set -e
 # This builds the assets for the Admin UI, defaulting to a release build.
 
-if [ ! -f build_admin.sh ]; then
+if [ ! -f build.sh ]; then
     echo "Please run from the right directory. (server/web_ui/admin)"
     exit 1
 fi
@@ -46,9 +48,7 @@ touch ./pkg/ANYTHING_HERE_WILL_BE_DELETED_ADD_TO_SRC && \
 echo "######################"
 echo "Moving files up into the webui pkg dir..."
 echo "######################"
-rsync -av pkg/external/* ../pkg/external/
-find ../pkg/ -name 'kanidmd_web_ui_admin*' -exec rm {} \;
-rsync -av pkg/kanidmd_web_ui_admin* ../pkg/
+rsync -av pkg/* ../pkg/
 
 echo "######################"
 echo "        Done!"

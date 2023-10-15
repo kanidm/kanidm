@@ -9,7 +9,7 @@ use yew::prelude::*;
 use super::reset::{EventBusMsg, ModalProps};
 use kanidmd_web_ui_shared::do_request;
 
-use crate::RequestMethod;
+use kanidmd_web_ui_shared::RequestMethod;
 
 enum State {
     Init,

@@ -3,15 +3,14 @@ use error::FetchError;
 use gloo::console;
 
 use kanidm_proto::constants::{APPLICATION_JSON, KSESSIONID};
+use models::get_bearer_token;
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsValue;
 use wasm_bindgen_futures::JsFuture;
 use web_sys::{Headers, Request, RequestInit, RequestMode, Response};
 
-use gloo::storage::{
-    LocalStorage as PersistentStorage, SessionStorage as TemporaryStorage, Storage,
-};
+use gloo::storage::{SessionStorage as TemporaryStorage, Storage};
 use yew::{html, Html};
 
 pub mod constants;
@@ -27,25 +26,6 @@ pub fn pop_auth_session_id() -> Option<String> {
     console::debug!(format!("auth_session_id -> {:?}", l).as_str());
     TemporaryStorage::delete("auth_session_id");
     l.ok()
-}
-
-pub fn set_bearer_token(r: String) {
-    PersistentStorage::set("bearer_token", r).expect_throw("failed to set bearer_token");
-}
-
-pub fn get_bearer_token() -> Option<String> {
-    let l: Result<String, _> = PersistentStorage::get("bearer_token");
-    #[cfg(debug_assertions)]
-    console::debug!(format!(
-        "login_hint::get_login_remember_me -> present={:?}",
-        l.is_ok()
-    )
-    .as_str());
-    l.ok()
-}
-
-pub fn clear_bearer_token() {
-    PersistentStorage::delete("bearer_token");
 }
 
 pub fn push_auth_session_id(r: String) {

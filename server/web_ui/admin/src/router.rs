@@ -44,9 +44,6 @@ pub(crate) fn admin_routes(route: AdminRoute) -> Html {
         AdminRoute::AdminListOAuth2 => html!(
           <components::admin_oauth2::AdminListOAuth2 />
         ),
-        AdminRoute::NotFound => html! (
-          <Redirect<AdminRoute> to={AdminRoute::NotFound}/>
-        ),
         AdminRoute::ViewGroup { uuid } => {
             html!(<components::admin_groups::AdminViewGroup uuid={uuid} />)
             // html! {<></>}
@@ -62,5 +59,8 @@ pub(crate) fn admin_routes(route: AdminRoute) -> Html {
           <components::admin_oauth2::AdminViewOAuth2 rs_name={rs_name} />
 
         },
+        AdminRoute::NotFound => html! (
+          <Redirect<AdminRoute> to={AdminRoute::NotFound}/>
+        ),
     }
 }

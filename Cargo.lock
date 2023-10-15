@@ -3197,33 +3197,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "kanidmd_web_ui"
-version = "1.1.0-rc.14-dev"
-dependencies = [
- "gloo",
- "gloo-timers 0.3.0",
- "js-sys",
- "kanidm_proto",
- "kanidmd_web_ui_shared",
- "lazy_static",
- "qrcode",
- "regex",
- "serde",
- "serde-wasm-bindgen 0.5.0",
- "serde_json",
- "time",
- "url",
- "uuid",
- "wasm-bindgen",
- "wasm-bindgen-futures",
- "wasm-bindgen-test",
- "wasm-timer",
- "web-sys",
- "yew",
- "yew-router",
-]
-
-[[package]]
 name = "kanidmd_web_ui_admin"
 version = "1.1.0-rc.14-dev"
 dependencies = [
@@ -3285,6 +3258,33 @@ dependencies = [
  "gloo-timers 0.3.0",
  "js-sys",
  "kanidm_proto",
+ "lazy_static",
+ "qrcode",
+ "regex",
+ "serde",
+ "serde-wasm-bindgen 0.5.0",
+ "serde_json",
+ "time",
+ "url",
+ "uuid",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "wasm-bindgen-test",
+ "wasm-timer",
+ "web-sys",
+ "yew",
+ "yew-router",
+]
+
+[[package]]
+name = "kanidmd_web_ui_user"
+version = "1.1.0-rc.14-dev"
+dependencies = [
+ "gloo",
+ "gloo-timers 0.3.0",
+ "js-sys",
+ "kanidm_proto",
+ "kanidmd_web_ui_shared",
  "lazy_static",
  "qrcode",
  "regex",

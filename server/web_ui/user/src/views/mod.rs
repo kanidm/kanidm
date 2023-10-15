@@ -2,22 +2,23 @@
 use gloo::console;
 use kanidm_proto::v1::{UiHint, UserAuthToken};
 use kanidmd_web_ui_shared::constants::ID_SIGNOUTMODAL;
+use kanidmd_web_ui_shared::models::{clear_bearer_token, push_return_location};
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::UnwrapThrowExt;
 use yew::prelude::*;
 use yew_router::prelude::*;
 
+use crate::components::profile::ProfileApp;
 use crate::manager::Route;
-use crate::models;
 use kanidmd_web_ui_shared::{do_request, error::FetchError, RequestMethod};
 
 mod apps;
 pub mod identityverification;
-mod profile;
+// mod profile;
 
 use apps::AppsApp;
 use identityverification::IdentityVerificationApp;
-use profile::ProfileApp;
+// use profile::ProfileApp;
 
 #[derive(Routable, PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
 pub enum ViewRoute {
@@ -28,7 +29,6 @@ pub enum ViewRoute {
 
     #[at("/ui/profile")]
     Profile,
-
     #[at("/ui/identity-verification")]
     IdentityVerification,
 
@@ -147,14 +147,18 @@ impl Component for ViewsApp {
                 // Where are we?
                 let maybe_loc: Option<ViewRoute> = ctx.link().route();
 
-                if let Some(loc) = maybe_loc {
-                    models::push_return_location(models::Location::Views(loc));
+                if let Some(_loc) = maybe_loc {
+                    push_return_location(
+                        // Location::Views(loc)
+                        "oh no", // TODO: work this out
+                    );
                 }
 
-                ctx.link()
-                    .navigator()
-                    .expect_throw("failed to read history")
-                    .push(&Route::Login);
+                // ctx.link()
+                //     .navigator()
+                //     .expect_throw("failed to read history")
+                //     .push(&Route::Login);
+                // TODO: fix this
                 html! { <div></div> }
             }
             State::LoggingOut | State::Verifying => {
@@ -347,7 +351,7 @@ impl ViewsApp {
         // In both cases - clear the local token to prevent our client
         // thinking we have auth.
 
-        models::clear_bearer_token();
+        clear_bearer_token();
 
         if status == 200 {
             Ok(ViewsMsg::LogoutComplete)

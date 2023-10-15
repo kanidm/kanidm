@@ -8,16 +8,35 @@ use http::header::CONTENT_TYPE;
 use super::middleware::KOpId;
 use super::ServerState;
 
+/// TODO: deprecate this
 pub(crate) fn spa_router() -> Router<ServerState> {
     Router::new()
-        .route("/", get(ui_handler))
-        .fallback(ui_handler)
+        .route("/", get(ui_handler_user_ui))
+        .fallback(ui_handler_user_ui)
 }
 
+/// This handles /ui/admin and all sub-paths
 pub(crate) fn spa_router_admin() -> Router<ServerState> {
     Router::new()
         .route("/", get(ui_handler_admin))
-        .fallback(ui_handler)
+        .fallback(ui_handler_admin)
+}
+
+/// This handles the following base paths:
+/// - /ui/login
+/// - /ui/reauth
+/// - /ui/oauth2
+pub(crate) fn spa_router_login_flows() -> Router<ServerState> {
+    Router::new()
+        .route("/", get(ui_handler_login_flows))
+        .fallback(ui_handler_login_flows)
+}
+
+pub(crate) async fn ui_handler_user_ui(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+) -> Response<String> {
+    ui_handler_generic(state, kopid, "wasmloader.js").await
 }
 
 pub(crate) async fn ui_handler_admin(
@@ -27,11 +46,11 @@ pub(crate) async fn ui_handler_admin(
     ui_handler_generic(state, kopid, "wasmloader_admin.js").await
 }
 
-pub(crate) async fn ui_handler(
+pub(crate) async fn ui_handler_login_flows(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
 ) -> Response<String> {
-    ui_handler_generic(state, kopid, "wasmloader.js").await
+    ui_handler_generic(state, kopid, "wasmloader_login_flows.js").await
 }
 
 pub(crate) async fn ui_handler_generic(
@@ -41,7 +60,7 @@ pub(crate) async fn ui_handler_generic(
 ) -> Response<String> {
     let domain_display_name = state.qe_r_ref.get_domain_display_name(kopid.eventid).await;
 
-    // this feels icky but I felt that adding a trait on Vec<JavaScriptFile> which generated the string was going a bit far
+    // let's get the tags we want to load the javascript files
     let mut jsfiles: Vec<String> = state
         .js_files
         .all_pages
@@ -53,7 +72,6 @@ pub(crate) async fn ui_handler_generic(
     };
 
     let jstags = jsfiles.join("\n");
-    // TODO: load the right JS based on which page we're on
 
     let body = format!(
         include_str!("ui_html.html"),

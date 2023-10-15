@@ -15,8 +15,6 @@ use yew::prelude::*;
 use yew_router::prelude::*;
 
 use crate::credential::reset::CredentialResetApp;
-use crate::login::{LoginApp, LoginWorkflow};
-use crate::oauth2::Oauth2App;
 use crate::views::{ViewRoute, ViewsApp};
 
 // router to decide on state.
@@ -25,15 +23,14 @@ pub enum Route {
     #[at("/ui")]
     Landing,
 
-    #[at("/ui/login")]
-    Login,
+    // // #[at("/ui/login")]
+    // // Login,
 
-    #[at("/ui/reauth")]
-    Reauth,
+    // // #[at("/ui/reauth")]
+    // // Reauth,
 
-    #[at("/ui/oauth2")]
-    Oauth2,
-
+    // #[at("/ui/oauth2")]
+    // Oauth2,
     #[at("/ui/reset")]
     CredentialReset,
 
@@ -64,12 +61,12 @@ fn switch(route: Route) -> Html {
     match route {
         #[allow(clippy::let_unit_value)]
         Route::Landing => html! { <Landing /> },
-        #[allow(clippy::let_unit_value)]
-        Route::Login => html! { <LoginApp workflow={ LoginWorkflow::Login } /> },
-        #[allow(clippy::let_unit_value)]
-        Route::Reauth => html! { <LoginApp workflow={ LoginWorkflow::Reauth } /> },
-        #[allow(clippy::let_unit_value)]
-        Route::Oauth2 => html! { <Oauth2App /> },
+        // #[allow(clippy::let_unit_value)]
+        // Route::Login => html! { <LoginApp workflow={ LoginWorkflow::Login } /> },
+        // #[allow(clippy::let_unit_value)]
+        // Route::Reauth => html! { <LoginApp workflow={ LoginWorkflow::Reauth } /> },
+        // #[allow(clippy::let_unit_value)]
+        // Route::Oauth2 => html! { <Oauth2App /> },
         #[allow(clippy::let_unit_value)]
         Route::Views => html! { <ViewsApp /> },
         #[allow(clippy::let_unit_value)]

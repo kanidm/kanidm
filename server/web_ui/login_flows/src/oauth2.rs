@@ -13,8 +13,11 @@ use web_sys::{Request, RequestInit, RequestMode, RequestRedirect, Response};
 use yew::prelude::*;
 use yew_router::prelude::*;
 
-use crate::manager::Route;
-use crate::models;
+use super::router::LoginRoute;
+use kanidmd_web_ui_shared::models::{
+    get_bearer_token, pop_oauth2_authorisation_request, push_login_hint,
+    push_oauth2_authorisation_request, push_return_location,
+};
 use kanidmd_web_ui_shared::{do_request, error::FetchError, utils, RequestMethod};
 
 use std::collections::BTreeSet;
@@ -160,7 +163,7 @@ impl Oauth2App {
             .set(CONTENT_TYPE, APPLICATION_JSON)
             .expect_throw("failed to set header");
 
-        if let Some(bearer_token) = models::get_bearer_token() {
+        if let Some(bearer_token) = get_bearer_token() {
             request
                 .headers()
                 .set("authorization", &bearer_token)
@@ -218,7 +221,7 @@ impl Component for Oauth2App {
             .ok()
             .or_else(|| {
                 console::log!("using previously storage oauth2 authorisation request if possible");
-                models::pop_oauth2_authorisation_request()
+                pop_oauth2_authorisation_request()
             });
 
         add_body_form_classes!();
@@ -239,11 +242,11 @@ impl Component for Oauth2App {
         // See: https://openid.net/specs/openid-connect-basic-1_0.html#RequestParameters
         // specifically, login_hint
         if let Some(login_hint) = query.oidc_ext.login_hint.clone() {
-            models::push_login_hint(login_hint)
+            push_login_hint(login_hint)
         }
         // Push the request down. This covers if we move to LoginRequired so we can restore where
         // we were / what we were doing.
-        models::push_oauth2_authorisation_request(query);
+        push_oauth2_authorisation_request(query);
 
         // Start the fetch req.
         // Put the fetch handle into the consent type.
@@ -275,18 +278,21 @@ impl Component for Oauth2App {
                 true
             }
             Oauth2Msg::LoginProceed => {
-                models::push_return_location(models::Location::Manager(Route::Oauth2));
+                push_return_location(
+                    // models::Location::Manager(LoginRoute::Oauth2)
+                    "/ui/oauth2",
+                );
 
                 ctx.link()
                     .navigator()
                     .expect_throw("failed to read history")
-                    .push(&Route::Login);
+                    .push(&LoginRoute::Login);
                 // Don't need to redraw as we are yolo-ing out.
                 false
             }
             Oauth2Msg::TokenValid => {
                 // Okay we can proceed, pop the query.
-                let ar = models::pop_oauth2_authorisation_request();
+                let ar = pop_oauth2_authorisation_request();
 
                 self.state = match (&self.state, ar) {
                     (State::TokenCheck, Some(ar)) => {

@@ -1,6 +1,9 @@
 #[cfg(debug_assertions)]
 use gloo::console;
 use kanidm_proto::v1::{CUSessionToken, CUStatus, UiHint, UserAuthToken};
+use kanidmd_web_ui_shared::models::{
+    push_cred_update_session, push_login_hint, push_return_location,
+};
 use kanidmd_web_ui_shared::{do_request, error::FetchError, RequestMethod};
 use time::format_description::well_known::Rfc3339;
 use wasm_bindgen::UnwrapThrowExt;
@@ -10,8 +13,7 @@ use yew_router::prelude::*;
 use crate::components::change_unix_password::ChangeUnixPassword;
 use crate::components::create_reset_code::CreateResetCode;
 use crate::manager::Route;
-use crate::models;
-use crate::views::{ViewProps, ViewRoute};
+use crate::views::ViewProps;
 use kanidmd_web_ui_shared::constants::CSS_PAGE_HEADER;
 
 #[allow(clippy::large_enum_variant)]
@@ -82,8 +84,11 @@ impl Component for ProfileApp {
             }
             Msg::BeginCredentialUpdate { token, status } => {
                 // Got the rec, setup.
-                models::push_cred_update_session((token, status));
-                models::push_return_location(models::Location::Views(ViewRoute::Profile));
+                push_cred_update_session((token, status));
+                push_return_location(
+                    // Location::Views(ViewRoute::Profile)
+                    "/ui/profile",
+                );
 
                 ctx.link()
                     .navigator()
@@ -94,18 +99,25 @@ impl Component for ProfileApp {
                 false
             }
             Msg::RequestReauth => {
-                models::push_return_location(models::Location::Views(ViewRoute::Profile));
+                push_return_location(
+                    // Location::Views(ViewRoute::Profile)
+                    "/ui/profile",
+                );
 
                 let uat = &ctx.props().current_user_uat;
                 let spn = uat.spn.to_string();
 
                 // Setup the ui hint.
-                models::push_login_hint(spn);
+                push_login_hint(spn);
 
                 ctx.link()
                     .navigator()
                     .expect_throw("failed to read history")
-                    .push(&Route::Reauth);
+                    .push(
+
+                        // &Route::Reauth
+                         // "/ui/reauth",
+                    );
 
                 // No need to redraw, or reset state, since this redirect will destroy
                 // the state.
