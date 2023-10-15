@@ -16,6 +16,7 @@ members = [
     "server/web_ui",
     "server/web_ui/admin",
     "server/web_ui/shared",
+    "server/web_ui/login_flows",
     "server/daemon",
     "server/lib",
     "server/lib-macros",
