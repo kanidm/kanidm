@@ -3059,7 +3059,7 @@ dependencies = [
  "filetime",
  "futures",
  "futures-util",
- "hashbrown 0.14.1",
+ "hashbrown 0.14.2",
  "http",
  "hyper",
  "kanidm_build_profiles",
