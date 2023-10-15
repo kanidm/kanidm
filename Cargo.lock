@@ -2952,7 +2952,7 @@ dependencies = [
  "tracing",
  "url",
  "urlencoding",
- "utoipa",
+ "utoipa 3.5.0",
  "uuid",
  "webauthn-rs-proto",
 ]
@@ -3082,7 +3082,7 @@ dependencies = [
  "tracing-subscriber",
  "url",
  "urlencoding",
- "utoipa",
+ "utoipa 3.5.0",
  "utoipa-swagger-ui",
  "uuid",
  "walkdir",
@@ -4551,9 +4551,9 @@ dependencies = [
 
 [[package]]
 name = "rust-embed"
-version = "6.8.1"
+version = "8.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a36224c3276f8c4ebc8c20f158eca7ca4359c8db89991c4925132aaaf6702661"
+checksum = "b1e7d90385b59f0a6bf3d3b757f3ca4ece2048265d70db20a2016043d4509a40"
 dependencies = [
  "rust-embed-impl",
  "rust-embed-utils",
@@ -4562,9 +4562,9 @@ dependencies = [
 
 [[package]]
 name = "rust-embed-impl"
-version = "6.8.1"
+version = "8.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "49b94b81e5b2c284684141a2fb9e2a31be90638caf040bf9afbc5a0416afe1ac"
+checksum = "3c3d8c6fd84090ae348e63a84336b112b5c3918b3bf0493a581f7bd8ee623c29"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -4576,9 +4576,9 @@ dependencies = [
 
 [[package]]
 name = "rust-embed-utils"
-version = "7.8.1"
+version = "8.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9d38ff6bf570dc3bb7100fce9f7b60c33fa71d80e88da3f2580df4ff2bdded74"
+checksum = "873feff8cb7bf86fdf0a71bb21c95159f4e4a37dd7a4bd1855a940909b583ada"
 dependencies = [
  "sha2 0.10.8",
  "walkdir",
@@ -5705,7 +5705,19 @@ dependencies = [
  "indexmap 2.0.2",
  "serde",
  "serde_json",
- "utoipa-gen",
+ "utoipa-gen 3.5.0",
+]
+
+[[package]]
+name = "utoipa"
+version = "4.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6b208a50ff438dcdc887ea3f2db59530bd2f4bc3d2c70630e4d7ee7a281a1d1b"
+dependencies = [
+ "indexmap 2.0.2",
+ "serde",
+ "serde_json",
+ "utoipa-gen 4.0.0",
 ]
 
 [[package]]
@@ -5722,10 +5734,22 @@ dependencies = [
 ]
 
 [[package]]
-name = "utoipa-swagger-ui"
-version = "3.1.5"
+name = "utoipa-gen"
+version = "4.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "84614caa239fb25b2bb373a52859ffd94605ceb256eeb1d63436325cf81e3653"
+checksum = "0bd516d8879043e081537690bc96c8f17b5a4602c336aecb8f1de89d9d9c7e72"
+dependencies = [
+ "proc-macro-error",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.38",
+]
+
+[[package]]
+name = "utoipa-swagger-ui"
+version = "4.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "154517adf0d0b6e22e8e1f385628f14fcaa3db43531dc74303d3edef89d6dfe5"
 dependencies = [
  "axum",
  "mime_guess",
@@ -5733,7 +5757,7 @@ dependencies = [
  "rust-embed",
  "serde",
  "serde_json",
- "utoipa",
+ "utoipa 4.0.0",
  "zip",
 ]
 

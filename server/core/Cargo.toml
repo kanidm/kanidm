@@ -67,7 +67,7 @@ utoipa = { workspace = true, features = [
     "openapi_extensions",
     "preserve_order",     #  Preserve order of properties when serializing the schema for a component.
 ] }
-utoipa-swagger-ui = { version = "3.1.5", features = ["axum"] }
+utoipa-swagger-ui = { version = "4.0.0", features = ["axum"] }
 
 [dev-dependencies]
 walkdir = { workspace = true }
