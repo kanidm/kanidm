@@ -189,7 +189,7 @@ time = { version = "^0.3.21", features = ["formatting", "local-offset"] }
 
 tikv-jemallocator = "0.5"
 
-tokio = "^1.32.0"
+tokio = "^1.33.0"
 tokio-openssl = "^0.6.3"
 tokio-util = "^0.7.9"
 
