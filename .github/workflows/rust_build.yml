@@ -46,11 +46,17 @@ jobs:
       - name: "Check disk space and size of target, then clean it"
         run: |
           df -h
-          du -sh target/
+          echo "Checking base dir"
+          du -shc *
+          echo "Checking target dir"
+          du -shc target/*
           rm -rf target/*
 
       - name: "Run cargo test"
         run: cargo test
+      - name: "Check disk space at the end"
+        run:
+          du -shc *
   run_release:
     runs-on: ubuntu-latest
     env:
