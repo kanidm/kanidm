@@ -18,5 +18,4 @@ async fn check_that_the_swagger_api_loads(rsclient: kanidm_client::KanidmClient)
         .await
         .unwrap();
     assert!(foo.openapi != "1.2.3");
-    println!("Hello world");
 }
