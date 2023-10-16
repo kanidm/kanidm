@@ -17,6 +17,11 @@ concurrency:
 jobs:
   rust_build:
     runs-on: ubuntu-latest
+    env:
+      SCCACHE_GHA_ENABLED: true
+      RUSTC_WRAPPER: sccache
+      CARGO_INCREMENTAL: 0
+      CARGO_TERM_COLOR: always
     steps:
       - uses: actions/checkout@v4
       - name: Install Rust
@@ -46,6 +51,11 @@ jobs:
         run: cargo test
   run_release:
     runs-on: ubuntu-latest
+    env:
+      SCCACHE_GHA_ENABLED: true
+      RUSTC_WRAPPER: sccache
+      CARGO_INCREMENTAL: 0
+      CARGO_TERM_COLOR: always
     steps:
       - uses: actions/checkout@v4
       - name: Install Rust
