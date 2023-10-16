@@ -238,12 +238,7 @@ pub(crate) struct ApiDoc;
 
 pub(crate) fn router() -> Router<ServerState> {
     Router::new()
-    .route("/docs", get(Redirect::temporary("/docs/swagger-ui")))
-    .route("/docs/", get(Redirect::temporary("/docs/swagger-ui")))
-    .merge(
-        SwaggerUi::new("/docs/swagger-ui").url(
-            "/docs/v1/openapi.json",
-            <ApiDoc as utoipa::OpenApi>::openapi(),
-        )
-    )
+        .route("/docs", get(Redirect::temporary("/docs/swagger-ui")))
+        .route("/docs/", get(Redirect::temporary("/docs/swagger-ui")))
+        .merge(SwaggerUi::new("/docs/swagger-ui").url("/docs/v1/openapi.json", ApiDoc::openapi()))
 }
