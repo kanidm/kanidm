@@ -38,8 +38,10 @@ jobs:
         run: cargo build --workspace
       - name: "Build the idv-tui feature kanidm binary"
         run: cargo build --bin kanidm --features idv-tui
-      - name: "Check disk space"
-        run: df -h
+      - name: "Check disk space and size of target"
+        run: |
+          df -h
+          du -sh target/
       - name: "Run cargo test"
         run: cargo test
   run_release:
