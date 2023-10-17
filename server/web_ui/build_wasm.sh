@@ -7,35 +7,24 @@ if [ ! -f build_wasm.sh ]; then
     echo "Please run from the crate directory. (server/web_ui)"
     exit 1
 fi
-
-# if [ -z "${BUILD_FLAGS}" ]; then
-#     BUILD_FLAGS="--release"
-# fi
-
 if [ -z "$(which rsync)" ]; then
     echo "Cannot find rsync which is needed to move things around, quitting!"
     exit 1
 fi
-
 if [ -z "$(which wasm-pack)" ]; then
     echo "Cannot find wasm-pack which is needed to build the UI, quitting!"
     exit 1
 fi
 
-# if [ "$(find ./pkg/ -name 'kanidmd*' | wc -l)" -gt 0 ]; then
-#     echo "Cleaning up WASM files before build..."
-#     rm pkg/kanidmd*
-# fi
+if [ -z "${BUILD_FLAGS}" ]; then
+    export BUILD_FLAGS="--release"
+fi
 
-# # we can disable this since we want it to expand
-# # shellcheck disable=SC2086
-# wasm-pack build ${BUILD_FLAGS} --no-typescript --target web --mode no-install --no-pack
-
+echo "Cleaning up pkg dir"
 find pkg/ -type f -delete
 find pkg/ -mindepth 1 -type d -delete
 
 touch ./pkg/ANYTHING_HERE_WILL_BE_DELETED_IN_BUILDS
-# rsync -av --copy-links ./static/* ./pkg/
 cp ../../README.md ./pkg/
 cp ../../LICENSE.md ./pkg/
 if [ -f ./pkg/.gitignore ]; then

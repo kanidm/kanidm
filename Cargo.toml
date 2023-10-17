@@ -13,7 +13,6 @@ members = [
     "unix_integration",
     "unix_integration/nss_kanidm",
     "unix_integration/pam_kanidm",
-    # "server/web_ui",                # to be deprecated
     "server/web_ui/admin",
     "server/web_ui/login_flows",
     "server/web_ui/user",
