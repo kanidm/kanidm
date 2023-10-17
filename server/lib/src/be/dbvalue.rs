@@ -405,6 +405,7 @@ pub enum DbValueAccessScopeV1 {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
+#[allow(clippy::enum_variant_names)]
 pub enum DbValueIdentityId {
     #[serde(rename = "v1i")]
     V1Internal,

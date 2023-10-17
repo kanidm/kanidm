@@ -2358,8 +2358,7 @@ mod tests {
 
         let admin = Identity::from_impersonate_entry_readwrite(E_TEST_ACCOUNT_1.clone());
 
-        let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(JSON_TESTPERSON1);
-        let ev1 = e1.into_sealed_committed();
+        let ev1 = E_TESTPERSON_1.clone().into_sealed_committed();
 
         let r_set = vec![Arc::new(ev1)];
 
@@ -2398,8 +2397,7 @@ mod tests {
 
         let admin = Identity::from_impersonate_entry_readwrite(E_TEST_ACCOUNT_1.clone());
 
-        let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(JSON_TESTPERSON1);
-        let ev1 = e1.into_sealed_committed();
+        let ev1 = E_TESTPERSON_1.clone().into_sealed_committed();
 
         let r_set = vec![Arc::new(ev1)];
 

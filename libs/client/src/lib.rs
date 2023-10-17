@@ -108,10 +108,10 @@ impl Display for KanidmClientBuilder {
 #[test]
 fn test_kanidmclientbuilder_display() {
     let foo = KanidmClientBuilder::default();
-    println!("{}", foo.to_string());
+    println!("{}", foo);
     assert!(foo.to_string().contains("verify_ca"));
 
-    let foo = KanidmClientBuilder {
+    let testclient = KanidmClientBuilder {
         address: Some("https://example.com".to_string()),
         verify_ca: true,
         verify_hostnames: true,
@@ -119,13 +119,13 @@ fn test_kanidmclientbuilder_display() {
         connect_timeout: Some(420),
         use_system_proxies: true,
     };
-    println!("foo {}", foo.to_string());
-    assert!(foo.to_string().contains("verify_ca: true"));
-    assert!(foo.to_string().contains("verify_hostnames: true"));
+    println!("foo {}", testclient);
+    assert!(testclient.to_string().contains("verify_ca: true"));
+    assert!(testclient.to_string().contains("verify_hostnames: true"));
 
-    let badness = foo.danger_accept_invalid_hostnames(true);
+    let badness = testclient.danger_accept_invalid_hostnames(true);
     let badness = badness.danger_accept_invalid_certs(true);
-    println!("badness: {}", badness.to_string());
+    println!("badness: {}", badness);
     assert!(badness.to_string().contains("verify_ca: false"));
     assert!(badness.to_string().contains("verify_hostnames: false"));
 }
@@ -415,13 +415,15 @@ impl KanidmClientBuilder {
     */
 
     /// Build the client ready for usage.
-    pub fn build(self) -> Result<KanidmClient, reqwest::Error> {
+    pub fn build(self) -> Result<KanidmClient, ClientError> {
         // Errghh, how to handle this cleaner.
         let address = match &self.address {
             Some(a) => a.clone(),
             None => {
                 error!("Configuration option 'uri' missing from client configuration, cannot continue client startup without specifying a server to connect to. 🤔");
-                std::process::exit(1);
+                return Err(ClientError::ConfigParseIssue(
+                    "Configuration option 'uri' missing from client configuration, cannot continue client startup without specifying a server to connect to. 🤔".to_string(),
+                ));
             }
         };
 
@@ -449,7 +451,7 @@ impl KanidmClientBuilder {
             None => client_builder,
         };
 
-        let client = client_builder.build()?;
+        let client = client_builder.build().map_err(ClientError::Transport)?;
 
         // Now get the origin.
         #[allow(clippy::expect_used)]
@@ -544,7 +546,7 @@ impl KanidmClient {
         (*tguard).as_ref().cloned()
     }
 
-    pub fn new_session(&self) -> Result<Self, reqwest::Error> {
+    pub fn new_session(&self) -> Result<Self, ClientError> {
         // Copy our builder, and then just process it.
         let builder = self.builder.clone();
         builder.build()

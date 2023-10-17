@@ -1566,6 +1566,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "fixedbitset"
+version = "0.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0ce7134b9999ecaf8bcd65542e436736ef32ddca1b3e06094cb6ec5755203b80"
+
+[[package]]
 name = "flate2"
 version = "1.0.27"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2979,6 +2985,7 @@ dependencies = [
  "serde",
  "serde_json",
  "shellexpand",
+ "sketching",
  "time",
  "tokio",
  "tracing",
@@ -3173,6 +3180,8 @@ dependencies = [
  "lazy_static",
  "oauth2",
  "openssl",
+ "petgraph",
+ "regex",
  "reqwest",
  "serde",
  "serde_json",
@@ -4069,6 +4078,17 @@ dependencies = [
  "memchr",
  "thiserror",
  "ucd-trie",
+]
+
+[[package]]
+name = "petgraph"
+version = "0.6.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e1d3afd2628e69da2be385eb6f2fd57c8ac7977ceeff6dc166ff1657b0e386a9"
+dependencies = [
+ "fixedbitset",
+ "indexmap 2.0.2",
+ "serde",
 ]
 
 [[package]]

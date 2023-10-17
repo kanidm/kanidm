@@ -1,3 +1,5 @@
+# Release checklist
+
 ## Pre-Reqs
 
 ```bash
@@ -65,7 +67,7 @@ cargo install cargo-udeps
 - [ ] docker buildx use cluster
 - [ ] `make buildx/kanidmd/x86_64_v3 buildx/kanidmd buildx/kanidm_tools buildx/radiusd`
 - [ ] `IMAGE_VERSION=latest make buildx/kanidmd/x86_64_v3 buildx/kanidmd buildx/kanidm_tools buildx/radiusd`
-- [ ] Update the readme on docker https://hub.docker.com/repository/docker/kanidm/server
+- [ ] Update the readme on docker <https://hub.docker.com/repository/docker/kanidm/server>
 
 ### Distro
 

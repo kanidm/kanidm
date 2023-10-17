@@ -351,6 +351,7 @@ impl Entry<EntryInit, EntryNew> {
     }
 
     #[cfg(test)]
+    // TODO: #[deprecated(note = "Use entry_init! macro instead or like... anything else")]
     pub(crate) fn unsafe_from_entry_str(es: &str) -> Self {
         // Just use log directly here, it's testing
         // str -> proto entry
