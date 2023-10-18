@@ -1,4 +1,4 @@
-# Synchronising from FreeIPA
+# Synchronising from LDAP
 
 If you have an LDAP server that supports sync repl (rfc4533 content synchronisation) then you are
 able to synchronise from it to Kanidm for the purposes of coexistence or migration.
@@ -72,7 +72,7 @@ You must modify the retro changelog plugin to include the full scope of the data
 the sync tool can view the changes to the database. Currently dsconf can not modify the
 include-suffix so you must do this manually.
 
-You need to change the `nsslapd-include-suffix` to match your FreeIPA baseDN here. You can access
+You need to change the `nsslapd-include-suffix` to match your LDAP baseDN here. You can access
 the basedn with:
 
 ```bash
@@ -99,7 +99,7 @@ You must then reboot your 389 Directory Server.
 ## Running the Sync Tool Manually
 
 You can perform a dry run with the sync tool manually to check your configurations are correct and
-that the tool can synchronise from FreeIPA.
+that the tool can synchronise from LDAP.
 
 ```bash
 kanidm-ldap-sync [-c /path/to/kanidm/config] -i /path/to/kanidm-ldap-sync -n
@@ -124,7 +124,7 @@ docker create --name kanidm-ldap-sync \
   -p 12345:12345 \
   -v /etc/kanidm/config:/etc/kanidm/config:ro \
   -v /path/to/ldap-sync:/etc/kanidm/ldap-sync:ro \
-  kanidm-ipa-sync -i /etc/kanidm/ldap-sync --schedule
+  kanidm-ldap-sync -i /etc/kanidm/ldap-sync --schedule
 ```
 
 ## Monitoring the Sync Tool
