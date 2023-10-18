@@ -69,7 +69,6 @@ tokio = { workspace = true, features = ["rt", "fs", "macros", "sync", "time", "n
 tokio-util = { workspace = true, features = ["codec"] }
 tracing = { workspace = true }
 tss-esapi = { workspace = true, optional = true }
-users = { workspace = true }
 uuid = { workspace = true }
 walkdir = { workspace = true }
 
