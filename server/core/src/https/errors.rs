@@ -26,6 +26,7 @@ impl WebError {
         let mut res = self.into_response();
         res.headers_mut().insert(
             ACCESS_CONTROL_ALLOW_ORIGIN,
+            #[allow(clippy::expect_used)]
             HeaderValue::from_str("*").expect("Header generation failed, this is weird."),
         );
         res
