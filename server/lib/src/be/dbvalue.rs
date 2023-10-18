@@ -337,16 +337,6 @@ pub struct DbValueCredV1 {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub enum DbApiToken {
-    V1 {
-        #[serde(rename = "u")]
-        uuid: Uuid,
-        #[serde(rename = "s")]
-        secret: DbPasswordV1,
-    },
-}
-
-#[derive(Serialize, Deserialize, Debug)]
 pub enum DbValuePasskeyV1 {
     V4 { u: Uuid, t: String, k: PasskeyV4 },
 }
