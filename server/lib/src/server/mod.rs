@@ -131,6 +131,7 @@ bitflags::bitflags! {
         const SYSTEM_CONFIG =  0b0001_0000;
         const SYNC_AGREEMENT = 0b0010_0000;
         const KEY_MATERIAL   = 0b0100_0000;
+        const APPLICATION    = 0b1000_0000;
     }
 }
 
@@ -664,6 +665,7 @@ pub trait QueryServerTransaction<'a> {
                         .ok_or_else(|| OperationError::InvalidAttribute("Invalid hex string syntax".to_string())),
                     SyntaxType::Certificate => Value::new_certificate_s(value)
                         .ok_or_else(|| OperationError::InvalidAttribute("Invalid x509 certificate syntax".to_string())),
+                    SyntaxType::ApplicationPassword => Err(OperationError::InvalidAttribute("ApplicationPassword values can not be supplied through modification".to_string())),
                 }
             }
             None => {
@@ -719,7 +721,8 @@ pub trait QueryServerTransaction<'a> {
                     | SyntaxType::OauthScopeMap
                     | SyntaxType::Session
                     | SyntaxType::ApiToken
-                    | SyntaxType::Oauth2Session => {
+                    | SyntaxType::Oauth2Session
+                    | SyntaxType::ApplicationPassword => {
                         let un = self.name_to_uuid(value).unwrap_or(UUID_DOES_NOT_EXIST);
                         Ok(PartialValue::Refer(un))
                     }
@@ -975,6 +978,15 @@ pub trait QueryServerTransaction<'a> {
         self.internal_search(filter!(f_eq(
             Attribute::Class,
             EntryClass::OAuth2ResourceServer.into(),
+        )))
+    }
+
+    fn get_ldap_applications_set(
+        &mut self,
+    ) -> Result<Vec<Arc<EntrySealedCommitted>>, OperationError> {
+        self.internal_search(filter!(f_eq(
+            Attribute::Class,
+            EntryClass::Application.into(),
         )))
     }
 
@@ -2058,6 +2070,11 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
     pub(crate) fn upgrade_reindex(&mut self, v: i64) -> Result<(), OperationError> {
         self.be_txn.upgrade_reindex(v)
+    }
+
+    #[inline]
+    pub(crate) fn get_changed_app(&self) -> bool {
+        self.changed_flags.contains(ChangeFlag::APPLICATION)
     }
 
     #[inline]

@@ -1106,6 +1106,7 @@ lazy_static! {
             Attribute::UserAuthTokenSession,
             Attribute::PassKeys,
             Attribute::AttestedPasskeys,
+            Attribute::ApplicationPassword,
         ],
         ..Default::default()
     };
@@ -1133,6 +1134,7 @@ lazy_static! {
             Attribute::PassKeys,
             Attribute::AttestedPasskeys,
             Attribute::UserAuthTokenSession,
+            Attribute::ApplicationPassword,
         ],
         modify_present_attrs: vec![
             Attribute::DisplayName,
@@ -1143,6 +1145,7 @@ lazy_static! {
             Attribute::UnixPassword,
             Attribute::PassKeys,
             Attribute::AttestedPasskeys,
+            Attribute::ApplicationPassword,
         ],
         ..Default::default()
     };
@@ -2016,6 +2019,43 @@ lazy_static! {
         ],
         modify_removed_attrs: vec![Attribute::EntryManagedBy],
         modify_present_attrs: vec![Attribute::EntryManagedBy],
+        ..Default::default()
+    };
+}
+
+lazy_static! {
+    pub static ref IDM_ACP_APPLICATION_ENTRY_MANAGER_DL7: BuiltinAcp = BuiltinAcp {
+        classes: vec![
+            EntryClass::Object,
+            EntryClass::AccessControlProfile,
+            EntryClass::AccessControlModify,
+            EntryClass::AccessControlSearch
+        ],
+        name: "idm_acp_application_entry_manager",
+        uuid: UUID_IDM_ACP_APPLICATION_ENTRY_MANAGER_V1,
+        description: "Builtin IDM Control for allowing EntryManager to read and modify applications",
+        receiver: BuiltinAcpReceiver::EntryManager,
+        // Any application
+        target: BuiltinAcpTarget::Filter( ProtoFilter::And(vec![
+            match_class_filter!(EntryClass::Application),
+            FILTER_ANDNOT_TOMBSTONE_OR_RECYCLED.clone()
+        ])),
+        search_attrs: vec![
+            Attribute::Class,
+            Attribute::Name,
+            Attribute::Uuid,
+            Attribute::Description,
+            Attribute::LinkedGroup,
+            Attribute::EntryManagedBy,
+        ],
+        modify_present_attrs: vec![
+            Attribute::Description,
+            Attribute::LinkedGroup,
+        ],
+        modify_removed_attrs: vec![
+            Attribute::Description,
+            Attribute::LinkedGroup,
+        ],
         ..Default::default()
     };
 }

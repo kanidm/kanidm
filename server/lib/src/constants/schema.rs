@@ -769,12 +769,33 @@ pub static ref SCHEMA_ATTR_REFERS_DL7: SchemaAttribute = SchemaAttribute {
     ..Default::default()
 };
 
+pub static ref SCHEMA_ATTR_LINKED_GROUP_DL7: SchemaAttribute = SchemaAttribute {
+    uuid: UUID_SCHEMA_ATTR_LINKED_GROUP,
+    name: Attribute::LinkedGroup.into(),
+    description: "A reference to the group linked to the entry".to_string(),
+
+    multivalue: false,
+    sync_allowed: false,
+    syntax: SyntaxType::ReferenceUuid,
+    ..Default::default()
+};
+
 pub static ref SCHEMA_ATTR_CERTIFICATE_DL7: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_CERTIFICATE,
     name: Attribute::Certificate.into(),
     description: "An x509 Certificate".to_string(),
     multivalue: false,
     syntax: SyntaxType::Certificate,
+    ..Default::default()
+};
+
+pub static ref SCHEMA_ATTR_APPLICATION_PASSWORD_DL7: SchemaAttribute = SchemaAttribute {
+    uuid: UUID_SCHEMA_ATTR_APPLICATION_PASSWORD,
+    name: Attribute::ApplicationPassword.into(),
+    description: "A set of application passwords".to_string(),
+
+    multivalue: true,
+    syntax: SyntaxType::ApplicationPassword,
     ..Default::default()
 };
 
@@ -819,7 +840,34 @@ pub static ref SCHEMA_CLASS_PERSON_DL5: SchemaClass = SchemaClass {
     systemmust: vec![
         Attribute::IdVerificationEcKey.into()
     ],
-    systemexcludes: vec![EntryClass::ServiceAccount.into()],
+    systemexcludes: vec![EntryClass::ServiceAccount.into(), EntryClass::Application.into()],
+    ..Default::default()
+};
+
+pub static ref SCHEMA_CLASS_PERSON_DL7: SchemaClass = SchemaClass {
+    uuid: UUID_SCHEMA_CLASS_PERSON,
+    name: EntryClass::Person.into(),
+    description: "Object representation of a person".to_string(),
+
+    sync_allowed: true,
+    systemmay: vec![
+        Attribute::PrimaryCredential.into(),
+        Attribute::PassKeys.into(),
+        Attribute::AttestedPasskeys.into(),
+        Attribute::CredentialUpdateIntentToken.into(),
+        Attribute::SshPublicKey.into(),
+        Attribute::RadiusSecret.into(),
+        Attribute::OAuth2ConsentScopeMap.into(),
+        Attribute::UserAuthTokenSession.into(),
+        Attribute::OAuth2Session.into(),
+        Attribute::Mail.into(),
+        Attribute::LegalName.into(),
+        Attribute::ApplicationPassword.into(),
+    ],
+    systemmust: vec![
+        Attribute::IdVerificationEcKey.into()
+    ],
+    systemexcludes: vec![EntryClass::ServiceAccount.into(), EntryClass::Application.into()],
     ..Default::default()
 };
 
@@ -1288,6 +1336,17 @@ pub static ref SCHEMA_CLASS_CLIENT_CERTIFICATE_DL7: SchemaClass = SchemaClass {
         Attribute::Certificate.into(),
         Attribute::Refers.into(),
     ],
+    ..Default::default()
+};
+
+pub static ref SCHEMA_CLASS_APPLICATION_DL7: SchemaClass = SchemaClass {
+    uuid: UUID_SCHEMA_CLASS_APPLICATION,
+    name: EntryClass::Application.into(),
+
+    description: "The class representing an application".to_string(),
+    systemmust: vec![Attribute::Name.into(), Attribute::LinkedGroup.into()],
+    systemmay: vec![Attribute::Description.into()],
+    systemsupplements: vec![EntryClass::ServiceAccount.into()],
     ..Default::default()
 };
 

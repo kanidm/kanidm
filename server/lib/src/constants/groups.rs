@@ -405,6 +405,14 @@ lazy_static! {
             UUID_IDM_CLIENT_CERTIFICATE_ADMINS,
             UUID_IDM_HIGH_PRIVILEGE,
         ],
+    }
+
+    pub static ref BUILTIN_GROUP_APPLICATION_ADMINS: BuiltinGroup = BuiltinGroup {
+        name: "idm_ldap_application_admins",
+        description: "Builtin Application Administration Group.",
+        uuid: UUID_IDM_APPLICATION_ADMINS,
+        entry_managed_by: Some(UUID_IDM_ADMINS),
+        members: vec![UUID_IDM_ADMINS],
         ..Default::default()
     };
 }
@@ -426,6 +434,7 @@ pub fn idm_builtin_non_admin_groups() -> Vec<&'static BuiltinGroup> {
         &BUILTIN_GROUP_PEOPLE_PII_READ,
         &BUILTIN_GROUP_PEOPLE_ON_BOARDING,
         &BUILTIN_GROUP_SERVICE_ACCOUNT_ADMINS,
+        &BUILTIN_GROUP_APPLICATION_ADMINS,
         &IDM_GROUP_ADMINS_V1,
         &IDM_ALL_PERSONS,
         &IDM_ALL_ACCOUNTS,

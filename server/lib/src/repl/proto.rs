@@ -443,6 +443,9 @@ pub enum ReplAttrV1 {
     Certificate {
         set: Vec<DbValueCertificate>,
     },
+    ApplicationPassword {
+        set: Vec<DbValueApplicationPassword>,
+    },
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]

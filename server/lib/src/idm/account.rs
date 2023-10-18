@@ -14,10 +14,12 @@ use webauthn_rs::prelude::{
 use super::accountpolicy::ResolvedAccountPolicy;
 use crate::constants::UUID_ANONYMOUS;
 use crate::credential::softlock::CredSoftLockPolicy;
-use crate::credential::Credential;
+use crate::credential::{apppwd::ApplicationPassword, Credential};
 use crate::entry::{Entry, EntryCommitted, EntryReduced, EntrySealed};
 use crate::event::SearchEvent;
+use crate::idm::application::Application;
 use crate::idm::group::Group;
+use crate::idm::ldap::{LdapBoundToken, LdapSession};
 use crate::idm::server::{IdmServerProxyReadTransaction, IdmServerProxyWriteTransaction};
 use crate::modify::{ModifyInvalid, ModifyList};
 use crate::prelude::*;
@@ -65,6 +67,7 @@ pub struct Account {
     pub mail: Vec<String>,
     pub credential_update_intent_tokens: BTreeMap<String, IntentTokenState>,
     pub(crate) unix_extn: Option<UnixExtensions>,
+    pub apps_pwds: BTreeMap<Uuid, Vec<ApplicationPassword>>,
 }
 
 macro_rules! try_from_entry {
@@ -197,6 +200,11 @@ macro_rules! try_from_entry {
             None
         };
 
+        let apps_pwds = $value
+            .get_ava_application_password(Attribute::ApplicationPassword)
+            .cloned()
+            .unwrap_or_default();
+
         Ok(Account {
             uuid,
             name,
@@ -215,6 +223,7 @@ macro_rules! try_from_entry {
             mail,
             credential_update_intent_tokens,
             unix_extn,
+            apps_pwds,
         })
     }};
 }
@@ -737,6 +746,51 @@ impl Account {
                 }
             }
         }
+    }
+
+    pub(crate) fn verify_application_password(
+        &self,
+        application: &Application,
+        cleartext: &str,
+    ) -> Result<Option<LdapBoundToken>, OperationError> {
+        if let Some(v) = self.apps_pwds.get(&application.uuid) {
+            for ap in v.iter() {
+                if ap.password.verify(cleartext).map_err(|e| {
+                    error!(crypto_err = ?e);
+                    e.into()
+                })? {
+                    let session_id = uuid::Uuid::new_v4();
+                    security_info!(
+                        "Starting session {} for {} {}",
+                        session_id,
+                        self.spn,
+                        self.uuid
+                    );
+
+                    return Ok(Some(LdapBoundToken {
+                        spn: self.spn.clone(),
+                        session_id,
+                        effective_session: LdapSession::ApplicationPasswordBind(
+                            application.uuid,
+                            self.uuid,
+                        ),
+                    }));
+                }
+            }
+        }
+        Ok(None)
+    }
+
+    pub(crate) fn generate_application_password_mod(
+        &self,
+        application: Uuid,
+        label: &str,
+        cleartext: &str,
+        policy: &CryptoPolicy,
+    ) -> Result<ModifyList<ModifyInvalid>, OperationError> {
+        let ap = ApplicationPassword::new(application, label, cleartext, policy)?;
+        let vap = Value::ApplicationPassword(ap);
+        Ok(ModifyList::new_append(Attribute::ApplicationPassword, vap))
     }
 }
 
