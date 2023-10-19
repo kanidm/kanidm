@@ -22,6 +22,7 @@ use crate::modify::{ModifyInvalid, ModifyList};
 use crate::prelude::*;
 use crate::schema::SchemaTransaction;
 use crate::value::{IntentTokenState, PartialValue, SessionState, Value};
+use super::accountpolicy::ResolvedAccountPolicy;
 use kanidm_lib_crypto::CryptoPolicy;
 
 use sshkey_attest::proto::PublicKey as SshPublicKey;
@@ -231,6 +232,16 @@ impl Account {
     ) -> Result<Self, OperationError> {
         let groups = Group::try_from_account_entry_ro(value, qs)?;
         try_from_entry!(value, groups)
+    }
+
+    #[instrument(level = "trace", skip_all)]
+    pub(crate) fn try_from_entry_with_policy_ro(
+        value: &Entry<EntrySealed, EntryCommitted>,
+        qs: &mut QueryServerReadTransaction,
+    ) -> Result<(Self, ResolvedAccountPolicy), OperationError> {
+        let (groups, rap) = Group::try_from_account_entry_with_policy_ro(value, qs)?;
+        try_from_entry!(value, groups)
+            .map(|acct| (acct, rap))
     }
 
     #[instrument(level = "trace", skip_all)]

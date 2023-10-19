@@ -33,9 +33,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
         };
 
         // Setup the account record.
-        let account = Account::try_from_entry_ro(entry.as_ref(), &mut self.qs_read)?;
-
-        let account_policy = (*self.account_policy).clone();
+        let (account, account_policy) = Account::try_from_entry_with_policy_ro(entry.as_ref(), &mut self.qs_read)?;
 
         security_info!(
             username = %account.name,

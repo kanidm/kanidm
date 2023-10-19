@@ -472,14 +472,14 @@ macro_rules! try_from_account_group_e {
 }
 
 impl UnixGroup {
-    pub fn try_from_account_entry_rw(
+    pub(crate) fn try_from_account_entry_rw(
         value: &Entry<EntrySealed, EntryCommitted>,
         qs: &mut QueryServerWriteTransaction,
     ) -> Result<Vec<Self>, OperationError> {
         try_from_account_group_e!(value, qs)
     }
 
-    pub fn try_from_account_entry_ro(
+    pub(crate) fn try_from_account_entry_ro(
         value: &Entry<EntrySealed, EntryCommitted>,
         qs: &mut QueryServerReadTransaction,
     ) -> Result<Vec<Self>, OperationError> {
@@ -495,13 +495,13 @@ impl UnixGroup {
     }
     */
 
-    pub fn try_from_entry_reduced(
+    pub(crate) fn try_from_entry_reduced(
         value: &Entry<EntryReduced, EntryCommitted>,
     ) -> Result<Self, OperationError> {
         try_from_group_e!(value)
     }
 
-    pub fn try_from_entry(
+    pub(crate) fn try_from_entry(
         value: &Entry<EntrySealed, EntryCommitted>,
     ) -> Result<Self, OperationError> {
         try_from_group_e!(value)
