@@ -2638,9 +2638,12 @@ impl<VALID, STATE> Entry<VALID, STATE> {
 
     #[inline(always)]
     /// If possible, return an iterator over the set of ssh key values transformed into a `&str`.
-    pub fn get_ava_iter_sshpubkeys(&self, attr: Attribute) -> Option<impl Iterator<Item = &str>> {
+    pub fn get_ava_iter_sshpubkeys(
+        &self,
+        attr: Attribute,
+    ) -> Option<impl Iterator<Item = String> + '_> {
         self.get_ava_set(attr)
-            .and_then(|vs| vs.as_sshpubkey_str_iter())
+            .and_then(|vs| vs.as_sshpubkey_string_iter())
     }
 
     // These are special types to allow returning typed values from

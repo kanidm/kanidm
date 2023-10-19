@@ -831,7 +831,7 @@ mod tests {
                 (Attribute::LoginShell, Value::new_iutf8("/bin/zsh")),
                 (
                     Attribute::SshPublicKey,
-                    Value::new_sshkey_str("test", ssh_ed25519)
+                    Value::new_sshkey_str("test", ssh_ed25519).expect("Invalid ssh key")
                 )
             );
 

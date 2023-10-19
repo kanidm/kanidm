@@ -4,6 +4,8 @@ use std::fmt;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
+use sshkey_attest::proto::PublicKey as SshPublicKey;
+
 use hashbrown::HashSet;
 use kanidm_proto::v1::{
     CUExtPortal, CURegState, CUStatus, CredentialDetail, PasskeyDetail, PasswordFeedback,
@@ -87,7 +89,6 @@ pub(crate) struct CredentialUpdateSession {
     account: Account,
     // What intent was used to initiate this session.
     intent_token_id: Option<String>,
-    // Acc policy
 
     // Is there an extertal credential portal?
     ext_cred_portal: CUExtPortal,
@@ -95,6 +96,14 @@ pub(crate) struct CredentialUpdateSession {
     // The pw credential as they are being updated
     primary: Option<Credential>,
     primary_can_edit: bool,
+
+    // Unix / Sudo PW
+    unixcred: Option<Credential>,
+    unixcred_can_edit: bool,
+
+    // Ssh Keys
+    sshkeys: BTreeMap<String, SshPublicKey>,
+    sshpubkey_can_edit: bool,
 
     // Passkeys that have been configured.
     passkeys: BTreeMap<Uuid, (String, PasskeyV4)>,
@@ -121,6 +130,7 @@ impl fmt::Debug for CredentialUpdateSession {
             .collect();
         f.debug_struct("CredentialUpdateSession")
             .field("account.spn", &self.account.spn)
+            .field("account.unix", &self.account.unix_extn().is_some())
             .field("intent_token_id", &self.intent_token_id)
             .field("primary.detail()", &primary)
             .field("passkeys.list()", &passkeys)
@@ -355,13 +365,15 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 ident,
                 Some(btreeset![
                     Attribute::PrimaryCredential.into(),
-                    Attribute::PassKeys.into()
+                    Attribute::PassKeys.into(),
+                    Attribute::UnixPassword.into(),
+                    Attribute::SshPublicKey.into()
                 ]),
                 &[entry],
             )?;
 
         let eperm = effective_perms.get(0).ok_or_else(|| {
-            admin_error!("Effective Permission check returned no results");
+            error!("Effective Permission check returned no results");
             OperationError::InvalidState
         })?;
 
@@ -369,7 +381,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         // the current status of it's authentication?
 
         if eperm.target != account.uuid {
-            admin_error!("Effective Permission check target differs from requested entry uuid");
+            error!("Effective Permission check target differs from requested entry uuid");
             return Err(OperationError::InvalidEntryState);
         }
 
@@ -414,6 +426,52 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         let passkeys_can_edit = eperm_search_passkeys && eperm_mod_passkeys && eperm_rem_passkeys;
 
+        let eperm_search_unixcred = match &eperm.search {
+            Access::Denied => false,
+            Access::Grant => true,
+            Access::Allow(attrs) => attrs.contains(Attribute::UnixPassword.as_ref()),
+        };
+
+        let eperm_mod_unixcred = match &eperm.modify_pres {
+            Access::Denied => false,
+            Access::Grant => true,
+            Access::Allow(attrs) => attrs.contains(Attribute::UnixPassword.as_ref()),
+        };
+
+        let eperm_rem_unixcred = match &eperm.modify_rem {
+            Access::Denied => false,
+            Access::Grant => true,
+            Access::Allow(attrs) => attrs.contains(Attribute::UnixPassword.as_ref()),
+        };
+
+        let unixcred_can_edit = account.unix_extn().is_some()
+            && eperm_search_unixcred
+            && eperm_mod_unixcred
+            && eperm_rem_unixcred;
+
+        let eperm_search_sshpubkey = match &eperm.search {
+            Access::Denied => false,
+            Access::Grant => true,
+            Access::Allow(attrs) => attrs.contains(Attribute::SshPublicKey.as_ref()),
+        };
+
+        let eperm_mod_sshpubkey = match &eperm.modify_pres {
+            Access::Denied => false,
+            Access::Grant => true,
+            Access::Allow(attrs) => attrs.contains(Attribute::SshPublicKey.as_ref()),
+        };
+
+        let eperm_rem_sshpubkey = match &eperm.modify_rem {
+            Access::Denied => false,
+            Access::Grant => true,
+            Access::Allow(attrs) => attrs.contains(Attribute::SshPublicKey.as_ref()),
+        };
+
+        let sshpubkey_can_edit = account.unix_extn().is_some()
+            && eperm_search_sshpubkey
+            && eperm_mod_sshpubkey
+            && eperm_rem_sshpubkey;
+
         let ext_cred_portal_can_view = if let Some(sync_parent_uuid) = account.sync_parent_uuid {
             // In theory this is always granted due to how access controls work, but we check anyway.
             let entry = self.qs_write.internal_search_uuid(sync_parent_uuid)?;
@@ -442,17 +500,24 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         };
 
         // At lease *one* must be modifiable OR visible.
-        if !(primary_can_edit || passkeys_can_edit || ext_cred_portal_can_view) {
+        if !(primary_can_edit
+            || passkeys_can_edit
+            || ext_cred_portal_can_view
+            || sshpubkey_can_edit
+            || unixcred_can_edit)
+        {
             error!("Unable to proceed with credential update intent - at least one type of credential must be modifiable or visible.");
             Err(OperationError::NotAuthorised)
         } else {
-            security_info!(%primary_can_edit, %passkeys_can_edit, %ext_cred_portal_can_view, "Proceeding");
+            security_info!(%primary_can_edit, %passkeys_can_edit, %unixcred_can_edit, %sshpubkey_can_edit, %ext_cred_portal_can_view, "Proceeding");
             Ok((
                 account,
                 CredUpdateSessionPerms {
                     ext_cred_portal_can_view,
                     passkeys_can_edit,
                     primary_can_edit,
+                    unixcred_can_edit,
+                    sshpubkey_can_edit,
                 },
             ))
         }
@@ -469,6 +534,8 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         let ext_cred_portal_can_view = perms.ext_cred_portal_can_view;
         let primary_can_edit = perms.primary_can_edit;
         let passkeys_can_edit = perms.passkeys_can_edit;
+        let unixcred_can_edit = perms.unixcred_can_edit;
+        let sshpubkey_can_edit = perms.sshpubkey_can_edit;
 
         // - stash the current state of all associated credentials
         let primary = if primary_can_edit {
@@ -479,6 +546,21 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         let passkeys = if passkeys_can_edit {
             account.passkeys.clone()
+        } else {
+            BTreeMap::default()
+        };
+
+        let unixcred: Option<Credential> = if unixcred_can_edit {
+            account.unix_extn().and_then(|uext| uext.ucred()).cloned()
+        } else {
+            None
+        };
+
+        let sshkeys = if sshpubkey_can_edit {
+            account
+                .unix_extn()
+                .map(|uext| uext.sshkeys().clone())
+                .unwrap_or_default()
         } else {
             BTreeMap::default()
         };
@@ -511,6 +593,10 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             ext_cred_portal,
             primary,
             primary_can_edit,
+            unixcred,
+            unixcred_can_edit,
+            sshkeys,
+            sshpubkey_can_edit,
             passkeys,
             passkeys_can_edit,
             _devicekeys: devicekeys,
@@ -952,15 +1038,10 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         };
 
         if session.primary_can_edit {
-            match &session.primary {
-                Some(ncred) => {
-                    modlist.push_mod(Modify::Purged(Attribute::PrimaryCredential.into()));
-                    let vcred = Value::new_credential("primary", ncred.clone());
-                    modlist.push_mod(Modify::Present(Attribute::PrimaryCredential.into(), vcred));
-                }
-                None => {
-                    modlist.push_mod(Modify::Purged(Attribute::PrimaryCredential.into()));
-                }
+            modlist.push_mod(Modify::Purged(Attribute::PrimaryCredential.into()));
+            if let Some(ncred) = &session.primary {
+                let vcred = Value::new_credential("primary", ncred.clone());
+                modlist.push_mod(Modify::Present(Attribute::PrimaryCredential.into(), vcred));
             };
         };
 
@@ -974,6 +1055,22 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 modlist.push_mod(Modify::Present(Attribute::PassKeys.into(), v_pk));
             });
         };
+
+        if session.unixcred_can_edit {
+            modlist.push_mod(Modify::Purged(Attribute::UnixPassword.into()));
+            if let Some(ncred) = &session.unixcred {
+                let vcred = Value::new_credential("unix", ncred.clone());
+                modlist.push_mod(Modify::Present(Attribute::UnixPassword.into(), vcred));
+            }
+        }
+
+        if session.sshpubkey_can_edit {
+            modlist.push_mod(Modify::Purged(Attribute::SshPublicKey.into()));
+            for (tag, pk) in &session.sshkeys {
+                let v_sk = Value::SshKey(tag.clone(), pk.clone());
+                modlist.push_mod(Modify::Present(Attribute::SshPublicKey.into(), v_sk));
+            }
+        }
 
         // Apply to the account!
         trace!(?modlist, "processing change");
@@ -1142,7 +1239,6 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
     ) -> Result<(), PasswordQuality> {
         // password strength and badlisting is always global, rather than per-pw-policy.
         // pw-policy as check on the account is about requirements for mfa for example.
-        //
 
         // is the password at least 10 char?
         if cleartext.len() < PW_MIN_LENGTH {

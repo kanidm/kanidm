@@ -58,17 +58,19 @@ repository = "https://github.com/kanidm/kanidm/"
 # scim_proto = { path = "../scim/proto" }
 # scim_proto = { git = "https://github.com/kanidm/scim.git"  }
 
-base64urlsafedata = { git = "https://github.com/kanidm/webauthn-rs.git", rev = "429662e34d6e760af8cff68760567c6b56dbb2d5" }
-webauthn-authenticator-rs = { git = "https://github.com/kanidm/webauthn-rs.git", rev = "429662e34d6e760af8cff68760567c6b56dbb2d5" }
-webauthn-rs = { git = "https://github.com/kanidm/webauthn-rs.git", rev = "429662e34d6e760af8cff68760567c6b56dbb2d5" }
-webauthn-rs-core = { git = "https://github.com/kanidm/webauthn-rs.git", rev = "429662e34d6e760af8cff68760567c6b56dbb2d5" }
-webauthn-rs-proto = { git = "https://github.com/kanidm/webauthn-rs.git", rev = "429662e34d6e760af8cff68760567c6b56dbb2d5" }
+base64urlsafedata = { git = "https://github.com/kanidm/webauthn-rs.git", rev = "2218d2055c0c900ef57b398423eee5e8d5521f4c" }
+webauthn-authenticator-rs = { git = "https://github.com/kanidm/webauthn-rs.git", rev = "2218d2055c0c900ef57b398423eee5e8d5521f4c" }
+webauthn-rs = { git = "https://github.com/kanidm/webauthn-rs.git", rev = "2218d2055c0c900ef57b398423eee5e8d5521f4c" }
+webauthn-rs-core = { git = "https://github.com/kanidm/webauthn-rs.git", rev = "2218d2055c0c900ef57b398423eee5e8d5521f4c" }
+webauthn-rs-proto = { git = "https://github.com/kanidm/webauthn-rs.git", rev = "2218d2055c0c900ef57b398423eee5e8d5521f4c" }
+sshkey-attest = { git = "https://github.com/kanidm/webauthn-rs.git", rev = "2218d2055c0c900ef57b398423eee5e8d5521f4c" }
 
 # base64urlsafedata = { path = "../webauthn-rs/base64urlsafedata" }
 # webauthn-authenticator-rs = { path = "../webauthn-rs/webauthn-authenticator-rs" }
 # webauthn-rs = { path = "../webauthn-rs/webauthn-rs" }
 # webauthn-rs-core = { path = "../webauthn-rs/webauthn-rs-core" }
 # webauthn-rs-proto = { path = "../webauthn-rs/webauthn-rs-proto" }
+# sshkey-attest = { path = "../webauthn-rs/sshkey-attest" }
 
 [workspace.dependencies]
 kanidmd_core = { path = "./server/core" }
@@ -180,7 +182,7 @@ shellexpand = "^2.1.2"
 sketching = { path = "./libs/sketching" }
 smartstring = "^1.0.1"
 smolset = "^1.3.1"
-sshkeys = "^0.3.1"
+sshkey-attest = "^0.5.0-dev"
 svg = "0.13.1"
 syn = { version = "2.0.38", features = ["full"] }
 tempfile = "3.8.0"

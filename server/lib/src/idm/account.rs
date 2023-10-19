@@ -24,6 +24,49 @@ use crate::schema::SchemaTransaction;
 use crate::value::{IntentTokenState, PartialValue, SessionState, Value};
 use kanidm_lib_crypto::CryptoPolicy;
 
+use sshkey_attest::proto::PublicKey as SshPublicKey;
+
+#[derive(Debug, Clone)]
+pub struct UnixExtensions {
+    ucred: Option<Credential>,
+    _shell: Option<String>,
+    sshkeys: BTreeMap<String, SshPublicKey>,
+    _gidnumber: u32,
+}
+
+impl UnixExtensions {
+    pub(crate) fn ucred(&self) -> Option<&Credential> {
+        self.ucred.as_ref()
+    }
+
+    pub(crate) fn sshkeys(&self) -> &BTreeMap<String, SshPublicKey> {
+        &self.sshkeys
+    }
+}
+
+#[derive(Default, Debug, Clone)]
+pub struct Account {
+    // To make this self-referential, we'll need to likely make Entry Pin<Arc<_>>
+    // so that we can make the references work.
+    pub name: String,
+    pub spn: String,
+    pub displayname: String,
+    pub uuid: Uuid,
+    pub sync_parent_uuid: Option<Uuid>,
+    pub groups: Vec<Group>,
+    pub primary: Option<Credential>,
+    pub passkeys: BTreeMap<Uuid, (String, PasskeyV4)>,
+    pub devicekeys: BTreeMap<Uuid, (String, DeviceKeyV4)>,
+    pub valid_from: Option<OffsetDateTime>,
+    pub expire: Option<OffsetDateTime>,
+    pub radius_secret: Option<String>,
+    pub ui_hints: BTreeSet<UiHint>,
+    pub mail_primary: Option<String>,
+    pub mail: Vec<String>,
+    pub credential_update_intent_tokens: BTreeMap<String, IntentTokenState>,
+    pub(crate) unix_extn: Option<UnixExtensions>,
+}
+
 macro_rules! try_from_entry {
     ($value:expr, $groups:expr) => {{
         // Check the classes
@@ -115,12 +158,44 @@ macro_rules! try_from_entry {
             ui_hints.insert(UiHint::SynchronisedAccount);
         }
 
-        if $value.attribute_equality(
+        let unix_extn = if $value.attribute_equality(
             Attribute::Class,
             &EntryClass::PosixAccount.to_partialvalue(),
         ) {
             ui_hints.insert(UiHint::PosixAccount);
-        }
+
+            let sshkeys = $value
+                .get_ava_set(Attribute::SshPublicKey)
+                .and_then(|vs| vs.as_sshkey_map())
+                .cloned()
+                .unwrap_or_default();
+
+            let ucred = $value
+                .get_ava_single_credential(Attribute::UnixPassword)
+                .map(|v| v.clone());
+
+            let _shell = $value
+                .get_ava_single_iutf8(Attribute::LoginShell)
+                .map(|s| s.to_string());
+
+            let _gidnumber = $value
+                .get_ava_single_uint32(Attribute::GidNumber)
+                .ok_or_else(|| {
+                    OperationError::InvalidAccountState(format!(
+                        "Missing attribute: {}",
+                        Attribute::GidNumber
+                    ))
+                })?;
+
+            Some(UnixExtensions {
+                ucred,
+                _shell,
+                sshkeys,
+                _gidnumber,
+            })
+        } else {
+            None
+        };
 
         Ok(Account {
             uuid,
@@ -139,41 +214,16 @@ macro_rules! try_from_entry {
             mail_primary,
             mail,
             credential_update_intent_tokens,
+            unix_extn,
         })
     }};
 }
 
-#[derive(Default, Debug, Clone)]
-pub struct Account {
-    // Later these could be &str if we cache entry here too ...
-    // They can't because if we mod the entry, we'll lose the ref.
-    //
-    // We do need to decide if we'll cache the entry, or if we just "work out"
-    // what the ops should be based on the values we cache here ... That's a future
-    // william problem I think :)
-    pub name: String,
-    pub displayname: String,
-    pub uuid: Uuid,
-    pub sync_parent_uuid: Option<Uuid>,
-    // We want to allow this so that in the future we can populate this into oauth2 tokens
-    #[allow(dead_code)]
-    pub groups: Vec<Group>,
-    pub primary: Option<Credential>,
-    pub passkeys: BTreeMap<Uuid, (String, PasskeyV4)>,
-    pub devicekeys: BTreeMap<Uuid, (String, DeviceKeyV4)>,
-    pub valid_from: Option<OffsetDateTime>,
-    pub expire: Option<OffsetDateTime>,
-    pub radius_secret: Option<String>,
-    pub spn: String,
-    pub ui_hints: BTreeSet<UiHint>,
-    // TODO #256: When you add mail, you should update the check to zxcvbn
-    // to include these.
-    pub mail_primary: Option<String>,
-    pub mail: Vec<String>,
-    pub credential_update_intent_tokens: BTreeMap<String, IntentTokenState>,
-}
-
 impl Account {
+    pub(crate) fn unix_extn(&self) -> Option<&UnixExtensions> {
+        self.unix_extn.as_ref()
+    }
+
     #[instrument(level = "trace", skip_all)]
     pub(crate) fn try_from_entry_ro(
         value: &Entry<EntrySealed, EntryCommitted>,

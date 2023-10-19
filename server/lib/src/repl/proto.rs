@@ -155,6 +155,10 @@ pub enum ReplIntentTokenV1 {
         primary_can_edit: bool,
         #[serde(default)]
         passkeys_can_edit: bool,
+        #[serde(default)]
+        unixcred_can_edit: bool,
+        #[serde(default)]
+        sshpubkey_can_edit: bool,
     },
     InProgress {
         token_id: String,
@@ -167,6 +171,10 @@ pub enum ReplIntentTokenV1 {
         primary_can_edit: bool,
         #[serde(default)]
         passkeys_can_edit: bool,
+        #[serde(default)]
+        unixcred_can_edit: bool,
+        #[serde(default)]
+        sshpubkey_can_edit: bool,
     },
     Consumed {
         token_id: String,

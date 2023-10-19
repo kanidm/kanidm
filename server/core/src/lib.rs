@@ -25,7 +25,7 @@ extern crate tracing;
 #[macro_use]
 extern crate kanidmd_lib;
 
-pub mod actors;
+mod actors;
 pub mod admin;
 pub mod config;
 mod crypto;
