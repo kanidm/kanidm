@@ -82,6 +82,8 @@ to `spn`.
 > UUID folder. Automatic support is provided for this via the unixd tasks daemon, as documented
 > here.
 
+> **NOTE:** Ubuntu users please see: [Why aren't snaps launching with home_alias set?](../frequently_asked_questions.md#why-arent-snaps-launching-with-home_alias-set)
+
 `use_etc_skel` controls if home directories should be prepopulated with the contents of `/etc/skel`
 when first created. Defaults to false.
 
