@@ -55,7 +55,6 @@ const PW_BADLIST_MSG: &str = "password is in badlist";
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
 pub enum AuthType {
     Anonymous,
-    UnixPassword,
     Password,
     GeneratedPassword,
     PasswordMfa,
@@ -66,7 +65,6 @@ impl fmt::Display for AuthType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             AuthType::Anonymous => write!(f, "anonymous"),
-            AuthType::UnixPassword => write!(f, "unixpassword"),
             AuthType::Password => write!(f, "password"),
             AuthType::GeneratedPassword => write!(f, "generatedpassword"),
             AuthType::PasswordMfa => write!(f, "passwordmfa"),
@@ -343,29 +341,26 @@ impl CredHandler {
         generated: bool,
         who: Uuid,
         async_tx: &Sender<DelayedAction>,
-        pw_badlist_set: Option<&HashSet<String>>,
+        pw_badlist_set: &HashSet<String>,
     ) -> CredState {
         match cred {
             AuthCredential::Password(cleartext) => {
                 if pw.verify(cleartext.as_str()).unwrap_or(false) {
-                    match pw_badlist_set {
-                        Some(p) if p.contains(&cleartext.to_lowercase()) => {
-                            security_error!("Handler::Password -> Result::Denied - Password found in badlist during login");
-                            CredState::Denied(PW_BADLIST_MSG)
-                        }
-                        _ => {
-                            security_info!("Handler::Password -> Result::Success");
-                            Self::maybe_pw_upgrade(pw, who, cleartext.as_str(), async_tx);
-                            if generated {
-                                CredState::Success {
-                                    auth_type: AuthType::GeneratedPassword,
-                                    cred_id,
-                                }
-                            } else {
-                                CredState::Success {
-                                    auth_type: AuthType::Password,
-                                    cred_id,
-                                }
+                    if pw_badlist_set.contains(&cleartext.to_lowercase()) {
+                        security_error!("Handler::Password -> Result::Denied - Password found in badlist during login");
+                        CredState::Denied(PW_BADLIST_MSG)
+                    } else {
+                        security_info!("Handler::Password -> Result::Success");
+                        Self::maybe_pw_upgrade(pw, who, cleartext.as_str(), async_tx);
+                        if generated {
+                            CredState::Success {
+                                auth_type: AuthType::GeneratedPassword,
+                                cred_id,
+                            }
+                        } else {
+                            CredState::Success {
+                                auth_type: AuthType::Password,
+                                cred_id,
                             }
                         }
                     }
@@ -395,7 +390,7 @@ impl CredHandler {
         webauthn: &Webauthn,
         who: Uuid,
         async_tx: &Sender<DelayedAction>,
-        pw_badlist_set: Option<&HashSet<String>>,
+        pw_badlist_set: &HashSet<String>,
     ) -> CredState {
         match (&pw_mfa.mfa_state, &pw_mfa.pw_state) {
             (CredVerifyState::Init, CredVerifyState::Init) => {
@@ -493,25 +488,22 @@ impl CredHandler {
                 match cred {
                     AuthCredential::Password(cleartext) => {
                         if pw_mfa.pw.verify(cleartext.as_str()).unwrap_or(false) {
-                            match pw_badlist_set {
-                                Some(p) if p.contains(&cleartext.to_lowercase()) => {
-                                    pw_mfa.pw_state = CredVerifyState::Fail;
-                                    security_error!("Handler::PasswordMfa -> Result::Denied - Password found in badlist during login");
-                                    CredState::Denied(PW_BADLIST_MSG)
-                                }
-                                _ => {
-                                    pw_mfa.pw_state = CredVerifyState::Success;
-                                    security_info!("Handler::PasswordMfa -> Result::Success - TOTP/WebAuthn/BackupCode OK, password OK");
-                                    Self::maybe_pw_upgrade(
-                                        &pw_mfa.pw,
-                                        who,
-                                        cleartext.as_str(),
-                                        async_tx,
-                                    );
-                                    CredState::Success {
-                                        auth_type: AuthType::PasswordMfa,
-                                        cred_id,
-                                    }
+                            if pw_badlist_set.contains(&cleartext.to_lowercase()) {
+                                pw_mfa.pw_state = CredVerifyState::Fail;
+                                security_error!("Handler::PasswordMfa -> Result::Denied - Password found in badlist during login");
+                                CredState::Denied(PW_BADLIST_MSG)
+                            } else {
+                                pw_mfa.pw_state = CredVerifyState::Success;
+                                security_info!("Handler::PasswordMfa -> Result::Success - TOTP/WebAuthn/BackupCode OK, password OK");
+                                Self::maybe_pw_upgrade(
+                                    &pw_mfa.pw,
+                                    who,
+                                    cleartext.as_str(),
+                                    async_tx,
+                                );
+                                CredState::Success {
+                                    auth_type: AuthType::PasswordMfa,
+                                    cred_id,
                                 }
                             }
                         } else {
@@ -611,7 +603,7 @@ impl CredHandler {
         who: Uuid,
         async_tx: &Sender<DelayedAction>,
         webauthn: &Webauthn,
-        pw_badlist_set: Option<&HashSet<String>>,
+        pw_badlist_set: &HashSet<String>,
     ) -> CredState {
         match self {
             CredHandler::Anonymous { cred_id } => Self::validate_anonymous(cred, *cred_id),
@@ -728,6 +720,9 @@ pub(crate) struct AuthSession {
     // Do we store a copy of the entry?
     // How do we know what claims to add?
     account: Account,
+    // This policies that apply to this account
+    account_policy: AccountPolicy,
+
     // Store how we plan to handle this sessions authentication: this is generally
     // made apparent by the presentation of an application id or not. If none is presented
     // we want the primary-interaction credentials.
@@ -752,6 +747,7 @@ impl AuthSession {
     /// or interleved write operations do not cause inconsistency in this process.
     pub fn new(
         account: Account,
+        account_policy: AccountPolicy,
         issue: AuthIssueSession,
         privileged: bool,
         webauthn: &Webauthn,
@@ -809,6 +805,7 @@ impl AuthSession {
             // We can proceed
             let auth_session = AuthSession {
                 account,
+                account_policy,
                 state,
                 issue,
                 intent: AuthIntent::InitialAuth { privileged },
@@ -831,6 +828,7 @@ impl AuthSession {
     /// initial authentication.
     pub(crate) fn new_reauth(
         account: Account,
+        account_policy: AccountPolicy,
         session_id: Uuid,
         session: &Session,
         cred_id: Uuid,
@@ -909,6 +907,7 @@ impl AuthSession {
                 let allow = handler.next_auth_allowed();
                 let auth_session = AuthSession {
                     account,
+                    account_policy,
                     state: AuthSessionState::InProgress(handler),
                     issue,
                     intent: AuthIntent::Reauth {
@@ -1021,7 +1020,7 @@ impl AuthSession {
         audit_tx: &Sender<AuditEvent>,
         webauthn: &Webauthn,
         uat_jwt_signer: &JwsSigner,
-        account_policy: &AccountPolicy,
+        pw_badlist: &HashSet<String>,
     ) -> Result<AuthState, OperationError> {
         let (next_state, response) = match &mut self.state {
             AuthSessionState::Init(_) | AuthSessionState::Success | AuthSessionState::Denied(_) => {
@@ -1036,7 +1035,7 @@ impl AuthSession {
                     self.account.uuid,
                     async_tx,
                     webauthn,
-                    Some(&account_policy.pw_badlist_cache),
+                    pw_badlist,
                 ) {
                     CredState::Success { auth_type, cred_id } => {
                         // Issue the uat based on a set of factors.
@@ -1045,8 +1044,8 @@ impl AuthSession {
                             time,
                             async_tx,
                             cred_id,
-                            account_policy.authsession_expiry,
-                            account_policy.privilege_expiry,
+                            self.account_policy.authsession_expiry(),
+                            self.account_policy.privilege_expiry(),
                         )?;
                         let jwt = Jws::new(uat);
 
@@ -1128,7 +1127,7 @@ impl AuthSession {
                 // We need to actually work this out better, and then
                 // pass it to to_userauthtoken
                 let scope = match auth_type {
-                    AuthType::UnixPassword | AuthType::Anonymous => SessionScope::ReadOnly,
+                    AuthType::Anonymous => SessionScope::ReadOnly,
                     AuthType::GeneratedPassword => SessionScope::ReadWrite,
                     AuthType::Password | AuthType::PasswordMfa | AuthType::Passkey => {
                         if privileged {
@@ -1162,11 +1161,6 @@ impl AuthSession {
                     AuthType::Anonymous => {
                         // Skip - these sessions are not validated by session id.
                     }
-                    AuthType::UnixPassword => {
-                        // Impossibru!
-                        admin_error!("Impossible auth type (UnixPassword) found");
-                        return Err(OperationError::InvalidState);
-                    }
                     AuthType::Password
                     | AuthType::GeneratedPassword
                     | AuthType::PasswordMfa
@@ -1199,7 +1193,7 @@ impl AuthSession {
                 // Sanity check - We have already been really strict about what session types
                 // can actually trigger a re-auth, but we recheck here for paranoia!
                 let scope = match auth_type {
-                    AuthType::UnixPassword | AuthType::Anonymous | AuthType::GeneratedPassword => {
+                    AuthType::Anonymous | AuthType::GeneratedPassword => {
                         error!("AuthType used in Reauth is not valid for session re-issuance. Rejecting");
                         return Err(OperationError::InvalidState);
                     }
@@ -1272,7 +1266,7 @@ mod tests {
     use crate::idm::server::AccountPolicy;
     use crate::idm::AuthState;
     use crate::prelude::*;
-    use crate::utils::{duration_from_epoch_now, readable_password_from_random};
+    use crate::utils::readable_password_from_random;
     use kanidm_lib_crypto::CryptoPolicy;
 
     fn create_pw_badlist_cache() -> HashSet<String> {
@@ -1304,6 +1298,7 @@ mod tests {
 
         let (session, state) = AuthSession::new(
             anon_account,
+            AccountPolicy::default(),
             AuthIssueSession::Token,
             false,
             &webauthn,
@@ -1340,6 +1335,7 @@ mod tests {
         ) => {{
             let (session, state) = AuthSession::new(
                 $account.clone(),
+                AccountPolicy::default(),
                 AuthIssueSession::Token,
                 $privileged,
                 $webauthn,
@@ -1395,7 +1391,7 @@ mod tests {
             &audit_tx,
             &webauthn,
             &jws_signer,
-            &AccountPolicy::from_pw_badlist_cache(pw_badlist_cache),
+            &pw_badlist_cache,
         ) {
             Ok(AuthState::Denied(_)) => {}
             _ => panic!(),
@@ -1419,7 +1415,7 @@ mod tests {
             &audit_tx,
             &webauthn,
             &jws_signer,
-            &AccountPolicy::from_pw_badlist_cache(pw_badlist_cache),
+            &pw_badlist_cache,
         ) {
             Ok(AuthState::Success(jwt, AuthIssueSession::Token)) => {
                 let uat = JwsUnverified::from_str(&jwt).expect("Failed to parse jwt");
@@ -1496,7 +1492,7 @@ mod tests {
             &audit_tx,
             &webauthn,
             &jws_signer,
-            &AccountPolicy::from_pw_badlist_cache(pw_badlist_cache),
+            &pw_badlist_cache,
         ) {
             Ok(AuthState::Denied(msg)) => assert!(msg == PW_BADLIST_MSG),
             _ => panic!(),
@@ -1520,6 +1516,7 @@ mod tests {
         ) => {{
             let (session, state) = AuthSession::new(
                 $account.clone(),
+                AccountPolicy::default(),
                 AuthIssueSession::Token,
                 false,
                 $webauthn,
@@ -1621,7 +1618,7 @@ mod tests {
                 &audit_tx,
                 &webauthn,
                 &jws_signer,
-                &AccountPolicy::from_pw_badlist_cache(pw_badlist_cache),
+                &pw_badlist_cache,
             ) {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_AUTH_TYPE_MSG),
                 _ => panic!(),
@@ -1647,7 +1644,7 @@ mod tests {
                 &audit_tx,
                 &webauthn,
                 &jws_signer,
-                &AccountPolicy::from_pw_badlist_cache(pw_badlist_cache),
+                &pw_badlist_cache,
             ) {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_AUTH_TYPE_MSG),
                 _ => panic!(),
@@ -1670,7 +1667,7 @@ mod tests {
                 &audit_tx,
                 &webauthn,
                 &jws_signer,
-                &AccountPolicy::from_pw_badlist_cache(pw_badlist_cache),
+                &pw_badlist_cache,
             ) {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_TOTP_MSG),
                 _ => panic!(),
@@ -1695,7 +1692,7 @@ mod tests {
                 &audit_tx,
                 &webauthn,
                 &jws_signer,
-                &AccountPolicy::from_pw_badlist_cache(pw_badlist_cache.to_owned()),
+                &pw_badlist_cache,
             ) {
                 Ok(AuthState::Continue(cont)) => assert!(cont == vec![AuthAllowed::Password]),
                 _ => panic!(),
@@ -1707,7 +1704,7 @@ mod tests {
                 &audit_tx,
                 &webauthn,
                 &jws_signer,
-                &AccountPolicy::from_pw_badlist_cache(pw_badlist_cache),
+                &pw_badlist_cache,
             ) {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_PASSWORD_MSG),
                 _ => panic!(),
@@ -1732,7 +1729,7 @@ mod tests {
                 &audit_tx,
                 &webauthn,
                 &jws_signer,
-                &AccountPolicy::from_pw_badlist_cache(pw_badlist_cache.to_owned()),
+                &pw_badlist_cache,
             ) {
                 Ok(AuthState::Continue(cont)) => assert!(cont == vec![AuthAllowed::Password]),
                 _ => panic!(),
@@ -1744,7 +1741,7 @@ mod tests {
                 &audit_tx,
                 &webauthn,
                 &jws_signer,
-                &AccountPolicy::from_pw_badlist_cache(pw_badlist_cache),
+                &pw_badlist_cache,
             ) {
                 Ok(AuthState::Success(_, AuthIssueSession::Token)) => {}
                 _ => panic!(),
@@ -1809,7 +1806,7 @@ mod tests {
                 &audit_tx,
                 &webauthn,
                 &jws_signer,
-                &AccountPolicy::from_pw_badlist_cache(pw_badlist_cache.to_owned()),
+                &pw_badlist_cache,
             ) {
                 Ok(AuthState::Continue(cont)) => assert!(cont == vec![AuthAllowed::Password]),
                 _ => panic!(),
@@ -1821,7 +1818,7 @@ mod tests {
                 &audit_tx,
                 &webauthn,
                 &jws_signer,
-                &AccountPolicy::from_pw_badlist_cache(pw_badlist_cache),
+                &pw_badlist_cache,
             ) {
                 Ok(AuthState::Denied(msg)) => assert!(msg == PW_BADLIST_MSG),
                 _ => panic!(),
@@ -1847,6 +1844,7 @@ mod tests {
         ) => {{
             let (session, state) = AuthSession::new(
                 $account.clone(),
+                AccountPolicy::default(),
                 AuthIssueSession::Token,
                 false,
                 $webauthn,
@@ -2132,7 +2130,7 @@ mod tests {
                 &audit_tx,
                 &webauthn,
                 &jws_signer,
-                &AccountPolicy::from_pw_badlist_cache(pw_badlist_cache),
+                &pw_badlist_cache,
             ) {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_AUTH_TYPE_MSG),
                 _ => panic!(),
@@ -2156,7 +2154,7 @@ mod tests {
                 &audit_tx,
                 &webauthn,
                 &jws_signer,
-                &AccountPolicy::from_pw_badlist_cache(pw_badlist_cache),
+                &pw_badlist_cache,
             ) {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_AUTH_TYPE_MSG),
                 _ => panic!(),
@@ -2191,7 +2189,7 @@ mod tests {
                 &audit_tx,
                 &webauthn,
                 &jws_signer,
-                &AccountPolicy::from_pw_badlist_cache(pw_badlist_cache),
+                &pw_badlist_cache,
             ) {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_WEBAUTHN_MSG),
                 _ => panic!(),
@@ -2221,7 +2219,7 @@ mod tests {
                 &audit_tx,
                 &webauthn,
                 &jws_signer,
-                &AccountPolicy::from_pw_badlist_cache(pw_badlist_cache.to_owned()),
+                &pw_badlist_cache,
             ) {
                 Ok(AuthState::Continue(cont)) => assert!(cont == vec![AuthAllowed::Password]),
                 _ => panic!(),
@@ -2233,7 +2231,7 @@ mod tests {
                 &audit_tx,
                 &webauthn,
                 &jws_signer,
-                &AccountPolicy::from_pw_badlist_cache(pw_badlist_cache),
+                &pw_badlist_cache,
             ) {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_PASSWORD_MSG),
                 _ => panic!(),
@@ -2269,7 +2267,7 @@ mod tests {
                 &audit_tx,
                 &webauthn,
                 &jws_signer,
-                &AccountPolicy::from_pw_badlist_cache(pw_badlist_cache.to_owned()),
+                &pw_badlist_cache,
             ) {
                 Ok(AuthState::Continue(cont)) => assert!(cont == vec![AuthAllowed::Password]),
                 _ => panic!(),
@@ -2281,7 +2279,7 @@ mod tests {
                 &audit_tx,
                 &webauthn,
                 &jws_signer,
-                &AccountPolicy::from_pw_badlist_cache(pw_badlist_cache),
+                &pw_badlist_cache,
             ) {
                 Ok(AuthState::Success(_, AuthIssueSession::Token)) => {}
                 _ => panic!(),
@@ -2350,7 +2348,7 @@ mod tests {
                 &audit_tx,
                 &webauthn,
                 &jws_signer,
-                &AccountPolicy::from_pw_badlist_cache(pw_badlist_cache),
+                &pw_badlist_cache,
             ) {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_AUTH_TYPE_MSG),
                 _ => panic!(),
@@ -2374,7 +2372,7 @@ mod tests {
                 &audit_tx,
                 &webauthn,
                 &jws_signer,
-                &AccountPolicy::from_pw_badlist_cache(pw_badlist_cache),
+                &pw_badlist_cache,
             ) {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_TOTP_MSG),
                 _ => panic!(),
@@ -2407,7 +2405,7 @@ mod tests {
                 &audit_tx,
                 &webauthn,
                 &jws_signer,
-                &AccountPolicy::from_pw_badlist_cache(pw_badlist_cache),
+                &pw_badlist_cache,
             ) {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_WEBAUTHN_MSG),
                 _ => panic!(),
@@ -2437,7 +2435,7 @@ mod tests {
                 &audit_tx,
                 &webauthn,
                 &jws_signer,
-                &AccountPolicy::from_pw_badlist_cache(pw_badlist_cache.to_owned()),
+                &pw_badlist_cache,
             ) {
                 Ok(AuthState::Continue(cont)) => assert!(cont == vec![AuthAllowed::Password]),
                 _ => panic!(),
@@ -2449,7 +2447,7 @@ mod tests {
                 &audit_tx,
                 &webauthn,
                 &jws_signer,
-                &AccountPolicy::from_pw_badlist_cache(pw_badlist_cache),
+                &pw_badlist_cache,
             ) {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_PASSWORD_MSG),
                 _ => panic!(),
@@ -2479,7 +2477,7 @@ mod tests {
                 &audit_tx,
                 &webauthn,
                 &jws_signer,
-                &AccountPolicy::from_pw_badlist_cache(pw_badlist_cache.to_owned()),
+                &pw_badlist_cache,
             ) {
                 Ok(AuthState::Continue(cont)) => assert!(cont == vec![AuthAllowed::Password]),
                 _ => panic!(),
@@ -2491,7 +2489,7 @@ mod tests {
                 &audit_tx,
                 &webauthn,
                 &jws_signer,
-                &AccountPolicy::from_pw_badlist_cache(pw_badlist_cache),
+                &pw_badlist_cache,
             ) {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_PASSWORD_MSG),
                 _ => panic!(),
@@ -2515,7 +2513,7 @@ mod tests {
                 &audit_tx,
                 &webauthn,
                 &jws_signer,
-                &AccountPolicy::from_pw_badlist_cache(pw_badlist_cache.to_owned()),
+                &pw_badlist_cache,
             ) {
                 Ok(AuthState::Continue(cont)) => assert!(cont == vec![AuthAllowed::Password]),
                 _ => panic!(),
@@ -2527,7 +2525,7 @@ mod tests {
                 &audit_tx,
                 &webauthn,
                 &jws_signer,
-                &AccountPolicy::from_pw_badlist_cache(pw_badlist_cache),
+                &pw_badlist_cache,
             ) {
                 Ok(AuthState::Success(_, AuthIssueSession::Token)) => {}
                 _ => panic!(),
@@ -2557,7 +2555,7 @@ mod tests {
                 &audit_tx,
                 &webauthn,
                 &jws_signer,
-                &AccountPolicy::from_pw_badlist_cache(pw_badlist_cache.to_owned()),
+                &pw_badlist_cache,
             ) {
                 Ok(AuthState::Continue(cont)) => assert!(cont == vec![AuthAllowed::Password]),
                 _ => panic!(),
@@ -2569,7 +2567,7 @@ mod tests {
                 &audit_tx,
                 &webauthn,
                 &jws_signer,
-                &AccountPolicy::from_pw_badlist_cache(pw_badlist_cache),
+                &pw_badlist_cache,
             ) {
                 Ok(AuthState::Success(_, AuthIssueSession::Token)) => {}
                 _ => panic!(),
@@ -2649,7 +2647,7 @@ mod tests {
                 &audit_tx,
                 &webauthn,
                 &jws_signer,
-                &AccountPolicy::from_pw_badlist_cache(pw_badlist_cache),
+                &pw_badlist_cache,
             ) {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_AUTH_TYPE_MSG),
                 _ => panic!(),
@@ -2672,7 +2670,7 @@ mod tests {
                 &audit_tx,
                 &webauthn,
                 &jws_signer,
-                &AccountPolicy::from_pw_badlist_cache(pw_badlist_cache),
+                &pw_badlist_cache,
             ) {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_BACKUPCODE_MSG),
                 _ => panic!(),
@@ -2696,7 +2694,7 @@ mod tests {
                 &audit_tx,
                 &webauthn,
                 &jws_signer,
-                &AccountPolicy::from_pw_badlist_cache(pw_badlist_cache.to_owned()),
+                &pw_badlist_cache,
             ) {
                 Ok(AuthState::Continue(cont)) => assert!(cont == vec![AuthAllowed::Password]),
                 _ => panic!(),
@@ -2708,7 +2706,7 @@ mod tests {
                 &audit_tx,
                 &webauthn,
                 &jws_signer,
-                &AccountPolicy::from_pw_badlist_cache(pw_badlist_cache),
+                &pw_badlist_cache,
             ) {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_PASSWORD_MSG),
                 _ => panic!(),
@@ -2738,7 +2736,7 @@ mod tests {
                 &audit_tx,
                 &webauthn,
                 &jws_signer,
-                &AccountPolicy::from_pw_badlist_cache(pw_badlist_cache.to_owned()),
+                &pw_badlist_cache,
             ) {
                 Ok(AuthState::Continue(cont)) => assert!(cont == vec![AuthAllowed::Password]),
                 _ => panic!(),
@@ -2750,7 +2748,7 @@ mod tests {
                 &audit_tx,
                 &webauthn,
                 &jws_signer,
-                &AccountPolicy::from_pw_badlist_cache(pw_badlist_cache),
+                &pw_badlist_cache,
             ) {
                 Ok(AuthState::Success(_, AuthIssueSession::Token)) => {}
                 _ => panic!(),
@@ -2782,7 +2780,7 @@ mod tests {
                 &audit_tx,
                 &webauthn,
                 &jws_signer,
-                &AccountPolicy::from_pw_badlist_cache(pw_badlist_cache.to_owned()),
+                &pw_badlist_cache,
             ) {
                 Ok(AuthState::Continue(cont)) => assert!(cont == vec![AuthAllowed::Password]),
                 _ => panic!(),
@@ -2794,7 +2792,7 @@ mod tests {
                 &audit_tx,
                 &webauthn,
                 &jws_signer,
-                &AccountPolicy::from_pw_badlist_cache(pw_badlist_cache),
+                &pw_badlist_cache,
             ) {
                 Ok(AuthState::Success(_, AuthIssueSession::Token)) => {}
                 _ => panic!(),
@@ -2865,7 +2863,7 @@ mod tests {
                 &audit_tx,
                 &webauthn,
                 &jws_signer,
-                &AccountPolicy::from_pw_badlist_cache(pw_badlist_cache.to_owned()),
+                &pw_badlist_cache,
             ) {
                 Ok(AuthState::Continue(cont)) => assert!(cont == vec![AuthAllowed::Password]),
                 _ => panic!(),
@@ -2877,7 +2875,7 @@ mod tests {
                 &audit_tx,
                 &webauthn,
                 &jws_signer,
-                &AccountPolicy::from_pw_badlist_cache(pw_badlist_cache),
+                &pw_badlist_cache,
             ) {
                 Ok(AuthState::Success(_, AuthIssueSession::Token)) => {}
                 _ => panic!(),
@@ -2901,7 +2899,7 @@ mod tests {
                 &audit_tx,
                 &webauthn,
                 &jws_signer,
-                &AccountPolicy::from_pw_badlist_cache(pw_badlist_cache.to_owned()),
+                &pw_badlist_cache,
             ) {
                 Ok(AuthState::Continue(cont)) => assert!(cont == vec![AuthAllowed::Password]),
                 _ => panic!(),
@@ -2913,7 +2911,7 @@ mod tests {
                 &audit_tx,
                 &webauthn,
                 &jws_signer,
-                &AccountPolicy::from_pw_badlist_cache(pw_badlist_cache),
+                &pw_badlist_cache,
             ) {
                 Ok(AuthState::Success(_, AuthIssueSession::Token)) => {}
                 _ => panic!(),

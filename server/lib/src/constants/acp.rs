@@ -1392,9 +1392,10 @@ lazy_static! {
             Attribute::Uuid,
             Attribute::Description,
             Attribute::BadlistPassword,
+            Attribute::DeniedName,
         ],
-        modify_removed_attrs: vec![Attribute::BadlistPassword],
-        modify_present_attrs: vec![Attribute::BadlistPassword],
+        modify_removed_attrs: vec![Attribute::BadlistPassword, Attribute::DeniedName],
+        modify_present_attrs: vec![Attribute::BadlistPassword, Attribute::DeniedName],
         ..Default::default()
     };
 
@@ -1668,6 +1669,7 @@ lazy_static! {
             Attribute::Rs256PrivateKeyDer,
             Attribute::OAuth2JwtLegacyCryptoEnable,
             Attribute::OAuth2PreferShortUsername,
+            Attribute::Image,
         ],
         modify_removed_attrs: vec![
             Attribute::Description,
@@ -1684,6 +1686,7 @@ lazy_static! {
             Attribute::Rs256PrivateKeyDer,
             Attribute::OAuth2JwtLegacyCryptoEnable,
             Attribute::OAuth2PreferShortUsername,
+            Attribute::Image,
         ],
         modify_present_attrs: vec![
             Attribute::Description,
@@ -1696,6 +1699,7 @@ lazy_static! {
             Attribute::OAuth2AllowInsecureClientDisablePkce,
             Attribute::OAuth2JwtLegacyCryptoEnable,
             Attribute::OAuth2PreferShortUsername,
+            Attribute::Image,
         ],
         create_attrs: vec![
             Attribute::Class,
@@ -1709,6 +1713,7 @@ lazy_static! {
             Attribute::OAuth2AllowInsecureClientDisablePkce,
             Attribute::OAuth2JwtLegacyCryptoEnable,
             Attribute::OAuth2PreferShortUsername,
+            Attribute::Image,
         ],
         create_classes: vec![
             EntryClass::Object,

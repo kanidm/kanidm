@@ -146,8 +146,11 @@ impl KanidmClient {
 
     pub async fn idm_service_account_unix_extend(
         &self,
+        // The username or uuid of the account
         id: &str,
+        // The GID number to set for the account
         gidnumber: Option<u32>,
+        // Set a default login shell
         shell: Option<&str>,
     ) -> Result<(), ClientError> {
         let ux = AccountUnixExtend {
@@ -158,6 +161,7 @@ impl KanidmClient {
             .await
     }
 
+    // TODO: test coverage for this, but there's a weird issue with ACPs on apply
     pub async fn idm_service_account_into_person(&self, id: &str) -> Result<(), ClientError> {
         self.perform_post_request(
             format!("/v1/service_account/{}/_into_person", id).as_str(),

@@ -6,7 +6,9 @@ use serde::{Deserialize, Serialize};
 use smartstring::alias::String as AttrString;
 use uuid::Uuid;
 
-use crate::be::dbvalue::{DbValueEmailAddressV1, DbValuePhoneNumberV1, DbValueSetV2, DbValueV1};
+use super::dbrepl::{DbEntryChangeState, DbReplMeta};
+use super::dbvalue::{DbValueEmailAddressV1, DbValuePhoneNumberV1, DbValueSetV2, DbValueV1};
+use super::keystorage::{KeyHandle, KeyHandleId};
 use crate::prelude::entries::Attribute;
 use crate::prelude::OperationError;
 
@@ -27,6 +29,10 @@ pub struct DbEntryV2 {
 pub enum DbEntryVers {
     V1(DbEntryV1),
     V2(DbEntryV2),
+    V3 {
+        changestate: DbEntryChangeState,
+        attrs: BTreeMap<AttrString, DbValueSetV2>,
+    },
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -55,6 +61,21 @@ pub enum DbBackup {
         db_s_uuid: Uuid,
         db_d_uuid: Uuid,
         db_ts_max: Duration,
+        entries: Vec<DbEntry>,
+    },
+    V3 {
+        db_s_uuid: Uuid,
+        db_d_uuid: Uuid,
+        db_ts_max: Duration,
+        keyhandles: BTreeMap<KeyHandleId, KeyHandle>,
+        entries: Vec<DbEntry>,
+    },
+    V4 {
+        db_s_uuid: Uuid,
+        db_d_uuid: Uuid,
+        db_ts_max: Duration,
+        keyhandles: BTreeMap<KeyHandleId, KeyHandle>,
+        repl_meta: DbReplMeta,
         entries: Vec<DbEntry>,
     },
 }
@@ -430,6 +451,26 @@ impl std::fmt::Debug for DbEntry {
                 }
                 write!(f, "\n        }}")
             }
+            DbEntryVers::V3 { changestate, attrs } => {
+                write!(f, "v3 - {{ ")?;
+                match changestate {
+                    DbEntryChangeState::V1Live { at, changes } => {
+                        writeln!(f, "\nlive {at:>32}")?;
+                        for (attr, cid) in changes {
+                            write!(f, "\n{attr:>32} - {cid} ")?;
+                            if let Some(vs) = attrs.get(attr.as_str()) {
+                                write!(f, "{vs:?}")?;
+                            } else {
+                                write!(f, "-")?;
+                            }
+                        }
+                    }
+                    DbEntryChangeState::V1Tombstone { at } => {
+                        writeln!(f, "\ntombstone {at:>32?}")?;
+                    }
+                }
+                write!(f, "\n        }}")
+            }
         }
     }
 }
@@ -480,6 +521,34 @@ impl std::fmt::Display for DbEntry {
                 }
                 if let Some(names) = dbe_v2.attrs.get(Attribute::ClassName.as_ref()) {
                     write!(f, "{names:?}, ")?;
+                }
+                write!(f, "}}")
+            }
+            DbEntryVers::V3 { changestate, attrs } => {
+                write!(f, "v3 - {{ ")?;
+                match attrs.get(Attribute::Uuid.as_ref()) {
+                    Some(uuids) => {
+                        write!(f, "{uuids:?}, ")?;
+                    }
+                    None => write!(f, "Uuid(INVALID), ")?,
+                };
+
+                match changestate {
+                    DbEntryChangeState::V1Live { at, changes: _ } => {
+                        write!(f, "created: {at}, ")?;
+                        if let Some(names) = attrs.get(Attribute::Name.as_ref()) {
+                            write!(f, "{names:?}, ")?;
+                        }
+                        if let Some(names) = attrs.get(Attribute::AttributeName.as_ref()) {
+                            write!(f, "{names:?}, ")?;
+                        }
+                        if let Some(names) = attrs.get(Attribute::ClassName.as_ref()) {
+                            write!(f, "{names:?}, ")?;
+                        }
+                    }
+                    DbEntryChangeState::V1Tombstone { at } => {
+                        write!(f, "tombstoned: {at}, ")?;
+                    }
                 }
                 write!(f, "}}")
             }

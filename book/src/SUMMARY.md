@@ -1,17 +1,18 @@
 # Kanidm
 
 - [Introduction to Kanidm](intro.md)
+
 - [Evaluation Quickstart](quickstart.md)
+
 - [Installing the Server](installing_the_server.md)
   - [Choosing a Domain Name](choosing_a_domain_name.md)
   - [Preparing for your Deployment](prepare_the_server.md)
   - [Server Configuration and Install](server_configuration.md)
   - [Platform Security Hardening](security_hardening.md)
   - [Server Updates](server_update.md)
+
 - [Client Tools](client_tools.md)
   - [Installing client tools](installing_client_tools.md)
-
-# Administration
 
 - [Administration](administrivia.md)
   - [Accounts and Groups](accounts_and_groups.md)
@@ -24,24 +25,25 @@
   - [Password Quality and Badlisting](password_quality.md)
   - [The Recycle Bin](recycle_bin.md)
 
-# Services
+- [Replication](repl/readme.md)
+  - [Planning](repl/planning.md)
+  - [Deployment](repl/deployment.md)
+  - [Administration](repl/administration.md)
 
-- [PAM and nsswitch](integrations/pam_and_nsswitch.md)
-- [SSH Key Distribution](ssh_key_dist.md)
-- [Oauth2](integrations/oauth2.md)
-- [LDAP](integrations/ldap.md)
-- [RADIUS](integrations/radius.md)
+- [Service Integrations](integrations/readme.md)
+  - [PAM and nsswitch](integrations/pam_and_nsswitch.md)
+  - [SSH Key Distribution](integrations/ssh_key_dist.md)
+  - [Oauth2](integrations/oauth2.md)
+  - [LDAP](integrations/ldap.md)
+  - [RADIUS](integrations/radius.md)
 
-# Synchronisation
+- [Service Integration Examples](examples/readme.md)
+  - [Kubernetes Ingress](examples/k8s_ingress_example.md)
+  - [Traefik](examples/traefik.md)
 
-- [Concepts](sync/concepts.md)
-- [FreeIPA](sync/freeipa.md)
-- [LDAP](sync/ldap.md)
-
-# Integration Examples
-
-- [Kubernetes Ingress](examples/k8s_ingress_example.md)
-- [Traefik](integrations/traefik.md)
+- [Synchronisation](sync/concepts.md)
+  - [FreeIPA](sync/freeipa.md)
+  - [LDAP](sync/ldap.md)
 
 # Support
 
@@ -64,8 +66,5 @@
   - [Replication Coordinator](developers/designs/replication_coord.md)
 - [Python Module](developers/python.md)
 - [RADIUS Integration](developers/radius.md)
-
-## Packaging
-
 - [Packaging](packaging.md)
   - [Debian/Ubuntu](packaging_debs.md)

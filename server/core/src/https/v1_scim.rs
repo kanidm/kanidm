@@ -1,190 +1,315 @@
+use super::apidocs::path_schema;
+use super::apidocs::response_schema::{ApiResponseWithout200, DefaultApiResponse};
+use super::errors::WebError;
 use super::middleware::KOpId;
-use super::{to_axum_response, ServerState};
-use axum::extract::{Path, State};
-use axum::response::IntoResponse;
-use axum::routing::{get, post};
-use axum::{Extension, Json, Router};
-use axum_auth::AuthBearer;
-use kanidm_proto::scim_v1::ScimSyncRequest;
-use kanidm_proto::v1::Entry as ProtoEntry;
-use kanidmd_lib::prelude::*;
-
 use super::v1::{
     json_rest_event_get, json_rest_event_get_id, json_rest_event_get_id_attr, json_rest_event_post,
     json_rest_event_put_id_attr,
 };
+use super::ServerState;
+use axum::extract::{Path, State};
+use axum::response::Html;
+use axum::routing::{get, post};
+use axum::{Extension, Json, Router};
+use axum_auth::AuthBearer;
+use kanidm_proto::scim_v1::{ScimSyncRequest, ScimSyncState};
+use kanidm_proto::v1::Entry as ProtoEntry;
+use kanidmd_lib::prelude::*;
 
+#[utoipa::path(
+    get,
+    path = "/v1/sync_account",
+    responses(
+        (status = 200,content_type="application/json", body=Vec<ProtoEntry>),
+        ApiResponseWithout200,
+    ),
+    security(("token_jwt" = [])),
+    tag = "v1/sync_account",
+)]
+/// Get all? the sync accounts.
 pub async fn sync_account_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
-) -> impl IntoResponse {
+) -> Result<Json<Vec<ProtoEntry>>, WebError> {
     let filter = filter_all!(f_eq(Attribute::Class, EntryClass::SyncAccount.into()));
     json_rest_event_get(state, None, filter, kopid).await
 }
 
+#[utoipa::path(
+    post,
+    path = "/v1/sync_account",
+    // request_body=ProtoEntry,
+    responses(
+        DefaultApiResponse,
+    ),
+    security(("token_jwt" = [])),
+    tag = "v1/sync_account",
+)]
 pub async fn sync_account_post(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     Json(obj): Json<ProtoEntry>,
-) -> impl IntoResponse {
+) -> Result<Json<()>, WebError> {
     let classes: Vec<String> = vec![EntryClass::SyncAccount.into(), EntryClass::Object.into()];
     json_rest_event_post(state, classes, obj, kopid).await
 }
 
+#[utoipa::path(
+    get,
+    path = "/v1/sync_account/{id}",
+    params(
+        path_schema::Id
+    ),
+    responses(
+        (status = 200,content_type="application/json", body=Option<ProtoEntry>),
+        ApiResponseWithout200,
+    ),
+    security(("token_jwt" = [])),
+    tag = "v1/sync_account",
+)]
+/// Get the details of a sync account
 pub async fn sync_account_id_get(
     State(state): State<ServerState>,
     Path(id): Path<String>,
     Extension(kopid): Extension<KOpId>,
-) -> impl IntoResponse {
+) -> Result<Json<Option<ProtoEntry>>, WebError> {
     let filter = filter_all!(f_eq(Attribute::Class, EntryClass::SyncAccount.into()));
     json_rest_event_get_id(state, id, filter, None, kopid).await
 }
 
+#[utoipa::path(
+    patch,
+    path = "/v1/sync_account/{id}",
+    params(
+        path_schema::UuidOrName
+    ),
+    request_body=ProtoEntry,
+    responses(
+        DefaultApiResponse,
+    ),
+    security(("token_jwt" = [])),
+    tag = "v1/sync_account",
+)]
+/// Modify a sync account in-place
 pub async fn sync_account_id_patch(
     State(state): State<ServerState>,
     Path(id): Path<String>,
     Extension(kopid): Extension<KOpId>,
     Json(obj): Json<ProtoEntry>,
-) -> impl IntoResponse {
+) -> Result<Json<()>, WebError> {
     let filter = filter_all!(f_eq(Attribute::Class, EntryClass::SyncAccount.into()));
     let filter = Filter::join_parts_and(filter, filter_all!(f_id(id.as_str())));
 
-    let res = state
+    state
         .qe_w_ref
         .handle_internalpatch(kopid.uat, filter, obj, kopid.eventid)
-        .await;
-    to_axum_response(res)
+        .await
+        .map(Json::from)
+        .map_err(WebError::from)
 }
 
-pub async fn sync_account_id_get_finalise(
+#[utoipa::path(
+    get,
+    path = "/v1/sync_account/{id}/_finalise",
+    params(
+        path_schema::UuidOrName
+    ),
+    responses(
+        DefaultApiResponse,
+    ),
+    security(("token_jwt" = [])),
+    tag = "v1/sync_account",
+)]
+// TODO: why is this a get and not a post?
+pub async fn sync_account_id_finalise_get(
     State(state): State<ServerState>,
     Path(id): Path<String>,
     Extension(kopid): Extension<KOpId>,
-) -> impl IntoResponse {
-    let res = state
+) -> Result<Json<()>, WebError> {
+    state
         .qe_w_ref
         .handle_sync_account_finalise(kopid.uat, id, kopid.eventid)
-        .await;
-    to_axum_response(res)
+        .await
+        .map(Json::from)
+        .map_err(WebError::from)
 }
 
-pub async fn sync_account_id_get_terminate(
+#[utoipa::path(
+    get,
+    path = "/v1/sync_account/{id}/_terminate",
+    params(
+        path_schema::UuidOrName
+    ),
+    responses(
+        DefaultApiResponse,
+    ),
+    security(("token_jwt" = [])),
+    tag = "v1/sync_account",
+)]
+// TODO: why is this a get if it's a terminate?
+pub async fn sync_account_id_terminate_get(
     State(state): State<ServerState>,
     Path(id): Path<String>,
     Extension(kopid): Extension<KOpId>,
-) -> impl IntoResponse {
-    let res = state
+) -> Result<Json<()>, WebError> {
+    state
         .qe_w_ref
         .handle_sync_account_terminate(kopid.uat, id, kopid.eventid)
-        .await;
-    to_axum_response(res)
+        .await
+        .map(Json::from)
+        .map_err(WebError::from)
 }
 
+#[utoipa::path(
+    post,
+    path = "/v1/sync_account/{id}/_sync_token",
+    params(
+        path_schema::UuidOrName
+    ),
+    responses(
+        (status = 200), // TODO: response content
+        ApiResponseWithout200,
+    ),
+    security(("token_jwt" = [])),
+    tag = "v1/sync_account",
+)]
 pub async fn sync_account_token_post(
     State(state): State<ServerState>,
     Path(id): Path<String>,
     Extension(kopid): Extension<KOpId>,
     Json(label): Json<String>,
-) -> impl IntoResponse {
-    let res = state
+) -> Result<Json<String>, WebError> {
+    state
         .qe_w_ref
         .handle_sync_account_token_generate(kopid.uat, id, label, kopid.eventid)
-        .await;
-    to_axum_response(res)
+        .await
+        .map(Json::from)
+        .map_err(WebError::from)
 }
 
+#[utoipa::path(
+    delete,
+    path = "/v1/sync_account/{id}/_sync_token",
+    responses(
+        DefaultApiResponse,
+    ),
+    security(("token_jwt" = [])),
+    tag = "v1/sync_account",
+)]
 pub async fn sync_account_token_delete(
     State(state): State<ServerState>,
     Path(id): Path<String>,
     Extension(kopid): Extension<KOpId>,
-) -> impl IntoResponse {
-    let res = state
+) -> Result<Json<()>, WebError> {
+    state
         .qe_w_ref
         .handle_sync_account_token_destroy(kopid.uat, id, kopid.eventid)
-        .await;
-    to_axum_response(res)
+        .await
+        .map(Json::from)
+        .map_err(WebError::from)
 }
 
+#[utoipa::path(
+    post,
+    path = "/scim/v1/Sync",
+    request_body = ScimSyncRequest,
+    responses(
+        DefaultApiResponse,
+    ),
+    security(("token_jwt" = [])),
+    tag = "scim",
+)]
 async fn scim_sync_post(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     AuthBearer(bearer): AuthBearer,
     Json(changes): Json<ScimSyncRequest>,
-) -> impl IntoResponse {
-    let res = state
+) -> Result<Json<()>, WebError> {
+    state
         .qe_w_ref
         .handle_scim_sync_apply(Some(bearer), changes, kopid.eventid)
-        .await;
-    to_axum_response(res)
+        .await
+        .map(Json::from)
+        .map_err(WebError::from)
 }
 
+#[utoipa::path(
+    get,
+    path = "/scim/v1/Sync",
+    responses(
+        (status = 200), // TODO: response content
+        ApiResponseWithout200,
+    ),
+    security(("token_jwt" = [])),
+    tag = "scim",
+)]
 async fn scim_sync_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     AuthBearer(bearer): AuthBearer,
-) -> impl IntoResponse {
+) -> Result<Json<ScimSyncState>, WebError> {
     // Given the token, what is it's connected sync state?
     trace!(?bearer);
-    let res = state
+    state
         .qe_r_ref
         .handle_scim_sync_status(Some(bearer), kopid.eventid)
-        .await;
-    to_axum_response(res)
+        .await
+        .map(Json::from)
+        .map_err(WebError::from)
 }
-
-pub async fn sync_account_id_get_attr(
+#[utoipa::path(
+    get,
+    path = "/v1/sync_account/{id}/_attr/{attr}",
+    params(
+        path_schema::UuidOrName,
+        path_schema::Attr,
+    ),
+    responses(
+        (status = 200), // TODO: response content
+        ApiResponseWithout200,
+    ),
+    security(("token_jwt" = [])),
+    tag = "v1/sync_account",
+)]
+pub async fn sync_account_id_attr_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     Path((id, attr)): Path<(String, String)>,
-) -> impl IntoResponse {
+) -> Result<Json<Option<Vec<String>>>, WebError> {
     let filter = filter_all!(f_eq(Attribute::Class, EntryClass::SyncAccount.into()));
     json_rest_event_get_id_attr(state, id, attr, filter, kopid).await
 }
 
-pub async fn sync_account_id_put_attr(
+#[utoipa::path(
+    post,
+    path = "/v1/sync_account/{id}/_attr/{attr}",
+    params(
+        path_schema::UuidOrName,
+        path_schema::Attr,
+    ),
+    request_body=Vec<String>,
+    responses(
+        DefaultApiResponse,
+    ),
+    security(("token_jwt" = [])),
+    tag = "v1/sync_account",
+)]
+pub async fn sync_account_id_attr_put(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     Path((id, attr)): Path<(String, String)>,
     Json(values): Json<Vec<String>>,
-) -> impl IntoResponse {
+) -> Result<Json<()>, WebError> {
     let filter = filter_all!(f_eq(Attribute::Class, EntryClass::SyncAccount.into()));
     json_rest_event_put_id_attr(state, id, attr, filter, values, kopid).await
 }
 
-async fn scim_sink_get() -> impl IntoResponse {
-    r#"
-    <!DOCTYPE html>
-    <html lang="en">
-        <head>
-            <meta charset="utf-8"/>
-            <meta name="theme-color" content="white" />
-            <meta name="viewport" content="width=device-width" />
-            <title>Sink!</title>
-            <link rel="icon" href="/pkg/img/favicon.png" />
-            <link rel="manifest" href="/manifest.webmanifest" />
-        </head>
-        <body>
-            <pre>
-                        ___
-                      .' _ '.
-                     / /` `\ \
-                     | |   [__]
-                     | |    {{
-                     | |    }}
-                  _  | |  _ {{
-      ___________<_>_| |_<_>}}________
-          .=======^=(___)=^={{====.
-         / .----------------}}---. \
-        / /                 {{    \ \
-       / /                  }}     \ \
-      (  '========================='  )
-       '-----------------------------'
-            </pre>
-        </body>
-    </html>"#
+/// When you want the kitchen Sink
+async fn scim_sink_get() -> Html<&'static str> {
+    Html::from(include_str!("scim/sink.html"))
 }
 
-pub fn scim_route_setup() -> Router<ServerState> {
+pub fn route_setup() -> Router<ServerState> {
     Router::new()
         // https://datatracker.ietf.org/doc/html/rfc7644#section-3.2
         //
@@ -254,6 +379,30 @@ pub fn scim_route_setup() -> Router<ServerState> {
         //
         //                            POST                   Send a sync update
         //
+        .route(
+            "/v1/sync_account",
+            get(sync_account_get).post(sync_account_post),
+        )
+        .route(
+            "/v1/sync_account/:id",
+            get(sync_account_id_get).patch(sync_account_id_patch),
+        )
+        .route(
+            "/v1/sync_account/:id/_attr/:attr",
+            get(sync_account_id_attr_get).put(sync_account_id_attr_put),
+        )
+        .route(
+            "/v1/sync_account/:id/_finalise",
+            get(sync_account_id_finalise_get),
+        )
+        .route(
+            "/v1/sync_account/:id/_terminate",
+            get(sync_account_id_terminate_get),
+        )
+        .route(
+            "/v1/sync_account/:id/_sync_token",
+            post(sync_account_token_post).delete(sync_account_token_delete),
+        )
         .route("/scim/v1/Sync", post(scim_sync_post).get(scim_sync_get))
-        .route("/scim/v1/Sink", get(scim_sink_get))
+        .route("/scim/v1/Sink", get(scim_sink_get)) // skip_route_check
 }

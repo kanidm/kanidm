@@ -2,6 +2,7 @@ use std::fmt;
 use std::time::Duration;
 
 use hashbrown::HashSet;
+use kanidm_proto::internal::ImageType;
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use url::Url;
@@ -15,12 +16,36 @@ use webauthn_rs_core::proto::{COSEKey, UserVerificationPolicy};
 use crate::repl::cid::Cid;
 pub use kanidm_lib_crypto::DbPasswordV1;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Ord, PartialOrd, PartialEq, Eq)]
 pub struct DbCidV1 {
-    #[serde(rename = "s")]
-    pub server_id: Uuid,
     #[serde(rename = "t")]
     pub timestamp: Duration,
+    #[serde(rename = "s")]
+    pub server_id: Uuid,
+}
+
+impl From<Cid> for DbCidV1 {
+    fn from(Cid { s_uuid, ts }: Cid) -> Self {
+        DbCidV1 {
+            timestamp: ts,
+            server_id: s_uuid,
+        }
+    }
+}
+
+impl From<&Cid> for DbCidV1 {
+    fn from(&Cid { s_uuid, ts }: &Cid) -> Self {
+        DbCidV1 {
+            timestamp: ts,
+            server_id: s_uuid,
+        }
+    }
+}
+
+impl fmt::Display for DbCidV1 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:032}-{}", self.timestamp.as_nanos(), self.server_id)
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -34,6 +59,10 @@ pub enum DbValueIntentTokenStateV1 {
         primary_can_edit: bool,
         #[serde(default)]
         passkeys_can_edit: bool,
+        #[serde(default)]
+        unixcred_can_edit: bool,
+        #[serde(default)]
+        sshpubkey_can_edit: bool,
     },
     #[serde(rename = "p")]
     InProgress {
@@ -46,6 +75,10 @@ pub enum DbValueIntentTokenStateV1 {
         primary_can_edit: bool,
         #[serde(default)]
         passkeys_can_edit: bool,
+        #[serde(default)]
+        unixcred_can_edit: bool,
+        #[serde(default)]
+        sshpubkey_can_edit: bool,
     },
     #[serde(rename = "c")]
     Consumed { max_ttl: Duration },
@@ -380,6 +413,7 @@ pub enum DbValueAccessScopeV1 {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
+#[allow(clippy::enum_variant_names)]
 pub enum DbValueIdentityId {
     #[serde(rename = "v1i")]
     V1Internal,
@@ -503,6 +537,16 @@ pub enum DbValueOauth2Session {
         issued_at: String,
         #[serde(rename = "r")]
         rs_uuid: Uuid,
+    },
+}
+
+// Internal representation of an image
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+pub enum DbValueImage {
+    V1 {
+        filename: String,
+        filetype: ImageType,
+        contents: Vec<u8>,
     },
 }
 
@@ -651,6 +695,8 @@ pub enum DbValueSetV2 {
     AuditLogString(Vec<(Cid, String)>),
     #[serde(rename = "EK")]
     EcKeyPrivate(Vec<u8>),
+    #[serde(rename = "IM")]
+    Image(Vec<DbValueImage>),
 }
 
 impl DbValueSetV2 {
@@ -694,6 +740,7 @@ impl DbValueSetV2 {
             DbValueSetV2::UiHint(set) => set.len(),
             DbValueSetV2::TotpSecret(set) => set.len(),
             DbValueSetV2::AuditLogString(set) => set.len(),
+            DbValueSetV2::Image(set) => set.len(),
             DbValueSetV2::EcKeyPrivate(_key) => 1, // here we have to hard code it because the Vec<u8>
                                                    // represents the bytes of  SINGLE(!) key
         }

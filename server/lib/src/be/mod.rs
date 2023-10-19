@@ -20,6 +20,7 @@ use tracing::{trace, trace_span};
 use uuid::Uuid;
 
 use crate::be::dbentry::{DbBackup, DbEntry};
+use crate::be::dbrepl::DbReplMeta;
 use crate::entry::Entry;
 use crate::filter::{Filter, FilterPlan, FilterResolved, FilterValidResolved};
 use crate::prelude::*;
@@ -31,11 +32,14 @@ use crate::repl::ruv::{
 };
 use crate::value::{IndexType, Value};
 
-pub mod dbentry;
-pub mod dbvalue;
+pub(crate) mod dbentry;
+pub(crate) mod dbrepl;
+pub(crate) mod dbvalue;
+
 mod idl_arc_sqlite;
 mod idl_sqlite;
 pub(crate) mod idxkey;
+pub(crate) mod keystorage;
 
 pub(crate) use self::idxkey::{IdxKey, IdxKeyRef, IdxKeyToRef, IdxSlope};
 use crate::be::idl_arc_sqlite::{
@@ -846,6 +850,8 @@ pub trait BackendTransaction {
     }
 
     fn backup(&mut self, dst_path: &str) -> Result<(), OperationError> {
+        let repl_meta = self.get_ruv().to_db_backup_ruv();
+
         // load all entries into RAM, may need to change this later
         // if the size of the database compared to RAM is an issue
         let idl = IdList::AllIds;
@@ -872,10 +878,14 @@ pub trait BackendTransaction {
             .get_db_ts_max()
             .and_then(|u| u.ok_or(OperationError::InvalidDbState))?;
 
-        let bak = DbBackup::V2 {
+        let keyhandles = idlayer.get_key_handles()?;
+
+        let bak = DbBackup::V4 {
             db_s_uuid,
             db_d_uuid,
             db_ts_max,
+            keyhandles,
+            repl_meta,
             entries,
         };
 
@@ -1585,7 +1595,7 @@ impl<'a> BackendWriteTransaction<'a> {
     }
 
     pub fn upgrade_reindex(&mut self, v: i64) -> Result<(), OperationError> {
-        let dbv = self.get_db_index_version();
+        let dbv = self.get_db_index_version()?;
         admin_debug!(?dbv, ?v, "upgrade_reindex");
         if dbv < v {
             limmediate_warning!(
@@ -1689,18 +1699,19 @@ impl<'a> BackendWriteTransaction<'a> {
     }
 
     pub fn restore(&mut self, src_path: &str) -> Result<(), OperationError> {
-        let idlayer = self.get_idlayer();
-        // load all entries into RAM, may need to change this later
-        // if the size of the database compared to RAM is an issue
         let serialized_string = fs::read_to_string(src_path).map_err(|e| {
             admin_error!("fs::read_to_string {:?}", e);
             OperationError::FsError
         })?;
 
-        idlayer.danger_purge_id2entry().map_err(|e| {
-            admin_error!("purge_id2entry failed {:?}", e);
+        self.danger_delete_all_db_content().map_err(|e| {
+            admin_error!("delete_all_db_content failed {:?}", e);
             e
         })?;
+
+        let idlayer = self.get_idlayer();
+        // load all entries into RAM, may need to change this later
+        // if the size of the database compared to RAM is an issue
 
         let dbbak_option: Result<DbBackup, serde_json::Error> =
             serde_json::from_str(&serialized_string);
@@ -1710,8 +1721,8 @@ impl<'a> BackendWriteTransaction<'a> {
             OperationError::SerdeJsonError
         })?;
 
-        let dbentries = match dbbak {
-            DbBackup::V1(dbentries) => dbentries,
+        let (dbentries, repl_meta) = match dbbak {
+            DbBackup::V1(dbentries) => (dbentries, None),
             DbBackup::V2 {
                 db_s_uuid,
                 db_d_uuid,
@@ -1722,9 +1733,49 @@ impl<'a> BackendWriteTransaction<'a> {
                 idlayer.write_db_s_uuid(db_s_uuid)?;
                 idlayer.write_db_d_uuid(db_d_uuid)?;
                 idlayer.set_db_ts_max(db_ts_max)?;
-                entries
+                (entries, None)
+            }
+            DbBackup::V3 {
+                db_s_uuid,
+                db_d_uuid,
+                db_ts_max,
+                keyhandles,
+                entries,
+            } => {
+                // Do stuff.
+                idlayer.write_db_s_uuid(db_s_uuid)?;
+                idlayer.write_db_d_uuid(db_d_uuid)?;
+                idlayer.set_db_ts_max(db_ts_max)?;
+                idlayer.set_key_handles(keyhandles)?;
+                (entries, None)
+            }
+            DbBackup::V4 {
+                db_s_uuid,
+                db_d_uuid,
+                db_ts_max,
+                keyhandles,
+                repl_meta,
+                entries,
+            } => {
+                // Do stuff.
+                idlayer.write_db_s_uuid(db_s_uuid)?;
+                idlayer.write_db_d_uuid(db_d_uuid)?;
+                idlayer.set_db_ts_max(db_ts_max)?;
+                idlayer.set_key_handles(keyhandles)?;
+                (entries, Some(repl_meta))
             }
         };
+
+        // Rebuild the RUV from the backup.
+        match repl_meta {
+            Some(DbReplMeta::V1 { ruv: db_ruv }) => {
+                self.get_ruv()
+                    .restore(db_ruv.into_iter().map(|db_cid| db_cid.into()))?;
+            }
+            None => {
+                warn!("Unable to restore replication metadata, this server may need a refresh.");
+            }
+        }
 
         info!("Restoring {} entries ...", dbentries.len());
 
@@ -1745,6 +1796,8 @@ impl<'a> BackendWriteTransaction<'a> {
             })
             .collect();
 
+        let idlayer = self.get_idlayer();
+
         idlayer.write_identries_raw(identries?.into_iter())?;
 
         info!("Restored {} entries", dbentries.len());
@@ -1760,8 +1813,33 @@ impl<'a> BackendWriteTransaction<'a> {
         }
     }
 
+    /// If any RUV elements are present in the DB, load them now. This provides us with
+    /// the RUV boundaries and change points from previous operations of the server, so
+    /// that ruv_rebuild can "fill in" the gaps.
+    ///
+    /// # SAFETY
+    ///
+    /// Note that you should only call this function during the server startup
+    /// to reload the RUV data from the entries of the database.
+    ///
+    /// Before calling this, the in memory ruv MUST be clear.
     #[instrument(level = "debug", name = "be::ruv_rebuild", skip_all)]
-    pub fn ruv_rebuild(&mut self) -> Result<(), OperationError> {
+    fn ruv_reload(&mut self) -> Result<(), OperationError> {
+        let idlayer = self.get_idlayer();
+
+        let db_ruv = idlayer.get_db_ruv()?;
+
+        // Setup the CID's that existed previously. We don't need to know what entries
+        // they affect, we just need them to ensure that we have ranges for replication
+        // comparison to take effect properly.
+        self.get_ruv().restore(db_ruv)?;
+
+        // Then populate the RUV with the data from the entries.
+        self.ruv_rebuild()
+    }
+
+    #[instrument(level = "debug", name = "be::ruv_rebuild", skip_all)]
+    fn ruv_rebuild(&mut self) -> Result<(), OperationError> {
         // Rebuild the ruv!
         // For now this has to read from all the entries in the DB, but in the future
         // we'll actually store this properly (?). If it turns out this is really fast
@@ -1801,10 +1879,13 @@ impl<'a> BackendWriteTransaction<'a> {
 
     pub fn commit(self) -> Result<(), OperationError> {
         let BackendWriteTransaction {
-            idlayer,
+            mut idlayer,
             idxmeta_wr,
             ruv,
         } = self;
+
+        // write the ruv content back to the db.
+        idlayer.write_db_ruv(ruv.added(), ruv.removed())?;
 
         idlayer.commit().map(|()| {
             ruv.commit();
@@ -1815,19 +1896,20 @@ impl<'a> BackendWriteTransaction<'a> {
     fn reset_db_s_uuid(&mut self) -> Result<Uuid, OperationError> {
         // The value is missing. Generate a new one and store it.
         let nsid = Uuid::new_v4();
-        self.get_idlayer().write_db_s_uuid(nsid)?;
+        self.get_idlayer().write_db_s_uuid(nsid).map_err(|err| {
+            error!(?err, "Unable to persist server uuid");
+            err
+        })?;
         Ok(nsid)
     }
 
-    pub fn get_db_s_uuid(&mut self) -> Uuid {
-        #[allow(clippy::expect_used)]
-        match self
-            .get_idlayer()
-            .get_db_s_uuid()
-            .expect("DBLayer Error!!!")
-        {
-            Some(s_uuid) => s_uuid,
-            None => self.reset_db_s_uuid().expect("Failed to regenerate S_UUID"),
+    pub fn get_db_s_uuid(&mut self) -> Result<Uuid, OperationError> {
+        match self.get_idlayer().get_db_s_uuid().map_err(|err| {
+            error!(?err, "Failed to read server uuid");
+            err
+        })? {
+            Some(s_uuid) => Ok(s_uuid),
+            None => self.reset_db_s_uuid(),
         }
     }
 
@@ -1835,7 +1917,10 @@ impl<'a> BackendWriteTransaction<'a> {
     /// returning the new UUID
     fn reset_db_d_uuid(&mut self) -> Result<Uuid, OperationError> {
         let nsid = Uuid::new_v4();
-        self.get_idlayer().write_db_d_uuid(nsid)?;
+        self.get_idlayer().write_db_d_uuid(nsid).map_err(|err| {
+            error!(?err, "Unable to persist domain uuid");
+            err
+        })?;
         Ok(nsid)
     }
 
@@ -1846,15 +1931,13 @@ impl<'a> BackendWriteTransaction<'a> {
     }
 
     /// This pulls the domain UUID from the database
-    pub fn get_db_d_uuid(&mut self) -> Uuid {
-        #[allow(clippy::expect_used)]
-        match self
-            .get_idlayer()
-            .get_db_d_uuid()
-            .expect("DBLayer Error retrieving Domain UUID!!!")
-        {
-            Some(d_uuid) => d_uuid,
-            None => self.reset_db_d_uuid().expect("Failed to regenerate D_UUID"),
+    pub fn get_db_d_uuid(&mut self) -> Result<Uuid, OperationError> {
+        match self.get_idlayer().get_db_d_uuid().map_err(|err| {
+            error!(?err, "Failed to read domain uuid");
+            err
+        })? {
+            Some(d_uuid) => Ok(d_uuid),
+            None => self.reset_db_d_uuid(),
         }
     }
 
@@ -1870,7 +1953,7 @@ impl<'a> BackendWriteTransaction<'a> {
         }
     }
 
-    fn get_db_index_version(&mut self) -> i64 {
+    fn get_db_index_version(&mut self) -> Result<i64, OperationError> {
         self.get_idlayer().get_db_index_version()
     }
 
@@ -1905,9 +1988,7 @@ impl Backend {
         idxkeys: Vec<IdxKey>,
         vacuum: bool,
     ) -> Result<Self, OperationError> {
-        info!("DB tickets -> {:?}", cfg.pool_size);
-        info!("Profile -> {}", env!("KANIDM_PROFILE_NAME"));
-        info!("CPU Flags -> {}", env!("KANIDM_CPU_FLAGS"));
+        debug!(db_tickets = ?cfg.pool_size, profile = %env!("KANIDM_PROFILE_NAME"), cpu_flags = %env!("KANIDM_CPU_FLAGS"));
 
         // If in memory, reduce pool to 1
         if cfg.path.is_empty() {
@@ -1945,7 +2026,7 @@ impl Backend {
         // In this case we can use an empty idx meta because we don't
         // access any parts of
         // the indexing subsystem here.
-        let mut idl_write = be.idlayer.write();
+        let mut idl_write = be.idlayer.write()?;
         idl_write
             .setup()
             .and_then(|_| idl_write.commit())
@@ -1955,9 +2036,9 @@ impl Backend {
             })?;
 
         // Now rebuild the ruv.
-        let mut be_write = be.write();
+        let mut be_write = be.write()?;
         be_write
-            .ruv_rebuild()
+            .ruv_reload()
             .and_then(|_| be_write.commit())
             .map_err(|e| {
                 admin_error!(?e, "Failed to reload ruv");
@@ -1976,41 +2057,21 @@ impl Backend {
         self.idlayer.try_quiesce();
     }
 
-    pub fn read(&self) -> BackendReadTransaction {
-        BackendReadTransaction {
-            idlayer: self.idlayer.read(),
+    pub fn read(&self) -> Result<BackendReadTransaction, OperationError> {
+        Ok(BackendReadTransaction {
+            idlayer: self.idlayer.read()?,
             idxmeta: self.idxmeta.read(),
             ruv: self.ruv.read(),
-        }
+        })
     }
 
-    pub fn write(&self) -> BackendWriteTransaction {
-        BackendWriteTransaction {
-            idlayer: self.idlayer.write(),
+    pub fn write(&self) -> Result<BackendWriteTransaction, OperationError> {
+        Ok(BackendWriteTransaction {
+            idlayer: self.idlayer.write()?,
             idxmeta_wr: self.idxmeta.write(),
             ruv: self.ruv.write(),
-        }
+        })
     }
-
-    // Should this actually call the idlayer directly?
-    pub fn reset_db_s_uuid(&self) -> Uuid {
-        let mut wr = self.write();
-        #[allow(clippy::expect_used)]
-        let sid = wr
-            .reset_db_s_uuid()
-            .expect("unable to reset db server uuid");
-        #[allow(clippy::expect_used)]
-        wr.commit()
-            .expect("Unable to commit to backend, can not proceed");
-        sid
-    }
-
-    /*
-    pub fn get_db_s_uuid(&self) -> Uuid {
-        let wr = self.write(Set::new());
-        wr.reset_db_s_uuid().unwrap()
-    }
-    */
 }
 
 // What are the possible actions we'll receive here?
@@ -2080,7 +2141,7 @@ mod tests {
             let be = Backend::new(BackendConfig::new_test("main"), idxmeta, false)
                 .expect("Failed to setup backend");
 
-            let mut be_txn = be.write();
+            let mut be_txn = be.write().unwrap();
 
             let r = $test_fn(&mut be_txn);
             // Commit, to guarantee it worked.
@@ -2505,6 +2566,25 @@ mod tests {
                 } => {
                     let _ = entries.pop();
                 }
+                DbBackup::V3 {
+                    db_s_uuid: _,
+                    db_d_uuid: _,
+                    db_ts_max: _,
+                    keyhandles: _,
+                    entries,
+                } => {
+                    let _ = entries.pop();
+                }
+                DbBackup::V4 {
+                    db_s_uuid: _,
+                    db_d_uuid: _,
+                    db_ts_max: _,
+                    keyhandles: _,
+                    repl_meta: _,
+                    entries,
+                } => {
+                    let _ = entries.pop();
+                }
             };
 
             let serialized_entries_str = serde_json::to_string_pretty(&dbbak).unwrap();
@@ -2519,12 +2599,12 @@ mod tests {
     #[test]
     fn test_be_sid_generation_and_reset() {
         run_test!(|be: &mut BackendWriteTransaction| {
-            let sid1 = be.get_db_s_uuid();
-            let sid2 = be.get_db_s_uuid();
+            let sid1 = be.get_db_s_uuid().unwrap();
+            let sid2 = be.get_db_s_uuid().unwrap();
             assert!(sid1 == sid2);
             let sid3 = be.reset_db_s_uuid().unwrap();
             assert!(sid1 != sid3);
-            let sid4 = be.get_db_s_uuid();
+            let sid4 = be.get_db_s_uuid().unwrap();
             assert!(sid3 == sid4);
         });
     }
@@ -3592,8 +3672,8 @@ mod tests {
         let be_b = Backend::new(BackendConfig::new_test("db_2"), idxmeta, false)
             .expect("Failed to setup backend");
 
-        let mut be_a_txn = be_a.write();
-        let mut be_b_txn = be_b.write();
+        let mut be_a_txn = be_a.write().unwrap();
+        let mut be_b_txn = be_b.write().unwrap();
 
         assert!(be_a_txn.get_db_s_uuid() != be_b_txn.get_db_s_uuid());
 

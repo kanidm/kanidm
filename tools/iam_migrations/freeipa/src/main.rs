@@ -23,8 +23,10 @@ use base64urlsafedata::Base64UrlSafeData;
 use chrono::Utc;
 use clap::Parser;
 use cron::Schedule;
-use kanidm_proto::constants::{LDAP_ATTR_CN, LDAP_ATTR_OBJECTCLASS};
-use kanidmd_lib::prelude::Attribute;
+use kanidm_proto::constants::{
+    ATTR_UID, LDAP_ATTR_CN, LDAP_ATTR_OBJECTCLASS, LDAP_CLASS_GROUPOFNAMES,
+};
+use kanidmd_lib::prelude::{Attribute, EntryClass};
 use std::collections::BTreeMap;
 use std::fs::metadata;
 use std::fs::File;
@@ -54,7 +56,8 @@ use kanidm_proto::scim_v1::{
     MultiValueAttr, ScimEntry, ScimExternalMember, ScimSshPubKey, ScimSyncGroup, ScimSyncPerson,
     ScimSyncRequest, ScimSyncRetentionMode, ScimSyncState, ScimTotp,
 };
-use kanidmd_lib::utils::file_permissions_readonly;
+
+use kanidm_lib_file_permissions::readonly as file_permissions_readonly;
 
 #[cfg(target_family = "unix")]
 use kanidm_utils_users::{get_current_gid, get_current_uid, get_effective_gid, get_effective_uid};
@@ -582,7 +585,7 @@ async fn process_ipa_sync_result(
                 .entry
                 .attrs
                 .get(LDAP_ATTR_OBJECTCLASS)
-                .map(|oc| oc.contains("person"))
+                .map(|oc| oc.contains(EntryClass::Person.as_ref()))
                 .unwrap_or_default()
             {
                 user_dns.push(dn.clone());
@@ -637,7 +640,7 @@ async fn process_ipa_sync_result(
                 // We have to split the DN to it's RDN because lol.
                 dn.split_once(',')
                     .and_then(|(rdn, _)| rdn.split_once('='))
-                    .map(|(_, uid)| LdapFilter::Equality("uid".to_string(), uid.to_string()))
+                    .map(|(_, uid)| LdapFilter::Equality(ATTR_UID.to_string(), uid.to_string()))
             })
             .collect();
 
@@ -902,7 +905,7 @@ fn ipa_to_scim_entry(
             }
             .into(),
         ))
-    } else if oc.contains("groupofnames") {
+    } else if oc.contains(LDAP_CLASS_GROUPOFNAMES) {
         let LdapSyncReplEntry {
             entry_uuid,
             state: _,

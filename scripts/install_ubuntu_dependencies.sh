@@ -16,14 +16,27 @@ ${SUDOCMD} apt-get install -y \
     pkg-config \
     curl \
     rsync \
-    build-essential
+    git \
+    build-essential \
+
+if [ "${PACKAGING}" -eq 1 ]; then
+    ${SUDOCMD} apt-get install -y \
+        devscripts \
+        fakeroot \
+        dh-make \
+        debmake
+fi
+
+if [ "${PACKAGING}" -eq 1 ]; then
+    export INSTALL_RUST=1
+fi
 
 if [ -z "$(which cargo)" ]; then
     if [ -f "$HOME/.cargo/env" ]; then
         #shellcheck disable=SC1091
         source "$HOME/.cargo/env"
     elif [ "${INSTALL_RUST}" == "1" ]; then
-        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
         #shellcheck disable=SC1091
         source "$HOME/.cargo/env"
     fi

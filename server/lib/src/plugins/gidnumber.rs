@@ -35,12 +35,12 @@ fn apply_gidnumber<T: Clone>(e: &mut Entry<EntryInvalid, T>) -> Result<(), Opera
         let gid = uuid_to_gid_u32(u_ref);
         // assert the value is greater than the system range.
         if gid < GID_SYSTEM_NUMBER_MIN {
-            return Err(OperationError::InvalidAttribute(format!(
-                "{} {} may overlap with system range {}",
-                Attribute::GidNumber,
+            admin_error!(
+                "Requested GID {} is lower than system minimum {}",
                 gid,
                 GID_SYSTEM_NUMBER_MIN
-            )));
+            );
+            return Err(OperationError::GidOverlapsSystemMin(GID_SYSTEM_NUMBER_MIN));
         }
 
         let gid_v = Value::new_uint32(gid);
@@ -50,12 +50,12 @@ fn apply_gidnumber<T: Clone>(e: &mut Entry<EntryInvalid, T>) -> Result<(), Opera
     } else if let Some(gid) = e.get_ava_single_uint32(Attribute::GidNumber) {
         // If they provided us with a gid number, ensure it's in a safe range.
         if gid <= GID_SAFETY_NUMBER_MIN {
-            Err(OperationError::InvalidAttribute(format!(
-                "{} {} overlaps into system secure range {}",
-                Attribute::GidNumber,
+            admin_error!(
+                "Requested GID {} is lower or equal to a safe value {}",
                 gid,
                 GID_SAFETY_NUMBER_MIN
-            )))
+            );
+            Err(OperationError::GidOverlapsSystemMin(GID_SAFETY_NUMBER_MIN))
         } else {
             Ok(())
         }
@@ -290,9 +290,7 @@ mod tests {
         let preload = Vec::new();
 
         run_create_test!(
-            Err(OperationError::InvalidAttribute(
-                "gidnumber 580 may overlap with system range 65536".to_string()
-            )),
+            Err(OperationError::GidOverlapsSystemMin(65536)),
             preload,
             create,
             None,
@@ -315,9 +313,7 @@ mod tests {
         let preload = Vec::new();
 
         run_create_test!(
-            Err(OperationError::InvalidAttribute(
-                "gidnumber 500 overlaps into system secure range 1000".to_string()
-            )),
+            Err(OperationError::GidOverlapsSystemMin(1000)),
             preload,
             create,
             None,
@@ -340,9 +336,7 @@ mod tests {
         let preload = Vec::new();
 
         run_create_test!(
-            Err(OperationError::InvalidAttribute(
-                "gidnumber 0 overlaps into system secure range 1000".to_string()
-            )),
+            Err(OperationError::GidOverlapsSystemMin(1000)),
             preload,
             create,
             None,

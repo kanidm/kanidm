@@ -3,12 +3,14 @@ use std::collections::{BTreeMap, BTreeSet};
 use compact_jwt::JwsSigner;
 use dyn_clone::DynClone;
 use hashbrown::HashSet;
+use kanidm_proto::internal::ImageValue;
 use openssl::ec::EcKey;
 use openssl::pkey::Private;
 use openssl::pkey::Public;
 use smolset::SmolSet;
 use time::OffsetDateTime;
 // use std::fmt::Debug;
+use sshkey_attest::proto::PublicKey as SshPublicKey;
 use webauthn_rs::prelude::AttestedPasskey as DeviceKeyV4;
 use webauthn_rs::prelude::Passkey as PasskeyV4;
 
@@ -30,6 +32,7 @@ pub use self::cid::ValueSetCid;
 pub use self::cred::{ValueSetCredential, ValueSetDeviceKey, ValueSetIntentToken, ValueSetPasskey};
 pub use self::datetime::ValueSetDateTime;
 pub use self::eckey::ValueSetEcKeyPrivate;
+use self::image::ValueSetImage;
 pub use self::iname::ValueSetIname;
 pub use self::index::ValueSetIndex;
 pub use self::iutf8::ValueSetIutf8;
@@ -58,6 +61,7 @@ mod cid;
 mod cred;
 mod datetime;
 pub mod eckey;
+pub mod image;
 mod iname;
 mod index;
 mod iutf8;
@@ -83,6 +87,10 @@ pub type ValueSet = Box<dyn ValueSetT + Send + Sync + 'static>;
 dyn_clone::clone_trait_object!(ValueSetT);
 
 pub trait ValueSetT: std::fmt::Debug + DynClone {
+    /// Returns whether the value was newly inserted. That is:
+    /// * If the set did not previously contain an equal value, true is returned.
+    /// * If the set already contained an equal value, false is returned, and the entry is not updated.
+    ///
     fn insert_checked(&mut self, value: Value) -> Result<bool, OperationError>;
 
     fn clear(&mut self);
@@ -140,7 +148,7 @@ pub trait ValueSetT: std::fmt::Debug + DynClone {
         Err(OperationError::InvalidValueState)
     }
 
-    fn get_ssh_tag(&self, _tag: &str) -> Option<&str> {
+    fn get_ssh_tag(&self, _tag: &str) -> Option<&SshPublicKey> {
         None
     }
 
@@ -190,7 +198,7 @@ pub trait ValueSetT: std::fmt::Debug + DynClone {
         None
     }
 
-    fn as_sshpubkey_str_iter(&self) -> Option<Box<dyn Iterator<Item = &str> + '_>> {
+    fn as_sshpubkey_string_iter(&self) -> Option<Box<dyn Iterator<Item = String> + '_>> {
         None
     }
 
@@ -311,7 +319,7 @@ pub trait ValueSetT: std::fmt::Debug + DynClone {
         None
     }
 
-    fn as_sshkey_map(&self) -> Option<&BTreeMap<String, String>> {
+    fn as_sshkey_map(&self) -> Option<&BTreeMap<String, SshPublicKey>> {
         None
     }
 
@@ -562,6 +570,11 @@ pub trait ValueSetT: std::fmt::Debug + DynClone {
         None
     }
 
+    fn as_imageset(&self) -> Option<&HashSet<ImageValue>> {
+        debug_assert!(false);
+        None
+    }
+
     fn repl_merge_valueset(
         &self,
         _older: &ValueSet,
@@ -600,7 +613,7 @@ pub fn from_result_value_iter(
     mut iter: impl Iterator<Item = Result<Value, OperationError>>,
 ) -> Result<ValueSet, OperationError> {
     let Some(init) = iter.next() else {
-        admin_error!("Empty value iterator");
+        trace!("Empty value iterator");
         return Err(OperationError::InvalidValueState);
     };
 
@@ -636,6 +649,7 @@ pub fn from_result_value_iter(
         Value::UiHint(u) => ValueSetUiHint::new(u),
         Value::AuditLogString(c, s) => ValueSetAuditLogString::new((c, s)),
         Value::EcKeyPrivate(k) => ValueSetEcKeyPrivate::new(&k),
+        Value::Image(imagevalue) => image::ValueSetImage::new(imagevalue),
         Value::PhoneNumber(_, _)
         | Value::Passkey(_, _, _)
         | Value::DeviceKey(_, _, _)
@@ -660,7 +674,7 @@ pub fn from_result_value_iter(
 
 pub fn from_value_iter(mut iter: impl Iterator<Item = Value>) -> Result<ValueSet, OperationError> {
     let Some(init) = iter.next() else {
-        admin_error!("Empty value iterator");
+        trace!("Empty value iterator");
         return Err(OperationError::InvalidValueState);
     };
 
@@ -702,6 +716,8 @@ pub fn from_value_iter(mut iter: impl Iterator<Item = Value>) -> Result<ValueSet
         Value::TotpSecret(l, t) => ValueSetTotpSecret::new(l, t),
         Value::AuditLogString(c, s) => ValueSetAuditLogString::new((c, s)),
         Value::EcKeyPrivate(k) => ValueSetEcKeyPrivate::new(&k),
+
+        Value::Image(imagevalue) => image::ValueSetImage::new(imagevalue),
         Value::PhoneNumber(_, _) => {
             debug_assert!(false);
             return Err(OperationError::InvalidValueState);
@@ -757,6 +773,7 @@ pub fn from_db_valueset_v2(dbvs: DbValueSetV2) -> Result<ValueSet, OperationErro
             debug_assert!(false);
             Err(OperationError::InvalidValueState)
         }
+        DbValueSetV2::Image(set) => ValueSetImage::from_dbvs2(&set),
     }
 }
 
@@ -801,5 +818,6 @@ pub fn from_repl_v1(rv1: &ReplAttrV1) -> Result<ValueSet, OperationError> {
         ReplAttrV1::TotpSecret { set } => ValueSetTotpSecret::from_repl_v1(set),
         ReplAttrV1::AuditLogString { map } => ValueSetAuditLogString::from_repl_v1(map),
         ReplAttrV1::EcKeyPrivate { key } => ValueSetEcKeyPrivate::from_repl_v1(key),
+        ReplAttrV1::Image { set } => ValueSetImage::from_repl_v1(set),
     }
 }

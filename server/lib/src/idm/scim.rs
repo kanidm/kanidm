@@ -14,6 +14,7 @@ use crate::prelude::*;
 use crate::value::ApiToken;
 
 use crate::schema::{SchemaClass, SchemaTransaction};
+use sshkey_attest::proto::PublicKey as SshPublicKey;
 
 // Internals of a Scim Sync token
 
@@ -642,7 +643,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         // Refuse to proceed if any entries are in the recycled or tombstone state, since subsequent
         // operations WOULD fail.
         //
-        // I'm still a bit not sure what to do here though, because if we have uuid re-use from the
+        // I'm still a bit not sure what to do here though, because if we have uuid reuse from the
         // external system, that would be a pain, but I think we have to do this. This would be an
         // exceedingly rare situation though since 389-ds doesn't allow external uuid to be set, nor
         // does openldap. It would break both of their replication models for it to occur.
@@ -1094,7 +1095,11 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                             ))
                         })
                         .and_then(|external_id| match external_id {
-                            ScimSimpleAttr::String(value) => Ok(value.clone()),
+                            ScimSimpleAttr::String(value) => SshPublicKey::from_string(value)
+                                .map_err(|err| {
+                                    error!(?err, "Invalid ssh key provided via scim");
+                                    OperationError::SC0001IncomingSshPublicKey
+                                }),
                             _ => {
                                 error!("Invalid value attribute - must be scim simple string");
                                 Err(OperationError::InvalidAttribute(format!(
@@ -2641,7 +2646,8 @@ mod tests {
         let mut ssh_keyiter = testuser
             .get_ava_iter_sshpubkeys(Attribute::SshPublicKey)
             .expect("Failed to access ssh pubkeys");
-        assert_eq!(ssh_keyiter.next(), Some("sk-ecdsa-sha2-nistp256@openssh.com AAAAInNrLWVjZHNhLXNoYTItbmlzdHAyNTZAb3BlbnNzaC5jb20AAAAIbmlzdHAyNTYAAABBBENubZikrb8hu+HeVRdZ0pp/VAk2qv4JDbuJhvD0yNdWDL2e3cBbERiDeNPkWx58Q4rVnxkbV1fa8E2waRtT91wAAAAEc3NoOg== testuser@fidokey"));
+
+        assert_eq!(ssh_keyiter.next(), Some("sk-ecdsa-sha2-nistp256@openssh.com AAAAInNrLWVjZHNhLXNoYTItbmlzdHAyNTZAb3BlbnNzaC5jb20AAAAIbmlzdHAyNTYAAABBBENubZikrb8hu+HeVRdZ0pp/VAk2qv4JDbuJhvD0yNdWDL2e3cBbERiDeNPkWx58Q4rVnxkbV1fa8E2waRtT91wAAAAEc3NoOg== testuser@fidokey".to_string()));
         assert_eq!(ssh_keyiter.next(), None);
 
         // Check memberof works.

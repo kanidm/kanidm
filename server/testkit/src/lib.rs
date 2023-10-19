@@ -33,6 +33,7 @@ pub const NOT_ADMIN_TEST_PASSWORD: &str = "eicieY7ahchaoCh0eeTa";
 pub static PORT_ALLOC: AtomicU16 = AtomicU16::new(18080);
 
 pub use testkit_macros::test;
+use tracing::trace;
 
 pub fn is_free_port(port: u16) -> bool {
     TcpStream::connect(("0.0.0.0", port)).is_err()
@@ -54,7 +55,7 @@ pub async fn setup_async_test(mut config: Configuration) -> (KanidmClient, CoreH
         counter += 1;
         #[allow(clippy::panic)]
         if counter >= 5 {
-            eprintln!("Unable to allocate port!");
+            tracing::error!("Unable to allocate port!");
             panic!();
         }
     };
@@ -325,7 +326,7 @@ pub async fn test_read_attrs(
     let e = rset.first().expect("Failed to get first user from set");
 
     for attr in attrs.iter() {
-        println!("Reading {}", attr);
+        trace!("Reading {}", attr);
         #[allow(clippy::unwrap_used)]
         let is_ok = match *attr {
             Attribute::RadiusSecret => rsclient
@@ -335,7 +336,7 @@ pub async fn test_read_attrs(
                 .is_some(),
             _ => e.attrs.get(attr.as_ref()).is_some(),
         };
-        dbg!(is_ok, is_readable);
+        trace!("is_ok: {}, is_readable: {}", is_ok, is_readable);
         assert!(is_ok == is_readable)
     }
 }

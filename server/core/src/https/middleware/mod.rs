@@ -6,8 +6,8 @@ use axum::{
     TypedHeader,
 };
 use http::HeaderValue;
+use kanidm_proto::constants::{KOPID, KVERSION};
 use uuid::Uuid;
-
 pub(crate) mod caching;
 pub(crate) mod compression;
 pub(crate) mod hsts_header;
@@ -21,14 +21,16 @@ pub async fn version_middleware<B>(request: Request<B>, next: Next<B>) -> Respon
     let mut response = next.run(request).await;
     response
         .headers_mut()
-        .insert("X-KANIDM-VERSION", HeaderValue::from_static(KANIDM_VERSION));
+        .insert(KVERSION, HeaderValue::from_static(KANIDM_VERSION));
     response
 }
 
 #[derive(Clone, Debug)]
 /// For holding onto the event ID and other handy request-based things
 pub struct KOpId {
+    /// The event correlation ID
     pub eventid: Uuid,
+    /// The User Access Token, if present
     pub uat: Option<String>,
 }
 
@@ -45,7 +47,9 @@ pub async fn are_we_json_yet<B>(request: Request<B>, next: Next<B>) -> Response 
         assert!(headers.contains_key(http::header::CONTENT_TYPE));
         assert!(
             headers.get(http::header::CONTENT_TYPE)
-                == Some(&HeaderValue::from_static(crate::https::APPLICATION_JSON))
+                == Some(&HeaderValue::from_static(
+                    kanidm_proto::constants::APPLICATION_JSON
+                ))
         );
     }
 
@@ -69,12 +73,13 @@ pub async fn kopid_middleware<B>(
     request.extensions_mut().insert(KOpId { eventid, uat });
     let mut response = next.run(request).await;
 
-    #[allow(clippy::expect_used)]
-    response.headers_mut().insert(
-        "X-KANIDM-OPID",
-        HeaderValue::from_str(&eventid.as_hyphenated().to_string())
-            .expect("Failed to set X-KANIDM-OPID header in response!"),
-    );
+    // This conversion *should never* fail. If it does, rather than panic, we warn and
+    // just don't put the id in the response.
+    let _ = HeaderValue::from_str(&eventid.as_hyphenated().to_string())
+        .map(|hv| response.headers_mut().insert(KOPID, hv))
+        .map_err(|err| {
+            warn!(?err, "An invalid operation id was encountered");
+        });
 
     response
 }

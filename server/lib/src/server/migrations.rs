@@ -113,13 +113,18 @@ impl QueryServer {
             }
         }
 
+        // Reload if anything in migrations requires it.
         write_txn.reload()?;
         // Migrations complete. Init idm will now set the version as needed.
+        write_txn.initialise_idm()?;
 
-        write_txn.initialise_idm().and_then(|_| {
-            write_txn.set_phase(ServerPhase::Running);
-            write_txn.commit()
-        })?;
+        // Now force everything to reload.
+        write_txn.force_all_reload();
+        // We are read to run
+        write_txn.set_phase(ServerPhase::Running);
+
+        // Commit all changes, this also triggers the reload.
+        write_txn.commit()?;
 
         // Here is where in the future we will need to apply domain version increments.
         // The actually migrations are done in a transaction though, this just needs to
@@ -545,6 +550,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             SCHEMA_ATTR_SYNC_TOKEN_SESSION.clone().into(),
             SCHEMA_ATTR_UNIX_PASSWORD.clone().into(),
             SCHEMA_ATTR_USER_AUTH_TOKEN_SESSION.clone().into(),
+            SCHEMA_ATTR_DENIED_NAME.clone().into(),
         ];
 
         let r = idm_schema
@@ -612,13 +618,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
         // Check the admin object exists (migrations).
         // Create the default idm_admin group.
-        let admin_entries: Vec<EntryInitNew> = vec![
-            BUILTIN_ACCOUNT_ANONYMOUS_V1.clone().into(),
-            BUILTIN_ACCOUNT_ADMIN.clone().into(),
-            BUILTIN_ACCOUNT_IDM_ADMIN.clone().into(),
-            BUILTIN_GROUP_IDM_ADMINS_V1.clone().try_into()?,
-            BUILTIN_GROUP_SYSTEM_ADMINS_V1.clone().try_into()?,
-        ];
+        let admin_entries: Vec<EntryInitNew> = idm_builtin_admin_entries()?;
         let res: Result<(), _> = admin_entries
             .into_iter()
             // Each item individually logs it's result
@@ -629,49 +629,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         debug_assert!(res.is_ok());
         res?;
 
-        // Create any system default schema entries.
-        let idm_entries: Vec<&BuiltinGroup> = vec![
-            &IDM_ALL_PERSONS,
-            &IDM_ALL_ACCOUNTS,
-            &IDM_PEOPLE_MANAGE_PRIV_V1,
-            &IDM_PEOPLE_ACCOUNT_PASSWORD_IMPORT_PRIV_V1,
-            &IDM_PEOPLE_EXTEND_PRIV_V1,
-            &IDM_PEOPLE_SELF_WRITE_MAIL_PRIV_V1,
-            &IDM_PEOPLE_WRITE_PRIV_V1,
-            &IDM_PEOPLE_READ_PRIV_V1,
-            &IDM_HP_PEOPLE_EXTEND_PRIV_V1,
-            &IDM_HP_PEOPLE_WRITE_PRIV_V1,
-            &IDM_HP_PEOPLE_READ_PRIV_V1,
-            &IDM_GROUP_MANAGE_PRIV_V1,
-            &IDM_GROUP_WRITE_PRIV_V1,
-            &IDM_GROUP_UNIX_EXTEND_PRIV_V1,
-            &IDM_ACCOUNT_MANAGE_PRIV_V1,
-            &IDM_ACCOUNT_WRITE_PRIV_V1,
-            &IDM_ACCOUNT_UNIX_EXTEND_PRIV_V1,
-            &IDM_ACCOUNT_READ_PRIV_V1,
-            &IDM_RADIUS_SECRET_WRITE_PRIV_V1,
-            &IDM_RADIUS_SECRET_READ_PRIV_V1,
-            &IDM_RADIUS_SERVERS_V1,
-            // Write deps on read, so write must be added first.
-            &IDM_HP_ACCOUNT_MANAGE_PRIV_V1,
-            &IDM_HP_ACCOUNT_WRITE_PRIV_V1,
-            &IDM_HP_ACCOUNT_READ_PRIV_V1,
-            &IDM_HP_ACCOUNT_UNIX_EXTEND_PRIV_V1,
-            &IDM_SCHEMA_MANAGE_PRIV_V1,
-            &IDM_HP_GROUP_MANAGE_PRIV_V1,
-            &IDM_HP_GROUP_WRITE_PRIV_V1,
-            &IDM_HP_GROUP_UNIX_EXTEND_PRIV_V1,
-            &IDM_ACP_MANAGE_PRIV_V1,
-            &DOMAIN_ADMINS,
-            &IDM_HP_OAUTH2_MANAGE_PRIV_V1,
-            &IDM_HP_SERVICE_ACCOUNT_INTO_PERSON_MIGRATE_PRIV,
-            &IDM_HP_SYNC_ACCOUNT_MANAGE_PRIV,
-            // All members must exist before we write HP
-            &IDM_HIGH_PRIVILEGE_V1,
-            // other things
-            &IDM_UI_ENABLE_EXPERIMENTAL_FEATURES,
-            &IDM_ACCOUNT_MAIL_READ_PRIV,
-        ];
+        let idm_entries = idm_builtin_non_admin_groups();
 
         let res: Result<(), _> = idm_entries
             .into_iter()

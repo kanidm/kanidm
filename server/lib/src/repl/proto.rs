@@ -1,6 +1,7 @@
 use super::cid::Cid;
 use super::entry::EntryChangeState;
 use super::entry::State;
+use crate::be::dbvalue::DbValueImage;
 use crate::entry::Eattrs;
 use crate::prelude::*;
 use crate::schema::{SchemaReadTransaction, SchemaTransaction};
@@ -15,6 +16,11 @@ use webauthn_rs::prelude::{
 
 // Re-export this for our own usage.
 pub use kanidm_lib_crypto::ReplPasswordV1;
+
+pub enum ConsumerState {
+    Ok,
+    RefreshRequired,
+}
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub struct ReplCidV1 {
@@ -63,22 +69,15 @@ pub struct ReplCidRange {
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub enum ReplRuvRange {
     V1 {
+        domain_uuid: Uuid,
         ranges: BTreeMap<Uuid, ReplCidRange>,
     },
-}
-
-impl Default for ReplRuvRange {
-    fn default() -> Self {
-        ReplRuvRange::V1 {
-            ranges: BTreeMap::default(),
-        }
-    }
 }
 
 impl ReplRuvRange {
     pub fn is_empty(&self) -> bool {
         match self {
-            ReplRuvRange::V1 { ranges } => ranges.is_empty(),
+            ReplRuvRange::V1 { ranges, .. } => ranges.is_empty(),
         }
     }
 }
@@ -156,6 +155,10 @@ pub enum ReplIntentTokenV1 {
         primary_can_edit: bool,
         #[serde(default)]
         passkeys_can_edit: bool,
+        #[serde(default)]
+        unixcred_can_edit: bool,
+        #[serde(default)]
+        sshpubkey_can_edit: bool,
     },
     InProgress {
         token_id: String,
@@ -168,6 +171,10 @@ pub enum ReplIntentTokenV1 {
         primary_can_edit: bool,
         #[serde(default)]
         passkeys_can_edit: bool,
+        #[serde(default)]
+        unixcred_can_edit: bool,
+        #[serde(default)]
+        sshpubkey_can_edit: bool,
     },
     Consumed {
         token_id: String,
@@ -401,6 +408,9 @@ pub enum ReplAttrV1 {
     },
     EcKeyPrivate {
         key: Vec<u8>,
+    },
+    Image {
+        set: Vec<DbValueImage>,
     },
 }
 
@@ -689,6 +699,7 @@ pub enum ReplRefreshContext {
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum ReplIncrementalContext {
+    DomainMismatch,
     NoChangesAvailable,
     RefreshRequired,
     UnwillingToSupply,

@@ -11,7 +11,6 @@ use concread::cowcell::{CowCellReadTxn, CowCellWriteTxn};
 use concread::hashmap::HashMap;
 use concread::CowCell;
 use fernet::Fernet;
-use hashbrown::HashSet;
 use kanidm_proto::internal::ScimSyncToken;
 use kanidm_proto::v1::{
     ApiToken, BackupCodesView, CredentialStatus, PasswordFeedback, RadiusAuthToken, UatPurpose,
@@ -70,30 +69,25 @@ pub struct DomainKeys {
 }
 
 #[derive(Clone)]
-pub struct AccountPolicy {
-    pub(crate) privilege_expiry: u32,
-    pub(crate) authsession_expiry: u32,
-    pub(crate) pw_badlist_cache: HashSet<String>,
+pub(crate) struct AccountPolicy {
+    privilege_expiry: u32,
+    authsession_expiry: u32,
 }
 
 impl AccountPolicy {
-    pub fn new(
-        privilege_expiry: u32,
-        authsession_expiry: u32,
-        pw_badlist_cache: HashSet<String>,
-    ) -> Self {
+    pub(crate) fn new(privilege_expiry: u32, authsession_expiry: u32) -> Self {
         Self {
             privilege_expiry,
             authsession_expiry,
-            pw_badlist_cache,
         }
     }
 
-    pub fn from_pw_badlist_cache(pw_badlist_cache: HashSet<String>) -> Self {
-        Self {
-            pw_badlist_cache,
-            ..Default::default()
-        }
+    pub(crate) fn privilege_expiry(&self) -> u32 {
+        self.privilege_expiry
+    }
+
+    pub(crate) fn authsession_expiry(&self) -> u32 {
+        self.authsession_expiry
     }
 }
 
@@ -102,7 +96,6 @@ impl Default for AccountPolicy {
         Self {
             privilege_expiry: DEFAULT_AUTH_PRIVILEGE_EXPIRY,
             authsession_expiry: DEFAULT_AUTH_SESSION_EXPIRY,
-            pw_badlist_cache: Default::default(), // TODO: more thoughts on this
         }
     }
 }
@@ -148,10 +141,10 @@ pub struct IdmServerAuthTransaction<'a> {
 }
 
 pub struct IdmServerCredUpdateTransaction<'a> {
-    pub(crate) _qs_read: QueryServerReadTransaction<'a>,
+    pub(crate) qs_read: QueryServerReadTransaction<'a>,
     // sid: Sid,
     pub(crate) webauthn: &'a Webauthn,
-    pub(crate) account_policy: CowCellReadTxn<AccountPolicy>,
+    pub(crate) _account_policy: CowCellReadTxn<AccountPolicy>,
     pub(crate) cred_update_sessions: BptreeMapReadTxn<'a, Uuid, CredentialUpdateSessionMutex>,
     pub(crate) domain_keys: CowCellReadTxn<DomainKeys>,
     pub(crate) crypto_policy: &'a CryptoPolicy,
@@ -204,7 +197,6 @@ impl IdmServer {
             fernet_private_key,
             es256_private_key,
             cookie_key,
-            pw_badlist_set,
             oauth2rs_set,
             privilege_expiry,
             authsession_expiry,
@@ -216,7 +208,6 @@ impl IdmServer {
                 qs_read.get_domain_fernet_private_key()?,
                 qs_read.get_domain_es256_private_key()?,
                 qs_read.get_domain_cookie_key()?,
-                qs_read.get_password_badlist()?,
                 // Add a read/reload of all oauth2 configurations.
                 qs_read.get_oauth2rs_set()?,
                 qs_read.get_privilege_expiry()?,
@@ -298,7 +289,6 @@ impl IdmServer {
                 account_policy: Arc::new(CowCell::new(AccountPolicy::new(
                     privilege_expiry,
                     authsession_expiry,
-                    pw_badlist_set,
                 ))),
                 domain_keys,
                 oauth2rs: Arc::new(oauth2rs),
@@ -367,10 +357,10 @@ impl IdmServer {
 
     pub async fn cred_update_transaction(&self) -> IdmServerCredUpdateTransaction<'_> {
         IdmServerCredUpdateTransaction {
-            _qs_read: self.qs.read().await,
+            qs_read: self.qs.read().await,
             // sid: Sid,
             webauthn: &self.webauthn,
-            account_policy: self.account_policy.read(),
+            _account_policy: self.account_policy.read(),
             cred_update_sessions: self.cred_update_sessions.read(),
             domain_keys: self.domain_keys.read(),
             crypto_policy: &self.crypto_policy,
@@ -1053,6 +1043,8 @@ impl<'a> IdmServerAuthTransaction<'a> {
                 // out of the session tree.
                 let account = Account::try_from_entry_ro(entry.as_ref(), &mut self.qs_read)?;
 
+                let account_policy = (*self.account_policy).clone();
+
                 trace!(?account.primary);
 
                 // Intent to take both trees to write.
@@ -1087,6 +1079,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
 
                 let (auth_session, state) = AuthSession::new(
                     account,
+                    account_policy,
                     init.issue,
                     init.privileged,
                     self.webauthn,
@@ -1217,7 +1210,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
                             &self.audit_tx,
                             self.webauthn,
                             &self.domain_keys.uat_jwt_signer,
-                            &self.account_policy,
+                            self.qs_read.pw_badlist(),
                         )
                         .map(|aus| {
                             // Inspect the result:
@@ -1657,7 +1650,11 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         // check a password badlist to eliminate more content
         // we check the password as "lower case" to help eliminate possibilities
         // also, when pw_badlist_cache is read from DB, it is read as Value (iutf8 lowercase)
-        if (self.account_policy.pw_badlist_cache).contains(&cleartext.to_lowercase()) {
+        if self
+            .qs_write
+            .pw_badlist()
+            .contains(&cleartext.to_lowercase())
+        {
             security_info!("Password found in badlist, rejecting");
             Err(OperationError::PasswordQuality(vec![
                 PasswordFeedback::BadListed,
@@ -2080,15 +2077,10 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
     #[instrument(level = "debug", skip_all)]
     pub fn commit(mut self) -> Result<(), OperationError> {
-        if self
-            .qs_write
-            .get_changed_uuids()
-            .contains(&UUID_SYSTEM_CONFIG)
-        {
-            // TODO: probably it would be more efficient to introduce a single check for each of the possible system configs
-            // but that would require changing what uuid the operation is assigned
+        if self.qs_write.get_changed_system_config() {
             self.reload_system_account_policy()?;
         };
+
         if self.qs_write.get_changed_ouath2() {
             self.qs_write
                 .get_oauth2rs_set()
@@ -2151,7 +2143,6 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
     }
 
     fn reload_system_account_policy(&mut self) -> Result<(), OperationError> {
-        self.account_policy.pw_badlist_cache = self.qs_write.get_password_badlist()?;
         self.account_policy.authsession_expiry = self.qs_write.get_authsession_expiry()?;
         self.account_policy.privilege_expiry = self.qs_write.get_privilege_expiry()?;
         Ok(())
@@ -2182,7 +2173,6 @@ mod tests {
     use crate::idm::AuthState;
     use crate::modify::{Modify, ModifyList};
     use crate::prelude::*;
-    use crate::utils::duration_from_epoch_now;
     use crate::value::SessionState;
     use kanidm_lib_crypto::CryptoPolicy;
 

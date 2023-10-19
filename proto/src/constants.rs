@@ -1,4 +1,19 @@
-/// Because consistency is great!
+//! Because consistency is great!
+
+pub const CONTENT_TYPE_JPG: &str = "image/jpeg";
+pub const CONTENT_TYPE_PNG: &str = "image/png";
+pub const CONTENT_TYPE_GIF: &str = "image/gif";
+pub const CONTENT_TYPE_SVG: &str = "image/svg+xml";
+pub const CONTENT_TYPE_WEBP: &str = "image/webp";
+
+// for when the user uploads things to the various image endpoints
+pub const VALID_IMAGE_UPLOAD_CONTENT_TYPES: [&str; 5] = [
+    CONTENT_TYPE_JPG,
+    CONTENT_TYPE_PNG,
+    CONTENT_TYPE_GIF,
+    CONTENT_TYPE_SVG,
+    CONTENT_TYPE_WEBP,
+];
 
 pub const APPLICATION_JSON: &str = "application/json";
 
@@ -39,6 +54,7 @@ pub const ATTR_CLASSNAME: &str = "classname";
 pub const ATTR_CN: &str = "cn";
 pub const ATTR_COOKIE_PRIVATE_KEY: &str = "cookie_private_key";
 pub const ATTR_CREDENTIAL_UPDATE_INTENT_TOKEN: &str = "credential_update_intent_token";
+pub const ATTR_DENIED_NAME: &str = "denied_name";
 pub const ATTR_DESCRIPTION: &str = "description";
 pub const ATTR_DEVICEKEYS: &str = "devicekeys";
 pub const ATTR_DIRECTMEMBEROF: &str = "directmemberof";
@@ -69,6 +85,7 @@ pub const ATTR_GIDNUMBER: &str = "gidnumber";
 pub const ATTR_GRANT_UI_HINT: &str = "grant_ui_hint";
 pub const ATTR_GROUP: &str = "group";
 pub const ATTR_ID_VERIFICATION_ECKEY: &str = "id_verification_eckey";
+pub const ATTR_IMAGE: &str = "image";
 pub const ATTR_INDEX: &str = "index";
 pub const ATTR_IPANTHASH: &str = "ipanthash";
 pub const ATTR_IPASSHPUBKEY: &str = "ipasshpubkey";
@@ -146,13 +163,6 @@ pub const ATTR_USERPASSWORD: &str = "userpassword";
 pub const ATTR_UUID: &str = "uuid";
 pub const ATTR_VERSION: &str = "version";
 
-// TODO: rust can't deal with this being compiled out, don't try and #[cfg()] them
-pub const TEST_ATTR_NON_EXIST: &str = "non-exist";
-pub const TEST_ATTR_TEST_ATTR: &str = "testattr";
-pub const TEST_ATTR_EXTRA: &str = "extra";
-pub const TEST_ATTR_NUMBER: &str = "testattrnumber";
-pub const TEST_ATTR_NOTALLOWED: &str = "notallowed";
-
 pub const OAUTH2_SCOPE_EMAIL: &str = ATTR_EMAIL;
 pub const OAUTH2_SCOPE_GROUPS: &str = "groups";
 pub const OAUTH2_SCOPE_OPENID: &str = "openid";
@@ -160,6 +170,7 @@ pub const OAUTH2_SCOPE_READ: &str = "read";
 pub const OAUTH2_SCOPE_SUPPLEMENT: &str = "supplement";
 
 pub const LDAP_ATTR_CN: &str = "cn";
+pub const LDAP_ATTR_DISPLAY_NAME: &str = "displayName";
 pub const LDAP_ATTR_EMAIL_ALTERNATIVE: &str = "emailalternative";
 pub const LDAP_ATTR_EMAIL_PRIMARY: &str = "emailprimary";
 pub const LDAP_ATTR_ENTRYDN: &str = "entrydn";
@@ -173,3 +184,17 @@ pub const LDAP_ATTR_MEMBER: &str = "member";
 pub const LDAP_ATTR_NAME: &str = "name";
 pub const LDAP_ATTR_OBJECTCLASS: &str = "objectClass";
 pub const LDAP_ATTR_OU: &str = "ou";
+pub const LDAP_CLASS_GROUPOFNAMES: &str = "groupofnames";
+
+// rust can't deal with this being compiled out, don't try and #[cfg()] them
+pub const TEST_ATTR_NON_EXIST: &str = "non-exist";
+pub const TEST_ATTR_TEST_ATTR: &str = "testattr";
+pub const TEST_ATTR_EXTRA: &str = "extra";
+pub const TEST_ATTR_NUMBER: &str = "testattrnumber";
+pub const TEST_ATTR_NOTALLOWED: &str = "notallowed";
+
+pub const KSESSIONID: &str = "X-KANIDM-AUTH-SESSION-ID";
+pub const KOPID: &str = "X-KANIDM-OPID";
+pub const KVERSION: &str = "X-KANIDM-VERSION";
+
+pub const X_FORWARDED_FOR: &str = "x-forwarded-for";

@@ -26,6 +26,8 @@ mod protected;
 mod refint;
 mod session;
 mod spn;
+mod valuedeny;
+
 trait Plugin {
     fn id() -> &'static str;
 
@@ -226,16 +228,17 @@ impl Plugins {
         cand: &mut Vec<Entry<EntryInvalid, EntryNew>>,
         ce: &CreateEvent,
     ) -> Result<(), OperationError> {
-        base::Base::pre_create_transform(qs, cand, ce)
-            .and_then(|_| cred_import::CredImport::pre_create_transform(qs, cand, ce))
-            .and_then(|_| jwskeygen::JwsKeygen::pre_create_transform(qs, cand, ce))
-            .and_then(|_| gidnumber::GidNumber::pre_create_transform(qs, cand, ce))
-            .and_then(|_| domain::Domain::pre_create_transform(qs, cand, ce))
-            .and_then(|_| spn::Spn::pre_create_transform(qs, cand, ce))
-            .and_then(|_| namehistory::NameHistory::pre_create_transform(qs, cand, ce))
-            .and_then(|_| eckeygen::EcdhKeyGen::pre_create_transform(qs, cand, ce))
-            // Should always be last
-            .and_then(|_| attrunique::AttrUnique::pre_create_transform(qs, cand, ce))
+        base::Base::pre_create_transform(qs, cand, ce)?;
+        valuedeny::ValueDeny::pre_create_transform(qs, cand, ce)?;
+        cred_import::CredImport::pre_create_transform(qs, cand, ce)?;
+        jwskeygen::JwsKeygen::pre_create_transform(qs, cand, ce)?;
+        gidnumber::GidNumber::pre_create_transform(qs, cand, ce)?;
+        domain::Domain::pre_create_transform(qs, cand, ce)?;
+        spn::Spn::pre_create_transform(qs, cand, ce)?;
+        namehistory::NameHistory::pre_create_transform(qs, cand, ce)?;
+        eckeygen::EcdhKeyGen::pre_create_transform(qs, cand, ce)?;
+        // Should always be last
+        attrunique::AttrUnique::pre_create_transform(qs, cand, ce)
     }
 
     #[instrument(level = "debug", name = "plugins::run_pre_create", skip_all)]
@@ -253,8 +256,8 @@ impl Plugins {
         cand: &[Entry<EntrySealed, EntryCommitted>],
         ce: &CreateEvent,
     ) -> Result<(), OperationError> {
-        refint::ReferentialIntegrity::post_create(qs, cand, ce)
-            .and_then(|_| memberof::MemberOf::post_create(qs, cand, ce))
+        refint::ReferentialIntegrity::post_create(qs, cand, ce)?;
+        memberof::MemberOf::post_create(qs, cand, ce)
     }
 
     #[instrument(level = "debug", name = "plugins::run_pre_modify", skip_all)]
@@ -264,18 +267,19 @@ impl Plugins {
         cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         me: &ModifyEvent,
     ) -> Result<(), OperationError> {
-        protected::Protected::pre_modify(qs, pre_cand, cand, me)
-            .and_then(|_| base::Base::pre_modify(qs, pre_cand, cand, me))
-            .and_then(|_| cred_import::CredImport::pre_modify(qs, pre_cand, cand, me))
-            .and_then(|_| jwskeygen::JwsKeygen::pre_modify(qs, pre_cand, cand, me))
-            .and_then(|_| gidnumber::GidNumber::pre_modify(qs, pre_cand, cand, me))
-            .and_then(|_| domain::Domain::pre_modify(qs, pre_cand, cand, me))
-            .and_then(|_| spn::Spn::pre_modify(qs, pre_cand, cand, me))
-            .and_then(|_| session::SessionConsistency::pre_modify(qs, pre_cand, cand, me))
-            .and_then(|_| namehistory::NameHistory::pre_modify(qs, pre_cand, cand, me))
-            .and_then(|_| eckeygen::EcdhKeyGen::pre_modify(qs, pre_cand, cand, me))
-            // attr unique should always be last
-            .and_then(|_| attrunique::AttrUnique::pre_modify(qs, pre_cand, cand, me))
+        protected::Protected::pre_modify(qs, pre_cand, cand, me)?;
+        base::Base::pre_modify(qs, pre_cand, cand, me)?;
+        valuedeny::ValueDeny::pre_modify(qs, pre_cand, cand, me)?;
+        cred_import::CredImport::pre_modify(qs, pre_cand, cand, me)?;
+        jwskeygen::JwsKeygen::pre_modify(qs, pre_cand, cand, me)?;
+        gidnumber::GidNumber::pre_modify(qs, pre_cand, cand, me)?;
+        domain::Domain::pre_modify(qs, pre_cand, cand, me)?;
+        spn::Spn::pre_modify(qs, pre_cand, cand, me)?;
+        session::SessionConsistency::pre_modify(qs, pre_cand, cand, me)?;
+        namehistory::NameHistory::pre_modify(qs, pre_cand, cand, me)?;
+        eckeygen::EcdhKeyGen::pre_modify(qs, pre_cand, cand, me)?;
+        // attr unique should always be last
+        attrunique::AttrUnique::pre_modify(qs, pre_cand, cand, me)
     }
 
     #[instrument(level = "debug", name = "plugins::run_post_modify", skip_all)]
@@ -285,9 +289,9 @@ impl Plugins {
         cand: &[Entry<EntrySealed, EntryCommitted>],
         me: &ModifyEvent,
     ) -> Result<(), OperationError> {
-        refint::ReferentialIntegrity::post_modify(qs, pre_cand, cand, me)
-            .and_then(|_| spn::Spn::post_modify(qs, pre_cand, cand, me))
-            .and_then(|_| memberof::MemberOf::post_modify(qs, pre_cand, cand, me))
+        refint::ReferentialIntegrity::post_modify(qs, pre_cand, cand, me)?;
+        spn::Spn::post_modify(qs, pre_cand, cand, me)?;
+        memberof::MemberOf::post_modify(qs, pre_cand, cand, me)
     }
 
     #[instrument(level = "debug", name = "plugins::run_pre_batch_modify", skip_all)]
@@ -297,18 +301,19 @@ impl Plugins {
         cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         me: &BatchModifyEvent,
     ) -> Result<(), OperationError> {
-        protected::Protected::pre_batch_modify(qs, pre_cand, cand, me)
-            .and_then(|_| base::Base::pre_batch_modify(qs, pre_cand, cand, me))
-            .and_then(|_| cred_import::CredImport::pre_batch_modify(qs, pre_cand, cand, me))
-            .and_then(|_| jwskeygen::JwsKeygen::pre_batch_modify(qs, pre_cand, cand, me))
-            .and_then(|_| gidnumber::GidNumber::pre_batch_modify(qs, pre_cand, cand, me))
-            .and_then(|_| domain::Domain::pre_batch_modify(qs, pre_cand, cand, me))
-            .and_then(|_| spn::Spn::pre_batch_modify(qs, pre_cand, cand, me))
-            .and_then(|_| session::SessionConsistency::pre_batch_modify(qs, pre_cand, cand, me))
-            .and_then(|_| namehistory::NameHistory::pre_batch_modify(qs, pre_cand, cand, me))
-            .and_then(|_| eckeygen::EcdhKeyGen::pre_batch_modify(qs, pre_cand, cand, me))
-            // attr unique should always be last
-            .and_then(|_| attrunique::AttrUnique::pre_batch_modify(qs, pre_cand, cand, me))
+        protected::Protected::pre_batch_modify(qs, pre_cand, cand, me)?;
+        base::Base::pre_batch_modify(qs, pre_cand, cand, me)?;
+        valuedeny::ValueDeny::pre_batch_modify(qs, pre_cand, cand, me)?;
+        cred_import::CredImport::pre_batch_modify(qs, pre_cand, cand, me)?;
+        jwskeygen::JwsKeygen::pre_batch_modify(qs, pre_cand, cand, me)?;
+        gidnumber::GidNumber::pre_batch_modify(qs, pre_cand, cand, me)?;
+        domain::Domain::pre_batch_modify(qs, pre_cand, cand, me)?;
+        spn::Spn::pre_batch_modify(qs, pre_cand, cand, me)?;
+        session::SessionConsistency::pre_batch_modify(qs, pre_cand, cand, me)?;
+        namehistory::NameHistory::pre_batch_modify(qs, pre_cand, cand, me)?;
+        eckeygen::EcdhKeyGen::pre_batch_modify(qs, pre_cand, cand, me)?;
+        // attr unique should always be last
+        attrunique::AttrUnique::pre_batch_modify(qs, pre_cand, cand, me)
     }
 
     #[instrument(level = "debug", name = "plugins::run_post_batch_modify", skip_all)]
@@ -318,9 +323,9 @@ impl Plugins {
         cand: &[Entry<EntrySealed, EntryCommitted>],
         me: &BatchModifyEvent,
     ) -> Result<(), OperationError> {
-        refint::ReferentialIntegrity::post_batch_modify(qs, pre_cand, cand, me)
-            .and_then(|_| spn::Spn::post_batch_modify(qs, pre_cand, cand, me))
-            .and_then(|_| memberof::MemberOf::post_batch_modify(qs, pre_cand, cand, me))
+        refint::ReferentialIntegrity::post_batch_modify(qs, pre_cand, cand, me)?;
+        spn::Spn::post_batch_modify(qs, pre_cand, cand, me)?;
+        memberof::MemberOf::post_batch_modify(qs, pre_cand, cand, me)
     }
 
     #[instrument(level = "debug", name = "plugins::run_pre_delete", skip_all)]
@@ -338,8 +343,8 @@ impl Plugins {
         cand: &[Entry<EntrySealed, EntryCommitted>],
         de: &DeleteEvent,
     ) -> Result<(), OperationError> {
-        refint::ReferentialIntegrity::post_delete(qs, cand, de)
-            .and_then(|_| memberof::MemberOf::post_delete(qs, cand, de))
+        refint::ReferentialIntegrity::post_delete(qs, cand, de)?;
+        memberof::MemberOf::post_delete(qs, cand, de)
     }
 
     #[instrument(level = "debug", name = "plugins::run_pre_repl_refresh", skip_all)]
@@ -355,8 +360,8 @@ impl Plugins {
         qs: &mut QueryServerWriteTransaction,
         cand: &[EntrySealedCommitted],
     ) -> Result<(), OperationError> {
-        refint::ReferentialIntegrity::post_repl_refresh(qs, cand)
-            .and_then(|_| memberof::MemberOf::post_repl_refresh(qs, cand))
+        refint::ReferentialIntegrity::post_repl_refresh(qs, cand)?;
+        memberof::MemberOf::post_repl_refresh(qs, cand)
     }
 
     #[instrument(level = "debug", name = "plugins::run_pre_repl_incremental", skip_all)]
@@ -407,6 +412,7 @@ impl Plugins {
         results: &mut Vec<Result<(), ConsistencyError>>,
     ) {
         run_verify_plugin!(qs, results, base::Base);
+        run_verify_plugin!(qs, results, valuedeny::ValueDeny);
         run_verify_plugin!(qs, results, attrunique::AttrUnique);
         run_verify_plugin!(qs, results, refint::ReferentialIntegrity);
         run_verify_plugin!(qs, results, dyngroup::DynGroup);

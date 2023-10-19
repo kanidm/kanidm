@@ -77,7 +77,10 @@ impl KanidmdOpt {
             | KanidmdOpt::DbScan {
                 commands: DbScanOpt::RestoreQuarantined { commonopts, .. },
             }
-            | KanidmdOpt::RecoverAccount { commonopts, .. } => commonopts,
+            | KanidmdOpt::ShowReplicationCertificate { commonopts }
+            | KanidmdOpt::RenewReplicationCertificate { commonopts }
+            | KanidmdOpt::RefreshReplicationConsumer { commonopts, .. } => commonopts,
+            KanidmdOpt::RecoverAccount { commonopts, .. } => commonopts,
             KanidmdOpt::DbScan {
                 commands: DbScanOpt::ListIndex(dopt),
             } => &dopt.commonopts,
@@ -118,6 +121,8 @@ async fn submit_admin_req(path: &str, req: AdminTaskRequest, output_mode: Consol
         Ok(s) => s,
         Err(e) => {
             error!(err = ?e, %path, "Unable to connect to socket path");
+            let diag = kanidm_lib_file_permissions::diagnose_path(path.as_ref());
+            info!(%diag);
             return;
         }
     };
@@ -145,14 +150,62 @@ async fn submit_admin_req(path: &str, req: AdminTaskRequest, output_mode: Consol
                 info!(new_password = ?password)
             }
         },
-        _ => {
+        Some(Ok(AdminTaskResponse::ShowReplicationCertificate { cert })) => match output_mode {
+            ConsoleOutputMode::JSON => {
+                eprintln!("{{\"certificate\":\"{}\"}}", cert)
+            }
+            ConsoleOutputMode::Text => {
+                info!(certificate = ?cert)
+            }
+        },
+        Some(Ok(AdminTaskResponse::Success)) => match output_mode {
+            ConsoleOutputMode::JSON => {
+                eprintln!("\"success\"")
+            }
+            ConsoleOutputMode::Text => {
+                info!("success")
+            }
+        },
+        Some(Ok(AdminTaskResponse::Error)) => match output_mode {
+            ConsoleOutputMode::JSON => {
+                eprintln!("\"error\"")
+            }
+            ConsoleOutputMode::Text => {
+                info!("Error - you should inspect the logs.")
+            }
+        },
+        Some(Err(err)) => {
+            error!(?err, "Error during admin task operation");
+        }
+        None => {
             error!("Error making request to admin socket");
         }
     }
 }
 
-#[tokio::main(flavor = "multi_thread")]
-async fn main() -> ExitCode {
+fn main() -> ExitCode {
+    let maybe_rt = tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .thread_name("kanidmd-thread-pool")
+        // .thread_stack_size(8 * 1024 * 1024)
+        // If we want a hook for thread start.
+        // .on_thread_start()
+        // In future, we can stop the whole process if a panic occurs.
+        // .unhandled_panic(tokio::runtime::UnhandledPanic::ShutdownRuntime)
+        .build();
+
+    let rt = match maybe_rt {
+        Ok(rt) => rt,
+        Err(err) => {
+            eprintln!("CRITICAL: Unable to start runtime! {:?}", err);
+            return ExitCode::FAILURE;
+        }
+    };
+
+    rt.block_on(kanidm_main())
+}
+
+async fn kanidm_main() -> ExitCode {
     // Read CLI args, determine what the user has asked us to do.
     let opt = KanidmdParser::parse();
 
@@ -177,21 +230,12 @@ async fn main() -> ExitCode {
         return ExitCode::FAILURE;
     };
 
-    let sconfig = match cfg_path.exists() {
-        false => {
-            config_error.push(format!(
-                "Refusing to run - config file {} does not exist",
-                cfg_path.to_str().unwrap_or("<invalid filename>")
-            ));
-            None
+    let sconfig = match ServerConfig::new(&cfg_path) {
+        Ok(c) => Some(c),
+        Err(e) => {
+            config_error.push(format!("Config Parse failure {:?}", e));
+            return ExitCode::FAILURE;
         }
-        true => match ServerConfig::new(&cfg_path) {
-            Ok(c) => Some(c),
-            Err(e) => {
-                config_error.push(format!("Config Parse failure {:?}", e));
-                return ExitCode::FAILURE;
-            }
-        },
     };
 
     // We only allow config file for log level now.
@@ -258,6 +302,13 @@ async fn main() -> ExitCode {
                 }
             };
 
+            // Stop early if replication was found
+            if sconfig.repl_config.is_some() &&
+                !sconfig.i_acknowledge_that_replication_is_in_development
+            {
+                error!("Unable to proceed. Replication should not be configured manually.");
+                return ExitCode::FAILURE
+            }
 
             #[cfg(target_family = "unix")]
             {
@@ -301,6 +352,8 @@ async fn main() -> ExitCode {
                         "DB folder {} may not exist, server startup may FAIL!",
                         db_parent_path.to_str().unwrap_or("invalid file path")
                     );
+                    let diag = kanidm_lib_file_permissions::diagnose_path(&db_path);
+                    info!(%diag);
                 }
 
                 let db_par_path_buf = db_parent_path.to_path_buf();
@@ -341,9 +394,18 @@ async fn main() -> ExitCode {
             config.update_output_mode(opt.commands.commonopt().output_mode.to_owned().into());
             config.update_trust_x_forward_for(sconfig.trust_x_forward_for);
             config.update_admin_bind_path(&sconfig.adminbindpath);
+
+            config.update_replication_config(
+                sconfig.repl_config.clone()
+            );
+
             match &opt.commands  {
                 // we aren't going to touch the DB so we can carry on
-                KanidmdOpt::HealthCheck(_) => (),
+                KanidmdOpt::ShowReplicationCertificate { .. }
+                | KanidmdOpt::RenewReplicationCertificate { .. }
+                | KanidmdOpt::RefreshReplicationConsumer { .. }
+                | KanidmdOpt::RecoverAccount { .. }
+                | KanidmdOpt::HealthCheck(_) => (),
                 _ => {
                     // Okay - Lets now create our lock and go.
                     let klock_path = format!("{}.klock" ,sconfig.db_path.as_str());
@@ -388,6 +450,8 @@ async fn main() -> ExitCode {
                                     &i_path.to_str().unwrap_or("invalid file path"),
                                     e
                                 );
+                                let diag = kanidm_lib_file_permissions::diagnose_path(&i_path);
+                                info!(%diag);
                                 return ExitCode::FAILURE
                             }
                         };
@@ -407,6 +471,8 @@ async fn main() -> ExitCode {
                                     &i_path.to_str().unwrap_or("invalid file path"),
                                     e
                                 );
+                                let diag = kanidm_lib_file_permissions::diagnose_path(&i_path);
+                                info!(%diag);
                                 return ExitCode::FAILURE
                             }
                         };
@@ -530,6 +596,42 @@ async fn main() -> ExitCode {
                 } => {
                     info!("Running in db verification mode ...");
                     verify_server_core(&config).await;
+                }
+                KanidmdOpt::ShowReplicationCertificate {
+                    commonopts
+                } => {
+                    info!("Running show replication certificate ...");
+                    let output_mode: ConsoleOutputMode = commonopts.output_mode.to_owned().into();
+                    submit_admin_req(config.adminbindpath.as_str(),
+                        AdminTaskRequest::ShowReplicationCertificate,
+                        output_mode,
+                    ).await;
+                }
+                KanidmdOpt::RenewReplicationCertificate {
+                    commonopts
+                } => {
+                    info!("Running renew replication certificate ...");
+                    let output_mode: ConsoleOutputMode = commonopts.output_mode.to_owned().into();
+                    submit_admin_req(config.adminbindpath.as_str(),
+                        AdminTaskRequest::RenewReplicationCertificate,
+                        output_mode,
+                    ).await;
+                }
+                KanidmdOpt::RefreshReplicationConsumer {
+                    commonopts,
+                    proceed
+                } => {
+                    info!("Running refresh replication consumer ...");
+                    if !proceed {
+                        error!("Unwilling to proceed. Check --help.");
+
+                    } else {
+                        let output_mode: ConsoleOutputMode = commonopts.output_mode.to_owned().into();
+                        submit_admin_req(config.adminbindpath.as_str(),
+                            AdminTaskRequest::RefreshReplicationConsumer,
+                            output_mode,
+                        ).await;
+                    }
                 }
                 KanidmdOpt::RecoverAccount {
                     name, commonopts

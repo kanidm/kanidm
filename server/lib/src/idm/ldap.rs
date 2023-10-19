@@ -1,4 +1,4 @@
-//! LDAP specific operations handling components. This is where LDAP operationsldap.rs
+//! LDAP specific operations handling components. This is where LDAP operations
 //! are sent to for processing.
 
 use std::collections::BTreeSet;
@@ -869,7 +869,7 @@ mod tests {
                 (Attribute::LoginShell, Value::new_iutf8("/bin/zsh")),
                 (
                     Attribute::SshPublicKey,
-                    Value::new_sshkey_str("test", ssh_ed25519)
+                    Value::new_sshkey_str("test", ssh_ed25519).expect("Invalid ssh key")
                 )
             );
 
@@ -935,10 +935,10 @@ mod tests {
                 assert_entry_contains!(
                     lsre,
                     "spn=testperson1@example.com,dc=example,dc=com",
-                    (Attribute::ObjectClass, "object"),
-                    (Attribute::ObjectClass, "person"),
-                    (Attribute::ObjectClass, "account"),
-                    (Attribute::ObjectClass, "posixaccount"),
+                    (Attribute::ObjectClass, EntryClass::Object.as_ref()),
+                    (Attribute::ObjectClass, EntryClass::Person.as_ref()),
+                    (Attribute::ObjectClass, EntryClass::Account.as_ref()),
+                    (Attribute::ObjectClass, EntryClass::PosixAccount.as_ref()),
                     (Attribute::DisplayName, "testperson1"),
                     (Attribute::Name, "testperson1"),
                     (Attribute::GidNumber, "12345678"),

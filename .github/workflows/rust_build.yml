@@ -17,6 +17,11 @@ concurrency:
 jobs:
   rust_build:
     runs-on: ubuntu-latest
+    env:
+      SCCACHE_GHA_ENABLED: true
+      RUSTC_WRAPPER: sccache
+      CARGO_INCREMENTAL: 0
+      CARGO_TERM_COLOR: always
     steps:
       - uses: actions/checkout@v4
       - name: Install Rust
@@ -38,10 +43,27 @@ jobs:
         run: cargo build --workspace
       - name: "Build the idv-tui feature kanidm binary"
         run: cargo build --bin kanidm --features idv-tui
+      - name: "Check disk space and size of target, then clean it"
+        run: |
+          df -h
+          echo "Checking base dir"
+          du -shc *
+          echo "Checking target dir"
+          du -shc target/*
+          rm -rf target/*
+
       - name: "Run cargo test"
         run: cargo test
+      - name: "Check disk space at the end"
+        run:
+          du -shc *
   run_release:
     runs-on: ubuntu-latest
+    env:
+      SCCACHE_GHA_ENABLED: true
+      RUSTC_WRAPPER: sccache
+      CARGO_INCREMENTAL: 0
+      CARGO_TERM_COLOR: always
     steps:
       - uses: actions/checkout@v4
       - name: Install Rust

@@ -19,6 +19,10 @@ path = "src/lib.rs"
 name = "scaling_10k"
 harness = false
 
+[[bench]]
+name = "image_benches"
+harness = false
+
 [dependencies]
 base64 = { workspace = true }
 base64urlsafedata = { workspace = true }
@@ -27,7 +31,6 @@ concread = { workspace = true }
 dyn-clone = { workspace = true }
 enum-iterator = { workspace = true }
 fernet = { workspace = true, features = ["fernet_danger_timestamps"] }
-filetime = { workspace = true }
 # futures-util = { workspace = true }
 hashbrown = { workspace = true }
 idlset = { workspace = true }
@@ -58,12 +61,11 @@ serde_json = { workspace = true }
 sketching = { workspace = true }
 smartstring = { workspace = true, features = ["serde"] }
 smolset = { workspace = true }
-sshkeys = { workspace = true }
+sshkey-attest = { workspace = true }
 time = { workspace = true, features = ["serde", "std"] }
 tokio = { workspace = true, features = ["net", "sync", "time", "rt"] }
 tokio-util = { workspace = true, features = ["codec"] }
 toml = { workspace = true }
-touch = { workspace = true }
 nonempty = { workspace = true, features = ["serialize"] }
 
 tracing = { workspace = true, features = ["attributes"] }
@@ -79,6 +81,14 @@ webauthn-rs = { workspace = true, features = [
 webauthn-rs-core = { workspace = true }
 zxcvbn = { workspace = true }
 serde_with = { workspace = true }
+hex.workspace = true
+lodepng = { workspace = true }
+image = { workspace = true, default-features = false, features = [
+    "gif",
+    "jpeg",
+    "webp",
+] }
+svg = { workspace = true }
 
 # because windows really can't build without the bundled one
 [target.'cfg(target_family = "windows")'.dependencies]

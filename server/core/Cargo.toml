@@ -14,7 +14,7 @@ repository = { workspace = true }
 [dependencies]
 async-trait = { workspace = true }
 axum = { workspace = true }
-axum-auth = "0.4.0"
+axum-auth = "0.4.1"
 axum-csp = { workspace = true }
 axum-macros = "0.3.8"
 axum-server = { version = "0.5.1", features = ["tls-openssl"] }
@@ -22,13 +22,16 @@ bytes = { workspace = true }
 chrono = { workspace = true }
 compact_jwt = { workspace = true }
 cron = { workspace = true }
+filetime = { workspace = true }
 futures = { workspace = true }
 futures-util = { workspace = true }
-http = "0.2.9"
+http = { workspace = true }
 hyper = { workspace = true }
 kanidm_proto = { workspace = true }
 kanidm_utils_users = { workspace = true }
 kanidmd_lib = { workspace = true }
+kanidm_lib_crypto = { workspace = true }
+kanidm_lib_file_permissions = { workspace = true }
 ldap3_proto = { workspace = true }
 libc = { workspace = true }
 openssl = { workspace = true }
@@ -57,8 +60,17 @@ tracing = { workspace = true, features = ["attributes"] }
 tracing-subscriber = { workspace = true, features = ["time", "json"] }
 urlencoding = { workspace = true }
 tempfile = { workspace = true }
+url = { workspace = true, features = ["serde"] }
 uuid = { workspace = true, features = ["serde", "v4"] }
+utoipa = { workspace = true, features = [
+    "axum_extras",
+    "openapi_extensions",
+    "preserve_order",     #  Preserve order of properties when serializing the schema for a component.
+] }
+utoipa-swagger-ui = { workspace = true, features = ["axum"] }
 
+[dev-dependencies]
+walkdir = { workspace = true }
 
 [build-dependencies]
 kanidm_build_profiles = { workspace = true }

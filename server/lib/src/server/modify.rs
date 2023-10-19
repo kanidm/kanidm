@@ -63,7 +63,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         if pre_candidates.is_empty() {
             if me.ident.is_internal() {
                 trace!(
-                    "modify: no candidates match filter ... continuing {:?}",
+                    "modify_pre_apply: no candidates match filter ... continuing {:?}",
                     me.filter
                 );
                 return Ok(None);
@@ -76,8 +76,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
             }
         };
 
-        trace!("modify: pre_candidates -> {:?}", pre_candidates);
-        trace!("modify: modlist -> {:?}", me.modlist);
+        trace!("modify_pre_apply: pre_candidates -> {:?}", pre_candidates);
+        trace!("modify_pre_apply: modlist -> {:?}", me.modlist);
 
         // Are we allowed to make the changes we want to?
         // modify_allow_operation
@@ -219,6 +219,12 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 .chain(pre_candidates.iter().map(|e| e.as_ref()))
                 .any(|e| e.attribute_equality(Attribute::Uuid, &PVUUID_DOMAIN_INFO));
         }
+        if !self.changed_system_config {
+            self.changed_system_config = norm_cand
+                .iter()
+                .chain(pre_candidates.iter().map(|e| e.as_ref()))
+                .any(|e| e.attribute_equality(Attribute::Uuid, &PVUUID_SYSTEM_CONFIG));
+        }
         if !self.changed_sync_agreement {
             self.changed_sync_agreement = norm_cand
                 .iter()
@@ -238,6 +244,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             acp_reload = ?self.changed_acp,
             oauth2_reload = ?self.changed_oauth2,
             domain_reload = ?self.changed_domain,
+            system_config_reload = ?self.changed_system_config,
             changed_sync_agreement = ?self.changed_sync_agreement
         );
 
@@ -374,6 +381,11 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 .iter()
                 .any(|e| e.attribute_equality(Attribute::Uuid, &PVUUID_DOMAIN_INFO));
         }
+        if !self.changed_system_config {
+            self.changed_system_config = norm_cand
+                .iter()
+                .any(|e| e.attribute_equality(Attribute::Uuid, &PVUUID_SYSTEM_CONFIG));
+        }
         self.changed_uuid.extend(
             norm_cand
                 .iter()
@@ -385,6 +397,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             acp_reload = ?self.changed_acp,
             oauth2_reload = ?self.changed_oauth2,
             domain_reload = ?self.changed_domain,
+            system_config_reload = ?self.changed_system_config,
         );
 
         trace!("Modify operation success");

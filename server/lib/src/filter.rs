@@ -10,6 +10,7 @@
 
 use std::cmp::{Ordering, PartialOrd};
 use std::collections::BTreeSet;
+use std::fmt;
 use std::hash::Hash;
 use std::iter;
 use std::num::NonZeroU8;
@@ -111,7 +112,7 @@ pub enum FC<'a> {
 }
 
 /// This is the filters internal representation
-#[derive(Debug, Clone, Hash, PartialEq, PartialOrd, Ord, Eq)]
+#[derive(Clone, Hash, PartialEq, PartialOrd, Ord, Eq)]
 enum FilterComp {
     // This is attr - value
     Eq(AttrString, PartialValue),
@@ -127,6 +128,61 @@ enum FilterComp {
     // Not(Box<FilterComp>),
 }
 
+impl fmt::Debug for FilterComp {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            FilterComp::Eq(attr, pv) => {
+                write!(f, "{} eq {:?}", attr, pv)
+            }
+            FilterComp::Sub(attr, pv) => {
+                write!(f, "{} sub {:?}", attr, pv)
+            }
+            FilterComp::Pres(attr) => {
+                write!(f, "{} pres", attr)
+            }
+            FilterComp::LessThan(attr, pv) => {
+                write!(f, "{} lt {:?}", attr, pv)
+            }
+            FilterComp::And(list) => {
+                write!(f, "(")?;
+                for (i, fc) in list.iter().enumerate() {
+                    write!(f, "{:?}", fc)?;
+                    if i != list.len() - 1 {
+                        write!(f, " and ")?;
+                    }
+                }
+                write!(f, ")")
+            }
+            FilterComp::Or(list) => {
+                write!(f, "(")?;
+                for (i, fc) in list.iter().enumerate() {
+                    write!(f, "{:?}", fc)?;
+                    if i != list.len() - 1 {
+                        write!(f, " or ")?;
+                    }
+                }
+                write!(f, ")")
+            }
+            FilterComp::Inclusion(list) => {
+                write!(f, "(")?;
+                for (i, fc) in list.iter().enumerate() {
+                    write!(f, "{:?}", fc)?;
+                    if i != list.len() - 1 {
+                        write!(f, " inc ")?;
+                    }
+                }
+                write!(f, ")")
+            }
+            FilterComp::AndNot(inner) => {
+                write!(f, "not ( {:?} )", inner)
+            }
+            FilterComp::SelfUuid => {
+                write!(f, "uuid eq self")
+            }
+        }
+    }
+}
+
 /// This is the fully resolved internal representation. Note the lack of Not and selfUUID
 /// because these are resolved into And(Pres(class), AndNot(term)) and Eq(uuid, ...).
 /// Importantly, we make this accessible to Entry so that it can then match on filters
@@ -137,7 +193,7 @@ enum FilterComp {
 /// where small value - faster index, larger value - slower index. This metadata is extremely
 /// important for the query optimiser to make decisions about how to re-arrange queries
 /// correctly.
-#[derive(Debug, Clone, Eq)]
+#[derive(Clone, Eq)]
 pub enum FilterResolved {
     // This is attr - value - indexed slope factor
     Eq(AttrString, PartialValue, Option<NonZeroU8>),
@@ -151,17 +207,89 @@ pub enum FilterResolved {
     AndNot(Box<FilterResolved>, Option<NonZeroU8>),
 }
 
+impl fmt::Debug for FilterResolved {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            FilterResolved::Eq(attr, pv, idx) => {
+                write!(
+                    f,
+                    "(s{} {} eq {:?})",
+                    idx.unwrap_or(NonZeroU8::MAX),
+                    attr,
+                    pv
+                )
+            }
+            FilterResolved::Sub(attr, pv, idx) => {
+                write!(
+                    f,
+                    "(s{} {} sub {:?})",
+                    idx.unwrap_or(NonZeroU8::MAX),
+                    attr,
+                    pv
+                )
+            }
+            FilterResolved::Pres(attr, idx) => {
+                write!(f, "(s{} {} pres)", idx.unwrap_or(NonZeroU8::MAX), attr)
+            }
+            FilterResolved::LessThan(attr, pv, idx) => {
+                write!(
+                    f,
+                    "(s{} {} lt {:?})",
+                    idx.unwrap_or(NonZeroU8::MAX),
+                    attr,
+                    pv
+                )
+            }
+            FilterResolved::And(list, idx) => {
+                write!(f, "(s{} ", idx.unwrap_or(NonZeroU8::MAX))?;
+                for (i, fc) in list.iter().enumerate() {
+                    write!(f, "{:?}", fc)?;
+                    if i != list.len() - 1 {
+                        write!(f, " and ")?;
+                    }
+                }
+                write!(f, ")")
+            }
+            FilterResolved::Or(list, idx) => {
+                write!(f, "(s{} ", idx.unwrap_or(NonZeroU8::MAX))?;
+                for (i, fc) in list.iter().enumerate() {
+                    write!(f, "{:?}", fc)?;
+                    if i != list.len() - 1 {
+                        write!(f, " or ")?;
+                    }
+                }
+                write!(f, ")")
+            }
+            FilterResolved::Inclusion(list, idx) => {
+                write!(f, "(s{} ", idx.unwrap_or(NonZeroU8::MAX))?;
+                for (i, fc) in list.iter().enumerate() {
+                    write!(f, "{:?}", fc)?;
+                    if i != list.len() - 1 {
+                        write!(f, " inc ")?;
+                    }
+                }
+                write!(f, ")")
+            }
+            FilterResolved::AndNot(inner, idx) => {
+                write!(f, "not (s{} {:?})", idx.unwrap_or(NonZeroU8::MAX), inner)
+            }
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
+/// A filter before it's gone through schema validation
 pub struct FilterInvalid {
     inner: FilterComp,
 }
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
+/// A filter after it's gone through schema validation
 pub struct FilterValid {
     inner: FilterComp,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct FilterValidResolved {
     inner: FilterResolved,
 }
@@ -214,9 +342,27 @@ pub enum FilterPlan {
 /// helps to prevent errors at compile time to assert `Filters` are secuerly. checked
 ///
 /// [`Entry`]: ../entry/struct.Entry.html
-#[derive(Debug, Clone, Hash, Ord, Eq, PartialOrd, PartialEq)]
+#[derive(Clone, Hash, Ord, Eq, PartialOrd, PartialEq)]
 pub struct Filter<STATE> {
     state: STATE,
+}
+
+impl fmt::Debug for Filter<FilterValidResolved> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(f, "Filter(Valid) {:?}", self.state.inner)
+    }
+}
+
+impl fmt::Debug for Filter<FilterValid> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(f, "Filter(Valid) {:?}", self.state.inner)
+    }
+}
+
+impl fmt::Debug for Filter<FilterInvalid> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(f, "Filter(Invalid) {:?}", self.state.inner)
+    }
 }
 
 impl Filter<FilterValidResolved> {
@@ -658,10 +804,10 @@ impl FilterComp {
                 }
             }
             FilterComp::Or(filters) => {
-                // If all filters are okay, return Ok(Filter::Or())
-                // If any is invalid, return the error.
-                // TODO: ftweedal says an empty or is a valid filter
-                // in mathematical terms.
+                // * If all filters are okay, return Ok(Filter::Or())
+                // * Any filter is invalid, return the error.
+                // * An empty "or" is a valid filter in mathematical terms, but we throw an
+                //   error to warn the user because it's super unlikely they want that
                 if filters.is_empty() {
                     return Err(SchemaError::EmptyFilter);
                 };
@@ -673,8 +819,10 @@ impl FilterComp {
                 x.map(FilterComp::Or)
             }
             FilterComp::And(filters) => {
-                // TODO: ftweedal says an empty or is a valid filter
-                // in mathematical terms.
+                // * If all filters are okay, return Ok(Filter::Or())
+                // * Any filter is invalid, return the error.
+                // * An empty "and" is a valid filter in mathematical terms, but we throw an
+                //   error to warn the user because it's super unlikely they want that
                 if filters.is_empty() {
                     return Err(SchemaError::EmptyFilter);
                 };
@@ -1013,14 +1161,12 @@ impl FilterResolved {
             }
             FilterComp::Pres(a) => {
                 let idx = idxmeta.contains(&(&a, &IndexType::Presence));
-                let idx = NonZeroU8::new(idx as u8);
-                FilterResolved::Pres(a, idx)
+                FilterResolved::Pres(a, NonZeroU8::new(idx as u8))
             }
             FilterComp::LessThan(a, v) => {
                 // let idx = idxmeta.contains(&(&a, &IndexType::ORDERING));
                 // TODO: For now, don't emit ordering indexes.
-                let idx = None;
-                FilterResolved::LessThan(a, v, idx)
+                FilterResolved::LessThan(a, v, None)
             }
             FilterComp::Or(vs) => FilterResolved::Or(
                 vs.into_iter()
@@ -1135,7 +1281,7 @@ impl FilterResolved {
     fn resolve_no_idx(fc: FilterComp, ev: &Identity) -> Option<Self> {
         // ⚠️  ⚠️  ⚠️  ⚠️
         // Remember, this function means we have NO INDEX METADATA so we can only
-        // asssign slopes to values we can GUARANTEE will EXIST.
+        // assign slopes to values we can GUARANTEE will EXIST.
         match fc {
             FilterComp::Eq(a, v) => {
                 // Since we have no index data, we manually configure a reasonable
@@ -1256,14 +1402,14 @@ impl FilterResolved {
 
                 // If the f_list_and only has one element, pop it and return.
                 if f_list_new.len() == 1 {
-                    #[allow(clippy::expect_used)]
-                    f_list_new.pop().expect("corrupt?")
+                    f_list_new.remove(0)
                 } else {
                     // finally, optimise this list by sorting.
                     f_list_new.sort_unstable();
                     f_list_new.dedup();
                     // Which ever element as the head is first must be the min SF
-                    // so we use this in our And to represent us.
+                    // so we use this in our And to represent the "best possible" value
+                    // of how indexes will perform.
                     let sf = f_list_new.first().and_then(|f| f.get_slopeyness_factor());
                     //
                     // return!
@@ -1287,8 +1433,7 @@ impl FilterResolved {
 
                 // If the f_list_or only has one element, pop it and return.
                 if f_list_new.len() == 1 {
-                    #[allow(clippy::expect_used)]
-                    f_list_new.pop().expect("corrupt?")
+                    f_list_new.remove(0)
                 } else {
                     // sort, but reverse so that sub-optimal elements are earlier
                     // to promote fast-failure.

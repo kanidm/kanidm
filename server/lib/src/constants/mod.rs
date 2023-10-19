@@ -2,6 +2,7 @@
 
 pub mod acp;
 pub mod entries;
+pub mod groups;
 pub mod schema;
 pub mod system_config;
 pub mod uuids;
@@ -9,6 +10,7 @@ pub mod values;
 
 pub use crate::constants::acp::*;
 pub use crate::constants::entries::*;
+pub use crate::constants::groups::*;
 pub use crate::constants::schema::*;
 pub use crate::constants::system_config::*;
 pub use crate::constants::uuids::*;

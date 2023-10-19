@@ -17,12 +17,13 @@ use std::time::Duration;
 use base64::{engine::general_purpose, Engine as _};
 use compact_jwt::JwsSigner;
 use hashbrown::HashSet;
+use kanidm_proto::internal::ImageValue;
 use num_enum::TryFromPrimitive;
 use openssl::ec::EcKey;
 use openssl::pkey::Private;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
-use sshkeys::PublicKey as SshPublicKey;
+use sshkey_attest::proto::PublicKey as SshPublicKey;
 use time::OffsetDateTime;
 use url::Url;
 use uuid::Uuid;
@@ -33,6 +34,7 @@ use crate::credential::{totp::Totp, Credential};
 use crate::prelude::*;
 use crate::repl::cid::Cid;
 use crate::server::identity::IdentityId;
+use crate::valueset::image::ImageValueThings;
 use crate::valueset::uuid_to_proto_string;
 use kanidm_proto::v1::ApiTokenPurpose;
 use kanidm_proto::v1::Filter as ProtoFilter;
@@ -122,6 +124,8 @@ pub struct CredUpdateSessionPerms {
     pub ext_cred_portal_can_view: bool,
     pub primary_can_edit: bool,
     pub passkeys_can_edit: bool,
+    pub unixcred_can_edit: bool,
+    pub sshpubkey_can_edit: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -254,6 +258,7 @@ pub enum SyntaxType {
     ApiToken = 31,
     AuditLogString = 32,
     EcKeyPrivate = 33,
+    Image = 34,
 }
 
 impl TryFrom<&str> for SyntaxType {
@@ -339,6 +344,7 @@ impl fmt::Display for SyntaxType {
             SyntaxType::ApiToken => "APITOKEN",
             SyntaxType::AuditLogString => "AUDIT_LOG_STRING",
             SyntaxType::EcKeyPrivate => "EC_KEY_PRIVATE",
+            SyntaxType::Image => "IMAGE",
         })
     }
 }
@@ -347,7 +353,7 @@ impl fmt::Display for SyntaxType {
 /// against a complete Value within a set in an Entry.
 ///
 /// A partialValue is typically used when you need to match against a value, but without
-/// requiring all of it's data or expression. This is common in Filters or other direct
+/// requiring all of its data or expression. This is common in Filters or other direct
 /// lookups and requests.
 #[derive(Hash, Debug, Clone, Eq, Ord, PartialOrd, PartialEq, Deserialize, Serialize)]
 pub enum PartialValue {
@@ -387,6 +393,8 @@ pub enum PartialValue {
     UiHint(UiHint),
     Passkey(Uuid),
     DeviceKey(Uuid),
+    /// We compare on the value hash
+    Image(String),
 }
 
 impl From<SyntaxType> for PartialValue {
@@ -702,6 +710,10 @@ impl PartialValue {
         Uuid::parse_str(us).map(PartialValue::DeviceKey).ok()
     }
 
+    pub fn new_image(input: &str) -> Self {
+        PartialValue::Image(input.to_string())
+    }
+
     pub fn to_str(&self) -> Option<&str> {
         match self {
             PartialValue::Utf8(s) => Some(s.as_str()),
@@ -759,6 +771,7 @@ impl PartialValue {
             PartialValue::PhoneNumber(a) => a.to_string(),
             PartialValue::IntentToken(u) => u.clone(),
             PartialValue::UiHint(u) => (*u as u16).to_string(),
+            PartialValue::Image(imagehash) => imagehash.to_owned(),
         }
     }
 
@@ -910,9 +923,9 @@ pub struct Oauth2Session {
 #[derive(Clone, Debug)]
 pub enum Value {
     Utf8(String),
-    // Case insensitive string
+    /// Case insensitive string
     Iutf8(String),
-    /// Case insensitive Name for a thing?
+    /// Case insensitive Name for a thing
     Iname(String),
     Uuid(Uuid),
     Bool(bool),
@@ -921,7 +934,7 @@ pub enum Value {
     Refer(Uuid),
     JsonFilt(ProtoFilter),
     Cred(String, Credential),
-    SshKey(String, String),
+    SshKey(String, SshPublicKey),
     SecretValue(String),
     Spn(String, String),
     Uint32(u32),
@@ -936,8 +949,6 @@ pub enum Value {
     OauthScopeMap(Uuid, BTreeSet<String>),
     PrivateBinary(Vec<u8>),
     PublicBinary(String, Vec<u8>),
-    // Enumeration(String),
-    // Float64(f64),
     RestrictedString(String),
     IntentToken(String, IntentTokenState),
     Passkey(Uuid, String, PasskeyV4),
@@ -954,6 +965,8 @@ pub enum Value {
     TotpSecret(String, Totp),
     AuditLogString(Cid, String),
     EcKeyPrivate(EcKey<Private>),
+
+    Image(ImageValue),
 }
 
 impl PartialEq for Value {
@@ -992,6 +1005,9 @@ impl PartialEq for Value {
             // OauthScopeMap
             (Value::OauthScopeMap(a, c), Value::OauthScopeMap(b, d)) => a.eq(b) && c.eq(d),
 
+            (Value::Image(image1), Value::Image(image2)) => {
+                image1.hash_imagevalue().eq(&image2.hash_imagevalue())
+            }
             (Value::Address(_), Value::Address(_))
             | (Value::PrivateBinary(_), Value::PrivateBinary(_))
             | (Value::SecretValue(_), Value::SecretValue(_)) => false,
@@ -1119,7 +1135,6 @@ impl Value {
         matches!(self, Value::Iutf8(_))
     }
 
-    // TODO: take this away
     #[inline(always)]
     pub fn new_class(s: &str) -> Self {
         Value::Iutf8(s.to_lowercase())
@@ -1233,6 +1248,13 @@ impl Value {
         }
     }
 
+    /// Want a `Value::Image`? use this!
+    pub fn new_image(input: &str) -> Result<Self, OperationError> {
+        serde_json::from_str::<ImageValue>(input)
+            .map(Value::Image)
+            .map_err(|_e| OperationError::InvalidValueState)
+    }
+
     pub fn new_secret_str(cleartext: &str) -> Self {
         Value::SecretValue(cleartext.to_string())
     }
@@ -1248,21 +1270,22 @@ impl Value {
         }
     }
 
-    pub fn new_sshkey_str(tag: &str, key: &str) -> Self {
-        Value::SshKey(tag.to_string(), key.to_string())
-    }
-
-    pub fn new_sshkey(tag: String, key: String) -> Self {
-        Value::SshKey(tag, key)
+    pub fn new_sshkey_str(tag: &str, key: &str) -> Result<Self, OperationError> {
+        SshPublicKey::from_string(key)
+            .map(|pk| Value::SshKey(tag.to_string(), pk))
+            .map_err(|err| {
+                error!(?err, "value sshkey failed to parse string");
+                OperationError::VL0001ValueSshPublicKeyString
+            })
     }
 
     pub fn is_sshkey(&self) -> bool {
         matches!(&self, Value::SshKey(_, _))
     }
 
-    pub fn get_sshkey(&self) -> Option<&str> {
+    pub fn get_sshkey(&self) -> Option<String> {
         match &self {
-            Value::SshKey(_, key) => Some(key.as_str()),
+            Value::SshKey(_, key) => Some(key.to_string()),
             _ => None,
         }
     }
@@ -1565,12 +1588,14 @@ impl Value {
         }
     }
 
-    pub fn to_sshkey(self) -> Option<(String, String)> {
+    /*
+    pub(crate) fn to_sshkey(self) -> Option<(String, SshPublicKey)> {
         match self {
             Value::SshKey(tag, k) => Some((tag, k)),
             _ => None,
         }
     }
+    */
 
     pub fn to_spn(self) -> Option<(String, String)> {
         match self {
@@ -1670,20 +1695,12 @@ impl Value {
             Value::Iname(s) => s.clone(),
             Value::Uuid(u) => u.as_hyphenated().to_string(),
             // We display the tag and fingerprint.
-            Value::SshKey(tag, key) =>
-            // Check it's really an sshkey in the
-            // supplemental data.
-            {
-                match SshPublicKey::from_string(key) {
-                    Ok(spk) => {
-                        let fp = spk.fingerprint();
-                        format!("{}: {}", tag, fp.hash)
-                    }
-                    Err(_) => format!("{tag}: corrupted ssh public key"),
-                }
-            }
+            Value::SshKey(tag, key) => format!("{}: {}", tag, key.to_string()),
             Value::Spn(n, r) => format!("{n}@{r}"),
-            _ => unreachable!(),
+            _ => unreachable!(
+                "You've specified the wrong type for the attribute, got: {:?}",
+                self
+            ),
         }
     }
 
@@ -1710,16 +1727,16 @@ impl Value {
                     && Value::validate_singleline(a)
                     && Value::validate_singleline(b)
             }
-
+            Value::Image(image) => image.validate_image().is_ok(),
             Value::Iname(s) => {
                 Value::validate_str_escapes(s)
                     && Value::validate_iname(s)
                     && Value::validate_singleline(s)
             }
 
-            Value::SshKey(s, key) => {
-                SshPublicKey::from_string(key).is_ok()
-                    && Value::validate_str_escapes(s)
+            Value::SshKey(s, _key) => {
+                Value::validate_str_escapes(s)
+                    // && Value::validate_iname(s)
                     && Value::validate_singleline(s)
             }
 
@@ -1861,30 +1878,30 @@ mod tests {
         "QK1JSAQqVfGhA8lLbJHmnQ/b/KMl2lzzp7SXej0wPUfvI/IP3NGb8irLzq8+JssAzXGJ+HMql+mNHiSuPaktbFzZ6y",
         "ikMR6Rx/psU07nAkxKZDEYpNVv william@amethyst");
 
-        let sk1 = Value::new_sshkey_str("tag", ecdsa);
+        let sk1 = Value::new_sshkey_str("tag", ecdsa).expect("Invalid ssh key");
         assert!(sk1.validate());
         // to proto them
         let psk1 = sk1.to_proto_string_clone();
-        assert_eq!(psk1, "tag: oMh0SibdRGV2APapEdVojzSySx9PuhcklWny5LP0Mg4");
+        assert_eq!(psk1, format!("tag: {}", ecdsa));
 
-        let sk2 = Value::new_sshkey_str("tag", ed25519);
+        let sk2 = Value::new_sshkey_str("tag", ed25519).expect("Invalid ssh key");
         assert!(sk2.validate());
         let psk2 = sk2.to_proto_string_clone();
-        assert_eq!(psk2, "tag: UR7mRCLLXmZNsun+F2lWO3hG3PORk/0JyjxPQxDUcdc");
+        assert_eq!(psk2, format!("tag: {}", ed25519));
 
-        let sk3 = Value::new_sshkey_str("tag", rsa);
+        let sk3 = Value::new_sshkey_str("tag", rsa).expect("Invalid ssh key");
         assert!(sk3.validate());
         let psk3 = sk3.to_proto_string_clone();
-        assert_eq!(psk3, "tag: sWugDdWeE4LkmKer8hz7ERf+6VttYPIqD0ULXR3EUcU");
+        assert_eq!(psk3, format!("tag: {}", rsa));
 
         let sk4 = Value::new_sshkey_str("tag", "ntaouhtnhtnuehtnuhotnuhtneouhtneouh");
-        assert!(!sk4.validate());
+        assert!(sk4.is_err());
 
         let sk5 = Value::new_sshkey_str(
             "tag",
             "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAeGW1P6Pc2rPq0XqbRaDKBcXZUPRklo",
         );
-        assert!(!sk5.validate());
+        assert!(sk5.is_err());
     }
 
     /*

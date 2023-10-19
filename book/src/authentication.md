@@ -44,11 +44,13 @@ These processes are very similar. You can send a credential reset link to a user
 directly enroll their own credentials. To generate this link or qrcode:
 
 ```bash
+kanidm person credential create-reset-token <account_id> [<time to live in seconds>]
 kanidm person credential create-reset-token demo_user --name idm_admin
+kanidm person credential create-reset-token demo_user 86400 --name idm_admin
 # The person can use one of the following to allow the credential reset
-# 
+#
 # Scan this QR Code:
-# 
+#
 # █████████████████████████████████████████████
 # █████████████████████████████████████████████
 # ████ ▄▄▄▄▄ █▄██ ▀▀▀▄▀▀█ ▄▀▀▀▀▄▀▀▄█ ▄▄▄▄▄ ████
@@ -72,7 +74,7 @@ kanidm person credential create-reset-token demo_user --name idm_admin
 # ████▄▄▄▄▄▄▄█▄█▄▄▄▄▄▄█▄█▄██▄█▄▄▄█▄██▄███▄▄████
 # █████████████████████████████████████████████
 # ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀
-# 
+#
 # This link: https://localhost:8443/ui/reset?token=8qDRG-AE1qC-zjjAT-0Fkd6
 # Or run this command: kanidm person credential use-reset-token 8qDRG-AE1qC-zjjAT-0Fkd6
 ```
@@ -80,8 +82,9 @@ kanidm person credential create-reset-token demo_user --name idm_admin
 If the user wishes you can direct them to `https://idm.mydomain.name/ui/reset` where they can
 manually enter their token value.
 
-Each token can be used only once within a 24 hour period. Once the credentials have been set the
-token is immediately invalidated.
+Once the credential has been set the token is immediately invalidated and can never be used again.
+By default the token is valid for 1 hour. You can request a longer token validity time when creating
+the token. Tokens are only allowed to be valid for a maximum of 24 hours.
 
 ### Resetting Credentials Directly
 
@@ -97,20 +100,30 @@ kanidm person credential update demo_user --name idm_admin
 # uuid: 0e19cd08-f943-489e-8ff2-69f9eacb1f31
 # generated password: set
 # Can Commit: true
-# 
+#
 # cred update (? for help) # : pass
-# New password: 
+# New password:
 # New password: [hidden]
-# Confirm password: 
+# Confirm password:
 # Confirm password: [hidden]
 # success
-# 
+#
 # cred update (? for help) # : commit
 # Do you want to commit your changes? yes
 # success
 kanidm login --name demo_user
 kanidm self whoami --name demo_user
 ```
+
+<!-- deno-fmt-ignore-start -->
+
+{{#template templates/kani-warning.md
+imagepath=images
+title=Warning!
+text=Don't use the direct credential reset to lock or invalidate an account. You should expire the account instead.
+}}
+
+<!-- deno-fmt-ignore-end -->
 
 ## Reauthentication / Privilege Access Mode
 
@@ -122,16 +135,17 @@ reauthenticate for short periods to access higher levels of privilege.
 
 When using a user command that requires these privileges you will be warned:
 
-```
+```shell
 kanidm person credential update william
 # Privileges have expired for william@idm.example.com - you need to re-authenticate again.
 ```
 
 To reauthenticate
 
-```
+```shell
 kanidm reauth -D william
 ```
 
-> **NOTE** During reauthentication can only use the same credential that was used to initially
-> authenticate to the session. The reauth flow will not allow any other credentials to be used!
+> **NOTE** During reauthentication an account must use the same credential that was used to
+> initially authenticate to the session. The reauth flow will not allow any other credentials to be
+> used!

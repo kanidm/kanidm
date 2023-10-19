@@ -55,7 +55,7 @@ disconnected from the network.
 Sudo on workstation
 ===================
 
-These are re-use of the above two scenarios.
+These are reuse of the above two scenarios.
 
 Access to VPN or Wifi
 =====================

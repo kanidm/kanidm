@@ -498,15 +498,11 @@ mod tests {
     // Test entry in db, and same name, reject.
     #[test]
     fn test_pre_create_name_unique() {
-        let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-            "attrs": {
-                "class": ["person"],
-                "name": ["testperson"],
-                "description": ["testperson"],
-                "displayname": ["testperson"]
-            }
-        }"#,
+        let e: Entry<EntryInit, EntryNew> = entry_init!(
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Name, Value::new_iname("testperson")),
+            (Attribute::Description, Value::new_utf8s("testperson")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson"))
         );
 
         let create = vec![e.clone()];
@@ -526,15 +522,11 @@ mod tests {
     // Test two entries in create that would have same name, reject.
     #[test]
     fn test_pre_create_name_unique_2() {
-        let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-            "attrs": {
-                "class": ["person"],
-                "name": ["testperson"],
-                "description": ["testperson"],
-                "displayname": ["testperson"]
-            }
-        }"#,
+        let e: Entry<EntryInit, EntryNew> = entry_init!(
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Name, Value::new_iname("testperson")),
+            (Attribute::Description, Value::new_utf8s("testperson")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson"))
         );
 
         let create = vec![e.clone(), e];
@@ -557,24 +549,15 @@ mod tests {
     // A mod to something that exists, reject.
     #[test]
     fn test_pre_modify_name_unique() {
-        let ea: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-            "attrs": {
-                "class": ["group"],
-                "name": ["testgroup_a"],
-                "description": ["testgroup"]
-            }
-        }"#,
+        let ea: Entry<EntryInit, EntryNew> = entry_init!(
+            (Attribute::Class, EntryClass::Group.to_value()),
+            (Attribute::Name, Value::new_iname("testgroup_a")),
+            (Attribute::Description, Value::new_utf8s("testgroup"))
         );
-
-        let eb: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-            "attrs": {
-                "class": ["group"],
-                "name": ["testgroup_b"],
-                "description": ["testgroup"]
-            }
-        }"#,
+        let eb: Entry<EntryInit, EntryNew> = entry_init!(
+            (Attribute::Class, EntryClass::Group.to_value()),
+            (Attribute::Name, Value::new_iname("testgroup_b")),
+            (Attribute::Description, Value::new_utf8s("testgroup"))
         );
 
         let preload = vec![ea, eb];
@@ -601,24 +584,15 @@ mod tests {
     // Two items modded to have the same value, reject.
     #[test]
     fn test_pre_modify_name_unique_2() {
-        let ea: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-            "attrs": {
-                "class": ["group"],
-                "name": ["testgroup_a"],
-                "description": ["testgroup"]
-            }
-        }"#,
+        let ea: Entry<EntryInit, EntryNew> = entry_init!(
+            (Attribute::Class, EntryClass::Group.to_value()),
+            (Attribute::Name, Value::new_iname("testgroup_a")),
+            (Attribute::Description, Value::new_utf8s("testgroup"))
         );
-
-        let eb: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-            "attrs": {
-                "class": ["group"],
-                "name": ["testgroup_b"],
-                "description": ["testgroup"]
-            }
-        }"#,
+        let eb: Entry<EntryInit, EntryNew> = entry_init!(
+            (Attribute::Class, EntryClass::Group.to_value()),
+            (Attribute::Name, Value::new_iname("testgroup_b")),
+            (Attribute::Description, Value::new_utf8s("testgroup"))
         );
 
         let preload = vec![ea, eb];

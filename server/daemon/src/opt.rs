@@ -154,6 +154,25 @@ enum KanidmdOpt {
         #[clap(flatten)]
         commonopts: CommonOpt,
     },
+    /// Display this server's replication certificate
+    ShowReplicationCertificate {
+        #[clap(flatten)]
+        commonopts: CommonOpt,
+    },
+    /// Renew this server's replication certificate
+    RenewReplicationCertificate {
+        #[clap(flatten)]
+        commonopts: CommonOpt,
+    },
+    /// Refresh this servers database content with the content from a supplier. This means
+    /// that all local content will be deleted and replaced with the supplier content.
+    RefreshReplicationConsumer {
+        #[clap(flatten)]
+        commonopts: CommonOpt,
+        /// Acknowledge that this database content will be refreshed from a supplier.
+        #[clap(long = "i-want-to-refresh-this-servers-database")]
+        proceed: bool,
+    },
     // #[clap(name = "reset_server_id")]
     // ResetServerId(CommonOpt),
     #[clap(name = "db-scan")]

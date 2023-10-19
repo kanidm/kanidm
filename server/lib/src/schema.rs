@@ -229,6 +229,7 @@ impl SchemaAttribute {
             // Comparing on the label.
             SyntaxType::TotpSecret => matches!(v, PartialValue::Utf8(_)),
             SyntaxType::AuditLogString => matches!(v, PartialValue::Utf8(_)),
+            SyntaxType::Image => matches!(v, PartialValue::Utf8(_)),
         };
         if r {
             Ok(())
@@ -280,6 +281,7 @@ impl SchemaAttribute {
                 SyntaxType::TotpSecret => matches!(v, Value::TotpSecret(_, _)),
                 SyntaxType::AuditLogString => matches!(v, Value::Utf8(_)),
                 SyntaxType::EcKeyPrivate => matches!(v, Value::EcKeyPrivate(_)),
+                SyntaxType::Image => matches!(v, Value::Image(_)),
             };
         if r {
             Ok(())
@@ -321,7 +323,6 @@ impl From<SchemaAttribute> for EntryInitNew {
     fn from(value: SchemaAttribute) -> Self {
         let mut entry = EntryInitNew::new();
 
-        #[allow(clippy::expect_used)]
         entry.set_ava(
             Attribute::AttributeName,
             vec![Value::new_iutf8(&value.name)],
@@ -374,7 +375,7 @@ impl From<SchemaAttribute> for EntryInitNew {
 /// takes precedence. It is not possible to combine classes in an incompatible way due to these
 /// rules.
 ///
-/// That in mind, and entry that has one of every possible class would probably be nonsensical,
+/// That in mind, an entry that has one of every possible class would probably be nonsensical,
 /// but the addition rules make it easy to construct and understand with concepts like [`access`]
 /// controls or accounts and posix extensions.
 ///
@@ -442,36 +443,36 @@ impl SchemaClass {
         let systemmay = value
             .get_ava_iter_iutf8(Attribute::SystemMay)
             .map(|i| i.map(|v| v.into()).collect())
-            .unwrap_or_else(Vec::new);
+            .unwrap_or_default();
         let systemmust = value
             .get_ava_iter_iutf8(Attribute::SystemMust)
             .map(|i| i.map(|v| v.into()).collect())
-            .unwrap_or_else(Vec::new);
+            .unwrap_or_default();
         let may = value
             .get_ava_iter_iutf8(Attribute::May)
             .map(|i| i.map(|v| v.into()).collect())
-            .unwrap_or_else(Vec::new);
+            .unwrap_or_default();
         let must = value
             .get_ava_iter_iutf8(Attribute::Must)
             .map(|i| i.map(|v| v.into()).collect())
-            .unwrap_or_else(Vec::new);
+            .unwrap_or_default();
 
         let systemsupplements = value
             .get_ava_iter_iutf8(Attribute::SystemSupplements)
             .map(|i| i.map(|v| v.into()).collect())
-            .unwrap_or_else(Vec::new);
+            .unwrap_or_default();
         let supplements = value
             .get_ava_iter_iutf8(Attribute::Supplements)
             .map(|i| i.map(|v| v.into()).collect())
-            .unwrap_or_else(Vec::new);
+            .unwrap_or_default();
         let systemexcludes = value
             .get_ava_iter_iutf8(Attribute::SystemExcludes)
             .map(|i| i.map(|v| v.into()).collect())
-            .unwrap_or_else(Vec::new);
+            .unwrap_or_default();
         let excludes = value
             .get_ava_iter_iutf8(Attribute::Excludes)
             .map(|i| i.map(|v| v.into()).collect())
-            .unwrap_or_else(Vec::new);
+            .unwrap_or_default();
 
         Ok(SchemaClass {
             name,
@@ -504,7 +505,6 @@ impl From<SchemaClass> for EntryInitNew {
     fn from(value: SchemaClass) -> Self {
         let mut entry = EntryInitNew::new();
 
-        #[allow(clippy::expect_used)]
         entry.set_ava(Attribute::ClassName, vec![Value::new_iutf8(&value.name)]);
 
         // class
@@ -1753,7 +1753,7 @@ impl<'a> SchemaWriteTransaction<'a> {
             SchemaAttribute {
                 name: Attribute::UidNumber.into(),
                 uuid: UUID_SCHEMA_ATTR_UIDNUMBER,
-                description: String::from("An LDAP Compatible uidNumber"),
+                description: String::from("An LDAP Compatible uidNumber."),
                 multivalue: false,
                 unique: false,
                 phantom: true,
@@ -1761,6 +1761,21 @@ impl<'a> SchemaWriteTransaction<'a> {
                 replicated: false,
                 index: vec![],
                 syntax: SyntaxType::Uint32,
+            },
+        );
+        self.attributes.insert(
+            Attribute::Image.into(),
+            SchemaAttribute {
+                name: Attribute::Image.into(),
+                uuid: UUID_SCHEMA_ATTR_IMAGE,
+                description: String::from("An image for display to end users."),
+                multivalue: false,
+                unique: false,
+                phantom: false,
+                sync_allowed: true,
+                replicated: true,
+                index: vec![],
+                syntax: SyntaxType::Image,
             },
         );
         // end LDAP masking phantoms
@@ -2887,9 +2902,9 @@ mod tests {
 
         assert_eq!(
             e_service_person.validate(&schema),
-            Err(SchemaError::ExcludesNotSatisfied(
-                vec!["person".to_string()]
-            ))
+            Err(SchemaError::ExcludesNotSatisfied(vec![
+                EntryClass::Person.to_string()
+            ]))
         );
 
         // These are valid configurations.

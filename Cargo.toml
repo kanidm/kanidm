@@ -58,26 +58,29 @@ repository = "https://github.com/kanidm/kanidm/"
 # scim_proto = { path = "../scim/proto" }
 # scim_proto = { git = "https://github.com/kanidm/scim.git"  }
 
-base64urlsafedata = { git = "https://github.com/kanidm/webauthn-rs.git", rev = "429662e34d6e760af8cff68760567c6b56dbb2d5" }
-webauthn-authenticator-rs = { git = "https://github.com/kanidm/webauthn-rs.git", rev = "429662e34d6e760af8cff68760567c6b56dbb2d5" }
-webauthn-rs = { git = "https://github.com/kanidm/webauthn-rs.git", rev = "429662e34d6e760af8cff68760567c6b56dbb2d5" }
-webauthn-rs-core = { git = "https://github.com/kanidm/webauthn-rs.git", rev = "429662e34d6e760af8cff68760567c6b56dbb2d5" }
-webauthn-rs-proto = { git = "https://github.com/kanidm/webauthn-rs.git", rev = "429662e34d6e760af8cff68760567c6b56dbb2d5" }
+base64urlsafedata = { git = "https://github.com/kanidm/webauthn-rs.git", rev = "2218d2055c0c900ef57b398423eee5e8d5521f4c" }
+webauthn-authenticator-rs = { git = "https://github.com/kanidm/webauthn-rs.git", rev = "2218d2055c0c900ef57b398423eee5e8d5521f4c" }
+webauthn-rs = { git = "https://github.com/kanidm/webauthn-rs.git", rev = "2218d2055c0c900ef57b398423eee5e8d5521f4c" }
+webauthn-rs-core = { git = "https://github.com/kanidm/webauthn-rs.git", rev = "2218d2055c0c900ef57b398423eee5e8d5521f4c" }
+webauthn-rs-proto = { git = "https://github.com/kanidm/webauthn-rs.git", rev = "2218d2055c0c900ef57b398423eee5e8d5521f4c" }
+sshkey-attest = { git = "https://github.com/kanidm/webauthn-rs.git", rev = "2218d2055c0c900ef57b398423eee5e8d5521f4c" }
 
 # base64urlsafedata = { path = "../webauthn-rs/base64urlsafedata" }
 # webauthn-authenticator-rs = { path = "../webauthn-rs/webauthn-authenticator-rs" }
 # webauthn-rs = { path = "../webauthn-rs/webauthn-rs" }
 # webauthn-rs-core = { path = "../webauthn-rs/webauthn-rs-core" }
 # webauthn-rs-proto = { path = "../webauthn-rs/webauthn-rs-proto" }
+# sshkey-attest = { path = "../webauthn-rs/sshkey-attest" }
 
 [workspace.dependencies]
 kanidmd_core = { path = "./server/core" }
 kanidmd_lib = { path = "./server/lib" }
 kanidmd_lib_macros = { path = "./server/lib-macros" }
+kanidmd_testkit = { path = "./server/testkit" }
 kanidm_build_profiles = { path = "./libs/profiles", version = "1.1.0-rc.14-dev" }
+kanidm_client = { path = "./libs/client", version = "1.1.0-rc.14-dev" }
 kanidm_lib_crypto = { path = "./libs/crypto" }
 kanidm_lib_file_permissions = { path = "./libs/file_permissions" }
-kanidm_client = { path = "./libs/client", version = "1.1.0-rc.14-dev" }
 kanidm_proto = { path = "./proto", version = "1.1.0-rc.14-dev" }
 kanidm_unix_int = { path = "./unix_integration" }
 kanidm_utils_users = { path = "./libs/users" }
@@ -85,29 +88,29 @@ kanidm_utils_users = { path = "./libs/users" }
 serde_with = "3.3.0"
 argon2 = { version = "0.5.2", features = ["alloc"] }
 async-recursion = "1.0.5"
-async-trait = "^0.1.73"
+async-trait = "^0.1.74"
 axum = { version = "0.6.20", features = [
-    "json",
-    "http2",
-    "macros",
-    "tracing",
+    "form",
     "headers",
+    "http2",
+    "json",
+    "macros",
+    "multipart",
     "original-uri",
     "query",
-    "form",
-    "http2",
+    "tracing",
 ] }
 axum-csp = { version = "0.0.5" }
 base32 = "^0.4.0"
 base64 = "^0.21.4"
 base64urlsafedata = "0.1.3"
 bytes = "^1.5.0"
-clap = { version = "^4.4.4", features = ["derive", "env"] }
-clap_complete = "^4.4.1"
+clap = { version = "^4.4.6", features = ["derive", "env"] }
+clap_complete = "^4.4.3"
 # Forced by saffron/cron
 chrono = "^0.4.31"
 compact_jwt = { version = "^0.2.10", default-features = false }
-concread = "^0.4.1"
+concread = "^0.4.3"
 cron = "0.12.0"
 crossbeam = "0.8.1"
 criterion = "^0.5.1"
@@ -122,11 +125,17 @@ futures-concurrency = "^3.1.0"
 futures-util = { version = "^0.3.21", features = ["sink"] }
 gix = { version = "0.53.1", default-features = false }
 gloo = "^0.8.1"
-hashbrown = { version = "0.14.0", features = ["serde", "inline-more", "ahash"] }
+hashbrown = { version = "0.14.1", features = ["serde", "inline-more", "ahash"] }
 hex = "^0.4.3"
+http = "0.2.9"
 hyper = { version = "0.14.27", features = ["full"] }
 hyper-tls = "0.5.0"
 idlset = "^0.2.4"
+image = { version = "0.24.7", default-features = false, features = [
+    "gif",
+    "jpeg",
+    "webp",
+] }
 enum-iterator = "1.4.0"
 js-sys = "^0.3.63"
 # REMOVE this
@@ -134,9 +143,10 @@ lazy_static = "^1.4.0"
 ldap3_client = "^0.3.5"
 ldap3_proto = { version = "^0.3.5", features = ["serde"] }
 
-libc = "^0.2.148"
+libc = "^0.2.149"
 libnss = "^0.4.0"
 libsqlite3-sys = "^0.25.0"
+lodepng = "3.7.2"
 lru = "^0.8.0"
 mathru = "^0.13.0"
 notify-debouncer-full = { version = "0.1" }
@@ -146,11 +156,11 @@ openssl-sys = "^0.9"
 openssl = "^0.10.57"
 paste = "^1.0.14"
 pkg-config = "^0.3.27"
-proc-macro2 = "1.0.67"
+proc-macro2 = "1.0.69"
 qrcode = "^0.12.0"
 quote = "1"
 rand = "^0.8.5"
-regex = "1.9.5"
+regex = "1.10.1"
 reqwest = { version = "0.11.20", default-features = false, features = [
     "cookies",
     "json",
@@ -164,7 +174,7 @@ rusqlite = { version = "^0.28.0", features = ["array", "bundled"] }
 scim_proto = "^0.2.1"
 sd-notify = "^0.4.1"
 selinux = "^0.4.2"
-serde = "^1.0.188"
+serde = "^1.0.189"
 serde_cbor = { version = "0.12.0-dev", package = "serde_cbor_2" }
 serde_json = "^1.0.107"
 serde-wasm-bindgen = "0.5"
@@ -172,21 +182,21 @@ shellexpand = "^2.1.2"
 sketching = { path = "./libs/sketching" }
 smartstring = "^1.0.1"
 smolset = "^1.3.1"
-sshkeys = "^0.3.1"
-syn = { version = "2.0.32", features = ["full"] }
+sshkey-attest = "^0.5.0-dev"
+svg = "0.13.1"
+syn = { version = "2.0.38", features = ["full"] }
 tempfile = "3.8.0"
 testkit-macros = { path = "./server/testkit-macros" }
 time = { version = "^0.3.21", features = ["formatting", "local-offset"] }
 
 tikv-jemallocator = "0.5"
 
-tokio = "^1.32.0"
+tokio = "^1.33.0"
 tokio-openssl = "^0.6.3"
 tokio-util = "^0.7.9"
 
 toml = "^0.5.11"
-touch = "^0.0.1"
-tracing = { version = "^0.1.37", features = [
+tracing = { version = "^0.1.39", features = [
     "max_level_trace",
     "release_max_level_debug",
 ] }
@@ -194,11 +204,12 @@ tracing = { version = "^0.1.37", features = [
 tracing-subscriber = { version = "^0.3.17", features = ["env-filter"] }
 tracing-forest = "^0.1.6"
 
-tss-esapi = "^7.3.0"
+tss-esapi = "^7.4.0"
 
 url = "^2.4.1"
 urlencoding = "2.1.3"
-users = "^0.11.0"
+utoipa = "4.0.0"
+utoipa-swagger-ui = "4.0.0"
 uuid = "^1.4.1"
 
 wasm-bindgen = "^0.2.86"

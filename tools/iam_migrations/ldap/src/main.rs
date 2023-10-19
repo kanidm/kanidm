@@ -43,11 +43,11 @@ use tracing_subscriber::prelude::*;
 use tracing_subscriber::{fmt, EnvFilter};
 
 use kanidm_client::KanidmClientBuilder;
+use kanidm_lib_file_permissions::readonly as file_permissions_readonly;
 use kanidm_proto::scim_v1::{
     MultiValueAttr, ScimEntry, ScimExternalMember, ScimSshPubKey, ScimSyncGroup, ScimSyncPerson,
     ScimSyncRequest, ScimSyncRetentionMode, ScimSyncState,
 };
-use kanidmd_lib::utils::file_permissions_readonly;
 
 #[cfg(target_family = "unix")]
 use kanidm_utils_users::{get_current_gid, get_current_uid, get_effective_gid, get_effective_uid};
@@ -62,21 +62,33 @@ async fn driver_main(opt: Opt) {
     let mut f = match File::open(&opt.ldap_sync_config) {
         Ok(f) => f,
         Err(e) => {
-            error!("Unable to open profile file [{:?}] 🥺", e);
+            error!(
+                "Unable to open ldap sync config from '{}' [{:?}] 🥺",
+                &opt.ldap_sync_config.display(),
+                e
+            );
             return;
         }
     };
 
     let mut contents = String::new();
     if let Err(e) = f.read_to_string(&mut contents) {
-        error!("unable to read profile contents {:?}", e);
+        error!(
+            "unable to read file '{}': {:?}",
+            &opt.ldap_sync_config.display(),
+            e
+        );
         return;
     };
 
     let sync_config: Config = match toml::from_str(contents.as_str()) {
         Ok(c) => c,
         Err(e) => {
-            eprintln!("unable to parse config {:?}", e);
+            eprintln!(
+                "Unable to parse config from '{}' error: {:?}",
+                &opt.ldap_sync_config.display(),
+                e
+            );
             return;
         }
     };
@@ -780,4 +792,48 @@ fn main() {
     tracing::debug!("Using {} worker threads", par_count);
 
     rt.block_on(async move { driver_main(opt).await });
+}
+
+#[tokio::test]
+async fn test_driver_main() {
+    let testopt = Opt {
+        client_config: PathBuf::from("test"),
+        ldap_sync_config: PathBuf::from("test"),
+        debug: false,
+        schedule: false,
+        proto_dump: false,
+        dry_run: false,
+        skip_root_check: true,
+    };
+    let _ = sketching::test_init();
+
+    println!("testing config");
+    // because it can't find the profile file it'll just stop
+    assert_eq!(driver_main(testopt.clone()).await, ());
+    println!("done testing missing config");
+
+    let testopt = Opt {
+        client_config: PathBuf::from(format!("{}/Cargo.toml", env!("CARGO_MANIFEST_DIR"))),
+        ldap_sync_config: PathBuf::from(format!("{}/Cargo.toml", env!("CARGO_MANIFEST_DIR"))),
+        ..testopt
+    };
+
+    println!("valid file path, invalid contents");
+    assert_eq!(driver_main(testopt.clone()).await, ());
+    println!("done with valid file path, invalid contents");
+    let testopt = Opt {
+        client_config: PathBuf::from(format!(
+            "{}/../../../examples/iam_migration_ldap.toml",
+            env!("CARGO_MANIFEST_DIR")
+        )),
+        ldap_sync_config: PathBuf::from(format!(
+            "{}/../../../examples/iam_migration_ldap.toml",
+            env!("CARGO_MANIFEST_DIR")
+        )),
+        ..testopt
+    };
+
+    println!("valid file path, invalid contents");
+    assert_eq!(driver_main(testopt).await, ());
+    println!("done with valid file path, valid contents");
 }

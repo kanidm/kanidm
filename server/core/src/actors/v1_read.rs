@@ -4,7 +4,7 @@ use std::net::IpAddr;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use kanidm_proto::internal::{AppLink, IdentifyUserRequest, IdentifyUserResponse};
+use kanidm_proto::internal::{AppLink, IdentifyUserRequest, IdentifyUserResponse, ImageValue};
 use kanidm_proto::v1::{
     ApiToken, AuthIssueSession, AuthRequest, BackupCodesView, CURequest, CUSessionToken, CUStatus,
     CredentialStatus, Entry as ProtoEntry, OperationError, RadiusAuthToken, SearchRequest,
@@ -402,6 +402,45 @@ impl QueryServerReadV1 {
             })
     }
 
+    #[instrument(level = "debug", skip_all)]
+    /// pull an image so we can present it to the user
+    pub async fn handle_oauth2_rs_image_get_image(
+        &self,
+        uat: Option<String>,
+        rs: Filter<FilterInvalid>,
+    ) -> Result<ImageValue, OperationError> {
+        let mut idms_prox_read = self.idms.proxy_read().await;
+        let ct = duration_from_epoch_now();
+
+        let ident = idms_prox_read
+                .validate_and_parse_token_to_ident(uat.as_deref(), ct)
+                .map_err(|e| {
+                    admin_error!(err = ?e, "Invalid identity in handle_oauth2_rs_image_get_image {:?}", uat);
+                    e
+                })?;
+        let attrs = vec![Attribute::Image.to_string()];
+
+        let search = SearchEvent::from_internal_message(
+            ident,
+            &rs,
+            Some(attrs.as_slice()),
+            &mut idms_prox_read.qs_read,
+        )?;
+
+        let entries = idms_prox_read.qs_read.search(&search)?;
+        if entries.is_empty() {
+            return Err(OperationError::NoMatchingEntries);
+        }
+        let entry = match entries.first() {
+            Some(entry) => entry,
+            None => return Err(OperationError::NoMatchingEntries),
+        };
+        match entry.get_ava_single_image(Attribute::Image) {
+            Some(image) => Ok(image),
+            None => Err(OperationError::NoMatchingEntries),
+        }
+    }
+
     #[instrument(
         level = "info",
         skip_all,
@@ -745,7 +784,7 @@ impl QueryServerReadV1 {
                     .and_then(|e| {
                         // From the entry, turn it into the value
                         e.get_ava_iter_sshpubkeys(Attribute::SshPublicKey)
-                            .map(|i| i.map(|s| s.to_string()).collect())
+                            .map(|i| i.collect())
                     })
                     .unwrap_or_else(|| {
                         // No matching entry? Return none.
@@ -809,7 +848,7 @@ impl QueryServerReadV1 {
                         // From the entry, turn it into the value
                         e.get_ava_set(Attribute::SshPublicKey).and_then(|vs| {
                             // Get the one tagged value
-                            vs.get_ssh_tag(&tag).map(str::to_string)
+                            vs.get_ssh_tag(&tag).map(|pk| pk.to_string())
                         })
                     })
                     .unwrap_or_else(|| {

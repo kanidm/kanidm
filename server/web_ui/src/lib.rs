@@ -15,7 +15,7 @@
 
 use error::FetchError;
 use gloo::console;
-use kanidm_proto::constants::APPLICATION_JSON;
+use kanidm_proto::constants::{APPLICATION_JSON, KSESSIONID};
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::JsFuture;
@@ -91,7 +91,7 @@ pub async fn do_request(
     if let Some(sessionid) = models::pop_auth_session_id() {
         request
             .headers()
-            .set("x-kanidm-auth-session-id", &sessionid)
+            .set(KSESSIONID, &sessionid)
             .expect_throw("failed to set auth session id header");
     }
 
@@ -108,7 +108,7 @@ pub async fn do_request(
     let status = resp.status();
     let headers: Headers = resp.headers();
 
-    if let Some(sessionid) = headers.get("x-kanidm-auth-session-id").ok().flatten() {
+    if let Some(sessionid) = headers.get(KSESSIONID).ok().flatten() {
         models::push_auth_session_id(sessionid);
     }
 

@@ -1,3 +1,6 @@
+use crate::constants::{
+    CONTENT_TYPE_GIF, CONTENT_TYPE_JPG, CONTENT_TYPE_PNG, CONTENT_TYPE_SVG, CONTENT_TYPE_WEBP,
+};
 use crate::v1::ApiTokenPurpose;
 use serde::{Deserialize, Serialize};
 use url::Url;
@@ -44,4 +47,84 @@ pub enum IdentifyUserResponse {
     Success,
     CodeFailure,
     InvalidUserId,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Hash, Ord, PartialOrd)]
+#[serde(rename_all = "lowercase")]
+pub enum ImageType {
+    Png,
+    Jpg,
+    Gif,
+    Svg,
+    Webp,
+}
+
+impl TryFrom<&str> for ImageType {
+    type Error = &'static str;
+    /// ```
+    /// use kanidm_proto::internal::ImageType;
+    /// assert_eq!(ImageType::try_from("png").unwrap(), ImageType::Png);
+    /// assert!(ImageType::try_from("krabs").is_err());
+    /// ```
+    fn try_from(value: &str) -> Result<Self, &'static str> {
+        #[allow(clippy::panic)]
+        match value {
+            "png" => Ok(Self::Png),
+            "jpg" => Ok(Self::Jpg),
+            "jpeg" => Ok(Self::Jpg), // ugh I hate this
+            "gif" => Ok(Self::Gif),
+            "svg" => Ok(Self::Svg),
+            "webp" => Ok(Self::Webp),
+            _ => Err("Invalid image type!"),
+        }
+    }
+}
+
+impl ImageType {
+    pub fn try_from_content_type(content_type: &str) -> Result<Self, String> {
+        let content_type = content_type.to_lowercase();
+        match content_type.as_str() {
+            CONTENT_TYPE_JPG => Ok(ImageType::Jpg),
+            CONTENT_TYPE_PNG => Ok(ImageType::Png),
+            CONTENT_TYPE_GIF => Ok(ImageType::Gif),
+            CONTENT_TYPE_WEBP => Ok(ImageType::Webp),
+            CONTENT_TYPE_SVG => Ok(ImageType::Svg),
+            _ => Err(format!("Invalid content type: {}", content_type)),
+        }
+    }
+
+    pub fn as_content_type_str(&self) -> &'static str {
+        match &self {
+            ImageType::Jpg => CONTENT_TYPE_JPG,
+            ImageType::Png => CONTENT_TYPE_PNG,
+            ImageType::Gif => CONTENT_TYPE_GIF,
+            ImageType::Webp => CONTENT_TYPE_WEBP,
+            ImageType::Svg => CONTENT_TYPE_SVG,
+        }
+    }
+}
+
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize, Debug, PartialOrd, Ord, Hash)]
+pub struct ImageValue {
+    pub filename: String,
+    pub filetype: ImageType,
+    pub contents: Vec<u8>,
+}
+
+impl TryFrom<&str> for ImageValue {
+    type Error = String;
+    fn try_from(s: &str) -> Result<Self, String> {
+        serde_json::from_str(s)
+            .map_err(|e| format!("Failed to decode ImageValue from {} - {:?}", s, e))
+    }
+}
+
+impl ImageValue {
+    pub fn new(filename: String, filetype: ImageType, contents: Vec<u8>) -> Self {
+        Self {
+            filename,
+            filetype,
+            contents,
+        }
+    }
 }

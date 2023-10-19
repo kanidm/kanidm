@@ -28,24 +28,24 @@ aiohttp = "^3.8.1"
 Authlib = "^1.2.0"
 
 [tool.poetry.dev-dependencies]
-mypy = "^1.5"
+mypy = "^1.6"
 pytest = "^7.4.2"
 types-toml = "^0.10.8"
-pylint-pydantic = "^0.2.4"
-coverage = "^7.3.1"
+pylint-pydantic = "^0.3.0"
+coverage = "^7.3.2"
 pylint-pytest = "^1.1.2"
 pytest-asyncio = "^0.21.1"
 pytest-mock = "^3.11.1"
 pytest-aiohttp = "^1.0.5"
 black = "^23.9.1"
 mkdocs = "^1.5.3"
-mkdocs-material = "^9.3.2"
+mkdocs-material = "^9.4.6"
 mkdocstrings = "^0.23.0"
-mkdocstrings-python = "^1.7.0"
+mkdocstrings-python = "^1.7.3"
 pook = "^1.1.1"
 
 [tool.poetry.group.dev.dependencies]
-ruff = ">=0.0.230,<0.0.292"
+ruff = ">=0.0.230,<0.0.293"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

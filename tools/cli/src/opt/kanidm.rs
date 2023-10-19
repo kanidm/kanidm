@@ -9,7 +9,7 @@ pub struct Named {
 
 #[derive(Debug, Args)]
 pub struct DebugOpt {
-    /// Enable debbuging of the kanidm tool
+    /// Enable debugging of the kanidm tool
     #[clap(short, long, env = "KANIDM_DEBUG")]
     pub debug: bool,
 }
@@ -34,7 +34,7 @@ impl std::str::FromStr for OutputMode {
 
 #[derive(Debug, Args, Clone)]
 pub struct CommonOpt {
-    /// Enable debbuging of the kanidm tool
+    /// Enable debugging of the kanidm tool
     #[clap(short, long, env = "KANIDM_DEBUG")]
     pub debug: bool,
     /// The URL of the kanidm instance
@@ -515,7 +515,7 @@ pub enum ServiceAccountOpt {
         #[clap(subcommand)]
         commands: AccountValidity,
     },
-    /// Convert a service account into a person. This is used during the alpha.9
+    /// (Deprecated - due for removal in v1.1.0-15) - Convert a service account into a person. This is used during the alpha.9
     /// to alpha.10 migration to "fix up" accounts that were not previously marked
     /// as persons.
     #[clap(name = "into-person")]
@@ -795,6 +795,32 @@ pub enum PwBadlistOpt {
 }
 
 #[derive(Debug, Subcommand)]
+pub enum DeniedNamesOpt {
+    #[clap[name = "show"]]
+    /// Show information about this system's denied name list
+    Show {
+        #[clap(flatten)]
+        copt: CommonOpt,
+    },
+    #[clap[name = "append"]]
+    Append {
+        #[clap(flatten)]
+        copt: CommonOpt,
+        #[clap(value_parser, required = true, num_args(1..))]
+        names: Vec<String>,
+    },
+    #[clap[name = "remove"]]
+    /// Remove a name from the denied name list.
+    Remove {
+        #[clap(flatten)]
+        copt: CommonOpt,
+        #[clap(value_parser, required = true, num_args(1..))]
+        names: Vec<String>,
+    },
+}
+
+
+#[derive(Debug, Subcommand)]
 pub enum DomainOpt {
     #[clap[name = "set-display-name"]]
     /// Set the domain display name
@@ -951,6 +977,12 @@ pub enum SystemOpt {
     PwBadlist {
         #[clap(subcommand)]
         commands: PwBadlistOpt,
+    },
+    #[clap(name = "denied-names")]
+    /// Configure and manage denied names
+    DeniedNames {
+        #[clap(subcommand)]
+        commands: DeniedNamesOpt,
     },
     /// Configure and display the system auth session expiry
     #[clap(name = "auth-expiry")]

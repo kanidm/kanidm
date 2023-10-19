@@ -8,9 +8,7 @@
 #![deny(clippy::suspicious)]
 #![deny(clippy::perf)]
 // Specific lints to enforce.
-// TODO: can't use this until we have a better way to handle the 'todo' lint?
-// #![deny(clippy::todo)]
-#![warn(clippy::todo)]
+#![deny(clippy::todo)]
 #![deny(clippy::unimplemented)]
 #![deny(clippy::unwrap_used)]
 #![deny(clippy::expect_used)]
@@ -28,6 +26,7 @@ static ALLOC: jemallocator::Jemalloc = jemallocator::Jemalloc;
 
 #[macro_use]
 extern crate rusqlite;
+
 #[macro_use]
 extern crate tracing;
 #[macro_use]
@@ -47,13 +46,14 @@ pub mod entry;
 pub mod event;
 pub mod filter;
 pub mod modify;
-pub mod utils;
+pub mod time;
+pub(crate) mod utils;
 pub mod value;
 pub mod valueset;
 #[macro_use]
 mod plugins;
 pub mod idm;
-mod repl;
+pub mod repl;
 pub mod schema;
 pub mod server;
 pub mod status;
@@ -102,7 +102,7 @@ pub mod prelude {
         QueryServer, QueryServerReadTransaction, QueryServerTransaction,
         QueryServerWriteTransaction,
     };
-    pub use crate::utils::duration_from_epoch_now;
+    pub use crate::time::duration_from_epoch_now;
     pub use crate::value::{
         ApiTokenScope, IndexType, PartialValue, SessionScope, SyntaxType, Value,
     };

@@ -1,13 +1,13 @@
-use std::time::Duration;
 use std::{iter, sync::Arc};
 
+use kanidm_proto::internal::ImageValue;
 use kanidm_proto::v1::{
     AccountUnixExtend, CUIntentToken, CUSessionToken, CUStatus, CreateRequest, DeleteRequest,
     Entry as ProtoEntry, GroupUnixExtend, Modify as ProtoModify, ModifyList as ProtoModifyList,
     ModifyRequest, OperationError,
 };
 use time::OffsetDateTime;
-use tracing::{info, instrument, span, trace, Level};
+use tracing::{info, instrument, span, trace, Instrument, Level};
 use uuid::Uuid;
 
 use kanidmd_lib::{
@@ -30,7 +30,6 @@ use kanidmd_lib::{
     idm::server::{IdmServer, IdmServerTransaction},
     idm::serviceaccount::{DestroyApiTokenEvent, GenerateApiTokenEvent},
     modify::{Modify, ModifyInvalid, ModifyList},
-    utils::duration_from_epoch_now,
     value::{PartialValue, Value},
 };
 
@@ -42,7 +41,7 @@ pub struct QueryServerWriteV1 {
 
 impl QueryServerWriteV1 {
     pub fn new(idms: Arc<IdmServer>) -> Self {
-        info!("Starting query server v1 worker ...");
+        debug!("Starting a query server v1 worker ...");
         QueryServerWriteV1 { idms }
     }
 
@@ -61,8 +60,8 @@ impl QueryServerWriteV1 {
         proto_ml: &ProtoModifyList,
         filter: Filter<FilterInvalid>,
     ) -> Result<(), OperationError> {
-        let mut idms_prox_write = self.idms.proxy_write(duration_from_epoch_now()).await;
         let ct = duration_from_epoch_now();
+        let mut idms_prox_write = self.idms.proxy_write(ct).await;
 
         let ident = idms_prox_write
             .validate_and_parse_token_to_ident(uat.as_deref(), ct)
@@ -88,7 +87,7 @@ impl QueryServerWriteV1 {
         ) {
             Ok(m) => m,
             Err(e) => {
-                admin_error!(err=?e, "Failed to begin modify");
+                admin_error!(err=?e, "Failed to begin modify during modify_from_parts");
                 return Err(e);
             }
         };
@@ -109,8 +108,8 @@ impl QueryServerWriteV1 {
         ml: &ModifyList<ModifyInvalid>,
         filter: Filter<FilterInvalid>,
     ) -> Result<(), OperationError> {
-        let mut idms_prox_write = self.idms.proxy_write(duration_from_epoch_now()).await;
         let ct = duration_from_epoch_now();
+        let mut idms_prox_write = self.idms.proxy_write(ct).await;
 
         let ident = idms_prox_write
             .validate_and_parse_token_to_ident(uat.as_deref(), ct)
@@ -139,7 +138,7 @@ impl QueryServerWriteV1 {
         ) {
             Ok(m) => m,
             Err(e) => {
-                admin_error!(err = ?e, "Failed to begin modify");
+                admin_error!(err = ?e, "Failed to begin modify during modify_from_internal_parts");
                 return Err(e);
             }
         };
@@ -163,8 +162,8 @@ impl QueryServerWriteV1 {
         req: CreateRequest,
         eventid: Uuid,
     ) -> Result<(), OperationError> {
-        let mut idms_prox_write = self.idms.proxy_write(duration_from_epoch_now()).await;
         let ct = duration_from_epoch_now();
+        let mut idms_prox_write = self.idms.proxy_write(ct).await;
 
         let ident = idms_prox_write
             .validate_and_parse_token_to_ident(uat.as_deref(), ct)
@@ -200,8 +199,8 @@ impl QueryServerWriteV1 {
         req: ModifyRequest,
         eventid: Uuid,
     ) -> Result<(), OperationError> {
-        let mut idms_prox_write = self.idms.proxy_write(duration_from_epoch_now()).await;
         let ct = duration_from_epoch_now();
+        let mut idms_prox_write = self.idms.proxy_write(ct).await;
         let ident = idms_prox_write
             .validate_and_parse_token_to_ident(uat.as_deref(), ct)
             .map_err(|e| {
@@ -212,7 +211,7 @@ impl QueryServerWriteV1 {
         let mdf = match ModifyEvent::from_message(ident, &req, &mut idms_prox_write.qs_write) {
             Ok(m) => m,
             Err(e) => {
-                admin_error!(err = ?e, "Failed to begin modify");
+                admin_error!(err = ?e, "Failed to begin modify during handle_modify");
                 return Err(e);
             }
         };
@@ -236,8 +235,8 @@ impl QueryServerWriteV1 {
         req: DeleteRequest,
         eventid: Uuid,
     ) -> Result<(), OperationError> {
-        let mut idms_prox_write = self.idms.proxy_write(duration_from_epoch_now()).await;
         let ct = duration_from_epoch_now();
+        let mut idms_prox_write = self.idms.proxy_write(ct).await;
         let ident = idms_prox_write
             .validate_and_parse_token_to_ident(uat.as_deref(), ct)
             .map_err(|e| {
@@ -273,8 +272,8 @@ impl QueryServerWriteV1 {
         eventid: Uuid,
     ) -> Result<(), OperationError> {
         // Given a protoEntry, turn this into a modification set.
-        let mut idms_prox_write = self.idms.proxy_write(duration_from_epoch_now()).await;
         let ct = duration_from_epoch_now();
+        let mut idms_prox_write = self.idms.proxy_write(ct).await;
         let ident = idms_prox_write
             .validate_and_parse_token_to_ident(uat.as_deref(), ct)
             .map_err(|e| {
@@ -292,7 +291,7 @@ impl QueryServerWriteV1 {
         let mdf =
             ModifyEvent::from_internal_parts(ident, &modlist, &filter, &idms_prox_write.qs_write)
                 .map_err(|e| {
-                admin_error!(err = ?e, "Failed to begin modify");
+                admin_error!(err = ?e, "Failed to begin modify during handle_internalpatch");
                 e
             })?;
 
@@ -315,8 +314,8 @@ impl QueryServerWriteV1 {
         filter: Filter<FilterInvalid>,
         eventid: Uuid,
     ) -> Result<(), OperationError> {
-        let mut idms_prox_write = self.idms.proxy_write(duration_from_epoch_now()).await;
         let ct = duration_from_epoch_now();
+        let mut idms_prox_write = self.idms.proxy_write(ct).await;
         let ident = idms_prox_write
             .validate_and_parse_token_to_ident(uat.as_deref(), ct)
             .map_err(|e| {
@@ -350,8 +349,8 @@ impl QueryServerWriteV1 {
         filter: Filter<FilterInvalid>,
         eventid: Uuid,
     ) -> Result<(), OperationError> {
-        let mut idms_prox_write = self.idms.proxy_write(duration_from_epoch_now()).await;
         let ct = duration_from_epoch_now();
+        let mut idms_prox_write = self.idms.proxy_write(ct).await;
         let ident = idms_prox_write
             .validate_and_parse_token_to_ident(uat.as_deref(), ct)
             .map_err(|e| {
@@ -892,7 +891,7 @@ impl QueryServerWriteV1 {
         ) {
             Ok(m) => m,
             Err(e) => {
-                admin_error!(err = ?e, "Failed to begin modify");
+                admin_error!(err = ?e, "Failed to begin modify during purge attribute");
                 return Err(e);
             }
         };
@@ -919,8 +918,8 @@ impl QueryServerWriteV1 {
         filter: Filter<FilterInvalid>,
         eventid: Uuid,
     ) -> Result<(), OperationError> {
-        let mut idms_prox_write = self.idms.proxy_write(duration_from_epoch_now()).await;
         let ct = duration_from_epoch_now();
+        let mut idms_prox_write = self.idms.proxy_write(ct).await;
         let ident = idms_prox_write
             .validate_and_parse_token_to_ident(uat.as_deref(), ct)
             .map_err(|e| {
@@ -1024,21 +1023,23 @@ impl QueryServerWriteV1 {
     #[instrument(
         level = "info",
         name = "ssh_key_create",
-        skip(self, uat, uuid_or_name, tag, key, filter, eventid)
+        skip_all,
         fields(uuid = ?eventid)
     )]
     pub async fn handle_sshkeycreate(
         &self,
         uat: Option<String>,
         uuid_or_name: String,
-        tag: String,
-        key: String,
+        tag: &str,
+        key: &str,
         filter: Filter<FilterInvalid>,
         eventid: Uuid,
     ) -> Result<(), OperationError> {
+        let v_sk = Value::new_sshkey_str(tag, key)?;
+
         // Because this is from internal, we can generate a real modlist, rather
         // than relying on the proto ones.
-        let ml = ModifyList::new_append(Attribute::SshPublicKey, Value::new_sshkey(tag, key));
+        let ml = ModifyList::new_append(Attribute::SshPublicKey, v_sk);
 
         self.modify_from_internal_parts(uat, &uuid_or_name, &ml, filter)
             .await
@@ -1047,7 +1048,7 @@ impl QueryServerWriteV1 {
     #[instrument(
         level = "info",
         name = "idm_account_unix_extend",
-        skip(self, uat, uuid_or_name, ux, eventid)
+        skip_all,
         fields(uuid = ?eventid)
     )]
     pub async fn handle_idmaccountunixextend(
@@ -1181,6 +1182,72 @@ impl QueryServerWriteV1 {
             .map(|_| ())
     }
 
+    #[instrument(level = "debug", skip_all)]
+    pub async fn handle_oauth2_rs_image_delete(
+        &self,
+        uat: Option<String>,
+        rs: Filter<FilterInvalid>,
+    ) -> Result<(), OperationError> {
+        let mut idms_prox_write = self.idms.proxy_write(duration_from_epoch_now()).await;
+        let ct = duration_from_epoch_now();
+
+        let ident = idms_prox_write
+                .validate_and_parse_token_to_ident(uat.as_deref(), ct)
+                .map_err(|e| {
+                    admin_error!(err = ?e, "Invalid identity in handle_oauth2_rs_image_delete {:?}", uat);
+                    e
+                })?;
+        let ml = ModifyList::new_purge(Attribute::Image);
+        let mdf = match ModifyEvent::from_internal_parts(ident, &ml, &rs, &idms_prox_write.qs_write)
+        {
+            Ok(m) => m,
+            Err(e) => {
+                admin_error!(err = ?e, "Failed to begin modify during handle_oauth2_rs_image_delete");
+                return Err(e);
+            }
+        };
+        idms_prox_write
+            .qs_write
+            .modify(&mdf)
+            .and_then(|_| idms_prox_write.commit().map(|_| ()))
+    }
+
+    #[instrument(level = "debug", skip_all)]
+    pub async fn handle_oauth2_rs_image_update(
+        &self,
+        uat: Option<String>,
+        rs: Filter<FilterInvalid>,
+        image: ImageValue,
+    ) -> Result<(), OperationError> {
+        let mut idms_prox_write = self.idms.proxy_write(duration_from_epoch_now()).await;
+        let ct = duration_from_epoch_now();
+
+        let ident = idms_prox_write
+            .validate_and_parse_token_to_ident(uat.as_deref(), ct)
+            .map_err(|e| {
+                admin_error!(err = ?e, "Invalid identity in handle_oauth2_rs_image_update {:?}", uat);
+                e
+            })?;
+
+        let ml = ModifyList::new_purge_and_set(Attribute::Image, Value::Image(image));
+
+        let mdf = match ModifyEvent::from_internal_parts(ident, &ml, &rs, &idms_prox_write.qs_write)
+        {
+            Ok(m) => m,
+            Err(e) => {
+                admin_error!(err = ?e, "Failed to begin modify during handle_oauth2_rs_image_update");
+                return Err(e);
+            }
+        };
+
+        trace!(?mdf, "Begin modify event");
+
+        idms_prox_write
+            .qs_write
+            .modify(&mdf)
+            .and_then(|_| idms_prox_write.commit().map(|_| ()))
+    }
+
     #[instrument(
         level = "info",
         skip_all,
@@ -1196,8 +1263,8 @@ impl QueryServerWriteV1 {
     ) -> Result<(), OperationError> {
         // Because this is from internal, we can generate a real modlist, rather
         // than relying on the proto ones.
-        let mut idms_prox_write = self.idms.proxy_write(duration_from_epoch_now()).await;
         let ct = duration_from_epoch_now();
+        let mut idms_prox_write = self.idms.proxy_write(ct).await;
 
         let ident = idms_prox_write
             .validate_and_parse_token_to_ident(uat.as_deref(), ct)
@@ -1254,8 +1321,8 @@ impl QueryServerWriteV1 {
         filter: Filter<FilterInvalid>,
         eventid: Uuid,
     ) -> Result<(), OperationError> {
-        let mut idms_prox_write = self.idms.proxy_write(duration_from_epoch_now()).await;
         let ct = duration_from_epoch_now();
+        let mut idms_prox_write = self.idms.proxy_write(ct).await;
 
         let ident = idms_prox_write
             .validate_and_parse_token_to_ident(uat.as_deref(), ct)
@@ -1311,8 +1378,8 @@ impl QueryServerWriteV1 {
     ) -> Result<(), OperationError> {
         // Because this is from internal, we can generate a real modlist, rather
         // than relying on the proto ones.
-        let mut idms_prox_write = self.idms.proxy_write(duration_from_epoch_now()).await;
         let ct = duration_from_epoch_now();
+        let mut idms_prox_write = self.idms.proxy_write(ct).await;
 
         let ident = idms_prox_write
             .validate_and_parse_token_to_ident(uat.as_deref(), ct)
@@ -1502,9 +1569,15 @@ impl QueryServerWriteV1 {
             .qs_write
             .purge_tombstones()
             .and_then(|_| idms_prox_write.commit());
-        admin_info!(?res, "Purge tombstones result");
-        #[allow(clippy::expect_used)]
-        res.expect("Invalid Server State");
+
+        match res {
+            Ok(()) => {
+                debug!("Purge tombstone success");
+            }
+            Err(err) => {
+                error!(?err, "Unable to purge tombstones");
+            }
+        }
     }
 
     #[instrument(
@@ -1514,30 +1587,40 @@ impl QueryServerWriteV1 {
     )]
     pub async fn handle_purgerecycledevent(&self, msg: PurgeRecycledEvent) {
         trace!(?msg, "Begin purge recycled event");
-        let mut idms_prox_write = self.idms.proxy_write(duration_from_epoch_now()).await;
+        let ct = duration_from_epoch_now();
+        let mut idms_prox_write = self.idms.proxy_write(ct).await;
         let res = idms_prox_write
             .qs_write
             .purge_recycled()
             .and_then(|_| idms_prox_write.commit());
-        admin_info!(?res, "Purge recycled result");
-        #[allow(clippy::expect_used)]
-        res.expect("Invalid Server State");
+
+        match res {
+            Ok(()) => {
+                debug!("Purge recyclebin success");
+            }
+            Err(err) => {
+                error!(?err, "Unable to purge recyclebin");
+            }
+        }
     }
 
     pub(crate) async fn handle_delayedaction(&self, da: DelayedAction) {
         let eventid = Uuid::new_v4();
-        let nspan = span!(Level::INFO, "process_delayed_action", uuid = ?eventid);
-        let _span = nspan.enter();
+        let span = span!(Level::INFO, "process_delayed_action", uuid = ?eventid);
 
-        trace!("Begin delayed action ...");
-        let ct = duration_from_epoch_now();
-        let mut idms_prox_write = self.idms.proxy_write(ct).await;
-        if let Err(res) = idms_prox_write
-            .process_delayedaction(da, ct)
-            .and_then(|_| idms_prox_write.commit())
-        {
-            admin_info!(?res, "delayed action error");
+        async {
+            trace!("Begin delayed action ...");
+            let ct = duration_from_epoch_now();
+            let mut idms_prox_write = self.idms.proxy_write(ct).await;
+            if let Err(res) = idms_prox_write
+                .process_delayedaction(da, ct)
+                .and_then(|_| idms_prox_write.commit())
+            {
+                info!(?res, "delayed action error");
+            }
         }
+        .instrument(span)
+        .await
     }
 
     #[instrument(
@@ -1551,7 +1634,8 @@ impl QueryServerWriteV1 {
         eventid: Uuid,
     ) -> Result<String, OperationError> {
         trace!(%name, "Begin admin recover account event");
-        let mut idms_prox_write = self.idms.proxy_write(duration_from_epoch_now()).await;
+        let ct = duration_from_epoch_now();
+        let mut idms_prox_write = self.idms.proxy_write(ct).await;
         let pw = idms_prox_write.recover_account(name.as_str(), None)?;
 
         idms_prox_write.commit().map(|()| pw)

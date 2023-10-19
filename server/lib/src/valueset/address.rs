@@ -331,7 +331,7 @@ impl ValueSetT for ValueSetEmailAddress {
                 let r = self.set.remove(a);
                 if &self.primary == a {
                     // if we can, inject another former address into primary.
-                    if let Some(n) = self.set.iter().next().cloned() {
+                    if let Some(n) = self.set.iter().take(1).next().cloned() {
                         self.primary = n
                     }
                 }

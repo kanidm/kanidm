@@ -23,10 +23,15 @@ use std::fmt;
 use std::time::{Duration, Instant};
 
 use kanidm_proto::v1::OperationError;
+use openssl::error::ErrorStack as OpenSSLErrorStack;
 use openssl::hash::{self, MessageDigest};
 use openssl::nid::Nid;
 use openssl::pkcs5::pbkdf2_hmac;
 use openssl::sha::Sha512;
+
+pub mod mtls;
+pub mod prelude;
+pub mod serialise;
 
 #[cfg(feature = "tpm")]
 pub use tss_esapi::{handles::ObjectHandle as TpmHandle, Context as TpmContext, Error as TpmError};
@@ -68,11 +73,26 @@ pub enum CryptoError {
     Tpm2FeatureMissing,
     Tpm2InputExceeded,
     Tpm2ContextMissing,
-    OpenSSL,
+    OpenSSL(u64),
     Md4Disabled,
     Argon2,
     Argon2Version,
     Argon2Parameters,
+}
+
+impl From<OpenSSLErrorStack> for CryptoError {
+    fn from(ossl_err: OpenSSLErrorStack) -> Self {
+        error!(?ossl_err);
+        let code = ossl_err.errors().get(0).map(|e| e.code()).unwrap_or(0);
+        #[cfg(not(target_family="windows"))]
+        let result = CryptoError::OpenSSL(code);
+
+        // this is an .into() because on windows it's a u32 not a u64
+        #[cfg(target_family="windows")]
+        let result = CryptoError::OpenSSL(code.into());
+
+        result
+    }
 }
 
 #[allow(clippy::from_over_into)]
@@ -785,8 +805,8 @@ impl Password {
             // Turn key to a vec.
             Kdf::PBKDF2(pbkdf2_cost, salt, key)
         })
-        .map_err(|_| CryptoError::OpenSSL)
         .map(|material| Password { material })
+        .map_err(|e| e.into())
     }
 
     pub fn new_argon2id(policy: &CryptoPolicy, cleartext: &str) -> Result<Self, CryptoError> {
@@ -962,11 +982,11 @@ impl Password {
                     MessageDigest::sha256(),
                     chal_key.as_mut_slice(),
                 )
-                .map_err(|_| CryptoError::OpenSSL)
                 .map(|()| {
                     // Actually compare the outputs.
                     &chal_key == key
                 })
+                .map_err(|e| e.into())
             }
             (Kdf::PBKDF2_SHA1(cost, salt, key), _) => {
                 let key_len = key.len();
@@ -979,11 +999,11 @@ impl Password {
                     MessageDigest::sha1(),
                     chal_key.as_mut_slice(),
                 )
-                .map_err(|_| CryptoError::OpenSSL)
                 .map(|()| {
                     // Actually compare the outputs.
                     &chal_key == key
                 })
+                .map_err(|e| e.into())
             }
             (Kdf::PBKDF2_SHA512(cost, salt, key), _) => {
                 let key_len = key.len();
@@ -996,11 +1016,11 @@ impl Password {
                     MessageDigest::sha512(),
                     chal_key.as_mut_slice(),
                 )
-                .map_err(|_| CryptoError::OpenSSL)
                 .map(|()| {
                     // Actually compare the outputs.
                     &chal_key == key
                 })
+                .map_err(|e| e.into())
             }
             (Kdf::SSHA512(salt, key), _) => {
                 let mut hasher = Sha512::new();

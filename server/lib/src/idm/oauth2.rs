@@ -19,6 +19,7 @@ use concread::cowcell::*;
 use fernet::Fernet;
 use hashbrown::HashMap;
 use kanidm_proto::constants::*;
+
 pub use kanidm_proto::oauth2::{
     AccessTokenIntrospectRequest, AccessTokenIntrospectResponse, AccessTokenRequest,
     AccessTokenResponse, AuthorisationRequest, CodeChallengeMethod, ErrorResponse, GrantTypeReq,
@@ -238,6 +239,8 @@ pub struct Oauth2RS {
     scopes_supported: BTreeSet<String>,
     prefer_short_username: bool,
     type_: OauthRSType,
+    /// Does the RS have a custom image set? If not, we use the default.
+    has_custom_image: bool,
 }
 
 impl std::fmt::Debug for Oauth2RS {
@@ -250,6 +253,7 @@ impl std::fmt::Debug for Oauth2RS {
             .field("origin", &self.origin)
             .field("scope_maps", &self.scope_maps)
             .field("sup_scope_maps", &self.sup_scope_maps)
+            .field("has_custom_image", &self.has_custom_image)
             .finish()
     }
 }
@@ -315,10 +319,10 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
             .into_iter()
             .map(|ent| {
                 let uuid = ent.get_uuid();
-                admin_info!(?uuid, "Checking oauth2 configuration");
+                trace!(?uuid, "Checking oauth2 configuration");
                 // From each entry, attempt to make an oauth2 configuration.
                 if !ent.attribute_equality(Attribute::Class, &EntryClass::OAuth2ResourceServer.into()) {
-                    admin_error!("Missing class oauth2_resource_server");
+                    error!("Missing class oauth2_resource_server");
                     // Check we have oauth2_resource_server class
                     return Err(OperationError::InvalidEntryState);
                 }
@@ -416,6 +420,8 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
                     .get_ava_single_bool(Attribute::OAuth2PreferShortUsername)
                     .unwrap_or(false);
 
+                let has_custom_image = ent.get_ava_single_image(Attribute::Image).is_some();
+
                 let mut authorization_endpoint = self.inner.origin.clone();
                 authorization_endpoint.set_path("/ui/oauth2");
 
@@ -464,6 +470,7 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
                     scopes_supported,
                     prefer_short_username,
                     type_,
+                    has_custom_image,
                 };
 
                 Ok((client_id, rscfg))
@@ -4741,7 +4748,7 @@ mod tests {
         assert!(idms_prox_write.commit().is_ok());
     }
 
-    // Test that re-use of a refresh token is denied + terminates the session.
+    // Test that reuse of a refresh token is denied + terminates the session.
     //
     // https://www.ietf.org/archive/id/draft-ietf-oauth-security-topics-18.html#refresh_token_protection
     #[idm_test]

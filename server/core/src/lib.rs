@@ -25,17 +25,21 @@ extern crate tracing;
 #[macro_use]
 extern crate kanidmd_lib;
 
-pub mod actors;
+mod actors;
 pub mod admin;
 pub mod config;
 mod crypto;
 mod https;
 mod interval;
 mod ldaps;
+mod repl;
+mod utils;
 
+use std::fmt::{Display, Formatter};
 use std::path::Path;
 use std::sync::Arc;
 
+use crate::utils::touch_file_or_quit;
 use compact_jwt::JwsSigner;
 use kanidm_proto::v1::OperationError;
 use kanidmd_lib::be::{Backend, BackendConfig, BackendTransaction, FsType};
@@ -43,11 +47,11 @@ use kanidmd_lib::idm::ldap::LdapServer;
 use kanidmd_lib::prelude::*;
 use kanidmd_lib::schema::Schema;
 use kanidmd_lib::status::StatusActor;
-use kanidmd_lib::utils::{duration_from_epoch_now, touch_file_or_quit};
 #[cfg(not(target_family = "windows"))]
 use libc::umask;
 
 use tokio::sync::broadcast;
+use tokio::task::JoinHandle;
 
 use crate::actors::v1_read::QueryServerReadV1;
 use crate::actors::v1_write::QueryServerWriteV1;
@@ -103,7 +107,7 @@ async fn setup_qs_idms(
     config: &Configuration,
 ) -> Result<(QueryServer, IdmServer, IdmServerDelayed, IdmServerAudit), OperationError> {
     // Create a query_server implementation
-    let query_server = QueryServer::new(be, schema, config.domain.clone());
+    let query_server = QueryServer::new(be, schema, config.domain.clone())?;
 
     // TODO #62: Should the IDM parts be broken out to the IdmServer?
     // What's important about this initial setup here is that it also triggers
@@ -131,7 +135,7 @@ async fn setup_qs(
     config: &Configuration,
 ) -> Result<QueryServer, OperationError> {
     // Create a query_server implementation
-    let query_server = QueryServer::new(be, schema, config.domain.clone());
+    let query_server = QueryServer::new(be, schema, config.domain.clone())?;
 
     // TODO #62: Should the IDM parts be broken out to the IdmServer?
     // What's important about this initial setup here is that it also triggers
@@ -172,7 +176,13 @@ macro_rules! dbscan_setup_be {
 
 pub fn dbscan_list_indexes_core(config: &Configuration) {
     let be = dbscan_setup_be!(config);
-    let mut be_rotxn = be.read();
+    let mut be_rotxn = match be.read() {
+        Ok(txn) => txn,
+        Err(err) => {
+            error!(?err, "Unable to proceed, backend read transaction failure.");
+            return;
+        }
+    };
 
     match be_rotxn.list_indexes() {
         Ok(mut idx_list) => {
@@ -189,7 +199,13 @@ pub fn dbscan_list_indexes_core(config: &Configuration) {
 
 pub fn dbscan_list_id2entry_core(config: &Configuration) {
     let be = dbscan_setup_be!(config);
-    let mut be_rotxn = be.read();
+    let mut be_rotxn = match be.read() {
+        Ok(txn) => txn,
+        Err(err) => {
+            error!(?err, "Unable to proceed, backend read transaction failure.");
+            return;
+        }
+    };
 
     match be_rotxn.list_id2entry() {
         Ok(mut id_list) => {
@@ -211,7 +227,13 @@ pub fn dbscan_list_index_analysis_core(config: &Configuration) {
 
 pub fn dbscan_list_index_core(config: &Configuration, index_name: &str) {
     let be = dbscan_setup_be!(config);
-    let mut be_rotxn = be.read();
+    let mut be_rotxn = match be.read() {
+        Ok(txn) => txn,
+        Err(err) => {
+            error!(?err, "Unable to proceed, backend read transaction failure.");
+            return;
+        }
+    };
 
     match be_rotxn.list_index_content(index_name) {
         Ok(mut idx_list) => {
@@ -228,7 +250,13 @@ pub fn dbscan_list_index_core(config: &Configuration, index_name: &str) {
 
 pub fn dbscan_get_id2entry_core(config: &Configuration, id: u64) {
     let be = dbscan_setup_be!(config);
-    let mut be_rotxn = be.read();
+    let mut be_rotxn = match be.read() {
+        Ok(txn) => txn,
+        Err(err) => {
+            error!(?err, "Unable to proceed, backend read transaction failure.");
+            return;
+        }
+    };
 
     match be_rotxn.get_id2entry(id) {
         Ok((id, value)) => println!("{:>8}: {}", id, value),
@@ -240,7 +268,16 @@ pub fn dbscan_get_id2entry_core(config: &Configuration, id: u64) {
 
 pub fn dbscan_quarantine_id2entry_core(config: &Configuration, id: u64) {
     let be = dbscan_setup_be!(config);
-    let mut be_wrtxn = be.write();
+    let mut be_wrtxn = match be.write() {
+        Ok(txn) => txn,
+        Err(err) => {
+            error!(
+                ?err,
+                "Unable to proceed, backend write transaction failure."
+            );
+            return;
+        }
+    };
 
     match be_wrtxn
         .quarantine_entry(id)
@@ -257,7 +294,13 @@ pub fn dbscan_quarantine_id2entry_core(config: &Configuration, id: u64) {
 
 pub fn dbscan_list_quarantined_core(config: &Configuration) {
     let be = dbscan_setup_be!(config);
-    let mut be_rotxn = be.read();
+    let mut be_rotxn = match be.read() {
+        Ok(txn) => txn,
+        Err(err) => {
+            error!(?err, "Unable to proceed, backend read transaction failure.");
+            return;
+        }
+    };
 
     match be_rotxn.list_quarantined() {
         Ok(mut id_list) => {
@@ -274,7 +317,16 @@ pub fn dbscan_list_quarantined_core(config: &Configuration) {
 
 pub fn dbscan_restore_quarantined_core(config: &Configuration, id: u64) {
     let be = dbscan_setup_be!(config);
-    let mut be_wrtxn = be.write();
+    let mut be_wrtxn = match be.write() {
+        Ok(txn) => txn,
+        Err(err) => {
+            error!(
+                ?err,
+                "Unable to proceed, backend write transaction failure."
+            );
+            return;
+        }
+    };
 
     match be_wrtxn
         .restore_quarantined(id)
@@ -306,7 +358,14 @@ pub fn backup_server_core(config: &Configuration, dst_path: &str) {
         }
     };
 
-    let mut be_ro_txn = be.read();
+    let mut be_ro_txn = match be.read() {
+        Ok(txn) => txn,
+        Err(err) => {
+            error!(?err, "Unable to proceed, backend read transaction failure.");
+            return;
+        }
+    };
+
     let r = be_ro_txn.backup(dst_path);
     match r {
         Ok(_) => info!("Backup success!"),
@@ -338,7 +397,16 @@ pub async fn restore_server_core(config: &Configuration, dst_path: &str) {
         }
     };
 
-    let mut be_wr_txn = be.write();
+    let mut be_wr_txn = match be.write() {
+        Ok(txn) => txn,
+        Err(err) => {
+            error!(
+                ?err,
+                "Unable to proceed, backend write transaction failure."
+            );
+            return;
+        }
+    };
     let r = be_wr_txn.restore(dst_path).and_then(|_| be_wr_txn.commit());
 
     if r.is_err() {
@@ -394,7 +462,16 @@ pub async fn reindex_server_core(config: &Configuration) {
     };
 
     // Reindex only the core schema attributes to bootstrap the process.
-    let mut be_wr_txn = be.write();
+    let mut be_wr_txn = match be.write() {
+        Ok(txn) => txn,
+        Err(err) => {
+            error!(
+                ?err,
+                "Unable to proceed, backend write transaction failure."
+            );
+            return;
+        }
+    };
     let r = be_wr_txn.reindex().and_then(|_| be_wr_txn.commit());
 
     // Now that's done, setup a minimal qs and reindex from that.
@@ -531,7 +608,14 @@ pub async fn verify_server_core(config: &Configuration) {
             return;
         }
     };
-    let server = QueryServer::new(be, schema_mem, config.domain.clone());
+
+    let server = match QueryServer::new(be, schema_mem, config.domain.clone()) {
+        Ok(qs) => qs,
+        Err(err) => {
+            error!(?err, "Failed to setup query server");
+            return;
+        }
+    };
 
     // Run verifications.
     let r = server.verify().await;
@@ -646,12 +730,42 @@ pub enum CoreAction {
     Shutdown,
 }
 
+pub(crate) enum TaskName {
+    AdminSocket,
+    AuditdActor,
+    BackupActor,
+    DelayedActionActor,
+    HttpsServer,
+    IntervalActor,
+    LdapActor,
+    Replication,
+}
+
+impl Display for TaskName {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                TaskName::AdminSocket => "Admin Socket",
+                TaskName::AuditdActor => "Auditd Actor",
+                TaskName::BackupActor => "Backup Actor",
+                TaskName::DelayedActionActor => "Delayed Action Actor",
+                TaskName::HttpsServer => "HTTPS Server",
+                TaskName::IntervalActor => "Interval Actor",
+                TaskName::LdapActor => "LDAP Acceptor Actor",
+                TaskName::Replication => "Replication",
+            }
+            .to_string()
+        )
+    }
+}
+
 pub struct CoreHandle {
     clean_shutdown: bool,
     tx: broadcast::Sender<CoreAction>,
-
-    handles: Vec<tokio::task::JoinHandle<()>>,
-    // interval_handle: tokio::task::JoinHandle<()>,
+    /// This stores a name for the handle, and the handle itself so we can tell which failed/succeeded at the end.
+    handles: Vec<(TaskName, tokio::task::JoinHandle<()>)>,
 }
 
 impl CoreHandle {
@@ -662,9 +776,9 @@ impl CoreHandle {
         }
 
         // Wait on the handles.
-        while let Some(handle) = self.handles.pop() {
-            if handle.await.is_err() {
-                eprintln!("A task failed to join");
+        while let Some((handle_name, handle)) = self.handles.pop() {
+            if let Err(error) = handle.await {
+                eprintln!("Task {} failed to finish: {:?}", handle_name, error);
             }
         }
 
@@ -699,8 +813,8 @@ pub async fn create_server_core(
     }
 
     info!(
-        "Starting kanidm with configuration: {} {}",
-        if config_test { "TEST" } else { "" },
+        "Starting kanidm with {}configuration: {}",
+        if config_test { "TEST " } else { "" },
         config
     );
     // Setup umask, so that every we touch or create is secure.
@@ -766,7 +880,7 @@ pub async fn create_server_core(
                 Ok(_) => {}
                 Err(e) => {
                     error!(
-                        "Unable to configure INTERGATION TEST admin account -> {:?}",
+                        "Unable to configure INTEGRATION TEST admin account -> {:?}",
                         e
                     );
                     return Err(());
@@ -775,7 +889,7 @@ pub async fn create_server_core(
             match idms_prox_write.commit() {
                 Ok(_) => {}
                 Err(e) => {
-                    error!("Unable to commit INTERGATION TEST setup -> {:?}", e);
+                    error!("Unable to commit INTEGRATION TEST setup -> {:?}", e);
                     return Err(());
                 }
             }
@@ -819,7 +933,7 @@ pub async fn create_server_core(
                 }
             }
         }
-        info!("Stopped DelayedActionActor");
+        info!("Stopped {}", TaskName::DelayedActionActor);
     });
 
     let mut broadcast_rx = broadcast_tx.subscribe();
@@ -846,7 +960,7 @@ pub async fn create_server_core(
                 }
             }
         }
-        info!("Stopped AuditdActor");
+        info!("Stopped {}", TaskName::AuditdActor);
     });
 
     // Setup timed events associated to the write thread
@@ -865,22 +979,6 @@ pub async fn create_server_core(
             debug!("Online backup not requested, skipping");
             None
         }
-    };
-
-    // If we are NOT in integration test mode, start the admin socket now
-    let maybe_admin_sock_handle = if config.integration_test_config.is_none() {
-        let broadcast_rx = broadcast_tx.subscribe();
-
-        let admin_handle = AdminActor::create_admin_sock(
-            config.adminbindpath.as_str(),
-            server_write_ref,
-            broadcast_rx,
-        )
-        .await?;
-
-        Some(admin_handle)
-    } else {
-        None
     };
 
     // If we have been requested to init LDAP, configure it now.
@@ -913,8 +1011,28 @@ pub async fn create_server_core(
         }
     };
 
+    // If we have replication configured, setup the listener with it's initial replication
+    // map (if any).
+    let (maybe_repl_handle, maybe_repl_ctrl_tx) = match &config.repl_config {
+        Some(rc) => {
+            if !config_test {
+                // ⚠️  only start the sockets and listeners in non-config-test modes.
+                let (h, repl_ctrl_tx) =
+                    repl::create_repl_server(idms_arc.clone(), rc, broadcast_tx.subscribe())
+                        .await?;
+                (Some(h), Some(repl_ctrl_tx))
+            } else {
+                (None, None)
+            }
+        }
+        None => {
+            debug!("Replication not requested, skipping");
+            (None, None)
+        }
+    };
+
     let maybe_http_acceptor_handle = if config_test {
-        admin_info!("this config rocks! 🪨 ");
+        admin_info!("This config rocks! 🪨 ");
         None
     } else {
         let h: tokio::task::JoinHandle<()> = match https::create_https_server(
@@ -941,22 +1059,47 @@ pub async fn create_server_core(
         Some(h)
     };
 
-    let mut handles = vec![interval_handle, delayed_handle, auditd_handle];
+    // If we are NOT in integration test mode, start the admin socket now
+    let maybe_admin_sock_handle = if config.integration_test_config.is_none() {
+        let broadcast_rx = broadcast_tx.subscribe();
+
+        let admin_handle = AdminActor::create_admin_sock(
+            config.adminbindpath.as_str(),
+            server_write_ref,
+            broadcast_rx,
+            maybe_repl_ctrl_tx,
+        )
+        .await?;
+
+        Some(admin_handle)
+    } else {
+        None
+    };
+
+    let mut handles: Vec<(TaskName, JoinHandle<()>)> = vec![
+        (TaskName::IntervalActor, interval_handle),
+        (TaskName::DelayedActionActor, delayed_handle),
+        (TaskName::AuditdActor, auditd_handle),
+    ];
 
     if let Some(backup_handle) = maybe_backup_handle {
-        handles.push(backup_handle)
+        handles.push((TaskName::BackupActor, backup_handle))
     }
 
     if let Some(admin_sock_handle) = maybe_admin_sock_handle {
-        handles.push(admin_sock_handle)
+        handles.push((TaskName::AdminSocket, admin_sock_handle))
     }
 
     if let Some(ldap_handle) = maybe_ldap_acceptor_handle {
-        handles.push(ldap_handle)
+        handles.push((TaskName::LdapActor, ldap_handle))
     }
 
     if let Some(http_handle) = maybe_http_acceptor_handle {
-        handles.push(http_handle)
+        handles.push((TaskName::HttpsServer, http_handle))
+    }
+
+    if let Some(repl_handle) = maybe_repl_handle {
+        handles.push((TaskName::Replication, repl_handle))
     }
 
     Ok(CoreHandle {

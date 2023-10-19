@@ -1,6 +1,6 @@
 Name: Kanidm Authentication
 Default: yes
-Priority: 300
+Priority: 128
 
 Auth-Type: Primary
 Auth:

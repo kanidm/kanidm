@@ -23,8 +23,8 @@ bindaddress = "[::]:443"
 #   The path to the kanidm database.
 db_path = "/var/lib/private/kanidm/kanidm.db"
 #
-#   If you have a known filesystem, kanidm can tune database
-#   to match. Valid choices are:
+#   If you have a known filesystem, kanidm can tune the 
+#   database page size to match. Valid choices are:
 #   [zfs, other]
 #   If you are unsure about this leave it as the default
 #   (other). After changing this
@@ -40,6 +40,8 @@ db_path = "/var/lib/private/kanidm/kanidm.db"
 #   The number of entries to store in the in-memory cache.
 #   Minimum value is 256. If unset
 #   an automatic heuristic is used to scale this.
+#   You should only adjust this value if you experience
+#   pressure on your system.
 # db_arc_size = 2048
 #
 #   TLS chain and key in pem format. Both must be present
@@ -76,24 +78,6 @@ domain = "idm.example.com"
 #   not consistent, the server WILL refuse to start!
 #   origin = "https://idm.example.com"
 origin = "https://idm.example.com:8443"
-#
-#   The role of this server. This affects available features
-#   and how replication may interact.
-#   Valid roles are:
-#   - WriteReplica
-#     This server provides all functionality of Kanidm. It
-#     allows authentication, writes, and
-#     the web user interface to be served.
-#   - WriteReplicaNoUI
-#     This server is the same as a WriteReplica, but does NOT
-#     offer the web user interface.
-#   - ReadOnlyReplica
-#     This server will not writes initiated by clients. It
-#     supports authentication and reads,
-#     and must have a replication agreement as a source of
-#     its data.
-#   Defaults to "WriteReplica".
-# role = "WriteReplica"
 #
 [online_backup]
 #   The path to the output folder for online backups

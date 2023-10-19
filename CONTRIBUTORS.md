@@ -31,6 +31,7 @@
 - Martin Weinelt (hexa)
 - Samuel Cabrero (scabrero)
 - philipcristiano
+- Jianchen Zhao (bolu61)
 
 ## Acknowledgements
 

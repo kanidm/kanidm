@@ -27,6 +27,7 @@ kanidmd_core = { workspace = true }
 kanidmd_lib = { workspace = true }
 # used for webdriver testing
 hyper-tls = { workspace = true }
+http = { workspace = true }
 # used for webdriver testing
 fantoccini = { version = "0.19.3", optional = true }
 serde = { workspace = true }
@@ -38,6 +39,8 @@ tracing = { workspace = true, features = ["attributes"] }
 tokio = { workspace = true, features = ["net", "sync", "io-util", "macros"] }
 openssl = { workspace = true }
 lazy_static = { workspace = true }
+petgraph = { version = "0.6.4", features = ["serde"] }
+regex.workspace = true
 
 
 [build-dependencies]
@@ -50,3 +53,7 @@ webauthn-authenticator-rs = { workspace = true }
 oauth2_ext = { workspace = true, default-features = false }
 futures = { workspace = true }
 time = { workspace = true }
+openssl = { workspace = true }
+tokio-openssl = { workspace = true }
+kanidm_lib_crypto = { workspace = true }
+uuid = { workspace = true }

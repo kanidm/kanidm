@@ -13,8 +13,11 @@ repository = { workspace = true }
 
 [dependencies]
 tracing = { workspace = true }
-reqwest = { workspace = true, default-features = false }
+reqwest = { workspace = true, default-features = false, features = [
+    "multipart",
+] }
 kanidm_proto = { workspace = true }
+kanidm_lib_file_permissions = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 time = { workspace = true, features = ["serde", "std"] }

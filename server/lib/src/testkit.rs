@@ -1,8 +1,6 @@
 use crate::be::{Backend, BackendConfig};
 use crate::prelude::*;
 use crate::schema::Schema;
-#[allow(unused_imports)]
-use crate::utils::duration_from_epoch_now;
 
 #[allow(clippy::expect_used)]
 pub async fn setup_test() -> QueryServer {
@@ -19,6 +17,7 @@ pub async fn setup_test() -> QueryServer {
 
     // Init is called via the proc macro
     QueryServer::new(be, schema_outer, "example.com".to_string())
+        .expect("Failed to setup Query Server")
 }
 
 #[allow(clippy::expect_used)]
@@ -37,6 +36,7 @@ pub async fn setup_pair_test() -> (QueryServer, QueryServer) {
 
         // Init is called via the proc macro
         QueryServer::new(be, schema_outer, "example.com".to_string())
+            .expect("Failed to setup Query Server")
     };
 
     let qs_b = {
@@ -51,6 +51,7 @@ pub async fn setup_pair_test() -> (QueryServer, QueryServer) {
 
         // Init is called via the proc macro
         QueryServer::new(be, schema_outer, "example.com".to_string())
+            .expect("Failed to setup Query Server")
     };
 
     (qs_a, qs_b)

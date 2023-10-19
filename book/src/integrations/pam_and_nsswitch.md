@@ -9,7 +9,7 @@ Kanidm into accounts that can be used on the machine for various interactive tas
 Kanidm provides a UNIX daemon that runs on any client that wants to use PAM and nsswitch
 integration. The daemon can cache the accounts for users who have unreliable networks, or who leave
 the site where Kanidm is hosted. The daemon is also able to cache missing-entry responses to reduce
-network traffic and main server load.
+network traffic and Kanidm server load.
 
 Additionally, running the daemon means that the PAM and nsswitch integration libraries can be small,
 helping to reduce the attack surface of the machine. Similarly, a tasks daemon is available that can
@@ -81,6 +81,8 @@ to `spn`.
 > system. We recommend that you have a stable ID (like the UUID), and symlinks from the name to the
 > UUID folder. Automatic support is provided for this via the unixd tasks daemon, as documented
 > here.
+
+> **NOTE:** Ubuntu users please see: [Why aren't snaps launching with home_alias set?](../frequently_asked_questions.md#why-arent-snaps-launching-with-home_alias-set)
 
 `use_etc_skel` controls if home directories should be prepopulated with the contents of `/etc/skel`
 when first created. Defaults to false.
@@ -154,7 +156,7 @@ testgroup:x:2439676479:testunix
 
 > **HINT** Remember to also create a UNIX password with something like
 > `kanidm account posix set_password --name idm_admin demo_user`. Otherwise there will be no
-> credential for the account to authenticate.
+> credential for the account to authenticate with.
 
 ## PAM
 
@@ -220,14 +222,6 @@ account    [default=1 ignore=ignore success=ok]  pam_succeed_if.so uid >= 1000 q
 account    sufficient    pam_kanidm.so ignore_unknown_user
 account    required      pam_deny.so
 
-# /etc/pam.d/common-password-pc
-# Controls flow of what happens when a user invokes the passwd command. Currently does NOT
-# interact with kanidm.
-password    [default=1 ignore=ignore success=ok] pam_localuser.so
-password    required    pam_unix.so use_authtok nullok shadow try_first_pass
-password    [default=1 ignore=ignore success=ok]  pam_succeed_if.so uid >= 1000 quiet_success quiet_fail
-password    required    pam_kanidm.so
-
 # /etc/pam.d/common-session-pc
 # Controls setup of the user session once a successful authentication and authorisation has
 # occurred.
@@ -237,7 +231,15 @@ session optional    pam_unix.so try_first_pass
 session optional    pam_umask.so
 session [default=1 ignore=ignore success=ok] pam_succeed_if.so uid >= 1000 quiet_success quiet_fail
 session optional    pam_kanidm.so
-    session optional    pam_env.so
+session optional    pam_env.so
+
+# /etc/pam.d/common-password-pc
+# Controls flow of what happens when a user invokes the passwd command. Currently does NOT
+# interact with kanidm.
+password    [default=1 ignore=ignore success=ok] pam_localuser.so
+password    required    pam_unix.so use_authtok nullok shadow try_first_pass
+password    [default=1 ignore=ignore success=ok]  pam_succeed_if.so uid >= 1000 quiet_success quiet_fail
+password    required    pam_kanidm.so
 ```
 
 > **WARNING:** Ensure that `pam_mkhomedir` or `pam_oddjobd` are _not_ present in any stage of your
@@ -246,7 +248,7 @@ session optional    pam_kanidm.so
 ### Fedora / CentOS
 
 > **WARNING:** Kanidm currently has no support for SELinux policy - this may mean you need to run
-> the daemon with permissive mode for the unconfined_service_t daemon type. To do this run:
+> the daemon with permissive mode for the `unconfined_service_t` daemon type. To do this run:
 > `semanage permissive -a unconfined_service_t`. To undo this run
 > `semanage permissive -d unconfined_service_t`.
 >

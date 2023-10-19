@@ -28,9 +28,6 @@ override_dh_autoreconf:
 
 override_dh_auto_build:
 	KANIDM_BUILD_PROFILE=release_suse_generic dh_auto_build -- release/${PACKAGE}
-	./platform/debian/fix_wasm_opt.sh
-	cargo install wasm-pack --force
-	cd server/web_ui && ./build_wasm.sh
 
 override_dh_auto_test:
 override_dh_shlibdeps:

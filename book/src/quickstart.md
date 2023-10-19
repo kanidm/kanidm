@@ -3,7 +3,7 @@
 This section will guide you through a quick setup of Kanidm for evaluation. It's recommended that
 for a production deployment you follow the steps in the
 [installation chapter](installing_the_server.html) instead as there are a number of security
-considerations you should understand.
+considerations you should be aware of for production deployments.
 
 ### Requirements
 

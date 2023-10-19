@@ -3,7 +3,7 @@
 ## Configuring server.toml
 
 You need a configuration file in the volume named `server.toml`. (Within the container it should be
-`/data/server.toml`) Its contents should be as follows:
+`/data/server.toml`) The following is a commented example configuration.
 
 ```toml
 {{#rustdoc_include ../../examples/server_container.toml}}

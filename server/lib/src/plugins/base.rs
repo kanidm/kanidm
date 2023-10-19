@@ -27,11 +27,7 @@ impl Plugin for Base {
         "plugin_base"
     }
 
-    #[instrument(
-        level = "debug",
-        name = "base_pre_create_transform",
-        skip(qs, cand, ce)
-    )]
+    #[instrument(level = "debug", name = "base_pre_create_transform", skip_all)]
     #[allow(clippy::cognitive_complexity)]
     fn pre_create_transform(
         qs: &mut QueryServerWriteTransaction,
@@ -156,7 +152,7 @@ impl Plugin for Base {
         Ok(())
     }
 
-    #[instrument(level = "debug", name = "base_pre_modify", skip(_qs, _cand, me))]
+    #[instrument(level = "debug", name = "base_pre_modify", skip_all)]
     fn pre_modify(
         _qs: &mut QueryServerWriteTransaction,
         _pre_cand: &[Arc<EntrySealedCommitted>],
@@ -180,7 +176,7 @@ impl Plugin for Base {
         })
     }
 
-    #[instrument(level = "debug", name = "base_pre_modify", skip(_qs, _cand, me))]
+    #[instrument(level = "debug", name = "base_pre_modify", skip_all)]
     fn pre_batch_modify(
         _qs: &mut QueryServerWriteTransaction,
         _pre_cand: &[Arc<EntrySealedCommitted>],

@@ -37,14 +37,14 @@ use self::access::{
     AccessControlsWriteTransaction,
 };
 
-pub mod access;
+pub(crate) mod access;
 pub mod batch_modify;
 pub mod create;
 pub mod delete;
 pub mod identity;
-pub mod migrations;
+pub(crate) mod migrations;
 pub mod modify;
-pub mod recycle;
+pub(crate) mod recycle;
 
 const RESOLVE_FILTER_CACHE_MAX: usize = 4096;
 const RESOLVE_FILTER_CACHE_LOCAL: usize = 0;
@@ -68,11 +68,18 @@ pub struct DomainInfo {
     pub(crate) d_ldap_allow_unix_pw_bind: bool,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct SystemConfig {
+    pub(crate) denied_names: HashSet<String>,
+    pub(crate) pw_badlist: HashSet<String>,
+}
+
 #[derive(Clone)]
 pub struct QueryServer {
     phase: Arc<CowCell<ServerPhase>>,
     s_uuid: Uuid,
     pub(crate) d_info: Arc<CowCell<DomainInfo>>,
+    system_config: Arc<CowCell<SystemConfig>>,
     be: Backend,
     schema: Arc<Schema>,
     accesscontrols: Arc<AccessControls>,
@@ -88,6 +95,7 @@ pub struct QueryServerReadTransaction<'a> {
     // Anything else? In the future, we'll need to have a schema transaction
     // type, maybe others?
     pub(crate) d_info: CowCellReadTxn<DomainInfo>,
+    system_config: CowCellReadTxn<SystemConfig>,
     schema: SchemaReadTransaction,
     accesscontrols: AccessControlsReadTransaction<'a>,
     _db_ticket: SemaphorePermit<'a>,
@@ -103,6 +111,7 @@ pub struct QueryServerWriteTransaction<'a> {
     committed: bool,
     phase: CowCellWriteTxn<'a, ServerPhase>,
     d_info: CowCellWriteTxn<'a, DomainInfo>,
+    system_config: CowCellWriteTxn<'a, SystemConfig>,
     curtime: Duration,
     cid: Cid,
     trim_cid: Cid,
@@ -112,13 +121,14 @@ pub struct QueryServerWriteTransaction<'a> {
     // We store a set of flags that indicate we need a reload of
     // schema or acp, which is tested by checking the classes of the
     // changing content.
-    pub(crate) changed_schema: bool,
-    pub(crate) changed_acp: bool,
-    pub(crate) changed_oauth2: bool,
-    pub(crate) changed_domain: bool,
-    pub(crate) changed_sync_agreement: bool,
+    pub(super) changed_schema: bool,
+    pub(super) changed_acp: bool,
+    pub(super) changed_oauth2: bool,
+    pub(super) changed_domain: bool,
+    pub(super) changed_system_config: bool,
+    pub(super) changed_sync_agreement: bool,
     // Store the list of changed uuids for other invalidation needs?
-    pub(crate) changed_uuid: HashSet<Uuid>,
+    pub(super) changed_uuid: HashSet<Uuid>,
     _db_ticket: SemaphorePermit<'a>,
     _write_ticket: SemaphorePermit<'a>,
     resolve_filter_cache:
@@ -150,6 +160,10 @@ pub trait QueryServerTransaction<'a> {
 
     type AccessControlsTransactionType: AccessControlsTransaction<'a>;
     fn get_accesscontrols(&self) -> &Self::AccessControlsTransactionType;
+
+    fn pw_badlist(&self) -> &HashSet<String>;
+
+    fn denied_names(&self) -> &HashSet<String>;
 
     fn get_domain_uuid(&self) -> Uuid;
 
@@ -541,6 +555,8 @@ pub trait QueryServerTransaction<'a> {
                     }
                     SyntaxType::JsonFilter => Value::new_json_filter_s(value)
                         .ok_or_else(|| OperationError::InvalidAttribute("Invalid Filter syntax".to_string())),
+                    SyntaxType::Image => Value::new_image(value),
+
                     SyntaxType::Credential => Err(OperationError::InvalidAttribute("Credentials can not be supplied through modification - please use the IDM api".to_string())),
                     SyntaxType::SecretUtf8String => Err(OperationError::InvalidAttribute("Radius secrets can not be supplied through modification - please use the IDM api".to_string())),
                     SyntaxType::SshKey => Err(OperationError::InvalidAttribute("SSH public keys can not be supplied through modification - please use the IDM api".to_string())),
@@ -682,6 +698,7 @@ pub trait QueryServerTransaction<'a> {
                         }),
                     SyntaxType::AuditLogString => Ok(PartialValue::new_utf8s(value)),
                     SyntaxType::EcKeyPrivate => Ok(PartialValue::SecretValue),
+                    SyntaxType::Image => Ok(PartialValue::new_utf8s(value)),
                 }
             }
             None => {
@@ -741,9 +758,13 @@ pub trait QueryServerTransaction<'a> {
                 })
                 .collect();
             v
+        /*
+        // We previously special cased sshkeys here, but proto string now yields
+        // these as the proper string keys that ldap expects.
         } else if let Some(k_set) = value.as_sshkey_map() {
             let v: Vec<_> = k_set.values().cloned().map(|s| s.into_bytes()).collect();
             Ok(v)
+        */
         } else {
             let v: Vec<_> = value
                 .to_proto_string_clone_iter()
@@ -825,15 +846,36 @@ pub trait QueryServerTransaction<'a> {
             })
     }
 
-    // This is a helper to get password badlist.
-    fn get_password_badlist(&mut self) -> Result<HashSet<String>, OperationError> {
+    /// Get the password badlist from the system config. You should not call this directly
+    /// as this value is cached in the system_config() value.
+    fn get_sc_password_badlist(&mut self) -> Result<HashSet<String>, OperationError> {
         self.internal_search_uuid(UUID_SYSTEM_CONFIG)
             .map(|e| match e.get_ava_iter_iutf8(Attribute::BadlistPassword) {
                 Some(vs_str_iter) => vs_str_iter.map(str::to_string).collect::<HashSet<_>>(),
                 None => HashSet::default(),
             })
             .map_err(|e| {
-                admin_error!(?e, "Failed to retrieve system configuration");
+                error!(
+                    ?e,
+                    "Failed to retrieve password badlist from system configuration"
+                );
+                e
+            })
+    }
+
+    /// Get the denied name set from the system config. You should not call this directly
+    /// as this value is cached in the system_config() value.
+    fn get_sc_denied_names(&mut self) -> Result<HashSet<String>, OperationError> {
+        self.internal_search_uuid(UUID_SYSTEM_CONFIG)
+            .map(|e| match e.get_ava_iter_iname(Attribute::DeniedName) {
+                Some(vs_str_iter) => vs_str_iter.map(str::to_string).collect::<HashSet<_>>(),
+                None => HashSet::default(),
+            })
+            .map_err(|e| {
+                error!(
+                    ?e,
+                    "Failed to retrieve denied names from system configuration"
+                );
                 e
             })
     }
@@ -907,6 +949,8 @@ pub trait QueryServerTransaction<'a> {
         //
         // ...
 
+        let domain_uuid = self.get_domain_uuid();
+
         // Which then the supplier will use to actually retrieve the set of entries.
         // and the needed attributes we need.
         let ruv_snapshot = self.get_be_txn().get_ruv();
@@ -914,7 +958,10 @@ pub trait QueryServerTransaction<'a> {
         // What's the current set of ranges?
         ruv_snapshot
             .current_ruv_range()
-            .map(|ranges| ReplRuvRange::V1 { ranges })
+            .map(|ranges| ReplRuvRange::V1 {
+                domain_uuid,
+                ranges,
+            })
     }
 }
 
@@ -958,6 +1005,14 @@ impl<'a> QueryServerTransaction<'a> for QueryServerReadTransaction<'a> {
         &mut ARCacheReadTxn<'a, (IdentityId, Filter<FilterValid>), Filter<FilterValidResolved>, ()>,
     ) {
         (&mut self.be_txn, &mut self.resolve_filter_cache)
+    }
+
+    fn pw_badlist(&self) -> &HashSet<String> {
+        &self.system_config.pw_badlist
+    }
+
+    fn denied_names(&self) -> &HashSet<String> {
+        &self.system_config.denied_names
     }
 
     fn get_domain_uuid(&self) -> Uuid {
@@ -1073,6 +1128,14 @@ impl<'a> QueryServerTransaction<'a> for QueryServerWriteTransaction<'a> {
         (&mut self.be_txn, &mut self.resolve_filter_cache)
     }
 
+    fn pw_badlist(&self) -> &HashSet<String> {
+        &self.system_config.pw_badlist
+    }
+
+    fn denied_names(&self) -> &HashSet<String> {
+        &self.system_config.denied_names
+    }
+
     fn get_domain_uuid(&self) -> Uuid {
         self.d_info.d_uuid
     }
@@ -1088,14 +1151,15 @@ impl<'a> QueryServerTransaction<'a> for QueryServerWriteTransaction<'a> {
 }
 
 impl QueryServer {
-    pub fn new(be: Backend, schema: Schema, domain_name: String) -> Self {
+    pub fn new(be: Backend, schema: Schema, domain_name: String) -> Result<Self, OperationError> {
         let (s_uuid, d_uuid) = {
-            let mut wr = be.write();
-            let res = (wr.get_db_s_uuid(), wr.get_db_d_uuid());
+            let mut wr = be.write()?;
+            let s_uuid = wr.get_db_s_uuid()?;
+            let d_uuid = wr.get_db_d_uuid()?;
             #[allow(clippy::expect_used)]
             wr.commit()
                 .expect("Critical - unable to commit db_s_uuid or db_d_uuid");
-            res
+            (s_uuid, d_uuid)
         };
 
         let pool_size = be.get_pool_size();
@@ -1116,29 +1180,35 @@ impl QueryServer {
             d_ldap_allow_unix_pw_bind: false,
         }));
 
+        // These default to empty, but they'll be populated shortly.
+        let system_config = Arc::new(CowCell::new(SystemConfig::default()));
+
         let dyngroup_cache = Arc::new(CowCell::new(DynGroupCache::default()));
 
         let phase = Arc::new(CowCell::new(ServerPhase::Bootstrap));
 
         #[allow(clippy::expect_used)]
-        QueryServer {
+        let resolve_filter_cache = Arc::new(
+            ARCacheBuilder::new()
+                .set_size(RESOLVE_FILTER_CACHE_MAX, RESOLVE_FILTER_CACHE_LOCAL)
+                .set_reader_quiesce(true)
+                .build()
+                .expect("Failed to build resolve_filter_cache"),
+        );
+
+        Ok(QueryServer {
             phase,
             s_uuid,
             d_info,
+            system_config,
             be,
             schema: Arc::new(schema),
             accesscontrols: Arc::new(AccessControls::default()),
             db_tickets: Arc::new(Semaphore::new(pool_size as usize)),
             write_ticket: Arc::new(Semaphore::new(1)),
-            resolve_filter_cache: Arc::new(
-                ARCacheBuilder::new()
-                    .set_size(RESOLVE_FILTER_CACHE_MAX, RESOLVE_FILTER_CACHE_LOCAL)
-                    .set_reader_quiesce(true)
-                    .build()
-                    .expect("Failed to build resolve_filter_cache"),
-            ),
+            resolve_filter_cache,
             dyngroup_cache,
-        }
+        })
     }
 
     pub fn try_quiesce(&self) {
@@ -1163,9 +1233,10 @@ impl QueryServer {
         };
 
         QueryServerReadTransaction {
-            be_txn: self.be.read(),
+            be_txn: self.be.read().unwrap(),
             schema: self.schema.read(),
             d_info: self.d_info.read(),
+            system_config: self.system_config.read(),
             accesscontrols: self.accesscontrols.read(),
             _db_ticket: db_ticket,
             resolve_filter_cache: self.resolve_filter_cache.read(),
@@ -1201,8 +1272,9 @@ impl QueryServer {
         };
 
         let schema_write = self.schema.write();
-        let mut be_txn = self.be.write();
+        let mut be_txn = self.be.write().unwrap();
         let d_info = self.d_info.write();
+        let system_config = self.system_config.write();
         let phase = self.phase.write();
 
         #[allow(clippy::expect_used)]
@@ -1225,6 +1297,7 @@ impl QueryServer {
             committed: false,
             phase,
             d_info,
+            system_config,
             curtime,
             cid,
             trim_cid,
@@ -1235,6 +1308,7 @@ impl QueryServer {
             changed_acp: false,
             changed_oauth2: false,
             changed_domain: false,
+            changed_system_config: false,
             changed_sync_agreement: false,
             changed_uuid: HashSet::new(),
             _db_ticket: db_ticket,
@@ -1259,6 +1333,11 @@ impl QueryServer {
 }
 
 impl<'a> QueryServerWriteTransaction<'a> {
+    pub(crate) fn get_server_uuid(&self) -> Uuid {
+        // Cid has our server id within
+        self.cid.s_uuid
+    }
+
     pub(crate) fn get_curtime(&self) -> Duration {
         self.curtime
     }
@@ -1507,6 +1586,17 @@ impl<'a> QueryServerWriteTransaction<'a> {
             })
     }
 
+    #[instrument(level = "debug", skip_all)]
+    pub(crate) fn reload_system_config(&mut self) -> Result<(), OperationError> {
+        let denied_names = self.get_sc_denied_names()?;
+        let pw_badlist = self.get_sc_password_badlist()?;
+
+        let mut_system_config = self.system_config.get_mut();
+        mut_system_config.denied_names = denied_names;
+        mut_system_config.pw_badlist = pw_badlist;
+        Ok(())
+    }
+
     /// Pulls the domain name from the database and updates the DomainInfo data in memory
     #[instrument(level = "debug", skip_all)]
     pub(crate) fn reload_domain_info(&mut self) -> Result<(), OperationError> {
@@ -1519,7 +1609,6 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 true
             }
         };
-        info!("here : {}", domain_ldap_allow_unix_pw_bind);
         let domain_uuid = self.be_txn.get_db_d_uuid();
         let mut_d_info = self.d_info.get_mut();
         mut_d_info.d_ldap_allow_unix_pw_bind = domain_ldap_allow_unix_pw_bind;
@@ -1586,6 +1675,15 @@ impl<'a> QueryServerWriteTransaction<'a> {
         self.be_txn.reindex()
     }
 
+    fn force_all_reload(&mut self) {
+        self.changed_schema = true;
+        self.changed_acp = true;
+        self.changed_oauth2 = true;
+        self.changed_domain = true;
+        self.changed_sync_agreement = true;
+        self.changed_system_config = true;
+    }
+
     fn force_schema_reload(&mut self) {
         self.changed_schema = true;
     }
@@ -1595,16 +1693,16 @@ impl<'a> QueryServerWriteTransaction<'a> {
         self.be_txn.upgrade_reindex(v)
     }
 
-    pub fn get_changed_uuids(&self) -> &HashSet<Uuid> {
-        &self.changed_uuid
-    }
-
-    pub fn get_changed_ouath2(&self) -> bool {
+    pub(crate) fn get_changed_ouath2(&self) -> bool {
         self.changed_oauth2
     }
 
-    pub fn get_changed_domain(&self) -> bool {
+    pub(crate) fn get_changed_domain(&self) -> bool {
         self.changed_domain
+    }
+
+    pub(crate) fn get_changed_system_config(&self) -> bool {
+        self.changed_system_config
     }
 
     fn set_phase(&mut self, phase: ServerPhase) {
@@ -1635,8 +1733,11 @@ impl<'a> QueryServerWriteTransaction<'a> {
             //    .invalidate_related_cache(self.changed_uuid.into_inner().as_slice())
         }
 
+        if self.changed_system_config {
+            self.reload_system_config()?;
+        }
+
         if self.changed_domain {
-            info!("herer : reloading domain info");
             self.reload_domain_info()?;
         }
 
@@ -1656,13 +1757,26 @@ impl<'a> QueryServerWriteTransaction<'a> {
         let QueryServerWriteTransaction {
             committed,
             phase,
+            d_info,
+            system_config,
             mut be_txn,
             schema,
-            d_info,
             accesscontrols,
             cid,
             dyngroup_cache,
-            ..
+            // Ignore values that don't need a commit.
+            curtime: _,
+            trim_cid: _,
+            changed_schema: _,
+            changed_acp: _,
+            changed_oauth2: _,
+            changed_domain: _,
+            changed_system_config: _,
+            changed_sync_agreement: _,
+            changed_uuid: _,
+            _db_ticket: _,
+            _write_ticket: _,
+            resolve_filter_cache: _,
         } = self;
         debug_assert!(!committed);
 
@@ -1677,6 +1791,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         schema
             .commit()
             .map(|_| d_info.commit())
+            .map(|_| system_config.commit())
             .map(|_| phase.commit())
             .map(|_| dyngroup_cache.commit())
             .and_then(|_| accesscontrols.commit())

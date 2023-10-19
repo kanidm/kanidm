@@ -24,13 +24,15 @@ use std::os::unix::fs::MetadataExt;
 use std::path::Path;
 use std::time::Duration;
 
-use kanidm_proto::constants::{APPLICATION_JSON, ATTR_NAME};
+use kanidm_proto::constants::{APPLICATION_JSON, ATTR_NAME, KOPID, KSESSIONID, KVERSION};
 use kanidm_proto::v1::*;
 use reqwest::header::CONTENT_TYPE;
+use reqwest::Response;
 pub use reqwest::StatusCode;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use serde_json::error::Error as SerdeJsonError;
+use serde_json::json;
 use tokio::sync::{Mutex, RwLock};
 use url::Url;
 use uuid::Uuid;
@@ -45,10 +47,6 @@ mod service_account;
 mod sync_account;
 mod system;
 
-pub const KOPID: &str = "X-KANIDM-OPID";
-pub const KSESSIONID: &str = "X-KANIDM-AUTH-SESSION-ID";
-
-const KVERSION: &str = "X-KANIDM-VERSION";
 const EXPECT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[derive(Debug)]
@@ -105,6 +103,31 @@ impl Display for KanidmClientBuilder {
         }
         writeln!(f, "use_system_proxies: {}", self.use_system_proxies)
     }
+}
+
+#[test]
+fn test_kanidmclientbuilder_display() {
+    let foo = KanidmClientBuilder::default();
+    println!("{}", foo);
+    assert!(foo.to_string().contains("verify_ca"));
+
+    let testclient = KanidmClientBuilder {
+        address: Some("https://example.com".to_string()),
+        verify_ca: true,
+        verify_hostnames: true,
+        ca: None,
+        connect_timeout: Some(420),
+        use_system_proxies: true,
+    };
+    println!("foo {}", testclient);
+    assert!(testclient.to_string().contains("verify_ca: true"));
+    assert!(testclient.to_string().contains("verify_hostnames: true"));
+
+    let badness = testclient.danger_accept_invalid_hostnames(true);
+    let badness = badness.danger_accept_invalid_certs(true);
+    println!("badness: {}", badness);
+    assert!(badness.to_string().contains("verify_ca: false"));
+    assert!(badness.to_string().contains("verify_hostnames: false"));
 }
 
 #[derive(Debug)]
@@ -171,7 +194,6 @@ impl KanidmClientBuilder {
             }
         }
 
-        // TODO #725: Handle these errors better, or at least provide diagnostics - this currently fails silently
         let mut f = File::open(ca_path).map_err(|e| {
             error!("{:?}", e);
             ClientError::ConfigParseIssue(format!("{:?}", e))
@@ -233,6 +255,8 @@ impl KanidmClientBuilder {
         // error. This check enforces that we get the CORRECT error message instead.
         if !config_path.as_ref().exists() {
             debug!("{:?} does not exist", config_path);
+            let diag = kanidm_lib_file_permissions::diagnose_path(config_path.as_ref());
+            info!(%diag);
             return Ok(self);
         };
 
@@ -263,6 +287,9 @@ impl KanidmClientBuilder {
                         );
                     }
                 };
+                let diag = kanidm_lib_file_permissions::diagnose_path(config_path.as_ref());
+                info!(%diag);
+
                 return Ok(self);
             }
         };
@@ -388,13 +415,15 @@ impl KanidmClientBuilder {
     */
 
     /// Build the client ready for usage.
-    pub fn build(self) -> Result<KanidmClient, reqwest::Error> {
+    pub fn build(self) -> Result<KanidmClient, ClientError> {
         // Errghh, how to handle this cleaner.
         let address = match &self.address {
             Some(a) => a.clone(),
             None => {
                 error!("Configuration option 'uri' missing from client configuration, cannot continue client startup without specifying a server to connect to. 🤔");
-                std::process::exit(1);
+                return Err(ClientError::ConfigParseIssue(
+                    "Configuration option 'uri' missing from client configuration, cannot continue client startup without specifying a server to connect to. 🤔".to_string(),
+                ));
             }
         };
 
@@ -422,7 +451,7 @@ impl KanidmClientBuilder {
             None => client_builder,
         };
 
-        let client = client_builder.build()?;
+        let client = client_builder.build().map_err(ClientError::Transport)?;
 
         // Now get the origin.
         #[allow(clippy::expect_used)]
@@ -517,7 +546,7 @@ impl KanidmClient {
         (*tguard).as_ref().cloned()
     }
 
-    pub fn new_session(&self) -> Result<Self, reqwest::Error> {
+    pub fn new_session(&self) -> Result<Self, ClientError> {
         // Copy our builder, and then just process it.
         let builder = self.builder.clone();
         builder.build()
@@ -561,7 +590,7 @@ impl KanidmClient {
     }
 
     /// You've got the response from a reqwest and you want to turn it into a `ClientError`
-    fn handle_response_error(&self, error: reqwest::Error) -> ClientError {
+    pub fn handle_response_error(&self, error: reqwest::Error) -> ClientError {
         if error.is_connect() {
             if find_reqwest_error_source::<std::io::Error>(&error).is_some() {
                 // TODO: one day handle IO errors better
@@ -580,6 +609,18 @@ impl KanidmClient {
             }
         }
         ClientError::Transport(error)
+    }
+
+    fn get_kopid_from_response(&self, response: &Response) -> String {
+        let opid = response
+            .headers()
+            .get(KOPID)
+            .and_then(|hv| hv.to_str().ok())
+            .unwrap_or("missing_kopid")
+            .to_string();
+
+        debug!("opid -> {:?}", opid);
+        opid
     }
 
     async fn perform_simple_post_request<R: Serialize, T: DeserializeOwned>(
@@ -602,13 +643,7 @@ impl KanidmClient {
 
         self.expect_version(&response).await;
 
-        let opid = response
-            .headers()
-            .get(KOPID)
-            .and_then(|hv| hv.to_str().ok())
-            .unwrap_or("missing_kopid")
-            .to_string();
-        debug!("opid -> {:?}", opid);
+        let opid = self.get_kopid_from_response(&response);
 
         match response.status() {
             reqwest::StatusCode::OK => {}
@@ -679,12 +714,7 @@ impl KanidmClient {
                 .and_then(|hv| hv.to_str().ok().map(str::to_string));
         }
 
-        let opid = headers
-            .get(KOPID)
-            .and_then(|hv| hv.to_str().ok())
-            .unwrap_or("missing_kopid")
-            .to_string();
-        debug!("opid -> {:?}", opid);
+        let opid = self.get_kopid_from_response(&response);
 
         match response.status() {
             reqwest::StatusCode::OK => {}
@@ -731,13 +761,7 @@ impl KanidmClient {
 
         self.expect_version(&response).await;
 
-        let opid = response
-            .headers()
-            .get(KOPID)
-            .and_then(|hv| hv.to_str().ok())
-            .unwrap_or("missing_kopid")
-            .to_string();
-        debug!("opid -> {:?}", opid);
+        let opid = self.get_kopid_from_response(&response);
 
         match response.status() {
             reqwest::StatusCode::OK => {}
@@ -784,14 +808,7 @@ impl KanidmClient {
 
         self.expect_version(&response).await;
 
-        let opid = response
-            .headers()
-            .get(KOPID)
-            .and_then(|hv| hv.to_str().ok())
-            .unwrap_or("missing_kopid")
-            .to_string();
-
-        debug!("opid -> {:?}", opid);
+        let opid = self.get_kopid_from_response(&response);
 
         match response.status() {
             reqwest::StatusCode::OK => {}
@@ -838,13 +855,7 @@ impl KanidmClient {
 
         self.expect_version(&response).await;
 
-        let opid = response
-            .headers()
-            .get(KOPID)
-            .and_then(|hv| hv.to_str().ok())
-            .unwrap_or("missing_kopid")
-            .to_string();
-        debug!("opid -> {:?}", opid);
+        let opid = self.get_kopid_from_response(&response);
 
         match response.status() {
             reqwest::StatusCode::OK => {}
@@ -885,14 +896,7 @@ impl KanidmClient {
 
         self.expect_version(&response).await;
 
-        let opid = response
-            .headers()
-            .get(KOPID)
-            .and_then(|hv| hv.to_str().ok())
-            .unwrap_or("missing_kopid")
-            .to_string();
-
-        debug!("opid -> {:?}", opid);
+        let opid = self.get_kopid_from_response(&response);
 
         match response.status() {
             reqwest::StatusCode::OK => {}
@@ -915,7 +919,8 @@ impl KanidmClient {
         let response = self
             .client
             .delete(self.make_url(dest))
-            .header(CONTENT_TYPE, APPLICATION_JSON);
+            // empty-ish body that makes the parser happy
+            .json(&json!([]));
 
         let response = {
             let tguard = self.bearer_token.read().await;
@@ -933,13 +938,7 @@ impl KanidmClient {
 
         self.expect_version(&response).await;
 
-        let opid = response
-            .headers()
-            .get(KOPID)
-            .and_then(|hv| hv.to_str().ok())
-            .unwrap_or("missing_kopid")
-            .to_string();
-        debug!("opid -> {:?}", opid);
+        let opid = self.get_kopid_from_response(&response);
 
         match response.status() {
             reqwest::StatusCode::OK => {}
@@ -963,12 +962,7 @@ impl KanidmClient {
         dest: &str,
         request: R,
     ) -> Result<(), ClientError> {
-        let req_string = serde_json::to_string(&request).map_err(ClientError::JsonEncode)?;
-        let response = self
-            .client
-            .delete(self.make_url(dest))
-            .body(req_string)
-            .header(CONTENT_TYPE, APPLICATION_JSON);
+        let response = self.client.delete(self.make_url(dest)).json(&request);
 
         let response = {
             let tguard = self.bearer_token.read().await;
@@ -986,13 +980,7 @@ impl KanidmClient {
 
         self.expect_version(&response).await;
 
-        let opid = response
-            .headers()
-            .get(KOPID)
-            .and_then(|hv| hv.to_str().ok())
-            .unwrap_or("missing_kopid")
-            .to_string();
-        debug!("opid -> {:?}", opid);
+        let opid = self.get_kopid_from_response(&response);
 
         match response.status() {
             reqwest::StatusCode::OK => {}
@@ -1459,14 +1447,7 @@ impl KanidmClient {
 
         self.expect_version(&response).await;
 
-        let opid = response
-            .headers()
-            .get(KOPID)
-            .and_then(|hv| hv.to_str().ok())
-            .unwrap_or("missing_kopid")
-            .to_string();
-        debug!("opid -> {:?}", opid);
-
+        let opid = self.get_kopid_from_response(&response);
         match response.status() {
             // Continue to process.
             reqwest::StatusCode::OK => {}
@@ -1691,6 +1672,7 @@ impl KanidmClient {
             .await
     }
 
+    // TODO: add test coverage
     pub async fn idm_account_credential_update_accept_sha1_totp(
         &self,
         session_token: &CUSessionToken,
@@ -1710,6 +1692,7 @@ impl KanidmClient {
             .await
     }
 
+    // TODO: add test coverage
     pub async fn idm_account_credential_update_backup_codes_generate(
         &self,
         session_token: &CUSessionToken,
@@ -1719,6 +1702,7 @@ impl KanidmClient {
             .await
     }
 
+    // TODO: add test coverage
     pub async fn idm_account_credential_update_primary_remove(
         &self,
         session_token: &CUSessionToken,
@@ -1748,6 +1732,7 @@ impl KanidmClient {
             .await
     }
 
+    // TODO: add test coverage
     pub async fn idm_account_credential_update_passkey_remove(
         &self,
         session_token: &CUSessionToken,
