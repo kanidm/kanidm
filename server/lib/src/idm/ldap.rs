@@ -644,8 +644,8 @@ mod tests {
         assert!(idms_prox_write.set_unix_account_password(&pce).is_ok());
         assert!(idms_prox_write.commit().is_ok()); // Committing all configs
 
-        // Test for optional use of POSIX password for bind
-        // Empty UNIX_PW bind, should allow :
+        // default UNIX_PW bind (default is set to true)
+        // Hence allows all unix binds
         let admin_t = ldaps
             .do_bind(idms, "admin", TEST_PASSWORD)
             .await
@@ -659,24 +659,27 @@ mod tests {
             .unwrap();
         assert!(admin_t.effective_session == LdapSession::UnixBind(UUID_ADMIN));
 
-        // Setting UNIX_PW to false:
+        // Setting UNIX_PW_BIND flag to false:
+        // Hence all of the below tests will fail (asserts are still satisfied)
         let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await;
-        let allow_unix_pw_flag = ModifyEvent::new_internal_invalid(
+        let disallow_unix_pw_flag = ModifyEvent::new_internal_invalid(
             filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(UUID_DOMAIN_INFO))),
             ModifyList::new_purge_and_set(Attribute::DomainLdapAllowUnixPwBind, Value::Bool(false)),
         );
-        assert!(idms_prox_write.qs_write.modify(&allow_unix_pw_flag).is_ok());
+        assert!(idms_prox_write
+            .qs_write
+            .modify(&disallow_unix_pw_flag)
+            .is_ok());
         assert!(idms_prox_write.commit().is_ok());
-        let anon_t = ldaps.do_bind(idms, "", "").await.unwrap().unwrap(); // Anon bind should be
-                                                                          // allowed anyways
+        let anon_t = ldaps.do_bind(idms, "", "").await.unwrap().unwrap();
         assert!(anon_t.effective_session == LdapSession::UnixBind(UUID_ANONYMOUS));
         assert!(
             ldaps.do_bind(idms, "", "test").await.unwrap_err() == OperationError::NotAuthenticated
         );
-        let admin_t = ldaps.do_bind(idms, "admin", TEST_PASSWORD).await;
-        assert!(admin_t.unwrap().is_none() == true);
+        let admin_t = ldaps.do_bind(idms, "admin", TEST_PASSWORD).await.unwrap();
+        assert!(admin_t.is_none() == true);
 
-        // ALLOWING UNIX_PW FOR BIND :
+        // Setting UNIX_PW_BIND flag to true :
         let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await;
         let allow_unix_pw_flag = ModifyEvent::new_internal_invalid(
             filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(UUID_DOMAIN_INFO))),

@@ -795,12 +795,13 @@ pub trait QueryServerTransaction<'a> {
     }
 
     fn get_domain_ldap_allow_unix_pw_bind(&mut self) -> Result<bool, OperationError> {
-        let res = self.internal_search_uuid(UUID_DOMAIN_INFO)?;
-        match res.get_ava_single(Attribute::DomainLdapAllowUnixPwBind) {
-            Some(v) => Ok(v.to_bool().unwrap_or(true)), // If typecasting Value to bool gives error
-            // we default to true
-            None => Ok(true),
-        }
+        self.internal_search_uuid(UUID_DOMAIN_INFO).map(|entry| {
+            entry
+                .get_ava_single(Attribute::DomainLdapAllowUnixPwBind)
+                .unwrap_or(Value::new_bool(true))
+                .to_bool()
+                .unwrap_or(true)
+        })
     }
 
     fn get_domain_cookie_key(&mut self) -> Result<[u8; 64], OperationError> {
@@ -1515,20 +1516,6 @@ impl<'a> QueryServerWriteTransaction<'a> {
             Ok(v) => v,
             _ => {
                 admin_warn!("Defaulting ldap_allow_unix_pw_bind to true");
-                info!("Defaulting ldap_allow_unix_pw_bind to true");
-
-                // let modl = ModifyList::new_purge_and_set(
-                //     Attribute::DomainLdapAllowUnixPwBind,
-                //     Value::Bool(true),
-                // );
-                // let udi = PVUUID_DOMAIN_INFO.clone();
-                // let filt = filter_all!(f_eq(Attribute::Uuid, udi));
-                // match self.internal_modify(&filt, &modl){
-                //     Ok(_) => {},
-                //     Err(e) => {
-                //        return Err(e);
-                //     }
-                // }
                 true
             }
         };
@@ -1665,7 +1652,6 @@ impl<'a> QueryServerWriteTransaction<'a> {
     #[instrument(level = "info", skip_all)]
     pub fn commit(mut self) -> Result<(), OperationError> {
         self.reload()?;
-        info!("here : commiting qs_write");
         // Now destructure the transaction ready to reset it.
         let QueryServerWriteTransaction {
             committed,

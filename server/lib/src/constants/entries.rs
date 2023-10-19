@@ -363,7 +363,6 @@ impl From<Attribute> for &'static str {
     fn from(val: Attribute) -> Self {
         match val {
             Attribute::Account => ATTR_ACCOUNT,
-            Attribute::DomainLdapAllowUnixPwBind => ATTR_DOMAIN_LDAP_ALLOW_UNIX_PW_BIND,
             Attribute::AccountExpire => ATTR_ACCOUNT_EXPIRE,
             Attribute::AccountValidFrom => ATTR_ACCOUNT_VALID_FROM,
             Attribute::AcpCreateAttr => ATTR_ACP_CREATE_ATTR,
@@ -395,6 +394,7 @@ impl From<Attribute> for &'static str {
             Attribute::Dn => ATTR_DN,
             Attribute::Domain => ATTR_DOMAIN,
             Attribute::DomainDisplayName => ATTR_DOMAIN_DISPLAY_NAME,
+            Attribute::DomainLdapAllowUnixPwBind => ATTR_DOMAIN_LDAP_ALLOW_UNIX_PW_BIND,
             Attribute::DomainLdapBasedn => ATTR_DOMAIN_LDAP_BASEDN,
             Attribute::DomainName => ATTR_DOMAIN_NAME,
             Attribute::DomainSsid => ATTR_DOMAIN_SSID,
