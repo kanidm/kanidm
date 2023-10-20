@@ -155,14 +155,7 @@ impl IdmServer {
         let (audit_tx, audit_rx) = unbounded();
 
         // Get the domain name, as the relying party id.
-        let (
-            rp_id,
-            rp_name,
-            fernet_private_key,
-            es256_private_key,
-            cookie_key,
-            oauth2rs_set,
-        ) = {
+        let (rp_id, rp_name, fernet_private_key, es256_private_key, cookie_key, oauth2rs_set) = {
             let mut qs_read = qs.read().await;
             (
                 qs_read.get_domain_name().to_string(),
@@ -994,7 +987,8 @@ impl<'a> IdmServerAuthTransaction<'a> {
                 // typing and functionality so we can assess what auth types can
                 // continue, and helps to keep non-needed entry specific data
                 // out of the session tree.
-                let (account, account_policy) = Account::try_from_entry_with_policy(entry.as_ref(), &mut self.qs_read)?;
+                let (account, account_policy) =
+                    Account::try_from_entry_with_policy(entry.as_ref(), &mut self.qs_read)?;
 
                 trace!(?account.primary);
 
@@ -3663,10 +3657,9 @@ mod tests {
             Attribute::AuthSessionExpiry,
             Value::Uint32(new_authsession_expiry),
         );
-        let filt = filter_all!(f_eq(Attribute::Uuid, PVUUID_SYSTEM_CONFIG.clone()));
         idms_prox_write
             .qs_write
-            .internal_modify(&filt, &modlist)
+            .internal_modify_uuid(UUID_IDM_ALL_ACCOUNTS, &modlist)
             .expect("Unable to change default session exp");
 
         assert!(idms_prox_write.commit().is_ok());

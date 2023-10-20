@@ -11,6 +11,7 @@ use webauthn_rs::prelude::{
     AttestedPasskey as DeviceKeyV4, AuthenticationResult, CredentialID, Passkey as PasskeyV4,
 };
 
+use super::accountpolicy::ResolvedAccountPolicy;
 use crate::constants::UUID_ANONYMOUS;
 use crate::credential::softlock::CredSoftLockPolicy;
 use crate::credential::Credential;
@@ -22,7 +23,6 @@ use crate::modify::{ModifyInvalid, ModifyList};
 use crate::prelude::*;
 use crate::schema::SchemaTransaction;
 use crate::value::{IntentTokenState, PartialValue, SessionState, Value};
-use super::accountpolicy::ResolvedAccountPolicy;
 use kanidm_lib_crypto::CryptoPolicy;
 
 use sshkey_attest::proto::PublicKey as SshPublicKey;
@@ -239,11 +239,11 @@ impl Account {
         value: &Entry<EntrySealed, EntryCommitted>,
         qs: &mut TXN,
     ) -> Result<(Self, ResolvedAccountPolicy), OperationError>
-        where TXN: QueryServerTransaction<'a>,
+    where
+        TXN: QueryServerTransaction<'a>,
     {
         let (groups, rap) = Group::try_from_account_entry_with_policy(value, qs)?;
-        try_from_entry!(value, groups)
-            .map(|acct| (acct, rap))
+        try_from_entry!(value, groups).map(|acct| (acct, rap))
     }
 
     #[instrument(level = "trace", skip_all)]
@@ -262,12 +262,6 @@ impl Account {
     ) -> Result<Self, OperationError> {
         let groups = Group::try_from_account_entry_reduced(value, qs)?;
         try_from_entry!(value, groups)
-    }
-
-    pub(crate) fn try_from_entry_no_groups(
-        value: &Entry<EntrySealed, EntryCommitted>,
-    ) -> Result<Self, OperationError> {
-        try_from_entry!(value, vec![])
     }
 
     /// Given the session_id and other metadata, create a user authentication token

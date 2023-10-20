@@ -27,19 +27,19 @@ use uuid::Uuid;
 
 include!("../opt/kanidm.rs");
 
-pub mod common;
-pub mod domain;
-pub mod group;
+mod common;
+mod domain;
+mod group;
 #[cfg(feature = "idv-tui")]
 mod identify_user_tui;
-pub mod oauth2;
-pub mod person;
-pub mod raw;
-pub mod recycle;
-pub mod serviceaccount;
-pub mod session;
-pub mod synch;
-pub mod system_config;
+mod oauth2;
+mod person;
+mod raw;
+mod recycle;
+mod serviceaccount;
+mod session;
+mod synch;
+mod system_config;
 mod webauthn;
 
 /// Throws an error and exits the program when we get an error
@@ -148,8 +148,6 @@ impl SystemOpt {
             SystemOpt::Oauth2 { commands } => commands.debug(),
             SystemOpt::Domain { commands } => commands.debug(),
             SystemOpt::Synch { commands } => commands.debug(),
-            SystemOpt::AuthSessionExpiry { commands } => commands.debug(),
-            SystemOpt::PrivilegedSessionExpiry { commands } => commands.debug(),
         }
     }
 
@@ -160,8 +158,6 @@ impl SystemOpt {
             SystemOpt::Oauth2 { commands } => commands.exec().await,
             SystemOpt::Domain { commands } => commands.exec().await,
             SystemOpt::Synch { commands } => commands.exec().await,
-            SystemOpt::AuthSessionExpiry { commands } => commands.exec().await,
-            SystemOpt::PrivilegedSessionExpiry { commands } => commands.exec().await,
         }
     }
 }

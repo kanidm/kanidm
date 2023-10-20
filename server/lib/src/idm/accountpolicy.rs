@@ -1,7 +1,6 @@
 use crate::prelude::*;
 // use crate::idm::server::IdmServerProxyWriteTransaction;
 
-
 #[derive(Copy, Clone, Debug, Ord, PartialOrd, Eq, PartialEq, Default)]
 #[repr(u32)]
 pub(crate) enum CredentialPolicy {
@@ -36,6 +35,31 @@ pub(crate) struct AccountPolicy {
     credential_policy: CredentialPolicy,
 }
 
+impl Into<Option<AccountPolicy>> for &EntrySealedCommitted {
+    fn into(self) -> Option<AccountPolicy> {
+        if !self.attribute_equality(
+            Attribute::Class,
+            &EntryClass::AccountPolicy.to_partialvalue(),
+        ) {
+            return None;
+        }
+
+        let authsession_expiry = self
+            .get_ava_single_uint32(Attribute::AuthSessionExpiry)
+            .unwrap_or(MAXIMUM_AUTH_SESSION_EXPIRY);
+        let privilege_expiry = self
+            .get_ava_single_uint32(Attribute::PrivilegeExpiry)
+            .unwrap_or(MAXIMUM_AUTH_PRIVILEGE_EXPIRY);
+        let credential_policy = CredentialPolicy::default();
+
+        Some(AccountPolicy {
+            privilege_expiry,
+            authsession_expiry,
+            credential_policy,
+        })
+    }
+}
+
 #[derive(Clone)]
 #[cfg_attr(test, derive(Default))]
 pub(crate) struct ResolvedAccountPolicy {
@@ -47,13 +71,13 @@ pub(crate) struct ResolvedAccountPolicy {
 impl ResolvedAccountPolicy {
     pub(crate) fn fold_from<I>(iter: I) -> Self
     where
-        I: Iterator<Item = AccountPolicy>
+        I: Iterator<Item = AccountPolicy>,
     {
-        // Start with our default
+        // Start with our maximums
         let mut accumulate = ResolvedAccountPolicy {
-            privilege_expiry: DEFAULT_AUTH_PRIVILEGE_EXPIRY,
-            authsession_expiry: DEFAULT_AUTH_SESSION_EXPIRY,
-            credential_policy: CredentialPolicy::NoPolicy
+            privilege_expiry: MAXIMUM_AUTH_PRIVILEGE_EXPIRY,
+            authsession_expiry: MAXIMUM_AUTH_SESSION_EXPIRY,
+            credential_policy: CredentialPolicy::default(),
         };
 
         iter.for_each(|acc_pol| {
@@ -84,36 +108,33 @@ impl ResolvedAccountPolicy {
         self.authsession_expiry
     }
 
+    /*
     pub(crate) fn credential_policy(&self) -> CredentialPolicy {
         self.credential_policy
     }
+    */
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{
-        CredentialPolicy,
-        AccountPolicy,
-        ResolvedAccountPolicy,
-    };
+    use super::{AccountPolicy, CredentialPolicy, ResolvedAccountPolicy};
     // use crate::prelude::*;
 
+    #[test]
     fn test_idm_account_policy_resolve() {
         let policy_a = AccountPolicy {
             privilege_expiry: 100,
             authsession_expiry: 100,
-            credential_policy: CredentialPolicy::MfaRequired
+            credential_policy: CredentialPolicy::MfaRequired,
         };
 
         let policy_b = AccountPolicy {
             privilege_expiry: 150,
             authsession_expiry: 50,
-            credential_policy: CredentialPolicy::PasskeyRequired
+            credential_policy: CredentialPolicy::PasskeyRequired,
         };
 
-        let rap = ResolvedAccountPolicy::fold_from(
-            [policy_a, policy_b].into_iter()
-        );
+        let rap = ResolvedAccountPolicy::fold_from([policy_a, policy_b].into_iter());
 
         assert_eq!(rap.privilege_expiry(), 100);
         assert_eq!(rap.authsession_expiry(), 50);

@@ -621,6 +621,18 @@ pub static ref SCHEMA_CLASS_DYNGROUP: SchemaClass = SchemaClass {
     ..Default::default()
 };
 
+pub static ref SCHEMA_CLASS_ACCOUNT_POLICY: SchemaClass = SchemaClass {
+    uuid: UUID_SCHEMA_CLASS_ACCOUNT_POLICY,
+    name: EntryClass::AccountPolicy.into(),
+    description: "Policies applied to accounts that are members of a group".to_string(),
+    systemmay: vec![
+        Attribute::AuthSessionExpiry.into(),
+        Attribute::PrivilegeExpiry.into()
+    ],
+    systemsupplements: vec![Attribute::Group.into()],
+    ..Default::default()
+};
+
 pub static ref SCHEMA_CLASS_ACCOUNT: SchemaClass = SchemaClass {
     uuid: UUID_SCHEMA_CLASS_ACCOUNT,
     name: EntryClass::Account.into(),

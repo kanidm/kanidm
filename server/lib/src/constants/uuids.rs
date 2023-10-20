@@ -240,6 +240,9 @@ pub const UUID_SCHEMA_ATTR_AUTH_PRIVILEGE_EXPIRY: Uuid =
 pub const UUID_SCHEMA_ATTR_IMAGE: Uuid = uuid!("00000000-0000-0000-0000-ffff00000143");
 pub const UUID_SCHEMA_ATTR_DENIED_NAME: Uuid = uuid!("00000000-0000-0000-0000-ffff00000144");
 
+// Leave 145 for ldap unix pw bind
+pub const UUID_SCHEMA_CLASS_ACCOUNT_POLICY: Uuid = uuid!("00000000-0000-0000-0000-ffff00000146");
+
 // System and domain infos
 // I'd like to strongly criticise william of the past for making poor choices about these allocations.
 pub const UUID_SYSTEM_INFO: Uuid = uuid!("00000000-0000-0000-0000-ffffff000001");
