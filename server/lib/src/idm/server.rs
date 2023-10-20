@@ -994,7 +994,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
                 // typing and functionality so we can assess what auth types can
                 // continue, and helps to keep non-needed entry specific data
                 // out of the session tree.
-                let (account, account_policy) = Account::try_from_entry_with_policy_ro(entry.as_ref(), &mut self.qs_read)?;
+                let (account, account_policy) = Account::try_from_entry_with_policy(entry.as_ref(), &mut self.qs_read)?;
 
                 trace!(?account.primary);
 

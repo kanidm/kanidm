@@ -79,36 +79,30 @@ macro_rules! try_from_account_e {
 }
 
 impl Group {
-    pub fn try_from_account_entry_red_ro(
+    pub fn try_from_account_entry_reduced<'a, TXN>(
         value: &Entry<EntryReduced, EntryCommitted>,
-        qs: &mut QueryServerReadTransaction,
-    ) -> Result<Vec<Self>, OperationError> {
+        qs: &mut TXN,
+    ) -> Result<Vec<Self>, OperationError>
+        where TXN: QueryServerTransaction<'a>
+    {
         try_from_account_e!(value, qs)
     }
 
-    pub fn try_from_account_entry_ro<'a, TXN>(
+    pub fn try_from_account_entry<'a, TXN>(
         value: &Entry<EntrySealed, EntryCommitted>,
-        qs: &'a mut TXN,
+        qs: &mut TXN,
     ) -> Result<Vec<Self>, OperationError> 
         where TXN: QueryServerTransaction<'a>
     {
         try_from_account_e!(value, qs)
     }
 
-    pub fn try_from_account_entry_with_policy_ro<'a, TXN>(
-        value: &Entry<EntrySealed, EntryCommitted>,
-        qs: &'a mut TXN,
-        // qs: &mut QueryServerReadTransaction,
-    ) -> Result<(Vec<Self>, ResolvedAccountPolicy), OperationError> 
+    pub fn try_from_account_entry_with_policy<'b, 'a, TXN>(
+        value: &'b Entry<EntrySealed, EntryCommitted>,
+        qs: &mut TXN,
+    ) -> Result<(Vec<Self>, ResolvedAccountPolicy), OperationError>
         where TXN: QueryServerTransaction<'a>
     {
-        try_from_account_e!(value, qs)
-    }
-
-    pub fn try_from_account_entry_rw(
-        value: &Entry<EntrySealed, EntryCommitted>,
-        qs: &mut QueryServerWriteTransaction,
-    ) -> Result<Vec<Self>, OperationError> {
         try_from_account_e!(value, qs)
     }
 

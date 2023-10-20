@@ -230,16 +230,18 @@ impl Account {
         value: &Entry<EntrySealed, EntryCommitted>,
         qs: &mut QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
-        let groups = Group::try_from_account_entry_ro(value, qs)?;
+        let groups = Group::try_from_account_entry(value, qs)?;
         try_from_entry!(value, groups)
     }
 
     #[instrument(level = "trace", skip_all)]
-    pub(crate) fn try_from_entry_with_policy_ro(
+    pub(crate) fn try_from_entry_with_policy<'a, TXN>(
         value: &Entry<EntrySealed, EntryCommitted>,
-        qs: &mut QueryServerReadTransaction,
-    ) -> Result<(Self, ResolvedAccountPolicy), OperationError> {
-        let (groups, rap) = Group::try_from_account_entry_with_policy_ro(value, qs)?;
+        qs: &mut TXN,
+    ) -> Result<(Self, ResolvedAccountPolicy), OperationError>
+        where TXN: QueryServerTransaction<'a>,
+    {
+        let (groups, rap) = Group::try_from_account_entry_with_policy(value, qs)?;
         try_from_entry!(value, groups)
             .map(|acct| (acct, rap))
     }
@@ -249,7 +251,7 @@ impl Account {
         value: &Entry<EntrySealed, EntryCommitted>,
         qs: &mut QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
-        let groups = Group::try_from_account_entry_rw(value, qs)?;
+        let groups = Group::try_from_account_entry(value, qs)?;
         try_from_entry!(value, groups)
     }
 
@@ -258,7 +260,7 @@ impl Account {
         value: &Entry<EntryReduced, EntryCommitted>,
         qs: &mut QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
-        let groups = Group::try_from_account_entry_red_ro(value, qs)?;
+        let groups = Group::try_from_account_entry_reduced(value, qs)?;
         try_from_entry!(value, groups)
     }
 
