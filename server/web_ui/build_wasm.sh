@@ -52,6 +52,9 @@ cd ..
 if [ -z "${SKIP_BROTLI}" ]; then
     # updates the brotli-compressed files
     echo "brotli-compressing compressible files over 16KB in size..."
-    find ./pkg -size +16k -type f -not -name '*.png' -exec ./find_best_brotli.sh "{}" \; || exit 1
+    find ./pkg -size +16k -type f \
+        -not -name '*.br' \
+        -not -name '*.png' \
+        -exec ./find_best_brotli.sh "{}" \; || exit 1
 fi
 
