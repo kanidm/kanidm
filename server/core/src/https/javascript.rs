@@ -43,7 +43,7 @@ pub struct JavaScriptFile {
 impl JavaScriptFile {
     /// returns a `<script>` HTML tag
     pub fn as_tag(&self) -> String {
-        let typeattr = match &self.filetype {
+        let filetype = match &self.filetype {
             Some(val) => {
                 format!(" type=\"{}\"", val.as_str())
             }
@@ -51,7 +51,7 @@ impl JavaScriptFile {
         };
         format!(
             r#"<script src="/pkg/{}" integrity="sha384-{}"{}></script>"#,
-            self.filepath, &self.hash, &typeattr,
+            self.filepath, &self.hash, &filetype,
         )
     }
 }
