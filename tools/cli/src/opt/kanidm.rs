@@ -88,6 +88,13 @@ pub enum GroupPosix {
 
 #[derive(Debug, Subcommand)]
 pub enum GroupAccountPolicyOpt {
+    /// Enable account policy for this group
+    #[clap(name = "enable")]
+    Enable {
+        name: String,
+        #[clap(flatten)]
+        copt: CommonOpt,
+    },
     /// Set the maximum time for session expiry
     #[clap(name = "auth-expiry")]
     AuthSessionExpiry {

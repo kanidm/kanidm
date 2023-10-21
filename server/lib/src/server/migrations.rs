@@ -519,6 +519,11 @@ impl<'a> QueryServerWriteTransaction<'a> {
         //
         // Should we not set these at all? Or should we do a one-time only attempt?
 
+        // Perhaps if there is no value in the system config on migrate, we create one here?
+        // But what about new installs?
+
+        // Is there where I'm forced to do the proper domain level migrations?
+
         let idm_all_accounts_entry = self.internal_search_uuid(UUID_SYSTEM_CONFIG)?;
 
         let mut all_account_modlist = Vec::with_capacity(3);
