@@ -1,5 +1,5 @@
-/// Set and maintain default values on entries that require them. This is seperate to
-/// migrations that enforce entry existance and state on startup, this enforces
+/// Set and maintain default values on entries that require them. This is separate to
+/// migrations that enforce entry existence and state on startup, this enforces
 /// default values for specific entry uuids over every transaction.
 use std::iter::once;
 use std::sync::Arc;
