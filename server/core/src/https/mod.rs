@@ -104,7 +104,6 @@ pub fn get_js_files(role: ServerRole) -> Result<JavaScriptFiles, ()> {
     if !matches!(role, ServerRole::WriteReplicaNoUI) {
         // let's set up the list of js module hashes
         for filepath in [
-            "wasmloader.js", // TODO: deprecate this
             "wasmloader_admin.js",
             "wasmloader_login_flows.js",
             "wasmloader_user.js",
@@ -135,7 +134,10 @@ pub fn get_js_files(role: ServerRole) -> Result<JavaScriptFiles, ()> {
             };
         }
 
-        for filepath in ["shared.js", "external/bootstrap.bundle.min.js"] {
+        for (filepath, filetype) in [
+            ("shared.js", Some("module".to_string())),
+            ("external/bootstrap.bundle.min.js", None),
+        ] {
             // let's set up the list of non-wasm-module js files we want to serve
             // for filepath in ["external/bootstrap.bundle.min.js", "shared.js"] {
             match generate_integrity_hash(format!(
@@ -146,7 +148,7 @@ pub fn get_js_files(role: ServerRole) -> Result<JavaScriptFiles, ()> {
                 Ok(hash) => all_pages.push(JavaScriptFile {
                     filepath,
                     hash,
-                    filetype: None,
+                    filetype,
                 }),
                 Err(err) => {
                     admin_error!(

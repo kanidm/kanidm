@@ -36,7 +36,7 @@ pub(crate) async fn ui_handler_user_ui(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
 ) -> Response<String> {
-    ui_handler_generic(state, kopid, "wasmloader.js").await
+    ui_handler_generic(state, kopid, "wasmloader_user.js").await
 }
 
 pub(crate) async fn ui_handler_admin(
