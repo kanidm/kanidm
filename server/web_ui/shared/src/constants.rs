@@ -49,8 +49,13 @@ pub const CSS_NAVBAR_NAV: &str = "navbar navbar-expand-md navbar-dark bg-dark mb
 pub const CSS_NAVBAR_BRAND: &str = "navbar-brand navbar-dark";
 pub const CSS_NAVBAR_LINKS_UL: &str = "navbar-nav me-auto mb-2 mb-md-0";
 
+pub const URL_ADMIN: &str = "/ui/admin";
+pub const URL_OAUTH2: &str = "/ui/oauth2";
 pub const URL_USER_HOME: &str = "/ui/apps";
+pub const URL_USER_PROFILE: &str = "/ui/profile";
 pub const URL_LOGIN: &str = "/ui/login";
+pub const URL_REAUTH: &str = "/ui/reauth";
+pub const URL_RESET: &str = "/ui/reset";
 
 pub const IMG_FAVICON: &str = "/pkg/img/favicon.png";
 pub const IMG_LOGO_SQUARE: &str = "/pkg/img/logo-square.svg";

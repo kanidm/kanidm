@@ -8,7 +8,7 @@ use super::prelude::*;
 use crate::components::admin_menu::{Entity, EntityType, GetError};
 use crate::router::AdminRoute;
 use kanidmd_web_ui_shared::constants::{
-    CSS_BREADCRUMB_ITEM, CSS_BREADCRUMB_ITEM_ACTIVE, CSS_CELL, CSS_DT, CSS_TABLE,
+    CSS_BREADCRUMB_ITEM, CSS_BREADCRUMB_ITEM_ACTIVE, CSS_CELL, CSS_DT, CSS_TABLE, URL_ADMIN,
 };
 
 impl From<GetError> for AdminListAccountsMsg {
@@ -185,7 +185,7 @@ impl Component for AdminListAccounts {
             <>
 
             <ol class="breadcrumb">
-            <li class={CSS_BREADCRUMB_ITEM}><a href="/ui/admin/">{"Admin"}</a></li>
+            <li class={CSS_BREADCRUMB_ITEM}><a href={URL_ADMIN}>{"Admin"}</a></li>
             <li class={CSS_BREADCRUMB_ITEM_ACTIVE} aria-current="page">{"Accounts"}</li>
             </ol>
             {do_page_header("Account Administration")}

@@ -1,5 +1,5 @@
 //! This handles the login/auth flows, and is designed to be smol and snappy
-//! so it laods fast and gets the user to where they need to go!
+//! so it loads fast and gets the user to where they need to go!
 //!
 //! - /ui/login
 //! - /ui/oauth2

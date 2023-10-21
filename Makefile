@@ -141,7 +141,9 @@ codespell:
 	--skip='./docs/*,./.git' \
 	--skip='*.svg' \
 	--skip='./rlm_python/mods-available/eap' \
-	--skip='./server/web_ui/static/external,./server/web_ui/pkg/external' \
+	--skip='./server/web_ui/static/external' \
+	--skip='./server/web_ui/pkg/external' \
+	--skip='./server/web_ui/shared/static/external' \
 	--skip='./server/web_ui/admin/static/external,./server/web_ui/admin/pkg/external' \
 	--skip='./server/lib/src/constants/system_config.rs,./pykanidm/site,./server/lib/src/constants/*.json'
 

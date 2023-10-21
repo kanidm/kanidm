@@ -85,10 +85,7 @@ impl Component for ProfileApp {
             Msg::BeginCredentialUpdate { token, status } => {
                 // Got the rec, setup.
                 push_cred_update_session((token, status));
-                push_return_location(
-                    // Location::Views(ViewRoute::Profile)
-                    "/ui/profile",
-                );
+                push_return_location(URL_USER_PROFILE);
 
                 ctx.link()
                     .navigator()
@@ -99,10 +96,7 @@ impl Component for ProfileApp {
                 false
             }
             Msg::RequestReauth => {
-                push_return_location(
-                    // Location::Views(ViewRoute::Profile)
-                    "/ui/profile",
-                );
+                push_return_location(URL_USER_PROFILE);
 
                 let uat = &ctx.props().current_user_uat;
                 let spn = uat.spn.to_string();
@@ -110,14 +104,11 @@ impl Component for ProfileApp {
                 // Setup the ui hint.
                 push_login_hint(spn);
 
-                ctx.link()
-                    .navigator()
-                    .expect_throw("failed to read history")
-                    .push(
-
-                        // &Route::Reauth
-                         // "/ui/reauth",
-                    );
+                let window = gloo_utils::window();
+                window
+                    .location()
+                    .set_href(URL_REAUTH)
+                    .expect_throw("Failed to redirect to reauth page!");
 
                 // No need to redraw, or reset state, since this redirect will destroy
                 // the state.

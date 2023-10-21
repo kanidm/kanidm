@@ -290,6 +290,7 @@ impl LoginApp {
                                 type="text"
                                 autocomplete="username"
                                 value={ username }
+                                required=true
                             />
                         </div>
 

@@ -4,7 +4,7 @@ use gloo::console;
 use kanidm_proto::v1::{UiHint, UserAuthToken};
 use kanidmd_web_ui_shared::constants::{
     CSS_ALERT_DANGER, CSS_NAVBAR_BRAND, CSS_NAVBAR_LINKS_UL, CSS_NAVBAR_NAV, CSS_NAV_LINK,
-    ID_NAVBAR_COLLAPSE, IMG_LOGO_SQUARE, URL_LOGIN,
+    ID_NAVBAR_COLLAPSE, IMG_LOGO_SQUARE, URL_ADMIN, URL_LOGIN,
 };
 use kanidmd_web_ui_shared::models::push_return_location;
 use kanidmd_web_ui_shared::{signout_link, signout_modal, ui_logout};
@@ -270,7 +270,7 @@ impl ViewsApp {
                 <span data-feather="file"></span>
                 { "Identity verification" }
                 </Link<ViewRoute>>},
-                html! {<a href="/ui/admin/" class={CSS_NAV_LINK}>
+                html! {<a href={URL_ADMIN} class={CSS_NAV_LINK}>
                 <span data-feather="file"></span>
                 { "Admin" }
                 </a>},

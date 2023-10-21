@@ -1,7 +1,7 @@
 #[cfg(debug_assertions)]
 use gloo::console;
 use kanidm_proto::v1::{CUIntentToken, UserAuthToken};
-use kanidmd_web_ui_shared::constants::ID_CRED_RESET_CODE;
+use kanidmd_web_ui_shared::constants::{ID_CRED_RESET_CODE, URL_RESET};
 use kanidmd_web_ui_shared::error::FetchError;
 use kanidmd_web_ui_shared::utils::{document, modal_hide_by_id, origin};
 use kanidmd_web_ui_shared::{do_request, RequestMethod};
@@ -127,7 +127,7 @@ impl Component for CreateResetCode {
             CodeState::Ready { token } => {
                 let mut url = origin();
 
-                url.set_path("/ui/reset");
+                url.set_path(URL_RESET);
                 let reset_link = html! {
                     <a href={ url.to_string() }>{ url.to_string() }</a>
                 };

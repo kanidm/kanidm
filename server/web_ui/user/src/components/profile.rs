@@ -14,7 +14,7 @@ use crate::components::change_unix_password::ChangeUnixPassword;
 use crate::components::create_reset_code::CreateResetCode;
 use crate::manager::Route;
 use crate::views::ViewProps;
-use kanidmd_web_ui_shared::constants::CSS_PAGE_HEADER;
+use kanidmd_web_ui_shared::constants::{CSS_PAGE_HEADER, URL_REAUTH, URL_USER_PROFILE};
 
 #[allow(clippy::large_enum_variant)]
 // Page state
@@ -85,10 +85,7 @@ impl Component for ProfileApp {
             Msg::BeginCredentialUpdate { token, status } => {
                 // Got the rec, setup.
                 push_cred_update_session((token, status));
-                push_return_location(
-                    // Location::Views(ViewRoute::Profile)
-                    "/ui/profile",
-                );
+                push_return_location(URL_USER_PROFILE);
 
                 ctx.link()
                     .navigator()
@@ -99,10 +96,7 @@ impl Component for ProfileApp {
                 false
             }
             Msg::RequestReauth => {
-                push_return_location(
-                    // Location::Views(ViewRoute::Profile)
-                    "/ui/profile",
-                );
+                push_return_location(URL_USER_PROFILE);
 
                 let uat = &ctx.props().current_user_uat;
                 let spn = uat.spn.to_string();
@@ -110,14 +104,11 @@ impl Component for ProfileApp {
                 // Setup the ui hint.
                 push_login_hint(spn);
 
-                // ctx.link()
-                //     .navigator()
-                //     .expect_throw("failed to read history")
-                //     .push(
-                //         // &Route::Reauth
-                //         "/ui/reauth",
-                //     );
-                // TODO: things are broken here, we need to fix the reauth link
+                let window = gloo_utils::window();
+                window
+                    .location()
+                    .set_href(URL_REAUTH)
+                    .expect_throw("Failed to redirect to reauth page!");
 
                 // No need to redraw, or reset state, since this redirect will destroy
                 // the state.

@@ -168,7 +168,7 @@ where
             <div class="modal-footer">
             <button type="button" class="btn btn-success"
                 data-bs-toggle="modal"
-                data-bs-target={["#{}", ID_SIGNOUTMODAL].concat()}
+                data-bs-target={["#", ID_SIGNOUTMODAL].concat()}
                 onclick={ ctx.link().callback(move |_| target.clone()) }>{ "Sign out" }</button>
             <button type="button" class="btn btn-secondary"
                 data-bs-dismiss="modal"
@@ -183,7 +183,7 @@ where
 pub fn signout_link() -> Html {
     html! {
         <a class={CSS_NAV_LINK} href="#" data-bs-toggle="modal"
-        data-bs-target={["#{}", ID_SIGNOUTMODAL].concat()}
+        data-bs-target={["#", ID_SIGNOUTMODAL].concat()}
         >{"Sign out"}</a>
     }
 }

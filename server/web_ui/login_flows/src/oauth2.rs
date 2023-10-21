@@ -4,7 +4,7 @@ pub use kanidm_proto::oauth2::{
     AccessTokenRequest, AccessTokenResponse, AuthorisationRequest, AuthorisationResponse,
     CodeChallengeMethod, ErrorResponse,
 };
-use kanidmd_web_ui_shared::constants::{CONTENT_TYPE, CSS_ALERT_DANGER};
+use kanidmd_web_ui_shared::constants::{CONTENT_TYPE, CSS_ALERT_DANGER, URL_OAUTH2};
 use kanidmd_web_ui_shared::utils::{do_alert_error, do_footer};
 use kanidmd_web_ui_shared::{add_body_form_classes, logo_img, remove_body_form_classes};
 use wasm_bindgen::{JsCast, JsValue, UnwrapThrowExt};
@@ -278,10 +278,7 @@ impl Component for Oauth2App {
                 true
             }
             Oauth2Msg::LoginProceed => {
-                push_return_location(
-                    // models::Location::Manager(LoginRoute::Oauth2)
-                    "/ui/oauth2",
-                );
+                push_return_location(URL_OAUTH2);
 
                 ctx.link()
                     .navigator()
