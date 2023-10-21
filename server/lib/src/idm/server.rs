@@ -1379,7 +1379,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
                 effective_session: LdapSession::UnixBind(UUID_ANONYMOUS),
             }))
         } else {
-            if self.qs_read.d_info.d_ldap_allow_unix_pw_bind == false {
+            if !self.qs_read.d_info.d_ldap_allow_unix_pw_bind {
                 security_info!("Bind not allowed through Unix passwords.");
                 return Ok(None);
             }

@@ -818,9 +818,7 @@ pub trait QueryServerTransaction<'a> {
     fn get_domain_ldap_allow_unix_pw_bind(&mut self) -> Result<bool, OperationError> {
         self.internal_search_uuid(UUID_DOMAIN_INFO).map(|entry| {
             entry
-                .get_ava_single(Attribute::DomainLdapAllowUnixPwBind)
-                .unwrap_or(Value::new_bool(true))
-                .to_bool()
+                .get_ava_single_bool(Attribute::DomainLdapAllowUnixPwBind)
                 .unwrap_or(true)
         })
     }
@@ -1609,7 +1607,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 true
             }
         };
-        let domain_uuid = self.be_txn.get_db_d_uuid();
+        let domain_uuid = self.be_txn.get_db_d_uuid()?;
         let mut_d_info = self.d_info.get_mut();
         mut_d_info.d_ldap_allow_unix_pw_bind = domain_ldap_allow_unix_pw_bind;
         if mut_d_info.d_uuid != domain_uuid {

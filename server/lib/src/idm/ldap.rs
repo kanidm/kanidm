@@ -660,7 +660,7 @@ mod tests {
         assert!(admin_t.effective_session == LdapSession::UnixBind(UUID_ADMIN));
 
         // Setting UNIX_PW_BIND flag to false:
-        // Hence all of the below tests will fail (asserts are still satisfied)
+        // Hence all of the below authentication will fail (asserts are still satisfied)
         let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await;
         let disallow_unix_pw_flag = ModifyEvent::new_internal_invalid(
             filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(UUID_DOMAIN_INFO))),
