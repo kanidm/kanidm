@@ -4,9 +4,10 @@ use kanidm_proto::v1::{
     PasskeyDetail,
 };
 
+use kanidmd_web_ui_shared::constants::{CSS_ALERT_DANGER, URL_USER_HOME};
 use kanidmd_web_ui_shared::models::{get_cred_update_session, pop_return_location};
 use kanidmd_web_ui_shared::utils::{autofocus, do_footer};
-use kanidmd_web_ui_shared::{add_body_form_classes, remove_body_form_classes};
+use kanidmd_web_ui_shared::{add_body_form_classes, logo_img, remove_body_form_classes};
 use uuid::Uuid;
 use wasm_bindgen::{JsValue, UnwrapThrowExt};
 use yew::prelude::*;
@@ -240,18 +241,14 @@ impl Component for CredentialResetApp {
             (Msg::Success, State::WaitingForCommit) => {
                 let loc = pop_return_location();
                 #[cfg(debug_assertions)]
-                console::debug!(format!("Going to -> {:?}", loc));
-                // loc.goto(
-                //     &ctx.link()
-                //         .navigator()
-                //         .expect_throw("failed to read history"),
-                // );
-                // None
-                todo!("what's this goto?");
+                console::debug!(["Successful, redirecting to -> ", &loc].concat());
+                let window = gloo_utils::window();
+                window.location().set_href(&loc.to_string()).unwrap_throw();
+                None
             }
             (Msg::Error { emsg, kopid }, _) => Some(State::Error { emsg, kopid }),
             (_, _) => {
-                console::error!("CredentialResetApp state match fail on update.");
+                console::error!("CredentialResetApp state match fail on update!");
                 None
             }
         };
@@ -294,7 +291,7 @@ impl CredentialResetApp {
         html! {
         <main class="flex-shrink-0 form-signin">
             <center>
-                <img src="/pkg/img/logo-square.svg" alt="Kanidm" class="kanidm_logo"/>
+                {logo_img()}
                 <h2>{ "Credential Reset" } </h2>
                 // TODO: replace this with a call to domain info
                 // <h3>{ "idm.example.com" } </h3>
@@ -325,7 +322,7 @@ impl CredentialResetApp {
                 </p>
                 </form>
             <p class="text-center">
-              <a href="/"><button href="/" class="btn btn-secondary" aria-label="Return home">{"Return to the home page"}</button></a>
+              <a href={URL_USER_HOME}><button href={URL_USER_HOME} class="btn btn-secondary" aria-label="Return home">{"Return to the home page"}</button></a>
             </p>
 
           </main>
@@ -630,9 +627,9 @@ impl CredentialResetApp {
         html! {
           <main class="form-signin">
             <p class="text-center">
-                <img src="/pkg/img/logo-square.svg" alt="Kanidm" class="kanidm_logo"/>
+                {logo_img()}
             </p>
-            <div class="alert alert-danger" role="alert">
+            <div class={CSS_ALERT_DANGER} role="alert">
               <h2>{ "An Error Occurred 🥺" }</h2>
             <p>{ msg.to_string() }</p>
             <p>
@@ -646,7 +643,7 @@ impl CredentialResetApp {
             </p>
             </div>
             <p class="text-center">
-              <a href="/"><button href="/" class="btn btn-secondary" aria-label="Return home">{"Return to the home page"}</button></a>
+              <a href={URL_USER_HOME}><button href={URL_USER_HOME} class="btn btn-secondary" aria-label="Return home">{"Return to the home page"}</button></a>
             </p>
           </main>
         }

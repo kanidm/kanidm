@@ -1,3 +1,5 @@
+#![allow(clippy::disallowed_types)] // because `Routable` uses a hashmap
+
 use serde::{Deserialize, Serialize};
 use yew::{html, Html};
 use yew_router::prelude::Redirect;
@@ -30,7 +32,7 @@ pub enum AdminRoute {
     NotFound,
 }
 
-pub(crate) fn admin_routes(route: AdminRoute) -> Html {
+pub(crate) fn switch(route: AdminRoute) -> Html {
     match route {
         AdminRoute::AdminMenu => html! {
           <components::admin_menu::AdminMenu />

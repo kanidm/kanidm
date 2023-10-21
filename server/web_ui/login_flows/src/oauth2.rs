@@ -4,9 +4,9 @@ pub use kanidm_proto::oauth2::{
     AccessTokenRequest, AccessTokenResponse, AuthorisationRequest, AuthorisationResponse,
     CodeChallengeMethod, ErrorResponse,
 };
-use kanidmd_web_ui_shared::constants::CONTENT_TYPE;
-use kanidmd_web_ui_shared::utils::do_footer;
-use kanidmd_web_ui_shared::{add_body_form_classes, remove_body_form_classes};
+use kanidmd_web_ui_shared::constants::{CONTENT_TYPE, CSS_ALERT_DANGER};
+use kanidmd_web_ui_shared::utils::{do_alert_error, do_footer};
+use kanidmd_web_ui_shared::{add_body_form_classes, logo_img, remove_body_form_classes};
 use wasm_bindgen::{JsCast, JsValue, UnwrapThrowExt};
 use wasm_bindgen_futures::JsFuture;
 use web_sys::{Request, RequestInit, RequestMode, RequestRedirect, Response};
@@ -485,7 +485,7 @@ impl Component for Oauth2App {
             }
             State::AccessDenied(kopid) => {
                 html! {
-                    <div class="alert alert-danger" role="alert">
+                    <div class={CSS_ALERT_DANGER} role="alert">
                         <h1>{ "Access Denied" } </h1>
                         <p>
                         { "You do not have access to the requested resources." }
@@ -501,22 +501,16 @@ impl Component for Oauth2App {
                     </div>
                 }
             }
-            State::ErrInvalidRequest => {
-                html! {
-                    <div class="alert alert-danger" role="alert">
-                        <h1>{ "Invalid request" } </h1>
-                        <p>
-                        { "Please close this window and try again again from the beginning." }
-                        </p>
-                    </div>
-                }
-            }
+            State::ErrInvalidRequest => do_alert_error(
+                "Invalid request",
+                Some("Please close this window and try again again from the beginning."),
+            ),
         };
         html! {
         <>
             <main class="form-signin">
             <center>
-                <img src="/pkg/img/logo-square.svg" alt="Kanidm" class="kanidm_logo"/>
+                {logo_img()}
             </center>
             <div class="container">
             { body_content }

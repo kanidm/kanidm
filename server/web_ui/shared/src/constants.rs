@@ -1,4 +1,3 @@
-
 //! Constants
 
 pub const CONTENT_TYPE: &str = "content-type";
@@ -16,6 +15,7 @@ pub const ID_SIGNOUTMODAL: &str = "signoutModal";
 pub const ID_UNIX_PASSWORDCHANGE: &str = "unixPasswordModal";
 pub const ID_IDENTITY_VERIFICATION_SYSTEM_TOTP_MODAL: &str = "identityVerificationSystemTotpModal";
 pub const ID_CRED_RESET_CODE: &str = "credResetCodeModal";
+pub const ID_NAVBAR_COLLAPSE: &str = "navbarCollapse";
 // classes for buttons
 pub const CLASS_BUTTON_DARK: &str = "btn btn-dark";
 pub const CLASS_BUTTON_SUCCESS: &str = "btn btn-success";
@@ -39,3 +39,18 @@ pub const CSS_BREADCRUMB_ITEM_ACTIVE: &str = "breadcrumb-item active";
 // used in the UI for ... cards
 pub const CSS_CARD: &str = "card text-center";
 pub const CSS_CARD_BODY: &str = "card-body text-center";
+
+pub const CSS_NAV_LINK: &str = "nav-link";
+
+pub const CSS_ALERT_WARNING: &str = "alert alert-warning";
+pub const CSS_ALERT_DANGER: &str = "alert alert-danger";
+
+pub const CSS_NAVBAR_NAV: &str = "navbar navbar-expand-md navbar-dark bg-dark mb-4";
+pub const CSS_NAVBAR_BRAND: &str = "navbar-brand navbar-dark";
+pub const CSS_NAVBAR_LINKS_UL: &str = "navbar-nav me-auto mb-2 mb-md-0";
+
+pub const URL_USER_HOME: &str = "/ui/apps";
+pub const URL_LOGIN: &str = "/ui/login";
+
+pub const IMG_FAVICON: &str = "/pkg/img/favicon.png";
+pub const IMG_LOGO_SQUARE: &str = "/pkg/img/logo-square.svg";

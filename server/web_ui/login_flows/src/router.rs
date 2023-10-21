@@ -1,7 +1,6 @@
+#![allow(clippy::disallowed_types)] // because `Routable` uses a hashmap
 use serde::{Deserialize, Serialize};
 use yew_router::Routable;
-
-// use crate::components;
 
 #[derive(Routable, PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
 pub enum LoginRoute {

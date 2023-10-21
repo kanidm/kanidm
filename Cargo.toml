@@ -128,6 +128,7 @@ futures-concurrency = "^3.1.0"
 futures-util = { version = "^0.3.21", features = ["sink"] }
 gix = { version = "0.53.1", default-features = false }
 gloo = "^0.8.1"
+gloo-utils = "0.2.0"
 hashbrown = { version = "0.14.2", features = ["serde", "inline-more", "ahash"] }
 hex = "^0.4.3"
 http = "0.2.9"

@@ -1,8 +1,11 @@
 #[cfg(debug_assertions)]
 use gloo::console;
+use kanidmd_web_ui_shared::logo_img;
 use yew::prelude::*;
 
-use kanidmd_web_ui_shared::constants::{CSS_CARD, CSS_LINK_DARK_STRETCHED, CSS_PAGE_HEADER};
+use kanidmd_web_ui_shared::constants::{
+    CSS_ALERT_DANGER, CSS_CARD, CSS_LINK_DARK_STRETCHED, CSS_PAGE_HEADER, URL_USER_HOME,
+};
 use kanidmd_web_ui_shared::{do_request, error::FetchError, RequestMethod};
 use wasm_bindgen::prelude::*;
 
@@ -155,9 +158,9 @@ impl AppsApp {
         html! {
           <>
             <p class="text-center">
-                <img src="/pkg/img/logo-square.svg" alt="Kanidm" class="kanidm_logo"/>
+                {logo_img()}
             </p>
-            <div class="alert alert-danger" role="alert">
+            <div class={CSS_ALERT_DANGER} role="alert">
               <h2>{ "An Error Occurred 🥺" }</h2>
             <p>{ msg.to_string() }</p>
             <p>
@@ -171,7 +174,7 @@ impl AppsApp {
             </p>
             </div>
             <p class="text-center">
-              <a href="/"><button href="/" class="btn btn-secondary" aria-label="Return home">{"Return to the home page"}</button></a>
+              <a href={URL_USER_HOME}><button href={URL_USER_HOME} class="btn btn-secondary" aria-label="Return home">{"Return to the home page"}</button></a>
             </p>
           </>
         }

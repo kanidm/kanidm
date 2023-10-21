@@ -8,7 +8,7 @@ use kanidm_proto::v1::{
 };
 use kanidm_proto::webauthn::PublicKeyCredential;
 use kanidmd_web_ui_shared::utils::{autofocus, do_footer};
-use kanidmd_web_ui_shared::{add_body_form_classes, remove_body_form_classes};
+use kanidmd_web_ui_shared::{add_body_form_classes, logo_img, remove_body_form_classes};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::{spawn_local, JsFuture};
 use web_sys::CredentialRequestOptions;
@@ -16,11 +16,11 @@ use yew::prelude::*;
 use yew::virtual_dom::VNode;
 
 use kanidmd_web_ui_shared::constants::{
-    CLASS_BUTTON_DARK, CLASS_DIV_LOGIN_BUTTON, CLASS_DIV_LOGIN_FIELD,
+    CLASS_BUTTON_DARK, CLASS_DIV_LOGIN_BUTTON, CLASS_DIV_LOGIN_FIELD, CSS_ALERT_DANGER,
 };
 use kanidmd_web_ui_shared::models::{
     self, clear_bearer_token, get_login_hint, pop_login_hint, pop_login_remember_me,
-    push_login_remember_me, set_bearer_token,
+    pop_return_location, push_login_remember_me, set_bearer_token,
 };
 use kanidmd_web_ui_shared::{do_request, error::FetchError, utils, RequestMethod};
 
@@ -42,10 +42,9 @@ impl Default for LoginApp {
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum LoginWorkflow {
-    #[allow(dead_code)]
     Login,
     #[allow(dead_code)]
-    Reauth,
+    Reauth, // TODO: test/implement reauth
 }
 
 impl Default for LoginWorkflow {
@@ -54,17 +53,9 @@ impl Default for LoginWorkflow {
     }
 }
 
-#[derive(PartialEq, Properties)]
+#[derive(PartialEq, Properties, Default)]
 pub struct LoginAppProps {
     pub workflow: LoginWorkflow,
-}
-
-impl Default for LoginAppProps {
-    fn default() -> Self {
-        Self {
-            workflow: LoginWorkflow::default(),
-        }
-    }
 }
 
 #[derive(PartialEq)]
@@ -256,7 +247,7 @@ impl LoginApp {
         html! {
         <div class="container">
             <div class="row justify-content-md-center">
-                <div class="alert alert-danger" role="alert">
+                <div class={CSS_ALERT_DANGER} role="alert">
                     <p><strong>{ alert_title }</strong></p>
                     if let Some(value) = alert_message {
                         <p>{ value }</p>
@@ -578,19 +569,21 @@ impl LoginApp {
                 }
             }
             LoginState::Authenticated => {
-                // TODO: this is dumb and over-complicated and needs to just be a URL
-                // let loc = pop_return_location();
-                // // redirect
-                // #[cfg(debug_assertions)]
-                // console::debug!(format!("authenticated, try going to -> {:?}", loc));
-                // loc.goto(
-                //     &ctx.link()
-                //         .navigator()
-                //         .expect_throw("failed to read history"),
-                // );
+                let loc = pop_return_location();
+                // redirect to the "return location"
+                #[cfg(debug_assertions)]
+                console::debug!(format!("authenticated, try going to -> {:?}", loc));
+
+                let window = gloo_utils::window();
+                window
+                    .location()
+                    .set_href(&loc)
+                    .expect_throw(&format!("failed to set location to {}", loc));
+                // this isn't likely to actually render but we might as well...
                 html! {
                     <div class="alert alert-success">
                         <h3>{ "Login Success 🎉" }</h3>
+                        <a href={loc}>{"Click here to continue if you aren't redirected..."}</a>
                     </div>
                 }
             }
@@ -633,7 +626,8 @@ impl Component for LoginApp {
             LoginWorkflow::Login => {
                 // Assume we are here for a good reason.
                 // -- clear the bearer to prevent conflict
-                clear_bearer_token();
+                clear_bearer_token(); // TODO: one day only clear this when it gets a 401 response
+
                 // Do we have a login hint?
                 let (username, remember_me) = get_login_hint()
                     .map(|user| (user, false))
@@ -1079,7 +1073,7 @@ impl Component for LoginApp {
         <>
         <main class="flex-shrink-0 form-signin">
             <center>
-                <img src="/pkg/img/logo-square.svg" alt="Kanidm" class="kanidm_logo"/>
+                {logo_img()}
                 // TODO: replace this with a call to domain info
                 // More likely we should have this passed in from the props when we start.
                 <h3>{ "Kanidm" }</h3>

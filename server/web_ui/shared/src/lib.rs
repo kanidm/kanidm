@@ -3,6 +3,7 @@ use error::FetchError;
 use gloo::console;
 
 use kanidm_proto::constants::{APPLICATION_JSON, KSESSIONID};
+use models::clear_bearer_token;
 use models::get_bearer_token;
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
@@ -11,7 +12,11 @@ use wasm_bindgen_futures::JsFuture;
 use web_sys::{Headers, Request, RequestInit, RequestMode, Response};
 
 use gloo::storage::{SessionStorage as TemporaryStorage, Storage};
+use yew::BaseComponent;
+use yew::Context;
 use yew::{html, Html};
+
+use crate::constants::{CSS_ALERT_WARNING, CSS_NAV_LINK, ID_SIGNOUTMODAL, IMG_LOGO_SQUARE};
 
 pub mod constants;
 pub mod error;
@@ -20,17 +25,21 @@ pub mod macros;
 pub mod models;
 pub mod utils;
 
+const AUTH_SESSION_ID: &str = "auth_session_id";
+
 pub fn pop_auth_session_id() -> Option<String> {
-    let l: Result<String, _> = TemporaryStorage::get("auth_session_id");
+    let l: Result<String, _> = TemporaryStorage::get(AUTH_SESSION_ID);
     #[cfg(debug_assertions)]
     console::debug!(format!("auth_session_id -> {:?}", l).as_str());
-    TemporaryStorage::delete("auth_session_id");
+    TemporaryStorage::delete(AUTH_SESSION_ID);
     l.ok()
 }
 
 pub fn push_auth_session_id(r: String) {
-    TemporaryStorage::set("auth_session_id", r)
-        .expect_throw("failed to set auth_session_id in temporary storage");
+    TemporaryStorage::set(AUTH_SESSION_ID, r).expect_throw(&format!(
+        "failed to set {} in temporary storage",
+        AUTH_SESSION_ID
+    ));
 }
 
 /// Build and send a request to the backend, with some standard headers and pull back
@@ -63,14 +72,14 @@ pub async fn do_request(
         request
             .headers()
             .set(KSESSIONID, &sessionid)
-            .expect_throw("failed to set auth session id header");
+            .expect_throw(&format!("failed to set {} header", KSESSIONID));
     }
 
     if let Some(bearer_token) = get_bearer_token() {
         request
             .headers()
             .set("authorization", &bearer_token)
-            .expect_throw("failed to set authorisation header");
+            .expect_throw("failed to set authorization header");
     }
 
     let window = utils::window();
@@ -83,6 +92,7 @@ pub async fn do_request(
         push_auth_session_id(sessionid);
     }
 
+    // TODO: x-kanidm-opid should be a const
     let kopid = headers.get("x-kanidm-opid").ok().flatten();
 
     let body = match resp.json() {
@@ -125,23 +135,77 @@ impl ToString for RequestMethod {
 /// creates the "Kanidm is alpha" banner
 pub fn alpha_warning_banner() -> Html {
     html!(
-        <div class="alert alert-warning" role="alert">
+        <div class={CSS_ALERT_WARNING} role="alert">
         {"🦀 Kanidm is still in early Alpha, this interface is a placeholder! "}
         </div>
     )
 }
 
-pub fn do_alert_error(alert_title: &str, alert_message: Option<&str>) -> Html {
+/// Returns a HTML img tag with the Kanidm logo
+pub fn logo_img() -> Html {
     html! {
-    <div class="container">
-        <div class="row justify-content-md-center">
-            <div class="alert alert-danger" role="alert">
-                <p><strong>{ alert_title }</strong></p>
-                if let Some(value) = alert_message {
-                    <p>{ value }</p>
-                }
+        <img src={IMG_LOGO_SQUARE} alt="Kanidm" class="kanidm_logo"/>
+    }
+}
+
+/// Builds the signout modal dialogue box - the "target" is the Message to send when clicked.
+pub fn signout_modal<T, U>(ctx: &Context<T>, target: U) -> Html
+where
+    T: BaseComponent,
+    U: Clone + 'static,
+    <T as BaseComponent>::Message: From<U>,
+{
+    html! {<div class="modal" tabindex="-1" role="dialog" id={ID_SIGNOUTMODAL}>
+        <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+            <h5 class="modal-title">{"Confirm Sign out"}</h5>
+            </div>
+            <div class="modal-body text-center">
+            {"Are you sure you'd like to log out?"}<br />
+            <img src="/pkg/img/kani-waving.svg" alt="Kani waving goodbye" />
+            </div>
+            <div class="modal-footer">
+            <button type="button" class="btn btn-success"
+                data-bs-toggle="modal"
+                data-bs-target={["#{}", ID_SIGNOUTMODAL].concat()}
+                onclick={ ctx.link().callback(move |_| target.clone()) }>{ "Sign out" }</button>
+            <button type="button" class="btn btn-secondary"
+                data-bs-dismiss="modal"
+                >{"Cancel"}</button>
             </div>
         </div>
-    </div>
+        </div>
+    </div>}
+}
+
+/// returns an a-href link which can trigger the signout flow
+pub fn signout_link() -> Html {
+    html! {
+        <a class={CSS_NAV_LINK} href="#" data-bs-toggle="modal"
+        data-bs-target={["#{}", ID_SIGNOUTMODAL].concat()}
+        >{"Sign out"}</a>
+    }
+}
+
+/// does the logout action, calling the api and clearing the local tokens
+pub async fn ui_logout() -> Result<(), (String, Option<String>)> {
+    let (kopid, status, value, _) = do_request("/v1/logout", RequestMethod::GET, None)
+        .await
+        .map_err(|e| {
+            let emsg = format!("failed to logout -> {:?}", e);
+            console::error!(emsg.as_str());
+            (emsg, None)
+        })?;
+
+    // In both cases - clear the local token to prevent our client thinking we have auth.
+
+    clear_bearer_token();
+
+    if status == 200 {
+        Ok(())
+    } else {
+        let emsg = value.as_string().unwrap_or_default();
+        Err((emsg, kopid))
     }
 }

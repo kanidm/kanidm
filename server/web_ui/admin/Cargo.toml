@@ -37,6 +37,7 @@ wasm-bindgen-futures = { workspace = true }
 wasm-timer = "0.2.5"
 yew = { workspace = true, features = ["csr"] }
 yew-router = { workspace = true }
+gloo-utils = { workspace = true }
 
 [dependencies.web-sys]
 workspace = true

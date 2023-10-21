@@ -8,7 +8,7 @@ use web_sys::{Document, HtmlElement, HtmlInputElement, Window};
 use yew::virtual_dom::VNode;
 use yew::{html, Html};
 
-use crate::constants::CSS_PAGE_HEADER;
+use crate::constants::{CSS_ALERT_DANGER, CSS_PAGE_HEADER};
 
 pub fn window() -> Window {
     web_sys::window().expect_throw("Unable to retrieve window")
@@ -80,7 +80,7 @@ pub fn get_value_from_element_id(id: &str) -> Option<String> {
         .map(|element| element.value())
 }
 
-#[wasm_bindgen(raw_module = "/pkg/wasmloader.js")]
+#[wasm_bindgen(raw_module = "/pkg/shared.js")]
 extern "C" {
     pub fn modal_hide_by_id(m: &str);
 }
@@ -100,7 +100,7 @@ pub fn do_alert_error(alert_title: &str, alert_message: Option<&str>) -> Html {
     html! {
     <div class="container">
         <div class="row justify-content-md-center">
-            <div class="alert alert-danger" role="alert">
+            <div class={CSS_ALERT_DANGER} role="alert">
                 <p><strong>{ alert_title }</strong></p>
                 if let Some(value) = alert_message {
                     <p>{ value }</p>

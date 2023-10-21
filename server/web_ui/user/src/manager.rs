@@ -1,3 +1,5 @@
+#![allow(clippy::disallowed_types)] // because yew's router uses a hashmap
+
 //! This is the top level router of the web ui for kanidm. It decides based on the incoming
 //! request, where to direct this too, and if the requirements for that request have been
 //! met before rendering. For example, if you land here with an oauth request, but you are
@@ -7,6 +9,7 @@
 use gloo::console;
 
 use kanidmd_web_ui_shared::add_body_form_classes;
+use kanidmd_web_ui_shared::logo_img;
 use kanidmd_web_ui_shared::utils::do_footer;
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::UnwrapThrowExt;
@@ -23,14 +26,6 @@ pub enum Route {
     #[at("/ui")]
     Landing,
 
-    // // #[at("/ui/login")]
-    // // Login,
-
-    // // #[at("/ui/reauth")]
-    // // Reauth,
-
-    // #[at("/ui/oauth2")]
-    // Oauth2,
     #[at("/ui/reset")]
     CredentialReset,
 
@@ -45,7 +40,7 @@ pub enum Route {
 #[function_component(Landing)]
 fn landing() -> Html {
     #[cfg(debug_assertions)]
-    console::debug!("manager::landing");
+    console::debug!("UserUiApp::landing");
     // Do this to allow use_navigator to work because lol.
     yew_router::hooks::use_navigator()
         .expect_throw("Unable to access history")
@@ -57,16 +52,10 @@ fn landing() -> Html {
 #[allow(clippy::needless_pass_by_value)]
 fn switch(route: Route) -> Html {
     #[cfg(debug_assertions)]
-    console::debug!(format!("manager::switch -> {:?}", route).as_str());
+    console::debug!(format!("UserUiApp::switch -> {:?}", route).as_str());
     match route {
         #[allow(clippy::let_unit_value)]
         Route::Landing => html! { <Landing /> },
-        // #[allow(clippy::let_unit_value)]
-        // Route::Login => html! { <LoginApp workflow={ LoginWorkflow::Login } /> },
-        // #[allow(clippy::let_unit_value)]
-        // Route::Reauth => html! { <LoginApp workflow={ LoginWorkflow::Reauth } /> },
-        // #[allow(clippy::let_unit_value)]
-        // Route::Oauth2 => html! { <Oauth2App /> },
         #[allow(clippy::let_unit_value)]
         Route::Views => html! { <ViewsApp /> },
         #[allow(clippy::let_unit_value)]
@@ -77,7 +66,7 @@ fn switch(route: Route) -> Html {
             html! {
                 <>
                 <main class="flex-shrink-0 form-signin text-center">
-                        <img src="/pkg/img/logo-square.svg" alt="Kanidm" class="kanidm_logo"/>
+                        {logo_img()}
                         // TODO: replace this with a call to domain info
                         <h3>{ "404 - Page not found" }</h3>
 
@@ -94,33 +83,33 @@ fn switch(route: Route) -> Html {
     }
 }
 
-pub struct ManagerApp {}
+pub struct UserUiApp {}
 
-impl Component for ManagerApp {
+impl Component for UserUiApp {
     type Message = ();
     type Properties = ();
 
     fn create(_ctx: &Context<Self>) -> Self {
         #[cfg(debug_assertions)]
-        console::debug!("manager::create");
-        ManagerApp {}
+        console::debug!("UserUiApp::create");
+        UserUiApp {}
     }
 
     fn changed(&mut self, _ctx: &Context<Self>, _props: &Self::Properties) -> bool {
         #[cfg(debug_assertions)]
-        console::debug!("manager::change");
+        console::debug!("UserUiApp::change");
         false
     }
 
     fn update(&mut self, _ctx: &Context<Self>, _msg: Self::Message) -> bool {
         #[cfg(debug_assertions)]
-        console::debug!("manager::update");
+        console::debug!("UserUiApp::update");
         true
     }
 
     fn rendered(&mut self, _ctx: &Context<Self>, _first_render: bool) {
         #[cfg(debug_assertions)]
-        console::debug!("manager::rendered");
+        console::debug!("UserUiApp::rendered");
         // Can only access the current_route AFTER it renders.
         // console::debug!(format!("{:?}", yew_router::current_route::<Route>()).as_str())
     }

@@ -1,12 +1,15 @@
 #[cfg(debug_assertions)]
 use gloo::console;
 use kanidm_proto::internal::{IdentifyUserRequest, IdentifyUserResponse};
+use kanidmd_web_ui_shared::logo_img;
 use regex::Regex;
 use wasm_bindgen::JsValue;
 use yew::prelude::*;
 
 use crate::components::totpdisplay::TotpDisplayApp;
-use kanidmd_web_ui_shared::constants::{CLASS_DIV_LOGIN_BUTTON, CLASS_DIV_LOGIN_FIELD};
+use kanidmd_web_ui_shared::constants::{
+    CLASS_DIV_LOGIN_BUTTON, CLASS_DIV_LOGIN_FIELD, CSS_ALERT_DANGER, URL_USER_HOME,
+};
 
 use crate::views::ViewProps;
 use kanidmd_web_ui_shared::{do_request, error::FetchError, utils, RequestMethod};
@@ -386,14 +389,14 @@ impl IdentityVerificationApp {
         html! {
           <>
             <p class="text-center">
-                <img src="/pkg/img/logo-square.svg" alt="Kanidm" class="kanidm_logo"/>
+                {logo_img()}
             </p>
-            <div class="alert alert-danger" role="alert">
+            <div class={CSS_ALERT_DANGER} role="alert">
               <h2>{ "An Error Occurred 🥺" }</h2>
             <p>{ error_message }</p>
             </div>
             <p class="text-center">
-              <a href="/"><button href="/" class="btn btn-secondary" aria-label="Return home">{"Return to the home page"}</button></a>
+              <a href={URL_USER_HOME}><button href={URL_USER_HOME} class="btn btn-secondary" aria-label="Return home">{"Return to the home page"}</button></a>
             </p>
           </>
         }
@@ -408,7 +411,7 @@ impl IdentityVerificationApp {
             <p><b>{other_id}</b>{"'s identity has been successfully confirmed!"}</p>
             </div>
             <p class="text-center">
-              <a href="/"><button href="/" class="btn btn-secondary" aria-label="Return home">{"Return to the home page"}</button></a>
+              <a href={URL_USER_HOME}><button href={URL_USER_HOME} class="btn btn-secondary" aria-label="Return home">{"Return to the home page"}</button></a>
             </p>
           </>
         }
@@ -461,8 +464,9 @@ impl IdentityVerificationApp {
             } => {
                 if *totp_valid {
                     IdentifyUserRequest::SubmitCode {
-                        other_totp: other_totp.unwrap_or_default(), // we know that the totp is valid so this should always be Some,
-                                                                    // if for some reason it's None then we are still covered
+                        // we know that the totp is valid so this should always be Some,
+                        // if for some reason it's None then we are still covered
+                        other_totp: other_totp.unwrap_or_default(),
                     }
                 } else {
                     return IdentifyUserTransition::DoNothing;

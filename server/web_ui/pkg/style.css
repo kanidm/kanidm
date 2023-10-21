@@ -129,6 +129,13 @@ body {
   right: 1rem;
 }
 
+.navbar-toggler-img {
+  width: 50px;
+  height: 50px;
+  padding: 0px;
+  margin: 0px;
+}
+
 .navbar .form-control {
   padding: 0.75rem 1rem;
   border-width: 0;

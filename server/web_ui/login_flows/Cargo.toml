@@ -37,37 +37,13 @@ gloo-timers = "0.3.0"
 wasm-timer = "0.2.5"
 regex.workspace = true
 lazy_static.workspace = true
-
-[dependencies.web-sys]
-workspace = true
-features = [
-    "AuthenticationExtensionsClientOutputs",
-    "AuthenticatorResponse",
-    "CredentialCreationOptions",
-    "CredentialRequestOptions",
+gloo-utils = { workspace = true }
+web-sys = { workspace = true, features = [
     "CredentialsContainer",
-    "DomTokenList",
-    "Element",
-    "Event",
-    "FocusEvent",
-    "FormData",
-    "Headers",
-    "HtmlButtonElement",
-    "HtmlDocument",
-    "HtmlFormElement",
+    "Location",
     "Navigator",
-    "PublicKeyCredential",
-    "PublicKeyCredentialCreationOptions",
-    "PublicKeyCredentialRpEntity",
-    "PublicKeyCredentialUserEntity",
-    "Request",
-    "RequestCredentials",
-    "RequestInit",
-    "RequestMode",
-    "RequestRedirect",
-    "Response",
     "Window",
-]
+] }
 
 [dev-dependencies]
 wasm-bindgen-test = { workspace = true }

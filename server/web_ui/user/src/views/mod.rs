@@ -1,8 +1,13 @@
+#![allow(clippy::disallowed_types)] // because `Routable` uses a hashmap
 #![allow(non_camel_case_types)]
 use gloo::console;
 use kanidm_proto::v1::{UiHint, UserAuthToken};
-use kanidmd_web_ui_shared::constants::ID_SIGNOUTMODAL;
-use kanidmd_web_ui_shared::models::{clear_bearer_token, push_return_location};
+use kanidmd_web_ui_shared::constants::{
+    CSS_ALERT_DANGER, CSS_NAVBAR_BRAND, CSS_NAVBAR_LINKS_UL, CSS_NAVBAR_NAV, CSS_NAV_LINK,
+    ID_NAVBAR_COLLAPSE, IMG_LOGO_SQUARE, URL_LOGIN,
+};
+use kanidmd_web_ui_shared::models::push_return_location;
+use kanidmd_web_ui_shared::{signout_link, signout_modal, ui_logout};
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::UnwrapThrowExt;
 use yew::prelude::*;
@@ -14,24 +19,18 @@ use kanidmd_web_ui_shared::{do_request, error::FetchError, RequestMethod};
 
 mod apps;
 pub mod identityverification;
-// mod profile;
 
 use apps::AppsApp;
 use identityverification::IdentityVerificationApp;
-// use profile::ProfileApp;
 
 #[derive(Routable, PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
 pub enum ViewRoute {
-    // #[at("/ui/admin/*")]
-    // Admin,
     #[at("/ui/apps")]
     Apps,
-
     #[at("/ui/profile")]
     Profile,
     #[at("/ui/identity-verification")]
     IdentityVerification,
-
     #[not_found]
     #[at("/ui/404")]
     NotFound,
@@ -54,6 +53,7 @@ pub struct ViewsApp {
     state: State,
 }
 
+#[derive(Clone)]
 pub enum ViewsMsg {
     Verified,
     ProfileInfoReceived { uat: UserAuthToken },
@@ -147,19 +147,19 @@ impl Component for ViewsApp {
                 // Where are we?
                 let maybe_loc: Option<ViewRoute> = ctx.link().route();
 
-                if let Some(_loc) = maybe_loc {
-                    push_return_location(
-                        // Location::Views(loc)
-                        "oh no", // TODO: work this out
-                    );
+                if let Some(loc) = maybe_loc {
+                    push_return_location(&loc.to_path());
                 }
 
-                // ctx.link()
-                //     .navigator()
-                //     .expect_throw("failed to read history")
-                //     .push(&Route::Login);
-                // TODO: fix this
-                html! { <div></div> }
+                gloo_utils::window()
+                    .location()
+                    .set_href(URL_LOGIN)
+                    .expect_throw("failed to send the user to the login page?");
+
+                html! { <div>
+                  { "Redirecting to login page..." }<br />
+                  <a href={URL_LOGIN}>{"Click here if you aren't redirected"}</a>
+                </div> }
             }
             State::LoggingOut | State::Verifying => {
                 html! {
@@ -176,7 +176,7 @@ impl Component for ViewsApp {
             State::Error { emsg, kopid } => {
                 html! {
                   <main class="form-signin">
-                    <div class="alert alert-danger" role="alert">
+                    <div class={CSS_ALERT_DANGER} role="alert">
                       <h2>{ "An Error Occurred 🥺" }</h2>
                     <p>{ emsg.to_string() }</p>
                     <p>
@@ -202,6 +202,35 @@ impl Component for ViewsApp {
     }
 }
 
+/// TODO: one day work out how to make this some kind of neat generic thing but... routers.
+fn make_navbar(links: Vec<Html>) -> Html {
+    html! {
+      <nav class={CSS_NAVBAR_NAV}>
+          <div class="container-fluid">
+          <Link<ViewRoute> classes={CSS_NAVBAR_BRAND} to={ViewRoute::Apps}>
+            {"Kanidm"}
+            </Link<ViewRoute>>
+            // this shows a button on mobile devices to open the menu
+            <button class="navbar-toggler bg-light" type="button" data-bs-toggle="collapse" data-bs-target={["#", ID_NAVBAR_COLLAPSE].concat()} aria-controls={ID_NAVBAR_COLLAPSE} aria-expanded="false" aria-label="Toggle navigation">
+              <img src={IMG_LOGO_SQUARE} alt="Toggle navigation" class="navbar-toggler-img" />
+            </button>
+
+            <div class="collapse navbar-collapse" id={ID_NAVBAR_COLLAPSE}>
+              <ul class={CSS_NAVBAR_LINKS_UL}>
+                { links.into_iter().map(|link| {
+                  html!{ <li class="mb-1">
+                    { link }
+                  </li>
+                } }).collect::<Html>()
+              }
+              </ul>
+
+            </div>
+          </div>
+        </nav>
+    }
+}
+
 impl ViewsApp {
     /// The base page for the user dashboard
     fn view_authenticated(&self, ctx: &Context<Self>, uat: &UserAuthToken) -> Html {
@@ -209,89 +238,53 @@ impl ViewsApp {
         let ui_hint_experimental = uat.ui_hints.contains(&UiHint::ExperimentalFeatures);
         let credential_update = uat.ui_hints.contains(&UiHint::CredentialUpdate);
 
-        // WARN set dash-body against body here?
+        let mut links = vec![
+            html! {<Link<ViewRoute> classes={CSS_NAV_LINK} to={ViewRoute::Apps}>
+              <span data-feather="file"></span>
+              { "Apps" }
+            </Link<ViewRoute>>},
+        ];
+
+        if ui_hint_experimental {
+            links.push(html! {
+            <Link<ViewRoute> classes={CSS_NAV_LINK} to={ViewRoute::IdentityVerification}>
+                <span data-feather="file"></span>
+                    { "Identity verification" }
+            </Link<ViewRoute>>
+
+            });
+        }
+        if credential_update {
+            links.push(html! {
+              <Link<ViewRoute> classes={CSS_NAV_LINK} to={ViewRoute::Profile}>
+                <span data-feather="file"></span>
+                { "Profile" }
+              </Link<ViewRoute>>
+
+            });
+        }
+
+        if ui_hint_experimental {
+            links.extend(vec![
+                html! {<Link<ViewRoute> classes={CSS_NAV_LINK} to={ViewRoute::IdentityVerification}>
+                <span data-feather="file"></span>
+                { "Identity verification" }
+                </Link<ViewRoute>>},
+                html! {<a href="/ui/admin/" class={CSS_NAV_LINK}>
+                <span data-feather="file"></span>
+                { "Admin" }
+                </a>},
+            ])
+        };
+
+        links.push(signout_link());
         html! {
           <>
-          <nav class="navbar navbar-expand-md navbar-dark bg-dark mb-4">
-              <div class="container-fluid">
-              <Link<ViewRoute> classes="navbar-brand navbar-dark" to={ViewRoute::Apps}>
-                {"Kanidm"}
-                </Link<ViewRoute>>
-                <button class="navbar-toggler bg-light" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation">
-                  <img src="/pkg/img/favicon.png" />
-                </button>
+          {make_navbar(links)}
 
-                <div class="collapse navbar-collapse" id="navbarCollapse">
-                  <ul class="navbar-nav me-auto mb-2 mb-md-0">
-
-                    <li class="mb-1">
-                      <Link<ViewRoute> classes="nav-link" to={ViewRoute::Apps}>
-                        <span data-feather="file"></span>
-                        { "Apps" }
-                      </Link<ViewRoute>>
-                    </li>
-                    if ui_hint_experimental {
-                      <li class="mb-1">
-                        <Link<ViewRoute> classes="nav-link" to={ViewRoute::IdentityVerification}>
-                          <span data-feather="file"></span>
-                          { "Identity verification" }
-                        </Link<ViewRoute>>
-                      </li>
-                    }
-                    if credential_update {
-                      <li class="mb-1">
-                        <Link<ViewRoute> classes="nav-link" to={ViewRoute::Profile}>
-                          <span data-feather="file"></span>
-                          { "Profile" }
-                        </Link<ViewRoute>>
-                      </li>
-                    }
-
-                    if ui_hint_experimental {
-                      <li class="mb-1">
-                        // <Link<AdminRoute> classes="nav-link" to={AdminRoute::AdminMenu}>
-                        <a href="/ui/admin/">
-                          <span data-feather="file"></span>
-                          { "Admin" }
-                          </a>
-                        // </Link<AdminRoute>>
-                      </li>
-                    }
-
-                    <li class="mb-1">
-                      <a class="nav-link" href="#"
-                        data-bs-toggle="modal"
-                        data-bs-target={format!("#{}", ID_SIGNOUTMODAL)}
-                        >{"Sign out"}</a>
-                    </li>
-                  </ul>
-
-                </div>
-              </div>
-            </nav>
         // sign out modal dialogue box
-        <div class="modal" tabindex="-1" role="dialog" id={ID_SIGNOUTMODAL}>
-          <div class="modal-dialog" role="document">
-            <div class="modal-content">
-              <div class="modal-header">
-                <h5 class="modal-title">{"Confirm Sign out"}</h5>
-              </div>
-              <div class="modal-body text-center">
-                {"Are you sure you'd like to log out?"}<br />
-                <img src="/pkg/img/kani-waving.svg" alt="Kani waving goodbye" />
-              </div>
-              <div class="modal-footer">
-                <button type="button" class="btn btn-success"
-                  data-bs-toggle="modal"
-                  data-bs-target={format!("#{}", ID_SIGNOUTMODAL)}
-                  onclick={ ctx.link().callback(|_| ViewsMsg::Logout) }>{ "Sign out" }</button>
-                <button type="button" class="btn btn-secondary"
-                  data-bs-dismiss="modal"
-                  >{"Cancel"}</button>
-              </div>
-            </div>
-          </div>
-        </div>
+        {signout_modal(ctx, ViewsMsg::Logout)}
+
         <main class="p-3 x-auto">
               <Switch<ViewRoute> render={ move |route: ViewRoute| {
                     // safety - can't panic because to get to this location we MUST be authenticated!
@@ -346,18 +339,9 @@ impl ViewsApp {
     }
 
     async fn fetch_logout() -> Result<ViewsMsg, FetchError> {
-        let (kopid, status, value, _) = do_request("/v1/logout", RequestMethod::GET, None).await?;
-
-        // In both cases - clear the local token to prevent our client
-        // thinking we have auth.
-
-        clear_bearer_token();
-
-        if status == 200 {
-            Ok(ViewsMsg::LogoutComplete)
-        } else {
-            let emsg = value.as_string().unwrap_or_default();
-            Ok(ViewsMsg::Error { emsg, kopid })
+        match ui_logout().await {
+            Ok(_) => Ok(ViewsMsg::LogoutComplete),
+            Err((emsg, kopid)) => Ok(ViewsMsg::Error { emsg, kopid }),
         }
     }
 }
