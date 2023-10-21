@@ -16,6 +16,8 @@ repository = { workspace = true }
 [lib]
 name = "profiles"
 path = "src/lib.rs"
+test = false
+doctest = false
 
 [dependencies]
 serde = { workspace = true, features = ["derive"] }

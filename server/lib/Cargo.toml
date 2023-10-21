@@ -14,6 +14,8 @@ repository = { workspace = true }
 [lib]
 name = "kanidmd_lib"
 path = "src/lib.rs"
+test = true
+doctest = false
 
 [[bench]]
 name = "scaling_10k"

@@ -122,9 +122,6 @@ impl QueryServer {
         // Migrations complete. Init idm will now set the version as needed.
         write_txn.initialise_idm()?;
 
-        // Conditionally update some attributes.
-        write_txn.conditional_update_default_account_policy()?;
-
         // Now force everything to reload.
         write_txn.force_all_reload();
         // We are ready to run
@@ -513,56 +510,6 @@ impl<'a> QueryServerWriteTransaction<'a> {
     }
 
     #[instrument(level = "debug", skip_all)]
-    pub fn conditional_update_default_account_policy(&mut self) -> Result<(), OperationError> {
-        // Should there actually be a transformer plugin that checks for default values on certain entries?
-        // If someone unsets these values, what do we do?
-        //
-        // Should we not set these at all? Or should we do a one-time only attempt?
-
-        // Perhaps if there is no value in the system config on migrate, we create one here?
-        // But what about new installs?
-
-        // Is there where I'm forced to do the proper domain level migrations?
-
-        let idm_all_accounts_entry = self.internal_search_uuid(UUID_SYSTEM_CONFIG)?;
-
-        let mut all_account_modlist = Vec::with_capacity(3);
-
-        all_account_modlist.push(Modify::Present(
-            Attribute::Class.into(),
-            EntryClass::AccountPolicy.to_value(),
-        ));
-
-        if idm_all_accounts_entry
-            .get_ava_single_uint32(Attribute::AuthSessionExpiry)
-            .is_none()
-        {
-            all_account_modlist.push(Modify::Present(
-                Attribute::AuthSessionExpiry.into(),
-                Value::Uint32(DEFAULT_AUTH_SESSION_EXPIRY),
-            ));
-        }
-
-        if idm_all_accounts_entry
-            .get_ava_single_uint32(Attribute::PrivilegeExpiry)
-            .is_none()
-        {
-            all_account_modlist.push(Modify::Present(
-                Attribute::PrivilegeExpiry.into(),
-                Value::Uint32(DEFAULT_AUTH_PRIVILEGE_EXPIRY),
-            ));
-        }
-
-        self.internal_batch_modify(
-            [(
-                UUID_IDM_ALL_ACCOUNTS,
-                ModifyList::new_list(all_account_modlist),
-            )]
-            .into_iter(),
-        )
-    }
-
-    #[instrument(level = "debug", skip_all)]
     pub fn initialise_schema_core(&mut self) -> Result<(), OperationError> {
         admin_debug!("initialise_schema_core -> start ...");
         // Load in all the "core" schema, that we already have in "memory".
@@ -792,6 +739,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             E_IDM_HP_ACP_SYNC_ACCOUNT_MANAGE_PRIV_V1.clone(),
             IDM_ACP_ACCOUNT_MAIL_READ_PRIV_V1.clone(),
             IDM_ACCOUNT_SELF_ACP_WRITE_V1.clone(),
+            IDM_ACP_GROUP_ACCOUNT_POLICY_MANAGE_PRIV_V1.clone(),
         ];
 
         let res: Result<(), _> = idm_entries

@@ -15,6 +15,7 @@ use crate::prelude::*;
 mod attrunique;
 mod base;
 mod cred_import;
+mod default_values;
 mod domain;
 pub(crate) mod dyngroup;
 mod eckeygen;
@@ -235,6 +236,7 @@ impl Plugins {
         gidnumber::GidNumber::pre_create_transform(qs, cand, ce)?;
         domain::Domain::pre_create_transform(qs, cand, ce)?;
         spn::Spn::pre_create_transform(qs, cand, ce)?;
+        default_values::DefaultValues::pre_create_transform(qs, cand, ce)?;
         namehistory::NameHistory::pre_create_transform(qs, cand, ce)?;
         eckeygen::EcdhKeyGen::pre_create_transform(qs, cand, ce)?;
         // Should always be last
@@ -276,6 +278,7 @@ impl Plugins {
         domain::Domain::pre_modify(qs, pre_cand, cand, me)?;
         spn::Spn::pre_modify(qs, pre_cand, cand, me)?;
         session::SessionConsistency::pre_modify(qs, pre_cand, cand, me)?;
+        default_values::DefaultValues::pre_modify(qs, pre_cand, cand, me)?;
         namehistory::NameHistory::pre_modify(qs, pre_cand, cand, me)?;
         eckeygen::EcdhKeyGen::pre_modify(qs, pre_cand, cand, me)?;
         // attr unique should always be last
@@ -310,6 +313,7 @@ impl Plugins {
         domain::Domain::pre_batch_modify(qs, pre_cand, cand, me)?;
         spn::Spn::pre_batch_modify(qs, pre_cand, cand, me)?;
         session::SessionConsistency::pre_batch_modify(qs, pre_cand, cand, me)?;
+        default_values::DefaultValues::pre_batch_modify(qs, pre_cand, cand, me)?;
         namehistory::NameHistory::pre_batch_modify(qs, pre_cand, cand, me)?;
         eckeygen::EcdhKeyGen::pre_batch_modify(qs, pre_cand, cand, me)?;
         // attr unique should always be last

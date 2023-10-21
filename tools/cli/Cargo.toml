@@ -19,15 +19,21 @@ unix = []
 [lib]
 name = "kanidm_cli"
 path = "src/cli/lib.rs"
+test = true
+doctest = false
 
 [[bin]]
 name = "kanidm"
 path = "src/cli/main.rs"
 doc = false
+test = true
+doctest = false
 
 [[bin]]
 name = "kanidm_ssh_authorizedkeys_direct"
 path = "src/ssh_authorizedkeys.rs"
+test = true
+doctest = false
 
 [dependencies]
 async-recursion = { workspace = true }

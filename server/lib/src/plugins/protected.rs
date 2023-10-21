@@ -32,6 +32,7 @@ lazy_static! {
         m.insert(Attribute::BadlistPassword);
         m.insert(Attribute::DeniedName);
         m.insert(Attribute::DomainDisplayName);
+        // Allow modification of account policy values for dyngroups
         m.insert(Attribute::AuthSessionExpiry);
         m.insert(Attribute::PrivilegeExpiry);
         m
@@ -108,7 +109,6 @@ impl Plugin for Protected {
         cand.iter().try_fold((), |(), cand| {
             if cand.attribute_equality(Attribute::Class, &EntryClass::Tombstone.into())
                 || cand.attribute_equality(Attribute::Class, &EntryClass::Recycled.into())
-                || cand.attribute_equality(Attribute::Class, &EntryClass::DynGroup.into())
             {
                 Err(OperationError::SystemProtectedObject)
             } else {
@@ -189,7 +189,6 @@ impl Plugin for Protected {
         cand.iter().try_fold((), |(), cand| {
             if cand.attribute_equality(Attribute::Class, &EntryClass::Tombstone.into())
                 || cand.attribute_equality(Attribute::Class, &EntryClass::Recycled.into())
-                || cand.attribute_equality(Attribute::Class, &EntryClass::DynGroup.into())
             {
                 Err(OperationError::SystemProtectedObject)
             } else {

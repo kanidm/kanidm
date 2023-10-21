@@ -432,6 +432,12 @@ lazy_static! {
                 Filter::Eq(Attribute::Class.to_string(), EntryClass::Account.to_string()),
             ])
         ),
+        extra_attributes: vec![
+            // Enable account policy by default
+            (Attribute::Class, EntryClass::AccountPolicy.to_value()),
+            // Enforce this is a system protected object
+            (Attribute::Class, EntryClass::System.to_value()),
+        ],
         ..Default::default()
     };
 
@@ -444,6 +450,12 @@ lazy_static! {
         dyngroup_filter: Some(
                 Filter::Eq(Attribute::Class.to_string(), EntryClass::Account.to_string()),
         ),
+        extra_attributes: vec![
+            // Enable account policy by default
+            (Attribute::Class, EntryClass::AccountPolicy.to_value()),
+            // Enforce this is a system protected object
+            (Attribute::Class, EntryClass::System.to_value()),
+        ],
         ..Default::default()
     };
 

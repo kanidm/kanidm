@@ -5,6 +5,8 @@ edition = "2021"
 
 [lib]
 proc-macro = true
+test = true
+doctest = false
 
 [dependencies]
 proc-macro2 = { workspace = true }

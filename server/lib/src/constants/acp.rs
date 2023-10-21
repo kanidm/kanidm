@@ -1212,7 +1212,6 @@ lazy_static! {
         ..Default::default()
     };
 
-
     pub static ref IDM_ACP_GROUP_MANAGE_PRIV_V1: BuiltinAcp = BuiltinAcp{
         classes: vec![
             EntryClass::Object,
@@ -1243,6 +1242,56 @@ lazy_static! {
         create_classes: vec![
             EntryClass::Object,
             EntryClass::Group,
+        ],
+        ..Default::default()
+    };
+
+    pub static ref IDM_ACP_GROUP_ACCOUNT_POLICY_MANAGE_PRIV_V1: BuiltinAcp = BuiltinAcp{
+        classes: vec![
+            EntryClass::Object,
+            EntryClass::AccessControlProfile,
+            EntryClass::AccessControlCreate,
+            EntryClass::AccessControlModify,
+            EntryClass::AccessControlSearch
+            ],
+        name: "idm_acp_group_account_policy_manage",
+        uuid: UUID_IDM_GROUP_ACCOUNT_POLICY_MANAGE_PRIV,
+        description: "Builtin IDM Control for management of account policy on groups",
+        // For now just target SA because we are going to rework this soon and I think
+        // there isn't a great reason to make more small priv groups that we plan to
+        // erase.
+        receiver_group: UUID_SYSTEM_ADMINS,
+         // group which is not in HP, Recycled, Tombstone
+         target_scope: ProtoFilter::And(vec![
+            match_class_filter!(EntryClass::Group),
+            ProtoFilter::AndNot(Box::new(FILTER_HP_OR_RECYCLED_OR_TOMBSTONE.clone())),
+
+        ]),
+        search_attrs: vec![
+            Attribute::Class,
+            Attribute::Name,
+            Attribute::Uuid,
+            Attribute::AuthSessionExpiry,
+            Attribute::PrivilegeExpiry,
+        ],
+        modify_removed_attrs: vec![
+            Attribute::Class,
+            Attribute::AuthSessionExpiry,
+            Attribute::PrivilegeExpiry,
+        ],
+        modify_present_attrs: vec![
+            Attribute::Class,
+            Attribute::AuthSessionExpiry,
+            Attribute::PrivilegeExpiry,
+        ],
+        modify_classes: vec![
+            EntryClass::AccountPolicy,
+        ],
+        create_attrs: vec![
+            Attribute::Class,
+        ],
+        create_classes: vec![
+            EntryClass::AccountPolicy,
         ],
         ..Default::default()
     };
