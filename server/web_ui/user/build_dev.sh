@@ -1,2 +1,2 @@
 #!/bin/sh
-BUILD_FLAGS="--dev" ./build_admin.sh
+BUILD_FLAGS="--dev" ./build.sh
