@@ -1,5 +1,5 @@
 use core::fmt;
-use std::{path::Path, fs::Metadata};
+use std::{fs::Metadata, path::Path};
 /// Check a given file's metadata is read-only for the current user (true = read-only) Stub function if you're building for windows!
 pub fn readonly(meta: &Metadata) -> bool {
     eprintln!(

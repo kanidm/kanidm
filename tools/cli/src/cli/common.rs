@@ -361,6 +361,7 @@ pub fn prompt_for_username_get_username() -> Result<String, String> {
     }
 }
 
+/*
 /// This parses the token store and prompts the user to select their username, returns the token as a String
 ///
 /// Powered by [prompt_for_username_get_values]
@@ -373,3 +374,4 @@ pub fn prompt_for_username_get_token() -> Result<String, String> {
         Err(err) => Err(err),
     }
 }
+*/

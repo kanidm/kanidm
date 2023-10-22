@@ -72,8 +72,8 @@ You must modify the retro changelog plugin to include the full scope of the data
 the sync tool can view the changes to the database. Currently dsconf can not modify the
 include-suffix so you must do this manually.
 
-You need to change the `nsslapd-include-suffix` to match your LDAP baseDN here. You can access
-the basedn with:
+You need to change the `nsslapd-include-suffix` to match your LDAP baseDN here. You can access the
+basedn with:
 
 ```bash
 ldapsearch -H ldaps://<SERVER HOSTNAME/IP> -x -b '' -s base namingContexts

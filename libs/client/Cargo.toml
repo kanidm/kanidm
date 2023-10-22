@@ -11,6 +11,10 @@ license = { workspace = true }
 homepage = { workspace = true }
 repository = { workspace = true }
 
+[lib]
+test = true
+doctest = false
+
 [dependencies]
 tracing = { workspace = true }
 reqwest = { workspace = true, default-features = false, features = [

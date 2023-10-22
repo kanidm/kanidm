@@ -4,6 +4,7 @@ use kanidm_proto::v1::UiHint;
 use kanidm_proto::v1::{Group as ProtoGroup, OperationError};
 use uuid::Uuid;
 
+use super::accountpolicy::{AccountPolicy, ResolvedAccountPolicy};
 use crate::entry::{Entry, EntryCommitted, EntryReduced, EntrySealed};
 use crate::prelude::*;
 use crate::value::PartialValue;
@@ -16,17 +17,32 @@ pub struct Group {
     pub ui_hints: BTreeSet<UiHint>,
 }
 
-macro_rules! try_from_account_e {
+macro_rules! entry_groups {
     ($value:expr, $qs:expr) => {{
-        /*
-        let name = $value
-            .get_ava_single_iname(Attribute::Name)
-            .map(str::to_string)
-            .ok_or_else(|| {
-                OperationError::InvalidAccountState("Missing attribute: name".to_string())
-            })?;
-        */
+        match $value.get_ava_as_refuuid(Attribute::MemberOf) {
+            Some(riter) => {
+                // given a list of uuid, make a filter: even if this is empty, the be will
+                // just give and empty result set.
+                let f = filter!(f_or(
+                    riter
+                        .map(|u| f_eq(Attribute::Uuid, PartialValue::Uuid(u)))
+                        .collect()
+                ));
+                $qs.internal_search(f).map_err(|e| {
+                    admin_error!(?e, "internal search failed");
+                    e
+                })?
+            }
+            None => {
+                // No memberof, no groups!
+                vec![]
+            }
+        }
+    }};
+}
 
+macro_rules! upg_from_account_e {
+    ($value:expr, $groups:expr) => {{
         // Setup the user private group
         let spn = $value.get_ava_single_proto_string(Attribute::Spn).ok_or(
             OperationError::InvalidAccountState(format!("Missing attribute: {}", Attribute::Spn)),
@@ -43,60 +59,61 @@ macro_rules! try_from_account_e {
             ui_hints,
         };
 
-        let mut groups: Vec<Group> = match $value.get_ava_as_refuuid(Attribute::MemberOf) {
-            Some(riter) => {
-                // given a list of uuid, make a filter: even if this is empty, the be will
-                // just give and empty result set.
-                let f = filter!(f_or(
-                    riter
-                        .map(|u| f_eq(Attribute::Uuid, PartialValue::Uuid(u)))
-                        .collect()
-                ));
-                let group_entries: Vec<_> = $qs.internal_search(f).map_err(|e| {
-                    admin_error!(?e, "internal search failed");
-                    e
-                })?;
-                // Now convert the group entries to groups.
-                let groups: Result<Vec<_>, _> = group_entries
-                    .iter()
-                    .map(|e| Group::try_from_entry(e.as_ref()))
-                    .collect();
+        // Now convert the group entries to groups.
+        let groups: Result<Vec<_>, _> = $groups
+            .iter()
+            .map(|e| Group::try_from_entry(e.as_ref()))
+            .chain(std::iter::once(Ok(upg)))
+            .collect();
 
-                groups.map_err(|e| {
-                    admin_error!(?e, "failed to transform group entries to groups");
-                    e
-                })?
-            }
-            None => {
-                // No memberof, no groups!
-                vec![]
-            }
-        };
-        groups.push(upg);
-        Ok(groups)
+        groups.map_err(|e| {
+            error!(?e, "failed to transform group entries to groups");
+            e
+        })
     }};
 }
 
 impl Group {
-    pub fn try_from_account_entry_red_ro(
+    pub fn try_from_account_entry_reduced<'a, TXN>(
         value: &Entry<EntryReduced, EntryCommitted>,
-        qs: &mut QueryServerReadTransaction,
-    ) -> Result<Vec<Self>, OperationError> {
-        try_from_account_e!(value, qs)
+        qs: &mut TXN,
+    ) -> Result<Vec<Self>, OperationError>
+    where
+        TXN: QueryServerTransaction<'a>,
+    {
+        let groups = entry_groups!(value, qs);
+        upg_from_account_e!(value, groups)
     }
 
-    pub fn try_from_account_entry_ro(
+    pub fn try_from_account_entry<'a, TXN>(
         value: &Entry<EntrySealed, EntryCommitted>,
-        qs: &mut QueryServerReadTransaction,
-    ) -> Result<Vec<Self>, OperationError> {
-        try_from_account_e!(value, qs)
+        qs: &mut TXN,
+    ) -> Result<Vec<Self>, OperationError>
+    where
+        TXN: QueryServerTransaction<'a>,
+    {
+        let groups = entry_groups!(value, qs);
+        upg_from_account_e!(value, groups)
     }
 
-    pub fn try_from_account_entry_rw(
-        value: &Entry<EntrySealed, EntryCommitted>,
-        qs: &mut QueryServerWriteTransaction,
-    ) -> Result<Vec<Self>, OperationError> {
-        try_from_account_e!(value, qs)
+    pub(crate) fn try_from_account_entry_with_policy<'b, 'a, TXN>(
+        value: &'b Entry<EntrySealed, EntryCommitted>,
+        qs: &mut TXN,
+    ) -> Result<(Vec<Self>, ResolvedAccountPolicy), OperationError>
+    where
+        TXN: QueryServerTransaction<'a>,
+    {
+        let groups = entry_groups!(value, qs);
+        // Get the account policy here.
+
+        let rap = ResolvedAccountPolicy::fold_from(groups.iter().filter_map(|entry| {
+            let acc_pol: Option<AccountPolicy> = entry.as_ref().into();
+            acc_pol
+        }));
+
+        let r_groups = upg_from_account_e!(value, groups)?;
+
+        Ok((r_groups, rap))
     }
 
     pub fn try_from_entry(

@@ -8,5 +8,9 @@ license.workspace = true
 homepage.workspace = true
 repository.workspace = true
 
+[lib]
+test = true
+doctest = false
+
 [dependencies]
 libc = { workspace = true }

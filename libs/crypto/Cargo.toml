@@ -6,6 +6,10 @@ edition = "2021"
 [features]
 tpm = ["dep:tss-esapi"]
 
+[lib]
+test = true
+doctest = false
+
 [dependencies]
 argon2 = { workspace = true }
 base64 = { workspace = true }

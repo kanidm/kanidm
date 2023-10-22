@@ -62,7 +62,7 @@ impl RadiusAccount {
                 ))
             })?;
 
-        let groups = Group::try_from_account_entry_red_ro(value, qs)?;
+        let groups = Group::try_from_account_entry_reduced(value, qs)?;
 
         let valid_from = value.get_ava_single_datetime(Attribute::AccountValidFrom);
 

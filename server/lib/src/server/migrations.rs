@@ -111,6 +111,10 @@ impl QueryServer {
             if system_info_version < 15 {
                 write_txn.migrate_14_to_15()?;
             }
+
+            if system_info_version < 16 {
+                write_txn.migrate_15_to_16()?;
+            }
         }
 
         // Reload if anything in migrations requires it.
@@ -120,7 +124,7 @@ impl QueryServer {
 
         // Now force everything to reload.
         write_txn.force_all_reload();
-        // We are read to run
+        // We are ready to run
         write_txn.set_phase(ServerPhase::Running);
 
         // Commit all changes, this also triggers the reload.
@@ -455,6 +459,57 @@ impl<'a> QueryServerWriteTransaction<'a> {
     }
 
     #[instrument(level = "debug", skip_all)]
+    pub fn migrate_15_to_16(&mut self) -> Result<(), OperationError> {
+        admin_warn!("starting 15 to 16 migration.");
+
+        let sysconfig_entry = match self.internal_search_uuid(UUID_SYSTEM_CONFIG) {
+            Ok(entry) => entry,
+            Err(OperationError::NoMatchingEntries) => return Ok(()),
+            Err(e) => return Err(e),
+        };
+
+        let mut all_account_modlist = Vec::with_capacity(3);
+
+        all_account_modlist.push(Modify::Present(
+            Attribute::Class.into(),
+            EntryClass::AccountPolicy.to_value(),
+        ));
+
+        if let Some(auth_exp) = sysconfig_entry.get_ava_single_uint32(Attribute::AuthSessionExpiry)
+        {
+            all_account_modlist.push(Modify::Present(
+                Attribute::AuthSessionExpiry.into(),
+                Value::Uint32(auth_exp),
+            ));
+        }
+
+        if let Some(priv_exp) = sysconfig_entry.get_ava_single_uint32(Attribute::PrivilegeExpiry) {
+            all_account_modlist.push(Modify::Present(
+                Attribute::PrivilegeExpiry.into(),
+                Value::Uint32(priv_exp),
+            ));
+        }
+
+        self.internal_batch_modify(
+            [
+                (
+                    UUID_SYSTEM_CONFIG,
+                    ModifyList::new_list(vec![
+                        Modify::Purged(Attribute::AuthSessionExpiry.into()),
+                        Modify::Purged(Attribute::PrivilegeExpiry.into()),
+                    ]),
+                ),
+                (
+                    UUID_IDM_ALL_ACCOUNTS,
+                    ModifyList::new_list(all_account_modlist),
+                ),
+            ]
+            .into_iter(),
+        )
+        // Complete
+    }
+
+    #[instrument(level = "debug", skip_all)]
     pub fn initialise_schema_core(&mut self) -> Result<(), OperationError> {
         admin_debug!("initialise_schema_core -> start ...");
         // Load in all the "core" schema, that we already have in "memory".
@@ -565,6 +620,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
         let idm_schema_classes: Vec<EntryInitNew> = vec![
             SCHEMA_CLASS_ACCOUNT.clone().into(),
+            SCHEMA_CLASS_ACCOUNT_POLICY.clone().into(),
             SCHEMA_CLASS_DOMAIN_INFO.clone().into(),
             SCHEMA_CLASS_DYNGROUP.clone().into(),
             SCHEMA_CLASS_GROUP.clone().into(),
@@ -683,6 +739,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             E_IDM_HP_ACP_SYNC_ACCOUNT_MANAGE_PRIV_V1.clone(),
             IDM_ACP_ACCOUNT_MAIL_READ_PRIV_V1.clone(),
             IDM_ACCOUNT_SELF_ACP_WRITE_V1.clone(),
+            IDM_ACP_GROUP_ACCOUNT_POLICY_MANAGE_PRIV_V1.clone(),
         ];
 
         let res: Result<(), _> = idm_entries
@@ -709,6 +766,9 @@ impl<'a> QueryServerWriteTransaction<'a> {
         }
         debug_assert!(res.is_ok());
         res?;
+
+        // Some attributes we don't want to stomp if they already exist. So we conditionally
+        // modify them.
 
         self.changed_schema = true;
         self.changed_acp = true;

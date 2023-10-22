@@ -1767,37 +1767,6 @@ async fn test_server_user_auth_reauthentication(rsclient: KanidmClient) {
     assert!(uat.purpose_readwrite_active(now));
 }
 
-#[kanidmd_testkit::test]
-async fn test_authsession_expiry(rsclient: KanidmClient) {
-    let res = rsclient
-        .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
-        .await;
-    assert!(res.is_ok());
-    let authsession_expiry = 2878_u32;
-    rsclient
-        .system_authsession_expiry_set(authsession_expiry)
-        .await
-        .unwrap();
-    let result = rsclient.system_authsession_expiry_get().await.unwrap();
-    assert_eq!(authsession_expiry, result);
-}
-
-#[kanidmd_testkit::test]
-async fn test_privilege_expiry(rsclient: KanidmClient) {
-    let res = rsclient
-        .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
-        .await;
-    assert!(res.is_ok());
-    let authsession_expiry = 2878_u32;
-
-    rsclient
-        .system_auth_privilege_expiry_set(authsession_expiry)
-        .await
-        .unwrap();
-    let result = rsclient.system_auth_privilege_expiry_get().await.unwrap();
-    assert_eq!(authsession_expiry, result);
-}
-
 async fn start_password_session(
     rsclient: &KanidmClient,
     username: &str,

@@ -58,7 +58,6 @@ pub fn get_user_name_by_uid(uid: uid_t) -> Option<OsString> {
     Some(name)
 }
 
-
 #[test]
 /// just testing these literally don't panic
 fn test_get_effective_uid() {

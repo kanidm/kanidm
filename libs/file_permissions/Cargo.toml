@@ -1,9 +1,18 @@
 [package]
 name = "kanidm_lib_file_permissions"
-version = "0.1.0"
-edition = "2021"
+description = "Kanidm File Permissions Library"
+# documentation = "https://docs.rs/kanidm_proto/latest/kanidm_proto/"
+version = { workspace = true }
+authors = { workspace = true }
+rust-version = { workspace = true }
+edition = { workspace = true }
+license = { workspace = true }
+homepage = { workspace = true }
+repository = { workspace = true }
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[lib]
+test = true
+doctest = false
 
 [dependencies]
 

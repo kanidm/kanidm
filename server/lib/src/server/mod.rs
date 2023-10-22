@@ -869,42 +869,6 @@ pub trait QueryServerTransaction<'a> {
             })
     }
 
-    fn get_authsession_expiry(&mut self) -> Result<u32, OperationError> {
-        self.internal_search_uuid(UUID_SYSTEM_CONFIG)
-            .and_then(|e| {
-                if let Some(expiry_time) = e.get_ava_single_uint32(Attribute::AuthSessionExpiry) {
-                    Ok(expiry_time)
-                } else {
-                    Err(OperationError::NoMatchingAttributes)
-                }
-            })
-            .map_err(|e| {
-                admin_error!(
-                    ?e,
-                    "Failed to retrieve authsession_expiry from system configuration"
-                );
-                e
-            })
-    }
-
-    fn get_privilege_expiry(&mut self) -> Result<u32, OperationError> {
-        self.internal_search_uuid(UUID_SYSTEM_CONFIG)
-            .and_then(|e| {
-                if let Some(expiry_time) = e.get_ava_single_uint32(Attribute::PrivilegeExpiry) {
-                    Ok(expiry_time)
-                } else {
-                    Err(OperationError::NoMatchingAttributes)
-                }
-            })
-            .map_err(|e| {
-                admin_error!(
-                    ?e,
-                    "Failed to retrieve privilege_expiry from system configuration"
-                );
-                e
-            })
-    }
-
     fn get_oauth2rs_set(&mut self) -> Result<Vec<Arc<EntrySealedCommitted>>, OperationError> {
         self.internal_search(filter!(f_eq(
             Attribute::Class,
@@ -1679,10 +1643,6 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
     pub(crate) fn get_changed_domain(&self) -> bool {
         self.changed_domain
-    }
-
-    pub(crate) fn get_changed_system_config(&self) -> bool {
-        self.changed_system_config
     }
 
     fn set_phase(&mut self, phase: ServerPhase) {

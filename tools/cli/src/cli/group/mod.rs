@@ -1,6 +1,8 @@
 use crate::common::OpType;
 use crate::{handle_client_error, GroupOpt, GroupPosix, OutputMode};
 
+mod account_policy;
+
 impl GroupOpt {
     pub fn debug(&self) -> bool {
         match self {
@@ -17,6 +19,7 @@ impl GroupOpt {
                 GroupPosix::Show(gcopt) => gcopt.copt.debug,
                 GroupPosix::Set(gcopt) => gcopt.copt.debug,
             },
+            GroupOpt::AccountPolicy { commands } => commands.debug(),
         }
     }
 
@@ -156,6 +159,7 @@ impl GroupOpt {
                     }
                 }
             },
+            GroupOpt::AccountPolicy { commands } => commands.exec().await,
         } // end match
     }
 }

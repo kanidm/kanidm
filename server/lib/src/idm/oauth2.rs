@@ -1641,7 +1641,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
                     return Ok(AccessTokenIntrospectResponse::inactive());
                 };
 
-                let account = match Account::try_from_entry_no_groups(&entry) {
+                let account = match Account::try_from_entry_ro(&entry, &mut self.qs_read) {
                     Ok(account) => account,
                     Err(err) => return Err(Oauth2Error::ServerError(err)),
                 };

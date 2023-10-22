@@ -4,6 +4,7 @@
 //! is implemented.
 
 pub mod account;
+pub(crate) mod accountpolicy;
 pub(crate) mod applinks;
 pub mod audit;
 pub(crate) mod authsession;

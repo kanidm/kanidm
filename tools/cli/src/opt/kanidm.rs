@@ -87,6 +87,34 @@ pub enum GroupPosix {
 }
 
 #[derive(Debug, Subcommand)]
+pub enum GroupAccountPolicyOpt {
+    /// Enable account policy for this group
+    #[clap(name = "enable")]
+    Enable {
+        name: String,
+        #[clap(flatten)]
+        copt: CommonOpt,
+    },
+    /// Set the maximum time for session expiry
+    #[clap(name = "auth-expiry")]
+    AuthSessionExpiry {
+        name: String,
+        expiry: u32,
+        #[clap(flatten)]
+        copt: CommonOpt,
+    },
+    /// Configure and display the privilege session expiry
+    /// Set the maximum time for privilege session expiry
+    #[clap(name = "privilege-expiry")]
+    PrivilegedSessionExpiry {
+        name: String,
+        expiry: u32,
+        #[clap(flatten)]
+        copt: CommonOpt,
+    },
+}
+
+#[derive(Debug, Subcommand)]
 pub enum GroupOpt {
     /// List all groups
     #[clap(name = "list")]
@@ -122,6 +150,12 @@ pub enum GroupOpt {
         #[clap(subcommand)]
         commands: GroupPosix,
     },
+    /// Manage the policies that apply to members of this group.
+    #[clap(name = "account-policy")]
+    AccountPolicy {
+        #[clap(subcommand)]
+        commands: GroupAccountPolicyOpt
+    }
 }
 
 #[derive(Debug, Args)]
@@ -983,18 +1017,6 @@ pub enum SystemOpt {
     DeniedNames {
         #[clap(subcommand)]
         commands: DeniedNamesOpt,
-    },
-    /// Configure and display the system auth session expiry
-    #[clap(name = "auth-expiry")]
-    AuthSessionExpiry {
-        #[clap(subcommand)]
-        commands: AuthSessionExpiryOpt,
-    },
-    /// Configure and display the system auth privilege session expiry
-    #[clap(name = "privilege-expiry")]
-    PrivilegedSessionExpiry {
-        #[clap(subcommand)]
-        commands: PrivilegedSessionExpiryOpt,
     },
     #[clap(name = "oauth2")]
     /// Configure and display oauth2/oidc resource server configuration

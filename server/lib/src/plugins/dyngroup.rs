@@ -17,7 +17,6 @@ impl DynGroup {
     #[allow(clippy::too_many_arguments)]
     fn apply_dyngroup_change(
         qs: &mut QueryServerWriteTransaction,
-        ident: &Identity,
         candidate_tuples: &mut Vec<(Arc<EntrySealedCommitted>, EntryInvalidCommitted)>,
         affected_uuids: &mut Vec<Uuid>,
         expect: bool,
@@ -25,11 +24,16 @@ impl DynGroup {
         dyn_groups: &mut DynGroupCache,
         n_dyn_groups: &[&Entry<EntrySealed, EntryCommitted>],
     ) -> Result<(), OperationError> {
+        /*
+         * This triggers even if we are modifying the dyngroups account policy attributes, which
+         * is allowed now. So we relax this, because systemprotection still blocks the creation
+         * of dyngroups.
         if !ident.is_internal() {
             // It should be impossible to trigger this right now due to protected plugin.
             error!("It is currently an error to create a dynamic group");
             return Err(OperationError::SystemProtectedObject);
         }
+        */
 
         // Search all the new groups first.
         let filt = filter!(FC::Or(
@@ -95,7 +99,7 @@ impl DynGroup {
         Ok(())
     }
 
-    #[instrument(level = "debug", name = "dyngroup_reload", skip_all)]
+    #[instrument(level = "debug", name = "dyngroup::reload", skip_all)]
     pub fn reload(qs: &mut QueryServerWriteTransaction) -> Result<(), OperationError> {
         let ident_internal = Identity::from_internal();
         // Internal search all our definitions.
@@ -135,11 +139,11 @@ impl DynGroup {
         Ok(())
     }
 
-    #[instrument(level = "debug", name = "dyngroup_post_create", skip_all)]
+    #[instrument(level = "debug", name = "dyngroup::post_create", skip_all)]
     pub fn post_create(
         qs: &mut QueryServerWriteTransaction,
         cand: &[Entry<EntrySealed, EntryCommitted>],
-        ident: &Identity,
+        _ident: &Identity,
     ) -> Result<Vec<Uuid>, OperationError> {
         let mut affected_uuids = Vec::with_capacity(cand.len());
 
@@ -213,7 +217,6 @@ impl DynGroup {
             trace!("considering new dyngroups");
             Self::apply_dyngroup_change(
                 qs,
-                ident,
                 &mut candidate_tuples,
                 &mut affected_uuids,
                 false,
@@ -235,12 +238,12 @@ impl DynGroup {
         Ok(affected_uuids)
     }
 
-    #[instrument(level = "debug", name = "memberof_post_modify", skip_all)]
+    #[instrument(level = "debug", name = "dyngroup::post_modify", skip_all)]
     pub fn post_modify(
         qs: &mut QueryServerWriteTransaction,
         pre_cand: &[Arc<Entry<EntrySealed, EntryCommitted>>],
         cand: &[Entry<EntrySealed, EntryCommitted>],
-        ident: &Identity,
+        _ident: &Identity,
     ) -> Result<Vec<Uuid>, OperationError> {
         let mut affected_uuids = Vec::with_capacity(cand.len());
 
@@ -276,7 +279,6 @@ impl DynGroup {
             trace!("considering modified dyngroups");
             Self::apply_dyngroup_change(
                 qs,
-                ident,
                 &mut candidate_tuples,
                 &mut affected_uuids,
                 true,

@@ -16,6 +16,8 @@ repository = "https://github.com/kanidm/kanidm/"
 
 [lib]
 crate-type = ["cdylib", "rlib"]
+test = true
+doctest = false
 
 [dependencies]
 gloo = { workspace = true }

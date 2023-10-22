@@ -36,7 +36,7 @@ use crate::prelude::*;
 use crate::value::{Session, SessionState};
 use time::OffsetDateTime;
 
-use super::server::AccountPolicy;
+use super::accountpolicy::ResolvedAccountPolicy;
 
 // Each CredHandler takes one or more credentials and determines if the
 // handlers requirements can be 100% fulfilled. This is where MFA or other
@@ -721,7 +721,7 @@ pub(crate) struct AuthSession {
     // How do we know what claims to add?
     account: Account,
     // This policies that apply to this account
-    account_policy: AccountPolicy,
+    account_policy: ResolvedAccountPolicy,
 
     // Store how we plan to handle this sessions authentication: this is generally
     // made apparent by the presentation of an application id or not. If none is presented
@@ -747,7 +747,7 @@ impl AuthSession {
     /// or interleved write operations do not cause inconsistency in this process.
     pub fn new(
         account: Account,
-        account_policy: AccountPolicy,
+        account_policy: ResolvedAccountPolicy,
         issue: AuthIssueSession,
         privileged: bool,
         webauthn: &Webauthn,
@@ -828,7 +828,7 @@ impl AuthSession {
     /// initial authentication.
     pub(crate) fn new_reauth(
         account: Account,
-        account_policy: AccountPolicy,
+        account_policy: ResolvedAccountPolicy,
         session_id: Uuid,
         session: &Session,
         cred_id: Uuid,
@@ -1257,13 +1257,13 @@ mod tests {
     use crate::credential::totp::{Totp, TOTP_DEFAULT_STEP};
     use crate::credential::{BackupCodes, Credential};
     use crate::idm::account::Account;
+    use crate::idm::accountpolicy::ResolvedAccountPolicy;
     use crate::idm::audit::AuditEvent;
     use crate::idm::authsession::{
         AuthSession, BAD_AUTH_TYPE_MSG, BAD_BACKUPCODE_MSG, BAD_PASSWORD_MSG, BAD_TOTP_MSG,
         BAD_WEBAUTHN_MSG, PW_BADLIST_MSG,
     };
     use crate::idm::delayed::DelayedAction;
-    use crate::idm::server::AccountPolicy;
     use crate::idm::AuthState;
     use crate::prelude::*;
     use crate::utils::readable_password_from_random;
@@ -1298,7 +1298,7 @@ mod tests {
 
         let (session, state) = AuthSession::new(
             anon_account,
-            AccountPolicy::default(),
+            ResolvedAccountPolicy::default(),
             AuthIssueSession::Token,
             false,
             &webauthn,
@@ -1335,7 +1335,7 @@ mod tests {
         ) => {{
             let (session, state) = AuthSession::new(
                 $account.clone(),
-                AccountPolicy::default(),
+                ResolvedAccountPolicy::default(),
                 AuthIssueSession::Token,
                 $privileged,
                 $webauthn,
@@ -1516,7 +1516,7 @@ mod tests {
         ) => {{
             let (session, state) = AuthSession::new(
                 $account.clone(),
-                AccountPolicy::default(),
+                ResolvedAccountPolicy::default(),
                 AuthIssueSession::Token,
                 false,
                 $webauthn,
@@ -1844,7 +1844,7 @@ mod tests {
         ) => {{
             let (session, state) = AuthSession::new(
                 $account.clone(),
-                AccountPolicy::default(),
+                ResolvedAccountPolicy::default(),
                 AuthIssueSession::Token,
                 false,
                 $webauthn,

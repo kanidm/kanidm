@@ -68,38 +68,6 @@ pub struct DomainKeys {
     pub(crate) cookie_key: [u8; 64],
 }
 
-#[derive(Clone)]
-pub(crate) struct AccountPolicy {
-    privilege_expiry: u32,
-    authsession_expiry: u32,
-}
-
-impl AccountPolicy {
-    pub(crate) fn new(privilege_expiry: u32, authsession_expiry: u32) -> Self {
-        Self {
-            privilege_expiry,
-            authsession_expiry,
-        }
-    }
-
-    pub(crate) fn privilege_expiry(&self) -> u32 {
-        self.privilege_expiry
-    }
-
-    pub(crate) fn authsession_expiry(&self) -> u32 {
-        self.authsession_expiry
-    }
-}
-
-impl Default for AccountPolicy {
-    fn default() -> Self {
-        Self {
-            privilege_expiry: DEFAULT_AUTH_PRIVILEGE_EXPIRY,
-            authsession_expiry: DEFAULT_AUTH_SESSION_EXPIRY,
-        }
-    }
-}
-
 pub struct IdmServer {
     // There is a good reason to keep this single thread - it
     // means that limits to sessions can be easily applied and checked to
@@ -120,7 +88,6 @@ pub struct IdmServer {
     webauthn: Webauthn,
     oauth2rs: Arc<Oauth2ResourceServers>,
     domain_keys: Arc<CowCell<DomainKeys>>,
-    account_policy: Arc<CowCell<AccountPolicy>>,
 }
 
 /// Contains methods that require writes, but in the context of writing to the idm in memory structures (maybe the query server too). This is things like authentication.
@@ -136,7 +103,6 @@ pub struct IdmServerAuthTransaction<'a> {
     pub(crate) async_tx: Sender<DelayedAction>,
     pub(crate) audit_tx: Sender<AuditEvent>,
     pub(crate) webauthn: &'a Webauthn,
-    pub(crate) account_policy: CowCellReadTxn<AccountPolicy>,
     pub(crate) domain_keys: CowCellReadTxn<DomainKeys>,
 }
 
@@ -144,7 +110,6 @@ pub struct IdmServerCredUpdateTransaction<'a> {
     pub(crate) qs_read: QueryServerReadTransaction<'a>,
     // sid: Sid,
     pub(crate) webauthn: &'a Webauthn,
-    pub(crate) _account_policy: CowCellReadTxn<AccountPolicy>,
     pub(crate) cred_update_sessions: BptreeMapReadTxn<'a, Uuid, CredentialUpdateSessionMutex>,
     pub(crate) domain_keys: CowCellReadTxn<DomainKeys>,
     pub(crate) crypto_policy: &'a CryptoPolicy,
@@ -166,7 +131,6 @@ pub struct IdmServerProxyWriteTransaction<'a> {
     pub(crate) sid: Sid,
     crypto_policy: &'a CryptoPolicy,
     webauthn: &'a Webauthn,
-    account_policy: CowCellWriteTxn<'a, AccountPolicy>,
     pub(crate) domain_keys: CowCellWriteTxn<'a, DomainKeys>,
     pub(crate) oauth2rs: Oauth2ResourceServersWriteTransaction<'a>,
 }
@@ -191,16 +155,7 @@ impl IdmServer {
         let (audit_tx, audit_rx) = unbounded();
 
         // Get the domain name, as the relying party id.
-        let (
-            rp_id,
-            rp_name,
-            fernet_private_key,
-            es256_private_key,
-            cookie_key,
-            oauth2rs_set,
-            privilege_expiry,
-            authsession_expiry,
-        ) = {
+        let (rp_id, rp_name, fernet_private_key, es256_private_key, cookie_key, oauth2rs_set) = {
             let mut qs_read = qs.read().await;
             (
                 qs_read.get_domain_name().to_string(),
@@ -210,8 +165,6 @@ impl IdmServer {
                 qs_read.get_domain_cookie_key()?,
                 // Add a read/reload of all oauth2 configurations.
                 qs_read.get_oauth2rs_set()?,
-                qs_read.get_privilege_expiry()?,
-                qs_read.get_authsession_expiry()?,
             )
         };
 
@@ -286,10 +239,6 @@ impl IdmServer {
                 async_tx,
                 audit_tx,
                 webauthn,
-                account_policy: Arc::new(CowCell::new(AccountPolicy::new(
-                    privilege_expiry,
-                    authsession_expiry,
-                ))),
                 domain_keys,
                 oauth2rs: Arc::new(oauth2rs),
             },
@@ -319,7 +268,6 @@ impl IdmServer {
             async_tx: self.async_tx.clone(),
             audit_tx: self.audit_tx.clone(),
             webauthn: &self.webauthn,
-            account_policy: self.account_policy.read(),
             domain_keys: self.domain_keys.read(),
         }
     }
@@ -349,7 +297,6 @@ impl IdmServer {
             sid,
             crypto_policy: &self.crypto_policy,
             webauthn: &self.webauthn,
-            account_policy: self.account_policy.write(),
             domain_keys: self.domain_keys.write(),
             oauth2rs: self.oauth2rs.write(),
         }
@@ -360,7 +307,6 @@ impl IdmServer {
             qs_read: self.qs.read().await,
             // sid: Sid,
             webauthn: &self.webauthn,
-            _account_policy: self.account_policy.read(),
             cred_update_sessions: self.cred_update_sessions.read(),
             domain_keys: self.domain_keys.read(),
             crypto_policy: &self.crypto_policy,
@@ -1041,9 +987,8 @@ impl<'a> IdmServerAuthTransaction<'a> {
                 // typing and functionality so we can assess what auth types can
                 // continue, and helps to keep non-needed entry specific data
                 // out of the session tree.
-                let account = Account::try_from_entry_ro(entry.as_ref(), &mut self.qs_read)?;
-
-                let account_policy = (*self.account_policy).clone();
+                let (account, account_policy) =
+                    Account::try_from_entry_with_policy(entry.as_ref(), &mut self.qs_read)?;
 
                 trace!(?account.primary);
 
@@ -2073,10 +2018,6 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
     #[instrument(level = "debug", skip_all)]
     pub fn commit(mut self) -> Result<(), OperationError> {
-        if self.qs_write.get_changed_system_config() {
-            self.reload_system_account_policy()?;
-        };
-
         if self.qs_write.get_changed_ouath2() {
             self.qs_write
                 .get_oauth2rs_set()
@@ -2132,16 +2073,9 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         // Commit everything.
         self.oauth2rs.commit();
         self.domain_keys.commit();
-        self.account_policy.commit();
         self.cred_update_sessions.commit();
         trace!("cred_update_session.commit");
         self.qs_write.commit()
-    }
-
-    fn reload_system_account_policy(&mut self) -> Result<(), OperationError> {
-        self.account_policy.authsession_expiry = self.qs_write.get_authsession_expiry()?;
-        self.account_policy.privilege_expiry = self.qs_write.get_privilege_expiry()?;
-        Ok(())
     }
 }
 
@@ -3717,8 +3651,17 @@ mod tests {
         //we first set the expiry to a custom value
         let mut idms_prox_write = idms.proxy_write(ct).await;
 
-        let new_authsession_expiry = 1000_u32;
-        idms_prox_write.account_policy.authsession_expiry = new_authsession_expiry;
+        let new_authsession_expiry = 1000;
+
+        let modlist = ModifyList::new_purge_and_set(
+            Attribute::AuthSessionExpiry,
+            Value::Uint32(new_authsession_expiry),
+        );
+        idms_prox_write
+            .qs_write
+            .internal_modify_uuid(UUID_IDM_ALL_ACCOUNTS, &modlist)
+            .expect("Unable to change default session exp");
+
         assert!(idms_prox_write.commit().is_ok());
 
         // Start anonymous auth.

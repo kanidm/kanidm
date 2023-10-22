@@ -410,7 +410,6 @@ lazy_static! {
     };
 
 
-    /// Builtin IDM Group for allowing migrations of service accounts into persons
     pub static ref IDM_HP_SYNC_ACCOUNT_MANAGE_PRIV: BuiltinGroup = BuiltinGroup {
         name: "idm_hp_sync_account_manage_priv",
         description: "Builtin IDM Group for managing synchronisation from external identity sources",
@@ -421,7 +420,6 @@ lazy_static! {
         ..Default::default()
     };
 
-    /// Builtin IDM Group for extending high privilege accounts to be people.
     pub static ref IDM_ALL_PERSONS: BuiltinGroup = BuiltinGroup {
         name: "idm_all_persons",
         description: "Builtin IDM Group for extending high privilege accounts to be people.",
@@ -434,10 +432,15 @@ lazy_static! {
                 Filter::Eq(Attribute::Class.to_string(), EntryClass::Account.to_string()),
             ])
         ),
+        extra_attributes: vec![
+            // Enable account policy by default
+            (Attribute::Class, EntryClass::AccountPolicy.to_value()),
+            // Enforce this is a system protected object
+            (Attribute::Class, EntryClass::System.to_value()),
+        ],
         ..Default::default()
     };
 
-    /// Builtin IDM Group for extending high privilege accounts to be people.
     pub static ref IDM_ALL_ACCOUNTS: BuiltinGroup = BuiltinGroup {
         name: "idm_all_accounts",
         description: "Builtin IDM dynamic group containing all entries that can authenticate.",
@@ -447,6 +450,12 @@ lazy_static! {
         dyngroup_filter: Some(
                 Filter::Eq(Attribute::Class.to_string(), EntryClass::Account.to_string()),
         ),
+        extra_attributes: vec![
+            // Enable account policy by default
+            (Attribute::Class, EntryClass::AccountPolicy.to_value()),
+            // Enforce this is a system protected object
+            (Attribute::Class, EntryClass::System.to_value()),
+        ],
         ..Default::default()
     };
 

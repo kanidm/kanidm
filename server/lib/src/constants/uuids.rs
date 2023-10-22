@@ -57,6 +57,8 @@ pub const UUID_IDM_HP_SYNC_ACCOUNT_MANAGE_PRIV: Uuid =
 pub const UUID_IDM_UI_ENABLE_EXPERIMENTAL_FEATURES: Uuid =
     uuid!("00000000-0000-0000-0000-000000000038");
 pub const UUID_IDM_ACCOUNT_MAIL_READ_PRIV: Uuid = uuid!("00000000-0000-0000-0000-000000000039");
+pub const UUID_IDM_GROUP_ACCOUNT_POLICY_MANAGE_PRIV: Uuid =
+    uuid!("00000000-0000-0000-0000-000000000040");
 
 //
 pub const UUID_IDM_HIGH_PRIVILEGE: Uuid = uuid!("00000000-0000-0000-0000-000000001000");
@@ -239,6 +241,9 @@ pub const UUID_SCHEMA_ATTR_AUTH_PRIVILEGE_EXPIRY: Uuid =
     uuid!("00000000-0000-0000-0000-ffff00000142");
 pub const UUID_SCHEMA_ATTR_IMAGE: Uuid = uuid!("00000000-0000-0000-0000-ffff00000143");
 pub const UUID_SCHEMA_ATTR_DENIED_NAME: Uuid = uuid!("00000000-0000-0000-0000-ffff00000144");
+
+// Leave 145 for ldap unix pw bind
+pub const UUID_SCHEMA_CLASS_ACCOUNT_POLICY: Uuid = uuid!("00000000-0000-0000-0000-ffff00000146");
 
 // System and domain infos
 // I'd like to strongly criticise william of the past for making poor choices about these allocations.

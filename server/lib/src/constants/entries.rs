@@ -551,6 +551,7 @@ pub enum EntryClass {
     AccessControlProfile,
     AccessControlSearch,
     Account,
+    AccountPolicy,
     AttributeType,
     Class,
     ClassType,
@@ -591,6 +592,7 @@ impl From<EntryClass> for &'static str {
             EntryClass::AccessControlProfile => "access_control_profile",
             EntryClass::AccessControlSearch => "access_control_search",
             EntryClass::Account => "account",
+            EntryClass::AccountPolicy => "account_policy",
             EntryClass::AttributeType => "attributetype",
             EntryClass::Class => ATTR_CLASS,
             EntryClass::ClassType => "classtype",
@@ -704,7 +706,7 @@ lazy_static! {
 Attribute::Description,
             Value::new_utf8s("System (local) info and metadata object.")
         ),
-        (Attribute::Version, Value::Uint32(14))
+        (Attribute::Version, Value::Uint32(16))
     );
 
     pub static ref E_DOMAIN_INFO_V1: EntryInitNew = entry_init!(

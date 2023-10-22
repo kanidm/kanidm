@@ -11,6 +11,7 @@ use webauthn_rs::prelude::{
     AttestedPasskey as DeviceKeyV4, AuthenticationResult, CredentialID, Passkey as PasskeyV4,
 };
 
+use super::accountpolicy::ResolvedAccountPolicy;
 use crate::constants::UUID_ANONYMOUS;
 use crate::credential::softlock::CredSoftLockPolicy;
 use crate::credential::Credential;
@@ -229,8 +230,20 @@ impl Account {
         value: &Entry<EntrySealed, EntryCommitted>,
         qs: &mut QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
-        let groups = Group::try_from_account_entry_ro(value, qs)?;
+        let groups = Group::try_from_account_entry(value, qs)?;
         try_from_entry!(value, groups)
+    }
+
+    #[instrument(level = "trace", skip_all)]
+    pub(crate) fn try_from_entry_with_policy<'a, TXN>(
+        value: &Entry<EntrySealed, EntryCommitted>,
+        qs: &mut TXN,
+    ) -> Result<(Self, ResolvedAccountPolicy), OperationError>
+    where
+        TXN: QueryServerTransaction<'a>,
+    {
+        let (groups, rap) = Group::try_from_account_entry_with_policy(value, qs)?;
+        try_from_entry!(value, groups).map(|acct| (acct, rap))
     }
 
     #[instrument(level = "trace", skip_all)]
@@ -238,7 +251,7 @@ impl Account {
         value: &Entry<EntrySealed, EntryCommitted>,
         qs: &mut QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
-        let groups = Group::try_from_account_entry_rw(value, qs)?;
+        let groups = Group::try_from_account_entry(value, qs)?;
         try_from_entry!(value, groups)
     }
 
@@ -247,14 +260,8 @@ impl Account {
         value: &Entry<EntryReduced, EntryCommitted>,
         qs: &mut QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
-        let groups = Group::try_from_account_entry_red_ro(value, qs)?;
+        let groups = Group::try_from_account_entry_reduced(value, qs)?;
         try_from_entry!(value, groups)
-    }
-
-    pub(crate) fn try_from_entry_no_groups(
-        value: &Entry<EntrySealed, EntryCommitted>,
-    ) -> Result<Self, OperationError> {
-        try_from_entry!(value, vec![])
     }
 
     /// Given the session_id and other metadata, create a user authentication token

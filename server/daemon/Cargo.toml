@@ -16,6 +16,8 @@ repository = { workspace = true }
 [[bin]]
 name = "kanidmd"
 path = "src/main.rs"
+test = true
+doctest = false
 
 [dependencies]
 kanidm_proto = { workspace = true }
