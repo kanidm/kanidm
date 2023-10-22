@@ -243,3 +243,8 @@ body {
   -o-transition: none !important;
   transition: none !important;
 }
+
+.oauth2-img {
+  max-width: 150px;
+  max-height: 150px;
+}

@@ -1,13 +1,14 @@
 #![allow(clippy::disallowed_types)] // because `Routable` uses a hashmap
 #![allow(non_camel_case_types)]
 use gloo::console;
+use kanidm_proto::constants::uri::V1_AUTH_VALID;
 use kanidm_proto::v1::{UiHint, UserAuthToken};
 use kanidmd_web_ui_shared::constants::{
     CSS_ALERT_DANGER, CSS_NAVBAR_BRAND, CSS_NAVBAR_LINKS_UL, CSS_NAVBAR_NAV, CSS_NAV_LINK,
     ID_NAVBAR_COLLAPSE, IMG_LOGO_SQUARE, URL_ADMIN, URL_LOGIN,
 };
 use kanidmd_web_ui_shared::models::push_return_location;
-use kanidmd_web_ui_shared::{signout_link, signout_modal, ui_logout};
+use kanidmd_web_ui_shared::ui::{signout_link, signout_modal, ui_logout};
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::UnwrapThrowExt;
 use yew::prelude::*;
@@ -174,6 +175,7 @@ impl Component for ViewsApp {
             }
             State::Authenticated(uat) => self.view_authenticated(ctx, uat),
             State::Error { emsg, kopid } => {
+                //
                 html! {
                   <main class="form-signin">
                     <div class={CSS_ALERT_DANGER} role="alert">
@@ -189,7 +191,7 @@ impl Component for ViewsApp {
                         }
                     </p>
                     </div>
-
+                    <center><a href={URL_LOGIN} class="btn btn-primary">{ "Return to Login" }</a></center>
                   </main>
                 }
             }
@@ -245,15 +247,6 @@ impl ViewsApp {
             </Link<ViewRoute>>},
         ];
 
-        if ui_hint_experimental {
-            links.push(html! {
-            <Link<ViewRoute> classes={CSS_NAV_LINK} to={ViewRoute::IdentityVerification}>
-                <span data-feather="file"></span>
-                    { "Identity verification" }
-            </Link<ViewRoute>>
-
-            });
-        }
         if credential_update {
             links.push(html! {
               <Link<ViewRoute> classes={CSS_NAV_LINK} to={ViewRoute::Profile}>
@@ -306,8 +299,7 @@ impl ViewsApp {
     }
 
     async fn check_session_valid() -> Result<ViewsMsg, FetchError> {
-        let (kopid, status, value, _) =
-            do_request("/v1/auth/valid", RequestMethod::GET, None).await?;
+        let (kopid, status, value, _) = do_request(V1_AUTH_VALID, RequestMethod::GET, None).await?;
 
         if status == 200 {
             Ok(ViewsMsg::Verified)

@@ -1,12 +1,15 @@
 use gloo::console;
-use kanidm_proto::constants::APPLICATION_JSON;
+use kanidm_proto::constants::uri::{OAUTH2_AUTHORISE, OAUTH2_AUTHORISE_PERMIT};
+use kanidm_proto::constants::{APPLICATION_JSON, KOPID};
 pub use kanidm_proto::oauth2::{
     AccessTokenRequest, AccessTokenResponse, AuthorisationRequest, AuthorisationResponse,
     CodeChallengeMethod, ErrorResponse,
 };
 use kanidmd_web_ui_shared::constants::{CONTENT_TYPE, CSS_ALERT_DANGER, URL_OAUTH2};
-use kanidmd_web_ui_shared::utils::{do_alert_error, do_footer};
-use kanidmd_web_ui_shared::{add_body_form_classes, logo_img, remove_body_form_classes};
+use kanidmd_web_ui_shared::utils::{do_alert_error, do_footer, window};
+use kanidmd_web_ui_shared::{
+    add_body_form_classes, fetch_session_valid, logo_img, remove_body_form_classes, SessionStatus,
+};
 use wasm_bindgen::{JsCast, JsValue, UnwrapThrowExt};
 use wasm_bindgen_futures::JsFuture;
 use web_sys::{Request, RequestInit, RequestMode, RequestRedirect, Response};
@@ -75,20 +78,20 @@ impl From<FetchError> for Oauth2Msg {
     }
 }
 
-impl Oauth2App {
-    async fn fetch_session_valid() -> Result<Oauth2Msg, FetchError> {
-        let (kopid, status, value, _) =
-            do_request("/v1/auth/valid", RequestMethod::GET, None).await?;
-
-        if status == 200 {
-            Ok(Oauth2Msg::TokenValid)
-        } else if status == 401 {
-            Ok(Oauth2Msg::LoginRequired)
-        } else {
-            let emsg = value.as_string().unwrap_or_default();
-            // let jsval_json = JsFuture::from(resp.json()?).await?;
-            Ok(Oauth2Msg::Error { emsg, kopid })
+impl From<SessionStatus> for Oauth2Msg {
+    fn from(value: SessionStatus) -> Self {
+        match value {
+            SessionStatus::TokenValid => Oauth2Msg::TokenValid,
+            SessionStatus::LoginRequired => Oauth2Msg::LoginRequired,
+            SessionStatus::Error { emsg, kopid } => Oauth2Msg::Error { emsg, kopid },
         }
+    }
+}
+
+impl Oauth2App {
+    /// Validate that the current auth token's OK
+    async fn fetch_session_valid() -> Result<Oauth2Msg, FetchError> {
+        fetch_session_valid().await.map(|v| v.into())
     }
 
     async fn fetch_authreq(authreq: AuthorisationRequest) -> Result<Oauth2Msg, FetchError> {
@@ -96,15 +99,11 @@ impl Oauth2App {
             .map(|s| JsValue::from(&s))
             .expect_throw("Failed to serialise authreq");
 
-        let (kopid, status, value, headers) = do_request(
-            "/oauth2/authorise",
-            RequestMethod::POST,
-            Some(authreq_jsvalue),
-        )
-        .await?;
+        let (kopid, status, value, headers) =
+            do_request(OAUTH2_AUTHORISE, RequestMethod::POST, Some(authreq_jsvalue)).await?;
 
         #[cfg(debug_assertions)]
-        console::debug!(&format!("fetch_authreq {}", status));
+        console::debug!(&format!("fetch_authreq result {}", status));
 
         if status == 200 {
             let state: AuthorisationResponse = serde_wasm_bindgen::from_value(value)
@@ -156,7 +155,7 @@ impl Oauth2App {
 
         opts.body(Some(&consentreq_jsvalue));
 
-        let request = Request::new_with_str_and_init("/oauth2/authorise/permit", &opts)?;
+        let request = Request::new_with_str_and_init(OAUTH2_AUTHORISE_PERMIT, &opts)?;
 
         request
             .headers()
@@ -176,7 +175,7 @@ impl Oauth2App {
         let status = resp.status();
         let headers = resp.headers();
 
-        let kopid = headers.get("x-kanidm-opid").ok().flatten();
+        let kopid = headers.get(KOPID).ok().flatten();
 
         if status == 200 {
             if let Some(loc) = headers.get("location").ok().flatten() {
@@ -278,7 +277,11 @@ impl Component for Oauth2App {
                 true
             }
             Oauth2Msg::LoginProceed => {
-                push_return_location(URL_OAUTH2);
+                let current_loc = window()
+                    .location()
+                    .as_string()
+                    .unwrap_or(URL_OAUTH2.to_string());
+                push_return_location(&current_loc);
 
                 ctx.link()
                     .navigator()
@@ -408,7 +411,7 @@ impl Component for Oauth2App {
                       action="javascript:void(0);"
                     >
                       <h1 class="h3 mb-3 fw-normal">
-                        // TODO: include the domain display name here
+                        // TODO: include the domain display name here, and the RS display name?
                         {"Sign in to proceed" }
                         </h1>
                       <button autofocus=true class="w-100 btn btn-lg btn-primary" type="submit">
@@ -501,6 +504,7 @@ impl Component for Oauth2App {
             State::ErrInvalidRequest => do_alert_error(
                 "Invalid request",
                 Some("Please close this window and try again again from the beginning."),
+                false,
             ),
         };
         html! {

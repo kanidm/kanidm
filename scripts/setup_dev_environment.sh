@@ -24,8 +24,12 @@ if [ "${1}" == "--help" ]; then
     exit 0
 fi
 if [ ! -f run_insecure_dev_server.sh ]; then
-    echo "Please run from the server/daemon dir!"
-    exit 1
+    if [ "$(basename "$(pwd)")" == "kanidm" ]; then
+        cd server/daemon || exit 1
+    else
+        echo "Please run from the server/daemon dir, I can't tell where you are..."
+        exit 1
+    fi
 fi
 
 
@@ -115,22 +119,32 @@ ${KANIDM} group add-members "${TEST_GROUP}" "${TEST_USER_NAME}" -D idm_admin
 echo "Enable experimental UI for admin idm_admin ${TEST_USER_NAME}"
 ${KANIDM} group add-members idm_ui_enable_experimental_features admin idm_admin "${TEST_USER_NAME}" -D idm_admin
 
-# create oauth2 rp
-echo "Creating the OAuth2 RP"
-${KANIDM} system oauth2 create "${OAUTH2_RP_ID}" "${OAUTH2_RP_DISPLAY}" "https://kanidm.com" -D admin
+# create oauth2 rp for kanidm.com
+echo "Creating the kanidm.com OAuth2 RP"
+${KANIDM} system oauth2 create "kanidm_com" "Kanidm.com" "https://kanidm.com" -D admin
+echo "Creating the kanidm.com OAuth2 RP Scope Map"
+${KANIDM} system oauth2 update-scope-map "kanidm_com" "${TEST_GROUP}" openid -D admin
+echo "Creating the kanidm.com OAuth2 RP Supplemental Scope Map"
+${KANIDM} system oauth2 update-sup-scope-map "kanidm_com" "${TEST_GROUP}" admin -D admin
 
-echo "Creating the OAuth2 RP Scope Map"
+
+# create oauth2 rp for localhost:10443 - for oauth2 proxy testing
+echo "Creating the ${OAUTH2_RP_ID} OAuth2 RP"
+${KANIDM} system oauth2 create "${OAUTH2_RP_ID}" "${OAUTH2_RP_DISPLAY}" "https://localhost:10443" -D admin
+echo "Creating the ${OAUTH2_RP_ID} OAuth2 RP Scope Map - Group ${TEST_GROUP}"
 ${KANIDM} system oauth2 update-scope-map "${OAUTH2_RP_ID}" "${TEST_GROUP}" openid -D admin
-echo "Creating the OAuth2 RP Supplemental Scope Map"
+echo "Creating the ${OAUTH2_RP_ID} OAuth2 RP Supplemental Scope Map"
 ${KANIDM} system oauth2 update-sup-scope-map "${OAUTH2_RP_ID}" "${TEST_GROUP}" admin -D admin
+
 echo "Creating the OAuth2 RP Secondary Supplemental Crab-baite Scope Map.... wait, no that's not a thing."
 
 echo "Checking the OAuth2 RP Exists"
 ${KANIDM} system oauth2 list -D admin | rg -A10 "${OAUTH2_RP_ID}"
 
 # config auth2
-echo "Pulling secret for the OAuth2 RP"
-${KANIDM} system oauth2 show-basic-secret -o json "${OAUTH2_RP_ID}" -D admin
+echo "Pulling secret for the ${OAUTH2_RP_ID} OAuth2 RP"
+OAUTH2_SECRET="$(${KANIDM} system oauth2 show-basic-secret -o json "${OAUTH2_RP_ID}" -D admin)"
+echo "${OAUTH2_SECRET}"
 
 echo "Creating cred reset link for ${TEST_USER_NAME}"
 ${KANIDM} person credential create-reset-token "${TEST_USER_NAME}" -D idm_admin
@@ -141,4 +155,6 @@ echo "###################################"
 echo "admin password:     ${ADMIN_PASS}"
 echo "idm_admin password: ${IDM_ADMIN_PASS}"
 echo "UI URL:             ${KANIDM_URL}"
+echo "OAuth2 RP ID:       ${OAUTH2_RP_ID}"
+echo "OAuth2 Secret:      $(echo "${OAUTH2_SECRET}" | jq  -r .secret)"
 echo "###################################"

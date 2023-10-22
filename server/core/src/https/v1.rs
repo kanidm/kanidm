@@ -9,6 +9,7 @@ use axum::routing::{delete, get, post, put};
 use axum::{Extension, Json, Router};
 use compact_jwt::Jws;
 use http::{HeaderMap, HeaderValue};
+use kanidm_proto::constants::uri::V1_AUTH_VALID;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -3101,7 +3102,7 @@ pub(crate) fn route_setup(state: ServerState) -> Router<ServerState> {
         //     get(|| async { "TODO" }),
         // )
         .route("/v1/auth", post(auth))
-        .route("/v1/auth/valid", get(auth_valid))
+        .route(V1_AUTH_VALID, get(auth_valid))
         .route("/v1/logout", get(logout))
         .route("/v1/reauth", post(reauth))
         .with_state(state.clone())

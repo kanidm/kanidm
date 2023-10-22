@@ -7,9 +7,7 @@ use yew_router::prelude::Link;
 
 use crate::components::admin_menu::{Entity, EntityType, GetError};
 use crate::router::AdminRoute;
-use kanidmd_web_ui_shared::constants::{
-    CSS_BREADCRUMB_ITEM, CSS_BREADCRUMB_ITEM_ACTIVE, CSS_CELL, CSS_TABLE,
-};
+use kanidmd_web_ui_shared::constants::{CSS_CELL, CSS_TABLE};
 use kanidmd_web_ui_shared::{alpha_warning_banner, do_request, RequestMethod};
 
 impl From<GetError> for AdminListGroupsMsg {
@@ -225,12 +223,12 @@ impl AdminListGroups {
                 console::error!("Failed to pull details", format!("{:?}", kopid));
                 html!(
                     <>
-                    {do_alert_error("Failed to Query Groups", Some(emsg))}
+                    {do_alert_error("Failed to Query Groups", Some(emsg), false)}
                     </>
                 )
             }
             GroupsViewState::NotAuthorized {} => {
-                do_alert_error("You're not authorized to see this page!", None)
+                do_alert_error("You're not authorized to see this page!", None, false)
             }
         }
     }
@@ -319,11 +317,6 @@ impl Component for AdminViewGroup {
                 };
                 html! {
                     <>
-                    <ol class="breadcrumb">
-                    <li class={CSS_BREADCRUMB_ITEM}><Link<AdminRoute> to={AdminRoute::AdminMenu}>{"Admin"}</Link<AdminRoute>></li>
-                    <li class={CSS_BREADCRUMB_ITEM}><Link<AdminRoute> to={AdminRoute::AdminListGroups}>{"Groups"}</Link<AdminRoute>></li>
-                    <li class={CSS_BREADCRUMB_ITEM_ACTIVE} aria-current="page">{group_name}</li>
-                    </ol>
                     {do_page_header(&page_title)}
                     <p>{"UUID: "}{group_uuid}</p>
                     // TODO: pull group membership and show members
@@ -338,9 +331,10 @@ impl Component for AdminViewGroup {
                         .as_ref()
                         .unwrap_or(&String::from("unknown operation ID")),
                 ),
+                false,
             ),
             GroupViewState::NotAuthorized {} => {
-                do_alert_error("You are not authorized to view this page!", None)
+                do_alert_error("You are not authorized to view this page!", None, false)
             }
         }
     }

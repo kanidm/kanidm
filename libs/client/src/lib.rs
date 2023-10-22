@@ -24,6 +24,7 @@ use std::os::unix::fs::MetadataExt;
 use std::path::Path;
 use std::time::Duration;
 
+use kanidm_proto::constants::uri::V1_AUTH_VALID;
 use kanidm_proto::constants::{APPLICATION_JSON, ATTR_NAME, KOPID, KSESSIONID, KVERSION};
 use kanidm_proto::v1::*;
 use reqwest::header::CONTENT_TYPE;
@@ -1442,7 +1443,7 @@ impl KanidmClient {
     }
 
     pub async fn auth_valid(&self) -> Result<(), ClientError> {
-        self.perform_get_request("/v1/auth/valid").await
+        self.perform_get_request(V1_AUTH_VALID).await
     }
 
     pub async fn whoami(&self) -> Result<Option<Entry>, ClientError> {

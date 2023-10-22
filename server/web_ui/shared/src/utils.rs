@@ -96,7 +96,7 @@ pub fn do_footer() -> VNode {
     }
 }
 
-pub fn do_alert_error(alert_title: &str, alert_message: Option<&str>) -> Html {
+pub fn do_alert_error(alert_title: &str, alert_message: Option<&str>, dismissable: bool) -> Html {
     html! {
     <div class="container">
         <div class="row justify-content-md-center">
@@ -104,6 +104,9 @@ pub fn do_alert_error(alert_title: &str, alert_message: Option<&str>) -> Html {
                 <p><strong>{ alert_title }</strong></p>
                 if let Some(value) = alert_message {
                     <p>{ value }</p>
+                }
+                if dismissable {
+                    <button type="button" class="btn btn-close" data-dismiss="alert" aria-label="Close"></button>
                 }
             </div>
         </div>

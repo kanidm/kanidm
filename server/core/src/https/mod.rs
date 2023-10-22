@@ -277,7 +277,8 @@ pub async fn create_https_server(
             }
             let pkg_router = Router::new()
                 .nest_service("/pkg", ServeDir::new(pkg_path).precompressed_br())
-                .layer(middleware::compression::new());
+                .layer(middleware::compression::new())
+                .layer(from_fn(middleware::caching::cache_me));
             app.merge(pkg_router)
         }
     };

@@ -2,12 +2,13 @@ mod components;
 mod router;
 
 use gloo::console::{self, error};
+use kanidmd_web_ui_shared::add_body_form_classes;
 use kanidmd_web_ui_shared::constants::{
     CSS_NAVBAR_BRAND, CSS_NAVBAR_LINKS_UL, CSS_NAVBAR_NAV, CSS_NAV_LINK, ID_NAVBAR_COLLAPSE,
     IMG_LOGO_SQUARE, URL_USER_HOME,
 };
+use kanidmd_web_ui_shared::ui::{signout_link, signout_modal, ui_logout};
 use kanidmd_web_ui_shared::utils::do_footer;
-use kanidmd_web_ui_shared::{add_body_form_classes, signout_link, signout_modal, ui_logout};
 #[allow(unused_imports)] // because it's needed to compile wasm things
 use wasm_bindgen::prelude::wasm_bindgen;
 use wasm_bindgen::JsValue;

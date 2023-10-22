@@ -7,8 +7,10 @@ use kanidm_proto::v1::{
     AuthStep,
 };
 use kanidm_proto::webauthn::PublicKeyCredential;
-use kanidmd_web_ui_shared::utils::{autofocus, do_footer};
-use kanidmd_web_ui_shared::{add_body_form_classes, logo_img, remove_body_form_classes};
+use kanidmd_web_ui_shared::utils::{autofocus, do_footer, window};
+use kanidmd_web_ui_shared::{
+    add_body_form_classes, fetch_session_valid, logo_img, remove_body_form_classes, SessionStatus,
+};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::{spawn_local, JsFuture};
 use web_sys::CredentialRequestOptions;
@@ -17,13 +19,16 @@ use yew::virtual_dom::VNode;
 
 use kanidmd_web_ui_shared::constants::{
     CLASS_BUTTON_DARK, CLASS_DIV_LOGIN_BUTTON, CLASS_DIV_LOGIN_FIELD, CSS_ALERT_DANGER,
+    URL_USER_HOME,
 };
 use kanidmd_web_ui_shared::models::{
-    self, clear_bearer_token, get_login_hint, pop_login_hint, pop_login_remember_me,
-    pop_return_location, push_login_remember_me, set_bearer_token,
+    self, clear_bearer_token, get_bearer_token, get_login_hint, pop_login_hint,
+    pop_login_remember_me, pop_return_location, push_login_remember_me, set_bearer_token,
 };
 use kanidmd_web_ui_shared::{do_request, error::FetchError, utils, RequestMethod};
+use yew_router::BrowserRouter;
 
+#[derive(Clone)]
 pub struct LoginApp {
     state: LoginState,
 }
@@ -40,11 +45,19 @@ impl Default for LoginApp {
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(PartialEq, Clone, Copy)]
 pub enum LoginWorkflow {
     Login,
-    #[allow(dead_code)]
-    Reauth, // TODO: test/implement reauth
+    Reauth,
+}
+
+impl std::fmt::Display for LoginWorkflow {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            LoginWorkflow::Login => "LoginWorkflow::Login",
+            LoginWorkflow::Reauth => "LoginWorkflow::Reauth",
+        })
+    }
 }
 
 impl Default for LoginWorkflow {
@@ -58,13 +71,14 @@ pub struct LoginAppProps {
     pub workflow: LoginWorkflow,
 }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Clone, Copy)]
 enum TotpState {
     Enabled,
     Disabled,
     Invalid,
 }
 
+#[derive(Clone)]
 enum LoginState {
     InitLogin {
         enable: bool,
@@ -109,6 +123,7 @@ pub enum LoginAppMsg {
     Select(usize),
     // DoNothing,
     UnknownUser,
+    AlreadyAuthenticated,
     Error { emsg: String, kopid: Option<String> },
 }
 
@@ -121,7 +136,22 @@ impl From<FetchError> for LoginAppMsg {
     }
 }
 
+impl From<SessionStatus> for LoginAppMsg {
+    fn from(s: SessionStatus) -> Self {
+        match s {
+            SessionStatus::TokenValid => LoginAppMsg::AlreadyAuthenticated,
+            SessionStatus::LoginRequired => LoginAppMsg::Begin,
+            SessionStatus::Error { emsg, kopid } => LoginAppMsg::Error { emsg, kopid },
+        }
+    }
+}
+
 impl LoginApp {
+    /// Validate that the current auth token's OK
+    async fn fetch_session_valid() -> Result<LoginAppMsg, FetchError> {
+        fetch_session_valid().await.map(|v| v.into())
+    }
+
     async fn auth_init(username: String) -> Result<LoginAppMsg, FetchError> {
         let authreq = AuthRequest {
             step: AuthStep::Init2 {
@@ -165,11 +195,11 @@ impl LoginApp {
 
         if status == 200 {
             let state: AuthResponse = serde_wasm_bindgen::from_value(value)
-                .expect_throw("Invalid response type - auth_init::AuthResponse");
+                .expect_throw("Invalid response type during reauth_init::AuthResponse");
             Ok(LoginAppMsg::Next(state))
         } else if status == 404 {
             console::error!(format!(
-                "User not found: {:?}. Operation ID: {:?}",
+                "User not found during reauth_init: {:?}. Operation ID: {:?}",
                 value.as_string(),
                 kopid
             ));
@@ -207,8 +237,9 @@ impl LoginApp {
     fn button_start_again(&self, ctx: &Context<Self>) -> VNode {
         html! {
             <div class="col-md-auto text-center">
-                // TODO: this doesn't seem to work if you failed to login
-                <button type="button" class={CLASS_BUTTON_DARK} onclick={ ctx.link().callback(|_| LoginAppMsg::Restart) } >{" Start Again "}</button>
+                <button type="button" class={CLASS_BUTTON_DARK} onclick={ ctx.link().callback(|_| LoginAppMsg::Restart) } >
+                {" Start Again "}
+                </button>
             </div>
         }
     }
@@ -573,7 +604,7 @@ impl LoginApp {
                 let loc = pop_return_location();
                 // redirect to the "return location"
                 #[cfg(debug_assertions)]
-                console::debug!(format!("authenticated, try going to -> {:?}", loc));
+                console::debug!(format!("authenticated, trying to go to {:?}", loc));
 
                 let window = gloo_utils::window();
                 window
@@ -619,15 +650,45 @@ impl Component for LoginApp {
     type Properties = LoginAppProps;
 
     fn create(ctx: &Context<Self>) -> Self {
-        #[cfg(debug_assertions)]
-        console::debug!("login::create".to_string());
+        let workflow = ctx.props().workflow.to_owned();
 
-        let workflow = &ctx.props().workflow;
+        #[cfg(debug_assertions)]
+        console::debug!(&format!("login::create -> workflow: {}", workflow));
+
         let state = match workflow {
             LoginWorkflow::Login => {
-                // Assume we are here for a good reason.
-                // -- clear the bearer to prevent conflict
-                clear_bearer_token(); // TODO: one day only clear this when it gets a 401 response
+                // let's check if they're already authenticated!
+                if get_bearer_token().is_some() {
+                    ctx.link().send_future(async {
+                        match Self::fetch_session_valid().await {
+                            Ok(_) => {
+                                console::info!(
+                                    "Already logged in, redirecting to user home page"
+                                );
+                                let window = gloo_utils::window();
+                                window
+                                    .location()
+                                    .set_href(URL_USER_HOME)
+                                    .expect_throw(&["failed to set location to ", URL_USER_HOME].concat());
+
+                                LoginAppMsg::AlreadyAuthenticated
+                                }
+                            Err(v) => {
+                                console::error!(
+                                    "Error checking session validity, clearing token and returning to login page: {:?}",
+                                    v.as_string()
+                                );
+                                clear_bearer_token();
+                                LoginAppMsg::Restart
+                            }
+                        }
+                    });
+                }
+
+                if get_bearer_token().is_some() {
+                    // We're already logged in, so we're going to redirect to the apps page.
+                    return Self::default();
+                }
 
                 // Do we have a login hint?
                 let (username, remember_me) = get_login_hint()
@@ -641,18 +702,13 @@ impl Component for LoginApp {
                     username,
                 }
             }
-            LoginWorkflow::Reauth => {
-                // Unlike login, don't clear tokens or cookies - these are needed during the operation
-                // to actually start the reauth as the same user.
-
-                match get_login_hint() {
-                    Some(spn) => LoginState::InitReauth { enable: true, spn },
-                    None => LoginState::Error {
-                        emsg: "Client Error - No login hint available".to_string(),
-                        kopid: None,
-                    },
-                }
-            }
+            LoginWorkflow::Reauth => match get_login_hint() {
+                Some(spn) => LoginState::InitReauth { enable: true, spn },
+                None => LoginState::Error {
+                    emsg: "Client Error - No login hint available".to_string(),
+                    kopid: None,
+                },
+            },
         };
 
         add_body_form_classes!();
@@ -666,6 +722,13 @@ impl Component for LoginApp {
 
     fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
+            LoginAppMsg::AlreadyAuthenticated => {
+                #[cfg(debug_assertions)]
+                console::info!("User is already authenticated, redirecting to user home");
+                window().location().set_href(URL_USER_HOME).unwrap_throw();
+                // no need to render it, we're going away now
+                false
+            }
             LoginAppMsg::Restart => {
                 // Clear any leftover input. Reset to the remembered username if any.
                 match &ctx.props().workflow {
@@ -683,7 +746,13 @@ impl Component for LoginApp {
                     }
                     LoginWorkflow::Reauth => {
                         match get_login_hint() {
-                            Some(spn) => LoginState::InitReauth { enable: true, spn },
+                            Some(spn) => {
+                                self.state = LoginState::InitReauth {
+                                    enable: true,
+                                    spn: spn.clone(),
+                                };
+                                LoginState::InitReauth { enable: true, spn }
+                            }
                             None => LoginState::Error {
                                 emsg: "Client Error - No login hint available".to_string(),
                                 kopid: None,
@@ -966,19 +1035,23 @@ impl Component for LoginApp {
                         } else {
                             // Else, present the options in a choice.
                             #[cfg(debug_assertions)]
-                            console::debug!("multiple choices exist".to_string());
+                            console::debug!("multiple auth method choices exist!");
                             self.state = LoginState::Continue(allowed);
                         }
                         true
                     }
                     AuthState::Denied(reason) => {
-                        console::error!(format!("denied -> {:?}", reason));
+                        console::error!(format!("Authentication denied -> {:?}", reason));
                         self.state = LoginState::Denied(reason);
                         true
                     }
                     AuthState::Success(bearer_token) => {
                         // Store the bearer here!
                         // We need to format the bearer onto it.
+                        #[cfg(debug_assertions)]
+                        console::info!(
+                            "User has successfully authenticated, setting the bearer token"
+                        );
                         let bearer_token = format!("Bearer {}", bearer_token);
                         set_bearer_token(bearer_token);
                         self.state = LoginState::Authenticated;
@@ -1049,40 +1122,20 @@ impl Component for LoginApp {
     fn view(&self, ctx: &Context<Self>) -> Html {
         #[cfg(debug_assertions)]
         console::debug!("login::view".to_string());
-        // How do we add a top level theme?
-        /*
-        let (width, height): (u32, u32) = if let Some(win) = web_sys::window() {
-            let w = win.inner_width().unwrap();
-            let h = win.inner_height().unwrap();
-            ConsoleService::log(format!("width {:?} {:?}", w, w.as_f64()).as_str());
-            ConsoleService::log(format!("height {:?} {:?}", h, h.as_f64()).as_str());
-            (w.as_f64().unwrap() as u32, h.as_f64().unwrap() as u32)
-        } else {
-            ConsoleService::log("Unable to access document window");
-            (0, 0)
-        };
-        let (width, height) = (width.to_string(), height.to_string());
-        */
-
-        // <canvas id="confetti-canvas" style="position:absolute" width=width height=height></canvas>
-
-        // May need to set these classes?
-        // <body class="html-body form-body">
-        // TODO: add the domain_display_name here
-
         html! {
-        <>
-        <main class="flex-shrink-0 form-signin">
-            <center>
-                {logo_img()}
-                // TODO: replace this with a call to domain info
-                // More likely we should have this passed in from the props when we start.
-                <h3>{ "Kanidm" }</h3>
-            </center>
-            { self.view_state(ctx) }
-        </main>
-        { do_footer() }
-        </>
+            <BrowserRouter>
+                <main class="flex-shrink-0 form-signin">
+                    <center>
+                    {logo_img()}
+                        // TODO: make a call to domain info to show the domain name
+                        // or more likely we should have this passed in from the props when we start.
+                        <h3>{ "Kanidm" }</h3>
+                    </center>
+                    // <Switch<LoginRoute> render={switch} />
+                    { self.view_state(ctx) }
+                </main>
+                { do_footer() }
+            </BrowserRouter>
         }
     }
 

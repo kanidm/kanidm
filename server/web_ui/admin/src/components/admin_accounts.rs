@@ -7,9 +7,7 @@ use yew_router::prelude::Link;
 use super::prelude::*;
 use crate::components::admin_menu::{Entity, EntityType, GetError};
 use crate::router::AdminRoute;
-use kanidmd_web_ui_shared::constants::{
-    CSS_BREADCRUMB_ITEM, CSS_BREADCRUMB_ITEM_ACTIVE, CSS_CELL, CSS_DT, CSS_TABLE, URL_ADMIN,
-};
+use kanidmd_web_ui_shared::constants::{CSS_CELL, CSS_DT, CSS_TABLE};
 
 impl From<GetError> for AdminListAccountsMsg {
     fn from(ge: GetError) -> Self {
@@ -183,11 +181,6 @@ impl Component for AdminListAccounts {
     fn view(&self, _ctx: &Context<Self>) -> Html {
         html! {
             <>
-
-            <ol class="breadcrumb">
-            <li class={CSS_BREADCRUMB_ITEM}><a href={URL_ADMIN}>{"Admin"}</a></li>
-            <li class={CSS_BREADCRUMB_ITEM_ACTIVE} aria-current="page">{"Accounts"}</li>
-            </ol>
             {do_page_header("Account Administration")}
             { alpha_warning_banner() }
         <div id={"accountlist"}>
@@ -267,12 +260,12 @@ impl Component for AdminListAccounts {
                 console::error!("Failed to pull details", format!("{:?}", kopid));
                 html!(
                     <>
-                    {do_alert_error("Failed to Query Accounts", Some(emsg))}
+                    {do_alert_error("Failed to Query Accounts", Some(emsg), false)}
                     </>
                 )
             }
             ViewState::NotAuthorized {} => {
-                do_alert_error("You're not authorized to see this page!", None)
+                do_alert_error("You're not authorized to see this page!", None, false)
             }
         }}
         </div>
@@ -351,6 +344,7 @@ impl Component for AdminViewPerson {
             ViewAccountState::Failed { emsg, kopid } => do_alert_error(
                 emsg.clone().as_str(),
                 Some(&format!("Operation ID: {:?}", kopid)),
+                false,
             ),
             // TODO: the not authorized page needs to be better
             ViewAccountState::NotAuthorized {} => {
@@ -379,11 +373,6 @@ impl Component for AdminViewPerson {
                 // };
                 html! {
                     <>
-                    <ol class="breadcrumb">
-                        <li class={CSS_BREADCRUMB_ITEM}><Link<AdminRoute> to={AdminRoute::AdminMenu}>{"Admin"}</Link<AdminRoute>></li>
-                        <li class={CSS_BREADCRUMB_ITEM}><Link<AdminRoute> to={AdminRoute::AdminListAccounts}>{"Accounts"}</Link<AdminRoute>></li>
-                        <li class={CSS_BREADCRUMB_ITEM_ACTIVE} aria-current="page">{username.as_str()}</li>
-                    </ol>
                     {do_page_header(display_name.as_str())}
                     {alpha_warning_banner()}
 
@@ -502,11 +491,7 @@ impl Component for AdminViewServiceAccount {
 
                 html! {
                 <>
-                <ol class="breadcrumb">
-                    <li class={CSS_BREADCRUMB_ITEM}><Link<AdminRoute> to={AdminRoute::AdminMenu}>{"Admin"}</Link<AdminRoute>></li>
-                    <li class={CSS_BREADCRUMB_ITEM}><Link<AdminRoute> to={AdminRoute::AdminListAccounts}>{"Accounts"}</Link<AdminRoute>></li>
-                    <li class={CSS_BREADCRUMB_ITEM_ACTIVE} aria-current="page">{username}</li>
-                </ol>
+
                 {do_page_header(&format!("Service Account: {}", username))}
                 {alpha_warning_banner()}
                 <p>{"Display Name: "}{displayname}</p>
@@ -515,7 +500,7 @@ impl Component for AdminViewServiceAccount {
                 }
             }
             ViewAccountState::Failed { emsg, kopid } => html! {
-                do_alert_error(emsg.as_str(), Some(&format!("Operation ID: {:?}", kopid)))
+                do_alert_error(emsg.as_str(), Some(&format!("Operation ID: {:?}", kopid)), false)
             },
             // TODO: this error needs fixing
             ViewAccountState::NotAuthorized {} => {

@@ -4,6 +4,7 @@ use kanidm_proto::v1::{CUSessionToken, CUStatus, UiHint, UserAuthToken};
 use kanidmd_web_ui_shared::models::{
     push_cred_update_session, push_login_hint, push_return_location,
 };
+use kanidmd_web_ui_shared::utils::do_alert_error;
 use kanidmd_web_ui_shared::{do_request, error::FetchError, RequestMethod};
 use time::format_description::well_known::Rfc3339;
 use wasm_bindgen::UnwrapThrowExt;
@@ -18,8 +19,7 @@ use kanidmd_web_ui_shared::constants::{CSS_PAGE_HEADER, URL_REAUTH, URL_USER_PRO
 
 #[allow(clippy::large_enum_variant)]
 // Page state
-pub enum Msg {
-    // Nothing
+pub enum ProfileMessage {
     RequestCredentialUpdate,
     BeginCredentialUpdate {
         token: CUSessionToken,
@@ -29,12 +29,13 @@ pub enum Msg {
         emsg: String,
         kopid: Option<String>,
     },
+    // User has requested to unlock the profile settings, this redirects to the reauth endpoint
     RequestReauth,
 }
 
-impl From<FetchError> for Msg {
+impl From<FetchError> for ProfileMessage {
     fn from(fe: FetchError) -> Self {
-        Msg::Error {
+        ProfileMessage::Error {
             emsg: fe.as_string(),
             kopid: None,
         }
@@ -52,20 +53,20 @@ pub struct ProfileApp {
 }
 
 impl Component for ProfileApp {
-    type Message = Msg;
+    type Message = ProfileMessage;
     type Properties = ViewProps;
 
     fn create(_ctx: &Context<Self>) -> Self {
         #[cfg(debug_assertions)]
-        console::debug!("views::security::create");
+        console::debug!("user::profile::create");
         ProfileApp { state: State::Init }
     }
 
     fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
         #[cfg(debug_assertions)]
-        console::debug!("views::security::update");
+        console::debug!("user::profile::update");
         match msg {
-            Msg::RequestCredentialUpdate => {
+            ProfileMessage::RequestCredentialUpdate => {
                 // Submit a req to init the session.
                 // The uuid we want to submit against - hint, it's us.
 
@@ -82,7 +83,7 @@ impl Component for ProfileApp {
                 self.state = State::Waiting;
                 true
             }
-            Msg::BeginCredentialUpdate { token, status } => {
+            ProfileMessage::BeginCredentialUpdate { token, status } => {
                 // Got the rec, setup.
                 push_cred_update_session((token, status));
                 push_return_location(URL_USER_PROFILE);
@@ -95,14 +96,13 @@ impl Component for ProfileApp {
                 // the state.
                 false
             }
-            Msg::RequestReauth => {
-                push_return_location(URL_USER_PROFILE);
+            ProfileMessage::RequestReauth => {
+                // store where we're coming back to
+                push_return_location(&[URL_USER_PROFILE, "?reauth=1"].concat());
 
                 let uat = &ctx.props().current_user_uat;
-                let spn = uat.spn.to_string();
-
-                // Setup the ui hint.
-                push_login_hint(spn);
+                // Setup the ui hint to tell the reauth page what to do.
+                push_login_hint(uat.name().to_string());
 
                 let window = gloo_utils::window();
                 window
@@ -114,7 +114,7 @@ impl Component for ProfileApp {
                 // the state.
                 false
             }
-            Msg::Error { emsg, kopid } => {
+            ProfileMessage::Error { emsg, kopid } => {
                 self.state = State::Error { emsg, kopid };
                 true
             }
@@ -123,11 +123,13 @@ impl Component for ProfileApp {
 
     fn changed(&mut self, _ctx: &Context<Self>, _props: &Self::Properties) -> bool {
         #[cfg(debug_assertions)]
-        console::debug!("views::security::changed");
+        console::debug!("user::profile::changed");
         true
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
+        #[cfg(debug_assertions)]
+        console::debug!("user::profile::view");
         let uat = &ctx.props().current_user_uat;
 
         let jsdate = js_sys::Date::new_0();
@@ -140,23 +142,22 @@ impl Component for ProfileApp {
 
         let is_priv_able = uat.purpose_readwrite_active(time);
 
-        let submit_enabled = match self.state {
+        let submit_enabled: bool = match self.state {
             State::Init | State::Error { .. } => is_priv_able,
             State::Waiting => false,
         };
 
         let flash = match &self.state {
             State::Error { emsg, kopid } => {
-                let message = match kopid {
-                    Some(k) => format!("An error occurred - {} - {}", emsg, k),
-                    None => format!("An error occurred - {} - No Operation ID", emsg),
+                let opid_str = match kopid {
+                    Some(k) => [" (Operation ID: ", k, ")"].concat(),
+                    None => " (Unknown Operation ID)".to_string(),
                 };
-                html! {
-                  <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                    { message }
-                    <button type="button" class="btn btn-close" data-dismiss="alert" aria-label="Close"></button>
-                  </div>
-                }
+                do_alert_error(
+                    "An error occurred starting the credential update session",
+                    Some(&[emsg.to_owned(), opid_str].concat()),
+                    true,
+                )
             }
             _ => html! { <></> },
         };
@@ -169,7 +170,7 @@ impl Component for ProfileApp {
                <button type="button" class="btn btn-primary"
                  onclick={
                     ctx.link().callback(|_e| {
-                        Msg::RequestReauth
+                        ProfileMessage::RequestReauth
                     })
                  }
                >
@@ -221,7 +222,7 @@ impl ProfileApp {
                        disabled={ !submit_enabled }
                        onclick={
                           ctx.link().callback(|_e| {
-                              Msg::RequestCredentialUpdate
+                              ProfileMessage::RequestCredentialUpdate
                           })
                        }
                      >
@@ -251,18 +252,18 @@ impl ProfileApp {
         }
     }
 
-    async fn request_credential_update(id: String) -> Result<Msg, FetchError> {
+    async fn request_credential_update(id: String) -> Result<ProfileMessage, FetchError> {
         let uri = format!("/v1/person/{}/_credential/_update", id);
         let (kopid, status, value, _headers) = do_request(&uri, RequestMethod::GET, None).await?;
 
         if status == 200 {
             let (token, status): (CUSessionToken, CUStatus) =
                 serde_wasm_bindgen::from_value(value).expect_throw("Invalid response type");
-            Ok(Msg::BeginCredentialUpdate { token, status })
+            Ok(ProfileMessage::BeginCredentialUpdate { token, status })
         } else {
             let emsg = value.as_string().unwrap_or_default();
             // let jsval_json = JsFuture::from(resp.json()?).await?;
-            Ok(Msg::Error { emsg, kopid })
+            Ok(ProfileMessage::Error { emsg, kopid })
         }
     }
 }

@@ -7,9 +7,7 @@ use yew_router::prelude::Link;
 use super::prelude::*;
 use crate::components::admin_menu::{Entity, EntityType, GetError};
 use crate::router::AdminRoute;
-use kanidmd_web_ui_shared::constants::{
-    CSS_BREADCRUMB_ITEM, CSS_BREADCRUMB_ITEM_ACTIVE, CSS_CELL, CSS_TABLE,
-};
+use kanidmd_web_ui_shared::constants::{CSS_CELL, CSS_TABLE};
 
 impl From<GetError> for AdminListOAuth2Msg {
     fn from(ge: GetError) -> Self {
@@ -164,10 +162,6 @@ impl Component for AdminListOAuth2 {
                 html! {
                     <>
 
-                    <ol class="breadcrumb">
-                    <li class={CSS_BREADCRUMB_ITEM}><Link<AdminRoute> to={AdminRoute::AdminMenu}>{"Admin"}</Link<AdminRoute>></li>
-                    <li class={CSS_BREADCRUMB_ITEM_ACTIVE} aria-current="page">{"OAuth2"}</li>
-                    </ol>
                       {do_page_header("OAuth2")}
 
                       { alpha_warning_banner() }
@@ -237,12 +231,12 @@ impl Component for AdminListOAuth2 {
                 console::error!("Failed to pull details", format!("{:?}", kopid));
                 html!(
                     <>
-                    {do_alert_error("Failed to Query OAuth2", Some(emsg))}
+                    {do_alert_error("Failed to Query OAuth2", Some(emsg), false)}
                     </>
                 )
             }
             ListViewState::NotAuthorized {} => {
-                do_alert_error("You're not authorized to see this page!", None)
+                do_alert_error("You're not authorized to see this page!", None, false)
             }
         }
     }
@@ -350,11 +344,6 @@ impl Component for AdminViewOAuth2 {
                 html! {
                   <>
 
-                  <ol class="breadcrumb">
-                  <li class={CSS_BREADCRUMB_ITEM}><Link<AdminRoute> to={AdminRoute::AdminMenu}>{"Admin"}</Link<AdminRoute>></li>
-                  <li class={CSS_BREADCRUMB_ITEM}><Link<AdminRoute> to={AdminRoute::AdminListOAuth2}>{"OAuth2"}</Link<AdminRoute>></li>
-                  <li class={CSS_BREADCRUMB_ITEM_ACTIVE} aria-current="page">{display_name.as_str()}</li>
-                  </ol>
                   {do_page_header(display_name.as_str())}
                   {alpha_warning_banner()}
 
@@ -369,12 +358,12 @@ impl Component for AdminViewOAuth2 {
                 console::error!("Failed to pull details", format!("{:?}", kopid));
                 html!(
                     <>
-                    {do_alert_error("Failed to Query OAuth2", Some(emsg))}
+                    {do_alert_error("Failed to Query OAuth2", Some(emsg), false)}
                     </>
                 )
             }
             ViewState::NotAuthorized {} => {
-                do_alert_error("You're not authorized to see this page!", None)
+                do_alert_error("You're not authorized to see this page!", None, false)
             }
         }
     }

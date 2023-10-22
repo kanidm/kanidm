@@ -110,8 +110,6 @@ impl Component for UserUiApp {
     fn rendered(&mut self, _ctx: &Context<Self>, _first_render: bool) {
         #[cfg(debug_assertions)]
         console::debug!("UserUiApp::rendered");
-        // Can only access the current_route AFTER it renders.
-        // console::debug!(format!("{:?}", yew_router::current_route::<Route>()).as_str())
     }
 
     fn view(&self, _ctx: &Context<Self>) -> Html {

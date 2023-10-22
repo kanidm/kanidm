@@ -128,7 +128,7 @@ impl AppsApp {
                     apps.iter().map(|applink| {
                     match &applink {
                         AppLink::Oauth2 {
-                            name: _,
+                            name,
                             display_name,
                             redirect_url,
                             icon: _,
@@ -138,9 +138,9 @@ impl AppsApp {
                                 <div class="col-md-3">
                                     <div class={CSS_CARD}>
                                     <a href={ redirect_url.clone() } class={CSS_LINK_DARK_STRETCHED}>
-                                    <img src={"/pkg/img/icon-oauth2.svg"} />
+                                    <img src={"/pkg/img/icon-oauth2.svg"} class="oauth2-img" id={name.clone()} alt={display_name.clone()} />
                                     </a>
-                                        <h5>{ display_name }</h5>
+                                        <label for={name.clone()}>{ display_name }</label>
                                     </div>
                                 </div>
                             }

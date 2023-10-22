@@ -20,7 +20,7 @@ pub async fn dont_cache_me<B>(request: Request<B>, next: Next<B>) -> Response {
     response
 }
 
-/// Adds `no-cache max-age=0` to the response headers.
+/// Adds a cache control header of 300 seconds to the response headers.
 pub async fn cache_me<B>(request: Request<B>, next: Next<B>) -> Response {
     let mut response = next.run(request).await;
     let cache_header = CacheControl::new()
