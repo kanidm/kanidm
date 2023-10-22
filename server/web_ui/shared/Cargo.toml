@@ -3,16 +3,16 @@ name = "kanidmd_web_ui_shared"
 description = "Kanidm Server Web UI - Shared Library"
 documentation = "https://docs.rs/kanidm/latest/kanidm/"
 
-version = "1.1.0-rc.14-dev"
+version = { workspace = true }
 authors = [
     "William Brown <william@blackhats.net.au>",
     "James Hodgkinson <james@terminaloutcomes.com>",
 ]
-rust-version = "1.66"
-edition = "2021"
-license = "MPL-2.0"
-homepage = "https://github.com/kanidm/kanidm/"
-repository = "https://github.com/kanidm/kanidm/"
+rust-version = { workspace = true }
+edition = { workspace = true }
+license = { workspace = true }
+homepage = { workspace = true }
+repository = { workspace = true }
 
 # [lib]
 # crate-type = ["cdylib", "rlib"]

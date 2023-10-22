@@ -246,7 +246,7 @@ pub async fn create_https_server(
                 .route("/", get(|| async { Redirect::temporary("/ui") }))
                 .route("/manifest.webmanifest", get(manifest::manifest)) // skip_route_check
                 // user UI app is the catch-all
-                .nest("/ui", ui::spa_router())
+                .nest("/ui", ui::spa_router_user_ui())
                 // login flows app
                 .nest("/ui/login", ui::spa_router_login_flows())
                 .nest("/ui/reauth", ui::spa_router_login_flows())

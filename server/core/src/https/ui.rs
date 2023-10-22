@@ -8,8 +8,7 @@ use http::header::CONTENT_TYPE;
 use super::middleware::KOpId;
 use super::ServerState;
 
-/// TODO: deprecate this
-pub(crate) fn spa_router() -> Router<ServerState> {
+pub(crate) fn spa_router_user_ui() -> Router<ServerState> {
     Router::new()
         .route("/", get(ui_handler_user_ui))
         .fallback(ui_handler_user_ui)
