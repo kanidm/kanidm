@@ -75,7 +75,7 @@ kanidm group account-policy auth-expiry my_admin_group 86400
 
 ## Setting Maximum Privilege Time
 
-The privilege-expiry time defines how long a session retains it's write privileges after a
+The privilege-expiry time defines how long a session retains its write privileges after a
 reauthentication. After this time, the session returns to read-only mode.
 
 To set the maximum privilege time
