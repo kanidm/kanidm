@@ -59,7 +59,7 @@ kanidm group account-policy enable my_admin_group
 ## Setting Maximum Session Time
 
 The auth-session value influences the maximum time in seconds that an authenticated session can
-exist for. After this time, the user must reauthenticate.
+exist. After this time, the user must reauthenticate.
 
 This value provides a difficult balance - forcing frequent re-authentications can frustrate and
 annoy users. However extremely long sessions allow a stolen or disclosed session token/device to
