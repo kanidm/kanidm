@@ -9,7 +9,7 @@ fn test_javscriptfile() {
     };
     assert_eq!(
         jsf.as_tag(),
-        r#"<script src="/pkg/wasmloader_admin.js" integrity="sha384-1234567890" type="module"></script>"#
+        r#"<script async src="/pkg/wasmloader_admin.js" integrity="sha384-1234567890" type="module"></script>"#
     );
     let jsf = JavaScriptFile {
         filepath: "wasmloader_admin.js",
@@ -18,6 +18,6 @@ fn test_javscriptfile() {
     };
     assert_eq!(
         jsf.as_tag(),
-        r#"<script src="/pkg/wasmloader_admin.js" integrity="sha384-1234567890"></script>"#
+        r#"<script async src="/pkg/wasmloader_admin.js" integrity="sha384-1234567890"></script>"#
     );
 }

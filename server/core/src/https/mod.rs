@@ -126,7 +126,7 @@ pub fn get_js_files(role: ServerRole) -> Result<JavaScriptFiles, ()> {
                 Err(err) => {
                     admin_error!(
                         ?err,
-                        "Failed to generate integrity hash for {} THIS IS GOING TO CAUSE PROBLEMS",
+                        "Failed to generate integrity hash for {} - cancelling startup!",
                         filepath
                     );
                     return Err(());
@@ -153,7 +153,7 @@ pub fn get_js_files(role: ServerRole) -> Result<JavaScriptFiles, ()> {
                 Err(err) => {
                     admin_error!(
                         ?err,
-                        "Failed to generate integrity hash for {} THIS IS GOING TO CAUSE PROBLEMS!",
+                        "Failed to generate integrity hash for {} - cancelling startup!",
                         filepath
                     );
                     return Err(());
@@ -241,16 +241,17 @@ pub async fn create_https_server(
             // Create a spa router that captures everything at ui without key extraction.
 
             Router::new()
-                // direct users to the base app page. If a login is required,
-                // then views will take care of redirection. We shouldn't redir
-                // to login because that force clears previous sessions!
-                // ^ TODO: this is dumb and we should stop that.
+                // Ddirect users to the base app page. If a login is required,
+                // then views will take care of redirection.
                 .route("/", get(|| async { Redirect::temporary("/ui") }))
                 .route("/manifest.webmanifest", get(manifest::manifest)) // skip_route_check
+                // user UI app is the catch-all
                 .nest("/ui", ui::spa_router())
+                // login flows app
                 .nest("/ui/login", ui::spa_router_login_flows())
                 .nest("/ui/reauth", ui::spa_router_login_flows())
                 .nest("/ui/oauth2", ui::spa_router_login_flows())
+                // admin app
                 .nest("/ui/admin", ui::spa_router_admin())
                 .layer(middleware::compression::new())
                 .route("/ui/images/oauth2/:rs_name", get(oauth2::oauth2_image_get))
