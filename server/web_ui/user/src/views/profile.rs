@@ -261,7 +261,6 @@ impl ProfileApp {
             Ok(Msg::BeginCredentialUpdate { token, status })
         } else {
             let emsg = value.as_string().unwrap_or_default();
-            // let jsval_json = JsFuture::from(resp.json()?).await?;
             Ok(Msg::Error { emsg, kopid })
         }
     }

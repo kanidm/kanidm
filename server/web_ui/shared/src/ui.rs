@@ -27,11 +27,10 @@ pub async fn ui_logout() -> Result<(), (String, Option<String>)> {
             (emsg, None)
         })?;
 
-    // In both cases - clear the local token to prevent our client thinking we have auth.
-
-    clear_bearer_token();
-
     if status == 200 {
+        // only clear the local token if it actually worked, because otherwise you could
+        // think the session is gone, while it's still live.
+        clear_bearer_token();
         Ok(())
     } else {
         let emsg = value.as_string().unwrap_or_default();

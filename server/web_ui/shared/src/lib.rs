@@ -178,7 +178,6 @@ pub async fn fetch_session_valid() -> Result<SessionStatus, FetchError> {
         Ok(SessionStatus::LoginRequired)
     } else {
         let emsg = value.as_string().unwrap_or_default();
-        // let jsval_json = JsFuture::from(resp.json()?).await?;
         Ok(SessionStatus::Error { emsg, kopid })
     }
 }
