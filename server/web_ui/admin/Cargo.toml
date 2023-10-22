@@ -21,11 +21,8 @@ crate-type = ["cdylib", "rlib"]
 kanidm_proto = { workspace = true, features = ["wasm"] }
 kanidmd_web_ui_shared = { workspace = true }
 gloo = { workspace = true }
-gloo-timers = "0.3.0"
 js-sys = { workspace = true }
 lazy_static.workspace = true
-qrcode = { workspace = true, features = ["svg"] }
-regex.workspace = true
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 serde-wasm-bindgen = { workspace = true }
@@ -34,7 +31,6 @@ url = { workspace = true }
 uuid = { workspace = true }
 wasm-bindgen = { workspace = true }
 wasm-bindgen-futures = { workspace = true }
-wasm-timer = "0.2.5"
 yew = { workspace = true, features = ["csr"] }
 yew-router = { workspace = true }
 gloo-utils = { workspace = true }

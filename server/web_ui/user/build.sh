@@ -9,8 +9,6 @@ fi
 
 if [ -z "${BUILD_FLAGS}" ]; then
     BUILD_FLAGS="--release"
-    # DURING DEV
-    # BUILD_FLAGS="--dev"
 fi
 
 if [ -z "$(which rsync)" ]; then

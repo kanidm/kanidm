@@ -241,7 +241,7 @@ pub async fn create_https_server(
             // Create a spa router that captures everything at ui without key extraction.
 
             Router::new()
-                // Ddirect users to the base app page. If a login is required,
+                // Direct users to the base app page. If a login is required,
                 // then views will take care of redirection.
                 .route("/", get(|| async { Redirect::temporary("/ui") }))
                 .route("/manifest.webmanifest", get(manifest::manifest)) // skip_route_check

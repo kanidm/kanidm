@@ -16,20 +16,3 @@ pub enum LoginRoute {
     #[at("/ui/login/404")]
     NotFound,
 }
-
-// pub(crate) fn login_routes(route: LoginRoute) -> Html {
-//     match route {
-//         #[allow(clippy::let_unit_value)]
-//         LoginRoute::Login => html! { <LoginApp workflow={ LoginWorkflow::Login } /> },
-//         #[allow(clippy::let_unit_value)]
-//         LoginRoute::Reauth => html! { <LoginApp workflow={ LoginWorkflow::Reauth } /> },
-
-//         #[allow(clippy::let_unit_value)]
-//         LoginRoute::Oauth2 => html! { <Oauth2App /> },
-
-//         LoginRoute::NotFound => {
-//             todo!()
-//             // <Redirect<AdminRoute> to={AdminRoute::NotFound}/>
-//         }
-//     }
-// }
