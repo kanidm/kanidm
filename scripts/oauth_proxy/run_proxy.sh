@@ -5,6 +5,8 @@ PROXY_HTTP_PORT="10080"
 PROXY_HTTPS_PORT="10443"
 CLIENT_ID="test_oauth2"
 
+# documentation for proxy settings is here: https://oauth2-proxy.github.io/oauth2-proxy/docs/configuration/overview/#environment-variables
+
 # generate a cookie secret
 echo "OAUTH2_PROXY_COOKIE_SECRET=$(openssl rand -hex 16)" > envfile
 {
