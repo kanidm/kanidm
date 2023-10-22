@@ -3,7 +3,7 @@
 Account Policy defines the security requirements that accounts must meet and influences users
 sessions.
 
-Policy is defined on groups so that membership of a group influences the security of it's members.
+Policy is defined on groups so that membership of a group influences the security of its members.
 This allows you to express that if you can access a system or resource, then the account must also
 meet the policy requirements.
 
