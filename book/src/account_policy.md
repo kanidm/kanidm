@@ -9,7 +9,7 @@ meet the policy requirements.
 
 ## Default Account Policy
 
-By default Account Policy is applied to `idm_all_accounts`. This provides the defaults that
+A default Account Policy is applied to `idm_all_accounts`. This provides the defaults that
 influence all accounts in Kanidm. This policy can be modified the same as any other group's policy.
 
 ## Policy Resolution
