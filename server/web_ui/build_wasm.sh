@@ -25,8 +25,8 @@ find pkg/ -type f -delete
 find pkg/ -mindepth 1 -type d -delete
 
 touch ./pkg/ANYTHING_HERE_WILL_BE_DELETED_IN_BUILDS
-cp ../../README.md ./pkg/
-cp ../../LICENSE.md ./pkg/
+# cp ../../README.md ./pkg/
+# cp ../../LICENSE.md ./pkg/
 if [ -f ./pkg/.gitignore ]; then
     rm ./pkg/.gitignore
 fi
@@ -36,16 +36,22 @@ rsync -av shared/static/* shared/static/* pkg/
 
 
 cd admin
-./build.sh
+echo "building admin"
+../individual_build.sh || exit 1
 cd ..
+echo "done building admin"
 
 cd login_flows
-./build.sh
+echo "building login_flows"
+../individual_build.sh || exit 1
 cd ..
+echo "done building login_flows"
 
 cd user
-./build.sh
+echo "building user"
+../individual_build.sh || exit 1
 cd ..
+echo "done building user"
 
 
 

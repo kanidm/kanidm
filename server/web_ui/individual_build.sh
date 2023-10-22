@@ -2,7 +2,7 @@
 
 set -e
 
-if [ ! -f build.sh ]; then
+if [ ! -f ../individual_build.sh ]; then
     echo "Please run from the package base directory!"
     exit 1
 fi
