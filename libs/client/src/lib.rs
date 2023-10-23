@@ -1000,7 +1000,7 @@ impl KanidmClient {
             .map_err(|e| ClientError::JsonDecode(e, opid))
     }
 
-    #[instrument(level = "debug")]
+    #[instrument(level = "debug", skip(self))]
     pub async fn auth_step_init(&self, ident: &str) -> Result<Set<AuthMech>, ClientError> {
         let auth_init = AuthRequest {
             step: AuthStep::Init2 {
@@ -1024,6 +1024,7 @@ impl KanidmClient {
         .map(|mechs| mechs.into_iter().collect())
     }
 
+    #[instrument(level = "debug", skip(self))]
     pub async fn auth_step_begin(&self, mech: AuthMech) -> Result<Vec<AuthAllowed>, ClientError> {
         let auth_begin = AuthRequest {
             step: AuthStep::Begin(mech),
@@ -1043,6 +1044,7 @@ impl KanidmClient {
         // .map(|allowed| allowed.into_iter().collect())
     }
 
+    #[instrument(level = "debug", skip_all)]
     pub async fn auth_step_anonymous(&self) -> Result<AuthResponse, ClientError> {
         let auth_anon = AuthRequest {
             step: AuthStep::Cred(AuthCredential::Anonymous),
@@ -1058,6 +1060,7 @@ impl KanidmClient {
         r
     }
 
+    #[instrument(level = "debug", skip_all)]
     pub async fn auth_step_password(&self, password: &str) -> Result<AuthResponse, ClientError> {
         let auth_req = AuthRequest {
             step: AuthStep::Cred(AuthCredential::Password(password.to_string())),
@@ -1072,6 +1075,7 @@ impl KanidmClient {
         r
     }
 
+    #[instrument(level = "debug", skip_all)]
     pub async fn auth_step_backup_code(
         &self,
         backup_code: &str,
@@ -1089,6 +1093,7 @@ impl KanidmClient {
         r
     }
 
+    #[instrument(level = "debug", skip_all)]
     pub async fn auth_step_totp(&self, totp: u32) -> Result<AuthResponse, ClientError> {
         let auth_req = AuthRequest {
             step: AuthStep::Cred(AuthCredential::Totp(totp)),
@@ -1103,6 +1108,7 @@ impl KanidmClient {
         r
     }
 
+    #[instrument(level = "debug", skip_all)]
     pub async fn auth_step_securitykey_complete(
         &self,
         pkc: Box<PublicKeyCredential>,
@@ -1120,6 +1126,7 @@ impl KanidmClient {
         r
     }
 
+    #[instrument(level = "debug", skip_all)]
     pub async fn auth_step_passkey_complete(
         &self,
         pkc: Box<PublicKeyCredential>,
@@ -1137,6 +1144,7 @@ impl KanidmClient {
         r
     }
 
+    #[instrument(level = "debug", skip(self))]
     pub async fn auth_anonymous(&self) -> Result<(), ClientError> {
         let mechs = match self.auth_step_init("anonymous").await {
             Ok(s) => s,
@@ -1164,7 +1172,7 @@ impl KanidmClient {
         }
     }
 
-    #[instrument(level = "debug")]
+    #[instrument(level = "debug", skip(self, password))]
     pub async fn auth_simple_password(
         &self,
         ident: &str,
@@ -1194,6 +1202,7 @@ impl KanidmClient {
         }
     }
 
+    #[instrument(level = "debug", skip(self, password, totp))]
     pub async fn auth_password_totp(
         &self,
         ident: &str,
@@ -1244,6 +1253,7 @@ impl KanidmClient {
         }
     }
 
+    #[instrument(level = "debug", skip(self, password, backup_code))]
     pub async fn auth_password_backup_code(
         &self,
         ident: &str,
@@ -1294,6 +1304,7 @@ impl KanidmClient {
         }
     }
 
+    #[instrument(level = "debug", skip(self))]
     pub async fn auth_passkey_begin(
         &self,
         ident: &str,
@@ -1320,6 +1331,7 @@ impl KanidmClient {
         }
     }
 
+    #[instrument(level = "debug", skip_all)]
     pub async fn auth_passkey_complete(
         &self,
         pkc: Box<PublicKeyCredential>,
@@ -1345,6 +1357,7 @@ impl KanidmClient {
         })
     }
 
+    #[instrument(level = "debug", skip_all)]
     pub async fn reauth_simple_password(&self, password: &str) -> Result<(), ClientError> {
         let state = match self.reauth_begin().await {
             Ok(mut s) => s.pop(),
@@ -1366,6 +1379,7 @@ impl KanidmClient {
         }
     }
 
+    #[instrument(level = "debug", skip_all)]
     pub async fn reauth_password_totp(&self, password: &str, totp: u32) -> Result<(), ClientError> {
         let state = match self.reauth_begin().await {
             Ok(s) => s,
@@ -1401,6 +1415,7 @@ impl KanidmClient {
         }
     }
 
+    #[instrument(level = "debug", skip_all)]
     pub async fn reauth_passkey_begin(&self) -> Result<RequestChallengeResponse, ClientError> {
         let state = match self.reauth_begin().await {
             Ok(mut s) => s.pop(),
@@ -1414,6 +1429,7 @@ impl KanidmClient {
         }
     }
 
+    #[instrument(level = "debug", skip_all)]
     pub async fn reauth_passkey_complete(
         &self,
         pkc: Box<PublicKeyCredential>,

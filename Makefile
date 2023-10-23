@@ -135,6 +135,7 @@ codespell:
 	codespell -c \
 	-L 'crate,unexpect,Pres,pres,ACI,aci,ser,te,ue,unx,aNULL' \
 	--skip='./target,./pykanidm/.venv,./pykanidm/.mypy_cache,./.mypy_cache,./pykanidm/poetry.lock' \
+	--skip='./book/*.js' \
 	--skip='./book/book/*' \
 	--skip='./book/src/images/*' \
 	--skip='./docs/*,./.git' \
@@ -175,7 +176,10 @@ doc:
 
 .PHONY: doc/format
 doc/format: ## Format docs and the Kanidm book
-	find . -type f  -not -path './target/*' -not -path '*/.venv/*' -not -path './vendor/*'\
+	find . -type f  \
+		-not -path './target/*' \
+		-not -path './docs/*' \
+		-not -path '*/.venv/*' -not -path './vendor/*'\
 		-name \*.md \
 		-exec deno fmt --check $(MARKDOWN_FORMAT_ARGS) "{}" +
 
@@ -188,12 +192,13 @@ doc/format/fix: ## Fix docs and the Kanidm book
 .PHONY: book
 book: ## Build the Kanidm book
 book:
-	cargo doc --no-deps
+	echo "Building rust docs"
+	cargo doc --no-deps --quiet
 	mdbook build book
 	rm -rf ./docs/
 	mv ./book/book/ ./docs/
-	mkdir -p ./docs/rustdoc/${BOOK_VERSION}
-	mv ./target/doc/* ./docs/rustdoc/${BOOK_VERSION}/
+	mkdir -p $(PWD)/docs/rustdoc/${BOOK_VERSION}/
+	rsync -a --delete $(PWD)/target/doc/ $(PWD)/docs/rustdoc/${BOOK_VERSION}/
 
 .PHONY: book_versioned
 book_versioned:

@@ -944,6 +944,7 @@ impl fmt::Display for AuthMech {
 
 #[derive(Debug, Serialize, Deserialize, Copy, Clone, ToSchema)]
 #[serde(rename_all = "lowercase")]
+// TODO: what is this actually used for?
 pub enum AuthIssueSession {
     Token,
 }
@@ -951,20 +952,21 @@ pub enum AuthIssueSession {
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "lowercase")]
 pub enum AuthStep {
-    // name
+    /// "I want to authenticate with this username"
     Init(String),
-    // A new way to issue sessions. Doing this as a new init type
-    // to prevent breaking existing clients. Allows requesting of the type
-    // of session that will be issued at the end if successful.
+    /// A new way to issue sessions. Doing this as a new init type
+    /// to prevent breaking existing clients. Allows requesting of the type
+    /// of session that will be issued at the end if successful.
     Init2 {
         username: String,
         issue: AuthIssueSession,
         #[serde(default)]
+        /// If true, the session will have r/w access.
         privileged: bool,
     },
-    // We want to talk to you like this.
+    /// We want to talk to you like this.
     Begin(AuthMech),
-    // Provide a response to a challenge.
+    /// Provide a response to a challenge.
     Cred(AuthCredential),
 }
 
@@ -1042,19 +1044,14 @@ impl fmt::Display for AuthAllowed {
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "lowercase")]
 pub enum AuthState {
-    // You need to select how you want to talk to me.
+    /// You need to select how you want to talk to me.
     Choose(Vec<AuthMech>),
-    // Continue to auth, allowed mechanisms/challenges listed.
+    /// Continue to auth, allowed mechanisms/challenges listed.
     Continue(Vec<AuthAllowed>),
-    // Something was bad, your session is terminated and no cookie.
+    /// Something was bad, your session is terminated and no cookie.
     Denied(String),
-    // Everything is good, your bearer token has been issued and is within
-    // the result.
+    /// Everything is good, your bearer token has been issued and is within the result.
     Success(String),
-    // Everything is good, your cookie has been issued.
-    // Cookies no longer supported. Left as a comment as an example of alternate
-    // issue types.
-    // SuccessCookie,
 }
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]

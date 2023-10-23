@@ -5,49 +5,15 @@
 {{#template ../../templates/kani-warning.md
 imagepath=../../images/
 title=Note!
-text=Here begins some early notes on the REST interface - much better ones are in the repository's designs directory.
+text=This is a work in progress and not all endpoints have perfect schema definitions, but they're all covered!
 }}
 
 <!-- deno-fmt-ignore-end -->
 
-There's an endpoint at `/<api_version>/routemap` (for example, `https://localhost/v1/routemap`)
-which is based on the API routes as they get instantiated.
+We're generating an OpenAPI specification file and Swagger interface using
+[utoipa](https://crates.io/crates/utoipa).
 
-It's _very, very, very_ early work, and should not be considered stable at all.
+The Swagger UI is available at `/docs/swagger-ui` on your server (ie, if your origin is
+`https://example.com:8443`, visit `https://example.com:8443/docs/swagger-ui`).
 
-An example of some elements of the output is below:
-
-```json
-{
-  "routelist": [
-    {
-      "path": "/",
-      "method": "GET"
-    },
-    {
-      "path": "/robots.txt",
-      "method": "GET"
-    },
-    {
-      "path": "/ui/",
-      "method": "GET"
-    },
-    {
-      "path": "/v1/account/:id/_unix/_token",
-      "method": "GET"
-    },
-    {
-      "path": "/v1/schema/attributetype/:id",
-      "method": "GET"
-    },
-    {
-      "path": "/v1/schema/attributetype/:id",
-      "method": "PUT"
-    },
-    {
-      "path": "/v1/schema/attributetype/:id",
-      "method": "PATCH"
-    }
-  ]
-}
-```
+The OpenAPI schema is similarly available at `/docs/v1/openapi.json`.
