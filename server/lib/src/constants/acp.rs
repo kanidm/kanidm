@@ -1293,7 +1293,6 @@ lazy_static! {
         create_classes: vec![
             EntryClass::AccountPolicy,
         ],
-        ..Default::default()
     };
 }
 

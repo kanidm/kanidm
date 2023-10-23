@@ -438,7 +438,6 @@ lazy_static! {
             // Enforce this is a system protected object
             (Attribute::Class, EntryClass::System.to_value()),
         ],
-        ..Default::default()
     };
 
     pub static ref IDM_ALL_ACCOUNTS: BuiltinGroup = BuiltinGroup {
@@ -456,7 +455,6 @@ lazy_static! {
             // Enforce this is a system protected object
             (Attribute::Class, EntryClass::System.to_value()),
         ],
-        ..Default::default()
     };
 
 
