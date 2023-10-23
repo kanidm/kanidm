@@ -30,7 +30,7 @@ use super::ldap::{LdapBoundToken, LdapSession};
 use crate::credential::{softlock::CredSoftLock, Credential};
 use crate::idm::account::Account;
 use crate::idm::audit::AuditEvent;
-use crate::idm::authsession::AuthSession;
+use crate::idm::authsession::{AuthSession, AuthSessionData};
 use crate::idm::credupdatesession::CredentialUpdateSessionMutex;
 use crate::idm::delayed::{
     AuthSessionRecord, BackupCodeRemoval, DelayedAction, PasswordUpgrade, UnixPasswordUpgrade,
@@ -1022,15 +1022,16 @@ impl<'a> IdmServerAuthTransaction<'a> {
                             slock_ref
                         });
 
-                let (auth_session, state) = AuthSession::new(
+                let asd: AuthSessionData = AuthSessionData {
                     account,
                     account_policy,
-                    init.issue,
-                    init.privileged,
-                    self.webauthn,
+                    issue: init.issue,
+                    webauthn: self.webauthn,
                     ct,
                     source,
-                );
+                };
+
+                let (auth_session, state) = AuthSession::new(asd, init.privileged);
 
                 match auth_session {
                     Some(auth_session) => {
