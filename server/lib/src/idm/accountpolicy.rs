@@ -35,19 +35,19 @@ pub(crate) struct AccountPolicy {
     credential_policy: CredentialPolicy,
 }
 
-impl Into<Option<AccountPolicy>> for &EntrySealedCommitted {
-    fn into(self) -> Option<AccountPolicy> {
-        if !self.attribute_equality(
+impl From<&EntrySealedCommitted> for Option<AccountPolicy> {
+    fn from(val: &EntrySealedCommitted) -> Self {
+        if !val.attribute_equality(
             Attribute::Class,
             &EntryClass::AccountPolicy.to_partialvalue(),
         ) {
             return None;
         }
 
-        let authsession_expiry = self
+        let authsession_expiry = val
             .get_ava_single_uint32(Attribute::AuthSessionExpiry)
             .unwrap_or(MAXIMUM_AUTH_SESSION_EXPIRY);
-        let privilege_expiry = self
+        let privilege_expiry = val
             .get_ava_single_uint32(Attribute::PrivilegeExpiry)
             .unwrap_or(MAXIMUM_AUTH_PRIVILEGE_EXPIRY);
         let credential_policy = CredentialPolicy::default();
