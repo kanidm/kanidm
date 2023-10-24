@@ -204,21 +204,21 @@ git rebase --abort
 
 ### Building the Book
 
-You'll need `mdbook` to build the book:
+You'll need `mdbook` and the extensions to build the book:
 
-```bash
-cargo install mdbook
+```shell
+cargo install mdbook mdbook-mermaid mdbook-template
 ```
 
 To build it:
 
-```bash
+```shell
 make book
 ```
 
 Or to run a local webserver:
 
-```bash
+```shell
 cd book
 mdbook serve
 ```

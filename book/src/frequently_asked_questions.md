@@ -73,9 +73,14 @@ Don't [ask](https://www.youtube.com/watch?v=0QaAKi0NFkA). They just
 [do](https://www.youtube.com/shorts/WizH5ae9ozw).
 
 ## Why aren't snaps launching with `home_alias` set?
-Snaps rely on AppArmor and [AppArmor doesn't follow symlinks](https://bugs.launchpad.net/apparmor/+bug/1485055).  When `home_alias` is any value other than `none` a symlink will be created and pointing to `home_attr`.  It is recommended to use alternative software packages to snaps.   
 
-All users in Kanidm can change their name (and their spn) at any time. If you change `home_attr` from `uuid` you must have a plan on how to manage these directory renames in your system.  
+Snaps rely on AppArmor and
+[AppArmor doesn't follow symlinks](https://bugs.launchpad.net/apparmor/+bug/1485055). When
+`home_alias` is any value other than `none` a symlink will be created and pointing to `home_attr`.
+It is recommended to use alternative software packages to snaps.
+
+All users in Kanidm can change their name (and their spn) at any time. If you change `home_attr`
+from `uuid` you must have a plan on how to manage these directory renames in your system.
 
 ## Why won't you take this FAQ thing seriously?
 
