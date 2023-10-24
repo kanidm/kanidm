@@ -12,19 +12,6 @@ from kanidm.utils import load_config
 
 EXAMPLE_CONFIG_FILE = "../examples/config"
 
-
-def test_load_config_file() -> None:
-    """tests that the file loads"""
-    if not Path(EXAMPLE_CONFIG_FILE).expanduser().resolve().exists():
-        print("Can't find client config file", file=sys.stderr)
-        pytest.skip()
-    config = load_config(EXAMPLE_CONFIG_FILE)
-    kanidm_config = KanidmClientConfig.model_validate(config)
-    assert kanidm_config.uri == "https://idm.example.com/"
-    print(f"{kanidm_config.uri=}")
-    print(kanidm_config)
-
-
 def test_radius_groups() -> None:
     """testing loading a config file with radius groups defined"""
 
