@@ -254,7 +254,7 @@ pub(crate) fn gen_private_key(
 
 /// build up a CA certificate and key.
 pub(crate) fn build_ca(ca_config: Option<CAConfig>) -> Result<CaHandle, ErrorStack> {
-    let ca_config = ca_config.unwrap_or(CAConfig::default());
+    let ca_config = ca_config.unwrap_or_default();
 
     let ca_key = gen_private_key(&ca_config.key_type, Some(ca_config.key_bits))?;
 
@@ -419,7 +419,7 @@ pub(crate) fn build_cert(
     key_type: Option<KeyType>,
     key_bits: Option<u64>,
 ) -> Result<CertHandle, ErrorStack> {
-    let key_type = key_type.unwrap_or(KeyType::default());
+    let key_type = key_type.unwrap_or_default();
     let int_key = gen_private_key(&key_type, key_bits)?;
 
     let mut req_builder = X509ReqBuilder::new()?;
