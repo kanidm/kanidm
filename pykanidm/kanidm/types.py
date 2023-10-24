@@ -20,7 +20,8 @@ class ClientResponse(BaseModel):
     """
 
     content: Optional[str] = None
-    data: Optional[Dict[str, Any]] = None
+    # the data field is used for the json-parsed response
+    data: Optional[Any] = None
     headers: Dict[str, Any]
     status_code: int
     model_config = ConfigDict(arbitrary_types_allowed=True)
@@ -160,7 +161,7 @@ class KanidmClientConfig(BaseModel):
 
     verify_hostnames: bool = True
     verify_certificate: bool = True
-    ca_path: Optional[str] = None
+    ca_path: Optional[str] = Field(default=None, alias='verify_ca')
 
     username: Optional[str] = None
     password: Optional[str] = None
