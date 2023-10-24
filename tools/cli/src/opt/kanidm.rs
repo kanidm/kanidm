@@ -677,6 +677,9 @@ pub enum ApplicationOpt {
     /// List all applications
     #[clap(name = "list")]
     List(CommonOpt),
+    /// Create a new application
+    #[clap(name = "create")]
+    Create(Named),
 }
 
 #[derive(Debug, Subcommand)]
