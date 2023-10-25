@@ -3,7 +3,7 @@ name: Container - Radiusd
 
 # This is always built and uploads an OCI image as a build artifact, but only
 # pushes to "ghcr.io/kanidm/radius:devel" when on "kanidm/kanidm@master".
-on:
+"on":
   pull_request:
   push:
 
