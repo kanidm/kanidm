@@ -1536,11 +1536,11 @@ async fn test_server_api_token_lifecycle(rsclient: KanidmClient) {
         .await
         .is_err());
 
-    // updating the username
+    // updating the service account details
     assert!(rsclient
         .idm_service_account_update(
             test_service_account_username,
-            None, // Some(&format!("{}lol", test_service_account_username)),
+            None,
             Some(&format!("{}displayzzzz", test_service_account_username)),
             Some(&[format!("{}@example.crabs", test_service_account_username)]),
         )
