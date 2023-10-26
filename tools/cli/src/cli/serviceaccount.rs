@@ -1,4 +1,4 @@
-use crate::common::OpType;
+use crate::common::{try_expire_at_from_string, OpType};
 use kanidm_proto::constants::{ATTR_ACCOUNT_EXPIRE, ATTR_ACCOUNT_VALID_FROM};
 use kanidm_proto::messages::{AccountChangeMessage, ConsoleOutputMode, MessageStatus};
 use time::OffsetDateTime;
@@ -430,36 +430,30 @@ impl ServiceAccountOpt {
                 }
                 AccountValidity::ExpireAt(ano) => {
                     let client = ano.copt.to_client(OpType::Write).await;
-                    if matches!(ano.datetime.as_str(), "never" | "clear") {
-                        // Unset the value
-                        match client
-                            .idm_service_account_purge_attr(
-                                ano.aopts.account_id.as_str(),
-                                ATTR_ACCOUNT_EXPIRE,
-                            )
-                            .await
-                        {
-                            Err(e) => error!("Error -> {:?}", e),
-                            _ => println!("Success"),
+                    let validity = try_expire_at_from_string(ano.datetime.as_str());
+                    let res = match validity {
+                        None => {
+                            client
+                                .idm_service_account_purge_attr(
+                                    ano.aopts.account_id.as_str(),
+                                    ATTR_ACCOUNT_EXPIRE,
+                                )
+                                .await
                         }
-                    } else {
-                        if let Err(e) = OffsetDateTime::parse(ano.datetime.as_str(), &Rfc3339) {
-                            error!("Error -> {:?}", e);
-                            return;
+                        Some(new_expiry) => {
+                            client
+                                .idm_service_account_set_attr(
+                                    ano.aopts.account_id.as_str(),
+                                    ATTR_ACCOUNT_EXPIRE,
+                                    &[&new_expiry],
+                                )
+                                .await
                         }
-
-                        match client
-                            .idm_service_account_set_attr(
-                                ano.aopts.account_id.as_str(),
-                                ATTR_ACCOUNT_EXPIRE,
-                                &[ano.datetime.as_str()],
-                            )
-                            .await
-                        {
-                            Err(e) => handle_client_error(e, &ano.copt.output_mode),
-                            _ => println!("Success"),
-                        }
-                    }
+                    };
+                    match res {
+                        Err(e) => handle_client_error(e, &ano.copt.output_mode),
+                        _ => println!("Success"),
+                    };
                 }
                 AccountValidity::BeginFrom(ano) => {
                     let client = ano.copt.to_client(OpType::Write).await;
