@@ -411,7 +411,10 @@ impl PersonOpt {
                 }
                 AccountValidity::ExpireAt(ano) => {
                     let client = ano.copt.to_client(OpType::Write).await;
-                    let validity = try_expire_at_from_string(ano.datetime.as_str());
+                    let validity = match try_expire_at_from_string(ano.datetime.as_str()) {
+                        Ok(val) => val,
+                        Err(()) => return,
+                    };
                     let res = match validity {
                         None => {
                             client
