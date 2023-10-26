@@ -114,6 +114,7 @@ impl Modify for SecurityAddon {
         super::v1::service_account_post,
         super::v1::service_account_id_get,
         super::v1::service_account_id_delete,
+        super::v1::service_account_id_patch,
         super::v1::service_account_id_get_attr,
         super::v1::service_account_id_put_attr,
         super::v1::service_account_id_post_attr,
