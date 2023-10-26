@@ -33,8 +33,8 @@
 
 - [Service Integrations](integrations/readme.md)
   - [PAM and nsswitch](integrations/pam_and_nsswitch.md)
-    - [Fedora](integrations/pam_and_nsswitch/fedora.md)
     - [SUSE / OpenSUSE](integrations/pam_and_nsswitch/suse.md)
+    - [Fedora](integrations/pam_and_nsswitch/fedora.md)
     - [Troubleshooting](integrations/pam_and_nsswitch/troubleshooting.md)
   - [SSH Key Distribution](integrations/ssh_key_dist.md)
   - [Oauth2](integrations/oauth2.md)
