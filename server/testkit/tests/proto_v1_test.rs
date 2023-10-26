@@ -1535,16 +1535,17 @@ async fn test_server_api_token_lifecycle(rsclient: KanidmClient) {
         .idm_service_account_update(test_service_account_username, None, None, None)
         .await
         .is_err());
+
+    // updating the service account details
     assert!(rsclient
         .idm_service_account_update(
             test_service_account_username,
-            Some(&format!("{}lol", test_service_account_username)),
+            None,
             Some(&format!("{}displayzzzz", test_service_account_username)),
             Some(&[format!("{}@example.crabs", test_service_account_username)]),
         )
         .await
-        .is_err());
-
+        .is_ok());
     let pw = rsclient
         .idm_service_account_generate_password(test_service_account_username)
         .await
@@ -1581,8 +1582,6 @@ async fn test_server_api_token_lifecycle(rsclient: KanidmClient) {
     //     .idm_person_account_delete(test_service_account_username)
     //     .await
     //     .is_ok());
-
-    // No need to test expiry, that's validated in the server internal tests.
 }
 
 #[kanidmd_testkit::test]
