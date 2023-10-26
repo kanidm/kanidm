@@ -664,6 +664,33 @@ pub async fn service_account_post(
 }
 
 #[utoipa::path(
+    patch,
+    path = "/v1/service_account/{id}",
+    responses(
+        DefaultApiResponse,
+    ),
+    // request_body=ProtoEntry, // TODO: can't deal with a HashMap in the attr
+    security(("token_jwt" = [])),
+    tag = "v1/service_account",
+)]
+pub async fn service_account_id_patch(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    Path(id): Path<String>,
+    Json(obj): Json<ProtoEntry>,
+) -> Result<Json<()>, WebError> {
+    // Update a value / attrs
+    let filter = filter_all!(f_eq(Attribute::Class, EntryClass::Account.into()));
+    let filter = Filter::join_parts_and(filter, filter_all!(f_id(id.as_str())));
+    state
+        .qe_w_ref
+        .handle_internalpatch(kopid.uat, filter, obj, kopid.eventid)
+        .await
+        .map(Json::from)
+        .map_err(WebError::from)
+}
+
+#[utoipa::path(
     get,
     path = "/v1/service_account/{id}",
     responses(
@@ -2945,7 +2972,9 @@ pub(crate) fn route_setup(state: ServerState) -> Router<ServerState> {
         )
         .route(
             "/v1/service_account/:id",
-            get(service_account_id_get).delete(service_account_id_delete),
+            get(service_account_id_get)
+                .delete(service_account_id_delete)
+                .patch(service_account_id_patch),
         )
         .route(
             "/v1/service_account/:id/_attr/:attr",

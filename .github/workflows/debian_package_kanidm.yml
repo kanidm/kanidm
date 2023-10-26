@@ -52,6 +52,10 @@ jobs:
           path: |
             target/*.deb
   upload-to-releases:
+    permissions:
+      # https://docs.github.com/en/actions/using-jobs/assigning-permissions-to-jobs
+      contents: write # allows the action to create a release
+
     name: Upload to releases
     needs: build-deb-package
     runs-on: ubuntu-latest
@@ -67,7 +71,7 @@ jobs:
       - uses: "marvinpinto/action-automatic-releases@latest"
         with:
           repo_token: "${{ secrets.GITHUB_TOKEN }}"
-          automatic_release_tag: "latest"
+          automatic_release_tag: "debs"
           prerelease: true
-          title: "Ubuntu Packages"
+          title: ".deb Packages"
           files: "*.deb"
