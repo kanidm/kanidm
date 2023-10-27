@@ -20,7 +20,7 @@ impl RecycleOpt {
                 }
             }
             RecycleOpt::Get(nopt) => {
-                let client = nopt.copt.to_client(OpType::Write).await;
+                let client = nopt.copt.to_client(OpType::Read).await;
                 match client.recycle_bin_get(nopt.name.as_str()).await {
                     Ok(Some(e)) => println!("{}", e),
                     Ok(None) => println!("No matching entries"),
