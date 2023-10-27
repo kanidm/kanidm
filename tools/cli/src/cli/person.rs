@@ -1,4 +1,4 @@
-use crate::common::OpType;
+use crate::common::{try_expire_at_from_string, OpType};
 use std::fmt::{self, Debug};
 use std::str::FromStr;
 
@@ -410,78 +410,33 @@ impl PersonOpt {
                 }
                 AccountValidity::ExpireAt(ano) => {
                     let client = ano.copt.to_client(OpType::Write).await;
-                    if matches!(ano.datetime.as_str(), "never" | "clear") {
-                        // Unset the value
-                        match client
-                            .idm_person_account_purge_attr(
-                                ano.aopts.account_id.as_str(),
-                                ATTR_ACCOUNT_EXPIRE,
-                            )
-                            .await
-                        {
-                            Err(e) => handle_client_error(e, &ano.copt.output_mode),
-                            _ => println!("Success"),
+                    let validity = match try_expire_at_from_string(ano.datetime.as_str()) {
+                        Ok(val) => val,
+                        Err(()) => return,
+                    };
+                    let res = match validity {
+                        None => {
+                            client
+                                .idm_person_account_purge_attr(
+                                    ano.aopts.account_id.as_str(),
+                                    ATTR_ACCOUNT_EXPIRE,
+                                )
+                                .await
                         }
-                    } else if matches!(ano.datetime.as_str(), "now") {
-                        // set the expiry to *now*
-                        let now = match OffsetDateTime::now_utc().format(&Rfc3339) {
-                            Ok(s) => s,
-                            Err(e) => {
-                                error!(err = ?e, "Unable to format current time to rfc3339");
-                                return;
-                            }
-                        };
-                        debug!("Setting expiry to {}", now);
-                        match client
-                            .idm_person_account_set_attr(
-                                ano.aopts.account_id.as_str(),
-                                ATTR_ACCOUNT_EXPIRE,
-                                &[&now],
-                            )
-                            .await
-                        {
-                            Err(e) => error!("Error setting expiry to 'now' -> {:?}", e),
-                            _ => println!("Success"),
+                        Some(new_expiry) => {
+                            client
+                                .idm_person_account_set_attr(
+                                    ano.aopts.account_id.as_str(),
+                                    ATTR_ACCOUNT_EXPIRE,
+                                    &[&new_expiry],
+                                )
+                                .await
                         }
-                    } else if matches!(ano.datetime.as_str(), "epoch") {
-                        // set the expiry to the epoch
-                        let epoch_str = match OffsetDateTime::UNIX_EPOCH.format(&Rfc3339) {
-                            Ok(s) => s,
-                            Err(e) => {
-                                error!(err = ?e, "Unable to format unix epoch to rfc3339");
-                                return;
-                            }
-                        };
-                        debug!("Setting expiry to {}", epoch_str);
-                        match client
-                            .idm_person_account_set_attr(
-                                ano.aopts.account_id.as_str(),
-                                ATTR_ACCOUNT_EXPIRE,
-                                &[&epoch_str],
-                            )
-                            .await
-                        {
-                            Err(e) => error!("Error setting expiry to 'epoch' -> {:?}", e),
-                            _ => println!("Success"),
-                        }
-                    } else {
-                        if let Err(e) = OffsetDateTime::parse(ano.datetime.as_str(), &Rfc3339) {
-                            error!("Error -> {:?}", e);
-                            return;
-                        }
-
-                        match client
-                            .idm_person_account_set_attr(
-                                ano.aopts.account_id.as_str(),
-                                ATTR_ACCOUNT_EXPIRE,
-                                &[ano.datetime.as_str()],
-                            )
-                            .await
-                        {
-                            Err(e) => handle_client_error(e, &ano.copt.output_mode),
-                            _ => println!("Success"),
-                        }
-                    }
+                    };
+                    match res {
+                        Err(e) => handle_client_error(e, &ano.copt.output_mode),
+                        _ => println!("Success"),
+                    };
                 }
                 AccountValidity::BeginFrom(ano) => {
                     let client = ano.copt.to_client(OpType::Write).await;
