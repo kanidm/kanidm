@@ -714,6 +714,15 @@ impl AuthSessionState {
     }
 }
 
+pub(crate) struct AuthSessionData<'a> {
+    pub(crate) account: Account,
+    pub(crate) account_policy: ResolvedAccountPolicy,
+    pub(crate) issue: AuthIssueSession,
+    pub(crate) webauthn: &'a Webauthn,
+    pub(crate) ct: Duration,
+    pub(crate) source: Source,
+}
+
 #[derive(Clone)]
 /// The current state of an authentication session that is in progress.
 pub(crate) struct AuthSession {
@@ -745,34 +754,26 @@ impl AuthSession {
     /// Create a new auth session, based on the available credential handlers of the account.
     /// the session is a whole encapsulated unit of what we need to proceed, so that subsequent
     /// or interleved write operations do not cause inconsistency in this process.
-    pub fn new(
-        account: Account,
-        account_policy: ResolvedAccountPolicy,
-        issue: AuthIssueSession,
-        privileged: bool,
-        webauthn: &Webauthn,
-        ct: Duration,
-        source: Source,
-    ) -> (Option<Self>, AuthState) {
+    pub fn new(asd: AuthSessionData<'_>, privileged: bool) -> (Option<Self>, AuthState) {
         // During this setup, determine the credential handler that we'll be using
         // for this session. This is currently based on presentation of an application
         // id.
-        let state = if account.is_within_valid_time(ct) {
+        let state = if asd.account.is_within_valid_time(asd.ct) {
             // We want the primary handler - this is where we make a decision
             // based on the anonymous ... in theory this could be cleaner
             // and interact with the account more?
-            if account.is_anonymous() {
+            if asd.account.is_anonymous() {
                 AuthSessionState::Init(nonempty![CredHandler::Anonymous {
-                    cred_id: account.uuid,
+                    cred_id: asd.account.uuid,
                 }])
             } else {
                 // What's valid to use in this context?
                 let mut handlers = Vec::new();
 
-                if let Some(cred) = &account.primary {
+                if let Some(cred) = &asd.account.primary {
                     // TODO: Make it possible to have multiple creds.
                     // Probably means new authsession has to be failable
-                    if let Ok(ch) = CredHandler::try_from((cred, webauthn)) {
+                    if let Ok(ch) = CredHandler::try_from((cred, asd.webauthn)) {
                         handlers.push(ch);
                     } else {
                         security_critical!(
@@ -781,7 +782,7 @@ impl AuthSession {
                     }
                 }
 
-                if let Ok(ch) = CredHandler::try_from((&account.passkeys, webauthn)) {
+                if let Ok(ch) = CredHandler::try_from((&asd.account.passkeys, asd.webauthn)) {
                     handlers.push(ch);
                 };
 
@@ -804,12 +805,12 @@ impl AuthSession {
         } else {
             // We can proceed
             let auth_session = AuthSession {
-                account,
-                account_policy,
+                account: asd.account,
+                account_policy: asd.account_policy,
                 state,
-                issue,
+                issue: asd.issue,
                 intent: AuthIntent::InitialAuth { privileged },
-                source,
+                source: asd.source,
             };
             // Get the set of mechanisms that can proceed. This is tied
             // to the session so that it can mutate state and have progression
@@ -827,15 +828,10 @@ impl AuthSession {
     /// will be used in this operation based on the credential id that was used in the
     /// initial authentication.
     pub(crate) fn new_reauth(
-        account: Account,
-        account_policy: ResolvedAccountPolicy,
+        asd: AuthSessionData<'_>,
         session_id: Uuid,
         session: &Session,
         cred_id: Uuid,
-        issue: AuthIssueSession,
-        webauthn: &Webauthn,
-        ct: Duration,
-        source: Source,
     ) -> (Option<Self>, AuthState) {
         /// An inner enum to allow us to more easily define state within this fn
         enum State {
@@ -844,7 +840,7 @@ impl AuthSession {
             Proceed(CredHandler),
         }
 
-        let state = if account.is_within_valid_time(ct) {
+        let state = if asd.account.is_within_valid_time(asd.ct) {
             // Get the credential that matches this cred_id.
             //
             // To make this work "cleanly" we can't really nest a bunch of if
@@ -856,9 +852,9 @@ impl AuthSession {
 
             let mut cred_handler = None;
 
-            if let Some(primary) = account.primary.as_ref() {
+            if let Some(primary) = asd.account.primary.as_ref() {
                 if primary.uuid == cred_id {
-                    if let Ok(ch) = CredHandler::try_from((primary, webauthn)) {
+                    if let Ok(ch) = CredHandler::try_from((primary, asd.webauthn)) {
                         // Update it.
                         debug_assert!(cred_handler.is_none());
                         cred_handler = Some(ch);
@@ -870,8 +866,8 @@ impl AuthSession {
                 }
             }
 
-            if let Some(pk) = account.passkeys.get(&cred_id).map(|(_, pk)| pk) {
-                if let Ok(ch) = CredHandler::try_from((cred_id, pk, webauthn)) {
+            if let Some(pk) = asd.account.passkeys.get(&cred_id).map(|(_, pk)| pk) {
+                if let Ok(ch) = CredHandler::try_from((cred_id, pk, asd.webauthn)) {
                     // Update it.
                     debug_assert!(cred_handler.is_none());
                     cred_handler = Some(ch);
@@ -906,15 +902,15 @@ impl AuthSession {
             State::Proceed(handler) => {
                 let allow = handler.next_auth_allowed();
                 let auth_session = AuthSession {
-                    account,
-                    account_policy,
+                    account: asd.account,
+                    account_policy: asd.account_policy,
                     state: AuthSessionState::InProgress(handler),
-                    issue,
+                    issue: asd.issue,
                     intent: AuthIntent::Reauth {
                         session_id,
                         session_expiry,
                     },
-                    source,
+                    source: asd.source,
                 };
 
                 let as_state = AuthState::Continue(allow);
@@ -1260,8 +1256,8 @@ mod tests {
     use crate::idm::accountpolicy::ResolvedAccountPolicy;
     use crate::idm::audit::AuditEvent;
     use crate::idm::authsession::{
-        AuthSession, BAD_AUTH_TYPE_MSG, BAD_BACKUPCODE_MSG, BAD_PASSWORD_MSG, BAD_TOTP_MSG,
-        BAD_WEBAUTHN_MSG, PW_BADLIST_MSG,
+        AuthSession, AuthSessionData, BAD_AUTH_TYPE_MSG, BAD_BACKUPCODE_MSG, BAD_PASSWORD_MSG,
+        BAD_TOTP_MSG, BAD_WEBAUTHN_MSG, PW_BADLIST_MSG,
     };
     use crate::idm::delayed::DelayedAction;
     use crate::idm::AuthState;
@@ -1296,16 +1292,15 @@ mod tests {
 
         let anon_account: Account = BUILTIN_ACCOUNT_ANONYMOUS_V1.clone().into();
 
-        let (session, state) = AuthSession::new(
-            anon_account,
-            ResolvedAccountPolicy::default(),
-            AuthIssueSession::Token,
-            false,
-            &webauthn,
-            duration_from_epoch_now(),
-            Source::Internal,
-        );
-
+        let asd = AuthSessionData {
+            account: anon_account,
+            account_policy: ResolvedAccountPolicy::default(),
+            issue: AuthIssueSession::Token,
+            webauthn: &webauthn,
+            ct: duration_from_epoch_now(),
+            source: Source::Internal,
+        };
+        let (session, state) = AuthSession::new(asd, false);
         if let AuthState::Choose(auth_mechs) = state {
             assert!(auth_mechs.iter().any(|x| matches!(x, AuthMech::Anonymous)));
         } else {
@@ -1333,15 +1328,15 @@ mod tests {
             $webauthn:expr,
             $privileged:expr
         ) => {{
-            let (session, state) = AuthSession::new(
-                $account.clone(),
-                ResolvedAccountPolicy::default(),
-                AuthIssueSession::Token,
-                $privileged,
-                $webauthn,
-                duration_from_epoch_now(),
-                Source::Internal,
-            );
+            let asd = AuthSessionData {
+                account: $account.clone(),
+                account_policy: ResolvedAccountPolicy::default(),
+                issue: AuthIssueSession::Token,
+                webauthn: $webauthn,
+                ct: duration_from_epoch_now(),
+                source: Source::Internal,
+            };
+            let (session, state) = AuthSession::new(asd, $privileged);
             let mut session = session.unwrap();
 
             if let AuthState::Choose(auth_mechs) = state {
@@ -1514,15 +1509,15 @@ mod tests {
             $account:expr,
             $webauthn:expr
         ) => {{
-            let (session, state) = AuthSession::new(
-                $account.clone(),
-                ResolvedAccountPolicy::default(),
-                AuthIssueSession::Token,
-                false,
-                $webauthn,
-                duration_from_epoch_now(),
-                Source::Internal,
-            );
+            let asd = AuthSessionData {
+                account: $account.clone(),
+                account_policy: ResolvedAccountPolicy::default(),
+                issue: AuthIssueSession::Token,
+                webauthn: $webauthn,
+                ct: duration_from_epoch_now(),
+                source: Source::Internal,
+            };
+            let (session, state) = AuthSession::new(asd, false);
             let mut session = session.expect("Session was unable to be created.");
 
             if let AuthState::Choose(auth_mechs) = state {
@@ -1842,15 +1837,15 @@ mod tests {
             $account:expr,
             $webauthn:expr
         ) => {{
-            let (session, state) = AuthSession::new(
-                $account.clone(),
-                ResolvedAccountPolicy::default(),
-                AuthIssueSession::Token,
-                false,
-                $webauthn,
-                duration_from_epoch_now(),
-                Source::Internal,
-            );
+            let asd = AuthSessionData {
+                account: $account.clone(),
+                account_policy: ResolvedAccountPolicy::default(),
+                issue: AuthIssueSession::Token,
+                webauthn: $webauthn,
+                ct: duration_from_epoch_now(),
+                source: Source::Internal,
+            };
+            let (session, state) = AuthSession::new(asd, false);
             let mut session = session.unwrap();
 
             if let AuthState::Choose(auth_mechs) = state {

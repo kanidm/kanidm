@@ -1184,8 +1184,12 @@ impl QueryServer {
                 .expect("unable to acquire db_ticket for qsr")
         };
 
+        #[allow(clippy::expect_used)]
         QueryServerReadTransaction {
-            be_txn: self.be.read().unwrap(),
+            be_txn: self
+                .be
+                .read()
+                .expect("unable to create backend read transaction"),
             schema: self.schema.read(),
             d_info: self.d_info.read(),
             system_config: self.system_config.read(),
@@ -1223,8 +1227,13 @@ impl QueryServer {
                 .expect("unable to acquire db_ticket for qsw")
         };
 
+        #[allow(clippy::expect_used)]
+        let mut be_txn = self
+            .be
+            .write()
+            .expect("unable to create backend write transaction");
+
         let schema_write = self.schema.write();
-        let mut be_txn = self.be.write().unwrap();
         let d_info = self.d_info.write();
         let system_config = self.system_config.write();
         let phase = self.phase.write();

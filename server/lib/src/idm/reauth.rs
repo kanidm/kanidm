@@ -2,7 +2,7 @@ use crate::prelude::*;
 
 use crate::credential::softlock::CredSoftLock;
 use crate::idm::account::Account;
-use crate::idm::authsession::AuthSession;
+use crate::idm::authsession::{AuthSession, AuthSessionData};
 use crate::idm::event::AuthResult;
 use crate::idm::server::IdmServerAuthTransaction;
 use crate::idm::AuthState;
@@ -129,17 +129,16 @@ impl<'a> IdmServerAuthTransaction<'a> {
         }
 
         // Create a re-auth session
-        let (auth_session, state) = AuthSession::new_reauth(
+        let asd: AuthSessionData = AuthSessionData {
             account,
             account_policy,
-            ident.session_id,
-            session,
-            session_cred_id,
             issue,
-            self.webauthn,
+            webauthn: self.webauthn,
             ct,
             source,
-        );
+        };
+        let (auth_session, state) =
+            AuthSession::new_reauth(asd, ident.session_id, session, session_cred_id);
 
         // Push the re-auth session to the session maps.
         match auth_session {
