@@ -30,3 +30,7 @@ kanidm-client-tools.tar.gz
 .coverage
 pykanidm/dist/
 pykanidm/site/
+
+# oauth2 integration test things
+scripts/oauth_proxy/client.secret
+scripts/oauth_proxy/envfile

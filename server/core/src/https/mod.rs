@@ -26,6 +26,7 @@ use axum::Router;
 use axum_csp::{CspDirectiveType, CspValue};
 use axum_macros::FromRef;
 use compact_jwt::{Jws, JwsSigner, JwsUnverified};
+use hashbrown::HashMap;
 use http::{HeaderMap, HeaderValue};
 use hyper::server::accept::Accept;
 use hyper::server::conn::{AddrStream, Http};
@@ -62,7 +63,7 @@ pub struct ServerState {
     pub jws_signer: compact_jwt::JwsSigner,
     pub jws_validator: compact_jwt::JwsValidator,
     // The SHA384 hashes of javascript files we're going to serve to users
-    pub js_files: Vec<JavaScriptFile>,
+    pub js_files: JavaScriptFiles,
     pub(crate) trust_x_forward_for: bool,
     pub csp_header: HeaderValue,
 }
@@ -90,51 +91,80 @@ impl ServerState {
     }
 }
 
-pub fn get_js_files(role: ServerRole) -> Vec<JavaScriptFile> {
-    let mut js_files: Vec<JavaScriptFile> = Vec::new();
+#[derive(Clone)]
+pub struct JavaScriptFiles {
+    all_pages: Vec<JavaScriptFile>,
+    selected: HashMap<String, JavaScriptFile>,
+}
+
+pub fn get_js_files(role: ServerRole) -> Result<JavaScriptFiles, ()> {
+    let mut all_pages: Vec<JavaScriptFile> = Vec::new();
+    let mut selected: HashMap<String, JavaScriptFile> = HashMap::new();
 
     if !matches!(role, ServerRole::WriteReplicaNoUI) {
         // let's set up the list of js module hashes
-        {
-            let filepath = "wasmloader.js";
+        for filepath in [
+            "wasmloader_admin.js",
+            "wasmloader_login_flows.js",
+            "wasmloader_user.js",
+        ] {
             match generate_integrity_hash(format!(
                 "{}/{}",
                 env!("KANIDM_WEB_UI_PKG_PATH").to_owned(),
                 filepath,
             )) {
-                Ok(hash) => js_files.push(JavaScriptFile {
-                    filepath,
-                    hash,
-                    filetype: Some("module".to_string()),
-                }),
+                Ok(hash) => {
+                    selected.insert(
+                        filepath.to_string(),
+                        JavaScriptFile {
+                            filepath,
+                            hash,
+                            filetype: Some("module".to_string()),
+                        },
+                    );
+                }
                 Err(err) => {
-                    admin_error!(?err, "Failed to generate integrity hash for wasmloader.js")
+                    admin_error!(
+                        ?err,
+                        "Failed to generate integrity hash for {} - cancelling startup!",
+                        filepath
+                    );
+                    return Err(());
                 }
             };
         }
-        // let's set up the list of non-module hashes
-        {
-            let filepath = "external/bootstrap.bundle.min.js";
+
+        for (filepath, filetype) in [
+            ("shared.js", Some("module".to_string())),
+            ("external/bootstrap.bundle.min.js", None),
+        ] {
+            // let's set up the list of non-wasm-module js files we want to serve
+            // for filepath in ["external/bootstrap.bundle.min.js", "shared.js"] {
             match generate_integrity_hash(format!(
                 "{}/{}",
                 env!("KANIDM_WEB_UI_PKG_PATH").to_owned(),
                 filepath,
             )) {
-                Ok(hash) => js_files.push(JavaScriptFile {
+                Ok(hash) => all_pages.push(JavaScriptFile {
                     filepath,
                     hash,
-                    filetype: None,
+                    filetype,
                 }),
                 Err(err) => {
                     admin_error!(
                         ?err,
-                        "Failed to generate integrity hash for bootstrap.bundle.min.js"
-                    )
+                        "Failed to generate integrity hash for {} - cancelling startup!",
+                        filepath
+                    );
+                    return Err(());
                 }
             }
         }
-    };
-    js_files
+    }
+    Ok(JavaScriptFiles {
+        all_pages,
+        selected,
+    })
 }
 
 pub async fn create_https_server(
@@ -149,14 +179,18 @@ pub async fn create_https_server(
         error!(?e, "Failed to get jws validator");
     })?;
 
-    let js_files = get_js_files(config.role);
+    let js_files = get_js_files(config.role)?;
     // set up the CSP headers
     // script-src 'self'
     //      'sha384-Zao7ExRXVZOJobzS/uMp0P1jtJz3TTqJU4nYXkdmsjpiVD+/wcwCyX7FGqRIqvIz'
     //      'sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM'
     //      'unsafe-eval';
-    let js_directives = js_files
-        .clone()
+    let mut all_js_files = js_files.all_pages.clone();
+    for (_, jsfile) in js_files.selected.clone() {
+        all_js_files.push(jsfile);
+    }
+
+    let js_directives = all_js_files
         .into_iter()
         .map(|f| f.hash)
         .collect::<Vec<String>>();
@@ -207,12 +241,18 @@ pub async fn create_https_server(
             // Create a spa router that captures everything at ui without key extraction.
 
             Router::new()
-                // direct users to the base app page. If a login is required,
-                // then views will take care of redirection. We shouldn't redir
-                // to login because that force clears previous sessions!
+                // Direct users to the base app page. If a login is required,
+                // then views will take care of redirection.
                 .route("/", get(|| async { Redirect::temporary("/ui") }))
                 .route("/manifest.webmanifest", get(manifest::manifest)) // skip_route_check
-                .nest("/ui", ui::spa_router())
+                // user UI app is the catch-all
+                .nest("/ui", ui::spa_router_user_ui())
+                // login flows app
+                .nest("/ui/login", ui::spa_router_login_flows())
+                .nest("/ui/reauth", ui::spa_router_login_flows())
+                .nest("/ui/oauth2", ui::spa_router_login_flows())
+                // admin app
+                .nest("/ui/admin", ui::spa_router_admin())
                 .layer(middleware::compression::new())
                 .route("/ui/images/oauth2/:rs_name", get(oauth2::oauth2_image_get))
             // skip_route_check
@@ -238,7 +278,8 @@ pub async fn create_https_server(
             }
             let pkg_router = Router::new()
                 .nest_service("/pkg", ServeDir::new(pkg_path).precompressed_br())
-                .layer(middleware::compression::new());
+                .layer(middleware::compression::new())
+                .layer(from_fn(middleware::caching::cache_me));
             app.merge(pkg_router)
         }
     };

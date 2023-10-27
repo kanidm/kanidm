@@ -1,4 +1,6 @@
 //! Because consistency is great!
+//!
+pub mod uri;
 
 pub const CONTENT_TYPE_JPG: &str = "image/jpeg";
 pub const CONTENT_TYPE_PNG: &str = "image/png";
@@ -6,7 +8,7 @@ pub const CONTENT_TYPE_GIF: &str = "image/gif";
 pub const CONTENT_TYPE_SVG: &str = "image/svg+xml";
 pub const CONTENT_TYPE_WEBP: &str = "image/webp";
 
-// for when the user uploads things to the various image endpoints
+// For when the user uploads things to the various image endpoints, these are the valid content-types.
 pub const VALID_IMAGE_UPLOAD_CONTENT_TYPES: [&str; 5] = [
     CONTENT_TYPE_JPG,
     CONTENT_TYPE_PNG,
@@ -22,13 +24,14 @@ pub const DEFAULT_CLIENT_CONFIG_PATH: &str = "/etc/kanidm/config";
 /// The user-owned path for Kanidm client config
 pub const DEFAULT_CLIENT_CONFIG_PATH_HOME: &str = "~/.config/kanidm";
 
-/// The default bind address for the Kanidm server
+/// The default HTTPS bind address for the Kanidm server
 pub const DEFAULT_SERVER_ADDRESS: &str = "127.0.0.1:8443";
 pub const DEFAULT_SERVER_LOCALHOST: &str = "localhost:8443";
+/// The default LDAP bind address for the Kanidm server
 pub const DEFAULT_LDAP_ADDRESS: &str = "127.0.0.1:636";
 pub const DEFAULT_LDAP_LOCALHOST: &str = "localhost:636";
 
-/// IF YOU CHANGE THESE VALUES YOU BREAK EVERYTHING
+// IF YOU CHANGE THESE VALUES YOU BREAK EVERYTHING
 pub const ATTR_ACCOUNT_EXPIRE: &str = "account_expire";
 pub const ATTR_ACCOUNT_VALID_FROM: &str = "account_valid_from";
 pub const ATTR_ACCOUNT: &str = "account";
@@ -185,15 +188,18 @@ pub const LDAP_ATTR_OBJECTCLASS: &str = "objectClass";
 pub const LDAP_ATTR_OU: &str = "ou";
 pub const LDAP_CLASS_GROUPOFNAMES: &str = "groupofnames";
 
-// rust can't deal with this being compiled out, don't try and #[cfg()] them
+// Rust can't deal with this being compiled out, don't try and #[cfg()] them
 pub const TEST_ATTR_NON_EXIST: &str = "non-exist";
 pub const TEST_ATTR_TEST_ATTR: &str = "testattr";
 pub const TEST_ATTR_EXTRA: &str = "extra";
 pub const TEST_ATTR_NUMBER: &str = "testattrnumber";
 pub const TEST_ATTR_NOTALLOWED: &str = "notallowed";
 
+/// HTTP Header containing an auth session ID for when you're going through an auth flow
 pub const KSESSIONID: &str = "X-KANIDM-AUTH-SESSION-ID";
+/// HTTP Header containing the backend operation ID
 pub const KOPID: &str = "X-KANIDM-OPID";
+/// HTTP Header containing the Kanidm server version
 pub const KVERSION: &str = "X-KANIDM-VERSION";
 
 pub const X_FORWARDED_FOR: &str = "x-forwarded-for";

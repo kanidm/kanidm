@@ -14,6 +14,9 @@ use http::header::{
 };
 use http::{HeaderMap, HeaderValue, StatusCode};
 use hyper::Body;
+use kanidm_proto::constants::uri::{
+    OAUTH2_AUTHORISE, OAUTH2_AUTHORISE_PERMIT, OAUTH2_AUTHORISE_REJECT,
+};
 use kanidm_proto::constants::APPLICATION_JSON;
 use kanidm_proto::oauth2::{AccessTokenResponse, AuthorisationResponse, OidcDiscoveryResponse};
 use kanidmd_lib::idm::oauth2::{
@@ -742,19 +745,19 @@ pub fn route_setup(state: ServerState) -> Router<ServerState> {
         // ⚠️  ⚠️   WARNING  ⚠️  ⚠️
         // IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS
         .route(
-            "/oauth2/authorise",
+            OAUTH2_AUTHORISE,
             post(oauth2_authorise_post).get(oauth2_authorise_get),
         )
         // ⚠️  ⚠️   WARNING  ⚠️  ⚠️
         // IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS
         .route(
-            "/oauth2/authorise/permit",
+            OAUTH2_AUTHORISE_PERMIT,
             post(oauth2_authorise_permit_post).get(oauth2_authorise_permit_get),
         )
         // ⚠️  ⚠️   WARNING  ⚠️  ⚠️
         // IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS
         .route(
-            "/oauth2/authorise/reject",
+            OAUTH2_AUTHORISE_REJECT,
             post(oauth2_authorise_reject_post).get(oauth2_authorise_reject_get),
         )
         // ⚠️  ⚠️   WARNING  ⚠️  ⚠️

@@ -1,7 +1,7 @@
 [package]
 name = "kanidmd_lib_macros"
 version = "0.1.0"
-edition = "2021"
+edition = { workspace = true }
 
 [lib]
 proc-macro = true
@@ -12,4 +12,3 @@ doctest = false
 proc-macro2 = { workspace = true }
 quote = { workspace = true }
 syn = { workspace = true }
-

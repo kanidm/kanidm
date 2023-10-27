@@ -4,6 +4,7 @@ use std::convert::TryFrom;
 use std::str::FromStr;
 
 use compact_jwt::{JwkKeySet, JwsValidator, OidcToken, OidcUnverified};
+use kanidm_proto::constants::uri::{OAUTH2_AUTHORISE, OAUTH2_AUTHORISE_PERMIT};
 use kanidm_proto::constants::*;
 use kanidm_proto::oauth2::{
     AccessTokenIntrospectRequest, AccessTokenIntrospectResponse, AccessTokenRequest,
@@ -221,7 +222,7 @@ async fn test_oauth2_openid_basic_flow(rsclient: KanidmClient) {
     let (pkce_code_challenge, pkce_code_verifier) = PkceCodeChallenge::new_random_sha256();
 
     let response = client
-        .get(rsclient.make_url("/oauth2/authorise"))
+        .get(rsclient.make_url(OAUTH2_AUTHORISE))
         .bearer_auth(oauth_test_uat.clone())
         .query(&[
             ("response_type", "code"),
@@ -261,7 +262,7 @@ async fn test_oauth2_openid_basic_flow(rsclient: KanidmClient) {
     // state and code.
 
     let response = client
-        .get(rsclient.make_url("/oauth2/authorise/permit"))
+        .get(rsclient.make_url(OAUTH2_AUTHORISE_PERMIT))
         .bearer_auth(oauth_test_uat)
         .query(&[("token", consent_token.as_str())])
         .send()
@@ -521,7 +522,7 @@ async fn test_oauth2_openid_public_flow(rsclient: KanidmClient) {
     let (pkce_code_challenge, pkce_code_verifier) = PkceCodeChallenge::new_random_sha256();
 
     let response = client
-        .get(rsclient.make_url("/oauth2/authorise"))
+        .get(rsclient.make_url(OAUTH2_AUTHORISE))
         .bearer_auth(oauth_test_uat.clone())
         .query(&[
             ("response_type", "code"),
@@ -560,7 +561,7 @@ async fn test_oauth2_openid_public_flow(rsclient: KanidmClient) {
     // Step 2 - we now send the consent get to the server which yields a redirect with a
     // state and code.
     let response = client
-        .get(rsclient.make_url("/oauth2/authorise/permit"))
+        .get(rsclient.make_url(OAUTH2_AUTHORISE_PERMIT))
         .bearer_auth(oauth_test_uat)
         .query(&[("token", consent_token.as_str())])
         .send()

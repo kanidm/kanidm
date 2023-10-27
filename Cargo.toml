@@ -13,7 +13,10 @@ members = [
     "unix_integration",
     "unix_integration/nss_kanidm",
     "unix_integration/pam_kanidm",
-    "server/web_ui",
+    "server/web_ui/admin",
+    "server/web_ui/login_flows",
+    "server/web_ui/user",
+    "server/web_ui/shared",
     "server/daemon",
     "server/lib",
     "server/lib-macros",
@@ -125,6 +128,7 @@ futures-concurrency = "^3.1.0"
 futures-util = { version = "^0.3.21", features = ["sink"] }
 gix = { version = "0.53.1", default-features = false }
 gloo = "^0.8.1"
+gloo-utils = "0.2.0"
 hashbrown = { version = "0.14.2", features = ["serde", "inline-more", "ahash"] }
 hex = "^0.4.3"
 http = "0.2.9"
@@ -138,6 +142,7 @@ image = { version = "0.24.7", default-features = false, features = [
 ] }
 enum-iterator = "1.4.0"
 js-sys = "^0.3.63"
+kanidmd_web_ui_shared = { path = "./server/web_ui/shared" }
 # REMOVE this
 lazy_static = "^1.4.0"
 ldap3_client = "^0.3.5"

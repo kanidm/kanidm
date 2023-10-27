@@ -17,7 +17,7 @@ doctest = false
 [dependencies]
 
 [target.'cfg(target_family = "windows")'.dependencies]
-whoami = {workspace = true}
+whoami = { workspace = true }
 
 [target.'cfg(not(target_family = "windows"))'.dependencies]
 kanidm_utils_users = { workspace = true }

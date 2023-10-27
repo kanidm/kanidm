@@ -29,6 +29,7 @@ cron = { workspace = true }
 filetime = { workspace = true }
 futures = { workspace = true }
 futures-util = { workspace = true }
+hashbrown = { workspace = true }
 http = { workspace = true }
 hyper = { workspace = true }
 kanidm_proto = { workspace = true }

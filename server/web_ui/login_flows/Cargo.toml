@@ -1,0 +1,45 @@
+[package]
+name = "kanidmd_web_ui_login_flows"
+description = "Kanidm Server Web UI - Login Flows"
+documentation = "https://docs.rs/kanidm/latest/kanidm/"
+
+version = { workspace = true }
+authors = [
+    "William Brown <william@blackhats.net.au>",
+    "James Hodgkinson <james@terminaloutcomes.com>",
+]
+rust-version = { workspace = true }
+edition = { workspace = true }
+license = { workspace = true }
+homepage = { workspace = true }
+repository = { workspace = true }
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+gloo = { workspace = true }
+js-sys = { workspace = true }
+kanidm_proto = { workspace = true, features = ["wasm"] }
+kanidmd_web_ui_shared = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+serde-wasm-bindgen = { workspace = true }
+wasm-bindgen = { workspace = true }
+wasm-bindgen-futures = { workspace = true }
+url = { workspace = true }
+uuid = { workspace = true }
+yew = { workspace = true, features = ["csr"] }
+yew-router = { workspace = true }
+time = { workspace = true }
+lazy_static.workspace = true
+gloo-utils = { workspace = true }
+web-sys = { workspace = true, features = [
+    "CredentialsContainer",
+    "Location",
+    "Navigator",
+    "Window",
+] }
+
+[dev-dependencies]
+wasm-bindgen-test = { workspace = true }

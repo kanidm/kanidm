@@ -133,7 +133,7 @@ install-tools:
 codespell: ## spell-check things.
 codespell:
 	codespell -c \
-	-L 'crate,unexpect,Pres,pres,ACI,aci,ser,te,ue,unx,aNULL' \
+	--ignore-words .codespell_ignore \
 	--skip='./target,./pykanidm/.venv,./pykanidm/.mypy_cache,./.mypy_cache,./pykanidm/poetry.lock' \
 	--skip='./book/*.js' \
 	--skip='./book/book/*' \
@@ -141,7 +141,10 @@ codespell:
 	--skip='./docs/*,./.git' \
 	--skip='*.svg' \
 	--skip='./rlm_python/mods-available/eap' \
-	--skip='./server/web_ui/static/external,./server/web_ui/pkg/external' \
+	--skip='./server/web_ui/static/external' \
+	--skip='./server/web_ui/pkg/external' \
+	--skip='./server/web_ui/shared/static/external' \
+	--skip='./server/web_ui/admin/static/external,./server/web_ui/admin/pkg/external' \
 	--skip='./server/lib/src/constants/system_config.rs,./pykanidm/site,./server/lib/src/constants/*.json'
 
 .PHONY: test/pykanidm/pytest
@@ -277,7 +280,7 @@ cert/clean:
 
 .PHONY: webui
 webui: ## Build the WASM web frontend
-	cd server/web_ui && ./build_wasm_release.sh
+	cd server/web_ui && ./build_wasm.sh
 
 .PHONY: webui/test
 webui/test: ## Run wasm-pack test
