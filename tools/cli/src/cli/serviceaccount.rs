@@ -365,36 +365,29 @@ impl ServiceAccountOpt {
                 AccountValidity::Show(ano) => {
                     let client = ano.copt.to_client(OpType::Read).await;
 
+                    let entry = match client
+                        .idm_service_account_get(ano.aopts.account_id.as_str())
+                        .await
+                    {
+                        Err(err) => {
+                            error!(
+                                "No account {} found, or other error occurred: {:?}",
+                                ano.aopts.account_id.as_str(),
+                                err
+                            );
+                            return;
+                        }
+                        Ok(val) => match val {
+                            Some(val) => val,
+                            None => {
+                                error!("No account {} found!", ano.aopts.account_id.as_str());
+                                return;
+                            }
+                        },
+                    };
+
                     println!("user: {}", ano.aopts.account_id.as_str());
-                    let ex = match client
-                        .idm_service_account_get_attr(
-                            ano.aopts.account_id.as_str(),
-                            ATTR_ACCOUNT_EXPIRE,
-                        )
-                        .await
-                    {
-                        Ok(v) => v,
-                        Err(e) => {
-                            error!("Error -> {:?}", e);
-                            return;
-                        }
-                    };
-
-                    let vf = match client
-                        .idm_service_account_get_attr(
-                            ano.aopts.account_id.as_str(),
-                            ATTR_ACCOUNT_VALID_FROM,
-                        )
-                        .await
-                    {
-                        Ok(v) => v,
-                        Err(e) => {
-                            error!("Error -> {:?}", e);
-                            return;
-                        }
-                    };
-
-                    if let Some(t) = vf {
+                    if let Some(t) = entry.attrs.get(ATTR_ACCOUNT_VALID_FROM) {
                         // Convert the time to local timezone.
                         let t = OffsetDateTime::parse(&t[0], &Rfc3339)
                             .map(|odt| {
@@ -412,7 +405,7 @@ impl ServiceAccountOpt {
                         println!("valid after: any time");
                     }
 
-                    if let Some(t) = ex {
+                    if let Some(t) = entry.attrs.get(ATTR_ACCOUNT_EXPIRE) {
                         let t = OffsetDateTime::parse(&t[0], &Rfc3339)
                             .map(|odt| {
                                 odt.to_offset(
