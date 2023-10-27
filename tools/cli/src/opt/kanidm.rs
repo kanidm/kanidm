@@ -56,8 +56,8 @@ pub struct CommonOpt {
         default_value_t = false
     )]
     skip_hostname_verification: bool,
-    #[clap(env = "KANIDM_TOKEN_CACHE_PATH", hide = true)]
     /// Path to a file to cache tokens in, defaults to ~/.cache/kanidm_tokens
+    #[clap(env = "KANIDM_TOKEN_CACHE_PATH", hide = true)]
     token_cache_path: Option<String>,
 }
 
