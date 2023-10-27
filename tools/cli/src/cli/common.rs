@@ -8,6 +8,8 @@ use dialoguer::{Confirm, Select};
 use kanidm_client::{KanidmClient, KanidmClientBuilder};
 use kanidm_proto::constants::{DEFAULT_CLIENT_CONFIG_PATH, DEFAULT_CLIENT_CONFIG_PATH_HOME};
 use kanidm_proto::v1::UserAuthToken;
+use time::format_description::well_known::Rfc3339;
+use time::OffsetDateTime;
 
 use crate::session::read_tokens;
 use crate::{CommonOpt, LoginOpt, ReauthOpt};
@@ -375,3 +377,37 @@ pub fn prompt_for_username_get_token() -> Result<String, String> {
     }
 }
 */
+
+/// This parses the input for the person/service-account expire-at CLI commands
+///
+/// If it fails, return error, if it needs to *clear* the result, return Ok(None),
+/// otherwise return Ok(Some(String)) which is the new value to set.
+pub(crate) fn try_expire_at_from_string(input: &str) -> Result<Option<String>, ()> {
+    match input {
+        "any" | "never" | "clear" => Ok(None),
+        "now" => match OffsetDateTime::now_utc().format(&Rfc3339) {
+            Ok(s) => Ok(Some(s)),
+            Err(e) => {
+                error!(err = ?e, "Unable to format current time to rfc3339");
+                Err(())
+            }
+        },
+        "epoch" => match OffsetDateTime::UNIX_EPOCH.format(&Rfc3339) {
+            Ok(val) => Ok(Some(val)),
+            Err(err) => {
+                error!("Failed to format epoch timestamp as RFC3339: {:?}", err);
+                Err(())
+            }
+        },
+        _ => {
+            // fall back to parsing it as a date
+            match OffsetDateTime::parse(input, &Rfc3339) {
+                Ok(_) => Ok(Some(input.to_string())),
+                Err(err) => {
+                    error!("Failed to parse supplied timestamp: {:?}", err);
+                    Err(())
+                }
+            }
+        }
+    }
+}

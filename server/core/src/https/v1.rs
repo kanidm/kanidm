@@ -1337,12 +1337,22 @@ pub async fn service_account_id_credential_status_get(
     Extension(kopid): Extension<KOpId>,
     Path(id): Path<String>,
 ) -> Result<Json<CredentialStatus>, WebError> {
-    state
+    match state
         .qe_r_ref
-        .handle_idmcredentialstatus(kopid.uat, id, kopid.eventid)
+        .handle_idmcredentialstatus(kopid.uat, id.clone(), kopid.eventid)
         .await
         .map(Json::from)
-        .map_err(WebError::from)
+    {
+        Ok(val) => Ok(val),
+        Err(err) => {
+            if let OperationError::NoMatchingAttributes = err {
+                debug!("No credentials set on account {}, returning empty list", id);
+                Ok(Json(CredentialStatus { creds: Vec::new() }))
+            } else {
+                Err(WebError::from(err))
+            }
+        }
+    }
 }
 
 #[utoipa::path(
@@ -1363,12 +1373,22 @@ pub async fn person_get_id_credential_status(
     Extension(kopid): Extension<KOpId>,
     Path(id): Path<String>,
 ) -> Result<Json<CredentialStatus>, WebError> {
-    state
+    match state
         .qe_r_ref
-        .handle_idmcredentialstatus(kopid.uat, id, kopid.eventid)
+        .handle_idmcredentialstatus(kopid.uat, id.clone(), kopid.eventid)
         .await
         .map(Json::from)
-        .map_err(WebError::from)
+    {
+        Ok(val) => Ok(val),
+        Err(err) => {
+            if let OperationError::NoMatchingAttributes = err {
+                debug!("No credentials set on person {}, returning empty list", id);
+                Ok(Json(CredentialStatus { creds: Vec::new() }))
+            } else {
+                Err(WebError::from(err))
+            }
+        }
+    }
 }
 
 #[utoipa::path(

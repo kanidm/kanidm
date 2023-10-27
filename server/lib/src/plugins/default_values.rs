@@ -58,12 +58,9 @@ impl DefaultValues {
             // We have to do this rather than get_uuid here because at this stage we haven't
             // scheme validated the entry so it's uuid could be missing in theory.
 
-            let e_uuid = match e.get_ava_single_uuid(Attribute::Uuid) {
-                Some(e_uuid) => e_uuid,
-                None => {
-                    trace!("entry does not contain a uuid");
-                    return Ok(());
-                }
+            let Some(e_uuid) = e.get_ava_single_uuid(Attribute::Uuid) else {
+                trace!("entry does not contain a uuid");
+                return Ok(());
             };
 
             if e_uuid == UUID_IDM_ALL_ACCOUNTS {

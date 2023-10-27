@@ -1695,7 +1695,7 @@ impl Value {
             Value::Iname(s) => s.clone(),
             Value::Uuid(u) => u.as_hyphenated().to_string(),
             // We display the tag and fingerprint.
-            Value::SshKey(tag, key) => format!("{}: {}", tag, key.to_string()),
+            Value::SshKey(tag, key) => format!("{}: {}", tag, key),
             Value::Spn(n, r) => format!("{n}@{r}"),
             _ => unreachable!(
                 "You've specified the wrong type for the attribute, got: {:?}",
