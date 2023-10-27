@@ -14,7 +14,7 @@ impl GroupAccountPolicyOpt {
         match self {
             GroupAccountPolicyOpt::Enable { name, copt } => {
                 let client = copt.to_client(OpType::Write).await;
-                if let Err(e) = client.group_account_policy_enable(&name).await {
+                if let Err(e) = client.group_account_policy_enable(name).await {
                     handle_client_error(e, &copt.output_mode);
                 } else {
                     println!("Group enabled for account policy.");
@@ -23,7 +23,7 @@ impl GroupAccountPolicyOpt {
             GroupAccountPolicyOpt::AuthSessionExpiry { name, expiry, copt } => {
                 let client = copt.to_client(OpType::Write).await;
                 if let Err(e) = client
-                    .group_account_policy_authsession_expiry_set(&name, *expiry)
+                    .group_account_policy_authsession_expiry_set(name, *expiry)
                     .await
                 {
                     handle_client_error(e, &copt.output_mode);
@@ -34,7 +34,7 @@ impl GroupAccountPolicyOpt {
             GroupAccountPolicyOpt::PrivilegedSessionExpiry { name, expiry, copt } => {
                 let client = copt.to_client(OpType::Write).await;
                 if let Err(e) = client
-                    .group_account_policy_privilege_expiry_set(&name, *expiry)
+                    .group_account_policy_privilege_expiry_set(name, *expiry)
                     .await
                 {
                     handle_client_error(e, &copt.output_mode);

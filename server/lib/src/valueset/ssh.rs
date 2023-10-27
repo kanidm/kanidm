@@ -44,7 +44,7 @@ impl ValueSetSshKey {
         let map = data
             .iter()
             .map(|(tag, data)| {
-                SshPublicKey::from_string(&data)
+                SshPublicKey::from_string(data)
                     .map_err(|err| {
                         warn!(%tag, ?err, "discarding corrupted ssh public key");
                         OperationError::VS0001IncomingReplSshPublicKey

@@ -756,7 +756,6 @@ impl Display for TaskName {
                 TaskName::LdapActor => "LDAP Acceptor Actor",
                 TaskName::Replication => "Replication",
             }
-            .to_string()
         )
     }
 }
