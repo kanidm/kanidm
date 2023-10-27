@@ -280,7 +280,7 @@ impl PersonOpt {
                 }
             }
             PersonOpt::Get(aopt) => {
-                let client = aopt.copt.to_client(OpType::Write).await;
+                let client = aopt.copt.to_client(OpType::Read).await;
                 match client
                     .idm_person_account_get(aopt.aopts.account_id.as_str())
                     .await
