@@ -2,6 +2,9 @@
 //!
 pub mod uri;
 
+/// The default location for the `kanidm` CLI tool's token cache.
+pub const CLIENT_TOKEN_CACHE: &str = "~/.cache/kanidm_tokens";
+
 pub const CONTENT_TYPE_JPG: &str = "image/jpeg";
 pub const CONTENT_TYPE_PNG: &str = "image/png";
 pub const CONTENT_TYPE_GIF: &str = "image/gif";

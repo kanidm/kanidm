@@ -56,6 +56,9 @@ pub struct CommonOpt {
         default_value_t = false
     )]
     skip_hostname_verification: bool,
+    #[clap(long = "token-cache-path", env = "KANIDM_TOKEN_CACHE_PATH")]
+    /// Path to a file to cache tokens in, defaults to ~/.cache/kanidm_tokens
+    token_cache_path: Option<String>,
 }
 
 #[derive(Debug, Args)]
@@ -154,8 +157,8 @@ pub enum GroupOpt {
     #[clap(name = "account-policy")]
     AccountPolicy {
         #[clap(subcommand)]
-        commands: GroupAccountPolicyOpt
-    }
+        commands: GroupAccountPolicyOpt,
+    },
 }
 
 #[derive(Debug, Args)]
@@ -597,10 +600,10 @@ pub struct LogoutOpt {
 pub enum SessionOpt {
     #[clap(name = "list")]
     /// List current active sessions
-    List(DebugOpt),
+    List(CommonOpt),
     #[clap(name = "cleanup")]
     /// Remove sessions that have expired or are invalid.
-    Cleanup(DebugOpt),
+    Cleanup(CommonOpt),
 }
 
 #[derive(Debug, Args)]
@@ -852,7 +855,6 @@ pub enum DeniedNamesOpt {
         names: Vec<String>,
     },
 }
-
 
 #[derive(Debug, Subcommand)]
 pub enum DomainOpt {

@@ -38,11 +38,19 @@ reqwest = { workspace = true, default-features = false, features = ["cookies"] }
 sketching = { workspace = true }
 testkit-macros = { workspace = true }
 tracing = { workspace = true, features = ["attributes"] }
-tokio = { workspace = true, features = ["net", "sync", "io-util", "macros"] }
+tokio = { workspace = true, features = [
+    "net",
+    "sync",
+    "io-util",
+    "macros",
+    "rt",
+] }
 openssl = { workspace = true }
 lazy_static = { workspace = true }
 petgraph = { version = "0.6.4", features = ["serde", "serde-1"] }
 regex.workspace = true
+assert_cmd = "2.0.12"
+tempfile.workspace = true
 
 
 [build-dependencies]

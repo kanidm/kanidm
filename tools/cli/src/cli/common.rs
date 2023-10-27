@@ -100,7 +100,7 @@ impl CommonOpt {
     async fn try_to_client(&self, optype: OpType) -> Result<KanidmClient, ToClientError> {
         let client = self.to_unauth_client();
         // Read the token file.
-        let tokens = match read_tokens() {
+        let tokens = match read_tokens(client.get_token_cache_path()) {
             Ok(t) => t,
             Err(_e) => {
                 error!("Error retrieving authentication token store");
@@ -187,7 +187,7 @@ impl CommonOpt {
                 } else {
                     // Unable to automatically select the user because multiple tokens exist
                     // so we'll prompt the user to select one
-                    match prompt_for_username_get_values() {
+                    match prompt_for_username_get_values(client.get_token_cache_path()) {
                         Ok(tuple) => tuple,
                         Err(msg) => {
                             error!("Error: {}", msg);
@@ -309,8 +309,10 @@ impl CommonOpt {
 /// This parses the token store and prompts the user to select their username, returns the username/token as a tuple of Strings
 ///
 /// Used to reduce duplication in implementing [prompt_for_username_get_username] and [prompt_for_username_get_token]
-pub fn prompt_for_username_get_values() -> Result<(String, String), String> {
-    let tokens = match read_tokens() {
+pub fn prompt_for_username_get_values(
+    token_cache_path: String,
+) -> Result<(String, String), String> {
+    let tokens = match read_tokens(token_cache_path) {
         Ok(value) => value,
         _ => return Err("Error retrieving authentication token store".to_string()),
     };
@@ -353,8 +355,8 @@ pub fn prompt_for_username_get_values() -> Result<(String, String), String> {
 /// This parses the token store and prompts the user to select their username, returns the username as a String
 ///
 /// Powered by [prompt_for_username_get_values]
-pub fn prompt_for_username_get_username() -> Result<String, String> {
-    match prompt_for_username_get_values() {
+pub fn prompt_for_username_get_username(token_cache_path: String) -> Result<String, String> {
+    match prompt_for_username_get_values(token_cache_path) {
         Ok(value) => {
             let (f_user, _) = value;
             Ok(f_user)

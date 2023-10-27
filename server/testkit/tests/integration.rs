@@ -1,7 +1,11 @@
 //! Integration tests using browser automation
 
+use assert_cmd::Command;
+use tempfile::tempdir;
+
 use kanidm_client::KanidmClient;
 use kanidmd_testkit::login_put_admin_idm_admins;
+use testkit_macros::cli_kanidm;
 
 /// Tries to handle closing the webdriver session if there's an error
 #[allow(unused_macros)]
@@ -218,4 +222,40 @@ async fn test_idm_domain_set_ldap_basedn(rsclient: KanidmClient) {
         .idm_domain_set_ldap_basedn("krabsarekool")
         .await
         .is_err());
+}
+
+#[kanidmd_testkit::test(threads = 4)]
+/// Testing the CLI doing things.
+async fn test_integration_with_assert_cmd(rsclient: KanidmClient) {
+    // setup the admin things
+    login_put_admin_idm_admins(&rsclient).await;
+
+    let token_cache_dir = tempdir().unwrap();
+    let token_cache_path = format!("{}/kanidm_tokens", token_cache_dir.path().display());
+
+    // we have to spawn in another thread for ... reasons
+    let _ = tokio::task::spawn_blocking(move || {
+        let anon_login = cli_kanidm!()
+            .args(&["login", "-D", "anonymous"])
+            .output()
+            .unwrap();
+        println!("Login Output: {:?}", anon_login);
+
+        for _ in 0..5 {
+            println!("");
+        }
+
+        let anon_whoami = cli_kanidm!()
+            .args(&["self", "whoami", "-D", "anonymous"])
+            .output()
+            .unwrap();
+        assert!(anon_whoami.status.success());
+        println!("Output: {:?}", anon_whoami);
+
+        for _ in 0..5 {
+            println!("");
+        }
+    })
+    .await;
+    println!("Success!");
 }
