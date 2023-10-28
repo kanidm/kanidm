@@ -87,7 +87,7 @@ pub struct KanidmClientBuilder {
     ca: Option<reqwest::Certificate>,
     connect_timeout: Option<u64>,
     use_system_proxies: bool,
-    /// WHere to store the tokens, modify in testing
+    /// Where to store auth tokens, only use in testing!
     token_cache_path: Option<String>,
 }
 
@@ -153,7 +153,7 @@ pub struct KanidmClient {
     pub(crate) bearer_token: RwLock<Option<String>>,
     pub(crate) auth_session_id: RwLock<Option<String>>,
     pub(crate) check_version: Mutex<bool>,
-    /// WHere to store the tokens when you auth
+    /// Where to store the tokens when you auth, only modify in testing.
     token_cache_path: String,
 }
 

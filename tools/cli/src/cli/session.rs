@@ -31,8 +31,8 @@ impl CommonOpt {
 }
 
 #[allow(clippy::result_unit_err)]
-pub fn read_tokens(token_path: String) -> Result<BTreeMap<String, String>, ()> {
-    let token_path = PathBuf::from(shellexpand::tilde(&token_path).into_owned());
+pub fn read_tokens(token_path: &str) -> Result<BTreeMap<String, String>, ()> {
+    let token_path = PathBuf::from(shellexpand::tilde(token_path).into_owned());
     if !token_path.exists() {
         debug!(
             "Token cache file path {:?} does not exist, returning an empty token store.",
@@ -79,9 +79,9 @@ pub fn read_tokens(token_path: String) -> Result<BTreeMap<String, String>, ()> {
 }
 
 #[allow(clippy::result_unit_err)]
-pub fn write_tokens(tokens: &BTreeMap<String, String>, token_path: String) -> Result<(), ()> {
+pub fn write_tokens(tokens: &BTreeMap<String, String>, token_path: &str) -> Result<(), ()> {
     let token_dir = PathBuf::from(shellexpand::tilde(TOKEN_DIR).into_owned());
-    let token_path = PathBuf::from(shellexpand::tilde(&token_path).into_owned());
+    let token_path = PathBuf::from(shellexpand::tilde(token_path).into_owned());
 
     token_dir
         .parent()
@@ -311,7 +311,7 @@ async fn process_auth_state(
     }
 
     // Read the current tokens
-    let mut tokens = read_tokens(client.get_token_cache_path()).unwrap_or_else(|_| {
+    let mut tokens = read_tokens(&client.get_token_cache_path()).unwrap_or_else(|_| {
         error!("Error retrieving authentication token store");
         std::process::exit(1);
     });
@@ -343,7 +343,7 @@ async fn process_auth_state(
     tokens.insert(spn.clone(), tonk);
 
     // write them out.
-    if write_tokens(&tokens, client.get_token_cache_path()).is_err() {
+    if write_tokens(&tokens, &client.get_token_cache_path()).is_err() {
         error!("Error persisting authentication token store");
         std::process::exit(1);
     };
@@ -449,7 +449,7 @@ impl LogoutOpt {
                 None => {
                     // check if we're in a tty
                     if std::io::stdin().is_terminal() {
-                        match prompt_for_username_get_username(self.copt.get_token_cache_path()) {
+                        match prompt_for_username_get_username(&self.copt.get_token_cache_path()) {
                             Ok(value) => value,
                             Err(msg) => {
                                 error!("{}", msg);
@@ -498,7 +498,7 @@ impl LogoutOpt {
             uat.spn
         };
 
-        let mut tokens = read_tokens(self.copt.get_token_cache_path()).unwrap_or_else(|_| {
+        let mut tokens = read_tokens(&self.copt.get_token_cache_path()).unwrap_or_else(|_| {
             error!("Error retrieving authentication token store");
             std::process::exit(1);
         });
@@ -506,7 +506,7 @@ impl LogoutOpt {
         // Remove our old one
         if tokens.remove(&spn).is_some() {
             // write them out.
-            if let Err(_e) = write_tokens(&tokens, self.copt.get_token_cache_path()) {
+            if let Err(_e) = write_tokens(&tokens, &self.copt.get_token_cache_path()) {
                 error!("Error persisting authentication token store");
                 std::process::exit(1);
             };
@@ -524,7 +524,7 @@ impl SessionOpt {
         }
     }
 
-    fn read_valid_tokens(token_cache_path: String) -> BTreeMap<String, (String, UserAuthToken)> {
+    fn read_valid_tokens(token_cache_path: &str) -> BTreeMap<String, (String, UserAuthToken)> {
         read_tokens(token_cache_path)
             .unwrap_or_else(|_| {
                 error!("Error retrieving authentication token store");
@@ -554,14 +554,14 @@ impl SessionOpt {
     pub async fn exec(&self) {
         match self {
             SessionOpt::List(copt) => {
-                let tokens = Self::read_valid_tokens(copt.get_token_cache_path());
+                let tokens = Self::read_valid_tokens(&copt.get_token_cache_path());
                 for (_, uat) in tokens.values() {
                     println!("---");
                     println!("{}", uat);
                 }
             }
             SessionOpt::Cleanup(copt) => {
-                let tokens = Self::read_valid_tokens(copt.get_token_cache_path());
+                let tokens = Self::read_valid_tokens(&copt.get_token_cache_path());
                 let start_len = tokens.len();
 
                 let now = time::OffsetDateTime::now_utc();
@@ -584,7 +584,7 @@ impl SessionOpt {
 
                 let end_len = tokens.len();
 
-                if let Err(_e) = write_tokens(&tokens, copt.get_token_cache_path()) {
+                if let Err(_e) = write_tokens(&tokens, &copt.get_token_cache_path()) {
                     error!("Error persisting authentication token store");
                     std::process::exit(1);
                 };

@@ -23,7 +23,7 @@ impl DeniedNamesOpt {
                         eprintln!("--");
                         eprintln!("Success");
                     }
-                    Err(e) => crate::handle_client_error(e, &copt.output_mode),
+                    Err(e) => crate::handle_client_error(e, copt.output_mode),
                 }
             }
             DeniedNamesOpt::Append { copt, names } => {
@@ -31,7 +31,7 @@ impl DeniedNamesOpt {
 
                 match client.system_denied_names_append(names).await {
                     Ok(_) => println!("Success"),
-                    Err(e) => handle_client_error(e, &copt.output_mode),
+                    Err(e) => handle_client_error(e, copt.output_mode),
                 }
             }
             DeniedNamesOpt::Remove { copt, names } => {
@@ -39,7 +39,7 @@ impl DeniedNamesOpt {
 
                 match client.system_denied_names_remove(names).await {
                     Ok(_) => println!("Success"),
-                    Err(e) => handle_client_error(e, &copt.output_mode),
+                    Err(e) => handle_client_error(e, copt.output_mode),
                 }
             }
         }

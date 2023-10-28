@@ -43,7 +43,7 @@ mod system_config;
 mod webauthn;
 
 /// Throws an error and exits the program when we get an error
-pub(crate) fn handle_client_error(response: ClientError, _output_mode: &OutputMode) {
+pub(crate) fn handle_client_error(response: ClientError, _output_mode: OutputMode) {
     match response {
         ClientError::Http(status, error, message) => {
             let error_msg = match error {
@@ -101,7 +101,7 @@ impl SelfOpt {
                             }
                         }
                     }
-                    Err(e) => handle_client_error(e, &copt.output_mode),
+                    Err(e) => handle_client_error(e, copt.output_mode),
                 }
             }
             SelfOpt::IdentifyUser(copt) => {

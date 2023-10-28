@@ -38,7 +38,7 @@ impl GroupOpt {
                         }
                         OutputMode::Text => r.iter().for_each(|ent| println!("{}", ent)),
                     },
-                    Err(e) => handle_client_error(e, &copt.output_mode),
+                    Err(e) => handle_client_error(e, copt.output_mode),
                 }
             }
             GroupOpt::Get(gcopt) => {
@@ -55,7 +55,7 @@ impl GroupOpt {
                         OutputMode::Text => println!("{}", e),
                     },
                     Ok(None) => warn!("No matching group '{}'", gcopt.name.as_str()),
-                    Err(e) => handle_client_error(e, &gcopt.copt.output_mode),
+                    Err(e) => handle_client_error(e, gcopt.copt.output_mode),
                 }
             }
             GroupOpt::Create(gcopt) => {
@@ -70,14 +70,14 @@ impl GroupOpt {
             GroupOpt::Delete(gcopt) => {
                 let client = gcopt.copt.to_client(OpType::Write).await;
                 match client.idm_group_delete(gcopt.name.as_str()).await {
-                    Err(e) => handle_client_error(e, &gcopt.copt.output_mode),
+                    Err(e) => handle_client_error(e, gcopt.copt.output_mode),
                     Ok(_) => println!("Successfully deleted group {}", gcopt.name.as_str()),
                 }
             }
             GroupOpt::PurgeMembers(gcopt) => {
                 let client = gcopt.copt.to_client(OpType::Write).await;
                 match client.idm_group_purge_members(gcopt.name.as_str()).await {
-                    Err(e) => handle_client_error(e, &gcopt.copt.output_mode),
+                    Err(e) => handle_client_error(e, gcopt.copt.output_mode),
                     Ok(_) => println!(
                         "Successfully purged members of group {}",
                         gcopt.name.as_str()
@@ -89,7 +89,7 @@ impl GroupOpt {
                 match client.idm_group_get_members(gcopt.name.as_str()).await {
                     Ok(Some(groups)) => groups.iter().for_each(|m| println!("{:?}", m)),
                     Ok(None) => warn!("No members in group {}", gcopt.name.as_str()),
-                    Err(e) => handle_client_error(e, &gcopt.copt.output_mode),
+                    Err(e) => handle_client_error(e, gcopt.copt.output_mode),
                 }
             }
             GroupOpt::AddMembers(gcopt) => {
@@ -100,7 +100,7 @@ impl GroupOpt {
                     .idm_group_add_members(gcopt.name.as_str(), &new_members)
                     .await
                 {
-                    Err(e) => handle_client_error(e, &gcopt.copt.output_mode),
+                    Err(e) => handle_client_error(e, gcopt.copt.output_mode),
                     Ok(_) => println!(
                         "Successfully added {:?} to group \"{}\"",
                         &new_members,
@@ -119,7 +119,7 @@ impl GroupOpt {
                 {
                     Err(e) => {
                         error!("Failed to remove members!");
-                        handle_client_error(e, &gcopt.copt.output_mode)
+                        handle_client_error(e, gcopt.copt.output_mode)
                     }
                     Ok(_) => println!("Successfully removed members from {}", gcopt.name.as_str()),
                 }
@@ -133,7 +133,7 @@ impl GroupOpt {
                     .idm_group_set_members(gcopt.name.as_str(), &new_members)
                     .await
                 {
-                    Err(e) => handle_client_error(e, &gcopt.copt.output_mode),
+                    Err(e) => handle_client_error(e, gcopt.copt.output_mode),
                     Ok(_) => println!("Successfully set members for group {}", gcopt.name.as_str()),
                 }
             }
@@ -142,7 +142,7 @@ impl GroupOpt {
                     let client = gcopt.copt.to_client(OpType::Read).await;
                     match client.idm_group_unix_token_get(gcopt.name.as_str()).await {
                         Ok(token) => println!("{}", token),
-                        Err(e) => handle_client_error(e, &gcopt.copt.output_mode),
+                        Err(e) => handle_client_error(e, gcopt.copt.output_mode),
                     }
                 }
                 GroupPosix::Set(gcopt) => {
@@ -151,7 +151,7 @@ impl GroupOpt {
                         .idm_group_unix_extend(gcopt.name.as_str(), gcopt.gidnumber)
                         .await
                     {
-                        Err(e) => handle_client_error(e, &gcopt.copt.output_mode),
+                        Err(e) => handle_client_error(e, gcopt.copt.output_mode),
                         Ok(_) => println!(
                             "Success adding POSIX configuration for group {}",
                             gcopt.name.as_str()
