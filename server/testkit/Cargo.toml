@@ -23,21 +23,26 @@ default = []
 webdriver = ["fantoccini"]
 
 [dependencies]
+assert_cmd = "2.0.12"
+escargot = "0.5.8"
+# used for webdriver testing
+fantoccini = { version = "0.19.3", optional = true }
+# used for webdriver testing
+hyper-tls = { workspace = true }
+http = { workspace = true }
 kanidm_client = { workspace = true }
 kanidm_proto = { workspace = true }
 kanidmd_core = { workspace = true }
 kanidmd_lib = { workspace = true }
-# used for webdriver testing
-hyper-tls = { workspace = true }
-http = { workspace = true }
-# used for webdriver testing
-fantoccini = { version = "0.19.3", optional = true }
-serde = { workspace = true }
-url = { workspace = true, features = ["serde"] }
+lazy_static = { workspace = true }
+openssl = { workspace = true }
+petgraph = { version = "0.6.4", features = ["serde", "serde-1"] }
+regex = { workspace = true }
 reqwest = { workspace = true, default-features = false, features = ["cookies"] }
+serde = { workspace = true }
 sketching = { workspace = true }
+tempfile = { workspace = true }
 testkit-macros = { workspace = true }
-tracing = { workspace = true, features = ["attributes"] }
 tokio = { workspace = true, features = [
     "net",
     "sync",
@@ -45,13 +50,8 @@ tokio = { workspace = true, features = [
     "macros",
     "rt",
 ] }
-openssl = { workspace = true }
-lazy_static = { workspace = true }
-petgraph = { version = "0.6.4", features = ["serde", "serde-1"] }
-regex.workspace = true
-assert_cmd = "2.0.12"
-tempfile.workspace = true
-
+tracing = { workspace = true, features = ["attributes"] }
+url = { workspace = true, features = ["serde"] }
 
 [build-dependencies]
 kanidm_build_profiles = { workspace = true }

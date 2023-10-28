@@ -70,6 +70,8 @@ features = ["crossterm-backend"]
 clap = { workspace = true, features = ["derive"] }
 clap_complete = { workspace = true }
 kanidm_build_profiles = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
 uuid = { workspace = true }
 url = { workspace = true }
 

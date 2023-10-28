@@ -1485,6 +1485,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "escargot"
+version = "0.5.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "768064bd3a0e2bedcba91dc87ace90beea91acc41b6a01a3ca8e9aa8827461bf"
+dependencies = [
+ "log",
+ "once_cell",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "fake-simd"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3217,6 +3229,7 @@ version = "1.1.0-rc.14-dev"
 dependencies = [
  "assert_cmd",
  "compact_jwt",
+ "escargot",
  "fantoccini",
  "futures",
  "http",
