@@ -10,14 +10,7 @@ pub mod macros;
 pub use {tracing, tracing_forest, tracing_subscriber};
 
 pub fn test_init() {
-    // tracing_subscriber::fmt::try_init()
     let _ = tracing_forest::test_init();
-    /*
-    let _ = Registry::default().with(ForestLayer::new(
-        TestCapturePrinter::new(),
-        NoTag,
-    )).try_init();
-    */
 }
 
 /// This is for tagging events. Currently not wired in.
