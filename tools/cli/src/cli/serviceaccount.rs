@@ -311,11 +311,11 @@ impl ServiceAccountOpt {
             }
             ServiceAccountOpt::Get(aopt) => {
                 let client = aopt.copt.to_client(OpType::Read).await;
-                match client
+                let res = client
                     .idm_service_account_get(aopt.aopts.account_id.as_str())
-                    .await
-                {
-                    Ok(Some(e)) => println!("{}", e),
+                    .await;
+                match res {
+                    Ok(Some(e)) => aopt.copt.output_mode.print_message(e),
                     Ok(None) => println!("No matching entries"),
                     Err(e) => handle_client_error(e, &aopt.copt.output_mode),
                 }

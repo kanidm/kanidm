@@ -1,10 +1,14 @@
 //! Integration tests using browser automation
 
-use assert_cmd::Command;
+use std::process::Output;
+
 use tempfile::tempdir;
 
 use kanidm_client::KanidmClient;
-use kanidmd_testkit::login_put_admin_idm_admins;
+use kanidmd_testkit::{
+    login_put_admin_idm_admins, ADMIN_TEST_PASSWORD, IDM_ADMIN_TEST_PASSWORD, IDM_ADMIN_TEST_USER,
+    NOT_ADMIN_TEST_USERNAME,
+};
 use testkit_macros::cli_kanidm;
 
 /// Tries to handle closing the webdriver session if there's an error
@@ -224,26 +228,68 @@ async fn test_idm_domain_set_ldap_basedn(rsclient: KanidmClient) {
         .is_err());
 }
 
+/// run a test command as the admin user
+fn test_cmd_admin(token_cache_path: &str, rsclient: &KanidmClient, cmd: &str) -> Output {
+    let split_cmd: Vec<&str> = cmd.split_ascii_whitespace().collect();
+    test_cmd_admin_split(token_cache_path, rsclient, &split_cmd)
+}
+/// run a test command as the admin user
+fn test_cmd_admin_split(token_cache_path: &str, rsclient: &KanidmClient, cmd: &[&str]) -> Output {
+    println!(
+        "##################################\nrunning {}\n##################################",
+        cmd.join(" ")
+    );
+    let res = cli_kanidm!()
+        .env("KANIDM_PASSWORD", ADMIN_TEST_PASSWORD)
+        .args(cmd)
+        .output()
+        .unwrap();
+    println!("############ result ##################");
+    println!("status: {:?}", res.status);
+    println!("stdout: {}", String::from_utf8_lossy(&res.stdout));
+    println!("stderr: {}", String::from_utf8_lossy(&res.stderr));
+    println!("######################################");
+    assert!(res.status.success());
+    res
+}
+
+/// run a test command as the idm_admin user
+fn test_cmd_idm_admin(token_cache_path: &str, rsclient: &KanidmClient, cmd: &str) -> Output {
+    println!("##############################\nrunning {}", cmd);
+    let res = cli_kanidm!()
+        .env("KANIDM_PASSWORD", IDM_ADMIN_TEST_PASSWORD)
+        .args(cmd.split(" "))
+        .output()
+        .unwrap();
+    println!("##############################\n{} result: {:?}", cmd, res);
+    assert!(res.status.success());
+    res
+}
+
 #[kanidmd_testkit::test(threads = 4)]
 /// Testing the CLI doing things.
 async fn test_integration_with_assert_cmd(rsclient: KanidmClient) {
     // setup the admin things
     login_put_admin_idm_admins(&rsclient).await;
 
+    rsclient
+        .idm_person_account_primary_credential_set_password(
+            IDM_ADMIN_TEST_USER,
+            IDM_ADMIN_TEST_PASSWORD,
+        )
+        .await
+        .expect(&format!("Failed to set {} password", IDM_ADMIN_TEST_USER));
+
     let token_cache_dir = tempdir().unwrap();
     let token_cache_path = format!("{}/kanidm_tokens", token_cache_dir.path().display());
 
     // we have to spawn in another thread for ... reasons
-    let _ = tokio::task::spawn_blocking(move || {
+    assert!(tokio::task::spawn_blocking(move || {
         let anon_login = cli_kanidm!()
             .args(&["login", "-D", "anonymous"])
             .output()
             .unwrap();
         println!("Login Output: {:?}", anon_login);
-
-        for _ in 0..5 {
-            println!("");
-        }
 
         let anon_whoami = cli_kanidm!()
             .args(&["self", "whoami", "-D", "anonymous"])
@@ -252,10 +298,64 @@ async fn test_integration_with_assert_cmd(rsclient: KanidmClient) {
         assert!(anon_whoami.status.success());
         println!("Output: {:?}", anon_whoami);
 
-        for _ in 0..5 {
-            println!("");
-        }
+        test_cmd_admin(&token_cache_path, &rsclient, "login -D admin");
+
+        // login as idm_admin
+        test_cmd_idm_admin(&token_cache_path, &rsclient, "login -D idm_admin");
+        test_cmd_admin_split(
+            &token_cache_path,
+            &rsclient,
+            &[
+                "service-account",
+                "create",
+                NOT_ADMIN_TEST_USERNAME,
+                "Test account",
+                "-D",
+                "admin",
+                "-o",
+                "json",
+            ],
+        );
+
+        test_cmd_admin(
+            &token_cache_path,
+            &rsclient,
+            &format!("service-account get -D admin {}", NOT_ADMIN_TEST_USERNAME),
+        );
+        // updating the display name
+        test_cmd_admin(
+            &token_cache_path,
+            &rsclient,
+            &format!(
+                "service-account update -D admin {} --displayname cheeseballs",
+                NOT_ADMIN_TEST_USERNAME
+            ),
+        );
+        // updating the email
+        test_cmd_admin(
+            &token_cache_path,
+            &rsclient,
+            &format!(
+                "service-account update -D admin {} --mail foo@bar.com",
+                NOT_ADMIN_TEST_USERNAME
+            ),
+        );
+
+        // checking the email was changed
+        let sad = test_cmd_admin(
+            &token_cache_path,
+            &rsclient,
+            &format!(
+                "service-account get -D admin -o json {}",
+                NOT_ADMIN_TEST_USERNAME
+            ),
+        );
+        let str_output: String = String::from_utf8_lossy(&sad.stdout).into();
+        assert!(str_output.contains("foo@bar.com"));
+
+        true
     })
-    .await;
+    .await
+    .unwrap());
     println!("Success!");
 }

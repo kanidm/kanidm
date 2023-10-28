@@ -1,7 +1,7 @@
 use crate::common::OpType;
 use std::collections::BTreeMap;
 use std::fs::{create_dir, File};
-use std::io::{self, BufReader, BufWriter, ErrorKind, Write};
+use std::io::{self, BufReader, BufWriter, ErrorKind, IsTerminal, Write};
 use std::path::PathBuf;
 use std::str::FromStr;
 
@@ -446,13 +446,21 @@ impl LogoutOpt {
             let mut _tmp_username = String::new();
             match &self.copt.username {
                 Some(value) => value.clone(),
-                None => match prompt_for_username_get_username(self.copt.get_token_cache_path()) {
-                    Ok(value) => value,
-                    Err(msg) => {
-                        error!("{}", msg);
-                        std::process::exit(1);
+                None => {
+                    // check if we're in a tty
+                    if std::io::stdin().is_terminal() {
+                        match prompt_for_username_get_username(self.copt.get_token_cache_path()) {
+                            Ok(value) => value,
+                            Err(msg) => {
+                                error!("{}", msg);
+                                std::process::exit(1);
+                            }
+                        }
+                    } else {
+                        eprintln!("Not running in interactive mode and no username specified, can't continue!");
+                        return;
                     }
-                },
+                }
             }
         } else {
             let client = self.copt.to_client(OpType::Read).await;
