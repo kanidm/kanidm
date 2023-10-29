@@ -22,7 +22,6 @@ jobs:
       RUSTC_WRAPPER: sccache
       CARGO_INCREMENTAL: 0
       CARGO_TERM_COLOR: always
-      MALLOC_CONF: "thp:always,metadata_thp:always"
     steps:
       - uses: actions/checkout@v4
       - name: Install Rust
