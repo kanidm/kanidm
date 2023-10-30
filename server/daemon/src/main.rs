@@ -254,25 +254,12 @@ async fn kanidm_main() -> ExitCode {
         None => sketching::otel::get_otlp_endpoint(),
     };
 
-    println!("OTLP ENDPOINT: {:?}", otel_endpoint);
+    // TODO: only send to stderr when we're not in a TTY
     if let Err(err) = sketching::otel::startup_opentelemetry(otel_endpoint, log_filter) {
-        eprintln!("{:} - Bailing", err);
+        eprintln!("Error starting logger - {:} - Bailing on startup!", err);
         return ExitCode::FAILURE;
     }
 
-    // TODO: only send to stderr when we're not in a TTY
-    // tracing_forest::worker_task()
-    //     .set_global(true)
-    //     .set_tag(sketching::event_tagger)
-    //     // Fall back to stderr
-    //     .map_sender(|sender| {
-    //         sender.or_stderr()
-
-    //     })
-    //     .build_on(|subscriber|{
-    //         subscriber.with(log_filter)
-    //     })
-    //     .on(async {
     // Get information on the windows username
     #[cfg(target_family = "windows")]
     get_user_details_windows();
@@ -834,6 +821,4 @@ async fn kanidm_main() -> ExitCode {
         KanidmdOpt::Version(_) => {}
     }
     ExitCode::SUCCESS
-    // })
-    // .await
 }
