@@ -20,7 +20,7 @@ use kanidm_lib_crypto::prelude::X509;
 use kanidm_lib_crypto::serialise::x509b64;
 
 use serde::Deserialize;
-use sketching::tracing_subscriber::EnvFilter;
+use sketching::LogLevel;
 use url::Url;
 
 #[derive(Deserialize, Debug, Clone)]
@@ -171,6 +171,8 @@ pub struct ServerConfig {
     #[serde(rename = "replication")]
     /// Replication configuration, this is a development feature and not yet ready for production use.
     pub repl_config: Option<ReplicationConfiguration>,
+    /// An optional OpenTelemetry collector endpoint to send trace and log data to
+    pub otel_endpoint: Option<String>,
 }
 
 impl ServerConfig {
@@ -229,50 +231,6 @@ impl FromStr for ServerRole {
             "write_replica_no_ui" => Ok(ServerRole::WriteReplicaNoUI),
             "read_only_replica" => Ok(ServerRole::ReadOnlyReplica),
             _ => Err("Must be one of write_replica, write_replica_no_ui, read_only_replica"),
-        }
-    }
-}
-
-#[derive(Clone, Deserialize, Debug, Default)]
-pub enum LogLevel {
-    #[default]
-    #[serde(rename = "info")]
-    Info,
-    #[serde(rename = "debug")]
-    Debug,
-    #[serde(rename = "trace")]
-    Trace,
-}
-
-impl FromStr for LogLevel {
-    type Err = &'static str;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "info" => Ok(LogLevel::Info),
-            "debug" => Ok(LogLevel::Debug),
-            "trace" => Ok(LogLevel::Trace),
-            _ => Err("Must be one of info, debug, trace"),
-        }
-    }
-}
-
-impl ToString for LogLevel {
-    fn to_string(&self) -> String {
-        match self {
-            LogLevel::Info => "info".to_string(),
-            LogLevel::Debug => "debug".to_string(),
-            LogLevel::Trace => "trace".to_string(),
-        }
-    }
-}
-
-impl From<LogLevel> for EnvFilter {
-    fn from(value: LogLevel) -> Self {
-        match value {
-            LogLevel::Info => EnvFilter::new("info"),
-            LogLevel::Debug => EnvFilter::new("debug"),
-            LogLevel::Trace => EnvFilter::new("trace"),
         }
     }
 }
@@ -434,7 +392,6 @@ impl Configuration {
     }
 
     pub fn update_log_level(&mut self, level: &Option<LogLevel>) {
-        let level = level.clone();
         self.log_level = level.unwrap_or_default();
     }
 

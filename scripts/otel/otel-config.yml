@@ -1,0 +1,70 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+      http:
+  prometheus:
+    config:
+      scrape_configs:
+        - job_name: otel-collector
+          scrape_interval: 5s
+          static_configs:
+            - targets:
+                - localhost:8888
+
+processors:
+  batch:
+
+extensions:
+  health_check:
+  pprof:
+  zpages:
+
+exporters:
+  # Data sources: traces, metrics, logs
+  # file:
+  #   path: ./filename.json
+  prometheusremotewrite:
+    endpoint: "http://prometheus:9090/api/v1/write"
+    tls:
+      insecure: true
+
+  # Data sources: traces
+  otlp/jaeger:
+    endpoint: jaeger:4317
+    tls:
+      insecure: true
+
+  # Data sources: traces, metrics, logs
+  # NOTE: Prior to v0.86.0 use `logging` instead of `debug`
+  debug:
+    verbosity: detailed
+
+service:
+  extensions:
+    - health_check
+    - pprof
+    - zpages
+  pipelines:
+    traces:
+      receivers:
+        - otlp
+      processors:
+        - batch
+      exporters:
+        - otlp/jaeger
+    metrics:
+      receivers:
+        - otlp
+      processors:
+        - batch
+      exporters:
+        - otlp/jaeger
+        - prometheusremotewrite
+    logs:
+      receivers:
+        - otlp
+      processors:
+        - batch
+      exporters:
+        - otlp/jaeger

@@ -26,3 +26,18 @@ tracing-forest = { workspace = true, features = [
     "tokio",
     "env-filter",
 ] }
+
+opentelemetry = { workspace = true, features = ["metrics", "rt-tokio"] }
+opentelemetry-otlp = { workspace = true, default-features = false, features = [
+    "serde",
+    "logs",
+    "metrics",
+    "http-proto",
+    "grpc-tonic",
+] }
+
+opentelemetry_sdk = { workspace = true }
+tracing-opentelemetry = { workspace = true }
+uuid = { workspace = true, features = ["v4"] }
+rand.workspace = true
+serde = { workspace = true, features = ["derive"] }

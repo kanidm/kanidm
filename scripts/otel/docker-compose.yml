@@ -1,0 +1,53 @@
+---
+# this sets up the required services locally for running a really basic otel/jaeger pipeline for collecting traces
+version: "3.8"
+
+services:
+  otel:
+    hostname: otel
+    container_name: otel
+    image: otel/opentelemetry-collector-contrib:0.86.0
+    restart: always
+
+    ports:
+      - 1888:1888 # pprof extension
+      - 8888:8888 # Prometheus metrics exposed by the collector
+      - 8889:8889 # Prometheus exporter metrics
+      - 13133:13133 # health_check extension
+      - 4317:4317 # OTLP gRPC receiver
+      - 4318:4318 # OTLP http receiver
+      - 55679:55679 # zpages extension
+    volumes:
+      - type: bind
+        source: ./otel-config.yml
+        target: /etc/otelcol-contrib/config.yaml
+    depends_on:
+      - jaeger
+  # prometheus:
+  #   hostname: prometheus
+  #   container_name: prometheus
+  #   image: prom/prometheus:v2.47.2
+  #   restart: always
+  #   ports:
+  #    - "9090:9090"
+  #   volumes:
+  #     - type: bind
+  #       source: ./prometheus.yml
+  #       target: /etc/prometheus/prometheus.yml
+  #     - prometheus:/prometheus
+  jaeger:
+    hostname: jaeger
+    container_name: jaeger
+    restart: always
+    image: jaegertracing/all-in-one:1.50
+    # environment:
+      # - "METRICS_STORAGE_TYPE=prometheus"
+      # - "PROMETHEUS_SERVER_URL=http://prometheus:9090"
+    ports:
+      # - "4317:4317"
+      # - "4318:4318"
+      - "16685:16685"
+      - "16686:16686"
+      - "16687:16687"
+# volumes:
+  # prometheus:
