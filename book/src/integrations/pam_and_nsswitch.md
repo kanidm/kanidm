@@ -183,8 +183,8 @@ cp -a /etc/pam.d /root/pam.d.backup
 
 Documentation examples for the following Linux distributions are available:
 
-- [Fedora](pam_and_nsswitch/fedora.md)
 - [SUSE / OpenSUSE](pam_and_nsswitch/suse.md)
+- [Fedora](pam_and_nsswitch/fedora.md)
 - Debian / Ubuntu - when one generates packages
   [from the repository tools](https://github.com/kanidm/kanidm/tree/master/platform/debian),
   configuration is modified on install.
