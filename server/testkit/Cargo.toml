@@ -20,14 +20,11 @@ doctest = false
 [features]
 default = []
 # Enables webdriver tests, you need to be running a webdriver server
-webdriver = ["fantoccini"]
+webdriver = []
 
 [dependencies]
 assert_cmd = "2.0.12"
 escargot = "0.5.8"
-# used for webdriver testing
-fantoccini = { version = "0.19.3", optional = true }
-# used for webdriver testing
 hyper-tls = { workspace = true }
 http = { workspace = true }
 kanidm_client = { workspace = true }
@@ -58,6 +55,9 @@ kanidm_build_profiles = { workspace = true }
 
 [dev-dependencies]
 compact_jwt = { workspace = true }
+# used for webdriver testing
+fantoccini = { version = "0.19.3" }
+
 serde_json = { workspace = true }
 webauthn-authenticator-rs = { workspace = true }
 oauth2_ext = { workspace = true, default-features = false }
