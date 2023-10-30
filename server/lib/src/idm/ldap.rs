@@ -58,6 +58,12 @@ pub struct LdapServer {
     binddnre: Regex,
 }
 
+#[derive(Debug)]
+enum LdapBindTarget {
+    Account(Uuid),
+    ApiToken,
+}
+
 impl LdapServer {
     pub async fn new(idms: &IdmServer) -> Result<Self, OperationError> {
         // let ct = duration_from_epoch_now();
@@ -383,49 +389,26 @@ impl LdapServer {
     ) -> Result<Option<LdapBoundToken>, OperationError> {
         security_info!(
             "Attempt LDAP Bind for {}",
-            if dn.is_empty() { "anonymous" } else { dn }
+            if dn.is_empty() { "(empty dn)" } else { dn }
         );
         let ct = duration_from_epoch_now();
 
         let mut idm_auth = idms.auth().await;
 
-        let target_uuid: Uuid = if dn.is_empty() {
+        let target: LdapBindTarget = if dn.is_empty() {
             if pw.is_empty() {
-                security_info!("✅ LDAP Bind success anonymous");
-                UUID_ANONYMOUS
+                LdapBindTarget::Account(UUID_ANONYMOUS)
             } else {
                 // This is the path to access api-token logins.
-                let lae = LdapTokenAuthEvent::from_parts(pw.to_string())?;
-                return idm_auth.token_auth_ldap(&lae, ct).await.and_then(|r| {
-                    idm_auth.commit().map(|_| {
-                        if r.is_some() {
-                            security_info!(%dn, "✅ LDAP Bind success");
-                        } else {
-                            security_info!(%dn, "❌ LDAP Bind failure");
-                        };
-                        r
-                    })
-                });
+                LdapBindTarget::ApiToken
             }
-        } else {
+        } else if dn == "dn=token" {
             // Is the passed dn requesting token auth?
             // We use dn= here since these are attr=value, and dn is a phantom so it will
             // never be present or match a real value. We also make it an ava so that clients
             // that over-zealously validate dn syntax are happy.
-            if dn == "dn=token" {
-                let lae = LdapTokenAuthEvent::from_parts(pw.to_string())?;
-                return idm_auth.token_auth_ldap(&lae, ct).await.and_then(|r| {
-                    idm_auth.commit().map(|_| {
-                        if r.is_some() {
-                            security_info!(%dn, "✅ LDAP Bind success");
-                        } else {
-                            security_info!(%dn, "❌ LDAP Bind failure");
-                        };
-                        r
-                    })
-                });
-            };
-
+            LdapBindTarget::ApiToken
+        } else {
             let rdn = self
                 .binddnre
                 .captures(dn)
@@ -433,30 +416,47 @@ impl LdapServer {
                 .map(|v| v.as_str().to_string())
                 .ok_or(OperationError::NoMatchingEntries)?;
 
-            trace!(?rdn, "relative dn");
-
             if rdn.is_empty() {
                 // That's weird ...
                 return Err(OperationError::NoMatchingEntries);
             }
 
-            idm_auth.qs_read.name_to_uuid(rdn.as_str()).map_err(|e| {
+            let uuid = idm_auth.qs_read.name_to_uuid(rdn.as_str()).map_err(|e| {
                 request_error!(err = ?e, ?rdn, "Error resolving rdn to target");
                 e
-            })?
+            })?;
+
+            LdapBindTarget::Account(uuid)
         };
 
-        let lae = LdapAuthEvent::from_parts(target_uuid, pw.to_string())?;
-        idm_auth.auth_ldap(&lae, ct).await.and_then(|r| {
-            idm_auth.commit().map(|_| {
-                if r.is_some() {
-                    security_info!(%dn, "✅ LDAP Bind (password) success");
-                } else {
-                    security_info!(%dn, "❌ LDAP Bind failure");
-                };
-                r
-            })
-        })
+        let result = match target {
+            LdapBindTarget::Account(uuid) => {
+                let lae = LdapAuthEvent::from_parts(uuid, pw.to_string())?;
+                idm_auth.auth_ldap(&lae, ct).await?
+            }
+            LdapBindTarget::ApiToken => {
+                let lae = LdapTokenAuthEvent::from_parts(pw.to_string())?;
+                idm_auth.token_auth_ldap(&lae, ct).await?
+            }
+        };
+
+        idm_auth.commit()?;
+
+        if result.is_some() {
+            security_info!(
+                "✅ LDAP Bind success for {} -> {:?}",
+                if dn.is_empty() { "(empty dn)" } else { dn },
+                target
+            );
+        } else {
+            security_info!(
+                "❌ LDAP Bind failure for {} -> {:?}",
+                if dn.is_empty() { "(empty dn)" } else { dn },
+                target
+            );
+        }
+
+        Ok(result)
     }
 
     pub async fn do_op(
