@@ -24,7 +24,7 @@ impl DomainOpt {
                     .await
                 {
                     Ok(_) => println!("Success"),
-                    Err(e) => handle_client_error(e, &opt.copt.output_mode),
+                    Err(e) => handle_client_error(e, opt.copt.output_mode),
                 }
             }
             DomainOpt::SetLdapBasedn { copt, new_basedn } => {
@@ -35,28 +35,28 @@ impl DomainOpt {
                 let client = copt.to_client(OpType::Write).await;
                 match client.idm_domain_set_ldap_basedn(new_basedn).await {
                     Ok(_) => println!("Success"),
-                    Err(e) => handle_client_error(e, &copt.output_mode),
+                    Err(e) => handle_client_error(e, copt.output_mode),
                 }
             }
             DomainOpt::SetLdapAllowUnixPasswordBind { copt, enable } => {
                 let client = copt.to_client(OpType::Write).await;
                 match client.idm_set_ldap_allow_unix_password_bind(*enable).await {
                     Ok(_) => println!("Success"),
-                    Err(e) => handle_client_error(e, &copt.output_mode),
+                    Err(e) => handle_client_error(e, copt.output_mode),
                 }
             }
             DomainOpt::Show(copt) => {
                 let client = copt.to_client(OpType::Read).await;
                 match client.idm_domain_get().await {
                     Ok(e) => println!("{}", e),
-                    Err(e) => handle_client_error(e, &copt.output_mode),
+                    Err(e) => handle_client_error(e, copt.output_mode),
                 }
             }
             DomainOpt::ResetTokenKey(copt) => {
                 let client = copt.to_client(OpType::Write).await;
                 match client.idm_domain_reset_token_key().await {
                     Ok(_) => println!("Success"),
-                    Err(e) => handle_client_error(e, &copt.output_mode),
+                    Err(e) => handle_client_error(e, copt.output_mode),
                 }
             }
         }

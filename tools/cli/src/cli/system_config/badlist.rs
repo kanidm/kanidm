@@ -30,7 +30,7 @@ impl PwBadlistOpt {
                         eprintln!("--");
                         eprintln!("Success");
                     }
-                    Err(e) => crate::handle_client_error(e, &copt.output_mode),
+                    Err(e) => crate::handle_client_error(e, copt.output_mode),
                 }
             }
             PwBadlistOpt::Upload {
@@ -126,7 +126,7 @@ impl PwBadlistOpt {
                     let client = copt.to_client(OpType::Write).await;
                     match client.system_password_badlist_append(filt_pwset).await {
                         Ok(_) => println!("Success"),
-                        Err(e) => handle_client_error(e, &copt.output_mode),
+                        Err(e) => handle_client_error(e, copt.output_mode),
                     }
                 }
             } // End Upload
@@ -165,7 +165,7 @@ impl PwBadlistOpt {
 
                 match client.system_password_badlist_remove(pwset).await {
                     Ok(_) => println!("Success"),
-                    Err(e) => handle_client_error(e, &copt.output_mode),
+                    Err(e) => handle_client_error(e, copt.output_mode),
                 }
             } // End Remove
         }

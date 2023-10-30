@@ -4,7 +4,7 @@ struct CommonOpt {
     #[clap(short, long = "config", env = "KANIDM_CONFIG")]
     config_path: Option<PathBuf>,
     /// Log format (still in very early development)
-    #[clap(short, long = "output", env = "KANIDM_OUTPUT", default_value="text")]
+    #[clap(short, long = "output", env = "KANIDM_OUTPUT", default_value = "text")]
     output_mode: String,
 }
 
@@ -60,14 +60,13 @@ struct DbScanListIndex {
     commonopts: CommonOpt,
 }
 
-
-#[derive(Debug,Parser)]
+#[derive(Debug, Parser)]
 struct HealthCheckArgs {
     /// Disable TLS verification
     #[clap(short, long, action)]
     verify_tls: bool,
     /// Check the 'origin' URL from the server configuration file, instead of the 'address'
-    #[clap(short='O', long, action)]
+    #[clap(short = 'O', long, action)]
     check_origin: bool,
     #[clap(flatten)]
     commonopts: CommonOpt,
@@ -126,7 +125,7 @@ enum DbScanOpt {
 }
 
 #[derive(Debug, Parser)]
-#[command(name="kanidmd")]
+#[command(name = "kanidmd")]
 struct KanidmdParser {
     #[command(subcommand)]
     commands: KanidmdOpt,
@@ -199,6 +198,6 @@ enum KanidmdOpt {
     HealthCheck(HealthCheckArgs),
 
     /// Print the program version and exit
-    #[clap(name="version")]
-    Version(CommonOpt)
+    #[clap(name = "version")]
+    Version(CommonOpt),
 }

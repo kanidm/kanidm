@@ -26,6 +26,8 @@ use tokio::task;
 
 pub const ADMIN_TEST_USER: &str = "admin";
 pub const ADMIN_TEST_PASSWORD: &str = "integration test admin password";
+pub const IDM_ADMIN_TEST_USER: &str = "idm_admin";
+pub const IDM_ADMIN_TEST_PASSWORD: &str = "integration idm admin password";
 
 pub const NOT_ADMIN_TEST_USERNAME: &str = "krab_test_user";
 pub const NOT_ADMIN_TEST_PASSWORD: &str = "eicieY7ahchaoCh0eeTa";
