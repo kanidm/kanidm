@@ -83,7 +83,7 @@ impl PersonOpt {
                             "No RADIUS secret set for user {}",
                             aopt.aopts.account_id.as_str(),
                         ),
-                        Err(e) => handle_client_error(e, &aopt.copt.output_mode),
+                        Err(e) => handle_client_error(e, aopt.copt.output_mode),
                     }
                 }
                 AccountRadius::Generate(aopt) => {
@@ -133,7 +133,7 @@ impl PersonOpt {
                         .await
                     {
                         Ok(token) => println!("{}", token),
-                        Err(e) => handle_client_error(e, &aopt.copt.output_mode),
+                        Err(e) => handle_client_error(e, aopt.copt.output_mode),
                     }
                 }
                 PersonPosix::Set(aopt) => {
@@ -146,7 +146,7 @@ impl PersonOpt {
                         )
                         .await
                     {
-                        handle_client_error(e, &aopt.copt.output_mode)
+                        handle_client_error(e, aopt.copt.output_mode)
                     }
                 }
                 PersonPosix::SetPassword(aopt) => {
@@ -166,7 +166,7 @@ impl PersonOpt {
                         )
                         .await
                     {
-                        handle_client_error(e, &aopt.copt.output_mode)
+                        handle_client_error(e, aopt.copt.output_mode)
                     }
                 }
             }, // end PersonOpt::Posix
@@ -186,7 +186,7 @@ impl PersonOpt {
                                 }
                             }
                         }
-                        Err(e) => handle_client_error(e, &apo.copt.output_mode),
+                        Err(e) => handle_client_error(e, apo.copt.output_mode),
                     }
                 }
                 AccountUserAuthToken::Destroy {
@@ -204,7 +204,7 @@ impl PersonOpt {
                         }
                         Err(e) => {
                             error!("Error destroying account session");
-                            handle_client_error(e, &copt.output_mode);
+                            handle_client_error(e, copt.output_mode);
                         }
                     }
                 }
@@ -218,7 +218,7 @@ impl PersonOpt {
                         .await
                     {
                         Ok(pkeys) => pkeys.iter().for_each(|pkey| println!("{}", pkey)),
-                        Err(e) => handle_client_error(e, &aopt.copt.output_mode),
+                        Err(e) => handle_client_error(e, aopt.copt.output_mode),
                     }
                 }
                 AccountSsh::Add(aopt) => {
@@ -231,7 +231,7 @@ impl PersonOpt {
                         )
                         .await
                     {
-                        handle_client_error(e, &aopt.copt.output_mode)
+                        handle_client_error(e, aopt.copt.output_mode)
                     }
                 }
                 AccountSsh::Delete(aopt) => {
@@ -243,7 +243,7 @@ impl PersonOpt {
                         )
                         .await
                     {
-                        handle_client_error(e, &aopt.copt.output_mode)
+                        handle_client_error(e, aopt.copt.output_mode)
                     }
                 }
             }, // end PersonOpt::Ssh
@@ -260,7 +260,7 @@ impl PersonOpt {
                         }
                         OutputMode::Text => r.iter().for_each(|ent| println!("{}", ent)),
                     },
-                    Err(e) => handle_client_error(e, &copt.output_mode),
+                    Err(e) => handle_client_error(e, copt.output_mode),
                 }
             }
             PersonOpt::Update(aopt) => {
@@ -276,7 +276,7 @@ impl PersonOpt {
                     .await
                 {
                     Ok(()) => println!("Success"),
-                    Err(e) => handle_client_error(e, &aopt.copt.output_mode),
+                    Err(e) => handle_client_error(e, aopt.copt.output_mode),
                 }
             }
             PersonOpt::Get(aopt) => {
@@ -295,7 +295,7 @@ impl PersonOpt {
                         OutputMode::Text => println!("{}", e),
                     },
                     Ok(None) => println!("No matching entries"),
-                    Err(e) => handle_client_error(e, &aopt.copt.output_mode),
+                    Err(e) => handle_client_error(e, aopt.copt.output_mode),
                 }
             }
             PersonOpt::Delete(aopt) => {
@@ -321,7 +321,7 @@ impl PersonOpt {
                         modmessage.status = MessageStatus::Failure;
                         eprintln!("{}", modmessage);
 
-                        // handle_client_error(e, &aopt.copt.output_mode),
+                        // handle_client_error(e, aopt.copt.output_mode),
                     }
                     Ok(result) => {
                         debug!("{:?}", result);
@@ -345,7 +345,7 @@ impl PersonOpt {
                             acopt.aopts.account_id.as_str(),
                         )
                     }
-                    Err(e) => handle_client_error(e, &acopt.copt.output_mode),
+                    Err(e) => handle_client_error(e, acopt.copt.output_mode),
                 }
             }
             PersonOpt::Validity { commands } => match commands {
@@ -434,7 +434,7 @@ impl PersonOpt {
                         }
                     };
                     match res {
-                        Err(e) => handle_client_error(e, &ano.copt.output_mode),
+                        Err(e) => handle_client_error(e, ano.copt.output_mode),
                         _ => println!("Success"),
                     };
                 }

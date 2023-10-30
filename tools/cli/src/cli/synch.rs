@@ -25,7 +25,7 @@ impl SynchOpt {
                 match client.idm_sync_account_list().await {
                     Ok(r) => r.iter().for_each(|ent| println!("{}", ent)),
 
-                    Err(e) => handle_client_error(e, &copt.output_mode),
+                    Err(e) => handle_client_error(e, copt.output_mode),
                 }
             }
             SynchOpt::Get(nopt) => {
@@ -33,7 +33,7 @@ impl SynchOpt {
                 match client.idm_sync_account_get(nopt.name.as_str()).await {
                     Ok(Some(e)) => println!("{}", e),
                     Ok(None) => println!("No matching entries"),
-                    Err(e) => handle_client_error(e, &nopt.copt.output_mode),
+                    Err(e) => handle_client_error(e, nopt.copt.output_mode),
                 }
             }
             SynchOpt::SetCredentialPortal {
@@ -47,7 +47,7 @@ impl SynchOpt {
                     .await
                 {
                     Ok(()) => println!("Success"),
-                    Err(e) => handle_client_error(e, &copt.output_mode),
+                    Err(e) => handle_client_error(e, copt.output_mode),
                 }
             }
             SynchOpt::Create {
@@ -61,7 +61,7 @@ impl SynchOpt {
                     .await
                 {
                     Ok(()) => println!("Success"),
-                    Err(e) => handle_client_error(e, &copt.output_mode),
+                    Err(e) => handle_client_error(e, copt.output_mode),
                 }
             }
             SynchOpt::GenerateToken {
@@ -75,14 +75,14 @@ impl SynchOpt {
                     .await
                 {
                     Ok(token) => println!("token: {}", token),
-                    Err(e) => handle_client_error(e, &copt.output_mode),
+                    Err(e) => handle_client_error(e, copt.output_mode),
                 }
             }
             SynchOpt::DestroyToken { account_id, copt } => {
                 let client = copt.to_client(OpType::Write).await;
                 match client.idm_sync_account_destroy_token(account_id).await {
                     Ok(()) => println!("Success"),
-                    Err(e) => handle_client_error(e, &copt.output_mode),
+                    Err(e) => handle_client_error(e, copt.output_mode),
                 }
             }
             SynchOpt::SetYieldAttributes {
@@ -96,14 +96,14 @@ impl SynchOpt {
                     .await
                 {
                     Ok(()) => println!("Success"),
-                    Err(e) => handle_client_error(e, &copt.output_mode),
+                    Err(e) => handle_client_error(e, copt.output_mode),
                 }
             }
             SynchOpt::ForceRefresh { account_id, copt } => {
                 let client = copt.to_client(OpType::Write).await;
                 match client.idm_sync_account_force_refresh(account_id).await {
                     Ok(()) => println!("Success"),
-                    Err(e) => handle_client_error(e, &copt.output_mode),
+                    Err(e) => handle_client_error(e, copt.output_mode),
                 }
             }
             SynchOpt::Finalise { account_id, copt } => {
@@ -120,7 +120,7 @@ impl SynchOpt {
                 let client = copt.to_client(OpType::Write).await;
                 match client.idm_sync_account_finalise(account_id).await {
                     Ok(()) => println!("Success"),
-                    Err(e) => handle_client_error(e, &copt.output_mode),
+                    Err(e) => handle_client_error(e, copt.output_mode),
                 }
             }
             SynchOpt::Terminate { account_id, copt } => {
@@ -137,7 +137,7 @@ impl SynchOpt {
                 let client = copt.to_client(OpType::Write).await;
                 match client.idm_sync_account_terminate(account_id).await {
                     Ok(()) => println!("Success"),
-                    Err(e) => handle_client_error(e, &copt.output_mode),
+                    Err(e) => handle_client_error(e, copt.output_mode),
                 }
             }
         }

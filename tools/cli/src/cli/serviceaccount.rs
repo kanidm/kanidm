@@ -192,7 +192,7 @@ impl ServiceAccountOpt {
                         .await
                     {
                         Ok(token) => println!("{}", token),
-                        Err(e) => handle_client_error(e, &aopt.copt.output_mode),
+                        Err(e) => handle_client_error(e, aopt.copt.output_mode),
                     }
                 }
                 ServiceAccountPosix::Set(aopt) => {
@@ -205,7 +205,7 @@ impl ServiceAccountOpt {
                         )
                         .await
                     {
-                        handle_client_error(e, &aopt.copt.output_mode)
+                        handle_client_error(e, aopt.copt.output_mode)
                     }
                 }
             }, // end ServiceAccountOpt::Posix
@@ -258,7 +258,7 @@ impl ServiceAccountOpt {
                         .await
                     {
                         Ok(pkeys) => pkeys.iter().for_each(|pkey| println!("{}", pkey)),
-                        Err(e) => handle_client_error(e, &aopt.copt.output_mode),
+                        Err(e) => handle_client_error(e, aopt.copt.output_mode),
                     }
                 }
                 AccountSsh::Add(aopt) => {
@@ -271,7 +271,7 @@ impl ServiceAccountOpt {
                         )
                         .await
                     {
-                        handle_client_error(e, &aopt.copt.output_mode)
+                        handle_client_error(e, aopt.copt.output_mode)
                     }
                 }
                 AccountSsh::Delete(aopt) => {
@@ -283,7 +283,7 @@ impl ServiceAccountOpt {
                         )
                         .await
                     {
-                        handle_client_error(e, &aopt.copt.output_mode)
+                        handle_client_error(e, aopt.copt.output_mode)
                     }
                 }
             }, // end ServiceAccountOpt::Ssh
@@ -291,7 +291,7 @@ impl ServiceAccountOpt {
                 let client = copt.to_client(OpType::Read).await;
                 match client.idm_service_account_list().await {
                     Ok(r) => r.iter().for_each(|ent| println!("{}", ent)),
-                    Err(e) => handle_client_error(e, &copt.output_mode),
+                    Err(e) => handle_client_error(e, copt.output_mode),
                 }
             }
             ServiceAccountOpt::Update(aopt) => {
@@ -306,18 +306,18 @@ impl ServiceAccountOpt {
                     .await
                 {
                     Ok(()) => println!("Success"),
-                    Err(e) => handle_client_error(e, &aopt.copt.output_mode),
+                    Err(e) => handle_client_error(e, aopt.copt.output_mode),
                 }
             }
             ServiceAccountOpt::Get(aopt) => {
                 let client = aopt.copt.to_client(OpType::Read).await;
-                match client
+                let res = client
                     .idm_service_account_get(aopt.aopts.account_id.as_str())
-                    .await
-                {
-                    Ok(Some(e)) => println!("{}", e),
+                    .await;
+                match res {
+                    Ok(Some(e)) => aopt.copt.output_mode.print_message(e),
                     Ok(None) => println!("No matching entries"),
-                    Err(e) => handle_client_error(e, &aopt.copt.output_mode),
+                    Err(e) => handle_client_error(e, aopt.copt.output_mode),
                 }
             }
             ServiceAccountOpt::Delete(aopt) => {
@@ -358,7 +358,7 @@ impl ServiceAccountOpt {
                     )
                     .await
                 {
-                    handle_client_error(e, &acopt.copt.output_mode)
+                    handle_client_error(e, acopt.copt.output_mode)
                 }
             }
             ServiceAccountOpt::Validity { commands } => match commands {
@@ -447,7 +447,7 @@ impl ServiceAccountOpt {
                         }
                     };
                     match res {
-                        Err(e) => handle_client_error(e, &ano.copt.output_mode),
+                        Err(e) => handle_client_error(e, ano.copt.output_mode),
                         _ => println!("Success"),
                     };
                 }
@@ -462,7 +462,7 @@ impl ServiceAccountOpt {
                             )
                             .await
                         {
-                            Err(e) => handle_client_error(e, &ano.copt.output_mode),
+                            Err(e) => handle_client_error(e, ano.copt.output_mode),
                             _ => println!("Success"),
                         }
                     } else {
@@ -480,7 +480,7 @@ impl ServiceAccountOpt {
                             )
                             .await
                         {
-                            Err(e) => handle_client_error(e, &ano.copt.output_mode),
+                            Err(e) => handle_client_error(e, ano.copt.output_mode),
                             _ => println!("Success"),
                         }
                     }
@@ -494,7 +494,7 @@ impl ServiceAccountOpt {
                     .await
                 {
                     Ok(()) => println!("Success"),
-                    Err(e) => handle_client_error(e, &aopt.copt.output_mode),
+                    Err(e) => handle_client_error(e, aopt.copt.output_mode),
                 }
             }
         }

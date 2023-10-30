@@ -25,7 +25,9 @@ use std::path::Path;
 use std::time::Duration;
 
 use kanidm_proto::constants::uri::V1_AUTH_VALID;
-use kanidm_proto::constants::{APPLICATION_JSON, ATTR_NAME, KOPID, KSESSIONID, KVERSION};
+use kanidm_proto::constants::{
+    APPLICATION_JSON, ATTR_NAME, CLIENT_TOKEN_CACHE, KOPID, KSESSIONID, KVERSION,
+};
 use kanidm_proto::v1::*;
 use reqwest::header::CONTENT_TYPE;
 use reqwest::Response;
@@ -85,6 +87,8 @@ pub struct KanidmClientBuilder {
     ca: Option<reqwest::Certificate>,
     connect_timeout: Option<u64>,
     use_system_proxies: bool,
+    /// Where to store auth tokens, only use in testing!
+    token_cache_path: Option<String>,
 }
 
 impl Display for KanidmClientBuilder {
@@ -103,7 +107,14 @@ impl Display for KanidmClientBuilder {
             Some(value) => writeln!(f, "connect_timeout: {}", value)?,
             None => writeln!(f, "connect_timeout: unset")?,
         }
-        writeln!(f, "use_system_proxies: {}", self.use_system_proxies)
+        writeln!(f, "use_system_proxies: {}", self.use_system_proxies)?;
+        writeln!(
+            f,
+            "token_cache_path: {}",
+            self.token_cache_path
+                .clone()
+                .unwrap_or(CLIENT_TOKEN_CACHE.to_string())
+        )
     }
 }
 
@@ -120,6 +131,7 @@ fn test_kanidmclientbuilder_display() {
         ca: None,
         connect_timeout: Some(420),
         use_system_proxies: true,
+        token_cache_path: Some(CLIENT_TOKEN_CACHE.to_string()),
     };
     println!("foo {}", testclient);
     assert!(testclient.to_string().contains("verify_ca: true"));
@@ -141,6 +153,8 @@ pub struct KanidmClient {
     pub(crate) bearer_token: RwLock<Option<String>>,
     pub(crate) auth_session_id: RwLock<Option<String>>,
     pub(crate) check_version: Mutex<bool>,
+    /// Where to store the tokens when you auth, only modify in testing.
+    token_cache_path: String,
 }
 
 #[cfg(target_family = "unix")]
@@ -163,6 +177,7 @@ impl KanidmClientBuilder {
             ca: None,
             connect_timeout: None,
             use_system_proxies: true,
+            token_cache_path: None,
         }
     }
 
@@ -218,6 +233,7 @@ impl KanidmClientBuilder {
             ca,
             connect_timeout,
             use_system_proxies,
+            token_cache_path,
         } = self;
         // Process and apply all our options if they exist.
         let address = match kcc.uri {
@@ -241,6 +257,7 @@ impl KanidmClientBuilder {
             ca,
             connect_timeout,
             use_system_proxies,
+            token_cache_path,
         })
     }
 
@@ -313,57 +330,37 @@ impl KanidmClientBuilder {
     pub fn address(self, address: String) -> Self {
         KanidmClientBuilder {
             address: Some(address),
-            verify_ca: self.verify_ca,
-            verify_hostnames: self.verify_hostnames,
-            ca: self.ca,
-            connect_timeout: self.connect_timeout,
-            use_system_proxies: self.use_system_proxies,
+            ..self
         }
     }
 
     pub fn danger_accept_invalid_hostnames(self, accept_invalid_hostnames: bool) -> Self {
         KanidmClientBuilder {
-            address: self.address,
-            verify_ca: self.verify_ca,
             // We have to flip the bool state here due to english language.
             verify_hostnames: !accept_invalid_hostnames,
-            ca: self.ca,
-            connect_timeout: self.connect_timeout,
-            use_system_proxies: self.use_system_proxies,
+            ..self
         }
     }
 
     pub fn danger_accept_invalid_certs(self, accept_invalid_certs: bool) -> Self {
         KanidmClientBuilder {
-            address: self.address,
             // We have to flip the bool state here due to english language.
             verify_ca: !accept_invalid_certs,
-            verify_hostnames: self.verify_hostnames,
-            ca: self.ca,
-            connect_timeout: self.connect_timeout,
-            use_system_proxies: self.use_system_proxies,
+            ..self
         }
     }
 
     pub fn connect_timeout(self, secs: u64) -> Self {
         KanidmClientBuilder {
-            address: self.address,
-            verify_ca: self.verify_ca,
-            verify_hostnames: self.verify_hostnames,
-            ca: self.ca,
             connect_timeout: Some(secs),
-            use_system_proxies: self.use_system_proxies,
+            ..self
         }
     }
 
     pub fn no_proxy(self) -> Self {
         KanidmClientBuilder {
-            address: self.address,
-            verify_ca: self.verify_ca,
-            verify_hostnames: self.verify_hostnames,
-            ca: self.ca,
-            connect_timeout: self.connect_timeout,
             use_system_proxies: false,
+            ..self
         }
     }
 
@@ -376,12 +373,8 @@ impl KanidmClientBuilder {
         })?;
 
         Ok(KanidmClientBuilder {
-            address: self.address,
-            verify_ca: self.verify_ca,
-            verify_hostnames: self.verify_hostnames,
             ca: Some(ca),
-            connect_timeout: self.connect_timeout,
-            use_system_proxies: self.use_system_proxies,
+            ..self
         })
     }
 
@@ -396,7 +389,6 @@ impl KanidmClientBuilder {
                 "verify_hostnames set to false in client configuration - this may allow network interception of passwords!"
             );
         }
-
         if !address.starts_with("https://") {
             warn!("Address does not start with 'https://' - this may allow network interception of passwords!");
         }
@@ -463,6 +455,11 @@ impl KanidmClientBuilder {
         let origin =
             Url::parse(&uri.origin().ascii_serialization()).expect("failed to parse origin");
 
+        let token_cache_path = match self.token_cache_path.clone() {
+            Some(val) => val.to_string(),
+            None => CLIENT_TOKEN_CACHE.to_string(),
+        };
+
         Ok(KanidmClient {
             client,
             addr: address,
@@ -471,6 +468,7 @@ impl KanidmClientBuilder {
             origin,
             auth_session_id: RwLock::new(None),
             check_version: Mutex::new(true),
+            token_cache_path,
         })
     }
 }
@@ -559,6 +557,10 @@ impl KanidmClient {
         let mut tguard = self.bearer_token.write().await;
         *tguard = None;
         Ok(())
+    }
+
+    pub fn get_token_cache_path(&self) -> String {
+        self.token_cache_path.clone()
     }
 
     /// Check that we're getting the right version back from the server.

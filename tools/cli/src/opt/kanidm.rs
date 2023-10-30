@@ -14,7 +14,7 @@ pub struct DebugOpt {
     pub debug: bool,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 /// The CLI output mode, either text or json, falls back to text if you ask for something other than text/json
 pub enum OutputMode {
     Text,
@@ -28,6 +28,25 @@ impl std::str::FromStr for OutputMode {
             "text" => Ok(OutputMode::Text),
             "json" => Ok(OutputMode::Json),
             _ => Ok(OutputMode::Text),
+        }
+    }
+}
+
+impl OutputMode {
+    pub fn print_message<T>(self, input: T)
+    where
+        T: serde::Serialize + std::fmt::Debug + std::fmt::Display,
+    {
+        match self {
+            OutputMode::Json => {
+                println!(
+                    "{}",
+                    serde_json::to_string(&input).unwrap_or(format!("{:?}", input))
+                );
+            }
+            OutputMode::Text => {
+                println!("{}", input);
+            }
         }
     }
 }
@@ -56,6 +75,9 @@ pub struct CommonOpt {
         default_value_t = false
     )]
     skip_hostname_verification: bool,
+    /// Path to a file to cache tokens in, defaults to ~/.cache/kanidm_tokens
+    #[clap(short, long, env = "KANIDM_TOKEN_CACHE_PATH", hide = true, default_value = None)]
+    token_cache_path: Option<String>,
 }
 
 #[derive(Debug, Args)]
@@ -154,8 +176,8 @@ pub enum GroupOpt {
     #[clap(name = "account-policy")]
     AccountPolicy {
         #[clap(subcommand)]
-        commands: GroupAccountPolicyOpt
-    }
+        commands: GroupAccountPolicyOpt,
+    },
 }
 
 #[derive(Debug, Args)]
@@ -597,10 +619,10 @@ pub struct LogoutOpt {
 pub enum SessionOpt {
     #[clap(name = "list")]
     /// List current active sessions
-    List(DebugOpt),
+    List(CommonOpt),
     #[clap(name = "cleanup")]
     /// Remove sessions that have expired or are invalid.
-    Cleanup(DebugOpt),
+    Cleanup(CommonOpt),
 }
 
 #[derive(Debug, Args)]
@@ -852,7 +874,6 @@ pub enum DeniedNamesOpt {
         names: Vec<String>,
     },
 }
-
 
 #[derive(Debug, Subcommand)]
 pub enum DomainOpt {

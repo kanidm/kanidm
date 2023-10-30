@@ -1,7 +1,7 @@
 use crate::common::OpType;
 use std::collections::BTreeMap;
 use std::fs::{create_dir, File};
-use std::io::{self, BufReader, BufWriter, ErrorKind, Write};
+use std::io::{self, BufReader, BufWriter, ErrorKind, IsTerminal, Write};
 use std::path::PathBuf;
 use std::str::FromStr;
 
@@ -9,6 +9,7 @@ use compact_jwt::{Jws, JwsUnverified};
 use dialoguer::theme::ColorfulTheme;
 use dialoguer::Select;
 use kanidm_client::{ClientError, KanidmClient};
+use kanidm_proto::constants::CLIENT_TOKEN_CACHE;
 use kanidm_proto::v1::{AuthAllowed, AuthResponse, AuthState, UserAuthToken};
 #[cfg(target_family = "unix")]
 use libc::umask;
@@ -16,18 +17,26 @@ use webauthn_authenticator_rs::prelude::RequestChallengeResponse;
 
 use crate::common::prompt_for_username_get_username;
 use crate::webauthn::get_authenticator;
-use crate::{LoginOpt, LogoutOpt, ReauthOpt, SessionOpt};
+use crate::{CommonOpt, LoginOpt, LogoutOpt, ReauthOpt, SessionOpt};
 
 static TOKEN_DIR: &str = "~/.cache";
-static TOKEN_PATH: &str = "~/.cache/kanidm_tokens";
+
+impl CommonOpt {
+    fn get_token_cache_path(&self) -> String {
+        match self.token_cache_path.clone() {
+            None => CLIENT_TOKEN_CACHE.to_string(),
+            Some(val) => val.clone(),
+        }
+    }
+}
 
 #[allow(clippy::result_unit_err)]
-pub fn read_tokens() -> Result<BTreeMap<String, String>, ()> {
-    let token_path = PathBuf::from(shellexpand::tilde(TOKEN_PATH).into_owned());
+pub fn read_tokens(token_path: &str) -> Result<BTreeMap<String, String>, ()> {
+    let token_path = PathBuf::from(shellexpand::tilde(token_path).into_owned());
     if !token_path.exists() {
         debug!(
             "Token cache file path {:?} does not exist, returning an empty token store.",
-            TOKEN_PATH
+            token_path
         );
         return Ok(BTreeMap::new());
     }
@@ -50,7 +59,8 @@ pub fn read_tokens() -> Result<BTreeMap<String, String>, ()> {
                 _ => {
                     warn!(
                         "Cannot read tokens from {} due to error: {:?} ... continuing.",
-                        TOKEN_PATH, e
+                        token_path.display(),
+                        e
                     );
                     return Ok(BTreeMap::new());
                 }
@@ -69,9 +79,9 @@ pub fn read_tokens() -> Result<BTreeMap<String, String>, ()> {
 }
 
 #[allow(clippy::result_unit_err)]
-pub fn write_tokens(tokens: &BTreeMap<String, String>) -> Result<(), ()> {
+pub fn write_tokens(tokens: &BTreeMap<String, String>, token_path: &str) -> Result<(), ()> {
     let token_dir = PathBuf::from(shellexpand::tilde(TOKEN_DIR).into_owned());
-    let token_path = PathBuf::from(shellexpand::tilde(TOKEN_PATH).into_owned());
+    let token_path = PathBuf::from(shellexpand::tilde(token_path).into_owned());
 
     token_dir
         .parent()
@@ -103,7 +113,7 @@ pub fn write_tokens(tokens: &BTreeMap<String, String>) -> Result<(), ()> {
     let file = File::create(&token_path).map_err(|e| {
         #[cfg(target_family = "unix")]
         let _ = unsafe { umask(before) };
-        error!("Can not write to {} -> {:?}", TOKEN_PATH, e);
+        error!("Can not write to {} -> {:?}", token_path.display(), e);
     })?;
 
     #[cfg(target_family = "unix")]
@@ -301,7 +311,7 @@ async fn process_auth_state(
     }
 
     // Read the current tokens
-    let mut tokens = read_tokens().unwrap_or_else(|_| {
+    let mut tokens = read_tokens(&client.get_token_cache_path()).unwrap_or_else(|_| {
         error!("Error retrieving authentication token store");
         std::process::exit(1);
     });
@@ -333,7 +343,7 @@ async fn process_auth_state(
     tokens.insert(spn.clone(), tonk);
 
     // write them out.
-    if write_tokens(&tokens).is_err() {
+    if write_tokens(&tokens, &client.get_token_cache_path()).is_err() {
         error!("Error persisting authentication token store");
         std::process::exit(1);
     };
@@ -436,13 +446,21 @@ impl LogoutOpt {
             let mut _tmp_username = String::new();
             match &self.copt.username {
                 Some(value) => value.clone(),
-                None => match prompt_for_username_get_username() {
-                    Ok(value) => value,
-                    Err(msg) => {
-                        error!("{}", msg);
-                        std::process::exit(1);
+                None => {
+                    // check if we're in a tty
+                    if std::io::stdin().is_terminal() {
+                        match prompt_for_username_get_username(&self.copt.get_token_cache_path()) {
+                            Ok(value) => value,
+                            Err(msg) => {
+                                error!("{}", msg);
+                                std::process::exit(1);
+                            }
+                        }
+                    } else {
+                        eprintln!("Not running in interactive mode and no username specified, can't continue!");
+                        return;
                     }
-                },
+                }
             }
         } else {
             let client = self.copt.to_client(OpType::Read).await;
@@ -480,7 +498,7 @@ impl LogoutOpt {
             uat.spn
         };
 
-        let mut tokens = read_tokens().unwrap_or_else(|_| {
+        let mut tokens = read_tokens(&self.copt.get_token_cache_path()).unwrap_or_else(|_| {
             error!("Error retrieving authentication token store");
             std::process::exit(1);
         });
@@ -488,7 +506,7 @@ impl LogoutOpt {
         // Remove our old one
         if tokens.remove(&spn).is_some() {
             // write them out.
-            if let Err(_e) = write_tokens(&tokens) {
+            if let Err(_e) = write_tokens(&tokens, &self.copt.get_token_cache_path()) {
                 error!("Error persisting authentication token store");
                 std::process::exit(1);
             };
@@ -506,8 +524,8 @@ impl SessionOpt {
         }
     }
 
-    fn read_valid_tokens() -> BTreeMap<String, (String, UserAuthToken)> {
-        read_tokens()
+    fn read_valid_tokens(token_cache_path: &str) -> BTreeMap<String, (String, UserAuthToken)> {
+        read_tokens(token_cache_path)
             .unwrap_or_else(|_| {
                 error!("Error retrieving authentication token store");
                 std::process::exit(1);
@@ -535,15 +553,15 @@ impl SessionOpt {
 
     pub async fn exec(&self) {
         match self {
-            SessionOpt::List(_) => {
-                let tokens = Self::read_valid_tokens();
+            SessionOpt::List(copt) => {
+                let tokens = Self::read_valid_tokens(&copt.get_token_cache_path());
                 for (_, uat) in tokens.values() {
                     println!("---");
                     println!("{}", uat);
                 }
             }
-            SessionOpt::Cleanup(_) => {
-                let tokens = Self::read_valid_tokens();
+            SessionOpt::Cleanup(copt) => {
+                let tokens = Self::read_valid_tokens(&copt.get_token_cache_path());
                 let start_len = tokens.len();
 
                 let now = time::OffsetDateTime::now_utc();
@@ -566,7 +584,7 @@ impl SessionOpt {
 
                 let end_len = tokens.len();
 
-                if let Err(_e) = write_tokens(&tokens) {
+                if let Err(_e) = write_tokens(&tokens, &copt.get_token_cache_path()) {
                     error!("Error persisting authentication token store");
                     std::process::exit(1);
                 };
