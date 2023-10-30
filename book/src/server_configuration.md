@@ -5,7 +5,9 @@
 You need a configuration file in the volume named `server.toml`. (Within the container it should be
 `/data/server.toml`) The following is a commented example configuration.
 
-The full options and explanations are in the  [kanidmd_core::config::ServerConfig](https://kanidm.github.io/kanidm/master/rustdoc/kanidmd_core/config/struct.ServerConfig.html) for your particular build.
+The full options and explanations are in the
+[kanidmd_core::config::ServerConfig](https://kanidm.github.io/kanidm/master/rustdoc/kanidmd_core/config/struct.ServerConfig.html)
+for your particular build.
 
 ```toml
 {{#rustdoc_include ../../examples/server_container.toml}}
