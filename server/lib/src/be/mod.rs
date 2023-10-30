@@ -46,8 +46,7 @@ use crate::be::idl_arc_sqlite::{
     IdlArcSqlite, IdlArcSqliteReadTransaction, IdlArcSqliteTransaction,
     IdlArcSqliteWriteTransaction,
 };
-// Re-export this
-pub use crate::be::idl_sqlite::FsType;
+use kanidm_proto::internal::FsType;
 
 // Currently disabled due to improvements in idlset for intersection handling.
 const FILTER_SEARCH_TEST_THRESHOLD: usize = 0;

@@ -40,22 +40,6 @@ pub(super) fn serde_json_error(e: serde_json::Error) -> OperationError {
 
 type ConnPool = Arc<Mutex<VecDeque<Connection>>>;
 
-#[repr(u32)]
-#[derive(Debug, Copy, Clone)]
-pub enum FsType {
-    Generic = 4096,
-    Zfs = 65536,
-}
-
-impl FsType {
-    pub fn checkpoint_pages(&self) -> u32 {
-        match self {
-            FsType::Generic => 2048,
-            FsType::Zfs => 256,
-        }
-    }
-}
-
 #[derive(Debug)]
 pub struct IdSqliteEntry {
     id: i64,
