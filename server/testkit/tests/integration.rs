@@ -266,7 +266,7 @@ fn test_cmd_idm_admin(token_cache_path: &str, rsclient: &KanidmClient, cmd: &str
     res
 }
 
-#[kanidmd_testkit::test(threads = 4)]
+#[kanidmd_testkit::test]
 /// Testing the CLI doing things.
 async fn test_integration_with_assert_cmd(rsclient: KanidmClient) {
     // setup the admin things
