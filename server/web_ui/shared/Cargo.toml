@@ -21,7 +21,6 @@ repository = { workspace = true }
 gloo = { workspace = true }
 js-sys = { workspace = true }
 kanidm_proto = { workspace = true, features = ["wasm"] }
-lazy_static.workspace = true
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 serde-wasm-bindgen = { workspace = true }
@@ -31,7 +30,6 @@ uuid = { workspace = true }
 wasm-bindgen = { workspace = true }
 wasm-bindgen-futures = { workspace = true }
 yew = { workspace = true, features = ["csr"] }
-yew-router = { workspace = true }
 
 [dependencies.web-sys]
 workspace = true

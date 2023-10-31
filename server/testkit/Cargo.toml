@@ -23,8 +23,6 @@ default = []
 webdriver = []
 
 [dependencies]
-assert_cmd = "2.0.12"
-escargot = "0.5.8"
 hyper-tls = { workspace = true }
 http = { workspace = true }
 kanidm_client = { workspace = true }
@@ -33,7 +31,6 @@ kanidmd_core = { workspace = true }
 kanidmd_lib = { workspace = true }
 lazy_static = { workspace = true }
 openssl = { workspace = true }
-petgraph = { version = "0.6.4", features = ["serde", "serde-1"] }
 regex = { workspace = true }
 reqwest = { workspace = true, default-features = false, features = ["cookies"] }
 serde = { workspace = true }
@@ -54,16 +51,18 @@ url = { workspace = true, features = ["serde"] }
 kanidm_build_profiles = { workspace = true }
 
 [dev-dependencies]
+assert_cmd = "2.0.12"
 compact_jwt = { workspace = true }
+escargot = "0.5.8"
 # used for webdriver testing
 fantoccini = { version = "0.19.3" }
-
-serde_json = { workspace = true }
-webauthn-authenticator-rs = { workspace = true }
-oauth2_ext = { workspace = true, default-features = false }
 futures = { workspace = true }
-time = { workspace = true }
+oauth2_ext = { workspace = true, default-features = false }
 openssl = { workspace = true }
+petgraph = { version = "0.6.4", features = ["serde", "serde-1"] }
+serde_json = { workspace = true }
+time = { workspace = true }
 tokio-openssl = { workspace = true }
 kanidm_lib_crypto = { workspace = true }
 uuid = { workspace = true }
+webauthn-authenticator-rs = { workspace = true }
