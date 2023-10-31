@@ -42,7 +42,7 @@ use std::sync::Arc;
 use crate::utils::touch_file_or_quit;
 use compact_jwt::JwsSigner;
 use kanidm_proto::v1::OperationError;
-use kanidmd_lib::be::{Backend, BackendConfig, BackendTransaction, FsType};
+use kanidmd_lib::be::{Backend, BackendConfig, BackendTransaction};
 use kanidmd_lib::idm::ldap::LdapServer;
 use kanidmd_lib::prelude::*;
 use kanidmd_lib::schema::Schema;
@@ -76,21 +76,11 @@ fn setup_backend_vacuum(
     let idxmeta = schema_txn.reload_idxmeta();
 
     let pool_size: u32 = config.threads as u32;
-    let fstype: FsType = if config
-        .db_fs_type
-        .as_ref()
-        .map(|s| s == "zfs")
-        .unwrap_or(false)
-    {
-        FsType::Zfs
-    } else {
-        FsType::Generic
-    };
 
     let cfg = BackendConfig::new(
         config.db_path.as_str(),
         pool_size,
-        fstype,
+        config.db_fs_type.unwrap_or_default(),
         config.db_arc_size,
     );
 

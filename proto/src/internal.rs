@@ -128,3 +128,47 @@ impl ImageValue {
         }
     }
 }
+
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, Deserialize, Default, Eq, PartialEq)]
+#[serde(rename_all = "lowercase")]
+/// Filesystem type object, used for tuning database parameters.
+pub enum FsType {
+    Zfs = 65536,
+    #[default]
+    #[serde(other)]
+    /// The default setting, if not set to "zfs"
+    Generic = 4096,
+}
+
+impl FsType {
+    pub fn checkpoint_pages(&self) -> u32 {
+        match self {
+            FsType::Generic => 2048,
+            FsType::Zfs => 256,
+        }
+    }
+}
+
+impl From<String> for FsType {
+    fn from(s: String) -> Self {
+        s.as_str().into()
+    }
+}
+
+impl From<&str> for FsType {
+    fn from(s: &str) -> Self {
+        match s {
+            "zfs" => FsType::Zfs,
+            _ => FsType::Generic,
+        }
+    }
+}
+
+#[test]
+fn test_fstype_deser() {
+    assert_eq!(FsType::from("zfs"), FsType::Zfs);
+    assert_eq!(FsType::from("generic"), FsType::Generic);
+    assert_eq!(FsType::from(" "), FsType::Generic);
+    assert_eq!(FsType::from("crab🦀"), FsType::Generic);
+}
