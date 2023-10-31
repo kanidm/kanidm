@@ -62,6 +62,7 @@ cargo install cargo-udeps
 - [ ] publish `kanidm_utils_users`
 - [ ] publish `kanidm_lib_file_permissions`
 - [ ] publish `kanidm_client`
+- [ ] publish `kanidm_lib_crypto`
 - [ ] publish `kanidm_tools`
 
 ### Docker
