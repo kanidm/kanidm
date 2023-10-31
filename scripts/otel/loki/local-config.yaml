@@ -28,7 +28,7 @@ common:
     instance_addr: 0.0.0.0
     kvstore:
       store: memberlist
-# ruler:
-#   storage:
-#     s3:
-#       bucketnames: loki-ruler
+ruler:
+  storage:
+    s3:
+      bucketnames: loki-ruler
