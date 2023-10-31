@@ -4,6 +4,7 @@ use opentelemetry_sdk::metrics::MeterProvider;
 use opentelemetry_sdk::trace::{self, Sampler};
 use opentelemetry_sdk::Resource;
 use std::time::Duration;
+use tracing::Subscriber;
 use tracing_subscriber::Registry;
 use tracing_subscriber::{prelude::*, EnvFilter};
 
@@ -37,7 +38,7 @@ pub fn init_metrics() -> metrics::Result<MeterProvider> {
 pub fn startup_opentelemetry(
     otlp_endpoint: Option<String>,
     log_filter: crate::LogLevel,
-) -> Result<(), String> {
+) -> Result<Box<dyn Subscriber + Send + Sync>, String> {
     let forest_filter: EnvFilter = log_filter.into();
     let forest_layer = tracing_forest::ForestLayer::default().with_filter(forest_filter);
 
@@ -82,14 +83,14 @@ pub fn startup_opentelemetry(
                 .with_threads(true)
                 .with_filter(t_filter);
 
-            let subscriber = Registry::default().with(forest_layer).with(telemetry);
-            tracing::subscriber::set_global_default(subscriber).unwrap();
+            Ok(Box::new(
+                Registry::default().with(forest_layer).with(telemetry),
+            ))
+            // tracing::subscriber::set_global_default(subscriber).unwrap();
         }
         None => {
-            let subscriber = Registry::default().with(forest_layer);
-            tracing::subscriber::set_global_default(subscriber).unwrap();
+            Ok(Box::new(Registry::default().with(forest_layer)))
+            // tracing::subscriber::set_global_default(subscriber).unwrap();
         }
-    };
-
-    Ok(())
+    }
 }

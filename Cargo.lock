@@ -1130,6 +1130,8 @@ dependencies = [
  "kanidm_proto",
  "kanidm_utils_users",
  "kanidmd_core",
+ "opentelemetry",
+ "opentelemetry_api",
  "reqwest",
  "sd-notify",
  "serde",
@@ -1138,6 +1140,7 @@ dependencies = [
  "tokio",
  "tokio-util",
  "toml",
+ "tracing",
  "whoami",
 ]
 

@@ -33,6 +33,12 @@ serde = { workspace = true, features = ["derive"] }
 tokio = { workspace = true, features = ["rt-multi-thread", "macros", "signal"] }
 tokio-util = { workspace = true, features = ["codec"] }
 toml = { workspace = true }
+opentelemetry = { workspace = true, features = ["logs"] }
+opentelemetry_api = { workspace = true, features = ["logs"] }
+tracing = { workspace = true, features = [
+    "max_level_trace",
+    "release_max_level_debug",
+] }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 sd-notify.workspace = true

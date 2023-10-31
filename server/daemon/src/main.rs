@@ -197,11 +197,17 @@ fn main() -> ExitCode {
         Ok(rt) => rt,
         Err(err) => {
             eprintln!("CRITICAL: Unable to start runtime! {:?}", err);
-            return ExitCode::FAILURE;
+            return shutdown(ExitCode::FAILURE);
         }
     };
 
     rt.block_on(kanidm_main())
+}
+
+fn shutdown(exit_code: ExitCode) -> ExitCode {
+    opentelemetry::global::shutdown_logger_provider();
+    opentelemetry::global::shutdown_tracer_provider();
+    exit_code
 }
 
 async fn kanidm_main() -> ExitCode {
@@ -211,7 +217,7 @@ async fn kanidm_main() -> ExitCode {
     // print the app version and bail
     if let KanidmdOpt::Version(_) = &opt.commands {
         println!("kanidmd {}", env!("KANIDM_PKG_VERSION"));
-        return ExitCode::SUCCESS;
+        return shutdown(ExitCode::SUCCESS);
     };
 
     //we set up a list of these so we can set the log config THEN log out the errors.
@@ -226,14 +232,14 @@ async fn kanidm_main() -> ExitCode {
 
     let Some(cfg_path) = cfg_path else {
         eprintln!("Unable to start - can not locate any configuration file");
-        return ExitCode::FAILURE;
+        return shutdown(ExitCode::FAILURE);
     };
 
     let sconfig = match ServerConfig::new(&cfg_path) {
         Ok(c) => Some(c),
         Err(e) => {
             config_error.push(format!("Config Parse failure {:?}", e));
-            return ExitCode::FAILURE;
+            return shutdown(ExitCode::FAILURE);
         }
     };
 
@@ -255,10 +261,19 @@ async fn kanidm_main() -> ExitCode {
     };
 
     // TODO: only send to stderr when we're not in a TTY
-    if let Err(err) = sketching::otel::startup_opentelemetry(otel_endpoint, log_filter) {
-        eprintln!("Error starting logger - {:} - Bailing on startup!", err);
-        return ExitCode::FAILURE;
-    }
+    let sub = match sketching::otel::startup_opentelemetry(otel_endpoint, log_filter) {
+        Err(err) => {
+            eprintln!("Error starting logger - {:} - Bailing on startup!", err);
+            return shutdown(ExitCode::FAILURE);
+        }
+        Ok(val) => val,
+    };
+    tracing::subscriber::set_global_default(sub)
+        .map_err(|err| {
+            eprintln!("Error starting logger - {:} - Bailing on startup!", err);
+            return shutdown(ExitCode::FAILURE);
+        })
+        .unwrap();
 
     // Get information on the windows username
     #[cfg(target_family = "windows")]
@@ -268,7 +283,7 @@ async fn kanidm_main() -> ExitCode {
         for e in config_error {
             error!("{}", e);
         }
-        return ExitCode::FAILURE;
+        return shutdown(ExitCode::FAILURE);
     }
 
     // Get info about who we are.
@@ -288,7 +303,7 @@ async fn kanidm_main() -> ExitCode {
         if cuid != ceuid || cgid != cegid {
             error!("{} != {} || {} != {}", cuid, ceuid, cgid, cegid);
             error!("Refusing to run - uid and euid OR gid and egid must be consistent.");
-            return ExitCode::FAILURE;
+            return shutdown(ExitCode::FAILURE);
         }
         (cuid, ceuid)
     };
@@ -297,14 +312,14 @@ async fn kanidm_main() -> ExitCode {
         Some(val) => val,
         None => {
             error!("Somehow you got an empty ServerConfig after error checking?");
-            return ExitCode::FAILURE;
+            return shutdown(ExitCode::FAILURE);
         }
     };
 
     // Stop early if replication was found
     if sconfig.repl_config.is_some() && !sconfig.i_acknowledge_that_replication_is_in_development {
         error!("Unable to proceed. Replication should not be configured manually.");
-        return ExitCode::FAILURE;
+        return shutdown(ExitCode::FAILURE);
     }
 
     #[cfg(target_family = "unix")]
@@ -317,7 +332,7 @@ async fn kanidm_main() -> ExitCode {
                     cfg_path.display(),
                     e
                 );
-                return ExitCode::FAILURE;
+                return shutdown(ExitCode::FAILURE);
             }
         };
 
@@ -362,7 +377,7 @@ async fn kanidm_main() -> ExitCode {
                     &db_par_path_buf.to_str().unwrap_or("invalid file path"),
                     e
                 );
-                return ExitCode::FAILURE;
+                return shutdown(ExitCode::FAILURE);
             }
         };
         if !i_meta.is_dir() {
@@ -370,7 +385,7 @@ async fn kanidm_main() -> ExitCode {
                 "ERROR: Refusing to run - DB folder {} may not be a directory",
                 db_par_path_buf.to_str().unwrap_or("invalid file path")
             );
-            return ExitCode::FAILURE;
+            return shutdown(ExitCode::FAILURE);
         }
 
         if kanidm_lib_file_permissions::readonly(&i_meta) {
@@ -408,7 +423,7 @@ async fn kanidm_main() -> ExitCode {
                 Ok(flock) => flock,
                 Err(e) => {
                     error!("ERROR: Refusing to start - unable to create kanidm exclusive lock at {} - {:?}", klock_path, e);
-                    return ExitCode::FAILURE;
+                    return shutdown(ExitCode::FAILURE);
                 }
             };
 
@@ -417,7 +432,7 @@ async fn kanidm_main() -> ExitCode {
                 Err(e) => {
                     error!("ERROR: Refusing to start - unable to lock kanidm exclusive lock at {} - {:?}", klock_path, e);
                     error!("Is another kanidm process running?");
-                    return ExitCode::FAILURE;
+                    return shutdown(ExitCode::FAILURE);
                 }
             };
         }
@@ -447,7 +462,7 @@ async fn kanidm_main() -> ExitCode {
                         );
                         let diag = kanidm_lib_file_permissions::diagnose_path(&i_path);
                         info!(%diag);
-                        return ExitCode::FAILURE;
+                        return shutdown(ExitCode::FAILURE);
                     }
                 };
                 if !kanidm_lib_file_permissions::readonly(&i_meta) {
@@ -468,7 +483,7 @@ async fn kanidm_main() -> ExitCode {
                         );
                         let diag = kanidm_lib_file_permissions::diagnose_path(&i_path);
                         info!(%diag);
-                        return ExitCode::FAILURE;
+                        return shutdown(ExitCode::FAILURE);
                     }
                 };
                 if !kanidm_lib_file_permissions::readonly(&i_meta) {
@@ -549,7 +564,7 @@ async fn kanidm_main() -> ExitCode {
                         error!("Failed to start server core!");
                         // We may need to return an exit code here, but that may take some re-architecting
                         // to ensure we drop everything cleanly.
-                        return ExitCode::FAILURE;
+                        return shutdown(ExitCode::FAILURE);
                     }
                 }
                 info!("Stopped 🛑 ");
@@ -568,7 +583,7 @@ async fn kanidm_main() -> ExitCode {
                 Some(p) => p,
                 None => {
                     error!("Invalid backup path");
-                    return ExitCode::FAILURE;
+                    return shutdown(ExitCode::FAILURE);
                 }
             };
             backup_server_core(&config, p);
@@ -581,7 +596,7 @@ async fn kanidm_main() -> ExitCode {
                 Some(p) => p,
                 None => {
                     error!("Invalid restore path");
-                    return ExitCode::FAILURE;
+                    return shutdown(ExitCode::FAILURE);
                 }
             };
             restore_server_core(&config, p).await;
@@ -743,7 +758,7 @@ async fn kanidm_main() -> ExitCode {
                                         "Failed to read {:?} from filesystem: {:?}",
                                         ca_cert_path, e
                                     );
-                                    return ExitCode::FAILURE;
+                                    return shutdown(ExitCode::FAILURE);
                                 }
                             };
                             let content = ca_contents
@@ -763,7 +778,7 @@ async fn kanidm_main() -> ExitCode {
                                         "Failed to parse {:?} as valid certificate",
                                         ca_cert_path
                                     );
-                                    return ExitCode::FAILURE;
+                                    return shutdown(ExitCode::FAILURE);
                                 }
                             };
                             let content = format!("{}-----END CERTIFICATE-----", content);
@@ -776,7 +791,7 @@ async fn kanidm_main() -> ExitCode {
                                             "Failed to parse {} into CA certificate!\nError: {:?}",
                                             ca_cert, e
                                         );
-                                        return ExitCode::FAILURE;
+                                        return shutdown(ExitCode::FAILURE);
                                     }
                                 };
                             client.add_root_certificate(ca_cert_parsed)
@@ -804,7 +819,7 @@ async fn kanidm_main() -> ExitCode {
                         }
                     };
                     error!("CRITICAL: {error_message}");
-                    return ExitCode::FAILURE;
+                    return shutdown(ExitCode::FAILURE);
                 }
             };
             debug!("Request: {req:?}");
