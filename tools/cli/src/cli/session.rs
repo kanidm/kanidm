@@ -259,7 +259,7 @@ async fn process_auth_state(
             {
                 #[allow(clippy::expect_used)]
                 allowed
-                    .get(0)
+                    .first()
                     .expect("can not fail - bounds already checked.")
             }
             _ => {
@@ -387,7 +387,7 @@ impl LoginOpt {
             {
                 #[allow(clippy::expect_used)]
                 mechs
-                    .get(0)
+                    .first()
                     .expect("can not fail - bounds already checked.")
             }
             _ => {

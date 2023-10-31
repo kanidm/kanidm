@@ -372,7 +372,7 @@ impl Credential {
     pub fn try_from_repl_v1(rc: &ReplCredV1) -> Result<(String, Self), OperationError> {
         match rc {
             ReplCredV1::TmpWn { tag, set } => {
-                let m_uuid: Option<Uuid> = set.get(0).map(|v| v.uuid);
+                let m_uuid: Option<Uuid> = set.first().map(|v| v.uuid);
 
                 let v_webauthn = set
                     .iter()

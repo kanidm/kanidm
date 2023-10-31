@@ -372,7 +372,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 &[entry],
             )?;
 
-        let eperm = effective_perms.get(0).ok_or_else(|| {
+        let eperm = effective_perms.first().ok_or_else(|| {
             error!("Effective Permission check returned no results");
             OperationError::InvalidState
         })?;
@@ -485,7 +485,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                     &[entry],
                 )?;
 
-            let eperm = effective_perms.get(0).ok_or_else(|| {
+            let eperm = effective_perms.first().ok_or_else(|| {
                 admin_error!("Effective Permission check returned no results");
                 OperationError::InvalidState
             })?;
@@ -2782,7 +2782,7 @@ mod tests {
         assert!(c_status.passkeys.len() == 1);
 
         // Get the UUID of the passkey here.
-        let pk_uuid = c_status.passkeys.get(0).map(|pkd| pkd.uuid).unwrap();
+        let pk_uuid = c_status.passkeys.first().map(|pkd| pkd.uuid).unwrap();
 
         // Commit
         drop(cutxn);

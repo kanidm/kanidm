@@ -251,7 +251,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             .get_accesscontrols()
             .effective_permission_check(&sfe.ident, Some(BTreeSet::default()), &[entry])?;
 
-        let eperm = effective_perms.get(0).ok_or_else(|| {
+        let eperm = effective_perms.first().ok_or_else(|| {
             admin_error!("Effective Permission check returned no results");
             OperationError::InvalidState
         })?;
@@ -382,7 +382,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             .get_accesscontrols()
             .effective_permission_check(&ste.ident, Some(BTreeSet::default()), &[entry])?;
 
-        let eperm = effective_perms.get(0).ok_or_else(|| {
+        let eperm = effective_perms.first().ok_or_else(|| {
             admin_error!("Effective Permission check returned no results");
             OperationError::InvalidState
         })?;
@@ -2153,7 +2153,7 @@ mod tests {
             // Should be none as the entry was masked by being recycled.
             .map(|entries| {
                 assert!(entries.len() == 1);
-                let ent = entries.get(0).unwrap();
+                let ent = entries.first().unwrap();
                 ent.mask_recycled_ts().is_none()
             })
             .unwrap_or(false));
@@ -2348,7 +2348,7 @@ mod tests {
             // Should be none as the entry was masked by being recycled.
             .map(|entries| {
                 assert!(entries.len() == 1);
-                let ent = entries.get(0).unwrap();
+                let ent = entries.first().unwrap();
                 ent.mask_recycled_ts().is_none()
             })
             .unwrap_or(false));
@@ -2432,7 +2432,7 @@ mod tests {
             // Should be none as the entry was masked by being recycled.
             .map(|entries| {
                 assert!(entries.len() == 1);
-                let ent = entries.get(0).unwrap();
+                let ent = entries.first().unwrap();
                 ent.mask_recycled_ts().is_none()
             })
             .unwrap_or(false));
@@ -2447,7 +2447,7 @@ mod tests {
             // Should be none as the entry was masked by being recycled.
             .map(|entries| {
                 assert!(entries.len() == 1);
-                let ent = entries.get(0).unwrap();
+                let ent = entries.first().unwrap();
                 ent.mask_recycled_ts().is_none()
             })
             .unwrap_or(false));
