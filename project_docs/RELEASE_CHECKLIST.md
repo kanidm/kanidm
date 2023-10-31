@@ -29,7 +29,6 @@ cargo install cargo-udeps
 
 ### Administration
 
-- [ ] update version in ./server/web\_ui/Cargo.toml
 - [ ] update version in ./Cargo.toml
 - [ ] update version in ./Makefile
 - [ ] cargo test

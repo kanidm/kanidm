@@ -14,6 +14,29 @@ report it to our [issue tracker].
 
 # Release Notes
 
+## 2023-10-31 - Kanidm 1.1.0-beta14
+
+This is the fourteenth pre-release of the Kanidm Identity Management project. Pre-releases are to
+help get feedback and ideas from the community on how we can continue to make this project better.
+
+At this point we believe we are on the final stretch to making something we consider "release
+ready". After this we will start to ship release candidates as our focus will now be changing to
+finish our production components and the stability of the API's for longer term support.
+
+### 1.1.0-beta14 Release Highlights
+
+- Replication is in Beta! Please test carefully!
+- Web UI WASM has been split up, significantly improving the responsiveness.
+- Resolved API JSON issues from 1.1.0-beta13
+- Swapped a lot of internal string constants for enums.
+- Added shortcuts for RW token sessions.
+- TLS client validation improvement
+- Minimum TLS key length enforcement on server code.
+- Improvements to exit code returns on CLI commands.
+- Credential reset link timeout issues resolved.
+- Removed a lot of uses of `unwrap` and `expect` to improve reliabilty.
+- Account policy framework is now in place.
+
 ## 2023-05-01 - Kanidm 1.1.0-beta13
 
 This is the thirteenth pre-release of the Kanidm Identity Management project. Pre-releases are to
@@ -23,7 +46,7 @@ At this point we believe we are on the final stretch to making something we cons
 ready". After this we will start to ship release candidates as our focus will now be changing to
 finish our production components and the stability of the API's for longer term support.
 
-### Release Highlights
+### 1.1.0-beta13 Release Highlights
 
 - Replication foundations
   - Full implementation of replication refresh

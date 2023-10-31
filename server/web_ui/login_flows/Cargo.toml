@@ -32,7 +32,6 @@ uuid = { workspace = true }
 yew = { workspace = true, features = ["csr"] }
 yew-router = { workspace = true }
 time = { workspace = true }
-lazy_static.workspace = true
 gloo-utils = { workspace = true }
 web-sys = { workspace = true, features = [
     "CredentialsContainer",
