@@ -64,7 +64,6 @@ tower-http = { version = "0.4.4", features = [
 tracing = { workspace = true, features = ["attributes"] }
 tracing-subscriber = { workspace = true, features = ["time", "json"] }
 urlencoding = { workspace = true }
-tempfile = { workspace = true }
 url = { workspace = true, features = ["serde"] }
 uuid = { workspace = true, features = ["serde", "v4"] }
 utoipa = { workspace = true, features = [
@@ -76,6 +75,7 @@ utoipa-swagger-ui = { workspace = true, features = ["axum"] }
 
 [dev-dependencies]
 walkdir = { workspace = true }
+tempfile = { workspace = true }
 
 [build-dependencies]
 kanidm_build_profiles = { workspace = true }

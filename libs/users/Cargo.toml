@@ -1,5 +1,6 @@
 [package]
 name = "kanidm_utils_users"
+description = "Kanidm utility crate"
 version.workspace = true
 authors.workspace = true
 rust-version.workspace = true

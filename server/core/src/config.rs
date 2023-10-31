@@ -13,6 +13,7 @@ use std::path::Path;
 use std::str::FromStr;
 
 use kanidm_proto::constants::DEFAULT_SERVER_ADDRESS;
+use kanidm_proto::internal::FsType;
 use kanidm_proto::messages::ConsoleOutputMode;
 
 use kanidm_lib_crypto::prelude::X509;
@@ -24,10 +25,29 @@ use url::Url;
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct OnlineBackup {
+    /// The destination folder for your backups
     pub path: String,
     #[serde(default = "default_online_backup_schedule")]
+    /// The schedule to run online backups (see <https://crontab.guru/>)
+    ///
+    /// Examples:
+    ///
+    /// - every day at 22:00 UTC (default): `"00 22 * * *"`
+    /// - every 6th hours (four times a day) at 3 minutes past the hour, :
+    /// `"03 */6 * * *"`
+    ///
+    /// We also support non standard cron syntax, with the following format:
+    ///
+    /// `<sec>  <min>   <hour>   <day of month>   <month>   <day of week>   <year>`
+    ///
+    /// eg:
+    /// - `1 2 3 5 12 * 2023` would only back up once on the 5th of December 2023 at 03:02:01am.
+    /// - `3 2 1 * * Mon *` backs up every Monday at 03:02:01am.
+    ///
+    /// (it's very similar to the standard cron syntax, it just allows to specify the seconds at the beginning and the year at the end)
     pub schedule: String,
     #[serde(default = "default_online_backup_versions")]
+    /// How many past backup versions to keep
     pub versions: usize,
 }
 
@@ -82,32 +102,60 @@ pub struct ReplicationConfiguration {
     pub manual: BTreeMap<Url, RepNodeConfig>,
 }
 
-/// This is the Server Configuration as read from server.toml. Important to note
-/// is that not all flags or values from Configuration are exposed via this structure
+/// This is the Server Configuration as read from `server.toml`.
+///
+/// NOTE: not all flags or values from the internal [Configuration] object are exposed via this structure
 /// to prevent certain settings being set (e.g. integration test modes)
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ServerConfig {
-    pub bindaddress: Option<String>,
-    pub ldapbindaddress: Option<String>,
-    pub adminbindpath: Option<String>,
-    pub trust_x_forward_for: Option<bool>,
-    // pub threads: Option<usize>,
-    pub db_path: String,
-    pub db_fs_type: Option<String>,
-    pub db_arc_size: Option<usize>,
-    pub tls_chain: Option<String>,
-    pub tls_key: Option<String>,
-    pub online_backup: Option<OnlineBackup>,
+    /// Kanidm Domain, eg `kanidm.example.com`.
     pub domain: String,
+    /// The user-facing HTTPS URL for this server, eg <https://idm.example.com>
     // TODO  -this should be URL
     pub origin: String,
-    pub log_level: Option<LogLevel>,
+    /// File path of the database file
+    pub db_path: String,
+    /// The file path to the TLS Certificate Chain
+    pub tls_chain: Option<String>,
+    /// The file path to the TLS Private Key
+    pub tls_key: Option<String>,
+
+    /// The listener address for the HTTPS server.
+    ///
+    /// eg. `[::]:8443` or `127.0.0.1:8443`. Defaults to [kanidm_proto::constants::DEFAULT_SERVER_ADDRESS]
+    pub bindaddress: Option<String>,
+    /// The listener address for the LDAP server.
+    ///
+    /// eg. `[::]:3636` or `127.0.0.1:3636`. Defaults to [kanidm_proto::constants::DEFAULT_LDAP_ADDRESS]
+    pub ldapbindaddress: Option<String>,
+
+    /// The role of this server, one of write_replica, write_replica_no_ui, read_only_replica
     #[serde(default)]
     pub role: ServerRole,
+    /// The log level, one of info, debug, trace. Defaults to "info" if not set.
+    pub log_level: Option<LogLevel>,
+
+    /// Backup Configuration, see [OnlineBackup] for details on sub-keys.
+    pub online_backup: Option<OnlineBackup>,
+
+    /// Trust the X-Forwarded-For header for client IP address. Defaults to false if unset.
+    pub trust_x_forward_for: Option<bool>,
+
+    /// The filesystem type, either "zfs" or "generic". Defaults to "generic" if unset.
+    pub db_fs_type: Option<kanidm_proto::internal::FsType>,
+    /// The path to the "admin" socket, used for local communication when performing cer ain server control tasks.
+    pub adminbindpath: Option<String>,
+
+    /// Don't touch this unless you know what you're doing!
+    #[allow(dead_code)]
+    db_arc_size: Option<usize>,
     #[serde(default)]
+
+    /// Enable replication, this is a development feature and not yet ready for production use.
     pub i_acknowledge_that_replication_is_in_development: bool,
     #[serde(rename = "replication")]
+    /// Replication configuration, this is a development feature and not yet ready for production use.
     pub repl_config: Option<ReplicationConfiguration>,
 }
 
@@ -132,6 +180,11 @@ impl ServerConfig {
             eprintln!("unable to parse config {:?}", e);
             std::io::Error::new(std::io::ErrorKind::Other, e)
         })
+    }
+
+    /// Return the ARC size for the database, it's something you really shouldn't touch unless you are doing extreme tuning.
+    pub fn get_db_arc_size(&self) -> Option<usize> {
+        self.db_arc_size
     }
 }
 
@@ -225,6 +278,7 @@ pub struct IntegrationReplConfig {
     // events? Or a channel to submit with oneshot responses.
 }
 
+/// The internal configuration of the server. User-facing configuration is in [ServerConfig], as the configuration file is parsed by that object.
 #[derive(Debug, Clone)]
 pub struct Configuration {
     pub address: String,
@@ -233,7 +287,7 @@ pub struct Configuration {
     pub threads: usize,
     // db type later
     pub db_path: String,
-    pub db_fs_type: Option<String>,
+    pub db_fs_type: Option<FsType>,
     pub db_arc_size: Option<usize>,
     pub maximum_request: usize,
     pub trust_x_forward_for: bool,
@@ -393,8 +447,8 @@ impl Configuration {
         self.db_arc_size = v
     }
 
-    pub fn update_db_fs_type(&mut self, p: &Option<String>) {
-        self.db_fs_type = p.as_ref().map(|v| v.to_lowercase());
+    pub fn update_db_fs_type(&mut self, p: &Option<FsType>) {
+        self.db_fs_type = p.to_owned();
     }
 
     pub fn update_bind(&mut self, b: &Option<String>) {

@@ -389,7 +389,7 @@ async fn kanidm_main() -> ExitCode {
             config.update_db_fs_type(&sconfig.db_fs_type);
             config.update_origin(sconfig.origin.as_str());
             config.update_domain(sconfig.domain.as_str());
-            config.update_db_arc_size(sconfig.db_arc_size);
+            config.update_db_arc_size(sconfig.get_db_arc_size());
             config.update_role(sconfig.role);
             config.update_output_mode(opt.commands.commonopt().output_mode.to_owned().into());
             config.update_trust_x_forward_for(sconfig.trust_x_forward_for);

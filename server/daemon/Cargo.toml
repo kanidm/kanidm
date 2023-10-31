@@ -33,7 +33,6 @@ serde = { workspace = true, features = ["derive"] }
 tokio = { workspace = true, features = ["rt-multi-thread", "macros", "signal"] }
 tokio-util = { workspace = true, features = ["codec"] }
 toml = { workspace = true }
-is-terminal = "0.4.9"
 
 [target.'cfg(target_os = "linux")'.dependencies]
 sd-notify.workspace = true
