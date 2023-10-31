@@ -2,15 +2,15 @@ receivers:
   otlp:
     protocols:
       grpc:
-      http:
-  prometheus:
-    config:
-      scrape_configs:
-        - job_name: otel-collector
-          scrape_interval: 5s
-          static_configs:
-            - targets:
-                - localhost:8888
+      # http:
+  # prometheus:
+  #   config:
+  #     scrape_configs:
+  #       - job_name: otel-collector
+  #         scrape_interval: 5s
+  #         static_configs:
+  #           - targets:
+  #               - localhost:8888
 
 processors:
   batch:
@@ -24,10 +24,10 @@ exporters:
   # Data sources: traces, metrics, logs
   # file:
   #   path: ./filename.json
-  prometheusremotewrite:
-    endpoint: "http://prometheus:9090/api/v1/write"
-    tls:
-      insecure: true
+  # prometheusremotewrite:
+  #   endpoint: "http://prometheus:9090/api/v1/write"
+  #   tls:
+  #     insecure: true
 
   # Data sources: traces
   otlp/jaeger:
@@ -60,7 +60,7 @@ service:
         - batch
       exporters:
         - otlp/jaeger
-        - prometheusremotewrite
+        # - prometheusremotewrite
     logs:
       receivers:
         - otlp
