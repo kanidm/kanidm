@@ -1,5 +1,6 @@
 [package]
 name = "sketching"
+description = "Logging crate"
 # We do not have tests in this pkg
 autotests = false
 
@@ -19,5 +20,9 @@ doctest = false
 num_enum = { workspace = true }
 tracing = { workspace = true, features = ["attributes"] }
 tracing-subscriber = { workspace = true, features = ["env-filter"] }
-tracing-forest = { workspace = true, features = ["uuid", "smallvec", "tokio", "env-filter"] }
-
+tracing-forest = { workspace = true, features = [
+    "uuid",
+    "smallvec",
+    "tokio",
+    "env-filter",
+] }
