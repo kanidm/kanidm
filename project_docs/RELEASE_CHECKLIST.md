@@ -57,8 +57,13 @@ cargo install cargo-udeps
 ### Cargo publish
 
 - [ ] publish `kanidm_proto`
-- [ ] publish `kanidmd/kanidm`
+- [ ] publish `sketching`
+<!-- - [ ] publish `kanidmd/kanidm` -->
+- [ ] publish `kanidm_utils_users`
+- [ ] publish `kanidm_lib_file_permissions`
 - [ ] publish `kanidm_client`
+- [ ] publish `kanidm_lib_crypto`
+- [ ] publish `kanidm_build_profiles`
 - [ ] publish `kanidm_tools`
 
 ### Docker
