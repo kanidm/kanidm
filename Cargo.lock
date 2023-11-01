@@ -3213,6 +3213,7 @@ dependencies = [
  "ldap3_proto",
  "libc",
  "openssl",
+ "opentelemetry_api",
  "rand",
  "regex",
  "serde",
