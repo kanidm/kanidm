@@ -10,12 +10,7 @@ use crate::unix_passwd::UnixIntegrationError;
 
 use serde::Deserialize;
 
-use crate::constants::{
-    DEFAULT_CACHE_TIMEOUT, DEFAULT_CONN_TIMEOUT, DEFAULT_DB_PATH, DEFAULT_GID_ATTR_MAP,
-    DEFAULT_HOME_ALIAS, DEFAULT_HOME_ATTR, DEFAULT_HOME_PREFIX, DEFAULT_SELINUX, DEFAULT_SHELL,
-    DEFAULT_SOCK_PATH, DEFAULT_TASK_SOCK_PATH, DEFAULT_TPM_TCTI_NAME, DEFAULT_UID_ATTR_MAP,
-    DEFAULT_USE_ETC_SKEL,
-};
+use crate::constants::*;
 
 #[derive(Debug, Deserialize)]
 struct ConfigInt {
@@ -35,7 +30,12 @@ struct ConfigInt {
     selinux: Option<bool>,
     #[serde(default)]
     allow_local_account_override: Vec<String>,
+
+    hsm_pin_path: Option<String>,
+    hsm_type: Option<String>,
+
     tpm_tcti_name: Option<String>,
+    // Will go away!
     tpm_policy: Option<String>,
 }
 
@@ -101,6 +101,29 @@ impl Display for TpmPolicy {
     }
 }
 
+#[derive(Debug, Clone)]
+pub enum HsmType {
+    Soft,
+    Tpm,
+    // may support pkcs 11 in future?
+}
+
+impl Default for HsmType {
+    fn default() -> Self {
+        // May change if we support TPM's in future?
+        HsmType::Soft
+    }
+}
+
+impl Display for HsmType {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            HsmType::Soft => write!(f, "Soft"),
+            HsmType::Tpm => write!(f, "Tpm"),
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct KanidmUnixdConfig {
     pub db_path: String,
@@ -118,6 +141,8 @@ pub struct KanidmUnixdConfig {
     pub uid_attr_map: UidAttr,
     pub gid_attr_map: UidAttr,
     pub selinux: bool,
+    pub hsm_type: HsmType,
+    pub hsm_pin_path: String,
     pub tpm_policy: TpmPolicy,
     pub allow_local_account_override: Vec<String>,
 }
@@ -168,6 +193,11 @@ impl KanidmUnixdConfig {
             Ok(val) => val,
             Err(_) => DEFAULT_DB_PATH.into(),
         };
+        let hsm_pin_path = match env::var("KANIDM_HSM_PIN_PATH") {
+            Ok(val) => val,
+            Err(_) => DEFAULT_HSM_PIN_PATH.into(),
+        };
+
         KanidmUnixdConfig {
             db_path,
             sock_path: DEFAULT_SOCK_PATH.to_string(),
@@ -184,6 +214,8 @@ impl KanidmUnixdConfig {
             uid_attr_map: DEFAULT_UID_ATTR_MAP,
             gid_attr_map: DEFAULT_GID_ATTR_MAP,
             selinux: DEFAULT_SELINUX,
+            hsm_pin_path,
+            hsm_type: HsmType::default(),
             tpm_policy: TpmPolicy::default(),
             allow_local_account_override: Vec::default(),
         }
@@ -301,6 +333,22 @@ impl KanidmUnixdConfig {
                 true => selinux_util::supported(),
                 _ => false,
             },
+            hsm_pin_path: config
+                .hsm_pin_path
+                .unwrap_or(self.hsm_pin_path),
+            hsm_type: config
+                .hsm_type
+                .and_then(|v| {
+                    match v.as_str() {
+                        "soft" => Some(HsmType::Soft),
+                        "tpm" => Some(HsmType::Tpm),
+                        _ => {
+                            warn!("Invalid hsm_type configured, using default ...");
+                            None
+                        }
+                    }
+                })
+                .unwrap_or(self.hsm_type),
             tpm_policy: config
                 .tpm_policy
                 .and_then(|v| {

@@ -75,6 +75,8 @@ sshkey-attest = { git = "https://github.com/kanidm/webauthn-rs.git", rev = "2218
 # webauthn-rs-proto = { path = "../webauthn-rs/webauthn-rs-proto" }
 # sshkey-attest = { path = "../webauthn-rs/sshkey-attest" }
 
+kanidm-hsm-crypto = { path = "../hsm-crypto" }
+
 [workspace.dependencies]
 kanidmd_core = { path = "./server/core", version = "1.1.0-rc.15-dev" }
 kanidmd_lib = { path = "./server/lib", version = "1.1.0-rc.15-dev" }
@@ -82,6 +84,7 @@ kanidmd_lib_macros = { path = "./server/lib-macros", version = "1.1.0-rc.15-dev"
 kanidmd_testkit = { path = "./server/testkit", version = "1.1.0-rc.15-dev" }
 kanidm_build_profiles = { path = "./libs/profiles", version = "1.1.0-rc.15-dev" }
 kanidm_client = { path = "./libs/client", version = "1.1.0-rc.15-dev" }
+kanidm-hsm-crypto = "0.1.0"
 kanidm_lib_crypto = { path = "./libs/crypto", version = "1.1.0-rc.15-dev" }
 kanidm_lib_file_permissions = { path = "./libs/file_permissions", version = "1.1.0-rc.15-dev" }
 kanidm_proto = { path = "./proto", version = "1.1.0-rc.15-dev" }

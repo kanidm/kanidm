@@ -18,6 +18,8 @@ use crate::idprovider::interface::{
 use crate::unix_config::{HomeAttr, UidAttr};
 use crate::unix_proto::{HomeDirectoryInfo, NssGroup, NssUser, PamAuthRequest, PamAuthResponse};
 
+use kanidm_hsm_crypto::Hsm;
+
 // use crate::unix_passwd::{EtcUser, EtcGroup};
 
 const NXCACHE_SIZE: NonZeroUsize = unsafe { NonZeroUsize::new_unchecked(128) };
@@ -44,13 +46,13 @@ pub enum AuthSession {
     Denied,
 }
 
-#[derive(Debug)]
 pub struct Resolver<I>
 where
     I: IdProvider + Sync,
 {
     // Generic / modular types.
     db: Db,
+    hsm: Box<dyn Hsm>,
     client: I,
     // Types to update still.
     state: Mutex<CacheState>,
@@ -84,6 +86,7 @@ where
     pub async fn new(
         db: Db,
         client: I,
+        hsm: Box<dyn Hsm>,
         // cache timeout
         timeout_seconds: u64,
         pam_allow_groups: Vec<String>,
@@ -110,6 +113,7 @@ where
         // being valid from "now".
         Ok(Resolver {
             db,
+            hsm,
             client,
             state: Mutex::new(CacheState::OfflineNextCheck(SystemTime::now())),
             timeout_seconds,

@@ -15,7 +15,7 @@ repository = { workspace = true }
 default = ["unix"]
 unix = []
 selinux = ["dep:selinux"]
-tpm = ["dep:tss-esapi", "kanidm_lib_crypto/tpm"]
+tpm = ["dep:tss-esapi", "kanidm_lib_crypto/tpm", "kanidm-hsm-crypto/tpm"]
 
 [[bin]]
 name = "kanidm_unixd"
@@ -64,6 +64,7 @@ libsqlite3-sys = { workspace = true }
 lru = { workspace = true }
 kanidm_client = { workspace = true }
 kanidm_proto = { workspace = true }
+kanidm-hsm-crypto = { workspace = true }
 kanidm_lib_crypto = { workspace = true }
 kanidm_lib_file_permissions = { workspace = true }
 notify-debouncer-full = { workspace = true }

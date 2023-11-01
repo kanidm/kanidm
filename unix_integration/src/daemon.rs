@@ -30,7 +30,7 @@ use kanidm_unix_common::db::Db;
 use kanidm_unix_common::idprovider::kanidm::KanidmProvider;
 // use kanidm_unix_common::idprovider::interface::AuthSession;
 use kanidm_unix_common::resolver::Resolver;
-use kanidm_unix_common::unix_config::KanidmUnixdConfig;
+use kanidm_unix_common::unix_config::{KanidmUnixdConfig, HsmType};
 use kanidm_unix_common::unix_passwd::{parse_etc_group, parse_etc_passwd};
 use kanidm_unix_common::unix_proto::{ClientRequest, ClientResponse, TaskRequest, TaskResponse};
 
@@ -47,6 +47,17 @@ use tokio::sync::mpsc::{channel, Receiver, Sender};
 use tokio::sync::oneshot;
 use tokio::time;
 use tokio_util::codec::{Decoder, Encoder, Framed};
+
+use kanidm_hsm_crypto::{
+    Hsm,
+    soft::{
+        SoftHsm,
+        SoftMachineKey,
+        SoftLoadableMachineKey,
+        SoftHmacKey,
+        SoftLoadableHmacKey,
+    }
+};
 
 use notify_debouncer_full::{new_debouncer, notify::RecursiveMode, notify::Watcher};
 
@@ -434,6 +445,15 @@ async fn process_etc_passwd_group(
     Ok(())
 }
 
+async fn read_hsm_pin(
+    hsm_pin_path: &str,
+) -> Result<Vec<u8>, Box<dyn Error>> {
+    let mut file = File::open(hsm_pin_path).await?;
+    let mut contents = vec![];
+    file.read_to_end(&mut contents).await?;
+    Ok(contents)
+}
+
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> ExitCode {
     let cuid = get_current_uid();
@@ -619,7 +639,6 @@ async fn main() -> ExitCode {
             rm_if_exist(cfg.sock_path.as_str());
             rm_if_exist(cfg.task_sock_path.as_str());
 
-
             // Check the db path will be okay.
             if !cfg.db_path.is_empty() {
                 let db_path = PathBuf::from(cfg.db_path.as_str());
@@ -724,8 +743,31 @@ async fn main() -> ExitCode {
                 }
             };
 
+
+            // read the hsm pin
+            let hsm_pin = match read_hsm_pin(cfg.hsm_pin_path.as_str()).await {
+                Ok(v) => v,
+                Err(_e) => {
+                    error!("Failed to read hsm pin");
+                    return ExitCode::FAILURE
+                }
+            };
+
+            let hsm: Box<dyn Hsm> = match cfg.hsm_type {
+                HsmType::Soft => {
+                    Box::new(SoftHsm::new())
+                }
+                HsmType::Tpm => {
+                    error!("TPM not supported ... yet");
+                    return ExitCode::FAILURE
+                }
+            };
+
+            // With the assistance of the db, setup the hsm and it's machine key.
+
             let cl_inner = match Resolver::new(
                 db,
+                hsm,
                 idprovider,
                 cfg.cache_timeout,
                 cfg.pam_allowed_login_groups.clone(),
