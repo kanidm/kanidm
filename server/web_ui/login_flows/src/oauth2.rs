@@ -1,10 +1,7 @@
 use gloo::console;
 use kanidm_proto::constants::uri::{OAUTH2_AUTHORISE, OAUTH2_AUTHORISE_PERMIT};
 use kanidm_proto::constants::{APPLICATION_JSON, KOPID};
-pub use kanidm_proto::oauth2::{
-    AccessTokenRequest, AccessTokenResponse, AuthorisationRequest, AuthorisationResponse,
-    CodeChallengeMethod, ErrorResponse,
-};
+pub use kanidm_proto::oauth2::{AuthorisationRequest, AuthorisationResponse};
 use kanidmd_web_ui_shared::constants::{CONTENT_TYPE, CSS_ALERT_DANGER, URL_OAUTH2};
 use kanidmd_web_ui_shared::utils::{do_alert_error, do_footer, window};
 use kanidmd_web_ui_shared::{

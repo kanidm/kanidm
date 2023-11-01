@@ -926,7 +926,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
 
     pub fn get_origin(&self) -> &Url {
         #[allow(clippy::unwrap_used)]
-        self.webauthn.get_allowed_origins().get(0).unwrap()
+        self.webauthn.get_allowed_origins().first().unwrap()
     }
 
     #[instrument(level = "trace", skip(self))]
@@ -1544,7 +1544,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
     pub fn get_origin(&self) -> &Url {
         #[allow(clippy::unwrap_used)]
-        self.webauthn.get_allowed_origins().get(0).unwrap()
+        self.webauthn.get_allowed_origins().first().unwrap()
     }
 
     fn check_password_quality(

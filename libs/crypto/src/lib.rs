@@ -83,7 +83,7 @@ pub enum CryptoError {
 impl From<OpenSSLErrorStack> for CryptoError {
     fn from(ossl_err: OpenSSLErrorStack) -> Self {
         error!(?ossl_err);
-        let code = ossl_err.errors().get(0).map(|e| e.code()).unwrap_or(0);
+        let code = ossl_err.errors().first().map(|e| e.code()).unwrap_or(0);
         #[cfg(not(target_family = "windows"))]
         let result = CryptoError::OpenSSL(code);
 
