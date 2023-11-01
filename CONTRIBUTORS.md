@@ -32,6 +32,7 @@
 - Samuel Cabrero (scabrero)
 - philipcristiano
 - Jianchen Zhao (bolu61)
+- Allan Zhang (allan2)
 
 ## Acknowledgements
 
