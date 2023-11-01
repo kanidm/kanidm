@@ -98,3 +98,7 @@ pub const GRACE_WINDOW: Duration = Duration::from_secs(300);
 /// How long access tokens should last. This is NOT the length
 /// of the refresh token, which is bound to the issuing session.
 pub const OAUTH2_ACCESS_TOKEN_EXPIRY: u32 = 15 * 60;
+
+/// The amount of time a suppliers clock can be "ahead" before
+/// we warn about possible clock synchronisation issues.
+pub const REPL_SUPPLIER_ADVANCE_WINDOW: Duration = Duration::from_secs(600);

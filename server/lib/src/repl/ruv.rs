@@ -480,6 +480,45 @@ impl<'a> ReplicationUpdateVectorWriteTransaction<'a> {
         self.ranged.clear();
     }
 
+    pub(crate) fn incremental_preflight_validate_ruv(
+        &self,
+        ctx_ranges: &BTreeMap<Uuid, ReplCidRange>,
+        txn_cid: &Cid,
+    ) -> Result<(), OperationError> {
+        // Check that the incoming ranges, for our servers id, do not exceed
+        // our servers max state. This can occur if we restore from a backup
+        // where the replication state is older than what our partners have,
+        // meaning that the context may have diverged in a way we can't then
+        // resolve.
+
+        if let Some(our_cid_range_max) = self
+            .ranged
+            .get(&txn_cid.s_uuid)
+            .and_then(|range| range.last().copied())
+        {
+            if let Some(incoming_cid_range) = ctx_ranges.get(&txn_cid.s_uuid) {
+                if incoming_cid_range.ts_max > our_cid_range_max {
+                    error!("The incoming data contains changes from our servers uuid, and those changes are *newer* than our data. This can occur if this consumer was restored from backup. Replication is unable to proceed as datacorruption may occur. You must refresh this consumer immediately.");
+                    return Err(OperationError::ReplServerUuidSplitDataState);
+                }
+            }
+        }
+
+        let warn_time = txn_cid.ts + REPL_SUPPLIER_ADVANCE_WINDOW;
+        for (s_uuid, incoming_cid_range) in ctx_ranges.iter() {
+            if incoming_cid_range.ts_max > warn_time {
+                // TODO: This would be a great place for fault management to pick up this warning
+                warn!(
+                    "Incoming changes from {:?} are further than {} seconds in the future.",
+                    s_uuid,
+                    REPL_SUPPLIER_ADVANCE_WINDOW.as_secs()
+                );
+            }
+        }
+
+        Ok(())
+    }
+
     pub(crate) fn refresh_validate_ruv(
         &self,
         ctx_ranges: &BTreeMap<Uuid, ReplCidRange>,
