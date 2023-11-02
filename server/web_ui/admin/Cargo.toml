@@ -26,6 +26,7 @@ serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 serde-wasm-bindgen = { workspace = true }
 time = { workspace = true }
+url = { workspace = true }
 uuid = { workspace = true }
 wasm-bindgen = { workspace = true }
 wasm-bindgen-futures = { workspace = true }
