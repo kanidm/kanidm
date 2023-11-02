@@ -12,6 +12,8 @@ use rusqlite::{Connection, OptionalExtension};
 use tokio::sync::{Mutex, MutexGuard};
 use uuid::Uuid;
 
+use serde::{de::DeserializeOwned, Serialize};
+
 use kanidm_hsm_crypto::{HmacKey, Hsm, LoadableHmacKey, LoadableMachineKey};
 
 #[async_trait]
@@ -250,6 +252,72 @@ impl<'a> DbTxn<'a> {
             .map(|v| v.map_err(|e| self.sqlite_error("map", &e)))
             .collect();
         data
+    }
+
+    pub fn get_tagged_hsm_key<K: DeserializeOwned>(
+        &self,
+        tag: &str,
+    ) -> Result<Option<K>, CacheError> {
+        let mut stmt = self
+            .conn
+            .prepare("SELECT value FROM hsm_data_t WHERE key = :key")
+            .map_err(|e| self.sqlite_error("select prepare", &e))?;
+
+        let data: Option<Vec<u8>> = stmt
+            .query_row(
+                named_params! {
+                    ":key": tag
+                },
+                |row| row.get(0),
+            )
+            .optional()
+            .map_err(|e| self.sqlite_error("query_row", &e))?;
+
+        match data {
+            Some(d) => Ok(serde_json::from_slice(d.as_slice())
+                .map_err(|e| {
+                    error!("json error -> {:?}", e);
+                })
+                .ok()),
+            None => Ok(None),
+        }
+    }
+
+    pub fn insert_tagged_hsm_key<K: Serialize>(
+        &self,
+        tag: &str,
+        key: &K,
+    ) -> Result<(), CacheError> {
+        let data = serde_json::to_vec(key).map_err(|e| {
+            error!("insert_hsm_machine_key json error -> {:?}", e);
+            CacheError::SerdeJson
+        })?;
+
+        let mut stmt = self
+            .conn
+            .prepare("INSERT OR REPLACE INTO hsm_int_t (key, value) VALUES (:key, :value)")
+            .map_err(|e| self.sqlite_error("prepare", &e))?;
+
+        stmt.execute(named_params! {
+            ":key": tag,
+            ":value": &data,
+        })
+        .map(|r| {
+            debug!("insert -> {:?}", r);
+        })
+        .map_err(|e| self.sqlite_error("execute", &e))
+    }
+
+    pub fn delete_tagged_hsm_key(&self, tag: &str) -> Result<(), CacheError> {
+        self.conn
+            .execute(
+                "DELETE FROM hsm_data_t where key = :key",
+                named_params! {
+                    ":key": tag,
+                },
+            )
+            .map(|_| ())
+            .map_err(|e| self.sqlite_error("delete hsm_data_t", &e))
     }
 }
 

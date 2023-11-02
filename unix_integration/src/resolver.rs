@@ -2,7 +2,7 @@
 use hashbrown::HashSet;
 use std::collections::BTreeSet;
 use std::num::NonZeroUsize;
-use std::ops::{Add, Sub};
+use std::ops::{Add, DerefMut, Sub};
 use std::path::Path;
 use std::string::ToString;
 use std::time::{Duration, SystemTime};
@@ -13,7 +13,8 @@ use uuid::Uuid;
 
 use crate::db::{Cache, CacheTxn, Db};
 use crate::idprovider::interface::{
-    AuthCacheAction, AuthCredHandler, AuthResult, GroupToken, Id, IdProvider, IdpError, UserToken,
+    AuthCacheAction, AuthCredHandler, AuthResult, GroupToken, Id, IdProvider, IdpError, KeyStore,
+    UserToken,
 };
 use crate::unix_config::{HomeAttr, UidAttr};
 use crate::unix_proto::{HomeDirectoryInfo, NssGroup, NssUser, PamAuthRequest, PamAuthResponse};
@@ -139,13 +140,15 @@ where
             })?;
 
         // Ask the client what keys it wants the HSM to configure.
+        // make a key store
+        let mut ks = KeyStore::new(&dbtxn);
 
-        /*
-        client.configure_hsm_keys()
-           .map_err(|err| {
-               error!(?err, "Client was unable to configure hsm keys");
-           })?;
-        */
+        client
+            .configure_hsm_keys(&mut ks, &mut **hsm_lock.deref_mut(), &machine_key)
+            .await
+            .map_err(|err| {
+                error!(?err, "Client was unable to configure hsm keys");
+            })?;
 
         drop(hsm_lock);
 
@@ -502,7 +505,7 @@ where
 
                 Ok(None)
             }
-            Err(IdpError::BadRequest) => {
+            Err(IdpError::KeyStore) | Err(IdpError::BadRequest) => {
                 // Some other transient error, continue with the token.
                 Ok(token)
             }
@@ -549,7 +552,7 @@ where
                 self.set_nxcache(grp_id).await;
                 Ok(None)
             }
-            Err(IdpError::BadRequest) => {
+            Err(IdpError::KeyStore) | Err(IdpError::BadRequest) => {
                 // Some other transient error, continue with the token.
                 Ok(token)
             }
@@ -1010,7 +1013,7 @@ where
                     .await;
                 Err(())
             }
-            Err(IdpError::BadRequest) => Err(()),
+            Err(IdpError::BadRequest) | Err(IdpError::KeyStore) => Err(()),
         }
     }
 
@@ -1163,7 +1166,7 @@ where
                     .await;
                 Err(())
             }
-            Err(IdpError::BadRequest) => Err(()),
+            Err(IdpError::KeyStore) | Err(IdpError::BadRequest) => Err(()),
         }
     }
 
