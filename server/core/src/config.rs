@@ -104,7 +104,7 @@ pub struct ReplicationConfiguration {
     pub manual: BTreeMap<Url, RepNodeConfig>,
 }
 
-pub const DEFAULT_REPL_TASK_POLL_INTERVAL: u64 = 15;
+const DEFAULT_REPL_TASK_POLL_INTERVAL: u64 = 15;
 
 impl ReplicationConfiguration {
     /// Get the task poll interval, or the default if not set.
