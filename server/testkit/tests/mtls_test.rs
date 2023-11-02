@@ -113,7 +113,7 @@ async fn setup_mtls_test(
                 };
 
                 if let Err(err) = SslStream::accept(Pin::new(&mut tlsstream)).await {
-                    error!("LDAP TLS accept error, continuing -> {:?}", err);
+                    error!("Replication TLS accept error, continuing -> {:?}", err);
 
                     let ossl_err = err.ssl_error().and_then(|e| e.errors().last()).unwrap();
 

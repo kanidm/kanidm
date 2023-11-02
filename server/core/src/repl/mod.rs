@@ -530,12 +530,12 @@ async fn handle_repl_conn(
     {
         Ok(ta) => ta,
         Err(err) => {
-            error!(?err, "LDAP TLS setup error, disconnecting client");
+            error!(?err, "Replication TLS setup error, disconnecting client");
             return;
         }
     };
     if let Err(err) = SslStream::accept(Pin::new(&mut tlsstream)).await {
-        error!(?err, "LDAP TLS accept error, disconnecting client");
+        error!(?err, "Replication TLS accept error, disconnecting client");
         return;
     };
     let (r, w) = tokio::io::split(tlsstream);
