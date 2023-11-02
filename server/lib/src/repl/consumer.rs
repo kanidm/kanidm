@@ -313,12 +313,21 @@ impl<'a> QueryServerWriteTransaction<'a> {
             return Err(OperationError::ReplDomainUuidMismatch);
         }
 
+        // Preflight checks of the incoming RUV to ensure it's in a good state.
+        let txn_cid = self.get_cid().clone();
+        let ruv = self.be_txn.get_ruv_write();
+
+        ruv.incremental_preflight_validate_ruv(ctx_ranges, &txn_cid)
+            .map_err(|e| {
+                error!("Incoming RUV failed preflight checks, unable to proceed.");
+                e
+            })?;
+
+        // == ⚠️  Below this point we begin to make changes! ==
         debug!(
             "Proceeding to apply incremental from domain {:?} at level {}",
             ctx_domain_uuid, ctx_domain_version
         );
-
-        // == ⚠️  Below this point we begin to make changes! ==
 
         debug!("Applying schema entries");
         // Apply the schema entries first.

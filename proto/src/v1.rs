@@ -274,6 +274,7 @@ pub enum OperationError {
     ReplInvalidRUVState,
     ReplDomainLevelUnsatisfiable,
     ReplDomainUuidMismatch,
+    ReplServerUuidSplitDataState,
     TransactionAlreadyCommitted,
     /// when you ask for a gid that's lower than a safe minimum
     GidOverlapsSystemMin(u32),
