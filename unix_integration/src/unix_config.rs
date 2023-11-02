@@ -76,18 +76,12 @@ impl Display for UidAttr {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub enum HsmType {
+    #[cfg_attr(not(feature = "tpm"), default)]
     Soft,
+    #[cfg_attr(feature = "tpm", default)]
     Tpm,
-    // may support pkcs 11 in future?
-}
-
-impl Default for HsmType {
-    fn default() -> Self {
-        // May change if we support TPM's in future?
-        HsmType::Soft
-    }
 }
 
 impl Display for HsmType {

@@ -653,10 +653,11 @@ impl<'a> CacheTxn for DbTxn<'a> {
         hsm: &mut dyn Hsm,
         hmac_key: &HmacKey,
     ) -> Result<(), CacheError> {
-        let pw = Password::new_argon2id_hsm(self.crypto_policy, cred, hsm, hmac_key).map_err(|e| {
-            error!("password error -> {:?}", e);
-            CacheError::Cryptography
-        })?;
+        let pw =
+            Password::new_argon2id_hsm(self.crypto_policy, cred, hsm, hmac_key).map_err(|e| {
+                error!("password error -> {:?}", e);
+                CacheError::Cryptography
+            })?;
 
         let dbpw = pw.to_dbpasswordv1();
         let data = serde_json::to_vec(&dbpw).map_err(|e| {

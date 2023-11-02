@@ -839,11 +839,10 @@ impl Password {
             )
             .map_err(|_| CryptoError::Argon2)
             .and_then(|()| {
-                hsm.hmac(&hmac_key, &check_key)
-                    .map_err(|err| {
-                        error!(?err, "hsm error");
-                        CryptoError::Hsm
-                    })
+                hsm.hmac(hmac_key, &check_key).map_err(|err| {
+                    error!(?err, "hsm error");
+                    CryptoError::Hsm
+                })
             })
             .map(|key| Kdf::TPM_ARGON2ID {
                 m_cost: policy.argon2id_params.m_cost(),
@@ -868,10 +867,7 @@ impl Password {
     pub fn verify_ctx(
         &self,
         cleartext: &str,
-        hsm: Option<(
-            &mut dyn Hsm,
-            &HmacKey,
-        )>
+        hsm: Option<(&mut dyn Hsm, &HmacKey)>,
     ) -> Result<bool, CryptoError> {
         match (&self.material, hsm) {
             (
@@ -912,11 +908,10 @@ impl Password {
                         CryptoError::Argon2
                     })
                     .and_then(|()| {
-                        hsm.hmac(&hmac_key, &check_key)
-                            .map_err(|err| {
-                                error!(?err, "hsm error");
-                                CryptoError::Hsm
-                            })
+                        hsm.hmac(hmac_key, &check_key).map_err(|err| {
+                            error!(?err, "hsm error");
+                            CryptoError::Hsm
+                        })
                     })
                     .map(|hmac_key| {
                         // Actually compare the outputs.
@@ -1192,9 +1187,9 @@ impl Password {
 
 #[cfg(test)]
 mod tests {
-    use std::convert::TryFrom;
     use kanidm_hsm_crypto::soft::SoftHsm;
     use kanidm_hsm_crypto::AuthValue;
+    use std::convert::TryFrom;
 
     use crate::*;
 
