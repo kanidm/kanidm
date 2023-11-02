@@ -125,18 +125,23 @@ impl Component for CreateResetCode {
                 </div>
             },
             CodeState::Ready { token } => {
-                let mut url = origin();
+                let url: web_sys::Url = origin();
+                url.set_pathname(URL_RESET);
+                #[cfg(debug_assertions)]
+                console::debug!("url: {}", url.to_string());
 
-                url.set_path(URL_RESET);
+                let url_string: String = url.to_string().into();
+
                 let reset_link = html! {
-                    <a href={ url.to_string() }>{ url.to_string() }</a>
+                    <a href={url_string}>{ url.to_string() }</a>
                 };
-                url.to_string();
 
-                url.query_pairs_mut()
-                    .append_pair("token", token.token.as_str());
-
-                let qr = QrCode::new(url.as_str()).unwrap_throw();
+                let params = url.search_params();
+                params.append("token", token.token.as_str());
+                let params_str = params.to_string();
+                url.set_search(&params_str.as_string().unwrap());
+                let url_string: String = url.to_string().into();
+                let qr: QrCode = QrCode::new(url_string).unwrap_throw();
 
                 let svg = qr.render::<svg::Color>().build();
 

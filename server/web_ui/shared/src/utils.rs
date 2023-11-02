@@ -1,6 +1,6 @@
 use gloo::console;
 
-use url::Url;
+// use url::Url;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::{JsCast, UnwrapThrowExt};
 pub use web_sys::InputEvent;
@@ -10,31 +10,34 @@ use yew::{html, Html};
 
 use crate::constants::{CSS_ALERT_DANGER, CSS_PAGE_HEADER};
 
+/// Gets the equivalent of `window()` in javascript
 pub fn window() -> Window {
     web_sys::window().expect_throw("Unable to retrieve window")
 }
 
+/// Gets the equivalent of `window().document()` in javascript
 pub fn document() -> Document {
     window()
         .document()
         .expect_throw("Unable to retrieve document")
 }
 
+/// Gets the equivalent of `document().body()` in javascript
 pub fn body() -> HtmlElement {
     document().body().expect_throw("Unable to retrieve body")
 }
 
-pub fn origin() -> Url {
+/// gets the origin URL of the current page
+pub fn origin() -> web_sys::Url {
     let uri_string = document()
         .document_uri()
         .expect_throw("Unable to access document uri");
-    let mut url = Url::parse(&uri_string).expect_throw("Unable to parse document uri");
-    url.set_path("/");
-    url
+    let websysurl = web_sys::Url::new(&uri_string).expect("Failed to parse document URL");
+    web_sys::Url::new(&websysurl.origin()).expect_throw("Unable to parse origin URL")
 }
 
+/// If an element with an id attribute matching 'target' exists, focus it.
 pub fn autofocus(target: &str) {
-    // If an element with an id attribute matching 'target' exists, focus it.
     let doc = document();
     if let Some(element) = doc.get_element_by_id(target) {
         if let Ok(htmlelement) = element.dyn_into::<web_sys::HtmlElement>() {
