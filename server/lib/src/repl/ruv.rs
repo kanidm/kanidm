@@ -498,7 +498,7 @@ impl<'a> ReplicationUpdateVectorWriteTransaction<'a> {
         {
             if let Some(incoming_cid_range) = ctx_ranges.get(&txn_cid.s_uuid) {
                 if incoming_cid_range.ts_max > our_cid_range_max {
-                    error!("The incoming data contains changes from our servers uuid, and those changes are *newer* than our data. This can occur if this consumer was restored from backup. Replication is unable to proceed as datacorruption may occur. You must refresh this consumer immediately.");
+                    error!("The incoming data contains changes matching this server's UUID, and those changes are newer than the local version. This can occur if the server was restored from a backup which was taken before sending out changes. Replication is unable to proceed as data corruption may occur. You must refresh this consumer immediately to continue.");
                     return Err(OperationError::ReplServerUuidSplitDataState);
                 }
             }
