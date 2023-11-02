@@ -97,9 +97,23 @@ pub enum RepNodeConfig {
 pub struct ReplicationConfiguration {
     pub origin: Url,
     pub bindaddress: SocketAddr,
+    /// Number of seconds between running a replication event
+    pub task_poll_interval: Option<u64>,
 
     #[serde(flatten)]
     pub manual: BTreeMap<Url, RepNodeConfig>,
+}
+
+const DEFAULT_REPL_TASK_POLL_INTERVAL: u64 = 15;
+
+impl ReplicationConfiguration {
+    /// Get the task poll interval, or the default if not set.
+    pub(crate) fn get_task_poll_interval(&self) -> core::time::Duration {
+        core::time::Duration::from_secs(
+            self.task_poll_interval
+                .unwrap_or(DEFAULT_REPL_TASK_POLL_INTERVAL),
+        )
+    }
 }
 
 /// This is the Server Configuration as read from `server.toml`.
