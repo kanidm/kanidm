@@ -288,7 +288,8 @@ pub async fn create_https_server(
     let trace_layer = TraceLayer::new_for_http()
         .make_span_with(trace::DefaultMakeSpanKanidmd::new())
         // setting these to trace because all they do is print "started processing request", and we are already doing that enough!
-        .on_response(trace::DefaultOnResponseKanidmd::new());
+        // .on_response(trace::DefaultOnResponseKanidmd::new())
+        ;
 
     let app = app
         .merge(static_routes)
