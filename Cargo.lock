@@ -3049,6 +3049,7 @@ dependencies = [
  "base64 0.21.5",
  "base64urlsafedata",
  "hex",
+ "kanidm-hsm-crypto",
  "kanidm_proto",
  "openssl",
  "openssl-sys",
@@ -3056,7 +3057,6 @@ dependencies = [
  "serde",
  "sketching",
  "tracing",
- "tss-esapi",
  "uuid",
 ]
 
@@ -3156,7 +3156,6 @@ dependencies = [
  "tokio-util",
  "toml",
  "tracing",
- "tss-esapi",
  "uuid",
  "walkdir",
 ]

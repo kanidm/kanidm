@@ -29,16 +29,11 @@ use openssl::nid::Nid;
 use openssl::pkcs5::pbkdf2_hmac;
 use openssl::sha::Sha512;
 
+use kanidm_hsm_crypto::{HmacKey, Hsm};
+
 pub mod mtls;
 pub mod prelude;
 pub mod serialise;
-
-#[cfg(feature = "tpm")]
-pub use tss_esapi::{handles::ObjectHandle as TpmHandle, Context as TpmContext, Error as TpmError};
-#[cfg(not(feature = "tpm"))]
-pub struct TpmContext {}
-#[cfg(not(feature = "tpm"))]
-pub struct TpmHandle {}
 
 // NIST 800-63.b salt should be 112 bits -> 14  8u8.
 const PBKDF2_SALT_LEN: usize = 24;
@@ -68,11 +63,8 @@ const ARGON2_MAX_P_COST: u32 = 1;
 
 #[derive(Clone, Debug)]
 pub enum CryptoError {
-    Tpm2,
-    Tpm2PublicBuilder,
-    Tpm2FeatureMissing,
-    Tpm2InputExceeded,
-    Tpm2ContextMissing,
+    Hsm,
+    HsmContextMissing,
     OpenSSL(u64),
     Md4Disabled,
     Argon2,
@@ -99,13 +91,6 @@ impl From<OpenSSLErrorStack> for CryptoError {
 impl Into<OperationError> for CryptoError {
     fn into(self) -> OperationError {
         OperationError::CryptographyError
-    }
-}
-
-#[cfg(feature = "tpm")]
-impl From<TpmError> for CryptoError {
-    fn from(_e: TpmError) -> Self {
-        CryptoError::Tpm2
     }
 }
 
@@ -832,11 +817,11 @@ impl Password {
             .map(|material| Password { material })
     }
 
-    pub fn new_argon2id_tpm(
+    pub fn new_argon2id_hsm(
         policy: &CryptoPolicy,
         cleartext: &str,
-        tpm_ctx: &mut TpmContext,
-        tpm_key_handle: TpmHandle,
+        hsm: &mut dyn Hsm,
+        hmac_key: &HmacKey,
     ) -> Result<Self, CryptoError> {
         let version = Version::V0x13;
 
@@ -853,7 +838,13 @@ impl Password {
                 check_key.as_mut_slice(),
             )
             .map_err(|_| CryptoError::Argon2)
-            .and_then(|()| do_tpm_hmac(check_key, tpm_ctx, tpm_key_handle))
+            .and_then(|()| {
+                hsm.hmac(&hmac_key, &check_key)
+                    .map_err(|err| {
+                        error!(?err, "hsm error");
+                        CryptoError::Hsm
+                    })
+            })
             .map(|key| Kdf::TPM_ARGON2ID {
                 m_cost: policy.argon2id_params.m_cost(),
                 t_cost: policy.argon2id_params.t_cost(),
@@ -877,9 +868,12 @@ impl Password {
     pub fn verify_ctx(
         &self,
         cleartext: &str,
-        tpm: Option<(&mut TpmContext, TpmHandle)>,
+        hsm: Option<(
+            &mut dyn Hsm,
+            &HmacKey,
+        )>
     ) -> Result<bool, CryptoError> {
-        match (&self.material, tpm) {
+        match (&self.material, hsm) {
             (
                 Kdf::TPM_ARGON2ID {
                     m_cost,
@@ -889,7 +883,7 @@ impl Password {
                     salt,
                     key,
                 },
-                Some((tpm_ctx, tpm_key_handle)),
+                Some((hsm, hmac_key)),
             ) => {
                 let version: Version = (*version).try_into().map_err(|_| {
                     error!("Failed to convert {} to valid argon2id version", version);
@@ -917,15 +911,21 @@ impl Password {
                         error!(err = ?e, "unable to perform argon2id hash");
                         CryptoError::Argon2
                     })
-                    .and_then(|()| do_tpm_hmac(check_key, tpm_ctx, tpm_key_handle))
+                    .and_then(|()| {
+                        hsm.hmac(&hmac_key, &check_key)
+                            .map_err(|err| {
+                                error!(?err, "hsm error");
+                                CryptoError::Hsm
+                            })
+                    })
                     .map(|hmac_key| {
                         // Actually compare the outputs.
                         &hmac_key == key
                     })
             }
             (Kdf::TPM_ARGON2ID { .. }, None) => {
-                error!("Unable to validate password - not tpm context available");
-                Err(CryptoError::Tpm2ContextMissing)
+                error!("Unable to validate password - not hsm context available");
+                Err(CryptoError::HsmContextMissing)
             }
             (
                 Kdf::ARGON2ID {
@@ -1188,39 +1188,6 @@ impl Password {
             | Kdf::NT_MD4(_) => true,
         }
     }
-}
-
-#[cfg(feature = "tpm")]
-fn do_tpm_hmac(
-    data: Vec<u8>,
-    ctx: &mut TpmContext,
-    key_handle: TpmHandle,
-) -> Result<Vec<u8>, CryptoError> {
-    use tss_esapi::interface_types::algorithm::HashingAlgorithm;
-    use tss_esapi::structures::MaxBuffer;
-
-    let data: MaxBuffer = data.try_into().map_err(|_| {
-        error!("input data exceeds maximum tpm input buffer");
-        CryptoError::Tpm2InputExceeded
-    })?;
-
-    ctx.hmac(key_handle, data.into(), HashingAlgorithm::Sha256)
-        .map(|dgst| dgst.to_vec())
-        .map_err(|e| {
-            error!(tpm_err = ?e, "unable to proceed, tpm error");
-            CryptoError::Tpm2
-        })
-}
-
-#[cfg(not(feature = "tpm"))]
-#[allow(clippy::needless_pass_by_value)]
-fn do_tpm_hmac(
-    _data: Vec<u8>,
-    _ctx: &mut TpmContext,
-    _key_handle: TpmHandle,
-) -> Result<Vec<u8>, CryptoError> {
-    error!("Unable to perform hmac - tpm feature not compiled");
-    Err(CryptoError::Tpm2FeatureMissing)
 }
 
 #[cfg(test)]

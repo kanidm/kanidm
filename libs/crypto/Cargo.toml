@@ -7,9 +7,8 @@ license = { workspace = true }
 homepage = { workspace = true }
 repository = { workspace = true }
 
-
 [features]
-tpm = ["dep:tss-esapi"]
+tpm = ["kanidm-hsm-crypto/tpm"]
 
 [lib]
 test = true
@@ -21,6 +20,7 @@ base64 = { workspace = true }
 base64urlsafedata = { workspace = true }
 hex = { workspace = true }
 kanidm_proto = { workspace = true }
+kanidm-hsm-crypto = { workspace = true }
 
 # We need to explicitly ask for openssl-sys so that we get the version propagated
 # into the build.rs for legacy feature checks.
@@ -29,7 +29,6 @@ openssl = { workspace = true }
 rand = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 tracing = { workspace = true }
-tss-esapi = { workspace = true, optional = true }
 uuid = { workspace = true }
 
 [dev-dependencies]

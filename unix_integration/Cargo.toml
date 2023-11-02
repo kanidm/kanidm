@@ -15,7 +15,7 @@ repository = { workspace = true }
 default = ["unix"]
 unix = []
 selinux = ["dep:selinux"]
-tpm = ["dep:tss-esapi", "kanidm_lib_crypto/tpm", "kanidm-hsm-crypto/tpm"]
+tpm = ["kanidm-hsm-crypto/tpm"]
 
 [[bin]]
 name = "kanidm_unixd"
@@ -79,7 +79,6 @@ toml = { workspace = true }
 tokio = { workspace = true, features = ["rt", "fs", "macros", "sync", "time", "net", "io-util"] }
 tokio-util = { workspace = true, features = ["codec"] }
 tracing = { workspace = true }
-tss-esapi = { workspace = true, optional = true }
 uuid = { workspace = true }
 walkdir = { workspace = true }
 

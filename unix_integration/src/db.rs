@@ -8,7 +8,7 @@ use kanidm_lib_crypto::CryptoPolicy;
 use kanidm_lib_crypto::DbPasswordV1;
 use kanidm_lib_crypto::Password;
 use libc::umask;
-use rusqlite::Connection;
+use rusqlite::{Connection, OptionalExtension};
 use tokio::sync::{Mutex, MutexGuard};
 use uuid::Uuid;
 
@@ -384,7 +384,24 @@ impl<'a> CacheTxn for DbTxn<'a> {
     }
 
     fn get_hsm_machine_key(&self) -> Result<Option<LoadableMachineKey>, CacheError> {
-        todo!();
+        let mut stmt = self
+            .conn
+            .prepare("SELECT value FROM hsm_int_t WHERE key = 'mk'")
+            .map_err(|e| self.sqlite_error("select prepare", &e))?;
+
+        let data: Option<Vec<u8>> = stmt
+            .query_row([], |row| row.get(0))
+            .optional()
+            .map_err(|e| self.sqlite_error("query_row", &e))?;
+
+        match data {
+            Some(d) => Ok(serde_json::from_slice(d.as_slice())
+                .map_err(|e| {
+                    error!("json error -> {:?}", e);
+                })
+                .ok()),
+            None => Ok(None),
+        }
     }
 
     fn insert_hsm_machine_key(&self, machine_key: &LoadableMachineKey) -> Result<(), CacheError> {
@@ -409,7 +426,24 @@ impl<'a> CacheTxn for DbTxn<'a> {
     }
 
     fn get_hsm_hmac_key(&self) -> Result<Option<LoadableHmacKey>, CacheError> {
-        todo!();
+        let mut stmt = self
+            .conn
+            .prepare("SELECT value FROM hsm_int_t WHERE key = 'hmac'")
+            .map_err(|e| self.sqlite_error("select prepare", &e))?;
+
+        let data: Option<Vec<u8>> = stmt
+            .query_row([], |row| row.get(0))
+            .optional()
+            .map_err(|e| self.sqlite_error("query_row", &e))?;
+
+        match data {
+            Some(d) => Ok(serde_json::from_slice(d.as_slice())
+                .map_err(|e| {
+                    error!("json error -> {:?}", e);
+                })
+                .ok()),
+            None => Ok(None),
+        }
     }
 
     fn insert_hsm_hmac_key(&self, hmac_key: &LoadableHmacKey) -> Result<(), CacheError> {
