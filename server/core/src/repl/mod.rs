@@ -606,14 +606,13 @@ async fn repl_acceptor(
     info!("Starting Replication Acceptor ...");
     // Persistent parts
     // These all probably need changes later ...
-    let task_poll_interval = Duration::from_secs(10);
     let replica_connect_timeout = Duration::from_secs(2);
     let retry_timeout = Duration::from_secs(60);
     let max_frame_bytes = 268435456;
 
     let consumer_conn_settings = ConsumerConnSettings {
         max_frame_bytes,
-        task_poll_interval,
+        task_poll_interval: repl_config.get_task_poll_interval(),
         replica_connect_timeout,
     };
 
