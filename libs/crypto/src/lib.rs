@@ -1193,6 +1193,8 @@ impl Password {
 #[cfg(test)]
 mod tests {
     use std::convert::TryFrom;
+    use kanidm_hsm_crypto::soft::SoftHsm;
+    use kanidm_hsm_crypto::AuthValue;
 
     use crate::*;
 
@@ -1360,33 +1362,30 @@ mod tests {
         }
     }
 
-    #[cfg(feature = "tpm")]
     #[test]
-    fn test_password_argon2id_tpm_bind() {
-        use std::str::FromStr;
-
+    fn test_password_argon2id_hsm_bind() {
         sketching::test_init();
 
-        use tss_esapi::{Context, TctiNameConf};
+        let mut hsm: Box<dyn Hsm> = Box::new(SoftHsm::new());
 
-        let mut context =
-            Context::new(TctiNameConf::from_str("device:/dev/tpmrm0").expect("Failed to get TCTI"))
-                .expect("Failed to create Context");
+        let auth_value = AuthValue::new_random().unwrap();
 
-        let key = context
-            .execute_with_nullauth_session(|ctx| prepare_tpm_key(ctx))
+        let loadable_machine_key = hsm.machine_key_create(&auth_value).unwrap();
+        let machine_key = hsm
+            .machine_key_load(&auth_value, &loadable_machine_key)
             .unwrap();
+
+        let loadable_hmac_key = hsm.hmac_key_create(&machine_key).unwrap();
+        let key = hsm.hmac_key_load(&machine_key, &loadable_hmac_key).unwrap();
+
+        let ctx: &mut dyn Hsm = &mut *hsm;
 
         let p = CryptoPolicy::minimum();
-        let c = context
-            .execute_with_nullauth_session(|ctx| {
-                Password::new_argon2id_tpm(&p, "password", ctx, key)
-            })
-            .unwrap();
+        let c = Password::new_argon2id_hsm(&p, "password", ctx, &key).unwrap();
 
         assert!(matches!(
             c.verify("password"),
-            Err(CryptoError::Tpm2ContextMissing)
+            Err(CryptoError::HsmContextMissing)
         ));
 
         // Assert it fails without the hmac
@@ -1413,83 +1412,8 @@ mod tests {
 
         assert!(!dup.verify("password").unwrap());
 
-        context
-            .execute_with_nullauth_session(|ctx| {
-                assert!(c.verify_ctx("password", Some((ctx, key))).unwrap());
-                assert!(!c.verify_ctx("password1", Some((ctx, key))).unwrap());
-                assert!(!c.verify_ctx("Password1", Some((ctx, key))).unwrap());
-
-                ctx.flush_context(key).expect("Failed to unload hmac key");
-
-                // Should fail, no key!
-                assert!(matches!(
-                    c.verify_ctx("password", Some((ctx, key))),
-                    Err(CryptoError::Tpm2)
-                ));
-
-                Ok::<(), CryptoError>(())
-            })
-            .unwrap();
-    }
-
-    #[cfg(feature = "tpm")]
-    pub fn prepare_tpm_key(tpm_ctx: &mut TpmContext) -> Result<TpmHandle, CryptoError> {
-        use tss_esapi::{
-            attributes::ObjectAttributesBuilder,
-            interface_types::{
-                algorithm::{HashingAlgorithm, PublicAlgorithm},
-                resource_handles::Hierarchy,
-            },
-            structures::{Digest, KeyedHashScheme, PublicBuilder, PublicKeyedHashParameters},
-        };
-
-        // We generate a digest, which is really some unique small amount of data that
-        // we save into the key context that we are going to save/load. This allows us
-        // to have unique hmac keys compared to other users of the same tpm.
-
-        let digest = tpm_ctx
-            .get_random(16)
-            .map_err(|e| {
-                error!(tpm_err = ?e, "unable to proceed, tpm error");
-                CryptoError::Tpm2
-            })
-            .and_then(|rand| {
-                Digest::try_from(rand).map_err(|e| {
-                    error!(tpm_err = ?e, "unable to proceed, tpm error");
-                    CryptoError::Tpm2
-                })
-            })?;
-
-        let object_attributes = ObjectAttributesBuilder::new()
-            .with_sign_encrypt(true)
-            .with_sensitive_data_origin(true)
-            .with_user_with_auth(true)
-            .build()
-            .map_err(|e| {
-                error!(tpm_err = ?e, "unable to proceed, tpm error");
-                CryptoError::Tpm2
-            })?;
-
-        let key_pub = PublicBuilder::new()
-            .with_public_algorithm(PublicAlgorithm::KeyedHash)
-            .with_name_hashing_algorithm(HashingAlgorithm::Sha256)
-            .with_object_attributes(object_attributes)
-            .with_keyed_hash_parameters(PublicKeyedHashParameters::new(
-                KeyedHashScheme::HMAC_SHA_256,
-            ))
-            .with_keyed_hash_unique_identifier(digest)
-            .build()
-            .map_err(|e| {
-                error!(tpm_err = ?e, "unable to proceed, tpm error");
-                CryptoError::Tpm2
-            })?;
-
-        tpm_ctx
-            .create_primary(Hierarchy::Owner, key_pub, None, None, None, None)
-            .map(|key| key.key_handle.into())
-            .map_err(|e| {
-                error!(tpm_err = ?e, "unable to proceed, tpm error");
-                CryptoError::Tpm2
-            })
+        assert!(c.verify_ctx("password", Some((ctx, &key))).unwrap());
+        assert!(!c.verify_ctx("password1", Some((ctx, &key))).unwrap());
+        assert!(!c.verify_ctx("Password1", Some((ctx, &key))).unwrap());
     }
 }
