@@ -18,9 +18,7 @@ use crate::idprovider::interface::{
 use crate::unix_config::{HomeAttr, UidAttr};
 use crate::unix_proto::{HomeDirectoryInfo, NssGroup, NssUser, PamAuthRequest, PamAuthResponse};
 
-use kanidm_hsm_crypto::Hsm;
-
-// use crate::unix_passwd::{EtcUser, EtcGroup};
+use kanidm_hsm_crypto::{HmacKey, Hsm, MachineKey};
 
 const NXCACHE_SIZE: NonZeroUsize = unsafe { NonZeroUsize::new_unchecked(128) };
 
@@ -52,7 +50,9 @@ where
 {
     // Generic / modular types.
     db: Db,
-    hsm: Box<dyn Hsm>,
+    hsm: Mutex<Box<dyn Hsm + Send>>,
+    // machine_key: MachineKey,
+    hmac_key: HmacKey,
     client: I,
     // Types to update still.
     state: Mutex<CacheState>,
@@ -86,7 +86,8 @@ where
     pub async fn new(
         db: Db,
         client: I,
-        hsm: Box<dyn Hsm>,
+        hsm: Box<dyn Hsm + Send>,
+        machine_key: MachineKey,
         // cache timeout
         timeout_seconds: u64,
         pam_allow_groups: Vec<String>,
@@ -98,15 +99,60 @@ where
         gid_attr_map: UidAttr,
         allow_id_overrides: Vec<String>,
     ) -> Result<Self, ()> {
+        let hsm = Mutex::new(hsm);
+        let mut hsm_lock = hsm.lock().await;
+
         // setup and do a migrate.
-        {
-            let dbtxn = db.write().await;
-            dbtxn.migrate().map_err(|_| ())?;
-            dbtxn.commit().map_err(|_| ())?;
-        }
+        let dbtxn = db.write().await;
+        dbtxn.migrate().map_err(|_| ())?;
+        dbtxn.commit().map_err(|_| ())?;
+
+        // Setup our internal keys
+        let dbtxn = db.write().await;
+
+        let loadable_hmac_key = match dbtxn.get_hsm_hmac_key() {
+            Ok(Some(hmk)) => hmk,
+            Ok(None) => {
+                // generate a new key.
+                let loadable_hmac_key = hsm_lock.hmac_key_create(&machine_key).map_err(|err| {
+                    error!(?err, "Unable to create hmac key");
+                })?;
+
+                dbtxn
+                    .insert_hsm_hmac_key(&loadable_hmac_key)
+                    .map_err(|err| {
+                        error!(?err, "Unable to persist hmac key");
+                    })?;
+
+                loadable_hmac_key
+            }
+            Err(err) => {
+                error!(?err, "Unable to retrieve loadable hmac key from db");
+                return Err(());
+            }
+        };
+
+        let hmac_key = hsm_lock
+            .hmac_key_load(&machine_key, &loadable_hmac_key)
+            .map_err(|err| {
+                error!(?err, "Unable to load hmac key");
+            })?;
+
+        // Ask the client what keys it wants the HSM to configure.
+
+        /*
+        client.configure_hsm_keys()
+           .map_err(|err| {
+               error!(?err, "Client was unable to configure hsm keys");
+           })?;
+        */
+
+        drop(hsm_lock);
+
+        dbtxn.commit().map_err(|_| ())?;
 
         if pam_allow_groups.is_empty() {
-            eprintln!("Will not be able to authorise user logins, pam_allow_groups config is not configured.");
+            warn!("Will not be able to authorise user logins, pam_allow_groups config is not configured.");
         }
 
         // We assume we are offline at start up, and we mark the next "online check" as
@@ -114,6 +160,8 @@ where
         Ok(Resolver {
             db,
             hsm,
+            // machine_key,
+            hmac_key,
             client,
             state: Mutex::new(CacheState::OfflineNextCheck(SystemTime::now())),
             timeout_seconds,
@@ -395,16 +443,18 @@ where
 
     async fn set_cache_userpassword(&self, a_uuid: Uuid, cred: &str) -> Result<(), ()> {
         let dbtxn = self.db.write().await;
+        let mut hsm_txn = self.hsm.lock().await;
         dbtxn
-            .update_account_password(a_uuid, cred)
+            .update_account_password(a_uuid, cred, &mut **hsm_txn, &self.hmac_key)
             .and_then(|x| dbtxn.commit().map(|_| x))
             .map_err(|_| ())
     }
 
     async fn check_cache_userpassword(&self, a_uuid: Uuid, cred: &str) -> Result<bool, ()> {
         let dbtxn = self.db.write().await;
+        let mut hsm_txn = self.hsm.lock().await;
         dbtxn
-            .check_account_password(a_uuid, cred)
+            .check_account_password(a_uuid, cred, &mut **hsm_txn, &self.hmac_key)
             .and_then(|x| dbtxn.commit().map(|_| x))
             .map_err(|_| ())
     }

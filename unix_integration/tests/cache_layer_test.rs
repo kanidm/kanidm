@@ -14,12 +14,13 @@ use kanidm_unix_common::db::Db;
 use kanidm_unix_common::idprovider::interface::Id;
 use kanidm_unix_common::idprovider::kanidm::KanidmProvider;
 use kanidm_unix_common::resolver::Resolver;
-use kanidm_unix_common::unix_config::TpmPolicy;
 use kanidmd_core::config::{Configuration, IntegrationTestConfig, ServerRole};
 use kanidmd_core::create_server_core;
 use kanidmd_testkit::{is_free_port, PORT_ALLOC};
 use tokio::task;
 use tracing::log::{debug, trace};
+
+use kanidm_hsm_crypto::{soft::SoftHsm, AuthValue, Hsm};
 
 const ADMIN_TEST_USER: &str = "admin";
 const ADMIN_TEST_PASSWORD: &str = "integration test admin password";
@@ -99,13 +100,23 @@ async fn setup_test(fix_fn: Fixture) -> (Resolver<KanidmProvider>, KanidmClient)
 
     let db = Db::new(
         "", // The sqlite db path, this is in memory.
-        &TpmPolicy::default(),
     )
     .expect("Failed to setup DB");
+
+    let mut hsm: Box<dyn Hsm + Send> = Box::new(SoftHsm::new());
+
+    let auth_value = AuthValue::new_random().unwrap();
+
+    let loadable_machine_key = hsm.machine_key_create(&auth_value).unwrap();
+    let machine_key = hsm
+        .machine_key_load(&auth_value, &loadable_machine_key)
+        .unwrap();
 
     let cachelayer = Resolver::new(
         db,
         idprovider,
+        hsm,
+        machine_key,
         300,
         vec!["allowed_group".to_string()],
         DEFAULT_SHELL.to_string(),

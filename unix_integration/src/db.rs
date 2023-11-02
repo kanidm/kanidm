@@ -3,7 +3,6 @@ use std::fmt;
 use std::time::Duration;
 
 use crate::idprovider::interface::{GroupToken, Id, UserToken};
-use crate::unix_config::TpmPolicy;
 use async_trait::async_trait;
 use kanidm_lib_crypto::CryptoPolicy;
 use kanidm_lib_crypto::DbPasswordV1;
@@ -12,6 +11,8 @@ use libc::umask;
 use rusqlite::Connection;
 use tokio::sync::{Mutex, MutexGuard};
 use uuid::Uuid;
+
+use kanidm_hsm_crypto::{HmacKey, Hsm, LoadableHmacKey, LoadableMachineKey};
 
 #[async_trait]
 pub trait Cache {
@@ -42,6 +43,14 @@ pub trait CacheTxn {
 
     fn clear(&self) -> Result<(), CacheError>;
 
+    fn get_hsm_machine_key(&self) -> Result<Option<LoadableMachineKey>, CacheError>;
+
+    fn insert_hsm_machine_key(&self, machine_key: &LoadableMachineKey) -> Result<(), CacheError>;
+
+    fn get_hsm_hmac_key(&self) -> Result<Option<LoadableHmacKey>, CacheError>;
+
+    fn insert_hsm_hmac_key(&self, hmac_key: &LoadableHmacKey) -> Result<(), CacheError>;
+
     fn get_account(&self, account_id: &Id) -> Result<Option<(UserToken, u64)>, CacheError>;
 
     fn get_accounts(&self) -> Result<Vec<UserToken>, CacheError>;
@@ -50,9 +59,21 @@ pub trait CacheTxn {
 
     fn delete_account(&self, a_uuid: Uuid) -> Result<(), CacheError>;
 
-    fn update_account_password(&self, a_uuid: Uuid, cred: &str) -> Result<(), CacheError>;
+    fn update_account_password(
+        &self,
+        a_uuid: Uuid,
+        cred: &str,
+        hsm: &mut dyn Hsm,
+        hmac_key: &HmacKey,
+    ) -> Result<(), CacheError>;
 
-    fn check_account_password(&self, a_uuid: Uuid, cred: &str) -> Result<bool, CacheError>;
+    fn check_account_password(
+        &self,
+        a_uuid: Uuid,
+        cred: &str,
+        hsm: &mut dyn Hsm,
+        hmac_key: &HmacKey,
+    ) -> Result<bool, CacheError>;
 
     fn get_group(&self, grp_id: &Id) -> Result<Option<(GroupToken, u64)>, CacheError>;
 
@@ -68,14 +89,12 @@ pub trait CacheTxn {
 pub struct Db {
     conn: Mutex<Connection>,
     crypto_policy: CryptoPolicy,
-    require_tpm: Option<tpm::TpmConfig>,
 }
 
 pub struct DbTxn<'a> {
     conn: MutexGuard<'a, Connection>,
     committed: bool,
     crypto_policy: &'a CryptoPolicy,
-    require_tpm: Option<&'a tpm::TpmConfig>,
 }
 
 #[derive(Debug)]
@@ -86,7 +105,7 @@ pub enum DbError {
 }
 
 impl Db {
-    pub fn new(path: &str, tpm_policy: &TpmPolicy) -> Result<Self, DbError> {
+    pub fn new(path: &str) -> Result<Self, DbError> {
         let before = unsafe { umask(0o0027) };
         let conn = Connection::open(path).map_err(|e| {
             error!(err = ?e, "rusqulite error");
@@ -99,20 +118,9 @@ impl Db {
 
         debug!("Configured {:?}", crypto_policy);
 
-        // Test if we have a tpm context.
-
-        let require_tpm = match tpm_policy {
-            TpmPolicy::Ignore => None,
-            TpmPolicy::IfPossible(tcti_str) => Db::tpm_setup_context(tcti_str, &conn).ok(),
-            TpmPolicy::Required(tcti_str) => {
-                Some(Db::tpm_setup_context(tcti_str, &conn).map_err(|_| DbError::Tpm)?)
-            }
-        };
-
         Ok(Db {
             conn: Mutex::new(conn),
             crypto_policy,
-            require_tpm,
         })
     }
 }
@@ -124,7 +132,7 @@ impl Cache for Db {
     #[allow(clippy::expect_used)]
     async fn write<'db>(&'db self) -> Self::Txn<'db> {
         let conn = self.conn.lock().await;
-        DbTxn::new(conn, &self.crypto_policy, self.require_tpm.as_ref())
+        DbTxn::new(conn, &self.crypto_policy)
     }
 }
 
@@ -135,11 +143,7 @@ impl fmt::Debug for Db {
 }
 
 impl<'a> DbTxn<'a> {
-    fn new(
-        conn: MutexGuard<'a, Connection>,
-        crypto_policy: &'a CryptoPolicy,
-        require_tpm: Option<&'a tpm::TpmConfig>,
-    ) -> Self {
+    fn new(conn: MutexGuard<'a, Connection>, crypto_policy: &'a CryptoPolicy) -> Self {
         // Start the transaction
         // debug!("Starting db WR txn ...");
         #[allow(clippy::expect_used)]
@@ -149,7 +153,6 @@ impl<'a> DbTxn<'a> {
             committed: false,
             conn,
             crypto_policy,
-            require_tpm,
         }
     }
 
@@ -311,6 +314,30 @@ impl<'a> CacheTxn for DbTxn<'a> {
             )
             .map_err(|e| self.sqlite_error("memberof_t create error", &e))?;
 
+        // Create the hsm_data store. These are all generally encrypted private
+        // keys, and the hsm structures will decrypt these as required.
+        self.conn
+            .execute(
+                "CREATE TABLE IF NOT EXISTS hsm_int_t (
+                    key TEXT PRIMARY KEY,
+                    value BLOB NOT NULL
+                )
+                ",
+                [],
+            )
+            .map_err(|e| self.sqlite_error("hsm_int_t create error", &e))?;
+
+        self.conn
+            .execute(
+                "CREATE TABLE IF NOT EXISTS hsm_data_t (
+                    key TEXT PRIMARY KEY,
+                    value BLOB NOT NULL
+                )
+                ",
+                [],
+            )
+            .map_err(|e| self.sqlite_error("hsm_data_t create error", &e))?;
+
         Ok(())
     }
 
@@ -354,6 +381,56 @@ impl<'a> CacheTxn for DbTxn<'a> {
             .map_err(|e| self.sqlite_error("delete group_t", &e))?;
 
         Ok(())
+    }
+
+    fn get_hsm_machine_key(&self) -> Result<Option<LoadableMachineKey>, CacheError> {
+        todo!();
+    }
+
+    fn insert_hsm_machine_key(&self, machine_key: &LoadableMachineKey) -> Result<(), CacheError> {
+        let data = serde_json::to_vec(machine_key).map_err(|e| {
+            error!("insert_hsm_machine_key json error -> {:?}", e);
+            CacheError::SerdeJson
+        })?;
+
+        let mut stmt = self
+            .conn
+            .prepare("INSERT OR REPLACE INTO hsm_int_t (key, value) VALUES (:key, :value)")
+            .map_err(|e| self.sqlite_error("prepare", &e))?;
+
+        stmt.execute(named_params! {
+            ":key": "mk",
+            ":value": &data,
+        })
+        .map(|r| {
+            debug!("insert -> {:?}", r);
+        })
+        .map_err(|e| self.sqlite_error("execute", &e))
+    }
+
+    fn get_hsm_hmac_key(&self) -> Result<Option<LoadableHmacKey>, CacheError> {
+        todo!();
+    }
+
+    fn insert_hsm_hmac_key(&self, hmac_key: &LoadableHmacKey) -> Result<(), CacheError> {
+        let data = serde_json::to_vec(hmac_key).map_err(|e| {
+            error!("insert_hsm_hmac_key json error -> {:?}", e);
+            CacheError::SerdeJson
+        })?;
+
+        let mut stmt = self
+            .conn
+            .prepare("INSERT OR REPLACE INTO hsm_int_t (key, value) VALUES (:key, :value)")
+            .map_err(|e| self.sqlite_error("prepare", &e))?;
+
+        stmt.execute(named_params! {
+            ":key": "hmac",
+            ":value": &data,
+        })
+        .map(|r| {
+            debug!("insert -> {:?}", r);
+        })
+        .map_err(|e| self.sqlite_error("execute", &e))
     }
 
     fn get_account(&self, account_id: &Id) -> Result<Option<(UserToken, u64)>, CacheError> {
@@ -535,24 +612,17 @@ impl<'a> CacheTxn for DbTxn<'a> {
             .map_err(|e| self.sqlite_error("account_t delete", &e))
     }
 
-    fn update_account_password(&self, a_uuid: Uuid, cred: &str) -> Result<(), CacheError> {
-        #[allow(unused_variables)]
-        let pw = if let Some(tcti_str) = self.require_tpm {
-            // Do nothing.
-            #[cfg(not(feature = "tpm"))]
-            return Ok(());
-
-            #[cfg(feature = "tpm")]
-            let pw =
-                Db::tpm_new(self.crypto_policy, cred, tcti_str).map_err(|()| CacheError::Tpm)?;
-            #[cfg(feature = "tpm")]
-            pw
-        } else {
-            Password::new(self.crypto_policy, cred).map_err(|e| {
-                error!("password error -> {:?}", e);
-                CacheError::Cryptography
-            })?
-        };
+    fn update_account_password(
+        &self,
+        a_uuid: Uuid,
+        cred: &str,
+        _hsm: &mut dyn Hsm,
+        _hmac_key: &HmacKey,
+    ) -> Result<(), CacheError> {
+        let pw = Password::new(self.crypto_policy, cred).map_err(|e| {
+            error!("password error -> {:?}", e);
+            CacheError::Cryptography
+        })?;
 
         let dbpw = pw.to_dbpasswordv1();
         let data = serde_json::to_vec(&dbpw).map_err(|e| {
@@ -572,12 +642,13 @@ impl<'a> CacheTxn for DbTxn<'a> {
             .map(|_| ())
     }
 
-    fn check_account_password(&self, a_uuid: Uuid, cred: &str) -> Result<bool, CacheError> {
-        #[cfg(not(feature = "tpm"))]
-        if self.require_tpm.is_some() {
-            return Ok(false);
-        }
-
+    fn check_account_password(
+        &self,
+        a_uuid: Uuid,
+        cred: &str,
+        _hsm: &mut dyn Hsm,
+        _hmac_key: &HmacKey,
+    ) -> Result<bool, CacheError> {
         let mut stmt = self
             .conn
             .prepare("SELECT password FROM account_t WHERE uuid = :a_uuid AND password IS NOT NULL")
@@ -616,22 +687,10 @@ impl<'a> CacheTxn for DbTxn<'a> {
             _ => return Ok(false),
         };
 
-        #[allow(unused_variables)]
-        if let Some(tcti_str) = self.require_tpm {
-            #[cfg(feature = "tpm")]
-            let r = Db::tpm_verify(pw, cred, tcti_str).map_err(|()| CacheError::Tpm);
-
-            // Do nothing.
-            #[cfg(not(feature = "tpm"))]
-            let r = Ok(false);
-
-            r
-        } else {
-            pw.verify(cred).map_err(|e| {
-                error!("password error -> {:?}", e);
-                CacheError::Cryptography
-            })
-        }
+        pw.verify(cred).map_err(|e| {
+            error!("password error -> {:?}", e);
+            CacheError::Cryptography
+        })
     }
 
     fn get_group(&self, grp_id: &Id) -> Result<Option<(GroupToken, u64)>, CacheError> {
@@ -1152,7 +1211,7 @@ mod tests {
     // use std::assert_matches::assert_matches;
     use super::{Cache, CacheTxn, Db};
     use crate::idprovider::interface::{GroupToken, Id, UserToken};
-    use crate::unix_config::TpmPolicy;
+    use kanidm_hsm_crypto::{soft::SoftHsm, AuthValue, Hsm};
 
     const TESTACCOUNT1_PASSWORD_A: &str = "password a for account1 test";
     const TESTACCOUNT1_PASSWORD_B: &str = "password b for account1 test";
@@ -1160,7 +1219,7 @@ mod tests {
     #[tokio::test]
     async fn test_cache_db_account_basic() {
         sketching::test_init();
-        let db = Db::new("", &TpmPolicy::default()).expect("failed to create.");
+        let db = Db::new("").expect("failed to create.");
         let dbtxn = db.write().await;
         assert!(dbtxn.migrate().is_ok());
 
@@ -1244,7 +1303,7 @@ mod tests {
     #[tokio::test]
     async fn test_cache_db_group_basic() {
         sketching::test_init();
-        let db = Db::new("", &TpmPolicy::default()).expect("failed to create.");
+        let db = Db::new("").expect("failed to create.");
         let dbtxn = db.write().await;
         assert!(dbtxn.migrate().is_ok());
 
@@ -1319,7 +1378,7 @@ mod tests {
     #[tokio::test]
     async fn test_cache_db_account_group_update() {
         sketching::test_init();
-        let db = Db::new("", &TpmPolicy::default()).expect("failed to create.");
+        let db = Db::new("").expect("failed to create.");
         let dbtxn = db.write().await;
         assert!(dbtxn.migrate().is_ok());
 
@@ -1388,16 +1447,26 @@ mod tests {
     async fn test_cache_db_account_password() {
         sketching::test_init();
 
-        #[cfg(feature = "tpm")]
-        let tpm_policy = TpmPolicy::Required("device:/dev/tpmrm0".to_string());
-
-        #[cfg(not(feature = "tpm"))]
-        let tpm_policy = TpmPolicy::default();
-
-        let db = Db::new("", &tpm_policy).expect("failed to create.");
+        let db = Db::new("").expect("failed to create.");
 
         let dbtxn = db.write().await;
         assert!(dbtxn.migrate().is_ok());
+
+        // Setup the hsm
+        // #[cfg(feature = "tpm")]
+
+        #[cfg(not(feature = "tpm"))]
+        let mut hsm: Box<dyn Hsm> = Box::new(SoftHsm::new());
+
+        let auth_value = AuthValue::new_random().unwrap();
+
+        let loadable_machine_key = hsm.machine_key_create(&auth_value).unwrap();
+        let machine_key = hsm
+            .machine_key_load(&auth_value, &loadable_machine_key)
+            .unwrap();
+
+        let loadable_hmac_key = hsm.hmac_key_create(&machine_key).unwrap();
+        let hmac_key = hsm.hmac_key_load(&machine_key, &loadable_hmac_key).unwrap();
 
         let uuid1 = uuid::uuid!("0302b99c-f0f6-41ab-9492-852692b0fd16");
         let mut ut1 = UserToken {
@@ -1414,40 +1483,40 @@ mod tests {
 
         // Test that with no account, is false
         assert!(matches!(
-            dbtxn.check_account_password(uuid1, TESTACCOUNT1_PASSWORD_A),
+            dbtxn.check_account_password(uuid1, TESTACCOUNT1_PASSWORD_A, &mut *hsm, &hmac_key),
             Ok(false)
         ));
         // test adding an account
         dbtxn.update_account(&ut1, 0).unwrap();
         // check with no password is false.
         assert!(matches!(
-            dbtxn.check_account_password(uuid1, TESTACCOUNT1_PASSWORD_A),
+            dbtxn.check_account_password(uuid1, TESTACCOUNT1_PASSWORD_A, &mut *hsm, &hmac_key),
             Ok(false)
         ));
         // update the pw
         assert!(dbtxn
-            .update_account_password(uuid1, TESTACCOUNT1_PASSWORD_A)
+            .update_account_password(uuid1, TESTACCOUNT1_PASSWORD_A, &mut *hsm, &hmac_key)
             .is_ok());
         // Check it now works.
         assert!(matches!(
-            dbtxn.check_account_password(uuid1, TESTACCOUNT1_PASSWORD_A),
+            dbtxn.check_account_password(uuid1, TESTACCOUNT1_PASSWORD_A, &mut *hsm, &hmac_key),
             Ok(true)
         ));
         assert!(matches!(
-            dbtxn.check_account_password(uuid1, TESTACCOUNT1_PASSWORD_B),
+            dbtxn.check_account_password(uuid1, TESTACCOUNT1_PASSWORD_B, &mut *hsm, &hmac_key),
             Ok(false)
         ));
         // Update the pw
         assert!(dbtxn
-            .update_account_password(uuid1, TESTACCOUNT1_PASSWORD_B)
+            .update_account_password(uuid1, TESTACCOUNT1_PASSWORD_B, &mut *hsm, &hmac_key)
             .is_ok());
         // Check it matches.
         assert!(matches!(
-            dbtxn.check_account_password(uuid1, TESTACCOUNT1_PASSWORD_A),
+            dbtxn.check_account_password(uuid1, TESTACCOUNT1_PASSWORD_A, &mut *hsm, &hmac_key),
             Ok(false)
         ));
         assert!(matches!(
-            dbtxn.check_account_password(uuid1, TESTACCOUNT1_PASSWORD_B),
+            dbtxn.check_account_password(uuid1, TESTACCOUNT1_PASSWORD_B, &mut *hsm, &hmac_key),
             Ok(true)
         ));
 
@@ -1455,7 +1524,7 @@ mod tests {
         ut1.displayname = "Test User Update".to_string();
         dbtxn.update_account(&ut1, 0).unwrap();
         assert!(matches!(
-            dbtxn.check_account_password(uuid1, TESTACCOUNT1_PASSWORD_B),
+            dbtxn.check_account_password(uuid1, TESTACCOUNT1_PASSWORD_B, &mut *hsm, &hmac_key),
             Ok(true)
         ));
 
@@ -1465,7 +1534,7 @@ mod tests {
     #[tokio::test]
     async fn test_cache_db_group_rename_duplicate() {
         sketching::test_init();
-        let db = Db::new("", &TpmPolicy::default()).expect("failed to create.");
+        let db = Db::new("").expect("failed to create.");
         let dbtxn = db.write().await;
         assert!(dbtxn.migrate().is_ok());
 
@@ -1520,7 +1589,7 @@ mod tests {
     #[tokio::test]
     async fn test_cache_db_account_rename_duplicate() {
         sketching::test_init();
-        let db = Db::new("", &TpmPolicy::default()).expect("failed to create.");
+        let db = Db::new("").expect("failed to create.");
         let dbtxn = db.write().await;
         assert!(dbtxn.migrate().is_ok());
 

@@ -33,10 +33,7 @@ struct ConfigInt {
 
     hsm_pin_path: Option<String>,
     hsm_type: Option<String>,
-
     tpm_tcti_name: Option<String>,
-    // Will go away!
-    tpm_policy: Option<String>,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -76,28 +73,6 @@ impl Display for UidAttr {
                 UidAttr::Spn => "SPN",
             }
         )
-    }
-}
-
-#[derive(Debug, Clone, Default)]
-pub enum TpmPolicy {
-    #[default]
-    Ignore,
-    IfPossible(String),
-    Required(String),
-}
-
-impl Display for TpmPolicy {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            TpmPolicy::Ignore => write!(f, "Ignore"),
-            TpmPolicy::IfPossible(p) => {
-                write!(f, "IfPossible ({})", p)
-            }
-            TpmPolicy::Required(p) => {
-                write!(f, "Required ({})", p)
-            }
-        }
     }
 }
 
@@ -143,7 +118,7 @@ pub struct KanidmUnixdConfig {
     pub selinux: bool,
     pub hsm_type: HsmType,
     pub hsm_pin_path: String,
-    pub tpm_policy: TpmPolicy,
+    pub tpm_tcti_name: String,
     pub allow_local_account_override: Vec<String>,
 }
 
@@ -177,8 +152,10 @@ impl Display for KanidmUnixdConfig {
         writeln!(f, "uid_attr_map: {}", self.uid_attr_map)?;
         writeln!(f, "gid_attr_map: {}", self.gid_attr_map)?;
 
+        writeln!(f, "hsm_type: {}", self.hsm_type)?;
+        writeln!(f, "tpm_tcti_name: {}", self.tpm_tcti_name)?;
+
         writeln!(f, "selinux: {}", self.selinux)?;
-        writeln!(f, "tpm_policy: {}", self.tpm_policy)?;
         writeln!(
             f,
             "allow_local_account_override: {:#?}",
@@ -216,7 +193,7 @@ impl KanidmUnixdConfig {
             selinux: DEFAULT_SELINUX,
             hsm_pin_path,
             hsm_type: HsmType::default(),
-            tpm_policy: TpmPolicy::default(),
+            tpm_tcti_name: DEFAULT_TPM_TCTI_NAME.to_string(),
             allow_local_account_override: Vec::default(),
         }
     }
@@ -333,39 +310,21 @@ impl KanidmUnixdConfig {
                 true => selinux_util::supported(),
                 _ => false,
             },
-            hsm_pin_path: config
-                .hsm_pin_path
-                .unwrap_or(self.hsm_pin_path),
+            hsm_pin_path: config.hsm_pin_path.unwrap_or(self.hsm_pin_path),
             hsm_type: config
                 .hsm_type
-                .and_then(|v| {
-                    match v.as_str() {
-                        "soft" => Some(HsmType::Soft),
-                        "tpm" => Some(HsmType::Tpm),
-                        _ => {
-                            warn!("Invalid hsm_type configured, using default ...");
-                            None
-                        }
+                .and_then(|v| match v.as_str() {
+                    "soft" => Some(HsmType::Soft),
+                    "tpm" => Some(HsmType::Tpm),
+                    _ => {
+                        warn!("Invalid hsm_type configured, using default ...");
+                        None
                     }
                 })
                 .unwrap_or(self.hsm_type),
-            tpm_policy: config
-                .tpm_policy
-                .and_then(|v| {
-                    let tpm_tcti_name = config
-                        .tpm_tcti_name
-                        .unwrap_or(DEFAULT_TPM_TCTI_NAME.to_string());
-                    match v.as_str() {
-                        "ignore" => Some(TpmPolicy::Ignore),
-                        "if_possible" => Some(TpmPolicy::IfPossible(tpm_tcti_name)),
-                        "required" => Some(TpmPolicy::Required(tpm_tcti_name)),
-                        _ => {
-                            warn!("Invalid tpm_policy configured, using default ...");
-                            None
-                        }
-                    }
-                })
-                .unwrap_or(self.tpm_policy),
+            tpm_tcti_name: config
+                .tpm_tcti_name
+                .unwrap_or(DEFAULT_TPM_TCTI_NAME.to_string()),
             allow_local_account_override: config.allow_local_account_override,
         })
     }

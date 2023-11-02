@@ -26,11 +26,11 @@ use futures::{SinkExt, StreamExt};
 use kanidm_client::KanidmClientBuilder;
 use kanidm_proto::constants::DEFAULT_CLIENT_CONFIG_PATH;
 use kanidm_unix_common::constants::DEFAULT_CONFIG_PATH;
-use kanidm_unix_common::db::Db;
+use kanidm_unix_common::db::{Cache, CacheTxn, Db};
 use kanidm_unix_common::idprovider::kanidm::KanidmProvider;
 // use kanidm_unix_common::idprovider::interface::AuthSession;
 use kanidm_unix_common::resolver::Resolver;
-use kanidm_unix_common::unix_config::{KanidmUnixdConfig, HsmType};
+use kanidm_unix_common::unix_config::{HsmType, KanidmUnixdConfig};
 use kanidm_unix_common::unix_passwd::{parse_etc_group, parse_etc_passwd};
 use kanidm_unix_common::unix_proto::{ClientRequest, ClientResponse, TaskRequest, TaskResponse};
 
@@ -48,16 +48,7 @@ use tokio::sync::oneshot;
 use tokio::time;
 use tokio_util::codec::{Decoder, Encoder, Framed};
 
-use kanidm_hsm_crypto::{
-    Hsm,
-    soft::{
-        SoftHsm,
-        SoftMachineKey,
-        SoftLoadableMachineKey,
-        SoftHmacKey,
-        SoftLoadableHmacKey,
-    }
-};
+use kanidm_hsm_crypto::{soft::SoftHsm, AuthValue, Hsm};
 
 use notify_debouncer_full::{new_debouncer, notify::RecursiveMode, notify::Watcher};
 
@@ -445,9 +436,7 @@ async fn process_etc_passwd_group(
     Ok(())
 }
 
-async fn read_hsm_pin(
-    hsm_pin_path: &str,
-) -> Result<Vec<u8>, Box<dyn Error>> {
+async fn read_hsm_pin(hsm_pin_path: &str) -> Result<Vec<u8>, Box<dyn Error>> {
     let mut file = File::open(hsm_pin_path).await?;
     let mut contents = vec![];
     file.read_to_end(&mut contents).await?;
@@ -735,7 +724,7 @@ async fn main() -> ExitCode {
 
             let idprovider = KanidmProvider::new(rsclient);
 
-            let db = match Db::new(cfg.db_path.as_str(), &cfg.tpm_policy) {
+            let db = match Db::new(cfg.db_path.as_str()) {
                 Ok(db) => db,
                 Err(_e) => {
                     error!("Failed to create database");
@@ -743,17 +732,24 @@ async fn main() -> ExitCode {
                 }
             };
 
-
             // read the hsm pin
             let hsm_pin = match read_hsm_pin(cfg.hsm_pin_path.as_str()).await {
-                Ok(v) => v,
-                Err(_e) => {
-                    error!("Failed to read hsm pin");
+                Ok(hp) => hp,
+                Err(err) => {
+                    error!(?err, "Failed to read hsm pin");
                     return ExitCode::FAILURE
                 }
             };
 
-            let hsm: Box<dyn Hsm> = match cfg.hsm_type {
+            let auth_value = match AuthValue::try_from(hsm_pin.as_slice()) {
+                Ok(av) => av,
+                Err(err) => {
+                    error!(?err, "invalid hsm pin");
+                    return ExitCode::FAILURE
+                }
+            };
+
+            let mut hsm: Box<dyn Hsm + Send> = match cfg.hsm_type {
                 HsmType::Soft => {
                     Box::new(SoftHsm::new())
                 }
@@ -764,11 +760,53 @@ async fn main() -> ExitCode {
             };
 
             // With the assistance of the db, setup the hsm and it's machine key.
+            let db_txn = db.write().await;
+
+            let loadable_machine_key = match db_txn.get_hsm_machine_key() {
+                Ok(Some(lmk)) => lmk,
+                Ok(None) => {
+                    // No machine key found - create one, and store it.
+                    let loadable_machine_key = match hsm.machine_key_create(&auth_value) {
+                        Ok(lmk) => lmk,
+                        Err(err) => {
+                            error!(?err, "Unable to create hsm loadable machine key");
+                            return ExitCode::FAILURE
+                        }
+                    };
+
+                    if let Err(err) = db_txn.insert_hsm_machine_key(&loadable_machine_key) {
+                        error!(?err, "Unable to persist hsm loadable machine key");
+                        return ExitCode::FAILURE
+                    }
+
+                    loadable_machine_key
+                }
+                Err(err) => {
+                    error!(?err, "Unable to access hsm loadable machine key");
+                    return ExitCode::FAILURE
+                }
+            };
+
+            let machine_key = match hsm.machine_key_load(&auth_value, &loadable_machine_key) {
+                Ok(mk) => mk,
+                Err(err) => {
+                    error!(?err, "Unable to load machine key");
+                    return ExitCode::FAILURE
+                }
+            };
+
+            if let Err(err) = db_txn.commit() {
+                error!(?err, "Failed to commit database transaction, unable to proceed");
+                return ExitCode::FAILURE
+            }
+
+            // Okay, the hsm is now loaded and ready to go.
 
             let cl_inner = match Resolver::new(
                 db,
-                hsm,
                 idprovider,
+                hsm,
+                machine_key,
                 cfg.cache_timeout,
                 cfg.pam_allowed_login_groups.clone(),
                 cfg.default_shell.clone(),
