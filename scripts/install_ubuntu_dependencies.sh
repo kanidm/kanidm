@@ -19,6 +19,10 @@ ${SUDOCMD} apt-get install -y \
     git \
     build-essential \
 
+if [ -z "${PACKAGING}" ]; then
+    PACKAGING=0
+fi
+
 if [ "${PACKAGING}" -eq 1 ]; then
     ${SUDOCMD} apt-get install -y \
         devscripts \
