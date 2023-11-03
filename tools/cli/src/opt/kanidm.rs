@@ -1037,8 +1037,8 @@ pub enum PrivilegedSessionExpiryOpt {
 pub struct ApiSchemaDownloadOpt {
     #[clap(flatten)]
     copt: CommonOpt,
-    /// Where to put the file, defaults to ./openapi.json
-    #[clap(name = "filename", env, default_value = "./openapi.json")]
+    /// Where to put the file, defaults to ./kanidm-openapi.json
+    #[clap(name = "filename", env, default_value = "./kanidm-openapi.json")]
     filename: PathBuf,
     /// Force overwriting the file if it exists
     #[clap(short, long, env)]
