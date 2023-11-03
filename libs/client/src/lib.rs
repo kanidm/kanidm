@@ -275,7 +275,7 @@ impl KanidmClientBuilder {
         if !config_path.as_ref().exists() {
             debug!("{:?} does not exist", config_path);
             let diag = kanidm_lib_file_permissions::diagnose_path(config_path.as_ref());
-            info!(%diag);
+            debug!(%diag);
             return Ok(self);
         };
 
