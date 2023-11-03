@@ -171,8 +171,8 @@ pub struct ServerConfig {
     #[serde(rename = "replication")]
     /// Replication configuration, this is a development feature and not yet ready for production use.
     pub repl_config: Option<ReplicationConfiguration>,
-    /// An optional OpenTelemetry collector endpoint to send trace and log data to
-    pub otel_endpoint: Option<String>,
+    /// An optional OpenTelemetry collector (GRPC) url to send trace and log data to, eg http://localhost:4317
+    pub otel_grpc_url: Option<String>,
 }
 
 impl ServerConfig {

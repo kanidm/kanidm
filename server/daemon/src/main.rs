@@ -251,9 +251,9 @@ async fn kanidm_main() -> ExitCode {
 
     println!("Log filter: {:?}", log_filter);
 
-    let otel_endpoint = match sconfig.as_ref() {
-        Some(sconfig) => match sconfig.otel_endpoint.clone() {
-            Some(otel_endpoint) => Some(otel_endpoint),
+    let otel_grpc_url = match sconfig.as_ref() {
+        Some(sconfig) => match sconfig.otel_grpc_url.clone() {
+            Some(otel_grpc_url) => Some(otel_grpc_url),
             None => sketching::otel::get_otlp_endpoint(),
         },
         // if we don't have a config, fall back to trying the env var
@@ -261,7 +261,7 @@ async fn kanidm_main() -> ExitCode {
     };
 
     // TODO: only send to stderr when we're not in a TTY
-    let sub = match sketching::otel::startup_opentelemetry(otel_endpoint, log_filter) {
+    let sub = match sketching::otel::startup_opentelemetry(otel_grpc_url, log_filter) {
         Err(err) => {
             eprintln!("Error starting logger - {:} - Bailing on startup!", err);
             return shutdown(ExitCode::FAILURE);

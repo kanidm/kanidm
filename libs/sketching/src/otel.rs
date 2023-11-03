@@ -13,9 +13,9 @@ pub const MAX_ATTRIBUTES_PER_SPAN: u32 = 128;
 
 // TODO: for some reason this doesn't show the response data at the end of the trace?
 
-/// if you set the KANIDM_OTEL_ENDPOINT env var you'll start the OpenTelemetry pipeline.
+/// if you set the KANIDM_OTEL_GRPC_ENDPOINT env var you'll start the OpenTelemetry pipeline.
 pub fn get_otlp_endpoint() -> Option<String> {
-    std::env::var("KANIDM_OTEL_ENDPOINT").ok()
+    std::env::var("KANIDM_OTEL_GRPC_ENDPOINT").ok()
 }
 
 #[allow(dead_code)]
