@@ -15,6 +15,7 @@ use clap::Parser;
 use kanidm_cli::KanidmClientParser;
 use std::thread;
 use tokio::runtime;
+use tracing_subscriber::filter::LevelFilter;
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::{fmt, EnvFilter};
 
@@ -35,7 +36,9 @@ fn main() {
     } else {
         match EnvFilter::try_from_default_env() {
             Ok(f) => f,
-            Err(_) => EnvFilter::new("kanidm_client=warn,kanidm_cli=warn"),
+            Err(_) => EnvFilter::builder()
+                .with_default_directive(LevelFilter::INFO.into())
+                .parse_lossy("kanidm_client=warn,kanidm_cli=info"),
         }
     };
 

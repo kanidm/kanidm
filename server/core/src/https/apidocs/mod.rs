@@ -1,4 +1,4 @@
-use axum::{response::Redirect, routing::get, Router};
+use axum::{middleware::from_fn, response::Redirect, routing::get, Router};
 use kanidm_proto::{scim_v1::ScimSyncState, v1};
 use utoipa::{
     openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme},
@@ -242,4 +242,6 @@ pub(crate) fn router() -> Router<ServerState> {
         .route("/docs", get(Redirect::temporary("/docs/swagger-ui")))
         .route("/docs/", get(Redirect::temporary("/docs/swagger-ui")))
         .merge(SwaggerUi::new("/docs/swagger-ui").url("/docs/v1/openapi.json", ApiDoc::openapi()))
+        // overlay the version middleware because the client is sad without it
+        .layer(from_fn(super::middleware::version_middleware))
 }
