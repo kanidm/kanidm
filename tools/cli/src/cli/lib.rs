@@ -143,6 +143,7 @@ impl SelfOpt {
 impl SystemOpt {
     pub fn debug(&self) -> bool {
         match self {
+            SystemOpt::Api { commands } => commands.debug(),
             SystemOpt::PwBadlist { commands } => commands.debug(),
             SystemOpt::DeniedNames { commands } => commands.debug(),
             SystemOpt::Oauth2 { commands } => commands.debug(),
@@ -153,6 +154,7 @@ impl SystemOpt {
 
     pub async fn exec(&self) {
         match self {
+            SystemOpt::Api { commands } => commands.exec().await,
             SystemOpt::PwBadlist { commands } => commands.exec().await,
             SystemOpt::DeniedNames { commands } => commands.exec().await,
             SystemOpt::Oauth2 { commands } => commands.exec().await,

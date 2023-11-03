@@ -1033,6 +1033,25 @@ pub enum PrivilegedSessionExpiryOpt {
     },
 }
 
+#[derive(Args, Debug)]
+pub struct ApiSchemaDownloadOpt {
+    #[clap(flatten)]
+    copt: CommonOpt,
+    /// Where to put the file, defaults to ./kanidm-openapi.json
+    #[clap(name = "filename", env, default_value = "./kanidm-openapi.json")]
+    filename: PathBuf,
+    /// Force overwriting the file if it exists
+    #[clap(short, long, env)]
+    force: bool,
+}
+
+#[derive(Debug, Subcommand)]
+pub enum ApiOpt {
+    /// Download the OpenAPI schema file
+    #[clap(name = "download-schema")]
+    DownloadSchema(ApiSchemaDownloadOpt),
+}
+
 #[derive(Debug, Subcommand)]
 pub enum SystemOpt {
     #[clap(name = "pw-badlist")]
@@ -1064,6 +1083,12 @@ pub enum SystemOpt {
     Synch {
         #[clap(subcommand)]
         commands: SynchOpt,
+    },
+    #[clap(name = "api")]
+    /// API related things
+    Api {
+        #[clap(subcommand)]
+        commands: ApiOpt,
     },
 }
 

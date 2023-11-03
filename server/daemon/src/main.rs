@@ -37,9 +37,9 @@ use kanidmd_core::{
     dbscan_restore_quarantined_core, domain_rename_core, reindex_server_core, restore_server_core,
     vacuum_server_core, verify_server_core,
 };
+use sketching::tracing_forest;
 use sketching::tracing_forest::traits::*;
 use sketching::tracing_forest::util::*;
-use sketching::tracing_forest::{self};
 use tokio::net::UnixStream;
 use tokio_util::codec::Framed;
 #[cfg(target_family = "windows")] // for windows builds
@@ -255,7 +255,6 @@ async fn kanidm_main() -> ExitCode {
         // Fall back to stderr
         .map_sender(|sender| {
             sender.or_stderr()
-
         })
         .build_on(|subscriber|{
             subscriber.with(log_filter)
