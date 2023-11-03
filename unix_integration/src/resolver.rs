@@ -19,7 +19,7 @@ use crate::idprovider::interface::{
 use crate::unix_config::{HomeAttr, UidAttr};
 use crate::unix_proto::{HomeDirectoryInfo, NssGroup, NssUser, PamAuthRequest, PamAuthResponse};
 
-use kanidm_hsm_crypto::{HmacKey, Hsm, MachineKey};
+use kanidm_hsm_crypto::{HmacKey, MachineKey, Tpm};
 
 const NXCACHE_SIZE: NonZeroUsize = unsafe { NonZeroUsize::new_unchecked(128) };
 
@@ -51,7 +51,7 @@ where
 {
     // Generic / modular types.
     db: Db,
-    hsm: Mutex<Box<dyn Hsm + Send>>,
+    hsm: Mutex<Box<dyn Tpm + Send>>,
     // machine_key: MachineKey,
     hmac_key: HmacKey,
     client: I,
@@ -87,7 +87,7 @@ where
     pub async fn new(
         db: Db,
         client: I,
-        hsm: Box<dyn Hsm + Send>,
+        hsm: Box<dyn Tpm + Send>,
         machine_key: MachineKey,
         // cache timeout
         timeout_seconds: u64,

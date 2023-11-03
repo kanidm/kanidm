@@ -4,7 +4,7 @@ use async_trait::async_trait;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use uuid::Uuid;
 
-pub use kanidm_hsm_crypto::{Hsm, KeyAlgorithm, MachineKey};
+pub use kanidm_hsm_crypto::{KeyAlgorithm, MachineKey, Tpm};
 
 /// Errors that the IdProvider may return. These drive the resolver state machine
 /// and should be carefully selected to match your expected errors.
@@ -131,7 +131,7 @@ pub trait IdProvider {
     async fn configure_hsm_keys(
         &self,
         _keystore: &mut KeyStore,
-        _hsm: &mut (dyn Hsm + Send),
+        _tpm: &mut (dyn Tpm + Send),
         _machine_key: &MachineKey,
     ) -> Result<(), IdpError> {
         Ok(())

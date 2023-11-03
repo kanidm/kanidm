@@ -75,7 +75,7 @@ sshkey-attest = { git = "https://github.com/kanidm/webauthn-rs.git", rev = "2218
 # webauthn-rs-proto = { path = "../webauthn-rs/webauthn-rs-proto" }
 # sshkey-attest = { path = "../webauthn-rs/sshkey-attest" }
 
-kanidm-hsm-crypto = { path = "../hsm-crypto" }
+kanidm-hsm-crypto = { path = "../kanidm-hsm-crypto" }
 
 [workspace.dependencies]
 kanidmd_core = { path = "./server/core", version = "1.1.0-rc.15-dev" }

@@ -20,7 +20,7 @@ use kanidmd_testkit::{is_free_port, PORT_ALLOC};
 use tokio::task;
 use tracing::log::{debug, trace};
 
-use kanidm_hsm_crypto::{soft::SoftHsm, AuthValue, Hsm};
+use kanidm_hsm_crypto::{soft::SoftTpm, AuthValue, Tpm};
 
 const ADMIN_TEST_USER: &str = "admin";
 const ADMIN_TEST_PASSWORD: &str = "integration test admin password";
@@ -103,7 +103,7 @@ async fn setup_test(fix_fn: Fixture) -> (Resolver<KanidmProvider>, KanidmClient)
     )
     .expect("Failed to setup DB");
 
-    let mut hsm: Box<dyn Hsm + Send> = Box::new(SoftHsm::new());
+    let mut hsm: Box<dyn Tpm + Send> = Box::new(SoftTpm::new());
 
     let auth_value = AuthValue::new_random().unwrap();
 

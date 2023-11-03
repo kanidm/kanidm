@@ -14,7 +14,7 @@ use uuid::Uuid;
 
 use serde::{de::DeserializeOwned, Serialize};
 
-use kanidm_hsm_crypto::{HmacKey, Hsm, LoadableHmacKey, LoadableMachineKey};
+use kanidm_hsm_crypto::{HmacKey, LoadableHmacKey, LoadableMachineKey, Tpm};
 
 #[async_trait]
 pub trait Cache {
@@ -65,7 +65,7 @@ pub trait CacheTxn {
         &self,
         a_uuid: Uuid,
         cred: &str,
-        hsm: &mut dyn Hsm,
+        hsm: &mut dyn Tpm,
         hmac_key: &HmacKey,
     ) -> Result<(), CacheError>;
 
@@ -73,7 +73,7 @@ pub trait CacheTxn {
         &self,
         a_uuid: Uuid,
         cred: &str,
-        hsm: &mut dyn Hsm,
+        hsm: &mut dyn Tpm,
         hmac_key: &HmacKey,
     ) -> Result<bool, CacheError>;
 
@@ -718,7 +718,7 @@ impl<'a> CacheTxn for DbTxn<'a> {
         &self,
         a_uuid: Uuid,
         cred: &str,
-        hsm: &mut dyn Hsm,
+        hsm: &mut dyn Tpm,
         hmac_key: &HmacKey,
     ) -> Result<(), CacheError> {
         let pw =
@@ -749,7 +749,7 @@ impl<'a> CacheTxn for DbTxn<'a> {
         &self,
         a_uuid: Uuid,
         cred: &str,
-        hsm: &mut dyn Hsm,
+        hsm: &mut dyn Tpm,
         hmac_key: &HmacKey,
     ) -> Result<bool, CacheError> {
         let mut stmt = self
@@ -959,7 +959,7 @@ mod tests {
     // use std::assert_matches::assert_matches;
     use super::{Cache, CacheTxn, Db};
     use crate::idprovider::interface::{GroupToken, Id, UserToken};
-    use kanidm_hsm_crypto::{soft::SoftHsm, AuthValue, Hsm};
+    use kanidm_hsm_crypto::{soft::SoftTpm, AuthValue, Tpm};
 
     const TESTACCOUNT1_PASSWORD_A: &str = "password a for account1 test";
     const TESTACCOUNT1_PASSWORD_B: &str = "password b for account1 test";
@@ -1204,7 +1204,7 @@ mod tests {
         // #[cfg(feature = "tpm")]
 
         #[cfg(not(feature = "tpm"))]
-        let mut hsm: Box<dyn Hsm> = Box::new(SoftHsm::new());
+        let mut hsm: Box<dyn Tpm> = Box::new(SoftTpm::new());
 
         let auth_value = AuthValue::new_random().unwrap();
 

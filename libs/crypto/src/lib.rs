@@ -29,7 +29,7 @@ use openssl::nid::Nid;
 use openssl::pkcs5::pbkdf2_hmac;
 use openssl::sha::Sha512;
 
-use kanidm_hsm_crypto::{HmacKey, Hsm};
+use kanidm_hsm_crypto::{HmacKey, Tpm};
 
 pub mod mtls;
 pub mod prelude;
@@ -820,7 +820,7 @@ impl Password {
     pub fn new_argon2id_hsm(
         policy: &CryptoPolicy,
         cleartext: &str,
-        hsm: &mut dyn Hsm,
+        hsm: &mut dyn Tpm,
         hmac_key: &HmacKey,
     ) -> Result<Self, CryptoError> {
         let version = Version::V0x13;
@@ -867,7 +867,7 @@ impl Password {
     pub fn verify_ctx(
         &self,
         cleartext: &str,
-        hsm: Option<(&mut dyn Hsm, &HmacKey)>,
+        hsm: Option<(&mut dyn Tpm, &HmacKey)>,
     ) -> Result<bool, CryptoError> {
         match (&self.material, hsm) {
             (
@@ -1187,7 +1187,7 @@ impl Password {
 
 #[cfg(test)]
 mod tests {
-    use kanidm_hsm_crypto::soft::SoftHsm;
+    use kanidm_hsm_crypto::soft::SoftTpm;
     use kanidm_hsm_crypto::AuthValue;
     use std::convert::TryFrom;
 
@@ -1361,7 +1361,7 @@ mod tests {
     fn test_password_argon2id_hsm_bind() {
         sketching::test_init();
 
-        let mut hsm: Box<dyn Hsm> = Box::new(SoftHsm::new());
+        let mut hsm: Box<dyn Tpm> = Box::new(SoftTpm::new());
 
         let auth_value = AuthValue::new_random().unwrap();
 
@@ -1373,7 +1373,7 @@ mod tests {
         let loadable_hmac_key = hsm.hmac_key_create(&machine_key).unwrap();
         let key = hsm.hmac_key_load(&machine_key, &loadable_hmac_key).unwrap();
 
-        let ctx: &mut dyn Hsm = &mut *hsm;
+        let ctx: &mut dyn Tpm = &mut *hsm;
 
         let p = CryptoPolicy::minimum();
         let c = Password::new_argon2id_hsm(&p, "password", ctx, &key).unwrap();
