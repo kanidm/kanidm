@@ -1,15 +1,12 @@
 //! Integration tests using browser automation
 
-use std::process::Output;
+// use std::process::Output;
 
-use tempfile::tempdir;
+// use tempfile::tempdir;
 
 use kanidm_client::KanidmClient;
-use kanidmd_testkit::{
-    login_put_admin_idm_admins, ADMIN_TEST_PASSWORD, IDM_ADMIN_TEST_PASSWORD, IDM_ADMIN_TEST_USER,
-    NOT_ADMIN_TEST_USERNAME,
-};
-use testkit_macros::cli_kanidm;
+use kanidmd_testkit::login_put_admin_idm_admins;
+// use testkit_macros::cli_kanidm;
 
 /// Tries to handle closing the webdriver session if there's an error
 #[allow(unused_macros)]
@@ -228,43 +225,43 @@ async fn test_idm_domain_set_ldap_basedn(rsclient: KanidmClient) {
         .is_err());
 }
 
-/// run a test command as the admin user
-fn test_cmd_admin(token_cache_path: &str, rsclient: &KanidmClient, cmd: &str) -> Output {
-    let split_cmd: Vec<&str> = cmd.split_ascii_whitespace().collect();
-    test_cmd_admin_split(token_cache_path, rsclient, &split_cmd)
-}
-/// run a test command as the admin user
-fn test_cmd_admin_split(token_cache_path: &str, rsclient: &KanidmClient, cmd: &[&str]) -> Output {
-    println!(
-        "##################################\nrunning {}\n##################################",
-        cmd.join(" ")
-    );
-    let res = cli_kanidm!()
-        .env("KANIDM_PASSWORD", ADMIN_TEST_PASSWORD)
-        .args(cmd)
-        .output()
-        .unwrap();
-    println!("############ result ##################");
-    println!("status: {:?}", res.status);
-    println!("stdout: {}", String::from_utf8_lossy(&res.stdout));
-    println!("stderr: {}", String::from_utf8_lossy(&res.stderr));
-    println!("######################################");
-    assert!(res.status.success());
-    res
-}
+// /// run a test command as the admin user
+// fn test_cmd_admin(token_cache_path: &str, rsclient: &KanidmClient, cmd: &str) -> Output {
+//     let split_cmd: Vec<&str> = cmd.split_ascii_whitespace().collect();
+//     test_cmd_admin_split(token_cache_path, rsclient, &split_cmd)
+// }
+// /// run a test command as the admin user
+// fn test_cmd_admin_split(token_cache_path: &str, rsclient: &KanidmClient, cmd: &[&str]) -> Output {
+//     println!(
+//         "##################################\nrunning {}\n##################################",
+//         cmd.join(" ")
+//     );
+//     let res = cli_kanidm!()
+//         .env("KANIDM_PASSWORD", ADMIN_TEST_PASSWORD)
+//         .args(cmd)
+//         .output()
+//         .unwrap();
+//     println!("############ result ##################");
+//     println!("status: {:?}", res.status);
+//     println!("stdout: {}", String::from_utf8_lossy(&res.stdout));
+//     println!("stderr: {}", String::from_utf8_lossy(&res.stderr));
+//     println!("######################################");
+//     assert!(res.status.success());
+//     res
+// }
 
-/// run a test command as the idm_admin user
-fn test_cmd_idm_admin(token_cache_path: &str, rsclient: &KanidmClient, cmd: &str) -> Output {
-    println!("##############################\nrunning {}", cmd);
-    let res = cli_kanidm!()
-        .env("KANIDM_PASSWORD", IDM_ADMIN_TEST_PASSWORD)
-        .args(cmd.split(" "))
-        .output()
-        .unwrap();
-    println!("##############################\n{} result: {:?}", cmd, res);
-    assert!(res.status.success());
-    res
-}
+// /// run a test command as the idm_admin user
+// fn test_cmd_idm_admin(token_cache_path: &str, rsclient: &KanidmClient, cmd: &str) -> Output {
+//     println!("##############################\nrunning {}", cmd);
+//     let res = cli_kanidm!()
+//         .env("KANIDM_PASSWORD", IDM_ADMIN_TEST_PASSWORD)
+//         .args(cmd.split(" "))
+//         .output()
+//         .unwrap();
+//     println!("##############################\n{} result: {:?}", cmd, res);
+//     assert!(res.status.success());
+//     res
+// }
 
 // Disabled due to inconsistent test failures and blocking
 /*
@@ -362,4 +359,3 @@ async fn test_integration_with_assert_cmd(rsclient: KanidmClient) {
     println!("Success!");
 }
 */
-
