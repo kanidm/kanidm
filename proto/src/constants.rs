@@ -53,6 +53,7 @@ pub const ATTR_ATTR: &str = "attr";
 pub const ATTR_ATTRIBUTENAME: &str = "attributename";
 pub const ATTR_ATTRIBUTETYPE: &str = "attributetype";
 pub const ATTR_AUTH_SESSION_EXPIRY: &str = "authsession_expiry";
+pub const ATTR_AUTH_PASSWORD_MINIMUM_LENGTH: &str = "auth_password_minimum_length";
 pub const ATTR_BADLIST_PASSWORD: &str = "badlist_password";
 pub const ATTR_CLAIM: &str = "claim";
 pub const ATTR_CLASS: &str = "class";

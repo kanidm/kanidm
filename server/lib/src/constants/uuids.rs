@@ -245,6 +245,8 @@ pub const UUID_SCHEMA_ATTR_LDAP_ALLOW_UNIX_PW_BIND: Uuid =
     uuid!("00000000-0000-0000-0000-ffff00000145");
 
 pub const UUID_SCHEMA_CLASS_ACCOUNT_POLICY: Uuid = uuid!("00000000-0000-0000-0000-ffff00000146");
+pub const UUID_SCHEMA_ATTR_AUTH_PASSWORD_MINIMUM_LENGTH: Uuid =
+    uuid!("00000000-0000-0000-0000-ffff00000147");
 
 // System and domain infos
 // I'd like to strongly criticise william of the past for making poor choices about these allocations.

@@ -125,6 +125,14 @@ pub enum GroupAccountPolicyOpt {
         #[clap(flatten)]
         copt: CommonOpt,
     },
+    /// Set the minimum length of passwords for accounts
+    #[clap(name = "password-minimum-length")]
+    PasswordMinimumLength {
+        name: String,
+        length: u32,
+        #[clap(flatten)]
+        copt: CommonOpt,
+    },
     /// Configure and display the privilege session expiry
     /// Set the maximum time for privilege session expiry
     #[clap(name = "privilege-expiry")]

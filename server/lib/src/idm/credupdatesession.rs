@@ -2553,6 +2553,62 @@ mod tests {
         drop(cutxn);
     }
 
+    #[idm_test]
+    async fn test_idm_credential_update_password_min_length_account_policy(
+        idms: &IdmServer,
+        _idms_delayed: &mut IdmServerDelayed,
+    ) {
+        let ct = Duration::from_secs(TEST_CURRENT_TIME);
+
+        // Set the account policy min pw length
+        let test_pw_min_length = PW_MIN_LENGTH * 2;
+
+        let mut idms_prox_write = idms.proxy_write(ct).await;
+
+        let modlist = ModifyList::new_purge_and_set(
+            Attribute::AuthPasswordMinimumLength,
+            Value::Uint32(test_pw_min_length),
+        );
+        idms_prox_write
+            .qs_write
+            .internal_modify_uuid(UUID_IDM_ALL_ACCOUNTS, &modlist)
+            .expect("Unable to change default session exp");
+
+        assert!(idms_prox_write.commit().is_ok());
+        // This now will affect all accounts for the next cred update.
+
+        let (cust, _) = setup_test_session(idms, ct).await;
+
+        let cutxn = idms.cred_update_transaction().await;
+
+        // Get the credential status - this should tell
+        // us the details of the credentials, as well as
+        // if they are ready and valid to commit?
+        let c_status = cutxn
+            .credential_update_status(&cust, ct)
+            .expect("Failed to get the current session status.");
+
+        trace!(?c_status);
+
+        assert!(c_status.primary.is_none());
+
+        // Test initially creating a credential.
+        //   - pw first
+
+        let err = cutxn
+            .credential_primary_set_password(&cust, ct, "password")
+            .unwrap_err();
+        trace!(?err);
+        assert!(match err {
+            OperationError::PasswordQuality(details)
+                if details == vec!(PasswordFeedback::TooShort(test_pw_min_length),) =>
+                true,
+            _ => false,
+        });
+
+        drop(cutxn);
+    }
+
     // Test set of primary account password
     //    - fail pw quality checks etc
     //    - set correctly.

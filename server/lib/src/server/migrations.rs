@@ -558,6 +558,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             SCHEMA_ATTR_API_TOKEN_SESSION.clone().into(),
             SCHEMA_ATTR_AUTH_SESSION_EXPIRY.clone().into(),
             SCHEMA_ATTR_AUTH_PRIVILEGE_EXPIRY.clone().into(),
+            SCHEMA_ATTR_AUTH_PASSWORD_MINIMUM_LENGTH.clone().into(),
             SCHEMA_ATTR_BADLIST_PASSWORD.clone().into(),
             SCHEMA_ATTR_CREDENTIAL_UPDATE_INTENT_TOKEN.clone().into(),
             SCHEMA_ATTR_DEVICEKEYS.clone().into(),

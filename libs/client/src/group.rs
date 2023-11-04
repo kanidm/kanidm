@@ -21,6 +21,18 @@ impl KanidmClient {
         .await
     }
 
+    pub async fn group_account_policy_password_minimum_length_set(
+        &self,
+        id: &str,
+        length: u32,
+    ) -> Result<(), ClientError> {
+        self.perform_put_request(
+            &format!("/v1/group/{}/_attr/auth_password_minimum_length", id),
+            vec![length.to_string()],
+        )
+        .await
+    }
+
     pub async fn group_account_policy_privilege_expiry_set(
         &self,
         id: &str,
