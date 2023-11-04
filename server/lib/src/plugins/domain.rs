@@ -62,7 +62,16 @@ impl Plugin for Domain {
     }
 }
 
+fn generate_domain_cookie_key() -> Value {
+    let mut key = [0; 64];
+    let mut rng = StdRng::from_entropy();
+    rng.fill(&mut key);
+    Value::new_privatebinary(&key)
+}
+
 impl Domain {
+    /// Generates the cookie key for the domain.
+
     fn modify_inner<T: Clone + std::fmt::Debug>(
         qs: &mut QueryServerWriteTransaction,
         cand: &mut [Entry<EntryInvalid, T>],
@@ -129,11 +138,7 @@ impl Domain {
 
                 if !e.attribute_pres(Attribute::PrivateCookieKey) {
                     security_info!("regenerating domain cookie key");
-                    let mut key = [0; 64];
-                    let mut rng = StdRng::from_entropy();
-                    rng.fill(&mut key);
-                    let v = Value::new_privatebinary(&key);
-                    e.add_ava(Attribute::PrivateCookieKey, v);
+                    e.add_ava(Attribute::PrivateCookieKey, generate_domain_cookie_key());
                 }
 
                 trace!(?e);

@@ -518,7 +518,7 @@ lazy_static! {
     };
 }
 
-/// Make a list of all the non-admin BuiltinGroup's that are created by default, doing it in a standard-ish way so we can use it for testing and stuff
+/// Make a list of all the non-admin BuiltinGroup's that are created by default, doing it in a standard-ish way so we can use it around the platform
 pub fn idm_builtin_non_admin_groups() -> Vec<&'static BuiltinGroup> {
     // Create any system default schema entries.
     vec![

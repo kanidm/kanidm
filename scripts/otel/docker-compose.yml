@@ -1,53 +1,92 @@
 ---
-# this sets up the required services locally for running a really basic otel/jaeger pipeline for collecting traces
-version: "3.8"
-
+# It should be *very* clear that this is an insecure, dev-only configuration. Don't run this in production!
 services:
-  otel:
-    hostname: otel
-    container_name: otel
-    image: otel/opentelemetry-collector-contrib:0.86.0
-    restart: always
-
-    ports:
-      - 1888:1888 # pprof extension
-      - 8888:8888 # Prometheus metrics exposed by the collector
-      - 8889:8889 # Prometheus exporter metrics
-      - 13133:13133 # health_check extension
-      - 4317:4317 # OTLP gRPC receiver
-      - 4318:4318 # OTLP http receiver
-      - 55679:55679 # zpages extension
+  grafana:
+    image: grafana/grafana:10.1.1
     volumes:
       - type: bind
-        source: ./otel-config.yml
-        target: /etc/otelcol-contrib/config.yaml
-    depends_on:
-      - jaeger
-  # prometheus:
-  #   hostname: prometheus
-  #   container_name: prometheus
-  #   image: prom/prometheus:v2.47.2
-  #   restart: always
-  #   ports:
-  #    - "9090:9090"
-  #   volumes:
-  #     - type: bind
-  #       source: ./prometheus.yml
-  #       target: /etc/prometheus/prometheus.yml
-  #     - prometheus:/prometheus
-  jaeger:
-    hostname: jaeger
-    container_name: jaeger
-    restart: always
-    image: jaegertracing/all-in-one:1.50
-    # environment:
-      # - "METRICS_STORAGE_TYPE=prometheus"
-      # - "PROMETHEUS_SERVER_URL=http://prometheus:9090"
+        source: ./grafana-datasources.yaml
+        target: /etc/grafana/provisioning/datasources/datasources.yaml
+    environment:
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+      - GF_AUTH_DISABLE_LOGIN_FORM=true
+      - GF_FEATURE_TOGGLES_ENABLE=traceqlEditor
     ports:
-      # - "4317:4317"
-      # - "4318:4318"
-      - "16685:16685"
-      - "16686:16686"
-      - "16687:16687"
-# volumes:
-  # prometheus:
+      - "3000:3000"
+  tempo:
+    image: grafana/tempo:latest
+    command: [ "-config.file=/etc/tempo.yaml" ]
+    volumes:
+      - type: bind
+        source: ./tempo.yaml
+        target: /etc/tempo.yaml
+      - type: volume
+        source: tempo
+        target: /tmp/tempo
+    ports:
+      - "14268:14268"  # jaeger ingest
+      - "3200:3200"   # tempo
+      - "9095:9095" # tempo grpc
+      - "4317:4317"  # otlp grpc
+      - "4318:4318"  # otlp http
+      - "9411:9411"   # zipkin
+  loki:
+    image: docker.io/grafana/loki:2.9.2
+    volumes:
+      - type: bind
+        source: ./local-config.yaml
+        target: /etc/loki/local-config.yaml
+    command: |
+      -config.file=/etc/loki/local-config.yaml \
+      -target=all
+    ports:
+      - "3100:3100"
+      - "3101:3101"
+      - "3102:3102"
+  minio:
+    image: minio/minio
+    entrypoint:
+      - sh
+      - -euc
+      - |
+        mkdir -p /data/loki-data && \
+        mkdir -p /data/loki-ruler && \
+        mkdir -p /data/tempo && \
+        minio server /data
+    environment:
+      - MINIO_ROOT_USER=loki
+      - MINIO_ROOT_PASSWORD=supersecret
+      - MINIO_PROMETHEUS_AUTH_TYPE=public
+      - MINIO_UPDATE=off
+    ports:
+      - 9000
+    volumes:
+      - type: volume
+        source: minio
+        target: /data
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:9000/minio/health/live" ]
+      interval: 15s
+      timeout: 20s
+      retries: 5
+
+  prometheus:
+    hostname: prometheus
+    container_name: prometheus
+    image: prom/prometheus:v2.47.2
+    restart: always
+    ports:
+    - "9090:9090"
+    volumes:
+      - type: bind
+        source: ./prometheus.yml
+        target: /etc/prometheus/prometheus.yml
+      - type: volume
+        source: prometheus
+        target: /prometheus
+
+volumes:
+  minio:
+  tempo:
+  prometheus:

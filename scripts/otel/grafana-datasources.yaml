@@ -1,3 +1,5 @@
+---
+# It should be *very* clear that this is an insecure, dev-only configuration. Don't run this in production!
 apiVersion: 1
 
 datasources:

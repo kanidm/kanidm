@@ -34,10 +34,11 @@ pub fn init_metrics() -> metrics::Result<MeterProvider> {
         .build()
 }
 
-/// This does all the bootup things
-pub fn startup_opentelemetry(
+/// This does all the startup things for the logging pipeline
+pub fn start_logging_pipeline(
     otlp_endpoint: Option<String>,
     log_filter: crate::LogLevel,
+    service_name: String,
 ) -> Result<Box<dyn Subscriber + Send + Sync>, String> {
     let forest_filter: EnvFilter = log_filter.into();
     let forest_layer = tracing_forest::ForestLayer::default().with_filter(forest_filter);
@@ -63,12 +64,11 @@ pub fn startup_opentelemetry(
                     trace::config()
                         // we want *everything!*
                         .with_sampler(Sampler::AlwaysOn)
-                        // .with_id_generator(TraceIdGenerator::default()) // TODO: this should be a uuidv4
                         .with_max_events_per_span(MAX_EVENTS_PER_SPAN)
                         .with_max_attributes_per_span(MAX_ATTRIBUTES_PER_SPAN)
                         .with_resource(Resource::new(vec![KeyValue::new(
                             "service.name",
-                            "kanidmd",
+                            service_name,
                         )])),
                 )
                 .install_batch(opentelemetry::runtime::Tokio)
@@ -86,58 +86,18 @@ pub fn startup_opentelemetry(
             Ok(Box::new(
                 Registry::default().with(forest_layer).with(telemetry),
             ))
-            // tracing::subscriber::set_global_default(subscriber).unwrap();
         }
-        None => {
-            Ok(Box::new(Registry::default().with(forest_layer)))
-            // tracing::subscriber::set_global_default(subscriber).unwrap();
-        }
+        None => Ok(Box::new(Registry::default().with(forest_layer))),
     }
 }
 
-// pub async fn on<F: Future>(self, f: F) -> F::Output {
-//     let (shutdown_tx, mut shutdown_rx) = tokio::mponeshot::channel();
-//     let processor = self.worker_processor.0;
-//     let mut receiver = self.receiver;
+/// This helps with cleanly shutting down the tracing/logging providers when done, so we don't lose things!
+pub struct TracingPipelineGuard {}
 
-//     // this does the processor bit
-//     let handle = tokio::spawn(async move {
-//         loop {
-//             tokio::select! {
-//                 Some(tree) = receiver.recv() => processor.process(tree).expect(fail::PROCESSING_ERROR),
-//                 Ok(()) = &mut shutdown_rx => break,
-//                 else => break,
-//             }
-//         }
-
-//         receiver.close();
-
-//         // Drain any remaining logs in the channel buffer.
-//         while let Ok(tree) = receiver.try_recv() {
-//             processor.process(tree).expect(fail::PROCESSING_ERROR);
-//         }
-//     });
-
-//     // this waits for the function
-//     let output = {
-//         let _guard = if self.is_global {
-//             tracing::subscriber::set_global_default(self.subscriber)
-//                 .expect("global default already set");
-//             None
-//         } else {
-//             Some(tracing::subscriber::set_default(self.subscriber))
-//         };
-
-//         f.await
-//     };
-
-//     shutdown_tx
-//         .send(())
-//         .expect("Shutdown signal couldn't send, this is a bug");
-
-//     handle
-//         .await
-//         .expect("Failed to join the writing task, this is a bug");
-
-//     output
-// }
+impl Drop for TracingPipelineGuard {
+    fn drop(&mut self) {
+        opentelemetry::global::shutdown_tracer_provider();
+        opentelemetry::global::shutdown_logger_provider();
+        println!("Logging pipeline completed shutdown");
+    }
+}

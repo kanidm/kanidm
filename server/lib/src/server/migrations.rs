@@ -155,19 +155,20 @@ impl<'a> QueryServerWriteTransaction<'a> {
         res
     }
 
+    #[instrument(level = "debug", skip_all)]
+    /// - If the thing exists:
+    ///   - Ensure the set of attributes match and are present
+    ///     (but don't delete multivalue, or extended attributes in the situation.
+    /// - If not:
+    ///   - Create the entry
+    ///
+    /// This will extra classes an attributes alone!
+    ///
+    /// NOTE: `gen_modlist*` IS schema aware and will handle multivalue correctly!
     pub fn internal_migrate_or_create(
         &mut self,
         e: Entry<EntryInit, EntryNew>,
     ) -> Result<(), OperationError> {
-        // if the thing exists, ensure the set of attributes on
-        // Entry A match and are present (but don't delete multivalue, or extended
-        // attributes in the situation.
-        // If not exist, create from Entry B
-        //
-        // This will extra classes an attributes alone!
-        //
-        // NOTE: gen modlist IS schema aware and will handle multivalue
-        // correctly!
         trace!("internal_migrate_or_create operating on {:?}", e.get_uuid());
 
         let Some(filt) = e.filter_from_attrs(&[Attribute::Uuid.into()]) else {
@@ -298,7 +299,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     /// a future version.
     ///
     /// An extended feature of this is the ability to store multiple TOTP's per entry.
-    #[instrument(level = "debug", skip_all)]
+    #[instrument(level = "info", skip_all)]
     pub fn migrate_9_to_10(&mut self) -> Result<(), OperationError> {
         admin_warn!("starting 9 to 10 migration.");
         let filter = filter!(f_or!([
@@ -318,7 +319,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     /// are, they are migrated to the passkey type, allowing us to deprecate and remove the older
     /// credential behaviour.
     ///
-    #[instrument(level = "debug", skip_all)]
+    #[instrument(level = "info", skip_all)]
     pub fn migrate_10_to_11(&mut self) -> Result<(), OperationError> {
         admin_warn!("starting 9 to 10 migration.");
         let filter = filter!(f_pres(Attribute::PrimaryCredential));
@@ -363,9 +364,9 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
     /// Migrate 11 to 12
     ///
-    /// Rewrite api-tokens from session to a dedicated api token type.
+    /// Rewrite api-tokens from session to a dedicated API token type.
     ///
-    #[instrument(level = "debug", skip_all)]
+    #[instrument(level = "info", skip_all)]
     pub fn migrate_11_to_12(&mut self) -> Result<(), OperationError> {
         admin_warn!("starting 11 to 12 migration.");
         // sync_token_session
@@ -421,7 +422,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
         self.internal_apply_writable(mod_candidates)
     }
 
-    #[instrument(level = "debug", skip_all)]
+    #[instrument(level = "info", skip_all)]
+    /// Deletes the Domain info privatecookiekey to force a regeneration as we changed the format
     pub fn migrate_12_to_13(&mut self) -> Result<(), OperationError> {
         admin_warn!("starting 12 to 13 migration.");
         let filter = filter!(f_and!([
@@ -434,7 +436,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // Complete
     }
 
-    #[instrument(level = "debug", skip_all)]
+    #[instrument(level = "info", skip_all)]
+    /// - Deletes the incorrectly added "member" attribute on dynamic groups
     pub fn migrate_13_to_14(&mut self) -> Result<(), OperationError> {
         admin_warn!("starting 13 to 14 migration.");
         let filter = filter!(f_eq(
@@ -447,18 +450,20 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // Complete
     }
 
-    #[instrument(level = "debug", skip_all)]
+    #[instrument(level = "info", skip_all)]
+    /// - Deletes the non-existing attribute for idverification private key which triggers it to regen
     pub fn migrate_14_to_15(&mut self) -> Result<(), OperationError> {
         admin_warn!("starting 14 to 15 migration.");
         let filter = filter!(f_eq(Attribute::Class, EntryClass::Person.into()));
-        // Delete the non-existing attr for idv private key which triggers
-        // it to regen.
+        // Delete the non-existing attr for idv private key which triggers it to regen.
         let modlist = ModifyList::new_purge(Attribute::IdVerificationEcKey);
         self.internal_modify(&filter, &modlist)
         // Complete
     }
 
-    #[instrument(level = "debug", skip_all)]
+    #[instrument(level = "info", skip_all)]
+    /// - updates the system config to include the new session expiry values.
+    /// - adds the account policy object to idm_all_accounts
     pub fn migrate_15_to_16(&mut self) -> Result<(), OperationError> {
         admin_warn!("starting 15 to 16 migration.");
 
@@ -509,7 +514,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // Complete
     }
 
-    #[instrument(level = "debug", skip_all)]
+    #[instrument(level = "info", skip_all)]
     pub fn initialise_schema_core(&mut self) -> Result<(), OperationError> {
         admin_debug!("initialise_schema_core -> start ...");
         // Load in all the "core" schema, that we already have in "memory".
@@ -532,7 +537,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         r
     }
 
-    #[instrument(level = "debug", skip_all)]
+    #[instrument(level = "info", skip_all)]
     pub fn initialise_schema_idm(&mut self) -> Result<(), OperationError> {
         admin_debug!("initialise_schema_idm -> start ...");
 
@@ -652,8 +657,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
         r
     }
 
-    // This function is idempotent
-    #[instrument(level = "debug", skip_all)]
+    #[instrument(level = "info", skip_all)]
+    /// This function is idempotent, runs all the startup functionality and checks
     pub fn initialise_idm(&mut self) -> Result<(), OperationError> {
         // First, check the system_info object. This stores some server information
         // and details. It's a pretty const thing. Also check anonymous, important to many
@@ -684,9 +689,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         debug_assert!(res.is_ok());
         res?;
 
-        let idm_entries = idm_builtin_non_admin_groups();
-
-        let res: Result<(), _> = idm_entries
+        let res: Result<(), _> = idm_builtin_non_admin_groups()
             .into_iter()
             .try_for_each(|e| self.internal_migrate_or_create(e.clone().try_into()?));
         if res.is_ok() {
@@ -756,7 +759,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
         res?;
 
         // Delete entries that no longer need to exist.
-        let delete_entries = [UUID_IDM_ACP_OAUTH2_READ_PRIV_V1];
+        // TODO: Shouldn't this be a migration?
+        let delete_entries: [Uuid; 1] = [UUID_IDM_ACP_OAUTH2_READ_PRIV_V1];
 
         let res: Result<(), _> = delete_entries
             .into_iter()

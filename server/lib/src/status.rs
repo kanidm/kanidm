@@ -4,6 +4,8 @@ use uuid::Uuid;
 
 use crate::prelude::*;
 
+// TODO: this should *totally* be running the OTEL metrics collector
+
 pub struct StatusRequestEvent {
     pub eventid: Uuid,
 }

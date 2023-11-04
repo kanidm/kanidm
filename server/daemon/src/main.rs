@@ -19,6 +19,7 @@ use std::str::FromStr;
 // This works on both unix and windows.
 use fs2::FileExt;
 use kanidm_proto::messages::ConsoleOutputMode;
+use sketching::otel::TracingPipelineGuard;
 use sketching::LogLevel;
 #[cfg(target_family = "unix")]
 use std::os::unix::fs::MetadataExt;
@@ -261,7 +262,11 @@ async fn kanidm_main() -> ExitCode {
     };
 
     // TODO: only send to stderr when we're not in a TTY
-    let sub = match sketching::otel::startup_opentelemetry(otel_grpc_url, log_filter) {
+    let sub = match sketching::otel::start_logging_pipeline(
+        otel_grpc_url,
+        log_filter,
+        "kanidmd".to_string(),
+    ) {
         Err(err) => {
             eprintln!("Error starting logger - {:} - Bailing on startup!", err);
             return shutdown(ExitCode::FAILURE);
@@ -274,6 +279,9 @@ async fn kanidm_main() -> ExitCode {
             return shutdown(ExitCode::FAILURE);
         })
         .unwrap();
+
+    // guard which shuts down the logging/tracing providers when we close out
+    let _otelguard = TracingPipelineGuard {};
 
     // Get information on the windows username
     #[cfg(target_family = "windows")]

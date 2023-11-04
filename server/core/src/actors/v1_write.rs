@@ -1568,7 +1568,14 @@ impl QueryServerWriteV1 {
         let res = idms_prox_write
             .qs_write
             .purge_tombstones()
-            .and_then(|_| idms_prox_write.commit());
+            .and_then(|changed| {
+                // we don't need to commit the txn if there were no changes
+                if changed > 0 {
+                    idms_prox_write.commit()
+                } else {
+                    Ok(())
+                }
+            });
 
         match res {
             Ok(()) => {
@@ -1592,7 +1599,14 @@ impl QueryServerWriteV1 {
         let res = idms_prox_write
             .qs_write
             .purge_recycled()
-            .and_then(|_| idms_prox_write.commit());
+            .and_then(|touched| {
+                // don't need to commit a txn with no changes
+                if touched > 0 {
+                    idms_prox_write.commit()
+                } else {
+                    Ok(())
+                }
+            });
 
         match res {
             Ok(()) => {

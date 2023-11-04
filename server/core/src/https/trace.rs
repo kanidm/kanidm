@@ -26,7 +26,7 @@ impl Default for DefaultMakeSpanKanidmd {
 }
 
 impl<B> tower_http::trace::MakeSpan<B> for DefaultMakeSpanKanidmd {
-    #[instrument(name = "handle_request", skip_all, fields(hhhhhh = "hmmmmmm"))]
+    #[instrument(name = "handle_request", skip_all, fields(latency, status_code))]
     fn make_span(&mut self, request: &Request<B>) -> Span {
         tracing::span!(
             Level::INFO,
@@ -34,7 +34,6 @@ impl<B> tower_http::trace::MakeSpan<B> for DefaultMakeSpanKanidmd {
             method = %request.method(),
             uri = %request.uri(),
             version = ?request.version(),
-            "http.status_code" = None::<u16>,
         )
     }
 }
@@ -49,6 +48,13 @@ pub(crate) struct DefaultOnResponseKanidmd {
     include_headers: bool,
 }
 
+impl DefaultOnResponseKanidmd {
+    #[allow(dead_code)]
+    pub fn new() -> Self {
+        Self::default()
+    }
+}
+
 impl Default for DefaultOnResponseKanidmd {
     fn default() -> Self {
         Self {
@@ -59,80 +65,81 @@ impl Default for DefaultOnResponseKanidmd {
     }
 }
 
-// struct Latency {
-//     unit: LatencyUnit,
-//     duration: Duration,
-// }
+impl<B> tower_http::trace::OnResponse<B> for DefaultOnResponseKanidmd {
+    fn on_response(
+        self,
+        response: &axum::response::Response<B>,
+        latency: std::time::Duration,
+        span: &Span,
+    ) {
+        // if let Some(meta) = span.metadata() {
+        //     meta.fields().iter().for_each(|f| {
+        //         println!("meta field: {:?}", f);
+        //     })
+        // };
+        // let latency = Latency {
+        //     unit: self.latency_unit,
+        //     duration: latency,
+        // };
+        let _response_headers = self
+            .include_headers
+            .then(|| tracing::field::debug(response.headers()));
+        span.record("latency_micros", latency.as_micros());
+        span.record("http.status_code", response.status().as_u16());
 
-// impl DefaultOnResponseKanidmd {
-//     pub fn new() -> Self {
-//         Self::default()
-//     }
-//     /// Set the [`Level`] used for [tracing events].
-//     ///
-//     /// Please note that while this will set the level for the tracing events
-//     /// themselves, it might cause them to lack expected information, like
-//     /// request method or path. You can address this using
-//     /// [`DefaultMakeSpan::level`].
-//     ///
-//     /// Defaults to [`Level::DEBUG`].
-//     ///
-//     /// [tracing events]: https://docs.rs/tracing/latest/tracing/#events
-//     /// [`DefaultMakeSpan::level`]: crate::trace::DefaultMakeSpan::level
-//     #[allow(dead_code)]
-//     pub fn level(mut self, level: Level) -> Self {
-//         self.level = level;
-//         self
-//     }
+        // span.record(
+        //     "status",
+        //     if response.status().is_success() {
+        //         "OK"
+        //     } else {
+        //         "ERROR"
+        //     },
+        // );
 
-//     /// Set the [`LatencyUnit`] latencies will be reported in.
-//     ///
-//     /// Defaults to [`LatencyUnit::Millis`].
-//     #[allow(dead_code)]
-//     pub fn latency_unit(mut self, latency_unit: LatencyUnit) -> Self {
-//         self.latency_unit = latency_unit;
-//         self
-//     }
-
-//     /// Include response headers on the [`Event`].
-//     ///
-//     /// By default headers are not included.
-//     ///
-//     /// [`Event`]: tracing::Event
-//     #[allow(dead_code)]
-//     pub fn include_headers(mut self, include_headers: bool) -> Self {
-//         self.include_headers = include_headers;
-//         self
-//     }
-// }
-
-// // use tower_http::trace::{Latency, DEFAULT_MESSAGE_LEVEL};
-
-// // impl<B> OnResponse<B> for DefaultOnResponseKanidmd {
-// //     fn on_response(self, response: &Response<B>, latency: Duration, _: &Span) {
-// //         let latency = Latency {
-// //             unit: self.latency_unit,
-// //             duration: latency,
-// //         };
-// //         let _response_headers = self
-// //             .include_headers
-// //             .then(|| tracing::field::debug(response.headers()));
-
-// //         tracing::event!(
-// //             // $(target: $target,)?
-// //             // $(parent: $parent,)?
-// //             // self.level,
-// //             // $($tt)*
-// //             // );
-// //             // event_dynamic_lvl!(
-// //             self.level,
-// //             // ?latency,
-// //             status = status(response),
-// //             response_headers,
-// //             "finished processing request"
-// //         );
-// //     }
-// // }
+        // let response_status = response.status();
+        // span.record(field, value)
+        // opentelemetry_api::trace::get_active_span(|otel_span| {
+        //     otel_span.set_status(if response.status().is_success() {
+        //         opentelemetry_api::trace::Status::Ok
+        //     } else {
+        //         opentelemetry_api::trace::Status::Error {
+        //             description: format!("{}", response_status).into(),
+        //         }
+        //     });
+        //     // span.set_attribute(attribute::http::METHOD.string(request.method().as_str()));
+        // })
+        match response.status().is_success() {
+            true => {
+                tracing::event!(
+                    target: "response",
+                    Level::INFO,
+                    ?latency,
+                    status = response.status().as_u16(),
+                    "finished processing request"
+                );
+            }
+            false => {
+                if response.status().as_u16() < 500 {
+                    tracing::event!(
+                        target: "response",
+                        Level::WARN, // this forces the tracing pipeline to recognize it as an error
+                        ?latency,
+                        status = response.status().as_u16(),
+                        "finished processing request"
+                    );
+                } else {
+                    tracing::event!(
+                        target: "response",
+                        Level::ERROR, // this forces the tracing pipeline to recognize it as an error
+                        ?latency,
+                        status = response.status().as_u16(),
+                        "finished processing request"
+                    );
+                };
+            }
+        }
+    }
+}
 
 // // fn status<B>(res: &Response<B>) -> Option<i32> {
 // // use crate::classify::grpc_errors_as_failures::ParsedGrpcStatus;
