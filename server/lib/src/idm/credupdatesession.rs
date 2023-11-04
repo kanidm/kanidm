@@ -27,6 +27,8 @@ use crate::server::access::Access;
 use crate::utils::{backup_code_from_random, readable_password_from_random, uuid_from_duration};
 use crate::value::{CredUpdateSessionPerms, IntentTokenState};
 
+use super::accountpolicy::ResolvedAccountPolicy;
+
 const MAXIMUM_CRED_UPDATE_TTL: Duration = Duration::from_secs(900);
 // Default 1 hour.
 const DEFAULT_INTENT_TTL: Duration = Duration::from_secs(3600);
@@ -37,8 +39,9 @@ const MINIMUM_INTENT_TTL: Duration = Duration::from_secs(300);
 
 #[derive(Debug)]
 pub enum PasswordQuality {
-    TooShort(usize),
+    TooShort(u32),
     BadListed,
+    DontReusePasswords,
     Feedback(Vec<PasswordFeedback>),
 }
 
@@ -87,6 +90,8 @@ pub(crate) struct CredentialUpdateSession {
     issuer: String,
     // Current credentials - these are on the Account!
     account: Account,
+    // The account policy applied to this account
+    resolved_account_policy: ResolvedAccountPolicy,
     // What intent was used to initiate this session.
     intent_token_id: Option<String>,
 
@@ -131,6 +136,7 @@ impl fmt::Debug for CredentialUpdateSession {
         f.debug_struct("CredentialUpdateSession")
             .field("account.spn", &self.account.spn)
             .field("account.unix", &self.account.unix_extn().is_some())
+            .field("resolved_account_policy", &self.resolved_account_policy)
             .field("intent_token_id", &self.intent_token_id)
             .field("primary.detail()", &primary)
             .field("passkeys.list()", &passkeys)
@@ -339,7 +345,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         &mut self,
         target: Uuid,
         ident: &Identity,
-    ) -> Result<(Account, CredUpdateSessionPerms), OperationError> {
+    ) -> Result<(Account, ResolvedAccountPolicy, CredUpdateSessionPerms), OperationError> {
         let entry = self.qs_write.internal_search_uuid(target)?;
 
         security_info!(
@@ -356,7 +362,8 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         }
 
         // Is target an account? This checks for us.
-        let account = Account::try_from_entry_rw(entry.as_ref(), &mut self.qs_write)?;
+        let (account, resolved_account_policy) =
+            Account::try_from_entry_with_policy(entry.as_ref(), &mut self.qs_write)?;
 
         let effective_perms = self
             .qs_write
@@ -512,6 +519,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             security_info!(%primary_can_edit, %passkeys_can_edit, %unixcred_can_edit, %sshpubkey_can_edit, %ext_cred_portal_can_view, "Proceeding");
             Ok((
                 account,
+                resolved_account_policy,
                 CredUpdateSessionPerms {
                     ext_cred_portal_can_view,
                     passkeys_can_edit,
@@ -528,6 +536,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         sessionid: Uuid,
         intent_token_id: Option<String>,
         account: Account,
+        resolved_account_policy: ResolvedAccountPolicy,
         perms: CredUpdateSessionPerms,
         ct: Duration,
     ) -> Result<(CredentialUpdateSessionToken, CredentialUpdateSessionStatus), OperationError> {
@@ -588,6 +597,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         // - store account policy (if present)
         let session = CredentialUpdateSession {
             account,
+            resolved_account_policy,
             issuer,
             intent_token_id,
             ext_cred_portal,
@@ -638,7 +648,11 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         event: &InitCredentialUpdateIntentEvent,
         ct: Duration,
     ) -> Result<CredentialUpdateIntentToken, OperationError> {
-        let (account, perms) = self.validate_init_credential_update(event.target, &event.ident)?;
+        let (account, _resolved_account_policy, perms) =
+            self.validate_init_credential_update(event.target, &event.ident)?;
+
+        // We should check in the acc-pol if we can proceed?
+        // Is there a reason account policy might deny us from proceeding?
 
         // ==== AUTHORISATION CHECKED ===
 
@@ -775,7 +789,8 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         };
 
         // Is target an account? This checks for us.
-        let account = Account::try_from_entry_rw(entry.as_ref(), &mut self.qs_write)?;
+        let (account, resolved_account_policy) =
+            Account::try_from_entry_with_policy(entry.as_ref(), &mut self.qs_write)?;
 
         // Check there is not already a user session in progress with this intent token.
         // Is there a need to revoke intent tokens?
@@ -885,24 +900,39 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         // ==========
         // Okay, good to exchange.
 
-        self.create_credupdate_session(session_id, Some(intent_id), account, perms, current_time)
+        self.create_credupdate_session(
+            session_id,
+            Some(intent_id),
+            account,
+            resolved_account_policy,
+            perms,
+            current_time,
+        )
     }
 
     #[instrument(level = "debug", skip_all)]
     pub fn init_credential_update(
         &mut self,
         event: &InitCredentialUpdateEvent,
-        ct: Duration,
+        current_time: Duration,
     ) -> Result<(CredentialUpdateSessionToken, CredentialUpdateSessionStatus), OperationError> {
-        let (account, perms) = self.validate_init_credential_update(event.target, &event.ident)?;
+        let (account, resolved_account_policy, perms) =
+            self.validate_init_credential_update(event.target, &event.ident)?;
 
         // ==== AUTHORISATION CHECKED ===
         // This is the expiry time, so that our cleanup task can "purge up to now" rather
         // than needing to do calculations.
-        let sessionid = uuid_from_duration(ct + MAXIMUM_CRED_UPDATE_TTL, self.sid);
+        let sessionid = uuid_from_duration(current_time + MAXIMUM_CRED_UPDATE_TTL, self.sid);
 
         // Build the cred update session.
-        self.create_credupdate_session(sessionid, None, account, perms, ct)
+        self.create_credupdate_session(
+            sessionid,
+            None,
+            account,
+            resolved_account_policy,
+            perms,
+            current_time,
+        )
     }
 
     #[instrument(level = "trace", skip(self))]
@@ -1231,25 +1261,48 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
         Ok(status)
     }
 
-    #[instrument(level = "debug", skip(self))]
+    #[instrument(level = "trace", skip(self))]
     fn check_password_quality(
         &self,
         cleartext: &str,
+        resolved_account_policy: &ResolvedAccountPolicy,
         related_inputs: &[&str],
+        radius_secret: Option<&str>,
     ) -> Result<(), PasswordQuality> {
         // password strength and badlisting is always global, rather than per-pw-policy.
         // pw-policy as check on the account is about requirements for mfa for example.
 
         // is the password at least 10 char?
-        if cleartext.len() < PW_MIN_LENGTH {
-            return Err(PasswordQuality::TooShort(PW_MIN_LENGTH));
+        let pw_min_length = resolved_account_policy.pw_min_length();
+        if cleartext.len() < pw_min_length as usize {
+            return Err(PasswordQuality::TooShort(pw_min_length));
+        }
+
+        if let Some(some_radius_secret) = radius_secret {
+            if cleartext.contains(some_radius_secret) {
+                return Err(PasswordQuality::DontReusePasswords);
+            }
+        }
+
+        // zxcvbn doesn't appear to be picking these up?
+        for related in related_inputs {
+            if cleartext.contains(related) {
+                return Err(PasswordQuality::Feedback(vec![
+                    PasswordFeedback::NamesAndSurnamesByThemselvesAreEasyToGuess,
+                    PasswordFeedback::AvoidDatesAndYearsThatAreAssociatedWithYou,
+                ]));
+            }
         }
 
         // does the password pass zxcvbn?
-
         let entropy = zxcvbn::zxcvbn(cleartext, related_inputs).map_err(|e| {
             admin_error!("zxcvbn check failure (password empty?) {:?}", e);
-            PasswordQuality::TooShort(PW_MIN_LENGTH)
+            // Return some generic feedback when the password is this bad.
+            PasswordQuality::Feedback(vec![
+                PasswordFeedback::UseAFewWordsAvoidCommonPhrases,
+                PasswordFeedback::AddAnotherWordOrTwo,
+                PasswordFeedback::NoNeedForSymbolsDigitsOrUppercaseLetters,
+            ])
         })?;
 
         // PW's should always be enforced as strong as possible.
@@ -1263,7 +1316,12 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
                 .map(|v| v.clone())
                 .map_err(|e| {
                     security_info!("zxcvbn returned no feedback when score < 3 -> {:?}", e);
-                    PasswordQuality::TooShort(PW_MIN_LENGTH)
+                    // Return some generic feedback when the password is this bad.
+                    PasswordQuality::Feedback(vec![
+                        PasswordFeedback::UseAFewWordsAvoidCommonPhrases,
+                        PasswordFeedback::AddAnotherWordOrTwo,
+                        PasswordFeedback::NoNeedForSymbolsDigitsOrUppercaseLetters,
+                    ])
                 })?;
 
             security_info!(?feedback, "pw quality feedback");
@@ -1397,17 +1455,24 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
             return Err(OperationError::AccessDenied);
         };
 
-        // Check pw quality (future - acc policy applies).
-        self.check_password_quality(pw, session.account.related_inputs().as_slice())
-            .map_err(|e| match e {
-                PasswordQuality::TooShort(sz) => {
-                    OperationError::PasswordQuality(vec![PasswordFeedback::TooShort(sz)])
-                }
-                PasswordQuality::BadListed => {
-                    OperationError::PasswordQuality(vec![PasswordFeedback::BadListed])
-                }
-                PasswordQuality::Feedback(feedback) => OperationError::PasswordQuality(feedback),
-            })?;
+        self.check_password_quality(
+            pw,
+            &session.resolved_account_policy,
+            session.account.related_inputs().as_slice(),
+            session.account.radius_secret.as_deref(),
+        )
+        .map_err(|e| match e {
+            PasswordQuality::TooShort(sz) => {
+                OperationError::PasswordQuality(vec![PasswordFeedback::TooShort(sz)])
+            }
+            PasswordQuality::BadListed => {
+                OperationError::PasswordQuality(vec![PasswordFeedback::BadListed])
+            }
+            PasswordQuality::DontReusePasswords => {
+                OperationError::PasswordQuality(vec![PasswordFeedback::DontReusePasswords])
+            }
+            PasswordQuality::Feedback(feedback) => OperationError::PasswordQuality(feedback),
+        })?;
 
         let ncred = match &session.primary {
             Some(primary) => {
@@ -1832,6 +1897,7 @@ mod tests {
 
     use kanidm_proto::v1::{
         AuthAllowed, AuthIssueSession, AuthMech, CUExtPortal, CredentialDetailType,
+        PasswordFeedback,
     };
     use uuid::uuid;
     use webauthn_authenticator_rs::softpasskey::SoftPasskey;
@@ -1845,7 +1911,7 @@ mod tests {
     use crate::credential::totp::Totp;
     use crate::event::CreateEvent;
     use crate::idm::delayed::DelayedAction;
-    use crate::idm::event::{AuthEvent, AuthResult};
+    use crate::idm::event::{AuthEvent, AuthResult, RegenerateRadiusSecretEvent};
     use crate::idm::server::{IdmServer, IdmServerDelayed};
     use crate::idm::AuthState;
     use crate::prelude::*;
@@ -1996,6 +2062,13 @@ mod tests {
             .qs_write
             .internal_search_uuid(TESTPERSON_UUID)
             .expect("failed");
+
+        // Setup the radius creds to ensure we don't use them anywhere else.
+        let rrse = RegenerateRadiusSecretEvent::new_internal(TESTPERSON_UUID);
+
+        let _ = idms_prox_write
+            .regenerate_radius_secret(&rrse)
+            .expect("Failed to reset radius credential 1");
 
         let cur = idms_prox_write.init_credential_update(
             &InitCredentialUpdateEvent::new_impersonate_entry(testperson),
@@ -2368,6 +2441,116 @@ mod tests {
         assert!(check_testperson_password(idms, idms_delayed, test_pw, ct)
             .await
             .is_none());
+    }
+
+    #[idm_test]
+    async fn test_idm_credential_update_password_quality_checks(
+        idms: &IdmServer,
+        _idms_delayed: &mut IdmServerDelayed,
+    ) {
+        let ct = Duration::from_secs(TEST_CURRENT_TIME);
+        let (cust, _) = setup_test_session(idms, ct).await;
+
+        // Get the radius pw
+
+        let mut r_txn = idms.proxy_read().await;
+
+        let radius_secret = r_txn
+            .qs_read
+            .internal_search_uuid(TESTPERSON_UUID)
+            .expect("No such entry")
+            .get_ava_single_secret(Attribute::RadiusSecret)
+            .expect("No radius secret found")
+            .to_string();
+
+        drop(r_txn);
+
+        let cutxn = idms.cred_update_transaction().await;
+
+        // Get the credential status - this should tell
+        // us the details of the credentials, as well as
+        // if they are ready and valid to commit?
+        let c_status = cutxn
+            .credential_update_status(&cust, ct)
+            .expect("Failed to get the current session status.");
+
+        trace!(?c_status);
+
+        assert!(c_status.primary.is_none());
+
+        // Test initially creating a credential.
+        //   - pw first
+
+        let err = cutxn
+            .credential_primary_set_password(&cust, ct, "password")
+            .unwrap_err();
+        trace!(?err);
+        assert!(match err {
+            OperationError::PasswordQuality(details)
+                if details == vec!(PasswordFeedback::TooShort(PW_MIN_LENGTH),) =>
+                true,
+            _ => false,
+        });
+
+        let err = cutxn
+            .credential_primary_set_password(&cust, ct, "password1234")
+            .unwrap_err();
+        trace!(?err);
+        assert!(match err {
+            OperationError::PasswordQuality(details)
+                if details
+                    == vec!(
+                        PasswordFeedback::AddAnotherWordOrTwo,
+                        PasswordFeedback::ThisIsACommonPassword,
+                    ) =>
+                true,
+            _ => false,
+        });
+
+        let err = cutxn
+            .credential_primary_set_password(&cust, ct, &radius_secret)
+            .unwrap_err();
+        trace!(?err);
+        assert!(match err {
+            OperationError::PasswordQuality(details)
+                if details == vec!(PasswordFeedback::DontReusePasswords,) =>
+                true,
+            _ => false,
+        });
+
+        let err = cutxn
+            .credential_primary_set_password(&cust, ct, "testperson2023")
+            .unwrap_err();
+        trace!(?err);
+        assert!(match err {
+            OperationError::PasswordQuality(details)
+                if details
+                    == vec!(
+                        PasswordFeedback::NamesAndSurnamesByThemselvesAreEasyToGuess,
+                        PasswordFeedback::AvoidDatesAndYearsThatAreAssociatedWithYou,
+                    ) =>
+                true,
+            _ => false,
+        });
+
+        let err = cutxn
+            .credential_primary_set_password(
+                &cust,
+                ct,
+                "demo_badlist_shohfie3aeci2oobur0aru9uushah6EiPi2woh4hohngoighaiRuepieN3ongoo1",
+            )
+            .unwrap_err();
+        trace!(?err);
+        assert!(match err {
+            OperationError::PasswordQuality(details)
+                if details == vec!(PasswordFeedback::BadListed) =>
+                true,
+            _ => false,
+        });
+
+        assert!(c_status.can_commit);
+
+        drop(cutxn);
     }
 
     // Test set of primary account password

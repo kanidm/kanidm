@@ -89,7 +89,7 @@ pub enum ConsistencyError {
     DeniedName(Uuid),
 }
 
-#[derive(Serialize, Deserialize, Debug, ToSchema)]
+#[derive(Serialize, Deserialize, Debug, ToSchema, PartialEq, Eq, PartialOrd, Ord)]
 #[serde(rename_all = "lowercase")]
 pub enum PasswordFeedback {
     // https://docs.rs/zxcvbn/latest/zxcvbn/feedback/enum.Suggestion.html
@@ -122,8 +122,9 @@ pub enum PasswordFeedback {
     NamesAndSurnamesByThemselvesAreEasyToGuess,
     CommonNamesAndSurnamesAreEasyToGuess,
     // Custom
-    TooShort(usize),
+    TooShort(u32),
     BadListed,
+    DontReusePasswords,
 }
 
 /// Human-readable PasswordFeedback result.
@@ -162,6 +163,12 @@ impl fmt::Display for PasswordFeedback {
             }
             PasswordFeedback::DatesAreOftenEasyToGuess => {
                 write!(f, "Dates are often easy to guess.")
+            }
+            PasswordFeedback::DontReusePasswords => {
+                write!(
+                    f,
+                    "Don't reuse passwords that already exist on your account"
+                )
             }
             PasswordFeedback::NamesAndSurnamesByThemselvesAreEasyToGuess => {
                 write!(f, "Names and surnames by themselves are easy to guess.")

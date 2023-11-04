@@ -60,7 +60,7 @@ impl From<&EntrySealedCommitted> for Option<AccountPolicy> {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 #[cfg_attr(test, derive(Default))]
 pub(crate) struct ResolvedAccountPolicy {
     privilege_expiry: u32,
@@ -106,6 +106,10 @@ impl ResolvedAccountPolicy {
 
     pub(crate) fn authsession_expiry(&self) -> u32 {
         self.authsession_expiry
+    }
+
+    pub(crate) fn pw_min_length(&self) -> u32 {
+        PW_MIN_LENGTH
     }
 
     /*
