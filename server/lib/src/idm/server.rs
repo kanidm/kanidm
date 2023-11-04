@@ -2023,7 +2023,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
     #[instrument(level = "debug", skip_all)]
     pub fn commit(mut self) -> Result<(), OperationError> {
-        if self.qs_write.get_changed_ouath2() {
+        if self.qs_write.get_changed_oauth2() {
             self.qs_write
                 .get_oauth2rs_set()
                 .and_then(|oauth2rs_set| self.oauth2rs.reload(oauth2rs_set))?;
