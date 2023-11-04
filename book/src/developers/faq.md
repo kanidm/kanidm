@@ -114,3 +114,21 @@ When a service like sudo, sshd, su etc. wants to authenticate someone, it opens 
 that service, then performs authentication according to the modules defined in the pam.d config. For
 example, if you run `ls -al /etc/pam.d /usr/etc/pam.d` in SUSE, you can see the services and their
 respective pam.d config.
+
+## Troubleshooting builds
+
+### WASM Build failures due to "Error: Not able to find or install a local wasm-bindgen."
+
+This seems to relate to a version mismatch error in `wasm-pack` as seen in
+[this thread in the wasm-pack repository](https://github.com/rustwasm/wasm-pack/issues/1138).
+
+Try reinstalling `wasm-bindgen-cli` by running the following (the `--force` is important):
+
+```shell
+cargo install --force wasm-bindgen-cli
+```
+
+Or reinstalling `wasm-pack` similarly.
+
+If that doesn't work, try running the build with the `RUST_LOG=debug` environment variable to
+investigate further.

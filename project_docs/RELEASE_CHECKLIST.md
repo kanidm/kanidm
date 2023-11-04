@@ -58,7 +58,6 @@ cargo install cargo-udeps
 
 - [ ] publish `kanidm_proto`
 - [ ] publish `sketching`
-<!-- - [ ] publish `kanidmd/kanidm` -->
 - [ ] publish `kanidm_utils_users`
 - [ ] publish `kanidm_lib_file_permissions`
 - [ ] publish `kanidm_client`
