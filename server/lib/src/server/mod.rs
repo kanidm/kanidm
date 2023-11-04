@@ -1657,12 +1657,12 @@ impl<'a> QueryServerWriteTransaction<'a> {
         self.changed_schema = true;
     }
 
-    #[instrument(level = "debug", skip_all)]
+    #[instrument(level = "info", skip_all)]
     pub(crate) fn upgrade_reindex(&mut self, v: i64) -> Result<(), OperationError> {
         self.be_txn.upgrade_reindex(v)
     }
 
-    pub(crate) fn get_changed_ouath2(&self) -> bool {
+    pub(crate) fn get_changed_oauth2(&self) -> bool {
         self.changed_oauth2
     }
 
@@ -1715,7 +1715,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         self.be_txn.clear_cache()
     }
 
-    #[instrument(level = "info", skip_all)]
+    #[instrument(level = "info", name="qswt_commit" skip_all)]
     pub fn commit(mut self) -> Result<(), OperationError> {
         self.reload()?;
 
