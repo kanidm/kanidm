@@ -82,6 +82,5 @@ cargo install cargo-udeps
 - [ ] git checkout master
 - [ ] git pull
 - [ ] git checkout -b YYYYMMDD-dev-version
-- [ ] update version to +1 and add dev tag in ./server/web\_ui/Cargo.toml
 - [ ] update version to +1 and add dev tag in ./Cargo.toml
 - [ ] update version to +1 and add dev tag in ./Makefile
