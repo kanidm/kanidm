@@ -2,8 +2,11 @@
 # It should be *very* clear that this is an insecure, dev-only configuration. Don't run this in production!
 
 # config docs https://grafana.com/docs/tempo/latest/configuration/#compactor
+
 server:
   http_listen_port: 3200
+  grpc_server_max_recv_msg_size: 20971520 # 20MiB
+  grpc_server_max_send_msg_size: 20971520 # 20MiB
 query_frontend:
   search:
     duration_slo: 5s
@@ -15,14 +18,14 @@ distributor:
   receivers:
     otlp:
       protocols:
-        http:
+        # http:
         grpc:
           max_recv_msg_size_mib: 20
 
     opencensus:
 
-ingester:
-  max_block_duration: 5m # cut the headblock when this much time passes. this is being set for demo purposes and should probably be left alone normally
+# ingester:
+# max_block_duration: 5m # cut the headblock when this much time passes. this is being set for demo purposes and should probably be left alone normally
 
 compactor:
   compaction:
@@ -59,4 +62,8 @@ storage:
 overrides:
   defaults:
     metrics_generator:
-      processors: [service-graphs, span-metrics] # enables metrics generator
+      processors:
+        - service-graphs
+        - span-metrics # enables metrics generator
+    global:
+      max_bytes_per_trace: 20971520 # 20MiB

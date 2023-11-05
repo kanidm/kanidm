@@ -2,9 +2,6 @@
 # It should be *very* clear that this is an insecure, dev-only configuration. Don't run this in production!
 server:
   http_listen_port: 3100
-# memberlist:
-# join_members:
-# - loki:7946
 schema_config:
   configs:
     - from: 2021-08-01

@@ -34,5 +34,3 @@ pykanidm/site/
 # oauth2 integration test things
 scripts/oauth_proxy/client.secret
 scripts/oauth_proxy/envfile
-scripts/otel/loki/data/*
-scripts/otel/loki/tempo-data/*
