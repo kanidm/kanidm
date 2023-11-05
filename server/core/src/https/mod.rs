@@ -18,7 +18,6 @@ use self::javascript::*;
 use crate::actors::v1_read::QueryServerReadV1;
 use crate::actors::v1_write::QueryServerWriteV1;
 use crate::config::{Configuration, ServerRole, TlsConfiguration};
-// use crate::https::middleware::opentelemetry::opentelemetry_layer;
 use axum::extract::connect_info::{IntoMakeServiceWithConnectInfo, ResponseFuture};
 use axum::middleware::{from_fn, from_fn_with_state};
 use axum::response::Redirect;
@@ -306,7 +305,6 @@ pub async fn create_https_server(
     let app = app.layer(from_fn(middleware::are_we_json_yet));
 
     let app = app
-        // .layer(from_fn(opentelemetry_layer))
         // This must be the LAST middleware.
         // This is because the last middleware here is the first to be entered and the last
         // to be exited, and this middleware sets up ids' and other bits for for logging

@@ -75,7 +75,6 @@ utoipa = { workspace = true, features = [
     "uuid",
 ] }
 utoipa-swagger-ui = { workspace = true, features = ["axum"] }
-opentelemetry_api.workspace = true
 
 [dev-dependencies]
 walkdir = { workspace = true }

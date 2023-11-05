@@ -29,7 +29,7 @@ impl<B> tower_http::trace::MakeSpan<B> for DefaultMakeSpanKanidmd {
     fn make_span(&mut self, request: &Request<B>) -> Span {
         tracing::span!(
             Level::INFO,
-            "handle_request",
+            "request",
             method = %request.method(),
             uri = %request.uri(),
             version = ?request.version(),

@@ -11,7 +11,6 @@ use uuid::Uuid;
 pub(crate) mod caching;
 pub(crate) mod compression;
 pub(crate) mod hsts_header;
-// pub(crate) mod opentelemetry;
 pub(crate) mod security_headers;
 
 // the version middleware injects
