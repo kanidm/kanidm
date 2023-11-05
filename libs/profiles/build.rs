@@ -18,8 +18,7 @@ fn workspace_dir() -> PathBuf {
 
 // We do this here so it's only actually run and checked once at build time.
 fn determine_git_rev() -> Option<String> {
-    let workspace_path = workspace_dir();
-    let repo = match gix::open(&workspace_path) {
+    let repo = match gix::open(workspace_dir()) {
         Ok(repo) => repo,
         Err(_) => {
             return None;

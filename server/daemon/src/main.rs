@@ -273,12 +273,13 @@ async fn kanidm_main() -> ExitCode {
         }
         Ok(val) => val,
     };
-    tracing::subscriber::set_global_default(sub)
-        .map_err(|err| {
-            eprintln!("Error starting logger - {:} - Bailing on startup!", err);
-            return shutdown(ExitCode::FAILURE);
-        })
-        .unwrap();
+
+    if let Err(err) = tracing::subscriber::set_global_default(sub).map_err(|err| {
+        eprintln!("Error starting logger - {:} - Bailing on startup!", err);
+        shutdown(ExitCode::FAILURE)
+    }) {
+        return err;
+    };
 
     // guard which shuts down the logging/tracing providers when we close out
     let _otelguard = TracingPipelineGuard {};
