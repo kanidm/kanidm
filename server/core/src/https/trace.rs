@@ -84,7 +84,7 @@ impl<B> tower_http::trace::OnResponse<B> for DefaultOnResponseKanidmd {
                     } else if response.status().is_client_error() {
                         (Level::WARN, "client error") // it worked, but there was an input error
                     } else {
-                        (Level::ERROR, "error handling request") // oh noes the server failed
+                        (Level::ERROR, "error handling request") // oh no the server failed
                     }
                 }
             };

@@ -18,15 +18,18 @@ either "true" or "false". `true` indicates that the platform is responding to re
 
 ## OpenTelemetry Tracing
 
-Configure OTLP trace exports by setting a `otel_grpc_endpoint` in the server configuration. This'll enable [OpenTelemetry traces](https://opentelemetry.io) to be sent for observability use cases.
+Configure OTLP trace exports by setting a `otel_grpc_endpoint` in the server configuration. This'll
+enable [OpenTelemetry traces](https://opentelemetry.io) to be sent for observability use cases.
 
 ### Troubleshooting
 
 #### Max Span Size Exceeded
 
-On startup, we run some big processes that might hit a "max trace size" in certain configurations. Grafana Tempo defaults to 5MB, which is sensible for most things, but ... 😁
+On startup, we run some big processes that might hit a "max trace size" in certain configurations.
+Grafana Tempo defaults to 5MB, which is sensible for most things, but ... 😁
 
-Grafana Tempo [config to allow larger spans](https://grafana.com/docs/tempo/latest/troubleshooting/response-too-large/):
+Grafana Tempo
+[config to allow larger spans](https://grafana.com/docs/tempo/latest/troubleshooting/response-too-large/):
 
 ```yaml
 distributor:
