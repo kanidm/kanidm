@@ -41,27 +41,26 @@ pub fn start_logging_pipeline(
 ) -> Result<Box<dyn Subscriber + Send + Sync>, String> {
     let forest_filter: EnvFilter = log_filter.into();
 
-    // adding these filters because when you close out the process the OTLP comms layer is NOISY
-    let forest_filter = forest_filter
-        .add_directive(
-            "tonic=info"
-                .parse()
-                .expect("Failed to set tonic logging to info"),
-        )
-        .add_directive("h2=info".parse().expect("Failed to set h2 logging to info"))
-        .add_directive(
-            "hyper=info"
-                .parse()
-                .expect("Failed to set hyper logging to info"),
-        );
-    let forest_layer = tracing_forest::ForestLayer::default().with_filter(forest_filter);
-
     // TODO: work out how to do metrics things
     // let meter_provider = init_metrics()
     //     .map_err(|err| eprintln!("failed to start metrics provider: {:?}", err))?;
 
     match otlp_endpoint {
         Some(endpoint) => {
+            // adding these filters because when you close out the process the OTLP comms layer is NOISY
+            let forest_filter = forest_filter
+                .add_directive(
+                    "tonic=info"
+                        .parse()
+                        .expect("Failed to set tonic logging to info"),
+                )
+                .add_directive("h2=info".parse().expect("Failed to set h2 logging to info"))
+                .add_directive(
+                    "hyper=info"
+                        .parse()
+                        .expect("Failed to set hyper logging to info"),
+                );
+            let forest_layer = tracing_forest::ForestLayer::default().with_filter(forest_filter);
             let t_filter: EnvFilter = log_filter.into();
 
             let tracer = opentelemetry_otlp::new_pipeline().tracing().with_exporter(
@@ -113,7 +112,10 @@ pub fn start_logging_pipeline(
                 Registry::default().with(forest_layer).with(telemetry),
             ))
         }
-        None => Ok(Box::new(Registry::default().with(forest_layer))),
+        None => {
+            let forest_layer = tracing_forest::ForestLayer::default().with_filter(forest_filter);
+            Ok(Box::new(Registry::default().with(forest_layer)))
+        }
     }
 }
 

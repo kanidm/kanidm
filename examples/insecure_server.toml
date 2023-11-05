@@ -15,7 +15,7 @@ tls_key = "/tmp/kanidm/key.pem"
 log_level = "debug"
 # log_level = "trace"
 
-otel_grpc_url = "http://localhost:4317"
+# otel_grpc_url = "http://localhost:4317"
 
 domain = "localhost"
 origin = "https://localhost:8443"
