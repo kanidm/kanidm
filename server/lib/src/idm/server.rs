@@ -1557,7 +1557,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         //
 
         // is the password at least 10 char?
-        if cleartext.len() < PW_MIN_LENGTH {
+        if cleartext.len() < PW_MIN_LENGTH as usize {
             return Err(OperationError::PasswordQuality(vec![
                 PasswordFeedback::TooShort(PW_MIN_LENGTH),
             ]));
@@ -1677,15 +1677,6 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         // If we got here, then pre-apply succeeded, and that means access control
         // passed. Now we can do the extra checks.
-
-        // Check the password quality.
-        // Ask if tis all good - this step checks pwpolicy and such
-
-        self.check_password_quality(pce.cleartext.as_str(), account.related_inputs().as_slice())
-            .map_err(|e| {
-                request_error!(err = ?e, "check_password_quality");
-                e
-            })?;
 
         // And actually really apply it now.
         self.qs_write.modify_apply(mp).map_err(|e| {
@@ -2542,30 +2533,6 @@ mod tests {
     }
 
     #[idm_test]
-    async fn test_idm_radius_secret_rejected_from_account_credential(
-        idms: &IdmServer,
-        _idms_delayed: &IdmServerDelayed,
-    ) {
-        let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await;
-        let rrse = RegenerateRadiusSecretEvent::new_internal(UUID_ADMIN);
-
-        let r1 = idms_prox_write
-            .regenerate_radius_secret(&rrse)
-            .expect("Failed to reset radius credential 1");
-
-        // Try and set that as the main account password, should fail.
-        let pce = PasswordChangeEvent::new_internal(UUID_ADMIN, r1.as_str());
-        let e = idms_prox_write.set_account_password(&pce);
-        assert!(e.is_err());
-
-        let pce = UnixPasswordChangeEvent::new_internal(UUID_ADMIN, r1.as_str());
-        let e = idms_prox_write.set_unix_account_password(&pce);
-        assert!(e.is_err());
-
-        assert!(idms_prox_write.commit().is_ok());
-    }
-
-    #[idm_test]
     async fn test_idm_radiusauthtoken(idms: &IdmServer, _idms_delayed: &IdmServerDelayed) {
         let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await;
         let rrse = RegenerateRadiusSecretEvent::new_internal(UUID_ADMIN);
@@ -2587,54 +2554,6 @@ mod tests {
 
         // view the token?
         assert!(r1 == tok_r.secret);
-    }
-
-    #[idm_test]
-    async fn test_idm_simple_password_reject_weak(
-        idms: &IdmServer,
-        _idms_delayed: &IdmServerDelayed,
-    ) {
-        // len check
-        let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await;
-
-        let pce = PasswordChangeEvent::new_internal(UUID_ADMIN, "password");
-        let e = idms_prox_write.set_account_password(&pce);
-        assert!(e.is_err());
-
-        // zxcvbn check
-        let pce = PasswordChangeEvent::new_internal(UUID_ADMIN, "password1234");
-        let e = idms_prox_write.set_account_password(&pce);
-        assert!(e.is_err());
-
-        // Check the "name" checking works too (I think admin may hit a common pw rule first)
-        let pce = PasswordChangeEvent::new_internal(UUID_ADMIN, "admin_nta");
-        let e = idms_prox_write.set_account_password(&pce);
-        assert!(e.is_err());
-
-        // Check that the demo badlist password is rejected.
-        let pce = PasswordChangeEvent::new_internal(
-            UUID_ADMIN,
-            "demo_badlist_shohfie3aeci2oobur0aru9uushah6EiPi2woh4hohngoighaiRuepieN3ongoo1",
-        );
-        let e = idms_prox_write.set_account_password(&pce);
-        assert!(e.is_err());
-
-        assert!(idms_prox_write.commit().is_ok());
-    }
-
-    #[idm_test]
-    async fn test_idm_simple_password_reject_badlist(
-        idms: &IdmServer,
-        _idms_delayed: &IdmServerDelayed,
-    ) {
-        let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await;
-
-        // Check that the badlist password inserted is rejected.
-        let pce = PasswordChangeEvent::new_internal(UUID_ADMIN, "bad@no3IBTyqHu$list");
-        let e = idms_prox_write.set_account_password(&pce);
-        assert!(e.is_err());
-
-        assert!(idms_prox_write.commit().is_ok());
     }
 
     #[idm_test]

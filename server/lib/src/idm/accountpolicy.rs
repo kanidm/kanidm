@@ -32,6 +32,7 @@ impl From<u32> for CredentialPolicy {
 pub(crate) struct AccountPolicy {
     privilege_expiry: u32,
     authsession_expiry: u32,
+    pw_min_length: u32,
     credential_policy: CredentialPolicy,
 }
 
@@ -50,21 +51,26 @@ impl From<&EntrySealedCommitted> for Option<AccountPolicy> {
         let privilege_expiry = val
             .get_ava_single_uint32(Attribute::PrivilegeExpiry)
             .unwrap_or(MAXIMUM_AUTH_PRIVILEGE_EXPIRY);
+        let pw_min_length = val
+            .get_ava_single_uint32(Attribute::AuthPasswordMinimumLength)
+            .unwrap_or(PW_MIN_LENGTH);
         let credential_policy = CredentialPolicy::default();
 
         Some(AccountPolicy {
             privilege_expiry,
             authsession_expiry,
+            pw_min_length,
             credential_policy,
         })
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 #[cfg_attr(test, derive(Default))]
 pub(crate) struct ResolvedAccountPolicy {
     privilege_expiry: u32,
     authsession_expiry: u32,
+    pw_min_length: u32,
     credential_policy: CredentialPolicy,
 }
 
@@ -77,6 +83,7 @@ impl ResolvedAccountPolicy {
         let mut accumulate = ResolvedAccountPolicy {
             privilege_expiry: MAXIMUM_AUTH_PRIVILEGE_EXPIRY,
             authsession_expiry: MAXIMUM_AUTH_SESSION_EXPIRY,
+            pw_min_length: PW_MIN_LENGTH,
             credential_policy: CredentialPolicy::default(),
         };
 
@@ -89,6 +96,11 @@ impl ResolvedAccountPolicy {
             // Take the smaller expiry
             if acc_pol.authsession_expiry < accumulate.authsession_expiry {
                 accumulate.authsession_expiry = acc_pol.authsession_expiry
+            }
+
+            // Take larger pw min len
+            if acc_pol.pw_min_length > accumulate.pw_min_length {
+                accumulate.pw_min_length = acc_pol.pw_min_length
             }
 
             // Take the greater credential type policy
@@ -108,6 +120,10 @@ impl ResolvedAccountPolicy {
         self.authsession_expiry
     }
 
+    pub(crate) fn pw_min_length(&self) -> u32 {
+        self.pw_min_length
+    }
+
     /*
     pub(crate) fn credential_policy(&self) -> CredentialPolicy {
         self.credential_policy
@@ -125,12 +141,14 @@ mod tests {
         let policy_a = AccountPolicy {
             privilege_expiry: 100,
             authsession_expiry: 100,
+            pw_min_length: 11,
             credential_policy: CredentialPolicy::MfaRequired,
         };
 
         let policy_b = AccountPolicy {
             privilege_expiry: 150,
             authsession_expiry: 50,
+            pw_min_length: 15,
             credential_policy: CredentialPolicy::PasskeyRequired,
         };
 
@@ -138,6 +156,7 @@ mod tests {
 
         assert_eq!(rap.privilege_expiry(), 100);
         assert_eq!(rap.authsession_expiry(), 50);
+        assert_eq!(rap.pw_min_length(), 15);
         assert_eq!(rap.credential_policy, CredentialPolicy::PasskeyRequired);
     }
 

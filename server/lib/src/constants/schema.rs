@@ -229,6 +229,15 @@ pub static ref SCHEMA_ATTR_AUTH_PRIVILEGE_EXPIRY: SchemaAttribute = SchemaAttrib
     ..Default::default()
 };
 
+pub static ref SCHEMA_ATTR_AUTH_PASSWORD_MINIMUM_LENGTH: SchemaAttribute = SchemaAttribute {
+    uuid: UUID_SCHEMA_ATTR_AUTH_PASSWORD_MINIMUM_LENGTH,
+    name: Attribute::AuthPasswordMinimumLength.into(),
+
+    description: "Minimum length of passwords.".to_string(),
+    syntax: SyntaxType::Uint32,
+    ..Default::default()
+};
+
 pub static ref SCHEMA_ATTR_LOGINSHELL: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_LOGINSHELL,
     name: Attribute::LoginShell.into(),
@@ -636,7 +645,8 @@ pub static ref SCHEMA_CLASS_ACCOUNT_POLICY: SchemaClass = SchemaClass {
     description: "Policies applied to accounts that are members of a group".to_string(),
     systemmay: vec![
         Attribute::AuthSessionExpiry.into(),
-        Attribute::PrivilegeExpiry.into()
+        Attribute::PrivilegeExpiry.into(),
+        Attribute::AuthPasswordMinimumLength.into(),
     ],
     systemsupplements: vec![Attribute::Group.into()],
     ..Default::default()

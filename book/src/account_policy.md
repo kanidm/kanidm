@@ -21,6 +21,7 @@ parts.
 | value            | ordering       |
 | ---------------- | -------------- |
 | auth-session     | smallest value |
+| password-minimum-length | largest value |
 | privilege-expiry | smallest value |
 
 ### Example Resolution
@@ -29,6 +30,7 @@ If we had two policies where the first defined:
 
 ```
 auth-session: 86400
+password-minimum-length: 10
 privilege-expiry: 600
 ```
 
@@ -36,14 +38,17 @@ And the second
 
 ```
 auth-session: 3600
+password-minimum-length: 15
 privilege-expiry: 3600
 ```
 
 As the value of auth-session from the second is smaller we would take that. We would take the
-smallest value of privilege-expiry from the first. This leaves:
+smallest value of privilege-expiry from the first. We would take the largest value of
+password-minimum-length. This leaves:
 
 ```
 auth-session: 3600
+password-minimum-length: 15
 privilege-expiry: 600
 ```
 
@@ -71,6 +76,19 @@ To set the maximum authentication session time
 ```
 kanidm group account-policy auth-expiry <group name> <seconds>
 kanidm group account-policy auth-expiry my_admin_group 86400
+```
+
+## Setting Minimum Password Length
+
+The password-minimum-length value defines the character length of passwords that are acceptable. There
+are no-other tunables for passwords in account policy. Other settings such as complexity, symbols,
+numbers and so on, have been proven to not matter in any real world attacks.
+
+To set this value:
+
+```
+kanidm group account-policy password-minimum-length <group name> <length>
+kanidm group account-policy password-minimum-length my_admin_group 12
 ```
 
 ## Setting Maximum Privilege Time
