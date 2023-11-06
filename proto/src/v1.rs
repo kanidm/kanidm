@@ -235,6 +235,7 @@ pub enum OperationError {
     NoMatchingAttributes,
     CorruptedEntry(u64),
     CorruptedIndex(String),
+    // TODO: this should just be a vec of the ConsistencyErrors, surely?
     ConsistencyError(Vec<Result<(), ConsistencyError>>),
     SchemaViolation(SchemaError),
     Plugin(PluginError),
@@ -368,7 +369,7 @@ impl FromStr for UiHint {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, ToSchema)]
 #[serde(rename_all = "lowercase")]
 pub enum UatPurposeStatus {
     ReadOnly,
@@ -376,7 +377,7 @@ pub enum UatPurposeStatus {
     PrivilegeCapable,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, ToSchema)]
 #[serde(rename_all = "lowercase")]
 pub enum UatStatusState {
     #[serde(with = "time::serde::timestamp")]
@@ -421,7 +422,7 @@ impl fmt::Display for UatStatus {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, ToSchema)]
 #[serde(rename_all = "lowercase")]
 pub enum UatPurpose {
     ReadOnly,
@@ -505,7 +506,7 @@ impl UserAuthToken {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+#[derive(Debug, Serialize, Deserialize, Clone, Default, ToSchema)]
 #[serde(rename_all = "lowercase")]
 pub enum ApiTokenPurpose {
     #[default]
@@ -671,7 +672,7 @@ pub struct AccountOrgPersonExtend {
 }
 */
 
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, ToSchema)]
 pub enum CredentialDetailType {
     Password,
     GeneratedPassword,
@@ -777,7 +778,7 @@ pub struct BackupCodesView {
 // the in memory server core entry type, without affecting the protoEntry type
 //
 
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Default, ToSchema)]
 pub struct Entry {
     pub attrs: BTreeMap<String, Vec<String>>,
 }
@@ -811,7 +812,7 @@ pub enum Filter {
     SelfUuid,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, ToSchema)]
 #[serde(rename_all = "lowercase")]
 pub enum Modify {
     Present(String, String),

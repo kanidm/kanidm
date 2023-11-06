@@ -1,4 +1,3 @@
-use super::apidocs::path_schema;
 use super::apidocs::response_schema::{ApiResponseWithout200, DefaultApiResponse};
 use super::errors::WebError;
 use super::middleware::KOpId;
@@ -87,9 +86,6 @@ pub(crate) async fn oauth2_public_post(
 #[utoipa::path(
     get,
     path = "/v1/oauth2/{rs_name}",
-    params(
-        path_schema::RsName
-    ),
     responses(
         (status = 200, /* TODO response=Option<ProtoEntry>*/),
         ApiResponseWithout200,
@@ -116,9 +112,6 @@ pub(crate) async fn oauth2_id_get(
 #[utoipa::path(
     get,
     path = "/v1/oauth2/{rs_name}/_basic_secret",
-    params(
-        path_schema::RsName,
-    ),
     responses(
         (status = 200,content_type="application/json", body=Option<String>),
         ApiResponseWithout200,
@@ -145,9 +138,6 @@ pub(crate) async fn oauth2_id_get_basic_secret(
 #[utoipa::path(
     patch,
     path = "/v1/oauth2/{rs_name}",
-    params(
-        path_schema::RsName,
-    ),
     request_body=ProtoEntry,
     responses(
         DefaultApiResponse,
@@ -175,10 +165,6 @@ pub(crate) async fn oauth2_id_patch(
 #[utoipa::path(
     patch,
     path = "/v1/oauth2/{rs_name}/_scopemap/{group}",
-    params(
-        path_schema::RsName,
-        path_schema::GroupName,
-    ),
     request_body=Vec<String>,
     responses(
         DefaultApiResponse,
@@ -205,10 +191,6 @@ pub(crate) async fn oauth2_id_scopemap_post(
 #[utoipa::path(
     delete,
     path = "/v1/oauth2/{rs_name}/_scopemap/{group}",
-    params(
-        path_schema::RsName,
-        path_schema::GroupName,
-    ),
     responses(
         DefaultApiResponse,
     ),
@@ -233,10 +215,6 @@ pub(crate) async fn oauth2_id_scopemap_delete(
 #[utoipa::path(
     post,
     path = "/v1/oauth2/{rs_name}/_sup_scopemap/{group}",
-    params(
-        path_schema::RsName,
-        path_schema::GroupName,
-    ),
     responses(
         DefaultApiResponse,
     ),
@@ -262,10 +240,6 @@ pub(crate) async fn oauth2_id_sup_scopemap_post(
 #[utoipa::path(
     delete,
     path = "/v1/oauth2/{rs_name}/_sup_scopemap/{group}",
-    params(
-        path_schema::RsName,
-        path_schema::GroupName,
-    ),
     responses(
         DefaultApiResponse,
     ),
@@ -290,9 +264,6 @@ pub(crate) async fn oauth2_id_sup_scopemap_delete(
 #[utoipa::path(
     delete,
     path = "/v1/oauth2/{rs_name}",
-    params(
-        path_schema::RsName,
-    ),
     responses(
         DefaultApiResponse,
         (status = 404),
@@ -318,9 +289,6 @@ pub(crate) async fn oauth2_id_delete(
 #[utoipa::path(
     delete,
     path = "/v1/oauth2/{rs_name}/_image",
-    params(
-        path_schema::RsName,
-    ),
     responses(
         DefaultApiResponse,
     ),
@@ -344,9 +312,6 @@ pub(crate) async fn oauth2_id_image_delete(
 #[utoipa::path(
     post,
     path = "/v1/oauth2/{rs_name}/_image",
-    params(
-        path_schema::RsName,
-    ),
     responses(
         DefaultApiResponse,
     ),

@@ -1,7 +1,5 @@
 //! The V1 API things!
 
-use std::net::IpAddr;
-
 use axum::extract::{Path, Query, State};
 use axum::middleware::from_fn;
 use axum::response::{IntoResponse, Response};
@@ -11,6 +9,7 @@ use compact_jwt::Jws;
 use http::{HeaderMap, HeaderValue};
 use kanidm_proto::constants::uri::V1_AUTH_VALID;
 use serde::{Deserialize, Serialize};
+use std::net::IpAddr;
 use uuid::Uuid;
 
 use kanidm_proto::internal::{AppLink, IdentifyUserRequest, IdentifyUserResponse};
@@ -27,7 +26,6 @@ use kanidmd_lib::prelude::*;
 use kanidmd_lib::value::PartialValue;
 
 use super::apidocs::path_schema;
-
 use super::errors::WebError;
 use super::middleware::caching::{cache_me, dont_cache_me};
 use super::middleware::KOpId;
@@ -805,9 +803,6 @@ pub async fn service_account_api_token_get(
 #[utoipa::path(
     post,
     path = "/v1/service_account/{id}/_spi_token",
-    params(
-        path_schema::Id,
-    ),
     request_body = ApiTokenGenerate,
     responses(
         (status=200), // TODO: define response
@@ -840,10 +835,6 @@ pub async fn service_account_api_token_post(
 #[utoipa::path(
     delete,
     path = "/v1/service_account/{id}/_spi_token/{token_id}",
-    params(
-        path_schema::Id,
-        path_schema::TokenId,
-    ),
     responses(
         DefaultApiResponse,
     ),
@@ -905,10 +896,6 @@ pub async fn service_account_id_get_attr(
 #[utoipa::path(
     post,
     path = "/v1/person/{id}/_attr/{attr}",
-    params(
-        path_schema::Id,
-        path_schema::Attr,
-    ),
     request_body= Json<Vec<String>>,
     responses(
         DefaultApiResponse,
@@ -1075,7 +1062,7 @@ pub async fn person_id_credential_update_get(
     get,
     path = "/v1/person/{id}/_credential/_update_intent/?ttl={ttl}",
     params(
-        ("ttl" = u32, Query, description="The new TTL for the credential?") // TODO: this is a query param?
+        ("ttl" = u64, description="The new TTL for the credential?")
     ),
     responses(
         (status=200), // TODO: define response
@@ -1108,9 +1095,6 @@ pub async fn person_id_credential_update_intent_ttl_get(
 #[utoipa::path(
     get,
     path = "/v1/person/{id}/_credential/_update_intent",
-    params(
-        path_schema::Id,
-    ),
     responses(
         (status=200), // TODO: define response
         ApiResponseWithout200,
@@ -1135,9 +1119,6 @@ pub async fn person_id_credential_update_intent_get(
 #[utoipa::path(
     get,
     path = "/v1/account/{id}/_user_auth_token",
-    params(
-        path_schema::Id,
-    ),
     responses(
         (status=200), // TODO: define response
         ApiResponseWithout200,
@@ -1161,10 +1142,6 @@ pub async fn account_id_user_auth_token_get(
 #[utoipa::path(
     get,
     path = "/v1/account/{id}/_user_auth_token/{token_id}",
-    params(
-        path_schema::Id,
-        path_schema::TokenId,
-    ),
     responses(
         DefaultApiResponse,
     ),
@@ -1322,9 +1299,6 @@ pub async fn credential_update_cancel(
 #[utoipa::path(
     get,
     path = "/v1/service_account/{id}/_credential/_status",
-    params(
-        path_schema::Id,
-    ),
     responses(
         (status=200), // TODO: define response
         ApiResponseWithout200,
@@ -1358,9 +1332,6 @@ pub async fn service_account_id_credential_status_get(
 #[utoipa::path(
     delete,
     path = "/v1/person/{id}/_credential/_status",
-    params(
-        path_schema::Id,
-    ),
     responses(
         (status=200), // TODO: define response
         ApiResponseWithout200,
@@ -1394,9 +1365,6 @@ pub async fn person_get_id_credential_status(
 #[utoipa::path(
     get,
     path = "/v1/person/{id}/_ssh_pubkeys",
-    params(
-        path_schema::Id,
-    ),
     responses(
         (status=200), // TODO: define response
         ApiResponseWithout200,
@@ -1420,9 +1388,6 @@ pub async fn person_id_ssh_pubkeys_get(
 #[utoipa::path(
     get,
     path = "/v1/account/{id}/_ssh_pubkeys",
-    params(
-        path_schema::Id,
-    ),
     responses(
         (status=200), // TODO: define response
         ApiResponseWithout200,
@@ -1447,9 +1412,6 @@ pub async fn account_id_ssh_pubkeys_get(
 #[utoipa::path(
     get,
     path = "/v1/service_account/{id}/_ssh_pubkeys",
-    params(
-        path_schema::Id,
-    ),
     responses(
         (status=200), // TODO: define response
         ApiResponseWithout200,
@@ -1473,9 +1435,6 @@ pub async fn service_account_id_ssh_pubkeys_get(
 #[utoipa::path(
     post,
     path = "/v1/person/{id}/_ssh_pubkeys",
-    params(
-        path_schema::Id,
-    ),
     responses(
         DefaultApiResponse,
     ),
@@ -1502,9 +1461,6 @@ pub async fn person_id_ssh_pubkeys_post(
     post,
     path = "/v1/service_account/{id}/_ssh_pubkeys",
     request_body = (String, String),
-    params(
-        path_schema::Id,
-    ),
     responses(
         DefaultApiResponse,
     ),
@@ -1530,10 +1486,6 @@ pub async fn service_account_id_ssh_pubkeys_post(
 #[utoipa::path(
     get,
     path = "/v1/person/{id}/_ssh_pubkeys/{tag}",
-    params(
-        path_schema::Id,
-        ("tag" = String, description="The tag of the SSH key"),
-    ),
     responses(
         (status=200), // TODO: define response
         ApiResponseWithout200,
@@ -1556,10 +1508,6 @@ pub async fn person_id_ssh_pubkeys_tag_get(
 #[utoipa::path(
     get,
     path = "/v1/account/{id}/_ssh_pubkeys/{tag}",
-    params(
-        path_schema::Id,
-        ("tag" = String, description="The tag of the SSH key"),
-    ),
     responses(
         (status=200), // TODO: define response
         ApiResponseWithout200,
@@ -1583,10 +1531,6 @@ pub async fn account_id_ssh_pubkeys_tag_get(
 #[utoipa::path(
     get,
     path = "/v1/service_account/{id}/_ssh_pubkeys/{tag}",
-    params(
-        path_schema::Id,
-        ("tag" = String, description="The tag of the SSH key"),
-    ),
     responses(
         (status=200), // TODO: define response
         ApiResponseWithout200,
@@ -1611,7 +1555,6 @@ pub async fn service_account_id_ssh_pubkeys_tag_get(
     delete,
     path = "/v1/person/{id}/_ssh_pubkeys/{tag}",
     params(
-        path_schema::Id,
         ("tag" = String, description="The tag of the SSH key"),
     ),
     responses(
@@ -1646,7 +1589,6 @@ pub async fn person_id_ssh_pubkeys_tag_delete(
     delete,
     path = "/v1/service_account/{id}/_ssh_pubkeys/{tag}",
     params(
-        path_schema::Id,
         ("tag" = String, description="The tag of the SSH key"),
     ),
     responses(
@@ -1680,9 +1622,6 @@ pub async fn service_account_id_ssh_pubkeys_tag_delete(
 #[utoipa::path(
     get,
     path = "/v1/person/{id}/_radius",
-    params(
-        path_schema::Id,
-    ),
     responses(
         (status=200), // TODO: define response
         ApiResponseWithout200,
@@ -1708,9 +1647,6 @@ pub async fn person_id_radius_get(
 #[utoipa::path(
     post,
     path = "/v1/person/{id}/_radius",
-    params(
-        path_schema::Id,
-    ),
     responses(
         (status=200), // TODO: define response
         ApiResponseWithout200,
@@ -1736,9 +1672,6 @@ pub async fn person_id_radius_post(
 #[utoipa::path(
     delete,
     path = "/v1/person/{id}/_radius",
-    params(
-        path_schema::Id,
-    ),
     responses(
         DefaultApiResponse,
     ),
@@ -1759,9 +1692,6 @@ pub async fn person_id_radius_delete(
 #[utoipa::path(
     get,
     path = "/v1/person/{id}/_radius/_token",
-    params(
-        path_schema::Id,
-    ),
     responses(
         (status=200), // TODO: define response
         ApiResponseWithout200,
@@ -1781,9 +1711,6 @@ pub async fn person_id_radius_token_get(
 #[utoipa::path(
     get,
     path = "/v1/account/{id}/_radius/_token",
-    params(
-        path_schema::Id,
-    ),
     responses(
         (status=200), // TODO: define response
         ApiResponseWithout200,
@@ -1802,9 +1729,6 @@ pub async fn account_id_radius_token_get(
 #[utoipa::path(
     post,
     path = "/v1/account/{id}/_radius/_token",
-    params(
-        path_schema::Id,
-    ),
     responses(
         (status=200), // TODO: define response
         ApiResponseWithout200,
@@ -1836,9 +1760,6 @@ async fn person_id_radius_handler(
 #[utoipa::path(
     post,
     path = "/v1/person/{id}/_unix",
-    params(
-        path_schema::Id,
-    ),
     request_body=Jaon<AccountUnixExtend>,
     responses(
         DefaultApiResponse,
@@ -1864,9 +1785,6 @@ pub async fn person_id_unix_post(
 #[utoipa::path(
     post,
     path = "/v1/service_account/{id}/_unix",
-    params(
-        path_schema::Id,
-    ),
     request_body = AccountUnixExtend,
     responses(
         DefaultApiResponse,
@@ -1893,9 +1811,6 @@ pub async fn service_account_id_unix_post(
 #[utoipa::path(
     post,
     path = "/v1/account/{id}/_unix",
-    params(
-        path_schema::Id,
-    ),
     responses(
         DefaultApiResponse,
     ),
@@ -1921,9 +1836,6 @@ pub async fn account_id_unix_post(
 #[utoipa::path(
     get,post,
     path = "/v1/account/{id}/_unix/_token",
-    params(
-        path_schema::Id,
-    ),
     responses(
         (status=200), // TODO: define response
         ApiResponseWithout200,
@@ -1964,9 +1876,6 @@ pub async fn account_id_unix_token(
 #[utoipa::path(
     post,
     path = "/v1/account/{id}/_unix/_auth",
-    params(
-        path_schema::Id,
-    ),
     responses(
         (status=200), // TODO: define response
         ApiResponseWithout200,
@@ -1991,9 +1900,6 @@ pub async fn account_id_unix_auth_post(
 #[utoipa::path(
     post,
     path = "/v1/person/{id}/_unix/_credential",
-    params(
-        path_schema::Id,
-    ),
     request_body = SingleStringRequest,
     responses(
         DefaultApiResponse,
@@ -2018,9 +1924,6 @@ pub async fn person_id_unix_credential_put(
 #[utoipa::path(
     delete,
     path = "/v1/person/{id}/_unix/_credential",
-    params(
-        path_schema::Id,
-    ),
     responses(
         DefaultApiResponse,
     ),
@@ -2050,9 +1953,6 @@ pub async fn person_id_unix_credential_delete(
 #[utoipa::path(
     post,
     path = "/v1/person/{id}/_identify/_user",
-    params(
-        path_schema::Id,
-    ),
     responses(
         (status=200), // TODO: define response
         ApiResponseWithout200,
@@ -2097,7 +1997,7 @@ pub async fn group_get(
     post,
     path = "/v1/group/{id}",
     params(
-        path_schema::Id,
+        path_schema::UuidOrName
     ),
     responses(
         DefaultApiResponse,
@@ -2117,9 +2017,6 @@ pub async fn group_post(
 #[utoipa::path(
     get,
     path = "/v1/group/{id}",
-    params(
-        path_schema::Id,
-    ),
     responses(
         (status=200), // TODO: define response
         ApiResponseWithout200,
@@ -2139,9 +2036,6 @@ pub async fn group_id_get(
 #[utoipa::path(
     delete,
     path = "/v1/group/{id}",
-    params(
-        path_schema::Id,
-    ),
     responses(
         DefaultApiResponse,
     ),
@@ -2160,10 +2054,6 @@ pub async fn group_id_delete(
 #[utoipa::path(
     get,
     path = "/v1/group/{id}/_attr/{attr}",
-    params(
-        path_schema::Id,
-        path_schema::Attr,
-    ),
     responses(
         (status=200), // TODO: define response
         ApiResponseWithout200,
@@ -2183,10 +2073,6 @@ pub async fn group_id_attr_get(
 #[utoipa::path(
     post,
     path = "/v1/group/{id}/_attr/{attr}",
-    params(
-        path_schema::Id,
-        path_schema::Attr,
-    ),
     request_body=Json<Vec<String>>,
     responses(
         DefaultApiResponse,
@@ -2207,10 +2093,6 @@ pub async fn group_id_attr_post(
 #[utoipa::path(
     delete,
     path = "/v1/group/{id}/_attr/{attr}",
-    params(
-        path_schema::Id,
-        path_schema::Attr,
-    ),
     request_body=Option<Json<Vec<String>>>,
     responses(
         DefaultApiResponse,
@@ -2232,10 +2114,6 @@ pub async fn group_id_attr_delete(
 #[utoipa::path(
     put,
     path = "/v1/group/{id}/_attr/{attr}",
-    params(
-        path_schema::Id,
-        path_schema::Attr,
-    ),
     request_body=Json<Vec<String>>,
     responses(
         DefaultApiResponse,
@@ -2256,9 +2134,6 @@ pub async fn group_id_attr_put(
 #[utoipa::path(
     put,
     path = "/v1/group/{id}/_unix",
-    params(
-        path_schema::Id,
-    ),
     request_body = GroupUnixExtend,
     responses(
         DefaultApiResponse,
@@ -2283,9 +2158,6 @@ pub async fn group_id_unix_post(
 #[utoipa::path(
     get,
     path = "/v1/group/{id}/_unix/_token",
-    params(
-        path_schema::Id,
-    ),
     responses(
         (status=200), // TODO: define response
         ApiResponseWithout200,
@@ -2327,9 +2199,6 @@ pub async fn domain_get(
 #[utoipa::path(
     get,
     path = "/v1/domain/_attr/{attr}",
-    params(
-        path_schema::Attr,
-    ),
     responses(
         (status=200), // TODO: define response
         ApiResponseWithout200,
@@ -2349,9 +2218,6 @@ pub async fn domain_attr_get(
 #[utoipa::path(
     put,
     path = "/v1/domain/_attr/{attr}",
-    params(
-        path_schema::Attr,
-    ),
     request_body=Json<Vec<String>>,
     responses(
         DefaultApiResponse,
@@ -2380,9 +2246,6 @@ pub async fn domain_attr_put(
 #[utoipa::path(
     delete,
     path = "/v1/domain/_attr/{attr}",
-    params(
-        path_schema::Attr,
-    ),
     request_body=Json<Option<Vec<String>>>,
     responses(
         DefaultApiResponse,
@@ -2432,9 +2295,6 @@ pub async fn system_get(
 #[utoipa::path(
     get,
     path = "/v1/system/_attr/{attr}",
-    params(
-        path_schema::Attr,
-    ),
     responses(
         (status=200), // TODO: define response
         ApiResponseWithout200,
@@ -2454,9 +2314,6 @@ pub async fn system_attr_get(
 #[utoipa::path(
     post,
     path = "/v1/system/_attr/{attr}",
-    params(
-        path_schema::Attr,
-    ),
     request_body=Json<Vec<String>>,
     responses(
         DefaultApiResponse,
@@ -2485,9 +2342,6 @@ pub async fn system_attr_post(
 #[utoipa::path(
     delete,
     path = "/v1/system/_attr/{attr}",
-    params(
-        path_schema::Attr,
-    ),
     request_body=Json<Option<Vec<String>>>,
     responses(
         DefaultApiResponse,
@@ -2516,9 +2370,6 @@ pub async fn system_attr_delete(
 #[utoipa::path(
     put,
     path = "/v1/system/_attr/{attr}",
-    params(
-        path_schema::Attr,
-    ),
     request_body=Json<Vec<String>>,
     responses(
         DefaultApiResponse,
@@ -2571,9 +2422,6 @@ pub async fn recycle_bin_get(
 #[utoipa::path(
     get,
     path = "/v1/recycle_bin/{id}",
-    params(
-        path_schema::Id,
-    ),
     responses(
         (status=200), // TODO: define response
         ApiResponseWithout200,
@@ -2601,9 +2449,6 @@ pub async fn recycle_bin_id_get(
 #[utoipa::path(
     post,
     path = "/v1/recycle_bin/{id}/_revive",
-    params(
-        path_schema::Id,
-    ),
     responses(
         DefaultApiResponse,
     ),

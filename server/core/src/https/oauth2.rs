@@ -81,9 +81,6 @@ pub(crate) fn oauth2_id(rs_name: &str) -> Filter<FilterInvalid> {
 #[utoipa::path(
     get,
     path = "/ui/images/oauth2/{rs_name}",
-    params(
-        super::apidocs::path_schema::RsName
-    ),
     responses(
         (status = 200, description = "Ok", body=&[u8]),
         (status = 403, description = "Authorization refused"),
