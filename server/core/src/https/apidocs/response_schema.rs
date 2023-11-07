@@ -6,7 +6,7 @@ use kanidm_proto::constants::APPLICATION_JSON;
 use std::collections::BTreeMap;
 use utoipa::{
     openapi::{Content, RefOr, Response, ResponseBuilder, ResponsesBuilder},
-    IntoResponses,
+    IntoResponses, ToSchema,
 };
 
 #[allow(dead_code)] // because this is used for the OpenAPI schema gen
@@ -59,3 +59,35 @@ impl IntoResponses for ApiResponseWithout200 {
             .into()
     }
 }
+
+/// Placeholder until we can handle a BTree in utipa
+#[derive(Debug, Clone, ToSchema)]
+pub(crate) struct ProtoEntry {}
+
+#[derive(Debug, Clone, ToSchema)]
+// TODO: this should be `webauthn_rs_proto::auth::PublicKeyCredential``, but ... I don't know how to make it possible in utoipa
+pub(crate) struct PublicKeyCredential {}
+
+#[derive(Debug, Clone, ToSchema)]
+// TODO: this should be `webauthn_rs_proto::auth::RequestChallengeResponse``, but ... I don't know how to make it possible in utoipa
+pub(crate) struct RequestChallengeResponse {}
+
+#[derive(Debug, Clone, ToSchema)]
+// TODO: this should be `webauthn_rs_proto::auth::CreationChallengeResponse``, but ... I don't know how to make it possible in utoipa
+pub(crate) struct CreationChallengeResponse {}
+
+#[derive(Debug, Clone, ToSchema)]
+// TODO: this should be `Base64UrlSafeData`, but ... I don't know how to make it possible in utoipa
+pub(crate) struct Base64UrlSafeData {}
+
+#[derive(Debug, Clone, ToSchema)]
+// TODO: this should be handled elsewhere, but ... I don't know how to make it possible in utoipa
+pub(crate) struct BTreeSet {}
+
+#[derive(Debug, Clone, ToSchema)]
+// TODO: this should be handled elsewhere, but ... I don't know how to make it possible in utoipa
+pub(crate) struct Result {}
+
+#[derive(Debug, Clone, ToSchema)]
+// TODO: this should be handled elsewhere, but ... I don't know how to make it possible in utoipa
+pub(crate) struct ScimEntry {}

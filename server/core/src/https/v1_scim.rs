@@ -1,4 +1,3 @@
-use super::apidocs::path_schema;
 use super::apidocs::response_schema::{ApiResponseWithout200, DefaultApiResponse};
 use super::errors::WebError;
 use super::middleware::KOpId;
@@ -57,9 +56,6 @@ pub async fn sync_account_post(
 #[utoipa::path(
     get,
     path = "/v1/sync_account/{id}",
-    params(
-        path_schema::Id
-    ),
     responses(
         (status = 200,content_type="application/json", body=Option<ProtoEntry>),
         ApiResponseWithout200,
@@ -80,9 +76,6 @@ pub async fn sync_account_id_get(
 #[utoipa::path(
     patch,
     path = "/v1/sync_account/{id}",
-    params(
-        path_schema::UuidOrName
-    ),
     request_body=ProtoEntry,
     responses(
         DefaultApiResponse,
@@ -111,9 +104,6 @@ pub async fn sync_account_id_patch(
 #[utoipa::path(
     get,
     path = "/v1/sync_account/{id}/_finalise",
-    params(
-        path_schema::UuidOrName
-    ),
     responses(
         DefaultApiResponse,
     ),
@@ -137,9 +127,6 @@ pub async fn sync_account_id_finalise_get(
 #[utoipa::path(
     get,
     path = "/v1/sync_account/{id}/_terminate",
-    params(
-        path_schema::UuidOrName
-    ),
     responses(
         DefaultApiResponse,
     ),
@@ -163,9 +150,6 @@ pub async fn sync_account_id_terminate_get(
 #[utoipa::path(
     post,
     path = "/v1/sync_account/{id}/_sync_token",
-    params(
-        path_schema::UuidOrName
-    ),
     responses(
         (status = 200), // TODO: response content
         ApiResponseWithout200,
@@ -260,10 +244,6 @@ async fn scim_sync_get(
 #[utoipa::path(
     get,
     path = "/v1/sync_account/{id}/_attr/{attr}",
-    params(
-        path_schema::UuidOrName,
-        path_schema::Attr,
-    ),
     responses(
         (status = 200), // TODO: response content
         ApiResponseWithout200,
@@ -283,10 +263,6 @@ pub async fn sync_account_id_attr_get(
 #[utoipa::path(
     post,
     path = "/v1/sync_account/{id}/_attr/{attr}",
-    params(
-        path_schema::UuidOrName,
-        path_schema::Attr,
-    ),
     request_body=Vec<String>,
     responses(
         DefaultApiResponse,

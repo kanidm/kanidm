@@ -1,5 +1,5 @@
 use axum::{middleware::from_fn, response::Redirect, routing::get, Router};
-use kanidm_proto::{scim_v1::ScimSyncState, v1};
+use kanidm_proto::{scim_v1, v1};
 use utoipa::{
     openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme},
     Modify, OpenApi,
@@ -183,6 +183,9 @@ impl Modify for SecurityAddon {
     ),
     components(
         schemas(
+            scim_v1::ScimSyncState,
+            scim_v1::ScimSyncRequest,
+            scim_v1::ScimSyncRetentionMode,
             // TODO: can't add Entry/ProtoEntry to schema as this was only recently supported utoipa v3.5.0 doesn't support it - ref <https://github.com/juhaku/utoipa/pull/756/files>
             // v1::Entry,
             v1::AccountUnixExtend,
@@ -216,10 +219,46 @@ impl Modify for SecurityAddon {
             v1::UnixUserToken,
             v1::UserAuthToken,
             v1::WhoamiResponse,
-            ScimSyncState,
+            v1::ApiTokenPurpose,
+            v1::AuthStep,
+            v1::AuthIssueSession,
+            v1::AuthMech,
+            v1::AuthCredential,
+            v1::AuthAllowed,
+            v1::CUExtPortal,
+            v1::CURegState,
+            v1::CredentialDetailType,
+            v1::Entry,
+            v1::Filter,
+            v1::Modify,
+            v1::UatStatusState,
+            v1::UatPurposeStatus,
+            v1::UatPurpose,
+            v1::OperationError,
+            v1::SchemaError,
+            v1::PluginError,
+            v1::PasswordFeedback,
+
+            kanidm_proto::internal::IdentifyUserRequest,
+            // terrible workaround for other things
+            response_schema::CreationChallengeResponse,
+            // terrible workaround for other things
+            response_schema::ProtoEntry,
+            // terrible workaround for other things
+            response_schema::PublicKeyCredential,
+            // terrible workaround for other things
+            response_schema::RequestChallengeResponse,
+            // terrible workaround for other things
+            response_schema::Base64UrlSafeData,
+            // terrible workaround for other things
+            response_schema::BTreeSet,
+            // terrible workaround for other things
+            response_schema::Result,
+            // terrible workaround for other things
+            response_schema::ScimEntry,
+
 
             WebError,
-
         )
     ),
     modifiers(&SecurityAddon),

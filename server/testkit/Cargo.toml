@@ -66,3 +66,4 @@ tokio-openssl = { workspace = true }
 kanidm_lib_crypto = { workspace = true }
 uuid = { workspace = true }
 webauthn-authenticator-rs = { workspace = true }
+jsonschema = "0.17.1"

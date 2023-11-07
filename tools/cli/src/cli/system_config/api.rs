@@ -23,13 +23,20 @@ impl ApiOpt {
                             && std::io::stdin().is_terminal()
                         {
                             // validate with the user that it's OK to overwrite
-                            let response = dialoguer::Confirm::new()
+                            let response = match dialoguer::Confirm::new()
                                 .with_prompt(format!(
                                     "Output file {} already exists, overwrite?",
                                     aopt.filename.display()
                                 ))
                                 .interact()
-                                .unwrap();
+                            {
+                                Ok(val) => val,
+                                // if it throws an error just trigger false
+                                Err(err) => {
+                                    eprintln!("Failed to get response from user: {:?}", err);
+                                    false
+                                }
+                            };
                             if !response {
                                 bail = true;
                             }
