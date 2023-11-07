@@ -24,6 +24,9 @@ use kanidmd_lib::idm::event::AuthResult;
 use kanidmd_lib::idm::AuthState;
 use kanidmd_lib::prelude::*;
 use kanidmd_lib::value::PartialValue;
+// Used by macros
+#[allow(unused_imports)]
+use crate::https::apidocs::response_schema::ProtoEntry;
 
 use super::apidocs::path_schema;
 use super::errors::WebError;
@@ -210,7 +213,7 @@ pub async fn json_rest_event_get(
     attrs: Option<Vec<String>>,
     filter: Filter<FilterInvalid>,
     kopid: KOpId,
-) -> Result<Json<Vec<ProtoEntry>>, WebError> {
+) -> Result<Json<Vec<ProtoEntryReal>>, WebError> {
     state
         .qe_r_ref
         .handle_internalsearch(kopid.uat, filter, attrs, kopid.eventid)
@@ -225,7 +228,7 @@ pub async fn json_rest_event_get_id(
     filter: Filter<FilterInvalid>,
     attrs: Option<Vec<String>>,
     kopid: KOpId,
-) -> Result<Json<Option<ProtoEntry>>, WebError> {
+) -> Result<Json<Option<ProtoEntryReal>>, WebError> {
     let filter = Filter::join_parts_and(filter, filter_all!(f_id(id.as_str())));
 
     state
@@ -283,7 +286,7 @@ pub async fn json_rest_event_get_id_attr(
 pub async fn json_rest_event_post(
     state: ServerState,
     classes: Vec<String>,
-    obj: ProtoEntry,
+    obj: ProtoEntryReal,
     kopid: KOpId,
 ) -> Result<Json<()>, WebError> {
     debug_assert!(!classes.is_empty());
@@ -430,7 +433,7 @@ pub async fn json_rest_event_delete_attr(
 pub async fn schema_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
-) -> Result<Json<Vec<ProtoEntry>>, WebError> {
+) -> Result<Json<Vec<ProtoEntryReal>>, WebError> {
     // NOTE: This is filter_all, because from_internal_message will still do the alterations
     // needed to make it safe. This is needed because there may be aci's that block access
     // to the recycle/ts types in the filter, and we need the aci to only eval on this
@@ -455,7 +458,7 @@ pub async fn schema_get(
 pub async fn schema_attributetype_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
-) -> Result<Json<Vec<ProtoEntry>>, WebError> {
+) -> Result<Json<Vec<ProtoEntryReal>>, WebError> {
     let filter = filter_all!(f_eq(Attribute::Class, EntryClass::AttributeType.into()));
     json_rest_event_get(state, None, filter, kopid).await
 }
@@ -474,7 +477,7 @@ pub async fn schema_attributetype_get_id(
     State(state): State<ServerState>,
     Path(id): Path<String>,
     Extension(kopid): Extension<KOpId>,
-) -> Result<Json<Option<ProtoEntry>>, WebError> {
+) -> Result<Json<Option<ProtoEntryReal>>, WebError> {
     // These can't use get_id because the attribute name and class name aren't ... well name.
     let filter = filter_all!(f_and!([
         f_eq(Attribute::Class, EntryClass::AttributeType.into()),
@@ -506,7 +509,7 @@ pub async fn schema_attributetype_get_id(
 pub async fn schema_classtype_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
-) -> Result<Json<Vec<ProtoEntry>>, WebError> {
+) -> Result<Json<Vec<ProtoEntryReal>>, WebError> {
     let filter = filter_all!(f_eq(Attribute::Class, EntryClass::ClassType.into()));
     json_rest_event_get(state, None, filter, kopid).await
 }
@@ -525,7 +528,7 @@ pub async fn schema_classtype_get_id(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     Path(id): Path<String>,
-) -> Result<Json<Option<ProtoEntry>>, WebError> {
+) -> Result<Json<Option<ProtoEntryReal>>, WebError> {
     // These can't use get_id because they attribute name and class name aren't ... well name.
     let filter = filter_all!(f_and!([
         f_eq(Attribute::Class, EntryClass::ClassType.into()),
@@ -553,7 +556,7 @@ pub async fn schema_classtype_get_id(
 pub async fn person_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
-) -> Result<Json<Vec<ProtoEntry>>, WebError> {
+) -> Result<Json<Vec<ProtoEntryReal>>, WebError> {
     let filter = filter_all!(f_eq(Attribute::Class, EntryClass::Person.into()));
     json_rest_event_get(state, None, filter, kopid).await
 }
@@ -564,7 +567,7 @@ pub async fn person_get(
     responses(
         DefaultApiResponse,
     ),
-    // request_body=ProtoEntry, // TODO: ProtoEntry can't be serialized, so we need to do this manually
+    request_body=ProtoEntry, // TODO: ProtoEntryReal can't be serialized, so we need to do this manually
     security(("token_jwt" = [])),
     tag = "v1/person",
 )]
@@ -572,8 +575,9 @@ pub async fn person_get(
 pub async fn person_post(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
-    Json(obj): Json<ProtoEntry>,
+    Json(obj): Json<ProtoEntryReal>,
 ) -> Result<Json<()>, WebError> {
+
     let classes: Vec<String> = vec![
         EntryClass::Person.into(),
         EntryClass::Account.into(),
@@ -596,7 +600,7 @@ pub async fn person_id_get(
     State(state): State<ServerState>,
     Path(id): Path<String>,
     Extension(kopid): Extension<KOpId>,
-) -> Result<Json<Option<ProtoEntry>>, WebError> {
+) -> Result<Json<Option<ProtoEntryReal>>, WebError> {
     let filter = filter_all!(f_eq(Attribute::Class, EntryClass::Person.into()));
     json_rest_event_get_id(state, id, filter, None, kopid).await
 }
@@ -634,7 +638,7 @@ pub async fn person_id_delete(
 pub async fn service_account_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
-) -> Result<Json<Vec<ProtoEntry>>, WebError> {
+) -> Result<Json<Vec<ProtoEntryReal>>, WebError> {
     let filter = filter_all!(f_eq(Attribute::Class, EntryClass::ServiceAccount.into()));
     json_rest_event_get(state, None, filter, kopid).await
 }
@@ -642,7 +646,7 @@ pub async fn service_account_get(
 #[utoipa::path(
     post,
     path = "/v1/service_account",
-    // request_body=Json, // TODO ProtoEntry can't be serialized, so we need to do this manually
+    request_body=ProtoEntry, // TODO ProtoEntryReal can't be serialized, so we need to do this manually
     responses(
         DefaultApiResponse,
     ),
@@ -652,7 +656,7 @@ pub async fn service_account_get(
 pub async fn service_account_post(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
-    Json(obj): Json<ProtoEntry>,
+    Json(obj): Json<ProtoEntryReal>,
 ) -> Result<Json<()>, WebError> {
     let classes: Vec<String> = vec![
         EntryClass::ServiceAccount.into(),
@@ -668,7 +672,7 @@ pub async fn service_account_post(
     responses(
         DefaultApiResponse,
     ),
-    // request_body=ProtoEntry, // TODO: can't deal with a HashMap in the attr
+    request_body=ProtoEntry, // TODO: can't deal with a HashMap in the attr
     security(("token_jwt" = [])),
     tag = "v1/service_account",
 )]
@@ -676,7 +680,7 @@ pub async fn service_account_id_patch(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     Path(id): Path<String>,
-    Json(obj): Json<ProtoEntry>,
+    Json(obj): Json<ProtoEntryReal>,
 ) -> Result<Json<()>, WebError> {
     // Update a value / attrs
     let filter = filter_all!(f_eq(Attribute::Class, EntryClass::Account.into()));
@@ -703,7 +707,7 @@ pub async fn service_account_id_get(
     State(state): State<ServerState>,
     Path(id): Path<String>,
     Extension(kopid): Extension<KOpId>,
-) -> Result<Json<Option<ProtoEntry>>, WebError> {
+) -> Result<Json<Option<ProtoEntryReal>>, WebError> {
     let filter = filter_all!(f_eq(Attribute::Class, EntryClass::ServiceAccount.into()));
     json_rest_event_get_id(state, id, filter, None, kopid).await
 }
@@ -1014,7 +1018,7 @@ pub async fn service_account_id_put_attr(
     responses(
         DefaultApiResponse,
     ),
-    // request_body=ProtoEntry, // TODO: can't deal with a HashMap in the attr
+    request_body=ProtoEntry, // TODO: can't deal with a HashMap in the attr
     security(("token_jwt" = [])),
     tag = "v1/person",
 )]
@@ -1022,7 +1026,7 @@ pub async fn person_id_patch(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     Path(id): Path<String>,
-    Json(obj): Json<ProtoEntry>,
+    Json(obj): Json<ProtoEntryReal>,
 ) -> Result<Json<()>, WebError> {
     // Update a value / attrs
     let filter = filter_all!(f_eq(Attribute::Class, EntryClass::Account.into()));
@@ -1760,7 +1764,7 @@ async fn person_id_radius_handler(
 #[utoipa::path(
     post,
     path = "/v1/person/{id}/_unix",
-    request_body=Jaon<AccountUnixExtend>,
+    request_body=AccountUnixExtend,
     responses(
         DefaultApiResponse,
     ),
@@ -1953,6 +1957,7 @@ pub async fn person_id_unix_credential_delete(
 #[utoipa::path(
     post,
     path = "/v1/person/{id}/_identify/_user",
+    request_body = IdentifyUserResponse,
     responses(
         (status=200), // TODO: define response
         ApiResponseWithout200,
@@ -1988,7 +1993,7 @@ pub async fn person_identify_user_post(
 pub async fn group_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
-) -> Result<Json<Vec<ProtoEntry>>, WebError> {
+) -> Result<Json<Vec<ProtoEntryReal>>, WebError> {
     let filter = filter_all!(f_eq(Attribute::Class, EntryClass::Group.into()));
     json_rest_event_get(state, None, filter, kopid).await
 }
@@ -1999,6 +2004,7 @@ pub async fn group_get(
     params(
         path_schema::UuidOrName
     ),
+    request_body=ProtoEntry,
     responses(
         DefaultApiResponse,
     ),
@@ -2008,7 +2014,7 @@ pub async fn group_get(
 pub async fn group_post(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
-    Json(obj): Json<ProtoEntry>,
+    Json(obj): Json<ProtoEntryReal>,
 ) -> Result<Json<()>, WebError> {
     let classes = vec!["group".to_string(), "object".to_string()];
     json_rest_event_post(state, classes, obj, kopid).await
@@ -2028,7 +2034,7 @@ pub async fn group_id_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     Path(id): Path<String>,
-) -> Result<Json<Option<ProtoEntry>>, WebError> {
+) -> Result<Json<Option<ProtoEntryReal>>, WebError> {
     let filter = filter_all!(f_eq(Attribute::Class, EntryClass::Group.into()));
     json_rest_event_get_id(state, id, filter, None, kopid).await
 }
@@ -2191,7 +2197,7 @@ pub async fn group_id_unix_token_get(
 pub async fn domain_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
-) -> Result<Json<Vec<ProtoEntry>>, WebError> {
+) -> Result<Json<Vec<ProtoEntryReal>>, WebError> {
     let filter = filter_all!(f_eq(Attribute::Uuid, PartialValue::Uuid(UUID_DOMAIN_INFO)));
     json_rest_event_get(state, None, filter, kopid).await
 }
@@ -2284,7 +2290,7 @@ pub async fn domain_attr_delete(
 pub async fn system_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
-) -> Result<Json<Vec<ProtoEntry>>, WebError> {
+) -> Result<Json<Vec<ProtoEntryReal>>, WebError> {
     let filter = filter_all!(f_eq(
         Attribute::Uuid,
         PartialValue::Uuid(UUID_SYSTEM_CONFIG)
@@ -2408,7 +2414,7 @@ pub async fn system_attr_put(
 pub async fn recycle_bin_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
-) -> Result<Json<Vec<ProtoEntry>>, WebError> {
+) -> Result<Json<Vec<ProtoEntryReal>>, WebError> {
     let filter = filter_all!(f_pres(Attribute::Class));
     let attrs = None;
     state
@@ -2433,7 +2439,7 @@ pub async fn recycle_bin_id_get(
     State(state): State<ServerState>,
     Path(id): Path<String>,
     Extension(kopid): Extension<KOpId>,
-) -> Result<Json<Option<ProtoEntry>>, WebError> {
+) -> Result<Json<Option<ProtoEntryReal>>, WebError> {
     let filter = filter_all!(f_id(id.as_str()));
     let attrs = None;
 

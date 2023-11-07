@@ -2,7 +2,7 @@ use axum::{middleware::from_fn, response::Redirect, routing::get, Router};
 use kanidm_proto::{scim_v1, v1};
 use utoipa::{
     openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme},
-    Modify, OpenApi,
+    Modify, OpenApi, ToSchema
 };
 use utoipa_swagger_ui::SwaggerUi;
 

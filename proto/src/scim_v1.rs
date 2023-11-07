@@ -7,6 +7,7 @@ use uuid::Uuid;
 pub use scim_proto::prelude::{ScimAttr, ScimComplexAttr, ScimEntry, ScimError, ScimSimpleAttr};
 pub use scim_proto::user::MultiValueAttr;
 use scim_proto::*;
+use utoipa::openapi::{RefOr, Schema};
 
 use crate::constants::{
     ATTR_DESCRIPTION, ATTR_DISPLAYNAME, ATTR_GIDNUMBER, ATTR_LOGINSHELL, ATTR_MAIL, ATTR_MEMBER,
@@ -41,6 +42,14 @@ pub struct ScimSyncRequest {
     pub entries: Vec<ScimEntry>,
 
     pub retain: ScimSyncRetentionMode,
+}
+
+impl<'s> ToSchema<'s> for ScimSyncRequest {
+    fn schema() -> (&'s str, RefOr<Schema>) {
+        ("ScimSyncRequest", utoipa::openapi::ObjectBuilder::new()
+            .description(Some("SCIM 2.0 Sync Request. Details TODO"))
+            .into())
+    }
 }
 
 impl ScimSyncRequest {
