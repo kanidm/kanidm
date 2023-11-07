@@ -413,3 +413,8 @@ docker run --rm -it \
 ```
 
 This assumes you have a `kanidm` client configuration file in the current working directory.
+
+### Testing the OpenAPI generator things
+
+There's a script in `scripts/openapi_tests` which runs a few docker containers - you need to be
+running a local instance on port 8443 to be able to pull the JSON file for testing.
