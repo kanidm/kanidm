@@ -87,3 +87,7 @@ pub(crate) struct BTreeSet {}
 #[derive(Debug, Clone, ToSchema)]
 // TODO: this should be handled elsewhere, but ... I don't know how to make it possible in utoipa
 pub(crate) struct Result {}
+
+#[derive(Debug, Clone, ToSchema)]
+// TODO: this should be handled elsewhere, but ... I don't know how to make it possible in utoipa
+pub(crate) struct ScimEntry {}

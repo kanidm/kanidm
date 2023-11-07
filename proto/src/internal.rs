@@ -4,6 +4,7 @@ use crate::constants::{
 use crate::v1::ApiTokenPurpose;
 use serde::{Deserialize, Serialize};
 use url::Url;
+use utoipa::ToSchema;
 use uuid::Uuid;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -31,7 +32,7 @@ pub struct ScimSyncToken {
 }
 
 // State machine states and transitions for the identity verification system feature!
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, ToSchema)]
 pub enum IdentifyUserRequest {
     Start,
     SubmitCode { other_totp: u32 },

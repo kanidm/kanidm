@@ -564,7 +564,7 @@ pub async fn person_get(
     responses(
         DefaultApiResponse,
     ),
-    request_body=Json, // TODO: ProtoEntry can't be serialized, so we need to do this manually
+    // request_body=ProtoEntry, // TODO: ProtoEntry can't be serialized, so we need to do this manually
     security(("token_jwt" = [])),
     tag = "v1/person",
 )]
@@ -642,7 +642,7 @@ pub async fn service_account_get(
 #[utoipa::path(
     post,
     path = "/v1/service_account",
-    request_body=Json, // TODO ProtoEntry can't be serialized, so we need to do this manually
+    // request_body=Json, // TODO ProtoEntry can't be serialized, so we need to do this manually
     responses(
         DefaultApiResponse,
     ),
@@ -896,7 +896,7 @@ pub async fn service_account_id_get_attr(
 #[utoipa::path(
     post,
     path = "/v1/person/{id}/_attr/{attr}",
-    request_body= Json<Vec<String>>,
+    request_body= Vec<String>,
     responses(
         DefaultApiResponse,
     ),
@@ -916,7 +916,7 @@ pub async fn person_id_post_attr(
 #[utoipa::path(
     post,
     path = "/v1/service_account/{id}/_attr/{attr}",
-    request_body=Json<Vec<String>>,
+    request_body=Vec<String>,
     responses(
         DefaultApiResponse,
     ),
@@ -1213,7 +1213,7 @@ pub async fn credential_update_status(
     post,
     path = "/v1/credential/_update",
     responses(
-        (status=200), // TODO: define response
+        (status=200, body=CUStatus), // TODO: define response
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
@@ -2073,7 +2073,7 @@ pub async fn group_id_attr_get(
 #[utoipa::path(
     post,
     path = "/v1/group/{id}/_attr/{attr}",
-    request_body=Json<Vec<String>>,
+    request_body=Vec<String>,
     responses(
         DefaultApiResponse,
     ),
@@ -2093,7 +2093,7 @@ pub async fn group_id_attr_post(
 #[utoipa::path(
     delete,
     path = "/v1/group/{id}/_attr/{attr}",
-    request_body=Option<Json<Vec<String>>>,
+    request_body=Option<Vec<String>>,
     responses(
         DefaultApiResponse,
     ),
@@ -2114,7 +2114,7 @@ pub async fn group_id_attr_delete(
 #[utoipa::path(
     put,
     path = "/v1/group/{id}/_attr/{attr}",
-    request_body=Json<Vec<String>>,
+    request_body=Vec<String>,
     responses(
         DefaultApiResponse,
     ),
@@ -2218,7 +2218,7 @@ pub async fn domain_attr_get(
 #[utoipa::path(
     put,
     path = "/v1/domain/_attr/{attr}",
-    request_body=Json<Vec<String>>,
+    request_body=Vec<String>,
     responses(
         DefaultApiResponse,
     ),
@@ -2246,7 +2246,7 @@ pub async fn domain_attr_put(
 #[utoipa::path(
     delete,
     path = "/v1/domain/_attr/{attr}",
-    request_body=Json<Option<Vec<String>>>,
+    request_body=Option<Vec<String>>,
     responses(
         DefaultApiResponse,
     ),
@@ -2314,7 +2314,7 @@ pub async fn system_attr_get(
 #[utoipa::path(
     post,
     path = "/v1/system/_attr/{attr}",
-    request_body=Json<Vec<String>>,
+    request_body=Vec<String>,
     responses(
         DefaultApiResponse,
     ),
@@ -2342,7 +2342,7 @@ pub async fn system_attr_post(
 #[utoipa::path(
     delete,
     path = "/v1/system/_attr/{attr}",
-    request_body=Json<Option<Vec<String>>>,
+    request_body=Option<Vec<String>>,
     responses(
         DefaultApiResponse,
     ),
@@ -2370,7 +2370,7 @@ pub async fn system_attr_delete(
 #[utoipa::path(
     put,
     path = "/v1/system/_attr/{attr}",
-    request_body=Json<Vec<String>>,
+    request_body=Vec<String>,
     responses(
         DefaultApiResponse,
     ),

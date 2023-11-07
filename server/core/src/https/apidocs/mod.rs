@@ -1,5 +1,5 @@
 use axum::{middleware::from_fn, response::Redirect, routing::get, Router};
-use kanidm_proto::{scim_v1::ScimSyncState, v1};
+use kanidm_proto::{scim_v1, v1};
 use utoipa::{
     openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme},
     Modify, OpenApi,
@@ -183,7 +183,9 @@ impl Modify for SecurityAddon {
     ),
     components(
         schemas(
-            ScimSyncState,
+            scim_v1::ScimSyncState,
+            scim_v1::ScimSyncRequest,
+            scim_v1::ScimSyncRetentionMode,
             // TODO: can't add Entry/ProtoEntry to schema as this was only recently supported utoipa v3.5.0 doesn't support it - ref <https://github.com/juhaku/utoipa/pull/756/files>
             // v1::Entry,
             v1::AccountUnixExtend,
@@ -237,6 +239,7 @@ impl Modify for SecurityAddon {
             v1::PluginError,
             v1::PasswordFeedback,
 
+            kanidm_proto::internal::IdentifyUserRequest,
             // terrible workaround for other things
             response_schema::CreationChallengeResponse,
             // terrible workaround for other things
@@ -251,6 +254,8 @@ impl Modify for SecurityAddon {
             response_schema::BTreeSet,
             // terrible workaround for other things
             response_schema::Result,
+            // terrible workaround for other things
+            response_schema::ScimEntry,
 
 
             WebError,

@@ -19,7 +19,7 @@ pub enum ScimSyncState {
     Active { cookie: Base64UrlSafeData },
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, ToSchema)]
 pub enum ScimSyncRetentionMode {
     /// No actions are to be taken - only update or create entries in the
     /// entries set.
@@ -32,7 +32,7 @@ pub enum ScimSyncRetentionMode {
     Delete(Vec<Uuid>),
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, ToSchema)]
 pub struct ScimSyncRequest {
     pub from_state: ScimSyncState,
     pub to_state: ScimSyncState,
