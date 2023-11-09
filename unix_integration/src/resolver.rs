@@ -2,7 +2,7 @@
 use hashbrown::HashSet;
 use std::collections::BTreeSet;
 use std::num::NonZeroUsize;
-use std::ops::{Add, Sub};
+use std::ops::{Add, DerefMut, Sub};
 use std::path::Path;
 use std::string::ToString;
 use std::time::{Duration, SystemTime};
@@ -13,12 +13,13 @@ use uuid::Uuid;
 
 use crate::db::{Cache, CacheTxn, Db};
 use crate::idprovider::interface::{
-    AuthCacheAction, AuthCredHandler, AuthResult, GroupToken, Id, IdProvider, IdpError, UserToken,
+    AuthCacheAction, AuthCredHandler, AuthResult, GroupToken, Id, IdProvider, IdpError, KeyStore,
+    UserToken,
 };
 use crate::unix_config::{HomeAttr, UidAttr};
 use crate::unix_proto::{HomeDirectoryInfo, NssGroup, NssUser, PamAuthRequest, PamAuthResponse};
 
-// use crate::unix_passwd::{EtcUser, EtcGroup};
+use kanidm_hsm_crypto::{HmacKey, MachineKey, Tpm};
 
 const NXCACHE_SIZE: NonZeroUsize = unsafe { NonZeroUsize::new_unchecked(128) };
 
@@ -44,13 +45,15 @@ pub enum AuthSession {
     Denied,
 }
 
-#[derive(Debug)]
 pub struct Resolver<I>
 where
     I: IdProvider + Sync,
 {
     // Generic / modular types.
     db: Db,
+    hsm: Mutex<Box<dyn Tpm + Send>>,
+    // machine_key: MachineKey,
+    hmac_key: HmacKey,
     client: I,
     // Types to update still.
     state: Mutex<CacheState>,
@@ -84,6 +87,8 @@ where
     pub async fn new(
         db: Db,
         client: I,
+        hsm: Box<dyn Tpm + Send>,
+        machine_key: MachineKey,
         // cache timeout
         timeout_seconds: u64,
         pam_allow_groups: Vec<String>,
@@ -95,21 +100,71 @@ where
         gid_attr_map: UidAttr,
         allow_id_overrides: Vec<String>,
     ) -> Result<Self, ()> {
+        let hsm = Mutex::new(hsm);
+        let mut hsm_lock = hsm.lock().await;
+
         // setup and do a migrate.
-        {
-            let dbtxn = db.write().await;
-            dbtxn.migrate().map_err(|_| ())?;
-            dbtxn.commit().map_err(|_| ())?;
-        }
+        let dbtxn = db.write().await;
+        dbtxn.migrate().map_err(|_| ())?;
+        dbtxn.commit().map_err(|_| ())?;
+
+        // Setup our internal keys
+        let dbtxn = db.write().await;
+
+        let loadable_hmac_key = match dbtxn.get_hsm_hmac_key() {
+            Ok(Some(hmk)) => hmk,
+            Ok(None) => {
+                // generate a new key.
+                let loadable_hmac_key = hsm_lock.hmac_key_create(&machine_key).map_err(|err| {
+                    error!(?err, "Unable to create hmac key");
+                })?;
+
+                dbtxn
+                    .insert_hsm_hmac_key(&loadable_hmac_key)
+                    .map_err(|err| {
+                        error!(?err, "Unable to persist hmac key");
+                    })?;
+
+                loadable_hmac_key
+            }
+            Err(err) => {
+                error!(?err, "Unable to retrieve loadable hmac key from db");
+                return Err(());
+            }
+        };
+
+        let hmac_key = hsm_lock
+            .hmac_key_load(&machine_key, &loadable_hmac_key)
+            .map_err(|err| {
+                error!(?err, "Unable to load hmac key");
+            })?;
+
+        // Ask the client what keys it wants the HSM to configure.
+        // make a key store
+        let mut ks = KeyStore::new(&dbtxn);
+
+        client
+            .configure_hsm_keys(&mut ks, &mut **hsm_lock.deref_mut(), &machine_key)
+            .await
+            .map_err(|err| {
+                error!(?err, "Client was unable to configure hsm keys");
+            })?;
+
+        drop(hsm_lock);
+
+        dbtxn.commit().map_err(|_| ())?;
 
         if pam_allow_groups.is_empty() {
-            eprintln!("Will not be able to authorise user logins, pam_allow_groups config is not configured.");
+            warn!("Will not be able to authorise user logins, pam_allow_groups config is not configured.");
         }
 
         // We assume we are offline at start up, and we mark the next "online check" as
         // being valid from "now".
         Ok(Resolver {
             db,
+            hsm,
+            // machine_key,
+            hmac_key,
             client,
             state: Mutex::new(CacheState::OfflineNextCheck(SystemTime::now())),
             timeout_seconds,
@@ -391,16 +446,18 @@ where
 
     async fn set_cache_userpassword(&self, a_uuid: Uuid, cred: &str) -> Result<(), ()> {
         let dbtxn = self.db.write().await;
+        let mut hsm_txn = self.hsm.lock().await;
         dbtxn
-            .update_account_password(a_uuid, cred)
+            .update_account_password(a_uuid, cred, &mut **hsm_txn, &self.hmac_key)
             .and_then(|x| dbtxn.commit().map(|_| x))
             .map_err(|_| ())
     }
 
     async fn check_cache_userpassword(&self, a_uuid: Uuid, cred: &str) -> Result<bool, ()> {
         let dbtxn = self.db.write().await;
+        let mut hsm_txn = self.hsm.lock().await;
         dbtxn
-            .check_account_password(a_uuid, cred)
+            .check_account_password(a_uuid, cred, &mut **hsm_txn, &self.hmac_key)
             .and_then(|x| dbtxn.commit().map(|_| x))
             .map_err(|_| ())
     }
@@ -448,7 +505,7 @@ where
 
                 Ok(None)
             }
-            Err(IdpError::BadRequest) => {
+            Err(IdpError::KeyStore) | Err(IdpError::BadRequest) => {
                 // Some other transient error, continue with the token.
                 Ok(token)
             }
@@ -495,7 +552,7 @@ where
                 self.set_nxcache(grp_id).await;
                 Ok(None)
             }
-            Err(IdpError::BadRequest) => {
+            Err(IdpError::KeyStore) | Err(IdpError::BadRequest) => {
                 // Some other transient error, continue with the token.
                 Ok(token)
             }
@@ -746,132 +803,6 @@ where
         self.get_nssgroup(Id::Gid(gid)).await
     }
 
-    /*
-    async fn online_account_authenticate(
-        &self,
-        token: &Option<UserToken>,
-        account_id: &Id,
-        cred: Option<PamCred>,
-        data: Option<PamData>,
-    ) -> Result<ClientResponse, ()> {
-        debug!("Attempt online password check");
-        // Unwrap the cred for passing to the step function
-        let ucred = match &cred {
-            Some(PamCred::Password(v)) => Some(v.clone()),
-            Some(PamCred::MFACode(v)) => Some(v.clone()),
-            None => None,
-        };
-        // We are online, attempt the pw to the server.
-        match self
-            .client
-            .unix_user_authenticate_step(account_id, ucred.as_deref(), data)
-            .await
-        {
-            Ok(ProviderResult::UserToken(Some(mut n_tok))) => {
-                if self.check_nxset(&n_tok.name, n_tok.gidnumber).await {
-                    // Refuse to release the token, it's in the denied set.
-                    self.delete_cache_usertoken(n_tok.uuid).await?;
-                    Ok(ClientResponse::PamStatus(None))
-                } else {
-                    debug!("online password check success.");
-                    self.set_cache_usertoken(&mut n_tok).await?;
-                    match cred {
-                        Some(PamCred::Password(cred)) => {
-                            // Only cache an actual password (not an MFA token)
-                            self.set_cache_userpassword(n_tok.uuid, &cred).await?;
-                        }
-                        Some(_) => {}
-                        None => {}
-                    }
-                    Ok(ClientResponse::PamStatus(Some(true)))
-                }
-            }
-            Ok(ProviderResult::UserToken(None)) => {
-                error!("incorrect password");
-                // PW failed the check.
-                Ok(ClientResponse::PamStatus(Some(false)))
-            }
-            Ok(ProviderResult::PamPrompt(prompt)) => {
-                debug!("Requesting pam prompt {:?}", prompt);
-                Ok(ClientResponse::PamPrompt(prompt))
-            }
-            Err(IdpError::Transport) => {
-                error!("transport error, moving to offline");
-                // Something went wrong, mark offline.
-                let time = SystemTime::now().add(Duration::from_secs(15));
-                self.set_cachestate(CacheState::OfflineNextCheck(time))
-                    .await;
-                match token.as_ref() {
-                    Some(t) => match ucred {
-                        Some(cred) => match self.check_cache_userpassword(t.uuid, &cred).await {
-                            Ok(res) => Ok(ClientResponse::PamStatus(Some(res))),
-                            Err(e) => Err(e),
-                        },
-                        None => Ok(ClientResponse::PamPrompt(PamPrompt::passwd_prompt())),
-                    },
-                    None => Ok(ClientResponse::PamStatus(None)),
-                }
-            }
-            Err(IdpError::ProviderUnauthorised) => {
-                // Something went wrong, mark offline to force a re-auth ASAP.
-                let time = SystemTime::now().sub(Duration::from_secs(1));
-                self.set_cachestate(CacheState::OfflineNextCheck(time))
-                    .await;
-                match token.as_ref() {
-                    Some(t) => match ucred {
-                        Some(cred) => match self.check_cache_userpassword(t.uuid, &cred).await {
-                            Ok(res) => Ok(ClientResponse::PamStatus(Some(res))),
-                            Err(e) => Err(e),
-                        },
-                        None => Ok(ClientResponse::PamPrompt(PamPrompt::passwd_prompt())),
-                    },
-                    None => Ok(ClientResponse::PamStatus(None)),
-                }
-            }
-            Err(IdpError::NotFound) => Ok(ClientResponse::PamStatus(None)),
-            Err(IdpError::BadRequest) => {
-                // Some other unknown processing error?
-                Err(())
-            }
-        }
-    }
-
-    async fn offline_account_authenticate(
-        &self,
-        token: &Option<UserToken>,
-        cred: Option<PamCred>,
-    ) -> Result<ClientResponse, ()> {
-        let cred = match cred {
-            Some(cred) => match cred {
-                PamCred::Password(v) => v.clone(),
-                // We can only authenticate using a password
-                _ => return Ok(ClientResponse::PamStatus(Some(false))),
-            },
-            None => return Ok(ClientResponse::PamPrompt(PamPrompt::passwd_prompt())),
-        };
-        debug!("Attempt offline password check");
-        match token.as_ref() {
-            Some(t) => {
-                if t.valid {
-                    match self.check_cache_userpassword(t.uuid, &cred).await {
-                        Ok(res) => Ok(ClientResponse::PamStatus(Some(res))),
-                        Err(e) => Err(e),
-                    }
-                } else {
-                    Ok(ClientResponse::PamStatus(Some(false)))
-                }
-            }
-            None => Ok(ClientResponse::PamStatus(None)),
-        }
-        /*
-        token
-            .as_ref()
-            .map(async |t| self.check_cache_userpassword(&t.uuid, cred).await)
-            .transpose()
-        */
-    }
-    */
-
     pub async fn pam_account_allowed(&self, account_id: &str) -> Result<Option<bool>, ()> {
         let token = self.get_usertoken(Id::Name(account_id.to_string())).await?;
 
@@ -956,7 +887,7 @@ where
                     .await;
                 Err(())
             }
-            Err(IdpError::BadRequest) => Err(()),
+            Err(IdpError::BadRequest) | Err(IdpError::KeyStore) => Err(()),
         }
     }
 
@@ -1109,7 +1040,7 @@ where
                     .await;
                 Err(())
             }
-            Err(IdpError::BadRequest) => Err(()),
+            Err(IdpError::KeyStore) | Err(IdpError::BadRequest) => Err(()),
         }
     }
 

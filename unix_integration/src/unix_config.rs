@@ -10,12 +10,7 @@ use crate::unix_passwd::UnixIntegrationError;
 
 use serde::Deserialize;
 
-use crate::constants::{
-    DEFAULT_CACHE_TIMEOUT, DEFAULT_CONN_TIMEOUT, DEFAULT_DB_PATH, DEFAULT_GID_ATTR_MAP,
-    DEFAULT_HOME_ALIAS, DEFAULT_HOME_ATTR, DEFAULT_HOME_PREFIX, DEFAULT_SELINUX, DEFAULT_SHELL,
-    DEFAULT_SOCK_PATH, DEFAULT_TASK_SOCK_PATH, DEFAULT_TPM_TCTI_NAME, DEFAULT_UID_ATTR_MAP,
-    DEFAULT_USE_ETC_SKEL,
-};
+use crate::constants::*;
 
 #[derive(Debug, Deserialize)]
 struct ConfigInt {
@@ -35,8 +30,10 @@ struct ConfigInt {
     selinux: Option<bool>,
     #[serde(default)]
     allow_local_account_override: Vec<String>,
+
+    hsm_pin_path: Option<String>,
+    hsm_type: Option<String>,
     tpm_tcti_name: Option<String>,
-    tpm_policy: Option<String>,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -80,23 +77,18 @@ impl Display for UidAttr {
 }
 
 #[derive(Debug, Clone, Default)]
-pub enum TpmPolicy {
-    #[default]
-    Ignore,
-    IfPossible(String),
-    Required(String),
+pub enum HsmType {
+    #[cfg_attr(not(feature = "tpm"), default)]
+    Soft,
+    #[cfg_attr(feature = "tpm", default)]
+    Tpm,
 }
 
-impl Display for TpmPolicy {
+impl Display for HsmType {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            TpmPolicy::Ignore => write!(f, "Ignore"),
-            TpmPolicy::IfPossible(p) => {
-                write!(f, "IfPossible ({})", p)
-            }
-            TpmPolicy::Required(p) => {
-                write!(f, "Required ({})", p)
-            }
+            HsmType::Soft => write!(f, "Soft"),
+            HsmType::Tpm => write!(f, "Tpm"),
         }
     }
 }
@@ -118,7 +110,9 @@ pub struct KanidmUnixdConfig {
     pub uid_attr_map: UidAttr,
     pub gid_attr_map: UidAttr,
     pub selinux: bool,
-    pub tpm_policy: TpmPolicy,
+    pub hsm_type: HsmType,
+    pub hsm_pin_path: String,
+    pub tpm_tcti_name: String,
     pub allow_local_account_override: Vec<String>,
 }
 
@@ -152,8 +146,10 @@ impl Display for KanidmUnixdConfig {
         writeln!(f, "uid_attr_map: {}", self.uid_attr_map)?;
         writeln!(f, "gid_attr_map: {}", self.gid_attr_map)?;
 
+        writeln!(f, "hsm_type: {}", self.hsm_type)?;
+        writeln!(f, "tpm_tcti_name: {}", self.tpm_tcti_name)?;
+
         writeln!(f, "selinux: {}", self.selinux)?;
-        writeln!(f, "tpm_policy: {}", self.tpm_policy)?;
         writeln!(
             f,
             "allow_local_account_override: {:#?}",
@@ -168,6 +164,11 @@ impl KanidmUnixdConfig {
             Ok(val) => val,
             Err(_) => DEFAULT_DB_PATH.into(),
         };
+        let hsm_pin_path = match env::var("KANIDM_HSM_PIN_PATH") {
+            Ok(val) => val,
+            Err(_) => DEFAULT_HSM_PIN_PATH.into(),
+        };
+
         KanidmUnixdConfig {
             db_path,
             sock_path: DEFAULT_SOCK_PATH.to_string(),
@@ -184,7 +185,9 @@ impl KanidmUnixdConfig {
             uid_attr_map: DEFAULT_UID_ATTR_MAP,
             gid_attr_map: DEFAULT_GID_ATTR_MAP,
             selinux: DEFAULT_SELINUX,
-            tpm_policy: TpmPolicy::default(),
+            hsm_pin_path,
+            hsm_type: HsmType::default(),
+            tpm_tcti_name: DEFAULT_TPM_TCTI_NAME.to_string(),
             allow_local_account_override: Vec::default(),
         }
     }
@@ -301,23 +304,21 @@ impl KanidmUnixdConfig {
                 true => selinux_util::supported(),
                 _ => false,
             },
-            tpm_policy: config
-                .tpm_policy
-                .and_then(|v| {
-                    let tpm_tcti_name = config
-                        .tpm_tcti_name
-                        .unwrap_or(DEFAULT_TPM_TCTI_NAME.to_string());
-                    match v.as_str() {
-                        "ignore" => Some(TpmPolicy::Ignore),
-                        "if_possible" => Some(TpmPolicy::IfPossible(tpm_tcti_name)),
-                        "required" => Some(TpmPolicy::Required(tpm_tcti_name)),
-                        _ => {
-                            warn!("Invalid tpm_policy configured, using default ...");
-                            None
-                        }
+            hsm_pin_path: config.hsm_pin_path.unwrap_or(self.hsm_pin_path),
+            hsm_type: config
+                .hsm_type
+                .and_then(|v| match v.as_str() {
+                    "soft" => Some(HsmType::Soft),
+                    "tpm" => Some(HsmType::Tpm),
+                    _ => {
+                        warn!("Invalid hsm_type configured, using default ...");
+                        None
                     }
                 })
-                .unwrap_or(self.tpm_policy),
+                .unwrap_or(self.hsm_type),
+            tpm_tcti_name: config
+                .tpm_tcti_name
+                .unwrap_or(DEFAULT_TPM_TCTI_NAME.to_string()),
             allow_local_account_override: config.allow_local_account_override,
         })
     }

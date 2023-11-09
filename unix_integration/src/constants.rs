@@ -15,3 +15,4 @@ pub const DEFAULT_UID_ATTR_MAP: UidAttr = UidAttr::Spn;
 pub const DEFAULT_GID_ATTR_MAP: UidAttr = UidAttr::Spn;
 pub const DEFAULT_SELINUX: bool = true;
 pub const DEFAULT_TPM_TCTI_NAME: &str = "device:/dev/tpmrm0";
+pub const DEFAULT_HSM_PIN_PATH: &str = "/etc/kanidm/unixd-hsm-pin";

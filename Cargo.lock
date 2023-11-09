@@ -1412,18 +1412,18 @@ dependencies = [
 
 [[package]]
 name = "enum-map"
-version = "2.7.0"
+version = "2.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "53337c2dbf26a3c31eccc73a37b10c1614e8d4ae99b6a50d553e8936423c1f16"
+checksum = "ed40247825a1a0393b91b51d475ea1063a6cbbf0847592e7f13fb427aca6a716"
 dependencies = [
  "enum-map-derive",
 ]
 
 [[package]]
 name = "enum-map-derive"
-version = "0.14.0"
+version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "04d0b288e3bb1d861c4403c1774a6f7a798781dfc519b3647df2a3dd4ae95f25"
+checksum = "7933cd46e720348d29ed1493f89df9792563f272f96d8f13d18afe03b32f8cb8"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1479,9 +1479,9 @@ checksum = "5443807d6dff69373d433ab9ef5378ad8df50ca6298caf15de6e52e24aaf54d5"
 
 [[package]]
 name = "errno"
-version = "0.3.5"
+version = "0.3.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ac3e13f66a2f95e32a39eaa81f6b95d42878ca0e1db0c7543723dfe12557e860"
+checksum = "7c18ee0ed65a5f1f81cac6b1d213b69c35fa47d4252ad41f1486dbd8226fe36e"
 dependencies = [
  "libc",
  "windows-sys 0.48.0",
@@ -1803,9 +1803,9 @@ dependencies = [
 
 [[package]]
 name = "getrandom"
-version = "0.2.10"
+version = "0.2.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "be4136b2a15dd319360be1c07d9933517ccf0be8f16bf62a3bee4f0d618df427"
+checksum = "fe9006bed769170c11f845cf00c7c1e9092aeb3f268e007c3e760ac68008070f"
 dependencies = [
  "cfg-if",
  "js-sys",
@@ -2950,6 +2950,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "kanidm-hsm-crypto"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2710fd18cfe2f774e6d1e743dae86ae9a7332cad1bb85cb66777f7ef63578410"
+dependencies = [
+ "argon2",
+ "openssl",
+ "serde",
+ "tracing",
+ "tss-esapi",
+ "zeroize",
+]
+
+[[package]]
 name = "kanidm-ipa-sync"
 version = "1.1.0-rc.15-dev"
 dependencies = [
@@ -3037,6 +3051,7 @@ dependencies = [
  "base64 0.21.5",
  "base64urlsafedata",
  "hex",
+ "kanidm-hsm-crypto",
  "kanidm_proto",
  "openssl",
  "openssl-sys",
@@ -3044,7 +3059,6 @@ dependencies = [
  "serde",
  "sketching",
  "tracing",
- "tss-esapi",
  "uuid",
 ]
 
@@ -3121,6 +3135,7 @@ dependencies = [
  "csv",
  "futures",
  "hashbrown 0.14.2",
+ "kanidm-hsm-crypto",
  "kanidm_build_profiles",
  "kanidm_client",
  "kanidm_lib_crypto",
@@ -3143,7 +3158,6 @@ dependencies = [
  "tokio-util",
  "toml",
  "tracing",
- "tss-esapi",
  "uuid",
  "walkdir",
 ]
@@ -3556,9 +3570,9 @@ dependencies = [
 
 [[package]]
 name = "linux-raw-sys"
-version = "0.4.10"
+version = "0.4.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "da2479e8c062e40bf0066ffa0bc823de0a9368974af99c9f6df941d2c231e03f"
+checksum = "969488b55f8ac402214f3f5fd243ebb7206cf82de60d3172994707a4bcc2b829"
 
 [[package]]
 name = "lock_api"
@@ -5040,9 +5054,9 @@ dependencies = [
 
 [[package]]
 name = "serde"
-version = "1.0.190"
+version = "1.0.192"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "91d3c334ca1ee894a2c6f6ad698fe8c435b76d504b13d436f0685d648d6d96f7"
+checksum = "bca2a08484b285dcb282d0f67b26cadc0df8b19f8c12502c13d966bf9482f001"
 dependencies = [
  "serde_derive",
 ]
@@ -5100,9 +5114,9 @@ dependencies = [
 
 [[package]]
 name = "serde_derive"
-version = "1.0.190"
+version = "1.0.192"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "67c5609f394e5c2bd7fc51efda478004ea80ef42fee983d5c67a65e34f32c0e3"
+checksum = "d6c7207fbec9faa48073f3e3074cbe553af6ea512d7c21ba46e434e70ea9fbc1"
 dependencies = [
  "proc-macro2",
  "quote",
