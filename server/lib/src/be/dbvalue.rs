@@ -697,6 +697,8 @@ pub enum DbValueSetV2 {
     EcKeyPrivate(Vec<u8>),
     #[serde(rename = "IM")]
     Image(Vec<DbValueImage>),
+    #[serde(rename = "CT")]
+    CredentialType(Vec<u16>),
 }
 
 impl DbValueSetV2 {
@@ -742,7 +744,8 @@ impl DbValueSetV2 {
             DbValueSetV2::AuditLogString(set) => set.len(),
             DbValueSetV2::Image(set) => set.len(),
             DbValueSetV2::EcKeyPrivate(_key) => 1, // here we have to hard code it because the Vec<u8>
-                                                   // represents the bytes of  SINGLE(!) key
+            // represents the bytes of  SINGLE(!) key
+            DbValueSetV2::CredentialType(set) => set.len(),
         }
     }
 

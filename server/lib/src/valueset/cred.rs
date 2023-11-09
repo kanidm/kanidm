@@ -1,3 +1,4 @@
+use smolset::SmolSet;
 use std::collections::btree_map::Entry as BTreeEntry;
 use std::collections::BTreeMap;
 
@@ -12,7 +13,7 @@ use crate::repl::proto::{
     ReplAttrV1, ReplCredV1, ReplDeviceKeyV4V1, ReplIntentTokenV1, ReplPasskeyV4V1,
 };
 use crate::schema::SchemaAttribute;
-use crate::value::{CredUpdateSessionPerms, IntentTokenState};
+use crate::value::{CredUpdateSessionPerms, CredentialType, IntentTokenState};
 use crate::valueset::{DbValueSetV2, ValueSet};
 
 #[derive(Debug, Clone)]
@@ -923,5 +924,154 @@ impl ValueSetT for ValueSetDeviceKey {
 
     fn as_devicekey_map(&self) -> Option<&BTreeMap<Uuid, (String, DeviceKeyV4)>> {
         Some(&self.map)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct ValueSetCredentialType {
+    set: SmolSet<[CredentialType; 1]>,
+}
+
+impl ValueSetCredentialType {
+    pub fn new(u: CredentialType) -> Box<Self> {
+        let mut set = SmolSet::new();
+        set.insert(u);
+        Box::new(ValueSetCredentialType { set })
+    }
+
+    pub fn push(&mut self, u: CredentialType) -> bool {
+        self.set.insert(u)
+    }
+
+    pub fn from_dbvs2(data: Vec<u16>) -> Result<ValueSet, OperationError> {
+        let set: Result<_, _> = data.into_iter().map(CredentialType::try_from).collect();
+        let set = set.map_err(|_| OperationError::InvalidValueState)?;
+        Ok(Box::new(ValueSetCredentialType { set }))
+    }
+
+    pub fn from_repl_v1(data: &[u16]) -> Result<ValueSet, OperationError> {
+        let set: Result<_, _> = data.iter().copied().map(CredentialType::try_from).collect();
+        let set = set.map_err(|_| OperationError::InvalidValueState)?;
+        Ok(Box::new(ValueSetCredentialType { set }))
+    }
+
+    // We need to allow this, because rust doesn't allow us to impl FromIterator on foreign
+    // types, and uuid is foreign.
+    #[allow(clippy::should_implement_trait)]
+    pub fn from_iter<T>(iter: T) -> Option<Box<Self>>
+    where
+        T: IntoIterator<Item = CredentialType>,
+    {
+        let set = iter.into_iter().collect();
+        Some(Box::new(ValueSetCredentialType { set }))
+    }
+}
+
+impl ValueSetT for ValueSetCredentialType {
+    fn insert_checked(&mut self, value: Value) -> Result<bool, OperationError> {
+        match value {
+            Value::CredentialType(u) => Ok(self.set.insert(u)),
+            _ => {
+                debug_assert!(false);
+                Err(OperationError::InvalidValueState)
+            }
+        }
+    }
+
+    fn clear(&mut self) {
+        self.set.clear();
+    }
+
+    fn remove(&mut self, pv: &PartialValue, _cid: &Cid) -> bool {
+        match pv {
+            PartialValue::CredentialType(u) => self.set.remove(u),
+            _ => {
+                debug_assert!(false);
+                true
+            }
+        }
+    }
+
+    fn contains(&self, pv: &PartialValue) -> bool {
+        match pv {
+            PartialValue::CredentialType(u) => self.set.contains(u),
+            _ => false,
+        }
+    }
+
+    fn substring(&self, _pv: &PartialValue) -> bool {
+        false
+    }
+
+    fn lessthan(&self, _pv: &PartialValue) -> bool {
+        false
+    }
+
+    fn len(&self) -> usize {
+        self.set.len()
+    }
+
+    fn generate_idx_eq_keys(&self) -> Vec<String> {
+        self.set.iter().map(|u| u.to_string()).collect()
+    }
+
+    fn syntax(&self) -> SyntaxType {
+        SyntaxType::CredentialType
+    }
+
+    fn validate(&self, _schema_attr: &SchemaAttribute) -> bool {
+        true
+    }
+
+    fn to_proto_string_clone_iter(&self) -> Box<dyn Iterator<Item = String> + '_> {
+        Box::new(self.set.iter().map(|ct| ct.to_string()))
+    }
+
+    fn to_db_valueset_v2(&self) -> DbValueSetV2 {
+        DbValueSetV2::CredentialType(self.set.iter().map(|s| *s as u16).collect())
+    }
+
+    fn to_repl_v1(&self) -> ReplAttrV1 {
+        ReplAttrV1::CredentialType {
+            set: self.set.iter().map(|s| *s as u16).collect(),
+        }
+    }
+
+    fn to_partialvalue_iter(&self) -> Box<dyn Iterator<Item = PartialValue> + '_> {
+        Box::new(self.set.iter().copied().map(PartialValue::CredentialType))
+    }
+
+    fn to_value_iter(&self) -> Box<dyn Iterator<Item = Value> + '_> {
+        Box::new(self.set.iter().copied().map(Value::CredentialType))
+    }
+
+    fn equal(&self, other: &ValueSet) -> bool {
+        if let Some(other) = other.as_credentialtype_set() {
+            &self.set == other
+        } else {
+            debug_assert!(false);
+            false
+        }
+    }
+
+    fn merge(&mut self, other: &ValueSet) -> Result<(), OperationError> {
+        if let Some(b) = other.as_credentialtype_set() {
+            mergesets!(self.set, b)
+        } else {
+            debug_assert!(false);
+            Err(OperationError::InvalidValueState)
+        }
+    }
+
+    fn to_credentialtype_single(&self) -> Option<CredentialType> {
+        if self.set.len() == 1 {
+            self.set.iter().copied().take(1).next()
+        } else {
+            None
+        }
+    }
+
+    fn as_credentialtype_set(&self) -> Option<&SmolSet<[CredentialType; 1]>> {
+        Some(&self.set)
     }
 }

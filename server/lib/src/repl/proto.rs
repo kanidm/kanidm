@@ -412,6 +412,9 @@ pub enum ReplAttrV1 {
     Image {
         set: Vec<DbValueImage>,
     },
+    CredentialType {
+        set: Vec<u16>,
+    },
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]

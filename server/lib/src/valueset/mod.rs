@@ -22,14 +22,17 @@ use crate::credential::{totp::Totp, Credential};
 use crate::prelude::*;
 use crate::repl::{cid::Cid, proto::ReplAttrV1};
 use crate::schema::SchemaAttribute;
-use crate::value::{Address, ApiToken, IntentTokenState, Oauth2Session, Session};
+use crate::value::{Address, ApiToken, CredentialType, IntentTokenState, Oauth2Session, Session};
 
 pub use self::address::{ValueSetAddress, ValueSetEmailAddress};
 pub use self::auditlogstring::{ValueSetAuditLogString, AUDIT_LOG_STRING_CAPACITY};
 pub use self::binary::{ValueSetPrivateBinary, ValueSetPublicBinary};
 pub use self::bool::ValueSetBool;
 pub use self::cid::ValueSetCid;
-pub use self::cred::{ValueSetCredential, ValueSetDeviceKey, ValueSetIntentToken, ValueSetPasskey};
+pub use self::cred::{
+    ValueSetCredential, ValueSetCredentialType, ValueSetDeviceKey, ValueSetIntentToken,
+    ValueSetPasskey,
+};
 pub use self::datetime::ValueSetDateTime;
 pub use self::eckey::ValueSetEcKeyPrivate;
 use self::image::ValueSetImage;
@@ -575,6 +578,16 @@ pub trait ValueSetT: std::fmt::Debug + DynClone {
         None
     }
 
+    fn to_credentialtype_single(&self) -> Option<CredentialType> {
+        debug_assert!(false);
+        None
+    }
+
+    fn as_credentialtype_set(&self) -> Option<&SmolSet<[CredentialType; 1]>> {
+        debug_assert!(false);
+        None
+    }
+
     fn repl_merge_valueset(
         &self,
         _older: &ValueSet,
@@ -650,6 +663,7 @@ pub fn from_result_value_iter(
         Value::AuditLogString(c, s) => ValueSetAuditLogString::new((c, s)),
         Value::EcKeyPrivate(k) => ValueSetEcKeyPrivate::new(&k),
         Value::Image(imagevalue) => image::ValueSetImage::new(imagevalue),
+        Value::CredentialType(c) => ValueSetCredentialType::new(c),
         Value::PhoneNumber(_, _)
         | Value::Passkey(_, _, _)
         | Value::DeviceKey(_, _, _)
@@ -716,8 +730,8 @@ pub fn from_value_iter(mut iter: impl Iterator<Item = Value>) -> Result<ValueSet
         Value::TotpSecret(l, t) => ValueSetTotpSecret::new(l, t),
         Value::AuditLogString(c, s) => ValueSetAuditLogString::new((c, s)),
         Value::EcKeyPrivate(k) => ValueSetEcKeyPrivate::new(&k),
-
         Value::Image(imagevalue) => image::ValueSetImage::new(imagevalue),
+        Value::CredentialType(c) => ValueSetCredentialType::new(c),
         Value::PhoneNumber(_, _) => {
             debug_assert!(false);
             return Err(OperationError::InvalidValueState);
@@ -774,6 +788,7 @@ pub fn from_db_valueset_v2(dbvs: DbValueSetV2) -> Result<ValueSet, OperationErro
             Err(OperationError::InvalidValueState)
         }
         DbValueSetV2::Image(set) => ValueSetImage::from_dbvs2(&set),
+        DbValueSetV2::CredentialType(set) => ValueSetCredentialType::from_dbvs2(set),
     }
 }
 
@@ -819,5 +834,6 @@ pub fn from_repl_v1(rv1: &ReplAttrV1) -> Result<ValueSet, OperationError> {
         ReplAttrV1::AuditLogString { map } => ValueSetAuditLogString::from_repl_v1(map),
         ReplAttrV1::EcKeyPrivate { key } => ValueSetEcKeyPrivate::from_repl_v1(key),
         ReplAttrV1::Image { set } => ValueSetImage::from_repl_v1(set),
+        ReplAttrV1::CredentialType { set } => ValueSetCredentialType::from_repl_v1(set),
     }
 }
