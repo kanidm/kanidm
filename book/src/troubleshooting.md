@@ -32,7 +32,7 @@ This means:
 
 If you see something like this:
 
-```
+```shell
 ➜ curl -v https://idm.example.com:8443
 *   Trying 10.0.0.1:8443...
 * connect to 10.0.0.1 port 8443 failed: Connection refused
@@ -47,7 +47,7 @@ some reason.
 If you get errors about certificates, try adding `-k` to skip certificate verification checking and
 just test connectivity:
 
-```
+```shell
 curl -vk https://idm.example.com:8443/status
 ```
 
@@ -86,4 +86,20 @@ to `1.1`. This can go in the same block as the `proxy_pass` option.
 
 ```text
 proxy_http_version 1.1
+```
+
+## OpenTelemetry errors
+
+If you see something like this:
+
+> `OpenTelemetry trace error occurred. Exporter otlp encountered the following error(s): the grpc server returns error (The system is not in a state required for the operation's execution): , detailed error message: TRACE_TOO_LARGE: max size of trace (5000000) exceeded while adding 86725 bytes to trace a657b63f6ca0415eb70b6734f20f82cf for tenant single-tenant`
+
+Then you'l need to tweak the maximum trace size in your OTLP receiver. In Grafana Tempo you can add
+the following keys to your `tempo.yaml`, in this example we're setting it to 20MiB:
+
+```yaml
+overrides:
+  defaults:
+    global:
+      max_bytes_per_trace: 20971520 # 20MiB
 ```

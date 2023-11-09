@@ -140,6 +140,7 @@ codespell:
 	--skip='./book/src/images/*' \
 	--skip='./docs/*,./.git' \
 	--skip='*.svg' \
+	--skip='*.br' \
 	--skip='./rlm_python/mods-available/eap' \
 	--skip='./server/web_ui/static/external' \
 	--skip='./server/web_ui/pkg/external' \

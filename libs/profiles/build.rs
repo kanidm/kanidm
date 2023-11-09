@@ -1,14 +1,28 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::{env, fs};
 
 use base64::{engine::general_purpose, Engine as _};
 
-// We do this here so it's only actually run and checked once.
+/// Work out where the workspace dir is
+fn workspace_dir() -> PathBuf {
+    let output = std::process::Command::new(env!("CARGO"))
+        .arg("locate-project")
+        .arg("--workspace")
+        .arg("--message-format=plain")
+        .output()
+        .unwrap()
+        .stdout;
+    let cargo_path = Path::new(std::str::from_utf8(&output).unwrap().trim());
+    cargo_path.parent().unwrap().to_path_buf()
+}
+
+// We do this here so it's only actually run and checked once at build time.
 fn determine_git_rev() -> Option<String> {
-    let path = PathBuf::from("../../");
-    let repo = match gix::open(path) {
+    let repo = match gix::open(workspace_dir()) {
         Ok(repo) => repo,
-        Err(_) => return None,
+        Err(_) => {
+            return None;
+        }
     };
     let mut head = repo.head().ok()?;
     let commit = head.peel_to_commit_in_place().ok()?;

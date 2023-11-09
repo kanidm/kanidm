@@ -1,7 +1,10 @@
 #![deny(warnings)]
 #![warn(unused_extern_crates)]
 #![allow(non_snake_case)]
+use std::str::FromStr;
+
 use num_enum::{IntoPrimitive, TryFromPrimitive};
+use serde::Deserialize;
 use tracing_forest::printer::TestCapturePrinter;
 use tracing_forest::tag::NoTag;
 use tracing_forest::util::*;
@@ -9,6 +12,7 @@ use tracing_forest::Tag;
 use tracing_subscriber::prelude::*;
 
 pub mod macros;
+pub mod otel;
 
 pub use {tracing, tracing_forest, tracing_subscriber};
 
@@ -93,6 +97,50 @@ impl EventTag {
             RequestTrace | FilterTrace | PerfTrace => "📍",
             SecurityCritical => "🔐",
             SecurityAccess => "🔓",
+        }
+    }
+}
+
+#[derive(Clone, Copy, Deserialize, Debug, Default)]
+pub enum LogLevel {
+    #[default]
+    #[serde(rename = "info")]
+    Info,
+    #[serde(rename = "debug")]
+    Debug,
+    #[serde(rename = "trace")]
+    Trace,
+}
+
+impl FromStr for LogLevel {
+    type Err = &'static str;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "info" => Ok(LogLevel::Info),
+            "debug" => Ok(LogLevel::Debug),
+            "trace" => Ok(LogLevel::Trace),
+            _ => Err("Must be one of info, debug, trace"),
+        }
+    }
+}
+
+impl ToString for LogLevel {
+    fn to_string(&self) -> String {
+        match self {
+            LogLevel::Info => "info".to_string(),
+            LogLevel::Debug => "debug".to_string(),
+            LogLevel::Trace => "trace".to_string(),
+        }
+    }
+}
+
+impl From<LogLevel> for EnvFilter {
+    fn from(value: LogLevel) -> Self {
+        match value {
+            LogLevel::Info => EnvFilter::new("info"),
+            LogLevel::Debug => EnvFilter::new("debug"),
+            LogLevel::Trace => EnvFilter::new("trace"),
         }
     }
 }

@@ -6,7 +6,7 @@ use hashbrown::HashMap;
 
 impl<'a> QueryServerWriteTransaction<'a> {
     #[instrument(level = "debug", skip_all)]
-    pub fn purge_tombstones(&mut self) -> Result<(), OperationError> {
+    pub fn purge_tombstones(&mut self) -> Result<usize, OperationError> {
         // purge everything that is a tombstone.
         let trim_cid = self.trim_cid().clone();
 
@@ -17,17 +17,18 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 error!(err = ?e, "Tombstone purge operation failed (backend)");
                 e
             })
-            .map(|_| {
+            .map(|res| {
                 admin_info!("Tombstone purge operation success");
+                res
             })
     }
 
     #[instrument(level = "debug", skip_all)]
-    pub fn purge_recycled(&mut self) -> Result<(), OperationError> {
+    pub fn purge_recycled(&mut self) -> Result<usize, OperationError> {
         // Send everything that is recycled to tombstone
         // Search all recycled
         let cid = self.cid.sub_secs(RECYCLEBIN_MAX_AGE).map_err(|e| {
-            admin_error!(err = ?e, "Unable to generate search cid");
+            admin_error!(err = ?e, "Unable to generate search cid for purge_recycled");
             e
         })?;
         let rc = self.internal_search(filter_all!(f_and!([
@@ -36,8 +37,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
         ])))?;
 
         if rc.is_empty() {
-            admin_info!("No recycled items present - purge operation success");
-            return Ok(());
+            admin_debug!("No recycled items present - purge operation success");
+            return Ok(0);
         }
 
         // Modify them to strip all avas except uuid
@@ -56,6 +57,9 @@ impl<'a> QueryServerWriteTransaction<'a> {
             .collect();
 
         let tombstone_cand = tombstone_cand?;
+        // it's enough to say "yeah we tried to touch this many" because
+        // we're using this to decide if we're going to commit the txn
+        let touched = tombstone_cand.len();
 
         // Backend Modify
         self.be_txn
@@ -66,6 +70,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             })
             .map(|_| {
                 admin_info!("Purge recycled operation success");
+                touched
             })
     }
 

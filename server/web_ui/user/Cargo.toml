@@ -28,7 +28,6 @@ serde_json = { workspace = true }
 serde-wasm-bindgen = { workspace = true }
 wasm-bindgen = { workspace = true }
 wasm-bindgen-futures = { workspace = true }
-url = { workspace = true }
 uuid = { workspace = true }
 yew = { workspace = true, features = ["csr"] }
 yew-router = { workspace = true }
