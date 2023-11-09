@@ -678,6 +678,13 @@ impl Credential {
         }
     }
 
+    pub fn is_mfa(&self) -> bool {
+        match &self.type_ {
+            CredentialType::Password(_) | CredentialType::GeneratedPassword(_) => false,
+            CredentialType::PasswordMfa(..) | CredentialType::Webauthn(_) => true,
+        }
+    }
+
     #[cfg(test)]
     pub fn verify_password(&self, cleartext: &str) -> Result<bool, OperationError> {
         self.password_ref().and_then(|pw| {

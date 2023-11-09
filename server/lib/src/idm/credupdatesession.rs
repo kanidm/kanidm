@@ -25,7 +25,7 @@ use crate::idm::server::{IdmServerCredUpdateTransaction, IdmServerProxyWriteTran
 use crate::prelude::*;
 use crate::server::access::Access;
 use crate::utils::{backup_code_from_random, readable_password_from_random, uuid_from_duration};
-use crate::value::{CredUpdateSessionPerms, IntentTokenState};
+use crate::value::{CredUpdateSessionPerms, CredentialType, IntentTokenState};
 
 use super::accountpolicy::ResolvedAccountPolicy;
 
@@ -150,34 +150,42 @@ impl CredentialUpdateSession {
     // properly how to proceed.
     fn can_commit(&self) -> (bool, Vec<CredentialUpdateSessionStatusWarnings>) {
         // Should be it's own PR and use account policy
-        let warnings = Vec::with_capacity(0);
+        let mut warnings = Vec::with_capacity(0);
 
-        let _cred_type_min = self.resolved_account_policy.credential_policy();
+        let cred_type_min = self.resolved_account_policy.credential_policy();
 
-        debug!(?_cred_type_min);
+        debug!(?cred_type_min);
 
-        /*
-        // We'll check policy here in future.
-        let is_primary_valid = match self.primary.as_ref() {
-            Some(Credential {
-                uuid: _,
-                type_: CredentialType::Password(_),
-            }) => {
-                // We refuse password-only auth now.
-                info!("Password only authentication.");
-                false
+        match cred_type_min {
+            CredentialType::Any => {}
+            CredentialType::Mfa => {
+                if self
+                    .primary
+                    .as_ref()
+                    .map(|cred| !cred.is_mfa())
+                    // If it's none, then we can proceed because we satisfy mfa on other
+                    // parts.
+                    .unwrap_or(false)
+                {
+                    warnings.push(CredentialUpdateSessionStatusWarnings::MfaRequired);
+                }
             }
-            // So far valid.
-            _ => true,
-        };
+            CredentialType::Passkey => {
+                // Primary can't be set at all.
+                if self.primary.is_some() {
+                    warnings.push(CredentialUpdateSessionStatusWarnings::PasskeyRequired);
+                }
+            }
+            // For now these error too.
+            CredentialType::AttestedPasskey
+            | CredentialType::AttestedResidentkey
+            | CredentialType::Invalid => {
+                // special case, must always deny all changes.
+                warnings.push(CredentialUpdateSessionStatusWarnings::Unsatisfiable)
+            }
+        }
 
-        info!("can_commit -> {}", is_primary_valid);
-
-        // For logic later.
-        is_primary_valid
-        */
-
-        (true, warnings)
+        (warnings.is_empty(), warnings)
     }
 }
 
@@ -208,6 +216,8 @@ impl fmt::Debug for MfaRegStateStatus {
 #[derive(Debug, PartialEq, Eq)]
 pub enum CredentialUpdateSessionStatusWarnings {
     MfaRequired,
+    PasskeyRequired,
+    Unsatisfiable,
 }
 
 #[derive(Debug)]
@@ -3374,7 +3384,7 @@ mod tests {
 
         let modlist = ModifyList::new_purge_and_set(
             Attribute::CredentialTypeMinimum,
-            CredentialType::Mfa.into(),
+            CredentialType::Passkey.into(),
         );
         idms_prox_write
             .qs_write
@@ -3396,7 +3406,6 @@ mod tests {
             .expect("Failed to get the current session status.");
 
         trace!(?c_status);
-
         assert!(c_status.primary.is_none());
 
         // Test initially creating a credential.
@@ -3412,6 +3421,7 @@ mod tests {
             .credential_primary_set_password(&cust, ct, test_pw)
             .expect("Failed to update the primary cred password");
 
+        trace!(?c_status);
         assert!(!c_status.can_commit);
         assert!(c_status
             .warnings
