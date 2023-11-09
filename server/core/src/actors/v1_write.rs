@@ -1568,14 +1568,7 @@ impl QueryServerWriteV1 {
         let res = idms_prox_write
             .qs_write
             .purge_tombstones()
-            .and_then(|changed| {
-                // we don't need to commit the txn if there were no changes
-                if changed > 0 {
-                    idms_prox_write.commit()
-                } else {
-                    Ok(())
-                }
-            });
+            .and_then(|_changed| idms_prox_write.commit());
 
         match res {
             Ok(()) => {
