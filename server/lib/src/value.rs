@@ -406,6 +406,18 @@ impl fmt::Display for CredentialType {
     }
 }
 
+impl From<CredentialType> for Value {
+    fn from(ct: CredentialType) -> Value {
+        Value::CredentialType(ct)
+    }
+}
+
+impl From<CredentialType> for PartialValue {
+    fn from(ct: CredentialType) -> PartialValue {
+        PartialValue::CredentialType(ct)
+    }
+}
+
 /// A partial value is a key or key subset that can be used to match for equality or substring
 /// against a complete Value within a set in an Entry.
 ///

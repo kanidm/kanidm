@@ -1273,18 +1273,21 @@ lazy_static! {
             Attribute::Uuid,
             Attribute::AuthSessionExpiry,
             Attribute::AuthPasswordMinimumLength,
+            Attribute::CredentialTypeMinimum,
             Attribute::PrivilegeExpiry,
         ],
         modify_removed_attrs: vec![
             Attribute::Class,
             Attribute::AuthSessionExpiry,
             Attribute::AuthPasswordMinimumLength,
+            Attribute::CredentialTypeMinimum,
             Attribute::PrivilegeExpiry,
         ],
         modify_present_attrs: vec![
             Attribute::Class,
             Attribute::AuthSessionExpiry,
             Attribute::AuthPasswordMinimumLength,
+            Attribute::CredentialTypeMinimum,
             Attribute::PrivilegeExpiry,
         ],
         modify_classes: vec![

@@ -148,8 +148,13 @@ impl fmt::Debug for CredentialUpdateSession {
 impl CredentialUpdateSession {
     // In future this should be a Vec of the issues with the current session so that UI's can highlight
     // properly how to proceed.
-    fn can_commit(&self) -> bool {
+    fn can_commit(&self) -> (bool, Vec<CredentialUpdateSessionStatusWarnings>) {
         // Should be it's own PR and use account policy
+        let warnings = Vec::with_capacity(0);
+
+        let _cred_type_min = self.resolved_account_policy.credential_policy();
+
+        debug!(?_cred_type_min);
 
         /*
         // We'll check policy here in future.
@@ -172,7 +177,7 @@ impl CredentialUpdateSession {
         is_primary_valid
         */
 
-        true
+        (true, warnings)
     }
 }
 
@@ -200,6 +205,11 @@ impl fmt::Debug for MfaRegStateStatus {
     }
 }
 
+#[derive(Debug, PartialEq, Eq)]
+pub enum CredentialUpdateSessionStatusWarnings {
+    MfaRequired,
+}
+
 #[derive(Debug)]
 pub struct CredentialUpdateSessionStatus {
     spn: String,
@@ -209,6 +219,8 @@ pub struct CredentialUpdateSessionStatus {
     // Any info the client needs about mfareg state.
     mfaregstate: MfaRegStateStatus,
     can_commit: bool,
+    // If can_commit is false, this will have warnings populated.
+    warnings: Vec<CredentialUpdateSessionStatusWarnings>,
     primary: Option<CredentialDetail>,
     primary_can_edit: bool,
     passkeys: Vec<PasskeyDetail>,
@@ -255,11 +267,14 @@ impl Into<CUStatus> for CredentialUpdateSessionStatus {
 
 impl From<&CredentialUpdateSession> for CredentialUpdateSessionStatus {
     fn from(session: &CredentialUpdateSession) -> Self {
+        let (can_commit, warnings) = session.can_commit();
+
         CredentialUpdateSessionStatus {
             spn: session.account.spn.clone(),
             displayname: session.account.displayname.clone(),
             ext_cred_portal: session.ext_cred_portal.clone(),
-            can_commit: session.can_commit(),
+            can_commit,
+            warnings,
             primary: session.primary.as_ref().map(|c| c.into()),
             primary_can_edit: session.primary_can_edit,
             passkeys: session
@@ -1009,7 +1024,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             self.credential_update_commit_common(cust, ct)?;
 
         // Can we actually proceed?
-        if !session.can_commit() {
+        if !session.can_commit().0 {
             admin_error!("Session is unable to commit due to a constraint violation.");
             return Err(OperationError::InvalidState);
         }
@@ -1904,17 +1919,18 @@ mod tests {
     use webauthn_authenticator_rs::WebauthnAuthenticator;
 
     use super::{
-        CredentialUpdateSessionStatus, CredentialUpdateSessionToken, InitCredentialUpdateEvent,
-        InitCredentialUpdateIntentEvent, MfaRegStateStatus, MAXIMUM_CRED_UPDATE_TTL,
-        MAXIMUM_INTENT_TTL, MINIMUM_INTENT_TTL,
+        CredentialUpdateSessionStatus, CredentialUpdateSessionStatusWarnings,
+        CredentialUpdateSessionToken, InitCredentialUpdateEvent, InitCredentialUpdateIntentEvent,
+        MfaRegStateStatus, MAXIMUM_CRED_UPDATE_TTL, MAXIMUM_INTENT_TTL, MINIMUM_INTENT_TTL,
     };
     use crate::credential::totp::Totp;
     use crate::event::CreateEvent;
     use crate::idm::delayed::DelayedAction;
     use crate::idm::event::{AuthEvent, AuthResult, RegenerateRadiusSecretEvent};
-    use crate::idm::server::{IdmServer, IdmServerDelayed};
+    use crate::idm::server::{IdmServer, IdmServerCredUpdateTransaction, IdmServerDelayed};
     use crate::idm::AuthState;
     use crate::prelude::*;
+    use crate::value::CredentialType;
 
     const TEST_CURRENT_TIME: u64 = 6000;
     const TESTPERSON_UUID: Uuid = uuid!("cf231fea-1a8f-4410-a520-fd9b1a379c86");
@@ -2654,7 +2670,7 @@ mod tests {
         // Intentionally get it wrong.
         let c_status = cutxn
             .credential_primary_check_totp(&cust, ct, chal + 1, "totp")
-            .expect("Failed to update the primary cred password");
+            .expect("Failed to update the primary cred totp");
 
         assert!(matches!(
             c_status.mfaregstate,
@@ -2663,7 +2679,7 @@ mod tests {
 
         let c_status = cutxn
             .credential_primary_check_totp(&cust, ct, chal, "totp")
-            .expect("Failed to update the primary cred password");
+            .expect("Failed to update the primary cred totp");
 
         assert!(matches!(c_status.mfaregstate, MfaRegStateStatus::None));
         assert!(match c_status.primary.as_ref().map(|c| &c.type_) {
@@ -2972,20 +2988,13 @@ mod tests {
     // - remove webauthn
     // - test multiple webauthn token.
 
-    #[idm_test]
-    async fn test_idm_credential_update_onboarding_create_new_passkey(
-        idms: &IdmServer,
-        idms_delayed: &mut IdmServerDelayed,
-    ) {
-        let ct = Duration::from_secs(TEST_CURRENT_TIME);
-
-        let (cust, _) = setup_test_session(idms, ct).await;
-        let cutxn = idms.cred_update_transaction().await;
-        let origin = cutxn.get_origin().clone();
-
-        // Create a soft passkey
-        let mut wa = WebauthnAuthenticator::new(SoftPasskey::new(true));
-
+    async fn create_new_passkey(
+        ct: Duration,
+        origin: &Url,
+        cutxn: &IdmServerCredUpdateTransaction<'_>,
+        cust: &CredentialUpdateSessionToken,
+        wa: &mut WebauthnAuthenticator<SoftPasskey>,
+    ) -> CredentialUpdateSessionStatus {
         // Start the registration
         let c_status = cutxn
             .credential_passkey_init(&cust, ct)
@@ -3019,6 +3028,25 @@ mod tests {
         // Check we have the passkey
         trace!(?c_status);
         assert!(c_status.passkeys.len() == 1);
+
+        c_status
+    }
+
+    #[idm_test]
+    async fn test_idm_credential_update_onboarding_create_new_passkey(
+        idms: &IdmServer,
+        idms_delayed: &mut IdmServerDelayed,
+    ) {
+        let ct = Duration::from_secs(TEST_CURRENT_TIME);
+
+        let (cust, _) = setup_test_session(idms, ct).await;
+        let cutxn = idms.cred_update_transaction().await;
+        let origin = cutxn.get_origin().clone();
+
+        // Create a soft passkey
+        let mut wa = WebauthnAuthenticator::new(SoftPasskey::new(true));
+
+        let c_status = create_new_passkey(ct, &origin, &cutxn, &cust, &mut wa).await;
 
         // Get the UUID of the passkey here.
         let pk_uuid = c_status.passkeys.first().map(|pkd| pkd.uuid).unwrap();
@@ -3126,6 +3154,7 @@ mod tests {
             ext_cred_portal,
             mfaregstate: _,
             can_commit: _,
+            warnings: _,
             primary: _,
             primary_can_edit,
             passkeys: _,
@@ -3210,7 +3239,235 @@ mod tests {
         commit_session(idms, ct, cust).await;
     }
 
-    // W_ policy, assert can't remove MFA if it's enforced.
+    // Assert we can't create "just" a password when mfa is required.
+    #[idm_test]
+    async fn test_idm_credential_update_account_policy_mfa_required(
+        idms: &IdmServer,
+        _idms_delayed: &mut IdmServerDelayed,
+    ) {
+        let test_pw = "fo3EitierohF9AelaNgiem0Ei6vup4equo1Oogeevaetehah8Tobeengae3Ci0ooh0uki";
+        let ct = Duration::from_secs(TEST_CURRENT_TIME);
+
+        let mut idms_prox_write = idms.proxy_write(ct).await;
+
+        let modlist = ModifyList::new_purge_and_set(
+            Attribute::CredentialTypeMinimum,
+            CredentialType::Mfa.into(),
+        );
+        idms_prox_write
+            .qs_write
+            .internal_modify_uuid(UUID_IDM_ALL_ACCOUNTS, &modlist)
+            .expect("Unable to change default session exp");
+
+        assert!(idms_prox_write.commit().is_ok());
+        // This now will affect all accounts for the next cred update.
+
+        let (cust, _) = setup_test_session(idms, ct).await;
+
+        let cutxn = idms.cred_update_transaction().await;
+
+        // Get the credential status - this should tell
+        // us the details of the credentials, as well as
+        // if they are ready and valid to commit?
+        let c_status = cutxn
+            .credential_update_status(&cust, ct)
+            .expect("Failed to get the current session status.");
+
+        trace!(?c_status);
+
+        assert!(c_status.primary.is_none());
+
+        // Test initially creating a credential.
+        //   - pw first
+        let c_status = cutxn
+            .credential_primary_set_password(&cust, ct, test_pw)
+            .expect("Failed to update the primary cred password");
+
+        assert!(!c_status.can_commit);
+        assert!(c_status
+            .warnings
+            .contains(&CredentialUpdateSessionStatusWarnings::MfaRequired));
+        // Check reason! Must show "no mfa". We need totp to be added now.
+
+        let c_status = cutxn
+            .credential_primary_init_totp(&cust, ct)
+            .expect("Failed to update the primary cred password");
+
+        // Check the status has the token.
+        let totp_token: Totp = match c_status.mfaregstate {
+            MfaRegStateStatus::TotpCheck(secret) => Some(secret.try_into().unwrap()),
+
+            _ => None,
+        }
+        .expect("Unable to retrieve totp token, invalid state.");
+
+        trace!(?totp_token);
+        let chal = totp_token
+            .do_totp_duration_from_epoch(&ct)
+            .expect("Failed to perform totp step");
+
+        let c_status = cutxn
+            .credential_primary_check_totp(&cust, ct, chal, "totp")
+            .expect("Failed to update the primary cred totp");
+
+        assert!(matches!(c_status.mfaregstate, MfaRegStateStatus::None));
+        assert!(match c_status.primary.as_ref().map(|c| &c.type_) {
+            Some(CredentialDetailType::PasswordMfa(totp, _, 0)) => !totp.is_empty(),
+            _ => false,
+        });
+
+        // Done, can now commit.
+        assert!(c_status.can_commit);
+        assert!(c_status.warnings.is_empty());
+
+        drop(cutxn);
+        commit_session(idms, ct, cust).await;
+
+        // If we remove TOTP, it blocks commit.
+        let (cust, _) = renew_test_session(idms, ct).await;
+        let cutxn = idms.cred_update_transaction().await;
+
+        let c_status = cutxn
+            .credential_primary_remove_totp(&cust, ct, "totp")
+            .expect("Failed to update the primary cred totp");
+
+        assert!(matches!(c_status.mfaregstate, MfaRegStateStatus::None));
+        assert!(matches!(
+            c_status.primary.as_ref().map(|c| &c.type_),
+            Some(CredentialDetailType::Password)
+        ));
+
+        // Delete of the totp forces us back here.
+        assert!(!c_status.can_commit);
+        assert!(c_status
+            .warnings
+            .contains(&CredentialUpdateSessionStatusWarnings::MfaRequired));
+
+        // Passkeys satisfy the policy though
+        let c_status = cutxn
+            .credential_primary_delete(&cust, ct)
+            .expect("Failed to delete the primary credential");
+        assert!(c_status.primary.is_none());
+
+        let origin = cutxn.get_origin().clone();
+        let mut wa = WebauthnAuthenticator::new(SoftPasskey::new(true));
+
+        let c_status = create_new_passkey(ct, &origin, &cutxn, &cust, &mut wa).await;
+
+        assert!(c_status.can_commit);
+        assert!(c_status.warnings.is_empty());
+        assert!(c_status.passkeys.len() == 1);
+
+        drop(cutxn);
+        commit_session(idms, ct, cust).await;
+    }
+
+    #[idm_test]
+    async fn test_idm_credential_update_account_policy_passkey_required(
+        idms: &IdmServer,
+        _idms_delayed: &mut IdmServerDelayed,
+    ) {
+        let test_pw = "fo3EitierohF9AelaNgiem0Ei6vup4equo1Oogeevaetehah8Tobeengae3Ci0ooh0uki";
+        let ct = Duration::from_secs(TEST_CURRENT_TIME);
+
+        let mut idms_prox_write = idms.proxy_write(ct).await;
+
+        let modlist = ModifyList::new_purge_and_set(
+            Attribute::CredentialTypeMinimum,
+            CredentialType::Mfa.into(),
+        );
+        idms_prox_write
+            .qs_write
+            .internal_modify_uuid(UUID_IDM_ALL_ACCOUNTS, &modlist)
+            .expect("Unable to change default session exp");
+
+        assert!(idms_prox_write.commit().is_ok());
+        // This now will affect all accounts for the next cred update.
+
+        let (cust, _) = setup_test_session(idms, ct).await;
+
+        let cutxn = idms.cred_update_transaction().await;
+
+        // Get the credential status - this should tell
+        // us the details of the credentials, as well as
+        // if they are ready and valid to commit?
+        let c_status = cutxn
+            .credential_update_status(&cust, ct)
+            .expect("Failed to get the current session status.");
+
+        trace!(?c_status);
+
+        assert!(c_status.primary.is_none());
+
+        // Test initially creating a credential.
+        //
+        // Should this actually error on the passkey version? On Mfa we need to allow pw set
+        // because it's the path to totp setting, but for passkeys we should probably block this as
+        // a whole.
+        //
+        // Alternately we leave the api available, but we have a UI flag to disable adding pw. This
+        // way we still check and can set the values. It saves some more complex possible enums about
+        // the status?
+        let c_status = cutxn
+            .credential_primary_set_password(&cust, ct, test_pw)
+            .expect("Failed to update the primary cred password");
+
+        assert!(!c_status.can_commit);
+        assert!(c_status
+            .warnings
+            .contains(&CredentialUpdateSessionStatusWarnings::PasskeyRequired));
+        // Check reason! Must show "no mfa". We need totp to be added now.
+
+        let c_status = cutxn
+            .credential_primary_init_totp(&cust, ct)
+            .expect("Failed to update the primary cred password");
+
+        // Check the status has the token.
+        let totp_token: Totp = match c_status.mfaregstate {
+            MfaRegStateStatus::TotpCheck(secret) => Some(secret.try_into().unwrap()),
+
+            _ => None,
+        }
+        .expect("Unable to retrieve totp token, invalid state.");
+
+        trace!(?totp_token);
+        let chal = totp_token
+            .do_totp_duration_from_epoch(&ct)
+            .expect("Failed to perform totp step");
+
+        let c_status = cutxn
+            .credential_primary_check_totp(&cust, ct, chal, "totp")
+            .expect("Failed to update the primary cred totp");
+
+        assert!(matches!(c_status.mfaregstate, MfaRegStateStatus::None));
+        assert!(match c_status.primary.as_ref().map(|c| &c.type_) {
+            Some(CredentialDetailType::PasswordMfa(totp, _, 0)) => !totp.is_empty(),
+            _ => false,
+        });
+
+        assert!(!c_status.can_commit);
+        assert!(c_status
+            .warnings
+            .contains(&CredentialUpdateSessionStatusWarnings::PasskeyRequired));
+
+        // Get rid of the pw + totp so that the policy is satisfiable.
+        let c_status = cutxn
+            .credential_primary_delete(&cust, ct)
+            .expect("Failed to delete the primary credential");
+        assert!(c_status.primary.is_none());
+
+        let origin = cutxn.get_origin().clone();
+        let mut wa = WebauthnAuthenticator::new(SoftPasskey::new(true));
+
+        let c_status = create_new_passkey(ct, &origin, &cutxn, &cust, &mut wa).await;
+
+        assert!(c_status.can_commit);
+        assert!(c_status.warnings.is_empty());
+        assert!(c_status.passkeys.len() == 1);
+
+        drop(cutxn);
+        commit_session(idms, ct, cust).await;
+    }
 
     // enroll trusted device
     // remove trusted device.

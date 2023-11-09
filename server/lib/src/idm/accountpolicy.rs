@@ -1,39 +1,13 @@
 use crate::prelude::*;
+use crate::value::CredentialType;
 // use crate::idm::server::IdmServerProxyWriteTransaction;
-
-#[derive(Copy, Clone, Debug, Ord, PartialOrd, Eq, PartialEq, Default)]
-#[repr(u32)]
-pub(crate) enum CredentialPolicy {
-    #[default]
-    NoPolicy = 0,
-    MfaRequired = 10,
-    PasskeyRequired = 20,
-    AttestedPasskeyRequired = 30,
-    AttestedResidentKeyRequired = 40,
-}
-
-impl From<u32> for CredentialPolicy {
-    fn from(value: u32) -> Self {
-        if value >= CredentialPolicy::AttestedResidentKeyRequired as u32 {
-            CredentialPolicy::AttestedResidentKeyRequired
-        } else if value >= CredentialPolicy::AttestedPasskeyRequired as u32 {
-            CredentialPolicy::AttestedPasskeyRequired
-        } else if value >= CredentialPolicy::PasskeyRequired as u32 {
-            CredentialPolicy::PasskeyRequired
-        } else if value >= CredentialPolicy::MfaRequired as u32 {
-            CredentialPolicy::MfaRequired
-        } else {
-            CredentialPolicy::NoPolicy
-        }
-    }
-}
 
 #[derive(Clone)]
 pub(crate) struct AccountPolicy {
     privilege_expiry: u32,
     authsession_expiry: u32,
     pw_min_length: u32,
-    credential_policy: CredentialPolicy,
+    credential_policy: CredentialType,
 }
 
 impl From<&EntrySealedCommitted> for Option<AccountPolicy> {
@@ -54,7 +28,10 @@ impl From<&EntrySealedCommitted> for Option<AccountPolicy> {
         let pw_min_length = val
             .get_ava_single_uint32(Attribute::AuthPasswordMinimumLength)
             .unwrap_or(PW_MIN_LENGTH);
-        let credential_policy = CredentialPolicy::default();
+
+        let credential_policy = val
+            .get_ava_single_credential_type(Attribute::CredentialTypeMinimum)
+            .unwrap_or(CredentialType::Any);
 
         Some(AccountPolicy {
             privilege_expiry,
@@ -71,7 +48,7 @@ pub(crate) struct ResolvedAccountPolicy {
     privilege_expiry: u32,
     authsession_expiry: u32,
     pw_min_length: u32,
-    credential_policy: CredentialPolicy,
+    credential_policy: CredentialType,
 }
 
 impl ResolvedAccountPolicy {
@@ -84,7 +61,7 @@ impl ResolvedAccountPolicy {
             privilege_expiry: MAXIMUM_AUTH_PRIVILEGE_EXPIRY,
             authsession_expiry: MAXIMUM_AUTH_SESSION_EXPIRY,
             pw_min_length: PW_MIN_LENGTH,
-            credential_policy: CredentialPolicy::default(),
+            credential_policy: CredentialType::Any,
         };
 
         iter.for_each(|acc_pol| {
@@ -124,16 +101,14 @@ impl ResolvedAccountPolicy {
         self.pw_min_length
     }
 
-    /*
-    pub(crate) fn credential_policy(&self) -> CredentialPolicy {
+    pub(crate) fn credential_policy(&self) -> CredentialType {
         self.credential_policy
     }
-    */
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{AccountPolicy, CredentialPolicy, ResolvedAccountPolicy};
+    use super::{AccountPolicy, CredentialType, ResolvedAccountPolicy};
     // use crate::prelude::*;
 
     #[test]
@@ -142,14 +117,14 @@ mod tests {
             privilege_expiry: 100,
             authsession_expiry: 100,
             pw_min_length: 11,
-            credential_policy: CredentialPolicy::MfaRequired,
+            credential_policy: CredentialType::Mfa,
         };
 
         let policy_b = AccountPolicy {
             privilege_expiry: 150,
             authsession_expiry: 50,
             pw_min_length: 15,
-            credential_policy: CredentialPolicy::PasskeyRequired,
+            credential_policy: CredentialType::Passkey,
         };
 
         let rap = ResolvedAccountPolicy::fold_from([policy_a, policy_b].into_iter());
@@ -157,7 +132,7 @@ mod tests {
         assert_eq!(rap.privilege_expiry(), 100);
         assert_eq!(rap.authsession_expiry(), 50);
         assert_eq!(rap.pw_min_length(), 15);
-        assert_eq!(rap.credential_policy, CredentialPolicy::PasskeyRequired);
+        assert_eq!(rap.credential_policy, CredentialType::Passkey);
     }
 
     /*

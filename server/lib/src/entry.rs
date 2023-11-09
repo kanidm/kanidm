@@ -59,7 +59,8 @@ use crate::repl::proto::{ReplEntryV1, ReplIncrementalEntryV1};
 
 use crate::schema::{SchemaAttribute, SchemaClass, SchemaTransaction};
 use crate::value::{
-    ApiToken, IndexType, IntentTokenState, Oauth2Session, PartialValue, Session, SyntaxType, Value,
+    ApiToken, CredentialType, IndexType, IntentTokenState, Oauth2Session, PartialValue, Session,
+    SyntaxType, Value,
 };
 use crate::valueset::{self, ValueSet};
 
@@ -2555,6 +2556,13 @@ impl<VALID, STATE> Entry<VALID, STATE> {
             .get(attr.as_ref())
             .and_then(|vs| vs.as_imageset())?;
         images.iter().next().cloned()
+    }
+
+    #[inline(always)]
+    pub fn get_ava_single_credential_type(&self, attr: Attribute) -> Option<CredentialType> {
+        self.attrs
+            .get(attr.as_ref())
+            .and_then(|vs| vs.to_credentialtype_single())
     }
 
     #[inline(always)]
