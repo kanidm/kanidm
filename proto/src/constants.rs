@@ -61,6 +61,7 @@ pub const ATTR_CLASSNAME: &str = "classname";
 pub const ATTR_CN: &str = "cn";
 pub const ATTR_COOKIE_PRIVATE_KEY: &str = "cookie_private_key";
 pub const ATTR_CREDENTIAL_UPDATE_INTENT_TOKEN: &str = "credential_update_intent_token";
+pub const ATTR_CREDENTIAL_TYPE_MINIMUM: &str = "credential_type_minimum";
 pub const ATTR_DENIED_NAME: &str = "denied_name";
 pub const ATTR_DESCRIPTION: &str = "description";
 pub const ATTR_DEVICEKEYS: &str = "devicekeys";
