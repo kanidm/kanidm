@@ -8,7 +8,7 @@ use sshkey_attest::proto::PublicKey as SshPublicKey;
 
 use hashbrown::HashSet;
 use kanidm_proto::v1::{
-    CUCredState, CUExtPortal, CURegState, CUStatus, CredentialDetail, PasskeyDetail,
+    CUCredState, CUExtPortal, CURegState, CURegWarning, CUStatus, CredentialDetail, PasskeyDetail,
     PasswordFeedback, TotpSecret,
 };
 use serde::{Deserialize, Serialize};
@@ -192,6 +192,7 @@ impl CredentialUpdateSession {
                 }
             }
             CredentialType::Passkey => {
+                // NOTE: Technically this is unreachable, but we keep it for correctness.
                 // Primary can't be set at all.
                 if self.primary.is_some() {
                     warnings.push(CredentialUpdateSessionStatusWarnings::PasskeyRequired);
@@ -234,11 +235,21 @@ impl fmt::Debug for MfaRegStateStatus {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum CredentialUpdateSessionStatusWarnings {
     MfaRequired,
     PasskeyRequired,
     Unsatisfiable,
+}
+
+impl Into<CURegWarning> for CredentialUpdateSessionStatusWarnings {
+    fn into(self) -> CURegWarning {
+        match self {
+            CredentialUpdateSessionStatusWarnings::MfaRequired => CURegWarning::MfaRequired,
+            CredentialUpdateSessionStatusWarnings::PasskeyRequired => CURegWarning::PasskeyRequired,
+            CredentialUpdateSessionStatusWarnings::Unsatisfiable => CURegWarning::Unsatisfiable,
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -288,6 +299,7 @@ impl Into<CUStatus> for CredentialUpdateSessionStatus {
                 MfaRegStateStatus::Passkey(r) => CURegState::Passkey(r),
             },
             can_commit: self.can_commit,
+            warnings: self.warnings.into_iter().map(|w| w.into()).collect(),
             primary: self.primary,
             primary_state: self.primary_state.into(),
             passkeys: self.passkeys,
@@ -3466,48 +3478,6 @@ mod tests {
             .credential_primary_set_password(&cust, ct, test_pw)
             .unwrap_err();
         assert!(matches!(err, OperationError::AccessDenied));
-
-        /*
-        // Check reason! Must show "no mfa". We need totp to be added now.
-
-        let c_status = cutxn
-            .credential_primary_init_totp(&cust, ct)
-            .expect("Failed to update the primary cred password");
-
-        // Check the status has the token.
-        let totp_token: Totp = match c_status.mfaregstate {
-            MfaRegStateStatus::TotpCheck(secret) => Some(secret.try_into().unwrap()),
-
-            _ => None,
-        }
-        .expect("Unable to retrieve totp token, invalid state.");
-
-        trace!(?totp_token);
-        let chal = totp_token
-            .do_totp_duration_from_epoch(&ct)
-            .expect("Failed to perform totp step");
-
-        let c_status = cutxn
-            .credential_primary_check_totp(&cust, ct, chal, "totp")
-            .expect("Failed to update the primary cred totp");
-
-        assert!(matches!(c_status.mfaregstate, MfaRegStateStatus::None));
-        assert!(match c_status.primary.as_ref().map(|c| &c.type_) {
-            Some(CredentialDetailType::PasswordMfa(totp, _, 0)) => !totp.is_empty(),
-            _ => false,
-        });
-
-        assert!(!c_status.can_commit);
-        assert!(c_status
-            .warnings
-            .contains(&CredentialUpdateSessionStatusWarnings::PasskeyRequired));
-
-        // Get rid of the pw + totp so that the policy is satisfiable.
-        let c_status = cutxn
-            .credential_primary_delete(&cust, ct)
-            .expect("Failed to delete the primary credential");
-        assert!(c_status.primary.is_none());
-        */
 
         let origin = cutxn.get_origin().clone();
         let mut wa = WebauthnAuthenticator::new(SoftPasskey::new(true));

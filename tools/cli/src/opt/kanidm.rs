@@ -125,6 +125,14 @@ pub enum GroupAccountPolicyOpt {
         #[clap(flatten)]
         copt: CommonOpt,
     },
+    /// Set the maximum time for session expiry
+    #[clap(name = "credential-type-minimum")]
+    CredentialTypeMinimum {
+        name: String,
+        value: String,
+        #[clap(flatten)]
+        copt: CommonOpt,
+    },
     /// Set the minimum length of passwords for accounts
     #[clap(name = "password-minimum-length")]
     PasswordMinimumLength {

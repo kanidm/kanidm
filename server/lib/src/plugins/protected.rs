@@ -17,7 +17,7 @@ pub struct Protected {}
 
 lazy_static! {
     static ref ALLOWED_ATTRS: HashSet<Attribute> = {
-        let mut m = HashSet::with_capacity(16);
+        let mut m = HashSet::with_capacity(32);
         // Allow modification of some schema class types to allow local extension
         // of schema types.
         //
@@ -35,6 +35,7 @@ lazy_static! {
         // Allow modification of account policy values for dyngroups
         m.insert(Attribute::AuthSessionExpiry);
         m.insert(Attribute::PrivilegeExpiry);
+        m.insert(Attribute::CredentialTypeMinimum);
         m
     };
 }

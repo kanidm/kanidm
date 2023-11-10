@@ -6,6 +6,7 @@ impl GroupAccountPolicyOpt {
         match self {
             GroupAccountPolicyOpt::Enable { copt, .. }
             | GroupAccountPolicyOpt::AuthSessionExpiry { copt, .. }
+            | GroupAccountPolicyOpt::CredentialTypeMinimum { copt, .. }
             | GroupAccountPolicyOpt::PasswordMinimumLength { copt, .. }
             | GroupAccountPolicyOpt::PrivilegedSessionExpiry { copt, .. } => copt.debug,
         }
@@ -30,6 +31,17 @@ impl GroupAccountPolicyOpt {
                     handle_client_error(e, copt.output_mode);
                 } else {
                     println!("Updated authsession expiry.");
+                }
+            }
+            GroupAccountPolicyOpt::CredentialTypeMinimum { name, value, copt } => {
+                let client = copt.to_client(OpType::Write).await;
+                if let Err(e) = client
+                    .group_account_policy_credential_type_minimum(name, value)
+                    .await
+                {
+                    handle_client_error(e, copt.output_mode);
+                } else {
+                    println!("Updated credential type minimum expiry.");
                 }
             }
             GroupAccountPolicyOpt::PasswordMinimumLength { name, length, copt } => {

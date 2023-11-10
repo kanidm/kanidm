@@ -21,6 +21,18 @@ impl KanidmClient {
         .await
     }
 
+    pub async fn group_account_policy_credential_type_minimum(
+        &self,
+        id: &str,
+        value: &str,
+    ) -> Result<(), ClientError> {
+        self.perform_put_request(
+            &format!("/v1/group/{}/_attr/credential_type_minimum", id),
+            vec![value.to_string()],
+        )
+        .await
+    }
+
     pub async fn group_account_policy_password_minimum_length_set(
         &self,
         id: &str,

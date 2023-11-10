@@ -10,7 +10,8 @@ use kanidm_proto::constants::{ATTR_ACCOUNT_EXPIRE, ATTR_ACCOUNT_VALID_FROM};
 use kanidm_proto::messages::{AccountChangeMessage, ConsoleOutputMode, MessageStatus};
 use kanidm_proto::v1::OperationError::PasswordQuality;
 use kanidm_proto::v1::{
-    CUExtPortal, CUIntentToken, CURegState, CUSessionToken, CUStatus, TotpSecret,
+    CUCredState, CUExtPortal, CUIntentToken, CURegState, CURegWarning, CUSessionToken, CUStatus,
+    TotpSecret,
 };
 use kanidm_proto::v1::{CredentialDetail, CredentialDetailType};
 use qrcode::render::unicode;
@@ -890,10 +891,11 @@ fn display_status(status: CUStatus) {
         ext_cred_portal,
         mfaregstate: _,
         can_commit,
+        warnings,
         primary,
-        primary_can_edit,
+        primary_state,
         passkeys,
-        passkeys_can_edit,
+        passkeys_state,
     } = status;
 
     println!("spn: {}", spn);
@@ -902,39 +904,66 @@ fn display_status(status: CUStatus) {
     match ext_cred_portal {
         CUExtPortal::None => {}
         CUExtPortal::Hidden => {
-            println!("Externally Managed: Contact your admin to update your account details.");
+            println!("Externally Managed: Not all features may be avaliable");
+            println!("    Contact your admin for more details.");
         }
         CUExtPortal::Some(url) => {
-            println!(
-                "Externally Managed: Visit {} to update your account details.",
-                url.as_str()
-            );
+            println!("Externally Managed: Not all features may be avaliable");
+            println!("    Visit {} to update your account details.", url.as_str());
         }
     };
 
-    println!("Primary Credential:");
-    if primary_can_edit {
-        if let Some(cred_detail) = &primary {
-            print!("{}", cred_detail);
-        } else {
-            println!("  not set");
-        }
-    } else {
-        println!("  unable to modify");
-    };
-
-    println!("Passkeys:");
-    if passkeys_can_edit {
-        if passkeys.is_empty() {
-            println!("  not set");
-        } else {
-            for pk in passkeys {
-                println!("  {} ({})", pk.tag, pk.uuid);
+    for warning in warnings {
+        print!(" ⚠️   ");
+        match warning {
+            CURegWarning::MfaRequired => {
+                println!("Multifactor authentication required - add totp, or use passkeys");
+            }
+            CURegWarning::PasskeyRequired => {
+                println!("Passkeys required");
+            }
+            CURegWarning::Unsatisfiable => {
+                println!("Account policy is unsatisfiable. Contact your administrator.");
             }
         }
-    } else {
-        println!("  unable to modify");
-    };
+    }
+
+    println!("Primary Credential:");
+
+    match primary_state {
+        CUCredState::Modifiable => {
+            if let Some(cred_detail) = &primary {
+                print!("{}", cred_detail);
+            } else {
+                println!("  not set");
+            }
+        }
+        CUCredState::AccessDeny => {
+            println!("  unable to modify - access denied");
+        }
+        CUCredState::PolicyDeny => {
+            println!("  unable to modify - account policy denied");
+        }
+    }
+
+    println!("Passkeys:");
+    match passkeys_state {
+        CUCredState::Modifiable => {
+            if passkeys.is_empty() {
+                println!("  not set");
+            } else {
+                for pk in passkeys {
+                    println!("  {} ({})", pk.tag, pk.uuid);
+                }
+            }
+        }
+        CUCredState::AccessDeny => {
+            println!("  unable to modify - access denied");
+        }
+        CUCredState::PolicyDeny => {
+            println!("  unable to modify - account policy denied");
+        }
+    }
 
     // We may need to be able to display if there are dangling
     // curegstates, but the cli ui statemachine can match the
