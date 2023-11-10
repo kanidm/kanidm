@@ -230,6 +230,7 @@ impl SchemaAttribute {
             SyntaxType::TotpSecret => matches!(v, PartialValue::Utf8(_)),
             SyntaxType::AuditLogString => matches!(v, PartialValue::Utf8(_)),
             SyntaxType::Image => matches!(v, PartialValue::Utf8(_)),
+            SyntaxType::CredentialType => matches!(v, PartialValue::CredentialType(_)),
         };
         if r {
             Ok(())
@@ -282,6 +283,7 @@ impl SchemaAttribute {
                 SyntaxType::AuditLogString => matches!(v, Value::Utf8(_)),
                 SyntaxType::EcKeyPrivate => matches!(v, Value::EcKeyPrivate(_)),
                 SyntaxType::Image => matches!(v, Value::Image(_)),
+                SyntaxType::CredentialType => matches!(v, Value::CredentialType(_)),
             };
         if r {
             Ok(())

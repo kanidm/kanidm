@@ -259,6 +259,7 @@ pub enum SyntaxType {
     AuditLogString = 32,
     EcKeyPrivate = 33,
     Image = 34,
+    CredentialType = 35,
 }
 
 impl TryFrom<&str> for SyntaxType {
@@ -302,6 +303,7 @@ impl TryFrom<&str> for SyntaxType {
             "APITOKEN" => Ok(SyntaxType::ApiToken),
             "AUDIT_LOG_STRING" => Ok(SyntaxType::AuditLogString),
             "EC_KEY_PRIVATE" => Ok(SyntaxType::EcKeyPrivate),
+            "CREDENTIAL_TYPE" => Ok(SyntaxType::CredentialType),
             _ => Err(()),
         }
     }
@@ -345,7 +347,74 @@ impl fmt::Display for SyntaxType {
             SyntaxType::AuditLogString => "AUDIT_LOG_STRING",
             SyntaxType::EcKeyPrivate => "EC_KEY_PRIVATE",
             SyntaxType::Image => "IMAGE",
+            SyntaxType::CredentialType => "CREDENTIAL_TYPE",
         })
+    }
+}
+
+#[derive(
+    Hash,
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Deserialize,
+    Serialize,
+    TryFromPrimitive,
+    Default,
+)]
+#[repr(u16)]
+pub enum CredentialType {
+    Any = 0,
+    #[default]
+    Mfa = 10,
+    Passkey = 20,
+    AttestedPasskey = 30,
+    AttestedResidentkey = 40,
+    Invalid = u16::MAX,
+}
+
+impl TryFrom<&str> for CredentialType {
+    type Error = ();
+
+    fn try_from(value: &str) -> Result<CredentialType, Self::Error> {
+        match value {
+            "any" => Ok(CredentialType::Any),
+            "mfa" => Ok(CredentialType::Mfa),
+            "passkey" => Ok(CredentialType::Passkey),
+            "attested_passkey" => Ok(CredentialType::AttestedPasskey),
+            "attested_residentkey" => Ok(CredentialType::AttestedResidentkey),
+            "invalid" => Ok(CredentialType::Invalid),
+            _ => Err(()),
+        }
+    }
+}
+
+impl fmt::Display for CredentialType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str(match self {
+            CredentialType::Any => "any",
+            CredentialType::Mfa => "mfa",
+            CredentialType::Passkey => "passkey",
+            CredentialType::AttestedPasskey => "attested_passkey",
+            CredentialType::AttestedResidentkey => "attested_residentkey",
+            CredentialType::Invalid => "invalid",
+        })
+    }
+}
+
+impl From<CredentialType> for Value {
+    fn from(ct: CredentialType) -> Value {
+        Value::CredentialType(ct)
+    }
+}
+
+impl From<CredentialType> for PartialValue {
+    fn from(ct: CredentialType) -> PartialValue {
+        PartialValue::CredentialType(ct)
     }
 }
 
@@ -395,6 +464,7 @@ pub enum PartialValue {
     DeviceKey(Uuid),
     /// We compare on the value hash
     Image(String),
+    CredentialType(CredentialType),
 }
 
 impl From<SyntaxType> for PartialValue {
@@ -772,6 +842,7 @@ impl PartialValue {
             PartialValue::IntentToken(u) => u.clone(),
             PartialValue::UiHint(u) => (*u as u16).to_string(),
             PartialValue::Image(imagehash) => imagehash.to_owned(),
+            PartialValue::CredentialType(ct) => ct.to_string(),
         }
     }
 
@@ -967,6 +1038,7 @@ pub enum Value {
     EcKeyPrivate(EcKey<Private>),
 
     Image(ImageValue),
+    CredentialType(CredentialType),
 }
 
 impl PartialEq for Value {
@@ -1773,7 +1845,8 @@ impl Value {
             | Value::Oauth2Session(_, _)
             | Value::JwsKeyRs256(_)
             | Value::EcKeyPrivate(_)
-            | Value::UiHint(_) => true,
+            | Value::UiHint(_)
+            | Value::CredentialType(_) => true,
         }
     }
 

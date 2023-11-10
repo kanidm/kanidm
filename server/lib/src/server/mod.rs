@@ -26,7 +26,7 @@ use crate::schema::{
     Schema, SchemaAttribute, SchemaClass, SchemaReadTransaction, SchemaTransaction,
     SchemaWriteTransaction,
 };
-use crate::value::EXTRACT_VAL_DN;
+use crate::value::{CredentialType, EXTRACT_VAL_DN};
 use crate::valueset::uuid_to_proto_string;
 
 use self::access::{
@@ -539,6 +539,9 @@ pub trait QueryServerTransaction<'a> {
                         .ok_or_else(|| OperationError::InvalidAttribute("Invalid Syntax syntax".to_string())),
                     SyntaxType::IndexId => Value::new_indexes(value)
                         .ok_or_else(|| OperationError::InvalidAttribute("Invalid Index syntax".to_string())),
+                    SyntaxType::CredentialType => CredentialType::try_from(value)
+                        .map(Value::CredentialType)
+                        .map_err(|()| OperationError::InvalidAttribute("Invalid CredentialType syntax".to_string())),
                     SyntaxType::Uuid => {
                         // Attempt to resolve this name to a uuid. If it's already a uuid, then
                         // name to uuid will "do the right thing" and give us the Uuid back.
@@ -627,6 +630,13 @@ pub trait QueryServerTransaction<'a> {
                     SyntaxType::IndexId => PartialValue::new_indexes(value).ok_or_else(|| {
                         OperationError::InvalidAttribute("Invalid Index syntax".to_string())
                     }),
+                    SyntaxType::CredentialType => CredentialType::try_from(value)
+                        .map(PartialValue::CredentialType)
+                        .map_err(|()| {
+                            OperationError::InvalidAttribute(
+                                "Invalid CredentialType syntax".to_string(),
+                            )
+                        }),
                     SyntaxType::Uuid => {
                         let un = self.name_to_uuid(value).unwrap_or(UUID_DOES_NOT_EXIST);
                         Ok(PartialValue::Uuid(un))

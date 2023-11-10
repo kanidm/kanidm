@@ -560,7 +560,7 @@ pub static ref SCHEMA_ATTR_GRANT_UI_HINT: SchemaAttribute = SchemaAttribute {
 pub static ref SCHEMA_ATTR_SYNC_CREDENTIAL_PORTAL: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_SYNC_CREDENTIAL_PORTAL,
     name: Attribute::SyncCredentialPortal.into(),
-    description: "The url of an external credential portal for synced accounts to visit to update their credentials.to_string().".to_string(),
+    description: "The url of an external credential portal for synced accounts to visit to update their credentials.".to_string(),
 
     syntax: SyntaxType::Url,
     ..Default::default()
@@ -569,10 +569,20 @@ pub static ref SCHEMA_ATTR_SYNC_CREDENTIAL_PORTAL: SchemaAttribute = SchemaAttri
 pub static ref SCHEMA_ATTR_SYNC_YIELD_AUTHORITY: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_SYNC_YIELD_AUTHORITY,
     name: Attribute::SyncYieldAuthority.into(),
-    description: "A set of attributes that have their authority yielded to Kanidm in a sync agreement.to_string().".to_string(),
+    description: "A set of attributes that have their authority yielded to Kanidm in a sync agreement".to_string(),
 
     multivalue: true,
     syntax: SyntaxType::Utf8StringInsensitive,
+    ..Default::default()
+};
+
+pub static ref SCHEMA_ATTR_CREDENTIAL_TYPE_MINIMUM: SchemaAttribute = SchemaAttribute {
+    uuid: UUID_SCHEMA_ATTR_CREDENTIAL_TYPE_MINIMUM,
+    name: Attribute::CredentialTypeMinimum.into(),
+    description: "The minimum level of credential type that can satisfy this policy".to_string(),
+
+    multivalue: false,
+    syntax: SyntaxType::CredentialType,
     ..Default::default()
 };
 
@@ -647,6 +657,7 @@ pub static ref SCHEMA_CLASS_ACCOUNT_POLICY: SchemaClass = SchemaClass {
         Attribute::AuthSessionExpiry.into(),
         Attribute::PrivilegeExpiry.into(),
         Attribute::AuthPasswordMinimumLength.into(),
+        Attribute::CredentialTypeMinimum.into()
     ],
     systemsupplements: vec![Attribute::Group.into()],
     ..Default::default()

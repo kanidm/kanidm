@@ -1,7 +1,7 @@
 use gloo::console;
 use kanidm_proto::v1::{
-    CUExtPortal, CUIntentToken, CUSessionToken, CUStatus, CredentialDetail, CredentialDetailType,
-    PasskeyDetail,
+    CUCredState, CUExtPortal, CUIntentToken, CURegWarning, CUSessionToken, CUStatus,
+    CredentialDetail, CredentialDetailType, PasskeyDetail,
 };
 
 use kanidmd_web_ui_shared::constants::{CSS_ALERT_DANGER, URL_USER_HOME};
@@ -350,10 +350,11 @@ impl CredentialResetApp {
             ext_cred_portal,
             mfaregstate: _,
             can_commit,
+            warnings,
             primary,
-            primary_can_edit,
+            primary_state,
             passkeys,
-            passkeys_can_edit,
+            passkeys_state,
         } = status;
 
         let displayname = displayname.clone();
@@ -378,8 +379,41 @@ impl CredentialResetApp {
             }
         };
 
-        let pw_html = self.view_primary(token, primary, *primary_can_edit);
-        let passkey_html = self.view_passkeys(token, passkeys, *passkeys_can_edit);
+        let pw_html = self.view_primary(token, primary, *primary_state);
+        let passkey_html = self.view_passkeys(token, passkeys, *passkeys_state);
+
+        let warnings_html = if warnings.is_empty() {
+            html! { <></> }
+        } else {
+            html! {
+                <>
+                    <hr class="my-4" />
+
+                    { for warnings.iter()
+                        .map(|warning|
+                            match warning {
+                                CURegWarning::MfaRequired => html! {
+                                    <div class="alert alert-warning" role="alert">
+                                        <p>{ "MFA is required for your account. Add TOTP or remove your password in favour of Passkeys." }</p>
+                                    </div>
+                                },
+                                CURegWarning::PasskeyRequired => html! {
+                                    <div class="alert alert-warning" role="alert">
+                                        <p>{ "Passkeys are required for your account." }</p>
+                                    </div>
+                                },
+                                CURegWarning::Unsatisfiable => html! {
+                                    <div class="alert alert-danger" role="alert">
+                                        <p>{ "An account policy conflict has occured and you will not be able to save your credentials" }</p>
+                                        <p>{ "Contact support IMMEDIATELY." }</p>
+                                    </div>
+                                },
+                            }
+                        )
+                    }
+                </>
+            }
+        };
 
         html! {
         <>
@@ -396,6 +430,8 @@ impl CredentialResetApp {
                     <hr class="my-4" />
 
                     { ext_cred_portal_html }
+
+                    { warnings_html }
 
                     <hr class="my-4" />
 
@@ -443,12 +479,12 @@ impl CredentialResetApp {
         &self,
         token: &CUSessionToken,
         primary: &Option<CredentialDetail>,
-        primary_can_edit: bool,
+        primary_state: CUCredState,
     ) -> Html {
         let cb = self.cb.clone();
 
         // match on primary, get type_.
-        let pw_html_inner = if primary_can_edit {
+        let pw_html_inner = if matches!(primary_state, CUCredState::Modifiable) {
             match primary {
                 Some(CredentialDetail {
                     uuid: _,
@@ -556,15 +592,21 @@ impl CredentialResetApp {
             html! {<></>}
         };
 
-        let pw_warn = if primary_can_edit {
-            html! {
-              <>
-                <p>{ "Legacy password paired with other authentication factors." }</p>
-                <p>{ "It is recommended you avoid setting these if possible, as these can be phished or exploited." }</p>
-              </>
+        let pw_warn = match primary_state {
+            CUCredState::Modifiable => {
+                html! {
+                  <>
+                    <p>{ "Legacy password paired with other authentication factors." }</p>
+                    <p>{ "It is recommended you avoid setting these if possible, as these can be phished or exploited." }</p>
+                  </>
+                }
             }
-        } else {
-            html! { <><p> { "You do not have access to modify the Password or TOTP tokens of this account" }</p></> }
+            CUCredState::AccessDeny => {
+                html! { <><p> { "You do not have access to modify the Password or TOTP tokens of this account" }</p></> }
+            }
+            CUCredState::PolicyDeny => {
+                html! { <><p> { "Account policy prevents you setting the Password or TOTP tokens of this account" }</p></> }
+            }
         };
 
         html! {
@@ -582,36 +624,44 @@ impl CredentialResetApp {
         &self,
         token: &CUSessionToken,
         passkeys: &Vec<PasskeyDetail>,
-        passkeys_can_edit: bool,
+        passkeys_state: CUCredState,
     ) -> Html {
         let cb = self.cb.clone();
 
-        let passkey_html_inner = if !passkeys_can_edit {
-            html! { <><p> { "You do not have access to modify the Passkeys of this account" }</p></> }
-        } else if passkeys.is_empty() {
-            html! {
-              <>
-                <p>{ "Strong cryptographic authenticators with self contained multi-factor authentication." }</p>
-                <p>{ "No Passkeys Registered" }</p>
-                <PasskeyModalApp token={ token.clone() } cb={ cb } />
-              </>
+        let passkey_html_inner = match passkeys_state {
+            CUCredState::Modifiable => {
+                if passkeys.is_empty() {
+                    html! {
+                      <>
+                        <p>{ "Strong cryptographic authenticators with self contained multi-factor authentication." }</p>
+                        <p>{ "No Passkeys Registered" }</p>
+                        <PasskeyModalApp token={ token.clone() } cb={ cb } />
+                      </>
+                    }
+                } else {
+                    html! {
+                        <>
+                        <p>{ "Strong cryptographic authenticators with self contained multi-factor authentication." }</p>
+                        { for passkeys.iter()
+                            .map(|detail|
+                                PasskeyRemoveModalApp::render_button(&detail.tag, detail.uuid)
+                            )
+                        }
+                        { for passkeys.iter()
+                            .map(|detail|
+                                html! { <PasskeyRemoveModalApp token={ token.clone() } tag={ detail.tag.clone() } uuid={ detail.uuid } cb={ cb.clone() } /> }
+                            )
+                        }
+                        <PasskeyModalApp token={ token.clone() } cb={ cb.clone() } />
+                        </>
+                    }
+                }
             }
-        } else {
-            html! {
-                <>
-                <p>{ "Strong cryptographic authenticators with self contained multi-factor authentication." }</p>
-                { for passkeys.iter()
-                    .map(|detail|
-                        PasskeyRemoveModalApp::render_button(&detail.tag, detail.uuid)
-                    )
-                }
-                { for passkeys.iter()
-                    .map(|detail|
-                        html! { <PasskeyRemoveModalApp token={ token.clone() } tag={ detail.tag.clone() } uuid={ detail.uuid } cb={ cb.clone() } /> }
-                    )
-                }
-                <PasskeyModalApp token={ token.clone() } cb={ cb.clone() } />
-                </>
+            CUCredState::AccessDeny => {
+                html! { <><p> { "You do not have access to modify the Passkeys of this account" }</p></> }
+            }
+            CUCredState::PolicyDeny => {
+                html! { <><p> { "Account policy prevents you modifying the Passkeys of this account" }</p></> }
             }
         };
 

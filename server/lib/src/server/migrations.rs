@@ -612,6 +612,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             SCHEMA_ATTR_UNIX_PASSWORD.clone().into(),
             SCHEMA_ATTR_USER_AUTH_TOKEN_SESSION.clone().into(),
             SCHEMA_ATTR_DENIED_NAME.clone().into(),
+            SCHEMA_ATTR_CREDENTIAL_TYPE_MINIMUM.clone().into(),
         ];
 
         let r = idm_schema

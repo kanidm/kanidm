@@ -1201,6 +1201,21 @@ pub enum CUExtPortal {
     Some(Url),
 }
 
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, ToSchema)]
+pub enum CUCredState {
+    Modifiable,
+    AccessDeny,
+    PolicyDeny,
+    // Disabled,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub enum CURegWarning {
+    MfaRequired,
+    PasskeyRequired,
+    Unsatisfiable,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct CUStatus {
     // Display values
@@ -1211,10 +1226,11 @@ pub struct CUStatus {
     pub mfaregstate: CURegState,
     // Display hints + The credential details.
     pub can_commit: bool,
+    pub warnings: Vec<CURegWarning>,
     pub primary: Option<CredentialDetail>,
-    pub primary_can_edit: bool,
+    pub primary_state: CUCredState,
     pub passkeys: Vec<PasskeyDetail>,
-    pub passkeys_can_edit: bool,
+    pub passkeys_state: CUCredState,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, ToSchema)]
