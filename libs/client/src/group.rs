@@ -21,7 +21,7 @@ impl KanidmClient {
         .await
     }
 
-    pub async fn group_account_policy_credential_type_minimum(
+    pub async fn group_account_policy_credential_type_minimum_set(
         &self,
         id: &str,
         value: &str,

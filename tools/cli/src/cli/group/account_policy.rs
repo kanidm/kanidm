@@ -36,7 +36,7 @@ impl GroupAccountPolicyOpt {
             GroupAccountPolicyOpt::CredentialTypeMinimum { name, value, copt } => {
                 let client = copt.to_client(OpType::Write).await;
                 if let Err(e) = client
-                    .group_account_policy_credential_type_minimum(name, value)
+                    .group_account_policy_credential_type_minimum_set(name, value)
                     .await
                 {
                     handle_client_error(e, copt.output_mode);
