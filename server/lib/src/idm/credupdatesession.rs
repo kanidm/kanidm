@@ -8,8 +8,8 @@ use sshkey_attest::proto::PublicKey as SshPublicKey;
 
 use hashbrown::HashSet;
 use kanidm_proto::v1::{
-    CUExtPortal, CURegState, CUStatus, CredentialDetail, PasskeyDetail, PasswordFeedback,
-    TotpSecret,
+    CUCredState, CUExtPortal, CURegState, CUStatus, CredentialDetail, PasskeyDetail,
+    PasswordFeedback, TotpSecret,
 };
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
@@ -85,6 +85,25 @@ impl fmt::Debug for MfaRegState {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
+enum CredentialState {
+    Modifiable,
+    AccessDeny,
+    PolicyDeny,
+    // Disabled,
+}
+
+impl Into<CUCredState> for CredentialState {
+    fn into(self) -> CUCredState {
+        match self {
+            CredentialState::Modifiable => CUCredState::Modifiable,
+            CredentialState::AccessDeny => CUCredState::AccessDeny,
+            CredentialState::PolicyDeny => CUCredState::PolicyDeny,
+            // CredentialState::Disabled => CUCredState::Disabled ,
+        }
+    }
+}
+
 #[derive(Clone)]
 pub(crate) struct CredentialUpdateSession {
     issuer: String,
@@ -99,8 +118,8 @@ pub(crate) struct CredentialUpdateSession {
     ext_cred_portal: CUExtPortal,
 
     // The pw credential as they are being updated
+    primary_state: CredentialState,
     primary: Option<Credential>,
-    primary_can_edit: bool,
 
     // Unix / Sudo PW
     unixcred: Option<Credential>,
@@ -112,7 +131,7 @@ pub(crate) struct CredentialUpdateSession {
 
     // Passkeys that have been configured.
     passkeys: BTreeMap<Uuid, (String, PasskeyV4)>,
-    passkeys_can_edit: bool,
+    passkeys_state: CredentialState,
 
     // Devicekeys
     _devicekeys: BTreeMap<Uuid, (String, DeviceKeyV4)>,
@@ -139,7 +158,9 @@ impl fmt::Debug for CredentialUpdateSession {
             .field("resolved_account_policy", &self.resolved_account_policy)
             .field("intent_token_id", &self.intent_token_id)
             .field("primary.detail()", &primary)
+            .field("primary.state", &self.primary_state)
             .field("passkeys.list()", &passkeys)
+            .field("passkeys.state", &self.passkeys_state)
             .field("mfaregstate", &self.mfaregstate)
             .finish()
     }
@@ -232,9 +253,9 @@ pub struct CredentialUpdateSessionStatus {
     // If can_commit is false, this will have warnings populated.
     warnings: Vec<CredentialUpdateSessionStatusWarnings>,
     primary: Option<CredentialDetail>,
-    primary_can_edit: bool,
+    primary_state: CredentialState,
     passkeys: Vec<PasskeyDetail>,
-    passkeys_can_edit: bool,
+    passkeys_state: CredentialState,
 }
 
 impl CredentialUpdateSessionStatus {
@@ -268,9 +289,9 @@ impl Into<CUStatus> for CredentialUpdateSessionStatus {
             },
             can_commit: self.can_commit,
             primary: self.primary,
-            primary_can_edit: self.primary_can_edit,
+            primary_state: self.primary_state.into(),
             passkeys: self.passkeys,
-            passkeys_can_edit: self.passkeys_can_edit,
+            passkeys_state: self.passkeys_state.into(),
         }
     }
 }
@@ -286,7 +307,7 @@ impl From<&CredentialUpdateSession> for CredentialUpdateSessionStatus {
             can_commit,
             warnings,
             primary: session.primary.as_ref().map(|c| c.into()),
-            primary_can_edit: session.primary_can_edit,
+            primary_state: session.primary_state,
             passkeys: session
                 .passkeys
                 .iter()
@@ -295,7 +316,7 @@ impl From<&CredentialUpdateSession> for CredentialUpdateSessionStatus {
                     uuid: *uuid,
                 })
                 .collect(),
-            passkeys_can_edit: session.passkeys_can_edit,
+            passkeys_state: session.passkeys_state,
             mfaregstate: match &session.mfaregstate {
                 MfaRegState::None => MfaRegStateStatus::None,
                 MfaRegState::TotpInit(token) => MfaRegStateStatus::TotpCheck(
@@ -566,19 +587,35 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         ct: Duration,
     ) -> Result<(CredentialUpdateSessionToken, CredentialUpdateSessionStatus), OperationError> {
         let ext_cred_portal_can_view = perms.ext_cred_portal_can_view;
-        let primary_can_edit = perms.primary_can_edit;
-        let passkeys_can_edit = perms.passkeys_can_edit;
         let unixcred_can_edit = perms.unixcred_can_edit;
         let sshpubkey_can_edit = perms.sshpubkey_can_edit;
 
+        let cred_type_min = resolved_account_policy.credential_policy();
+
+        let primary_state = if cred_type_min > CredentialType::Mfa {
+            CredentialState::PolicyDeny
+        } else if perms.primary_can_edit {
+            CredentialState::Modifiable
+        } else {
+            CredentialState::AccessDeny
+        };
+
+        let passkeys_state = if cred_type_min > CredentialType::Passkey {
+            CredentialState::PolicyDeny
+        } else if perms.passkeys_can_edit {
+            CredentialState::Modifiable
+        } else {
+            CredentialState::AccessDeny
+        };
+
         // - stash the current state of all associated credentials
-        let primary = if primary_can_edit {
+        let primary = if matches!(primary_state, CredentialState::Modifiable) {
             account.primary.clone()
         } else {
             None
         };
 
-        let passkeys = if passkeys_can_edit {
+        let passkeys = if matches!(passkeys_state, CredentialState::Modifiable) {
             account.passkeys.clone()
         } else {
             BTreeMap::default()
@@ -627,13 +664,13 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             intent_token_id,
             ext_cred_portal,
             primary,
-            primary_can_edit,
+            primary_state,
             unixcred,
             unixcred_can_edit,
             sshkeys,
             sshpubkey_can_edit,
             passkeys,
-            passkeys_can_edit,
+            passkeys_state,
             _devicekeys: devicekeys,
             _devicekeys_can_edit: false,
             mfaregstate: MfaRegState::None,
@@ -1092,23 +1129,36 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             ));
         };
 
-        if session.primary_can_edit {
-            modlist.push_mod(Modify::Purged(Attribute::PrimaryCredential.into()));
-            if let Some(ncred) = &session.primary {
-                let vcred = Value::new_credential("primary", ncred.clone());
-                modlist.push_mod(Modify::Present(Attribute::PrimaryCredential.into(), vcred));
-            };
+        match session.primary_state {
+            CredentialState::Modifiable => {
+                modlist.push_mod(Modify::Purged(Attribute::PrimaryCredential.into()));
+                if let Some(ncred) = &session.primary {
+                    let vcred = Value::new_credential("primary", ncred.clone());
+                    modlist.push_mod(Modify::Present(Attribute::PrimaryCredential.into(), vcred));
+                };
+            }
+            CredentialState::PolicyDeny => {
+                modlist.push_mod(Modify::Purged(Attribute::PrimaryCredential.into()));
+            }
+            // CredentialState::Disabled |
+            CredentialState::AccessDeny => {}
         };
 
-        if session.passkeys_can_edit {
-            // Need to update passkeys.
-            modlist.push_mod(Modify::Purged(Attribute::PassKeys.into()));
-            // Add all the passkeys. If none, nothing will be added! This handles
-            // the delete case quite cleanly :)
-            session.passkeys.iter().for_each(|(uuid, (tag, pk))| {
-                let v_pk = Value::Passkey(*uuid, tag.clone(), pk.clone());
-                modlist.push_mod(Modify::Present(Attribute::PassKeys.into(), v_pk));
-            });
+        match session.passkeys_state {
+            CredentialState::Modifiable => {
+                modlist.push_mod(Modify::Purged(Attribute::PassKeys.into()));
+                // Add all the passkeys. If none, nothing will be added! This handles
+                // the delete case quite cleanly :)
+                session.passkeys.iter().for_each(|(uuid, (tag, pk))| {
+                    let v_pk = Value::Passkey(*uuid, tag.clone(), pk.clone());
+                    modlist.push_mod(Modify::Present(Attribute::PassKeys.into(), v_pk));
+                });
+            }
+            CredentialState::PolicyDeny => {
+                modlist.push_mod(Modify::Purged(Attribute::PassKeys.into()));
+            }
+            // CredentialState::Disabled |
+            CredentialState::AccessDeny => {}
         };
 
         if session.unixcred_can_edit {
@@ -1475,7 +1525,7 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
         })?;
         trace!(?session);
 
-        if !session.primary_can_edit {
+        if !matches!(session.primary_state, CredentialState::Modifiable) {
             error!("Session does not have permission to modify primary credential");
             return Err(OperationError::AccessDenied);
         };
@@ -1523,7 +1573,7 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
         })?;
         trace!(?session);
 
-        if !session.primary_can_edit {
+        if !matches!(session.primary_state, CredentialState::Modifiable) {
             error!("Session does not have permission to modify primary credential");
             return Err(OperationError::AccessDenied);
         };
@@ -1557,7 +1607,7 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
         })?;
         trace!(?session);
 
-        if !session.primary_can_edit {
+        if !matches!(session.primary_state, CredentialState::Modifiable) {
             error!("Session does not have permission to modify primary credential");
             return Err(OperationError::AccessDenied);
         };
@@ -1621,7 +1671,7 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
         })?;
         trace!(?session);
 
-        if !session.primary_can_edit {
+        if !matches!(session.primary_state, CredentialState::Modifiable) {
             error!("Session does not have permission to modify primary credential");
             return Err(OperationError::AccessDenied);
         };
@@ -1664,7 +1714,7 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
         })?;
         trace!(?session);
 
-        if !session.primary_can_edit {
+        if !matches!(session.primary_state, CredentialState::Modifiable) {
             error!("Session does not have permission to modify primary credential");
             return Err(OperationError::AccessDenied);
         };
@@ -1702,7 +1752,7 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
         })?;
         trace!(?session);
 
-        if !session.primary_can_edit {
+        if !matches!(session.primary_state, CredentialState::Modifiable) {
             error!("Session does not have permission to modify primary credential");
             return Err(OperationError::AccessDenied);
         };
@@ -1747,7 +1797,7 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
         })?;
         trace!(?session);
 
-        if !session.primary_can_edit {
+        if !matches!(session.primary_state, CredentialState::Modifiable) {
             error!("Session does not have permission to modify primary credential");
             return Err(OperationError::AccessDenied);
         };
@@ -1785,7 +1835,7 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
         })?;
         trace!(?session);
 
-        if !session.passkeys_can_edit {
+        if !matches!(session.passkeys_state, CredentialState::Modifiable) {
             error!("Session does not have permission to modify primary credential");
             return Err(OperationError::AccessDenied);
         };
@@ -1827,7 +1877,7 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
         })?;
         trace!(?session);
 
-        if !session.passkeys_can_edit {
+        if !matches!(session.passkeys_state, CredentialState::Modifiable) {
             error!("Session does not have permission to modify primary credential");
             return Err(OperationError::AccessDenied);
         };
@@ -1866,7 +1916,7 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
         })?;
         trace!(?session);
 
-        if !session.passkeys_can_edit {
+        if !matches!(session.passkeys_state, CredentialState::Modifiable) {
             error!("Session does not have permission to modify primary credential");
             return Err(OperationError::AccessDenied);
         };
@@ -1904,7 +1954,7 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
         })?;
         trace!(?session);
 
-        if !session.primary_can_edit {
+        if !matches!(session.primary_state, CredentialState::Modifiable) {
             error!("Session does not have permission to modify primary credential");
             return Err(OperationError::AccessDenied);
         };
@@ -1929,7 +1979,7 @@ mod tests {
     use webauthn_authenticator_rs::WebauthnAuthenticator;
 
     use super::{
-        CredentialUpdateSessionStatus, CredentialUpdateSessionStatusWarnings,
+        CredentialState, CredentialUpdateSessionStatus, CredentialUpdateSessionStatusWarnings,
         CredentialUpdateSessionToken, InitCredentialUpdateEvent, InitCredentialUpdateIntentEvent,
         MfaRegStateStatus, MAXIMUM_CRED_UPDATE_TTL, MAXIMUM_INTENT_TTL, MINIMUM_INTENT_TTL,
     };
@@ -3166,14 +3216,14 @@ mod tests {
             can_commit: _,
             warnings: _,
             primary: _,
-            primary_can_edit,
+            primary_state,
             passkeys: _,
-            passkeys_can_edit,
+            passkeys_state,
         } = custatus;
 
         assert!(matches!(ext_cred_portal, CUExtPortal::Hidden));
-        assert!(!primary_can_edit);
-        assert!(!passkeys_can_edit);
+        assert!(matches!(primary_state, CredentialState::AccessDeny));
+        assert!(matches!(passkeys_state, CredentialState::AccessDeny));
 
         let cutxn = idms.cred_update_transaction().await;
 
@@ -3407,25 +3457,17 @@ mod tests {
 
         trace!(?c_status);
         assert!(c_status.primary.is_none());
+        assert!(matches!(
+            c_status.primary_state,
+            CredentialState::PolicyDeny
+        ));
 
-        // Test initially creating a credential.
-        //
-        // Should this actually error on the passkey version? On Mfa we need to allow pw set
-        // because it's the path to totp setting, but for passkeys we should probably block this as
-        // a whole.
-        //
-        // Alternately we leave the api available, but we have a UI flag to disable adding pw. This
-        // way we still check and can set the values. It saves some more complex possible enums about
-        // the status?
-        let c_status = cutxn
+        let err = cutxn
             .credential_primary_set_password(&cust, ct, test_pw)
-            .expect("Failed to update the primary cred password");
+            .unwrap_err();
+        assert!(matches!(err, OperationError::AccessDenied));
 
-        trace!(?c_status);
-        assert!(!c_status.can_commit);
-        assert!(c_status
-            .warnings
-            .contains(&CredentialUpdateSessionStatusWarnings::PasskeyRequired));
+        /*
         // Check reason! Must show "no mfa". We need totp to be added now.
 
         let c_status = cutxn
@@ -3465,6 +3507,7 @@ mod tests {
             .credential_primary_delete(&cust, ct)
             .expect("Failed to delete the primary credential");
         assert!(c_status.primary.is_none());
+        */
 
         let origin = cutxn.get_origin().clone();
         let mut wa = WebauthnAuthenticator::new(SoftPasskey::new(true));

@@ -1202,6 +1202,14 @@ pub enum CUExtPortal {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub enum CUCredState {
+    Modifiable,
+    AccessDeny,
+    PolicyDeny,
+    Disabled,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct CUStatus {
     // Display values
     pub spn: String,
@@ -1212,9 +1220,9 @@ pub struct CUStatus {
     // Display hints + The credential details.
     pub can_commit: bool,
     pub primary: Option<CredentialDetail>,
-    pub primary_can_edit: bool,
+    pub primary_state: CUCredState,
     pub passkeys: Vec<PasskeyDetail>,
-    pub passkeys_can_edit: bool,
+    pub passkeys_state: CUCredState,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, ToSchema)]
