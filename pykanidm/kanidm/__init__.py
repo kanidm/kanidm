@@ -1,5 +1,6 @@
 """ Kanidm python module """
 
+from datetime import datetime
 from functools import lru_cache
 import json as json_lib  # because we're taking a field "json" at various points
 import logging
@@ -67,13 +68,16 @@ class KanidmClient:
             self.config = config
 
         else:
-            self.config = KanidmClientConfig(
-                uri=uri,
-                verify_hostnames=verify_hostnames,
-                verify_certificate=verify_certificate,
-                ca_path=ca_path,
-                auth_token=token,
+            self.config = KanidmClientConfig.model_validate(
+                {
+                    "uri": uri,
+                    "verify_hostnames": verify_hostnames,
+                    "verify_certificate": verify_certificate,
+                    "verify_ca": ca_path,
+                    "auth_token": token,
+                }
             )
+            logging.debug(self.config)
 
             if config_file is not None:
                 if not isinstance(config_file, Path):
@@ -205,6 +209,18 @@ class KanidmClient:
             response = ClientResponse.model_validate(response_input)
             return response
 
+    async def call_delete(
+        self,
+        path: str,
+        headers: Optional[Dict[str, str]] = None,
+        json: Optional[Dict[str, Any]] = None,
+        timeout: Optional[int] = None,
+    ) -> ClientResponse:
+        """does a DELETE call to the server"""
+        return await self._call(
+            method="DELETE", path=path, headers=headers, json=json, timeout=timeout
+        )
+
     async def call_get(
         self,
         path: str,
@@ -222,7 +238,7 @@ class KanidmClient:
         json: Optional[Dict[str, Any]] = None,
         timeout: Optional[int] = None,
     ) -> ClientResponse:
-        """does a get call to the server"""
+        """does a POST call to the server"""
 
         return await self._call(
             method="POST", path=path, headers=headers, json=json, timeout=timeout
@@ -452,9 +468,128 @@ class KanidmClient:
         grouplist = GroupList.model_validate(json_lib.loads(response.content))
         return [group.as_groupinfo() for group in grouplist.root]
 
-    async def idm_oauth2_rs_list(self) -> ClientResponse:
+    async def oauth2_rs_list(self) -> ClientResponse:
         """gets the list of oauth2 resource servers"""
         endpoint = "/v1/oauth2"
 
         resp = await self.call_get(endpoint)
         return resp
+
+    async def oauth2_rs_get(self, rs_name: str) -> ClientResponse:
+        """get an OAuth2 client"""
+        endpoint = f"/v1/oauth2/{rs_name}"
+
+        return await self.call_get(endpoint)
+
+    async def oauth2_rs_delete(self, rs_name: str) -> ClientResponse:
+        """delete an oauth2 resource server"""
+        endpoint = f"/v1/oauth2/{rs_name}"
+
+        return await self.call_delete(endpoint)
+
+    async def oauth2_rs_list(self, rs_name: str) -> ClientResponse:
+        """delete an oauth2 resource server"""
+        endpoint = f"/v1/oauth2/{rs_name}"
+        return await self.call_delete(endpoint)
+
+    async def oauth2_rs_basic_create(
+        self, rs_name: str, displayname: str, origin: str
+    ) -> ClientResponse:
+        """create a basic OAuth2 RS"""
+
+        # validate that origin is a URL
+        parsed_url = aiohttp.client.URL(origin)
+        if parsed_url.scheme not in ["http", "https"]:
+            raise ValueError(
+                f"Invalid scheme: {parsed_url.scheme} for origin URL: {origin}"
+            )
+
+        endpoint = "/v1/oauth2/_basic"
+        payload = {
+            "attrs": {
+                "oauth2_rs_name": [rs_name],
+                "oauth2_rs_origin": [origin],
+                "displayname": [displayname],
+            }
+        }
+        return await self.call_post(endpoint, json=payload)
+
+    async def oauth2_rs_public_create(
+        self, rs_name: str, displayname: str, origin: str
+    ) -> ClientResponse:
+        """create a basic OAuth2 RS"""
+
+        # validate that origin is a URL
+        parsed_url = aiohttp.client.URL(origin)
+        if parsed_url.scheme not in ["http", "https"]:
+            raise ValueError(
+                f"Invalid scheme: {parsed_url.scheme} for origin URL: {origin}"
+            )
+
+        endpoint = "/v1/oauth2/_public"
+        payload = {
+            "oauth2_rs_name": [rs_name],
+            "oauth2_rs_origin": [origin],
+            "displayname": [displayname],
+        }
+        return await self.call_post(endpoint, json=payload)
+
+    async def service_account_create(
+        self, name: str, display_name: str
+    ) -> ClientResponse:
+        """create a service account"""
+        endpoint = "/v1/service_account"
+        payload = {
+            "attrs": {
+                "name": [name],
+                "display_name": [
+                    display_name,
+                ],
+            }
+        }
+        return await self.call_post(endpoint, json=payload)
+
+    async def person_account_create(
+        self, name: str, display_name: str
+    ) -> ClientResponse:
+        """create a person account"""
+        endpoint = "/v1/person"
+        payload = {
+            "attrs": {
+                "name": [name],
+                "display_name": [display_name],
+            }
+        }
+        return await self.call_post(endpoint, json=payload)
+
+    async def group_create(self, name: str) -> ClientResponse:
+        """create a group"""
+        endpoint = f"/v1/group/{name}"
+
+        return await self.call_post(endpoint)
+
+    async def group_delete(self, name: str) -> ClientResponse:
+        """create a group"""
+        endpoint = f"/v1/group/{name}"
+
+        return await self.call_delete(endpoint)
+
+    async def service_account_generate_api_token(
+        self, account_id: str, label: str, expiry: str, read_write: bool = False
+    ) -> ClientResponse:
+        """create a service account API token"""
+
+        # parse the expiry as rfc3339
+        try:
+            datetime.strptime(expiry, "%Y-%m-%dT%H:%M:%SZ")
+        except Exception as error:
+            raise ValueError(f"Failed to parse expiry from {expiry}: {error}")
+        payload = {
+            "label": label,
+            "expiry": expiry,
+            "read_write": read_write,
+        }
+
+        endpoint = f"/v1/service_account/{account_id}/_token"
+
+        return await self.call_post(endpoint, json=payload)

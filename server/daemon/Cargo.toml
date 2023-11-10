@@ -39,6 +39,7 @@ tracing = { workspace = true, features = [
     "max_level_trace",
     "release_max_level_debug",
 ] }
+serde_json.workspace = true
 
 [target.'cfg(target_os = "linux")'.dependencies]
 sd-notify.workspace = true

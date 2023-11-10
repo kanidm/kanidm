@@ -1152,6 +1152,7 @@ dependencies = [
  "reqwest",
  "sd-notify",
  "serde",
+ "serde_json",
  "sketching",
  "tikv-jemallocator",
  "tokio",

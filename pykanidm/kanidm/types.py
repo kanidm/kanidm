@@ -161,7 +161,7 @@ class KanidmClientConfig(BaseModel):
 
     verify_hostnames: bool = True
     verify_certificate: bool = True
-    ca_path: Optional[str] = Field(default=None, alias='verify_ca')
+    ca_path: Optional[str] = Field(default=None, alias="verify_ca")
 
     username: Optional[str] = None
     password: Optional[str] = None
