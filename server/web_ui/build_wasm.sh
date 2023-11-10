@@ -32,7 +32,7 @@ if [ -f ./pkg/.gitignore ]; then
 fi
 
 # copy the shared static things
-rsync -av shared/static/* shared/static/* pkg/
+rsync -av shared/static/* admin/static/* user/static/* login_flows/static/* pkg/
 
 
 cd admin
