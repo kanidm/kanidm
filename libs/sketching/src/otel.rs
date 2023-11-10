@@ -122,6 +122,6 @@ impl Drop for TracingPipelineGuard {
     fn drop(&mut self) {
         opentelemetry::global::shutdown_tracer_provider();
         opentelemetry::global::shutdown_logger_provider();
-        println!("Logging pipeline completed shutdown");
+        eprintln!("Logging pipeline completed shutdown");
     }
 }
