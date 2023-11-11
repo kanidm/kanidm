@@ -10,6 +10,7 @@ from typing import Any, Dict, List, Optional, Union
 
 import aiohttp
 from pydantic import ValidationError
+import yarl
 
 from .exceptions import (
     AuthBeginFailed,
@@ -497,12 +498,7 @@ class KanidmClient:
     ) -> ClientResponse:
         """create a basic OAuth2 RS"""
 
-        # validate that origin is a URL
-        parsed_url = aiohttp.client.URL(origin)
-        if parsed_url.scheme not in ["http", "https"]:
-            raise ValueError(
-                f"Invalid scheme: {parsed_url.scheme} for origin URL: {origin}"
-            )
+        self._validate_is_valid_origin_url(origin)
 
         endpoint = "/v1/oauth2/_basic"
         payload = {
@@ -514,17 +510,27 @@ class KanidmClient:
         }
         return await self.call_post(endpoint, json=payload)
 
+    @classmethod
+    def _validate_is_valid_origin_url(cls, url: str) -> None:
+        """check if it's https and a valid URL as far as we can tell"""
+        parsed_url = yarl.URL(url)
+        if parsed_url.scheme not in ["http", "https"]:
+            raise ValueError(
+                f"Invalid scheme: {parsed_url.scheme} for origin URL: {url}"
+            )
+        if parsed_url.host is None:
+            raise ValueError(f"Empty/invalid host for origin URL: {url}")
+        if parsed_url.user is not None:
+            raise ValueError(f"Can't have username in origin URL: {url}")
+        if parsed_url.password is not None:
+            raise ValueError(f"Can't have password in origin URL: {url}")
+
     async def oauth2_rs_public_create(
         self, rs_name: str, displayname: str, origin: str
     ) -> ClientResponse:
         """create a basic OAuth2 RS"""
 
-        # validate that origin is a URL
-        parsed_url = aiohttp.client.URL(origin)
-        if parsed_url.scheme not in ["http", "https"]:
-            raise ValueError(
-                f"Invalid scheme: {parsed_url.scheme} for origin URL: {origin}"
-            )
+        self._validate_is_valid_origin_url(origin)
 
         endpoint = "/v1/oauth2/_public"
         payload = {

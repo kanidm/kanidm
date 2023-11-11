@@ -9,7 +9,8 @@ if [ ! -d ".venv" ]; then
     python -m venv .venv
     # shellcheck disable=SC1091
     source .venv/bin/activate
-    pip install poetry
+    pip install --upgrade pip
+    pip install poetry pytest ruff mypy black
     echo "Installing in virtualenv"
     pip install -e pykanidm
 fi
