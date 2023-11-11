@@ -3,7 +3,7 @@ use gloo::console;
 use kanidm_proto::internal::{IdentifyUserRequest, IdentifyUserResponse};
 use kanidmd_web_ui_shared::logo_img;
 use regex::Regex;
-use wasm_bindgen::JsValue;
+use wasm_bindgen::{JsValue, UnwrapThrowExt};
 use yew::prelude::*;
 
 use crate::components::totpdisplay::TotpDisplayApp;
@@ -490,13 +490,14 @@ impl IdentityVerificationApp {
         other_id: &str,
     ) -> Result<IdentifyUserResponse, String> {
         let uri = format!("/v1/person/{}/_identify_user", other_id);
-        let request_as_jsvalue = serde_json::to_string(&request)
-            .map(|s| JsValue::from(&s))
-            .map_err(|_| "Invalid request!".to_string())?;
-        let (_, status, response, _) =
-            do_request(&uri, RequestMethod::POST, Some(request_as_jsvalue))
-                .await
-                .map_err(|e| e.to_string())?;
+
+        let req_jsvalue =
+            serde_wasm_bindgen::to_value(&request).expect("Failed to serialise request");
+        let req_jsvalue = js_sys::JSON::stringify(&req_jsvalue).expect_throw("failed to stringify");
+
+        let (_, status, response, _) = do_request(&uri, RequestMethod::POST, Some(req_jsvalue))
+            .await
+            .map_err(|e| e.to_string())?;
         if status != 200 {
             Err(format!(
                 "The server responded with status code {status}, here is what went wrong: {}",
@@ -511,7 +512,10 @@ impl IdentityVerificationApp {
     async fn update_self_id(uuid: String) -> IdentifyUserTransition {
         let uri = format!("/v1/person/{}/_attr/spn", uuid);
         let outcome: Option<Vec<String>> =
-            match do_request(&uri, RequestMethod::GET, None).await.ok() {
+            match do_request(&uri, RequestMethod::GET, None::<JsValue>)
+                .await
+                .ok()
+            {
                 None => None,
                 Some((_, _, res, ..)) => serde_wasm_bindgen::from_value(res).ok(),
             };

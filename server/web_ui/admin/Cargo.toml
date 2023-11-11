@@ -23,7 +23,6 @@ kanidmd_web_ui_shared = { workspace = true }
 gloo = { workspace = true }
 js-sys = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
-serde_json = { workspace = true }
 serde-wasm-bindgen = { workspace = true }
 time = { workspace = true }
 uuid = { workspace = true }

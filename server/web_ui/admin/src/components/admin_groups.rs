@@ -2,6 +2,7 @@ use std::collections::BTreeMap;
 
 use gloo::console;
 use kanidmd_web_ui_shared::utils::{do_alert_error, do_page_header};
+use wasm_bindgen::JsValue;
 use yew::{html, Component, Context, Html, Properties};
 use yew_router::prelude::Link;
 
@@ -70,7 +71,8 @@ pub async fn get_groups() -> Result<AdminListGroupsMsg, GetError> {
     let endpoints = [("/v1/group", EntityType::Group)];
 
     for (endpoint, object_type) in endpoints {
-        let (_, _, value, _) = match do_request(endpoint, RequestMethod::GET, None).await {
+        let (_, _, value, _) = match do_request(endpoint, RequestMethod::GET, None::<JsValue>).await
+        {
             Ok(val) => val,
             Err(error) => {
                 return Err(GetError {
@@ -360,7 +362,7 @@ impl Component for AdminViewGroup {
 /// pull the details for a single group by UUID
 pub async fn get_group(groupid: &str) -> Result<AdminViewGroupMsg, GetError> {
     let endpoint = format!("/v1/group/{}", groupid);
-    let (_, _, value, _) = match do_request(&endpoint, RequestMethod::GET, None).await {
+    let (_, _, value, _) = match do_request(&endpoint, RequestMethod::GET, None::<JsValue>).await {
         Ok(val) => val,
         Err(error) => {
             return Err(GetError {

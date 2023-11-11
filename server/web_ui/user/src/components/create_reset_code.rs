@@ -9,6 +9,7 @@ use yew::prelude::*;
 
 use qrcode::render::svg;
 use qrcode::QrCode;
+use wasm_bindgen::JsValue;
 use wasm_bindgen::UnwrapThrowExt;
 use web_sys::Node;
 
@@ -237,7 +238,8 @@ impl CreateResetCode {
     async fn credential_get_update_intent_token(id: String) -> Result<Msg, FetchError> {
         let uri = format!("/v1/person/{}/_credential/_update_intent?ttl=0", id);
 
-        let (kopid, status, value, _) = do_request(&uri, RequestMethod::GET, None).await?;
+        let (kopid, status, value, _) =
+            do_request(&uri, RequestMethod::GET, None::<JsValue>).await?;
 
         if status == 200 {
             let token: CUIntentToken =

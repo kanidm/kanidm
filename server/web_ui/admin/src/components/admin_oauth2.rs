@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 
 use gloo::console;
+use wasm_bindgen::JsValue;
 use yew::{html, Component, Context, Html, Properties};
 use yew_router::prelude::Link;
 
@@ -70,7 +71,8 @@ pub async fn get_entities() -> Result<AdminListOAuth2Msg, GetError> {
     let endpoints = [("/v1/oauth2", EntityType::OAuth2RP)];
 
     for (endpoint, object_type) in endpoints {
-        let (_, _, value, _) = match do_request(endpoint, RequestMethod::GET, None).await {
+        let (_, _, value, _) = match do_request(endpoint, RequestMethod::GET, None::<JsValue>).await
+        {
             Ok(val) => val,
             Err(error) => {
                 return Err(GetError {
@@ -136,7 +138,8 @@ impl Component for AdminListOAuth2 {
                 for key in response.keys() {
                     let j = response
                         .get(key)
-                        .and_then(|k| serde_json::to_string(k).ok())
+                        .and_then(|k| serde_wasm_bindgen::to_value(&k).ok())
+                        .and_then(|jsv| js_sys::JSON::stringify(&jsv).ok().map(|s| s.into()))
                         .unwrap_or_else(|| "Failed to dump response key".to_string());
                     console::log!("response: {}", j);
                 }
@@ -396,7 +399,7 @@ impl Component for AdminViewOAuth2 {
 
 pub async fn get_oauth2_rp(rs_name: &str) -> Result<AdminViewOAuth2Msg, GetError> {
     let endpoint = format!("/v1/oauth2/{}", rs_name);
-    let (_, _, value, _) = match do_request(&endpoint, RequestMethod::GET, None).await {
+    let (_, _, value, _) = match do_request(&endpoint, RequestMethod::GET, None::<JsValue>).await {
         Ok(val) => val,
         Err(error) => {
             return Err(GetError {

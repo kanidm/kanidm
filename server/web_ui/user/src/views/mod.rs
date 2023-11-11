@@ -10,7 +10,7 @@ use kanidmd_web_ui_shared::constants::{
 use kanidmd_web_ui_shared::models::push_return_location;
 use kanidmd_web_ui_shared::ui::{signout_link, signout_modal, ui_logout};
 use serde::{Deserialize, Serialize};
-use wasm_bindgen::UnwrapThrowExt;
+use wasm_bindgen::{JsValue, UnwrapThrowExt};
 use yew::prelude::*;
 use yew_router::prelude::*;
 
@@ -299,7 +299,8 @@ impl ViewsApp {
     }
 
     async fn check_session_valid() -> Result<ViewsMsg, FetchError> {
-        let (kopid, status, value, _) = do_request(V1_AUTH_VALID, RequestMethod::GET, None).await?;
+        let (kopid, status, value, _) =
+            do_request(V1_AUTH_VALID, RequestMethod::GET, None::<JsValue>).await?;
 
         if status == 200 {
             Ok(ViewsMsg::Verified)
@@ -313,7 +314,7 @@ impl ViewsApp {
 
     async fn fetch_user_data() -> Result<ViewsMsg, FetchError> {
         let (kopid, status, value, _) =
-            do_request("/v1/self/_uat", RequestMethod::GET, None).await?;
+            do_request("/v1/self/_uat", RequestMethod::GET, None::<JsValue>).await?;
 
         if status == 200 {
             let uat: UserAuthToken = serde_wasm_bindgen::from_value(value)

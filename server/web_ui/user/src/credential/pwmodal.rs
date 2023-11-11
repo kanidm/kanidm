@@ -1,6 +1,6 @@
 use gloo::console;
 use kanidm_proto::v1::{CURequest, CUSessionToken, CUStatus, OperationError, PasswordFeedback};
-use wasm_bindgen::{JsValue, UnwrapThrowExt};
+use wasm_bindgen::UnwrapThrowExt;
 
 use yew::prelude::*;
 
@@ -55,9 +55,9 @@ impl PwModalApp {
     }
 
     async fn submit_password_update(token: CUSessionToken, pw: String) -> Result<Msg, FetchError> {
-        let req_jsvalue = serde_json::to_string(&(CURequest::Password(pw), token))
-            .map(|s| JsValue::from(&s))
-            .expect_throw("Failed to serialise pw curequest");
+        let req_jsvalue = serde_wasm_bindgen::to_value(&(CURequest::Password(pw), token))
+            .expect("Failed to serialise request");
+        let req_jsvalue = js_sys::JSON::stringify(&req_jsvalue).expect_throw("failed to stringify");
 
         let (kopid, status, value, _) = do_request(
             "/v1/credential/_update",

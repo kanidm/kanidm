@@ -9,7 +9,7 @@ use kanidmd_web_ui_shared::models::{get_cred_update_session, pop_return_location
 use kanidmd_web_ui_shared::utils::{autofocus, do_footer};
 use kanidmd_web_ui_shared::{add_body_form_classes, logo_img, remove_body_form_classes};
 use uuid::Uuid;
-use wasm_bindgen::{JsValue, UnwrapThrowExt};
+use wasm_bindgen::UnwrapThrowExt;
 use yew::prelude::*;
 use yew_router::prelude::*;
 
@@ -700,9 +700,9 @@ impl CredentialResetApp {
     }
 
     async fn exchange_intent_token(token: String) -> Result<Msg, FetchError> {
-        let req_jsvalue = serde_json::to_string(&CUIntentToken { token })
-            .map(|s| JsValue::from(&s))
-            .expect_throw("Failed to serialise intent request");
+        let req_jsvalue = serde_wasm_bindgen::to_value(&CUIntentToken { token })
+            .expect("Failed to serialise request");
+        let req_jsvalue = js_sys::JSON::stringify(&req_jsvalue).expect_throw("failed to stringify");
 
         let (kopid, status, value, _) = do_request(
             "/v1/credential/_exchange_intent",
@@ -722,9 +722,9 @@ impl CredentialResetApp {
     }
 
     async fn end_session(token: CUSessionToken, url: &str) -> Result<Msg, FetchError> {
-        let req_jsvalue = serde_json::to_string(&token)
-            .map(|s| JsValue::from(&s))
-            .expect_throw("Failed to serialise session token");
+        let req_jsvalue =
+            serde_wasm_bindgen::to_value(&token).expect("Failed to serialise request");
+        let req_jsvalue = js_sys::JSON::stringify(&req_jsvalue).expect_throw("failed to stringify");
 
         let (kopid, status, value, _) =
             do_request(url, RequestMethod::POST, Some(req_jsvalue)).await?;

@@ -3,7 +3,7 @@ use kanidm_proto::v1::{CURegState, CURequest, CUSessionToken, CUStatus};
 use kanidm_proto::webauthn::{CreationChallengeResponse, RegisterPublicKeyCredential};
 use kanidmd_web_ui_shared::constants::CLASS_BUTTON_SUCCESS;
 use kanidmd_web_ui_shared::error::FetchError;
-use wasm_bindgen::{JsValue, UnwrapThrowExt};
+use wasm_bindgen::UnwrapThrowExt;
 use wasm_bindgen_futures::JsFuture;
 use yew::prelude::*;
 
@@ -57,9 +57,9 @@ impl PasskeyModalApp {
         req: CURequest,
         cb: Callback<EventBusMsg>,
     ) -> Result<Msg, FetchError> {
-        let req_jsvalue = serde_json::to_string(&(req, token))
-            .map(|s| JsValue::from(&s))
-            .expect_throw("Failed to serialise pw curequest");
+        let req_jsvalue =
+            serde_wasm_bindgen::to_value(&(req, token)).expect("Failed to serialise request");
+        let req_jsvalue = js_sys::JSON::stringify(&req_jsvalue).expect_throw("failed to stringify");
 
         let (kopid, status, value, _) = do_request(
             "/v1/credential/_update",

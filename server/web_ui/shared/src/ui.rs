@@ -2,6 +2,7 @@
 //!
 
 use gloo::console;
+use wasm_bindgen::JsValue;
 use yew::{html, BaseComponent, Context, Html};
 
 use crate::constants::{CSS_NAV_LINK, ID_SIGNOUTMODAL};
@@ -19,7 +20,7 @@ pub fn signout_link() -> Html {
 
 /// does the logout action, calling the api and clearing the local tokens
 pub async fn ui_logout() -> Result<(), (String, Option<String>)> {
-    let (kopid, status, value, _) = do_request("/v1/logout", RequestMethod::GET, None)
+    let (kopid, status, value, _) = do_request("/v1/logout", RequestMethod::GET, None::<JsValue>)
         .await
         .map_err(|e| {
             let emsg = format!("failed to logout -> {:?}", e);
