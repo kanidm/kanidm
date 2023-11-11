@@ -404,7 +404,7 @@ impl CredentialResetApp {
                                 },
                                 CURegWarning::Unsatisfiable => html! {
                                     <div class="alert alert-danger" role="alert">
-                                        <p>{ "An account policy conflict has occured and you will not be able to save your credentials" }</p>
+                                        <p>{ "An account policy conflict has occurred and you will not be able to save your credentials" }</p>
                                         <p>{ "Contact support IMMEDIATELY." }</p>
                                     </div>
                                 },

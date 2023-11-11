@@ -904,11 +904,11 @@ fn display_status(status: CUStatus) {
     match ext_cred_portal {
         CUExtPortal::None => {}
         CUExtPortal::Hidden => {
-            println!("Externally Managed: Not all features may be avaliable");
+            println!("Externally Managed: Not all features may be available");
             println!("    Contact your admin for more details.");
         }
         CUExtPortal::Some(url) => {
-            println!("Externally Managed: Not all features may be avaliable");
+            println!("Externally Managed: Not all features may be available");
             println!("    Visit {} to update your account details.", url.as_str());
         }
     };
