@@ -138,12 +138,14 @@ impl Component for AdminListGroups {
         match msg {
             AdminListGroupsMsg::Responded { response } => {
                 // TODO: do we paginate here?
-                #[cfg(test)]
+                #[cfg(debug_assertions)]
                 for key in response.keys() {
-                    console::debug!(
-                        "response: {:?}",
-                        serde_json::to_string(response.get(key).unwrap()).unwrap()
-                    );
+                    let j = response
+                        .get(key)
+                        .and_then(|k| serde_wasm_bindgen::to_value(&k).ok())
+                        .and_then(|jsv| js_sys::JSON::stringify(&jsv).ok().map(|s| s.into()))
+                        .unwrap_or_else(|| "Failed to dump response key".to_string());
+                    console::log!("response: {}", j);
                 }
                 self.state = GroupsViewState::Responded { response };
                 return true;
