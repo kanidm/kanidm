@@ -7,6 +7,7 @@ use kanidmd_web_ui_shared::models::{
 use kanidmd_web_ui_shared::utils::do_alert_error;
 use kanidmd_web_ui_shared::{do_request, error::FetchError, RequestMethod};
 use time::format_description::well_known::Rfc3339;
+use wasm_bindgen::JsValue;
 use wasm_bindgen::UnwrapThrowExt;
 use yew::prelude::*;
 use yew_router::prelude::*;
@@ -254,7 +255,8 @@ impl ProfileApp {
 
     async fn request_credential_update(id: String) -> Result<ProfileMessage, FetchError> {
         let uri = format!("/v1/person/{}/_credential/_update", id);
-        let (kopid, status, value, _headers) = do_request(&uri, RequestMethod::GET, None).await?;
+        let (kopid, status, value, _headers) =
+            do_request(&uri, RequestMethod::GET, None::<JsValue>).await?;
 
         if status == 200 {
             let (token, status): (CUSessionToken, CUStatus) =

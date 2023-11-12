@@ -2,7 +2,7 @@
 use gloo::console;
 use kanidm_proto::v1::{CURegState, CURequest, CUSessionToken, CUStatus};
 use uuid::Uuid;
-use wasm_bindgen::{JsValue, UnwrapThrowExt};
+use wasm_bindgen::UnwrapThrowExt;
 use yew::prelude::*;
 
 use super::reset::{EventBusMsg, PasskeyRemoveModalProps};
@@ -63,9 +63,9 @@ impl PasskeyRemoveModalApp {
         req: CURequest,
         cb: Callback<EventBusMsg>,
     ) -> Result<Msg, FetchError> {
-        let req_jsvalue = serde_json::to_string(&(req, token))
-            .map(|s| JsValue::from(&s))
-            .expect_throw("Failed to serialise pw curequest");
+        let req_jsvalue =
+            serde_wasm_bindgen::to_value(&(req, token)).expect("Failed to serialise request");
+        let req_jsvalue = js_sys::JSON::stringify(&req_jsvalue).expect_throw("failed to stringify");
 
         // this really should require a DELETE not a post!
         let (kopid, status, value, _) = do_request(

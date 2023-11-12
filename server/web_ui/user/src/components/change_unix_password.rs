@@ -4,7 +4,7 @@ use kanidmd_web_ui_shared::do_request;
 use kanidmd_web_ui_shared::error::FetchError;
 use kanidmd_web_ui_shared::RequestMethod;
 use uuid::Uuid;
-use wasm_bindgen::{JsCast, JsValue, UnwrapThrowExt};
+use wasm_bindgen::{JsCast, UnwrapThrowExt};
 use web_sys::{FormData, HtmlFormElement};
 use yew::prelude::*;
 
@@ -247,14 +247,15 @@ impl Component for ChangeUnixPassword {
 
 impl ChangeUnixPassword {
     async fn update_unix_password(id: Uuid, new_password: String) -> Result<Msg, FetchError> {
-        let changereq_jsvalue = serde_json::to_string(&SingleStringRequest {
+        let req_jsvalue = serde_wasm_bindgen::to_value(&SingleStringRequest {
             value: new_password,
         })
-        .map(|s| JsValue::from(&s))
-        .expect_throw("Failed to change request");
+        .expect("Failed to serialise request");
+        let req_jsvalue = js_sys::JSON::stringify(&req_jsvalue).expect_throw("failed to stringify");
+
         let uri = format!("/v1/person/{}/_unix/_credential", id);
         let (kopid, status, value, _) =
-            do_request(&uri, RequestMethod::PUT, Some(changereq_jsvalue)).await?;
+            do_request(&uri, RequestMethod::PUT, Some(req_jsvalue)).await?;
 
         if status == 200 {
             Ok(Msg::Success)

@@ -7,7 +7,7 @@ use kanidmd_web_ui_shared::utils::{do_alert_error, do_footer, window};
 use kanidmd_web_ui_shared::{
     add_body_form_classes, fetch_session_valid, logo_img, remove_body_form_classes, SessionStatus,
 };
-use wasm_bindgen::{JsCast, JsValue, UnwrapThrowExt};
+use wasm_bindgen::{JsCast, UnwrapThrowExt};
 use wasm_bindgen_futures::JsFuture;
 use web_sys::{Request, RequestInit, RequestMode, RequestRedirect, Response};
 use yew::prelude::*;
@@ -92,12 +92,12 @@ impl Oauth2App {
     }
 
     async fn fetch_authreq(authreq: AuthorisationRequest) -> Result<Oauth2Msg, FetchError> {
-        let authreq_jsvalue = serde_json::to_string(&authreq)
-            .map(|s| JsValue::from(&s))
-            .expect_throw("Failed to serialise authreq");
+        let req_jsvalue =
+            serde_wasm_bindgen::to_value(&authreq).expect("Failed to serialise request");
+        let req_jsvalue = js_sys::JSON::stringify(&req_jsvalue).expect_throw("failed to stringify");
 
         let (kopid, status, value, headers) =
-            do_request(OAUTH2_AUTHORISE, RequestMethod::POST, Some(authreq_jsvalue)).await?;
+            do_request(OAUTH2_AUTHORISE, RequestMethod::POST, Some(req_jsvalue)).await?;
 
         #[cfg(debug_assertions)]
         console::debug!(&format!("fetch_authreq result {}", status));
@@ -141,16 +141,16 @@ impl Oauth2App {
     }
 
     async fn fetch_consent_token(consent_token: String) -> Result<Oauth2Msg, FetchError> {
-        let consentreq_jsvalue = serde_json::to_string(&consent_token)
-            .map(|s| JsValue::from(&s))
-            .expect_throw("Failed to serialise consent_req");
+        let req_jsvalue =
+            serde_wasm_bindgen::to_value(&consent_token).expect("Failed to serialise request");
+        let req_jsvalue = js_sys::JSON::stringify(&req_jsvalue).expect_throw("failed to stringify");
 
         let mut opts = RequestInit::new();
         opts.method("POST");
         opts.mode(RequestMode::SameOrigin);
         opts.redirect(RequestRedirect::Manual); // can't replace with do_request because of this
 
-        opts.body(Some(&consentreq_jsvalue));
+        opts.body(Some(&req_jsvalue));
 
         let request = Request::new_with_str_and_init(OAUTH2_AUTHORISE_PERMIT, &opts)?;
 

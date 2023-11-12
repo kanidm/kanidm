@@ -3,7 +3,7 @@ use gloo::console;
 use gloo_timers::callback::{Interval, Timeout};
 use kanidm_proto::internal::{IdentifyUserRequest, IdentifyUserResponse};
 use kanidmd_web_ui_shared::constants::ID_IDENTITY_VERIFICATION_SYSTEM_TOTP_MODAL;
-use wasm_bindgen::JsValue;
+use wasm_bindgen::UnwrapThrowExt;
 use wasm_timer::SystemTime;
 use yew::prelude::*;
 
@@ -55,11 +55,12 @@ impl TotpDisplayApp {
     async fn renew_totp(other_id: String) -> Msg {
         let uri = format!("/v1/person/{}/_identify_user", other_id);
         let request = IdentifyUserRequest::DisplayCode;
-        let Ok(state_as_jsvalue) = serde_json::to_string(&request).map(|s| JsValue::from(&s))
-        else {
-            return Msg::Cancel;
-        };
-        let response = match do_request(&uri, RequestMethod::POST, Some(state_as_jsvalue)).await {
+
+        let req_jsvalue =
+            serde_wasm_bindgen::to_value(&request).expect("Failed to serialise request");
+        let req_jsvalue = js_sys::JSON::stringify(&req_jsvalue).expect_throw("failed to stringify");
+
+        let response = match do_request(&uri, RequestMethod::POST, Some(req_jsvalue)).await {
             Ok((_, _, response, _)) => response,
             Err(_) => return Msg::Cancel,
         };

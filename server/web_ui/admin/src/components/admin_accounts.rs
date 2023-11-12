@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 
 use gloo::console;
+use wasm_bindgen::JsValue;
 use yew::{html, Component, Context, Html, Properties};
 use yew_router::prelude::Link;
 
@@ -90,7 +91,8 @@ pub async fn get_accounts() -> Result<AdminListAccountsMsg, GetError> {
     ];
 
     for (endpoint, object_type) in endpoints {
-        let (_, _, value, _) = match do_request(endpoint, RequestMethod::GET, None).await {
+        let (_, _, value, _) = match do_request(endpoint, RequestMethod::GET, None::<JsValue>).await
+        {
             Ok(val) => val,
             Err(error) => {
                 return Err(GetError {
@@ -527,7 +529,7 @@ pub async fn get_person(uuid: &str) -> Result<AdminViewPersonMsg, GetError> {
     let (_, _, value, _) = match do_request(
         format!("/v1/person/{}", uuid).as_str(),
         RequestMethod::GET,
-        None,
+        None::<JsValue>,
     )
     .await
     {
@@ -555,7 +557,7 @@ pub async fn get_service_account(uuid: &str) -> Result<AdminViewServiceAccountMs
     let (_, _, value, _) = match do_request(
         format!("/v1/service_account/{}", uuid).as_str(),
         RequestMethod::GET,
-        None,
+        None::<JsValue>,
     )
     .await
     {

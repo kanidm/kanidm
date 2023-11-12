@@ -182,7 +182,7 @@ impl AppsApp {
 
     async fn fetch_user_apps() -> Result<Msg, FetchError> {
         let (kopid, status, value, _) =
-            do_request("/v1/self/_applinks", RequestMethod::GET, None).await?;
+            do_request("/v1/self/_applinks", RequestMethod::GET, None::<JsValue>).await?;
 
         if status == 200 {
             let apps: Vec<AppLink> = serde_wasm_bindgen::from_value(value)

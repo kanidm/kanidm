@@ -160,9 +160,9 @@ impl LoginApp {
                 privileged: false,
             },
         };
-        let req_jsvalue = serde_json::to_string(&authreq)
-            .map(|s| JsValue::from(&s))
-            .expect_throw("Failed to serialise authreq");
+        let req_jsvalue =
+            serde_wasm_bindgen::to_value(&authreq).expect("Failed to serialise request");
+        let req_jsvalue = js_sys::JSON::stringify(&req_jsvalue).expect_throw("failed to stringify");
 
         let (kopid, status, value, _) =
             do_request("/v1/auth", RequestMethod::POST, Some(req_jsvalue)).await?;
@@ -186,12 +186,12 @@ impl LoginApp {
 
     async fn reauth_init() -> Result<LoginAppMsg, FetchError> {
         let issue = AuthIssueSession::Token;
-        let authreq_jsvalue = serde_json::to_string(&issue)
-            .map(|s| JsValue::from(&s))
-            .expect_throw("Failed to serialise authreq");
+        let req_jsvalue =
+            serde_wasm_bindgen::to_value(&issue).expect("Failed to serialise request");
+        let req_jsvalue = js_sys::JSON::stringify(&req_jsvalue).expect_throw("failed to stringify");
         let url = "/v1/reauth";
         let (kopid, status, value, _) =
-            do_request(url, RequestMethod::POST, Some(authreq_jsvalue)).await?;
+            do_request(url, RequestMethod::POST, Some(req_jsvalue)).await?;
 
         if status == 200 {
             let state: AuthResponse = serde_wasm_bindgen::from_value(value)
@@ -211,12 +211,12 @@ impl LoginApp {
     }
 
     async fn auth_step(authreq: AuthRequest) -> Result<LoginAppMsg, FetchError> {
-        let authreq_jsvalue = serde_json::to_string(&authreq)
-            .map(|s| JsValue::from(&s))
-            .expect_throw("Failed to serialise authreq");
+        let req_jsvalue =
+            serde_wasm_bindgen::to_value(&authreq).expect("Failed to serialise request");
+        let req_jsvalue = js_sys::JSON::stringify(&req_jsvalue).expect_throw("failed to stringify");
 
         let (kopid, status, value, _) =
-            do_request("/v1/auth", RequestMethod::POST, Some(authreq_jsvalue)).await?;
+            do_request("/v1/auth", RequestMethod::POST, Some(req_jsvalue)).await?;
 
         if status == 200 {
             let state: AuthResponse = serde_wasm_bindgen::from_value(value)

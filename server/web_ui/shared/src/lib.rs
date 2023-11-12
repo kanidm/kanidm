@@ -44,10 +44,10 @@ pub fn push_auth_session_id(r: String) {
 
 /// Build and send a request to the backend, with some standard headers and pull back
 /// (kopid, status, json, headers)
-pub async fn do_request(
+pub async fn do_request<JV: AsRef<JsValue>>(
     uri: &str,
     method: RequestMethod,
-    body: Option<JsValue>,
+    body: Option<JV>,
 ) -> Result<(Option<String>, u16, JsValue, Headers), FetchError> {
     let mut opts = RequestInit::new();
     opts.method(&method.to_string());
@@ -59,7 +59,7 @@ pub async fn do_request(
         if method == RequestMethod::GET {
             gloo::console::debug!("This seems odd, you've supplied a body with a GET request?")
         }
-        opts.body(Some(&body));
+        opts.body(Some(body.as_ref()));
     }
 
     let request = Request::new_with_str_and_init(uri, &opts)?;
@@ -167,7 +167,8 @@ impl ToString for SessionStatus {
 
 /// Validate that the current stored session token is valid
 pub async fn fetch_session_valid() -> Result<SessionStatus, FetchError> {
-    let (kopid, status, value, _) = do_request(V1_AUTH_VALID, RequestMethod::GET, None).await?;
+    let (kopid, status, value, _) =
+        do_request(V1_AUTH_VALID, RequestMethod::GET, None::<JsValue>).await?;
 
     if status == 200 {
         Ok(SessionStatus::TokenValid)

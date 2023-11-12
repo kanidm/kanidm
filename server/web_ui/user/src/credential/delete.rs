@@ -3,7 +3,7 @@ use gloo::console;
 use kanidm_proto::v1::{CURequest, CUSessionToken, CUStatus};
 use kanidmd_web_ui_shared::error::FetchError;
 use kanidmd_web_ui_shared::utils::modal_hide_by_id;
-use wasm_bindgen::{JsValue, UnwrapThrowExt};
+use wasm_bindgen::UnwrapThrowExt;
 use yew::prelude::*;
 
 use super::reset::{EventBusMsg, ModalProps};
@@ -47,9 +47,9 @@ impl DeleteApp {
         req: CURequest,
         cb: Callback<EventBusMsg>,
     ) -> Result<Msg, FetchError> {
-        let req_jsvalue = serde_json::to_string(&(req, token))
-            .map(|s| JsValue::from(&s))
-            .expect_throw("Failed to serialise pw curequest");
+        let req_jsvalue =
+            serde_wasm_bindgen::to_value(&(req, token)).expect("Failed to serialise request");
+        let req_jsvalue = js_sys::JSON::stringify(&req_jsvalue).expect_throw("failed to stringify");
 
         let (kopid, status, value, _) = do_request(
             "/v1/credential/_update",
