@@ -13,7 +13,7 @@ Kanidm currently is packaged for the following systems:
 - MacOS
 - Arch Linux
 - NixOS
-- Fedora 36
+- Fedora 38
 - CentOS Stream 9
 
 The `kanidm` client has been built and tested from Windows, but is not (yet) packaged routinely.
@@ -77,7 +77,7 @@ metadata into the correct directory:
 
 ```bash
 # Fedora
-wget https://download.opensuse.org/repositories/network:/idm/Fedora_36/network:idm.repo
+wget https://download.opensuse.org/repositories/network:/idm/Fedora_38/network:idm.repo
 # Centos Stream 9
 wget https://download.opensuse.org/repositories/network:/idm/CentOS_9_Stream/network:idm.repo
 ```
