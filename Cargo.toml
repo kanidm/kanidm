@@ -111,7 +111,7 @@ base32 = "^0.4.0"
 base64 = "^0.21.5"
 base64urlsafedata = "0.1.3"
 bytes = "^1.5.0"
-clap = { version = "^4.4.7", features = ["derive", "env"] }
+clap = { version = "^4.4.8", features = ["derive", "env"] }
 clap_complete = "^4.4.4"
 # Forced by saffron/cron
 chrono = "^0.4.31"
@@ -134,7 +134,7 @@ gloo = "^0.8.1"
 gloo-utils = "0.2.0"
 hashbrown = { version = "0.14.2", features = ["serde", "inline-more", "ahash"] }
 hex = "^0.4.3"
-http = "0.2.9"
+http = "0.2.10"
 hyper = { version = "0.14.27", features = ["full"] }
 hyper-tls = "0.5.0"
 idlset = "^0.2.4"
@@ -195,7 +195,7 @@ reqwest = { version = "0.11.20", default-features = false, features = [
     "native-tls",
     "native-tls-alpn",
 ] }
-rpassword = "^7.2.0"
+rpassword = "^7.3.1"
 rusqlite = { version = "^0.28.0", features = ["array", "bundled"] }
 
 scim_proto = "^0.2.1"
@@ -218,7 +218,7 @@ time = { version = "^0.3.21", features = ["formatting", "local-offset"] }
 
 tikv-jemallocator = "0.5"
 
-tokio = "^1.33.0"
+tokio = "^1.34.0"
 tokio-openssl = "^0.6.3"
 tokio-util = "^0.7.10"
 
