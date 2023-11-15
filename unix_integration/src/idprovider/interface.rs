@@ -1,10 +1,10 @@
-use crate::db::DbTxn;
+use crate::db::KeyStoreTxn;
 use crate::unix_proto::{DeviceAuthorizationResponse, PamAuthRequest, PamAuthResponse};
 use async_trait::async_trait;
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-pub use kanidm_hsm_crypto::{KeyAlgorithm, MachineKey, Tpm};
+pub use kanidm_hsm_crypto as tpm;
 
 /// Errors that the IdProvider may return. These drive the resolver state machine
 /// and should be carefully selected to match your expected errors.
@@ -26,6 +26,8 @@ pub enum IdpError {
     NotFound,
     /// The idp was unable to perform an operation on the underlying hsm keystorage
     KeyStore,
+    /// The idp failed to interact with the configured TPM
+    Tpm,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -91,48 +93,13 @@ pub enum AuthCacheAction {
     PasswordHashUpdate { cred: String },
 }
 
-pub struct KeyStore<'a> {
-    dbtxn: &'a DbTxn<'a>,
-}
-
-impl<'a> KeyStore<'a> {
-    pub(crate) fn new(dbtxn: &'a DbTxn<'a>) -> Self {
-        KeyStore { dbtxn }
-    }
-
-    pub fn get_tagged_hsm_key<K: DeserializeOwned>(
-        &mut self,
-        tag: &str,
-    ) -> Result<Option<K>, IdpError> {
-        self.dbtxn
-            .get_tagged_hsm_key(tag)
-            .map_err(|_err| IdpError::KeyStore)
-    }
-
-    pub fn insert_tagged_hsm_key<K: Serialize>(
-        &mut self,
-        tag: &str,
-        key: &K,
-    ) -> Result<(), IdpError> {
-        self.dbtxn
-            .insert_tagged_hsm_key(tag, key)
-            .map_err(|_err| IdpError::KeyStore)
-    }
-
-    pub fn delete_tagged_hsm_key(&mut self, tag: &str) -> Result<(), IdpError> {
-        self.dbtxn
-            .delete_tagged_hsm_key(tag)
-            .map_err(|_err| IdpError::KeyStore)
-    }
-}
-
 #[async_trait]
 pub trait IdProvider {
-    async fn configure_hsm_keys(
+    async fn configure_hsm_keys<D: KeyStoreTxn + Send>(
         &self,
-        _keystore: &mut KeyStore,
-        _tpm: &mut (dyn Tpm + Send),
-        _machine_key: &MachineKey,
+        _keystore: &mut D,
+        _tpm: &mut (dyn tpm::Tpm + Send),
+        _machine_key: &tpm::MachineKey,
     ) -> Result<(), IdpError> {
         Ok(())
     }

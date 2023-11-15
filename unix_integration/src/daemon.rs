@@ -760,7 +760,7 @@ async fn main() -> ExitCode {
             };
 
             // With the assistance of the db, setup the hsm and it's machine key.
-            let db_txn = db.write().await;
+            let mut db_txn = db.write().await;
 
             let loadable_machine_key = match db_txn.get_hsm_machine_key() {
                 Ok(Some(lmk)) => lmk,
