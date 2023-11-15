@@ -444,7 +444,7 @@ class KanidmClient:
         return result
 
     async def auth_as_anonymous(self) -> None:
-        """authenticate as the anonymous user"""
+        """Authenticate as the anonymous user"""
 
         init = await self.auth_init("anonymous", update_internal_auth_token=True)
         logging.debug("auth_init completed, moving onto begin step")
@@ -469,7 +469,7 @@ class KanidmClient:
         self,
         sessionid: str,
     ) -> Dict[str, str]:
-        """create a headers dict from a session id"""
+        """Create a headers dict from a session id"""
         # TODO: perhaps allow session_header to take a dict and update it, too?
         return {
             "authorization": f"bearer {sessionid}",
@@ -519,7 +519,7 @@ class KanidmClient:
     async def oauth2_rs_basic_create(
         self, rs_name: str, displayname: str, origin: str
     ) -> ClientResponse:
-        """create a basic OAuth2 RS"""
+        """Create a basic OAuth2 RS"""
 
         self._validate_is_valid_origin_url(origin)
 
@@ -535,7 +535,7 @@ class KanidmClient:
 
     @classmethod
     def _validate_is_valid_origin_url(cls, url: str) -> None:
-        """check if it's https and a valid URL as far as we can tell"""
+        """Check if it's HTTPS and a valid URL as far as we can tell"""
         parsed_url = yarl.URL(url)
         if parsed_url.scheme not in ["http", "https"]:
             raise ValueError(
@@ -551,7 +551,7 @@ class KanidmClient:
     async def oauth2_rs_public_create(
         self, rs_name: str, displayname: str, origin: str
     ) -> ClientResponse:
-        """create a basic OAuth2 RS"""
+        """Create a public OAuth2 RS"""
 
         self._validate_is_valid_origin_url(origin)
 
@@ -566,7 +566,7 @@ class KanidmClient:
     async def service_account_create(
         self, name: str, display_name: str
     ) -> ClientResponse:
-        """create a service account"""
+        """Create a service account"""
         endpoint = "/v1/service_account"
         payload = {
             "attrs": {
@@ -607,7 +607,7 @@ class KanidmClient:
     async def person_account_create(
         self, name: str, display_name: str
     ) -> ClientResponse:
-        """create a person account"""
+        """Create a person account"""
         endpoint = "/v1/person"
         payload = {
             "attrs": {
@@ -618,13 +618,13 @@ class KanidmClient:
         return await self.call_post(endpoint, json=payload)
 
     async def group_create(self, name: str) -> ClientResponse:
-        """create a group"""
+        """Create a group"""
         endpoint = f"/v1/group/{name}"
 
         return await self.call_post(endpoint)
 
     async def group_delete(self, name: str) -> ClientResponse:
-        """create a group"""
+        """Delete a group"""
         endpoint = f"/v1/group/{name}"
 
         return await self.call_delete(endpoint)
@@ -632,13 +632,15 @@ class KanidmClient:
     async def service_account_generate_api_token(
         self, account_id: str, label: str, expiry: str, read_write: bool = False
     ) -> ClientResponse:
-        """create a service account API token"""
+        """Create a service account API token, expiry needs to be in RFC3339 format."""
 
         # parse the expiry as rfc3339
         try:
             datetime.strptime(expiry, "%Y-%m-%dT%H:%M:%SZ")
         except Exception as error:
-            raise ValueError(f"Failed to parse expiry from {expiry}: {error}")
+            raise ValueError(
+                f"Failed to parse expiry from {expiry} (needs to be RFC3339 format): {error}"
+            )
         payload = {
             "label": label,
             "expiry": expiry,
@@ -650,17 +652,17 @@ class KanidmClient:
         return await self.call_post(endpoint, json=payload)
 
     async def group_set_members(self, id: str, members: List[str]) -> ClientResponse:
-        """set member list"""
+        """Set group member list"""
         url = f"/v1/group/{id}/_attr/member"
         return await self.call_put(url, json=members)
 
     async def group_add_members(self, id: str, members: List[str]) -> ClientResponse:
-        """add members to a group"""
+        """Add members to a group"""
         url = f"/v1/group/{id}/_attr/member"
         return await self.call_post(url, json=members)
 
     async def group_delete_members(self, id: str, members: List[str]) -> ClientResponse:
-        """remove members from a group"""
+        """Remove members from a group"""
         url = f"/v1/group/{id}/_attr/member"
         return await self.call_delete(url, json=members)
 
@@ -672,7 +674,7 @@ class KanidmClient:
         legalname: Optional[str] = None,
         mail: Optional[List[str]] = None,
     ) -> ClientResponse:
-        """update details of a person"""
+        """Update details of a person"""
         url = f"/v1/person/{id}"
 
         attrs = {}
@@ -690,14 +692,14 @@ class KanidmClient:
         return await self.call_patch(url, json={"attrs": attrs})
 
     async def person_account_delete(self, id: str) -> ClientResponse:
-        """delete a person"""
+        """Delete a person"""
         url = f"/v1/person/{id}"
         return await self.call_delete(url)
 
     async def person_account_post_ssh_key(
         self, id: str, tag: str, pubkey: str
     ) -> ClientResponse:
-        """create an SSH key for a user"""
+        """Create an SSH key for a user"""
         url = f"/v1/person/{id}/_ssh_pubkeys"
 
         payload = (tag, pubkey)
@@ -705,12 +707,13 @@ class KanidmClient:
         return await self.call_post(url, json=payload)
 
     async def person_account_delete_ssh_key(self, id: str, tag: str) -> ClientResponse:
-        """delete an SSH key for a user"""
+        """Delete an SSH key for a user"""
         url = f"/v1/person/{id}/_ssh_pubkeys/{tag}"
 
         return await self.call_delete(url)
 
     async def group_account_policy_enable(self, id: str) -> ClientResponse:
+        """Enable account policy for a group"""
         url = f"/v1/group/{id}/_attr/class"
         payload = ["account_policy"]
         return await self.call_post(url, json=payload)
@@ -720,68 +723,71 @@ class KanidmClient:
         id: str,
         expiry: int,
     ) -> ClientResponse:
+        """set the account policy authenticated session expiry length (seconds) for a group"""
         url = f"/v1/group/{id}/_attr/authsession_expiry"
         payload = [expiry]
         return await self.call_put(url, json=payload)
 
     async def group_account_policy_password_minimum_length_set(
-        self, id: str, length: int
+        self, id: str, minimum_length: int
     ) -> ClientResponse:
+        """set the account policy password minimum length for a group"""
         url = f"/v1/group/{id}/_attr/auth_password_minimum_length"
-        payload = [length]
+        payload = [minimum_length]
         return await self.call_put(url, json=payload)
 
     async def group_account_policy_privilege_expiry_set(
         self, id: str, expiry: int
     ) -> ClientResponse:
+        """set the account policy privilege expiry for a group"""
         url = f"/v1/group/{id}/_attr/privilege_expiry"
         payload = [expiry]
         return await self.call_put(url, json=payload)
 
     async def system_password_badlist_get(self) -> ClientResponse:
-        """get the password badlist"""
+        """Get the password badlist"""
         return await self.call_get("/v1/system/_attr/badlist_password")
 
     async def system_password_badlist_append(
-        self, new_members: List[str]
+        self, new_passwords: List[str]
     ) -> ClientResponse:
-        """get the password badlist"""
+        """Add new items to the password badlist"""
 
         return await self.call_post(
-            "/v1/system/_attr/badlist_passwordpayload", json=new_members
+            "/v1/system/_attr/badlist_passwordpayload", json=new_passwords
         )
 
-    async def system_password_badlist_remove(
-        self, members: List[str]
-    ) -> ClientResponse:
-        """get the password badlist"""
+    async def system_password_badlist_remove(self, items: List[str]) -> ClientResponse:
+        """Remove items from the password badlist"""
 
         return await self.call_delete(
-            "/v1/system/_attr/badlist_passwordpayload", json=members
+            "/v1/system/_attr/badlist_passwordpayload", json=items
         )
 
     async def system_denied_names_get(self) -> ClientResponse:
-        """get the denied names list"""
+        """Get the denied names list"""
         return await self.call_get("/v1/system/_attr/denied_name")
 
     async def system_denied_names_append(self, names: List[str]) -> ClientResponse:
-        """add items to the denied names list"""
+        """Add items to the denied names list"""
         return await self.call_post("/v1/system/_attr/denied_name", json=names)
 
     async def system_denied_names_remove(self, names: List[str]) -> ClientResponse:
-        """remove items from the denied names list"""
+        """Remove items from the denied names list"""
         return await self.call_delete("/v1/system/_attr/denied_name", json=names)
 
     async def domain_set_display_name(
         self,
         new_display_name: str,
     ) -> ClientResponse:
+        """Set the Domain Display Name - this requires admin privs"""
         return await self.call_put(
             "/v1/domain/_attr/domain_display_name",
             json=[new_display_name],
         )
 
     async def domain_set_ldap_basedn(self, new_basedn: str) -> ClientResponse:
+        """Set the domain LDAP base DN."""
         return await self.call_put(
             "/v1/domain/_attr/domain_ldap_basedn",
             json=[new_basedn],
@@ -798,7 +804,7 @@ class KanidmClient:
         reset_token_key: bool = False,
         reset_sign_key: bool = False,
     ) -> ClientResponse:
-        """update an oauth2 rs"""
+        """Update an OAuth2 Resource Server"""
 
         attrs = {}
 
@@ -828,7 +834,7 @@ class KanidmClient:
     async def oauth2_rs_update_scope_map(
         self, id: str, group: str, scopes: List[str]
     ) -> ClientResponse:
-        """update a scope map"""
+        """Update an OAuth2 scope map"""
 
         url = f"/v1/oauth2/{id}/_scopemap/{group}"
 
@@ -839,13 +845,13 @@ class KanidmClient:
         id: str,
         group: str,
     ) -> ClientResponse:
-        """delete an oauth2 scope map"""
+        """Delete an OAuth2 scope map"""
         return await self.call_delete(f"/v1/oauth2/{id}/_scopemap/{group}")
 
     async def oauth2_rs_update_sup_scope_map(
         self, id: str, group: str, scopes: List[str]
     ) -> ClientResponse:
-        """update a scope map"""
+        """Update an OAuth2 supplemental scope map"""
 
         url = f"/v1/oauth2/{id}/_sup_scopemap/{group}"
 
@@ -856,5 +862,5 @@ class KanidmClient:
         id: str,
         group: str,
     ) -> ClientResponse:
-        """delete an oauth2 scope map"""
+        """Delete an OAuth2 supplemental scope map"""
         return await self.call_delete(f"/v1/oauth2/{id}/_sup_scopemap/{group}")
