@@ -2,8 +2,8 @@ use gloo::console;
 use kanidm_proto::v1::{CURequest, CUSessionToken, CUStatus, OperationError, PasswordFeedback};
 use wasm_bindgen::UnwrapThrowExt;
 
-use yew::prelude::*;
 use serde::Serialize;
+use yew::prelude::*;
 
 use super::reset::{EventBusMsg, ModalProps};
 use kanidmd_web_ui_shared::{do_request, error::FetchError, utils, RequestMethod};
@@ -56,9 +56,9 @@ impl PwModalApp {
     }
 
     async fn submit_password_update(token: CUSessionToken, pw: String) -> Result<Msg, FetchError> {
-
         let request = (CURequest::Password(pw), token);
-        let req_jsvalue = request.serialize(&serde_wasm_bindgen::Serializer::json_compatible())
+        let req_jsvalue = request
+            .serialize(&serde_wasm_bindgen::Serializer::json_compatible())
             .expect("Failed to serialise request");
         let req_jsvalue = js_sys::JSON::stringify(&req_jsvalue).expect_throw("failed to stringify");
 

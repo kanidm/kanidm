@@ -3,11 +3,11 @@ use kanidmd_web_ui_shared::constants::ID_UNIX_PASSWORDCHANGE;
 use kanidmd_web_ui_shared::do_request;
 use kanidmd_web_ui_shared::error::FetchError;
 use kanidmd_web_ui_shared::RequestMethod;
+use serde::Serialize;
 use uuid::Uuid;
 use wasm_bindgen::{JsCast, UnwrapThrowExt};
 use web_sys::{FormData, HtmlFormElement};
 use yew::prelude::*;
-use serde::Serialize;
 
 use kanidmd_web_ui_shared::utils::{self, modal_hide_by_id};
 
@@ -251,7 +251,8 @@ impl ChangeUnixPassword {
         let req = SingleStringRequest {
             value: new_password,
         };
-        let req_jsvalue = req.serialize(&serde_wasm_bindgen::Serializer::json_compatible())
+        let req_jsvalue = req
+            .serialize(&serde_wasm_bindgen::Serializer::json_compatible())
             .expect("Failed to serialise request");
         let req_jsvalue = js_sys::JSON::stringify(&req_jsvalue).expect_throw("failed to stringify");
 

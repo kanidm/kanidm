@@ -3,9 +3,9 @@ use gloo::console;
 use kanidm_proto::v1::{CURequest, CUSessionToken, CUStatus};
 use kanidmd_web_ui_shared::error::FetchError;
 use kanidmd_web_ui_shared::utils::modal_hide_by_id;
+use serde::Serialize;
 use wasm_bindgen::UnwrapThrowExt;
 use yew::prelude::*;
-use serde::Serialize;
 
 use super::reset::{EventBusMsg, ModalProps};
 use kanidmd_web_ui_shared::do_request;
@@ -49,7 +49,8 @@ impl DeleteApp {
         cb: Callback<EventBusMsg>,
     ) -> Result<Msg, FetchError> {
         let request = (req, token);
-        let req_jsvalue = request.serialize(&serde_wasm_bindgen::Serializer::json_compatible())
+        let req_jsvalue = request
+            .serialize(&serde_wasm_bindgen::Serializer::json_compatible())
             .expect("Failed to serialise request");
         let req_jsvalue = js_sys::JSON::stringify(&req_jsvalue).expect_throw("failed to stringify");
 

@@ -20,8 +20,8 @@ use kanidmd_web_ui_shared::models::{
 };
 use kanidmd_web_ui_shared::{do_request, error::FetchError, utils, RequestMethod};
 
-use std::collections::BTreeSet;
 use serde::Serialize;
+use std::collections::BTreeSet;
 
 enum State {
     LoginRequired,
@@ -93,9 +93,11 @@ impl Oauth2App {
     }
 
     async fn fetch_authreq(authreq: AuthorisationRequest) -> Result<Oauth2Msg, FetchError> {
-        let req_jsvalue_1 = authreq.serialize(&serde_wasm_bindgen::Serializer::json_compatible())
+        let req_jsvalue_1 = authreq
+            .serialize(&serde_wasm_bindgen::Serializer::json_compatible())
             .expect("Failed to serialise request");
-        let req_jsvalue = js_sys::JSON::stringify(&req_jsvalue_1).expect_throw("failed to stringify");
+        let req_jsvalue =
+            js_sys::JSON::stringify(&req_jsvalue_1).expect_throw("failed to stringify");
 
         #[cfg(debug_assertions)]
         console::debug!(&format!("fetch_authreq post {}", req_jsvalue));
@@ -145,7 +147,8 @@ impl Oauth2App {
     }
 
     async fn fetch_consent_token(consent_token: String) -> Result<Oauth2Msg, FetchError> {
-        let req_jsvalue = consent_token.serialize(&serde_wasm_bindgen::Serializer::json_compatible())
+        let req_jsvalue = consent_token
+            .serialize(&serde_wasm_bindgen::Serializer::json_compatible())
             .expect("Failed to serialise request");
         let req_jsvalue = js_sys::JSON::stringify(&req_jsvalue).expect_throw("failed to stringify");
 

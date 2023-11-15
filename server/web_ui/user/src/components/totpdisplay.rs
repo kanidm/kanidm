@@ -3,10 +3,10 @@ use gloo::console;
 use gloo_timers::callback::{Interval, Timeout};
 use kanidm_proto::internal::{IdentifyUserRequest, IdentifyUserResponse};
 use kanidmd_web_ui_shared::constants::ID_IDENTITY_VERIFICATION_SYSTEM_TOTP_MODAL;
+use serde::Serialize;
 use wasm_bindgen::UnwrapThrowExt;
 use wasm_timer::SystemTime;
 use yew::prelude::*;
-use serde::Serialize;
 
 use crate::views::identityverification::{
     IdentifyUserState, IdentifyUserTransition, CORRUPT_STATE_ERROR,
@@ -57,7 +57,8 @@ impl TotpDisplayApp {
         let uri = format!("/v1/person/{}/_identify_user", other_id);
         let request = IdentifyUserRequest::DisplayCode;
 
-        let req_jsvalue = request.serialize(&serde_wasm_bindgen::Serializer::json_compatible())
+        let req_jsvalue = request
+            .serialize(&serde_wasm_bindgen::Serializer::json_compatible())
             .expect("Failed to serialise request");
         let req_jsvalue = js_sys::JSON::stringify(&req_jsvalue).expect_throw("failed to stringify");
 

@@ -3,10 +3,10 @@ use kanidm_proto::v1::{CURegState, CURequest, CUSessionToken, CUStatus};
 use kanidm_proto::webauthn::{CreationChallengeResponse, RegisterPublicKeyCredential};
 use kanidmd_web_ui_shared::constants::CLASS_BUTTON_SUCCESS;
 use kanidmd_web_ui_shared::error::FetchError;
+use serde::Serialize;
 use wasm_bindgen::UnwrapThrowExt;
 use wasm_bindgen_futures::JsFuture;
 use yew::prelude::*;
-use serde::Serialize;
 
 use super::reset::{EventBusMsg, ModalProps};
 
@@ -59,7 +59,8 @@ impl PasskeyModalApp {
         cb: Callback<EventBusMsg>,
     ) -> Result<Msg, FetchError> {
         let request = (req, token);
-        let req_jsvalue = request.serialize(&serde_wasm_bindgen::Serializer::json_compatible())
+        let req_jsvalue = request
+            .serialize(&serde_wasm_bindgen::Serializer::json_compatible())
             .expect("Failed to serialise request");
         let req_jsvalue = js_sys::JSON::stringify(&req_jsvalue).expect_throw("failed to stringify");
 

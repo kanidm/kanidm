@@ -144,9 +144,10 @@ impl Component for AdminListGroups {
                 for key in response.keys() {
                     let j = response
                         .get(key)
-                        .and_then(|k|
-                            k.serialize(&serde_wasm_bindgen::Serializer::json_compatible()).ok()
-                        )
+                        .and_then(|k| {
+                            k.serialize(&serde_wasm_bindgen::Serializer::json_compatible())
+                                .ok()
+                        })
                         .and_then(|jsv| js_sys::JSON::stringify(&jsv).ok().map(|s| s.into()))
                         .unwrap_or_else(|| "Failed to dump response key".to_string());
                     console::log!("response: {}", j);

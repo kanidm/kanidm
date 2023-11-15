@@ -4,9 +4,9 @@ use gloo::console;
 use kanidm_proto::v1::{CURequest, CUSessionToken, CUStatus};
 use kanidmd_web_ui_shared::RequestMethod;
 use kanidmd_web_ui_shared::{do_request, error::FetchError};
+use serde::Serialize;
 use wasm_bindgen::UnwrapThrowExt;
 use yew::prelude::*;
-use serde::Serialize;
 
 pub enum Msg {
     Submit,
@@ -103,7 +103,8 @@ impl TotpRemoveComp {
         cb: Callback<EventBusMsg>,
     ) -> Result<Msg, FetchError> {
         let request = (req, token);
-        let req_jsvalue = request.serialize(&serde_wasm_bindgen::Serializer::json_compatible())
+        let req_jsvalue = request
+            .serialize(&serde_wasm_bindgen::Serializer::json_compatible())
             .expect("Failed to serialise request");
         let req_jsvalue = js_sys::JSON::stringify(&req_jsvalue).expect_throw("failed to stringify");
 
