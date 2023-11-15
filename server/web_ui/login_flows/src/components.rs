@@ -26,6 +26,7 @@ use kanidmd_web_ui_shared::models::{
     pop_login_remember_me, pop_return_location, push_login_remember_me, set_bearer_token,
 };
 use kanidmd_web_ui_shared::{do_request, error::FetchError, utils, RequestMethod};
+use serde::Serialize;
 use yew_router::BrowserRouter;
 
 #[derive(Clone)]
@@ -160,8 +161,9 @@ impl LoginApp {
                 privileged: false,
             },
         };
-        let req_jsvalue =
-            serde_wasm_bindgen::to_value(&authreq).expect("Failed to serialise request");
+        let req_jsvalue = authreq
+            .serialize(&serde_wasm_bindgen::Serializer::json_compatible())
+            .expect("Failed to serialise request");
         let req_jsvalue = js_sys::JSON::stringify(&req_jsvalue).expect_throw("failed to stringify");
 
         let (kopid, status, value, _) =
@@ -186,8 +188,9 @@ impl LoginApp {
 
     async fn reauth_init() -> Result<LoginAppMsg, FetchError> {
         let issue = AuthIssueSession::Token;
-        let req_jsvalue =
-            serde_wasm_bindgen::to_value(&issue).expect("Failed to serialise request");
+        let req_jsvalue = issue
+            .serialize(&serde_wasm_bindgen::Serializer::json_compatible())
+            .expect("Failed to serialise request");
         let req_jsvalue = js_sys::JSON::stringify(&req_jsvalue).expect_throw("failed to stringify");
         let url = "/v1/reauth";
         let (kopid, status, value, _) =
@@ -211,8 +214,9 @@ impl LoginApp {
     }
 
     async fn auth_step(authreq: AuthRequest) -> Result<LoginAppMsg, FetchError> {
-        let req_jsvalue =
-            serde_wasm_bindgen::to_value(&authreq).expect("Failed to serialise request");
+        let req_jsvalue = authreq
+            .serialize(&serde_wasm_bindgen::Serializer::json_compatible())
+            .expect("Failed to serialise request");
         let req_jsvalue = js_sys::JSON::stringify(&req_jsvalue).expect_throw("failed to stringify");
 
         let (kopid, status, value, _) =

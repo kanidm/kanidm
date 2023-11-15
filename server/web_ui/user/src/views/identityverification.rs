@@ -3,6 +3,7 @@ use gloo::console;
 use kanidm_proto::internal::{IdentifyUserRequest, IdentifyUserResponse};
 use kanidmd_web_ui_shared::logo_img;
 use regex::Regex;
+use serde::Serialize;
 use wasm_bindgen::{JsValue, UnwrapThrowExt};
 use yew::prelude::*;
 
@@ -491,8 +492,9 @@ impl IdentityVerificationApp {
     ) -> Result<IdentifyUserResponse, String> {
         let uri = format!("/v1/person/{}/_identify_user", other_id);
 
-        let req_jsvalue =
-            serde_wasm_bindgen::to_value(&request).expect("Failed to serialise request");
+        let req_jsvalue = request
+            .serialize(&serde_wasm_bindgen::Serializer::json_compatible())
+            .expect("Failed to serialise request");
         let req_jsvalue = js_sys::JSON::stringify(&req_jsvalue).expect_throw("failed to stringify");
 
         let (_, status, response, _) = do_request(&uri, RequestMethod::POST, Some(req_jsvalue))

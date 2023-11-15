@@ -10,6 +10,9 @@ use crate::components::admin_menu::{Entity, EntityType, GetError};
 use crate::router::AdminRoute;
 use kanidmd_web_ui_shared::constants::{CSS_CELL, CSS_TABLE};
 
+#[cfg(debug_assertions)]
+use serde::Serialize;
+
 impl From<GetError> for AdminListOAuth2Msg {
     fn from(ge: GetError) -> Self {
         AdminListOAuth2Msg::Failed {
@@ -138,7 +141,10 @@ impl Component for AdminListOAuth2 {
                 for key in response.keys() {
                     let j = response
                         .get(key)
-                        .and_then(|k| serde_wasm_bindgen::to_value(&k).ok())
+                        .and_then(|k| {
+                            k.serialize(&serde_wasm_bindgen::Serializer::json_compatible())
+                                .ok()
+                        })
                         .and_then(|jsv| js_sys::JSON::stringify(&jsv).ok().map(|s| s.into()))
                         .unwrap_or_else(|| "Failed to dump response key".to_string());
                     console::log!("response: {}", j);
