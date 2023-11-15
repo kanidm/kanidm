@@ -6,7 +6,7 @@ import json as json_lib  # because we're taking a field "json" at various points
 import logging
 from pathlib import Path
 import ssl
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import aiohttp
 from pydantic import ValidationError
@@ -37,6 +37,8 @@ KANIDMURLS = {
 }
 
 TOKEN_PATH = Path("~/.cache/kanidm_tokens")
+
+CallJsonType = Optional[Union[Dict[str, Any], List[Any], Tuple[str, str]]]
 
 
 class KanidmClient:
@@ -162,7 +164,7 @@ class KanidmClient:
         path: str,
         headers: Optional[Dict[str, str]] = None,
         timeout: Optional[int] = None,
-        json: Optional[Dict[str, str]] = None,
+        json: CallJsonType = None,
         params: Optional[Dict[str, str]] = None,
     ) -> ClientResponse:
         if timeout is None:
@@ -214,7 +216,7 @@ class KanidmClient:
         self,
         path: str,
         headers: Optional[Dict[str, str]] = None,
-        json: Optional[Dict[str, Any]] = None,
+        json: CallJsonType = None,
         timeout: Optional[int] = None,
     ) -> ClientResponse:
         """does a DELETE call to the server"""
@@ -236,13 +238,39 @@ class KanidmClient:
         self,
         path: str,
         headers: Optional[Dict[str, str]] = None,
-        json: Optional[Dict[str, Any]] = None,
+        json: CallJsonType = None,
         timeout: Optional[int] = None,
     ) -> ClientResponse:
         """does a POST call to the server"""
 
         return await self._call(
             method="POST", path=path, headers=headers, json=json, timeout=timeout
+        )
+
+    async def call_patch(
+        self,
+        path: str,
+        headers: Optional[Dict[str, str]] = None,
+        json: CallJsonType = None,
+        timeout: Optional[int] = None,
+    ) -> ClientResponse:
+        """does a PATCH call to the server"""
+
+        return await self._call(
+            method="PATCH", path=path, headers=headers, json=json, timeout=timeout
+        )
+
+    async def call_put(
+        self,
+        path: str,
+        headers: Optional[Dict[str, str]] = None,
+        json: CallJsonType = None,
+        timeout: Optional[int] = None,
+    ) -> ClientResponse:
+        """does a PUT call to the server"""
+
+        return await self._call(
+            method="PUT", path=path, headers=headers, json=json, timeout=timeout
         )
 
     async def auth_init(
@@ -488,11 +516,6 @@ class KanidmClient:
 
         return await self.call_delete(endpoint)
 
-    async def oauth2_rs_list(self, rs_name: str) -> ClientResponse:
-        """delete an oauth2 resource server"""
-        endpoint = f"/v1/oauth2/{rs_name}"
-        return await self.call_delete(endpoint)
-
     async def oauth2_rs_basic_create(
         self, rs_name: str, displayname: str, origin: str
     ) -> ClientResponse:
@@ -555,6 +578,32 @@ class KanidmClient:
         }
         return await self.call_post(endpoint, json=payload)
 
+    async def service_account_post_ssh_pubkey(
+        self,
+        id: str,
+        tag: str,
+        pubkey: str,
+    ) -> ClientResponse:
+        payload = (tag, pubkey)
+        return await self.call_post(
+            f"/v1/service_account/{id}/_ssh_pubkeys",
+            json=payload,
+        )
+
+    async def service_account_delete_ssh_pubkey(
+        self, id: str, tag: str
+    ) -> ClientResponse:
+        return await self.call_delete(f"/v1/service_account/{id}/_ssh_pubkeys/{tag}")
+
+    async def service_account_destroy_api_token(
+        self,
+        id: str,
+        token_id: str,
+    ) -> ClientResponse:
+        url = f"/v1/service_account/{id}/_api_token/{token_id}"
+
+        return await self.call_delete(url)
+
     async def person_account_create(
         self, name: str, display_name: str
     ) -> ClientResponse:
@@ -599,3 +648,213 @@ class KanidmClient:
         endpoint = f"/v1/service_account/{account_id}/_token"
 
         return await self.call_post(endpoint, json=payload)
+
+    async def group_set_members(self, id: str, members: List[str]) -> ClientResponse:
+        """set member list"""
+        url = f"/v1/group/{id}/_attr/member"
+        return await self.call_put(url, json=members)
+
+    async def group_add_members(self, id: str, members: List[str]) -> ClientResponse:
+        """add members to a group"""
+        url = f"/v1/group/{id}/_attr/member"
+        return await self.call_post(url, json=members)
+
+    async def group_delete_members(self, id: str, members: List[str]) -> ClientResponse:
+        """remove members from a group"""
+        url = f"/v1/group/{id}/_attr/member"
+        return await self.call_delete(url, json=members)
+
+    async def person_account_update(
+        self,
+        id: str,
+        newname: Optional[str] = None,
+        displayname: Optional[str] = None,
+        legalname: Optional[str] = None,
+        mail: Optional[List[str]] = None,
+    ) -> ClientResponse:
+        """update details of a person"""
+        url = f"/v1/person/{id}"
+
+        attrs = {}
+        if newname is not None:
+            attrs["name"] = [newname]
+        if displayname is not None:
+            attrs["displayname"] = [displayname]
+        if legalname is not None:
+            attrs["legalname"] = [legalname]
+        if mail is not None:
+            attrs["mail"] = mail
+
+        if not attrs:
+            raise ValueError("You need to specify something to update!")
+        return await self.call_patch(url, json={"attrs": attrs})
+
+    async def person_account_delete(self, id: str) -> ClientResponse:
+        """delete a person"""
+        url = f"/v1/person/{id}"
+        return await self.call_delete(url)
+
+    async def person_account_post_ssh_key(
+        self, id: str, tag: str, pubkey: str
+    ) -> ClientResponse:
+        """create an SSH key for a user"""
+        url = f"/v1/person/{id}/_ssh_pubkeys"
+
+        payload = (tag, pubkey)
+
+        return await self.call_post(url, json=payload)
+
+    async def person_account_delete_ssh_key(self, id: str, tag: str) -> ClientResponse:
+        """delete an SSH key for a user"""
+        url = f"/v1/person/{id}/_ssh_pubkeys/{tag}"
+
+        return await self.call_delete(url)
+
+    async def group_account_policy_enable(self, id: str) -> ClientResponse:
+        url = f"/v1/group/{id}/_attr/class"
+        payload = ["account_policy"]
+        return await self.call_post(url, json=payload)
+
+    async def group_account_policy_authsession_expiry_set(
+        self,
+        id: str,
+        expiry: int,
+    ) -> ClientResponse:
+        url = f"/v1/group/{id}/_attr/authsession_expiry"
+        payload = [expiry]
+        return await self.call_put(url, json=payload)
+
+    async def group_account_policy_password_minimum_length_set(
+        self, id: str, length: int
+    ) -> ClientResponse:
+        url = f"/v1/group/{id}/_attr/auth_password_minimum_length"
+        payload = [length]
+        return await self.call_put(url, json=payload)
+
+    async def group_account_policy_privilege_expiry_set(
+        self, id: str, expiry: int
+    ) -> ClientResponse:
+        url = f"/v1/group/{id}/_attr/privilege_expiry"
+        payload = [expiry]
+        return await self.call_put(url, json=payload)
+
+    async def system_password_badlist_get(self) -> ClientResponse:
+        """get the password badlist"""
+        return await self.call_get("/v1/system/_attr/badlist_password")
+
+    async def system_password_badlist_append(
+        self, new_members: List[str]
+    ) -> ClientResponse:
+        """get the password badlist"""
+
+        return await self.call_post(
+            "/v1/system/_attr/badlist_passwordpayload", json=new_members
+        )
+
+    async def system_password_badlist_remove(
+        self, members: List[str]
+    ) -> ClientResponse:
+        """get the password badlist"""
+
+        return await self.call_delete(
+            "/v1/system/_attr/badlist_passwordpayload", json=members
+        )
+
+    async def system_denied_names_get(self) -> ClientResponse:
+        """get the denied names list"""
+        return await self.call_get("/v1/system/_attr/denied_name")
+
+    async def system_denied_names_append(self, names: List[str]) -> ClientResponse:
+        """add items to the denied names list"""
+        return await self.call_post("/v1/system/_attr/denied_name", json=names)
+
+    async def system_denied_names_remove(self, names: List[str]) -> ClientResponse:
+        """remove items from the denied names list"""
+        return await self.call_delete("/v1/system/_attr/denied_name", json=names)
+
+    async def domain_set_display_name(
+        self,
+        new_display_name: str,
+    ) -> ClientResponse:
+        return await self.call_put(
+            "/v1/domain/_attr/domain_display_name",
+            json=[new_display_name],
+        )
+
+    async def domain_set_ldap_basedn(self, new_basedn: str) -> ClientResponse:
+        return await self.call_put(
+            "/v1/domain/_attr/domain_ldap_basedn",
+            json=[new_basedn],
+        )
+
+    async def oauth2_rs_update(
+        self,
+        id: str,
+        name: Optional[str] = None,
+        displayname: Optional[str] = None,
+        origin: Optional[str] = None,
+        landing: Optional[str] = None,
+        reset_secret: bool = False,
+        reset_token_key: bool = False,
+        reset_sign_key: bool = False,
+    ) -> ClientResponse:
+        """update an oauth2 rs"""
+
+        attrs = {}
+
+        if name is not None:
+            attrs["name"] = [name]
+        if displayname is not None:
+            attrs["displayname"] = [displayname]
+        if origin is not None:
+            attrs["oauth2_rs_origin"] = [origin]
+        if landing is not None:
+            attrs["oauth2_rs_landing"] = [landing]
+        if reset_secret:
+            attrs["oauth2_rs_basic_secret"] = []
+        if reset_token_key:
+            attrs["oauth2_rs_token_key"] = []
+        if reset_sign_key:
+            attrs["es256_private_key_der"] = []
+            attrs["rs256_private_key_der"] = []
+
+        if not attrs:
+            raise ValueError("You need to set something to change!")
+        url = f"/v1/oauth2/{id}"
+        payload = {"attrs": attrs}
+
+        return await self.call_patch(url, json=payload)
+
+    async def oauth2_rs_update_scope_map(
+        self, id: str, group: str, scopes: List[str]
+    ) -> ClientResponse:
+        """update a scope map"""
+
+        url = f"/v1/oauth2/{id}/_scopemap/{group}"
+
+        return await self.call_post(url, json=scopes)
+
+    async def oauth2_rs_delete_scope_map(
+        self,
+        id: str,
+        group: str,
+    ) -> ClientResponse:
+        """delete an oauth2 scope map"""
+        return await self.call_delete(f"/v1/oauth2/{id}/_scopemap/{group}")
+
+    async def oauth2_rs_update_sup_scope_map(
+        self, id: str, group: str, scopes: List[str]
+    ) -> ClientResponse:
+        """update a scope map"""
+
+        url = f"/v1/oauth2/{id}/_sup_scopemap/{group}"
+
+        return await self.call_post(url, json=scopes)
+
+    async def oauth2_rs_delete_sup_scope_map(
+        self,
+        id: str,
+        group: str,
+    ) -> ClientResponse:
+        """delete an oauth2 scope map"""
+        return await self.call_delete(f"/v1/oauth2/{id}/_sup_scopemap/{group}")

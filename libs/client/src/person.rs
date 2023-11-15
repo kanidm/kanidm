@@ -75,7 +75,7 @@ impl KanidmClient {
     }
 
     pub async fn idm_person_account_delete(&self, id: &str) -> Result<(), ClientError> {
-        self.perform_delete_request(["/v1/person/", id].concat().as_str())
+        self.perform_delete_request(format!("/v1/person/{}", id).as_str())
             .await
     }
 
