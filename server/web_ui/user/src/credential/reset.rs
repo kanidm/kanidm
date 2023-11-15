@@ -12,6 +12,7 @@ use uuid::Uuid;
 use wasm_bindgen::UnwrapThrowExt;
 use yew::prelude::*;
 use yew_router::prelude::*;
+use serde::Serialize;
 
 use super::delete::DeleteApp;
 use super::passkey::PasskeyModalApp;
@@ -700,7 +701,8 @@ impl CredentialResetApp {
     }
 
     async fn exchange_intent_token(token: String) -> Result<Msg, FetchError> {
-        let req_jsvalue = serde_wasm_bindgen::to_value(&CUIntentToken { token })
+        let request = CUIntentToken { token };
+        let req_jsvalue = request.serialize(&serde_wasm_bindgen::Serializer::json_compatible())
             .expect("Failed to serialise request");
         let req_jsvalue = js_sys::JSON::stringify(&req_jsvalue).expect_throw("failed to stringify");
 
@@ -722,8 +724,8 @@ impl CredentialResetApp {
     }
 
     async fn end_session(token: CUSessionToken, url: &str) -> Result<Msg, FetchError> {
-        let req_jsvalue =
-            serde_wasm_bindgen::to_value(&token).expect("Failed to serialise request");
+        let req_jsvalue = token.serialize(&serde_wasm_bindgen::Serializer::json_compatible())
+            .expect("Failed to serialise request");
         let req_jsvalue = js_sys::JSON::stringify(&req_jsvalue).expect_throw("failed to stringify");
 
         let (kopid, status, value, _) =

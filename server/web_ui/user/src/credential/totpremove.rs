@@ -6,6 +6,7 @@ use kanidmd_web_ui_shared::RequestMethod;
 use kanidmd_web_ui_shared::{do_request, error::FetchError};
 use wasm_bindgen::UnwrapThrowExt;
 use yew::prelude::*;
+use serde::Serialize;
 
 pub enum Msg {
     Submit,
@@ -101,8 +102,9 @@ impl TotpRemoveComp {
         req: CURequest,
         cb: Callback<EventBusMsg>,
     ) -> Result<Msg, FetchError> {
-        let req_jsvalue =
-            serde_wasm_bindgen::to_value(&(req, token)).expect("Failed to serialise request");
+        let request = (req, token);
+        let req_jsvalue = request.serialize(&serde_wasm_bindgen::Serializer::json_compatible())
+            .expect("Failed to serialise request");
         let req_jsvalue = js_sys::JSON::stringify(&req_jsvalue).expect_throw("failed to stringify");
 
         let (kopid, status, value, _) = do_request(

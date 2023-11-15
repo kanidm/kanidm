@@ -7,6 +7,7 @@ use uuid::Uuid;
 use wasm_bindgen::{JsCast, UnwrapThrowExt};
 use web_sys::{FormData, HtmlFormElement};
 use yew::prelude::*;
+use serde::Serialize;
 
 use kanidmd_web_ui_shared::utils::{self, modal_hide_by_id};
 
@@ -247,10 +248,11 @@ impl Component for ChangeUnixPassword {
 
 impl ChangeUnixPassword {
     async fn update_unix_password(id: Uuid, new_password: String) -> Result<Msg, FetchError> {
-        let req_jsvalue = serde_wasm_bindgen::to_value(&SingleStringRequest {
+        let req = SingleStringRequest {
             value: new_password,
-        })
-        .expect("Failed to serialise request");
+        };
+        let req_jsvalue = req.serialize(&serde_wasm_bindgen::Serializer::json_compatible())
+            .expect("Failed to serialise request");
         let req_jsvalue = js_sys::JSON::stringify(&req_jsvalue).expect_throw("failed to stringify");
 
         let uri = format!("/v1/person/{}/_unix/_credential", id);

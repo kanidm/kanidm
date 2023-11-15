@@ -93,15 +93,8 @@ impl Oauth2App {
     }
 
     async fn fetch_authreq(authreq: AuthorisationRequest) -> Result<Oauth2Msg, FetchError> {
-        #[cfg(debug_assertions)]
-        console::debug!(&format!("fetch_authreq raw {:?}", authreq));
-
         let req_jsvalue_1 = authreq.serialize(&serde_wasm_bindgen::Serializer::json_compatible())
             .expect("Failed to serialise request");
-
-        #[cfg(debug_assertions)]
-        console::debug!(&format!("fetch_authreq jsvalue {:?}", req_jsvalue_1));
-
         let req_jsvalue = js_sys::JSON::stringify(&req_jsvalue_1).expect_throw("failed to stringify");
 
         #[cfg(debug_assertions)]
@@ -152,8 +145,8 @@ impl Oauth2App {
     }
 
     async fn fetch_consent_token(consent_token: String) -> Result<Oauth2Msg, FetchError> {
-        let req_jsvalue =
-            serde_wasm_bindgen::to_value(&consent_token).expect("Failed to serialise request");
+        let req_jsvalue = consent_token.serialize(&serde_wasm_bindgen::Serializer::json_compatible())
+            .expect("Failed to serialise request");
         let req_jsvalue = js_sys::JSON::stringify(&req_jsvalue).expect_throw("failed to stringify");
 
         let mut opts = RequestInit::new();

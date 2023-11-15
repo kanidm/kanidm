@@ -6,6 +6,7 @@ use kanidmd_web_ui_shared::error::FetchError;
 use wasm_bindgen::UnwrapThrowExt;
 use wasm_bindgen_futures::JsFuture;
 use yew::prelude::*;
+use serde::Serialize;
 
 use super::reset::{EventBusMsg, ModalProps};
 
@@ -57,8 +58,9 @@ impl PasskeyModalApp {
         req: CURequest,
         cb: Callback<EventBusMsg>,
     ) -> Result<Msg, FetchError> {
-        let req_jsvalue =
-            serde_wasm_bindgen::to_value(&(req, token)).expect("Failed to serialise request");
+        let request = (req, token);
+        let req_jsvalue = request.serialize(&serde_wasm_bindgen::Serializer::json_compatible())
+            .expect("Failed to serialise request");
         let req_jsvalue = js_sys::JSON::stringify(&req_jsvalue).expect_throw("failed to stringify");
 
         let (kopid, status, value, _) = do_request(

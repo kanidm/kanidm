@@ -4,6 +4,7 @@ use kanidm_proto::v1::{CURegState, CURequest, CUSessionToken, CUStatus};
 use uuid::Uuid;
 use wasm_bindgen::UnwrapThrowExt;
 use yew::prelude::*;
+use serde::Serialize;
 
 use super::reset::{EventBusMsg, PasskeyRemoveModalProps};
 use kanidmd_web_ui_shared::{do_request, error::FetchError, utils, RequestMethod};
@@ -63,8 +64,9 @@ impl PasskeyRemoveModalApp {
         req: CURequest,
         cb: Callback<EventBusMsg>,
     ) -> Result<Msg, FetchError> {
-        let req_jsvalue =
-            serde_wasm_bindgen::to_value(&(req, token)).expect("Failed to serialise request");
+        let request = (req, token);
+        let req_jsvalue = request.serialize(&serde_wasm_bindgen::Serializer::json_compatible())
+            .expect("Failed to serialise request");
         let req_jsvalue = js_sys::JSON::stringify(&req_jsvalue).expect_throw("failed to stringify");
 
         // this really should require a DELETE not a post!
