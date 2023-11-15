@@ -21,6 +21,7 @@ use kanidmd_web_ui_shared::models::{
 use kanidmd_web_ui_shared::{do_request, error::FetchError, utils, RequestMethod};
 
 use std::collections::BTreeSet;
+use serde::Serialize;
 
 enum State {
     LoginRequired,
@@ -92,9 +93,19 @@ impl Oauth2App {
     }
 
     async fn fetch_authreq(authreq: AuthorisationRequest) -> Result<Oauth2Msg, FetchError> {
-        let req_jsvalue =
-            serde_wasm_bindgen::to_value(&authreq).expect("Failed to serialise request");
-        let req_jsvalue = js_sys::JSON::stringify(&req_jsvalue).expect_throw("failed to stringify");
+        #[cfg(debug_assertions)]
+        console::debug!(&format!("fetch_authreq raw {:?}", authreq));
+
+        let req_jsvalue_1 = authreq.serialize(&serde_wasm_bindgen::Serializer::json_compatible())
+            .expect("Failed to serialise request");
+
+        #[cfg(debug_assertions)]
+        console::debug!(&format!("fetch_authreq jsvalue {:?}", req_jsvalue_1));
+
+        let req_jsvalue = js_sys::JSON::stringify(&req_jsvalue_1).expect_throw("failed to stringify");
+
+        #[cfg(debug_assertions)]
+        console::debug!(&format!("fetch_authreq post {}", req_jsvalue));
 
         let (kopid, status, value, headers) =
             do_request(OAUTH2_AUTHORISE, RequestMethod::POST, Some(req_jsvalue)).await?;
