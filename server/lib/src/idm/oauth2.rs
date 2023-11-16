@@ -1,8 +1,8 @@
 //! Oauth2 resource server configurations
 //!
-//! This contains the in memory and loaded set of active oauth2 resource server
+//! This contains the in memory and loaded set of active OAuth2 resource server
 //! integrations, which are then able to be used an accessed from the IDM layer
-//! for operations involving oauth2 authentication processing.
+//! for operations involving OAuth2 authentication processing.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::convert::TryFrom;
@@ -319,8 +319,8 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
             .into_iter()
             .map(|ent| {
                 let uuid = ent.get_uuid();
-                trace!(?uuid, "Checking oauth2 configuration");
-                // From each entry, attempt to make an oauth2 configuration.
+                trace!(?uuid, "Checking OAuth2 configuration");
+                // From each entry, attempt to make an OAuth2 configuration.
                 if !ent.attribute_equality(Attribute::Class, &EntryClass::OAuth2ResourceServer.into()) {
                     error!("Missing class oauth2_resource_server");
                     // Check we have oauth2_resource_server class
@@ -345,7 +345,7 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
                 } else if ent.attribute_equality(Attribute::Class, &EntryClass::OAuth2ResourceServerPublic.into()) {
                     OauthRSType::Public
                 } else {
-                    error!("Missing class determining oauth2 rs type");
+                    error!("Missing class determining OAuth2 rs type");
                     return Err(OperationError::InvalidEntryState);
                 };
 
@@ -502,7 +502,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         // Get the o2rs for the handle.
         let o2rs = self.oauth2rs.inner.rs_set.get(&client_id).ok_or_else(|| {
-            admin_warn!("Invalid oauth2 client_id");
+            admin_warn!("Invalid OAuth2 client_id");
             Oauth2Error::AuthenticationRequired
         })?;
 
@@ -510,7 +510,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         match &o2rs.type_ {
             OauthRSType::Basic { authz_secret, .. } => {
                 if authz_secret != &secret {
-                    security_info!("Invalid oauth2 client_id secret");
+                    security_info!("Invalid OAuth2 client_id secret");
                     return Err(Oauth2Error::AuthenticationRequired);
                 }
             }
@@ -576,7 +576,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                         &modlist,
                     )
                     .map_err(|e| {
-                        admin_error!("Failed to modify - revoke oauth2 session {:?}", e);
+                        admin_error!("Failed to modify - revoke OAuth2 session {:?}", e);
                         Oauth2Error::ServerError(e)
                     })
             }
@@ -600,7 +600,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 _ => {
                     // We at least need the client_id, else we can't proceed!
                     security_info!(
-                        "Invalid oauth2 authentication - no basic auth or missing client_id in access token request"
+                        "Invalid OAuth2 authentication - no basic auth or missing client_id in access token request"
                     );
                     return Err(Oauth2Error::AuthenticationRequired);
                 }
@@ -615,7 +615,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         // lifetime here is safe since we are the sole accessor.
         let o2rs: &Oauth2RS = unsafe {
             let s = self.oauth2rs.inner.rs_set.get(&client_id).ok_or_else(|| {
-                admin_warn!("Invalid oauth2 client_id");
+                admin_warn!("Invalid OAuth2 client_id");
                 Oauth2Error::AuthenticationRequired
             })?;
             &*(s as *const _)
@@ -627,14 +627,14 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 match secret {
                     Some(secret) => {
                         if authz_secret != &secret {
-                            security_info!("Invalid oauth2 client_id secret");
+                            security_info!("Invalid OAuth2 client_id secret");
                             return Err(Oauth2Error::AuthenticationRequired);
                         }
                     }
                     None => {
                         // We can only get here if we relied on the atr for the client_id and secret
                         security_info!(
-                            "Invalid oauth2 authentication - no secret in access token request"
+                            "Invalid OAuth2 authentication - no secret in access token request"
                         );
                         return Err(Oauth2Error::AuthenticationRequired);
                     }
@@ -712,7 +712,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             .rs_set
             .get(&consent_req.client_id)
             .ok_or_else(|| {
-                admin_error!("Invalid consent request oauth2 client_id");
+                admin_error!("Invalid consent request OAuth2 client_id");
                 OperationError::InvalidRequestState
             })?;
 
@@ -825,7 +825,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         // Validate the redirect_uri is the same as the original.
         if token_req_redirect_uri != &code_xchg.redirect_uri {
-            security_info!("Invalid oauth2 redirect_uri (differs from original request uri)");
+            security_info!("Invalid OAuth2 redirect_uri (differs from original request uri)");
             return Err(Oauth2Error::InvalidOrigin);
         }
 
@@ -834,7 +834,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         if let Some(expiry) = code_xchg.uat.expiry {
             if expiry <= odt_ct {
                 security_info!(
-                    "User Auth Token has expired before we could publish the oauth2 response"
+                    "User Auth Token has expired before we could publish the OAuth2 response"
                 );
                 return Err(Oauth2Error::AccessDenied);
             }
@@ -906,7 +906,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 }
 
                 // Check the session is still valid. This call checks the parent session
-                // and the oauth2 session.
+                // and the OAuth2 session.
                 let valid = self
                     .check_oauth2_account_uuid_valid(uuid, session_id, parent_session_id, iat, ct)
                     .map_err(|_| admin_error!("Account is not valid"));
@@ -926,7 +926,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                     .ok_or_else(|| {
                         security_info!(
                             ?session_id,
-                            "No oauth2 session found, unable to proceed with refresh"
+                            "No OAuth2 session found, unable to proceed with refresh"
                         );
                         Oauth2Error::InvalidToken
                     })?;
@@ -953,7 +953,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                             &modlist,
                         )
                         .map_err(|e| {
-                            admin_error!("Failed to modify - revoke oauth2 session {:?}", e);
+                            admin_error!("Failed to modify - revoke OAuth2 session {:?}", e);
                             Oauth2Error::ServerError(e)
                         })?;
 
@@ -969,7 +969,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                         debug!("oauth2 scopes requested, checked as valid.");
                     }
                 } else {
-                    debug!("No oauth2 scopes requested, this is valid.");
+                    debug!("No OAuth2 scopes requested, this is valid.");
                 };
 
                 // ----------
@@ -1163,7 +1163,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 &modlist,
             )
             .map_err(|e| {
-                admin_error!("Failed to persist oauth2 session record {:?}", e);
+                admin_error!("Failed to persist OAuth2 session record {:?}", e);
                 Oauth2Error::ServerError(e)
             })?;
 
@@ -1190,7 +1190,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         // Get the o2rs for the handle.
         let o2rs = self.oauth2rs.inner.rs_set.get(&client_id).ok_or_else(|| {
-            admin_warn!("Invalid oauth2 client_id");
+            admin_warn!("Invalid OAuth2 client_id");
             OperationError::InvalidSessionState
         })?;
 
@@ -1198,7 +1198,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         match &o2rs.type_ {
             OauthRSType::Basic { authz_secret, .. } => {
                 if authz_secret != &secret {
-                    security_info!("Invalid oauth2 client_id secret");
+                    security_info!("Invalid OAuth2 client_id secret");
                     return Err(OperationError::InvalidSessionState);
                 }
             }
@@ -1236,7 +1236,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
         trace!(?auth_req);
 
         if auth_req.response_type != "code" {
-            admin_warn!("Invalid oauth2 response_type (should be 'code')");
+            admin_warn!("Invalid OAuth2 response_type (should be 'code')");
             return Err(Oauth2Error::UnsupportedResponseType);
         }
 
@@ -1258,7 +1258,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
             .get(&auth_req.client_id)
             .ok_or_else(|| {
                 admin_warn!(
-                    "Invalid oauth2 client_id ({}) Have you configured the oauth2 resource server?",
+                    "Invalid OAuth2 client_id ({}) Have you configured the OAuth2 resource server?",
                     &auth_req.client_id
                 );
                 Oauth2Error::InvalidClientId
@@ -1268,7 +1268,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
         if auth_req.redirect_uri.origin() != o2rs.origin {
             admin_warn!(
                 origin = ?o2rs.origin,
-                "Invalid oauth2 redirect_uri (must be related to origin {:?}) - got {:?}",
+                "Invalid OAuth2 redirect_uri (must be related to origin {:?}) - got {:?}",
                 o2rs.origin,
                 auth_req.redirect_uri.origin()
             );
@@ -1278,7 +1278,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
         if o2rs.origin_https && auth_req.redirect_uri.scheme() != "https" {
             admin_warn!(
                 origin = ?o2rs.origin,
-                "Invalid oauth2 redirect_uri (must be https for secure origin) - got {:?}", auth_req.redirect_uri.scheme()
+                "Invalid OAuth2 redirect_uri (must be https for secure origin) - got {:?}", auth_req.redirect_uri.scheme()
             );
             return Err(Oauth2Error::InvalidOrigin);
         }
@@ -1294,7 +1294,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
             }
             // CodeChallengeMethod must be S256
             if pkce_request.code_challenge_method != CodeChallengeMethod::S256 {
-                admin_warn!("Invalid oauth2 code_challenge_method (must be 'S256')");
+                admin_warn!("Invalid OAuth2 code_challenge_method (must be 'S256')");
                 return Err(Oauth2Error::InvalidRequest);
             }
             Some(pkce_request.code_challenge.clone())
@@ -1330,7 +1330,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
         // Deny anonymous access to oauth2
         if uat.uuid == UUID_ANONYMOUS {
             admin_error!(
-                "Invalid oauth2 request - refusing to allow user that authenticated with anonymous"
+                "Invalid OAuth2 request - refusing to allow user that authenticated with anonymous"
             );
             return Err(Oauth2Error::AccessDenied);
         }
@@ -1342,14 +1342,20 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
             .map(str::to_string)
             .collect();
         if req_scopes.is_empty() {
-            admin_error!("Invalid oauth2 request - must contain at least one requested scope");
+            admin_error!("Invalid OAuth2 request - must contain at least one requested scope");
             return Err(Oauth2Error::InvalidRequest);
         }
 
         // Check the scopes by our scope regex validation rules.
         if !req_scopes.iter().all(|s| OAUTHSCOPE_RE.is_match(s)) {
             admin_error!(
-                "Invalid oauth2 request - requested scopes failed to pass validation rules"
+                "Invalid OAuth2 request - requested scopes ({}) failed to pass validation rules - all need to match the regex {}",
+                req_scopes
+                    .iter()
+                    .cloned()
+                    .collect::<Vec<String>>()
+                    .join(","),
+                    OAUTHSCOPE_RE.as_str()
             );
             return Err(Oauth2Error::InvalidScope);
         }
@@ -1558,7 +1564,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
             .rs_set
             .get(&consent_req.client_id)
             .ok_or_else(|| {
-                admin_error!("Invalid consent request oauth2 client_id");
+                admin_error!("Invalid consent request OAuth2 client_id");
                 OperationError::InvalidRequestState
             })?;
 
@@ -1577,7 +1583,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
 
         // Get the o2rs for the handle.
         let o2rs = self.oauth2rs.inner.rs_set.get(&client_id).ok_or_else(|| {
-            admin_warn!("Invalid oauth2 client_id");
+            admin_warn!("Invalid OAuth2 client_id");
             Oauth2Error::AuthenticationRequired
         })?;
 
@@ -1585,7 +1591,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
         match &o2rs.type_ {
             OauthRSType::Basic { authz_secret, .. } => {
                 if authz_secret != &secret {
-                    security_info!("Invalid oauth2 client_id secret");
+                    security_info!("Invalid OAuth2 client_id secret");
                     return Err(Oauth2Error::AuthenticationRequired);
                 }
             }
@@ -1628,7 +1634,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
                     return Ok(AccessTokenIntrospectResponse::inactive());
                 }
 
-                // Is the user expired, or the oauth2 session invalid?
+                // Is the user expired, or the OAuth2 session invalid?
                 let valid = self
                     .check_oauth2_account_uuid_valid(uuid, session_id, parent_session_id, iat, ct)
                     .map_err(|_| admin_error!("Account is not valid"));
@@ -1692,7 +1698,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
         let o2rs: &Oauth2RS = unsafe {
             let s = self.oauth2rs.inner.rs_set.get(client_id).ok_or_else(|| {
                 admin_warn!(
-                    "Invalid oauth2 client_id (have you configured the oauth2 resource server?)"
+                    "Invalid OAuth2 client_id (have you configured the OAuth2 resource server?)"
                 );
                 Oauth2Error::InvalidClientId
             })?;
@@ -1732,7 +1738,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
                     return Err(Oauth2Error::InvalidToken);
                 }
 
-                // Is the user expired, or the oauth2 session invalid?
+                // Is the user expired, or the OAuth2 session invalid?
                 let valid = self
                     .check_oauth2_account_uuid_valid(uuid, session_id, parent_session_id, iat, ct)
                     .map_err(|_| admin_error!("Account is not valid"));
@@ -1790,7 +1796,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
     ) -> Result<OidcDiscoveryResponse, OperationError> {
         let o2rs = self.oauth2rs.inner.rs_set.get(client_id).ok_or_else(|| {
             admin_warn!(
-                "Invalid oauth2 client_id (have you configured the oauth2 resource server?)"
+                "Invalid OAuth2 client_id (have you configured the OAuth2 resource server?)"
             );
             OperationError::NoMatchingEntries
         })?;
@@ -1811,7 +1817,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
             JwsSigner::ES256 { .. } => vec![IdTokenSignAlg::ES256],
             JwsSigner::RS256 { .. } => vec![IdTokenSignAlg::RS256],
             JwsSigner::HS256 { .. } => {
-                admin_warn!("Invalid oauth2 configuration - HS256 is not supported!");
+                admin_warn!("Invalid OAuth2 configuration - HS256 is not supported!");
                 vec![]
             }
         };
@@ -1871,7 +1877,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
     pub fn oauth2_openid_publickey(&self, client_id: &str) -> Result<JwkKeySet, OperationError> {
         let o2rs = self.oauth2rs.inner.rs_set.get(client_id).ok_or_else(|| {
             admin_warn!(
-                "Invalid oauth2 client_id (have you configured the oauth2 resource server?)"
+                "Invalid OAuth2 client_id (have you configured the OAuth2 resource server?)"
             );
             OperationError::NoMatchingEntries
         })?;
@@ -2041,11 +2047,11 @@ mod tests {
 
             $idms_prox_read
                 .check_oauth2_authorisation($ident, $uat, &auth_req, $ct)
-                .expect("Oauth2 authorisation failed")
+                .expect("OAuth2 authorisation failed")
         }};
     }
 
-    // setup an oauth2 instance.
+    // setup an OAuth2 instance.
     async fn setup_oauth2_resource_server_basic(
         idms: &IdmServer,
         ct: Duration,
@@ -2124,7 +2130,7 @@ mod tests {
         let entry = idms_prox_write
             .qs_write
             .internal_search_uuid(uuid)
-            .expect("Failed to retrieve oauth2 resource entry ");
+            .expect("Failed to retrieve OAuth2 resource entry ");
         let secret = entry
             .get_ava_single_secret(Attribute::OAuth2RsBasicSecret)
             .map(str::to_string)
@@ -2379,7 +2385,7 @@ mod tests {
 
         let permit_success = idms_prox_write
             .check_oauth2_authorise_permit(&ident, &uat, &consent_token, ct)
-            .expect("Failed to perform oauth2 permit");
+            .expect("Failed to perform OAuth2 permit");
 
         // Check we are reflecting the CSRF properly.
         assert!(permit_success.state == "123");
@@ -2399,7 +2405,7 @@ mod tests {
 
         let token_response = idms_prox_write
             .check_oauth2_token_exchange(None, &token_req, ct)
-            .expect("Failed to perform oauth2 token exchange");
+            .expect("Failed to perform OAuth2 token exchange");
 
         // 🎉 We got a token! In the future we can then check introspection from this point.
         assert!(token_response.token_type == "bearer");
@@ -2445,7 +2451,7 @@ mod tests {
 
         let permit_success = idms_prox_write
             .check_oauth2_authorise_permit(&ident, &uat, &consent_token, ct)
-            .expect("Failed to perform oauth2 permit");
+            .expect("Failed to perform OAuth2 permit");
 
         // Check we are reflecting the CSRF properly.
         assert!(permit_success.state == "123");
@@ -2465,7 +2471,7 @@ mod tests {
 
         let token_response = idms_prox_write
             .check_oauth2_token_exchange(None, &token_req, ct)
-            .expect("Failed to perform oauth2 token exchange");
+            .expect("Failed to perform OAuth2 token exchange");
 
         // 🎉 We got a token! In the future we can then check introspection from this point.
         assert!(token_response.token_type == "bearer");
@@ -2478,7 +2484,7 @@ mod tests {
         idms: &IdmServer,
         _idms_delayed: &mut IdmServerDelayed,
     ) {
-        // Test invalid oauth2 authorisation states/requests.
+        // Test invalid OAuth2 authorisation states/requests.
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
         let (_secret, uat, ident, _) =
             setup_oauth2_resource_server_basic(idms, ct, true, false, false).await;
@@ -2642,7 +2648,7 @@ mod tests {
         idms: &IdmServer,
         _idms_delayed: &mut IdmServerDelayed,
     ) {
-        // Test invalid oauth2 authorisation states/requests.
+        // Test invalid OAuth2 authorisation states/requests.
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
         let (_secret, uat, ident, _) =
             setup_oauth2_resource_server_basic(idms, ct, true, false, false).await;
@@ -2775,7 +2781,7 @@ mod tests {
         // == Manually submit the consent token to the permit for the permit_success
         let permit_success = idms_prox_write
             .check_oauth2_authorise_permit(&ident, &uat, &consent_token, ct)
-            .expect("Failed to perform oauth2 permit");
+            .expect("Failed to perform OAuth2 permit");
 
         // == Submit the token exchange code.
 
@@ -2939,7 +2945,7 @@ mod tests {
 
         let permit_success = idms_prox_write
             .check_oauth2_authorise_permit(&ident, &uat, &consent_token, ct)
-            .expect("Failed to perform oauth2 permit");
+            .expect("Failed to perform OAuth2 permit");
 
         let token_req: AccessTokenRequest = GrantTypeReq::AuthorizationCode {
             code: permit_success.code,
@@ -2949,7 +2955,7 @@ mod tests {
         .into();
         let oauth2_token = idms_prox_write
             .check_oauth2_token_exchange(client_authz.as_deref(), &token_req, ct)
-            .expect("Unable to exchange for oauth2 token");
+            .expect("Unable to exchange for OAuth2 token");
 
         assert!(idms_prox_write.commit().is_ok());
 
@@ -3035,7 +3041,7 @@ mod tests {
 
         let permit_success = idms_prox_write
             .check_oauth2_authorise_permit(&ident, &uat, &consent_token, ct)
-            .expect("Failed to perform oauth2 permit");
+            .expect("Failed to perform OAuth2 permit");
 
         // Assert that the consent was submitted
         let token_req: AccessTokenRequest = GrantTypeReq::AuthorizationCode {
@@ -3046,7 +3052,7 @@ mod tests {
         .into();
         let oauth2_token = idms_prox_write
             .check_oauth2_token_exchange(client_authz.as_deref(), &token_req, ct)
-            .expect("Unable to exchange for oauth2 token");
+            .expect("Unable to exchange for OAuth2 token");
 
         assert!(idms_prox_write.commit().is_ok());
 
@@ -3202,7 +3208,7 @@ mod tests {
 
         let permit_success = idms_prox_write
             .check_oauth2_authorise_permit(&ident, &uat, &consent_token, ct)
-            .expect("Failed to perform oauth2 permit");
+            .expect("Failed to perform OAuth2 permit");
 
         let token_req: AccessTokenRequest = GrantTypeReq::AuthorizationCode {
             code: permit_success.code,
@@ -3213,7 +3219,7 @@ mod tests {
 
         let oauth2_token = idms_prox_write
             .check_oauth2_token_exchange(client_authz.as_deref(), &token_req, ct)
-            .expect("Unable to exchange for oauth2 token");
+            .expect("Unable to exchange for OAuth2 token");
 
         let reflected_token = idms_prox_write
             .reflect_oauth2_token(client_authz.as_ref().unwrap(), &oauth2_token.access_token)
@@ -3318,7 +3324,7 @@ mod tests {
 
         let reject_success = idms_prox_read
             .check_oauth2_authorise_reject(&ident, &uat, &consent_token, ct)
-            .expect("Failed to perform oauth2 reject");
+            .expect("Failed to perform OAuth2 reject");
 
         assert!(reject_success == redirect_uri);
 
@@ -3532,7 +3538,7 @@ mod tests {
 
         let permit_success = idms_prox_write
             .check_oauth2_authorise_permit(&ident, &uat, &consent_token, ct)
-            .expect("Failed to perform oauth2 permit");
+            .expect("Failed to perform OAuth2 permit");
 
         // == Submit the token exchange code.
         let token_req: AccessTokenRequest = GrantTypeReq::AuthorizationCode {
@@ -3545,7 +3551,7 @@ mod tests {
 
         let token_response = idms_prox_write
             .check_oauth2_token_exchange(client_authz.as_deref(), &token_req, ct)
-            .expect("Failed to perform oauth2 token exchange");
+            .expect("Failed to perform OAuth2 token exchange");
 
         // 🎉 We got a token!
         assert!(token_response.token_type == "bearer");
@@ -3643,7 +3649,7 @@ mod tests {
 
         let token_response = idms_prox_write
             .check_oauth2_token_exchange(client_authz.as_deref(), &token_req, ct)
-            .expect("Unable to exchange for oauth2 token");
+            .expect("Unable to exchange for OAuth2 token");
 
         let access_token = token_response.access_token;
 
@@ -3712,7 +3718,7 @@ mod tests {
 
         let permit_success = idms_prox_write
             .check_oauth2_authorise_permit(&ident, &uat, &consent_token, ct)
-            .expect("Failed to perform oauth2 permit");
+            .expect("Failed to perform OAuth2 permit");
 
         // == Submit the token exchange code.
         let token_req: AccessTokenRequest = GrantTypeReq::AuthorizationCode {
@@ -3725,7 +3731,7 @@ mod tests {
 
         let token_response = idms_prox_write
             .check_oauth2_token_exchange(client_authz.as_deref(), &token_req, ct)
-            .expect("Failed to perform oauth2 token exchange");
+            .expect("Failed to perform OAuth2 token exchange");
 
         let id_token = token_response.id_token.expect("No id_token in response!");
         let access_token = token_response.access_token;
@@ -3798,7 +3804,7 @@ mod tests {
 
         let permit_success = idms_prox_write
             .check_oauth2_authorise_permit(&ident, &uat, &consent_token, ct)
-            .expect("Failed to perform oauth2 permit");
+            .expect("Failed to perform OAuth2 permit");
 
         // == Submit the token exchange code.
         let token_req: AccessTokenRequest = GrantTypeReq::AuthorizationCode {
@@ -3811,7 +3817,7 @@ mod tests {
 
         let token_response = idms_prox_write
             .check_oauth2_token_exchange(client_authz.as_deref(), &token_req, ct)
-            .expect("Failed to perform oauth2 token exchange");
+            .expect("Failed to perform OAuth2 token exchange");
 
         let id_token = token_response.id_token.expect("No id_token in response!");
         let access_token = token_response.access_token;
@@ -3959,7 +3965,7 @@ mod tests {
 
         let permit_success = idms_prox_write
             .check_oauth2_authorise_permit(&ident, &uat, &consent_token, ct)
-            .expect("Failed to perform oauth2 permit");
+            .expect("Failed to perform OAuth2 permit");
 
         // == Submit the token exchange code.
         let token_req = AccessTokenRequest {
@@ -3975,7 +3981,7 @@ mod tests {
 
         let token_response = idms_prox_write
             .check_oauth2_token_exchange(None, &token_req, ct)
-            .expect("Failed to perform oauth2 token exchange");
+            .expect("Failed to perform OAuth2 token exchange");
 
         // 🎉 We got a token!
         assert!(token_response.token_type == "bearer");
@@ -4032,7 +4038,7 @@ mod tests {
 
         let _permit_success = idms_prox_write
             .check_oauth2_authorise_permit(&ident, &uat, &consent_token, ct)
-            .expect("Failed to perform oauth2 permit");
+            .expect("Failed to perform OAuth2 permit");
 
         assert!(idms_prox_write.commit().is_ok());
 
@@ -4064,7 +4070,7 @@ mod tests {
 
         drop(idms_prox_read);
 
-        // Great! Now change the scopes on the oauth2 instance, this revokes the permit.
+        // Great! Now change the scopes on the OAuth2 instance, this revokes the permit.
         let mut idms_prox_write = idms.proxy_write(ct).await;
 
         let me_extend_scopes = ModifyEvent::new_internal_invalid(
@@ -4130,7 +4136,7 @@ mod tests {
 
         // Success! We had to consent again due to the change :)
 
-        // Now change the supplemental scopes on the oauth2 instance, this revokes the permit.
+        // Now change the supplemental scopes on the OAuth2 instance, this revokes the permit.
         let mut idms_prox_write = idms.proxy_write(ct).await;
 
         let me_extend_scopes = ModifyEvent::new_internal_invalid(
@@ -4231,7 +4237,7 @@ mod tests {
 
         let _permit_success = idms_prox_write
             .check_oauth2_authorise_permit(&ident, &uat, &consent_token, ct)
-            .expect("Failed to perform oauth2 permit");
+            .expect("Failed to perform OAuth2 permit");
 
         let ident = idms_prox_write
             .process_uat_to_identity(&uat, ct)
@@ -4318,7 +4324,7 @@ mod tests {
 
         let consent_request = idms_prox_read
             .check_oauth2_authorisation(&ident, &uat, &auth_req, ct)
-            .expect("Failed to perform oauth2 authorisation request.");
+            .expect("Failed to perform OAuth2 authorisation request.");
 
         // Should be in the consent phase;
         let consent_token =
@@ -4334,7 +4340,7 @@ mod tests {
 
         let permit_success = idms_prox_write
             .check_oauth2_authorise_permit(&ident, &uat, &consent_token, ct)
-            .expect("Failed to perform oauth2 permit");
+            .expect("Failed to perform OAuth2 permit");
 
         // == Submit the token exchange code.
         // This exchange failed because we submitted a verifier when the code exchange
@@ -4427,7 +4433,7 @@ mod tests {
 
         let permit_success = idms_prox_write
             .check_oauth2_authorise_permit(&ident, &uat, &consent_token, ct)
-            .expect("Failed to perform oauth2 permit");
+            .expect("Failed to perform OAuth2 permit");
 
         // == Submit the token exchange code.
         // NOTE the url is http again
@@ -4488,7 +4494,7 @@ mod tests {
 
         let permit_success = idms_prox_write
             .check_oauth2_authorise_permit(&ident, &uat, &consent_token, ct)
-            .expect("Failed to perform oauth2 permit");
+            .expect("Failed to perform OAuth2 permit");
 
         let token_req: AccessTokenRequest = GrantTypeReq::AuthorizationCode {
             code: permit_success.code,
@@ -4498,7 +4504,7 @@ mod tests {
         .into();
         let access_token_response_1 = idms_prox_write
             .check_oauth2_token_exchange(client_authz.as_deref(), &token_req, ct)
-            .expect("Unable to exchange for oauth2 token");
+            .expect("Unable to exchange for OAuth2 token");
 
         assert!(idms_prox_write.commit().is_ok());
 
@@ -4538,7 +4544,7 @@ mod tests {
 
         let access_token_response_2 = idms_prox_write
             .check_oauth2_token_exchange(client_authz.as_deref(), &token_req, ct)
-            .expect("Unable to exchange for oauth2 token");
+            .expect("Unable to exchange for OAuth2 token");
 
         assert!(idms_prox_write.commit().is_ok());
 
@@ -4579,7 +4585,7 @@ mod tests {
 
         let access_token_response_3 = idms_prox_write
             .check_oauth2_token_exchange(client_authz.as_deref(), &token_req, ct)
-            .expect("Unable to exchange for oauth2 token");
+            .expect("Unable to exchange for OAuth2 token");
 
         assert!(idms_prox_write.commit().is_ok());
 
@@ -4620,7 +4626,7 @@ mod tests {
         assert!(idms_prox_write.commit().is_ok());
     }
 
-    // refresh when oauth2 parent session exp / missing.
+    // refresh when OAuth2 parent session exp / missing.
     #[idm_test]
     async fn test_idm_oauth2_refresh_token_oauth2_session_expired(
         idms: &IdmServer,
@@ -4633,7 +4639,7 @@ mod tests {
             setup_refresh_token(idms, idms_delayed, ct).await;
 
         // ============================================
-        // Revoke the oauth2 session
+        // Revoke the OAuth2 session
 
         let mut idms_prox_write = idms.proxy_write(ct).await;
         let revoke_request = TokenRevokeRequest {
@@ -4781,7 +4787,7 @@ mod tests {
 
         let _access_token_response_2 = idms_prox_write
             .check_oauth2_token_exchange(client_authz.as_deref(), &token_req, ct)
-            .expect("Unable to exchange for oauth2 token");
+            .expect("Unable to exchange for OAuth2 token");
 
         assert!(idms_prox_write.commit().is_ok());
 
@@ -4859,7 +4865,7 @@ mod tests {
 
         let access_token_response_2 = idms_prox_write
             .check_oauth2_token_exchange(client_authz.as_deref(), &token_req, ct)
-            .expect("Unable to exchange for oauth2 token");
+            .expect("Unable to exchange for OAuth2 token");
 
         // DO NOT COMMIT HERE - this is what forces the session issued_at
         // time to stay at the original time!
@@ -4883,7 +4889,7 @@ mod tests {
 
         let _access_token_response_3 = idms_prox_write
             .check_oauth2_token_exchange(client_authz.as_deref(), &token_req, ct)
-            .expect("Unable to exchange for oauth2 token");
+            .expect("Unable to exchange for OAuth2 token");
 
         assert!(idms_prox_write.commit().is_ok());
 
