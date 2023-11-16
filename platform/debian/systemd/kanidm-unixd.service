@@ -4,6 +4,8 @@
 [Unit]
 Description=Kanidm Local Client Resolver
 After=chronyd.service ntpd.service network-online.target
+Before=systemd-user-sessions.service nss-user-lookup.target
+Wants=nss-user-lookup.target
 
 [Service]
 DynamicUser=yes
