@@ -127,7 +127,7 @@ class KanidmClient:
 
     async def check_token_valid(self, token: Optional[str] = None) -> bool:
         """checks if a given token is valid, or the local one if you don't pass it"""
-        url = "/v1/auth/valid"
+        endpoint = "/v1/auth/valid"
         if token is not None:
             headers = {
                 "authorization": f"Bearer {token}",
@@ -135,7 +135,7 @@ class KanidmClient:
             }
         else:
             headers = None
-        result = await self.call_get(url, headers=headers)
+        result = await self.call_get(endpoint, headers=headers)
         logging.debug(result)
         if result.status_code == 200:
             return True
@@ -194,14 +194,17 @@ class KanidmClient:
                 ssl=self._ssl,
             ) as request:
                 content = await request.content.read()
-                try:
-                    response_json = json_lib.loads(content)
-                    response_headers = dict(request.headers)
-                    response_status = request.status
-                except json_lib.JSONDecodeError as json_error:
-                    logging.error("Failed to JSON Decode Response: %s", json_error)
-                    logging.error("Response data: %s", content)
-                    response_json = None
+                if len(content) > 0:
+                    try:
+                        response_json = json_lib.loads(content)
+                        response_headers = dict(request.headers)
+                        response_status = request.status
+                    except json_lib.JSONDecodeError as json_error:
+                        logging.error("Failed to JSON Decode Response: %s", json_error)
+                        logging.error("Response data: %s", content)
+                        response_json = None
+                else:
+                    response_json = {}
             response_input = {
                 "data": response_json,
                 "content": content.decode("utf-8"),
@@ -564,19 +567,25 @@ class KanidmClient:
         return await self.call_post(endpoint, json=payload)
 
     async def service_account_create(
-        self, name: str, display_name: str
+        self, name: str, displayname: str
     ) -> ClientResponse:
         """Create a service account"""
         endpoint = "/v1/service_account"
         payload = {
             "attrs": {
                 "name": [name],
-                "display_name": [
-                    display_name,
+                "displayname": [
+                    displayname,
                 ],
             }
         }
         return await self.call_post(endpoint, json=payload)
+
+    async def service_account_delete(self, name: str) -> ClientResponse:
+        """Create a service account"""
+        endpoint = f"/v1/service_account/{name}"
+
+        return await self.call_delete(endpoint)
 
     async def service_account_post_ssh_pubkey(
         self,
@@ -600,28 +609,34 @@ class KanidmClient:
         id: str,
         token_id: str,
     ) -> ClientResponse:
-        url = f"/v1/service_account/{id}/_api_token/{token_id}"
+        endpoint = f"/v1/service_account/{id}/_api_token/{token_id}"
 
-        return await self.call_delete(url)
+        return await self.call_delete(endpoint)
 
     async def person_account_create(
-        self, name: str, display_name: str
+        self, name: str, displayname: str
     ) -> ClientResponse:
         """Create a person account"""
         endpoint = "/v1/person"
         payload = {
             "attrs": {
                 "name": [name],
-                "display_name": [display_name],
+                "displayname": [displayname],
             }
         }
         return await self.call_post(endpoint, json=payload)
 
+    async def group_get(self, name: str) -> ClientResponse:
+        """Get a group"""
+        endpoint = f"/v1/group/{name}"
+        return await self.call_get(endpoint)
+
     async def group_create(self, name: str) -> ClientResponse:
         """Create a group"""
-        endpoint = f"/v1/group/{name}"
+        endpoint = "/v1/group"
+        payload = {"attrs": {"name": [name]}}
 
-        return await self.call_post(endpoint)
+        return await self.call_post(endpoint, json=payload)
 
     async def group_delete(self, name: str) -> ClientResponse:
         """Delete a group"""
@@ -653,18 +668,18 @@ class KanidmClient:
 
     async def group_set_members(self, id: str, members: List[str]) -> ClientResponse:
         """Set group member list"""
-        url = f"/v1/group/{id}/_attr/member"
-        return await self.call_put(url, json=members)
+        endpoint = f"/v1/group/{id}/_attr/member"
+        return await self.call_put(endpoint, json=members)
 
     async def group_add_members(self, id: str, members: List[str]) -> ClientResponse:
         """Add members to a group"""
-        url = f"/v1/group/{id}/_attr/member"
-        return await self.call_post(url, json=members)
+        endpoint = f"/v1/group/{id}/_attr/member"
+        return await self.call_post(endpoint, json=members)
 
     async def group_delete_members(self, id: str, members: List[str]) -> ClientResponse:
         """Remove members from a group"""
-        url = f"/v1/group/{id}/_attr/member"
-        return await self.call_delete(url, json=members)
+        endpoint = f"/v1/group/{id}/_attr/member"
+        return await self.call_delete(endpoint, json=members)
 
     async def person_account_update(
         self,
@@ -675,7 +690,7 @@ class KanidmClient:
         mail: Optional[List[str]] = None,
     ) -> ClientResponse:
         """Update details of a person"""
-        url = f"/v1/person/{id}"
+        endpoint = f"/v1/person/{id}"
 
         attrs = {}
         if newname is not None:
@@ -689,34 +704,34 @@ class KanidmClient:
 
         if not attrs:
             raise ValueError("You need to specify something to update!")
-        return await self.call_patch(url, json={"attrs": attrs})
+        return await self.call_patch(endpoint, json={"attrs": attrs})
 
     async def person_account_delete(self, id: str) -> ClientResponse:
         """Delete a person"""
-        url = f"/v1/person/{id}"
-        return await self.call_delete(url)
+        endpoint = f"/v1/person/{id}"
+        return await self.call_delete(endpoint)
 
     async def person_account_post_ssh_key(
         self, id: str, tag: str, pubkey: str
     ) -> ClientResponse:
         """Create an SSH key for a user"""
-        url = f"/v1/person/{id}/_ssh_pubkeys"
+        endpoint = f"/v1/person/{id}/_ssh_pubkeys"
 
         payload = (tag, pubkey)
 
-        return await self.call_post(url, json=payload)
+        return await self.call_post(endpoint, json=payload)
 
     async def person_account_delete_ssh_key(self, id: str, tag: str) -> ClientResponse:
         """Delete an SSH key for a user"""
-        url = f"/v1/person/{id}/_ssh_pubkeys/{tag}"
+        endpoint = f"/v1/person/{id}/_ssh_pubkeys/{tag}"
 
-        return await self.call_delete(url)
+        return await self.call_delete(endpoint)
 
     async def group_account_policy_enable(self, id: str) -> ClientResponse:
         """Enable account policy for a group"""
-        url = f"/v1/group/{id}/_attr/class"
+        endpoint = f"/v1/group/{id}/_attr/class"
         payload = ["account_policy"]
-        return await self.call_post(url, json=payload)
+        return await self.call_post(endpoint, json=payload)
 
     async def group_account_policy_authsession_expiry_set(
         self,
@@ -724,25 +739,25 @@ class KanidmClient:
         expiry: int,
     ) -> ClientResponse:
         """set the account policy authenticated session expiry length (seconds) for a group"""
-        url = f"/v1/group/{id}/_attr/authsession_expiry"
+        endpoint = f"/v1/group/{id}/_attr/authsession_expiry"
         payload = [expiry]
-        return await self.call_put(url, json=payload)
+        return await self.call_put(endpoint, json=payload)
 
     async def group_account_policy_password_minimum_length_set(
         self, id: str, minimum_length: int
     ) -> ClientResponse:
         """set the account policy password minimum length for a group"""
-        url = f"/v1/group/{id}/_attr/auth_password_minimum_length"
+        endpoint = f"/v1/group/{id}/_attr/auth_password_minimum_length"
         payload = [minimum_length]
-        return await self.call_put(url, json=payload)
+        return await self.call_put(endpoint, json=payload)
 
     async def group_account_policy_privilege_expiry_set(
         self, id: str, expiry: int
     ) -> ClientResponse:
         """set the account policy privilege expiry for a group"""
-        url = f"/v1/group/{id}/_attr/privilege_expiry"
+        endpoint = f"/v1/group/{id}/_attr/privilege_expiry"
         payload = [expiry]
-        return await self.call_put(url, json=payload)
+        return await self.call_put(endpoint, json=payload)
 
     async def system_password_badlist_get(self) -> ClientResponse:
         """Get the password badlist"""
@@ -754,15 +769,13 @@ class KanidmClient:
         """Add new items to the password badlist"""
 
         return await self.call_post(
-            "/v1/system/_attr/badlist_passwordpayload", json=new_passwords
+            "/v1/system/_attr/badlist_password", json=new_passwords
         )
 
     async def system_password_badlist_remove(self, items: List[str]) -> ClientResponse:
         """Remove items from the password badlist"""
 
-        return await self.call_delete(
-            "/v1/system/_attr/badlist_passwordpayload", json=items
-        )
+        return await self.call_delete("/v1/system/_attr/badlist_password", json=items)
 
     async def system_denied_names_get(self) -> ClientResponse:
         """Get the denied names list"""
@@ -826,19 +839,19 @@ class KanidmClient:
 
         if not attrs:
             raise ValueError("You need to set something to change!")
-        url = f"/v1/oauth2/{id}"
+        endpoint = f"/v1/oauth2/{id}"
         payload = {"attrs": attrs}
 
-        return await self.call_patch(url, json=payload)
+        return await self.call_patch(endpoint, json=payload)
 
     async def oauth2_rs_update_scope_map(
         self, id: str, group: str, scopes: List[str]
     ) -> ClientResponse:
         """Update an OAuth2 scope map"""
 
-        url = f"/v1/oauth2/{id}/_scopemap/{group}"
+        endpoint = f"/v1/oauth2/{id}/_scopemap/{group}"
 
-        return await self.call_post(url, json=scopes)
+        return await self.call_post(endpoint, json=scopes)
 
     async def oauth2_rs_delete_scope_map(
         self,
@@ -853,9 +866,9 @@ class KanidmClient:
     ) -> ClientResponse:
         """Update an OAuth2 supplemental scope map"""
 
-        url = f"/v1/oauth2/{id}/_sup_scopemap/{group}"
+        endpoint = f"/v1/oauth2/{id}/_sup_scopemap/{group}"
 
-        return await self.call_post(url, json=scopes)
+        return await self.call_post(endpoint, json=scopes)
 
     async def oauth2_rs_delete_sup_scope_map(
         self,
