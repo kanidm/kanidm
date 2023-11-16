@@ -37,3 +37,4 @@ pykanidm/site/
 # oauth2 integration test things
 scripts/oauth_proxy/client.secret
 scripts/oauth_proxy/envfile
+.envrc

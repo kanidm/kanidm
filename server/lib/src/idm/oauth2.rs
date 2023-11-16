@@ -510,7 +510,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         match &o2rs.type_ {
             OauthRSType::Basic { authz_secret, .. } => {
                 if authz_secret != &secret {
-                    security_info!("Invalid OAuth2 client_id secret");
+                    security_info!("Invalid OAuth2 client_id secret, this can happen if your RS is public but you configured a 'basic' type.");
                     return Err(Oauth2Error::AuthenticationRequired);
                 }
             }
@@ -634,7 +634,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                     None => {
                         // We can only get here if we relied on the atr for the client_id and secret
                         security_info!(
-                            "Invalid OAuth2 authentication - no secret in access token request"
+                            "Invalid OAuth2 authentication - no secret in access token request - this can happen if you're expecting a public client and configured a basic one."
                         );
                         return Err(Oauth2Error::AuthenticationRequired);
                     }
@@ -1346,15 +1346,21 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
             return Err(Oauth2Error::InvalidRequest);
         }
 
-        // Check the scopes by our scope regex validation rules.
-        if !req_scopes.iter().all(|s| OAUTHSCOPE_RE.is_match(s)) {
+        let failed_scopes = req_scopes
+            .iter()
+            .cloned()
+            .filter(|s| !OAUTHSCOPE_RE.is_match(s))
+            .collect::<Vec<String>>();
+        if !failed_scopes.is_empty() {
+            let requested_scopes_string = req_scopes
+                .iter()
+                .cloned()
+                .collect::<Vec<String>>()
+                .join(",");
             admin_error!(
-                "Invalid OAuth2 request - requested scopes ({}) failed to pass validation rules - all need to match the regex {}",
-                req_scopes
-                    .iter()
-                    .cloned()
-                    .collect::<Vec<String>>()
-                    .join(","),
+                "Invalid OAuth2 request - requested scopes ({}) but ({}) failed to pass validation rules - all must match the regex {}",
+                    requested_scopes_string,
+                    failed_scopes.join(","),
                     OAUTHSCOPE_RE.as_str()
             );
             return Err(Oauth2Error::InvalidScope);
