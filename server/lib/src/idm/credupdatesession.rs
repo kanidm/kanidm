@@ -93,9 +93,9 @@ enum CredentialState {
     // Disabled,
 }
 
-impl Into<CUCredState> for CredentialState {
-    fn into(self) -> CUCredState {
-        match self {
+impl From<CredentialState> for CUCredState {
+    fn from(val: CredentialState) -> CUCredState {
+        match val {
             CredentialState::Modifiable => CUCredState::Modifiable,
             CredentialState::AccessDeny => CUCredState::AccessDeny,
             CredentialState::PolicyDeny => CUCredState::PolicyDeny,
@@ -242,9 +242,9 @@ pub enum CredentialUpdateSessionStatusWarnings {
     Unsatisfiable,
 }
 
-impl Into<CURegWarning> for CredentialUpdateSessionStatusWarnings {
-    fn into(self) -> CURegWarning {
-        match self {
+impl From<CredentialUpdateSessionStatusWarnings> for CURegWarning {
+    fn from(val: CredentialUpdateSessionStatusWarnings) -> CURegWarning {
+        match val {
             CredentialUpdateSessionStatusWarnings::MfaRequired => CURegWarning::MfaRequired,
             CredentialUpdateSessionStatusWarnings::PasskeyRequired => CURegWarning::PasskeyRequired,
             CredentialUpdateSessionStatusWarnings::Unsatisfiable => CURegWarning::Unsatisfiable,
