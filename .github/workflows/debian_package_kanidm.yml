@@ -51,13 +51,57 @@ jobs:
           name: ubuntu-packages
           path: |
             target/*.deb
+  build-deb-package-arm:
+    name: Build deb packages
+    strategy:
+      matrix:
+        image:
+          - ubuntu:22.04
+          # - debian:12
+      fail-fast: false
+    runs-on: ubuntu-latest
+    container:
+      image: ${{ matrix.image }}
+      env:
+        DEBIAN_FRONTEND: noninteractive
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: install curl
+        run: |
+          apt-get update && apt-get install -y curl
+      - name: Setup sccache
+        uses: mozilla-actions/sccache-action@v0.0.3
+        with:
+          version: "v0.4.2"
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          target: aarch64-unknown-linux-gnu
+      - name: Install dependencies
+        run: |
+          scripts/install_ubuntu_dependencies.sh
+      - name: build with target
+        run: cargo build --target=aarch64-unknown-linux-gnu --release --bin kanidm_unix
+      # - name: Install wasm-pack
+      #   run: cargo install wasm-pack
+      # - name: Build packages (kanidm-unixd)
+      #   run: make -f platform/debian/Makefile debs/kanidm-unixd
+      # - name: Upload debs
+      #   uses: actions/upload-artifact@v3
+      #   with:
+      #     name: ubuntu-packages
+      #     path: |
+      #       target/*.deb
   upload-to-releases:
     permissions:
       # https://docs.github.com/en/actions/using-jobs/assigning-permissions-to-jobs
       contents: write # allows the action to create a release
 
     name: Upload to releases
-    needs: build-deb-package
+    needs:
+      - build-deb-package
+      - build-deb-package-arm
     runs-on: ubuntu-latest
     if: ${{ github.ref == 'refs/heads/master' && github.repository == 'kanidm/kanidm' }}
     steps:
