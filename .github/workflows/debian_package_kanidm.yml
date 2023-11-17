@@ -6,14 +6,13 @@ name: "Build Deb Packages"
   pull_request:
 
 env:
-  SCCACHE_GHA_ENABLED: "true"
-  RUSTC_WRAPPER: "sccache"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 jobs:
   # build-deb-package:
+
   #   name: Build deb packages
   #   strategy:
   #     matrix:
@@ -26,6 +25,8 @@ jobs:
   #     image: ${{ matrix.image }}
   #     env:
   #       DEBIAN_FRONTEND: noninteractive
+  #       SCCACHE_GHA_ENABLED: "true"
+  #       RUSTC_WRAPPER: "sccache"
   #   steps:
   #     - name: Checkout
   #       uses: actions/checkout@v4
@@ -70,10 +71,10 @@ jobs:
       - name: install curl
         run: |
           apt-get update && apt-get install -y curl
-      - name: Setup sccache
-        uses: mozilla-actions/sccache-action@v0.0.3
-        with:
-          version: "v0.4.2"
+      # - name: Setup sccache
+      #   uses: mozilla-actions/sccache-action@v0.0.3
+      #   with:
+      #     version: "v0.4.2"
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
