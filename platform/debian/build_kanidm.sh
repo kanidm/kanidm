@@ -4,6 +4,17 @@
 
 set -e
 
+if [ -z "${ARCH}" ]; then
+    ARCH="$(dpkg --print-architecture)"
+fi
+
+if [ "${ARCH}" -ne "$(dpkg --print-architecture)" ]; then
+    echo "${ARCH} -ne $(dpkg --print-architecture), cross-compiling!"
+    export PKG_CONFIG_ALLOW_CROSS=1
+
+fi
+
+
 if [ -z "$1" ]; then
     PACKAGE="kanidm"
 else

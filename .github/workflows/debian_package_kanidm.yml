@@ -82,11 +82,13 @@ jobs:
         run: |
           scripts/install_ubuntu_dependencies.sh
       - name: build with target
-        run: cargo build --target=aarch64-unknown-linux-gnu --release --bin kanidm_unixd --bin kanidm_unixd_tasks --bin kanidm-unix
+        run: |
+          cargo build --target=aarch64-unknown-linux-gnu --release --bin kanidm_unixd --bin kanidm_unixd_tasks --bin kanidm-unix
+          mv target/aarch64-unknown-linux-gnu/release/kanidm* target/release/
       # - name: Install wasm-pack
       #   run: cargo install wasm-pack
-      # - name: Build packages (kanidm-unixd)
-      #   run: make -f platform/debian/Makefile debs/kanidm-unixd
+      - name: Build packages (kanidm-unixd)
+        run: ARCH=arm64 make -f platform/debian/Makefile debs/kanidm-unixd
       # - name: Upload debs
       #   uses: actions/upload-artifact@v3
       #   with:
