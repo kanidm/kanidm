@@ -5,8 +5,6 @@ name: "Build Deb Packages"
   push:
   pull_request:
 
-env:
-
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
