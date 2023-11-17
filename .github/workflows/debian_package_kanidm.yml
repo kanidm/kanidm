@@ -15,6 +15,7 @@ jobs:
   #   strategy:
   #     matrix:
   #       image:
+  #         - ubuntu:20.04
   #         - ubuntu:22.04
   #         - debian:12
   #     fail-fast: false
@@ -40,8 +41,6 @@ jobs:
   #     - name: Install dependencies
   #       run: |
   #         scripts/install_ubuntu_dependencies.sh
-  #     - name: Install wasm-pack
-  #       run: cargo install wasm-pack
   #     - name: Build packages (kanidm-unixd)
   #       run: make -f platform/debian/Makefile debs/kanidm-unixd
   #     - name: Upload debs
@@ -82,7 +81,7 @@ jobs:
           scripts/install_ubuntu_dependencies.sh
       - name: build with target
         run: |
-          apt-get -y install libssl-dev:aarch64-unknown-linux-gnu pkg-config gcc-aarch64-linux-gnu rsync
+          apt-get -y install libssl-dev:arm64 pkg-config gcc-aarch64-linux-gnu rsync
           rsync -av /usr/include/aarch64-unknown-linux-gnu/openssl/* /usr/include/openssl/
           PKG_CONFIG_ALLOW_CROSS=1 cargo build -q --target=aarch64-unknown-linux-gnu --release --bin kanidm_unixd --bin kanidm_unixd_tasks --bin kanidm-unix
           mv target/aarch64-unknown-linux-gnu/release/kanidm* target/release/
