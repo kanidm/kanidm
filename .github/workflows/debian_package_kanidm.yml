@@ -82,8 +82,8 @@ jobs:
           scripts/install_ubuntu_dependencies.sh
       - name: build with target
         run: |
-          apt-get -y install libssl-dev pkg-config gcc-aarch64-linux-gnu
-          find /usr/include -name '*openssl*'
+          apt-get -y install libssl-dev pkg-config gcc-aarch64-linux-gnu rsync
+          rsync -av /usr/include/x86_64-linux-gnu/openssl/* /usr/include/openssl/
           PKG_CONFIG_ALLOW_CROSS=1 cargo build -q --target=aarch64-unknown-linux-gnu --release --bin kanidm_unixd --bin kanidm_unixd_tasks --bin kanidm-unix
           mv target/aarch64-unknown-linux-gnu/release/kanidm* target/release/
       # - name: Install wasm-pack
