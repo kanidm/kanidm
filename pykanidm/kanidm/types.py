@@ -10,7 +10,7 @@ from urllib.parse import urlparse
 from pydantic import field_validator, ConfigDict, BaseModel, Field
 import toml
 
-from kanidm.models.group import Group, RawGroup, GroupList  # noqa
+from kanidm.models.group import Group as GroupInfo, RawGroup as RawGroupInfo, GroupList  # noqa
 
 
 T = TypeVar("T", Dict[str, Any], None)
