@@ -4,14 +4,19 @@
 
 from ipaddress import IPv4Address, IPv6Address, IPv6Network, IPv4Network
 import socket
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Generic, TypeVar
 from urllib.parse import urlparse
 
-from pydantic import field_validator, ConfigDict, BaseModel, Field, RootModel
+from pydantic import field_validator, ConfigDict, BaseModel, Field
 import toml
 
+from kanidm.models.group import Group, RawGroup, GroupList  # noqa
 
-class ClientResponse(BaseModel):
+
+T = TypeVar("T", Dict[str, Any], None)
+
+
+class ClientResponse(BaseModel, Generic[T]):
     """response from an API call, includes the following fields:
     content: Optional[str]
     data: Optional[Dict[str, Any]]
@@ -21,7 +26,7 @@ class ClientResponse(BaseModel):
 
     content: Optional[str] = None
     # the data field is used for the json-parsed response
-    data: Optional[Any] = None
+    data: Optional[T] = None
     headers: Dict[str, Any]
     status_code: int
     model_config = ConfigDict(arbitrary_types_allowed=True)
@@ -201,50 +206,3 @@ class KanidmClientConfig(BaseModel):
                 value = f"{value}/"
 
         return value
-
-
-class GroupInfo(BaseModel):
-    """nicer"""
-
-    name: str
-    dynmember: List[str]
-    member: List[str]
-    spn: str
-    uuid: str
-    # posix-enabled group
-    gidnumber: Optional[int]
-
-    def has_member(self, member: str) -> bool:
-        """check if a member is in the group"""
-        return member in self.member or member in self.dynmember
-
-
-class RawGroupInfo(BaseModel):
-    """group information as it comes back from the API"""
-
-    attrs: Dict[str, List[str]]
-    model_config = ConfigDict(arbitrary_types_allowed=True)
-
-    def as_groupinfo(self) -> GroupInfo:
-        """return it as the GroupInfo object which has nicer fields"""
-        for field in "name", "uuid", "spn":
-            if field not in self.attrs:
-                raise ValueError(f"Missing field {field} in {self.attrs}")
-
-        # we want either the first element of gidnumber_field, or None
-        gidnumber_field = self.attrs.get("gidnumber", [])
-        gidnumber: Optional[int] = None
-        if len(gidnumber_field) > 0:
-            gidnumber = int(gidnumber_field[0])
-
-        return GroupInfo(
-            name=self.attrs["name"][0],
-            uuid=self.attrs["uuid"][0],
-            spn=self.attrs["spn"][0],
-            member=self.attrs.get("member", []),
-            dynmember=self.attrs.get("dynmember", []),
-            gidnumber=gidnumber,
-        )
-
-
-GroupList = RootModel[List[RawGroupInfo]]
