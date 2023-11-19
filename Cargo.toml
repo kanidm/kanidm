@@ -134,7 +134,7 @@ gloo = "^0.8.1"
 gloo-utils = "0.2.0"
 hashbrown = { version = "0.14.2", features = ["serde", "inline-more", "ahash"] }
 hex = "^0.4.3"
-http = "0.2.10"
+http = "0.2.11"
 hyper = { version = "0.14.27", features = ["full"] }
 hyper-tls = "0.5.0"
 idlset = "^0.2.4"
@@ -228,14 +228,14 @@ tracing = { version = "^0.1.40", features = [
     "release_max_level_debug",
 ] }
 # tracing = { version = "^0.1.37" }
-tracing-subscriber = { version = "^0.3.17", features = ["env-filter"] }
+tracing-subscriber = { version = "^0.3.18", features = ["env-filter"] }
 tracing-forest = "^0.1.6"
 
 tss-esapi = "^7.4.0"
 
 url = "^2.4.1"
 urlencoding = "2.1.3"
-utoipa = "4.0.0"
+utoipa = "4.1.0"
 utoipa-swagger-ui = "4.0.0"
 uuid = "^1.5.0"
 
