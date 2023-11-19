@@ -31,9 +31,15 @@ pub fn uuid_from_duration(d: Duration, sid: Sid) -> Uuid {
     uuid_from_u64_u32(d.as_secs(), d.subsec_nanos(), sid)
 }
 
+pub(crate) fn password_from_random_len(len: u32) -> String {
+    thread_rng()
+        .sample_iter(&DistinctAlpha)
+        .take(len as usize)
+        .collect::<String>()
+}
+
 pub fn password_from_random() -> String {
-    let rand_string: String = thread_rng().sample_iter(&DistinctAlpha).take(48).collect();
-    rand_string
+    password_from_random_len(48)
 }
 
 pub fn backup_code_from_random() -> HashSet<String> {

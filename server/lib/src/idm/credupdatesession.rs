@@ -2002,6 +2002,7 @@ mod tests {
     use crate::idm::server::{IdmServer, IdmServerCredUpdateTransaction, IdmServerDelayed};
     use crate::idm::AuthState;
     use crate::prelude::*;
+    use crate::utils::password_from_random_len;
     use crate::value::CredentialType;
 
     const TEST_CURRENT_TIME: u64 = 6000;
@@ -2682,9 +2683,9 @@ mod tests {
 
         // Test initially creating a credential.
         //   - pw first
-
+        let pw = password_from_random_len(8);
         let err = cutxn
-            .credential_primary_set_password(&cust, ct, "password")
+            .credential_primary_set_password(&cust, ct, &pw)
             .unwrap_err();
         trace!(?err);
         assert!(match err {
@@ -2694,7 +2695,29 @@ mod tests {
             _ => false,
         });
 
+        // Test pw len of len minus 1
+        let pw = password_from_random_len(test_pw_min_length - 1);
+        let err = cutxn
+            .credential_primary_set_password(&cust, ct, &pw)
+            .unwrap_err();
+        trace!(?err);
+        assert!(match err {
+            OperationError::PasswordQuality(details)
+                if details == vec!(PasswordFeedback::TooShort(test_pw_min_length),) =>
+                true,
+            _ => false,
+        });
+
+        // Test pw len of exact len
+        let pw = password_from_random_len(test_pw_min_length);
+        let c_status = cutxn
+            .credential_primary_set_password(&cust, ct, &pw)
+            .expect("Failed to update the primary cred password");
+
+        assert!(c_status.can_commit);
+
         drop(cutxn);
+        commit_session(idms, ct, cust).await;
     }
 
     // Test set of primary account password
