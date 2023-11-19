@@ -73,7 +73,7 @@ async def main() -> None:
     )
 
     # create an oauth2 rs
-    logger.info("Creating oauth2 rs")
+    logger.info("Creating OAuth2 RS")
     res = await admin_client.oauth2_rs_basic_create(
         "basic_rs", "Basic AF RS", "https://basic.example.com"
     )
@@ -81,8 +81,13 @@ async def main() -> None:
     assert res.status_code == 200
     logger.info("Done!")
 
+    logger.info("Getting basic secret for OAuth2 RS")
+    res = await admin_client.oauth2_rs_get_basic_secret("basic_rs")
+    assert res.status_code == 200
+    assert res.data is not None
+
     # delete the oauth2 rs
-    logger.info("Deleting oauth2 rs")
+    logger.info("Deleting OAuth2 RS")
     res = await admin_client.oauth2_rs_delete("basic_rs")
     logger.debug(f"Result: {res}")
     assert res.status_code == 200
