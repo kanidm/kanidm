@@ -1,77 +1,77 @@
 ---
-  name: "Build Deb Packages"
+name: "Build Deb Packages"
 
-  "on":
-    push:
-    pull_request:
+"on":
+  push:
+  pull_request:
 
-  env:
-    SCCACHE_GHA_ENABLED: "true"
-    RUSTC_WRAPPER: "sccache"
+env:
+  SCCACHE_GHA_ENABLED: "true"
+  RUSTC_WRAPPER: "sccache"
 
-  concurrency:
-    group: ${{ github.workflow }}-${{ github.ref }}
-    cancel-in-progress: true
-  jobs:
-    build-deb-package:
-      name: Build deb packages
-      strategy:
-        matrix:
-          image:
-            - ubuntu:22.04
-            - debian:12
-        fail-fast: false
-      runs-on: ubuntu-latest
-      container:
-        image: ${{ matrix.image }}
-        env:
-          DEBIAN_FRONTEND: noninteractive
-      steps:
-        - name: Checkout
-          uses: actions/checkout@v4
-        - name: install curl
-          run: |
-            apt-get update && apt-get install -y curl
-        - name: Setup sccache
-          uses: mozilla-actions/sccache-action@v0.0.3
-          with:
-            version: "v0.4.2"
-        - name: Install Rust
-          uses: dtolnay/rust-toolchain@stable
-        - name: Install dependencies
-          run: |
-            scripts/install_ubuntu_dependencies.sh
-        - name: Install wasm-pack
-          run: cargo install wasm-pack
-        - name: Build packages (kanidm-unixd)
-          run: make -f platform/debian/Makefile debs/kanidm-unixd
-        - name: Upload debs
-          uses: actions/upload-artifact@v3
-          with:
-            name: ubuntu-packages
-            path: |
-              target/*.deb
-    upload-to-releases:
-      permissions:
-        # https://docs.github.com/en/actions/using-jobs/assigning-permissions-to-jobs
-        contents: write # allows the action to create a release
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  build-deb-package:
+    name: Build deb packages
+    strategy:
+      matrix:
+        image:
+          - ubuntu:22.04
+          - debian:12
+      fail-fast: false
+    runs-on: ubuntu-latest
+    container:
+      image: ${{ matrix.image }}
+      env:
+        DEBIAN_FRONTEND: noninteractive
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: install curl
+        run: |
+          apt-get update && apt-get install -y curl
+      - name: Setup sccache
+        uses: mozilla-actions/sccache-action@v0.0.3
+        with:
+          version: "v0.4.2"
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+      - name: Install dependencies
+        run: |
+          scripts/install_ubuntu_dependencies.sh
+      - name: Install wasm-pack
+        run: cargo install wasm-pack
+      - name: Build packages (kanidm-unixd)
+        run: make -f platform/debian/Makefile debs/kanidm-unixd
+      - name: Upload debs
+        uses: actions/upload-artifact@v3
+        with:
+          name: ubuntu-packages
+          path: |
+            target/*.deb
+  upload-to-releases:
+    permissions:
+      # https://docs.github.com/en/actions/using-jobs/assigning-permissions-to-jobs
+      contents: write # allows the action to create a release
 
-      name: Upload to releases
-      needs: build-deb-package
-      runs-on: ubuntu-latest
-      if: ${{ github.ref == 'refs/heads/master' && github.repository == 'kanidm/kanidm' }}
-      steps:
-        - name: Download previously built debs
-          uses: actions/download-artifact@v3
-          with:
-            name: ubuntu-packages
-        - name: List packages
-          run: |
-            ls
-        - uses: "marvinpinto/action-automatic-releases@latest"
-          with:
-            repo_token: "${{ secrets.GITHUB_TOKEN }}"
-            automatic_release_tag: "debs"
-            prerelease: true
-            title: ".deb Packages"
-            files: "*.deb"
+    name: Upload to releases
+    needs: build-deb-package
+    runs-on: ubuntu-latest
+    if: ${{ github.ref == 'refs/heads/master' && github.repository == 'kanidm/kanidm' }}
+    steps:
+      - name: Download previously built debs
+        uses: actions/download-artifact@v3
+        with:
+          name: ubuntu-packages
+      - name: List packages
+        run: |
+          ls
+      - uses: "marvinpinto/action-automatic-releases@latest"
+        with:
+          repo_token: "${{ secrets.GITHUB_TOKEN }}"
+          automatic_release_tag: "debs"
+          prerelease: true
+          title: ".deb Packages"
+          files: "*.deb"
