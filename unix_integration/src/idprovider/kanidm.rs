@@ -1,13 +1,25 @@
+use crate::db::KeyStoreTxn;
 use async_trait::async_trait;
 use kanidm_client::{ClientError, KanidmClient, StatusCode};
 use kanidm_proto::v1::{OperationError, UnixGroupToken, UnixUserToken};
 use tokio::sync::RwLock;
 
 use super::interface::{
-    AuthCacheAction, AuthCredHandler, AuthRequest, AuthResult, GroupToken, Id, IdProvider,
-    IdpError, UserToken,
+    // KeyStore,
+    tpm,
+    AuthCacheAction,
+    AuthCredHandler,
+    AuthRequest,
+    AuthResult,
+    GroupToken,
+    Id,
+    IdProvider,
+    IdpError,
+    UserToken,
 };
 use crate::unix_proto::PamAuthRequest;
+
+const TAG_IDKEY: &str = "idkey";
 
 pub struct KanidmProvider {
     client: RwLock<KanidmClient>,
@@ -71,6 +83,37 @@ impl From<UnixGroupToken> for GroupToken {
 
 #[async_trait]
 impl IdProvider for KanidmProvider {
+    async fn configure_hsm_keys<D: KeyStoreTxn + Send>(
+        &self,
+        keystore: &mut D,
+        tpm: &mut (dyn tpm::Tpm + Send),
+        machine_key: &tpm::MachineKey,
+    ) -> Result<(), IdpError> {
+        let id_key: Option<tpm::LoadableIdentityKey> =
+            keystore.get_tagged_hsm_key(TAG_IDKEY).map_err(|ks_err| {
+                error!(?ks_err);
+                IdpError::KeyStore
+            })?;
+
+        if id_key.is_none() {
+            let lik = tpm
+                .identity_key_create(machine_key, tpm::KeyAlgorithm::Ecdsa256)
+                .map_err(|tpm_err| {
+                    error!(?tpm_err);
+                    IdpError::Tpm
+                })?;
+
+            keystore
+                .insert_tagged_hsm_key(TAG_IDKEY, &lik)
+                .map_err(|ks_err| {
+                    error!(?ks_err);
+                    IdpError::KeyStore
+                })?;
+        }
+
+        Ok(())
+    }
+
     // Needs .read on all types except re-auth.
     async fn provider_authenticate(&self) -> Result<(), IdpError> {
         match self.client.write().await.auth_anonymous().await {

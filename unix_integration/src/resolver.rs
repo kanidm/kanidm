@@ -13,7 +13,14 @@ use uuid::Uuid;
 
 use crate::db::{Cache, CacheTxn, Db};
 use crate::idprovider::interface::{
-    AuthCacheAction, AuthCredHandler, AuthResult, GroupToken, Id, IdProvider, IdpError, KeyStore,
+    AuthCacheAction,
+    AuthCredHandler,
+    AuthResult,
+    GroupToken,
+    Id,
+    IdProvider,
+    IdpError,
+    // KeyStore,
     UserToken,
 };
 use crate::unix_config::{HomeAttr, UidAttr};
@@ -104,12 +111,12 @@ where
         let mut hsm_lock = hsm.lock().await;
 
         // setup and do a migrate.
-        let dbtxn = db.write().await;
+        let mut dbtxn = db.write().await;
         dbtxn.migrate().map_err(|_| ())?;
         dbtxn.commit().map_err(|_| ())?;
 
         // Setup our internal keys
-        let dbtxn = db.write().await;
+        let mut dbtxn = db.write().await;
 
         let loadable_hmac_key = match dbtxn.get_hsm_hmac_key() {
             Ok(Some(hmk)) => hmk,
@@ -141,16 +148,19 @@ where
 
         // Ask the client what keys it wants the HSM to configure.
         // make a key store
-        let mut ks = KeyStore::new(&dbtxn);
+        // let mut ks = KeyStore::new(&mut dbtxn);
 
-        client
-            .configure_hsm_keys(&mut ks, &mut **hsm_lock.deref_mut(), &machine_key)
-            .await
-            .map_err(|err| {
-                error!(?err, "Client was unable to configure hsm keys");
-            })?;
+        let result = client
+            // .configure_hsm_keys(&mut ks, &mut **hsm_lock.deref_mut(), &machine_key)
+            .configure_hsm_keys(&mut dbtxn, &mut **hsm_lock.deref_mut(), &machine_key)
+            .await;
 
+        // drop(ks);
         drop(hsm_lock);
+
+        result.map_err(|err| {
+            error!(?err, "Client was unable to configure hsm keys");
+        })?;
 
         dbtxn.commit().map_err(|_| ())?;
 
@@ -204,14 +214,14 @@ where
     pub async fn clear_cache(&self) -> Result<(), ()> {
         let mut nxcache_txn = self.nxcache.lock().await;
         nxcache_txn.clear();
-        let dbtxn = self.db.write().await;
+        let mut dbtxn = self.db.write().await;
         dbtxn.clear().and_then(|_| dbtxn.commit()).map_err(|_| ())
     }
 
     pub async fn invalidate(&self) -> Result<(), ()> {
         let mut nxcache_txn = self.nxcache.lock().await;
         nxcache_txn.clear();
-        let dbtxn = self.db.write().await;
+        let mut dbtxn = self.db.write().await;
         dbtxn
             .invalidate()
             .and_then(|_| dbtxn.commit())
@@ -219,12 +229,12 @@ where
     }
 
     async fn get_cached_usertokens(&self) -> Result<Vec<UserToken>, ()> {
-        let dbtxn = self.db.write().await;
+        let mut dbtxn = self.db.write().await;
         dbtxn.get_accounts().map_err(|_| ())
     }
 
     async fn get_cached_grouptokens(&self) -> Result<Vec<GroupToken>, ()> {
-        let dbtxn = self.db.write().await;
+        let mut dbtxn = self.db.write().await;
         dbtxn.get_groups().map_err(|_| ())
     }
 
@@ -268,7 +278,7 @@ where
         //  * spn
         //  * uuid
         //  Attempt to search these in the db.
-        let dbtxn = self.db.write().await;
+        let mut dbtxn = self.db.write().await;
         let r = dbtxn.get_account(account_id).map_err(|_| ())?;
 
         match r {
@@ -316,7 +326,7 @@ where
         //  * spn
         //  * uuid
         //  Attempt to search these in the db.
-        let dbtxn = self.db.write().await;
+        let mut dbtxn = self.db.write().await;
         let r = dbtxn.get_group(grp_id).map_err(|_| ())?;
 
         match r {
@@ -398,7 +408,7 @@ where
             });
         }
 
-        let dbtxn = self.db.write().await;
+        let mut dbtxn = self.db.write().await;
         token
             .groups
             .iter()
@@ -421,7 +431,7 @@ where
                 error!("time conversion error - ex_time less than epoch? {:?}", e);
             })?;
 
-        let dbtxn = self.db.write().await;
+        let mut dbtxn = self.db.write().await;
         dbtxn
             .update_group(token, offset.as_secs())
             .and_then(|_| dbtxn.commit())
@@ -429,7 +439,7 @@ where
     }
 
     async fn delete_cache_usertoken(&self, a_uuid: Uuid) -> Result<(), ()> {
-        let dbtxn = self.db.write().await;
+        let mut dbtxn = self.db.write().await;
         dbtxn
             .delete_account(a_uuid)
             .and_then(|_| dbtxn.commit())
@@ -437,7 +447,7 @@ where
     }
 
     async fn delete_cache_grouptoken(&self, g_uuid: Uuid) -> Result<(), ()> {
-        let dbtxn = self.db.write().await;
+        let mut dbtxn = self.db.write().await;
         dbtxn
             .delete_group(g_uuid)
             .and_then(|_| dbtxn.commit())
@@ -445,7 +455,7 @@ where
     }
 
     async fn set_cache_userpassword(&self, a_uuid: Uuid, cred: &str) -> Result<(), ()> {
-        let dbtxn = self.db.write().await;
+        let mut dbtxn = self.db.write().await;
         let mut hsm_txn = self.hsm.lock().await;
         dbtxn
             .update_account_password(a_uuid, cred, &mut **hsm_txn, &self.hmac_key)
@@ -454,7 +464,7 @@ where
     }
 
     async fn check_cache_userpassword(&self, a_uuid: Uuid, cred: &str) -> Result<bool, ()> {
-        let dbtxn = self.db.write().await;
+        let mut dbtxn = self.db.write().await;
         let mut hsm_txn = self.hsm.lock().await;
         dbtxn
             .check_account_password(a_uuid, cred, &mut **hsm_txn, &self.hmac_key)
@@ -505,7 +515,7 @@ where
 
                 Ok(None)
             }
-            Err(IdpError::KeyStore) | Err(IdpError::BadRequest) => {
+            Err(IdpError::KeyStore) | Err(IdpError::BadRequest) | Err(IdpError::Tpm) => {
                 // Some other transient error, continue with the token.
                 Ok(token)
             }
@@ -552,7 +562,7 @@ where
                 self.set_nxcache(grp_id).await;
                 Ok(None)
             }
-            Err(IdpError::KeyStore) | Err(IdpError::BadRequest) => {
+            Err(IdpError::KeyStore) | Err(IdpError::BadRequest) | Err(IdpError::Tpm) => {
                 // Some other transient error, continue with the token.
                 Ok(token)
             }
@@ -659,7 +669,7 @@ where
     }
 
     async fn get_groupmembers(&self, g_uuid: Uuid) -> Vec<String> {
-        let dbtxn = self.db.write().await;
+        let mut dbtxn = self.db.write().await;
 
         dbtxn
             .get_group_members(g_uuid)
@@ -887,7 +897,7 @@ where
                     .await;
                 Err(())
             }
-            Err(IdpError::BadRequest) | Err(IdpError::KeyStore) => Err(()),
+            Err(IdpError::BadRequest) | Err(IdpError::KeyStore) | Err(IdpError::Tpm) => Err(()),
         }
     }
 
@@ -1040,7 +1050,7 @@ where
                     .await;
                 Err(())
             }
-            Err(IdpError::KeyStore) | Err(IdpError::BadRequest) => Err(()),
+            Err(IdpError::KeyStore) | Err(IdpError::BadRequest) | Err(IdpError::Tpm) => Err(()),
         }
     }
 
