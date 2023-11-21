@@ -79,6 +79,14 @@ impl ValueSetT for ValueSetUint32 {
         false
     }
 
+    fn startswith(&self, _pv: &PartialValue) -> bool {
+        false
+    }
+
+    fn endswith(&self, _pv: &PartialValue) -> bool {
+        false
+    }
+
     fn lessthan(&self, pv: &PartialValue) -> bool {
         match pv {
             PartialValue::Uint32(u) => self.set.iter().any(|i| i < u),

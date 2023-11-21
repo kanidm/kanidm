@@ -113,6 +113,10 @@ pub trait ValueSetT: std::fmt::Debug + DynClone {
 
     fn substring(&self, pv: &PartialValue) -> bool;
 
+    fn startswith(&self, pv: &PartialValue) -> bool;
+
+    fn endswith(&self, pv: &PartialValue) -> bool;
+
     fn lessthan(&self, pv: &PartialValue) -> bool;
 
     fn len(&self) -> usize;

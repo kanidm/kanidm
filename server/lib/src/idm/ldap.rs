@@ -574,6 +574,8 @@ pub(crate) fn ldap_all_vattrs() -> Vec<String> {
         ATTR_OBJECTCLASS.to_string(),
         ATTR_LDAP_SSHPUBLICKEY.to_string(),
         ATTR_UIDNUMBER.to_string(),
+        ATTR_UID.to_string(),
+        ATTR_GECOS.to_string(),
     ]
 }
 
@@ -586,7 +588,8 @@ pub(crate) fn ldap_vattr_map(input: &str) -> Option<&str> {
     //
     //   LDAP NAME     KANI ATTR SOURCE NAME
     match input {
-        ATTR_CN => Some(ATTR_NAME),
+        ATTR_CN | ATTR_UID => Some(ATTR_NAME),
+        ATTR_GECOS => Some(ATTR_DISPLAYNAME),
         ATTR_EMAIL => Some(ATTR_MAIL),
         ATTR_LDAP_EMAIL_ADDRESS => Some(ATTR_MAIL),
         LDAP_ATTR_EMAIL_ALTERNATIVE => Some(ATTR_MAIL),
@@ -616,7 +619,7 @@ mod tests {
     use compact_jwt::{Jws, JwsUnverified};
     use hashbrown::HashSet;
     use kanidm_proto::v1::ApiToken;
-    use ldap3_proto::proto::{LdapFilter, LdapOp, LdapSearchScope};
+    use ldap3_proto::proto::{LdapFilter, LdapOp, LdapSearchScope, LdapSubstringFilter};
     use ldap3_proto::simple::*;
 
     use super::{LdapServer, LdapSession};
@@ -1313,6 +1316,108 @@ mod tests {
                     ("vendorname", "Kanidm Project"),
                     ("supportedldapversion", "3"),
                     ("defaultnamingcontext", "o=kanidmproject")
+                );
+            }
+            _ => assert!(false),
+        };
+    }
+
+    #[idm_test]
+    async fn test_ldap_sssd_compat(idms: &IdmServer, _idms_delayed: &IdmServerDelayed) {
+        let ldaps = LdapServer::new(idms).await.expect("failed to start ldap");
+
+        let acct_uuid = uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930");
+
+        // Setup a user we want to check.
+        {
+            let e1 = entry_init!(
+                (Attribute::Class, EntryClass::Person.to_value()),
+                (Attribute::Class, EntryClass::Account.to_value()),
+                (Attribute::Class, EntryClass::PosixAccount.to_value()),
+                (Attribute::Name, Value::new_iname("testperson1")),
+                (Attribute::Uuid, Value::Uuid(acct_uuid)),
+                (Attribute::GidNumber, Value::Uint32(123456)),
+                (Attribute::Description, Value::new_utf8s("testperson1")),
+                (Attribute::DisplayName, Value::new_utf8s("testperson1"))
+            );
+
+            let mut server_txn = idms.proxy_write(duration_from_epoch_now()).await;
+            assert!(server_txn
+                .qs_write
+                .internal_create(vec![e1])
+                .and_then(|_| server_txn.commit())
+                .is_ok());
+        }
+
+        // Setup the anonymous login.
+        let anon_t = ldaps.do_bind(idms, "", "").await.unwrap().unwrap();
+        assert!(anon_t.effective_session == LdapSession::UnixBind(UUID_ANONYMOUS));
+
+        // SSSD tries to just search for silly attrs all the time. We ignore them.
+        let sr = SearchRequest {
+            msgid: 1,
+            base: "dc=example,dc=com".to_string(),
+            scope: LdapSearchScope::Subtree,
+            filter: LdapFilter::And(vec![
+                LdapFilter::Equality(Attribute::Class.to_string(), "sudohost".to_string()),
+                LdapFilter::Substring(
+                    Attribute::SudoHost.to_string(),
+                    LdapSubstringFilter {
+                        initial: Some("a".to_string()),
+                        any: vec!["x".to_string()],
+                        final_: Some("z".to_string()),
+                    },
+                ),
+            ]),
+            attrs: vec![
+                "*".to_string(),
+                // Already being returned
+                LDAP_ATTR_NAME.to_string(),
+                // This is a virtual attribute
+                Attribute::EntryUuid.to_string(),
+            ],
+        };
+        let r1 = ldaps.do_search(idms, &sr, &anon_t).await.unwrap();
+
+        // Empty results and ldap proto success msg.
+        assert!(r1.len() == 1);
+
+        // Second search
+
+        let sr = SearchRequest {
+            msgid: 1,
+            base: "dc=example,dc=com".to_string(),
+            scope: LdapSearchScope::Subtree,
+            filter: LdapFilter::Equality(Attribute::Name.to_string(), "testperson1".to_string()),
+            attrs: vec![
+                "uid".to_string(),
+                "uidNumber".to_string(),
+                "gidNumber".to_string(),
+                "gecos".to_string(),
+                "cn".to_string(),
+                "entryuuid".to_string(),
+            ],
+        };
+        let r1 = ldaps.do_search(idms, &sr, &anon_t).await.unwrap();
+
+        trace!(?r1);
+
+        // The result, and the ldap proto success msg.
+        assert!(r1.len() == 2);
+        match &r1[0].op {
+            LdapOp::SearchResultEntry(lsre) => {
+                assert_entry_contains!(
+                    lsre,
+                    "spn=testperson1@example.com,dc=example,dc=com",
+                    (Attribute::Uid, "testperson1"),
+                    (Attribute::Cn, "testperson1"),
+                    (Attribute::Gecos, "testperson1"),
+                    (Attribute::UidNumber, "123456"),
+                    (Attribute::GidNumber, "123456"),
+                    (
+                        Attribute::EntryUuid.as_ref(),
+                        "cc8e95b4-c24f-4d68-ba54-8bed76f63930"
+                    )
                 );
             }
             _ => assert!(false),

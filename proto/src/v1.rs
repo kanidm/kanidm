@@ -798,8 +798,8 @@ pub enum Filter {
     // This is attr - value
     #[serde(alias = "Eq")]
     Eq(String, String),
-    #[serde(alias = "Sub")]
-    Sub(String, String),
+    #[serde(alias = "Cnt")]
+    Cnt(String, String),
     #[serde(alias = "Pres")]
     Pres(String),
     #[serde(alias = "Or")]

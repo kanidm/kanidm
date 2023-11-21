@@ -86,6 +86,14 @@ impl ValueSetT for ValueSetCid {
         false
     }
 
+    fn startswith(&self, _pv: &PartialValue) -> bool {
+        false
+    }
+
+    fn endswith(&self, _pv: &PartialValue) -> bool {
+        false
+    }
+
     fn lessthan(&self, pv: &PartialValue) -> bool {
         match pv {
             PartialValue::Cid(c2) => self.set.iter().any(|c1| c1 < c2),

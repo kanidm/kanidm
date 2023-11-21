@@ -85,6 +85,26 @@ impl ValueSetT for ValueSetIname {
         }
     }
 
+    fn startswith(&self, pv: &PartialValue) -> bool {
+        match pv {
+            PartialValue::Iname(s2) => self.set.iter().any(|s1| s1.starts_with(s2)),
+            _ => {
+                debug_assert!(false);
+                false
+            }
+        }
+    }
+
+    fn endswith(&self, pv: &PartialValue) -> bool {
+        match pv {
+            PartialValue::Iname(s2) => self.set.iter().any(|s1| s1.ends_with(s2)),
+            _ => {
+                debug_assert!(false);
+                false
+            }
+        }
+    }
+
     fn lessthan(&self, _pv: &PartialValue) -> bool {
         false
     }
