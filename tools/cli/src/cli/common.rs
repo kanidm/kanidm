@@ -308,7 +308,7 @@ impl CommonOpt {
 
 /// This parses the token store and prompts the user to select their username, returns the username/token as a tuple of Strings
 ///
-/// Used to reduce duplication in implementing [prompt_for_username_get_username] and [prompt_for_username_get_token]
+/// Used to reduce duplication in implementing [prompt_for_username_get_username] and `prompt_for_username_get_token`
 pub fn prompt_for_username_get_values(token_cache_path: &str) -> Result<(String, String), String> {
     let tokens = match read_tokens(token_cache_path) {
         Ok(value) => value,

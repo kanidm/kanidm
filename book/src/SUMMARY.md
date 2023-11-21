@@ -36,6 +36,7 @@
     - [SUSE / OpenSUSE](integrations/pam_and_nsswitch/suse.md)
     - [Fedora](integrations/pam_and_nsswitch/fedora.md)
     - [Troubleshooting](integrations/pam_and_nsswitch/troubleshooting.md)
+  - [SSSD](integrations/sssd.md)
   - [SSH Key Distribution](integrations/ssh_key_dist.md)
   - [Oauth2](integrations/oauth2.md)
   - [LDAP](integrations/ldap.md)
