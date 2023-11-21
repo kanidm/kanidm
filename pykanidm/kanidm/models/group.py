@@ -1,7 +1,7 @@
 # pylint: disable=too-few-public-methods
 # ^ disabling this because pydantic models don't have public methods
 
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, TypedDict
 
 from pydantic import ConfigDict, BaseModel, RootModel
 
@@ -31,9 +31,12 @@ class RawGroup(BaseModel):
     @property
     def as_group(self) -> Group:
         """return it as the GroupInfo object which has nicer fields"""
-        for field in "name", "uuid", "spn":
+        required_fields = ("name", "uuid", "spn")
+        for field in required_fields:
             if field not in self.attrs:
                 raise ValueError(f"Missing field {field} in {self.attrs}")
+            if len(self.attrs[field]) == 0:
+                raise ValueError(f"Empty field {field} in {self.attrs}")
 
         # we want either the first element of gidnumber_field, or None
         gidnumber_field = self.attrs.get("gidnumber", [])
@@ -52,3 +55,7 @@ class RawGroup(BaseModel):
 
 
 GroupList = RootModel[List[RawGroup]]
+
+
+class IGroup(TypedDict):
+    attrs: Dict[str, List[str]]

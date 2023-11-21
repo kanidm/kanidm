@@ -4,16 +4,14 @@
 
 from ipaddress import IPv4Address, IPv6Address, IPv6Network, IPv4Network
 import socket
-from typing import Any, Dict, List, Optional, Generic, TypeVar
+from typing import Any, Dict, List, Optional, Generic, TypeVar, TypedDict
 from urllib.parse import urlparse
 
 from pydantic import field_validator, ConfigDict, BaseModel, Field
 import toml
 
-from kanidm.models.group import Group as GroupInfo, RawGroup as RawGroupInfo, GroupList  # noqa
 
-
-T = TypeVar("T", Dict[str, Any], None)
+T = TypeVar("T")
 
 
 class ClientResponse(BaseModel, Generic[T]):

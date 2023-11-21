@@ -1,8 +1,7 @@
 # pylint: disable=too-few-public-methods
 # ^ disabling this because pydantic models don't have public methods
 
-from typing import Dict, List
-from uuid import UUID
+from typing import Dict, List, TypedDict
 
 from pydantic import BaseModel, ConfigDict, RootModel
 
@@ -24,9 +23,19 @@ class RawOAuth2Rs(BaseModel):
     @property
     def as_oauth2_rs(self) -> OAuth2Rs:
         """return it as the Person object which has nicer fields"""
-        for field in "name", "uuid", "spn", "displayname":
+        required_fields = (
+            "displayname",
+            "es256_private_key_der",
+            "oauth2_rs_basic_secret",
+            "oauth2_rs_name",
+            "oauth2_rs_origin",
+            "oauth2_rs_token_key",
+        )
+        for field in required_fields:
             if field not in self.attrs:
                 raise ValueError(f"Missing field {field} in {self.attrs}")
+            if len(self.attrs[field]) == 0:
+                raise ValueError(f"Empty field {field} in {self.attrs}")
 
         return OAuth2Rs(
             classes=self.attrs["class"],
@@ -39,3 +48,7 @@ class RawOAuth2Rs(BaseModel):
         )
 
 Oauth2RsList = RootModel[List[RawOAuth2Rs]]
+
+
+class IOauth2Rs(TypedDict):
+    attrs: Dict[str, List[str]]

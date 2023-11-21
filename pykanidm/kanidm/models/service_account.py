@@ -1,7 +1,7 @@
 # pylint: disable=too-few-public-methods
 # ^ disabling this because pydantic models don't have public methods
 
-from typing import Dict, List, Optional
+from typing import Dict, List, TypedDict
 from uuid import UUID
 
 from pydantic import ConfigDict, BaseModel, RootModel
@@ -25,6 +25,7 @@ class RawServiceAccount(BaseModel):
     @property
     def as_service_account(self) -> ServiceAccount:
         """return it as the Person object which has nicer fields"""
+        required_fields = ("displayname", "uuid", "spn", "name")
         for field in "name", "uuid", "spn", "displayname":
             if field not in self.attrs:
                 raise ValueError(f"Missing field {field} in {self.attrs}")
@@ -40,3 +41,7 @@ class RawServiceAccount(BaseModel):
 
 
 ServiceAccountList = RootModel[List[RawServiceAccount]]
+
+
+class IServiceAccount(TypedDict):
+    attrs: Dict[str, List[str]]
