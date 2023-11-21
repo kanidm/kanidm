@@ -3481,6 +3481,20 @@ mod tests {
         assert!(!e.attribute_substring(Attribute::UserId, &PartialValue::new_utf8s("llim")));
         assert!(!e.attribute_substring(Attribute::UserId, &PartialValue::new_utf8s("bob")));
         assert!(!e.attribute_substring(Attribute::UserId, &PartialValue::new_utf8s("wl")));
+
+        assert!(e.attribute_startswith(Attribute::UserId, &PartialValue::new_utf8s("will")));
+        assert!(!e.attribute_startswith(Attribute::UserId, &PartialValue::new_utf8s("liam")));
+        assert!(!e.attribute_startswith(Attribute::UserId, &PartialValue::new_utf8s("lli")));
+        assert!(!e.attribute_startswith(Attribute::UserId, &PartialValue::new_utf8s("llim")));
+        assert!(!e.attribute_startswith(Attribute::UserId, &PartialValue::new_utf8s("bob")));
+        assert!(!e.attribute_startswith(Attribute::UserId, &PartialValue::new_utf8s("wl")));
+
+        assert!(e.attribute_endswith(Attribute::UserId, &PartialValue::new_utf8s("liam")));
+        assert!(!e.attribute_endswith(Attribute::UserId, &PartialValue::new_utf8s("will")));
+        assert!(!e.attribute_endswith(Attribute::UserId, &PartialValue::new_utf8s("lli")));
+        assert!(!e.attribute_endswith(Attribute::UserId, &PartialValue::new_utf8s("llim")));
+        assert!(!e.attribute_endswith(Attribute::UserId, &PartialValue::new_utf8s("bob")));
+        assert!(!e.attribute_endswith(Attribute::UserId, &PartialValue::new_utf8s("wl")));
     }
 
     #[test]
