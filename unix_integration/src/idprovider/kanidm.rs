@@ -96,7 +96,7 @@ impl IdProvider for KanidmProvider {
             })?;
 
         if id_key.is_none() {
-            let lik = tpm
+            let loadable_id_key = tpm
                 .identity_key_create(machine_key, tpm::KeyAlgorithm::Ecdsa256)
                 .map_err(|tpm_err| {
                     error!(?tpm_err);
@@ -104,7 +104,7 @@ impl IdProvider for KanidmProvider {
                 })?;
 
             keystore
-                .insert_tagged_hsm_key(TAG_IDKEY, &lik)
+                .insert_tagged_hsm_key(TAG_IDKEY, &loadable_id_key)
                 .map_err(|ks_err| {
                     error!(?ks_err);
                     IdpError::KeyStore

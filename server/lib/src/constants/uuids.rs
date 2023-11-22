@@ -249,6 +249,9 @@ pub const UUID_SCHEMA_ATTR_AUTH_PASSWORD_MINIMUM_LENGTH: Uuid =
     uuid!("00000000-0000-0000-0000-ffff00000147");
 pub const UUID_SCHEMA_ATTR_CREDENTIAL_TYPE_MINIMUM: Uuid =
     uuid!("00000000-0000-0000-0000-ffff00000148");
+pub const UUID_SCHEMA_ATTR_SUDOHOST: Uuid = uuid!("00000000-0000-0000-0000-ffff00000149");
+pub const UUID_SCHEMA_ATTR_UID: Uuid = uuid!("00000000-0000-0000-0000-ffff00000150");
+pub const UUID_SCHEMA_ATTR_GECOS: Uuid = uuid!("00000000-0000-0000-0000-ffff00000151");
 
 // System and domain infos
 // I'd like to strongly criticise william of the past for making poor choices about these allocations.

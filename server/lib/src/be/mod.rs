@@ -234,7 +234,7 @@ pub trait BackendTransaction {
                     (IdList::AllIds, FilterPlan::EqUnindexed(attr.clone()))
                 }
             }
-            FilterResolved::Sub(attr, subvalue, idx) => {
+            FilterResolved::Cnt(attr, subvalue, idx) => {
                 if idx.is_some() {
                     // Get the idx_key
                     let idx_key = subvalue.get_idx_sub_key();
@@ -253,6 +253,14 @@ pub trait BackendTransaction {
                     // Schema believes this is not indexed
                     (IdList::AllIds, FilterPlan::SubUnindexed(attr.clone()))
                 }
+            }
+            FilterResolved::Stw(attr, _subvalue, _idx) => {
+                // Schema believes this is not indexed
+                (IdList::AllIds, FilterPlan::SubUnindexed(attr.clone()))
+            }
+            FilterResolved::Enw(attr, _subvalue, _idx) => {
+                // Schema believes this is not indexed
+                (IdList::AllIds, FilterPlan::SubUnindexed(attr.clone()))
             }
             FilterResolved::Pres(attr, idx) => {
                 if idx.is_some() {

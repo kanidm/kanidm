@@ -101,6 +101,14 @@ impl ValueSetT for ValueSetJwsKeyEs256 {
         false
     }
 
+    fn startswith(&self, _pv: &PartialValue) -> bool {
+        false
+    }
+
+    fn endswith(&self, _pv: &PartialValue) -> bool {
+        false
+    }
+
     fn lessthan(&self, _pv: &PartialValue) -> bool {
         false
     }
@@ -279,6 +287,14 @@ impl ValueSetT for ValueSetJwsKeyRs256 {
     }
 
     fn substring(&self, _pv: &PartialValue) -> bool {
+        false
+    }
+
+    fn startswith(&self, _pv: &PartialValue) -> bool {
+        false
+    }
+
+    fn endswith(&self, _pv: &PartialValue) -> bool {
         false
     }
 

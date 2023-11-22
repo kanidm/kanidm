@@ -129,6 +129,14 @@ impl ValueSetT for ValueSetAddress {
         false
     }
 
+    fn startswith(&self, _pv: &PartialValue) -> bool {
+        false
+    }
+
+    fn endswith(&self, _pv: &PartialValue) -> bool {
+        false
+    }
+
     fn lessthan(&self, _pv: &PartialValue) -> bool {
         false
     }
@@ -349,6 +357,14 @@ impl ValueSetT for ValueSetEmailAddress {
     }
 
     fn substring(&self, _pv: &PartialValue) -> bool {
+        false
+    }
+
+    fn startswith(&self, _pv: &PartialValue) -> bool {
+        false
+    }
+
+    fn endswith(&self, _pv: &PartialValue) -> bool {
         false
     }
 

@@ -88,6 +88,7 @@ pub const ATTR_LDAP_KEYS: &str = "keys";
 pub const ATTR_EXCLUDES: &str = "excludes";
 pub const ATTR_ES256_PRIVATE_KEY_DER: &str = "es256_private_key_der";
 pub const ATTR_FERNET_PRIVATE_KEY_STR: &str = "fernet_private_key_str";
+pub const ATTR_GECOS: &str = "gecos";
 pub const ATTR_GIDNUMBER: &str = "gidnumber";
 pub const ATTR_GRANT_UI_HINT: &str = "grant_ui_hint";
 pub const ATTR_GROUP: &str = "group";
@@ -143,6 +144,7 @@ pub const ATTR_SCOPE: &str = "scope";
 pub const ATTR_SELF: &str = "self";
 pub const ATTR_SOURCE_UUID: &str = "source_uuid";
 pub const ATTR_SPN: &str = "spn";
+pub const ATTR_SUDOHOST: &str = "sudohost";
 pub const ATTR_SUPPLEMENTS: &str = "supplements";
 pub const ATTR_LDAP_SSHPUBLICKEY: &str = "sshpublickey";
 pub const ATTR_SSH_PUBLICKEY: &str = "ssh_publickey";
@@ -192,6 +194,7 @@ pub const LDAP_ATTR_MEMBER: &str = "member";
 pub const LDAP_ATTR_NAME: &str = "name";
 pub const LDAP_ATTR_OBJECTCLASS: &str = "objectClass";
 pub const LDAP_ATTR_OU: &str = "ou";
+pub const LDAP_ATTR_UID: &str = "uid";
 pub const LDAP_CLASS_GROUPOFNAMES: &str = "groupofnames";
 
 // Rust can't deal with this being compiled out, don't try and #[cfg()] them

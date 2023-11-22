@@ -2889,7 +2889,27 @@ impl<VALID, STATE> Entry<VALID, STATE> {
     }
 
     #[inline(always)]
-    /// Assert if an attribute of this name is present, and one of it's values is less than
+    /// Assert if an attribute of this name is present, and one of its values startswith
+    /// the following string, if possible to perform the comparison.
+    pub fn attribute_startswith(&self, attr: Attribute, subvalue: &PartialValue) -> bool {
+        self.attrs
+            .get(attr.as_ref())
+            .map(|vset| vset.startswith(subvalue))
+            .unwrap_or(false)
+    }
+
+    #[inline(always)]
+    /// Assert if an attribute of this name is present, and one of its values startswith
+    /// the following string, if possible to perform the comparison.
+    pub fn attribute_endswith(&self, attr: Attribute, subvalue: &PartialValue) -> bool {
+        self.attrs
+            .get(attr.as_ref())
+            .map(|vset| vset.endswith(subvalue))
+            .unwrap_or(false)
+    }
+
+    #[inline(always)]
+    /// Assert if an attribute of this name is present, and one of its values is less than
     /// the following partial value
     pub fn attribute_lessthan(&self, attr: Attribute, subvalue: &PartialValue) -> bool {
         self.attrs
@@ -2923,8 +2943,22 @@ impl<VALID, STATE> Entry<VALID, STATE> {
                     false
                 }
             },
-            FilterResolved::Sub(attr, subvalue, _) => match attr.try_into() {
+            FilterResolved::Cnt(attr, subvalue, _) => match attr.try_into() {
                 Ok(a) => self.attribute_substring(a, subvalue),
+                Err(_) => {
+                    admin_error!("Failed to convert {} to attribute!", attr);
+                    false
+                }
+            },
+            FilterResolved::Stw(attr, subvalue, _) => match attr.try_into() {
+                Ok(a) => self.attribute_startswith(a, subvalue),
+                Err(_) => {
+                    admin_error!("Failed to convert {} to attribute!", attr);
+                    false
+                }
+            },
+            FilterResolved::Enw(attr, subvalue, _) => match attr.try_into() {
+                Ok(a) => self.attribute_endswith(a, subvalue),
                 Err(_) => {
                     admin_error!("Failed to convert {} to attribute!", attr);
                     false
@@ -3447,6 +3481,20 @@ mod tests {
         assert!(!e.attribute_substring(Attribute::UserId, &PartialValue::new_utf8s("llim")));
         assert!(!e.attribute_substring(Attribute::UserId, &PartialValue::new_utf8s("bob")));
         assert!(!e.attribute_substring(Attribute::UserId, &PartialValue::new_utf8s("wl")));
+
+        assert!(e.attribute_startswith(Attribute::UserId, &PartialValue::new_utf8s("will")));
+        assert!(!e.attribute_startswith(Attribute::UserId, &PartialValue::new_utf8s("liam")));
+        assert!(!e.attribute_startswith(Attribute::UserId, &PartialValue::new_utf8s("lli")));
+        assert!(!e.attribute_startswith(Attribute::UserId, &PartialValue::new_utf8s("llim")));
+        assert!(!e.attribute_startswith(Attribute::UserId, &PartialValue::new_utf8s("bob")));
+        assert!(!e.attribute_startswith(Attribute::UserId, &PartialValue::new_utf8s("wl")));
+
+        assert!(e.attribute_endswith(Attribute::UserId, &PartialValue::new_utf8s("liam")));
+        assert!(!e.attribute_endswith(Attribute::UserId, &PartialValue::new_utf8s("will")));
+        assert!(!e.attribute_endswith(Attribute::UserId, &PartialValue::new_utf8s("lli")));
+        assert!(!e.attribute_endswith(Attribute::UserId, &PartialValue::new_utf8s("llim")));
+        assert!(!e.attribute_endswith(Attribute::UserId, &PartialValue::new_utf8s("bob")));
+        assert!(!e.attribute_endswith(Attribute::UserId, &PartialValue::new_utf8s("wl")));
     }
 
     #[test]

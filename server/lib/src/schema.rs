@@ -1751,6 +1751,36 @@ impl<'a> SchemaWriteTransaction<'a> {
             },
         );
         self.attributes.insert(
+            Attribute::Gecos.into(),
+            SchemaAttribute {
+                name: Attribute::Gecos.into(),
+                uuid: UUID_SCHEMA_ATTR_GECOS,
+                description: String::from("An LDAP Compatible gecos."),
+                multivalue: false,
+                unique: false,
+                phantom: true,
+                sync_allowed: false,
+                replicated: false,
+                index: vec![],
+                syntax: SyntaxType::Utf8String,
+            },
+        );
+        self.attributes.insert(
+            Attribute::Uid.into(),
+            SchemaAttribute {
+                name: Attribute::Uid.into(),
+                uuid: UUID_SCHEMA_ATTR_UID,
+                description: String::from("An LDAP Compatible uid."),
+                multivalue: false,
+                unique: false,
+                phantom: true,
+                sync_allowed: false,
+                replicated: false,
+                index: vec![],
+                syntax: SyntaxType::Utf8String,
+            },
+        );
+        self.attributes.insert(
             Attribute::UidNumber.into(),
             SchemaAttribute {
                 name: Attribute::UidNumber.into(),
@@ -1766,6 +1796,22 @@ impl<'a> SchemaWriteTransaction<'a> {
             },
         );
         self.attributes.insert(
+            Attribute::SudoHost.into(),
+            SchemaAttribute {
+                name: Attribute::SudoHost.into(),
+                uuid: UUID_SCHEMA_ATTR_SUDOHOST,
+                description: String::from("An LDAP Compatible sudohost."),
+                multivalue: false,
+                unique: false,
+                phantom: true,
+                sync_allowed: false,
+                replicated: false,
+                index: vec![],
+                syntax: SyntaxType::Utf8String,
+            },
+        );
+        // end LDAP masking phantoms
+        self.attributes.insert(
             Attribute::Image.into(),
             SchemaAttribute {
                 name: Attribute::Image.into(),
@@ -1780,7 +1826,6 @@ impl<'a> SchemaWriteTransaction<'a> {
                 syntax: SyntaxType::Image,
             },
         );
-        // end LDAP masking phantoms
 
         self.classes.insert(
             EntryClass::AttributeType.into(),

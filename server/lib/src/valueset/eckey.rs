@@ -102,6 +102,14 @@ impl ValueSetT for ValueSetEcKeyPrivate {
         false
     }
 
+    fn startswith(&self, _pv: &PartialValue) -> bool {
+        false
+    }
+
+    fn endswith(&self, _pv: &PartialValue) -> bool {
+        false
+    }
+
     fn lessthan(&self, _pv: &crate::value::PartialValue) -> bool {
         false
     }

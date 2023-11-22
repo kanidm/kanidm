@@ -102,6 +102,14 @@ impl ValueSetT for ValueSetCredential {
         false
     }
 
+    fn startswith(&self, _pv: &PartialValue) -> bool {
+        false
+    }
+
+    fn endswith(&self, _pv: &PartialValue) -> bool {
+        false
+    }
+
     fn lessthan(&self, _pv: &PartialValue) -> bool {
         false
     }
@@ -378,6 +386,14 @@ impl ValueSetT for ValueSetIntentToken {
         false
     }
 
+    fn startswith(&self, _pv: &PartialValue) -> bool {
+        false
+    }
+
+    fn endswith(&self, _pv: &PartialValue) -> bool {
+        false
+    }
+
     fn lessthan(&self, _pv: &PartialValue) -> bool {
         false
     }
@@ -643,6 +659,14 @@ impl ValueSetT for ValueSetPasskey {
         false
     }
 
+    fn startswith(&self, _pv: &PartialValue) -> bool {
+        false
+    }
+
+    fn endswith(&self, _pv: &PartialValue) -> bool {
+        false
+    }
+
     fn lessthan(&self, _pv: &PartialValue) -> bool {
         false
     }
@@ -827,6 +851,14 @@ impl ValueSetT for ValueSetDeviceKey {
         false
     }
 
+    fn startswith(&self, _pv: &PartialValue) -> bool {
+        false
+    }
+
+    fn endswith(&self, _pv: &PartialValue) -> bool {
+        false
+    }
+
     fn lessthan(&self, _pv: &PartialValue) -> bool {
         false
     }
@@ -1000,6 +1032,14 @@ impl ValueSetT for ValueSetCredentialType {
     }
 
     fn substring(&self, _pv: &PartialValue) -> bool {
+        false
+    }
+
+    fn startswith(&self, _pv: &PartialValue) -> bool {
+        false
+    }
+
+    fn endswith(&self, _pv: &PartialValue) -> bool {
         false
     }
 

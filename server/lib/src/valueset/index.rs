@@ -80,6 +80,14 @@ impl ValueSetT for ValueSetIndex {
         false
     }
 
+    fn startswith(&self, _pv: &PartialValue) -> bool {
+        false
+    }
+
+    fn endswith(&self, _pv: &PartialValue) -> bool {
+        false
+    }
+
     fn lessthan(&self, _pv: &PartialValue) -> bool {
         false
     }

@@ -43,7 +43,7 @@ pub fn f_eq<'a>(a: Attribute, v: PartialValue) -> FC<'a> {
 }
 
 pub fn f_sub<'a>(a: Attribute, v: PartialValue) -> FC<'a> {
-    FC::Sub(a.into(), v)
+    FC::Cnt(a.into(), v)
 }
 
 pub fn f_pres<'a>(a: Attribute) -> FC<'a> {
@@ -100,7 +100,7 @@ pub fn f_spn_name(id: &str) -> FC<'static> {
 #[derive(Clone, Debug, Deserialize)]
 pub enum FC<'a> {
     Eq(&'a str, PartialValue),
-    Sub(&'a str, PartialValue),
+    Cnt(&'a str, PartialValue),
     Pres(&'a str),
     LessThan(&'a str, PartialValue),
     Or(Vec<FC<'a>>),
@@ -116,7 +116,9 @@ pub enum FC<'a> {
 enum FilterComp {
     // This is attr - value
     Eq(AttrString, PartialValue),
-    Sub(AttrString, PartialValue),
+    Cnt(AttrString, PartialValue),
+    Stw(AttrString, PartialValue),
+    Enw(AttrString, PartialValue),
     Pres(AttrString),
     LessThan(AttrString, PartialValue),
     Or(Vec<FilterComp>),
@@ -134,8 +136,14 @@ impl fmt::Debug for FilterComp {
             FilterComp::Eq(attr, pv) => {
                 write!(f, "{} eq {:?}", attr, pv)
             }
-            FilterComp::Sub(attr, pv) => {
-                write!(f, "{} sub {:?}", attr, pv)
+            FilterComp::Cnt(attr, pv) => {
+                write!(f, "{} cnt {:?}", attr, pv)
+            }
+            FilterComp::Stw(attr, pv) => {
+                write!(f, "{} stw {:?}", attr, pv)
+            }
+            FilterComp::Enw(attr, pv) => {
+                write!(f, "{} enw {:?}", attr, pv)
             }
             FilterComp::Pres(attr) => {
                 write!(f, "{} pres", attr)
@@ -197,7 +205,9 @@ impl fmt::Debug for FilterComp {
 pub enum FilterResolved {
     // This is attr - value - indexed slope factor
     Eq(AttrString, PartialValue, Option<NonZeroU8>),
-    Sub(AttrString, PartialValue, Option<NonZeroU8>),
+    Cnt(AttrString, PartialValue, Option<NonZeroU8>),
+    Stw(AttrString, PartialValue, Option<NonZeroU8>),
+    Enw(AttrString, PartialValue, Option<NonZeroU8>),
     Pres(AttrString, Option<NonZeroU8>),
     LessThan(AttrString, PartialValue, Option<NonZeroU8>),
     Or(Vec<FilterResolved>, Option<NonZeroU8>),
@@ -219,10 +229,28 @@ impl fmt::Debug for FilterResolved {
                     pv
                 )
             }
-            FilterResolved::Sub(attr, pv, idx) => {
+            FilterResolved::Cnt(attr, pv, idx) => {
                 write!(
                     f,
-                    "(s{} {} sub {:?})",
+                    "(s{} {} cnt {:?})",
+                    idx.unwrap_or(NonZeroU8::MAX),
+                    attr,
+                    pv
+                )
+            }
+            FilterResolved::Stw(attr, pv, idx) => {
+                write!(
+                    f,
+                    "(s{} {} stw {:?})",
+                    idx.unwrap_or(NonZeroU8::MAX),
+                    attr,
+                    pv
+                )
+            }
+            FilterResolved::Enw(attr, pv, idx) => {
+                write!(
+                    f,
+                    "(s{} {} enw {:?})",
                     idx.unwrap_or(NonZeroU8::MAX),
                     attr,
                     pv
@@ -682,7 +710,7 @@ impl FilterComp {
     fn new(fc: FC) -> Self {
         match fc {
             FC::Eq(a, v) => FilterComp::Eq(AttrString::from(a), v),
-            FC::Sub(a, v) => FilterComp::Sub(AttrString::from(a), v),
+            FC::Cnt(a, v) => FilterComp::Cnt(AttrString::from(a), v),
             FC::Pres(a) => FilterComp::Pres(AttrString::from(a)),
             FC::LessThan(a, v) => FilterComp::LessThan(AttrString::from(a), v),
             FC::Or(v) => FilterComp::Or(v.into_iter().map(FilterComp::new).collect()),
@@ -712,16 +740,12 @@ impl FilterComp {
 
     fn get_attr_set<'a>(&'a self, r_set: &mut BTreeSet<&'a str>) {
         match self {
-            FilterComp::Eq(attr, _) => {
-                r_set.insert(attr.as_str());
-            }
-            FilterComp::Sub(attr, _) => {
-                r_set.insert(attr.as_str());
-            }
-            FilterComp::Pres(attr) => {
-                r_set.insert(attr.as_str());
-            }
-            FilterComp::LessThan(attr, _) => {
+            FilterComp::Eq(attr, _)
+            | FilterComp::Cnt(attr, _)
+            | FilterComp::Stw(attr, _)
+            | FilterComp::Enw(attr, _)
+            | FilterComp::Pres(attr)
+            | FilterComp::LessThan(attr, _) => {
                 r_set.insert(attr.as_str());
             }
             FilterComp::Or(vs) => vs.iter().for_each(|f| f.get_attr_set(r_set)),
@@ -762,7 +786,7 @@ impl FilterComp {
                     None => Err(SchemaError::InvalidAttribute(attr_norm.to_string())),
                 }
             }
-            FilterComp::Sub(attr, value) => {
+            FilterComp::Cnt(attr, value) => {
                 // Validate/normalise the attr name.
                 let attr_norm = schema.normalise_attr_name(attr);
                 // Now check it exists
@@ -771,7 +795,37 @@ impl FilterComp {
                         schema_a
                             .validate_partialvalue(attr_norm.as_str(), value)
                             // Okay, it worked, transform to a filter component
-                            .map(|_| FilterComp::Sub(attr_norm, value.clone()))
+                            .map(|_| FilterComp::Cnt(attr_norm, value.clone()))
+                        // On error, pass the error back out.
+                    }
+                    None => Err(SchemaError::InvalidAttribute(attr_norm.to_string())),
+                }
+            }
+            FilterComp::Stw(attr, value) => {
+                // Validate/normalise the attr name.
+                let attr_norm = schema.normalise_attr_name(attr);
+                // Now check it exists
+                match schema_attributes.get(&attr_norm) {
+                    Some(schema_a) => {
+                        schema_a
+                            .validate_partialvalue(attr_norm.as_str(), value)
+                            // Okay, it worked, transform to a filter component
+                            .map(|_| FilterComp::Stw(attr_norm, value.clone()))
+                        // On error, pass the error back out.
+                    }
+                    None => Err(SchemaError::InvalidAttribute(attr_norm.to_string())),
+                }
+            }
+            FilterComp::Enw(attr, value) => {
+                // Validate/normalise the attr name.
+                let attr_norm = schema.normalise_attr_name(attr);
+                // Now check it exists
+                match schema_attributes.get(&attr_norm) {
+                    Some(schema_a) => {
+                        schema_a
+                            .validate_partialvalue(attr_norm.as_str(), value)
+                            // Okay, it worked, transform to a filter component
+                            .map(|_| FilterComp::Enw(attr_norm, value.clone()))
                         // On error, pass the error back out.
                     }
                     None => Err(SchemaError::InvalidAttribute(attr_norm.to_string())),
@@ -870,10 +924,10 @@ impl FilterComp {
                 let v = qs.clone_partialvalue(nk.as_str(), v)?;
                 FilterComp::Eq(nk, v)
             }
-            ProtoFilter::Sub(a, v) => {
+            ProtoFilter::Cnt(a, v) => {
                 let nk = qs.get_schema().normalise_attr_name(a);
                 let v = qs.clone_partialvalue(nk.as_str(), v)?;
-                FilterComp::Sub(nk, v)
+                FilterComp::Cnt(nk, v)
             }
             ProtoFilter::Pres(a) => {
                 let nk = qs.get_schema().normalise_attr_name(a);
@@ -922,10 +976,10 @@ impl FilterComp {
                 let v = qs.clone_partialvalue(nk.as_str(), v)?;
                 FilterComp::Eq(nk, v)
             }
-            ProtoFilter::Sub(a, v) => {
+            ProtoFilter::Cnt(a, v) => {
                 let nk = qs.get_schema().normalise_attr_name(a);
                 let v = qs.clone_partialvalue(nk.as_str(), v)?;
-                FilterComp::Sub(nk, v)
+                FilterComp::Cnt(nk, v)
             }
             ProtoFilter::Pres(a) => {
                 let nk = qs.get_schema().normalise_attr_name(a);
@@ -1004,16 +1058,32 @@ impl FilterComp {
             }
             LdapFilter::Present(a) => FilterComp::Pres(ldap_attr_filter_map(a)),
             LdapFilter::Substring(
-                _a,
+                a,
                 LdapSubstringFilter {
-                    initial: _,
-                    any: _,
-                    final_: _,
+                    initial,
+                    any,
+                    final_,
                 },
             ) => {
-                // let a = ldap_attr_filter_map(a);
-                admin_error!("Unable to convert ldapsubstringfilter to sub filter");
-                return Err(OperationError::FilterGeneration);
+                let a = ldap_attr_filter_map(a);
+
+                let mut terms = Vec::with_capacity(any.len() + 2);
+                if let Some(ini) = initial {
+                    let v = qs.clone_partialvalue(a.as_str(), ini)?;
+                    terms.push(FilterComp::Stw(a.clone(), v));
+                }
+
+                for term in any.into_iter() {
+                    let v = qs.clone_partialvalue(a.as_str(), &term)?;
+                    terms.push(FilterComp::Cnt(a.clone(), v));
+                }
+
+                if let Some(fin) = final_ {
+                    let v = qs.clone_partialvalue(a.as_str(), fin)?;
+                    terms.push(FilterComp::Enw(a.clone(), v));
+                }
+
+                FilterComp::And(terms)
             }
             LdapFilter::GreaterOrEqual(_, _) => {
                 admin_error!("Unsupported filter operation - greater or equal");
@@ -1071,7 +1141,7 @@ impl PartialEq for FilterResolved {
     fn eq(&self, rhs: &FilterResolved) -> bool {
         match (self, rhs) {
             (FilterResolved::Eq(a1, v1, _), FilterResolved::Eq(a2, v2, _)) => a1 == a2 && v1 == v2,
-            (FilterResolved::Sub(a1, v1, _), FilterResolved::Sub(a2, v2, _)) => {
+            (FilterResolved::Cnt(a1, v1, _), FilterResolved::Cnt(a2, v2, _)) => {
                 a1 == a2 && v1 == v2
             }
             (FilterResolved::Pres(a1, _), FilterResolved::Pres(a2, _)) => a1 == a2,
@@ -1115,7 +1185,7 @@ impl Ord for FilterResolved {
         if r == Ordering::Equal {
             match (self, rhs) {
                 (FilterResolved::Eq(a1, v1, _), FilterResolved::Eq(a2, v2, _))
-                | (FilterResolved::Sub(a1, v1, _), FilterResolved::Sub(a2, v2, _))
+                | (FilterResolved::Cnt(a1, v1, _), FilterResolved::Cnt(a2, v2, _))
                 | (FilterResolved::LessThan(a1, v1, _), FilterResolved::LessThan(a2, v2, _)) => {
                     match a1.cmp(a2) {
                         Ordering::Equal => v1.cmp(v2),
@@ -1130,8 +1200,8 @@ impl Ord for FilterResolved {
                 (_, FilterResolved::Pres(_, _)) => Ordering::Greater,
                 (FilterResolved::LessThan(_, _, _), _) => Ordering::Less,
                 (_, FilterResolved::LessThan(_, _, _)) => Ordering::Greater,
-                (FilterResolved::Sub(_, _, _), _) => Ordering::Less,
-                (_, FilterResolved::Sub(_, _, _)) => Ordering::Greater,
+                (FilterResolved::Cnt(_, _, _), _) => Ordering::Less,
+                (_, FilterResolved::Cnt(_, _, _)) => Ordering::Greater,
                 // They can't be re-arranged, they don't move!
                 (_, _) => Ordering::Equal,
             }
@@ -1153,12 +1223,14 @@ impl FilterResolved {
                 FilterResolved::Eq(a, v, idx)
             }
             FilterComp::SelfUuid => panic!("Not possible to resolve SelfUuid in from_invalid!"),
-            FilterComp::Sub(a, v) => {
+            FilterComp::Cnt(a, v) => {
                 // TODO: For now, don't emit substring indexes.
                 // let idx = idxmeta.contains(&(&a, &IndexType::SubString));
                 // let idx = NonZeroU8::new(idx as u8);
-                FilterResolved::Sub(a, v, None)
+                FilterResolved::Cnt(a, v, None)
             }
+            FilterComp::Stw(a, v) => FilterResolved::Stw(a, v, None),
+            FilterComp::Enw(a, v) => FilterResolved::Enw(a, v, None),
             FilterComp::Pres(a) => {
                 let idx = idxmeta.contains(&(&a, &IndexType::Presence));
                 FilterResolved::Pres(a, NonZeroU8::new(idx as u8))
@@ -1222,13 +1294,35 @@ impl FilterResolved {
                     .and_then(NonZeroU8::new);
                 FilterResolved::Eq(Attribute::Uuid.into(), PartialValue::Uuid(uuid), idx)
             }),
-            FilterComp::Sub(a, v) => {
+            FilterComp::Cnt(a, v) => {
                 let idxkref = IdxKeyRef::new(&a, &IndexType::SubString);
                 let idx = idxmeta
                     .get(&idxkref as &dyn IdxKeyToRef)
                     .copied()
                     .and_then(NonZeroU8::new);
-                Some(FilterResolved::Sub(a, v, idx))
+                Some(FilterResolved::Cnt(a, v, idx))
+            }
+            FilterComp::Stw(a, v) => {
+                /*
+                let idxkref = IdxKeyRef::new(&a, &IndexType::SubString);
+                let idx = idxmeta
+                    .get(&idxkref as &dyn IdxKeyToRef)
+                    .copied()
+                    .and_then(NonZeroU8::new);
+                Some(FilterResolved::Stw(a, v, idx))
+                */
+                Some(FilterResolved::Stw(a, v, None))
+            }
+            FilterComp::Enw(a, v) => {
+                /*
+                let idxkref = IdxKeyRef::new(&a, &IndexType::SubString);
+                let idx = idxmeta
+                    .get(&idxkref as &dyn IdxKeyToRef)
+                    .copied()
+                    .and_then(NonZeroU8::new);
+                Some(FilterResolved::Enw(a, v, idx))
+                */
+                Some(FilterResolved::Enw(a, v, None))
             }
             FilterComp::Pres(a) => {
                 let idxkref = IdxKeyRef::new(&a, &IndexType::Presence);
@@ -1298,7 +1392,9 @@ impl FilterResolved {
                     NonZeroU8::new(true as u8),
                 )
             }),
-            FilterComp::Sub(a, v) => Some(FilterResolved::Sub(a, v, None)),
+            FilterComp::Cnt(a, v) => Some(FilterResolved::Cnt(a, v, None)),
+            FilterComp::Stw(a, v) => Some(FilterResolved::Stw(a, v, None)),
+            FilterComp::Enw(a, v) => Some(FilterResolved::Enw(a, v, None)),
             FilterComp::Pres(a) => Some(FilterResolved::Pres(a, None)),
             FilterComp::LessThan(a, v) => Some(FilterResolved::LessThan(a, v, None)),
             FilterComp::Or(vs) => {
@@ -1461,7 +1557,9 @@ impl FilterResolved {
     fn get_slopeyness_factor(&self) -> Option<NonZeroU8> {
         match self {
             FilterResolved::Eq(_, _, sf)
-            | FilterResolved::Sub(_, _, sf)
+            | FilterResolved::Cnt(_, _, sf)
+            | FilterResolved::Stw(_, _, sf)
+            | FilterResolved::Enw(_, _, sf)
             | FilterResolved::Pres(_, sf)
             | FilterResolved::LessThan(_, _, sf)
             | FilterResolved::Or(_, sf)
