@@ -1800,7 +1800,7 @@ impl<'a> SchemaWriteTransaction<'a> {
             SchemaAttribute {
                 name: Attribute::SudoHost.into(),
                 uuid: UUID_SCHEMA_ATTR_SUDOHOST,
-                description: String::from("An LDAP Compatible sudoHost."),
+                description: String::from("An LDAP Compatible sudohost."),
                 multivalue: false,
                 unique: false,
                 phantom: true,
