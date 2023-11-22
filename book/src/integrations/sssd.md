@@ -21,7 +21,7 @@ SSSD has many significant limitations compared to Kanidm's native
 ### Performance
 
 Kanidm's native provider outperforms SSSD significantly for both online and offline user resolving
-and operations. Because of this, SSSD can cause higher load on the Kanidm server due to it's design
+and operations. Because of this, SSSD can cause higher load on the Kanidm server due to its design
 limitations.
 
 ### Features
