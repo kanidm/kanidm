@@ -2899,7 +2899,7 @@ impl<VALID, STATE> Entry<VALID, STATE> {
     }
 
     #[inline(always)]
-    /// Assert if an attribute of this name is present, and one of it's values startswith
+    /// Assert if an attribute of this name is present, and one of its values startswith
     /// the following string, if possible to perform the comparison.
     pub fn attribute_endswith(&self, attr: Attribute, subvalue: &PartialValue) -> bool {
         self.attrs
