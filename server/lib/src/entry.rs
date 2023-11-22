@@ -2909,7 +2909,7 @@ impl<VALID, STATE> Entry<VALID, STATE> {
     }
 
     #[inline(always)]
-    /// Assert if an attribute of this name is present, and one of it's values is less than
+    /// Assert if an attribute of this name is present, and one of its values is less than
     /// the following partial value
     pub fn attribute_lessthan(&self, attr: Attribute, subvalue: &PartialValue) -> bool {
         self.attrs
