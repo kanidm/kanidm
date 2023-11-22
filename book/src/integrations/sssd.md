@@ -110,7 +110,7 @@ ldap_group_search_base = o=idm?subtree?(|(objectClass=posixAccount)(objectClass=
 ldap_access_filter = (memberof=idm_all_accounts@idm.example.com)
 
 # Set the home dir override. Kanidm does not support configuration of homedirs as an
-# attribute, and will use the uid number of the account. This is because user's can
+# attribute, and will use the uid number of the account. This is because users can
 # change their uid at anytime, so you must have home directories configured in a stable
 # way that does not change.
 #
