@@ -22,9 +22,8 @@ use crate::repl::config::ReplicationConfiguration;
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct OnlineBackup {
-    /// The destination folder for your backups
-    pub path: String,
-    #[serde(default = "default_online_backup_schedule")]
+    /// The destination folder for your backups, defaults to the db_path dir if not set
+    pub path: Option<String>,
     /// The schedule to run online backups (see <https://crontab.guru/>), defaults to @daily
     ///
     /// Examples:
@@ -46,14 +45,17 @@ pub struct OnlineBackup {
     #[serde(default = "default_online_backup_versions")]
     /// How many past backup versions to keep, defaults to 7
     pub versions: usize,
+    /// Enabled by default
+    pub enabled: bool,
 }
 
 impl Default for OnlineBackup {
     fn default() -> Self {
         OnlineBackup {
-            path: "/dev/null".to_string(),
+            path: None, // This makes it revert to the kanidm_db path
             schedule: default_online_backup_schedule(),
             versions: default_online_backup_versions(),
+            enabled: true,
         }
     }
 }
@@ -226,10 +228,10 @@ impl ServerConfig {
                 }
                 "ONLINE_BACKUP_PATH" => {
                     if let Some(backup) = &mut self.online_backup {
-                        backup.path = value.to_string();
+                        backup.path = Some(value.to_string());
                     } else {
                         self.online_backup = Some(OnlineBackup {
-                            path: value.to_string(),
+                            path: Some(value.to_string()),
                             ..Default::default()
                         });
                     }
@@ -445,8 +447,11 @@ impl fmt::Display for Configuration {
         match &self.online_backup {
             Some(bck) => write!(
                 f,
-                "online_backup: enabled - schedule: {} versions: {}, ",
-                bck.schedule, bck.versions
+                "online_backup: enabled: {} - schedule: {} versions: {} path: {}, ",
+                bck.enabled,
+                bck.schedule,
+                bck.versions,
+                bck.path.as_ref().unwrap()
             ),
             None => write!(f, "online_backup: disabled, "),
         }?;
@@ -526,13 +531,26 @@ impl Configuration {
         match cfg {
             None => {}
             Some(cfg) => {
-                let path = cfg.path.to_string();
-                let schedule = cfg.schedule.to_string();
-                let versions = cfg.versions;
+                let path = match cfg.path.clone() {
+                    Some(path) => Some(path),
+                    // Default to the same path as the data directory
+                    None => {
+                        let db_filepath = Path::new(&self.db_path);
+                        let db_path = db_filepath
+                            .parent()
+                            .map(|p| {
+                                p.to_str()
+                                    .expect("Couldn't turn db_path to str")
+                                    .to_string()
+                            })
+                            .expect("Unable to get parent directory of db_path");
+
+                        Some(db_path)
+                    }
+                };
                 self.online_backup = Some(OnlineBackup {
                     path,
-                    schedule,
-                    versions,
+                    ..cfg.clone()
                 })
             }
         }
