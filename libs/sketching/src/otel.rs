@@ -11,11 +11,6 @@ use tracing_subscriber::{prelude::*, EnvFilter};
 pub const MAX_EVENTS_PER_SPAN: u32 = 64 * 1024;
 pub const MAX_ATTRIBUTES_PER_SPAN: u32 = 128;
 
-/// if you set the KANIDM_OTEL_GRPC_ENDPOINT env var you'll start the OpenTelemetry pipeline.
-pub fn get_otlp_endpoint() -> Option<String> {
-    std::env::var("KANIDM_OTEL_GRPC_ENDPOINT").ok()
-}
-
 // TODO: this is coming back later
 // #[allow(dead_code)]
 // pub fn init_metrics() -> metrics::Result<MeterProvider> {
