@@ -16,9 +16,11 @@ if [ ! -d "platform/crossbuild/$1" ]; then
     exit 1
 fi
 
-echo "Building to ./target/$1"
-rm -rf "./target/$1"
-mkdir -p "./target/$1"
+TARGET_DIR="./target/$1"
+
+echo "Recreating then building to ${TARGET_DIR}"
+rm -rf "${TARGET_DIR}"
+mkdir -p "${TARGET_DIR}"
 
 CROSS_CONFIG="platform/crossbuild/${1}/Cross.toml" \
     cross build --target aarch64-unknown-linux-gnu \
@@ -28,5 +30,11 @@ CROSS_CONFIG="platform/crossbuild/${1}/Cross.toml" \
         --bin kanidm-unix \
         --release
 
-mv ./target/aarch64-unknown-linux-gnu/release/kanidm* "./target/$1/"
-rm "./target/$1/*.d"
+find "./target/aarch64-unknown-linux-gnu/release/" -maxdepth 1 \
+    -type f -not -name '*.d' \
+    -name 'kanidm*' \
+    -exec mv "{}" "${TARGET_DIR}/" \;
+# find "${TARGET_DIR}" -name '*.d' -delete
+
+echo "Contents of ${TARGET_DIR}"
+find "${TARGET_DIR}" -type f
