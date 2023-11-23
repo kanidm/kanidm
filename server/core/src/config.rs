@@ -451,7 +451,7 @@ impl fmt::Display for Configuration {
                 bck.enabled,
                 bck.schedule,
                 bck.versions,
-                bck.path.as_ref().unwrap()
+                bck.path.clone().unwrap_or("<unset>".to_string()),
             ),
             None => write!(f, "online_backup: disabled, "),
         }?;
@@ -536,9 +536,11 @@ impl Configuration {
                     // Default to the same path as the data directory
                     None => {
                         let db_filepath = Path::new(&self.db_path);
+                        #[allow(clippy::expect_used)]
                         let db_path = db_filepath
                             .parent()
                             .map(|p| {
+                                #[allow(clippy::expect_used)]
                                 p.to_str()
                                     .expect("Couldn't turn db_path to str")
                                     .to_string()
