@@ -213,26 +213,16 @@ impl ServerConfig {
                     self.ldapbindaddress = Some(value.to_string());
                 }
                 "ROLE" => {
-                    self.role = match ServerRole::from_str(&value) {
-                        Ok(val) => val,
-                        Err(err) => {
-                            return Err(format!(
-                                "Failed to parse KANIDM_ROLE as ServerRole: {}",
-                                err
-                            ));
-                        }
-                    };
+                    self.role = ServerRole::from_str(&value).map_err(|err| {
+                        format!("Failed to parse KANIDM_ROLE as ServerRole: {}", err)
+                    })?;
                 }
                 "LOG_LEVEL" => {
-                    self.log_level = match LogLevel::from_str(&value) {
-                        Ok(val) => Some(val),
-                        Err(err) => {
-                            return Err(format!(
-                                "Failed to parse KANIDM_LOG_LEVEL as LogLevel: {}",
-                                err
-                            ));
-                        }
-                    };
+                    self.log_level = LogLevel::from_str(&value)
+                        .map_err(|err| {
+                            format!("Failed to parse KANIDM_LOG_LEVEL as LogLevel: {}", err)
+                        })
+                        .ok();
                 }
                 "ONLINE_BACKUP_PATH" => {
                     if let Some(backup) = &mut self.online_backup {
@@ -268,20 +258,25 @@ impl ServerConfig {
                     }
                 }
                 "TRUST_X_FORWARD_FOR" => {
-                    self.trust_x_forward_for = Some(value.parse().map_err(|_| {
-                        "Failed to parse KANIDM_TRUST_X_FORWARD_FOR as bool".to_string()
-                    })?);
+                    self.trust_x_forward_for = value
+                        .parse()
+                        .map_err(|_| {
+                            "Failed to parse KANIDM_TRUST_X_FORWARD_FOR as bool".to_string()
+                        })
+                        .ok();
                 }
                 "DB_FS_TYPE" => {
-                    self.db_fs_type = Some(FsType::try_from(value.as_str()).map_err(|_| {
-                        "Failed to parse KANIDM_DB_FS_TYPE env var to valid value!".to_string()
-                    })?);
+                    self.db_fs_type = FsType::try_from(value.as_str())
+                        .map_err(|_| {
+                            "Failed to parse KANIDM_DB_FS_TYPE env var to valid value!".to_string()
+                        })
+                        .ok();
                 }
                 "DB_ARC_SIZE" => {
-                    self.db_arc_size =
-                        Some(value.parse().map_err(|_| {
-                            "Failed to parse KANIDM_DB_ARC_SIZE as value".to_string()
-                        })?);
+                    self.db_arc_size = value
+                        .parse()
+                        .map_err(|_| "Failed to parse KANIDM_DB_ARC_SIZE as value".to_string())
+                        .ok();
                 }
                 "ADMIN_BIND_PATH" => {
                     self.adminbindpath = Some(value.to_string());
@@ -320,9 +315,12 @@ impl ServerConfig {
                     }
                 }
                 "REPLICATION_TASK_POLL_INTERVAL" => {
-                    let poll_interval = Some(value.parse().map_err(|_| {
-                        "Failed to parse replication task poll interval as u64".to_string()
-                    })?);
+                    let poll_interval = value
+                        .parse()
+                        .map_err(|_| {
+                            "Failed to parse replication task poll interval as u64".to_string()
+                        })
+                        .ok();
                     if let Some(repl) = &mut self.repl_config {
                         repl.task_poll_interval = poll_interval;
                     } else {
