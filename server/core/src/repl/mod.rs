@@ -31,13 +31,13 @@ use kanidmd_lib::prelude::IdmServer;
 use kanidmd_lib::repl::proto::ConsumerState;
 use kanidmd_lib::server::QueryServerTransaction;
 
-use crate::config::RepNodeConfig;
-use crate::config::ReplicationConfiguration;
 use crate::CoreAction;
+use config::{RepNodeConfig, ReplicationConfiguration};
 
 use self::codec::{ConsumerRequest, SupplierResponse};
 
 mod codec;
+pub(crate) mod config;
 
 pub(crate) enum ReplCtrl {
     GetCertificate {

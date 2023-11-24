@@ -33,6 +33,9 @@ pub const DEFAULT_SERVER_LOCALHOST: &str = "localhost:8443";
 /// The default LDAP bind address for the Kanidm server
 pub const DEFAULT_LDAP_ADDRESS: &str = "127.0.0.1:636";
 pub const DEFAULT_LDAP_LOCALHOST: &str = "localhost:636";
+/// Default replication configuration
+pub const DEFAULT_REPLICATION_ADDRESS: &str = "127.0.0.1:8444";
+pub const DEFAULT_REPLICATION_ORIGIN: &str = "repl://localhost:8444";
 
 // IF YOU CHANGE THESE VALUES YOU BREAK EVERYTHING
 pub const ATTR_ACCOUNT_EXPIRE: &str = "account_expire";

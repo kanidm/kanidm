@@ -1073,8 +1073,8 @@ impl FilterComp {
                     terms.push(FilterComp::Stw(a.clone(), v));
                 }
 
-                for term in any.into_iter() {
-                    let v = qs.clone_partialvalue(a.as_str(), &term)?;
+                for term in any.iter() {
+                    let v = qs.clone_partialvalue(a.as_str(), term)?;
                     terms.push(FilterComp::Cnt(a.clone(), v));
                 }
 
