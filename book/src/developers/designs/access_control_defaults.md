@@ -71,7 +71,7 @@ PersonCredentialModify --> |"Reads"| PersonReadNoPII("Person Read No PII")
 PersonPIIModify --> |"Reads Modifies"| Persons
 PersonAdmin --> PersonReadWithPII("Person Read - With PII")
 PersonReadWithPII --> PersonReadNoPII
-PersonReadNoPII --> |"Reads"| Person
+PersonReadNoPII --> |"Reads"| Persons
 PosixAccountIncludesCredMod --> |"Extends (Add Posix Account)"| Persons
 
 ```
