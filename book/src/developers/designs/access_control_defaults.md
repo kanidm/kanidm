@@ -5,18 +5,19 @@
 ```mermaid
 graph LR
 
-   DomainAdmin("Domain Admin") --> DomainConfigAdmin("Domain Config Admin")
-   DomainAdmin("Domain Admin") --> SyncAccountAdmin("Sync Account Admin")
-   DomainAdmin("Domain Admin") --> SchemaAdmin("Schema Admin")
-   DomainAdmin("Domain Admin") --> AccessControlAdmin("Access Control Admin")
-   DomainAdmin("Domain Admin") --> AccountPolicyAdmin("Account Policy Admin")
-   DomainAdmin("Domain Admin") --> HPGroupAdmin("HP Group Admin")
+DomainAdmin("Domain Admin") --> DomainConfigAdmin("Domain Config Admin")
+DomainAdmin("Domain Admin") --> SyncAccountAdmin("Sync Account Admin")
+DomainAdmin("Domain Admin") --> SchemaAdmin("Schema Admin")
+DomainAdmin("Domain Admin") --> AccessControlAdmin("Access Control Admin")
+DomainAdmin("Domain Admin") --> AccountPolicyAdmin("Account Policy Admin")
+DomainAdmin("Domain Admin") --> HPGroupAdmin("HP Group Admin")
 ```
 
 ## IDM Admin
 
 ```mermaid
 graph LR
+
 IdmAdmin("IDM Admin") --> RadiusAccountModify("Radius Account Modify")
 IdmAdmin("IDM Admin") --> PersonPIIModify("Person PII Modify")
 IdmAdmin("IDM Admin") --> GroupAdmin("Group Admin")
@@ -28,8 +29,8 @@ IdmAdmin("IDM Admin") --> PersonReadNoPII("Person Read No PII")
 ## Integration Admin
 
 ```mermaid
-
 graph LR
+
 IntegrationAdmin("Integration Admin") --> Oauth2Admin("Oauth2 Admin")
 IntegrationAdmin("Integration Admin") --> RadiusServiceAdmin("Radius Service Admin")
 IntegrationAdmin("Integration Admin") --> PosixAccountConsumer("POSIX Account Consumer")
@@ -39,6 +40,7 @@ IntegrationAdmin("Integration Admin") --> PosixAccountConsumer("POSIX Account Co
 
 ```mermaid
 graph LR
+
 HelpDesk("Help Desk") --> PersonReadNoPII("Person Read No PII")
 HelpDesk("Help Desk") --> PersonCredentialModify("Person Credential Modify")
 ```
@@ -47,6 +49,7 @@ HelpDesk("Help Desk") --> PersonCredentialModify("Person Credential Modify")
 
 ```mermaid
 graph LR
+
 SelfMailModify("Self Mail Modify") --> |"Modifies"| Self
 SelfRead("Self Read") --> |"Read"| Self
 SelfModify("Self Modify") --> |"Writes Secrets"| Self
@@ -59,7 +62,6 @@ Duplicated for Service Accounts, HP persons, HP service Accounts.
 
 ```mermaid
 graph LR
-
 
 PersonAdmin("Person Admin") --> |"Creates Deletes"| Persons("Persons")
 PersonCredentialModify("Person Credential Modify") -.-> |"Member of"| PersonAdmin
@@ -90,6 +92,8 @@ AccessControlAdmin("Access Control Admin") --> |"Creates Modifies Deletes"| Acce
 ## High-Priv and Groups
 
 ```mermaid
+graph LR
+
 GroupAdmin("Group Admin") --> |"Create Modify Delete"| Groups("Groups")
 AccountPolicyAdmin("Account Policy Admin") --> |"Modifies Extends"| Groups("Groups")
 GroupAdmin --> |"Modify Delete"| HPGroups("HP Groups")
@@ -103,6 +107,7 @@ GroupAdmin --> |"Inherits"| HPGroupAdmin
 
 ```mermaid
 graph LR
+
 Oauth2Admin("Oauth2 Admin") --> |"Creates Modifies Delegates"| Oauth2RS("Oauth2 RS")
 ScopedMember("Scoped Member") --> |"Reads"| Oauth2RS
 ```
@@ -111,13 +116,13 @@ ScopedMember("Scoped Member") --> |"Reads"| Oauth2RS
 
 ```mermaid
 graph LR
+
 PosixAccountConsumer("POSIX Account Consumer") --> |"Reads Auths"| PosixAccounts("Posix Accounts")
 ```
 
 ## Radius
 
 ```mermaid
-
 graph LR
 
 RadiusServiceAdmin("Radius Service Admin") --> |"Adds Members"| RadiusService("Radius Service")
@@ -129,5 +134,6 @@ RadiusAccountModify("Radius Account Modify") --> |"Writes Secrets"| RadiusAccoun
 
 ```mermaid
 graph LR
+
 RecycleBinAdmin("Recycle Bin Admin") --> |"Modifies Reads Revives"| RecycledEntries("Recycled Entries")
 ```
