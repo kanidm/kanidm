@@ -72,10 +72,32 @@ pub enum ClientError {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
+/// This struct is what Kanidm uses for parsing the client configuration at runtime.
+///
+/// # Configuration file inheritance
+///
+/// The configuration files are loaded in order, with the last one loaded overriding the previous one.
+///
+/// 1. The "system" config is loaded from in [kanidm_proto::constants::DEFAULT_CLIENT_CONFIG_PATH].
+/// 2. Then a per-user configuration, from [kanidm_proto::constants::DEFAULT_CLIENT_CONFIG_PATH_HOME] is loaded.
+/// 3. All of these may be overridden by setting environment variables.
+///
 pub struct KanidmClientConfig {
+    /// The URL of the server, ie `https://example.com`.
+    ///
+    /// Environment variable is `KANIDM_URL`. Yeah, we know.
     pub uri: Option<String>,
-    pub verify_ca: Option<bool>,
+    /// Whether to verify the TLS certificate of the server matches the hostname you connect to, defaults to `true`.
+    ///
+    /// Environment variable is slightly inverted - `KANIDM_SKIP_HOSTNAME_VERIFICATION`.
     pub verify_hostnames: Option<bool>,
+    /// Whether to verify the Certificate Authority details of the server's TLS certificate, defaults to `true`.
+    ///
+    /// Environment variable is slightly inverted - `KANIDM_SKIP_HOSTNAME_VERIFICATION`.
+    pub verify_ca: Option<bool>,
+    /// Optionally you can specify the path of a CA certificate to use for verifying the server, if you're not using one trusted by your system certificate store.
+    ///
+    /// Environment variable is `KANIDM_CA_PATH`.
     pub ca_path: Option<String>,
 }
 
@@ -261,7 +283,6 @@ impl KanidmClientBuilder {
         })
     }
 
-    #[allow(clippy::result_unit_err)]
     pub fn read_options_from_optional_config<P: AsRef<Path> + std::fmt::Debug>(
         self,
         config_path: P,
