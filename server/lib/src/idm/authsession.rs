@@ -1281,9 +1281,9 @@ mod tests {
     }
 
     fn create_jwt_signer() -> JwsEs256Signer {
-        let mut jws_key = JwsEs256Signer::generate_es256().expect("failed to construct signer.");
-        jws_key.set_sign_option_embed_jwk(true);
-        jws_key
+        JwsEs256Signer::generate_es256()
+            .expect("failed to construct signer.")
+            .set_sign_option_embed_jwk(true)
     }
 
     #[test]

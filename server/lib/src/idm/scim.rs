@@ -42,15 +42,14 @@ macro_rules! try_from_entry {
                 "Missing attribute: name".to_string(),
             ))?;
 
-        let mut jws_key = $value
+        let jws_key = $value
             .get_ava_single_jws_key_es256(Attribute::JwsEs256PrivateKey)
             .cloned()
             .ok_or(OperationError::InvalidAccountState(format!(
                 "Missing attribute: {}",
                 Attribute::JwsEs256PrivateKey
-            )))?;
-
-        jws_key.set_sign_option_embed_jwk(true);
+            )))?
+            .set_sign_option_embed_jwk(true);
 
         let sync_tokens = $value
             .get_ava_as_apitoken_map(Attribute::SyncTokenSession)

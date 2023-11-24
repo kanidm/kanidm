@@ -205,13 +205,12 @@ impl IdmServer {
             OperationError::CryptographyError
         })?;
 
-        let mut uat_jwt_signer =
-            JwsEs256Signer::from_es256_der(&es256_private_key).map_err(|e| {
+        let uat_jwt_signer = JwsEs256Signer::from_es256_der(&es256_private_key)
+            .map_err(|e| {
                 admin_error!(err = ?e, "Unable to load ES256 JwsSigner from DER");
                 OperationError::CryptographyError
-            })?;
-
-        uat_jwt_signer.set_sign_option_embed_jwk(true);
+            })?
+            .set_sign_option_embed_jwk(true);
 
         let uat_jwt_validator = uat_jwt_signer.get_verifier().map_err(|e| {
             admin_error!(err = ?e, "Unable to load ES256 JwsValidator from JwsSigner");
@@ -2059,13 +2058,14 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             self.qs_write
                 .get_domain_es256_private_key()
                 .and_then(|key_der| {
-                    JwsEs256Signer::from_es256_der(&key_der).map_err(|e| {
-                        admin_error!("Failed to generate uat_jwt_signer - {:?}", e);
-                        OperationError::InvalidState
-                    })
+                    JwsEs256Signer::from_es256_der(&key_der)
+                        .map(|signer| signer.set_sign_option_embed_jwk(true))
+                        .map_err(|e| {
+                            admin_error!("Failed to generate uat_jwt_signer - {:?}", e);
+                            OperationError::InvalidState
+                        })
                 })
-                .and_then(|mut signer| {
-                    signer.set_sign_option_embed_jwk(true);
+                .and_then(|signer| {
                     signer
                         .get_verifier()
                         .map_err(|e| {
