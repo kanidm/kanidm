@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 use std::time::Duration;
 
-use compact_jwt::{Jws, JwsSigner};
+use compact_jwt::{Jws, JwsEs256Signer, JwsSigner};
 use kanidm_proto::v1::ApiToken as ProtoApiToken;
 use time::OffsetDateTime;
 
@@ -42,13 +42,15 @@ macro_rules! try_from_entry {
             OperationError::InvalidAccountState(format!("Missing attribute: {}", Attribute::Spn)),
         )?;
 
-        let jws_key = $value
+        let mut jws_key = $value
             .get_ava_single_jws_key_es256(Attribute::JwsEs256PrivateKey)
             .cloned()
             .ok_or(OperationError::InvalidAccountState(format!(
                 "Missing attribute: {}",
                 Attribute::JwsEs256PrivateKey
             )))?;
+
+        jws_key.set_sign_option_embed_jwk(true);
 
         let api_tokens = $value
             .get_ava_as_apitoken_map(Attribute::ApiTokenSession)
@@ -81,7 +83,7 @@ pub struct ServiceAccount {
 
     pub api_tokens: BTreeMap<Uuid, ApiToken>,
 
-    pub jws_key: JwsSigner,
+    pub jws_key: JwsEs256Signer,
 }
 
 impl ServiceAccount {
@@ -240,14 +242,19 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         );
 
         // create the session token (not yet signed)
-        let token = Jws::new(ProtoApiToken {
+        let proto_api_token = ProtoApiToken {
             account_id: service_account.uuid,
             token_id: session_id,
             label: gte.label.clone(),
             expiry: gte.expiry,
             issued_at,
             purpose,
-        });
+        };
+
+        let token = Jws::into_json(&proto_api_token).map_err(|err| {
+            error!(?err, "Unable to serialise JWS");
+            OperationError::SerdeJsonError
+        })?;
 
         // modify the account to put the session onto it.
         let modlist = ModifyList::new_list(vec![Modify::Present(
@@ -267,8 +274,9 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             )
             .and_then(|_| {
                 // The modify succeeded and was allowed, now sign the token for return.
-                token
-                    .sign_embed_public_jwk(&service_account.jws_key)
+                service_account
+                    .jws_key
+                    .sign(&token)
                     .map(|jws_signed| jws_signed.to_string())
                     .map_err(|e| {
                         admin_error!(err = ?e, "Unable to sign api token");
@@ -424,7 +432,7 @@ mod tests {
     use std::str::FromStr;
     use std::time::Duration;
 
-    use compact_jwt::{Jws, JwsUnverified};
+    use compact_jwt::{JwsCompact, JwsEs256Verifier, JwsVerifier};
     use kanidm_proto::v1::ApiToken;
 
     use super::{DestroyApiTokenEvent, GenerateApiTokenEvent};
@@ -471,11 +479,16 @@ mod tests {
 
         // Deserialise it.
         let apitoken_unverified =
-            JwsUnverified::from_str(&api_token).expect("Failed to parse apitoken");
-        let apitoken_inner: Jws<ApiToken> = apitoken_unverified
-            .validate_embeded()
-            .expect("Embedded jwk not found");
-        let apitoken_inner = apitoken_inner.into_inner();
+            JwsCompact::from_str(&api_token).expect("Failed to parse apitoken");
+
+        let jws_verifier =
+            JwsEs256Verifier::try_from(apitoken_unverified.get_jwk_pubkey().unwrap()).unwrap();
+
+        let apitoken_inner = jws_verifier
+            .verify(&apitoken_unverified)
+            .unwrap()
+            .from_json::<ApiToken>()
+            .unwrap();
 
         let ident = idms_prox_write
             .validate_and_parse_token_to_ident(Some(&api_token), ct)

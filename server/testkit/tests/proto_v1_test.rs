@@ -18,7 +18,7 @@ use tracing::{debug, trace};
 
 use std::str::FromStr;
 
-use compact_jwt::JwsUnverified;
+use compact_jwt::{JwsCompact, JwsEs256Verifier, JwsVerifier};
 use webauthn_authenticator_rs::softpasskey::SoftPasskey;
 use webauthn_authenticator_rs::WebauthnAuthenticator;
 
@@ -1445,12 +1445,19 @@ async fn test_server_api_token_lifecycle(rsclient: KanidmClient) {
         .expect("Failed to create service account api token");
 
     // Decode it?
-    let token_unverified = JwsUnverified::from_str(&token).expect("Failed to parse apitoken");
+    let token_unverified = JwsCompact::from_str(&token).expect("Failed to parse apitoken");
 
-    let token: ApiToken = token_unverified
-        .validate_embeded()
-        .map(|j| j.into_inner())
-        .expect("Embedded jwk not found");
+    let jws_verifier = JwsEs256Verifier::try_from(
+        token_unverified
+            .get_jwk_pubkey()
+            .expect("No pubkey in token"),
+    )
+    .expect("Unable to build verifier");
+
+    let token = jws_verifier
+        .verify(&token_unverified)
+        .map(|j| j.from_json::<ApiToken>().expect("invalid token json"))
+        .expect("Failed to verify token");
 
     let tokens = rsclient
         .idm_service_account_list_api_token(test_service_account_username)
@@ -1649,13 +1656,16 @@ async fn test_server_user_auth_token_lifecycle(rsclient: KanidmClient) {
 
     let token = rsclient.get_token().await.expect("No bearer token present");
 
-    let token_unverified =
-        JwsUnverified::from_str(&token).expect("Failed to parse user auth token");
+    let jwt = JwsCompact::from_str(&token).expect("Failed to parse jwt");
 
-    let token: UserAuthToken = token_unverified
-        .validate_embeded()
-        .map(|j| j.into_inner())
-        .expect("Embedded jwk not found");
+    let jws_verifier =
+        JwsEs256Verifier::try_from(jwt.get_jwk_pubkey().expect("No pubkey in token"))
+            .expect("Unable to build verifier");
+
+    let token: UserAuthToken = jws_verifier
+        .verify(&jwt)
+        .map(|jws| jws.from_json::<UserAuthToken>().expect("Invalid json"))
+        .expect("Unable extract uat");
 
     let sessions = rsclient
         .idm_account_list_user_auth_token("demo_account")
@@ -1719,12 +1729,17 @@ async fn test_server_user_auth_reauthentication(rsclient: KanidmClient) {
         .get_token()
         .await
         .expect("Must have a bearer token");
-    let jwtu = JwsUnverified::from_str(&token).expect("Failed to parse jwsu");
 
-    let uat: UserAuthToken = jwtu
-        .validate_embeded()
-        .map(|jws| jws.into_inner())
-        .expect("Unable to open up token.");
+    let jwt = JwsCompact::from_str(&token).expect("Failed to parse jwt");
+
+    let jws_verifier =
+        JwsEs256Verifier::try_from(jwt.get_jwk_pubkey().expect("No pubkey in token"))
+            .expect("Unable to build verifier");
+
+    let uat: UserAuthToken = jws_verifier
+        .verify(&jwt)
+        .map(|jws| jws.from_json::<UserAuthToken>().expect("Invalid json"))
+        .expect("Unable extract uat");
 
     let now = time::OffsetDateTime::now_utc();
     assert!(!uat.purpose_readwrite_active(now));
@@ -1754,12 +1769,17 @@ async fn test_server_user_auth_reauthentication(rsclient: KanidmClient) {
         .get_token()
         .await
         .expect("Must have a bearer token");
-    let jwtu = JwsUnverified::from_str(&token).expect("Failed to parse jwsu");
 
-    let uat: UserAuthToken = jwtu
-        .validate_embeded()
-        .map(|jws| jws.into_inner())
-        .expect("Unable to open up token.");
+    let jwt = JwsCompact::from_str(&token).expect("Failed to parse jwt");
+
+    let jws_verifier =
+        JwsEs256Verifier::try_from(jwt.get_jwk_pubkey().expect("No pubkey in token"))
+            .expect("Unable to build verifier");
+
+    let uat: UserAuthToken = jws_verifier
+        .verify(&jwt)
+        .map(|jws| jws.from_json::<UserAuthToken>().expect("Invalid json"))
+        .expect("Unable extract uat");
 
     let now = time::OffsetDateTime::now_utc();
     eprintln!("{:?} {:?}", now, uat.purpose);
@@ -1839,10 +1859,15 @@ async fn start_password_session(
         _ => panic!("Failed to extract jwt"),
     };
 
-    let jwt = JwsUnverified::from_str(&jwt).expect("Failed to parse jwt");
-    let uat: UserAuthToken = jwt
-        .validate_embeded()
-        .map(|jws| jws.into_inner())
+    let jwt = JwsCompact::from_str(&jwt).expect("Failed to parse jwt");
+
+    let jws_verifier =
+        JwsEs256Verifier::try_from(jwt.get_jwk_pubkey().expect("No pubkey in token"))
+            .expect("Unable to build verifier");
+
+    let uat: UserAuthToken = jws_verifier
+        .verify(&jwt)
+        .map(|jws| jws.from_json::<UserAuthToken>().expect("Invalid json"))
         .expect("Unable extract uat");
 
     Ok(uat)

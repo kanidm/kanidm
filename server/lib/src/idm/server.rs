@@ -5,7 +5,7 @@ use std::time::Duration;
 
 use kanidm_lib_crypto::CryptoPolicy;
 
-use compact_jwt::{Jws, JwsSigner, JwsUnverified, JwsValidator};
+use compact_jwt::{JwsCompact, JwsEs256Signer, JwsEs256Verifier, JwsSignerToVerifier, JwsVerifier};
 use concread::bptree::{BptreeMap, BptreeMapReadTxn, BptreeMapWriteTxn};
 use concread::cowcell::{CowCellReadTxn, CowCellWriteTxn};
 use concread::hashmap::HashMap;
@@ -62,8 +62,8 @@ pub(crate) type CredSoftLockMutex = Arc<Mutex<CredSoftLock>>;
 
 #[derive(Clone)]
 pub struct DomainKeys {
-    pub(crate) uat_jwt_signer: JwsSigner,
-    pub(crate) uat_jwt_validator: JwsValidator,
+    pub(crate) uat_jwt_signer: JwsEs256Signer,
+    pub(crate) uat_jwt_validator: JwsEs256Verifier,
     pub(crate) token_enc_key: Fernet,
     pub(crate) cookie_key: [u8; 64],
 }
@@ -205,12 +205,15 @@ impl IdmServer {
             OperationError::CryptographyError
         })?;
 
-        let uat_jwt_signer = JwsSigner::from_es256_der(&es256_private_key).map_err(|e| {
-            admin_error!(err = ?e, "Unable to load ES256 JwsSigner from DER");
-            OperationError::CryptographyError
-        })?;
+        let mut uat_jwt_signer =
+            JwsEs256Signer::from_es256_der(&es256_private_key).map_err(|e| {
+                admin_error!(err = ?e, "Unable to load ES256 JwsSigner from DER");
+                OperationError::CryptographyError
+            })?;
 
-        let uat_jwt_validator = uat_jwt_signer.get_validator().map_err(|e| {
+        uat_jwt_signer.set_sign_option_embed_jwk(true);
+
+        let uat_jwt_validator = uat_jwt_signer.get_verifier().map_err(|e| {
             admin_error!(err = ?e, "Unable to load ES256 JwsValidator from JwsSigner");
             OperationError::CryptographyError
         })?;
@@ -394,7 +397,7 @@ pub trait IdmServerTransaction<'a> {
 
     fn get_qs_txn(&mut self) -> &mut Self::QsTransactionType;
 
-    fn get_uat_validator_txn(&self) -> &JwsValidator;
+    fn get_uat_validator_txn(&self) -> &JwsEs256Verifier;
 
     /// This is the preferred method to transform and securely verify a token into
     /// an identity that can be used for operations and access enforcement. This
@@ -442,7 +445,7 @@ pub trait IdmServerTransaction<'a> {
                 OperationError::NotAuthenticated
             })
             .and_then(|s| {
-                JwsUnverified::from_str(s).map_err(|e| {
+                JwsCompact::from_str(s).map_err(|e| {
                     security_info!(?e, "Unable to decode token");
                     OperationError::NotAuthenticated
                 })
@@ -456,20 +459,25 @@ pub trait IdmServerTransaction<'a> {
             OperationError::NotAuthenticated
         })?;
 
-        let jwsv_kid = jws_validator.get_jwk_kid().ok_or_else(|| {
+        let jwsv_kid = jws_validator.get_kid().ok_or_else(|| {
             security_info!("JWS validator does not contain a valid kid");
             OperationError::NotAuthenticated
         })?;
 
         if kid == jwsv_kid {
             // It's signed by the primary jws, so it's probably a UserAuthToken.
-            let uat = jwsu
-                .validate(jws_validator)
+            let uat = jws_validator
+                .verify(&jwsu)
                 .map_err(|e| {
                     security_info!(?e, "Unable to verify token");
                     OperationError::NotAuthenticated
                 })
-                .map(|t: Jws<UserAuthToken>| t.into_inner())?;
+                .and_then(|t| {
+                    t.from_json::<UserAuthToken>().map_err(|err| {
+                        error!(?err, "Unable to deserialise JWS");
+                        OperationError::SerdeJsonError
+                    })
+                })?;
 
             if let Some(exp) = uat.expiry {
                 let ct_odt = time::OffsetDateTime::UNIX_EPOCH + ct;
@@ -514,18 +522,23 @@ pub trait IdmServerTransaction<'a> {
                     OperationError::NotAuthenticated
                 })?;
 
-            let user_validator = user_signer.get_validator().map_err(|e| {
+            let user_validator = user_signer.get_verifier().map_err(|e| {
                 security_info!(?e, "Unable to access token verifier");
                 OperationError::NotAuthenticated
             })?;
 
-            let apit = jwsu
-                .validate(&user_validator)
+            let apit = user_validator
+                .verify(&jwsu)
                 .map_err(|e| {
                     security_info!(?e, "Unable to verify token");
                     OperationError::NotAuthenticated
                 })
-                .map(|t: Jws<ApiToken>| t.into_inner())?;
+                .and_then(|t| {
+                    t.from_json::<ApiToken>().map_err(|err| {
+                        error!(?err, "Unable to deserialise JWS");
+                        OperationError::SerdeJsonError
+                    })
+                })?;
 
             if let Some(expiry) = apit.expiry {
                 if time::OffsetDateTime::UNIX_EPOCH + ct >= expiry {
@@ -550,18 +563,24 @@ pub trait IdmServerTransaction<'a> {
         let uat: UserAuthToken = token
             .ok_or(OperationError::NotAuthenticated)
             .and_then(|s| {
-                JwsUnverified::from_str(s).map_err(|e| {
+                JwsCompact::from_str(s).map_err(|e| {
                     security_info!(?e, "Unable to decode token");
                     OperationError::NotAuthenticated
                 })
             })
             .and_then(|jwtu| {
-                jwtu.validate(jws_validator)
+                jws_validator
+                    .verify(&jwtu)
                     .map_err(|e| {
                         security_info!(?e, "Unable to verify token");
                         OperationError::NotAuthenticated
                     })
-                    .map(|t: Jws<UserAuthToken>| t.into_inner())
+                    .and_then(|t| {
+                        t.from_json::<UserAuthToken>().map_err(|err| {
+                            error!(?err, "Unable to deserialise JWS");
+                            OperationError::SerdeJsonError
+                        })
+                    })
             })?;
 
         if let Some(exp) = uat.expiry {
@@ -833,7 +852,7 @@ pub trait IdmServerTransaction<'a> {
                 OperationError::NotAuthenticated
             })
             .and_then(|s| {
-                JwsUnverified::from_str(s).map_err(|e| {
+                JwsCompact::from_str(s).map_err(|e| {
                     security_info!(?e, "Unable to decode token");
                     OperationError::NotAuthenticated
                 })
@@ -872,18 +891,23 @@ pub trait IdmServerTransaction<'a> {
                 OperationError::NotAuthenticated
             })?;
 
-        let user_validator = user_signer.get_validator().map_err(|e| {
+        let user_validator = user_signer.get_verifier().map_err(|e| {
             security_info!(?e, "Unable to access token verifier");
             OperationError::NotAuthenticated
         })?;
 
-        let sync_token = jwsu
-            .validate(&user_validator)
+        let sync_token = user_validator
+            .verify(&jwsu)
             .map_err(|e| {
                 security_info!(?e, "Unable to verify token");
                 OperationError::NotAuthenticated
             })
-            .map(|t: Jws<ScimSyncToken>| t.into_inner())?;
+            .and_then(|t| {
+                t.from_json::<ScimSyncToken>().map_err(|err| {
+                    error!(?err, "Unable to deserialise JWS");
+                    OperationError::SerdeJsonError
+                })
+            })?;
 
         let valid = SyncAccount::check_sync_token_valid(ct, &sync_token, &entry);
 
@@ -912,7 +936,7 @@ impl<'a> IdmServerTransaction<'a> for IdmServerAuthTransaction<'a> {
         &mut self.qs_read
     }
 
-    fn get_uat_validator_txn(&self) -> &JwsValidator {
+    fn get_uat_validator_txn(&self) -> &JwsEs256Verifier {
         &self.domain_keys.uat_jwt_validator
     }
 }
@@ -1429,7 +1453,7 @@ impl<'a> IdmServerTransaction<'a> for IdmServerProxyReadTransaction<'a> {
         &mut self.qs_read
     }
 
-    fn get_uat_validator_txn(&self) -> &JwsValidator {
+    fn get_uat_validator_txn(&self) -> &JwsEs256Verifier {
         &self.domain_keys.uat_jwt_validator
     }
 }
@@ -1532,7 +1556,7 @@ impl<'a> IdmServerTransaction<'a> for IdmServerProxyWriteTransaction<'a> {
         &mut self.qs_write
     }
 
-    fn get_uat_validator_txn(&self) -> &JwsValidator {
+    fn get_uat_validator_txn(&self) -> &JwsEs256Verifier {
         &self.domain_keys.uat_jwt_validator
     }
 }
@@ -2035,14 +2059,15 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             self.qs_write
                 .get_domain_es256_private_key()
                 .and_then(|key_der| {
-                    JwsSigner::from_es256_der(&key_der).map_err(|e| {
+                    JwsEs256Signer::from_es256_der(&key_der).map_err(|e| {
                         admin_error!("Failed to generate uat_jwt_signer - {:?}", e);
                         OperationError::InvalidState
                     })
                 })
-                .and_then(|signer| {
+                .and_then(|mut signer| {
+                    signer.set_sign_option_embed_jwk(true);
                     signer
-                        .get_validator()
+                        .get_verifier()
                         .map_err(|e| {
                             admin_error!("Failed to generate uat_jwt_validator - {:?}", e);
                             OperationError::InvalidState
@@ -2100,6 +2125,7 @@ mod tests {
     use crate::modify::{Modify, ModifyList};
     use crate::prelude::*;
     use crate::value::SessionState;
+    use compact_jwt::{JwsCompact, JwsEs256Verifier, JwsVerifier};
     use kanidm_lib_crypto::CryptoPolicy;
 
     const TEST_PASSWORD: &str = "ntaoeuntnaoeuhraohuercahu😍";
@@ -3474,7 +3500,6 @@ mod tests {
         idms: &IdmServer,
         idms_delayed: &mut IdmServerDelayed,
     ) {
-        use compact_jwt::{Jws, JwsUnverified};
         use kanidm_proto::v1::UserAuthToken;
         use std::str::FromStr;
 
@@ -3499,11 +3524,16 @@ mod tests {
         let r = idms.delayed_action(ct, da).await;
         assert!(Ok(true) == r);
 
-        let uat_unverified = JwsUnverified::from_str(&token).expect("Failed to parse apitoken");
-        let uat_inner: Jws<UserAuthToken> = uat_unverified
-            .validate_embeded()
-            .expect("Embedded jwk not found");
-        let uat_inner = uat_inner.into_inner();
+        let uat_unverified = JwsCompact::from_str(&token).expect("Failed to parse apitoken");
+
+        let jws_validator =
+            JwsEs256Verifier::try_from(uat_unverified.get_jwk_pubkey().unwrap()).unwrap();
+
+        let uat_inner: UserAuthToken = jws_validator
+            .verify(&uat_unverified)
+            .unwrap()
+            .from_json()
+            .unwrap();
 
         let mut idms_prox_read = idms.proxy_read().await;
 

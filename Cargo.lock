@@ -807,6 +807,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "compact_jwt"
+version = "0.3.1"
+dependencies = [
+ "base64 0.21.5",
+ "base64urlsafedata",
+ "hex",
+ "kanidm-hsm-crypto",
+ "openssl",
+ "serde",
+ "serde_json",
+ "tracing",
+ "url",
+ "uuid",
+]
+
+[[package]]
 name = "concread"
 version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2976,9 +2992,9 @@ dependencies = [
 
 [[package]]
 name = "kanidm-hsm-crypto"
-version = "0.1.1"
+version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2710fd18cfe2f774e6d1e743dae86ae9a7332cad1bb85cb66777f7ef63578410"
+checksum = "fdc2a5dbe42b03b3e5e3f99eab1c5773032c8e508896691b3f4562c7de264d67"
 dependencies = [
  "argon2",
  "openssl",
@@ -3122,7 +3138,7 @@ dependencies = [
  "async-recursion",
  "clap",
  "clap_complete",
- "compact_jwt",
+ "compact_jwt 0.3.1",
  "cursive",
  "dialoguer",
  "futures-concurrency",
@@ -3206,7 +3222,7 @@ dependencies = [
  "axum-server",
  "bytes",
  "chrono",
- "compact_jwt",
+ "compact_jwt 0.3.1",
  "cron",
  "filetime",
  "futures",
@@ -3253,7 +3269,7 @@ version = "1.1.0-rc.15-dev"
 dependencies = [
  "base64 0.21.5",
  "base64urlsafedata",
- "compact_jwt",
+ "compact_jwt 0.3.1",
  "concread",
  "criterion",
  "dyn-clone",
@@ -3319,7 +3335,7 @@ name = "kanidmd_testkit"
 version = "1.1.0-rc.15-dev"
 dependencies = [
  "assert_cmd",
- "compact_jwt",
+ "compact_jwt 0.3.1",
  "escargot",
  "fantoccini",
  "futures",
@@ -6518,7 +6534,7 @@ source = "git+https://github.com/kanidm/webauthn-rs.git?rev=2218d2055c0c900ef57b
 dependencies = [
  "base64 0.21.5",
  "base64urlsafedata",
- "compact_jwt",
+ "compact_jwt 0.2.10",
  "der-parser",
  "nom",
  "openssl",

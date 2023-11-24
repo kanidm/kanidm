@@ -40,7 +40,7 @@ use std::path::Path;
 use std::sync::Arc;
 
 use crate::utils::touch_file_or_quit;
-use compact_jwt::JwsSigner;
+use compact_jwt::JwsHs256Signer;
 use kanidm_proto::v1::OperationError;
 use kanidmd_lib::be::{Backend, BackendConfig, BackendTransaction};
 use kanidmd_lib::idm::ldap::LdapServer;
@@ -853,7 +853,7 @@ pub async fn create_server_core(
 
     // Extract any configuration from the IDMS that we may need.
     // For now we just do this per run, but we need to extract this from the db later.
-    let jws_signer = match JwsSigner::generate_hs256() {
+    let jws_signer = match JwsHs256Signer::generate_hs256() {
         Ok(k) => k,
         Err(e) => {
             error!("Unable to setup jws signer -> {:?}", e);

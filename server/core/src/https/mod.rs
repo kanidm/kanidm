@@ -25,7 +25,7 @@ use axum::routing::*;
 use axum::Router;
 use axum_csp::{CspDirectiveType, CspValue};
 use axum_macros::FromRef;
-use compact_jwt::{Jws, JwsSigner, JwsUnverified};
+use compact_jwt::{JwsCompact, JwsHs256Signer, JwsVerifier};
 use hashbrown::HashMap;
 use http::{HeaderMap, HeaderValue};
 use hyper::server::accept::Accept;
@@ -59,8 +59,7 @@ pub struct ServerState {
     pub qe_w_ref: &'static crate::actors::v1_write::QueryServerWriteV1,
     pub qe_r_ref: &'static crate::actors::v1_read::QueryServerReadV1,
     // Store the token management parts.
-    pub jws_signer: compact_jwt::JwsSigner,
-    pub jws_validator: compact_jwt::JwsValidator,
+    pub jws_signer: compact_jwt::JwsHs256Signer,
     // The SHA384 hashes of javascript files we're going to serve to users
     pub js_files: JavaScriptFiles,
     pub(crate) trust_x_forward_for: bool,
@@ -69,11 +68,13 @@ pub struct ServerState {
 
 impl ServerState {
     fn reinflate_uuid_from_bytes(&self, input: &str) -> Option<Uuid> {
-        match JwsUnverified::from_str(input) {
-            Ok(val) => val
-                .validate(&self.jws_validator)
-                .map(|jws: Jws<SessionId>| jws.into_inner().sessionid)
-                .ok(),
+        match JwsCompact::from_str(input) {
+            Ok(val) => self
+                .jws_signer
+                .verify(&val)
+                .ok()
+                .and_then(|jws| jws.from_json::<SessionId>().ok())
+                .map(|inner| inner.sessionid),
             Err(_) => None,
         }
     }
@@ -168,16 +169,12 @@ pub fn get_js_files(role: ServerRole) -> Result<JavaScriptFiles, ()> {
 
 pub async fn create_https_server(
     config: Configuration,
-    jws_signer: JwsSigner,
+    jws_signer: JwsHs256Signer,
     status_ref: &'static StatusActor,
     qe_w_ref: &'static QueryServerWriteV1,
     qe_r_ref: &'static QueryServerReadV1,
     mut rx: broadcast::Receiver<CoreAction>,
 ) -> Result<tokio::task::JoinHandle<()>, ()> {
-    let jws_validator = jws_signer.get_validator().map_err(|e| {
-        error!(?e, "Failed to get jws validator");
-    })?;
-
     let js_files = get_js_files(config.role)?;
     // set up the CSP headers
     // script-src 'self'
@@ -229,7 +226,6 @@ pub async fn create_https_server(
         qe_w_ref,
         qe_r_ref,
         jws_signer,
-        jws_validator,
         js_files,
         trust_x_forward_for,
         csp_header: csp_header.finish(),

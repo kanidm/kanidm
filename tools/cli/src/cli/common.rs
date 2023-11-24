@@ -2,7 +2,7 @@ use std::env;
 use std::str::FromStr;
 
 use async_recursion::async_recursion;
-use compact_jwt::{Jws, JwsUnverified};
+use compact_jwt::{JwsCompact, JwsEs256Verifier, JwsVerifier, JwtError};
 use dialoguer::theme::ColorfulTheme;
 use dialoguer::{Confirm, Select};
 use kanidm_client::{KanidmClient, KanidmClientBuilder};
@@ -198,7 +198,7 @@ impl CommonOpt {
             }
         };
 
-        let jwtu = match JwsUnverified::from_str(&token) {
+        let jwsc = match JwsCompact::from_str(&token) {
             Ok(jwtu) => jwtu,
             Err(e) => {
                 error!("Unable to parse token - {:?}", e);
@@ -207,10 +207,25 @@ impl CommonOpt {
         };
 
         // Is the token (probably) valid?
-        match jwtu
-            .validate_embeded()
-            .map(|jws: Jws<UserAuthToken>| jws.into_inner())
-        {
+        let jws_verifier = if let Some(pub_jwk) = jwsc.get_jwk_pubkey() {
+            match JwsEs256Verifier::try_from(pub_jwk) {
+                Ok(verifier) => verifier,
+                Err(err) => {
+                    error!(?err, "Unable to configure jws verifier");
+                    return Err(ToClientError::Other);
+                }
+            }
+        } else {
+            error!("Unable to access token public key");
+            return Err(ToClientError::Other);
+        };
+
+        match jws_verifier.verify(&jwsc).and_then(|jws| {
+            jws.from_json::<UserAuthToken>().map_err(|serde_err| {
+                error!(?serde_err);
+                JwtError::InvalidJwt
+            })
+        }) {
             Ok(uat) => {
                 let now_utc = time::OffsetDateTime::now_utc();
                 if let Some(exp) = uat.expiry {

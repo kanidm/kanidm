@@ -13,8 +13,8 @@ use std::time::Duration;
 use base64::{engine::general_purpose, Engine as _};
 
 use base64urlsafedata::Base64UrlSafeData;
-pub use compact_jwt::{JwkKeySet, OidcToken};
-use compact_jwt::{JwsSigner, OidcClaims, OidcSubject};
+pub use compact_jwt::{compact::JwkKeySet, OidcToken};
+use compact_jwt::{crypto::JwsRs256Signer, JwsEs256Signer, JwsSigner, OidcClaims, OidcSubject};
 use concread::cowcell::*;
 use fernet::Fernet;
 use hashbrown::HashMap;
@@ -217,6 +217,12 @@ impl std::fmt::Debug for OauthRSType {
 }
 
 #[derive(Clone)]
+enum Oauth2JwsSigner {
+    ES256 { signer: JwsEs256Signer },
+    RS256 { signer: JwsRs256Signer },
+}
+
+#[derive(Clone)]
 pub struct Oauth2RS {
     name: String,
     displayname: String,
@@ -227,8 +233,9 @@ pub struct Oauth2RS {
     sup_scope_maps: BTreeMap<Uuid, BTreeSet<String>>,
     // Our internal exchange encryption material for this rs.
     token_fernet: Fernet,
-    jws_signer: JwsSigner,
-    // jws_validator: JwsValidator,
+
+    jws_signer: Oauth2JwsSigner,
+
     // For oidc we also need our issuer url.
     iss: Url,
     // For discovery we need to build and keep a number of values.
@@ -398,7 +405,9 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
                         .get_ava_single_private_binary(Attribute::Rs256PrivateKeyDer)
                         .ok_or(OperationError::InvalidValueState)
                         .and_then(|key_der| {
-                            JwsSigner::from_rs256_der(key_der).map_err(|e| {
+                            JwsRs256Signer::from_rs256_der(key_der)
+                            .map(|signer| Oauth2JwsSigner::RS256 { signer })
+                            .map_err(|e| {
                                 admin_error!(err = ?e, "Unable to load Legacy RS256 JwsSigner from DER");
                                 OperationError::CryptographyError
                             })
@@ -409,7 +418,9 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
                         .get_ava_single_private_binary(Attribute::Es256PrivateKeyDer)
                         .ok_or(OperationError::InvalidValueState)
                         .and_then(|key_der| {
-                            JwsSigner::from_es256_der(key_der).map_err(|e| {
+                            JwsEs256Signer::from_es256_der(key_der)
+                            .map(|signer| Oauth2JwsSigner::ES256 { signer })
+                            .map_err(|e| {
                                 admin_error!(err = ?e, "Unable to load ES256 JwsSigner from DER");
                                 OperationError::CryptographyError
                             })
@@ -1081,14 +1092,16 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
             trace!(?oidc);
 
-            Some(
-                oidc.sign(&o2rs.jws_signer)
-                    .map(|jwt_signed| jwt_signed.to_string())
-                    .map_err(|e| {
-                        admin_error!(err = ?e, "Unable to encode uat data");
-                        Oauth2Error::ServerError(OperationError::InvalidState)
-                    })?,
-            )
+            let jwt_signed = match &o2rs.jws_signer {
+                Oauth2JwsSigner::ES256 { signer } => signer.sign(&oidc),
+                Oauth2JwsSigner::RS256 { signer } => signer.sign(&oidc),
+            }
+            .map_err(|e| {
+                admin_error!(err = ?e, "Unable to encode uat data");
+                Oauth2Error::ServerError(OperationError::InvalidState)
+            })?;
+
+            Some(jwt_signed.to_string())
         } else {
             // id_token is not required in non-openid flows.
             None
@@ -1820,12 +1833,8 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
         let subject_types_supported = vec![SubjectType::Public];
 
         let id_token_signing_alg_values_supported = match &o2rs.jws_signer {
-            JwsSigner::ES256 { .. } => vec![IdTokenSignAlg::ES256],
-            JwsSigner::RS256 { .. } => vec![IdTokenSignAlg::RS256],
-            JwsSigner::HS256 { .. } => {
-                admin_warn!("Invalid OAuth2 configuration - HS256 is not supported!");
-                vec![]
-            }
+            Oauth2JwsSigner::ES256 { .. } => vec![IdTokenSignAlg::ES256],
+            Oauth2JwsSigner::RS256 { .. } => vec![IdTokenSignAlg::RS256],
         };
 
         let userinfo_signing_alg_values_supported = None;
@@ -1888,13 +1897,15 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
             OperationError::NoMatchingEntries
         })?;
 
-        o2rs.jws_signer
-            .public_key_as_jwk()
-            .map_err(|e| {
-                admin_error!("Unable to retrieve public key for {} - {:?}", o2rs.name, e);
-                OperationError::InvalidState
-            })
-            .map(|jwk| JwkKeySet { keys: vec![jwk] })
+        match &o2rs.jws_signer {
+            Oauth2JwsSigner::ES256 { signer } => signer.public_key_as_jwk(),
+            Oauth2JwsSigner::RS256 { signer } => signer.public_key_as_jwk(),
+        }
+        .map_err(|e| {
+            admin_error!("Unable to retrieve public key for {} - {:?}", o2rs.name, e);
+            OperationError::InvalidState
+        })
+        .map(|jwk| JwkKeySet { keys: vec![jwk] })
     }
 }
 
@@ -1997,7 +2008,10 @@ mod tests {
     use std::time::Duration;
 
     use base64urlsafedata::Base64UrlSafeData;
-    use compact_jwt::{JwaAlg, Jwk, JwkUse, JwsValidator, OidcSubject, OidcUnverified};
+    use compact_jwt::{
+        compact::JwkUse, crypto::JwsRs256Verifier, JwaAlg, Jwk, JwsEs256Verifier, JwsVerifier,
+        OidcSubject, OidcUnverified,
+    };
     use kanidm_proto::constants::*;
     use kanidm_proto::oauth2::*;
     use kanidm_proto::v1::UserAuthToken;
@@ -3581,15 +3595,18 @@ mod tests {
 
         let public_jwk = jwkset.keys.pop().expect("no such jwk");
 
-        let jws_validator = JwsValidator::try_from(&public_jwk).expect("failed to build validator");
+        let jws_validator =
+            JwsEs256Verifier::try_from(&public_jwk).expect("failed to build validator");
 
         let oidc_unverified =
             OidcUnverified::from_str(&id_token).expect("Failed to parse id_token");
 
         let iat = ct.as_secs() as i64;
 
-        let oidc = oidc_unverified
-            .validate(&jws_validator, iat)
+        let oidc = jws_validator
+            .verify(&oidc_unverified)
+            .unwrap()
+            .verify_exp(iat)
             .expect("Failed to verify oidc");
 
         // Are the id_token values what we expect?
@@ -3750,15 +3767,18 @@ mod tests {
             .expect("Failed to get public key");
         let public_jwk = jwkset.keys.pop().expect("no such jwk");
 
-        let jws_validator = JwsValidator::try_from(&public_jwk).expect("failed to build validator");
+        let jws_validator =
+            JwsEs256Verifier::try_from(&public_jwk).expect("failed to build validator");
 
         let oidc_unverified =
             OidcUnverified::from_str(&id_token).expect("Failed to parse id_token");
 
         let iat = ct.as_secs() as i64;
 
-        let oidc = oidc_unverified
-            .validate(&jws_validator, iat)
+        let oidc = jws_validator
+            .verify(&oidc_unverified)
+            .unwrap()
+            .verify_exp(iat)
             .expect("Failed to verify oidc");
 
         // Do we have the short username in the token claims?
@@ -3836,15 +3856,18 @@ mod tests {
             .expect("Failed to get public key");
         let public_jwk = jwkset.keys.pop().expect("no such jwk");
 
-        let jws_validator = JwsValidator::try_from(&public_jwk).expect("failed to build validator");
+        let jws_validator =
+            JwsEs256Verifier::try_from(&public_jwk).expect("failed to build validator");
 
         let oidc_unverified =
             OidcUnverified::from_str(&id_token).expect("Failed to parse id_token");
 
         let iat = ct.as_secs() as i64;
 
-        let oidc = oidc_unverified
-            .validate(&jws_validator, iat)
+        let oidc = jws_validator
+            .verify(&oidc_unverified)
+            .unwrap()
+            .verify_exp(iat)
             .expect("Failed to verify oidc");
 
         // does our id_token contain the expected groups?
@@ -3993,15 +4016,18 @@ mod tests {
         assert!(token_response.token_type == "bearer");
         let id_token = token_response.id_token.expect("No id_token in response!");
 
-        let jws_validator = JwsValidator::try_from(&public_jwk).expect("failed to build validator");
+        let jws_validator =
+            JwsRs256Verifier::try_from(&public_jwk).expect("failed to build validator");
 
         let oidc_unverified =
             OidcUnverified::from_str(&id_token).expect("Failed to parse id_token");
 
         let iat = ct.as_secs() as i64;
 
-        let oidc = oidc_unverified
-            .validate(&jws_validator, iat)
+        let oidc = jws_validator
+            .verify(&oidc_unverified)
+            .unwrap()
+            .verify_exp(iat)
             .expect("Failed to verify oidc");
 
         assert!(oidc.sub == OidcSubject::U(UUID_ADMIN));
