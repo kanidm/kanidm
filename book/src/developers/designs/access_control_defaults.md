@@ -5,12 +5,12 @@
 ```mermaid
 graph LR
 
-DomainAdmin("Domain Admin") --> DomainConfigAdmin("Domain Config Admin")
-DomainAdmin("Domain Admin") --> SyncAccountAdmin("Sync Account Admin")
-DomainAdmin("Domain Admin") --> SchemaAdmin("Schema Admin")
 DomainAdmin("Domain Admin") --> AccessControlAdmin("Access Control Admin")
 DomainAdmin("Domain Admin") --> AccountPolicyAdmin("Account Policy Admin")
+DomainAdmin("Domain Admin") --> DomainConfigAdmin("Domain Config Admin")
 DomainAdmin("Domain Admin") --> HPGroupAdmin("HP Group Admin")
+DomainAdmin("Domain Admin") --> SchemaAdmin("Schema Admin")
+DomainAdmin("Domain Admin") --> SyncAccountAdmin("Sync Account Admin")
 ```
 
 ## IDM Admin
@@ -18,12 +18,12 @@ DomainAdmin("Domain Admin") --> HPGroupAdmin("HP Group Admin")
 ```mermaid
 graph LR
 
-IdmAdmin("IDM Admin") --> RadiusAccountModify("Radius Account Modify")
-IdmAdmin("IDM Admin") --> PersonPIIModify("Person PII Modify")
 IdmAdmin("IDM Admin") --> GroupAdmin("Group Admin")
-IdmAdmin("IDM Admin") --> PosixAccountIncludesCredMod("POSIX Account - [Includes Cred Mod]")
 IdmAdmin("IDM Admin") --> PersonAdmin("Person Admin")
+IdmAdmin("IDM Admin") --> PersonPIIModify("Person PII Modify")
 IdmAdmin("IDM Admin") --> PersonReadNoPII("Person Read No PII")
+IdmAdmin("IDM Admin") --> PosixAccountIncludesCredMod("POSIX Account - [Includes Cred Mod]")
+IdmAdmin("IDM Admin") --> RadiusAccountModify("Radius Account Modify")
 ```
 
 ## Integration Admin
@@ -32,8 +32,8 @@ IdmAdmin("IDM Admin") --> PersonReadNoPII("Person Read No PII")
 graph LR
 
 IntegrationAdmin("Integration Admin") --> Oauth2Admin("Oauth2 Admin")
-IntegrationAdmin("Integration Admin") --> RadiusServiceAdmin("Radius Service Admin")
 IntegrationAdmin("Integration Admin") --> PosixAccountConsumer("POSIX Account Consumer")
+IntegrationAdmin("Integration Admin") --> RadiusServiceAdmin("Radius Service Admin")
 ```
 
 ## Help Desk
@@ -41,8 +41,8 @@ IntegrationAdmin("Integration Admin") --> PosixAccountConsumer("POSIX Account Co
 ```mermaid
 graph LR
 
-HelpDesk("Help Desk") --> PersonReadNoPII("Person Read No PII")
 HelpDesk("Help Desk") --> PersonCredentialModify("Person Credential Modify")
+HelpDesk("Help Desk") --> PersonReadNoPII("Person Read No PII")
 ```
 
 ## Account "Self"
