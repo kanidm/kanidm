@@ -64,11 +64,11 @@ Duplicated for Service Accounts, HP persons, HP service Accounts.
 graph LR
 
 PersonAdmin("Person Admin") --> |"Creates Deletes"| Persons("Persons")
-PersonCredentialModify("Person Credential Modify") -.-> |"Member of"| PersonAdmin
+PersonPIIModify --> |"Reads Modifies"| Persons
 PersonPIIModify("Person PII Modify") -.-> |"Member of"| PersonAdmin 
+PersonCredentialModify("Person Credential Modify") -.-> |"Member of"| PersonAdmin
 PersonCredentialModify --> |"Reads Modifies"| Persons
 PersonCredentialModify --> |"Reads"| PersonReadNoPII("Person Read No PII")
-PersonPIIModify --> |"Reads Modifies"| Persons
 PersonAdmin --> PersonReadWithPII("Person Read - With PII")
 PersonReadWithPII --> PersonReadNoPII
 PersonReadNoPII --> |"Reads"| Persons
@@ -100,7 +100,7 @@ GroupAdmin --> |"Modify Delete"| HPGroups("HP Groups")
 GroupAdmin --> |"Add Members"| HPGroup("HP Group")
 
 HPGroupAdmin("HP Group Admin") --> HPGroup
-GroupAdmin --> |"Inherits"| HPGroupAdmin
+GroupAdmin -.-> |"Inherits"| HPGroupAdmin
 ```
 
 ## OAuth2 Specific
