@@ -1,5 +1,6 @@
+# Access Control Defaults
 
-```
+```text
 
 
 ┏━━━━━━━━━━━━━━━━━┓                              ┏━━━━━━━━━━━━━━━━━┓     ┌─────────────────┐ ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐
@@ -136,26 +137,18 @@
 │                                                                   │       └───────────────────────────────────────────────┘
 └───────────────────────────────────────────────────────────────────┘
 
-                                                                            ┌─────────────────────────────────────────────┐
-    ┌───────────────────────────────────────────────────────┐               │  Domain Admin                               │
-    │ Help Desk                                             │               │                                             │
-    │                                                       │               │   ┏━━━━━━━━━━━━━━━━━┓  ┏━━━━━━━━━━━━━━━━━┓  │
-    │     ┏━━━━━━━━━━━━━━━━━┓     ┌─────────────────┐       │               │   ┃     Domain      ┃  ┃  Sync Account   ┃  │
-    │     ┃Person Credential┃     │ Person Read (No │       │               │   ┃  Configuration  ┃  ┃      Admin      ┃  │
-    │     ┃     Modify      ┃     │      PII)       │       │               │   ┃      Admin      ┃  ┃                 ┃  │
-    │     ┃                 ┃     │                 │       │               │   ┗━━━━━━━━━━━━━━━━━┛  ┗━━━━━━━━━━━━━━━━━┛  │
-    │     ┗━━━━━━━━━━━━━━━━━┛     └─────────────────┘       │               │                                             │
-    │                                                       │               │   ┏━━━━━━━━━━━━━━━━━┓  ┏━━━━━━━━━━━━━━━━━┓  │
-    │                                                       │               │   ┃ Access Control  ┃  ┃                 ┃  │
-    │                                                       │               │   ┃      Admin      ┃  ┃  Schema Admin   ┃  │
-    └───────────────────────────────────────────────────────┘               │   ┃                 ┃  ┃                 ┃  │
-                                                                            │   ┗━━━━━━━━━━━━━━━━━┛  ┗━━━━━━━━━━━━━━━━━┛  │
-                                                                            │   ┏━━━━━━━━━━━━━━━━━┓  ┏━━━━━━━━━━━━━━━━━┓  │
-                                                                            │   ┃ Account Policy  ┃  ┃                 ┃  │
-                                                                            │   ┃      Admin      ┃  ┃ HP Group Admin  ┃  │
-                                                                            │   ┃                 ┃  ┃                 ┃  │
-                                                                            │   ┗━━━━━━━━━━━━━━━━━┛  ┗━━━━━━━━━━━━━━━━━┛  │
-                                                                            │                                             │
-                                                                            │                                             │
-                                                                            └─────────────────────────────────────────────┘
+
+```
+
+## Domain Admin
+
+```mermaid
+graph TD
+
+   DomainAdmin("Domain Admin") --> DomainConfigAdmin("Domain Config Admin")
+   DomainAdmin("Domain Admin") --> SyncAccountAdmin("Sync Account Admin")
+   DomainAdmin("Domain Admin") --> SchemaAdmin("Schema Admin")
+   DomainAdmin("Domain Admin") --> AccessControlAdmin("Access Control Admin")
+   DomainAdmin("Domain Admin") --> AccountPolicyAdmin("Account Policy Admin")
+   DomainAdmin("Domain Admin") --> HPGroupAdmin("HP Group Admin")
 ```
