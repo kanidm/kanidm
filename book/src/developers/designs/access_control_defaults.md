@@ -58,7 +58,7 @@ SelfNameModify("Self Name Modify") --> |"Modifies"| Self
 Duplicated for Service Accounts, HP persons, HP service Accounts.
 
 ```mermaid
-graph TD
+graph LR
 
 
 PersonAdmin("Person Admin") --> |"Creates Deletes"| Persons("Persons")
