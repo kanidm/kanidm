@@ -468,6 +468,7 @@ async fn main() -> ExitCode {
                 .help("Allow running as root. Don't use this in production as it is risky!")
                 .short('r')
                 .long("skip-root-check")
+                .env("KANIDM_SKIP_ROOT_CHECK")
                 .action(ArgAction::SetTrue),
         )
         .arg(
@@ -475,6 +476,7 @@ async fn main() -> ExitCode {
                 .help("Show extra debug information")
                 .short('d')
                 .long("debug")
+                .env("KANIDM_DEBUG")
                 .action(ArgAction::SetTrue),
         )
         .arg(

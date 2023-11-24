@@ -120,7 +120,7 @@ alias kanidm="docker run ..."
 
 The tools are available as a cargo download if you have a rust tool chain available. To install rust
 you should follow the documentation for [rustup](https://rustup.rs/). These will be installed into
-your home directory. To update these, re-run the install command.
+your home directory. To update these, re-run the install command. You will likely need to install additional development libraries, specified in the [Developer Guide](DEVELOPER_README.html).
 
 ```bash
 cargo install kanidm_tools
