@@ -15,7 +15,7 @@ use std::time::Duration;
 
 #[cfg(test)]
 use base64::{engine::general_purpose, Engine as _};
-use compact_jwt::JwsSigner;
+use compact_jwt::{crypto::JwsRs256Signer, JwsEs256Signer};
 use hashbrown::HashSet;
 use kanidm_proto::internal::ImageValue;
 use num_enum::TryFromPrimitive;
@@ -1029,8 +1029,8 @@ pub enum Value {
     ApiToken(Uuid, ApiToken),
     Oauth2Session(Uuid, Oauth2Session),
 
-    JwsKeyEs256(JwsSigner),
-    JwsKeyRs256(JwsSigner),
+    JwsKeyEs256(JwsEs256Signer),
+    JwsKeyRs256(JwsRs256Signer),
     UiHint(UiHint),
 
     TotpSecret(String, Totp),

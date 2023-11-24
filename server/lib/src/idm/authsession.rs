@@ -7,13 +7,11 @@ use std::convert::TryFrom;
 use std::fmt;
 use std::time::Duration;
 
-// use webauthn_rs::proto::Credential as WebauthnCredential;
-use compact_jwt::{Jws, JwsSigner};
+use compact_jwt::{Jws, JwsEs256Signer, JwsSigner};
 use hashbrown::HashSet;
 use kanidm_proto::v1::{
     AuthAllowed, AuthCredential, AuthIssueSession, AuthMech, OperationError, UserAuthToken,
 };
-// use crossbeam::channel::Sender;
 use nonempty::{nonempty, NonEmpty};
 use tokio::sync::mpsc::UnboundedSender as Sender;
 use uuid::Uuid;
@@ -1014,7 +1012,7 @@ impl AuthSession {
         async_tx: &Sender<DelayedAction>,
         audit_tx: &Sender<AuditEvent>,
         webauthn: &Webauthn,
-        uat_jwt_signer: &JwsSigner,
+        uat_jwt_signer: &JwsEs256Signer,
         pw_badlist: &HashSet<String>,
     ) -> Result<AuthState, OperationError> {
         let (next_state, response) = match &mut self.state {
@@ -1042,14 +1040,18 @@ impl AuthSession {
                             self.account_policy.authsession_expiry(),
                             self.account_policy.privilege_expiry(),
                         )?;
-                        let jwt = Jws::new(uat);
+
+                        let jwt = Jws::into_json(&uat).map_err(|e| {
+                            admin_error!(?e, "Failed to serialise into Jws");
+                            OperationError::InvalidState
+                        })?;
 
                         // Now encrypt and prepare the token for return to the client.
-                        let token = jwt
+                        let token = uat_jwt_signer
                             // Do we want to embed this? Or just give the URL? I think we embed
                             // as we only need the client to be able to check it's not tampered, but
                             // this isn't a root of trust.
-                            .sign_embed_public_jwk(uat_jwt_signer)
+                            .sign(&jwt)
                             .map(|jwts| jwts.to_string())
                             .map_err(|e| {
                                 admin_error!(?e, "Failed to sign UserAuthToken to Jwt");
@@ -1239,7 +1241,7 @@ mod tests {
     use std::str::FromStr;
     use std::time::Duration;
 
-    use compact_jwt::{Jws, JwsSigner, JwsUnverified};
+    use compact_jwt::{JwsCompact, JwsEs256Signer, JwsEs256Verifier, JwsVerifier};
     use hashbrown::HashSet;
     use kanidm_proto::v1::{
         AuthAllowed, AuthCredential, AuthIssueSession, AuthMech, UatPurpose, UserAuthToken,
@@ -1278,8 +1280,10 @@ mod tests {
         .unwrap()
     }
 
-    fn create_jwt_signer() -> JwsSigner {
-        JwsSigner::generate_es256().expect("failed to construct signer.")
+    fn create_jwt_signer() -> JwsEs256Signer {
+        JwsEs256Signer::generate_es256()
+            .expect("failed to construct signer.")
+            .set_sign_option_embed_jwk(true)
     }
 
     #[test]
@@ -1411,10 +1415,16 @@ mod tests {
             &pw_badlist_cache,
         ) {
             Ok(AuthState::Success(jwt, AuthIssueSession::Token)) => {
-                let uat = JwsUnverified::from_str(&jwt).expect("Failed to parse jwt");
-                let uat: Jws<UserAuthToken> =
-                    uat.validate_embeded().expect("Embedded uat not found");
-                uat.into_inner()
+                let jwsc = JwsCompact::from_str(&jwt).expect("Failed to parse jwt");
+
+                let jws_verifier =
+                    JwsEs256Verifier::try_from(jwsc.get_jwk_pubkey().unwrap()).unwrap();
+
+                jws_verifier
+                    .verify(&jwsc)
+                    .unwrap()
+                    .from_json::<UserAuthToken>()
+                    .unwrap()
             }
             _ => panic!(),
         };

@@ -7,7 +7,7 @@
 use std::iter::once;
 use std::sync::Arc;
 
-use compact_jwt::JwsSigner;
+use compact_jwt::JwsEs256Signer;
 use kanidm_proto::v1::OperationError;
 use rand::prelude::*;
 use regex::Regex;
@@ -126,7 +126,7 @@ impl Domain {
 
                 if !e.attribute_pres(Attribute::Es256PrivateKeyDer) {
                     security_info!("regenerating domain es256 private key");
-                    let der = JwsSigner::generate_es256()
+                    let der = JwsEs256Signer::generate_es256()
                         .and_then(|jws| jws.private_key_to_der())
                         .map_err(|e| {
                             admin_error!(err = ?e, "Unable to generate ES256 JwsSigner private key");

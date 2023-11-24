@@ -1,4 +1,4 @@
-use compact_jwt::JwsSigner;
+use compact_jwt::{crypto::JwsRs256Signer, JwsEs256Signer};
 use std::sync::Arc;
 
 use crate::event::{CreateEvent, ModifyEvent};
@@ -62,7 +62,7 @@ impl JwsKeygen {
             }
             if !e.attribute_pres(Attribute::Es256PrivateKeyDer) {
                 security_info!("regenerating oauth2 es256 private key");
-                let der = JwsSigner::generate_es256()
+                let der = JwsEs256Signer::generate_es256()
                     .and_then(|jws| jws.private_key_to_der())
                     .map_err(|e| {
                         admin_error!(err = ?e, "Unable to generate ES256 JwsSigner private key");
@@ -74,7 +74,7 @@ impl JwsKeygen {
             if e.get_ava_single_bool(Attribute::OAuth2JwtLegacyCryptoEnable).unwrap_or(false)
                 && !e.attribute_pres(Attribute::Rs256PrivateKeyDer) {
                 security_info!("regenerating oauth2 legacy rs256 private key");
-                let der = JwsSigner::generate_legacy_rs256()
+                let der = JwsRs256Signer::generate_legacy_rs256()
                     .and_then(|jws| jws.private_key_to_der())
                     .map_err(|e| {
                         admin_error!(err = ?e, "Unable to generate Legacy RS256 JwsSigner private key");
@@ -89,7 +89,7 @@ impl JwsKeygen {
             e.attribute_equality(Attribute::Class, &EntryClass::SyncAccount.into())) &&
             !e.attribute_pres(Attribute::JwsEs256PrivateKey) {
                 security_info!("regenerating jws es256 private key");
-                let jwssigner = JwsSigner::generate_es256()
+                let jwssigner = JwsEs256Signer::generate_es256()
                     .map_err(|e| {
                         admin_error!(err = ?e, "Unable to generate ES256 JwsSigner private key");
                         OperationError::CryptographyError
