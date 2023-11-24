@@ -46,6 +46,7 @@ pub struct OnlineBackup {
     /// How many past backup versions to keep, defaults to 7
     pub versions: usize,
     /// Enabled by default
+    #[serde(default = "default_online_backup_enabled")]
     pub enabled: bool,
 }
 
@@ -55,9 +56,13 @@ impl Default for OnlineBackup {
             path: None, // This makes it revert to the kanidm_db path
             schedule: default_online_backup_schedule(),
             versions: default_online_backup_versions(),
-            enabled: true,
+            enabled: default_online_backup_enabled(),
         }
     }
+}
+
+fn default_online_backup_enabled() -> bool {
+    true
 }
 
 fn default_online_backup_schedule() -> String {
