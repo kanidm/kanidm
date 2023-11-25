@@ -439,7 +439,6 @@ async fn process_etc_passwd_group(
 
 async fn read_hsm_pin(hsm_pin_path: &str) -> Result<Vec<u8>, Box<dyn Error>> {
     if !PathBuf::from_str(hsm_pin_path)?.exists() {
-        // TODO generate the file by default
         return Err(std::io::Error::new(
             std::io::ErrorKind::NotFound,
             format!("HSM PIN file '{}' not found", hsm_pin_path),
@@ -451,6 +450,21 @@ async fn read_hsm_pin(hsm_pin_path: &str) -> Result<Vec<u8>, Box<dyn Error>> {
     let mut contents = vec![];
     file.read_to_end(&mut contents).await?;
     Ok(contents)
+}
+
+async fn write_hsm_pin(hsm_pin_path: &str) -> Result<(), Box<dyn Error>> {
+    if !PathBuf::from_str(hsm_pin_path)?.exists() {
+        let new_pin = AuthValue::generate().map_err(|hsm_err| {
+            error!(?hsm_err, "Unable to generate new pin");
+            std::io::Error::new(std::io::ErrorKind::Other, "Unable to generate new pin")
+        })?;
+
+        std::fs::write(hsm_pin_path, new_pin)?;
+
+        info!("Generated new HSM pin");
+    }
+
+    Ok(())
 }
 
 #[tokio::main(flavor = "current_thread")]
@@ -652,8 +666,8 @@ async fn main() -> ExitCode {
                                 .to_str()
                                 .unwrap_or("<db_parent_path invalid>")
                         );
-            let diag = kanidm_lib_file_permissions::diagnose_path(db_path.as_ref());
-            info!(%diag);
+                        let diag = kanidm_lib_file_permissions::diagnose_path(db_path.as_ref());
+                        info!(%diag);
                         return ExitCode::FAILURE
                     }
 
@@ -702,8 +716,8 @@ async fn main() -> ExitCode {
                             "Refusing to run - DB path {} already exists and is not a file.",
                             db_path.to_str().unwrap_or("<db_path invalid>")
                         );
-            let diag = kanidm_lib_file_permissions::diagnose_path(db_path.as_ref());
-            info!(%diag);
+                        let diag = kanidm_lib_file_permissions::diagnose_path(db_path.as_ref());
+                        info!(%diag);
                         return ExitCode::FAILURE
                     };
 
@@ -715,8 +729,8 @@ async fn main() -> ExitCode {
                                 db_path.to_str().unwrap_or("<db_path invalid>"),
                                 e
                             );
-            let diag = kanidm_lib_file_permissions::diagnose_path(db_path.as_ref());
-            info!(%diag);
+                            let diag = kanidm_lib_file_permissions::diagnose_path(db_path.as_ref());
+                            info!(%diag);
                             return ExitCode::FAILURE
                         }
                     };
@@ -742,6 +756,12 @@ async fn main() -> ExitCode {
                     error!("Failed to create database");
                     return ExitCode::FAILURE
                 }
+            };
+
+            // Check for and create the hsm pin if required.
+            if let Err(err) = write_hsm_pin(cfg.hsm_pin_path.as_str()).await {
+                error!(?err, "Failed to create HSM PIN into {}", cfg.hsm_pin_path.as_str());
+                return ExitCode::FAILURE
             };
 
             // read the hsm pin
@@ -802,7 +822,8 @@ async fn main() -> ExitCode {
             let machine_key = match hsm.machine_key_load(&auth_value, &loadable_machine_key) {
                 Ok(mk) => mk,
                 Err(err) => {
-                    error!(?err, "Unable to load machine key");
+                    error!(?err, "Unable to load machine root key - This can occur if you have changed your HSM pin");
+                    error!("To proceed you must remove the content of the cache db ({}) to reset all keys", cfg.db_path.as_str());
                     return ExitCode::FAILURE
                 }
             };

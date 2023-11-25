@@ -1433,18 +1433,18 @@ dependencies = [
 
 [[package]]
 name = "enum-map"
-version = "2.7.2"
+version = "2.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "09e6b4f374c071b18172e23134e01026653dc980636ee139e0dfe59c538c61e5"
+checksum = "6866f3bfdf8207509a033af1a75a7b08abda06bbaaeae6669323fd5a097df2e9"
 dependencies = [
  "enum-map-derive",
 ]
 
 [[package]]
 name = "enum-map-derive"
-version = "0.16.0"
+version = "0.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bfdb3d73d1beaf47c8593a1364e577fde072677cbfd103600345c0f547408cc0"
+checksum = "f282cfdfe92516eb26c2af8589c274c7c17681f5ecc03c18255fe741c6aa64eb"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1857,9 +1857,9 @@ dependencies = [
 
 [[package]]
 name = "gimli"
-version = "0.28.0"
+version = "0.28.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6fb8d784f27acf97159b40fc4db5ecd8aa23b9ad5ef69cdd136d3bc80665f0c0"
+checksum = "4271d37baee1b8c7e4b708028c57d816cf9d2434acb33a549475f78c181f6253"
 
 [[package]]
 name = "gix"
@@ -2994,11 +2994,12 @@ dependencies = [
 
 [[package]]
 name = "kanidm-hsm-crypto"
-version = "0.1.2"
+version = "0.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fdc2a5dbe42b03b3e5e3f99eab1c5773032c8e508896691b3f4562c7de264d67"
+checksum = "d325d5f7a3978ad1451f8bad2fdea1cc70a7b33dcaa8bbff7617a80d4c36c449"
 dependencies = [
  "argon2",
+ "hex",
  "openssl",
  "serde",
  "tracing",
@@ -3175,6 +3176,7 @@ dependencies = [
  "bytes",
  "clap",
  "clap_complete",
+ "compact_jwt 0.3.2",
  "csv",
  "futures",
  "hashbrown 0.14.2",
@@ -7060,3 +7062,8 @@ dependencies = [
  "regex",
  "time",
 ]
+
+[[patch.unused]]
+name = "tss-esapi"
+version = "7.1.0"
+source = "git+https://github.com/Firstyear/rust-tss-esapi.git?rev=8b4797d6de825809e473e36e252b1cac34469022#8b4797d6de825809e473e36e252b1cac34469022"

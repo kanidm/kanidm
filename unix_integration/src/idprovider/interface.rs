@@ -104,7 +104,18 @@ pub trait IdProvider {
         Ok(())
     }
 
-    // Need a domain join section here.
+    /// This is similar to a "domain join" process. What do we actually need to pass here
+    /// for this to work for kanidm or himmelblau? Should we make it take a generic?
+    /*
+    async fn configure_machine_identity<D: KeyStoreTxn + Send>(
+        &self,
+        _keystore: &mut D,
+        _tpm: &mut (dyn tpm::Tpm + Send),
+        _machine_key: &tpm::MachineKey,
+    ) -> Result<(), IdpError> {
+        Ok(())
+    }
+    */
 
     async fn provider_authenticate(&self, _tpm: &mut (dyn tpm::Tpm + Send))
         -> Result<(), IdpError>;
