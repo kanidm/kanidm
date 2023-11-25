@@ -65,7 +65,7 @@ graph LR
 
 PersonAdmin("Person Admin") --> |"Creates Deletes"| Persons("Persons")
 PersonPIIModify --> |"Reads Modifies"| Persons
-PersonPIIModify("Person PII Modify") -.-> |"Member of"| PersonAdmin 
+PersonPIIModify("Person PII Modify") -.-> |"Member of"| PersonAdmin
 PersonCredentialModify("Person Credential Modify") -.-> |"Member of"| PersonAdmin
 PersonCredentialModify --> |"Reads Modifies"| Persons
 PersonCredentialModify --> |"Reads"| PersonReadNoPII("Person Read No PII")
