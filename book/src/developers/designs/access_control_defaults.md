@@ -1,5 +1,9 @@
 # Access Control Defaults
 
+ * Do we need some kind of permission atoms to allow certain tasks?
+
+
+
 ## Domain Admin
 
 ```mermaid
