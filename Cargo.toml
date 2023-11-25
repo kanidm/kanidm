@@ -77,8 +77,6 @@ sshkey-attest = { git = "https://github.com/kanidm/webauthn-rs.git", rev = "2218
 
 # kanidm-hsm-crypto = { path = "../hsm-crypto" }
 
-tss-esapi = { git = "https://github.com/Firstyear/rust-tss-esapi.git", rev = "8b4797d6de825809e473e36e252b1cac34469022" }
-
 [workspace.dependencies]
 kanidmd_core = { path = "./server/core", version = "1.1.0-rc.15-dev" }
 kanidmd_lib = { path = "./server/lib", version = "1.1.0-rc.15-dev" }
