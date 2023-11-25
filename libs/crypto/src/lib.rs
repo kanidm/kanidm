@@ -55,11 +55,16 @@ const DS_SSHA512_HASH_LEN: usize = 64;
 const ARGON2_VERSION: u32 = 19;
 const ARGON2_SALT_LEN: usize = 16;
 const ARGON2_KEY_LEN: usize = 32;
+// Default amount of ram we sacrifice per thread is 8MB
 const ARGON2_MIN_RAM_KIB: u32 = 8 * 1024;
-const ARGON2_MAX_RAM_KIB: u32 = 32 * 1024;
-const ARGON2_TCOST_RAM_ITER_KIB: u32 = 16 * 1024;
+// Max is 64MB. This may change in time.
+const ARGON2_MAX_RAM_KIB: u32 = 64 * 1024;
+// Amount of ram to subtract when we do a T cost iter. This
+// is because t=2 m=32 == t=3 m=20. So we just step down a little
+// to keep the value about the same.
+const ARGON2_TCOST_RAM_ITER_KIB: u32 = 12 * 1024;
 const ARGON2_MIN_T_COST: u32 = 2;
-const ARGON2_MAX_T_COST: u32 = 4;
+const ARGON2_MAX_T_COST: u32 = 8;
 const ARGON2_MAX_P_COST: u32 = 1;
 
 #[derive(Clone, Debug)]
@@ -255,10 +260,7 @@ impl CryptoPolicy {
         // thread x ram will be used. If we had 8 threads at 64mb of ram, that would require
         // 512mb of ram alone just for hashing. This becomes worse as core counts scale, with
         // 24 core xeons easily reaching 1.5GB in these cases.
-        //
-        // To try to balance this we cap max ram at 32MB for now.
 
-        // Default amount of ram we sacrifice per thread is 8MB
         let mut m_cost = ARGON2_MIN_RAM_KIB;
         let mut t_cost = ARGON2_MIN_T_COST;
         let p_cost = ARGON2_MAX_P_COST;
@@ -294,7 +296,7 @@ impl CryptoPolicy {
                             m_cost * 2
                         } else {
                             // Close! Increase in a small step
-                            m_cost + (2 * 1024)
+                            m_cost + 1024
                         };
 
                         m_cost = if m_adjust > ARGON2_MAX_RAM_KIB {

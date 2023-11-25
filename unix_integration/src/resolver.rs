@@ -110,11 +110,6 @@ where
         let hsm = Mutex::new(hsm);
         let mut hsm_lock = hsm.lock().await;
 
-        // setup and do a migrate.
-        let mut dbtxn = db.write().await;
-        dbtxn.migrate().map_err(|_| ())?;
-        dbtxn.commit().map_err(|_| ())?;
-
         // Setup our internal keys
         let mut dbtxn = db.write().await;
 
