@@ -57,6 +57,7 @@ const ARGON2_SALT_LEN: usize = 16;
 const ARGON2_KEY_LEN: usize = 32;
 const ARGON2_MIN_RAM_KIB: u32 = 8 * 1024;
 const ARGON2_MAX_RAM_KIB: u32 = 32 * 1024;
+const ARGON2_TCOST_RAM_ITER_KIB: u32 = 16 * 1024;
 const ARGON2_MIN_T_COST: u32 = 2;
 const ARGON2_MAX_T_COST: u32 = 4;
 const ARGON2_MAX_P_COST: u32 = 1;
@@ -278,7 +279,7 @@ impl CryptoPolicy {
             };
 
             if let Some(ubt) = Password::bench_argon2id(params) {
-                trace!("{}µs - t_cost {} m_cost {}", ubt.as_nanos(), t_cost, m_cost);
+                debug!("{}µs - t_cost {} m_cost {}", ubt.as_nanos(), t_cost, m_cost);
                 // Parameter adjustment
                 if ubt < target_time {
                     if m_cost < ARGON2_MAX_RAM_KIB {
@@ -308,15 +309,20 @@ impl CryptoPolicy {
                         // here though, just to give a little window under that for adjustment.
                         //
                         // Similar, once we hit t=4 we just need to have max ram.
-                        let m_adjust = (t_cost.saturating_sub(ARGON2_MIN_T_COST)
-                            * ARGON2_MIN_RAM_KIB)
-                            + ARGON2_MAX_RAM_KIB;
+                        t_cost += 1;
+                        // Halve the ram cost.
+                        let m_adjust = m_cost
+                            .checked_sub(ARGON2_TCOST_RAM_ITER_KIB)
+                            .unwrap_or(ARGON2_MIN_RAM_KIB);
+
+                        // Floor and Ceil
                         m_cost = if m_adjust > ARGON2_MAX_RAM_KIB {
                             ARGON2_MAX_RAM_KIB
+                        } else if m_adjust < ARGON2_MIN_RAM_KIB {
+                            ARGON2_MIN_RAM_KIB
                         } else {
                             m_adjust
                         };
-                        t_cost += 1;
                         continue;
                     } else {
                         // Unable to proceed, parameters are maxed out.

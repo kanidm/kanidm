@@ -758,6 +758,16 @@ async fn main() -> ExitCode {
                 }
             };
 
+            // perform any db migrations.
+            let mut dbtxn = db.write().await;
+            if dbtxn.migrate()
+                .and_then(|_| {
+                    dbtxn.commit()
+                }).is_err() {
+                    error!("Failed to migrate database");
+                    return ExitCode::FAILURE
+                }
+
             // Check for and create the hsm pin if required.
             if let Err(err) = write_hsm_pin(cfg.hsm_pin_path.as_str()).await {
                 error!(?err, "Failed to create HSM PIN into {}", cfg.hsm_pin_path.as_str());

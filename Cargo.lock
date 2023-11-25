@@ -7062,8 +7062,3 @@ dependencies = [
  "regex",
  "time",
 ]
-
-[[patch.unused]]
-name = "tss-esapi"
-version = "7.1.0"
-source = "git+https://github.com/Firstyear/rust-tss-esapi.git?rev=8b4797d6de825809e473e36e252b1cac34469022#8b4797d6de825809e473e36e252b1cac34469022"
