@@ -104,18 +104,23 @@ pub trait IdProvider {
         Ok(())
     }
 
-    async fn provider_authenticate(&self) -> Result<(), IdpError>;
+    // Need a domain join section here.
+
+    async fn provider_authenticate(&self, _tpm: &mut (dyn tpm::Tpm + Send))
+        -> Result<(), IdpError>;
 
     async fn unix_user_get(
         &self,
         _id: &Id,
         _token: Option<&UserToken>,
+        _tpm: &mut (dyn tpm::Tpm + Send),
     ) -> Result<UserToken, IdpError>;
 
     async fn unix_user_online_auth_init(
         &self,
         _account_id: &str,
         _token: Option<&UserToken>,
+        _tpm: &mut (dyn tpm::Tpm + Send),
     ) -> Result<(AuthRequest, AuthCredHandler), IdpError>;
 
     async fn unix_user_online_auth_step(
@@ -123,6 +128,7 @@ pub trait IdProvider {
         _account_id: &str,
         _cred_handler: &mut AuthCredHandler,
         _pam_next_req: PamAuthRequest,
+        _tpm: &mut (dyn tpm::Tpm + Send),
     ) -> Result<(AuthResult, AuthCacheAction), IdpError>;
 
     async fn unix_user_offline_auth_init(
@@ -155,5 +161,9 @@ pub trait IdProvider {
     ) -> Result<AuthResult, IdpError>;
     */
 
-    async fn unix_group_get(&self, id: &Id) -> Result<GroupToken, IdpError>;
+    async fn unix_group_get(
+        &self,
+        id: &Id,
+        _tpm: &mut (dyn tpm::Tpm + Send),
+    ) -> Result<GroupToken, IdpError>;
 }

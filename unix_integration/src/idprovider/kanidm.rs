@@ -115,7 +115,10 @@ impl IdProvider for KanidmProvider {
     }
 
     // Needs .read on all types except re-auth.
-    async fn provider_authenticate(&self) -> Result<(), IdpError> {
+    async fn provider_authenticate(
+        &self,
+        _tpm: &mut (dyn tpm::Tpm + Send),
+    ) -> Result<(), IdpError> {
         match self.client.write().await.auth_anonymous().await {
             Ok(_uat) => Ok(()),
             Err(err) => {
@@ -129,6 +132,7 @@ impl IdProvider for KanidmProvider {
         &self,
         id: &Id,
         _token: Option<&UserToken>,
+        _tpm: &mut (dyn tpm::Tpm + Send),
     ) -> Result<UserToken, IdpError> {
         match self
             .client
@@ -191,6 +195,7 @@ impl IdProvider for KanidmProvider {
         &self,
         _account_id: &str,
         _token: Option<&UserToken>,
+        _tpm: &mut (dyn tpm::Tpm + Send),
     ) -> Result<(AuthRequest, AuthCredHandler), IdpError> {
         // Not sure that I need to do much here?
         Ok((AuthRequest::Password, AuthCredHandler::Password))
@@ -201,6 +206,7 @@ impl IdProvider for KanidmProvider {
         account_id: &str,
         cred_handler: &mut AuthCredHandler,
         pam_next_req: PamAuthRequest,
+        _tpm: &mut (dyn tpm::Tpm + Send),
     ) -> Result<(AuthResult, AuthCacheAction), IdpError> {
         match (cred_handler, pam_next_req) {
             (AuthCredHandler::Password, PamAuthRequest::Password { cred }) => {
@@ -303,7 +309,11 @@ impl IdProvider for KanidmProvider {
     }
     */
 
-    async fn unix_group_get(&self, id: &Id) -> Result<GroupToken, IdpError> {
+    async fn unix_group_get(
+        &self,
+        id: &Id,
+        _tpm: &mut (dyn tpm::Tpm + Send),
+    ) -> Result<GroupToken, IdpError> {
         match self
             .client
             .read()
