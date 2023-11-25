@@ -64,7 +64,7 @@ const ARGON2_MAX_RAM_KIB: u32 = 64 * 1024;
 // to keep the value about the same.
 const ARGON2_TCOST_RAM_ITER_KIB: u32 = 12 * 1024;
 const ARGON2_MIN_T_COST: u32 = 2;
-const ARGON2_MAX_T_COST: u32 = 8;
+const ARGON2_MAX_T_COST: u32 = 16;
 const ARGON2_MAX_P_COST: u32 = 1;
 
 #[derive(Clone, Debug)]
@@ -1299,7 +1299,7 @@ mod tests {
         let im_pw = "{ARGON2}$argon2id$v=19$m=65536,t=2,p=1$IyTQMsvzB2JHDiWx8fq7Ew$VhYOA7AL0kbRXI5g2kOyyp8St1epkNj7WZyUY4pAIQQ";
         let password = "password";
         let r = Password::try_from(im_pw).expect("Failed to parse");
-        assert!(r.requires_upgrade());
+        assert!(!r.requires_upgrade());
         assert!(r.verify(password).unwrap_or(false));
     }
 
