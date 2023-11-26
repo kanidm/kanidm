@@ -5,7 +5,7 @@ use std::io::{self, BufReader, BufWriter, ErrorKind, IsTerminal, Write};
 use std::path::PathBuf;
 use std::str::FromStr;
 
-use compact_jwt::{Jws, JwsUnverified};
+use compact_jwt::{JwsCompact, JwsEs256Verifier, JwsVerifier, JwtError};
 use dialoguer::theme::ColorfulTheme;
 use dialoguer::Select;
 use kanidm_client::{ClientError, KanidmClient};
@@ -319,13 +319,36 @@ async fn process_auth_state(
     // Add our new one
     let (spn, tonk) = match client.get_token().await {
         Some(t) => {
-            let tonk = match JwsUnverified::from_str(&t).and_then(|jwtu| {
-                jwtu.validate_embeded()
-                    .map(|jws: Jws<UserAuthToken>| jws.into_inner())
+            let jwsc = match JwsCompact::from_str(&t) {
+                Ok(j) => j,
+                Err(err) => {
+                    error!(?err, "Unable to parse token");
+                    std::process::exit(1);
+                }
+            };
+
+            let jws_verifier = if let Some(pub_jwk) = jwsc.get_jwk_pubkey() {
+                match JwsEs256Verifier::try_from(pub_jwk) {
+                    Ok(verifier) => verifier,
+                    Err(err) => {
+                        error!(?err, "Unable to configure jws verifier");
+                        std::process::exit(1);
+                    }
+                }
+            } else {
+                error!("Unable to access token public key");
+                std::process::exit(1);
+            };
+
+            let tonk = match jws_verifier.verify(&jwsc).and_then(|jws| {
+                jws.from_json::<UserAuthToken>().map_err(|serde_err| {
+                    error!(?serde_err);
+                    JwtError::InvalidJwt
+                })
             }) {
                 Ok(uat) => uat,
-                Err(e) => {
-                    error!("Unable to parse token - {:?}", e);
+                Err(err) => {
+                    error!(?err, "Unable to verify token signature");
                     std::process::exit(1);
                 }
             };
@@ -479,16 +502,35 @@ impl LogoutOpt {
             }
 
             // Server acked the logout, lets proceed with the local cleanup now.
-            let jwtu = match JwsUnverified::from_str(&token) {
-                Ok(value) => value,
-                Err(e) => {
-                    error!(?e, "Unable to parse token from str");
+
+            let jwsc = match JwsCompact::from_str(&token) {
+                Ok(j) => j,
+                Err(err) => {
+                    error!(?err, "Unable to parse token");
                     std::process::exit(1);
                 }
             };
 
-            let uat: UserAuthToken = match jwtu.validate_embeded() {
-                Ok(jwt) => jwt.into_inner(),
+            let jws_verifier = if let Some(pub_jwk) = jwsc.get_jwk_pubkey() {
+                match JwsEs256Verifier::try_from(pub_jwk) {
+                    Ok(verifier) => verifier,
+                    Err(err) => {
+                        error!(?err, "Unable to configure jws verifier");
+                        std::process::exit(1);
+                    }
+                }
+            } else {
+                error!("Unable to access token public key");
+                std::process::exit(1);
+            };
+
+            let uat = match jws_verifier.verify(&jwsc).and_then(|jws| {
+                jws.from_json::<UserAuthToken>().map_err(|serde_err| {
+                    error!(?serde_err);
+                    JwtError::InvalidJwt
+                })
+            }) {
+                Ok(uat) => uat,
                 Err(e) => {
                     error!(?e, "Unable to verify token signature, may be corrupt");
                     std::process::exit(1);
@@ -532,20 +574,32 @@ impl SessionOpt {
             })
             .into_iter()
             .filter_map(|(u, t)| {
-                let jwtu = JwsUnverified::from_str(&t)
+                let jwsc = JwsCompact::from_str(&t)
                     .map_err(|e| {
                         error!(?e, "Unable to parse token from str");
                     })
                     .ok()?;
 
-                jwtu.validate_embeded()
+                let jws_verifier = jwsc.get_jwk_pubkey().and_then(|pub_jwk| {
+                    JwsEs256Verifier::try_from(pub_jwk)
+                        .map_err(|e| {
+                            error!(?e, "Unable to configure jws verifier");
+                        })
+                        .ok()
+                })?;
+
+                jws_verifier
+                    .verify(&jwsc)
+                    .and_then(|jws| {
+                        jws.from_json::<UserAuthToken>().map_err(|serde_err| {
+                            error!(?serde_err);
+                            JwtError::InvalidJwt
+                        })
+                    })
                     .map_err(|e| {
                         error!(?e, "Unable to verify token signature, may be corrupt");
                     })
-                    .map(|jwt| {
-                        let uat = jwt.into_inner();
-                        (u, (t, uat))
-                    })
+                    .map(|uat| (u, (t, uat)))
                     .ok()
             })
             .collect()

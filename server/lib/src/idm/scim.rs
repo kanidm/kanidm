@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use base64urlsafedata::Base64UrlSafeData;
 
-use compact_jwt::{Jws, JwsSigner};
+use compact_jwt::{Jws, JwsEs256Signer, JwsSigner};
 use kanidm_proto::internal::ScimSyncToken;
 use kanidm_proto::scim_v1::*;
 use kanidm_proto::v1::ApiTokenPurpose;
@@ -23,7 +23,7 @@ pub(crate) struct SyncAccount {
     pub name: String,
     pub uuid: Uuid,
     pub sync_tokens: BTreeMap<Uuid, ApiToken>,
-    pub jws_key: JwsSigner,
+    pub jws_key: JwsEs256Signer,
 }
 
 macro_rules! try_from_entry {
@@ -48,7 +48,8 @@ macro_rules! try_from_entry {
             .ok_or(OperationError::InvalidAccountState(format!(
                 "Missing attribute: {}",
                 Attribute::JwsEs256PrivateKey
-            )))?;
+            )))?
+            .set_sign_option_embed_jwk(true);
 
         let sync_tokens = $value
             .get_ava_as_apitoken_map(Attribute::SyncTokenSession)
@@ -156,11 +157,16 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             },
         );
 
-        let token = Jws::new(ScimSyncToken {
+        let scim_sync_token = ScimSyncToken {
             token_id: session_id,
             issued_at,
             purpose,
-        });
+        };
+
+        let token = Jws::into_json(&scim_sync_token).map_err(|err| {
+            error!(?err, "Unable to serialise JWS");
+            OperationError::SerdeJsonError
+        })?;
 
         let modlist = ModifyList::new_list(vec![Modify::Present(
             Attribute::SyncTokenSession.into(),
@@ -179,8 +185,9 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             )
             .and_then(|_| {
                 // The modify succeeded and was allowed, now sign the token for return.
-                token
-                    .sign_embed_public_jwk(&sync_account.jws_key)
+                sync_account
+                    .jws_key
+                    .sign(&token)
                     .map(|jws_signed| jws_signed.to_string())
                     .map_err(|e| {
                         admin_error!(err = ?e, "Unable to sign sync token");
@@ -1517,7 +1524,7 @@ mod tests {
     use crate::idm::server::{IdmServerProxyWriteTransaction, IdmServerTransaction};
     use crate::prelude::*;
     use base64urlsafedata::Base64UrlSafeData;
-    use compact_jwt::Jws;
+    use compact_jwt::{Jws, JwsSigner};
     use kanidm_proto::scim_v1::*;
     use kanidm_proto::v1::ApiTokenPurpose;
     use std::sync::Arc;
@@ -1706,14 +1713,16 @@ mod tests {
 
         let purpose = ApiTokenPurpose::ReadWrite;
 
-        let token = Jws::new(ScimSyncToken {
+        let scim_sync_token = ScimSyncToken {
             token_id,
             issued_at,
             purpose,
-        });
+        };
 
-        let forged_token = token
-            .sign(&jws_key)
+        let token = Jws::into_json(&scim_sync_token).expect("Unable to serialise forged token");
+
+        let forged_token = jws_key
+            .sign(&token)
             .map(|jws_signed| jws_signed.to_string())
             .expect("Unable to sign forged token");
 

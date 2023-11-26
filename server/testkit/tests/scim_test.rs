@@ -1,4 +1,4 @@
-use compact_jwt::JwsUnverified;
+use compact_jwt::{JwsCompact, JwsEs256Verifier, JwsVerifier};
 use kanidm_client::KanidmClient;
 use kanidm_proto::internal::ScimSyncToken;
 use kanidmd_testkit::{ADMIN_TEST_PASSWORD, ADMIN_TEST_USER};
@@ -75,12 +75,19 @@ async fn test_sync_account_lifecycle(rsclient: KanidmClient) {
         .await
         .expect("Failed to generate token");
 
-    let token_unverified = JwsUnverified::from_str(&token).expect("Failed to parse apitoken");
+    let token_unverified = JwsCompact::from_str(&token).expect("Failed to parse apitoken");
 
-    let token: ScimSyncToken = token_unverified
-        .validate_embeded()
-        .map(|j| j.into_inner())
-        .expect("Embedded jwk not found");
+    let jws_verifier = JwsEs256Verifier::try_from(
+        token_unverified
+            .get_jwk_pubkey()
+            .expect("No pubkey in token"),
+    )
+    .expect("Unable to build verifier");
+
+    let token = jws_verifier
+        .verify(&token_unverified)
+        .map(|jws| jws.from_json::<ScimSyncToken>().expect("Invalid json"))
+        .expect("Unable verify token");
 
     println!("{:?}", token);
 

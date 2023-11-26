@@ -5,7 +5,7 @@ use axum::middleware::from_fn;
 use axum::response::{IntoResponse, Response};
 use axum::routing::{delete, get, post, put};
 use axum::{Extension, Json, Router};
-use compact_jwt::Jws;
+use compact_jwt::{Jws, JwsSigner};
 use http::{HeaderMap, HeaderValue};
 use kanidm_proto::constants::uri::V1_AUTH_VALID;
 use serde::{Deserialize, Serialize};
@@ -2571,9 +2571,13 @@ fn auth_session_state_management(
                     debug!("🧩 -> AuthState::Choose"); // TODO: this should be ... less work
                                                        // Ensure the auth-session-id is set
                     let kref = &state.jws_signer;
-                    let jws = Jws::new(SessionId { sessionid });
+                    let jws = Jws::into_json(&SessionId { sessionid }).map_err(|e| {
+                        error!(?e);
+                        OperationError::InvalidSessionState
+                    })?;
+
                     // Get the header token ready.
-                    jws.sign(kref)
+                    kref.sign(&jws)
                         .map(|jwss| {
                             auth_session_id_tok = Some(jwss.to_string());
                         })
@@ -2587,8 +2591,11 @@ fn auth_session_state_management(
                     debug!("🧩 -> AuthState::Continue");
                     let kref = &state.jws_signer;
                     // Get the header token ready.
-                    let jws = Jws::new(SessionId { sessionid });
-                    jws.sign(kref)
+                    let jws = Jws::into_json(&SessionId { sessionid }).map_err(|e| {
+                        error!(?e);
+                        OperationError::InvalidSessionState
+                    })?;
+                    kref.sign(&jws)
                         .map(|jwss| {
                             auth_session_id_tok = Some(jwss.to_string());
                         })

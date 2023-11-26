@@ -17,6 +17,7 @@ use std::io::{Error as IoError, ErrorKind};
 use std::os::unix::fs::MetadataExt;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
+use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -437,6 +438,15 @@ async fn process_etc_passwd_group(
 }
 
 async fn read_hsm_pin(hsm_pin_path: &str) -> Result<Vec<u8>, Box<dyn Error>> {
+    if !PathBuf::from_str(hsm_pin_path)?.exists() {
+        // TODO generate the file by default
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::NotFound,
+            format!("HSM PIN file '{}' not found", hsm_pin_path),
+        )
+        .into());
+    }
+
     let mut file = File::open(hsm_pin_path).await?;
     let mut contents = vec![];
     file.read_to_end(&mut contents).await?;
@@ -458,6 +468,7 @@ async fn main() -> ExitCode {
                 .help("Allow running as root. Don't use this in production as it is risky!")
                 .short('r')
                 .long("skip-root-check")
+                .env("KANIDM_SKIP_ROOT_CHECK")
                 .action(ArgAction::SetTrue),
         )
         .arg(
@@ -465,6 +476,7 @@ async fn main() -> ExitCode {
                 .help("Show extra debug information")
                 .short('d')
                 .long("debug")
+                .env("KANIDM_DEBUG")
                 .action(ArgAction::SetTrue),
         )
         .arg(
@@ -736,7 +748,7 @@ async fn main() -> ExitCode {
             let hsm_pin = match read_hsm_pin(cfg.hsm_pin_path.as_str()).await {
                 Ok(hp) => hp,
                 Err(err) => {
-                    error!(?err, "Failed to read hsm pin");
+                    error!(?err, "Failed to read HSM PIN from {}", cfg.hsm_pin_path.as_str());
                     return ExitCode::FAILURE
                 }
             };

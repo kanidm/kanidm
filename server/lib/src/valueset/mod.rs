@@ -1,6 +1,6 @@
 use std::collections::{BTreeMap, BTreeSet};
 
-use compact_jwt::JwsSigner;
+use compact_jwt::{crypto::JwsRs256Signer, JwsEs256Signer};
 use dyn_clone::DynClone;
 use hashbrown::HashSet;
 use kanidm_proto::internal::ImageValue;
@@ -527,7 +527,7 @@ pub trait ValueSetT: std::fmt::Debug + DynClone {
         None
     }
 
-    fn to_jws_key_es256_single(&self) -> Option<&JwsSigner> {
+    fn to_jws_key_es256_single(&self) -> Option<&JwsEs256Signer> {
         debug_assert!(false);
         None
     }
@@ -542,17 +542,17 @@ pub trait ValueSetT: std::fmt::Debug + DynClone {
         None
     }
 
-    fn as_jws_key_es256_set(&self) -> Option<&HashSet<JwsSigner>> {
+    fn as_jws_key_es256_set(&self) -> Option<&HashSet<JwsEs256Signer>> {
         debug_assert!(false);
         None
     }
 
-    fn to_jws_key_rs256_single(&self) -> Option<&JwsSigner> {
+    fn to_jws_key_rs256_single(&self) -> Option<&JwsRs256Signer> {
         debug_assert!(false);
         None
     }
 
-    fn as_jws_key_rs256_set(&self) -> Option<&HashSet<JwsSigner>> {
+    fn as_jws_key_rs256_set(&self) -> Option<&HashSet<JwsRs256Signer>> {
         debug_assert!(false);
         None
     }

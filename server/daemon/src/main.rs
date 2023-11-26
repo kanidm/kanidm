@@ -246,14 +246,10 @@ async fn kanidm_main() -> ExitCode {
 
     println!("Log filter: {:?}", log_filter);
 
-    let otel_grpc_url = match sconfig.as_ref() {
-        Some(sconfig) => match sconfig.otel_grpc_url.clone() {
-            Some(otel_grpc_url) => Some(otel_grpc_url),
-            None => sketching::otel::get_otlp_endpoint(),
-        },
-        // if we don't have a config, fall back to trying the env var
-        None => sketching::otel::get_otlp_endpoint(),
-    };
+    // if we have a server config and it has an otel url, then we'll start the logging pipeline
+    let otel_grpc_url = sconfig
+        .as_ref()
+        .and_then(|config| config.otel_grpc_url.clone());
 
     // TODO: only send to stderr when we're not in a TTY
     let sub = match sketching::otel::start_logging_pipeline(

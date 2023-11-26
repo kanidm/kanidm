@@ -40,7 +40,7 @@ use std::path::Path;
 use std::sync::Arc;
 
 use crate::utils::touch_file_or_quit;
-use compact_jwt::JwsSigner;
+use compact_jwt::JwsHs256Signer;
 use kanidm_proto::v1::OperationError;
 use kanidmd_lib::be::{Backend, BackendConfig, BackendTransaction};
 use kanidmd_lib::idm::ldap::LdapServer;
@@ -853,7 +853,7 @@ pub async fn create_server_core(
 
     // Extract any configuration from the IDMS that we may need.
     // For now we just do this per run, but we need to extract this from the db later.
-    let jws_signer = match JwsSigner::generate_hs256() {
+    let jws_signer = match JwsHs256Signer::generate_hs256() {
         Ok(k) => k,
         Err(e) => {
             error!("Unable to setup jws signer -> {:?}", e);
@@ -957,12 +957,17 @@ pub async fn create_server_core(
     // Setup timed events associated to the read thread
     let maybe_backup_handle = match &config.online_backup {
         Some(online_backup_config) => {
-            let handle = IntervalActor::start_online_backup(
-                server_read_ref,
-                online_backup_config,
-                broadcast_tx.subscribe(),
-            )?;
-            Some(handle)
+            if online_backup_config.enabled {
+                let handle = IntervalActor::start_online_backup(
+                    server_read_ref,
+                    online_backup_config,
+                    broadcast_tx.subscribe(),
+                )?;
+                Some(handle)
+            } else {
+                debug!("Backups disabled");
+                None
+            }
         }
         None => {
             debug!("Online backup not requested, skipping");

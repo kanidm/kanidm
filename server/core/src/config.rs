@@ -4,11 +4,9 @@
 //! These components should be "per server". Any "per domain" config should be in the system
 //! or domain entries that are able to be replicated.
 
-use std::collections::BTreeMap;
 use std::fmt;
 use std::fs::File;
 use std::io::Read;
-use std::net::SocketAddr;
 use std::path::Path;
 use std::str::FromStr;
 
@@ -16,19 +14,17 @@ use kanidm_proto::constants::DEFAULT_SERVER_ADDRESS;
 use kanidm_proto::internal::FsType;
 use kanidm_proto::messages::ConsoleOutputMode;
 
-use kanidm_lib_crypto::prelude::X509;
-use kanidm_lib_crypto::serialise::x509b64;
-
 use serde::Deserialize;
 use sketching::LogLevel;
 use url::Url;
 
+use crate::repl::config::ReplicationConfiguration;
+
 #[derive(Deserialize, Debug, Clone)]
 pub struct OnlineBackup {
-    /// The destination folder for your backups
-    pub path: String,
-    #[serde(default = "default_online_backup_schedule")]
-    /// The schedule to run online backups (see <https://crontab.guru/>)
+    /// The destination folder for your backups, defaults to the db_path dir if not set
+    pub path: Option<String>,
+    /// The schedule to run online backups (see <https://crontab.guru/>), defaults to @daily
     ///
     /// Examples:
     ///
@@ -47,8 +43,26 @@ pub struct OnlineBackup {
     /// (it's very similar to the standard cron syntax, it just allows to specify the seconds at the beginning and the year at the end)
     pub schedule: String,
     #[serde(default = "default_online_backup_versions")]
-    /// How many past backup versions to keep
+    /// How many past backup versions to keep, defaults to 7
     pub versions: usize,
+    /// Enabled by default
+    #[serde(default = "default_online_backup_enabled")]
+    pub enabled: bool,
+}
+
+impl Default for OnlineBackup {
+    fn default() -> Self {
+        OnlineBackup {
+            path: None, // This makes it revert to the kanidm_db path
+            schedule: default_online_backup_schedule(),
+            versions: default_online_backup_versions(),
+            enabled: default_online_backup_enabled(),
+        }
+    }
+}
+
+fn default_online_backup_enabled() -> bool {
+    true
 }
 
 fn default_online_backup_schedule() -> String {
@@ -65,61 +79,12 @@ pub struct TlsConfiguration {
     pub key: String,
 }
 
-#[derive(Deserialize, Debug, Clone)]
-#[serde(tag = "type")]
-pub enum RepNodeConfig {
-    #[serde(rename = "allow-pull")]
-    AllowPull {
-        #[serde(with = "x509b64")]
-        consumer_cert: X509,
-    },
-    #[serde(rename = "pull")]
-    Pull {
-        #[serde(with = "x509b64")]
-        supplier_cert: X509,
-        automatic_refresh: bool,
-    },
-    #[serde(rename = "mutual-pull")]
-    MutualPull {
-        #[serde(with = "x509b64")]
-        partner_cert: X509,
-        automatic_refresh: bool,
-    },
-    /*
-    AllowPush {
-    },
-    Push {
-    },
-    */
-}
-
-#[derive(Deserialize, Debug, Clone)]
-pub struct ReplicationConfiguration {
-    pub origin: Url,
-    pub bindaddress: SocketAddr,
-    /// Number of seconds between running a replication event
-    pub task_poll_interval: Option<u64>,
-
-    #[serde(flatten)]
-    pub manual: BTreeMap<Url, RepNodeConfig>,
-}
-
-const DEFAULT_REPL_TASK_POLL_INTERVAL: u64 = 15;
-
-impl ReplicationConfiguration {
-    /// Get the task poll interval, or the default if not set.
-    pub(crate) fn get_task_poll_interval(&self) -> core::time::Duration {
-        core::time::Duration::from_secs(
-            self.task_poll_interval
-                .unwrap_or(DEFAULT_REPL_TASK_POLL_INTERVAL),
-        )
-    }
-}
-
 /// This is the Server Configuration as read from `server.toml`.
 ///
 /// NOTE: not all flags or values from the internal [Configuration] object are exposed via this structure
 /// to prevent certain settings being set (e.g. integration test modes)
+///
+/// If you want to set these as environment variables, prefix them with `KANIDM_` and they will be picked up. This doesn't include replication peer config.
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ServerConfig {
@@ -176,6 +141,7 @@ pub struct ServerConfig {
 }
 
 impl ServerConfig {
+    /// loads the configuration file from the path specified, then overlays fields from environment variables starting with `KANIDM_``
     pub fn new<P: AsRef<Path>>(config_path: P) -> Result<Self, std::io::Error> {
         let mut f = File::open(config_path.as_ref()).map_err(|e| {
             eprintln!("Unable to open config file [{:?}] 🥺", e);
@@ -192,10 +158,194 @@ impl ServerConfig {
             e
         })?;
 
-        toml::from_str(contents.as_str()).map_err(|e| {
-            eprintln!("unable to parse config {:?}", e);
+        let res: ServerConfig = toml::from_str(contents.as_str()).map_err(|e| {
+            eprintln!(
+                "Unable to parse config from '{:?}': {:?}",
+                config_path.as_ref(),
+                e
+            );
             std::io::Error::new(std::io::ErrorKind::Other, e)
-        })
+        })?;
+
+        let res = res.try_from_env().map_err(|e| {
+            println!("Failed to use environment variable config: {e}");
+            std::io::Error::new(std::io::ErrorKind::Other, e)
+        })?;
+
+        Ok(res)
+    }
+
+    /// Updates the ServerConfig from environment variables starting with `KANIDM_`
+    fn try_from_env(mut self) -> Result<Self, String> {
+        for (key, value) in std::env::vars() {
+            if !key.starts_with("KANIDM_") {
+                continue;
+            }
+
+            let ignorable_build_fields = [
+                "KANIDM_CPU_FLAGS",
+                "KANIDM_DEFAULT_CONFIG_PATH",
+                "KANIDM_DEFAULT_UNIX_SHELL_PATH",
+                "KANIDM_PKG_VERSION",
+                "KANIDM_PROFILE_NAME",
+                "KANIDM_WEB_UI_PKG_PATH",
+            ];
+
+            if ignorable_build_fields.contains(&key.as_str()) {
+                #[cfg(any(debug_assertions, test))]
+                eprintln!("-- Ignoring build-time env var {}", key);
+                continue;
+            }
+
+            match key.replace("KANIDM_", "").as_str() {
+                "DOMAIN" => {
+                    self.domain = value.to_string();
+                }
+                "ORIGIN" => {
+                    self.origin = value.to_string();
+                }
+                "DB_PATH" => {
+                    self.origin = value.to_string();
+                }
+                "TLS_CHAIN" => {
+                    self.tls_chain = Some(value.to_string());
+                }
+                "TLS_KEY" => {
+                    self.tls_key = Some(value.to_string());
+                }
+                "BINDADDRESS" => {
+                    self.bindaddress = Some(value.to_string());
+                }
+                "LDAPBINDADDRESS" => {
+                    self.ldapbindaddress = Some(value.to_string());
+                }
+                "ROLE" => {
+                    self.role = ServerRole::from_str(&value).map_err(|err| {
+                        format!("Failed to parse KANIDM_ROLE as ServerRole: {}", err)
+                    })?;
+                }
+                "LOG_LEVEL" => {
+                    self.log_level = LogLevel::from_str(&value)
+                        .map_err(|err| {
+                            format!("Failed to parse KANIDM_LOG_LEVEL as LogLevel: {}", err)
+                        })
+                        .ok();
+                }
+                "ONLINE_BACKUP_PATH" => {
+                    if let Some(backup) = &mut self.online_backup {
+                        backup.path = Some(value.to_string());
+                    } else {
+                        self.online_backup = Some(OnlineBackup {
+                            path: Some(value.to_string()),
+                            ..Default::default()
+                        });
+                    }
+                }
+                "ONLINE_BACKUP_SCHEDULE" => {
+                    if let Some(backup) = &mut self.online_backup {
+                        backup.schedule = value.to_string();
+                    } else {
+                        self.online_backup = Some(OnlineBackup {
+                            schedule: value.to_string(),
+                            ..Default::default()
+                        });
+                    }
+                }
+                "ONLINE_BACKUP_VERSIONS" => {
+                    let versions = value.parse().map_err(|_| {
+                        "Failed to parse KANIDM_ONLINE_BACKUP_VERSIONS as usize".to_string()
+                    })?;
+                    if let Some(backup) = &mut self.online_backup {
+                        backup.versions = versions;
+                    } else {
+                        self.online_backup = Some(OnlineBackup {
+                            versions,
+                            ..Default::default()
+                        })
+                    }
+                }
+                "TRUST_X_FORWARD_FOR" => {
+                    self.trust_x_forward_for = value
+                        .parse()
+                        .map_err(|_| {
+                            "Failed to parse KANIDM_TRUST_X_FORWARD_FOR as bool".to_string()
+                        })
+                        .ok();
+                }
+                "DB_FS_TYPE" => {
+                    self.db_fs_type = FsType::try_from(value.as_str())
+                        .map_err(|_| {
+                            "Failed to parse KANIDM_DB_FS_TYPE env var to valid value!".to_string()
+                        })
+                        .ok();
+                }
+                "DB_ARC_SIZE" => {
+                    self.db_arc_size = value
+                        .parse()
+                        .map_err(|_| "Failed to parse KANIDM_DB_ARC_SIZE as value".to_string())
+                        .ok();
+                }
+                "ADMIN_BIND_PATH" => {
+                    self.adminbindpath = Some(value.to_string());
+                }
+                "REPLICATION_ORIGIN" => {
+                    let repl_origin = Url::parse(value.as_str()).map_err(|err| {
+                        format!("Failed to parse KANIDM_REPLICATION_ORIGIN as URL: {}", err)
+                    })?;
+                    if let Some(repl) = &mut self.repl_config {
+                        repl.origin = repl_origin
+                    } else {
+                        self.repl_config = Some(ReplicationConfiguration {
+                            origin: repl_origin,
+                            ..Default::default()
+                        });
+                    }
+                }
+                "I_ACKNOWLEDGE_THAT_REPLICATION_IS_IN_DEVELOPMENT" => {
+                    self.i_acknowledge_that_replication_is_in_development =
+                        value.parse().map_err(|_| {
+                            "Failed to parse terribly long confirmation of replication beta-ness!"
+                                .to_string()
+                        })?;
+                }
+                "REPLICATION_BINDADDRESS" => {
+                    let repl_bind_address = value
+                        .parse()
+                        .map_err(|_| "Failed to parse replication bind address".to_string())?;
+                    if let Some(repl) = &mut self.repl_config {
+                        repl.bindaddress = repl_bind_address;
+                    } else {
+                        self.repl_config = Some(ReplicationConfiguration {
+                            bindaddress: repl_bind_address,
+                            ..Default::default()
+                        });
+                    }
+                }
+                "REPLICATION_TASK_POLL_INTERVAL" => {
+                    let poll_interval = value
+                        .parse()
+                        .map_err(|_| {
+                            "Failed to parse replication task poll interval as u64".to_string()
+                        })
+                        .ok();
+                    if let Some(repl) = &mut self.repl_config {
+                        repl.task_poll_interval = poll_interval;
+                    } else {
+                        self.repl_config = Some(ReplicationConfiguration {
+                            task_poll_interval: poll_interval,
+                            ..Default::default()
+                        });
+                    }
+                }
+                "OTEL_GRPC_URL" => {
+                    self.otel_grpc_url = Some(value.to_string());
+                }
+
+                _ => eprintln!("Ignoring env var {}", key),
+            }
+        }
+
+        Ok(self)
     }
 
     /// Return the ARC size for the database, it's something you really shouldn't touch unless you are doing extreme tuning.
@@ -276,6 +426,8 @@ pub struct Configuration {
     pub repl_config: Option<ReplicationConfiguration>,
     /// This allows internally setting some unsafe options for replication.
     pub integration_repl_config: Option<Box<IntegrationReplConfig>>,
+
+    pub otel_grpc_url: Option<String>,
 }
 
 impl fmt::Display for Configuration {
@@ -300,8 +452,11 @@ impl fmt::Display for Configuration {
         match &self.online_backup {
             Some(bck) => write!(
                 f,
-                "online_backup: enabled - schedule: {} versions: {}, ",
-                bck.schedule, bck.versions
+                "online_backup: enabled: {} - schedule: {} versions: {} path: {}, ",
+                bck.enabled,
+                bck.schedule,
+                bck.versions,
+                bck.path.clone().unwrap_or("<unset>".to_string()),
             ),
             None => write!(f, "online_backup: disabled, "),
         }?;
@@ -328,6 +483,7 @@ impl fmt::Display for Configuration {
                 write!(f, "replication: disabled, ")?;
             }
         }
+        write!(f, "otel_grpc_url: {:?}", self.otel_grpc_url)?;
         Ok(())
     }
 }
@@ -365,6 +521,7 @@ impl Configuration {
             role: ServerRole::WriteReplica,
             repl_config: None,
             integration_repl_config: None,
+            otel_grpc_url: None,
         }
     }
 
@@ -379,13 +536,28 @@ impl Configuration {
         match cfg {
             None => {}
             Some(cfg) => {
-                let path = cfg.path.to_string();
-                let schedule = cfg.schedule.to_string();
-                let versions = cfg.versions;
+                let path = match cfg.path.clone() {
+                    Some(path) => Some(path),
+                    // Default to the same path as the data directory
+                    None => {
+                        let db_filepath = Path::new(&self.db_path);
+                        #[allow(clippy::expect_used)]
+                        let db_path = db_filepath
+                            .parent()
+                            .map(|p| {
+                                #[allow(clippy::expect_used)]
+                                p.to_str()
+                                    .expect("Couldn't turn db_path to str")
+                                    .to_string()
+                            })
+                            .expect("Unable to get parent directory of db_path");
+
+                        Some(db_path)
+                    }
+                };
                 self.online_backup = Some(OnlineBackup {
                     path,
-                    schedule,
-                    versions,
+                    ..cfg.clone()
                 })
             }
         }

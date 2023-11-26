@@ -28,7 +28,7 @@ harness = false
 [dependencies]
 base64 = { workspace = true }
 base64urlsafedata = { workspace = true }
-compact_jwt = { workspace = true, features = ["openssl"] }
+compact_jwt = { workspace = true, features = ["openssl", "hsm-crypto"] }
 concread = { workspace = true }
 dyn-clone = { workspace = true }
 enum-iterator = { workspace = true }

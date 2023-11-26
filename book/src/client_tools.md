@@ -15,6 +15,9 @@ verify_hostnames = true|false
 ca_path = "/path/to/ca.pem"
 ```
 
+The full configuration reference is in the
+[definition of `KanidmClientConfig`](https://kanidm.github.io/kanidm/master/rustdoc/kanidm_client/struct.KanidmClientConfig.html).
+
 Once configured, you can test this with:
 
 ```bash

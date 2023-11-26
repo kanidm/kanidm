@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::str::FromStr;
 
-use compact_jwt::{JwkKeySet, JwsValidator, OidcToken, OidcUnverified};
+use compact_jwt::{JwkKeySet, JwsEs256Verifier, JwsVerifier, OidcToken, OidcUnverified};
 use kanidm_proto::constants::uri::{OAUTH2_AUTHORISE, OAUTH2_AUTHORISE_PERMIT};
 use kanidm_proto::constants::*;
 use kanidm_proto::oauth2::{
@@ -211,7 +211,7 @@ async fn test_oauth2_openid_basic_flow(rsclient: KanidmClient) {
 
     let public_jwk = jwk_set.keys.pop().expect("No public key in set!");
 
-    let jws_validator = JwsValidator::try_from(&public_jwk).expect("failed to build validator");
+    let jws_validator = JwsEs256Verifier::try_from(&public_jwk).expect("failed to build validator");
 
     // Step 1 - the Oauth2 Resource Server would send a redirect to the authorisation
     // server, where the url contains a series of authorisation request parameters.
@@ -366,9 +366,11 @@ async fn test_oauth2_openid_basic_flow(rsclient: KanidmClient) {
     let oidc_unverified =
         OidcUnverified::from_str(atr.id_token.as_ref().unwrap()).expect("Failed to parse id_token");
 
-    let oidc = oidc_unverified
-        .validate(&jws_validator, 0)
-        .expect("Failed to verify oidc");
+    let oidc = jws_validator
+        .verify(&oidc_unverified)
+        .expect("Failed to verify oidc")
+        .verify_exp(0)
+        .expect("Failed to check exp");
 
     // This is mostly checked inside of idm/oauth2.rs. This is more to check the oidc
     // token and the userinfo endpoints.
@@ -512,7 +514,7 @@ async fn test_oauth2_openid_public_flow(rsclient: KanidmClient) {
 
     let public_jwk = jwk_set.keys.pop().expect("No public key in set!");
 
-    let jws_validator = JwsValidator::try_from(&public_jwk).expect("failed to build validator");
+    let jws_validator = JwsEs256Verifier::try_from(&public_jwk).expect("failed to build validator");
 
     // Step 1 - the Oauth2 Resource Server would send a redirect to the authorisation
     // server, where the url contains a series of authorisation request parameters.
@@ -624,9 +626,11 @@ async fn test_oauth2_openid_public_flow(rsclient: KanidmClient) {
     let oidc_unverified =
         OidcUnverified::from_str(atr.id_token.as_ref().unwrap()).expect("Failed to parse id_token");
 
-    let oidc = oidc_unverified
-        .validate(&jws_validator, 0)
-        .expect("Failed to verify oidc");
+    let oidc = jws_validator
+        .verify(&oidc_unverified)
+        .expect("Failed to verify oidc")
+        .verify_exp(0)
+        .expect("Failed to check exp");
 
     // This is mostly checked inside of idm/oauth2.rs. This is more to check the oidc
     // token and the userinfo endpoints.

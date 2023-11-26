@@ -29,7 +29,7 @@ pub use std::collections::BTreeSet as Set;
 use std::collections::{BTreeMap as Map, BTreeMap, BTreeSet};
 use std::sync::Arc;
 
-use compact_jwt::JwsSigner;
+use compact_jwt::JwsEs256Signer;
 use hashbrown::{HashMap, HashSet};
 use kanidm_proto::internal::ImageValue;
 use kanidm_proto::v1::{
@@ -2834,7 +2834,7 @@ impl<VALID, STATE> Entry<VALID, STATE> {
             .and_then(|vs| vs.to_private_binary_single())
     }
 
-    pub fn get_ava_single_jws_key_es256(&self, attr: Attribute) -> Option<&JwsSigner> {
+    pub fn get_ava_single_jws_key_es256(&self, attr: Attribute) -> Option<&JwsEs256Signer> {
         self.attrs
             .get(attr.as_ref())
             .and_then(|vs| vs.to_jws_key_es256_single())

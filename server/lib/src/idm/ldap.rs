@@ -616,7 +616,7 @@ mod tests {
     use crate::prelude::*;
     use std::str::FromStr;
 
-    use compact_jwt::{Jws, JwsUnverified};
+    use compact_jwt::{JwsCompact, JwsEs256Verifier, JwsVerifier};
     use hashbrown::HashSet;
     use kanidm_proto::v1::ApiToken;
     use ldap3_proto::proto::{LdapFilter, LdapOp, LdapSearchScope, LdapSubstringFilter};
@@ -1119,13 +1119,16 @@ mod tests {
 
         // Inspect the token to get its uuid out.
         let apitoken_unverified =
-            JwsUnverified::from_str(&apitoken).expect("Failed to parse apitoken");
+            JwsCompact::from_str(&apitoken).expect("Failed to parse apitoken");
 
-        let apitoken_inner: Jws<ApiToken> = apitoken_unverified
-            .validate_embeded()
-            .expect("Embedded jwk not found");
+        let jws_verifier =
+            JwsEs256Verifier::try_from(apitoken_unverified.get_jwk_pubkey().unwrap()).unwrap();
 
-        let apitoken_inner = apitoken_inner.into_inner();
+        let apitoken_inner = jws_verifier
+            .verify(&apitoken_unverified)
+            .unwrap()
+            .from_json::<ApiToken>()
+            .unwrap();
 
         // Bind using the token as a DN
         let sa_lbt = ldaps
