@@ -55,10 +55,16 @@ const DS_SSHA512_HASH_LEN: usize = 64;
 const ARGON2_VERSION: u32 = 19;
 const ARGON2_SALT_LEN: usize = 16;
 const ARGON2_KEY_LEN: usize = 32;
+// Default amount of ram we sacrifice per thread is 8MB
 const ARGON2_MIN_RAM_KIB: u32 = 8 * 1024;
-const ARGON2_MAX_RAM_KIB: u32 = 32 * 1024;
+// Max is 64MB. This may change in time.
+const ARGON2_MAX_RAM_KIB: u32 = 64 * 1024;
+// Amount of ram to subtract when we do a T cost iter. This
+// is because t=2 m=32 == t=3 m=20. So we just step down a little
+// to keep the value about the same.
+const ARGON2_TCOST_RAM_ITER_KIB: u32 = 12 * 1024;
 const ARGON2_MIN_T_COST: u32 = 2;
-const ARGON2_MAX_T_COST: u32 = 4;
+const ARGON2_MAX_T_COST: u32 = 16;
 const ARGON2_MAX_P_COST: u32 = 1;
 
 #[derive(Clone, Debug)]
@@ -254,10 +260,7 @@ impl CryptoPolicy {
         // thread x ram will be used. If we had 8 threads at 64mb of ram, that would require
         // 512mb of ram alone just for hashing. This becomes worse as core counts scale, with
         // 24 core xeons easily reaching 1.5GB in these cases.
-        //
-        // To try to balance this we cap max ram at 32MB for now.
 
-        // Default amount of ram we sacrifice per thread is 8MB
         let mut m_cost = ARGON2_MIN_RAM_KIB;
         let mut t_cost = ARGON2_MIN_T_COST;
         let p_cost = ARGON2_MAX_P_COST;
@@ -278,7 +281,7 @@ impl CryptoPolicy {
             };
 
             if let Some(ubt) = Password::bench_argon2id(params) {
-                trace!("{}µs - t_cost {} m_cost {}", ubt.as_nanos(), t_cost, m_cost);
+                debug!("{}µs - t_cost {} m_cost {}", ubt.as_nanos(), t_cost, m_cost);
                 // Parameter adjustment
                 if ubt < target_time {
                     if m_cost < ARGON2_MAX_RAM_KIB {
@@ -293,7 +296,7 @@ impl CryptoPolicy {
                             m_cost * 2
                         } else {
                             // Close! Increase in a small step
-                            m_cost + (2 * 1024)
+                            m_cost + 1024
                         };
 
                         m_cost = if m_adjust > ARGON2_MAX_RAM_KIB {
@@ -308,15 +311,20 @@ impl CryptoPolicy {
                         // here though, just to give a little window under that for adjustment.
                         //
                         // Similar, once we hit t=4 we just need to have max ram.
-                        let m_adjust = (t_cost.saturating_sub(ARGON2_MIN_T_COST)
-                            * ARGON2_MIN_RAM_KIB)
-                            + ARGON2_MAX_RAM_KIB;
+                        t_cost += 1;
+                        // Halve the ram cost.
+                        let m_adjust = m_cost
+                            .checked_sub(ARGON2_TCOST_RAM_ITER_KIB)
+                            .unwrap_or(ARGON2_MIN_RAM_KIB);
+
+                        // Floor and Ceil
                         m_cost = if m_adjust > ARGON2_MAX_RAM_KIB {
                             ARGON2_MAX_RAM_KIB
+                        } else if m_adjust < ARGON2_MIN_RAM_KIB {
+                            ARGON2_MIN_RAM_KIB
                         } else {
                             m_adjust
                         };
-                        t_cost += 1;
                         continue;
                     } else {
                         // Unable to proceed, parameters are maxed out.
@@ -1291,7 +1299,7 @@ mod tests {
         let im_pw = "{ARGON2}$argon2id$v=19$m=65536,t=2,p=1$IyTQMsvzB2JHDiWx8fq7Ew$VhYOA7AL0kbRXI5g2kOyyp8St1epkNj7WZyUY4pAIQQ";
         let password = "password";
         let r = Password::try_from(im_pw).expect("Failed to parse");
-        assert!(r.requires_upgrade());
+        assert!(!r.requires_upgrade());
         assert!(r.verify(password).unwrap_or(false));
     }
 
@@ -1363,7 +1371,7 @@ mod tests {
 
         let mut hsm: Box<dyn Tpm> = Box::new(SoftTpm::new());
 
-        let auth_value = AuthValue::new_random().unwrap();
+        let auth_value = AuthValue::ephemeral().unwrap();
 
         let loadable_machine_key = hsm.machine_key_create(&auth_value).unwrap();
         let machine_key = hsm

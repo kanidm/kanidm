@@ -1238,7 +1238,7 @@ mod tests {
         #[cfg(not(feature = "tpm"))]
         let mut hsm: Box<dyn Tpm> = Box::new(SoftTpm::new());
 
-        let auth_value = AuthValue::new_random().unwrap();
+        let auth_value = AuthValue::ephemeral().unwrap();
 
         let loadable_machine_key = hsm.machine_key_create(&auth_value).unwrap();
         let machine_key = hsm

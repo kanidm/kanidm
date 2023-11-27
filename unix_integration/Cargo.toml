@@ -57,6 +57,7 @@ base64urlsafedata = { workspace = true }
 bytes = { workspace = true }
 clap = { workspace = true, features = ["derive", "env"] }
 csv = { workspace = true }
+compact_jwt = { workspace = true, features = ["hsm-crypto"] }
 futures = { workspace = true }
 hashbrown = { workspace = true }
 libc = { workspace = true }

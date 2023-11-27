@@ -110,11 +110,6 @@ where
         let hsm = Mutex::new(hsm);
         let mut hsm_lock = hsm.lock().await;
 
-        // setup and do a migrate.
-        let mut dbtxn = db.write().await;
-        dbtxn.migrate().map_err(|_| ())?;
-        dbtxn.commit().map_err(|_| ())?;
-
         // Setup our internal keys
         let mut dbtxn = db.write().await;
 
@@ -477,7 +472,16 @@ where
         account_id: &Id,
         token: Option<UserToken>,
     ) -> Result<Option<UserToken>, ()> {
-        match self.client.unix_user_get(account_id, token.as_ref()).await {
+        let mut hsm_lock = self.hsm.lock().await;
+
+        let user_get_result = self
+            .client
+            .unix_user_get(account_id, token.as_ref(), &mut **hsm_lock.deref_mut())
+            .await;
+
+        drop(hsm_lock);
+
+        match user_get_result {
             Ok(mut n_tok) => {
                 if self.check_nxset(&n_tok.name, n_tok.gidnumber).await {
                     // Refuse to release the token, it's in the denied set.
@@ -527,7 +531,16 @@ where
         grp_id: &Id,
         token: Option<GroupToken>,
     ) -> Result<Option<GroupToken>, ()> {
-        match self.client.unix_group_get(grp_id).await {
+        let mut hsm_lock = self.hsm.lock().await;
+
+        let group_get_result = self
+            .client
+            .unix_group_get(grp_id, &mut **hsm_lock.deref_mut())
+            .await;
+
+        drop(hsm_lock);
+
+        match group_get_result {
             Ok(n_tok) => {
                 if self.check_nxset(&n_tok.name, n_tok.gidnumber).await {
                     // Refuse to release the token, it's in the denied set.
@@ -863,8 +876,9 @@ where
         };
 
         let maybe_err = if online_at_init {
+            let mut hsm_lock = self.hsm.lock().await;
             self.client
-                .unix_user_online_auth_init(account_id, token.as_ref())
+                .unix_user_online_auth_init(account_id, token.as_ref(), &mut **hsm_lock.deref_mut())
                 .await
         } else {
             // Can the auth proceed offline?
@@ -919,10 +933,19 @@ where
                 },
                 CacheState::Online,
             ) => {
+                let mut hsm_lock = self.hsm.lock().await;
+
                 let maybe_cache_action = self
                     .client
-                    .unix_user_online_auth_step(account_id, cred_handler, pam_next_req)
+                    .unix_user_online_auth_step(
+                        account_id,
+                        cred_handler,
+                        pam_next_req,
+                        &mut **hsm_lock.deref_mut(),
+                    )
                     .await;
+
+                drop(hsm_lock);
 
                 match maybe_cache_action {
                     Ok((res, AuthCacheAction::None)) => Ok(res),
@@ -1120,7 +1143,16 @@ where
                 false
             }
             CacheState::OfflineNextCheck(_time) => {
-                match self.client.provider_authenticate().await {
+                let mut hsm_lock = self.hsm.lock().await;
+
+                let prov_auth_result = self
+                    .client
+                    .provider_authenticate(&mut **hsm_lock.deref_mut())
+                    .await;
+
+                drop(hsm_lock);
+
+                match prov_auth_result {
                     Ok(()) => {
                         debug!("OfflineNextCheck -> authenticated");
                         self.set_cachestate(CacheState::Online).await;

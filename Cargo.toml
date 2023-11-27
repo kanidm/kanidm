@@ -84,7 +84,7 @@ kanidmd_lib_macros = { path = "./server/lib-macros", version = "1.1.0-rc.15-dev"
 kanidmd_testkit = { path = "./server/testkit", version = "1.1.0-rc.15-dev" }
 kanidm_build_profiles = { path = "./libs/profiles", version = "1.1.0-rc.15-dev" }
 kanidm_client = { path = "./libs/client", version = "1.1.0-rc.15-dev" }
-kanidm-hsm-crypto = "^0.1.1"
+kanidm-hsm-crypto = "^0.1.3"
 kanidm_lib_crypto = { path = "./libs/crypto", version = "1.1.0-rc.15-dev" }
 kanidm_lib_file_permissions = { path = "./libs/file_permissions", version = "1.1.0-rc.15-dev" }
 kanidm_proto = { path = "./proto", version = "1.1.0-rc.15-dev" }
@@ -230,8 +230,6 @@ tracing = { version = "^0.1.40", features = [
 # tracing = { version = "^0.1.37" }
 tracing-subscriber = { version = "^0.3.18", features = ["env-filter"] }
 tracing-forest = "^0.1.6"
-
-tss-esapi = "^7.4.0"
 
 url = "^2.4.1"
 urlencoding = "2.1.3"
