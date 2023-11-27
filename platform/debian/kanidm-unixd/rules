@@ -25,6 +25,7 @@ override_dh_auto_clean:
 override_dh_autoreconf:
 
 override_dh_auto_build:
+	# this runs "make -- release/${PACKAGE} release/kanidm-ssh"
 	KANIDM_BUILD_PROFILE=release_suse_generic dh_auto_build -- release/${PACKAGE} release/kanidm-ssh
 
 override_dh_auto_test:
