@@ -132,7 +132,7 @@ futures-util = { version = "^0.3.21", features = ["sink"] }
 gix = { version = "0.53.1", default-features = false }
 gloo = "^0.8.1"
 gloo-utils = "0.2.0"
-hashbrown = { version = "0.14.2", features = ["serde", "inline-more", "ahash"] }
+hashbrown = { version = "0.14.3", features = ["serde", "inline-more", "ahash"] }
 hex = "^0.4.3"
 http = "0.2.11"
 hyper = { version = "0.14.27", features = ["full"] }
@@ -183,7 +183,7 @@ tracing-opentelemetry = "0.21.0"
 
 paste = "^1.0.14"
 pkg-config = "^0.3.27"
-proc-macro2 = "1.0.69"
+proc-macro2 = "1.0.70"
 qrcode = "^0.12.0"
 quote = "1"
 rand = "^0.8.5"
