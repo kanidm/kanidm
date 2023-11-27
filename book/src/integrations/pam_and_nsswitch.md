@@ -38,7 +38,7 @@ systemctl status kanidm-unixd-tasks
 ```
 
 > **NOTE** The `kanidm_unixd_tasks` daemon is not required for PAM and nsswitch functionality. If
-> disabled, your system will function as usual. It is, however, recommended due to the features it
+> disabled, your system will function as usual. It is however strongly recommended due to the features it
 > provides supporting Kanidm's capabilities.
 
 Both unixd daemons use the connection configuration from /etc/kanidm/config. This is the covered in
@@ -47,34 +47,8 @@ Both unixd daemons use the connection configuration from /etc/kanidm/config. Thi
 You can also configure some unixd-specific options with the file /etc/kanidm/unixd:
 
 ```toml
-pam_allowed_login_groups = ["posix_group"]
-default_shell = "/bin/sh"
-home_prefix = "/home/"
-home_attr = "uuid"
-home_alias = "spn"
-use_etc_skel = false
-uid_attr_map = "spn"
-gid_attr_map = "spn"
-selinux = true
-allow_local_account_override = ["account_name"]
+{{#rustdoc_include ../../examples/unixd}}
 ```
-
-`pam_allowed_login_groups` defines a set of POSIX groups where membership of any of these groups
-will be allowed to login via PAM. All POSIX users and groups can be resolved by nss regardless of
-PAM login status. This may be a group name, spn, or uuid.
-
-`default_shell` is the default shell for users. Defaults to `/bin/sh`.
-
-`home_prefix` is the prepended path to where home directories are stored. Must end with a trailing
-`/`. Defaults to `/home/`.
-
-`home_attr` is the default token attribute used for the home directory path. Valid choices are
-`uuid`, `name`, `spn`. Defaults to `uuid`.
-
-`home_alias` is the default token attribute used for generating symlinks pointing to the user's home
-directory. If set, this will become the value of the home path to nss calls. It is recommended you
-choose a "human friendly" attribute here. Valid choices are `none`, `uuid`, `name`, `spn`. Defaults
-to `spn`.
 
 > **NOTICE:** All users in Kanidm can change their name (and their spn) at any time. If you change
 > `home_attr` from `uuid` you _must_ have a plan on how to manage these directory renames in your
@@ -84,27 +58,6 @@ to `spn`.
 >
 > **NOTE:** Ubuntu users please see:
 > [Why aren't snaps launching with home_alias set?](../frequently_asked_questions.md#why-arent-snaps-launching-with-home_alias-set)
-
-`use_etc_skel` controls if home directories should be prepopulated with the contents of `/etc/skel`
-when first created. Defaults to false.
-
-`uid_attr_map` chooses which attribute is used for domain local users in presentation. Defaults to
-`spn`. Users from a trust will always use spn.
-
-`gid_attr_map` chooses which attribute is used for domain local groups in presentation. Defaults to
-`spn`. Groups from a trust will always use spn.
-
-`selinux` controls whether the `kanidm_unixd_tasks` daemon should detect and enable SELinux runtime
-compatibility features to ensure that newly created home directories are labeled correctly. This
-setting as no bearing on systems without SELinux, as these features will automatically be disabled
-if SELinux is not detected when the daemon starts. Note that `kanidm_unixd_tasks` must also be built
-with the SELinux feature flag for this functionality. Defaults to true.
-
-`allow_local_account_override` allows kanidm to "override" the content of a user or group that is
-defined locally. By default kanidm will detect when a user/group conflict with their entries from
-`/etc/passwd` or `/etc/group` and will ignore the kanidm entry. However if you want kanidm to
-override users or groups from the local system, you must list them in this field. Note that this can
-have many unexpected consequences, so it is not recommended to enable this.
 
 You can then check the communication status of the daemon:
 

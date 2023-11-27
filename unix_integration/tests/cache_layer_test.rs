@@ -10,7 +10,7 @@ use kanidm_unix_common::constants::{
     DEFAULT_GID_ATTR_MAP, DEFAULT_HOME_ALIAS, DEFAULT_HOME_ATTR, DEFAULT_HOME_PREFIX,
     DEFAULT_SHELL, DEFAULT_UID_ATTR_MAP,
 };
-use kanidm_unix_common::db::Db;
+use kanidm_unix_common::db::{Cache, CacheTxn, Db};
 use kanidm_unix_common::idprovider::interface::Id;
 use kanidm_unix_common::idprovider::kanidm::KanidmProvider;
 use kanidm_unix_common::resolver::Resolver;
@@ -103,9 +103,15 @@ async fn setup_test(fix_fn: Fixture) -> (Resolver<KanidmProvider>, KanidmClient)
     )
     .expect("Failed to setup DB");
 
+    let mut dbtxn = db.write().await;
+    dbtxn
+        .migrate()
+        .and_then(|_| dbtxn.commit())
+        .expect("Unable to migrate cache db");
+
     let mut hsm: Box<dyn Tpm + Send> = Box::new(SoftTpm::new());
 
-    let auth_value = AuthValue::new_random().unwrap();
+    let auth_value = AuthValue::ephemeral().unwrap();
 
     let loadable_machine_key = hsm.machine_key_create(&auth_value).unwrap();
     let machine_key = hsm
