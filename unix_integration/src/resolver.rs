@@ -54,7 +54,7 @@ pub enum AuthSession {
 
 pub struct Resolver<I>
 where
-    I: IdProvider + Sync,
+    I: for<'a> IdProvider<'a> + Sync,
 {
     // Generic / modular types.
     db: Db,
@@ -88,7 +88,7 @@ impl ToString for Id {
 
 impl<I> Resolver<I>
 where
-    I: IdProvider + Sync,
+    I: for<'a> IdProvider<'a> + Sync,
 {
     #[allow(clippy::too_many_arguments)]
     pub async fn new(

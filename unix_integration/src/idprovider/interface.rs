@@ -94,12 +94,12 @@ pub enum AuthCacheAction {
 }
 
 #[async_trait]
-pub trait IdProvider {
+pub trait IdProvider<'a> {
     async fn configure_hsm_keys<D: KeyStoreTxn + Send>(
         &self,
         _keystore: &mut D,
         _tpm: &mut (dyn tpm::Tpm + Send),
-        _machine_key: &tpm::MachineKey,
+        _machine_key: &'a tpm::MachineKey,
     ) -> Result<(), IdpError> {
         Ok(())
     }

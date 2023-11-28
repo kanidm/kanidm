@@ -82,12 +82,12 @@ impl From<UnixGroupToken> for GroupToken {
 }
 
 #[async_trait]
-impl IdProvider for KanidmProvider {
+impl<'a> IdProvider<'a> for KanidmProvider {
     async fn configure_hsm_keys<D: KeyStoreTxn + Send>(
         &self,
         keystore: &mut D,
         tpm: &mut (dyn tpm::Tpm + Send),
-        machine_key: &tpm::MachineKey,
+        machine_key: &'a tpm::MachineKey,
     ) -> Result<(), IdpError> {
         let id_key: Option<tpm::LoadableIdentityKey> =
             keystore.get_tagged_hsm_key(TAG_IDKEY).map_err(|ks_err| {
