@@ -132,6 +132,7 @@ pub trait IdProvider {
         _account_id: &str,
         _token: Option<&UserToken>,
         _tpm: &mut (dyn tpm::Tpm + Send),
+        _machine_key: &tpm::MachineKey,
     ) -> Result<(AuthRequest, AuthCredHandler), IdpError>;
 
     async fn unix_user_online_auth_step(
@@ -140,6 +141,7 @@ pub trait IdProvider {
         _cred_handler: &mut AuthCredHandler,
         _pam_next_req: PamAuthRequest,
         _tpm: &mut (dyn tpm::Tpm + Send),
+        _machine_key: &tpm::MachineKey,
     ) -> Result<(AuthResult, AuthCacheAction), IdpError>;
 
     async fn unix_user_offline_auth_init(
