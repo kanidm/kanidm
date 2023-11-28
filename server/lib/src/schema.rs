@@ -235,7 +235,7 @@ impl SchemaAttribute {
         if r {
             Ok(())
         } else {
-            trace!(
+            error!(
                 ?a,
                 ?self,
                 ?v,
@@ -288,7 +288,7 @@ impl SchemaAttribute {
         if r {
             Ok(())
         } else {
-            trace!(
+            error!(
                 ?a,
                 ?self,
                 ?v,
@@ -311,10 +311,9 @@ impl SchemaAttribute {
         if valid && ava.validate(self) {
             Ok(())
         } else {
-            admin_error!(
+            error!(
                 ?a,
-                "validate_ava - InvalidAttributeSyntax for {:?}",
-                self.syntax
+                "validate_ava - InvalidAttributeSyntax for {:?}", self.syntax
             );
             Err(SchemaError::InvalidAttributeSyntax(a.to_string()))
         }

@@ -68,8 +68,8 @@ async fn client_process(
         return;
     };
     let (r, w) = tokio::io::split(tlsstream);
-    let mut r = FramedRead::new(r, LdapCodec);
-    let mut w = FramedWrite::new(w, LdapCodec);
+    let mut r = FramedRead::new(r, LdapCodec::default());
+    let mut w = FramedWrite::new(w, LdapCodec::default());
 
     // This is a connected client session. we need to associate some state to the session
     let mut session = LdapSession::new();

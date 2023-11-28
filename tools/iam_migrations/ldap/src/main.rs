@@ -20,6 +20,7 @@ use chrono::Utc;
 use clap::Parser;
 use cron::Schedule;
 use kanidm_proto::constants::ATTR_OBJECTCLASS;
+use kanidmd_lib::prelude::Attribute;
 use std::fs::metadata;
 use std::fs::File;
 use std::io::Read;
@@ -582,6 +583,22 @@ fn ldap_to_scim_entry(
             })
             .unwrap_or_default();
 
+        let account_disabled: bool = entry
+            .remove_ava(Attribute::NsAccountLock.as_ref())
+            .map(|set| {
+                set.into_iter()
+                    .any(|value| value != "FALSE" && value != "false")
+            })
+            .unwrap_or_default();
+
+        // Account is not valid
+        let account_expire = if account_disabled {
+            Some(chrono::DateTime::UNIX_EPOCH.to_rfc3339())
+        } else {
+            None
+        };
+        let account_valid_from = None;
+
         let login_shell = entry.remove_ava_single(&sync_config.person_attr_login_shell);
         let external_id = Some(entry.dn);
 
@@ -597,6 +614,8 @@ fn ldap_to_scim_entry(
                 login_shell,
                 mail,
                 ssh_publickey,
+                account_expire,
+                account_valid_from,
             }
             .into(),
         ))

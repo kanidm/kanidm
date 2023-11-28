@@ -8,7 +8,7 @@
 #![deny(clippy::await_holding_lock)]
 #![deny(clippy::needless_pass_by_value)]
 #![deny(clippy::trivially_copy_pass_by_ref)]
-#![allow(clippy::unreachable)]
+#![deny(clippy::unreachable)]
 
 use argon2::{Algorithm, Argon2, Params, PasswordHash, Version};
 use base64::engine::GeneralPurpose;
@@ -620,12 +620,14 @@ impl TryFrom<&str> for Password {
             let nt_md4 = match value.split_once(' ') {
                 Some((_, v)) => v,
                 None => {
-                    unreachable!();
+                    return Err(());
                 }
             };
 
-            let h = base64::engine::general_purpose::STANDARD_NO_PAD
+            // Great work.
+            let h = base64::engine::general_purpose::URL_SAFE_NO_PAD
                 .decode(nt_md4)
+                .or_else(|_| base64::engine::general_purpose::URL_SAFE.decode(nt_md4))
                 .map_err(|_| ())?;
 
             return Ok(Password {
@@ -637,7 +639,7 @@ impl TryFrom<&str> for Password {
             let nt_md4 = match value.split_once(' ') {
                 Some((_, v)) => v,
                 None => {
-                    unreachable!();
+                    return Err(());
                 }
             };
 
@@ -729,7 +731,7 @@ impl TryFrom<&str> for Password {
             let ol_pbkdf2 = match value.split_once('}') {
                 Some((_, v)) => v,
                 None => {
-                    unreachable!();
+                    return Err(());
                 }
             };
 
@@ -786,7 +788,7 @@ impl TryFrom<&str> for Password {
                 }
 
                 // Should be no way to get here!
-                unreachable!();
+                return Err(());
             } else {
                 warn!("oldap pbkdf2 found but invalid number of elements?");
             }
@@ -1575,6 +1577,9 @@ mod tests {
                 }
             }
         }
+
+        let im_pw = "ipaNTHash: pS43DjQLcUYhaNF_cd_Vhw==";
+        Password::try_from(im_pw).expect("Failed to parse");
     }
 
     #[test]

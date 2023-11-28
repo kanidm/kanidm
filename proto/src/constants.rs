@@ -114,6 +114,7 @@ pub const ATTR_MUST: &str = "must";
 pub const ATTR_NAME_HISTORY: &str = "name_history";
 pub const ATTR_NAME: &str = "name";
 pub const ATTR_NO_INDEX: &str = "no-index";
+pub const ATTR_NSACCOUNTLOCK: &str = "nsaccountlock";
 pub const ATTR_NSUNIQUEID: &str = "nsuniqueid";
 
 pub const ATTR_OAUTH2_ALLOW_INSECURE_CLIENT_DISABLE_PKCE: &str =
@@ -183,7 +184,7 @@ pub const OAUTH2_SCOPE_READ: &str = "read";
 pub const OAUTH2_SCOPE_SUPPLEMENT: &str = "supplement";
 
 pub const LDAP_ATTR_CN: &str = "cn";
-pub const LDAP_ATTR_DISPLAY_NAME: &str = "displayName";
+pub const LDAP_ATTR_DISPLAY_NAME: &str = "displayname";
 pub const LDAP_ATTR_EMAIL_ALTERNATIVE: &str = "emailalternative";
 pub const LDAP_ATTR_EMAIL_PRIMARY: &str = "emailprimary";
 pub const LDAP_ATTR_ENTRYDN: &str = "entrydn";
@@ -195,7 +196,7 @@ pub const LDAP_ATTR_MAIL_PRIMARY: &str = "mail;primary";
 pub const LDAP_ATTR_MAIL: &str = "mail";
 pub const LDAP_ATTR_MEMBER: &str = "member";
 pub const LDAP_ATTR_NAME: &str = "name";
-pub const LDAP_ATTR_OBJECTCLASS: &str = "objectClass";
+pub const LDAP_ATTR_OBJECTCLASS: &str = "objectclass";
 pub const LDAP_ATTR_OU: &str = "ou";
 pub const LDAP_ATTR_UID: &str = "uid";
 pub const LDAP_CLASS_GROUPOFNAMES: &str = "groupofnames";
