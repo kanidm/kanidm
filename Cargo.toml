@@ -250,7 +250,7 @@ webauthn-rs = { version = "0.5.0-dev", features = ["preview-features"] }
 webauthn-rs-core = "0.5.0-dev"
 webauthn-rs-proto = "0.5.0-dev"
 
-web-sys = "^0.3.65"
+web-sys = "^0.3.66"
 whoami = "^1.4.1"
 walkdir = "2"
 
