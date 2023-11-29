@@ -40,7 +40,7 @@ communicating to a real server. Many developer choices have already been made to
 is the most important aspect of the project to ensure that every feature is high quality and
 reliable.
 
-The addition of extra projects or dependencies, would violate this principle and lead to a situation
+The addition of extra projects or dependencies would violate this principle and lead to a situation
 where it would not be possible to effectively test for all developers.
 
 ## Why don't you use Raft/Etcd/MongoDB/Other to solve replication?
