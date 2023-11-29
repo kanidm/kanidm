@@ -43,7 +43,9 @@ use smartstring::alias::String as AttrString;
 use time::OffsetDateTime;
 use tracing::trace;
 use uuid::Uuid;
-use webauthn_rs::prelude::{AttestedPasskey as DeviceKeyV4, Passkey as PasskeyV4};
+use webauthn_rs::prelude::{
+    AttestationCaList, AttestedPasskey as AttestedPasskeyV4, Passkey as PasskeyV4,
+};
 
 use crate::be::dbentry::{DbEntry, DbEntryVers};
 use crate::be::dbvalue::DbValueSetV2;
@@ -2733,13 +2735,13 @@ impl<VALID, STATE> Entry<VALID, STATE> {
 
     #[inline(always)]
     /// Get the set of devicekeys on this account, if any are present.
-    pub fn get_ava_devicekeys(
+    pub fn get_ava_attestedpasskeys(
         &self,
         attr: Attribute,
-    ) -> Option<&BTreeMap<Uuid, (String, DeviceKeyV4)>> {
+    ) -> Option<&BTreeMap<Uuid, (String, AttestedPasskeyV4)>> {
         self.attrs
             .get(attr.as_ref())
-            .and_then(|vs| vs.as_devicekey_map())
+            .and_then(|vs| vs.as_attestedpasskey_map())
     }
 
     #[inline(always)]
@@ -2851,6 +2853,16 @@ impl<VALID, STATE> Entry<VALID, STATE> {
             .get(attr.as_ref())
             .and_then(|vs| vs.to_eckey_public_single())
     }
+
+    pub fn get_ava_webauthn_attestation_ca_list(
+        &self,
+        attr: Attribute,
+    ) -> Option<&AttestationCaList> {
+        self.attrs
+            .get(attr.as_ref())
+            .and_then(|vs| vs.as_webauthn_attestation_ca_list())
+    }
+
     #[inline(always)]
     /// Return a single security principle name, if valid to transform this value.
     pub(crate) fn generate_spn(&self, domain_name: &str) -> Option<Value> {

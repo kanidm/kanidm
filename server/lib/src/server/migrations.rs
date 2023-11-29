@@ -566,7 +566,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             SCHEMA_ATTR_AUTH_PASSWORD_MINIMUM_LENGTH.clone().into(),
             SCHEMA_ATTR_BADLIST_PASSWORD.clone().into(),
             SCHEMA_ATTR_CREDENTIAL_UPDATE_INTENT_TOKEN.clone().into(),
-            SCHEMA_ATTR_DEVICEKEYS.clone().into(),
+            SCHEMA_ATTR_ATTESTED_PASSKEYS.clone().into(),
             SCHEMA_ATTR_DISPLAYNAME.clone().into(),
             SCHEMA_ATTR_DOMAIN_DISPLAY_NAME.clone().into(),
             SCHEMA_ATTR_DOMAIN_LDAP_BASEDN.clone().into(),
@@ -613,6 +613,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             SCHEMA_ATTR_USER_AUTH_TOKEN_SESSION.clone().into(),
             SCHEMA_ATTR_DENIED_NAME.clone().into(),
             SCHEMA_ATTR_CREDENTIAL_TYPE_MINIMUM.clone().into(),
+            SCHEMA_ATTR_WEBAUTHN_ATTESTATION_CA_LIST.clone().into(),
         ];
 
         let r = idm_schema

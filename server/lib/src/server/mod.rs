@@ -577,11 +577,13 @@ pub trait QueryServerTransaction<'a> {
                         .ok_or_else(|| OperationError::InvalidAttribute("Invalid Url (whatwg/url) syntax".to_string())),
                     SyntaxType::OauthScope => Value::new_oauthscope(value)
                         .ok_or_else(|| OperationError::InvalidAttribute("Invalid Oauth Scope syntax".to_string())),
+                    SyntaxType::WebauthnAttestationCaList => Value::new_webauthn_attestation_ca_list(value)
+                        .ok_or_else(|| OperationError::InvalidAttribute("Invalid Webauthn Attestation Ca List".to_string())),
                     SyntaxType::OauthScopeMap => Err(OperationError::InvalidAttribute("Oauth Scope Maps can not be supplied through modification - please use the IDM api".to_string())),
                     SyntaxType::PrivateBinary => Err(OperationError::InvalidAttribute("Private Binary Values can not be supplied through modification".to_string())),
                     SyntaxType::IntentToken => Err(OperationError::InvalidAttribute("Intent Token Values can not be supplied through modification".to_string())),
                     SyntaxType::Passkey => Err(OperationError::InvalidAttribute("Passkey Values can not be supplied through modification".to_string())),
-                    SyntaxType::DeviceKey => Err(OperationError::InvalidAttribute("DeviceKey Values can not be supplied through modification".to_string())),
+                    SyntaxType::AttestedPasskey => Err(OperationError::InvalidAttribute("AttestedPasskey Values can not be supplied through modification".to_string())),
                     SyntaxType::Session => Err(OperationError::InvalidAttribute("Session Values can not be supplied through modification".to_string())),
                     SyntaxType::ApiToken => Err(OperationError::InvalidAttribute("ApiToken Values can not be supplied through modification".to_string())),
                     SyntaxType::JwsKeyEs256 => Err(OperationError::InvalidAttribute("JwsKeyEs256 Values can not be supplied through modification".to_string())),
@@ -634,7 +636,7 @@ pub trait QueryServerTransaction<'a> {
                         .map(PartialValue::CredentialType)
                         .map_err(|()| {
                             OperationError::InvalidAttribute(
-                                "Invalid CredentialType syntax".to_string(),
+                                "Invalid credentialtype syntax".to_string(),
                             )
                         }),
                     SyntaxType::Uuid => {
@@ -694,13 +696,12 @@ pub trait QueryServerTransaction<'a> {
                     SyntaxType::Passkey => PartialValue::new_passkey_s(value).ok_or_else(|| {
                         OperationError::InvalidAttribute("Invalid Passkey UUID syntax".to_string())
                     }),
-                    SyntaxType::DeviceKey => {
-                        PartialValue::new_devicekey_s(value).ok_or_else(|| {
+                    SyntaxType::AttestedPasskey => PartialValue::new_attested_passkey_s(value)
+                        .ok_or_else(|| {
                             OperationError::InvalidAttribute(
-                                "Invalid DeviceKey UUID syntax".to_string(),
+                                "Invalid AttestedPasskey UUID syntax".to_string(),
                             )
-                        })
-                    }
+                        }),
                     SyntaxType::UiHint => UiHint::from_str(value)
                         .map(PartialValue::UiHint)
                         .map_err(|()| {
@@ -709,6 +710,9 @@ pub trait QueryServerTransaction<'a> {
                     SyntaxType::AuditLogString => Ok(PartialValue::new_utf8s(value)),
                     SyntaxType::EcKeyPrivate => Ok(PartialValue::SecretValue),
                     SyntaxType::Image => Ok(PartialValue::new_utf8s(value)),
+                    SyntaxType::WebauthnAttestationCaList => Err(OperationError::InvalidAttribute(
+                        "Invalid - unable to query attestation ca list".to_string(),
+                    )),
                 }
             }
             None => {

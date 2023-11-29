@@ -8,6 +8,7 @@ impl GroupAccountPolicyOpt {
             | GroupAccountPolicyOpt::AuthSessionExpiry { copt, .. }
             | GroupAccountPolicyOpt::CredentialTypeMinimum { copt, .. }
             | GroupAccountPolicyOpt::PasswordMinimumLength { copt, .. }
+            | GroupAccountPolicyOpt::WebauthnAttesationCaList { copt, .. }
             | GroupAccountPolicyOpt::PrivilegedSessionExpiry { copt, .. } => copt.debug,
         }
     }
@@ -41,7 +42,7 @@ impl GroupAccountPolicyOpt {
                 {
                     handle_client_error(e, copt.output_mode);
                 } else {
-                    println!("Updated credential type minimum expiry.");
+                    println!("Updated credential type minimum.");
                 }
             }
             GroupAccountPolicyOpt::PasswordMinimumLength { name, length, copt } => {
@@ -63,7 +64,22 @@ impl GroupAccountPolicyOpt {
                 {
                     handle_client_error(e, copt.output_mode);
                 } else {
-                    println!("Updated authsession expiry.");
+                    println!("Updated privilege session expiry.");
+                }
+            }
+            GroupAccountPolicyOpt::WebauthnAttesationCaList {
+                name,
+                attestation_ca_list_json,
+                copt,
+            } => {
+                let client = copt.to_client(OpType::Write).await;
+                if let Err(e) = client
+                    .group_account_policy_webauthn_attestation_set(name, attestation_ca_list_json)
+                    .await
+                {
+                    handle_client_error(e, copt.output_mode);
+                } else {
+                    println!("Updated webauthn attesation ca list.");
                 }
             }
         }

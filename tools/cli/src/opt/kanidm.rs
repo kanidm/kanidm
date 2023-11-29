@@ -125,7 +125,8 @@ pub enum GroupAccountPolicyOpt {
         #[clap(flatten)]
         copt: CommonOpt,
     },
-    /// Set the maximum time for session expiry
+    /// Set the minimum credential class that members may authenticate with. Valid values
+    /// in order of weakest to strongest are: "any" "mfa" "passkey" "attested_passkey"
     #[clap(name = "credential-type-minimum")]
     CredentialTypeMinimum {
         name: String,
@@ -141,12 +142,21 @@ pub enum GroupAccountPolicyOpt {
         #[clap(flatten)]
         copt: CommonOpt,
     },
-    /// Configure and display the privilege session expiry
     /// Set the maximum time for privilege session expiry
     #[clap(name = "privilege-expiry")]
     PrivilegedSessionExpiry {
         name: String,
         expiry: u32,
+        #[clap(flatten)]
+        copt: CommonOpt,
+    },
+    /// The the webauthn attestation ca list that should be enforced
+    /// on members of this group. Prevents use of passkeys that are
+    /// in this list. To create this list, use `fido-mds-tool`
+    #[clap(name = "webauthn-attestation-ca-list")]
+    WebauthnAttesationCaList {
+        name: String,
+        attestation_ca_list_json: String,
         #[clap(flatten)]
         copt: CommonOpt,
     },

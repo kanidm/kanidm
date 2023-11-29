@@ -27,7 +27,9 @@ use sshkey_attest::proto::PublicKey as SshPublicKey;
 use time::OffsetDateTime;
 use url::Url;
 use uuid::Uuid;
-use webauthn_rs::prelude::{AttestedPasskey as DeviceKeyV4, Passkey as PasskeyV4};
+use webauthn_rs::prelude::{
+    AttestationCaList, AttestedPasskey as AttestedPasskeyV4, Passkey as PasskeyV4,
+};
 
 use crate::be::dbentry::DbIdentSpn;
 use crate::credential::{totp::Totp, Credential};
@@ -124,6 +126,7 @@ pub struct CredUpdateSessionPerms {
     pub ext_cred_portal_can_view: bool,
     pub primary_can_edit: bool,
     pub passkeys_can_edit: bool,
+    pub attested_passkeys_can_edit: bool,
     pub unixcred_can_edit: bool,
     pub sshpubkey_can_edit: bool,
 }
@@ -248,7 +251,7 @@ pub enum SyntaxType {
     PrivateBinary = 21,
     IntentToken = 22,
     Passkey = 23,
-    DeviceKey = 24,
+    AttestedPasskey = 24,
     Session = 25,
     JwsKeyEs256 = 26,
     JwsKeyRs256 = 27,
@@ -260,6 +263,7 @@ pub enum SyntaxType {
     EcKeyPrivate = 33,
     Image = 34,
     CredentialType = 35,
+    WebauthnAttestationCaList = 36,
 }
 
 impl TryFrom<&str> for SyntaxType {
@@ -293,7 +297,7 @@ impl TryFrom<&str> for SyntaxType {
             "PRIVATE_BINARY" => Ok(SyntaxType::PrivateBinary),
             "INTENT_TOKEN" => Ok(SyntaxType::IntentToken),
             "PASSKEY" => Ok(SyntaxType::Passkey),
-            "DEVICEKEY" => Ok(SyntaxType::DeviceKey),
+            "ATTESTED_PASSKEY" => Ok(SyntaxType::AttestedPasskey),
             "SESSION" => Ok(SyntaxType::Session),
             "JWS_KEY_ES256" => Ok(SyntaxType::JwsKeyEs256),
             "JWS_KEY_RS256" => Ok(SyntaxType::JwsKeyRs256),
@@ -304,6 +308,7 @@ impl TryFrom<&str> for SyntaxType {
             "AUDIT_LOG_STRING" => Ok(SyntaxType::AuditLogString),
             "EC_KEY_PRIVATE" => Ok(SyntaxType::EcKeyPrivate),
             "CREDENTIAL_TYPE" => Ok(SyntaxType::CredentialType),
+            "WEBAUTHN_ATTESTATION_CA_LIST" => Ok(SyntaxType::WebauthnAttestationCaList),
             _ => Err(()),
         }
     }
@@ -336,7 +341,7 @@ impl fmt::Display for SyntaxType {
             SyntaxType::PrivateBinary => "PRIVATE_BINARY",
             SyntaxType::IntentToken => "INTENT_TOKEN",
             SyntaxType::Passkey => "PASSKEY",
-            SyntaxType::DeviceKey => "DEVICEKEY",
+            SyntaxType::AttestedPasskey => "ATTESTED_PASSKEY",
             SyntaxType::Session => "SESSION",
             SyntaxType::JwsKeyEs256 => "JWS_KEY_ES256",
             SyntaxType::JwsKeyRs256 => "JWS_KEY_RS256",
@@ -348,6 +353,7 @@ impl fmt::Display for SyntaxType {
             SyntaxType::EcKeyPrivate => "EC_KEY_PRIVATE",
             SyntaxType::Image => "IMAGE",
             SyntaxType::CredentialType => "CREDENTIAL_TYPE",
+            SyntaxType::WebauthnAttestationCaList => "WEBAUTHN_ATTESTATION_CA_LIST",
         })
     }
 }
@@ -461,7 +467,7 @@ pub enum PartialValue {
     IntentToken(String),
     UiHint(UiHint),
     Passkey(Uuid),
-    DeviceKey(Uuid),
+    AttestedPasskey(Uuid),
     /// We compare on the value hash
     Image(String),
     CredentialType(CredentialType),
@@ -776,8 +782,8 @@ impl PartialValue {
         Uuid::parse_str(us).map(PartialValue::Passkey).ok()
     }
 
-    pub fn new_devicekey_s(us: &str) -> Option<Self> {
-        Uuid::parse_str(us).map(PartialValue::DeviceKey).ok()
+    pub fn new_attested_passkey_s(us: &str) -> Option<Self> {
+        Uuid::parse_str(us).map(PartialValue::AttestedPasskey).ok()
     }
 
     pub fn new_image(input: &str) -> Self {
@@ -809,7 +815,7 @@ impl PartialValue {
             | PartialValue::EmailAddress(s)
             | PartialValue::RestrictedString(s) => s.clone(),
             PartialValue::Passkey(u)
-            | PartialValue::DeviceKey(u)
+            | PartialValue::AttestedPasskey(u)
             | PartialValue::Refer(u)
             | PartialValue::Uuid(u) => u.as_hyphenated().to_string(),
             PartialValue::Bool(b) => b.to_string(),
@@ -1023,7 +1029,7 @@ pub enum Value {
     RestrictedString(String),
     IntentToken(String, IntentTokenState),
     Passkey(Uuid, String, PasskeyV4),
-    DeviceKey(Uuid, String, DeviceKeyV4),
+    AttestedPasskey(Uuid, String, AttestedPasskeyV4),
 
     Session(Uuid, Session),
     ApiToken(Uuid, ApiToken),
@@ -1039,6 +1045,7 @@ pub enum Value {
 
     Image(ImageValue),
     CredentialType(CredentialType),
+    WebauthnAttestationCaList(AttestationCaList),
 }
 
 impl PartialEq for Value {
@@ -1538,6 +1545,15 @@ impl Value {
         Value::RestrictedString(s)
     }
 
+    pub fn new_webauthn_attestation_ca_list(s: &str) -> Option<Self> {
+        serde_json::from_str(s)
+            .map(Value::WebauthnAttestationCaList)
+            .map_err(|err| {
+                debug!(?err, ?s);
+            })
+            .ok()
+    }
+
     #[allow(clippy::unreachable)]
     pub(crate) fn to_db_ident_spn(&self) -> DbIdentSpn {
         // This has to clone due to how the backend works.
@@ -1788,7 +1804,7 @@ impl Value {
             | Value::PublicBinary(s, _)
             | Value::IntentToken(s, _)
             | Value::Passkey(_, s, _)
-            | Value::DeviceKey(_, s, _)
+            | Value::AttestedPasskey(_, s, _)
             | Value::TotpSecret(s, _) => {
                 Value::validate_str_escapes(s) && Value::validate_singleline(s)
             }
@@ -1846,7 +1862,8 @@ impl Value {
             | Value::JwsKeyRs256(_)
             | Value::EcKeyPrivate(_)
             | Value::UiHint(_)
-            | Value::CredentialType(_) => true,
+            | Value::CredentialType(_)
+            | Value::WebauthnAttestationCaList(_) => true,
         }
     }
 

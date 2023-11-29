@@ -36,6 +36,7 @@ lazy_static! {
         m.insert(Attribute::AuthSessionExpiry);
         m.insert(Attribute::PrivilegeExpiry);
         m.insert(Attribute::CredentialTypeMinimum);
+        m.insert(Attribute::WebauthnAttestationCaList);
         m
     };
 }

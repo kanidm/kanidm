@@ -1,5 +1,6 @@
 use crate::prelude::*;
 use crate::value::CredentialType;
+use webauthn_rs::prelude::AttestationCaList;
 // use crate::idm::server::IdmServerProxyWriteTransaction;
 
 #[derive(Clone)]
@@ -8,6 +9,7 @@ pub(crate) struct AccountPolicy {
     authsession_expiry: u32,
     pw_min_length: u32,
     credential_policy: CredentialType,
+    webauthn_att_ca_list: Option<AttestationCaList>,
 }
 
 impl From<&EntrySealedCommitted> for Option<AccountPolicy> {
@@ -22,9 +24,11 @@ impl From<&EntrySealedCommitted> for Option<AccountPolicy> {
         let authsession_expiry = val
             .get_ava_single_uint32(Attribute::AuthSessionExpiry)
             .unwrap_or(MAXIMUM_AUTH_SESSION_EXPIRY);
+
         let privilege_expiry = val
             .get_ava_single_uint32(Attribute::PrivilegeExpiry)
             .unwrap_or(MAXIMUM_AUTH_PRIVILEGE_EXPIRY);
+
         let pw_min_length = val
             .get_ava_single_uint32(Attribute::AuthPasswordMinimumLength)
             .unwrap_or(PW_MIN_LENGTH);
@@ -33,11 +37,16 @@ impl From<&EntrySealedCommitted> for Option<AccountPolicy> {
             .get_ava_single_credential_type(Attribute::CredentialTypeMinimum)
             .unwrap_or(CredentialType::Any);
 
+        let webauthn_att_ca_list = val
+            .get_ava_webauthn_attestation_ca_list(Attribute::WebauthnAttestationCaList)
+            .cloned();
+
         Some(AccountPolicy {
             privilege_expiry,
             authsession_expiry,
             pw_min_length,
             credential_policy,
+            webauthn_att_ca_list,
         })
     }
 }
@@ -49,6 +58,7 @@ pub(crate) struct ResolvedAccountPolicy {
     authsession_expiry: u32,
     pw_min_length: u32,
     credential_policy: CredentialType,
+    webauthn_att_ca_list: Option<AttestationCaList>,
 }
 
 impl ResolvedAccountPolicy {
@@ -62,6 +72,7 @@ impl ResolvedAccountPolicy {
             authsession_expiry: MAXIMUM_AUTH_SESSION_EXPIRY,
             pw_min_length: PW_MIN_LENGTH,
             credential_policy: CredentialType::Any,
+            webauthn_att_ca_list: None,
         };
 
         iter.for_each(|acc_pol| {
@@ -84,6 +95,14 @@ impl ResolvedAccountPolicy {
             if acc_pol.credential_policy > accumulate.credential_policy {
                 accumulate.credential_policy = acc_pol.credential_policy
             }
+
+            if let Some(acc_pol_w_att_ca) = acc_pol.webauthn_att_ca_list {
+                if let Some(res_w_att_ca) = accumulate.webauthn_att_ca_list.as_mut() {
+                    res_w_att_ca.intersection(&acc_pol_w_att_ca);
+                } else {
+                    accumulate.webauthn_att_ca_list = Some(acc_pol_w_att_ca);
+                }
+            }
         });
 
         accumulate
@@ -104,27 +123,104 @@ impl ResolvedAccountPolicy {
     pub(crate) fn credential_policy(&self) -> CredentialType {
         self.credential_policy
     }
+
+    pub(crate) fn webauthn_attestation_ca_list(&self) -> Option<&AttestationCaList> {
+        self.webauthn_att_ca_list.as_ref()
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::{AccountPolicy, CredentialType, ResolvedAccountPolicy};
-    // use crate::prelude::*;
+    use crate::prelude::*;
+    use webauthn_rs_core::proto::AttestationCaListBuilder;
 
     #[test]
     fn test_idm_account_policy_resolve() {
+        sketching::test_init();
+
+        let ca_root_a: &[u8] = b"-----BEGIN CERTIFICATE-----
+MIIDHjCCAgagAwIBAgIEG0BT9zANBgkqhkiG9w0BAQsFADAuMSwwKgYDVQQDEyNZ
+dWJpY28gVTJGIFJvb3QgQ0EgU2VyaWFsIDQ1NzIwMDYzMTAgFw0xNDA4MDEwMDAw
+MDBaGA8yMDUwMDkwNDAwMDAwMFowLjEsMCoGA1UEAxMjWXViaWNvIFUyRiBSb290
+IENBIFNlcmlhbCA0NTcyMDA2MzEwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEK
+AoIBAQC/jwYuhBVlqaiYWEMsrWFisgJ+PtM91eSrpI4TK7U53mwCIawSDHy8vUmk
+5N2KAj9abvT9NP5SMS1hQi3usxoYGonXQgfO6ZXyUA9a+KAkqdFnBnlyugSeCOep
+8EdZFfsaRFtMjkwz5Gcz2Py4vIYvCdMHPtwaz0bVuzneueIEz6TnQjE63Rdt2zbw
+nebwTG5ZybeWSwbzy+BJ34ZHcUhPAY89yJQXuE0IzMZFcEBbPNRbWECRKgjq//qT
+9nmDOFVlSRCt2wiqPSzluwn+v+suQEBsUjTGMEd25tKXXTkNW21wIWbxeSyUoTXw
+LvGS6xlwQSgNpk2qXYwf8iXg7VWZAgMBAAGjQjBAMB0GA1UdDgQWBBQgIvz0bNGJ
+hjgpToksyKpP9xv9oDAPBgNVHRMECDAGAQH/AgEAMA4GA1UdDwEB/wQEAwIBBjAN
+BgkqhkiG9w0BAQsFAAOCAQEAjvjuOMDSa+JXFCLyBKsycXtBVZsJ4Ue3LbaEsPY4
+MYN/hIQ5ZM5p7EjfcnMG4CtYkNsfNHc0AhBLdq45rnT87q/6O3vUEtNMafbhU6kt
+hX7Y+9XFN9NpmYxr+ekVY5xOxi8h9JDIgoMP4VB1uS0aunL1IGqrNooL9mmFnL2k
+LVVee6/VR6C5+KSTCMCWppMuJIZII2v9o4dkoZ8Y7QRjQlLfYzd3qGtKbw7xaF1U
+sG/5xUb/Btwb2X2g4InpiB/yt/3CpQXpiWX/K4mBvUKiGn05ZsqeY1gx4g0xLBqc
+U9psmyPzK+Vsgw2jeRQ5JlKDyqE0hebfC1tvFu0CCrJFcw==
+-----END CERTIFICATE-----";
+        let ca_root_b: &[u8] = b"-----BEGIN CERTIFICATE-----
+MIICEjCCAZmgAwIBAgIQaB0BbHo84wIlpQGUKEdXcTAKBggqhkjOPQQDAzBLMR8w
+HQYDVQQDDBZBcHBsZSBXZWJBdXRobiBSb290IENBMRMwEQYDVQQKDApBcHBsZSBJ
+bmMuMRMwEQYDVQQIDApDYWxpZm9ybmlhMB4XDTIwMDMxODE4MjEzMloXDTQ1MDMx
+NTAwMDAwMFowSzEfMB0GA1UEAwwWQXBwbGUgV2ViQXV0aG4gUm9vdCBDQTETMBEG
+A1UECgwKQXBwbGUgSW5jLjETMBEGA1UECAwKQ2FsaWZvcm5pYTB2MBAGByqGSM49
+AgEGBSuBBAAiA2IABCJCQ2pTVhzjl4Wo6IhHtMSAzO2cv+H9DQKev3//fG59G11k
+xu9eI0/7o6V5uShBpe1u6l6mS19S1FEh6yGljnZAJ+2GNP1mi/YK2kSXIuTHjxA/
+pcoRf7XkOtO4o1qlcaNCMEAwDwYDVR0TAQH/BAUwAwEB/zAdBgNVHQ4EFgQUJtdk
+2cV4wlpn0afeaxLQG2PxxtcwDgYDVR0PAQH/BAQDAgEGMAoGCCqGSM49BAMDA2cA
+MGQCMFrZ+9DsJ1PW9hfNdBywZDsWDbWFp28it1d/5w2RPkRX3Bbn/UbDTNLx7Jr3
+jAGGiQIwHFj+dJZYUJR786osByBelJYsVZd2GbHQu209b5RCmGQ21gpSAk9QZW4B
+1bWeT0vT
+-----END CERTIFICATE-----";
+
+        let aaguid_a = Uuid::new_v4();
+        let aaguid_b = Uuid::new_v4();
+        let aaguid_c = Uuid::new_v4();
+        let aaguid_d = Uuid::new_v4();
+        let aaguid_e = Uuid::new_v4();
+
+        let mut att_ca_builder = AttestationCaListBuilder::new();
+
+        att_ca_builder
+            .insert_device_pem(ca_root_a, aaguid_a, "A".to_string(), Default::default())
+            .unwrap();
+        att_ca_builder
+            .insert_device_pem(ca_root_a, aaguid_b, "B".to_string(), Default::default())
+            .unwrap();
+        att_ca_builder
+            .insert_device_pem(ca_root_a, aaguid_c, "C".to_string(), Default::default())
+            .unwrap();
+        att_ca_builder
+            .insert_device_pem(ca_root_b, aaguid_d, "D".to_string(), Default::default())
+            .unwrap();
+
+        let att_ca_list_a = att_ca_builder.build();
+
         let policy_a = AccountPolicy {
             privilege_expiry: 100,
             authsession_expiry: 100,
             pw_min_length: 11,
             credential_policy: CredentialType::Mfa,
+            webauthn_att_ca_list: Some(att_ca_list_a),
         };
+
+        let mut att_ca_builder = AttestationCaListBuilder::new();
+
+        att_ca_builder
+            .insert_device_pem(ca_root_a, aaguid_b, "B".to_string(), Default::default())
+            .unwrap();
+        att_ca_builder
+            .insert_device_pem(ca_root_b, aaguid_e, "E".to_string(), Default::default())
+            .unwrap();
+
+        let att_ca_list_b = att_ca_builder.build();
 
         let policy_b = AccountPolicy {
             privilege_expiry: 150,
             authsession_expiry: 50,
             pw_min_length: 15,
             credential_policy: CredentialType::Passkey,
+            webauthn_att_ca_list: Some(att_ca_list_b),
         };
 
         let rap = ResolvedAccountPolicy::fold_from([policy_a, policy_b].into_iter());
@@ -133,15 +229,15 @@ mod tests {
         assert_eq!(rap.authsession_expiry(), 50);
         assert_eq!(rap.pw_min_length(), 15);
         assert_eq!(rap.credential_policy, CredentialType::Passkey);
-    }
 
-    /*
-    #[idm_test]
-    async fn test_idm_account_policy_load(
-        idms: &IdmServer,
-        _idms_delayed: &mut IdmServerDelayed,
-    ) {
-        todo!();
+        let mut att_ca_builder = AttestationCaListBuilder::new();
+
+        att_ca_builder
+            .insert_device_pem(ca_root_a, aaguid_b, "B".to_string(), Default::default())
+            .unwrap();
+
+        let att_ca_list_ex = att_ca_builder.build();
+
+        assert_eq!(rap.webauthn_att_ca_list, Some(att_ca_list_ex));
     }
-    */
 }

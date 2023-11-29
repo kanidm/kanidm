@@ -1784,6 +1784,36 @@ impl KanidmClient {
             .await
     }
 
+    pub async fn idm_account_credential_update_attested_passkey_init(
+        &self,
+        session_token: &CUSessionToken,
+    ) -> Result<CUStatus, ClientError> {
+        let scr = CURequest::AttestedPasskeyInit;
+        self.perform_simple_post_request("/v1/credential/_update", &(scr, &session_token))
+            .await
+    }
+
+    pub async fn idm_account_credential_update_attested_passkey_finish(
+        &self,
+        session_token: &CUSessionToken,
+        label: String,
+        registration: RegisterPublicKeyCredential,
+    ) -> Result<CUStatus, ClientError> {
+        let scr = CURequest::AttestedPasskeyFinish(label, registration);
+        self.perform_simple_post_request("/v1/credential/_update", &(scr, &session_token))
+            .await
+    }
+
+    pub async fn idm_account_credential_update_attested_passkey_remove(
+        &self,
+        session_token: &CUSessionToken,
+        uuid: Uuid,
+    ) -> Result<CUStatus, ClientError> {
+        let scr = CURequest::AttestedPasskeyRemove(uuid);
+        self.perform_simple_post_request("/v1/credential/_update", &(scr, &session_token))
+            .await
+    }
+
     pub async fn idm_account_credential_update_commit(
         &self,
         session_token: &CUSessionToken,

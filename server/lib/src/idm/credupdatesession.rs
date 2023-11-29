@@ -14,8 +14,8 @@ use kanidm_proto::v1::{
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 use webauthn_rs::prelude::{
-    AttestedPasskey as DeviceKeyV4, CreationChallengeResponse, Passkey as PasskeyV4,
-    PasskeyRegistration, RegisterPublicKeyCredential,
+    AttestedPasskey as AttestedPasskeyV4, AttestedPasskeyRegistration, CreationChallengeResponse,
+    Passkey as PasskeyV4, PasskeyRegistration, RegisterPublicKeyCredential, WebauthnError,
 };
 
 use crate::credential::totp::{Totp, TOTP_DEFAULT_STEP};
@@ -70,6 +70,8 @@ enum MfaRegState {
     TotpTryAgain(Totp),
     TotpInvalidSha1(Totp, Totp, String),
     Passkey(Box<CreationChallengeResponse>, PasskeyRegistration),
+    #[allow(dead_code)]
+    AttestedPasskey(Box<CreationChallengeResponse>, AttestedPasskeyRegistration),
 }
 
 impl fmt::Debug for MfaRegState {
@@ -80,6 +82,7 @@ impl fmt::Debug for MfaRegState {
             MfaRegState::TotpTryAgain(_) => "MfaRegState::TotpTryAgain",
             MfaRegState::TotpInvalidSha1(_, _, _) => "MfaRegState::TotpInvalidSha1",
             MfaRegState::Passkey(_, _) => "MfaRegState::Passkey",
+            MfaRegState::AttestedPasskey(_, _) => "MfaRegState::AttestedPasskey",
         };
         write!(f, "{t}")
     }
@@ -88,6 +91,7 @@ impl fmt::Debug for MfaRegState {
 #[derive(Debug, Clone, Copy)]
 enum CredentialState {
     Modifiable,
+    DeleteOnly,
     AccessDeny,
     PolicyDeny,
     // Disabled,
@@ -97,6 +101,7 @@ impl From<CredentialState> for CUCredState {
     fn from(val: CredentialState) -> CUCredState {
         match val {
             CredentialState::Modifiable => CUCredState::Modifiable,
+            CredentialState::DeleteOnly => CUCredState::DeleteOnly,
             CredentialState::AccessDeny => CUCredState::AccessDeny,
             CredentialState::PolicyDeny => CUCredState::PolicyDeny,
             // CredentialState::Disabled => CUCredState::Disabled ,
@@ -133,9 +138,9 @@ pub(crate) struct CredentialUpdateSession {
     passkeys: BTreeMap<Uuid, (String, PasskeyV4)>,
     passkeys_state: CredentialState,
 
-    // Devicekeys
-    _devicekeys: BTreeMap<Uuid, (String, DeviceKeyV4)>,
-    _devicekeys_can_edit: bool,
+    // Attested Passkeys
+    attested_passkeys: BTreeMap<Uuid, (String, AttestedPasskeyV4)>,
+    attested_passkeys_state: CredentialState,
 
     // Internal reg state of any inprogress totp or webauthn credentials.
     mfaregstate: MfaRegState,
@@ -152,6 +157,14 @@ impl fmt::Debug for CredentialUpdateSession {
                 uuid: *uuid,
             })
             .collect();
+        let attested_passkeys: Vec<PasskeyDetail> = self
+            .attested_passkeys
+            .iter()
+            .map(|(uuid, (tag, _pk))| PasskeyDetail {
+                tag: tag.clone(),
+                uuid: *uuid,
+            })
+            .collect();
         f.debug_struct("CredentialUpdateSession")
             .field("account.spn", &self.account.spn)
             .field("account.unix", &self.account.unix_extn().is_some())
@@ -161,16 +174,16 @@ impl fmt::Debug for CredentialUpdateSession {
             .field("primary.state", &self.primary_state)
             .field("passkeys.list()", &passkeys)
             .field("passkeys.state", &self.passkeys_state)
+            .field("attested_passkeys.list()", &attested_passkeys)
+            .field("attested_passkeys.state", &self.attested_passkeys_state)
             .field("mfaregstate", &self.mfaregstate)
             .finish()
     }
 }
 
 impl CredentialUpdateSession {
-    // In future this should be a Vec of the issues with the current session so that UI's can highlight
-    // properly how to proceed.
+    // Vec of the issues with the current session so that UI's can highlight properly how to proceed.
     fn can_commit(&self) -> (bool, Vec<CredentialUpdateSessionStatusWarnings>) {
-        // Should be it's own PR and use account policy
         let mut warnings = Vec::with_capacity(0);
 
         let cred_type_min = self.resolved_account_policy.credential_policy();
@@ -198,12 +211,32 @@ impl CredentialUpdateSession {
                     warnings.push(CredentialUpdateSessionStatusWarnings::PasskeyRequired);
                 }
             }
-            // For now these error too.
-            CredentialType::AttestedPasskey
-            | CredentialType::AttestedResidentkey
-            | CredentialType::Invalid => {
+            CredentialType::AttestedPasskey => {
+                // Also unreachable - during these sessions, there will be no values present here.
+                if !self.passkeys.is_empty() || self.primary.is_some() {
+                    warnings.push(CredentialUpdateSessionStatusWarnings::AttestedPasskeyRequired);
+                }
+            }
+            CredentialType::AttestedResidentkey => {
+                // Also unreachable - during these sessions, there will be no values present here.
+                if !self.attested_passkeys.is_empty()
+                    || !self.passkeys.is_empty()
+                    || self.primary.is_some()
+                {
+                    warnings
+                        .push(CredentialUpdateSessionStatusWarnings::AttestedResidentKeyRequired);
+                }
+            }
+            CredentialType::Invalid => {
                 // special case, must always deny all changes.
                 warnings.push(CredentialUpdateSessionStatusWarnings::Unsatisfiable)
+            }
+        }
+
+        if let Some(att_ca_list) = self.resolved_account_policy.webauthn_attestation_ca_list() {
+            if att_ca_list.is_empty() {
+                warnings
+                    .push(CredentialUpdateSessionStatusWarnings::WebauthnAttestationUnsatisfiable)
             }
         }
 
@@ -219,6 +252,7 @@ pub enum MfaRegStateStatus {
     TotpInvalidSha1,
     BackupCodes(HashSet<String>),
     Passkey(CreationChallengeResponse),
+    AttestedPasskey(CreationChallengeResponse),
 }
 
 impl fmt::Debug for MfaRegStateStatus {
@@ -230,6 +264,7 @@ impl fmt::Debug for MfaRegStateStatus {
             MfaRegStateStatus::TotpInvalidSha1 => "MfaRegStateStatus::TotpInvalidSha1",
             MfaRegStateStatus::BackupCodes(_) => "MfaRegStateStatus::BackupCodes",
             MfaRegStateStatus::Passkey(_) => "MfaRegStateStatus::Passkey",
+            MfaRegStateStatus::AttestedPasskey(_) => "MfaRegStateStatus::AttestedPasskey",
         };
         write!(f, "{t}")
     }
@@ -239,7 +274,10 @@ impl fmt::Debug for MfaRegStateStatus {
 pub enum CredentialUpdateSessionStatusWarnings {
     MfaRequired,
     PasskeyRequired,
+    AttestedPasskeyRequired,
+    AttestedResidentKeyRequired,
     Unsatisfiable,
+    WebauthnAttestationUnsatisfiable,
 }
 
 impl From<CredentialUpdateSessionStatusWarnings> for CURegWarning {
@@ -247,7 +285,16 @@ impl From<CredentialUpdateSessionStatusWarnings> for CURegWarning {
         match val {
             CredentialUpdateSessionStatusWarnings::MfaRequired => CURegWarning::MfaRequired,
             CredentialUpdateSessionStatusWarnings::PasskeyRequired => CURegWarning::PasskeyRequired,
+            CredentialUpdateSessionStatusWarnings::AttestedPasskeyRequired => {
+                CURegWarning::AttestedPasskeyRequired
+            }
+            CredentialUpdateSessionStatusWarnings::AttestedResidentKeyRequired => {
+                CURegWarning::AttestedResidentKeyRequired
+            }
             CredentialUpdateSessionStatusWarnings::Unsatisfiable => CURegWarning::Unsatisfiable,
+            CredentialUpdateSessionStatusWarnings::WebauthnAttestationUnsatisfiable => {
+                CURegWarning::WebauthnAttestationUnsatisfiable
+            }
         }
     }
 }
@@ -267,6 +314,9 @@ pub struct CredentialUpdateSessionStatus {
     primary_state: CredentialState,
     passkeys: Vec<PasskeyDetail>,
     passkeys_state: CredentialState,
+    attested_passkeys: Vec<PasskeyDetail>,
+    attested_passkeys_state: CredentialState,
+    attested_passkeys_allowed_devices: Vec<String>,
 }
 
 impl CredentialUpdateSessionStatus {
@@ -297,6 +347,7 @@ impl Into<CUStatus> for CredentialUpdateSessionStatus {
                     CURegState::BackupCodes(s.into_iter().collect())
                 }
                 MfaRegStateStatus::Passkey(r) => CURegState::Passkey(r),
+                MfaRegStateStatus::AttestedPasskey(r) => CURegState::AttestedPasskey(r),
             },
             can_commit: self.can_commit,
             warnings: self.warnings.into_iter().map(|w| w.into()).collect(),
@@ -304,6 +355,9 @@ impl Into<CUStatus> for CredentialUpdateSessionStatus {
             primary_state: self.primary_state.into(),
             passkeys: self.passkeys,
             passkeys_state: self.passkeys_state.into(),
+            attested_passkeys: self.attested_passkeys,
+            attested_passkeys_state: self.attested_passkeys_state.into(),
+            attested_passkeys_allowed_devices: self.attested_passkeys_allowed_devices,
         }
     }
 }
@@ -311,6 +365,19 @@ impl Into<CUStatus> for CredentialUpdateSessionStatus {
 impl From<&CredentialUpdateSession> for CredentialUpdateSessionStatus {
     fn from(session: &CredentialUpdateSession) -> Self {
         let (can_commit, warnings) = session.can_commit();
+
+        let attested_passkeys_allowed_devices: Vec<String> = session
+            .resolved_account_policy
+            .webauthn_attestation_ca_list()
+            .iter()
+            .flat_map(|att_ca_list| {
+                att_ca_list.cas().values().flat_map(|ca| {
+                    ca.aaguids()
+                        .values()
+                        .map(|device| device.description_en().to_string())
+                })
+            })
+            .collect();
 
         CredentialUpdateSessionStatus {
             spn: session.account.spn.clone(),
@@ -329,6 +396,16 @@ impl From<&CredentialUpdateSession> for CredentialUpdateSessionStatus {
                 })
                 .collect(),
             passkeys_state: session.passkeys_state,
+            attested_passkeys: session
+                .attested_passkeys
+                .iter()
+                .map(|(uuid, (tag, _pk))| PasskeyDetail {
+                    tag: tag.clone(),
+                    uuid: *uuid,
+                })
+                .collect(),
+            attested_passkeys_state: session.attested_passkeys_state,
+            attested_passkeys_allowed_devices,
             mfaregstate: match &session.mfaregstate {
                 MfaRegState::None => MfaRegStateStatus::None,
                 MfaRegState::TotpInit(token) => MfaRegStateStatus::TotpCheck(
@@ -337,6 +414,9 @@ impl From<&CredentialUpdateSession> for CredentialUpdateSessionStatus {
                 MfaRegState::TotpTryAgain(_) => MfaRegStateStatus::TotpTryAgain,
                 MfaRegState::TotpInvalidSha1(_, _, _) => MfaRegStateStatus::TotpInvalidSha1,
                 MfaRegState::Passkey(r, _) => MfaRegStateStatus::Passkey(r.as_ref().clone()),
+                MfaRegState::AttestedPasskey(r, _) => {
+                    MfaRegStateStatus::AttestedPasskey(r.as_ref().clone())
+                }
             },
         }
     }
@@ -431,6 +511,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 Some(btreeset![
                     Attribute::PrimaryCredential.into(),
                     Attribute::PassKeys.into(),
+                    Attribute::AttestedPasskeys.into(),
                     Attribute::UnixPassword.into(),
                     Attribute::SshPublicKey.into()
                 ]),
@@ -490,6 +571,28 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         };
 
         let passkeys_can_edit = eperm_search_passkeys && eperm_mod_passkeys && eperm_rem_passkeys;
+
+        let eperm_search_attested_passkeys = match &eperm.search {
+            Access::Denied => false,
+            Access::Grant => true,
+            Access::Allow(attrs) => attrs.contains(Attribute::AttestedPasskeys.as_ref()),
+        };
+
+        let eperm_mod_attested_passkeys = match &eperm.modify_pres {
+            Access::Denied => false,
+            Access::Grant => true,
+            Access::Allow(attrs) => attrs.contains(Attribute::AttestedPasskeys.as_ref()),
+        };
+
+        let eperm_rem_attested_passkeys = match &eperm.modify_rem {
+            Access::Denied => false,
+            Access::Grant => true,
+            Access::Allow(attrs) => attrs.contains(Attribute::AttestedPasskeys.as_ref()),
+        };
+
+        let attested_passkeys_can_edit = eperm_search_attested_passkeys
+            && eperm_mod_attested_passkeys
+            && eperm_rem_attested_passkeys;
 
         let eperm_search_unixcred = match &eperm.search {
             Access::Denied => false,
@@ -567,6 +670,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         // At lease *one* must be modifiable OR visible.
         if !(primary_can_edit
             || passkeys_can_edit
+            || attested_passkeys_can_edit
             || ext_cred_portal_can_view
             || sshpubkey_can_edit
             || unixcred_can_edit)
@@ -581,6 +685,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 CredUpdateSessionPerms {
                     ext_cred_portal_can_view,
                     passkeys_can_edit,
+                    attested_passkeys_can_edit,
                     primary_can_edit,
                     unixcred_can_edit,
                     sshpubkey_can_edit,
@@ -604,6 +709,13 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         let cred_type_min = resolved_account_policy.credential_policy();
 
+        // We can't decide this based on CredentialType alone since we may have CredentialType::Mfa
+        // and still need attestation. As a result, we have to decide this based on presence of
+        // the attestation policy.
+        let passkey_attestation_required = resolved_account_policy
+            .webauthn_attestation_ca_list()
+            .is_some();
+
         let primary_state = if cred_type_min > CredentialType::Mfa {
             CredentialState::PolicyDeny
         } else if perms.primary_can_edit {
@@ -612,10 +724,24 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             CredentialState::AccessDeny
         };
 
-        let passkeys_state = if cred_type_min > CredentialType::Passkey {
+        let passkeys_state =
+            if cred_type_min > CredentialType::Passkey || passkey_attestation_required {
+                CredentialState::PolicyDeny
+            } else if perms.passkeys_can_edit {
+                CredentialState::Modifiable
+            } else {
+                CredentialState::AccessDeny
+            };
+
+        let attested_passkeys_state = if cred_type_min > CredentialType::AttestedPasskey {
             CredentialState::PolicyDeny
-        } else if perms.passkeys_can_edit {
-            CredentialState::Modifiable
+        } else if perms.attested_passkeys_can_edit {
+            if passkey_attestation_required {
+                CredentialState::Modifiable
+            } else {
+                // User can only delete, no police available to add more keys.
+                CredentialState::DeleteOnly
+            }
         } else {
             CredentialState::AccessDeny
         };
@@ -648,8 +774,37 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             BTreeMap::default()
         };
 
-        // let devicekeys = account.devicekeys.clone();
-        let devicekeys = BTreeMap::default();
+        // Before we start, we pre-filter out anything that no longer conforms to policy.
+        // These would already be failing authentication, so they should have the appearance
+        // of "being removed".
+        let attested_passkeys = if matches!(attested_passkeys_state, CredentialState::Modifiable)
+            || matches!(attested_passkeys_state, CredentialState::DeleteOnly)
+        {
+            if let Some(att_ca_list) = resolved_account_policy.webauthn_attestation_ca_list() {
+                let mut attested_passkeys = BTreeMap::default();
+
+                for (uuid, (label, apk)) in account.attested_passkeys.iter() {
+                    match apk.verify_attestation(att_ca_list) {
+                        Ok(_) => {
+                            // Good to go
+                            attested_passkeys.insert(*uuid, (label.clone(), apk.clone()));
+                        }
+                        Err(e) => {
+                            warn!(eclass=?e, emsg=%e, "credential no longer meets attestation criteria");
+                        }
+                    }
+                }
+
+                attested_passkeys
+            } else {
+                // Seems weird here to be skipping filtering of the credentials. The reason is that
+                // if an account had registered attested passkeys in the past we can delete them, but
+                // not add new ones. Situation only occurs when policy isn't present on the account.
+                account.attested_passkeys.clone()
+            }
+        } else {
+            BTreeMap::default()
+        };
 
         // Get the external credential portal, if any.
         let ext_cred_portal = match (account.sync_parent_uuid, ext_cred_portal_can_view) {
@@ -683,8 +838,8 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             sshpubkey_can_edit,
             passkeys,
             passkeys_state,
-            _devicekeys: devicekeys,
-            _devicekeys_can_edit: false,
+            attested_passkeys,
+            attested_passkeys_state,
             mfaregstate: MfaRegState::None,
         };
 
@@ -1149,15 +1304,14 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                     modlist.push_mod(Modify::Present(Attribute::PrimaryCredential.into(), vcred));
                 };
             }
-            CredentialState::PolicyDeny => {
+            CredentialState::DeleteOnly | CredentialState::PolicyDeny => {
                 modlist.push_mod(Modify::Purged(Attribute::PrimaryCredential.into()));
             }
-            // CredentialState::Disabled |
             CredentialState::AccessDeny => {}
         };
 
         match session.passkeys_state {
-            CredentialState::Modifiable => {
+            CredentialState::DeleteOnly | CredentialState::Modifiable => {
                 modlist.push_mod(Modify::Purged(Attribute::PassKeys.into()));
                 // Add all the passkeys. If none, nothing will be added! This handles
                 // the delete case quite cleanly :)
@@ -1168,6 +1322,25 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             }
             CredentialState::PolicyDeny => {
                 modlist.push_mod(Modify::Purged(Attribute::PassKeys.into()));
+            }
+            CredentialState::AccessDeny => {}
+        };
+
+        match session.attested_passkeys_state {
+            CredentialState::DeleteOnly | CredentialState::Modifiable => {
+                modlist.push_mod(Modify::Purged(Attribute::AttestedPasskeys.into()));
+                // Add all the passkeys. If none, nothing will be added! This handles
+                // the delete case quite cleanly :)
+                session
+                    .attested_passkeys
+                    .iter()
+                    .for_each(|(uuid, (tag, pk))| {
+                        let v_pk = Value::AttestedPasskey(*uuid, tag.clone(), pk.clone());
+                        modlist.push_mod(Modify::Present(Attribute::AttestedPasskeys.into(), v_pk));
+                    });
+            }
+            CredentialState::PolicyDeny => {
+                modlist.push_mod(Modify::Purged(Attribute::AttestedPasskeys.into()));
             }
             // CredentialState::Disabled |
             CredentialState::AccessDeny => {}
@@ -1848,7 +2021,7 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
         trace!(?session);
 
         if !matches!(session.passkeys_state, CredentialState::Modifiable) {
-            error!("Session does not have permission to modify primary credential");
+            error!("Session does not have permission to modify passkeys");
             return Err(OperationError::AccessDenied);
         };
 
@@ -1890,24 +2063,27 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
         trace!(?session);
 
         if !matches!(session.passkeys_state, CredentialState::Modifiable) {
-            error!("Session does not have permission to modify primary credential");
+            error!("Session does not have permission to modify passkeys");
             return Err(OperationError::AccessDenied);
         };
 
         match &session.mfaregstate {
             MfaRegState::Passkey(_ccr, pk_reg) => {
-                let passkey = self
+                let result = self
                     .webauthn
                     .finish_passkey_registration(reg, pk_reg)
                     .map_err(|e| {
-                        error!(eclass=?e, emsg=%e, "Unable to start passkey registration");
+                        error!(eclass=?e, emsg=%e, "Unable to complete passkey registration");
                         OperationError::Webauthn
-                    })?;
+                    });
+
+                // The reg is done. Clean up state before returning errors.
+                session.mfaregstate = MfaRegState::None;
+
+                let passkey = result?;
+
                 let pk_id = Uuid::new_v4();
                 session.passkeys.insert(pk_id, (label, passkey));
-
-                // The reg is done.
-                session.mfaregstate = MfaRegState::None;
 
                 Ok(session.deref().into())
             }
@@ -1928,13 +2104,147 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
         })?;
         trace!(?session);
 
-        if !matches!(session.passkeys_state, CredentialState::Modifiable) {
-            error!("Session does not have permission to modify primary credential");
+        if !(matches!(session.passkeys_state, CredentialState::Modifiable)
+            || matches!(session.passkeys_state, CredentialState::DeleteOnly))
+        {
+            error!("Session does not have permission to modify passkeys");
             return Err(OperationError::AccessDenied);
         };
 
         // No-op if not present
         session.passkeys.remove(&uuid);
+
+        Ok(session.deref().into())
+    }
+
+    pub fn credential_attested_passkey_init(
+        &self,
+        cust: &CredentialUpdateSessionToken,
+        ct: Duration,
+    ) -> Result<CredentialUpdateSessionStatus, OperationError> {
+        let session_handle = self.get_current_session(cust, ct)?;
+        let mut session = session_handle.try_lock().map_err(|_| {
+            error!("Session already locked, unable to proceed.");
+            OperationError::InvalidState
+        })?;
+        trace!(?session);
+
+        if !matches!(session.attested_passkeys_state, CredentialState::Modifiable) {
+            error!("Session does not have permission to modify attested passkeys");
+            return Err(OperationError::AccessDenied);
+        };
+
+        if !matches!(session.mfaregstate, MfaRegState::None) {
+            info!("Invalid Attested Passkey Init state, another update is in progress");
+            return Err(OperationError::InvalidState);
+        }
+
+        let att_ca_list = session
+            .resolved_account_policy
+            .webauthn_attestation_ca_list()
+            .cloned()
+            .ok_or_else(|| {
+                error!(
+                    "No attestation ca list is available, can not procedd with attested passkeys."
+                );
+                OperationError::AccessDenied
+            })?;
+
+        let (ccr, pk_reg) = self
+            .webauthn
+            .start_attested_passkey_registration(
+                session.account.uuid,
+                &session.account.spn,
+                &session.account.displayname,
+                session.account.existing_credential_id_list(),
+                att_ca_list,
+                None,
+            )
+            .map_err(|e| {
+                error!(eclass=?e, emsg=%e, "Unable to start passkey registration");
+                OperationError::Webauthn
+            })?;
+
+        session.mfaregstate = MfaRegState::AttestedPasskey(Box::new(ccr), pk_reg);
+        // Now that it's in the state, it'll be in the status when returned.
+        Ok(session.deref().into())
+    }
+
+    pub fn credential_attested_passkey_finish(
+        &self,
+        cust: &CredentialUpdateSessionToken,
+        ct: Duration,
+        label: String,
+        reg: &RegisterPublicKeyCredential,
+    ) -> Result<CredentialUpdateSessionStatus, OperationError> {
+        let session_handle = self.get_current_session(cust, ct)?;
+        let mut session = session_handle.try_lock().map_err(|_| {
+            admin_error!("Session already locked, unable to proceed.");
+            OperationError::InvalidState
+        })?;
+        trace!(?session);
+
+        if !matches!(session.attested_passkeys_state, CredentialState::Modifiable) {
+            error!("Session does not have permission to modify attested passkeys");
+            return Err(OperationError::AccessDenied);
+        };
+
+        match &session.mfaregstate {
+            MfaRegState::AttestedPasskey(_ccr, pk_reg) => {
+                let result = self
+                    .webauthn
+                    .finish_attested_passkey_registration(reg, pk_reg)
+                    .map_err(|e| {
+                        error!(eclass=?e, emsg=%e, "Unable to complete passkey registration");
+
+                        match e {
+                            WebauthnError::AttestationChainNotTrusted(_)
+                            | WebauthnError::AttestationNotVerifiable => {
+                                OperationError::CU0001WebauthnAttestationNotTrusted
+                            }
+                            _ => OperationError::CU0002WebauthnRegistrationError,
+                        }
+                    });
+
+                // The reg is done. Clean up state before returning errors.
+                session.mfaregstate = MfaRegState::None;
+
+                let passkey = result?;
+                trace!(?passkey);
+
+                let pk_id = Uuid::new_v4();
+                session.attested_passkeys.insert(pk_id, (label, passkey));
+
+                trace!(?session.attested_passkeys);
+
+                Ok(session.deref().into())
+            }
+            _ => Err(OperationError::InvalidRequestState),
+        }
+    }
+
+    pub fn credential_attested_passkey_remove(
+        &self,
+        cust: &CredentialUpdateSessionToken,
+        ct: Duration,
+        uuid: Uuid,
+    ) -> Result<CredentialUpdateSessionStatus, OperationError> {
+        let session_handle = self.get_current_session(cust, ct)?;
+        let mut session = session_handle.try_lock().map_err(|_| {
+            admin_error!("Session already locked, unable to proceed.");
+            OperationError::InvalidState
+        })?;
+        trace!(?session);
+
+        if !(matches!(session.attested_passkeys_state, CredentialState::Modifiable)
+            || matches!(session.attested_passkeys_state, CredentialState::DeleteOnly))
+        {
+            error!("Session does not have permission to modify attested passkeys");
+            return Err(OperationError::AccessDenied);
+        };
+
+        // No-op if not present
+        session.attested_passkeys.remove(&uuid);
 
         Ok(session.deref().into())
     }
@@ -1966,7 +2276,9 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
         })?;
         trace!(?session);
 
-        if !matches!(session.primary_state, CredentialState::Modifiable) {
+        if !(matches!(session.primary_state, CredentialState::Modifiable)
+            || matches!(session.primary_state, CredentialState::DeleteOnly))
+        {
             error!("Session does not have permission to modify primary credential");
             return Err(OperationError::AccessDenied);
         };
@@ -1988,7 +2300,9 @@ mod tests {
     };
     use uuid::uuid;
     use webauthn_authenticator_rs::softpasskey::SoftPasskey;
-    use webauthn_authenticator_rs::WebauthnAuthenticator;
+    use webauthn_authenticator_rs::softtoken::{self, SoftToken};
+    use webauthn_authenticator_rs::{AuthenticatorBackend, WebauthnAuthenticator};
+    use webauthn_rs::prelude::AttestationCaListBuilder;
 
     use super::{
         CredentialState, CredentialUpdateSessionStatus, CredentialUpdateSessionStatusWarnings,
@@ -1997,6 +2311,7 @@ mod tests {
     };
     use crate::credential::totp::Totp;
     use crate::event::CreateEvent;
+    use crate::idm::audit::AuditEvent;
     use crate::idm::delayed::DelayedAction;
     use crate::idm::event::{AuthEvent, AuthResult, RegenerateRadiusSecretEvent};
     use crate::idm::server::{IdmServer, IdmServerCredUpdateTransaction, IdmServerDelayed};
@@ -2185,6 +2500,8 @@ mod tests {
             ct,
         );
 
+        trace!(renew_test_session_result = ?cur);
+
         idms_prox_write.commit().expect("Failed to commit txn");
 
         cur.expect("Failed to start update")
@@ -2371,10 +2688,10 @@ mod tests {
         }
     }
 
-    async fn check_testperson_passkey(
+    async fn check_testperson_passkey<T: AuthenticatorBackend>(
         idms: &IdmServer,
         idms_delayed: &mut IdmServerDelayed,
-        wa: &mut WebauthnAuthenticator<SoftPasskey>,
+        wa: &mut WebauthnAuthenticator<T>,
         origin: Url,
         ct: Duration,
     ) -> Option<String> {
@@ -3167,7 +3484,7 @@ mod tests {
 
         let c_status = cutxn
             .credential_passkey_remove(&cust, ct, pk_uuid)
-            .expect("Failed to delete the primary cred");
+            .expect("Failed to delete the passkey");
 
         trace!(?c_status);
         assert!(c_status.primary.is_none());
@@ -3254,11 +3571,18 @@ mod tests {
             primary_state,
             passkeys: _,
             passkeys_state,
+            attested_passkeys: _,
+            attested_passkeys_state,
+            attested_passkeys_allowed_devices: _,
         } = custatus;
 
         assert!(matches!(ext_cred_portal, CUExtPortal::Hidden));
         assert!(matches!(primary_state, CredentialState::AccessDeny));
         assert!(matches!(passkeys_state, CredentialState::AccessDeny));
+        assert!(matches!(
+            attested_passkeys_state,
+            CredentialState::AccessDeny
+        ));
 
         let cutxn = idms.cred_update_transaction().await;
 
@@ -3515,11 +3839,461 @@ mod tests {
         commit_session(idms, ct, cust).await;
     }
 
-    // enroll trusted device
-    // remove trusted device.
-    // trusted device flag changes?
+    // Attested passkey types
 
-    // Any policy checks we care about?
+    #[idm_test]
+    async fn test_idm_credential_update_account_policy_attested_passkey_required(
+        idms: &IdmServer,
+        idms_delayed: &mut IdmServerDelayed,
+    ) {
+        let ct = Duration::from_secs(TEST_CURRENT_TIME);
 
-    // Others in the future
+        // Create the attested soft token we will use in this test.
+        let (soft_token_valid, ca_root) = SoftToken::new(true).unwrap();
+        let mut wa_token_valid = WebauthnAuthenticator::new(soft_token_valid);
+
+        // Create it's associated policy.
+        let mut att_ca_builder = AttestationCaListBuilder::new();
+        att_ca_builder
+            .insert_device_x509(
+                ca_root,
+                softtoken::AAGUID,
+                "softtoken".to_string(),
+                Default::default(),
+            )
+            .unwrap();
+        let att_ca_list = att_ca_builder.build();
+
+        let mut idms_prox_write = idms.proxy_write(ct).await;
+
+        let modlist = ModifyList::new_purge_and_set(
+            Attribute::WebauthnAttestationCaList,
+            Value::WebauthnAttestationCaList(att_ca_list),
+        );
+        idms_prox_write
+            .qs_write
+            .internal_modify_uuid(UUID_IDM_ALL_ACCOUNTS, &modlist)
+            .expect("Unable to change webauthn attestation policy");
+
+        assert!(idms_prox_write.commit().is_ok());
+
+        // Create the invalid tokens
+        let (soft_token_invalid, _) = SoftToken::new(true).unwrap();
+        let mut wa_token_invalid = WebauthnAuthenticator::new(soft_token_invalid);
+
+        let mut wa_passkey_invalid = WebauthnAuthenticator::new(SoftPasskey::new(true));
+
+        // Setup the cred update session.
+
+        let (cust, _) = setup_test_session(idms, ct).await;
+        let cutxn = idms.cred_update_transaction().await;
+        let origin = cutxn.get_origin().clone();
+
+        // Our status needs the correct device names for UI hinting.
+        let c_status = cutxn
+            .credential_update_status(&cust, ct)
+            .expect("Failed to get the current session status.");
+
+        trace!(?c_status);
+        assert!(c_status.attested_passkeys.is_empty());
+        assert_eq!(
+            c_status.attested_passkeys_allowed_devices,
+            vec!["softtoken".to_string()]
+        );
+
+        // -------------------------------------------------------
+        // Unable to add an passkey when attestation is requested.
+        let err = cutxn.credential_passkey_init(&cust, ct).unwrap_err();
+        assert!(matches!(err, OperationError::AccessDenied));
+
+        // -------------------------------------------------------
+        // Reject a credential that lacks attestation
+        let c_status = cutxn
+            .credential_attested_passkey_init(&cust, ct)
+            .expect("Failed to initiate attested passkey registration");
+
+        let passkey_chal = match c_status.mfaregstate {
+            MfaRegStateStatus::AttestedPasskey(c) => Some(c),
+            _ => None,
+        }
+        .expect("Unable to access passkey challenge, invalid state");
+
+        let passkey_resp = wa_passkey_invalid
+            .do_registration(origin.clone(), passkey_chal)
+            .expect("Failed to create soft passkey");
+
+        // Finish the registration
+        let label = "softtoken".to_string();
+        let err = cutxn
+            .credential_attested_passkey_finish(&cust, ct, label, &passkey_resp)
+            .unwrap_err();
+
+        assert!(matches!(
+            err,
+            OperationError::CU0001WebauthnAttestationNotTrusted
+        ));
+
+        // -------------------------------------------------------
+        // Reject a credential with wrong CA / correct aaguid
+        let c_status = cutxn
+            .credential_attested_passkey_init(&cust, ct)
+            .expect("Failed to initiate attested passkey registration");
+
+        let passkey_chal = match c_status.mfaregstate {
+            MfaRegStateStatus::AttestedPasskey(c) => Some(c),
+            _ => None,
+        }
+        .expect("Unable to access passkey challenge, invalid state");
+
+        let passkey_resp = wa_token_invalid
+            .do_registration(origin.clone(), passkey_chal)
+            .expect("Failed to create soft passkey");
+
+        // Finish the registration
+        let label = "softtoken".to_string();
+        let err = cutxn
+            .credential_attested_passkey_finish(&cust, ct, label, &passkey_resp)
+            .unwrap_err();
+
+        assert!(matches!(
+            err,
+            OperationError::CU0001WebauthnAttestationNotTrusted
+        ));
+
+        // -------------------------------------------------------
+        // Accept credential with correct CA/aaguid
+        let c_status = cutxn
+            .credential_attested_passkey_init(&cust, ct)
+            .expect("Failed to initiate attested passkey registration");
+
+        let passkey_chal = match c_status.mfaregstate {
+            MfaRegStateStatus::AttestedPasskey(c) => Some(c),
+            _ => None,
+        }
+        .expect("Unable to access passkey challenge, invalid state");
+
+        let passkey_resp = wa_token_valid
+            .do_registration(origin.clone(), passkey_chal)
+            .expect("Failed to create soft passkey");
+
+        // Finish the registration
+        let label = "softtoken".to_string();
+        let c_status = cutxn
+            .credential_attested_passkey_finish(&cust, ct, label, &passkey_resp)
+            .expect("Failed to initiate passkey registration");
+
+        assert!(matches!(c_status.mfaregstate, MfaRegStateStatus::None));
+        trace!(?c_status);
+        assert_eq!(c_status.attested_passkeys.len(), 1);
+
+        let pk_uuid = c_status
+            .attested_passkeys
+            .first()
+            .map(|pkd| pkd.uuid)
+            .unwrap();
+
+        drop(cutxn);
+        commit_session(idms, ct, cust).await;
+
+        // Assert that auth works.
+        assert!(check_testperson_passkey(
+            idms,
+            idms_delayed,
+            &mut wa_token_valid,
+            origin.clone(),
+            ct
+        )
+        .await
+        .is_some());
+
+        // Remove attested passkey works.
+        let (cust, _) = renew_test_session(idms, ct).await;
+        let cutxn = idms.cred_update_transaction().await;
+
+        trace!(?c_status);
+        assert!(c_status.primary.is_none());
+        assert!(c_status.passkeys.is_empty());
+        assert!(c_status.attested_passkeys.len() == 1);
+
+        let c_status = cutxn
+            .credential_attested_passkey_remove(&cust, ct, pk_uuid)
+            .expect("Failed to delete the attested passkey");
+
+        trace!(?c_status);
+        assert!(c_status.primary.is_none());
+        assert!(c_status.passkeys.is_empty());
+        assert!(c_status.attested_passkeys.is_empty());
+
+        drop(cutxn);
+        commit_session(idms, ct, cust).await;
+
+        // Must fail now!
+        assert!(
+            check_testperson_passkey(idms, idms_delayed, &mut wa_token_valid, origin, ct)
+                .await
+                .is_none()
+        );
+    }
+
+    #[idm_test(audit)]
+    async fn test_idm_credential_update_account_policy_attested_passkey_changed(
+        idms: &IdmServer,
+        idms_delayed: &mut IdmServerDelayed,
+        idms_audit: &mut IdmServerAudit,
+    ) {
+        let ct = Duration::from_secs(TEST_CURRENT_TIME);
+
+        // Setup the policy.
+        let (soft_token_1, ca_root_1) = SoftToken::new(true).unwrap();
+        let mut wa_token_1 = WebauthnAuthenticator::new(soft_token_1);
+
+        let (_soft_token_2, ca_root_2) = SoftToken::new(true).unwrap();
+
+        let mut att_ca_builder = AttestationCaListBuilder::new();
+        att_ca_builder
+            .insert_device_x509(
+                ca_root_1.clone(),
+                softtoken::AAGUID,
+                "softtoken_1".to_string(),
+                Default::default(),
+            )
+            .unwrap();
+        let att_ca_list = att_ca_builder.build();
+
+        trace!(?att_ca_list);
+
+        let mut idms_prox_write = idms.proxy_write(ct).await;
+
+        let modlist = ModifyList::new_purge_and_set(
+            Attribute::WebauthnAttestationCaList,
+            Value::WebauthnAttestationCaList(att_ca_list),
+        );
+        idms_prox_write
+            .qs_write
+            .internal_modify_uuid(UUID_IDM_ALL_ACCOUNTS, &modlist)
+            .expect("Unable to change webauthn attestation policy");
+
+        assert!(idms_prox_write.commit().is_ok());
+
+        // Setup the policy for later that lacks token 2.
+        let mut att_ca_builder = AttestationCaListBuilder::new();
+        att_ca_builder
+            .insert_device_x509(
+                ca_root_2,
+                softtoken::AAGUID,
+                "softtoken_2".to_string(),
+                Default::default(),
+            )
+            .unwrap();
+        let att_ca_list_post = att_ca_builder.build();
+
+        // Enroll the attested keys
+        let (cust, _) = setup_test_session(idms, ct).await;
+        let cutxn = idms.cred_update_transaction().await;
+        let origin = cutxn.get_origin().clone();
+
+        // -------------------------------------------------------
+        let c_status = cutxn
+            .credential_attested_passkey_init(&cust, ct)
+            .expect("Failed to initiate attested passkey registration");
+
+        let passkey_chal = match c_status.mfaregstate {
+            MfaRegStateStatus::AttestedPasskey(c) => Some(c),
+            _ => None,
+        }
+        .expect("Unable to access passkey challenge, invalid state");
+
+        let passkey_resp = wa_token_1
+            .do_registration(origin.clone(), passkey_chal)
+            .expect("Failed to create soft passkey");
+
+        // Finish the registration
+        let label = "softtoken".to_string();
+        let c_status = cutxn
+            .credential_attested_passkey_finish(&cust, ct, label, &passkey_resp)
+            .expect("Failed to initiate passkey registration");
+
+        assert!(matches!(c_status.mfaregstate, MfaRegStateStatus::None));
+        trace!(?c_status);
+        assert_eq!(c_status.attested_passkeys.len(), 1);
+
+        // -------------------------------------------------------
+        // Commit
+        drop(cutxn);
+        commit_session(idms, ct, cust).await;
+
+        // Check auth works
+        assert!(
+            check_testperson_passkey(idms, idms_delayed, &mut wa_token_1, origin.clone(), ct)
+                .await
+                .is_some()
+        );
+
+        // Change policy
+        let mut idms_prox_write = idms.proxy_write(ct).await;
+
+        let modlist = ModifyList::new_purge_and_set(
+            Attribute::WebauthnAttestationCaList,
+            Value::WebauthnAttestationCaList(att_ca_list_post),
+        );
+        idms_prox_write
+            .qs_write
+            .internal_modify_uuid(UUID_IDM_ALL_ACCOUNTS, &modlist)
+            .expect("Unable to change webauthn attestation policy");
+
+        assert!(idms_prox_write.commit().is_ok());
+
+        // Auth fail
+        assert!(
+            check_testperson_passkey(idms, idms_delayed, &mut wa_token_1, origin.clone(), ct)
+                .await
+                .is_none()
+        );
+
+        // This gives an auth denied because the attested passkey still exists but it no longer
+        // meets criteria.
+        match idms_audit.audit_rx().try_recv() {
+            Ok(AuditEvent::AuthenticationDenied { .. }) => {}
+            _ => assert!(false),
+        }
+
+        //  Update creds
+        let (cust, _) = renew_test_session(idms, ct).await;
+        let cutxn = idms.cred_update_transaction().await;
+
+        // Invalid key removed
+        let c_status = cutxn
+            .credential_update_status(&cust, ct)
+            .expect("Failed to get the current session status.");
+
+        trace!(?c_status);
+        assert!(c_status.attested_passkeys.is_empty());
+
+        drop(cutxn);
+        commit_session(idms, ct, cust).await;
+
+        // Auth fail
+        assert!(
+            check_testperson_passkey(idms, idms_delayed, &mut wa_token_1, origin.clone(), ct)
+                .await
+                .is_none()
+        );
+    }
+
+    // Test that when attestation policy is removed, the apk downgrades to passkey and still works.
+    #[idm_test]
+    async fn test_idm_credential_update_account_policy_attested_passkey_downgrade(
+        idms: &IdmServer,
+        idms_delayed: &mut IdmServerDelayed,
+    ) {
+        let ct = Duration::from_secs(TEST_CURRENT_TIME);
+
+        // Setup the policy.
+        let (soft_token_1, ca_root_1) = SoftToken::new(true).unwrap();
+        let mut wa_token_1 = WebauthnAuthenticator::new(soft_token_1);
+
+        let mut att_ca_builder = AttestationCaListBuilder::new();
+        att_ca_builder
+            .insert_device_x509(
+                ca_root_1.clone(),
+                softtoken::AAGUID,
+                "softtoken_1".to_string(),
+                Default::default(),
+            )
+            .unwrap();
+        let att_ca_list = att_ca_builder.build();
+
+        trace!(?att_ca_list);
+
+        let mut idms_prox_write = idms.proxy_write(ct).await;
+
+        let modlist = ModifyList::new_purge_and_set(
+            Attribute::WebauthnAttestationCaList,
+            Value::WebauthnAttestationCaList(att_ca_list),
+        );
+        idms_prox_write
+            .qs_write
+            .internal_modify_uuid(UUID_IDM_ALL_ACCOUNTS, &modlist)
+            .expect("Unable to change webauthn attestation policy");
+
+        assert!(idms_prox_write.commit().is_ok());
+
+        // Enroll the attested keys
+        let (cust, _) = setup_test_session(idms, ct).await;
+        let cutxn = idms.cred_update_transaction().await;
+        let origin = cutxn.get_origin().clone();
+
+        // -------------------------------------------------------
+        let c_status = cutxn
+            .credential_attested_passkey_init(&cust, ct)
+            .expect("Failed to initiate attested passkey registration");
+
+        let passkey_chal = match c_status.mfaregstate {
+            MfaRegStateStatus::AttestedPasskey(c) => Some(c),
+            _ => None,
+        }
+        .expect("Unable to access passkey challenge, invalid state");
+
+        let passkey_resp = wa_token_1
+            .do_registration(origin.clone(), passkey_chal)
+            .expect("Failed to create soft passkey");
+
+        // Finish the registration
+        let label = "softtoken".to_string();
+        let c_status = cutxn
+            .credential_attested_passkey_finish(&cust, ct, label, &passkey_resp)
+            .expect("Failed to initiate passkey registration");
+
+        assert!(matches!(c_status.mfaregstate, MfaRegStateStatus::None));
+        trace!(?c_status);
+        assert_eq!(c_status.attested_passkeys.len(), 1);
+
+        // -------------------------------------------------------
+        // Commit
+        drop(cutxn);
+        commit_session(idms, ct, cust).await;
+
+        // Check auth works
+        assert!(
+            check_testperson_passkey(idms, idms_delayed, &mut wa_token_1, origin.clone(), ct)
+                .await
+                .is_some()
+        );
+
+        // Change policy
+        let mut idms_prox_write = idms.proxy_write(ct).await;
+
+        let modlist = ModifyList::new_purge(Attribute::WebauthnAttestationCaList);
+        idms_prox_write
+            .qs_write
+            .internal_modify_uuid(UUID_IDM_ALL_ACCOUNTS, &modlist)
+            .expect("Unable to change webauthn attestation policy");
+
+        assert!(idms_prox_write.commit().is_ok());
+
+        // Auth still passes, key was downgraded.
+        assert!(
+            check_testperson_passkey(idms, idms_delayed, &mut wa_token_1, origin.clone(), ct)
+                .await
+                .is_some()
+        );
+
+        // Show it still exists, but can only be deleted now.
+        let (cust, _) = renew_test_session(idms, ct).await;
+        let cutxn = idms.cred_update_transaction().await;
+
+        let c_status = cutxn
+            .credential_update_status(&cust, ct)
+            .expect("Failed to get the current session status.");
+
+        trace!(?c_status);
+        assert_eq!(c_status.attested_passkeys.len(), 1);
+        assert!(matches!(
+            c_status.attested_passkeys_state,
+            CredentialState::DeleteOnly
+        ));
+
+        drop(cutxn);
+        commit_session(idms, ct, cust).await;
+    }
 }

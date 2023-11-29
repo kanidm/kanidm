@@ -50,6 +50,7 @@ pub enum Attribute {
     AcpSearchAttr,
     AcpTargetScope,
     ApiTokenSession,
+    AttestedPasskeys,
     Attr,
     AttributeName,
     AttributeType,
@@ -65,7 +66,6 @@ pub enum Attribute {
     CredentialTypeMinimum,
     DeniedName,
     Description,
-    DeviceKeys,
     DirectMemberOf,
     DisplayName,
     Dn,
@@ -173,6 +173,7 @@ pub enum Attribute {
     UserPassword,
     Uuid,
     Version,
+    WebauthnAttestationCaList,
 
     #[cfg(any(debug_assertions, test))]
     NonExist,
@@ -232,6 +233,7 @@ impl TryFrom<String> for Attribute {
             ATTR_ACP_SEARCH_ATTR => Attribute::AcpSearchAttr,
             ATTR_ACP_TARGET_SCOPE => Attribute::AcpTargetScope,
             ATTR_API_TOKEN_SESSION => Attribute::ApiTokenSession,
+            ATTR_ATTESTED_PASSKEYS => Attribute::AttestedPasskeys,
             ATTR_ATTR => Attribute::Attr,
             ATTR_ATTRIBUTENAME => Attribute::AttributeName,
             ATTR_ATTRIBUTETYPE => Attribute::AttributeType,
@@ -247,7 +249,6 @@ impl TryFrom<String> for Attribute {
             ATTR_CREDENTIAL_TYPE_MINIMUM => Attribute::CredentialTypeMinimum,
             ATTR_DENIED_NAME => Attribute::DeniedName,
             ATTR_DESCRIPTION => Attribute::Description,
-            ATTR_DEVICEKEYS => Attribute::DeviceKeys,
             ATTR_DIRECTMEMBEROF => Attribute::DirectMemberOf,
             ATTR_DISPLAYNAME => Attribute::DisplayName,
             ATTR_DN => Attribute::Dn,
@@ -353,6 +354,7 @@ impl TryFrom<String> for Attribute {
             ATTR_USERPASSWORD => Attribute::UserPassword,
             ATTR_UUID => Attribute::Uuid,
             ATTR_VERSION => Attribute::Version,
+            ATTR_WEBAUTHN_ATTESTATION_CA_LIST => Attribute::WebauthnAttestationCaList,
 
             #[cfg(any(debug_assertions, test))]
             TEST_ATTR_NON_EXIST => Attribute::NonExist,
@@ -390,6 +392,7 @@ impl From<Attribute> for &'static str {
             Attribute::AcpSearchAttr => ATTR_ACP_SEARCH_ATTR,
             Attribute::AcpTargetScope => ATTR_ACP_TARGET_SCOPE,
             Attribute::ApiTokenSession => ATTR_API_TOKEN_SESSION,
+            Attribute::AttestedPasskeys => ATTR_ATTESTED_PASSKEYS,
             Attribute::Attr => ATTR_ATTR,
             Attribute::AttributeName => ATTR_ATTRIBUTENAME,
             Attribute::AttributeType => ATTR_ATTRIBUTETYPE,
@@ -405,7 +408,6 @@ impl From<Attribute> for &'static str {
             Attribute::CredentialTypeMinimum => ATTR_CREDENTIAL_TYPE_MINIMUM,
             Attribute::DeniedName => ATTR_DENIED_NAME,
             Attribute::Description => ATTR_DESCRIPTION,
-            Attribute::DeviceKeys => ATTR_DEVICEKEYS,
             Attribute::DirectMemberOf => ATTR_DIRECTMEMBEROF,
             Attribute::DisplayName => ATTR_DISPLAYNAME,
             Attribute::Dn => ATTR_DN,
@@ -511,6 +513,7 @@ impl From<Attribute> for &'static str {
             Attribute::UserPassword => ATTR_USERPASSWORD,
             Attribute::Uuid => ATTR_UUID,
             Attribute::Version => ATTR_VERSION,
+            Attribute::WebauthnAttestationCaList => ATTR_WEBAUTHN_ATTESTATION_CA_LIST,
 
             #[cfg(any(debug_assertions, test))]
             Attribute::NonExist => TEST_ATTR_NON_EXIST,

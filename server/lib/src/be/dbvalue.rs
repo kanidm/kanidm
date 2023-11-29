@@ -8,7 +8,8 @@ use serde_with::skip_serializing_none;
 use url::Url;
 use uuid::Uuid;
 use webauthn_rs::prelude::{
-    AttestedPasskey as DeviceKeyV4, Passkey as PasskeyV4, SecurityKey as SecurityKeyV4,
+    AttestationCaList, AttestedPasskey as AttestedPasskeyV4, Passkey as PasskeyV4,
+    SecurityKey as SecurityKeyV4,
 };
 use webauthn_rs_core::proto::{COSEKey, UserVerificationPolicy};
 
@@ -60,6 +61,8 @@ pub enum DbValueIntentTokenStateV1 {
         #[serde(default)]
         passkeys_can_edit: bool,
         #[serde(default)]
+        attested_passkeys_can_edit: bool,
+        #[serde(default)]
         unixcred_can_edit: bool,
         #[serde(default)]
         sshpubkey_can_edit: bool,
@@ -75,6 +78,8 @@ pub enum DbValueIntentTokenStateV1 {
         primary_can_edit: bool,
         #[serde(default)]
         passkeys_can_edit: bool,
+        #[serde(default)]
+        attested_passkeys_can_edit: bool,
         #[serde(default)]
         unixcred_can_edit: bool,
         #[serde(default)]
@@ -347,8 +352,12 @@ pub enum DbValuePasskeyV1 {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub enum DbValueDeviceKeyV1 {
-    V4 { u: Uuid, t: String, k: DeviceKeyV4 },
+pub enum DbValueAttestedPasskeyV1 {
+    V4 {
+        u: Uuid,
+        t: String,
+        k: AttestedPasskeyV4,
+    },
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -674,7 +683,7 @@ pub enum DbValueSetV2 {
     #[serde(rename = "PK")]
     Passkey(Vec<DbValuePasskeyV1>),
     #[serde(rename = "DK")]
-    DeviceKey(Vec<DbValueDeviceKeyV1>),
+    AttestedPasskey(Vec<DbValueAttestedPasskeyV1>),
     #[serde(rename = "TE")]
     TrustedDeviceEnrollment(Vec<Uuid>),
     #[serde(rename = "AS")]
@@ -699,6 +708,8 @@ pub enum DbValueSetV2 {
     Image(Vec<DbValueImage>),
     #[serde(rename = "CT")]
     CredentialType(Vec<u16>),
+    #[serde(rename = "WC")]
+    WebauthnAttestationCaList { ca_list: AttestationCaList },
 }
 
 impl DbValueSetV2 {
@@ -732,7 +743,7 @@ impl DbValueSetV2 {
             DbValueSetV2::RestrictedString(set) => set.len(),
             DbValueSetV2::IntentToken(set) => set.len(),
             DbValueSetV2::Passkey(set) => set.len(),
-            DbValueSetV2::DeviceKey(set) => set.len(),
+            DbValueSetV2::AttestedPasskey(set) => set.len(),
             DbValueSetV2::TrustedDeviceEnrollment(set) => set.len(),
             DbValueSetV2::Session(set) => set.len(),
             DbValueSetV2::ApiToken(set) => set.len(),
@@ -746,6 +757,7 @@ impl DbValueSetV2 {
             DbValueSetV2::EcKeyPrivate(_key) => 1, // here we have to hard code it because the Vec<u8>
             // represents the bytes of  SINGLE(!) key
             DbValueSetV2::CredentialType(set) => set.len(),
+            DbValueSetV2::WebauthnAttestationCaList { ca_list } => ca_list.len(),
         }
     }
 

@@ -216,7 +216,7 @@ impl SchemaAttribute {
             SyntaxType::PrivateBinary => matches!(v, PartialValue::PrivateBinary),
             SyntaxType::IntentToken => matches!(v, PartialValue::IntentToken(_)),
             SyntaxType::Passkey => matches!(v, PartialValue::Passkey(_)),
-            SyntaxType::DeviceKey => matches!(v, PartialValue::DeviceKey(_)),
+            SyntaxType::AttestedPasskey => matches!(v, PartialValue::AttestedPasskey(_)),
             // Allow refer types.
             SyntaxType::Session => matches!(v, PartialValue::Refer(_)),
             SyntaxType::ApiToken => matches!(v, PartialValue::Refer(_)),
@@ -231,6 +231,7 @@ impl SchemaAttribute {
             SyntaxType::AuditLogString => matches!(v, PartialValue::Utf8(_)),
             SyntaxType::Image => matches!(v, PartialValue::Utf8(_)),
             SyntaxType::CredentialType => matches!(v, PartialValue::CredentialType(_)),
+            SyntaxType::WebauthnAttestationCaList => false,
         };
         if r {
             Ok(())
@@ -272,7 +273,7 @@ impl SchemaAttribute {
                 SyntaxType::PrivateBinary => matches!(v, Value::PrivateBinary(_)),
                 SyntaxType::IntentToken => matches!(v, Value::IntentToken(_, _)),
                 SyntaxType::Passkey => matches!(v, Value::Passkey(_, _, _)),
-                SyntaxType::DeviceKey => matches!(v, Value::DeviceKey(_, _, _)),
+                SyntaxType::AttestedPasskey => matches!(v, Value::AttestedPasskey(_, _, _)),
                 SyntaxType::Session => matches!(v, Value::Session(_, _)),
                 SyntaxType::ApiToken => matches!(v, Value::ApiToken(_, _)),
                 SyntaxType::Oauth2Session => matches!(v, Value::Oauth2Session(_, _)),
@@ -284,6 +285,9 @@ impl SchemaAttribute {
                 SyntaxType::EcKeyPrivate => matches!(v, Value::EcKeyPrivate(_)),
                 SyntaxType::Image => matches!(v, Value::Image(_)),
                 SyntaxType::CredentialType => matches!(v, Value::CredentialType(_)),
+                SyntaxType::WebauthnAttestationCaList => {
+                    matches!(v, Value::WebauthnAttestationCaList(_))
+                }
             };
         if r {
             Ok(())

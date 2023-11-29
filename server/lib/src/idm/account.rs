@@ -8,7 +8,7 @@ use kanidm_proto::v1::{
 use time::OffsetDateTime;
 use uuid::Uuid;
 use webauthn_rs::prelude::{
-    AttestedPasskey as DeviceKeyV4, AuthenticationResult, CredentialID, Passkey as PasskeyV4,
+    AttestedPasskey as AttestedPasskeyV4, AuthenticationResult, CredentialID, Passkey as PasskeyV4,
 };
 
 use super::accountpolicy::ResolvedAccountPolicy;
@@ -57,7 +57,7 @@ pub struct Account {
     pub groups: Vec<Group>,
     pub primary: Option<Credential>,
     pub passkeys: BTreeMap<Uuid, (String, PasskeyV4)>,
-    pub devicekeys: BTreeMap<Uuid, (String, DeviceKeyV4)>,
+    pub attested_passkeys: BTreeMap<Uuid, (String, AttestedPasskeyV4)>,
     pub valid_from: Option<OffsetDateTime>,
     pub expire: Option<OffsetDateTime>,
     pub radius_secret: Option<String>,
@@ -106,8 +106,8 @@ macro_rules! try_from_entry {
             .cloned()
             .unwrap_or_default();
 
-        let devicekeys = $value
-            .get_ava_devicekeys(Attribute::DeviceKeys)
+        let attested_passkeys = $value
+            .get_ava_attestedpasskeys(Attribute::AttestedPasskeys)
             .cloned()
             .unwrap_or_default();
 
@@ -206,7 +206,7 @@ macro_rules! try_from_entry {
             groups,
             primary,
             passkeys,
-            devicekeys,
+            attested_passkeys,
             valid_from,
             expire,
             radius_secret,
@@ -522,6 +522,21 @@ impl Account {
             }
         });
 
+        // Is it an attested passkey?
+        self.attested_passkeys.iter_mut().for_each(|(u, (t, k))| {
+            if let Some(true) = k.update_credential(auth_result) {
+                ml.push(Modify::Removed(
+                    Attribute::AttestedPasskeys.into(),
+                    PartialValue::AttestedPasskey(*u),
+                ));
+
+                ml.push(Modify::Present(
+                    Attribute::AttestedPasskeys.into(),
+                    Value::AttestedPasskey(*u, t.clone(), k.clone()),
+                ));
+            }
+        });
+
         if ml.is_empty() {
             Ok(None)
         } else {
@@ -641,6 +656,8 @@ impl Account {
                         true
                     }
                     (SessionState::RevokedAt(_), _) => {
+                        // William, if you have added a new type of credential, and end up here, you
+                        // need to look at session consistency plugin.
                         security_info!("Session has been revoked");
                         false
                     }

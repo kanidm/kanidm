@@ -8,10 +8,10 @@ use openssl::ec::EcKey;
 use openssl::pkey::Private;
 use openssl::pkey::Public;
 use smolset::SmolSet;
-use time::OffsetDateTime;
-// use std::fmt::Debug;
 use sshkey_attest::proto::PublicKey as SshPublicKey;
-use webauthn_rs::prelude::AttestedPasskey as DeviceKeyV4;
+use time::OffsetDateTime;
+use webauthn_rs::prelude::AttestationCaList;
+use webauthn_rs::prelude::AttestedPasskey as AttestedPasskeyV4;
 use webauthn_rs::prelude::Passkey as PasskeyV4;
 
 use kanidm_proto::v1::Filter as ProtoFilter;
@@ -30,8 +30,8 @@ pub use self::binary::{ValueSetPrivateBinary, ValueSetPublicBinary};
 pub use self::bool::ValueSetBool;
 pub use self::cid::ValueSetCid;
 pub use self::cred::{
-    ValueSetCredential, ValueSetCredentialType, ValueSetDeviceKey, ValueSetIntentToken,
-    ValueSetPasskey,
+    ValueSetAttestedPasskey, ValueSetCredential, ValueSetCredentialType, ValueSetIntentToken,
+    ValueSetPasskey, ValueSetWebauthnAttestationCaList,
 };
 pub use self::datetime::ValueSetDateTime;
 pub use self::eckey::ValueSetEcKeyPrivate;
@@ -355,7 +355,12 @@ pub trait ValueSetT: std::fmt::Debug + DynClone {
         None
     }
 
-    fn as_devicekey_map(&self) -> Option<&BTreeMap<Uuid, (String, DeviceKeyV4)>> {
+    fn as_attestedpasskey_map(&self) -> Option<&BTreeMap<Uuid, (String, AttestedPasskeyV4)>> {
+        debug_assert!(false);
+        None
+    }
+
+    fn as_webauthn_attestation_ca_list(&self) -> Option<&AttestationCaList> {
         debug_assert!(false);
         None
     }
@@ -503,11 +508,6 @@ pub trait ValueSetT: std::fmt::Debug + DynClone {
     }
 
     fn to_passkey_single(&self) -> Option<&PasskeyV4> {
-        debug_assert!(false);
-        None
-    }
-
-    fn to_devicekey_single(&self) -> Option<&DeviceKeyV4> {
         debug_assert!(false);
         None
     }
@@ -668,9 +668,10 @@ pub fn from_result_value_iter(
         Value::EcKeyPrivate(k) => ValueSetEcKeyPrivate::new(&k),
         Value::Image(imagevalue) => image::ValueSetImage::new(imagevalue),
         Value::CredentialType(c) => ValueSetCredentialType::new(c),
-        Value::PhoneNumber(_, _)
+        Value::WebauthnAttestationCaList(_)
+        | Value::PhoneNumber(_, _)
         | Value::Passkey(_, _, _)
-        | Value::DeviceKey(_, _, _)
+        | Value::AttestedPasskey(_, _, _)
         | Value::TotpSecret(_, _)
         | Value::Session(_, _)
         | Value::ApiToken(_, _)
@@ -724,7 +725,7 @@ pub fn from_value_iter(mut iter: impl Iterator<Item = Value>) -> Result<ValueSet
         Value::IntentToken(u, s) => ValueSetIntentToken::new(u, s),
         Value::EmailAddress(a, _) => ValueSetEmailAddress::new(a),
         Value::Passkey(u, t, k) => ValueSetPasskey::new(u, t, k),
-        Value::DeviceKey(u, t, k) => ValueSetDeviceKey::new(u, t, k),
+        Value::AttestedPasskey(u, t, k) => ValueSetAttestedPasskey::new(u, t, k),
         Value::JwsKeyEs256(k) => ValueSetJwsKeyEs256::new(k),
         Value::JwsKeyRs256(k) => ValueSetJwsKeyRs256::new(k),
         Value::Session(u, m) => ValueSetSession::new(u, m),
@@ -736,6 +737,9 @@ pub fn from_value_iter(mut iter: impl Iterator<Item = Value>) -> Result<ValueSet
         Value::EcKeyPrivate(k) => ValueSetEcKeyPrivate::new(&k),
         Value::Image(imagevalue) => image::ValueSetImage::new(imagevalue),
         Value::CredentialType(c) => ValueSetCredentialType::new(c),
+        Value::WebauthnAttestationCaList(ca_list) => {
+            ValueSetWebauthnAttestationCaList::new(ca_list)
+        }
         Value::PhoneNumber(_, _) => {
             debug_assert!(false);
             return Err(OperationError::InvalidValueState);
@@ -777,7 +781,7 @@ pub fn from_db_valueset_v2(dbvs: DbValueSetV2) -> Result<ValueSet, OperationErro
         DbValueSetV2::IntentToken(set) => ValueSetIntentToken::from_dbvs2(set),
         DbValueSetV2::EmailAddress(primary, set) => ValueSetEmailAddress::from_dbvs2(primary, set),
         DbValueSetV2::Passkey(set) => ValueSetPasskey::from_dbvs2(set),
-        DbValueSetV2::DeviceKey(set) => ValueSetDeviceKey::from_dbvs2(set),
+        DbValueSetV2::AttestedPasskey(set) => ValueSetAttestedPasskey::from_dbvs2(set),
         DbValueSetV2::Session(set) => ValueSetSession::from_dbvs2(set),
         DbValueSetV2::ApiToken(set) => ValueSetApiToken::from_dbvs2(set),
         DbValueSetV2::Oauth2Session(set) => ValueSetOauth2Session::from_dbvs2(set),
@@ -793,6 +797,9 @@ pub fn from_db_valueset_v2(dbvs: DbValueSetV2) -> Result<ValueSet, OperationErro
         }
         DbValueSetV2::Image(set) => ValueSetImage::from_dbvs2(&set),
         DbValueSetV2::CredentialType(set) => ValueSetCredentialType::from_dbvs2(set),
+        DbValueSetV2::WebauthnAttestationCaList { ca_list } => {
+            ValueSetWebauthnAttestationCaList::from_dbvs2(ca_list)
+        }
     }
 }
 
@@ -823,7 +830,7 @@ pub fn from_repl_v1(rv1: &ReplAttrV1) -> Result<ValueSet, OperationError> {
         ReplAttrV1::Credential { set } => ValueSetCredential::from_repl_v1(set),
         ReplAttrV1::IntentToken { set } => ValueSetIntentToken::from_repl_v1(set),
         ReplAttrV1::Passkey { set } => ValueSetPasskey::from_repl_v1(set),
-        ReplAttrV1::DeviceKey { set } => ValueSetDeviceKey::from_repl_v1(set),
+        ReplAttrV1::AttestedPasskey { set } => ValueSetAttestedPasskey::from_repl_v1(set),
         ReplAttrV1::DateTime { set } => ValueSetDateTime::from_repl_v1(set),
         ReplAttrV1::Url { set } => ValueSetUrl::from_repl_v1(set),
         ReplAttrV1::NsUniqueId { set } => ValueSetNsUniqueId::from_repl_v1(set),
@@ -839,5 +846,8 @@ pub fn from_repl_v1(rv1: &ReplAttrV1) -> Result<ValueSet, OperationError> {
         ReplAttrV1::EcKeyPrivate { key } => ValueSetEcKeyPrivate::from_repl_v1(key),
         ReplAttrV1::Image { set } => ValueSetImage::from_repl_v1(set),
         ReplAttrV1::CredentialType { set } => ValueSetCredentialType::from_repl_v1(set),
+        ReplAttrV1::WebauthnAttestationCaList { ca_list } => {
+            ValueSetWebauthnAttestationCaList::from_repl_v1(ca_list)
+        }
     }
 }
