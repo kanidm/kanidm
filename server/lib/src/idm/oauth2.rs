@@ -1182,7 +1182,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         Ok(AccessTokenResponse {
             access_token,
-            token_type: "bearer".to_string(),
+            token_type: "Bearer".to_string(),
             expires_in,
             refresh_token: Some(refresh_token),
             scope,
@@ -2428,7 +2428,7 @@ mod tests {
             .expect("Failed to perform OAuth2 token exchange");
 
         // 🎉 We got a token! In the future we can then check introspection from this point.
-        assert!(token_response.token_type == "bearer");
+        assert!(token_response.token_type == "Bearer");
 
         assert!(idms_prox_write.commit().is_ok());
     }
@@ -2494,7 +2494,7 @@ mod tests {
             .expect("Failed to perform OAuth2 token exchange");
 
         // 🎉 We got a token! In the future we can then check introspection from this point.
-        assert!(token_response.token_type == "bearer");
+        assert!(token_response.token_type == "Bearer");
 
         assert!(idms_prox_write.commit().is_ok());
     }
@@ -3574,7 +3574,7 @@ mod tests {
             .expect("Failed to perform OAuth2 token exchange");
 
         // 🎉 We got a token!
-        assert!(token_response.token_type == "bearer");
+        assert!(token_response.token_type == "Bearer");
 
         let id_token = token_response.id_token.expect("No id_token in response!");
         let access_token = token_response.access_token;
@@ -4013,7 +4013,7 @@ mod tests {
             .expect("Failed to perform OAuth2 token exchange");
 
         // 🎉 We got a token!
-        assert!(token_response.token_type == "bearer");
+        assert!(token_response.token_type == "Bearer");
         let id_token = token_response.id_token.expect("No id_token in response!");
 
         let jws_validator =
