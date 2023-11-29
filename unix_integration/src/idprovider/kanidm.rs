@@ -196,6 +196,7 @@ impl IdProvider for KanidmProvider {
         _account_id: &str,
         _token: Option<&UserToken>,
         _tpm: &mut (dyn tpm::Tpm + Send),
+        _machine_key: &tpm::MachineKey,
     ) -> Result<(AuthRequest, AuthCredHandler), IdpError> {
         // Not sure that I need to do much here?
         Ok((AuthRequest::Password, AuthCredHandler::Password))
@@ -207,6 +208,7 @@ impl IdProvider for KanidmProvider {
         cred_handler: &mut AuthCredHandler,
         pam_next_req: PamAuthRequest,
         _tpm: &mut (dyn tpm::Tpm + Send),
+        _machine_key: &tpm::MachineKey,
     ) -> Result<(AuthResult, AuthCacheAction), IdpError> {
         match (cred_handler, pam_next_req) {
             (AuthCredHandler::Password, PamAuthRequest::Password { cred }) => {

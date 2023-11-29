@@ -59,7 +59,7 @@ where
     // Generic / modular types.
     db: Db,
     hsm: Mutex<Box<dyn Tpm + Send>>,
-    // machine_key: MachineKey,
+    machine_key: MachineKey,
     hmac_key: HmacKey,
     client: I,
     // Types to update still.
@@ -168,7 +168,7 @@ where
         Ok(Resolver {
             db,
             hsm,
-            // machine_key,
+            machine_key,
             hmac_key,
             client,
             state: Mutex::new(CacheState::OfflineNextCheck(SystemTime::now())),
@@ -878,7 +878,12 @@ where
         let maybe_err = if online_at_init {
             let mut hsm_lock = self.hsm.lock().await;
             self.client
-                .unix_user_online_auth_init(account_id, token.as_ref(), &mut **hsm_lock.deref_mut())
+                .unix_user_online_auth_init(
+                    account_id,
+                    token.as_ref(),
+                    &mut **hsm_lock.deref_mut(),
+                    &self.machine_key,
+                )
                 .await
         } else {
             // Can the auth proceed offline?
@@ -942,6 +947,7 @@ where
                         cred_handler,
                         pam_next_req,
                         &mut **hsm_lock.deref_mut(),
+                        &self.machine_key,
                     )
                     .await;
 
