@@ -9,10 +9,10 @@ projects can come in different forms so I'll answer to a few of them:
 
 ## Is the library in Rust?
 
-If it's not in Rust, it's not ellegible for inclusion. There is a single exception today (rlm
+If it's not in Rust, it's not eligible for inclusion. There is a single exception today (rlm
 python) but it's very likely this will also be removed in the future. Keeping a single language
 helps with testing, but also makes the project more accessible and consistent to developers.
-Additionally, features exist in Rust that help to improve quality of the project from development to
+Additionally, features exist in Rust that help to improve the quality of the project from development to
 production.
 
 ## Is the project going to create a microservice like architecture?
@@ -40,7 +40,7 @@ communicating to a real server. Many developer choices have already been made to
 is the most important aspect of the project to ensure that every feature is high quality and
 reliable.
 
-Addition of extra projects or dependencies, would violate this principle and lead to a situation
+The addition of extra projects or dependencies, would violate this principle and lead to a situation
 where it would not be possible to effectively test for all developers.
 
 ## Why don't you use Raft/Etcd/MongoDB/Other to solve replication?
@@ -53,28 +53,28 @@ technologies do solve problems, but they are not the problems in Kanidm.
 CAP theorem states that in a database you must choose only two of the three possible elements:
 
 - Consistency - All servers in a topology see the same data at all times
-- Availability - All servers in a a topology can accept write operations at all times
+- Availability - All servers in a topology can accept write operations at all times
 - Partitioning - In the case of a network separation in the topology, all systems can continue to
   process read operations
 
 Many protocols like Raft or Etcd are databases that provide PC guarantees. They guarantee that they
 are always consistent, and can always be read in the face of partitioning, but to accept a write,
-they must not be experiencing a partitioning event. Generally this is achieved by the fact that
+they must not be experiencing a partitioning event. Generally, this is achieved by the fact that
 these systems elect a single node to process all operations, and then re-elect a new node in the
 case of partitioning events. The elections will fail if a quorum is not met disallowing writes
 throughout the topology.
 
-This doesn't work for Authentication systems, and global scale databases. As you introduce
+This doesn't work for Authentication systems and global scale databases. As you introduce
 non-negligible network latency, the processing of write operations will decrease in these systems.
 This is why Google's Spanner is a PA system.
 
 PA systems are also considered to be "eventually consistent". All nodes can provide reads and writes
 at all times, but during a network partitioning or after a write there is a delay for all nodes to
-arrive at a consistent database state. A key element is that the nodes perform an consistency
+arrive at a consistent database state. A key element is that the nodes perform a consistency
 operation that uses application aware rules to allow all servers to arrive at the same state
 _without_ communication between the nodes.
 
-## Update Resolutionn
+## Update Resolution
 
 Many databases do exist that are PA, such as CouchDB or MongoDB. However, they often do not have the
 properties required in update resolution that is required for Kanidm.
@@ -93,7 +93,7 @@ correctly increment/advance between the servers. However, Mongo is not aware of 
 would not be able to give the experience we desire. Mongo is a very good database, it's just not the
 right choice for Kanidm.
 
-Additionally, it's worth noting that most of these other database would violate the previous desires
+Additionally, it's worth noting that most of these other databases would violate the previous desires
 to keep the language as Rust and may require external configuration or daemons which may not be
 possible to test.
 
@@ -110,7 +110,7 @@ passwd: compat kanidm
 group: compat kanidm
 ```
 
-When a service like sudo, sshd, su etc. wants to authenticate someone, it opens the pam.d config of
+When a service like sudo, sshd, su, etc. wants to authenticate someone, it opens the pam.d config of
 that service, then performs authentication according to the modules defined in the pam.d config. For
 example, if you run `ls -al /etc/pam.d /usr/etc/pam.d` in SUSE, you can see the services and their
 respective pam.d config.
