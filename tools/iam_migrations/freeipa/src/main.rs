@@ -361,7 +361,6 @@ async fn run_sync(
         // LdapFilter::Equality(LDAP_ATTR_OBJECTCLASS.into(), "domain".to_string()),
         LdapFilter::And(vec![
             LdapFilter::Equality(LDAP_ATTR_OBJECTCLASS.into(), "person".to_string()),
-            LdapFilter::Equality(LDAP_ATTR_OBJECTCLASS.into(), "ipantuserattrs".to_string()),
             LdapFilter::Equality(LDAP_ATTR_OBJECTCLASS.into(), "posixaccount".to_string()),
         ]),
         LdapFilter::And(vec![
@@ -381,6 +380,15 @@ async fn run_sync(
             LdapFilter::Not(Box::new(LdapFilter::Equality(
                 LDAP_ATTR_CN.into(),
                 "ipausers".to_string(),
+            ))),
+            // Ignore editors/trust admins
+            LdapFilter::Not(Box::new(LdapFilter::Equality(
+                LDAP_ATTR_CN.into(),
+                "editors".to_string(),
+            ))),
+            LdapFilter::Not(Box::new(LdapFilter::Equality(
+                LDAP_ATTR_CN.into(),
+                "trust admins".to_string(),
             ))),
         ]),
         // Fetch TOTP's so we know when/if they change.
@@ -785,6 +793,7 @@ fn ipa_to_scim_entry(
         .attrs
         .get(LDAP_ATTR_OBJECTCLASS)
         .ok_or_else(|| {
+            debug!(?sync_entry);
             error!("Invalid entry - no object class {}", dn);
         })?;
 
@@ -823,14 +832,16 @@ fn ipa_to_scim_entry(
                 error!("Missing required attribute {}", Attribute::Cn);
             })?;
 
+        // There are some installs that incorrectly assign this to a shared
+        // group.
         let gidnumber = if let Some(number) = entry_config.map_gidnumber {
             Some(number)
         } else {
             entry
-                .remove_ava_single(Attribute::GidNumber.as_ref())
-                .map(|gid| {
-                    u32::from_str(&gid).map_err(|_| {
-                        error!("Invalid {}", Attribute::GidNumber);
+                .remove_ava_single(Attribute::UidNumber.as_ref())
+                .map(|uid| {
+                    u32::from_str(&uid).map_err(|_| {
+                        error!("Invalid {}", Attribute::UidNumber);
                     })
                 })
                 .transpose()?
@@ -887,6 +898,23 @@ fn ipa_to_scim_entry(
             })
             .unwrap_or_default();
 
+        let account_disabled: bool = entry
+            .remove_ava(Attribute::NsAccountLock.as_ref())
+            .map(|set| {
+                set.into_iter()
+                    .any(|value| value != "FALSE" && value != "false")
+            })
+            .unwrap_or_default();
+
+        // Account is not valid
+        let account_expire = if account_disabled {
+            Some(chrono::DateTime::UNIX_EPOCH.to_rfc3339())
+        } else {
+            None
+        };
+
+        let account_valid_from = None;
+
         let login_shell = entry.remove_ava_single(Attribute::LoginShell.as_ref());
         let external_id = Some(entry.dn);
 
@@ -902,6 +930,8 @@ fn ipa_to_scim_entry(
                 login_shell,
                 mail,
                 ssh_publickey,
+                account_expire,
+                account_valid_from,
             }
             .into(),
         ))

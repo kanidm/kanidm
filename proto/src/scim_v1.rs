@@ -9,8 +9,8 @@ pub use scim_proto::user::MultiValueAttr;
 use scim_proto::*;
 
 use crate::constants::{
-    ATTR_DESCRIPTION, ATTR_DISPLAYNAME, ATTR_GIDNUMBER, ATTR_LOGINSHELL, ATTR_MAIL, ATTR_MEMBER,
-    ATTR_NAME, ATTR_SSH_PUBLICKEY,
+    ATTR_ACCOUNT_EXPIRE, ATTR_ACCOUNT_VALID_FROM, ATTR_DESCRIPTION, ATTR_DISPLAYNAME,
+    ATTR_GIDNUMBER, ATTR_LOGINSHELL, ATTR_MAIL, ATTR_MEMBER, ATTR_NAME, ATTR_SSH_PUBLICKEY,
 };
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, ToSchema)]
@@ -142,6 +142,8 @@ pub struct ScimSyncPerson {
     pub login_shell: Option<String>,
     pub mail: Vec<MultiValueAttr>,
     pub ssh_publickey: Vec<ScimSshPubKey>,
+    pub account_valid_from: Option<String>,
+    pub account_expire: Option<String>,
 }
 
 // Need to allow this because clippy is broken and doesn't realise scimentry is out of crate
@@ -160,6 +162,8 @@ impl Into<ScimEntry> for ScimSyncPerson {
             login_shell,
             mail,
             ssh_publickey,
+            account_valid_from,
+            account_expire,
         } = self;
 
         let schemas = if gidnumber.is_some() {
@@ -185,6 +189,8 @@ impl Into<ScimEntry> for ScimSyncPerson {
         set_option_string!(attrs, ATTR_LOGINSHELL, login_shell);
         set_multi_complex!(attrs, ATTR_MAIL, mail);
         set_multi_complex!(attrs, ATTR_SSH_PUBLICKEY, ssh_publickey); // with the underscore
+        set_option_string!(attrs, ATTR_ACCOUNT_EXPIRE, account_expire);
+        set_option_string!(attrs, ATTR_ACCOUNT_VALID_FROM, account_valid_from);
 
         ScimEntry {
             schemas,

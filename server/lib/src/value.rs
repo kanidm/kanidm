@@ -1880,6 +1880,8 @@ impl Value {
                 "value contains invalid whitespace chars forbidden by \"{}\"",
                 *SINGLELINE_RE
             );
+            // Trace only, could be an injection attack of some kind.
+            trace!(?s, "Invalid whitespace");
             false
         }
     }
@@ -1888,6 +1890,8 @@ impl Value {
         // Look for and prevent certain types of string escapes and injections.
         if UNICODE_CONTROL_RE.is_match(s) {
             error!("value contains invalid unicode control character",);
+            // Trace only, could be an injection attack of some kind.
+            trace!(?s, "Invalid Uncode Control");
             false
         } else {
             true

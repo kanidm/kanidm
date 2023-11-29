@@ -1119,6 +1119,20 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 }
                 Ok(vs)
             }
+            (
+                SyntaxType::DateTime,
+                false,
+                ScimAttr::SingleSimple(ScimSimpleAttr::String(value)),
+            ) => {
+                Value::new_datetime_s(value)
+                    .map(|v| vec![v])
+                    .ok_or_else(|| {
+                        error!("Invalid value attribute - must be scim simple string with rfc3339 formatted datetime");
+                        OperationError::InvalidAttribute(format!(
+                            "value must be scim simple string with rfc3339 formatted datetime - {scim_attr_name}"
+                        ))
+                    })
+            }
             (syn, mv, sa) => {
                 error!(?syn, ?mv, ?sa, "Unsupported scim attribute conversion. This may be a syntax error in your import, or a missing feature in Kanidm.");
                 Err(OperationError::InvalidAttribute(format!(
@@ -3287,7 +3301,9 @@ mod tests {
       "gidnumber": 12345,
       "loginshell": "/bin/sh",
       "name": "testuser",
-      "password_import": "ipaNTHash: iEb36u6PsRetBr3YMLdYbA"
+      "password_import": "ipaNTHash: iEb36u6PsRetBr3YMLdYbA",
+      "account_valid_from": "2021-11-28T04:57:55Z",
+      "account_expire": "2023-11-28T04:57:55Z"
     },
     {
       "schemas": [

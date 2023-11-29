@@ -8,7 +8,7 @@
 #![deny(clippy::await_holding_lock)]
 #![deny(clippy::needless_pass_by_value)]
 #![deny(clippy::trivially_copy_pass_by_ref)]
-#![allow(clippy::unreachable)]
+#![deny(clippy::unreachable)]
 
 use argon2::{Algorithm, Argon2, Params, PasswordHash, Version};
 use base64::engine::GeneralPurpose;
@@ -27,7 +27,7 @@ use openssl::error::ErrorStack as OpenSSLErrorStack;
 use openssl::hash::{self, MessageDigest};
 use openssl::nid::Nid;
 use openssl::pkcs5::pbkdf2_hmac;
-use openssl::sha::Sha512;
+use openssl::sha::{Sha1, Sha256, Sha512};
 
 use kanidm_hsm_crypto::{HmacKey, Tpm};
 
@@ -48,8 +48,10 @@ const PBKDF2_KEY_LEN: usize = 64;
 const PBKDF2_MIN_NIST_KEY_LEN: usize = 32;
 const PBKDF2_SHA1_MIN_KEY_LEN: usize = 19;
 
-const DS_SSHA512_SALT_LEN: usize = 8;
-const DS_SSHA512_HASH_LEN: usize = 64;
+const DS_SHA_SALT_LEN: usize = 8;
+const DS_SHA1_HASH_LEN: usize = 20;
+const DS_SHA256_HASH_LEN: usize = 32;
+const DS_SHA512_HASH_LEN: usize = 64;
 
 // Taken from the argon2 library and rfc 9106
 const ARGON2_VERSION: u32 = 19;
@@ -122,6 +124,11 @@ pub enum DbPasswordV1 {
     PBKDF2(usize, Vec<u8>, Vec<u8>),
     PBKDF2_SHA1(usize, Vec<u8>, Vec<u8>),
     PBKDF2_SHA512(usize, Vec<u8>, Vec<u8>),
+    SHA1(Vec<u8>),
+    SSHA1(Vec<u8>, Vec<u8>),
+    SHA256(Vec<u8>),
+    SSHA256(Vec<u8>, Vec<u8>),
+    SHA512(Vec<u8>),
     SSHA512(Vec<u8>, Vec<u8>),
     NT_MD4(Vec<u8>),
 }
@@ -160,6 +167,23 @@ pub enum ReplPasswordV1 {
         salt: Base64UrlSafeData,
         hash: Base64UrlSafeData,
     },
+    SHA1 {
+        hash: Base64UrlSafeData,
+    },
+    SSHA1 {
+        salt: Base64UrlSafeData,
+        hash: Base64UrlSafeData,
+    },
+    SHA256 {
+        hash: Base64UrlSafeData,
+    },
+    SSHA256 {
+        salt: Base64UrlSafeData,
+        hash: Base64UrlSafeData,
+    },
+    SHA512 {
+        hash: Base64UrlSafeData,
+    },
     SSHA512 {
         salt: Base64UrlSafeData,
         hash: Base64UrlSafeData,
@@ -177,6 +201,11 @@ impl fmt::Debug for DbPasswordV1 {
             DbPasswordV1::PBKDF2(_, _, _) => write!(f, "PBKDF2"),
             DbPasswordV1::PBKDF2_SHA1(_, _, _) => write!(f, "PBKDF2_SHA1"),
             DbPasswordV1::PBKDF2_SHA512(_, _, _) => write!(f, "PBKDF2_SHA512"),
+            DbPasswordV1::SHA1(_) => write!(f, "SHA1"),
+            DbPasswordV1::SSHA1(_, _) => write!(f, "SSHA1"),
+            DbPasswordV1::SHA256(_) => write!(f, "SHA256"),
+            DbPasswordV1::SSHA256(_, _) => write!(f, "SSHA256"),
+            DbPasswordV1::SHA512(_) => write!(f, "SHA512"),
             DbPasswordV1::SSHA512(_, _) => write!(f, "SSHA512"),
             DbPasswordV1::NT_MD4(_) => write!(f, "NT_MD4"),
         }
@@ -386,6 +415,11 @@ enum Kdf {
     //           cost,   salt,    hash
     PBKDF2_SHA512(usize, Vec<u8>, Vec<u8>),
     //      salt     hash
+    SHA1(Vec<u8>),
+    SSHA1(Vec<u8>, Vec<u8>),
+    SHA256(Vec<u8>),
+    SSHA256(Vec<u8>, Vec<u8>),
+    SHA512(Vec<u8>),
     SSHA512(Vec<u8>, Vec<u8>),
     //     hash
     NT_MD4(Vec<u8>),
@@ -429,6 +463,21 @@ impl TryFrom<DbPasswordV1> for Password {
             }),
             DbPasswordV1::PBKDF2_SHA512(c, s, h) => Ok(Password {
                 material: Kdf::PBKDF2_SHA512(c, s, h),
+            }),
+            DbPasswordV1::SHA1(h) => Ok(Password {
+                material: Kdf::SHA1(h),
+            }),
+            DbPasswordV1::SSHA1(s, h) => Ok(Password {
+                material: Kdf::SSHA1(s, h),
+            }),
+            DbPasswordV1::SHA256(h) => Ok(Password {
+                material: Kdf::SHA256(h),
+            }),
+            DbPasswordV1::SSHA256(s, h) => Ok(Password {
+                material: Kdf::SSHA256(s, h),
+            }),
+            DbPasswordV1::SHA512(h) => Ok(Password {
+                material: Kdf::SHA512(h),
             }),
             DbPasswordV1::SSHA512(s, h) => Ok(Password {
                 material: Kdf::SSHA512(s, h),
@@ -487,6 +536,21 @@ impl TryFrom<&ReplPasswordV1> for Password {
             }),
             ReplPasswordV1::PBKDF2_SHA512 { cost, salt, hash } => Ok(Password {
                 material: Kdf::PBKDF2_SHA512(*cost, salt.0.clone(), hash.0.clone()),
+            }),
+            ReplPasswordV1::SHA1 { hash } => Ok(Password {
+                material: Kdf::SHA1(hash.0.clone()),
+            }),
+            ReplPasswordV1::SSHA1 { salt, hash } => Ok(Password {
+                material: Kdf::SSHA1(salt.0.clone(), hash.0.clone()),
+            }),
+            ReplPasswordV1::SHA256 { hash } => Ok(Password {
+                material: Kdf::SHA256(hash.0.clone()),
+            }),
+            ReplPasswordV1::SSHA256 { salt, hash } => Ok(Password {
+                material: Kdf::SSHA256(salt.0.clone(), hash.0.clone()),
+            }),
+            ReplPasswordV1::SHA512 { hash } => Ok(Password {
+                material: Kdf::SHA512(hash.0.clone()),
             }),
             ReplPasswordV1::SSHA512 { salt, hash } => Ok(Password {
                 material: Kdf::SSHA512(salt.0.clone(), hash.0.clone()),
@@ -556,12 +620,14 @@ impl TryFrom<&str> for Password {
             let nt_md4 = match value.split_once(' ') {
                 Some((_, v)) => v,
                 None => {
-                    unreachable!();
+                    return Err(());
                 }
             };
 
-            let h = base64::engine::general_purpose::STANDARD_NO_PAD
+            // Great work.
+            let h = base64::engine::general_purpose::URL_SAFE_NO_PAD
                 .decode(nt_md4)
+                .or_else(|_| base64::engine::general_purpose::URL_SAFE.decode(nt_md4))
                 .map_err(|_| ())?;
 
             return Ok(Password {
@@ -573,7 +639,7 @@ impl TryFrom<&str> for Password {
             let nt_md4 = match value.split_once(' ') {
                 Some((_, v)) => v,
                 None => {
-                    unreachable!();
+                    return Err(());
                 }
             };
 
@@ -584,12 +650,71 @@ impl TryFrom<&str> for Password {
         }
 
         // Test 389ds formats
+
+        if let Some(ds_ssha1) = value.strip_prefix("{SHA}") {
+            let h = general_purpose::STANDARD.decode(ds_ssha1).map_err(|_| ())?;
+            if h.len() != DS_SHA1_HASH_LEN {
+                return Err(());
+            }
+            return Ok(Password {
+                material: Kdf::SHA1(h.to_vec()),
+            });
+        }
+
+        if let Some(ds_ssha1) = value.strip_prefix("{SSHA}") {
+            let sh = general_purpose::STANDARD.decode(ds_ssha1).map_err(|_| ())?;
+            let (h, s) = sh.split_at(DS_SHA1_HASH_LEN);
+            if s.len() != DS_SHA_SALT_LEN {
+                return Err(());
+            }
+            return Ok(Password {
+                material: Kdf::SSHA1(s.to_vec(), h.to_vec()),
+            });
+        }
+
+        if let Some(ds_ssha256) = value.strip_prefix("{SHA256}") {
+            let h = general_purpose::STANDARD
+                .decode(ds_ssha256)
+                .map_err(|_| ())?;
+            if h.len() != DS_SHA256_HASH_LEN {
+                return Err(());
+            }
+            return Ok(Password {
+                material: Kdf::SHA256(h.to_vec()),
+            });
+        }
+
+        if let Some(ds_ssha256) = value.strip_prefix("{SSHA256}") {
+            let sh = general_purpose::STANDARD
+                .decode(ds_ssha256)
+                .map_err(|_| ())?;
+            let (h, s) = sh.split_at(DS_SHA256_HASH_LEN);
+            if s.len() != DS_SHA_SALT_LEN {
+                return Err(());
+            }
+            return Ok(Password {
+                material: Kdf::SSHA256(s.to_vec(), h.to_vec()),
+            });
+        }
+
+        if let Some(ds_ssha512) = value.strip_prefix("{SHA512}") {
+            let h = general_purpose::STANDARD
+                .decode(ds_ssha512)
+                .map_err(|_| ())?;
+            if h.len() != DS_SHA512_HASH_LEN {
+                return Err(());
+            }
+            return Ok(Password {
+                material: Kdf::SHA512(h.to_vec()),
+            });
+        }
+
         if let Some(ds_ssha512) = value.strip_prefix("{SSHA512}") {
             let sh = general_purpose::STANDARD
                 .decode(ds_ssha512)
                 .map_err(|_| ())?;
-            let (h, s) = sh.split_at(DS_SSHA512_HASH_LEN);
-            if s.len() != DS_SSHA512_SALT_LEN {
+            let (h, s) = sh.split_at(DS_SHA512_HASH_LEN);
+            if s.len() != DS_SHA_SALT_LEN {
                 return Err(());
             }
             return Ok(Password {
@@ -606,7 +731,7 @@ impl TryFrom<&str> for Password {
             let ol_pbkdf2 = match value.split_once('}') {
                 Some((_, v)) => v,
                 None => {
-                    unreachable!();
+                    return Err(());
                 }
             };
 
@@ -663,7 +788,7 @@ impl TryFrom<&str> for Password {
                 }
 
                 // Should be no way to get here!
-                unreachable!();
+                return Err(());
             } else {
                 warn!("oldap pbkdf2 found but invalid number of elements?");
             }
@@ -1025,6 +1150,38 @@ impl Password {
                 })
                 .map_err(|e| e.into())
             }
+            (Kdf::SHA1(key), _) => {
+                let mut hasher = Sha1::new();
+                hasher.update(cleartext.as_bytes());
+                let r = hasher.finish();
+                Ok(key == &(r.to_vec()))
+            }
+            (Kdf::SSHA1(salt, key), _) => {
+                let mut hasher = Sha1::new();
+                hasher.update(cleartext.as_bytes());
+                hasher.update(salt);
+                let r = hasher.finish();
+                Ok(key == &(r.to_vec()))
+            }
+            (Kdf::SHA256(key), _) => {
+                let mut hasher = Sha256::new();
+                hasher.update(cleartext.as_bytes());
+                let r = hasher.finish();
+                Ok(key == &(r.to_vec()))
+            }
+            (Kdf::SSHA256(salt, key), _) => {
+                let mut hasher = Sha256::new();
+                hasher.update(cleartext.as_bytes());
+                hasher.update(salt);
+                let r = hasher.finish();
+                Ok(key == &(r.to_vec()))
+            }
+            (Kdf::SHA512(key), _) => {
+                let mut hasher = Sha512::new();
+                hasher.update(cleartext.as_bytes());
+                let r = hasher.finish();
+                Ok(key == &(r.to_vec()))
+            }
             (Kdf::SSHA512(salt, key), _) => {
                 let mut hasher = Sha512::new();
                 hasher.update(cleartext.as_bytes());
@@ -1099,6 +1256,11 @@ impl Password {
             Kdf::PBKDF2_SHA512(cost, salt, hash) => {
                 DbPasswordV1::PBKDF2_SHA512(*cost, salt.clone(), hash.clone())
             }
+            Kdf::SHA1(hash) => DbPasswordV1::SHA1(hash.clone()),
+            Kdf::SSHA1(salt, hash) => DbPasswordV1::SSHA1(salt.clone(), hash.clone()),
+            Kdf::SHA256(hash) => DbPasswordV1::SHA256(hash.clone()),
+            Kdf::SSHA256(salt, hash) => DbPasswordV1::SSHA256(salt.clone(), hash.clone()),
+            Kdf::SHA512(hash) => DbPasswordV1::SHA512(hash.clone()),
             Kdf::SSHA512(salt, hash) => DbPasswordV1::SSHA512(salt.clone(), hash.clone()),
             Kdf::NT_MD4(hash) => DbPasswordV1::NT_MD4(hash.clone()),
         }
@@ -1151,6 +1313,23 @@ impl Password {
                 salt: salt.clone().into(),
                 hash: hash.clone().into(),
             },
+            Kdf::SHA1(hash) => ReplPasswordV1::SHA1 {
+                hash: hash.clone().into(),
+            },
+            Kdf::SSHA1(salt, hash) => ReplPasswordV1::SSHA1 {
+                salt: salt.clone().into(),
+                hash: hash.clone().into(),
+            },
+            Kdf::SHA256(hash) => ReplPasswordV1::SHA256 {
+                hash: hash.clone().into(),
+            },
+            Kdf::SSHA256(salt, hash) => ReplPasswordV1::SSHA256 {
+                salt: salt.clone().into(),
+                hash: hash.clone().into(),
+            },
+            Kdf::SHA512(hash) => ReplPasswordV1::SHA512 {
+                hash: hash.clone().into(),
+            },
             Kdf::SSHA512(salt, hash) => ReplPasswordV1::SSHA512 {
                 salt: salt.clone().into(),
                 hash: hash.clone().into(),
@@ -1187,6 +1366,11 @@ impl Password {
             Kdf::PBKDF2(_, _, _)
             | Kdf::PBKDF2_SHA512(_, _, _)
             | Kdf::PBKDF2_SHA1(_, _, _)
+            | Kdf::SHA1(_)
+            | Kdf::SSHA1(_, _)
+            | Kdf::SHA256(_)
+            | Kdf::SSHA256(_, _)
+            | Kdf::SHA512(_)
             | Kdf::SSHA512(_, _)
             | Kdf::NT_MD4(_) => true,
         }
@@ -1240,6 +1424,56 @@ mod tests {
         let im_pw = "pbkdf2_sha256$36000$xIEozuZVAoYm$uW1b35DUKyhvQAf1mBqMvoBDcqSD06juzyO/nmyV0+w=";
         let password = "eicieY7ahchaoCh0eeTa";
         let r = Password::try_from(im_pw).expect("Failed to parse");
+        assert!(r.verify(password).unwrap_or(false));
+    }
+
+    #[test]
+    fn test_password_from_ds_sha1() {
+        let im_pw = "{SHA}W6ph5Mm5Pz8GgiULbPgzG37mj9g=";
+        let password = "password";
+        let r = Password::try_from(im_pw).expect("Failed to parse");
+        // Known weak, require upgrade.
+        assert!(r.requires_upgrade());
+        assert!(r.verify(password).unwrap_or(false));
+    }
+
+    #[test]
+    fn test_password_from_ds_ssha1() {
+        let im_pw = "{SSHA}EyzbBiP4u4zxOrLpKTORI/RX3HC6TCTJtnVOCQ==";
+        let password = "password";
+        let r = Password::try_from(im_pw).expect("Failed to parse");
+        // Known weak, require upgrade.
+        assert!(r.requires_upgrade());
+        assert!(r.verify(password).unwrap_or(false));
+    }
+
+    #[test]
+    fn test_password_from_ds_sha256() {
+        let im_pw = "{SHA256}XohImNooBHFR0OVvjcYpJ3NgPQ1qq73WKhHvch0VQtg=";
+        let password = "password";
+        let r = Password::try_from(im_pw).expect("Failed to parse");
+        // Known weak, require upgrade.
+        assert!(r.requires_upgrade());
+        assert!(r.verify(password).unwrap_or(false));
+    }
+
+    #[test]
+    fn test_password_from_ds_ssha256() {
+        let im_pw = "{SSHA256}luYWfFJOZgxySTsJXHgIaCYww4yMpu6yest69j/wO5n5OycuHFV/GQ==";
+        let password = "password";
+        let r = Password::try_from(im_pw).expect("Failed to parse");
+        // Known weak, require upgrade.
+        assert!(r.requires_upgrade());
+        assert!(r.verify(password).unwrap_or(false));
+    }
+
+    #[test]
+    fn test_password_from_ds_sha512() {
+        let im_pw = "{SHA512}sQnzu7wkTrgkQZF+0G1hi5AI3Qmzvv0bXgc5THBqi7mAsdd4Xll27ASbRt9fEyavWi6m0QP9B8lThf+rDKy8hg==";
+        let password = "password";
+        let r = Password::try_from(im_pw).expect("Failed to parse");
+        // Known weak, require upgrade.
+        assert!(r.requires_upgrade());
         assert!(r.verify(password).unwrap_or(false));
     }
 
@@ -1343,6 +1577,9 @@ mod tests {
                 }
             }
         }
+
+        let im_pw = "ipaNTHash: pS43DjQLcUYhaNF_cd_Vhw==";
+        Password::try_from(im_pw).expect("Failed to parse");
     }
 
     #[test]

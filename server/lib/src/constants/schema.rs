@@ -273,7 +273,7 @@ pub static ref SCHEMA_ATTR_NSUNIQUEID: SchemaAttribute = SchemaAttribute {
 pub static ref SCHEMA_ATTR_ACCOUNT_EXPIRE: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_ACCOUNT_EXPIRE,
     name: Attribute::AccountExpire.into(),
-    description: "The datetime after which this accounnt no longer may authenticate.to_string().".to_string(),
+    description: "The datetime after which this account no longer may authenticate.to_string().".to_string(),
 
     sync_allowed: true,
     syntax: SyntaxType::DateTime,
