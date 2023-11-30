@@ -1,8 +1,8 @@
 use axum::extract::State;
+use axum::http::header::CONTENT_TYPE;
 use axum::response::IntoResponse;
 use axum::routing::get;
 use axum::{Extension, Router};
-use http::header::CONTENT_TYPE;
 use kanidmd_lib::status::StatusRequestEvent;
 
 use super::middleware::KOpId;

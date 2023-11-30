@@ -1,9 +1,9 @@
 //! Where we hide the error handling widgets
 //!
 
+use axum::http::header::ACCESS_CONTROL_ALLOW_ORIGIN;
+use axum::http::{HeaderValue, StatusCode};
 use axum::response::{IntoResponse, Response};
-use http::header::ACCESS_CONTROL_ALLOW_ORIGIN;
-use http::{HeaderValue, StatusCode};
 use kanidm_proto::v1::OperationError;
 use utoipa::ToSchema;
 

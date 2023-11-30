@@ -1,6 +1,6 @@
 use axum::{
     headers::{CacheControl, HeaderMapExt},
-    http::{self, Request},
+    http::{header, HeaderValue, Request},
     middleware::Next,
     response::Response,
 };
@@ -9,13 +9,12 @@ use axum::{
 pub async fn dont_cache_me<B>(request: Request<B>, next: Next<B>) -> Response {
     let mut response = next.run(request).await;
     response.headers_mut().insert(
-        http::header::CACHE_CONTROL,
-        http::HeaderValue::from_static("no-store no-cache max-age=0"),
+        header::CACHE_CONTROL,
+        HeaderValue::from_static("no-store no-cache max-age=0"),
     );
-    response.headers_mut().insert(
-        http::header::PRAGMA,
-        http::HeaderValue::from_static("no-cache"),
-    );
+    response
+        .headers_mut()
+        .insert(header::PRAGMA, HeaderValue::from_static("no-cache"));
 
     response
 }
@@ -28,10 +27,9 @@ pub async fn cache_me<B>(request: Request<B>, next: Next<B>) -> Response {
         .with_private();
 
     response.headers_mut().typed_insert(cache_header);
-    response.headers_mut().insert(
-        http::header::PRAGMA,
-        http::HeaderValue::from_static("no-cache"),
-    );
+    response
+        .headers_mut()
+        .insert(header::PRAGMA, HeaderValue::from_static("no-cache"));
 
     response
 }

@@ -1361,8 +1361,8 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
 
         let failed_scopes = req_scopes
             .iter()
+            .filter(|&s| !OAUTHSCOPE_RE.is_match(s))
             .cloned()
-            .filter(|s| !OAUTHSCOPE_RE.is_match(s))
             .collect::<Vec<String>>();
         if !failed_scopes.is_empty() {
             let requested_scopes_string = req_scopes
