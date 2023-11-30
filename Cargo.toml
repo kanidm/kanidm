@@ -61,12 +61,12 @@ repository = "https://github.com/kanidm/kanidm/"
 # scim_proto = { path = "../scim/proto" }
 # scim_proto = { git = "https://github.com/kanidm/scim.git"  }
 
-base64urlsafedata = { git = "https://github.com/kanidm/webauthn-rs.git", rev = "2218d2055c0c900ef57b398423eee5e8d5521f4c" }
-webauthn-authenticator-rs = { git = "https://github.com/kanidm/webauthn-rs.git", rev = "2218d2055c0c900ef57b398423eee5e8d5521f4c" }
-webauthn-rs = { git = "https://github.com/kanidm/webauthn-rs.git", rev = "2218d2055c0c900ef57b398423eee5e8d5521f4c" }
-webauthn-rs-core = { git = "https://github.com/kanidm/webauthn-rs.git", rev = "2218d2055c0c900ef57b398423eee5e8d5521f4c" }
-webauthn-rs-proto = { git = "https://github.com/kanidm/webauthn-rs.git", rev = "2218d2055c0c900ef57b398423eee5e8d5521f4c" }
-sshkey-attest = { git = "https://github.com/kanidm/webauthn-rs.git", rev = "2218d2055c0c900ef57b398423eee5e8d5521f4c" }
+base64urlsafedata = { git = "https://github.com/kanidm/webauthn-rs.git", rev = "ebd6ff03532fdc72c553bcd8d10b5dad334dcfc3" }
+webauthn-authenticator-rs = { git = "https://github.com/kanidm/webauthn-rs.git", rev = "ebd6ff03532fdc72c553bcd8d10b5dad334dcfc3" }
+webauthn-rs = { git = "https://github.com/kanidm/webauthn-rs.git", rev = "ebd6ff03532fdc72c553bcd8d10b5dad334dcfc3" }
+webauthn-rs-core = { git = "https://github.com/kanidm/webauthn-rs.git", rev = "ebd6ff03532fdc72c553bcd8d10b5dad334dcfc3" }
+webauthn-rs-proto = { git = "https://github.com/kanidm/webauthn-rs.git", rev = "ebd6ff03532fdc72c553bcd8d10b5dad334dcfc3" }
+sshkey-attest = { git = "https://github.com/kanidm/webauthn-rs.git", rev = "ebd6ff03532fdc72c553bcd8d10b5dad334dcfc3" }
 
 # base64urlsafedata = { path = "../webauthn-rs/base64urlsafedata" }
 # webauthn-authenticator-rs = { path = "../webauthn-rs/webauthn-authenticator-rs" }
