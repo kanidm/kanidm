@@ -98,7 +98,7 @@ pub trait IdProvider {
     async fn configure_hsm_keys<D: KeyStoreTxn + Send>(
         &self,
         _keystore: &mut D,
-        _tpm: &mut (dyn tpm::Tpm + Send),
+        _tpm: &mut tpm::BoxedDynTpm,
         _machine_key: &tpm::MachineKey,
     ) -> Result<(), IdpError> {
         Ok(())
@@ -117,21 +117,20 @@ pub trait IdProvider {
     }
     */
 
-    async fn provider_authenticate(&self, _tpm: &mut (dyn tpm::Tpm + Send))
-        -> Result<(), IdpError>;
+    async fn provider_authenticate(&self, _tpm: &mut tpm::BoxedDynTpm) -> Result<(), IdpError>;
 
     async fn unix_user_get(
         &self,
         _id: &Id,
         _token: Option<&UserToken>,
-        _tpm: &mut (dyn tpm::Tpm + Send),
+        _tpm: &mut tpm::BoxedDynTpm,
     ) -> Result<UserToken, IdpError>;
 
     async fn unix_user_online_auth_init(
         &self,
         _account_id: &str,
         _token: Option<&UserToken>,
-        _tpm: &mut (dyn tpm::Tpm + Send),
+        _tpm: &mut tpm::BoxedDynTpm,
         _machine_key: &tpm::MachineKey,
     ) -> Result<(AuthRequest, AuthCredHandler), IdpError>;
 
@@ -140,7 +139,7 @@ pub trait IdProvider {
         _account_id: &str,
         _cred_handler: &mut AuthCredHandler,
         _pam_next_req: PamAuthRequest,
-        _tpm: &mut (dyn tpm::Tpm + Send),
+        _tpm: &mut tpm::BoxedDynTpm,
         _machine_key: &tpm::MachineKey,
     ) -> Result<(AuthResult, AuthCacheAction), IdpError>;
 
@@ -177,6 +176,6 @@ pub trait IdProvider {
     async fn unix_group_get(
         &self,
         id: &Id,
-        _tpm: &mut (dyn tpm::Tpm + Send),
+        _tpm: &mut tpm::BoxedDynTpm,
     ) -> Result<GroupToken, IdpError>;
 }

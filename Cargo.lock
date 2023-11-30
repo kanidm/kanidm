@@ -2994,9 +2994,7 @@ dependencies = [
 
 [[package]]
 name = "kanidm-hsm-crypto"
-version = "0.1.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d325d5f7a3978ad1451f8bad2fdea1cc70a7b33dcaa8bbff7617a80d4c36c449"
+version = "0.1.4"
 dependencies = [
  "argon2",
  "hex",

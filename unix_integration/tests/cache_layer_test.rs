@@ -20,7 +20,7 @@ use kanidmd_testkit::{is_free_port, PORT_ALLOC};
 use tokio::task;
 use tracing::log::{debug, trace};
 
-use kanidm_hsm_crypto::{soft::SoftTpm, AuthValue, Tpm};
+use kanidm_hsm_crypto::{soft::SoftTpm, AuthValue, BoxedDynTpm, Tpm};
 
 const ADMIN_TEST_USER: &str = "admin";
 const ADMIN_TEST_PASSWORD: &str = "integration test admin password";
@@ -109,7 +109,7 @@ async fn setup_test(fix_fn: Fixture) -> (Resolver<KanidmProvider>, KanidmClient)
         .and_then(|_| dbtxn.commit())
         .expect("Unable to migrate cache db");
 
-    let mut hsm: Box<dyn Tpm + Send> = Box::new(SoftTpm::new());
+    let mut hsm = BoxedDynTpm::new(SoftTpm::new());
 
     let auth_value = AuthValue::ephemeral().unwrap();
 

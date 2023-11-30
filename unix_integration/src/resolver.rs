@@ -26,7 +26,7 @@ use crate::idprovider::interface::{
 use crate::unix_config::{HomeAttr, UidAttr};
 use crate::unix_proto::{HomeDirectoryInfo, NssGroup, NssUser, PamAuthRequest, PamAuthResponse};
 
-use kanidm_hsm_crypto::{HmacKey, MachineKey, Tpm};
+use kanidm_hsm_crypto::{BoxedDynTpm, HmacKey, MachineKey, Tpm};
 
 const NXCACHE_SIZE: NonZeroUsize = unsafe { NonZeroUsize::new_unchecked(128) };
 
@@ -58,7 +58,7 @@ where
 {
     // Generic / modular types.
     db: Db,
-    hsm: Mutex<Box<dyn Tpm + Send>>,
+    hsm: Mutex<BoxedDynTpm>,
     machine_key: MachineKey,
     hmac_key: HmacKey,
     client: I,
@@ -94,7 +94,7 @@ where
     pub async fn new(
         db: Db,
         client: I,
-        hsm: Box<dyn Tpm + Send>,
+        hsm: BoxedDynTpm,
         machine_key: MachineKey,
         // cache timeout
         timeout_seconds: u64,
@@ -146,8 +146,7 @@ where
         // let mut ks = KeyStore::new(&mut dbtxn);
 
         let result = client
-            // .configure_hsm_keys(&mut ks, &mut **hsm_lock.deref_mut(), &machine_key)
-            .configure_hsm_keys(&mut dbtxn, &mut **hsm_lock.deref_mut(), &machine_key)
+            .configure_hsm_keys(&mut dbtxn, hsm_lock.deref_mut(), &machine_key)
             .await;
 
         // drop(ks);
@@ -453,7 +452,7 @@ where
         let mut dbtxn = self.db.write().await;
         let mut hsm_txn = self.hsm.lock().await;
         dbtxn
-            .update_account_password(a_uuid, cred, &mut **hsm_txn, &self.hmac_key)
+            .update_account_password(a_uuid, cred, hsm_txn.deref_mut(), &self.hmac_key)
             .and_then(|x| dbtxn.commit().map(|_| x))
             .map_err(|_| ())
     }
@@ -462,7 +461,7 @@ where
         let mut dbtxn = self.db.write().await;
         let mut hsm_txn = self.hsm.lock().await;
         dbtxn
-            .check_account_password(a_uuid, cred, &mut **hsm_txn, &self.hmac_key)
+            .check_account_password(a_uuid, cred, hsm_txn.deref_mut(), &self.hmac_key)
             .and_then(|x| dbtxn.commit().map(|_| x))
             .map_err(|_| ())
     }
@@ -476,7 +475,7 @@ where
 
         let user_get_result = self
             .client
-            .unix_user_get(account_id, token.as_ref(), &mut **hsm_lock.deref_mut())
+            .unix_user_get(account_id, token.as_ref(), hsm_lock.deref_mut())
             .await;
 
         drop(hsm_lock);
@@ -535,7 +534,7 @@ where
 
         let group_get_result = self
             .client
-            .unix_group_get(grp_id, &mut **hsm_lock.deref_mut())
+            .unix_group_get(grp_id, hsm_lock.deref_mut())
             .await;
 
         drop(hsm_lock);
@@ -881,7 +880,7 @@ where
                 .unix_user_online_auth_init(
                     account_id,
                     token.as_ref(),
-                    &mut **hsm_lock.deref_mut(),
+                    hsm_lock.deref_mut(),
                     &self.machine_key,
                 )
                 .await
@@ -946,7 +945,7 @@ where
                         account_id,
                         cred_handler,
                         pam_next_req,
-                        &mut **hsm_lock.deref_mut(),
+                        hsm_lock.deref_mut(),
                         &self.machine_key,
                     )
                     .await;
@@ -1153,7 +1152,7 @@ where
 
                 let prov_auth_result = self
                     .client
-                    .provider_authenticate(&mut **hsm_lock.deref_mut())
+                    .provider_authenticate(hsm_lock.deref_mut())
                     .await;
 
                 drop(hsm_lock);

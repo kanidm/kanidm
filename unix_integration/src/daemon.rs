@@ -49,7 +49,7 @@ use tokio::sync::oneshot;
 use tokio::time;
 use tokio_util::codec::{Decoder, Encoder, Framed};
 
-use kanidm_hsm_crypto::{soft::SoftTpm, AuthValue, Tpm};
+use kanidm_hsm_crypto::{soft::SoftTpm, AuthValue, BoxedDynTpm, Tpm};
 
 use notify_debouncer_full::{new_debouncer, notify::RecursiveMode, notify::Watcher};
 
@@ -791,9 +791,9 @@ async fn main() -> ExitCode {
                 }
             };
 
-            let mut hsm: Box<dyn Tpm + Send> = match cfg.hsm_type {
+            let mut hsm: BoxedDynTpm = match cfg.hsm_type {
                 HsmType::Soft => {
-                    Box::new(SoftTpm::new())
+                    BoxedDynTpm::new(SoftTpm::new())
                 }
                 HsmType::Tpm => {
                     error!("TPM not supported ... yet");
