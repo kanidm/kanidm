@@ -1,6 +1,6 @@
 use axum::{
     headers::{authorization::Bearer, Authorization},
-    http::{header, HeaderValue, Request},
+    http::{HeaderValue, Request},
     middleware::Next,
     response::Response,
     TypedHeader,
@@ -43,9 +43,9 @@ pub async fn are_we_json_yet<B>(request: Request<B>, next: Next<B>) -> Response 
 
     if uri.starts_with("/v1") && response.status().is_success() {
         let headers = response.headers();
-        assert!(headers.contains_key(header::CONTENT_TYPE));
+        assert!(headers.contains_key(axum::http::header::CONTENT_TYPE));
         assert!(
-            headers.get(header::CONTENT_TYPE)
+            headers.get(axum::http::header::CONTENT_TYPE)
                 == Some(&HeaderValue::from_static(
                     kanidm_proto::constants::APPLICATION_JSON
                 ))
