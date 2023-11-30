@@ -1,10 +1,10 @@
 //! Builds a Progressive Web App Manifest page.
 
 use axum::extract::State;
+use axum::http::header::CONTENT_TYPE;
+use axum::http::HeaderValue;
 use axum::response::{IntoResponse, Response};
 use axum::Extension;
-use http::header::CONTENT_TYPE;
-use http::HeaderValue;
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 

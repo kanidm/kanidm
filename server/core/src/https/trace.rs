@@ -1,6 +1,6 @@
 //! Reimplementation of tower-http's DefaultMakeSpan that only runs at "INFO" level for our own needs.
 
-use http::Request;
+use axum::http::Request;
 use kanidm_proto::constants::KOPID;
 use sketching::event_dynamic_lvl;
 use tower_http::LatencyUnit;

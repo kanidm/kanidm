@@ -1,11 +1,10 @@
 use axum::{
     headers::{authorization::Bearer, Authorization},
-    http::{self, Request},
+    http::{header, HeaderValue, Request},
     middleware::Next,
     response::Response,
     TypedHeader,
 };
-use http::HeaderValue;
 use kanidm_proto::constants::{KOPID, KVERSION};
 use uuid::Uuid;
 pub(crate) mod caching;
@@ -44,9 +43,9 @@ pub async fn are_we_json_yet<B>(request: Request<B>, next: Next<B>) -> Response 
 
     if uri.starts_with("/v1") && response.status().is_success() {
         let headers = response.headers();
-        assert!(headers.contains_key(http::header::CONTENT_TYPE));
+        assert!(headers.contains_key(header::CONTENT_TYPE));
         assert!(
-            headers.get(http::header::CONTENT_TYPE)
+            headers.get(header::CONTENT_TYPE)
                 == Some(&HeaderValue::from_static(
                     kanidm_proto::constants::APPLICATION_JSON
                 ))
