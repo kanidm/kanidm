@@ -37,7 +37,7 @@ impl Encoder<ClientRequest> for ClientCodec {
             error!("socket encoding error -> {:?}", e);
             IoError::new(ErrorKind::Other, "JSON encode error")
         })?;
-        debug!("Attempting to send request -> {:?} ...", data);
+        debug!("Attempting to send request -> {:?} ...", msg);
         dst.put(data.as_slice());
         Ok(())
     }

@@ -61,6 +61,8 @@ async fn main() -> ExitCode {
                 return ExitCode::FAILURE;
             };
 
+            info!("Sending request for user {}", &account_id);
+
             let mut req = ClientRequest::PamAuthenticateInit(account_id.clone());
             loop {
                 match call_daemon(cfg.sock_path.as_str(), req, cfg.unix_sock_timeout).await {
@@ -76,7 +78,7 @@ async fn main() -> ExitCode {
                             break;
                         }
                         ClientResponse::PamAuthenticateStepResponse(PamAuthResponse::Unknown) => {
-                            // ClientResponse::PamStatus(None) => {
+                            debug!("User may need to be in allow_local_account_override");
                             println!("auth user unknown");
                             break;
                         }
