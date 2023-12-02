@@ -13,9 +13,14 @@ SupplementaryGroups=tss
 UMask=0027
 CacheDirectory=kanidm-unixd
 RuntimeDirectory=kanidm-unixd
+StateDirectory=kanidm-unixd
+
 
 Type=simple
 ExecStart=/usr/sbin/kanidm_unixd
+# auth going down is bad, but infinite speedlooping is worse
+Restart=always
+RestartSec=30
 
 # Implied by dynamic user.
 # ProtectHome=
