@@ -13,7 +13,7 @@
 use argon2::{Algorithm, Argon2, Params, PasswordHash, Version};
 use base64::engine::GeneralPurpose;
 use base64::{alphabet, Engine};
-use tracing::{debug, error, info, trace, warn};
+use tracing::{debug, error, trace, warn};
 
 use base64::engine::general_purpose;
 use base64urlsafedata::Base64UrlSafeData;
@@ -378,7 +378,7 @@ impl CryptoPolicy {
             pbkdf2_cost,
             argon2id_params,
         };
-        info!(pbkdf2_cost = %p.pbkdf2_cost, argon2id_m = %p.argon2id_params.m_cost(), argon2id_p = %p.argon2id_params.p_cost(), argon2id_t = %p.argon2id_params.t_cost(), );
+        debug!(pbkdf2_cost = %p.pbkdf2_cost, argon2id_m = %p.argon2id_params.m_cost(), argon2id_p = %p.argon2id_params.p_cost(), argon2id_t = %p.argon2id_params.t_cost(), );
         p
     }
 }
