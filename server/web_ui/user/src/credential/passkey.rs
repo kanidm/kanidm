@@ -8,7 +8,7 @@ use wasm_bindgen::UnwrapThrowExt;
 use wasm_bindgen_futures::JsFuture;
 use yew::prelude::*;
 
-use super::reset::{EventBusMsg, ModalProps};
+use super::reset::{EventBusMsg, PasskeyClass, PasskeyModalProps};
 
 use kanidmd_web_ui_shared::{do_request, utils, RequestMethod};
 pub struct PasskeyModalApp {
@@ -87,7 +87,9 @@ impl PasskeyModalApp {
                     emsg: "Invalid Passkey reg state response".to_string(),
                     kopid,
                 },
-                CURegState::Passkey(challenge) => Msg::ChallengeReady(challenge),
+                CURegState::AttestedPasskey(challenge) | CURegState::Passkey(challenge) => {
+                    Msg::ChallengeReady(challenge)
+                }
                 CURegState::None => Msg::Success,
             })
         } else {
@@ -99,7 +101,7 @@ impl PasskeyModalApp {
 
 impl Component for PasskeyModalApp {
     type Message = Msg;
-    type Properties = ModalProps;
+    type Properties = PasskeyModalProps;
 
     fn create(_ctx: &Context<Self>) -> Self {
         console::debug!("passkey modal create");
@@ -128,14 +130,13 @@ impl Component for PasskeyModalApp {
                     // Init a fetch to get the challenge.
                     let token_c = ctx.props().token.clone();
 
+                    let req = match &ctx.props().class {
+                        PasskeyClass::Any => CURequest::PasskeyFinish(label, rpkc),
+                        PasskeyClass::Attested => CURequest::AttestedPasskeyFinish(label, rpkc),
+                    };
+
                     ctx.link().send_future(async {
-                        match Self::submit_passkey_update(
-                            token_c,
-                            CURequest::PasskeyFinish(label, rpkc),
-                            cb,
-                        )
-                        .await
-                        {
+                        match Self::submit_passkey_update(token_c, req, cb).await {
                             Ok(v) => v,
                             Err(v) => v.into(),
                         }
@@ -152,8 +153,13 @@ impl Component for PasskeyModalApp {
                 // Init a fetch to get the challenge.
                 let token_c = ctx.props().token.clone();
 
+                let req = match &ctx.props().class {
+                    PasskeyClass::Any => CURequest::PasskeyInit,
+                    PasskeyClass::Attested => CURequest::AttestedPasskeyInit,
+                };
+
                 ctx.link().send_future(async {
-                    match Self::submit_passkey_update(token_c, CURequest::PasskeyInit, cb).await {
+                    match Self::submit_passkey_update(token_c, req, cb).await {
                         Ok(v) => v,
                         Err(v) => v.into(),
                     }
@@ -175,6 +181,9 @@ impl Component for PasskeyModalApp {
                         .navigator()
                         .credentials()
                         .create_with_options(&c_options)
+                        .map_err(|e| {
+                            console::error!(format!("error -> {:?}", e).as_str());
+                        })
                         .expect_throw("Unable to create promise");
                     let fut = JsFuture::from(promise);
 
@@ -248,16 +257,39 @@ impl Component for PasskeyModalApp {
                 }
             }
             State::ChallengeReady(_challenge) => {
+                let allowed_devices = ctx.props().allowed_devices.clone();
                 // This works around a bug in safari :(
                 html! {
-                    <button id="passkey-generate" type="button" class="btn btn-primary"
-                        onclick={
-                            ctx.link()
-                                .callback(move |_| {
-                                    Msg::CredentialCreate
-                                })
+                    <>
+                        {
+                            if let Some(allowed_devices) = allowed_devices {
+                                html! {
+                                    <>
+                                        <p>{ "The following devices are allowed to register" }</p>
+                                        <ul>
+                                        {
+                                            for allowed_devices.iter().map(|dev|
+                                                html!{
+                                                    <li> { dev } </li>
+                                                }
+                                            )
+                                        }
+                                        </ul>
+                                    </>
+                                }
+                            } else {
+                                html!{ <></> }
+                            }
                         }
-                    >{ "Begin Passkey Enrollment" }</button>
+                        <button id="passkey-generate" type="button" class="btn btn-primary"
+                            onclick={
+                                ctx.link()
+                                    .callback(move |_| {
+                                        Msg::CredentialCreate
+                                    })
+                            }
+                        >{ "Begin Passkey Enrollment" }</button>
+                    </>
                 }
             }
             State::CredentialReady(_) => {

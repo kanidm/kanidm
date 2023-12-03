@@ -64,7 +64,12 @@ impl SessionConsistency {
                 .chain(
                     entry.get_ava_passkeys(Attribute::PassKeys)
                         .iter()
-                        .flat_map(|pks| pks.keys().copied()  )
+                        .flat_map(|pks| pks.keys().copied())
+                )
+                .chain(
+                    entry.get_ava_attestedpasskeys(Attribute::AttestedPasskeys)
+                        .iter()
+                        .flat_map(|pks| pks.keys().copied())
                 )
                 .collect();
 

@@ -56,4 +56,16 @@ impl KanidmClient {
         )
         .await
     }
+
+    pub async fn group_account_policy_webauthn_attestation_set(
+        &self,
+        id: &str,
+        att_ca_list: &str,
+    ) -> Result<(), ClientError> {
+        self.perform_put_request(
+            &format!("/v1/group/{}/_attr/webauthn_attestation_ca_list", id),
+            vec![att_ca_list.to_string()],
+        )
+        .await
+    }
 }

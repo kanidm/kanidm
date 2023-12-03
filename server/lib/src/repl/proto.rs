@@ -11,7 +11,8 @@ use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 
 use webauthn_rs::prelude::{
-    AttestedPasskey as DeviceKeyV4, Passkey as PasskeyV4, SecurityKey as SecurityKeyV4,
+    AttestationCaList, AttestedPasskey as AttestedPasskeyV4, Passkey as PasskeyV4,
+    SecurityKey as SecurityKeyV4,
 };
 
 // Re-export this for our own usage.
@@ -156,6 +157,8 @@ pub enum ReplIntentTokenV1 {
         #[serde(default)]
         passkeys_can_edit: bool,
         #[serde(default)]
+        attested_passkeys_can_edit: bool,
+        #[serde(default)]
         unixcred_can_edit: bool,
         #[serde(default)]
         sshpubkey_can_edit: bool,
@@ -171,6 +174,8 @@ pub enum ReplIntentTokenV1 {
         primary_can_edit: bool,
         #[serde(default)]
         passkeys_can_edit: bool,
+        #[serde(default)]
+        attested_passkeys_can_edit: bool,
         #[serde(default)]
         unixcred_can_edit: bool,
         #[serde(default)]
@@ -212,15 +217,15 @@ impl PartialEq for ReplPasskeyV4V1 {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct ReplDeviceKeyV4V1 {
+pub struct ReplAttestedPasskeyV4V1 {
     pub uuid: Uuid,
     pub tag: String,
-    pub key: DeviceKeyV4,
+    pub key: AttestedPasskeyV4,
 }
 
-impl Eq for ReplDeviceKeyV4V1 {}
+impl Eq for ReplAttestedPasskeyV4V1 {}
 
-impl PartialEq for ReplDeviceKeyV4V1 {
+impl PartialEq for ReplAttestedPasskeyV4V1 {
     fn eq(&self, other: &Self) -> bool {
         self.uuid == other.uuid && self.key.cred_id() == other.key.cred_id()
     }
@@ -325,8 +330,8 @@ pub enum ReplAttrV1 {
     Passkey {
         set: Vec<ReplPasskeyV4V1>,
     },
-    DeviceKey {
-        set: Vec<ReplDeviceKeyV4V1>,
+    AttestedPasskey {
+        set: Vec<ReplAttestedPasskeyV4V1>,
     },
     DateTime {
         set: Vec<String>,
@@ -414,6 +419,9 @@ pub enum ReplAttrV1 {
     },
     CredentialType {
         set: Vec<u16>,
+    },
+    WebauthnAttestationCaList {
+        ca_list: AttestationCaList,
     },
 }
 

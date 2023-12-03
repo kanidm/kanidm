@@ -616,6 +616,8 @@ enum CUAction {
     Remove,
     Passkey,
     PasskeyRemove,
+    AttestedPasskey,
+    AttestedPasskeyRemove,
     End,
     Commit,
 }
@@ -638,6 +640,9 @@ remove (rm) - Remove only the password based credential
 -- Passkeys
 passkey (pk) - Add a new Passkey
 passkey remove (passkey rm, pkrm) - Remove a Passkey
+-- Attested Passkeys
+attested-passkey (apk) - Add a new Attested Passkey
+attested-passkey-remove (attested-passkey rm, apkrm) - Remove an Attested Passkey
 "#
         )
     }
@@ -660,6 +665,10 @@ impl FromStr for CUAction {
             "remove" | "rm" => Ok(CUAction::Remove),
             "passkey" | "pk" => Ok(CUAction::Passkey),
             "passkey remove" | "passkey rm" | "pkrm" => Ok(CUAction::PasskeyRemove),
+            "attested-passkey" | "apk" => Ok(CUAction::AttestedPasskey),
+            "attested-passkey remove" | "attested-passkey rm" | "apkrm" => {
+                Ok(CUAction::AttestedPasskeyRemove)
+            }
             _ => Err(()),
         }
     }
@@ -833,23 +842,66 @@ async fn totp_enroll_prompt(session_token: &CUSessionToken, client: &KanidmClien
     // Done!
 }
 
-async fn passkey_enroll_prompt(session_token: &CUSessionToken, client: &KanidmClient) {
-    let pk_reg = match client
-        .idm_account_credential_update_passkey_init(session_token)
-        .await
-    {
-        Ok(CUStatus {
-            mfaregstate: CURegState::Passkey(pk_reg),
-            ..
-        }) => pk_reg,
-        Ok(status) => {
-            debug!(?status);
-            eprintln!("An error occurred -> InvalidState");
-            return;
+#[derive(Clone, Copy)]
+enum PasskeyClass {
+    Any,
+    Attested,
+}
+
+impl fmt::Display for PasskeyClass {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            PasskeyClass::Any => write!(f, "Passkey"),
+            PasskeyClass::Attested => write!(f, "Attested Passkey"),
         }
-        Err(e) => {
-            eprintln!("An error occurred -> {:?}", e);
-            return;
+    }
+}
+
+async fn passkey_enroll_prompt(
+    session_token: &CUSessionToken,
+    client: &KanidmClient,
+    pk_class: PasskeyClass,
+) {
+    let pk_reg = match pk_class {
+        PasskeyClass::Any => {
+            match client
+                .idm_account_credential_update_passkey_init(session_token)
+                .await
+            {
+                Ok(CUStatus {
+                    mfaregstate: CURegState::Passkey(pk_reg),
+                    ..
+                }) => pk_reg,
+                Ok(status) => {
+                    debug!(?status);
+                    eprintln!("An error occurred -> InvalidState");
+                    return;
+                }
+                Err(e) => {
+                    eprintln!("An error occurred -> {:?}", e);
+                    return;
+                }
+            }
+        }
+        PasskeyClass::Attested => {
+            match client
+                .idm_account_credential_update_attested_passkey_init(session_token)
+                .await
+            {
+                Ok(CUStatus {
+                    mfaregstate: CURegState::AttestedPasskey(pk_reg),
+                    ..
+                }) => pk_reg,
+                Ok(status) => {
+                    debug!(?status);
+                    eprintln!("An error occurred -> InvalidState");
+                    return;
+                }
+                Err(e) => {
+                    eprintln!("An error occurred -> {:?}", e);
+                    return;
+                }
+            }
         }
     };
 
@@ -873,15 +925,108 @@ async fn passkey_enroll_prompt(session_token: &CUSessionToken, client: &KanidmCl
         .interact_text()
         .expect("Failed to interact with interactive session");
 
+    match pk_class {
+        PasskeyClass::Any => {
+            match client
+                .idm_account_credential_update_passkey_finish(session_token, label, rego)
+                .await
+            {
+                Ok(_) => println!("success"),
+                Err(e) => {
+                    eprintln!("An error occurred -> {:?}", e);
+                }
+            }
+        }
+        PasskeyClass::Attested => {
+            match client
+                .idm_account_credential_update_attested_passkey_finish(session_token, label, rego)
+                .await
+            {
+                Ok(_) => println!("success"),
+                Err(e) => {
+                    eprintln!("An error occurred -> {:?}", e);
+                }
+            }
+        }
+    }
+}
+
+async fn passkey_remove_prompt(
+    session_token: &CUSessionToken,
+    client: &KanidmClient,
+    pk_class: PasskeyClass,
+) {
+    // TODO: make this a scrollable selector with a "cancel" option as the default
     match client
-        .idm_account_credential_update_passkey_finish(session_token, label, rego)
+        .idm_account_credential_update_status(session_token)
         .await
     {
-        Ok(_) => println!("success"),
+        Ok(status) => match pk_class {
+            PasskeyClass::Any => {
+                if status.passkeys.is_empty() {
+                    println!("No passkeys are configured for this user");
+                    return;
+                }
+                println!("Current passkeys:");
+                for pk in status.passkeys {
+                    println!("  {} ({})", pk.tag, pk.uuid);
+                }
+            }
+            PasskeyClass::Attested => {
+                if status.attested_passkeys.is_empty() {
+                    println!("No attested passkeys are configured for this user");
+                    return;
+                }
+                println!("Current attested passkeys:");
+                for pk in status.attested_passkeys {
+                    println!("  {} ({})", pk.tag, pk.uuid);
+                }
+            }
+        },
         Err(e) => {
-            eprintln!("An error occurred -> {:?}", e);
+            eprintln!(
+                "An error occurred retrieving existing credentials -> {:?}",
+                e
+            );
         }
-    };
+    }
+
+    let uuid_s: String = Input::new()
+        .with_prompt("\nEnter the UUID of the Passkey to remove (blank to stop) # ")
+        .validate_with(|input: &String| -> Result<(), &str> {
+            if input.is_empty() || Uuid::parse_str(input).is_ok() {
+                Ok(())
+            } else {
+                Err("This is not a valid UUID")
+            }
+        })
+        .allow_empty(true)
+        .interact_text()
+        .expect("Failed to interact with interactive session");
+
+    // Remember, if it's NOT a valid uuid, it must have been empty as a termination.
+    if let Ok(uuid) = Uuid::parse_str(&uuid_s) {
+        let result = match pk_class {
+            PasskeyClass::Any => {
+                client
+                    .idm_account_credential_update_passkey_remove(session_token, uuid)
+                    .await
+            }
+            PasskeyClass::Attested => {
+                client
+                    .idm_account_credential_update_attested_passkey_remove(session_token, uuid)
+                    .await
+            }
+        };
+
+        if let Err(e) = result {
+            eprintln!("An error occurred -> {:?}", e);
+        } else {
+            println!("success");
+        }
+    } else {
+        println!("{}s were NOT changed", pk_class);
+    }
 }
 
 fn display_status(status: CUStatus) {
@@ -896,6 +1041,9 @@ fn display_status(status: CUStatus) {
         primary_state,
         passkeys,
         passkeys_state,
+        attested_passkeys,
+        attested_passkeys_state,
+        attested_passkeys_allowed_devices,
     } = status;
 
     println!("spn: {}", spn);
@@ -922,6 +1070,15 @@ fn display_status(status: CUStatus) {
             CURegWarning::PasskeyRequired => {
                 println!("Passkeys required");
             }
+            CURegWarning::AttestedPasskeyRequired => {
+                println!("Attested Passkeys required");
+            }
+            CURegWarning::AttestedResidentKeyRequired => {
+                println!("Attested Resident Keys required");
+            }
+            CURegWarning::WebauthnAttestationUnsatisfiable => {
+                println!("Attestation is unsatisfiable. Contact your administrator.");
+            }
             CURegWarning::Unsatisfiable => {
                 println!("Account policy is unsatisfiable. Contact your administrator.");
             }
@@ -936,6 +1093,13 @@ fn display_status(status: CUStatus) {
                 print!("{}", cred_detail);
             } else {
                 println!("  not set");
+            }
+        }
+        CUCredState::DeleteOnly => {
+            if let Some(cred_detail) = &primary {
+                print!("{}", cred_detail);
+            } else {
+                println!("  unable to modify - access denied");
             }
         }
         CUCredState::AccessDeny => {
@@ -957,11 +1121,54 @@ fn display_status(status: CUStatus) {
                 }
             }
         }
+        CUCredState::DeleteOnly => {
+            if passkeys.is_empty() {
+                println!("  unable to modify - access denied");
+            } else {
+                for pk in passkeys {
+                    println!("  {} ({})", pk.tag, pk.uuid);
+                }
+            }
+        }
         CUCredState::AccessDeny => {
             println!("  unable to modify - access denied");
         }
         CUCredState::PolicyDeny => {
             println!("  unable to modify - account policy denied");
+        }
+    }
+
+    println!("Attested Passkeys:");
+    match attested_passkeys_state {
+        CUCredState::Modifiable => {
+            if attested_passkeys.is_empty() {
+                println!("  not set");
+            } else {
+                for pk in attested_passkeys {
+                    println!("  {} ({})", pk.tag, pk.uuid);
+                }
+            }
+
+            println!("  --");
+            println!("  The following devices models are allowed by account policy");
+            for dev in attested_passkeys_allowed_devices {
+                println!("  - {}", dev);
+            }
+        }
+        CUCredState::DeleteOnly => {
+            if attested_passkeys.is_empty() {
+                println!("  unable to modify - attestation policy not configured");
+            } else {
+                for pk in attested_passkeys {
+                    println!("  {} ({})", pk.tag, pk.uuid);
+                }
+            }
+        }
+        CUCredState::AccessDeny => {
+            println!("  unable to modify - access denied");
+        }
+        CUCredState::PolicyDeny => {
+            println!("  unable to modify - attestation policy not configured");
         }
     }
 
@@ -1143,57 +1350,17 @@ async fn credential_update_exec(
                     println!("Primary credential was NOT removed");
                 }
             }
-            CUAction::Passkey => passkey_enroll_prompt(&session_token, &client).await,
+            CUAction::Passkey => {
+                passkey_enroll_prompt(&session_token, &client, PasskeyClass::Any).await
+            }
             CUAction::PasskeyRemove => {
-                // TODO: make this a scrollable selector with a "cancel" option as the default
-                match client
-                    .idm_account_credential_update_status(&session_token)
-                    .await
-                {
-                    Ok(status) => {
-                        if status.passkeys.is_empty() {
-                            println!("No passkeys are configured for this user");
-                            return;
-                        }
-                        println!("Current passkeys:");
-                        for pk in status.passkeys {
-                            println!("  {} ({})", pk.tag, pk.uuid);
-                        }
-                    }
-                    Err(e) => {
-                        eprintln!(
-                            "An error occurred retrieving existing credentials -> {:?}",
-                            e
-                        );
-                    }
-                }
-
-                let uuid_s: String = Input::new()
-                    .with_prompt("\nEnter the UUID of the Passkey to remove (blank to stop) # ")
-                    .validate_with(|input: &String| -> Result<(), &str> {
-                        if input.is_empty() || Uuid::parse_str(input).is_ok() {
-                            Ok(())
-                        } else {
-                            Err("This is not a valid UUID")
-                        }
-                    })
-                    .allow_empty(true)
-                    .interact_text()
-                    .expect("Failed to interact with interactive session");
-
-                // Remember, if it's NOT a valid uuid, it must have been empty as a termination.
-                if let Ok(uuid) = Uuid::parse_str(&uuid_s) {
-                    if let Err(e) = client
-                        .idm_account_credential_update_passkey_remove(&session_token, uuid)
-                        .await
-                    {
-                        eprintln!("An error occurred -> {:?}", e);
-                    } else {
-                        println!("success");
-                    }
-                } else {
-                    println!("Passkeys were NOT changed");
-                }
+                passkey_remove_prompt(&session_token, &client, PasskeyClass::Any).await
+            }
+            CUAction::AttestedPasskey => {
+                passkey_enroll_prompt(&session_token, &client, PasskeyClass::Attested).await
+            }
+            CUAction::AttestedPasskeyRemove => {
+                passkey_remove_prompt(&session_token, &client, PasskeyClass::Attested).await
             }
             CUAction::End => {
                 println!("Changes were NOT saved.");

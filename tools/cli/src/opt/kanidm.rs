@@ -1,4 +1,5 @@
-use clap::{Args, Subcommand};
+use clap::{Args, Subcommand, ValueEnum, builder::PossibleValue};
+use std::fmt;
 
 #[derive(Debug, Args)]
 pub struct Named {
@@ -35,7 +36,7 @@ impl std::str::FromStr for OutputMode {
 impl OutputMode {
     pub fn print_message<T>(self, input: T)
     where
-        T: serde::Serialize + std::fmt::Debug + std::fmt::Display,
+        T: serde::Serialize + fmt::Debug + fmt::Display,
     {
         match self {
             OutputMode::Json => {
@@ -108,6 +109,40 @@ pub enum GroupPosix {
     Set(GroupPosixOpt),
 }
 
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub enum AccountPolicyCredentialType {
+    Any,
+    Mfa,
+    Passkey,
+    AttestedPasskey,
+}
+
+impl AccountPolicyCredentialType {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::Any => "any",
+            Self::Mfa => "mfa",
+            Self::Passkey => "passkey",
+            Self::AttestedPasskey => "attested_passkey",
+        }
+    }
+}
+
+impl ValueEnum for AccountPolicyCredentialType {
+    fn value_variants<'a>() -> &'a [Self] {
+        &[Self::Any, Self::Mfa, Self::Passkey, Self::AttestedPasskey]
+    }
+
+    fn to_possible_value(&self) -> Option<PossibleValue> {
+        Some(match self {
+            Self::Any => PossibleValue::new("any"),
+            Self::Mfa => PossibleValue::new("mfa"),
+            Self::Passkey => PossibleValue::new("passkey"),
+            Self::AttestedPasskey => PossibleValue::new("attested_passkey"),
+        })
+    }
+}
+
 #[derive(Debug, Subcommand)]
 pub enum GroupAccountPolicyOpt {
     /// Enable account policy for this group
@@ -125,11 +160,13 @@ pub enum GroupAccountPolicyOpt {
         #[clap(flatten)]
         copt: CommonOpt,
     },
-    /// Set the maximum time for session expiry
+    /// Set the minimum credential class that members may authenticate with. Valid values
+    /// in order of weakest to strongest are: "any" "mfa" "passkey" "attested_passkey"
     #[clap(name = "credential-type-minimum")]
     CredentialTypeMinimum {
         name: String,
-        value: String,
+        #[clap(value_enum)]
+        value: AccountPolicyCredentialType,
         #[clap(flatten)]
         copt: CommonOpt,
     },
@@ -141,12 +178,22 @@ pub enum GroupAccountPolicyOpt {
         #[clap(flatten)]
         copt: CommonOpt,
     },
-    /// Configure and display the privilege session expiry
     /// Set the maximum time for privilege session expiry
     #[clap(name = "privilege-expiry")]
     PrivilegedSessionExpiry {
         name: String,
         expiry: u32,
+        #[clap(flatten)]
+        copt: CommonOpt,
+    },
+    /// The the webauthn attestation ca list that should be enforced
+    /// on members of this group. Prevents use of passkeys that are
+    /// in this list. To create this list, use `fido-mds-tool`
+    /// from <https://crates.io/crates/fido-mds-tool>
+    #[clap(name = "webauthn-attestation-ca-list")]
+    WebauthnAttestationCaList {
+        name: String,
+        attestation_ca_list_json: String,
         #[clap(flatten)]
         copt: CommonOpt,
     },

@@ -44,9 +44,24 @@ pub struct TotpRemoveProps {
     pub cb: Callback<EventBusMsg>,
 }
 
+#[derive(PartialEq)]
+pub enum PasskeyClass {
+    Any,
+    Attested,
+}
+
+#[derive(PartialEq, Properties)]
+pub struct PasskeyModalProps {
+    pub token: CUSessionToken,
+    pub class: PasskeyClass,
+    pub allowed_devices: Option<Vec<String>>,
+    pub cb: Callback<EventBusMsg>,
+}
+
 #[derive(PartialEq, Properties)]
 pub struct PasskeyRemoveModalProps {
     pub token: CUSessionToken,
+    pub class: PasskeyClass,
     pub tag: String,
     pub uuid: Uuid,
     pub cb: Callback<EventBusMsg>,
@@ -356,6 +371,9 @@ impl CredentialResetApp {
             primary_state,
             passkeys,
             passkeys_state,
+            attested_passkeys,
+            attested_passkeys_state,
+            attested_passkeys_allowed_devices,
         } = status;
 
         let displayname = displayname.clone();
@@ -382,6 +400,12 @@ impl CredentialResetApp {
 
         let pw_html = self.view_primary(token, primary, *primary_state);
         let passkey_html = self.view_passkeys(token, passkeys, *passkeys_state);
+        let attested_passkey_html = self.view_attested_passkeys(
+            token,
+            attested_passkeys,
+            *attested_passkeys_state,
+            attested_passkeys_allowed_devices.as_slice(),
+        );
 
         let warnings_html = if warnings.is_empty() {
             html! { <></> }
@@ -401,6 +425,22 @@ impl CredentialResetApp {
                                 CURegWarning::PasskeyRequired => html! {
                                     <div class="alert alert-warning" role="alert">
                                         <p>{ "Passkeys are required for your account." }</p>
+                                    </div>
+                                },
+                                CURegWarning::AttestedPasskeyRequired => html! {
+                                    <div class="alert alert-warning" role="alert">
+                                        <p>{ "Attested Passkeys are required for your account." }</p>
+                                    </div>
+                                },
+                                CURegWarning::AttestedResidentKeyRequired => html! {
+                                    <div class="alert alert-warning" role="alert">
+                                        <p>{ "Attested Resident Keys are required for your account." }</p>
+                                    </div>
+                                },
+                                CURegWarning::WebauthnAttestationUnsatisfiable => html! {
+                                    <div class="alert alert-danger" role="alert">
+                                        <p>{ "A webauthn attestation policy conflict has occurred and you will not be able to save your credentials" }</p>
+                                        <p>{ "Contact support IMMEDIATELY." }</p>
                                     </div>
                                 },
                                 CURegWarning::Unsatisfiable => html! {
@@ -434,11 +474,9 @@ impl CredentialResetApp {
 
                     { warnings_html }
 
-                    <hr class="my-4" />
+                    { attested_passkey_html }
 
                     { passkey_html }
-
-                    <hr class="my-4" />
 
                     { pw_html }
 
@@ -589,6 +627,14 @@ impl CredentialResetApp {
                     }
                 }
             }
+        } else if matches!(primary_state, CUCredState::DeleteOnly) {
+            html! {
+              <p>
+                <button type="button" class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#staticDeletePrimaryCred">
+                  { "Delete this Legacy Credential" }
+                </button>
+              </p>
+            }
         } else {
             html! {<></>}
         };
@@ -602,6 +648,14 @@ impl CredentialResetApp {
                   </>
                 }
             }
+            CUCredState::DeleteOnly => {
+                html! {
+                  <>
+                    <p>{ "Legacy password paired with other authentication factors." }</p>
+                    <p>{ "Account policy prevents you modifying this credential, but you may remove it." }</p>
+                  </>
+                }
+            }
             CUCredState::AccessDeny => {
                 html! { <><p> { "You do not have access to modify the Password or TOTP tokens of this account" }</p></> }
             }
@@ -612,6 +666,8 @@ impl CredentialResetApp {
 
         html! {
            <>
+            <hr class="my-4" />
+
             <h4>{"Password / TOTP"}</h4>
             { pw_warn }
             { pw_html_inner }
@@ -629,48 +685,91 @@ impl CredentialResetApp {
     ) -> Html {
         let cb = self.cb.clone();
 
-        let passkey_html_inner = match passkeys_state {
-            CUCredState::Modifiable => {
-                if passkeys.is_empty() {
-                    html! {
-                      <>
-                        <p>{ "Strong cryptographic authenticators with self contained multi-factor authentication." }</p>
-                        <p>{ "No Passkeys Registered" }</p>
-                        <PasskeyModalApp token={ token.clone() } cb={ cb } />
-                      </>
+        match passkeys_state {
+            CUCredState::DeleteOnly | CUCredState::Modifiable => {
+                html! {
+                  <>
+                    <hr class="my-4" />
+                    <h4>{"Passkeys"}</h4>
+
+                    <p>{ "Strong cryptographic authenticators with self contained multi-factor authentication." }</p>
+
+                    { if passkeys.is_empty() {
+                        html! { <p>{ "No Passkeys Registered" }</p> }
+                    } else {
+                        html! { <></> }
+                    } }
+
+                    { for passkeys.iter()
+                        .map(|detail|
+                            PasskeyRemoveModalApp::render_button(&detail.tag, detail.uuid)
+                        )
                     }
-                } else {
-                    html! {
-                        <>
-                        <p>{ "Strong cryptographic authenticators with self contained multi-factor authentication." }</p>
-                        { for passkeys.iter()
-                            .map(|detail|
-                                PasskeyRemoveModalApp::render_button(&detail.tag, detail.uuid)
-                            )
-                        }
-                        { for passkeys.iter()
-                            .map(|detail|
-                                html! { <PasskeyRemoveModalApp token={ token.clone() } tag={ detail.tag.clone() } uuid={ detail.uuid } cb={ cb.clone() } /> }
-                            )
-                        }
-                        <PasskeyModalApp token={ token.clone() } cb={ cb.clone() } />
-                        </>
+                    { for passkeys.iter()
+                        .map(|detail|
+                            html! { <PasskeyRemoveModalApp token={ token.clone() } tag={ detail.tag.clone() } uuid={ detail.uuid } cb={ cb.clone() } class={ PasskeyClass::Any } /> }
+                        )
                     }
+
+                    { if passkeys_state == CUCredState::Modifiable {
+                        html! { <PasskeyModalApp token={ token.clone() } cb={ cb.clone() } class={ PasskeyClass::Any } /> }
+                    } else {
+                        html! { <></> }
+                    }}
+                  </>
                 }
             }
             CUCredState::AccessDeny => {
-                html! { <><p> { "You do not have access to modify the Passkeys of this account" }</p></> }
+                html! { <></> }
             }
             CUCredState::PolicyDeny => {
-                html! { <><p> { "Account policy prevents you modifying the Passkeys of this account" }</p></> }
+                html! { <></> }
             }
-        };
+        }
+    }
 
-        html! {
-          <>
-            <h4>{"Passkeys"}</h4>
-            { passkey_html_inner }
-          </>
+    fn view_attested_passkeys(
+        &self,
+        token: &CUSessionToken,
+        attested_passkeys: &Vec<PasskeyDetail>,
+        attested_passkeys_state: CUCredState,
+        attested_passkeys_allowed_devices: &[String],
+    ) -> Html {
+        let cb = self.cb.clone();
+
+        match attested_passkeys_state {
+            CUCredState::Modifiable | CUCredState::DeleteOnly => {
+                html! {
+                  <>
+                    <hr class="my-4" />
+                    <h4>{"Attested Passkeys"}</h4>
+                    { if attested_passkeys.is_empty() { html! { <p> { "No Passkeys Registered" } </p> } } else { html! {<></>} } }
+
+                    { for attested_passkeys.iter()
+                        .map(|detail|
+                            PasskeyRemoveModalApp::render_button(&detail.tag, detail.uuid)
+                        )
+                    }
+                    { for attested_passkeys.iter()
+                        .map(|detail|
+                            html! { <PasskeyRemoveModalApp token={ token.clone() } tag={ detail.tag.clone() } uuid={ detail.uuid } cb={ cb.clone() } class={ PasskeyClass::Attested } /> }
+                        )
+                    }
+
+                    {
+                        if attested_passkeys_state == CUCredState::Modifiable {
+                            html! { <PasskeyModalApp token={ token.clone() } cb={ cb } class={ PasskeyClass::Attested } allowed_devices={ Some(attested_passkeys_allowed_devices.to_vec()) } /> }
+                        } else {
+                            html! { <></> }
+                        }
+                    }
+                  </>
+                }
+            }
+            CUCredState::AccessDeny | CUCredState::PolicyDeny => {
+                // Don't display anything.
+                html! { <></> }
+            }
         }
     }
 

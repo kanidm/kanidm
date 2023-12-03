@@ -208,7 +208,7 @@ lazy_static! {
             Attribute::PrimaryCredential,
             Attribute::UserAuthTokenSession,
             Attribute::PassKeys,
-            Attribute::DeviceKeys,
+            Attribute::AttestedPasskeys,
         ],
         ..Default::default()
     };
@@ -241,7 +241,7 @@ lazy_static! {
             Attribute::SshPublicKey,
             Attribute::UnixPassword,
             Attribute::PassKeys,
-            Attribute::DeviceKeys,
+            Attribute::AttestedPasskeys,
             Attribute::UserAuthTokenSession,
         ],
         modify_present_attrs: vec![
@@ -253,7 +253,7 @@ lazy_static! {
             Attribute::SshPublicKey,
             Attribute::UnixPassword,
             Attribute::PassKeys,
-            Attribute::DeviceKeys,
+            Attribute::AttestedPasskeys,
         ],
         ..Default::default()
         };
@@ -442,7 +442,7 @@ lazy_static! {
             Attribute::AccountExpire,
             Attribute::AccountValidFrom,
             Attribute::PassKeys,
-            Attribute::DeviceKeys,
+            Attribute::AttestedPasskeys,
         ],
         create_classes: vec![EntryClass::Object, EntryClass::Account, EntryClass::Person,],
         ..Default::default()
@@ -695,7 +695,7 @@ lazy_static! {
             Attribute::AccountExpire,
             Attribute::AccountValidFrom,
             Attribute::PassKeys,
-            Attribute::DeviceKeys,
+            Attribute::AttestedPasskeys,
             Attribute::ApiTokenSession,
             Attribute::UserAuthTokenSession,
         ],
@@ -729,7 +729,7 @@ lazy_static! {
             Attribute::AccountExpire,
             Attribute::AccountValidFrom,
             Attribute::PassKeys,
-            Attribute::DeviceKeys,
+            Attribute::AttestedPasskeys,
             Attribute::ApiTokenSession,
             Attribute::UserAuthTokenSession,
             Attribute::IdVerificationEcKey,
@@ -743,7 +743,7 @@ lazy_static! {
             Attribute::AccountExpire,
             Attribute::AccountValidFrom,
             Attribute::PassKeys,
-            Attribute::DeviceKeys,
+            Attribute::AttestedPasskeys,
             Attribute::ApiTokenSession,
         ],
         ..Default::default()
@@ -779,7 +779,7 @@ lazy_static! {
             Attribute::AccountExpire,
             Attribute::AccountValidFrom,
             Attribute::PassKeys,
-            Attribute::DeviceKeys,
+            Attribute::AttestedPasskeys,
         ],
         create_classes: vec![
             EntryClass::Object,
@@ -895,7 +895,7 @@ lazy_static! {
             Attribute::AccountExpire,
             Attribute::AccountValidFrom,
             Attribute::PassKeys,
-            Attribute::DeviceKeys,
+            Attribute::AttestedPasskeys,
             Attribute::ApiTokenSession,
             Attribute::UserAuthTokenSession,
         ],
@@ -925,7 +925,7 @@ lazy_static! {
             Attribute::AccountExpire,
             Attribute::AccountValidFrom,
             Attribute::PassKeys,
-            Attribute::DeviceKeys,
+            Attribute::AttestedPasskeys,
             Attribute::ApiTokenSession,
             Attribute::UserAuthTokenSession,
             Attribute::IdVerificationEcKey,
@@ -938,7 +938,7 @@ lazy_static! {
             Attribute::AccountExpire,
             Attribute::AccountValidFrom,
             Attribute::PassKeys,
-            Attribute::DeviceKeys,
+            Attribute::AttestedPasskeys,
             Attribute::ApiTokenSession,
         ],
         ..Default::default()
@@ -1275,6 +1275,7 @@ lazy_static! {
             Attribute::AuthPasswordMinimumLength,
             Attribute::CredentialTypeMinimum,
             Attribute::PrivilegeExpiry,
+            Attribute::WebauthnAttestationCaList,
         ],
         modify_removed_attrs: vec![
             Attribute::Class,
@@ -1282,6 +1283,7 @@ lazy_static! {
             Attribute::AuthPasswordMinimumLength,
             Attribute::CredentialTypeMinimum,
             Attribute::PrivilegeExpiry,
+            Attribute::WebauthnAttestationCaList,
         ],
         modify_present_attrs: vec![
             Attribute::Class,
@@ -1289,6 +1291,7 @@ lazy_static! {
             Attribute::AuthPasswordMinimumLength,
             Attribute::CredentialTypeMinimum,
             Attribute::PrivilegeExpiry,
+            Attribute::WebauthnAttestationCaList,
         ],
         modify_classes: vec![
             EntryClass::AccountPolicy,
@@ -1329,7 +1332,7 @@ lazy_static! {
             Attribute::AccountExpire,
             Attribute::AccountValidFrom,
             Attribute::PassKeys,
-            Attribute::DeviceKeys,
+            Attribute::AttestedPasskeys,
         ],
         create_classes: vec![
             EntryClass::Object,

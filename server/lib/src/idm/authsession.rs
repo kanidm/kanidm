@@ -15,10 +15,10 @@ use kanidm_proto::v1::{
 use nonempty::{nonempty, NonEmpty};
 use tokio::sync::mpsc::UnboundedSender as Sender;
 use uuid::Uuid;
-use webauthn_rs::prelude::Passkey as PasskeyV4;
 use webauthn_rs::prelude::{
-    CredentialID, PasskeyAuthentication, RequestChallengeResponse, SecurityKeyAuthentication,
-    Webauthn,
+    AttestationCaList, AttestedPasskey as AttestedPasskeyV4, AttestedPasskeyAuthentication,
+    CredentialID, Passkey as PasskeyV4, PasskeyAuthentication, RequestChallengeResponse,
+    SecurityKeyAuthentication, Webauthn,
 };
 
 use crate::credential::totp::Totp;
@@ -43,6 +43,7 @@ use super::accountpolicy::ResolvedAccountPolicy;
 const BAD_PASSWORD_MSG: &str = "incorrect password";
 const BAD_TOTP_MSG: &str = "incorrect totp";
 const BAD_WEBAUTHN_MSG: &str = "invalid webauthn authentication";
+const BAD_ACCOUNT_POLICY: &str = "the credential no longer meets account policy requirements";
 const BAD_BACKUPCODE_MSG: &str = "invalid backup code";
 const BAD_AUTH_TYPE_MSG: &str = "invalid authentication method in this context";
 const BAD_CREDENTIALS: &str = "invalid credential message";
@@ -56,6 +57,7 @@ pub enum AuthType {
     GeneratedPassword,
     PasswordMfa,
     Passkey,
+    AttestedPasskey,
 }
 
 impl fmt::Display for AuthType {
@@ -66,6 +68,7 @@ impl fmt::Display for AuthType {
             AuthType::GeneratedPassword => write!(f, "generatedpassword"),
             AuthType::PasswordMfa => write!(f, "passwordmfa"),
             AuthType::Passkey => write!(f, "passkey"),
+            AuthType::AttestedPasskey => write!(f, "attested_passkey"),
         }
     }
 }
@@ -108,10 +111,18 @@ struct CredMfa {
 }
 
 #[derive(Clone, Debug)]
-/// The state of a webauthn credential during authentication
-struct CredWebauthn {
+/// The state of a passkey during authentication
+struct CredPasskey {
     chal: RequestChallengeResponse,
     wan_state: PasskeyAuthentication,
+    state: CredVerifyState,
+}
+
+#[derive(Clone, Debug)]
+/// The state of an attested passkey during authentication
+struct CredAttestedPasskey {
+    chal: RequestChallengeResponse,
+    wan_state: AttestedPasskeyAuthentication,
     state: CredVerifyState,
 }
 
@@ -133,8 +144,15 @@ enum CredHandler {
         cred_id: Uuid,
     },
     Passkey {
-        c_wan: CredWebauthn,
+        c_wan: CredPasskey,
         cred_ids: BTreeMap<CredentialID, Uuid>,
+    },
+    AttestedPasskey {
+        c_wan: CredAttestedPasskey,
+        // To verify the attestation post auth
+        att_ca_list: AttestationCaList,
+        // AP does `PartialEq` on cred_id
+        creds: BTreeMap<AttestedPasskeyV4, Uuid>,
     },
 }
 
@@ -205,7 +223,7 @@ impl TryFrom<(&Credential, &Webauthn)> for CredHandler {
                 webauthn
                     .start_passkey_authentication(&pks)
                     .map(|(chal, wan_state)| CredHandler::Passkey {
-                        c_wan: CredWebauthn {
+                        c_wan: CredPasskey {
                             chal,
                             wan_state,
                             state: CredVerifyState::Init,
@@ -221,31 +239,32 @@ impl TryFrom<(&Credential, &Webauthn)> for CredHandler {
     }
 }
 
-impl TryFrom<(&BTreeMap<Uuid, (String, PasskeyV4)>, &Webauthn)> for CredHandler {
-    type Error = ();
-
+impl CredHandler {
     /// Given a credential and some external configuration, Generate the credential handler
     /// that will be used for this session. This credential handler is a "self contained"
     /// unit that defines what is possible to use during this authentication session to prevent
     /// inconsistency.
-    fn try_from(
-        (wan, webauthn): (&BTreeMap<Uuid, (String, PasskeyV4)>, &Webauthn),
-    ) -> Result<Self, Self::Error> {
-        if wan.is_empty() {
-            security_info!("Account does not have any passkeys");
-            return Err(());
+    fn build_from_set_passkey(
+        wan: impl Iterator<Item = (Uuid, PasskeyV4)>,
+        webauthn: &Webauthn,
+    ) -> Result<Self, ()> {
+        let mut pks = Vec::with_capacity(wan.size_hint().0);
+        let mut cred_ids = BTreeMap::default();
+
+        for (uuid, pk) in wan {
+            cred_ids.insert(pk.cred_id().clone(), uuid);
+            pks.push(pk);
         }
 
-        let pks: Vec<_> = wan.values().map(|(_, k)| k).cloned().collect();
-        let cred_ids: BTreeMap<_, _> = wan
-            .iter()
-            .map(|(u, (_, k))| (k.cred_id().clone(), *u))
-            .collect();
+        if pks.is_empty() {
+            security_info!("Account does not have any passkeys");
+            return Err(());
+        };
 
         webauthn
             .start_passkey_authentication(&pks)
             .map(|(chal, wan_state)| CredHandler::Passkey {
-                c_wan: CredWebauthn {
+                c_wan: CredPasskey {
                     chal,
                     wan_state,
                     state: CredVerifyState::Init,
@@ -260,20 +279,19 @@ impl TryFrom<(&BTreeMap<Uuid, (String, PasskeyV4)>, &Webauthn)> for CredHandler 
                 // maps to unit.
             })
     }
-}
 
-impl TryFrom<(Uuid, &PasskeyV4, &Webauthn)> for CredHandler {
-    type Error = ();
-    fn try_from(
-        (cred_id, pk, webauthn): (Uuid, &PasskeyV4, &Webauthn),
-    ) -> Result<Self, Self::Error> {
+    fn build_from_single_passkey(
+        cred_id: Uuid,
+        pk: PasskeyV4,
+        webauthn: &Webauthn,
+    ) -> Result<Self, ()> {
         let cred_ids = btreemap!((pk.cred_id().clone(), cred_id));
-        let pks = vec![pk.clone()];
+        let pks = vec![pk];
 
         webauthn
             .start_passkey_authentication(pks.as_slice())
             .map(|(chal, wan_state)| CredHandler::Passkey {
-                c_wan: CredWebauthn {
+                c_wan: CredPasskey {
                     chal,
                     wan_state,
                     state: CredVerifyState::Init,
@@ -288,9 +306,69 @@ impl TryFrom<(Uuid, &PasskeyV4, &Webauthn)> for CredHandler {
                 // maps to unit.
             })
     }
-}
 
-impl CredHandler {
+    fn build_from_set_attested_pk(
+        wan: &BTreeMap<Uuid, (String, AttestedPasskeyV4)>,
+        att_ca_list: &AttestationCaList,
+        webauthn: &Webauthn,
+    ) -> Result<Self, ()> {
+        if wan.is_empty() {
+            security_info!("Account does not have any attested passkeys");
+            return Err(());
+        };
+
+        let pks: Vec<_> = wan.values().map(|(_, k)| k).cloned().collect();
+        let creds: BTreeMap<_, _> = wan.iter().map(|(u, (_, k))| (k.clone(), *u)).collect();
+
+        webauthn
+            .start_attested_passkey_authentication(&pks)
+            .map(|(chal, wan_state)| CredHandler::AttestedPasskey {
+                c_wan: CredAttestedPasskey {
+                    chal,
+                    wan_state,
+                    state: CredVerifyState::Init,
+                },
+                att_ca_list: att_ca_list.clone(),
+                creds,
+            })
+            .map_err(|e| {
+                security_info!(
+                    ?e,
+                    "Unable to create attested passkey webauthn authentication challenge"
+                );
+                // maps to unit.
+            })
+    }
+
+    fn build_from_single_attested_pk(
+        cred_id: Uuid,
+        pk: &AttestedPasskeyV4,
+        att_ca_list: &AttestationCaList,
+        webauthn: &Webauthn,
+    ) -> Result<Self, ()> {
+        let creds = btreemap!((pk.clone(), cred_id));
+        let pks = vec![pk.clone()];
+
+        webauthn
+            .start_attested_passkey_authentication(pks.as_slice())
+            .map(|(chal, wan_state)| CredHandler::AttestedPasskey {
+                c_wan: CredAttestedPasskey {
+                    chal,
+                    wan_state,
+                    state: CredVerifyState::Init,
+                },
+                att_ca_list: att_ca_list.clone(),
+                creds,
+            })
+            .map_err(|e| {
+                security_info!(
+                    ?e,
+                    "Unable to create attested passkey webauthn authentication challenge"
+                );
+                // maps to unit.
+            })
+    }
+
     /// Determine if this password factor requires an upgrade of it's cryptographic type. If
     /// so, send an asynchronous event into the queue that will allow the password to have it's
     /// content upgraded later.
@@ -527,10 +605,10 @@ impl CredHandler {
     // end CredHandler::PasswordMfa
 
     /// Validate a webauthn authentication attempt
-    pub fn validate_webauthn(
+    pub fn validate_passkey(
         cred: &AuthCredential,
         cred_ids: &BTreeMap<CredentialID, Uuid>,
-        wan_cred: &mut CredWebauthn,
+        wan_cred: &mut CredPasskey,
         webauthn: &Webauthn,
         who: Uuid,
         async_tx: &Sender<DelayedAction>,
@@ -566,6 +644,82 @@ impl CredHandler {
                             CredState::Success {
                                 auth_type: AuthType::Passkey,
                                 cred_id,
+                            }
+                        } else {
+                            wan_cred.state = CredVerifyState::Fail;
+                            // Denied.
+                            security_error!("Handler::Webauthn -> Result::Denied - webauthn credential id not found");
+                            CredState::Denied(BAD_WEBAUTHN_MSG)
+                        }
+                    }
+                    Err(e) => {
+                        wan_cred.state = CredVerifyState::Fail;
+                        // Denied.
+                        security_error!(?e, "Handler::Webauthn -> Result::Denied - webauthn error");
+                        CredState::Denied(BAD_WEBAUTHN_MSG)
+                    }
+                }
+            }
+            _ => {
+                security_error!(
+                    "Handler::Webauthn -> Result::Denied - invalid cred type for handler"
+                );
+                CredState::Denied(BAD_AUTH_TYPE_MSG)
+            }
+        }
+    }
+
+    /// Validate a webauthn authentication attempt
+    pub fn validate_attested_passkey(
+        cred: &AuthCredential,
+        creds: &BTreeMap<AttestedPasskeyV4, Uuid>,
+        wan_cred: &mut CredAttestedPasskey,
+        webauthn: &Webauthn,
+        who: Uuid,
+        async_tx: &Sender<DelayedAction>,
+        att_ca_list: &AttestationCaList,
+    ) -> CredState {
+        if wan_cred.state != CredVerifyState::Init {
+            security_error!("Handler::Webauthn -> Result::Denied - Internal State Already Fail");
+            return CredState::Denied(BAD_WEBAUTHN_MSG);
+        }
+
+        match cred {
+            AuthCredential::Passkey(resp) => {
+                // lets see how we go.
+                match webauthn.finish_attested_passkey_authentication(resp, &wan_cred.wan_state) {
+                    Ok(auth_result) => {
+                        if let Some((apk, cred_id)) = creds.get_key_value(auth_result.cred_id()) {
+                            // Verify attestation of the key.
+
+                            if let Err(webauthn_err) = apk.verify_attestation(att_ca_list) {
+                                wan_cred.state = CredVerifyState::Fail;
+                                // Denied.
+                                debug!(?webauthn_err);
+                                security_error!("Handler::Webauthn -> Result::Denied - webauthn credential fails attestation");
+                                return CredState::Denied(BAD_ACCOUNT_POLICY);
+                            }
+
+                            wan_cred.state = CredVerifyState::Success;
+                            // Success. Determine if we need to update the counter
+                            // async from r.
+                            if auth_result.needs_update() {
+                                // Do async
+                                if let Err(_e) =
+                                    async_tx.send(DelayedAction::WebauthnCounterIncrement(
+                                        WebauthnCounterIncrement {
+                                            target_uuid: who,
+                                            auth_result,
+                                        },
+                                    ))
+                                {
+                                    admin_warn!("unable to queue delayed webauthn property update, continuing ... ");
+                                };
+                            };
+
+                            CredState::Success {
+                                auth_type: AuthType::AttestedPasskey,
+                                cred_id: *cred_id,
                             }
                         } else {
                             wan_cred.state = CredVerifyState::Fail;
@@ -633,7 +787,20 @@ impl CredHandler {
             CredHandler::Passkey {
                 ref mut c_wan,
                 cred_ids,
-            } => Self::validate_webauthn(cred, cred_ids, c_wan, webauthn, who, async_tx),
+            } => Self::validate_passkey(cred, cred_ids, c_wan, webauthn, who, async_tx),
+            CredHandler::AttestedPasskey {
+                ref mut c_wan,
+                ref att_ca_list,
+                creds,
+            } => Self::validate_attested_passkey(
+                cred,
+                creds,
+                c_wan,
+                webauthn,
+                who,
+                async_tx,
+                att_ca_list,
+            ),
         }
     }
 
@@ -659,6 +826,9 @@ impl CredHandler {
                 )
                 .collect(),
             CredHandler::Passkey { c_wan, .. } => vec![AuthAllowed::Passkey(c_wan.chal.clone())],
+            CredHandler::AttestedPasskey { c_wan, .. } => {
+                vec![AuthAllowed::Passkey(c_wan.chal.clone())]
+            }
         }
     }
 
@@ -668,7 +838,8 @@ impl CredHandler {
             (CredHandler::Anonymous { .. }, AuthMech::Anonymous)
             | (CredHandler::Password { .. }, AuthMech::Password)
             | (CredHandler::PasswordMfa { .. }, AuthMech::PasswordMfa)
-            | (CredHandler::Passkey { .. }, AuthMech::Passkey) => true,
+            | (CredHandler::Passkey { .. }, AuthMech::Passkey)
+            | (CredHandler::AttestedPasskey { .. }, AuthMech::Passkey) => true,
             (_, _) => false,
         }
     }
@@ -679,6 +850,7 @@ impl CredHandler {
             CredHandler::Password { .. } => AuthMech::Password,
             CredHandler::PasswordMfa { .. } => AuthMech::PasswordMfa,
             CredHandler::Passkey { .. } => AuthMech::Passkey,
+            CredHandler::AttestedPasskey { .. } => AuthMech::Passkey,
         }
     }
 }
@@ -767,9 +939,13 @@ impl AuthSession {
                 // What's valid to use in this context?
                 let mut handlers = Vec::new();
 
+                // TODO: We can't yet fully enforce account policy on auth, there is a bit of work
+                // to do to be able to check for pw / mfa etc.
+                // A possible gotcha is service accounts which can't be affected by these policies?
+
+                // let cred_type_min = asd.account_policy.credential_policy();
+
                 if let Some(cred) = &asd.account.primary {
-                    // TODO: Make it possible to have multiple creds.
-                    // Probably means new authsession has to be failable
                     if let Ok(ch) = CredHandler::try_from((cred, asd.webauthn)) {
                         handlers.push(ch);
                     } else {
@@ -779,8 +955,33 @@ impl AuthSession {
                     }
                 }
 
-                if let Ok(ch) = CredHandler::try_from((&asd.account.passkeys, asd.webauthn)) {
-                    handlers.push(ch);
+                // Important - if attested is present, don't use passkeys
+                if let Some(att_ca_list) = asd.account_policy.webauthn_attestation_ca_list() {
+                    if let Ok(ch) = CredHandler::build_from_set_attested_pk(
+                        &asd.account.attested_passkeys,
+                        att_ca_list,
+                        asd.webauthn,
+                    ) {
+                        handlers.push(ch);
+                    }
+                } else {
+                    let credential_iter = asd
+                        .account
+                        .passkeys
+                        .iter()
+                        .map(|(u, (_, pk))| (*u, pk.clone()))
+                        .chain(
+                            asd.account
+                                .attested_passkeys
+                                .iter()
+                                .map(|(u, (_, pk))| (*u, pk.into())),
+                        );
+
+                    if let Ok(ch) =
+                        CredHandler::build_from_set_passkey(credential_iter, asd.webauthn)
+                    {
+                        handlers.push(ch);
+                    }
                 };
 
                 if let Some(non_empty_handlers) = NonEmpty::collect(handlers) {
@@ -847,6 +1048,9 @@ impl AuthSession {
             // Do we need to double check for anon here? I don't think so since the
             // anon cred_id won't ever exist on an account.
 
+            // We can't yet fully enforce account policy on auth, there is a bit of work
+            // to do to be able to check the credential types match what we expect.
+
             let mut cred_handler = None;
 
             if let Some(primary) = asd.account.primary.as_ref() {
@@ -863,13 +1067,51 @@ impl AuthSession {
                 }
             }
 
-            if let Some(pk) = asd.account.passkeys.get(&cred_id).map(|(_, pk)| pk) {
-                if let Ok(ch) = CredHandler::try_from((cred_id, pk, asd.webauthn)) {
-                    // Update it.
-                    debug_assert!(cred_handler.is_none());
-                    cred_handler = Some(ch);
-                } else {
-                    security_critical!("corrupt credentials, unable to start primary credhandler");
+            // Do we have an attestation ca list? If so, we only accept attested
+            // passkeys.
+            if let Some(att_ca_list) = asd.account_policy.webauthn_attestation_ca_list() {
+                if let Some(pk) = asd
+                    .account
+                    .attested_passkeys
+                    .get(&cred_id)
+                    .map(|(_, pk)| pk)
+                {
+                    if let Ok(ch) = CredHandler::build_from_single_attested_pk(
+                        cred_id,
+                        pk,
+                        att_ca_list,
+                        asd.webauthn,
+                    ) {
+                        // Update it.
+                        debug_assert!(cred_handler.is_none());
+                        cred_handler = Some(ch);
+                    } else {
+                        security_critical!(
+                            "corrupt credentials, unable to start attested passkey credhandler"
+                        );
+                    }
+                }
+            } else {
+                // Scan both attested and passkeys for the possible credential.
+                let maybe_pk: Option<PasskeyV4> = asd
+                    .account
+                    .attested_passkeys
+                    .get(&cred_id)
+                    .map(|(_, apk)| apk.into())
+                    .or_else(|| asd.account.passkeys.get(&cred_id).map(|(_, pk)| pk.clone()));
+
+                if let Some(pk) = maybe_pk {
+                    if let Ok(ch) =
+                        CredHandler::build_from_single_passkey(cred_id, pk, asd.webauthn)
+                    {
+                        // Update it.
+                        debug_assert!(cred_handler.is_none());
+                        cred_handler = Some(ch);
+                    } else {
+                        security_critical!(
+                            "corrupt credentials, unable to start passkey credhandler"
+                        );
+                    }
                 }
             }
 
@@ -932,7 +1174,8 @@ impl AuthSession {
                 Ok(Some(*cred_id))
             }
             AuthSessionState::InProgress(CredHandler::Anonymous { .. })
-            | AuthSessionState::InProgress(CredHandler::Passkey { .. }) => Ok(None),
+            | AuthSessionState::InProgress(CredHandler::Passkey { .. })
+            | AuthSessionState::InProgress(CredHandler::AttestedPasskey { .. }) => Ok(None),
             _ => Err(OperationError::InvalidState),
         }
     }
@@ -1126,7 +1369,10 @@ impl AuthSession {
                 let scope = match auth_type {
                     AuthType::Anonymous => SessionScope::ReadOnly,
                     AuthType::GeneratedPassword => SessionScope::ReadWrite,
-                    AuthType::Password | AuthType::PasswordMfa | AuthType::Passkey => {
+                    AuthType::Password
+                    | AuthType::PasswordMfa
+                    | AuthType::Passkey
+                    | AuthType::AttestedPasskey => {
                         if privileged {
                             SessionScope::ReadWrite
                         } else {
@@ -1161,7 +1407,8 @@ impl AuthSession {
                     AuthType::Password
                     | AuthType::GeneratedPassword
                     | AuthType::PasswordMfa
-                    | AuthType::Passkey => {
+                    | AuthType::Passkey
+                    | AuthType::AttestedPasskey => {
                         trace!("⚠️   Queued AuthSessionRecord for {}", self.account.uuid);
                         async_tx.send(DelayedAction::AuthSessionRecord(AuthSessionRecord {
                             target_uuid: self.account.uuid,
@@ -1194,9 +1441,10 @@ impl AuthSession {
                         error!("AuthType used in Reauth is not valid for session re-issuance. Rejecting");
                         return Err(OperationError::InvalidState);
                     }
-                    AuthType::Password | AuthType::PasswordMfa | AuthType::Passkey => {
-                        SessionScope::PrivilegeCapable
-                    }
+                    AuthType::Password
+                    | AuthType::PasswordMfa
+                    | AuthType::Passkey
+                    | AuthType::AttestedPasskey => SessionScope::PrivilegeCapable,
                 };
 
                 let uat = self

@@ -289,6 +289,9 @@ pub enum OperationError {
     /// When a name is denied by the system config
     ValueDenyName,
     // What about something like this for unique errors?
+    // Credential Update Errors
+    CU0001WebauthnAttestationNotTrusted,
+    CU0002WebauthnRegistrationError,
     // ValueSet errors
     VS0001IncomingReplSshPublicKey,
     // Value Errors
@@ -1161,6 +1164,9 @@ pub enum CURequest {
     PasskeyInit,
     PasskeyFinish(String, RegisterPublicKeyCredential),
     PasskeyRemove(Uuid),
+    AttestedPasskeyInit,
+    AttestedPasskeyFinish(String, RegisterPublicKeyCredential),
+    AttestedPasskeyRemove(Uuid),
 }
 
 impl fmt::Debug for CURequest {
@@ -1178,6 +1184,9 @@ impl fmt::Debug for CURequest {
             CURequest::PasskeyInit => "CURequest::PasskeyInit",
             CURequest::PasskeyFinish(_, _) => "CURequest::PasskeyFinish",
             CURequest::PasskeyRemove(_) => "CURequest::PasskeyRemove",
+            CURequest::AttestedPasskeyInit => "CURequest::AttestedPasskeyInit",
+            CURequest::AttestedPasskeyFinish(_, _) => "CURequest::AttestedPasskeyFinish",
+            CURequest::AttestedPasskeyRemove(_) => "CURequest::AttestedPasskeyRemove",
         };
         writeln!(f, "{}", t)
     }
@@ -1192,6 +1201,7 @@ pub enum CURegState {
     TotpInvalidSha1,
     BackupCodes(Vec<String>),
     Passkey(CreationChallengeResponse),
+    AttestedPasskey(CreationChallengeResponse),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
@@ -1201,9 +1211,10 @@ pub enum CUExtPortal {
     Some(Url),
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, ToSchema, PartialEq)]
 pub enum CUCredState {
     Modifiable,
+    DeleteOnly,
     AccessDeny,
     PolicyDeny,
     // Disabled,
@@ -1213,7 +1224,10 @@ pub enum CUCredState {
 pub enum CURegWarning {
     MfaRequired,
     PasskeyRequired,
+    AttestedPasskeyRequired,
+    AttestedResidentKeyRequired,
     Unsatisfiable,
+    WebauthnAttestationUnsatisfiable,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
@@ -1231,6 +1245,9 @@ pub struct CUStatus {
     pub primary_state: CUCredState,
     pub passkeys: Vec<PasskeyDetail>,
     pub passkeys_state: CUCredState,
+    pub attested_passkeys: Vec<PasskeyDetail>,
+    pub attested_passkeys_state: CUCredState,
+    pub attested_passkeys_allowed_devices: Vec<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, ToSchema)]

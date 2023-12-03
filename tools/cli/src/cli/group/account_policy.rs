@@ -8,6 +8,7 @@ impl GroupAccountPolicyOpt {
             | GroupAccountPolicyOpt::AuthSessionExpiry { copt, .. }
             | GroupAccountPolicyOpt::CredentialTypeMinimum { copt, .. }
             | GroupAccountPolicyOpt::PasswordMinimumLength { copt, .. }
+            | GroupAccountPolicyOpt::WebauthnAttestationCaList { copt, .. }
             | GroupAccountPolicyOpt::PrivilegedSessionExpiry { copt, .. } => copt.debug,
         }
     }
@@ -36,12 +37,12 @@ impl GroupAccountPolicyOpt {
             GroupAccountPolicyOpt::CredentialTypeMinimum { name, value, copt } => {
                 let client = copt.to_client(OpType::Write).await;
                 if let Err(e) = client
-                    .group_account_policy_credential_type_minimum_set(name, value)
+                    .group_account_policy_credential_type_minimum_set(name, value.as_str())
                     .await
                 {
                     handle_client_error(e, copt.output_mode);
                 } else {
-                    println!("Updated credential type minimum expiry.");
+                    println!("Updated credential type minimum.");
                 }
             }
             GroupAccountPolicyOpt::PasswordMinimumLength { name, length, copt } => {
@@ -63,7 +64,22 @@ impl GroupAccountPolicyOpt {
                 {
                     handle_client_error(e, copt.output_mode);
                 } else {
-                    println!("Updated authsession expiry.");
+                    println!("Updated privilege session expiry.");
+                }
+            }
+            GroupAccountPolicyOpt::WebauthnAttestationCaList {
+                name,
+                attestation_ca_list_json,
+                copt,
+            } => {
+                let client = copt.to_client(OpType::Write).await;
+                if let Err(e) = client
+                    .group_account_policy_webauthn_attestation_set(name, attestation_ca_list_json)
+                    .await
+                {
+                    handle_client_error(e, copt.output_mode);
+                } else {
+                    println!("Updated webauthn attesation CA list.");
                 }
             }
         }

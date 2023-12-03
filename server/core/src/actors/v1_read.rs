@@ -1251,7 +1251,7 @@ impl QueryServerReadV1 {
                 .map_err(|e| {
                     admin_error!(
                         err = ?e,
-                        "Failed to begin credential_passkey_init",
+                        "Failed to begin credential_passkey_finish",
                     );
                     e
                 }),
@@ -1260,7 +1260,34 @@ impl QueryServerReadV1 {
                 .map_err(|e| {
                     admin_error!(
                         err = ?e,
-                        "Failed to begin credential_passkey_init",
+                        "Failed to begin credential_passkey_remove",
+                    );
+                    e
+                }),
+            CURequest::AttestedPasskeyInit => idms_cred_update
+                .credential_attested_passkey_init(&session_token, ct)
+                .map_err(|e| {
+                    admin_error!(
+                        err = ?e,
+                        "Failed to begin credential_attested_passkey_init",
+                    );
+                    e
+                }),
+            CURequest::AttestedPasskeyFinish(label, rpkc) => idms_cred_update
+                .credential_attested_passkey_finish(&session_token, ct, label, &rpkc)
+                .map_err(|e| {
+                    admin_error!(
+                        err = ?e,
+                        "Failed to begin credential_attested_passkey_finish",
+                    );
+                    e
+                }),
+            CURequest::AttestedPasskeyRemove(uuid) => idms_cred_update
+                .credential_attested_passkey_remove(&session_token, ct, uuid)
+                .map_err(|e| {
+                    admin_error!(
+                        err = ?e,
+                        "Failed to begin credential_attested_passkey_remove",
                     );
                     e
                 }),

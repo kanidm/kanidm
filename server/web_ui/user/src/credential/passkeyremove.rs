@@ -6,7 +6,7 @@ use uuid::Uuid;
 use wasm_bindgen::UnwrapThrowExt;
 use yew::prelude::*;
 
-use super::reset::{EventBusMsg, PasskeyRemoveModalProps};
+use super::reset::{EventBusMsg, PasskeyClass, PasskeyRemoveModalProps};
 use kanidmd_web_ui_shared::{do_request, error::FetchError, utils, RequestMethod};
 
 pub struct PasskeyRemoveModalApp {
@@ -91,6 +91,7 @@ impl PasskeyRemoveModalApp {
                 | CURegState::TotpTryAgain
                 | CURegState::TotpInvalidSha1
                 | CURegState::Passkey(_)
+                | CURegState::AttestedPasskey(_)
                 | CURegState::BackupCodes(_) => Msg::Error {
                     emsg: "Invalid Passkey reg state response".to_string(),
                     kopid,
@@ -140,12 +141,16 @@ impl Component for PasskeyRemoveModalApp {
 
                 // Do the call back.
                 let token_c = ctx.props().token.clone();
+                let class = &ctx.props().class;
                 let uuid = self.uuid;
 
+                let request = match class {
+                    PasskeyClass::Any => CURequest::PasskeyRemove(uuid),
+                    PasskeyClass::Attested => CURequest::AttestedPasskeyRemove(uuid),
+                };
+
                 ctx.link().send_future(async move {
-                    match Self::submit_passkey_update(token_c, CURequest::PasskeyRemove(uuid), cb)
-                        .await
-                    {
+                    match Self::submit_passkey_update(token_c, request, cb).await {
                         Ok(v) => v,
                         Err(v) => v.into(),
                     }

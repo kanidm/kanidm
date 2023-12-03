@@ -251,7 +251,7 @@ pub static ref SCHEMA_ATTR_LOGINSHELL: SchemaAttribute = SchemaAttribute {
 pub static ref SCHEMA_ATTR_UNIX_PASSWORD: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_UNIX_PASSWORD,
     name: Attribute::UnixPassword.into(),
-    description: "A POSIX user's UNIX login password.to_string().".to_string(),
+    description: "A POSIX user's UNIX login password.".to_string(),
 
     index: vec![IndexType::Presence],
     syntax: SyntaxType::Credential,
@@ -273,7 +273,7 @@ pub static ref SCHEMA_ATTR_NSUNIQUEID: SchemaAttribute = SchemaAttribute {
 pub static ref SCHEMA_ATTR_ACCOUNT_EXPIRE: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_ACCOUNT_EXPIRE,
     name: Attribute::AccountExpire.into(),
-    description: "The datetime after which this account no longer may authenticate.to_string().".to_string(),
+    description: "The datetime after which this account no longer may authenticate.".to_string(),
 
     sync_allowed: true,
     syntax: SyntaxType::DateTime,
@@ -283,10 +283,19 @@ pub static ref SCHEMA_ATTR_ACCOUNT_EXPIRE: SchemaAttribute = SchemaAttribute {
 pub static ref SCHEMA_ATTR_ACCOUNT_VALID_FROM: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_ACCOUNT_VALID_FROM,
     name: Attribute::AccountValidFrom.into(),
-    description: "The datetime after which this account may commence authenticating.to_string().".to_string(),
+    description: "The datetime after which this account may commence authenticating.".to_string(),
 
     sync_allowed: true,
     syntax: SyntaxType::DateTime,
+    ..Default::default()
+};
+
+pub static ref SCHEMA_ATTR_WEBAUTHN_ATTESTATION_CA_LIST: SchemaAttribute = SchemaAttribute {
+    uuid: UUID_SCHEMA_ATTR_WEBAUTHN_ATTESTATION_CA_LIST,
+    name: Attribute::WebauthnAttestationCaList.into(),
+    description: "A set of CA's that limit devices that can be used with webauthn.".to_string(),
+    syntax: SyntaxType::WebauthnAttestationCaList,
+    multivalue: true,
     ..Default::default()
 };
 
@@ -461,15 +470,15 @@ pub static ref SCHEMA_ATTR_PASSKEYS: SchemaAttribute = SchemaAttribute {
     ..Default::default()
 };
 
-pub static ref SCHEMA_ATTR_DEVICEKEYS: SchemaAttribute = SchemaAttribute {
-    uuid: UUID_SCHEMA_ATTR_DEVICEKEYS,
-    name: Attribute::DeviceKeys.into(),
+pub static ref SCHEMA_ATTR_ATTESTED_PASSKEYS: SchemaAttribute = SchemaAttribute {
+    uuid: UUID_SCHEMA_ATTR_ATTESTED_PASSKEYS,
+    name: Attribute::AttestedPasskeys.into(),
     description: "A set of registered device keys".to_string(),
 
     index: vec![IndexType::Equality],
     multivalue: true,
     sync_allowed: true,
-    syntax: SyntaxType::DeviceKey,
+    syntax: SyntaxType::AttestedPasskey,
     ..Default::default()
 };
 
@@ -657,7 +666,8 @@ pub static ref SCHEMA_CLASS_ACCOUNT_POLICY: SchemaClass = SchemaClass {
         Attribute::AuthSessionExpiry.into(),
         Attribute::PrivilegeExpiry.into(),
         Attribute::AuthPasswordMinimumLength.into(),
-        Attribute::CredentialTypeMinimum.into()
+        Attribute::CredentialTypeMinimum.into(),
+        Attribute::WebauthnAttestationCaList.into(),
     ],
     systemsupplements: vec![Attribute::Group.into()],
     ..Default::default()
@@ -672,7 +682,7 @@ pub static ref SCHEMA_CLASS_ACCOUNT: SchemaClass = SchemaClass {
     systemmay: vec![
         Attribute::PrimaryCredential.into(),
         Attribute::PassKeys.into(),
-        Attribute::DeviceKeys.into(),
+        Attribute::AttestedPasskeys.into(),
         Attribute::CredentialUpdateIntentToken.into(),
         Attribute::SshPublicKey.into(),
         Attribute::RadiusSecret.into(),
