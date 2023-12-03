@@ -61,22 +61,22 @@ async fn main() -> ExitCode {
                 return ExitCode::FAILURE;
             };
 
+            info!("Sending request for user {}", &account_id);
+
             let mut req = ClientRequest::PamAuthenticateInit(account_id.clone());
             loop {
                 match call_daemon(cfg.sock_path.as_str(), req, cfg.unix_sock_timeout).await {
                     Ok(r) => match r {
                         ClientResponse::PamAuthenticateStepResponse(PamAuthResponse::Success) => {
-                            // ClientResponse::PamStatus(Some(true)) => {
                             println!("auth success!");
                             break;
                         }
                         ClientResponse::PamAuthenticateStepResponse(PamAuthResponse::Denied) => {
-                            // ClientResponse::PamStatus(Some(false)) => {
                             println!("auth failed!");
                             break;
                         }
                         ClientResponse::PamAuthenticateStepResponse(PamAuthResponse::Unknown) => {
-                            // ClientResponse::PamStatus(None) => {
+                            debug!("User may need to be in allow_local_account_override");
                             println!("auth user unknown");
                             break;
                         }
@@ -96,7 +96,15 @@ async fn main() -> ExitCode {
                             });
                             continue;
                         }
-                        _ => {
+                        ClientResponse::PamAuthenticateStepResponse(_)
+                        | ClientResponse::SshKeys(_)
+                        | ClientResponse::NssAccounts(_)
+                        | ClientResponse::NssAccount(_)
+                        | ClientResponse::NssGroup(_)
+                        | ClientResponse::NssGroups(_)
+                        | ClientResponse::Ok
+                        | ClientResponse::Error
+                        | ClientResponse::PamStatus(_) => {
                             // unexpected response.
                             error!("Error: unexpected response -> {:?}", r);
                             break;

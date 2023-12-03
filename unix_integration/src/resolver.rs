@@ -273,7 +273,9 @@ where
         //  * uuid
         //  Attempt to search these in the db.
         let mut dbtxn = self.db.write().await;
-        let r = dbtxn.get_account(account_id).map_err(|_| ())?;
+        let r = dbtxn.get_account(account_id).map_err(|err| {
+            debug!("get_cached_usertoken {:?}", err);
+        })?;
 
         match r {
             Some((ut, ex)) => {
@@ -484,6 +486,10 @@ where
             Ok(mut n_tok) => {
                 if self.check_nxset(&n_tok.name, n_tok.gidnumber).await {
                     // Refuse to release the token, it's in the denied set.
+                    debug!(
+                        "Account {:?} is in denied set, refusing to release token. It may need to be in the allow_local_account_override configuration list.",
+                        account_id
+                    );
                     self.delete_cache_usertoken(n_tok.uuid).await?;
                     Ok(None)
                 } else {

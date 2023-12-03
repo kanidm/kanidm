@@ -72,6 +72,30 @@ pub enum ClientRequest {
     Status,
 }
 
+impl ClientRequest {
+    /// Get a safe display version of the request, without credentials.
+    pub fn as_safe_string(&self) -> String {
+        match self {
+            ClientRequest::SshKey(id) => format!("SshKey({})", id),
+            ClientRequest::NssAccounts => "NssAccounts".to_string(),
+            ClientRequest::NssAccountByUid(id) => format!("NssAccountByUid({})", id),
+            ClientRequest::NssAccountByName(id) => format!("NssAccountByName({})", id),
+            ClientRequest::NssGroups => "NssGroups".to_string(),
+            ClientRequest::NssGroupByGid(id) => format!("NssGroupByGid({})", id),
+            ClientRequest::NssGroupByName(id) => format!("NssGroupByName({})", id),
+            ClientRequest::PamAuthenticateInit(id) => format!("PamAuthenticateInit({})", id),
+            ClientRequest::PamAuthenticateStep(_) => "PamAuthenticateStep".to_string(),
+            ClientRequest::PamAccountAllowed(id) => {
+                format!("PamAccountAllowed({})", id)
+            }
+            ClientRequest::PamAccountBeginSession(_) => "PamAccountBeginSession".to_string(),
+            ClientRequest::InvalidateCache => "InvalidateCache".to_string(),
+            ClientRequest::ClearCache => "ClearCache".to_string(),
+            ClientRequest::Status => "Status".to_string(),
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug)]
 pub enum ClientResponse {
     SshKeys(Vec<String>),
@@ -109,4 +133,16 @@ pub enum TaskRequest {
 pub enum TaskResponse {
     Success,
     Error(String),
+}
+
+#[test]
+fn test_clientrequest_as_safe_string() {
+    assert_eq!(
+        ClientRequest::NssAccounts.as_safe_string(),
+        "NssAccounts".to_string()
+    );
+    assert_eq!(
+        ClientRequest::SshKey("cheese".to_string()).as_safe_string(),
+        format!("SshKey({})", "cheese")
+    );
 }

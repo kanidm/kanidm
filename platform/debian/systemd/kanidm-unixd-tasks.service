@@ -10,6 +10,11 @@ User=root
 Type=simple
 ExecStart=/usr/sbin/kanidm_unixd_tasks
 
+# because kanidm-unixd might have failed for some reason but we need to try again later
+Restart=always
+RestartSec=30
+
+
 CapabilityBoundingSet=CAP_CHOWN CAP_FOWNER CAP_DAC_OVERRIDE CAP_DAC_READ_SEARCH
 # SystemCallFilter=@aio @basic-io @chown @file-system @io-event @network-io @sync
 ProtectSystem=strict
