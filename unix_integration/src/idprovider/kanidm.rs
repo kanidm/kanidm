@@ -7,6 +7,7 @@ use tokio::sync::RwLock;
 use super::interface::{
     // KeyStore,
     tpm,
+    tpm::Tpm,
     AuthCacheAction,
     AuthCredHandler,
     AuthRequest,
@@ -86,7 +87,7 @@ impl IdProvider for KanidmProvider {
     async fn configure_hsm_keys<D: KeyStoreTxn + Send>(
         &self,
         keystore: &mut D,
-        tpm: &mut (dyn tpm::Tpm + Send),
+        tpm: &mut tpm::BoxedDynTpm,
         machine_key: &tpm::MachineKey,
     ) -> Result<(), IdpError> {
         let id_key: Option<tpm::LoadableIdentityKey> =
@@ -115,10 +116,7 @@ impl IdProvider for KanidmProvider {
     }
 
     // Needs .read on all types except re-auth.
-    async fn provider_authenticate(
-        &self,
-        _tpm: &mut (dyn tpm::Tpm + Send),
-    ) -> Result<(), IdpError> {
+    async fn provider_authenticate(&self, _tpm: &mut tpm::BoxedDynTpm) -> Result<(), IdpError> {
         match self.client.write().await.auth_anonymous().await {
             Ok(_uat) => Ok(()),
             Err(err) => {
@@ -132,7 +130,7 @@ impl IdProvider for KanidmProvider {
         &self,
         id: &Id,
         _token: Option<&UserToken>,
-        _tpm: &mut (dyn tpm::Tpm + Send),
+        _tpm: &mut tpm::BoxedDynTpm,
     ) -> Result<UserToken, IdpError> {
         match self
             .client
@@ -195,7 +193,7 @@ impl IdProvider for KanidmProvider {
         &self,
         _account_id: &str,
         _token: Option<&UserToken>,
-        _tpm: &mut (dyn tpm::Tpm + Send),
+        _tpm: &mut tpm::BoxedDynTpm,
         _machine_key: &tpm::MachineKey,
     ) -> Result<(AuthRequest, AuthCredHandler), IdpError> {
         // Not sure that I need to do much here?
@@ -207,7 +205,7 @@ impl IdProvider for KanidmProvider {
         account_id: &str,
         cred_handler: &mut AuthCredHandler,
         pam_next_req: PamAuthRequest,
-        _tpm: &mut (dyn tpm::Tpm + Send),
+        _tpm: &mut tpm::BoxedDynTpm,
         _machine_key: &tpm::MachineKey,
     ) -> Result<(AuthResult, AuthCacheAction), IdpError> {
         match (cred_handler, pam_next_req) {
@@ -314,7 +312,7 @@ impl IdProvider for KanidmProvider {
     async fn unix_group_get(
         &self,
         id: &Id,
-        _tpm: &mut (dyn tpm::Tpm + Send),
+        _tpm: &mut tpm::BoxedDynTpm,
     ) -> Result<GroupToken, IdpError> {
         match self
             .client
