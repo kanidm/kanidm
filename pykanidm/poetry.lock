@@ -1517,12 +1517,12 @@ pylint = ">=1.7"
 
 [[package]]
 name = "pylint-pydantic"
-version = "0.3.0"
+version = "0.3.1"
 description = "A Pylint plugin to help Pylint understand the Pydantic"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "pylint_pydantic-0.3.0-py3-none-any.whl", hash = "sha256:040603055f45168048fe86e07bb4b6d672ddc931e00a318102f6da42f6c65564"},
+    {file = "pylint_pydantic-0.3.1-py3-none-any.whl", hash = "sha256:4c7f40b3aef9754f61479adfd76076f85b0615608bb5ce967ffc948909ffb0eb"},
 ]
 
 [package.dependencies]
@@ -1606,13 +1606,13 @@ testing = ["coverage (==6.2)", "mypy (==0.931)"]
 
 [[package]]
 name = "pytest-asyncio"
-version = "0.21.1"
+version = "0.23.1"
 description = "Pytest support for asyncio"
 optional = false
-python-versions = ">=3.7"
+python-versions = ">=3.8"
 files = [
-    {file = "pytest-asyncio-0.21.1.tar.gz", hash = "sha256:40a7eae6dded22c7b604986855ea48400ab15b069ae38116e8c01238e9eeb64d"},
-    {file = "pytest_asyncio-0.21.1-py3-none-any.whl", hash = "sha256:8666c1c8ac02631d7c51ba282e0c69a8a452b211ffedf2599099845da5c5c37b"},
+    {file = "pytest-asyncio-0.23.1.tar.gz", hash = "sha256:2d06468de455e7d4302e670a583d1a127d57ac2b09c95164a895b88c7a1e5178"},
+    {file = "pytest_asyncio-0.23.1-py3-none-any.whl", hash = "sha256:044ac9167e655f2462097e21cc9a29c9385674ea4fcc34677f1cc1ca35f3cd39"},
 ]
 
 [package.dependencies]
@@ -1620,7 +1620,7 @@ pytest = ">=7.0.0"
 
 [package.extras]
 docs = ["sphinx (>=5.3)", "sphinx-rtd-theme (>=1.0)"]
-testing = ["coverage (>=6.2)", "flaky (>=3.5.0)", "hypothesis (>=5.7.1)", "mypy (>=0.931)", "pytest-trio (>=0.7.0)"]
+testing = ["coverage (>=6.2)", "hypothesis (>=5.7.1)"]
 
 [[package]]
 name = "pytest-mock"
@@ -2313,4 +2313,4 @@ testing = ["big-O", "jaraco.functools", "jaraco.itertools", "more-itertools", "p
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.9"
-content-hash = "d697689b4db72590a37ab2f6a742fccca48944c7c95352e5b91d672e9ea0dc26"
+content-hash = "fbe2e4c0ee8fd54f9613bf066be99797bf9411adb321310701db0cb50d8d1fe9"
