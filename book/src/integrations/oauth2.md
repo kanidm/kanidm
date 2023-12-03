@@ -303,10 +303,6 @@ OAUTH2_REDIRECT_URL = "https://feeds.example.com/oauth2/kanidm/callback";
 OAUTH2_OIDC_DISCOVERY_ENDPOINT = "https://idm.example.com/oauth2/openid/<oauth2_rs_name>";
 ```
 
-Currently Miniflux [does not support PKCE](https://github.com/miniflux/v2/issues/1910) and Kanidm
-will prevent logins until you [disable PKCE](#extended-options-for-legacy-clients) for the resource
-server.
-
 ### Nextcloud
 
 Install the module [from the nextcloud market place](https://apps.nextcloud.com/apps/user_oidc) - it
