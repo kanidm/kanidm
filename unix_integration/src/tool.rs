@@ -68,12 +68,10 @@ async fn main() -> ExitCode {
                 match call_daemon(cfg.sock_path.as_str(), req, cfg.unix_sock_timeout).await {
                     Ok(r) => match r {
                         ClientResponse::PamAuthenticateStepResponse(PamAuthResponse::Success) => {
-                            // ClientResponse::PamStatus(Some(true)) => {
                             println!("auth success!");
                             break;
                         }
                         ClientResponse::PamAuthenticateStepResponse(PamAuthResponse::Denied) => {
-                            // ClientResponse::PamStatus(Some(false)) => {
                             println!("auth failed!");
                             break;
                         }
@@ -98,7 +96,15 @@ async fn main() -> ExitCode {
                             });
                             continue;
                         }
-                        _ => {
+                        ClientResponse::PamAuthenticateStepResponse(_)
+                        | ClientResponse::SshKeys(_)
+                        | ClientResponse::NssAccounts(_)
+                        | ClientResponse::NssAccount(_)
+                        | ClientResponse::NssGroup(_)
+                        | ClientResponse::NssGroups(_)
+                        | ClientResponse::Ok
+                        | ClientResponse::Error
+                        | ClientResponse::PamStatus(_) => {
                             // unexpected response.
                             error!("Error: unexpected response -> {:?}", r);
                             break;

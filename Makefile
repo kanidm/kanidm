@@ -133,6 +133,7 @@ install-tools:
 codespell: ## spell-check things.
 codespell:
 	codespell -c \
+	-D .codespell_dictionary \
 	--ignore-words .codespell_ignore \
 	--skip='./target,./pykanidm/.venv,./pykanidm/.mypy_cache,./.mypy_cache,./pykanidm/poetry.lock' \
 	--skip='./book/*.js' \

@@ -843,13 +843,11 @@ async fn main() -> ExitCode {
                 return ExitCode::FAILURE
             }
 
-            if cfg.default_shell.is_empty() {
-                error!("No default shell configured, unable to proceed");
-                return ExitCode::FAILURE
-            }
-            let shell_path = PathBuf::from_str(&cfg.default_shell).expect("Failed to build a representation of your default_shell path!");
-            if !shell_path.exists() {
-                error!("Cannot find configured default shell at {}, this is going to cause login issues!", shell_path.display())
+            if !cfg.default_shell.is_empty() {
+                let shell_path = PathBuf::from_str(&cfg.default_shell).expect("Failed to build a representation of your default_shell path!");
+                if !shell_path.exists() {
+                    error!("Cannot find configured default shell at {}, this could cause login issues!", shell_path.display())
+                }
             }
 
             // Okay, the hsm is now loaded and ready to go.
