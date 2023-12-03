@@ -53,7 +53,7 @@ RUN \
         --target-dir="/usr/src/kanidm/target/" \
         --features="${KANIDM_FEATURES}" \
         --release && \
-    cargo install fido-mds-tool \
+    cargo install --force fido-mds-tool \
         --target-dir="/usr/src/kanidm/target/" && \
     sccache -s
 
