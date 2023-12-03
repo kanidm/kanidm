@@ -958,7 +958,7 @@ async fn passkey_remove_prompt(
 ) {
     // TODO: make this a scrollable selector with a "cancel" option as the default
     match client
-        .idm_account_credential_update_status(&session_token)
+        .idm_account_credential_update_status(session_token)
         .await
     {
         Ok(status) => match pk_class {
@@ -1009,12 +1009,12 @@ async fn passkey_remove_prompt(
         let result = match pk_class {
             PasskeyClass::Any => {
                 client
-                    .idm_account_credential_update_passkey_remove(&session_token, uuid)
+                    .idm_account_credential_update_passkey_remove(session_token, uuid)
                     .await
             }
             PasskeyClass::Attested => {
                 client
-                    .idm_account_credential_update_attested_passkey_remove(&session_token, uuid)
+                    .idm_account_credential_update_attested_passkey_remove(session_token, uuid)
                     .await
             }
         };

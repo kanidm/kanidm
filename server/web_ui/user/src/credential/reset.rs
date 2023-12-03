@@ -404,7 +404,7 @@ impl CredentialResetApp {
             token,
             attested_passkeys,
             *attested_passkeys_state,
-            attested_passkeys_allowed_devices,
+            attested_passkeys_allowed_devices.as_slice(),
         );
 
         let warnings_html = if warnings.is_empty() {
@@ -733,7 +733,7 @@ impl CredentialResetApp {
         token: &CUSessionToken,
         attested_passkeys: &Vec<PasskeyDetail>,
         attested_passkeys_state: CUCredState,
-        attested_passkeys_allowed_devices: &Vec<String>,
+        attested_passkeys_allowed_devices: &[String],
     ) -> Html {
         let cb = self.cb.clone();
 
@@ -758,7 +758,7 @@ impl CredentialResetApp {
 
                     {
                         if attested_passkeys_state == CUCredState::Modifiable {
-                            html! { <PasskeyModalApp token={ token.clone() } cb={ cb } class={ PasskeyClass::Attested } allowed_devices={ Some(attested_passkeys_allowed_devices.clone()) } /> }
+                            html! { <PasskeyModalApp token={ token.clone() } cb={ cb } class={ PasskeyClass::Attested } allowed_devices={ Some(attested_passkeys_allowed_devices.to_vec()) } /> }
                         } else {
                             html! { <></> }
                         }

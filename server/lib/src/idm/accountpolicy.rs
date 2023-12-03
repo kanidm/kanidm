@@ -139,6 +139,7 @@ mod tests {
     fn test_idm_account_policy_resolve() {
         sketching::test_init();
 
+        // Yubico U2F Root CA Serial 457200631
         let ca_root_a: &[u8] = b"-----BEGIN CERTIFICATE-----
 MIIDHjCCAgagAwIBAgIEG0BT9zANBgkqhkiG9w0BAQsFADAuMSwwKgYDVQQDEyNZ
 dWJpY28gVTJGIFJvb3QgQ0EgU2VyaWFsIDQ1NzIwMDYzMTAgFw0xNDA4MDEwMDAw
@@ -158,6 +159,8 @@ LVVee6/VR6C5+KSTCMCWppMuJIZII2v9o4dkoZ8Y7QRjQlLfYzd3qGtKbw7xaF1U
 sG/5xUb/Btwb2X2g4InpiB/yt/3CpQXpiWX/K4mBvUKiGn05ZsqeY1gx4g0xLBqc
 U9psmyPzK+Vsgw2jeRQ5JlKDyqE0hebfC1tvFu0CCrJFcw==
 -----END CERTIFICATE-----";
+
+        // Defunct Apple WebAuthn Root CA
         let ca_root_b: &[u8] = b"-----BEGIN CERTIFICATE-----
 MIICEjCCAZmgAwIBAgIQaB0BbHo84wIlpQGUKEdXcTAKBggqhkjOPQQDAzBLMR8w
 HQYDVQQDDBZBcHBsZSBXZWJBdXRobiBSb290IENBMRMwEQYDVQQKDApBcHBsZSBJ

@@ -578,7 +578,7 @@ pub trait QueryServerTransaction<'a> {
                     SyntaxType::OauthScope => Value::new_oauthscope(value)
                         .ok_or_else(|| OperationError::InvalidAttribute("Invalid Oauth Scope syntax".to_string())),
                     SyntaxType::WebauthnAttestationCaList => Value::new_webauthn_attestation_ca_list(value)
-                        .ok_or_else(|| OperationError::InvalidAttribute("Invalid Webauthn Attestation Ca List".to_string())),
+                        .ok_or_else(|| OperationError::InvalidAttribute("Invalid Webauthn Attestation CA List".to_string())),
                     SyntaxType::OauthScopeMap => Err(OperationError::InvalidAttribute("Oauth Scope Maps can not be supplied through modification - please use the IDM api".to_string())),
                     SyntaxType::PrivateBinary => Err(OperationError::InvalidAttribute("Private Binary Values can not be supplied through modification".to_string())),
                     SyntaxType::IntentToken => Err(OperationError::InvalidAttribute("Intent Token Values can not be supplied through modification".to_string())),
@@ -711,7 +711,7 @@ pub trait QueryServerTransaction<'a> {
                     SyntaxType::EcKeyPrivate => Ok(PartialValue::SecretValue),
                     SyntaxType::Image => Ok(PartialValue::new_utf8s(value)),
                     SyntaxType::WebauthnAttestationCaList => Err(OperationError::InvalidAttribute(
-                        "Invalid - unable to query attestation ca list".to_string(),
+                        "Invalid - unable to query attestation CA list".to_string(),
                     )),
                 }
             }

@@ -12,10 +12,33 @@ use std::path::PathBuf;
 
 use clap::Parser;
 use kanidm_client::{ClientError, KanidmClient, KanidmClientBuilder};
-use kanidm_proto::constants::{DEFAULT_CLIENT_CONFIG_PATH, DEFAULT_CLIENT_CONFIG_PATH_HOME};
-use tracing::{debug, error};
+use tracing::error;
 
 include!("opt/ssh_authorizedkeys.rs");
+
+#[cfg(not(test))]
+fn k_client_builder() -> Result<KanidmClientBuilder, ()> {
+    use kanidm_proto::constants::{DEFAULT_CLIENT_CONFIG_PATH, DEFAULT_CLIENT_CONFIG_PATH_HOME};
+    use tracing::debug;
+
+    let config_path: String = shellexpand::tilde(DEFAULT_CLIENT_CONFIG_PATH_HOME).into_owned();
+
+    debug!("Attempting to use config {}", DEFAULT_CLIENT_CONFIG_PATH);
+    KanidmClientBuilder::new()
+        .read_options_from_optional_config(DEFAULT_CLIENT_CONFIG_PATH)
+        .and_then(|cb| {
+            debug!("Attempting to use config {}", config_path);
+            cb.read_options_from_optional_config(config_path)
+        })
+        .map_err(|e| {
+            error!("Failed to parse config (if present) -- {:?}", e);
+        })
+}
+
+#[cfg(test)]
+fn k_client_builder() -> Result<KanidmClientBuilder, ()> {
+    Ok(KanidmClientBuilder::new())
+}
 
 pub(crate) fn build_configured_client(opt: &SshAuthorizedOpt) -> Result<KanidmClient, ()> {
     if opt.debug {
@@ -26,17 +49,7 @@ pub(crate) fn build_configured_client(opt: &SshAuthorizedOpt) -> Result<KanidmCl
     #[cfg(test)]
     sketching::test_init();
 
-    let config_path: String = shellexpand::tilde(DEFAULT_CLIENT_CONFIG_PATH_HOME).into_owned();
-    debug!("Attempting to use config {}", DEFAULT_CLIENT_CONFIG_PATH);
-    let client_builder = KanidmClientBuilder::new()
-        .read_options_from_optional_config(DEFAULT_CLIENT_CONFIG_PATH)
-        .and_then(|cb| {
-            debug!("Attempting to use config {}", config_path);
-            cb.read_options_from_optional_config(config_path)
-        })
-        .map_err(|e| {
-            error!("Failed to parse config (if present) -- {:?}", e);
-        })?;
+    let client_builder = k_client_builder()?;
 
     let client_builder = match &opt.addr {
         Some(a) => client_builder.address(a.to_string()),

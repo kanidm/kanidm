@@ -2145,7 +2145,7 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
             .cloned()
             .ok_or_else(|| {
                 error!(
-                    "No attestation ca list is available, can not procedd with attested passkeys."
+                    "No attestation CA list is available, can not proceed with attested passkeys."
                 );
                 OperationError::AccessDenied
             })?;

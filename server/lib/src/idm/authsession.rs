@@ -31,7 +31,6 @@ use crate::idm::delayed::{
 use crate::idm::AuthState;
 use crate::prelude::*;
 use crate::value::{Session, SessionState};
-// use crate::value::CredentialType as PolicyCredentialType;
 use time::OffsetDateTime;
 
 use super::accountpolicy::ResolvedAccountPolicy;
@@ -152,7 +151,7 @@ enum CredHandler {
         c_wan: CredAttestedPasskey,
         // To verify the attestation post auth
         att_ca_list: AttestationCaList,
-        // AP does peq on cred_id
+        // AP does `PartialEq` on cred_id
         creds: BTreeMap<AttestedPasskeyV4, Uuid>,
     },
 }
@@ -940,8 +939,9 @@ impl AuthSession {
                 // What's valid to use in this context?
                 let mut handlers = Vec::new();
 
-                // We can't yet fully enforce account policy on auth, there is a bit of work
+                // TODO: We can't yet fully enforce account policy on auth, there is a bit of work
                 // to do to be able to check for pw / mfa etc.
+                // A possible gotcha is service accounts which can't be affected by these policies?
 
                 // let cred_type_min = asd.account_policy.credential_policy();
 

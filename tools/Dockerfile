@@ -53,6 +53,8 @@ RUN \
         --target-dir="/usr/src/kanidm/target/" \
         --features="${KANIDM_FEATURES}" \
         --release && \
+    cargo install fido-mds-tool \
+        --target-dir="/usr/src/kanidm/target/" && \
     sccache -s
 
 # == Construct the tools container
@@ -69,9 +71,11 @@ RUN \
 COPY --from=builder /usr/src/kanidm/target/release/kanidm /sbin/
 COPY --from=builder /usr/src/kanidm/target/release/kanidm-ipa-sync /sbin/
 COPY --from=builder /usr/src/kanidm/target/release/kanidm-ldap-sync /sbin/
+COPY --from=builder /usr/src/kanidm/target/release/fido-mds-tool /sbin/
 RUN chmod +x /sbin/kanidm
 RUN chmod +x /sbin/kanidm-ipa-sync
 RUN chmod +x /sbin/kanidm-ldap-sync
+RUN chmod +x /sbin/fido-mds-tool
 
 RUN mkdir /etc/kanidm && \
     touch /etc/kanidm/config
