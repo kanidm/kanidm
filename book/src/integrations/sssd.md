@@ -61,7 +61,7 @@ An example configuration for SSSD is provided.
 
 # Setup for ssh keys
 # Inside /etc/ssh/sshd_config add the lines:
-#   AuthorizedKeysCommand /usr/bin/sss_ssh_authorizedkeys
+#   AuthorizedKeysCommand /usr/bin/sss_ssh_authorizedkeys %u
 #   AuthorizedKeysCommandUser nobody
 # You can test with the command: sss_ssh_authorizedkeys <username>
 

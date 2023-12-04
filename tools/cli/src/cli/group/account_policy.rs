@@ -79,7 +79,7 @@ impl GroupAccountPolicyOpt {
                 {
                     handle_client_error(e, copt.output_mode);
                 } else {
-                    println!("Updated webauthn attesation CA list.");
+                    println!("Updated webauthn attestation CA list.");
                 }
             }
         }
