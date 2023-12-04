@@ -16,6 +16,7 @@ authentication:
 > copy the `-pc` files. You can then edit the files safely.
 
 ```bash
+# These steps must be taken as root
 rm /etc/pam.d/common-account
 rm /etc/pam.d/common-auth
 rm /etc/pam.d/common-session
@@ -48,7 +49,7 @@ auth        required      pam_deny.so
 
 # /etc/pam.d/common-password
 # Controls flow of what happens when a user invokes the passwd command. Currently does NOT
-# interact with kanidm.
+# push password changes back to kanidm
 password    [default=1 ignore=ignore success=ok] pam_localuser.so
 password    required    pam_unix.so use_authtok nullok shadow try_first_pass
 password    [default=1 ignore=ignore success=ok]  pam_succeed_if.so uid >= 1000 quiet_success quiet_fail
