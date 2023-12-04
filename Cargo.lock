@@ -808,9 +808,9 @@ dependencies = [
 
 [[package]]
 name = "compact_jwt"
-version = "0.3.2"
+version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "75968a6d3a1232f93c8701152281fba5ae2f936091f97fe746e35bd8a892f9d0"
+checksum = "1c88e50516e010f137593b9e80dab437bc82c7c7bb4c5bf5dd042e30b0807dd7"
 dependencies = [
  "base64 0.21.5",
  "base64urlsafedata",
@@ -2994,7 +2994,9 @@ dependencies = [
 
 [[package]]
 name = "kanidm-hsm-crypto"
-version = "0.1.4"
+version = "0.1.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0605892a3d0aca88b43a2d60a381ff7307c2c741d64ff87fb7c763556305791d"
 dependencies = [
  "argon2",
  "hex",
@@ -3139,7 +3141,7 @@ dependencies = [
  "async-recursion",
  "clap",
  "clap_complete",
- "compact_jwt 0.3.2",
+ "compact_jwt 0.3.3",
  "cursive",
  "dialoguer",
  "futures-concurrency",
@@ -3174,7 +3176,7 @@ dependencies = [
  "bytes",
  "clap",
  "clap_complete",
- "compact_jwt 0.3.2",
+ "compact_jwt 0.3.3",
  "csv",
  "futures",
  "hashbrown 0.14.3",
@@ -3224,7 +3226,7 @@ dependencies = [
  "axum-server",
  "bytes",
  "chrono",
- "compact_jwt 0.3.2",
+ "compact_jwt 0.3.3",
  "cron",
  "filetime",
  "futures",
@@ -3271,7 +3273,7 @@ version = "1.1.0-rc.15-dev"
 dependencies = [
  "base64 0.21.5",
  "base64urlsafedata",
- "compact_jwt 0.3.2",
+ "compact_jwt 0.3.3",
  "concread",
  "criterion",
  "dyn-clone",
@@ -3337,7 +3339,7 @@ name = "kanidmd_testkit"
 version = "1.1.0-rc.15-dev"
 dependencies = [
  "assert_cmd",
- "compact_jwt 0.3.2",
+ "compact_jwt 0.3.3",
  "escargot",
  "fantoccini",
  "futures",

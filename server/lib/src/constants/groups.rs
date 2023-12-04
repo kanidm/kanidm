@@ -422,7 +422,7 @@ lazy_static! {
 
     pub static ref IDM_ALL_PERSONS: BuiltinGroup = BuiltinGroup {
         name: "idm_all_persons",
-        description: "Builtin IDM Group for extending high privilege accounts to be people.",
+        description: "Builtin IDM dynamic group containing all persons.",
         uuid: UUID_IDM_ALL_PERSONS,
         members: Vec::new(),
         dyngroup: true,

@@ -77,6 +77,8 @@ async fn driver_main(opt: Opt) {
         Ok(f) => f,
         Err(e) => {
             error!("Unable to open profile file [{:?}] 🥺", e);
+            let diag = kanidm_lib_file_permissions::diagnose_path(&opt.ipa_sync_config);
+            info!(%diag);
             return;
         }
     };

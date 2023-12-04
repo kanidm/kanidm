@@ -66,7 +66,7 @@ lines:
 ```text
 PubkeyAuthentication yes
 UsePAM yes
-AuthorizedKeysCommand /usr/bin/kanidm_ssh_authorizedkeys %u
+AuthorizedKeysCommand /usr/sbin/kanidm_ssh_authorizedkeys %u
 AuthorizedKeysCommandUser nobody
 ```
 
