@@ -1,8 +1,27 @@
 # Access Control Defaults
 
- * Do we need some kind of permission atoms to allow certain tasks?
+- Do we need some kind of permission atoms to allow certain tasks?
 
+## Use Cases:
 
+- User sign-up portal (need service account that can create users and do cred reset)
+- Role for service account generation.
+- Remote backup - this account should be able to trigger and retrieve a backup
+- Groups should be able to be changed by a managing group (managed by)
+- IP limits on accounts?
+
+- Users need to not be able to see other users.
+  - Means the user can't read member attr, but can see groups + group info.
+
+- Anonymous needs to be able to be blocked more easily.
+- Enable disable self-mail write
+- Enable disable self-name-change
+
+## To achieve
+
+- IP access limits
+- Managed By rules
+- Better group specification syntax (not filters)
 
 ## Domain Admin
 
@@ -77,7 +96,6 @@ PersonAdmin --> PersonReadWithPII("Person Read - With PII")
 PersonReadWithPII --> PersonReadNoPII
 PersonReadNoPII --> |"Reads"| Persons
 PosixAccountIncludesCredMod --> |"Extends (Add Posix Account)"| Persons
-
 ```
 
 ## Domain and Schema
@@ -90,7 +108,6 @@ DomainConfigAdmin("Domain Configuration Admin") --> |"Modifies Reads"| System
 SyncAccountAdmin("Sync Account Admin") --> |"Creates Modifies Deletes"| SyncAccounts("Sync Accounts")
 SchemaAdmin("Schema Admin") --> |"Creates Modifies"| Schema("Schema")
 AccessControlAdmin("Access Control Admin") --> |"Creates Modifies Deletes"| AccessControls("Access Controls")
-
 ```
 
 ## High-Priv and Groups

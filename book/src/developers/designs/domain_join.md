@@ -1,7 +1,7 @@
 # Domain Join - Machine Accounts
 
-There are a number of features we have been considering that will required us to finally give
-in and support machine accounts also know as domain joining.
+There are a number of features we have been considering that will required us to finally give in and
+support machine accounts also know as domain joining.
 
 ## Feature Requirements
 
@@ -16,19 +16,21 @@ retrieve ssh public keys, and then perform sudo authentication.
 This has the obvious caveat that anyone can stand up a machine that trusts a Kanidm instance. This
 presents a double edged sword:
 
-* The owner of the machine by configuring it to authenticate to Kanidm is stating it has full trust of the authentication decisions Kanidm makes.
-* Users of Kanidm may not realise that they are accessing a machine that is not potentially managed by their IT or other central authority.
+- The owner of the machine by configuring it to authenticate to Kanidm is stating it has full trust
+  of the authentication decisions Kanidm makes.
+- Users of Kanidm may not realise that they are accessing a machine that is not potentially managed
+  by their IT or other central authority.
 
-To prevent this, unix authentication should be configurable to prevent usage to anonymous
-machines. This will require the machine to present machine authentication credentials simultaneously
-with the user's credentials.
+To prevent this, unix authentication should be configurable to prevent usage to anonymous machines.
+This will require the machine to present machine authentication credentials simultaneously with the
+user's credentials.
 
 ### Requesting Cryptographic Credentials
 
-When a user logs in to a machine, it may be required that they can use that authentication to identify
-themself to other systems. When a user authenticates with credentials such as ssh-keys, it's not
-possible to use these to request other forwardable credentials - and ssh agent forwarding only allows
-forwarding of ssh credentials, not other types of credentials that may be needed.
+When a user logs in to a machine, it may be required that they can use that authentication to
+identify themself to other systems. When a user authenticates with credentials such as ssh-keys,
+it's not possible to use these to request other forwardable credentials - and ssh agent forwarding
+only allows forwarding of ssh credentials, not other types of credentials that may be needed.
 
 In this case when a user authenticates with ssh, since we are a trusted machine we should be able to
 request short-term and limited credentials on the users behalf.
@@ -38,16 +40,18 @@ An example is that we could dynamicly request TLS certificates or kerberos crede
 Normally with ssh in this manner, everything has to use kerberos. This would force users to kinit on
 their machine to ssh and forward their credentials to the next machine. This causes friction since
 configuring kerberos on machines is an exercise in frustration, and with BYOD it gets even worse. In
-addition if a use ssh's with an ssh key, the only viable kinit mechanism is password or password + totp. Both
-of which are falling out of favour for cryptographic authentication.
+addition when using ssh with an ssh key, the only viable kinit mechanism is password or password +
+totp once the user has logged in. This is because pkcs11 can't be forwarded over ssh, nor can CTAP2,
+limiting kinit to weaker authentication mechanisms.
 
 ## Security Considerations
 
-* Anonymous joins should not be allowed or permitted.
-* Join tokens need to be revoked (causing related machines to request re-enrollment) or expired (related machines can continue to function)
-* Join tokens must be auditable.
-* Private keys SHOULD be stored in a TPM, or at least a software HSM with a secured unlock key.
-* The use of the private key must prevent replay attacks
+- Anonymous joins should not be allowed or permitted.
+- Join tokens need to be revoked (causing related machines to request re-enrollment) or expired
+  (related machines can continue to function)
+- Join tokens must be auditable.
+- Private keys SHOULD be stored in a TPM, or at least a software HSM with a secured unlock key.
+- The use of the private key must prevent replay attacks
 
 ## Overview
 
@@ -55,15 +59,20 @@ Since the machine would now be an entity requiring authentication, we need to ha
 establish and maintain this trust relationship.
 
 1. A join token is created by a user who is authorised to perform domain joins.
-2. The machine is audited for a known trust state. This process may vary from site to site. A future improvement could be that the join token can only release on certain TPM PCR values.
-3. The join token is yielded to the kanidm unix daemon which submits it's signing key to the kanidm server.
+2. The machine is audited for a known trust state. This process may vary from site to site. A future
+   improvement could be that the join token can only release on certain TPM PCR values.
+3. The join token is yielded to the kanidm unix daemon which submits it's signing key to the kanidm
+   server.
 4. The kanidm server verifies the submission and creates a machine account.
-5. The kanidm unix daemon now uses it's signing key to sign a challenge that is submitted with all requests to the kanidm server.
+5. The kanidm unix daemon now uses it's signing key to sign a challenge that is submitted with all
+   requests to the kanidm server.
 
 Extra
 
-6. Machines should be able to "re-join" with an alternate join token, moving their machine account join token relationship.
-7. Machines must be able to self-enroll newer keys which may have stronger cryptographic requirements.
+6. Machines should be able to "re-join" with an alternate join token, moving their machine account
+   join token relationship.
+7. Machines must be able to self-enroll newer keys which may have stronger cryptographic
+   requirements.
 
 ## Details
 
@@ -71,14 +80,14 @@ Extra
 
 Join tokens are persisted in the database allowing tracing back to the usage of the token.
 
-Every machine that is joined by that token will related back to that token. This allows auditing
-of which token was used to join which machine.
+Every machine that is joined by that token will related back to that token. This allows auditing of
+which token was used to join which machine.
 
 Machines may re-enroll with an alternate token.
 
-The join token should be signed. The JWK pub key should be available at a known HTTPS uri so that the client
-can use it to validate the join token and it's content. This *may* allow policy to be embedded into
-the join token for the client to self-adhere to in the join process.
+The join token should be signed. The JWK pub key should be available at a known HTTPS uri so that
+the client can use it to validate the join token and it's content. This _may_ allow policy to be
+embedded into the join token for the client to self-adhere to in the join process.
 
 ### Machine Auditing
 
@@ -90,9 +99,9 @@ we should consider using TPM PCRs with secure boot to measure this and validate 
 The private key should be generated and stored in a TPM/HSM. If possible, we should also submit
 attestation of this.
 
-The submission of the public key should prevent replays, and should sign either a nonce or the current
-time. The current time must be valid to within a number of seconds. The nonce must be created by
-the server.
+The submission of the public key should prevent replays, and should sign either a nonce or the
+current time. The current time must be valid to within a number of seconds. The nonce must be
+created by the server.
 
 The machine must submit it's public key, the time value and the signature. This should accompany the
 join token.
@@ -102,9 +111,8 @@ machine account created. The machine account is linked to the join token.
 
 ### Machine Account
 
-The machine account is a new form of account, similar to a service account. It should identify
-the machine, it's hostname, and other properties. It should also contain the machines public key
-id.
+The machine account is a new form of account, similar to a service account. It should identify the
+machine, it's hostname, and other properties. It should also contain the machines public key id.
 
 When the machine requests certain API's from Kanidm, it should submit signed requests that include
 the current time. The kid is used to find the machine account that is submitting the request. This
