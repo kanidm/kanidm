@@ -94,10 +94,10 @@ embedded into the join token for the client to self-adhere to in the join proces
 The machine should be audited to be in a secure state. It's not yet clear how to proceed here, but
 we should consider using TPM PCRs with secure boot to measure this and validate the machine state.
 
-One possible way to achieve this could be with full disk encryption that is bound to secure boot
-and TPM PCRs. Kanidm-unixd could validate the same PCR's to start operating. The challenge here would
-be updates of the expected PCR values during a system update. Alternately, Kanidm could "assume"
-that if started, then the FDE must have passed and attestation of health "is out of scope" for us.
+One possible way to achieve this could be with full disk encryption that is bound to secure boot and
+TPM PCRs. Kanidm-unixd could validate the same PCR's to start operating. The challenge here would be
+updates of the expected PCR values during a system update. Alternately, Kanidm could "assume" that
+if started, then the FDE must have passed and attestation of health "is out of scope" for us.
 
 ### Public Key Submission
 
