@@ -255,23 +255,7 @@ pub struct AccessControlProfile {
     // the acp update routine.
     #[allow(dead_code)]
     uuid: Uuid,
-    // Must be
-    //   Group
-    // === ⚠️   WARNING!!! ⚠️  ===
-    // This is OPTION to allow migration from 10 -> 11. We have to do this because ACP is reloaded
-    // so early in the boot phase that we can't have migrated the content of the receiver yet! As a
-    // result we MUST be able to withstand some failure in the parse process. The INTENT is that
-    // during early boot this will be None, and will NEVER match. Once started, the migration
-    // will occur, and this will flip to Some. In a future version we can remove this!
-    // pub receiver: Option<Uuid>,
     pub receiver: AccessControlReceiver,
-    // or
-    //  Filter
-    //  Group
-    //  Self
-    // and
-    //  exclude
-    //    Group
     pub target: AccessControlTarget,
 }
 
@@ -282,7 +266,7 @@ impl AccessControlProfile {
     ) -> Result<Self, OperationError> {
         // Assert we have class access_control_profile
         if !value.attribute_equality(Attribute::Class, &EntryClass::AccessControlProfile.into()) {
-            admin_error!("class access_control_profile not present.");
+            error!("class access_control_profile not present.");
             return Err(OperationError::InvalidAcpState(
                 "Missing access_control_profile".to_string(),
             ));
@@ -292,50 +276,74 @@ impl AccessControlProfile {
         let name = value
             .get_ava_single_iname(Attribute::Name)
             .ok_or_else(|| {
-                admin_error!("Missing {}", Attribute::Name);
+                error!("Missing {}", Attribute::Name);
                 OperationError::InvalidAcpState(format!("Missing {}", Attribute::Name))
             })?
             .to_string();
         // copy uuid
         let uuid = value.get_uuid();
-        // receiver, and turn to real filter
 
-        // === ⚠️   WARNING!!! ⚠️  ===
-        // See struct ACP for details.
-        let receiver = value
-            .get_ava_refer(Attribute::AcpReceiverGroup)
-            .map(|groups| AccessControlReceiver::Group(groups.clone()))
-            .unwrap_or(AccessControlReceiver::None);
-        /*
-        .ok_or_else(|| {
-            admin_error!("Missing {}", Attribute::AcpReceiverGroup);
-            OperationError::InvalidAcpState(format!("Missing {}", Attribute::AcpReceiverGroup))
-        })?
-        */
+        let receiver = if value.attribute_equality(
+            Attribute::Class,
+            &EntryClass::AccessControlReceiverGroup.into(),
+        ) {
+            value
+                .get_ava_refer(Attribute::AcpReceiverGroup)
+                .cloned()
+                .map(AccessControlReceiver::Group)
+                .ok_or_else(|| {
+                    admin_error!("Missing {}", Attribute::AcpReceiverGroup);
+                    OperationError::InvalidAcpState(format!(
+                        "Missing {}",
+                        Attribute::AcpReceiverGroup
+                    ))
+                })?
+        } else {
+            warn!(
+                ?name,
+                "access control has no defined receivers - this will do nothing!"
+            );
+            AccessControlReceiver::None
+        };
 
-        // targetscope, and turn to real filter
-        let targetscope_f: ProtoFilter = value
-            .get_ava_single_protofilter(Attribute::AcpTargetScope)
-            // .map(|pf| pf.clone())
-            .cloned()
-            .ok_or_else(|| {
-                admin_error!("Missing {}", Attribute::AcpTargetScope);
-                OperationError::InvalidAcpState(format!("Missing {}", Attribute::AcpTargetScope))
+        let target = if value.attribute_equality(
+            Attribute::Class,
+            &EntryClass::AccessControlTargetScope.into(),
+        ) {
+            // targetscope, and turn to real filter
+            let targetscope_f: ProtoFilter = value
+                .get_ava_single_protofilter(Attribute::AcpTargetScope)
+                // .map(|pf| pf.clone())
+                .cloned()
+                .ok_or_else(|| {
+                    admin_error!("Missing {}", Attribute::AcpTargetScope);
+                    OperationError::InvalidAcpState(format!(
+                        "Missing {}",
+                        Attribute::AcpTargetScope
+                    ))
+                })?;
+
+            let ident = Identity::from_internal();
+
+            let targetscope_i = Filter::from_rw(&ident, &targetscope_f, qs).map_err(|e| {
+                admin_error!("{} validation failed {:?}", Attribute::AcpTargetScope, e);
+                e
             })?;
 
-        let ident = Identity::from_internal();
-
-        let targetscope_i = Filter::from_rw(&ident, &targetscope_f, qs).map_err(|e| {
-            admin_error!("{} validation failed {:?}", Attribute::AcpTargetScope, e);
-            e
-        })?;
-
-        let targetscope = targetscope_i.validate(qs.get_schema()).map_err(|e| {
-            admin_error!("{} Schema Violation {:?}", Attribute::AcpTargetScope, e);
-            OperationError::SchemaViolation(e)
-        })?;
-
-        let target = AccessControlTarget::Scope(targetscope);
+            targetscope_i
+                .validate(qs.get_schema())
+                .map_err(|e| {
+                    admin_error!("{} Schema Violation {:?}", Attribute::AcpTargetScope, e);
+                    OperationError::SchemaViolation(e)
+                })
+                .map(AccessControlTarget::Scope)?
+        } else {
+            warn!(
+                ?name,
+                "access control has no defined targets - this will do nothing!"
+            );
+            AccessControlTarget::None
+        };
 
         Ok(AccessControlProfile {
             name,

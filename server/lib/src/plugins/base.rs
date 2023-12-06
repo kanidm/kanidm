@@ -270,6 +270,14 @@ mod tests {
                 Attribute::Class,
                 EntryClass::AccessControlProfile.to_value()
             ),
+            (
+                Attribute::Class,
+                EntryClass::AccessControlTargetScope.to_value()
+            ),
+            (
+                Attribute::Class,
+                EntryClass::AccessControlReceiverGroup.to_value()
+            ),
             (Attribute::Class, EntryClass::AccessControlModify.to_value()),
             (Attribute::Class, EntryClass::AccessControlCreate.to_value()),
             (Attribute::Class, EntryClass::AccessControlDelete.to_value()),

@@ -1143,6 +1143,7 @@ mod tests {
             let ev1 = e1.into_sealed_committed();
 
             let r1 = <$type>::try_from($qs, &ev1);
+            error!(?r1);
             assert!(r1.is_err());
         }};
     }
@@ -1189,7 +1190,7 @@ mod tests {
             &mut qs_write,
             r#"{
                     "attrs": {
-                        "class": ["object", "access_control_profile"],
+                        "class": ["object", "access_control_profile", "access_control_receiver_g", "access_control_target_scope"],
                         "name": ["acp_invalid"],
                         "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"]
                     }
@@ -1201,7 +1202,7 @@ mod tests {
             &mut qs_write,
             r#"{
                     "attrs": {
-                        "class": ["object", "access_control_profile"],
+                        "class": ["object", "access_control_profile", "access_control_receiver_g", "access_control_target_scope"],
                         "name": ["acp_invalid"],
                         "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"],
                         "acp_receiver_group": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"],

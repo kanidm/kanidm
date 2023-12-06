@@ -1264,7 +1264,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 name: Attribute::AcpTargetScope.into(),
                 uuid: UUID_SCHEMA_ATTR_ACP_TARGETSCOPE,
                 description: String::from(
-                    "The effective targets of the ACP, IE what will be acted upon.",
+                    "The effective targets of the ACP, e.g. what will be acted upon.",
                 ),
                 multivalue: false,
                 unique: false,
@@ -1967,31 +1967,6 @@ impl<'a> SchemaWriteTransaction<'a> {
         );
         // ACP
         self.classes.insert(
-            EntryClass::AccessControlProfile.into(),
-            SchemaClass {
-                name: EntryClass::AccessControlProfile.into(),
-                uuid: UUID_SCHEMA_CLASS_ACCESS_CONTROL_PROFILE,
-                description: String::from("System Access Control Profile Class"),
-                systemmay: vec![
-                    Attribute::AcpEnable.into(),
-                    Attribute::Description.into(),
-                    Attribute::AcpReceiver.into(),
-                ],
-                systemmust: vec![
-                    Attribute::AcpReceiverGroup.into(),
-                    Attribute::AcpTargetScope.into(),
-                    Attribute::Name.into(),
-                ],
-                systemsupplements: vec![
-                    EntryClass::AccessControlSearch.into(),
-                    EntryClass::AccessControlDelete.into(),
-                    EntryClass::AccessControlModify.into(),
-                    EntryClass::AccessControlCreate.into(),
-                ],
-                ..Default::default()
-            },
-        );
-        self.classes.insert(
             EntryClass::AccessControlSearch.into(),
             SchemaClass {
                 name: EntryClass::AccessControlSearch.into(),
@@ -2037,6 +2012,48 @@ impl<'a> SchemaWriteTransaction<'a> {
                 ..Default::default()
             },
         );
+        self.classes.insert(
+            EntryClass::AccessControlProfile.into(),
+            SchemaClass {
+                name: EntryClass::AccessControlProfile.into(),
+                uuid: UUID_SCHEMA_CLASS_ACCESS_CONTROL_PROFILE,
+                description: String::from("System Access Control Profile Class"),
+                systemmay: vec![Attribute::AcpEnable.into(), Attribute::Description.into()],
+                systemmust: vec![Attribute::Name.into()],
+                systemsupplements: vec![
+                    EntryClass::AccessControlSearch.into(),
+                    EntryClass::AccessControlDelete.into(),
+                    EntryClass::AccessControlModify.into(),
+                    EntryClass::AccessControlCreate.into(),
+                ],
+                ..Default::default()
+            },
+        );
+        self.classes.insert(
+            EntryClass::AccessControlReceiverGroup.into(),
+            SchemaClass {
+                name: EntryClass::AccessControlReceiverGroup.into(),
+                uuid: UUID_SCHEMA_CLASS_ACCESS_CONTROL_RECEIVER_GROUP,
+                description: String::from("System Access Control Profile Receiver Group"),
+                systemmay: vec![Attribute::AcpReceiver.into()],
+                systemmust: vec![Attribute::AcpReceiverGroup.into()],
+                systemsupplements: vec![EntryClass::AccessControlProfile.into()],
+                ..Default::default()
+            },
+        );
+        self.classes.insert(
+            EntryClass::AccessControlTargetScope.into(),
+            SchemaClass {
+                name: EntryClass::AccessControlTargetScope.into(),
+                uuid: UUID_SCHEMA_CLASS_ACCESS_CONTROL_TARGET_SCOPE,
+                description: String::from("System Access Control Profile Target Scope"),
+                systemmust: vec![Attribute::AcpTargetScope.into()],
+                systemsupplements: vec![EntryClass::AccessControlProfile.into()],
+                ..Default::default()
+            },
+        );
+
+        // System attrs
         self.classes.insert(
             EntryClass::System.into(),
             SchemaClass {

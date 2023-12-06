@@ -124,6 +124,10 @@ impl From<BuiltinAcp> for EntryInitNew {
                 panic!("Builtin ACP has no receiver!");
             }
             BuiltinAcpReceiver::Group(list) => {
+                entry.add_ava(
+                    Attribute::Class,
+                    EntryClass::AccessControlReceiverGroup.to_value(),
+                );
                 for group in list {
                     entry.set_ava(Attribute::AcpReceiverGroup, [Value::Refer(group)]);
                 }
@@ -135,6 +139,10 @@ impl From<BuiltinAcp> for EntryInitNew {
                 panic!("Builtin ACP has no target!");
             }
             BuiltinAcpTarget::Filter(proto_filter) => {
+                entry.add_ava(
+                    Attribute::Class,
+                    EntryClass::AccessControlTargetScope.to_value(),
+                );
                 entry.set_ava(Attribute::AcpTargetScope, [Value::JsonFilt(proto_filter)]);
             }
         }
