@@ -1374,6 +1374,23 @@ impl<'a> SchemaWriteTransaction<'a> {
                     syntax: SyntaxType::Utf8StringInsensitive,
                 },
             );
+        self.attributes.insert(
+            Attribute::EntryManagedBy.into(),
+            SchemaAttribute {
+                name: Attribute::EntryManagedBy.into(),
+                uuid: UUID_SCHEMA_ATTR_ENTRY_MANAGED_BY,
+                description: String::from(
+                    "A reference to a group that has access to manage the content of this entry.",
+                ),
+                multivalue: false,
+                unique: false,
+                phantom: false,
+                sync_allowed: false,
+                replicated: true,
+                index: vec![IndexType::Equality],
+                syntax: SyntaxType::ReferenceUuid,
+            },
+        );
         // MO/Member
         self.attributes.insert(
             Attribute::MemberOf.into(),
@@ -1886,7 +1903,10 @@ impl<'a> SchemaWriteTransaction<'a> {
                 name: EntryClass::Object.into(),
                 uuid: UUID_SCHEMA_CLASS_OBJECT,
                 description: String::from("A system created class that all objects must contain"),
-                systemmay: vec![Attribute::Description.into()],
+                systemmay: vec![
+                    Attribute::Description.into(),
+                    Attribute::EntryManagedBy.into(),
+                ],
                 systemmust: vec![
                     Attribute::Class.into(),
                     Attribute::Uuid.into(),
@@ -2030,14 +2050,26 @@ impl<'a> SchemaWriteTransaction<'a> {
             },
         );
         self.classes.insert(
+            EntryClass::AccessControlReceiverEntryManager.into(),
+            SchemaClass {
+                name: EntryClass::AccessControlReceiverEntryManager.into(),
+                uuid: UUID_SCHEMA_CLASS_ACCESS_CONTROL_RECEIVER_ENTRY_MANAGER,
+                description: String::from("System Access Control Profile Receiver - Entry Manager"),
+                systemexcludes: vec![EntryClass::AccessControlReceiverGroup.into()],
+                systemsupplements: vec![EntryClass::AccessControlProfile.into()],
+                ..Default::default()
+            },
+        );
+        self.classes.insert(
             EntryClass::AccessControlReceiverGroup.into(),
             SchemaClass {
                 name: EntryClass::AccessControlReceiverGroup.into(),
                 uuid: UUID_SCHEMA_CLASS_ACCESS_CONTROL_RECEIVER_GROUP,
-                description: String::from("System Access Control Profile Receiver Group"),
+                description: String::from("System Access Control Profile Receiver - Group"),
                 systemmay: vec![Attribute::AcpReceiver.into()],
                 systemmust: vec![Attribute::AcpReceiverGroup.into()],
                 systemsupplements: vec![EntryClass::AccessControlProfile.into()],
+                systemexcludes: vec![EntryClass::AccessControlReceiverEntryManager.into()],
                 ..Default::default()
             },
         );
@@ -2046,7 +2078,7 @@ impl<'a> SchemaWriteTransaction<'a> {
             SchemaClass {
                 name: EntryClass::AccessControlTargetScope.into(),
                 uuid: UUID_SCHEMA_CLASS_ACCESS_CONTROL_TARGET_SCOPE,
-                description: String::from("System Access Control Profile Target Scope"),
+                description: String::from("System Access Control Profile Target - Scope"),
                 systemmust: vec![Attribute::AcpTargetScope.into()],
                 systemsupplements: vec![EntryClass::AccessControlProfile.into()],
                 ..Default::default()

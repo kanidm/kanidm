@@ -1,13 +1,20 @@
 use crate::prelude::*;
 use std::collections::BTreeSet;
 
-use crate::filter::{Filter, FilterValid};
+use crate::filter::{Filter, FilterValid, FilterValidResolved};
 
 use kanidm_proto::v1::Filter as ProtoFilter;
 
 // =========================================================================
 // PARSE ENTRY TO ACP, AND ACP MANAGEMENT
 // =========================================================================
+
+#[derive(Debug, Clone)]
+pub struct AccessControlSearchResolved<'a> {
+    pub acp: &'a AccessControlSearch,
+    pub receiver_condition: AccessControlReceiverCondition,
+    pub target_condition: AccessControlTargetCondition,
+}
 
 #[derive(Debug, Clone)]
 pub struct AccessControlSearch {
@@ -62,6 +69,33 @@ impl AccessControlSearch {
             attrs: attrs.split_whitespace().map(AttrString::from).collect(),
         }
     }
+
+    /// ⚠️  - Manually create a search access profile from values.
+    /// This is a TEST ONLY method and will never be exposed in production.
+    #[cfg(test)]
+    pub(super) fn from_managed_by(
+        name: &str,
+        uuid: Uuid,
+        target: AccessControlTarget,
+        attrs: &str,
+    ) -> Self {
+        AccessControlSearch {
+            acp: AccessControlProfile {
+                name: name.to_string(),
+                uuid,
+                receiver: AccessControlReceiver::EntryManager,
+                target,
+            },
+            attrs: attrs.split_whitespace().map(AttrString::from).collect(),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct AccessControlDeleteResolved<'a> {
+    pub acp: &'a AccessControlDelete,
+    pub receiver_condition: AccessControlReceiverCondition,
+    pub target_condition: AccessControlTargetCondition,
 }
 
 #[derive(Debug, Clone)]
@@ -104,6 +138,27 @@ impl AccessControlDelete {
             },
         }
     }
+
+    /// ⚠️  - Manually create a delete access profile from values.
+    /// This is a TEST ONLY method and will never be exposed in production.
+    #[cfg(test)]
+    pub(super) fn from_managed_by(name: &str, uuid: Uuid, target: AccessControlTarget) -> Self {
+        AccessControlDelete {
+            acp: AccessControlProfile {
+                name: name.to_string(),
+                uuid,
+                receiver: AccessControlReceiver::EntryManager,
+                target,
+            },
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct AccessControlCreateResolved<'a> {
+    pub acp: &'a AccessControlCreate,
+    pub receiver_condition: AccessControlReceiverCondition,
+    pub target_condition: AccessControlTargetCondition,
 }
 
 #[derive(Debug, Clone)]
@@ -165,6 +220,35 @@ impl AccessControlCreate {
             attrs: attrs.split_whitespace().map(AttrString::from).collect(),
         }
     }
+
+    /// ⚠️  - Manually create a create access profile from values.
+    /// This is a TEST ONLY method and will never be exposed in production.
+    #[cfg(test)]
+    pub(super) fn from_managed_by(
+        name: &str,
+        uuid: Uuid,
+        target: AccessControlTarget,
+        classes: &str,
+        attrs: &str,
+    ) -> Self {
+        AccessControlCreate {
+            acp: AccessControlProfile {
+                name: name.to_string(),
+                uuid,
+                receiver: AccessControlReceiver::EntryManager,
+                target,
+            },
+            classes: classes.split_whitespace().map(AttrString::from).collect(),
+            attrs: attrs.split_whitespace().map(AttrString::from).collect(),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct AccessControlModifyResolved<'a> {
+    pub acp: &'a AccessControlModify,
+    pub receiver_condition: AccessControlReceiverCondition,
+    pub target_condition: AccessControlTargetCondition,
 }
 
 #[derive(Debug, Clone)]
@@ -234,19 +318,73 @@ impl AccessControlModify {
             remattrs: remattrs.split_whitespace().map(AttrString::from).collect(),
         }
     }
+
+    /// ⚠️  - Manually create a modify access profile from values.
+    /// This is a TEST ONLY method and will never be exposed in production.
+    #[cfg(test)]
+    pub(super) fn from_managed_by(
+        name: &str,
+        uuid: Uuid,
+        target: AccessControlTarget,
+        presattrs: &str,
+        remattrs: &str,
+        classes: &str,
+    ) -> Self {
+        AccessControlModify {
+            acp: AccessControlProfile {
+                name: name.to_string(),
+                uuid,
+                receiver: AccessControlReceiver::EntryManager,
+                target,
+            },
+            classes: classes.split_whitespace().map(AttrString::from).collect(),
+            presattrs: presattrs.split_whitespace().map(AttrString::from).collect(),
+            remattrs: remattrs.split_whitespace().map(AttrString::from).collect(),
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
 pub enum AccessControlReceiver {
     None,
     Group(BTreeSet<Uuid>),
+    EntryManager,
 }
+
+#[derive(Debug, Clone)]
+pub enum AccessControlReceiverCondition {
+    // None,
+    GroupChecked,
+    EntryManager,
+}
+
+/*
+impl AccessControlReceiverCondition {
+    pub(crate) fn is_none(&self) {
+        matches!(self, AccessControlReceiverCondition::None)
+    }
+}
+*/
 
 #[derive(Debug, Clone)]
 pub enum AccessControlTarget {
     None,
     Scope(Filter<FilterValid>),
 }
+
+#[derive(Debug, Clone)]
+pub enum AccessControlTargetCondition {
+    // None,
+    Scope(Filter<FilterValidResolved>),
+}
+
+/*
+impl AccessControlTargetCondition {
+    pub(crate) fn is_none(&self) {
+        matches!(&self, AccessControlTargetCondition::None)
+    }
+}
+*/
 
 #[derive(Debug, Clone)]
 pub struct AccessControlProfile {
@@ -298,6 +436,11 @@ impl AccessControlProfile {
                         Attribute::AcpReceiverGroup
                     ))
                 })?
+        } else if value.attribute_equality(
+            Attribute::Class,
+            &EntryClass::AccessControlReceiverEntryManager.into(),
+        ) {
+            AccessControlReceiver::EntryManager
         } else {
             warn!(
                 ?name,

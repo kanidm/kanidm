@@ -86,6 +86,7 @@ pub const ATTR_EMAIL_ALTERNATIVE: &str = "emailalternative";
 pub const ATTR_EMAIL_PRIMARY: &str = "emailprimary";
 pub const ATTR_EMAIL: &str = "email";
 pub const ATTR_ENTRYDN: &str = "entrydn";
+pub const ATTR_ENTRY_MANAGED_BY: &str = "entry_managed_by";
 pub const ATTR_ENTRYUUID: &str = "entryuuid";
 pub const ATTR_LDAP_KEYS: &str = "keys";
 pub const ATTR_EXCLUDES: &str = "excludes";

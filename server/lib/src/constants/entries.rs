@@ -83,6 +83,7 @@ pub enum Attribute {
     EmailAlternative,
     EmailPrimary,
     EntryDn,
+    EntryManagedBy,
     EntryUuid,
     Es256PrivateKeyDer,
     Excludes,
@@ -266,6 +267,7 @@ impl TryFrom<String> for Attribute {
             ATTR_EMAIL_ALTERNATIVE => Attribute::EmailAlternative,
             ATTR_EMAIL_PRIMARY => Attribute::EmailPrimary,
             ATTR_ENTRYDN => Attribute::EntryDn,
+            ATTR_ENTRY_MANAGED_BY => Attribute::EntryManagedBy,
             ATTR_ENTRYUUID => Attribute::EntryUuid,
             ATTR_ES256_PRIVATE_KEY_DER => Attribute::Es256PrivateKeyDer,
             ATTR_EXCLUDES => Attribute::Excludes,
@@ -425,6 +427,7 @@ impl From<Attribute> for &'static str {
             Attribute::EmailAlternative => ATTR_EMAIL_ALTERNATIVE,
             Attribute::EmailPrimary => ATTR_EMAIL_PRIMARY,
             Attribute::EntryDn => ATTR_ENTRYDN,
+            Attribute::EntryManagedBy => ATTR_ENTRY_MANAGED_BY,
             Attribute::EntryUuid => ATTR_ENTRYUUID,
             Attribute::Es256PrivateKeyDer => ATTR_ES256_PRIVATE_KEY_DER,
             Attribute::Excludes => ATTR_EXCLUDES,
@@ -570,6 +573,7 @@ pub enum EntryClass {
     AccessControlDelete,
     AccessControlModify,
     AccessControlProfile,
+    AccessControlReceiverEntryManager,
     AccessControlReceiverGroup,
     AccessControlSearch,
     AccessControlTargetScope,
@@ -613,6 +617,9 @@ impl From<EntryClass> for &'static str {
             EntryClass::AccessControlDelete => "access_control_delete",
             EntryClass::AccessControlModify => "access_control_modify",
             EntryClass::AccessControlProfile => "access_control_profile",
+            EntryClass::AccessControlReceiverEntryManager => {
+                "access_control_receiver_entry_manager"
+            }
             EntryClass::AccessControlReceiverGroup => "access_control_receiver_group",
             EntryClass::AccessControlSearch => "access_control_search",
             EntryClass::AccessControlTargetScope => "access_control_target_scope",

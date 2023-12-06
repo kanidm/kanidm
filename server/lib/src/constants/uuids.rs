@@ -256,8 +256,11 @@ pub const UUID_SCHEMA_ATTR_WEBAUTHN_ATTESTATION_CA_LIST: Uuid =
     uuid!("00000000-0000-0000-0000-ffff00000152");
 pub const UUID_SCHEMA_CLASS_ACCESS_CONTROL_RECEIVER_GROUP: Uuid =
     uuid!("00000000-0000-0000-0000-ffff00000153");
-pub const UUID_SCHEMA_CLASS_ACCESS_CONTROL_TARGET_SCOPE: Uuid =
+pub const UUID_SCHEMA_CLASS_ACCESS_CONTROL_RECEIVER_ENTRY_MANAGER: Uuid =
     uuid!("00000000-0000-0000-0000-ffff00000154");
+pub const UUID_SCHEMA_CLASS_ACCESS_CONTROL_TARGET_SCOPE: Uuid =
+    uuid!("00000000-0000-0000-0000-ffff00000155");
+pub const UUID_SCHEMA_ATTR_ENTRY_MANAGED_BY: Uuid = uuid!("00000000-0000-0000-0000-ffff00000156");
 
 // System and domain infos
 // I'd like to strongly criticise william of the past for making poor choices about these allocations.

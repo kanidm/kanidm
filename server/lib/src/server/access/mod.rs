@@ -32,8 +32,10 @@ use crate::modify::Modify;
 use crate::prelude::*;
 
 use self::profiles::{
-    AccessControlCreate, AccessControlDelete, AccessControlModify, AccessControlReceiver,
-    AccessControlSearch, AccessControlTarget,
+    AccessControlCreate, AccessControlCreateResolved, AccessControlDelete,
+    AccessControlDeleteResolved, AccessControlModify, AccessControlModifyResolved,
+    AccessControlReceiver, AccessControlReceiverCondition, AccessControlSearch,
+    AccessControlSearchResolved, AccessControlTarget, AccessControlTargetCondition,
 };
 
 use self::create::{apply_create_access, CreateResult};
@@ -104,6 +106,52 @@ pub struct AccessControls {
         ARCache<(IdentityId, Filter<FilterValid>), Filter<FilterValidResolved>>,
 }
 
+fn resolve_access_conditions<'a>(
+    ident: &Identity,
+    ident_memberof: Option<&BTreeSet<Uuid>>,
+    receiver: &AccessControlReceiver,
+    target: &AccessControlTarget,
+    acp_resolve_filter_cache: &mut ARCacheReadTxn<
+        'a,
+        (IdentityId, Filter<FilterValid>),
+        Filter<FilterValidResolved>,
+        (),
+    >,
+) -> Option<(AccessControlReceiverCondition, AccessControlTargetCondition)> {
+    let receiver_condition = match receiver {
+        AccessControlReceiver::Group(groups) => {
+            let group_check = ident_memberof
+                // Have at least one group allowed.
+                .map(|imo| imo.intersection(groups).next().is_some())
+                .unwrap_or_default();
+
+            if group_check {
+                AccessControlReceiverCondition::GroupChecked
+            } else {
+                // AccessControlReceiverCondition::None
+                return None;
+            }
+        }
+        AccessControlReceiver::EntryManager => AccessControlReceiverCondition::EntryManager,
+        AccessControlReceiver::None => return None,
+        // AccessControlReceiverCondition::None,
+    };
+
+    let target_condition = match &target {
+        AccessControlTarget::Scope(filter) => filter
+            .resolve(ident, None, Some(acp_resolve_filter_cache))
+            .map_err(|e| {
+                admin_error!(?e, "A internal filter/event was passed for resolution!?!?");
+                e
+            })
+            .ok()
+            .map(AccessControlTargetCondition::Scope)?,
+        AccessControlTarget::None => return None,
+    };
+
+    Some((receiver_condition, target_condition))
+}
+
 pub trait AccessControlsTransaction<'a> {
     fn get_search(&self) -> &Vec<AccessControlSearch>;
     fn get_create(&self) -> &Vec<AccessControlCreate>;
@@ -117,10 +165,7 @@ pub trait AccessControlsTransaction<'a> {
     ) -> &mut ARCacheReadTxn<'a, (IdentityId, Filter<FilterValid>), Filter<FilterValidResolved>, ()>;
 
     #[instrument(level = "debug", name = "access::search_related_acp", skip_all)]
-    fn search_related_acp<'b>(
-        &'b self,
-        ident: &Identity,
-    ) -> Vec<(&'b AccessControlSearch, Filter<FilterValidResolved>)> {
+    fn search_related_acp<'b>(&'b self, ident: &Identity) -> Vec<AccessControlSearchResolved<'b>> {
         let search_state = self.get_search();
         let acp_resolve_filter_cache = self.get_acp_resolve_filter_cache();
 
@@ -153,7 +198,8 @@ pub trait AccessControlsTransaction<'a> {
 
         let ident_memberof = ident.get_memberof();
 
-        let related_acp: Vec<(&AccessControlSearch, Filter<FilterValidResolved>)> = search_state
+        // let related_acp: Vec<(&AccessControlSearch, Filter<FilterValidResolved>)> =
+        let related_acp: Vec<AccessControlSearchResolved<'b>> = search_state
             .iter()
             .filter_map(|acs| {
                 // Now resolve the receiver filter
@@ -171,34 +217,19 @@ pub trait AccessControlsTransaction<'a> {
                 // A possible solution is to change the filter resolve function
                 // such that it takes an entry, rather than an event, but that
                 // would create issues in search.
-                let receives_acs = match &acs.acp.receiver {
-                    AccessControlReceiver::Group(groups) => ident_memberof
-                        // Have at least one group allowed.
-                        .map(|imo| imo.intersection(groups).next().is_some())
-                        .unwrap_or_default(),
-                    AccessControlReceiver::None => false,
-                };
+                let (receiver_condition, target_condition) = resolve_access_conditions(
+                    ident,
+                    ident_memberof,
+                    &acs.acp.receiver,
+                    &acs.acp.target,
+                    acp_resolve_filter_cache,
+                )?;
 
-                if receives_acs {
-                    // Now, for each of the acp's that apply to our receiver, resolve their
-                    // related target filters.
-                    match &acs.acp.target {
-                        AccessControlTarget::Scope(filter) => filter
-                            .resolve(ident, None, Some(acp_resolve_filter_cache))
-                            .map_err(|e| {
-                                admin_error!(
-                                    ?e,
-                                    "A internal filter/event was passed for resolution!?!?"
-                                );
-                                e
-                            })
-                            .ok()
-                            .map(|f_res| (acs, f_res)),
-                        AccessControlTarget::None => None,
-                    }
-                } else {
-                    None
-                }
+                Some(AccessControlSearchResolved {
+                    acp: acs,
+                    receiver_condition,
+                    target_condition,
+                })
             })
             .collect();
 
@@ -220,7 +251,7 @@ pub trait AccessControlsTransaction<'a> {
         let requested_attrs: BTreeSet<&str> = se.filter_orig.get_attr_set();
 
         // First get the set of acps that apply to this receiver
-        let related_acp: Vec<(&AccessControlSearch, _)> = self.search_related_acp(&se.ident);
+        let related_acp = self.search_related_acp(&se.ident);
 
         // For each entry.
         let entries_is_empty = entries.is_empty();
@@ -274,13 +305,13 @@ pub trait AccessControlsTransaction<'a> {
             .map(|vs| vs.iter().map(|s| s.as_str()).collect());
 
         // Get the relevant acps for this receiver.
-        let related_acp: Vec<(&AccessControlSearch, _)> = self.search_related_acp(&se.ident);
-        let related_acp: Vec<(&AccessControlSearch, _)> = if let Some(r_attrs) = se.attrs.as_ref() {
+        let related_acp = self.search_related_acp(&se.ident);
+        let related_acp: Vec<_> = if let Some(r_attrs) = se.attrs.as_ref() {
             // If the acp doesn't overlap with our requested attrs, there is no point in
             // testing it!
             related_acp
                 .into_iter()
-                .filter(|(acs, _)| !acs.attrs.is_disjoint(r_attrs))
+                .filter(|acs| !acs.acp.attrs.is_disjoint(r_attrs))
                 .collect()
         } else {
             related_acp
@@ -339,10 +370,7 @@ pub trait AccessControlsTransaction<'a> {
     }
 
     #[instrument(level = "debug", name = "access::modify_related_acp", skip_all)]
-    fn modify_related_acp<'b>(
-        &'b self,
-        ident: &Identity,
-    ) -> Vec<(&'b AccessControlModify, Filter<FilterValidResolved>)> {
+    fn modify_related_acp<'b>(&'b self, ident: &Identity) -> Vec<AccessControlModifyResolved<'b>> {
         // Some useful references we'll use for the remainder of the operation
         let modify_state = self.get_modify();
         let acp_resolve_filter_cache = self.get_acp_resolve_filter_cache();
@@ -351,35 +379,22 @@ pub trait AccessControlsTransaction<'a> {
 
         // Find the acps that relate to the caller, and compile their related
         // target filters.
-        let related_acp: Vec<(&AccessControlModify, _)> = modify_state
+        let related_acp: Vec<_> = modify_state
             .iter()
             .filter_map(|acs| {
-                let receives_acs = match &acs.acp.receiver {
-                    AccessControlReceiver::Group(groups) => ident_memberof
-                        // Have at least one group allowed.
-                        .map(|imo| imo.intersection(groups).next().is_some())
-                        .unwrap_or_default(),
-                    AccessControlReceiver::None => false,
-                };
+                let (receiver_condition, target_condition) = resolve_access_conditions(
+                    ident,
+                    ident_memberof,
+                    &acs.acp.receiver,
+                    &acs.acp.target,
+                    acp_resolve_filter_cache,
+                )?;
 
-                if receives_acs {
-                    match &acs.acp.target {
-                        AccessControlTarget::Scope(filter) => filter
-                            .resolve(ident, None, Some(acp_resolve_filter_cache))
-                            .map_err(|e| {
-                                admin_error!(
-                                    ?e,
-                                    "A internal filter/event was passed for resolution!?!?"
-                                );
-                                e
-                            })
-                            .ok()
-                            .map(|f_res| (acs, f_res)),
-                        AccessControlTarget::None => None,
-                    }
-                } else {
-                    None
-                }
+                Some(AccessControlModifyResolved {
+                    acp: acs,
+                    receiver_condition,
+                    target_condition,
+                })
             })
             .collect();
 
@@ -405,7 +420,7 @@ pub trait AccessControlsTransaction<'a> {
 
         // Find the acps that relate to the caller, and compile their related
         // target filters.
-        let related_acp: Vec<(&AccessControlModify, _)> = self.modify_related_acp(&me.ident);
+        let related_acp: Vec<_> = self.modify_related_acp(&me.ident);
 
         // build two sets of "requested pres" and "requested rem"
         let requested_pres: BTreeSet<&str> = me
@@ -521,7 +536,7 @@ pub trait AccessControlsTransaction<'a> {
     ) -> Result<bool, OperationError> {
         // Find the acps that relate to the caller, and compile their related
         // target filters.
-        let related_acp: Vec<(&AccessControlModify, _)> = self.modify_related_acp(&me.ident);
+        let related_acp = self.modify_related_acp(&me.ident);
 
         let r = entries.iter().all(|e| {
             // Due to how batch mod works, we have to check the modlist *per entry* rather
@@ -655,35 +670,22 @@ pub trait AccessControlsTransaction<'a> {
         let ident_memberof = ce.ident.get_memberof();
 
         // Find the acps that relate to the caller.
-        let related_acp: Vec<(&AccessControlCreate, _)> = create_state
+        let related_acp: Vec<_> = create_state
             .iter()
             .filter_map(|acs| {
-                let receives_acs = match &acs.acp.receiver {
-                    AccessControlReceiver::Group(groups) => ident_memberof
-                        // Have at least one group allowed.
-                        .map(|imo| imo.intersection(groups).next().is_some())
-                        .unwrap_or_default(),
-                    AccessControlReceiver::None => false,
-                };
+                let (receiver_condition, target_condition) = resolve_access_conditions(
+                    &ce.ident,
+                    ident_memberof,
+                    &acs.acp.receiver,
+                    &acs.acp.target,
+                    acp_resolve_filter_cache,
+                )?;
 
-                if receives_acs {
-                    match &acs.acp.target {
-                        AccessControlTarget::Scope(filter) => filter
-                            .resolve(&ce.ident, None, Some(acp_resolve_filter_cache))
-                            .map_err(|e| {
-                                admin_error!(
-                                    ?e,
-                                    "A internal filter/event was passed for resolution!?!?"
-                                );
-                                e
-                            })
-                            .ok()
-                            .map(|f_res| (acs, f_res)),
-                        AccessControlTarget::None => None,
-                    }
-                } else {
-                    None
-                }
+                Some(AccessControlCreateResolved {
+                    acp: acs,
+                    receiver_condition,
+                    target_condition,
+                })
             })
             .collect();
 
@@ -705,47 +707,29 @@ pub trait AccessControlsTransaction<'a> {
     }
 
     #[instrument(level = "debug", name = "access::delete_related_acp", skip_all)]
-    fn delete_related_acp<'b>(
-        &'b self,
-        ident: &Identity,
-    ) -> Vec<(&'b AccessControlDelete, Filter<FilterValidResolved>)> {
+    fn delete_related_acp<'b>(&'b self, ident: &Identity) -> Vec<AccessControlDeleteResolved<'b>> {
         // Some useful references we'll use for the remainder of the operation
         let delete_state = self.get_delete();
         let acp_resolve_filter_cache = self.get_acp_resolve_filter_cache();
 
         let ident_memberof = ident.get_memberof();
 
-        let related_acp: Vec<(&AccessControlDelete, _)> = delete_state
+        let related_acp: Vec<_> = delete_state
             .iter()
             .filter_map(|acs| {
-                let receives_acs = match &acs.acp.receiver {
-                    AccessControlReceiver::Group(groups) => ident_memberof
-                        // Have at least one group allowed.
-                        .map(|imo| imo.intersection(groups).next().is_some())
-                        .unwrap_or_default(),
-                    AccessControlReceiver::None => false,
-                };
+                let (receiver_condition, target_condition) = resolve_access_conditions(
+                    ident,
+                    ident_memberof,
+                    &acs.acp.receiver,
+                    &acs.acp.target,
+                    acp_resolve_filter_cache,
+                )?;
 
-                if receives_acs {
-                    // Now, for each of the acp's that apply to our receiver, resolve their
-                    // related target filters.
-                    match &acs.acp.target {
-                        AccessControlTarget::Scope(filter) => filter
-                            .resolve(ident, None, Some(acp_resolve_filter_cache))
-                            .map_err(|e| {
-                                admin_error!(
-                                    ?e,
-                                    "A internal filter/event was passed for resolution!?!?"
-                                );
-                                e
-                            })
-                            .ok()
-                            .map(|f_res| (acs, f_res)),
-                        AccessControlTarget::None => None,
-                    }
-                } else {
-                    None
-                }
+                Some(AccessControlDeleteResolved {
+                    acp: acs,
+                    receiver_condition,
+                    target_condition,
+                })
             })
             .collect();
 
@@ -811,16 +795,17 @@ pub trait AccessControlsTransaction<'a> {
 
         // == search ==
         // Get the relevant acps for this receiver.
-        let search_related_acp: Vec<(&AccessControlSearch, _)> = self.search_related_acp(ident);
-        let search_related_acp: Vec<(&AccessControlSearch, _)> =
-            if let Some(r_attrs) = attrs.as_ref() {
-                search_related_acp
-                    .into_iter()
-                    .filter(|(acs, _)| !acs.attrs.is_disjoint(r_attrs))
-                    .collect()
-            } else {
-                search_related_acp
-            };
+        let search_related_acp = self.search_related_acp(ident);
+        // Trim any search rule that doesn't provide attributes related to the request.
+        let search_related_acp = if let Some(r_attrs) = attrs.as_ref() {
+            search_related_acp
+                .into_iter()
+                .filter(|acs| !acs.acp.attrs.is_disjoint(r_attrs))
+                .collect()
+        } else {
+            // None here means all attrs requested.
+            search_related_acp
+        };
 
         // == modify ==
 
@@ -860,18 +845,12 @@ pub trait AccessControlsTransaction<'a> {
                 };
 
                 // == delete ==
-                let delete = delete_related_acp.iter().any(|(acd, f_res)| {
-                    if e.entry_match_no_index(f_res) {
-                        security_access!(
-                            entry_uuid = ?e.get_uuid(),
-                            acs = %acd.acp.name,
-                            "entry matches acd"
-                        );
-                        true
-                    } else {
-                        false
-                    }
-                });
+                let delete_status = apply_delete_access(ident, delete_related_acp.as_slice(), e);
+
+                let delete = match delete_status {
+                    DeleteResult::Denied => false,
+                    DeleteResult::Grant => true,
+                };
 
                 AccessEffectivePermission {
                     target: e.get_uuid(),
@@ -1101,7 +1080,7 @@ mod tests {
     use super::{
         profiles::{
             AccessControlCreate, AccessControlDelete, AccessControlModify, AccessControlProfile,
-            AccessControlSearch,
+            AccessControlSearch, AccessControlTarget,
         },
         Access, AccessControls, AccessControlsTransaction, AccessEffectivePermission,
     };
@@ -2951,5 +2930,201 @@ mod tests {
         let ex_b = vec![];
 
         test_acp_search!(&se_b, vec![], r_set, ex_b);
+    }
+
+    #[test]
+    fn test_access_entry_managed_by_search() {
+        sketching::test_init();
+
+        let test_entry = Arc::new(
+            entry_init!(
+                (Attribute::Class, EntryClass::Object.to_value()),
+                (Attribute::Name, Value::new_iname("testperson1")),
+                (Attribute::Uuid, Value::Uuid(UUID_TEST_ACCOUNT_1)),
+                (Attribute::EntryManagedBy, Value::Refer(UUID_TEST_GROUP_1))
+            )
+            .into_sealed_committed(),
+        );
+
+        let data_set = vec![test_entry.clone()];
+
+        let se_a = SearchEvent::new_impersonate_entry(
+            E_TEST_ACCOUNT_1.clone(),
+            filter_all!(f_pres(Attribute::Name)),
+        );
+        let expect_a = vec![test_entry];
+
+        let se_b = SearchEvent::new_impersonate_entry(
+            E_TEST_ACCOUNT_2.clone(),
+            filter_all!(f_pres(Attribute::Name)),
+        );
+        let expect_b = vec![];
+
+        let acp = AccessControlSearch::from_managed_by(
+            "test_acp",
+            Uuid::new_v4(),
+            // Allow admin to read only testperson1
+            AccessControlTarget::Scope(filter_valid!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("testperson1")
+            ))),
+            // In that read, admin may only view the "name" attribute, or query on
+            // the name attribute. Any other query (should be) rejected.
+            Attribute::Name.as_ref(),
+        );
+
+        // Check where allowed
+        test_acp_search!(&se_a, vec![acp.clone()], data_set.clone(), expect_a);
+
+        // And where not
+        test_acp_search!(&se_b, vec![acp], data_set, expect_b);
+    }
+
+    #[test]
+    fn test_access_entry_managed_by_create() {
+        sketching::test_init();
+
+        let test_entry = entry_init!(
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Name, Value::new_iname("testperson1")),
+            (Attribute::Uuid, Value::Uuid(UUID_TEST_ACCOUNT_1)),
+            (Attribute::EntryManagedBy, Value::Refer(UUID_TEST_GROUP_1))
+        );
+
+        let data_set = vec![test_entry];
+
+        let ce = CreateEvent::new_impersonate_identity(
+            Identity::from_impersonate_entry_readwrite(E_TEST_ACCOUNT_1.clone()),
+            vec![],
+        );
+
+        let acp = AccessControlCreate::from_managed_by(
+            "test_create",
+            Uuid::new_v4(),
+            AccessControlTarget::Scope(filter_valid!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("testperson1")
+            ))),
+            // classes
+            EntryClass::Account.into(),
+            // attrs
+            "class name uuid",
+        );
+
+        // Test reject create (not allowed attr). This is because entry
+        // managed by is non-sensical with creates!
+        test_acp_create!(&ce, vec![acp.clone()], &data_set, false);
+    }
+
+    #[test]
+    fn test_access_entry_managed_by_modify() {
+        let test_entry = Arc::new(
+            entry_init!(
+                (Attribute::Class, EntryClass::Object.to_value()),
+                (Attribute::Name, Value::new_iname("testperson1")),
+                (Attribute::Uuid, Value::Uuid(UUID_TEST_ACCOUNT_1)),
+                (Attribute::EntryManagedBy, Value::Refer(UUID_TEST_GROUP_1))
+            )
+            .into_sealed_committed(),
+        );
+
+        let data_set = vec![test_entry];
+
+        // Name present
+        let me_pres = ModifyEvent::new_impersonate_entry(
+            E_TEST_ACCOUNT_1.clone(),
+            filter_all!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
+            modlist!([m_pres(Attribute::Name, &Value::new_iname("value"))]),
+        );
+        // Name rem
+        let me_rem = ModifyEvent::new_impersonate_entry(
+            E_TEST_ACCOUNT_1.clone(),
+            filter_all!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
+            modlist!([m_remove(Attribute::Name, &PartialValue::new_iname("value"))]),
+        );
+        // Name purge
+        let me_purge = ModifyEvent::new_impersonate_entry(
+            E_TEST_ACCOUNT_1.clone(),
+            filter_all!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
+            modlist!([m_purge(Attribute::Name)]),
+        );
+
+        let acp_allow = AccessControlModify::from_managed_by(
+            "test_modify_allow",
+            Uuid::new_v4(),
+            // To modify testperson
+            AccessControlTarget::Scope(filter_valid!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("testperson1")
+            ))),
+            // Allow pres name and class
+            "name class",
+            // Allow rem name and class
+            "name class",
+            // And the class allowed is account
+            EntryClass::Account.into(),
+        );
+
+        // Test allowed pres
+        test_acp_modify!(&me_pres, vec![acp_allow.clone()], &data_set, true);
+        // test allowed rem
+        test_acp_modify!(&me_rem, vec![acp_allow.clone()], &data_set, true);
+        // test allowed purge
+        test_acp_modify!(&me_purge, vec![acp_allow.clone()], &data_set, true);
+    }
+
+    #[test]
+    fn test_access_entry_managed_by_delete() {
+        let test_entry = Arc::new(
+            entry_init!(
+                (Attribute::Class, EntryClass::Object.to_value()),
+                (Attribute::Name, Value::new_iname("testperson1")),
+                (Attribute::Uuid, Value::Uuid(UUID_TEST_ACCOUNT_1)),
+                (Attribute::EntryManagedBy, Value::Refer(UUID_TEST_GROUP_1))
+            )
+            .into_sealed_committed(),
+        );
+
+        let data_set = vec![test_entry];
+
+        let de_a = DeleteEvent::new_impersonate_entry(
+            E_TEST_ACCOUNT_1.clone(),
+            filter_all!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
+        );
+
+        let de_b = DeleteEvent::new_impersonate_entry(
+            E_TEST_ACCOUNT_2.clone(),
+            filter_all!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
+        );
+
+        let acp = AccessControlDelete::from_managed_by(
+            "test_delete",
+            Uuid::new_v4(),
+            // To delete testperson
+            AccessControlTarget::Scope(filter_valid!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("testperson1")
+            ))),
+        );
+
+        // Test allowed to delete
+        test_acp_delete!(&de_a, vec![acp.clone()], &data_set, true);
+        // Test reject delete
+        test_acp_delete!(&de_b, vec![acp], &data_set, false);
     }
 }
