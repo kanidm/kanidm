@@ -32,7 +32,8 @@ use crate::modify::Modify;
 use crate::prelude::*;
 
 use self::profiles::{
-    AccessControlCreate, AccessControlDelete, AccessControlModify, AccessControlSearch,
+    AccessControlCreate, AccessControlDelete, AccessControlModify, AccessControlReceiver,
+    AccessControlSearch, AccessControlTarget,
 };
 
 use self::create::{apply_create_access, CreateResult};
@@ -149,6 +150,9 @@ pub trait AccessControlsTransaction<'a> {
         } else {
         */
         // else, we calculate this, and then stash/cache the uuids.
+
+        let ident_memberof = ident.get_memberof();
+
         let related_acp: Vec<(&AccessControlSearch, Filter<FilterValidResolved>)> = search_state
             .iter()
             .filter_map(|acs| {
@@ -167,12 +171,19 @@ pub trait AccessControlsTransaction<'a> {
                 // A possible solution is to change the filter resolve function
                 // such that it takes an entry, rather than an event, but that
                 // would create issues in search.
-                if let Some(receiver) = acs.acp.receiver {
-                    if ident.is_memberof(receiver) {
-                        // Now, for each of the acp's that apply to our receiver, resolve their
-                        // related target filters.
-                        acs.acp
-                            .targetscope
+                let receives_acs = match &acs.acp.receiver {
+                    AccessControlReceiver::Group(groups) => ident_memberof
+                        // Have at least one group allowed.
+                        .map(|imo| imo.intersection(groups).next().is_some())
+                        .unwrap_or_default(),
+                    AccessControlReceiver::None => false,
+                };
+
+                if receives_acs {
+                    // Now, for each of the acp's that apply to our receiver, resolve their
+                    // related target filters.
+                    match &acs.acp.target {
+                        AccessControlTarget::Scope(filter) => filter
                             .resolve(ident, None, Some(acp_resolve_filter_cache))
                             .map_err(|e| {
                                 admin_error!(
@@ -182,9 +193,8 @@ pub trait AccessControlsTransaction<'a> {
                                 e
                             })
                             .ok()
-                            .map(|f_res| (acs, f_res))
-                    } else {
-                        None
+                            .map(|f_res| (acs, f_res)),
+                        AccessControlTarget::None => None,
                     }
                 } else {
                     None
@@ -337,27 +347,35 @@ pub trait AccessControlsTransaction<'a> {
         let modify_state = self.get_modify();
         let acp_resolve_filter_cache = self.get_acp_resolve_filter_cache();
 
+        let ident_memberof = ident.get_memberof();
+
         // Find the acps that relate to the caller, and compile their related
         // target filters.
         let related_acp: Vec<(&AccessControlModify, _)> = modify_state
             .iter()
             .filter_map(|acs| {
-                if let Some(receiver) = acs.acp.receiver {
-                    if ident.is_memberof(receiver) {
-                        acs.acp
-                            .targetscope
+                let receives_acs = match &acs.acp.receiver {
+                    AccessControlReceiver::Group(groups) => ident_memberof
+                        // Have at least one group allowed.
+                        .map(|imo| imo.intersection(groups).next().is_some())
+                        .unwrap_or_default(),
+                    AccessControlReceiver::None => false,
+                };
+
+                if receives_acs {
+                    match &acs.acp.target {
+                        AccessControlTarget::Scope(filter) => filter
                             .resolve(ident, None, Some(acp_resolve_filter_cache))
                             .map_err(|e| {
                                 admin_error!(
-                                    "A internal filter/event was passed for resolution!?!? {:?}",
-                                    e
+                                    ?e,
+                                    "A internal filter/event was passed for resolution!?!?"
                                 );
                                 e
                             })
                             .ok()
-                            .map(|f_res| (acs, f_res))
-                    } else {
-                        None
+                            .map(|f_res| (acs, f_res)),
+                        AccessControlTarget::None => None,
                     }
                 } else {
                     None
@@ -634,26 +652,34 @@ pub trait AccessControlsTransaction<'a> {
         let create_state = self.get_create();
         let acp_resolve_filter_cache = self.get_acp_resolve_filter_cache();
 
+        let ident_memberof = ce.ident.get_memberof();
+
         // Find the acps that relate to the caller.
         let related_acp: Vec<(&AccessControlCreate, _)> = create_state
             .iter()
             .filter_map(|acs| {
-                if let Some(receiver) = acs.acp.receiver {
-                    if ce.ident.is_memberof(receiver) {
-                        acs.acp
-                            .targetscope
+                let receives_acs = match &acs.acp.receiver {
+                    AccessControlReceiver::Group(groups) => ident_memberof
+                        // Have at least one group allowed.
+                        .map(|imo| imo.intersection(groups).next().is_some())
+                        .unwrap_or_default(),
+                    AccessControlReceiver::None => false,
+                };
+
+                if receives_acs {
+                    match &acs.acp.target {
+                        AccessControlTarget::Scope(filter) => filter
                             .resolve(&ce.ident, None, Some(acp_resolve_filter_cache))
                             .map_err(|e| {
                                 admin_error!(
-                                    "A internal filter/event was passed for resolution!?!? {:?}",
-                                    e
+                                    ?e,
+                                    "A internal filter/event was passed for resolution!?!?"
                                 );
                                 e
                             })
                             .ok()
-                            .map(|f_res| (acs, f_res))
-                    } else {
-                        None
+                            .map(|f_res| (acs, f_res)),
+                        AccessControlTarget::None => None,
                     }
                 } else {
                     None
@@ -687,25 +713,35 @@ pub trait AccessControlsTransaction<'a> {
         let delete_state = self.get_delete();
         let acp_resolve_filter_cache = self.get_acp_resolve_filter_cache();
 
+        let ident_memberof = ident.get_memberof();
+
         let related_acp: Vec<(&AccessControlDelete, _)> = delete_state
             .iter()
             .filter_map(|acs| {
-                if let Some(receiver) = acs.acp.receiver {
-                    if ident.is_memberof(receiver) {
-                        acs.acp
-                            .targetscope
+                let receives_acs = match &acs.acp.receiver {
+                    AccessControlReceiver::Group(groups) => ident_memberof
+                        // Have at least one group allowed.
+                        .map(|imo| imo.intersection(groups).next().is_some())
+                        .unwrap_or_default(),
+                    AccessControlReceiver::None => false,
+                };
+
+                if receives_acs {
+                    // Now, for each of the acp's that apply to our receiver, resolve their
+                    // related target filters.
+                    match &acs.acp.target {
+                        AccessControlTarget::Scope(filter) => filter
                             .resolve(ident, None, Some(acp_resolve_filter_cache))
                             .map_err(|e| {
                                 admin_error!(
-                                    "A internal filter/event was passed for resolution!?!? {:?}",
-                                    e
+                                    ?e,
+                                    "A internal filter/event was passed for resolution!?!?"
                                 );
                                 e
                             })
                             .ok()
-                            .map(|f_res| (acs, f_res))
-                    } else {
-                        None
+                            .map(|f_res| (acs, f_res)),
+                        AccessControlTarget::None => None,
                     }
                 } else {
                     None

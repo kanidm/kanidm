@@ -1248,7 +1248,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 description: String::from(
                     "The group that receives this access control to allow access",
                 ),
-                multivalue: false,
+                multivalue: true,
                 unique: false,
                 phantom: false,
                 sync_allowed: false,

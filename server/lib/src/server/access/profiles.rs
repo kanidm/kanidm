@@ -56,8 +56,8 @@ impl AccessControlSearch {
             acp: AccessControlProfile {
                 name: name.to_string(),
                 uuid,
-                receiver: Some(receiver),
-                targetscope,
+                receiver: AccessControlReceiver::Group(btreeset!(receiver)),
+                target: AccessControlTarget::Scope(targetscope),
             },
             attrs: attrs.split_whitespace().map(AttrString::from).collect(),
         }
@@ -99,8 +99,8 @@ impl AccessControlDelete {
             acp: AccessControlProfile {
                 name: name.to_string(),
                 uuid,
-                receiver: Some(receiver),
-                targetscope,
+                receiver: AccessControlReceiver::Group(btreeset!(receiver)),
+                target: AccessControlTarget::Scope(targetscope),
             },
         }
     }
@@ -158,8 +158,8 @@ impl AccessControlCreate {
             acp: AccessControlProfile {
                 name: name.to_string(),
                 uuid,
-                receiver: Some(receiver),
-                targetscope,
+                receiver: AccessControlReceiver::Group(btreeset!(receiver)),
+                target: AccessControlTarget::Scope(targetscope),
             },
             classes: classes.split_whitespace().map(AttrString::from).collect(),
             attrs: attrs.split_whitespace().map(AttrString::from).collect(),
@@ -226,14 +226,26 @@ impl AccessControlModify {
             acp: AccessControlProfile {
                 name: name.to_string(),
                 uuid,
-                receiver: Some(receiver),
-                targetscope,
+                receiver: AccessControlReceiver::Group(btreeset!(receiver)),
+                target: AccessControlTarget::Scope(targetscope),
             },
             classes: classes.split_whitespace().map(AttrString::from).collect(),
             presattrs: presattrs.split_whitespace().map(AttrString::from).collect(),
             remattrs: remattrs.split_whitespace().map(AttrString::from).collect(),
         }
     }
+}
+
+#[derive(Debug, Clone)]
+pub enum AccessControlReceiver {
+    None,
+    Group(BTreeSet<Uuid>),
+}
+
+#[derive(Debug, Clone)]
+pub enum AccessControlTarget {
+    None,
+    Scope(Filter<FilterValid>),
 }
 
 #[derive(Debug, Clone)]
@@ -251,7 +263,8 @@ pub struct AccessControlProfile {
     // result we MUST be able to withstand some failure in the parse process. The INTENT is that
     // during early boot this will be None, and will NEVER match. Once started, the migration
     // will occur, and this will flip to Some. In a future version we can remove this!
-    pub receiver: Option<Uuid>,
+    // pub receiver: Option<Uuid>,
+    pub receiver: AccessControlReceiver,
     // or
     //  Filter
     //  Group
@@ -259,7 +272,7 @@ pub struct AccessControlProfile {
     // and
     //  exclude
     //    Group
-    pub targetscope: Filter<FilterValid>,
+    pub target: AccessControlTarget,
 }
 
 impl AccessControlProfile {
@@ -289,12 +302,15 @@ impl AccessControlProfile {
 
         // === ⚠️   WARNING!!! ⚠️  ===
         // See struct ACP for details.
-        let receiver = value.get_ava_single_refer(Attribute::AcpReceiverGroup);
+        let receiver = value
+            .get_ava_refer(Attribute::AcpReceiverGroup)
+            .map(|groups| AccessControlReceiver::Group(groups.clone()))
+            .unwrap_or(AccessControlReceiver::None);
         /*
         .ok_or_else(|| {
-            admin_error!("Missing acp_receiver_group");
-            OperationError::InvalidAcpState("Missing acp_receiver_group".to_string())
-        })?;
+            admin_error!("Missing {}", Attribute::AcpReceiverGroup);
+            OperationError::InvalidAcpState(format!("Missing {}", Attribute::AcpReceiverGroup))
+        })?
         */
 
         // targetscope, and turn to real filter
@@ -319,11 +335,13 @@ impl AccessControlProfile {
             OperationError::SchemaViolation(e)
         })?;
 
+        let target = AccessControlTarget::Scope(targetscope);
+
         Ok(AccessControlProfile {
             name,
             uuid,
             receiver,
-            targetscope,
+            target,
         })
     }
 }
