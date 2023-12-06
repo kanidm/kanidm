@@ -106,13 +106,13 @@ pub struct AccessControls {
         ARCache<(IdentityId, Filter<FilterValid>), Filter<FilterValidResolved>>,
 }
 
-fn resolve_access_conditions<'a>(
+fn resolve_access_conditions(
     ident: &Identity,
     ident_memberof: Option<&BTreeSet<Uuid>>,
     receiver: &AccessControlReceiver,
     target: &AccessControlTarget,
     acp_resolve_filter_cache: &mut ARCacheReadTxn<
-        'a,
+        '_,
         (IdentityId, Filter<FilterValid>),
         Filter<FilterValidResolved>,
         (),

@@ -57,7 +57,7 @@ pub enum BuiltinAcpTarget {
     // MemberOf ( Uuid ),
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 /// Built-in Access Control Profile definitions
 pub struct BuiltinAcp {
     classes: Vec<EntryClass>,
@@ -72,27 +72,6 @@ pub struct BuiltinAcp {
     modify_classes: Vec<EntryClass>,
     create_classes: Vec<EntryClass>,
     create_attrs: Vec<Attribute>,
-}
-
-impl Default for BuiltinAcp {
-    fn default() -> Self {
-        Self {
-            classes: Default::default(),
-            name: Default::default(),
-            uuid: Default::default(),
-            description: Default::default(),
-            // Defaults to "None"
-            receiver: Default::default(),
-            search_attrs: Default::default(),
-            modify_present_attrs: Default::default(),
-            modify_removed_attrs: Default::default(),
-            modify_classes: Default::default(),
-            // Defaults to "None"
-            target: Default::default(),
-            create_classes: Default::default(),
-            create_attrs: Default::default(),
-        }
-    }
 }
 
 impl From<BuiltinAcp> for EntryInitNew {
@@ -120,6 +99,7 @@ impl From<BuiltinAcp> for EntryInitNew {
         );
 
         match value.receiver {
+            #[allow(clippy::panic)]
             BuiltinAcpReceiver::None => {
                 panic!("Builtin ACP has no receiver!");
             }
@@ -135,6 +115,7 @@ impl From<BuiltinAcp> for EntryInitNew {
         };
 
         match value.target {
+            #[allow(clippy::panic)]
             BuiltinAcpTarget::None => {
                 panic!("Builtin ACP has no target!");
             }
