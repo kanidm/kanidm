@@ -1,9 +1,10 @@
 use crate::prelude::*;
 use std::collections::BTreeSet;
 
-use super::profiles::AccessControlSearch;
+use super::profiles::{
+    AccessControlReceiverCondition, AccessControlSearchResolved, AccessControlTargetCondition,
+};
 use super::AccessResult;
-use crate::filter::FilterValidResolved;
 use std::sync::Arc;
 
 pub(super) enum SearchResult<'a> {
@@ -14,7 +15,7 @@ pub(super) enum SearchResult<'a> {
 
 pub(super) fn apply_search_access<'a>(
     ident: &Identity,
-    related_acp: &'a [(&AccessControlSearch, Filter<FilterValidResolved>)],
+    related_acp: &'a [AccessControlSearchResolved],
     entry: &'a Arc<EntrySealedCommitted>,
 ) -> SearchResult<'a> {
     // This could be considered "slow" due to allocs each iter with the entry. We
@@ -71,7 +72,7 @@ pub(super) fn apply_search_access<'a>(
 
 fn search_filter_entry<'a>(
     ident: &Identity,
-    related_acp: &'a [(&AccessControlSearch, Filter<FilterValidResolved>)],
+    related_acp: &'a [AccessControlSearchResolved],
     entry: &'a Arc<EntrySealedCommitted>,
 ) -> AccessResult<'a> {
     // If this is an internal search, return our working set.
@@ -99,19 +100,62 @@ fn search_filter_entry<'a>(
         }
     };
 
+    // needed for checking entry manager conditions.
+    let ident_memberof = ident.get_memberof();
+    let ident_uuid = ident.get_uuid();
+
     let allowed_attrs: BTreeSet<&str> = related_acp
         .iter()
-        .filter_map(|(acs, f_res)| {
-            // if it applies
-            if entry.entry_match_no_index(f_res) {
-                security_debug!(entry = ?entry.get_display_id(), acs = %acs.acp.name, "acs applied to entry");
-                // add search_attrs to allowed.
-                Some(acs.attrs.iter().map(|s| s.as_str()))
-            } else {
-                // should this be `security_access`?
-                security_debug!(entry = ?entry.get_display_id(), acs = %acs.acp.name, "entry DOES NOT match acs");
-                None
-            }
+        .filter_map(|acs| {
+            // Assert that the receiver condition applies.
+            match &acs.receiver_condition {
+                AccessControlReceiverCondition::GroupChecked => {
+                    // The groups were already checked during filter resolution. Trust
+                    // that result, and continue.
+                }
+                AccessControlReceiverCondition::EntryManager => {
+                    // This condition relies on the entry we are looking at to have a back-ref
+                    // to our uuid or a group we are in as an entry manager.
+
+                    // Note, while schema has this as single value, we currently
+                    // fetch it as a multivalue btreeset for future incase we allow
+                    // multiple entry manager by in future.
+                    if let Some(entry_manager_uuids) = entry.get_ava_refer(Attribute::EntryManagedBy) {
+                        let group_check = ident_memberof
+                            // Have at least one group allowed.
+                            .map(|imo| imo.intersection(entry_manager_uuids).next().is_some())
+                            .unwrap_or_default();
+
+                        let user_check = ident_uuid
+                            .map(|u| entry_manager_uuids.contains(&u))
+                            .unwrap_or_default();
+
+                        if !(group_check || user_check) {
+                            // Not the entry manager
+                            return None
+                        }
+                    } else {
+                        // Can not satsify.
+                        return None
+                    }
+                }
+            };
+
+            match &acs.target_condition {
+                AccessControlTargetCondition::Scope(f_res) => {
+                    if !entry.entry_match_no_index(f_res) {
+                        // should this be `security_access`?
+                        security_debug!(entry = ?entry.get_display_id(), acs = %acs.acp.acp.name, "entry DOES NOT match acs");
+                        return None
+                    }
+                }
+            };
+
+            // -- Conditions pass -- release the attributes.
+
+            security_debug!(entry = ?entry.get_display_id(), acs = %acs.acp.acp.name, "acs applied to entry");
+            // add search_attrs to allowed.
+            Some(acs.acp.attrs.iter().map(|s| s.as_str()))
         })
         .flatten()
         .collect();

@@ -1,13 +1,20 @@
 use crate::prelude::*;
 use std::collections::BTreeSet;
 
-use crate::filter::{Filter, FilterValid};
+use crate::filter::{Filter, FilterValid, FilterValidResolved};
 
 use kanidm_proto::v1::Filter as ProtoFilter;
 
 // =========================================================================
 // PARSE ENTRY TO ACP, AND ACP MANAGEMENT
 // =========================================================================
+
+#[derive(Debug, Clone)]
+pub struct AccessControlSearchResolved<'a> {
+    pub acp: &'a AccessControlSearch,
+    pub receiver_condition: AccessControlReceiverCondition,
+    pub target_condition: AccessControlTargetCondition,
+}
 
 #[derive(Debug, Clone)]
 pub struct AccessControlSearch {
@@ -56,12 +63,39 @@ impl AccessControlSearch {
             acp: AccessControlProfile {
                 name: name.to_string(),
                 uuid,
-                receiver: Some(receiver),
-                targetscope,
+                receiver: AccessControlReceiver::Group(btreeset!(receiver)),
+                target: AccessControlTarget::Scope(targetscope),
             },
             attrs: attrs.split_whitespace().map(AttrString::from).collect(),
         }
     }
+
+    /// ⚠️  - Manually create a search access profile from values.
+    /// This is a TEST ONLY method and will never be exposed in production.
+    #[cfg(test)]
+    pub(super) fn from_managed_by(
+        name: &str,
+        uuid: Uuid,
+        target: AccessControlTarget,
+        attrs: &str,
+    ) -> Self {
+        AccessControlSearch {
+            acp: AccessControlProfile {
+                name: name.to_string(),
+                uuid,
+                receiver: AccessControlReceiver::EntryManager,
+                target,
+            },
+            attrs: attrs.split_whitespace().map(AttrString::from).collect(),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct AccessControlDeleteResolved<'a> {
+    pub acp: &'a AccessControlDelete,
+    pub receiver_condition: AccessControlReceiverCondition,
+    pub target_condition: AccessControlTargetCondition,
 }
 
 #[derive(Debug, Clone)]
@@ -99,11 +133,32 @@ impl AccessControlDelete {
             acp: AccessControlProfile {
                 name: name.to_string(),
                 uuid,
-                receiver: Some(receiver),
-                targetscope,
+                receiver: AccessControlReceiver::Group(btreeset!(receiver)),
+                target: AccessControlTarget::Scope(targetscope),
             },
         }
     }
+
+    /// ⚠️  - Manually create a delete access profile from values.
+    /// This is a TEST ONLY method and will never be exposed in production.
+    #[cfg(test)]
+    pub(super) fn from_managed_by(name: &str, uuid: Uuid, target: AccessControlTarget) -> Self {
+        AccessControlDelete {
+            acp: AccessControlProfile {
+                name: name.to_string(),
+                uuid,
+                receiver: AccessControlReceiver::EntryManager,
+                target,
+            },
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct AccessControlCreateResolved<'a> {
+    pub acp: &'a AccessControlCreate,
+    pub receiver_condition: AccessControlReceiverCondition,
+    pub target_condition: AccessControlTargetCondition,
 }
 
 #[derive(Debug, Clone)]
@@ -158,13 +213,42 @@ impl AccessControlCreate {
             acp: AccessControlProfile {
                 name: name.to_string(),
                 uuid,
-                receiver: Some(receiver),
-                targetscope,
+                receiver: AccessControlReceiver::Group(btreeset!(receiver)),
+                target: AccessControlTarget::Scope(targetscope),
             },
             classes: classes.split_whitespace().map(AttrString::from).collect(),
             attrs: attrs.split_whitespace().map(AttrString::from).collect(),
         }
     }
+
+    /// ⚠️  - Manually create a create access profile from values.
+    /// This is a TEST ONLY method and will never be exposed in production.
+    #[cfg(test)]
+    pub(super) fn from_managed_by(
+        name: &str,
+        uuid: Uuid,
+        target: AccessControlTarget,
+        classes: &str,
+        attrs: &str,
+    ) -> Self {
+        AccessControlCreate {
+            acp: AccessControlProfile {
+                name: name.to_string(),
+                uuid,
+                receiver: AccessControlReceiver::EntryManager,
+                target,
+            },
+            classes: classes.split_whitespace().map(AttrString::from).collect(),
+            attrs: attrs.split_whitespace().map(AttrString::from).collect(),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct AccessControlModifyResolved<'a> {
+    pub acp: &'a AccessControlModify,
+    pub receiver_condition: AccessControlReceiverCondition,
+    pub target_condition: AccessControlTargetCondition,
 }
 
 #[derive(Debug, Clone)]
@@ -226,8 +310,32 @@ impl AccessControlModify {
             acp: AccessControlProfile {
                 name: name.to_string(),
                 uuid,
-                receiver: Some(receiver),
-                targetscope,
+                receiver: AccessControlReceiver::Group(btreeset!(receiver)),
+                target: AccessControlTarget::Scope(targetscope),
+            },
+            classes: classes.split_whitespace().map(AttrString::from).collect(),
+            presattrs: presattrs.split_whitespace().map(AttrString::from).collect(),
+            remattrs: remattrs.split_whitespace().map(AttrString::from).collect(),
+        }
+    }
+
+    /// ⚠️  - Manually create a modify access profile from values.
+    /// This is a TEST ONLY method and will never be exposed in production.
+    #[cfg(test)]
+    pub(super) fn from_managed_by(
+        name: &str,
+        uuid: Uuid,
+        target: AccessControlTarget,
+        presattrs: &str,
+        remattrs: &str,
+        classes: &str,
+    ) -> Self {
+        AccessControlModify {
+            acp: AccessControlProfile {
+                name: name.to_string(),
+                uuid,
+                receiver: AccessControlReceiver::EntryManager,
+                target,
             },
             classes: classes.split_whitespace().map(AttrString::from).collect(),
             presattrs: presattrs.split_whitespace().map(AttrString::from).collect(),
@@ -237,29 +345,56 @@ impl AccessControlModify {
 }
 
 #[derive(Debug, Clone)]
+pub enum AccessControlReceiver {
+    None,
+    Group(BTreeSet<Uuid>),
+    EntryManager,
+}
+
+#[derive(Debug, Clone)]
+pub enum AccessControlReceiverCondition {
+    // None,
+    GroupChecked,
+    EntryManager,
+}
+
+/*
+impl AccessControlReceiverCondition {
+    pub(crate) fn is_none(&self) {
+        matches!(self, AccessControlReceiverCondition::None)
+    }
+}
+*/
+
+#[derive(Debug, Clone)]
+pub enum AccessControlTarget {
+    None,
+    Scope(Filter<FilterValid>),
+}
+
+#[derive(Debug, Clone)]
+pub enum AccessControlTargetCondition {
+    // None,
+    Scope(Filter<FilterValidResolved>),
+}
+
+/*
+impl AccessControlTargetCondition {
+    pub(crate) fn is_none(&self) {
+        matches!(&self, AccessControlTargetCondition::None)
+    }
+}
+*/
+
+#[derive(Debug, Clone)]
 pub struct AccessControlProfile {
     pub name: String,
     // Currently we retrieve this but don't use it. We could depending on how we change
     // the acp update routine.
     #[allow(dead_code)]
     uuid: Uuid,
-    // Must be
-    //   Group
-    // === ⚠️   WARNING!!! ⚠️  ===
-    // This is OPTION to allow migration from 10 -> 11. We have to do this because ACP is reloaded
-    // so early in the boot phase that we can't have migrated the content of the receiver yet! As a
-    // result we MUST be able to withstand some failure in the parse process. The INTENT is that
-    // during early boot this will be None, and will NEVER match. Once started, the migration
-    // will occur, and this will flip to Some. In a future version we can remove this!
-    pub receiver: Option<Uuid>,
-    // or
-    //  Filter
-    //  Group
-    //  Self
-    // and
-    //  exclude
-    //    Group
-    pub targetscope: Filter<FilterValid>,
+    pub receiver: AccessControlReceiver,
+    pub target: AccessControlTarget,
 }
 
 impl AccessControlProfile {
@@ -269,7 +404,7 @@ impl AccessControlProfile {
     ) -> Result<Self, OperationError> {
         // Assert we have class access_control_profile
         if !value.attribute_equality(Attribute::Class, &EntryClass::AccessControlProfile.into()) {
-            admin_error!("class access_control_profile not present.");
+            error!("class access_control_profile not present.");
             return Err(OperationError::InvalidAcpState(
                 "Missing access_control_profile".to_string(),
             ));
@@ -279,51 +414,85 @@ impl AccessControlProfile {
         let name = value
             .get_ava_single_iname(Attribute::Name)
             .ok_or_else(|| {
-                admin_error!("Missing {}", Attribute::Name);
+                error!("Missing {}", Attribute::Name);
                 OperationError::InvalidAcpState(format!("Missing {}", Attribute::Name))
             })?
             .to_string();
         // copy uuid
         let uuid = value.get_uuid();
-        // receiver, and turn to real filter
 
-        // === ⚠️   WARNING!!! ⚠️  ===
-        // See struct ACP for details.
-        let receiver = value.get_ava_single_refer(Attribute::AcpReceiverGroup);
-        /*
-        .ok_or_else(|| {
-            admin_error!("Missing acp_receiver_group");
-            OperationError::InvalidAcpState("Missing acp_receiver_group".to_string())
-        })?;
-        */
+        let receiver = if value.attribute_equality(
+            Attribute::Class,
+            &EntryClass::AccessControlReceiverGroup.into(),
+        ) {
+            value
+                .get_ava_refer(Attribute::AcpReceiverGroup)
+                .cloned()
+                .map(AccessControlReceiver::Group)
+                .ok_or_else(|| {
+                    admin_error!("Missing {}", Attribute::AcpReceiverGroup);
+                    OperationError::InvalidAcpState(format!(
+                        "Missing {}",
+                        Attribute::AcpReceiverGroup
+                    ))
+                })?
+        } else if value.attribute_equality(
+            Attribute::Class,
+            &EntryClass::AccessControlReceiverEntryManager.into(),
+        ) {
+            AccessControlReceiver::EntryManager
+        } else {
+            warn!(
+                ?name,
+                "access control has no defined receivers - this will do nothing!"
+            );
+            AccessControlReceiver::None
+        };
 
-        // targetscope, and turn to real filter
-        let targetscope_f: ProtoFilter = value
-            .get_ava_single_protofilter(Attribute::AcpTargetScope)
-            // .map(|pf| pf.clone())
-            .cloned()
-            .ok_or_else(|| {
-                admin_error!("Missing {}", Attribute::AcpTargetScope);
-                OperationError::InvalidAcpState(format!("Missing {}", Attribute::AcpTargetScope))
+        let target = if value.attribute_equality(
+            Attribute::Class,
+            &EntryClass::AccessControlTargetScope.into(),
+        ) {
+            // targetscope, and turn to real filter
+            let targetscope_f: ProtoFilter = value
+                .get_ava_single_protofilter(Attribute::AcpTargetScope)
+                // .map(|pf| pf.clone())
+                .cloned()
+                .ok_or_else(|| {
+                    admin_error!("Missing {}", Attribute::AcpTargetScope);
+                    OperationError::InvalidAcpState(format!(
+                        "Missing {}",
+                        Attribute::AcpTargetScope
+                    ))
+                })?;
+
+            let ident = Identity::from_internal();
+
+            let targetscope_i = Filter::from_rw(&ident, &targetscope_f, qs).map_err(|e| {
+                admin_error!("{} validation failed {:?}", Attribute::AcpTargetScope, e);
+                e
             })?;
 
-        let ident = Identity::from_internal();
-
-        let targetscope_i = Filter::from_rw(&ident, &targetscope_f, qs).map_err(|e| {
-            admin_error!("{} validation failed {:?}", Attribute::AcpTargetScope, e);
-            e
-        })?;
-
-        let targetscope = targetscope_i.validate(qs.get_schema()).map_err(|e| {
-            admin_error!("{} Schema Violation {:?}", Attribute::AcpTargetScope, e);
-            OperationError::SchemaViolation(e)
-        })?;
+            targetscope_i
+                .validate(qs.get_schema())
+                .map_err(|e| {
+                    admin_error!("{} Schema Violation {:?}", Attribute::AcpTargetScope, e);
+                    OperationError::SchemaViolation(e)
+                })
+                .map(AccessControlTarget::Scope)?
+        } else {
+            warn!(
+                ?name,
+                "access control has no defined targets - this will do nothing!"
+            );
+            AccessControlTarget::None
+        };
 
         Ok(AccessControlProfile {
             name,
             uuid,
             receiver,
-            targetscope,
+            target,
         })
     }
 }

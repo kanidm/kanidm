@@ -2,9 +2,11 @@ use crate::prelude::*;
 use hashbrown::HashMap;
 use std::collections::BTreeSet;
 
-use super::profiles::AccessControlModify;
+use super::profiles::{
+    AccessControlModify, AccessControlModifyResolved, AccessControlReceiverCondition,
+    AccessControlTargetCondition,
+};
 use super::AccessResult;
-use crate::filter::FilterValidResolved;
 use std::sync::Arc;
 
 pub(super) enum ModifyResult<'a> {
@@ -19,7 +21,7 @@ pub(super) enum ModifyResult<'a> {
 
 pub(super) fn apply_modify_access<'a>(
     ident: &Identity,
-    related_acp: &'a [(&AccessControlModify, Filter<FilterValidResolved>)],
+    related_acp: &'a [AccessControlModifyResolved],
     sync_agreements: &'a HashMap<Uuid, BTreeSet<String>>,
     entry: &'a Arc<EntrySealedCommitted>,
 ) -> ModifyResult<'a> {
@@ -31,6 +33,11 @@ pub(super) fn apply_modify_access<'a>(
     let mut allow_rem = BTreeSet::default();
     let mut constrain_cls = BTreeSet::default();
     let mut allow_cls = BTreeSet::default();
+
+    // Some useful references.
+    //  - needed for checking entry manager conditions.
+    let ident_memberof = ident.get_memberof();
+    let ident_uuid = ident.get_uuid();
 
     // run each module. These have to be broken down further due to modify
     // kind of being three operations all in one.
@@ -63,12 +70,51 @@ pub(super) fn apply_modify_access<'a>(
         // Setup the acp's here
         let scoped_acp: Vec<&AccessControlModify> = related_acp
             .iter()
-            .filter_map(|(acm, f_res)| {
-                if entry.entry_match_no_index(f_res) {
-                    Some(*acm)
-                } else {
-                    None
-                }
+            .filter_map(|acm| {
+                match &acm.receiver_condition {
+                    AccessControlReceiverCondition::GroupChecked => {
+                        // The groups were already checked during filter resolution. Trust
+                        // that result, and continue.
+                    }
+                    AccessControlReceiverCondition::EntryManager => {
+                        // This condition relies on the entry we are looking at to have a back-ref
+                        // to our uuid or a group we are in as an entry manager.
+
+                        // Note, while schema has this as single value, we currently
+                        // fetch it as a multivalue btreeset for future incase we allow
+                        // multiple entry manager by in future.
+                        if let Some(entry_manager_uuids) =
+                            entry.get_ava_refer(Attribute::EntryManagedBy)
+                        {
+                            let group_check = ident_memberof
+                                // Have at least one group allowed.
+                                .map(|imo| imo.intersection(entry_manager_uuids).next().is_some())
+                                .unwrap_or_default();
+
+                            let user_check = ident_uuid
+                                .map(|u| entry_manager_uuids.contains(&u))
+                                .unwrap_or_default();
+
+                            if !(group_check || user_check) {
+                                // Not the entry manager
+                                return None;
+                            }
+                        } else {
+                            // Can not satsify.
+                            return None;
+                        }
+                    }
+                };
+
+                match &acm.target_condition {
+                    AccessControlTargetCondition::Scope(f_res) => {
+                        if !entry.entry_match_no_index(f_res) {
+                            return None;
+                        }
+                    }
+                };
+
+                Some(acm.acp)
             })
             .collect();
 

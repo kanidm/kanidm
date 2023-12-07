@@ -1208,4 +1208,49 @@ mod tests {
 
         assert!(server_txn.commit().is_ok());
     }
+
+    #[qs_test]
+    async fn test_entry_managed_by_references(server: &QueryServer) {
+        let curtime = duration_from_epoch_now();
+        let mut server_txn = server.write(curtime).await;
+
+        let manages_uuid = Uuid::new_v4();
+        let e_manages: Entry<EntryInit, EntryNew> = entry_init!(
+            (Attribute::Class, EntryClass::Group.to_value()),
+            (Attribute::Name, Value::new_iname("entry_manages")),
+            (Attribute::Uuid, Value::Uuid(manages_uuid))
+        );
+
+        let group_uuid = Uuid::new_v4();
+        let e_group: Entry<EntryInit, EntryNew> = entry_init!(
+            (Attribute::Class, EntryClass::Group.to_value()),
+            (Attribute::Name, Value::new_iname("entry_managed_by")),
+            (Attribute::Uuid, Value::Uuid(group_uuid)),
+            (Attribute::EntryManagedBy, Value::Refer(manages_uuid))
+        );
+
+        let ce = CreateEvent::new_internal(vec![e_manages, e_group]);
+        assert!(server_txn.create(&ce).is_ok());
+
+        let group = server_txn
+            .internal_search_uuid(group_uuid)
+            .expect("Failed to access group");
+
+        let entry_managed_by = group
+            .get_ava_single_refer(Attribute::EntryManagedBy)
+            .expect("No entry managed by");
+
+        assert_eq!(entry_managed_by, manages_uuid);
+
+        // It's valid to delete this, since entryManagedBy is may not must.
+        assert!(server_txn.internal_delete_uuid(manages_uuid).is_ok());
+
+        let group = server_txn
+            .internal_search_uuid(group_uuid)
+            .expect("Failed to access group");
+
+        assert!(group.get_ava_refer(Attribute::EntryManagedBy).is_none());
+
+        assert!(server_txn.commit().is_ok());
+    }
 }

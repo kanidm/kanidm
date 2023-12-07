@@ -1,5 +1,6 @@
-use super::profiles::AccessControlDelete;
-use crate::filter::FilterValidResolved;
+use super::profiles::{
+    AccessControlDeleteResolved, AccessControlReceiverCondition, AccessControlTargetCondition,
+};
 use crate::prelude::*;
 use std::sync::Arc;
 
@@ -16,7 +17,7 @@ enum IResult {
 
 pub(super) fn apply_delete_access<'a>(
     ident: &Identity,
-    related_acp: &'a [(&AccessControlDelete, Filter<FilterValidResolved>)],
+    related_acp: &'a [AccessControlDeleteResolved],
     entry: &'a Arc<EntrySealedCommitted>,
 ) -> DeleteResult {
     let mut denied = false;
@@ -47,7 +48,7 @@ pub(super) fn apply_delete_access<'a>(
 
 fn delete_filter_entry<'a>(
     ident: &Identity,
-    related_acp: &'a [(&AccessControlDelete, Filter<FilterValidResolved>)],
+    related_acp: &'a [AccessControlDeleteResolved],
     entry: &'a Arc<EntrySealedCommitted>,
 ) -> IResult {
     match &ident.origin {
@@ -74,26 +75,68 @@ fn delete_filter_entry<'a>(
         }
     };
 
-    let allow = related_acp.iter().any(|(acd, f_res)| {
-        if entry.entry_match_no_index(f_res) {
-            security_access!(
-                entry_uuid = ?entry.get_uuid(),
-                acs = %acd.acp.name,
-                "entry matches acs"
-            );
-            // It matches, so we can delete this!
-            debug!("passed");
-            true
-        } else {
-            trace!(
-                "entry {:?} DOES NOT match acs {}",
-                entry.get_uuid(),
-                acd.acp.name
-            );
-            // Does not match, fail.
-            false
-        } // else
+    let ident_memberof = ident.get_memberof();
+    let ident_uuid = ident.get_uuid();
+
+    let allow = related_acp.iter().any(|acd| {
+        // Assert that the receiver condition applies.
+        match &acd.receiver_condition {
+            AccessControlReceiverCondition::GroupChecked => {
+                // The groups were already checked during filter resolution. Trust
+                // that result, and continue.
+            }
+            AccessControlReceiverCondition::EntryManager => {
+                // This condition relies on the entry we are looking at to have a back-ref
+                // to our uuid or a group we are in as an entry manager.
+
+                // Note, while schema has this as single value, we currently
+                // fetch it as a multivalue btreeset for future incase we allow
+                // multiple entry manager by in future.
+                if let Some(entry_manager_uuids) = entry.get_ava_refer(Attribute::EntryManagedBy) {
+                    let group_check = ident_memberof
+                        // Have at least one group allowed.
+                        .map(|imo| imo.intersection(entry_manager_uuids).next().is_some())
+                        .unwrap_or_default();
+
+                    let user_check = ident_uuid
+                        .map(|u| entry_manager_uuids.contains(&u))
+                        .unwrap_or_default();
+
+                    if !(group_check || user_check) {
+                        // Not the entry manager
+                        return false;
+                    }
+                } else {
+                    // Can not satsify.
+                    return false;
+                }
+            }
+        };
+
+        match &acd.target_condition {
+            AccessControlTargetCondition::Scope(f_res) => {
+                if !entry.entry_match_no_index(f_res) {
+                    trace!(
+                        "entry {:?} DOES NOT match acs {}",
+                        entry.get_uuid(),
+                        acd.acp.acp.name
+                    );
+                    // Does not match, fail.
+                    return false;
+                }
+            }
+        };
+
+        security_access!(
+            entry_uuid = ?entry.get_uuid(),
+            acs = %acd.acp.acp.name,
+            "entry matches acs"
+        );
+        // It matches, so we can delete this!
+        trace!("passed");
+        true
     }); // any related_acp
+
     if allow {
         IResult::Grant
     } else {
