@@ -87,7 +87,7 @@ impl From<BuiltinAcp> for EntryInitNew {
             panic!("Builtin ACP has no classes! {:?}", value);
         }
 
-        value.classes.into_iter().for_each(|class| {
+        value.classes.iter().for_each(|class| {
             entry.add_ava(Attribute::Class, class.to_value());
         });
 
@@ -98,10 +98,10 @@ impl From<BuiltinAcp> for EntryInitNew {
             [Value::new_utf8s(value.description)],
         );
 
-        match value.receiver {
+        match &value.receiver {
             #[allow(clippy::panic)]
             BuiltinAcpReceiver::None => {
-                panic!("Builtin ACP has no receiver!");
+                panic!("Builtin ACP has no receiver! {:?}", &value);
             }
             BuiltinAcpReceiver::Group(list) => {
                 entry.add_ava(
@@ -109,22 +109,25 @@ impl From<BuiltinAcp> for EntryInitNew {
                     EntryClass::AccessControlReceiverGroup.to_value(),
                 );
                 for group in list {
-                    entry.set_ava(Attribute::AcpReceiverGroup, [Value::Refer(group)]);
+                    entry.set_ava(Attribute::AcpReceiverGroup, [Value::Refer(*group)]);
                 }
             }
         };
 
-        match value.target {
+        match &value.target {
             #[allow(clippy::panic)]
             BuiltinAcpTarget::None => {
-                panic!("Builtin ACP has no target!");
+                panic!("Builtin ACP has no target! {:?}", &value);
             }
             BuiltinAcpTarget::Filter(proto_filter) => {
                 entry.add_ava(
                     Attribute::Class,
                     EntryClass::AccessControlTargetScope.to_value(),
                 );
-                entry.set_ava(Attribute::AcpTargetScope, [Value::JsonFilt(proto_filter)]);
+                entry.set_ava(
+                    Attribute::AcpTargetScope,
+                    [Value::JsonFilt(proto_filter.clone())],
+                );
             }
         }
 
