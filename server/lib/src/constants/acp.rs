@@ -8,7 +8,6 @@ use crate::value::Value;
 use kanidm_proto::v1::Filter as ProtoFilter;
 
 lazy_static! {
-
     /// either recycled or tombstone
     pub static ref FILTER_RECYCLED_OR_TOMBSTONE: ProtoFilter = ProtoFilter::Or(vec![
         match_class_filter!(EntryClass::Recycled),
@@ -44,7 +43,7 @@ pub enum BuiltinAcpReceiver {
     /// This functions as an "OR" condition, that membership of *at least one* of these UUIDs
     /// is sufficient for you to receive the access control.
     Group(Vec<Uuid>),
-    // ManagerOf,
+    EntryManager,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -111,6 +110,12 @@ impl From<BuiltinAcp> for EntryInitNew {
                 for group in list {
                     entry.set_ava(Attribute::AcpReceiverGroup, [Value::Refer(*group)]);
                 }
+            }
+            BuiltinAcpReceiver::EntryManager => {
+                entry.add_ava(
+                    Attribute::Class,
+                    EntryClass::AccessControlReceiverEntryManager.to_value(),
+                );
             }
         };
 
@@ -423,7 +428,7 @@ lazy_static! {
             EntryClass::AccessControlSearch
         ],
         name: "idm_acp_group_entry_managed_by",
-        uuid: UUID_IDM_GROUP_ENTRY_MANAGED_BY_MODIFY,
+        uuid: UUID_IDM_ACP_GROUP_ENTRY_MANAGED_BY_MODIFY,
         description: "Builtin IDM Control for allowing entry_managed_by to be set on group entries",
         receiver: BuiltinAcpReceiver::Group(vec![UUID_IDM_ACCESS_CONTROL_ADMINS]),
         target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
@@ -452,7 +457,7 @@ lazy_static! {
             EntryClass::AccessControlSearch
         ],
         name: "idm_acp_group_account_policy_manage",
-        uuid: UUID_IDM_GROUP_ACCOUNT_POLICY_MANAGE,
+        uuid: UUID_IDM_ACP_GROUP_ACCOUNT_POLICY_MANAGE,
         description: "Builtin IDM Control for management of account policy on groups",
         receiver: BuiltinAcpReceiver::Group(vec![UUID_IDM_ACCOUNT_POLICY_ADMINS]),
         target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
@@ -600,16 +605,7 @@ lazy_static! {
                 Attribute::Class.to_string(),
                 EntryClass::SyncAccount.to_string()
             ),
-            ProtoFilter::AndNot(Box::new(ProtoFilter::Or(vec![
-                ProtoFilter::Eq(
-                    Attribute::Class.to_string(),
-                    EntryClass::Tombstone.to_string()
-                ),
-                ProtoFilter::Eq(
-                    Attribute::Class.to_string(),
-                    EntryClass::Tombstone.to_string()
-                ),
-            ]))),
+            FILTER_ANDNOT_TOMBSTONE_OR_RECYCLED.clone(),
         ])),
         search_attrs: vec![
             Attribute::Class,
@@ -640,6 +636,45 @@ lazy_static! {
         ],
         create_attrs: vec![Attribute::Class, Attribute::Name, Attribute::Description,],
         create_classes: vec![EntryClass::Object, EntryClass::SyncAccount,],
+        ..Default::default()
+    };
+}
+
+lazy_static! {
+    pub static ref IDM_ACP_GROUP_ENTRY_MANAGER_V1: BuiltinAcp = BuiltinAcp{
+        classes: vec![
+            EntryClass::Object,
+            EntryClass::AccessControlProfile,
+            EntryClass::AccessControlModify,
+            EntryClass::AccessControlSearch
+            ],
+        name: "idm_acp_group_entry_manager",
+        uuid: UUID_IDM_ACP_GROUP_ENTRY_MANAGER_V1,
+        description: "Builtin IDM Control for allowing EntryManager to read and modify groups",
+        receiver: BuiltinAcpReceiver::EntryManager,
+        // Any group
+        target: BuiltinAcpTarget::Filter( ProtoFilter::And(vec![
+            match_class_filter!(EntryClass::Group),
+            FILTER_ANDNOT_TOMBSTONE_OR_RECYCLED.clone()
+        ])),
+        search_attrs: vec![
+            Attribute::Class,
+            Attribute::Name,
+            Attribute::Uuid,
+            Attribute::Spn,
+            Attribute::Uuid,
+            Attribute::Description,
+            Attribute::Member,
+            Attribute::DynMember,
+        ],
+        modify_present_attrs: vec![
+            Attribute::Description,
+            Attribute::Member,
+        ],
+        modify_removed_attrs: vec![
+            Attribute::Description,
+            Attribute::Member,
+        ],
         ..Default::default()
     };
 }
@@ -1498,7 +1533,6 @@ lazy_static! {
         ],
         ..Default::default()
     };
-
 }
 
 lazy_static! {

@@ -713,6 +713,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             IDM_ACP_GROUP_ACCOUNT_POLICY_MANAGE_V1.clone(),
             IDM_ACP_OAUTH2_MANAGE_V1.clone(),
             IDM_ACP_SYNC_ACCOUNT_MANAGE_V1.clone(),
+            IDM_ACP_GROUP_ENTRY_MANAGER_V1.clone(),
             // tbd
             IDM_ALL_ACP_READ_V1.clone(),
             IDM_SELF_ACP_READ_V1.clone(),
