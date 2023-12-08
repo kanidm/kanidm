@@ -704,8 +704,16 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
         let idm_entries: Vec<BuiltinAcp> = vec![
             // Built in access controls.
-            IDM_ADMINS_ACP_RECYCLE_SEARCH_V1.clone(),
-            IDM_ADMINS_ACP_REVIVE_V1.clone(),
+            IDM_ACP_RECYCLE_BIN_SEARCH_V1.clone(),
+            IDM_ACP_RECYCLE_BIN_REVIVE_V1.clone(),
+            IDM_ACP_SCHEMA_WRITE_ATTRS_V1.clone(),
+            IDM_ACP_SCHEMA_WRITE_CLASSES_V1.clone(),
+            IDM_ACP_ACP_MANAGE_V1.clone(),
+            IDM_ACP_GROUP_ENTRY_MANAGED_BY_MODIFY_V1.clone(),
+            IDM_ACP_GROUP_ACCOUNT_POLICY_MANAGE_V1.clone(),
+            IDM_ACP_OAUTH2_MANAGE_V1.clone(),
+            IDM_ACP_SYNC_ACCOUNT_MANAGE_V1.clone(),
+            // tbd
             IDM_ALL_ACP_READ_V1.clone(),
             IDM_SELF_ACP_READ_V1.clone(),
             IDM_SELF_ACP_WRITE_V1.clone(),
@@ -723,9 +731,6 @@ impl<'a> QueryServerWriteTransaction<'a> {
             IDM_ACP_GROUP_MANAGE_PRIV_V1.clone(),
             IDM_ACP_HP_GROUP_WRITE_PRIV_V1.clone(),
             IDM_ACP_HP_GROUP_MANAGE_PRIV_V1.clone(),
-            IDM_ACP_SCHEMA_WRITE_ATTRS_PRIV_V1.clone(),
-            IDM_ACP_SCHEMA_WRITE_CLASSES_PRIV_V1.clone(),
-            IDM_ACP_ACP_MANAGE_PRIV_V1.clone(),
             IDM_ACP_RADIUS_SERVERS_V1.clone(),
             IDM_ACP_DOMAIN_ADMIN_PRIV_V1.clone(),
             IDM_ACP_SYSTEM_CONFIG_PRIV_V1.clone(),
@@ -739,14 +744,11 @@ impl<'a> QueryServerWriteTransaction<'a> {
             E_IDM_HP_ACP_ACCOUNT_UNIX_EXTEND_PRIV_V1.clone(),
             IDM_ACP_GROUP_UNIX_EXTEND_PRIV_V1.clone(),
             E_IDM_HP_ACP_GROUP_UNIX_EXTEND_PRIV_V1.clone(),
-            E_IDM_HP_ACP_OAUTH2_MANAGE_PRIV_V1.clone(),
             IDM_ACP_RADIUS_SECRET_READ_PRIV_V1.clone(),
             IDM_ACP_RADIUS_SECRET_WRITE_PRIV_V1.clone(),
             E_IDM_HP_ACP_SERVICE_ACCOUNT_INTO_PERSON_MIGRATE_V1.clone(),
-            E_IDM_HP_ACP_SYNC_ACCOUNT_MANAGE_PRIV_V1.clone(),
             IDM_ACP_ACCOUNT_MAIL_READ_PRIV_V1.clone(),
             IDM_ACCOUNT_SELF_ACP_WRITE_V1.clone(),
-            IDM_ACP_GROUP_ACCOUNT_POLICY_MANAGE_PRIV_V1.clone(),
         ];
 
         let res: Result<(), _> = idm_entries
@@ -762,7 +764,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
         // Delete entries that no longer need to exist.
         // TODO: Shouldn't this be a migration?
-        let delete_entries: [Uuid; 1] = [UUID_IDM_ACP_OAUTH2_READ_PRIV_V1];
+        let delete_entries: [Uuid; 2] = [
+            UUID_IDM_ACP_OAUTH2_READ_PRIV_V1,
+            UUID_IDM_HP_SYNC_ACCOUNT_MANAGE_PRIV,
+        ];
 
         let res: Result<(), _> = delete_entries
             .into_iter()
