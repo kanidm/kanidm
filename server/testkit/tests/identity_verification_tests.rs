@@ -6,15 +6,13 @@ use kanidm_proto::{
 };
 
 use kanidmd_lib::prelude::{
-    Attribute, BUILTIN_GROUP_IDM_ADMINS_V1, IDM_PEOPLE_ACCOUNT_PASSWORD_IMPORT_PRIV_V1,
+    Attribute, BUILTIN_GROUP_IDM_ADMINS_V1,
     IDM_PEOPLE_MANAGE_PRIV_V1,
 };
 use kanidmd_testkit::ADMIN_TEST_PASSWORD;
 use reqwest::StatusCode;
 
 static UNIVERSAL_PW: &'static str = "eicieY7ahchaoCh0eeTa";
-static UNIVERSAL_PW_HASH: &'static str =
-    "pbkdf2_sha256$36000$xIEozuZVAoYm$uW1b35DUKyhvQAf1mBqMvoBDcqSD06juzyO/nmyV0+w=";
 
 static USER_A_NAME: &'static str = "valid_user_a";
 
@@ -276,11 +274,6 @@ async fn setup_server(rsclient: &KanidmClient) {
     // To enable the admin to actually make some of these changes, we have
     // to make them a people admin. NOT recommended in production!
     rsclient
-        .idm_group_add_members(IDM_PEOPLE_ACCOUNT_PASSWORD_IMPORT_PRIV_V1.name, &["admin"])
-        .await
-        .unwrap();
-
-    rsclient
         .idm_group_add_members(IDM_PEOPLE_MANAGE_PRIV_V1.name, &["admin"])
         .await
         .unwrap();
@@ -306,10 +299,12 @@ async fn create_user(rsclient: &KanidmClient, user: &str) -> String {
     let res = rsclient.create(vec![e.clone()]).await;
 
     assert!(res.is_ok());
+
     rsclient
-        .idm_person_account_primary_credential_import_password(user, UNIVERSAL_PW_HASH)
+        .idm_person_account_primary_credential_set_password(user, UNIVERSAL_PW)
         .await
         .unwrap();
+
     let r = rsclient
         .idm_person_account_get_attr(user, Attribute::Uuid.as_ref())
         .await

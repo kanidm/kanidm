@@ -119,18 +119,6 @@ impl KanidmClient {
             .await
     }
 
-    pub async fn idm_person_account_primary_credential_import_password(
-        &self,
-        id: &str,
-        pw: &str,
-    ) -> Result<(), ClientError> {
-        self.perform_put_request(
-            format!("/v1/person/{}/_attr/password_import", id).as_str(),
-            vec![pw.to_string()],
-        )
-        .await
-    }
-
     pub async fn idm_person_account_get_credential_status(
         &self,
         id: &str,

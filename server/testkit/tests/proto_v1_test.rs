@@ -6,13 +6,12 @@ use kanidm_proto::constants::KSESSIONID;
 use kanidm_proto::internal::ImageValue;
 use kanidm_proto::v1::{
     ApiToken, AuthCredential, AuthIssueSession, AuthMech, AuthRequest, AuthResponse, AuthState,
-    AuthStep, CURegState, CredentialDetailType, Entry, Filter, Modify, ModifyList, UatPurpose,
+    AuthStep, CURegState, Entry, Filter, Modify, ModifyList, UatPurpose,
     UserAuthToken,
 };
 use kanidmd_lib::credential::totp::Totp;
 use kanidmd_lib::prelude::{
-    Attribute, BUILTIN_GROUP_IDM_ADMINS_V1, BUILTIN_GROUP_SYSTEM_ADMINS_V1,
-    IDM_PEOPLE_ACCOUNT_PASSWORD_IMPORT_PRIV_V1,
+    Attribute, BUILTIN_GROUP_IDM_ADMINS_V1, BUILTIN_GROUP_SYSTEM_ADMINS_V1
 };
 use tracing::{debug, trace};
 
@@ -785,72 +784,16 @@ async fn test_server_rest_recycle_lifecycle(rsclient: KanidmClient) {
 }
 
 #[kanidmd_testkit::test]
-async fn test_server_rest_account_import_password(rsclient: KanidmClient) {
-    let res = rsclient
-        .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
-        .await;
-    assert!(res.is_ok());
-    // To enable the admin to actually make some of these changes, we have
-    // to make them a password import admin. NOT recommended in production!
-    rsclient
-        .idm_group_add_members(IDM_PEOPLE_ACCOUNT_PASSWORD_IMPORT_PRIV_V1.name, &["admin"])
-        .await
-        .unwrap();
-    rsclient
-        .idm_group_add_members(BUILTIN_GROUP_IDM_ADMINS_V1.name, &["admin"])
-        .await
-        .unwrap();
-
-    // Create a new person
-    rsclient
-        .idm_person_account_create("demo_account", "Deeeeemo")
-        .await
-        .unwrap();
-
-    // Attempt to import a bad password
-    let r = rsclient
-        .idm_person_account_primary_credential_import_password("demo_account", "password")
-        .await;
-    assert!(r.is_err());
-
-    // Import a good password
-    // eicieY7ahchaoCh0eeTa
-    // pbkdf2_sha256$36000$xIEozuZVAoYm$uW1b35DUKyhvQAf1mBqMvoBDcqSD06juzyO/nmyV0+w=
-    rsclient
-        .idm_person_account_primary_credential_import_password(
-            "demo_account",
-            "pbkdf2_sha256$36000$xIEozuZVAoYm$uW1b35DUKyhvQAf1mBqMvoBDcqSD06juzyO/nmyV0+w=",
-        )
-        .await
-        .unwrap();
-
-    // Now show we can auth with it
-    // "reset" the client.
-    let _ = rsclient.logout();
-    let res = rsclient
-        .auth_simple_password("demo_account", "eicieY7ahchaoCh0eeTa")
-        .await;
-    assert!(res.is_ok());
-
-    // And that the account can self read the cred status.
-    let cred_state = rsclient
-        .idm_person_account_get_credential_status("demo_account")
-        .await
-        .unwrap();
-
-    if let Some(cred) = cred_state.creds.get(0) {
-        assert!(cred.type_ == CredentialDetailType::Password)
-    } else {
-        assert!(false);
-    }
-}
-
-#[kanidmd_testkit::test]
 async fn test_server_rest_oauth2_basic_lifecycle(rsclient: KanidmClient) {
     let res = rsclient
         .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
         .await;
     assert!(res.is_ok());
+
+    rsclient
+        .idm_group_add_members(BUILTIN_GROUP_IDM_ADMINS_V1.name, &["admin"])
+        .await
+        .unwrap();
 
     // List, there are non.
     let initial_configs = rsclient

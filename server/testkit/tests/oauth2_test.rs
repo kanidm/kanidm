@@ -55,6 +55,11 @@ async fn test_oauth2_openid_basic_flow(rsclient: KanidmClient) {
         .await;
     assert!(res.is_ok());
 
+    rsclient
+        .idm_group_add_members(BUILTIN_GROUP_IDM_ADMINS_V1.name, &["admin"])
+        .await
+        .unwrap();
+
     // Create an oauth2 application integration.
     rsclient
         .idm_oauth2_rs_basic_create(
@@ -417,6 +422,11 @@ async fn test_oauth2_openid_public_flow(rsclient: KanidmClient) {
         .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
         .await;
     assert!(res.is_ok());
+
+    rsclient
+        .idm_group_add_members(BUILTIN_GROUP_IDM_ADMINS_V1.name, &["admin"])
+        .await
+        .unwrap();
 
     // Create an oauth2 application integration.
     rsclient
