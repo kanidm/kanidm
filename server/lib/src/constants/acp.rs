@@ -803,12 +803,10 @@ lazy_static! {
     };
 }
 
-// ⚠️  -- to be audited.
-
 lazy_static! {
-    pub static ref IDM_SELF_ACP_READ_V1: BuiltinAcp = BuiltinAcp {
-        name: "idm_self_acp_read",
-        uuid: UUID_IDM_SELF_ACP_READ_V1,
+    pub static ref IDM_ACP_SELF_READ_V1: BuiltinAcp = BuiltinAcp {
+        name: "idm_acp_self_read",
+        uuid: UUID_IDM_ACP_SELF_READ_V1,
         description:
             "Builtin IDM Control for self read - required for whoami and many other functions",
         classes: vec![
@@ -816,8 +814,8 @@ lazy_static! {
             EntryClass::AccessControlProfile,
             EntryClass::AccessControlSearch,
         ],
-        receiver: BuiltinAcpReceiver::Group ( vec![UUID_IDM_ALL_ACCOUNTS] ),
-        target: BuiltinAcpTarget::Filter( ProtoFilter::SelfUuid ),
+        receiver: BuiltinAcpReceiver::Group(vec![UUID_IDM_ALL_ACCOUNTS]),
+        target: BuiltinAcpTarget::Filter(ProtoFilter::SelfUuid),
         search_attrs: vec![
             Attribute::Class,
             Attribute::Name,
@@ -841,10 +839,12 @@ lazy_static! {
         ],
         ..Default::default()
     };
+}
 
-    pub static ref IDM_SELF_ACP_WRITE_V1: BuiltinAcp = BuiltinAcp{
-        name: "idm_self_acp_write",
-        uuid: UUID_IDM_SELF_ACP_WRITE_V1,
+lazy_static! {
+    pub static ref IDM_ACP_SELF_WRITE_V1: BuiltinAcp = BuiltinAcp{
+        name: "idm_acp_self_write",
+        uuid: UUID_IDM_ACP_SELF_WRITE_V1,
         classes: vec![
             EntryClass::Object,
             EntryClass::AccessControlProfile,
@@ -852,18 +852,8 @@ lazy_static! {
             ],
         description: "Builtin IDM Control for self write - required for people to update their own identities and credentials in line with best practices.",
         receiver: BuiltinAcpReceiver::Group ( vec![UUID_IDM_ALL_PERSONS] ),
-        target:
-        BuiltinAcpTarget::Filter(
-        ProtoFilter::And(
-            vec![
-                match_class_filter!(EntryClass::Person),
-                ProtoFilter::Eq(EntryClass::Class.to_string(), EntryClass::Account.to_string()),
-                match_class_filter!(EntryClass::Account),
-                ProtoFilter::SelfUuid,
-            ]
-        )),
+        target: BuiltinAcpTarget::Filter(ProtoFilter::SelfUuid),
         modify_removed_attrs: vec![
-            Attribute::Name,
             Attribute::DisplayName,
             Attribute::LegalName,
             Attribute::RadiusSecret,
@@ -875,7 +865,6 @@ lazy_static! {
             Attribute::UserAuthTokenSession,
         ],
         modify_present_attrs: vec![
-            Attribute::Name,
             Attribute::DisplayName,
             Attribute::LegalName,
             Attribute::RadiusSecret,
@@ -886,11 +875,35 @@ lazy_static! {
             Attribute::AttestedPasskeys,
         ],
         ..Default::default()
-        };
+    };
+}
 
-    pub static ref IDM_ACCOUNT_SELF_ACP_WRITE_V1: BuiltinAcp = BuiltinAcp {
-        name: "idm_self_account_acp_write",
-        uuid: UUID_IDM_ACCOUNT_SELF_ACP_WRITE_V1,
+lazy_static! {
+    pub static ref IDM_ACP_SELF_NAME_WRITE_V1: BuiltinAcp = BuiltinAcp{
+        name: "idm_acp_self_name_write",
+        uuid: UUID_IDM_ACP_SELF_NAME_WRITE_V1,
+        classes: vec![
+            EntryClass::Object,
+            EntryClass::AccessControlProfile,
+            EntryClass::AccessControlModify,
+            ],
+        description: "Builtin IDM Control for self write of name - required for people to update their own identities in line with best practices.",
+        receiver: BuiltinAcpReceiver::Group ( vec![UUID_IDM_ALL_PERSONS] ),
+        target: BuiltinAcpTarget::Filter(ProtoFilter::SelfUuid),
+        modify_removed_attrs: vec![
+            Attribute::Name,
+        ],
+        modify_present_attrs: vec![
+            Attribute::Name,
+        ],
+        ..Default::default()
+    };
+}
+
+lazy_static! {
+    pub static ref IDM_ACP_ACCOUNT_SELF_WRITE_V1: BuiltinAcp = BuiltinAcp {
+        name: "idm_acp_self_account_write",
+        uuid: UUID_IDM_ACP_ACCOUNT_SELF_WRITE_V1,
         description: "Builtin IDM Control for self write - required for accounts to update their own session state.",
         classes: vec![
             EntryClass::Object,
@@ -898,13 +911,15 @@ lazy_static! {
             EntryClass::AccessControlModify
             ],
         receiver: BuiltinAcpReceiver::Group ( vec![UUID_IDM_ALL_ACCOUNTS] ),
-        target: BuiltinAcpTarget::Filter( ProtoFilter::And(vec![ProtoFilter::Eq(Attribute::Class.to_string(), Attribute::Account.to_string()), ProtoFilter::SelfUuid]) ),
+        target: BuiltinAcpTarget::Filter(ProtoFilter::SelfUuid),
         modify_removed_attrs: vec![
             Attribute::UserAuthTokenSession
             ],
         ..Default::default()
     };
 }
+
+// ⚠️  -- to be audited.
 
 lazy_static! {
     pub static ref IDM_ALL_ACP_READ_V1: BuiltinAcp = BuiltinAcp {

@@ -718,10 +718,12 @@ impl<'a> QueryServerWriteTransaction<'a> {
             IDM_ACP_RADIUS_SERVERS_V1.clone(),
             IDM_ACP_RADIUS_SECRET_MANAGE_V1.clone(),
             IDM_ACP_PEOPLE_SELF_WRITE_MAIL_V1.clone(),
+            IDM_ACP_SELF_READ_V1.clone(),
+            IDM_ACP_SELF_WRITE_V1.clone(),
+            IDM_ACP_ACCOUNT_SELF_WRITE_V1.clone(),
+            IDM_ACP_SELF_NAME_WRITE_V1.clone(),
             // tbd
             IDM_ALL_ACP_READ_V1.clone(),
-            IDM_SELF_ACP_READ_V1.clone(),
-            IDM_SELF_ACP_WRITE_V1.clone(),
             IDM_ACP_PEOPLE_READ_PRIV_V1.clone(),
             IDM_ACP_PEOPLE_WRITE_PRIV_V1.clone(),
             IDM_ACP_PEOPLE_MANAGE_PRIV_V1.clone(),
@@ -745,7 +747,6 @@ impl<'a> QueryServerWriteTransaction<'a> {
             E_IDM_HP_ACP_GROUP_UNIX_EXTEND_PRIV_V1.clone(),
             E_IDM_HP_ACP_SERVICE_ACCOUNT_INTO_PERSON_MIGRATE_V1.clone(),
             IDM_ACP_ACCOUNT_MAIL_READ_PRIV_V1.clone(),
-            IDM_ACCOUNT_SELF_ACP_WRITE_V1.clone(),
         ];
 
         let res: Result<(), _> = idm_entries
