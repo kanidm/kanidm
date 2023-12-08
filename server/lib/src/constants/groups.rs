@@ -214,10 +214,10 @@ lazy_static! {
     };
 
     /// Self-write of mail
-    pub static ref IDM_PEOPLE_SELF_WRITE_MAIL_PRIV_V1: BuiltinGroup = BuiltinGroup {
-        name: "idm_people_self_write_mail_priv",
+    pub static ref IDM_PEOPLE_SELF_WRITE_MAIL_V1: BuiltinGroup = BuiltinGroup {
+        name: "idm_people_self_write_mail",
         description: "Builtin IDM Group for people accounts to update their own mail.",
-        uuid: UUID_IDM_PEOPLE_SELF_WRITE_MAIL_PRIV,
+        uuid: UUID_IDM_PEOPLE_SELF_WRITE_MAIL,
         members: Vec::new(),
         ..Default::default()
     };
@@ -526,7 +526,7 @@ pub fn idm_builtin_non_admin_groups() -> Vec<&'static BuiltinGroup> {
         &IDM_ALL_ACCOUNTS,
         &IDM_RADIUS_SERVERS_V1,
         &IDM_PEOPLE_MANAGE_PRIV_V1,
-        &IDM_PEOPLE_SELF_WRITE_MAIL_PRIV_V1,
+        &IDM_PEOPLE_SELF_WRITE_MAIL_V1,
         &IDM_PEOPLE_WRITE_PRIV_V1,
         &IDM_PEOPLE_READ_PRIV_V1,
         &IDM_HP_PEOPLE_WRITE_PRIV_V1,

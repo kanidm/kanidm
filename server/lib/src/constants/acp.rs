@@ -781,6 +781,28 @@ lazy_static! {
     };
 }
 
+lazy_static! {
+    pub static ref IDM_ACP_PEOPLE_SELF_WRITE_MAIL_V1: BuiltinAcp = BuiltinAcp {
+        classes: vec![
+            EntryClass::Object,
+            EntryClass::AccessControlProfile,
+            EntryClass::AccessControlModify,
+        ],
+        name: "idm_people_self_acp_write_mail",
+        uuid: UUID_IDM_ACP_PEOPLE_SELF_WRITE_MAIL,
+        description: "Builtin IDM Control for self write of mail for people accounts.",
+        receiver: BuiltinAcpReceiver::Group(vec![UUID_IDM_PEOPLE_SELF_WRITE_MAIL]),
+        target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
+            match_class_filter!(EntryClass::Person).clone(),
+            match_class_filter!(EntryClass::Account).clone(),
+            ProtoFilter::SelfUuid,
+        ])),
+        modify_removed_attrs: vec![Attribute::Mail],
+        modify_present_attrs: vec![Attribute::Mail],
+        ..Default::default()
+    };
+}
+
 // ⚠️  -- to be audited.
 
 lazy_static! {
@@ -880,28 +902,6 @@ lazy_static! {
         modify_removed_attrs: vec![
             Attribute::UserAuthTokenSession
             ],
-        ..Default::default()
-    };
-}
-
-lazy_static! {
-    pub static ref E_IDM_PEOPLE_SELF_ACP_WRITE_MAIL_PRIV_V1: BuiltinAcp = BuiltinAcp {
-        classes: vec![
-            EntryClass::Object,
-            EntryClass::AccessControlProfile,
-            EntryClass::AccessControlModify,
-        ],
-        name: "idm_people_self_acp_write_mail",
-        uuid: UUID_IDM_PEOPLE_SELF_ACP_WRITE_MAIL_V1,
-        description: "Builtin IDM Control for self write of mail for people accounts.",
-        receiver: BuiltinAcpReceiver::Group(vec![UUID_IDM_PEOPLE_SELF_WRITE_MAIL_PRIV]),
-        target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
-            match_class_filter!(EntryClass::Person).clone(),
-            match_class_filter!(EntryClass::Account).clone(),
-            ProtoFilter::SelfUuid,
-        ])),
-        modify_removed_attrs: vec![Attribute::Mail],
-        modify_present_attrs: vec![Attribute::Mail],
         ..Default::default()
     };
 }
