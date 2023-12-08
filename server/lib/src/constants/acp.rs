@@ -731,6 +731,56 @@ lazy_static! {
     };
 }
 
+lazy_static! {
+    pub static ref IDM_ACP_RADIUS_SERVERS_V1: BuiltinAcp = BuiltinAcp {
+        classes: vec![
+            EntryClass::Object,
+            EntryClass::AccessControlProfile,
+            EntryClass::AccessControlSearch,
+        ],
+        name: "idm_acp_radius_servers",
+        uuid: UUID_IDM_ACP_RADIUS_SERVERS_V1,
+        description:
+            "Builtin IDM Control for RADIUS servers to read credentials and other needed details.",
+        receiver: BuiltinAcpReceiver::Group(vec![UUID_IDM_RADIUS_SERVERS]),
+        target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
+            ProtoFilter::Pres(EntryClass::Class.to_string()),
+            FILTER_ANDNOT_TOMBSTONE_OR_RECYCLED.clone()
+        ])),
+        search_attrs: vec![
+            Attribute::Class,
+            Attribute::Name,
+            Attribute::Spn,
+            Attribute::Uuid,
+            Attribute::RadiusSecret,
+        ],
+        ..Default::default()
+    };
+}
+
+lazy_static! {
+    pub static ref IDM_ACP_RADIUS_SECRET_MANAGE_V1: BuiltinAcp = BuiltinAcp {
+        classes: vec![
+            EntryClass::Object,
+            EntryClass::AccessControlProfile,
+            EntryClass::AccessControlModify,
+            EntryClass::AccessControlSearch,
+        ],
+        name: "idm_acp_radius_secret_manage",
+        uuid: UUID_IDM_ACP_RADIUS_SECRET_MANAGE_V1,
+        description: "Builtin IDM Control allowing reads and writes to user radius secrets.",
+        receiver: BuiltinAcpReceiver::Group(vec![UUID_IDM_RADIUS_ADMINS]),
+        target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
+            match_class_filter!(EntryClass::Account),
+            FILTER_ANDNOT_TOMBSTONE_OR_RECYCLED.clone()
+        ])),
+        search_attrs: vec![Attribute::RadiusSecret],
+        modify_present_attrs: vec![Attribute::RadiusSecret],
+        modify_removed_attrs: vec![Attribute::RadiusSecret],
+        ..Default::default()
+    };
+}
+
 // ⚠️  -- to be audited.
 
 lazy_static! {
@@ -1003,34 +1053,6 @@ lazy_static! {
             Attribute::AttestedPasskeys,
         ],
         create_classes: vec![EntryClass::Object, EntryClass::Account, EntryClass::Person,],
-        ..Default::default()
-    };
-}
-
-// 31 - password import modification priv
-// right now, create requires you to have access to every attribute in a single snapshot,
-// so people will need to two step (create then import pw). Later we could add another
-// acp that allows the create here too? Should it be separate?
-lazy_static! {
-    pub static ref IDM_ACP_PEOPLE_ACCOUNT_PASSWORD_IMPORT_PRIV_V1: BuiltinAcp = BuiltinAcp {
-        classes: vec![
-            EntryClass::Object,
-            EntryClass::AccessControlProfile,
-            EntryClass::AccessControlModify
-        ],
-        name: "idm_acp_people_account_password_import_priv",
-        uuid: UUID_IDM_ACP_PEOPLE_ACCOUNT_PASSWORD_IMPORT_PRIV_V1,
-        description:
-            "Builtin IDM Control for allowing imports of passwords to people+account types.",
-        receiver: BuiltinAcpReceiver::Group(vec![UUID_IDM_PEOPLE_ACCOUNT_PASSWORD_IMPORT_PRIV]),
-        target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
-            match_class_filter!(EntryClass::Person),
-            match_class_filter!(EntryClass::Account),
-            ProtoFilter::AndNot(Box::new(FILTER_HP_OR_RECYCLED_OR_TOMBSTONE.clone())),
-        ])),
-
-        modify_removed_attrs: vec![Attribute::PasswordImport],
-        modify_present_attrs: vec![Attribute::PasswordImport],
         ..Default::default()
     };
 }
@@ -1343,82 +1365,6 @@ lazy_static! {
             EntryClass::Object,
             EntryClass::Account,
             EntryClass::ServiceAccount,
-        ],
-        ..Default::default()
-    };
-}
-
-// 14 radius read acp JSON_IDM_RADIUS_SERVERS_V1
-// The targetscope of this could change later to a "radius access" group or similar so we can add/remove
-//  users from having radius access easier.
-
-lazy_static! {
-    pub static ref IDM_ACP_RADIUS_SECRET_READ_PRIV_V1: BuiltinAcp = BuiltinAcp{
-        classes: vec![
-            EntryClass::Object,
-            EntryClass::AccessControlProfile,
-            EntryClass::AccessControlSearch,
-        ],
-        name: "idm_acp_radius_secret_read_priv",
-        uuid: UUID_IDM_ACP_RADIUS_SECRET_READ_PRIV_V1,
-        description: "Builtin IDM Control for reading user radius secrets.",
-        receiver: BuiltinAcpReceiver::Group ( vec![UUID_IDM_RADIUS_SECRET_READ_PRIV_V1] ),
-        // Account which is not in HP, Recycled, Tombstone
-        target: BuiltinAcpTarget::Filter( ProtoFilter::And(vec![
-            match_class_filter!(EntryClass::Account),
-            ProtoFilter::AndNot(Box::new(FILTER_HP_OR_RECYCLED_OR_TOMBSTONE.clone())),
-        ])),
-        search_attrs: vec![
-            Attribute::RadiusSecret
-        ],
-        ..Default::default()
-    };
-
-
-    pub static ref IDM_ACP_RADIUS_SECRET_WRITE_PRIV_V1: BuiltinAcp = BuiltinAcp{
-        classes: vec![
-            EntryClass::Object,
-            EntryClass::AccessControlProfile,
-            EntryClass::AccessControlModify,
-        ],
-        name: "idm_acp_radius_secret_write_priv",
-        uuid: UUID_IDM_ACP_RADIUS_SECRET_WRITE_PRIV_V1,
-        description: "Builtin IDM Control allowing writes to user radius secrets.",
-        receiver: BuiltinAcpReceiver::Group ( vec![UUID_IDM_RADIUS_SECRET_WRITE_PRIV_V1] ),
-        // Account which is not in HP, Recycled, Tombstone
-        target: BuiltinAcpTarget::Filter( ProtoFilter::And(vec![
-            match_class_filter!(EntryClass::Account),
-            ProtoFilter::AndNot(Box::new(FILTER_HP_OR_RECYCLED_OR_TOMBSTONE.clone())),
-        ])),
-        modify_present_attrs:vec![Attribute::RadiusSecret],
-        modify_removed_attrs: vec![Attribute::RadiusSecret],
-        ..Default::default()
-
-
-    };
-
-
-    pub static ref IDM_ACP_RADIUS_SERVERS_V1: BuiltinAcp = BuiltinAcp{
-        classes: vec![
-            EntryClass::Object,
-            EntryClass::AccessControlProfile,
-            EntryClass::AccessControlSearch,
-        ],
-        name: "idm_acp_radius_servers",
-        uuid: UUID_IDM_ACP_RADIUS_SERVERS_V1,
-        description: "Builtin IDM Control for RADIUS servers to read credentials and other needed details.",
-        receiver: BuiltinAcpReceiver::Group ( vec![UUID_IDM_RADIUS_SERVERS] ),
-        // has a class, and isn't recycled/tombstoned
-        target: BuiltinAcpTarget::Filter( ProtoFilter::And(vec![
-            ProtoFilter::Pres(EntryClass::Class.to_string()),
-            FILTER_ANDNOT_TOMBSTONE_OR_RECYCLED.clone()
-        ])),
-        search_attrs: vec![
-            Attribute::Class,
-            Attribute::Name,
-            Attribute::Spn,
-            Attribute::Uuid,
-            Attribute::RadiusSecret,
         ],
         ..Default::default()
     };

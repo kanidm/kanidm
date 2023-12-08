@@ -164,16 +164,16 @@ lazy_static! {
         ..Default::default()
     };
 
-    /*
-    pub static ref BUILTIN_GROUP_RADIUS_ACCOUNT_SECRET_MODIFY: BuiltinGroup = BuiltinGroup {
-        name: "idm_radius_account_secret_modify",
-        // description: "Builtin Service Desk Group.",
-        uuid: UUID_IDM_RADIUS_ACCOUNT_SECRET_MODIFY,
-        entry_managed_by: Some(UUID_IDM_ADMINS),
-        members: vec![UUID_IDM_ADMINS],
+    /// Builtin IDM Group for RADIUS server access delegation.
+    pub static ref IDM_RADIUS_SERVERS_V1: BuiltinGroup = BuiltinGroup {
+        name: "idm_radius_servers",
+        description: "Builtin IDM Group for RADIUS server access delegation.",
+        uuid: UUID_IDM_RADIUS_SERVERS,
+        entry_managed_by: Some(UUID_IDM_RADIUS_ADMINS),
+        members: vec![
+        ],
         ..Default::default()
-    }
-    */
+    };
 
     pub static ref BUILTIN_GROUP_ACCOUNT_POLICY_ADMINS: BuiltinGroup = BuiltinGroup {
         name: "idm_account_policy_admins",
@@ -209,15 +209,6 @@ lazy_static! {
         name: "idm_people_manage_priv",
         description: "Builtin IDM Group for granting elevated people (personal data) write and lifecycle management permissions.",
         uuid: UUID_IDM_PEOPLE_MANAGE_PRIV,
-        members: vec![UUID_IDM_ADMINS],
-        ..Default::default()
-    };
-
-    /// Builtin IDM Group for importing passwords to person accounts - intended for service account membership only.
-    pub static ref IDM_PEOPLE_ACCOUNT_PASSWORD_IMPORT_PRIV_V1: BuiltinGroup = BuiltinGroup {
-        name: "idm_people_account_password_import_priv",
-        description: "Builtin IDM Group for importing passwords to person accounts - intended for service account membership only.",
-        uuid: UUID_IDM_PEOPLE_ACCOUNT_PASSWORD_IMPORT_PRIV,
         members: vec![UUID_IDM_ADMINS],
         ..Default::default()
     };
@@ -339,38 +330,6 @@ lazy_static! {
         uuid: UUID_IDM_ACCOUNT_UNIX_EXTEND_PRIV,
         members: vec![
             UUID_IDM_ADMINS,
-        ],
-        ..Default::default()
-    };
-
-    /// Builtin IDM Group for RADIUS secret write for all non-hp accounts.
-    pub static ref IDM_RADIUS_SECRET_WRITE_PRIV_V1: BuiltinGroup = BuiltinGroup {
-        name: "idm_radius_secret_write_priv",
-        description: "Builtin IDM Group for RADIUS secret write for all non-hp accounts.",
-        uuid: UUID_IDM_RADIUS_SECRET_WRITE_PRIV_V1,
-        members: vec![
-            UUID_IDM_ADMINS,
-        ],
-        ..Default::default()
-    };
-
-    /// Builtin IDM Group for RADIUS secret reading for all non-hp accounts.
-    pub static ref IDM_RADIUS_SECRET_READ_PRIV_V1: BuiltinGroup = BuiltinGroup {
-        name: "idm_radius_secret_read_priv",
-        description: "Builtin IDM Group for RADIUS secret reading for all non-hp accounts.",
-        uuid: UUID_IDM_RADIUS_SECRET_READ_PRIV_V1,
-        members: vec![
-            UUID_IDM_RADIUS_SECRET_WRITE_PRIV_V1,
-        ],
-        ..Default::default()
-    };
-
-    /// Builtin IDM Group for RADIUS server access delegation.
-    pub static ref IDM_RADIUS_SERVERS_V1: BuiltinGroup = BuiltinGroup {
-        name: "idm_radius_servers",
-        description: "Builtin IDM Group for RADIUS server access delegation.",
-        uuid: UUID_IDM_RADIUS_SERVERS,
-        members: vec![
         ],
         ..Default::default()
     };
@@ -540,6 +499,7 @@ lazy_static! {
             UUID_IDM_OAUTH2_ADMINS,
             UUID_IDM_RADIUS_ADMINS,
             UUID_IDM_ACCOUNT_POLICY_ADMINS,
+            UUID_IDM_RADIUS_SERVERS,
 
 
             UUID_IDM_HIGH_PRIVILEGE,
@@ -550,7 +510,6 @@ lazy_static! {
             UUID_IDM_GROUP_WRITE_PRIV,
             UUID_IDM_ACCOUNT_READ_PRIV,
             UUID_IDM_ACCOUNT_WRITE_PRIV,
-            UUID_IDM_RADIUS_SERVERS,
             UUID_IDM_HP_ACCOUNT_READ_PRIV,
             UUID_IDM_HP_ACCOUNT_WRITE_PRIV,
             UUID_IDM_HP_GROUP_WRITE_PRIV,
@@ -559,12 +518,9 @@ lazy_static! {
             UUID_IDM_GROUP_MANAGE_PRIV,
             UUID_IDM_HP_ACCOUNT_MANAGE_PRIV,
             UUID_IDM_HP_GROUP_MANAGE_PRIV,
-            UUID_IDM_PEOPLE_ACCOUNT_PASSWORD_IMPORT_PRIV,
             UUID_IDM_PEOPLE_EXTEND_PRIV,
             UUID_IDM_HP_ACCOUNT_UNIX_EXTEND_PRIV,
             UUID_IDM_HP_GROUP_UNIX_EXTEND_PRIV,
-            UUID_IDM_RADIUS_SECRET_WRITE_PRIV_V1,
-            UUID_IDM_RADIUS_SECRET_READ_PRIV_V1,
             UUID_IDM_HP_SERVICE_ACCOUNT_INTO_PERSON_MIGRATE_PRIV,
         ],
         ..Default::default()
@@ -575,10 +531,19 @@ lazy_static! {
 pub fn idm_builtin_non_admin_groups() -> Vec<&'static BuiltinGroup> {
     // Create any system default schema entries.
     vec![
+        &BUILTIN_GROUP_DOMAIN_ADMINS,
+        // &IDM_HP_OAUTH2_MANAGE_PRIV_V1,
+        &BUILTIN_GROUP_SCHEMA_ADMINS,
+        &BUILTIN_GROUP_ACCESS_CONTROL_ADMINS,
+        &BUILTIN_GROUP_RECYCLE_BIN_ADMINS,
+        &BUILTIN_GROUP_SERVICE_DESK,
+        &BUILTIN_GROUP_OAUTH2_ADMINS,
+        &BUILTIN_GROUP_RADIUS_SERVICE_ADMINS,
+        &BUILTIN_GROUP_ACCOUNT_POLICY_ADMINS,
         &IDM_ALL_PERSONS,
         &IDM_ALL_ACCOUNTS,
+        &IDM_RADIUS_SERVERS_V1,
         &IDM_PEOPLE_MANAGE_PRIV_V1,
-        &IDM_PEOPLE_ACCOUNT_PASSWORD_IMPORT_PRIV_V1,
         &IDM_PEOPLE_EXTEND_PRIV_V1,
         &IDM_PEOPLE_SELF_WRITE_MAIL_PRIV_V1,
         &IDM_PEOPLE_WRITE_PRIV_V1,
@@ -593,9 +558,6 @@ pub fn idm_builtin_non_admin_groups() -> Vec<&'static BuiltinGroup> {
         &IDM_ACCOUNT_WRITE_PRIV_V1,
         &IDM_ACCOUNT_UNIX_EXTEND_PRIV_V1,
         &IDM_ACCOUNT_READ_PRIV_V1,
-        &IDM_RADIUS_SECRET_WRITE_PRIV_V1,
-        &IDM_RADIUS_SECRET_READ_PRIV_V1,
-        &IDM_RADIUS_SERVERS_V1,
         // Write deps on read, so write must be added first.
         &IDM_HP_ACCOUNT_MANAGE_PRIV_V1,
         &IDM_HP_ACCOUNT_WRITE_PRIV_V1,
@@ -604,15 +566,6 @@ pub fn idm_builtin_non_admin_groups() -> Vec<&'static BuiltinGroup> {
         &IDM_HP_GROUP_MANAGE_PRIV_V1,
         &IDM_HP_GROUP_WRITE_PRIV_V1,
         &IDM_HP_GROUP_UNIX_EXTEND_PRIV_V1,
-        &BUILTIN_GROUP_DOMAIN_ADMINS,
-        // &IDM_HP_OAUTH2_MANAGE_PRIV_V1,
-        &BUILTIN_GROUP_SCHEMA_ADMINS,
-        &BUILTIN_GROUP_ACCESS_CONTROL_ADMINS,
-        &BUILTIN_GROUP_RECYCLE_BIN_ADMINS,
-        &BUILTIN_GROUP_SERVICE_DESK,
-        &BUILTIN_GROUP_OAUTH2_ADMINS,
-        &BUILTIN_GROUP_RADIUS_SERVICE_ADMINS,
-        &BUILTIN_GROUP_ACCOUNT_POLICY_ADMINS,
         &IDM_HP_SERVICE_ACCOUNT_INTO_PERSON_MIGRATE_PRIV,
         // All members must exist before we write HP
         &IDM_HIGH_PRIVILEGE_V1,
