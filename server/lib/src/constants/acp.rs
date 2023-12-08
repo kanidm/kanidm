@@ -1058,36 +1058,6 @@ lazy_static! {
 }
 
 lazy_static! {
-    pub static ref IDM_ACP_PEOPLE_EXTEND_PRIV_V1: BuiltinAcp = BuiltinAcp {
-        classes: vec![
-            EntryClass::Object,
-            EntryClass::AccessControlProfile,
-            EntryClass::AccessControlModify
-        ],
-        name: "idm_acp_people_extend_priv",
-        uuid: UUID_IDM_ACP_PEOPLE_EXTEND_PRIV_V1,
-        description: "Builtin IDM Control for allowing person class extension",
-        receiver: BuiltinAcpReceiver::Group(vec![UUID_IDM_PEOPLE_EXTEND_PRIV]),
-        target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
-            match_class_filter!(EntryClass::Account).clone(),
-            ProtoFilter::AndNot(Box::new(FILTER_HP_OR_RECYCLED_OR_TOMBSTONE.clone())),
-        ])),
-        modify_removed_attrs: vec![
-            Attribute::Name,
-            Attribute::DisplayName,
-            Attribute::LegalName,
-            Attribute::Mail,
-        ],
-        modify_present_attrs: vec![
-            Attribute::Class,
-            Attribute::Name,
-            Attribute::DisplayName,
-            Attribute::LegalName,
-            Attribute::Name,
-        ],
-        modify_classes: vec![EntryClass::Person,],
-        ..Default::default()
-    };
     pub static ref IDM_ACP_HP_PEOPLE_READ_PRIV_V1: BuiltinAcp = BuiltinAcp {
         classes: vec![
             EntryClass::Object,
@@ -1131,6 +1101,9 @@ lazy_static! {
         search_attrs: vec![Attribute::Mail],
         ..Default::default()
     };
+}
+
+lazy_static! {
     pub static ref IDM_ACP_HP_PEOPLE_WRITE_PRIV_V1: BuiltinAcp = BuiltinAcp {
         classes: vec![
             EntryClass::Object,
@@ -1161,40 +1134,6 @@ lazy_static! {
             Attribute::LegalName,
             Attribute::Name,
         ],
-        ..Default::default()
-    };
-    pub static ref IDM_ACP_HP_PEOPLE_EXTEND_PRIV_V1: BuiltinAcp = BuiltinAcp {
-        classes: vec![
-            EntryClass::Object,
-            EntryClass::AccessControlProfile,
-            EntryClass::AccessControlModify
-        ],
-        name: "idm_acp_hp_people_extend_priv",
-        uuid: UUID_IDM_ACP_HP_PEOPLE_EXTEND_PRIV_V1,
-        description: "Builtin IDM Control for allowing privilege person class extension",
-        receiver: BuiltinAcpReceiver::Group(vec![UUID_IDM_HP_PEOPLE_EXTEND_PRIV]),
-        target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
-            match_class_filter!(EntryClass::Account),
-            ProtoFilter::Eq(
-                Attribute::MemberOf.to_string(),
-                UUID_IDM_HIGH_PRIVILEGE.to_string()
-            ),
-            FILTER_ANDNOT_TOMBSTONE_OR_RECYCLED.clone()
-        ])),
-        modify_removed_attrs: vec![
-            Attribute::Name,
-            Attribute::DisplayName,
-            Attribute::LegalName,
-            Attribute::Mail,
-        ],
-        modify_present_attrs: vec![
-            Attribute::Class,
-            Attribute::Name,
-            Attribute::DisplayName,
-            Attribute::LegalName,
-            Attribute::Name,
-        ],
-        modify_classes: vec![EntryClass::Person,],
         ..Default::default()
     };
 }

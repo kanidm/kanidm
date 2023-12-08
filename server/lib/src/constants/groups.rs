@@ -199,7 +199,7 @@ lazy_static! {
         name: "idm_people_write_priv",
         description: "Builtin IDM Group for granting elevated people (personal data) write permissions.",
         uuid: UUID_IDM_PEOPLE_WRITE_PRIV,
-        members: vec![UUID_IDM_PEOPLE_MANAGE_PRIV,UUID_IDM_PEOPLE_EXTEND_PRIV],
+        members: vec![UUID_IDM_PEOPLE_MANAGE_PRIV],
         ..Default::default()
     };
 
@@ -213,14 +213,6 @@ lazy_static! {
         ..Default::default()
     };
 
-    /// Builtin IDM Group for allowing the ability to extend accounts to have the "person" flag set.
-    pub static ref IDM_PEOPLE_EXTEND_PRIV_V1: BuiltinGroup = BuiltinGroup {
-        name: "idm_people_extend_priv",
-        description: "Builtin System Administrators Group.",
-        uuid: UUID_IDM_PEOPLE_EXTEND_PRIV,
-        members: vec![UUID_SYSTEM_ADMINS],
-        ..Default::default()
-    };
     /// Self-write of mail
     pub static ref IDM_PEOPLE_SELF_WRITE_MAIL_PRIV_V1: BuiltinGroup = BuiltinGroup {
         name: "idm_people_self_write_mail_priv",
@@ -244,16 +236,7 @@ lazy_static! {
         name: "idm_hp_people_write_priv",
         description: "Builtin IDM Group for granting elevated high privilege people (personal data) write permissions.",
         uuid: UUID_IDM_HP_PEOPLE_WRITE_PRIV,
-        members: vec![UUID_IDM_HP_PEOPLE_EXTEND_PRIV],
-        ..Default::default()
-    };
-
-    /// Builtin IDM Group for extending high privilege accounts to be people.
-    pub static ref IDM_HP_PEOPLE_EXTEND_PRIV_V1: BuiltinGroup = BuiltinGroup {
-        name: "idm_hp_people_extend_priv",
-        description: "Builtin IDM Group for extending high privilege accounts to be people.",
-        uuid: UUID_IDM_HP_PEOPLE_EXTEND_PRIV,
-        members: vec![UUID_SYSTEM_ADMINS],
+        members: vec![],
         ..Default::default()
     };
 
@@ -518,7 +501,6 @@ lazy_static! {
             UUID_IDM_GROUP_MANAGE_PRIV,
             UUID_IDM_HP_ACCOUNT_MANAGE_PRIV,
             UUID_IDM_HP_GROUP_MANAGE_PRIV,
-            UUID_IDM_PEOPLE_EXTEND_PRIV,
             UUID_IDM_HP_ACCOUNT_UNIX_EXTEND_PRIV,
             UUID_IDM_HP_GROUP_UNIX_EXTEND_PRIV,
             UUID_IDM_HP_SERVICE_ACCOUNT_INTO_PERSON_MIGRATE_PRIV,
@@ -544,11 +526,9 @@ pub fn idm_builtin_non_admin_groups() -> Vec<&'static BuiltinGroup> {
         &IDM_ALL_ACCOUNTS,
         &IDM_RADIUS_SERVERS_V1,
         &IDM_PEOPLE_MANAGE_PRIV_V1,
-        &IDM_PEOPLE_EXTEND_PRIV_V1,
         &IDM_PEOPLE_SELF_WRITE_MAIL_PRIV_V1,
         &IDM_PEOPLE_WRITE_PRIV_V1,
         &IDM_PEOPLE_READ_PRIV_V1,
-        &IDM_HP_PEOPLE_EXTEND_PRIV_V1,
         &IDM_HP_PEOPLE_WRITE_PRIV_V1,
         &IDM_HP_PEOPLE_READ_PRIV_V1,
         &IDM_GROUP_MANAGE_PRIV_V1,
