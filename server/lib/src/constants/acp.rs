@@ -587,6 +587,58 @@ lazy_static! {
 }
 
 lazy_static! {
+    pub static ref IDM_ACP_DOMAIN_ADMIN_V1: BuiltinAcp = BuiltinAcp {
+        classes: vec![
+            EntryClass::Object,
+            EntryClass::AccessControlProfile,
+            EntryClass::AccessControlModify,
+            EntryClass::AccessControlSearch
+        ],
+        name: "idm_acp_domain_admin",
+        uuid: UUID_IDM_ACP_DOMAIN_ADMIN_V1,
+        description: "Builtin IDM Control for granting domain info administration locally",
+        receiver: BuiltinAcpReceiver::Group(vec![UUID_DOMAIN_ADMINS]),
+        target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
+            ProtoFilter::Eq(
+                Attribute::Uuid.to_string(),
+                STR_UUID_DOMAIN_INFO.to_string()
+            ),
+            FILTER_ANDNOT_TOMBSTONE_OR_RECYCLED.clone()
+        ])),
+        search_attrs: vec![
+            Attribute::Class,
+            Attribute::Name,
+            Attribute::Uuid,
+            Attribute::DomainDisplayName,
+            Attribute::DomainName,
+            Attribute::DomainLdapBasedn,
+            Attribute::DomainSsid,
+            Attribute::DomainUuid,
+            Attribute::Es256PrivateKeyDer,
+            Attribute::FernetPrivateKeyStr,
+            Attribute::CookiePrivateKey,
+            Attribute::LdapAllowUnixPwBind,
+        ],
+        modify_removed_attrs: vec![
+            Attribute::DomainDisplayName,
+            Attribute::DomainSsid,
+            Attribute::DomainLdapBasedn,
+            Attribute::Es256PrivateKeyDer,
+            Attribute::CookiePrivateKey,
+            Attribute::FernetPrivateKeyStr,
+            Attribute::LdapAllowUnixPwBind,
+        ],
+        modify_present_attrs: vec![
+            Attribute::DomainDisplayName,
+            Attribute::DomainLdapBasedn,
+            Attribute::DomainSsid,
+            Attribute::LdapAllowUnixPwBind,
+        ],
+        ..Default::default()
+    };
+}
+
+lazy_static! {
     pub static ref IDM_ACP_SYNC_ACCOUNT_MANAGE_V1: BuiltinAcp = BuiltinAcp {
         classes: vec![
             EntryClass::Object,
@@ -1602,57 +1654,6 @@ lazy_static! {
         ..Default::default()
     };
 
-    pub static ref IDM_ACP_DOMAIN_ADMIN_PRIV_V1: BuiltinAcp = BuiltinAcp{
-        classes: vec![
-            EntryClass::Object,
-            EntryClass::AccessControlProfile,
-            EntryClass::AccessControlModify,
-            EntryClass::AccessControlSearch
-        ],
-        name: "idm_acp_domain_admin_priv",
-        uuid: UUID_IDM_ACP_DOMAIN_ADMIN_PRIV_V1,
-        description: "Builtin IDM Control for granting domain info administration locally",
-        receiver: BuiltinAcpReceiver::Group ( vec![UUID_DOMAIN_ADMINS] ),
-        // STR_UUID_DOMAIN_INFO
-        target: BuiltinAcpTarget::Filter( ProtoFilter::And(vec![
-            ProtoFilter::Eq(Attribute::Uuid.to_string(),STR_UUID_DOMAIN_INFO.to_string()),
-            FILTER_ANDNOT_TOMBSTONE_OR_RECYCLED.clone()
-        ])),
-        // target_scope: Value::new_json_filter_s(
-        //         "{\"and\": [{\"eq\": [\"uuid\",\"00000000-0000-0000-0000-ffffff000025\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-        //     )
-        //         .expect("Invalid JSON filter"),
-        search_attrs: vec![
-            Attribute::Class,
-            Attribute::Name,
-            Attribute::Uuid,
-            Attribute::DomainDisplayName,
-            Attribute::DomainName,
-            Attribute::DomainLdapBasedn,
-            Attribute::DomainSsid,
-            Attribute::DomainUuid,
-            Attribute::Es256PrivateKeyDer,
-            Attribute::FernetPrivateKeyStr,
-            Attribute::CookiePrivateKey,
-            Attribute::LdapAllowUnixPwBind,
-        ],
-        modify_removed_attrs: vec![
-            Attribute::DomainDisplayName,
-            Attribute::DomainSsid,
-            Attribute::DomainLdapBasedn,
-            Attribute::Es256PrivateKeyDer,
-            Attribute::CookiePrivateKey,
-            Attribute::FernetPrivateKeyStr,
-            Attribute::LdapAllowUnixPwBind,
-        ],
-        modify_present_attrs: vec![
-            Attribute::DomainDisplayName,
-            Attribute::DomainLdapBasedn,
-            Attribute::DomainSsid,
-            Attribute::LdapAllowUnixPwBind,
-        ],
-        ..Default::default()
-    };
 }
 
 lazy_static! {
