@@ -184,6 +184,16 @@ lazy_static! {
         ..Default::default()
     };
 
+    /// Builtin IDM Group for managing posix/unix attributes on groups and users.
+    pub static ref BUILTIN_GROUP_UNIX_ADMINS: BuiltinGroup = BuiltinGroup {
+        name: "idm_unix_admins",
+        description: "Builtin Unix Administration Group.",
+        uuid: UUID_IDM_UNIX_ADMINS,
+        entry_managed_by: Some(UUID_IDM_ADMINS),
+        members: vec![UUID_IDM_ADMINS],
+        ..Default::default()
+    };
+
 
 // * People read managers
     /// Builtin IDM Group for granting elevated people (personal data) read permissions.
@@ -360,42 +370,9 @@ lazy_static! {
         ..Default::default()
     };
 
-    /// Builtin IDM Group for granting elevated group write and lifecycle privileges for high privilege groups.
-    pub static ref IDM_HP_GROUP_MANAGE_PRIV_V1: BuiltinGroup = BuiltinGroup {
-        name: "idm_hp_group_manage_priv",
-        description: "Builtin IDM Group for granting elevated group write and lifecycle privileges for high privilege groups.",
-        uuid: UUID_IDM_HP_GROUP_MANAGE_PRIV,
-        members: vec![
-            UUID_SYSTEM_ADMINS,
-        ],
-        ..Default::default()
-    };
-
-    /// Builtin IDM Group for granting elevated group write privileges for high privilege groups.
-    pub static ref IDM_HP_GROUP_WRITE_PRIV_V1: BuiltinGroup = BuiltinGroup {
-        name: "idm_hp_group_write_priv",
-        description: "Builtin IDM Group for granting elevated group write privileges for high privilege groups.",
-        uuid: UUID_IDM_HP_GROUP_WRITE_PRIV,
-        members: vec![
-            UUID_IDM_HP_GROUP_MANAGE_PRIV,
-        ],
-        ..Default::default()
-    };
-
 }
 // at some point vs code just gives up on syntax highlighting inside lazy_static...
 lazy_static! {
-
-    /// Builtin IDM Group for granting unix group extension permissions for high privilege groups.
-    pub static ref IDM_HP_GROUP_UNIX_EXTEND_PRIV_V1: BuiltinGroup = BuiltinGroup {
-        name: "idm_hp_group_unix_extend_priv",
-        description: "Builtin IDM Group for granting unix group extension permissions for high privilege groups.",
-        uuid: UUID_IDM_HP_GROUP_UNIX_EXTEND_PRIV,
-        members: vec![
-            UUID_SYSTEM_ADMINS,
-        ],
-        ..Default::default()
-    };
 
     /// Builtin IDM Group for allowing migrations of service accounts into persons
     pub static ref IDM_HP_SERVICE_ACCOUNT_INTO_PERSON_MIGRATE_PRIV: BuiltinGroup = BuiltinGroup {
@@ -498,14 +475,12 @@ lazy_static! {
             UUID_IDM_ACCOUNT_WRITE_PRIV,
             UUID_IDM_HP_ACCOUNT_READ_PRIV,
             UUID_IDM_HP_ACCOUNT_WRITE_PRIV,
-            UUID_IDM_HP_GROUP_WRITE_PRIV,
             UUID_IDM_PEOPLE_MANAGE_PRIV,
             UUID_IDM_ACCOUNT_MANAGE_PRIV,
             UUID_IDM_GROUP_MANAGE_PRIV,
             UUID_IDM_HP_ACCOUNT_MANAGE_PRIV,
-            UUID_IDM_HP_GROUP_MANAGE_PRIV,
             UUID_IDM_HP_ACCOUNT_UNIX_EXTEND_PRIV,
-            UUID_IDM_HP_GROUP_UNIX_EXTEND_PRIV,
+
             UUID_IDM_HP_SERVICE_ACCOUNT_INTO_PERSON_MIGRATE_PRIV,
         ],
         ..Default::default()
@@ -520,6 +495,7 @@ pub fn idm_builtin_non_admin_groups() -> Vec<&'static BuiltinGroup> {
         // &IDM_HP_OAUTH2_MANAGE_PRIV_V1,
         &BUILTIN_GROUP_SCHEMA_ADMINS,
         &BUILTIN_GROUP_ACCESS_CONTROL_ADMINS,
+        &BUILTIN_GROUP_UNIX_ADMINS,
         &BUILTIN_GROUP_RECYCLE_BIN_ADMINS,
         &BUILTIN_GROUP_SERVICE_DESK,
         &BUILTIN_GROUP_OAUTH2_ADMINS,
@@ -546,9 +522,6 @@ pub fn idm_builtin_non_admin_groups() -> Vec<&'static BuiltinGroup> {
         &IDM_HP_ACCOUNT_WRITE_PRIV_V1,
         &IDM_HP_ACCOUNT_READ_PRIV_V1,
         &IDM_HP_ACCOUNT_UNIX_EXTEND_PRIV_V1,
-        &IDM_HP_GROUP_MANAGE_PRIV_V1,
-        &IDM_HP_GROUP_WRITE_PRIV_V1,
-        &IDM_HP_GROUP_UNIX_EXTEND_PRIV_V1,
         &IDM_HP_SERVICE_ACCOUNT_INTO_PERSON_MIGRATE_PRIV,
         // All members must exist before we write HP
         &IDM_HIGH_PRIVILEGE_V1,
