@@ -10,7 +10,7 @@ use kanidm_proto::oauth2::{
     AccessTokenIntrospectRequest, AccessTokenIntrospectResponse, AccessTokenRequest,
     AccessTokenResponse, AuthorisationResponse, GrantTypeReq, OidcDiscoveryResponse,
 };
-use kanidmd_lib::prelude::{Attribute, BUILTIN_GROUP_IDM_ADMINS_V1, IDM_ALL_ACCOUNTS};
+use kanidmd_lib::prelude::{Attribute, IDM_ALL_ACCOUNTS};
 use oauth2_ext::PkceCodeChallenge;
 use reqwest::header::{HeaderValue, CONTENT_TYPE};
 use reqwest::StatusCode;
@@ -55,11 +55,6 @@ async fn test_oauth2_openid_basic_flow(rsclient: KanidmClient) {
         .await;
     assert!(res.is_ok());
 
-    rsclient
-        .idm_group_add_members(BUILTIN_GROUP_IDM_ADMINS_V1.name, &["admin"])
-        .await
-        .unwrap();
-
     // Create an oauth2 application integration.
     rsclient
         .idm_oauth2_rs_basic_create(
@@ -71,11 +66,6 @@ async fn test_oauth2_openid_basic_flow(rsclient: KanidmClient) {
         .expect("Failed to create oauth2 config");
 
     // Extend the admin account with extended details for openid claims.
-    rsclient
-        .idm_group_add_members(BUILTIN_GROUP_IDM_ADMINS_V1.name, &["admin"])
-        .await
-        .unwrap();
-
     rsclient
         .idm_person_account_create("oauth_test", "oauth_test")
         .await
@@ -423,11 +413,6 @@ async fn test_oauth2_openid_public_flow(rsclient: KanidmClient) {
         .await;
     assert!(res.is_ok());
 
-    rsclient
-        .idm_group_add_members(BUILTIN_GROUP_IDM_ADMINS_V1.name, &["admin"])
-        .await
-        .unwrap();
-
     // Create an oauth2 application integration.
     rsclient
         .idm_oauth2_rs_public_create(
@@ -439,11 +424,6 @@ async fn test_oauth2_openid_public_flow(rsclient: KanidmClient) {
         .expect("Failed to create oauth2 config");
 
     // Extend the admin account with extended details for openid claims.
-    rsclient
-        .idm_group_add_members(BUILTIN_GROUP_IDM_ADMINS_V1.name, &["admin"])
-        .await
-        .unwrap();
-
     rsclient
         .idm_person_account_create("oauth_test", "oauth_test")
         .await

@@ -244,7 +244,13 @@ async fn test_server_rest_group_lifecycle(rsclient: KanidmClient) {
         .await
         .unwrap();
     println!("{:?}", members);
-    assert!(members == Some(vec!["idm_admin@localhost".to_string()]));
+    assert!(
+        members
+            == Some(vec![
+                "admin@localhost".to_string(),
+                "idm_admin@localhost".to_string()
+            ])
+    );
 }
 
 #[kanidmd_testkit::test]
@@ -1283,12 +1289,6 @@ async fn setup_demo_account_password(
         .await
         .expect("Failed to authenticate as admin");
 
-    // Not recommended in production!
-    rsclient
-        .idm_group_add_members(BUILTIN_GROUP_IDM_ADMINS_V1.name, &["admin"])
-        .await
-        .expect("Failed to add admin to idm_admins");
-
     rsclient
         .idm_person_account_create("demo_account", "Deeeeemo")
         .await
@@ -1358,12 +1358,6 @@ async fn test_server_api_token_lifecycle(rsclient: KanidmClient) {
     assert!(res.is_ok());
 
     let test_service_account_username = "test_service";
-
-    // Not recommended in production!
-    rsclient
-        .idm_group_add_members(BUILTIN_GROUP_IDM_ADMINS_V1.name, &[ADMIN_TEST_USER])
-        .await
-        .unwrap();
 
     rsclient
         .idm_service_account_create(test_service_account_username, "Test Service")
@@ -1539,12 +1533,6 @@ async fn test_server_user_auth_token_lifecycle(rsclient: KanidmClient) {
         .auth_simple_password(ADMIN_TEST_USER, ADMIN_TEST_PASSWORD)
         .await;
     assert!(res.is_ok());
-
-    // Not recommended in production!
-    rsclient
-        .idm_group_add_members(BUILTIN_GROUP_IDM_ADMINS_V1.name, &[ADMIN_TEST_USER])
-        .await
-        .unwrap();
 
     rsclient
         .idm_person_account_create("demo_account", "Deeeeemo")

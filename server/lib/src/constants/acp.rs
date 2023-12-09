@@ -31,6 +31,9 @@ lazy_static! {
         match_class_filter!(EntryClass::Tombstone),
     ]);
 
+    pub static ref FILTER_ANDNOT_HP_OR_RECYCLED_OR_TOMBSTONE: ProtoFilter =
+        ProtoFilter::AndNot(Box::new(FILTER_HP_OR_RECYCLED_OR_TOMBSTONE.clone()));
+
     pub static ref DEFAULT_TARGET_SCOPE: ProtoFilter = ProtoFilter::And(Vec::with_capacity(0));
 
 }
@@ -420,6 +423,36 @@ lazy_static! {
 }
 
 lazy_static! {
+    pub static ref IDM_ACP_GROUP_READ_ACCESS_CONTROL_V1: BuiltinAcp = BuiltinAcp {
+        classes: vec![
+            EntryClass::Object,
+            EntryClass::AccessControlProfile,
+            EntryClass::AccessControlSearch
+        ],
+        name: "idm_acp_group_read_access_control",
+        uuid: UUID_IDM_ACP_GROUP_READ_ACCESS_CONTROL,
+        description:
+            "Builtin IDM Control for allowing all groups to be read by access control admins",
+        receiver: BuiltinAcpReceiver::Group(vec![UUID_IDM_ACCESS_CONTROL_ADMINS]),
+        target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
+            match_class_filter!(EntryClass::Group),
+            FILTER_ANDNOT_TOMBSTONE_OR_RECYCLED.clone(),
+        ])),
+        search_attrs: vec![
+            Attribute::Class,
+            Attribute::DynMember,
+            Attribute::Name,
+            Attribute::Uuid,
+            Attribute::Spn,
+            Attribute::Description,
+            Attribute::Member,
+            Attribute::EntryManagedBy,
+        ],
+        ..Default::default()
+    };
+}
+
+lazy_static! {
     pub static ref IDM_ACP_GROUP_ENTRY_MANAGED_BY_MODIFY_V1: BuiltinAcp = BuiltinAcp {
         classes: vec![
             EntryClass::Object,
@@ -433,7 +466,7 @@ lazy_static! {
         receiver: BuiltinAcpReceiver::Group(vec![UUID_IDM_ACCESS_CONTROL_ADMINS]),
         target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
             match_class_filter!(EntryClass::Group),
-            ProtoFilter::AndNot(Box::new(FILTER_HP_OR_RECYCLED_OR_TOMBSTONE.clone())),
+            FILTER_ANDNOT_HP_OR_RECYCLED_OR_TOMBSTONE.clone(),
         ])),
         search_attrs: vec![
             Attribute::Class,
@@ -441,8 +474,8 @@ lazy_static! {
             Attribute::Uuid,
             Attribute::EntryManagedBy,
         ],
-        modify_removed_attrs: vec![Attribute::EntryManagedBy,],
-        modify_present_attrs: vec![Attribute::EntryManagedBy,],
+        modify_removed_attrs: vec![Attribute::EntryManagedBy],
+        modify_present_attrs: vec![Attribute::EntryManagedBy],
         ..Default::default()
     };
 }
@@ -1039,7 +1072,7 @@ lazy_static! {
         target: BuiltinAcpTarget::Filter( ProtoFilter::And(vec![
             match_class_filter!(EntryClass::Group),
             FILTER_HP.clone(),
-            ProtoFilter::AndNot(Box::new(FILTER_RECYCLED_OR_TOMBSTONE.clone())),
+            FILTER_ANDNOT_TOMBSTONE_OR_RECYCLED.clone(),
         ])),
         search_attrs: vec![
             Attribute::DynMember,
@@ -1061,6 +1094,92 @@ lazy_static! {
         modify_classes: vec![
             EntryClass::PosixGroup,
         ],
+        ..Default::default()
+    };
+}
+
+lazy_static! {
+    pub static ref IDM_ACP_GROUP_MANAGE_V1: BuiltinAcp = BuiltinAcp{
+        classes: vec![
+            EntryClass::Object,
+            EntryClass::AccessControlProfile,
+            EntryClass::AccessControlCreate,
+            EntryClass::AccessControlDelete,
+            EntryClass::AccessControlModify,
+            EntryClass::AccessControlSearch
+            ],
+        name: "idm_acp_group_manage",
+        uuid: UUID_IDM_ACP_GROUP_MANAGE_V1,
+        description: "Builtin IDM Control for creating and deleting groups in the directory",
+        receiver: BuiltinAcpReceiver::Group ( vec![UUID_IDM_GROUP_ADMINS] ),
+         // group which is not in HP, Recycled, Tombstone
+         target: BuiltinAcpTarget::Filter( ProtoFilter::And(vec![
+            match_class_filter!(EntryClass::Group),
+            FILTER_ANDNOT_HP_OR_RECYCLED_OR_TOMBSTONE.clone(),
+        ])),
+        search_attrs: vec![
+            Attribute::Class,
+            Attribute::Name,
+            Attribute::Uuid,
+            Attribute::Spn,
+            Attribute::Uuid,
+            Attribute::Description,
+            Attribute::Member,
+            Attribute::DynMember,
+        ],
+        create_attrs: vec![
+            Attribute::Class,
+            Attribute::Name,
+            Attribute::Description,
+            Attribute::Member,
+        ],
+        create_classes: vec![
+            EntryClass::Object,
+            EntryClass::Group,
+        ],
+        modify_present_attrs: vec![
+            Attribute::Name,
+            Attribute::Description,
+            Attribute::Member,
+        ],
+        modify_removed_attrs: vec![
+            Attribute::Name,
+            Attribute::Description,
+            Attribute::Member,
+        ],
+        ..Default::default()
+    };
+}
+
+lazy_static! {
+    pub static ref IDM_ACP_GROUP_UNIX_MANAGE_V1: BuiltinAcp = BuiltinAcp {
+        classes: vec![
+            EntryClass::Object,
+            EntryClass::AccessControlProfile,
+            EntryClass::AccessControlModify,
+            EntryClass::AccessControlSearch
+        ],
+        name: "idm_acp_group_unix_manage",
+        uuid: UUID_IDM_ACP_GROUP_UNIX_MANAGE_V1,
+        description: "Builtin IDM Control for managing unix groups",
+        receiver: BuiltinAcpReceiver::Group(vec![UUID_IDM_UNIX_ADMINS]),
+        target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
+            match_class_filter!(EntryClass::Group),
+            FILTER_ANDNOT_HP_OR_RECYCLED_OR_TOMBSTONE.clone(),
+        ])),
+        search_attrs: vec![
+            Attribute::DynMember,
+            Attribute::Class,
+            Attribute::Name,
+            Attribute::Uuid,
+            Attribute::Spn,
+            Attribute::Description,
+            Attribute::Member,
+            Attribute::GidNumber,
+        ],
+        modify_removed_attrs: vec![Attribute::GidNumber,],
+        modify_present_attrs: vec![Attribute::Class, Attribute::GidNumber,],
+        modify_classes: vec![EntryClass::PosixGroup,],
         ..Default::default()
     };
 }
@@ -1223,49 +1342,6 @@ lazy_static! {
 }
 
 // -- end people
-
-lazy_static! {
-    pub static ref IDM_ACP_GROUP_WRITE_PRIV_V1: BuiltinAcp = BuiltinAcp{
-        classes: vec![
-            EntryClass::Object,
-            EntryClass::AccessControlProfile,
-            EntryClass::AccessControlModify,
-            EntryClass::AccessControlSearch
-        ],
-        name: "idm_acp_group_write_priv",
-        uuid: UUID_IDM_ACP_GROUP_WRITE_PRIV_V1,
-        description: "Builtin IDM Control for managing groups",
-        receiver: BuiltinAcpReceiver::Group ( vec![UUID_IDM_GROUP_WRITE_PRIV] ),
-        // group which is not in HP, Recycled, Tombstone
-        target: BuiltinAcpTarget::Filter( ProtoFilter::And(vec![
-            match_class_filter!(EntryClass::Group),
-            ProtoFilter::AndNot(Box::new(FILTER_HP_OR_RECYCLED_OR_TOMBSTONE.clone())),
-
-        ])),
-        search_attrs: vec![
-            Attribute::Class,
-            Attribute::Name,
-            Attribute::Uuid,
-            Attribute::Spn,
-            Attribute::Uuid,
-            Attribute::Description,
-            Attribute::Member,
-            Attribute::DynMember,
-
-        ],
-        modify_present_attrs: vec![
-            Attribute::Name,
-            Attribute::Description,
-            Attribute::Member,
-        ],
-        modify_removed_attrs: vec![
-            Attribute::Name,
-            Attribute::Description,
-            Attribute::Member,
-        ],
-        ..Default::default()
-    };
-}
 
 lazy_static! {
     pub static ref IDM_ACP_ACCOUNT_READ_PRIV_V1: BuiltinAcp = BuiltinAcp{
@@ -1473,42 +1549,6 @@ lazy_static! {
 }
 
 lazy_static! {
-    pub static ref IDM_ACP_GROUP_MANAGE_PRIV_V1: BuiltinAcp = BuiltinAcp{
-        classes: vec![
-            EntryClass::Object,
-            EntryClass::AccessControlProfile,
-            EntryClass::AccessControlDelete,
-            EntryClass::AccessControlCreate
-            ],
-        name: "idm_acp_group_manage",
-        uuid: UUID_IDM_ACP_GROUP_MANAGE_PRIV_V1,
-        description: "Builtin IDM Control for creating and deleting groups in the directory",
-        receiver: BuiltinAcpReceiver::Group ( vec![UUID_IDM_GROUP_MANAGE_PRIV] ),
-         // group which is not in HP, Recycled, Tombstone
-         target: BuiltinAcpTarget::Filter( ProtoFilter::And(vec![
-            match_class_filter!(EntryClass::Group),
-            ProtoFilter::AndNot(Box::new(FILTER_HP_OR_RECYCLED_OR_TOMBSTONE.clone())),
-
-        ])),
-        // target_scope: Value::new_json_filter_s(
-        //         "{\"and\": [{\"eq\": [\"class\",\"group\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-        //     )
-        //         .expect("Invalid JSON filter"),
-        create_attrs: vec![
-            Attribute::Class,
-            Attribute::Name,
-            Attribute::Description,
-            Attribute::Member,
-        ],
-        create_classes: vec![
-            EntryClass::Object,
-            EntryClass::Group,
-        ],
-        ..Default::default()
-    };
-}
-
-lazy_static! {
     pub static ref IDM_ACP_HP_ACCOUNT_MANAGE_PRIV_V1: BuiltinAcp = BuiltinAcp{
         classes: vec![
             EntryClass::Object,
@@ -1594,49 +1634,6 @@ lazy_static! {
         ],
         modify_classes: vec![
             EntryClass::PosixAccount,
-        ],
-        ..Default::default()
-    };
-
-    pub static ref IDM_ACP_GROUP_UNIX_EXTEND_PRIV_V1: BuiltinAcp = BuiltinAcp{
-        classes: vec![
-            EntryClass::Object,
-            EntryClass::AccessControlProfile,
-            EntryClass::AccessControlModify,
-            EntryClass::AccessControlSearch
-            ],
-        name: "idm_acp_group_unix_extend_priv",
-        uuid: UUID_IDM_ACP_GROUP_UNIX_EXTEND_PRIV_V1,
-        description: "Builtin IDM Control for managing and extending unix groups",
-        receiver: BuiltinAcpReceiver::Group ( vec![UUID_IDM_GROUP_UNIX_EXTEND_PRIV] ),
-        // group not in HP, Recycled, Tombstone
-        target: BuiltinAcpTarget::Filter( ProtoFilter::And(vec![
-            match_class_filter!(EntryClass::Group),
-            ProtoFilter::AndNot(Box::new(FILTER_HP_OR_RECYCLED_OR_TOMBSTONE.clone())),
-        ])),
-
-        // Value::new_json_filter_s(
-        //         "{\"and\": [{\"eq\": [\"class\",\"group\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-        //     )
-        //         .expect("Invalid JSON filter"),
-        search_attrs: vec![
-            Attribute::Class,
-            Attribute::Name,
-            Attribute::Uuid,
-            Attribute::Spn,
-            Attribute::Description,
-            Attribute::Member,
-            Attribute::GidNumber,
-        ],
-        modify_removed_attrs: vec![
-            Attribute::GidNumber,
-        ],
-        modify_present_attrs: vec![
-            Attribute::Class,
-            Attribute::GidNumber,
-        ],
-        modify_classes: vec![
-            EntryClass::PosixGroup,
         ],
         ..Default::default()
     };

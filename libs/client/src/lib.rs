@@ -1561,6 +1561,16 @@ impl KanidmClient {
         self.perform_post_request("/v1/group", new_group).await
     }
 
+    pub async fn idm_group_set_entry_managed_by(
+        &self,
+        id: &str,
+        entry_manager: &str,
+    ) -> Result<(), ClientError> {
+        let data = vec![entry_manager];
+        self.perform_put_request(&format!("/v1/group/{}/_attr/entry_managed_by", id), data)
+            .await
+    }
+
     pub async fn idm_group_set_members(
         &self,
         id: &str,

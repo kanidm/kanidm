@@ -158,12 +158,6 @@ async fn test_fixture(rsclient: KanidmClient) {
     debug!("auth_simple_password res: {:?}", res);
     trace!("{:?}", &res);
     assert!(res.is_ok());
-    // Not recommended in production!
-    rsclient
-        .idm_group_add_members("idm_admins", &["admin"])
-        .await
-        .unwrap();
-
     // Create a new account
     rsclient
         .idm_person_account_create("testaccount1", "Posix Demo Account")

@@ -74,7 +74,6 @@ lazy_static! {
     // There are our built in "roles". They encapsulate some higher level collections
     // of roles. The intent is to allow a pretty generic and correct by default set
     // of these use cases.
-
     pub static ref BUILTIN_GROUP_SYSTEM_ADMINS_V1: BuiltinGroup = BuiltinGroup {
         name: "system_admins",
         description: "Builtin System Administrators Group.",
@@ -194,6 +193,15 @@ lazy_static! {
         ..Default::default()
     };
 
+    /// Builtin IDM Group for granting elevated group write and lifecycle permissions.
+    pub static ref IDM_GROUP_ADMINS_V1: BuiltinGroup = BuiltinGroup {
+        name: "idm_group_admins",
+        description: "Builtin IDM Group for granting elevated group write and lifecycle permissions.",
+        uuid: UUID_IDM_GROUP_ADMINS,
+        entry_managed_by: Some(UUID_IDM_ADMINS),
+        members: vec![UUID_IDM_ADMINS],
+        ..Default::default()
+    };
 
 // * People read managers
     /// Builtin IDM Group for granting elevated people (personal data) read permissions.
@@ -219,6 +227,7 @@ lazy_static! {
         name: "idm_people_manage_priv",
         description: "Builtin IDM Group for granting elevated people (personal data) write and lifecycle management permissions.",
         uuid: UUID_IDM_PEOPLE_MANAGE_PRIV,
+        entry_managed_by: Some(UUID_IDM_ACCESS_CONTROL_ADMINS),
         members: vec![UUID_IDM_ADMINS],
         ..Default::default()
     };
@@ -247,42 +256,6 @@ lazy_static! {
         description: "Builtin IDM Group for granting elevated high privilege people (personal data) write permissions.",
         uuid: UUID_IDM_HP_PEOPLE_WRITE_PRIV,
         members: vec![],
-        ..Default::default()
-    };
-
-// * group write manager (no read, everyone has read via the anon, etc)
-
-    /// Builtin IDM Group for granting elevated group write and lifecycle permissions.
-    pub static ref IDM_GROUP_MANAGE_PRIV_V1: BuiltinGroup = BuiltinGroup {
-        name: "idm_group_manage_priv",
-        description: "Builtin IDM Group for granting elevated group write and lifecycle permissions.",
-        uuid: UUID_IDM_GROUP_MANAGE_PRIV,
-        members: vec![
-            BUILTIN_GROUP_IDM_ADMINS_V1.uuid,
-            BUILTIN_GROUP_SYSTEM_ADMINS_V1.uuid,
-        ],
-        ..Default::default()
-    };
-
-    /// Builtin IDM Group for granting elevated group write and lifecycle permissions.
-    pub static ref IDM_GROUP_WRITE_PRIV_V1: BuiltinGroup = BuiltinGroup {
-        name: "idm_group_write_priv",
-        description: "Builtin IDM Group for granting elevated group write permissions.",
-        uuid: UUID_IDM_GROUP_WRITE_PRIV,
-        members: vec![
-            UUID_IDM_GROUP_MANAGE_PRIV
-        ],
-        ..Default::default()
-    };
-
-    /// Builtin IDM Group for granting unix group extension permissions.
-    pub static ref IDM_GROUP_UNIX_EXTEND_PRIV_V1: BuiltinGroup = BuiltinGroup {
-        name: "idm_group_unix_extend_priv",
-        description: "Builtin IDM Group for granting UNIX group extension permissions.",
-        uuid: UUID_IDM_GROUP_UNIX_EXTEND_PRIV,
-        members: vec![
-            UUID_IDM_ADMINS
-        ],
         ..Default::default()
     };
 
@@ -374,17 +347,6 @@ lazy_static! {
 // at some point vs code just gives up on syntax highlighting inside lazy_static...
 lazy_static! {
 
-    /// Builtin IDM Group for allowing migrations of service accounts into persons
-    pub static ref IDM_HP_SERVICE_ACCOUNT_INTO_PERSON_MIGRATE_PRIV: BuiltinGroup = BuiltinGroup {
-        name: "idm_hp_service_account_into_person_migrate_priv",
-        description:"Builtin IDM Group for allowing migrations of service accounts into persons",
-        uuid: UUID_IDM_HP_SERVICE_ACCOUNT_INTO_PERSON_MIGRATE_PRIV,
-        members: vec![
-            UUID_SYSTEM_ADMINS,
-        ],
-        ..Default::default()
-    };
-
     pub static ref IDM_ALL_PERSONS: BuiltinGroup = BuiltinGroup {
         name: "idm_all_persons",
         description: "Builtin IDM dynamic group containing all persons.",
@@ -463,25 +425,22 @@ lazy_static! {
             UUID_IDM_RADIUS_ADMINS,
             UUID_IDM_ACCOUNT_POLICY_ADMINS,
             UUID_IDM_RADIUS_SERVERS,
-
+            UUID_IDM_GROUP_ADMINS,
+            UUID_IDM_UNIX_ADMINS,
 
             UUID_IDM_HIGH_PRIVILEGE,
             // TBD
 
             UUID_IDM_PEOPLE_READ_PRIV,
             UUID_IDM_PEOPLE_WRITE_PRIV,
-            UUID_IDM_GROUP_WRITE_PRIV,
             UUID_IDM_ACCOUNT_READ_PRIV,
             UUID_IDM_ACCOUNT_WRITE_PRIV,
             UUID_IDM_HP_ACCOUNT_READ_PRIV,
             UUID_IDM_HP_ACCOUNT_WRITE_PRIV,
             UUID_IDM_PEOPLE_MANAGE_PRIV,
             UUID_IDM_ACCOUNT_MANAGE_PRIV,
-            UUID_IDM_GROUP_MANAGE_PRIV,
             UUID_IDM_HP_ACCOUNT_MANAGE_PRIV,
             UUID_IDM_HP_ACCOUNT_UNIX_EXTEND_PRIV,
-
-            UUID_IDM_HP_SERVICE_ACCOUNT_INTO_PERSON_MIGRATE_PRIV,
         ],
         ..Default::default()
     };
@@ -501,6 +460,7 @@ pub fn idm_builtin_non_admin_groups() -> Vec<&'static BuiltinGroup> {
         &BUILTIN_GROUP_OAUTH2_ADMINS,
         &BUILTIN_GROUP_RADIUS_SERVICE_ADMINS,
         &BUILTIN_GROUP_ACCOUNT_POLICY_ADMINS,
+        &IDM_GROUP_ADMINS_V1,
         &IDM_ALL_PERSONS,
         &IDM_ALL_ACCOUNTS,
         &IDM_RADIUS_SERVERS_V1,
@@ -510,9 +470,6 @@ pub fn idm_builtin_non_admin_groups() -> Vec<&'static BuiltinGroup> {
         &IDM_PEOPLE_READ_PRIV_V1,
         &IDM_HP_PEOPLE_WRITE_PRIV_V1,
         &IDM_HP_PEOPLE_READ_PRIV_V1,
-        &IDM_GROUP_MANAGE_PRIV_V1,
-        &IDM_GROUP_WRITE_PRIV_V1,
-        &IDM_GROUP_UNIX_EXTEND_PRIV_V1,
         &IDM_ACCOUNT_MANAGE_PRIV_V1,
         &IDM_ACCOUNT_WRITE_PRIV_V1,
         &IDM_ACCOUNT_UNIX_EXTEND_PRIV_V1,
@@ -522,7 +479,6 @@ pub fn idm_builtin_non_admin_groups() -> Vec<&'static BuiltinGroup> {
         &IDM_HP_ACCOUNT_WRITE_PRIV_V1,
         &IDM_HP_ACCOUNT_READ_PRIV_V1,
         &IDM_HP_ACCOUNT_UNIX_EXTEND_PRIV_V1,
-        &IDM_HP_SERVICE_ACCOUNT_INTO_PERSON_MIGRATE_PRIV,
         // All members must exist before we write HP
         &IDM_HIGH_PRIVILEGE_V1,
         // other things

@@ -725,12 +725,11 @@ impl<'a> QueryServerWriteTransaction<'a> {
             IDM_ACP_ALL_ACCOUNTS_POSIX_READ_V1.clone(),
             IDM_ACP_ACCOUNT_MAIL_READ_V1.clone(),
             IDM_ACP_SYSTEM_CONFIG_ACCOUNT_POLICY_MANAGE_V1.clone(),
+            IDM_ACP_GROUP_UNIX_MANAGE_V1.clone(),
             IDM_ACP_HP_GROUP_UNIX_MANAGE_V1.clone(),
+            IDM_ACP_GROUP_READ_ACCESS_CONTROL_V1.clone(),
+            IDM_ACP_GROUP_MANAGE_V1.clone(),
             // tbd
-            IDM_ACP_GROUP_WRITE_PRIV_V1.clone(),
-            IDM_ACP_GROUP_MANAGE_PRIV_V1.clone(),
-            IDM_ACP_GROUP_UNIX_EXTEND_PRIV_V1.clone(),
-
             IDM_ACP_PEOPLE_READ_PRIV_V1.clone(),
             IDM_ACP_PEOPLE_WRITE_PRIV_V1.clone(),
             IDM_ACP_PEOPLE_MANAGE_PRIV_V1.clone(),
@@ -776,6 +775,9 @@ impl<'a> QueryServerWriteTransaction<'a> {
             UUID_IDM_HP_GROUP_MANAGE_PRIV,
             UUID_IDM_HP_GROUP_WRITE_PRIV,
             UUID_IDM_HP_GROUP_UNIX_EXTEND_PRIV,
+            UUID_IDM_ACP_GROUP_WRITE_PRIV_V1,
+            UUID_IDM_GROUP_WRITE_PRIV,
+            UUID_IDM_GROUP_UNIX_EXTEND_PRIV,
         ];
 
         let res: Result<(), _> = delete_entries

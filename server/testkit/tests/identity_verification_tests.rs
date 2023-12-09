@@ -5,7 +5,7 @@ use kanidm_proto::{
     v1::Entry,
 };
 
-use kanidmd_lib::prelude::{Attribute, BUILTIN_GROUP_IDM_ADMINS_V1, IDM_PEOPLE_MANAGE_PRIV_V1};
+use kanidmd_lib::prelude::Attribute;
 use kanidmd_testkit::ADMIN_TEST_PASSWORD;
 use reqwest::StatusCode;
 
@@ -267,18 +267,6 @@ async fn setup_server(rsclient: &KanidmClient) {
         .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
         .await;
     assert!(res.is_ok());
-
-    // To enable the admin to actually make some of these changes, we have
-    // to make them a people admin. NOT recommended in production!
-    rsclient
-        .idm_group_add_members(IDM_PEOPLE_MANAGE_PRIV_V1.name, &["admin"])
-        .await
-        .unwrap();
-
-    rsclient
-        .idm_group_add_members(BUILTIN_GROUP_IDM_ADMINS_V1.name, &["admin"])
-        .await
-        .unwrap();
 }
 
 async fn create_user(rsclient: &KanidmClient, user: &str) -> String {
