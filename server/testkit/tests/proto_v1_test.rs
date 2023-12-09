@@ -6,12 +6,11 @@ use kanidm_proto::constants::KSESSIONID;
 use kanidm_proto::internal::ImageValue;
 use kanidm_proto::v1::{
     ApiToken, AuthCredential, AuthIssueSession, AuthMech, AuthRequest, AuthResponse, AuthState,
-    AuthStep, CURegState, Entry, Filter, Modify, ModifyList, UatPurpose,
-    UserAuthToken,
+    AuthStep, CURegState, Entry, Filter, Modify, ModifyList, UatPurpose, UserAuthToken,
 };
 use kanidmd_lib::credential::totp::Totp;
 use kanidmd_lib::prelude::{
-    Attribute, BUILTIN_GROUP_IDM_ADMINS_V1, BUILTIN_GROUP_SYSTEM_ADMINS_V1
+    Attribute, BUILTIN_GROUP_IDM_ADMINS_V1, BUILTIN_GROUP_SYSTEM_ADMINS_V1,
 };
 use tracing::{debug, trace};
 

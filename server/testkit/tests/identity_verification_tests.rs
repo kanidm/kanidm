@@ -5,10 +5,7 @@ use kanidm_proto::{
     v1::Entry,
 };
 
-use kanidmd_lib::prelude::{
-    Attribute, BUILTIN_GROUP_IDM_ADMINS_V1,
-    IDM_PEOPLE_MANAGE_PRIV_V1,
-};
+use kanidmd_lib::prelude::{Attribute, BUILTIN_GROUP_IDM_ADMINS_V1, IDM_PEOPLE_MANAGE_PRIV_V1};
 use kanidmd_testkit::ADMIN_TEST_PASSWORD;
 use reqwest::StatusCode;
 

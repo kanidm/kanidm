@@ -18,9 +18,7 @@ use kanidm_client::{KanidmClient, KanidmClientBuilder};
 use kanidm_proto::v1::{Filter, Modify, ModifyList};
 use kanidmd_core::config::{Configuration, IntegrationTestConfig};
 use kanidmd_core::{create_server_core, CoreHandle};
-use kanidmd_lib::prelude::{
-    Attribute, BUILTIN_GROUP_IDM_ADMINS_V1
-};
+use kanidmd_lib::prelude::{Attribute, BUILTIN_GROUP_IDM_ADMINS_V1};
 use tokio::task;
 
 pub const ADMIN_TEST_USER: &str = "admin";

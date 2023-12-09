@@ -919,19 +919,17 @@ lazy_static! {
     };
 }
 
-// ⚠️  -- to be audited.
-
 lazy_static! {
-    pub static ref IDM_ALL_ACP_READ_V1: BuiltinAcp = BuiltinAcp {
+    pub static ref IDM_ACP_ALL_ACCOUNTS_POSIX_READ_V1: BuiltinAcp = BuiltinAcp {
         classes: vec![
             EntryClass::Object,
             EntryClass::AccessControlProfile,
             EntryClass::AccessControlSearch,
         ],
-        name: "idm_all_acp_read",
-        uuid: UUID_IDM_ALL_ACP_READ_V1,
+        name: "idm_acp_all_accounts_posix_read",
+        uuid: UUID_IDM_ACP_ALL_ACCOUNTS_POSIX_READ_V1,
         description:
-            "Builtin IDM Control for all read - e.g. anonymous and all authenticated accounts.",
+            "Builtin IDM Control for reading minimal posix attrs - applies anonymous and all authenticated accounts.",
         receiver: BuiltinAcpReceiver::Group ( vec![UUID_IDM_ALL_ACCOUNTS] ),
         target: BuiltinAcpTarget::Filter( ProtoFilter::And(
             vec![
@@ -942,23 +940,6 @@ lazy_static! {
                 FILTER_ANDNOT_TOMBSTONE_OR_RECYCLED.clone(),
             ]
         )),
-
-        // Value::new_json_filter_s(
-        //     "{\"and\":
-        //              [{\"or\":
-        //                  [{\"eq\": [\"class\",\"account\"]},
-        //                   {\"eq\": [\"class\",\"group\"]}]
-        //               },
-        //              {\"andnot\":
-        //                  {\"or\":
-        //                      [{\"eq\": [\"class\", \"tombstone\"]},
-        //                       {\"eq\": [\"class\", \"recycled\"]}
-        //                      ]
-        //                  }
-        //              }
-        //          ]}"
-        // )
-        // .expect("Invalid JSON filter"),
         search_attrs: vec![
             Attribute::Class,
             Attribute::Name,
@@ -976,6 +957,73 @@ lazy_static! {
         ..Default::default()
     };
 }
+
+lazy_static! {
+    pub static ref IDM_ACP_ACCOUNT_MAIL_READ_V1: BuiltinAcp = BuiltinAcp {
+        classes: vec![
+            EntryClass::Object,
+            EntryClass::AccessControlProfile,
+            EntryClass::AccessControlSearch
+        ],
+        name: "idm_acp_account_mail_read",
+        uuid: UUID_IDM_ACP_ACCOUNT_MAIL_READ_V1,
+        description: "Builtin IDM Control for reading account mail attributes.",
+        receiver: BuiltinAcpReceiver::Group(vec![UUID_IDM_ACCOUNT_MAIL_READ]),
+        target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
+            match_class_filter!(EntryClass::Account),
+            FILTER_ANDNOT_TOMBSTONE_OR_RECYCLED.clone(),
+        ])),
+        search_attrs: vec![Attribute::Mail],
+        ..Default::default()
+    };
+}
+
+lazy_static! {
+    pub static ref IDM_ACP_SYSTEM_CONFIG_ACCOUNT_POLICY_MANAGE_V1: BuiltinAcp = BuiltinAcp {
+        classes: vec![
+            EntryClass::Object,
+            EntryClass::AccessControlProfile,
+            EntryClass::AccessControlModify,
+            EntryClass::AccessControlSearch
+        ],
+        name: "idm_acp_system_config_account_policy_manage",
+        uuid: UUID_IDM_ACP_SYSTEM_CONFIG_ACCOUNT_POLICY_MANAGE_V1,
+        description: "Builtin IDM Control for granting system configuration of account policy",
+        receiver: BuiltinAcpReceiver::Group(vec![UUID_IDM_ACCOUNT_POLICY_ADMINS]),
+        target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
+            ProtoFilter::Eq(
+                Attribute::Uuid.to_string(),
+                STR_UUID_SYSTEM_CONFIG.to_string()
+            ),
+            FILTER_ANDNOT_TOMBSTONE_OR_RECYCLED.clone()
+        ])),
+        search_attrs: vec![
+            Attribute::Class,
+            Attribute::Name,
+            Attribute::Uuid,
+            Attribute::Description,
+            Attribute::BadlistPassword,
+            Attribute::DeniedName,
+            Attribute::AuthSessionExpiry,
+            Attribute::PrivilegeExpiry,
+        ],
+        modify_removed_attrs: vec![
+            Attribute::BadlistPassword,
+            Attribute::DeniedName,
+            Attribute::AuthSessionExpiry,
+            Attribute::PrivilegeExpiry,
+        ],
+        modify_present_attrs: vec![
+            Attribute::BadlistPassword,
+            Attribute::DeniedName,
+            Attribute::AuthSessionExpiry,
+            Attribute::PrivilegeExpiry,
+        ],
+        ..Default::default()
+    };
+}
+
+// ⚠️  -- to be audited.
 
 lazy_static! {
     pub static ref IDM_ACP_PEOPLE_READ_PRIV_V1: BuiltinAcp = BuiltinAcp {
@@ -1093,27 +1141,6 @@ lazy_static! {
             Attribute::LegalName,
             Attribute::Mail,
         ],
-        ..Default::default()
-    };
-}
-
-lazy_static! {
-    pub static ref IDM_ACP_ACCOUNT_MAIL_READ_PRIV_V1: BuiltinAcp = BuiltinAcp {
-        classes: vec![
-            EntryClass::Object,
-            EntryClass::AccessControlProfile,
-            EntryClass::AccessControlSearch
-        ],
-        name: "idm_acp_account_mail_read_priv",
-        uuid: UUID_IDM_ACP_ACCOUNT_MAIL_READ_PRIV_V1,
-        description: "Builtin IDM Control for reading account mail attributes.",
-        receiver: BuiltinAcpReceiver::Group(vec![UUID_IDM_ACCOUNT_MAIL_READ_PRIV]),
-        target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
-            match_class_filter!(EntryClass::Account),
-            FILTER_ANDNOT_TOMBSTONE_OR_RECYCLED.clone(),
-        ])),
-
-        search_attrs: vec![Attribute::Mail],
         ..Default::default()
     };
 }
@@ -1557,80 +1584,6 @@ lazy_static! {
 }
 
 lazy_static! {
-    pub static ref IDM_ACP_SYSTEM_CONFIG_PRIV_V1: BuiltinAcp = BuiltinAcp{
-        classes: vec![
-            EntryClass::Object,
-            EntryClass::AccessControlProfile,
-            EntryClass::AccessControlModify,
-            EntryClass::AccessControlSearch
-        ],
-        name: "idm_acp_system_config_priv",
-        uuid: UUID_IDM_ACP_SYSTEM_CONFIG_PRIV_V1,
-        description: "Builtin IDM Control for granting system configuration rights",
-        receiver: BuiltinAcpReceiver::Group ( vec![UUID_SYSTEM_ADMINS] ),
-        target: BuiltinAcpTarget::Filter( ProtoFilter::And(vec![
-            ProtoFilter::Eq(Attribute::Uuid.to_string(),STR_UUID_SYSTEM_CONFIG.to_string()),
-            FILTER_ANDNOT_TOMBSTONE_OR_RECYCLED.clone()
-        ])),
-        // Value::new_json_filter_s(
-        //         "{\"and\": [{\"eq\": [\"uuid\",\"00000000-0000-0000-0000-ffffff000027\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-        //     )
-        //         .expect("Invalid JSON filter"),
-        search_attrs: vec![
-            Attribute::Class,
-            Attribute::Name,
-            Attribute::Uuid,
-            Attribute::Description,
-            Attribute::BadlistPassword,
-            Attribute::DeniedName,
-        ],
-        modify_removed_attrs: vec![Attribute::BadlistPassword, Attribute::DeniedName],
-        modify_present_attrs: vec![Attribute::BadlistPassword, Attribute::DeniedName],
-        ..Default::default()
-    };
-
-    pub static ref IDM_ACP_SYSTEM_CONFIG_SESSION_EXP_PRIV_V1: BuiltinAcp = BuiltinAcp{
-        classes: vec![
-            EntryClass::Object,
-            EntryClass::AccessControlProfile,
-            EntryClass::AccessControlModify,
-            EntryClass::AccessControlSearch
-        ],
-        name: "idm_acp_system_config_session_exp_priv",
-        uuid: UUID_IDM_ACP_SYSTEM_CONFIG_SESSION_EXP_PRIV_V1,
-        description: "Builtin IDM Control for granting session expiry configuration rights",
-        receiver: BuiltinAcpReceiver::Group ( vec![UUID_SYSTEM_ADMINS] ),
-        target: BuiltinAcpTarget::Filter( ProtoFilter::And(vec![
-            ProtoFilter::Eq(Attribute::Uuid.to_string(),STR_UUID_SYSTEM_CONFIG.to_string()),
-            FILTER_ANDNOT_TOMBSTONE_OR_RECYCLED.clone()
-        ])),
-
-        // Value::new_json_filter_s(
-        //         "{\"and\": [{\"eq\": [\"uuid\",\"00000000-0000-0000-0000-ffffff000027\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-        //     )
-        //         .expect("Invalid JSON filter"),
-        search_attrs:vec![
-            Attribute::Class,
-            Attribute::Name,
-            Attribute::Uuid,
-            Attribute::Description,
-            Attribute::AuthSessionExpiry,
-            Attribute::PrivilegeExpiry,
-        ],
-        modify_removed_attrs:vec![
-            Attribute::AuthSessionExpiry,
-            Attribute::PrivilegeExpiry,
-        ],
-        modify_present_attrs:vec![
-            Attribute::AuthSessionExpiry,
-            Attribute::PrivilegeExpiry,
-        ],
-        ..Default::default()
-
-    };
-}
-
-lazy_static! {
     pub static ref IDM_ACP_ACCOUNT_UNIX_EXTEND_PRIV_V1: BuiltinAcp = BuiltinAcp{
         classes: vec![
             EntryClass::Object,
@@ -1821,39 +1774,6 @@ lazy_static! {
             EntryClass::PosixGroup,
 
         ],
-        ..Default::default()
-    };
-}
-
-lazy_static! {
-    pub static ref E_IDM_HP_ACP_SERVICE_ACCOUNT_INTO_PERSON_MIGRATE_V1: BuiltinAcp = BuiltinAcp {
-        classes: vec![
-            EntryClass::Object,
-            EntryClass::AccessControlProfile,
-            EntryClass::AccessControlModify,
-            EntryClass::AccessControlSearch
-        ],
-        name: "idm_hp_acp_service_account_into_person_migrate",
-        uuid: UUID_IDM_HP_ACP_SERVICE_ACCOUNT_INTO_PERSON_MIGRATE_V1,
-        description: "Builtin IDM Control allowing service accounts to be migrated into persons",
-        receiver: BuiltinAcpReceiver::Group(vec![
-            UUID_IDM_HP_SERVICE_ACCOUNT_INTO_PERSON_MIGRATE_PRIV
-        ]),
-        target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
-            match_class_filter!(EntryClass::Account),
-            FILTER_ANDNOT_TOMBSTONE_OR_RECYCLED.clone(),
-        ])),
-
-        search_attrs: vec![
-            Attribute::Class,
-            Attribute::Name,
-            Attribute::Uuid,
-            Attribute::Spn,
-        ],
-
-        modify_present_attrs: vec![Attribute::Class],
-        modify_removed_attrs: vec![Attribute::Class],
-        modify_classes: vec![EntryClass::ServiceAccount, EntryClass::Person,],
         ..Default::default()
     };
 }

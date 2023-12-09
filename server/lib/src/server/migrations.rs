@@ -722,31 +722,29 @@ impl<'a> QueryServerWriteTransaction<'a> {
             IDM_ACP_SELF_WRITE_V1.clone(),
             IDM_ACP_ACCOUNT_SELF_WRITE_V1.clone(),
             IDM_ACP_SELF_NAME_WRITE_V1.clone(),
+            IDM_ACP_ALL_ACCOUNTS_POSIX_READ_V1.clone(),
+            IDM_ACP_ACCOUNT_MAIL_READ_V1.clone(),
+            IDM_ACP_SYSTEM_CONFIG_ACCOUNT_POLICY_MANAGE_V1.clone(),
             // tbd
-            IDM_ALL_ACP_READ_V1.clone(),
+            IDM_ACP_GROUP_WRITE_PRIV_V1.clone(),
+            IDM_ACP_GROUP_MANAGE_PRIV_V1.clone(),
+            IDM_ACP_HP_GROUP_WRITE_PRIV_V1.clone(),
+            IDM_ACP_HP_GROUP_MANAGE_PRIV_V1.clone(),
+            IDM_ACP_GROUP_UNIX_EXTEND_PRIV_V1.clone(),
+            E_IDM_HP_ACP_GROUP_UNIX_EXTEND_PRIV_V1.clone(),
             IDM_ACP_PEOPLE_READ_PRIV_V1.clone(),
             IDM_ACP_PEOPLE_WRITE_PRIV_V1.clone(),
             IDM_ACP_PEOPLE_MANAGE_PRIV_V1.clone(),
+            IDM_ACP_HP_PEOPLE_READ_PRIV_V1.clone(),
+            IDM_ACP_HP_PEOPLE_WRITE_PRIV_V1.clone(),
             IDM_ACP_ACCOUNT_READ_PRIV_V1.clone(),
             IDM_ACP_ACCOUNT_WRITE_PRIV_V1.clone(),
             IDM_ACP_ACCOUNT_MANAGE_PRIV_V1.clone(),
             IDM_ACP_HP_ACCOUNT_READ_PRIV_V1.clone(),
             IDM_ACP_HP_ACCOUNT_WRITE_PRIV_V1.clone(),
             IDM_ACP_HP_ACCOUNT_MANAGE_PRIV_V1.clone(),
-            IDM_ACP_GROUP_WRITE_PRIV_V1.clone(),
-            IDM_ACP_GROUP_MANAGE_PRIV_V1.clone(),
-            IDM_ACP_HP_GROUP_WRITE_PRIV_V1.clone(),
-            IDM_ACP_HP_GROUP_MANAGE_PRIV_V1.clone(),
-            IDM_ACP_SYSTEM_CONFIG_PRIV_V1.clone(),
-            IDM_ACP_SYSTEM_CONFIG_SESSION_EXP_PRIV_V1.clone(),
-            IDM_ACP_HP_PEOPLE_READ_PRIV_V1.clone(),
-            IDM_ACP_HP_PEOPLE_WRITE_PRIV_V1.clone(),
             IDM_ACP_ACCOUNT_UNIX_EXTEND_PRIV_V1.clone(),
             E_IDM_HP_ACP_ACCOUNT_UNIX_EXTEND_PRIV_V1.clone(),
-            IDM_ACP_GROUP_UNIX_EXTEND_PRIV_V1.clone(),
-            E_IDM_HP_ACP_GROUP_UNIX_EXTEND_PRIV_V1.clone(),
-            E_IDM_HP_ACP_SERVICE_ACCOUNT_INTO_PERSON_MIGRATE_V1.clone(),
-            IDM_ACP_ACCOUNT_MAIL_READ_PRIV_V1.clone(),
         ];
 
         let res: Result<(), _> = idm_entries
@@ -762,7 +760,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
         // Delete entries that no longer need to exist.
         // TODO: Shouldn't this be a migration?
-        let delete_entries: [Uuid; 9] = [
+        let delete_entries = [
             UUID_IDM_ACP_OAUTH2_READ_PRIV_V1,
             UUID_IDM_HP_SYNC_ACCOUNT_MANAGE_PRIV,
             UUID_IDM_ACP_RADIUS_SECRET_READ_PRIV_V1,
@@ -772,6 +770,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
             UUID_IDM_ACP_PEOPLE_ACCOUNT_PASSWORD_IMPORT_PRIV_V1,
             UUID_IDM_PEOPLE_EXTEND_PRIV,
             UUID_IDM_HP_PEOPLE_EXTEND_PRIV,
+            UUID_IDM_ACP_SYSTEM_CONFIG_SESSION_EXP_PRIV_V1,
+            UUID_IDM_HP_ACP_SERVICE_ACCOUNT_INTO_PERSON_MIGRATE_V1,
         ];
 
         let res: Result<(), _> = delete_entries

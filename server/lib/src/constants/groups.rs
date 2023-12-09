@@ -452,6 +452,7 @@ lazy_static! {
         name: "idm_ui_enable_experimental_features",
         description: "Members of this group will have access to experimental web UI features.",
         uuid: UUID_IDM_UI_ENABLE_EXPERIMENTAL_FEATURES,
+        entry_managed_by: Some(UUID_IDM_ADMINS),
         extra_attributes: vec![
             (Attribute::GrantUiHint, Value::UiHint(UiHint::ExperimentalFeatures))
         ],
@@ -459,10 +460,11 @@ lazy_static! {
     };
 
     /// Members of this group will have access to read the mail attribute of all persons and service accounts.
-    pub static ref IDM_ACCOUNT_MAIL_READ_PRIV: BuiltinGroup = BuiltinGroup {
+    pub static ref IDM_ACCOUNT_MAIL_READ: BuiltinGroup = BuiltinGroup {
         name: "idm_account_mail_read_priv",
         description: "Members of this group will have access to read the mail attribute of all persons and service accounts.",
-        uuid: UUID_IDM_ACCOUNT_MAIL_READ_PRIV,
+        entry_managed_by: Some(UUID_IDM_ACCESS_CONTROL_ADMINS),
+        uuid: UUID_IDM_ACCOUNT_MAIL_READ,
         ..Default::default()
     };
 
@@ -470,6 +472,7 @@ lazy_static! {
     pub static ref IDM_HIGH_PRIVILEGE_V1: BuiltinGroup = BuiltinGroup {
         name: "idm_high_privilege",
         uuid: UUID_IDM_HIGH_PRIVILEGE,
+        entry_managed_by: Some(UUID_IDM_ACCESS_CONTROL_ADMINS),
         description: "Builtin IDM provided groups with high levels of access that should be audited and limited in modification.",
         members: vec![
             UUID_SYSTEM_ADMINS,
@@ -551,7 +554,7 @@ pub fn idm_builtin_non_admin_groups() -> Vec<&'static BuiltinGroup> {
         &IDM_HIGH_PRIVILEGE_V1,
         // other things
         &IDM_UI_ENABLE_EXPERIMENTAL_FEATURES,
-        &IDM_ACCOUNT_MAIL_READ_PRIV,
+        &IDM_ACCOUNT_MAIL_READ,
     ]
 }
 
