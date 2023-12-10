@@ -4,7 +4,9 @@ from datetime import datetime
 from functools import lru_cache
 import json as json_lib  # because we're taking a field "json" at various points
 from logging import Logger, getLogger
+import os
 from pathlib import Path
+import platform
 import ssl
 from typing import Any, Dict, List, Optional, Tuple, Union
 
@@ -49,7 +51,13 @@ class Endpoints:
     SERVICE_ACCOUNT = "/v1/service_account"
 
 
-TOKEN_PATH = Path("~/.cache/kanidm_tokens")
+XDG_CACHE_HOME = (
+    Path(os.getenv("LOCALAPPDATA", "~/AppData/Local")) / "cache"
+    if platform.system() == "Windows"
+    else Path(os.getenv("XDG_CACHE_HOME", "~/.cache"))
+)
+
+TOKEN_PATH = XDG_CACHE_HOME / "kanidm_tokens"
 
 CallJsonType = Optional[Union[Dict[str, Any], List[Any], Tuple[str, str]]]
 
@@ -181,7 +189,7 @@ class KanidmClient:
         timeout: Optional[int] = None,
         json: CallJsonType = None,
         params: Optional[Dict[str, str]] = None,
-    ) -> ClientResponse:
+    ) -> ClientResponse[Any]:
         if timeout is None:
             timeout = self.config.connect_timeout
         # if we have a token set, we send it.
@@ -240,7 +248,7 @@ class KanidmClient:
         headers: Optional[Dict[str, str]] = None,
         json: CallJsonType = None,
         timeout: Optional[int] = None,
-    ) -> ClientResponse:
+    ) -> ClientResponse[Any]:
         """does a DELETE call to the server"""
         return await self._call(
             method="DELETE", path=path, headers=headers, json=json, timeout=timeout
@@ -252,7 +260,7 @@ class KanidmClient:
         headers: Optional[Dict[str, str]] = None,
         params: Optional[Dict[str, str]] = None,
         timeout: Optional[int] = None,
-    ) -> ClientResponse:
+    ) -> ClientResponse[Any]:
         """does a get call to the server"""
         return await self._call("GET", path, headers, timeout, params=params)
 
@@ -262,7 +270,7 @@ class KanidmClient:
         headers: Optional[Dict[str, str]] = None,
         json: CallJsonType = None,
         timeout: Optional[int] = None,
-    ) -> ClientResponse:
+    ) -> ClientResponse[Any]:
         """does a POST call to the server"""
 
         return await self._call(
@@ -275,7 +283,7 @@ class KanidmClient:
         headers: Optional[Dict[str, str]] = None,
         json: CallJsonType = None,
         timeout: Optional[int] = None,
-    ) -> ClientResponse:
+    ) -> ClientResponse[Any]:
         """does a PATCH call to the server"""
 
         return await self._call(
@@ -288,7 +296,7 @@ class KanidmClient:
         headers: Optional[Dict[str, str]] = None,
         json: CallJsonType = None,
         timeout: Optional[int] = None,
-    ) -> ClientResponse:
+    ) -> ClientResponse[Any]:
         """does a PUT call to the server"""
 
         return await self._call(
@@ -337,7 +345,7 @@ class KanidmClient:
         method: str,
         sessionid: Optional[str] = None,
         update_internal_auth_token: bool = False,
-    ) -> ClientResponse:
+    ) -> ClientResponse[Any]:
         """the 'begin' step"""
 
         begin_auth = {
@@ -498,7 +506,7 @@ class KanidmClient:
         }
 
     # TODO: write tests for get_groups
-    async def get_radius_token(self, username: str) -> ClientResponse:
+    async def get_radius_token(self, username: str) -> ClientResponse[Any]:
         """does the call to the radius token endpoint"""
         path = f"/v1/account/{username}/_radius/_token"
         response = await self.call_get(path)
@@ -532,10 +540,7 @@ class KanidmClient:
             raise ValueError(
                 f"Failed to get oauth2 resource server: {response.content}"
             )
-        data = RawOAuth2Rs(**response.data).as_oauth2_rs
-        secret = await self.oauth2_rs_secret_get(rs_name)
-        data.oauth2_rs_basic_secret = secret
-        return data
+        return RawOAuth2Rs(**response.data).as_oauth2_rs
 
     async def oauth2_rs_secret_get(self, rs_name: str) -> str:
         """get an OAuth2 client secret"""
@@ -880,7 +885,9 @@ class KanidmClient:
 
     async def system_denied_names_get(self) -> List[str]:
         """Get the denied names list"""
-        response = (await self.call_get("/v1/system/_attr/denied_name")).data
+        response: Optional[List[str]] = (
+            await self.call_get("/v1/system/_attr/denied_name")
+        ).data
         if response is None:
             return []
         return response
@@ -914,41 +921,11 @@ class KanidmClient:
             json=[new_basedn],
         )
 
-    async def oauth2_rs_get_basic_secret(self, rs_name: str) -> ClientResponse:
+    async def oauth2_rs_get_basic_secret(self, rs_name: str) -> ClientResponse[Any]:
         """get the basic secret for an OAuth2 resource server"""
         endpoint = f"/v1/oauth2/{rs_name}/_basic_secret"
 
         return await self.call_get(endpoint)
-
-    @classmethod
-    def _validate_is_valid_origin_url(cls, url: str) -> None:
-        """Check if it's HTTPS and a valid URL as far as we can tell"""
-        parsed_url = yarl.URL(url)
-        if parsed_url.scheme not in ["http", "https"]:
-            raise ValueError(
-                f"Invalid scheme: {parsed_url.scheme} for origin URL: {url}"
-            )
-        if parsed_url.host is None:
-            raise ValueError(f"Empty/invalid host for origin URL: {url}")
-        if parsed_url.user is not None:
-            raise ValueError(f"Can't have username in origin URL: {url}")
-        if parsed_url.password is not None:
-            raise ValueError(f"Can't have password in origin URL: {url}")
-
-    async def oauth2_rs_public_create(
-        self, rs_name: str, displayname: str, origin: str
-    ) -> ClientResponse:
-        """Create a public OAuth2 RS"""
-
-        self._validate_is_valid_origin_url(origin)
-
-        endpoint = "/v1/oauth2/_public"
-        payload = {
-            "oauth2_rs_name": [rs_name],
-            "oauth2_rs_origin": [origin],
-            "displayname": [displayname],
-        }
-        return await self.call_post(endpoint, json=payload)
 
     async def oauth2_rs_update(
         self,

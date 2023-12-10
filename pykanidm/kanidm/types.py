@@ -4,7 +4,7 @@
 
 from ipaddress import IPv4Address, IPv6Address, IPv6Network, IPv4Network
 import socket
-from typing import Any, Dict, List, Optional, Generic, TypeVar, TypedDict
+from typing import Any, Dict, List, Optional, Generic, TypeVar
 from urllib.parse import urlparse
 
 from pydantic import field_validator, ConfigDict, BaseModel, Field
@@ -41,7 +41,7 @@ class AuthInitResponse(BaseModel):
 
     sessionid: str
     state: _AuthInitState
-    response: Optional[ClientResponse] = None
+    response: Optional[ClientResponse[Any]] = None
     # model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
@@ -61,7 +61,7 @@ class AuthBeginResponse(BaseModel):
     # this should be pulled from the response headers as x-kanidm-auth-session-id
     sessionid: Optional[str]
     state: _AuthBeginState
-    response: Optional[ClientResponse] = None
+    response: Optional[ClientResponse[Any]] = None
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
@@ -75,7 +75,7 @@ class AuthState(BaseModel):
 
     state: _InternalState
     sessionid: Optional[str] = None
-    response: Optional[ClientResponse] = None
+    response: Optional[ClientResponse[Any]] = None
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
 

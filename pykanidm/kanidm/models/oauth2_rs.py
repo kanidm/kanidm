@@ -14,6 +14,7 @@ class OAuth2Rs(BaseModel):
     oauth2_rs_name: str
     oauth2_rs_origin: str
     oauth2_rs_token_key: str
+    oauth2_rs_sup_scope_map: List[str]
 
 
 class RawOAuth2Rs(BaseModel):
@@ -45,6 +46,7 @@ class RawOAuth2Rs(BaseModel):
             oauth2_rs_name=self.attrs["oauth2_rs_name"][0],
             oauth2_rs_origin=self.attrs["oauth2_rs_origin"][0],
             oauth2_rs_token_key=self.attrs["oauth2_rs_token_key"][0],
+            oauth2_rs_sup_scope_map=self.attrs.get("oauth2_rs_sup_scope_map", []),
         )
 
 Oauth2RsList = RootModel[List[RawOAuth2Rs]]

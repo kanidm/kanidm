@@ -10,7 +10,7 @@ from kanidm.types import KanidmClientConfig
 from kanidm.utils import load_config
 
 
-EXAMPLE_CONFIG_FILE = "../examples/config"
+EXAMPLE_CONFIG_FILE = Path(__file__).parent.parent.parent / "examples/config"
 
 def test_radius_groups() -> None:
     """testing loading a config file with radius groups defined"""

@@ -26,7 +26,7 @@ class RawServiceAccount(BaseModel):
     def as_service_account(self) -> ServiceAccount:
         """return it as the Person object which has nicer fields"""
         required_fields = ("displayname", "uuid", "spn", "name")
-        for field in "name", "uuid", "spn", "displayname":
+        for field in required_fields:
             if field not in self.attrs:
                 raise ValueError(f"Missing field {field} in {self.attrs}")
 
