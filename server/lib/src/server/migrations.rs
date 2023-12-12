@@ -703,6 +703,55 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // The domain info now exists, we should be able to do these migrations as they will
         // cause SPN regenerations to occur
 
+        // Delete entries that no longer need to exist.
+        // TODO: Shouldn't this be a migration?
+        let delete_entries = [
+            UUID_IDM_ACP_OAUTH2_READ_PRIV_V1,
+            UUID_IDM_ACP_RADIUS_SECRET_READ_PRIV_V1,
+            UUID_IDM_ACP_PEOPLE_ACCOUNT_PASSWORD_IMPORT_PRIV_V1,
+            UUID_IDM_ACP_SYSTEM_CONFIG_SESSION_EXP_PRIV_V1,
+            UUID_IDM_ACP_HP_GROUP_WRITE_PRIV_V1,
+            UUID_IDM_ACP_HP_GROUP_MANAGE_PRIV_V1,
+            UUID_IDM_ACP_HP_PEOPLE_WRITE_PRIV_V1,
+            UUID_IDM_ACP_ACCOUNT_READ_PRIV_V1,
+            UUID_IDM_ACP_ACCOUNT_WRITE_PRIV_V1,
+            UUID_IDM_ACP_ACCOUNT_MANAGE_PRIV_V1,
+            UUID_IDM_ACP_HP_ACCOUNT_READ_PRIV_V1,
+            UUID_IDM_ACP_HP_ACCOUNT_WRITE_PRIV_V1,
+            UUID_IDM_ACP_GROUP_WRITE_PRIV_V1,
+            UUID_IDM_ACP_HP_PEOPLE_EXTEND_PRIV_V1,
+            UUID_IDM_ACP_PEOPLE_EXTEND_PRIV_V1,
+            UUID_IDM_ACP_HP_ACCOUNT_MANAGE_PRIV_V1,
+            UUID_IDM_HP_ACP_SERVICE_ACCOUNT_INTO_PERSON_MIGRATE_V1,
+            UUID_IDM_HP_ACP_ACCOUNT_UNIX_EXTEND_PRIV_V1,
+            UUID_IDM_ACP_HP_PEOPLE_READ_PRIV_V1,
+            UUID_IDM_ACP_PEOPLE_WRITE_PRIV_V1,
+            UUID_IDM_HP_SYNC_ACCOUNT_MANAGE_PRIV,
+            UUID_IDM_RADIUS_SECRET_WRITE_PRIV_V1,
+            UUID_IDM_RADIUS_SECRET_READ_PRIV_V1,
+            UUID_IDM_PEOPLE_ACCOUNT_PASSWORD_IMPORT_PRIV,
+            UUID_IDM_PEOPLE_EXTEND_PRIV,
+            UUID_IDM_HP_PEOPLE_EXTEND_PRIV,
+            UUID_IDM_HP_GROUP_MANAGE_PRIV,
+            UUID_IDM_HP_GROUP_WRITE_PRIV,
+            UUID_IDM_GROUP_ACCOUNT_POLICY_MANAGE_PRIV,
+            UUID_IDM_HP_GROUP_UNIX_EXTEND_PRIV,
+            UUID_IDM_GROUP_WRITE_PRIV,
+            UUID_IDM_GROUP_UNIX_EXTEND_PRIV,
+            UUID_IDM_HP_ACCOUNT_UNIX_EXTEND_PRIV,
+            UUID_IDM_ACCOUNT_UNIX_EXTEND_PRIV,
+            UUID_IDM_PEOPLE_WRITE_PRIV,
+            UUID_IDM_HP_PEOPLE_READ_PRIV,
+            UUID_IDM_HP_PEOPLE_WRITE_PRIV,
+            UUID_IDM_PEOPLE_WRITE_PRIV,
+            UUID_IDM_ACCOUNT_READ_PRIV,
+            UUID_IDM_ACCOUNT_MANAGE_PRIV,
+            UUID_IDM_ACCOUNT_WRITE_PRIV,
+            UUID_IDM_HP_ACCOUNT_READ_PRIV,
+            UUID_IDM_HP_ACCOUNT_MANAGE_PRIV,
+            UUID_IDM_HP_ACCOUNT_WRITE_PRIV,
+        ];
+
         // Check the admin object exists (migrations).
         // Create the default idm_admin group.
         let admin_entries: Vec<EntryInitNew> = idm_builtin_admin_entries()?;
@@ -781,52 +830,6 @@ impl<'a> QueryServerWriteTransaction<'a> {
         }
         debug_assert!(res.is_ok());
         res?;
-
-        // Delete entries that no longer need to exist.
-        // TODO: Shouldn't this be a migration?
-        let delete_entries = [
-            UUID_IDM_ACP_OAUTH2_READ_PRIV_V1,
-            UUID_IDM_HP_SYNC_ACCOUNT_MANAGE_PRIV,
-            UUID_IDM_ACP_RADIUS_SECRET_READ_PRIV_V1,
-            UUID_IDM_RADIUS_SECRET_WRITE_PRIV_V1,
-            UUID_IDM_RADIUS_SECRET_READ_PRIV_V1,
-            UUID_IDM_PEOPLE_ACCOUNT_PASSWORD_IMPORT_PRIV,
-            UUID_IDM_ACP_PEOPLE_ACCOUNT_PASSWORD_IMPORT_PRIV_V1,
-            UUID_IDM_PEOPLE_EXTEND_PRIV,
-            UUID_IDM_HP_PEOPLE_EXTEND_PRIV,
-            UUID_IDM_ACP_SYSTEM_CONFIG_SESSION_EXP_PRIV_V1,
-            UUID_IDM_HP_ACP_SERVICE_ACCOUNT_INTO_PERSON_MIGRATE_V1,
-            UUID_IDM_ACP_HP_GROUP_WRITE_PRIV_V1,
-            UUID_IDM_ACP_HP_GROUP_MANAGE_PRIV_V1,
-            UUID_IDM_HP_GROUP_MANAGE_PRIV,
-            UUID_IDM_HP_GROUP_WRITE_PRIV,
-            UUID_IDM_HP_GROUP_UNIX_EXTEND_PRIV,
-            UUID_IDM_ACP_GROUP_WRITE_PRIV_V1,
-            UUID_IDM_GROUP_WRITE_PRIV,
-            UUID_IDM_GROUP_UNIX_EXTEND_PRIV,
-            UUID_IDM_HP_ACCOUNT_UNIX_EXTEND_PRIV,
-            UUID_IDM_ACCOUNT_UNIX_EXTEND_PRIV,
-            UUID_IDM_HP_ACP_ACCOUNT_UNIX_EXTEND_PRIV_V1,
-            UUID_IDM_PEOPLE_WRITE_PRIV,
-            UUID_IDM_ACP_HP_PEOPLE_READ_PRIV_V1,
-            UUID_IDM_HP_PEOPLE_READ_PRIV,
-            UUID_IDM_ACP_HP_PEOPLE_WRITE_PRIV_V1,
-            UUID_IDM_HP_PEOPLE_WRITE_PRIV,
-            UUID_IDM_ACP_PEOPLE_WRITE_PRIV_V1,
-            UUID_IDM_PEOPLE_WRITE_PRIV,
-            UUID_IDM_ACP_ACCOUNT_READ_PRIV_V1,
-            UUID_IDM_ACP_ACCOUNT_WRITE_PRIV_V1,
-            UUID_IDM_ACP_ACCOUNT_MANAGE_PRIV_V1,
-            UUID_IDM_ACP_HP_ACCOUNT_READ_PRIV_V1,
-            UUID_IDM_ACP_HP_ACCOUNT_WRITE_PRIV_V1,
-            UUID_IDM_ACP_HP_ACCOUNT_MANAGE_PRIV_V1,
-            UUID_IDM_ACCOUNT_READ_PRIV,
-            UUID_IDM_ACCOUNT_MANAGE_PRIV,
-            UUID_IDM_ACCOUNT_WRITE_PRIV,
-            UUID_IDM_HP_ACCOUNT_READ_PRIV,
-            UUID_IDM_HP_ACCOUNT_MANAGE_PRIV,
-            UUID_IDM_HP_ACCOUNT_WRITE_PRIV,
-        ];
 
         let res: Result<(), _> = delete_entries
             .into_iter()

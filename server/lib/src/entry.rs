@@ -2149,8 +2149,8 @@ impl<STATE> Entry<EntryValid, STATE> {
 
         if !missing_must.is_empty() {
             admin_warn!(
-                "Validation error, the following required (must) attributes are missing - {:?}",
-                missing_must
+                "Validation error, the following required ({}) (must) attributes are missing - {:?}",
+                self.get_display_id(), missing_must
             );
             // We if are in the recycle bin, we don't hard error here. This can occur when
             // a migration occurs and we delete an acp, and then the related group. Because
