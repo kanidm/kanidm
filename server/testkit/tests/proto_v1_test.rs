@@ -52,29 +52,6 @@ async fn test_server_create(rsclient: KanidmClient) {
 }
 
 #[kanidmd_testkit::test]
-async fn test_server_modify(rsclient: KanidmClient) {
-    // Build a self mod.
-    let f = Filter::SelfUuid;
-    let m = ModifyList::new_list(vec![
-        Modify::Purged(Attribute::DisplayName.to_string()),
-        Modify::Present(Attribute::DisplayName.to_string(), "test".to_string()),
-    ]);
-
-    // Not logged in - should fail!
-    let res = rsclient.modify(f.clone(), m.clone()).await;
-    assert!(res.is_err());
-
-    let a_res = rsclient
-        .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
-        .await;
-    assert!(a_res.is_ok());
-
-    let res = rsclient.modify(f, m).await;
-    println!("{:?}", res);
-    assert!(res.is_ok());
-}
-
-#[kanidmd_testkit::test]
 async fn test_server_whoami_anonymous(rsclient: KanidmClient) {
     // First show we are un-authenticated.
     let pre_res = rsclient.whoami().await;
@@ -179,7 +156,10 @@ async fn test_server_rest_group_lifecycle(rsclient: KanidmClient) {
     assert!(!g_list.is_empty());
 
     // Create a new group
-    rsclient.idm_group_create("demo_group").await.unwrap();
+    rsclient
+        .idm_group_create("demo_group", Some(BUILTIN_GROUP_IDM_ADMINS_V1.name))
+        .await
+        .unwrap();
 
     // List again, ensure one more.
     let g_list_2 = rsclient.idm_group_list().await.unwrap();
@@ -556,7 +536,10 @@ async fn test_server_rest_posix_lifecycle(rsclient: KanidmClient) {
     // Create a group
 
     // Extend the group with posix attrs
-    rsclient.idm_group_create("posix_group").await.unwrap();
+    rsclient
+        .idm_group_create("posix_group", Some(BUILTIN_GROUP_IDM_ADMINS_V1.name))
+        .await
+        .unwrap();
     rsclient
         .idm_group_add_members("posix_group", &["posix_account"])
         .await
@@ -1067,6 +1050,23 @@ async fn test_server_credential_update_session_pw(rsclient: KanidmClient) {
         .auth_simple_password("demo_account", "eicieY7ahchaoCh0eeTa")
         .await;
     assert!(res.is_ok());
+
+    // Get privs
+    let res = rsclient
+        .reauth_simple_password("eicieY7ahchaoCh0eeTa")
+        .await;
+    assert!(res.is_ok());
+
+    // Build a self mod.
+    let f = Filter::SelfUuid;
+    let m = ModifyList::new_list(vec![
+        Modify::Purged(Attribute::DisplayName.to_string()),
+        Modify::Present(Attribute::DisplayName.to_string(), "test".to_string()),
+    ]);
+
+    let res = rsclient.modify(f, m).await;
+    println!("{:?}", res);
+    assert!(res.is_ok());
 }
 
 #[kanidmd_testkit::test]
@@ -1360,7 +1360,11 @@ async fn test_server_api_token_lifecycle(rsclient: KanidmClient) {
     let test_service_account_username = "test_service";
 
     rsclient
-        .idm_service_account_create(test_service_account_username, "Test Service")
+        .idm_service_account_create(
+            test_service_account_username,
+            "Test Service",
+            BUILTIN_GROUP_IDM_ADMINS_V1.name,
+        )
         .await
         .expect("Failed to create service account");
 
@@ -1475,7 +1479,7 @@ async fn test_server_api_token_lifecycle(rsclient: KanidmClient) {
 
     // because you have to set *something*
     assert!(rsclient
-        .idm_service_account_update(test_service_account_username, None, None, None)
+        .idm_service_account_update(test_service_account_username, None, None, None, None)
         .await
         .is_err());
 
@@ -1485,6 +1489,7 @@ async fn test_server_api_token_lifecycle(rsclient: KanidmClient) {
             test_service_account_username,
             None,
             Some(&format!("{}displayzzzz", test_service_account_username)),
+            None,
             Some(&[format!("{}@example.crabs", test_service_account_username)]),
         )
         .await

@@ -209,7 +209,14 @@ pub enum GroupOpt {
     Get(Named),
     /// Create a new group
     #[clap(name = "create")]
-    Create(Named),
+    Create {
+        /// The name of the group
+        name: String,
+        /// Optional name/spn of a group that have entry manager rights over this group.
+        entry_managed_by: Option<String>,
+        #[clap(flatten)]
+        copt: CommonOpt,
+    },
     /// Delete a group
     #[clap(name = "delete")]
     Delete(Named),
@@ -220,6 +227,16 @@ pub enum GroupOpt {
     /// set operation.
     #[clap(name = "set-members")]
     SetMembers(GroupNamedMembers),
+    /// Set a new entry-managed-by for this group.
+    #[clap(name = "set-entry-manager")]
+    SetEntryManagedBy {
+        /// The name of the group
+        name: String,
+        /// Optional name/spn of a group that have entry manager rights over this group.
+        entry_managed_by: String,
+        #[clap(flatten)]
+        copt: CommonOpt,
+    },
     /// Delete all members of a group.
     #[clap(name = "purge-members")]
     PurgeMembers(Named),
@@ -573,6 +590,12 @@ pub struct ServiceAccountUpdateOpt {
     displayname: Option<String>,
     #[clap(
         long,
+        short = 'e',
+        help = "Set the entry manager for the service account."
+    )]
+    entry_managed_by: Option<String>,
+    #[clap(
+        long,
         short,
         help = "Set the mail address, can be set multiple times for multiple addresses. The first listed mail address is the 'primary'"
     )]
@@ -621,7 +644,16 @@ pub enum ServiceAccountOpt {
     Get(AccountNamedOpt),
     /// Create a new service account
     #[clap(name = "create")]
-    Create(AccountCreateOpt),
+    Create {
+        #[clap(flatten)]
+        aopts: AccountCommonOpt,
+        #[clap(name = "display-name")]
+        display_name: String,
+        #[clap(name = "entry-managed-by")]
+        entry_managed_by: String,
+        #[clap(flatten)]
+        copt: CommonOpt,
+    },
     /// Update a specific service account's attributes
     #[clap(name = "update")]
     Update(ServiceAccountUpdateOpt),

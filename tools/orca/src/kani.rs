@@ -160,7 +160,7 @@ impl KaniHttpServer {
                 }
                 Entity::Group(g) => {
                     self.client
-                        .idm_group_create(&g.name)
+                        .idm_group_create(&g.name, None)
                         .await
                         .map(|_| ())
                         .or_else(|e| {

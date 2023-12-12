@@ -182,7 +182,7 @@ async fn test_fixture(rsclient: KanidmClient) {
         .unwrap();
 
     // Setup a group
-    rsclient.idm_group_create("testgroup1").await.unwrap();
+    rsclient.idm_group_create("testgroup1", None).await.unwrap();
     rsclient
         .idm_group_add_members("testgroup1", &["testaccount1"])
         .await
@@ -193,14 +193,20 @@ async fn test_fixture(rsclient: KanidmClient) {
         .unwrap();
 
     // Setup the allowed group
-    rsclient.idm_group_create("allowed_group").await.unwrap();
+    rsclient
+        .idm_group_create("allowed_group", None)
+        .await
+        .unwrap();
     rsclient
         .idm_group_unix_extend("allowed_group", Some(20002))
         .await
         .unwrap();
 
     // Setup a group that is masked by nxset, but allowed in overrides
-    rsclient.idm_group_create("masked_group").await.unwrap();
+    rsclient
+        .idm_group_create("masked_group", None)
+        .await
+        .unwrap();
     rsclient
         .idm_group_unix_extend("masked_group", Some(20003))
         .await

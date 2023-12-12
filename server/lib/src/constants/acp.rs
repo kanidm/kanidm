@@ -423,17 +423,21 @@ lazy_static! {
 }
 
 lazy_static! {
-    pub static ref IDM_ACP_GROUP_READ_ACCESS_CONTROL_V1: BuiltinAcp = BuiltinAcp {
+    pub static ref IDM_ACP_GROUP_READ_V1: BuiltinAcp = BuiltinAcp {
         classes: vec![
             EntryClass::Object,
             EntryClass::AccessControlProfile,
             EntryClass::AccessControlSearch
         ],
-        name: "idm_acp_group_read_access_control",
-        uuid: UUID_IDM_ACP_GROUP_READ_ACCESS_CONTROL,
+        name: "idm_acp_group_read",
+        uuid: UUID_IDM_ACP_GROUP_READ,
         description:
             "Builtin IDM Control for allowing all groups to be read by access control admins",
-        receiver: BuiltinAcpReceiver::Group(vec![UUID_IDM_ACCESS_CONTROL_ADMINS]),
+        receiver: BuiltinAcpReceiver::Group(vec![
+            UUID_IDM_ACCESS_CONTROL_ADMINS,
+            // UUID_IDM_SERVICE_DESK,
+            // UUID_IDM_PEOPLE_ADMINS,
+        ]),
         target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
             match_class_filter!(EntryClass::Group),
             FILTER_ANDNOT_TOMBSTONE_OR_RECYCLED.clone(),
@@ -1125,12 +1129,14 @@ lazy_static! {
             Attribute::Description,
             Attribute::Member,
             Attribute::DynMember,
+            Attribute::EntryManagedBy,
         ],
         create_attrs: vec![
             Attribute::Class,
             Attribute::Name,
             Attribute::Description,
             Attribute::Member,
+            Attribute::EntryManagedBy,
         ],
         create_classes: vec![
             EntryClass::Object,
@@ -1184,7 +1190,7 @@ lazy_static! {
 }
 
 lazy_static! {
-    pub static ref IDM_ACP_ACCOUNT_UNIX_EXTEND_V1: BuiltinAcp = BuiltinAcp{
+    pub static ref IDM_ACP_ACCOUNT_UNIX_EXTEND_V1: BuiltinAcp = BuiltinAcp {
         classes: vec![
             EntryClass::Object,
             EntryClass::AccessControlProfile,
@@ -1194,8 +1200,8 @@ lazy_static! {
         name: "idm_acp_account_unix_extend",
         uuid: UUID_IDM_ACP_ACCOUNT_UNIX_EXTEND_V1,
         description: "Builtin IDM Control for managing and extending unix accounts",
-        receiver: BuiltinAcpReceiver::Group ( vec![UUID_IDM_UNIX_ADMINS] ),
-        target: BuiltinAcpTarget::Filter( ProtoFilter::And(vec![
+        receiver: BuiltinAcpReceiver::Group(vec![UUID_IDM_UNIX_ADMINS]),
+        target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
             match_class_filter!(EntryClass::Account),
             FILTER_ANDNOT_TOMBSTONE_OR_RECYCLED.clone(),
         ])),
@@ -1220,14 +1226,10 @@ lazy_static! {
             Attribute::Class,
             Attribute::GidNumber,
             Attribute::LoginShell,
-            // Unsure if we want this type to be able to write this attr.
-            // Delete is reasonable though to remove rogue credentials if required.
-            // Attribute::UnixPassword,
-            // Attribute::SshPublicKey,
+            Attribute::UnixPassword,
+            Attribute::SshPublicKey,
         ],
-        modify_classes: vec![
-            EntryClass::PosixAccount,
-        ],
+        modify_classes: vec![EntryClass::PosixAccount,],
         ..Default::default()
     };
 }
@@ -1535,6 +1537,37 @@ lazy_static! {
 }
 
 lazy_static! {
+    pub static ref IDM_ACP_SERVICE_ACCOUNT_MANAGE_V1: BuiltinAcp = BuiltinAcp {
+        classes: vec![
+            EntryClass::Object,
+            EntryClass::AccessControlProfile,
+            EntryClass::AccessControlModify
+        ],
+        name: "idm_acp_service_account_manage",
+        uuid: UUID_IDM_ACP_SERVICE_ACCOUNT_MANAGE_V1,
+        description: "Builtin IDM Control for modifying service account data",
+        receiver: BuiltinAcpReceiver::Group(vec![UUID_IDM_SERVICE_ACCOUNT_ADMINS]),
+        target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
+            match_class_filter!(EntryClass::ServiceAccount).clone(),
+            match_class_filter!(EntryClass::Account).clone(),
+            FILTER_ANDNOT_HP_OR_RECYCLED_OR_TOMBSTONE.clone(),
+        ])),
+        modify_removed_attrs: vec![
+            Attribute::Name,
+            Attribute::DisplayName,
+            Attribute::Mail,
+            Attribute::SshPublicKey,
+            Attribute::UnixPassword,
+            Attribute::PrimaryCredential,
+            Attribute::ApiTokenSession,
+            Attribute::UserAuthTokenSession,
+        ],
+        modify_present_attrs: vec![Attribute::Name, Attribute::DisplayName, Attribute::Mail,],
+        ..Default::default()
+    };
+}
+
+lazy_static! {
     pub static ref IDM_ACP_SERVICE_ACCOUNT_DELETE_V1: BuiltinAcp = BuiltinAcp {
         classes: vec![
             EntryClass::Object,
@@ -1585,6 +1618,7 @@ lazy_static! {
             Attribute::GidNumber,
             Attribute::LoginShell,
             Attribute::UnixPassword,
+            Attribute::PassKeys,
             Attribute::PrimaryCredential,
             Attribute::AccountExpire,
             Attribute::AccountValidFrom,
@@ -1596,6 +1630,8 @@ lazy_static! {
             Attribute::SshPublicKey,
             Attribute::PrimaryCredential,
             Attribute::UnixPassword,
+            // For legacy upgrades we allow removing this.
+            Attribute::PassKeys,
             Attribute::AccountExpire,
             Attribute::AccountValidFrom,
             Attribute::ApiTokenSession,
@@ -1604,9 +1640,8 @@ lazy_static! {
         modify_present_attrs: vec![
             Attribute::DisplayName,
             Attribute::SshPublicKey,
-            // I want to start phasing out passwords on service accounts.
-            // Attribute::PrimaryCredential,
-            // Should this be a thing? I think no.
+            Attribute::PrimaryCredential,
+            // Should this be a thing? I think no?
             // Attribute::UnixPassword,
             Attribute::AccountExpire,
             Attribute::AccountValidFrom,

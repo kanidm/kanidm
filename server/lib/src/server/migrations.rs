@@ -727,7 +727,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             IDM_ACP_SYSTEM_CONFIG_ACCOUNT_POLICY_MANAGE_V1.clone(),
             IDM_ACP_GROUP_UNIX_MANAGE_V1.clone(),
             IDM_ACP_HP_GROUP_UNIX_MANAGE_V1.clone(),
-            IDM_ACP_GROUP_READ_ACCESS_CONTROL_V1.clone(),
+            IDM_ACP_GROUP_READ_V1.clone(),
             IDM_ACP_GROUP_MANAGE_V1.clone(),
             IDM_ACP_ACCOUNT_UNIX_EXTEND_V1.clone(),
             IDM_ACP_PEOPLE_PII_READ_V1.clone(),
@@ -743,6 +743,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             IDM_ACP_SERVICE_ACCOUNT_ENTRY_MANAGER_V1.clone(),
             IDM_ACP_SERVICE_ACCOUNT_ENTRY_MANAGED_BY_MODIFY_V1.clone(),
             IDM_ACP_HP_SERVICE_ACCOUNT_ENTRY_MANAGED_BY_MODIFY_V1.clone(),
+            IDM_ACP_SERVICE_ACCOUNT_MANAGE_V1.clone(),
         ];
 
         let res: Result<(), _> = idm_entries

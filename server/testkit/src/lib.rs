@@ -113,7 +113,7 @@ pub async fn create_user(rsclient: &KanidmClient, id: &str, group_name: &str) {
     {
         #[allow(clippy::panic)]
         rsclient
-            .idm_group_create(group_name)
+            .idm_group_create(group_name, None)
             .await
             .unwrap_or_else(|_| panic!("Failed to create group {}", group_name));
     }

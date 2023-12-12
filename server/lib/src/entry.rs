@@ -2935,9 +2935,9 @@ impl<VALID, STATE> Entry<VALID, STATE> {
     // valid, we still have strict typing checks between the filter -> entry to guarantee
     // they should be functional. We'll never match something that isn't syntactially valid.
     #[inline(always)]
+    #[instrument(level = "trace", name = "entry::entry_match_no_index", skip(self))]
     /// Test if the following filter applies to and matches this entry.
     pub fn entry_match_no_index(&self, filter: &Filter<FilterValidResolved>) -> bool {
-        let _entered = trace_span!("entry::entry_match_no_index").entered();
         self.entry_match_no_index_inner(filter.to_inner())
     }
 

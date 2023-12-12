@@ -109,10 +109,13 @@ pub(super) fn apply_modify_access<'a>(
                 match &acm.target_condition {
                     AccessControlTargetCondition::Scope(f_res) => {
                         if !entry.entry_match_no_index(f_res) {
+                            debug!(entry = ?entry.get_display_id(), acm = %acm.acp.acp.name, "entry DOES NOT match acs");
                             return None;
                         }
                     }
                 };
+
+                debug!(entry = ?entry.get_display_id(), acs = %acm.acp.acp.name, "acs applied to entry");
 
                 Some(acm.acp)
             })
