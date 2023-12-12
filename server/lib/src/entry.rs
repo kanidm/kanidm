@@ -2235,8 +2235,10 @@ impl<STATE> Entry<EntryValid, STATE> {
                         }
                         None => {
                             admin_error!(
-                                "{} - not found in the list of valid attributes for this set of classes {:?} - valid attributes are {:?}",
+                                "{} {} - not found in the list of valid attributes for this set of classes {:?} - valid attributes are {:?}",
+
                                 attr_name.to_string(),
+                                self.get_display_id(),
                                 entry_classes.iter().collect::<Vec<_>>(),
                                 may.keys().collect::<Vec<_>>()
                             );

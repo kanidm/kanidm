@@ -493,7 +493,7 @@ lazy_static! {
             EntryClass::AccessControlModify,
             EntryClass::AccessControlSearch
         ],
-        name: "idm_acp_group_account_policy_manage",
+        name: "idm_acp_group_account_policy_manage_",
         uuid: UUID_IDM_ACP_GROUP_ACCOUNT_POLICY_MANAGE,
         description: "Builtin IDM Control for management of account policy on groups",
         receiver: BuiltinAcpReceiver::Group(vec![UUID_IDM_ACCOUNT_POLICY_ADMINS]),
