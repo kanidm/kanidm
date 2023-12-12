@@ -154,6 +154,15 @@ lazy_static! {
         ..Default::default()
     };
 
+    pub static ref BUILTIN_GROUP_PEOPLE_CREATE: BuiltinGroup = BuiltinGroup {
+        name: "idm_people_create",
+        description: "Builtin People Create Group.",
+        uuid: UUID_IDM_PEOPLE_CREATE,
+        entry_managed_by: Some(UUID_IDM_ADMINS),
+        members: vec![],
+        ..Default::default()
+    };
+
     /// Builtin IDM Group for granting elevated people (personal data) read permissions.
     pub static ref BUILTIN_GROUP_PEOPLE_PII_READ: BuiltinGroup = BuiltinGroup {
         name: "idm_people_pii_read",
@@ -355,7 +364,7 @@ lazy_static! {
 
     /// Members of this group will have access to read the mail attribute of all persons and service accounts.
     pub static ref IDM_ACCOUNT_MAIL_READ: BuiltinGroup = BuiltinGroup {
-        name: "idm_account_mail_read_priv",
+        name: "idm_account_mail_read",
         description: "Members of this group will have access to read the mail attribute of all persons and service accounts.",
         entry_managed_by: Some(UUID_IDM_ACCESS_CONTROL_ADMINS),
         uuid: UUID_IDM_ACCOUNT_MAIL_READ,
@@ -384,6 +393,7 @@ lazy_static! {
             UUID_IDM_UNIX_ADMINS,
             UUID_IDM_PEOPLE_PII_READ,
             UUID_IDM_PEOPLE_ADMINS,
+            UUID_IDM_PEOPLE_CREATE,
 
             UUID_IDM_HIGH_PRIVILEGE,
             // TBD

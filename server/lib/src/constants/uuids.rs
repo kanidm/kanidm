@@ -348,6 +348,8 @@ pub const UUID_IDM_ACP_GROUP_ENTRY_MANAGER_V1: Uuid = uuid!("00000000-0000-0000-
 pub const UUID_IDM_ACP_SELF_NAME_WRITE_V1: Uuid = uuid!("00000000-0000-0000-0000-ffffff000051");
 pub const UUID_IDM_ACP_GROUP_READ_ACCESS_CONTROL: Uuid =
     uuid!("00000000-0000-0000-0000-ffffff000052");
+pub const UUID_IDM_ACP_PEOPLE_READ_V1: Uuid =
+    uuid!("00000000-0000-0000-0000-ffffff000053");
 
 // End of system ranges
 pub const UUID_DOES_NOT_EXIST: Uuid = uuid!("00000000-0000-0000-0000-fffffffffffe");

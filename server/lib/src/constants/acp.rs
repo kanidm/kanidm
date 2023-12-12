@@ -1287,7 +1287,108 @@ lazy_static! {
     };
 }
 
-// -- end people
+// Person Account Create
+lazy_static! {
+    pub static ref IDM_ACP_PEOPLE_CREATE_V1: BuiltinAcp = BuiltinAcp {
+        classes: vec![
+            EntryClass::Object,
+            EntryClass::AccessControlProfile,
+            EntryClass::AccessControlCreate,
+        ],
+        name: "idm_acp_people_create",
+        uuid: UUID_IDM_ACP_PEOPLE_CREATE_V1,
+        description: "Builtin IDM Control for creating new persons.",
+        receiver: BuiltinAcpReceiver::Group(vec![
+            UUID_IDM_PEOPLE_ADMINS,
+            UUID_IDM_PEOPLE_CREATE,
+        ]),
+        target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
+            match_class_filter!(EntryClass::Person).clone(),
+            match_class_filter!(EntryClass::Account).clone(),
+            FILTER_ANDNOT_TOMBSTONE_OR_RECYCLED.clone(),
+        ])),
+        create_attrs: vec![
+            Attribute::Class,
+            Attribute::Name,
+            Attribute::DisplayName,
+            Attribute::Mail,
+            Attribute::AccountExpire,
+            Attribute::AccountValidFrom,
+        ],
+        create_classes: vec![EntryClass::Object, EntryClass::Account, EntryClass::Person,],
+        ..Default::default()
+    };
+}
+
+// Person Read
+lazy_static! {
+    pub static ref IDM_ACP_PEOPLE_READ_V1: BuiltinAcp = BuiltinAcp {
+        classes: vec![
+            EntryClass::Object,
+            EntryClass::AccessControlProfile,
+            EntryClass::AccessControlSearch,
+        ],
+        name: "idm_acp_people_read",
+        uuid: UUID_IDM_ACP_PEOPLE_READ_V1,
+        description: "Builtin IDM Control for reading non-sensitive data.",
+        receiver: BuiltinAcpReceiver::Group(vec![
+            UUID_IDM_PEOPLE_ADMINS,
+            UUID_IDM_PEOPLE_PII_READ,
+            UUID_IDM_ACCOUNT_MAIL_READ
+        ]),
+        target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
+            match_class_filter!(EntryClass::Person).clone(),
+            FILTER_ANDNOT_TOMBSTONE_OR_RECYCLED.clone(),
+        ])),
+        search_attrs: vec![
+            Attribute::Class,
+            Attribute::Name,
+            Attribute::Spn,
+            Attribute::DisplayName,
+            Attribute::MemberOf,
+            Attribute::Uuid,
+        ],
+        ..Default::default()
+    };
+}
+
+// Person Delete
+lazy_static! {
+    pub static ref IDM_ACP_PEOPLE_DELETE_V1: BuiltinAcp = BuiltinAcp {
+        classes: vec![
+            EntryClass::Object,
+            EntryClass::AccessControlProfile,
+            EntryClass::AccessControlDelete,
+        ],
+        name: "idm_acp_people_delete",
+        uuid: UUID_IDM_ACP_PEOPLE_DELETE_V1,
+        description: "Builtin IDM Control for deleting persons.",
+        receiver: BuiltinAcpReceiver::Group(vec![
+            UUID_IDM_PEOPLE_ADMINS,
+        ]),
+        target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
+            match_class_filter!(EntryClass::Person).clone(),
+            match_class_filter!(EntryClass::Account).clone(),
+            FILTER_ANDNOT_TOMBSTONE_OR_RECYCLED.clone(),
+        ])),
+        ..Default::default()
+    };
+}
+
+// Person Account Credential Reset
+
+// HP Person Account Credential Reset
+
+
+
+// Service Account Create/Manage
+//   needs to be able to assign to entry managed by
+
+// Service Account Credential Manage
+//   entry managed by?
+
+
+
 
 // ⚠️  -- to be audited.
 

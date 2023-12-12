@@ -732,6 +732,9 @@ impl<'a> QueryServerWriteTransaction<'a> {
             IDM_ACP_ACCOUNT_UNIX_EXTEND_V1.clone(),
             IDM_ACP_PEOPLE_PII_READ_V1.clone(),
             IDM_ACP_PEOPLE_PII_MANAGE_V1.clone(),
+            IDM_ACP_PEOPLE_READ_V1.clone(),
+            IDM_ACP_PEOPLE_DELETE_V1.clone(),
+            IDM_ACP_PEOPLE_CREATE_V1.clone(),
             // tbd
             IDM_ACP_ACCOUNT_READ_PRIV_V1.clone(),
             IDM_ACP_ACCOUNT_WRITE_PRIV_V1.clone(),
