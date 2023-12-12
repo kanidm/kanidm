@@ -471,6 +471,7 @@ lazy_static! {
         search_attrs: vec![
             Attribute::Class,
             Attribute::Name,
+            Attribute::Spn,
             Attribute::Uuid,
             Attribute::EntryManagedBy,
         ],
@@ -485,7 +486,6 @@ lazy_static! {
         classes: vec![
             EntryClass::Object,
             EntryClass::AccessControlProfile,
-            EntryClass::AccessControlCreate,
             EntryClass::AccessControlModify,
             EntryClass::AccessControlSearch
         ],
@@ -524,8 +524,7 @@ lazy_static! {
             Attribute::WebauthnAttestationCaList,
         ],
         modify_classes: vec![EntryClass::AccountPolicy,],
-        create_attrs: vec![Attribute::Class,],
-        create_classes: vec![EntryClass::AccountPolicy,],
+        ..Default::default()
     };
 }
 
@@ -1209,18 +1208,22 @@ lazy_static! {
             Attribute::GidNumber,
             Attribute::LoginShell,
             Attribute::UnixPassword,
+            Attribute::SshPublicKey,
         ],
         modify_removed_attrs: vec![
             Attribute::GidNumber,
             Attribute::LoginShell,
             Attribute::UnixPassword,
+            Attribute::SshPublicKey,
         ],
         modify_present_attrs: vec![
             Attribute::Class,
             Attribute::GidNumber,
             Attribute::LoginShell,
             // Unsure if we want this type to be able to write this attr.
+            // Delete is reasonable though to remove rogue credentials if required.
             // Attribute::UnixPassword,
+            // Attribute::SshPublicKey,
         ],
         modify_classes: vec![
             EntryClass::PosixAccount,
@@ -1247,6 +1250,8 @@ lazy_static! {
         search_attrs: vec![
             Attribute::Class,
             Attribute::Name,
+            Attribute::Uuid,
+            Attribute::Spn,
             Attribute::DisplayName,
             Attribute::LegalName,
             Attribute::Mail,
@@ -1260,7 +1265,6 @@ lazy_static! {
         classes: vec![
             EntryClass::Object,
             EntryClass::AccessControlProfile,
-            EntryClass::AccessControlDelete,
             EntryClass::AccessControlModify
         ],
         name: "idm_acp_people_pii_manage",
@@ -1300,7 +1304,7 @@ lazy_static! {
         description: "Builtin IDM Control for creating new persons.",
         receiver: BuiltinAcpReceiver::Group(vec![
             UUID_IDM_PEOPLE_ADMINS,
-            UUID_IDM_PEOPLE_CREATE,
+            UUID_IDM_PEOPLE_ON_BOARDING
         ]),
         target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
             match_class_filter!(EntryClass::Person).clone(),
@@ -1320,6 +1324,28 @@ lazy_static! {
     };
 }
 
+lazy_static! {
+    pub static ref IDM_ACP_PEOPLE_MANAGE_V1: BuiltinAcp = BuiltinAcp {
+        classes: vec![
+            EntryClass::Object,
+            EntryClass::AccessControlProfile,
+            EntryClass::AccessControlModify,
+        ],
+        name: "idm_acp_people_account_policy_manage",
+        uuid: UUID_IDM_ACP_PEOPLE_MANAGE_V1,
+        description: "Builtin IDM Control for management of peoples non sensitive attributes.",
+        receiver: BuiltinAcpReceiver::Group(vec![UUID_IDM_PEOPLE_ADMINS]),
+        target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
+            match_class_filter!(EntryClass::Person),
+            match_class_filter!(EntryClass::Account),
+            FILTER_ANDNOT_HP_OR_RECYCLED_OR_TOMBSTONE.clone(),
+        ])),
+        modify_removed_attrs: vec![Attribute::AccountExpire, Attribute::AccountValidFrom,],
+        modify_present_attrs: vec![Attribute::AccountExpire, Attribute::AccountValidFrom,],
+        ..Default::default()
+    };
+}
+
 // Person Read
 lazy_static! {
     pub static ref IDM_ACP_PEOPLE_READ_V1: BuiltinAcp = BuiltinAcp {
@@ -1334,7 +1360,8 @@ lazy_static! {
         receiver: BuiltinAcpReceiver::Group(vec![
             UUID_IDM_PEOPLE_ADMINS,
             UUID_IDM_PEOPLE_PII_READ,
-            UUID_IDM_ACCOUNT_MAIL_READ
+            UUID_IDM_ACCOUNT_MAIL_READ,
+            UUID_IDM_SERVICE_DESK
         ]),
         target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
             match_class_filter!(EntryClass::Person).clone(),
@@ -1344,9 +1371,12 @@ lazy_static! {
             Attribute::Class,
             Attribute::Name,
             Attribute::Spn,
+            Attribute::Uuid,
             Attribute::DisplayName,
             Attribute::MemberOf,
             Attribute::Uuid,
+            Attribute::AccountExpire,
+            Attribute::AccountValidFrom,
         ],
         ..Default::default()
     };
@@ -1363,9 +1393,7 @@ lazy_static! {
         name: "idm_acp_people_delete",
         uuid: UUID_IDM_ACP_PEOPLE_DELETE_V1,
         description: "Builtin IDM Control for deleting persons.",
-        receiver: BuiltinAcpReceiver::Group(vec![
-            UUID_IDM_PEOPLE_ADMINS,
-        ]),
+        receiver: BuiltinAcpReceiver::Group(vec![UUID_IDM_PEOPLE_ADMINS,]),
         target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
             match_class_filter!(EntryClass::Person).clone(),
             match_class_filter!(EntryClass::Account).clone(),
@@ -1376,162 +1404,265 @@ lazy_static! {
 }
 
 // Person Account Credential Reset
+lazy_static! {
+    pub static ref IDM_ACP_PEOPLE_CREDENTIAL_RESET_V1: BuiltinAcp = BuiltinAcp {
+        classes: vec![
+            EntryClass::Object,
+            EntryClass::AccessControlProfile,
+            EntryClass::AccessControlModify,
+            EntryClass::AccessControlSearch
+        ],
+        name: "idm_acp_people_credential_reset",
+        uuid: UUID_IDM_ACP_PEOPLE_CREDENTIAL_RESET_V1,
+        description: "Builtin IDM Control for resetting peoples credentials ",
+        receiver: BuiltinAcpReceiver::Group(vec![
+            UUID_IDM_PEOPLE_ADMINS,
+            UUID_IDM_SERVICE_DESK,
+            UUID_IDM_PEOPLE_ON_BOARDING,
+        ]),
+        target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
+            match_class_filter!(EntryClass::Person),
+            match_class_filter!(EntryClass::Account),
+            FILTER_ANDNOT_HP_OR_RECYCLED_OR_TOMBSTONE.clone(),
+        ])),
+        search_attrs: vec![
+            Attribute::Class,
+            Attribute::Uuid,
+            Attribute::Name,
+            Attribute::Spn,
+            Attribute::PrimaryCredential,
+            Attribute::AccountExpire,
+            Attribute::AccountValidFrom,
+            Attribute::PassKeys,
+            Attribute::AttestedPasskeys,
+        ],
+        modify_removed_attrs: vec![
+            Attribute::PrimaryCredential,
+            Attribute::PassKeys,
+            Attribute::AttestedPasskeys,
+        ],
+        modify_present_attrs: vec![
+            Attribute::PrimaryCredential,
+            Attribute::PassKeys,
+            Attribute::AttestedPasskeys,
+        ],
+        ..Default::default()
+    };
+}
 
 // HP Person Account Credential Reset
-
-
+lazy_static! {
+    pub static ref IDM_ACP_HP_PEOPLE_CREDENTIAL_RESET_V1: BuiltinAcp = BuiltinAcp {
+        classes: vec![
+            EntryClass::Object,
+            EntryClass::AccessControlProfile,
+            EntryClass::AccessControlModify,
+            EntryClass::AccessControlSearch
+        ],
+        name: "idm_acp_hp_people_credential_reset",
+        uuid: UUID_IDM_ACP_HP_PEOPLE_CREDENTIAL_RESET_V1,
+        description: "Builtin IDM Control for resetting high privilege peoples credentials ",
+        receiver: BuiltinAcpReceiver::Group(vec![UUID_IDM_PEOPLE_ADMINS,]),
+        target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
+            match_class_filter!(EntryClass::Person),
+            match_class_filter!(EntryClass::Account),
+            FILTER_HP.clone(),
+            FILTER_ANDNOT_TOMBSTONE_OR_RECYCLED.clone(),
+        ])),
+        search_attrs: vec![
+            Attribute::Class,
+            Attribute::Uuid,
+            Attribute::Name,
+            Attribute::Spn,
+            Attribute::PrimaryCredential,
+            Attribute::AccountExpire,
+            Attribute::AccountValidFrom,
+            Attribute::PassKeys,
+            Attribute::AttestedPasskeys,
+        ],
+        modify_removed_attrs: vec![
+            Attribute::PrimaryCredential,
+            Attribute::AccountExpire,
+            Attribute::AccountValidFrom,
+            Attribute::PassKeys,
+            Attribute::AttestedPasskeys,
+        ],
+        modify_present_attrs: vec![
+            Attribute::PrimaryCredential,
+            Attribute::AccountExpire,
+            Attribute::AccountValidFrom,
+            Attribute::PassKeys,
+            Attribute::AttestedPasskeys,
+        ],
+        ..Default::default()
+    };
+}
 
 // Service Account Create/Manage
 //   needs to be able to assign to entry managed by
+lazy_static! {
+    pub static ref IDM_ACP_SERVICE_ACCOUNT_CREATE_V1: BuiltinAcp = BuiltinAcp {
+        classes: vec![
+            EntryClass::Object,
+            EntryClass::AccessControlProfile,
+            EntryClass::AccessControlCreate,
+        ],
+        name: "idm_acp_service_account_create",
+        uuid: UUID_IDM_ACP_SERVICE_ACCOUNT_CREATE_V1,
+        description: "Builtin IDM Control for creating new service accounts.",
+        receiver: BuiltinAcpReceiver::Group(vec![UUID_IDM_SERVICE_ACCOUNT_ADMINS]),
+        target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
+            match_class_filter!(EntryClass::ServiceAccount).clone(),
+            match_class_filter!(EntryClass::Account).clone(),
+            FILTER_ANDNOT_TOMBSTONE_OR_RECYCLED.clone(),
+        ])),
+        create_attrs: vec![
+            Attribute::Class,
+            Attribute::Name,
+            Attribute::DisplayName,
+            Attribute::EntryManagedBy,
+            Attribute::Description,
+            Attribute::AccountExpire,
+            Attribute::AccountValidFrom,
+        ],
+        create_classes: vec![
+            EntryClass::Object,
+            EntryClass::Account,
+            EntryClass::ServiceAccount,
+        ],
+        ..Default::default()
+    };
+}
+
+lazy_static! {
+    pub static ref IDM_ACP_SERVICE_ACCOUNT_DELETE_V1: BuiltinAcp = BuiltinAcp {
+        classes: vec![
+            EntryClass::Object,
+            EntryClass::AccessControlProfile,
+            EntryClass::AccessControlDelete,
+        ],
+        name: "idm_acp_service_account_delete",
+        uuid: UUID_IDM_ACP_SERVICE_ACCOUNT_DELETE_V1,
+        description: "Builtin IDM Control for deleting service accounts.",
+        receiver: BuiltinAcpReceiver::Group(vec![UUID_IDM_SERVICE_ACCOUNT_ADMINS]),
+        target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
+            match_class_filter!(EntryClass::ServiceAccount).clone(),
+            match_class_filter!(EntryClass::Account).clone(),
+            FILTER_ANDNOT_HP_OR_RECYCLED_OR_TOMBSTONE.clone(),
+        ])),
+        ..Default::default()
+    };
+}
 
 // Service Account Credential Manage
 //   entry managed by?
 
-
-
-
-// ⚠️  -- to be audited.
-
 lazy_static! {
-    pub static ref IDM_ACP_ACCOUNT_READ_PRIV_V1: BuiltinAcp = BuiltinAcp{
+    pub static ref IDM_ACP_SERVICE_ACCOUNT_ENTRY_MANAGER_V1: BuiltinAcp = BuiltinAcp{
         classes: vec![
             EntryClass::Object,
             EntryClass::AccessControlProfile,
+            EntryClass::AccessControlModify,
             EntryClass::AccessControlSearch
         ],
-        name: "idm_acp_account_read_priv",
-        uuid: UUID_IDM_ACP_ACCOUNT_READ_PRIV_V1,
-        description: "Builtin IDM Control for reading accounts.",
-        receiver: BuiltinAcpReceiver::Group ( vec![UUID_IDM_ACCOUNT_READ_PRIV] ),
-        // Account which is not in HP, Recycled, Tombstone
+        name: "idm_acp_service_account_entry_manager",
+        uuid: UUID_IDM_ACP_SERVICE_ACCOUNT_ENTRY_MANAGER_V1,
+        description: "Builtin IDM Control for allowing entry managers to modify service accounts",
+        receiver: BuiltinAcpReceiver::EntryManager,
         target: BuiltinAcpTarget::Filter( ProtoFilter::And(vec![
             match_class_filter!(EntryClass::Account),
-            ProtoFilter::AndNot(Box::new(FILTER_HP_OR_RECYCLED_OR_TOMBSTONE.clone())),
+            match_class_filter!(EntryClass::ServiceAccount),
+            FILTER_ANDNOT_TOMBSTONE_OR_RECYCLED.clone(),
         ])),
-
         search_attrs: vec![
             Attribute::Class,
             Attribute::Name,
             Attribute::Spn,
             Attribute::Uuid,
+            Attribute::EntryManagedBy,
             Attribute::DisplayName,
             Attribute::SshPublicKey,
-            Attribute::PrimaryCredential,
-            Attribute::MemberOf,
-            Attribute::Mail,
             Attribute::GidNumber,
+            Attribute::LoginShell,
+            Attribute::UnixPassword,
+            Attribute::PrimaryCredential,
             Attribute::AccountExpire,
             Attribute::AccountValidFrom,
-            Attribute::PassKeys,
-            Attribute::AttestedPasskeys,
             Attribute::ApiTokenSession,
             Attribute::UserAuthTokenSession,
         ],
-        ..Default::default()
-    };
-}
-
-lazy_static! {
-    pub static ref IDM_ACP_ACCOUNT_WRITE_PRIV_V1: BuiltinAcp = BuiltinAcp{
-        classes: vec![
-            EntryClass::Object,
-            EntryClass::AccessControlProfile,
-            EntryClass::AccessControlModify
-        ],
-        name: "idm_acp_account_write_priv",
-        uuid: UUID_IDM_ACP_ACCOUNT_WRITE_PRIV_V1,
-        description: "Builtin IDM Control for managing all accounts (both person and service).",
-        receiver: BuiltinAcpReceiver::Group ( vec![UUID_IDM_ACCOUNT_WRITE_PRIV] ),
-        // Account which is not in HP, Recycled, Tombstone
-        target: BuiltinAcpTarget::Filter( ProtoFilter::And(vec![
-            match_class_filter!(EntryClass::Account),
-            ProtoFilter::AndNot(Box::new(FILTER_HP_OR_RECYCLED_OR_TOMBSTONE.clone())),
-        ])),
-
         modify_removed_attrs: vec![
-            Attribute::Name,
             Attribute::DisplayName,
             Attribute::SshPublicKey,
             Attribute::PrimaryCredential,
-            Attribute::Mail,
+            Attribute::UnixPassword,
             Attribute::AccountExpire,
             Attribute::AccountValidFrom,
-            Attribute::PassKeys,
-            Attribute::AttestedPasskeys,
             Attribute::ApiTokenSession,
             Attribute::UserAuthTokenSession,
-            Attribute::IdVerificationEcKey,
         ],
         modify_present_attrs: vec![
-            Attribute::Name,
             Attribute::DisplayName,
             Attribute::SshPublicKey,
-            Attribute::PrimaryCredential,
-            Attribute::Mail,
+            // I want to start phasing out passwords on service accounts.
+            // Attribute::PrimaryCredential,
+            // Should this be a thing? I think no.
+            // Attribute::UnixPassword,
             Attribute::AccountExpire,
             Attribute::AccountValidFrom,
-            Attribute::PassKeys,
-            Attribute::AttestedPasskeys,
             Attribute::ApiTokenSession,
         ],
         ..Default::default()
-
     };
 }
 
+// Service Account Access Manager
 lazy_static! {
-    pub static ref IDM_ACP_ACCOUNT_MANAGE_PRIV_V1: BuiltinAcp = BuiltinAcp{
+    pub static ref IDM_ACP_SERVICE_ACCOUNT_ENTRY_MANAGED_BY_MODIFY_V1: BuiltinAcp = BuiltinAcp {
         classes: vec![
             EntryClass::Object,
             EntryClass::AccessControlProfile,
-            EntryClass::AccessControlDelete,
-            EntryClass::AccessControlCreate,
+            EntryClass::AccessControlModify,
+            EntryClass::AccessControlSearch
         ],
-        name: "idm_acp_account_manage",
-        uuid: UUID_IDM_ACP_ACCOUNT_MANAGE_PRIV_V1,
-        description: "Builtin IDM Control for creating and deleting (service) accounts",
-        receiver: BuiltinAcpReceiver::Group ( vec![UUID_IDM_ACCOUNT_MANAGE_PRIV] ),
-        // Account which is not in HP, Recycled, Tombstone
-        target: BuiltinAcpTarget::Filter( ProtoFilter::And(vec![
-            match_class_filter!(EntryClass::Account),
-            ProtoFilter::AndNot(Box::new(FILTER_HP_OR_RECYCLED_OR_TOMBSTONE.clone())),
+        name: "idm_acp_service_account_entry_managed_by",
+        uuid: UUID_IDM_ACP_SERVICE_ACCOUNT_ENTRY_MANAGED_BY_MODIFY,
+        description:
+            "Builtin IDM Control for allowing entry_managed_by to be set on service account entries",
+        receiver: BuiltinAcpReceiver::Group(vec![UUID_IDM_SERVICE_ACCOUNT_ADMINS]),
+        target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
+            match_class_filter!(EntryClass::ServiceAccount).clone(),
+            match_class_filter!(EntryClass::Account).clone(),
+            FILTER_ANDNOT_HP_OR_RECYCLED_OR_TOMBSTONE.clone(),
         ])),
-        create_attrs: vec![
+        search_attrs: vec![
             Attribute::Class,
             Attribute::Name,
-            Attribute::DisplayName,
-            Attribute::Description,
-            Attribute::PrimaryCredential,
-            Attribute::SshPublicKey,
-            Attribute::Mail,
-            Attribute::AccountExpire,
-            Attribute::AccountValidFrom,
-            Attribute::PassKeys,
-            Attribute::AttestedPasskeys,
+            Attribute::Spn,
+            Attribute::Uuid,
+            Attribute::EntryManagedBy,
         ],
-        create_classes: vec![
-            EntryClass::Object,
-            EntryClass::Account,
-            EntryClass::ServiceAccount,
-        ],
+        modify_removed_attrs: vec![Attribute::EntryManagedBy],
+        modify_present_attrs: vec![Attribute::EntryManagedBy],
         ..Default::default()
     };
 }
 
 lazy_static! {
-    pub static ref IDM_ACP_HP_ACCOUNT_READ_PRIV_V1: BuiltinAcp = BuiltinAcp{
+    pub static ref IDM_ACP_HP_SERVICE_ACCOUNT_ENTRY_MANAGED_BY_MODIFY_V1: BuiltinAcp = BuiltinAcp {
         classes: vec![
             EntryClass::Object,
             EntryClass::AccessControlProfile,
-            EntryClass::AccessControlSearch,
+            EntryClass::AccessControlModify,
+            EntryClass::AccessControlSearch
         ],
-        name: "idm_acp_hp_account_read_priv",
-        uuid: UUID_IDM_ACP_HP_ACCOUNT_READ_PRIV_V1,
-        description: "Builtin IDM Control for reading high privilege accounts.",
-        receiver: BuiltinAcpReceiver::Group ( vec![UUID_IDM_HP_ACCOUNT_READ_PRIV] ),
-        // account, in hp, not recycled/tombstoned
-        target: BuiltinAcpTarget::Filter( ProtoFilter::And(vec![
-            match_class_filter!(EntryClass::Account),
+        name: "idm_acp_hp_service_account_entry_managed_by",
+        uuid: UUID_IDM_ACP_HP_SERVICE_ACCOUNT_ENTRY_MANAGED_BY_MODIFY,
+        description: "Builtin IDM Control for allowing entry_managed_by to be set on high priv service account entries",
+        receiver: BuiltinAcpReceiver::Group(vec![UUID_SYSTEM_ADMINS]),
+        target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
+            match_class_filter!(EntryClass::ServiceAccount).clone(),
+            match_class_filter!(EntryClass::Account).clone(),
             FILTER_HP.clone(),
             FILTER_ANDNOT_TOMBSTONE_OR_RECYCLED.clone(),
         ])),
@@ -1540,97 +1671,10 @@ lazy_static! {
             Attribute::Name,
             Attribute::Spn,
             Attribute::Uuid,
-            Attribute::DisplayName,
-            Attribute::SshPublicKey,
-            Attribute::PrimaryCredential,
-            Attribute::MemberOf,
-            Attribute::AccountExpire,
-            Attribute::AccountValidFrom,
-            Attribute::PassKeys,
-            Attribute::AttestedPasskeys,
-            Attribute::ApiTokenSession,
-            Attribute::UserAuthTokenSession,
+            Attribute::EntryManagedBy,
         ],
-        ..Default::default()
-    };
-
-    pub static ref IDM_ACP_HP_ACCOUNT_WRITE_PRIV_V1: BuiltinAcp = BuiltinAcp{
-        classes: vec![
-            EntryClass::Object,
-            EntryClass::AccessControlProfile,
-            EntryClass::AccessControlModify],
-        name: "idm_acp_hp_account_write_priv",
-        uuid: UUID_IDM_ACP_HP_ACCOUNT_WRITE_PRIV_V1,
-        description: "Builtin IDM Control for managing high privilege accounts (both person and service).",
-        receiver: BuiltinAcpReceiver::Group ( vec![UUID_IDM_HP_ACCOUNT_WRITE_PRIV] ),
-        // account, in hp, not recycled/tombstoned
-        target: BuiltinAcpTarget::Filter( ProtoFilter::And(vec![
-            match_class_filter!(EntryClass::Account),
-            FILTER_HP.clone(),
-            FILTER_ANDNOT_TOMBSTONE_OR_RECYCLED.clone(),
-        ])),
-        modify_removed_attrs: vec![
-            Attribute::Name,
-            Attribute::DisplayName,
-            Attribute::SshPublicKey,
-            Attribute::PrimaryCredential,
-            Attribute::AccountExpire,
-            Attribute::AccountValidFrom,
-            Attribute::PassKeys,
-            Attribute::AttestedPasskeys,
-            Attribute::ApiTokenSession,
-            Attribute::UserAuthTokenSession,
-            Attribute::IdVerificationEcKey,
-        ],
-        modify_present_attrs: vec![
-            Attribute::Name,
-            Attribute::DisplayName,
-            Attribute::SshPublicKey,
-            Attribute::PrimaryCredential,
-            Attribute::AccountExpire,
-            Attribute::AccountValidFrom,
-            Attribute::PassKeys,
-            Attribute::AttestedPasskeys,
-            Attribute::ApiTokenSession,
-        ],
-        ..Default::default()
-    };
-}
-
-lazy_static! {
-    pub static ref IDM_ACP_HP_ACCOUNT_MANAGE_PRIV_V1: BuiltinAcp = BuiltinAcp{
-        classes: vec![
-            EntryClass::Object,
-            EntryClass::AccessControlProfile,
-            EntryClass::AccessControlDelete,
-            EntryClass::AccessControlCreate
-        ],
-        name: "idm_acp_hp_account_manage",
-        uuid: UUID_IDM_ACP_HP_ACCOUNT_MANAGE_PRIV_V1,
-        description: "Builtin IDM Control for creating and deleting hp and regular (service) accounts",
-        receiver: BuiltinAcpReceiver::Group ( vec![UUID_IDM_HP_ACCOUNT_MANAGE_PRIV] ),
-        // account that's not tombstoned?
-        target: BuiltinAcpTarget::Filter( ProtoFilter::And(vec![
-            match_class_filter!(EntryClass::Account),
-            FILTER_ANDNOT_TOMBSTONE_OR_RECYCLED.clone(),
-        ])),
-        create_attrs: vec![
-            Attribute::Class,
-            Attribute::Name,
-            Attribute::DisplayName,
-            Attribute::Description,
-            Attribute::PrimaryCredential,
-            Attribute::SshPublicKey,
-            Attribute::AccountExpire,
-            Attribute::AccountValidFrom,
-            Attribute::PassKeys,
-            Attribute::AttestedPasskeys,
-        ],
-        create_classes: vec![
-            EntryClass::Object,
-            EntryClass::Account,
-            EntryClass::ServiceAccount,
-        ],
+        modify_removed_attrs: vec![Attribute::EntryManagedBy],
+        modify_present_attrs: vec![Attribute::EntryManagedBy],
         ..Default::default()
     };
 }

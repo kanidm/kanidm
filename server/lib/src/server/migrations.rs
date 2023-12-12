@@ -732,16 +732,17 @@ impl<'a> QueryServerWriteTransaction<'a> {
             IDM_ACP_ACCOUNT_UNIX_EXTEND_V1.clone(),
             IDM_ACP_PEOPLE_PII_READ_V1.clone(),
             IDM_ACP_PEOPLE_PII_MANAGE_V1.clone(),
-            IDM_ACP_PEOPLE_READ_V1.clone(),
-            IDM_ACP_PEOPLE_DELETE_V1.clone(),
             IDM_ACP_PEOPLE_CREATE_V1.clone(),
-            // tbd
-            IDM_ACP_ACCOUNT_READ_PRIV_V1.clone(),
-            IDM_ACP_ACCOUNT_WRITE_PRIV_V1.clone(),
-            IDM_ACP_ACCOUNT_MANAGE_PRIV_V1.clone(),
-            IDM_ACP_HP_ACCOUNT_READ_PRIV_V1.clone(),
-            IDM_ACP_HP_ACCOUNT_WRITE_PRIV_V1.clone(),
-            IDM_ACP_HP_ACCOUNT_MANAGE_PRIV_V1.clone(),
+            IDM_ACP_PEOPLE_READ_V1.clone(),
+            IDM_ACP_PEOPLE_MANAGE_V1.clone(),
+            IDM_ACP_PEOPLE_DELETE_V1.clone(),
+            IDM_ACP_PEOPLE_CREDENTIAL_RESET_V1.clone(),
+            IDM_ACP_HP_PEOPLE_CREDENTIAL_RESET_V1.clone(),
+            IDM_ACP_SERVICE_ACCOUNT_CREATE_V1.clone(),
+            IDM_ACP_SERVICE_ACCOUNT_DELETE_V1.clone(),
+            IDM_ACP_SERVICE_ACCOUNT_ENTRY_MANAGER_V1.clone(),
+            IDM_ACP_SERVICE_ACCOUNT_ENTRY_MANAGED_BY_MODIFY_V1.clone(),
+            IDM_ACP_HP_SERVICE_ACCOUNT_ENTRY_MANAGED_BY_MODIFY_V1.clone(),
         ];
 
         let res: Result<(), _> = idm_entries
@@ -787,6 +788,18 @@ impl<'a> QueryServerWriteTransaction<'a> {
             UUID_IDM_HP_PEOPLE_WRITE_PRIV,
             UUID_IDM_ACP_PEOPLE_WRITE_PRIV_V1,
             UUID_IDM_PEOPLE_WRITE_PRIV,
+            UUID_IDM_ACP_ACCOUNT_READ_PRIV_V1,
+            UUID_IDM_ACP_ACCOUNT_WRITE_PRIV_V1,
+            UUID_IDM_ACP_ACCOUNT_MANAGE_PRIV_V1,
+            UUID_IDM_ACP_HP_ACCOUNT_READ_PRIV_V1,
+            UUID_IDM_ACP_HP_ACCOUNT_WRITE_PRIV_V1,
+            UUID_IDM_ACP_HP_ACCOUNT_MANAGE_PRIV_V1,
+            UUID_IDM_ACCOUNT_READ_PRIV,
+            UUID_IDM_ACCOUNT_MANAGE_PRIV,
+            UUID_IDM_ACCOUNT_WRITE_PRIV,
+            UUID_IDM_HP_ACCOUNT_READ_PRIV,
+            UUID_IDM_HP_ACCOUNT_MANAGE_PRIV,
+            UUID_IDM_HP_ACCOUNT_WRITE_PRIV,
         ];
 
         let res: Result<(), _> = delete_entries

@@ -154,10 +154,10 @@ lazy_static! {
         ..Default::default()
     };
 
-    pub static ref BUILTIN_GROUP_PEOPLE_CREATE: BuiltinGroup = BuiltinGroup {
+    pub static ref BUILTIN_GROUP_PEOPLE_ON_BOARDING: BuiltinGroup = BuiltinGroup {
         name: "idm_people_create",
         description: "Builtin People Create Group.",
-        uuid: UUID_IDM_PEOPLE_CREATE,
+        uuid: UUID_IDM_PEOPLE_ON_BOARDING,
         entry_managed_by: Some(UUID_IDM_ADMINS),
         members: vec![],
         ..Default::default()
@@ -170,6 +170,15 @@ lazy_static! {
         uuid: UUID_IDM_PEOPLE_PII_READ,
         entry_managed_by: Some(UUID_IDM_ADMINS),
         members: vec![],
+        ..Default::default()
+    };
+
+    pub static ref BUILTIN_GROUP_SERVICE_ACCOUNT_ADMINS: BuiltinGroup = BuiltinGroup {
+        name: "idm_service_account_admins",
+        description: "Builtin Service Account Administration Group.",
+        uuid: UUID_IDM_SERVICE_ACCOUNT_ADMINS,
+        entry_managed_by: Some(UUID_IDM_ADMINS),
+        members: vec![UUID_IDM_ADMINS],
         ..Default::default()
     };
 
@@ -232,9 +241,6 @@ lazy_static! {
         ..Default::default()
     };
 
-
-
-
     /// Self-write of mail
     pub static ref IDM_PEOPLE_SELF_WRITE_MAIL_V1: BuiltinGroup = BuiltinGroup {
         name: "idm_people_self_write_mail",
@@ -243,74 +249,10 @@ lazy_static! {
         members: Vec::new(),
         ..Default::default()
     };
-
-    /// Account read manager
-    pub static ref IDM_ACCOUNT_READ_PRIV_V1: BuiltinGroup = BuiltinGroup {
-        name: "idm_account_read_priv",
-        description: "Builtin IDM Group for granting elevated account read permissions.",
-        uuid: UUID_IDM_ACCOUNT_READ_PRIV,
-        members: vec![
-            UUID_IDM_ACCOUNT_WRITE_PRIV,
-        ],
-        ..Default::default()
-    };
-
-    pub static ref IDM_ACCOUNT_MANAGE_PRIV_V1: BuiltinGroup = BuiltinGroup {
-        name: "idm_account_manage_priv",
-        description: "Builtin IDM Group for granting elevated account write and lifecycle permissions.",
-        uuid: UUID_IDM_ACCOUNT_MANAGE_PRIV,
-        members: vec![
-            UUID_IDM_ADMINS,
-        ],
-        ..Default::default()
-    };
-
-    pub static ref IDM_ACCOUNT_WRITE_PRIV_V1: BuiltinGroup = BuiltinGroup {
-        name: "idm_account_write_priv",
-        description: "Builtin IDM Group for granting elevated account write permissions.",
-        uuid: UUID_IDM_ACCOUNT_WRITE_PRIV,
-        members: vec![
-            UUID_IDM_ACCOUNT_MANAGE_PRIV,
-        ],
-        ..Default::default()
-    };
-
-    /// High privilege account read manager
-    pub static ref IDM_HP_ACCOUNT_READ_PRIV_V1: BuiltinGroup = BuiltinGroup {
-        name: "idm_hp_account_read_priv",
-        description: "Builtin IDM Group for granting elevated account read permissions over high privilege accounts.",
-        uuid: UUID_IDM_HP_ACCOUNT_READ_PRIV,
-        members: vec![
-            UUID_IDM_HP_ACCOUNT_WRITE_PRIV
-        ],
-        ..Default::default()
-    };
-
-    /// Builtin IDM Group for granting elevated account write permissions over high privilege accounts.
-    pub static ref IDM_HP_ACCOUNT_MANAGE_PRIV_V1: BuiltinGroup = BuiltinGroup {
-        name: "idm_hp_account_manage_priv",
-        description: "Builtin IDM Group for granting elevated account write and lifecycle permissions over high privilege accounts.",
-        uuid: UUID_IDM_HP_ACCOUNT_MANAGE_PRIV,
-        members: vec![
-            UUID_SYSTEM_ADMINS,
-        ],
-        ..Default::default()
-    };
-    /// Builtin IDM Group for granting elevated account write permissions over high privilege accounts.
-    pub static ref IDM_HP_ACCOUNT_WRITE_PRIV_V1: BuiltinGroup = BuiltinGroup {
-        name: "idm_hp_account_write_priv",
-        description: "Builtin IDM Group for granting elevated account write permissions over high privilege accounts.",
-        uuid: UUID_IDM_HP_ACCOUNT_WRITE_PRIV,
-        members: vec![
-            UUID_IDM_HP_ACCOUNT_MANAGE_PRIV,
-        ],
-        ..Default::default()
-    };
-
 }
+
 // at some point vs code just gives up on syntax highlighting inside lazy_static...
 lazy_static! {
-
     pub static ref IDM_ALL_PERSONS: BuiltinGroup = BuiltinGroup {
         name: "idm_all_persons",
         description: "Builtin IDM dynamic group containing all persons.",
@@ -393,17 +335,9 @@ lazy_static! {
             UUID_IDM_UNIX_ADMINS,
             UUID_IDM_PEOPLE_PII_READ,
             UUID_IDM_PEOPLE_ADMINS,
-            UUID_IDM_PEOPLE_CREATE,
-
+            UUID_IDM_PEOPLE_ON_BOARDING,
+            UUID_IDM_SERVICE_ACCOUNT_ADMINS,
             UUID_IDM_HIGH_PRIVILEGE,
-            // TBD
-
-            UUID_IDM_ACCOUNT_READ_PRIV,
-            UUID_IDM_ACCOUNT_WRITE_PRIV,
-            UUID_IDM_HP_ACCOUNT_READ_PRIV,
-            UUID_IDM_HP_ACCOUNT_WRITE_PRIV,
-            UUID_IDM_ACCOUNT_MANAGE_PRIV,
-            UUID_IDM_HP_ACCOUNT_MANAGE_PRIV,
         ],
         ..Default::default()
     };
@@ -414,7 +348,6 @@ pub fn idm_builtin_non_admin_groups() -> Vec<&'static BuiltinGroup> {
     // Create any system default schema entries.
     vec![
         &BUILTIN_GROUP_DOMAIN_ADMINS,
-        // &IDM_HP_OAUTH2_MANAGE_PRIV_V1,
         &BUILTIN_GROUP_SCHEMA_ADMINS,
         &BUILTIN_GROUP_ACCESS_CONTROL_ADMINS,
         &BUILTIN_GROUP_UNIX_ADMINS,
@@ -425,18 +358,14 @@ pub fn idm_builtin_non_admin_groups() -> Vec<&'static BuiltinGroup> {
         &BUILTIN_GROUP_ACCOUNT_POLICY_ADMINS,
         &BUILTIN_GROUP_PEOPLE_ADMINS,
         &BUILTIN_GROUP_PEOPLE_PII_READ,
+        &BUILTIN_GROUP_PEOPLE_ON_BOARDING,
+        &BUILTIN_GROUP_SERVICE_ACCOUNT_ADMINS,
         &IDM_GROUP_ADMINS_V1,
         &IDM_ALL_PERSONS,
         &IDM_ALL_ACCOUNTS,
         &IDM_RADIUS_SERVERS_V1,
         &IDM_PEOPLE_SELF_WRITE_MAIL_V1,
-        &IDM_ACCOUNT_MANAGE_PRIV_V1,
-        &IDM_ACCOUNT_WRITE_PRIV_V1,
-        &IDM_ACCOUNT_READ_PRIV_V1,
         // Write deps on read, so write must be added first.
-        &IDM_HP_ACCOUNT_MANAGE_PRIV_V1,
-        &IDM_HP_ACCOUNT_WRITE_PRIV_V1,
-        &IDM_HP_ACCOUNT_READ_PRIV_V1,
         // All members must exist before we write HP
         &IDM_HIGH_PRIVILEGE_V1,
         // other things
