@@ -117,6 +117,31 @@ impl QueryServer {
             }
         }
 
+        // This is the start of domain info related migrations which we will need in future
+        // to handle replication. Due to the access control rework, and the addition of "managed by"
+        // syntax, we need to ensure both node "fence" replication from each other. We do this
+        // by changing domain infos to be incompatible during this phase.
+        let domain_info_version = match write_txn.internal_search_uuid(UUID_DOMAIN_INFO) {
+            Ok(e) => Ok(e.get_ava_single_uint32(Attribute::Version).unwrap_or(0)),
+            Err(OperationError::NoMatchingEntries) => Ok(0),
+            Err(r) => Err(r),
+        }?;
+        admin_debug!(?domain_info_version);
+
+        if domain_info_version < DOMAIN_TGT_LEVEL {
+            write_txn
+                .internal_modify_uuid(
+                    UUID_DOMAIN_INFO,
+                    &ModifyList::new_purge_and_set(
+                        Attribute::Version.into(),
+                        Value::new_uint32(DOMAIN_TGT_LEVEL),
+                    ),
+                )
+                .map(|()| {
+                    warn!("Domain level has been raised to {}", DOMAIN_TGT_LEVEL);
+                })?;
+        }
+
         // Reload if anything in migrations requires it.
         write_txn.reload()?;
         // Migrations complete. Init idm will now set the version as needed.
