@@ -2235,8 +2235,9 @@ impl<STATE> Entry<EntryValid, STATE> {
                         }
                         None => {
                             admin_error!(
-                                "{} - not found in the list of valid attributes for this set of classes - valid attributes are {:?}",
+                                "{} - not found in the list of valid attributes for this set of classes {:?} - valid attributes are {:?}",
                                 attr_name.to_string(),
+                                entry_classes.iter().collect::<Vec<_>>(),
                                 may.keys().collect::<Vec<_>>()
                             );
                             Err(SchemaError::AttributeNotValidForClass(
