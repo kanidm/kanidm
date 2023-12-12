@@ -144,6 +144,26 @@ lazy_static! {
     // These are the IDM roles. They concern application integration, user permissions
     // and credential security management.
 
+    /// Builtin IDM Group for managing persons and their account details
+    pub static ref BUILTIN_GROUP_PEOPLE_ADMINS: BuiltinGroup = BuiltinGroup {
+        name: "idm_people_admins",
+        description: "Builtin People Administration Group.",
+        uuid: UUID_IDM_PEOPLE_ADMINS,
+        entry_managed_by: Some(UUID_IDM_ADMINS),
+        members: vec![UUID_IDM_ADMINS],
+        ..Default::default()
+    };
+
+    /// Builtin IDM Group for granting elevated people (personal data) read permissions.
+    pub static ref BUILTIN_GROUP_PEOPLE_PII_READ: BuiltinGroup = BuiltinGroup {
+        name: "idm_people_pii_read",
+        description: "Builtin IDM Group for granting elevated people (personal data) read permissions.",
+        uuid: UUID_IDM_PEOPLE_PII_READ,
+        entry_managed_by: Some(UUID_IDM_ADMINS),
+        members: vec![],
+        ..Default::default()
+    };
+
     /// Builtin IDM Group for managing oauth2 resource server integrations to this authentication domain.
     pub static ref BUILTIN_GROUP_OAUTH2_ADMINS: BuiltinGroup = BuiltinGroup {
         name: "idm_oauth2_admins",
@@ -203,34 +223,8 @@ lazy_static! {
         ..Default::default()
     };
 
-// * People read managers
-    /// Builtin IDM Group for granting elevated people (personal data) read permissions.
-    pub static ref IDM_PEOPLE_READ_PRIV_V1: BuiltinGroup = BuiltinGroup {
-        name: "idm_people_read_priv",
-        description: "Builtin IDM Group for granting elevated people (personal data) read permissions.",
-        uuid: UUID_IDM_PEOPLE_READ_PRIV,
-        members: vec![UUID_IDM_PEOPLE_WRITE_PRIV],
-        ..Default::default()
-    };
 
-    pub static ref IDM_PEOPLE_WRITE_PRIV_V1: BuiltinGroup = BuiltinGroup {
-        name: "idm_people_write_priv",
-        description: "Builtin IDM Group for granting elevated people (personal data) write permissions.",
-        uuid: UUID_IDM_PEOPLE_WRITE_PRIV,
-        members: vec![UUID_IDM_PEOPLE_MANAGE_PRIV],
-        ..Default::default()
-    };
 
-// * People write managers
-    /// Builtin IDM Group for granting elevated people (personal data) write and lifecycle management permissions.
-    pub static ref IDM_PEOPLE_MANAGE_PRIV_V1: BuiltinGroup = BuiltinGroup {
-        name: "idm_people_manage_priv",
-        description: "Builtin IDM Group for granting elevated people (personal data) write and lifecycle management permissions.",
-        uuid: UUID_IDM_PEOPLE_MANAGE_PRIV,
-        entry_managed_by: Some(UUID_IDM_ACCESS_CONTROL_ADMINS),
-        members: vec![UUID_IDM_ADMINS],
-        ..Default::default()
-    };
 
     /// Self-write of mail
     pub static ref IDM_PEOPLE_SELF_WRITE_MAIL_V1: BuiltinGroup = BuiltinGroup {
@@ -238,24 +232,6 @@ lazy_static! {
         description: "Builtin IDM Group for people accounts to update their own mail.",
         uuid: UUID_IDM_PEOPLE_SELF_WRITE_MAIL,
         members: Vec::new(),
-        ..Default::default()
-    };
-
-    /// Builtin IDM Group for granting elevated high privilege people (personal data) read permissions.
-    pub static ref IDM_HP_PEOPLE_READ_PRIV_V1: BuiltinGroup = BuiltinGroup {
-        name: "idm_hp_people_read_priv",
-        description: "Builtin IDM Group for granting elevated high privilege people (personal data) read permissions.",
-        uuid: UUID_IDM_HP_PEOPLE_READ_PRIV,
-        members: vec![UUID_IDM_HP_PEOPLE_WRITE_PRIV],
-        ..Default::default()
-    };
-
-    /// Builtin IDM Group for granting elevated high privilege people (personal data) write permissions.
-    pub static ref IDM_HP_PEOPLE_WRITE_PRIV_V1: BuiltinGroup = BuiltinGroup {
-        name: "idm_hp_people_write_priv",
-        description: "Builtin IDM Group for granting elevated high privilege people (personal data) write permissions.",
-        uuid: UUID_IDM_HP_PEOPLE_WRITE_PRIV,
-        members: vec![],
         ..Default::default()
     };
 
@@ -290,16 +266,6 @@ lazy_static! {
         ..Default::default()
     };
 
-    pub static ref IDM_ACCOUNT_UNIX_EXTEND_PRIV_V1: BuiltinGroup = BuiltinGroup {
-        name: "idm_account_unix_extend_priv",
-        description: "Builtin IDM Group for granting account unix extend permissions.",
-        uuid: UUID_IDM_ACCOUNT_UNIX_EXTEND_PRIV,
-        members: vec![
-            UUID_IDM_ADMINS,
-        ],
-        ..Default::default()
-    };
-
     /// High privilege account read manager
     pub static ref IDM_HP_ACCOUNT_READ_PRIV_V1: BuiltinGroup = BuiltinGroup {
         name: "idm_hp_account_read_priv",
@@ -328,17 +294,6 @@ lazy_static! {
         uuid: UUID_IDM_HP_ACCOUNT_WRITE_PRIV,
         members: vec![
             UUID_IDM_HP_ACCOUNT_MANAGE_PRIV,
-        ],
-        ..Default::default()
-    };
-
-    /// Builtin IDM Group for granting account unix extend permissions for high privilege accounts.
-    pub static ref IDM_HP_ACCOUNT_UNIX_EXTEND_PRIV_V1: BuiltinGroup = BuiltinGroup {
-        name: "idm_hp_account_unix_extend_priv",
-        description: "Builtin IDM Group for granting account UNIX extend permissions for high privilege accounts.",
-        uuid: UUID_IDM_HP_ACCOUNT_UNIX_EXTEND_PRIV,
-        members: vec![
-            UUID_SYSTEM_ADMINS,
         ],
         ..Default::default()
     };
@@ -427,20 +382,18 @@ lazy_static! {
             UUID_IDM_RADIUS_SERVERS,
             UUID_IDM_GROUP_ADMINS,
             UUID_IDM_UNIX_ADMINS,
+            UUID_IDM_PEOPLE_PII_READ,
+            UUID_IDM_PEOPLE_ADMINS,
 
             UUID_IDM_HIGH_PRIVILEGE,
             // TBD
 
-            UUID_IDM_PEOPLE_READ_PRIV,
-            UUID_IDM_PEOPLE_WRITE_PRIV,
             UUID_IDM_ACCOUNT_READ_PRIV,
             UUID_IDM_ACCOUNT_WRITE_PRIV,
             UUID_IDM_HP_ACCOUNT_READ_PRIV,
             UUID_IDM_HP_ACCOUNT_WRITE_PRIV,
-            UUID_IDM_PEOPLE_MANAGE_PRIV,
             UUID_IDM_ACCOUNT_MANAGE_PRIV,
             UUID_IDM_HP_ACCOUNT_MANAGE_PRIV,
-            UUID_IDM_HP_ACCOUNT_UNIX_EXTEND_PRIV,
         ],
         ..Default::default()
     };
@@ -460,25 +413,20 @@ pub fn idm_builtin_non_admin_groups() -> Vec<&'static BuiltinGroup> {
         &BUILTIN_GROUP_OAUTH2_ADMINS,
         &BUILTIN_GROUP_RADIUS_SERVICE_ADMINS,
         &BUILTIN_GROUP_ACCOUNT_POLICY_ADMINS,
+        &BUILTIN_GROUP_PEOPLE_ADMINS,
+        &BUILTIN_GROUP_PEOPLE_PII_READ,
         &IDM_GROUP_ADMINS_V1,
         &IDM_ALL_PERSONS,
         &IDM_ALL_ACCOUNTS,
         &IDM_RADIUS_SERVERS_V1,
-        &IDM_PEOPLE_MANAGE_PRIV_V1,
         &IDM_PEOPLE_SELF_WRITE_MAIL_V1,
-        &IDM_PEOPLE_WRITE_PRIV_V1,
-        &IDM_PEOPLE_READ_PRIV_V1,
-        &IDM_HP_PEOPLE_WRITE_PRIV_V1,
-        &IDM_HP_PEOPLE_READ_PRIV_V1,
         &IDM_ACCOUNT_MANAGE_PRIV_V1,
         &IDM_ACCOUNT_WRITE_PRIV_V1,
-        &IDM_ACCOUNT_UNIX_EXTEND_PRIV_V1,
         &IDM_ACCOUNT_READ_PRIV_V1,
         // Write deps on read, so write must be added first.
         &IDM_HP_ACCOUNT_MANAGE_PRIV_V1,
         &IDM_HP_ACCOUNT_WRITE_PRIV_V1,
         &IDM_HP_ACCOUNT_READ_PRIV_V1,
-        &IDM_HP_ACCOUNT_UNIX_EXTEND_PRIV_V1,
         // All members must exist before we write HP
         &IDM_HIGH_PRIVILEGE_V1,
         // other things

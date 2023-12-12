@@ -1184,22 +1184,65 @@ lazy_static! {
     };
 }
 
-// ⚠️  -- to be audited.
+lazy_static! {
+    pub static ref IDM_ACP_ACCOUNT_UNIX_EXTEND_V1: BuiltinAcp = BuiltinAcp{
+        classes: vec![
+            EntryClass::Object,
+            EntryClass::AccessControlProfile,
+            EntryClass::AccessControlModify,
+            EntryClass::AccessControlSearch
+        ],
+        name: "idm_acp_account_unix_extend",
+        uuid: UUID_IDM_ACP_ACCOUNT_UNIX_EXTEND_V1,
+        description: "Builtin IDM Control for managing and extending unix accounts",
+        receiver: BuiltinAcpReceiver::Group ( vec![UUID_IDM_UNIX_ADMINS] ),
+        target: BuiltinAcpTarget::Filter( ProtoFilter::And(vec![
+            match_class_filter!(EntryClass::Account),
+            FILTER_ANDNOT_TOMBSTONE_OR_RECYCLED.clone(),
+        ])),
+        search_attrs: vec![
+            Attribute::Class,
+            Attribute::Name,
+            Attribute::Uuid,
+            Attribute::Spn,
+            Attribute::Description,
+            Attribute::GidNumber,
+            Attribute::LoginShell,
+            Attribute::UnixPassword,
+        ],
+        modify_removed_attrs: vec![
+            Attribute::GidNumber,
+            Attribute::LoginShell,
+            Attribute::UnixPassword,
+        ],
+        modify_present_attrs: vec![
+            Attribute::Class,
+            Attribute::GidNumber,
+            Attribute::LoginShell,
+            // Unsure if we want this type to be able to write this attr.
+            // Attribute::UnixPassword,
+        ],
+        modify_classes: vec![
+            EntryClass::PosixAccount,
+        ],
+        ..Default::default()
+    };
+}
 
 lazy_static! {
-    pub static ref IDM_ACP_PEOPLE_READ_PRIV_V1: BuiltinAcp = BuiltinAcp {
+    pub static ref IDM_ACP_PEOPLE_PII_READ_V1: BuiltinAcp = BuiltinAcp {
         classes: vec![
             EntryClass::Object,
             EntryClass::AccessControlProfile,
             EntryClass::AccessControlSearch,
         ],
-        name: "idm_acp_people_read_priv",
-        uuid: UUID_IDM_ACP_PEOPLE_READ_PRIV_V1,
-        description: "Builtin IDM Control for reading personal sensitive data.",
-        receiver: BuiltinAcpReceiver::Group(vec![UUID_IDM_PEOPLE_READ_PRIV]),
+        name: "idm_acp_people_pii_read",
+        uuid: UUID_IDM_ACP_PEOPLE_PII_READ_V1,
+        description: "Builtin IDM Control for reading personal and sensitive data.",
+        receiver: BuiltinAcpReceiver::Group(vec![UUID_IDM_PEOPLE_ADMINS, UUID_IDM_PEOPLE_PII_READ]),
         target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
             match_class_filter!(EntryClass::Person).clone(),
-            ProtoFilter::AndNot(Box::new(FILTER_HP_OR_RECYCLED_OR_TOMBSTONE.clone())),
+            FILTER_ANDNOT_TOMBSTONE_OR_RECYCLED.clone(),
         ])),
         search_attrs: vec![
             Attribute::Class,
@@ -1213,117 +1256,20 @@ lazy_static! {
 }
 
 lazy_static! {
-    pub static ref IDM_ACP_PEOPLE_WRITE_PRIV_V1: BuiltinAcp = BuiltinAcp {
-        classes: vec![
-            EntryClass::Object,
-            EntryClass::AccessControlProfile,
-            EntryClass::AccessControlModify
-        ],
-        name: "idm_acp_people_write_priv",
-        uuid: UUID_IDM_ACP_PEOPLE_WRITE_PRIV_V1,
-        description: "Builtin IDM Control for managing personal and sensitive data.",
-        receiver: BuiltinAcpReceiver::Group(vec![UUID_IDM_PEOPLE_WRITE_PRIV]),
-
-        target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
-            match_class_filter!(EntryClass::Person).clone(),
-            ProtoFilter::AndNot(Box::new(FILTER_HP_OR_RECYCLED_OR_TOMBSTONE.clone())),
-        ])),
-
-        modify_removed_attrs: vec![
-            Attribute::Name,
-            Attribute::DisplayName,
-            Attribute::LegalName,
-            Attribute::Mail,
-        ],
-        modify_present_attrs: vec![
-            Attribute::Name,
-            Attribute::DisplayName,
-            Attribute::LegalName,
-            Attribute::Mail,
-        ],
-        ..Default::default()
-    };
-}
-
-lazy_static! {
-    pub static ref IDM_ACP_PEOPLE_MANAGE_PRIV_V1: BuiltinAcp = BuiltinAcp {
+    pub static ref IDM_ACP_PEOPLE_PII_MANAGE_V1: BuiltinAcp = BuiltinAcp {
         classes: vec![
             EntryClass::Object,
             EntryClass::AccessControlProfile,
             EntryClass::AccessControlDelete,
-            EntryClass::AccessControlCreate
-        ],
-        name: "idm_acp_people_manage",
-        uuid: UUID_IDM_ACP_PEOPLE_MANAGE_PRIV_V1,
-        description: "Builtin IDM Control for creating person (user) accounts",
-        receiver: BuiltinAcpReceiver::Group(vec![UUID_IDM_PEOPLE_MANAGE_PRIV]),
-        target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
-            match_class_filter!(EntryClass::Person),
-            match_class_filter!(EntryClass::Account),
-            ProtoFilter::AndNot(Box::new(FILTER_HP_OR_RECYCLED_OR_TOMBSTONE.clone())),
-        ])),
-
-        create_attrs: vec![
-            Attribute::Class,
-            Attribute::Name,
-            Attribute::DisplayName,
-            Attribute::LegalName,
-            Attribute::PrimaryCredential,
-            Attribute::SshPublicKey,
-            Attribute::Mail,
-            Attribute::AccountExpire,
-            Attribute::AccountValidFrom,
-            Attribute::PassKeys,
-            Attribute::AttestedPasskeys,
-        ],
-        create_classes: vec![EntryClass::Object, EntryClass::Account, EntryClass::Person,],
-        ..Default::default()
-    };
-}
-
-lazy_static! {
-    pub static ref IDM_ACP_HP_PEOPLE_READ_PRIV_V1: BuiltinAcp = BuiltinAcp {
-        classes: vec![
-            EntryClass::Object,
-            EntryClass::AccessControlProfile,
-            EntryClass::AccessControlSearch,
-        ],
-        name: "idm_acp_hp_people_read_priv",
-        uuid: UUID_IDM_ACP_HP_PEOPLE_READ_PRIV_V1,
-        description: "Builtin IDM Control for reading high privilege personal sensitive data.",
-        receiver: BuiltinAcpReceiver::Group(vec![UUID_IDM_HP_PEOPLE_READ_PRIV]),
-        target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
-            match_class_filter!(EntryClass::Person).clone(),
-            ProtoFilter::AndNot(Box::new(FILTER_HP_OR_RECYCLED_OR_TOMBSTONE.clone())),
-        ])),
-        search_attrs: vec![
-            Attribute::Name,
-            Attribute::DisplayName,
-            Attribute::LegalName,
-            Attribute::Mail,
-        ],
-        ..Default::default()
-    };
-}
-
-lazy_static! {
-    pub static ref IDM_ACP_HP_PEOPLE_WRITE_PRIV_V1: BuiltinAcp = BuiltinAcp {
-        classes: vec![
-            EntryClass::Object,
-            EntryClass::AccessControlProfile,
             EntryClass::AccessControlModify
         ],
-        name: "idm_acp_hp_people_write_priv",
-        uuid: UUID_IDM_ACP_HP_PEOPLE_WRITE_PRIV_V1,
-        description: "Builtin IDM Control for managing privilege personal and sensitive data.",
-        receiver: BuiltinAcpReceiver::Group(vec![UUID_IDM_HP_PEOPLE_WRITE_PRIV]),
+        name: "idm_acp_people_pii_manage",
+        uuid: UUID_IDM_ACP_PEOPLE_PII_MANAGE_V1,
+        description: "Builtin IDM Control for modifying peoples personal and sensitive data",
+        receiver: BuiltinAcpReceiver::Group(vec![UUID_IDM_PEOPLE_ADMINS]),
         target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
-            match_class_filter!(EntryClass::Person).clone(),
-            ProtoFilter::Eq(
-                Attribute::MemberOf.to_string(),
-                UUID_IDM_HIGH_PRIVILEGE.to_string()
-            ),
-            ProtoFilter::AndNot(Box::new(FILTER_HP_OR_RECYCLED_OR_TOMBSTONE.clone())),
+            match_class_filter!(EntryClass::Person),
+            FILTER_ANDNOT_TOMBSTONE_OR_RECYCLED.clone(),
         ])),
         modify_removed_attrs: vec![
             Attribute::Name,
@@ -1335,13 +1281,15 @@ lazy_static! {
             Attribute::Name,
             Attribute::DisplayName,
             Attribute::LegalName,
-            Attribute::Name,
+            Attribute::Mail,
         ],
         ..Default::default()
     };
 }
 
 // -- end people
+
+// ⚠️  -- to be audited.
 
 lazy_static! {
     pub static ref IDM_ACP_ACCOUNT_READ_PRIV_V1: BuiltinAcp = BuiltinAcp{
@@ -1581,108 +1529,6 @@ lazy_static! {
             EntryClass::Object,
             EntryClass::Account,
             EntryClass::ServiceAccount,
-        ],
-        ..Default::default()
-    };
-}
-
-lazy_static! {
-    pub static ref IDM_ACP_ACCOUNT_UNIX_EXTEND_PRIV_V1: BuiltinAcp = BuiltinAcp{
-        classes: vec![
-            EntryClass::Object,
-            EntryClass::AccessControlProfile,
-            EntryClass::AccessControlModify,
-            EntryClass::AccessControlSearch
-        ],
-        name: "idm_acp_account_unix_extend_priv",
-        uuid: UUID_IDM_ACP_ACCOUNT_UNIX_EXTEND_PRIV_V1,
-        description: "Builtin IDM Control for managing and extending unix accounts",
-        receiver: BuiltinAcpReceiver::Group ( vec![UUID_IDM_ACCOUNT_UNIX_EXTEND_PRIV] ),
-        // account not in HP, Recycled, Tombstone
-        target: BuiltinAcpTarget::Filter( ProtoFilter::And(vec![
-            match_class_filter!(EntryClass::Account),
-            ProtoFilter::AndNot(Box::new(FILTER_HP_OR_RECYCLED_OR_TOMBSTONE.clone())),
-        ])),
-
-        // Value::new_json_filter_s(
-        //         "{\"and\": [{\"eq\": [\"class\",\"account\"]}, {\"andnot\": {\"or\": [
-            // {\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]},
-            // {\"eq\": [\"class\", \"tombstone\"]},
-            // {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-        //     )
-        //         .expect("Invalid JSON filter"),
-        search_attrs: vec![
-            Attribute::Class,
-            Attribute::Name,
-            Attribute::Uuid,
-            Attribute::Spn,
-            Attribute::Description,
-            Attribute::GidNumber,
-            Attribute::LoginShell,
-            Attribute::UnixPassword,
-        ],
-        modify_removed_attrs: vec![
-            Attribute::GidNumber,
-            Attribute::LoginShell,
-            Attribute::UnixPassword,
-        ],
-        modify_present_attrs: vec![
-            Attribute::Class,
-            Attribute::GidNumber,
-            Attribute::LoginShell,
-            Attribute::UnixPassword,
-        ],
-        modify_classes: vec![
-            EntryClass::PosixAccount,
-        ],
-        ..Default::default()
-    };
-
-    pub static ref E_IDM_HP_ACP_ACCOUNT_UNIX_EXTEND_PRIV_V1: BuiltinAcp = BuiltinAcp{
-        classes: vec![
-            EntryClass::Object,
-            EntryClass::AccessControlProfile,
-            EntryClass::AccessControlModify,
-            EntryClass::AccessControlSearch
-        ],
-        name: "idm_acp_hp_account_unix_extend_priv",
-        uuid: UUID_IDM_HP_ACP_ACCOUNT_UNIX_EXTEND_PRIV_V1,
-        description: "Builtin IDM Control for managing and extending unix accounts",
-        receiver: BuiltinAcpReceiver::Group ( vec![UUID_IDM_HP_ACCOUNT_UNIX_EXTEND_PRIV] ),
-        // account not in HP, Recycled, Tombstone
-        target: BuiltinAcpTarget::Filter( ProtoFilter::And(vec![
-            match_class_filter!(EntryClass::Account),
-            FILTER_HP.clone(),
-            FILTER_ANDNOT_TOMBSTONE_OR_RECYCLED.clone(),
-        ])),
-
-        // Value::new_json_filter_s(
-        //         "{\"and\": [{\"eq\": [\"class\",\"account\"]}, {\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-        //     )
-        //         .expect("Invalid JSON filter"),
-        search_attrs: vec![
-            Attribute::Class,
-            Attribute::Name,
-            Attribute::Uuid,
-            Attribute::Spn,
-            Attribute::Description,
-            Attribute::GidNumber,
-            Attribute::LoginShell,
-            Attribute::UnixPassword,
-        ],
-        modify_removed_attrs: vec![
-            Attribute::GidNumber,
-            Attribute::LoginShell,
-            Attribute::UnixPassword,
-        ],
-        modify_present_attrs: vec![
-            Attribute::Class,
-            Attribute::GidNumber,
-            Attribute::LoginShell,
-            Attribute::UnixPassword,
-        ],
-        modify_classes: vec![
-            EntryClass::PosixAccount,
         ],
         ..Default::default()
     };
