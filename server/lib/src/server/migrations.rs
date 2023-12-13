@@ -137,7 +137,7 @@ impl QueryServer {
                 .internal_modify_uuid(
                     UUID_DOMAIN_INFO,
                     &ModifyList::new_purge_and_set(
-                        Attribute::Version.into(),
+                        Attribute::Version,
                         Value::new_uint32(DOMAIN_TGT_LEVEL),
                     ),
                 )
