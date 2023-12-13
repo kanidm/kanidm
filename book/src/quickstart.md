@@ -55,11 +55,20 @@ docker run --rm -i -t -v kanidmd:/data \
 docker start kanidmd
 ```
 
-### Recover the admin password
+### Recover the admin roles
+
+The `admin` account is used to configure Kanidm itself.
 
 ```bash
 docker exec -i -t kanidmd \
   kanidmd recover-account admin
+```
+
+The `idm_admin` account is used to manage persons and groups.
+
+```
+docker exec -i -t kanidmd \
+  kanidmd recover-account idm_admin
 ```
 
 ### Setup the client configuration
@@ -74,8 +83,22 @@ verify_ca = false
 ### Check you can login
 
 ```bash
-kanidm login
+kanidm login --name idm_admin
 ```
+
+### Create an account for yourself
+
+```
+kanidm person create <your username> <Your Displayname>
+```
+
+### Setup your account credentials
+
+```
+kanidm person credential create-reset-token <your username>
+```
+
+Then follow the presented steps.
 
 ### What next?
 

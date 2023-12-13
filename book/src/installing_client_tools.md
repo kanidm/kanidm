@@ -120,35 +120,9 @@ alias kanidm="docker run ..."
 
 The tools are available as a cargo download if you have a rust tool chain available. To install rust
 you should follow the documentation for [rustup](https://rustup.rs/). These will be installed into
-your home directory. To update these, re-run the install command. You will likely need to install additional development libraries, specified in the [Developer Guide](DEVELOPER_README.html).
+your home directory. To update these, re-run the install command. You will likely need to install
+additional development libraries, specified in the [Developer Guide](DEVELOPER_README.html).
 
 ```bash
 cargo install kanidm_tools
 ```
-
-## Initializing the configuration
-
-The client requires a configuration file to connect to the server. This should be at
-`/etc/kanidm/config` or `~/.config/kanidm`, and configures the kanidm command line tool.
-
-Here is a minimal example:
-
-```toml
-uri = "https://idm.example.com"
-verify_ca = true
-verify_hostnames = true
-```
-
-## Checking that the tools work
-
-Now you can check your instance is working. You may need to provide a CA certificate for
-verification with the -C parameter:
-
-```bash
-kanidm login --name anonymous
-kanidm self whoami -H https://localhost:8443 --name anonymous
-kanidm self whoami -C ../path/to/ca.pem -H https://localhost:8443 --name anonymous
-```
-
-Now you can take some time to look at what commands are available - please
-[ask for help at any time](https://github.com/kanidm/kanidm#getting-in-contact--questions).

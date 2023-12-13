@@ -155,8 +155,8 @@ lazy_static! {
     };
 
     pub static ref BUILTIN_GROUP_PEOPLE_ON_BOARDING: BuiltinGroup = BuiltinGroup {
-        name: "idm_people_create",
-        description: "Builtin People Create Group.",
+        name: "idm_people_on_boarding",
+        description: "Builtin People On Boarding Group.",
         uuid: UUID_IDM_PEOPLE_ON_BOARDING,
         entry_managed_by: Some(UUID_IDM_ADMINS),
         members: vec![],

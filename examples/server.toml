@@ -41,7 +41,7 @@ db_path = "/var/lib/private/kanidm/kanidm.db"
 #   Minimum value is 256. If unset
 #   an automatic heuristic is used to scale this.
 #   You should only adjust this value if you experience
-#   pressure on your system.
+#   memory pressure on your system.
 # db_arc_size = 2048
 #
 #   TLS chain and key in pem format. Both must be present
@@ -50,7 +50,8 @@ tls_key = "/var/lib/private/kanidm/key.pem"
 #
 #   The log level of the server. May be one of info, debug, trace
 #
-#   NOTE: this is overridden by environment variables at runtime
+#   NOTE: this can be overridden by the environment variable
+#   `KANIDM_LOG_LEVEL` at runtime
 #   Defaults to "info"
 # log_level = "info"
 #
@@ -59,21 +60,22 @@ tls_key = "/var/lib/private/kanidm/key.pem"
 #   such as webauthn, so it *must* match your DNS
 #   hostname. It is used to create
 #   security principal names such as `william@idm.example.com`
-#   so that in a (future)
-#   trust configuration it is possible to have unique Security
-#   Principal Names (spns) throughout the topology.
+#   so that in a (future) trust configuration it is possible
+#   to have unique Security Principal Names (spns) throughout
+#   the topology.
+#
 #   ⚠️  WARNING ⚠️
+#
 #   Changing this value WILL break many types of registered
-#   credentials for accounts
-#   including but not limited to webauthn, oauth tokens, and more.
+#   credentials for accounts including but not limited to
+#   webauthn, oauth tokens, and more.
 #   If you change this value you *must* run
 #   `kanidmd domain_name_change` immediately after.
 domain = "idm.example.com"
 #
 #   The origin for webauthn. This is the url to the server,
-#   with the port included if
-#   it is non-standard (any port except 443). This must match
-#   or be a descendent of the
+#   with the port included if it is non-standard (any port
+#   except 443). This must match or be a descendent of the
 #   domain name you configure above. If these two items are
 #   not consistent, the server WILL refuse to start!
 #   origin = "https://idm.example.com"

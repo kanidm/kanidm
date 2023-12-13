@@ -9,10 +9,10 @@ projects can come in different forms so I'll answer to a few of them:
 
 ## Is the library in Rust?
 
-If it's not in Rust, it's not eligible for inclusion. There is a single exception today (rlm
-python) but it's very likely this will also be removed in the future. Keeping a single language
-helps with testing, but also makes the project more accessible and consistent to developers.
-Additionally, features exist in Rust that help to improve the quality of the project from development to
+If it's not in Rust, it's not eligible for inclusion. There is a single exception today (rlm python)
+but it's very likely this will also be removed in the future. Keeping a single language helps with
+testing, but also makes the project more accessible and consistent to developers. Additionally,
+features exist in Rust that help to improve the quality of the project from development to
 production.
 
 ## Is the project going to create a microservice like architecture?
@@ -93,9 +93,9 @@ correctly increment/advance between the servers. However, Mongo is not aware of 
 would not be able to give the experience we desire. Mongo is a very good database, it's just not the
 right choice for Kanidm.
 
-Additionally, it's worth noting that most of these other databases would violate the previous desires
-to keep the language as Rust and may require external configuration or daemons which may not be
-possible to test.
+Additionally, it's worth noting that most of these other databases would violate the previous
+desires to keep the language as Rust and may require external configuration or daemons which may not
+be possible to test.
 
 ## How PAM/nsswitch Work
 

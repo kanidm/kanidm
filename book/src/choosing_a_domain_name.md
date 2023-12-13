@@ -76,7 +76,8 @@ between them. This provides proper isolation between the instances.
 
 `idm.local` - This is a bad example as `.local` is an mDNS domain name suffix which means that
 client machines if they visit another network _may_ try to contact `idm.local` believing they are on
-their usual network. If TLS verification were disabled, this would allow leaking of credentials.
+their usual network. If TLS certificate verification were disabled, this would allow leaking of
+credentials.
 
 `kanidm.com` - This is bad because the use of the top level domain means that any subdomain can
 access the cookies issued by `kanidm.com`, effectively leaking them to all other hosts.

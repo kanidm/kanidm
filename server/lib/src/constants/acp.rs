@@ -754,6 +754,7 @@ lazy_static! {
             Attribute::Description,
             Attribute::Member,
             Attribute::DynMember,
+            Attribute::EntryManagedBy,
         ],
         modify_present_attrs: vec![
             Attribute::Description,
@@ -1694,7 +1695,7 @@ lazy_static! {
         name: "idm_acp_hp_service_account_entry_managed_by",
         uuid: UUID_IDM_ACP_HP_SERVICE_ACCOUNT_ENTRY_MANAGED_BY_MODIFY,
         description: "Builtin IDM Control for allowing entry_managed_by to be set on high priv service account entries",
-        receiver: BuiltinAcpReceiver::Group(vec![UUID_SYSTEM_ADMINS]),
+        receiver: BuiltinAcpReceiver::Group(vec![UUID_IDM_ACCESS_CONTROL_ADMINS]),
         target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
             match_class_filter!(EntryClass::ServiceAccount).clone(),
             match_class_filter!(EntryClass::Account).clone(),

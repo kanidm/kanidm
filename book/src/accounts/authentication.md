@@ -16,13 +16,20 @@ secure method of authentication in Kanidm.
 
 <!-- deno-fmt-ignore-start -->
 
-{{#template templates/kani-warning.md
+{{#template ../templates/kani-warning.md
 imagepath=images
 title=Warning!
-text=Kanidm's definition of Passkeys differs to other systems. This is because we adopted the term very early before it has changed and evolved.
+text=Kanidm's definition of may Passkeys differ to other systems. This is because we adopted the term very early before it has changed and evolved.
 }}
 
 <!-- deno-fmt-ignore-end -->
+
+### Attested Passkeys
+
+These are the same as Passkeys, except that the device must present a cryptographic certificate or
+origin during registration. This allows [account policy](policy.md) to be defined to only allow the
+use of certain models of authenticator. In general only FIDO2 keys or TPM's are capable of meeting
+attestation requirements.
 
 ### Password + TOTP
 
@@ -35,8 +42,13 @@ environments due to the fact it is still possible to perform realtime phishing a
 
 ## Resetting Person Account Credentials
 
-Members of the `idm_account_manage_priv` group have the rights to manage person and service accounts
-security and login aspects. This includes resetting account credentials.
+Members of the groups `idm_people_admins`, `idm_people_on_boarding` and `idm_service_desk` have the
+rights to initiate a credential reset for a person.
+
+> NOTE: If the person is a memberof `idm_high_privilege` then these resets are not allowed. This is
+> to prevent `idm_service_desk` and similar roles from privilege escalation by resetting the
+> credentials of a higher privileged account. If a person who is a memberof `idm_high_privilege`
+> requires a credential reset, this must be initiated by a member of `idm_people_admins`.
 
 ### Onboarding a New Person / Resetting Credentials
 
@@ -82,15 +94,25 @@ kanidm person credential create-reset-token demo_user 86400 --name idm_admin
 If the user wishes you can direct them to `https://idm.mydomain.name/ui/reset` where they can
 manually enter their token value.
 
-Once the credential has been set the token is immediately invalidated and can never be used again.
-By default the token is valid for 1 hour. You can request a longer token validity time when creating
-the token. Tokens are only allowed to be valid for a maximum of 24 hours.
+Once the credential reset has been committed the token is immediately invalidated and can never be
+used again. By default the token is valid for 1 hour. You can request a longer token validity time
+when creating the token. Tokens are only allowed to be valid for a maximum of 24 hours.
 
 ### Resetting Credentials Directly
 
-You can perform a password reset on the demo\_user, for example as the idm\_admin user, who is a
+You can perform a password reset on the `demo_user`, for example as the `idm_admin` user, who is a
 default member of this group. The lines below prefixed with `#` are the interactive credential
 update interface. This allows the user to directly manage the credentials of another account.
+
+<!-- deno-fmt-ignore-start -->
+
+{{#template ../templates/kani-warning.md
+imagepath=images
+title=Warning!
+text=Don't use the direct credential reset to lock or invalidate an account. You should expire the account instead.
+}}
+
+<!-- deno-fmt-ignore-end -->
 
 ```bash
 kanidm person credential update demo_user --name idm_admin
@@ -115,15 +137,10 @@ kanidm login --name demo_user
 kanidm self whoami --name demo_user
 ```
 
-<!-- deno-fmt-ignore-start -->
+## Credential Deletion
 
-{{#template templates/kani-warning.md
-imagepath=images
-title=Warning!
-text=Don't use the direct credential reset to lock or invalidate an account. You should expire the account instead.
-}}
-
-<!-- deno-fmt-ignore-end -->
+When a person deletes a credential, all sessions that were created by that credential are
+immediately logged out and invalidated.
 
 ## Reauthentication / Privilege Access Mode
 

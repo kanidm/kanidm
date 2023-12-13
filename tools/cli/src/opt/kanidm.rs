@@ -362,7 +362,6 @@ pub enum AccountCredential {
         #[clap(flatten)]
         copt: CommonOpt,
         /// Optionally set how many seconds the reset token should be valid for.
-        #[clap(long = "ttl")]
         ttl: Option<u32>,
     },
 }
