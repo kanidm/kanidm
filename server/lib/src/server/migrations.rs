@@ -835,6 +835,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             SCHEMA_CLASS_SYSTEM_CONFIG.clone().into(),
             SCHEMA_CLASS_OAUTH2_RS_BASIC.clone().into(),
             SCHEMA_CLASS_OAUTH2_RS_PUBLIC.clone().into(),
+            SCHEMA_CLASS_APPLICATION.clone().into(),
         ];
 
         let r: Result<(), _> = idm_schema_classes

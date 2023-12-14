@@ -839,13 +839,22 @@ pub static ref SCHEMA_CLASS_OAUTH2_RS_BASIC: SchemaClass = SchemaClass {
     ..Default::default()
 };
 
-
 pub static ref SCHEMA_CLASS_OAUTH2_RS_PUBLIC: SchemaClass = SchemaClass {
     uuid: UUID_SCHEMA_CLASS_OAUTH2_RS_PUBLIC,
     name: EntryClass::OAuth2ResourceServerPublic.into(),
 
     description: "The class representing a configured Oauth2 Resource Server with public clients and pkce verification".to_string(),
     systemexcludes: vec![EntryClass::OAuth2ResourceServerBasic.into()],
+    ..Default::default()
+};
+
+pub static ref SCHEMA_CLASS_APPLICATION: SchemaClass = SchemaClass {
+    uuid: UUID_SCHEMA_CLASS_APPLICATION,
+    name: EntryClass::Application.into(),
+
+    description: "The class representing an application, requires group".to_string(),
+    systemsupplements: vec![EntryClass::Group.into()],
+    systemexcludes: vec![EntryClass::Person.into(), EntryClass::ServiceAccount.into()],
     ..Default::default()
 };
 
