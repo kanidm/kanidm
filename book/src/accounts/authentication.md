@@ -19,7 +19,7 @@ secure method of authentication in Kanidm.
 {{#template ../templates/kani-warning.md
 imagepath=images
 title=Warning!
-text=Kanidm's definition of may Passkeys differ to other systems. This is because we adopted the term very early before it has changed and evolved.
+text=Kanidm's definition of Passkeys may differ from that of other systems. This is because we adopted the term very early, before it has changed and evolved.
 }}
 
 <!-- deno-fmt-ignore-end -->
@@ -45,9 +45,9 @@ environments due to the fact it is still possible to perform realtime phishing a
 Members of the groups `idm_people_admins`, `idm_people_on_boarding` and `idm_service_desk` have the
 rights to initiate a credential reset for a person.
 
-> NOTE: If the person is a memberof `idm_high_privilege` then these resets are not allowed. This is
+> NOTE: If the person is a member of `idm_high_privilege` then these resets are not allowed. This is
 > to prevent `idm_service_desk` and similar roles from privilege escalation by resetting the
-> credentials of a higher privileged account. If a person who is a memberof `idm_high_privilege`
+> credentials of a higher privileged account. If a person who is a member of `idm_high_privilege`
 > requires a credential reset, this must be initiated by a member of `idm_people_admins`.
 
 ### Onboarding a New Person / Resetting Credentials

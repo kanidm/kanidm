@@ -1,9 +1,9 @@
 # People Accounts
 
 A person represents a human's account in Kanidm. The majority of your users will be a person who
-will use this account in their daily activities. These entries may contain personaly identifying
-information that _is_ considered by kani to be sensitive. Because of this, there are default limits
-to who may access these data.
+will use this account in their daily activities. These entries may contain personally identifying
+information that _is_ considered by Kanidm to be sensitive. Because of this, there are default
+limits to who may access these data.
 
 ## Creating Person Accounts
 
@@ -28,7 +28,7 @@ kanidm person update demo_user --legalname "initial name" --mail "initial@email.
 ```
 
 You can also use anonymous to view accounts - note that you won't see certain fields due to the
-limits of the access control anonymous access profile.
+limits of the anonymous access control profile.
 
 ```bash
 kanidm login --name anonymous
@@ -73,7 +73,7 @@ These datetimes are stored in the server as UTC, but presented according to your
 to aid correct understanding of when the events will occur.
 
 You may set these time and date values in any timezone you wish (such as your local timezone), and
-the server will transform these to UTC. These time values are in iso8601 format, and you should
+the server will transform these to UTC. These time values are in ISO8601 format, and you should
 specify this as:
 
 ```shell

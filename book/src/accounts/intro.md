@@ -30,7 +30,7 @@ Identity Management (IDM) systems.
 
 There are two "break-glass" system administration accounts.
 
-`admin` is the default service account which has privileges to configure and administer kanidm as a
+`admin` is the default service account which has privileges to configure and administer Kanidm as a
 whole. This account can manage access controls, schema, integrations and more. However the `admin`
 can not manage persons by default.
 
@@ -51,7 +51,7 @@ assign persons to these roles instead.
 ## Reauthentication and Session Privilege
 
 Kanidm sessions have a concept of session privilege. Conceptually you can consider this like `sudo`
-on unix systems or `uac` on windows. This allows a session to briefly access it's write permissions
+on unix systems or `uac` on windows. This allows a session to briefly access its write permissions
 by reauthentication with the identical credential they logged in with.
 
 This allows safe assignment of high privilege roles to persons since their sessions do not have
@@ -69,7 +69,7 @@ users if this is considered a risk.
 By default the `admin` and `idm_admin` accounts have no password, and can not be accessed. They need
 to be "recovered" from the server that is running the kanidmd server.
 
-You should have already recovered the admin account during your setup process. If not refer to the
+You should have already recovered the admin account during your setup process. If not, refer to the
 [server configuration chapter](server_configuration.md#default-admin-account) on how to recover
 these accounts.
 
@@ -78,7 +78,7 @@ These accounts will be used through the remainder of this document for managing 
 ## Viewing Default Groups
 
 You should take some time to inspect the default groups which are related to default roles and
-permissions. Each group has a description to explain it's purpose. These can be viewed with:
+permissions. Each group has a description to explain its purpose. These can be viewed with:
 
 ```bash
 kanidm group list --name idm_admin
@@ -88,9 +88,8 @@ kanidm group get <name>
 ## Why Can't I Change admin With idm\_admin?
 
 As a security mechanism there is a distinction between "accounts" and "high permission accounts".
-This is to help prevent elevation attacks, where say a member of a service desk could attempt to
-reset the password of idm\_admin or admin, or even a member of HR or System Admin teams to move
-laterally.
+This is to help prevent elevation attacks, where a member of a service desk could attempt to reset
+the password of idm\_admin or admin, or even a member of HR or System Admin teams to move laterally.
 
 Generally, membership of a "privilege" group that ships with Kanidm, such as:
 
@@ -102,7 +101,7 @@ Generally, membership of a "privilege" group that ships with Kanidm, such as:
 ...indirectly grants you membership to "idm\_high\_privilege". If you are a member of this group,
 the standard "account" and "people" rights groups are NOT able to alter, read or manage these
 accounts. To manage these accounts higher rights are required, such as those held by the admin
-account are required.
+account.
 
 Further, groups that are considered "idm\_high\_privilege" can NOT be managed by the standard
 "idm\_group\_manage\_priv" group.
