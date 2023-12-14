@@ -1116,7 +1116,7 @@ lazy_static! {
             ],
         name: "idm_acp_group_manage",
         uuid: UUID_IDM_ACP_GROUP_MANAGE_V1,
-        description: "Builtin IDM Control for creating and deleting groups in the directory",
+        description: "Builtin IDM Control for creating and deleting groups and applications in the directory",
         receiver: BuiltinAcpReceiver::Group ( vec![UUID_IDM_GROUP_ADMINS] ),
          // group which is not in HP, Recycled, Tombstone
          target: BuiltinAcpTarget::Filter( ProtoFilter::And(vec![
@@ -1144,6 +1144,7 @@ lazy_static! {
         create_classes: vec![
             EntryClass::Object,
             EntryClass::Group,
+            EntryClass::Application,
         ],
         modify_present_attrs: vec![
             Attribute::Name,
