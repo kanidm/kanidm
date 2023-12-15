@@ -55,7 +55,7 @@ docker run --rm -i -t -v kanidmd:/data \
 docker start kanidmd
 ```
 
-### Recover the admin roles
+### Recover the Admin Role Passwords
 
 The `admin` account is used to configure Kanidm itself.
 

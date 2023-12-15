@@ -11,7 +11,7 @@ allows other users or groups to update the service account.
 The `entry_managed_by` attribute of a service account may be created and modified by members of
 `idm_service_account_admins`.
 
-> NOTE: If a service account is a member of `idm_high_privilege` it's `entry_managed_by` may only be
+> NOTE: If a service account is a member of `idm_high_privilege` its `entry_managed_by` may only be
 > modified by members of `idm_access_control_admins`
 
 ```bash
@@ -25,20 +25,20 @@ to administer the service account.
 
 ## Using API Tokens with Service Accounts
 
-Service accounts can have api tokens generated and associated with them. These tokens can be used
+Service accounts can have API tokens generated and associated with them. These tokens can be used
 for identification of the service account, and for granting extended access rights where the service
 account may previously have not had the access. Additionally service accounts can have expiry times
 and other auditing information attached.
 
-To show api tokens for a service account:
+To show API tokens for a service account:
 
 ```bash
 kanidm service-account api-token status --name ENTRY_MANAGER ACCOUNT_ID
 kanidm service-account api-token status --name demo_user demo_service
 ```
 
-By default api tokens are issued to be "read only", so they are unable to make changes on behalf of
-the service account they represent. To generate a new read only api token with optional expiry time:
+By default API tokens are issued to be "read only", so they are unable to make changes on behalf of
+the service account they represent. To generate a new read only API token with optional expiry time:
 
 ```bash
 kanidm service-account api-token generate --name ENTRY_MANAGER ACCOUNT_ID LABEL [EXPIRY]
@@ -47,8 +47,8 @@ kanidm service-account api-token generate --name demo_user demo_service "Test To
 ```
 
 If you wish to issue a token that is able to make changes on behalf of the service account, you must
-add the "--rw" flag during the generate command. It is recommended you only add --rw when the
-api-token is performing writes to Kanidm.
+add the `--rw` flag during the generate command. It is recommended you only add `--rw` when the API
+token is performing writes to Kanidm.
 
 ```bash
 kanidm service-account api-token generate --name ENTRY_MANAGER ACCOUNT_ID LABEL [EXPIRY] --rw
@@ -56,7 +56,7 @@ kanidm service-account api-token generate --name demo_user demo_service "Test To
 kanidm service-account api-token generate --name demo_user demo_service "Test Token" 2020-09-25T11:22:02+10:00 --rw
 ```
 
-To destroy (revoke) an api token you will need it's token id. This can be shown with the "status"
+To destroy (revoke) an API token you will need its token id. This can be shown with the "status"
 command.
 
 ```bash
@@ -68,8 +68,8 @@ kanidm service-account api-token destroy --name demo_user demo_service 4de2a4e9-
 
 ## API Tokens with LDAP
 
-Api tokens can also be used to gain extended search permissions with LDAP. To do this you can bind
-with a dn of `dn=token` and provide the api token in the password.
+API tokens can also be used to gain extended search permissions with LDAP. To do this you can bind
+with a dn of `dn=token` and provide the API token as the password.
 
 ```bash
 ldapwhoami -H ldaps://URL -x -D "dn=token" -w "TOKEN"

@@ -1,6 +1,6 @@
 # Configuring the Server
 
-In this section we will configure your server and create it's container instance.
+In this section we will configure your server and create its container instance.
 
 ## Configuring server.toml
 
@@ -77,7 +77,7 @@ and `idm_admin` which manages accounts and groups in Kanidm.
 You should consider these as "break-glass" accounts. They exist to allow the server to be
 bootstrapped and accessed in emergencies. They are not intended for day-to-day use.
 
-This command will generate a new random password for the admin accounts. You must run this command
+These commands will generate a new random password for the admin accounts. You must run the commands
 as the same user as the kanidmd process or as root. This defaults to using `-c /data/server.toml`.
 
 ```bash
