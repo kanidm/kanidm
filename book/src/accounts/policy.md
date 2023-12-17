@@ -27,7 +27,8 @@ The minimum length for passwords (if they are allowed).
 
 ### Privilege Expiry
 
-The maximum length in seconds that privileges will exist during reauthentication for persons.
+The maximum length in seconds that privileges will exist after reauthentication for to a read/write
+session.
 
 ### Webauthn Attestation
 
@@ -134,8 +135,8 @@ kanidm group account-policy privilege-expiry my_admin_group 900
 
 ### Setting Webauthn Attestation CA Lists
 
-The list should be generated with `fido-mds-tool`. This will emit json that can be directly used
-with kanidm.
+The list should be generated with `fido-mds-tool`. This will emit JSON that can be directly used
+with Kanidm.
 
 ```bash
 kanidm group account-policy webauthn-attestation-ca-list <group name> <attestation ca list json>
