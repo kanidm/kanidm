@@ -111,7 +111,7 @@ kanidm group account-policy auth-expiry my_admin_group 86400
 ### Setting Minimum Password Length
 
 The password-minimum-length value defines the character length of passwords that are acceptable.
-There are no-other tunables for passwords in account policy. Other settings such as complexity,
+There are no other tunables for passwords in account policy. Other settings such as complexity,
 symbols, numbers and so on, have been proven to not matter in any real world attacks.
 
 To set this value:
