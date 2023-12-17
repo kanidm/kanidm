@@ -72,7 +72,7 @@ process applications for HR/People that are capable of supplying this kind of da
 ### Enabling POSIX Attributes on Accounts
 
 To enable POSIX account features and IDs on an account, you require the permission
-`idm_account_unix_extend_priv`. This is provided to `idm_admins` in the default database.
+`idm_unix_admins`. This is provided to `idm_admins` by default.
 
 You can then use the following command to enable POSIX extensions on a person or service account.
 
@@ -97,8 +97,8 @@ kanidm service-account posix show --name anonymous demo_account
 
 ### Enabling POSIX Attributes on Groups
 
-To enable POSIX group features and IDs on an account, you require the permission
-`idm_group_unix_extend_priv`. This is provided to `idm_admins` in the default database.
+To enable POSIX group features and IDs on an account, you require the permission `idm_unix_admins`.
+This is provided to `idm_admins` by default.
 
 You can then use the following command to enable POSIX extensions:
 

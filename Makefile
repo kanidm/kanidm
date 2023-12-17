@@ -117,6 +117,7 @@ precommit: ## all the usual test things
 precommit: test codespell test/pykanidm doc/format
 
 .PHONY: vendor
+vendor: ## Vendor required crates
 vendor:
 	cargo vendor > cargo_vendor_config
 

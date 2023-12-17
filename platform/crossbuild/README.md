@@ -34,7 +34,6 @@ CROSS_CONFIG=platform/crossbuild/ubuntu-22.04/Cross.toml \
         --bin kanidm_ssh_authorizedkeys \
         --bin kanidm-unix \
         --release
-
 ```
 
 Things will end up in `./target/aarch64-unknown-linux-gnu/release/`

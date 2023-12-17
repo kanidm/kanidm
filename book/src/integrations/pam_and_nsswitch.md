@@ -38,8 +38,8 @@ systemctl status kanidm-unixd-tasks
 ```
 
 > **NOTE** The `kanidm_unixd_tasks` daemon is not required for PAM and nsswitch functionality. If
-> disabled, your system will function as usual. It is however strongly recommended due to the features it
-> provides supporting Kanidm's capabilities.
+> disabled, your system will function as usual. It is however strongly recommended due to the
+> features it provides supporting Kanidm's capabilities.
 
 Both unixd daemons use the connection configuration from /etc/kanidm/config. This is the covered in
 [client_tools](../client_tools.md#kanidm-configuration).
@@ -47,7 +47,7 @@ Both unixd daemons use the connection configuration from /etc/kanidm/config. Thi
 You can also configure some unixd-specific options with the file /etc/kanidm/unixd:
 
 ```toml
-{{#rustdoc_include ../../examples/unixd}}
+{{#rustdoc_include ../../../examples/unixd}}
 ```
 
 > **NOTICE:** All users in Kanidm can change their name (and their spn) at any time. If you change

@@ -26,7 +26,8 @@ use std::time::Duration;
 
 use kanidm_proto::constants::uri::V1_AUTH_VALID;
 use kanidm_proto::constants::{
-    APPLICATION_JSON, ATTR_NAME, CLIENT_TOKEN_CACHE, KOPID, KSESSIONID, KVERSION,
+    APPLICATION_JSON, ATTR_ENTRY_MANAGED_BY, ATTR_NAME, CLIENT_TOKEN_CACHE, KOPID, KSESSIONID,
+    KVERSION,
 };
 use kanidm_proto::v1::*;
 use reqwest::header::CONTENT_TYPE;
@@ -1551,14 +1552,36 @@ impl KanidmClient {
             .await
     }
 
-    pub async fn idm_group_create(&self, name: &str) -> Result<(), ClientError> {
+    pub async fn idm_group_create(
+        &self,
+        name: &str,
+        entry_managed_by: Option<&str>,
+    ) -> Result<(), ClientError> {
         let mut new_group = Entry {
             attrs: BTreeMap::new(),
         };
         new_group
             .attrs
             .insert(ATTR_NAME.to_string(), vec![name.to_string()]);
+
+        if let Some(entry_manager) = entry_managed_by {
+            new_group.attrs.insert(
+                ATTR_ENTRY_MANAGED_BY.to_string(),
+                vec![entry_manager.to_string()],
+            );
+        }
+
         self.perform_post_request("/v1/group", new_group).await
+    }
+
+    pub async fn idm_group_set_entry_managed_by(
+        &self,
+        id: &str,
+        entry_manager: &str,
+    ) -> Result<(), ClientError> {
+        let data = vec![entry_manager];
+        self.perform_put_request(&format!("/v1/group/{}/_attr/entry_managed_by", id), data)
+            .await
     }
 
     pub async fn idm_group_set_members(

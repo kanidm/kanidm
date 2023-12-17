@@ -384,6 +384,7 @@ impl CredentialResetApp {
             CUExtPortal::None => html! { <></> },
             CUExtPortal::Hidden => html! {
                 <>
+                  <hr class="my-4" />
                   <p>{ "This account is externally managed. Some features may not be available." }</p>
                 </>
             },
@@ -391,6 +392,7 @@ impl CredentialResetApp {
                 let url_str = url.as_str().to_string();
                 html! {
                     <>
+                      <hr class="my-4" />
                       <p>{ "This account is externally managed. Some features may not be available." }</p>
                       <a href={ url_str } >{ "Visit the external account portal" }</a>
                     </>
@@ -468,7 +470,6 @@ impl CredentialResetApp {
 
               <div class="row g-3">
                   <form class="needs-validation" novalidate=true>
-                    <hr class="my-4" />
 
                     { ext_cred_portal_html }
 
@@ -738,7 +739,7 @@ impl CredentialResetApp {
         let cb = self.cb.clone();
 
         match attested_passkeys_state {
-            CUCredState::Modifiable | CUCredState::DeleteOnly => {
+            CUCredState::Modifiable => {
                 html! {
                   <>
                     <hr class="my-4" />
@@ -756,14 +757,32 @@ impl CredentialResetApp {
                         )
                     }
 
-                    {
-                        if attested_passkeys_state == CUCredState::Modifiable {
-                            html! { <PasskeyModalApp token={ token.clone() } cb={ cb } class={ PasskeyClass::Attested } allowed_devices={ Some(attested_passkeys_allowed_devices.to_vec()) } /> }
-                        } else {
-                            html! { <></> }
-                        }
-                    }
+                    <PasskeyModalApp token={ token.clone() } cb={ cb } class={ PasskeyClass::Attested } allowed_devices={ Some(attested_passkeys_allowed_devices.to_vec()) } />
                   </>
+                }
+            }
+            CUCredState::DeleteOnly => {
+                if attested_passkeys.is_empty() {
+                    html! { <></> }
+                } else {
+                    html! {
+                      <>
+                        <hr class="my-4" />
+                        <h4>{"Attested Passkeys"}</h4>
+
+                        { for attested_passkeys.iter()
+                            .map(|detail|
+                                PasskeyRemoveModalApp::render_button(&detail.tag, detail.uuid)
+                            )
+                        }
+                        { for attested_passkeys.iter()
+                            .map(|detail|
+                                html! { <PasskeyRemoveModalApp token={ token.clone() } tag={ detail.tag.clone() } uuid={ detail.uuid } cb={ cb.clone() } class={ PasskeyClass::Attested } /> }
+                            )
+                        }
+
+                      </>
+                    }
                 }
             }
             CUCredState::AccessDeny | CUCredState::PolicyDeny => {

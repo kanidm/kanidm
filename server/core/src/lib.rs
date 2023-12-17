@@ -865,6 +865,7 @@ pub async fn create_server_core(
     match &config.integration_test_config {
         Some(itc) => {
             let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await;
+            // We need to get the admin pw.
             match idms_prox_write.recover_account("admin", Some(&itc.admin_password)) {
                 Ok(_) => {}
                 Err(e) => {
@@ -875,6 +876,22 @@ pub async fn create_server_core(
                     return Err(());
                 }
             };
+            // Add admin to idm_admins to allow tests more flexibility wrt to permissions.
+            // This way our default access controls can be stricter to prevent lateral
+            // movement.
+            match idms_prox_write.qs_write.internal_modify_uuid(
+                UUID_IDM_ADMINS,
+                &ModifyList::new_append(Attribute::Member, Value::Refer(UUID_ADMIN)),
+            ) {
+                Ok(_) => {}
+                Err(e) => {
+                    error!(
+                        "Unable to configure INTEGRATION TEST admin as member of idm_admins -> {:?}",
+                        e
+                    );
+                    return Err(());
+                }
+            }
             match idms_prox_write.commit() {
                 Ok(_) => {}
                 Err(e) => {

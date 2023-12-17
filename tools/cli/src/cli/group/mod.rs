@@ -8,7 +8,7 @@ impl GroupOpt {
         match self {
             GroupOpt::List(copt) => copt.debug,
             GroupOpt::Get(gcopt) => gcopt.copt.debug,
-            GroupOpt::Create(gcopt) => gcopt.copt.debug,
+            GroupOpt::SetEntryManagedBy { copt, .. } | GroupOpt::Create { copt, .. } => copt.debug,
             GroupOpt::Delete(gcopt) => gcopt.copt.debug,
             GroupOpt::ListMembers(gcopt) => gcopt.copt.debug,
             GroupOpt::AddMembers(gcopt) => gcopt.copt.debug,
@@ -58,13 +58,20 @@ impl GroupOpt {
                     Err(e) => handle_client_error(e, gcopt.copt.output_mode),
                 }
             }
-            GroupOpt::Create(gcopt) => {
-                let client = gcopt.copt.to_client(OpType::Write).await;
-                match client.idm_group_create(gcopt.name.as_str()).await {
+            GroupOpt::Create {
+                copt,
+                name,
+                entry_managed_by,
+            } => {
+                let client = copt.to_client(OpType::Write).await;
+                match client
+                    .idm_group_create(name.as_str(), entry_managed_by.as_deref())
+                    .await
+                {
                     Err(err) => {
                         error!("Error -> {:?}", err)
                     }
-                    Ok(_) => println!("Successfully created group '{}'", gcopt.name.as_str()),
+                    Ok(_) => println!("Successfully created group '{}'", name.as_str()),
                 }
             }
             GroupOpt::Delete(gcopt) => {
@@ -124,7 +131,6 @@ impl GroupOpt {
                     Ok(_) => println!("Successfully removed members from {}", gcopt.name.as_str()),
                 }
             }
-
             GroupOpt::SetMembers(gcopt) => {
                 let client = gcopt.copt.to_client(OpType::Write).await;
                 let new_members: Vec<&str> = gcopt.members.iter().map(String::as_str).collect();
@@ -135,6 +141,21 @@ impl GroupOpt {
                 {
                     Err(e) => handle_client_error(e, gcopt.copt.output_mode),
                     Ok(_) => println!("Successfully set members for group {}", gcopt.name.as_str()),
+                }
+            }
+            GroupOpt::SetEntryManagedBy {
+                name,
+                entry_managed_by,
+                copt,
+            } => {
+                let client = copt.to_client(OpType::Write).await;
+
+                match client
+                    .idm_group_set_entry_managed_by(name.as_str(), entry_managed_by.as_str())
+                    .await
+                {
+                    Err(e) => handle_client_error(e, copt.output_mode),
+                    Ok(_) => println!("Successfully set members for group {}", name.as_str()),
                 }
             }
             GroupOpt::Posix { commands } => match commands {

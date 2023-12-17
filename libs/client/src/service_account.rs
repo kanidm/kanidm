@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use kanidm_proto::constants::{ATTR_DISPLAYNAME, ATTR_MAIL, ATTR_NAME};
+use kanidm_proto::constants::{ATTR_DISPLAYNAME, ATTR_ENTRY_MANAGED_BY, ATTR_MAIL, ATTR_NAME};
 use kanidm_proto::v1::{AccountUnixExtend, ApiToken, ApiTokenGenerate, CredentialStatus, Entry};
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -22,6 +22,7 @@ impl KanidmClient {
         &self,
         name: &str,
         displayname: &str,
+        entry_managed_by: &str,
     ) -> Result<(), ClientError> {
         let mut new_acct = Entry {
             attrs: BTreeMap::new(),
@@ -32,6 +33,11 @@ impl KanidmClient {
         new_acct
             .attrs
             .insert(ATTR_DISPLAYNAME.to_string(), vec![displayname.to_string()]);
+        new_acct.attrs.insert(
+            ATTR_ENTRY_MANAGED_BY.to_string(),
+            vec![entry_managed_by.to_string()],
+        );
+
         self.perform_post_request("/v1/service_account", new_acct)
             .await
     }
@@ -46,6 +52,7 @@ impl KanidmClient {
         id: &str,
         newname: Option<&str>,
         displayname: Option<&str>,
+        entry_managed_by: Option<&str>,
         mail: Option<&[String]>,
     ) -> Result<(), ClientError> {
         let mut update_entry = Entry {
@@ -57,12 +64,21 @@ impl KanidmClient {
                 .attrs
                 .insert(ATTR_NAME.to_string(), vec![newname.to_string()]);
         }
+
         if let Some(newdisplayname) = displayname {
             update_entry.attrs.insert(
                 ATTR_DISPLAYNAME.to_string(),
                 vec![newdisplayname.to_string()],
             );
         }
+
+        if let Some(entry_managed_by) = entry_managed_by {
+            update_entry.attrs.insert(
+                ATTR_ENTRY_MANAGED_BY.to_string(),
+                vec![entry_managed_by.to_string()],
+            );
+        }
+
         if let Some(mail) = mail {
             update_entry
                 .attrs

@@ -171,13 +171,13 @@ fn enforce_unique<VALID, STATE>(
 
             while let Some(cand_query) = queue.pop_front() {
                 let filt_in = filter!(f_or(cand_query.to_vec()));
-                let conflict_cand = qs.internal_exists(filt_in).map_err(|e| {
+                let conflict_cand = qs.internal_search(filt_in).map_err(|e| {
                     admin_error!("internal exists error {:?}", e);
                     e
                 })?;
 
                 // A conflict was found!
-                if conflict_cand {
+                if let Some(conflict_cand_zero) = conflict_cand.get(0) {
                     if cand_query.len() >= 2 {
                         // Continue to split to isolate.
                         let mid = cand_query.len() / 2;
@@ -187,7 +187,7 @@ fn enforce_unique<VALID, STATE>(
                         // Continue!
                     } else {
                         // Report this as a failing query.
-                        error!(cand_filters = ?cand_query, "The following filter conditions failed to assert uniqueness");
+                        error!(cand_filters = ?cand_query, conflicting_with = %conflict_cand_zero.get_display_id(), "The following filter conditions failed to assert uniqueness");
                     }
                 }
             }

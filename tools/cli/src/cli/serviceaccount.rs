@@ -38,7 +38,7 @@ impl ServiceAccountOpt {
             ServiceAccountOpt::Get(aopt) => aopt.copt.debug,
             ServiceAccountOpt::Update(aopt) => aopt.copt.debug,
             ServiceAccountOpt::Delete(aopt) => aopt.copt.debug,
-            ServiceAccountOpt::Create(aopt) => aopt.copt.debug,
+            ServiceAccountOpt::Create { copt, .. } => copt.debug,
             ServiceAccountOpt::Validity { commands } => match commands {
                 AccountValidity::Show(ano) => ano.copt.debug,
                 AccountValidity::ExpireAt(ano) => ano.copt.debug,
@@ -301,6 +301,7 @@ impl ServiceAccountOpt {
                         aopt.aopts.account_id.as_str(),
                         aopt.newname.as_deref(),
                         aopt.displayname.as_deref(),
+                        aopt.entry_managed_by.as_deref(),
                         aopt.mail.as_deref(),
                     )
                     .await
@@ -349,16 +350,22 @@ impl ServiceAccountOpt {
                     }
                 };
             }
-            ServiceAccountOpt::Create(acopt) => {
-                let client = acopt.copt.to_client(OpType::Write).await;
+            ServiceAccountOpt::Create {
+                aopts,
+                copt,
+                display_name,
+                entry_managed_by,
+            } => {
+                let client = copt.to_client(OpType::Write).await;
                 if let Err(e) = client
                     .idm_service_account_create(
-                        acopt.aopts.account_id.as_str(),
-                        acopt.display_name.as_str(),
+                        aopts.account_id.as_str(),
+                        display_name.as_str(),
+                        entry_managed_by.as_str(),
                     )
                     .await
                 {
-                    handle_client_error(e, acopt.copt.output_mode)
+                    handle_client_error(e, copt.output_mode)
                 }
             }
             ServiceAccountOpt::Validity { commands } => match commands {

@@ -154,4 +154,7 @@ docker run --rm -i -t -u 1000:1000 -v kanidmd:/data kanidm/server:latest /sbin/k
 
 ## Minimum TLS key lengths
 
-We enforce a minimum RSA key length of 2048 bits, and ECDSA keys need 224 bits.
+We enforce a minimum RSA and ECDSA key sizes. If your key is insufficently large, the server will
+refuse to start and inform you of this.
+
+Currently accepted key sizes are minimum 2048 bit RSA and 224 bit ECDSA.

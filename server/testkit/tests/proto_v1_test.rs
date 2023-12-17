@@ -6,13 +6,11 @@ use kanidm_proto::constants::KSESSIONID;
 use kanidm_proto::internal::ImageValue;
 use kanidm_proto::v1::{
     ApiToken, AuthCredential, AuthIssueSession, AuthMech, AuthRequest, AuthResponse, AuthState,
-    AuthStep, CURegState, CredentialDetailType, Entry, Filter, Modify, ModifyList, UatPurpose,
-    UserAuthToken,
+    AuthStep, CURegState, Entry, Filter, Modify, ModifyList, UatPurpose, UserAuthToken,
 };
 use kanidmd_lib::credential::totp::Totp;
 use kanidmd_lib::prelude::{
     Attribute, BUILTIN_GROUP_IDM_ADMINS_V1, BUILTIN_GROUP_SYSTEM_ADMINS_V1,
-    IDM_PEOPLE_ACCOUNT_PASSWORD_IMPORT_PRIV_V1,
 };
 use tracing::{debug, trace};
 
@@ -50,29 +48,6 @@ async fn test_server_create(rsclient: KanidmClient) {
     assert!(a_res.is_ok());
 
     let res = rsclient.create(vec![e]).await;
-    assert!(res.is_ok());
-}
-
-#[kanidmd_testkit::test]
-async fn test_server_modify(rsclient: KanidmClient) {
-    // Build a self mod.
-    let f = Filter::SelfUuid;
-    let m = ModifyList::new_list(vec![
-        Modify::Purged(Attribute::DisplayName.to_string()),
-        Modify::Present(Attribute::DisplayName.to_string(), "test".to_string()),
-    ]);
-
-    // Not logged in - should fail!
-    let res = rsclient.modify(f.clone(), m.clone()).await;
-    assert!(res.is_err());
-
-    let a_res = rsclient
-        .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
-        .await;
-    assert!(a_res.is_ok());
-
-    let res = rsclient.modify(f, m).await;
-    println!("{:?}", res);
     assert!(res.is_ok());
 }
 
@@ -181,7 +156,10 @@ async fn test_server_rest_group_lifecycle(rsclient: KanidmClient) {
     assert!(!g_list.is_empty());
 
     // Create a new group
-    rsclient.idm_group_create("demo_group").await.unwrap();
+    rsclient
+        .idm_group_create("demo_group", Some(BUILTIN_GROUP_IDM_ADMINS_V1.name))
+        .await
+        .unwrap();
 
     // List again, ensure one more.
     let g_list_2 = rsclient.idm_group_list().await.unwrap();
@@ -246,7 +224,13 @@ async fn test_server_rest_group_lifecycle(rsclient: KanidmClient) {
         .await
         .unwrap();
     println!("{:?}", members);
-    assert!(members == Some(vec!["idm_admin@localhost".to_string()]));
+    assert!(
+        members
+            == Some(vec![
+                "admin@localhost".to_string(),
+                "idm_admin@localhost".to_string()
+            ])
+    );
 }
 
 #[kanidmd_testkit::test]
@@ -552,7 +536,10 @@ async fn test_server_rest_posix_lifecycle(rsclient: KanidmClient) {
     // Create a group
 
     // Extend the group with posix attrs
-    rsclient.idm_group_create("posix_group").await.unwrap();
+    rsclient
+        .idm_group_create("posix_group", Some(BUILTIN_GROUP_IDM_ADMINS_V1.name))
+        .await
+        .unwrap();
     rsclient
         .idm_group_add_members("posix_group", &["posix_account"])
         .await
@@ -785,72 +772,16 @@ async fn test_server_rest_recycle_lifecycle(rsclient: KanidmClient) {
 }
 
 #[kanidmd_testkit::test]
-async fn test_server_rest_account_import_password(rsclient: KanidmClient) {
-    let res = rsclient
-        .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
-        .await;
-    assert!(res.is_ok());
-    // To enable the admin to actually make some of these changes, we have
-    // to make them a password import admin. NOT recommended in production!
-    rsclient
-        .idm_group_add_members(IDM_PEOPLE_ACCOUNT_PASSWORD_IMPORT_PRIV_V1.name, &["admin"])
-        .await
-        .unwrap();
-    rsclient
-        .idm_group_add_members(BUILTIN_GROUP_IDM_ADMINS_V1.name, &["admin"])
-        .await
-        .unwrap();
-
-    // Create a new person
-    rsclient
-        .idm_person_account_create("demo_account", "Deeeeemo")
-        .await
-        .unwrap();
-
-    // Attempt to import a bad password
-    let r = rsclient
-        .idm_person_account_primary_credential_import_password("demo_account", "password")
-        .await;
-    assert!(r.is_err());
-
-    // Import a good password
-    // eicieY7ahchaoCh0eeTa
-    // pbkdf2_sha256$36000$xIEozuZVAoYm$uW1b35DUKyhvQAf1mBqMvoBDcqSD06juzyO/nmyV0+w=
-    rsclient
-        .idm_person_account_primary_credential_import_password(
-            "demo_account",
-            "pbkdf2_sha256$36000$xIEozuZVAoYm$uW1b35DUKyhvQAf1mBqMvoBDcqSD06juzyO/nmyV0+w=",
-        )
-        .await
-        .unwrap();
-
-    // Now show we can auth with it
-    // "reset" the client.
-    let _ = rsclient.logout();
-    let res = rsclient
-        .auth_simple_password("demo_account", "eicieY7ahchaoCh0eeTa")
-        .await;
-    assert!(res.is_ok());
-
-    // And that the account can self read the cred status.
-    let cred_state = rsclient
-        .idm_person_account_get_credential_status("demo_account")
-        .await
-        .unwrap();
-
-    if let Some(cred) = cred_state.creds.get(0) {
-        assert!(cred.type_ == CredentialDetailType::Password)
-    } else {
-        assert!(false);
-    }
-}
-
-#[kanidmd_testkit::test]
 async fn test_server_rest_oauth2_basic_lifecycle(rsclient: KanidmClient) {
     let res = rsclient
         .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
         .await;
     assert!(res.is_ok());
+
+    rsclient
+        .idm_group_add_members(BUILTIN_GROUP_IDM_ADMINS_V1.name, &["admin"])
+        .await
+        .unwrap();
 
     // List, there are non.
     let initial_configs = rsclient
@@ -1119,6 +1050,23 @@ async fn test_server_credential_update_session_pw(rsclient: KanidmClient) {
         .auth_simple_password("demo_account", "eicieY7ahchaoCh0eeTa")
         .await;
     assert!(res.is_ok());
+
+    // Get privs
+    let res = rsclient
+        .reauth_simple_password("eicieY7ahchaoCh0eeTa")
+        .await;
+    assert!(res.is_ok());
+
+    // Build a self mod.
+    let f = Filter::SelfUuid;
+    let m = ModifyList::new_list(vec![
+        Modify::Purged(Attribute::DisplayName.to_string()),
+        Modify::Present(Attribute::DisplayName.to_string(), "test".to_string()),
+    ]);
+
+    let res = rsclient.modify(f, m).await;
+    println!("{:?}", res);
+    assert!(res.is_ok());
 }
 
 #[kanidmd_testkit::test]
@@ -1341,12 +1289,6 @@ async fn setup_demo_account_password(
         .await
         .expect("Failed to authenticate as admin");
 
-    // Not recommended in production!
-    rsclient
-        .idm_group_add_members(BUILTIN_GROUP_IDM_ADMINS_V1.name, &["admin"])
-        .await
-        .expect("Failed to add admin to idm_admins");
-
     rsclient
         .idm_person_account_create("demo_account", "Deeeeemo")
         .await
@@ -1417,14 +1359,12 @@ async fn test_server_api_token_lifecycle(rsclient: KanidmClient) {
 
     let test_service_account_username = "test_service";
 
-    // Not recommended in production!
     rsclient
-        .idm_group_add_members(BUILTIN_GROUP_IDM_ADMINS_V1.name, &[ADMIN_TEST_USER])
-        .await
-        .unwrap();
-
-    rsclient
-        .idm_service_account_create(test_service_account_username, "Test Service")
+        .idm_service_account_create(
+            test_service_account_username,
+            "Test Service",
+            BUILTIN_GROUP_IDM_ADMINS_V1.name,
+        )
         .await
         .expect("Failed to create service account");
 
@@ -1539,7 +1479,7 @@ async fn test_server_api_token_lifecycle(rsclient: KanidmClient) {
 
     // because you have to set *something*
     assert!(rsclient
-        .idm_service_account_update(test_service_account_username, None, None, None)
+        .idm_service_account_update(test_service_account_username, None, None, None, None)
         .await
         .is_err());
 
@@ -1549,6 +1489,7 @@ async fn test_server_api_token_lifecycle(rsclient: KanidmClient) {
             test_service_account_username,
             None,
             Some(&format!("{}displayzzzz", test_service_account_username)),
+            None,
             Some(&[format!("{}@example.crabs", test_service_account_username)]),
         )
         .await
@@ -1597,12 +1538,6 @@ async fn test_server_user_auth_token_lifecycle(rsclient: KanidmClient) {
         .auth_simple_password(ADMIN_TEST_USER, ADMIN_TEST_PASSWORD)
         .await;
     assert!(res.is_ok());
-
-    // Not recommended in production!
-    rsclient
-        .idm_group_add_members(BUILTIN_GROUP_IDM_ADMINS_V1.name, &[ADMIN_TEST_USER])
-        .await
-        .unwrap();
 
     rsclient
         .idm_person_account_create("demo_account", "Deeeeemo")

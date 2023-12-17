@@ -2149,8 +2149,8 @@ impl<STATE> Entry<EntryValid, STATE> {
 
         if !missing_must.is_empty() {
             admin_warn!(
-                "Validation error, the following required (must) attributes are missing - {:?}",
-                missing_must
+                "Validation error, the following required ({}) (must) attributes are missing - {:?}",
+                self.get_display_id(), missing_must
             );
             // We if are in the recycle bin, we don't hard error here. This can occur when
             // a migration occurs and we delete an acp, and then the related group. Because
@@ -2235,8 +2235,11 @@ impl<STATE> Entry<EntryValid, STATE> {
                         }
                         None => {
                             admin_error!(
-                                "{} - not found in the list of valid attributes for this set of classes - valid attributes are {:?}",
+                                "{} {} - not found in the list of valid attributes for this set of classes {:?} - valid attributes are {:?}",
+
                                 attr_name.to_string(),
+                                self.get_display_id(),
+                                entry_classes.iter().collect::<Vec<_>>(),
                                 may.keys().collect::<Vec<_>>()
                             );
                             Err(SchemaError::AttributeNotValidForClass(
@@ -2935,9 +2938,9 @@ impl<VALID, STATE> Entry<VALID, STATE> {
     // valid, we still have strict typing checks between the filter -> entry to guarantee
     // they should be functional. We'll never match something that isn't syntactially valid.
     #[inline(always)]
+    #[instrument(level = "trace", name = "entry::entry_match_no_index", skip(self))]
     /// Test if the following filter applies to and matches this entry.
     pub fn entry_match_no_index(&self, filter: &Filter<FilterValidResolved>) -> bool {
-        let _entered = trace_span!("entry::entry_match_no_index").entered();
         self.entry_match_no_index_inner(filter.to_inner())
     }
 

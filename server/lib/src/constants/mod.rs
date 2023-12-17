@@ -44,12 +44,13 @@ pub const SYSTEM_INDEX_VERSION: i64 = 30;
 pub type DomainVersion = u32;
 
 pub const DOMAIN_LEVEL_1: DomainVersion = 1;
+pub const DOMAIN_LEVEL_2: DomainVersion = 2;
 // The minimum supported domain functional level
-pub const DOMAIN_MIN_LEVEL: DomainVersion = DOMAIN_LEVEL_1;
+pub const DOMAIN_MIN_LEVEL: DomainVersion = DOMAIN_LEVEL_2;
 // The target supported domain functional level
-pub const DOMAIN_TGT_LEVEL: DomainVersion = DOMAIN_LEVEL_1;
+pub const DOMAIN_TGT_LEVEL: DomainVersion = DOMAIN_LEVEL_2;
 // The maximum supported domain functional level
-pub const DOMAIN_MAX_LEVEL: DomainVersion = DOMAIN_LEVEL_1;
+pub const DOMAIN_MAX_LEVEL: DomainVersion = DOMAIN_LEVEL_2;
 
 // On test builds, define to 60 seconds
 #[cfg(test)]
