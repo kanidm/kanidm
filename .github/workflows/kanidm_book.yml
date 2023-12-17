@@ -50,7 +50,7 @@ jobs:
           find ./docs > docs/manifest.txt
       - name: Upload redirector artifact
         # https://github.com/actions/upload-artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: base
           path: docs/index.html
@@ -91,14 +91,14 @@ jobs:
         with:
           fetch-depth: 0
       - name: Download base artifact
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: base
           path: ./docs/
         env:
           ACTIONS_RUNNER_DEBUG: true
       - name: Download individual artifact
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: individual
           path: ./docs/
