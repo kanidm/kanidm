@@ -456,6 +456,9 @@ async fn run_sync(
                 entries,
                 &sync_config.entry_map,
                 is_initialise,
+                sync_config
+                    .sync_password_as_unix_password
+                    .unwrap_or_default(),
             )
             .await
             {
@@ -521,6 +524,7 @@ async fn process_ipa_sync_result(
     ldap_entries: Vec<LdapSyncReplEntry>,
     entry_config_map: &BTreeMap<Uuid, EntryConfig>,
     is_initialise: bool,
+    sync_password_as_unix_password: bool,
 ) -> Result<Vec<ScimEntry>, ()> {
     // Because of how TOTP works with freeipa it's a soft referral from
     // the totp toward the user. This means if a TOTP is added or removed
@@ -758,7 +762,7 @@ async fn process_ipa_sync_result(
 
             let totp = totp_entries.get(&dn).unwrap_or(&empty_slice);
 
-            match ipa_to_scim_entry(e, &e_config, totp) {
+            match ipa_to_scim_entry(e, &e_config, totp, sync_password_as_unix_password) {
                 Ok(Some(e)) => Some(Ok(e)),
                 Ok(None) => None,
                 Err(()) => Some(Err(())),
@@ -767,12 +771,11 @@ async fn process_ipa_sync_result(
         .collect::<Result<Vec<_>, _>>()
 }
 
-// TODO: Allow re-map of uuid -> uuid
-
 fn ipa_to_scim_entry(
     sync_entry: LdapSyncReplEntry,
     entry_config: &EntryConfig,
     totp: &[LdapSyncReplEntry],
+    sync_password_as_unix_password: bool,
 ) -> Result<Option<ScimEntry>, ()> {
     debug!("{:#?}", sync_entry);
 
@@ -857,6 +860,12 @@ fn ipa_to_scim_entry(
             // pw hash formats in 389-ds we don't support!
             .or_else(|| entry.remove_ava_single(Attribute::UserPassword.as_ref()));
 
+        let unix_password_import = if sync_password_as_unix_password {
+            password_import.clone()
+        } else {
+            None
+        };
+
         let mail: Vec<_> = entry
             .remove_ava(Attribute::Mail.as_ref())
             .map(|set| {
@@ -928,6 +937,7 @@ fn ipa_to_scim_entry(
                 display_name,
                 gidnumber,
                 password_import,
+                unix_password_import,
                 totp_import,
                 login_shell,
                 mail,

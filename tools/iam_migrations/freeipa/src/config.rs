@@ -14,6 +14,8 @@ pub struct Config {
     pub ipa_sync_pw: String,
     pub ipa_sync_base_dn: String,
 
+    pub sync_password_as_unix_password: Option<bool>,
+
     // pub entry: Option<Vec<EntryConfig>>,
     #[serde(flatten)]
     pub entry_map: BTreeMap<Uuid, EntryConfig>,

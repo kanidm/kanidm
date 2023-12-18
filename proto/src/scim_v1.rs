@@ -10,7 +10,8 @@ use scim_proto::*;
 
 use crate::constants::{
     ATTR_ACCOUNT_EXPIRE, ATTR_ACCOUNT_VALID_FROM, ATTR_DESCRIPTION, ATTR_DISPLAYNAME,
-    ATTR_GIDNUMBER, ATTR_LOGINSHELL, ATTR_MAIL, ATTR_MEMBER, ATTR_NAME, ATTR_SSH_PUBLICKEY,
+    ATTR_GIDNUMBER, ATTR_LOGINSHELL, ATTR_MAIL, ATTR_MEMBER, ATTR_NAME, ATTR_PASSWORD_IMPORT,
+    ATTR_SSH_PUBLICKEY, ATTR_UNIX_PASSWORD_IMPORT,
 };
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, ToSchema)]
@@ -138,6 +139,7 @@ pub struct ScimSyncPerson {
     pub display_name: String,
     pub gidnumber: Option<u32>,
     pub password_import: Option<String>,
+    pub unix_password_import: Option<String>,
     pub totp_import: Vec<ScimTotp>,
     pub login_shell: Option<String>,
     pub mail: Vec<MultiValueAttr>,
@@ -158,6 +160,7 @@ impl Into<ScimEntry> for ScimSyncPerson {
             display_name,
             gidnumber,
             password_import,
+            unix_password_import,
             totp_import,
             login_shell,
             mail,
@@ -184,7 +187,8 @@ impl Into<ScimEntry> for ScimSyncPerson {
         set_string!(attrs, ATTR_NAME, user_name);
         set_string!(attrs, ATTR_DISPLAYNAME, display_name);
         set_option_u32!(attrs, ATTR_GIDNUMBER, gidnumber);
-        set_option_string!(attrs, "password_import", password_import);
+        set_option_string!(attrs, ATTR_PASSWORD_IMPORT, password_import);
+        set_option_string!(attrs, ATTR_UNIX_PASSWORD_IMPORT, unix_password_import);
         set_multi_complex!(attrs, "totp_import", totp_import);
         set_option_string!(attrs, ATTR_LOGINSHELL, login_shell);
         set_multi_complex!(attrs, ATTR_MAIL, mail);

@@ -72,6 +72,8 @@ pub struct Config {
 
     pub ldap_filter: LdapFilter,
 
+    pub sync_password_as_unix_password: Option<bool>,
+
     #[serde(default = "person_objectclass")]
     pub person_objectclass: String,
     #[serde(default = "person_attr_user_name")]

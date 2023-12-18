@@ -1593,7 +1593,9 @@ impl<'a> SchemaWriteTransaction<'a> {
             SchemaAttribute {
                 name: Attribute::UnixPasswordImport.into(),
                 uuid: UUID_SCHEMA_ATTR_UNIX_PASSWORD_IMPORT,
-                description: String::from("An imported unix password hash from an external system."),
+                description: String::from(
+                    "An imported unix password hash from an external system.",
+                ),
                 multivalue: false,
                 unique: false,
                 phantom: true,

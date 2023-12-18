@@ -553,6 +553,15 @@ fn ldap_to_scim_entry(
             password_import
         };
 
+        let unix_password_import = if sync_config
+            .sync_password_as_unix_password
+            .unwrap_or_default()
+        {
+            password_import.clone()
+        } else {
+            None
+        };
+
         let mail: Vec<_> = entry
             .remove_ava(&sync_config.person_attr_mail)
             .map(|set| {
@@ -610,6 +619,7 @@ fn ldap_to_scim_entry(
                 display_name,
                 gidnumber,
                 password_import,
+                unix_password_import,
                 totp_import,
                 login_shell,
                 mail,
