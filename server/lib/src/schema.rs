@@ -1589,6 +1589,24 @@ impl<'a> SchemaWriteTransaction<'a> {
         );
 
         self.attributes.insert(
+            Attribute::UnixPasswordImport.into(),
+            SchemaAttribute {
+                name: Attribute::UnixPasswordImport.into(),
+                uuid: UUID_SCHEMA_ATTR_UNIX_PASSWORD_IMPORT,
+                description: String::from(
+                    "An imported unix password hash from an external system.",
+                ),
+                multivalue: false,
+                unique: false,
+                phantom: true,
+                sync_allowed: true,
+                replicated: false,
+                index: vec![],
+                syntax: SyntaxType::Utf8String,
+            },
+        );
+
+        self.attributes.insert(
             Attribute::TotpImport.into(),
             SchemaAttribute {
                 name: Attribute::TotpImport.into(),

@@ -73,7 +73,7 @@ impl CredImport {
                     let hint = im_pw.split_at(len).0;
                     let id = e.get_display_id();
 
-                    error!(%hint, entry_id = %id, "password_import was unable to convert hash format");
+                    error!(%hint, entry_id = %id, "{} was unable to convert hash format", Attribute::PasswordImport);
 
                     OperationError::Plugin(PluginError::CredImport(
                         "password_import was unable to convert hash format".to_string(),
@@ -126,6 +126,40 @@ impl CredImport {
                 }
             }
 
+            // UNIX PASSWORD IMPORT
+            if let Some(vs) = e.pop_ava(Attribute::UnixPasswordImport) {
+                // if there are multiple, fail.
+                let im_pw = vs.to_utf8_single().ok_or_else(|| {
+                    OperationError::Plugin(PluginError::CredImport(
+                        format!("{} has incorrect value type - should be a single utf8 string", Attribute::UnixPasswordImport),
+                    ))
+                })?;
+
+                // convert the import_password_string to a password
+                let pw = Password::try_from(im_pw).map_err(|_| {
+                    let len = if im_pw.len() > 5 {
+                        4
+                    } else {
+                        im_pw.len() - 1
+                    };
+                    let hint = im_pw.split_at(len).0;
+                    let id = e.get_display_id();
+
+                    error!(%hint, entry_id = %id, "{} was unable to convert hash format", Attribute::UnixPasswordImport);
+
+                    OperationError::Plugin(PluginError::CredImport(
+                        "unix_password_import was unable to convert hash format".to_string(),
+                    ))
+                })?;
+
+                // Unix pw's aren't like primary, we can just splat them here.
+                let c = Credential::new_from_password(pw);
+                e.set_ava(
+                    Attribute::UnixPassword,
+                    once(Value::new_credential("primary", c)),
+                );
+            };
+
             Ok(())
         })
     }
@@ -147,17 +181,29 @@ mod tests {
     fn test_pre_create_password_import_1() {
         let preload: Vec<Entry<EntryInit, EntryNew>> = Vec::new();
 
-        let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-            "attrs": {
-                "class": ["person", "account"],
-                "name": ["testperson"],
-                "description": ["testperson"],
-                "displayname": ["testperson"],
-                "uuid": ["d2b496bd-8493-47b7-8142-f568b5cf47ee"],
-                "password_import": ["pbkdf2_sha256$36000$xIEozuZVAoYm$uW1b35DUKyhvQAf1mBqMvoBDcqSD06juzyO/nmyV0+w="]
-            }
-        }"#,
+        let e = entry_init!(
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Name, Value::new_iname("testperson")),
+            (
+                Attribute::Description,
+                Value::Utf8("testperson".to_string())
+            ),
+            (
+                Attribute::DisplayName,
+                Value::Utf8("testperson".to_string())
+            ),
+            (
+                Attribute::Uuid,
+                Value::Uuid(uuid!("d2b496bd-8493-47b7-8142-f568b5cf47ee"))
+            ),
+            (
+                Attribute::PasswordImport,
+                Value::Utf8(
+                    "pbkdf2_sha256$36000$xIEozuZVAoYm$uW1b35DUKyhvQAf1mBqMvoBDcqSD06juzyO/nmyV0+w="
+                        .into()
+                )
+            )
         );
 
         let create = vec![e];
@@ -167,17 +213,22 @@ mod tests {
 
     #[test]
     fn test_modify_password_import_1() {
-        // Add another uuid to a type
-        let ea: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-            "attrs": {
-                "class": ["account", "person"],
-                "name": ["testperson"],
-                "description": ["testperson"],
-                "displayname": ["testperson"],
-                "uuid": ["d2b496bd-8493-47b7-8142-f568b5cf47ee"]
-            }
-        }"#,
+        let ea = entry_init!(
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Name, Value::new_iname("testperson")),
+            (
+                Attribute::Description,
+                Value::Utf8("testperson".to_string())
+            ),
+            (
+                Attribute::DisplayName,
+                Value::Utf8("testperson".to_string())
+            ),
+            (
+                Attribute::Uuid,
+                Value::Uuid(uuid!("d2b496bd-8493-47b7-8142-f568b5cf47ee"))
+            )
         );
 
         let preload = vec![ea];
@@ -198,17 +249,22 @@ mod tests {
 
     #[test]
     fn test_modify_password_import_2() {
-        // Add another uuid to a type
-        let mut ea: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-            "attrs": {
-                "class": ["account", "person"],
-                "name": ["testperson"],
-                "description": ["testperson"],
-                "displayname": ["testperson"],
-                "uuid": ["d2b496bd-8493-47b7-8142-f568b5cf47ee"]
-            }
-        }"#,
+        let mut ea = entry_init!(
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Name, Value::new_iname("testperson")),
+            (
+                Attribute::Description,
+                Value::Utf8("testperson".to_string())
+            ),
+            (
+                Attribute::DisplayName,
+                Value::Utf8("testperson".to_string())
+            ),
+            (
+                Attribute::Uuid,
+                Value::Uuid(uuid!("d2b496bd-8493-47b7-8142-f568b5cf47ee"))
+            )
         );
 
         let p = CryptoPolicy::minimum();
@@ -236,17 +292,22 @@ mod tests {
 
     #[test]
     fn test_modify_password_import_3_totp() {
-        // Add another uuid to a type
-        let mut ea: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-            "attrs": {
-                "class": ["account", "person"],
-                "name": ["testperson"],
-                "description": ["testperson"],
-                "displayname": ["testperson"],
-                "uuid": ["d2b496bd-8493-47b7-8142-f568b5cf47ee"]
-            }
-        }"#,
+        let mut ea = entry_init!(
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Name, Value::new_iname("testperson")),
+            (
+                Attribute::Description,
+                Value::Utf8("testperson".to_string())
+            ),
+            (
+                Attribute::DisplayName,
+                Value::Utf8("testperson".to_string())
+            ),
+            (
+                Attribute::Uuid,
+                Value::Uuid(uuid!("d2b496bd-8493-47b7-8142-f568b5cf47ee"))
+            )
         );
 
         let totp = Totp::generate_secure(TOTP_DEFAULT_STEP);
@@ -391,6 +452,52 @@ mod tests {
             None,
             |_| {},
             |_| {}
+        );
+    }
+
+    #[test]
+    fn test_modify_unix_password_import() {
+        let ea = entry_init!(
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::PosixAccount.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Name, Value::new_iname("testperson")),
+            (
+                Attribute::Description,
+                Value::Utf8("testperson".to_string())
+            ),
+            (
+                Attribute::DisplayName,
+                Value::Utf8("testperson".to_string())
+            ),
+            (
+                Attribute::Uuid,
+                Value::Uuid(uuid!("d2b496bd-8493-47b7-8142-f568b5cf47ee"))
+            )
+        );
+
+        let preload = vec![ea];
+
+        run_modify_test!(
+            Ok(()),
+            preload,
+            filter!(f_eq(Attribute::Name, PartialValue::new_iutf8("testperson"))),
+            ModifyList::new_list(vec![Modify::Present(
+                Attribute::UnixPasswordImport.into(),
+                Value::from(IMPORT_HASH)
+            )]),
+            None,
+            |_| {},
+            |qs: &mut QueryServerWriteTransaction| {
+                let e = qs
+                    .internal_search_uuid(uuid!("d2b496bd-8493-47b7-8142-f568b5cf47ee"))
+                    .expect("failed to get entry");
+                let c = e
+                    .get_ava_single_credential(Attribute::UnixPassword)
+                    .expect("failed to get unix cred.");
+
+                assert!(matches!(&c.type_, CredentialType::Password(_pw)));
+            }
         );
     }
 }

@@ -820,13 +820,11 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 false,
                 ScimAttr::SingleSimple(ScimSimpleAttr::String(value)),
             ) => Ok(vec![Value::new_utf8(value.clone())]),
-
             (
                 SyntaxType::Utf8StringInsensitive,
                 false,
                 ScimAttr::SingleSimple(ScimSimpleAttr::String(value)),
             ) => Ok(vec![Value::new_iutf8(value)]),
-
             (
                 SyntaxType::Uint32,
                 false,
@@ -848,7 +846,6 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                     })
                 })
                 .map(|value| vec![Value::Uint32(value)]),
-
             (SyntaxType::ReferenceUuid, true, ScimAttr::MultiComplex(values)) => {
                 // In this case, because it's a reference uuid only, despite the multicomplex structure, it's a list of
                 // "external_id" to external_ids. These *might* also be uuids. So we need to use sync_external_id_to_uuid
@@ -3191,6 +3188,7 @@ mod tests {
           "value": "sk-ecdsa-sha2-nistp256@openssh.com AAAAInNrLWVjZHNhLXNoYTItbmlzdHAyNTZAb3BlbnNzaC5jb20AAAAIbmlzdHAyNTYAAABBBENubZikrb8hu+HeVRdZ0pp/VAk2qv4JDbuJhvD0yNdWDL2e3cBbERiDeNPkWx58Q4rVnxkbV1fa8E2waRtT91wAAAAEc3NoOg== testuser@fidokey"
         }
       ],
+      "unix_password_import": "ipaNTHash: iEb36u6PsRetBr3YMLdYbA",
       "password_import": "ipaNTHash: iEb36u6PsRetBr3YMLdYbA"
     },
     {
@@ -3302,6 +3300,7 @@ mod tests {
       "loginshell": "/bin/sh",
       "name": "testuser",
       "password_import": "ipaNTHash: iEb36u6PsRetBr3YMLdYbA",
+      "unix_password_import": "ipaNTHash: iEb36u6PsRetBr3YMLdYbA",
       "account_valid_from": "2021-11-28T04:57:55Z",
       "account_expire": "2023-11-28T04:57:55Z"
     },
