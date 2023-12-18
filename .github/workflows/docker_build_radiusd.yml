@@ -30,7 +30,7 @@ jobs:
           # Must use OCI exporter for multi-arch: https://github.com/docker/buildx/pull/1813
           outputs: type=oci,dest=/tmp/radius-docker.tar
       - name: Upload artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: radius-docker
           path: /tmp/radius-docker.tar
@@ -47,7 +47,7 @@ jobs:
 
     steps:
       - name: Download artifact
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: radius-docker
           path: /tmp

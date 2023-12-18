@@ -46,7 +46,7 @@ jobs:
       - name: Build packages (kanidm-unixd)
         run: make -f platform/debian/Makefile debs/kanidm-unixd
       - name: Upload debs
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ubuntu-packages
           path: |
@@ -62,7 +62,7 @@ jobs:
     if: ${{ github.ref == 'refs/heads/master' && github.repository == 'kanidm/kanidm' }}
     steps:
       - name: Download previously built debs
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: ubuntu-packages
       - name: List packages
