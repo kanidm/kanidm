@@ -189,7 +189,7 @@ impl Into<ScimEntry> for ScimSyncPerson {
         set_option_u32!(attrs, ATTR_GIDNUMBER, gidnumber);
         set_option_string!(attrs, ATTR_PASSWORD_IMPORT, password_import);
         set_option_string!(attrs, ATTR_UNIX_PASSWORD_IMPORT, unix_password_import);
-        set_multi_complex!(attrs, "totp_import", totp_import);
+        set_multi_complex!(attrs, ATTR_TOTP_IMPORT, totp_import);
         set_option_string!(attrs, ATTR_LOGINSHELL, login_shell);
         set_multi_complex!(attrs, ATTR_MAIL, mail);
         set_multi_complex!(attrs, ATTR_SSH_PUBLICKEY, ssh_publickey); // with the underscore
