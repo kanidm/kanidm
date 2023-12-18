@@ -73,7 +73,7 @@ impl CredImport {
                     let hint = im_pw.split_at(len).0;
                     let id = e.get_display_id();
 
-                    error!(%hint, entry_id = %id, "password_import was unable to convert hash format");
+                    error!(%hint, entry_id = %id, "{} was unable to convert hash format", Attribute::PasswordImport);
 
                     OperationError::Plugin(PluginError::CredImport(
                         "password_import was unable to convert hash format".to_string(),
@@ -145,10 +145,10 @@ impl CredImport {
                     let hint = im_pw.split_at(len).0;
                     let id = e.get_display_id();
 
-                    error!(%hint, entry_id = %id, "password_import was unable to convert hash format");
+                    error!(%hint, entry_id = %id, "{} was unable to convert hash format", Attribute::UnixPasswordImport);
 
                     OperationError::Plugin(PluginError::CredImport(
-                        "password_import was unable to convert hash format".to_string(),
+                        "unix_password_import was unable to convert hash format".to_string(),
                     ))
                 })?;
 
