@@ -172,6 +172,7 @@ pub const ATTR_UID: &str = "uid";
 pub const ATTR_UIDNUMBER: &str = "uidnumber";
 pub const ATTR_UNIQUE: &str = "unique";
 pub const ATTR_UNIX_PASSWORD: &str = "unix_password";
+pub const ATTR_UNIX_PASSWORD_IMPORT: &str = "unix_password_import";
 pub const ATTR_USER_AUTH_TOKEN_SESSION: &str = "user_auth_token_session";
 pub const ATTR_USERID: &str = "userid";
 pub const ATTR_USERPASSWORD: &str = "userpassword";
