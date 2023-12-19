@@ -187,6 +187,7 @@ pub const OAUTH2_SCOPE_READ: &str = "read";
 pub const OAUTH2_SCOPE_SUPPLEMENT: &str = "supplement";
 
 pub const LDAP_ATTR_CN: &str = "cn";
+pub const LDAP_ATTR_DN: &str = "dn";
 pub const LDAP_ATTR_DISPLAY_NAME: &str = "displayname";
 pub const LDAP_ATTR_EMAIL_ALTERNATIVE: &str = "emailalternative";
 pub const LDAP_ATTR_EMAIL_PRIMARY: &str = "emailprimary";
