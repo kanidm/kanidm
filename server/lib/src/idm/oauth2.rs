@@ -1879,9 +1879,11 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
             claims_locales_supported: None,
             ui_locales_supported: None,
             claims_parameter_supported: false,
-            // I think?
-            request_parameter_supported: true,
+            // TODO: once we support RFC9101 this can be true again
+            request_parameter_supported: false,
+            // TODO: if we support RFC9101 request_uri methods this can be true
             request_uri_parameter_supported: false,
+            // TODO: if we support RFC9101 request_uri methods this should be true
             require_request_uri_registration: false,
             op_policy_uri: None,
             op_tos_uri: None,
@@ -3518,7 +3520,7 @@ mod tests {
         assert!(!discovery.claims_parameter_supported);
         assert!(!discovery.request_uri_parameter_supported);
         assert!(!discovery.require_request_uri_registration);
-        assert!(discovery.request_parameter_supported);
+        assert!(!discovery.request_parameter_supported);
     }
 
     #[idm_test]
