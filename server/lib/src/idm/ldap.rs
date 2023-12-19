@@ -268,15 +268,7 @@ impl LdapServer {
                 // NOTE: All req_attrs are lowercase at this point.
                 let mapped_attrs: BTreeSet<_> = req_attrs
                     .iter()
-                    .filter_map(|a| {
-                        // EntryDN and DN have special handling in to_ldap in Entry. We don't
-                        // need these here, we know they will be returned as part of the transform.
-                        if a == "entrydn" || a == "dn" {
-                            None
-                        } else {
-                            Some(AttrString::from(ldap_vattr_map(a).unwrap_or(a)))
-                        }
-                    })
+                    .map(|a| AttrString::from(ldap_vattr_map(a).unwrap_or(a)))
                     .collect();
 
                 (Some(mapped_attrs), req_attrs)
@@ -564,9 +556,10 @@ pub(crate) fn ldap_all_vattrs() -> Vec<String> {
         ATTR_CN.to_string(),
         ATTR_EMAIL.to_string(),
         ATTR_LDAP_EMAIL_ADDRESS.to_string(),
+        LDAP_ATTR_DN.to_string(),
         LDAP_ATTR_EMAIL_ALTERNATIVE.to_string(),
         LDAP_ATTR_EMAIL_PRIMARY.to_string(),
-        "entrydn".to_string(),
+        LDAP_ATTR_ENTRYDN.to_string(),
         LDAP_ATTR_ENTRYUUID.to_string(),
         LDAP_ATTR_KEYS.to_string(),
         LDAP_ATTR_MAIL_ALTERNATIVE.to_string(),
@@ -588,7 +581,12 @@ pub(crate) fn ldap_vattr_map(input: &str) -> Option<&str> {
     //
     //   LDAP NAME     KANI ATTR SOURCE NAME
     match input {
-        ATTR_CN | ATTR_UID => Some(ATTR_NAME),
+        // EntryDN and DN have special handling in to_ldap in Entry. However, we
+        // need to map them to "name" so that if the user has requested dn/entrydn
+        // only, then we still requested at least one attribute from the backend
+        // allowing the access control tests to take place. Otherwise no entries
+        // would be returned.
+        ATTR_CN | ATTR_UID | LDAP_ATTR_ENTRYDN | LDAP_ATTR_DN => Some(ATTR_NAME),
         ATTR_GECOS => Some(ATTR_DISPLAYNAME),
         ATTR_EMAIL => Some(ATTR_MAIL),
         ATTR_LDAP_EMAIL_ADDRESS => Some(ATTR_MAIL),
