@@ -276,7 +276,7 @@ fn request_parameter_supported_default() -> bool {
 }
 
 fn request_uri_parameter_supported_default() -> bool {
-    true
+    false
 }
 
 fn require_request_uri_parameter_supported_default() -> bool {
@@ -330,14 +330,17 @@ pub struct OidcDiscoveryResponse {
     // Default false.
     #[serde(default = "claims_parameter_supported_default")]
     pub claims_parameter_supported: bool,
+
+    pub op_policy_uri: Option<Url>,
+    pub op_tos_uri: Option<Url>,
+
+    // these are related to RFC9101 JWT-Secured Authorization Request support
     #[serde(default = "request_parameter_supported_default")]
     pub request_parameter_supported: bool,
     #[serde(default = "request_uri_parameter_supported_default")]
     pub request_uri_parameter_supported: bool,
     #[serde(default = "require_request_uri_parameter_supported_default")]
     pub require_request_uri_registration: bool,
-    pub op_policy_uri: Option<Url>,
-    pub op_tos_uri: Option<Url>,
 }
 
 #[skip_serializing_none]
