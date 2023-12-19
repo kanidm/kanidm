@@ -1,6 +1,6 @@
-## Getting Started (for Developers)
+# Getting Started (for Developers)
 
-### Setup the Server
+## Setup the Server
 
 It's important before you start trying to write code and contribute that you understand what Kanidm
 does and its goals.
@@ -8,30 +8,57 @@ does and its goals.
 An important first step is to [install the server](installing_the_server.md) so if you have not done
 that yet, go and try that now! 😄
 
-### Setting up your Machine
+## Setting up your Machine
 
 Each operating system has different steps required to configure and build Kanidm.
 
-#### MacOS
+### MacOS
 
 A prerequisite is [Apple Xcode](https://apps.apple.com/au/app/xcode/id497799835?mt=12) for access to
 git and compiler tools. You should install this first.
 
 You will need [rustup](https://rustup.rs/) to install a Rust toolchain.
 
-To build the Web UI you'll need [wasm-pack](https://rustwasm.github.io/wasm-pack/) (`cargo install wasm-pack`).
+To build the Web UI you'll need [wasm-pack](https://rustwasm.github.io/wasm-pack/)
+(`cargo install wasm-pack`).
 
-#### SUSE / OpenSUSE
+### SUSE / OpenSUSE
 
 You will need to install rustup and our build dependencies with:
 
 ```bash
-zypper in rustup git libudev-devel sqlite3-devel libopenssl-3-devel
+zypper in rustup git libudev-devel sqlite3-devel libopenssl-3-devel libselinux-devel pam-devel tpm2-0-tss-devel
 ```
 
 You can then use rustup to complete the setup of the toolchain.
 
-#### Fedora
+In some cases you may need to build other vendored components, or use an alternate linker. In these
+cases we advise you to also install.
+
+```bash
+zypper in clang lld make sccache
+```
+
+You should also adjust your environment with:
+
+```bash
+export RUSTC_WRAPPER=sccache
+export CC="sccache /usr/bin/clang"
+export CXX="sccache /usr/bin/clang++"
+```
+
+And add the following to a cargo config of your choice (such as ~/.cargo/config), adjusting for cpu
+arch
+
+```toml
+[target.aarch64-unknown-linux-gnu]
+linker = "clang"
+rustflags = [
+    "-C", "link-arg=-fuse-ld=lld",
+]
+```
+
+### Fedora
 
 You will need [rustup](https://rustup.rs/) to install a Rust toolchain.
 
@@ -47,19 +74,19 @@ Building the Web UI requires additional packages:
 perl-FindBin perl-File-Compare
 ```
 
-#### Ubuntu
+### Ubuntu
 
 You need [rustup](https://rustup.rs/) to install a Rust toolchain.
 
 You will also need some system libraries to build this, which can be installed by running:
 
 ```bash
-sudo apt-get install libsqlite3-dev libudev-dev libssl-dev pkg-config libpam0g-dev
+sudo apt-get install libudev-dev libssl-dev pkg-config libpam0g-dev
 ```
 
 Tested with Ubuntu 20.04 and 22.04.
 
-#### Windows
+### Windows
 
 <!-- deno-fmt-ignore-start -->
 
@@ -80,21 +107,21 @@ This is how it works in the automated build:
 
 1. Enable use of installed packages for the user system-wide:
 
-```bash
-vcpkg integrate install
-```
+   ```bash
+   vcpkg integrate install
+   ```
 
 2. Install the openssl dependency, which compiles it from source. This downloads all sorts of
    dependencies, including perl for the build.
 
-```bash
-vcpkg install openssl:x64-windows-static-md
-```
+   ```bash
+   vcpkg install openssl:x64-windows-static-md
+   ```
 
 There's a powershell script in the root directory of the repository which, in concert with `openssl`
 will generate a config file and certs for testing.
 
-### Getting the Source Code
+## Getting the Source Code
 
 ### Get Involved
 
@@ -157,7 +184,7 @@ git pull
 git branch -D <feature-branch-name>
 ```
 
-#### Rebasing
+### Rebasing
 
 If you are asked to rebase your change, follow these steps:
 
@@ -177,44 +204,44 @@ git rebase --abort
 
 ### Building the Book
 
-You'll need `mdbook` to build the book:
+You'll need `mdbook` and the extensions to build the book:
 
-```bash
-cargo install mdbook
+```shell
+cargo install mdbook mdbook-mermaid mdbook-template
 ```
 
 To build it:
 
-```bash
+```shell
 make book
 ```
 
 Or to run a local webserver:
 
-```bash
+```shell
 cd book
 mdbook serve
 ```
 
-### Designs
+## Designs
 
 See the "Design Documents" section of this book.
 
-### Rust Documentation
+## Rust Documentation
 
 A list of links to the library documentation is at
 [kanidm.com/documentation](https://kanidm.com/documentation/).
 
-### Advanced
+## Advanced
 
-#### Minimum Supported Rust Version
+### Minimum Supported Rust Version
 
 The MSRV is specified in the package `Cargo.toml` files.
 
 We tend to be quite proactive in updating this to recent rust versions so we are open to increasing
 this value if required!
 
-#### Build Profiles
+### Build Profiles
 
 Build profiles allow us to change the operation of Kanidm during it's compilation for development or
 release on various platforms. By default the "developer" profile is used that assumes the correct
@@ -230,7 +257,7 @@ For example, this will set the CPU flags to "none" and the location for the Web 
 KANIDM_BUILD_PROFILE=release_suse_generic cargo build --release --bin kanidmd
 ```
 
-#### Building the Web UI
+### Building the Web UI
 
 **NOTE:** There is a pre-packaged version of the Web UI at `/server/web_ui/pkg/`, which can be used
 directly. This means you don't need to build the Web UI yourself.
@@ -249,11 +276,11 @@ cd server/web_ui/
 ./build_wasm_dev.sh
 ```
 
-To build for release, run `build_wasm_release.sh`.
+To build for release, run `build_wasm.sh`, or `make webui` from the project root.
 
 The "developer" profile for kanidmd will automatically use the pkg output in this folder.
 
-#### Development Server for Interactive Testing
+### Development Server for Interactive Testing
 
 Especially if you wish to develop the WebUI then the ability to run the server from the source tree
 is critical.
@@ -267,18 +294,20 @@ will create self-signed certificates in `/tmp/kanidm`.
 You can now build and run the server with the commands below. It will use a database in
 `/tmp/kanidm/kanidm.db`.
 
-Create the initial database and generate an `admin` password:
+Start the server
 
 ```bash
 cd server/daemon
+./run_insecure_dev_server.sh
+```
+
+While the server is running, you can use the admin socket to generate an `admin` password:
+
+```bash
 ./run_insecure_dev_server.sh recover-account admin
 ```
 
-Record the password above, then run the server start command:
-
-```bash
-./run_insecure_dev_server.sh
-```
+Record the password above.
 
 In a new terminal, you can now build and run the client tools with:
 
@@ -294,7 +323,7 @@ cargo run --bin kanidm -- self whoami -H https://localhost:8443 -D admin -C /tmp
 You may find it easier to modify `~/.config/kanidm` per the
 [book client tools section](client_tools.md) for extended administration locally.
 
-#### Raw actions
+### Raw actions
 
 <!-- deno-fmt-ignore-start -->
 
@@ -326,7 +355,7 @@ kanidm raw search -H https://localhost:8443 -C ../insecure/ca.pem -D admin '{"eq
 kanidm raw delete -H https://localhost:8443 -C ../insecure/ca.pem -D idm_admin '{"eq": ["name", "test_account_delete_me"]}'
 ```
 
-#### Build a Kanidm Container
+### Build a Kanidm Container
 
 Build a container with the current branch using:
 
@@ -348,7 +377,7 @@ The following environment variables control the build:
 | `CONTAINER_TOOL`       | Use an alternative container build tool.                  | `docker`                  |
 | `BOOK_VERSION`         | Sets version used when building the documentation book.   | `master`                  |
 
-##### Container Build Examples
+#### Container Build Examples
 
 Build a `kanidm` container using `podman`:
 
@@ -362,7 +391,7 @@ Build a `kanidm` container and use a redis build cache:
 CONTAINER_BUILD_ARGS='--build-arg "SCCACHE_REDIS=redis://redis.dev.blackhats.net.au:6379"' make build/kanidmd
 ```
 
-##### Automatically Built Containers
+#### Automatically Built Containers
 
 To speed up testing across platforms, we're leveraging GitHub actions to build containers for test
 use.
@@ -384,3 +413,8 @@ docker run --rm -it \
 ```
 
 This assumes you have a `kanidm` client configuration file in the current working directory.
+
+### Testing the OpenAPI generator things
+
+There's a script in `scripts/openapi_tests` which runs a few docker containers - you need to be
+running a local instance on port 8443 to be able to pull the JSON file for testing.

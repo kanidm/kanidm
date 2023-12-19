@@ -1,0 +1,17 @@
+[package]
+name = "kanidm_utils_users"
+description = "Kanidm utility crate"
+version.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+edition.workspace = true
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
+
+[lib]
+test = true
+doctest = false
+
+[dependencies]
+libc = { workspace = true }

@@ -1,5 +1,5 @@
 use base64urlsafedata::Base64UrlSafeData;
-use compact_jwt::{JwaAlg, JwsSigner};
+use compact_jwt::{crypto::JwsRs256Signer, JwsEs256Signer, JwsSigner};
 use hashbrown::HashSet;
 
 use crate::prelude::*;
@@ -9,19 +9,17 @@ use crate::valueset::{DbValueSetV2, ValueSet};
 
 #[derive(Debug, Clone)]
 pub struct ValueSetJwsKeyEs256 {
-    set: HashSet<JwsSigner>,
+    set: HashSet<JwsEs256Signer>,
 }
 
 impl ValueSetJwsKeyEs256 {
-    pub fn new(k: JwsSigner) -> Box<Self> {
-        debug_assert!(k.get_jwa_alg() == JwaAlg::ES256);
+    pub fn new(k: JwsEs256Signer) -> Box<Self> {
         let mut set = HashSet::new();
         set.insert(k);
         Box::new(ValueSetJwsKeyEs256 { set })
     }
 
-    pub fn push(&mut self, k: JwsSigner) -> bool {
-        debug_assert!(k.get_jwa_alg() == JwaAlg::ES256);
+    pub fn push(&mut self, k: JwsEs256Signer) -> bool {
         self.set.insert(k)
     }
 
@@ -29,7 +27,7 @@ impl ValueSetJwsKeyEs256 {
         let set = data
             .iter()
             .map(|b| {
-                JwsSigner::from_es256_der(b).map_err(|e| {
+                JwsEs256Signer::from_es256_der(b).map_err(|e| {
                     debug!(?e, "Error occurred parsing ES256 DER");
                     OperationError::InvalidValueState
                 })
@@ -42,7 +40,7 @@ impl ValueSetJwsKeyEs256 {
         let set = data
             .iter()
             .map(|b| {
-                JwsSigner::from_es256_der(b.0.as_slice()).map_err(|e| {
+                JwsEs256Signer::from_es256_der(b.0.as_slice()).map_err(|e| {
                     debug!(?e, "Error occurred parsing ES256 DER");
                     OperationError::InvalidValueState
                 })
@@ -56,10 +54,9 @@ impl ValueSetJwsKeyEs256 {
     #[allow(clippy::should_implement_trait)]
     pub fn from_iter<T>(iter: T) -> Option<Box<ValueSetJwsKeyEs256>>
     where
-        T: IntoIterator<Item = JwsSigner>,
+        T: IntoIterator<Item = JwsEs256Signer>,
     {
-        let set: HashSet<JwsSigner> = iter.into_iter().collect();
-        debug_assert!(set.iter().all(|k| k.get_jwa_alg() == JwaAlg::ES256));
+        let set: HashSet<JwsEs256Signer> = iter.into_iter().collect();
         Some(Box::new(ValueSetJwsKeyEs256 { set }))
     }
 }
@@ -79,7 +76,7 @@ impl ValueSetT for ValueSetJwsKeyEs256 {
         self.set.clear();
     }
 
-    fn remove(&mut self, pv: &PartialValue) -> bool {
+    fn remove(&mut self, pv: &PartialValue, _cid: &Cid) -> bool {
         match pv {
             PartialValue::Iutf8(kid) => {
                 let x = self.set.len();
@@ -101,6 +98,14 @@ impl ValueSetT for ValueSetJwsKeyEs256 {
         false
     }
 
+    fn startswith(&self, _pv: &PartialValue) -> bool {
+        false
+    }
+
+    fn endswith(&self, _pv: &PartialValue) -> bool {
+        false
+    }
+
     fn lessthan(&self, _pv: &PartialValue) -> bool {
         false
     }
@@ -118,7 +123,7 @@ impl ValueSetT for ValueSetJwsKeyEs256 {
     }
 
     fn validate(&self, _schema_attr: &SchemaAttribute) -> bool {
-        self.set.iter().all(|k| k.get_jwa_alg() == JwaAlg::ES256)
+        true
     }
 
     fn to_proto_string_clone_iter(&self) -> Box<dyn Iterator<Item = String> + '_> {
@@ -178,7 +183,7 @@ impl ValueSetT for ValueSetJwsKeyEs256 {
         }
     }
 
-    fn to_jws_key_es256_single(&self) -> Option<&JwsSigner> {
+    fn to_jws_key_es256_single(&self) -> Option<&JwsEs256Signer> {
         if self.set.len() == 1 {
             self.set.iter().take(1).next()
         } else {
@@ -186,26 +191,24 @@ impl ValueSetT for ValueSetJwsKeyEs256 {
         }
     }
 
-    fn as_jws_key_es256_set(&self) -> Option<&HashSet<JwsSigner>> {
+    fn as_jws_key_es256_set(&self) -> Option<&HashSet<JwsEs256Signer>> {
         Some(&self.set)
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct ValueSetJwsKeyRs256 {
-    set: HashSet<JwsSigner>,
+    set: HashSet<JwsRs256Signer>,
 }
 
 impl ValueSetJwsKeyRs256 {
-    pub fn new(k: JwsSigner) -> Box<Self> {
-        debug_assert!(k.get_jwa_alg() == JwaAlg::RS256);
+    pub fn new(k: JwsRs256Signer) -> Box<Self> {
         let mut set = HashSet::new();
         set.insert(k);
         Box::new(ValueSetJwsKeyRs256 { set })
     }
 
-    pub fn push(&mut self, k: JwsSigner) -> bool {
-        debug_assert!(k.get_jwa_alg() == JwaAlg::RS256);
+    pub fn push(&mut self, k: JwsRs256Signer) -> bool {
         self.set.insert(k)
     }
 
@@ -213,7 +216,7 @@ impl ValueSetJwsKeyRs256 {
         let set = data
             .iter()
             .map(|b| {
-                JwsSigner::from_rs256_der(b).map_err(|e| {
+                JwsRs256Signer::from_rs256_der(b).map_err(|e| {
                     debug!(?e, "Error occurred parsing RS256 DER");
                     OperationError::InvalidValueState
                 })
@@ -226,7 +229,7 @@ impl ValueSetJwsKeyRs256 {
         let set = data
             .iter()
             .map(|b| {
-                JwsSigner::from_rs256_der(b.0.as_slice()).map_err(|e| {
+                JwsRs256Signer::from_rs256_der(b.0.as_slice()).map_err(|e| {
                     debug!(?e, "Error occurred parsing RS256 DER");
                     OperationError::InvalidValueState
                 })
@@ -240,10 +243,9 @@ impl ValueSetJwsKeyRs256 {
     #[allow(clippy::should_implement_trait)]
     pub fn from_iter<T>(iter: T) -> Option<Box<ValueSetJwsKeyRs256>>
     where
-        T: IntoIterator<Item = JwsSigner>,
+        T: IntoIterator<Item = JwsRs256Signer>,
     {
-        let set: HashSet<JwsSigner> = iter.into_iter().collect();
-        debug_assert!(set.iter().all(|k| k.get_jwa_alg() == JwaAlg::RS256));
+        let set: HashSet<JwsRs256Signer> = iter.into_iter().collect();
         Some(Box::new(ValueSetJwsKeyRs256 { set }))
     }
 }
@@ -263,7 +265,7 @@ impl ValueSetT for ValueSetJwsKeyRs256 {
         self.set.clear();
     }
 
-    fn remove(&mut self, pv: &PartialValue) -> bool {
+    fn remove(&mut self, pv: &PartialValue, _cid: &Cid) -> bool {
         match pv {
             PartialValue::Iutf8(kid) => {
                 let x = self.set.len();
@@ -279,6 +281,14 @@ impl ValueSetT for ValueSetJwsKeyRs256 {
     }
 
     fn substring(&self, _pv: &PartialValue) -> bool {
+        false
+    }
+
+    fn startswith(&self, _pv: &PartialValue) -> bool {
+        false
+    }
+
+    fn endswith(&self, _pv: &PartialValue) -> bool {
         false
     }
 
@@ -299,7 +309,7 @@ impl ValueSetT for ValueSetJwsKeyRs256 {
     }
 
     fn validate(&self, _schema_attr: &SchemaAttribute) -> bool {
-        self.set.iter().all(|k| k.get_jwa_alg() == JwaAlg::RS256)
+        true
     }
 
     fn to_proto_string_clone_iter(&self) -> Box<dyn Iterator<Item = String> + '_> {
@@ -359,7 +369,7 @@ impl ValueSetT for ValueSetJwsKeyRs256 {
         }
     }
 
-    fn to_jws_key_rs256_single(&self) -> Option<&JwsSigner> {
+    fn to_jws_key_rs256_single(&self) -> Option<&JwsRs256Signer> {
         if self.set.len() == 1 {
             self.set.iter().take(1).next()
         } else {
@@ -367,7 +377,7 @@ impl ValueSetT for ValueSetJwsKeyRs256 {
         }
     }
 
-    fn as_jws_key_rs256_set(&self) -> Option<&HashSet<JwsSigner>> {
+    fn as_jws_key_rs256_set(&self) -> Option<&HashSet<JwsRs256Signer>> {
         Some(&self.set)
     }
 }

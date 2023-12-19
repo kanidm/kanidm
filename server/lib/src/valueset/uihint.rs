@@ -48,7 +48,7 @@ impl ValueSetT for ValueSetUiHint {
         self.set.clear();
     }
 
-    fn remove(&mut self, pv: &PartialValue) -> bool {
+    fn remove(&mut self, pv: &PartialValue, _cid: &Cid) -> bool {
         match pv {
             PartialValue::UiHint(s) => self.set.remove(s),
             _ => {
@@ -66,6 +66,14 @@ impl ValueSetT for ValueSetUiHint {
     }
 
     fn substring(&self, _pv: &PartialValue) -> bool {
+        false
+    }
+
+    fn startswith(&self, _pv: &PartialValue) -> bool {
+        false
+    }
+
+    fn endswith(&self, _pv: &PartialValue) -> bool {
         false
     }
 

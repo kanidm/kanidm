@@ -4,9 +4,11 @@
 #![deny(warnings)]
 #![recursion_limit = "512"]
 #![warn(unused_extern_crates)]
-// TODO: can't use this until we have a better way to handle the 'todo' lint?
-// #![deny(clippy::todo)]
-#![warn(clippy::todo)]
+// Enable some groups of clippy lints.
+#![deny(clippy::suspicious)]
+#![deny(clippy::perf)]
+// Specific lints to enforce.
+#![deny(clippy::todo)]
 #![deny(clippy::unimplemented)]
 #![deny(clippy::unwrap_used)]
 #![deny(clippy::expect_used)]
@@ -14,6 +16,8 @@
 #![deny(clippy::await_holding_lock)]
 #![deny(clippy::needless_pass_by_value)]
 #![deny(clippy::trivially_copy_pass_by_ref)]
+#![deny(clippy::disallowed_types)]
+#![deny(clippy::manual_let_else)]
 #![allow(clippy::unreachable)]
 
 #[cfg(all(jemallocator, test, not(target_family = "windows")))]
@@ -22,6 +26,7 @@ static ALLOC: jemallocator::Jemalloc = jemallocator::Jemalloc;
 
 #[macro_use]
 extern crate rusqlite;
+
 #[macro_use]
 extern crate tracing;
 #[macro_use]
@@ -41,13 +46,14 @@ pub mod entry;
 pub mod event;
 pub mod filter;
 pub mod modify;
-pub mod utils;
+pub mod time;
+pub(crate) mod utils;
 pub mod value;
 pub mod valueset;
 #[macro_use]
 mod plugins;
 pub mod idm;
-mod repl;
+pub mod repl;
 pub mod schema;
 pub mod server;
 pub mod status;
@@ -56,6 +62,7 @@ pub mod testkit;
 /// A prelude of imports that should be imported by all other Kanidm modules to
 /// help make imports cleaner.
 pub mod prelude {
+    pub use kanidm_proto::constants::*;
     pub use kanidm_proto::v1::{ConsistencyError, OperationError, SchemaError};
     pub use sketching::{
         admin_debug, admin_error, admin_info, admin_warn, filter_error, filter_info, filter_trace,
@@ -85,6 +92,7 @@ pub mod prelude {
     pub use crate::modify::{
         m_assert, m_pres, m_purge, m_remove, Modify, ModifyInvalid, ModifyList, ModifyValid,
     };
+    pub use crate::repl::cid::Cid;
     pub use crate::server::access::AccessControlsTransaction;
     pub use crate::server::batch_modify::BatchModifyEvent;
     pub use crate::server::identity::{
@@ -94,7 +102,7 @@ pub mod prelude {
         QueryServer, QueryServerReadTransaction, QueryServerTransaction,
         QueryServerWriteTransaction,
     };
-    pub use crate::utils::duration_from_epoch_now;
+    pub use crate::time::duration_from_epoch_now;
     pub use crate::value::{
         ApiTokenScope, IndexType, PartialValue, SessionScope, SyntaxType, Value,
     };

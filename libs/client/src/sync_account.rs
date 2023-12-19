@@ -1,6 +1,8 @@
 use crate::{ClientError, KanidmClient};
+use kanidm_proto::constants::{ATTR_DESCRIPTION, ATTR_NAME};
 use kanidm_proto::v1::Entry;
 use std::collections::BTreeMap;
+use url::Url;
 
 impl KanidmClient {
     pub async fn idm_sync_account_list(&self) -> Result<Vec<Entry>, ClientError> {
@@ -10,6 +12,48 @@ impl KanidmClient {
     pub async fn idm_sync_account_get(&self, id: &str) -> Result<Option<Entry>, ClientError> {
         self.perform_get_request(format!("/v1/sync_account/{}", id).as_str())
             .await
+    }
+
+    pub async fn idm_sync_account_set_credential_portal(
+        &self,
+        id: &str,
+        url: Option<&Url>,
+    ) -> Result<(), ClientError> {
+        let m = if let Some(url) = url {
+            vec![url.to_owned()]
+        } else {
+            vec![]
+        };
+
+        self.perform_put_request(
+            format!("/v1/sync_account/{}/_attr/sync_credential_portal", id).as_str(),
+            m,
+        )
+        .await
+    }
+
+    pub async fn idm_sync_account_get_credential_portal(
+        &self,
+        id: &str,
+    ) -> Result<Option<Url>, ClientError> {
+        self.perform_get_request(
+            format!("/v1/sync_account/{}/_attr/sync_credential_portal", id).as_str(),
+        )
+        .await
+        .map(|values: Vec<Url>| values.first().cloned())
+    }
+
+    pub async fn idm_sync_account_set_yield_attributes(
+        &self,
+        id: &str,
+        attrs: &Vec<String>,
+    ) -> Result<(), ClientError> {
+        // let m: Vec<_> = members.iter().map(|v| (*v).to_string()).collect();
+        self.perform_put_request(
+            format!("/v1/sync_account/{}/_attr/sync_yield_authority", id).as_str(),
+            &attrs,
+        )
+        .await
     }
 
     pub async fn idm_sync_account_create(
@@ -23,17 +67,18 @@ impl KanidmClient {
 
         new_acct
             .attrs
-            .insert("name".to_string(), vec![name.to_string()]);
+            .insert(ATTR_NAME.to_string(), vec![name.to_string()]);
         if let Some(description) = description {
             new_acct
                 .attrs
-                .insert("description".to_string(), vec![description.to_string()]);
+                .insert(ATTR_DESCRIPTION.to_string(), vec![description.to_string()]);
         }
 
         self.perform_post_request("/v1/sync_account", new_acct)
             .await
     }
 
+    /// Creates a sync token for a given sync account
     pub async fn idm_sync_account_generate_token(
         &self,
         id: &str,

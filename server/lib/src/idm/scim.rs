@@ -2,10 +2,10 @@ use std::time::Duration;
 
 use base64urlsafedata::Base64UrlSafeData;
 
-use compact_jwt::{Jws, JwsSigner};
+use compact_jwt::{Jws, JwsEs256Signer, JwsSigner};
+use kanidm_proto::internal::ScimSyncToken;
 use kanidm_proto::scim_v1::*;
 use kanidm_proto::v1::ApiTokenPurpose;
-use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 
 use crate::credential::totp::{Totp, TotpAlgo, TotpDigits};
@@ -14,6 +14,7 @@ use crate::prelude::*;
 use crate::value::ApiToken;
 
 use crate::schema::{SchemaClass, SchemaTransaction};
+use sshkey_attest::proto::PublicKey as SshPublicKey;
 
 // Internals of a Scim Sync token
 
@@ -22,34 +23,36 @@ pub(crate) struct SyncAccount {
     pub name: String,
     pub uuid: Uuid,
     pub sync_tokens: BTreeMap<Uuid, ApiToken>,
-    pub jws_key: JwsSigner,
+    pub jws_key: JwsEs256Signer,
 }
 
 macro_rules! try_from_entry {
     ($value:expr) => {{
         // Check the classes
-        if !$value.attribute_equality("class", &PVCLASS_SYNC_ACCOUNT) {
+        if !$value.attribute_equality(Attribute::Class, &EntryClass::SyncAccount.into()) {
             return Err(OperationError::InvalidAccountState(
                 "Missing class: sync account".to_string(),
             ));
         }
 
         let name = $value
-            .get_ava_single_iname("name")
+            .get_ava_single_iname(Attribute::Name)
             .map(|s| s.to_string())
             .ok_or(OperationError::InvalidAccountState(
                 "Missing attribute: name".to_string(),
             ))?;
 
         let jws_key = $value
-            .get_ava_single_jws_key_es256("jws_es256_private_key")
+            .get_ava_single_jws_key_es256(Attribute::JwsEs256PrivateKey)
             .cloned()
-            .ok_or(OperationError::InvalidAccountState(
-                "Missing attribute: jws_es256_private_key".to_string(),
-            ))?;
+            .ok_or(OperationError::InvalidAccountState(format!(
+                "Missing attribute: {}",
+                Attribute::JwsEs256PrivateKey
+            )))?
+            .set_sign_option_embed_jwk(true);
 
         let sync_tokens = $value
-            .get_ava_as_apitoken_map("sync_token_session")
+            .get_ava_as_apitoken_map(Attribute::SyncTokenSession)
             .cloned()
             .unwrap_or_default();
 
@@ -83,7 +86,7 @@ impl SyncAccount {
 
         // Get the sessions. There are no gracewindows on sync, we are much stricter.
         let session_present = entry
-            .get_ava_as_apitoken_map("sync_token_session")
+            .get_ava_as_apitoken_map(Attribute::SyncTokenSession)
             .map(|session_map| session_map.get(&sst.token_id).is_some())
             .unwrap_or(false);
 
@@ -114,17 +117,6 @@ impl GenerateScimSyncTokenEvent {
             label: label.to_string(),
         }
     }
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-#[serde(rename_all = "lowercase")]
-pub(crate) struct ScimSyncToken {
-    // uuid of the token?
-    pub token_id: Uuid,
-    #[serde(with = "time::serde::timestamp")]
-    pub issued_at: time::OffsetDateTime,
-    #[serde(default)]
-    pub purpose: ApiTokenPurpose,
 }
 
 impl<'a> IdmServerProxyWriteTransaction<'a> {
@@ -165,31 +157,37 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             },
         );
 
-        let token = Jws::new(ScimSyncToken {
+        let scim_sync_token = ScimSyncToken {
             token_id: session_id,
             issued_at,
             purpose,
-        });
+        };
+
+        let token = Jws::into_json(&scim_sync_token).map_err(|err| {
+            error!(?err, "Unable to serialise JWS");
+            OperationError::SerdeJsonError
+        })?;
 
         let modlist = ModifyList::new_list(vec![Modify::Present(
-            AttrString::from("sync_token_session"),
+            Attribute::SyncTokenSession.into(),
             session,
         )]);
 
         self.qs_write
             .impersonate_modify(
                 // Filter as executed
-                &filter!(f_eq("uuid", PartialValue::Uuid(gte.target))),
+                &filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(gte.target))),
                 // Filter as intended (acp)
-                &filter_all!(f_eq("uuid", PartialValue::Uuid(gte.target))),
+                &filter_all!(f_eq(Attribute::Uuid, PartialValue::Uuid(gte.target))),
                 &modlist,
                 // Provide the event to impersonate
                 &gte.ident,
             )
             .and_then(|_| {
                 // The modify succeeded and was allowed, now sign the token for return.
-                token
-                    .sign(&sync_account.jws_key)
+                sync_account
+                    .jws_key
+                    .sign(&token)
                     .map(|jws_signed| jws_signed.to_string())
                     .map_err(|e| {
                         admin_error!(err = ?e, "Unable to sign sync token");
@@ -210,14 +208,14 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         _ct: Duration,
     ) -> Result<(), OperationError> {
         let modlist =
-            ModifyList::new_list(vec![Modify::Purged(AttrString::from("sync_token_session"))]);
+            ModifyList::new_list(vec![Modify::Purged(Attribute::SyncTokenSession.into())]);
 
         self.qs_write
             .impersonate_modify(
                 // Filter as executed
-                &filter!(f_eq("uuid", PartialValue::Uuid(target))),
+                &filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(target))),
                 // Filter as intended (acp)
-                &filter!(f_eq("uuid", PartialValue::Uuid(target))),
+                &filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(target))),
                 &modlist,
                 // Provide the event to impersonate
                 ident,
@@ -260,7 +258,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             .get_accesscontrols()
             .effective_permission_check(&sfe.ident, Some(BTreeSet::default()), &[entry])?;
 
-        let eperm = effective_perms.get(0).ok_or_else(|| {
+        let eperm = effective_perms.first().ok_or_else(|| {
             admin_error!("Effective Permission check returned no results");
             OperationError::InvalidState
         })?;
@@ -294,8 +292,8 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         // First, get the set of uuids that exist. We need this so we have the set of uuids we'll
         // be deleting *at the end*.
         let f_all_sync = filter_all!(f_and!([
-            f_eq("class", PVCLASS_SYNC_OBJECT.clone()),
-            f_eq("sync_parent_uuid", PartialValue::Refer(sync_uuid))
+            f_eq(Attribute::Class, EntryClass::SyncObject.into()),
+            f_eq(Attribute::SyncParentUuid, PartialValue::Refer(sync_uuid))
         ]));
 
         // TODO: This could benefit from a search that only grabs uuids?
@@ -311,24 +309,30 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         /*
         let filter_or: Vec<_> = existing_entries
             .iter()
-            .map(|e| f_eq("uuid", PartialValue::Uuid(e.get_uuid())))
+            .map(|e| f_eq(Attribute::Uuid, PartialValue::Uuid(e.get_uuid())))
             .collect();
         */
 
         // We only need to delete the sync account itself.
-        let delete_filter = filter!(f_eq("uuid", PartialValue::Uuid(sync_uuid)));
+        let delete_filter = filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(sync_uuid)));
 
         if existing_entries {
             // Now modify these to remove their sync related attributes.
             let schema = self.qs_write.get_schema();
-            let sync_class = schema.get_classes().get("sync_object").ok_or_else(|| {
-                error!("Failed to access sync_object class, schema corrupt");
-                OperationError::InvalidState
-            })?;
+            let sync_class = schema
+                .get_classes()
+                .get(EntryClass::SyncObject.into())
+                .ok_or_else(|| {
+                    error!(
+                        "Failed to access {} class, schema corrupt",
+                        EntryClass::SyncObject
+                    );
+                    OperationError::InvalidState
+                })?;
 
             let modlist = std::iter::once(Modify::Removed(
-                "class".into(),
-                PartialValue::new_class("sync_object"),
+                Attribute::Class.into(),
+                EntryClass::SyncObject.into(),
             ))
             .chain(
                 sync_class
@@ -385,7 +389,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             .get_accesscontrols()
             .effective_permission_check(&ste.ident, Some(BTreeSet::default()), &[entry])?;
 
-        let eperm = effective_perms.get(0).ok_or_else(|| {
+        let eperm = effective_perms.first().ok_or_else(|| {
             admin_error!("Effective Permission check returned no results");
             OperationError::InvalidState
         })?;
@@ -419,8 +423,8 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         // First, get the set of uuids that exist. We need this so we have the set of uuids we'll
         // be deleting *at the end*.
         let f_all_sync = filter_all!(f_and!([
-            f_eq("class", PVCLASS_SYNC_OBJECT.clone()),
-            f_eq("sync_parent_uuid", PartialValue::Refer(sync_uuid))
+            f_eq(Attribute::Class, EntryClass::SyncObject.into()),
+            f_eq(Attribute::SyncParentUuid, PartialValue::Refer(sync_uuid))
         ]));
 
         // TODO: This could benefit from a search that only grabs uuids?
@@ -434,24 +438,30 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         let delete_filter = if existing_entries.is_empty() {
             // We only need to delete the sync account itself.
-            filter!(f_eq("uuid", PartialValue::Uuid(sync_uuid)))
+            filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(sync_uuid)))
         } else {
             // This is the delete filter we need later.
             let filter_or: Vec<_> = existing_entries
                 .iter()
-                .map(|e| f_eq("uuid", PartialValue::Uuid(e.get_uuid())))
+                .map(|e| f_eq(Attribute::Uuid, PartialValue::Uuid(e.get_uuid())))
                 .collect();
 
             // Now modify these to remove their sync related attributes.
             let schema = self.qs_write.get_schema();
-            let sync_class = schema.get_classes().get("sync_object").ok_or_else(|| {
-                error!("Failed to access sync_object class, schema corrupt");
-                OperationError::InvalidState
-            })?;
+            let sync_class = schema
+                .get_classes()
+                .get(EntryClass::SyncObject.into())
+                .ok_or_else(|| {
+                    error!(
+                        "Failed to access {} class, schema corrupt",
+                        EntryClass::SyncObject
+                    );
+                    OperationError::InvalidState
+                })?;
 
             let modlist = std::iter::once(Modify::Removed(
-                "class".into(),
-                PartialValue::new_class("sync_object"),
+                Attribute::Class.into(),
+                EntryClass::SyncObject.into(),
             ))
             .chain(
                 sync_class
@@ -470,7 +480,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 })?;
 
             filter!(f_or!([
-                f_eq("uuid", PartialValue::Uuid(sync_uuid)),
+                f_eq(Attribute::Uuid, PartialValue::Uuid(sync_uuid)),
                 f_or(filter_or)
             ]))
         };
@@ -563,7 +573,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         match (
             &changes.from_state,
-            sync_entry.get_ava_single_private_binary("sync_cookie"),
+            sync_entry.get_ava_single_private_binary(Attribute::SyncCookie),
         ) {
             (ScimSyncState::Refresh, _) => {
                 // valid
@@ -591,7 +601,10 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         let sync_refresh = matches!(&changes.from_state, ScimSyncState::Refresh);
 
         // Get the sync authority set from the entry.
-        let sync_authority_set = BTreeSet::default();
+        let sync_authority_set = sync_entry
+            .get_ava_as_iutf8(Attribute::SyncYieldAuthority)
+            .cloned()
+            .unwrap_or_default();
 
         // Transform the changes into something that supports lookups.
         let change_entries: BTreeMap<Uuid, &ScimEntry> = changes
@@ -621,7 +634,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         let filter_or = change_entries
             .keys()
             .copied()
-            .map(|u| f_eq("uuid", PartialValue::Uuid(u)))
+            .map(|u| f_eq(Attribute::Uuid, PartialValue::Uuid(u)))
             .collect();
 
         // NOTE: We bypass recycled/ts here because we WANT to know if we are in that
@@ -637,7 +650,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         // Refuse to proceed if any entries are in the recycled or tombstone state, since subsequent
         // operations WOULD fail.
         //
-        // I'm still a bit not sure what to do here though, because if we have uuid re-use from the
+        // I'm still a bit not sure what to do here though, because if we have uuid reuse from the
         // external system, that would be a pain, but I think we have to do this. This would be an
         // exceedingly rare situation though since 389-ds doesn't allow external uuid to be set, nor
         // does openldap. It would break both of their replication models for it to occur.
@@ -671,10 +684,10 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             .copied()
             .map(|u| {
                 entry_init!(
-                    ("class", Value::new_class("object")),
-                    ("class", Value::new_class("sync_object")),
-                    ("sync_parent_uuid", Value::Refer(sync_uuid)),
-                    ("uuid", Value::Uuid(u))
+                    (Attribute::Class, EntryClass::Object.to_value()),
+                    (Attribute::Class, EntryClass::SyncObject.to_value()),
+                    (Attribute::SyncParentUuid, Value::Refer(sync_uuid)),
+                    (Attribute::Uuid, Value::Uuid(u))
                 )
             })
             .collect();
@@ -704,11 +717,14 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                         *u,
                         ModifyList::new_list(vec![
                             Modify::Assert(
-                                "sync_parent_uuid".into(),
+                                Attribute::SyncParentUuid,
                                 PartialValue::Refer(sync_uuid),
                             ),
-                            Modify::Purged("sync_external_id".into()),
-                            Modify::Present("sync_external_id".into(), Value::new_iutf8(ext_id)),
+                            Modify::Purged(Attribute::SyncExternalId.into()),
+                            Modify::Present(
+                                Attribute::SyncExternalId.into(),
+                                Value::new_iutf8(ext_id),
+                            ),
                         ]),
                     )
                 })
@@ -747,18 +763,18 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         let filter_or = change_entries
             .keys()
             .copied()
-            .map(|u| f_eq("uuid", PartialValue::Uuid(u)))
+            .map(|u| f_eq(Attribute::Uuid, PartialValue::Uuid(u)))
             .collect::<Vec<_>>();
 
         let delete_filter = if filter_or.is_empty() {
             filter!(f_and!([
                 // Must be part of this sync agreement.
-                f_eq("sync_parent_uuid", PartialValue::Refer(sync_uuid))
+                f_eq(Attribute::SyncParentUuid, PartialValue::Refer(sync_uuid))
             ]))
         } else {
             filter!(f_and!([
                 // Must be part of this sync agreement.
-                f_eq("sync_parent_uuid", PartialValue::Refer(sync_uuid)),
+                f_eq(Attribute::SyncParentUuid, PartialValue::Refer(sync_uuid)),
                 // Must not be an entry in the change set.
                 f_andnot(f_or(filter_or))
             ]))
@@ -804,13 +820,11 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 false,
                 ScimAttr::SingleSimple(ScimSimpleAttr::String(value)),
             ) => Ok(vec![Value::new_utf8(value.clone())]),
-
             (
                 SyntaxType::Utf8StringInsensitive,
                 false,
                 ScimAttr::SingleSimple(ScimSimpleAttr::String(value)),
             ) => Ok(vec![Value::new_iutf8(value)]),
-
             (
                 SyntaxType::Uint32,
                 false,
@@ -832,7 +846,6 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                     })
                 })
                 .map(|value| vec![Value::Uint32(value)]),
-
             (SyntaxType::ReferenceUuid, true, ScimAttr::MultiComplex(values)) => {
                 // In this case, because it's a reference uuid only, despite the multicomplex structure, it's a list of
                 // "external_id" to external_ids. These *might* also be uuids. So we need to use sync_external_id_to_uuid
@@ -902,9 +915,9 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
                     let secret = complex
                         .attrs
-                        .get("secret")
+                        .get(SCIM_SECRET)
                         .ok_or_else(|| {
-                            error!("Invalid scim complex attr - missing required key secret");
+                            error!("Invalid SCIM complex attr - missing required key secret");
                             OperationError::InvalidAttribute(format!(
                                 "missing required key secret - {scim_attr_name}"
                             ))
@@ -928,7 +941,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                             }
                         })?;
 
-                    let algo = complex.attrs.get("algo")
+                    let algo = complex.attrs.get(SCIM_ALGO)
                         .ok_or_else(|| {
                             error!("Invalid scim complex attr - missing required key algo");
                             OperationError::InvalidAttribute(format!(
@@ -959,7 +972,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                             }
                         })?;
 
-                    let step = complex.attrs.get("step").ok_or_else(|| {
+                    let step = complex.attrs.get(SCIM_STEP).ok_or_else(|| {
                         error!("Invalid scim complex attr - missing required key step");
                         OperationError::InvalidAttribute(format!(
                             "missing required key step - {scim_attr_name}"
@@ -986,7 +999,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
                     let digits = complex
                         .attrs
-                        .get("digits")
+                        .get(SCIM_DIGITS)
                         .ok_or_else(|| {
                             error!("Invalid scim complex attr - missing required key digits");
                             OperationError::InvalidAttribute(format!(
@@ -1054,6 +1067,69 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 }
                 Ok(vs)
             }
+            (SyntaxType::SshKey, true, ScimAttr::MultiComplex(values)) => {
+                let mut vs = Vec::with_capacity(values.len());
+                for complex in values.iter() {
+                    let label = complex
+                        .attrs
+                        .get("label")
+                        .ok_or_else(|| {
+                            error!("Invalid scim complex attr - missing required key label");
+                            OperationError::InvalidAttribute(format!(
+                                "missing required key label - {scim_attr_name}"
+                            ))
+                        })
+                        .and_then(|external_id| match external_id {
+                            ScimSimpleAttr::String(value) => Ok(value.clone()),
+                            _ => {
+                                error!("Invalid value attribute - must be scim simple string");
+                                Err(OperationError::InvalidAttribute(format!(
+                                    "value must be scim simple string - {scim_attr_name}"
+                                )))
+                            }
+                        })?;
+
+                    let value = complex
+                        .attrs
+                        .get("value")
+                        .ok_or_else(|| {
+                            error!("Invalid scim complex attr - missing required key value");
+                            OperationError::InvalidAttribute(format!(
+                                "missing required key value - {scim_attr_name}"
+                            ))
+                        })
+                        .and_then(|external_id| match external_id {
+                            ScimSimpleAttr::String(value) => SshPublicKey::from_string(value)
+                                .map_err(|err| {
+                                    error!(?err, "Invalid ssh key provided via scim");
+                                    OperationError::SC0001IncomingSshPublicKey
+                                }),
+                            _ => {
+                                error!("Invalid value attribute - must be scim simple string");
+                                Err(OperationError::InvalidAttribute(format!(
+                                    "value must be scim simple string - {scim_attr_name}"
+                                )))
+                            }
+                        })?;
+
+                    vs.push(Value::SshKey(label, value))
+                }
+                Ok(vs)
+            }
+            (
+                SyntaxType::DateTime,
+                false,
+                ScimAttr::SingleSimple(ScimSimpleAttr::String(value)),
+            ) => {
+                Value::new_datetime_s(value)
+                    .map(|v| vec![v])
+                    .ok_or_else(|| {
+                        error!("Invalid value attribute - must be scim simple string with rfc3339 formatted datetime");
+                        OperationError::InvalidAttribute(format!(
+                            "value must be scim simple string with rfc3339 formatted datetime - {scim_attr_name}"
+                        ))
+                    })
+            }
             (syn, mv, sa) => {
                 error!(?syn, ?mv, ?sa, "Unsupported scim attribute conversion. This may be a syntax error in your import, or a missing feature in Kanidm.");
                 Err(OperationError::InvalidAttribute(format!(
@@ -1096,16 +1172,19 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         let mut mods = Vec::new();
 
         mods.push(Modify::Assert(
-            "sync_parent_uuid".into(),
+            Attribute::SyncParentUuid,
             PartialValue::Refer(sync_uuid),
         ));
 
         for req_class in requested_classes.keys() {
             mods.push(Modify::Present(
-                "sync_class".into(),
+                Attribute::SyncClass.into(),
                 Value::new_iutf8(req_class),
             ));
-            mods.push(Modify::Present("class".into(), Value::new_iutf8(req_class)));
+            mods.push(Modify::Present(
+                Attribute::Class.into(),
+                Value::new_iutf8(req_class),
+            ));
         }
 
         // Clean up from removed classes. NEED THE OLD ENTRY FOR THIS.
@@ -1290,18 +1369,18 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 let filter_or = present_uuids
                     .iter()
                     .copied()
-                    .map(|u| f_eq("uuid", PartialValue::Uuid(u)))
+                    .map(|u| f_eq(Attribute::Uuid, PartialValue::Uuid(u)))
                     .collect::<Vec<_>>();
 
                 if filter_or.is_empty() {
                     filter!(f_and!([
                         // F in chat for all these entries.
-                        f_eq("sync_parent_uuid", PartialValue::Refer(sync_uuid))
+                        f_eq(Attribute::SyncParentUuid, PartialValue::Refer(sync_uuid))
                     ]))
                 } else {
                     filter!(f_and!([
                         // Must be part of this sync agreement.
-                        f_eq("sync_parent_uuid", PartialValue::Refer(sync_uuid)),
+                        f_eq(Attribute::SyncParentUuid, PartialValue::Refer(sync_uuid)),
                         // Must not be an entry in the change set.
                         f_andnot(f_or(filter_or))
                     ]))
@@ -1317,7 +1396,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 let filter_or = delete_uuids
                     .iter()
                     .copied()
-                    .map(|u| f_eq("uuid", PartialValue::Uuid(u)))
+                    .map(|u| f_eq(Attribute::Uuid, PartialValue::Uuid(u)))
                     .collect();
 
                 // NOTE: We bypass recycled/ts here because we WANT to know if we are in that
@@ -1336,14 +1415,19 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                         if ent.mask_recycled_ts().is_none() {
                             debug!("Skipping already deleted entry {}", ent.get_uuid());
                             None
-                        } else if ent.get_ava_single_refer("sync_parent_uuid") != Some(sync_uuid) {
+                        } else if ent.get_ava_single_refer(Attribute::SyncParentUuid)
+                            != Some(sync_uuid)
+                        {
                             warn!(
                                 "Skipping entry that is not within sync control {}",
                                 ent.get_uuid()
                             );
                             Some(Err(OperationError::AccessDenied))
                         } else {
-                            Some(Ok(f_eq("uuid", PartialValue::Uuid(ent.get_uuid()))))
+                            Some(Ok(f_eq(
+                                Attribute::Uuid,
+                                PartialValue::Uuid(ent.get_uuid()),
+                            )))
                         }
                     })
                     .collect::<Result<Vec<_>, _>>()?;
@@ -1356,7 +1440,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 filter!(f_and(vec![
                     // Technically not needed, but it's better to add more safeties and this
                     // costs nothing to add.
-                    f_eq("sync_parent_uuid", PartialValue::Refer(sync_uuid)),
+                    f_eq(Attribute::SyncParentUuid, PartialValue::Refer(sync_uuid)),
                     f_or(delete_filter)
                 ]))
             }
@@ -1386,10 +1470,11 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         // to reflect the new sync state.
 
         let modlist = match to_state {
-            ScimSyncState::Active { cookie } => {
-                ModifyList::new_purge_and_set("sync_cookie", Value::PrivateBinary(cookie.0.clone()))
-            }
-            ScimSyncState::Refresh => ModifyList::new_purge("sync_cookie"),
+            ScimSyncState::Active { cookie } => ModifyList::new_purge_and_set(
+                Attribute::SyncCookie,
+                Value::PrivateBinary(cookie.0.clone()),
+            ),
+            ScimSyncState::Refresh => ModifyList::new_purge(Attribute::SyncCookie),
         };
 
         self.qs_write
@@ -1435,7 +1520,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
         let sync_entry = self.qs_read.internal_search_uuid(sync_uuid)?;
 
         Ok(
-            match sync_entry.get_ava_single_private_binary("sync_cookie") {
+            match sync_entry.get_ava_single_private_binary(Attribute::SyncCookie) {
                 Some(b) => ScimSyncState::Active {
                     cookie: Base64UrlSafeData(b.to_vec()),
                 },
@@ -1450,7 +1535,7 @@ mod tests {
     use crate::idm::server::{IdmServerProxyWriteTransaction, IdmServerTransaction};
     use crate::prelude::*;
     use base64urlsafedata::Base64UrlSafeData;
-    use compact_jwt::Jws;
+    use compact_jwt::{Jws, JwsSigner};
     use kanidm_proto::scim_v1::*;
     use kanidm_proto::v1::ApiTokenPurpose;
     use std::sync::Arc;
@@ -1470,11 +1555,14 @@ mod tests {
         let sync_uuid = Uuid::new_v4();
 
         let e1 = entry_init!(
-            ("class", Value::new_class("object")),
-            ("class", Value::new_class("sync_account")),
-            ("name", Value::new_iname("test_scim_sync")),
-            ("uuid", Value::Uuid(sync_uuid)),
-            ("description", Value::new_utf8s("A test sync agreement"))
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::SyncAccount.to_value()),
+            (Attribute::Name, Value::new_iname("test_scim_sync")),
+            (Attribute::Uuid, Value::Uuid(sync_uuid)),
+            (
+                Attribute::Description,
+                Value::new_utf8s("A test sync agreement")
+            )
         );
 
         let ce = CreateEvent::new_internal(vec![e1]);
@@ -1537,11 +1625,14 @@ mod tests {
         let sync_uuid = Uuid::new_v4();
 
         let e1 = entry_init!(
-            ("class", Value::new_class("object")),
-            ("class", Value::new_class("sync_account")),
-            ("name", Value::new_iname("test_scim_sync")),
-            ("uuid", Value::Uuid(sync_uuid)),
-            ("description", Value::new_utf8s("A test sync agreement"))
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::SyncAccount.to_value()),
+            (Attribute::Name, Value::new_iname("test_scim_sync")),
+            (Attribute::Uuid, Value::Uuid(sync_uuid)),
+            (
+                Attribute::Description,
+                Value::new_utf8s("A test sync agreement")
+            )
         );
 
         let ce = CreateEvent::new_internal(vec![e1]);
@@ -1567,12 +1658,13 @@ mod tests {
         // -- Revoke the session
 
         let mut idms_prox_write = idms.proxy_write(ct).await;
-        let me_inv_m = unsafe {
-            ModifyEvent::new_internal_invalid(
-                filter!(f_eq("name", PartialValue::new_iname("test_scim_sync"))),
-                ModifyList::new_list(vec![Modify::Purged(AttrString::from("sync_token_session"))]),
-            )
-        };
+        let me_inv_m = ModifyEvent::new_internal_invalid(
+            filter!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("test_scim_sync")
+            )),
+            ModifyList::new_list(vec![Modify::Purged(Attribute::SyncTokenSession.into())]),
+        );
         assert!(idms_prox_write.qs_write.modify(&me_inv_m).is_ok());
         assert!(idms_prox_write.commit().is_ok());
 
@@ -1591,14 +1683,13 @@ mod tests {
             .scim_sync_generate_token(&gte, ct)
             .expect("failed to generate new scim sync token");
 
-        let me_inv_m = unsafe {
-            ModifyEvent::new_internal_invalid(
-                filter!(f_eq("name", PartialValue::new_iname("test_scim_sync"))),
-                ModifyList::new_list(vec![Modify::Purged(AttrString::from(
-                    "jws_es256_private_key",
-                ))]),
-            )
-        };
+        let me_inv_m = ModifyEvent::new_internal_invalid(
+            filter!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("test_scim_sync")
+            )),
+            ModifyList::new_list(vec![Modify::Purged(Attribute::JwsEs256PrivateKey.into())]),
+        );
         assert!(idms_prox_write.qs_write.modify(&me_inv_m).is_ok());
         assert!(idms_prox_write.commit().is_ok());
 
@@ -1615,12 +1706,12 @@ mod tests {
             .expect("Unable to access sync entry");
 
         let jws_key = sync_entry
-            .get_ava_single_jws_key_es256("jws_es256_private_key")
+            .get_ava_single_jws_key_es256(Attribute::JwsEs256PrivateKey)
             .cloned()
             .expect("Missing attribute: jws_es256_private_key");
 
         let sync_tokens = sync_entry
-            .get_ava_as_apitoken_map("sync_token_session")
+            .get_ava_as_apitoken_map(Attribute::SyncTokenSession)
             .cloned()
             .unwrap_or_default();
 
@@ -1633,14 +1724,16 @@ mod tests {
 
         let purpose = ApiTokenPurpose::ReadWrite;
 
-        let token = Jws::new(ScimSyncToken {
+        let scim_sync_token = ScimSyncToken {
             token_id,
             issued_at,
             purpose,
-        });
+        };
 
-        let forged_token = token
-            .sign(&jws_key)
+        let token = Jws::into_json(&scim_sync_token).expect("Unable to serialise forged token");
+
+        let forged_token = jws_key
+            .sign(&token)
             .map(|jws_signed| jws_signed.to_string())
             .expect("Unable to sign forged token");
 
@@ -1656,11 +1749,14 @@ mod tests {
         let sync_uuid = Uuid::new_v4();
 
         let e1 = entry_init!(
-            ("class", Value::new_class("object")),
-            ("class", Value::new_class("sync_account")),
-            ("name", Value::new_iname("test_scim_sync")),
-            ("uuid", Value::Uuid(sync_uuid)),
-            ("description", Value::new_utf8s("A test sync agreement"))
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::SyncAccount.to_value()),
+            (Attribute::Name, Value::new_iname("test_scim_sync")),
+            (Attribute::Uuid, Value::Uuid(sync_uuid)),
+            (
+                Attribute::Description,
+                Value::new_utf8s("A test sync agreement")
+            )
         );
 
         let ce = CreateEvent::new_internal(vec![e1]);
@@ -1729,7 +1825,7 @@ mod tests {
                 external_id: Some("dn=william,ou=people,dc=test".to_string()),
                 meta: None,
                 attrs: btreemap!((
-                    "name".to_string(),
+                    Attribute::Name.to_string(),
                     ScimAttr::SingleSimple(ScimSimpleAttr::String("william".to_string()))
                 ),),
             }],
@@ -1750,7 +1846,7 @@ mod tests {
             .expect("Failed to access sync stub entry");
 
         assert!(
-            synced_entry.get_ava_single_iutf8("sync_external_id")
+            synced_entry.get_ava_single_iutf8(Attribute::SyncExternalId)
                 == Some("dn=william,ou=people,dc=test")
         );
         assert!(synced_entry.get_uuid() == user_sync_uuid);
@@ -1772,8 +1868,8 @@ mod tests {
         assert!(idms_prox_write
             .qs_write
             .internal_create(vec![entry_init!(
-                ("class", Value::new_class("object")),
-                ("uuid", Value::Uuid(user_sync_uuid))
+                (Attribute::Class, EntryClass::Object.to_value()),
+                (Attribute::Uuid, Value::Uuid(user_sync_uuid))
             )])
             .is_ok());
 
@@ -1797,7 +1893,7 @@ mod tests {
                 external_id: Some("dn=william,ou=people,dc=test".to_string()),
                 meta: None,
                 attrs: btreemap!((
-                    "name".to_string(),
+                    Attribute::Name.to_string(),
                     ScimAttr::SingleSimple(ScimSimpleAttr::String("william".to_string()))
                 ),),
             }],
@@ -1863,7 +1959,7 @@ mod tests {
                 external_id: Some("cn=testgroup,ou=people,dc=test".to_string()),
                 meta: None,
                 attrs: btreemap!((
-                    "name".to_string(),
+                    Attribute::Name.to_string(),
                     ScimAttr::SingleSimple(ScimSimpleAttr::String("testgroup".to_string()))
                 ),),
             }]
@@ -1879,9 +1975,10 @@ mod tests {
             .internal_search_uuid(user_sync_uuid)
             .expect("Unable to access entry");
 
-        assert!(ent.get_ava_single_iname("name") == Some("testgroup"));
+        assert!(ent.get_ava_single_iname(Attribute::Name) == Some("testgroup"));
         assert!(
-            ent.get_ava_single_iutf8("sync_external_id") == Some("cn=testgroup,ou=people,dc=test")
+            ent.get_ava_single_iutf8(Attribute::SyncExternalId)
+                == Some("cn=testgroup,ou=people,dc=test")
         );
 
         assert!(idms_prox_write.commit().is_ok());
@@ -1904,11 +2001,11 @@ mod tests {
                 meta: None,
                 attrs: btreemap!(
                     (
-                        "name".to_string(),
+                        Attribute::Name.to_string(),
                         ScimAttr::SingleSimple(ScimSimpleAttr::String("testgroup".to_string()))
                     ),
                     (
-                        "uuid".to_string(),
+                        Attribute::Uuid.to_string(),
                         ScimAttr::SingleSimple(ScimSimpleAttr::String(
                             "2c019619-f894-4a94-b356-05d371850e3d".to_string()
                         ))
@@ -1937,7 +2034,7 @@ mod tests {
                 meta: None,
                 attrs: btreemap!(
                     (
-                        "name".to_string(),
+                        Attribute::Name.to_string(),
                         ScimAttr::SingleSimple(ScimSimpleAttr::String("testgroup".to_string()))
                     ),
                     (
@@ -1970,11 +2067,11 @@ mod tests {
                 meta: None,
                 attrs: btreemap!(
                     (
-                        "name".to_string(),
+                        Attribute::Name.to_string(),
                         ScimAttr::SingleSimple(ScimSimpleAttr::String("testgroup".to_string()))
                     ),
                     (
-                        "class".to_string(),
+                        Attribute::Class.to_string(),
                         ScimAttr::SingleSimple(ScimSimpleAttr::String("posixgroup".to_string()))
                     )
                 ),
@@ -2001,7 +2098,7 @@ mod tests {
                 external_id: Some("cn=testgroup,ou=people,dc=test".to_string()),
                 meta: None,
                 attrs: btreemap!((
-                    "name".to_string(),
+                    Attribute::Name.to_string(),
                     ScimAttr::SingleSimple(ScimSimpleAttr::String("testgroup".to_string()))
                 ),),
             }]
@@ -2039,7 +2136,7 @@ mod tests {
                 external_id: Some("cn=testgroup,ou=people,dc=test".to_string()),
                 meta: None,
                 attrs: btreemap!((
-                    "name".to_string(),
+                    Attribute::Name.to_string(),
                     ScimAttr::SingleSimple(ScimSimpleAttr::String("testgroup".to_string()))
                 ),),
             }],
@@ -2070,13 +2167,13 @@ mod tests {
         assert!(idms_prox_write
             .qs_write
             .internal_search(filter_all!(f_eq(
-                "uuid",
+                Attribute::Uuid,
                 PartialValue::Uuid(user_sync_uuid)
             )))
             // Should be none as the entry was masked by being recycled.
             .map(|entries| {
                 assert!(entries.len() == 1);
-                let ent = entries.get(0).unwrap();
+                let ent = entries.first().unwrap();
                 ent.mask_recycled_ts().is_none()
             })
             .unwrap_or(false));
@@ -2126,8 +2223,8 @@ mod tests {
         assert!(idms_prox_write
             .qs_write
             .internal_create(vec![entry_init!(
-                ("class", Value::new_class("object")),
-                ("uuid", Value::Uuid(user_sync_uuid))
+                (Attribute::Class, EntryClass::Object.to_value()),
+                (Attribute::Uuid, Value::Uuid(user_sync_uuid))
             )])
             .is_ok());
 
@@ -2163,8 +2260,8 @@ mod tests {
         assert!(idms_prox_write
             .qs_write
             .internal_create(vec![entry_init!(
-                ("class", Value::new_class("object")),
-                ("uuid", Value::Uuid(user_sync_uuid))
+                (Attribute::Class, EntryClass::Object.to_value()),
+                (Attribute::Uuid, Value::Uuid(user_sync_uuid))
             )])
             .is_ok());
 
@@ -2223,7 +2320,7 @@ mod tests {
                     external_id: Some("cn=testgroup,ou=people,dc=test".to_string()),
                     meta: None,
                     attrs: btreemap!((
-                        "name".to_string(),
+                        Attribute::Name.to_string(),
                         ScimAttr::SingleSimple(ScimSimpleAttr::String("testgroup".to_string()))
                     ),),
                 },
@@ -2233,7 +2330,7 @@ mod tests {
                     external_id: Some("cn=anothergroup,ou=people,dc=test".to_string()),
                     meta: None,
                     attrs: btreemap!((
-                        "name".to_string(),
+                        Attribute::Name.to_string(),
                         ScimAttr::SingleSimple(ScimSimpleAttr::String("anothergroup".to_string()))
                     ),),
                 },
@@ -2264,11 +2361,14 @@ mod tests {
         // Can't use internal_search_uuid since that applies a mask.
         assert!(idms_prox_write
             .qs_write
-            .internal_search(filter_all!(f_eq("uuid", PartialValue::Uuid(sync_uuid_b))))
+            .internal_search(filter_all!(f_eq(
+                Attribute::Uuid,
+                PartialValue::Uuid(sync_uuid_b)
+            )))
             // Should be none as the entry was masked by being recycled.
             .map(|entries| {
                 assert!(entries.len() == 1);
-                let ent = entries.get(0).unwrap();
+                let ent = entries.first().unwrap();
                 ent.mask_recycled_ts().is_none()
             })
             .unwrap_or(false));
@@ -2304,7 +2404,7 @@ mod tests {
                     external_id: Some("cn=testgroup,ou=people,dc=test".to_string()),
                     meta: None,
                     attrs: btreemap!((
-                        "name".to_string(),
+                        Attribute::Name.to_string(),
                         ScimAttr::SingleSimple(ScimSimpleAttr::String("testgroup".to_string()))
                     ),),
                 },
@@ -2314,7 +2414,7 @@ mod tests {
                     external_id: Some("cn=anothergroup,ou=people,dc=test".to_string()),
                     meta: None,
                     attrs: btreemap!((
-                        "name".to_string(),
+                        Attribute::Name.to_string(),
                         ScimAttr::SingleSimple(ScimSimpleAttr::String("anothergroup".to_string()))
                     ),),
                 },
@@ -2345,11 +2445,14 @@ mod tests {
         // Can't use internal_search_uuid since that applies a mask.
         assert!(idms_prox_write
             .qs_write
-            .internal_search(filter_all!(f_eq("uuid", PartialValue::Uuid(sync_uuid_a))))
+            .internal_search(filter_all!(f_eq(
+                Attribute::Uuid,
+                PartialValue::Uuid(sync_uuid_a)
+            )))
             // Should be none as the entry was masked by being recycled.
             .map(|entries| {
                 assert!(entries.len() == 1);
-                let ent = entries.get(0).unwrap();
+                let ent = entries.first().unwrap();
                 ent.mask_recycled_ts().is_none()
             })
             .unwrap_or(false));
@@ -2357,11 +2460,14 @@ mod tests {
         // Can't use internal_search_uuid since that applies a mask.
         assert!(idms_prox_write
             .qs_write
-            .internal_search(filter_all!(f_eq("uuid", PartialValue::Uuid(sync_uuid_b))))
+            .internal_search(filter_all!(f_eq(
+                Attribute::Uuid,
+                PartialValue::Uuid(sync_uuid_b)
+            )))
             // Should be none as the entry was masked by being recycled.
             .map(|entries| {
                 assert!(entries.len() == 1);
-                let ent = entries.get(0).unwrap();
+                let ent = entries.first().unwrap();
                 ent.mask_recycled_ts().is_none()
             })
             .unwrap_or(false));
@@ -2395,7 +2501,7 @@ mod tests {
                 external_id: Some("cn=testgroup,ou=people,dc=test".to_string()),
                 meta: None,
                 attrs: btreemap!((
-                    "name".to_string(),
+                    Attribute::Name.to_string(),
                     ScimAttr::SingleSimple(ScimSimpleAttr::String("testgroup".to_string()))
                 ),),
             }],
@@ -2428,7 +2534,7 @@ mod tests {
             .internal_search_uuid(sync_uuid_a)
             .expect("Unable to access entry");
 
-        assert!(ent.get_ava_single_iname("name") == Some("testgroup"));
+        assert!(ent.get_ava_single_iname(Attribute::Name) == Some("testgroup"));
 
         assert!(idms_prox_write.commit().is_ok());
     }
@@ -2487,7 +2593,10 @@ mod tests {
     ) -> Arc<EntrySealedCommitted> {
         idms_prox_write
             .qs_write
-            .internal_search(filter!(f_eq("name", PartialValue::new_iname(name))))
+            .internal_search(filter!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname(name)
+            )))
             .map_err(|_| ())
             .and_then(|mut entries| {
                 if entries.len() != 1 {
@@ -2522,42 +2631,59 @@ mod tests {
 
         let testgroup = get_single_entry("testgroup", &mut idms_prox_write);
         assert!(
-            testgroup.get_ava_single_iutf8("sync_external_id")
+            testgroup.get_ava_single_iutf8(Attribute::SyncExternalId)
                 == Some("cn=testgroup,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au")
         );
-        assert!(testgroup.get_ava_single_uint32("gidnumber").is_none());
+        assert!(testgroup
+            .get_ava_single_uint32(Attribute::GidNumber)
+            .is_none());
 
         let testposix = get_single_entry("testposix", &mut idms_prox_write);
         assert!(
-            testposix.get_ava_single_iutf8("sync_external_id")
+            testposix.get_ava_single_iutf8(Attribute::SyncExternalId)
                 == Some("cn=testposix,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au")
         );
-        assert!(testposix.get_ava_single_uint32("gidnumber") == Some(1234567));
+        assert!(testposix.get_ava_single_uint32(Attribute::GidNumber) == Some(1234567));
 
         let testexternal = get_single_entry("testexternal", &mut idms_prox_write);
         assert!(
-            testexternal.get_ava_single_iutf8("sync_external_id")
+            testexternal.get_ava_single_iutf8(Attribute::SyncExternalId)
                 == Some("cn=testexternal,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au")
         );
-        assert!(testexternal.get_ava_single_uint32("gidnumber").is_none());
+        assert!(testexternal
+            .get_ava_single_uint32(Attribute::GidNumber)
+            .is_none());
 
         let testuser = get_single_entry("testuser", &mut idms_prox_write);
         assert!(
-            testuser.get_ava_single_iutf8("sync_external_id")
+            testuser.get_ava_single_iutf8(Attribute::SyncExternalId)
                 == Some("uid=testuser,cn=users,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au")
         );
-        assert!(testuser.get_ava_single_uint32("gidnumber") == Some(12345));
-        assert!(testuser.get_ava_single_utf8("displayname") == Some("Test User"));
-        assert!(testuser.get_ava_single_iutf8("loginshell") == Some("/bin/sh"));
+        assert!(testuser.get_ava_single_uint32(Attribute::GidNumber) == Some(12345));
+        assert!(testuser.get_ava_single_utf8(Attribute::DisplayName) == Some("Test User"));
+        assert!(testuser.get_ava_single_iutf8(Attribute::LoginShell) == Some("/bin/sh"));
+
+        let mut ssh_keyiter = testuser
+            .get_ava_iter_sshpubkeys(Attribute::SshPublicKey)
+            .expect("Failed to access ssh pubkeys");
+
+        assert_eq!(ssh_keyiter.next(), Some("sk-ecdsa-sha2-nistp256@openssh.com AAAAInNrLWVjZHNhLXNoYTItbmlzdHAyNTZAb3BlbnNzaC5jb20AAAAIbmlzdHAyNTYAAABBBENubZikrb8hu+HeVRdZ0pp/VAk2qv4JDbuJhvD0yNdWDL2e3cBbERiDeNPkWx58Q4rVnxkbV1fa8E2waRtT91wAAAAEc3NoOg== testuser@fidokey".to_string()));
+        assert_eq!(ssh_keyiter.next(), None);
 
         // Check memberof works.
-        let testgroup_mb = testgroup.get_ava_refer("member").expect("No members!");
+        let testgroup_mb = testgroup
+            .get_ava_refer(Attribute::Member)
+            .expect("No members!");
         assert!(testgroup_mb.contains(&testuser.get_uuid()));
 
-        let testposix_mb = testposix.get_ava_refer("member").expect("No members!");
+        let testposix_mb = testposix
+            .get_ava_refer(Attribute::Member)
+            .expect("No members!");
         assert!(testposix_mb.contains(&testuser.get_uuid()));
 
-        let testuser_mo = testuser.get_ava_refer("memberof").expect("No memberof!");
+        let testuser_mo = testuser
+            .get_ava_refer(Attribute::MemberOf)
+            .expect("No memberof!");
         assert!(testuser_mo.contains(&testposix.get_uuid()));
         assert!(testuser_mo.contains(&testgroup.get_uuid()));
 
@@ -2577,35 +2703,44 @@ mod tests {
         // Deleted
         assert!(idms_prox_write
             .qs_write
-            .internal_search(filter!(f_eq("name", PartialValue::new_iname("testgroup"))))
+            .internal_search(filter!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("testgroup")
+            )))
             .unwrap()
             .is_empty());
 
         let testposix = get_single_entry("testposix", &mut idms_prox_write);
         info!("{:?}", testposix);
         assert!(
-            testposix.get_ava_single_iutf8("sync_external_id")
+            testposix.get_ava_single_iutf8(Attribute::SyncExternalId)
                 == Some("cn=testposix,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au")
         );
-        assert!(testposix.get_ava_single_uint32("gidnumber") == Some(1234567));
+        assert!(testposix.get_ava_single_uint32(Attribute::GidNumber) == Some(1234567));
 
         let testexternal = get_single_entry("testexternal2", &mut idms_prox_write);
         info!("{:?}", testexternal);
         assert!(
-            testexternal.get_ava_single_iutf8("sync_external_id")
+            testexternal.get_ava_single_iutf8(Attribute::SyncExternalId)
                 == Some("cn=testexternal2,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au")
         );
-        assert!(testexternal.get_ava_single_uint32("gidnumber").is_none());
+        assert!(testexternal
+            .get_ava_single_uint32(Attribute::GidNumber)
+            .is_none());
 
         let testuser = get_single_entry("testuser", &mut idms_prox_write);
 
         // Check memberof works.
-        let testexternal_mb = testexternal.get_ava_refer("member").expect("No members!");
+        let testexternal_mb = testexternal
+            .get_ava_refer(Attribute::Member)
+            .expect("No members!");
         assert!(testexternal_mb.contains(&testuser.get_uuid()));
 
-        assert!(testposix.get_ava_refer("member").is_none());
+        assert!(testposix.get_ava_refer(Attribute::Member).is_none());
 
-        let testuser_mo = testuser.get_ava_refer("memberof").expect("No memberof!");
+        let testuser_mo = testuser
+            .get_ava_refer(Attribute::MemberOf)
+            .expect("No memberof!");
         assert!(testuser_mo.contains(&testexternal.get_uuid()));
 
         assert!(idms_prox_write.commit().is_ok());
@@ -2637,42 +2772,52 @@ mod tests {
         // Check entries still remain as expected.
         let testgroup = get_single_entry("testgroup", &mut idms_prox_write);
         assert!(
-            testgroup.get_ava_single_iutf8("sync_external_id")
+            testgroup.get_ava_single_iutf8(Attribute::SyncExternalId)
                 == Some("cn=testgroup,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au")
         );
-        assert!(testgroup.get_ava_single_uint32("gidnumber").is_none());
+        assert!(testgroup
+            .get_ava_single_uint32(Attribute::GidNumber)
+            .is_none());
 
         let testposix = get_single_entry("testposix", &mut idms_prox_write);
         assert!(
-            testposix.get_ava_single_iutf8("sync_external_id")
+            testposix.get_ava_single_iutf8(Attribute::SyncExternalId)
                 == Some("cn=testposix,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au")
         );
-        assert!(testposix.get_ava_single_uint32("gidnumber") == Some(1234567));
+        assert!(testposix.get_ava_single_uint32(Attribute::GidNumber) == Some(1234567));
 
         let testexternal = get_single_entry("testexternal", &mut idms_prox_write);
         assert!(
-            testexternal.get_ava_single_iutf8("sync_external_id")
+            testexternal.get_ava_single_iutf8(Attribute::SyncExternalId)
                 == Some("cn=testexternal,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au")
         );
-        assert!(testexternal.get_ava_single_uint32("gidnumber").is_none());
+        assert!(testexternal
+            .get_ava_single_uint32(Attribute::GidNumber)
+            .is_none());
 
         let testuser = get_single_entry("testuser", &mut idms_prox_write);
         assert!(
-            testuser.get_ava_single_iutf8("sync_external_id")
+            testuser.get_ava_single_iutf8(Attribute::SyncExternalId)
                 == Some("uid=testuser,cn=users,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au")
         );
-        assert!(testuser.get_ava_single_uint32("gidnumber") == Some(12345));
-        assert!(testuser.get_ava_single_utf8("displayname") == Some("Test User"));
-        assert!(testuser.get_ava_single_iutf8("loginshell") == Some("/bin/sh"));
+        assert!(testuser.get_ava_single_uint32(Attribute::GidNumber) == Some(12345));
+        assert!(testuser.get_ava_single_utf8(Attribute::DisplayName) == Some("Test User"));
+        assert!(testuser.get_ava_single_iutf8(Attribute::LoginShell) == Some("/bin/sh"));
 
         // Check memberof works.
-        let testgroup_mb = testgroup.get_ava_refer("member").expect("No members!");
+        let testgroup_mb = testgroup
+            .get_ava_refer(Attribute::Member)
+            .expect("No members!");
         assert!(testgroup_mb.contains(&testuser.get_uuid()));
 
-        let testposix_mb = testposix.get_ava_refer("member").expect("No members!");
+        let testposix_mb = testposix
+            .get_ava_refer(Attribute::Member)
+            .expect("No members!");
         assert!(testposix_mb.contains(&testuser.get_uuid()));
 
-        let testuser_mo = testuser.get_ava_refer("memberof").expect("No memberof!");
+        let testuser_mo = testuser
+            .get_ava_refer(Attribute::MemberOf)
+            .expect("No memberof!");
         assert!(testuser_mo.contains(&testposix.get_uuid()));
         assert!(testuser_mo.contains(&testgroup.get_uuid()));
 
@@ -2685,14 +2830,17 @@ mod tests {
 
         assert!(idms_prox_write
             .qs_write
-            .internal_search(filter!(f_eq("name", PartialValue::new_iname("testposix"))))
+            .internal_search(filter!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("testposix")
+            )))
             .unwrap()
             .is_empty());
 
         assert!(idms_prox_write
             .qs_write
             .internal_search(filter!(f_eq(
-                "name",
+                Attribute::Name,
                 PartialValue::new_iname("testexternal")
             )))
             .unwrap()
@@ -2700,26 +2848,92 @@ mod tests {
 
         let testgroup = get_single_entry("testgroup", &mut idms_prox_write);
         assert!(
-            testgroup.get_ava_single_iutf8("sync_external_id")
+            testgroup.get_ava_single_iutf8(Attribute::SyncExternalId)
                 == Some("cn=testgroup,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au")
         );
-        assert!(testgroup.get_ava_single_uint32("gidnumber").is_none());
+        assert!(testgroup
+            .get_ava_single_uint32(Attribute::GidNumber)
+            .is_none());
 
         let testuser = get_single_entry("testuser", &mut idms_prox_write);
         assert!(
-            testuser.get_ava_single_iutf8("sync_external_id")
+            testuser.get_ava_single_iutf8(Attribute::SyncExternalId)
                 == Some("uid=testuser,cn=users,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au")
         );
-        assert!(testuser.get_ava_single_uint32("gidnumber") == Some(12345));
-        assert!(testuser.get_ava_single_utf8("displayname") == Some("Test User"));
-        assert!(testuser.get_ava_single_iutf8("loginshell") == Some("/bin/sh"));
+        assert!(testuser.get_ava_single_uint32(Attribute::GidNumber) == Some(12345));
+        assert!(testuser.get_ava_single_utf8(Attribute::DisplayName) == Some("Test User"));
+        assert!(testuser.get_ava_single_iutf8(Attribute::LoginShell) == Some("/bin/sh"));
 
         // Check memberof works.
-        let testgroup_mb = testgroup.get_ava_refer("member").expect("No members!");
+        let testgroup_mb = testgroup
+            .get_ava_refer(Attribute::Member)
+            .expect("No members!");
         assert!(testgroup_mb.contains(&testuser.get_uuid()));
 
-        let testuser_mo = testuser.get_ava_refer("memberof").expect("No memberof!");
+        let testuser_mo = testuser
+            .get_ava_refer(Attribute::MemberOf)
+            .expect("No memberof!");
         assert!(testuser_mo.contains(&testgroup.get_uuid()));
+
+        assert!(idms_prox_write.commit().is_ok());
+    }
+
+    #[idm_test]
+    async fn test_idm_scim_sync_yield_authority(
+        idms: &IdmServer,
+        _idms_delayed: &mut IdmServerDelayed,
+    ) {
+        let ct = Duration::from_secs(TEST_CURRENT_TIME);
+        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let (sync_uuid, ident) = test_scim_sync_apply_setup_ident(&mut idms_prox_write, ct);
+        let sse = ScimSyncUpdateEvent { ident };
+
+        let changes =
+            serde_json::from_str(TEST_SYNC_SCIM_IPA_1).expect("failed to parse scim sync");
+
+        assert!(idms_prox_write.scim_sync_apply(&sse, &changes, ct).is_ok());
+
+        // Now we set the sync agreement to have description yielded.
+        assert!(idms_prox_write
+            .qs_write
+            .internal_modify_uuid(
+                sync_uuid,
+                &ModifyList::new_purge_and_set(
+                    Attribute::SyncYieldAuthority,
+                    Value::new_iutf8(Attribute::LegalName.as_ref())
+                )
+            )
+            .is_ok());
+
+        let testuser_filter = filter!(f_eq(Attribute::Name, PartialValue::new_iname("testuser")));
+
+        // We then can change our user.
+        assert!(idms_prox_write
+            .qs_write
+            .internal_modify(
+                &testuser_filter,
+                &ModifyList::new_purge_and_set(
+                    Attribute::LegalName,
+                    Value::Utf8("Test Userington the First".to_string())
+                )
+            )
+            .is_ok());
+
+        let changes =
+            serde_json::from_str(TEST_SYNC_SCIM_IPA_REFRESH_1).expect("failed to parse scim sync");
+
+        assert!(idms_prox_write.scim_sync_apply(&sse, &changes, ct).is_ok());
+
+        // Finally, now the gidnumber should not have changed.
+        let testuser = idms_prox_write
+            .qs_write
+            .internal_search(testuser_filter)
+            .map(|mut results| results.pop().expect("Empty result set"))
+            .expect("Failed to access testuser");
+
+        assert!(
+            testuser.get_ava_single_utf8(Attribute::LegalName) == Some("Test Userington the First")
+        );
 
         assert!(idms_prox_write.commit().is_ok());
     }
@@ -2758,16 +2972,16 @@ mod tests {
 
         // Check that the entries still exists but now have no sync_object attached.
         let testgroup = get_single_entry("testgroup", &mut idms_prox_write);
-        assert!(!testgroup.attribute_equality("class", &PVCLASS_SYNC_OBJECT));
+        assert!(!testgroup.attribute_equality(Attribute::Class, &EntryClass::SyncObject.into()));
 
         let testposix = get_single_entry("testposix", &mut idms_prox_write);
-        assert!(!testposix.attribute_equality("class", &PVCLASS_SYNC_OBJECT));
+        assert!(!testposix.attribute_equality(Attribute::Class, &EntryClass::SyncObject.into()));
 
         let testexternal = get_single_entry("testexternal", &mut idms_prox_write);
-        assert!(!testexternal.attribute_equality("class", &PVCLASS_SYNC_OBJECT));
+        assert!(!testexternal.attribute_equality(Attribute::Class, &EntryClass::SyncObject.into()));
 
         let testuser = get_single_entry("testuser", &mut idms_prox_write);
-        assert!(!testuser.attribute_equality("class", &PVCLASS_SYNC_OBJECT));
+        assert!(!testuser.attribute_equality(Attribute::Class, &EntryClass::SyncObject.into()));
 
         assert!(idms_prox_write.commit().is_ok());
     }
@@ -2813,16 +3027,19 @@ mod tests {
 
         // Check that the entries still exists but now have no sync_object attached.
         let testgroup = get_single_entry("testgroup", &mut idms_prox_write);
-        assert!(!testgroup.attribute_equality("class", &PVCLASS_SYNC_OBJECT));
+        assert!(!testgroup.attribute_equality(Attribute::Class, &EntryClass::SyncObject.into()));
 
         let testuser = get_single_entry("testuser", &mut idms_prox_write);
-        assert!(!testuser.attribute_equality("class", &PVCLASS_SYNC_OBJECT));
+        assert!(!testuser.attribute_equality(Attribute::Class, &EntryClass::SyncObject.into()));
 
         for iname in ["testposix", "testexternal"] {
             trace!(%iname);
             assert!(idms_prox_write
                 .qs_write
-                .internal_search(filter!(f_eq("name", PartialValue::new_iname(iname))))
+                .internal_search(filter!(f_eq(
+                    Attribute::Name,
+                    PartialValue::new_iname(iname)
+                )))
                 .unwrap()
                 .is_empty());
         }
@@ -2870,7 +3087,10 @@ mod tests {
             trace!(%iname);
             assert!(idms_prox_write
                 .qs_write
-                .internal_search(filter!(f_eq("name", PartialValue::new_iname(iname))))
+                .internal_search(filter!(f_eq(
+                    Attribute::Name,
+                    PartialValue::new_iname(iname)
+                )))
                 .unwrap()
                 .is_empty());
         }
@@ -2925,7 +3145,10 @@ mod tests {
             trace!(%iname);
             assert!(idms_prox_write
                 .qs_write
-                .internal_search(filter!(f_eq("name", PartialValue::new_iname(iname))))
+                .internal_search(filter!(f_eq(
+                    Attribute::Name,
+                    PartialValue::new_iname(iname)
+                )))
                 .unwrap()
                 .is_empty());
         }
@@ -2959,6 +3182,13 @@ mod tests {
           "value": "testuser@dev.blackhats.net.au"
         }
       ],
+      "ssh_publickey": [
+        {
+          "label": "ssh-key",
+          "value": "sk-ecdsa-sha2-nistp256@openssh.com AAAAInNrLWVjZHNhLXNoYTItbmlzdHAyNTZAb3BlbnNzaC5jb20AAAAIbmlzdHAyNTYAAABBBENubZikrb8hu+HeVRdZ0pp/VAk2qv4JDbuJhvD0yNdWDL2e3cBbERiDeNPkWx58Q4rVnxkbV1fa8E2waRtT91wAAAAEc3NoOg== testuser@fidokey"
+        }
+      ],
+      "unix_password_import": "ipaNTHash: iEb36u6PsRetBr3YMLdYbA",
       "password_import": "ipaNTHash: iEb36u6PsRetBr3YMLdYbA"
     },
     {
@@ -3069,7 +3299,10 @@ mod tests {
       "gidnumber": 12345,
       "loginshell": "/bin/sh",
       "name": "testuser",
-      "password_import": "ipaNTHash: iEb36u6PsRetBr3YMLdYbA"
+      "password_import": "ipaNTHash: iEb36u6PsRetBr3YMLdYbA",
+      "unix_password_import": "ipaNTHash: iEb36u6PsRetBr3YMLdYbA",
+      "account_valid_from": "2021-11-28T04:57:55Z",
+      "account_expire": "2023-11-28T04:57:55Z"
     },
     {
       "schemas": [

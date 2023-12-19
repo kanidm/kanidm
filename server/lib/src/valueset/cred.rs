@@ -1,18 +1,22 @@
+use smolset::SmolSet;
 use std::collections::btree_map::Entry as BTreeEntry;
 use std::collections::BTreeMap;
 
-use webauthn_rs::prelude::{DeviceKey as DeviceKeyV4, Passkey as PasskeyV4};
+use webauthn_rs::prelude::{
+    AttestationCaList, AttestedPasskey as AttestedPasskeyV4, Passkey as PasskeyV4,
+};
 
 use crate::be::dbvalue::{
-    DbValueCredV1, DbValueDeviceKeyV1, DbValueIntentTokenStateV1, DbValuePasskeyV1,
+    DbValueAttestedPasskeyV1, DbValueCredV1, DbValueIntentTokenStateV1, DbValuePasskeyV1,
 };
 use crate::credential::Credential;
 use crate::prelude::*;
 use crate::repl::proto::{
-    ReplAttrV1, ReplCredV1, ReplDeviceKeyV4V1, ReplIntentTokenV1, ReplPasskeyV4V1,
+    ReplAttestedPasskeyV4V1, ReplAttrV1, ReplCredV1, ReplIntentTokenV1, ReplPasskeyV4V1,
 };
 use crate::schema::SchemaAttribute;
-use crate::valueset::{DbValueSetV2, IntentTokenState, ValueSet};
+use crate::value::{CredUpdateSessionPerms, CredentialType, IntentTokenState};
+use crate::valueset::{DbValueSetV2, ValueSet};
 
 #[derive(Debug, Clone)]
 pub struct ValueSetCredential {
@@ -82,7 +86,7 @@ impl ValueSetT for ValueSetCredential {
         self.map.clear();
     }
 
-    fn remove(&mut self, pv: &PartialValue) -> bool {
+    fn remove(&mut self, pv: &PartialValue, _cid: &Cid) -> bool {
         match pv {
             PartialValue::Cred(t) => self.map.remove(t.as_str()).is_some(),
             _ => false,
@@ -97,6 +101,14 @@ impl ValueSetT for ValueSetCredential {
     }
 
     fn substring(&self, _pv: &PartialValue) -> bool {
+        false
+    }
+
+    fn startswith(&self, _pv: &PartialValue) -> bool {
+        false
+    }
+
+    fn endswith(&self, _pv: &PartialValue) -> bool {
         false
     }
 
@@ -215,17 +227,47 @@ impl ValueSetIntentToken {
             .into_iter()
             .map(|(s, dits)| {
                 let ts = match dits {
-                    DbValueIntentTokenStateV1::Valid { max_ttl } => {
-                        IntentTokenState::Valid { max_ttl }
-                    }
+                    DbValueIntentTokenStateV1::Valid {
+                        max_ttl,
+                        ext_cred_portal_can_view,
+                        primary_can_edit,
+                        passkeys_can_edit,
+                        attested_passkeys_can_edit,
+                        unixcred_can_edit,
+                        sshpubkey_can_edit,
+                    } => IntentTokenState::Valid {
+                        max_ttl,
+                        perms: CredUpdateSessionPerms {
+                            ext_cred_portal_can_view,
+                            primary_can_edit,
+                            passkeys_can_edit,
+                            attested_passkeys_can_edit,
+                            unixcred_can_edit,
+                            sshpubkey_can_edit,
+                        },
+                    },
                     DbValueIntentTokenStateV1::InProgress {
                         max_ttl,
                         session_id,
                         session_ttl,
+                        ext_cred_portal_can_view,
+                        primary_can_edit,
+                        passkeys_can_edit,
+                        attested_passkeys_can_edit,
+                        unixcred_can_edit,
+                        sshpubkey_can_edit,
                     } => IntentTokenState::InProgress {
                         max_ttl,
                         session_id,
                         session_ttl,
+                        perms: CredUpdateSessionPerms {
+                            ext_cred_portal_can_view,
+                            primary_can_edit,
+                            passkeys_can_edit,
+                            attested_passkeys_can_edit,
+                            unixcred_can_edit,
+                            sshpubkey_can_edit,
+                        },
                     },
                     DbValueIntentTokenStateV1::Consumed { max_ttl } => {
                         IntentTokenState::Consumed { max_ttl }
@@ -241,21 +283,54 @@ impl ValueSetIntentToken {
         let map = data
             .iter()
             .map(|dits| match dits {
-                ReplIntentTokenV1::Valid { token_id, max_ttl } => (
+                ReplIntentTokenV1::Valid {
+                    token_id,
+                    max_ttl,
+                    ext_cred_portal_can_view,
+                    primary_can_edit,
+                    passkeys_can_edit,
+                    attested_passkeys_can_edit,
+                    unixcred_can_edit,
+                    sshpubkey_can_edit,
+                } => (
                     token_id.clone(),
-                    IntentTokenState::Valid { max_ttl: *max_ttl },
+                    IntentTokenState::Valid {
+                        max_ttl: *max_ttl,
+                        perms: CredUpdateSessionPerms {
+                            ext_cred_portal_can_view: *ext_cred_portal_can_view,
+                            primary_can_edit: *primary_can_edit,
+                            passkeys_can_edit: *passkeys_can_edit,
+                            attested_passkeys_can_edit: *attested_passkeys_can_edit,
+                            unixcred_can_edit: *unixcred_can_edit,
+                            sshpubkey_can_edit: *sshpubkey_can_edit,
+                        },
+                    },
                 ),
                 ReplIntentTokenV1::InProgress {
                     token_id,
                     max_ttl,
                     session_id,
                     session_ttl,
+                    ext_cred_portal_can_view,
+                    primary_can_edit,
+                    passkeys_can_edit,
+                    attested_passkeys_can_edit,
+                    unixcred_can_edit,
+                    sshpubkey_can_edit,
                 } => (
                     token_id.clone(),
                     IntentTokenState::InProgress {
                         max_ttl: *max_ttl,
                         session_id: *session_id,
                         session_ttl: *session_ttl,
+                        perms: CredUpdateSessionPerms {
+                            ext_cred_portal_can_view: *ext_cred_portal_can_view,
+                            primary_can_edit: *primary_can_edit,
+                            passkeys_can_edit: *passkeys_can_edit,
+                            attested_passkeys_can_edit: *attested_passkeys_can_edit,
+                            unixcred_can_edit: *unixcred_can_edit,
+                            sshpubkey_can_edit: *sshpubkey_can_edit,
+                        },
                     },
                 ),
                 ReplIntentTokenV1::Consumed { token_id, max_ttl } => (
@@ -298,11 +373,16 @@ impl ValueSetT for ValueSetIntentToken {
         self.map.clear();
     }
 
-    fn remove(&mut self, pv: &PartialValue) -> bool {
+    fn remove(&mut self, pv: &PartialValue, _cid: &Cid) -> bool {
         match pv {
             PartialValue::IntentToken(u) => self.map.remove(u).is_some(),
             _ => false,
         }
+    }
+
+    fn purge(&mut self, _cid: &Cid) -> bool {
+        // Could consider making this a TS capable entry.
+        true
     }
 
     fn contains(&self, pv: &PartialValue) -> bool {
@@ -313,6 +393,14 @@ impl ValueSetT for ValueSetIntentToken {
     }
 
     fn substring(&self, _pv: &PartialValue) -> bool {
+        false
+    }
+
+    fn startswith(&self, _pv: &PartialValue) -> bool {
+        false
+    }
+
+    fn endswith(&self, _pv: &PartialValue) -> bool {
         false
     }
 
@@ -350,17 +438,49 @@ impl ValueSetT for ValueSetIntentToken {
                     (
                         u.clone(),
                         match s {
-                            IntentTokenState::Valid { max_ttl } => {
-                                DbValueIntentTokenStateV1::Valid { max_ttl: *max_ttl }
-                            }
+                            IntentTokenState::Valid {
+                                max_ttl,
+                                perms:
+                                    CredUpdateSessionPerms {
+                                        ext_cred_portal_can_view,
+                                        primary_can_edit,
+                                        passkeys_can_edit,
+                                        attested_passkeys_can_edit,
+                                        unixcred_can_edit,
+                                        sshpubkey_can_edit,
+                                    },
+                            } => DbValueIntentTokenStateV1::Valid {
+                                max_ttl: *max_ttl,
+                                ext_cred_portal_can_view: *ext_cred_portal_can_view,
+                                primary_can_edit: *primary_can_edit,
+                                passkeys_can_edit: *passkeys_can_edit,
+                                attested_passkeys_can_edit: *attested_passkeys_can_edit,
+                                unixcred_can_edit: *unixcred_can_edit,
+                                sshpubkey_can_edit: *sshpubkey_can_edit,
+                            },
                             IntentTokenState::InProgress {
                                 max_ttl,
                                 session_id,
                                 session_ttl,
+                                perms:
+                                    CredUpdateSessionPerms {
+                                        ext_cred_portal_can_view,
+                                        primary_can_edit,
+                                        passkeys_can_edit,
+                                        attested_passkeys_can_edit,
+                                        unixcred_can_edit,
+                                        sshpubkey_can_edit,
+                                    },
                             } => DbValueIntentTokenStateV1::InProgress {
                                 max_ttl: *max_ttl,
                                 session_id: *session_id,
                                 session_ttl: *session_ttl,
+                                ext_cred_portal_can_view: *ext_cred_portal_can_view,
+                                primary_can_edit: *primary_can_edit,
+                                passkeys_can_edit: *passkeys_can_edit,
+                                attested_passkeys_can_edit: *attested_passkeys_can_edit,
+                                unixcred_can_edit: *unixcred_can_edit,
+                                sshpubkey_can_edit: *sshpubkey_can_edit,
                             },
                             IntentTokenState::Consumed { max_ttl } => {
                                 DbValueIntentTokenStateV1::Consumed { max_ttl: *max_ttl }
@@ -378,19 +498,51 @@ impl ValueSetT for ValueSetIntentToken {
                 .map
                 .iter()
                 .map(|(u, s)| match s {
-                    IntentTokenState::Valid { max_ttl } => ReplIntentTokenV1::Valid {
+                    IntentTokenState::Valid {
+                        max_ttl,
+                        perms:
+                            CredUpdateSessionPerms {
+                                ext_cred_portal_can_view,
+                                primary_can_edit,
+                                passkeys_can_edit,
+                                attested_passkeys_can_edit,
+                                unixcred_can_edit,
+                                sshpubkey_can_edit,
+                            },
+                    } => ReplIntentTokenV1::Valid {
                         token_id: u.clone(),
                         max_ttl: *max_ttl,
+                        ext_cred_portal_can_view: *ext_cred_portal_can_view,
+                        primary_can_edit: *primary_can_edit,
+                        passkeys_can_edit: *passkeys_can_edit,
+                        attested_passkeys_can_edit: *attested_passkeys_can_edit,
+                        unixcred_can_edit: *unixcred_can_edit,
+                        sshpubkey_can_edit: *sshpubkey_can_edit,
                     },
                     IntentTokenState::InProgress {
                         max_ttl,
                         session_id,
                         session_ttl,
+                        perms:
+                            CredUpdateSessionPerms {
+                                ext_cred_portal_can_view,
+                                primary_can_edit,
+                                passkeys_can_edit,
+                                attested_passkeys_can_edit,
+                                unixcred_can_edit,
+                                sshpubkey_can_edit,
+                            },
                     } => ReplIntentTokenV1::InProgress {
                         token_id: u.clone(),
                         max_ttl: *max_ttl,
                         session_id: *session_id,
                         session_ttl: *session_ttl,
+                        ext_cred_portal_can_view: *ext_cred_portal_can_view,
+                        primary_can_edit: *primary_can_edit,
+                        passkeys_can_edit: *passkeys_can_edit,
+                        attested_passkeys_can_edit: *attested_passkeys_can_edit,
+                        unixcred_can_edit: *unixcred_can_edit,
+                        sshpubkey_can_edit: *sshpubkey_can_edit,
                     },
                     IntentTokenState::Consumed { max_ttl } => ReplIntentTokenV1::Consumed {
                         token_id: u.clone(),
@@ -429,6 +581,11 @@ impl ValueSetT for ValueSetIntentToken {
             debug_assert!(false);
             Err(OperationError::InvalidValueState)
         }
+    }
+
+    fn repl_merge_valueset(&self, _older: &ValueSet, _trim_cid: &Cid) -> Option<ValueSet> {
+        // Im not sure this actually needs repl handling ...
+        None
     }
 
     fn as_intenttoken_map(&self) -> Option<&BTreeMap<String, IntentTokenState>> {
@@ -502,7 +659,7 @@ impl ValueSetT for ValueSetPasskey {
         self.map.clear();
     }
 
-    fn remove(&mut self, pv: &PartialValue) -> bool {
+    fn remove(&mut self, pv: &PartialValue, _cid: &Cid) -> bool {
         match pv {
             PartialValue::Passkey(u) => self.map.remove(u).is_some(),
             _ => false,
@@ -517,6 +674,14 @@ impl ValueSetT for ValueSetPasskey {
     }
 
     fn substring(&self, _pv: &PartialValue) -> bool {
+        false
+    }
+
+    fn startswith(&self, _pv: &PartialValue) -> bool {
+        false
+    }
+
+    fn endswith(&self, _pv: &PartialValue) -> bool {
         false
     }
 
@@ -621,38 +786,38 @@ impl ValueSetT for ValueSetPasskey {
 }
 
 #[derive(Debug, Clone)]
-pub struct ValueSetDeviceKey {
-    map: BTreeMap<Uuid, (String, DeviceKeyV4)>,
+pub struct ValueSetAttestedPasskey {
+    map: BTreeMap<Uuid, (String, AttestedPasskeyV4)>,
 }
 
-impl ValueSetDeviceKey {
-    pub fn new(u: Uuid, t: String, k: DeviceKeyV4) -> Box<Self> {
+impl ValueSetAttestedPasskey {
+    pub fn new(u: Uuid, t: String, k: AttestedPasskeyV4) -> Box<Self> {
         let mut map = BTreeMap::new();
         map.insert(u, (t, k));
-        Box::new(ValueSetDeviceKey { map })
+        Box::new(ValueSetAttestedPasskey { map })
     }
 
-    pub fn push(&mut self, u: Uuid, t: String, k: DeviceKeyV4) -> bool {
+    pub fn push(&mut self, u: Uuid, t: String, k: AttestedPasskeyV4) -> bool {
         self.map.insert(u, (t, k)).is_none()
     }
 
-    pub fn from_dbvs2(data: Vec<DbValueDeviceKeyV1>) -> Result<ValueSet, OperationError> {
+    pub fn from_dbvs2(data: Vec<DbValueAttestedPasskeyV1>) -> Result<ValueSet, OperationError> {
         let map = data
             .into_iter()
             .map(|k| match k {
-                DbValueDeviceKeyV1::V4 { u, t, k } => Ok((u, (t, k))),
+                DbValueAttestedPasskeyV1::V4 { u, t, k } => Ok((u, (t, k))),
             })
             .collect::<Result<_, _>>()?;
-        Ok(Box::new(ValueSetDeviceKey { map }))
+        Ok(Box::new(ValueSetAttestedPasskey { map }))
     }
 
-    pub fn from_repl_v1(data: &[ReplDeviceKeyV4V1]) -> Result<ValueSet, OperationError> {
+    pub fn from_repl_v1(data: &[ReplAttestedPasskeyV4V1]) -> Result<ValueSet, OperationError> {
         let map = data
             .iter()
             .cloned()
-            .map(|ReplDeviceKeyV4V1 { uuid, tag, key }| Ok((uuid, (tag, key))))
+            .map(|ReplAttestedPasskeyV4V1 { uuid, tag, key }| Ok((uuid, (tag, key))))
             .collect::<Result<_, _>>()?;
-        Ok(Box::new(ValueSetDeviceKey { map }))
+        Ok(Box::new(ValueSetAttestedPasskey { map }))
     }
 
     // We need to allow this, because rust doesn't allow us to impl FromIterator on foreign
@@ -660,17 +825,17 @@ impl ValueSetDeviceKey {
     #[allow(clippy::should_implement_trait)]
     pub fn from_iter<T>(iter: T) -> Option<Box<Self>>
     where
-        T: IntoIterator<Item = (Uuid, String, DeviceKeyV4)>,
+        T: IntoIterator<Item = (Uuid, String, AttestedPasskeyV4)>,
     {
         let map = iter.into_iter().map(|(u, t, k)| (u, (t, k))).collect();
-        Some(Box::new(ValueSetDeviceKey { map }))
+        Some(Box::new(ValueSetAttestedPasskey { map }))
     }
 }
 
-impl ValueSetT for ValueSetDeviceKey {
+impl ValueSetT for ValueSetAttestedPasskey {
     fn insert_checked(&mut self, value: Value) -> Result<bool, OperationError> {
         match value {
-            Value::DeviceKey(u, t, k) => {
+            Value::AttestedPasskey(u, t, k) => {
                 if let BTreeEntry::Vacant(e) = self.map.entry(u) {
                     e.insert((t, k));
                     Ok(true)
@@ -686,21 +851,29 @@ impl ValueSetT for ValueSetDeviceKey {
         self.map.clear();
     }
 
-    fn remove(&mut self, pv: &PartialValue) -> bool {
+    fn remove(&mut self, pv: &PartialValue, _cid: &Cid) -> bool {
         match pv {
-            PartialValue::DeviceKey(u) => self.map.remove(u).is_some(),
+            PartialValue::AttestedPasskey(u) => self.map.remove(u).is_some(),
             _ => false,
         }
     }
 
     fn contains(&self, pv: &PartialValue) -> bool {
         match pv {
-            PartialValue::DeviceKey(u) => self.map.contains_key(u),
+            PartialValue::AttestedPasskey(u) => self.map.contains_key(u),
             _ => false,
         }
     }
 
     fn substring(&self, _pv: &PartialValue) -> bool {
+        false
+    }
+
+    fn startswith(&self, _pv: &PartialValue) -> bool {
+        false
+    }
+
+    fn endswith(&self, _pv: &PartialValue) -> bool {
         false
     }
 
@@ -720,7 +893,7 @@ impl ValueSetT for ValueSetDeviceKey {
     }
 
     fn syntax(&self) -> SyntaxType {
-        SyntaxType::DeviceKey
+        SyntaxType::AttestedPasskey
     }
 
     fn validate(&self, _schema_attr: &SchemaAttribute) -> bool {
@@ -734,10 +907,10 @@ impl ValueSetT for ValueSetDeviceKey {
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
-        DbValueSetV2::DeviceKey(
+        DbValueSetV2::AttestedPasskey(
             self.map
                 .iter()
-                .map(|(u, (t, k))| DbValueDeviceKeyV1::V4 {
+                .map(|(u, (t, k))| DbValueAttestedPasskeyV1::V4 {
                     u: *u,
                     t: t.clone(),
                     k: k.clone(),
@@ -747,11 +920,11 @@ impl ValueSetT for ValueSetDeviceKey {
     }
 
     fn to_repl_v1(&self) -> ReplAttrV1 {
-        ReplAttrV1::DeviceKey {
+        ReplAttrV1::AttestedPasskey {
             set: self
                 .map
                 .iter()
-                .map(|(u, (t, k))| ReplDeviceKeyV4V1 {
+                .map(|(u, (t, k))| ReplAttestedPasskeyV4V1 {
                     uuid: *u,
                     tag: t.clone(),
                     key: k.clone(),
@@ -761,20 +934,20 @@ impl ValueSetT for ValueSetDeviceKey {
     }
 
     fn to_partialvalue_iter(&self) -> Box<dyn Iterator<Item = PartialValue> + '_> {
-        Box::new(self.map.keys().copied().map(PartialValue::DeviceKey))
+        Box::new(self.map.keys().copied().map(PartialValue::AttestedPasskey))
     }
 
     fn to_value_iter(&self) -> Box<dyn Iterator<Item = Value> + '_> {
         Box::new(
             self.map
                 .iter()
-                .map(|(u, (t, k))| Value::DeviceKey(*u, t.clone(), k.clone())),
+                .map(|(u, (t, k))| Value::AttestedPasskey(*u, t.clone(), k.clone())),
         )
     }
 
     fn equal(&self, other: &ValueSet) -> bool {
         // Looks like we may not need this?
-        if let Some(other) = other.as_devicekey_map() {
+        if let Some(other) = other.as_attestedpasskey_map() {
             &self.map == other
         } else {
             // debug_assert!(false);
@@ -783,7 +956,7 @@ impl ValueSetT for ValueSetDeviceKey {
     }
 
     fn merge(&mut self, other: &ValueSet) -> Result<(), OperationError> {
-        if let Some(b) = other.as_devicekey_map() {
+        if let Some(b) = other.as_attestedpasskey_map() {
             mergemaps!(self.map, b)
         } else {
             debug_assert!(false);
@@ -791,15 +964,346 @@ impl ValueSetT for ValueSetDeviceKey {
         }
     }
 
-    fn to_devicekey_single(&self) -> Option<&DeviceKeyV4> {
+    /*
+    fn to_attestedpasskey_single(&self) -> Option<&AttestedPasskeyV4> {
         if self.map.len() == 1 {
             self.map.values().take(1).next().map(|(_, k)| k)
         } else {
             None
         }
     }
+    */
 
-    fn as_devicekey_map(&self) -> Option<&BTreeMap<Uuid, (String, DeviceKeyV4)>> {
+    fn as_attestedpasskey_map(&self) -> Option<&BTreeMap<Uuid, (String, AttestedPasskeyV4)>> {
         Some(&self.map)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct ValueSetCredentialType {
+    set: SmolSet<[CredentialType; 1]>,
+}
+
+impl ValueSetCredentialType {
+    pub fn new(u: CredentialType) -> Box<Self> {
+        let mut set = SmolSet::new();
+        set.insert(u);
+        Box::new(ValueSetCredentialType { set })
+    }
+
+    pub fn push(&mut self, u: CredentialType) -> bool {
+        self.set.insert(u)
+    }
+
+    pub fn from_dbvs2(data: Vec<u16>) -> Result<ValueSet, OperationError> {
+        let set: Result<_, _> = data.into_iter().map(CredentialType::try_from).collect();
+        let set = set.map_err(|_| OperationError::InvalidValueState)?;
+        Ok(Box::new(ValueSetCredentialType { set }))
+    }
+
+    pub fn from_repl_v1(data: &[u16]) -> Result<ValueSet, OperationError> {
+        let set: Result<_, _> = data.iter().copied().map(CredentialType::try_from).collect();
+        let set = set.map_err(|_| OperationError::InvalidValueState)?;
+        Ok(Box::new(ValueSetCredentialType { set }))
+    }
+
+    // We need to allow this, because rust doesn't allow us to impl FromIterator on foreign
+    // types, and uuid is foreign.
+    #[allow(clippy::should_implement_trait)]
+    pub fn from_iter<T>(iter: T) -> Option<Box<Self>>
+    where
+        T: IntoIterator<Item = CredentialType>,
+    {
+        let set = iter.into_iter().collect();
+        Some(Box::new(ValueSetCredentialType { set }))
+    }
+}
+
+impl ValueSetT for ValueSetCredentialType {
+    fn insert_checked(&mut self, value: Value) -> Result<bool, OperationError> {
+        match value {
+            Value::CredentialType(u) => Ok(self.set.insert(u)),
+            _ => {
+                debug_assert!(false);
+                Err(OperationError::InvalidValueState)
+            }
+        }
+    }
+
+    fn clear(&mut self) {
+        self.set.clear();
+    }
+
+    fn remove(&mut self, pv: &PartialValue, _cid: &Cid) -> bool {
+        match pv {
+            PartialValue::CredentialType(u) => self.set.remove(u),
+            _ => {
+                debug_assert!(false);
+                true
+            }
+        }
+    }
+
+    fn contains(&self, pv: &PartialValue) -> bool {
+        match pv {
+            PartialValue::CredentialType(u) => self.set.contains(u),
+            _ => false,
+        }
+    }
+
+    fn substring(&self, _pv: &PartialValue) -> bool {
+        false
+    }
+
+    fn startswith(&self, _pv: &PartialValue) -> bool {
+        false
+    }
+
+    fn endswith(&self, _pv: &PartialValue) -> bool {
+        false
+    }
+
+    fn lessthan(&self, _pv: &PartialValue) -> bool {
+        false
+    }
+
+    fn len(&self) -> usize {
+        self.set.len()
+    }
+
+    fn generate_idx_eq_keys(&self) -> Vec<String> {
+        self.set.iter().map(|u| u.to_string()).collect()
+    }
+
+    fn syntax(&self) -> SyntaxType {
+        SyntaxType::CredentialType
+    }
+
+    fn validate(&self, _schema_attr: &SchemaAttribute) -> bool {
+        true
+    }
+
+    fn to_proto_string_clone_iter(&self) -> Box<dyn Iterator<Item = String> + '_> {
+        Box::new(self.set.iter().map(|ct| ct.to_string()))
+    }
+
+    fn to_db_valueset_v2(&self) -> DbValueSetV2 {
+        DbValueSetV2::CredentialType(self.set.iter().map(|s| *s as u16).collect())
+    }
+
+    fn to_repl_v1(&self) -> ReplAttrV1 {
+        ReplAttrV1::CredentialType {
+            set: self.set.iter().map(|s| *s as u16).collect(),
+        }
+    }
+
+    fn to_partialvalue_iter(&self) -> Box<dyn Iterator<Item = PartialValue> + '_> {
+        Box::new(self.set.iter().copied().map(PartialValue::CredentialType))
+    }
+
+    fn to_value_iter(&self) -> Box<dyn Iterator<Item = Value> + '_> {
+        Box::new(self.set.iter().copied().map(Value::CredentialType))
+    }
+
+    fn equal(&self, other: &ValueSet) -> bool {
+        if let Some(other) = other.as_credentialtype_set() {
+            &self.set == other
+        } else {
+            debug_assert!(false);
+            false
+        }
+    }
+
+    fn merge(&mut self, other: &ValueSet) -> Result<(), OperationError> {
+        if let Some(b) = other.as_credentialtype_set() {
+            mergesets!(self.set, b)
+        } else {
+            debug_assert!(false);
+            Err(OperationError::InvalidValueState)
+        }
+    }
+
+    fn to_credentialtype_single(&self) -> Option<CredentialType> {
+        if self.set.len() == 1 {
+            self.set.iter().copied().take(1).next()
+        } else {
+            None
+        }
+    }
+
+    fn as_credentialtype_set(&self) -> Option<&SmolSet<[CredentialType; 1]>> {
+        Some(&self.set)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct ValueSetWebauthnAttestationCaList {
+    ca_list: AttestationCaList,
+}
+
+impl ValueSetWebauthnAttestationCaList {
+    pub fn new(ca_list: AttestationCaList) -> Box<Self> {
+        Box::new(ValueSetWebauthnAttestationCaList { ca_list })
+    }
+
+    /*
+    pub fn push(&mut self, u: CredentialType) -> bool {
+        self.set.insert(u)
+    }
+    */
+
+    pub fn from_dbvs2(ca_list: AttestationCaList) -> Result<ValueSet, OperationError> {
+        Ok(Box::new(ValueSetWebauthnAttestationCaList { ca_list }))
+    }
+
+    pub fn from_repl_v1(ca_list: &AttestationCaList) -> Result<ValueSet, OperationError> {
+        Ok(Box::new(ValueSetWebauthnAttestationCaList {
+            ca_list: ca_list.clone(),
+        }))
+    }
+
+    /*
+    // We need to allow this, because rust doesn't allow us to impl FromIterator on foreign
+    // types, and uuid is foreign.
+    #[allow(clippy::should_implement_trait)]
+    pub fn from_iter<T>(iter: T) -> Option<Box<Self>>
+    where
+        T: IntoIterator<Item = CredentialType>,
+    {
+        let set = iter.into_iter().collect();
+        Some(Box::new(ValueSetCredentialType { set }))
+    }
+    */
+}
+
+impl ValueSetT for ValueSetWebauthnAttestationCaList {
+    fn insert_checked(&mut self, value: Value) -> Result<bool, OperationError> {
+        match value {
+            Value::WebauthnAttestationCaList(u) => {
+                self.ca_list.union(&u);
+                Ok(true)
+            }
+            _ => {
+                debug_assert!(false);
+                Err(OperationError::InvalidValueState)
+            }
+        }
+    }
+
+    fn clear(&mut self) {
+        self.ca_list.clear();
+    }
+
+    fn remove(&mut self, _pv: &PartialValue, _cid: &Cid) -> bool {
+        /*
+        match pv {
+            _ => {
+                debug_assert!(false);
+                true
+            }
+        }
+        */
+        debug_assert!(false);
+        true
+    }
+
+    fn contains(&self, _pv: &PartialValue) -> bool {
+        /*
+        match pv {
+            PartialValue::CredentialType(u) => self.set.contains(u),
+            _ => false,
+        }
+        */
+        false
+    }
+
+    fn substring(&self, _pv: &PartialValue) -> bool {
+        false
+    }
+
+    fn startswith(&self, _pv: &PartialValue) -> bool {
+        false
+    }
+
+    fn endswith(&self, _pv: &PartialValue) -> bool {
+        false
+    }
+
+    fn lessthan(&self, _pv: &PartialValue) -> bool {
+        false
+    }
+
+    fn len(&self) -> usize {
+        self.ca_list.len()
+    }
+
+    fn generate_idx_eq_keys(&self) -> Vec<String> {
+        // self.set.iter().map(|u| u.to_string()).collect()
+        Vec::with_capacity(0)
+    }
+
+    fn syntax(&self) -> SyntaxType {
+        SyntaxType::WebauthnAttestationCaList
+    }
+
+    fn validate(&self, _schema_attr: &SchemaAttribute) -> bool {
+        // Should we actually be looking through the ca-list as given and eliminate
+        // known vuln devices?
+        true
+    }
+
+    fn to_proto_string_clone_iter(&self) -> Box<dyn Iterator<Item = String> + '_> {
+        Box::new(
+            self.ca_list
+                .cas()
+                .values()
+                .flat_map(|att_ca| att_ca.aaguids().values())
+                .map(|device| device.description_en().to_string()),
+        )
+    }
+
+    fn to_db_valueset_v2(&self) -> DbValueSetV2 {
+        DbValueSetV2::WebauthnAttestationCaList {
+            ca_list: self.ca_list.clone(),
+        }
+    }
+
+    fn to_repl_v1(&self) -> ReplAttrV1 {
+        ReplAttrV1::WebauthnAttestationCaList {
+            ca_list: self.ca_list.clone(),
+        }
+    }
+
+    fn to_partialvalue_iter(&self) -> Box<dyn Iterator<Item = PartialValue> + '_> {
+        Box::new(std::iter::empty::<PartialValue>())
+    }
+
+    fn to_value_iter(&self) -> Box<dyn Iterator<Item = Value> + '_> {
+        Box::new(std::iter::once(Value::WebauthnAttestationCaList(
+            self.ca_list.clone(),
+        )))
+    }
+
+    fn equal(&self, other: &ValueSet) -> bool {
+        if let Some(other) = other.as_webauthn_attestation_ca_list() {
+            &self.ca_list == other
+        } else {
+            debug_assert!(false);
+            false
+        }
+    }
+
+    fn merge(&mut self, other: &ValueSet) -> Result<(), OperationError> {
+        if let Some(b) = other.as_webauthn_attestation_ca_list() {
+            self.ca_list.union(b);
+            Ok(())
+        } else {
+            debug_assert!(false);
+            Err(OperationError::InvalidValueState)
+        }
+    }
+
+    fn as_webauthn_attestation_ca_list(&self) -> Option<&AttestationCaList> {
+        Some(&self.ca_list)
     }
 }

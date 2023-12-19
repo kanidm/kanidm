@@ -7,34 +7,52 @@ use crate::repl::proto::ReplAttrV1;
 use crate::schema::SchemaAttribute;
 use crate::valueset::{DbValueSetV2, ValueSet};
 
-use sshkeys::PublicKey as SshPublicKey;
+use sshkey_attest::proto::PublicKey as SshPublicKey;
 
 #[derive(Debug, Clone)]
 pub struct ValueSetSshKey {
-    map: BTreeMap<String, String>,
+    map: BTreeMap<String, SshPublicKey>,
 }
 
 impl ValueSetSshKey {
-    pub fn new(t: String, k: String) -> Box<Self> {
+    pub fn new(t: String, k: SshPublicKey) -> Box<Self> {
         let mut map = BTreeMap::new();
         map.insert(t, k);
         Box::new(ValueSetSshKey { map })
     }
 
-    pub fn push(&mut self, t: String, k: String) -> bool {
+    pub fn push(&mut self, t: String, k: SshPublicKey) -> bool {
         self.map.insert(t, k).is_none()
     }
 
     pub fn from_dbvs2(data: Vec<DbValueTaggedStringV1>) -> Result<ValueSet, OperationError> {
-        let map = data.into_iter().map(|dbv| (dbv.tag, dbv.data)).collect();
+        let map = data
+            .into_iter()
+            .filter_map(|DbValueTaggedStringV1 { tag, data }| {
+                SshPublicKey::from_string(&data)
+                    .map_err(|err| {
+                        warn!(%tag, ?err, "discarding corrupted ssh public key");
+                    })
+                    .map(|pk| (tag, pk))
+                    .ok()
+            })
+            .collect();
         Ok(Box::new(ValueSetSshKey { map }))
     }
 
     pub fn from_repl_v1(data: &[(String, String)]) -> Result<ValueSet, OperationError> {
         let map = data
             .iter()
-            .map(|(tag, data)| (tag.clone(), data.clone()))
-            .collect();
+            .map(|(tag, data)| {
+                SshPublicKey::from_string(data)
+                    .map_err(|err| {
+                        warn!(%tag, ?err, "discarding corrupted ssh public key");
+                        OperationError::VS0001IncomingReplSshPublicKey
+                    })
+                    .map(|pk| (tag.clone(), pk))
+            })
+            .collect::<Result<BTreeMap<_, _>, _>>()?;
+
         Ok(Box::new(ValueSetSshKey { map }))
     }
 
@@ -43,7 +61,7 @@ impl ValueSetSshKey {
     #[allow(clippy::should_implement_trait)]
     pub fn from_iter<T>(iter: T) -> Option<Box<Self>>
     where
-        T: IntoIterator<Item = (String, String)>,
+        T: IntoIterator<Item = (String, SshPublicKey)>,
     {
         let map = iter.into_iter().collect();
         Some(Box::new(ValueSetSshKey { map }))
@@ -69,7 +87,7 @@ impl ValueSetT for ValueSetSshKey {
         self.map.clear();
     }
 
-    fn remove(&mut self, pv: &PartialValue) -> bool {
+    fn remove(&mut self, pv: &PartialValue, _cid: &Cid) -> bool {
         match pv {
             PartialValue::SshKey(t) => self.map.remove(t.as_str()).is_some(),
             _ => false,
@@ -84,6 +102,14 @@ impl ValueSetT for ValueSetSshKey {
     }
 
     fn substring(&self, _pv: &PartialValue) -> bool {
+        false
+    }
+
+    fn startswith(&self, _pv: &PartialValue) -> bool {
+        false
+    }
+
+    fn endswith(&self, _pv: &PartialValue) -> bool {
         false
     }
 
@@ -104,15 +130,15 @@ impl ValueSetT for ValueSetSshKey {
     }
 
     fn validate(&self, _schema_attr: &SchemaAttribute) -> bool {
-        self.map.iter().all(|(s, key)| {
-            SshPublicKey::from_string(key).is_ok()
-                && Value::validate_str_escapes(s)
+        self.map.iter().all(|(s, _key)| {
+            Value::validate_str_escapes(s)
+                // && Value::validate_iname(s)
                 && Value::validate_singleline(s)
         })
     }
 
     fn to_proto_string_clone_iter(&self) -> Box<dyn Iterator<Item = String> + '_> {
-        Box::new(self.map.keys().cloned())
+        Box::new(self.map.values().map(|pk| pk.to_string()))
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
@@ -121,7 +147,7 @@ impl ValueSetT for ValueSetSshKey {
                 .iter()
                 .map(|(tag, key)| DbValueTaggedStringV1 {
                     tag: tag.clone(),
-                    data: key.clone(),
+                    data: key.to_string(),
                 })
                 .collect(),
         )
@@ -132,7 +158,7 @@ impl ValueSetT for ValueSetSshKey {
             set: self
                 .map
                 .iter()
-                .map(|(tag, key)| (tag.clone(), key.clone()))
+                .map(|(tag, key)| (tag.clone(), key.to_string()))
                 .collect(),
         }
     }
@@ -167,15 +193,15 @@ impl ValueSetT for ValueSetSshKey {
         }
     }
 
-    fn as_sshkey_map(&self) -> Option<&BTreeMap<String, String>> {
+    fn as_sshkey_map(&self) -> Option<&BTreeMap<String, SshPublicKey>> {
         Some(&self.map)
     }
 
-    fn get_ssh_tag(&self, tag: &str) -> Option<&str> {
-        self.map.get(tag).map(|s| s.as_str())
+    fn get_ssh_tag(&self, tag: &str) -> Option<&SshPublicKey> {
+        self.map.get(tag)
     }
 
-    fn as_sshpubkey_str_iter(&self) -> Option<Box<dyn Iterator<Item = &str> + '_>> {
-        Some(Box::new(self.map.values().map(|s| s.as_str())))
+    fn as_sshpubkey_string_iter(&self) -> Option<Box<dyn Iterator<Item = String> + '_>> {
+        Some(Box::new(self.map.values().map(|pk| pk.to_string())))
     }
 }

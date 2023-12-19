@@ -19,6 +19,3 @@ extern crate lazy_static;
 
 #[cfg(target_family = "unix")]
 mod implementation;
-
-#[cfg(target_family = "unix")]
-pub use implementation::*;

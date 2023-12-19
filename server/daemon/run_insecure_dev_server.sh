@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 # This script based on the developer readme and allows you to run a test server.
 
 if [ -z "$KANI_CARGO_OPTS" ]; then
@@ -16,7 +18,7 @@ if [ ! -d "${KANI_TMP}" ]; then
     mkdir -p "${KANI_TMP}"
 fi
 
-CONFIG_FILE="../../examples/insecure_server.toml"
+CONFIG_FILE=${CONFIG_FILE:="../../examples/insecure_server.toml"}
 
 if [ ! -f "${CONFIG_FILE}" ]; then
     SCRIPT_DIR="$(dirname -a "$0")"
@@ -24,13 +26,14 @@ if [ ! -f "${CONFIG_FILE}" ]; then
     exit 1
 fi
 
-#shellcheck disable=SC2086
-cargo run ${KANI_CARGO_OPTS} --bin kanidmd -- cert-generate -c "${CONFIG_FILE}"
-
-COMMAND="server"
 if [ -n "${1}" ]; then
     COMMAND=$*
+    #shellcheck disable=SC2086
+    cargo run ${KANI_CARGO_OPTS} --bin kanidmd -- ${COMMAND} -c "${CONFIG_FILE}"
+else
+    #shellcheck disable=SC2086
+    cargo run ${KANI_CARGO_OPTS} --bin kanidmd -- cert-generate -c "${CONFIG_FILE}"
+    #shellcheck disable=SC2086
+    cargo run ${KANI_CARGO_OPTS} --bin kanidmd -- server -c "${CONFIG_FILE}"
 fi
 
-#shellcheck disable=SC2086
-cargo run ${KANI_CARGO_OPTS} --bin kanidmd -- ${COMMAND} -c "${CONFIG_FILE}"

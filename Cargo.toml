@@ -3,6 +3,7 @@ debug = true
 lto = "thin"
 
 [workspace]
+resolver = "2"
 members = [
     "proto",
     "tools/cli",
@@ -12,7 +13,10 @@ members = [
     "unix_integration",
     "unix_integration/nss_kanidm",
     "unix_integration/pam_kanidm",
-    "server/web_ui",
+    "server/web_ui/admin",
+    "server/web_ui/login_flows",
+    "server/web_ui/user",
+    "server/web_ui/shared",
     "server/daemon",
     "server/lib",
     "server/lib-macros",
@@ -23,157 +27,230 @@ members = [
     "libs/crypto",
     "libs/file_permissions",
     "libs/profiles",
-    "libs/sketching"
+    "libs/sketching",
+    "libs/users",
 ]
 
 [workspace.package]
-version = "1.1.0-beta.13-dev"
+version = "1.1.0-rc.15-dev"
 authors = [
     "William Brown <william@blackhats.net.au>",
     "James Hodgkinson <james@terminaloutcomes.com>",
-    ]
+]
 rust-version = "1.66"
 edition = "2021"
 license = "MPL-2.0"
 homepage = "https://github.com/kanidm/kanidm/"
 repository = "https://github.com/kanidm/kanidm/"
 
-[workspace.dependencies]
-argon2 = { version = "0.5.0", features = ["alloc"] }
-async-recursion = "1.0.4"
-async-trait = "^0.1.68"
-base32 = "^0.4.0"
-base64 = "^0.21.0"
-base64urlsafedata = "0.1.3"
-bytes = "^1.3.0"
-clap = { version = "^3.2", features = ["derive"] }
-clap_complete = "^3.2.5"
-# Forced by saffron/cron
-chrono = "^0.4.26"
-compact_jwt = { version = "^0.2.3", default-features = false }
+
+[patch.crates-io]
+## As Kanidm maintains a number of libraries, sometimes during development we need to override them
+## with local or git versions. This patch table allows quick uncommenting to achieve that.
+
 # compact_jwt = { path = "../compact_jwt" }
-concread = "^0.4.1"
 # concread = { path = "../concread" }
+
+# idlset = { path = "../idlset" }
+
+# ldap3_client = { path = "../ldap3/client" }
+# ldap3_proto = { path = "../ldap3/proto" }
+# ldap3_client = { git = "https://github.com/kanidm/ldap3.git" }
+# ldap3_proto = { git = "https://github.com/kanidm/ldap3.git" }
+
+# scim_proto = { path = "../scim/proto" }
+# scim_proto = { git = "https://github.com/kanidm/scim.git"  }
+
+base64urlsafedata = { git = "https://github.com/kanidm/webauthn-rs.git", rev = "5f4db4172f8e22aedc68c282d177e98db2b1892f" }
+webauthn-authenticator-rs = { git = "https://github.com/kanidm/webauthn-rs.git", rev = "5f4db4172f8e22aedc68c282d177e98db2b1892f" }
+webauthn-rs = { git = "https://github.com/kanidm/webauthn-rs.git", rev = "5f4db4172f8e22aedc68c282d177e98db2b1892f" }
+webauthn-rs-core = { git = "https://github.com/kanidm/webauthn-rs.git", rev = "5f4db4172f8e22aedc68c282d177e98db2b1892f" }
+webauthn-rs-proto = { git = "https://github.com/kanidm/webauthn-rs.git", rev = "5f4db4172f8e22aedc68c282d177e98db2b1892f" }
+sshkey-attest = { git = "https://github.com/kanidm/webauthn-rs.git", rev = "5f4db4172f8e22aedc68c282d177e98db2b1892f" }
+
+# base64urlsafedata = { path = "../webauthn-rs/base64urlsafedata" }
+# webauthn-authenticator-rs = { path = "../webauthn-rs/webauthn-authenticator-rs" }
+# webauthn-rs = { path = "../webauthn-rs/webauthn-rs" }
+# webauthn-rs-core = { path = "../webauthn-rs/webauthn-rs-core" }
+# webauthn-rs-proto = { path = "../webauthn-rs/webauthn-rs-proto" }
+# sshkey-attest = { path = "../webauthn-rs/sshkey-attest" }
+
+# kanidm-hsm-crypto = { path = "../hsm-crypto" }
+
+[workspace.dependencies]
+kanidmd_core = { path = "./server/core", version = "1.1.0-rc.15-dev" }
+kanidmd_lib = { path = "./server/lib", version = "1.1.0-rc.15-dev" }
+kanidmd_lib_macros = { path = "./server/lib-macros", version = "1.1.0-rc.15-dev" }
+kanidmd_testkit = { path = "./server/testkit", version = "1.1.0-rc.15-dev" }
+kanidm_build_profiles = { path = "./libs/profiles", version = "1.1.0-rc.15-dev" }
+kanidm_client = { path = "./libs/client", version = "1.1.0-rc.15-dev" }
+kanidm-hsm-crypto = "^0.1.5"
+kanidm_lib_crypto = { path = "./libs/crypto", version = "1.1.0-rc.15-dev" }
+kanidm_lib_file_permissions = { path = "./libs/file_permissions", version = "1.1.0-rc.15-dev" }
+kanidm_proto = { path = "./proto", version = "1.1.0-rc.15-dev" }
+kanidm_unix_int = { path = "./unix_integration", version = "1.1.0-rc.15-dev" }
+kanidm_utils_users = { path = "./libs/users", version = "1.1.0-rc.15-dev" }
+
+serde_with = "3.4.0"
+argon2 = { version = "0.5.2", features = ["alloc"] }
+async-recursion = "1.0.5"
+async-trait = "^0.1.74"
+axum = { version = "0.6.20", features = [
+    "form",
+    "headers",
+    "http2",
+    "json",
+    "macros",
+    "multipart",
+    "original-uri",
+    "query",
+    "tracing",
+] }
+axum-csp = { version = "0.0.5" }
+base32 = "^0.4.0"
+base64 = "^0.21.5"
+base64urlsafedata = "0.1.3"
+bytes = "^1.5.0"
+clap = { version = "^4.4.8", features = ["derive", "env"] }
+clap_complete = "^4.4.4"
+# Forced by saffron/cron
+chrono = "^0.4.31"
+compact_jwt = { version = "^0.3.3", default-features = false }
+concread = "^0.4.3"
 cron = "0.12.0"
 crossbeam = "0.8.1"
-criterion = "^0.4.0"
+criterion = "^0.5.1"
 csv = "1.2.2"
 dialoguer = "0.10.4"
-dyn-clone = "^1.0.11"
+dyn-clone = "^1.0.16"
 fernet = "^0.2.1"
-filetime = "^0.2.21"
+filetime = "^0.2.22"
 fs2 = "^0.4.3"
-futures = "^0.3.28"
+futures = "^0.3.29"
 futures-concurrency = "^3.1.0"
 futures-util = { version = "^0.3.21", features = ["sink"] }
+gix = { version = "0.53.1", default-features = false }
 gloo = "^0.8.1"
-gloo-net = "0.3.0"
-hashbrown = { version = "0.14.0", features = ["serde", "inline-more", "ahash"] }
+gloo-utils = "0.2.0"
+hashbrown = { version = "0.14.2", features = ["serde", "inline-more", "ahash"] }
 hex = "^0.4.3"
-http-types = "^2.12.0"
+http = "0.2.11"
+hyper = { version = "0.14.27", features = ["full"] }
+hyper-tls = "0.5.0"
 idlset = "^0.2.4"
-# idlset = { path = "../idlset" }
-js-sys = "^0.3.63"
-kanidmd_core = { path = "./server/core" }
-kanidmd_idm = { path = "./server/idm" }
-kanidmd_lib = { path = "./server/lib" }
-kanidmd_lib_macros = { path = "./server/lib-macros" }
-kanidm_lib_crypto = { path = "./libs/crypto" }
-kanidm_lib_file_permissions = { path = "./libs/file_permissions" }
-kanidmd_testkit = { path = "./server/testkit" }
-kanidm_client = { path = "./libs/client", version = "1.1.0-alpha.11" }
-kanidm_proto = { path = "./proto", version = "1.1.0-alpha.11" }
-kanidm_unix_int = { path = "./unix_integration" }
-last-git-commit = "0.2.0"
+image = { version = "0.24.7", default-features = false, features = [
+    "gif",
+    "jpeg",
+    "webp",
+] }
+enum-iterator = "1.4.0"
+js-sys = "^0.3.65"
+kanidmd_web_ui_shared = { path = "./server/web_ui/shared" }
 # REMOVE this
 lazy_static = "^1.4.0"
-ldap3_client = "^0.3.4"
-ldap3_proto = { version = "^0.3.4", features = ["serde"] }
+ldap3_client = "^0.4.2"
+ldap3_proto = { version = "^0.4.2", features = ["serde"] }
 
-# ldap3_client = { path = "../ldap3/client", version = "0.3.2" }
-# ldap3_proto = { path = "../ldap3/proto", version = "^0.3.2", features = ["serde"] }
-# ldap3_client = { git = "https://github.com/kanidm/ldap3.git", version = "0.3.0" }
-# ldap3_proto = { git = "https://github.com/kanidm/ldap3.git", version = "0.3.0" }
-
-libc = "^0.2.147"
+libc = "^0.2.150"
 libnss = "^0.4.0"
 libsqlite3-sys = "^0.25.0"
+lodepng = "3.7.2"
 lru = "^0.8.0"
 mathru = "^0.13.0"
 notify-debouncer-full = { version = "0.1" }
 num_enum = "^0.5.11"
 oauth2_ext = { version = "^4.1.0", package = "oauth2", default-features = false }
 openssl-sys = "^0.9"
-openssl = "^0.10.55"
-paste = "^1.0.12"
+openssl = "^0.10.59"
+
+opentelemetry = { version = "0.20.0" }
+opentelemetry_api = { version = "0.20.0", features = ["logs", "metrics"] }
+opentelemetry-otlp = { version = "0.13.0", default-features = false, features = [
+    "serde",
+    "logs",
+    "metrics",
+    "http-proto",
+    "grpc-tonic",
+] }
+opentelemetry_sdk = "0.20.0"
+opentelemetry-stdout = { version = "0.1.0", features = [
+    "logs",
+    "metrics",
+    "trace",
+] }
+tonic = "0.10.2"
+tracing-opentelemetry = "0.21.0"
+
+paste = "^1.0.14"
 pkg-config = "^0.3.27"
-proc-macro2 = "1.0.63"
-profiles = { path = "./libs/profiles" }
+proc-macro2 = "1.0.69"
 qrcode = "^0.12.0"
 quote = "1"
 rand = "^0.8.5"
-regex = "1.8.4"
-reqwest = { version = "0.11.18", default-features = false, features=["cookies", "json", "gzip", "native-tls"] }
-rpassword = "^7.2.0"
-rusqlite = "^0.28.0"
+regex = "1.10.2"
+reqwest = { version = "0.11.20", default-features = false, features = [
+    "cookies",
+    "json",
+    "gzip",
+    "native-tls",
+    "native-tls-alpn",
+] }
+rpassword = "^7.3.1"
+rusqlite = { version = "^0.28.0", features = ["array", "bundled"] }
 
 scim_proto = "^0.2.1"
-# scim_proto = { path = "../scim/proto", version = "^0.2.1" }
-# scim_proto = { git = "https://github.com/kanidm/scim.git", version = "0.1.1" }
-
-selinux = "^0.4.1"
-serde = "^1.0.164"
+sd-notify = "^0.4.1"
+selinux = "^0.4.2"
+serde = "^1.0.190"
 serde_cbor = { version = "0.12.0-dev", package = "serde_cbor_2" }
-serde_json = "^1.0.99"
-serde-wasm-bindgen = "0.4"
+serde_json = "^1.0.107"
+serde-wasm-bindgen = "0.5"
 shellexpand = "^2.1.2"
-sketching = { path = "./libs/sketching" }
+sketching = { path = "./libs/sketching", version = "1.1.0-rc.15-dev" }
 smartstring = "^1.0.1"
 smolset = "^1.3.1"
-sshkeys = "^0.3.1"
-syn = { version = "2.0.23", features = ["full"] }
+sshkey-attest = "^0.5.0-dev"
+svg = "0.13.1"
+syn = { version = "2.0.38", features = ["full"] }
+tempfile = "3.8.1"
 testkit-macros = { path = "./server/testkit-macros" }
-tide = "^0.16.0"
-# Including brotli *very* slow, so don't do that. Including the "default" feature pulls a mime-type list from the internet on build, which isn't used.
-tide-compress = { version="0.10.6", default-features = false, features = [ "gzip", "regex-check" ] }
-tide-openssl = "^0.1.1"
 time = { version = "^0.3.21", features = ["formatting", "local-offset"] }
 
 tikv-jemallocator = "0.5"
 
-tokio = "^1.29.1"
+tokio = "^1.34.0"
 tokio-openssl = "^0.6.3"
-tokio-util = "^0.7.8"
+tokio-util = "^0.7.10"
 
 toml = "^0.5.11"
-touch = "^0.0.1"
-# tracing = { version = "^0.1.37", features = ["max_level_trace", "release_max_level_debug"] }
-tracing = { version = "^0.1.37" }
-tracing-subscriber = { version = "^0.3.17", features = ["env-filter"] }
+tracing = { version = "^0.1.40", features = [
+    "max_level_trace",
+    "release_max_level_debug",
+] }
+# tracing = { version = "^0.1.37" }
+tracing-subscriber = { version = "^0.3.18", features = ["env-filter"] }
+tracing-forest = "^0.1.6"
 
-# tracing-forest = { path = "/Users/william/development/tracing-forest/tracing-forest" }
-tracing-forest = { git = "https://github.com/QnnOkabayashi/tracing-forest.git", rev = "77daf8c8abf010b87d45ece2bf656983c6f8cecb" }
-
-tss-esapi = "^7.2.0"
-
-url = "^2.4.0"
-urlencoding = "2.1.2"
-users = "^0.11.0"
-uuid = "^1.4.0"
+url = "^2.4.1"
+urlencoding = "2.1.3"
+utoipa = "4.1.0"
+utoipa-swagger-ui = "4.0.0"
+uuid = "^1.5.0"
 
 wasm-bindgen = "^0.2.86"
-wasm-bindgen-futures = "^0.4.30"
-wasm-bindgen-test = "0.3.35"
+wasm-bindgen-futures = "^0.4.38"
+wasm-bindgen-test = "0.3.38"
 
-webauthn-authenticator-rs = "0.4.8"
-webauthn-rs = "0.4.8"
-webauthn-rs-core = "0.4.8"
-webauthn-rs-proto = "0.4.8"
-# webauthn-authenticator-rs = { path = "../webauthn-rs/webauthn-authenticator-rs" }
-# webauthn-rs = { path = "../webauthn-rs/webauthn-rs" }
-# webauthn-rs-core = { path = "../webauthn-rs/webauthn-rs-core" }
-# webauthn-rs-proto = { path = "../webauthn-rs/webauthn-rs-proto" }
-web-sys = "^0.3.62"
+webauthn-authenticator-rs = { version = "0.5.0-dev", features = [
+    "softpasskey",
+    "softtoken",
+    "mozilla",
+] }
+webauthn-rs = { version = "0.5.0-dev", features = ["preview-features"] }
+webauthn-rs-core = "0.5.0-dev"
+webauthn-rs-proto = "0.5.0-dev"
+
+web-sys = "^0.3.65"
 whoami = "^1.4.1"
 walkdir = "2"
 
@@ -182,12 +259,3 @@ yew-router = "^0.17.0"
 zxcvbn = "^2.2.2"
 
 nonempty = "0.8.1"
-
-# enshrinken the WASMs
-[profile.release.package.kanidmd_web_ui]
-# optimization over all codebase ( better optimization, slower build )
-codegen-units = 1
-# optimization for size ( more aggressive )
-opt-level = 'z'
-# link time optimization using using whole-program analysis
-# lto = true

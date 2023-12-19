@@ -1,13 +1,8 @@
 use super::proto::*;
 use crate::plugins::Plugins;
 use crate::prelude::*;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
-
-pub enum ConsumerState {
-    Ok,
-    RefreshRequired,
-}
 
 impl<'a> QueryServerWriteTransaction<'a> {
     // Apply the state changes if they are valid.
@@ -16,7 +11,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         &mut self,
         ctx_entries: &[ReplIncrementalEntryV1],
     ) -> Result<(), OperationError> {
-        trace!(?ctx_entries);
+        // trace!(?ctx_entries);
 
         // No action needed for this if the entries are empty.
         if ctx_entries.is_empty() {
@@ -43,7 +38,6 @@ impl<'a> QueryServerWriteTransaction<'a> {
             e
         })?;
 
-        trace!("===========================================");
         trace!(?ctx_entries);
 
         let db_entries = self.be_txn.incremental_prepare(&ctx_entries).map_err(|e| {
@@ -61,35 +55,42 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
         let (conflicts, proceed): (Vec<_>, Vec<_>) = ctx_entries
             .iter()
-            .zip(db_entries.into_iter())
+            .zip(db_entries)
             .partition(|(ctx_ent, db_ent)| ctx_ent.is_add_conflict(db_ent.as_ref()));
+
+        debug!(conflicts = %conflicts.len(), proceed = %proceed.len());
 
         // Now we have a set of conflicts and a set of entries to proceed.
         //
         //    /- entries that need to be created as conflicts.
         //    |                /- entries that survive and need update to the db in place.
         //    v                v
-
-        #[allow(clippy::todo)]
         let (conflict_create, conflict_update): (
-            Vec<EntrySealedNew>,
+            Vec<Option<EntrySealedNew>>,
             Vec<(EntryIncrementalCommitted, Arc<EntrySealedCommitted>)>,
         ) = conflicts
             .into_iter()
-            .map(|(_ctx_ent, _db_ent)| {
-                // Determine which of the entries must become the conflict
-                // and which will now persist. There are two possible cases.
-                //
-                // 1. The ReplIncremental is after the DBEntry, and becomes the conflict.
-                //    This means we just update the db entry with itself.
-                //
-                // 2. The ReplIncremental is before the DBEntry, and becomes live.
-                //    This means we have to take the DBEntry as it exists, convert
-                //    it to a new entry. Then we have to take the repl incremental
-                //    entry and place it into the update queue.
-                todo!();
-            })
+            .map(
+                |(ctx_ent, db_ent): (&EntryIncrementalNew, Arc<EntrySealedCommitted>)| {
+                    let (opt_create, ent) =
+                        ctx_ent.resolve_add_conflict(self.get_cid(), db_ent.as_ref());
+                    (opt_create, (ent, db_ent))
+                },
+            )
             .unzip();
+
+        // ⚠️  If we end up with plugins triggering other entries to conflicts, we DON'T need to
+        // add them to this list. This is just for uuid conflicts, not higher level ones!
+        //
+        // ⚠️  We need to collect this from conflict_update since we may NOT be the originator
+        // server for some conflicts, but we still need to know the UUID is IN the conflict
+        // state for plugins. We also need to do this here before the conflict_update
+        // set is consumed by later steps.
+        let mut conflict_uuids: BTreeSet<_> =
+            conflict_update.iter().map(|(_, e)| e.get_uuid()).collect();
+
+        // Filter out None from conflict_create
+        let conflict_create: Vec<EntrySealedNew> = conflict_create.into_iter().flatten().collect();
 
         let proceed_update: Vec<(EntryIncrementalCommitted, Arc<EntrySealedCommitted>)> = proceed
             .into_iter()
@@ -98,18 +99,31 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 // their attribute sets/states per the change state rules.
 
                 // This must create an EntryInvalidCommitted
-                let merge_ent = ctx_ent.merge_state(db_ent.as_ref(), &self.schema);
+                let merge_ent = ctx_ent.merge_state(db_ent.as_ref(), &self.schema, self.trim_cid());
                 (merge_ent, db_ent)
             })
             .collect();
 
-        // To be consistent to Modify, we need to run pre-modify here.
+        // We now merge the conflict updates and the updates that can proceed. This is correct
+        // since if an entry was conflicting by uuid then there is nothing for it to merge with
+        // so as a result we can just by pass that step. We now have all_updates which is
+        // the set of live entries to write back.
         let mut all_updates = conflict_update
             .into_iter()
-            .chain(proceed_update.into_iter())
+            .chain(proceed_update)
             .collect::<Vec<_>>();
 
-        // Plugins can mark entries into a conflict status.
+        // ⚠️  This hook is probably not what you want to use for checking entries are consistent.
+        //
+        // The main issue is that at this point we have a set of entries that need to be
+        // created / marked into conflicts, and until that occurs it's hard to proceed with validations
+        // like attr unique because then we would need to walk the various sets to find cases where
+        // an attribute may not be unique "currently" but *would* be unique once the various entries
+        // have then been conflicted and updated.
+        //
+        // Instead we treat this like refint - we allow the database to "temporarily" become
+        // inconsistent, then we fix it immediately. This hook remains for cases in future
+        // where we may wish to have session cleanup performed for example.
         Plugins::run_pre_repl_incremental(self, all_updates.as_mut_slice()).map_err(|e| {
             admin_error!(
                 "Refresh operation failed (pre_repl_incremental plugin), {:?}",
@@ -118,8 +132,9 @@ impl<'a> QueryServerWriteTransaction<'a> {
             e
         })?;
 
-        // Now we have to schema check our data and separate to schema_valid and
-        // invalid.
+        // Now we have to schema check our entries. Remember, here because this is
+        // using into_iter it's possible that entries may be conflicted due to becoming
+        // schema invalid during the merge process.
         let all_updates_valid = all_updates
             .into_iter()
             .map(|(ctx_ent, db_ent)| {
@@ -133,30 +148,18 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 (sealed_ent, db_ent)
             })
             .collect::<Vec<_>>();
-        /*
-        .collect::<Result<Vec<_>, _>>()
-        .map_err(|e| {
-            error!(err = ?e, "Failed to validate schema of incremental entries");
-            OperationError::SchemaViolation(e)
-        })?;
-        */
 
-        // We now have three sets!
+        // We now have two sets!
         //
         // * conflict_create - entries to be created that are conflicted via add statements (duplicate uuid)
-        // * schema_invalid - entries that were merged and their attribute state has now become invalid to schema.
-        // * schema_valid - entries that were merged and are schema valid.
+        //                     these are only created on the entry origin node!
+        // * all_updates_valid - this has two types of entries
+        //   * entries that have survived a uuid conflict and need inplace write. Unlikely to become invalid.
+        //   * entries that were merged and are schema valid.
+        //   * entries that were merged and their attribute state has now become invalid and are conflicts.
         //
-        // From these sets, we will move conflict_create and schema_invalid into the replication masked
-        // state. However schema_valid needs to be processed to check for plugin rules as well. If
-        // anything hits one of these states we need to have a way to handle this too in a consistent
-        // manner.
-        //
-
-        // Then similar to modify, we need the pre and post candidates.
-
-        // We need to unzip the schema_valid and invalid entries.
-
+        // incremental_apply here handles both the creations and the update processes to ensure that
+        // everything is updated in a single consistent operation.
         self.be_txn
             .incremental_apply(&all_updates_valid, conflict_create)
             .map_err(|e| {
@@ -164,21 +167,47 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 e
             })?;
 
+        Plugins::run_post_repl_incremental_conflict(
+            self,
+            all_updates_valid.as_slice(),
+            &mut conflict_uuids,
+        )
+        .map_err(|e| {
+            error!(
+                "Refresh operation failed (post_repl_incremental_conflict plugin), {:?}",
+                e
+            );
+            e
+        })?;
+
         // Plugins need these unzipped
-        let (cand, pre_cand): (Vec<_>, Vec<_>) = all_updates_valid.into_iter().unzip();
+        //
+        let (cand, pre_cand): (Vec<_>, Vec<_>) = all_updates_valid
+            .into_iter()
+            .filter(|(cand, _)| {
+                // Exclude anything that is conflicted as a result of the conflict plugins.
+                !conflict_uuids.contains(&cand.get_uuid())
+            })
+            .unzip();
 
         // We don't need to process conflict_creates here, since they are all conflicting
-        // uuids which means that the uuids are all *here* so they will trigger anything
-        // that requires processing anyway.
-        Plugins::run_post_repl_incremental(self, pre_cand.as_slice(), cand.as_slice()).map_err(
-            |e| {
-                admin_error!(
-                    "Refresh operation failed (post_repl_incremental plugin), {:?}",
-                    e
-                );
+        // uuids which means that the conflict_uuids are all *here* so they will trigger anything
+        // that requires processing anyway. As well conflict_creates may not be the full
+        // set of conflict entries as we may not be the origin node! Conflict_creates is always
+        // a subset of the conflicts.
+        Plugins::run_post_repl_incremental(
+            self,
+            pre_cand.as_slice(),
+            cand.as_slice(),
+            &conflict_uuids,
+        )
+        .map_err(|e| {
+            error!(
+                "Refresh operation failed (post_repl_incremental plugin), {:?}",
                 e
-            },
-        )?;
+            );
+            e
+        })?;
 
         self.changed_uuid.extend(cand.iter().map(|e| e.get_uuid()));
 
@@ -186,13 +215,23 @@ impl<'a> QueryServerWriteTransaction<'a> {
             self.changed_acp = cand
                 .iter()
                 .chain(pre_cand.iter().map(|e| e.as_ref()))
-                .any(|e| e.attribute_equality("class", &PVCLASS_ACP))
+                .any(|e| {
+                    e.attribute_equality(Attribute::Class, &EntryClass::AccessControlProfile.into())
+                })
         }
         if !self.changed_oauth2 {
             self.changed_oauth2 = cand
                 .iter()
                 .chain(pre_cand.iter().map(|e| e.as_ref()))
-                .any(|e| e.attribute_equality("class", &PVCLASS_OAUTH2_RS));
+                .any(|e| {
+                    e.attribute_equality(Attribute::Class, &EntryClass::OAuth2ResourceServer.into())
+                });
+        }
+        if !self.changed_sync_agreement {
+            self.changed_sync_agreement = cand
+                .iter()
+                .chain(pre_cand.iter().map(|e| e.as_ref()))
+                .any(|e| e.attribute_equality(Attribute::Class, &EntryClass::SyncAccount.into()));
         }
 
         trace!(
@@ -200,6 +239,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             acp_reload = ?self.changed_acp,
             oauth2_reload = ?self.changed_oauth2,
             domain_reload = ?self.changed_domain,
+            changed_sync_agreement = ?self.changed_sync_agreement
         );
 
         Ok(())
@@ -210,6 +250,11 @@ impl<'a> QueryServerWriteTransaction<'a> {
         ctx: &ReplIncrementalContext,
     ) -> Result<ConsumerState, OperationError> {
         match ctx {
+            ReplIncrementalContext::DomainMismatch => {
+                error!("Unable to proceed with consumer incremental - the supplier has indicated that our domain_uuid's are not equivalent. This can occur when adding a new consumer to an existing topology.");
+                error!("This server's content must be refreshed to proceed. If you have configured automatic refresh, this will occur shortly.");
+                Ok(ConsumerState::RefreshRequired)
+            }
             ReplIncrementalContext::NoChangesAvailable => {
                 info!("no changes are available");
                 Ok(ConsumerState::Ok)
@@ -219,9 +264,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 error!("This server's content must be refreshed to proceed. If you have configured automatic refresh, this will occur shortly.");
                 Ok(ConsumerState::RefreshRequired)
             }
-            #[allow(clippy::todo)]
             ReplIncrementalContext::UnwillingToSupply => {
-                todo!();
+                warn!("Unable to proceed with consumer incremental - the supplier has indicated that our RUV is ahead, and replication would introduce data corruption.");
+                error!("This supplier's content must be refreshed to proceed. If you have configured automatic refresh, this will occur shortly.");
+                Ok(ConsumerState::Ok)
             }
             ReplIncrementalContext::V1 {
                 domain_version,
@@ -260,19 +306,30 @@ impl<'a> QueryServerWriteTransaction<'a> {
         };
 
         // Assert that the d_uuid matches the repl domain uuid.
-        let db_uuid = self.be_txn.get_db_d_uuid();
+        let db_uuid = self.be_txn.get_db_d_uuid()?;
+
         if db_uuid != ctx_domain_uuid {
             error!("Unable to proceed with consumer incremental - incoming domain uuid does not match our database uuid. You must investigate this situation. {:?} != {:?}", db_uuid, ctx_domain_uuid);
             return Err(OperationError::ReplDomainUuidMismatch);
         }
 
+        // Preflight checks of the incoming RUV to ensure it's in a good state.
+        let txn_cid = self.get_cid().clone();
+        let ruv = self.be_txn.get_ruv_write();
+
+        ruv.incremental_preflight_validate_ruv(ctx_ranges, &txn_cid)
+            .map_err(|e| {
+                error!("Incoming RUV failed preflight checks, unable to proceed.");
+                e
+            })?;
+
+        // == ⚠️  Below this point we begin to make changes! ==
         debug!(
             "Proceeding to apply incremental from domain {:?} at level {}",
             ctx_domain_uuid, ctx_domain_version
         );
 
-        // == ⚠️  Below this point we begin to make changes! ==
-
+        debug!("Applying schema entries");
         // Apply the schema entries first.
         self.consumer_incremental_apply_entries(ctx_schema_entries)
             .map_err(|e| {
@@ -286,6 +343,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             e
         })?;
 
+        debug!("Applying meta entries");
         // Apply meta entries now.
         self.consumer_incremental_apply_entries(ctx_meta_entries)
             .map_err(|e| {
@@ -302,9 +360,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
         // Trigger for post commit hooks. Should we detect better in the entry
         // apply phases?
-        self.changed_schema = true;
-        self.changed_domain = true;
+        // self.changed_schema = true;
+        // self.changed_domain = true;
 
+        debug!("Applying all context entries");
         // Update all other entries now.
         self.consumer_incremental_apply_entries(ctx_entries)
             .map_err(|e| {

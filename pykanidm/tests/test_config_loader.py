@@ -13,7 +13,7 @@ from kanidm.utils import load_config
 
 logging.basicConfig(level=logging.DEBUG)
 
-EXAMPLE_CONFIG_FILE = "../examples/config"
+EXAMPLE_CONFIG_FILE = "../examples/config_localhost"
 
 
 @pytest.fixture(scope="function")
@@ -31,7 +31,7 @@ def test_load_config_file() -> None:
         pytest.skip()
     print("Loading config file")
     config = load_config(EXAMPLE_CONFIG_FILE)
-    assert config.get("uri") == "https://idm.example.com"
+    assert config.get("uri") == "https://localhost:8443"
 
     print(f"{config.get('uri')=}")
     print(config)
@@ -80,7 +80,7 @@ def test_config_invalid_uri() -> None:
         "uri": "asdfsadfasd",
     }
     with pytest.raises(pydantic.ValidationError):
-        KanidmClientConfig.parse_obj(test_input)
+        KanidmClientConfig.model_validate(test_input)
 
 
 def test_config_none_uri() -> None:

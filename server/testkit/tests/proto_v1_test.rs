@@ -1,20 +1,27 @@
 #![deny(warnings)]
+use std::path::Path;
 use std::time::SystemTime;
 
+use kanidm_proto::constants::KSESSIONID;
+use kanidm_proto::internal::ImageValue;
 use kanidm_proto::v1::{
-    ApiToken, CURegState, CredentialDetailType, Entry, Filter, Modify, ModifyList, UserAuthToken,
+    ApiToken, AuthCredential, AuthIssueSession, AuthMech, AuthRequest, AuthResponse, AuthState,
+    AuthStep, CURegState, Entry, Filter, Modify, ModifyList, UatPurpose, UserAuthToken,
 };
 use kanidmd_lib::credential::totp::Totp;
-use tracing::debug;
+use kanidmd_lib::prelude::{
+    Attribute, BUILTIN_GROUP_IDM_ADMINS_V1, BUILTIN_GROUP_SYSTEM_ADMINS_V1,
+};
+use tracing::{debug, trace};
 
 use std::str::FromStr;
 
-use compact_jwt::JwsUnverified;
+use compact_jwt::{JwsCompact, JwsEs256Verifier, JwsVerifier};
 use webauthn_authenticator_rs::softpasskey::SoftPasskey;
 use webauthn_authenticator_rs::WebauthnAuthenticator;
 
-use kanidm_client::KanidmClient;
-use kanidmd_testkit::ADMIN_TEST_PASSWORD;
+use kanidm_client::{ClientError, KanidmClient};
+use kanidmd_testkit::{ADMIN_TEST_PASSWORD, ADMIN_TEST_USER};
 
 const UNIX_TEST_PASSWORD: &str = "unix test user password";
 
@@ -41,29 +48,6 @@ async fn test_server_create(rsclient: KanidmClient) {
     assert!(a_res.is_ok());
 
     let res = rsclient.create(vec![e]).await;
-    assert!(res.is_ok());
-}
-
-#[kanidmd_testkit::test]
-async fn test_server_modify(rsclient: KanidmClient) {
-    // Build a self mod.
-    let f = Filter::SelfUuid;
-    let m = ModifyList::new_list(vec![
-        Modify::Purged("displayname".to_string()),
-        Modify::Present("displayname".to_string(), "test".to_string()),
-    ]);
-
-    // Not logged in - should fail!
-    let res = rsclient.modify(f.clone(), m.clone()).await;
-    assert!(res.is_err());
-
-    let a_res = rsclient
-        .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
-        .await;
-    assert!(a_res.is_ok());
-
-    let res = rsclient.modify(f, m).await;
-    println!("{:?}", res);
     assert!(res.is_ok());
 }
 
@@ -120,6 +104,7 @@ async fn test_server_search(rsclient: KanidmClient) {
     // First show we are un-authenticated.
     let pre_res = rsclient.whoami().await;
     // This means it was okay whoami, but no uat attached.
+    println!("Response: {:?}", pre_res);
     assert!(pre_res.unwrap().is_none());
 
     let res = rsclient
@@ -128,14 +113,14 @@ async fn test_server_search(rsclient: KanidmClient) {
     assert!(res.is_ok());
 
     let rset = rsclient
-        .search(Filter::Eq("name".to_string(), "admin".to_string()))
+        .search(Filter::Eq(Attribute::Name.to_string(), "admin".to_string()))
         .await
         .unwrap();
     println!("{:?}", rset);
     let e = rset.first().unwrap();
     // Check it's admin.
     println!("{:?}", e);
-    let name = e.attrs.get("name").unwrap();
+    let name = e.attrs.get(Attribute::Name.as_ref()).unwrap();
     assert!(name == &vec!["admin".to_string()]);
 }
 
@@ -151,7 +136,10 @@ async fn test_server_rest_group_read(rsclient: KanidmClient) {
     let g_list = rsclient.idm_group_list().await.unwrap();
     assert!(!g_list.is_empty());
 
-    let g = rsclient.idm_group_get("idm_admins").await.unwrap();
+    let g = rsclient
+        .idm_group_get(BUILTIN_GROUP_IDM_ADMINS_V1.name)
+        .await
+        .unwrap();
     assert!(g.is_some());
     println!("{:?}", g);
 }
@@ -168,7 +156,10 @@ async fn test_server_rest_group_lifecycle(rsclient: KanidmClient) {
     assert!(!g_list.is_empty());
 
     // Create a new group
-    rsclient.idm_group_create("demo_group").await.unwrap();
+    rsclient
+        .idm_group_create("demo_group", Some(BUILTIN_GROUP_IDM_ADMINS_V1.name))
+        .await
+        .unwrap();
 
     // List again, ensure one more.
     let g_list_2 = rsclient.idm_group_list().await.unwrap();
@@ -220,14 +211,26 @@ async fn test_server_rest_group_lifecycle(rsclient: KanidmClient) {
     assert!(g_list_3.len() == g_list.len());
 
     // Check we can get an exact group
-    let g = rsclient.idm_group_get("idm_admins").await.unwrap();
+    let g = rsclient
+        .idm_group_get(BUILTIN_GROUP_IDM_ADMINS_V1.name)
+        .await
+        .unwrap();
     assert!(g.is_some());
     println!("{:?}", g);
 
     // They should have members
-    let members = rsclient.idm_group_get_members("idm_admins").await.unwrap();
+    let members = rsclient
+        .idm_group_get_members(BUILTIN_GROUP_IDM_ADMINS_V1.name)
+        .await
+        .unwrap();
     println!("{:?}", members);
-    assert!(members == Some(vec!["idm_admin@localhost".to_string()]));
+    assert!(
+        members
+            == Some(vec![
+                "admin@localhost".to_string(),
+                "idm_admin@localhost".to_string()
+            ])
+    );
 }
 
 #[kanidmd_testkit::test]
@@ -264,11 +267,17 @@ async fn test_server_rest_schema_read(rsclient: KanidmClient) {
     assert!(!c_list.is_empty());
 
     // Get an attr/class
-    let a = rsclient.idm_schema_attributetype_get("name").await.unwrap();
+    let a = rsclient
+        .idm_schema_attributetype_get(Attribute::Name.as_ref())
+        .await
+        .unwrap();
     assert!(a.is_some());
     println!("{:?}", a);
 
-    let c = rsclient.idm_schema_classtype_get("account").await.unwrap();
+    let c = rsclient
+        .idm_schema_classtype_get(Attribute::Account.as_ref())
+        .await
+        .unwrap();
     assert!(c.is_some());
     println!("{:?}", c);
 }
@@ -283,7 +292,7 @@ async fn test_server_radius_credential_lifecycle(rsclient: KanidmClient) {
 
     // All admin to create persons.
     rsclient
-        .idm_group_add_members("idm_admins", &["admin"])
+        .idm_group_add_members(BUILTIN_GROUP_IDM_ADMINS_V1.name, &["admin"])
         .await
         .unwrap();
 
@@ -354,7 +363,7 @@ async fn test_server_rest_person_account_lifecycle(rsclient: KanidmClient) {
     // To enable the admin to actually make some of these changes, we have
     // to make them a people admin. NOT recommended in production!
     rsclient
-        .idm_group_add_members("idm_admins", &["admin"])
+        .idm_group_add_members(BUILTIN_GROUP_IDM_ADMINS_V1.name, &["admin"])
         .await
         .unwrap();
 
@@ -378,12 +387,16 @@ async fn test_server_rest_person_account_lifecycle(rsclient: KanidmClient) {
 
     // Test adding some mail addrs
     rsclient
-        .idm_person_account_add_attr("demo_account", "mail", &["demo@idm.example.com"])
+        .idm_person_account_add_attr(
+            "demo_account",
+            Attribute::Mail.as_ref(),
+            &["demo@idm.example.com"],
+        )
         .await
         .unwrap();
 
     let r = rsclient
-        .idm_person_account_get_attr("demo_account", "mail")
+        .idm_person_account_get_attr("demo_account", Attribute::Mail.as_ref())
         .await
         .unwrap();
 
@@ -490,7 +503,7 @@ async fn test_server_rest_domain_lifecycle(rsclient: KanidmClient) {
     assert!(
         dlocal
             .attrs
-            .get("domain_display_name")
+            .get(Attribute::DomainDisplayName.as_ref())
             .and_then(|v| v.get(0))
             == Some(&"Super Cool Crabz".to_string())
     );
@@ -504,7 +517,7 @@ async fn test_server_rest_posix_lifecycle(rsclient: KanidmClient) {
     assert!(res.is_ok());
     // Not recommended in production!
     rsclient
-        .idm_group_add_members("idm_admins", &["admin"])
+        .idm_group_add_members(BUILTIN_GROUP_IDM_ADMINS_V1.name, &["admin"])
         .await
         .unwrap();
 
@@ -523,7 +536,10 @@ async fn test_server_rest_posix_lifecycle(rsclient: KanidmClient) {
     // Create a group
 
     // Extend the group with posix attrs
-    rsclient.idm_group_create("posix_group").await.unwrap();
+    rsclient
+        .idm_group_create("posix_group", Some(BUILTIN_GROUP_IDM_ADMINS_V1.name))
+        .await
+        .unwrap();
     rsclient
         .idm_group_add_members("posix_group", &["posix_account"])
         .await
@@ -532,6 +548,15 @@ async fn test_server_rest_posix_lifecycle(rsclient: KanidmClient) {
         .idm_group_unix_extend("posix_group", None)
         .await
         .unwrap();
+    // here we check that we can successfully change the gid without breaking anything
+
+    let res = rsclient
+        .idm_group_unix_extend("posix_group", Some(123123))
+        .await;
+    assert!(res.is_ok());
+
+    let res = rsclient.idm_group_unix_extend("posix_group", None).await;
+    assert!(res.is_ok());
 
     // Open a new connection as anonymous
     let res = rsclient.auth_anonymous().await;
@@ -554,7 +579,7 @@ async fn test_server_rest_posix_lifecycle(rsclient: KanidmClient) {
         .unwrap();
     // get the account by uuid
     let r3 = rsclient
-        .idm_account_unix_token_get(r.uuid.as_str())
+        .idm_account_unix_token_get(&r.uuid.hyphenated().to_string())
         .await
         .unwrap();
 
@@ -581,7 +606,7 @@ async fn test_server_rest_posix_lifecycle(rsclient: KanidmClient) {
         .unwrap();
     // get the group by uuid
     let r3 = rsclient
-        .idm_group_unix_token_get(r.uuid.as_str())
+        .idm_group_unix_token_get(&r.uuid.hyphenated().to_string())
         .await
         .unwrap();
 
@@ -604,7 +629,7 @@ async fn test_server_rest_posix_auth_lifecycle(rsclient: KanidmClient) {
 
     // Not recommended in production!
     rsclient
-        .idm_group_add_members("idm_admins", &["admin"])
+        .idm_group_add_members(BUILTIN_GROUP_IDM_ADMINS_V1.name, &["admin"])
         .await
         .unwrap();
 
@@ -625,6 +650,34 @@ async fn test_server_rest_posix_auth_lifecycle(rsclient: KanidmClient) {
         .idm_person_account_unix_cred_put("posix_account", UNIX_TEST_PASSWORD)
         .await
         .unwrap();
+
+    // test sending a faulty JSON blob to the person unix update endpoint
+    let bad_json: serde_json::Value = serde_json::json!({
+        "shell" : "test_value",
+        "gidnumber" : "5" // this should be a u32, but it's not!
+    });
+    let res = rsclient
+        .perform_post_request::<serde_json::Value, String>(
+            format!("/v1/person/{}/_unix", "posix_account").as_str(),
+            bad_json,
+        )
+        .await;
+    tracing::trace!("{:?}", &res);
+    assert!(res.is_err());
+
+    // test sending a faulty JSON blob to the person unix update endpoint
+    let bad_json: serde_json::Value = serde_json::json!({
+        "crab" : "cakes", // this is an invalid field.
+        "gidnumber" : 5
+    });
+    let res = rsclient
+        .perform_post_request::<serde_json::Value, String>(
+            format!("/v1/person/{}/_unix", "posix_account").as_str(),
+            bad_json,
+        )
+        .await;
+    tracing::trace!("{:?}", &res);
+    assert!(res.is_err());
 
     // attempt to verify (good, anon-conn)
     let r1 = anon_rsclient
@@ -673,7 +726,7 @@ async fn test_server_rest_recycle_lifecycle(rsclient: KanidmClient) {
 
     // Not recommended in production!
     rsclient
-        .idm_group_add_members("idm_admins", &["admin"])
+        .idm_group_add_members(BUILTIN_GROUP_IDM_ADMINS_V1.name, &["admin"])
         .await
         .unwrap();
 
@@ -719,72 +772,16 @@ async fn test_server_rest_recycle_lifecycle(rsclient: KanidmClient) {
 }
 
 #[kanidmd_testkit::test]
-async fn test_server_rest_account_import_password(rsclient: KanidmClient) {
-    let res = rsclient
-        .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
-        .await;
-    assert!(res.is_ok());
-    // To enable the admin to actually make some of these changes, we have
-    // to make them a password import admin. NOT recommended in production!
-    rsclient
-        .idm_group_add_members("idm_people_account_password_import_priv", &["admin"])
-        .await
-        .unwrap();
-    rsclient
-        .idm_group_add_members("idm_admins", &["admin"])
-        .await
-        .unwrap();
-
-    // Create a new person
-    rsclient
-        .idm_person_account_create("demo_account", "Deeeeemo")
-        .await
-        .unwrap();
-
-    // Attempt to import a bad password
-    let r = rsclient
-        .idm_person_account_primary_credential_import_password("demo_account", "password")
-        .await;
-    assert!(r.is_err());
-
-    // Import a good password
-    // eicieY7ahchaoCh0eeTa
-    // pbkdf2_sha256$36000$xIEozuZVAoYm$uW1b35DUKyhvQAf1mBqMvoBDcqSD06juzyO/nmyV0+w=
-    rsclient
-        .idm_person_account_primary_credential_import_password(
-            "demo_account",
-            "pbkdf2_sha256$36000$xIEozuZVAoYm$uW1b35DUKyhvQAf1mBqMvoBDcqSD06juzyO/nmyV0+w=",
-        )
-        .await
-        .unwrap();
-
-    // Now show we can auth with it
-    // "reset" the client.
-    let _ = rsclient.logout();
-    let res = rsclient
-        .auth_simple_password("demo_account", "eicieY7ahchaoCh0eeTa")
-        .await;
-    assert!(res.is_ok());
-
-    // And that the account can self read the cred status.
-    let cred_state = rsclient
-        .idm_person_account_get_credential_status("demo_account")
-        .await
-        .unwrap();
-
-    if let Some(cred) = cred_state.creds.get(0) {
-        assert!(cred.type_ == CredentialDetailType::Password)
-    } else {
-        assert!(false);
-    }
-}
-
-#[kanidmd_testkit::test]
 async fn test_server_rest_oauth2_basic_lifecycle(rsclient: KanidmClient) {
     let res = rsclient
         .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
         .await;
     assert!(res.is_ok());
+
+    rsclient
+        .idm_group_add_members(BUILTIN_GROUP_IDM_ADMINS_V1.name, &["admin"])
+        .await
+        .unwrap();
 
     // List, there are non.
     let initial_configs = rsclient
@@ -824,9 +821,13 @@ async fn test_server_rest_oauth2_basic_lifecycle(rsclient: KanidmClient) {
     eprintln!("{:?}", oauth2_config);
 
     // What can we see?
-    assert!(oauth2_config.attrs.contains_key("oauth2_rs_basic_secret"));
+    assert!(oauth2_config
+        .attrs
+        .contains_key(Attribute::OAuth2RsBasicSecret.as_ref()));
     // This is present, but redacted.
-    assert!(oauth2_config.attrs.contains_key("oauth2_rs_token_key"));
+    assert!(oauth2_config
+        .attrs
+        .contains_key(Attribute::OAuth2RsTokenKey.as_ref()));
 
     // Mod delete the secret/key and check them again.
     // Check we can patch the oauth2_rs_name / oauth2_rs_origin
@@ -855,7 +856,11 @@ async fn test_server_rest_oauth2_basic_lifecycle(rsclient: KanidmClient) {
 
     // Check that we can add scope maps and delete them.
     rsclient
-        .idm_oauth2_rs_update_scope_map("test_integration", "system_admins", vec!["a", "b"])
+        .idm_oauth2_rs_update_scope_map(
+            "test_integration",
+            BUILTIN_GROUP_SYSTEM_ADMINS_V1.name,
+            vec!["a", "b"],
+        )
         .await
         .expect("Failed to create scope map");
 
@@ -870,7 +875,11 @@ async fn test_server_rest_oauth2_basic_lifecycle(rsclient: KanidmClient) {
 
     // Check we can update a scope map
     rsclient
-        .idm_oauth2_rs_update_scope_map("test_integration", "system_admins", vec!["a", "b", "c"])
+        .idm_oauth2_rs_update_scope_map(
+            "test_integration",
+            BUILTIN_GROUP_SYSTEM_ADMINS_V1.name,
+            vec!["a", "b", "c"],
+        )
         .await
         .expect("Failed to create scope map");
 
@@ -883,10 +892,78 @@ async fn test_server_rest_oauth2_basic_lifecycle(rsclient: KanidmClient) {
 
     assert!(oauth2_config_updated2 != oauth2_config_updated3);
 
+    // Check we can upload an image
+    let image_path = Path::new("../../server/lib/src/valueset/image/test_images/ok.png");
+    assert!(image_path.exists());
+    let image_contents = std::fs::read(image_path).unwrap();
+    let image = ImageValue::new(
+        "test".to_string(),
+        kanidm_proto::internal::ImageType::Png,
+        image_contents,
+    );
+
+    let res = rsclient
+        .idm_oauth2_rs_update_image("test_integration", image)
+        .await;
+    trace!("update image result: {:?}", &res);
+    assert!(res.is_ok());
+
+    //test getting the image
+    let client = reqwest::Client::new();
+
+    let response = client
+        .get(rsclient.make_url("/ui/images/oauth2/test_integration"))
+        .bearer_auth(rsclient.get_token().await.unwrap());
+
+    let response = response
+        .send()
+        .await
+        .map_err(|err| rsclient.handle_response_error(err))
+        .unwrap();
+
+    assert!(response.status().is_success());
+
+    // check we can upload a *replacement* image
+
+    let image_path = Path::new("../../server/lib/src/valueset/image/test_images/ok.jpg");
+    trace!("image path {:?}", &image_path.canonicalize());
+    assert!(image_path.exists());
+    let jpg_file_contents = std::fs::read(image_path).unwrap();
+    let image = ImageValue::new(
+        "test".to_string(),
+        kanidm_proto::internal::ImageType::Jpg,
+        jpg_file_contents.clone(),
+    );
+    let res = rsclient
+        .idm_oauth2_rs_update_image("test_integration", image)
+        .await;
+    trace!("idm_oauth2_rs_update_image result: {:?}", &res);
+    assert!(res.is_ok());
+
+    // check it fails when we upload a jpg and say it's a webp
+    let image = ImageValue::new(
+        "test".to_string(),
+        kanidm_proto::internal::ImageType::Webp,
+        jpg_file_contents,
+    );
+    let res = rsclient
+        .idm_oauth2_rs_update_image("test_integration", image)
+        .await;
+    trace!("idm_oauth2_rs_update_image result: {:?}", &res);
+    assert!(res.is_err());
+
+    // check we can remove an image
+
+    let res = rsclient
+        .idm_oauth2_rs_delete_image("test_integration")
+        .await;
+    trace!("idm_oauth2_rs_delete_image result: {:?}", &res);
+    assert!(res.is_ok());
+
     // Check we can delete a scope map.
 
     rsclient
-        .idm_oauth2_rs_delete_scope_map("test_integration", "system_admins")
+        .idm_oauth2_rs_delete_scope_map("test_integration", BUILTIN_GROUP_SYSTEM_ADMINS_V1.name)
         .await
         .expect("Failed to delete scope map");
 
@@ -926,7 +1003,7 @@ async fn test_server_credential_update_session_pw(rsclient: KanidmClient) {
 
     // Not recommended in production!
     rsclient
-        .idm_group_add_members("idm_admins", &["admin"])
+        .idm_group_add_members(BUILTIN_GROUP_IDM_ADMINS_V1.name, &["admin"])
         .await
         .unwrap();
 
@@ -973,6 +1050,23 @@ async fn test_server_credential_update_session_pw(rsclient: KanidmClient) {
         .auth_simple_password("demo_account", "eicieY7ahchaoCh0eeTa")
         .await;
     assert!(res.is_ok());
+
+    // Get privs
+    let res = rsclient
+        .reauth_simple_password("eicieY7ahchaoCh0eeTa")
+        .await;
+    assert!(res.is_ok());
+
+    // Build a self mod.
+    let f = Filter::SelfUuid;
+    let m = ModifyList::new_list(vec![
+        Modify::Purged(Attribute::DisplayName.to_string()),
+        Modify::Present(Attribute::DisplayName.to_string(), "test".to_string()),
+    ]);
+
+    let res = rsclient.modify(f, m).await;
+    println!("{:?}", res);
+    assert!(res.is_ok());
 }
 
 #[kanidmd_testkit::test]
@@ -984,7 +1078,7 @@ async fn test_server_credential_update_session_totp_pw(rsclient: KanidmClient) {
 
     // Not recommended in production!
     rsclient
-        .idm_group_add_members("idm_admins", &["admin"])
+        .idm_group_add_members(BUILTIN_GROUP_IDM_ADMINS_V1.name, &["admin"])
         .await
         .unwrap();
 
@@ -1113,7 +1207,7 @@ async fn setup_demo_account_passkey(rsclient: &KanidmClient) -> WebauthnAuthenti
 
     // Not recommended in production!
     rsclient
-        .idm_group_add_members("idm_admins", &["admin"])
+        .idm_group_add_members(BUILTIN_GROUP_IDM_ADMINS_V1.name, &["admin"])
         .await
         .unwrap();
 
@@ -1143,7 +1237,7 @@ async fn setup_demo_account_passkey(rsclient: &KanidmClient) -> WebauthnAuthenti
         .unwrap();
 
     // Setup and update the passkey
-    let mut wa = WebauthnAuthenticator::new(SoftPasskey::new());
+    let mut wa = WebauthnAuthenticator::new(SoftPasskey::new(true));
 
     let status = rsclient
         .idm_account_credential_update_passkey_init(&session_token)
@@ -1183,6 +1277,61 @@ async fn setup_demo_account_passkey(rsclient: &KanidmClient) -> WebauthnAuthenti
     wa
 }
 
+async fn setup_demo_account_password(
+    rsclient: &KanidmClient,
+) -> Result<(String, String), ClientError> {
+    let account_name = String::from_str("demo_account").expect("Failed to parse string");
+
+    let account_pass = String::from_str("eicieY7ahchaoCh0eeTa").expect("Failed to parse string");
+
+    rsclient
+        .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
+        .await
+        .expect("Failed to authenticate as admin");
+
+    rsclient
+        .idm_person_account_create("demo_account", "Deeeeemo")
+        .await
+        .expect("Failed to create demo account");
+
+    // First, show there are no auth sessions.
+    let sessions = rsclient
+        .idm_account_list_user_auth_token("demo_account")
+        .await
+        .expect("Failed to list user auth tokens");
+    assert!(sessions.is_empty());
+
+    // Setup the credentials for the account
+    // Create an intent token for them
+    let intent_token = rsclient
+        .idm_person_account_credential_update_intent("demo_account", None)
+        .await
+        .expect("Failed to create intent token");
+
+    // Logout, we don't need any auth now.
+    rsclient.logout().await.expect("Failed to logout");
+
+    // Exchange the intent token
+    let (session_token, _status) = rsclient
+        .idm_account_credential_update_exchange(intent_token)
+        .await
+        .expect("Failed to exchange intent token");
+
+    // Setup and update the password
+    rsclient
+        .idm_account_credential_update_set_password(&session_token, account_pass.as_str())
+        .await
+        .expect("Failed to set password");
+
+    // Commit it
+    rsclient
+        .idm_account_credential_update_commit(&session_token)
+        .await
+        .expect("Failed to commit changes");
+
+    Ok((account_name, account_pass))
+}
+
 #[kanidmd_testkit::test]
 async fn test_server_credential_update_session_passkey(rsclient: KanidmClient) {
     let mut wa = setup_demo_account_passkey(&rsclient).await;
@@ -1204,42 +1353,54 @@ async fn test_server_credential_update_session_passkey(rsclient: KanidmClient) {
 #[kanidmd_testkit::test]
 async fn test_server_api_token_lifecycle(rsclient: KanidmClient) {
     let res = rsclient
-        .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
+        .auth_simple_password(ADMIN_TEST_USER, ADMIN_TEST_PASSWORD)
         .await;
     assert!(res.is_ok());
 
-    // Not recommended in production!
-    rsclient
-        .idm_group_add_members("idm_admins", &["admin"])
-        .await
-        .unwrap();
+    let test_service_account_username = "test_service";
 
     rsclient
-        .idm_service_account_create("test_service", "Test Service")
+        .idm_service_account_create(
+            test_service_account_username,
+            "Test Service",
+            BUILTIN_GROUP_IDM_ADMINS_V1.name,
+        )
         .await
         .expect("Failed to create service account");
 
     let tokens = rsclient
-        .idm_service_account_list_api_token("test_service")
+        .idm_service_account_list_api_token(test_service_account_username)
         .await
         .expect("Failed to list service account api tokens");
     assert!(tokens.is_empty());
 
     let token = rsclient
-        .idm_service_account_generate_api_token("test_service", "test token", None, false)
+        .idm_service_account_generate_api_token(
+            test_service_account_username,
+            "test token",
+            None,
+            false,
+        )
         .await
         .expect("Failed to create service account api token");
 
     // Decode it?
-    let token_unverified = JwsUnverified::from_str(&token).expect("Failed to parse apitoken");
+    let token_unverified = JwsCompact::from_str(&token).expect("Failed to parse apitoken");
 
-    let token: ApiToken = token_unverified
-        .validate_embeded()
-        .map(|j| j.into_inner())
-        .expect("Embedded jwk not found");
+    let jws_verifier = JwsEs256Verifier::try_from(
+        token_unverified
+            .get_jwk_pubkey()
+            .expect("No pubkey in token"),
+    )
+    .expect("Unable to build verifier");
+
+    let token = jws_verifier
+        .verify(&token_unverified)
+        .map(|j| j.from_json::<ApiToken>().expect("invalid token json"))
+        .expect("Failed to verify token");
 
     let tokens = rsclient
-        .idm_service_account_list_api_token("test_service")
+        .idm_service_account_list_api_token(test_service_account_username)
         .await
         .expect("Failed to list service account api tokens");
 
@@ -1251,26 +1412,132 @@ async fn test_server_api_token_lifecycle(rsclient: KanidmClient) {
         .expect("Failed to destroy service account api token");
 
     let tokens = rsclient
-        .idm_service_account_list_api_token("test_service")
+        .idm_service_account_list_api_token(test_service_account_username)
         .await
         .expect("Failed to list service account api tokens");
     assert!(tokens.is_empty());
 
-    // No need to test expiry, that's validated in the server internal tests.
+    // test we can add an attribute
+    assert!(rsclient
+        .idm_service_account_add_attr(
+            test_service_account_username,
+            Attribute::Mail.as_ref(),
+            &vec!["test@example.com"]
+        )
+        .await
+        .is_ok());
+
+    // test we can overwrite an attribute
+    let new_displayname = vec!["testing displayname 1235"];
+    assert!(rsclient
+        .idm_service_account_set_attr(
+            test_service_account_username,
+            Attribute::DisplayName.as_ref(),
+            &new_displayname
+        )
+        .await
+        .is_ok());
+    // check it actually set
+    let displayname = rsclient
+        .idm_service_account_get_attr(
+            test_service_account_username,
+            Attribute::DisplayName.as_ref(),
+        )
+        .await
+        .expect("Failed to get displayname")
+        .expect("Failed to unwrap displayname");
+    assert!(new_displayname == displayname);
+
+    rsclient
+        .idm_service_account_purge_attr(test_service_account_username, Attribute::Mail.as_ref())
+        .await
+        .expect("Failed to purge displayname");
+
+    assert!(rsclient
+        .idm_service_account_get_attr(test_service_account_username, Attribute::Mail.as_ref(),)
+        .await
+        .expect("Failed to check mail attr")
+        .is_none());
+
+    assert!(rsclient
+        .idm_service_account_unix_extend(
+            test_service_account_username,
+            Some(58008),
+            Some("/bin/vim")
+        )
+        .await
+        .is_ok());
+
+    assert!(rsclient
+        .idm_service_account_unix_extend(
+            test_service_account_username,
+            Some(1000),
+            Some("/bin/vim")
+        )
+        .await
+        .is_err());
+
+    // because you have to set *something*
+    assert!(rsclient
+        .idm_service_account_update(test_service_account_username, None, None, None, None)
+        .await
+        .is_err());
+
+    // updating the service account details
+    assert!(rsclient
+        .idm_service_account_update(
+            test_service_account_username,
+            None,
+            Some(&format!("{}displayzzzz", test_service_account_username)),
+            None,
+            Some(&[format!("{}@example.crabs", test_service_account_username)]),
+        )
+        .await
+        .is_ok());
+    let pw = rsclient
+        .idm_service_account_generate_password(test_service_account_username)
+        .await
+        .expect("Failed to get a pw for the service account");
+
+    assert!(!pw.is_empty());
+    assert!(pw.is_ascii());
+
+    let res = rsclient
+        .idm_service_account_get_credential_status(test_service_account_username)
+        .await;
+    dbg!(&res);
+    assert!(res.is_ok());
+
+    println!(
+        "testing deletion of service account {}",
+        test_service_account_username
+    );
+    assert!(rsclient
+        .idm_service_account_delete(test_service_account_username)
+        .await
+        .is_ok());
+
+    // let's create one and just yolo it into a person
+    // TODO: Turns out this doesn't work because admin doesn't have the right perms to remove `jws_es256_private_key` from the account?
+    // rsclient
+    // .idm_service_account_create(test_service_account_username, "Test Service")
+    // .await
+    // .expect("Failed to create service account");
+
+    // rsclient.idm_service_account_into_person(test_service_account_username).await.expect("Failed to convert service account into person");
+
+    // assert!(rsclient
+    //     .idm_person_account_delete(test_service_account_username)
+    //     .await
+    //     .is_ok());
 }
 
 #[kanidmd_testkit::test]
 async fn test_server_user_auth_token_lifecycle(rsclient: KanidmClient) {
     let res = rsclient
-        .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
+        .auth_simple_password(ADMIN_TEST_USER, ADMIN_TEST_PASSWORD)
         .await;
     assert!(res.is_ok());
-
-    // Not recommended in production!
-    rsclient
-        .idm_group_add_members("idm_admins", &["admin"])
-        .await
-        .unwrap();
 
     rsclient
         .idm_person_account_create("demo_account", "Deeeeemo")
@@ -1324,13 +1591,16 @@ async fn test_server_user_auth_token_lifecycle(rsclient: KanidmClient) {
 
     let token = rsclient.get_token().await.expect("No bearer token present");
 
-    let token_unverified =
-        JwsUnverified::from_str(&token).expect("Failed to parse user auth token");
+    let jwt = JwsCompact::from_str(&token).expect("Failed to parse jwt");
 
-    let token: UserAuthToken = token_unverified
-        .validate_embeded()
-        .map(|j| j.into_inner())
-        .expect("Embedded jwk not found");
+    let jws_verifier =
+        JwsEs256Verifier::try_from(jwt.get_jwk_pubkey().expect("No pubkey in token"))
+            .expect("Unable to build verifier");
+
+    let token: UserAuthToken = jws_verifier
+        .verify(&jwt)
+        .map(|jws| jws.from_json::<UserAuthToken>().expect("Invalid json"))
+        .expect("Unable extract uat");
 
     let sessions = rsclient
         .idm_account_list_user_auth_token("demo_account")
@@ -1345,6 +1615,12 @@ async fn test_server_user_auth_token_lifecycle(rsclient: KanidmClient) {
         .await
         .expect("Failed to destroy user auth token");
 
+    // Since the session is revoked, check with the admin.
+    let res = rsclient
+        .auth_simple_password(ADMIN_TEST_USER, ADMIN_TEST_PASSWORD)
+        .await;
+    assert!(res.is_ok());
+
     let tokens = rsclient
         .idm_service_account_list_api_token("demo_account")
         .await
@@ -1352,6 +1628,18 @@ async fn test_server_user_auth_token_lifecycle(rsclient: KanidmClient) {
     assert!(tokens.is_empty());
 
     // No need to test expiry, that's validated in the server internal tests.
+
+    // testing idm_account_credential_update_cancel_mfareg
+    let (token, _status) = rsclient
+        .idm_account_credential_update_begin("demo_account")
+        .await
+        .expect("Failed to get token for demo_account");
+
+    println!("trying to cancel the token we just got");
+    assert!(rsclient
+        .idm_account_credential_update_cancel_mfareg(&token)
+        .await
+        .is_ok());
 }
 
 #[kanidmd_testkit::test]
@@ -1376,12 +1664,17 @@ async fn test_server_user_auth_reauthentication(rsclient: KanidmClient) {
         .get_token()
         .await
         .expect("Must have a bearer token");
-    let jwtu = JwsUnverified::from_str(&token).expect("Failed to parse jwsu");
 
-    let uat: UserAuthToken = jwtu
-        .validate_embeded()
-        .map(|jws| jws.into_inner())
-        .expect("Unable to open up token.");
+    let jwt = JwsCompact::from_str(&token).expect("Failed to parse jwt");
+
+    let jws_verifier =
+        JwsEs256Verifier::try_from(jwt.get_jwk_pubkey().expect("No pubkey in token"))
+            .expect("Unable to build verifier");
+
+    let uat: UserAuthToken = jws_verifier
+        .verify(&jwt)
+        .map(|jws| jws.from_json::<UserAuthToken>().expect("Invalid json"))
+        .expect("Unable extract uat");
 
     let now = time::OffsetDateTime::now_utc();
     assert!(!uat.purpose_readwrite_active(now));
@@ -1411,14 +1704,170 @@ async fn test_server_user_auth_reauthentication(rsclient: KanidmClient) {
         .get_token()
         .await
         .expect("Must have a bearer token");
-    let jwtu = JwsUnverified::from_str(&token).expect("Failed to parse jwsu");
 
-    let uat: UserAuthToken = jwtu
-        .validate_embeded()
-        .map(|jws| jws.into_inner())
-        .expect("Unable to open up token.");
+    let jwt = JwsCompact::from_str(&token).expect("Failed to parse jwt");
+
+    let jws_verifier =
+        JwsEs256Verifier::try_from(jwt.get_jwk_pubkey().expect("No pubkey in token"))
+            .expect("Unable to build verifier");
+
+    let uat: UserAuthToken = jws_verifier
+        .verify(&jwt)
+        .map(|jws| jws.from_json::<UserAuthToken>().expect("Invalid json"))
+        .expect("Unable extract uat");
 
     let now = time::OffsetDateTime::now_utc();
     eprintln!("{:?} {:?}", now, uat.purpose);
     assert!(uat.purpose_readwrite_active(now));
 }
+
+async fn start_password_session(
+    rsclient: &KanidmClient,
+    username: &str,
+    password: &str,
+    privileged: bool,
+) -> Result<UserAuthToken, ()> {
+    let client = reqwest::Client::new();
+
+    let authreq = AuthRequest {
+        step: AuthStep::Init2 {
+            username: username.to_string(),
+            issue: AuthIssueSession::Token,
+            privileged,
+        },
+    };
+    let authreq = serde_json::to_string(&authreq).expect("Failed to serialize AuthRequest");
+
+    let res = match client
+        .post(rsclient.make_url("/v1/auth"))
+        .header("Content-Type", "application/json")
+        .body(authreq)
+        .send()
+        .await
+    {
+        Ok(value) => value,
+        Err(error) => panic!("Failed to post: {:#?}", error),
+    };
+    assert_eq!(res.status(), 200);
+
+    let session_id = res.headers().get(KSESSIONID).unwrap();
+
+    let authreq = AuthRequest {
+        step: AuthStep::Begin(AuthMech::Password),
+    };
+    let authreq = serde_json::to_string(&authreq).expect("Failed to serialize AuthRequest");
+
+    let res = match client
+        .post(rsclient.make_url("/v1/auth"))
+        .header("Content-Type", "application/json")
+        .header(KSESSIONID, session_id)
+        .body(authreq)
+        .send()
+        .await
+    {
+        Ok(value) => value,
+        Err(error) => panic!("Failed to post: {:#?}", error),
+    };
+    assert_eq!(res.status(), 200);
+
+    let authreq = AuthRequest {
+        step: AuthStep::Cred(AuthCredential::Password(password.to_string())),
+    };
+    let authreq = serde_json::to_string(&authreq).expect("Failed to serialize AuthRequest");
+
+    let res = match client
+        .post(rsclient.make_url("/v1/auth"))
+        .header("Content-Type", "application/json")
+        .header(KSESSIONID, session_id)
+        .body(authreq)
+        .send()
+        .await
+    {
+        Ok(value) => value,
+        Err(error) => panic!("Failed to post: {:#?}", error),
+    };
+    assert_eq!(res.status(), 200);
+
+    let res: AuthResponse = res.json().await.expect("Failed to read JSON response");
+    let jwt = match res.state {
+        AuthState::Success(val) => val,
+        _ => panic!("Failed to extract jwt"),
+    };
+
+    let jwt = JwsCompact::from_str(&jwt).expect("Failed to parse jwt");
+
+    let jws_verifier =
+        JwsEs256Verifier::try_from(jwt.get_jwk_pubkey().expect("No pubkey in token"))
+            .expect("Unable to build verifier");
+
+    let uat: UserAuthToken = jws_verifier
+        .verify(&jwt)
+        .map(|jws| jws.from_json::<UserAuthToken>().expect("Invalid json"))
+        .expect("Unable extract uat");
+
+    Ok(uat)
+}
+
+#[kanidmd_testkit::test]
+async fn test_server_user_auth_unprivileged(rsclient: KanidmClient) {
+    let (account_name, account_pass) = setup_demo_account_password(&rsclient)
+        .await
+        .expect("Failed to setup demo_account");
+
+    let uat = start_password_session(
+        &rsclient,
+        account_name.as_str(),
+        account_pass.as_str(),
+        false,
+    )
+    .await
+    .expect("Failed to start session");
+
+    match uat.purpose {
+        UatPurpose::ReadOnly => panic!("Unexpected uat purpose"),
+        UatPurpose::ReadWrite { expiry } => {
+            assert!(expiry.is_none())
+        }
+    }
+}
+
+#[kanidmd_testkit::test]
+async fn test_server_user_auth_privileged_shortcut(rsclient: KanidmClient) {
+    let (account_name, account_pass) = setup_demo_account_password(&rsclient)
+        .await
+        .expect("Failed to setup demo_account");
+
+    let uat = start_password_session(
+        &rsclient,
+        account_name.as_str(),
+        account_pass.as_str(),
+        true,
+    )
+    .await
+    .expect("Failed to start session");
+
+    match uat.purpose {
+        UatPurpose::ReadOnly => panic!("Unexpected uat purpose"),
+        UatPurpose::ReadWrite { expiry } => {
+            assert!(expiry.is_some())
+        }
+    }
+}
+
+// wanna test how long it takes for testkit to start up? here's your biz.
+// turns out  as of 2023-10-11 on my M2 Max, it's about 1.0 seconds per iteration
+// #[kanidmd_testkit::test]
+// fn test_teskit_test_test() {
+//     #[allow(unnameable_test_items)]
+
+//     for _ in 0..15 {
+//         #[kanidmd_testkit::test]
+//         #[allow(dead_code)]
+//         async fn test_teskit_test(rsclient: KanidmClient){
+//             assert!(rsclient.auth_anonymous().await.is_ok());
+//         }
+
+//         tk_test_teskit_test();
+//     }
+
+// }

@@ -14,21 +14,26 @@ repository = { workspace = true }
 [lib]
 name = "kanidmd_lib"
 path = "src/lib.rs"
+test = true
+doctest = false
 
 [[bench]]
 name = "scaling_10k"
 harness = false
 
+[[bench]]
+name = "image_benches"
+harness = false
+
 [dependencies]
-async-trait = { workspace = true }
 base64 = { workspace = true }
 base64urlsafedata = { workspace = true }
-compact_jwt = { workspace = true, features = ["openssl"] }
+compact_jwt = { workspace = true, features = ["openssl", "hsm-crypto"] }
 concread = { workspace = true }
 dyn-clone = { workspace = true }
+enum-iterator = { workspace = true }
 fernet = { workspace = true, features = ["fernet_danger_timestamps"] }
-filetime = { workspace = true }
-futures-util = { workspace = true }
+# futures-util = { workspace = true }
 hashbrown = { workspace = true }
 idlset = { workspace = true }
 kanidm_proto = { workspace = true }
@@ -43,39 +48,56 @@ num_enum = { workspace = true }
 openssl-sys = { workspace = true }
 openssl = { workspace = true }
 rand = { workspace = true }
-regex = { workspace = true, features = ["std", "perf", "perf-inline", "unicode", "unicode-gencat"] }
+regex = { workspace = true, features = [
+    "std",
+    "perf",
+    "perf-inline",
+    "unicode",
+    "unicode-gencat",
+] }
+rusqlite = { workspace = true, features = ["array", "bundled"] }
+
 serde = { workspace = true, features = ["derive"] }
 serde_cbor = { workspace = true }
 serde_json = { workspace = true }
 sketching = { workspace = true }
 smartstring = { workspace = true, features = ["serde"] }
 smolset = { workspace = true }
-sshkeys = { workspace = true }
-tide = { workspace = true }
+sshkey-attest = { workspace = true }
 time = { workspace = true, features = ["serde", "std"] }
 tokio = { workspace = true, features = ["net", "sync", "time", "rt"] }
 tokio-util = { workspace = true, features = ["codec"] }
 toml = { workspace = true }
-touch = { workspace = true }
 nonempty = { workspace = true, features = ["serialize"] }
 
 tracing = { workspace = true, features = ["attributes"] }
 
 url = { workspace = true, features = ["serde"] }
 urlencoding = { workspace = true }
-uuid = { workspace = true, features = ["serde", "v4" ] }
-webauthn-rs = { workspace = true, features = ["resident-key-support", "preview-features", "danger-credential-internals"] }
+uuid = { workspace = true, features = ["serde", "v4"] }
+webauthn-rs = { workspace = true, features = [
+    "resident-key-support",
+    "preview-features",
+    "danger-credential-internals",
+] }
 webauthn-rs-core = { workspace = true }
 zxcvbn = { workspace = true }
+serde_with = { workspace = true }
+hex.workspace = true
+lodepng = { workspace = true }
+image = { workspace = true, default-features = false, features = [
+    "gif",
+    "jpeg",
+    "webp",
+] }
+svg = { workspace = true }
 
 # because windows really can't build without the bundled one
 [target.'cfg(target_family = "windows")'.dependencies]
-rusqlite = { workspace = true, features = ["bundled"] }
 whoami = { workspace = true }
 
 [target.'cfg(not(target_family = "windows"))'.dependencies]
-rusqlite = { workspace = true }
-users = { workspace = true }
+kanidm_utils_users = { workspace = true }
 
 [features]
 # default = [ "libsqlite3-sys/bundled", "openssl/vendored" ]
@@ -88,5 +110,6 @@ futures = { workspace = true }
 kanidmd_lib_macros = { workspace = true }
 
 [build-dependencies]
-profiles = { workspace = true }
-
+hashbrown = { workspace = true }
+kanidm_build_profiles = { workspace = true }
+regex = { workspace = true }

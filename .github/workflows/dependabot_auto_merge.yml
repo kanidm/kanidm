@@ -20,7 +20,7 @@ jobs:
           github-token: "${{ secrets.GITHUB_TOKEN }}"
           alert-lookup: true
           compat-lookup: true
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Enable auto-merge for Dependabot PRs
         run: gh pr merge --auto --squash "$PR_URL"
         env:

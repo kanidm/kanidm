@@ -1,4 +1,6 @@
 use super::cid::Cid;
+use crate::be::dbrepl::DbEntryChangeState;
+use crate::be::dbvalue::DbCidV1;
 use crate::entry::Eattrs;
 use crate::prelude::*;
 use crate::schema::SchemaTransaction;
@@ -38,10 +40,10 @@ impl EntryChangeState {
     }
 
     pub fn new_without_schema(cid: &Cid, attrs: &Eattrs) -> Self {
-        let class = attrs.get("class");
+        let class = attrs.get(Attribute::Class.as_ref());
         let st = if class
             .as_ref()
-            .map(|c| c.contains(&PVCLASS_TOMBSTONE as &PartialValue))
+            .map(|c| c.contains(&EntryClass::Tombstone.to_partialvalue()))
             .unwrap_or(false)
         {
             State::Tombstone { at: cid.clone() }
@@ -59,6 +61,76 @@ impl EntryChangeState {
         };
 
         EntryChangeState { st }
+    }
+
+    pub(crate) fn to_db_changestate(&self) -> DbEntryChangeState {
+        match &self.st {
+            State::Live { at, changes } => {
+                let at = DbCidV1 {
+                    server_id: at.s_uuid,
+                    timestamp: at.ts,
+                };
+
+                let changes = changes
+                    .iter()
+                    .map(|(attr, cid)| {
+                        (
+                            attr.to_string(),
+                            DbCidV1 {
+                                server_id: cid.s_uuid,
+                                timestamp: cid.ts,
+                            },
+                        )
+                    })
+                    .collect();
+
+                DbEntryChangeState::V1Live { at, changes }
+            }
+            State::Tombstone { at } => {
+                let at = DbCidV1 {
+                    server_id: at.s_uuid,
+                    timestamp: at.ts,
+                };
+
+                DbEntryChangeState::V1Tombstone { at }
+            }
+        }
+    }
+
+    pub(crate) fn from_db_changestate(db_ecstate: DbEntryChangeState) -> Self {
+        match db_ecstate {
+            DbEntryChangeState::V1Live { at, changes } => {
+                let at = Cid {
+                    s_uuid: at.server_id,
+                    ts: at.timestamp,
+                };
+
+                let changes = changes
+                    .iter()
+                    .map(|(attr, cid)| {
+                        (
+                            attr.into(),
+                            Cid {
+                                s_uuid: cid.server_id,
+                                ts: cid.timestamp,
+                            },
+                        )
+                    })
+                    .collect();
+
+                EntryChangeState {
+                    st: State::Live { at, changes },
+                }
+            }
+            DbEntryChangeState::V1Tombstone { at } => EntryChangeState {
+                st: State::Tombstone {
+                    at: Cid {
+                        s_uuid: at.server_id,
+                        ts: at.timestamp,
+                    },
+                },
+            },
+        }
     }
 
     pub(crate) fn build(st: State) -> Self {
@@ -87,13 +159,13 @@ impl EntryChangeState {
         EntryChangeState { st }
     }
 
-    pub fn change_ava(&mut self, cid: &Cid, attr: &str) {
+    pub fn change_ava(&mut self, cid: &Cid, attr: Attribute) {
         match &mut self.st {
             State::Live {
                 at: _,
                 ref mut changes,
             } => {
-                if let Some(change) = changes.get_mut(attr) {
+                if let Some(change) = changes.get_mut(attr.as_ref()) {
                     // Update the cid.
                     if change != cid {
                         *change = cid.clone()
@@ -137,6 +209,19 @@ impl EntryChangeState {
         }
     }
 
+    #[cfg(test)]
+    pub(crate) fn get_tail_cid(&self) -> Cid {
+        self.cid_iter().pop().cloned().unwrap()
+    }
+
+    #[cfg(test)]
+    pub(crate) fn get_attr_cid(&self, attr: &Attribute) -> Option<Cid> {
+        match &self.st {
+            State::Live { at: _, changes } => changes.get(attr.as_ref()).map(|cid| cid.clone()),
+            State::Tombstone { at: _ } => None,
+        }
+    }
+
     pub fn cid_iter(&self) -> Vec<&Cid> {
         match &self.st {
             State::Live { at: _, changes } => {
@@ -167,10 +252,10 @@ impl EntryChangeState {
         entry_id: u64,
         results: &mut Vec<Result<(), ConsistencyError>>,
     ) {
-        let class = expected_attrs.get("class");
+        let class = expected_attrs.get(Attribute::Class.as_ref());
         let is_ts = class
             .as_ref()
-            .map(|c| c.contains(&PVCLASS_TOMBSTONE as &PartialValue))
+            .map(|c| c.contains(&EntryClass::Tombstone.to_partialvalue()))
             .unwrap_or(false);
 
         match (&self.st, is_ts) {

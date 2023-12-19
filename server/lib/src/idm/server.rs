@@ -5,13 +5,13 @@ use std::time::Duration;
 
 use kanidm_lib_crypto::CryptoPolicy;
 
-use compact_jwt::{Jws, JwsSigner, JwsUnverified, JwsValidator};
+use compact_jwt::{JwsCompact, JwsEs256Signer, JwsEs256Verifier, JwsSignerToVerifier, JwsVerifier};
 use concread::bptree::{BptreeMap, BptreeMapReadTxn, BptreeMapWriteTxn};
 use concread::cowcell::{CowCellReadTxn, CowCellWriteTxn};
 use concread::hashmap::HashMap;
 use concread::CowCell;
 use fernet::Fernet;
-use hashbrown::HashSet;
+use kanidm_proto::internal::ScimSyncToken;
 use kanidm_proto::v1::{
     ApiToken, BackupCodesView, CredentialStatus, PasswordFeedback, RadiusAuthToken, UatPurpose,
     UnixGroupToken, UnixUserToken, UserAuthToken,
@@ -30,7 +30,7 @@ use super::ldap::{LdapBoundToken, LdapSession};
 use crate::credential::{softlock::CredSoftLock, Credential};
 use crate::idm::account::Account;
 use crate::idm::audit::AuditEvent;
-use crate::idm::authsession::AuthSession;
+use crate::idm::authsession::{AuthSession, AuthSessionData};
 use crate::idm::credupdatesession::CredentialUpdateSessionMutex;
 use crate::idm::delayed::{
     AuthSessionRecord, BackupCodeRemoval, DelayedAction, PasswordUpgrade, UnixPasswordUpgrade,
@@ -49,23 +49,23 @@ use crate::idm::oauth2::{
     Oauth2ResourceServersWriteTransaction,
 };
 use crate::idm::radius::RadiusAccount;
-use crate::idm::scim::{ScimSyncToken, SyncAccount};
+use crate::idm::scim::SyncAccount;
 use crate::idm::serviceaccount::ServiceAccount;
 use crate::idm::unix::{UnixGroup, UnixUserAccount};
 use crate::idm::AuthState;
 use crate::prelude::*;
 use crate::utils::{password_from_random, readable_password_from_random, uuid_from_duration, Sid};
-use crate::value::Session;
+use crate::value::{Session, SessionState};
 
 pub(crate) type AuthSessionMutex = Arc<Mutex<AuthSession>>;
 pub(crate) type CredSoftLockMutex = Arc<Mutex<CredSoftLock>>;
 
 #[derive(Clone)]
 pub struct DomainKeys {
-    pub(crate) uat_jwt_signer: JwsSigner,
-    pub(crate) uat_jwt_validator: JwsValidator,
+    pub(crate) uat_jwt_signer: JwsEs256Signer,
+    pub(crate) uat_jwt_validator: JwsEs256Verifier,
     pub(crate) token_enc_key: Fernet,
-    pub(crate) cookie_key: [u8; 32],
+    pub(crate) cookie_key: [u8; 64],
 }
 
 pub struct IdmServer {
@@ -86,7 +86,6 @@ pub struct IdmServer {
     audit_tx: Sender<AuditEvent>,
     /// [Webauthn] verifier/config
     webauthn: Webauthn,
-    pw_badlist_cache: Arc<CowCell<HashSet<String>>>,
     oauth2rs: Arc<Oauth2ResourceServers>,
     domain_keys: Arc<CowCell<DomainKeys>>,
 }
@@ -104,15 +103,13 @@ pub struct IdmServerAuthTransaction<'a> {
     pub(crate) async_tx: Sender<DelayedAction>,
     pub(crate) audit_tx: Sender<AuditEvent>,
     pub(crate) webauthn: &'a Webauthn,
-    pub(crate) pw_badlist_cache: CowCellReadTxn<HashSet<String>>,
     pub(crate) domain_keys: CowCellReadTxn<DomainKeys>,
 }
 
 pub struct IdmServerCredUpdateTransaction<'a> {
-    pub(crate) _qs_read: QueryServerReadTransaction<'a>,
+    pub(crate) qs_read: QueryServerReadTransaction<'a>,
     // sid: Sid,
     pub(crate) webauthn: &'a Webauthn,
-    pub(crate) pw_badlist_cache: CowCellReadTxn<HashSet<String>>,
     pub(crate) cred_update_sessions: BptreeMapReadTxn<'a, Uuid, CredentialUpdateSessionMutex>,
     pub(crate) domain_keys: CowCellReadTxn<DomainKeys>,
     pub(crate) crypto_policy: &'a CryptoPolicy,
@@ -134,7 +131,6 @@ pub struct IdmServerProxyWriteTransaction<'a> {
     pub(crate) sid: Sid,
     crypto_policy: &'a CryptoPolicy,
     webauthn: &'a Webauthn,
-    pw_badlist_cache: CowCellWriteTxn<'a, HashSet<String>>,
     pub(crate) domain_keys: CowCellWriteTxn<'a, DomainKeys>,
     pub(crate) oauth2rs: Oauth2ResourceServersWriteTransaction<'a>,
 }
@@ -159,15 +155,7 @@ impl IdmServer {
         let (audit_tx, audit_rx) = unbounded();
 
         // Get the domain name, as the relying party id.
-        let (
-            rp_id,
-            rp_name,
-            fernet_private_key,
-            es256_private_key,
-            cookie_key,
-            pw_badlist_set,
-            oauth2rs_set,
-        ) = {
+        let (rp_id, rp_name, fernet_private_key, es256_private_key, cookie_key, oauth2rs_set) = {
             let mut qs_read = qs.read().await;
             (
                 qs_read.get_domain_name().to_string(),
@@ -175,7 +163,6 @@ impl IdmServer {
                 qs_read.get_domain_fernet_private_key()?,
                 qs_read.get_domain_es256_private_key()?,
                 qs_read.get_domain_cookie_key()?,
-                qs_read.get_password_badlist()?,
                 // Add a read/reload of all oauth2 configurations.
                 qs_read.get_oauth2rs_set()?,
             )
@@ -218,12 +205,14 @@ impl IdmServer {
             OperationError::CryptographyError
         })?;
 
-        let uat_jwt_signer = JwsSigner::from_es256_der(&es256_private_key).map_err(|e| {
-            admin_error!(err = ?e, "Unable to load ES256 JwsSigner from DER");
-            OperationError::CryptographyError
-        })?;
+        let uat_jwt_signer = JwsEs256Signer::from_es256_der(&es256_private_key)
+            .map_err(|e| {
+                admin_error!(err = ?e, "Unable to load ES256 JwsSigner from DER");
+                OperationError::CryptographyError
+            })?
+            .set_sign_option_embed_jwk(true);
 
-        let uat_jwt_validator = uat_jwt_signer.get_validator().map_err(|e| {
+        let uat_jwt_validator = uat_jwt_signer.get_verifier().map_err(|e| {
             admin_error!(err = ?e, "Unable to load ES256 JwsValidator from JwsSigner");
             OperationError::CryptographyError
         })?;
@@ -252,7 +241,6 @@ impl IdmServer {
                 async_tx,
                 audit_tx,
                 webauthn,
-                pw_badlist_cache: Arc::new(CowCell::new(pw_badlist_set)),
                 domain_keys,
                 oauth2rs: Arc::new(oauth2rs),
             },
@@ -261,7 +249,7 @@ impl IdmServer {
         ))
     }
 
-    pub fn get_cookie_key(&self) -> [u8; 32] {
+    pub fn get_cookie_key(&self) -> [u8; 64] {
         self.domain_keys.read().cookie_key
     }
 
@@ -282,7 +270,6 @@ impl IdmServer {
             async_tx: self.async_tx.clone(),
             audit_tx: self.audit_tx.clone(),
             webauthn: &self.webauthn,
-            pw_badlist_cache: self.pw_badlist_cache.read(),
             domain_keys: self.domain_keys.read(),
         }
     }
@@ -312,7 +299,6 @@ impl IdmServer {
             sid,
             crypto_policy: &self.crypto_policy,
             webauthn: &self.webauthn,
-            pw_badlist_cache: self.pw_badlist_cache.write(),
             domain_keys: self.domain_keys.write(),
             oauth2rs: self.oauth2rs.write(),
         }
@@ -320,10 +306,9 @@ impl IdmServer {
 
     pub async fn cred_update_transaction(&self) -> IdmServerCredUpdateTransaction<'_> {
         IdmServerCredUpdateTransaction {
-            _qs_read: self.qs.read().await,
+            qs_read: self.qs.read().await,
             // sid: Sid,
             webauthn: &self.webauthn,
-            pw_badlist_cache: self.pw_badlist_cache.read(),
             cred_update_sessions: self.cred_update_sessions.read(),
             domain_keys: self.domain_keys.read(),
             crypto_policy: &self.crypto_policy,
@@ -411,7 +396,7 @@ pub trait IdmServerTransaction<'a> {
 
     fn get_qs_txn(&mut self) -> &mut Self::QsTransactionType;
 
-    fn get_uat_validator_txn(&self) -> &JwsValidator;
+    fn get_uat_validator_txn(&self) -> &JwsEs256Verifier;
 
     /// This is the preferred method to transform and securely verify a token into
     /// an identity that can be used for operations and access enforcement. This
@@ -459,7 +444,7 @@ pub trait IdmServerTransaction<'a> {
                 OperationError::NotAuthenticated
             })
             .and_then(|s| {
-                JwsUnverified::from_str(s).map_err(|e| {
+                JwsCompact::from_str(s).map_err(|e| {
                     security_info!(?e, "Unable to decode token");
                     OperationError::NotAuthenticated
                 })
@@ -473,26 +458,33 @@ pub trait IdmServerTransaction<'a> {
             OperationError::NotAuthenticated
         })?;
 
-        let jwsv_kid = jws_validator.get_jwk_kid().ok_or_else(|| {
+        let jwsv_kid = jws_validator.get_kid().ok_or_else(|| {
             security_info!("JWS validator does not contain a valid kid");
             OperationError::NotAuthenticated
         })?;
 
         if kid == jwsv_kid {
             // It's signed by the primary jws, so it's probably a UserAuthToken.
-            let uat = jwsu
-                .validate(jws_validator)
+            let uat = jws_validator
+                .verify(&jwsu)
                 .map_err(|e| {
                     security_info!(?e, "Unable to verify token");
                     OperationError::NotAuthenticated
                 })
-                .map(|t: Jws<UserAuthToken>| t.into_inner())?;
+                .and_then(|t| {
+                    t.from_json::<UserAuthToken>().map_err(|err| {
+                        error!(?err, "Unable to deserialise JWS");
+                        OperationError::SerdeJsonError
+                    })
+                })?;
 
             if let Some(exp) = uat.expiry {
-                if time::OffsetDateTime::UNIX_EPOCH + ct >= exp {
-                    security_info!("Session expired");
+                let ct_odt = time::OffsetDateTime::UNIX_EPOCH + ct;
+                if ct_odt >= exp {
+                    security_info!(?ct_odt, ?exp, "Session expired");
                     Err(OperationError::SessionExpired)
                 } else {
+                    trace!(?ct_odt, ?exp, "Session not yet expired");
                     Ok(Token::UserAuthToken(uat))
                 }
             } else {
@@ -504,7 +496,7 @@ pub trait IdmServerTransaction<'a> {
             let entry = self
                 .get_qs_txn()
                 .internal_search(filter!(f_eq(
-                    "jws_es256_private_key",
+                    Attribute::JwsEs256PrivateKey,
                     PartialValue::new_iutf8(kid)
                 )))
                 .and_then(|mut vs| match vs.pop() {
@@ -519,7 +511,7 @@ pub trait IdmServerTransaction<'a> {
                 })?;
 
             let user_signer = entry
-                .get_ava_single_jws_key_es256("jws_es256_private_key")
+                .get_ava_single_jws_key_es256(Attribute::JwsEs256PrivateKey)
                 .ok_or_else(|| {
                     admin_error!(
                         ?kid,
@@ -529,18 +521,23 @@ pub trait IdmServerTransaction<'a> {
                     OperationError::NotAuthenticated
                 })?;
 
-            let user_validator = user_signer.get_validator().map_err(|e| {
+            let user_validator = user_signer.get_verifier().map_err(|e| {
                 security_info!(?e, "Unable to access token verifier");
                 OperationError::NotAuthenticated
             })?;
 
-            let apit = jwsu
-                .validate(&user_validator)
+            let apit = user_validator
+                .verify(&jwsu)
                 .map_err(|e| {
                     security_info!(?e, "Unable to verify token");
                     OperationError::NotAuthenticated
                 })
-                .map(|t: Jws<ApiToken>| t.into_inner())?;
+                .and_then(|t| {
+                    t.from_json::<ApiToken>().map_err(|err| {
+                        error!(?err, "Unable to deserialise JWS");
+                        OperationError::SerdeJsonError
+                    })
+                })?;
 
             if let Some(expiry) = apit.expiry {
                 if time::OffsetDateTime::UNIX_EPOCH + ct >= expiry {
@@ -565,18 +562,24 @@ pub trait IdmServerTransaction<'a> {
         let uat: UserAuthToken = token
             .ok_or(OperationError::NotAuthenticated)
             .and_then(|s| {
-                JwsUnverified::from_str(s).map_err(|e| {
+                JwsCompact::from_str(s).map_err(|e| {
                     security_info!(?e, "Unable to decode token");
                     OperationError::NotAuthenticated
                 })
             })
             .and_then(|jwtu| {
-                jwtu.validate(jws_validator)
+                jws_validator
+                    .verify(&jwtu)
                     .map_err(|e| {
                         security_info!(?e, "Unable to verify token");
                         OperationError::NotAuthenticated
                     })
-                    .map(|t: Jws<UserAuthToken>| t.into_inner())
+                    .and_then(|t| {
+                        t.from_json::<UserAuthToken>().map_err(|err| {
+                            error!(?err, "Unable to deserialise JWS");
+                            OperationError::SerdeJsonError
+                        })
+                    })
             })?;
 
         if let Some(exp) = uat.expiry {
@@ -607,8 +610,12 @@ pub trait IdmServerTransaction<'a> {
 
         let within_valid_window = Account::check_within_valid_time(
             ct,
-            entry.get_ava_single_datetime("account_valid_from").as_ref(),
-            entry.get_ava_single_datetime("account_expire").as_ref(),
+            entry
+                .get_ava_single_datetime(Attribute::AccountValidFrom)
+                .as_ref(),
+            entry
+                .get_ava_single_datetime(Attribute::AccountExpire)
+                .as_ref(),
         );
 
         if !within_valid_window {
@@ -616,28 +623,54 @@ pub trait IdmServerTransaction<'a> {
             return Ok(None);
         }
 
-        if ct >= Duration::from_secs(iat as u64) + GRACE_WINDOW {
-            // We are past the grace window. Enforce session presence.
-            // We enforce both sessions are present in case of inconsistency
-            // that may occur with replication.
-            let oauth2_session_valid = entry
-                .get_ava_as_oauth2session_map("oauth2_session")
-                .map(|map| map.get(&session_id).is_some())
-                .unwrap_or(false);
-            let uat_session_valid = entry
-                .get_ava_as_session_map("user_auth_token_session")
-                .map(|map| map.get(&parent_session_id).is_some())
-                .unwrap_or(false);
+        // We are past the grace window. Enforce session presence.
+        // We enforce both sessions are present in case of inconsistency
+        // that may occur with replication.
 
-            if oauth2_session_valid && uat_session_valid {
-                security_info!("A valid session value exists for this token");
-            } else {
-                security_info!(%uat_session_valid, %oauth2_session_valid, "The token grace window has passed and no sessions exist. Assuming invalid.");
+        let grace_valid = ct < (Duration::from_secs(iat as u64) + GRACE_WINDOW);
+
+        let oauth2_session = entry
+            .get_ava_as_oauth2session_map(Attribute::OAuth2Session)
+            .and_then(|sessions| sessions.get(&session_id));
+        let uat_session = entry
+            .get_ava_as_session_map(Attribute::UserAuthTokenSession)
+            .and_then(|sessions| sessions.get(&parent_session_id));
+
+        if let Some(oauth2_session) = oauth2_session {
+            // We have the oauth2 session, lets check it.
+            let oauth2_session_valid = !matches!(oauth2_session.state, SessionState::RevokedAt(_));
+
+            if !oauth2_session_valid {
+                security_info!("The oauth2 session associated to this token is revoked.");
                 return Ok(None);
             }
-        } else {
+
+            if let Some(uat_session) = uat_session {
+                let parent_session_valid = !matches!(uat_session.state, SessionState::RevokedAt(_));
+                if parent_session_valid {
+                    security_info!("A valid parent and oauth2 session value exists for this token");
+                } else {
+                    security_info!(
+                        "The parent oauth2 session associated to this token is revoked."
+                    );
+                    return Ok(None);
+                }
+            } else if grace_valid {
+                security_info!(
+                    "The token grace window is in effect. Assuming parent session valid."
+                );
+            } else {
+                security_info!("The token grace window has passed and no entry parent sessions exist. Assuming invalid.");
+                return Ok(None);
+            }
+        } else if grace_valid {
             security_info!("The token grace window is in effect. Assuming valid.");
-        };
+        } else {
+            security_info!(
+                "The token grace window has passed and no entry sessions exist. Assuming invalid."
+            );
+            return Ok(None);
+        }
 
         Ok(Some(entry))
     }
@@ -769,8 +802,12 @@ pub trait IdmServerTransaction<'a> {
 
                 if Account::check_within_valid_time(
                     ct,
-                    entry.get_ava_single_datetime("account_valid_from").as_ref(),
-                    entry.get_ava_single_datetime("account_expire").as_ref(),
+                    entry
+                        .get_ava_single_datetime(Attribute::AccountValidFrom)
+                        .as_ref(),
+                    entry
+                        .get_ava_single_datetime(Attribute::AccountExpire)
+                        .as_ref(),
                 ) {
                     // Good to go
                     let limits = Limits::default();
@@ -814,7 +851,7 @@ pub trait IdmServerTransaction<'a> {
                 OperationError::NotAuthenticated
             })
             .and_then(|s| {
-                JwsUnverified::from_str(s).map_err(|e| {
+                JwsCompact::from_str(s).map_err(|e| {
                     security_info!(?e, "Unable to decode token");
                     OperationError::NotAuthenticated
                 })
@@ -828,7 +865,7 @@ pub trait IdmServerTransaction<'a> {
         let entry = self
             .get_qs_txn()
             .internal_search(filter!(f_eq(
-                "jws_es256_private_key",
+                Attribute::JwsEs256PrivateKey,
                 PartialValue::new_iutf8(kid)
             )))
             .and_then(|mut vs| match vs.pop() {
@@ -843,7 +880,7 @@ pub trait IdmServerTransaction<'a> {
             })?;
 
         let user_signer = entry
-            .get_ava_single_jws_key_es256("jws_es256_private_key")
+            .get_ava_single_jws_key_es256(Attribute::JwsEs256PrivateKey)
             .ok_or_else(|| {
                 admin_error!(
                     ?kid,
@@ -853,18 +890,23 @@ pub trait IdmServerTransaction<'a> {
                 OperationError::NotAuthenticated
             })?;
 
-        let user_validator = user_signer.get_validator().map_err(|e| {
+        let user_validator = user_signer.get_verifier().map_err(|e| {
             security_info!(?e, "Unable to access token verifier");
             OperationError::NotAuthenticated
         })?;
 
-        let sync_token = jwsu
-            .validate(&user_validator)
+        let sync_token = user_validator
+            .verify(&jwsu)
             .map_err(|e| {
                 security_info!(?e, "Unable to verify token");
                 OperationError::NotAuthenticated
             })
-            .map(|t: Jws<ScimSyncToken>| t.into_inner())?;
+            .and_then(|t| {
+                t.from_json::<ScimSyncToken>().map_err(|err| {
+                    error!(?err, "Unable to deserialise JWS");
+                    OperationError::SerdeJsonError
+                })
+            })?;
 
         let valid = SyncAccount::check_sync_token_valid(ct, &sync_token, &entry);
 
@@ -893,7 +935,7 @@ impl<'a> IdmServerTransaction<'a> for IdmServerAuthTransaction<'a> {
         &mut self.qs_read
     }
 
-    fn get_uat_validator_txn(&self) -> &JwsValidator {
+    fn get_uat_validator_txn(&self) -> &JwsEs256Verifier {
         &self.domain_keys.uat_jwt_validator
     }
 }
@@ -907,7 +949,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
 
     pub fn get_origin(&self) -> &Url {
         #[allow(clippy::unwrap_used)]
-        self.webauthn.get_allowed_origins().get(0).unwrap()
+        self.webauthn.get_allowed_origins().first().unwrap()
     }
 
     #[instrument(level = "trace", skip(self))]
@@ -959,6 +1001,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
                 security_info!(
                     username = %init.username,
                     issue = ?init.issue,
+                    privileged = ?init.privileged,
                     uuid = %euuid,
                     "Initiating Authentication Session",
                 );
@@ -967,7 +1010,8 @@ impl<'a> IdmServerAuthTransaction<'a> {
                 // typing and functionality so we can assess what auth types can
                 // continue, and helps to keep non-needed entry specific data
                 // out of the session tree.
-                let account = Account::try_from_entry_ro(entry.as_ref(), &mut self.qs_read)?;
+                let (account, account_policy) =
+                    Account::try_from_entry_with_policy(entry.as_ref(), &mut self.qs_read)?;
 
                 trace!(?account.primary);
 
@@ -1001,8 +1045,16 @@ impl<'a> IdmServerAuthTransaction<'a> {
                             slock_ref
                         });
 
-                let (auth_session, state) =
-                    AuthSession::new(account, init.issue, self.webauthn, ct, source);
+                let asd: AuthSessionData = AuthSessionData {
+                    account,
+                    account_policy,
+                    issue: init.issue,
+                    webauthn: self.webauthn,
+                    ct,
+                    source,
+                };
+
+                let (auth_session, state) = AuthSession::new(asd, init.privileged);
 
                 match auth_session {
                     Some(auth_session) => {
@@ -1119,7 +1171,6 @@ impl<'a> IdmServerAuthTransaction<'a> {
                     // Process the credentials here as required.
                     // Basically throw them at the auth_session and see what
                     // falls out.
-                    let pw_badlist_cache = Some(&(*self.pw_badlist_cache));
                     auth_session
                         .validate_creds(
                             &creds.cred,
@@ -1127,8 +1178,8 @@ impl<'a> IdmServerAuthTransaction<'a> {
                             &self.async_tx,
                             &self.audit_tx,
                             self.webauthn,
-                            pw_badlist_cache,
                             &self.domain_keys.uat_jwt_signer,
+                            self.qs_read.pw_badlist(),
                         )
                         .map(|aus| {
                             // Inspect the result:
@@ -1248,9 +1299,11 @@ impl<'a> IdmServerAuthTransaction<'a> {
                 }))
             }
             Token::ApiToken(apit, entry) => {
-                let spn = entry.get_ava_single_proto_string("spn").ok_or_else(|| {
-                    OperationError::InvalidAccountState("Missing attribute: spn".to_string())
-                })?;
+                let spn = entry
+                    .get_ava_single_proto_string(Attribute::Spn)
+                    .ok_or_else(|| {
+                        OperationError::InvalidAccountState("Missing attribute: spn".to_string())
+                    })?;
 
                 Ok(Some(LdapBoundToken {
                     session_id: apit.token_id,
@@ -1295,6 +1348,10 @@ impl<'a> IdmServerAuthTransaction<'a> {
                 effective_session: LdapSession::UnixBind(UUID_ANONYMOUS),
             }))
         } else {
+            if !self.qs_read.d_info.d_ldap_allow_unix_pw_bind {
+                security_info!("Bind not allowed through Unix passwords.");
+                return Ok(None);
+            }
             let account =
                 UnixUserAccount::try_from_entry_ro(account_entry.as_ref(), &mut self.qs_read)?;
 
@@ -1395,7 +1452,7 @@ impl<'a> IdmServerTransaction<'a> for IdmServerProxyReadTransaction<'a> {
         &mut self.qs_read
     }
 
-    fn get_uat_validator_txn(&self) -> &JwsValidator {
+    fn get_uat_validator_txn(&self) -> &JwsEs256Verifier {
         &self.domain_keys.uat_jwt_validator
     }
 }
@@ -1498,7 +1555,7 @@ impl<'a> IdmServerTransaction<'a> for IdmServerProxyWriteTransaction<'a> {
         &mut self.qs_write
     }
 
-    fn get_uat_validator_txn(&self) -> &JwsValidator {
+    fn get_uat_validator_txn(&self) -> &JwsEs256Verifier {
         &self.domain_keys.uat_jwt_validator
     }
 }
@@ -1510,7 +1567,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
     pub fn get_origin(&self) -> &Url {
         #[allow(clippy::unwrap_used)]
-        self.webauthn.get_allowed_origins().get(0).unwrap()
+        self.webauthn.get_allowed_origins().first().unwrap()
     }
 
     fn check_password_quality(
@@ -1523,7 +1580,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         //
 
         // is the password at least 10 char?
-        if cleartext.len() < PW_MIN_LENGTH {
+        if cleartext.len() < PW_MIN_LENGTH as usize {
             return Err(OperationError::PasswordQuality(vec![
                 PasswordFeedback::TooShort(PW_MIN_LENGTH),
             ]));
@@ -1562,7 +1619,11 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         // check a password badlist to eliminate more content
         // we check the password as "lower case" to help eliminate possibilities
         // also, when pw_badlist_cache is read from DB, it is read as Value (iutf8 lowercase)
-        if (*self.pw_badlist_cache).contains(&cleartext.to_lowercase()) {
+        if self
+            .qs_write
+            .pw_badlist()
+            .contains(&cleartext.to_lowercase())
+        {
             security_info!("Password found in badlist, rejecting");
             Err(OperationError::PasswordQuality(vec![
                 PasswordFeedback::BadListed,
@@ -1617,9 +1678,9 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             .qs_write
             .impersonate_modify_gen_event(
                 // Filter as executed
-                &filter!(f_eq("uuid", PartialValue::Uuid(pce.target))),
+                &filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(pce.target))),
                 // Filter as intended (acp)
-                &filter_all!(f_eq("uuid", PartialValue::Uuid(pce.target))),
+                &filter_all!(f_eq(Attribute::Uuid, PartialValue::Uuid(pce.target))),
                 &modlist,
                 &pce.ident,
             )
@@ -1628,27 +1689,17 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 e
             })?;
 
-        let mp = unsafe {
-            self.qs_write
-                .modify_pre_apply(&me)
-                .and_then(|opt_mp| opt_mp.ok_or(OperationError::NoMatchingEntries))
-                .map_err(|e| {
-                    request_error!(error = ?e);
-                    e
-                })?
-        };
+        let mp = self
+            .qs_write
+            .modify_pre_apply(&me)
+            .and_then(|opt_mp| opt_mp.ok_or(OperationError::NoMatchingEntries))
+            .map_err(|e| {
+                request_error!(error = ?e);
+                e
+            })?;
 
         // If we got here, then pre-apply succeeded, and that means access control
         // passed. Now we can do the extra checks.
-
-        // Check the password quality.
-        // Ask if tis all good - this step checks pwpolicy and such
-
-        self.check_password_quality(pce.cleartext.as_str(), account.related_inputs().as_slice())
-            .map_err(|e| {
-                request_error!(err = ?e, "check_password_quality");
-                e
-            })?;
 
         // And actually really apply it now.
         self.qs_write.modify_apply(mp).map_err(|e| {
@@ -1696,9 +1747,9 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             .qs_write
             .impersonate_modify_gen_event(
                 // Filter as executed
-                &filter!(f_eq("uuid", PartialValue::Uuid(pce.target))),
+                &filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(pce.target))),
                 // Filter as intended (acp)
-                &filter_all!(f_eq("uuid", PartialValue::Uuid(pce.target))),
+                &filter_all!(f_eq(Attribute::Uuid, PartialValue::Uuid(pce.target))),
                 &modlist,
                 &pce.ident,
             )
@@ -1707,15 +1758,14 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 e
             })?;
 
-        let mp = unsafe {
-            self.qs_write
-                .modify_pre_apply(&me)
-                .and_then(|opt_mp| opt_mp.ok_or(OperationError::NoMatchingEntries))
-                .map_err(|e| {
-                    request_error!(error = ?e);
-                    e
-                })?
-        };
+        let mp = self
+            .qs_write
+            .modify_pre_apply(&me)
+            .and_then(|opt_mp| opt_mp.ok_or(OperationError::NoMatchingEntries))
+            .map_err(|e| {
+                request_error!(error = ?e);
+                e
+            })?;
 
         // If we got here, then pre-apply succeeded, and that means access control
         // passed. Now we can do the extra checks.
@@ -1735,6 +1785,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         Ok(())
     }
 
+    #[instrument(level = "debug", skip_all)]
     pub fn recover_account(
         &mut self,
         name: &str,
@@ -1758,9 +1809,9 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         let vcred = Value::new_credential("primary", ncred);
         // We need to remove other credentials too.
         let modlist = ModifyList::new_list(vec![
-            m_purge("passkeys"),
-            m_purge("primary_credential"),
-            Modify::Present("primary_credential".into(), vcred),
+            m_purge(Attribute::PassKeys),
+            m_purge(Attribute::PrimaryCredential),
+            Modify::Present(Attribute::PrimaryCredential.into(), vcred),
         ]);
 
         trace!(?modlist, "processing change");
@@ -1768,7 +1819,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         self.qs_write
             .internal_modify(
                 // Filter as executed
-                &filter!(f_eq("uuid", PartialValue::Uuid(target))),
+                &filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(target))),
                 &modlist,
             )
             .map_err(|e| {
@@ -1779,6 +1830,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         Ok(cleartext)
     }
 
+    #[instrument(level = "debug", skip_all)]
     pub fn regenerate_radius_secret(
         &mut self,
         rrse: &RegenerateRadiusSecretEvent,
@@ -1802,9 +1854,9 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         self.qs_write
             .impersonate_modify(
                 // Filter as executed
-                &filter!(f_eq("uuid", PartialValue::Uuid(rrse.target))),
+                &filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(rrse.target))),
                 // Filter as intended (acp)
-                &filter_all!(f_eq("uuid", PartialValue::Uuid(rrse.target))),
+                &filter_all!(f_eq(Attribute::Uuid, PartialValue::Uuid(rrse.target))),
                 &modlist,
                 // Provide the event to impersonate
                 &rrse.ident,
@@ -1817,26 +1869,23 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
     }
 
     // -- delayed action processing --
+    #[instrument(level = "debug", skip_all)]
     fn process_pwupgrade(&mut self, pwu: &PasswordUpgrade) -> Result<(), OperationError> {
         // get the account
         let account = self.target_to_account(pwu.target_uuid)?;
 
         info!(session_id = %pwu.target_uuid, "Processing password hash upgrade");
 
-        // check, does the pw still match?
-        let same = account.check_credential_pw(pwu.existing_password.as_str())?;
+        let maybe_modlist = account
+            .gen_password_upgrade_mod(pwu.existing_password.as_str(), self.crypto_policy)
+            .map_err(|e| {
+                admin_error!("Unable to generate password mod {:?}", e);
+                e
+            })?;
 
-        // if yes, gen the pw mod and apply.
-        if same {
-            let modlist = account
-                .gen_password_mod(pwu.existing_password.as_str(), self.crypto_policy)
-                .map_err(|e| {
-                    admin_error!("Unable to generate password mod {:?}", e);
-                    e
-                })?;
-
+        if let Some(modlist) = maybe_modlist {
             self.qs_write.internal_modify(
-                &filter_all!(f_eq("uuid", PartialValue::Uuid(pwu.target_uuid))),
+                &filter_all!(f_eq(Attribute::Uuid, PartialValue::Uuid(pwu.target_uuid))),
                 &modlist,
             )
         } else {
@@ -1845,6 +1894,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         }
     }
 
+    #[instrument(level = "debug", skip_all)]
     fn process_unixpwupgrade(&mut self, pwu: &UnixPasswordUpgrade) -> Result<(), OperationError> {
         info!(session_id = %pwu.target_uuid, "Processing unix password hash upgrade");
 
@@ -1859,25 +1909,21 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 e
             })?;
 
-        let same = account.check_existing_pw(pwu.existing_password.as_str())?;
+        let maybe_modlist =
+            account.gen_password_upgrade_mod(pwu.existing_password.as_str(), self.crypto_policy)?;
 
-        if same {
-            let modlist = account
-                .gen_password_mod(pwu.existing_password.as_str(), self.crypto_policy)
-                .map_err(|e| {
-                    admin_error!("Unable to generate password mod {:?}", e);
-                    e
-                })?;
-
+        if let Some(modlist) = maybe_modlist {
             self.qs_write.internal_modify(
-                &filter_all!(f_eq("uuid", PartialValue::Uuid(pwu.target_uuid))),
+                &filter_all!(f_eq(Attribute::Uuid, PartialValue::Uuid(pwu.target_uuid))),
                 &modlist,
             )
         } else {
+            // No action needed, it's probably been changed/updated already.
             Ok(())
         }
     }
 
+    #[instrument(level = "debug", skip_all)]
     pub(crate) fn process_webauthncounterinc(
         &mut self,
         wci: &WebauthnCounterIncrement,
@@ -1896,7 +1942,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         if let Some(modlist) = opt_modlist {
             self.qs_write.internal_modify(
-                &filter_all!(f_eq("uuid", PartialValue::Uuid(wci.target_uuid))),
+                &filter_all!(f_eq(Attribute::Uuid, PartialValue::Uuid(wci.target_uuid))),
                 &modlist,
             )
         } else {
@@ -1906,6 +1952,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         }
     }
 
+    #[instrument(level = "debug", skip_all)]
     pub(crate) fn process_backupcoderemoval(
         &mut self,
         bcr: &BackupCodeRemoval,
@@ -1922,22 +1969,27 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             })?;
 
         self.qs_write.internal_modify(
-            &filter_all!(f_eq("uuid", PartialValue::Uuid(bcr.target_uuid))),
+            &filter_all!(f_eq(Attribute::Uuid, PartialValue::Uuid(bcr.target_uuid))),
             &modlist,
         )
     }
 
+    #[instrument(level = "debug", skip_all)]
     pub(crate) fn process_authsessionrecord(
         &mut self,
         asr: &AuthSessionRecord,
     ) -> Result<(), OperationError> {
         // We have to get the entry so we can work out if we need to expire any of it's sessions.
+        let state = match asr.expiry {
+            Some(e) => SessionState::ExpiresAt(e),
+            None => SessionState::NeverExpires,
+        };
 
         let session = Value::Session(
             asr.session_id,
             Session {
                 label: asr.label.clone(),
-                expiry: asr.expiry,
+                state,
                 // Need the other inner bits?
                 // for the gracewindow.
                 issued_at: asr.issued_at,
@@ -1954,11 +2006,11 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         info!(session_id = %asr.session_id, "Persisting auth session");
 
         // modify the account to put the session onto it.
-        let modlist = ModifyList::new_append("user_auth_token_session", session);
+        let modlist = ModifyList::new_append(Attribute::UserAuthTokenSession, session);
 
         self.qs_write
             .internal_modify(
-                &filter!(f_eq("uuid", PartialValue::Uuid(asr.target_uuid))),
+                &filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(asr.target_uuid))),
                 &modlist,
             )
             .map_err(|e| {
@@ -1968,6 +2020,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         // Done!
     }
 
+    #[instrument(level = "debug", skip_all)]
     pub fn process_delayedaction(
         &mut self,
         da: DelayedAction,
@@ -1984,14 +2037,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
     #[instrument(level = "debug", skip_all)]
     pub fn commit(mut self) -> Result<(), OperationError> {
-        if self
-            .qs_write
-            .get_changed_uuids()
-            .contains(&UUID_SYSTEM_CONFIG)
-        {
-            self.reload_password_badlist()?;
-        };
-        if self.qs_write.get_changed_ouath2() {
+        if self.qs_write.get_changed_oauth2() {
             self.qs_write
                 .get_oauth2rs_set()
                 .and_then(|oauth2rs_set| self.oauth2rs.reload(oauth2rs_set))?;
@@ -2012,14 +2058,16 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             self.qs_write
                 .get_domain_es256_private_key()
                 .and_then(|key_der| {
-                    JwsSigner::from_es256_der(&key_der).map_err(|e| {
-                        admin_error!("Failed to generate uat_jwt_signer - {:?}", e);
-                        OperationError::InvalidState
-                    })
+                    JwsEs256Signer::from_es256_der(&key_der)
+                        .map(|signer| signer.set_sign_option_embed_jwk(true))
+                        .map_err(|e| {
+                            admin_error!("Failed to generate uat_jwt_signer - {:?}", e);
+                            OperationError::InvalidState
+                        })
                 })
                 .and_then(|signer| {
                     signer
-                        .get_validator()
+                        .get_verifier()
                         .map_err(|e| {
                             admin_error!("Failed to generate uat_jwt_validator - {:?}", e);
                             OperationError::InvalidState
@@ -2035,24 +2083,20 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 .map(|new_cookie_key| {
                     self.domain_keys.cookie_key = new_cookie_key;
                 })?;
+            // If the domain name has changed, we need to update rp-id in
+            // webauthn rs
+            //
+            // TODO: I'm not sure actually. because on a domain rename we
+            // might need to update origin too. So this gets a bit tricky.
+            // we might actually need to *not* reload here, and then let the
+            // admin do it inline with their configs too.
         }
         // Commit everything.
         self.oauth2rs.commit();
         self.domain_keys.commit();
-        self.pw_badlist_cache.commit();
         self.cred_update_sessions.commit();
         trace!("cred_update_session.commit");
         self.qs_write.commit()
-    }
-
-    fn reload_password_badlist(&mut self) -> Result<(), OperationError> {
-        match self.qs_write.get_password_badlist() {
-            Ok(badlist_entry) => {
-                *self.pw_badlist_cache = badlist_entry;
-                Ok(())
-            }
-            Err(e) => Err(e),
-        }
     }
 }
 
@@ -2064,7 +2108,6 @@ mod tests {
     use std::time::Duration;
 
     use kanidm_proto::v1::{AuthAllowed, AuthIssueSession, AuthMech, OperationError};
-    use smartstring::alias::String as AttrString;
     use time::OffsetDateTime;
     use uuid::Uuid;
 
@@ -2077,11 +2120,12 @@ mod tests {
         PasswordChangeEvent, RadiusAuthTokenEvent, RegenerateRadiusSecretEvent,
         UnixGroupTokenEvent, UnixPasswordChangeEvent, UnixUserAuthEvent, UnixUserTokenEvent,
     };
-    use crate::idm::server::{IdmServer, IdmServerTransaction};
+    use crate::idm::server::{IdmServer, IdmServerTransaction, Token};
     use crate::idm::AuthState;
     use crate::modify::{Modify, ModifyList};
     use crate::prelude::*;
-    use crate::utils::duration_from_epoch_now;
+    use crate::value::SessionState;
+    use compact_jwt::{JwsCompact, JwsEs256Verifier, JwsVerifier};
     use kanidm_lib_crypto::CryptoPolicy;
 
     const TEST_PASSWORD: &str = "ntaoeuntnaoeuhraohuercahu😍";
@@ -2257,15 +2301,13 @@ mod tests {
         let mut idms_write = idms.proxy_write(duration_from_epoch_now()).await;
 
         // now modify and provide a primary credential.
-        let me_inv_m = unsafe {
-            ModifyEvent::new_internal_invalid(
-                filter!(f_eq("name", PartialValue::new_iname("admin"))),
-                ModifyList::new_list(vec![Modify::Present(
-                    AttrString::from("primary_credential"),
-                    v_cred,
-                )]),
-            )
-        };
+        let me_inv_m = ModifyEvent::new_internal_invalid(
+            filter!(f_eq(Attribute::Name, PartialValue::new_iname("admin"))),
+            ModifyList::new_list(vec![Modify::Present(
+                Attribute::PrimaryCredential.into(),
+                v_cred,
+            )]),
+        );
         // go!
         assert!(idms_write.qs_write.modify(&me_inv_m).is_ok());
 
@@ -2517,30 +2559,6 @@ mod tests {
     }
 
     #[idm_test]
-    async fn test_idm_radius_secret_rejected_from_account_credential(
-        idms: &IdmServer,
-        _idms_delayed: &IdmServerDelayed,
-    ) {
-        let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await;
-        let rrse = RegenerateRadiusSecretEvent::new_internal(UUID_ADMIN);
-
-        let r1 = idms_prox_write
-            .regenerate_radius_secret(&rrse)
-            .expect("Failed to reset radius credential 1");
-
-        // Try and set that as the main account password, should fail.
-        let pce = PasswordChangeEvent::new_internal(UUID_ADMIN, r1.as_str());
-        let e = idms_prox_write.set_account_password(&pce);
-        assert!(e.is_err());
-
-        let pce = UnixPasswordChangeEvent::new_internal(UUID_ADMIN, r1.as_str());
-        let e = idms_prox_write.set_unix_account_password(&pce);
-        assert!(e.is_err());
-
-        assert!(idms_prox_write.commit().is_ok());
-    }
-
-    #[idm_test]
     async fn test_idm_radiusauthtoken(idms: &IdmServer, _idms_delayed: &IdmServerDelayed) {
         let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await;
         let rrse = RegenerateRadiusSecretEvent::new_internal(UUID_ADMIN);
@@ -2550,7 +2568,12 @@ mod tests {
         idms_prox_write.commit().expect("failed to commit");
 
         let mut idms_prox_read = idms.proxy_read().await;
-        let rate = RadiusAuthTokenEvent::new_internal(UUID_ADMIN);
+        let admin_entry = idms_prox_read
+            .qs_read
+            .internal_search_uuid(UUID_ADMIN)
+            .expect("Can't access admin entry.");
+
+        let rate = RadiusAuthTokenEvent::new_impersonate(admin_entry, UUID_ADMIN);
         let tok_r = idms_prox_read
             .get_radiusauthtoken(&rate, duration_from_epoch_now())
             .expect("Failed to generate radius auth token");
@@ -2560,80 +2583,30 @@ mod tests {
     }
 
     #[idm_test]
-    async fn test_idm_simple_password_reject_weak(
-        idms: &IdmServer,
-        _idms_delayed: &IdmServerDelayed,
-    ) {
-        // len check
-        let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await;
-
-        let pce = PasswordChangeEvent::new_internal(UUID_ADMIN, "password");
-        let e = idms_prox_write.set_account_password(&pce);
-        assert!(e.is_err());
-
-        // zxcvbn check
-        let pce = PasswordChangeEvent::new_internal(UUID_ADMIN, "password1234");
-        let e = idms_prox_write.set_account_password(&pce);
-        assert!(e.is_err());
-
-        // Check the "name" checking works too (I think admin may hit a common pw rule first)
-        let pce = PasswordChangeEvent::new_internal(UUID_ADMIN, "admin_nta");
-        let e = idms_prox_write.set_account_password(&pce);
-        assert!(e.is_err());
-
-        // Check that the demo badlist password is rejected.
-        let pce = PasswordChangeEvent::new_internal(
-            UUID_ADMIN,
-            "demo_badlist_shohfie3aeci2oobur0aru9uushah6EiPi2woh4hohngoighaiRuepieN3ongoo1",
-        );
-        let e = idms_prox_write.set_account_password(&pce);
-        assert!(e.is_err());
-
-        assert!(idms_prox_write.commit().is_ok());
-    }
-
-    #[idm_test]
-    async fn test_idm_simple_password_reject_badlist(
-        idms: &IdmServer,
-        _idms_delayed: &IdmServerDelayed,
-    ) {
-        let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await;
-
-        // Check that the badlist password inserted is rejected.
-        let pce = PasswordChangeEvent::new_internal(UUID_ADMIN, "bad@no3IBTyqHu$list");
-        let e = idms_prox_write.set_account_password(&pce);
-        assert!(e.is_err());
-
-        assert!(idms_prox_write.commit().is_ok());
-    }
-
-    #[idm_test]
     async fn test_idm_unixusertoken(idms: &IdmServer, _idms_delayed: &IdmServerDelayed) {
         let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await;
         // Modify admin to have posixaccount
-        let me_posix = unsafe {
-            ModifyEvent::new_internal_invalid(
-                filter!(f_eq("name", PartialValue::new_iname("admin"))),
-                ModifyList::new_list(vec![
-                    Modify::Present(AttrString::from("class"), Value::new_class("posixaccount")),
-                    Modify::Present(AttrString::from("gidnumber"), Value::new_uint32(2001)),
-                ]),
-            )
-        };
+        let me_posix = ModifyEvent::new_internal_invalid(
+            filter!(f_eq(Attribute::Name, PartialValue::new_iname("admin"))),
+            ModifyList::new_list(vec![
+                Modify::Present(Attribute::Class.into(), EntryClass::PosixAccount.into()),
+                Modify::Present(Attribute::GidNumber.into(), Value::new_uint32(2001)),
+            ]),
+        );
         assert!(idms_prox_write.qs_write.modify(&me_posix).is_ok());
         // Add a posix group that has the admin as a member.
         let e: Entry<EntryInit, EntryNew> = entry_init!(
-            ("class", Value::new_class("object")),
-            ("class", Value::new_class("group")),
-            ("class", Value::new_class("posixgroup")),
-            ("name", Value::new_iname("testgroup")),
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Group.to_value()),
+            (Attribute::Class, EntryClass::PosixGroup.to_value()),
+            (Attribute::Name, Value::new_iname("testgroup")),
             (
-                "uuid",
+                Attribute::Uuid,
                 Value::Uuid(uuid::uuid!("01609135-a1c4-43d5-966b-a28227644445"))
             ),
-            ("description", Value::new_utf8s("testgroup")),
+            (Attribute::Description, Value::new_utf8s("testgroup")),
             (
-                "member",
+                Attribute::Member,
                 Value::Refer(uuid::uuid!("00000000-0000-0000-0000-000000000000"))
             )
         );
@@ -2646,7 +2619,16 @@ mod tests {
 
         let mut idms_prox_read = idms.proxy_read().await;
 
-        let ugte = UnixGroupTokenEvent::new_internal(uuid!("01609135-a1c4-43d5-966b-a28227644445"));
+        // Get the account that will be doing the actual reads.
+        let admin_entry = idms_prox_read
+            .qs_read
+            .internal_search_uuid(UUID_ADMIN)
+            .expect("Can't access admin entry.");
+
+        let ugte = UnixGroupTokenEvent::new_impersonate(
+            admin_entry.clone(),
+            uuid!("01609135-a1c4-43d5-966b-a28227644445"),
+        );
         let tok_g = idms_prox_read
             .get_unixgrouptoken(&ugte)
             .expect("Failed to generate unix group token");
@@ -2667,7 +2649,10 @@ mod tests {
         assert!(tok_r.valid);
 
         // Show we can get the admin as a unix group token too
-        let ugte = UnixGroupTokenEvent::new_internal(uuid!("00000000-0000-0000-0000-000000000000"));
+        let ugte = UnixGroupTokenEvent::new_impersonate(
+            admin_entry,
+            uuid!("00000000-0000-0000-0000-000000000000"),
+        );
         let tok_g = idms_prox_read
             .get_unixgrouptoken(&ugte)
             .expect("Failed to generate unix group token");
@@ -2683,15 +2668,13 @@ mod tests {
     ) {
         let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await;
         // make the admin a valid posix account
-        let me_posix = unsafe {
-            ModifyEvent::new_internal_invalid(
-                filter!(f_eq("name", PartialValue::new_iname("admin"))),
-                ModifyList::new_list(vec![
-                    Modify::Present(AttrString::from("class"), Value::new_class("posixaccount")),
-                    Modify::Present(AttrString::from("gidnumber"), Value::new_uint32(2001)),
-                ]),
-            )
-        };
+        let me_posix = ModifyEvent::new_internal_invalid(
+            filter!(f_eq(Attribute::Name, PartialValue::new_iname("admin"))),
+            ModifyList::new_list(vec![
+                Modify::Present(Attribute::Class.into(), EntryClass::PosixAccount.into()),
+                Modify::Present(Attribute::GidNumber.into(), Value::new_uint32(2001)),
+            ]),
+        );
         assert!(idms_prox_write.qs_write.modify(&me_posix).is_ok());
 
         let pce = UnixPasswordChangeEvent::new_internal(UUID_ADMIN, TEST_PASSWORD);
@@ -2723,12 +2706,10 @@ mod tests {
 
         // Check deleting the password
         let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await;
-        let me_purge_up = unsafe {
-            ModifyEvent::new_internal_invalid(
-                filter!(f_eq("name", PartialValue::new_iname("admin"))),
-                ModifyList::new_list(vec![Modify::Purged(AttrString::from("unix_password"))]),
-            )
-        };
+        let me_purge_up = ModifyEvent::new_internal_invalid(
+            filter!(f_eq(Attribute::Name, PartialValue::new_iname("admin"))),
+            ModifyList::new_list(vec![Modify::Purged(Attribute::UnixPassword.into())]),
+        );
         assert!(idms_prox_write.qs_write.modify(&me_purge_up).is_ok());
         assert!(idms_prox_write.commit().is_ok());
 
@@ -2756,23 +2737,41 @@ mod tests {
         {
             let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await;
             // now modify and provide a primary credential.
-            let me_inv_m = unsafe {
+            let me_inv_m =
                 ModifyEvent::new_internal_invalid(
-                        filter!(f_eq("name", PartialValue::new_iname("admin"))),
+                        filter!(f_eq(Attribute::Name, PartialValue::new_iname("admin"))),
                         ModifyList::new_list(vec![Modify::Present(
-                            AttrString::from("password_import"),
+                            Attribute::PasswordImport.into(),
                             Value::from("{SSHA512}JwrSUHkI7FTAfHRVR6KoFlSN0E3dmaQWARjZ+/UsShYlENOqDtFVU77HJLLrY2MuSp0jve52+pwtdVl2QUAHukQ0XUf5LDtM")
                         )]),
-                    )
-            };
+                    );
             // go!
             assert!(idms_prox_write.qs_write.modify(&me_inv_m).is_ok());
             assert!(idms_prox_write.commit().is_ok());
         }
         // Still empty
         idms_delayed.check_is_empty_or_panic();
+
+        let mut idms_prox_read = idms.proxy_read().await;
+        let admin_entry = idms_prox_read
+            .qs_read
+            .internal_search_uuid(UUID_ADMIN)
+            .expect("Can't access admin entry.");
+        let cred_before = admin_entry
+            .get_ava_single_credential(Attribute::PrimaryCredential)
+            .expect("No credential present")
+            .clone();
+        drop(idms_prox_read);
+
         // Do an auth, this will trigger the action to send.
         check_admin_password(idms, "password").await;
+
+        // ⚠️  We have to be careful here. Between these two actions, it's possible
+        // that on the pw upgrade that the credential uuid changes. This immediately
+        // causes the session to be invalidated.
+
+        // We need to check the credential id does not change between these steps to
+        // prevent this!
 
         // process it.
         let da = idms_delayed.try_recv().expect("invalid");
@@ -2783,6 +2782,19 @@ mod tests {
         let da = idms_delayed.try_recv().expect("invalid");
         assert!(matches!(da, DelayedAction::AuthSessionRecord(_)));
         assert!(Ok(true) == r);
+
+        let mut idms_prox_read = idms.proxy_read().await;
+        let admin_entry = idms_prox_read
+            .qs_read
+            .internal_search_uuid(UUID_ADMIN)
+            .expect("Can't access admin entry.");
+        let cred_after = admin_entry
+            .get_ava_single_credential(Attribute::PrimaryCredential)
+            .expect("No credential present")
+            .clone();
+        drop(idms_prox_read);
+
+        assert_eq!(cred_before.uuid, cred_after.uuid);
 
         // Check the admin pw still matches
         check_admin_password(idms, "password").await;
@@ -2806,16 +2818,14 @@ mod tests {
         let cred = Credential::new_from_password(pw);
         let v_cred = Value::new_credential("unix", cred);
 
-        let me_posix = unsafe {
-            ModifyEvent::new_internal_invalid(
-                filter!(f_eq("name", PartialValue::new_iname("admin"))),
-                ModifyList::new_list(vec![
-                    Modify::Present(AttrString::from("class"), Value::new_class("posixaccount")),
-                    Modify::Present(AttrString::from("gidnumber"), Value::new_uint32(2001)),
-                    Modify::Present(AttrString::from("unix_password"), v_cred),
-                ]),
-            )
-        };
+        let me_posix = ModifyEvent::new_internal_invalid(
+            filter!(f_eq(Attribute::Name, PartialValue::new_iname("admin"))),
+            ModifyList::new_list(vec![
+                Modify::Present(Attribute::Class.into(), EntryClass::PosixAccount.into()),
+                Modify::Present(Attribute::GidNumber.into(), Value::new_uint32(2001)),
+                Modify::Present(Attribute::UnixPassword.into(), v_cred),
+            ]),
+        );
         assert!(idms_prox_write.qs_write.modify(&me_posix).is_ok());
         assert!(idms_prox_write.commit().is_ok());
         idms_delayed.check_is_empty_or_panic();
@@ -2863,15 +2873,13 @@ mod tests {
         let v_expire = Value::new_datetime_epoch(Duration::from_secs(TEST_EXPIRE_TIME));
 
         // now modify and provide a primary credential.
-        let me_inv_m = unsafe {
-            ModifyEvent::new_internal_invalid(
-                filter!(f_eq("name", PartialValue::new_iname("admin"))),
-                ModifyList::new_list(vec![
-                    Modify::Present(AttrString::from("account_expire"), v_expire),
-                    Modify::Present(AttrString::from("account_valid_from"), v_valid_from),
-                ]),
-            )
-        };
+        let me_inv_m = ModifyEvent::new_internal_invalid(
+            filter!(f_eq(Attribute::Name, PartialValue::new_iname("admin"))),
+            ModifyList::new_list(vec![
+                Modify::Present(Attribute::AccountExpire.into(), v_expire),
+                Modify::Present(Attribute::AccountValidFrom.into(), v_valid_from),
+            ]),
+        );
         // go!
         assert!(idms_write.qs_write.modify(&me_inv_m).is_ok());
 
@@ -2955,15 +2963,13 @@ mod tests {
 
         // make the admin a valid posix account
         let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await;
-        let me_posix = unsafe {
-            ModifyEvent::new_internal_invalid(
-                filter!(f_eq("name", PartialValue::new_iname("admin"))),
-                ModifyList::new_list(vec![
-                    Modify::Present(AttrString::from("class"), Value::new_class("posixaccount")),
-                    Modify::Present(AttrString::from("gidnumber"), Value::new_uint32(2001)),
-                ]),
-            )
-        };
+        let me_posix = ModifyEvent::new_internal_invalid(
+            filter!(f_eq(Attribute::Name, PartialValue::new_iname("admin"))),
+            ModifyList::new_list(vec![
+                Modify::Present(Attribute::Class.into(), EntryClass::PosixAccount.into()),
+                Modify::Present(Attribute::GidNumber.into(), Value::new_uint32(2001)),
+            ]),
+        );
         assert!(idms_prox_write.qs_write.modify(&me_posix).is_ok());
 
         let pce = UnixPasswordChangeEvent::new_internal(UUID_ADMIN, TEST_PASSWORD);
@@ -3032,7 +3038,12 @@ mod tests {
         idms_prox_write.commit().expect("failed to commit");
 
         let mut idms_prox_read = idms.proxy_read().await;
-        let rate = RadiusAuthTokenEvent::new_internal(UUID_ADMIN);
+        let admin_entry = idms_prox_read
+            .qs_read
+            .internal_search_uuid(UUID_ADMIN)
+            .expect("Can't access admin entry.");
+
+        let rate = RadiusAuthTokenEvent::new_impersonate(admin_entry, UUID_ADMIN);
         let tok_r = idms_prox_read.get_radiusauthtoken(&rate, time_low);
 
         if tok_r.is_err() {
@@ -3315,15 +3326,13 @@ mod tests {
             .expect("Failed to setup admin account");
         // make the admin a valid posix account
         let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await;
-        let me_posix = unsafe {
-            ModifyEvent::new_internal_invalid(
-                filter!(f_eq("name", PartialValue::new_iname("admin"))),
-                ModifyList::new_list(vec![
-                    Modify::Present(AttrString::from("class"), Value::new_class("posixaccount")),
-                    Modify::Present(AttrString::from("gidnumber"), Value::new_uint32(2001)),
-                ]),
-            )
-        };
+        let me_posix = ModifyEvent::new_internal_invalid(
+            filter!(f_eq(Attribute::Name, PartialValue::new_iname("admin"))),
+            ModifyList::new_list(vec![
+                Modify::Present(Attribute::Class.into(), EntryClass::PosixAccount.into()),
+                Modify::Present(Attribute::GidNumber.into(), Value::new_uint32(2001)),
+            ]),
+        );
         assert!(idms_prox_write.qs_write.modify(&me_posix).is_ok());
 
         let pce = UnixPasswordChangeEvent::new_internal(UUID_ADMIN, TEST_PASSWORD);
@@ -3366,7 +3375,7 @@ mod tests {
     #[idm_test]
     async fn test_idm_jwt_uat_expiry(idms: &IdmServer, idms_delayed: &mut IdmServerDelayed) {
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
-        let expiry = ct + Duration::from_secs(AUTH_SESSION_EXPIRY + 1);
+        let expiry = ct + Duration::from_secs((DEFAULT_AUTH_SESSION_EXPIRY + 1).into());
         // Do an authenticate
         init_admin_w_password(idms, TEST_PASSWORD)
             .await
@@ -3377,13 +3386,13 @@ mod tests {
         let da = idms_delayed.try_recv().expect("invalid");
         assert!(matches!(da, DelayedAction::AuthSessionRecord(_)));
         // Persist it.
-        let r = idms.delayed_action(duration_from_epoch_now(), da).await;
+        let r = idms.delayed_action(ct, da).await;
         assert!(Ok(true) == r);
         idms_delayed.check_is_empty_or_panic();
 
         let mut idms_prox_read = idms.proxy_read().await;
 
-        // Check it's valid.
+        // Check it's valid - This is within the time window so will pass.
         idms_prox_read
             .validate_and_parse_token_to_ident(Some(token.as_str()), ct)
             .expect("Failed to validate");
@@ -3401,8 +3410,8 @@ mod tests {
         _idms_delayed: &mut IdmServerDelayed,
     ) {
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
-        let expiry_a = ct + Duration::from_secs(AUTH_SESSION_EXPIRY + 1);
-        let expiry_b = ct + Duration::from_secs((AUTH_SESSION_EXPIRY + 1) * 2);
+        let expiry_a = ct + Duration::from_secs((DEFAULT_AUTH_SESSION_EXPIRY + 1).into());
+        let expiry_b = ct + Duration::from_secs(((DEFAULT_AUTH_SESSION_EXPIRY + 1) * 2).into());
 
         let session_a = Uuid::new_v4();
         let session_b = Uuid::new_v4();
@@ -3418,7 +3427,7 @@ mod tests {
             .qs_read
             .internal_search_uuid(UUID_ADMIN)
             .expect("failed");
-        let sessions = admin.get_ava_as_session_map("user_auth_token_session");
+        let sessions = admin.get_ava_as_session_map(Attribute::UserAuthTokenSession);
         assert!(sessions.is_none());
         drop(idms_prox_read);
 
@@ -3443,19 +3452,15 @@ mod tests {
             .internal_search_uuid(UUID_ADMIN)
             .expect("failed");
         let sessions = admin
-            .get_ava_as_session_map("user_auth_token_session")
+            .get_ava_as_session_map(Attribute::UserAuthTokenSession)
             .expect("Sessions must be present!");
         assert!(sessions.len() == 1);
-        let session_id_a = sessions
-            .keys()
-            .copied()
-            .next()
-            .expect("Could not access session id");
-        assert!(session_id_a == session_a);
+        let session_data_a = sessions.get(&session_a).expect("Session A is missing!");
+        assert!(matches!(session_data_a.state, SessionState::ExpiresAt(_)));
 
         drop(idms_prox_read);
 
-        // When we re-auth, this is what triggers the session cleanup via the delayed action.
+        // When we re-auth, this is what triggers the session revoke via the delayed action.
 
         let da = DelayedAction::AuthSessionRecord(AuthSessionRecord {
             target_uuid: UUID_ADMIN,
@@ -3477,18 +3482,17 @@ mod tests {
             .internal_search_uuid(UUID_ADMIN)
             .expect("failed");
         let sessions = admin
-            .get_ava_as_session_map("user_auth_token_session")
+            .get_ava_as_session_map(Attribute::UserAuthTokenSession)
             .expect("Sessions must be present!");
         trace!(?sessions);
-        assert!(sessions.len() == 1);
-        let session_id_b = sessions
-            .keys()
-            .copied()
-            .next()
-            .expect("Could not access session id");
-        assert!(session_id_b == session_b);
+        assert!(sessions.len() == 2);
 
-        assert!(session_id_a != session_id_b);
+        let session_data_a = sessions.get(&session_a).expect("Session A is missing!");
+        assert!(matches!(session_data_a.state, SessionState::RevokedAt(_)));
+
+        let session_data_b = sessions.get(&session_b).expect("Session B is missing!");
+        assert!(matches!(session_data_b.state, SessionState::ExpiresAt(_)));
+        // Now show that sessions trim!
     }
 
     #[idm_test]
@@ -3496,14 +3500,13 @@ mod tests {
         idms: &IdmServer,
         idms_delayed: &mut IdmServerDelayed,
     ) {
-        use compact_jwt::{Jws, JwsUnverified};
         use kanidm_proto::v1::UserAuthToken;
         use std::str::FromStr;
 
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
 
         let post_grace = ct + GRACE_WINDOW + Duration::from_secs(1);
-        let expiry = ct + Duration::from_secs(AUTH_SESSION_EXPIRY + 1);
+        let expiry = ct + Duration::from_secs(DEFAULT_AUTH_SESSION_EXPIRY as u64 + 1);
 
         // Assert that our grace time is less than expiry, so we know the failure is due to
         // this.
@@ -3521,11 +3524,16 @@ mod tests {
         let r = idms.delayed_action(ct, da).await;
         assert!(Ok(true) == r);
 
-        let uat_unverified = JwsUnverified::from_str(&token).expect("Failed to parse apitoken");
-        let uat_inner: Jws<UserAuthToken> = uat_unverified
-            .validate_embeded()
-            .expect("Embedded jwk not found");
-        let uat_inner = uat_inner.into_inner();
+        let uat_unverified = JwsCompact::from_str(&token).expect("Failed to parse apitoken");
+
+        let jws_validator =
+            JwsEs256Verifier::try_from(uat_unverified.get_jwk_pubkey().unwrap()).unwrap();
+
+        let uat_inner: UserAuthToken = jws_validator
+            .verify(&uat_unverified)
+            .unwrap()
+            .from_json()
+            .unwrap();
 
         let mut idms_prox_read = idms.proxy_read().await;
 
@@ -3550,7 +3558,32 @@ mod tests {
         // Now check again with the session destroyed.
         let mut idms_prox_read = idms.proxy_read().await;
 
-        // Now, within gracewindow, it's still valid.
+        // Now, within gracewindow, it's NOT valid because the session entry exists and is in
+        // the revoked state!
+        match idms_prox_read.validate_and_parse_token_to_ident(Some(token.as_str()), post_grace) {
+            Err(OperationError::SessionExpired) => {}
+            _ => assert!(false),
+        }
+        drop(idms_prox_read);
+
+        // Force trim the session out so that we can check the grate handling.
+        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let filt = filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(uat_inner.uuid)));
+        let mut work_set = idms_prox_write
+            .qs_write
+            .internal_search_writeable(&filt)
+            .expect("Failed to perform internal search writeable");
+        for (_, entry) in work_set.iter_mut() {
+            let _ = entry.force_trim_ava(Attribute::UserAuthTokenSession.into());
+        }
+        assert!(idms_prox_write
+            .qs_write
+            .internal_apply_writable(work_set)
+            .is_ok());
+
+        assert!(idms_prox_write.commit().is_ok());
+
+        let mut idms_prox_read = idms.proxy_read().await;
         idms_prox_read
             .validate_and_parse_token_to_ident(Some(token.as_str()), ct)
             .expect("Failed to validate");
@@ -3560,6 +3593,147 @@ mod tests {
             Err(OperationError::SessionExpired) => {}
             _ => assert!(false),
         }
+    }
+
+    #[idm_test]
+    async fn test_idm_account_session_expiry(
+        idms: &IdmServer,
+        _idms_delayed: &mut IdmServerDelayed,
+    ) {
+        let ct = Duration::from_secs(TEST_CURRENT_TIME);
+
+        //we first set the expiry to a custom value
+        let mut idms_prox_write = idms.proxy_write(ct).await;
+
+        let new_authsession_expiry = 1000;
+
+        let modlist = ModifyList::new_purge_and_set(
+            Attribute::AuthSessionExpiry,
+            Value::Uint32(new_authsession_expiry),
+        );
+        idms_prox_write
+            .qs_write
+            .internal_modify_uuid(UUID_IDM_ALL_ACCOUNTS, &modlist)
+            .expect("Unable to change default session exp");
+
+        assert!(idms_prox_write.commit().is_ok());
+
+        // Start anonymous auth.
+        let mut idms_auth = idms.auth().await;
+        // Send the initial auth event for initialising the session
+        let anon_init = AuthEvent::anonymous_init();
+        // Expect success
+        let r1 = idms_auth.auth(&anon_init, ct, Source::Internal).await;
+        /* Some weird lifetime things happen here ... */
+
+        let sid = match r1 {
+            Ok(ar) => {
+                let AuthResult { sessionid, state } = ar;
+                match state {
+                    AuthState::Choose(mut conts) => {
+                        // Should only be one auth mech
+                        assert!(conts.len() == 1);
+                        // And it should be anonymous
+                        let m = conts.pop().expect("Should not fail");
+                        assert!(m == AuthMech::Anonymous);
+                    }
+                    _ => {
+                        error!("A critical error has occurred! We have a non-continue result!");
+                        panic!();
+                    }
+                };
+                // Now pass back the sessionid, we are good to continue.
+                sessionid
+            }
+            Err(e) => {
+                // Should not occur!
+                error!("A critical error has occurred! {:?}", e);
+                panic!();
+            }
+        };
+
+        idms_auth.commit().expect("Must not fail");
+
+        let mut idms_auth = idms.auth().await;
+        let anon_begin = AuthEvent::begin_mech(sid, AuthMech::Anonymous);
+
+        let r2 = idms_auth.auth(&anon_begin, ct, Source::Internal).await;
+
+        match r2 {
+            Ok(ar) => {
+                let AuthResult {
+                    sessionid: _,
+                    state,
+                } = ar;
+
+                match state {
+                    AuthState::Continue(allowed) => {
+                        // Check the uat.
+                        assert!(allowed.len() == 1);
+                        assert!(allowed.first() == Some(&AuthAllowed::Anonymous));
+                    }
+                    _ => {
+                        error!("A critical error has occurred! We have a non-continue result!");
+                        panic!();
+                    }
+                }
+            }
+            Err(e) => {
+                error!("A critical error has occurred! {:?}", e);
+                // Should not occur!
+                panic!();
+            }
+        };
+
+        idms_auth.commit().expect("Must not fail");
+
+        let mut idms_auth = idms.auth().await;
+        // Now send the anonymous request, given the session id.
+        let anon_step = AuthEvent::cred_step_anonymous(sid);
+
+        // Expect success
+        let r2 = idms_auth.auth(&anon_step, ct, Source::Internal).await;
+
+        let token = match r2 {
+            Ok(ar) => {
+                let AuthResult {
+                    sessionid: _,
+                    state,
+                } = ar;
+
+                match state {
+                    AuthState::Success(uat, AuthIssueSession::Token) => uat,
+                    _ => {
+                        error!("A critical error has occurred! We have a non-succcess result!");
+                        panic!();
+                    }
+                }
+            }
+            Err(e) => {
+                error!("A critical error has occurred! {:?}", e);
+                // Should not occur!
+                panic!();
+            }
+        };
+
+        idms_auth.commit().expect("Must not fail");
+
+        // Token_str to uat
+        // we have to do it this way because anonymous doesn't have an ideantity for which we cam get the expiry value
+        let Token::UserAuthToken(uat) = idms
+            .proxy_read()
+            .await
+            .validate_and_parse_token_to_token(Some(&token), ct)
+            .expect("Must not fail")
+        else {
+            panic!("Unexpected auth token type for anonymous auth");
+        };
+
+        debug!(?uat);
+
+        assert!(
+            matches!(uat.expiry, Some(exp) if exp == OffsetDateTime::UNIX_EPOCH + ct + Duration::from_secs(new_authsession_expiry as u64))
+        );
     }
 
     #[idm_test]
@@ -3579,7 +3753,12 @@ mod tests {
 
         // == anonymous
         let uat = account
-            .to_userauthtoken(session_id, SessionScope::ReadWrite, ct)
+            .to_userauthtoken(
+                session_id,
+                SessionScope::ReadWrite,
+                ct,
+                DEFAULT_AUTH_SESSION_EXPIRY,
+            )
             .expect("Unable to create uat");
         let ident = idms_prox_write
             .process_uat_to_identity(&uat, ct)
@@ -3593,7 +3772,12 @@ mod tests {
 
         // == unixpassword
         let uat = account
-            .to_userauthtoken(session_id, SessionScope::ReadWrite, ct)
+            .to_userauthtoken(
+                session_id,
+                SessionScope::ReadWrite,
+                ct,
+                DEFAULT_AUTH_SESSION_EXPIRY,
+            )
             .expect("Unable to create uat");
         let ident = idms_prox_write
             .process_uat_to_identity(&uat, ct)
@@ -3607,7 +3791,12 @@ mod tests {
 
         // == password
         let uat = account
-            .to_userauthtoken(session_id, SessionScope::ReadWrite, ct)
+            .to_userauthtoken(
+                session_id,
+                SessionScope::ReadWrite,
+                ct,
+                DEFAULT_AUTH_SESSION_EXPIRY,
+            )
             .expect("Unable to create uat");
         let ident = idms_prox_write
             .process_uat_to_identity(&uat, ct)
@@ -3621,7 +3810,12 @@ mod tests {
 
         // == generatedpassword
         let uat = account
-            .to_userauthtoken(session_id, SessionScope::ReadWrite, ct)
+            .to_userauthtoken(
+                session_id,
+                SessionScope::ReadWrite,
+                ct,
+                DEFAULT_AUTH_SESSION_EXPIRY,
+            )
             .expect("Unable to create uat");
         let ident = idms_prox_write
             .process_uat_to_identity(&uat, ct)
@@ -3635,7 +3829,12 @@ mod tests {
 
         // == webauthn
         let uat = account
-            .to_userauthtoken(session_id, SessionScope::ReadWrite, ct)
+            .to_userauthtoken(
+                session_id,
+                SessionScope::ReadWrite,
+                ct,
+                DEFAULT_AUTH_SESSION_EXPIRY,
+            )
             .expect("Unable to create uat");
         let ident = idms_prox_write
             .process_uat_to_identity(&uat, ct)
@@ -3649,7 +3848,12 @@ mod tests {
 
         // == passwordmfa
         let uat = account
-            .to_userauthtoken(session_id, SessionScope::ReadWrite, ct)
+            .to_userauthtoken(
+                session_id,
+                SessionScope::ReadWrite,
+                ct,
+                DEFAULT_AUTH_SESSION_EXPIRY,
+            )
             .expect("Unable to create uat");
         let ident = idms_prox_write
             .process_uat_to_identity(&uat, ct)
@@ -3694,16 +3898,14 @@ mod tests {
         // fernet_private_key_str
         // es256_private_key_der
         let mut idms_prox_write = idms.proxy_write(ct).await;
-        let me_reset_tokens = unsafe {
-            ModifyEvent::new_internal_invalid(
-                filter!(f_eq("uuid", PartialValue::Uuid(UUID_DOMAIN_INFO))),
-                ModifyList::new_list(vec![
-                    Modify::Purged(AttrString::from("fernet_private_key_str")),
-                    Modify::Purged(AttrString::from("es256_private_key_der")),
-                    Modify::Purged(AttrString::from("domain_token_key")),
-                ]),
-            )
-        };
+        let me_reset_tokens = ModifyEvent::new_internal_invalid(
+            filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(UUID_DOMAIN_INFO))),
+            ModifyList::new_list(vec![
+                Modify::Purged(Attribute::FernetPrivateKeyStr.into()),
+                Modify::Purged(Attribute::Es256PrivateKeyDer.into()),
+                Modify::Purged(Attribute::DomainTokenKey.into()),
+            ]),
+        );
         assert!(idms_prox_write.qs_write.modify(&me_reset_tokens).is_ok());
         assert!(idms_prox_write.commit().is_ok());
         // Check the old token is invalid, due to reload.
@@ -3737,13 +3939,13 @@ mod tests {
 
         // Create a service account
         let e = entry_init!(
-            ("class", Value::new_class("object")),
-            ("class", Value::new_class("account")),
-            ("class", Value::new_class("service_account")),
-            ("name", Value::new_iname("testaccount")),
-            ("uuid", Value::Uuid(target_uuid)),
-            ("description", Value::new_utf8s("testaccount")),
-            ("displayname", Value::new_utf8s("Test Account"))
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::ServiceAccount.to_value()),
+            (Attribute::Name, Value::new_iname("testaccount")),
+            (Attribute::Uuid, Value::Uuid(target_uuid)),
+            (Attribute::Description, Value::new_utf8s("testaccount")),
+            (Attribute::DisplayName, Value::new_utf8s("Test Account"))
         );
 
         let ce = CreateEvent::new_internal(vec![e]);

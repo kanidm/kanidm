@@ -19,10 +19,8 @@ jobs:
       matrix:
         image:
           - ubuntu:22.04
-          - ubuntu:20.04
-          - ubuntu:18.04
-          - debian:11
-          - debian:10
+          - debian:12
+      fail-fast: false
     runs-on: ubuntu-latest
     container:
       image: ${{ matrix.image }}
@@ -30,7 +28,7 @@ jobs:
         DEBIAN_FRONTEND: noninteractive
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: install curl
         run: |
           apt-get update && apt-get install -y curl
@@ -43,38 +41,28 @@ jobs:
       - name: Install dependencies
         run: |
           scripts/install_ubuntu_dependencies.sh
-      #     apt-get update && \
-      #     apt-get install -y \
-      #       lsb-release \
-      #       libpam0g-dev \
-      #       libudev-dev \
-      #       libssl-dev \
-      #       libsqlite3-dev \
-      #       pkg-config \
-      #       make \
-      #       curl \
-      #       sudo \
-      #       build-essential \
-      #       rsync
       - name: Install wasm-pack
         run: cargo install wasm-pack
-      - name: Build packages
-        run: |
-          make -f platform/debian/Makefile debs/all
+      - name: Build packages (kanidm-unixd)
+        run: make -f platform/debian/Makefile debs/kanidm-unixd
       - name: Upload debs
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ubuntu-packages
           path: |
             target/*.deb
   upload-to-releases:
+    permissions:
+      # https://docs.github.com/en/actions/using-jobs/assigning-permissions-to-jobs
+      contents: write # allows the action to create a release
+
     name: Upload to releases
     needs: build-deb-package
     runs-on: ubuntu-latest
     if: ${{ github.ref == 'refs/heads/master' && github.repository == 'kanidm/kanidm' }}
     steps:
       - name: Download previously built debs
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: ubuntu-packages
       - name: List packages
@@ -83,7 +71,7 @@ jobs:
       - uses: "marvinpinto/action-automatic-releases@latest"
         with:
           repo_token: "${{ secrets.GITHUB_TOKEN }}"
-          automatic_release_tag: "latest"
+          automatic_release_tag: "debs"
           prerelease: true
-          title: "Ubuntu Packages"
+          title: ".deb Packages"
           files: "*.deb"

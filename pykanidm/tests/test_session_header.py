@@ -10,9 +10,9 @@ from kanidm import KanidmClient
 
 def test_session_header(client: KanidmClient) -> None:
     """tests the session_header function"""
-
-    assert client.session_header("testval") == {
-        "X-KANIDM-AUTH-SESSION-ID": "testval",
+    sessionid = "testval"
+    assert client.session_header(sessionid) == {
+        "authorization": f"bearer {sessionid}",
     }
 
 

@@ -20,9 +20,9 @@ const GID_SAFETY_NUMBER_MIN: u32 = 1000;
 pub struct GidNumber {}
 
 fn apply_gidnumber<T: Clone>(e: &mut Entry<EntryInvalid, T>) -> Result<(), OperationError> {
-    if (e.attribute_equality("class", &PVCLASS_POSIXGROUP)
-        || e.attribute_equality("class", &PVCLASS_POSIXACCOUNT))
-        && !e.attribute_pres("gidnumber")
+    if (e.attribute_equality(Attribute::Class, &EntryClass::PosixGroup.into())
+        || e.attribute_equality(Attribute::Class, &EntryClass::PosixAccount.into()))
+        && !e.attribute_pres(Attribute::GidNumber)
     {
         let u_ref = e
             .get_uuid()
@@ -35,21 +35,27 @@ fn apply_gidnumber<T: Clone>(e: &mut Entry<EntryInvalid, T>) -> Result<(), Opera
         let gid = uuid_to_gid_u32(u_ref);
         // assert the value is greater than the system range.
         if gid < GID_SYSTEM_NUMBER_MIN {
-            return Err(OperationError::InvalidAttribute(format!(
-                "gidnumber {gid} may overlap with system range {GID_SYSTEM_NUMBER_MIN}"
-            )));
+            admin_error!(
+                "Requested GID {} is lower than system minimum {}",
+                gid,
+                GID_SYSTEM_NUMBER_MIN
+            );
+            return Err(OperationError::GidOverlapsSystemMin(GID_SYSTEM_NUMBER_MIN));
         }
 
         let gid_v = Value::new_uint32(gid);
         admin_info!("Generated {} for {:?}", gid, u_ref);
-        e.set_ava("gidnumber", once(gid_v));
+        e.set_ava(Attribute::GidNumber, once(gid_v));
         Ok(())
-    } else if let Some(gid) = e.get_ava_single_uint32("gidnumber") {
+    } else if let Some(gid) = e.get_ava_single_uint32(Attribute::GidNumber) {
         // If they provided us with a gid number, ensure it's in a safe range.
         if gid <= GID_SAFETY_NUMBER_MIN {
-            Err(OperationError::InvalidAttribute(format!(
-                "gidnumber {gid} overlaps into system secure range {GID_SAFETY_NUMBER_MIN}"
-            )))
+            admin_error!(
+                "Requested GID {} is lower or equal to a safe value {}",
+                gid,
+                GID_SAFETY_NUMBER_MIN
+            );
+            Err(OperationError::GidOverlapsSystemMin(GID_SAFETY_NUMBER_MIN))
         } else {
             Ok(())
         }
@@ -100,7 +106,7 @@ mod tests {
     fn check_gid(qs_write: &mut QueryServerWriteTransaction, uuid: &str, gid: u32) {
         let u = Uuid::parse_str(uuid).unwrap();
         let e = qs_write.internal_search_uuid(u).unwrap();
-        let gidnumber = e.get_ava_single("gidnumber").unwrap();
+        let gidnumber = e.get_ava_single(Attribute::GidNumber).unwrap();
         let ex_gid = Value::new_uint32(gid);
         assert!(ex_gid == gidnumber);
     }
@@ -108,15 +114,15 @@ mod tests {
     #[test]
     fn test_gidnumber_create_generate() {
         let e = entry_init!(
-            ("class", Value::new_class("account")),
-            ("class", Value::new_class("posixaccount")),
-            ("name", Value::new_iname("testperson")),
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::PosixAccount.to_value()),
+            (Attribute::Name, Value::new_iname("testperson")),
             (
-                "uuid",
+                Attribute::Uuid,
                 Value::Uuid(uuid!("83a0927f-3de1-45ec-bea0-2f7b997ef244"))
             ),
-            ("description", Value::new_utf8s("testperson")),
-            ("displayname", Value::new_utf8s("testperson"))
+            (Attribute::Description, Value::new_utf8s("testperson")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson"))
         );
 
         let create = vec![e];
@@ -139,16 +145,16 @@ mod tests {
     #[test]
     fn test_gidnumber_create_noaction() {
         let e = entry_init!(
-            ("class", Value::new_class("account")),
-            ("class", Value::new_class("posixaccount")),
-            ("name", Value::new_iname("testperson")),
-            ("gidnumber", Value::Uint32(10001)),
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::PosixAccount.to_value()),
+            (Attribute::Name, Value::new_iname("testperson")),
+            (Attribute::GidNumber, Value::Uint32(10001)),
             (
-                "uuid",
+                Attribute::Uuid,
                 Value::Uuid(uuid!("83a0927f-3de1-45ec-bea0-2f7b997ef244"))
             ),
-            ("description", Value::new_utf8s("testperson")),
-            ("displayname", Value::new_utf8s("testperson"))
+            (Attribute::Description, Value::new_utf8s("testperson")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson"))
         );
 
         let create = vec![e];
@@ -171,15 +177,15 @@ mod tests {
     #[test]
     fn test_gidnumber_modify_generate() {
         let e = entry_init!(
-            ("class", Value::new_class("account")),
-            ("class", Value::new_class("posixaccount")),
-            ("name", Value::new_iname("testperson")),
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::PosixAccount.to_value()),
+            (Attribute::Name, Value::new_iname("testperson")),
             (
-                "uuid",
+                Attribute::Uuid,
                 Value::Uuid(uuid!("83a0927f-3de1-45ec-bea0-2f7b997ef244"))
             ),
-            ("description", Value::new_utf8s("testperson")),
-            ("displayname", Value::new_utf8s("testperson"))
+            (Attribute::Description, Value::new_utf8s("testperson")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson"))
         );
 
         let preload = vec![e];
@@ -187,8 +193,8 @@ mod tests {
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq("name", PartialValue::new_iname("testperson"))),
-            modlist!([m_pres("class", &Value::new_class("posixgroup"))]),
+            filter!(f_eq(Attribute::Name, PartialValue::new_iname("testperson"))),
+            modlist!([m_pres(Attribute::Class, &EntryClass::PosixGroup.into())]),
             None,
             |_| {},
             |qs_write: &mut QueryServerWriteTransaction| check_gid(
@@ -203,15 +209,15 @@ mod tests {
     #[test]
     fn test_gidnumber_modify_regenerate() {
         let e = entry_init!(
-            ("class", Value::new_class("account")),
-            ("class", Value::new_class("posixaccount")),
-            ("name", Value::new_iname("testperson")),
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::PosixAccount.to_value()),
+            (Attribute::Name, Value::new_iname("testperson")),
             (
-                "uuid",
+                Attribute::Uuid,
                 Value::Uuid(uuid::uuid!("83a0927f-3de1-45ec-bea0-2f7b997ef244"))
             ),
-            ("description", Value::new_utf8s("testperson")),
-            ("displayname", Value::new_utf8s("testperson"))
+            (Attribute::Description, Value::new_utf8s("testperson")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson"))
         );
 
         let preload = vec![e];
@@ -219,8 +225,8 @@ mod tests {
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq("name", PartialValue::new_iname("testperson"))),
-            modlist!([m_purge("gidnumber")]),
+            filter!(f_eq(Attribute::Name, PartialValue::new_iname("testperson"))),
+            modlist!([m_purge(Attribute::GidNumber)]),
             None,
             |_| {},
             |qs_write: &mut QueryServerWriteTransaction| check_gid(
@@ -235,15 +241,15 @@ mod tests {
     #[test]
     fn test_gidnumber_modify_noregen() {
         let e = entry_init!(
-            ("class", Value::new_class("account")),
-            ("class", Value::new_class("posixaccount")),
-            ("name", Value::new_iname("testperson")),
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::PosixAccount.to_value()),
+            (Attribute::Name, Value::new_iname("testperson")),
             (
-                "uuid",
+                Attribute::Uuid,
                 Value::Uuid(uuid::uuid!("83a0927f-3de1-45ec-bea0-2f7b997ef244"))
             ),
-            ("description", Value::new_utf8s("testperson")),
-            ("displayname", Value::new_utf8s("testperson"))
+            (Attribute::Description, Value::new_utf8s("testperson")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson"))
         );
 
         let preload = vec![e];
@@ -251,10 +257,10 @@ mod tests {
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq("name", PartialValue::new_iname("testperson"))),
+            filter!(f_eq(Attribute::Name, PartialValue::new_iname("testperson"))),
             modlist!([
-                m_purge("gidnumber"),
-                m_pres("gidnumber", &Value::new_uint32(2000))
+                m_purge(Attribute::GidNumber),
+                m_pres(Attribute::GidNumber, &Value::new_uint32(2000))
             ]),
             None,
             |_| {},
@@ -269,24 +275,22 @@ mod tests {
     #[test]
     fn test_gidnumber_create_system_reject() {
         let e = entry_init!(
-            ("class", Value::new_class("account")),
-            ("class", Value::new_class("posixaccount")),
-            ("name", Value::new_iname("testperson")),
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::PosixAccount.to_value()),
+            (Attribute::Name, Value::new_iname("testperson")),
             (
-                "uuid",
+                Attribute::Uuid,
                 Value::Uuid(uuid::uuid!("83a0927f-3de1-45ec-bea0-000000000244"))
             ),
-            ("description", Value::new_utf8s("testperson")),
-            ("displayname", Value::new_utf8s("testperson"))
+            (Attribute::Description, Value::new_utf8s("testperson")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson"))
         );
 
         let create = vec![e];
         let preload = Vec::new();
 
         run_create_test!(
-            Err(OperationError::InvalidAttribute(
-                "gidnumber 580 may overlap with system range 65536".to_string()
-            )),
+            Err(OperationError::GidOverlapsSystemMin(65536)),
             preload,
             create,
             None,
@@ -297,21 +301,19 @@ mod tests {
     #[test]
     fn test_gidnumber_create_secure_reject() {
         let e = entry_init!(
-            ("class", Value::new_class("account")),
-            ("class", Value::new_class("posixaccount")),
-            ("name", Value::new_iname("testperson")),
-            ("gidnumber", Value::Uint32(500)),
-            ("description", Value::new_utf8s("testperson")),
-            ("displayname", Value::new_utf8s("testperson"))
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::PosixAccount.to_value()),
+            (Attribute::Name, Value::new_iname("testperson")),
+            (Attribute::GidNumber, Value::Uint32(500)),
+            (Attribute::Description, Value::new_utf8s("testperson")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson"))
         );
 
         let create = vec![e];
         let preload = Vec::new();
 
         run_create_test!(
-            Err(OperationError::InvalidAttribute(
-                "gidnumber 500 overlaps into system secure range 1000".to_string()
-            )),
+            Err(OperationError::GidOverlapsSystemMin(1000)),
             preload,
             create,
             None,
@@ -322,21 +324,19 @@ mod tests {
     #[test]
     fn test_gidnumber_create_secure_root_reject() {
         let e = entry_init!(
-            ("class", Value::new_class("account")),
-            ("class", Value::new_class("posixaccount")),
-            ("name", Value::new_iname("testperson")),
-            ("gidnumber", Value::Uint32(0)),
-            ("description", Value::new_utf8s("testperson")),
-            ("displayname", Value::new_utf8s("testperson"))
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::PosixAccount.to_value()),
+            (Attribute::Name, Value::new_iname("testperson")),
+            (Attribute::GidNumber, Value::Uint32(0)),
+            (Attribute::Description, Value::new_utf8s("testperson")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson"))
         );
 
         let create = vec![e];
         let preload = Vec::new();
 
         run_create_test!(
-            Err(OperationError::InvalidAttribute(
-                "gidnumber 0 overlaps into system secure range 1000".to_string()
-            )),
+            Err(OperationError::GidOverlapsSystemMin(1000)),
             preload,
             create,
             None,

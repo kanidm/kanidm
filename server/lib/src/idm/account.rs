@@ -2,14 +2,16 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::time::Duration;
 
 use kanidm_proto::v1::{
-    BackupCodesView, CredentialStatus, OperationError, UatPurpose, UatStatus, UiHint, UserAuthToken,
+    BackupCodesView, CredentialStatus, OperationError, UatPurpose, UatStatus, UatStatusState,
+    UiHint, UserAuthToken,
 };
 use time::OffsetDateTime;
 use uuid::Uuid;
 use webauthn_rs::prelude::{
-    AuthenticationResult, CredentialID, DeviceKey as DeviceKeyV4, Passkey as PasskeyV4,
+    AttestedPasskey as AttestedPasskeyV4, AuthenticationResult, CredentialID, Passkey as PasskeyV4,
 };
 
+use super::accountpolicy::ResolvedAccountPolicy;
 use crate::constants::UUID_ANONYMOUS;
 use crate::credential::softlock::CredSoftLockPolicy;
 use crate::credential::Credential;
@@ -20,64 +22,114 @@ use crate::idm::server::{IdmServerProxyReadTransaction, IdmServerProxyWriteTrans
 use crate::modify::{ModifyInvalid, ModifyList};
 use crate::prelude::*;
 use crate::schema::SchemaTransaction;
-use crate::value::{IntentTokenState, PartialValue, Value};
+use crate::value::{IntentTokenState, PartialValue, SessionState, Value};
 use kanidm_lib_crypto::CryptoPolicy;
+
+use sshkey_attest::proto::PublicKey as SshPublicKey;
+
+#[derive(Debug, Clone)]
+pub struct UnixExtensions {
+    ucred: Option<Credential>,
+    _shell: Option<String>,
+    sshkeys: BTreeMap<String, SshPublicKey>,
+    _gidnumber: u32,
+}
+
+impl UnixExtensions {
+    pub(crate) fn ucred(&self) -> Option<&Credential> {
+        self.ucred.as_ref()
+    }
+
+    pub(crate) fn sshkeys(&self) -> &BTreeMap<String, SshPublicKey> {
+        &self.sshkeys
+    }
+}
+
+#[derive(Default, Debug, Clone)]
+pub struct Account {
+    // To make this self-referential, we'll need to likely make Entry Pin<Arc<_>>
+    // so that we can make the references work.
+    pub name: String,
+    pub spn: String,
+    pub displayname: String,
+    pub uuid: Uuid,
+    pub sync_parent_uuid: Option<Uuid>,
+    pub groups: Vec<Group>,
+    pub primary: Option<Credential>,
+    pub passkeys: BTreeMap<Uuid, (String, PasskeyV4)>,
+    pub attested_passkeys: BTreeMap<Uuid, (String, AttestedPasskeyV4)>,
+    pub valid_from: Option<OffsetDateTime>,
+    pub expire: Option<OffsetDateTime>,
+    pub radius_secret: Option<String>,
+    pub ui_hints: BTreeSet<UiHint>,
+    pub mail_primary: Option<String>,
+    pub mail: Vec<String>,
+    pub credential_update_intent_tokens: BTreeMap<String, IntentTokenState>,
+    pub(crate) unix_extn: Option<UnixExtensions>,
+}
 
 macro_rules! try_from_entry {
     ($value:expr, $groups:expr) => {{
         // Check the classes
-        if !$value.attribute_equality("class", &PVCLASS_ACCOUNT) {
-            return Err(OperationError::InvalidAccountState(
-                "Missing class: account".to_string(),
-            ));
+        if !$value.attribute_equality(Attribute::Class, &EntryClass::Account.to_partialvalue()) {
+            return Err(OperationError::InvalidAccountState(format!(
+                "Missing class: {}",
+                EntryClass::Account
+            )));
         }
 
         // Now extract our needed attributes
         let name = $value
-            .get_ava_single_iname("name")
+            .get_ava_single_iname(Attribute::Name)
             .map(|s| s.to_string())
-            .ok_or(OperationError::InvalidAccountState(
-                "Missing attribute: name".to_string(),
-            ))?;
+            .ok_or(OperationError::InvalidAccountState(format!(
+                "Missing attribute: {}",
+                Attribute::Name
+            )))?;
 
         let displayname = $value
-            .get_ava_single_utf8("displayname")
+            .get_ava_single_utf8(Attribute::DisplayName)
             .map(|s| s.to_string())
-            .ok_or(OperationError::InvalidAccountState(
-                "Missing attribute: displayname".to_string(),
-            ))?;
+            .ok_or(OperationError::InvalidAccountState(format!(
+                "Missing attribute: {}",
+                Attribute::DisplayName
+            )))?;
+
+        let sync_parent_uuid = $value.get_ava_single_refer(Attribute::SyncParentUuid);
 
         let primary = $value
-            .get_ava_single_credential("primary_credential")
+            .get_ava_single_credential(Attribute::PrimaryCredential)
             .map(|v| v.clone());
 
         let passkeys = $value
-            .get_ava_passkeys("passkeys")
+            .get_ava_passkeys(Attribute::PassKeys)
             .cloned()
             .unwrap_or_default();
 
-        let devicekeys = $value
-            .get_ava_devicekeys("devicekeys")
+        let attested_passkeys = $value
+            .get_ava_attestedpasskeys(Attribute::AttestedPasskeys)
             .cloned()
             .unwrap_or_default();
 
-        let spn = $value.get_ava_single_proto_string("spn").ok_or(
-            OperationError::InvalidAccountState("Missing attribute: spn".to_string()),
+        let spn = $value.get_ava_single_proto_string(Attribute::Spn).ok_or(
+            OperationError::InvalidAccountState(format!("Missing attribute: {}", Attribute::Spn)),
         )?;
 
-        let mail_primary = $value.get_ava_mail_primary("mail").map(str::to_string);
+        let mail_primary = $value
+            .get_ava_mail_primary(Attribute::Mail)
+            .map(str::to_string);
 
         let mail = $value
-            .get_ava_iter_mail("mail")
+            .get_ava_iter_mail(Attribute::Mail)
             .map(|i| i.map(str::to_string).collect())
-            .unwrap_or_else(Vec::new);
+            .unwrap_or_default();
 
-        let valid_from = $value.get_ava_single_datetime("account_valid_from");
+        let valid_from = $value.get_ava_single_datetime(Attribute::AccountValidFrom);
 
-        let expire = $value.get_ava_single_datetime("account_expire");
+        let expire = $value.get_ava_single_datetime(Attribute::AccountExpire);
 
         let radius_secret = $value
-            .get_ava_single_secret("radius_secret")
+            .get_ava_single_secret(Attribute::RadiusSecret)
             .map(str::to_string);
 
         // Resolved by the caller
@@ -86,7 +138,7 @@ macro_rules! try_from_entry {
         let uuid = $value.get_uuid().clone();
 
         let credential_update_intent_tokens = $value
-            .get_ava_as_intenttokens("credential_update_intent_token")
+            .get_ava_as_intenttokens(Attribute::CredentialUpdateIntentToken)
             .cloned()
             .unwrap_or_default();
 
@@ -98,22 +150,63 @@ macro_rules! try_from_entry {
             .copied()
             .collect();
 
-        if !$value.attribute_equality("class", &PVCLASS_SYNC_OBJECT) {
+        // For now disable cred updates on sync accounts too.
+        if $value.attribute_equality(Attribute::Class, &EntryClass::Person.to_partialvalue()) {
             ui_hints.insert(UiHint::CredentialUpdate);
         }
 
-        if $value.attribute_equality("class", &PVCLASS_POSIXACCOUNT) {
-            ui_hints.insert(UiHint::PosixAccount);
+        if $value.attribute_equality(Attribute::Class, &EntryClass::SyncObject.to_partialvalue()) {
+            ui_hints.insert(UiHint::SynchronisedAccount);
         }
+
+        let unix_extn = if $value.attribute_equality(
+            Attribute::Class,
+            &EntryClass::PosixAccount.to_partialvalue(),
+        ) {
+            ui_hints.insert(UiHint::PosixAccount);
+
+            let sshkeys = $value
+                .get_ava_set(Attribute::SshPublicKey)
+                .and_then(|vs| vs.as_sshkey_map())
+                .cloned()
+                .unwrap_or_default();
+
+            let ucred = $value
+                .get_ava_single_credential(Attribute::UnixPassword)
+                .map(|v| v.clone());
+
+            let _shell = $value
+                .get_ava_single_iutf8(Attribute::LoginShell)
+                .map(|s| s.to_string());
+
+            let _gidnumber = $value
+                .get_ava_single_uint32(Attribute::GidNumber)
+                .ok_or_else(|| {
+                    OperationError::InvalidAccountState(format!(
+                        "Missing attribute: {}",
+                        Attribute::GidNumber
+                    ))
+                })?;
+
+            Some(UnixExtensions {
+                ucred,
+                _shell,
+                sshkeys,
+                _gidnumber,
+            })
+        } else {
+            None
+        };
 
         Ok(Account {
             uuid,
             name,
+            sync_parent_uuid,
             displayname,
             groups,
             primary,
             passkeys,
-            devicekeys,
+            attested_passkeys,
             valid_from,
             expire,
             radius_secret,
@@ -122,47 +215,35 @@ macro_rules! try_from_entry {
             mail_primary,
             mail,
             credential_update_intent_tokens,
+            unix_extn,
         })
     }};
 }
 
-#[derive(Debug, Clone)]
-pub struct Account {
-    // Later these could be &str if we cache entry here too ...
-    // They can't because if we mod the entry, we'll lose the ref.
-    //
-    // We do need to decide if we'll cache the entry, or if we just "work out"
-    // what the ops should be based on the values we cache here ... That's a future
-    // william problem I think :)
-    pub name: String,
-    pub displayname: String,
-    pub uuid: Uuid,
-    // We want to allow this so that in the future we can populate this into oauth2 tokens
-    #[allow(dead_code)]
-    pub groups: Vec<Group>,
-    pub primary: Option<Credential>,
-    pub passkeys: BTreeMap<Uuid, (String, PasskeyV4)>,
-    pub devicekeys: BTreeMap<Uuid, (String, DeviceKeyV4)>,
-    pub valid_from: Option<OffsetDateTime>,
-    pub expire: Option<OffsetDateTime>,
-    pub radius_secret: Option<String>,
-    pub spn: String,
-    pub ui_hints: BTreeSet<UiHint>,
-    // TODO #256: When you add mail, you should update the check to zxcvbn
-    // to include these.
-    pub mail_primary: Option<String>,
-    pub mail: Vec<String>,
-    pub credential_update_intent_tokens: BTreeMap<String, IntentTokenState>,
-}
-
 impl Account {
+    pub(crate) fn unix_extn(&self) -> Option<&UnixExtensions> {
+        self.unix_extn.as_ref()
+    }
+
     #[instrument(level = "trace", skip_all)]
     pub(crate) fn try_from_entry_ro(
         value: &Entry<EntrySealed, EntryCommitted>,
         qs: &mut QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
-        let groups = Group::try_from_account_entry_ro(value, qs)?;
+        let groups = Group::try_from_account_entry(value, qs)?;
         try_from_entry!(value, groups)
+    }
+
+    #[instrument(level = "trace", skip_all)]
+    pub(crate) fn try_from_entry_with_policy<'a, TXN>(
+        value: &Entry<EntrySealed, EntryCommitted>,
+        qs: &mut TXN,
+    ) -> Result<(Self, ResolvedAccountPolicy), OperationError>
+    where
+        TXN: QueryServerTransaction<'a>,
+    {
+        let (groups, rap) = Group::try_from_account_entry_with_policy(value, qs)?;
+        try_from_entry!(value, groups).map(|acct| (acct, rap))
     }
 
     #[instrument(level = "trace", skip_all)]
@@ -170,7 +251,7 @@ impl Account {
         value: &Entry<EntrySealed, EntryCommitted>,
         qs: &mut QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
-        let groups = Group::try_from_account_entry_rw(value, qs)?;
+        let groups = Group::try_from_account_entry(value, qs)?;
         try_from_entry!(value, groups)
     }
 
@@ -179,14 +260,8 @@ impl Account {
         value: &Entry<EntryReduced, EntryCommitted>,
         qs: &mut QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
-        let groups = Group::try_from_account_entry_red_ro(value, qs)?;
+        let groups = Group::try_from_account_entry_reduced(value, qs)?;
         try_from_entry!(value, groups)
-    }
-
-    pub(crate) fn try_from_entry_no_groups(
-        value: &Entry<EntrySealed, EntryCommitted>,
-    ) -> Result<Self, OperationError> {
-        try_from_entry!(value, vec![])
     }
 
     /// Given the session_id and other metadata, create a user authentication token
@@ -198,6 +273,7 @@ impl Account {
         session_id: Uuid,
         scope: SessionScope,
         ct: Duration,
+        auth_session_expiry: u32,
     ) -> Option<UserAuthToken> {
         // TODO: Apply policy to this expiry time.
         // We have to remove the nanoseconds because when we transmit this / serialise it we drop
@@ -205,9 +281,15 @@ impl Account {
         // ns value which breaks some checks.
         let ct = ct - Duration::from_nanos(ct.subsec_nanos() as u64);
         let issued_at = OffsetDateTime::UNIX_EPOCH + ct;
-
+        // Note that currently the auth_session time comes from policy, but the already-privileged
+        // session bound is hardcoded.
         let expiry =
-            Some(OffsetDateTime::UNIX_EPOCH + ct + Duration::from_secs(AUTH_SESSION_EXPIRY));
+            Some(OffsetDateTime::UNIX_EPOCH + ct + Duration::from_secs(auth_session_expiry as u64));
+        let limited_expiry = Some(
+            OffsetDateTime::UNIX_EPOCH
+                + ct
+                + Duration::from_secs(DEFAULT_AUTH_SESSION_LIMITED_EXPIRY as u64),
+        );
 
         let (purpose, expiry) = match scope {
             // Issue an invalid/expired session.
@@ -220,18 +302,9 @@ impl Account {
             SessionScope::ReadOnly => (UatPurpose::ReadOnly, expiry),
             SessionScope::ReadWrite => {
                 // These sessions are always rw, and so have limited life.
-                (UatPurpose::ReadWrite { expiry }, expiry)
+                (UatPurpose::ReadWrite { expiry }, limited_expiry)
             }
-            SessionScope::PrivilegeCapable =>
-            // Return a rw capable session with the expiry currently invalid.
-            // These sessions COULD live forever since they can re-auth properly.
-            // Today I'm setting this to 24hr though.
-            {
-                (
-                    UatPurpose::ReadWrite { expiry: None },
-                    Some(OffsetDateTime::UNIX_EPOCH + ct + Duration::from_secs(86400)),
-                )
-            }
+            SessionScope::PrivilegeCapable => (UatPurpose::ReadWrite { expiry: None }, expiry),
         };
 
         Some(UserAuthToken {
@@ -258,6 +331,7 @@ impl Account {
         session_expiry: Option<OffsetDateTime>,
         scope: SessionScope,
         ct: Duration,
+        auth_privilege_expiry: u32,
     ) -> Option<UserAuthToken> {
         let issued_at = OffsetDateTime::UNIX_EPOCH + ct;
 
@@ -273,7 +347,9 @@ impl Account {
             // Return a ReadWrite session with an inner expiry for the privileges
             {
                 let expiry = Some(
-                    OffsetDateTime::UNIX_EPOCH + ct + Duration::from_secs(AUTH_PRIVILEGE_EXPIRY),
+                    OffsetDateTime::UNIX_EPOCH
+                        + ct
+                        + Duration::from_secs(auth_privilege_expiry.into()),
                 );
                 (
                     UatPurpose::ReadWrite { expiry },
@@ -306,6 +382,7 @@ impl Account {
         expire: Option<&OffsetDateTime>,
     ) -> bool {
         let cot = OffsetDateTime::UNIX_EPOCH + ct;
+        trace!("Checking within valid time: {:?} {:?}", valid_from, expire);
 
         let vmin = if let Some(vft) = valid_from {
             // If current time greater than start time window
@@ -344,16 +421,6 @@ impl Account {
         inputs
     }
 
-    pub fn primary_cred_uuid(&self) -> Option<Uuid> {
-        self.primary.as_ref().map(|cred| cred.uuid).or_else(|| {
-            if self.is_anonymous() {
-                Some(UUID_ANONYMOUS)
-            } else {
-                None
-            }
-        })
-    }
-
     pub fn primary_cred_uuid_and_policy(&self) -> Option<(Uuid, CredSoftLockPolicy)> {
         self.primary
             .as_ref()
@@ -371,6 +438,7 @@ impl Account {
         self.uuid == UUID_ANONYMOUS
     }
 
+    #[cfg(test)]
     pub(crate) fn gen_password_mod(
         &self,
         cleartext: &str,
@@ -381,14 +449,44 @@ impl Account {
             Some(primary) => {
                 let ncred = primary.set_password(crypto_policy, cleartext)?;
                 let vcred = Value::new_credential("primary", ncred);
-                Ok(ModifyList::new_purge_and_set("primary_credential", vcred))
+                Ok(ModifyList::new_purge_and_set(
+                    Attribute::PrimaryCredential,
+                    vcred,
+                ))
             }
             // Make a new credential instead
             None => {
                 let ncred = Credential::new_password_only(crypto_policy, cleartext)?;
                 let vcred = Value::new_credential("primary", ncred);
-                Ok(ModifyList::new_purge_and_set("primary_credential", vcred))
+                Ok(ModifyList::new_purge_and_set(
+                    Attribute::PrimaryCredential,
+                    vcred,
+                ))
             }
+        }
+    }
+
+    pub(crate) fn gen_password_upgrade_mod(
+        &self,
+        cleartext: &str,
+        crypto_policy: &CryptoPolicy,
+    ) -> Result<Option<ModifyList<ModifyInvalid>>, OperationError> {
+        match &self.primary {
+            // Change the cred
+            Some(primary) => {
+                if let Some(ncred) = primary.upgrade_password(crypto_policy, cleartext)? {
+                    let vcred = Value::new_credential("primary", ncred);
+                    Ok(Some(ModifyList::new_purge_and_set(
+                        Attribute::PrimaryCredential,
+                        vcred,
+                    )))
+                } else {
+                    // No action, not the same pw
+                    Ok(None)
+                }
+            }
+            // Nothing to do.
+            None => Ok(None),
         }
     }
 
@@ -405,21 +503,36 @@ impl Account {
 
         if let Some(ncred) = opt_ncred {
             let vcred = Value::new_credential("primary", ncred);
-            ml.push(Modify::Purged("primary_credential".into()));
-            ml.push(Modify::Present("primary_credential".into(), vcred));
+            ml.push(Modify::Purged(Attribute::PrimaryCredential.into()));
+            ml.push(Modify::Present(Attribute::PrimaryCredential.into(), vcred));
         }
 
         // Is it a passkey?
         self.passkeys.iter_mut().for_each(|(u, (t, k))| {
             if let Some(true) = k.update_credential(auth_result) {
                 ml.push(Modify::Removed(
-                    "passkeys".into(),
+                    Attribute::PassKeys.into(),
                     PartialValue::Passkey(*u),
                 ));
 
                 ml.push(Modify::Present(
-                    "passkeys".into(),
+                    Attribute::PassKeys.into(),
                     Value::Passkey(*u, t.clone(), k.clone()),
+                ));
+            }
+        });
+
+        // Is it an attested passkey?
+        self.attested_passkeys.iter_mut().for_each(|(u, (t, k))| {
+            if let Some(true) = k.update_credential(auth_result) {
+                ml.push(Modify::Removed(
+                    Attribute::AttestedPasskeys.into(),
+                    PartialValue::AttestedPasskey(*u),
+                ));
+
+                ml.push(Modify::Present(
+                    Attribute::AttestedPasskeys.into(),
+                    Value::AttestedPasskey(*u, t.clone(), k.clone()),
                 ));
             }
         });
@@ -442,7 +555,10 @@ impl Account {
                 match r_ncred {
                     Ok(ncred) => {
                         let vcred = Value::new_credential("primary", ncred);
-                        Ok(ModifyList::new_purge_and_set("primary_credential", vcred))
+                        Ok(ModifyList::new_purge_and_set(
+                            Attribute::PrimaryCredential,
+                            vcred,
+                        ))
                     }
                     Err(e) => Err(e),
                 }
@@ -454,26 +570,15 @@ impl Account {
         }
     }
 
-    pub(crate) fn check_credential_pw(&self, cleartext: &str) -> Result<bool, OperationError> {
-        self.primary
-            .as_ref()
-            .ok_or(OperationError::InvalidState)
-            .and_then(|cred| {
-                cred.password_ref().and_then(|pw| {
-                    pw.verify(cleartext).map_err(|e| {
-                        error!(crypto_err = ?e);
-                        e.into()
-                    })
-                })
-            })
-    }
-
     pub(crate) fn regenerate_radius_secret_mod(
         &self,
         cleartext: &str,
     ) -> Result<ModifyList<ModifyInvalid>, OperationError> {
         let vcred = Value::new_secret_str(cleartext);
-        Ok(ModifyList::new_purge_and_set("radius_secret", vcred))
+        Ok(ModifyList::new_purge_and_set(
+            Attribute::RadiusSecret,
+            vcred,
+        ))
     }
 
     pub(crate) fn to_credentialstatus(&self) -> Result<CredentialStatus, OperationError> {
@@ -507,12 +612,16 @@ impl Account {
     ) -> bool {
         // Remember, token expiry is checked by validate_and_parse_token_to_token.
         // If we wanted we could check other properties of the uat here?
-        // Alternatelly, we could always store LESS in the uat because of this?
+        // Alternatively, we could always store LESS in the uat because of this?
 
         let within_valid_window = Account::check_within_valid_time(
             ct,
-            entry.get_ava_single_datetime("account_valid_from").as_ref(),
-            entry.get_ava_single_datetime("account_expire").as_ref(),
+            entry
+                .get_ava_single_datetime(Attribute::AccountValidFrom)
+                .as_ref(),
+            entry
+                .get_ava_single_datetime(Attribute::AccountExpire)
+                .as_ref(),
         );
 
         if !within_valid_window {
@@ -522,6 +631,7 @@ impl Account {
 
         // Anonymous does NOT record it's sessions, so we simply check the expiry time
         // of the token. This is already done for us as noted above.
+        trace!("{}", &uat);
 
         if uat.uuid == UUID_ANONYMOUS {
             security_debug!("Anonymous sessions do not have session records, session is valid.");
@@ -529,18 +639,33 @@ impl Account {
         } else {
             // Get the sessions.
             let session_present = entry
-                .get_ava_as_session_map("user_auth_token_session")
+                .get_ava_as_session_map(Attribute::UserAuthTokenSession)
                 .and_then(|session_map| session_map.get(&uat.session_id));
 
+            // Important - we don't have to check the expiry time against ct here since it was
+            // already checked in token_to_token. Here we just need to check it's consistent
+            // to our internal session knowledge.
             if let Some(session) = session_present {
-                security_info!("A valid session value exists for this token");
-
-                if session.expiry == uat.expiry {
-                    true
-                } else {
-                    security_info!("Session and uat expiry are not consistent, rejecting.");
-                    debug!(ses_exp = ?session.expiry, uat_exp = ?uat.expiry);
-                    false
+                match (&session.state, &uat.expiry) {
+                    (SessionState::ExpiresAt(s_exp), Some(u_exp)) if s_exp == u_exp => {
+                        security_info!("A valid limited session value exists for this token");
+                        true
+                    }
+                    (SessionState::NeverExpires, None) => {
+                        security_info!("A valid unbound session value exists for this token");
+                        true
+                    }
+                    (SessionState::RevokedAt(_), _) => {
+                        // William, if you have added a new type of credential, and end up here, you
+                        // need to look at session consistency plugin.
+                        security_info!("Session has been revoked");
+                        false
+                    }
+                    _ => {
+                        security_info!("Session and uat expiry are not consistent, rejecting.");
+                        debug!(ses_st = ?session.state, uat_exp = ?uat.expiry);
+                        false
+                    }
                 }
             } else {
                 let grace = uat.issued_at + GRACE_WINDOW;
@@ -591,7 +716,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
     ) -> Result<(), OperationError> {
         // Delete the attribute with uuid.
         let modlist = ModifyList::new_list(vec![Modify::Removed(
-            AttrString::from("user_auth_token_session"),
+            Attribute::UserAuthTokenSession.into(),
             PartialValue::Refer(dte.token_id),
         )]);
 
@@ -599,13 +724,19 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             .impersonate_modify(
                 // Filter as executed
                 &filter!(f_and!([
-                    f_eq("uuid", PartialValue::Uuid(dte.target)),
-                    f_eq("user_auth_token_session", PartialValue::Refer(dte.token_id))
+                    f_eq(Attribute::Uuid, PartialValue::Uuid(dte.target)),
+                    f_eq(
+                        Attribute::UserAuthTokenSession,
+                        PartialValue::Refer(dte.token_id)
+                    )
                 ])),
                 // Filter as intended (acp)
                 &filter_all!(f_and!([
-                    f_eq("uuid", PartialValue::Uuid(dte.target)),
-                    f_eq("user_auth_token_session", PartialValue::Refer(dte.token_id))
+                    f_eq(Attribute::Uuid, PartialValue::Uuid(dte.target)),
+                    f_eq(
+                        Attribute::UserAuthTokenSession,
+                        PartialValue::Refer(dte.token_id)
+                    )
                 ])),
                 &modlist,
                 // Provide the event to impersonate. Notice how we project this with readwrite
@@ -637,18 +768,24 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         // Copy the current classes
         let prev_classes: BTreeSet<_> = account_entry
-            .get_ava_as_iutf8_iter("class")
+            .get_ava_as_iutf8_iter(Attribute::Class)
             .ok_or_else(|| {
-                admin_error!("Invalid entry, class attribute is not present or not iutf8");
-                OperationError::InvalidAccountState("Missing attribute: class".to_string())
+                admin_error!(
+                    "Invalid entry, {} attribute is not present or not iutf8",
+                    Attribute::Class.as_ref()
+                );
+                OperationError::InvalidAccountState(format!(
+                    "Missing attribute: {}",
+                    Attribute::Class
+                ))
             })?
             .collect();
 
         // Remove the service account class.
         // Add the person class.
         let mut new_classes = prev_classes.clone();
-        new_classes.remove("service_account");
-        new_classes.insert("person");
+        new_classes.remove(EntryClass::ServiceAccount.into());
+        new_classes.insert(EntryClass::Person.into());
 
         // diff the schema attrs, and remove the ones that are service_account only.
         let (_added, removed) = schema_ref
@@ -662,10 +799,15 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         // Now construct the modlist which:
         // removes service_account
-        let mut modlist =
-            ModifyList::new_remove("class", PartialValue::new_class("service_account"));
+        let mut modlist = ModifyList::new_remove(
+            Attribute::Class,
+            EntryClass::ServiceAccount.to_partialvalue(),
+        );
         // add person
-        modlist.push_mod(Modify::Present("class".into(), Value::new_class("person")));
+        modlist.push_mod(Modify::Present(
+            Attribute::Class.into(),
+            EntryClass::Person.to_value(),
+        ));
         // purge the other attrs that are SA only.
         removed
             .into_iter()
@@ -676,9 +818,9 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         self.qs_write
             .impersonate_modify(
                 // Filter as executed
-                &filter!(f_eq("uuid", PartialValue::Uuid(target_uuid))),
+                &filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(target_uuid))),
                 // Filter as intended (acp)
-                &filter_all!(f_eq("uuid", PartialValue::Uuid(target_uuid))),
+                &filter_all!(f_eq(Attribute::Uuid, PartialValue::Uuid(target_uuid))),
                 &modlist,
                 // Provide the entry to impersonate
                 ident,
@@ -723,16 +865,26 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
                     .and_then(|e| {
                         let account_id = e.get_uuid();
                         // From the entry, turn it into the value
-                        e.get_ava_as_session_map("user_auth_token_session")
+                        e.get_ava_as_session_map(Attribute::UserAuthTokenSession)
                             .map(|smap| {
                                 smap.iter()
                                     .map(|(u, s)| {
+                                        let state = match s.state {
+                                            SessionState::ExpiresAt(odt) => {
+                                                UatStatusState::ExpiresAt(odt)
+                                            }
+                                            SessionState::NeverExpires => {
+                                                UatStatusState::NeverExpires
+                                            }
+                                            SessionState::RevokedAt(_) => UatStatusState::Revoked,
+                                        };
+
                                         s.scope
                                             .try_into()
                                             .map(|purpose| UatStatus {
                                                 account_id,
                                                 session_id: *u,
-                                                expiry: s.expiry,
+                                                state,
                                                 issued_at: s.issued_at,
                                                 purpose,
                                             })
@@ -756,13 +908,14 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
 
 #[cfg(test)]
 mod tests {
+    use crate::idm::account::Account;
     use crate::prelude::*;
     use kanidm_proto::v1::UiHint;
 
     #[test]
     fn test_idm_account_from_anonymous() {
-        let anon_e = entry_to_account!(E_ANONYMOUS_V1.clone());
-        debug!("{:?}", anon_e);
+        let account: Account = BUILTIN_ACCOUNT_ANONYMOUS_V1.clone().into();
+        debug!("{:?}", account);
         // I think that's it? we may want to check anonymous mech ...
     }
 
@@ -776,13 +929,13 @@ mod tests {
         // Create a user. So far no ui hints.
         // Create a service account
         let e = entry_init!(
-            ("class", Value::new_class("object")),
-            ("class", Value::new_class("account")),
-            ("class", Value::new_class("person")),
-            ("name", Value::new_iname("testaccount")),
-            ("uuid", Value::Uuid(target_uuid)),
-            ("description", Value::new_utf8s("testaccount")),
-            ("displayname", Value::new_utf8s("Test Account"))
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Name, Value::new_iname("testaccount")),
+            (Attribute::Uuid, Value::Uuid(target_uuid)),
+            (Attribute::Description, Value::new_utf8s("testaccount")),
+            (Attribute::DisplayName, Value::new_utf8s("Test Account"))
         );
 
         let ce = CreateEvent::new_internal(vec![e]);
@@ -793,7 +946,12 @@ mod tests {
             .expect("account must exist");
         let session_id = uuid::Uuid::new_v4();
         let uat = account
-            .to_userauthtoken(session_id, SessionScope::ReadWrite, ct)
+            .to_userauthtoken(
+                session_id,
+                SessionScope::ReadWrite,
+                ct,
+                DEFAULT_AUTH_SESSION_EXPIRY,
+            )
             .expect("Unable to create uat");
 
         // Check the ui hints are as expected.
@@ -801,15 +959,16 @@ mod tests {
         assert!(uat.ui_hints.contains(&UiHint::CredentialUpdate));
 
         // Modify the user to be a posix account, ensure they get the hint.
-        let me_posix = unsafe {
-            ModifyEvent::new_internal_invalid(
-                filter!(f_eq("name", PartialValue::new_iname("testaccount"))),
-                ModifyList::new_list(vec![
-                    Modify::Present(AttrString::from("class"), Value::new_class("posixaccount")),
-                    Modify::Present(AttrString::from("gidnumber"), Value::new_uint32(2001)),
-                ]),
-            )
-        };
+        let me_posix = ModifyEvent::new_internal_invalid(
+            filter!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("testaccount")
+            )),
+            ModifyList::new_list(vec![
+                Modify::Present(Attribute::Class.into(), EntryClass::PosixAccount.into()),
+                Modify::Present(Attribute::GidNumber.into(), Value::new_uint32(2001)),
+            ]),
+        );
         assert!(idms_prox_write.qs_write.modify(&me_posix).is_ok());
 
         // Check the ui hints are as expected.
@@ -818,7 +977,12 @@ mod tests {
             .expect("account must exist");
         let session_id = uuid::Uuid::new_v4();
         let uat = account
-            .to_userauthtoken(session_id, SessionScope::ReadWrite, ct)
+            .to_userauthtoken(
+                session_id,
+                SessionScope::ReadWrite,
+                ct,
+                DEFAULT_AUTH_PRIVILEGE_EXPIRY,
+            )
             .expect("Unable to create uat");
 
         assert!(uat.ui_hints.len() == 2);
@@ -827,11 +991,14 @@ mod tests {
 
         // Add a group with a ui hint, and then check they get the hint.
         let e = entry_init!(
-            ("class", Value::new_class("object")),
-            ("class", Value::new_class("group")),
-            ("name", Value::new_iname("test_uihint_group")),
-            ("member", Value::Refer(target_uuid)),
-            ("grant_ui_hint", Value::UiHint(UiHint::ExperimentalFeatures))
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Group.to_value()),
+            (Attribute::Name, Value::new_iname("test_uihint_group")),
+            (Attribute::Member, Value::Refer(target_uuid)),
+            (
+                Attribute::GrantUiHint,
+                Value::UiHint(UiHint::ExperimentalFeatures)
+            )
         );
 
         let ce = CreateEvent::new_internal(vec![e]);
@@ -843,7 +1010,12 @@ mod tests {
             .expect("account must exist");
         let session_id = uuid::Uuid::new_v4();
         let uat = account
-            .to_userauthtoken(session_id, SessionScope::ReadWrite, ct)
+            .to_userauthtoken(
+                session_id,
+                SessionScope::ReadWrite,
+                ct,
+                DEFAULT_AUTH_SESSION_EXPIRY,
+            )
             .expect("Unable to create uat");
 
         assert!(uat.ui_hints.len() == 3);

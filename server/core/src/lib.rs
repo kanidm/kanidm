@@ -25,32 +25,37 @@ extern crate tracing;
 #[macro_use]
 extern crate kanidmd_lib;
 
-pub mod actors;
+mod actors;
+pub mod admin;
 pub mod config;
 mod crypto;
-pub mod https;
+mod https;
 mod interval;
 mod ldaps;
+mod repl;
+mod utils;
 
+use std::fmt::{Display, Formatter};
 use std::path::Path;
 use std::sync::Arc;
 
-use compact_jwt::JwsSigner;
-use kanidm_proto::messages::{AccountChangeMessage, MessageStatus};
+use crate::utils::touch_file_or_quit;
+use compact_jwt::JwsHs256Signer;
 use kanidm_proto::v1::OperationError;
-use kanidmd_lib::be::{Backend, BackendConfig, BackendTransaction, FsType};
+use kanidmd_lib::be::{Backend, BackendConfig, BackendTransaction};
 use kanidmd_lib::idm::ldap::LdapServer;
 use kanidmd_lib::prelude::*;
 use kanidmd_lib::schema::Schema;
 use kanidmd_lib::status::StatusActor;
-use kanidmd_lib::utils::{duration_from_epoch_now, touch_file_or_quit};
 #[cfg(not(target_family = "windows"))]
 use libc::umask;
 
 use tokio::sync::broadcast;
+use tokio::task::JoinHandle;
 
 use crate::actors::v1_read::QueryServerReadV1;
 use crate::actors::v1_write::QueryServerWriteV1;
+use crate::admin::AdminActor;
 use crate::config::{Configuration, ServerRole};
 use crate::interval::IntervalActor;
 
@@ -71,21 +76,11 @@ fn setup_backend_vacuum(
     let idxmeta = schema_txn.reload_idxmeta();
 
     let pool_size: u32 = config.threads as u32;
-    let fstype: FsType = if config
-        .db_fs_type
-        .as_ref()
-        .map(|s| s == "zfs")
-        .unwrap_or(false)
-    {
-        FsType::Zfs
-    } else {
-        FsType::Generic
-    };
 
     let cfg = BackendConfig::new(
         config.db_path.as_str(),
         pool_size,
-        fstype,
+        config.db_fs_type.unwrap_or_default(),
         config.db_arc_size,
     );
 
@@ -102,7 +97,7 @@ async fn setup_qs_idms(
     config: &Configuration,
 ) -> Result<(QueryServer, IdmServer, IdmServerDelayed, IdmServerAudit), OperationError> {
     // Create a query_server implementation
-    let query_server = QueryServer::new(be, schema, config.domain.clone());
+    let query_server = QueryServer::new(be, schema, config.domain.clone())?;
 
     // TODO #62: Should the IDM parts be broken out to the IdmServer?
     // What's important about this initial setup here is that it also triggers
@@ -130,7 +125,7 @@ async fn setup_qs(
     config: &Configuration,
 ) -> Result<QueryServer, OperationError> {
     // Create a query_server implementation
-    let query_server = QueryServer::new(be, schema, config.domain.clone());
+    let query_server = QueryServer::new(be, schema, config.domain.clone())?;
 
     // TODO #62: Should the IDM parts be broken out to the IdmServer?
     // What's important about this initial setup here is that it also triggers
@@ -171,7 +166,13 @@ macro_rules! dbscan_setup_be {
 
 pub fn dbscan_list_indexes_core(config: &Configuration) {
     let be = dbscan_setup_be!(config);
-    let mut be_rotxn = be.read();
+    let mut be_rotxn = match be.read() {
+        Ok(txn) => txn,
+        Err(err) => {
+            error!(?err, "Unable to proceed, backend read transaction failure.");
+            return;
+        }
+    };
 
     match be_rotxn.list_indexes() {
         Ok(mut idx_list) => {
@@ -188,7 +189,13 @@ pub fn dbscan_list_indexes_core(config: &Configuration) {
 
 pub fn dbscan_list_id2entry_core(config: &Configuration) {
     let be = dbscan_setup_be!(config);
-    let mut be_rotxn = be.read();
+    let mut be_rotxn = match be.read() {
+        Ok(txn) => txn,
+        Err(err) => {
+            error!(?err, "Unable to proceed, backend read transaction failure.");
+            return;
+        }
+    };
 
     match be_rotxn.list_id2entry() {
         Ok(mut id_list) => {
@@ -210,7 +217,13 @@ pub fn dbscan_list_index_analysis_core(config: &Configuration) {
 
 pub fn dbscan_list_index_core(config: &Configuration, index_name: &str) {
     let be = dbscan_setup_be!(config);
-    let mut be_rotxn = be.read();
+    let mut be_rotxn = match be.read() {
+        Ok(txn) => txn,
+        Err(err) => {
+            error!(?err, "Unable to proceed, backend read transaction failure.");
+            return;
+        }
+    };
 
     match be_rotxn.list_index_content(index_name) {
         Ok(mut idx_list) => {
@@ -227,12 +240,93 @@ pub fn dbscan_list_index_core(config: &Configuration, index_name: &str) {
 
 pub fn dbscan_get_id2entry_core(config: &Configuration, id: u64) {
     let be = dbscan_setup_be!(config);
-    let mut be_rotxn = be.read();
+    let mut be_rotxn = match be.read() {
+        Ok(txn) => txn,
+        Err(err) => {
+            error!(?err, "Unable to proceed, backend read transaction failure.");
+            return;
+        }
+    };
 
     match be_rotxn.get_id2entry(id) {
         Ok((id, value)) => println!("{:>8}: {}", id, value),
         Err(e) => {
             error!("Failed to retrieve id2entry value: {:?}", e);
+        }
+    };
+}
+
+pub fn dbscan_quarantine_id2entry_core(config: &Configuration, id: u64) {
+    let be = dbscan_setup_be!(config);
+    let mut be_wrtxn = match be.write() {
+        Ok(txn) => txn,
+        Err(err) => {
+            error!(
+                ?err,
+                "Unable to proceed, backend write transaction failure."
+            );
+            return;
+        }
+    };
+
+    match be_wrtxn
+        .quarantine_entry(id)
+        .and_then(|_| be_wrtxn.commit())
+    {
+        Ok(()) => {
+            println!("quarantined - {:>8}", id)
+        }
+        Err(e) => {
+            error!("Failed to quarantine id2entry value: {:?}", e);
+        }
+    };
+}
+
+pub fn dbscan_list_quarantined_core(config: &Configuration) {
+    let be = dbscan_setup_be!(config);
+    let mut be_rotxn = match be.read() {
+        Ok(txn) => txn,
+        Err(err) => {
+            error!(?err, "Unable to proceed, backend read transaction failure.");
+            return;
+        }
+    };
+
+    match be_rotxn.list_quarantined() {
+        Ok(mut id_list) => {
+            id_list.sort_unstable_by_key(|k| k.0);
+            id_list.iter().for_each(|(id, value)| {
+                println!("{:>8}: {}", id, value);
+            })
+        }
+        Err(e) => {
+            error!("Failed to retrieve id2entry list: {:?}", e);
+        }
+    };
+}
+
+pub fn dbscan_restore_quarantined_core(config: &Configuration, id: u64) {
+    let be = dbscan_setup_be!(config);
+    let mut be_wrtxn = match be.write() {
+        Ok(txn) => txn,
+        Err(err) => {
+            error!(
+                ?err,
+                "Unable to proceed, backend write transaction failure."
+            );
+            return;
+        }
+    };
+
+    match be_wrtxn
+        .restore_quarantined(id)
+        .and_then(|_| be_wrtxn.commit())
+    {
+        Ok(()) => {
+            println!("restored - {:>8}", id)
+        }
+        Err(e) => {
+            error!("Failed to restore quarantined id2entry value: {:?}", e);
         }
     };
 }
@@ -254,7 +348,14 @@ pub fn backup_server_core(config: &Configuration, dst_path: &str) {
         }
     };
 
-    let mut be_ro_txn = be.read();
+    let mut be_ro_txn = match be.read() {
+        Ok(txn) => txn,
+        Err(err) => {
+            error!(?err, "Unable to proceed, backend read transaction failure.");
+            return;
+        }
+    };
+
     let r = be_ro_txn.backup(dst_path);
     match r {
         Ok(_) => info!("Backup success!"),
@@ -286,7 +387,16 @@ pub async fn restore_server_core(config: &Configuration, dst_path: &str) {
         }
     };
 
-    let mut be_wr_txn = be.write();
+    let mut be_wr_txn = match be.write() {
+        Ok(txn) => txn,
+        Err(err) => {
+            error!(
+                ?err,
+                "Unable to proceed, backend write transaction failure."
+            );
+            return;
+        }
+    };
     let r = be_wr_txn.restore(dst_path).and_then(|_| be_wr_txn.commit());
 
     if r.is_err() {
@@ -342,7 +452,16 @@ pub async fn reindex_server_core(config: &Configuration) {
     };
 
     // Reindex only the core schema attributes to bootstrap the process.
-    let mut be_wr_txn = be.write();
+    let mut be_wr_txn = match be.write() {
+        Ok(txn) => txn,
+        Err(err) => {
+            error!(
+                ?err,
+                "Unable to proceed, backend write transaction failure."
+            );
+            return;
+        }
+    };
     let r = be_wr_txn.reindex().and_then(|_| be_wr_txn.commit());
 
     // Now that's done, setup a minimal qs and reindex from that.
@@ -450,7 +569,7 @@ pub async fn domain_rename_core(config: &Configuration) {
 
     let mut qs_write = qs.write(duration_from_epoch_now()).await;
     let r = qs_write
-        .domain_rename(new_domain_name)
+        .danger_domain_rename(new_domain_name)
         .and_then(|_| qs_write.commit());
 
     match r {
@@ -479,7 +598,14 @@ pub async fn verify_server_core(config: &Configuration) {
             return;
         }
     };
-    let server = QueryServer::new(be, schema_mem, config.domain.clone());
+
+    let server = match QueryServer::new(be, schema_mem, config.domain.clone()) {
+        Ok(qs) => qs,
+        Err(err) => {
+            error!(?err, "Failed to setup query server");
+            return;
+        }
+    };
 
     // Run verifications.
     let r = server.verify().await;
@@ -495,62 +621,6 @@ pub async fn verify_server_core(config: &Configuration) {
     }
 
     // Now add IDM server verifications?
-}
-
-pub async fn recover_account_core(config: &Configuration, name: &str) {
-    let schema = match Schema::new() {
-        Ok(s) => s,
-        Err(e) => {
-            eprintln!("Failed to setup in memory schema: {:?}", e);
-            std::process::exit(1);
-        }
-    };
-
-    // Start the backend.
-    let be = match setup_backend(config, &schema) {
-        Ok(be) => be,
-        Err(e) => {
-            error!("Failed to setup BE: {:?}", e);
-            return;
-        }
-    };
-    // setup the qs - *with* init of the migrations and schema.
-    let (_qs, idms, _idms_delayed, _idms_audit) = match setup_qs_idms(be, schema, config).await {
-        Ok(t) => t,
-        Err(e) => {
-            error!("Unable to setup query server or idm server -> {:?}", e);
-            return;
-        }
-    };
-
-    // Run the password change.
-    let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await;
-    let new_pw = match idms_prox_write.recover_account(name, None) {
-        Ok(new_pw) => match idms_prox_write.commit() {
-            Ok(_) => new_pw,
-            Err(e) => {
-                error!("A critical error during commit occurred {:?}", e);
-                std::process::exit(1);
-            }
-        },
-        Err(e) => {
-            error!("Error during password reset -> {:?}", e);
-            // abort the txn
-            std::mem::drop(idms_prox_write);
-            std::process::exit(1);
-        }
-    };
-    println!(
-        "{}",
-        AccountChangeMessage {
-            output_mode: config.output_mode,
-            status: MessageStatus::Success,
-            src_user: String::from("command-line invocation"),
-            dest_user: name.to_string(),
-            result: new_pw,
-            action: String::from("recovery of account password"),
-        }
-    );
 }
 
 pub fn cert_generate_core(config: &Configuration) {
@@ -603,7 +673,7 @@ pub fn cert_generate_core(config: &Configuration) {
 
     let ca_handle = if !ca_cert.exists() || !ca_key.exists() {
         // Generate the CA again.
-        let ca_handle = match crypto::build_ca() {
+        let ca_handle = match crypto::build_ca(None) {
             Ok(ca_handle) => ca_handle,
             Err(e) => {
                 error!(err = ?e, "Failed to build CA");
@@ -629,7 +699,7 @@ pub fn cert_generate_core(config: &Configuration) {
 
     if !tls_key_path.exists() || !tls_chain_path.exists() || !tls_cert_path.exists() {
         // Generate the cert from the ca.
-        let cert_handle = match crypto::build_cert(origin_domain, &ca_handle) {
+        let cert_handle = match crypto::build_cert(origin_domain, &ca_handle, None, None) {
             Ok(cert_handle) => cert_handle,
             Err(e) => {
                 error!(err = ?e, "Failed to build certificate");
@@ -650,12 +720,41 @@ pub enum CoreAction {
     Shutdown,
 }
 
+pub(crate) enum TaskName {
+    AdminSocket,
+    AuditdActor,
+    BackupActor,
+    DelayedActionActor,
+    HttpsServer,
+    IntervalActor,
+    LdapActor,
+    Replication,
+}
+
+impl Display for TaskName {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                TaskName::AdminSocket => "Admin Socket",
+                TaskName::AuditdActor => "Auditd Actor",
+                TaskName::BackupActor => "Backup Actor",
+                TaskName::DelayedActionActor => "Delayed Action Actor",
+                TaskName::HttpsServer => "HTTPS Server",
+                TaskName::IntervalActor => "Interval Actor",
+                TaskName::LdapActor => "LDAP Acceptor Actor",
+                TaskName::Replication => "Replication",
+            }
+        )
+    }
+}
+
 pub struct CoreHandle {
     clean_shutdown: bool,
     tx: broadcast::Sender<CoreAction>,
-
-    handles: Vec<tokio::task::JoinHandle<()>>,
-    // interval_handle: tokio::task::JoinHandle<()>,
+    /// This stores a name for the handle, and the handle itself so we can tell which failed/succeeded at the end.
+    handles: Vec<(TaskName, tokio::task::JoinHandle<()>)>,
 }
 
 impl CoreHandle {
@@ -666,9 +765,9 @@ impl CoreHandle {
         }
 
         // Wait on the handles.
-        while let Some(handle) = self.handles.pop() {
-            if handle.await.is_err() {
-                eprintln!("A task failed to join");
+        while let Some((handle_name, handle)) = self.handles.pop() {
+            if let Err(error) = handle.await {
+                eprintln!("Task {} failed to finish: {:?}", handle_name, error);
             }
         }
 
@@ -703,8 +802,8 @@ pub async fn create_server_core(
     }
 
     info!(
-        "Starting kanidm with configuration: {} {}",
-        if config_test { "TEST" } else { "" },
+        "Starting kanidm with {}configuration: {}",
+        if config_test { "TEST " } else { "" },
         config
     );
     // Setup umask, so that every we touch or create is secure.
@@ -754,7 +853,7 @@ pub async fn create_server_core(
 
     // Extract any configuration from the IDMS that we may need.
     // For now we just do this per run, but we need to extract this from the db later.
-    let jws_signer = match JwsSigner::generate_hs256() {
+    let jws_signer = match JwsHs256Signer::generate_hs256() {
         Ok(k) => k,
         Err(e) => {
             error!("Unable to setup jws signer -> {:?}", e);
@@ -762,26 +861,41 @@ pub async fn create_server_core(
         }
     };
 
-    let cookie_key: [u8; 32] = idms.get_cookie_key();
-
     // Any pre-start tasks here.
     match &config.integration_test_config {
         Some(itc) => {
             let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await;
+            // We need to get the admin pw.
             match idms_prox_write.recover_account("admin", Some(&itc.admin_password)) {
                 Ok(_) => {}
                 Err(e) => {
                     error!(
-                        "Unable to configure INTERGATION TEST admin account -> {:?}",
+                        "Unable to configure INTEGRATION TEST admin account -> {:?}",
                         e
                     );
                     return Err(());
                 }
             };
+            // Add admin to idm_admins to allow tests more flexibility wrt to permissions.
+            // This way our default access controls can be stricter to prevent lateral
+            // movement.
+            match idms_prox_write.qs_write.internal_modify_uuid(
+                UUID_IDM_ADMINS,
+                &ModifyList::new_append(Attribute::Member, Value::Refer(UUID_ADMIN)),
+            ) {
+                Ok(_) => {}
+                Err(e) => {
+                    error!(
+                        "Unable to configure INTEGRATION TEST admin as member of idm_admins -> {:?}",
+                        e
+                    );
+                    return Err(());
+                }
+            }
             match idms_prox_write.commit() {
                 Ok(_) => {}
                 Err(e) => {
-                    error!("Unable to commit INTERGATION TEST setup -> {:?}", e);
+                    error!("Unable to commit INTEGRATION TEST setup -> {:?}", e);
                     return Err(());
                 }
             }
@@ -825,7 +939,7 @@ pub async fn create_server_core(
                 }
             }
         }
-        info!("Stopped DelayedActionActor");
+        info!("Stopped {}", TaskName::DelayedActionActor);
     });
 
     let mut broadcast_rx = broadcast_tx.subscribe();
@@ -852,7 +966,7 @@ pub async fn create_server_core(
                 }
             }
         }
-        info!("Stopped AuditdActor");
+        info!("Stopped {}", TaskName::AuditdActor);
     });
 
     // Setup timed events associated to the write thread
@@ -860,12 +974,17 @@ pub async fn create_server_core(
     // Setup timed events associated to the read thread
     let maybe_backup_handle = match &config.online_backup {
         Some(online_backup_config) => {
-            let handle = IntervalActor::start_online_backup(
-                server_read_ref,
-                online_backup_config,
-                broadcast_tx.subscribe(),
-            )?;
-            Some(handle)
+            if online_backup_config.enabled {
+                let handle = IntervalActor::start_online_backup(
+                    server_read_ref,
+                    online_backup_config,
+                    broadcast_tx.subscribe(),
+                )?;
+                Some(handle)
+            } else {
+                debug!("Backups disabled");
+                None
+            }
         }
         None => {
             debug!("Online backup not requested, skipping");
@@ -876,7 +995,7 @@ pub async fn create_server_core(
     // If we have been requested to init LDAP, configure it now.
     let maybe_ldap_acceptor_handle = match &config.ldapaddress {
         Some(la) => {
-            let opt_ldap_tls_params = match crypto::setup_tls(&config) {
+            let opt_ldap_ssl_acceptor = match crypto::setup_tls(&config) {
                 Ok(t) => t,
                 Err(e) => {
                     error!("Failed to configure LDAP TLS parameters -> {:?}", e);
@@ -887,7 +1006,7 @@ pub async fn create_server_core(
                 // ⚠️  only start the sockets and listeners in non-config-test modes.
                 let h = ldaps::create_ldap_server(
                     la.as_str(),
-                    opt_ldap_tls_params,
+                    opt_ldap_ssl_acceptor,
                     server_read_ref,
                     broadcast_tx.subscribe(),
                 )
@@ -903,50 +1022,95 @@ pub async fn create_server_core(
         }
     };
 
-    // TODO: Remove these when we go to auth bearer!
-    // Copy the max size
-    let _secure_cookies = config.secure_cookies;
+    // If we have replication configured, setup the listener with it's initial replication
+    // map (if any).
+    let (maybe_repl_handle, maybe_repl_ctrl_tx) = match &config.repl_config {
+        Some(rc) => {
+            if !config_test {
+                // ⚠️  only start the sockets and listeners in non-config-test modes.
+                let (h, repl_ctrl_tx) =
+                    repl::create_repl_server(idms_arc.clone(), rc, broadcast_tx.subscribe())
+                        .await?;
+                (Some(h), Some(repl_ctrl_tx))
+            } else {
+                (None, None)
+            }
+        }
+        None => {
+            debug!("Replication not requested, skipping");
+            (None, None)
+        }
+    };
 
     let maybe_http_acceptor_handle = if config_test {
-        admin_info!("this config rocks! 🪨 ");
+        admin_info!("This config rocks! 🪨 ");
         None
     } else {
-        // ⚠️  only start the sockets and listeners in non-config-test modes.
-        let h = self::https::create_https_server(
-            config.address,
-            &config.domain,
-            config.tls_config.as_ref(),
-            config.role,
-            config.trust_x_forward_for,
-            &cookie_key,
+        let h: tokio::task::JoinHandle<()> = match https::create_https_server(
+            config.clone(),
             jws_signer,
             status_ref,
             server_write_ref,
             server_read_ref,
             broadcast_tx.subscribe(),
         )
-        .await?;
-
+        .await
+        {
+            Ok(h) => h,
+            Err(e) => {
+                error!("Failed to start HTTPS server -> {:?}", e);
+                return Err(());
+            }
+        };
         if config.role != ServerRole::WriteReplicaNoUI {
-            admin_info!("ready to rock! 🪨 UI available at: {}", config.origin);
+            admin_info!("ready to rock! 🪨  UI available at: {}", config.origin);
         } else {
-            admin_info!("ready to rock! 🪨");
+            admin_info!("ready to rock! 🪨 ");
         }
         Some(h)
     };
 
-    let mut handles = vec![interval_handle, delayed_handle, auditd_handle];
+    // If we are NOT in integration test mode, start the admin socket now
+    let maybe_admin_sock_handle = if config.integration_test_config.is_none() {
+        let broadcast_rx = broadcast_tx.subscribe();
+
+        let admin_handle = AdminActor::create_admin_sock(
+            config.adminbindpath.as_str(),
+            server_write_ref,
+            broadcast_rx,
+            maybe_repl_ctrl_tx,
+        )
+        .await?;
+
+        Some(admin_handle)
+    } else {
+        None
+    };
+
+    let mut handles: Vec<(TaskName, JoinHandle<()>)> = vec![
+        (TaskName::IntervalActor, interval_handle),
+        (TaskName::DelayedActionActor, delayed_handle),
+        (TaskName::AuditdActor, auditd_handle),
+    ];
 
     if let Some(backup_handle) = maybe_backup_handle {
-        handles.push(backup_handle)
+        handles.push((TaskName::BackupActor, backup_handle))
+    }
+
+    if let Some(admin_sock_handle) = maybe_admin_sock_handle {
+        handles.push((TaskName::AdminSocket, admin_sock_handle))
     }
 
     if let Some(ldap_handle) = maybe_ldap_acceptor_handle {
-        handles.push(ldap_handle)
+        handles.push((TaskName::LdapActor, ldap_handle))
     }
 
     if let Some(http_handle) = maybe_http_acceptor_handle {
-        handles.push(http_handle)
+        handles.push((TaskName::HttpsServer, http_handle))
+    }
+
+    if let Some(repl_handle) = maybe_repl_handle {
+        handles.push((TaskName::Replication, repl_handle))
     }
 
     Ok(CoreHandle {

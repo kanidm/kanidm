@@ -2,7 +2,7 @@ use crate::prelude::*;
 
 use crate::credential::softlock::CredSoftLock;
 use crate::idm::account::Account;
-use crate::idm::authsession::AuthSession;
+use crate::idm::authsession::{AuthSession, AuthSessionData};
 use crate::idm::event::AuthResult;
 use crate::idm::server::IdmServerAuthTransaction;
 use crate::idm::AuthState;
@@ -27,16 +27,14 @@ impl<'a> IdmServerAuthTransaction<'a> {
     ) -> Result<AuthResult, OperationError> {
         // re-auth only works on users, so lets get the user account.
         // hint - it's in the ident!
-        let entry = match ident.get_user_entry() {
-            Some(entry) => entry,
-            None => {
-                error!("Ident is not a user and has no entry associated. Unable to proceed.");
-                return Err(OperationError::InvalidState);
-            }
+        let Some(entry) = ident.get_user_entry() else {
+            error!("Ident is not a user and has no entry associated. Unable to proceed.");
+            return Err(OperationError::InvalidState);
         };
 
         // Setup the account record.
-        let account = Account::try_from_entry_ro(entry.as_ref(), &mut self.qs_read)?;
+        let (account, account_policy) =
+            Account::try_from_entry_with_policy(entry.as_ref(), &mut self.qs_read)?;
 
         security_info!(
             username = %account.name,
@@ -47,7 +45,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
 
         // Check that the entry/session can be re-authed.
         let session = entry
-            .get_ava_as_session_map("user_auth_token_session")
+            .get_ava_as_session_map(Attribute::UserAuthTokenSession)
             .and_then(|sessions| sessions.get(&ident.session_id))
             .ok_or_else(|| {
                 error!("Ident session is not present in entry. Perhaps replication is delayed?");
@@ -131,16 +129,16 @@ impl<'a> IdmServerAuthTransaction<'a> {
         }
 
         // Create a re-auth session
-        let (auth_session, state) = AuthSession::new_reauth(
+        let asd: AuthSessionData = AuthSessionData {
             account,
-            ident.session_id,
-            session,
-            session_cred_id,
+            account_policy,
             issue,
-            self.webauthn,
+            webauthn: self.webauthn,
             ct,
             source,
-        );
+        };
+        let (auth_session, state) =
+            AuthSession::new_reauth(asd, ident.session_id, session, session_cred_id);
 
         // Push the re-auth session to the session maps.
         match auth_session {
@@ -191,13 +189,13 @@ mod tests {
         let mut idms_prox_write = idms.proxy_write(ct).await;
 
         let e2 = entry_init!(
-            ("class", Value::new_class("object")),
-            ("class", Value::new_class("account")),
-            ("class", Value::new_class("person")),
-            ("name", Value::new_iname("testperson")),
-            ("uuid", Value::Uuid(TESTPERSON_UUID)),
-            ("description", Value::new_utf8s("testperson")),
-            ("displayname", Value::new_utf8s("testperson"))
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Name, Value::new_iname("testperson")),
+            (Attribute::Uuid, Value::Uuid(TESTPERSON_UUID)),
+            (Attribute::Description, Value::new_utf8s("testperson")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson"))
         );
 
         let cr = idms_prox_write.qs_write.internal_create(vec![e2]);
@@ -227,7 +225,7 @@ mod tests {
         let cutxn = idms.cred_update_transaction().await;
         let origin = cutxn.get_origin().clone();
 
-        let mut wa = WebauthnAuthenticator::new(SoftPasskey::new());
+        let mut wa = WebauthnAuthenticator::new(SoftPasskey::new(true));
 
         let c_status = cutxn
             .credential_passkey_init(&cust, ct)

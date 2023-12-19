@@ -1,6 +1,7 @@
 use super::cid::Cid;
 use super::entry::EntryChangeState;
 use super::entry::State;
+use crate::be::dbvalue::DbValueImage;
 use crate::entry::Eattrs;
 use crate::prelude::*;
 use crate::schema::{SchemaReadTransaction, SchemaTransaction};
@@ -10,11 +11,17 @@ use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 
 use webauthn_rs::prelude::{
-    DeviceKey as DeviceKeyV4, Passkey as PasskeyV4, SecurityKey as SecurityKeyV4,
+    AttestationCaList, AttestedPasskey as AttestedPasskeyV4, Passkey as PasskeyV4,
+    SecurityKey as SecurityKeyV4,
 };
 
 // Re-export this for our own usage.
 pub use kanidm_lib_crypto::ReplPasswordV1;
+
+pub enum ConsumerState {
+    Ok,
+    RefreshRequired,
+}
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub struct ReplCidV1 {
@@ -63,22 +70,15 @@ pub struct ReplCidRange {
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub enum ReplRuvRange {
     V1 {
+        domain_uuid: Uuid,
         ranges: BTreeMap<Uuid, ReplCidRange>,
     },
-}
-
-impl Default for ReplRuvRange {
-    fn default() -> Self {
-        ReplRuvRange::V1 {
-            ranges: BTreeMap::default(),
-        }
-    }
 }
 
 impl ReplRuvRange {
     pub fn is_empty(&self) -> bool {
         match self {
-            ReplRuvRange::V1 { ranges } => ranges.is_empty(),
+            ReplRuvRange::V1 { ranges, .. } => ranges.is_empty(),
         }
     }
 }
@@ -150,12 +150,36 @@ pub enum ReplIntentTokenV1 {
     Valid {
         token_id: String,
         max_ttl: Duration,
+        #[serde(default)]
+        ext_cred_portal_can_view: bool,
+        #[serde(default)]
+        primary_can_edit: bool,
+        #[serde(default)]
+        passkeys_can_edit: bool,
+        #[serde(default)]
+        attested_passkeys_can_edit: bool,
+        #[serde(default)]
+        unixcred_can_edit: bool,
+        #[serde(default)]
+        sshpubkey_can_edit: bool,
     },
     InProgress {
         token_id: String,
         max_ttl: Duration,
         session_id: Uuid,
         session_ttl: Duration,
+        #[serde(default)]
+        ext_cred_portal_can_view: bool,
+        #[serde(default)]
+        primary_can_edit: bool,
+        #[serde(default)]
+        passkeys_can_edit: bool,
+        #[serde(default)]
+        attested_passkeys_can_edit: bool,
+        #[serde(default)]
+        unixcred_can_edit: bool,
+        #[serde(default)]
+        sshpubkey_can_edit: bool,
     },
     Consumed {
         token_id: String,
@@ -193,15 +217,15 @@ impl PartialEq for ReplPasskeyV4V1 {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct ReplDeviceKeyV4V1 {
+pub struct ReplAttestedPasskeyV4V1 {
     pub uuid: Uuid,
     pub tag: String,
-    pub key: DeviceKeyV4,
+    pub key: AttestedPasskeyV4,
 }
 
-impl Eq for ReplDeviceKeyV4V1 {}
+impl Eq for ReplAttestedPasskeyV4V1 {}
 
-impl PartialEq for ReplDeviceKeyV4V1 {
+impl PartialEq for ReplAttestedPasskeyV4V1 {
     fn eq(&self, other: &Self) -> bool {
         self.uuid == other.uuid && self.key.cred_id() == other.key.cred_id()
     }
@@ -217,7 +241,8 @@ pub struct ReplOauthScopeMapV1 {
 pub struct ReplOauth2SessionV1 {
     pub refer: Uuid,
     pub parent: Uuid,
-    pub expiry: Option<String>,
+    pub state: ReplSessionStateV1,
+    // pub expiry: Option<String>,
     pub issued_at: String,
     pub rs_uuid: Uuid,
 }
@@ -250,11 +275,19 @@ pub enum ReplIdentityIdV1 {
 pub struct ReplSessionV1 {
     pub refer: Uuid,
     pub label: String,
-    pub expiry: Option<String>,
+    pub state: ReplSessionStateV1,
+    // pub expiry: Option<String>,
     pub issued_at: String,
     pub issued_by: ReplIdentityIdV1,
     pub cred_id: Uuid,
     pub scope: ReplSessionScopeV1,
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
+pub enum ReplSessionStateV1 {
+    ExpiresAt(String),
+    Never,
+    RevokedAt(ReplCidV1),
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
@@ -297,8 +330,8 @@ pub enum ReplAttrV1 {
     Passkey {
         set: Vec<ReplPasskeyV4V1>,
     },
-    DeviceKey {
-        set: Vec<ReplDeviceKeyV4V1>,
+    AttestedPasskey {
+        set: Vec<ReplAttestedPasskeyV4V1>,
     },
     DateTime {
         set: Vec<String>,
@@ -376,7 +409,19 @@ pub enum ReplAttrV1 {
         set: Vec<(String, ReplTotpV1)>,
     },
     AuditLogString {
-        set: Vec<(Cid, String)>,
+        map: Vec<(Cid, String)>,
+    },
+    EcKeyPrivate {
+        key: Vec<u8>,
+    },
+    Image {
+        set: Vec<DbValueImage>,
+    },
+    CredentialType {
+        set: Vec<u16>,
+    },
+    WebauthnAttestationCaList {
+        ca_list: AttestationCaList,
     },
 }
 
@@ -504,12 +549,12 @@ impl ReplEntryV1 {
 
                 let mut eattrs = Eattrs::default();
 
-                let class_ava = vs_iutf8!["object", "tombstone"];
+                let class_ava = vs_iutf8![EntryClass::Object.into(), EntryClass::Tombstone.into()];
                 let last_mod_ava = vs_cid![at.clone()];
 
-                eattrs.insert(AttrString::from("uuid"), vs_uuid![self.uuid]);
-                eattrs.insert(AttrString::from("class"), class_ava);
-                eattrs.insert(AttrString::from("last_modified_cid"), last_mod_ava);
+                eattrs.insert(Attribute::Uuid.into(), vs_uuid![self.uuid]);
+                eattrs.insert(Attribute::Class.into(), class_ava);
+                eattrs.insert(Attribute::LastModifiedCid.into(), last_mod_ava);
 
                 let ecstate = EntryChangeState {
                     st: State::Tombstone { at },
@@ -665,6 +710,7 @@ pub enum ReplRefreshContext {
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum ReplIncrementalContext {
+    DomainMismatch,
     NoChangesAvailable,
     RefreshRequired,
     UnwillingToSupply,

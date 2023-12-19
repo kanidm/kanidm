@@ -1,19 +1,25 @@
 IMAGE_BASE ?= kanidm
 IMAGE_VERSION ?= devel
-IMAGE_EXT_VERSION ?= 1.1.0-beta.13-dev
+IMAGE_EXT_VERSION ?= 1.1.0-rc.15-dev
 CONTAINER_TOOL_ARGS ?=
 IMAGE_ARCH ?= "linux/amd64,linux/arm64"
 CONTAINER_BUILD_ARGS ?=
 MARKDOWN_FORMAT_ARGS ?= --options-line-width=100
 CONTAINER_TOOL ?= docker
 BUILDKIT_PROGRESS ?= plain
-
+TESTS ?=
 BOOK_VERSION ?= master
+GIT_COMMIT := $(shell git rev-parse HEAD)
 
 .DEFAULT: help
 .PHONY: help
 help:
 	@grep -E -h '\s##\s' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
+
+.PHONY: run
+run: ## Run the test/dev server
+run:
+	cd server/daemon && ./run_insecure_dev_server.sh
 
 .PHONY: buildx/kanidmd
 buildx/kanidmd: ## Build multiarch kanidm server images and push to docker hub
@@ -27,6 +33,8 @@ buildx/kanidmd:
 		--progress $(BUILDKIT_PROGRESS) \
 		--build-arg "KANIDM_BUILD_PROFILE=container_generic" \
 		--build-arg "KANIDM_FEATURES=" \
+		--label "com.kanidm.git-commit=$(GIT_COMMIT)" \
+		--label "com.kanidm.version=$(IMAGE_EXT_VERSION)" \
 		$(CONTAINER_BUILD_ARGS) .
 
 .PHONY: buildx/kanidm_tools
@@ -40,6 +48,8 @@ buildx/kanidm_tools:
 		--progress $(BUILDKIT_PROGRESS) \
 		--build-arg "KANIDM_BUILD_PROFILE=container_generic" \
 		--build-arg "KANIDM_FEATURES=" \
+		--label "com.kanidm.git-commit=$(GIT_COMMIT)" \
+		--label "com.kanidm.version=$(IMAGE_EXT_VERSION)" \
 		$(CONTAINER_BUILD_ARGS) .
 
 .PHONY: buildx/radiusd
@@ -49,6 +59,8 @@ buildx/radiusd:
 		--pull --push --platform $(IMAGE_ARCH) \
 		-f rlm_python/Dockerfile \
 		--progress $(BUILDKIT_PROGRESS) \
+		--label "com.kanidm.git-commit=$(GIT_COMMIT)" \
+		--label "com.kanidm.version=$(IMAGE_EXT_VERSION)" \
 		-t $(IMAGE_BASE)/radius:$(IMAGE_VERSION) \
 		-t $(IMAGE_BASE)/radius:$(IMAGE_EXT_VERSION) .
 
@@ -60,17 +72,19 @@ build/kanidmd:	## Build the kanidmd docker image locally
 build/kanidmd:
 	@$(CONTAINER_TOOL) build $(CONTAINER_TOOL_ARGS) -f server/Dockerfile \
 		-t $(IMAGE_BASE)/server:$(IMAGE_VERSION) \
-		--platform $(IMAGE_ARCH) \
 		--build-arg "KANIDM_BUILD_PROFILE=container_generic" \
 		--build-arg "KANIDM_FEATURES=" \
+		--label "com.kanidm.git-commit=$(GIT_COMMIT)" \
+		--label "com.kanidm.version=$(IMAGE_EXT_VERSION)" \
 		$(CONTAINER_BUILD_ARGS) .
 
 .PHONY: build/radiusd
 build/radiusd:	## Build the radiusd docker image locally
 build/radiusd:
 	@$(CONTAINER_TOOL) build $(CONTAINER_TOOL_ARGS) \
-		--platform $(IMAGE_ARCH) \
 		-f rlm_python/Dockerfile \
+		--label "com.kanidm.git-commit=$(GIT_COMMIT)" \
+		--label "com.kanidm.version=$(IMAGE_EXT_VERSION)" \
 		-t $(IMAGE_BASE)/radius:$(IMAGE_VERSION) .
 
 .PHONY: build
@@ -83,6 +97,8 @@ test/kanidmd:
 		$(CONTAINER_TOOL_ARGS) -f server/Dockerfile \
 		--target builder \
 		-t $(IMAGE_BASE)/server:$(IMAGE_VERSION)-builder \
+		--label "com.kanidm.git-commit=$(GIT_COMMIT)" \
+		--label "com.kanidm.version=$(IMAGE_EXT_VERSION)" \
 		$(CONTAINER_BUILD_ARGS) .
 	@$(CONTAINER_TOOL) run --rm $(IMAGE_BASE)/server:$(IMAGE_VERSION)-builder cargo test
 
@@ -101,6 +117,7 @@ precommit: ## all the usual test things
 precommit: test codespell test/pykanidm doc/format
 
 .PHONY: vendor
+vendor: ## Vendor required crates
 vendor:
 	cargo vendor > cargo_vendor_config
 
@@ -117,12 +134,20 @@ install-tools:
 codespell: ## spell-check things.
 codespell:
 	codespell -c \
-	-L 'crate,unexpect,Pres,pres,ACI,aci,te,ue,unx,aNULL' \
+	-D .codespell_dictionary \
+	--ignore-words .codespell_ignore \
 	--skip='./target,./pykanidm/.venv,./pykanidm/.mypy_cache,./.mypy_cache,./pykanidm/poetry.lock' \
+	--skip='./book/*.js' \
 	--skip='./book/book/*' \
+	--skip='./book/src/images/*' \
 	--skip='./docs/*,./.git' \
+	--skip='*.svg' \
+	--skip='*.br' \
 	--skip='./rlm_python/mods-available/eap' \
-	--skip='./server/web_ui/static/external,./server/web_ui/pkg/external' \
+	--skip='./server/web_ui/static/external' \
+	--skip='./server/web_ui/pkg/external' \
+	--skip='./server/web_ui/shared/static/external' \
+	--skip='./server/web_ui/admin/static/external,./server/web_ui/admin/pkg/external' \
 	--skip='./server/lib/src/constants/system_config.rs,./pykanidm/site,./server/lib/src/constants/*.json'
 
 .PHONY: test/pykanidm/pytest
@@ -157,25 +182,29 @@ doc:
 
 .PHONY: doc/format
 doc/format: ## Format docs and the Kanidm book
-	find . -type f  -not -path './target/*' -not -path '*/.venv/*' \
+	find . -type f  \
+		-not -path './target/*' \
+		-not -path './docs/*' \
+		-not -path '*/.venv/*' -not -path './vendor/*'\
 		-name \*.md \
 		-exec deno fmt --check $(MARKDOWN_FORMAT_ARGS) "{}" +
 
 .PHONY: doc/format/fix
 doc/format/fix: ## Fix docs and the Kanidm book
-	find . -type f  -not -path './target/*' -not -path '*/.venv/*' \
+	find . -type f  -not -path './target/*' -not -path '*/.venv/*' -not -path './vendor/*'\
 		-name \*.md \
 		-exec deno fmt  $(MARKDOWN_FORMAT_ARGS) "{}" +
 
 .PHONY: book
 book: ## Build the Kanidm book
 book:
-	cargo doc --no-deps
+	echo "Building rust docs"
+	cargo doc --no-deps --quiet
 	mdbook build book
 	rm -rf ./docs/
 	mv ./book/book/ ./docs/
-	mkdir -p ./docs/rustdoc/${BOOK_VERSION}
-	mv ./target/doc/* ./docs/rustdoc/${BOOK_VERSION}/
+	mkdir -p $(PWD)/docs/rustdoc/${BOOK_VERSION}/
+	rsync -a --delete $(PWD)/target/doc/ $(PWD)/docs/rustdoc/${BOOK_VERSION}/
 
 .PHONY: book_versioned
 book_versioned:
@@ -254,8 +283,32 @@ cert/clean:
 
 .PHONY: webui
 webui: ## Build the WASM web frontend
-	cd server/web_ui && ./build_wasm_release.sh
+	cd server/web_ui && ./build_wasm.sh
 
 .PHONY: webui/test
 webui/test: ## Run wasm-pack test
 	cd server/web_ui && wasm-pack test --headless --chrome
+
+.PHONY: rust/coverage
+coverage/test: ## Run coverage tests
+coverage/test:
+	LLVM_PROFILE_FILE="$(PWD)/target/profile/coverage-%p-%m.profraw" RUSTFLAGS="-C instrument-coverage" cargo test $(TESTS)
+
+.PHONY: coverage/grcov
+coverage/grcov: ## Run grcov
+coverage/grcov:
+	rm -rf ./target/coverage/html
+	grcov . --binary-path ./target/debug/deps/ \
+		-s . \
+		-t html \
+		--branch \
+		--ignore-not-existing \
+		--ignore '../*' \
+		--ignore "/*" \
+		--ignore "target/*" \
+		-o target/coverage/html
+
+.PHONY: coverage
+coverage: ## Run all the coverage tests
+coverage: coverage/test coverage/grcov
+	echo "Coverage report is in ./target/coverage/html/index.html"

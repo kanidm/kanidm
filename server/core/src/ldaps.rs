@@ -1,5 +1,5 @@
-use std::marker::Unpin;
 use std::net;
+use std::pin::Pin;
 use std::str::FromStr;
 
 use crate::actors::v1_read::QueryServerReadV1;
@@ -9,9 +9,8 @@ use kanidmd_lib::idm::ldap::{LdapBoundToken, LdapResponseState};
 use kanidmd_lib::prelude::*;
 use ldap3_proto::proto::LdapMsg;
 use ldap3_proto::LdapCodec;
-use openssl::ssl::{Ssl, SslAcceptor, SslAcceptorBuilder};
-use tokio::io::{AsyncRead, AsyncWrite};
-use tokio::net::TcpListener;
+use openssl::ssl::{Ssl, SslAcceptor};
+use tokio::net::{TcpListener, TcpStream};
 use tokio_openssl::SslStream;
 use tokio_util::codec::{FramedRead, FramedWrite};
 
@@ -47,12 +46,31 @@ async fn client_process_msg(
     qe_r_ref.handle_ldaprequest(eventid, protomsg, uat).await
 }
 
-async fn client_process<W: AsyncWrite + Unpin, R: AsyncRead + Unpin>(
-    mut r: FramedRead<R, LdapCodec>,
-    mut w: FramedWrite<W, LdapCodec>,
+async fn client_process(
+    tcpstream: TcpStream,
+    tls_acceptor: SslAcceptor,
     client_address: net::SocketAddr,
     qe_r_ref: &'static QueryServerReadV1,
 ) {
+    // Start the event
+    // From the parameters we need to create an SslContext.
+    let mut tlsstream = match Ssl::new(tls_acceptor.context())
+        .and_then(|tls_obj| SslStream::new(tls_obj, tcpstream))
+    {
+        Ok(ta) => ta,
+        Err(e) => {
+            error!("LDAP TLS setup error, continuing -> {:?}", e);
+            return;
+        }
+    };
+    if let Err(e) = SslStream::accept(Pin::new(&mut tlsstream)).await {
+        error!("LDAP TLS accept error, continuing -> {:?}", e);
+        return;
+    };
+    let (r, w) = tokio::io::split(tlsstream);
+    let mut r = FramedRead::new(r, LdapCodec::default());
+    let mut w = FramedWrite::new(w, LdapCodec::default());
+
     // This is a connected client session. we need to associate some state to the session
     let mut session = LdapSession::new();
     // Now that we have the session we begin an event loop to process input OR we return.
@@ -108,7 +126,7 @@ async fn client_process<W: AsyncWrite + Unpin, R: AsyncRead + Unpin>(
 /// TLS LDAP Listener, hands off to [client_process]
 async fn tls_acceptor(
     listener: TcpListener,
-    tls_parms: SslAcceptor,
+    tls_acceptor: SslAcceptor,
     qe_r_ref: &'static QueryServerReadV1,
     mut rx: broadcast::Receiver<CoreAction>,
 ) {
@@ -122,25 +140,8 @@ async fn tls_acceptor(
             accept_result = listener.accept() => {
                 match accept_result {
                     Ok((tcpstream, client_socket_addr)) => {
-                        // Start the event
-                        // From the parameters we need to create an SslContext.
-                        let mut tlsstream = match Ssl::new(tls_parms.context())
-                            .and_then(|tls_obj| SslStream::new(tls_obj, tcpstream))
-                        {
-                            Ok(ta) => ta,
-                            Err(e) => {
-                                error!("LDAP TLS setup error, continuing -> {:?}", e);
-                                continue;
-                            }
-                        };
-                        if let Err(e) = SslStream::accept(Pin::new(&mut tlsstream)).await {
-                            error!("LDAP TLS accept error, continuing -> {:?}", e);
-                            continue;
-                        };
-                        let (r, w) = tokio::io::split(tlsstream);
-                        let r = FramedRead::new(r, LdapCodec);
-                        let w = FramedWrite::new(w, LdapCodec);
-                        tokio::spawn(client_process(r, w, client_socket_addr, qe_r_ref));
+                        let clone_tls_acceptor = tls_acceptor.clone();
+                        tokio::spawn(client_process(tcpstream, clone_tls_acceptor, client_socket_addr, qe_r_ref));
                     }
                     Err(e) => {
                         error!("LDAP acceptor error, continuing -> {:?}", e);
@@ -149,12 +150,12 @@ async fn tls_acceptor(
             }
         }
     }
-    info!("Stopped LdapAcceptorActor");
+    info!("Stopped {}", super::TaskName::LdapActor);
 }
 
 pub(crate) async fn create_ldap_server(
     address: &str,
-    opt_tls_params: Option<SslAcceptorBuilder>,
+    opt_ssl_acceptor: Option<SslAcceptor>,
     qe_r_ref: &'static QueryServerReadV1,
     rx: broadcast::Receiver<CoreAction>,
 ) -> Result<tokio::task::JoinHandle<()>, ()> {
@@ -175,11 +176,11 @@ pub(crate) async fn create_ldap_server(
         );
     })?;
 
-    let ldap_acceptor_handle = match opt_tls_params {
-        Some(tls_params) => {
+    let ldap_acceptor_handle = match opt_ssl_acceptor {
+        Some(ssl_acceptor) => {
             info!("Starting LDAPS interface ldaps://{} ...", address);
-            let tls_parms = tls_params.build();
-            tokio::spawn(tls_acceptor(listener, tls_parms, qe_r_ref, rx))
+
+            tokio::spawn(tls_acceptor(listener, ssl_acceptor, qe_r_ref, rx))
         }
         None => {
             error!("The server won't run without TLS!");

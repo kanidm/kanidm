@@ -4,6 +4,7 @@ use std::hash::{Hash, Hasher};
 
 use smartstring::alias::String as AttrString;
 
+use crate::prelude::entries::Attribute;
 use crate::value::IndexType;
 
 pub type IdxSlope = u8;
@@ -17,7 +18,7 @@ pub struct IdxKey {
 }
 
 impl IdxKey {
-    pub fn new(attr: &str, itype: IndexType) -> Self {
+    pub fn new(attr: Attribute, itype: IndexType) -> Self {
         IdxKey {
             attr: attr.into(),
             itype,
@@ -151,7 +152,7 @@ impl<'a> Hash for (dyn IdlCacheKeyToRef + 'a) {
 
 impl<'a> PartialOrd for (dyn IdlCacheKeyToRef + 'a) {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        self.keyref().partial_cmp(&other.keyref())
+        Some(self.cmp(&other.keyref()))
     }
 }
 

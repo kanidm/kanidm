@@ -18,6 +18,7 @@ chrono = { workspace = true }
 cron = { workspace = true }
 kanidm_client = { workspace = true }
 kanidm_proto = { workspace = true }
+kanidm_lib_file_permissions = { workspace = true }
 tokio = { workspace = true, features = ["rt", "macros", "net"] }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true, features = ["env-filter", "fmt"] }
@@ -30,11 +31,11 @@ toml = { workspace = true }
 url = { workspace = true, features = ["serde"] }
 uuid = { workspace = true, features = ["serde"] }
 
-# For file metadata, should this me moved out?
+# Currently only for attribute - should attribute be broken out?
 kanidmd_lib = { workspace = true }
 
 [target.'cfg(target_family = "unix")'.dependencies]
-users = { workspace = true }
+kanidm_utils_users = { workspace = true }
 
 [build-dependencies]
 clap = { workspace = true, features = ["derive"] }

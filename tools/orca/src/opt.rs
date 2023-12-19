@@ -11,10 +11,10 @@ struct CommonOpt {
 struct PreProcOpt {
     #[clap(flatten)]
     pub copt: CommonOpt,
-    #[clap(parse(from_os_str), short, long = "input")]
+    #[clap(value_parser, short, long = "input")]
     /// Path to unprocessed data in json format.
     pub input_path: PathBuf,
-    #[clap(parse(from_os_str), short, long = "output")]
+    #[clap(value_parser, short, long = "output")]
     /// Path to write the processed output.
     pub output_path: PathBuf,
 }
@@ -23,7 +23,7 @@ struct PreProcOpt {
 struct GenerateOpt {
     #[clap(flatten)]
     pub copt: CommonOpt,
-    #[clap(parse(from_os_str), short, long = "output")]
+    #[clap(value_parser, short, long = "output")]
     /// Path to write the generated output.
     pub output_path: PathBuf,
 }
@@ -34,7 +34,7 @@ struct SetupOpt {
     pub copt: CommonOpt,
     #[clap(name = "target")]
     pub target: TargetOpt,
-    #[clap(parse(from_os_str), short, long = "profile")]
+    #[clap(value_parser, short, long = "profile")]
     /// Path to the test profile.
     pub profile_path: PathBuf,
 }
@@ -45,15 +45,53 @@ struct RunOpt {
     pub copt: CommonOpt,
     #[clap(name = "target")]
     pub target: TargetOpt,
-    #[clap(name = "test-type")]
+    #[clap(
+        name = "test-type",
+        help = "Which type of test to run against this system: currently supports 'search-basic'"
+    )]
     /// Which type of test to run against this system
     pub test_type: TestTypeOpt,
-    #[clap(parse(from_os_str), short, long = "profile")]
+    #[clap(value_parser, short, long = "profile")]
     /// Path to the test profile.
     pub profile_path: PathBuf,
 }
 
-#[derive(Debug, Subcommand)]
+#[derive(Debug, Parser)]
+/// Configuration options
+struct ConfigOpt {
+    #[clap(flatten)]
+    pub copt: CommonOpt,
+    #[clap(value_parser, short, long)]
+    /// Update the admin password
+    pub admin_password: Option<String>,
+    #[clap(value_parser, short, long)]
+    /// Update the Kanidm URI
+    pub kanidm_uri: Option<String>,
+    #[clap(value_parser, short, long)]
+    /// Update the LDAP URI
+    pub ldap_uri: Option<String>,
+    #[clap(value_parser, long)]
+    /// Update the LDAP base DN
+    pub ldap_base_dn: Option<String>,
+
+    #[clap(value_parser, short = 'D', long)]
+    /// Set the configuration name
+    pub name: Option<String>,
+
+    #[clap(value_parser, long)]
+    /// The data file path to update (or create)
+    pub data_file: Option<String>,
+
+    #[clap(value_parser, short, long)]
+    /// The place we'll drop the results
+    pub results: Option<PathBuf>,
+
+    #[clap(value_parser, short, long)]
+    /// The configuration file path to update (or create)
+    pub profile: PathBuf,
+}
+
+#[derive(Debug, Subcommand, Clone)]
 /// The target to run against
 pub(crate) enum TargetOpt {
     #[clap(name = "ds")]
@@ -84,7 +122,7 @@ impl FromStr for TargetOpt {
     }
 }
 
-#[derive(Debug, Subcommand)]
+#[derive(Debug, Subcommand, Clone)]
 pub(crate) enum TestTypeOpt {
     #[clap(name = "search-basic")]
     /// Perform a basic search-only test
@@ -150,5 +188,8 @@ enum OrcaOpt {
     Run(RunOpt),
     #[clap(name = "version")]
     /// Print version info and exit
-    Version(CommonOpt)
+    Version(CommonOpt),
+    #[clap(name = "configure")]
+    /// Update a config file
+    Configure(ConfigOpt),
 }

@@ -1,35 +1,33 @@
 #![deny(warnings)]
 use std::future::Future;
-use std::net::TcpStream;
 use std::pin::Pin;
-use std::sync::atomic::{AtomicU16, Ordering};
+use std::sync::atomic::Ordering;
 use std::time::Duration;
 
 use kanidm_client::{KanidmClient, KanidmClientBuilder};
-use kanidm_unix_common::cache::{CacheLayer, Id};
+use kanidm_proto::constants::ATTR_ACCOUNT_EXPIRE;
 use kanidm_unix_common::constants::{
     DEFAULT_GID_ATTR_MAP, DEFAULT_HOME_ALIAS, DEFAULT_HOME_ATTR, DEFAULT_HOME_PREFIX,
     DEFAULT_SHELL, DEFAULT_UID_ATTR_MAP,
 };
-use kanidm_unix_common::unix_config::TpmPolicy;
+use kanidm_unix_common::db::{Cache, CacheTxn, Db};
+use kanidm_unix_common::idprovider::interface::Id;
+use kanidm_unix_common::idprovider::kanidm::KanidmProvider;
+use kanidm_unix_common::resolver::Resolver;
 use kanidmd_core::config::{Configuration, IntegrationTestConfig, ServerRole};
 use kanidmd_core::create_server_core;
+use kanidmd_testkit::{is_free_port, PORT_ALLOC};
 use tokio::task;
+use tracing::log::{debug, trace};
 
-static PORT_ALLOC: AtomicU16 = AtomicU16::new(28080);
+use kanidm_hsm_crypto::{soft::SoftTpm, AuthValue, BoxedDynTpm, Tpm};
+
 const ADMIN_TEST_USER: &str = "admin";
 const ADMIN_TEST_PASSWORD: &str = "integration test admin password";
 const TESTACCOUNT1_PASSWORD_A: &str = "password a for account1 test";
 const TESTACCOUNT1_PASSWORD_B: &str = "password b for account1 test";
 const TESTACCOUNT1_PASSWORD_INC: &str = "never going to work";
 const ACCOUNT_EXPIRE: &str = "1970-01-01T00:00:00+00:00";
-
-fn is_free_port(port: u16) -> bool {
-    match TcpStream::connect(("0.0.0.0", port)) {
-        Ok(_) => false,
-        Err(_) => true,
-    }
-}
 
 type Fixture = Box<dyn FnOnce(KanidmClient) -> Pin<Box<dyn Future<Output = ()>>>>;
 
@@ -40,7 +38,7 @@ where
     Box::new(move |n| Box::pin(f(n)))
 }
 
-async fn setup_test(fix_fn: Fixture) -> (CacheLayer, KanidmClient) {
+async fn setup_test(fix_fn: Fixture) -> (Resolver<KanidmProvider>, KanidmClient) {
     sketching::test_init();
 
     let mut counter = 0;
@@ -64,7 +62,6 @@ async fn setup_test(fix_fn: Fixture) -> (CacheLayer, KanidmClient) {
     // Setup the config ...
     let mut config = Configuration::new();
     config.address = format!("127.0.0.1:{}", port);
-    config.secure_cookies = false;
     config.integration_test_config = Some(int_config);
     config.role = ServerRole::WriteReplicaNoUI;
     config.threads = 1;
@@ -72,7 +69,7 @@ async fn setup_test(fix_fn: Fixture) -> (CacheLayer, KanidmClient) {
     create_server_core(config, false)
         .await
         .expect("failed to start server core");
-    // We have to yield now to guarantee that the tide elements are setup.
+    // We have to yield now to guarantee that the elements are setup.
     task::yield_now().await;
 
     // Setup the client, and the address we selected.
@@ -99,10 +96,34 @@ async fn setup_test(fix_fn: Fixture) -> (CacheLayer, KanidmClient) {
         .build()
         .expect("Failed to build client");
 
-    let cachelayer = CacheLayer::new(
+    let idprovider = KanidmProvider::new(rsclient);
+
+    let db = Db::new(
         "", // The sqlite db path, this is in memory.
+    )
+    .expect("Failed to setup DB");
+
+    let mut dbtxn = db.write().await;
+    dbtxn
+        .migrate()
+        .and_then(|_| dbtxn.commit())
+        .expect("Unable to migrate cache db");
+
+    let mut hsm = BoxedDynTpm::new(SoftTpm::new());
+
+    let auth_value = AuthValue::ephemeral().unwrap();
+
+    let loadable_machine_key = hsm.machine_key_create(&auth_value).unwrap();
+    let machine_key = hsm
+        .machine_key_load(&auth_value, &loadable_machine_key)
+        .unwrap();
+
+    let cachelayer = Resolver::new(
+        db,
+        idprovider,
+        hsm,
+        machine_key,
         300,
-        rsclient,
         vec!["allowed_group".to_string()],
         DEFAULT_SHELL.to_string(),
         DEFAULT_HOME_PREFIX.to_string(),
@@ -111,7 +132,6 @@ async fn setup_test(fix_fn: Fixture) -> (CacheLayer, KanidmClient) {
         DEFAULT_UID_ATTR_MAP,
         DEFAULT_GID_ATTR_MAP,
         vec!["masked_group".to_string()],
-        &TpmPolicy::default(),
     )
     .await
     .expect("Failed to build cache layer.");
@@ -122,17 +142,22 @@ async fn setup_test(fix_fn: Fixture) -> (CacheLayer, KanidmClient) {
     // let the tables hit the floor
 }
 
+/// This is the test fixture. It sets up the following:
+/// - adds admin to idm_admins
+/// - creates a test account (testaccount1)
+/// - extends the test account with posix attrs
+/// - adds a ssh public key to the test account
+/// - sets a posix password for the test account
+/// - creates a test group (testgroup1) and adds the test account to the test group
+/// - extends testgroup1 with posix attrs
+/// - creates two more groups with unix perms (allowed_group, masked_group)
 async fn test_fixture(rsclient: KanidmClient) {
     let res = rsclient
         .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
         .await;
+    debug!("auth_simple_password res: {:?}", res);
+    trace!("{:?}", &res);
     assert!(res.is_ok());
-    // Not recommended in production!
-    rsclient
-        .idm_group_add_members("idm_admins", &["admin"])
-        .await
-        .unwrap();
-
     // Create a new account
     rsclient
         .idm_person_account_create("testaccount1", "Posix Demo Account")
@@ -157,7 +182,7 @@ async fn test_fixture(rsclient: KanidmClient) {
         .unwrap();
 
     // Setup a group
-    rsclient.idm_group_create("testgroup1").await.unwrap();
+    rsclient.idm_group_create("testgroup1", None).await.unwrap();
     rsclient
         .idm_group_add_members("testgroup1", &["testaccount1"])
         .await
@@ -168,14 +193,20 @@ async fn test_fixture(rsclient: KanidmClient) {
         .unwrap();
 
     // Setup the allowed group
-    rsclient.idm_group_create("allowed_group").await.unwrap();
+    rsclient
+        .idm_group_create("allowed_group", None)
+        .await
+        .unwrap();
     rsclient
         .idm_group_unix_extend("allowed_group", Some(20002))
         .await
         .unwrap();
 
     // Setup a group that is masked by nxset, but allowed in overrides
-    rsclient.idm_group_create("masked_group").await.unwrap();
+    rsclient
+        .idm_group_create("masked_group", None)
+        .await
+        .unwrap();
     rsclient
         .idm_group_unix_extend("masked_group", Some(20003))
         .await
@@ -573,7 +604,7 @@ async fn test_cache_account_expiry() {
         .await
         .expect("failed to auth as admin");
     adminclient
-        .idm_person_account_set_attr("testaccount1", "account_expire", &[ACCOUNT_EXPIRE])
+        .idm_person_account_set_attr("testaccount1", ATTR_ACCOUNT_EXPIRE, &[ACCOUNT_EXPIRE])
         .await
         .unwrap();
     // auth will fail
@@ -664,10 +695,13 @@ async fn test_cache_nxcache() {
     assert!(gt.is_none());
 
     // Should all now be nxed
-    assert!(cachelayer
-        .check_nxcache(&Id::Name("oracle".to_string()))
-        .await
-        .is_some());
+    assert!(
+        cachelayer
+            .check_nxcache(&Id::Name("oracle".to_string()))
+            .await
+            .is_some(),
+        "'oracle' Wasn't in the nxcache!"
+    );
     assert!(cachelayer.check_nxcache(&Id::Gid(2000)).await.is_some());
     assert!(cachelayer
         .check_nxcache(&Id::Name("oracle_group".to_string()))
@@ -840,4 +874,48 @@ async fn test_cache_nxset_allow_overrides() {
         .await
         .expect("Failed to get from cache");
     assert!(gt.is_some());
+}
+
+/// Issue 1830. If cache items expire where we have an account and a group, and we
+/// refresh the group *first*, the group appears to drop it's members. This is because
+/// sqlite "INSERT OR REPLACE INTO" triggers a delete cascade of the foreign key elements
+/// which then makes the group appear empty.
+///
+/// We can reproduce this by retrieving an account + group, wait for expiry, then retrieve
+/// only the group.
+#[tokio::test]
+async fn test_cache_group_fk_deferred() {
+    let (cachelayer, _adminclient) = setup_test(fixture(test_fixture)).await;
+
+    cachelayer.attempt_online().await;
+    assert!(cachelayer.test_connection().await);
+
+    // Get the account then the group.
+    let ut = cachelayer
+        .get_nssaccount_name("testaccount1")
+        .await
+        .expect("Failed to get from cache");
+    assert!(ut.is_some());
+
+    let gt = cachelayer
+        .get_nssgroup_name("testgroup1")
+        .await
+        .expect("Failed to get from cache");
+    assert!(gt.is_some());
+    assert!(gt.unwrap().members.len() == 1);
+
+    // Invalidate all items.
+    cachelayer.mark_offline().await;
+    assert!(cachelayer.invalidate().await.is_ok());
+    cachelayer.attempt_online().await;
+    assert!(cachelayer.test_connection().await);
+
+    // Get the *group*. It *should* still have it's members.
+    let gt = cachelayer
+        .get_nssgroup_name("testgroup1")
+        .await
+        .expect("Failed to get from cache");
+    assert!(gt.is_some());
+    // And check we have members in the group, since we came from a userlook up
+    assert!(gt.unwrap().members.len() == 1);
 }

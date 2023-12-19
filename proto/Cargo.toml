@@ -11,9 +11,12 @@ license = { workspace = true }
 homepage = { workspace = true }
 repository = { workspace = true }
 
+[lib]
+test = true
+doctest = true
+
 [features]
 wasm = ["webauthn-rs-proto/wasm"]
-
 
 [dependencies]
 base32 = { workspace = true }
@@ -22,12 +25,11 @@ num_enum = { workspace = true }
 scim_proto = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
+serde_with = { workspace = true }
 time = { workspace = true, features = ["serde", "std"] }
 tracing = { workspace = true }
 url = { workspace = true, features = ["serde"] }
 urlencoding = { workspace = true }
+utoipa = { workspace = true }
 uuid = { workspace = true, features = ["serde"] }
 webauthn-rs-proto = { workspace = true }
-
-[target.'cfg(not(target_family = "wasm"))'.dependencies]
-last-git-commit = { workspace = true }

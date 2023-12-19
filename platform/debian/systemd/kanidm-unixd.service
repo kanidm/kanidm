@@ -4,15 +4,41 @@
 [Unit]
 Description=Kanidm Local Client Resolver
 After=chronyd.service ntpd.service network-online.target
+Before=systemd-user-sessions.service nss-user-lookup.target
+Wants=nss-user-lookup.target
 
 [Service]
 DynamicUser=yes
-Type=simple
-ExecStart=/usr/sbin/kanidm_unixd
-
+SupplementaryGroups=tss
+UMask=0027
 CacheDirectory=kanidm-unixd
 RuntimeDirectory=kanidm-unixd
-UMask=0027
+StateDirectory=kanidm-unixd
+
+
+Type=simple
+ExecStart=/usr/sbin/kanidm_unixd
+# auth going down is bad, but infinite speedlooping is worse
+Restart=always
+RestartSec=30
+
+# Implied by dynamic user.
+# ProtectHome=
+# ProtectSystem=strict
+# ReadWritePaths=/var/run/kanidm-unixd /var/cache/kanidm-unixd
+
+# SystemCallFilter=@aio @basic-io @chown @file-system @io-event @network-io @sync
+NoNewPrivileges=true
+PrivateTmp=true
+# We have to disable this to allow tpmrm0 access for tpm binding.
+PrivateDevices=false
+ProtectHostname=true
+ProtectClock=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+MemoryDenyWriteExecute=true
 
 [Install]
 WantedBy=multi-user.target

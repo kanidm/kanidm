@@ -2,11 +2,14 @@ use std::fmt;
 use std::time::Duration;
 
 use hashbrown::HashSet;
+use kanidm_proto::internal::ImageType;
 use serde::{Deserialize, Serialize};
+use serde_with::skip_serializing_none;
 use url::Url;
 use uuid::Uuid;
 use webauthn_rs::prelude::{
-    DeviceKey as DeviceKeyV4, Passkey as PasskeyV4, SecurityKey as SecurityKeyV4,
+    AttestationCaList, AttestedPasskey as AttestedPasskeyV4, Passkey as PasskeyV4,
+    SecurityKey as SecurityKeyV4,
 };
 use webauthn_rs_core::proto::{COSEKey, UserVerificationPolicy};
 
@@ -14,23 +17,73 @@ use webauthn_rs_core::proto::{COSEKey, UserVerificationPolicy};
 use crate::repl::cid::Cid;
 pub use kanidm_lib_crypto::DbPasswordV1;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Ord, PartialOrd, PartialEq, Eq)]
 pub struct DbCidV1 {
-    #[serde(rename = "s")]
-    pub server_id: Uuid,
     #[serde(rename = "t")]
     pub timestamp: Duration,
+    #[serde(rename = "s")]
+    pub server_id: Uuid,
+}
+
+impl From<Cid> for DbCidV1 {
+    fn from(Cid { s_uuid, ts }: Cid) -> Self {
+        DbCidV1 {
+            timestamp: ts,
+            server_id: s_uuid,
+        }
+    }
+}
+
+impl From<&Cid> for DbCidV1 {
+    fn from(&Cid { s_uuid, ts }: &Cid) -> Self {
+        DbCidV1 {
+            timestamp: ts,
+            server_id: s_uuid,
+        }
+    }
+}
+
+impl fmt::Display for DbCidV1 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:032}-{}", self.timestamp.as_nanos(), self.server_id)
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub enum DbValueIntentTokenStateV1 {
     #[serde(rename = "v")]
-    Valid { max_ttl: Duration },
+    Valid {
+        max_ttl: Duration,
+        #[serde(default)]
+        ext_cred_portal_can_view: bool,
+        #[serde(default)]
+        primary_can_edit: bool,
+        #[serde(default)]
+        passkeys_can_edit: bool,
+        #[serde(default)]
+        attested_passkeys_can_edit: bool,
+        #[serde(default)]
+        unixcred_can_edit: bool,
+        #[serde(default)]
+        sshpubkey_can_edit: bool,
+    },
     #[serde(rename = "p")]
     InProgress {
         max_ttl: Duration,
         session_id: Uuid,
         session_ttl: Duration,
+        #[serde(default)]
+        ext_cred_portal_can_view: bool,
+        #[serde(default)]
+        primary_can_edit: bool,
+        #[serde(default)]
+        passkeys_can_edit: bool,
+        #[serde(default)]
+        attested_passkeys_can_edit: bool,
+        #[serde(default)]
+        unixcred_can_edit: bool,
+        #[serde(default)]
+        sshpubkey_can_edit: bool,
     },
     #[serde(rename = "c")]
     Consumed { max_ttl: Duration },
@@ -100,54 +153,39 @@ fn is_false(b: &bool) -> bool {
     !b
 }
 
+#[skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(tag = "type_")]
 pub enum DbCred {
     // These are the old v1 versions.
     Pw {
-        #[serde(skip_serializing_if = "Option::is_none")]
         password: Option<DbPasswordV1>,
-        #[serde(skip_serializing_if = "Option::is_none")]
         webauthn: Option<Vec<DbWebauthnV1>>,
-        #[serde(skip_serializing_if = "Option::is_none")]
         totp: Option<DbTotpV1>,
-        #[serde(skip_serializing_if = "Option::is_none")]
         backup_code: Option<DbBackupCodeV1>,
         claims: Vec<String>,
         uuid: Uuid,
     },
     GPw {
-        #[serde(skip_serializing_if = "Option::is_none")]
         password: Option<DbPasswordV1>,
-        #[serde(skip_serializing_if = "Option::is_none")]
         webauthn: Option<Vec<DbWebauthnV1>>,
-        #[serde(skip_serializing_if = "Option::is_none")]
         totp: Option<DbTotpV1>,
-        #[serde(skip_serializing_if = "Option::is_none")]
         backup_code: Option<DbBackupCodeV1>,
         claims: Vec<String>,
         uuid: Uuid,
     },
     PwMfa {
-        #[serde(skip_serializing_if = "Option::is_none")]
         password: Option<DbPasswordV1>,
-        #[serde(skip_serializing_if = "Option::is_none")]
         webauthn: Option<Vec<DbWebauthnV1>>,
-        #[serde(skip_serializing_if = "Option::is_none")]
         totp: Option<DbTotpV1>,
-        #[serde(skip_serializing_if = "Option::is_none")]
         backup_code: Option<DbBackupCodeV1>,
         claims: Vec<String>,
         uuid: Uuid,
     },
     Wn {
-        #[serde(skip_serializing_if = "Option::is_none")]
         password: Option<DbPasswordV1>,
-        #[serde(skip_serializing_if = "Option::is_none")]
         webauthn: Option<Vec<DbWebauthnV1>>,
-        #[serde(skip_serializing_if = "Option::is_none")]
         totp: Option<DbTotpV1>,
-        #[serde(skip_serializing_if = "Option::is_none")]
         backup_code: Option<DbBackupCodeV1>,
         claims: Vec<String>,
         uuid: Uuid,
@@ -314,8 +352,12 @@ pub enum DbValuePasskeyV1 {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub enum DbValueDeviceKeyV1 {
-    V4 { u: Uuid, t: String, k: DeviceKeyV4 },
+pub enum DbValueAttestedPasskeyV1 {
+    V4 {
+        u: Uuid,
+        t: String,
+        k: AttestedPasskeyV4,
+    },
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -380,6 +422,7 @@ pub enum DbValueAccessScopeV1 {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
+#[allow(clippy::enum_variant_names)]
 pub enum DbValueIdentityId {
     #[serde(rename = "v1i")]
     V1Internal,
@@ -387,6 +430,16 @@ pub enum DbValueIdentityId {
     V1Uuid(Uuid),
     #[serde(rename = "v1s")]
     V1Sync(Uuid),
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub enum DbValueSessionStateV1 {
+    #[serde(rename = "ea")]
+    ExpiresAt(String),
+    #[serde(rename = "nv")]
+    Never,
+    #[serde(rename = "ra")]
+    RevokedAt(DbCidV1),
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -412,6 +465,22 @@ pub enum DbValueSession {
         label: String,
         #[serde(rename = "e")]
         expiry: Option<String>,
+        #[serde(rename = "i")]
+        issued_at: String,
+        #[serde(rename = "b")]
+        issued_by: DbValueIdentityId,
+        #[serde(rename = "c")]
+        cred_id: Uuid,
+        #[serde(rename = "s", default)]
+        scope: DbValueAccessScopeV1,
+    },
+    V3 {
+        #[serde(rename = "u")]
+        refer: Uuid,
+        #[serde(rename = "l")]
+        label: String,
+        #[serde(rename = "e")]
+        state: DbValueSessionStateV1,
         #[serde(rename = "i")]
         issued_at: String,
         #[serde(rename = "b")]
@@ -465,6 +534,28 @@ pub enum DbValueOauth2Session {
         issued_at: String,
         #[serde(rename = "r")]
         rs_uuid: Uuid,
+    },
+    V2 {
+        #[serde(rename = "u")]
+        refer: Uuid,
+        #[serde(rename = "p")]
+        parent: Uuid,
+        #[serde(rename = "e")]
+        state: DbValueSessionStateV1,
+        #[serde(rename = "i")]
+        issued_at: String,
+        #[serde(rename = "r")]
+        rs_uuid: Uuid,
+    },
+}
+
+// Internal representation of an image
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+pub enum DbValueImage {
+    V1 {
+        filename: String,
+        filetype: ImageType,
+        contents: Vec<u8>,
     },
 }
 
@@ -592,7 +683,7 @@ pub enum DbValueSetV2 {
     #[serde(rename = "PK")]
     Passkey(Vec<DbValuePasskeyV1>),
     #[serde(rename = "DK")]
-    DeviceKey(Vec<DbValueDeviceKeyV1>),
+    AttestedPasskey(Vec<DbValueAttestedPasskeyV1>),
     #[serde(rename = "TE")]
     TrustedDeviceEnrollment(Vec<Uuid>),
     #[serde(rename = "AS")]
@@ -611,6 +702,14 @@ pub enum DbValueSetV2 {
     ApiToken(Vec<DbValueApiToken>),
     #[serde(rename = "SA")]
     AuditLogString(Vec<(Cid, String)>),
+    #[serde(rename = "EK")]
+    EcKeyPrivate(Vec<u8>),
+    #[serde(rename = "IM")]
+    Image(Vec<DbValueImage>),
+    #[serde(rename = "CT")]
+    CredentialType(Vec<u16>),
+    #[serde(rename = "WC")]
+    WebauthnAttestationCaList { ca_list: AttestationCaList },
 }
 
 impl DbValueSetV2 {
@@ -644,7 +743,7 @@ impl DbValueSetV2 {
             DbValueSetV2::RestrictedString(set) => set.len(),
             DbValueSetV2::IntentToken(set) => set.len(),
             DbValueSetV2::Passkey(set) => set.len(),
-            DbValueSetV2::DeviceKey(set) => set.len(),
+            DbValueSetV2::AttestedPasskey(set) => set.len(),
             DbValueSetV2::TrustedDeviceEnrollment(set) => set.len(),
             DbValueSetV2::Session(set) => set.len(),
             DbValueSetV2::ApiToken(set) => set.len(),
@@ -654,6 +753,11 @@ impl DbValueSetV2 {
             DbValueSetV2::UiHint(set) => set.len(),
             DbValueSetV2::TotpSecret(set) => set.len(),
             DbValueSetV2::AuditLogString(set) => set.len(),
+            DbValueSetV2::Image(set) => set.len(),
+            DbValueSetV2::EcKeyPrivate(_key) => 1, // here we have to hard code it because the Vec<u8>
+            // represents the bytes of  SINGLE(!) key
+            DbValueSetV2::CredentialType(set) => set.len(),
+            DbValueSetV2::WebauthnAttestationCaList { ca_list } => ca_list.len(),
         }
     }
 
@@ -666,6 +770,7 @@ impl DbValueSetV2 {
 mod tests {
     use base64::{engine::general_purpose, Engine as _};
     use serde::{Deserialize, Serialize};
+    use serde_with::skip_serializing_none;
     use uuid::Uuid;
 
     use super::{DbBackupCodeV1, DbCred, DbPasswordV1, DbTotpV1, DbWebauthnV1};
@@ -685,17 +790,14 @@ mod tests {
         // PwWnVer,
     }
 
+    #[skip_serializing_none]
     #[derive(Serialize, Deserialize, Debug)]
     pub struct DbCredV1 {
         #[serde(default = "dbcred_type_default_pw")]
         pub type_: DbCredTypeV1,
-        #[serde(skip_serializing_if = "Option::is_none")]
         pub password: Option<DbPasswordV1>,
-        #[serde(skip_serializing_if = "Option::is_none")]
         pub webauthn: Option<Vec<DbWebauthnV1>>,
-        #[serde(skip_serializing_if = "Option::is_none")]
         pub totp: Option<DbTotpV1>,
-        #[serde(skip_serializing_if = "Option::is_none")]
         pub backup_code: Option<DbBackupCodeV1>,
         pub claims: Vec<String>,
         pub uuid: Uuid,

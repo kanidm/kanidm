@@ -29,6 +29,10 @@
 - Minh Phan (MinhPhan8803)
 - Kenton Groombridge (0xC0ncord)
 - Martin Weinelt (hexa)
+- Samuel Cabrero (scabrero)
+- philipcristiano
+- Jianchen Zhao (bolu61)
+- Allan Zhang (allan2)
 
 ## Acknowledgements
 

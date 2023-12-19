@@ -84,7 +84,7 @@ pub(crate) fn config(
     debug!("Target server info -> {}", server.info());
 
     // load the related data (if any) or generate it if that is what we have.
-    let data_file = File::open(data_path).map_err(|e| {
+    let data_file = File::open(&data_path).map_err(|e| {
         error!("Unable to open data file [{:?}] 🥺", e);
     })?;
 
@@ -92,7 +92,8 @@ pub(crate) fn config(
 
     let data: TestData = serde_json::from_reader(data_reader).map_err(|e| {
         error!(
-            "Unable to process data file. You may need to preprocess it again: {:?}",
+            "Unable to process data file {}. You may need to preprocess it again: {:?}",
+            data_path.display(),
             e
         );
     })?;

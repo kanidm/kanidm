@@ -1,22 +1,7 @@
-use std::fs::Metadata;
-use std::io::ErrorKind;
-#[cfg(target_os = "linux")]
-use std::os::linux::fs::MetadataExt;
-#[cfg(target_os = "macos")]
-use std::os::macos::fs::MetadataExt;
-use std::path::PathBuf;
-use std::time::{Duration, SystemTime};
-
-use filetime::FileTime;
+use crate::prelude::*;
 use hashbrown::HashSet;
 use rand::distributions::Distribution;
 use rand::{thread_rng, Rng};
-use touch::file as touch_file;
-// #[cfg(target_os = "windows")]
-// use std::os::windows::fs::MetadataExt;
-use crate::prelude::*;
-#[cfg(target_family = "unix")]
-use users::{get_current_gid, get_current_uid};
 
 #[derive(Debug)]
 pub struct DistinctAlpha;
@@ -46,9 +31,15 @@ pub fn uuid_from_duration(d: Duration, sid: Sid) -> Uuid {
     uuid_from_u64_u32(d.as_secs(), d.subsec_nanos(), sid)
 }
 
+pub(crate) fn password_from_random_len(len: u32) -> String {
+    thread_rng()
+        .sample_iter(&DistinctAlpha)
+        .take(len as usize)
+        .collect::<String>()
+}
+
 pub fn password_from_random() -> String {
-    let rand_string: String = thread_rng().sample_iter(&DistinctAlpha).take(48).collect();
-    rand_string
+    password_from_random_len(48)
 }
 
 pub fn backup_code_from_random() -> HashSet<String> {
@@ -80,66 +71,6 @@ pub fn readable_password_from_random() -> String {
     )
 }
 
-pub fn duration_from_epoch_now() -> Duration {
-    #[allow(clippy::expect_used)]
-    SystemTime::now()
-        .duration_since(SystemTime::UNIX_EPOCH)
-        .expect("invalid duration from epoch now")
-}
-
-pub fn touch_file_or_quit(file_path: &str) {
-    /*
-    Attempt to touch the file file_path, will quit the application if it fails for any reason.
-
-    Will also create a new file if it doesn't already exist.
-    */
-    if PathBuf::from(file_path).exists() {
-        let t = FileTime::from_system_time(SystemTime::now());
-        match filetime::set_file_times(file_path, t, t) {
-            Ok(_) => debug!(
-                "Successfully touched existing file {}, can continue",
-                file_path
-            ),
-            Err(e) => {
-                match e.kind() {
-                    ErrorKind::PermissionDenied => {
-                        // we bail here because you won't be able to write them back...
-                        error!("Permission denied writing to {}, quitting.", file_path)
-                    }
-                    _ => {
-                        error!(
-                            "Failed to write to {} due to error: {:?} ... quitting.",
-                            file_path, e
-                        )
-                    }
-                }
-                std::process::exit(1);
-            }
-        }
-    } else {
-        match touch_file::write(file_path, "", false) {
-            Ok(_) => debug!("Successfully touched new file {}", file_path),
-            Err(e) => {
-                error!(
-                    "Failed to write to {} due to error: {:?} ... quitting.",
-                    file_path, e
-                );
-                std::process::exit(1);
-            }
-        };
-    }
-}
-
-/*
-#[allow(dead_code)]
-pub fn uuid_from_now(sid: Sid) -> Uuid {
-    let d = SystemTime::now()
-        .duration_since(SystemTime::UNIX_EPOCH)
-        .unwrap();
-    uuid_from_duration(d, sid)
-}
-*/
-
 impl Distribution<char> for DistinctAlpha {
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> char {
         const RANGE: u32 = 55;
@@ -154,40 +85,6 @@ impl Distribution<char> for DistinctAlpha {
             }
         }
     }
-}
-
-#[cfg(target_family = "unix")]
-/// Check a given file's metadata is read-only for the current user (true = read-only)
-pub fn file_permissions_readonly(meta: &Metadata) -> bool {
-    // Who are we running as?
-    let cuid = get_current_uid();
-    let cgid = get_current_gid();
-
-    // Who owns the file?
-    // Who is the group owner of the file?
-    let f_gid = meta.st_gid();
-    let f_uid = meta.st_uid();
-
-    let f_mode = meta.st_mode();
-
-    !(
-        // If we are the owner, we have write perms as we can alter the DAC rights
-        cuid == f_uid ||
-        // If we are the group owner, check the mode bits do not have write.
-        (cgid == f_gid && (f_mode & 0o0020) != 0) ||
-        // Finally, check that everyone bits don't have write.
-        ((f_mode & 0o0002) != 0)
-    )
-}
-
-#[cfg(not(target_family = "unix"))]
-/// Check a given file's metadata is read-only for the current user (true = read-only) Stub function if you're building for windows!
-pub fn file_permissions_readonly(meta: &Metadata) -> bool {
-    debug!(
-        "Windows target asked to check metadata on {:?} returning false",
-        meta
-    );
-    false
 }
 
 #[cfg(test)]

@@ -4,7 +4,7 @@
 
 In some environments Kanidm may be the first Identity Management system introduced. However many
 existing environments have existing IDM systems that are well established and in use. To allow
-Kanidm to work with these, it is possible to synchronised data between these IDM systems.
+Kanidm to work with these, it is possible to synchronise data between these IDM systems.
 
 Currently Kanidm can consume (import) data from another IDM system. There are two major use cases
 for this:
@@ -13,7 +13,7 @@ for this:
 - Migrating from an existing IDM to Kanidm
 
 An incoming IDM data source is bound to Kanidm by a sync account. All synchronised entries will have
-a reference to the sync account that they came from defined by their "sync parent uuid". While an
+a reference to the sync account that they came from defined by their `sync_parent_uuid`. While an
 entry is owned by a sync account we refer to the sync account as having authority over the content
 of that entry.
 
@@ -87,6 +87,35 @@ If the sync tool fails, you can investigate details in the Kanidmd server output
 
 The sync tool can run "indefinitely" if you wish for Kanidm to always import data from the external
 source.
+
+## Yielding Authority of Attributes to Kanidm
+
+By default Kanidm assumes that authority over synchronised entries is retained by the sync tool.
+This means that synchronised entries can not be written to in any capacity outside of a small number
+of internal Kanidm internal attributes.
+
+An adminisrator may wish to allow synchronised entries to have some attributes written by the
+instance locally. An example is allowing passkeys to be created on Kanidm when the external
+synchronisation provider does not supply them.
+
+In this case the synchronisation agreement can be configured to yield it's authority over these
+attributes to Kanidm.
+
+To configure the attributes that Kanidm can control:
+
+```bash
+kanidm system sync set-yield-attributes <sync account name> [attr, ...]
+kanidm system sync set-yield-attributes ipasync passkeys
+```
+
+This commands takes the set of attributes that should be yielded. To remove an attribute you declare
+the yield set with that attribute missing.
+
+```bash
+kanidm system sync set-yield-attributes ipasync passkeys
+# To remove passkeys from being Kanidm controlled.
+kanidm system sync set-yield-attributes ipasync
+```
 
 ## Finalising the Sync Account
 

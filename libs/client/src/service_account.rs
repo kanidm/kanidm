@@ -1,5 +1,6 @@
 use std::collections::BTreeMap;
 
+use kanidm_proto::constants::{ATTR_DISPLAYNAME, ATTR_ENTRY_MANAGED_BY, ATTR_MAIL, ATTR_NAME};
 use kanidm_proto::v1::{AccountUnixExtend, ApiToken, ApiTokenGenerate, CredentialStatus, Entry};
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -21,16 +22,22 @@ impl KanidmClient {
         &self,
         name: &str,
         displayname: &str,
+        entry_managed_by: &str,
     ) -> Result<(), ClientError> {
         let mut new_acct = Entry {
             attrs: BTreeMap::new(),
         };
         new_acct
             .attrs
-            .insert("name".to_string(), vec![name.to_string()]);
+            .insert(ATTR_NAME.to_string(), vec![name.to_string()]);
         new_acct
             .attrs
-            .insert("displayname".to_string(), vec![displayname.to_string()]);
+            .insert(ATTR_DISPLAYNAME.to_string(), vec![displayname.to_string()]);
+        new_acct.attrs.insert(
+            ATTR_ENTRY_MANAGED_BY.to_string(),
+            vec![entry_managed_by.to_string()],
+        );
+
         self.perform_post_request("/v1/service_account", new_acct)
             .await
     }
@@ -45,6 +52,7 @@ impl KanidmClient {
         id: &str,
         newname: Option<&str>,
         displayname: Option<&str>,
+        entry_managed_by: Option<&str>,
         mail: Option<&[String]>,
     ) -> Result<(), ClientError> {
         let mut update_entry = Entry {
@@ -54,15 +62,27 @@ impl KanidmClient {
         if let Some(newname) = newname {
             update_entry
                 .attrs
-                .insert("name".to_string(), vec![newname.to_string()]);
+                .insert(ATTR_NAME.to_string(), vec![newname.to_string()]);
         }
+
         if let Some(newdisplayname) = displayname {
+            update_entry.attrs.insert(
+                ATTR_DISPLAYNAME.to_string(),
+                vec![newdisplayname.to_string()],
+            );
+        }
+
+        if let Some(entry_managed_by) = entry_managed_by {
+            update_entry.attrs.insert(
+                ATTR_ENTRY_MANAGED_BY.to_string(),
+                vec![entry_managed_by.to_string()],
+            );
+        }
+
+        if let Some(mail) = mail {
             update_entry
                 .attrs
-                .insert("displayname".to_string(), vec![newdisplayname.to_string()]);
-        }
-        if let Some(mail) = mail {
-            update_entry.attrs.insert("mail".to_string(), mail.to_vec());
+                .insert(ATTR_MAIL.to_string(), mail.to_vec());
         }
 
         self.perform_patch_request(format!("/v1/service_account/{}", id).as_str(), update_entry)
@@ -142,8 +162,11 @@ impl KanidmClient {
 
     pub async fn idm_service_account_unix_extend(
         &self,
+        // The username or uuid of the account
         id: &str,
+        // The GID number to set for the account
         gidnumber: Option<u32>,
+        // Set a default login shell
         shell: Option<&str>,
     ) -> Result<(), ClientError> {
         let ux = AccountUnixExtend {
@@ -154,6 +177,7 @@ impl KanidmClient {
             .await
     }
 
+    // TODO: test coverage for this, but there's a weird issue with ACPs on apply
     pub async fn idm_service_account_into_person(&self, id: &str) -> Result<(), ClientError> {
         self.perform_post_request(
             format!("/v1/service_account/{}/_into_person", id).as_str(),

@@ -3,6 +3,9 @@
 //! typed values, allows their comparison, filtering and more. It also has the code for serialising
 //! these into a form for the backend that can be persistent into the [`Backend`](crate::be::Backend).
 
+#![allow(non_upper_case_globals)]
+
+use std::cmp::Ordering;
 use std::collections::BTreeSet;
 use std::convert::TryFrom;
 use std::fmt;
@@ -12,28 +15,34 @@ use std::time::Duration;
 
 #[cfg(test)]
 use base64::{engine::general_purpose, Engine as _};
-use compact_jwt::JwsSigner;
+use compact_jwt::{crypto::JwsRs256Signer, JwsEs256Signer};
 use hashbrown::HashSet;
+use kanidm_proto::internal::ImageValue;
 use num_enum::TryFromPrimitive;
+use openssl::ec::EcKey;
+use openssl::pkey::Private;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
-use sshkeys::PublicKey as SshPublicKey;
+use sshkey_attest::proto::PublicKey as SshPublicKey;
 use time::OffsetDateTime;
 use url::Url;
 use uuid::Uuid;
-use webauthn_rs::prelude::{DeviceKey as DeviceKeyV4, Passkey as PasskeyV4};
-
-use kanidm_proto::v1::ApiTokenPurpose;
-use kanidm_proto::v1::Filter as ProtoFilter;
-use kanidm_proto::v1::UatPurposeStatus;
-use kanidm_proto::v1::UiHint;
+use webauthn_rs::prelude::{
+    AttestationCaList, AttestedPasskey as AttestedPasskeyV4, Passkey as PasskeyV4,
+};
 
 use crate::be::dbentry::DbIdentSpn;
 use crate::credential::{totp::Totp, Credential};
 use crate::prelude::*;
 use crate::repl::cid::Cid;
 use crate::server::identity::IdentityId;
+use crate::valueset::image::ImageValueThings;
 use crate::valueset::uuid_to_proto_string;
+use kanidm_proto::v1::ApiTokenPurpose;
+use kanidm_proto::v1::Filter as ProtoFilter;
+use kanidm_proto::v1::UatPurposeStatus;
+use kanidm_proto::v1::UiHint;
+use std::hash::Hash;
 
 lazy_static! {
     pub static ref SPN_RE: Regex = {
@@ -53,7 +62,7 @@ lazy_static! {
     /// Only lowercase+numbers, with limited chars.
     pub static ref INAME_RE: Regex = {
         #[allow(clippy::expect_used)]
-        Regex::new("^[a-z][a-z0-9-_\\.]+$").expect("Invalid Iname regex found")
+        Regex::new("^[a-z][a-z0-9-_\\.]*$").expect("Invalid Iname regex found")
     };
 
     pub static ref EXTRACT_VAL_DN: Regex = {
@@ -112,14 +121,25 @@ pub struct Address {
     // Must be validated.
     pub country: String,
 }
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub struct CredUpdateSessionPerms {
+    pub ext_cred_portal_can_view: bool,
+    pub primary_can_edit: bool,
+    pub passkeys_can_edit: bool,
+    pub attested_passkeys_can_edit: bool,
+    pub unixcred_can_edit: bool,
+    pub sshpubkey_can_edit: bool,
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum IntentTokenState {
     Valid {
         max_ttl: Duration,
+        perms: CredUpdateSessionPerms,
     },
     InProgress {
         max_ttl: Duration,
+        perms: CredUpdateSessionPerms,
         session_id: Uuid,
         session_ttl: Duration,
     },
@@ -231,7 +251,7 @@ pub enum SyntaxType {
     PrivateBinary = 21,
     IntentToken = 22,
     Passkey = 23,
-    DeviceKey = 24,
+    AttestedPasskey = 24,
     Session = 25,
     JwsKeyEs256 = 26,
     JwsKeyRs256 = 27,
@@ -240,6 +260,10 @@ pub enum SyntaxType {
     TotpSecret = 30,
     ApiToken = 31,
     AuditLogString = 32,
+    EcKeyPrivate = 33,
+    Image = 34,
+    CredentialType = 35,
+    WebauthnAttestationCaList = 36,
 }
 
 impl TryFrom<&str> for SyntaxType {
@@ -273,7 +297,7 @@ impl TryFrom<&str> for SyntaxType {
             "PRIVATE_BINARY" => Ok(SyntaxType::PrivateBinary),
             "INTENT_TOKEN" => Ok(SyntaxType::IntentToken),
             "PASSKEY" => Ok(SyntaxType::Passkey),
-            "DEVICEKEY" => Ok(SyntaxType::DeviceKey),
+            "ATTESTED_PASSKEY" => Ok(SyntaxType::AttestedPasskey),
             "SESSION" => Ok(SyntaxType::Session),
             "JWS_KEY_ES256" => Ok(SyntaxType::JwsKeyEs256),
             "JWS_KEY_RS256" => Ok(SyntaxType::JwsKeyRs256),
@@ -282,6 +306,9 @@ impl TryFrom<&str> for SyntaxType {
             "TOTPSECRET" => Ok(SyntaxType::TotpSecret),
             "APITOKEN" => Ok(SyntaxType::ApiToken),
             "AUDIT_LOG_STRING" => Ok(SyntaxType::AuditLogString),
+            "EC_KEY_PRIVATE" => Ok(SyntaxType::EcKeyPrivate),
+            "CREDENTIAL_TYPE" => Ok(SyntaxType::CredentialType),
+            "WEBAUTHN_ATTESTATION_CA_LIST" => Ok(SyntaxType::WebauthnAttestationCaList),
             _ => Err(()),
         }
     }
@@ -314,7 +341,7 @@ impl fmt::Display for SyntaxType {
             SyntaxType::PrivateBinary => "PRIVATE_BINARY",
             SyntaxType::IntentToken => "INTENT_TOKEN",
             SyntaxType::Passkey => "PASSKEY",
-            SyntaxType::DeviceKey => "DEVICEKEY",
+            SyntaxType::AttestedPasskey => "ATTESTED_PASSKEY",
             SyntaxType::Session => "SESSION",
             SyntaxType::JwsKeyEs256 => "JWS_KEY_ES256",
             SyntaxType::JwsKeyRs256 => "JWS_KEY_RS256",
@@ -323,7 +350,77 @@ impl fmt::Display for SyntaxType {
             SyntaxType::TotpSecret => "TOTPSECRET",
             SyntaxType::ApiToken => "APITOKEN",
             SyntaxType::AuditLogString => "AUDIT_LOG_STRING",
+            SyntaxType::EcKeyPrivate => "EC_KEY_PRIVATE",
+            SyntaxType::Image => "IMAGE",
+            SyntaxType::CredentialType => "CREDENTIAL_TYPE",
+            SyntaxType::WebauthnAttestationCaList => "WEBAUTHN_ATTESTATION_CA_LIST",
         })
+    }
+}
+
+#[derive(
+    Hash,
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Deserialize,
+    Serialize,
+    TryFromPrimitive,
+    Default,
+)]
+#[repr(u16)]
+pub enum CredentialType {
+    Any = 0,
+    #[default]
+    Mfa = 10,
+    Passkey = 20,
+    AttestedPasskey = 30,
+    AttestedResidentkey = 40,
+    Invalid = u16::MAX,
+}
+
+impl TryFrom<&str> for CredentialType {
+    type Error = ();
+
+    fn try_from(value: &str) -> Result<CredentialType, Self::Error> {
+        match value {
+            "any" => Ok(CredentialType::Any),
+            "mfa" => Ok(CredentialType::Mfa),
+            "passkey" => Ok(CredentialType::Passkey),
+            "attested_passkey" => Ok(CredentialType::AttestedPasskey),
+            "attested_residentkey" => Ok(CredentialType::AttestedResidentkey),
+            "invalid" => Ok(CredentialType::Invalid),
+            _ => Err(()),
+        }
+    }
+}
+
+impl fmt::Display for CredentialType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str(match self {
+            CredentialType::Any => "any",
+            CredentialType::Mfa => "mfa",
+            CredentialType::Passkey => "passkey",
+            CredentialType::AttestedPasskey => "attested_passkey",
+            CredentialType::AttestedResidentkey => "attested_residentkey",
+            CredentialType::Invalid => "invalid",
+        })
+    }
+}
+
+impl From<CredentialType> for Value {
+    fn from(ct: CredentialType) -> Value {
+        Value::CredentialType(ct)
+    }
+}
+
+impl From<CredentialType> for PartialValue {
+    fn from(ct: CredentialType) -> PartialValue {
+        PartialValue::CredentialType(ct)
     }
 }
 
@@ -331,7 +428,7 @@ impl fmt::Display for SyntaxType {
 /// against a complete Value within a set in an Entry.
 ///
 /// A partialValue is typically used when you need to match against a value, but without
-/// requiring all of it's data or expression. This is common in Filters or other direct
+/// requiring all of its data or expression. This is common in Filters or other direct
 /// lookups and requests.
 #[derive(Hash, Debug, Clone, Eq, Ord, PartialOrd, PartialEq, Deserialize, Serialize)]
 pub enum PartialValue {
@@ -370,8 +467,10 @@ pub enum PartialValue {
     IntentToken(String),
     UiHint(UiHint),
     Passkey(Uuid),
-    DeviceKey(Uuid),
-    // The label, if any.
+    AttestedPasskey(Uuid),
+    /// We compare on the value hash
+    Image(String),
+    CredentialType(CredentialType),
 }
 
 impl From<SyntaxType> for PartialValue {
@@ -443,6 +542,7 @@ impl PartialValue {
         PartialValue::Iname(s.to_lowercase())
     }
 
+    // TODO: take this away
     #[inline]
     pub fn new_class(s: &str) -> Self {
         PartialValue::new_iutf8(s)
@@ -546,7 +646,7 @@ impl PartialValue {
 
     pub fn new_spn_s(s: &str) -> Option<Self> {
         SPN_RE.captures(s).and_then(|caps| {
-            let name = match caps.name("name") {
+            let name = match caps.name(Attribute::Name.as_ref()) {
                 Some(v) => v.as_str().to_string(),
                 None => return None,
             };
@@ -682,8 +782,12 @@ impl PartialValue {
         Uuid::parse_str(us).map(PartialValue::Passkey).ok()
     }
 
-    pub fn new_devicekey_s(us: &str) -> Option<Self> {
-        Uuid::parse_str(us).map(PartialValue::DeviceKey).ok()
+    pub fn new_attested_passkey_s(us: &str) -> Option<Self> {
+        Uuid::parse_str(us).map(PartialValue::AttestedPasskey).ok()
+    }
+
+    pub fn new_image(input: &str) -> Self {
+        PartialValue::Image(input.to_string())
     }
 
     pub fn to_str(&self) -> Option<&str> {
@@ -711,7 +815,7 @@ impl PartialValue {
             | PartialValue::EmailAddress(s)
             | PartialValue::RestrictedString(s) => s.clone(),
             PartialValue::Passkey(u)
-            | PartialValue::DeviceKey(u)
+            | PartialValue::AttestedPasskey(u)
             | PartialValue::Refer(u)
             | PartialValue::Uuid(u) => u.as_hyphenated().to_string(),
             PartialValue::Bool(b) => b.to_string(),
@@ -743,6 +847,8 @@ impl PartialValue {
             PartialValue::PhoneNumber(a) => a.to_string(),
             PartialValue::IntentToken(u) => u.clone(),
             PartialValue::UiHint(u) => (*u as u16).to_string(),
+            PartialValue::Image(imagehash) => imagehash.to_owned(),
+            PartialValue::CredentialType(ct) => ct.to_string(),
         }
     }
 
@@ -802,10 +908,54 @@ impl TryInto<UatPurposeStatus> for SessionScope {
     }
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum SessionState {
+    // IMPORTANT - this order allows sorting by
+    // lowest to highest, we always want to take
+    // the lowest value!
+    RevokedAt(Cid),
+    ExpiresAt(OffsetDateTime),
+    NeverExpires,
+}
+
+impl PartialOrd for SessionState {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for SessionState {
+    fn cmp(&self, other: &Self) -> Ordering {
+        // We need this to order by highest -> least which represents
+        // priority amongst these elements.
+        match (self, other) {
+            // RevokedAt with the earliest time = highest
+            (SessionState::RevokedAt(c_self), SessionState::RevokedAt(c_other)) => {
+                // We need to reverse this - we need the "lower value" to take priority.
+                // This is similar to tombstones where the earliest CID must be persisted
+                c_other.cmp(c_self)
+            }
+            (SessionState::RevokedAt(_), _) => Ordering::Greater,
+            (_, SessionState::RevokedAt(_)) => Ordering::Less,
+            // ExpiresAt with a greater time = higher
+            (SessionState::ExpiresAt(e_self), SessionState::ExpiresAt(e_other)) => {
+                // Keep the "newer" expiry. This can be because a session was extended
+                // by some mechanism, generally in oauth2.
+                e_self.cmp(e_other)
+            }
+            (SessionState::ExpiresAt(_), _) => Ordering::Greater,
+            (_, SessionState::ExpiresAt(_)) => Ordering::Less,
+            // NeverExpires = least.
+            (SessionState::NeverExpires, SessionState::NeverExpires) => Ordering::Equal,
+        }
+    }
+}
+
 #[derive(Clone, PartialEq, Eq)]
 pub struct Session {
     pub label: String,
-    pub expiry: Option<OffsetDateTime>,
+    // pub expiry: Option<OffsetDateTime>,
+    pub state: SessionState,
     pub issued_at: OffsetDateTime,
     pub issued_by: IdentityId,
     pub cred_id: Uuid,
@@ -819,13 +969,14 @@ impl fmt::Debug for Session {
             IdentityId::Synch(u) => format!("Synch - {}", uuid_to_proto_string(u)),
             IdentityId::Internal => "Internal".to_string(),
         };
-        let expiry = match self.expiry {
-            Some(e) => e.to_string(),
-            None => "never".to_string(),
+        let expiry = match self.state {
+            SessionState::ExpiresAt(e) => e.to_string(),
+            SessionState::NeverExpires => "never".to_string(),
+            SessionState::RevokedAt(_) => "revoked".to_string(),
         };
         write!(
             f,
-            "expiry: {}, issued at: {}, issued by: {}, credential id: {}, scope: {:?}",
+            "state: {}, issued at: {}, issued by: {}, credential id: {}, scope: {:?}",
             expiry, self.issued_at, issuer, self.cred_id, self.scope
         )
     }
@@ -834,7 +985,8 @@ impl fmt::Debug for Session {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Oauth2Session {
     pub parent: Uuid,
-    pub expiry: Option<OffsetDateTime>,
+    // pub expiry: Option<OffsetDateTime>,
+    pub state: SessionState,
     pub issued_at: OffsetDateTime,
     pub rs_uuid: Uuid,
 }
@@ -848,9 +1000,9 @@ pub struct Oauth2Session {
 #[derive(Clone, Debug)]
 pub enum Value {
     Utf8(String),
-    // Case insensitive string
+    /// Case insensitive string
     Iutf8(String),
-    /// Case insensitive Name for a thing?
+    /// Case insensitive Name for a thing
     Iname(String),
     Uuid(Uuid),
     Bool(bool),
@@ -859,7 +1011,7 @@ pub enum Value {
     Refer(Uuid),
     JsonFilt(ProtoFilter),
     Cred(String, Credential),
-    SshKey(String, String),
+    SshKey(String, SshPublicKey),
     SecretValue(String),
     Spn(String, String),
     Uint32(u32),
@@ -874,23 +1026,26 @@ pub enum Value {
     OauthScopeMap(Uuid, BTreeSet<String>),
     PrivateBinary(Vec<u8>),
     PublicBinary(String, Vec<u8>),
-    // Enumeration(String),
-    // Float64(f64),
     RestrictedString(String),
     IntentToken(String, IntentTokenState),
     Passkey(Uuid, String, PasskeyV4),
-    DeviceKey(Uuid, String, DeviceKeyV4),
+    AttestedPasskey(Uuid, String, AttestedPasskeyV4),
 
     Session(Uuid, Session),
     ApiToken(Uuid, ApiToken),
     Oauth2Session(Uuid, Oauth2Session),
 
-    JwsKeyEs256(JwsSigner),
-    JwsKeyRs256(JwsSigner),
+    JwsKeyEs256(JwsEs256Signer),
+    JwsKeyRs256(JwsRs256Signer),
     UiHint(UiHint),
 
     TotpSecret(String, Totp),
     AuditLogString(Cid, String),
+    EcKeyPrivate(EcKey<Private>),
+
+    Image(ImageValue),
+    CredentialType(CredentialType),
+    WebauthnAttestationCaList(AttestationCaList),
 }
 
 impl PartialEq for Value {
@@ -929,6 +1084,9 @@ impl PartialEq for Value {
             // OauthScopeMap
             (Value::OauthScopeMap(a, c), Value::OauthScopeMap(b, d)) => a.eq(b) && c.eq(d),
 
+            (Value::Image(image1), Value::Image(image2)) => {
+                image1.hash_imagevalue().eq(&image2.hash_imagevalue())
+            }
             (Value::Address(_), Value::Address(_))
             | (Value::PrivateBinary(_), Value::PrivateBinary(_))
             | (Value::SecretValue(_), Value::SecretValue(_)) => false,
@@ -1056,6 +1214,7 @@ impl Value {
         matches!(self, Value::Iutf8(_))
     }
 
+    #[inline(always)]
     pub fn new_class(s: &str) -> Self {
         Value::Iutf8(s.to_lowercase())
     }
@@ -1168,6 +1327,13 @@ impl Value {
         }
     }
 
+    /// Want a `Value::Image`? use this!
+    pub fn new_image(input: &str) -> Result<Self, OperationError> {
+        serde_json::from_str::<ImageValue>(input)
+            .map(Value::Image)
+            .map_err(|_e| OperationError::InvalidValueState)
+    }
+
     pub fn new_secret_str(cleartext: &str) -> Self {
         Value::SecretValue(cleartext.to_string())
     }
@@ -1183,28 +1349,29 @@ impl Value {
         }
     }
 
-    pub fn new_sshkey_str(tag: &str, key: &str) -> Self {
-        Value::SshKey(tag.to_string(), key.to_string())
-    }
-
-    pub fn new_sshkey(tag: String, key: String) -> Self {
-        Value::SshKey(tag, key)
+    pub fn new_sshkey_str(tag: &str, key: &str) -> Result<Self, OperationError> {
+        SshPublicKey::from_string(key)
+            .map(|pk| Value::SshKey(tag.to_string(), pk))
+            .map_err(|err| {
+                error!(?err, "value sshkey failed to parse string");
+                OperationError::VL0001ValueSshPublicKeyString
+            })
     }
 
     pub fn is_sshkey(&self) -> bool {
         matches!(&self, Value::SshKey(_, _))
     }
 
-    pub fn get_sshkey(&self) -> Option<&str> {
+    pub fn get_sshkey(&self) -> Option<String> {
         match &self {
-            Value::SshKey(_, key) => Some(key.as_str()),
+            Value::SshKey(_, key) => Some(key.to_string()),
             _ => None,
         }
     }
 
     pub fn new_spn_parse(s: &str) -> Option<Self> {
         SPN_RE.captures(s).and_then(|caps| {
-            let name = match caps.name("name") {
+            let name = match caps.name(Attribute::Name.as_ref()) {
                 Some(v) => v.as_str().to_string(),
                 None => return None,
             };
@@ -1378,6 +1545,15 @@ impl Value {
         Value::RestrictedString(s)
     }
 
+    pub fn new_webauthn_attestation_ca_list(s: &str) -> Option<Self> {
+        serde_json::from_str(s)
+            .map(Value::WebauthnAttestationCaList)
+            .map_err(|err| {
+                debug!(?err, ?s);
+            })
+            .ok()
+    }
+
     #[allow(clippy::unreachable)]
     pub(crate) fn to_db_ident_spn(&self) -> DbIdentSpn {
         // This has to clone due to how the backend works.
@@ -1500,12 +1676,14 @@ impl Value {
         }
     }
 
-    pub fn to_sshkey(self) -> Option<(String, String)> {
+    /*
+    pub(crate) fn to_sshkey(self) -> Option<(String, SshPublicKey)> {
         match self {
             Value::SshKey(tag, k) => Some((tag, k)),
             _ => None,
         }
     }
+    */
 
     pub fn to_spn(self) -> Option<(String, String)> {
         match self {
@@ -1605,20 +1783,12 @@ impl Value {
             Value::Iname(s) => s.clone(),
             Value::Uuid(u) => u.as_hyphenated().to_string(),
             // We display the tag and fingerprint.
-            Value::SshKey(tag, key) =>
-            // Check it's really an sshkey in the
-            // supplemental data.
-            {
-                match SshPublicKey::from_string(key) {
-                    Ok(spk) => {
-                        let fp = spk.fingerprint();
-                        format!("{}: {}", tag, fp.hash)
-                    }
-                    Err(_) => format!("{tag}: corrupted ssh public key"),
-                }
-            }
+            Value::SshKey(tag, key) => format!("{}: {}", tag, key),
             Value::Spn(n, r) => format!("{n}@{r}"),
-            _ => unreachable!(),
+            _ => unreachable!(
+                "You've specified the wrong type for the attribute, got: {:?}",
+                self
+            ),
         }
     }
 
@@ -1634,7 +1804,7 @@ impl Value {
             | Value::PublicBinary(s, _)
             | Value::IntentToken(s, _)
             | Value::Passkey(_, s, _)
-            | Value::DeviceKey(_, s, _)
+            | Value::AttestedPasskey(_, s, _)
             | Value::TotpSecret(s, _) => {
                 Value::validate_str_escapes(s) && Value::validate_singleline(s)
             }
@@ -1645,16 +1815,16 @@ impl Value {
                     && Value::validate_singleline(a)
                     && Value::validate_singleline(b)
             }
-
+            Value::Image(image) => image.validate_image().is_ok(),
             Value::Iname(s) => {
                 Value::validate_str_escapes(s)
                     && Value::validate_iname(s)
                     && Value::validate_singleline(s)
             }
 
-            Value::SshKey(s, key) => {
-                SshPublicKey::from_string(key).is_ok()
-                    && Value::validate_str_escapes(s)
+            Value::SshKey(s, _key) => {
+                Value::validate_str_escapes(s)
+                    // && Value::validate_iname(s)
                     && Value::validate_singleline(s)
             }
 
@@ -1690,7 +1860,10 @@ impl Value {
             | Value::Session(_, _)
             | Value::Oauth2Session(_, _)
             | Value::JwsKeyRs256(_)
-            | Value::UiHint(_) => true,
+            | Value::EcKeyPrivate(_)
+            | Value::UiHint(_)
+            | Value::CredentialType(_)
+            | Value::WebauthnAttestationCaList(_) => true,
         }
     }
 
@@ -1724,6 +1897,8 @@ impl Value {
                 "value contains invalid whitespace chars forbidden by \"{}\"",
                 *SINGLELINE_RE
             );
+            // Trace only, could be an injection attack of some kind.
+            trace!(?s, "Invalid whitespace");
             false
         }
     }
@@ -1732,6 +1907,8 @@ impl Value {
         // Look for and prevent certain types of string escapes and injections.
         if UNICODE_CONTROL_RE.is_match(s) {
             error!("value contains invalid unicode control character",);
+            // Trace only, could be an injection attack of some kind.
+            trace!(?s, "Invalid Uncode Control");
             false
         } else {
             true
@@ -1795,30 +1972,30 @@ mod tests {
         "QK1JSAQqVfGhA8lLbJHmnQ/b/KMl2lzzp7SXej0wPUfvI/IP3NGb8irLzq8+JssAzXGJ+HMql+mNHiSuPaktbFzZ6y",
         "ikMR6Rx/psU07nAkxKZDEYpNVv william@amethyst");
 
-        let sk1 = Value::new_sshkey_str("tag", ecdsa);
+        let sk1 = Value::new_sshkey_str("tag", ecdsa).expect("Invalid ssh key");
         assert!(sk1.validate());
         // to proto them
         let psk1 = sk1.to_proto_string_clone();
-        assert_eq!(psk1, "tag: oMh0SibdRGV2APapEdVojzSySx9PuhcklWny5LP0Mg4");
+        assert_eq!(psk1, format!("tag: {}", ecdsa));
 
-        let sk2 = Value::new_sshkey_str("tag", ed25519);
+        let sk2 = Value::new_sshkey_str("tag", ed25519).expect("Invalid ssh key");
         assert!(sk2.validate());
         let psk2 = sk2.to_proto_string_clone();
-        assert_eq!(psk2, "tag: UR7mRCLLXmZNsun+F2lWO3hG3PORk/0JyjxPQxDUcdc");
+        assert_eq!(psk2, format!("tag: {}", ed25519));
 
-        let sk3 = Value::new_sshkey_str("tag", rsa);
+        let sk3 = Value::new_sshkey_str("tag", rsa).expect("Invalid ssh key");
         assert!(sk3.validate());
         let psk3 = sk3.to_proto_string_clone();
-        assert_eq!(psk3, "tag: sWugDdWeE4LkmKer8hz7ERf+6VttYPIqD0ULXR3EUcU");
+        assert_eq!(psk3, format!("tag: {}", rsa));
 
         let sk4 = Value::new_sshkey_str("tag", "ntaouhtnhtnuehtnuhotnuhtneouhtneouh");
-        assert!(!sk4.validate());
+        assert!(sk4.is_err());
 
         let sk5 = Value::new_sshkey_str(
             "tag",
             "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAeGW1P6Pc2rPq0XqbRaDKBcXZUPRklo",
         );
-        assert!(!sk5.validate());
+        assert!(sk5.is_err());
     }
 
     /*

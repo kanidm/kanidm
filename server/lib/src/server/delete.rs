@@ -51,7 +51,11 @@ impl<'a> QueryServerWriteTransaction<'a> {
         let mut candidates: Vec<Entry<EntryInvalid, EntryCommitted>> = pre_candidates
             .iter()
             // Invalidate and assign change id's
-            .map(|er| er.as_ref().clone().invalidate(self.cid.clone()))
+            .map(|er| {
+                er.as_ref()
+                    .clone()
+                    .invalidate(self.cid.clone(), &self.trim_cid)
+            })
             .collect();
 
         trace!(?candidates, "delete: candidates");
@@ -98,24 +102,34 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // schema or acp requires reload.
         if !self.changed_schema {
             self.changed_schema = del_cand.iter().any(|e| {
-                e.attribute_equality("class", &PVCLASS_CLASSTYPE)
-                    || e.attribute_equality("class", &PVCLASS_ATTRIBUTETYPE)
+                e.attribute_equality(Attribute::Class, &EntryClass::ClassType.into())
+                    || e.attribute_equality(Attribute::Class, &EntryClass::AttributeType.into())
             });
         }
         if !self.changed_acp {
-            self.changed_acp = del_cand
-                .iter()
-                .any(|e| e.attribute_equality("class", &PVCLASS_ACP));
+            self.changed_acp = del_cand.iter().any(|e| {
+                e.attribute_equality(Attribute::Class, &EntryClass::AccessControlProfile.into())
+            });
         }
         if !self.changed_oauth2 {
-            self.changed_oauth2 = del_cand
-                .iter()
-                .any(|e| e.attribute_equality("class", &PVCLASS_OAUTH2_RS));
+            self.changed_oauth2 = del_cand.iter().any(|e| {
+                e.attribute_equality(Attribute::Class, &EntryClass::OAuth2ResourceServer.into())
+            });
         }
         if !self.changed_domain {
             self.changed_domain = del_cand
                 .iter()
-                .any(|e| e.attribute_equality("uuid", &PVUUID_DOMAIN_INFO));
+                .any(|e| e.attribute_equality(Attribute::Uuid, &PVUUID_DOMAIN_INFO));
+        }
+        if !self.changed_system_config {
+            self.changed_system_config = del_cand
+                .iter()
+                .any(|e| e.attribute_equality(Attribute::Uuid, &PVUUID_SYSTEM_CONFIG));
+        }
+        if !self.changed_sync_agreement {
+            self.changed_sync_agreement = del_cand
+                .iter()
+                .any(|e| e.attribute_equality(Attribute::Uuid, &EntryClass::SyncAccount.into()));
         }
 
         self.changed_uuid
@@ -126,6 +140,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
             acp_reload = ?self.changed_acp,
             oauth2_reload = ?self.changed_oauth2,
             domain_reload = ?self.changed_domain,
+            system_config_reload = ?self.changed_system_config,
+            changed_sync_agreement = ?self.changed_sync_agreement
         );
 
         // Send result
@@ -149,7 +165,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     }
 
     pub fn internal_delete_uuid(&mut self, target_uuid: Uuid) -> Result<(), OperationError> {
-        let filter = filter!(f_eq("uuid", PartialValue::Uuid(target_uuid)));
+        let filter = filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(target_uuid)));
         let f_valid = filter
             .validate(self.get_schema())
             .map_err(OperationError::SchemaViolation)?;
@@ -157,12 +173,12 @@ impl<'a> QueryServerWriteTransaction<'a> {
         self.delete(&de)
     }
 
-    #[instrument(level = "debug", skip_all)]
+    #[instrument(level = "debug", skip(self))]
     pub fn internal_delete_uuid_if_exists(
         &mut self,
         target_uuid: Uuid,
     ) -> Result<(), OperationError> {
-        let filter = filter!(f_eq("uuid", PartialValue::Uuid(target_uuid)));
+        let filter = filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(target_uuid)));
         let f_valid = filter
             .validate(self.get_schema())
             .map_err(OperationError::SchemaViolation)?;
@@ -187,39 +203,39 @@ mod tests {
         let mut server_txn = server.write(duration_from_epoch_now()).await;
 
         let e1 = entry_init!(
-            ("class", Value::new_class("object")),
-            ("class", Value::new_class("person")),
-            ("name", Value::new_iname("testperson1")),
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Name, Value::new_iname("testperson1")),
             (
-                "uuid",
+                Attribute::Uuid,
                 Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
             ),
-            ("description", Value::new_utf8s("testperson")),
-            ("displayname", Value::new_utf8s("testperson1"))
+            (Attribute::Description, Value::new_utf8s("testperson")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson1"))
         );
 
         let e2 = entry_init!(
-            ("class", Value::new_class("object")),
-            ("class", Value::new_class("person")),
-            ("name", Value::new_iname("testperson2")),
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Name, Value::new_iname("testperson2")),
             (
-                "uuid",
+                Attribute::Uuid,
                 Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63932"))
             ),
-            ("description", Value::new_utf8s("testperson")),
-            ("displayname", Value::new_utf8s("testperson2"))
+            (Attribute::Description, Value::new_utf8s("testperson")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson2"))
         );
 
         let e3 = entry_init!(
-            ("class", Value::new_class("object")),
-            ("class", Value::new_class("person")),
-            ("name", Value::new_iname("testperson3")),
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Name, Value::new_iname("testperson3")),
             (
-                "uuid",
+                Attribute::Uuid,
                 Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63933"))
             ),
-            ("description", Value::new_utf8s("testperson")),
-            ("displayname", Value::new_utf8s("testperson3"))
+            (Attribute::Description, Value::new_utf8s("testperson")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson3"))
         );
 
         let ce = CreateEvent::new_internal(vec![e1, e2, e3]);
@@ -228,35 +244,28 @@ mod tests {
         assert!(cr.is_ok());
 
         // Delete filter is syntax invalid
-        let de_inv =
-            unsafe { DeleteEvent::new_internal_invalid(filter!(f_pres("nhtoaunaoehtnu"))) };
+        let de_inv = DeleteEvent::new_internal_invalid(filter!(f_pres(Attribute::NonExist)));
         assert!(server_txn.delete(&de_inv).is_err());
 
         // Delete deletes nothing
-        let de_empty = unsafe {
-            DeleteEvent::new_internal_invalid(filter!(f_eq(
-                "uuid",
-                PartialValue::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-000000000000"))
-            )))
-        };
+        let de_empty = DeleteEvent::new_internal_invalid(filter!(f_eq(
+            Attribute::Uuid,
+            PartialValue::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-000000000000"))
+        )));
         assert!(server_txn.delete(&de_empty).is_err());
 
         // Delete matches one
-        let de_sin = unsafe {
-            DeleteEvent::new_internal_invalid(filter!(f_eq(
-                "name",
-                PartialValue::new_iname("testperson3")
-            )))
-        };
+        let de_sin = DeleteEvent::new_internal_invalid(filter!(f_eq(
+            Attribute::Name,
+            PartialValue::new_iname("testperson3")
+        )));
         assert!(server_txn.delete(&de_sin).is_ok());
 
         // Delete matches many
-        let de_mult = unsafe {
-            DeleteEvent::new_internal_invalid(filter!(f_eq(
-                "description",
-                PartialValue::new_utf8s("testperson")
-            )))
-        };
+        let de_mult = DeleteEvent::new_internal_invalid(filter!(f_eq(
+            Attribute::Description,
+            PartialValue::new_utf8s("testperson")
+        )));
         assert!(server_txn.delete(&de_mult).is_ok());
 
         assert!(server_txn.commit().is_ok());

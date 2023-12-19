@@ -2,12 +2,14 @@ use std::env;
 use std::str::FromStr;
 
 use async_recursion::async_recursion;
-use compact_jwt::{Jws, JwsUnverified};
+use compact_jwt::{JwsCompact, JwsEs256Verifier, JwsVerifier, JwtError};
 use dialoguer::theme::ColorfulTheme;
 use dialoguer::{Confirm, Select};
 use kanidm_client::{KanidmClient, KanidmClientBuilder};
 use kanidm_proto::constants::{DEFAULT_CLIENT_CONFIG_PATH, DEFAULT_CLIENT_CONFIG_PATH_HOME};
 use kanidm_proto::v1::UserAuthToken;
+use time::format_description::well_known::Rfc3339;
+use time::OffsetDateTime;
 
 use crate::session::read_tokens;
 use crate::{CommonOpt, LoginOpt, ReauthOpt};
@@ -62,20 +64,32 @@ impl CommonOpt {
         let client_builder = match ca_path {
             Some(p) => {
                 debug!("Adding trusted CA cert {:?}", p);
-                client_builder
+                let client_builder = client_builder
                     .add_root_certificate_filepath(p)
                     .unwrap_or_else(|e| {
                         error!("Failed to add ca certificate -- {:?}", e);
                         std::process::exit(1);
-                    })
+                    });
+
+                debug!(
+                    "After attempting to add trusted CA cert, client builder state: {:?}",
+                    client_builder
+                );
+                client_builder
             }
             None => client_builder,
         };
 
-        debug!(
-            "Post attempting to add trusted CA cert, client builder state: {:?}",
-            client_builder
-        );
+        let client_builder = match self.skip_hostname_verification {
+            true => {
+                warn!(
+                    "Accepting invalid hostnames on the certificate for {:?}",
+                    &self.addr
+                );
+                client_builder.danger_accept_invalid_hostnames(true)
+            }
+            false => client_builder,
+        };
 
         client_builder.build().unwrap_or_else(|e| {
             error!("Failed to build client instance -- {:?}", e);
@@ -86,7 +100,7 @@ impl CommonOpt {
     async fn try_to_client(&self, optype: OpType) -> Result<KanidmClient, ToClientError> {
         let client = self.to_unauth_client();
         // Read the token file.
-        let tokens = match read_tokens() {
+        let tokens = match read_tokens(&client.get_token_cache_path()) {
             Ok(t) => t,
             Err(_e) => {
                 error!("Error retrieving authentication token store");
@@ -110,20 +124,43 @@ impl CommonOpt {
                         .get(filter_username)
                         .map(|t| (filter_username.clone(), t.clone()))
                 } else {
-                    let filter_username = format!("{}@", filter_username);
-                    // First, filter for tokens that match.
+                    // first we try to find user@hostname
+                    let filter_username_with_hostname = format!(
+                        "{}@{}",
+                        filter_username,
+                        client.get_origin().host_str().unwrap_or("localhost")
+                    );
+                    debug!(
+                        "Looking for tokens matching {}",
+                        filter_username_with_hostname
+                    );
+
                     let mut token_refs: Vec<_> = tokens
                         .iter()
-                        .filter(|(t, _)| t.starts_with(&filter_username))
+                        .filter(|(t, _)| *t == &filter_username_with_hostname)
                         .map(|(k, v)| (k.clone(), v.clone()))
                         .collect();
 
-                    match token_refs.len() {
-                        0 => None,
-                        1 => token_refs.pop(),
-                        _ => {
-                            error!("Multiple authentication tokens found for {}. Please specify the full spn to proceed", filter_username);
-                            return Err(ToClientError::Other);
+                    if token_refs.len() == 1 {
+                        // return the token
+                        token_refs.pop()
+                    } else {
+                        // otherwise let's try the fallback
+                        let filter_username = format!("{}@", filter_username);
+                        // Filter for tokens that match the pattern
+                        let mut token_refs: Vec<_> = tokens
+                            .into_iter()
+                            .filter(|(t, _)| t.starts_with(&filter_username))
+                            .map(|(k, v)| (k, v))
+                            .collect();
+
+                        match token_refs.len() {
+                            0 => None,
+                            1 => token_refs.pop(),
+                            _ => {
+                                error!("Multiple authentication tokens found for {}. Please specify the full spn to proceed", filter_username);
+                                return Err(ToClientError::Other);
+                            }
                         }
                     }
                 };
@@ -150,10 +187,10 @@ impl CommonOpt {
                 } else {
                     // Unable to automatically select the user because multiple tokens exist
                     // so we'll prompt the user to select one
-                    match prompt_for_username_get_values() {
+                    match prompt_for_username_get_values(&client.get_token_cache_path()) {
                         Ok(tuple) => tuple,
                         Err(msg) => {
-                            error!("{}", msg);
+                            error!("Error: {}", msg);
                             std::process::exit(1);
                         }
                     }
@@ -161,7 +198,7 @@ impl CommonOpt {
             }
         };
 
-        let jwtu = match JwsUnverified::from_str(&token) {
+        let jwsc = match JwsCompact::from_str(&token) {
             Ok(jwtu) => jwtu,
             Err(e) => {
                 error!("Unable to parse token - {:?}", e);
@@ -170,10 +207,25 @@ impl CommonOpt {
         };
 
         // Is the token (probably) valid?
-        match jwtu
-            .validate_embeded()
-            .map(|jws: Jws<UserAuthToken>| jws.into_inner())
-        {
+        let jws_verifier = if let Some(pub_jwk) = jwsc.get_jwk_pubkey() {
+            match JwsEs256Verifier::try_from(pub_jwk) {
+                Ok(verifier) => verifier,
+                Err(err) => {
+                    error!(?err, "Unable to configure jws verifier");
+                    return Err(ToClientError::Other);
+                }
+            }
+        } else {
+            error!("Unable to access token public key");
+            return Err(ToClientError::Other);
+        };
+
+        match jws_verifier.verify(&jwsc).and_then(|jws| {
+            jws.from_json::<UserAuthToken>().map_err(|serde_err| {
+                error!(?serde_err);
+                JwtError::InvalidJwt
+            })
+        }) {
             Ok(uat) => {
                 let now_utc = time::OffsetDateTime::now_utc();
                 if let Some(exp) = uat.expiry {
@@ -271,9 +323,9 @@ impl CommonOpt {
 
 /// This parses the token store and prompts the user to select their username, returns the username/token as a tuple of Strings
 ///
-/// Used to reduce duplication in implementing [prompt_for_username_get_username] and [prompt_for_username_get_token]
-pub fn prompt_for_username_get_values() -> Result<(String, String), String> {
-    let tokens = match read_tokens() {
+/// Used to reduce duplication in implementing [prompt_for_username_get_username] and `prompt_for_username_get_token`
+pub fn prompt_for_username_get_values(token_cache_path: &str) -> Result<(String, String), String> {
+    let tokens = match read_tokens(token_cache_path) {
         Ok(value) => value,
         _ => return Err("Error retrieving authentication token store".to_string()),
     };
@@ -316,8 +368,8 @@ pub fn prompt_for_username_get_values() -> Result<(String, String), String> {
 /// This parses the token store and prompts the user to select their username, returns the username as a String
 ///
 /// Powered by [prompt_for_username_get_values]
-pub fn prompt_for_username_get_username() -> Result<String, String> {
-    match prompt_for_username_get_values() {
+pub fn prompt_for_username_get_username(token_cache_path: &str) -> Result<String, String> {
+    match prompt_for_username_get_values(token_cache_path) {
         Ok(value) => {
             let (f_user, _) = value;
             Ok(f_user)
@@ -326,6 +378,7 @@ pub fn prompt_for_username_get_username() -> Result<String, String> {
     }
 }
 
+/*
 /// This parses the token store and prompts the user to select their username, returns the token as a String
 ///
 /// Powered by [prompt_for_username_get_values]
@@ -336,5 +389,40 @@ pub fn prompt_for_username_get_token() -> Result<String, String> {
             Ok(f_token)
         }
         Err(err) => Err(err),
+    }
+}
+*/
+
+/// This parses the input for the person/service-account expire-at CLI commands
+///
+/// If it fails, return error, if it needs to *clear* the result, return Ok(None),
+/// otherwise return Ok(Some(String)) which is the new value to set.
+pub(crate) fn try_expire_at_from_string(input: &str) -> Result<Option<String>, ()> {
+    match input {
+        "any" | "never" | "clear" => Ok(None),
+        "now" => match OffsetDateTime::now_utc().format(&Rfc3339) {
+            Ok(s) => Ok(Some(s)),
+            Err(e) => {
+                error!(err = ?e, "Unable to format current time to rfc3339");
+                Err(())
+            }
+        },
+        "epoch" => match OffsetDateTime::UNIX_EPOCH.format(&Rfc3339) {
+            Ok(val) => Ok(Some(val)),
+            Err(err) => {
+                error!("Failed to format epoch timestamp as RFC3339: {:?}", err);
+                Err(())
+            }
+        },
+        _ => {
+            // fall back to parsing it as a date
+            match OffsetDateTime::parse(input, &Rfc3339) {
+                Ok(_) => Ok(Some(input.to_string())),
+                Err(err) => {
+                    error!("Failed to parse supplied timestamp: {:?}", err);
+                    Err(())
+                }
+            }
+        }
     }
 }

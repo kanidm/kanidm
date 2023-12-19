@@ -3,26 +3,22 @@
 //! factor to assert that the user is legitimate. This also contains some
 //! support code for asynchronous task execution.
 use std::collections::BTreeMap;
-pub use std::collections::BTreeSet as Set;
 use std::convert::TryFrom;
 use std::fmt;
 use std::time::Duration;
 
-// use webauthn_rs::proto::Credential as WebauthnCredential;
-use compact_jwt::{Jws, JwsSigner};
+use compact_jwt::{Jws, JwsEs256Signer, JwsSigner};
 use hashbrown::HashSet;
 use kanidm_proto::v1::{
     AuthAllowed, AuthCredential, AuthIssueSession, AuthMech, OperationError, UserAuthToken,
 };
-// use crossbeam::channel::Sender;
+use nonempty::{nonempty, NonEmpty};
 use tokio::sync::mpsc::UnboundedSender as Sender;
 use uuid::Uuid;
-// use webauthn_rs::prelude::DeviceKey as DeviceKeyV4;
-use nonempty::{nonempty, NonEmpty};
-use webauthn_rs::prelude::Passkey as PasskeyV4;
 use webauthn_rs::prelude::{
-    CredentialID, PasskeyAuthentication, RequestChallengeResponse, SecurityKeyAuthentication,
-    Webauthn,
+    AttestationCaList, AttestedPasskey as AttestedPasskeyV4, AttestedPasskeyAuthentication,
+    CredentialID, Passkey as PasskeyV4, PasskeyAuthentication, RequestChallengeResponse,
+    SecurityKeyAuthentication, Webauthn,
 };
 
 use crate::credential::totp::Totp;
@@ -34,8 +30,10 @@ use crate::idm::delayed::{
 };
 use crate::idm::AuthState;
 use crate::prelude::*;
-use crate::value::Session;
+use crate::value::{Session, SessionState};
 use time::OffsetDateTime;
+
+use super::accountpolicy::ResolvedAccountPolicy;
 
 // Each CredHandler takes one or more credentials and determines if the
 // handlers requirements can be 100% fulfilled. This is where MFA or other
@@ -45,6 +43,7 @@ use time::OffsetDateTime;
 const BAD_PASSWORD_MSG: &str = "incorrect password";
 const BAD_TOTP_MSG: &str = "incorrect totp";
 const BAD_WEBAUTHN_MSG: &str = "invalid webauthn authentication";
+const BAD_ACCOUNT_POLICY: &str = "the credential no longer meets account policy requirements";
 const BAD_BACKUPCODE_MSG: &str = "invalid backup code";
 const BAD_AUTH_TYPE_MSG: &str = "invalid authentication method in this context";
 const BAD_CREDENTIALS: &str = "invalid credential message";
@@ -54,29 +53,31 @@ const PW_BADLIST_MSG: &str = "password is in badlist";
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
 pub enum AuthType {
     Anonymous,
-    UnixPassword,
     Password,
     GeneratedPassword,
     PasswordMfa,
     Passkey,
+    AttestedPasskey,
 }
 
 impl fmt::Display for AuthType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             AuthType::Anonymous => write!(f, "anonymous"),
-            AuthType::UnixPassword => write!(f, "unixpassword"),
             AuthType::Password => write!(f, "password"),
             AuthType::GeneratedPassword => write!(f, "generatedpassword"),
             AuthType::PasswordMfa => write!(f, "passwordmfa"),
             AuthType::Passkey => write!(f, "passkey"),
+            AuthType::AttestedPasskey => write!(f, "attested_passkey"),
         }
     }
 }
 
 #[derive(Debug, Clone)]
 enum AuthIntent {
-    InitialAuth,
+    InitialAuth {
+        privileged: bool,
+    },
     Reauth {
         session_id: Uuid,
         session_expiry: Option<OffsetDateTime>,
@@ -110,10 +111,18 @@ struct CredMfa {
 }
 
 #[derive(Clone, Debug)]
-/// The state of a webauthn credential during authentication
-struct CredWebauthn {
+/// The state of a passkey during authentication
+struct CredPasskey {
     chal: RequestChallengeResponse,
     wan_state: PasskeyAuthentication,
+    state: CredVerifyState,
+}
+
+#[derive(Clone, Debug)]
+/// The state of an attested passkey during authentication
+struct CredAttestedPasskey {
+    chal: RequestChallengeResponse,
+    wan_state: AttestedPasskeyAuthentication,
     state: CredVerifyState,
 }
 
@@ -135,8 +144,15 @@ enum CredHandler {
         cred_id: Uuid,
     },
     Passkey {
-        c_wan: CredWebauthn,
+        c_wan: CredPasskey,
         cred_ids: BTreeMap<CredentialID, Uuid>,
+    },
+    AttestedPasskey {
+        c_wan: CredAttestedPasskey,
+        // To verify the attestation post auth
+        att_ca_list: AttestationCaList,
+        // AP does `PartialEq` on cred_id
+        creds: BTreeMap<AttestedPasskeyV4, Uuid>,
     },
 }
 
@@ -207,7 +223,7 @@ impl TryFrom<(&Credential, &Webauthn)> for CredHandler {
                 webauthn
                     .start_passkey_authentication(&pks)
                     .map(|(chal, wan_state)| CredHandler::Passkey {
-                        c_wan: CredWebauthn {
+                        c_wan: CredPasskey {
                             chal,
                             wan_state,
                             state: CredVerifyState::Init,
@@ -223,31 +239,32 @@ impl TryFrom<(&Credential, &Webauthn)> for CredHandler {
     }
 }
 
-impl TryFrom<(&BTreeMap<Uuid, (String, PasskeyV4)>, &Webauthn)> for CredHandler {
-    type Error = ();
-
+impl CredHandler {
     /// Given a credential and some external configuration, Generate the credential handler
     /// that will be used for this session. This credential handler is a "self contained"
     /// unit that defines what is possible to use during this authentication session to prevent
     /// inconsistency.
-    fn try_from(
-        (wan, webauthn): (&BTreeMap<Uuid, (String, PasskeyV4)>, &Webauthn),
-    ) -> Result<Self, Self::Error> {
-        if wan.is_empty() {
-            security_info!("Account does not have any passkeys");
-            return Err(());
+    fn build_from_set_passkey(
+        wan: impl Iterator<Item = (Uuid, PasskeyV4)>,
+        webauthn: &Webauthn,
+    ) -> Result<Self, ()> {
+        let mut pks = Vec::with_capacity(wan.size_hint().0);
+        let mut cred_ids = BTreeMap::default();
+
+        for (uuid, pk) in wan {
+            cred_ids.insert(pk.cred_id().clone(), uuid);
+            pks.push(pk);
         }
 
-        let pks: Vec<_> = wan.values().map(|(_, k)| k).cloned().collect();
-        let cred_ids: BTreeMap<_, _> = wan
-            .iter()
-            .map(|(u, (_, k))| (k.cred_id().clone(), *u))
-            .collect();
+        if pks.is_empty() {
+            security_info!("Account does not have any passkeys");
+            return Err(());
+        };
 
         webauthn
             .start_passkey_authentication(&pks)
             .map(|(chal, wan_state)| CredHandler::Passkey {
-                c_wan: CredWebauthn {
+                c_wan: CredPasskey {
                     chal,
                     wan_state,
                     state: CredVerifyState::Init,
@@ -262,20 +279,19 @@ impl TryFrom<(&BTreeMap<Uuid, (String, PasskeyV4)>, &Webauthn)> for CredHandler 
                 // maps to unit.
             })
     }
-}
 
-impl TryFrom<(Uuid, &PasskeyV4, &Webauthn)> for CredHandler {
-    type Error = ();
-    fn try_from(
-        (cred_id, pk, webauthn): (Uuid, &PasskeyV4, &Webauthn),
-    ) -> Result<Self, Self::Error> {
+    fn build_from_single_passkey(
+        cred_id: Uuid,
+        pk: PasskeyV4,
+        webauthn: &Webauthn,
+    ) -> Result<Self, ()> {
         let cred_ids = btreemap!((pk.cred_id().clone(), cred_id));
-        let pks = vec![pk.clone()];
+        let pks = vec![pk];
 
         webauthn
             .start_passkey_authentication(pks.as_slice())
             .map(|(chal, wan_state)| CredHandler::Passkey {
-                c_wan: CredWebauthn {
+                c_wan: CredPasskey {
                     chal,
                     wan_state,
                     state: CredVerifyState::Init,
@@ -290,9 +306,69 @@ impl TryFrom<(Uuid, &PasskeyV4, &Webauthn)> for CredHandler {
                 // maps to unit.
             })
     }
-}
 
-impl CredHandler {
+    fn build_from_set_attested_pk(
+        wan: &BTreeMap<Uuid, (String, AttestedPasskeyV4)>,
+        att_ca_list: &AttestationCaList,
+        webauthn: &Webauthn,
+    ) -> Result<Self, ()> {
+        if wan.is_empty() {
+            security_info!("Account does not have any attested passkeys");
+            return Err(());
+        };
+
+        let pks: Vec<_> = wan.values().map(|(_, k)| k).cloned().collect();
+        let creds: BTreeMap<_, _> = wan.iter().map(|(u, (_, k))| (k.clone(), *u)).collect();
+
+        webauthn
+            .start_attested_passkey_authentication(&pks)
+            .map(|(chal, wan_state)| CredHandler::AttestedPasskey {
+                c_wan: CredAttestedPasskey {
+                    chal,
+                    wan_state,
+                    state: CredVerifyState::Init,
+                },
+                att_ca_list: att_ca_list.clone(),
+                creds,
+            })
+            .map_err(|e| {
+                security_info!(
+                    ?e,
+                    "Unable to create attested passkey webauthn authentication challenge"
+                );
+                // maps to unit.
+            })
+    }
+
+    fn build_from_single_attested_pk(
+        cred_id: Uuid,
+        pk: &AttestedPasskeyV4,
+        att_ca_list: &AttestationCaList,
+        webauthn: &Webauthn,
+    ) -> Result<Self, ()> {
+        let creds = btreemap!((pk.clone(), cred_id));
+        let pks = vec![pk.clone()];
+
+        webauthn
+            .start_attested_passkey_authentication(pks.as_slice())
+            .map(|(chal, wan_state)| CredHandler::AttestedPasskey {
+                c_wan: CredAttestedPasskey {
+                    chal,
+                    wan_state,
+                    state: CredVerifyState::Init,
+                },
+                att_ca_list: att_ca_list.clone(),
+                creds,
+            })
+            .map_err(|e| {
+                security_info!(
+                    ?e,
+                    "Unable to create attested passkey webauthn authentication challenge"
+                );
+                // maps to unit.
+            })
+    }
+
     /// Determine if this password factor requires an upgrade of it's cryptographic type. If
     /// so, send an asynchronous event into the queue that will allow the password to have it's
     /// content upgraded later.
@@ -332,7 +408,7 @@ impl CredHandler {
         }
     }
 
-    /// Validate a singule password credential of the account.
+    /// Validate a single password credential of the account.
     fn validate_password(
         cred: &AuthCredential,
         cred_id: Uuid,
@@ -340,29 +416,26 @@ impl CredHandler {
         generated: bool,
         who: Uuid,
         async_tx: &Sender<DelayedAction>,
-        pw_badlist_set: Option<&HashSet<String>>,
+        pw_badlist_set: &HashSet<String>,
     ) -> CredState {
         match cred {
             AuthCredential::Password(cleartext) => {
                 if pw.verify(cleartext.as_str()).unwrap_or(false) {
-                    match pw_badlist_set {
-                        Some(p) if p.contains(&cleartext.to_lowercase()) => {
-                            security_error!("Handler::Password -> Result::Denied - Password found in badlist during login");
-                            CredState::Denied(PW_BADLIST_MSG)
-                        }
-                        _ => {
-                            security_info!("Handler::Password -> Result::Success");
-                            Self::maybe_pw_upgrade(pw, who, cleartext.as_str(), async_tx);
-                            if generated {
-                                CredState::Success {
-                                    auth_type: AuthType::GeneratedPassword,
-                                    cred_id,
-                                }
-                            } else {
-                                CredState::Success {
-                                    auth_type: AuthType::Password,
-                                    cred_id,
-                                }
+                    if pw_badlist_set.contains(&cleartext.to_lowercase()) {
+                        security_error!("Handler::Password -> Result::Denied - Password found in badlist during login");
+                        CredState::Denied(PW_BADLIST_MSG)
+                    } else {
+                        security_info!("Handler::Password -> Result::Success");
+                        Self::maybe_pw_upgrade(pw, who, cleartext.as_str(), async_tx);
+                        if generated {
+                            CredState::Success {
+                                auth_type: AuthType::GeneratedPassword,
+                                cred_id,
+                            }
+                        } else {
+                            CredState::Success {
+                                auth_type: AuthType::Password,
+                                cred_id,
                             }
                         }
                     }
@@ -392,7 +465,7 @@ impl CredHandler {
         webauthn: &Webauthn,
         who: Uuid,
         async_tx: &Sender<DelayedAction>,
-        pw_badlist_set: Option<&HashSet<String>>,
+        pw_badlist_set: &HashSet<String>,
     ) -> CredState {
         match (&pw_mfa.mfa_state, &pw_mfa.pw_state) {
             (CredVerifyState::Init, CredVerifyState::Init) => {
@@ -490,25 +563,22 @@ impl CredHandler {
                 match cred {
                     AuthCredential::Password(cleartext) => {
                         if pw_mfa.pw.verify(cleartext.as_str()).unwrap_or(false) {
-                            match pw_badlist_set {
-                                Some(p) if p.contains(&cleartext.to_lowercase()) => {
-                                    pw_mfa.pw_state = CredVerifyState::Fail;
-                                    security_error!("Handler::PasswordMfa -> Result::Denied - Password found in badlist during login");
-                                    CredState::Denied(PW_BADLIST_MSG)
-                                }
-                                _ => {
-                                    pw_mfa.pw_state = CredVerifyState::Success;
-                                    security_info!("Handler::PasswordMfa -> Result::Success - TOTP/WebAuthn/BackupCode OK, password OK");
-                                    Self::maybe_pw_upgrade(
-                                        &pw_mfa.pw,
-                                        who,
-                                        cleartext.as_str(),
-                                        async_tx,
-                                    );
-                                    CredState::Success {
-                                        auth_type: AuthType::PasswordMfa,
-                                        cred_id,
-                                    }
+                            if pw_badlist_set.contains(&cleartext.to_lowercase()) {
+                                pw_mfa.pw_state = CredVerifyState::Fail;
+                                security_error!("Handler::PasswordMfa -> Result::Denied - Password found in badlist during login");
+                                CredState::Denied(PW_BADLIST_MSG)
+                            } else {
+                                pw_mfa.pw_state = CredVerifyState::Success;
+                                security_info!("Handler::PasswordMfa -> Result::Success - TOTP/WebAuthn/BackupCode OK, password OK");
+                                Self::maybe_pw_upgrade(
+                                    &pw_mfa.pw,
+                                    who,
+                                    cleartext.as_str(),
+                                    async_tx,
+                                );
+                                CredState::Success {
+                                    auth_type: AuthType::PasswordMfa,
+                                    cred_id,
                                 }
                             }
                         } else {
@@ -535,10 +605,10 @@ impl CredHandler {
     // end CredHandler::PasswordMfa
 
     /// Validate a webauthn authentication attempt
-    pub fn validate_webauthn(
+    pub fn validate_passkey(
         cred: &AuthCredential,
         cred_ids: &BTreeMap<CredentialID, Uuid>,
-        wan_cred: &mut CredWebauthn,
+        wan_cred: &mut CredPasskey,
         webauthn: &Webauthn,
         who: Uuid,
         async_tx: &Sender<DelayedAction>,
@@ -599,6 +669,82 @@ impl CredHandler {
         }
     }
 
+    /// Validate a webauthn authentication attempt
+    pub fn validate_attested_passkey(
+        cred: &AuthCredential,
+        creds: &BTreeMap<AttestedPasskeyV4, Uuid>,
+        wan_cred: &mut CredAttestedPasskey,
+        webauthn: &Webauthn,
+        who: Uuid,
+        async_tx: &Sender<DelayedAction>,
+        att_ca_list: &AttestationCaList,
+    ) -> CredState {
+        if wan_cred.state != CredVerifyState::Init {
+            security_error!("Handler::Webauthn -> Result::Denied - Internal State Already Fail");
+            return CredState::Denied(BAD_WEBAUTHN_MSG);
+        }
+
+        match cred {
+            AuthCredential::Passkey(resp) => {
+                // lets see how we go.
+                match webauthn.finish_attested_passkey_authentication(resp, &wan_cred.wan_state) {
+                    Ok(auth_result) => {
+                        if let Some((apk, cred_id)) = creds.get_key_value(auth_result.cred_id()) {
+                            // Verify attestation of the key.
+
+                            if let Err(webauthn_err) = apk.verify_attestation(att_ca_list) {
+                                wan_cred.state = CredVerifyState::Fail;
+                                // Denied.
+                                debug!(?webauthn_err);
+                                security_error!("Handler::Webauthn -> Result::Denied - webauthn credential fails attestation");
+                                return CredState::Denied(BAD_ACCOUNT_POLICY);
+                            }
+
+                            wan_cred.state = CredVerifyState::Success;
+                            // Success. Determine if we need to update the counter
+                            // async from r.
+                            if auth_result.needs_update() {
+                                // Do async
+                                if let Err(_e) =
+                                    async_tx.send(DelayedAction::WebauthnCounterIncrement(
+                                        WebauthnCounterIncrement {
+                                            target_uuid: who,
+                                            auth_result,
+                                        },
+                                    ))
+                                {
+                                    admin_warn!("unable to queue delayed webauthn property update, continuing ... ");
+                                };
+                            };
+
+                            CredState::Success {
+                                auth_type: AuthType::AttestedPasskey,
+                                cred_id: *cred_id,
+                            }
+                        } else {
+                            wan_cred.state = CredVerifyState::Fail;
+                            // Denied.
+                            security_error!("Handler::Webauthn -> Result::Denied - webauthn credential id not found");
+                            CredState::Denied(BAD_WEBAUTHN_MSG)
+                        }
+                    }
+                    Err(e) => {
+                        wan_cred.state = CredVerifyState::Fail;
+                        // Denied.
+                        security_error!(?e, "Handler::Webauthn -> Result::Denied - webauthn error");
+                        CredState::Denied(BAD_WEBAUTHN_MSG)
+                    }
+                }
+            }
+            _ => {
+                security_error!(
+                    "Handler::Webauthn -> Result::Denied - invalid cred type for handler"
+                );
+                CredState::Denied(BAD_AUTH_TYPE_MSG)
+            }
+        }
+    }
+
     #[allow(clippy::too_many_arguments)]
     /// Given the current handler, proceed to authenticate the attempted credential step.
     pub fn validate(
@@ -608,7 +754,7 @@ impl CredHandler {
         who: Uuid,
         async_tx: &Sender<DelayedAction>,
         webauthn: &Webauthn,
-        pw_badlist_set: Option<&HashSet<String>>,
+        pw_badlist_set: &HashSet<String>,
     ) -> CredState {
         match self {
             CredHandler::Anonymous { cred_id } => Self::validate_anonymous(cred, *cred_id),
@@ -641,7 +787,20 @@ impl CredHandler {
             CredHandler::Passkey {
                 ref mut c_wan,
                 cred_ids,
-            } => Self::validate_webauthn(cred, cred_ids, c_wan, webauthn, who, async_tx),
+            } => Self::validate_passkey(cred, cred_ids, c_wan, webauthn, who, async_tx),
+            CredHandler::AttestedPasskey {
+                ref mut c_wan,
+                ref att_ca_list,
+                creds,
+            } => Self::validate_attested_passkey(
+                cred,
+                creds,
+                c_wan,
+                webauthn,
+                who,
+                async_tx,
+                att_ca_list,
+            ),
         }
     }
 
@@ -667,6 +826,9 @@ impl CredHandler {
                 )
                 .collect(),
             CredHandler::Passkey { c_wan, .. } => vec![AuthAllowed::Passkey(c_wan.chal.clone())],
+            CredHandler::AttestedPasskey { c_wan, .. } => {
+                vec![AuthAllowed::Passkey(c_wan.chal.clone())]
+            }
         }
     }
 
@@ -676,7 +838,8 @@ impl CredHandler {
             (CredHandler::Anonymous { .. }, AuthMech::Anonymous)
             | (CredHandler::Password { .. }, AuthMech::Password)
             | (CredHandler::PasswordMfa { .. }, AuthMech::PasswordMfa)
-            | (CredHandler::Passkey { .. }, AuthMech::Passkey) => true,
+            | (CredHandler::Passkey { .. }, AuthMech::Passkey)
+            | (CredHandler::AttestedPasskey { .. }, AuthMech::Passkey) => true,
             (_, _) => false,
         }
     }
@@ -687,6 +850,7 @@ impl CredHandler {
             CredHandler::Password { .. } => AuthMech::Password,
             CredHandler::PasswordMfa { .. } => AuthMech::PasswordMfa,
             CredHandler::Passkey { .. } => AuthMech::Passkey,
+            CredHandler::AttestedPasskey { .. } => AuthMech::Passkey,
         }
     }
 }
@@ -719,12 +883,24 @@ impl AuthSessionState {
     }
 }
 
+pub(crate) struct AuthSessionData<'a> {
+    pub(crate) account: Account,
+    pub(crate) account_policy: ResolvedAccountPolicy,
+    pub(crate) issue: AuthIssueSession,
+    pub(crate) webauthn: &'a Webauthn,
+    pub(crate) ct: Duration,
+    pub(crate) source: Source,
+}
+
 #[derive(Clone)]
 /// The current state of an authentication session that is in progress.
 pub(crate) struct AuthSession {
     // Do we store a copy of the entry?
     // How do we know what claims to add?
     account: Account,
+    // This policies that apply to this account
+    account_policy: ResolvedAccountPolicy,
+
     // Store how we plan to handle this sessions authentication: this is generally
     // made apparent by the presentation of an application id or not. If none is presented
     // we want the primary-interaction credentials.
@@ -747,32 +923,30 @@ impl AuthSession {
     /// Create a new auth session, based on the available credential handlers of the account.
     /// the session is a whole encapsulated unit of what we need to proceed, so that subsequent
     /// or interleved write operations do not cause inconsistency in this process.
-    pub fn new(
-        account: Account,
-        issue: AuthIssueSession,
-        webauthn: &Webauthn,
-        ct: Duration,
-        source: Source,
-    ) -> (Option<Self>, AuthState) {
+    pub fn new(asd: AuthSessionData<'_>, privileged: bool) -> (Option<Self>, AuthState) {
         // During this setup, determine the credential handler that we'll be using
         // for this session. This is currently based on presentation of an application
         // id.
-        let state = if account.is_within_valid_time(ct) {
+        let state = if asd.account.is_within_valid_time(asd.ct) {
             // We want the primary handler - this is where we make a decision
             // based on the anonymous ... in theory this could be cleaner
             // and interact with the account more?
-            if account.is_anonymous() {
+            if asd.account.is_anonymous() {
                 AuthSessionState::Init(nonempty![CredHandler::Anonymous {
-                    cred_id: account.uuid,
+                    cred_id: asd.account.uuid,
                 }])
             } else {
                 // What's valid to use in this context?
                 let mut handlers = Vec::new();
 
-                if let Some(cred) = &account.primary {
-                    // TODO: Make it possible to have multiple creds.
-                    // Probably means new authsession has to be failable
-                    if let Ok(ch) = CredHandler::try_from((cred, webauthn)) {
+                // TODO: We can't yet fully enforce account policy on auth, there is a bit of work
+                // to do to be able to check for pw / mfa etc.
+                // A possible gotcha is service accounts which can't be affected by these policies?
+
+                // let cred_type_min = asd.account_policy.credential_policy();
+
+                if let Some(cred) = &asd.account.primary {
+                    if let Ok(ch) = CredHandler::try_from((cred, asd.webauthn)) {
                         handlers.push(ch);
                     } else {
                         security_critical!(
@@ -781,11 +955,36 @@ impl AuthSession {
                     }
                 }
 
-                if let Ok(ch) = CredHandler::try_from((&account.passkeys, webauthn)) {
-                    handlers.push(ch);
+                // Important - if attested is present, don't use passkeys
+                if let Some(att_ca_list) = asd.account_policy.webauthn_attestation_ca_list() {
+                    if let Ok(ch) = CredHandler::build_from_set_attested_pk(
+                        &asd.account.attested_passkeys,
+                        att_ca_list,
+                        asd.webauthn,
+                    ) {
+                        handlers.push(ch);
+                    }
+                } else {
+                    let credential_iter = asd
+                        .account
+                        .passkeys
+                        .iter()
+                        .map(|(u, (_, pk))| (*u, pk.clone()))
+                        .chain(
+                            asd.account
+                                .attested_passkeys
+                                .iter()
+                                .map(|(u, (_, pk))| (*u, pk.into())),
+                        );
+
+                    if let Ok(ch) =
+                        CredHandler::build_from_set_passkey(credential_iter, asd.webauthn)
+                    {
+                        handlers.push(ch);
+                    }
                 };
 
-                if let Some(non_empty_handlers) = NonEmpty::collect(handlers.into_iter()) {
+                if let Some(non_empty_handlers) = NonEmpty::collect(handlers) {
                     AuthSessionState::Init(non_empty_handlers)
                 } else {
                     security_info!("account has no available credentials");
@@ -804,11 +1003,12 @@ impl AuthSession {
         } else {
             // We can proceed
             let auth_session = AuthSession {
-                account,
+                account: asd.account,
+                account_policy: asd.account_policy,
                 state,
-                issue,
-                intent: AuthIntent::InitialAuth,
-                source,
+                issue: asd.issue,
+                intent: AuthIntent::InitialAuth { privileged },
+                source: asd.source,
             };
             // Get the set of mechanisms that can proceed. This is tied
             // to the session so that it can mutate state and have progression
@@ -826,14 +1026,10 @@ impl AuthSession {
     /// will be used in this operation based on the credential id that was used in the
     /// initial authentication.
     pub(crate) fn new_reauth(
-        account: Account,
+        asd: AuthSessionData<'_>,
         session_id: Uuid,
         session: &Session,
         cred_id: Uuid,
-        issue: AuthIssueSession,
-        webauthn: &Webauthn,
-        ct: Duration,
-        source: Source,
     ) -> (Option<Self>, AuthState) {
         /// An inner enum to allow us to more easily define state within this fn
         enum State {
@@ -842,7 +1038,7 @@ impl AuthSession {
             Proceed(CredHandler),
         }
 
-        let state = if account.is_within_valid_time(ct) {
+        let state = if asd.account.is_within_valid_time(asd.ct) {
             // Get the credential that matches this cred_id.
             //
             // To make this work "cleanly" we can't really nest a bunch of if
@@ -852,11 +1048,14 @@ impl AuthSession {
             // Do we need to double check for anon here? I don't think so since the
             // anon cred_id won't ever exist on an account.
 
+            // We can't yet fully enforce account policy on auth, there is a bit of work
+            // to do to be able to check the credential types match what we expect.
+
             let mut cred_handler = None;
 
-            if let Some(primary) = account.primary.as_ref() {
+            if let Some(primary) = asd.account.primary.as_ref() {
                 if primary.uuid == cred_id {
-                    if let Ok(ch) = CredHandler::try_from((primary, webauthn)) {
+                    if let Ok(ch) = CredHandler::try_from((primary, asd.webauthn)) {
                         // Update it.
                         debug_assert!(cred_handler.is_none());
                         cred_handler = Some(ch);
@@ -868,13 +1067,51 @@ impl AuthSession {
                 }
             }
 
-            if let Some(pk) = account.passkeys.get(&cred_id).map(|(_, pk)| pk) {
-                if let Ok(ch) = CredHandler::try_from((cred_id, pk, webauthn)) {
-                    // Update it.
-                    debug_assert!(cred_handler.is_none());
-                    cred_handler = Some(ch);
-                } else {
-                    security_critical!("corrupt credentials, unable to start primary credhandler");
+            // Do we have an attestation ca list? If so, we only accept attested
+            // passkeys.
+            if let Some(att_ca_list) = asd.account_policy.webauthn_attestation_ca_list() {
+                if let Some(pk) = asd
+                    .account
+                    .attested_passkeys
+                    .get(&cred_id)
+                    .map(|(_, pk)| pk)
+                {
+                    if let Ok(ch) = CredHandler::build_from_single_attested_pk(
+                        cred_id,
+                        pk,
+                        att_ca_list,
+                        asd.webauthn,
+                    ) {
+                        // Update it.
+                        debug_assert!(cred_handler.is_none());
+                        cred_handler = Some(ch);
+                    } else {
+                        security_critical!(
+                            "corrupt credentials, unable to start attested passkey credhandler"
+                        );
+                    }
+                }
+            } else {
+                // Scan both attested and passkeys for the possible credential.
+                let maybe_pk: Option<PasskeyV4> = asd
+                    .account
+                    .attested_passkeys
+                    .get(&cred_id)
+                    .map(|(_, apk)| apk.into())
+                    .or_else(|| asd.account.passkeys.get(&cred_id).map(|(_, pk)| pk.clone()));
+
+                if let Some(pk) = maybe_pk {
+                    if let Ok(ch) =
+                        CredHandler::build_from_single_passkey(cred_id, pk, asd.webauthn)
+                    {
+                        // Update it.
+                        debug_assert!(cred_handler.is_none());
+                        cred_handler = Some(ch);
+                    } else {
+                        security_critical!(
+                            "corrupt credentials, unable to start passkey credhandler"
+                        );
+                    }
                 }
             }
 
@@ -889,18 +1126,30 @@ impl AuthSession {
             State::Expired
         };
 
+        let session_expiry = match session.state {
+            SessionState::ExpiresAt(odt) => Some(odt),
+            SessionState::NeverExpires => None,
+            SessionState::RevokedAt(_) => {
+                security_error!(
+                    "Invalid State - Should not be possible to trigger re-auth on revoked session."
+                );
+                return (None, AuthState::Denied(ACCOUNT_EXPIRED.to_string()));
+            }
+        };
+
         match state {
             State::Proceed(handler) => {
                 let allow = handler.next_auth_allowed();
                 let auth_session = AuthSession {
-                    account,
+                    account: asd.account,
+                    account_policy: asd.account_policy,
                     state: AuthSessionState::InProgress(handler),
-                    issue,
+                    issue: asd.issue,
                     intent: AuthIntent::Reauth {
                         session_id,
-                        session_expiry: session.expiry,
+                        session_expiry,
                     },
-                    source,
+                    source: asd.source,
                 };
 
                 let as_state = AuthState::Continue(allow);
@@ -925,7 +1174,8 @@ impl AuthSession {
                 Ok(Some(*cred_id))
             }
             AuthSessionState::InProgress(CredHandler::Anonymous { .. })
-            | AuthSessionState::InProgress(CredHandler::Passkey { .. }) => Ok(None),
+            | AuthSessionState::InProgress(CredHandler::Passkey { .. })
+            | AuthSessionState::InProgress(CredHandler::AttestedPasskey { .. }) => Ok(None),
             _ => Err(OperationError::InvalidState),
         }
     }
@@ -1005,8 +1255,8 @@ impl AuthSession {
         async_tx: &Sender<DelayedAction>,
         audit_tx: &Sender<AuditEvent>,
         webauthn: &Webauthn,
-        pw_badlist_set: Option<&HashSet<String>>,
-        uat_jwt_signer: &JwsSigner,
+        uat_jwt_signer: &JwsEs256Signer,
+        pw_badlist: &HashSet<String>,
     ) -> Result<AuthState, OperationError> {
         let (next_state, response) = match &mut self.state {
             AuthSessionState::Init(_) | AuthSessionState::Success | AuthSessionState::Denied(_) => {
@@ -1021,19 +1271,30 @@ impl AuthSession {
                     self.account.uuid,
                     async_tx,
                     webauthn,
-                    pw_badlist_set,
+                    pw_badlist,
                 ) {
                     CredState::Success { auth_type, cred_id } => {
                         // Issue the uat based on a set of factors.
-                        let uat = self.issue_uat(&auth_type, time, async_tx, cred_id)?;
-                        let jwt = Jws::new(uat);
+                        let uat = self.issue_uat(
+                            &auth_type,
+                            time,
+                            async_tx,
+                            cred_id,
+                            self.account_policy.authsession_expiry(),
+                            self.account_policy.privilege_expiry(),
+                        )?;
+
+                        let jwt = Jws::into_json(&uat).map_err(|e| {
+                            admin_error!(?e, "Failed to serialise into Jws");
+                            OperationError::InvalidState
+                        })?;
 
                         // Now encrypt and prepare the token for return to the client.
-                        let token = jwt
+                        let token = uat_jwt_signer
                             // Do we want to embed this? Or just give the URL? I think we embed
                             // as we only need the client to be able to check it's not tampered, but
                             // this isn't a root of trust.
-                            .sign_embed_public_jwk(uat_jwt_signer)
+                            .sign(&jwt)
                             .map(|jwts| jwts.to_string())
                             .map_err(|e| {
                                 admin_error!(?e, "Failed to sign UserAuthToken to Jwt");
@@ -1096,24 +1357,34 @@ impl AuthSession {
         time: Duration,
         async_tx: &Sender<DelayedAction>,
         cred_id: Uuid,
+        auth_session_expiry: u32,
+        auth_privilege_expiry: u32,
     ) -> Result<UserAuthToken, OperationError> {
         security_debug!("Successful cred handling");
         match self.intent {
-            AuthIntent::InitialAuth => {
+            AuthIntent::InitialAuth { privileged } => {
                 let session_id = Uuid::new_v4();
                 // We need to actually work this out better, and then
                 // pass it to to_userauthtoken
                 let scope = match auth_type {
-                    AuthType::UnixPassword | AuthType::Anonymous => SessionScope::ReadOnly,
+                    AuthType::Anonymous => SessionScope::ReadOnly,
                     AuthType::GeneratedPassword => SessionScope::ReadWrite,
-                    AuthType::Password | AuthType::PasswordMfa | AuthType::Passkey => {
-                        SessionScope::PrivilegeCapable
+                    AuthType::Password
+                    | AuthType::PasswordMfa
+                    | AuthType::Passkey
+                    | AuthType::AttestedPasskey => {
+                        if privileged {
+                            SessionScope::ReadWrite
+                        } else {
+                            SessionScope::PrivilegeCapable
+                        }
                     }
                 };
 
                 security_info!(
-                    "Issuing {:?} session {} for {} {}",
+                    "Issuing {:?} session ({:?}) {} for {} {}",
                     self.issue,
+                    scope,
                     session_id,
                     self.account.spn,
                     self.account.uuid
@@ -1121,7 +1392,7 @@ impl AuthSession {
 
                 let uat = self
                     .account
-                    .to_userauthtoken(session_id, scope, time)
+                    .to_userauthtoken(session_id, scope, time, auth_session_expiry)
                     .ok_or(OperationError::InvalidState)?;
 
                 // Queue the session info write.
@@ -1133,15 +1404,11 @@ impl AuthSession {
                     AuthType::Anonymous => {
                         // Skip - these sessions are not validated by session id.
                     }
-                    AuthType::UnixPassword => {
-                        // Impossibru!
-                        admin_error!("Impossible auth type (UnixPassword) found");
-                        return Err(OperationError::InvalidState);
-                    }
                     AuthType::Password
                     | AuthType::GeneratedPassword
                     | AuthType::PasswordMfa
-                    | AuthType::Passkey => {
+                    | AuthType::Passkey
+                    | AuthType::AttestedPasskey => {
                         trace!("⚠️   Queued AuthSessionRecord for {}", self.account.uuid);
                         async_tx.send(DelayedAction::AuthSessionRecord(AuthSessionRecord {
                             target_uuid: self.account.uuid,
@@ -1170,18 +1437,25 @@ impl AuthSession {
                 // Sanity check - We have already been really strict about what session types
                 // can actually trigger a re-auth, but we recheck here for paranoia!
                 let scope = match auth_type {
-                    AuthType::UnixPassword | AuthType::Anonymous | AuthType::GeneratedPassword => {
+                    AuthType::Anonymous | AuthType::GeneratedPassword => {
                         error!("AuthType used in Reauth is not valid for session re-issuance. Rejecting");
                         return Err(OperationError::InvalidState);
                     }
-                    AuthType::Password | AuthType::PasswordMfa | AuthType::Passkey => {
-                        SessionScope::PrivilegeCapable
-                    }
+                    AuthType::Password
+                    | AuthType::PasswordMfa
+                    | AuthType::Passkey
+                    | AuthType::AttestedPasskey => SessionScope::PrivilegeCapable,
                 };
 
                 let uat = self
                     .account
-                    .to_reissue_userauthtoken(session_id, session_expiry, scope, time)
+                    .to_reissue_userauthtoken(
+                        session_id,
+                        session_expiry,
+                        scope,
+                        time,
+                        auth_privilege_expiry,
+                    )
                     .ok_or(OperationError::InvalidState)?;
 
                 Ok(uat)
@@ -1212,27 +1486,31 @@ impl AuthSession {
 
 #[cfg(test)]
 mod tests {
-    pub use std::collections::BTreeSet as Set;
+    use std::str::FromStr;
     use std::time::Duration;
 
-    use compact_jwt::JwsSigner;
+    use compact_jwt::{JwsCompact, JwsEs256Signer, JwsEs256Verifier, JwsVerifier};
     use hashbrown::HashSet;
-    use kanidm_proto::v1::{AuthAllowed, AuthCredential, AuthIssueSession, AuthMech};
+    use kanidm_proto::v1::{
+        AuthAllowed, AuthCredential, AuthIssueSession, AuthMech, UatPurpose, UserAuthToken,
+    };
     use tokio::sync::mpsc::unbounded_channel as unbounded;
     use webauthn_authenticator_rs::softpasskey::SoftPasskey;
     use webauthn_authenticator_rs::WebauthnAuthenticator;
 
     use crate::credential::totp::{Totp, TOTP_DEFAULT_STEP};
     use crate::credential::{BackupCodes, Credential};
+    use crate::idm::account::Account;
+    use crate::idm::accountpolicy::ResolvedAccountPolicy;
     use crate::idm::audit::AuditEvent;
     use crate::idm::authsession::{
-        AuthSession, BAD_AUTH_TYPE_MSG, BAD_BACKUPCODE_MSG, BAD_PASSWORD_MSG, BAD_TOTP_MSG,
-        BAD_WEBAUTHN_MSG, PW_BADLIST_MSG,
+        AuthSession, AuthSessionData, BAD_AUTH_TYPE_MSG, BAD_BACKUPCODE_MSG, BAD_PASSWORD_MSG,
+        BAD_TOTP_MSG, BAD_WEBAUTHN_MSG, PW_BADLIST_MSG,
     };
     use crate::idm::delayed::DelayedAction;
     use crate::idm::AuthState;
     use crate::prelude::*;
-    use crate::utils::{duration_from_epoch_now, readable_password_from_random};
+    use crate::utils::readable_password_from_random;
     use kanidm_lib_crypto::CryptoPolicy;
 
     fn create_pw_badlist_cache() -> HashSet<String> {
@@ -1250,8 +1528,10 @@ mod tests {
         .unwrap()
     }
 
-    fn create_jwt_signer() -> JwsSigner {
-        JwsSigner::generate_es256().expect("failed to construct signer.")
+    fn create_jwt_signer() -> JwsEs256Signer {
+        JwsEs256Signer::generate_es256()
+            .expect("failed to construct signer.")
+            .set_sign_option_embed_jwk(true)
     }
 
     #[test]
@@ -1260,16 +1540,17 @@ mod tests {
 
         let webauthn = create_webauthn();
 
-        let anon_account = entry_to_account!(E_ANONYMOUS_V1.clone());
+        let anon_account: Account = BUILTIN_ACCOUNT_ANONYMOUS_V1.clone().into();
 
-        let (session, state) = AuthSession::new(
-            anon_account,
-            AuthIssueSession::Token,
-            &webauthn,
-            duration_from_epoch_now(),
-            Source::Internal,
-        );
-
+        let asd = AuthSessionData {
+            account: anon_account,
+            account_policy: ResolvedAccountPolicy::default(),
+            issue: AuthIssueSession::Token,
+            webauthn: &webauthn,
+            ct: duration_from_epoch_now(),
+            source: Source::Internal,
+        };
+        let (session, state) = AuthSession::new(asd, false);
         if let AuthState::Choose(auth_mechs) = state {
             assert!(auth_mechs.iter().any(|x| matches!(x, AuthMech::Anonymous)));
         } else {
@@ -1294,15 +1575,18 @@ mod tests {
         (
             $audit:expr,
             $account:expr,
-            $webauthn:expr
+            $webauthn:expr,
+            $privileged:expr
         ) => {{
-            let (session, state) = AuthSession::new(
-                $account.clone(),
-                AuthIssueSession::Token,
-                $webauthn,
-                duration_from_epoch_now(),
-                Source::Internal,
-            );
+            let asd = AuthSessionData {
+                account: $account.clone(),
+                account_policy: ResolvedAccountPolicy::default(),
+                issue: AuthIssueSession::Token,
+                webauthn: $webauthn,
+                ct: duration_from_epoch_now(),
+                source: Source::Internal,
+            };
+            let (session, state) = AuthSession::new(asd, $privileged);
             let mut session = session.unwrap();
 
             if let AuthState::Choose(auth_mechs) = state {
@@ -1327,12 +1611,10 @@ mod tests {
         }};
     }
 
-    #[test]
-    fn test_idm_authsession_simple_password_mech() {
-        sketching::test_init();
+    fn start_session_simple_password_mech(privileged: bool) -> UserAuthToken {
         let webauthn = create_webauthn();
         // create the ent
-        let mut account = entry_to_account!(E_ADMIN_V1.clone());
+        let mut account: Account = BUILTIN_ACCOUNT_ADMIN.clone().into();
         // manually load in a cred
         let p = CryptoPolicy::minimum();
         let cred = Credential::new_password_only(&p, "test_password").unwrap();
@@ -1343,7 +1625,7 @@ mod tests {
 
         // now check
         let (mut session, pw_badlist_cache) =
-            start_password_session!(&mut audit, account, &webauthn);
+            start_password_session!(&mut audit, account, &webauthn, false);
 
         let attempt = AuthCredential::Password("bad_password".to_string());
         let jws_signer = create_jwt_signer();
@@ -1353,8 +1635,8 @@ mod tests {
             &async_tx,
             &audit_tx,
             &webauthn,
-            Some(&pw_badlist_cache),
             &jws_signer,
+            &pw_badlist_cache,
         ) {
             Ok(AuthState::Denied(_)) => {}
             _ => panic!(),
@@ -1368,19 +1650,30 @@ mod tests {
         // === Now begin a new session, and use a good pw.
 
         let (mut session, pw_badlist_cache) =
-            start_password_session!(&mut audit, account, &webauthn);
+            start_password_session!(&mut audit, account, &webauthn, privileged);
 
         let attempt = AuthCredential::Password("test_password".to_string());
-        match session.validate_creds(
+        let uat: UserAuthToken = match session.validate_creds(
             &attempt,
             Duration::from_secs(0),
             &async_tx,
             &audit_tx,
             &webauthn,
-            Some(&pw_badlist_cache),
             &jws_signer,
+            &pw_badlist_cache,
         ) {
-            Ok(AuthState::Success(_, AuthIssueSession::Token)) => {}
+            Ok(AuthState::Success(jwt, AuthIssueSession::Token)) => {
+                let jwsc = JwsCompact::from_str(&jwt).expect("Failed to parse jwt");
+
+                let jws_verifier =
+                    JwsEs256Verifier::try_from(jwsc.get_jwk_pubkey().unwrap()).unwrap();
+
+                jws_verifier
+                    .verify(&jwsc)
+                    .unwrap()
+                    .from_json::<UserAuthToken>()
+                    .unwrap()
+            }
             _ => panic!(),
         };
 
@@ -1393,6 +1686,34 @@ mod tests {
         assert!(async_rx.blocking_recv().is_none());
         drop(audit_tx);
         assert!(audit_rx.blocking_recv().is_none());
+
+        uat
+    }
+
+    #[test]
+    fn test_idm_authsession_simple_password_mech() {
+        sketching::test_init();
+        let uat = start_session_simple_password_mech(false);
+        match uat.purpose {
+            UatPurpose::ReadOnly => panic!("Unexpected UatPurpose::ReadOnly"),
+            UatPurpose::ReadWrite { expiry } => {
+                // Long lived RO session capable of reauth
+                assert!(expiry.is_none())
+            }
+        }
+    }
+
+    #[test]
+    fn test_idm_authsession_simple_password_mech_priv_shortcut() {
+        sketching::test_init();
+        let uat = start_session_simple_password_mech(true);
+        match uat.purpose {
+            UatPurpose::ReadOnly => panic!("Unexpected UatPurpose::ReadOnly"),
+            UatPurpose::ReadWrite { expiry } => {
+                // Short lived RW session
+                assert!(expiry.is_some())
+            }
+        }
     }
 
     #[test]
@@ -1401,7 +1722,7 @@ mod tests {
         let jws_signer = create_jwt_signer();
         let webauthn = create_webauthn();
         // create the ent
-        let mut account = entry_to_account!(E_ADMIN_V1.clone());
+        let mut account: Account = BUILTIN_ACCOUNT_ADMIN.clone().into();
         // manually load in a cred
         let p = CryptoPolicy::minimum();
         let cred = Credential::new_password_only(&p, "list@no3IBTyqHu$bad").unwrap();
@@ -1412,7 +1733,7 @@ mod tests {
 
         // now check, even though the password is correct, Auth should be denied since it is in badlist
         let (mut session, pw_badlist_cache) =
-            start_password_session!(&mut audit, account, &webauthn);
+            start_password_session!(&mut audit, account, &webauthn, false);
 
         let attempt = AuthCredential::Password("list@no3IBTyqHu$bad".to_string());
         match session.validate_creds(
@@ -1421,8 +1742,8 @@ mod tests {
             &async_tx,
             &audit_tx,
             &webauthn,
-            Some(&pw_badlist_cache),
             &jws_signer,
+            &pw_badlist_cache,
         ) {
             Ok(AuthState::Denied(msg)) => assert!(msg == PW_BADLIST_MSG),
             _ => panic!(),
@@ -1444,13 +1765,15 @@ mod tests {
             $account:expr,
             $webauthn:expr
         ) => {{
-            let (session, state) = AuthSession::new(
-                $account.clone(),
-                AuthIssueSession::Token,
-                $webauthn,
-                duration_from_epoch_now(),
-                Source::Internal,
-            );
+            let asd = AuthSessionData {
+                account: $account.clone(),
+                account_policy: ResolvedAccountPolicy::default(),
+                issue: AuthIssueSession::Token,
+                webauthn: $webauthn,
+                ct: duration_from_epoch_now(),
+                source: Source::Internal,
+            };
+            let (session, state) = AuthSession::new(asd, false);
             let mut session = session.expect("Session was unable to be created.");
 
             if let AuthState::Choose(auth_mechs) = state {
@@ -1503,7 +1826,7 @@ mod tests {
         let webauthn = create_webauthn();
         let jws_signer = create_jwt_signer();
         // create the ent
-        let mut account = entry_to_account!(E_ADMIN_V1);
+        let mut account: Account = BUILTIN_ACCOUNT_ADMIN.clone().into();
 
         // Setup a fake time stamp for consistency.
         let ts = Duration::from_secs(12345);
@@ -1545,8 +1868,8 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                Some(&pw_badlist_cache),
                 &jws_signer,
+                &pw_badlist_cache,
             ) {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_AUTH_TYPE_MSG),
                 _ => panic!(),
@@ -1571,8 +1894,8 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                Some(&pw_badlist_cache),
                 &jws_signer,
+                &pw_badlist_cache,
             ) {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_AUTH_TYPE_MSG),
                 _ => panic!(),
@@ -1594,8 +1917,8 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                Some(&pw_badlist_cache),
                 &jws_signer,
+                &pw_badlist_cache,
             ) {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_TOTP_MSG),
                 _ => panic!(),
@@ -1619,8 +1942,8 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                Some(&pw_badlist_cache),
                 &jws_signer,
+                &pw_badlist_cache,
             ) {
                 Ok(AuthState::Continue(cont)) => assert!(cont == vec![AuthAllowed::Password]),
                 _ => panic!(),
@@ -1631,8 +1954,8 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                Some(&pw_badlist_cache),
                 &jws_signer,
+                &pw_badlist_cache,
             ) {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_PASSWORD_MSG),
                 _ => panic!(),
@@ -1656,8 +1979,8 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                Some(&pw_badlist_cache),
                 &jws_signer,
+                &pw_badlist_cache,
             ) {
                 Ok(AuthState::Continue(cont)) => assert!(cont == vec![AuthAllowed::Password]),
                 _ => panic!(),
@@ -1668,8 +1991,8 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                Some(&pw_badlist_cache),
                 &jws_signer,
+                &pw_badlist_cache,
             ) {
                 Ok(AuthState::Success(_, AuthIssueSession::Token)) => {}
                 _ => panic!(),
@@ -1693,7 +2016,7 @@ mod tests {
         let webauthn = create_webauthn();
         let jws_signer = create_jwt_signer();
         // create the ent
-        let mut account = entry_to_account!(E_ADMIN_V1);
+        let mut account: Account = BUILTIN_ACCOUNT_ADMIN.clone().into();
 
         // Setup a fake time stamp for consistency.
         let ts = Duration::from_secs(12345);
@@ -1733,8 +2056,8 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                Some(&pw_badlist_cache),
                 &jws_signer,
+                &pw_badlist_cache,
             ) {
                 Ok(AuthState::Continue(cont)) => assert!(cont == vec![AuthAllowed::Password]),
                 _ => panic!(),
@@ -1745,8 +2068,8 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                Some(&pw_badlist_cache),
                 &jws_signer,
+                &pw_badlist_cache,
             ) {
                 Ok(AuthState::Denied(msg)) => assert!(msg == PW_BADLIST_MSG),
                 _ => panic!(),
@@ -1770,13 +2093,15 @@ mod tests {
             $account:expr,
             $webauthn:expr
         ) => {{
-            let (session, state) = AuthSession::new(
-                $account.clone(),
-                AuthIssueSession::Token,
-                $webauthn,
-                duration_from_epoch_now(),
-                Source::Internal,
-            );
+            let asd = AuthSessionData {
+                account: $account.clone(),
+                account_policy: ResolvedAccountPolicy::default(),
+                issue: AuthIssueSession::Token,
+                webauthn: $webauthn,
+                ct: duration_from_epoch_now(),
+                source: Source::Internal,
+            };
+            let (session, state) = AuthSession::new(asd, false);
             let mut session = session.unwrap();
 
             if let AuthState::Choose(auth_mechs) = state {
@@ -1815,7 +2140,7 @@ mod tests {
     ) {
         let webauthn = create_webauthn();
         // Setup a soft token
-        let mut wa = WebauthnAuthenticator::new(SoftPasskey::new());
+        let mut wa = WebauthnAuthenticator::new(SoftPasskey::new(true));
 
         let uuid = Uuid::new_v4();
 
@@ -1843,7 +2168,7 @@ mod tests {
     ) {
         let webauthn = create_webauthn();
         // Setup a soft token
-        let mut wa = WebauthnAuthenticator::new(SoftPasskey::new());
+        let mut wa = WebauthnAuthenticator::new(SoftPasskey::new(true));
 
         let uuid = Uuid::new_v4();
 
@@ -1869,7 +2194,7 @@ mod tests {
         let (audit_tx, mut audit_rx) = unbounded();
         let ts = duration_from_epoch_now();
         // create the ent
-        let mut account = entry_to_account!(E_ADMIN_V1.clone());
+        let mut account: Account = BUILTIN_ACCOUNT_ADMIN.clone().into();
 
         let (webauthn, mut wa, wan_cred) = setup_webauthn_passkey(account.name.as_str());
         let jws_signer = create_jwt_signer();
@@ -1890,8 +2215,8 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                None,
                 &jws_signer,
+                &Default::default(),
             ) {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_AUTH_TYPE_MSG),
                 _ => panic!(),
@@ -1918,8 +2243,8 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                None,
                 &jws_signer,
+                &Default::default(),
             ) {
                 Ok(AuthState::Success(_, AuthIssueSession::Token)) => {}
                 _ => panic!(),
@@ -1953,8 +2278,8 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                None,
                 &jws_signer,
+                &Default::default(),
             ) {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_WEBAUTHN_MSG),
                 _ => panic!(),
@@ -1968,7 +2293,7 @@ mod tests {
 
         // Use an incorrect softtoken.
         {
-            let mut inv_wa = WebauthnAuthenticator::new(SoftPasskey::new());
+            let mut inv_wa = WebauthnAuthenticator::new(SoftPasskey::new(true));
             let (chal, reg_state) = webauthn
                 .start_passkey_registration(account.uuid, &account.name, &account.displayname, None)
                 .expect("Failed to setup webauthn rego challenge");
@@ -2002,8 +2327,8 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                None,
                 &jws_signer,
+                &Default::default(),
             ) {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_WEBAUTHN_MSG),
                 _ => panic!(),
@@ -2028,7 +2353,7 @@ mod tests {
         let (audit_tx, mut audit_rx) = unbounded();
         let ts = duration_from_epoch_now();
         // create the ent
-        let mut account = entry_to_account!(E_ADMIN_V1);
+        let mut account: Account = BUILTIN_ACCOUNT_ADMIN.clone().into();
 
         let (webauthn, mut wa, wan_cred) = setup_webauthn_securitykey(account.name.as_str());
         let jws_signer = create_jwt_signer();
@@ -2055,8 +2380,8 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                Some(&pw_badlist_cache),
                 &jws_signer,
+                &pw_badlist_cache,
             ) {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_AUTH_TYPE_MSG),
                 _ => panic!(),
@@ -2079,8 +2404,8 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                Some(&pw_badlist_cache),
                 &jws_signer,
+                &pw_badlist_cache,
             ) {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_AUTH_TYPE_MSG),
                 _ => panic!(),
@@ -2114,8 +2439,8 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                Some(&pw_badlist_cache),
                 &jws_signer,
+                &pw_badlist_cache,
             ) {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_WEBAUTHN_MSG),
                 _ => panic!(),
@@ -2144,8 +2469,8 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                Some(&pw_badlist_cache),
                 &jws_signer,
+                &pw_badlist_cache,
             ) {
                 Ok(AuthState::Continue(cont)) => assert!(cont == vec![AuthAllowed::Password]),
                 _ => panic!(),
@@ -2156,8 +2481,8 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                Some(&pw_badlist_cache),
                 &jws_signer,
+                &pw_badlist_cache,
             ) {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_PASSWORD_MSG),
                 _ => panic!(),
@@ -2192,8 +2517,8 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                Some(&pw_badlist_cache),
                 &jws_signer,
+                &pw_badlist_cache,
             ) {
                 Ok(AuthState::Continue(cont)) => assert!(cont == vec![AuthAllowed::Password]),
                 _ => panic!(),
@@ -2204,8 +2529,8 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                Some(&pw_badlist_cache),
                 &jws_signer,
+                &pw_badlist_cache,
             ) {
                 Ok(AuthState::Success(_, AuthIssueSession::Token)) => {}
                 _ => panic!(),
@@ -2235,7 +2560,7 @@ mod tests {
         let (audit_tx, mut audit_rx) = unbounded();
         let ts = duration_from_epoch_now();
         // create the ent
-        let mut account = entry_to_account!(E_ADMIN_V1);
+        let mut account: Account = BUILTIN_ACCOUNT_ADMIN.clone().into();
 
         let (webauthn, mut wa, wan_cred) = setup_webauthn_securitykey(account.name.as_str());
         let jws_signer = create_jwt_signer();
@@ -2273,8 +2598,8 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                Some(&pw_badlist_cache),
                 &jws_signer,
+                &pw_badlist_cache,
             ) {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_AUTH_TYPE_MSG),
                 _ => panic!(),
@@ -2297,8 +2622,8 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                Some(&pw_badlist_cache),
                 &jws_signer,
+                &pw_badlist_cache,
             ) {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_TOTP_MSG),
                 _ => panic!(),
@@ -2330,8 +2655,8 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                Some(&pw_badlist_cache),
                 &jws_signer,
+                &pw_badlist_cache,
             ) {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_WEBAUTHN_MSG),
                 _ => panic!(),
@@ -2360,8 +2685,8 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                Some(&pw_badlist_cache),
                 &jws_signer,
+                &pw_badlist_cache,
             ) {
                 Ok(AuthState::Continue(cont)) => assert!(cont == vec![AuthAllowed::Password]),
                 _ => panic!(),
@@ -2372,8 +2697,8 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                Some(&pw_badlist_cache),
                 &jws_signer,
+                &pw_badlist_cache,
             ) {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_PASSWORD_MSG),
                 _ => panic!(),
@@ -2402,8 +2727,8 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                Some(&pw_badlist_cache),
                 &jws_signer,
+                &pw_badlist_cache,
             ) {
                 Ok(AuthState::Continue(cont)) => assert!(cont == vec![AuthAllowed::Password]),
                 _ => panic!(),
@@ -2414,8 +2739,8 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                Some(&pw_badlist_cache),
                 &jws_signer,
+                &pw_badlist_cache,
             ) {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_PASSWORD_MSG),
                 _ => panic!(),
@@ -2438,8 +2763,8 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                Some(&pw_badlist_cache),
                 &jws_signer,
+                &pw_badlist_cache,
             ) {
                 Ok(AuthState::Continue(cont)) => assert!(cont == vec![AuthAllowed::Password]),
                 _ => panic!(),
@@ -2450,8 +2775,8 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                Some(&pw_badlist_cache),
                 &jws_signer,
+                &pw_badlist_cache,
             ) {
                 Ok(AuthState::Success(_, AuthIssueSession::Token)) => {}
                 _ => panic!(),
@@ -2480,8 +2805,8 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                Some(&pw_badlist_cache),
                 &jws_signer,
+                &pw_badlist_cache,
             ) {
                 Ok(AuthState::Continue(cont)) => assert!(cont == vec![AuthAllowed::Password]),
                 _ => panic!(),
@@ -2492,8 +2817,8 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                Some(&pw_badlist_cache),
                 &jws_signer,
+                &pw_badlist_cache,
             ) {
                 Ok(AuthState::Success(_, AuthIssueSession::Token)) => {}
                 _ => panic!(),
@@ -2522,7 +2847,7 @@ mod tests {
         let jws_signer = create_jwt_signer();
         let webauthn = create_webauthn();
         // create the ent
-        let mut account = entry_to_account!(E_ADMIN_V1);
+        let mut account: Account = BUILTIN_ACCOUNT_ADMIN.clone().into();
 
         // Setup a fake time stamp for consistency.
         let ts = Duration::from_secs(12345);
@@ -2572,8 +2897,8 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                Some(&pw_badlist_cache),
                 &jws_signer,
+                &pw_badlist_cache,
             ) {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_AUTH_TYPE_MSG),
                 _ => panic!(),
@@ -2595,8 +2920,8 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                Some(&pw_badlist_cache),
                 &jws_signer,
+                &pw_badlist_cache,
             ) {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_BACKUPCODE_MSG),
                 _ => panic!(),
@@ -2619,8 +2944,8 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                Some(&pw_badlist_cache),
                 &jws_signer,
+                &pw_badlist_cache,
             ) {
                 Ok(AuthState::Continue(cont)) => assert!(cont == vec![AuthAllowed::Password]),
                 _ => panic!(),
@@ -2631,8 +2956,8 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                Some(&pw_badlist_cache),
                 &jws_signer,
+                &pw_badlist_cache,
             ) {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_PASSWORD_MSG),
                 _ => panic!(),
@@ -2661,8 +2986,8 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                Some(&pw_badlist_cache),
                 &jws_signer,
+                &pw_badlist_cache,
             ) {
                 Ok(AuthState::Continue(cont)) => assert!(cont == vec![AuthAllowed::Password]),
                 _ => panic!(),
@@ -2673,8 +2998,8 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                Some(&pw_badlist_cache),
                 &jws_signer,
+                &pw_badlist_cache,
             ) {
                 Ok(AuthState::Success(_, AuthIssueSession::Token)) => {}
                 _ => panic!(),
@@ -2705,8 +3030,8 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                Some(&pw_badlist_cache),
                 &jws_signer,
+                &pw_badlist_cache,
             ) {
                 Ok(AuthState::Continue(cont)) => assert!(cont == vec![AuthAllowed::Password]),
                 _ => panic!(),
@@ -2717,8 +3042,8 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                Some(&pw_badlist_cache),
                 &jws_signer,
+                &pw_badlist_cache,
             ) {
                 Ok(AuthState::Success(_, AuthIssueSession::Token)) => {}
                 _ => panic!(),
@@ -2745,7 +3070,7 @@ mod tests {
         let webauthn = create_webauthn();
         let jws_signer = create_jwt_signer();
         // create the ent
-        let mut account = entry_to_account!(E_ADMIN_V1);
+        let mut account: Account = BUILTIN_ACCOUNT_ADMIN.clone().into();
 
         // Setup a fake time stamp for consistency.
         let ts = Duration::from_secs(12345);
@@ -2788,8 +3113,8 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                Some(&pw_badlist_cache),
                 &jws_signer,
+                &pw_badlist_cache,
             ) {
                 Ok(AuthState::Continue(cont)) => assert!(cont == vec![AuthAllowed::Password]),
                 _ => panic!(),
@@ -2800,8 +3125,8 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                Some(&pw_badlist_cache),
                 &jws_signer,
+                &pw_badlist_cache,
             ) {
                 Ok(AuthState::Success(_, AuthIssueSession::Token)) => {}
                 _ => panic!(),
@@ -2824,8 +3149,8 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                Some(&pw_badlist_cache),
                 &jws_signer,
+                &pw_badlist_cache,
             ) {
                 Ok(AuthState::Continue(cont)) => assert!(cont == vec![AuthAllowed::Password]),
                 _ => panic!(),
@@ -2836,8 +3161,8 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                Some(&pw_badlist_cache),
                 &jws_signer,
+                &pw_badlist_cache,
             ) {
                 Ok(AuthState::Success(_, AuthIssueSession::Token)) => {}
                 _ => panic!(),

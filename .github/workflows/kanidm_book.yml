@@ -7,6 +7,7 @@ name: GitHub Pages
       - "master"
   pull_request:
 
+# yamllint disable-line rule:line-length
 # permissions list: https://docs.github.com/en/actions/security-guides/automatic-token-authentication#modifying-the-permissions-for-the-github_token
 permissions:
   id-token: write
@@ -31,12 +32,16 @@ jobs:
     outputs:
       latest: ${{ steps.branchname.outputs.latest }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
       - name: Latest branch
         run: |
-          echo "latest=$(git branch -a  | awk '{print $1}' | sort -t. -k3n,3 -k4n,4 | awk -F'/' '{print $NF}' | tail -n1)" >> $GITHUB_OUTPUT
+          echo "latest=$(git branch -a  \
+            | awk '{print $1}' \
+            | sort -t. -k3n,3 -k4n,4 \
+            | awk -F'/' '{print $NF}' \
+            | tail -n1)" >> $GITHUB_OUTPUT
         id: branchname
       - name: Move redirector page
         run: |
@@ -45,7 +50,7 @@ jobs:
           find ./docs > docs/manifest.txt
       - name: Upload redirector artifact
         # https://github.com/actions/upload-artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: base
           path: docs/index.html
@@ -53,8 +58,7 @@ jobs:
   fanout:
     uses: './.github/workflows/kanidm_individual_book.yml'
     needs: pre_deploy
-    if: ${{ github.action_ref == 'refs/heads/master' && github.repository == 'kanidm/kanidm' && github.event == 'merge' }}
-
+    # yamllint disable-line rule:line-length
     strategy:
       fail-fast: false
       matrix:
@@ -78,22 +82,23 @@ jobs:
       - fanout
       - docs_master
     runs-on: ubuntu-latest
-    if: ${{ github.action_ref == 'refs/heads/master' && github.repository == 'kanidm/kanidm' && github.event == 'merge' }}
+    # yamllint disable-line rule:line-length
+    if: ${{ github.ref == 'refs/heads/master' && github.repository == 'kanidm/kanidm' }}
     steps:
       - name: Setup Pages
-        uses: actions/configure-pages@v3
-      - uses: actions/checkout@v3
+        uses: actions/configure-pages@v4
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
       - name: Download base artifact
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: base
           path: ./docs/
         env:
           ACTIONS_RUNNER_DEBUG: true
       - name: Download individual artifact
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: individual
           path: ./docs/
@@ -110,18 +115,20 @@ jobs:
           find $(pwd) -name '*.tar.gz' -ls -exec tar zxvf "{}" \;
           echo "Carrying on..."
           mkdir -p docs
-          cd docs && cp -R "$(git branch -a  | awk '{print $1}' | sort -t. -k3n,3 -k4n,4 | awk -F'/' '{print $NF}' | tail -n1)/" stable && cd ..
+          cd docs && cp -R "$(git branch -a  \
+            | awk '{print $1}' \
+            | sort -t. -k3n,3 -k4n,4 \
+            | awk -F'/' '{print $NF}' | tail -n1)/" stable && cd ..
           ls -la docs/
           echo "Cleaning up docs archives"
           rm docs/*.tar.gz
         env:
           ACTIONS_RUNNER_DEBUG: true
       - name: Upload pages artifacts
-        uses: actions/upload-pages-artifact@v1
+        uses: actions/upload-pages-artifact@v2
         with:
           # Upload entire repository
           path: 'docs/'
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v2
-        if: ${{ github.ref == 'refs/heads/master' && github.repository == 'kanidm/kanidm' }}
+        uses: actions/deploy-pages@v3

@@ -1,5 +1,7 @@
 use std::collections::BTreeMap;
 
+use kanidm_proto::constants::*;
+use kanidm_proto::internal::{IdentifyUserRequest, IdentifyUserResponse};
 use kanidm_proto::v1::{
     AccountUnixExtend, CredentialStatus, Entry, SingleStringRequest, UatStatus,
 };
@@ -27,10 +29,10 @@ impl KanidmClient {
         };
         new_acct
             .attrs
-            .insert("name".to_string(), vec![name.to_string()]);
+            .insert(ATTR_NAME.to_string(), vec![name.to_string()]);
         new_acct
             .attrs
-            .insert("displayname".to_string(), vec![displayname.to_string()]);
+            .insert(ATTR_DISPLAYNAME.to_string(), vec![displayname.to_string()]);
         self.perform_post_request("/v1/person", new_acct).await
     }
 
@@ -49,20 +51,23 @@ impl KanidmClient {
         if let Some(newname) = newname {
             update_entry
                 .attrs
-                .insert("name".to_string(), vec![newname.to_string()]);
+                .insert(ATTR_NAME.to_string(), vec![newname.to_string()]);
         }
         if let Some(newdisplayname) = displayname {
-            update_entry
-                .attrs
-                .insert("displayname".to_string(), vec![newdisplayname.to_string()]);
+            update_entry.attrs.insert(
+                ATTR_DISPLAYNAME.to_string(),
+                vec![newdisplayname.to_string()],
+            );
         }
         if let Some(newlegalname) = legalname {
             update_entry
                 .attrs
-                .insert("legalname".to_string(), vec![newlegalname.to_string()]);
+                .insert(ATTR_LEGALNAME.to_string(), vec![newlegalname.to_string()]);
         }
         if let Some(mail) = mail {
-            update_entry.attrs.insert("mail".to_string(), mail.to_vec());
+            update_entry
+                .attrs
+                .insert(ATTR_MAIL.to_string(), mail.to_vec());
         }
 
         self.perform_patch_request(format!("/v1/person/{}", id).as_str(), update_entry)
@@ -112,18 +117,6 @@ impl KanidmClient {
     ) -> Result<(), ClientError> {
         self.perform_delete_request(format!("/v1/person/{}/_attr/{}", id, attr).as_str())
             .await
-    }
-
-    pub async fn idm_person_account_primary_credential_import_password(
-        &self,
-        id: &str,
-        pw: &str,
-    ) -> Result<(), ClientError> {
-        self.perform_put_request(
-            format!("/v1/person/{}/_attr/password_import", id).as_str(),
-            vec![pw.to_string()],
-        )
-        .await
     }
 
     pub async fn idm_person_account_get_credential_status(
@@ -212,6 +205,18 @@ impl KanidmClient {
     pub async fn idm_person_account_unix_cred_delete(&self, id: &str) -> Result<(), ClientError> {
         self.perform_delete_request(["/v1/person/", id, "/_unix/_credential"].concat().as_str())
             .await
+    }
+
+    pub async fn idm_person_identify_user(
+        &self,
+        id: &str,
+        request: IdentifyUserRequest,
+    ) -> Result<IdentifyUserResponse, ClientError> {
+        self.perform_post_request(
+            ["/v1/person/", id, "/_identify_user"].concat().as_str(),
+            request,
+        )
+        .await
     }
 
     pub async fn idm_account_radius_credential_get(

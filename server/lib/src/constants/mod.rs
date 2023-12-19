@@ -2,6 +2,7 @@
 
 pub mod acp;
 pub mod entries;
+pub mod groups;
 pub mod schema;
 pub mod system_config;
 pub mod uuids;
@@ -9,6 +10,7 @@ pub mod values;
 
 pub use crate::constants::acp::*;
 pub use crate::constants::entries::*;
+pub use crate::constants::groups::*;
 pub use crate::constants::schema::*;
 pub use crate::constants::system_config::*;
 pub use crate::constants::uuids::*;
@@ -17,7 +19,7 @@ pub use crate::constants::values::*;
 use std::time::Duration;
 
 // Increment this as we add new schema types and values!!!
-pub const SYSTEM_INDEX_VERSION: i64 = 29;
+pub const SYSTEM_INDEX_VERSION: i64 = 30;
 
 /*
  * domain functional levels
@@ -42,12 +44,13 @@ pub const SYSTEM_INDEX_VERSION: i64 = 29;
 pub type DomainVersion = u32;
 
 pub const DOMAIN_LEVEL_1: DomainVersion = 1;
+pub const DOMAIN_LEVEL_2: DomainVersion = 2;
 // The minimum supported domain functional level
-pub const DOMAIN_MIN_LEVEL: DomainVersion = DOMAIN_LEVEL_1;
+pub const DOMAIN_MIN_LEVEL: DomainVersion = DOMAIN_LEVEL_2;
 // The target supported domain functional level
-pub const DOMAIN_TGT_LEVEL: DomainVersion = DOMAIN_LEVEL_1;
+pub const DOMAIN_TGT_LEVEL: DomainVersion = DOMAIN_LEVEL_2;
 // The maximum supported domain functional level
-pub const DOMAIN_MAX_LEVEL: DomainVersion = DOMAIN_LEVEL_1;
+pub const DOMAIN_MAX_LEVEL: DomainVersion = DOMAIN_LEVEL_2;
 
 // On test builds, define to 60 seconds
 #[cfg(test)]
@@ -74,12 +77,17 @@ pub const RECYCLEBIN_MAX_AGE: u64 = 604_800;
 pub const AUTH_SESSION_TIMEOUT: u64 = 300;
 // 5 minute mfa reg window
 pub const MFAREG_SESSION_TIMEOUT: u64 = 300;
-pub const PW_MIN_LENGTH: usize = 10;
+pub const PW_MIN_LENGTH: u32 = 10;
 
-// Default - sessions last for 1 hour.
-pub const AUTH_SESSION_EXPIRY: u64 = 3600;
+// Maximum - Sessions have no upper bound.
+pub const MAXIMUM_AUTH_SESSION_EXPIRY: u32 = u32::MAX;
+// Default - sessions last for 1 day
+pub const DEFAULT_AUTH_SESSION_EXPIRY: u32 = 86400;
+pub const DEFAULT_AUTH_SESSION_LIMITED_EXPIRY: u32 = 3600;
+// Maximum - privileges last for 1 hour.
+pub const MAXIMUM_AUTH_PRIVILEGE_EXPIRY: u32 = 3600;
 // Default - privileges last for 10 minutes.
-pub const AUTH_PRIVILEGE_EXPIRY: u64 = 600;
+pub const DEFAULT_AUTH_PRIVILEGE_EXPIRY: u32 = 600;
 // Default - oauth refresh tokens last for 16 hours.
 pub const OAUTH_REFRESH_TOKEN_EXPIRY: u64 = 3600 * 8;
 
@@ -91,3 +99,7 @@ pub const GRACE_WINDOW: Duration = Duration::from_secs(300);
 /// How long access tokens should last. This is NOT the length
 /// of the refresh token, which is bound to the issuing session.
 pub const OAUTH2_ACCESS_TOKEN_EXPIRY: u32 = 15 * 60;
+
+/// The amount of time a suppliers clock can be "ahead" before
+/// we warn about possible clock synchronisation issues.
+pub const REPL_SUPPLIER_ADVANCE_WINDOW: Duration = Duration::from_secs(600);

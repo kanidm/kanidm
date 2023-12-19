@@ -1,12 +1,17 @@
 use std::collections::{BTreeMap, BTreeSet};
 
-use compact_jwt::JwsSigner;
+use compact_jwt::{crypto::JwsRs256Signer, JwsEs256Signer};
 use dyn_clone::DynClone;
 use hashbrown::HashSet;
+use kanidm_proto::internal::ImageValue;
+use openssl::ec::EcKey;
+use openssl::pkey::Private;
+use openssl::pkey::Public;
 use smolset::SmolSet;
+use sshkey_attest::proto::PublicKey as SshPublicKey;
 use time::OffsetDateTime;
-// use std::fmt::Debug;
-use webauthn_rs::prelude::DeviceKey as DeviceKeyV4;
+use webauthn_rs::prelude::AttestationCaList;
+use webauthn_rs::prelude::AttestedPasskey as AttestedPasskeyV4;
 use webauthn_rs::prelude::Passkey as PasskeyV4;
 
 use kanidm_proto::v1::Filter as ProtoFilter;
@@ -17,15 +22,20 @@ use crate::credential::{totp::Totp, Credential};
 use crate::prelude::*;
 use crate::repl::{cid::Cid, proto::ReplAttrV1};
 use crate::schema::SchemaAttribute;
-use crate::value::{Address, ApiToken, IntentTokenState, Oauth2Session, Session};
-use crate::valueset::auditlogstring::ValueSetAuditLogString;
+use crate::value::{Address, ApiToken, CredentialType, IntentTokenState, Oauth2Session, Session};
 
 pub use self::address::{ValueSetAddress, ValueSetEmailAddress};
+pub use self::auditlogstring::{ValueSetAuditLogString, AUDIT_LOG_STRING_CAPACITY};
 pub use self::binary::{ValueSetPrivateBinary, ValueSetPublicBinary};
 pub use self::bool::ValueSetBool;
 pub use self::cid::ValueSetCid;
-pub use self::cred::{ValueSetCredential, ValueSetDeviceKey, ValueSetIntentToken, ValueSetPasskey};
+pub use self::cred::{
+    ValueSetAttestedPasskey, ValueSetCredential, ValueSetCredentialType, ValueSetIntentToken,
+    ValueSetPasskey, ValueSetWebauthnAttestationCaList,
+};
 pub use self::datetime::ValueSetDateTime;
+pub use self::eckey::ValueSetEcKeyPrivate;
+use self::image::ValueSetImage;
 pub use self::iname::ValueSetIname;
 pub use self::index::ValueSetIndex;
 pub use self::iutf8::ValueSetIutf8;
@@ -53,6 +63,8 @@ mod bool;
 mod cid;
 mod cred;
 mod datetime;
+pub mod eckey;
+pub mod image;
 mod iname;
 mod index;
 mod iutf8;
@@ -78,23 +90,32 @@ pub type ValueSet = Box<dyn ValueSetT + Send + Sync + 'static>;
 dyn_clone::clone_trait_object!(ValueSetT);
 
 pub trait ValueSetT: std::fmt::Debug + DynClone {
-    /// # Safety
-    /// This is unsafe as you are unable to distinguish the case between
-    /// the value already existing, OR the value being an incorrect type to add
-    /// to the set.
-    unsafe fn insert(&mut self, value: Value) -> bool {
-        self.insert_checked(value).unwrap_or(false)
-    }
-
+    /// Returns whether the value was newly inserted. That is:
+    /// * If the set did not previously contain an equal value, true is returned.
+    /// * If the set already contained an equal value, false is returned, and the entry is not updated.
+    ///
     fn insert_checked(&mut self, value: Value) -> Result<bool, OperationError>;
 
     fn clear(&mut self);
 
-    fn remove(&mut self, pv: &PartialValue) -> bool;
+    fn remove(&mut self, pv: &PartialValue, cid: &Cid) -> bool;
+
+    fn purge(&mut self, _cid: &Cid) -> bool {
+        // Default handling is true.
+        true
+    }
+
+    fn trim(&mut self, _trim_cid: &Cid) {
+        // default to a no-op
+    }
 
     fn contains(&self, pv: &PartialValue) -> bool;
 
     fn substring(&self, pv: &PartialValue) -> bool;
+
+    fn startswith(&self, pv: &PartialValue) -> bool;
+
+    fn endswith(&self, pv: &PartialValue) -> bool;
 
     fn lessthan(&self, pv: &PartialValue) -> bool;
 
@@ -134,7 +155,7 @@ pub trait ValueSetT: std::fmt::Debug + DynClone {
         Err(OperationError::InvalidValueState)
     }
 
-    fn get_ssh_tag(&self, _tag: &str) -> Option<&str> {
+    fn get_ssh_tag(&self, _tag: &str) -> Option<&SshPublicKey> {
         None
     }
 
@@ -184,7 +205,7 @@ pub trait ValueSetT: std::fmt::Debug + DynClone {
         None
     }
 
-    fn as_sshpubkey_str_iter(&self) -> Option<Box<dyn Iterator<Item = &str> + '_>> {
+    fn as_sshpubkey_string_iter(&self) -> Option<Box<dyn Iterator<Item = String> + '_>> {
         None
     }
 
@@ -305,7 +326,7 @@ pub trait ValueSetT: std::fmt::Debug + DynClone {
         None
     }
 
-    fn as_sshkey_map(&self) -> Option<&BTreeMap<String, String>> {
+    fn as_sshkey_map(&self) -> Option<&BTreeMap<String, SshPublicKey>> {
         None
     }
 
@@ -334,7 +355,12 @@ pub trait ValueSetT: std::fmt::Debug + DynClone {
         None
     }
 
-    fn as_devicekey_map(&self) -> Option<&BTreeMap<Uuid, (String, DeviceKeyV4)>> {
+    fn as_attestedpasskey_map(&self) -> Option<&BTreeMap<Uuid, (String, AttestedPasskeyV4)>> {
+        debug_assert!(false);
+        None
+    }
+
+    fn as_webauthn_attestation_ca_list(&self) -> Option<&AttestationCaList> {
         debug_assert!(false);
         None
     }
@@ -486,11 +512,6 @@ pub trait ValueSetT: std::fmt::Debug + DynClone {
         None
     }
 
-    fn to_devicekey_single(&self) -> Option<&DeviceKeyV4> {
-        debug_assert!(false);
-        None
-    }
-
     fn as_session_map(&self) -> Option<&BTreeMap<Uuid, Session>> {
         debug_assert!(false);
         None
@@ -506,22 +527,32 @@ pub trait ValueSetT: std::fmt::Debug + DynClone {
         None
     }
 
-    fn to_jws_key_es256_single(&self) -> Option<&JwsSigner> {
+    fn to_jws_key_es256_single(&self) -> Option<&JwsEs256Signer> {
         debug_assert!(false);
         None
     }
 
-    fn as_jws_key_es256_set(&self) -> Option<&HashSet<JwsSigner>> {
+    fn to_eckey_private_single(&self) -> Option<&EcKey<Private>> {
         debug_assert!(false);
         None
     }
 
-    fn to_jws_key_rs256_single(&self) -> Option<&JwsSigner> {
+    fn to_eckey_public_single(&self) -> Option<&EcKey<Public>> {
         debug_assert!(false);
         None
     }
 
-    fn as_jws_key_rs256_set(&self) -> Option<&HashSet<JwsSigner>> {
+    fn as_jws_key_es256_set(&self) -> Option<&HashSet<JwsEs256Signer>> {
+        debug_assert!(false);
+        None
+    }
+
+    fn to_jws_key_rs256_single(&self) -> Option<&JwsRs256Signer> {
+        debug_assert!(false);
+        None
+    }
+
+    fn as_jws_key_rs256_set(&self) -> Option<&HashSet<JwsRs256Signer>> {
         debug_assert!(false);
         None
     }
@@ -535,7 +566,28 @@ pub trait ValueSetT: std::fmt::Debug + DynClone {
         debug_assert!(false);
         None
     }
-    fn as_audit_log_string(&self) -> Option<&SmolSet<[(Cid, String); 8]>> {
+
+    fn as_audit_log_string(&self) -> Option<&BTreeMap<Cid, String>> {
+        debug_assert!(false);
+        None
+    }
+
+    fn as_ec_key_private(&self) -> Option<&EcKey<Private>> {
+        debug_assert!(false);
+        None
+    }
+
+    fn as_imageset(&self) -> Option<&HashSet<ImageValue>> {
+        debug_assert!(false);
+        None
+    }
+
+    fn to_credentialtype_single(&self) -> Option<CredentialType> {
+        debug_assert!(false);
+        None
+    }
+
+    fn as_credentialtype_set(&self) -> Option<&SmolSet<[CredentialType; 1]>> {
         debug_assert!(false);
         None
     }
@@ -543,7 +595,7 @@ pub trait ValueSetT: std::fmt::Debug + DynClone {
     fn repl_merge_valueset(
         &self,
         _older: &ValueSet,
-        // schema_attr: &SchemaAttribute
+        _trim_cid: &Cid, // schema_attr: &SchemaAttribute
     ) -> Option<ValueSet> {
         // Self is the "latest" content. Older contains the earlier
         // state of the attribute.
@@ -577,10 +629,8 @@ pub fn uuid_to_proto_string(u: Uuid) -> String {
 pub fn from_result_value_iter(
     mut iter: impl Iterator<Item = Result<Value, OperationError>>,
 ) -> Result<ValueSet, OperationError> {
-    let init = if let Some(v) = iter.next() {
-        v
-    } else {
-        admin_error!("Empty value iterator");
+    let Some(init) = iter.next() else {
+        trace!("Empty value iterator");
         return Err(OperationError::InvalidValueState);
     };
 
@@ -615,9 +665,13 @@ pub fn from_result_value_iter(
         Value::EmailAddress(a, _) => ValueSetEmailAddress::new(a),
         Value::UiHint(u) => ValueSetUiHint::new(u),
         Value::AuditLogString(c, s) => ValueSetAuditLogString::new((c, s)),
-        Value::PhoneNumber(_, _)
+        Value::EcKeyPrivate(k) => ValueSetEcKeyPrivate::new(&k),
+        Value::Image(imagevalue) => image::ValueSetImage::new(imagevalue),
+        Value::CredentialType(c) => ValueSetCredentialType::new(c),
+        Value::WebauthnAttestationCaList(_)
+        | Value::PhoneNumber(_, _)
         | Value::Passkey(_, _, _)
-        | Value::DeviceKey(_, _, _)
+        | Value::AttestedPasskey(_, _, _)
         | Value::TotpSecret(_, _)
         | Value::Session(_, _)
         | Value::ApiToken(_, _)
@@ -638,10 +692,8 @@ pub fn from_result_value_iter(
 }
 
 pub fn from_value_iter(mut iter: impl Iterator<Item = Value>) -> Result<ValueSet, OperationError> {
-    let init = if let Some(v) = iter.next() {
-        v
-    } else {
-        admin_error!("Empty value iterator");
+    let Some(init) = iter.next() else {
+        trace!("Empty value iterator");
         return Err(OperationError::InvalidValueState);
     };
 
@@ -673,7 +725,7 @@ pub fn from_value_iter(mut iter: impl Iterator<Item = Value>) -> Result<ValueSet
         Value::IntentToken(u, s) => ValueSetIntentToken::new(u, s),
         Value::EmailAddress(a, _) => ValueSetEmailAddress::new(a),
         Value::Passkey(u, t, k) => ValueSetPasskey::new(u, t, k),
-        Value::DeviceKey(u, t, k) => ValueSetDeviceKey::new(u, t, k),
+        Value::AttestedPasskey(u, t, k) => ValueSetAttestedPasskey::new(u, t, k),
         Value::JwsKeyEs256(k) => ValueSetJwsKeyEs256::new(k),
         Value::JwsKeyRs256(k) => ValueSetJwsKeyRs256::new(k),
         Value::Session(u, m) => ValueSetSession::new(u, m),
@@ -682,6 +734,12 @@ pub fn from_value_iter(mut iter: impl Iterator<Item = Value>) -> Result<ValueSet
         Value::UiHint(u) => ValueSetUiHint::new(u),
         Value::TotpSecret(l, t) => ValueSetTotpSecret::new(l, t),
         Value::AuditLogString(c, s) => ValueSetAuditLogString::new((c, s)),
+        Value::EcKeyPrivate(k) => ValueSetEcKeyPrivate::new(&k),
+        Value::Image(imagevalue) => image::ValueSetImage::new(imagevalue),
+        Value::CredentialType(c) => ValueSetCredentialType::new(c),
+        Value::WebauthnAttestationCaList(ca_list) => {
+            ValueSetWebauthnAttestationCaList::new(ca_list)
+        }
         Value::PhoneNumber(_, _) => {
             debug_assert!(false);
             return Err(OperationError::InvalidValueState);
@@ -723,7 +781,7 @@ pub fn from_db_valueset_v2(dbvs: DbValueSetV2) -> Result<ValueSet, OperationErro
         DbValueSetV2::IntentToken(set) => ValueSetIntentToken::from_dbvs2(set),
         DbValueSetV2::EmailAddress(primary, set) => ValueSetEmailAddress::from_dbvs2(primary, set),
         DbValueSetV2::Passkey(set) => ValueSetPasskey::from_dbvs2(set),
-        DbValueSetV2::DeviceKey(set) => ValueSetDeviceKey::from_dbvs2(set),
+        DbValueSetV2::AttestedPasskey(set) => ValueSetAttestedPasskey::from_dbvs2(set),
         DbValueSetV2::Session(set) => ValueSetSession::from_dbvs2(set),
         DbValueSetV2::ApiToken(set) => ValueSetApiToken::from_dbvs2(set),
         DbValueSetV2::Oauth2Session(set) => ValueSetOauth2Session::from_dbvs2(set),
@@ -732,9 +790,15 @@ pub fn from_db_valueset_v2(dbvs: DbValueSetV2) -> Result<ValueSet, OperationErro
         DbValueSetV2::UiHint(set) => ValueSetUiHint::from_dbvs2(set),
         DbValueSetV2::TotpSecret(set) => ValueSetTotpSecret::from_dbvs2(set),
         DbValueSetV2::AuditLogString(set) => ValueSetAuditLogString::from_dbvs2(set),
+        DbValueSetV2::EcKeyPrivate(key) => ValueSetEcKeyPrivate::from_dbvs2(&key),
         DbValueSetV2::PhoneNumber(_, _) | DbValueSetV2::TrustedDeviceEnrollment(_) => {
             debug_assert!(false);
             Err(OperationError::InvalidValueState)
+        }
+        DbValueSetV2::Image(set) => ValueSetImage::from_dbvs2(&set),
+        DbValueSetV2::CredentialType(set) => ValueSetCredentialType::from_dbvs2(set),
+        DbValueSetV2::WebauthnAttestationCaList { ca_list } => {
+            ValueSetWebauthnAttestationCaList::from_dbvs2(ca_list)
         }
     }
 }
@@ -766,7 +830,7 @@ pub fn from_repl_v1(rv1: &ReplAttrV1) -> Result<ValueSet, OperationError> {
         ReplAttrV1::Credential { set } => ValueSetCredential::from_repl_v1(set),
         ReplAttrV1::IntentToken { set } => ValueSetIntentToken::from_repl_v1(set),
         ReplAttrV1::Passkey { set } => ValueSetPasskey::from_repl_v1(set),
-        ReplAttrV1::DeviceKey { set } => ValueSetDeviceKey::from_repl_v1(set),
+        ReplAttrV1::AttestedPasskey { set } => ValueSetAttestedPasskey::from_repl_v1(set),
         ReplAttrV1::DateTime { set } => ValueSetDateTime::from_repl_v1(set),
         ReplAttrV1::Url { set } => ValueSetUrl::from_repl_v1(set),
         ReplAttrV1::NsUniqueId { set } => ValueSetNsUniqueId::from_repl_v1(set),
@@ -778,6 +842,12 @@ pub fn from_repl_v1(rv1: &ReplAttrV1) -> Result<ValueSet, OperationError> {
         ReplAttrV1::Session { set } => ValueSetSession::from_repl_v1(set),
         ReplAttrV1::ApiToken { set } => ValueSetApiToken::from_repl_v1(set),
         ReplAttrV1::TotpSecret { set } => ValueSetTotpSecret::from_repl_v1(set),
-        ReplAttrV1::AuditLogString { set } => ValueSetAuditLogString::from_repl_v1(set),
+        ReplAttrV1::AuditLogString { map } => ValueSetAuditLogString::from_repl_v1(map),
+        ReplAttrV1::EcKeyPrivate { key } => ValueSetEcKeyPrivate::from_repl_v1(key),
+        ReplAttrV1::Image { set } => ValueSetImage::from_repl_v1(set),
+        ReplAttrV1::CredentialType { set } => ValueSetCredentialType::from_repl_v1(set),
+        ReplAttrV1::WebauthnAttestationCaList { ca_list } => {
+            ValueSetWebauthnAttestationCaList::from_repl_v1(ca_list)
+        }
     }
 }

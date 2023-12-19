@@ -47,9 +47,9 @@ pub const _PAM_AUTHTOK_TYPE: PamItemType = 13;
 
 // Message styles
 pub const PAM_PROMPT_ECHO_OFF: PamMessageStyle = 1;
-pub const _PAM_PROMPT_ECHO_ON: PamMessageStyle = 2;
-pub const _PAM_ERROR_MSG: PamMessageStyle = 3;
-pub const _PAM_TEXT_INFO: PamMessageStyle = 4;
+pub const PAM_PROMPT_ECHO_ON: PamMessageStyle = 2;
+pub const PAM_ERROR_MSG: PamMessageStyle = 3;
+pub const PAM_TEXT_INFO: PamMessageStyle = 4;
 /// yes/no/maybe conditionals
 pub const _PAM_RADIO_TYPE: PamMessageStyle = 5;
 pub const _PAM_BINARY_PROMPT: PamMessageStyle = 7;

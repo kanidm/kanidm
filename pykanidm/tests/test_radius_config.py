@@ -12,19 +12,6 @@ from kanidm.utils import load_config
 
 EXAMPLE_CONFIG_FILE = "../examples/config"
 
-
-def test_load_config_file() -> None:
-    """tests that the file loads"""
-    if not Path(EXAMPLE_CONFIG_FILE).expanduser().resolve().exists():
-        print("Can't find client config file", file=sys.stderr)
-        pytest.skip()
-    config = load_config(EXAMPLE_CONFIG_FILE)
-    kanidm_config = KanidmClientConfig.parse_obj(config)
-    assert kanidm_config.uri == "https://idm.example.com/"
-    print(f"{kanidm_config.uri=}")
-    print(kanidm_config)
-
-
 def test_radius_groups() -> None:
     """testing loading a config file with radius groups defined"""
 
@@ -36,7 +23,7 @@ radius_groups = [
 """
     config_parsed = toml.loads(config_toml)
     print(config_parsed)
-    kanidm_config = KanidmClientConfig.parse_obj(config_parsed)
+    kanidm_config = KanidmClientConfig.model_validate(config_parsed)
     for group in kanidm_config.radius_groups:
         print(group.spn)
         assert group.spn == "hello world"
@@ -52,7 +39,7 @@ radius_clients = [ { name = "hello world", ipaddr = "10.0.0.5", secret = "cr4bj0
 """
     config_parsed = toml.loads(config_toml)
     print(config_parsed)
-    kanidm_config = KanidmClientConfig.parse_obj(config_parsed)
+    kanidm_config = KanidmClientConfig.model_validate(config_parsed)
     client = kanidm_config.radius_clients[0]
     print(client.name)
     assert client.name == "hello world"

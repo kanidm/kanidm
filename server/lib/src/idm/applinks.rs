@@ -5,12 +5,9 @@ use kanidm_proto::internal::AppLink;
 impl<'a> IdmServerProxyReadTransaction<'a> {
     pub fn list_applinks(&mut self, ident: &Identity) -> Result<Vec<AppLink>, OperationError> {
         // From the member-of of the ident.
-        let ident_mo = match ident.get_memberof() {
-            Some(mo) => mo,
-            None => {
-                debug!("Ident has no memberof, no applinks are present");
-                return Ok(Vec::with_capacity(0));
-            }
+        let Some(ident_mo) = ident.get_memberof() else {
+            debug!("Ident has no memberof, no applinks are present");
+            return Ok(Vec::with_capacity(0));
         };
 
         // Formerly we did an internal search here, but we no longer need to since we have
@@ -24,10 +21,13 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
             ident_mo
                 .iter()
                 .copied()
-                .map(|uuid| { f_eq("oauth2_rs_scope_map", PartialValue::Refer(uuid)) })
+                .map(|uuid| { f_eq(Attribute::OAuth2RsScopeMap, PartialValue::Refer(uuid)) })
                 .collect()
         ));
-        let f_intent = filter!(f_eq("class", PVCLASS_OAUTH2_RS.clone()));
+        let f_intent = filter!(f_eq(
+            Attribute::Class,
+            EntryClass::OAuth2ResourceServer.into()
+        ));
 
         // _ext reduces the entries based on access.
         let oauth2_related = self
@@ -40,16 +40,16 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
             .iter()
             .filter_map(|entry| {
                 let display_name = entry
-                    .get_ava_single_utf8("displayname")
+                    .get_ava_single_utf8(Attribute::DisplayName)
                     .map(str::to_string)?;
 
                 let redirect_url = entry
-                    .get_ava_single_url("oauth2_rs_origin_landing")
-                    .or_else(|| entry.get_ava_single_url("oauth2_rs_origin"))
+                    .get_ava_single_url(Attribute::OAuth2RsOriginLanding)
+                    .or_else(|| entry.get_ava_single_url(Attribute::OAuth2RsOrigin))
                     .cloned()?;
 
                 let name = entry
-                    .get_ava_single_iname("oauth2_rs_name")
+                    .get_ava_single_iname(Attribute::OAuth2RsName)
                     .map(str::to_string)?;
 
                 Some(AppLink::Oauth2 {
@@ -83,42 +83,57 @@ mod tests {
         let grp_uuid = Uuid::new_v4();
 
         let e_rs: Entry<EntryInit, EntryNew> = entry_init!(
-            ("class", Value::new_class("object")),
-            ("class", Value::new_class("oauth2_resource_server")),
-            ("class", Value::new_class("oauth2_resource_server_basic")),
-            ("oauth2_rs_name", Value::new_iname("test_resource_server")),
-            ("displayname", Value::new_utf8s("test_resource_server")),
+            (Attribute::Class, EntryClass::Object.to_value()),
             (
-                "oauth2_rs_origin",
+                Attribute::Class,
+                EntryClass::OAuth2ResourceServer.to_value()
+            ),
+            (
+                Attribute::Class,
+                EntryClass::OAuth2ResourceServerBasic.to_value()
+            ),
+            (
+                Attribute::OAuth2RsName,
+                Value::new_iname("test_resource_server")
+            ),
+            (
+                Attribute::DisplayName,
+                Value::new_utf8s("test_resource_server")
+            ),
+            (
+                Attribute::OAuth2RsOrigin,
                 Value::new_url_s("https://demo.example.com").unwrap()
             ),
             (
-                "oauth2_rs_origin_landing",
+                Attribute::OAuth2RsOriginLanding,
                 Value::new_url_s("https://demo.example.com/landing").unwrap()
             ),
             // System admins
             (
-                "oauth2_rs_scope_map",
-                Value::new_oauthscopemap(grp_uuid, btreeset!["read".to_string()])
-                    .expect("invalid oauthscope")
+                Attribute::OAuth2RsScopeMap,
+                Value::new_oauthscopemap(
+                    grp_uuid,
+                    btreeset![kanidm_proto::constants::OAUTH2_SCOPE_READ.to_string()]
+                )
+                .expect("invalid oauthscope")
             )
         );
 
         let e_usr = entry_init!(
-            ("class", Value::new_class("object")),
-            ("class", Value::new_class("account")),
-            ("class", Value::new_class("person")),
-            ("name", Value::new_iname("testaccount")),
-            ("uuid", Value::Uuid(usr_uuid)),
-            ("description", Value::new_utf8s("testaccount")),
-            ("displayname", Value::new_utf8s("Test Account"))
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Name, Value::new_iname("testaccount")),
+            (Attribute::Uuid, Value::Uuid(usr_uuid)),
+            (Attribute::Description, Value::new_utf8s("testaccount")),
+            (Attribute::DisplayName, Value::new_utf8s("Test Account"))
         );
 
         let e_grp = entry_init!(
-            ("class", Value::new_class("object")),
-            ("class", Value::new_class("group")),
-            ("uuid", Value::Uuid(grp_uuid)),
-            ("name", Value::new_iname("test_oauth2_group"))
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Group.to_value()),
+            (Attribute::Uuid, Value::Uuid(grp_uuid)),
+            (Attribute::Name, Value::new_iname("test_oauth2_group"))
         );
 
         let ce = CreateEvent::new_internal(vec![e_rs, e_grp, e_usr]);
@@ -143,12 +158,10 @@ mod tests {
 
         // Add them to the group.
         let mut idms_prox_write = idms.proxy_write(ct).await;
-        let me_inv_m = unsafe {
-            ModifyEvent::new_internal_invalid(
-                filter!(f_eq("uuid", PartialValue::Refer(grp_uuid))),
-                ModifyList::new_append("member", Value::Refer(usr_uuid)),
-            )
-        };
+        let me_inv_m = ModifyEvent::new_internal_invalid(
+            filter!(f_eq(Attribute::Uuid, PartialValue::Refer(grp_uuid))),
+            ModifyList::new_append(Attribute::Member, Value::Refer(usr_uuid)),
+        );
         assert!(idms_prox_write.qs_write.modify(&me_inv_m).is_ok());
         assert!(idms_prox_write.commit().is_ok());
 

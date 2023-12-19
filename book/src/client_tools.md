@@ -10,10 +10,11 @@ You can configure `kanidm` to help make commands simpler by modifying `~/.config
 
 ```toml
 uri = "https://idm.example.com"
-verify_ca = true|false
-verify_hostnames = true|false
 ca_path = "/path/to/ca.pem"
 ```
+
+The full configuration reference is in the
+[definition of `KanidmClientConfig`](https://kanidm.github.io/kanidm/master/rustdoc/kanidm_client/struct.KanidmClientConfig.html).
 
 Once configured, you can test this with:
 
@@ -29,6 +30,8 @@ establish a session token.
 ```bash
 kanidm login --name USERNAME
 kanidm login --name admin
+kanidm login -D USERNAME
+kanidm login -D admin
 ```
 
 Once complete, you can use `kanidm` without re-authenticating for a period of time for
@@ -40,8 +43,7 @@ You can list active sessions with:
 kanidm session list
 ```
 
-Sessions will expire after a period of time (by default 1 hour). To remove these expired sessions
-locally you can use:
+Sessions will expire after a period of time. To remove these expired sessions locally you can use:
 
 ```bash
 kanidm session cleanup

@@ -1,5 +1,5 @@
 [package]
-name = "profiles"
+name = "kanidm_build_profiles"
 description = "Kanidm Build System Profiles"
 documentation = "https://docs.rs/kanidm/latest/kanidm/"
 # We do not have tests in this pkg
@@ -16,6 +16,8 @@ repository = { workspace = true }
 [lib]
 name = "profiles"
 path = "src/lib.rs"
+test = false
+doctest = false
 
 [dependencies]
 serde = { workspace = true, features = ["derive"] }
@@ -24,3 +26,4 @@ base64 = { workspace = true }
 
 [build-dependencies]
 base64 = { workspace = true }
+gix = { workspace = true, default-features = false }

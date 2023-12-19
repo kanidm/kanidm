@@ -16,6 +16,11 @@ vendor.tar.*
 tools/orca/example_profiles/small/orca-edited.toml
 /docs/
 .vscode/
+# webui things we don't need
+*.d.ts
+
+server/web_ui/*/pkg/*.js
+server/web_ui/*/pkg/*.wasm
 
 # kanidm simple packaging
 deployment-config/
@@ -28,3 +33,9 @@ kanidm-client-tools.tar.gz
 .coverage
 pykanidm/dist/
 pykanidm/site/
+
+# oauth2 integration test things
+scripts/oauth_proxy/client.secret
+scripts/oauth_proxy/envfile
+# local config things
+.envrc

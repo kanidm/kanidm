@@ -3,7 +3,7 @@
 use std::env;
 use std::path::PathBuf;
 
-use clap::{Args, IntoApp, Parser, Subcommand};
+use clap::{Args, CommandFactory, Parser, Subcommand};
 use clap_complete::{generate_to, Shell};
 
 include!("src/opt.rs");

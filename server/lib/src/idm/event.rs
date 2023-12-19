@@ -4,6 +4,8 @@ use kanidm_proto::v1::OperationError;
 use kanidm_proto::v1::{AuthCredential, AuthIssueSession, AuthMech, AuthRequest, AuthStep};
 
 #[cfg(test)]
+use std::sync::Arc;
+#[cfg(test)]
 use webauthn_rs::prelude::PublicKeyCredential;
 
 #[cfg(test)]
@@ -109,8 +111,8 @@ impl RadiusAuthTokenEvent {
     }
 
     #[cfg(test)]
-    pub fn new_internal(target: Uuid) -> Self {
-        let ident = Identity::from_internal();
+    pub fn new_impersonate(e: Arc<Entry<EntrySealed, EntryCommitted>>, target: Uuid) -> Self {
+        let ident = Identity::from_impersonate_entry_readonly(e);
 
         RadiusAuthTokenEvent { ident, target }
     }
@@ -155,8 +157,8 @@ impl UnixGroupTokenEvent {
     }
 
     #[cfg(test)]
-    pub fn new_internal(target: Uuid) -> Self {
-        let ident = Identity::from_internal();
+    pub fn new_impersonate(e: Arc<Entry<EntrySealed, EntryCommitted>>, target: Uuid) -> Self {
+        let ident = Identity::from_impersonate_entry_readonly(e);
 
         UnixGroupTokenEvent { ident, target }
     }
@@ -278,6 +280,7 @@ impl LdapTokenAuthEvent {
 pub struct AuthEventStepInit {
     pub username: String,
     pub issue: AuthIssueSession,
+    pub privileged: bool,
 }
 
 #[derive(Debug)]
@@ -302,28 +305,41 @@ pub enum AuthEventStep {
 impl AuthEventStep {
     fn from_authstep(aus: AuthStep, sid: Option<Uuid>) -> Result<Self, OperationError> {
         match aus {
-            AuthStep::Init(username) => Ok(AuthEventStep::Init(AuthEventStepInit {
+            AuthStep::Init(username) => {
+                if username.trim().is_empty() {
+                    Err(OperationError::EmptyRequest)
+                } else {
+                    Ok(AuthEventStep::Init(AuthEventStepInit {
+                        username,
+                        issue: AuthIssueSession::Token,
+                        privileged: false,
+                    }))
+                }
+            }
+            AuthStep::Init2 {
                 username,
-                issue: AuthIssueSession::Token,
-            })),
-            AuthStep::Init2 { username, issue } => {
-                Ok(AuthEventStep::Init(AuthEventStepInit { username, issue }))
+                issue,
+                privileged,
+            } => {
+                if username.trim().is_empty() {
+                    Err(OperationError::EmptyRequest)
+                } else {
+                    Ok(AuthEventStep::Init(AuthEventStepInit {
+                        username,
+                        issue,
+                        privileged,
+                    }))
+                }
             }
 
             AuthStep::Begin(mech) => match sid {
-                Some(ssid) => Ok(AuthEventStep::Begin(AuthEventStepMech {
-                    sessionid: ssid,
-                    mech,
-                })),
+                Some(sessionid) => Ok(AuthEventStep::Begin(AuthEventStepMech { sessionid, mech })),
                 None => Err(OperationError::InvalidAuthState(
                     "session id not present in cred presented to 'begin' step".to_string(),
                 )),
             },
             AuthStep::Cred(cred) => match sid {
-                Some(ssid) => Ok(AuthEventStep::Cred(AuthEventStepCred {
-                    sessionid: ssid,
-                    cred,
-                })),
+                Some(sessionid) => Ok(AuthEventStep::Cred(AuthEventStepCred { sessionid, cred })),
                 None => Err(OperationError::InvalidAuthState(
                     "session id not present in cred to 'cred' step".to_string(),
                 )),
@@ -336,6 +352,7 @@ impl AuthEventStep {
         AuthEventStep::Init(AuthEventStepInit {
             username: "anonymous".to_string(),
             issue: AuthIssueSession::Token,
+            privileged: false,
         })
     }
 
@@ -344,6 +361,7 @@ impl AuthEventStep {
         AuthEventStep::Init(AuthEventStepInit {
             username: name.to_string(),
             issue: AuthIssueSession::Token,
+            privileged: false,
         })
     }
 

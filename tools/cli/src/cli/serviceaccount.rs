@@ -1,10 +1,11 @@
-use crate::common::OpType;
+use crate::common::{try_expire_at_from_string, OpType};
+use kanidm_proto::constants::{ATTR_ACCOUNT_EXPIRE, ATTR_ACCOUNT_VALID_FROM};
 use kanidm_proto::messages::{AccountChangeMessage, ConsoleOutputMode, MessageStatus};
 use time::OffsetDateTime;
 
 use crate::{
-    AccountSsh, AccountUserAuthToken, AccountValidity, OutputMode, ServiceAccountApiToken,
-    ServiceAccountCredential, ServiceAccountOpt, ServiceAccountPosix,
+    handle_client_error, AccountSsh, AccountUserAuthToken, AccountValidity, OutputMode,
+    ServiceAccountApiToken, ServiceAccountCredential, ServiceAccountOpt, ServiceAccountPosix,
 };
 use time::format_description::well_known::Rfc3339;
 
@@ -37,7 +38,7 @@ impl ServiceAccountOpt {
             ServiceAccountOpt::Get(aopt) => aopt.copt.debug,
             ServiceAccountOpt::Update(aopt) => aopt.copt.debug,
             ServiceAccountOpt::Delete(aopt) => aopt.copt.debug,
-            ServiceAccountOpt::Create(aopt) => aopt.copt.debug,
+            ServiceAccountOpt::Create { copt, .. } => copt.debug,
             ServiceAccountOpt::Validity { commands } => match commands {
                 AccountValidity::Show(ano) => ano.copt.debug,
                 AccountValidity::ExpireAt(ano) => ano.copt.debug,
@@ -191,9 +192,7 @@ impl ServiceAccountOpt {
                         .await
                     {
                         Ok(token) => println!("{}", token),
-                        Err(e) => {
-                            error!("Error -> {:?}", e);
-                        }
+                        Err(e) => handle_client_error(e, aopt.copt.output_mode),
                     }
                 }
                 ServiceAccountPosix::Set(aopt) => {
@@ -206,7 +205,7 @@ impl ServiceAccountOpt {
                         )
                         .await
                     {
-                        error!("Error -> {:?}", e);
+                        handle_client_error(e, aopt.copt.output_mode)
                     }
                 }
             }, // end ServiceAccountOpt::Posix
@@ -259,9 +258,7 @@ impl ServiceAccountOpt {
                         .await
                     {
                         Ok(pkeys) => pkeys.iter().for_each(|pkey| println!("{}", pkey)),
-                        Err(e) => {
-                            error!("Error -> {:?}", e);
-                        }
+                        Err(e) => handle_client_error(e, aopt.copt.output_mode),
                     }
                 }
                 AccountSsh::Add(aopt) => {
@@ -274,7 +271,7 @@ impl ServiceAccountOpt {
                         )
                         .await
                     {
-                        error!("Error -> {:?}", e);
+                        handle_client_error(e, aopt.copt.output_mode)
                     }
                 }
                 AccountSsh::Delete(aopt) => {
@@ -286,7 +283,7 @@ impl ServiceAccountOpt {
                         )
                         .await
                     {
-                        error!("Error -> {:?}", e);
+                        handle_client_error(e, aopt.copt.output_mode)
                     }
                 }
             }, // end ServiceAccountOpt::Ssh
@@ -294,7 +291,7 @@ impl ServiceAccountOpt {
                 let client = copt.to_client(OpType::Read).await;
                 match client.idm_service_account_list().await {
                     Ok(r) => r.iter().for_each(|ent| println!("{}", ent)),
-                    Err(e) => error!("Error -> {:?}", e),
+                    Err(e) => handle_client_error(e, copt.output_mode),
                 }
             }
             ServiceAccountOpt::Update(aopt) => {
@@ -304,23 +301,24 @@ impl ServiceAccountOpt {
                         aopt.aopts.account_id.as_str(),
                         aopt.newname.as_deref(),
                         aopt.displayname.as_deref(),
+                        aopt.entry_managed_by.as_deref(),
                         aopt.mail.as_deref(),
                     )
                     .await
                 {
                     Ok(()) => println!("Success"),
-                    Err(e) => error!("Error -> {:?}", e),
+                    Err(e) => handle_client_error(e, aopt.copt.output_mode),
                 }
             }
             ServiceAccountOpt::Get(aopt) => {
                 let client = aopt.copt.to_client(OpType::Read).await;
-                match client
+                let res = client
                     .idm_service_account_get(aopt.aopts.account_id.as_str())
-                    .await
-                {
-                    Ok(Some(e)) => println!("{}", e),
+                    .await;
+                match res {
+                    Ok(Some(e)) => aopt.copt.output_mode.print_message(e),
                     Ok(None) => println!("No matching entries"),
-                    Err(e) => error!("Error -> {:?}", e),
+                    Err(e) => handle_client_error(e, aopt.copt.output_mode),
                 }
             }
             ServiceAccountOpt::Delete(aopt) => {
@@ -352,52 +350,51 @@ impl ServiceAccountOpt {
                     }
                 };
             }
-            ServiceAccountOpt::Create(acopt) => {
-                let client = acopt.copt.to_client(OpType::Write).await;
+            ServiceAccountOpt::Create {
+                aopts,
+                copt,
+                display_name,
+                entry_managed_by,
+            } => {
+                let client = copt.to_client(OpType::Write).await;
                 if let Err(e) = client
                     .idm_service_account_create(
-                        acopt.aopts.account_id.as_str(),
-                        acopt.display_name.as_str(),
+                        aopts.account_id.as_str(),
+                        display_name.as_str(),
+                        entry_managed_by.as_str(),
                     )
                     .await
                 {
-                    error!("Error -> {:?}", e)
+                    handle_client_error(e, copt.output_mode)
                 }
             }
             ServiceAccountOpt::Validity { commands } => match commands {
                 AccountValidity::Show(ano) => {
                     let client = ano.copt.to_client(OpType::Read).await;
 
+                    let entry = match client
+                        .idm_service_account_get(ano.aopts.account_id.as_str())
+                        .await
+                    {
+                        Err(err) => {
+                            error!(
+                                "No account {} found, or other error occurred: {:?}",
+                                ano.aopts.account_id.as_str(),
+                                err
+                            );
+                            return;
+                        }
+                        Ok(val) => match val {
+                            Some(val) => val,
+                            None => {
+                                error!("No account {} found!", ano.aopts.account_id.as_str());
+                                return;
+                            }
+                        },
+                    };
+
                     println!("user: {}", ano.aopts.account_id.as_str());
-                    let ex = match client
-                        .idm_service_account_get_attr(
-                            ano.aopts.account_id.as_str(),
-                            "account_expire",
-                        )
-                        .await
-                    {
-                        Ok(v) => v,
-                        Err(e) => {
-                            error!("Error -> {:?}", e);
-                            return;
-                        }
-                    };
-
-                    let vf = match client
-                        .idm_service_account_get_attr(
-                            ano.aopts.account_id.as_str(),
-                            "account_valid_from",
-                        )
-                        .await
-                    {
-                        Ok(v) => v,
-                        Err(e) => {
-                            error!("Error -> {:?}", e);
-                            return;
-                        }
-                    };
-
-                    if let Some(t) = vf {
+                    if let Some(t) = entry.attrs.get(ATTR_ACCOUNT_VALID_FROM) {
                         // Convert the time to local timezone.
                         let t = OffsetDateTime::parse(&t[0], &Rfc3339)
                             .map(|odt| {
@@ -415,7 +412,7 @@ impl ServiceAccountOpt {
                         println!("valid after: any time");
                     }
 
-                    if let Some(t) = ex {
+                    if let Some(t) = entry.attrs.get(ATTR_ACCOUNT_EXPIRE) {
                         let t = OffsetDateTime::parse(&t[0], &Rfc3339)
                             .map(|odt| {
                                 odt.to_offset(
@@ -433,36 +430,33 @@ impl ServiceAccountOpt {
                 }
                 AccountValidity::ExpireAt(ano) => {
                     let client = ano.copt.to_client(OpType::Write).await;
-                    if matches!(ano.datetime.as_str(), "never" | "clear") {
-                        // Unset the value
-                        match client
-                            .idm_service_account_purge_attr(
-                                ano.aopts.account_id.as_str(),
-                                "account_expire",
-                            )
-                            .await
-                        {
-                            Err(e) => error!("Error -> {:?}", e),
-                            _ => println!("Success"),
+                    let validity = match try_expire_at_from_string(ano.datetime.as_str()) {
+                        Ok(val) => val,
+                        Err(()) => return,
+                    };
+                    let res = match validity {
+                        None => {
+                            client
+                                .idm_service_account_purge_attr(
+                                    ano.aopts.account_id.as_str(),
+                                    ATTR_ACCOUNT_EXPIRE,
+                                )
+                                .await
                         }
-                    } else {
-                        if let Err(e) = OffsetDateTime::parse(ano.datetime.as_str(), &Rfc3339) {
-                            error!("Error -> {:?}", e);
-                            return;
+                        Some(new_expiry) => {
+                            client
+                                .idm_service_account_set_attr(
+                                    ano.aopts.account_id.as_str(),
+                                    ATTR_ACCOUNT_EXPIRE,
+                                    &[&new_expiry],
+                                )
+                                .await
                         }
-
-                        match client
-                            .idm_service_account_set_attr(
-                                ano.aopts.account_id.as_str(),
-                                "account_expire",
-                                &[ano.datetime.as_str()],
-                            )
-                            .await
-                        {
-                            Err(e) => error!("Error -> {:?}", e),
-                            _ => println!("Success"),
-                        }
-                    }
+                    };
+                    match res {
+                        Err(e) => handle_client_error(e, ano.copt.output_mode),
+                        _ => println!("Success"),
+                    };
                 }
                 AccountValidity::BeginFrom(ano) => {
                     let client = ano.copt.to_client(OpType::Write).await;
@@ -471,11 +465,11 @@ impl ServiceAccountOpt {
                         match client
                             .idm_service_account_purge_attr(
                                 ano.aopts.account_id.as_str(),
-                                "account_valid_from",
+                                ATTR_ACCOUNT_VALID_FROM,
                             )
                             .await
                         {
-                            Err(e) => error!("Error -> {:?}", e),
+                            Err(e) => handle_client_error(e, ano.copt.output_mode),
                             _ => println!("Success"),
                         }
                     } else {
@@ -488,25 +482,26 @@ impl ServiceAccountOpt {
                         match client
                             .idm_service_account_set_attr(
                                 ano.aopts.account_id.as_str(),
-                                "account_valid_from",
+                                ATTR_ACCOUNT_VALID_FROM,
                                 &[ano.datetime.as_str()],
                             )
                             .await
                         {
-                            Err(e) => error!("Error -> {:?}", e),
+                            Err(e) => handle_client_error(e, ano.copt.output_mode),
                             _ => println!("Success"),
                         }
                     }
                 }
             }, // end ServiceAccountOpt::Validity
             ServiceAccountOpt::IntoPerson(aopt) => {
+                warn!("This command is deprecated and will be removed in a future release");
                 let client = aopt.copt.to_client(OpType::Write).await;
                 match client
                     .idm_service_account_into_person(aopt.aopts.account_id.as_str())
                     .await
                 {
                     Ok(()) => println!("Success"),
-                    Err(e) => error!("Error -> {:?}", e),
+                    Err(e) => handle_client_error(e, aopt.copt.output_mode),
                 }
             }
         }

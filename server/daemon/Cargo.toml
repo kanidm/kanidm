@@ -16,6 +16,8 @@ repository = { workspace = true }
 [[bin]]
 name = "kanidmd"
 path = "src/main.rs"
+test = true
+doctest = false
 
 [dependencies]
 kanidm_proto = { workspace = true }
@@ -23,23 +25,33 @@ kanidmd_core = { workspace = true }
 kanidm_lib_file_permissions = { workspace = true }
 sketching = { workspace = true }
 fs2 = { workspace = true }
+futures = { workspace = true }
 
 clap = { workspace = true, features = ["env"] }
 reqwest = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 tokio = { workspace = true, features = ["rt-multi-thread", "macros", "signal"] }
+tokio-util = { workspace = true, features = ["codec"] }
 toml = { workspace = true }
-is-terminal = "0.4.7"
+opentelemetry = { workspace = true, features = ["logs"] }
+opentelemetry_api = { workspace = true, features = ["logs"] }
+tracing = { workspace = true, features = [
+    "max_level_trace",
+    "release_max_level_debug",
+] }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+sd-notify.workspace = true
 
 [target.'cfg(target_family = "windows")'.dependencies]
 whoami = { workspace = true }
 
 [target.'cfg(not(target_family = "windows"))'.dependencies]
-users = { workspace = true }
+kanidm_utils_users = { workspace = true }
 tikv-jemallocator = { workspace = true }
 
 [build-dependencies]
 serde = { workspace = true, features = ["derive"] }
 clap = { workspace = true, features = ["derive"] }
 clap_complete = { workspace = true }
-profiles = { workspace = true }
+kanidm_build_profiles = { workspace = true }

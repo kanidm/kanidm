@@ -2,7 +2,6 @@
 name = "kanidmd_core"
 description = "Kanidm Server Core and Library"
 documentation = "https://docs.rs/kanidm/latest/kanidm/"
-autotests = false
 
 version = { workspace = true }
 authors = { workspace = true }
@@ -12,15 +11,32 @@ license = { workspace = true }
 homepage = { workspace = true }
 repository = { workspace = true }
 
+[lib]
+test = true
+doctest = false
+
 [dependencies]
 async-trait = { workspace = true }
+axum = { workspace = true }
+axum-auth = "0.4.1"
+axum-csp = { workspace = true }
+axum-macros = "0.3.8"
+axum-server = { version = "0.5.1", features = ["tls-openssl"] }
+bytes = { workspace = true }
 chrono = { workspace = true }
-cron = { workspace = true }
 compact_jwt = { workspace = true }
+cron = { workspace = true }
+filetime = { workspace = true }
+futures = { workspace = true }
 futures-util = { workspace = true }
-http-types = { workspace = true }
+hashbrown = { workspace = true }
+http = { workspace = true }
+hyper = { workspace = true }
 kanidm_proto = { workspace = true }
+kanidm_utils_users = { workspace = true }
 kanidmd_lib = { workspace = true }
+kanidm_lib_crypto = { workspace = true }
+kanidm_lib_file_permissions = { workspace = true }
 ldap3_proto = { workspace = true }
 libc = { workspace = true }
 openssl = { workspace = true }
@@ -28,18 +44,41 @@ rand = { workspace = true }
 regex = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
+serde_with = { workspace = true }
 sketching = { workspace = true }
-tide = { workspace = true }
-time = { workspace = true, features = ["serde", "std","local-offset"] }
-tide-compress = { workspace = true }
-tide-openssl = { workspace = true }
+time = { workspace = true, features = ["serde", "std", "local-offset"] }
 tokio = { workspace = true, features = ["net", "sync", "io-util", "macros"] }
 tokio-openssl = { workspace = true }
 tokio-util = { workspace = true, features = ["codec"] }
-toml = {workspace = true}
+toml = { workspace = true }
+tower = { version = "0.4.13", features = ["tokio-stream", "tracing"] }
+tower-http = { version = "0.4.4", features = [
+    "compression-gzip",
+    "compression-zstd",
+    "fs",
+    "tokio",
+    "trace",
+    "tracing",
+    "uuid",
+] }
 tracing = { workspace = true, features = ["attributes"] }
+tracing-subscriber = { workspace = true, features = ["time", "json"] }
 urlencoding = { workspace = true }
-uuid = { workspace = true, features = ["serde", "v4" ] }
+url = { workspace = true, features = ["serde"] }
+uuid = { workspace = true, features = ["serde", "v4"] }
+utoipa = { workspace = true, features = [
+    "axum_extras",
+    "openapi_extensions",
+    "preserve_order",     #  Preserve order of properties when serializing the schema for a component.
+    "time",
+    "url",
+    "uuid",
+] }
+utoipa-swagger-ui = { workspace = true, features = ["axum"] }
+
+[dev-dependencies]
+walkdir = { workspace = true }
+tempfile = { workspace = true }
 
 [build-dependencies]
-profiles = { workspace = true }
+kanidm_build_profiles = { workspace = true }

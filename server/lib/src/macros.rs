@@ -12,7 +12,8 @@ macro_rules! setup_test {
         let be = Backend::new(BackendConfig::new_test("main"), idxmeta, false)
             .expect("Failed to init BE");
 
-        let qs = QueryServer::new(be, schema_outer, "example.com".to_string());
+        let qs = QueryServer::new(be, schema_outer, "example.com".to_string())
+            .expect("Failed to setup Query Server");
         tokio::runtime::Builder::new_current_thread()
             .enable_all()
             .build()
@@ -24,7 +25,7 @@ macro_rules! setup_test {
     (
         $preload_entries:expr
     ) => {{
-        use crate::utils::duration_from_epoch_now;
+        use crate::prelude::duration_from_epoch_now;
 
         let _ = sketching::test_init();
 
@@ -37,7 +38,8 @@ macro_rules! setup_test {
         let be = Backend::new(BackendConfig::new_test("main"), idxmeta, false)
             .expect("Failed to init BE");
 
-        let qs = QueryServer::new(be, schema_outer, "example.com".to_string());
+        let qs = QueryServer::new(be, schema_outer, "example.com".to_string())
+            .expect("Failed to setup Query Server");
         tokio::runtime::Builder::new_current_thread()
             .enable_all()
             .build()
@@ -60,29 +62,6 @@ macro_rules! setup_test {
     }};
 }
 
-#[cfg(test)]
-macro_rules! entry_to_account {
-    ($entry:expr) => {{
-        use std::iter::once;
-
-        use crate::entry::{Entry, EntryInvalid, EntryNew};
-        use crate::idm::account::Account;
-        use crate::value::Value;
-
-        let mut e: Entry<EntryInvalid, EntryNew> = unsafe { $entry.clone().into_invalid_new() };
-        // Add spn, because normally this is generated but in tests we can't.
-        let spn = e
-            .get_ava_single_iname("name")
-            .map(|s| Value::new_spn_str(s, "example.com"))
-            .expect("Failed to munge spn from name!");
-        e.set_ava("spn", once(spn));
-
-        let e = unsafe { e.into_sealed_committed() };
-
-        Account::try_from_entry_no_groups(&e).expect("Account conversion failure")
-    }};
-}
-
 // Test helpers for all plugins.
 // #[macro_export]
 #[cfg(test)]
@@ -98,7 +77,6 @@ macro_rules! run_create_test {
         use crate::event::CreateEvent;
         use crate::prelude::*;
         use crate::schema::Schema;
-        use crate::utils::duration_from_epoch_now;
 
         let qs = setup_test!($preload_entries);
 
@@ -141,16 +119,22 @@ macro_rules! run_create_test {
     }};
 }
 
-// #[macro_export]
 #[cfg(test)]
+/// Runs a test with preloaded entries, then modifies based on a filter/list, then runs a given check
 macro_rules! run_modify_test {
     (
+        // expected outcome
         $expect:expr,
+        // things to preload
         $preload_entries:ident,
+        // the targets to modify
         $modify_filter:expr,
+        // changes to make
         $modify_list:expr,
         $internal:expr,
+        // something to run after the preload but before the modification, takes `&mut qs_write`
         $pre_hook:expr,
+        // the result we expect
         $check:expr
     ) => {{
         use crate::be::{Backend, BackendConfig};
@@ -171,10 +155,8 @@ macro_rules! run_modify_test {
         }
 
         let me = match $internal {
-            None => unsafe { ModifyEvent::new_internal_invalid($modify_filter, $modify_list) },
-            Some(ent) => unsafe {
-                ModifyEvent::new_impersonate_entry(ent, $modify_filter, $modify_list)
-            },
+            None => ModifyEvent::new_internal_invalid($modify_filter, $modify_list),
+            Some(ent) => ModifyEvent::new_impersonate_entry(ent, $modify_filter, $modify_list),
         };
 
         {
@@ -222,13 +204,12 @@ macro_rules! run_delete_test {
         use crate::event::DeleteEvent;
         use crate::prelude::*;
         use crate::schema::Schema;
-        use crate::utils::duration_from_epoch_now;
 
         let qs = setup_test!($preload_entries);
 
         let de = match $internal {
-            Some(ent) => unsafe { DeleteEvent::new_impersonate_entry(ent, $delete_filter.clone()) },
-            None => unsafe { DeleteEvent::new_internal_invalid($delete_filter.clone()) },
+            Some(ent) => DeleteEvent::new_impersonate_entry(ent, $delete_filter.clone()),
+            None => DeleteEvent::new_internal_invalid($delete_filter.clone()),
         };
 
         {
@@ -334,6 +315,14 @@ macro_rules! filter_all {
     ) => {{
         Filter::new($fc)
     }};
+}
+
+#[macro_export]
+/// Build a filter which matches class == input
+macro_rules! match_class_filter {
+    ($class:expr) => {
+        ProtoFilter::Eq(Attribute::Class.to_string(), $class.to_string())
+    };
 }
 
 #[cfg(test)]
@@ -503,9 +492,11 @@ macro_rules! mergemaps {
         $b:expr
     ) => {{
         $b.iter().for_each(|(k, v)| {
-            if !$a.contains_key(k) {
-                $a.insert(k.clone(), v.clone());
-            }
+            // I think to be consistent, we need the content of b to always
+            // the content of a
+            // if !$a.contains_key(k) {
+            $a.insert(k.clone(), v.clone());
+            // }
         });
         Ok(())
     }};
@@ -529,6 +520,7 @@ macro_rules! vs_utf8 {
 
 #[allow(unused_macros)]
 #[macro_export]
+/// Takes EntryClass objects and makes  a VaueSetIutf8
 macro_rules! vs_iutf8 {
     () => (
         compile_error!("ValueSetIutf8 needs at least 1 element")

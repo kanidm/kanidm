@@ -1,43 +1,47 @@
-use serde::{Deserialize, Serialize};
+//! Builds a Progressive Web App Manifest page.
 
-///! Builds a Progressive Web App Manifest page.
+use axum::extract::State;
+use axum::http::header::CONTENT_TYPE;
+use axum::http::HeaderValue;
+use axum::response::{IntoResponse, Response};
+use axum::Extension;
+use serde::{Deserialize, Serialize};
+use serde_with::skip_serializing_none;
+
+use super::middleware::KOpId;
 // Thanks to the webmanifest crate for a lot of this code
-use crate::https::{AppState, RequestExtensions};
+use super::ServerState;
 
 /// The MIME type for `.webmanifest` files.
 const MIME_TYPE_MANIFEST: &str = "application/manifest+json;charset=utf-8";
 
 /// Create a new manifest builder.
+
+#[skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Manifest<'s> {
-    name: &'s str,
-    short_name: &'s str,
-    start_url: &'s str,
+pub struct Manifest {
+    name: String,
+    short_name: String,
+    start_url: String,
     #[serde(rename = "display")]
     display_mode: DisplayMode,
-    background_color: &'s str,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    description: Option<&'s str>,
+    background_color: String,
+    description: Option<String>,
     #[serde(rename = "dir")]
     direction: Direction,
     // direction: Option<Direction>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     orientation: Option<String>,
     // orientation: Option<Orientation>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    lang: Option<&'s str>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    scope: Option<&'s str>,
-    // #[serde(skip_serializing_if = "Option::is_none")]
-    theme_color: &'s str,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    lang: Option<String>,
+    scope: Option<String>,
+    //
+    theme_color: String,
     prefer_related_applications: Option<bool>,
     // #[serde(borrow)]
-    // #[serde(skip_serializing_if = "Option::is_none")]
+    //
     icons: Vec<ManifestIcon>,
     // icons: Vec<Icon<'i>>,
     // #[serde(borrow)]
-    #[serde(skip_serializing_if = "Option::is_none")]
     related_applications: Option<Vec<String>>,
     // related_applications: Vec<Related<'r>>,
 }
@@ -94,12 +98,7 @@ enum DisplayMode {
     Browser,
 }
 
-/// Generates a manifest.json file for progressive web app usage
-pub async fn manifest(req: tide::Request<AppState>) -> tide::Result {
-    let mut res = tide::Response::new(200);
-    let (eventid, _) = req.new_eventid();
-    let domain_display_name = req.state().qe_r_ref.get_domain_display_name(eventid).await;
-
+pub fn manifest_data(host_req: Option<&str>, domain_display_name: String) -> Manifest {
     let icons = vec![
         ManifestIcon {
             sizes: String::from("512x512"),
@@ -127,32 +126,45 @@ pub async fn manifest(req: tide::Request<AppState>) -> tide::Result {
         },
     ];
 
-    let start_url = match req.host() {
+    let start_url = match host_req {
         Some(value) => format!("https://{}/", value),
         None => String::from("/"),
     };
 
-    let manifest_struct = Manifest {
-        short_name: "Kanidm",
-        name: domain_display_name.as_str(),
-        start_url: start_url.as_str(),
+    Manifest {
+        short_name: "Kanidm".to_string(),
+        name: domain_display_name,
+        start_url,
         display_mode: DisplayMode::MinimalUi,
         description: None,
         orientation: None,
-        lang: Some("en"),
-        theme_color: "white",
-        background_color: "white",
+        lang: Some("en".to_string()),
+        theme_color: "white".to_string(),
+        background_color: "white".to_string(),
         direction: Direction::Auto,
         scope: None,
         prefer_related_applications: None,
         icons,
         related_applications: None,
-    };
+    }
+}
 
-    let manifest_string = serde_json::to_string_pretty(&manifest_struct)?;
+/// Generates a manifest.json file for progressive web app usage
+pub(crate) async fn manifest(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+) -> impl IntoResponse {
+    let domain_display_name = state.qe_r_ref.get_domain_display_name(kopid.eventid).await;
+    // TODO: fix the None here to make it the request host
+    let manifest_string =
+        match serde_json::to_string_pretty(&manifest_data(None, domain_display_name)) {
+            Ok(val) => val,
+            Err(_) => String::from(""),
+        };
+    let mut res = Response::new(manifest_string);
 
-    res.set_content_type(MIME_TYPE_MANIFEST);
-    res.set_body(manifest_string);
+    res.headers_mut()
+        .insert(CONTENT_TYPE, HeaderValue::from_static(MIME_TYPE_MANIFEST));
 
-    Ok(res)
+    res
 }

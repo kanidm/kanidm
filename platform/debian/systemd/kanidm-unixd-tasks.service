@@ -10,22 +10,28 @@ User=root
 Type=simple
 ExecStart=/usr/sbin/kanidm_unixd_tasks
 
-ReadWritePaths=/home /var/run/kanidm-unixd
+# because kanidm-unixd might have failed for some reason but we need to try again later
+Restart=always
+RestartSec=30
+
 
 CapabilityBoundingSet=CAP_CHOWN CAP_FOWNER CAP_DAC_OVERRIDE CAP_DAC_READ_SEARCH
-MemoryDenyWriteExecute=true
+# SystemCallFilter=@aio @basic-io @chown @file-system @io-event @network-io @sync
+ProtectSystem=strict
+ReadWritePaths=/home /var/run/kanidm-unixd
+RestrictAddressFamilies=AF_UNIX
 NoNewPrivileges=true
+PrivateTmp=true
 PrivateDevices=true
 PrivateNetwork=true
-PrivateTmp=true
-ProtectClock=true
-ProtectControlGroups=true
 ProtectHostname=true
-ProtectKernelLogs=true
-ProtectKernelModules=true
+ProtectClock=true
 ProtectKernelTunables=true
-ProtectSystem=strict
-RestrictAddressFamilies=AF_UNIX
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+MemoryDenyWriteExecute=true
 
 [Install]
 WantedBy=multi-user.target
+

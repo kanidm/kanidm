@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 from authlib.jose import JsonWebSignature  # type: ignore
-from pydantic import BaseModel
+from pydantic import ConfigDict, BaseModel, RootModel
 
 from . import TOKEN_PATH
 
@@ -31,11 +31,7 @@ class JWSHeader(BaseModel):
     alg: str
     typ: str
     jwk: JWSHeaderJWK
-
-    class Config:
-        """Configure the pydantic class"""
-
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
 class JWSPayload(BaseModel):
@@ -50,7 +46,7 @@ class JWSPayload(BaseModel):
     name: str
     displayname: str
     spn: str
-    mail_primary: Optional[str]
+    mail_primary: Optional[str] = None
     lim_uidx: bool
     lim_rmax: int
     lim_pmax: int
@@ -93,13 +89,13 @@ class JWS:
         padded_header = raw_header + "=" * divmod(len(raw_header), 4)[0]
         decoded_header = base64.urlsafe_b64decode(padded_header)
         logging.debug("decoded_header=%s", decoded_header)
-        header = JWSHeader.parse_obj(json.loads(decoded_header.decode("utf-8")))
+        header = JWSHeader.model_validate(json.loads(decoded_header.decode("utf-8")))
         logging.debug("header: %s", header)
 
         raw_payload = split_raw[1]
         logging.debug("Parsing payload: %s", raw_payload)
         padded_payload = raw_payload + "=" * divmod(len(raw_payload), 4)[1]
-        payload = JWSPayload.parse_raw(base64.urlsafe_b64decode(padded_payload))
+        payload = JWSPayload.model_validate_json(base64.urlsafe_b64decode(padded_payload))
 
         raw_signature = split_raw[2]
         logging.debug("Parsing signature: %s", raw_signature)
@@ -109,32 +105,31 @@ class JWS:
         return header, payload, signature
 
 
-class TokenStore(BaseModel):
-    """Represents the user auth tokens, can load them from the user store"""
-
-    __root__: Dict[str, str] = {}
+class TokenStore(RootModel[Dict[str, str]]):
+    """Represents the user auth tokens, so we can load them from the user store"""
+    root: Dict[str, str]
 
     # TODO: one day work out how to type the __iter__ on TokenStore properly. It's some kind of iter() that makes mypy unhappy.
     def __iter__(self) -> Any:
         """overloading the default function"""
-        for key in self.__root__.keys():
+        for key in self.root.keys():
             yield key
 
     def __getitem__(self, item: str) -> str:
         """overloading the default function"""
-        return self.__root__[item]
+        return self.root[item]
 
     def __delitem__(self, item: str) -> None:
         """overloading the default function"""
-        del self.__root__[item]
+        del self.root[item]
 
     def __setitem__(self, key: str, value: str) -> None:
         """overloading the default function"""
-        self.__root__[key] = value
+        self.root[key] = value
 
     def save(self, filepath: Path = TOKEN_PATH) -> None:
         """saves the cached tokens to disk"""
-        data = json.dumps(self.__root__, indent=2)
+        data = json.dumps(self.root, indent=2)
         with filepath.expanduser().resolve().open(
             mode="w", encoding="utf-8"
         ) as file_handle:
@@ -157,19 +152,19 @@ class TokenStore(BaseModel):
                 tokens = json.load(file_handle)
 
         if overwrite:
-            self.__root__ = tokens
+            self.root = tokens
         else:
             for user in tokens:
-                self.__root__[user] = tokens[user]
+                self.root[user] = tokens[user]
 
         self.validate_tokens()
 
         logging.debug(json.dumps(tokens, indent=4))
-        return self.__root__
+        return self.root
 
     def validate_tokens(self) -> None:
         """validates the JWS tokens for format, not their signature - PRs welcome"""
-        for username in self.__root__:
+        for username in self.root:
             logging.debug("Parsing %s", username)
             # TODO: Work out how to get the validation working. We probably shouldn't be worried about this since we're using it for auth...
             logging.debug(
@@ -184,4 +179,4 @@ class TokenStore(BaseModel):
             s=self[username], key=None
         )
         logging.debug(parsed_object)
-        return JWSPayload.parse_raw(parsed_object.payload)
+        return JWSPayload.model_validate_json(parsed_object.payload)

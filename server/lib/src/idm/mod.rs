@@ -4,21 +4,23 @@
 //! is implemented.
 
 pub mod account;
-pub mod applinks;
+pub(crate) mod accountpolicy;
+pub(crate) mod applinks;
 pub mod audit;
-pub mod authsession;
+pub(crate) mod authsession;
 pub mod credupdatesession;
 pub mod delayed;
 pub mod event;
 pub mod group;
+pub mod identityverification;
 pub mod ldap;
 pub mod oauth2;
-pub mod radius;
-pub mod reauth;
+pub(crate) mod radius;
+pub(crate) mod reauth;
 pub mod scim;
 pub mod server;
 pub mod serviceaccount;
-pub mod unix;
+pub(crate) mod unix;
 
 use std::fmt;
 

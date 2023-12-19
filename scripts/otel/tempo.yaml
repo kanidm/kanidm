@@ -1,0 +1,69 @@
+---
+# It should be *very* clear that this is an insecure, dev-only configuration. Don't run this in production!
+
+# config docs https://grafana.com/docs/tempo/latest/configuration/#compactor
+
+server:
+  http_listen_port: 3200
+  grpc_server_max_recv_msg_size: 20971520 # 20MiB
+  grpc_server_max_send_msg_size: 20971520 # 20MiB
+query_frontend:
+  search:
+    duration_slo: 5s
+    throughput_bytes_slo: 1.073741824e+09
+  trace_by_id:
+    duration_slo: 5s
+
+distributor:
+  receivers:
+    otlp:
+      protocols:
+        # http:
+        grpc:
+          max_recv_msg_size_mib: 20
+
+    opencensus:
+
+# ingester:
+# max_block_duration: 5m # cut the headblock when this much time passes. this is being set for demo purposes and should probably be left alone normally
+
+compactor:
+  compaction:
+    # Optional. Duration to keep blocks.  Default is 14 days (336h).
+    block_retention: 24h
+
+metrics_generator:
+  registry:
+    external_labels:
+      source: tempo
+      cluster: docker-compose
+  storage:
+    # path: /tmp/tempo/generator/wal
+    remote_write:
+      - url: http://prometheus:9090/api/v1/write
+        send_exemplars: true
+
+storage:
+  trace:
+    backend: s3 # we're using minio anyway!
+    s3:
+      bucket: tempo
+      endpoint: minio:9000
+      region: minio
+      insecure: true
+      access_key: loki
+      secret_key: supersecret
+    # backend: local
+    # wal:
+    #   path: /tmp/tempo/wal # where to store the the wal locally
+    # local:
+    #   path: /tmp/tempo/blocks
+
+overrides:
+  defaults:
+    metrics_generator:
+      processors:
+        - service-graphs
+        - span-metrics # enables metrics generator
+    global:
+      max_bytes_per_trace: 20971520 # 20MiB

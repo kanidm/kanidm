@@ -71,7 +71,7 @@ impl QueryServer {
         // effect as ... there is nothing to migrate! It allows reset of the version to 0 to force
         // db migrations to take place.
         let system_info_version = match write_txn.internal_search_uuid(UUID_SYSTEM_INFO) {
-            Ok(e) => Ok(e.get_ava_single_uint32("version").unwrap_or(0)),
+            Ok(e) => Ok(e.get_ava_single_uint32(Attribute::Version).unwrap_or(0)),
             Err(OperationError::NoMatchingEntries) => Ok(0),
             Err(r) => Err(r),
         }?;
@@ -99,15 +99,65 @@ impl QueryServer {
             if system_info_version < 12 {
                 write_txn.migrate_11_to_12()?;
             }
+
+            if system_info_version < 13 {
+                write_txn.migrate_12_to_13()?;
+            }
+
+            if system_info_version < 14 {
+                write_txn.migrate_13_to_14()?;
+            }
+
+            if system_info_version < 15 {
+                write_txn.migrate_14_to_15()?;
+            }
+
+            if system_info_version < 16 {
+                write_txn.migrate_15_to_16()?;
+            }
+
+            if system_info_version < 17 {
+                write_txn.migrate_16_to_17()?;
+            }
         }
 
+        // This is the start of domain info related migrations which we will need in future
+        // to handle replication. Due to the access control rework, and the addition of "managed by"
+        // syntax, we need to ensure both node "fence" replication from each other. We do this
+        // by changing domain infos to be incompatible during this phase.
+        let domain_info_version = match write_txn.internal_search_uuid(UUID_DOMAIN_INFO) {
+            Ok(e) => Ok(e.get_ava_single_uint32(Attribute::Version).unwrap_or(0)),
+            Err(OperationError::NoMatchingEntries) => Ok(0),
+            Err(r) => Err(r),
+        }?;
+        admin_debug!(?domain_info_version);
+
+        if domain_info_version < DOMAIN_TGT_LEVEL {
+            write_txn
+                .internal_modify_uuid(
+                    UUID_DOMAIN_INFO,
+                    &ModifyList::new_purge_and_set(
+                        Attribute::Version,
+                        Value::new_uint32(DOMAIN_TGT_LEVEL),
+                    ),
+                )
+                .map(|()| {
+                    warn!("Domain level has been raised to {}", DOMAIN_TGT_LEVEL);
+                })?;
+        }
+
+        // Reload if anything in migrations requires it.
         write_txn.reload()?;
         // Migrations complete. Init idm will now set the version as needed.
+        write_txn.initialise_idm()?;
 
-        write_txn.initialise_idm().and_then(|_| {
-            write_txn.set_phase(ServerPhase::Running);
-            write_txn.commit()
-        })?;
+        // Now force everything to reload.
+        write_txn.force_all_reload();
+        // We are ready to run
+        write_txn.set_phase(ServerPhase::Running);
+
+        // Commit all changes, this also triggers the reload.
+        write_txn.commit()?;
 
         // Here is where in the future we will need to apply domain version increments.
         // The actually migrations are done in a transaction though, this just needs to
@@ -134,24 +184,24 @@ impl<'a> QueryServerWriteTransaction<'a> {
         res
     }
 
+    #[instrument(level = "debug", skip_all)]
+    /// - If the thing exists:
+    ///   - Ensure the set of attributes match and are present
+    ///     (but don't delete multivalue, or extended attributes in the situation.
+    /// - If not:
+    ///   - Create the entry
+    ///
+    /// This will extra classes an attributes alone!
+    ///
+    /// NOTE: `gen_modlist*` IS schema aware and will handle multivalue correctly!
     pub fn internal_migrate_or_create(
         &mut self,
         e: Entry<EntryInit, EntryNew>,
     ) -> Result<(), OperationError> {
-        // if the thing exists, ensure the set of attributes on
-        // Entry A match and are present (but don't delete multivalue, or extended
-        // attributes in the situation.
-        // If not exist, create from Entry B
-        //
-        // This will extra classes an attributes alone!
-        //
-        // NOTE: gen modlist IS schema aware and will handle multivalue
-        // correctly!
         trace!("internal_migrate_or_create operating on {:?}", e.get_uuid());
 
-        let filt = match e.filter_from_attrs(&[AttrString::from("uuid")]) {
-            Some(f) => f,
-            None => return Err(OperationError::FilterGeneration),
+        let Some(filt) = e.filter_from_attrs(&[Attribute::Uuid.into()]) else {
+            return Err(OperationError::FilterGeneration);
         };
 
         trace!("internal_migrate_or_create search {:?}", filt);
@@ -191,8 +241,11 @@ impl<'a> QueryServerWriteTransaction<'a> {
     pub fn migrate_8_to_9(&mut self) -> Result<(), OperationError> {
         admin_warn!("starting 8 to 9 migration.");
         let filt = filter_all!(f_or!([
-            f_eq("class", PVCLASS_OAUTH2_RS.clone()),
-            f_eq("class", PVCLASS_OAUTH2_BASIC.clone()),
+            f_eq(Attribute::Class, EntryClass::OAuth2ResourceServer.into()),
+            f_eq(
+                Attribute::Class,
+                EntryClass::OAuth2ResourceServerBasic.into()
+            ),
         ]));
 
         let pre_candidates = self.internal_search(filt).map_err(|e| {
@@ -209,23 +262,27 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // Change the value type.
         let mut candidates: Vec<Entry<EntryInvalid, EntryCommitted>> = pre_candidates
             .iter()
-            .map(|er| er.as_ref().clone().invalidate(self.cid.clone()))
+            .map(|er| {
+                er.as_ref()
+                    .clone()
+                    .invalidate(self.cid.clone(), &self.trim_cid)
+            })
             .collect();
 
         candidates.iter_mut().try_for_each(|er| {
             // Migrate basic secrets if they exist.
             let nvs = er
-                .get_ava_set("oauth2_rs_basic_secret")
+                .get_ava_set(Attribute::OAuth2RsBasicSecret)
                 .and_then(|vs| vs.as_utf8_iter())
                 .and_then(|vs_iter| {
                     ValueSetSecret::from_iter(vs_iter.map(|s: &str| s.to_string()))
                 });
             if let Some(nvs) = nvs {
-                er.set_ava_set("oauth2_rs_basic_secret", nvs)
+                er.set_ava_set(Attribute::OAuth2RsBasicSecret, nvs)
             }
 
             // Migrate implicit scopes if they exist.
-            let nv = if let Some(vs) = er.get_ava_set("oauth2_rs_implicit_scopes") {
+            let nv = if let Some(vs) = er.get_ava_set(Attribute::OAuth2RsImplicitScopes) {
                 vs.as_oauthscope_set()
                     .map(|v| Value::OauthScopeMap(UUID_IDM_ALL_PERSONS, v.clone()))
             } else {
@@ -233,9 +290,9 @@ impl<'a> QueryServerWriteTransaction<'a> {
             };
 
             if let Some(nv) = nv {
-                er.add_ava("oauth2_rs_scope_map", nv)
+                er.add_ava(Attribute::OAuth2RsScopeMap, nv)
             }
-            er.purge_ava("oauth2_rs_implicit_scopes");
+            er.purge_ava(Attribute::OAuth2RsImplicitScopes);
 
             Ok(())
         })?;
@@ -271,16 +328,16 @@ impl<'a> QueryServerWriteTransaction<'a> {
     /// a future version.
     ///
     /// An extended feature of this is the ability to store multiple TOTP's per entry.
-    #[instrument(level = "debug", skip_all)]
+    #[instrument(level = "info", skip_all)]
     pub fn migrate_9_to_10(&mut self) -> Result<(), OperationError> {
         admin_warn!("starting 9 to 10 migration.");
         let filter = filter!(f_or!([
-            f_pres("primary_credential"),
-            f_pres("unix_password"),
+            f_pres(Attribute::PrimaryCredential),
+            f_pres(Attribute::UnixPassword),
         ]));
         // This "does nothing" since everything has object anyway, but it forces the entry to be
         // loaded and rewritten.
-        let modlist = ModifyList::new_append("class", Value::new_class("object"));
+        let modlist = ModifyList::new_append(Attribute::Class, EntryClass::Object.to_value());
         self.internal_modify(&filter, &modlist)
         // Complete
     }
@@ -291,10 +348,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
     /// are, they are migrated to the passkey type, allowing us to deprecate and remove the older
     /// credential behaviour.
     ///
-    #[instrument(level = "debug", skip_all)]
+    #[instrument(level = "info", skip_all)]
     pub fn migrate_10_to_11(&mut self) -> Result<(), OperationError> {
         admin_warn!("starting 9 to 10 migration.");
-        let filter = filter!(f_pres("primary_credential"));
+        let filter = filter!(f_pres(Attribute::PrimaryCredential));
 
         let pre_candidates = self.internal_search(filter).map_err(|e| {
             admin_error!(err = ?e, "migrate_10_to_11 internal search failure");
@@ -306,7 +363,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         let modset: Vec<_> = pre_candidates
             .into_iter()
             .filter_map(|ent| {
-                ent.get_ava_single_credential("primary_credential")
+                ent.get_ava_single_credential(Attribute::PrimaryCredential)
                     .and_then(|cred| cred.passkey_ref().ok())
                     .map(|pk_map| {
                         let modlist = pk_map
@@ -317,7 +374,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                                     Value::Passkey(Uuid::new_v4(), t.clone(), k.clone()),
                                 )
                             })
-                            .chain(std::iter::once(m_purge("primary_credential")))
+                            .chain(std::iter::once(m_purge(Attribute::PrimaryCredential)))
                             .collect();
                         (ent.get_uuid(), ModifyList::new_list(modlist))
                     })
@@ -336,15 +393,15 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
     /// Migrate 11 to 12
     ///
-    /// Rewrite api-tokens from session to a dedicated api token type.
+    /// Rewrite api-tokens from session to a dedicated API token type.
     ///
-    #[instrument(level = "debug", skip_all)]
+    #[instrument(level = "info", skip_all)]
     pub fn migrate_11_to_12(&mut self) -> Result<(), OperationError> {
         admin_warn!("starting 11 to 12 migration.");
         // sync_token_session
         let filter = filter!(f_or!([
-            f_pres("api_token_session"),
-            f_pres("sync_token_session"),
+            f_pres(Attribute::ApiTokenSession),
+            f_pres(Attribute::SyncTokenSession),
         ]));
 
         let mut mod_candidates = self.internal_search_writeable(&filter).map_err(|e| {
@@ -362,19 +419,22 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // webauthn type.
 
         for (_, ent) in mod_candidates.iter_mut() {
-            if let Some(api_token_session) = ent.pop_ava("api_token_session") {
+            if let Some(api_token_session) = ent.pop_ava(Attribute::ApiTokenSession) {
                 let api_token_session =
                     api_token_session
                         .migrate_session_to_apitoken()
                         .map_err(|e| {
-                            error!("Failed to convert api_token_session from session -> apitoken");
+                            error!(
+                                "Failed to convert {} from session -> apitoken",
+                                Attribute::ApiTokenSession
+                            );
                             e
                         })?;
 
-                ent.set_ava_set("api_token_session", api_token_session);
+                ent.set_ava_set(Attribute::ApiTokenSession, api_token_session);
             }
 
-            if let Some(sync_token_session) = ent.pop_ava("sync_token_session") {
+            if let Some(sync_token_session) = ent.pop_ava(Attribute::SyncTokenSession) {
                 let sync_token_session =
                     sync_token_session
                         .migrate_session_to_apitoken()
@@ -383,7 +443,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                             e
                         })?;
 
-                ent.set_ava_set("sync_token_session", sync_token_session);
+                ent.set_ava_set(Attribute::SyncTokenSession, sync_token_session);
             }
         }
 
@@ -391,7 +451,199 @@ impl<'a> QueryServerWriteTransaction<'a> {
         self.internal_apply_writable(mod_candidates)
     }
 
-    #[instrument(level = "debug", skip_all)]
+    #[instrument(level = "info", skip_all)]
+    /// Deletes the Domain info privatecookiekey to force a regeneration as we changed the format
+    pub fn migrate_12_to_13(&mut self) -> Result<(), OperationError> {
+        admin_warn!("starting 12 to 13 migration.");
+        let filter = filter!(f_and!([
+            f_eq(Attribute::Class, EntryClass::DomainInfo.into()),
+            f_eq(Attribute::Uuid, PVUUID_DOMAIN_INFO.clone()),
+        ]));
+        // Delete the existing cookie key to trigger a regeneration.
+        let modlist = ModifyList::new_purge(Attribute::PrivateCookieKey);
+        self.internal_modify(&filter, &modlist)
+        // Complete
+    }
+
+    #[instrument(level = "info", skip_all)]
+    /// - Deletes the incorrectly added "member" attribute on dynamic groups
+    pub fn migrate_13_to_14(&mut self) -> Result<(), OperationError> {
+        admin_warn!("starting 13 to 14 migration.");
+        let filter = filter!(f_eq(
+            Attribute::Class,
+            EntryClass::DynGroup.to_partialvalue()
+        ));
+        // Delete the incorrectly added "member" attr.
+        let modlist = ModifyList::new_purge(Attribute::Member);
+        self.internal_modify(&filter, &modlist)
+        // Complete
+    }
+
+    #[instrument(level = "info", skip_all)]
+    /// - Deletes the non-existing attribute for idverification private key which triggers it to regen
+    pub fn migrate_14_to_15(&mut self) -> Result<(), OperationError> {
+        admin_warn!("starting 14 to 15 migration.");
+        let filter = filter!(f_eq(Attribute::Class, EntryClass::Person.into()));
+        // Delete the non-existing attr for idv private key which triggers it to regen.
+        let modlist = ModifyList::new_purge(Attribute::IdVerificationEcKey);
+        self.internal_modify(&filter, &modlist)
+        // Complete
+    }
+
+    #[instrument(level = "info", skip_all)]
+    /// - updates the system config to include the new session expiry values.
+    /// - adds the account policy object to idm_all_accounts
+    pub fn migrate_15_to_16(&mut self) -> Result<(), OperationError> {
+        admin_warn!("starting 15 to 16 migration.");
+
+        let sysconfig_entry = match self.internal_search_uuid(UUID_SYSTEM_CONFIG) {
+            Ok(entry) => entry,
+            Err(OperationError::NoMatchingEntries) => return Ok(()),
+            Err(e) => return Err(e),
+        };
+
+        let mut all_account_modlist = Vec::with_capacity(3);
+
+        all_account_modlist.push(Modify::Present(
+            Attribute::Class.into(),
+            EntryClass::AccountPolicy.to_value(),
+        ));
+
+        if let Some(auth_exp) = sysconfig_entry.get_ava_single_uint32(Attribute::AuthSessionExpiry)
+        {
+            all_account_modlist.push(Modify::Present(
+                Attribute::AuthSessionExpiry.into(),
+                Value::Uint32(auth_exp),
+            ));
+        }
+
+        if let Some(priv_exp) = sysconfig_entry.get_ava_single_uint32(Attribute::PrivilegeExpiry) {
+            all_account_modlist.push(Modify::Present(
+                Attribute::PrivilegeExpiry.into(),
+                Value::Uint32(priv_exp),
+            ));
+        }
+
+        self.internal_batch_modify(
+            [
+                (
+                    UUID_SYSTEM_CONFIG,
+                    ModifyList::new_list(vec![
+                        Modify::Purged(Attribute::AuthSessionExpiry.into()),
+                        Modify::Purged(Attribute::PrivilegeExpiry.into()),
+                    ]),
+                ),
+                (
+                    UUID_IDM_ALL_ACCOUNTS,
+                    ModifyList::new_list(all_account_modlist),
+                ),
+            ]
+            .into_iter(),
+        )
+        // Complete
+    }
+
+    #[instrument(level = "info", skip_all)]
+    /// This migration will:
+    /// * ensure that all access controls have the needed group receiver type
+    /// * delete legacy entries that are no longer needed.
+    pub fn migrate_16_to_17(&mut self) -> Result<(), OperationError> {
+        admin_warn!("starting 16 to 17 migration.");
+
+        let filter = filter!(f_and!([
+            f_or!([
+                f_pres(Attribute::AcpReceiverGroup),
+                f_pres(Attribute::AcpTargetScope),
+            ]),
+            f_eq(
+                Attribute::Class,
+                EntryClass::AccessControlProfile.to_partialvalue()
+            )
+        ]));
+        // Delete the incorrectly added "member" attr.
+        let modlist = ModifyList::new_list(vec![
+            Modify::Present(
+                Attribute::Class.into(),
+                EntryClass::AccessControlReceiverGroup.to_value(),
+            ),
+            Modify::Present(
+                Attribute::Class.into(),
+                EntryClass::AccessControlTargetScope.to_value(),
+            ),
+        ]);
+        self.internal_modify(&filter, &modlist)?;
+
+        let delete_entries = [
+            UUID_IDM_ACP_OAUTH2_READ_PRIV_V1,
+            UUID_IDM_ACP_RADIUS_SECRET_READ_PRIV_V1,
+            UUID_IDM_ACP_PEOPLE_ACCOUNT_PASSWORD_IMPORT_PRIV_V1,
+            UUID_IDM_ACP_SYSTEM_CONFIG_SESSION_EXP_PRIV_V1,
+            UUID_IDM_ACP_HP_GROUP_WRITE_PRIV_V1,
+            UUID_IDM_ACP_HP_GROUP_MANAGE_PRIV_V1,
+            UUID_IDM_ACP_HP_PEOPLE_WRITE_PRIV_V1,
+            UUID_IDM_ACP_ACCOUNT_READ_PRIV_V1,
+            UUID_IDM_ACP_ACCOUNT_WRITE_PRIV_V1,
+            UUID_IDM_ACP_ACCOUNT_MANAGE_PRIV_V1,
+            UUID_IDM_ACP_HP_ACCOUNT_READ_PRIV_V1,
+            UUID_IDM_ACP_HP_ACCOUNT_WRITE_PRIV_V1,
+            UUID_IDM_ACP_GROUP_WRITE_PRIV_V1,
+            UUID_IDM_ACP_HP_PEOPLE_EXTEND_PRIV_V1,
+            UUID_IDM_ACP_PEOPLE_EXTEND_PRIV_V1,
+            UUID_IDM_ACP_HP_ACCOUNT_MANAGE_PRIV_V1,
+            UUID_IDM_HP_ACP_SERVICE_ACCOUNT_INTO_PERSON_MIGRATE_V1,
+            UUID_IDM_HP_ACP_ACCOUNT_UNIX_EXTEND_PRIV_V1,
+            UUID_IDM_HP_ACP_SYNC_ACCOUNT_MANAGE_PRIV_V1,
+            UUID_IDM_ACP_ACCOUNT_UNIX_EXTEND_PRIV_V1,
+            UUID_IDM_ACP_RADIUS_SECRET_WRITE_PRIV_V1,
+            UUID_IDM_HP_ACP_GROUP_UNIX_EXTEND_PRIV_V1,
+            UUID_IDM_ACP_GROUP_UNIX_EXTEND_PRIV_V1,
+            UUID_IDM_ACP_HP_PEOPLE_READ_PRIV_V1,
+            UUID_IDM_ACP_PEOPLE_WRITE_PRIV_V1,
+            UUID_IDM_HP_SYNC_ACCOUNT_MANAGE_PRIV,
+            UUID_IDM_RADIUS_SECRET_WRITE_PRIV_V1,
+            UUID_IDM_RADIUS_SECRET_READ_PRIV_V1,
+            UUID_IDM_PEOPLE_ACCOUNT_PASSWORD_IMPORT_PRIV,
+            UUID_IDM_PEOPLE_EXTEND_PRIV,
+            UUID_IDM_HP_PEOPLE_EXTEND_PRIV,
+            UUID_IDM_HP_GROUP_MANAGE_PRIV,
+            UUID_IDM_HP_GROUP_WRITE_PRIV,
+            UUID_IDM_HP_SERVICE_ACCOUNT_INTO_PERSON_MIGRATE_PRIV,
+            UUID_IDM_GROUP_ACCOUNT_POLICY_MANAGE_PRIV,
+            UUID_IDM_HP_GROUP_UNIX_EXTEND_PRIV,
+            UUID_IDM_GROUP_WRITE_PRIV,
+            UUID_IDM_GROUP_UNIX_EXTEND_PRIV,
+            UUID_IDM_HP_ACCOUNT_UNIX_EXTEND_PRIV,
+            UUID_IDM_ACCOUNT_UNIX_EXTEND_PRIV,
+            UUID_IDM_PEOPLE_WRITE_PRIV,
+            UUID_IDM_HP_PEOPLE_READ_PRIV,
+            UUID_IDM_HP_PEOPLE_WRITE_PRIV,
+            UUID_IDM_PEOPLE_WRITE_PRIV,
+            UUID_IDM_ACCOUNT_READ_PRIV,
+            UUID_IDM_ACCOUNT_MANAGE_PRIV,
+            UUID_IDM_ACCOUNT_WRITE_PRIV,
+            UUID_IDM_HP_ACCOUNT_READ_PRIV,
+            UUID_IDM_HP_ACCOUNT_MANAGE_PRIV,
+            UUID_IDM_HP_ACCOUNT_WRITE_PRIV,
+        ];
+
+        let res: Result<(), _> = delete_entries
+            .into_iter()
+            .try_for_each(|entry_uuid| self.internal_delete_uuid_if_exists(entry_uuid));
+        if res.is_ok() {
+            admin_debug!("initialise_idm -> result Ok!");
+        } else {
+            admin_error!(?res, "initialise_idm p3 -> result");
+        }
+        debug_assert!(res.is_ok());
+        res?;
+
+        self.changed_schema = true;
+        self.changed_acp = true;
+
+        Ok(())
+    }
+
+    #[instrument(level = "info", skip_all)]
     pub fn initialise_schema_core(&mut self) -> Result<(), OperationError> {
         admin_debug!("initialise_schema_core -> start ...");
         // Load in all the "core" schema, that we already have in "memory".
@@ -414,90 +666,130 @@ impl<'a> QueryServerWriteTransaction<'a> {
         r
     }
 
-    #[instrument(level = "debug", skip_all)]
+    #[instrument(level = "info", skip_all)]
     pub fn initialise_schema_idm(&mut self) -> Result<(), OperationError> {
         admin_debug!("initialise_schema_idm -> start ...");
+
+        let idm_schema_attrs = [
+            SCHEMA_ATTR_SYNC_CREDENTIAL_PORTAL.clone().into(),
+            SCHEMA_ATTR_SYNC_YIELD_AUTHORITY.clone().into(),
+        ];
+
+        let r: Result<(), _> = idm_schema_attrs
+            .into_iter()
+            .try_for_each(|entry| self.internal_migrate_or_create(entry));
+
+        if r.is_err() {
+            error!(res = ?r, "initialise_schema_idm -> Error");
+        }
+        debug_assert!(r.is_ok());
+
         // List of IDM schemas to init.
-        let idm_schema: Vec<&str> = vec![
-            JSON_SCHEMA_ATTR_DISPLAYNAME,
-            JSON_SCHEMA_ATTR_LEGALNAME,
-            JSON_SCHEMA_ATTR_NAME_HISTORY,
-            JSON_SCHEMA_ATTR_MAIL,
-            JSON_SCHEMA_ATTR_SSH_PUBLICKEY,
-            JSON_SCHEMA_ATTR_PRIMARY_CREDENTIAL,
-            JSON_SCHEMA_ATTR_RADIUS_SECRET,
-            JSON_SCHEMA_ATTR_DOMAIN_NAME,
-            JSON_SCHEMA_ATTR_DOMAIN_DISPLAY_NAME,
-            JSON_SCHEMA_ATTR_DOMAIN_UUID,
-            JSON_SCHEMA_ATTR_DOMAIN_SSID,
-            JSON_SCHEMA_ATTR_DOMAIN_TOKEN_KEY,
-            JSON_SCHEMA_ATTR_FERNET_PRIVATE_KEY_STR,
-            JSON_SCHEMA_ATTR_GIDNUMBER,
-            JSON_SCHEMA_ATTR_BADLIST_PASSWORD,
-            JSON_SCHEMA_ATTR_LOGINSHELL,
-            JSON_SCHEMA_ATTR_UNIX_PASSWORD,
-            JSON_SCHEMA_ATTR_ACCOUNT_EXPIRE,
-            JSON_SCHEMA_ATTR_ACCOUNT_VALID_FROM,
-            JSON_SCHEMA_ATTR_OAUTH2_RS_NAME,
-            JSON_SCHEMA_ATTR_OAUTH2_RS_ORIGIN,
-            JSON_SCHEMA_ATTR_OAUTH2_RS_SCOPE_MAP,
-            JSON_SCHEMA_ATTR_OAUTH2_RS_IMPLICIT_SCOPES,
-            JSON_SCHEMA_ATTR_OAUTH2_RS_BASIC_SECRET,
-            JSON_SCHEMA_ATTR_OAUTH2_RS_TOKEN_KEY,
-            JSON_SCHEMA_ATTR_ES256_PRIVATE_KEY_DER,
-            JSON_SCHEMA_ATTR_OAUTH2_ALLOW_INSECURE_CLIENT_DISABLE_PKCE,
-            JSON_SCHEMA_ATTR_OAUTH2_JWT_LEGACY_CRYPTO_ENABLE,
-            JSON_SCHEMA_ATTR_RS256_PRIVATE_KEY_DER,
-            JSON_SCHEMA_ATTR_CREDENTIAL_UPDATE_INTENT_TOKEN,
-            JSON_SCHEMA_ATTR_OAUTH2_CONSENT_SCOPE_MAP,
-            JSON_SCHEMA_ATTR_PASSKEYS,
-            JSON_SCHEMA_ATTR_DEVICEKEYS,
-            JSON_SCHEMA_ATTR_DYNGROUP_FILTER,
-            JSON_SCHEMA_ATTR_JWS_ES256_PRIVATE_KEY,
-            JSON_SCHEMA_ATTR_API_TOKEN_SESSION,
-            JSON_SCHEMA_ATTR_OAUTH2_RS_SUP_SCOPE_MAP,
-            JSON_SCHEMA_ATTR_USER_AUTH_TOKEN_SESSION,
-            JSON_SCHEMA_ATTR_OAUTH2_SESSION,
-            JSON_SCHEMA_ATTR_NSUNIQUEID,
-            JSON_SCHEMA_ATTR_OAUTH2_PREFER_SHORT_USERNAME,
-            JSON_SCHEMA_ATTR_SYNC_TOKEN_SESSION,
-            JSON_SCHEMA_ATTR_SYNC_COOKIE,
-            JSON_SCHEMA_ATTR_GRANT_UI_HINT,
-            JSON_SCHEMA_ATTR_OAUTH2_RS_ORIGIN_LANDING,
-            JSON_SCHEMA_ATTR_DOMAIN_LDAP_BASEDN,
-            JSON_SCHEMA_CLASS_PERSON,
-            JSON_SCHEMA_CLASS_ORGPERSON,
-            JSON_SCHEMA_CLASS_GROUP,
-            JSON_SCHEMA_CLASS_DYNGROUP,
-            JSON_SCHEMA_CLASS_ACCOUNT,
-            JSON_SCHEMA_CLASS_SERVICE_ACCOUNT,
-            JSON_SCHEMA_CLASS_DOMAIN_INFO,
-            JSON_SCHEMA_CLASS_POSIXACCOUNT,
-            JSON_SCHEMA_CLASS_POSIXGROUP,
-            JSON_SCHEMA_CLASS_SYSTEM_CONFIG,
-            JSON_SCHEMA_CLASS_OAUTH2_RS,
-            JSON_SCHEMA_CLASS_OAUTH2_RS_BASIC,
-            JSON_SCHEMA_CLASS_SYNC_ACCOUNT,
-            JSON_SCHEMA_ATTR_PRIVATE_COOKIE_KEY,
+        let idm_schema: Vec<EntryInitNew> = vec![
+            SCHEMA_ATTR_MAIL.clone().into(),
+            SCHEMA_ATTR_ACCOUNT_EXPIRE.clone().into(),
+            SCHEMA_ATTR_ACCOUNT_VALID_FROM.clone().into(),
+            SCHEMA_ATTR_API_TOKEN_SESSION.clone().into(),
+            SCHEMA_ATTR_AUTH_SESSION_EXPIRY.clone().into(),
+            SCHEMA_ATTR_AUTH_PRIVILEGE_EXPIRY.clone().into(),
+            SCHEMA_ATTR_AUTH_PASSWORD_MINIMUM_LENGTH.clone().into(),
+            SCHEMA_ATTR_BADLIST_PASSWORD.clone().into(),
+            SCHEMA_ATTR_CREDENTIAL_UPDATE_INTENT_TOKEN.clone().into(),
+            SCHEMA_ATTR_ATTESTED_PASSKEYS.clone().into(),
+            SCHEMA_ATTR_DISPLAYNAME.clone().into(),
+            SCHEMA_ATTR_DOMAIN_DISPLAY_NAME.clone().into(),
+            SCHEMA_ATTR_DOMAIN_LDAP_BASEDN.clone().into(),
+            SCHEMA_ATTR_DOMAIN_NAME.clone().into(),
+            SCHEMA_ATTR_LDAP_ALLOW_UNIX_PW_BIND.clone().into(),
+            SCHEMA_ATTR_DOMAIN_SSID.clone().into(),
+            SCHEMA_ATTR_DOMAIN_TOKEN_KEY.clone().into(),
+            SCHEMA_ATTR_DOMAIN_UUID.clone().into(),
+            SCHEMA_ATTR_DYNGROUP_FILTER.clone().into(),
+            SCHEMA_ATTR_EC_KEY_PRIVATE.clone().into(),
+            SCHEMA_ATTR_ES256_PRIVATE_KEY_DER.clone().into(),
+            SCHEMA_ATTR_FERNET_PRIVATE_KEY_STR.clone().into(),
+            SCHEMA_ATTR_GIDNUMBER.clone().into(),
+            SCHEMA_ATTR_GRANT_UI_HINT.clone().into(),
+            SCHEMA_ATTR_JWS_ES256_PRIVATE_KEY.clone().into(),
+            SCHEMA_ATTR_LEGALNAME.clone().into(),
+            SCHEMA_ATTR_LOGINSHELL.clone().into(),
+            SCHEMA_ATTR_NAME_HISTORY.clone().into(),
+            SCHEMA_ATTR_NSUNIQUEID.clone().into(),
+            SCHEMA_ATTR_OAUTH2_ALLOW_INSECURE_CLIENT_DISABLE_PKCE
+                .clone()
+                .into(),
+            SCHEMA_ATTR_OAUTH2_CONSENT_SCOPE_MAP.clone().into(),
+            SCHEMA_ATTR_OAUTH2_JWT_LEGACY_CRYPTO_ENABLE.clone().into(),
+            SCHEMA_ATTR_OAUTH2_PREFER_SHORT_USERNAME.clone().into(),
+            SCHEMA_ATTR_OAUTH2_RS_BASIC_SECRET.clone().into(),
+            SCHEMA_ATTR_OAUTH2_RS_IMPLICIT_SCOPES.clone().into(),
+            SCHEMA_ATTR_OAUTH2_RS_NAME.clone().into(),
+            SCHEMA_ATTR_OAUTH2_RS_ORIGIN_LANDING.clone().into(),
+            SCHEMA_ATTR_OAUTH2_RS_ORIGIN.clone().into(),
+            SCHEMA_ATTR_OAUTH2_RS_SCOPE_MAP.clone().into(),
+            SCHEMA_ATTR_OAUTH2_RS_SUP_SCOPE_MAP.clone().into(),
+            SCHEMA_ATTR_OAUTH2_RS_TOKEN_KEY.clone().into(),
+            SCHEMA_ATTR_OAUTH2_SESSION.clone().into(),
+            SCHEMA_ATTR_PASSKEYS.clone().into(),
+            SCHEMA_ATTR_PRIMARY_CREDENTIAL.clone().into(),
+            SCHEMA_ATTR_PRIVATE_COOKIE_KEY.clone().into(),
+            SCHEMA_ATTR_RADIUS_SECRET.clone().into(),
+            SCHEMA_ATTR_RS256_PRIVATE_KEY_DER.clone().into(),
+            SCHEMA_ATTR_SSH_PUBLICKEY.clone().into(),
+            SCHEMA_ATTR_SYNC_COOKIE.clone().into(),
+            SCHEMA_ATTR_SYNC_TOKEN_SESSION.clone().into(),
+            SCHEMA_ATTR_UNIX_PASSWORD.clone().into(),
+            SCHEMA_ATTR_USER_AUTH_TOKEN_SESSION.clone().into(),
+            SCHEMA_ATTR_DENIED_NAME.clone().into(),
+            SCHEMA_ATTR_CREDENTIAL_TYPE_MINIMUM.clone().into(),
+            SCHEMA_ATTR_WEBAUTHN_ATTESTATION_CA_LIST.clone().into(),
         ];
 
         let r = idm_schema
-            .iter()
+            .into_iter()
             // Each item individually logs it's result
-            .try_for_each(|e_str| self.internal_migrate_or_create_str(e_str));
+            .try_for_each(|entry| self.internal_migrate_or_create(entry));
 
-        if r.is_ok() {
-            admin_debug!("initialise_schema_idm -> Ok!");
-        } else {
-            admin_error!(res = ?r, "initialise_schema_idm -> Error");
+        if r.is_err() {
+            error!(res = ?r, "initialise_schema_idm -> Error");
         }
-        debug_assert!(r.is_ok()); // why return a result if we assert it's `Ok`?
+
+        debug_assert!(r.is_ok());
+
+        let idm_schema_classes: Vec<EntryInitNew> = vec![
+            SCHEMA_CLASS_ACCOUNT.clone().into(),
+            SCHEMA_CLASS_ACCOUNT_POLICY.clone().into(),
+            SCHEMA_CLASS_DOMAIN_INFO.clone().into(),
+            SCHEMA_CLASS_DYNGROUP.clone().into(),
+            SCHEMA_CLASS_GROUP.clone().into(),
+            SCHEMA_CLASS_OAUTH2_RS.clone().into(),
+            SCHEMA_CLASS_ORGPERSON.clone().into(),
+            SCHEMA_CLASS_PERSON.clone().into(),
+            SCHEMA_CLASS_POSIXACCOUNT.clone().into(),
+            SCHEMA_CLASS_POSIXGROUP.clone().into(),
+            SCHEMA_CLASS_SERVICE_ACCOUNT.clone().into(),
+            SCHEMA_CLASS_SYNC_ACCOUNT.clone().into(),
+            SCHEMA_CLASS_SYSTEM_CONFIG.clone().into(),
+            SCHEMA_CLASS_OAUTH2_RS_BASIC.clone().into(),
+            SCHEMA_CLASS_OAUTH2_RS_PUBLIC.clone().into(),
+        ];
+
+        let r: Result<(), _> = idm_schema_classes
+            .into_iter()
+            .try_for_each(|entry| self.internal_migrate_or_create(entry));
+
+        if r.is_err() {
+            error!(res = ?r, "initialise_schema_idm -> Error");
+        }
+        debug_assert!(r.is_ok());
+
+        debug!("initialise_schema_idm -> Ok!");
 
         r
     }
 
-    // This function is idempotent
-    #[instrument(level = "debug", skip_all)]
+    #[instrument(level = "info", skip_all)]
+    /// This function is idempotent, runs all the startup functionality and checks
     pub fn initialise_idm(&mut self) -> Result<(), OperationError> {
         // First, check the system_info object. This stores some server information
         // and details. It's a pretty const thing. Also check anonymous, important to many
@@ -515,15 +807,11 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // The domain info now exists, we should be able to do these migrations as they will
         // cause SPN regenerations to occur
 
+        // Delete entries that no longer need to exist.
+        // TODO: Shouldn't this be a migration?
         // Check the admin object exists (migrations).
         // Create the default idm_admin group.
-        let admin_entries = [
-            E_ANONYMOUS_V1.clone(),
-            E_ADMIN_V1.clone(),
-            E_IDM_ADMIN_V1.clone(),
-            E_IDM_ADMINS_V1.clone(),
-            E_SYSTEM_ADMINS_V1.clone(),
-        ];
+        let admin_entries: Vec<EntryInitNew> = idm_builtin_admin_entries()?;
         let res: Result<(), _> = admin_entries
             .into_iter()
             // Each item individually logs it's result
@@ -534,54 +822,9 @@ impl<'a> QueryServerWriteTransaction<'a> {
         debug_assert!(res.is_ok());
         res?;
 
-        // Create any system default schema entries.
-
-        // Create any system default access profile entries.
-        let idm_entries = [
-            // Builtin dyn groups,
-            JSON_IDM_ALL_PERSONS,
-            JSON_IDM_ALL_ACCOUNTS,
-            // Builtin groups
-            JSON_IDM_PEOPLE_MANAGE_PRIV_V1,
-            JSON_IDM_PEOPLE_ACCOUNT_PASSWORD_IMPORT_PRIV_V1,
-            JSON_IDM_PEOPLE_EXTEND_PRIV_V1,
-            JSON_IDM_PEOPLE_SELF_WRITE_MAIL_PRIV_V1,
-            JSON_IDM_PEOPLE_WRITE_PRIV_V1,
-            JSON_IDM_PEOPLE_READ_PRIV_V1,
-            JSON_IDM_HP_PEOPLE_EXTEND_PRIV_V1,
-            JSON_IDM_HP_PEOPLE_WRITE_PRIV_V1,
-            JSON_IDM_HP_PEOPLE_READ_PRIV_V1,
-            JSON_IDM_GROUP_MANAGE_PRIV_V1,
-            JSON_IDM_GROUP_WRITE_PRIV_V1,
-            JSON_IDM_GROUP_UNIX_EXTEND_PRIV_V1,
-            JSON_IDM_ACCOUNT_MANAGE_PRIV_V1,
-            JSON_IDM_ACCOUNT_WRITE_PRIV_V1,
-            JSON_IDM_ACCOUNT_UNIX_EXTEND_PRIV_V1,
-            JSON_IDM_ACCOUNT_READ_PRIV_V1,
-            JSON_IDM_RADIUS_SECRET_WRITE_PRIV_V1,
-            JSON_IDM_RADIUS_SECRET_READ_PRIV_V1,
-            JSON_IDM_RADIUS_SERVERS_V1,
-            // Write deps on read, so write must be added first.
-            JSON_IDM_HP_ACCOUNT_MANAGE_PRIV_V1,
-            JSON_IDM_HP_ACCOUNT_WRITE_PRIV_V1,
-            JSON_IDM_HP_ACCOUNT_READ_PRIV_V1,
-            JSON_IDM_HP_ACCOUNT_UNIX_EXTEND_PRIV_V1,
-            JSON_IDM_SCHEMA_MANAGE_PRIV_V1,
-            JSON_IDM_HP_GROUP_MANAGE_PRIV_V1,
-            JSON_IDM_HP_GROUP_WRITE_PRIV_V1,
-            JSON_IDM_HP_GROUP_UNIX_EXTEND_PRIV_V1,
-            JSON_IDM_ACP_MANAGE_PRIV_V1,
-            JSON_DOMAIN_ADMINS,
-            JSON_IDM_HP_OAUTH2_MANAGE_PRIV_V1,
-            JSON_IDM_HP_SERVICE_ACCOUNT_INTO_PERSON_MIGRATE_PRIV,
-            JSON_IDM_HP_SYNC_ACCOUNT_MANAGE_PRIV,
-            // All members must exist before we write HP
-            JSON_IDM_HIGH_PRIVILEGE_V1,
-        ];
-
-        let res: Result<(), _> = idm_entries
-            .iter()
-            .try_for_each(|e_str| self.internal_migrate_or_create_str(e_str));
+        let res: Result<(), _> = idm_builtin_non_admin_groups()
+            .into_iter()
+            .try_for_each(|e| self.internal_migrate_or_create(e.clone().try_into()?));
         if res.is_ok() {
             admin_debug!("initialise_idm -> result Ok!");
         } else {
@@ -590,56 +833,53 @@ impl<'a> QueryServerWriteTransaction<'a> {
         debug_assert!(res.is_ok());
         res?;
 
-        let idm_entries = [
+        let idm_entries: Vec<BuiltinAcp> = vec![
             // Built in access controls.
-            E_IDM_ADMINS_ACP_RECYCLE_SEARCH_V1.clone(),
-            E_IDM_ADMINS_ACP_REVIVE_V1.clone(),
-            E_IDM_ALL_ACP_READ_V1.clone(),
-            E_IDM_SELF_ACP_READ_V1.clone(),
-            E_IDM_SELF_ACP_WRITE_V1.clone(),
-            E_IDM_PEOPLE_SELF_ACP_WRITE_MAIL_PRIV_V1.clone(),
-            E_IDM_ACP_PEOPLE_READ_PRIV_V1.clone(),
-            E_IDM_ACP_PEOPLE_WRITE_PRIV_V1.clone(),
-            E_IDM_ACP_PEOPLE_MANAGE_PRIV_V1.clone(),
-            E_IDM_ACP_ACCOUNT_READ_PRIV_V1.clone(),
-            E_IDM_ACP_ACCOUNT_WRITE_PRIV_V1.clone(),
-            E_IDM_ACP_ACCOUNT_MANAGE_PRIV_V1.clone(),
-            E_IDM_ACP_HP_ACCOUNT_READ_PRIV_V1.clone(),
-            E_IDM_ACP_HP_ACCOUNT_WRITE_PRIV_V1.clone(),
-            E_IDM_ACP_HP_ACCOUNT_MANAGE_PRIV_V1.clone(),
-            E_IDM_ACP_GROUP_WRITE_PRIV_V1.clone(),
-            E_IDM_ACP_GROUP_MANAGE_PRIV_V1.clone(),
-            E_IDM_ACP_HP_GROUP_WRITE_PRIV_V1.clone(),
-            E_IDM_ACP_HP_GROUP_MANAGE_PRIV_V1.clone(),
-            E_IDM_ACP_SCHEMA_WRITE_ATTRS_PRIV_V1.clone(),
-            E_IDM_ACP_SCHEMA_WRITE_CLASSES_PRIV_V1.clone(),
-            E_IDM_ACP_ACP_MANAGE_PRIV_V1.clone(),
-            E_IDM_ACP_RADIUS_SERVERS_V1.clone(),
-            E_IDM_ACP_DOMAIN_ADMIN_PRIV_V1.clone(),
-            E_IDM_ACP_SYSTEM_CONFIG_PRIV_V1.clone(),
-            E_IDM_ACP_PEOPLE_ACCOUNT_PASSWORD_IMPORT_PRIV_V1.clone(),
-            E_IDM_ACP_PEOPLE_EXTEND_PRIV_V1.clone(),
-            E_IDM_ACP_HP_PEOPLE_READ_PRIV_V1.clone(),
-            E_IDM_ACP_HP_PEOPLE_WRITE_PRIV_V1.clone(),
-            E_IDM_ACP_HP_PEOPLE_EXTEND_PRIV_V1.clone(),
-            E_IDM_ACP_ACCOUNT_UNIX_EXTEND_PRIV_V1.clone(),
-            E_IDM_HP_ACP_ACCOUNT_UNIX_EXTEND_PRIV_V1.clone(),
-            E_IDM_ACP_GROUP_UNIX_EXTEND_PRIV_V1.clone(),
-            E_IDM_HP_ACP_GROUP_UNIX_EXTEND_PRIV_V1.clone(),
-            E_IDM_HP_ACP_OAUTH2_MANAGE_PRIV_V1.clone(),
-            E_IDM_ACP_RADIUS_SECRET_READ_PRIV_V1.clone(),
-            E_IDM_ACP_RADIUS_SECRET_WRITE_PRIV_V1.clone(),
-            E_IDM_HP_ACP_SERVICE_ACCOUNT_INTO_PERSON_MIGRATE_V1.clone(),
-            E_IDM_HP_ACP_SYNC_ACCOUNT_MANAGE_PRIV_V1.clone(),
-            E_IDM_UI_ENABLE_EXPERIMENTAL_FEATURES.clone(),
-            E_IDM_ACCOUNT_MAIL_READ_PRIV.clone(),
-            E_IDM_ACP_ACCOUNT_MAIL_READ_PRIV_V1.clone(),
-            E_IDM_ACCOUNT_SELF_ACP_WRITE_V1.clone(),
+            IDM_ACP_RECYCLE_BIN_SEARCH_V1.clone(),
+            IDM_ACP_RECYCLE_BIN_REVIVE_V1.clone(),
+            IDM_ACP_SCHEMA_WRITE_ATTRS_V1.clone(),
+            IDM_ACP_SCHEMA_WRITE_CLASSES_V1.clone(),
+            IDM_ACP_ACP_MANAGE_V1.clone(),
+            IDM_ACP_GROUP_ENTRY_MANAGED_BY_MODIFY_V1.clone(),
+            IDM_ACP_GROUP_ENTRY_MANAGER_V1.clone(),
+            IDM_ACP_GROUP_ACCOUNT_POLICY_MANAGE_V1.clone(),
+            IDM_ACP_OAUTH2_MANAGE_V1.clone(),
+            IDM_ACP_DOMAIN_ADMIN_V1.clone(),
+            IDM_ACP_SYNC_ACCOUNT_MANAGE_V1.clone(),
+            IDM_ACP_RADIUS_SERVERS_V1.clone(),
+            IDM_ACP_RADIUS_SECRET_MANAGE_V1.clone(),
+            IDM_ACP_PEOPLE_SELF_WRITE_MAIL_V1.clone(),
+            IDM_ACP_SELF_READ_V1.clone(),
+            IDM_ACP_SELF_WRITE_V1.clone(),
+            IDM_ACP_ACCOUNT_SELF_WRITE_V1.clone(),
+            IDM_ACP_SELF_NAME_WRITE_V1.clone(),
+            IDM_ACP_ALL_ACCOUNTS_POSIX_READ_V1.clone(),
+            IDM_ACP_ACCOUNT_MAIL_READ_V1.clone(),
+            IDM_ACP_SYSTEM_CONFIG_ACCOUNT_POLICY_MANAGE_V1.clone(),
+            IDM_ACP_GROUP_UNIX_MANAGE_V1.clone(),
+            IDM_ACP_HP_GROUP_UNIX_MANAGE_V1.clone(),
+            IDM_ACP_GROUP_READ_V1.clone(),
+            IDM_ACP_GROUP_MANAGE_V1.clone(),
+            IDM_ACP_ACCOUNT_UNIX_EXTEND_V1.clone(),
+            IDM_ACP_PEOPLE_PII_READ_V1.clone(),
+            IDM_ACP_PEOPLE_PII_MANAGE_V1.clone(),
+            IDM_ACP_PEOPLE_CREATE_V1.clone(),
+            IDM_ACP_PEOPLE_READ_V1.clone(),
+            IDM_ACP_PEOPLE_MANAGE_V1.clone(),
+            IDM_ACP_PEOPLE_DELETE_V1.clone(),
+            IDM_ACP_PEOPLE_CREDENTIAL_RESET_V1.clone(),
+            IDM_ACP_HP_PEOPLE_CREDENTIAL_RESET_V1.clone(),
+            IDM_ACP_SERVICE_ACCOUNT_CREATE_V1.clone(),
+            IDM_ACP_SERVICE_ACCOUNT_DELETE_V1.clone(),
+            IDM_ACP_SERVICE_ACCOUNT_ENTRY_MANAGER_V1.clone(),
+            IDM_ACP_SERVICE_ACCOUNT_ENTRY_MANAGED_BY_MODIFY_V1.clone(),
+            IDM_ACP_HP_SERVICE_ACCOUNT_ENTRY_MANAGED_BY_MODIFY_V1.clone(),
+            IDM_ACP_SERVICE_ACCOUNT_MANAGE_V1.clone(),
         ];
 
         let res: Result<(), _> = idm_entries
             .into_iter()
-            .try_for_each(|entry| self.internal_migrate_or_create(entry));
+            .try_for_each(|entry| self.internal_migrate_or_create(entry.into()));
         if res.is_ok() {
             admin_debug!("initialise_idm -> result Ok!");
         } else {
@@ -648,19 +888,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
         debug_assert!(res.is_ok());
         res?;
 
-        // Delete entries that no longer need to exist.
-        let delete_entries = [UUID_IDM_ACP_OAUTH2_READ_PRIV_V1];
-
-        let res: Result<(), _> = delete_entries
-            .into_iter()
-            .try_for_each(|entry_uuid| self.internal_delete_uuid_if_exists(entry_uuid));
-        if res.is_ok() {
-            admin_debug!("initialise_idm -> result Ok!");
-        } else {
-            admin_error!(?res, "initialise_idm p3 -> result");
-        }
-        debug_assert!(res.is_ok());
-        res?;
+        // Some attributes we don't want to stomp if they already exist. So we conditionally
+        // modify them.
 
         self.changed_schema = true;
         self.changed_acp = true;
@@ -732,8 +961,8 @@ mod tests {
         let me_syn = unsafe {
             ModifyEvent::new_internal_invalid(
                 filter!(f_or!([
-                    f_eq("attributename", PartialValue::new_iutf8("name")),
-                    f_eq("attributename", PartialValue::new_iutf8("domain_name")),
+                    f_eq(Attribute::AttributeName, Attribute::Name.to_partialvalue()),
+                    f_eq(Attribute::AttributeName, Attribute::DomainName.into()),
                 ])),
                 ModifyList::new_purge_and_set(
                     "syntax",
@@ -748,13 +977,13 @@ mod tests {
         // ++ Mod domain name and name to be the old type.
         let me_dn = unsafe {
             ModifyEvent::new_internal_invalid(
-                filter!(f_eq("uuid", PartialValue::Uuid(UUID_DOMAIN_INFO))),
+                filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(UUID_DOMAIN_INFO))),
                 ModifyList::new_list(vec![
-                    Modify::Purged(AttrString::from("name")),
-                    Modify::Purged(AttrString::from("domain_name")),
-                    Modify::Present(AttrString::from("name"), Value::new_iutf8("domain_local")),
+                    Modify::Purged(Attribute::Name.into()),
+                    Modify::Purged(Attribute::DomainName.into()),
+                    Modify::Present(Attribute::Name.into(), Value::new_iutf8("domain_local")),
                     Modify::Present(
-                        AttrString::from("domain_name"),
+                        Attribute::DomainName.into(),
                         Value::new_iutf8("example.com"),
                     ),
                 ]),
@@ -775,8 +1004,8 @@ mod tests {
         let me_syn = unsafe {
             ModifyEvent::new_internal_invalid(
                 filter!(f_or!([
-                    f_eq("attributename", PartialValue::new_iutf8("name")),
-                    f_eq("attributename", PartialValue::new_iutf8("domain_name")),
+                    f_eq(Attribute::AttributeName, Attribute::Name.to_partialvalue()),
+                    f_eq(Attribute::AttributeName, Attribute::DomainName.into()),
                 ])),
                 ModifyList::new_purge_and_set(
                     "syntax",
@@ -803,12 +1032,12 @@ mod tests {
             .expect("failed");
         // ++ assert all names are iname
         assert!(
-            domain.get_ava_set("name").expect("no name?").syntax() == SyntaxType::Utf8StringIname
+            domain.get_ava_set(Attribute::Name).expect("no name?").syntax() == SyntaxType::Utf8StringIname
         );
         // ++ assert all domain/domain_name are iname
         assert!(
             domain
-                .get_ava_set("domain_name")
+                .get_ava_set(Attribute::DomainName.as_ref())
                 .expect("no domain_name?")
                 .syntax()
                 == SyntaxType::Utf8StringIname

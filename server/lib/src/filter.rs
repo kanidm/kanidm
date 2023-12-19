@@ -10,6 +10,7 @@
 
 use std::cmp::{Ordering, PartialOrd};
 use std::collections::BTreeSet;
+use std::fmt;
 use std::hash::Hash;
 use std::iter;
 use std::num::NonZeroU8;
@@ -18,6 +19,7 @@ use concread::arcache::ARCacheReadTxn;
 use hashbrown::HashMap;
 #[cfg(test)]
 use hashbrown::HashSet;
+use kanidm_proto::constants::ATTR_UUID;
 use kanidm_proto::v1::{Filter as ProtoFilter, OperationError, SchemaError};
 use ldap3_proto::proto::{LdapFilter, LdapSubstringFilter};
 // use smartstring::alias::String as AttrString;
@@ -36,58 +38,48 @@ const FILTER_DEPTH_MAX: usize = 16;
 
 // This is &Value so we can lazy const then clone, but perhaps we can reconsider
 // later if this should just take Value.
-#[allow(dead_code)]
-pub fn f_eq(a: &str, v: PartialValue) -> FC {
-    FC::Eq(a, v)
+pub fn f_eq<'a>(a: Attribute, v: PartialValue) -> FC<'a> {
+    FC::Eq(a.into(), v)
 }
 
-#[allow(dead_code)]
-pub fn f_sub(a: &str, v: PartialValue) -> FC {
-    FC::Sub(a, v)
+pub fn f_sub<'a>(a: Attribute, v: PartialValue) -> FC<'a> {
+    FC::Cnt(a.into(), v)
 }
 
-#[allow(dead_code)]
-pub fn f_pres(a: &str) -> FC {
-    FC::Pres(a)
+pub fn f_pres<'a>(a: Attribute) -> FC<'a> {
+    FC::Pres(a.into())
 }
 
-#[allow(dead_code)]
-pub fn f_lt(a: &str, v: PartialValue) -> FC {
-    FC::LessThan(a, v)
+pub fn f_lt<'a>(a: Attribute, v: PartialValue) -> FC<'a> {
+    FC::LessThan(a.into(), v)
 }
 
-#[allow(dead_code)]
 pub fn f_or(vs: Vec<FC>) -> FC {
     FC::Or(vs)
 }
 
-#[allow(dead_code)]
 pub fn f_and(vs: Vec<FC>) -> FC {
     FC::And(vs)
 }
 
-#[allow(dead_code)]
 pub fn f_inc(vs: Vec<FC>) -> FC {
     FC::Inclusion(vs)
 }
 
-#[allow(dead_code)]
 pub fn f_andnot(fc: FC) -> FC {
     FC::AndNot(Box::new(fc))
 }
 
-#[allow(dead_code)]
 pub fn f_self<'a>() -> FC<'a> {
     FC::SelfUuid
 }
 
-#[allow(dead_code)]
-pub fn f_id(id: &str) -> FC<'static> {
-    let uf = Uuid::parse_str(id)
+pub fn f_id(uuid: &str) -> FC<'static> {
+    let uf = Uuid::parse_str(uuid)
         .ok()
-        .map(|u| FC::Eq("uuid", PartialValue::Uuid(u)));
-    let spnf = PartialValue::new_spn_s(id).map(|spn| FC::Eq("spn", spn));
-    let nf = FC::Eq("name", PartialValue::new_iname(id));
+        .map(|u| FC::Eq(Attribute::Uuid.as_ref(), PartialValue::Uuid(u)));
+    let spnf = PartialValue::new_spn_s(uuid).map(|spn| FC::Eq(Attribute::Spn.as_ref(), spn));
+    let nf = FC::Eq(Attribute::Name.as_ref(), PartialValue::new_iname(uuid));
     let f: Vec<_> = iter::once(uf)
         .chain(iter::once(spnf))
         .flatten()
@@ -96,10 +88,9 @@ pub fn f_id(id: &str) -> FC<'static> {
     FC::Or(f)
 }
 
-#[allow(dead_code)]
 pub fn f_spn_name(id: &str) -> FC<'static> {
-    let spnf = PartialValue::new_spn_s(id).map(|spn| FC::Eq("spn", spn));
-    let nf = FC::Eq("name", PartialValue::new_iname(id));
+    let spnf = PartialValue::new_spn_s(id).map(|spn| FC::Eq(Attribute::Spn.as_ref(), spn));
+    let nf = FC::Eq(Attribute::Name.as_ref(), PartialValue::new_iname(id));
     let f: Vec<_> = iter::once(spnf).flatten().chain(iter::once(nf)).collect();
     FC::Or(f)
 }
@@ -109,7 +100,7 @@ pub fn f_spn_name(id: &str) -> FC<'static> {
 #[derive(Clone, Debug, Deserialize)]
 pub enum FC<'a> {
     Eq(&'a str, PartialValue),
-    Sub(&'a str, PartialValue),
+    Cnt(&'a str, PartialValue),
     Pres(&'a str),
     LessThan(&'a str, PartialValue),
     Or(Vec<FC<'a>>),
@@ -121,11 +112,13 @@ pub enum FC<'a> {
 }
 
 /// This is the filters internal representation
-#[derive(Debug, Clone, Hash, PartialEq, PartialOrd, Ord, Eq)]
+#[derive(Clone, Hash, PartialEq, PartialOrd, Ord, Eq)]
 enum FilterComp {
     // This is attr - value
     Eq(AttrString, PartialValue),
-    Sub(AttrString, PartialValue),
+    Cnt(AttrString, PartialValue),
+    Stw(AttrString, PartialValue),
+    Enw(AttrString, PartialValue),
     Pres(AttrString),
     LessThan(AttrString, PartialValue),
     Or(Vec<FilterComp>),
@@ -135,6 +128,67 @@ enum FilterComp {
     SelfUuid,
     // Does this mean we can add a true not to the type now?
     // Not(Box<FilterComp>),
+}
+
+impl fmt::Debug for FilterComp {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            FilterComp::Eq(attr, pv) => {
+                write!(f, "{} eq {:?}", attr, pv)
+            }
+            FilterComp::Cnt(attr, pv) => {
+                write!(f, "{} cnt {:?}", attr, pv)
+            }
+            FilterComp::Stw(attr, pv) => {
+                write!(f, "{} stw {:?}", attr, pv)
+            }
+            FilterComp::Enw(attr, pv) => {
+                write!(f, "{} enw {:?}", attr, pv)
+            }
+            FilterComp::Pres(attr) => {
+                write!(f, "{} pres", attr)
+            }
+            FilterComp::LessThan(attr, pv) => {
+                write!(f, "{} lt {:?}", attr, pv)
+            }
+            FilterComp::And(list) => {
+                write!(f, "(")?;
+                for (i, fc) in list.iter().enumerate() {
+                    write!(f, "{:?}", fc)?;
+                    if i != list.len() - 1 {
+                        write!(f, " and ")?;
+                    }
+                }
+                write!(f, ")")
+            }
+            FilterComp::Or(list) => {
+                write!(f, "(")?;
+                for (i, fc) in list.iter().enumerate() {
+                    write!(f, "{:?}", fc)?;
+                    if i != list.len() - 1 {
+                        write!(f, " or ")?;
+                    }
+                }
+                write!(f, ")")
+            }
+            FilterComp::Inclusion(list) => {
+                write!(f, "(")?;
+                for (i, fc) in list.iter().enumerate() {
+                    write!(f, "{:?}", fc)?;
+                    if i != list.len() - 1 {
+                        write!(f, " inc ")?;
+                    }
+                }
+                write!(f, ")")
+            }
+            FilterComp::AndNot(inner) => {
+                write!(f, "not ( {:?} )", inner)
+            }
+            FilterComp::SelfUuid => {
+                write!(f, "uuid eq self")
+            }
+        }
+    }
 }
 
 /// This is the fully resolved internal representation. Note the lack of Not and selfUUID
@@ -147,11 +201,13 @@ enum FilterComp {
 /// where small value - faster index, larger value - slower index. This metadata is extremely
 /// important for the query optimiser to make decisions about how to re-arrange queries
 /// correctly.
-#[derive(Debug, Clone, Eq)]
+#[derive(Clone, Eq)]
 pub enum FilterResolved {
     // This is attr - value - indexed slope factor
     Eq(AttrString, PartialValue, Option<NonZeroU8>),
-    Sub(AttrString, PartialValue, Option<NonZeroU8>),
+    Cnt(AttrString, PartialValue, Option<NonZeroU8>),
+    Stw(AttrString, PartialValue, Option<NonZeroU8>),
+    Enw(AttrString, PartialValue, Option<NonZeroU8>),
     Pres(AttrString, Option<NonZeroU8>),
     LessThan(AttrString, PartialValue, Option<NonZeroU8>),
     Or(Vec<FilterResolved>, Option<NonZeroU8>),
@@ -161,17 +217,107 @@ pub enum FilterResolved {
     AndNot(Box<FilterResolved>, Option<NonZeroU8>),
 }
 
+impl fmt::Debug for FilterResolved {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            FilterResolved::Eq(attr, pv, idx) => {
+                write!(
+                    f,
+                    "(s{} {} eq {:?})",
+                    idx.unwrap_or(NonZeroU8::MAX),
+                    attr,
+                    pv
+                )
+            }
+            FilterResolved::Cnt(attr, pv, idx) => {
+                write!(
+                    f,
+                    "(s{} {} cnt {:?})",
+                    idx.unwrap_or(NonZeroU8::MAX),
+                    attr,
+                    pv
+                )
+            }
+            FilterResolved::Stw(attr, pv, idx) => {
+                write!(
+                    f,
+                    "(s{} {} stw {:?})",
+                    idx.unwrap_or(NonZeroU8::MAX),
+                    attr,
+                    pv
+                )
+            }
+            FilterResolved::Enw(attr, pv, idx) => {
+                write!(
+                    f,
+                    "(s{} {} enw {:?})",
+                    idx.unwrap_or(NonZeroU8::MAX),
+                    attr,
+                    pv
+                )
+            }
+            FilterResolved::Pres(attr, idx) => {
+                write!(f, "(s{} {} pres)", idx.unwrap_or(NonZeroU8::MAX), attr)
+            }
+            FilterResolved::LessThan(attr, pv, idx) => {
+                write!(
+                    f,
+                    "(s{} {} lt {:?})",
+                    idx.unwrap_or(NonZeroU8::MAX),
+                    attr,
+                    pv
+                )
+            }
+            FilterResolved::And(list, idx) => {
+                write!(f, "(s{} ", idx.unwrap_or(NonZeroU8::MAX))?;
+                for (i, fc) in list.iter().enumerate() {
+                    write!(f, "{:?}", fc)?;
+                    if i != list.len() - 1 {
+                        write!(f, " and ")?;
+                    }
+                }
+                write!(f, ")")
+            }
+            FilterResolved::Or(list, idx) => {
+                write!(f, "(s{} ", idx.unwrap_or(NonZeroU8::MAX))?;
+                for (i, fc) in list.iter().enumerate() {
+                    write!(f, "{:?}", fc)?;
+                    if i != list.len() - 1 {
+                        write!(f, " or ")?;
+                    }
+                }
+                write!(f, ")")
+            }
+            FilterResolved::Inclusion(list, idx) => {
+                write!(f, "(s{} ", idx.unwrap_or(NonZeroU8::MAX))?;
+                for (i, fc) in list.iter().enumerate() {
+                    write!(f, "{:?}", fc)?;
+                    if i != list.len() - 1 {
+                        write!(f, " inc ")?;
+                    }
+                }
+                write!(f, ")")
+            }
+            FilterResolved::AndNot(inner, idx) => {
+                write!(f, "not (s{} {:?})", idx.unwrap_or(NonZeroU8::MAX), inner)
+            }
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
+/// A filter before it's gone through schema validation
 pub struct FilterInvalid {
     inner: FilterComp,
 }
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
+/// A filter after it's gone through schema validation
 pub struct FilterValid {
     inner: FilterComp,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct FilterValidResolved {
     inner: FilterResolved,
 }
@@ -224,9 +370,27 @@ pub enum FilterPlan {
 /// helps to prevent errors at compile time to assert `Filters` are secuerly. checked
 ///
 /// [`Entry`]: ../entry/struct.Entry.html
-#[derive(Debug, Clone, Hash, Ord, Eq, PartialOrd, PartialEq)]
+#[derive(Clone, Hash, Ord, Eq, PartialOrd, PartialEq)]
 pub struct Filter<STATE> {
     state: STATE,
+}
+
+impl fmt::Debug for Filter<FilterValidResolved> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(f, "Filter(Valid) {:?}", self.state.inner)
+    }
+}
+
+impl fmt::Debug for Filter<FilterValid> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(f, "Filter(Valid) {:?}", self.state.inner)
+    }
+}
+
+impl fmt::Debug for Filter<FilterInvalid> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(f, "Filter(Invalid) {:?}", self.state.inner)
+    }
 }
 
 impl Filter<FilterValidResolved> {
@@ -412,8 +576,10 @@ impl Filter<FilterInvalid> {
         }
     }
 
+    /// ⚠️  - Bypass the schema state machine and force the filter to be considered valid.
+    /// This is a TEST ONLY method and will never be exposed in production.
     #[cfg(test)]
-    pub unsafe fn into_valid_resolved(self) -> Filter<FilterValidResolved> {
+    pub fn into_valid_resolved(self) -> Filter<FilterValidResolved> {
         // There is a good reason this function only exists in tests ...
         //
         // YOLO.
@@ -425,19 +591,19 @@ impl Filter<FilterInvalid> {
         // some core test idxs faster. This is never used in production, it's JUST for
         // test case speedups.
         let idxmeta = vec![
-            (AttrString::from("uuid"), IndexType::Equality),
-            (AttrString::from("uuid"), IndexType::Presence),
-            (AttrString::from("name"), IndexType::Equality),
-            (AttrString::from("name"), IndexType::SubString),
-            (AttrString::from("name"), IndexType::Presence),
-            (AttrString::from("class"), IndexType::Equality),
-            (AttrString::from("class"), IndexType::Presence),
-            (AttrString::from("member"), IndexType::Equality),
-            (AttrString::from("member"), IndexType::Presence),
-            (AttrString::from("memberof"), IndexType::Equality),
-            (AttrString::from("memberof"), IndexType::Presence),
-            (AttrString::from("directmemberof"), IndexType::Equality),
-            (AttrString::from("directmemberof"), IndexType::Presence),
+            (Attribute::Uuid.into(), IndexType::Equality),
+            (Attribute::Uuid.into(), IndexType::Presence),
+            (Attribute::Name.into(), IndexType::Equality),
+            (Attribute::Name.into(), IndexType::SubString),
+            (Attribute::Name.into(), IndexType::Presence),
+            (Attribute::Class.into(), IndexType::Equality),
+            (Attribute::Class.into(), IndexType::Presence),
+            (Attribute::Member.into(), IndexType::Equality),
+            (Attribute::Member.into(), IndexType::Presence),
+            (Attribute::MemberOf.into(), IndexType::Equality),
+            (Attribute::MemberOf.into(), IndexType::Presence),
+            (Attribute::DirectMemberOf.into(), IndexType::Equality),
+            (Attribute::DirectMemberOf.into(), IndexType::Presence),
         ];
 
         let idxmeta_ref = idxmeta.iter().map(|(attr, itype)| (attr, itype)).collect();
@@ -449,8 +615,10 @@ impl Filter<FilterInvalid> {
         }
     }
 
+    /// ⚠️  - Bypass the schema state machine and force the filter to be considered valid.
+    /// This is a TEST ONLY method and will never be exposed in production.
     #[cfg(test)]
-    pub unsafe fn into_valid(self) -> Filter<FilterValid> {
+    pub fn into_valid(self) -> Filter<FilterValid> {
         // There is a good reason this function only exists in tests ...
         //
         // YOLO.
@@ -464,8 +632,10 @@ impl Filter<FilterInvalid> {
         }
     }
 
+    /// ⚠️  - Blindly accept a filter from a string, panicking if it fails to parse.
+    /// This is a TEST ONLY method and will never be exposed in production.
     #[cfg(test)]
-    pub unsafe fn from_str(fc: &str) -> Self {
+    pub fn from_str(fc: &str) -> Self {
         let f: FC = serde_json::from_str(fc).expect("Failure parsing filter!");
         Filter {
             state: FilterInvalid {
@@ -540,7 +710,7 @@ impl FilterComp {
     fn new(fc: FC) -> Self {
         match fc {
             FC::Eq(a, v) => FilterComp::Eq(AttrString::from(a), v),
-            FC::Sub(a, v) => FilterComp::Sub(AttrString::from(a), v),
+            FC::Cnt(a, v) => FilterComp::Cnt(AttrString::from(a), v),
             FC::Pres(a) => FilterComp::Pres(AttrString::from(a)),
             FC::LessThan(a, v) => FilterComp::LessThan(AttrString::from(a), v),
             FC::Or(v) => FilterComp::Or(v.into_iter().map(FilterComp::new).collect()),
@@ -554,14 +724,8 @@ impl FilterComp {
     fn new_ignore_hidden(fc: FilterComp) -> Self {
         FilterComp::And(vec![
             FilterComp::AndNot(Box::new(FilterComp::Or(vec![
-                FilterComp::Eq(
-                    AttrString::from("class"),
-                    PartialValue::new_iutf8("tombstone"),
-                ),
-                FilterComp::Eq(
-                    AttrString::from("class"),
-                    PartialValue::new_iutf8("recycled"),
-                ),
+                FilterComp::Eq(Attribute::Class.into(), EntryClass::Tombstone.into()),
+                FilterComp::Eq(Attribute::Class.into(), EntryClass::Recycled.into()),
             ]))),
             fc,
         ])
@@ -569,26 +733,19 @@ impl FilterComp {
 
     fn new_recycled(fc: FilterComp) -> Self {
         FilterComp::And(vec![
-            FilterComp::Eq(
-                AttrString::from("class"),
-                PartialValue::new_iutf8("recycled"),
-            ),
+            FilterComp::Eq(Attribute::Class.into(), EntryClass::Recycled.into()),
             fc,
         ])
     }
 
     fn get_attr_set<'a>(&'a self, r_set: &mut BTreeSet<&'a str>) {
         match self {
-            FilterComp::Eq(attr, _) => {
-                r_set.insert(attr.as_str());
-            }
-            FilterComp::Sub(attr, _) => {
-                r_set.insert(attr.as_str());
-            }
-            FilterComp::Pres(attr) => {
-                r_set.insert(attr.as_str());
-            }
-            FilterComp::LessThan(attr, _) => {
+            FilterComp::Eq(attr, _)
+            | FilterComp::Cnt(attr, _)
+            | FilterComp::Stw(attr, _)
+            | FilterComp::Enw(attr, _)
+            | FilterComp::Pres(attr)
+            | FilterComp::LessThan(attr, _) => {
                 r_set.insert(attr.as_str());
             }
             FilterComp::Or(vs) => vs.iter().for_each(|f| f.get_attr_set(r_set)),
@@ -596,7 +753,7 @@ impl FilterComp {
             FilterComp::Inclusion(vs) => vs.iter().for_each(|f| f.get_attr_set(r_set)),
             FilterComp::AndNot(f) => f.get_attr_set(r_set),
             FilterComp::SelfUuid => {
-                r_set.insert("uuid");
+                r_set.insert(ATTR_UUID);
             }
         }
     }
@@ -629,7 +786,7 @@ impl FilterComp {
                     None => Err(SchemaError::InvalidAttribute(attr_norm.to_string())),
                 }
             }
-            FilterComp::Sub(attr, value) => {
+            FilterComp::Cnt(attr, value) => {
                 // Validate/normalise the attr name.
                 let attr_norm = schema.normalise_attr_name(attr);
                 // Now check it exists
@@ -638,7 +795,37 @@ impl FilterComp {
                         schema_a
                             .validate_partialvalue(attr_norm.as_str(), value)
                             // Okay, it worked, transform to a filter component
-                            .map(|_| FilterComp::Sub(attr_norm, value.clone()))
+                            .map(|_| FilterComp::Cnt(attr_norm, value.clone()))
+                        // On error, pass the error back out.
+                    }
+                    None => Err(SchemaError::InvalidAttribute(attr_norm.to_string())),
+                }
+            }
+            FilterComp::Stw(attr, value) => {
+                // Validate/normalise the attr name.
+                let attr_norm = schema.normalise_attr_name(attr);
+                // Now check it exists
+                match schema_attributes.get(&attr_norm) {
+                    Some(schema_a) => {
+                        schema_a
+                            .validate_partialvalue(attr_norm.as_str(), value)
+                            // Okay, it worked, transform to a filter component
+                            .map(|_| FilterComp::Stw(attr_norm, value.clone()))
+                        // On error, pass the error back out.
+                    }
+                    None => Err(SchemaError::InvalidAttribute(attr_norm.to_string())),
+                }
+            }
+            FilterComp::Enw(attr, value) => {
+                // Validate/normalise the attr name.
+                let attr_norm = schema.normalise_attr_name(attr);
+                // Now check it exists
+                match schema_attributes.get(&attr_norm) {
+                    Some(schema_a) => {
+                        schema_a
+                            .validate_partialvalue(attr_norm.as_str(), value)
+                            // Okay, it worked, transform to a filter component
+                            .map(|_| FilterComp::Enw(attr_norm, value.clone()))
                         // On error, pass the error back out.
                     }
                     None => Err(SchemaError::InvalidAttribute(attr_norm.to_string())),
@@ -671,10 +858,10 @@ impl FilterComp {
                 }
             }
             FilterComp::Or(filters) => {
-                // If all filters are okay, return Ok(Filter::Or())
-                // If any is invalid, return the error.
-                // TODO: ftweedal says an empty or is a valid filter
-                // in mathematical terms.
+                // * If all filters are okay, return Ok(Filter::Or())
+                // * Any filter is invalid, return the error.
+                // * An empty "or" is a valid filter in mathematical terms, but we throw an
+                //   error to warn the user because it's super unlikely they want that
                 if filters.is_empty() {
                     return Err(SchemaError::EmptyFilter);
                 };
@@ -686,8 +873,10 @@ impl FilterComp {
                 x.map(FilterComp::Or)
             }
             FilterComp::And(filters) => {
-                // TODO: ftweedal says an empty or is a valid filter
-                // in mathematical terms.
+                // * If all filters are okay, return Ok(Filter::Or())
+                // * Any filter is invalid, return the error.
+                // * An empty "and" is a valid filter in mathematical terms, but we throw an
+                //   error to warn the user because it's super unlikely they want that
                 if filters.is_empty() {
                     return Err(SchemaError::EmptyFilter);
                 };
@@ -735,10 +924,10 @@ impl FilterComp {
                 let v = qs.clone_partialvalue(nk.as_str(), v)?;
                 FilterComp::Eq(nk, v)
             }
-            ProtoFilter::Sub(a, v) => {
+            ProtoFilter::Cnt(a, v) => {
                 let nk = qs.get_schema().normalise_attr_name(a);
                 let v = qs.clone_partialvalue(nk.as_str(), v)?;
-                FilterComp::Sub(nk, v)
+                FilterComp::Cnt(nk, v)
             }
             ProtoFilter::Pres(a) => {
                 let nk = qs.get_schema().normalise_attr_name(a);
@@ -787,10 +976,10 @@ impl FilterComp {
                 let v = qs.clone_partialvalue(nk.as_str(), v)?;
                 FilterComp::Eq(nk, v)
             }
-            ProtoFilter::Sub(a, v) => {
+            ProtoFilter::Cnt(a, v) => {
                 let nk = qs.get_schema().normalise_attr_name(a);
                 let v = qs.clone_partialvalue(nk.as_str(), v)?;
-                FilterComp::Sub(nk, v)
+                FilterComp::Cnt(nk, v)
             }
             ProtoFilter::Pres(a) => {
                 let nk = qs.get_schema().normalise_attr_name(a);
@@ -869,16 +1058,32 @@ impl FilterComp {
             }
             LdapFilter::Present(a) => FilterComp::Pres(ldap_attr_filter_map(a)),
             LdapFilter::Substring(
-                _a,
+                a,
                 LdapSubstringFilter {
-                    initial: _,
-                    any: _,
-                    final_: _,
+                    initial,
+                    any,
+                    final_,
                 },
             ) => {
-                // let a = ldap_attr_filter_map(a);
-                admin_error!("Unable to convert ldapsubstringfilter to sub filter");
-                return Err(OperationError::FilterGeneration);
+                let a = ldap_attr_filter_map(a);
+
+                let mut terms = Vec::with_capacity(any.len() + 2);
+                if let Some(ini) = initial {
+                    let v = qs.clone_partialvalue(a.as_str(), ini)?;
+                    terms.push(FilterComp::Stw(a.clone(), v));
+                }
+
+                for term in any.iter() {
+                    let v = qs.clone_partialvalue(a.as_str(), term)?;
+                    terms.push(FilterComp::Cnt(a.clone(), v));
+                }
+
+                if let Some(fin) = final_ {
+                    let v = qs.clone_partialvalue(a.as_str(), fin)?;
+                    terms.push(FilterComp::Enw(a.clone(), v));
+                }
+
+                FilterComp::And(terms)
             }
             LdapFilter::GreaterOrEqual(_, _) => {
                 admin_error!("Unsupported filter operation - greater or equal");
@@ -936,7 +1141,7 @@ impl PartialEq for FilterResolved {
     fn eq(&self, rhs: &FilterResolved) -> bool {
         match (self, rhs) {
             (FilterResolved::Eq(a1, v1, _), FilterResolved::Eq(a2, v2, _)) => a1 == a2 && v1 == v2,
-            (FilterResolved::Sub(a1, v1, _), FilterResolved::Sub(a2, v2, _)) => {
+            (FilterResolved::Cnt(a1, v1, _), FilterResolved::Cnt(a2, v2, _)) => {
                 a1 == a2 && v1 == v2
             }
             (FilterResolved::Pres(a1, _), FilterResolved::Pres(a2, _)) => a1 == a2,
@@ -980,7 +1185,7 @@ impl Ord for FilterResolved {
         if r == Ordering::Equal {
             match (self, rhs) {
                 (FilterResolved::Eq(a1, v1, _), FilterResolved::Eq(a2, v2, _))
-                | (FilterResolved::Sub(a1, v1, _), FilterResolved::Sub(a2, v2, _))
+                | (FilterResolved::Cnt(a1, v1, _), FilterResolved::Cnt(a2, v2, _))
                 | (FilterResolved::LessThan(a1, v1, _), FilterResolved::LessThan(a2, v2, _)) => {
                     match a1.cmp(a2) {
                         Ordering::Equal => v1.cmp(v2),
@@ -995,8 +1200,8 @@ impl Ord for FilterResolved {
                 (_, FilterResolved::Pres(_, _)) => Ordering::Greater,
                 (FilterResolved::LessThan(_, _, _), _) => Ordering::Less,
                 (_, FilterResolved::LessThan(_, _, _)) => Ordering::Greater,
-                (FilterResolved::Sub(_, _, _), _) => Ordering::Less,
-                (_, FilterResolved::Sub(_, _, _)) => Ordering::Greater,
+                (FilterResolved::Cnt(_, _, _), _) => Ordering::Less,
+                (_, FilterResolved::Cnt(_, _, _)) => Ordering::Greater,
                 // They can't be re-arranged, they don't move!
                 (_, _) => Ordering::Equal,
             }
@@ -1007,8 +1212,10 @@ impl Ord for FilterResolved {
 }
 
 impl FilterResolved {
+    /// ⚠️  - Process a filter without verifying with schema.
+    /// This is a TEST ONLY method and will never be exposed in production.
     #[cfg(test)]
-    unsafe fn from_invalid(fc: FilterComp, idxmeta: &HashSet<(&AttrString, &IndexType)>) -> Self {
+    fn from_invalid(fc: FilterComp, idxmeta: &HashSet<(&AttrString, &IndexType)>) -> Self {
         match fc {
             FilterComp::Eq(a, v) => {
                 let idx = idxmeta.contains(&(&a, &IndexType::Equality));
@@ -1016,22 +1223,22 @@ impl FilterResolved {
                 FilterResolved::Eq(a, v, idx)
             }
             FilterComp::SelfUuid => panic!("Not possible to resolve SelfUuid in from_invalid!"),
-            FilterComp::Sub(a, v) => {
+            FilterComp::Cnt(a, v) => {
                 // TODO: For now, don't emit substring indexes.
                 // let idx = idxmeta.contains(&(&a, &IndexType::SubString));
                 // let idx = NonZeroU8::new(idx as u8);
-                FilterResolved::Sub(a, v, None)
+                FilterResolved::Cnt(a, v, None)
             }
+            FilterComp::Stw(a, v) => FilterResolved::Stw(a, v, None),
+            FilterComp::Enw(a, v) => FilterResolved::Enw(a, v, None),
             FilterComp::Pres(a) => {
                 let idx = idxmeta.contains(&(&a, &IndexType::Presence));
-                let idx = NonZeroU8::new(idx as u8);
-                FilterResolved::Pres(a, idx)
+                FilterResolved::Pres(a, NonZeroU8::new(idx as u8))
             }
             FilterComp::LessThan(a, v) => {
                 // let idx = idxmeta.contains(&(&a, &IndexType::ORDERING));
                 // TODO: For now, don't emit ordering indexes.
-                let idx = None;
-                FilterResolved::LessThan(a, v, idx)
+                FilterResolved::LessThan(a, v, None)
             }
             FilterComp::Or(vs) => FilterResolved::Or(
                 vs.into_iter()
@@ -1080,21 +1287,42 @@ impl FilterResolved {
                 Some(FilterResolved::Eq(a, v, idx))
             }
             FilterComp::SelfUuid => ev.get_uuid().map(|uuid| {
-                let uuid_s = AttrString::from("uuid");
-                let idxkref = IdxKeyRef::new(&uuid_s, &IndexType::Equality);
+                let idxkref = IdxKeyRef::new(Attribute::Uuid.as_ref(), &IndexType::Equality);
                 let idx = idxmeta
                     .get(&idxkref as &dyn IdxKeyToRef)
                     .copied()
                     .and_then(NonZeroU8::new);
-                FilterResolved::Eq(uuid_s, PartialValue::Uuid(uuid), idx)
+                FilterResolved::Eq(Attribute::Uuid.into(), PartialValue::Uuid(uuid), idx)
             }),
-            FilterComp::Sub(a, v) => {
+            FilterComp::Cnt(a, v) => {
                 let idxkref = IdxKeyRef::new(&a, &IndexType::SubString);
                 let idx = idxmeta
                     .get(&idxkref as &dyn IdxKeyToRef)
                     .copied()
                     .and_then(NonZeroU8::new);
-                Some(FilterResolved::Sub(a, v, idx))
+                Some(FilterResolved::Cnt(a, v, idx))
+            }
+            FilterComp::Stw(a, v) => {
+                /*
+                let idxkref = IdxKeyRef::new(&a, &IndexType::SubString);
+                let idx = idxmeta
+                    .get(&idxkref as &dyn IdxKeyToRef)
+                    .copied()
+                    .and_then(NonZeroU8::new);
+                Some(FilterResolved::Stw(a, v, idx))
+                */
+                Some(FilterResolved::Stw(a, v, None))
+            }
+            FilterComp::Enw(a, v) => {
+                /*
+                let idxkref = IdxKeyRef::new(&a, &IndexType::SubString);
+                let idx = idxmeta
+                    .get(&idxkref as &dyn IdxKeyToRef)
+                    .copied()
+                    .and_then(NonZeroU8::new);
+                Some(FilterResolved::Enw(a, v, idx))
+                */
+                Some(FilterResolved::Enw(a, v, None))
             }
             FilterComp::Pres(a) => {
                 let idxkref = IdxKeyRef::new(&a, &IndexType::Presence);
@@ -1147,24 +1375,26 @@ impl FilterResolved {
     fn resolve_no_idx(fc: FilterComp, ev: &Identity) -> Option<Self> {
         // ⚠️  ⚠️  ⚠️  ⚠️
         // Remember, this function means we have NO INDEX METADATA so we can only
-        // asssign slopes to values we can GUARANTEE will EXIST.
+        // assign slopes to values we can GUARANTEE will EXIST.
         match fc {
             FilterComp::Eq(a, v) => {
                 // Since we have no index data, we manually configure a reasonable
                 // slope and indicate the presence of some expected basic
                 // indexes.
-                let idx = matches!(a.as_str(), "name" | "uuid");
+                let idx = matches!(a.as_str(), ATTR_NAME | ATTR_UUID);
                 let idx = NonZeroU8::new(idx as u8);
                 Some(FilterResolved::Eq(a, v, idx))
             }
             FilterComp::SelfUuid => ev.get_uuid().map(|uuid| {
                 FilterResolved::Eq(
-                    AttrString::from("uuid"),
+                    Attribute::Uuid.into(),
                     PartialValue::Uuid(uuid),
                     NonZeroU8::new(true as u8),
                 )
             }),
-            FilterComp::Sub(a, v) => Some(FilterResolved::Sub(a, v, None)),
+            FilterComp::Cnt(a, v) => Some(FilterResolved::Cnt(a, v, None)),
+            FilterComp::Stw(a, v) => Some(FilterResolved::Stw(a, v, None)),
+            FilterComp::Enw(a, v) => Some(FilterResolved::Enw(a, v, None)),
             FilterComp::Pres(a) => Some(FilterResolved::Pres(a, None)),
             FilterComp::LessThan(a, v) => Some(FilterResolved::LessThan(a, v, None)),
             FilterComp::Or(vs) => {
@@ -1268,14 +1498,14 @@ impl FilterResolved {
 
                 // If the f_list_and only has one element, pop it and return.
                 if f_list_new.len() == 1 {
-                    #[allow(clippy::expect_used)]
-                    f_list_new.pop().expect("corrupt?")
+                    f_list_new.remove(0)
                 } else {
                     // finally, optimise this list by sorting.
                     f_list_new.sort_unstable();
                     f_list_new.dedup();
                     // Which ever element as the head is first must be the min SF
-                    // so we use this in our And to represent us.
+                    // so we use this in our And to represent the "best possible" value
+                    // of how indexes will perform.
                     let sf = f_list_new.first().and_then(|f| f.get_slopeyness_factor());
                     //
                     // return!
@@ -1299,8 +1529,7 @@ impl FilterResolved {
 
                 // If the f_list_or only has one element, pop it and return.
                 if f_list_new.len() == 1 {
-                    #[allow(clippy::expect_used)]
-                    f_list_new.pop().expect("corrupt?")
+                    f_list_new.remove(0)
                 } else {
                     // sort, but reverse so that sub-optimal elements are earlier
                     // to promote fast-failure.
@@ -1328,7 +1557,9 @@ impl FilterResolved {
     fn get_slopeyness_factor(&self) -> Option<NonZeroU8> {
         match self {
             FilterResolved::Eq(_, _, sf)
-            | FilterResolved::Sub(_, _, sf)
+            | FilterResolved::Cnt(_, _, sf)
+            | FilterResolved::Stw(_, _, sf)
+            | FilterResolved::Enw(_, _, sf)
             | FilterResolved::Pres(_, sf)
             | FilterResolved::LessThan(_, _, sf)
             | FilterResolved::Or(_, sf)
@@ -1355,15 +1586,15 @@ mod tests {
     #[test]
     fn test_filter_simple() {
         // Test construction.
-        let _filt: Filter<FilterInvalid> = filter!(f_eq("class", PartialValue::new_class("user")));
+        let _filt: Filter<FilterInvalid> = filter!(f_eq(Attribute::Class, EntryClass::User.into()));
 
         // AFTER
         let _complex_filt: Filter<FilterInvalid> = filter!(f_and!([
             f_or!([
-                f_eq("userid", PartialValue::new_iutf8("test_a")),
-                f_eq("userid", PartialValue::new_iutf8("test_b")),
+                f_eq(Attribute::UserId, PartialValue::new_iutf8("test_a")),
+                f_eq(Attribute::UserId, PartialValue::new_iutf8("test_b")),
             ]),
-            f_sub("class", PartialValue::new_class("user")),
+            f_sub(Attribute::Class, EntryClass::User.into()),
         ]));
     }
 
@@ -1378,9 +1609,9 @@ mod tests {
             let f_init: Filter<FilterInvalid> = Filter::new($init);
             let f_expect: Filter<FilterInvalid> = Filter::new($expect);
             // Create a resolved filter, via the most unsafe means possible!
-            let f_init_r = unsafe { f_init.into_valid_resolved() };
+            let f_init_r = f_init.into_valid_resolved();
             let f_init_o = f_init_r.optimise();
-            let f_init_e = unsafe { f_expect.into_valid_resolved() };
+            let f_init_e = f_expect.into_valid_resolved();
             debug!("--");
             debug!("init   --> {:?}", f_init_r);
             debug!("opt    --> {:?}", f_init_o);
@@ -1395,40 +1626,43 @@ mod tests {
         // Given sets of "optimisable" filters, optimise them.
         filter_optimise_assert!(
             f_and(vec![f_and(vec![f_eq(
-                "class",
-                PartialValue::new_class("test")
+                Attribute::Class,
+                EntryClass::TestClass.into()
             )])]),
-            f_eq("class", PartialValue::new_class("test"))
+            f_eq(Attribute::Class, EntryClass::TestClass.into())
         );
 
         filter_optimise_assert!(
             f_or(vec![f_or(vec![f_eq(
-                "class",
-                PartialValue::new_class("test")
+                Attribute::Class,
+                EntryClass::TestClass.into()
             )])]),
-            f_eq("class", PartialValue::new_class("test"))
+            f_eq(Attribute::Class, EntryClass::TestClass.into())
         );
 
         filter_optimise_assert!(
             f_and(vec![f_or(vec![f_and(vec![f_eq(
-                "class",
-                PartialValue::new_class("test")
+                Attribute::Class,
+                EntryClass::TestClass.to_partialvalue()
             )])])]),
-            f_eq("class", PartialValue::new_class("test"))
+            f_eq(Attribute::Class, EntryClass::TestClass.to_partialvalue())
         );
 
         // Later this can test duplicate filter detection.
         filter_optimise_assert!(
             f_and(vec![
-                f_and(vec![f_eq("class", PartialValue::new_class("test"))]),
-                f_sub("class", PartialValue::new_class("te")),
-                f_pres("class"),
-                f_eq("class", PartialValue::new_class("test"))
+                f_and(vec![f_eq(
+                    Attribute::Class,
+                    EntryClass::TestClass.to_partialvalue()
+                )]),
+                f_sub(Attribute::Class, PartialValue::new_class("te")),
+                f_pres(Attribute::Class),
+                f_eq(Attribute::Class, EntryClass::TestClass.to_partialvalue())
             ]),
             f_and(vec![
-                f_eq("class", PartialValue::new_class("test")),
-                f_pres("class"),
-                f_sub("class", PartialValue::new_class("te")),
+                f_eq(Attribute::Class, EntryClass::TestClass.to_partialvalue()),
+                f_pres(Attribute::Class),
+                f_sub(Attribute::Class, PartialValue::new_class("te")),
             ])
         );
 
@@ -1436,70 +1670,76 @@ mod tests {
         filter_optimise_assert!(
             f_and(vec![
                 f_and(vec![
-                    f_eq("class", PartialValue::new_class("foo")),
-                    f_eq("class", PartialValue::new_class("test")),
-                    f_eq("uid", PartialValue::new_class("bar")),
+                    f_eq(Attribute::Class, PartialValue::new_class("foo")),
+                    f_eq(Attribute::Class, EntryClass::TestClass.to_partialvalue()),
+                    f_eq(Attribute::Uid, PartialValue::new_class("bar")),
                 ]),
-                f_sub("class", PartialValue::new_class("te")),
-                f_pres("class"),
-                f_eq("class", PartialValue::new_class("test"))
+                f_sub(Attribute::Class, PartialValue::new_class("te")),
+                f_pres(Attribute::Class),
+                f_eq(Attribute::Class, EntryClass::TestClass.to_partialvalue())
             ]),
             f_and(vec![
-                f_eq("class", PartialValue::new_class("foo")),
-                f_eq("class", PartialValue::new_class("test")),
-                f_pres("class"),
-                f_eq("uid", PartialValue::new_class("bar")),
-                f_sub("class", PartialValue::new_class("te")),
+                f_eq(Attribute::Class, PartialValue::new_class("foo")),
+                f_eq(Attribute::Class, EntryClass::TestClass.to_partialvalue()),
+                f_pres(Attribute::Class),
+                f_eq(Attribute::Uid, PartialValue::new_class("bar")),
+                f_sub(Attribute::Class, PartialValue::new_class("te")),
             ])
         );
 
         filter_optimise_assert!(
             f_or(vec![
-                f_eq("class", PartialValue::new_class("test")),
-                f_pres("class"),
-                f_sub("class", PartialValue::new_class("te")),
-                f_or(vec![f_eq("class", PartialValue::new_class("test"))]),
+                f_eq(Attribute::Class, EntryClass::TestClass.to_partialvalue()),
+                f_pres(Attribute::Class),
+                f_sub(Attribute::Class, PartialValue::new_class("te")),
+                f_or(vec![f_eq(
+                    Attribute::Class,
+                    EntryClass::TestClass.to_partialvalue()
+                )]),
             ]),
             f_or(vec![
-                f_sub("class", PartialValue::new_class("te")),
-                f_pres("class"),
-                f_eq("class", PartialValue::new_class("test"))
+                f_sub(Attribute::Class, PartialValue::new_class("te")),
+                f_pres(Attribute::Class),
+                f_eq(Attribute::Class, EntryClass::TestClass.to_partialvalue())
             ])
         );
 
         // Test dedup doesn't affect nested items incorrectly.
         filter_optimise_assert!(
             f_or(vec![
-                f_eq("class", PartialValue::new_class("test")),
+                f_eq(Attribute::Class, EntryClass::TestClass.to_partialvalue()),
                 f_and(vec![
-                    f_eq("class", PartialValue::new_class("test")),
-                    f_eq("term", PartialValue::new_class("test")),
-                    f_or(vec![f_eq("class", PartialValue::new_class("test"))])
+                    f_eq(Attribute::Class, EntryClass::TestClass.to_partialvalue()),
+                    f_eq(Attribute::Term, EntryClass::TestClass.to_partialvalue()),
+                    f_or(vec![f_eq(
+                        Attribute::Class,
+                        EntryClass::TestClass.to_partialvalue()
+                    )])
                 ]),
             ]),
             f_or(vec![
                 f_and(vec![
-                    f_eq("class", PartialValue::new_class("test")),
-                    f_eq("term", PartialValue::new_class("test"))
+                    f_eq(Attribute::Class, EntryClass::TestClass.to_partialvalue()),
+                    f_eq(Attribute::Term, EntryClass::TestClass.to_partialvalue())
                 ]),
-                f_eq("class", PartialValue::new_class("test")),
+                f_eq(Attribute::Class, EntryClass::TestClass.to_partialvalue()),
             ])
         );
     }
 
     #[test]
     fn test_filter_eq() {
-        let f_t1a = filter!(f_pres("userid"));
-        let f_t1b = filter!(f_pres("userid"));
-        let f_t1c = filter!(f_pres("zzzz"));
+        let f_t1a = filter!(f_pres(Attribute::UserId));
+        let f_t1b = filter!(f_pres(Attribute::UserId));
+        let f_t1c = filter!(f_pres(Attribute::NonExist));
 
         assert!(f_t1a == f_t1b);
         assert!(f_t1a != f_t1c);
         assert!(f_t1b != f_t1c);
 
-        let f_t2a = filter!(f_and!([f_pres("userid")]));
-        let f_t2b = filter!(f_and!([f_pres("userid")]));
-        let f_t2c = filter!(f_and!([f_pres("zzzz")]));
+        let f_t2a = filter!(f_and!([f_pres(Attribute::UserId)]));
+        let f_t2b = filter!(f_and!([f_pres(Attribute::UserId)]));
+        let f_t2c = filter!(f_and!([f_pres(Attribute::NonExist)]));
         assert!(f_t2a == f_t2b);
         assert!(f_t2a != f_t2c);
         assert!(f_t2b != f_t2c);
@@ -1513,25 +1753,25 @@ mod tests {
         // Test that we uphold the rules of partialOrd
         // Basic equality
         // Test the two major paths here (str vs list)
-        let f_t1a = unsafe { filter_resolved!(f_pres("userid")) };
-        let f_t1b = unsafe { filter_resolved!(f_pres("userid")) };
+        let f_t1a = filter_resolved!(f_pres(Attribute::UserId));
+        let f_t1b = filter_resolved!(f_pres(Attribute::UserId));
 
         assert_eq!(f_t1a.partial_cmp(&f_t1b), Some(Ordering::Equal));
         assert_eq!(f_t1b.partial_cmp(&f_t1a), Some(Ordering::Equal));
 
-        let f_t2a = unsafe { filter_resolved!(f_and!([])) };
-        let f_t2b = unsafe { filter_resolved!(f_and!([])) };
+        let f_t2a = filter_resolved!(f_and!([]));
+        let f_t2b = filter_resolved!(f_and!([]));
         assert_eq!(f_t2a.partial_cmp(&f_t2b), Some(Ordering::Equal));
         assert_eq!(f_t2b.partial_cmp(&f_t2a), Some(Ordering::Equal));
 
         // antisymmetry: if a < b then !(a > b), as well as a > b implying !(a < b); and
         // These are unindexed so we have to check them this way.
-        let f_t3b = unsafe { filter_resolved!(f_eq("userid", PartialValue::new_iutf8(""))) };
+        let f_t3b = filter_resolved!(f_eq(Attribute::UserId, PartialValue::new_iutf8("")));
         assert_eq!(f_t1a.partial_cmp(&f_t3b), Some(Ordering::Greater));
         assert_eq!(f_t3b.partial_cmp(&f_t1a), Some(Ordering::Less));
 
         // transitivity: a < b and b < c implies a < c. The same must hold for both == and >.
-        let f_t4b = unsafe { filter_resolved!(f_sub("userid", PartialValue::new_iutf8(""))) };
+        let f_t4b = filter_resolved!(f_sub(Attribute::UserId, PartialValue::new_iutf8("")));
         assert_eq!(f_t1a.partial_cmp(&f_t4b), Some(Ordering::Less));
         assert_eq!(f_t3b.partial_cmp(&f_t4b), Some(Ordering::Less));
 
@@ -1543,16 +1783,16 @@ mod tests {
     fn test_filter_clone() {
         // Test that cloning filters yields the same result regardless of
         // complexity.
-        let f_t1a = unsafe { filter_resolved!(f_pres("userid")) };
+        let f_t1a = filter_resolved!(f_pres(Attribute::UserId));
         let f_t1b = f_t1a.clone();
-        let f_t1c = unsafe { filter_resolved!(f_pres("zzzz")) };
+        let f_t1c = filter_resolved!(f_pres(Attribute::NonExist));
 
         assert!(f_t1a == f_t1b);
         assert!(f_t1a != f_t1c);
 
-        let f_t2a = unsafe { filter_resolved!(f_and!([f_pres("userid")])) };
+        let f_t2a = filter_resolved!(f_and!([f_pres(Attribute::UserId)]));
         let f_t2b = f_t2a.clone();
-        let f_t2c = unsafe { filter_resolved!(f_and!([f_pres("zzzz")])) };
+        let f_t2c = filter_resolved!(f_and!([f_pres(Attribute::NonExist)]));
 
         assert!(f_t2a == f_t2b);
         assert!(f_t2a != f_t2c);
@@ -1560,205 +1800,174 @@ mod tests {
 
     #[test]
     fn test_lessthan_entry_filter() {
-        let e = unsafe {
-            entry_init!(
-                ("userid", Value::new_iutf8("william")),
-                (
-                    "uuid",
-                    Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
-                ),
-                ("gidnumber", Value::Uint32(1000))
-            )
-            .into_sealed_new()
-        };
+        let e = entry_init!(
+            (Attribute::UserId, Value::new_iutf8("william")),
+            (
+                Attribute::Uuid,
+                Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
+            ),
+            (Attribute::GidNumber, Value::Uint32(1000))
+        )
+        .into_sealed_new();
 
-        let f_t1a = unsafe { filter_resolved!(f_lt("gidnumber", PartialValue::new_uint32(500))) };
+        let f_t1a = filter_resolved!(f_lt(Attribute::GidNumber, PartialValue::new_uint32(500)));
         assert!(!e.entry_match_no_index(&f_t1a));
 
-        let f_t1b = unsafe { filter_resolved!(f_lt("gidnumber", PartialValue::new_uint32(1000))) };
+        let f_t1b = filter_resolved!(f_lt(Attribute::GidNumber, PartialValue::new_uint32(1000)));
         assert!(!e.entry_match_no_index(&f_t1b));
 
-        let f_t1c = unsafe { filter_resolved!(f_lt("gidnumber", PartialValue::new_uint32(1001))) };
+        let f_t1c = filter_resolved!(f_lt(Attribute::GidNumber, PartialValue::new_uint32(1001)));
         assert!(e.entry_match_no_index(&f_t1c));
     }
 
     #[test]
     fn test_or_entry_filter() {
-        let e = unsafe {
-            entry_init!(
-                ("userid", Value::new_iutf8("william")),
-                (
-                    "uuid",
-                    Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
-                ),
-                ("gidnumber", Value::Uint32(1000))
-            )
-            .into_sealed_new()
-        };
+        let e = entry_init!(
+            (Attribute::UserId, Value::new_iutf8("william")),
+            (
+                Attribute::Uuid,
+                Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
+            ),
+            (Attribute::GidNumber, Value::Uint32(1000))
+        )
+        .into_sealed_new();
 
-        let f_t1a = unsafe {
-            filter_resolved!(f_or!([
-                f_eq("userid", PartialValue::new_iutf8("william")),
-                f_eq("gidnumber", PartialValue::Uint32(1000)),
-            ]))
-        };
+        let f_t1a = filter_resolved!(f_or!([
+            f_eq(Attribute::UserId, PartialValue::new_iutf8("william")),
+            f_eq(Attribute::GidNumber, PartialValue::Uint32(1000)),
+        ]));
         assert!(e.entry_match_no_index(&f_t1a));
 
-        let f_t2a = unsafe {
-            filter_resolved!(f_or!([
-                f_eq("userid", PartialValue::new_iutf8("william")),
-                f_eq("gidnumber", PartialValue::Uint32(1000)),
-            ]))
-        };
+        let f_t2a = filter_resolved!(f_or!([
+            f_eq(Attribute::UserId, PartialValue::new_iutf8("william")),
+            f_eq(Attribute::GidNumber, PartialValue::Uint32(1000)),
+        ]));
         assert!(e.entry_match_no_index(&f_t2a));
 
-        let f_t3a = unsafe {
-            filter_resolved!(f_or!([
-                f_eq("userid", PartialValue::new_iutf8("alice")),
-                f_eq("gidnumber", PartialValue::Uint32(1000)),
-            ]))
-        };
+        let f_t3a = filter_resolved!(f_or!([
+            f_eq(Attribute::UserId, PartialValue::new_iutf8("alice")),
+            f_eq(Attribute::GidNumber, PartialValue::Uint32(1000)),
+        ]));
         assert!(e.entry_match_no_index(&f_t3a));
 
-        let f_t4a = unsafe {
-            filter_resolved!(f_or!([
-                f_eq("userid", PartialValue::new_iutf8("alice")),
-                f_eq("gidnumber", PartialValue::Uint32(1001)),
-            ]))
-        };
+        let f_t4a = filter_resolved!(f_or!([
+            f_eq(Attribute::UserId, PartialValue::new_iutf8("alice")),
+            f_eq(Attribute::GidNumber, PartialValue::Uint32(1001)),
+        ]));
         assert!(!e.entry_match_no_index(&f_t4a));
     }
 
     #[test]
     fn test_and_entry_filter() {
-        let e = unsafe {
-            entry_init!(
-                ("userid", Value::new_iutf8("william")),
-                (
-                    "uuid",
-                    Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
-                ),
-                ("gidnumber", Value::Uint32(1000))
-            )
-            .into_sealed_new()
-        };
+        let e = entry_init!(
+            (Attribute::UserId, Value::new_iutf8("william")),
+            (
+                Attribute::Uuid,
+                Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
+            ),
+            (Attribute::GidNumber, Value::Uint32(1000))
+        )
+        .into_sealed_new();
 
-        let f_t1a = unsafe {
-            filter_resolved!(f_and!([
-                f_eq("userid", PartialValue::new_iutf8("william")),
-                f_eq("gidnumber", PartialValue::Uint32(1000)),
-            ]))
-        };
+        let f_t1a = filter_resolved!(f_and!([
+            f_eq(Attribute::UserId, PartialValue::new_iutf8("william")),
+            f_eq(Attribute::GidNumber, PartialValue::Uint32(1000)),
+        ]));
         assert!(e.entry_match_no_index(&f_t1a));
 
-        let f_t2a = unsafe {
-            filter_resolved!(f_and!([
-                f_eq("userid", PartialValue::new_iutf8("william")),
-                f_eq("gidnumber", PartialValue::Uint32(1001)),
-            ]))
-        };
+        let f_t2a = filter_resolved!(f_and!([
+            f_eq(Attribute::UserId, PartialValue::new_iutf8("william")),
+            f_eq(Attribute::GidNumber, PartialValue::Uint32(1001)),
+        ]));
         assert!(!e.entry_match_no_index(&f_t2a));
 
-        let f_t3a = unsafe {
-            filter_resolved!(f_and!([
-                f_eq("userid", PartialValue::new_iutf8("alice")),
-                f_eq("gidnumber", PartialValue::Uint32(1000)),
-            ]))
-        };
+        let f_t3a = filter_resolved!(f_and!([
+            f_eq(Attribute::UserId, PartialValue::new_iutf8("alice")),
+            f_eq(Attribute::GidNumber, PartialValue::Uint32(1000)),
+        ]));
         assert!(!e.entry_match_no_index(&f_t3a));
 
-        let f_t4a = unsafe {
-            filter_resolved!(f_and!([
-                f_eq("userid", PartialValue::new_iutf8("alice")),
-                f_eq("gidnumber", PartialValue::Uint32(1001)),
-            ]))
-        };
+        let f_t4a = filter_resolved!(f_and!([
+            f_eq(Attribute::UserId, PartialValue::new_iutf8("alice")),
+            f_eq(Attribute::GidNumber, PartialValue::Uint32(1001)),
+        ]));
         assert!(!e.entry_match_no_index(&f_t4a));
     }
 
     #[test]
     fn test_not_entry_filter() {
-        let e1 = unsafe {
-            entry_init!(
-                ("userid", Value::new_iutf8("william")),
-                (
-                    "uuid",
-                    Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
-                ),
-                ("gidnumber", Value::Uint32(1000))
-            )
-            .into_sealed_new()
-        };
+        let e1 = entry_init!(
+            (Attribute::UserId, Value::new_iutf8("william")),
+            (
+                Attribute::Uuid,
+                Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
+            ),
+            (Attribute::GidNumber, Value::Uint32(1000))
+        )
+        .into_sealed_new();
 
-        let f_t1a =
-            unsafe { filter_resolved!(f_andnot(f_eq("userid", PartialValue::new_iutf8("alice")))) };
+        let f_t1a = filter_resolved!(f_andnot(f_eq(
+            Attribute::UserId,
+            PartialValue::new_iutf8("alice")
+        )));
         assert!(e1.entry_match_no_index(&f_t1a));
 
-        let f_t2a = unsafe {
-            filter_resolved!(f_andnot(f_eq("userid", PartialValue::new_iutf8("william"))))
-        };
+        let f_t2a = filter_resolved!(f_andnot(f_eq(
+            Attribute::UserId,
+            PartialValue::new_iutf8("william")
+        )));
         assert!(!e1.entry_match_no_index(&f_t2a));
     }
 
     #[test]
     fn test_nested_entry_filter() {
-        let e1 = unsafe {
-            entry_init!(
-                ("class", CLASS_PERSON.clone()),
-                (
-                    "uuid",
-                    Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
-                ),
-                ("gidnumber", Value::Uint32(1000))
-            )
-            .into_sealed_new()
-        };
+        let e1 = entry_init!(
+            (Attribute::Class, EntryClass::Person.to_value().clone()),
+            (
+                Attribute::Uuid,
+                Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
+            ),
+            (Attribute::GidNumber, Value::Uint32(1000))
+        )
+        .into_sealed_new();
 
-        let e2 = unsafe {
-            entry_init!(
-                ("class", CLASS_PERSON.clone()),
-                (
-                    "uuid",
-                    Value::Uuid(uuid::uuid!("4b6228ab-1dbe-42a4-a9f5-f6368222438e"))
-                ),
-                ("gidnumber", Value::Uint32(1001))
-            )
-            .into_sealed_new()
-        };
+        let e2 = entry_init!(
+            (Attribute::Class, EntryClass::Person.to_value().clone()),
+            (
+                Attribute::Uuid,
+                Value::Uuid(uuid::uuid!("4b6228ab-1dbe-42a4-a9f5-f6368222438e"))
+            ),
+            (Attribute::GidNumber, Value::Uint32(1001))
+        )
+        .into_sealed_new();
 
-        let e3 = unsafe {
-            entry_init!(
-                ("class", CLASS_PERSON.clone()),
-                (
-                    "uuid",
-                    Value::Uuid(uuid::uuid!("7b23c99d-c06b-4a9a-a958-3afa56383e1d"))
-                ),
-                ("gidnumber", Value::Uint32(1002))
-            )
-            .into_sealed_new()
-        };
+        let e3 = entry_init!(
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (
+                Attribute::Uuid,
+                Value::Uuid(uuid::uuid!("7b23c99d-c06b-4a9a-a958-3afa56383e1d"))
+            ),
+            (Attribute::GidNumber, Value::Uint32(1002))
+        )
+        .into_sealed_new();
 
-        let e4 = unsafe {
-            entry_init!(
-                ("class", CLASS_GROUP.clone()),
-                (
-                    "uuid",
-                    Value::Uuid(uuid::uuid!("21d816b5-1f6a-4696-b7c1-6ed06d22ed81"))
-                ),
-                ("gidnumber", Value::Uint32(1000))
-            )
-            .into_sealed_new()
-        };
+        let e4 = entry_init!(
+            (Attribute::Class, EntryClass::Group.to_value()),
+            (
+                Attribute::Uuid,
+                Value::Uuid(uuid::uuid!("21d816b5-1f6a-4696-b7c1-6ed06d22ed81"))
+            ),
+            (Attribute::GidNumber, Value::Uint32(1000))
+        )
+        .into_sealed_new();
 
-        let f_t1a = unsafe {
-            filter_resolved!(f_and!([
-                f_eq("class", PVCLASS_PERSON.clone()),
-                f_or!([
-                    f_eq("gidnumber", PartialValue::Uint32(1001)),
-                    f_eq("gidnumber", PartialValue::Uint32(1000))
-                ])
-            ]))
-        };
+        let f_t1a = filter_resolved!(f_and!([
+            f_eq(Attribute::Class, EntryClass::Person.into()),
+            f_or!([
+                f_eq(Attribute::GidNumber, PartialValue::Uint32(1001)),
+                f_eq(Attribute::GidNumber, PartialValue::Uint32(1000))
+            ])
+        ]));
 
         assert!(e1.entry_match_no_index(&f_t1a));
         assert!(e2.entry_match_no_index(&f_t1a));
@@ -1770,25 +1979,21 @@ mod tests {
     fn test_attr_set_filter() {
         let mut f_expect = BTreeSet::new();
         f_expect.insert("userid");
-        f_expect.insert("class");
+        f_expect.insert(Attribute::Class.as_ref());
         // Given filters, get their expected attribute sets - this is used by access control profiles
         // to determine what attrs we are requesting regardless of the partialvalue.
-        let f_t1a = unsafe {
-            filter_valid!(f_and!([
-                f_eq("userid", PartialValue::new_iutf8("alice")),
-                f_eq("class", PartialValue::new_iutf8("1001")),
-            ]))
-        };
+        let f_t1a = filter_valid!(f_and!([
+            f_eq(Attribute::UserId, PartialValue::new_iutf8("alice")),
+            f_eq(Attribute::Class, PartialValue::new_iutf8("1001")),
+        ]));
 
         assert!(f_t1a.get_attr_set() == f_expect);
 
-        let f_t2a = unsafe {
-            filter_valid!(f_and!([
-                f_eq("userid", PartialValue::new_iutf8("alice")),
-                f_eq("class", PartialValue::new_iutf8("1001")),
-                f_eq("userid", PartialValue::new_iutf8("claire")),
-            ]))
-        };
+        let f_t2a = filter_valid!(f_and!([
+            f_eq(Attribute::UserId, PartialValue::new_iutf8("alice")),
+            f_eq(Attribute::Class, PartialValue::new_iutf8("1001")),
+            f_eq(Attribute::UserId, PartialValue::new_iutf8("claire")),
+        ]));
 
         assert!(f_t2a.get_attr_set() == f_expect);
     }
@@ -1802,53 +2007,51 @@ mod tests {
         let mut server_txn = server.write(time_p1).await;
 
         let e1 = entry_init!(
-            ("class", CLASS_OBJECT.clone()),
-            ("class", CLASS_PERSON.clone()),
-            ("class", CLASS_ACCOUNT.clone()),
-            ("name", Value::new_iname("testperson1")),
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Name, Value::new_iname("testperson1")),
             (
-                "uuid",
+                Attribute::Uuid,
                 Value::Uuid(uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
             ),
-            ("description", Value::new_utf8s("testperson1")),
-            ("displayname", Value::new_utf8s("testperson1"))
+            (Attribute::Description, Value::new_utf8s("testperson1")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson1"))
         );
 
         let e2 = entry_init!(
-            ("class", CLASS_OBJECT.clone()),
-            ("class", CLASS_PERSON.clone()),
-            ("name", Value::new_iname("testperson2")),
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value().clone()),
+            (Attribute::Name, Value::new_iname("testperson2")),
             (
-                "uuid",
+                Attribute::Uuid,
                 Value::Uuid(uuid::uuid!("a67c0c71-0b35-4218-a6b0-22d23d131d27"))
             ),
-            ("description", Value::new_utf8s("testperson2")),
-            ("displayname", Value::new_utf8s("testperson2"))
+            (Attribute::Description, Value::new_utf8s("testperson2")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson2"))
         );
 
         // We need to add these and then push through the state machine.
         let e_ts = entry_init!(
-            ("class", CLASS_OBJECT.clone()),
-            ("class", CLASS_PERSON.clone()),
-            ("name", Value::new_iname("testperson3")),
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value().clone()),
+            (Attribute::Name, Value::new_iname("testperson3")),
             (
-                "uuid",
+                Attribute::Uuid,
                 Value::Uuid(uuid!("9557f49c-97a5-4277-a9a5-097d17eb8317"))
             ),
-            ("description", Value::new_utf8s("testperson3")),
-            ("displayname", Value::new_utf8s("testperson3"))
+            (Attribute::Description, Value::new_utf8s("testperson3")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson3"))
         );
 
         let ce = CreateEvent::new_internal(vec![e1, e2, e_ts]);
         let cr = server_txn.create(&ce);
         assert!(cr.is_ok());
 
-        let de_sin = unsafe {
-            DeleteEvent::new_internal_invalid(filter!(f_or!([f_eq(
-                "name",
-                PartialValue::new_iname("testperson3")
-            )])))
-        };
+        let de_sin = DeleteEvent::new_internal_invalid(filter!(f_or!([f_eq(
+            Attribute::Name,
+            PartialValue::new_iname("testperson3")
+        )])));
         assert!(server_txn.delete(&de_sin).is_ok());
 
         // Commit
@@ -1898,12 +2101,12 @@ mod tests {
     async fn test_filter_depth_limits(server: &QueryServer) {
         let mut r_txn = server.read().await;
 
-        let mut inv_proto = ProtoFilter::Pres("class".to_string());
+        let mut inv_proto = ProtoFilter::Pres(Attribute::Class.to_string());
         for _i in 0..(FILTER_DEPTH_MAX + 1) {
             inv_proto = ProtoFilter::And(vec![inv_proto]);
         }
 
-        let mut inv_ldap = LdapFilter::Present("class".to_string());
+        let mut inv_ldap = LdapFilter::Present(Attribute::Class.to_string());
         for _i in 0..(FILTER_DEPTH_MAX + 1) {
             inv_ldap = LdapFilter::And(vec![inv_ldap]);
         }
@@ -1934,13 +2137,13 @@ mod tests {
 
         let inv_proto = ProtoFilter::And(
             (0..(LIMIT * 2))
-                .map(|_| ProtoFilter::Pres("class".to_string()))
+                .map(|_| ProtoFilter::Pres(Attribute::Class.to_string()))
                 .collect(),
         );
 
         let inv_ldap = LdapFilter::And(
             (0..(LIMIT * 2))
-                .map(|_| LdapFilter::Present("class".to_string()))
+                .map(|_| LdapFilter::Present(Attribute::Class.to_string()))
                 .collect(),
         );
 

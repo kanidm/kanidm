@@ -14,6 +14,8 @@ repository = { workspace = true }
 [[bin]]
 name = "orca"
 path = "src/main.rs"
+test = true
+doctest = false
 
 [dependencies]
 clap = { workspace = true }
@@ -21,6 +23,7 @@ crossbeam = { workspace = true }
 csv = { workspace = true }
 dialoguer = { workspace = true }
 futures-util = { workspace = true, features = ["sink"] }
+hashbrown = { workspace = true }
 kanidm_client = { workspace = true }
 kanidm_proto = { workspace = true }
 ldap3_proto = { workspace = true }
@@ -41,4 +44,4 @@ uuid = { workspace = true, features = ["serde", "v4" ] }
 tikv-jemallocator = { workspace = true }
 
 [build-dependencies]
-profiles = { workspace = true }
+kanidm_build_profiles = { workspace = true }

@@ -1,5 +1,6 @@
-use super::profiles::AccessControlCreate;
-use crate::filter::FilterValidResolved;
+use super::profiles::{
+    AccessControlCreateResolved, AccessControlReceiverCondition, AccessControlTargetCondition,
+};
 use crate::prelude::*;
 use std::collections::BTreeSet;
 
@@ -16,7 +17,7 @@ enum IResult {
 
 pub(super) fn apply_create_access<'a>(
     ident: &Identity,
-    related_acp: &'a [(&AccessControlCreate, Filter<FilterValidResolved>)],
+    related_acp: &'a [AccessControlCreateResolved],
     entry: &'a Entry<EntryInit, EntryNew>,
 ) -> CreateResult {
     let mut denied = false;
@@ -48,7 +49,7 @@ pub(super) fn apply_create_access<'a>(
 
 fn create_filter_entry<'a>(
     ident: &Identity,
-    related_acp: &'a [(&AccessControlCreate, Filter<FilterValidResolved>)],
+    related_acp: &'a [AccessControlCreateResolved],
     entry: &'a Entry<EntryInit, EntryNew>,
 ) -> IResult {
     match &ident.origin {
@@ -91,7 +92,7 @@ fn create_filter_entry<'a>(
     // I still think if this is None, we should just fail here ...
     // because it shouldn't be possible to match.
 
-    let create_classes: BTreeSet<&str> = match entry.get_ava_iter_iutf8("class") {
+    let create_classes: BTreeSet<&str> = match entry.get_ava_iter_iutf8(Attribute::Class) {
         Some(s) => s.collect(),
         None => {
             admin_error!("Class set failed to build - corrupted entry?");
@@ -106,33 +107,53 @@ fn create_filter_entry<'a>(
     //          IE: all attrs to be created AND classes match classes
     //              allow
     //          if no acp allows, fail operation.
-    let allow = related_acp.iter().any(|(accr, f_res)| {
-        // Check to see if allowed.
-        if entry.entry_match_no_index(f_res) {
-            security_access!(?entry, acs = ?accr, "entry matches acs");
-            // It matches, so now we have to check attrs and classes.
-            // Remember, we have to match ALL requested attrs
-            // and classes to pass!
-            let allowed_attrs: BTreeSet<&str> = accr.attrs.iter().map(|s| s.as_str()).collect();
-            let allowed_classes: BTreeSet<&str> = accr.classes.iter().map(|s| s.as_str()).collect();
-
-            if !create_attrs.is_subset(&allowed_attrs) {
-                security_access!("create_attrs is not a subset of allowed");
-                security_access!("{:?} !⊆ {:?}", create_attrs, allowed_attrs);
+    let allow = related_acp.iter().any(|accr| {
+        // Assert that the receiver condition applies.
+        match &accr.receiver_condition {
+            AccessControlReceiverCondition::GroupChecked => {
+                // The groups were already checked during filter resolution. Trust
+                // that result, and continue.
+            }
+            AccessControlReceiverCondition::EntryManager => {
+                // Currently, this is unsatisfiable for creates.
                 return false;
             }
-            if !create_classes.is_subset(&allowed_classes) {
-                security_access!("create_classes is not a subset of allowed");
-                security_access!("{:?} !⊆ {:?}", create_classes, allowed_classes);
-                return false;
-            }
-            debug!("passed");
+        };
 
-            true
-        } else {
-            trace!(?entry, acs = %accr.acp.name, "entry DOES NOT match acs");
-            // Does not match, fail this rule.
+        match &accr.target_condition {
+            AccessControlTargetCondition::Scope(f_res) => {
+                if !entry.entry_match_no_index(f_res) {
+                    trace!(?entry, acs = %accr.acp.acp.name, "entry DOES NOT match acs");
+                    // Does not match, fail this rule.
+                    return false;
+                }
+            }
+        };
+
+        // -- Conditions pass -- now verify the attributes.
+
+        security_access!(?entry, acs = ?accr.acp, "entry matches acs");
+        // It matches, so now we have to check attrs and classes.
+        // Remember, we have to match ALL requested attrs
+        // and classes to pass!
+        let allowed_attrs: BTreeSet<&str> = accr.acp.attrs.iter().map(|s| s.as_str()).collect();
+        let allowed_classes: BTreeSet<&str> = accr.acp.classes.iter().map(|s| s.as_str()).collect();
+
+        if !create_attrs.is_subset(&allowed_attrs) {
+            security_access!("create_attrs is not a subset of allowed");
+            security_access!("create: {:?} !⊆ allowed: {:?}", create_attrs, allowed_attrs);
             false
+        } else if !create_classes.is_subset(&allowed_classes) {
+            security_error!("create_classes is not a subset of allowed");
+            security_error!(
+                "create: {:?} !⊆ allowed: {:?}",
+                create_classes,
+                allowed_classes
+            );
+            false
+        } else {
+            // All attribute conditions are now met.
+            true
         }
     });
 
@@ -157,8 +178,8 @@ fn protected_filter_entry(ident: &Identity, entry: &Entry<EntryInit, EntryNew>) 
             // Now check things ...
 
             // For now we just block create on sync object
-            if let Some(classes) = entry.get_ava_set("class") {
-                if classes.contains(&PVCLASS_SYNC_OBJECT) {
+            if let Some(classes) = entry.get_ava_set(Attribute::Class) {
+                if classes.contains(&EntryClass::SyncObject.into()) {
                     // Block the mod
                     security_access!("attempt to create with protected class type");
                     IResult::Denied

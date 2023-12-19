@@ -64,7 +64,7 @@ async def test_auth_begin(client_configfile: KanidmClient) -> None:
 
     retval["response"] = begin_result
 
-    assert AuthBeginResponse.parse_obj(retval)
+    assert AuthBeginResponse.model_validate(retval)
 
 
 @pytest.mark.network
@@ -83,6 +83,17 @@ async def test_authenticate_flow(client_configfile: KanidmClient) -> None:
     print(f"Doing client.authenticate for {client_configfile.config.username}")
     result = await client_configfile.authenticate_password()
     print(result)
+
+
+@pytest.mark.network
+@pytest.mark.asyncio
+async def test_authenticate_anonymous(client_configfile: KanidmClient) -> None:
+    """tests the authenticate() flow"""
+
+    client_configfile.config.auth_token = None
+    print(f"Doing client.authenticate for {client_configfile.config.username}")
+    await client_configfile.auth_as_anonymous()
+    assert client_configfile.config.auth_token is not None
 
 
 @pytest.mark.network
@@ -170,7 +181,7 @@ async def test_authenticate_with_token(client_configfile: KanidmClient) -> None:
             f"Using username {test_username} by default - set KANIDM_TEST_USERNAME env var if you want to change this."
         )
 
-    tokens = TokenStore()
+    tokens = TokenStore.model_validate({})
     tokens.load()
 
     if test_username not in tokens:

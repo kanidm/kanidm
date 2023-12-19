@@ -1,14 +1,14 @@
 [package]
 name = "testkit-macros"
 version = "0.1.0"
-edition = "2021"
+edition = { workspace = true }
 
 [lib]
 proc-macro = true
+test = true
+doctest = false
 
 [dependencies]
 proc-macro2 = { workspace = true }
 quote = { workspace = true }
 syn = { workspace = true }
-
-

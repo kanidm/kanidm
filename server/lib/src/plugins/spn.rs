@@ -1,5 +1,6 @@
 // Generate and manage spn's for all entries in the domain. Also deals with
 // the infrequent - but possible - case where a domain is renamed.
+use std::collections::BTreeSet;
 use std::iter::once;
 use std::sync::Arc;
 
@@ -73,7 +74,17 @@ impl Plugin for Spn {
         Self::post_modify_inner(qs, pre_cand, cand)
     }
 
-    #[instrument(level = "debug", name = "spn_verify", skip(qs))]
+    #[instrument(level = "debug", name = "spn_post_repl_incremental", skip_all)]
+    fn post_repl_incremental(
+        qs: &mut QueryServerWriteTransaction,
+        pre_cand: &[Arc<EntrySealedCommitted>],
+        cand: &[EntrySealedCommitted],
+        _conflict_uuids: &BTreeSet<Uuid>,
+    ) -> Result<(), OperationError> {
+        Self::post_modify_inner(qs, pre_cand, cand)
+    }
+
+    #[instrument(level = "debug", name = "spn::verify", skip_all)]
     fn verify(qs: &mut QueryServerReadTransaction) -> Vec<Result<(), ConsistencyError>> {
         // Verify that all items with spn's have valid spns.
         //   We need to consider the case that an item has a different origin domain too,
@@ -83,8 +94,8 @@ impl Plugin for Spn {
         let domain_name = qs.get_domain_name().to_string();
 
         let filt_in = filter!(f_or!([
-            f_eq("class", PVCLASS_GROUP.clone()),
-            f_eq("class", PVCLASS_ACCOUNT.clone())
+            f_eq(Attribute::Class, EntryClass::Group.into()),
+            f_eq(Attribute::Class, EntryClass::Account.into()),
         ]));
 
         let all_cand = match qs
@@ -98,19 +109,16 @@ impl Plugin for Spn {
         let mut r = Vec::new();
 
         for e in all_cand {
-            let g_spn = match e.generate_spn(&domain_name) {
-                Some(s) => s,
-                None => {
-                    admin_error!(
-                        uuid = ?e.get_uuid(),
-                        "Entry SPN could not be generated (missing name!?)",
-                    );
-                    debug_assert!(false);
-                    r.push(Err(ConsistencyError::InvalidSpn(e.get_id())));
-                    continue;
-                }
+            let Some(g_spn) = e.generate_spn(&domain_name) else {
+                admin_error!(
+                    uuid = ?e.get_uuid(),
+                    "Entry SPN could not be generated (missing name!?)",
+                );
+                debug_assert!(false);
+                r.push(Err(ConsistencyError::InvalidSpn(e.get_id())));
+                continue;
             };
-            match e.get_ava_single("spn") {
+            match e.get_ava_single(Attribute::Spn) {
                 Some(r_spn) => {
                     trace!("verify spn: s {:?} == ex {:?} ?", r_spn, g_spn);
                     if r_spn != g_spn {
@@ -142,8 +150,8 @@ impl Spn {
         let domain_name = qs.get_domain_name();
 
         for ent in cand.iter_mut() {
-            if ent.attribute_equality("class", &PVCLASS_GROUP)
-                || ent.attribute_equality("class", &PVCLASS_ACCOUNT)
+            if ent.attribute_equality(Attribute::Class, &EntryClass::Group.into())
+                || ent.attribute_equality(Attribute::Class, &EntryClass::Account.into())
             {
                 let spn = ent
                     .generate_spn(domain_name)
@@ -155,8 +163,13 @@ impl Spn {
                         );
                         e
                     })?;
-                trace!("plugin_spn: set spn to {:?}", spn);
-                ent.set_ava("spn", once(spn));
+                trace!(
+                    "plugin_{}: set {} to {:?}",
+                    Attribute::Spn,
+                    Attribute::Spn,
+                    spn
+                );
+                ent.set_ava(Attribute::Spn, once(spn));
             }
         }
         Ok(())
@@ -167,14 +180,12 @@ impl Spn {
         pre_cand: &[Arc<Entry<EntrySealed, EntryCommitted>>],
         cand: &[Entry<EntrySealed, EntryCommitted>],
     ) -> Result<(), OperationError> {
-        // On modify, if changing domain_name on UUID_DOMAIN_INFO
-        //    trigger the spn regen ... which is expensive. Future
-        // TODO #157: will be improvements to modify on large txns.
+        // On modify, if changing domain_name on UUID_DOMAIN_INFO trigger the spn regen
 
         let domain_name_changed = cand.iter().zip(pre_cand.iter()).find_map(|(post, pre)| {
-            let domain_name = post.get_ava_single("domain_name");
-            if post.attribute_equality("uuid", &PVUUID_DOMAIN_INFO)
-                && domain_name != pre.get_ava_single("domain_name")
+            let domain_name = post.get_ava_single(Attribute::DomainName);
+            if post.attribute_equality(Attribute::Uuid, &PVUUID_DOMAIN_INFO)
+                && domain_name != pre.get_ava_single(Attribute::DomainName)
             {
                 domain_name
             } else {
@@ -182,10 +193,15 @@ impl Spn {
             }
         });
 
-        let domain_name = match domain_name_changed {
-            Some(s) => s,
-            None => return Ok(()),
+        let Some(domain_name) = domain_name_changed else {
+            return Ok(());
         };
+
+        // IMPORTANT - we have to *pre-emptively reload the domain info here*
+        //
+        // If we don't, we don't get the updated domain name in the txn, and then
+        // spn rename fails as we recurse and just populate the old name.
+        qs.reload_domain_info()?;
 
         admin_info!(
             "IMPORTANT!!! Changing domain name to \"{:?}\". THIS MAY TAKE A LONG TIME ...",
@@ -196,10 +212,10 @@ impl Spn {
         // within the transaction, just in case!
         qs.internal_modify(
             &filter!(f_or!([
-                f_eq("class", PVCLASS_GROUP.clone()),
-                f_eq("class", PVCLASS_ACCOUNT.clone())
+                f_eq(Attribute::Class, EntryClass::Group.into()),
+                f_eq(Attribute::Class, EntryClass::Account.into()),
             ])),
-            &modlist!([m_purge("spn")]),
+            &modlist!([m_purge(Attribute::Spn)]),
         )
     }
 }
@@ -210,16 +226,13 @@ mod tests {
 
     #[test]
     fn test_spn_generate_create() {
-        // on create don't provide
-        let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-            "attrs": {
-                "class": ["account", "service_account"],
-                "name": ["testperson"],
-                "description": ["testperson"],
-                "displayname": ["testperson"]
-            }
-        }"#,
+        // on create don't provide the spn, we generate it.
+        let e: Entry<EntryInit, EntryNew> = entry_init!(
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::ServiceAccount.to_value()),
+            (Attribute::Name, Value::new_iname("testperson")),
+            (Attribute::Description, Value::new_utf8s("testperson")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson"))
         );
 
         let create = vec![e];
@@ -237,16 +250,13 @@ mod tests {
 
     #[test]
     fn test_spn_generate_modify() {
-        // on a purge of the spen, generate it.
-        let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-            "attrs": {
-                "class": ["account", "service_account"],
-                "name": ["testperson"],
-                "description": ["testperson"],
-                "displayname": ["testperson"]
-            }
-        }"#,
+        // on a purge of the spn, generate it.
+        let e: Entry<EntryInit, EntryNew> = entry_init!(
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::ServiceAccount.to_value()),
+            (Attribute::Name, Value::new_iname("testperson")),
+            (Attribute::Description, Value::new_utf8s("testperson")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson"))
         );
 
         let preload = vec![e];
@@ -254,8 +264,8 @@ mod tests {
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq("name", PartialValue::new_iname("testperson"))),
-            modlist!([m_purge("spn")]),
+            filter!(f_eq(Attribute::Name, PartialValue::new_iname("testperson"))),
+            modlist!([m_purge(Attribute::Spn)]),
             None,
             |_| {},
             |_| {}
@@ -265,16 +275,17 @@ mod tests {
     #[test]
     fn test_spn_validate_create() {
         // on create providing invalid spn, we over-write it.
-        let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-            "attrs": {
-                "class": ["account", "service_account"],
-                "spn": ["testperson@invalid_domain.com"],
-                "name": ["testperson"],
-                "description": ["testperson"],
-                "displayname": ["testperson"]
-            }
-        }"#,
+
+        let e: Entry<EntryInit, EntryNew> = entry_init!(
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::ServiceAccount.to_value()),
+            (
+                Attribute::Spn,
+                Value::new_utf8s("testperson@invalid_domain.com")
+            ),
+            (Attribute::Name, Value::new_iname("testperson")),
+            (Attribute::Description, Value::new_utf8s("testperson")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson"))
         );
 
         let create = vec![e];
@@ -292,15 +303,13 @@ mod tests {
     #[test]
     fn test_spn_validate_modify() {
         // On modify (removed/present) of the spn, just regenerate it.
-        let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-            "attrs": {
-                "class": ["account", "service_account"],
-                "name": ["testperson"],
-                "description": ["testperson"],
-                "displayname": ["testperson"]
-            }
-        }"#,
+
+        let e: Entry<EntryInit, EntryNew> = entry_init!(
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::ServiceAccount.to_value()),
+            (Attribute::Name, Value::new_iname("testperson")),
+            (Attribute::Description, Value::new_utf8s("testperson")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson"))
         );
 
         let preload = vec![e];
@@ -308,10 +317,13 @@ mod tests {
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq("name", PartialValue::new_iname("testperson"))),
+            filter!(f_eq(Attribute::Name, PartialValue::new_iname("testperson"))),
             modlist!([
-                m_purge("spn"),
-                m_pres("spn", &Value::new_spn_str("invalid", "spn"))
+                m_purge(Attribute::Spn),
+                m_pres(
+                    Attribute::Spn,
+                    &Value::new_spn_str("invalid", Attribute::Spn.as_ref())
+                )
             ]),
             None,
             |_| {},
@@ -331,24 +343,24 @@ mod tests {
             .internal_search_uuid(UUID_ADMIN)
             .expect("must not fail");
 
-        let e_pre_spn = e_pre.get_ava_single("spn").expect("must not fail");
+        let e_pre_spn = e_pre.get_ava_single(Attribute::Spn).expect("must not fail");
         assert!(e_pre_spn == ex1);
 
         // trigger the domain_name change (this will be a cli option to the server
         // in the final version), but it will still call the same qs function to perform the
         // change.
-        unsafe {
-            server_txn
-                .domain_rename_inner("new.example.com")
-                .expect("should not fail!");
-        }
+        server_txn
+            .danger_domain_rename("new.example.com")
+            .expect("should not fail!");
 
         // check the spn on admin is admin@<new domain>
         let e_post = server_txn
             .internal_search_uuid(UUID_ADMIN)
             .expect("must not fail");
 
-        let e_post_spn = e_post.get_ava_single("spn").expect("must not fail");
+        let e_post_spn = e_post
+            .get_ava_single(Attribute::Spn)
+            .expect("must not fail");
         debug!("{:?}", e_post_spn);
         debug!("{:?}", ex2);
         assert!(e_post_spn == ex2);

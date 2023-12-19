@@ -4,6 +4,7 @@
 use std::collections::BTreeSet;
 use std::iter;
 
+use kanidm_proto::constants::*;
 use kanidm_proto::v1::{ApiToken, OperationError, UserAuthToken};
 use ldap3_proto::simple::*;
 use regex::Regex;
@@ -57,6 +58,12 @@ pub struct LdapServer {
     binddnre: Regex,
 }
 
+#[derive(Debug)]
+enum LdapBindTarget {
+    Account(Uuid),
+    ApiToken,
+}
+
 impl LdapServer {
     pub async fn new(idms: &IdmServer) -> Result<Self, OperationError> {
         // let ct = duration_from_epoch_now();
@@ -68,11 +75,11 @@ impl LdapServer {
             .internal_search_uuid(UUID_DOMAIN_INFO)?;
 
         let basedn = domain_entry
-            .get_ava_single_iutf8("domain_ldap_basedn")
+            .get_ava_single_iutf8(Attribute::DomainLdapBasedn)
             .map(|s| s.to_string())
             .or_else(|| {
                 domain_entry
-                    .get_ava_single_iname("domain_name")
+                    .get_ava_single_iname(Attribute::DomainName)
                     .map(ldap_domain_to_dc)
             })
             .ok_or(OperationError::InvalidEntryState)?;
@@ -87,7 +94,7 @@ impl LdapServer {
             dn: "".to_string(),
             attributes: vec![
                 LdapPartialAttribute {
-                    atype: "objectclass".to_string(),
+                    atype: ATTR_OBJECTCLASS.to_string(),
                     vals: vec!["top".as_bytes().to_vec()],
                 },
                 LdapPartialAttribute {
@@ -134,7 +141,7 @@ impl LdapServer {
         // eventid: &Uuid,
     ) -> Result<Vec<LdapMsg>, OperationError> {
         admin_info!("Attempt LDAP Search for {}", uat.spn);
-        // If the request is "", Base, Present("objectclass"), [], then we want the rootdse.
+        // If the request is "", Base, Present(Attribute::ObjectClass.into()), [], then we want the rootdse.
         if sr.base.is_empty() && sr.scope == LdapSearchScope::Base {
             admin_info!("LDAP Search success - RootDSE");
             Ok(vec![
@@ -181,7 +188,7 @@ impl LdapServer {
                 (LdapSearchScope::Children, None) | (LdapSearchScope::OneLevel, None) => {
                     // exclude domain_info
                     Some(LdapFilter::Not(Box::new(LdapFilter::Equality(
-                        "uuid".to_string(),
+                        Attribute::Uuid.to_string(),
                         STR_UUID_DOMAIN_INFO.to_string(),
                     ))))
                 }
@@ -192,7 +199,7 @@ impl LdapServer {
                 (LdapSearchScope::Base, None) => {
                     // domain_info
                     Some(LdapFilter::Equality(
-                        "uuid".to_string(),
+                        Attribute::Uuid.to_string(),
                         STR_UUID_DOMAIN_INFO.to_string(),
                     ))
                 }
@@ -261,15 +268,7 @@ impl LdapServer {
                 // NOTE: All req_attrs are lowercase at this point.
                 let mapped_attrs: BTreeSet<_> = req_attrs
                     .iter()
-                    .filter_map(|a| {
-                        // EntryDN and DN have special handling in to_ldap in Entry. We don't
-                        // need these here, we know they will be returned as part of the transform.
-                        if a == "entrydn" || a == "dn" {
-                            None
-                        } else {
-                            Some(AttrString::from(ldap_vattr_map(a).unwrap_or(a)))
-                        }
-                    })
+                    .map(|a| AttrString::from(ldap_vattr_map(a).unwrap_or(a)))
                     .collect();
 
                 (Some(mapped_attrs), req_attrs)
@@ -288,10 +287,13 @@ impl LdapServer {
                     sr.filter.clone(),
                     ext,
                     LdapFilter::Not(Box::new(LdapFilter::Or(vec![
-                        LdapFilter::Equality("class".to_string(), "classtype".to_string()),
-                        LdapFilter::Equality("class".to_string(), "attributetype".to_string()),
+                        LdapFilter::Equality(Attribute::Class.to_string(), "classtype".to_string()),
                         LdapFilter::Equality(
-                            "class".to_string(),
+                            Attribute::Class.to_string(),
+                            "attributetype".to_string(),
+                        ),
+                        LdapFilter::Equality(
+                            Attribute::Class.to_string(),
                             "access_control_profile".to_string(),
                         ),
                     ]))),
@@ -299,10 +301,13 @@ impl LdapServer {
                 None => LdapFilter::And(vec![
                     sr.filter.clone(),
                     LdapFilter::Not(Box::new(LdapFilter::Or(vec![
-                        LdapFilter::Equality("class".to_string(), "classtype".to_string()),
-                        LdapFilter::Equality("class".to_string(), "attributetype".to_string()),
+                        LdapFilter::Equality(Attribute::Class.to_string(), "classtype".to_string()),
                         LdapFilter::Equality(
-                            "class".to_string(),
+                            Attribute::Class.to_string(),
+                            "attributetype".to_string(),
+                        ),
+                        LdapFilter::Equality(
+                            Attribute::Class.to_string(),
                             "access_control_profile".to_string(),
                         ),
                     ]))),
@@ -376,49 +381,26 @@ impl LdapServer {
     ) -> Result<Option<LdapBoundToken>, OperationError> {
         security_info!(
             "Attempt LDAP Bind for {}",
-            if dn.is_empty() { "anonymous" } else { dn }
+            if dn.is_empty() { "(empty dn)" } else { dn }
         );
         let ct = duration_from_epoch_now();
 
         let mut idm_auth = idms.auth().await;
 
-        let target_uuid: Uuid = if dn.is_empty() {
+        let target: LdapBindTarget = if dn.is_empty() {
             if pw.is_empty() {
-                security_info!("✅ LDAP Bind success anonymous");
-                UUID_ANONYMOUS
+                LdapBindTarget::Account(UUID_ANONYMOUS)
             } else {
                 // This is the path to access api-token logins.
-                let lae = LdapTokenAuthEvent::from_parts(pw.to_string())?;
-                return idm_auth.token_auth_ldap(&lae, ct).await.and_then(|r| {
-                    idm_auth.commit().map(|_| {
-                        if r.is_some() {
-                            security_info!(%dn, "✅ LDAP Bind success");
-                        } else {
-                            security_info!(%dn, "❌ LDAP Bind failure");
-                        };
-                        r
-                    })
-                });
+                LdapBindTarget::ApiToken
             }
-        } else {
+        } else if dn == "dn=token" {
             // Is the passed dn requesting token auth?
             // We use dn= here since these are attr=value, and dn is a phantom so it will
             // never be present or match a real value. We also make it an ava so that clients
             // that over-zealously validate dn syntax are happy.
-            if dn == "dn=token" {
-                let lae = LdapTokenAuthEvent::from_parts(pw.to_string())?;
-                return idm_auth.token_auth_ldap(&lae, ct).await.and_then(|r| {
-                    idm_auth.commit().map(|_| {
-                        if r.is_some() {
-                            security_info!(%dn, "✅ LDAP Bind success");
-                        } else {
-                            security_info!(%dn, "❌ LDAP Bind failure");
-                        };
-                        r
-                    })
-                });
-            };
-
+            LdapBindTarget::ApiToken
+        } else {
             let rdn = self
                 .binddnre
                 .captures(dn)
@@ -426,30 +408,47 @@ impl LdapServer {
                 .map(|v| v.as_str().to_string())
                 .ok_or(OperationError::NoMatchingEntries)?;
 
-            trace!(?rdn, "relative dn");
-
             if rdn.is_empty() {
                 // That's weird ...
                 return Err(OperationError::NoMatchingEntries);
             }
 
-            idm_auth.qs_read.name_to_uuid(rdn.as_str()).map_err(|e| {
+            let uuid = idm_auth.qs_read.name_to_uuid(rdn.as_str()).map_err(|e| {
                 request_error!(err = ?e, ?rdn, "Error resolving rdn to target");
                 e
-            })?
+            })?;
+
+            LdapBindTarget::Account(uuid)
         };
 
-        let lae = LdapAuthEvent::from_parts(target_uuid, pw.to_string())?;
-        idm_auth.auth_ldap(&lae, ct).await.and_then(|r| {
-            idm_auth.commit().map(|_| {
-                if r.is_some() {
-                    security_info!(%dn, "✅ LDAP Bind success");
-                } else {
-                    security_info!(%dn, "❌ LDAP Bind failure");
-                };
-                r
-            })
-        })
+        let result = match target {
+            LdapBindTarget::Account(uuid) => {
+                let lae = LdapAuthEvent::from_parts(uuid, pw.to_string())?;
+                idm_auth.auth_ldap(&lae, ct).await?
+            }
+            LdapBindTarget::ApiToken => {
+                let lae = LdapTokenAuthEvent::from_parts(pw.to_string())?;
+                idm_auth.token_auth_ldap(&lae, ct).await?
+            }
+        };
+
+        idm_auth.commit()?;
+
+        if result.is_some() {
+            security_info!(
+                "✅ LDAP Bind success for {} -> {:?}",
+                if dn.is_empty() { "(empty dn)" } else { dn },
+                target
+            );
+        } else {
+            security_info!(
+                "❌ LDAP Bind failure for {} -> {:?}",
+                if dn.is_empty() { "(empty dn)" } else { dn },
+                target
+            );
+        }
+
+        Ok(result)
     }
 
     pub async fn do_op(
@@ -554,19 +553,22 @@ fn operationerr_to_ldapresultcode(e: OperationError) -> (LdapResultCode, String)
 #[inline]
 pub(crate) fn ldap_all_vattrs() -> Vec<String> {
     vec![
-        "cn".to_string(),
-        "email".to_string(),
-        "emailaddress".to_string(),
-        "emailalternative".to_string(),
-        "emailprimary".to_string(),
-        "entrydn".to_string(),
-        "entryuuid".to_string(),
-        "keys".to_string(),
-        "mail;alternative".to_string(),
-        "mail;primary".to_string(),
-        "objectclass".to_string(),
-        "sshpublickey".to_string(),
-        "uidnumber".to_string(),
+        ATTR_CN.to_string(),
+        ATTR_EMAIL.to_string(),
+        ATTR_LDAP_EMAIL_ADDRESS.to_string(),
+        LDAP_ATTR_DN.to_string(),
+        LDAP_ATTR_EMAIL_ALTERNATIVE.to_string(),
+        LDAP_ATTR_EMAIL_PRIMARY.to_string(),
+        LDAP_ATTR_ENTRYDN.to_string(),
+        LDAP_ATTR_ENTRYUUID.to_string(),
+        LDAP_ATTR_KEYS.to_string(),
+        LDAP_ATTR_MAIL_ALTERNATIVE.to_string(),
+        LDAP_ATTR_MAIL_PRIMARY.to_string(),
+        ATTR_OBJECTCLASS.to_string(),
+        ATTR_LDAP_SSHPUBLICKEY.to_string(),
+        ATTR_UIDNUMBER.to_string(),
+        ATTR_UID.to_string(),
+        ATTR_GECOS.to_string(),
     ]
 }
 
@@ -579,18 +581,24 @@ pub(crate) fn ldap_vattr_map(input: &str) -> Option<&str> {
     //
     //   LDAP NAME     KANI ATTR SOURCE NAME
     match input {
-        "cn" => Some("name"),
-        "email" => Some("mail"),
-        "emailaddress" => Some("mail"),
-        "emailalternative" => Some("mail"),
-        "emailprimary" => Some("mail"),
-        "entryuuid" => Some("uuid"),
-        "keys" => Some("ssh_publickey"),
-        "mail;alternative" => Some("mail"),
-        "mail;primary" => Some("mail"),
-        "objectclass" => Some("class"),
-        "sshpublickey" => Some("ssh_publickey"),
-        "uidnumber" => Some("gidnumber"),
+        // EntryDN and DN have special handling in to_ldap in Entry. However, we
+        // need to map them to "name" so that if the user has requested dn/entrydn
+        // only, then we still requested at least one attribute from the backend
+        // allowing the access control tests to take place. Otherwise no entries
+        // would be returned.
+        ATTR_CN | ATTR_UID | LDAP_ATTR_ENTRYDN | LDAP_ATTR_DN => Some(ATTR_NAME),
+        ATTR_GECOS => Some(ATTR_DISPLAYNAME),
+        ATTR_EMAIL => Some(ATTR_MAIL),
+        ATTR_LDAP_EMAIL_ADDRESS => Some(ATTR_MAIL),
+        LDAP_ATTR_EMAIL_ALTERNATIVE => Some(ATTR_MAIL),
+        LDAP_ATTR_EMAIL_PRIMARY => Some(ATTR_MAIL),
+        LDAP_ATTR_ENTRYUUID => Some(ATTR_UUID),
+        LDAP_ATTR_KEYS => Some(ATTR_SSH_PUBLICKEY),
+        LDAP_ATTR_MAIL_ALTERNATIVE => Some(ATTR_MAIL),
+        LDAP_ATTR_MAIL_PRIMARY => Some(ATTR_MAIL),
+        ATTR_OBJECTCLASS => Some(ATTR_CLASS),
+        ATTR_LDAP_SSHPUBLICKEY => Some(ATTR_SSH_PUBLICKEY), // no-underscore -> underscore
+        ATTR_UIDNUMBER => Some(ATTR_GIDNUMBER),             // yes this is intentional
         _ => None,
     }
 }
@@ -606,10 +614,10 @@ mod tests {
     use crate::prelude::*;
     use std::str::FromStr;
 
-    use compact_jwt::{Jws, JwsUnverified};
+    use compact_jwt::{JwsCompact, JwsEs256Verifier, JwsVerifier};
     use hashbrown::HashSet;
     use kanidm_proto::v1::ApiToken;
-    use ldap3_proto::proto::{LdapFilter, LdapOp, LdapSearchScope};
+    use ldap3_proto::proto::{LdapFilter, LdapOp, LdapSearchScope, LdapSubstringFilter};
     use ldap3_proto::simple::*;
 
     use super::{LdapServer, LdapSession};
@@ -624,27 +632,63 @@ mod tests {
 
         let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await;
         // make the admin a valid posix account
-        let me_posix = unsafe {
-            ModifyEvent::new_internal_invalid(
-                filter!(f_eq("name", PartialValue::new_iname("admin"))),
-                ModifyList::new_list(vec![
-                    Modify::Present(AttrString::from("class"), Value::new_class("posixaccount")),
-                    Modify::Present(AttrString::from("gidnumber"), Value::new_uint32(2001)),
-                ]),
-            )
-        };
+        let me_posix = ModifyEvent::new_internal_invalid(
+            filter!(f_eq(Attribute::Name, PartialValue::new_iname("admin"))),
+            ModifyList::new_list(vec![
+                Modify::Present(Attribute::Class.into(), EntryClass::PosixAccount.into()),
+                Modify::Present(Attribute::GidNumber.into(), Value::new_uint32(2001)),
+            ]),
+        );
         assert!(idms_prox_write.qs_write.modify(&me_posix).is_ok());
 
         let pce = UnixPasswordChangeEvent::new_internal(UUID_ADMIN, TEST_PASSWORD);
 
         assert!(idms_prox_write.set_unix_account_password(&pce).is_ok());
-        assert!(idms_prox_write.commit().is_ok());
+        assert!(idms_prox_write.commit().is_ok()); // Committing all configs
 
+        // default UNIX_PW bind (default is set to true)
+        // Hence allows all unix binds
+        let admin_t = ldaps
+            .do_bind(idms, "admin", TEST_PASSWORD)
+            .await
+            .unwrap()
+            .unwrap();
+        assert!(admin_t.effective_session == LdapSession::UnixBind(UUID_ADMIN));
+        let admin_t = ldaps
+            .do_bind(idms, "admin@example.com", TEST_PASSWORD)
+            .await
+            .unwrap()
+            .unwrap();
+        assert!(admin_t.effective_session == LdapSession::UnixBind(UUID_ADMIN));
+
+        // Setting UNIX_PW_BIND flag to false:
+        // Hence all of the below authentication will fail (asserts are still satisfied)
+        let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await;
+        let disallow_unix_pw_flag = ModifyEvent::new_internal_invalid(
+            filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(UUID_DOMAIN_INFO))),
+            ModifyList::new_purge_and_set(Attribute::LdapAllowUnixPwBind, Value::Bool(false)),
+        );
+        assert!(idms_prox_write
+            .qs_write
+            .modify(&disallow_unix_pw_flag)
+            .is_ok());
+        assert!(idms_prox_write.commit().is_ok());
         let anon_t = ldaps.do_bind(idms, "", "").await.unwrap().unwrap();
         assert!(anon_t.effective_session == LdapSession::UnixBind(UUID_ANONYMOUS));
         assert!(
             ldaps.do_bind(idms, "", "test").await.unwrap_err() == OperationError::NotAuthenticated
         );
+        let admin_t = ldaps.do_bind(idms, "admin", TEST_PASSWORD).await.unwrap();
+        assert!(admin_t.is_none() == true);
+
+        // Setting UNIX_PW_BIND flag to true :
+        let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await;
+        let allow_unix_pw_flag = ModifyEvent::new_internal_invalid(
+            filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(UUID_DOMAIN_INFO))),
+            ModifyList::new_purge_and_set(Attribute::LdapAllowUnixPwBind, Value::Bool(true)),
+        );
+        assert!(idms_prox_write.qs_write.modify(&allow_unix_pw_flag).is_ok());
+        assert!(idms_prox_write.commit().is_ok());
 
         // Now test the admin and various DN's
         let admin_t = ldaps
@@ -776,14 +820,14 @@ mod tests {
 
     macro_rules! assert_entry_contains {
         (
-            $e:expr,
+            $entry:expr,
             $dn:expr,
             $($item:expr),*
         ) => {{
-            assert!($e.dn == $dn);
+            assert!($entry.dn == $dn);
             // Build a set from the attrs.
             let mut attrs = HashSet::new();
-            for a in $e.attributes.iter() {
+            for a in $entry.attributes.iter() {
                 for v in a.vals.iter() {
                     attrs.insert((a.atype.as_str(), v.as_slice()));
                 }
@@ -792,7 +836,7 @@ mod tests {
             $(
                 warn!("{}", $item.0);
                 assert!(attrs.contains(&(
-                    $item.0, $item.1.as_bytes()
+                    $item.0.as_ref(), $item.1.as_bytes()
                 )));
             )*
 
@@ -811,20 +855,23 @@ mod tests {
         // Setup a user we want to check.
         {
             let e1 = entry_init!(
-                ("class", Value::new_class("object")),
-                ("class", Value::new_class("person")),
-                ("class", Value::new_class("account")),
-                ("class", Value::new_class("posixaccount")),
-                ("name", Value::new_iname("testperson1")),
+                (Attribute::Class, EntryClass::Object.to_value()),
+                (Attribute::Class, EntryClass::Person.to_value()),
+                (Attribute::Class, EntryClass::Account.to_value()),
+                (Attribute::Class, EntryClass::PosixAccount.to_value()),
+                (Attribute::Name, Value::new_iname("testperson1")),
                 (
-                    "uuid",
+                    Attribute::Uuid,
                     Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
                 ),
-                ("description", Value::new_utf8s("testperson1")),
-                ("displayname", Value::new_utf8s("testperson1")),
-                ("gidnumber", Value::new_uint32(12345678)),
-                ("loginshell", Value::new_iutf8("/bin/zsh")),
-                ("ssh_publickey", Value::new_sshkey_str("test", ssh_ed25519))
+                (Attribute::Description, Value::new_utf8s("testperson1")),
+                (Attribute::DisplayName, Value::new_utf8s("testperson1")),
+                (Attribute::GidNumber, Value::new_uint32(12345678)),
+                (Attribute::LoginShell, Value::new_iutf8("/bin/zsh")),
+                (
+                    Attribute::SshPublicKey,
+                    Value::new_sshkey_str("test", ssh_ed25519).expect("Invalid ssh key")
+                )
             );
 
             let mut server_txn = idms.proxy_write(duration_from_epoch_now()).await;
@@ -845,7 +892,7 @@ mod tests {
             msgid: 1,
             base: "dc=example,dc=com".to_string(),
             scope: LdapSearchScope::Subtree,
-            filter: LdapFilter::Equality("name".to_string(), "testperson1".to_string()),
+            filter: LdapFilter::Equality(Attribute::Name.to_string(), "testperson1".to_string()),
             attrs: vec!["*".to_string()],
         };
         let r1 = ldaps.do_search(idms, &sr, &anon_t).await.unwrap();
@@ -857,16 +904,16 @@ mod tests {
                 assert_entry_contains!(
                     lsre,
                     "spn=testperson1@example.com,dc=example,dc=com",
-                    ("class", "object"),
-                    ("class", "person"),
-                    ("class", "account"),
-                    ("class", "posixaccount"),
-                    ("displayname", "testperson1"),
-                    ("name", "testperson1"),
-                    ("gidnumber", "12345678"),
-                    ("loginshell", "/bin/zsh"),
-                    ("ssh_publickey", ssh_ed25519),
-                    ("uuid", "cc8e95b4-c24f-4d68-ba54-8bed76f63930")
+                    (Attribute::Class, EntryClass::Object.to_string()),
+                    (Attribute::Class, EntryClass::Person.to_string()),
+                    (Attribute::Class, EntryClass::Account.to_string()),
+                    (Attribute::Class, EntryClass::PosixAccount.to_string()),
+                    (Attribute::DisplayName, "testperson1"),
+                    (Attribute::Name, "testperson1"),
+                    (Attribute::GidNumber, "12345678"),
+                    (Attribute::LoginShell, "/bin/zsh"),
+                    (Attribute::SshPublicKey, ssh_ed25519),
+                    (Attribute::Uuid, "cc8e95b4-c24f-4d68-ba54-8bed76f63930")
                 );
             }
             _ => assert!(false),
@@ -877,7 +924,7 @@ mod tests {
             msgid: 1,
             base: "dc=example,dc=com".to_string(),
             scope: LdapSearchScope::Subtree,
-            filter: LdapFilter::Equality("name".to_string(), "testperson1".to_string()),
+            filter: LdapFilter::Equality(Attribute::Name.to_string(), "testperson1".to_string()),
             attrs: vec!["+".to_string()],
         };
         let r1 = ldaps.do_search(idms, &sr, &anon_t).await.unwrap();
@@ -889,20 +936,23 @@ mod tests {
                 assert_entry_contains!(
                     lsre,
                     "spn=testperson1@example.com,dc=example,dc=com",
-                    ("objectclass", "object"),
-                    ("objectclass", "person"),
-                    ("objectclass", "account"),
-                    ("objectclass", "posixaccount"),
-                    ("displayname", "testperson1"),
-                    ("name", "testperson1"),
-                    ("gidnumber", "12345678"),
-                    ("loginshell", "/bin/zsh"),
-                    ("ssh_publickey", ssh_ed25519),
-                    ("entryuuid", "cc8e95b4-c24f-4d68-ba54-8bed76f63930"),
-                    ("entrydn", "spn=testperson1@example.com,dc=example,dc=com"),
-                    ("uidnumber", "12345678"),
-                    ("cn", "testperson1"),
-                    ("keys", ssh_ed25519)
+                    (Attribute::ObjectClass, EntryClass::Object.as_ref()),
+                    (Attribute::ObjectClass, EntryClass::Person.as_ref()),
+                    (Attribute::ObjectClass, EntryClass::Account.as_ref()),
+                    (Attribute::ObjectClass, EntryClass::PosixAccount.as_ref()),
+                    (Attribute::DisplayName, "testperson1"),
+                    (Attribute::Name, "testperson1"),
+                    (Attribute::GidNumber, "12345678"),
+                    (Attribute::LoginShell, "/bin/zsh"),
+                    (Attribute::SshPublicKey, ssh_ed25519),
+                    (Attribute::EntryUuid, "cc8e95b4-c24f-4d68-ba54-8bed76f63930"),
+                    (
+                        Attribute::EntryDn,
+                        "spn=testperson1@example.com,dc=example,dc=com"
+                    ),
+                    (Attribute::UidNumber, "12345678"),
+                    (Attribute::Cn, "testperson1"),
+                    (Attribute::LdapKeys, ssh_ed25519)
                 );
             }
             _ => assert!(false),
@@ -913,12 +963,12 @@ mod tests {
             msgid: 1,
             base: "dc=example,dc=com".to_string(),
             scope: LdapSearchScope::Subtree,
-            filter: LdapFilter::Equality("name".to_string(), "testperson1".to_string()),
+            filter: LdapFilter::Equality(Attribute::Name.to_string(), "testperson1".to_string()),
             attrs: vec![
-                "name".to_string(),
-                "entrydn".to_string(),
-                "keys".to_string(),
-                "uidnumber".to_string(),
+                LDAP_ATTR_NAME.to_string(),
+                Attribute::EntryDn.to_string(),
+                ATTR_LDAP_KEYS.to_string(),
+                Attribute::UidNumber.to_string(),
             ],
         };
         let r1 = ldaps.do_search(idms, &sr, &anon_t).await.unwrap();
@@ -930,10 +980,13 @@ mod tests {
                 assert_entry_contains!(
                     lsre,
                     "spn=testperson1@example.com,dc=example,dc=com",
-                    ("name", "testperson1"),
-                    ("entrydn", "spn=testperson1@example.com,dc=example,dc=com"),
-                    ("uidnumber", "12345678"),
-                    ("keys", ssh_ed25519)
+                    (Attribute::Name, "testperson1"),
+                    (
+                        Attribute::EntryDn,
+                        "spn=testperson1@example.com,dc=example,dc=com"
+                    ),
+                    (Attribute::UidNumber, "12345678"),
+                    (Attribute::LdapKeys, ssh_ed25519)
                 );
             }
             _ => assert!(false),
@@ -953,15 +1006,18 @@ mod tests {
             msgid: 1,
             base: "dc=example,dc=com".to_string(),
             scope: LdapSearchScope::Subtree,
-            filter: LdapFilter::Equality("name".to_string(), "testperson1".to_string()),
+            filter: LdapFilter::Equality(Attribute::Name.to_string(), "testperson1".to_string()),
             attrs: vec![
-                "name".to_string(),
-                "mail".to_string(),
-                "mail;primary".to_string(),
-                "mail;alternative".to_string(),
-                "emailprimary".to_string(),
-                "emailalternative".to_string(),
-            ],
+                LDAP_ATTR_NAME,
+                LDAP_ATTR_MAIL,
+                LDAP_ATTR_MAIL_PRIMARY,
+                LDAP_ATTR_MAIL_ALTERNATIVE,
+                LDAP_ATTR_EMAIL_PRIMARY,
+                LDAP_ATTR_EMAIL_ALTERNATIVE,
+            ]
+            .into_iter()
+            .map(|s| s.to_string())
+            .collect(),
         };
 
         let sa_uuid = uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930");
@@ -972,33 +1028,36 @@ mod tests {
             // Create a service account,
 
             let e1 = entry_init!(
-                ("class", Value::new_class("object")),
-                ("class", Value::new_class("service_account")),
-                ("class", Value::new_class("account")),
-                ("uuid", Value::Uuid(sa_uuid)),
-                ("name", Value::new_iname("service_permission_test")),
-                ("displayname", Value::new_utf8s("service_permission_test"))
+                (Attribute::Class, EntryClass::Object.to_value()),
+                (Attribute::Class, EntryClass::ServiceAccount.to_value()),
+                (Attribute::Class, EntryClass::Account.to_value()),
+                (Attribute::Uuid, Value::Uuid(sa_uuid)),
+                (Attribute::Name, Value::new_iname("service_permission_test")),
+                (
+                    Attribute::DisplayName,
+                    Value::new_utf8s("service_permission_test")
+                )
             );
 
             // Setup a person with an email
             let e2 = entry_init!(
-                ("class", Value::new_class("object")),
-                ("class", Value::new_class("person")),
-                ("class", Value::new_class("account")),
-                ("class", Value::new_class("posixaccount")),
-                ("name", Value::new_iname("testperson1")),
+                (Attribute::Class, EntryClass::Object.to_value()),
+                (Attribute::Class, EntryClass::Person.to_value()),
+                (Attribute::Class, EntryClass::Account.to_value()),
+                (Attribute::Class, EntryClass::PosixAccount.to_value()),
+                (Attribute::Name, Value::new_iname("testperson1")),
                 (
-                    "mail",
+                    Attribute::Mail,
                     Value::EmailAddress("testperson1@example.com".to_string(), true)
                 ),
                 (
-                    "mail",
+                    Attribute::Mail,
                     Value::EmailAddress("testperson1.alternative@example.com".to_string(), false)
                 ),
-                ("description", Value::new_utf8s("testperson1")),
-                ("displayname", Value::new_utf8s("testperson1")),
-                ("gidnumber", Value::new_uint32(12345678)),
-                ("loginshell", Value::new_iutf8("/bin/zsh"))
+                (Attribute::Description, Value::new_utf8s("testperson1")),
+                (Attribute::DisplayName, Value::new_utf8s("testperson1")),
+                (Attribute::GidNumber, Value::new_uint32(12345678)),
+                (Attribute::LoginShell, Value::new_iutf8("/bin/zsh"))
             );
 
             // Setup an access control for the service account to view mail attrs.
@@ -1010,18 +1069,16 @@ mod tests {
             assert!(server_txn.qs_write.create(&ce).is_ok());
 
             // idm_people_read_priv
-            let me = unsafe {
-                ModifyEvent::new_internal_invalid(
-                    filter!(f_eq(
-                        "name",
-                        PartialValue::new_iname("idm_people_read_priv")
-                    )),
-                    ModifyList::new_list(vec![Modify::Present(
-                        AttrString::from("member"),
-                        Value::Refer(sa_uuid),
-                    )]),
-                )
-            };
+            let me = ModifyEvent::new_internal_invalid(
+                filter!(f_eq(
+                    Attribute::Name,
+                    PartialValue::new_iname(BUILTIN_GROUP_PEOPLE_PII_READ.name)
+                )),
+                ModifyList::new_list(vec![Modify::Present(
+                    Attribute::Member.into(),
+                    Value::Refer(sa_uuid),
+                )]),
+            );
             assert!(server_txn.qs_write.modify(&me).is_ok());
 
             // Issue a token
@@ -1052,7 +1109,7 @@ mod tests {
                 assert_entry_contains!(
                     lsre,
                     "spn=testperson1@example.com,dc=example,dc=com",
-                    ("name", "testperson1")
+                    (Attribute::Name, "testperson1")
                 );
             }
             _ => assert!(false),
@@ -1060,13 +1117,16 @@ mod tests {
 
         // Inspect the token to get its uuid out.
         let apitoken_unverified =
-            JwsUnverified::from_str(&apitoken).expect("Failed to parse apitoken");
+            JwsCompact::from_str(&apitoken).expect("Failed to parse apitoken");
 
-        let apitoken_inner: Jws<ApiToken> = apitoken_unverified
-            .validate_embeded()
-            .expect("Embedded jwk not found");
+        let jws_verifier =
+            JwsEs256Verifier::try_from(apitoken_unverified.get_jwk_pubkey().unwrap()).unwrap();
 
-        let apitoken_inner = apitoken_inner.into_inner();
+        let apitoken_inner = jws_verifier
+            .verify(&apitoken_unverified)
+            .unwrap()
+            .from_json::<ApiToken>()
+            .unwrap();
 
         // Bind using the token as a DN
         let sa_lbt = ldaps
@@ -1088,13 +1148,22 @@ mod tests {
                 assert_entry_contains!(
                     lsre,
                     "spn=testperson1@example.com,dc=example,dc=com",
-                    ("name", "testperson1"),
-                    ("mail", "testperson1@example.com"),
-                    ("mail", "testperson1.alternative@example.com"),
-                    ("mail;primary", "testperson1@example.com"),
-                    ("mail;alternative", "testperson1.alternative@example.com"),
-                    ("emailprimary", "testperson1@example.com"),
-                    ("emailalternative", "testperson1.alternative@example.com")
+                    (Attribute::Name.as_ref(), "testperson1"),
+                    (Attribute::Mail.as_ref(), "testperson1@example.com"),
+                    (
+                        Attribute::Mail.as_ref(),
+                        "testperson1.alternative@example.com"
+                    ),
+                    (LDAP_ATTR_MAIL_PRIMARY, "testperson1@example.com"),
+                    (
+                        LDAP_ATTR_MAIL_ALTERNATIVE,
+                        "testperson1.alternative@example.com"
+                    ),
+                    (LDAP_ATTR_MAIL_PRIMARY, "testperson1@example.com"),
+                    (
+                        LDAP_ATTR_MAIL_ALTERNATIVE,
+                        "testperson1.alternative@example.com"
+                    )
                 );
             }
             _ => assert!(false),
@@ -1113,12 +1182,12 @@ mod tests {
         // Setup a user we want to check.
         {
             let e1 = entry_init!(
-                ("class", Value::new_class("person")),
-                ("class", Value::new_class("account")),
-                ("name", Value::new_iname("testperson1")),
-                ("uuid", Value::Uuid(acct_uuid)),
-                ("description", Value::new_utf8s("testperson1")),
-                ("displayname", Value::new_utf8s("testperson1"))
+                (Attribute::Class, EntryClass::Person.to_value()),
+                (Attribute::Class, EntryClass::Account.to_value()),
+                (Attribute::Name, Value::new_iname("testperson1")),
+                (Attribute::Uuid, Value::Uuid(acct_uuid)),
+                (Attribute::Description, Value::new_utf8s("testperson1")),
+                (Attribute::DisplayName, Value::new_utf8s("testperson1"))
             );
 
             let mut server_txn = idms.proxy_write(duration_from_epoch_now()).await;
@@ -1138,13 +1207,13 @@ mod tests {
             msgid: 1,
             base: "dc=example,dc=com".to_string(),
             scope: LdapSearchScope::Subtree,
-            filter: LdapFilter::Equality("name".to_string(), "testperson1".to_string()),
+            filter: LdapFilter::Equality(Attribute::Name.to_string(), "testperson1".to_string()),
             attrs: vec![
                 "*".to_string(),
                 // Already being returned
-                "name".to_string(),
+                LDAP_ATTR_NAME.to_string(),
                 // This is a virtual attribute
-                "entryuuid".to_string(),
+                Attribute::EntryUuid.to_string(),
             ],
         };
         let r1 = ldaps.do_search(idms, &sr, &anon_t).await.unwrap();
@@ -1156,10 +1225,13 @@ mod tests {
                 assert_entry_contains!(
                     lsre,
                     "spn=testperson1@example.com,dc=example,dc=com",
-                    ("name", "testperson1"),
-                    ("displayname", "testperson1"),
-                    ("uuid", "cc8e95b4-c24f-4d68-ba54-8bed76f63930"),
-                    ("entryuuid", "cc8e95b4-c24f-4d68-ba54-8bed76f63930")
+                    (Attribute::Name, "testperson1"),
+                    (Attribute::DisplayName, "testperson1"),
+                    (Attribute::Uuid, "cc8e95b4-c24f-4d68-ba54-8bed76f63930"),
+                    (
+                        Attribute::EntryUuid.as_ref(),
+                        "cc8e95b4-c24f-4d68-ba54-8bed76f63930"
+                    )
                 );
             }
             _ => assert!(false),
@@ -1177,7 +1249,7 @@ mod tests {
             msgid: 1,
             base: "".to_string(),
             scope: LdapSearchScope::Base,
-            filter: LdapFilter::Present("objectclass".to_string()),
+            filter: LdapFilter::Present(Attribute::ObjectClass.to_string()),
             attrs: vec!["*".to_string()],
         };
         let r1 = ldaps.do_search(idms, &sr, &anon_t).await.unwrap();
@@ -1191,7 +1263,7 @@ mod tests {
                 assert_entry_contains!(
                     lsre,
                     "",
-                    ("objectclass", "top"),
+                    (Attribute::ObjectClass, "top"),
                     ("vendorname", "Kanidm Project"),
                     ("supportedldapversion", "3"),
                     ("defaultnamingcontext", "dc=example,dc=com")
@@ -1206,15 +1278,13 @@ mod tests {
 
         let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await;
         // make the admin a valid posix account
-        let me_posix = unsafe {
-            ModifyEvent::new_internal_invalid(
-                filter!(f_eq("uuid", PartialValue::Uuid(UUID_DOMAIN_INFO))),
-                ModifyList::new_purge_and_set(
-                    "domain_ldap_basedn",
-                    Value::new_iutf8("o=kanidmproject"),
-                ),
-            )
-        };
+        let me_posix = ModifyEvent::new_internal_invalid(
+            filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(UUID_DOMAIN_INFO))),
+            ModifyList::new_purge_and_set(
+                Attribute::DomainLdapBasedn,
+                Value::new_iutf8("o=kanidmproject"),
+            ),
+        );
         assert!(idms_prox_write.qs_write.modify(&me_posix).is_ok());
 
         assert!(idms_prox_write.commit().is_ok());
@@ -1229,7 +1299,7 @@ mod tests {
             msgid: 1,
             base: "".to_string(),
             scope: LdapSearchScope::Base,
-            filter: LdapFilter::Present("objectclass".to_string()),
+            filter: LdapFilter::Present(Attribute::ObjectClass.to_string()),
             attrs: vec!["*".to_string()],
         };
         let r1 = ldaps.do_search(idms, &sr, &anon_t).await.unwrap();
@@ -1243,10 +1313,112 @@ mod tests {
                 assert_entry_contains!(
                     lsre,
                     "",
-                    ("objectclass", "top"),
+                    (Attribute::ObjectClass, "top"),
                     ("vendorname", "Kanidm Project"),
                     ("supportedldapversion", "3"),
                     ("defaultnamingcontext", "o=kanidmproject")
+                );
+            }
+            _ => assert!(false),
+        };
+    }
+
+    #[idm_test]
+    async fn test_ldap_sssd_compat(idms: &IdmServer, _idms_delayed: &IdmServerDelayed) {
+        let ldaps = LdapServer::new(idms).await.expect("failed to start ldap");
+
+        let acct_uuid = uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930");
+
+        // Setup a user we want to check.
+        {
+            let e1 = entry_init!(
+                (Attribute::Class, EntryClass::Person.to_value()),
+                (Attribute::Class, EntryClass::Account.to_value()),
+                (Attribute::Class, EntryClass::PosixAccount.to_value()),
+                (Attribute::Name, Value::new_iname("testperson1")),
+                (Attribute::Uuid, Value::Uuid(acct_uuid)),
+                (Attribute::GidNumber, Value::Uint32(123456)),
+                (Attribute::Description, Value::new_utf8s("testperson1")),
+                (Attribute::DisplayName, Value::new_utf8s("testperson1"))
+            );
+
+            let mut server_txn = idms.proxy_write(duration_from_epoch_now()).await;
+            assert!(server_txn
+                .qs_write
+                .internal_create(vec![e1])
+                .and_then(|_| server_txn.commit())
+                .is_ok());
+        }
+
+        // Setup the anonymous login.
+        let anon_t = ldaps.do_bind(idms, "", "").await.unwrap().unwrap();
+        assert!(anon_t.effective_session == LdapSession::UnixBind(UUID_ANONYMOUS));
+
+        // SSSD tries to just search for silly attrs all the time. We ignore them.
+        let sr = SearchRequest {
+            msgid: 1,
+            base: "dc=example,dc=com".to_string(),
+            scope: LdapSearchScope::Subtree,
+            filter: LdapFilter::And(vec![
+                LdapFilter::Equality(Attribute::Class.to_string(), "sudohost".to_string()),
+                LdapFilter::Substring(
+                    Attribute::SudoHost.to_string(),
+                    LdapSubstringFilter {
+                        initial: Some("a".to_string()),
+                        any: vec!["x".to_string()],
+                        final_: Some("z".to_string()),
+                    },
+                ),
+            ]),
+            attrs: vec![
+                "*".to_string(),
+                // Already being returned
+                LDAP_ATTR_NAME.to_string(),
+                // This is a virtual attribute
+                Attribute::EntryUuid.to_string(),
+            ],
+        };
+        let r1 = ldaps.do_search(idms, &sr, &anon_t).await.unwrap();
+
+        // Empty results and ldap proto success msg.
+        assert!(r1.len() == 1);
+
+        // Second search
+
+        let sr = SearchRequest {
+            msgid: 1,
+            base: "dc=example,dc=com".to_string(),
+            scope: LdapSearchScope::Subtree,
+            filter: LdapFilter::Equality(Attribute::Name.to_string(), "testperson1".to_string()),
+            attrs: vec![
+                "uid".to_string(),
+                "uidNumber".to_string(),
+                "gidNumber".to_string(),
+                "gecos".to_string(),
+                "cn".to_string(),
+                "entryuuid".to_string(),
+            ],
+        };
+        let r1 = ldaps.do_search(idms, &sr, &anon_t).await.unwrap();
+
+        trace!(?r1);
+
+        // The result, and the ldap proto success msg.
+        assert!(r1.len() == 2);
+        match &r1[0].op {
+            LdapOp::SearchResultEntry(lsre) => {
+                assert_entry_contains!(
+                    lsre,
+                    "spn=testperson1@example.com,dc=example,dc=com",
+                    (Attribute::Uid, "testperson1"),
+                    (Attribute::Cn, "testperson1"),
+                    (Attribute::Gecos, "testperson1"),
+                    (Attribute::UidNumber, "123456"),
+                    (Attribute::GidNumber, "123456"),
+                    (
+                        Attribute::EntryUuid.as_ref(),
+                        "cc8e95b4-c24f-4d68-ba54-8bed76f63930"
+                    )
                 );
             }
             _ => assert!(false),

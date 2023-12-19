@@ -1,8 +1,8 @@
-## About these artworks
+# About these artworks
 
 The original artworks were commissioned and produced by Jesse Irwin (tw: @wizardfortress).
 
-The christmas logo was donated and produced by @ateneatla ( https://github.com/ateneatla/ )
+The christmas logo was donated and produced by [@ateneatla](https://github.com/ateneatla/).
 
 The recursive logo was donated and produced by Pi-Cla
 

@@ -50,18 +50,19 @@ text=Downgrades are not possible. It is critical you know how to backup and rest
 
 <!-- deno-fmt-ignore-end -->
 
-Docker updates by deleting and recreating the instance. All that needs to be preserved is contained
-in your storage volume.
+Docker updates operate by deleting and recreating the container. All state that needs to be
+preserved is within your storage volume.
 
 ```bash
 docker stop <previous instance name>
 ```
 
-You can test that your configuration is correct, and the server should correctly start.
+You can test that your configuration is correct with the new version, and the server should
+correctly start.
 
 ```bash
 docker run --rm -i -t -v kanidmd:/data \
-    kanidm/server:latest /sbin/kanidmd configtest -c /data/server.toml
+    kanidm/server:latest /sbin/kanidmd configtest
 ```
 
 You can then follow through with the upgrade by running the create / run command with your existing
@@ -89,7 +90,9 @@ docker start <previous instance name>
 If you deleted the previous instance, you can recreate it from your preserved tag instead.
 
 ```bash
-docker run -p ports -v volumes kanidm/server:<DATE>
+docker run [Your Arguments Here] -v kanidmd:/data \
+    OTHER_CUSTOM_OPTIONS \
+    kanidm/server:<DATE>
 ```
 
 If the server from your previous version fails to start, you will need to restore from backup.

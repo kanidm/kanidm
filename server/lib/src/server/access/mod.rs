@@ -13,6 +13,7 @@
 //! - the ability to turn an entry into a partial-entry for results send
 //!   requirements (also search).
 
+use hashbrown::HashMap;
 use std::cell::Cell;
 use std::collections::BTreeSet;
 use std::ops::DerefMut;
@@ -31,7 +32,10 @@ use crate::modify::Modify;
 use crate::prelude::*;
 
 use self::profiles::{
-    AccessControlCreate, AccessControlDelete, AccessControlModify, AccessControlSearch,
+    AccessControlCreate, AccessControlCreateResolved, AccessControlDelete,
+    AccessControlDeleteResolved, AccessControlModify, AccessControlModifyResolved,
+    AccessControlReceiver, AccessControlReceiverCondition, AccessControlSearch,
+    AccessControlSearchResolved, AccessControlTarget, AccessControlTargetCondition,
 };
 
 use self::create::{apply_create_access, CreateResult};
@@ -90,6 +94,7 @@ struct AccessControlsInner {
     acps_create: Vec<AccessControlCreate>,
     acps_modify: Vec<AccessControlModify>,
     acps_delete: Vec<AccessControlDelete>,
+    sync_agreements: HashMap<Uuid, BTreeSet<String>>,
     // Oauth2
     // Sync prov
 }
@@ -101,11 +106,58 @@ pub struct AccessControls {
         ARCache<(IdentityId, Filter<FilterValid>), Filter<FilterValidResolved>>,
 }
 
+fn resolve_access_conditions(
+    ident: &Identity,
+    ident_memberof: Option<&BTreeSet<Uuid>>,
+    receiver: &AccessControlReceiver,
+    target: &AccessControlTarget,
+    acp_resolve_filter_cache: &mut ARCacheReadTxn<
+        '_,
+        (IdentityId, Filter<FilterValid>),
+        Filter<FilterValidResolved>,
+        (),
+    >,
+) -> Option<(AccessControlReceiverCondition, AccessControlTargetCondition)> {
+    let receiver_condition = match receiver {
+        AccessControlReceiver::Group(groups) => {
+            let group_check = ident_memberof
+                // Have at least one group allowed.
+                .map(|imo| imo.intersection(groups).next().is_some())
+                .unwrap_or_default();
+
+            if group_check {
+                AccessControlReceiverCondition::GroupChecked
+            } else {
+                // AccessControlReceiverCondition::None
+                return None;
+            }
+        }
+        AccessControlReceiver::EntryManager => AccessControlReceiverCondition::EntryManager,
+        AccessControlReceiver::None => return None,
+        // AccessControlReceiverCondition::None,
+    };
+
+    let target_condition = match &target {
+        AccessControlTarget::Scope(filter) => filter
+            .resolve(ident, None, Some(acp_resolve_filter_cache))
+            .map_err(|e| {
+                admin_error!(?e, "A internal filter/event was passed for resolution!?!?");
+                e
+            })
+            .ok()
+            .map(AccessControlTargetCondition::Scope)?,
+        AccessControlTarget::None => return None,
+    };
+
+    Some((receiver_condition, target_condition))
+}
+
 pub trait AccessControlsTransaction<'a> {
     fn get_search(&self) -> &Vec<AccessControlSearch>;
     fn get_create(&self) -> &Vec<AccessControlCreate>;
     fn get_modify(&self) -> &Vec<AccessControlModify>;
     fn get_delete(&self) -> &Vec<AccessControlDelete>;
+    fn get_sync_agreements(&self) -> &HashMap<Uuid, BTreeSet<String>>;
 
     #[allow(clippy::mut_from_ref)]
     fn get_acp_resolve_filter_cache(
@@ -113,10 +165,7 @@ pub trait AccessControlsTransaction<'a> {
     ) -> &mut ARCacheReadTxn<'a, (IdentityId, Filter<FilterValid>), Filter<FilterValidResolved>, ()>;
 
     #[instrument(level = "debug", name = "access::search_related_acp", skip_all)]
-    fn search_related_acp<'b>(
-        &'b self,
-        ident: &Identity,
-    ) -> Vec<(&'b AccessControlSearch, Filter<FilterValidResolved>)> {
+    fn search_related_acp<'b>(&'b self, ident: &Identity) -> Vec<AccessControlSearchResolved<'b>> {
         let search_state = self.get_search();
         let acp_resolve_filter_cache = self.get_acp_resolve_filter_cache();
 
@@ -146,7 +195,11 @@ pub trait AccessControlsTransaction<'a> {
         } else {
         */
         // else, we calculate this, and then stash/cache the uuids.
-        let related_acp: Vec<(&AccessControlSearch, Filter<FilterValidResolved>)> = search_state
+
+        let ident_memberof = ident.get_memberof();
+
+        // let related_acp: Vec<(&AccessControlSearch, Filter<FilterValidResolved>)> =
+        let related_acp: Vec<AccessControlSearchResolved<'b>> = search_state
             .iter()
             .filter_map(|acs| {
                 // Now resolve the receiver filter
@@ -164,28 +217,19 @@ pub trait AccessControlsTransaction<'a> {
                 // A possible solution is to change the filter resolve function
                 // such that it takes an entry, rather than an event, but that
                 // would create issues in search.
-                if let Some(receiver) = acs.acp.receiver {
-                    if ident.is_memberof(receiver) {
-                        // Now, for each of the acp's that apply to our receiver, resolve their
-                        // related target filters.
-                        acs.acp
-                            .targetscope
-                            .resolve(ident, None, Some(acp_resolve_filter_cache))
-                            .map_err(|e| {
-                                admin_error!(
-                                    ?e,
-                                    "A internal filter/event was passed for resolution!?!?"
-                                );
-                                e
-                            })
-                            .ok()
-                            .map(|f_res| (acs, f_res))
-                    } else {
-                        None
-                    }
-                } else {
-                    None
-                }
+                let (receiver_condition, target_condition) = resolve_access_conditions(
+                    ident,
+                    ident_memberof,
+                    &acs.acp.receiver,
+                    &acs.acp.target,
+                    acp_resolve_filter_cache,
+                )?;
+
+                Some(AccessControlSearchResolved {
+                    acp: acs,
+                    receiver_condition,
+                    target_condition,
+                })
             })
             .collect();
 
@@ -207,7 +251,7 @@ pub trait AccessControlsTransaction<'a> {
         let requested_attrs: BTreeSet<&str> = se.filter_orig.get_attr_set();
 
         // First get the set of acps that apply to this receiver
-        let related_acp: Vec<(&AccessControlSearch, _)> = self.search_related_acp(&se.ident);
+        let related_acp = self.search_related_acp(&se.ident);
 
         // For each entry.
         let entries_is_empty = entries.is_empty();
@@ -261,13 +305,13 @@ pub trait AccessControlsTransaction<'a> {
             .map(|vs| vs.iter().map(|s| s.as_str()).collect());
 
         // Get the relevant acps for this receiver.
-        let related_acp: Vec<(&AccessControlSearch, _)> = self.search_related_acp(&se.ident);
-        let related_acp: Vec<(&AccessControlSearch, _)> = if let Some(r_attrs) = se.attrs.as_ref() {
+        let related_acp = self.search_related_acp(&se.ident);
+        let related_acp: Vec<_> = if let Some(r_attrs) = se.attrs.as_ref() {
             // If the acp doesn't overlap with our requested attrs, there is no point in
             // testing it!
             related_acp
                 .into_iter()
-                .filter(|(acs, _)| !acs.attrs.is_disjoint(r_attrs))
+                .filter(|acs| !acs.acp.attrs.is_disjoint(r_attrs))
                 .collect()
         } else {
             related_acp
@@ -279,16 +323,10 @@ pub trait AccessControlsTransaction<'a> {
             .into_iter()
             .filter_map(|e| {
                 match apply_search_access(&se.ident, related_acp.as_slice(), &e) {
-                    SearchResult::Denied => None,
-                    SearchResult::Grant => {
-                        if cfg!(test) {
-                            // We only allow this during tests.
-                            // No properly written access module should allow
-                            // unbounded attribute read!
-                            Some(unsafe { e.as_ref().clone().into_reduced() })
-                        } else {
-                            None
-                        }
+                    SearchResult::Denied | SearchResult::Grant => {
+                        // No properly written access module should allow
+                        // unbounded attribute read!
+                        None
                     }
                     SearchResult::Allow(allowed_attrs) => {
                         // The allow set constrained.
@@ -332,39 +370,31 @@ pub trait AccessControlsTransaction<'a> {
     }
 
     #[instrument(level = "debug", name = "access::modify_related_acp", skip_all)]
-    fn modify_related_acp<'b>(
-        &'b self,
-        ident: &Identity,
-    ) -> Vec<(&'b AccessControlModify, Filter<FilterValidResolved>)> {
+    fn modify_related_acp<'b>(&'b self, ident: &Identity) -> Vec<AccessControlModifyResolved<'b>> {
         // Some useful references we'll use for the remainder of the operation
         let modify_state = self.get_modify();
         let acp_resolve_filter_cache = self.get_acp_resolve_filter_cache();
 
+        let ident_memberof = ident.get_memberof();
+
         // Find the acps that relate to the caller, and compile their related
         // target filters.
-        let related_acp: Vec<(&AccessControlModify, _)> = modify_state
+        let related_acp: Vec<_> = modify_state
             .iter()
             .filter_map(|acs| {
-                if let Some(receiver) = acs.acp.receiver {
-                    if ident.is_memberof(receiver) {
-                        acs.acp
-                            .targetscope
-                            .resolve(ident, None, Some(acp_resolve_filter_cache))
-                            .map_err(|e| {
-                                admin_error!(
-                                    "A internal filter/event was passed for resolution!?!? {:?}",
-                                    e
-                                );
-                                e
-                            })
-                            .ok()
-                            .map(|f_res| (acs, f_res))
-                    } else {
-                        None
-                    }
-                } else {
-                    None
-                }
+                let (receiver_condition, target_condition) = resolve_access_conditions(
+                    ident,
+                    ident_memberof,
+                    &acs.acp.receiver,
+                    &acs.acp.target,
+                    acp_resolve_filter_cache,
+                )?;
+
+                Some(AccessControlModifyResolved {
+                    acp: acs,
+                    receiver_condition,
+                    target_condition,
+                })
             })
             .collect();
 
@@ -381,16 +411,16 @@ pub trait AccessControlsTransaction<'a> {
         let disallow = me
             .modlist
             .iter()
-            .any(|m| matches!(m, Modify::Purged(a) if a == "class"));
+            .any(|m| matches!(m, Modify::Purged(a) if a == Attribute::Class.as_ref()));
 
         if disallow {
-            security_access!("Disallowing purge class in modification");
+            security_access!("Disallowing purge {} in modification", Attribute::Class);
             return Ok(false);
         }
 
         // Find the acps that relate to the caller, and compile their related
         // target filters.
-        let related_acp: Vec<(&AccessControlModify, _)> = self.modify_related_acp(&me.ident);
+        let related_acp: Vec<_> = self.modify_related_acp(&me.ident);
 
         // build two sets of "requested pres" and "requested rem"
         let requested_pres: BTreeSet<&str> = me
@@ -420,7 +450,7 @@ pub trait AccessControlsTransaction<'a> {
             .iter()
             .filter_map(|m| match m {
                 Modify::Present(a, v) => {
-                    if a.as_str() == "class" {
+                    if a == Attribute::Class.as_ref() {
                         // Here we have an option<&str> which could mean there is a risk of
                         // a malicious entity attempting to trick us by masking class mods
                         // in non-iutf8 types. However, the server first won't respect their
@@ -433,7 +463,7 @@ pub trait AccessControlsTransaction<'a> {
                     }
                 }
                 Modify::Removed(a, v) => {
-                    if a.as_str() == "class" {
+                    if a == Attribute::Class.as_ref() {
                         v.to_str()
                     } else {
                         None
@@ -447,8 +477,10 @@ pub trait AccessControlsTransaction<'a> {
         debug!(?requested_rem, "Requested remove set");
         debug!(?requested_classes, "Requested class set");
 
+        let sync_agmts = self.get_sync_agreements();
+
         let r = entries.iter().all(|e| {
-            match apply_modify_access(&me.ident, related_acp.as_slice(), e) {
+            match apply_modify_access(&me.ident, related_acp.as_slice(), sync_agmts, e) {
                 ModifyResult::Denied => false,
                 ModifyResult::Grant => true,
                 ModifyResult::Allow { pres, rem, cls } => {
@@ -504,15 +536,13 @@ pub trait AccessControlsTransaction<'a> {
     ) -> Result<bool, OperationError> {
         // Find the acps that relate to the caller, and compile their related
         // target filters.
-        let related_acp: Vec<(&AccessControlModify, _)> = self.modify_related_acp(&me.ident);
+        let related_acp = self.modify_related_acp(&me.ident);
 
         let r = entries.iter().all(|e| {
             // Due to how batch mod works, we have to check the modlist *per entry* rather
             // than as a whole.
 
-            let modlist = if let Some(mlist) = me.modset.get(&e.get_uuid()) {
-                mlist
-            } else {
+            let Some(modlist) = me.modset.get(&e.get_uuid()) else {
                 security_access!(
                     "modlist not present for {}, failing operation.",
                     e.get_uuid()
@@ -522,10 +552,10 @@ pub trait AccessControlsTransaction<'a> {
 
             let disallow = modlist
                 .iter()
-                .any(|m| matches!(m, Modify::Purged(a) if a == "class"));
+                .any(|m| matches!(m, Modify::Purged(a) if a == Attribute::Class.as_ref()));
 
             if disallow {
-                security_access!("Disallowing purge class in modification");
+                security_access!("Disallowing purge in modification");
                 return false;
             }
 
@@ -554,7 +584,7 @@ pub trait AccessControlsTransaction<'a> {
                 .iter()
                 .filter_map(|m| match m {
                     Modify::Present(a, v) => {
-                        if a.as_str() == "class" {
+                        if a == Attribute::Class.as_ref() {
                             // Here we have an option<&str> which could mean there is a risk of
                             // a malicious entity attempting to trick us by masking class mods
                             // in non-iutf8 types. However, the server first won't respect their
@@ -567,7 +597,7 @@ pub trait AccessControlsTransaction<'a> {
                         }
                     }
                     Modify::Removed(a, v) => {
-                        if a.as_str() == "class" {
+                        if a == Attribute::Class.as_ref() {
                             v.to_str()
                         } else {
                             None
@@ -581,7 +611,9 @@ pub trait AccessControlsTransaction<'a> {
             debug!(?requested_rem, "Requested remove set");
             debug!(?requested_classes, "Requested class set");
 
-            match apply_modify_access(&me.ident, related_acp.as_slice(), e) {
+            let sync_agmts = self.get_sync_agreements();
+
+            match apply_modify_access(&me.ident, related_acp.as_slice(), sync_agmts, e) {
                 ModifyResult::Denied => false,
                 ModifyResult::Grant => true,
                 ModifyResult::Allow { pres, rem, cls } => {
@@ -635,30 +667,25 @@ pub trait AccessControlsTransaction<'a> {
         let create_state = self.get_create();
         let acp_resolve_filter_cache = self.get_acp_resolve_filter_cache();
 
+        let ident_memberof = ce.ident.get_memberof();
+
         // Find the acps that relate to the caller.
-        let related_acp: Vec<(&AccessControlCreate, _)> = create_state
+        let related_acp: Vec<_> = create_state
             .iter()
             .filter_map(|acs| {
-                if let Some(receiver) = acs.acp.receiver {
-                    if ce.ident.is_memberof(receiver) {
-                        acs.acp
-                            .targetscope
-                            .resolve(&ce.ident, None, Some(acp_resolve_filter_cache))
-                            .map_err(|e| {
-                                admin_error!(
-                                    "A internal filter/event was passed for resolution!?!? {:?}",
-                                    e
-                                );
-                                e
-                            })
-                            .ok()
-                            .map(|f_res| (acs, f_res))
-                    } else {
-                        None
-                    }
-                } else {
-                    None
-                }
+                let (receiver_condition, target_condition) = resolve_access_conditions(
+                    &ce.ident,
+                    ident_memberof,
+                    &acs.acp.receiver,
+                    &acs.acp.target,
+                    acp_resolve_filter_cache,
+                )?;
+
+                Some(AccessControlCreateResolved {
+                    acp: acs,
+                    receiver_condition,
+                    target_condition,
+                })
             })
             .collect();
 
@@ -680,37 +707,29 @@ pub trait AccessControlsTransaction<'a> {
     }
 
     #[instrument(level = "debug", name = "access::delete_related_acp", skip_all)]
-    fn delete_related_acp<'b>(
-        &'b self,
-        ident: &Identity,
-    ) -> Vec<(&'b AccessControlDelete, Filter<FilterValidResolved>)> {
+    fn delete_related_acp<'b>(&'b self, ident: &Identity) -> Vec<AccessControlDeleteResolved<'b>> {
         // Some useful references we'll use for the remainder of the operation
         let delete_state = self.get_delete();
         let acp_resolve_filter_cache = self.get_acp_resolve_filter_cache();
 
-        let related_acp: Vec<(&AccessControlDelete, _)> = delete_state
+        let ident_memberof = ident.get_memberof();
+
+        let related_acp: Vec<_> = delete_state
             .iter()
             .filter_map(|acs| {
-                if let Some(receiver) = acs.acp.receiver {
-                    if ident.is_memberof(receiver) {
-                        acs.acp
-                            .targetscope
-                            .resolve(ident, None, Some(acp_resolve_filter_cache))
-                            .map_err(|e| {
-                                admin_error!(
-                                    "A internal filter/event was passed for resolution!?!? {:?}",
-                                    e
-                                );
-                                e
-                            })
-                            .ok()
-                            .map(|f_res| (acs, f_res))
-                    } else {
-                        None
-                    }
-                } else {
-                    None
-                }
+                let (receiver_condition, target_condition) = resolve_access_conditions(
+                    ident,
+                    ident_memberof,
+                    &acs.acp.receiver,
+                    &acs.acp.target,
+                    acp_resolve_filter_cache,
+                )?;
+
+                Some(AccessControlDeleteResolved {
+                    acp: acs,
+                    receiver_condition,
+                    target_condition,
+                })
             })
             .collect();
 
@@ -776,21 +795,24 @@ pub trait AccessControlsTransaction<'a> {
 
         // == search ==
         // Get the relevant acps for this receiver.
-        let search_related_acp: Vec<(&AccessControlSearch, _)> = self.search_related_acp(ident);
-        let search_related_acp: Vec<(&AccessControlSearch, _)> =
-            if let Some(r_attrs) = attrs.as_ref() {
-                search_related_acp
-                    .into_iter()
-                    .filter(|(acs, _)| !acs.attrs.is_disjoint(r_attrs))
-                    .collect()
-            } else {
-                search_related_acp
-            };
+        let search_related_acp = self.search_related_acp(ident);
+        // Trim any search rule that doesn't provide attributes related to the request.
+        let search_related_acp = if let Some(r_attrs) = attrs.as_ref() {
+            search_related_acp
+                .into_iter()
+                .filter(|acs| !acs.acp.attrs.is_disjoint(r_attrs))
+                .collect()
+        } else {
+            // None here means all attrs requested.
+            search_related_acp
+        };
 
         // == modify ==
 
         let modify_related_acp = self.modify_related_acp(ident);
         let delete_related_acp = self.delete_related_acp(ident);
+
+        let sync_agmts = self.get_sync_agreements();
 
         let effective_permissions: Vec<_> = entries
             .iter()
@@ -807,31 +829,28 @@ pub trait AccessControlsTransaction<'a> {
                     };
 
                 // == modify ==
-
-                let (modify_pres, modify_rem, modify_class) =
-                    match apply_modify_access(ident, modify_related_acp.as_slice(), e) {
-                        ModifyResult::Denied => (Access::Denied, Access::Denied, Access::Denied),
-                        ModifyResult::Grant => (Access::Grant, Access::Grant, Access::Grant),
-                        ModifyResult::Allow { pres, rem, cls } => (
-                            Access::Allow(pres.into_iter().map(|s| s.into()).collect()),
-                            Access::Allow(rem.into_iter().map(|s| s.into()).collect()),
-                            Access::Allow(cls.into_iter().map(|s| s.into()).collect()),
-                        ),
-                    };
+                let (modify_pres, modify_rem, modify_class) = match apply_modify_access(
+                    ident,
+                    modify_related_acp.as_slice(),
+                    sync_agmts,
+                    e,
+                ) {
+                    ModifyResult::Denied => (Access::Denied, Access::Denied, Access::Denied),
+                    ModifyResult::Grant => (Access::Grant, Access::Grant, Access::Grant),
+                    ModifyResult::Allow { pres, rem, cls } => (
+                        Access::Allow(pres.into_iter().map(|s| s.into()).collect()),
+                        Access::Allow(rem.into_iter().map(|s| s.into()).collect()),
+                        Access::Allow(cls.into_iter().map(|s| s.into()).collect()),
+                    ),
+                };
 
                 // == delete ==
-                let delete = delete_related_acp.iter().any(|(acd, f_res)| {
-                    if e.entry_match_no_index(f_res) {
-                        security_access!(
-                            entry_uuid = ?e.get_uuid(),
-                            acs = %acd.acp.name,
-                            "entry matches acd"
-                        );
-                        true
-                    } else {
-                        false
-                    }
-                });
+                let delete_status = apply_delete_access(ident, delete_related_acp.as_slice(), e);
+
+                let delete = match delete_status {
+                    DeleteResult::Denied => false,
+                    DeleteResult::Grant => true,
+                };
 
                 AccessEffectivePermission {
                     target: e.get_uuid(),
@@ -895,6 +914,13 @@ impl<'a> AccessControlsWriteTransaction<'a> {
         Ok(())
     }
 
+    pub fn update_sync_agreements(&mut self, mut sync_agreements: HashMap<Uuid, BTreeSet<String>>) {
+        std::mem::swap(
+            &mut sync_agreements,
+            &mut self.inner.deref_mut().sync_agreements,
+        );
+    }
+
     pub fn commit(self) -> Result<(), OperationError> {
         self.inner.commit();
 
@@ -917,6 +943,10 @@ impl<'a> AccessControlsTransaction<'a> for AccessControlsWriteTransaction<'a> {
 
     fn get_delete(&self) -> &Vec<AccessControlDelete> {
         &self.inner.acps_delete
+    }
+
+    fn get_sync_agreements(&self) -> &HashMap<Uuid, BTreeSet<String>> {
+        &self.inner.sync_agreements
     }
 
     fn get_acp_resolve_filter_cache(
@@ -969,6 +999,10 @@ impl<'a> AccessControlsTransaction<'a> for AccessControlsReadTransaction<'a> {
         &self.inner.acps_delete
     }
 
+    fn get_sync_agreements(&self) -> &HashMap<Uuid, BTreeSet<String>> {
+        &self.inner.sync_agreements
+    }
+
     fn get_acp_resolve_filter_cache(
         &self,
     ) -> &mut ARCacheReadTxn<'a, (IdentityId, Filter<FilterValid>), Filter<FilterValidResolved>, ()>
@@ -999,6 +1033,7 @@ impl Default for AccessControls {
                 acps_create: Vec::new(),
                 acps_modify: Vec::new(),
                 acps_delete: Vec::new(),
+                sync_agreements: HashMap::default(),
             }),
             // Allow the expect, if this fails it represents a programming/development
             // failure.
@@ -1036,6 +1071,7 @@ impl AccessControls {
 
 #[cfg(test)]
 mod tests {
+    use hashbrown::HashMap;
     use std::collections::BTreeSet;
     use std::sync::Arc;
 
@@ -1044,7 +1080,7 @@ mod tests {
     use super::{
         profiles::{
             AccessControlCreate, AccessControlDelete, AccessControlModify, AccessControlProfile,
-            AccessControlSearch,
+            AccessControlSearch, AccessControlTarget,
         },
         Access, AccessControls, AccessControlsTransaction, AccessEffectivePermission,
     };
@@ -1056,24 +1092,24 @@ mod tests {
     const UUID_TEST_GROUP_2: Uuid = uuid::uuid!("acae81d6-5ea7-4bd8-8f7f-fcec4c0dd647");
 
     lazy_static! {
-        pub static ref E_TEST_ACCOUNT_1: Arc<EntrySealedCommitted> = Arc::new(unsafe {
+        pub static ref E_TEST_ACCOUNT_1: Arc<EntrySealedCommitted> = Arc::new(
             entry_init!(
-                ("class", Value::new_class("object")),
-                ("name", Value::new_iname("test_account_1")),
-                ("uuid", Value::Uuid(UUID_TEST_ACCOUNT_1)),
-                ("memberof", Value::Refer(UUID_TEST_GROUP_1))
+                (Attribute::Class, EntryClass::Object.to_value()),
+                (Attribute::Name, Value::new_iname("test_account_1")),
+                (Attribute::Uuid, Value::Uuid(UUID_TEST_ACCOUNT_1)),
+                (Attribute::MemberOf, Value::Refer(UUID_TEST_GROUP_1))
             )
             .into_sealed_committed()
-        });
-        pub static ref E_TEST_ACCOUNT_2: Arc<EntrySealedCommitted> = Arc::new(unsafe {
+        );
+        pub static ref E_TEST_ACCOUNT_2: Arc<EntrySealedCommitted> = Arc::new(
             entry_init!(
-                ("class", Value::new_class("object")),
-                ("name", Value::new_iname("test_account_1")),
-                ("uuid", Value::Uuid(UUID_TEST_ACCOUNT_2)),
-                ("memberof", Value::Refer(UUID_TEST_GROUP_2))
+                (Attribute::Class, EntryClass::Object.to_value()),
+                (Attribute::Name, Value::new_iname("test_account_1")),
+                (Attribute::Uuid, Value::Uuid(UUID_TEST_ACCOUNT_2)),
+                (Attribute::MemberOf, Value::Refer(UUID_TEST_GROUP_2))
             )
             .into_sealed_committed()
-        });
+        );
     }
 
     macro_rules! acp_from_entry_err {
@@ -1083,9 +1119,10 @@ mod tests {
             $type:ty
         ) => {{
             let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str($e);
-            let ev1 = unsafe { e1.into_sealed_committed() };
+            let ev1 = e1.into_sealed_committed();
 
             let r1 = <$type>::try_from($qs, &ev1);
+            error!(?r1);
             assert!(r1.is_err());
         }};
     }
@@ -1096,7 +1133,7 @@ mod tests {
             $e:expr,
             $type:ty
         ) => {{
-            let ev1 = unsafe { $e.into_sealed_committed() };
+            let ev1 = $e.into_sealed_committed();
 
             let r1 = <$type>::try_from($qs, &ev1);
             assert!(r1.is_ok());
@@ -1132,7 +1169,7 @@ mod tests {
             &mut qs_write,
             r#"{
                     "attrs": {
-                        "class": ["object", "access_control_profile"],
+                        "class": ["object", "access_control_profile", "access_control_receiver_g", "access_control_target_scope"],
                         "name": ["acp_invalid"],
                         "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"]
                     }
@@ -1144,7 +1181,7 @@ mod tests {
             &mut qs_write,
             r#"{
                     "attrs": {
-                        "class": ["object", "access_control_profile"],
+                        "class": ["object", "access_control_profile", "access_control_receiver_g", "access_control_target_scope"],
                         "name": ["acp_invalid"],
                         "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"],
                         "acp_receiver_group": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"],
@@ -1158,19 +1195,22 @@ mod tests {
         acp_from_entry_ok!(
             &mut qs_write,
             entry_init!(
-                ("class", Value::new_class("object")),
-                ("class", Value::new_class("access_control_profile")),
-                ("name", Value::new_iname("acp_valid")),
+                (Attribute::Class, EntryClass::Object.to_value()),
                 (
-                    "uuid",
+                    Attribute::Class,
+                    EntryClass::AccessControlProfile.to_value()
+                ),
+                (Attribute::Name, Value::new_iname("acp_valid")),
+                (
+                    Attribute::Uuid,
                     Value::Uuid(uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
                 ),
                 (
-                    "acp_receiver_group",
+                    Attribute::AcpReceiverGroup,
                     Value::Refer(uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
                 ),
                 (
-                    "acp_targetscope",
+                    Attribute::AcpTargetScope,
                     Value::new_json_filter_s("{\"eq\":[\"name\",\"a\"]}").expect("filter")
                 )
             ),
@@ -1201,20 +1241,23 @@ mod tests {
         acp_from_entry_ok!(
             &mut qs_write,
             entry_init!(
-                ("class", Value::new_class("object")),
-                ("class", Value::new_class("access_control_profile")),
-                ("class", Value::new_class("access_control_delete")),
-                ("name", Value::new_iname("acp_valid")),
+                (Attribute::Class, EntryClass::Object.to_value()),
                 (
-                    "uuid",
+                    Attribute::Class,
+                    EntryClass::AccessControlProfile.to_value()
+                ),
+                (Attribute::Class, EntryClass::AccessControlDelete.to_value()),
+                (Attribute::Name, Value::new_iname("acp_valid")),
+                (
+                    Attribute::Uuid,
                     Value::Uuid(uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
                 ),
                 (
-                    "acp_receiver_group",
+                    Attribute::AcpReceiverGroup,
                     Value::Refer(uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
                 ),
                 (
-                    "acp_targetscope",
+                    Attribute::AcpTargetScope,
                     Value::new_json_filter_s("{\"eq\":[\"name\",\"a\"]}").expect("filter")
                 )
             ),
@@ -1284,24 +1327,27 @@ mod tests {
         acp_from_entry_ok!(
             &mut qs_write,
             entry_init!(
-                ("class", Value::new_class("object")),
-                ("class", Value::new_class("access_control_profile")),
-                ("class", Value::new_class("access_control_search")),
-                ("name", Value::new_iname("acp_valid")),
+                (Attribute::Class, EntryClass::Object.to_value()),
                 (
-                    "uuid",
+                    Attribute::Class,
+                    EntryClass::AccessControlProfile.to_value()
+                ),
+                (Attribute::Class, EntryClass::AccessControlSearch.to_value()),
+                (Attribute::Name, Value::new_iname("acp_valid")),
+                (
+                    Attribute::Uuid,
                     Value::Uuid(uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
                 ),
                 (
-                    "acp_receiver_group",
+                    Attribute::AcpReceiverGroup,
                     Value::Refer(uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
                 ),
                 (
-                    "acp_targetscope",
+                    Attribute::AcpTargetScope,
                     Value::new_json_filter_s("{\"eq\":[\"name\",\"a\"]}").expect("filter")
                 ),
-                ("acp_search_attr", Value::new_iutf8("name")),
-                ("acp_search_attr", Value::new_iutf8("class"))
+                (Attribute::AcpSearchAttr, Attribute::Name.to_value()),
+                (Attribute::AcpSearchAttr, Value::new_iutf8("class"))
             ),
             AccessControlSearch
         );
@@ -1334,20 +1380,23 @@ mod tests {
         acp_from_entry_ok!(
             &mut qs_write,
             entry_init!(
-                ("class", Value::new_class("object")),
-                ("class", Value::new_class("access_control_profile")),
-                ("class", Value::new_class("access_control_modify")),
-                ("name", Value::new_iname("acp_valid")),
+                (Attribute::Class, EntryClass::Object.to_value()),
                 (
-                    "uuid",
+                    Attribute::Class,
+                    EntryClass::AccessControlProfile.to_value()
+                ),
+                (Attribute::Class, EntryClass::AccessControlModify.to_value()),
+                (Attribute::Name, Value::new_iname("acp_valid")),
+                (
+                    Attribute::Uuid,
                     Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
                 ),
                 (
-                    "acp_receiver_group",
+                    Attribute::AcpReceiverGroup,
                     Value::Refer(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
                 ),
                 (
-                    "acp_targetscope",
+                    Attribute::AcpTargetScope,
                     Value::new_json_filter_s("{\"eq\":[\"name\",\"a\"]}").expect("filter")
                 )
             ),
@@ -1357,25 +1406,28 @@ mod tests {
         acp_from_entry_ok!(
             &mut qs_write,
             entry_init!(
-                ("class", Value::new_class("object")),
-                ("class", Value::new_class("access_control_profile")),
-                ("class", Value::new_class("access_control_modify")),
-                ("name", Value::new_iname("acp_valid")),
+                (Attribute::Class, EntryClass::Object.to_value()),
                 (
-                    "uuid",
+                    Attribute::Class,
+                    EntryClass::AccessControlProfile.to_value()
+                ),
+                (Attribute::Class, EntryClass::AccessControlModify.to_value()),
+                (Attribute::Name, Value::new_iname("acp_valid")),
+                (
+                    Attribute::Uuid,
                     Value::Uuid(uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
                 ),
                 (
-                    "acp_receiver_group",
+                    Attribute::AcpReceiverGroup,
                     Value::Refer(uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
                 ),
                 (
-                    "acp_targetscope",
+                    Attribute::AcpTargetScope,
                     Value::new_json_filter_s("{\"eq\":[\"name\",\"a\"]}").expect("filter")
                 ),
-                ("acp_modify_removedattr", Value::new_iutf8("name")),
-                ("acp_modify_presentattr", Value::new_iutf8("name")),
-                ("acp_modify_class", Value::new_iutf8("object"))
+                (Attribute::AcpModifyRemovedAttr, Attribute::Name.to_value()),
+                (Attribute::AcpModifyPresentAttr, Attribute::Name.to_value()),
+                (Attribute::AcpModifyClass, EntryClass::Object.to_value())
             ),
             AccessControlModify
         );
@@ -1407,20 +1459,23 @@ mod tests {
         acp_from_entry_ok!(
             &mut qs_write,
             entry_init!(
-                ("class", Value::new_class("object")),
-                ("class", Value::new_class("access_control_profile")),
-                ("class", Value::new_class("access_control_create")),
-                ("name", Value::new_iname("acp_valid")),
+                (Attribute::Class, EntryClass::Object.to_value()),
                 (
-                    "uuid",
+                    Attribute::Class,
+                    EntryClass::AccessControlProfile.to_value()
+                ),
+                (Attribute::Class, EntryClass::AccessControlCreate.to_value()),
+                (Attribute::Name, Value::new_iname("acp_valid")),
+                (
+                    Attribute::Uuid,
                     Value::Uuid(uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
                 ),
                 (
-                    "acp_receiver_group",
+                    Attribute::AcpReceiverGroup,
                     Value::Refer(uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
                 ),
                 (
-                    "acp_targetscope",
+                    Attribute::AcpTargetScope,
                     Value::new_json_filter_s("{\"eq\":[\"name\",\"a\"]}").expect("filter")
                 )
             ),
@@ -1430,24 +1485,27 @@ mod tests {
         acp_from_entry_ok!(
             &mut qs_write,
             entry_init!(
-                ("class", Value::new_class("object")),
-                ("class", Value::new_class("access_control_profile")),
-                ("class", Value::new_class("access_control_create")),
-                ("name", Value::new_iname("acp_valid")),
+                (Attribute::Class, EntryClass::Object.to_value()),
                 (
-                    "uuid",
+                    Attribute::Class,
+                    EntryClass::AccessControlProfile.to_value()
+                ),
+                (Attribute::Class, EntryClass::AccessControlCreate.to_value()),
+                (Attribute::Name, Value::new_iname("acp_valid")),
+                (
+                    Attribute::Uuid,
                     Value::Uuid(uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
                 ),
                 (
-                    "acp_receiver_group",
+                    Attribute::AcpReceiverGroup,
                     Value::Refer(uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
                 ),
                 (
-                    "acp_targetscope",
+                    Attribute::AcpTargetScope,
                     Value::new_json_filter_s("{\"eq\":[\"name\",\"a\"]}").expect("filter")
                 ),
-                ("acp_create_attr", Value::new_iutf8("name")),
-                ("acp_create_class", Value::new_iutf8("object"))
+                (Attribute::AcpCreateAttr, Attribute::Name.to_value()),
+                (Attribute::AcpCreateClass, EntryClass::Object.to_value())
             ),
             AccessControlCreate
         );
@@ -1462,31 +1520,34 @@ mod tests {
         let mut qs_write = qs.write(duration_from_epoch_now()).await;
 
         let e = entry_init!(
-            ("class", Value::new_class("object")),
-            ("class", Value::new_class("access_control_profile")),
-            ("class", Value::new_class("access_control_create")),
-            ("class", Value::new_class("access_control_delete")),
-            ("class", Value::new_class("access_control_modify")),
-            ("class", Value::new_class("access_control_search")),
-            ("name", Value::new_iname("acp_valid")),
+            (Attribute::Class, EntryClass::Object.to_value()),
             (
-                "uuid",
+                Attribute::Class,
+                EntryClass::AccessControlProfile.to_value()
+            ),
+            (Attribute::Class, EntryClass::AccessControlCreate.to_value()),
+            (Attribute::Class, EntryClass::AccessControlDelete.to_value()),
+            (Attribute::Class, EntryClass::AccessControlModify.to_value()),
+            (Attribute::Class, EntryClass::AccessControlSearch.to_value()),
+            (Attribute::Name, Value::new_iname("acp_valid")),
+            (
+                Attribute::Uuid,
                 Value::Uuid(uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
             ),
             (
-                "acp_receiver_group",
+                Attribute::AcpReceiverGroup,
                 Value::Refer(uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
             ),
             (
-                "acp_targetscope",
+                Attribute::AcpTargetScope,
                 Value::new_json_filter_s("{\"eq\":[\"name\",\"a\"]}").expect("filter")
             ),
-            ("acp_search_attr", Value::new_iutf8("name")),
-            ("acp_create_class", Value::new_iutf8("class")),
-            ("acp_create_attr", Value::new_iutf8("name")),
-            ("acp_modify_removedattr", Value::new_iutf8("name")),
-            ("acp_modify_presentattr", Value::new_iutf8("name")),
-            ("acp_modify_class", Value::new_iutf8("object"))
+            (Attribute::AcpSearchAttr, Attribute::Name.to_value()),
+            (Attribute::AcpCreateClass, EntryClass::Class.to_value()),
+            (Attribute::AcpCreateAttr, Attribute::Name.to_value()),
+            (Attribute::AcpModifyRemovedAttr, Attribute::Name.to_value()),
+            (Attribute::AcpModifyPresentAttr, Attribute::Name.to_value()),
+            (Attribute::AcpModifyClass, EntryClass::Object.to_value())
         );
 
         acp_from_entry_ok!(&mut qs_write, e.clone(), AccessControlCreate);
@@ -1539,10 +1600,8 @@ mod tests {
                 .expect("operation failed");
 
             // Help the type checker for the expect set.
-            let expect_set: Vec<Entry<EntryReduced, EntryCommitted>> = $expect
-                .into_iter()
-                .map(|e| unsafe { e.into_reduced() })
-                .collect();
+            let expect_set: Vec<Entry<EntryReduced, EntryCommitted>> =
+                $expect.into_iter().map(|e| e.into_reduced()).collect();
 
             debug!("expect --> {:?}", expect_set);
             debug!("result --> {:?}", reduced);
@@ -1554,7 +1613,7 @@ mod tests {
     #[test]
     fn test_access_internal_search() {
         // Test that an internal search bypasses ACS
-        let se = unsafe { SearchEvent::new_internal_invalid(filter!(f_pres("class"))) };
+        let se = SearchEvent::new_internal_invalid(filter!(f_pres(Attribute::Class)));
 
         let expect = vec![E_TEST_ACCOUNT_1.clone()];
         let entries = vec![E_TEST_ACCOUNT_1.clone()];
@@ -1562,15 +1621,13 @@ mod tests {
         // This acp basically is "allow access to stuff, but not this".
         test_acp_search!(
             &se,
-            vec![unsafe {
-                AccessControlSearch::from_raw(
-                    "test_acp",
-                    Uuid::new_v4(),
-                    UUID_TEST_GROUP_1,
-                    filter_valid!(f_pres("nomatchy")), // apply to none - ie no allowed results
-                    "name", // allow to this attr, but we don't eval this.
-                )
-            }],
+            vec![AccessControlSearch::from_raw(
+                "test_acp",
+                Uuid::new_v4(),
+                UUID_TEST_GROUP_1,
+                filter_valid!(f_pres(Attribute::NonExist)), // apply to none - ie no allowed results
+                Attribute::Name.as_ref(), // allow to this attr, but we don't eval this.
+            )],
             entries,
             expect
         );
@@ -1579,40 +1636,37 @@ mod tests {
     #[test]
     fn test_access_enforce_search() {
         // Test that entries from a search are reduced by acps
-        let ev1 = unsafe { E_TESTPERSON_1.clone().into_sealed_committed() };
-        let ev2 = unsafe { E_TESTPERSON_2.clone().into_sealed_committed() };
+        let ev1 = E_TESTPERSON_1.clone().into_sealed_committed();
+        let ev2 = E_TESTPERSON_2.clone().into_sealed_committed();
 
         let r_set = vec![Arc::new(ev1.clone()), Arc::new(ev2)];
 
-        let se_a = unsafe {
-            SearchEvent::new_impersonate_entry(
-                E_TEST_ACCOUNT_1.clone(),
-                filter_all!(f_pres("name")),
-            )
-        };
+        let se_a = SearchEvent::new_impersonate_entry(
+            E_TEST_ACCOUNT_1.clone(),
+            filter_all!(f_pres(Attribute::Name)),
+        );
         let ex_a = vec![Arc::new(ev1)];
 
-        let se_b = unsafe {
-            SearchEvent::new_impersonate_entry(
-                E_TEST_ACCOUNT_2.clone(),
-                filter_all!(f_pres("name")),
-            )
-        };
+        let se_b = SearchEvent::new_impersonate_entry(
+            E_TEST_ACCOUNT_2.clone(),
+            filter_all!(f_pres(Attribute::Name)),
+        );
         let ex_b = vec![];
 
-        let acp = unsafe {
-            AccessControlSearch::from_raw(
-                "test_acp",
-                Uuid::new_v4(),
-                // apply to admin only
-                UUID_TEST_GROUP_1,
-                // Allow admin to read only testperson1
-                filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
-                // In that read, admin may only view the "name" attribute, or query on
-                // the name attribute. Any other query (should be) rejected.
-                "name",
-            )
-        };
+        let acp = AccessControlSearch::from_raw(
+            "test_acp",
+            Uuid::new_v4(),
+            // apply to admin only
+            UUID_TEST_GROUP_1,
+            // Allow admin to read only testperson1
+            filter_valid!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
+            // In that read, admin may only view the "name" attribute, or query on
+            // the name attribute. Any other query (should be) rejected.
+            Attribute::Name.as_ref(),
+        );
 
         // Check the admin search event
         test_acp_search!(&se_a, vec![acp.clone()], r_set.clone(), ex_a);
@@ -1625,39 +1679,36 @@ mod tests {
     fn test_access_enforce_scope_search() {
         sketching::test_init();
         // Test that identities are bound by their access scope.
-        let ev1 = unsafe { E_TESTPERSON_1.clone().into_sealed_committed() };
+        let ev1 = E_TESTPERSON_1.clone().into_sealed_committed();
 
         let ex_some = vec![Arc::new(ev1.clone())];
 
         let r_set = vec![Arc::new(ev1)];
 
-        let se_ro = unsafe {
-            SearchEvent::new_impersonate_identity(
-                Identity::from_impersonate_entry_readonly(E_TEST_ACCOUNT_1.clone()),
-                filter_all!(f_pres("name")),
-            )
-        };
+        let se_ro = SearchEvent::new_impersonate_identity(
+            Identity::from_impersonate_entry_readonly(E_TEST_ACCOUNT_1.clone()),
+            filter_all!(f_pres(Attribute::Name)),
+        );
 
-        let se_rw = unsafe {
-            SearchEvent::new_impersonate_identity(
-                Identity::from_impersonate_entry_readwrite(E_TEST_ACCOUNT_1.clone()),
-                filter_all!(f_pres("name")),
-            )
-        };
+        let se_rw = SearchEvent::new_impersonate_identity(
+            Identity::from_impersonate_entry_readwrite(E_TEST_ACCOUNT_1.clone()),
+            filter_all!(f_pres(Attribute::Name)),
+        );
 
-        let acp = unsafe {
-            AccessControlSearch::from_raw(
-                "test_acp",
-                Uuid::new_v4(),
-                // apply to admin only
-                UUID_TEST_GROUP_1,
-                // Allow admin to read only testperson1
-                filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
-                // In that read, admin may only view the "name" attribute, or query on
-                // the name attribute. Any other query (should be) rejected.
-                "name",
-            )
-        };
+        let acp = AccessControlSearch::from_raw(
+            "test_acp",
+            Uuid::new_v4(),
+            // apply to admin only
+            UUID_TEST_GROUP_1,
+            // Allow admin to read only testperson1
+            filter_valid!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
+            // In that read, admin may only view the "name" attribute, or query on
+            // the name attribute. Any other query (should be) rejected.
+            Attribute::Name.as_ref(),
+        );
 
         // Check the admin search event
         test_acp_search!(&se_ro, vec![acp.clone()], r_set.clone(), ex_some);
@@ -1670,33 +1721,32 @@ mod tests {
         // Test that in ident only mode that all attrs are always denied. The op should already have
         // "nothing to do" based on search_filter_entries, but we do the "right thing" anyway.
 
-        let ev1 = unsafe { E_TESTPERSON_1.clone().into_sealed_committed() };
+        let ev1 = E_TESTPERSON_1.clone().into_sealed_committed();
         let r_set = vec![Arc::new(ev1)];
 
-        let exv1 = unsafe { E_TESTPERSON_1_REDUCED.clone().into_sealed_committed() };
+        let exv1 = E_TESTPERSON_1_REDUCED.clone().into_sealed_committed();
 
         let ex_anon_some = vec![exv1];
 
-        let se_anon_ro = unsafe {
-            SearchEvent::new_impersonate_identity(
-                Identity::from_impersonate_entry_readonly(E_TEST_ACCOUNT_1.clone()),
-                filter_all!(f_pres("name")),
-            )
-        };
+        let se_anon_ro = SearchEvent::new_impersonate_identity(
+            Identity::from_impersonate_entry_readonly(E_TEST_ACCOUNT_1.clone()),
+            filter_all!(f_pres(Attribute::Name)),
+        );
 
-        let acp = unsafe {
-            AccessControlSearch::from_raw(
-                "test_acp",
-                Uuid::new_v4(),
-                // apply to all accounts.
-                UUID_TEST_GROUP_1,
-                // Allow anonymous to read only testperson1
-                filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
-                // In that read, admin may only view the "name" attribute, or query on
-                // the name attribute. Any other query (should be) rejected.
-                "name",
-            )
-        };
+        let acp = AccessControlSearch::from_raw(
+            "test_acp",
+            Uuid::new_v4(),
+            // apply to all accounts.
+            UUID_TEST_GROUP_1,
+            // Allow anonymous to read only testperson1
+            filter_valid!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
+            // In that read, admin may only view the "name" attribute, or query on
+            // the name attribute. Any other query (should be) rejected.
+            Attribute::Name.as_ref(),
+        );
 
         // Finally test it!
         test_acp_search_reduce!(&se_anon_ro, vec![acp], r_set, ex_anon_some);
@@ -1704,7 +1754,7 @@ mod tests {
 
     lazy_static! {
         pub static ref E_TESTPERSON_1_REDUCED: EntryInitNew =
-            entry_init!(("name", Value::new_iname("testperson1")));
+            entry_init!((Attribute::Name, Value::new_iname("testperson1")));
     }
 
     #[test]
@@ -1712,32 +1762,34 @@ mod tests {
         // Test that attributes are correctly limited.
         // In this case, we test that a user can only see "name" despite the
         // class and uuid being present.
-        let ev1 = unsafe { E_TESTPERSON_1.clone().into_sealed_committed() };
+        let ev1 = E_TESTPERSON_1.clone().into_sealed_committed();
         let r_set = vec![Arc::new(ev1)];
 
-        let exv1 = unsafe { E_TESTPERSON_1_REDUCED.clone().into_sealed_committed() };
+        let exv1 = E_TESTPERSON_1_REDUCED.clone().into_sealed_committed();
         let ex_anon = vec![exv1];
 
-        let se_anon = unsafe {
-            SearchEvent::new_impersonate_entry(
-                E_TEST_ACCOUNT_1.clone(),
-                filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
-            )
-        };
+        let se_anon = SearchEvent::new_impersonate_entry(
+            E_TEST_ACCOUNT_1.clone(),
+            filter_all!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
+        );
 
-        let acp = unsafe {
-            AccessControlSearch::from_raw(
-                "test_acp",
-                Uuid::new_v4(),
-                // apply to anonymous only
-                UUID_TEST_GROUP_1,
-                // Allow anonymous to read only testperson1
-                filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
-                // In that read, admin may only view the "name" attribute, or query on
-                // the name attribute. Any other query (should be) rejected.
-                "name",
-            )
-        };
+        let acp = AccessControlSearch::from_raw(
+            "test_acp",
+            Uuid::new_v4(),
+            // apply to anonymous only
+            UUID_TEST_GROUP_1,
+            // Allow anonymous to read only testperson1
+            filter_valid!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
+            // In that read, admin may only view the "name" attribute, or query on
+            // the name attribute. Any other query (should be) rejected.
+            Attribute::Name.as_ref(),
+        );
 
         // Finally test it!
         test_acp_search_reduce!(&se_anon, vec![acp], r_set, ex_anon);
@@ -1748,35 +1800,37 @@ mod tests {
         // Test that attributes are correctly limited by the request.
         // In this case, we test that a user can only see "name" despite the
         // class and uuid being present.
-        let ev1 = unsafe { E_TESTPERSON_1.clone().into_sealed_committed() };
+        let ev1 = E_TESTPERSON_1.clone().into_sealed_committed();
 
         let r_set = vec![Arc::new(ev1)];
 
-        let exv1 = unsafe { E_TESTPERSON_1_REDUCED.clone().into_sealed_committed() };
+        let exv1 = E_TESTPERSON_1_REDUCED.clone().into_sealed_committed();
         let ex_anon = vec![exv1];
 
-        let mut se_anon = unsafe {
-            SearchEvent::new_impersonate_entry(
-                E_TEST_ACCOUNT_1.clone(),
-                filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
-            )
-        };
+        let mut se_anon = SearchEvent::new_impersonate_entry(
+            E_TEST_ACCOUNT_1.clone(),
+            filter_all!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
+        );
         // the requested attrs here.
-        se_anon.attrs = Some(btreeset![AttrString::from("name")]);
+        se_anon.attrs = Some(btreeset![Attribute::Name.into()]);
 
-        let acp = unsafe {
-            AccessControlSearch::from_raw(
-                "test_acp",
-                Uuid::new_v4(),
-                // apply to anonymous only
-                UUID_TEST_GROUP_1,
-                // Allow anonymous to read only testperson1
-                filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
-                // In that read, admin may only view the "name" attribute, or query on
-                // the name attribute. Any other query (should be) rejected.
-                "name uuid",
-            )
-        };
+        let acp = AccessControlSearch::from_raw(
+            "test_acp",
+            Uuid::new_v4(),
+            // apply to anonymous only
+            UUID_TEST_GROUP_1,
+            // Allow anonymous to read only testperson1
+            filter_valid!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
+            // In that read, admin may only view the "name" attribute, or query on
+            // the name attribute. Any other query (should be) rejected.
+            "name uuid",
+        );
 
         // Finally test it!
         test_acp_search_reduce!(&se_anon, vec![acp], r_set, ex_anon);
@@ -1803,114 +1857,153 @@ mod tests {
             // should be ok, and same as expect.
             assert!(res == $expect);
         }};
+        (
+            $me:expr,
+            $controls:expr,
+            $sync_uuid:expr,
+            $sync_yield_attr:expr,
+            $entries:expr,
+            $expect:expr
+        ) => {{
+            let ac = AccessControls::default();
+            let mut acw = ac.write();
+            acw.update_modify($controls).expect("Failed to update");
+            let mut sync_agmt = HashMap::new();
+            let mut set = BTreeSet::new();
+            set.insert($sync_yield_attr.to_string());
+            sync_agmt.insert($sync_uuid, set);
+            acw.update_sync_agreements(sync_agmt);
+            let acw = acw;
+
+            let res = acw
+                .modify_allow_operation(&mut $me, $entries)
+                .expect("op failed");
+
+            debug!("result --> {:?}", res);
+            debug!("expect --> {:?}", $expect);
+            // should be ok, and same as expect.
+            assert!(res == $expect);
+        }};
     }
 
     #[test]
     fn test_access_enforce_modify() {
-        let ev1 = unsafe { E_TESTPERSON_1.clone().into_sealed_committed() };
+        let ev1 = E_TESTPERSON_1.clone().into_sealed_committed();
         let r_set = vec![Arc::new(ev1)];
 
         // Name present
-        let me_pres = unsafe {
-            ModifyEvent::new_impersonate_entry(
-                E_TEST_ACCOUNT_1.clone(),
-                filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
-                modlist!([m_pres("name", &Value::new_iname("value"))]),
-            )
-        };
+        let me_pres = ModifyEvent::new_impersonate_entry(
+            E_TEST_ACCOUNT_1.clone(),
+            filter_all!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
+            modlist!([m_pres(Attribute::Name, &Value::new_iname("value"))]),
+        );
         // Name rem
-        let me_rem = unsafe {
-            ModifyEvent::new_impersonate_entry(
-                E_TEST_ACCOUNT_1.clone(),
-                filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
-                modlist!([m_remove("name", &PartialValue::new_iname("value"))]),
-            )
-        };
+        let me_rem = ModifyEvent::new_impersonate_entry(
+            E_TEST_ACCOUNT_1.clone(),
+            filter_all!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
+            modlist!([m_remove(Attribute::Name, &PartialValue::new_iname("value"))]),
+        );
         // Name purge
-        let me_purge = unsafe {
-            ModifyEvent::new_impersonate_entry(
-                E_TEST_ACCOUNT_1.clone(),
-                filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
-                modlist!([m_purge("name")]),
-            )
-        };
+        let me_purge = ModifyEvent::new_impersonate_entry(
+            E_TEST_ACCOUNT_1.clone(),
+            filter_all!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
+            modlist!([m_purge(Attribute::Name)]),
+        );
 
         // Class account pres
-        let me_pres_class = unsafe {
-            ModifyEvent::new_impersonate_entry(
-                E_TEST_ACCOUNT_1.clone(),
-                filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
-                modlist!([m_pres("class", &Value::new_class("account"))]),
-            )
-        };
+        let me_pres_class = ModifyEvent::new_impersonate_entry(
+            E_TEST_ACCOUNT_1.clone(),
+            filter_all!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
+            modlist!([m_pres(Attribute::Class, &EntryClass::Account.to_value())]),
+        );
         // Class account rem
-        let me_rem_class = unsafe {
-            ModifyEvent::new_impersonate_entry(
-                E_TEST_ACCOUNT_1.clone(),
-                filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
-                modlist!([m_remove("class", &PartialValue::new_class("account"))]),
-            )
-        };
+        let me_rem_class = ModifyEvent::new_impersonate_entry(
+            E_TEST_ACCOUNT_1.clone(),
+            filter_all!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
+            modlist!([m_remove(
+                Attribute::Class,
+                &EntryClass::Account.to_partialvalue()
+            )]),
+        );
         // Class purge
-        let me_purge_class = unsafe {
-            ModifyEvent::new_impersonate_entry(
-                E_TEST_ACCOUNT_1.clone(),
-                filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
-                modlist!([m_purge("class")]),
-            )
-        };
+        let me_purge_class = ModifyEvent::new_impersonate_entry(
+            E_TEST_ACCOUNT_1.clone(),
+            filter_all!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
+            modlist!([m_purge(Attribute::Class)]),
+        );
 
         // Allow name and class, class is account
-        let acp_allow = unsafe {
-            AccessControlModify::from_raw(
-                "test_modify_allow",
-                Uuid::new_v4(),
-                // Apply to admin
-                UUID_TEST_GROUP_1,
-                // To modify testperson
-                filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
-                // Allow pres name and class
-                "name class",
-                // Allow rem name and class
-                "name class",
-                // And the class allowed is account
-                "account",
-            )
-        };
+        let acp_allow = AccessControlModify::from_raw(
+            "test_modify_allow",
+            Uuid::new_v4(),
+            // Apply to admin
+            UUID_TEST_GROUP_1,
+            // To modify testperson
+            filter_valid!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
+            // Allow pres name and class
+            "name class",
+            // Allow rem name and class
+            "name class",
+            // And the class allowed is account
+            EntryClass::Account.into(),
+        );
         // Allow member, class is group. IE not account
-        let acp_deny = unsafe {
-            AccessControlModify::from_raw(
-                "test_modify_deny",
-                Uuid::new_v4(),
-                // Apply to admin
-                UUID_TEST_GROUP_1,
-                // To modify testperson
-                filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
-                // Allow pres name and class
-                "member class",
-                // Allow rem name and class
-                "member class",
-                // And the class allowed is account
-                "group",
-            )
-        };
+        let acp_deny = AccessControlModify::from_raw(
+            "test_modify_deny",
+            Uuid::new_v4(),
+            // Apply to admin
+            UUID_TEST_GROUP_1,
+            // To modify testperson
+            filter_valid!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
+            // Allow pres name and class
+            "member class",
+            // Allow rem name and class
+            "member class",
+            // And the class allowed is account
+            "group",
+        );
         // Does not have a pres or rem class in attrs
-        let acp_no_class = unsafe {
-            AccessControlModify::from_raw(
-                "test_modify_no_class",
-                Uuid::new_v4(),
-                // Apply to admin
-                UUID_TEST_GROUP_1,
-                // To modify testperson
-                filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
-                // Allow pres name and class
-                "name class",
-                // Allow rem name and class
-                "name class",
-                // And the class allowed is NOT an account ...
-                "group",
-            )
-        };
+        let acp_no_class = AccessControlModify::from_raw(
+            "test_modify_no_class",
+            Uuid::new_v4(),
+            // Apply to admin
+            UUID_TEST_GROUP_1,
+            // To modify testperson
+            filter_valid!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
+            // Allow pres name and class
+            "name class",
+            // Allow rem name and class
+            "name class",
+            // And the class allowed is NOT an account ...
+            "group",
+        );
 
         // Test allowed pres
         test_acp_modify!(&me_pres, vec![acp_allow.clone()], &r_set, true);
@@ -1945,43 +2038,46 @@ mod tests {
 
     #[test]
     fn test_access_enforce_scope_modify() {
-        let ev1 = unsafe { E_TESTPERSON_1.clone().into_sealed_committed() };
+        let ev1 = E_TESTPERSON_1.clone().into_sealed_committed();
         let r_set = vec![Arc::new(ev1)];
 
         // Name present
-        let me_pres_ro = unsafe {
-            ModifyEvent::new_impersonate_identity(
-                Identity::from_impersonate_entry_readonly(E_TEST_ACCOUNT_1.clone()),
-                filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
-                modlist!([m_pres("name", &Value::new_iname("value"))]),
-            )
-        };
+        let me_pres_ro = ModifyEvent::new_impersonate_identity(
+            Identity::from_impersonate_entry_readonly(E_TEST_ACCOUNT_1.clone()),
+            filter_all!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
+            modlist!([m_pres(Attribute::Name, &Value::new_iname("value"))]),
+        );
 
         // Name present
-        let me_pres_rw = unsafe {
-            ModifyEvent::new_impersonate_identity(
-                Identity::from_impersonate_entry_readwrite(E_TEST_ACCOUNT_1.clone()),
-                filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
-                modlist!([m_pres("name", &Value::new_iname("value"))]),
-            )
-        };
+        let me_pres_rw = ModifyEvent::new_impersonate_identity(
+            Identity::from_impersonate_entry_readwrite(E_TEST_ACCOUNT_1.clone()),
+            filter_all!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
+            modlist!([m_pres(Attribute::Name, &Value::new_iname("value"))]),
+        );
 
-        let acp_allow = unsafe {
-            AccessControlModify::from_raw(
-                "test_modify_allow",
-                Uuid::new_v4(),
-                // apply to admin only
-                UUID_TEST_GROUP_1,
-                // To modify testperson
-                filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
-                // Allow pres name and class
-                "name class",
-                // Allow rem name and class
-                "name class",
-                // And the class allowed is account
-                "account",
-            )
-        };
+        let acp_allow = AccessControlModify::from_raw(
+            "test_modify_allow",
+            Uuid::new_v4(),
+            // apply to admin only
+            UUID_TEST_GROUP_1,
+            // To modify testperson
+            filter_valid!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
+            // Allow pres name and class
+            "name class",
+            // Allow rem name and class
+            "name class",
+            // And the class allowed is account
+            EntryClass::Account.into(),
+        );
 
         test_acp_modify!(&me_pres_ro, vec![acp_allow.clone()], &r_set, false);
 
@@ -2014,34 +2110,34 @@ mod tests {
     #[test]
     fn test_access_enforce_create() {
         let ev1 = entry_init!(
-            ("class", Value::new_class("account")),
-            ("name", Value::new_iname("testperson1")),
-            ("uuid", Value::Uuid(UUID_TEST_ACCOUNT_1))
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Name, Value::new_iname("testperson1")),
+            (Attribute::Uuid, Value::Uuid(UUID_TEST_ACCOUNT_1))
         );
         let r1_set = vec![ev1];
 
         let ev2 = entry_init!(
-            ("class", Value::new_class("account")),
-            ("notallowed", Value::new_class("notallowed")),
-            ("name", Value::new_iname("testperson1")),
-            ("uuid", Value::Uuid(UUID_TEST_ACCOUNT_1))
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::TestNotAllowed, Value::new_class("notallowed")),
+            (Attribute::Name, Value::new_iname("testperson1")),
+            (Attribute::Uuid, Value::Uuid(UUID_TEST_ACCOUNT_1))
         );
 
         let r2_set = vec![ev2];
 
         let ev3 = entry_init!(
-            ("class", Value::new_class("account")),
-            ("class", Value::new_class("notallowed")),
-            ("name", Value::new_iname("testperson1")),
-            ("uuid", Value::Uuid(UUID_TEST_ACCOUNT_1))
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Class, Value::new_class("notallowed")),
+            (Attribute::Name, Value::new_iname("testperson1")),
+            (Attribute::Uuid, Value::Uuid(UUID_TEST_ACCOUNT_1))
         );
         let r3_set = vec![ev3];
 
         let ev4 = entry_init!(
-            ("class", Value::new_class("account")),
-            ("class", Value::new_class("group")),
-            ("name", Value::new_iname("testperson1")),
-            ("uuid", Value::Uuid(UUID_TEST_ACCOUNT_1))
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::Group.to_value()),
+            (Attribute::Name, Value::new_iname("testperson1")),
+            (Attribute::Uuid, Value::Uuid(UUID_TEST_ACCOUNT_1))
         );
         let r4_set = vec![ev4];
 
@@ -2056,36 +2152,38 @@ mod tests {
             vec![],
         );
 
-        let acp = unsafe {
-            AccessControlCreate::from_raw(
-                "test_create",
-                Uuid::new_v4(),
-                // Apply to admin
-                UUID_TEST_GROUP_1,
-                // To create matching filter testperson
-                // Can this be empty?
-                filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
-                // classes
-                "account",
-                // attrs
-                "class name uuid",
-            )
-        };
+        let acp = AccessControlCreate::from_raw(
+            "test_create",
+            Uuid::new_v4(),
+            // Apply to admin
+            UUID_TEST_GROUP_1,
+            // To create matching filter testperson
+            // Can this be empty?
+            filter_valid!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
+            // classes
+            EntryClass::Account.into(),
+            // attrs
+            "class name uuid",
+        );
 
-        let acp2 = unsafe {
-            AccessControlCreate::from_raw(
-                "test_create_2",
-                Uuid::new_v4(),
-                // Apply to admin
-                UUID_TEST_GROUP_1,
-                // To create matching filter testperson
-                filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
-                // classes
-                "group",
-                // attrs
-                "class name uuid",
-            )
-        };
+        let acp2 = AccessControlCreate::from_raw(
+            "test_create_2",
+            Uuid::new_v4(),
+            // Apply to admin
+            UUID_TEST_GROUP_1,
+            // To create matching filter testperson
+            filter_valid!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
+            // classes
+            EntryClass::Group.into(),
+            // attrs
+            "class name uuid",
+        );
 
         // Test allowed to create
         test_acp_create!(&ce_admin, vec![acp.clone()], &r1_set, true);
@@ -2100,9 +2198,9 @@ mod tests {
     #[test]
     fn test_access_enforce_scope_create() {
         let ev1 = entry_init!(
-            ("class", Value::new_class("account")),
-            ("name", Value::new_iname("testperson1")),
-            ("uuid", Value::Uuid(UUID_TEST_ACCOUNT_1))
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Name, Value::new_iname("testperson1")),
+            (Attribute::Uuid, Value::Uuid(UUID_TEST_ACCOUNT_1))
         );
         let r1_set = vec![ev1];
 
@@ -2118,21 +2216,22 @@ mod tests {
             vec![],
         );
 
-        let acp = unsafe {
-            AccessControlCreate::from_raw(
-                "test_create",
-                Uuid::new_v4(),
-                // Apply to admin
-                UUID_TEST_GROUP_1,
-                // To create matching filter testperson
-                // Can this be empty?
-                filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
-                // classes
-                "account",
-                // attrs
-                "class name uuid",
-            )
-        };
+        let acp = AccessControlCreate::from_raw(
+            "test_create",
+            Uuid::new_v4(),
+            // Apply to admin
+            UUID_TEST_GROUP_1,
+            // To create matching filter testperson
+            // Can this be empty?
+            filter_valid!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
+            // classes
+            EntryClass::Account.into(),
+            // attrs
+            "class name uuid",
+        );
 
         test_acp_create!(&ce_admin_ro, vec![acp.clone()], &r1_set, false);
 
@@ -2164,33 +2263,36 @@ mod tests {
 
     #[test]
     fn test_access_enforce_delete() {
-        let ev1 = unsafe { E_TESTPERSON_1.clone().into_sealed_committed() };
+        let ev1 = E_TESTPERSON_1.clone().into_sealed_committed();
         let r_set = vec![Arc::new(ev1)];
 
-        let de_admin = unsafe {
-            DeleteEvent::new_impersonate_entry(
-                E_TEST_ACCOUNT_1.clone(),
-                filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
-            )
-        };
+        let de_admin = DeleteEvent::new_impersonate_entry(
+            E_TEST_ACCOUNT_1.clone(),
+            filter_all!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
+        );
 
-        let de_anon = unsafe {
-            DeleteEvent::new_impersonate_entry(
-                E_TEST_ACCOUNT_2.clone(),
-                filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
-            )
-        };
+        let de_anon = DeleteEvent::new_impersonate_entry(
+            E_TEST_ACCOUNT_2.clone(),
+            filter_all!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
+        );
 
-        let acp = unsafe {
-            AccessControlDelete::from_raw(
-                "test_delete",
-                Uuid::new_v4(),
-                // Apply to admin
-                UUID_TEST_GROUP_1,
-                // To delete testperson
-                filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
-            )
-        };
+        let acp = AccessControlDelete::from_raw(
+            "test_delete",
+            Uuid::new_v4(),
+            // Apply to admin
+            UUID_TEST_GROUP_1,
+            // To delete testperson
+            filter_valid!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
+        );
 
         // Test allowed to delete
         test_acp_delete!(&de_admin, vec![acp.clone()], &r_set, true);
@@ -2200,31 +2302,38 @@ mod tests {
 
     #[test]
     fn test_access_enforce_scope_delete() {
-        let ev1 = unsafe { E_TESTPERSON_1.clone().into_sealed_committed() };
+        let ev1 = E_TESTPERSON_1.clone().into_sealed_committed();
         let r_set = vec![Arc::new(ev1)];
 
         let admin = E_TEST_ACCOUNT_1.clone();
 
         let de_admin_ro = DeleteEvent::new_impersonate_identity(
             Identity::from_impersonate_entry_readonly(admin.clone()),
-            filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
+            filter_all!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
         );
 
         let de_admin_rw = DeleteEvent::new_impersonate_identity(
             Identity::from_impersonate_entry_readwrite(admin),
-            filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
+            filter_all!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
         );
 
-        let acp = unsafe {
-            AccessControlDelete::from_raw(
-                "test_delete",
-                Uuid::new_v4(),
-                // Apply to admin
-                UUID_TEST_GROUP_1,
-                // To delete testperson
-                filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
-            )
-        };
+        let acp = AccessControlDelete::from_raw(
+            "test_delete",
+            Uuid::new_v4(),
+            // Apply to admin
+            UUID_TEST_GROUP_1,
+            // To delete testperson
+            filter_valid!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
+        );
 
         test_acp_delete!(&de_admin_ro, vec![acp.clone()], &r_set, false);
 
@@ -2265,32 +2374,32 @@ mod tests {
 
         let admin = Identity::from_impersonate_entry_readwrite(E_TEST_ACCOUNT_1.clone());
 
-        let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(JSON_TESTPERSON1);
-        let ev1 = unsafe { e1.into_sealed_committed() };
+        let ev1 = E_TESTPERSON_1.clone().into_sealed_committed();
 
         let r_set = vec![Arc::new(ev1)];
 
         test_acp_effective_permissions!(
             &admin,
             None,
-            vec![unsafe {
-                AccessControlSearch::from_raw(
-                    "test_acp",
-                    Uuid::new_v4(),
-                    // apply to admin only
-                    UUID_TEST_GROUP_1,
-                    // Allow admin to read only testperson1
-                    filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
-                    // They can read "name".
-                    "name",
-                )
-            }],
+            vec![AccessControlSearch::from_raw(
+                "test_acp",
+                Uuid::new_v4(),
+                // apply to admin only
+                UUID_TEST_GROUP_1,
+                // Allow admin to read only testperson1
+                filter_valid!(f_eq(
+                    Attribute::Name,
+                    PartialValue::new_iname("testperson1")
+                )),
+                // They can read "name".
+                Attribute::Name.as_ref(),
+            )],
             vec![],
             &r_set,
             vec![AccessEffectivePermission {
                 delete: false,
                 target: uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"),
-                search: Access::Allow(btreeset![AttrString::from("name")]),
+                search: Access::Allow(btreeset![Attribute::Name.into()]),
                 modify_pres: Access::Allow(BTreeSet::new()),
                 modify_rem: Access::Allow(BTreeSet::new()),
                 modify_class: Access::Allow(BTreeSet::new()),
@@ -2304,8 +2413,7 @@ mod tests {
 
         let admin = Identity::from_impersonate_entry_readwrite(E_TEST_ACCOUNT_1.clone());
 
-        let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(JSON_TESTPERSON1);
-        let ev1 = unsafe { e1.into_sealed_committed() };
+        let ev1 = E_TESTPERSON_1.clone().into_sealed_committed();
 
         let r_set = vec![Arc::new(ev1)];
 
@@ -2313,28 +2421,29 @@ mod tests {
             &admin,
             None,
             vec![],
-            vec![unsafe {
-                AccessControlModify::from_raw(
-                    "test_acp",
-                    Uuid::new_v4(),
-                    // apply to admin only
-                    UUID_TEST_GROUP_1,
-                    // Allow admin to read only testperson1
-                    filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
-                    // They can read "name".
-                    "name",
-                    "name",
-                    "object",
-                )
-            }],
+            vec![AccessControlModify::from_raw(
+                "test_acp",
+                Uuid::new_v4(),
+                // apply to admin only
+                UUID_TEST_GROUP_1,
+                // Allow admin to read only testperson1
+                filter_valid!(f_eq(
+                    Attribute::Name,
+                    PartialValue::new_iname("testperson1")
+                )),
+                // They can read "name".
+                Attribute::Name.as_ref(),
+                Attribute::Name.as_ref(),
+                EntryClass::Object.into(),
+            )],
             &r_set,
             vec![AccessEffectivePermission {
                 delete: false,
                 target: uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"),
                 search: Access::Allow(BTreeSet::new()),
-                modify_pres: Access::Allow(btreeset![AttrString::from("name")]),
-                modify_rem: Access::Allow(btreeset![AttrString::from("name")]),
-                modify_class: Access::Allow(btreeset![AttrString::from("object")]),
+                modify_pres: Access::Allow(btreeset![Attribute::Name.into()]),
+                modify_rem: Access::Allow(btreeset![Attribute::Name.into()]),
+                modify_class: Access::Allow(btreeset![EntryClass::Object.into()]),
             }]
         )
     }
@@ -2350,35 +2459,36 @@ mod tests {
 
         // We can create without a sync class.
         let ev1 = entry_init!(
-            ("class", CLASS_ACCOUNT.clone()),
-            ("name", Value::new_iname("testperson1")),
-            ("uuid", Value::Uuid(UUID_TEST_ACCOUNT_1))
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Name, Value::new_iname("testperson1")),
+            (Attribute::Uuid, Value::Uuid(UUID_TEST_ACCOUNT_1))
         );
         let r1_set = vec![ev1];
 
         let ev2 = entry_init!(
-            ("class", CLASS_ACCOUNT.clone()),
-            ("class", CLASS_SYNC_OBJECT.clone()),
-            ("name", Value::new_iname("testperson1")),
-            ("uuid", Value::Uuid(UUID_TEST_ACCOUNT_1))
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::SyncObject.to_value()),
+            (Attribute::Name, Value::new_iname("testperson1")),
+            (Attribute::Uuid, Value::Uuid(UUID_TEST_ACCOUNT_1))
         );
         let r2_set = vec![ev2];
 
-        let acp = unsafe {
-            AccessControlCreate::from_raw(
-                "test_create",
-                Uuid::new_v4(),
-                // Apply to admin
-                UUID_TEST_GROUP_1,
-                // To create matching filter testperson
-                // Can this be empty?
-                filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
-                // classes
-                "account sync_object",
-                // attrs
-                "class name uuid",
-            )
-        };
+        let acp = AccessControlCreate::from_raw(
+            "test_create",
+            Uuid::new_v4(),
+            // Apply to admin
+            UUID_TEST_GROUP_1,
+            // To create matching filter testperson
+            // Can this be empty?
+            filter_valid!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
+            // classes
+            "account sync_object",
+            // attrs
+            "class name uuid",
+        );
 
         // Test allowed to create
         test_acp_create!(&ce_admin, vec![acp.clone()], &r1_set, true);
@@ -2390,44 +2500,42 @@ mod tests {
     fn test_access_sync_authority_delete() {
         sketching::test_init();
 
-        let ev1 = unsafe {
-            entry_init!(
-                ("class", CLASS_ACCOUNT.clone()),
-                ("name", Value::new_iname("testperson1")),
-                ("uuid", Value::Uuid(UUID_TEST_ACCOUNT_1))
-            )
-            .into_sealed_committed()
-        };
+        let ev1 = entry_init!(
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Name, Value::new_iname("testperson1")),
+            (Attribute::Uuid, Value::Uuid(UUID_TEST_ACCOUNT_1))
+        )
+        .into_sealed_committed();
         let r1_set = vec![Arc::new(ev1)];
 
-        let ev2 = unsafe {
-            entry_init!(
-                ("class", CLASS_ACCOUNT.clone()),
-                ("class", CLASS_SYNC_OBJECT.clone()),
-                ("name", Value::new_iname("testperson1")),
-                ("uuid", Value::Uuid(UUID_TEST_ACCOUNT_1))
-            )
-            .into_sealed_committed()
-        };
+        let ev2 = entry_init!(
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::SyncObject.to_value()),
+            (Attribute::Name, Value::new_iname("testperson1")),
+            (Attribute::Uuid, Value::Uuid(UUID_TEST_ACCOUNT_1))
+        )
+        .into_sealed_committed();
         let r2_set = vec![Arc::new(ev2)];
 
-        let de_admin = unsafe {
-            DeleteEvent::new_impersonate_entry(
-                E_TEST_ACCOUNT_1.clone(),
-                filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
-            )
-        };
+        let de_admin = DeleteEvent::new_impersonate_entry(
+            E_TEST_ACCOUNT_1.clone(),
+            filter_all!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
+        );
 
-        let acp = unsafe {
-            AccessControlDelete::from_raw(
-                "test_delete",
-                Uuid::new_v4(),
-                // Apply to admin
-                UUID_TEST_GROUP_1,
-                // To delete testperson
-                filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
-            )
-        };
+        let acp = AccessControlDelete::from_raw(
+            "test_delete",
+            Uuid::new_v4(),
+            // Apply to admin
+            UUID_TEST_GROUP_1,
+            // To delete testperson
+            filter_valid!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
+        );
 
         // Test allowed to delete
         test_acp_delete!(&de_admin, vec![acp.clone()], &r1_set, true);
@@ -2439,77 +2547,79 @@ mod tests {
     fn test_access_sync_authority_modify() {
         sketching::test_init();
 
-        let ev1 = unsafe {
-            entry_init!(
-                ("class", CLASS_ACCOUNT.clone()),
-                ("name", Value::new_iname("testperson1")),
-                ("uuid", Value::Uuid(UUID_TEST_ACCOUNT_1))
-            )
-            .into_sealed_committed()
-        };
+        let ev1 = entry_init!(
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Name, Value::new_iname("testperson1")),
+            (Attribute::Uuid, Value::Uuid(UUID_TEST_ACCOUNT_1))
+        )
+        .into_sealed_committed();
         let r1_set = vec![Arc::new(ev1)];
 
-        let ev2 = unsafe {
-            entry_init!(
-                ("class", CLASS_ACCOUNT.clone()),
-                ("class", CLASS_SYNC_OBJECT.clone()),
-                ("name", Value::new_iname("testperson1")),
-                ("uuid", Value::Uuid(UUID_TEST_ACCOUNT_1))
-            )
-            .into_sealed_committed()
-        };
+        let sync_uuid = Uuid::new_v4();
+        let ev2 = entry_init!(
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::SyncObject.to_value()),
+            (Attribute::SyncParentUuid, Value::Refer(sync_uuid)),
+            (Attribute::Name, Value::new_iname("testperson1")),
+            (Attribute::Uuid, Value::Uuid(UUID_TEST_ACCOUNT_1))
+        )
+        .into_sealed_committed();
         let r2_set = vec![Arc::new(ev2)];
 
         // Allow name and class, class is account
-        let acp_allow = unsafe {
-            AccessControlModify::from_raw(
-                "test_modify_allow",
-                Uuid::new_v4(),
-                // Apply to admin
-                UUID_TEST_GROUP_1,
-                // To modify testperson
-                filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
-                // Allow pres user_auth_token_session
-                "user_auth_token_session name",
-                // Allow user_auth_token_session
-                "user_auth_token_session name",
-                // And the class allowed is account, we don't use it though.
-                "account",
-            )
-        };
+        let acp_allow = AccessControlModify::from_raw(
+            "test_modify_allow",
+            Uuid::new_v4(),
+            // Apply to admin
+            UUID_TEST_GROUP_1,
+            // To modify testperson
+            filter_valid!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
+            // Allow pres user_auth_token_session
+            &format!("{} {}", Attribute::UserAuthTokenSession, Attribute::Name),
+            // Allow user_auth_token_session
+            &format!("{} {}", Attribute::UserAuthTokenSession, Attribute::Name),
+            // And the class allowed is account, we don't use it though.
+            EntryClass::Account.into(),
+        );
 
         // NOTE! Syntax doesn't matter here, we just need to assert if the attr exists
         // and is being modified.
         // Name present
-        let me_pres = unsafe {
-            ModifyEvent::new_impersonate_entry(
-                E_TEST_ACCOUNT_1.clone(),
-                filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
-                modlist!([m_pres(
-                    "user_auth_token_session",
-                    &Value::new_iname("value")
-                )]),
-            )
-        };
+        let me_pres = ModifyEvent::new_impersonate_entry(
+            E_TEST_ACCOUNT_1.clone(),
+            filter_all!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
+            modlist!([m_pres(
+                Attribute::UserAuthTokenSession,
+                &Value::new_iname("value")
+            )]),
+        );
         // Name rem
-        let me_rem = unsafe {
-            ModifyEvent::new_impersonate_entry(
-                E_TEST_ACCOUNT_1.clone(),
-                filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
-                modlist!([m_remove(
-                    "user_auth_token_session",
-                    &PartialValue::new_iname("value")
-                )]),
-            )
-        };
+        let me_rem = ModifyEvent::new_impersonate_entry(
+            E_TEST_ACCOUNT_1.clone(),
+            filter_all!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
+            modlist!([m_remove(
+                Attribute::UserAuthTokenSession,
+                &PartialValue::new_iname("value")
+            )]),
+        );
         // Name purge
-        let me_purge = unsafe {
-            ModifyEvent::new_impersonate_entry(
-                E_TEST_ACCOUNT_1.clone(),
-                filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
-                modlist!([m_purge("user_auth_token_session")]),
-            )
-        };
+        let me_purge = ModifyEvent::new_impersonate_entry(
+            E_TEST_ACCOUNT_1.clone(),
+            filter_all!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
+            modlist!([m_purge(Attribute::UserAuthTokenSession)]),
+        );
 
         // Test allowed pres
         test_acp_modify!(&me_pres, vec![acp_allow.clone()], &r1_set, true);
@@ -2526,36 +2636,70 @@ mod tests {
         test_acp_modify!(&me_purge, vec![acp_allow.clone()], &r2_set, true);
 
         // But other attrs are blocked.
-        let me_pres = unsafe {
-            ModifyEvent::new_impersonate_entry(
-                E_TEST_ACCOUNT_1.clone(),
-                filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
-                modlist!([m_pres("name", &Value::new_iname("value"))]),
-            )
-        };
+        let me_pres = ModifyEvent::new_impersonate_entry(
+            E_TEST_ACCOUNT_1.clone(),
+            filter_all!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
+            modlist!([m_pres(Attribute::Name, &Value::new_iname("value"))]),
+        );
         // Name rem
-        let me_rem = unsafe {
-            ModifyEvent::new_impersonate_entry(
-                E_TEST_ACCOUNT_1.clone(),
-                filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
-                modlist!([m_remove("name", &PartialValue::new_iname("value"))]),
-            )
-        };
+        let me_rem = ModifyEvent::new_impersonate_entry(
+            E_TEST_ACCOUNT_1.clone(),
+            filter_all!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
+            modlist!([m_remove(Attribute::Name, &PartialValue::new_iname("value"))]),
+        );
         // Name purge
-        let me_purge = unsafe {
-            ModifyEvent::new_impersonate_entry(
-                E_TEST_ACCOUNT_1.clone(),
-                filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
-                modlist!([m_purge("name")]),
-            )
-        };
+        let me_purge = ModifyEvent::new_impersonate_entry(
+            E_TEST_ACCOUNT_1.clone(),
+            filter_all!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
+            modlist!([m_purge(Attribute::Name)]),
+        );
 
         // Test reject pres
         test_acp_modify!(&me_pres, vec![acp_allow.clone()], &r2_set, false);
         // Test reject rem
         test_acp_modify!(&me_rem, vec![acp_allow.clone()], &r2_set, false);
         // Test reject purge
-        test_acp_modify!(&me_purge, vec![acp_allow], &r2_set, false);
+        test_acp_modify!(&me_purge, vec![acp_allow.clone()], &r2_set, false);
+
+        // Test that when an attribute is in the sync_yield state that it can be
+        // modified by a user.
+
+        // Test allow pres
+        test_acp_modify!(
+            &me_pres,
+            vec![acp_allow.clone()],
+            sync_uuid,
+            Attribute::Name.as_ref(),
+            &r2_set,
+            true
+        );
+        // Test allow rem
+        test_acp_modify!(
+            &me_rem,
+            vec![acp_allow.clone()],
+            sync_uuid,
+            Attribute::Name.as_ref(),
+            &r2_set,
+            true
+        );
+        // Test allow purge
+        test_acp_modify!(
+            &me_purge,
+            vec![acp_allow],
+            sync_uuid,
+            Attribute::Name.as_ref(),
+            &r2_set,
+            true
+        );
     }
 
     #[test]
@@ -2564,110 +2708,139 @@ mod tests {
         // Test that an account that is granted a scope to an oauth2 rs is granted
         // the ability to search that rs.
         let rs_uuid = Uuid::new_v4();
-        let ev1 = unsafe {
-            entry_init!(
-                ("class", CLASS_OBJECT.clone()),
-                ("class", Value::new_class("oauth2_resource_server")),
-                ("class", Value::new_class("oauth2_resource_server_basic")),
-                ("uuid", Value::Uuid(rs_uuid)),
-                ("oauth2_rs_name", Value::new_iname("test_resource_server")),
-                ("displayname", Value::new_utf8s("test_resource_server")),
-                (
-                    "oauth2_rs_origin",
-                    Value::new_url_s("https://demo.example.com").unwrap()
-                ),
-                (
-                    "oauth2_rs_scope_map",
-                    Value::new_oauthscopemap(UUID_TEST_GROUP_1, btreeset!["groups".to_string()])
-                        .expect("invalid oauthscope")
-                ),
-                (
-                    "oauth2_rs_sup_scope_map",
-                    Value::new_oauthscopemap(
-                        UUID_TEST_GROUP_1,
-                        btreeset!["supplement".to_string()]
-                    )
+        let ev1 = entry_init!(
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (
+                Attribute::Class,
+                EntryClass::OAuth2ResourceServer.to_value()
+            ),
+            (
+                Attribute::Class,
+                EntryClass::OAuth2ResourceServerBasic.to_value()
+            ),
+            (Attribute::Uuid, Value::Uuid(rs_uuid)),
+            (
+                Attribute::OAuth2RsName,
+                Value::new_iname("test_resource_server")
+            ),
+            (
+                Attribute::DisplayName,
+                Value::new_utf8s("test_resource_server")
+            ),
+            (
+                Attribute::OAuth2RsOrigin,
+                Value::new_url_s("https://demo.example.com").unwrap()
+            ),
+            (
+                Attribute::OAuth2RsScopeMap,
+                Value::new_oauthscopemap(UUID_TEST_GROUP_1, btreeset!["groups".to_string()])
                     .expect("invalid oauthscope")
-                ),
-                (
-                    "oauth2_allow_insecure_client_disable_pkce",
-                    Value::new_bool(true)
-                ),
-                ("oauth2_jwt_legacy_crypto_enable", Value::new_bool(false)),
-                ("oauth2_prefer_short_username", Value::new_bool(false))
-            )
-            .into_sealed_committed()
-        };
+            ),
+            (
+                Attribute::OAuth2RsSupScopeMap,
+                Value::new_oauthscopemap(UUID_TEST_GROUP_1, btreeset!["supplement".to_string()])
+                    .expect("invalid oauthscope")
+            ),
+            (
+                Attribute::OAuth2AllowInsecureClientDisablePkce,
+                Value::new_bool(true)
+            ),
+            (
+                Attribute::OAuth2JwtLegacyCryptoEnable,
+                Value::new_bool(false)
+            ),
+            (Attribute::OAuth2PreferShortUsername, Value::new_bool(false))
+        )
+        .into_sealed_committed();
 
-        let ev1_reduced = unsafe {
-            entry_init!(
-                ("class", CLASS_OBJECT.clone()),
-                ("class", Value::new_class("oauth2_resource_server")),
-                ("class", Value::new_class("oauth2_resource_server_basic")),
-                ("uuid", Value::Uuid(rs_uuid)),
-                ("oauth2_rs_name", Value::new_iname("test_resource_server")),
-                ("displayname", Value::new_utf8s("test_resource_server")),
-                (
-                    "oauth2_rs_origin",
-                    Value::new_url_s("https://demo.example.com").unwrap()
+        let ev1_reduced = entry_init!(
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (
+                Attribute::Class,
+                EntryClass::OAuth2ResourceServer.to_value()
+            ),
+            (
+                Attribute::Class,
+                EntryClass::OAuth2ResourceServerBasic.to_value()
+            ),
+            (Attribute::Uuid, Value::Uuid(rs_uuid)),
+            (
+                Attribute::OAuth2RsName,
+                Value::new_iname("test_resource_server")
+            ),
+            (
+                Attribute::DisplayName,
+                Value::new_utf8s("test_resource_server")
+            ),
+            (
+                Attribute::OAuth2RsOrigin,
+                Value::new_url_s("https://demo.example.com").unwrap()
+            )
+        )
+        .into_sealed_committed();
+
+        let ev2 = entry_init!(
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (
+                Attribute::Class,
+                EntryClass::OAuth2ResourceServer.to_value()
+            ),
+            (
+                Attribute::Class,
+                EntryClass::OAuth2ResourceServerBasic.to_value()
+            ),
+            (Attribute::Uuid, Value::Uuid(Uuid::new_v4())),
+            (
+                Attribute::OAuth2RsName,
+                Value::new_iname("second_resource_server")
+            ),
+            (
+                Attribute::DisplayName,
+                Value::new_utf8s("second_resource_server")
+            ),
+            (
+                Attribute::OAuth2RsOrigin,
+                Value::new_url_s("https://noaccess.example.com").unwrap()
+            ),
+            (
+                Attribute::OAuth2RsScopeMap,
+                Value::new_oauthscopemap(UUID_SYSTEM_ADMINS, btreeset!["groups".to_string()])
+                    .expect("invalid oauthscope")
+            ),
+            (
+                Attribute::OAuth2RsSupScopeMap,
+                Value::new_oauthscopemap(
+                    // This is NOT the scope map that is access checked!
+                    UUID_TEST_GROUP_1,
+                    btreeset!["supplement".to_string()]
                 )
-            )
-            .into_sealed_committed()
-        };
-
-        let ev2 = unsafe {
-            entry_init!(
-                ("class", CLASS_OBJECT.clone()),
-                ("class", Value::new_class("oauth2_resource_server")),
-                ("class", Value::new_class("oauth2_resource_server_basic")),
-                ("uuid", Value::Uuid(Uuid::new_v4())),
-                ("oauth2_rs_name", Value::new_iname("second_resource_server")),
-                ("displayname", Value::new_utf8s("second_resource_server")),
-                (
-                    "oauth2_rs_origin",
-                    Value::new_url_s("https://noaccess.example.com").unwrap()
-                ),
-                (
-                    "oauth2_rs_scope_map",
-                    Value::new_oauthscopemap(UUID_SYSTEM_ADMINS, btreeset!["groups".to_string()])
-                        .expect("invalid oauthscope")
-                ),
-                (
-                    "oauth2_rs_sup_scope_map",
-                    Value::new_oauthscopemap(
-                        // This is NOT the scope map that is access checked!
-                        UUID_TEST_GROUP_1,
-                        btreeset!["supplement".to_string()]
-                    )
-                    .expect("invalid oauthscope")
-                ),
-                (
-                    "oauth2_allow_insecure_client_disable_pkce",
-                    Value::new_bool(true)
-                ),
-                ("oauth2_jwt_legacy_crypto_enable", Value::new_bool(false)),
-                ("oauth2_prefer_short_username", Value::new_bool(false))
-            )
-            .into_sealed_committed()
-        };
+                .expect("invalid oauthscope")
+            ),
+            (
+                Attribute::OAuth2AllowInsecureClientDisablePkce,
+                Value::new_bool(true)
+            ),
+            (
+                Attribute::OAuth2JwtLegacyCryptoEnable,
+                Value::new_bool(false)
+            ),
+            (Attribute::OAuth2PreferShortUsername, Value::new_bool(false))
+        )
+        .into_sealed_committed();
 
         let r_set = vec![Arc::new(ev1.clone()), Arc::new(ev2)];
 
-        let se_a = unsafe {
-            SearchEvent::new_impersonate_entry(
-                E_TEST_ACCOUNT_1.clone(),
-                filter_all!(f_pres("oauth2_rs_name")),
-            )
-        };
+        let se_a = SearchEvent::new_impersonate_entry(
+            E_TEST_ACCOUNT_1.clone(),
+            filter_all!(f_pres(Attribute::OAuth2RsName)),
+        );
         let ex_a = vec![Arc::new(ev1)];
         let ex_a_reduced = vec![ev1_reduced];
 
-        let se_b = unsafe {
-            SearchEvent::new_impersonate_entry(
-                E_TEST_ACCOUNT_2.clone(),
-                filter_all!(f_pres("oauth2_rs_name")),
-            )
-        };
+        let se_b = SearchEvent::new_impersonate_entry(
+            E_TEST_ACCOUNT_2.clone(),
+            filter_all!(f_pres(Attribute::OAuth2RsName)),
+        );
         let ex_b = vec![];
 
         // Check the authorisation search event, and that it reduces correctly.
@@ -2676,5 +2849,282 @@ mod tests {
 
         // Check the deny case.
         test_acp_search!(&se_b, vec![], r_set, ex_b);
+    }
+
+    #[test]
+    fn test_access_sync_account_dyn_search() {
+        sketching::test_init();
+        // Test that an account that has been synchronised from external
+        // sources is able to read the sync providers credential portal
+        // url.
+
+        let sync_uuid = Uuid::new_v4();
+        let portal_url = Url::parse("https://localhost/portal").unwrap();
+
+        let ev1 = entry_init!(
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::SyncAccount.to_value()),
+            (Attribute::Uuid, Value::Uuid(sync_uuid)),
+            (Attribute::Name, Value::new_iname("test_sync_account")),
+            (
+                Attribute::SyncCredentialPortal,
+                Value::Url(portal_url.clone())
+            )
+        )
+        .into_sealed_committed();
+
+        let ev1_reduced = entry_init!(
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::SyncAccount.to_value()),
+            (Attribute::Uuid, Value::Uuid(sync_uuid)),
+            (
+                Attribute::SyncCredentialPortal,
+                Value::Url(portal_url.clone())
+            )
+        )
+        .into_sealed_committed();
+
+        let ev2 = entry_init!(
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::SyncAccount.to_value()),
+            (Attribute::Uuid, Value::Uuid(Uuid::new_v4())),
+            (Attribute::Name, Value::new_iname("test_sync_account")),
+            (
+                Attribute::SyncCredentialPortal,
+                Value::Url(portal_url.clone())
+            )
+        )
+        .into_sealed_committed();
+
+        let sync_test_account: Arc<EntrySealedCommitted> = Arc::new(
+            entry_init!(
+                (Attribute::Class, EntryClass::Object.to_value()),
+                (Attribute::Class, EntryClass::Account.to_value()),
+                (Attribute::Class, EntryClass::SyncObject.to_value()),
+                (Attribute::Name, Value::new_iname("test_account_1")),
+                (Attribute::Uuid, Value::Uuid(UUID_TEST_ACCOUNT_1)),
+                (Attribute::MemberOf, Value::Refer(UUID_TEST_GROUP_1)),
+                (Attribute::SyncParentUuid, Value::Refer(sync_uuid))
+            )
+            .into_sealed_committed(),
+        );
+
+        // Check the authorised search event, and that it reduces correctly.
+        let r_set = vec![Arc::new(ev1.clone()), Arc::new(ev2)];
+
+        let se_a = SearchEvent::new_impersonate_entry(
+            sync_test_account,
+            filter_all!(f_pres(Attribute::SyncCredentialPortal)),
+        );
+        let ex_a = vec![Arc::new(ev1)];
+        let ex_a_reduced = vec![ev1_reduced];
+
+        test_acp_search!(&se_a, vec![], r_set.clone(), ex_a);
+        test_acp_search_reduce!(&se_a, vec![], r_set.clone(), ex_a_reduced);
+
+        // Test a non-synced account aka the deny case
+        let se_b = SearchEvent::new_impersonate_entry(
+            E_TEST_ACCOUNT_2.clone(),
+            filter_all!(f_pres(Attribute::SyncCredentialPortal)),
+        );
+        let ex_b = vec![];
+
+        test_acp_search!(&se_b, vec![], r_set, ex_b);
+    }
+
+    #[test]
+    fn test_access_entry_managed_by_search() {
+        sketching::test_init();
+
+        let test_entry = Arc::new(
+            entry_init!(
+                (Attribute::Class, EntryClass::Object.to_value()),
+                (Attribute::Name, Value::new_iname("testperson1")),
+                (Attribute::Uuid, Value::Uuid(UUID_TEST_ACCOUNT_1)),
+                (Attribute::EntryManagedBy, Value::Refer(UUID_TEST_GROUP_1))
+            )
+            .into_sealed_committed(),
+        );
+
+        let data_set = vec![test_entry.clone()];
+
+        let se_a = SearchEvent::new_impersonate_entry(
+            E_TEST_ACCOUNT_1.clone(),
+            filter_all!(f_pres(Attribute::Name)),
+        );
+        let expect_a = vec![test_entry];
+
+        let se_b = SearchEvent::new_impersonate_entry(
+            E_TEST_ACCOUNT_2.clone(),
+            filter_all!(f_pres(Attribute::Name)),
+        );
+        let expect_b = vec![];
+
+        let acp = AccessControlSearch::from_managed_by(
+            "test_acp",
+            Uuid::new_v4(),
+            // Allow admin to read only testperson1
+            AccessControlTarget::Scope(filter_valid!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("testperson1")
+            ))),
+            // In that read, admin may only view the "name" attribute, or query on
+            // the name attribute. Any other query (should be) rejected.
+            Attribute::Name.as_ref(),
+        );
+
+        // Check where allowed
+        test_acp_search!(&se_a, vec![acp.clone()], data_set.clone(), expect_a);
+
+        // And where not
+        test_acp_search!(&se_b, vec![acp], data_set, expect_b);
+    }
+
+    #[test]
+    fn test_access_entry_managed_by_create() {
+        sketching::test_init();
+
+        let test_entry = entry_init!(
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Name, Value::new_iname("testperson1")),
+            (Attribute::Uuid, Value::Uuid(UUID_TEST_ACCOUNT_1)),
+            (Attribute::EntryManagedBy, Value::Refer(UUID_TEST_GROUP_1))
+        );
+
+        let data_set = vec![test_entry];
+
+        let ce = CreateEvent::new_impersonate_identity(
+            Identity::from_impersonate_entry_readwrite(E_TEST_ACCOUNT_1.clone()),
+            vec![],
+        );
+
+        let acp = AccessControlCreate::from_managed_by(
+            "test_create",
+            Uuid::new_v4(),
+            AccessControlTarget::Scope(filter_valid!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("testperson1")
+            ))),
+            // classes
+            EntryClass::Account.into(),
+            // attrs
+            "class name uuid",
+        );
+
+        // Test reject create (not allowed attr). This is because entry
+        // managed by is non-sensical with creates!
+        test_acp_create!(&ce, vec![acp.clone()], &data_set, false);
+    }
+
+    #[test]
+    fn test_access_entry_managed_by_modify() {
+        let test_entry = Arc::new(
+            entry_init!(
+                (Attribute::Class, EntryClass::Object.to_value()),
+                (Attribute::Name, Value::new_iname("testperson1")),
+                (Attribute::Uuid, Value::Uuid(UUID_TEST_ACCOUNT_1)),
+                (Attribute::EntryManagedBy, Value::Refer(UUID_TEST_GROUP_1))
+            )
+            .into_sealed_committed(),
+        );
+
+        let data_set = vec![test_entry];
+
+        // Name present
+        let me_pres = ModifyEvent::new_impersonate_entry(
+            E_TEST_ACCOUNT_1.clone(),
+            filter_all!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
+            modlist!([m_pres(Attribute::Name, &Value::new_iname("value"))]),
+        );
+        // Name rem
+        let me_rem = ModifyEvent::new_impersonate_entry(
+            E_TEST_ACCOUNT_1.clone(),
+            filter_all!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
+            modlist!([m_remove(Attribute::Name, &PartialValue::new_iname("value"))]),
+        );
+        // Name purge
+        let me_purge = ModifyEvent::new_impersonate_entry(
+            E_TEST_ACCOUNT_1.clone(),
+            filter_all!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
+            modlist!([m_purge(Attribute::Name)]),
+        );
+
+        let acp_allow = AccessControlModify::from_managed_by(
+            "test_modify_allow",
+            Uuid::new_v4(),
+            // To modify testperson
+            AccessControlTarget::Scope(filter_valid!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("testperson1")
+            ))),
+            // Allow pres name and class
+            "name class",
+            // Allow rem name and class
+            "name class",
+            // And the class allowed is account
+            EntryClass::Account.into(),
+        );
+
+        // Test allowed pres
+        test_acp_modify!(&me_pres, vec![acp_allow.clone()], &data_set, true);
+        // test allowed rem
+        test_acp_modify!(&me_rem, vec![acp_allow.clone()], &data_set, true);
+        // test allowed purge
+        test_acp_modify!(&me_purge, vec![acp_allow.clone()], &data_set, true);
+    }
+
+    #[test]
+    fn test_access_entry_managed_by_delete() {
+        let test_entry = Arc::new(
+            entry_init!(
+                (Attribute::Class, EntryClass::Object.to_value()),
+                (Attribute::Name, Value::new_iname("testperson1")),
+                (Attribute::Uuid, Value::Uuid(UUID_TEST_ACCOUNT_1)),
+                (Attribute::EntryManagedBy, Value::Refer(UUID_TEST_GROUP_1))
+            )
+            .into_sealed_committed(),
+        );
+
+        let data_set = vec![test_entry];
+
+        let de_a = DeleteEvent::new_impersonate_entry(
+            E_TEST_ACCOUNT_1.clone(),
+            filter_all!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
+        );
+
+        let de_b = DeleteEvent::new_impersonate_entry(
+            E_TEST_ACCOUNT_2.clone(),
+            filter_all!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
+        );
+
+        let acp = AccessControlDelete::from_managed_by(
+            "test_delete",
+            Uuid::new_v4(),
+            // To delete testperson
+            AccessControlTarget::Scope(filter_valid!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("testperson1")
+            ))),
+        );
+
+        // Test allowed to delete
+        test_acp_delete!(&de_a, vec![acp.clone()], &data_set, true);
+        // Test reject delete
+        test_acp_delete!(&de_b, vec![acp], &data_set, false);
     }
 }

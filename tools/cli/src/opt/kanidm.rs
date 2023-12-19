@@ -1,4 +1,5 @@
-use clap::{Args, Subcommand};
+use clap::{Args, Subcommand, ValueEnum, builder::PossibleValue};
+use std::fmt;
 
 #[derive(Debug, Args)]
 pub struct Named {
@@ -9,12 +10,12 @@ pub struct Named {
 
 #[derive(Debug, Args)]
 pub struct DebugOpt {
-    /// Enable debbuging of the kanidm tool
+    /// Enable debugging of the kanidm tool
     #[clap(short, long, env = "KANIDM_DEBUG")]
     pub debug: bool,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 /// The CLI output mode, either text or json, falls back to text if you ask for something other than text/json
 pub enum OutputMode {
     Text,
@@ -32,9 +33,28 @@ impl std::str::FromStr for OutputMode {
     }
 }
 
+impl OutputMode {
+    pub fn print_message<T>(self, input: T)
+    where
+        T: serde::Serialize + fmt::Debug + fmt::Display,
+    {
+        match self {
+            OutputMode::Json => {
+                println!(
+                    "{}",
+                    serde_json::to_string(&input).unwrap_or(format!("{:?}", input))
+                );
+            }
+            OutputMode::Text => {
+                println!("{}", input);
+            }
+        }
+    }
+}
+
 #[derive(Debug, Args, Clone)]
 pub struct CommonOpt {
-    /// Enable debbuging of the kanidm tool
+    /// Enable debugging of the kanidm tool
     #[clap(short, long, env = "KANIDM_DEBUG")]
     pub debug: bool,
     /// The URL of the kanidm instance
@@ -44,17 +64,27 @@ pub struct CommonOpt {
     #[clap(short = 'D', long = "name", env = "KANIDM_NAME")]
     pub username: Option<String>,
     /// Path to a CA certificate file
-    #[clap(parse(from_os_str), short = 'C', long = "ca", env = "KANIDM_CA_PATH")]
+    #[clap(value_parser, short = 'C', long = "ca", env = "KANIDM_CA_PATH")]
     pub ca_path: Option<PathBuf>,
     /// Log format (still in very early development)
     #[clap(short, long = "output", env = "KANIDM_OUTPUT", default_value = "text")]
     output_mode: OutputMode,
+    /// Skip hostname verification
+    #[clap(
+        long = "skip-hostname-verification",
+        env = "KANIDM_SKIP_HOSTNAME_VERIFICATION",
+        default_value_t = false
+    )]
+    skip_hostname_verification: bool,
+    /// Path to a file to cache tokens in, defaults to ~/.cache/kanidm_tokens
+    #[clap(short, long, env = "KANIDM_TOKEN_CACHE_PATH", hide = true, default_value = None)]
+    token_cache_path: Option<String>,
 }
 
 #[derive(Debug, Args)]
 pub struct GroupNamedMembers {
     name: String,
-    #[clap(required = true, min_values = 1)]
+    #[clap(required = true, num_args(1..))]
     members: Vec<String>,
     #[clap(flatten)]
     copt: CommonOpt,
@@ -79,6 +109,96 @@ pub enum GroupPosix {
     Set(GroupPosixOpt),
 }
 
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub enum AccountPolicyCredentialType {
+    Any,
+    Mfa,
+    Passkey,
+    AttestedPasskey,
+}
+
+impl AccountPolicyCredentialType {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::Any => "any",
+            Self::Mfa => "mfa",
+            Self::Passkey => "passkey",
+            Self::AttestedPasskey => "attested_passkey",
+        }
+    }
+}
+
+impl ValueEnum for AccountPolicyCredentialType {
+    fn value_variants<'a>() -> &'a [Self] {
+        &[Self::Any, Self::Mfa, Self::Passkey, Self::AttestedPasskey]
+    }
+
+    fn to_possible_value(&self) -> Option<PossibleValue> {
+        Some(match self {
+            Self::Any => PossibleValue::new("any"),
+            Self::Mfa => PossibleValue::new("mfa"),
+            Self::Passkey => PossibleValue::new("passkey"),
+            Self::AttestedPasskey => PossibleValue::new("attested_passkey"),
+        })
+    }
+}
+
+#[derive(Debug, Subcommand)]
+pub enum GroupAccountPolicyOpt {
+    /// Enable account policy for this group
+    #[clap(name = "enable")]
+    Enable {
+        name: String,
+        #[clap(flatten)]
+        copt: CommonOpt,
+    },
+    /// Set the maximum time for session expiry
+    #[clap(name = "auth-expiry")]
+    AuthSessionExpiry {
+        name: String,
+        expiry: u32,
+        #[clap(flatten)]
+        copt: CommonOpt,
+    },
+    /// Set the minimum credential class that members may authenticate with. Valid values
+    /// in order of weakest to strongest are: "any" "mfa" "passkey" "attested_passkey"
+    #[clap(name = "credential-type-minimum")]
+    CredentialTypeMinimum {
+        name: String,
+        #[clap(value_enum)]
+        value: AccountPolicyCredentialType,
+        #[clap(flatten)]
+        copt: CommonOpt,
+    },
+    /// Set the minimum length of passwords for accounts
+    #[clap(name = "password-minimum-length")]
+    PasswordMinimumLength {
+        name: String,
+        length: u32,
+        #[clap(flatten)]
+        copt: CommonOpt,
+    },
+    /// Set the maximum time for privilege session expiry
+    #[clap(name = "privilege-expiry")]
+    PrivilegedSessionExpiry {
+        name: String,
+        expiry: u32,
+        #[clap(flatten)]
+        copt: CommonOpt,
+    },
+    /// The the webauthn attestation ca list that should be enforced
+    /// on members of this group. Prevents use of passkeys that are
+    /// in this list. To create this list, use `fido-mds-tool`
+    /// from <https://crates.io/crates/fido-mds-tool>
+    #[clap(name = "webauthn-attestation-ca-list")]
+    WebauthnAttestationCaList {
+        name: String,
+        attestation_ca_list_json: String,
+        #[clap(flatten)]
+        copt: CommonOpt,
+    },
+}
+
 #[derive(Debug, Subcommand)]
 pub enum GroupOpt {
     /// List all groups
@@ -89,7 +209,14 @@ pub enum GroupOpt {
     Get(Named),
     /// Create a new group
     #[clap(name = "create")]
-    Create(Named),
+    Create {
+        /// The name of the group
+        name: String,
+        /// Optional name/spn of a group that have entry manager rights over this group.
+        entry_managed_by: Option<String>,
+        #[clap(flatten)]
+        copt: CommonOpt,
+    },
     /// Delete a group
     #[clap(name = "delete")]
     Delete(Named),
@@ -100,6 +227,16 @@ pub enum GroupOpt {
     /// set operation.
     #[clap(name = "set-members")]
     SetMembers(GroupNamedMembers),
+    /// Set a new entry-managed-by for this group.
+    #[clap(name = "set-entry-manager")]
+    SetEntryManagedBy {
+        /// The name of the group
+        name: String,
+        /// Optional name/spn of a group that have entry manager rights over this group.
+        entry_managed_by: String,
+        #[clap(flatten)]
+        copt: CommonOpt,
+    },
     /// Delete all members of a group.
     #[clap(name = "purge-members")]
     PurgeMembers(Named),
@@ -114,6 +251,12 @@ pub enum GroupOpt {
     Posix {
         #[clap(subcommand)]
         commands: GroupPosix,
+    },
+    /// Manage the policies that apply to members of this group.
+    #[clap(name = "account-policy")]
+    AccountPolicy {
+        #[clap(subcommand)]
+        commands: GroupAccountPolicyOpt,
     },
 }
 
@@ -219,7 +362,6 @@ pub enum AccountCredential {
         #[clap(flatten)]
         copt: CommonOpt,
         /// Optionally set how many seconds the reset token should be valid for.
-        #[clap(long = "ttl")]
         ttl: Option<u32>,
     },
 }
@@ -447,6 +589,12 @@ pub struct ServiceAccountUpdateOpt {
     displayname: Option<String>,
     #[clap(
         long,
+        short = 'e',
+        help = "Set the entry manager for the service account."
+    )]
+    entry_managed_by: Option<String>,
+    #[clap(
+        long,
         short,
         help = "Set the mail address, can be set multiple times for multiple addresses. The first listed mail address is the 'primary'"
     )]
@@ -495,7 +643,16 @@ pub enum ServiceAccountOpt {
     Get(AccountNamedOpt),
     /// Create a new service account
     #[clap(name = "create")]
-    Create(AccountCreateOpt),
+    Create {
+        #[clap(flatten)]
+        aopts: AccountCommonOpt,
+        #[clap(name = "display-name")]
+        display_name: String,
+        #[clap(name = "entry-managed-by")]
+        entry_managed_by: String,
+        #[clap(flatten)]
+        copt: CommonOpt,
+    },
     /// Update a specific service account's attributes
     #[clap(name = "update")]
     Update(ServiceAccountUpdateOpt),
@@ -508,7 +665,7 @@ pub enum ServiceAccountOpt {
         #[clap(subcommand)]
         commands: AccountValidity,
     },
-    /// Convert a service account into a person. This is used during the alpha.9
+    /// (Deprecated - due for removal in v1.1.0-15) - Convert a service account into a person. This is used during the alpha.9
     /// to alpha.10 migration to "fix up" accounts that were not previously marked
     /// as persons.
     #[clap(name = "into-person")]
@@ -556,10 +713,10 @@ pub struct LogoutOpt {
 pub enum SessionOpt {
     #[clap(name = "list")]
     /// List current active sessions
-    List(DebugOpt),
+    List(CommonOpt),
     #[clap(name = "cleanup")]
     /// Remove sessions that have expired or are invalid.
-    Cleanup(DebugOpt),
+    Cleanup(CommonOpt),
 }
 
 #[derive(Debug, Args)]
@@ -572,7 +729,7 @@ pub struct FilterOpt {
 
 #[derive(Debug, Args)]
 pub struct CreateOpt {
-    #[clap(parse(from_os_str))]
+    #[clap(value_parser)]
     file: PathBuf,
     #[clap(flatten)]
     commonopts: CommonOpt,
@@ -584,7 +741,7 @@ pub struct ModifyOpt {
     commonopts: CommonOpt,
     #[clap()]
     filter: String,
-    #[clap(parse(from_os_str))]
+    #[clap(value_parser)]
     file: PathBuf,
 }
 
@@ -602,18 +759,11 @@ pub enum RawOpt {
 
 #[derive(Debug, Subcommand)]
 pub enum SelfOpt {
+    /// Use the identify user feature
+    #[clap(name = "identify-user")]
+    IdentifyUser(CommonOpt),
     /// Show the current authenticated user's identity
     Whoami(CommonOpt),
-}
-
-#[derive(Debug, Args)]
-pub struct Oauth2BasicCreateOpt {
-    #[clap(flatten)]
-    nopt: Named,
-    #[clap(name = "displayname")]
-    displayname: String,
-    #[clap(name = "origin")]
-    origin: String,
 }
 
 #[derive(Debug, Args)]
@@ -662,8 +812,33 @@ pub enum Oauth2Opt {
     // /// Set options for a selected oauth2 resource server
     // Set(),
     #[clap(name = "create")]
-    /// Create a new oauth2 resource server
-    CreateBasic(Oauth2BasicCreateOpt),
+    /// Create a new oauth2 confidential resource server that is protected by basic auth.
+    CreateBasic {
+        #[clap(name = "name")]
+        name: String,
+        #[clap(name = "displayname")]
+        displayname: String,
+        #[clap(name = "origin")]
+        origin: String,
+        #[clap(flatten)]
+        copt: CommonOpt,
+    },
+    #[clap(name = "create-public")]
+    /// Create a new OAuth2 public resource server that requires PKCE. You should prefer
+    /// using confidential resource server types if possible over public ones.
+    ///
+    /// Public clients have many limitations and can not access all API's of OAuth2. For
+    /// example rfc7662 token introspection requires client authentication.
+    CreatePublic {
+        #[clap(name = "name")]
+        name: String,
+        #[clap(name = "displayname")]
+        displayname: String,
+        #[clap(name = "origin")]
+        origin: String,
+        #[clap(flatten)]
+        copt: CommonOpt,
+    },
     #[clap(name = "update-scope-map", visible_aliases=&["create-scope-map"])]
     /// Update or add a new mapping from a group to scopes that it provides to members
     UpdateScopeMap(Oauth2CreateScopeMapOpt),
@@ -752,7 +927,7 @@ pub enum PwBadlistOpt {
     Upload {
         #[clap(flatten)]
         copt: CommonOpt,
-        #[clap(parse(from_os_str), required = true, min_values = 1)]
+        #[clap(value_parser, required = true, num_args(1..))]
         paths: Vec<PathBuf>,
         /// Perform a dry run and display the list that would have been uploaded instead.
         #[clap(short = 'n', long)]
@@ -764,8 +939,33 @@ pub enum PwBadlistOpt {
     Remove {
         #[clap(flatten)]
         copt: CommonOpt,
-        #[clap(parse(from_os_str), required = true, min_values = 1)]
+        #[clap(value_parser, required = true, num_args(1..))]
         paths: Vec<PathBuf>,
+    },
+}
+
+#[derive(Debug, Subcommand)]
+pub enum DeniedNamesOpt {
+    #[clap[name = "show"]]
+    /// Show information about this system's denied name list
+    Show {
+        #[clap(flatten)]
+        copt: CommonOpt,
+    },
+    #[clap[name = "append"]]
+    Append {
+        #[clap(flatten)]
+        copt: CommonOpt,
+        #[clap(value_parser, required = true, num_args(1..))]
+        names: Vec<String>,
+    },
+    #[clap[name = "remove"]]
+    /// Remove a name from the denied name list.
+    Remove {
+        #[clap(flatten)]
+        copt: CommonOpt,
+        #[clap(value_parser, required = true, num_args(1..))]
+        names: Vec<String>,
     },
 }
 
@@ -785,6 +985,14 @@ pub enum DomainOpt {
         #[clap(name = "new-basedn")]
         new_basedn: String,
     },
+    /// Enable or disable unix passwords being used to bind via LDAP. Unless you have a specific
+    /// requirement for this, you should disable this.
+    SetLdapAllowUnixPasswordBind {
+        #[clap(flatten)]
+        copt: CommonOpt,
+        #[clap(name = "allow", action = clap::ArgAction::Set)]
+        enable: bool,
+    },
     #[clap(name = "show")]
     /// Show information about this system's domain
     Show(CommonOpt),
@@ -802,6 +1010,17 @@ pub enum SynchOpt {
     #[clap(name = "get")]
     /// Display a selected IDM sync account
     Get(Named),
+    #[clap(name = "set-credential-portal")]
+    /// Set the url to the external credential portal. This will be displayed to synced users
+    /// so that they can be redirected to update their credentials on this portal.
+    SetCredentialPortal {
+        #[clap()]
+        account_id: String,
+        #[clap(flatten)]
+        copt: CommonOpt,
+        #[clap(name = "url")]
+        url: Option<Url>,
+    },
     /// Create a new IDM sync account
     #[clap(name = "create")]
     Create {
@@ -829,6 +1048,18 @@ pub enum SynchOpt {
         account_id: String,
         #[clap(flatten)]
         copt: CommonOpt,
+    },
+    /// Set the list of attributes that have their authority yielded from the sync account
+    /// and are allowed to be modified by kanidm and users. Any attributes not listed in
+    /// in this command will have their authority returned to the sync account.
+    #[clap(name = "set-yield-attributes")]
+    SetYieldAttributes {
+        #[clap()]
+        account_id: String,
+        #[clap(flatten)]
+        copt: CommonOpt,
+        #[clap(name = "attributes")]
+        attrs: Vec<String>,
     },
     /// Reset the sync cookie of this connector, so that on the next operation of the sync tool
     /// a full refresh of the provider is requested. Kanidm attributes that have been granted
@@ -867,12 +1098,67 @@ pub enum SynchOpt {
 }
 
 #[derive(Debug, Subcommand)]
+pub enum AuthSessionExpiryOpt {
+    #[clap[name = "get"]]
+    /// Show information about this system auth session expiry
+    Get(CommonOpt),
+    #[clap[name = "set"]]
+    /// Sets the system auth session expiry in seconds
+    Set {
+        #[clap(flatten)]
+        copt: CommonOpt,
+        #[clap(name = "expiry")]
+        expiry: u32,
+    },
+}
+
+#[derive(Debug, Subcommand)]
+pub enum PrivilegedSessionExpiryOpt {
+    #[clap[name = "get"]]
+    /// Show information about this system privileged session expiry
+    Get(CommonOpt),
+    #[clap[name = "set"]]
+    /// Sets the system auth privilege session expiry in seconds
+    Set {
+        #[clap(flatten)]
+        copt: CommonOpt,
+        #[clap(name = "expiry")]
+        expiry: u32,
+    },
+}
+
+#[derive(Args, Debug)]
+pub struct ApiSchemaDownloadOpt {
+    #[clap(flatten)]
+    copt: CommonOpt,
+    /// Where to put the file, defaults to ./kanidm-openapi.json
+    #[clap(name = "filename", env, default_value = "./kanidm-openapi.json")]
+    filename: PathBuf,
+    /// Force overwriting the file if it exists
+    #[clap(short, long, env)]
+    force: bool,
+}
+
+#[derive(Debug, Subcommand)]
+pub enum ApiOpt {
+    /// Download the OpenAPI schema file
+    #[clap(name = "download-schema")]
+    DownloadSchema(ApiSchemaDownloadOpt),
+}
+
+#[derive(Debug, Subcommand)]
 pub enum SystemOpt {
     #[clap(name = "pw-badlist")]
     /// Configure and manage the password badlist entry
     PwBadlist {
         #[clap(subcommand)]
         commands: PwBadlistOpt,
+    },
+    #[clap(name = "denied-names")]
+    /// Configure and manage denied names
+    DeniedNames {
+        #[clap(subcommand)]
+        commands: DeniedNamesOpt,
     },
     #[clap(name = "oauth2")]
     /// Configure and display oauth2/oidc resource server configuration
@@ -891,6 +1177,12 @@ pub enum SystemOpt {
     Synch {
         #[clap(subcommand)]
         commands: SynchOpt,
+    },
+    #[clap(name = "api")]
+    /// API related things
+    Api {
+        #[clap(subcommand)]
+        commands: ApiOpt,
     },
 }
 

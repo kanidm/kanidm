@@ -1,16 +1,16 @@
 #[derive(Debug, Args)]
 struct CommonOpt {
-    #[clap(parse(from_os_str), default_value = "", short, long = "config", env = "KANIDM_CONFIG")]
     /// Path to the server's configuration file. If it does not exist, it will be created.
-    config_path: PathBuf,
+    #[clap(short, long = "config", env = "KANIDM_CONFIG")]
+    config_path: Option<PathBuf>,
     /// Log format (still in very early development)
-    #[clap(short, long = "output", env = "KANIDM_OUTPUT", default_value="text")]
+    #[clap(short, long = "output", env = "KANIDM_OUTPUT", default_value = "text")]
     output_mode: String,
 }
 
 #[derive(Debug, Args)]
 struct BackupOpt {
-    #[clap(parse(from_os_str))]
+    #[clap(value_parser)]
     /// Output path for the backup content.
     path: PathBuf,
     #[clap(flatten)]
@@ -19,22 +19,12 @@ struct BackupOpt {
 
 #[derive(Debug, Args)]
 struct RestoreOpt {
-    #[clap(parse(from_os_str))]
+    #[clap(value_parser)]
     /// Restore from this path. Should be created with "backup".
     path: PathBuf,
     #[clap(flatten)]
     commonopts: CommonOpt,
 }
-
-#[derive(Debug, Args)]
-struct RecoverAccountOpt {
-    #[clap(value_parser)]
-    /// The account name to recover credentials for.
-    name: String,
-    #[clap(flatten)]
-    commonopts: CommonOpt,
-}
-
 
 #[derive(Debug, Subcommand)]
 enum DomainSettingsCmds {
@@ -70,30 +60,17 @@ struct DbScanListIndex {
     commonopts: CommonOpt,
 }
 
-
-#[derive(Debug,Parser)]
+#[derive(Debug, Parser)]
 struct HealthCheckArgs {
     /// Disable TLS verification
     #[clap(short, long, action)]
     verify_tls: bool,
     /// Check the 'origin' URL from the server configuration file, instead of the 'address'
-    #[clap(short='O', long, action)]
+    #[clap(short = 'O', long, action)]
     check_origin: bool,
     #[clap(flatten)]
     commonopts: CommonOpt,
 }
-
-/*
-#[derive(Debug, Args)]
-struct DbScanGetIndex {
-    /// The name of the index to list
-    index_name: String,
-    /// The name of the index key to retrieve
-    key: String,
-    #[clap(flatten)]
-    commonopts: CommonOpt,
-}
-*/
 
 #[derive(Debug, Args)]
 struct DbScanGetId2Entry {
@@ -123,11 +100,34 @@ enum DbScanOpt {
     #[clap(name = "list-index-analysis")]
     /// List all content of index analysis
     ListIndexAnalysis(CommonOpt),
+    #[clap(name = "quarantine-id2entry")]
+    /// Given an entry id, quarantine the entry in a hidden db partition
+    QuarantineId2Entry {
+        /// The id of the entry to display
+        id: u64,
+        #[clap(flatten)]
+        commonopts: CommonOpt,
+    },
+    #[clap(name = "list-quarantined")]
+    /// List the entries in quarantine
+    ListQuarantined {
+        #[clap(flatten)]
+        commonopts: CommonOpt,
+    },
+    #[clap(name = "restore-quarantined")]
+    /// Given an entry id, restore the entry from the hidden db partition
+    RestoreQuarantined {
+        /// The id of the entry to display
+        id: u64,
+        #[clap(flatten)]
+        commonopts: CommonOpt,
+    },
 }
 
 #[derive(Debug, Parser)]
+#[command(name = "kanidmd")]
 struct KanidmdParser {
-    #[clap(subcommand)]
+    #[command(subcommand)]
     commands: KanidmdOpt,
 }
 
@@ -146,7 +146,32 @@ enum KanidmdOpt {
     CertGenerate(CommonOpt),
     #[clap(name = "recover-account")]
     /// Recover an account's password
-    RecoverAccount(RecoverAccountOpt),
+    RecoverAccount {
+        #[clap(value_parser)]
+        /// The account name to recover credentials for.
+        name: String,
+        #[clap(flatten)]
+        commonopts: CommonOpt,
+    },
+    /// Display this server's replication certificate
+    ShowReplicationCertificate {
+        #[clap(flatten)]
+        commonopts: CommonOpt,
+    },
+    /// Renew this server's replication certificate
+    RenewReplicationCertificate {
+        #[clap(flatten)]
+        commonopts: CommonOpt,
+    },
+    /// Refresh this servers database content with the content from a supplier. This means
+    /// that all local content will be deleted and replaced with the supplier content.
+    RefreshReplicationConsumer {
+        #[clap(flatten)]
+        commonopts: CommonOpt,
+        /// Acknowledge that this database content will be refreshed from a supplier.
+        #[clap(long = "i-want-to-refresh-this-servers-database")]
+        proceed: bool,
+    },
     // #[clap(name = "reset_server_id")]
     // ResetServerId(CommonOpt),
     #[clap(name = "db-scan")]
@@ -167,11 +192,12 @@ enum KanidmdOpt {
         #[clap(subcommand)]
         commands: DomainSettingsCmds,
     },
+
     /// Load the server config and check services are listening
     #[clap(name = "healthcheck")]
     HealthCheck(HealthCheckArgs),
 
     /// Print the program version and exit
-    #[clap(name="version")]
-    Version(CommonOpt)
+    #[clap(name = "version")]
+    Version(CommonOpt),
 }

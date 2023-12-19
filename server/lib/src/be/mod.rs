@@ -20,6 +20,7 @@ use tracing::{trace, trace_span};
 use uuid::Uuid;
 
 use crate::be::dbentry::{DbBackup, DbEntry};
+use crate::be::dbrepl::DbReplMeta;
 use crate::entry::Entry;
 use crate::filter::{Filter, FilterPlan, FilterResolved, FilterValidResolved};
 use crate::prelude::*;
@@ -31,19 +32,21 @@ use crate::repl::ruv::{
 };
 use crate::value::{IndexType, Value};
 
-pub mod dbentry;
-pub mod dbvalue;
+pub(crate) mod dbentry;
+pub(crate) mod dbrepl;
+pub(crate) mod dbvalue;
+
 mod idl_arc_sqlite;
 mod idl_sqlite;
 pub(crate) mod idxkey;
+pub(crate) mod keystorage;
 
 pub(crate) use self::idxkey::{IdxKey, IdxKeyRef, IdxKeyToRef, IdxSlope};
 use crate::be::idl_arc_sqlite::{
     IdlArcSqlite, IdlArcSqliteReadTransaction, IdlArcSqliteTransaction,
     IdlArcSqliteWriteTransaction,
 };
-// Re-export this
-pub use crate::be::idl_sqlite::FsType;
+use kanidm_proto::internal::FsType;
 
 // Currently disabled due to improvements in idlset for intersection handling.
 const FILTER_SEARCH_TEST_THRESHOLD: usize = 0;
@@ -231,7 +234,7 @@ pub trait BackendTransaction {
                     (IdList::AllIds, FilterPlan::EqUnindexed(attr.clone()))
                 }
             }
-            FilterResolved::Sub(attr, subvalue, idx) => {
+            FilterResolved::Cnt(attr, subvalue, idx) => {
                 if idx.is_some() {
                     // Get the idx_key
                     let idx_key = subvalue.get_idx_sub_key();
@@ -250,6 +253,14 @@ pub trait BackendTransaction {
                     // Schema believes this is not indexed
                     (IdList::AllIds, FilterPlan::SubUnindexed(attr.clone()))
                 }
+            }
+            FilterResolved::Stw(attr, _subvalue, _idx) => {
+                // Schema believes this is not indexed
+                (IdList::AllIds, FilterPlan::SubUnindexed(attr.clone()))
+            }
+            FilterResolved::Enw(attr, _subvalue, _idx) => {
+                // Schema believes this is not indexed
+                (IdList::AllIds, FilterPlan::SubUnindexed(attr.clone()))
             }
             FilterResolved::Pres(attr, idx) => {
                 if idx.is_some() {
@@ -431,14 +442,9 @@ pub trait BackendTransaction {
 
                 for f in f_andnot.iter() {
                     f_rem_count -= 1;
-                    let f_in = match f {
-                        FilterResolved::AndNot(f_in, _) => f_in,
-                        _ => {
-                            filter_error!(
-                                "Invalid server state, a cand filter leaked to andnot set!"
-                            );
-                            return Err(OperationError::InvalidState);
-                        }
+                    let FilterResolved::AndNot(f_in, _) = f else {
+                        filter_error!("Invalid server state, a cand filter leaked to andnot set!");
+                        return Err(OperationError::InvalidState);
                     };
                     let (inter, fp) = self.filter2idl(f_in, thres)?;
                     // It's an and not, so we need to wrap the plan accordingly.
@@ -578,7 +584,7 @@ pub trait BackendTransaction {
         let (idl, fplan) = trace_span!("be::search -> filter2idl")
             .in_scope(|| self.filter2idl(filt.to_inner(), FILTER_SEARCH_TEST_THRESHOLD))?;
 
-        debug!(filter_executed_plan = ?fplan);
+        debug!(search_filter_executed_plan = ?fplan);
 
         match &idl {
             IdList::AllIds => {
@@ -671,7 +677,7 @@ pub trait BackendTransaction {
         let (idl, fplan) = trace_span!("be::exists -> filter2idl")
             .in_scope(|| self.filter2idl(filt.to_inner(), FILTER_EXISTS_TEST_THRESHOLD))?;
 
-        debug!(filter_executed_plan = ?fplan);
+        debug!(exist_filter_executed_plan = ?fplan);
 
         // Apply limits to the IdList.
         match &idl {
@@ -754,12 +760,9 @@ pub trait BackendTransaction {
             // We only check these on live entries.
             let (n2u_add, n2u_rem) = Entry::idx_name2uuid_diff(None, Some(e));
 
-            let n2u_set = match (n2u_add, n2u_rem) {
-                (Some(set), None) => set,
-                (_, _) => {
-                    admin_error!("Invalid idx_name2uuid_diff state");
-                    return Err(ConsistencyError::BackendIndexSync);
-                }
+            let (Some(n2u_set), None) = (n2u_add, n2u_rem) else {
+                admin_error!("Invalid idx_name2uuid_diff state");
+                return Err(ConsistencyError::BackendIndexSync);
             };
 
             // If the set.len > 1, check each item.
@@ -789,7 +792,8 @@ pub trait BackendTransaction {
                     }
                 }
                 r => {
-                    admin_error!(state = ?r, "Invalid uuid2spn state");
+                    admin_error!(state = ?r, ?e_uuid, "Invalid uuid2spn state");
+                    trace!(entry = ?e);
                     return Err(ConsistencyError::BackendIndexSync);
                 }
             };
@@ -853,6 +857,8 @@ pub trait BackendTransaction {
     }
 
     fn backup(&mut self, dst_path: &str) -> Result<(), OperationError> {
+        let repl_meta = self.get_ruv().to_db_backup_ruv();
+
         // load all entries into RAM, may need to change this later
         // if the size of the database compared to RAM is an issue
         let idl = IdList::AllIds;
@@ -879,10 +885,14 @@ pub trait BackendTransaction {
             .get_db_ts_max()
             .and_then(|u| u.ok_or(OperationError::InvalidDbState))?;
 
-        let bak = DbBackup::V2 {
+        let keyhandles = idlayer.get_key_handles()?;
+
+        let bak = DbBackup::V4 {
             db_s_uuid,
             db_d_uuid,
             db_ts_max,
+            keyhandles,
+            repl_meta,
             entries,
         };
 
@@ -951,6 +961,10 @@ impl<'a> BackendReadTransaction<'a> {
 
     pub fn get_id2entry(&mut self, id: u64) -> Result<(u64, String), OperationError> {
         self.get_idlayer().get_id2entry(id)
+    }
+
+    pub fn list_quarantined(&mut self) -> Result<Vec<(u64, String)>, OperationError> {
+        self.get_idlayer().list_quarantined()
     }
 }
 
@@ -1128,9 +1142,11 @@ impl<'a> BackendWriteTransaction<'a> {
             let ctx_ent_uuid = ctx_ent.get_uuid();
             let idx_key = ctx_ent_uuid.as_hyphenated().to_string();
 
-            let idl = self
-                .get_idlayer()
-                .get_idl("uuid", IndexType::Equality, &idx_key)?;
+            let idl = self.get_idlayer().get_idl(
+                Attribute::Uuid.as_ref(),
+                IndexType::Equality,
+                &idx_key,
+            )?;
 
             let entry = match idl {
                 Some(idl) if idl.is_empty() => {
@@ -1138,10 +1154,15 @@ impl<'a> BackendWriteTransaction<'a> {
                     // allocated.
                     id_max += 1;
 
-                    Arc::new(EntrySealedCommitted::stub_sealed_committed_id(
+                    let stub_entry = Arc::new(EntrySealedCommitted::stub_sealed_committed_id(
                         id_max, ctx_ent,
-                    ))
+                    ));
+                    // Now, the stub entry needs to be indexed. If not, uuid2spn
+                    // isn't created, so subsequent index diffs don't work correctly.
+                    self.entry_index(None, Some(stub_entry.as_ref()))?;
+
                     // Okay, entry ready to go.
+                    stub_entry
                 }
                 Some(idl) if idl.len() == 1 => {
                     // Get the entry from this idl.
@@ -1164,7 +1185,7 @@ impl<'a> BackendWriteTransaction<'a> {
                 }
                 Some(idl) => {
                     // BUG - duplicate uuid!
-                    error!(uuid = ?ctx_ent_uuid, "Invalid IDL state, uuid index must have only a single or no values. Contains {}", idl.len());
+                    error!(uuid = ?ctx_ent_uuid, "Invalid IDL state, uuid index must have only a single or no values. Contains {:?}", idl);
                     return Err(OperationError::InvalidDbState);
                 }
                 None => {
@@ -1379,7 +1400,6 @@ impl<'a> BackendWriteTransaction<'a> {
         // Update the names/uuid maps. These have to mask out entries
         // that are recycled or tombstones, so these pretend as "deleted"
         // and can trigger correct actions.
-        //
 
         let mask_pre = pre.and_then(|e| e.mask_recycled_ts());
         let mask_pre = if !uuid_same {
@@ -1494,6 +1514,11 @@ impl<'a> BackendWriteTransaction<'a> {
                         match self.idlayer.get_idl(attr, itype, &idx_key)? {
                             Some(mut idl) => {
                                 idl.insert_id(e_id);
+                                if cfg!(debug_assertions)
+                                    && attr == Attribute::Uuid.as_ref() && itype == IndexType::Equality {
+                                        trace!("{:?}", idl);
+                                        debug_assert!(idl.len() <= 1);
+                                }
                                 self.idlayer.write_idl(attr, itype, &idx_key, &idl)
                             }
                             None => {
@@ -1510,6 +1535,10 @@ impl<'a> BackendWriteTransaction<'a> {
                         match self.idlayer.get_idl(attr, itype, &idx_key)? {
                             Some(mut idl) => {
                                 idl.remove_id(e_id);
+                                if cfg!(debug_assertions) && attr == Attribute::Uuid.as_ref() && itype == IndexType::Equality {
+                                        trace!("{:?}", idl);
+                                        debug_assert!(idl.len() <= 1);
+                                }
                                 self.idlayer.write_idl(attr, itype, &idx_key, &idl)
                             }
                             None => {
@@ -1566,14 +1595,14 @@ impl<'a> BackendWriteTransaction<'a> {
         trace!("Creating index -> uuid2rdn");
         self.idlayer.create_uuid2rdn()?;
 
-        self.idxmeta_wr
-            .idxkeys
-            .keys()
-            .try_for_each(|ikey| self.idlayer.create_idx(&ikey.attr, ikey.itype))
+        self.idxmeta_wr.idxkeys.keys().try_for_each(|ikey| {
+            let attr: Attribute = (&ikey.attr).try_into()?;
+            self.idlayer.create_idx(attr, ikey.itype)
+        })
     }
 
     pub fn upgrade_reindex(&mut self, v: i64) -> Result<(), OperationError> {
-        let dbv = self.get_db_index_version();
+        let dbv = self.get_db_index_version()?;
         admin_debug!(?dbv, ?v, "upgrade_reindex");
         if dbv < v {
             limmediate_warning!(
@@ -1589,7 +1618,7 @@ impl<'a> BackendWriteTransaction<'a> {
 
     pub fn reindex(&mut self) -> Result<(), OperationError> {
         // Purge the idxs
-        unsafe { self.idlayer.purge_idxs()? };
+        self.idlayer.danger_purge_idxs()?;
 
         // Using the index metadata on the txn, create all our idx tables
         self.create_idxs()?;
@@ -1633,17 +1662,23 @@ impl<'a> BackendWriteTransaction<'a> {
         Ok(())
     }
 
-    fn purge_idxs(&mut self) -> Result<(), OperationError> {
-        unsafe { self.get_idlayer().purge_idxs() }
+    /// ⚠️  - This function will destroy all indexes in the database.
+    ///
+    /// It should only be called internally by the backend in limited and
+    /// specific situations.
+    fn danger_purge_idxs(&mut self) -> Result<(), OperationError> {
+        self.get_idlayer().danger_purge_idxs()
     }
 
+    /// ⚠️  - This function will destroy all entries and indexes in the database.
+    ///
+    /// It should only be called internally by the backend in limited and
+    /// specific situations.
     pub(crate) fn danger_delete_all_db_content(&mut self) -> Result<(), OperationError> {
         self.get_ruv().clear();
-        unsafe {
-            self.get_idlayer()
-                .purge_id2entry()
-                .and_then(|_| self.purge_idxs())
-        }
+        self.get_idlayer()
+            .danger_purge_id2entry()
+            .and_then(|_| self.danger_purge_idxs())
     }
 
     #[cfg(test)]
@@ -1671,18 +1706,19 @@ impl<'a> BackendWriteTransaction<'a> {
     }
 
     pub fn restore(&mut self, src_path: &str) -> Result<(), OperationError> {
-        let idlayer = self.get_idlayer();
-        // load all entries into RAM, may need to change this later
-        // if the size of the database compared to RAM is an issue
         let serialized_string = fs::read_to_string(src_path).map_err(|e| {
             admin_error!("fs::read_to_string {:?}", e);
             OperationError::FsError
         })?;
 
-        unsafe { idlayer.purge_id2entry() }.map_err(|e| {
-            admin_error!("purge_id2entry failed {:?}", e);
+        self.danger_delete_all_db_content().map_err(|e| {
+            admin_error!("delete_all_db_content failed {:?}", e);
             e
         })?;
+
+        let idlayer = self.get_idlayer();
+        // load all entries into RAM, may need to change this later
+        // if the size of the database compared to RAM is an issue
 
         let dbbak_option: Result<DbBackup, serde_json::Error> =
             serde_json::from_str(&serialized_string);
@@ -1692,8 +1728,8 @@ impl<'a> BackendWriteTransaction<'a> {
             OperationError::SerdeJsonError
         })?;
 
-        let dbentries = match dbbak {
-            DbBackup::V1(dbentries) => dbentries,
+        let (dbentries, repl_meta) = match dbbak {
+            DbBackup::V1(dbentries) => (dbentries, None),
             DbBackup::V2 {
                 db_s_uuid,
                 db_d_uuid,
@@ -1704,9 +1740,49 @@ impl<'a> BackendWriteTransaction<'a> {
                 idlayer.write_db_s_uuid(db_s_uuid)?;
                 idlayer.write_db_d_uuid(db_d_uuid)?;
                 idlayer.set_db_ts_max(db_ts_max)?;
-                entries
+                (entries, None)
+            }
+            DbBackup::V3 {
+                db_s_uuid,
+                db_d_uuid,
+                db_ts_max,
+                keyhandles,
+                entries,
+            } => {
+                // Do stuff.
+                idlayer.write_db_s_uuid(db_s_uuid)?;
+                idlayer.write_db_d_uuid(db_d_uuid)?;
+                idlayer.set_db_ts_max(db_ts_max)?;
+                idlayer.set_key_handles(keyhandles)?;
+                (entries, None)
+            }
+            DbBackup::V4 {
+                db_s_uuid,
+                db_d_uuid,
+                db_ts_max,
+                keyhandles,
+                repl_meta,
+                entries,
+            } => {
+                // Do stuff.
+                idlayer.write_db_s_uuid(db_s_uuid)?;
+                idlayer.write_db_d_uuid(db_d_uuid)?;
+                idlayer.set_db_ts_max(db_ts_max)?;
+                idlayer.set_key_handles(keyhandles)?;
+                (entries, Some(repl_meta))
             }
         };
+
+        // Rebuild the RUV from the backup.
+        match repl_meta {
+            Some(DbReplMeta::V1 { ruv: db_ruv }) => {
+                self.get_ruv()
+                    .restore(db_ruv.into_iter().map(|db_cid| db_cid.into()))?;
+            }
+            None => {
+                warn!("Unable to restore replication metadata, this server may need a refresh.");
+            }
+        }
 
         info!("Restoring {} entries ...", dbentries.len());
 
@@ -1727,6 +1803,8 @@ impl<'a> BackendWriteTransaction<'a> {
             })
             .collect();
 
+        let idlayer = self.get_idlayer();
+
         idlayer.write_identries_raw(identries?.into_iter())?;
 
         info!("Restored {} entries", dbentries.len());
@@ -1742,8 +1820,33 @@ impl<'a> BackendWriteTransaction<'a> {
         }
     }
 
+    /// If any RUV elements are present in the DB, load them now. This provides us with
+    /// the RUV boundaries and change points from previous operations of the server, so
+    /// that ruv_rebuild can "fill in" the gaps.
+    ///
+    /// # SAFETY
+    ///
+    /// Note that you should only call this function during the server startup
+    /// to reload the RUV data from the entries of the database.
+    ///
+    /// Before calling this, the in memory ruv MUST be clear.
     #[instrument(level = "debug", name = "be::ruv_rebuild", skip_all)]
-    pub fn ruv_rebuild(&mut self) -> Result<(), OperationError> {
+    fn ruv_reload(&mut self) -> Result<(), OperationError> {
+        let idlayer = self.get_idlayer();
+
+        let db_ruv = idlayer.get_db_ruv()?;
+
+        // Setup the CID's that existed previously. We don't need to know what entries
+        // they affect, we just need them to ensure that we have ranges for replication
+        // comparison to take effect properly.
+        self.get_ruv().restore(db_ruv)?;
+
+        // Then populate the RUV with the data from the entries.
+        self.ruv_rebuild()
+    }
+
+    #[instrument(level = "debug", name = "be::ruv_rebuild", skip_all)]
+    fn ruv_rebuild(&mut self) -> Result<(), OperationError> {
         // Rebuild the ruv!
         // For now this has to read from all the entries in the DB, but in the future
         // we'll actually store this properly (?). If it turns out this is really fast
@@ -1762,12 +1865,34 @@ impl<'a> BackendWriteTransaction<'a> {
         Ok(())
     }
 
+    pub fn quarantine_entry(&mut self, id: u64) -> Result<(), OperationError> {
+        self.get_idlayer().quarantine_entry(id)?;
+        // We have to set the index version to 0 so that on next start we force
+        // a reindex to automatically occur.
+        self.set_db_index_version(0)
+    }
+
+    pub fn restore_quarantined(&mut self, id: u64) -> Result<(), OperationError> {
+        self.get_idlayer().restore_quarantined(id)?;
+        // We have to set the index version to 0 so that on next start we force
+        // a reindex to automatically occur.
+        self.set_db_index_version(0)
+    }
+
+    #[cfg(any(test, debug_assertions))]
+    pub fn clear_cache(&mut self) -> Result<(), OperationError> {
+        self.get_idlayer().clear_cache()
+    }
+
     pub fn commit(self) -> Result<(), OperationError> {
         let BackendWriteTransaction {
-            idlayer,
+            mut idlayer,
             idxmeta_wr,
             ruv,
         } = self;
+
+        // write the ruv content back to the db.
+        idlayer.write_db_ruv(ruv.added(), ruv.removed())?;
 
         idlayer.commit().map(|()| {
             ruv.commit();
@@ -1778,19 +1903,20 @@ impl<'a> BackendWriteTransaction<'a> {
     fn reset_db_s_uuid(&mut self) -> Result<Uuid, OperationError> {
         // The value is missing. Generate a new one and store it.
         let nsid = Uuid::new_v4();
-        self.get_idlayer().write_db_s_uuid(nsid)?;
+        self.get_idlayer().write_db_s_uuid(nsid).map_err(|err| {
+            error!(?err, "Unable to persist server uuid");
+            err
+        })?;
         Ok(nsid)
     }
 
-    pub fn get_db_s_uuid(&mut self) -> Uuid {
-        #[allow(clippy::expect_used)]
-        match self
-            .get_idlayer()
-            .get_db_s_uuid()
-            .expect("DBLayer Error!!!")
-        {
-            Some(s_uuid) => s_uuid,
-            None => self.reset_db_s_uuid().expect("Failed to regenerate S_UUID"),
+    pub fn get_db_s_uuid(&mut self) -> Result<Uuid, OperationError> {
+        match self.get_idlayer().get_db_s_uuid().map_err(|err| {
+            error!(?err, "Failed to read server uuid");
+            err
+        })? {
+            Some(s_uuid) => Ok(s_uuid),
+            None => self.reset_db_s_uuid(),
         }
     }
 
@@ -1798,7 +1924,10 @@ impl<'a> BackendWriteTransaction<'a> {
     /// returning the new UUID
     fn reset_db_d_uuid(&mut self) -> Result<Uuid, OperationError> {
         let nsid = Uuid::new_v4();
-        self.get_idlayer().write_db_d_uuid(nsid)?;
+        self.get_idlayer().write_db_d_uuid(nsid).map_err(|err| {
+            error!(?err, "Unable to persist domain uuid");
+            err
+        })?;
         Ok(nsid)
     }
 
@@ -1809,15 +1938,13 @@ impl<'a> BackendWriteTransaction<'a> {
     }
 
     /// This pulls the domain UUID from the database
-    pub fn get_db_d_uuid(&mut self) -> Uuid {
-        #[allow(clippy::expect_used)]
-        match self
-            .get_idlayer()
-            .get_db_d_uuid()
-            .expect("DBLayer Error retrieving Domain UUID!!!")
-        {
-            Some(d_uuid) => d_uuid,
-            None => self.reset_db_d_uuid().expect("Failed to regenerate D_UUID"),
+    pub fn get_db_d_uuid(&mut self) -> Result<Uuid, OperationError> {
+        match self.get_idlayer().get_db_d_uuid().map_err(|err| {
+            error!(?err, "Failed to read domain uuid");
+            err
+        })? {
+            Some(d_uuid) => Ok(d_uuid),
+            None => self.reset_db_d_uuid(),
         }
     }
 
@@ -1833,7 +1960,7 @@ impl<'a> BackendWriteTransaction<'a> {
         }
     }
 
-    fn get_db_index_version(&mut self) -> i64 {
+    fn get_db_index_version(&mut self) -> Result<i64, OperationError> {
         self.get_idlayer().get_db_index_version()
     }
 
@@ -1847,10 +1974,10 @@ impl<'a> BackendWriteTransaction<'a> {
 // these are values that are generally "good enough" for most applications
 fn get_idx_slope_default(ikey: &IdxKey) -> IdxSlope {
     match (ikey.attr.as_str(), &ikey.itype) {
-        ("name", IndexType::Equality)
-        | ("spn", IndexType::Equality)
-        | ("uuid", IndexType::Equality) => 1,
-        ("class", IndexType::Equality) => 180,
+        (ATTR_NAME, IndexType::Equality)
+        | (ATTR_SPN, IndexType::Equality)
+        | (ATTR_UUID, IndexType::Equality) => 1,
+        (ATTR_CLASS, IndexType::Equality) => 180,
         (_, IndexType::Equality) => 45,
         (_, IndexType::SubString) => 90,
         (_, IndexType::Presence) => 90,
@@ -1868,9 +1995,7 @@ impl Backend {
         idxkeys: Vec<IdxKey>,
         vacuum: bool,
     ) -> Result<Self, OperationError> {
-        info!("DB tickets -> {:?}", cfg.pool_size);
-        info!("Profile -> {}", env!("KANIDM_PROFILE_NAME"));
-        info!("CPU Flags -> {}", env!("KANIDM_CPU_FLAGS"));
+        debug!(db_tickets = ?cfg.pool_size, profile = %env!("KANIDM_PROFILE_NAME"), cpu_flags = %env!("KANIDM_CPU_FLAGS"));
 
         // If in memory, reduce pool to 1
         if cfg.path.is_empty() {
@@ -1908,7 +2033,7 @@ impl Backend {
         // In this case we can use an empty idx meta because we don't
         // access any parts of
         // the indexing subsystem here.
-        let mut idl_write = be.idlayer.write();
+        let mut idl_write = be.idlayer.write()?;
         idl_write
             .setup()
             .and_then(|_| idl_write.commit())
@@ -1918,9 +2043,9 @@ impl Backend {
             })?;
 
         // Now rebuild the ruv.
-        let mut be_write = be.write();
+        let mut be_write = be.write()?;
         be_write
-            .ruv_rebuild()
+            .ruv_reload()
             .and_then(|_| be_write.commit())
             .map_err(|e| {
                 admin_error!(?e, "Failed to reload ruv");
@@ -1939,41 +2064,21 @@ impl Backend {
         self.idlayer.try_quiesce();
     }
 
-    pub fn read(&self) -> BackendReadTransaction {
-        BackendReadTransaction {
-            idlayer: self.idlayer.read(),
+    pub fn read(&self) -> Result<BackendReadTransaction, OperationError> {
+        Ok(BackendReadTransaction {
+            idlayer: self.idlayer.read()?,
             idxmeta: self.idxmeta.read(),
             ruv: self.ruv.read(),
-        }
+        })
     }
 
-    pub fn write(&self) -> BackendWriteTransaction {
-        BackendWriteTransaction {
-            idlayer: self.idlayer.write(),
+    pub fn write(&self) -> Result<BackendWriteTransaction, OperationError> {
+        Ok(BackendWriteTransaction {
+            idlayer: self.idlayer.write()?,
             idxmeta_wr: self.idxmeta.write(),
             ruv: self.ruv.write(),
-        }
+        })
     }
-
-    // Should this actually call the idlayer directly?
-    pub fn reset_db_s_uuid(&self) -> Uuid {
-        let mut wr = self.write();
-        #[allow(clippy::expect_used)]
-        let sid = wr
-            .reset_db_s_uuid()
-            .expect("unable to reset db server uuid");
-        #[allow(clippy::expect_used)]
-        wr.commit()
-            .expect("Unable to commit to backend, can not proceed");
-        sid
-    }
-
-    /*
-    pub fn get_db_s_uuid(&self) -> Uuid {
-        let wr = self.write(Set::new());
-        wr.reset_db_s_uuid().unwrap()
-    }
-    */
 }
 
 // What are the possible actions we'll receive here?
@@ -1998,10 +2103,10 @@ mod tests {
     use crate::value::{IndexType, PartialValue, Value};
 
     lazy_static! {
-        static ref CID_ZERO: Cid = unsafe { Cid::new_zero() };
-        static ref CID_ONE: Cid = unsafe { Cid::new_count(1) };
-        static ref CID_TWO: Cid = unsafe { Cid::new_count(2) };
-        static ref CID_THREE: Cid = unsafe { Cid::new_count(3) };
+        static ref CID_ZERO: Cid = Cid::new_zero();
+        static ref CID_ONE: Cid = Cid::new_count(1);
+        static ref CID_TWO: Cid = Cid::new_count(2);
+        static ref CID_THREE: Cid = Cid::new_count(3);
     }
 
     macro_rules! run_test {
@@ -2011,31 +2116,31 @@ mod tests {
             // This is a demo idxmeta, purely for testing.
             let idxmeta = vec![
                 IdxKey {
-                    attr: AttrString::from("name"),
+                    attr: Attribute::Name.into(),
                     itype: IndexType::Equality,
                 },
                 IdxKey {
-                    attr: AttrString::from("name"),
+                    attr: Attribute::Name.into(),
                     itype: IndexType::Presence,
                 },
                 IdxKey {
-                    attr: AttrString::from("name"),
+                    attr: Attribute::Name.into(),
                     itype: IndexType::SubString,
                 },
                 IdxKey {
-                    attr: AttrString::from("uuid"),
+                    attr: Attribute::Uuid.into(),
                     itype: IndexType::Equality,
                 },
                 IdxKey {
-                    attr: AttrString::from("uuid"),
+                    attr: Attribute::Uuid.into(),
                     itype: IndexType::Presence,
                 },
                 IdxKey {
-                    attr: AttrString::from("ta"),
+                    attr: Attribute::TestAttr.into(),
                     itype: IndexType::Equality,
                 },
                 IdxKey {
-                    attr: AttrString::from("tb"),
+                    attr: Attribute::TestNumber.into(),
                     itype: IndexType::Equality,
                 },
             ];
@@ -2043,7 +2148,7 @@ mod tests {
             let be = Backend::new(BackendConfig::new_test("main"), idxmeta, false)
                 .expect("Failed to setup backend");
 
-            let mut be_txn = be.write();
+            let mut be_txn = be.write().unwrap();
 
             let r = $test_fn(&mut be_txn);
             // Commit, to guarantee it worked.
@@ -2054,12 +2159,11 @@ mod tests {
 
     macro_rules! entry_exists {
         ($be:expr, $ent:expr) => {{
-            let ei = unsafe { $ent.clone().into_sealed_committed() };
-            let filt = unsafe {
-                ei.filter_from_attrs(&vec![AttrString::from("uuid")])
-                    .expect("failed to generate filter")
-                    .into_valid_resolved()
-            };
+            let ei = $ent.clone().into_sealed_committed();
+            let filt = ei
+                .filter_from_attrs(&vec![Attribute::Uuid.into()])
+                .expect("failed to generate filter")
+                .into_valid_resolved();
             let lims = Limits::unlimited();
             let entries = $be.search(&lims, &filt).expect("failed to search");
             entries.first().is_some()
@@ -2068,12 +2172,11 @@ mod tests {
 
     macro_rules! entry_attr_pres {
         ($be:expr, $ent:expr, $attr:expr) => {{
-            let ei = unsafe { $ent.clone().into_sealed_committed() };
-            let filt = unsafe {
-                ei.filter_from_attrs(&vec![AttrString::from("userid")])
-                    .expect("failed to generate filter")
-                    .into_valid_resolved()
-            };
+            let ei = $ent.clone().into_sealed_committed();
+            let filt = ei
+                .filter_from_attrs(&vec![Attribute::UserId.into()])
+                .expect("failed to generate filter")
+                .into_valid_resolved();
             let lims = Limits::unlimited();
             let entries = $be.search(&lims, &filt).expect("failed to search");
             match entries.first() {
@@ -2103,9 +2206,12 @@ mod tests {
             assert_eq!(empty_result, Err(OperationError::EmptyRequest));
 
             let mut e: Entry<EntryInit, EntryNew> = Entry::new();
-            e.add_ava("userid", Value::from("william"));
-            e.add_ava("uuid", Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
-            let e = unsafe { e.into_sealed_new() };
+            e.add_ava(Attribute::UserId, Value::from("william"));
+            e.add_ava(
+                Attribute::Uuid,
+                Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"),
+            );
+            let e = e.into_sealed_new();
 
             let single_result = be.create(&CID_ZERO, vec![e.clone()]);
 
@@ -2122,16 +2228,18 @@ mod tests {
             trace!("Simple Search");
 
             let mut e: Entry<EntryInit, EntryNew> = Entry::new();
-            e.add_ava("userid", Value::from("claire"));
-            e.add_ava("uuid", Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
-            let e = unsafe { e.into_sealed_new() };
+            e.add_ava(Attribute::UserId, Value::from("claire"));
+            e.add_ava(
+                Attribute::Uuid,
+                Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"),
+            );
+            let e = e.into_sealed_new();
 
             let single_result = be.create(&CID_ZERO, vec![e]);
             assert!(single_result.is_ok());
             // Test a simple EQ search
 
-            let filt =
-                unsafe { filter_resolved!(f_eq("userid", PartialValue::new_utf8s("claire"))) };
+            let filt = filter_resolved!(f_eq(Attribute::UserId, PartialValue::new_utf8s("claire")));
 
             let lims = Limits::unlimited();
 
@@ -2153,15 +2261,21 @@ mod tests {
             let lims = Limits::unlimited();
             // First create some entries (3?)
             let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
-            e1.add_ava("userid", Value::from("william"));
-            e1.add_ava("uuid", Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
+            e1.add_ava(Attribute::UserId, Value::from("william"));
+            e1.add_ava(
+                Attribute::Uuid,
+                Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"),
+            );
 
             let mut e2: Entry<EntryInit, EntryNew> = Entry::new();
-            e2.add_ava("userid", Value::from("alice"));
-            e2.add_ava("uuid", Value::from("4b6228ab-1dbe-42a4-a9f5-f6368222438e"));
+            e2.add_ava(Attribute::UserId, Value::from("alice"));
+            e2.add_ava(
+                Attribute::Uuid,
+                Value::from("4b6228ab-1dbe-42a4-a9f5-f6368222438e"),
+            );
 
-            let ve1 = unsafe { e1.clone().into_sealed_new() };
-            let ve2 = unsafe { e2.clone().into_sealed_new() };
+            let ve1 = e1.clone().into_sealed_new();
+            let ve2 = e2.clone().into_sealed_new();
 
             assert!(be.create(&CID_ZERO, vec![ve1, ve2]).is_ok());
             assert!(entry_exists!(be, e1));
@@ -2169,20 +2283,20 @@ mod tests {
 
             // You need to now retrieve the entries back out to get the entry id's
             let mut results = be
-                .search(&lims, unsafe { &filter_resolved!(f_pres("userid")) })
+                .search(&lims, &filter_resolved!(f_pres(Attribute::UserId)))
                 .expect("Failed to search");
 
             // Get these out to usable entries.
             let r1 = results.remove(0);
             let r2 = results.remove(0);
 
-            let mut r1 = unsafe { r1.as_ref().clone().into_invalid() };
-            let mut r2 = unsafe { r2.as_ref().clone().into_invalid() };
+            let mut r1 = r1.as_ref().clone().into_invalid();
+            let mut r2 = r2.as_ref().clone().into_invalid();
 
             // Modify no id (err)
             // This is now impossible due to the state machine design.
             // However, with some unsafe ....
-            let ue1 = unsafe { e1.clone().into_sealed_committed() };
+            let ue1 = e1.clone().into_sealed_committed();
             assert!(be
                 .modify(&CID_ZERO, &[Arc::new(ue1.clone())], &[ue1])
                 .is_err());
@@ -2190,21 +2304,21 @@ mod tests {
             assert!(be.modify(&CID_ZERO, &[], &[]).is_err());
 
             // Make some changes to r1, r2.
-            let pre1 = unsafe { Arc::new(r1.clone().into_sealed_committed()) };
-            let pre2 = unsafe { Arc::new(r2.clone().into_sealed_committed()) };
-            r1.add_ava("desc", Value::from("modified"));
-            r2.add_ava("desc", Value::from("modified"));
+            let pre1 = Arc::new(r1.clone().into_sealed_committed());
+            let pre2 = Arc::new(r2.clone().into_sealed_committed());
+            r1.add_ava(Attribute::TestAttr, Value::from("modified"));
+            r2.add_ava(Attribute::TestAttr, Value::from("modified"));
 
             // Now ... cheat.
 
-            let vr1 = unsafe { r1.into_sealed_committed() };
-            let vr2 = unsafe { r2.into_sealed_committed() };
+            let vr1 = r1.into_sealed_committed();
+            let vr2 = r2.into_sealed_committed();
 
             // Modify single
             assert!(be.modify(&CID_ZERO, &[pre1], &[vr1.clone()]).is_ok());
             // Assert no other changes
-            assert!(entry_attr_pres!(be, vr1, "desc"));
-            assert!(!entry_attr_pres!(be, vr2, "desc"));
+            assert!(entry_attr_pres!(be, vr1, Attribute::TestAttr));
+            assert!(!entry_attr_pres!(be, vr2, Attribute::TestAttr));
 
             // Modify both
             assert!(be
@@ -2215,8 +2329,8 @@ mod tests {
                 )
                 .is_ok());
 
-            assert!(entry_attr_pres!(be, vr1, "desc"));
-            assert!(entry_attr_pres!(be, vr2, "desc"));
+            assert!(entry_attr_pres!(be, vr1, Attribute::TestAttr));
+            assert!(entry_attr_pres!(be, vr2, Attribute::TestAttr));
         });
     }
 
@@ -2228,20 +2342,29 @@ mod tests {
 
             // First create some entries (3?)
             let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
-            e1.add_ava("userid", Value::from("william"));
-            e1.add_ava("uuid", Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
+            e1.add_ava(Attribute::UserId, Value::from("william"));
+            e1.add_ava(
+                Attribute::Uuid,
+                Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"),
+            );
 
             let mut e2: Entry<EntryInit, EntryNew> = Entry::new();
-            e2.add_ava("userid", Value::from("alice"));
-            e2.add_ava("uuid", Value::from("4b6228ab-1dbe-42a4-a9f5-f6368222438e"));
+            e2.add_ava(Attribute::UserId, Value::from("alice"));
+            e2.add_ava(
+                Attribute::Uuid,
+                Value::from("4b6228ab-1dbe-42a4-a9f5-f6368222438e"),
+            );
 
             let mut e3: Entry<EntryInit, EntryNew> = Entry::new();
-            e3.add_ava("userid", Value::from("lucy"));
-            e3.add_ava("uuid", Value::from("7b23c99d-c06b-4a9a-a958-3afa56383e1d"));
+            e3.add_ava(Attribute::UserId, Value::from("lucy"));
+            e3.add_ava(
+                Attribute::Uuid,
+                Value::from("7b23c99d-c06b-4a9a-a958-3afa56383e1d"),
+            );
 
-            let ve1 = unsafe { e1.clone().into_sealed_new() };
-            let ve2 = unsafe { e2.clone().into_sealed_new() };
-            let ve3 = unsafe { e3.clone().into_sealed_new() };
+            let ve1 = e1.clone().into_sealed_new();
+            let ve2 = e2.clone().into_sealed_new();
+            let ve3 = e3.clone().into_sealed_new();
 
             assert!(be.create(&CID_ZERO, vec![ve1, ve2, ve3]).is_ok());
             assert!(entry_exists!(be, e1));
@@ -2250,7 +2373,7 @@ mod tests {
 
             // You need to now retrieve the entries back out to get the entry id's
             let mut results = be
-                .search(&lims, unsafe { &filter_resolved!(f_pres("userid")) })
+                .search(&lims, &filter_resolved!(f_pres(Attribute::UserId)))
                 .expect("Failed to search");
 
             // Get these out to usable entries.
@@ -2263,12 +2386,12 @@ mod tests {
 
             // Put them into the tombstone state, and write that down.
             // This sets up the RUV with the changes.
-            let r1_ts = unsafe { r1.to_tombstone(CID_ONE.clone()).into_sealed_committed() };
+            let r1_ts = r1.to_tombstone(CID_ONE.clone()).into_sealed_committed();
 
             assert!(be.modify(&CID_ONE, &[r1], &[r1_ts.clone()]).is_ok());
 
-            let r2_ts = unsafe { r2.to_tombstone(CID_TWO.clone()).into_sealed_committed() };
-            let r3_ts = unsafe { r3.to_tombstone(CID_TWO.clone()).into_sealed_committed() };
+            let r2_ts = r2.to_tombstone(CID_TWO.clone()).into_sealed_committed();
+            let r3_ts = r3.to_tombstone(CID_TWO.clone()).into_sealed_committed();
 
             assert!(be
                 .modify(&CID_TWO, &[r2, r3], &[r2_ts.clone(), r3_ts.clone()])
@@ -2324,20 +2447,29 @@ mod tests {
 
             // First create some entries (3?)
             let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
-            e1.add_ava("userid", Value::from("william"));
-            e1.add_ava("uuid", Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
+            e1.add_ava(Attribute::UserId, Value::from("william"));
+            e1.add_ava(
+                Attribute::Uuid,
+                Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"),
+            );
 
             let mut e2: Entry<EntryInit, EntryNew> = Entry::new();
-            e2.add_ava("userid", Value::from("alice"));
-            e2.add_ava("uuid", Value::from("4b6228ab-1dbe-42a4-a9f5-f6368222438e"));
+            e2.add_ava(Attribute::UserId, Value::from("alice"));
+            e2.add_ava(
+                Attribute::Uuid,
+                Value::from("4b6228ab-1dbe-42a4-a9f5-f6368222438e"),
+            );
 
             let mut e3: Entry<EntryInit, EntryNew> = Entry::new();
-            e3.add_ava("userid", Value::from("lucy"));
-            e3.add_ava("uuid", Value::from("7b23c99d-c06b-4a9a-a958-3afa56383e1d"));
+            e3.add_ava(Attribute::UserId, Value::from("lucy"));
+            e3.add_ava(
+                Attribute::Uuid,
+                Value::from("7b23c99d-c06b-4a9a-a958-3afa56383e1d"),
+            );
 
-            let ve1 = unsafe { e1.clone().into_sealed_new() };
-            let ve2 = unsafe { e2.clone().into_sealed_new() };
-            let ve3 = unsafe { e3.clone().into_sealed_new() };
+            let ve1 = e1.clone().into_sealed_new();
+            let ve2 = e2.clone().into_sealed_new();
+            let ve3 = e3.clone().into_sealed_new();
 
             assert!(be.create(&CID_ZERO, vec![ve1, ve2, ve3]).is_ok());
             assert!(entry_exists!(be, e1));
@@ -2379,20 +2511,29 @@ mod tests {
             be.set_db_ts_max(Duration::from_secs(1)).unwrap();
             // First create some entries (3?)
             let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
-            e1.add_ava("userid", Value::from("william"));
-            e1.add_ava("uuid", Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
+            e1.add_ava(Attribute::UserId, Value::from("william"));
+            e1.add_ava(
+                Attribute::Uuid,
+                Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"),
+            );
 
             let mut e2: Entry<EntryInit, EntryNew> = Entry::new();
-            e2.add_ava("userid", Value::from("alice"));
-            e2.add_ava("uuid", Value::from("4b6228ab-1dbe-42a4-a9f5-f6368222438e"));
+            e2.add_ava(Attribute::UserId, Value::from("alice"));
+            e2.add_ava(
+                Attribute::Uuid,
+                Value::from("4b6228ab-1dbe-42a4-a9f5-f6368222438e"),
+            );
 
             let mut e3: Entry<EntryInit, EntryNew> = Entry::new();
-            e3.add_ava("userid", Value::from("lucy"));
-            e3.add_ava("uuid", Value::from("7b23c99d-c06b-4a9a-a958-3afa56383e1d"));
+            e3.add_ava(Attribute::UserId, Value::from("lucy"));
+            e3.add_ava(
+                Attribute::Uuid,
+                Value::from("7b23c99d-c06b-4a9a-a958-3afa56383e1d"),
+            );
 
-            let ve1 = unsafe { e1.clone().into_sealed_new() };
-            let ve2 = unsafe { e2.clone().into_sealed_new() };
-            let ve3 = unsafe { e3.clone().into_sealed_new() };
+            let ve1 = e1.clone().into_sealed_new();
+            let ve2 = e2.clone().into_sealed_new();
+            let ve3 = e3.clone().into_sealed_new();
 
             assert!(be.create(&CID_ZERO, vec![ve1, ve2, ve3]).is_ok());
             assert!(entry_exists!(be, e1));
@@ -2432,6 +2573,25 @@ mod tests {
                 } => {
                     let _ = entries.pop();
                 }
+                DbBackup::V3 {
+                    db_s_uuid: _,
+                    db_d_uuid: _,
+                    db_ts_max: _,
+                    keyhandles: _,
+                    entries,
+                } => {
+                    let _ = entries.pop();
+                }
+                DbBackup::V4 {
+                    db_s_uuid: _,
+                    db_d_uuid: _,
+                    db_ts_max: _,
+                    keyhandles: _,
+                    repl_meta: _,
+                    entries,
+                } => {
+                    let _ = entries.pop();
+                }
             };
 
             let serialized_entries_str = serde_json::to_string_pretty(&dbbak).unwrap();
@@ -2446,12 +2606,12 @@ mod tests {
     #[test]
     fn test_be_sid_generation_and_reset() {
         run_test!(|be: &mut BackendWriteTransaction| {
-            let sid1 = be.get_db_s_uuid();
-            let sid2 = be.get_db_s_uuid();
+            let sid1 = be.get_db_s_uuid().unwrap();
+            let sid2 = be.get_db_s_uuid().unwrap();
             assert!(sid1 == sid2);
             let sid3 = be.reset_db_s_uuid().unwrap();
             assert!(sid1 != sid3);
-            let sid4 = be.get_db_s_uuid();
+            let sid4 = be.get_db_s_uuid().unwrap();
             assert!(sid3 == sid4);
         });
     }
@@ -2474,19 +2634,25 @@ mod tests {
         run_test!(|be: &mut BackendWriteTransaction| {
             // Add some test data?
             let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
-            e1.add_ava("name", Value::new_iname("william"));
-            e1.add_ava("uuid", Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
-            let e1 = unsafe { e1.into_sealed_new() };
+            e1.add_ava(Attribute::Name, Value::new_iname("william"));
+            e1.add_ava(
+                Attribute::Uuid,
+                Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"),
+            );
+            let e1 = e1.into_sealed_new();
 
             let mut e2: Entry<EntryInit, EntryNew> = Entry::new();
-            e2.add_ava("name", Value::new_iname("claire"));
-            e2.add_ava("uuid", Value::from("bd651620-00dd-426b-aaa0-4494f7b7906f"));
-            let e2 = unsafe { e2.into_sealed_new() };
+            e2.add_ava(Attribute::Name, Value::new_iname("claire"));
+            e2.add_ava(
+                Attribute::Uuid,
+                Value::from("bd651620-00dd-426b-aaa0-4494f7b7906f"),
+            );
+            let e2 = e2.into_sealed_new();
 
             be.create(&CID_ZERO, vec![e1, e2]).unwrap();
 
             // purge indexes
-            be.purge_idxs().unwrap();
+            be.danger_purge_idxs().unwrap();
             // Check they are gone
             let missing = be.missing_idxs().unwrap();
             assert!(missing.len() == 7);
@@ -2496,15 +2662,33 @@ mod tests {
             assert!(missing.is_empty());
             // check name and uuid ids on eq, sub, pres
 
-            idl_state!(be, "name", IndexType::Equality, "william", Some(vec![1]));
-
-            idl_state!(be, "name", IndexType::Equality, "claire", Some(vec![2]));
-
-            idl_state!(be, "name", IndexType::Presence, "_", Some(vec![1, 2]));
+            idl_state!(
+                be,
+                Attribute::Name.as_ref(),
+                IndexType::Equality,
+                "william",
+                Some(vec![1])
+            );
 
             idl_state!(
                 be,
-                "uuid",
+                Attribute::Name.as_ref(),
+                IndexType::Equality,
+                "claire",
+                Some(vec![2])
+            );
+
+            idl_state!(
+                be,
+                Attribute::Name.as_ref(),
+                IndexType::Presence,
+                "_",
+                Some(vec![1, 2])
+            );
+
+            idl_state!(
+                be,
+                Attribute::Uuid.as_ref(),
                 IndexType::Equality,
                 "db237e8a-0079-4b8c-8a56-593b22aa44d1",
                 Some(vec![1])
@@ -2512,19 +2696,25 @@ mod tests {
 
             idl_state!(
                 be,
-                "uuid",
+                Attribute::Uuid.as_ref(),
                 IndexType::Equality,
                 "bd651620-00dd-426b-aaa0-4494f7b7906f",
                 Some(vec![2])
             );
 
-            idl_state!(be, "uuid", IndexType::Presence, "_", Some(vec![1, 2]));
+            idl_state!(
+                be,
+                Attribute::Uuid.as_ref(),
+                IndexType::Presence,
+                "_",
+                Some(vec![1, 2])
+            );
 
             // Show what happens with empty
 
             idl_state!(
                 be,
-                "name",
+                Attribute::Name.as_ref(),
                 IndexType::Equality,
                 "not-exist",
                 Some(Vec::new())
@@ -2532,7 +2722,7 @@ mod tests {
 
             idl_state!(
                 be,
-                "uuid",
+                Attribute::Uuid.as_ref(),
                 IndexType::Equality,
                 "fake-0079-4b8c-8a56-593b22aa44d1",
                 Some(Vec::new())
@@ -2571,27 +2761,48 @@ mod tests {
             // Test that on entry create, the indexes are made correctly.
             // this is a similar case to reindex.
             let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
-            e1.add_ava("name", Value::from("william"));
-            e1.add_ava("uuid", Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
-            let e1 = unsafe { e1.into_sealed_new() };
+            e1.add_ava(Attribute::Name, Value::from("william"));
+            e1.add_ava(
+                Attribute::Uuid,
+                Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"),
+            );
+            let e1 = e1.into_sealed_new();
 
             let rset = be.create(&CID_ZERO, vec![e1]).unwrap();
             let mut rset: Vec<_> = rset.into_iter().map(Arc::new).collect();
             let e1 = rset.pop().unwrap();
 
-            idl_state!(be, "name", IndexType::Equality, "william", Some(vec![1]));
-
-            idl_state!(be, "name", IndexType::Presence, "_", Some(vec![1]));
+            idl_state!(
+                be,
+                Attribute::Name.as_ref(),
+                IndexType::Equality,
+                "william",
+                Some(vec![1])
+            );
 
             idl_state!(
                 be,
-                "uuid",
+                Attribute::Name.as_ref(),
+                IndexType::Presence,
+                "_",
+                Some(vec![1])
+            );
+
+            idl_state!(
+                be,
+                Attribute::Uuid.as_ref(),
                 IndexType::Equality,
                 "db237e8a-0079-4b8c-8a56-593b22aa44d1",
                 Some(vec![1])
             );
 
-            idl_state!(be, "uuid", IndexType::Presence, "_", Some(vec![1]));
+            idl_state!(
+                be,
+                Attribute::Uuid.as_ref(),
+                IndexType::Presence,
+                "_",
+                Some(vec![1])
+            );
 
             let william_uuid = uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1");
             assert!(be.name2uuid("william") == Ok(Some(william_uuid)));
@@ -2599,23 +2810,41 @@ mod tests {
             assert!(be.uuid2rdn(william_uuid) == Ok(Some("name=william".to_string())));
 
             // == Now we reap_tombstones, and assert we removed the items.
-            let e1_ts = unsafe { e1.to_tombstone(CID_ONE.clone()).into_sealed_committed() };
+            let e1_ts = e1.to_tombstone(CID_ONE.clone()).into_sealed_committed();
             assert!(be.modify(&CID_ONE, &[e1], &[e1_ts]).is_ok());
             be.reap_tombstones(&CID_TWO).unwrap();
 
-            idl_state!(be, "name", IndexType::Equality, "william", Some(Vec::new()));
-
-            idl_state!(be, "name", IndexType::Presence, "_", Some(Vec::new()));
+            idl_state!(
+                be,
+                Attribute::Name.as_ref(),
+                IndexType::Equality,
+                "william",
+                Some(Vec::new())
+            );
 
             idl_state!(
                 be,
-                "uuid",
+                Attribute::Name.as_ref(),
+                IndexType::Presence,
+                "_",
+                Some(Vec::new())
+            );
+
+            idl_state!(
+                be,
+                Attribute::Uuid.as_ref(),
                 IndexType::Equality,
                 "db237e8a-0079-4b8c-8a56-593b22aa44d1",
                 Some(Vec::new())
             );
 
-            idl_state!(be, "uuid", IndexType::Presence, "_", Some(Vec::new()));
+            idl_state!(
+                be,
+                Attribute::Uuid.as_ref(),
+                IndexType::Presence,
+                "_",
+                Some(Vec::new())
+            );
 
             assert!(be.name2uuid("william") == Ok(None));
             assert!(be.uuid2spn(william_uuid) == Ok(None));
@@ -2632,19 +2861,28 @@ mod tests {
             // Test that on entry create, the indexes are made correctly.
             // this is a similar case to reindex.
             let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
-            e1.add_ava("name", Value::new_iname("william"));
-            e1.add_ava("uuid", Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
-            let e1 = unsafe { e1.into_sealed_new() };
+            e1.add_ava(Attribute::Name, Value::new_iname("william"));
+            e1.add_ava(
+                Attribute::Uuid,
+                Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"),
+            );
+            let e1 = e1.into_sealed_new();
 
             let mut e2: Entry<EntryInit, EntryNew> = Entry::new();
-            e2.add_ava("name", Value::new_iname("claire"));
-            e2.add_ava("uuid", Value::from("bd651620-00dd-426b-aaa0-4494f7b7906f"));
-            let e2 = unsafe { e2.into_sealed_new() };
+            e2.add_ava(Attribute::Name, Value::new_iname("claire"));
+            e2.add_ava(
+                Attribute::Uuid,
+                Value::from("bd651620-00dd-426b-aaa0-4494f7b7906f"),
+            );
+            let e2 = e2.into_sealed_new();
 
             let mut e3: Entry<EntryInit, EntryNew> = Entry::new();
-            e3.add_ava("userid", Value::new_iname("lucy"));
-            e3.add_ava("uuid", Value::from("7b23c99d-c06b-4a9a-a958-3afa56383e1d"));
-            let e3 = unsafe { e3.into_sealed_new() };
+            e3.add_ava(Attribute::UserId, Value::new_iname("lucy"));
+            e3.add_ava(
+                Attribute::Uuid,
+                Value::from("7b23c99d-c06b-4a9a-a958-3afa56383e1d"),
+            );
+            let e3 = e3.into_sealed_new();
 
             let mut rset = be.create(&CID_ZERO, vec![e1, e2, e3]).unwrap();
             rset.remove(1);
@@ -2653,24 +2891,42 @@ mod tests {
             let e3 = rset.pop().unwrap();
 
             // Now remove e1, e3.
-            let e1_ts = unsafe { e1.to_tombstone(CID_ONE.clone()).into_sealed_committed() };
-            let e3_ts = unsafe { e3.to_tombstone(CID_ONE.clone()).into_sealed_committed() };
+            let e1_ts = e1.to_tombstone(CID_ONE.clone()).into_sealed_committed();
+            let e3_ts = e3.to_tombstone(CID_ONE.clone()).into_sealed_committed();
             assert!(be.modify(&CID_ONE, &[e1, e3], &[e1_ts, e3_ts]).is_ok());
             be.reap_tombstones(&CID_TWO).unwrap();
 
-            idl_state!(be, "name", IndexType::Equality, "claire", Some(vec![2]));
-
-            idl_state!(be, "name", IndexType::Presence, "_", Some(vec![2]));
+            idl_state!(
+                be,
+                Attribute::Name.as_ref(),
+                IndexType::Equality,
+                "claire",
+                Some(vec![2])
+            );
 
             idl_state!(
                 be,
-                "uuid",
+                Attribute::Name.as_ref(),
+                IndexType::Presence,
+                "_",
+                Some(vec![2])
+            );
+
+            idl_state!(
+                be,
+                Attribute::Uuid.as_ref(),
                 IndexType::Equality,
                 "bd651620-00dd-426b-aaa0-4494f7b7906f",
                 Some(vec![2])
             );
 
-            idl_state!(be, "uuid", IndexType::Presence, "_", Some(vec![2]));
+            idl_state!(
+                be,
+                Attribute::Uuid.as_ref(),
+                IndexType::Presence,
+                "_",
+                Some(vec![2])
+            );
 
             let claire_uuid = uuid!("bd651620-00dd-426b-aaa0-4494f7b7906f");
             let william_uuid = uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1");
@@ -2700,35 +2956,62 @@ mod tests {
             // us. For the test to be "accurate" we must add one attr, remove one attr
             // and change one attr.
             let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
-            e1.add_ava("name", Value::new_iname("william"));
-            e1.add_ava("uuid", Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
-            e1.add_ava("ta", Value::from("test"));
-            let e1 = unsafe { e1.into_sealed_new() };
+            e1.add_ava(Attribute::Name, Value::new_iname("william"));
+            e1.add_ava(
+                Attribute::Uuid,
+                Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"),
+            );
+            e1.add_ava(Attribute::TestAttr, Value::from("test"));
+            let e1 = e1.into_sealed_new();
 
             let rset = be.create(&CID_ZERO, vec![e1]).unwrap();
             let rset: Vec<_> = rset.into_iter().map(Arc::new).collect();
             // Now, alter the new entry.
-            let mut ce1 = unsafe { rset[0].as_ref().clone().into_invalid() };
+            let mut ce1 = rset[0].as_ref().clone().into_invalid();
             // add something.
-            ce1.add_ava("tb", Value::from("test"));
+            ce1.add_ava(Attribute::TestNumber, Value::from("test"));
             // remove something.
-            ce1.purge_ava("ta");
+            ce1.purge_ava(Attribute::TestAttr);
             // mod something.
-            ce1.purge_ava("name");
-            ce1.add_ava("name", Value::new_iname("claire"));
+            ce1.purge_ava(Attribute::Name);
+            ce1.add_ava(Attribute::Name, Value::new_iname("claire"));
 
-            let ce1 = unsafe { ce1.into_sealed_committed() };
+            let ce1 = ce1.into_sealed_committed();
 
             be.modify(&CID_ZERO, &rset, &[ce1]).unwrap();
 
             // Now check the idls
-            idl_state!(be, "name", IndexType::Equality, "claire", Some(vec![1]));
+            idl_state!(
+                be,
+                Attribute::Name.as_ref(),
+                IndexType::Equality,
+                "claire",
+                Some(vec![1])
+            );
 
-            idl_state!(be, "name", IndexType::Presence, "_", Some(vec![1]));
+            idl_state!(
+                be,
+                Attribute::Name.as_ref(),
+                IndexType::Presence,
+                "_",
+                Some(vec![1])
+            );
 
-            idl_state!(be, "tb", IndexType::Equality, "test", Some(vec![1]));
+            idl_state!(
+                be,
+                Attribute::TestNumber.as_ref(),
+                IndexType::Equality,
+                "test",
+                Some(vec![1])
+            );
 
-            idl_state!(be, "ta", IndexType::Equality, "test", Some(vec![]));
+            idl_state!(
+                be,
+                Attribute::TestAttr,
+                IndexType::Equality,
+                "test",
+                Some(vec![])
+            );
 
             let william_uuid = uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1");
             assert!(be.name2uuid("william") == Ok(None));
@@ -2746,43 +3029,73 @@ mod tests {
             // This will be needing to be correct for conflicts when we add
             // replication support!
             let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
-            e1.add_ava("name", Value::new_iname("william"));
-            e1.add_ava("uuid", Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
-            let e1 = unsafe { e1.into_sealed_new() };
+            e1.add_ava(Attribute::Name, Value::new_iname("william"));
+            e1.add_ava(
+                Attribute::Uuid,
+                Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"),
+            );
+            let e1 = e1.into_sealed_new();
 
             let rset = be.create(&CID_ZERO, vec![e1]).unwrap();
             let rset: Vec<_> = rset.into_iter().map(Arc::new).collect();
             // Now, alter the new entry.
-            let mut ce1 = unsafe { rset[0].as_ref().clone().into_invalid() };
-            ce1.purge_ava("name");
-            ce1.purge_ava("uuid");
-            ce1.add_ava("name", Value::new_iname("claire"));
-            ce1.add_ava("uuid", Value::from("04091a7a-6ce4-42d2-abf5-c2ce244ac9e8"));
-            let ce1 = unsafe { ce1.into_sealed_committed() };
+            let mut ce1 = rset[0].as_ref().clone().into_invalid();
+            ce1.purge_ava(Attribute::Name);
+            ce1.purge_ava(Attribute::Uuid);
+            ce1.add_ava(Attribute::Name, Value::new_iname("claire"));
+            ce1.add_ava(
+                Attribute::Uuid,
+                Value::from("04091a7a-6ce4-42d2-abf5-c2ce244ac9e8"),
+            );
+            let ce1 = ce1.into_sealed_committed();
 
             be.modify(&CID_ZERO, &rset, &[ce1]).unwrap();
 
-            idl_state!(be, "name", IndexType::Equality, "claire", Some(vec![1]));
+            idl_state!(
+                be,
+                Attribute::Name.as_ref(),
+                IndexType::Equality,
+                "claire",
+                Some(vec![1])
+            );
 
             idl_state!(
                 be,
-                "uuid",
+                Attribute::Uuid.as_ref(),
                 IndexType::Equality,
                 "04091a7a-6ce4-42d2-abf5-c2ce244ac9e8",
                 Some(vec![1])
             );
 
-            idl_state!(be, "name", IndexType::Presence, "_", Some(vec![1]));
-            idl_state!(be, "uuid", IndexType::Presence, "_", Some(vec![1]));
+            idl_state!(
+                be,
+                Attribute::Name.as_ref(),
+                IndexType::Presence,
+                "_",
+                Some(vec![1])
+            );
+            idl_state!(
+                be,
+                Attribute::Uuid.as_ref(),
+                IndexType::Presence,
+                "_",
+                Some(vec![1])
+            );
 
             idl_state!(
                 be,
-                "uuid",
+                Attribute::Uuid.as_ref(),
                 IndexType::Equality,
                 "db237e8a-0079-4b8c-8a56-593b22aa44d1",
                 Some(Vec::new())
             );
-            idl_state!(be, "name", IndexType::Equality, "william", Some(Vec::new()));
+            idl_state!(
+                be,
+                Attribute::Name.as_ref(),
+                IndexType::Equality,
+                "william",
+                Some(Vec::new())
+            );
 
             let claire_uuid = uuid!("04091a7a-6ce4-42d2-abf5-c2ce244ac9e8");
             let william_uuid = uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1");
@@ -2802,21 +3115,27 @@ mod tests {
 
             // Create a test entry with some indexed / unindexed values.
             let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
-            e1.add_ava("name", Value::new_iname("william"));
-            e1.add_ava("uuid", Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
-            e1.add_ava("no-index", Value::from("william"));
-            e1.add_ava("other-no-index", Value::from("william"));
-            let e1 = unsafe { e1.into_sealed_new() };
+            e1.add_ava(Attribute::Name, Value::new_iname("william"));
+            e1.add_ava(
+                Attribute::Uuid,
+                Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"),
+            );
+            e1.add_ava(Attribute::NoIndex, Value::from("william"));
+            e1.add_ava(Attribute::OtherNoIndex, Value::from("william"));
+            let e1 = e1.into_sealed_new();
 
             let mut e2: Entry<EntryInit, EntryNew> = Entry::new();
-            e2.add_ava("name", Value::new_iname("claire"));
-            e2.add_ava("uuid", Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d2"));
-            let e2 = unsafe { e2.into_sealed_new() };
+            e2.add_ava(Attribute::Name, Value::new_iname("claire"));
+            e2.add_ava(
+                Attribute::Uuid,
+                Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d2"),
+            );
+            let e2 = e2.into_sealed_new();
 
             let _rset = be.create(&CID_ZERO, vec![e1, e2]).unwrap();
             // Test fully unindexed
             let f_un =
-                unsafe { filter_resolved!(f_eq("no-index", PartialValue::new_utf8s("william"))) };
+                filter_resolved!(f_eq(Attribute::NoIndex, PartialValue::new_utf8s("william")));
 
             let (r, _plan) = be.filter2idl(f_un.to_inner(), 0).unwrap();
             match r {
@@ -2827,7 +3146,7 @@ mod tests {
             }
 
             // Test that a fully indexed search works
-            let feq = unsafe { filter_resolved!(f_eq("name", PartialValue::new_utf8s("william"))) };
+            let feq = filter_resolved!(f_eq(Attribute::Name, PartialValue::new_utf8s("william")));
 
             let (r, _plan) = be.filter2idl(feq.to_inner(), 0).unwrap();
             match r {
@@ -2841,15 +3160,13 @@ mod tests {
 
             // Test and/or
             //   full index and
-            let f_in_and = unsafe {
-                filter_resolved!(f_and!([
-                    f_eq("name", PartialValue::new_utf8s("william")),
-                    f_eq(
-                        "uuid",
-                        PartialValue::new_utf8s("db237e8a-0079-4b8c-8a56-593b22aa44d1")
-                    )
-                ]))
-            };
+            let f_in_and = filter_resolved!(f_and!([
+                f_eq(Attribute::Name, PartialValue::new_utf8s("william")),
+                f_eq(
+                    Attribute::Uuid,
+                    PartialValue::new_utf8s("db237e8a-0079-4b8c-8a56-593b22aa44d1")
+                )
+            ]));
 
             let (r, _plan) = be.filter2idl(f_in_and.to_inner(), 0).unwrap();
             match r {
@@ -2862,19 +3179,15 @@ mod tests {
             }
 
             //   partial index and
-            let f_p1 = unsafe {
-                filter_resolved!(f_and!([
-                    f_eq("name", PartialValue::new_utf8s("william")),
-                    f_eq("no-index", PartialValue::new_utf8s("william"))
-                ]))
-            };
+            let f_p1 = filter_resolved!(f_and!([
+                f_eq(Attribute::Name, PartialValue::new_utf8s("william")),
+                f_eq(Attribute::NoIndex, PartialValue::new_utf8s("william"))
+            ]));
 
-            let f_p2 = unsafe {
-                filter_resolved!(f_and!([
-                    f_eq("name", PartialValue::new_utf8s("william")),
-                    f_eq("no-index", PartialValue::new_utf8s("william"))
-                ]))
-            };
+            let f_p2 = filter_resolved!(f_and!([
+                f_eq(Attribute::Name, PartialValue::new_utf8s("william")),
+                f_eq(Attribute::NoIndex, PartialValue::new_utf8s("william"))
+            ]));
 
             let (r, _plan) = be.filter2idl(f_p1.to_inner(), 0).unwrap();
             match r {
@@ -2897,12 +3210,10 @@ mod tests {
             }
 
             //   no index and
-            let f_no_and = unsafe {
-                filter_resolved!(f_and!([
-                    f_eq("no-index", PartialValue::new_utf8s("william")),
-                    f_eq("other-no-index", PartialValue::new_utf8s("william"))
-                ]))
-            };
+            let f_no_and = filter_resolved!(f_and!([
+                f_eq(Attribute::NoIndex, PartialValue::new_utf8s("william")),
+                f_eq(Attribute::OtherNoIndex, PartialValue::new_utf8s("william"))
+            ]));
 
             let (r, _plan) = be.filter2idl(f_no_and.to_inner(), 0).unwrap();
             match r {
@@ -2913,9 +3224,10 @@ mod tests {
             }
 
             //   full index or
-            let f_in_or = unsafe {
-                filter_resolved!(f_or!([f_eq("name", PartialValue::new_utf8s("william"))]))
-            };
+            let f_in_or = filter_resolved!(f_or!([f_eq(
+                Attribute::Name,
+                PartialValue::new_utf8s("william")
+            )]));
 
             let (r, _plan) = be.filter2idl(f_in_or.to_inner(), 0).unwrap();
             match r {
@@ -2927,12 +3239,10 @@ mod tests {
                 }
             }
             //   partial (aka allids) or
-            let f_un_or = unsafe {
-                filter_resolved!(f_or!([f_eq(
-                    "no-index",
-                    PartialValue::new_utf8s("william")
-                )]))
-            };
+            let f_un_or = filter_resolved!(f_or!([f_eq(
+                Attribute::NoIndex,
+                PartialValue::new_utf8s("william")
+            )]));
 
             let (r, _plan) = be.filter2idl(f_un_or.to_inner(), 0).unwrap();
             match r {
@@ -2943,9 +3253,10 @@ mod tests {
             }
 
             // Test root andnot
-            let f_r_andnot = unsafe {
-                filter_resolved!(f_andnot(f_eq("name", PartialValue::new_utf8s("william"))))
-            };
+            let f_r_andnot = filter_resolved!(f_andnot(f_eq(
+                Attribute::Name,
+                PartialValue::new_utf8s("william")
+            )));
 
             let (r, _plan) = be.filter2idl(f_r_andnot.to_inner(), 0).unwrap();
             match r {
@@ -2958,12 +3269,10 @@ mod tests {
             }
 
             // test andnot as only in and
-            let f_and_andnot = unsafe {
-                filter_resolved!(f_and!([f_andnot(f_eq(
-                    "name",
-                    PartialValue::new_utf8s("william")
-                ))]))
-            };
+            let f_and_andnot = filter_resolved!(f_and!([f_andnot(f_eq(
+                Attribute::Name,
+                PartialValue::new_utf8s("william")
+            ))]));
 
             let (r, _plan) = be.filter2idl(f_and_andnot.to_inner(), 0).unwrap();
             match r {
@@ -2975,12 +3284,10 @@ mod tests {
                 }
             }
             // test andnot as only in or
-            let f_or_andnot = unsafe {
-                filter_resolved!(f_or!([f_andnot(f_eq(
-                    "name",
-                    PartialValue::new_utf8s("william")
-                ))]))
-            };
+            let f_or_andnot = filter_resolved!(f_or!([f_andnot(f_eq(
+                Attribute::Name,
+                PartialValue::new_utf8s("william")
+            ))]));
 
             let (r, _plan) = be.filter2idl(f_or_andnot.to_inner(), 0).unwrap();
             match r {
@@ -2993,12 +3300,10 @@ mod tests {
             }
 
             // test andnot in and (first) with name
-            let f_and_andnot = unsafe {
-                filter_resolved!(f_and!([
-                    f_andnot(f_eq("name", PartialValue::new_utf8s("claire"))),
-                    f_pres("name")
-                ]))
-            };
+            let f_and_andnot = filter_resolved!(f_and!([
+                f_andnot(f_eq(Attribute::Name, PartialValue::new_utf8s("claire"))),
+                f_pres(Attribute::Name)
+            ]));
 
             let (r, _plan) = be.filter2idl(f_and_andnot.to_inner(), 0).unwrap();
             match r {
@@ -3011,12 +3316,10 @@ mod tests {
                 }
             }
             // test andnot in and (last) with name
-            let f_and_andnot = unsafe {
-                filter_resolved!(f_and!([
-                    f_pres("name"),
-                    f_andnot(f_eq("name", PartialValue::new_utf8s("claire")))
-                ]))
-            };
+            let f_and_andnot = filter_resolved!(f_and!([
+                f_pres(Attribute::Name),
+                f_andnot(f_eq(Attribute::Name, PartialValue::new_utf8s("claire")))
+            ]));
 
             let (r, _plan) = be.filter2idl(f_and_andnot.to_inner(), 0).unwrap();
             match r {
@@ -3028,12 +3331,10 @@ mod tests {
                 }
             }
             // test andnot in and (first) with no-index
-            let f_and_andnot = unsafe {
-                filter_resolved!(f_and!([
-                    f_andnot(f_eq("name", PartialValue::new_utf8s("claire"))),
-                    f_pres("no-index")
-                ]))
-            };
+            let f_and_andnot = filter_resolved!(f_and!([
+                f_andnot(f_eq(Attribute::Name, PartialValue::new_utf8s("claire"))),
+                f_pres(Attribute::NoIndex)
+            ]));
 
             let (r, _plan) = be.filter2idl(f_and_andnot.to_inner(), 0).unwrap();
             match r {
@@ -3043,12 +3344,10 @@ mod tests {
                 }
             }
             // test andnot in and (last) with no-index
-            let f_and_andnot = unsafe {
-                filter_resolved!(f_and!([
-                    f_pres("no-index"),
-                    f_andnot(f_eq("name", PartialValue::new_utf8s("claire")))
-                ]))
-            };
+            let f_and_andnot = filter_resolved!(f_and!([
+                f_pres(Attribute::NoIndex),
+                f_andnot(f_eq(Attribute::Name, PartialValue::new_utf8s("claire")))
+            ]));
 
             let (r, _plan) = be.filter2idl(f_and_andnot.to_inner(), 0).unwrap();
             match r {
@@ -3059,7 +3358,7 @@ mod tests {
             }
 
             //   empty or
-            let f_e_or = unsafe { filter_resolved!(f_or!([])) };
+            let f_e_or = filter_resolved!(f_or!([]));
 
             let (r, _plan) = be.filter2idl(f_e_or.to_inner(), 0).unwrap();
             match r {
@@ -3071,7 +3370,7 @@ mod tests {
                 }
             }
 
-            let f_e_and = unsafe { filter_resolved!(f_and!([])) };
+            let f_e_and = filter_resolved!(f_and!([]));
 
             let (r, _plan) = be.filter2idl(f_e_and.to_inner(), 0).unwrap();
             match r {
@@ -3090,10 +3389,9 @@ mod tests {
         run_test!(|be: &mut BackendWriteTransaction| {
             // Test where the index is in schema but not created (purge idxs)
             // should fall back to an empty set because we can't satisfy the term
-            be.purge_idxs().unwrap();
+            be.danger_purge_idxs().unwrap();
             debug!("{:?}", be.missing_idxs().unwrap());
-            let f_eq =
-                unsafe { filter_resolved!(f_eq("name", PartialValue::new_utf8s("william"))) };
+            let f_eq = filter_resolved!(f_eq(Attribute::Name, PartialValue::new_utf8s("william")));
 
             let (r, _plan) = be.filter2idl(f_eq.to_inner(), 0).unwrap();
             match r {
@@ -3110,25 +3408,34 @@ mod tests {
         run_test!(|be: &mut BackendWriteTransaction| {
             // Create some test entry with some indexed / unindexed values.
             let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
-            e1.add_ava("name", Value::new_iname("william"));
-            e1.add_ava("uuid", Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
-            e1.add_ava("ta", Value::from("dupe"));
-            e1.add_ava("tb", Value::from("1"));
-            let e1 = unsafe { e1.into_sealed_new() };
+            e1.add_ava(Attribute::Name, Value::new_iname("william"));
+            e1.add_ava(
+                Attribute::Uuid,
+                Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"),
+            );
+            e1.add_ava(Attribute::TestAttr, Value::from("dupe"));
+            e1.add_ava(Attribute::TestNumber, Value::from("1"));
+            let e1 = e1.into_sealed_new();
 
             let mut e2: Entry<EntryInit, EntryNew> = Entry::new();
-            e2.add_ava("name", Value::new_iname("claire"));
-            e2.add_ava("uuid", Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d2"));
-            e2.add_ava("ta", Value::from("dupe"));
-            e2.add_ava("tb", Value::from("1"));
-            let e2 = unsafe { e2.into_sealed_new() };
+            e2.add_ava(Attribute::Name, Value::new_iname("claire"));
+            e2.add_ava(
+                Attribute::Uuid,
+                Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d2"),
+            );
+            e2.add_ava(Attribute::TestAttr, Value::from("dupe"));
+            e2.add_ava(Attribute::TestNumber, Value::from("1"));
+            let e2 = e2.into_sealed_new();
 
             let mut e3: Entry<EntryInit, EntryNew> = Entry::new();
-            e3.add_ava("name", Value::new_iname("benny"));
-            e3.add_ava("uuid", Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d3"));
-            e3.add_ava("ta", Value::from("dupe"));
-            e3.add_ava("tb", Value::from("2"));
-            let e3 = unsafe { e3.into_sealed_new() };
+            e3.add_ava(Attribute::Name, Value::new_iname("benny"));
+            e3.add_ava(
+                Attribute::Uuid,
+                Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d3"),
+            );
+            e3.add_ava(Attribute::TestAttr, Value::from("dupe"));
+            e3.add_ava(Attribute::TestNumber, Value::from("2"));
+            let e3 = e3.into_sealed_new();
 
             let _rset = be.create(&CID_ZERO, vec![e1, e2, e3]).unwrap();
 
@@ -3137,30 +3444,30 @@ mod tests {
             assert!(!be.is_idx_slopeyness_generated().unwrap());
 
             let ta_eq_slope = be
-                .get_idx_slope(&IdxKey::new("ta", IndexType::Equality))
+                .get_idx_slope(&IdxKey::new(Attribute::TestAttr, IndexType::Equality))
                 .unwrap();
             assert_eq!(ta_eq_slope, 45);
 
             let tb_eq_slope = be
-                .get_idx_slope(&IdxKey::new("tb", IndexType::Equality))
+                .get_idx_slope(&IdxKey::new(Attribute::TestNumber, IndexType::Equality))
                 .unwrap();
             assert_eq!(tb_eq_slope, 45);
 
             let name_eq_slope = be
-                .get_idx_slope(&IdxKey::new("name", IndexType::Equality))
+                .get_idx_slope(&IdxKey::new(Attribute::Name, IndexType::Equality))
                 .unwrap();
             assert_eq!(name_eq_slope, 1);
             let uuid_eq_slope = be
-                .get_idx_slope(&IdxKey::new("uuid", IndexType::Equality))
+                .get_idx_slope(&IdxKey::new(Attribute::Uuid, IndexType::Equality))
                 .unwrap();
             assert_eq!(uuid_eq_slope, 1);
 
             let name_pres_slope = be
-                .get_idx_slope(&IdxKey::new("name", IndexType::Presence))
+                .get_idx_slope(&IdxKey::new(Attribute::Name, IndexType::Presence))
                 .unwrap();
             assert_eq!(name_pres_slope, 90);
             let uuid_pres_slope = be
-                .get_idx_slope(&IdxKey::new("uuid", IndexType::Presence))
+                .get_idx_slope(&IdxKey::new(Attribute::Uuid, IndexType::Presence))
                 .unwrap();
             assert_eq!(uuid_pres_slope, 90);
             // Check the slopes are what we expect for hardcoded values.
@@ -3171,30 +3478,30 @@ mod tests {
             assert!(be.is_idx_slopeyness_generated().unwrap());
 
             let ta_eq_slope = be
-                .get_idx_slope(&IdxKey::new("ta", IndexType::Equality))
+                .get_idx_slope(&IdxKey::new(Attribute::TestAttr, IndexType::Equality))
                 .unwrap();
             assert_eq!(ta_eq_slope, 200);
 
             let tb_eq_slope = be
-                .get_idx_slope(&IdxKey::new("tb", IndexType::Equality))
+                .get_idx_slope(&IdxKey::new(Attribute::TestNumber, IndexType::Equality))
                 .unwrap();
             assert_eq!(tb_eq_slope, 133);
 
             let name_eq_slope = be
-                .get_idx_slope(&IdxKey::new("name", IndexType::Equality))
+                .get_idx_slope(&IdxKey::new(Attribute::Name, IndexType::Equality))
                 .unwrap();
             assert_eq!(name_eq_slope, 51);
             let uuid_eq_slope = be
-                .get_idx_slope(&IdxKey::new("uuid", IndexType::Equality))
+                .get_idx_slope(&IdxKey::new(Attribute::Uuid, IndexType::Equality))
                 .unwrap();
             assert_eq!(uuid_eq_slope, 51);
 
             let name_pres_slope = be
-                .get_idx_slope(&IdxKey::new("name", IndexType::Presence))
+                .get_idx_slope(&IdxKey::new(Attribute::Name, IndexType::Presence))
                 .unwrap();
             assert_eq!(name_pres_slope, 200);
             let uuid_pres_slope = be
-                .get_idx_slope(&IdxKey::new("uuid", IndexType::Presence))
+                .get_idx_slope(&IdxKey::new(Attribute::Uuid, IndexType::Presence))
                 .unwrap();
             assert_eq!(uuid_pres_slope, 200);
         })
@@ -3210,18 +3517,20 @@ mod tests {
             lim_deny_allids.unindexed_allow = false;
 
             let mut e: Entry<EntryInit, EntryNew> = Entry::new();
-            e.add_ava("userid", Value::from("william"));
-            e.add_ava("uuid", Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
-            e.add_ava("nonexist", Value::from("x"));
-            let e = unsafe { e.into_sealed_new() };
+            e.add_ava(Attribute::UserId, Value::from("william"));
+            e.add_ava(
+                Attribute::Uuid,
+                Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"),
+            );
+            e.add_ava(Attribute::NonExist, Value::from("x"));
+            let e = e.into_sealed_new();
             let single_result = be.create(&CID_ZERO, vec![e.clone()]);
 
             assert!(single_result.is_ok());
-            let filt = unsafe {
-                e.filter_from_attrs(&[AttrString::from("nonexist")])
-                    .expect("failed to generate filter")
-                    .into_valid_resolved()
-            };
+            let filt = e
+                .filter_from_attrs(&[Attribute::NonExist.into()])
+                .expect("failed to generate filter")
+                .into_valid_resolved();
             // check allow on allids
             let res = be.search(&lim_allow_allids, &filt);
             assert!(res.is_ok());
@@ -3246,18 +3555,20 @@ mod tests {
             lim_deny.search_max_results = 0;
 
             let mut e: Entry<EntryInit, EntryNew> = Entry::new();
-            e.add_ava("userid", Value::from("william"));
-            e.add_ava("uuid", Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
-            e.add_ava("nonexist", Value::from("x"));
-            let e = unsafe { e.into_sealed_new() };
+            e.add_ava(Attribute::UserId, Value::from("william"));
+            e.add_ava(
+                Attribute::Uuid,
+                Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"),
+            );
+            e.add_ava(Attribute::NonExist, Value::from("x"));
+            let e = e.into_sealed_new();
             let single_result = be.create(&CID_ZERO, vec![e.clone()]);
             assert!(single_result.is_ok());
 
-            let filt = unsafe {
-                e.filter_from_attrs(&[AttrString::from("nonexist")])
-                    .expect("failed to generate filter")
-                    .into_valid_resolved()
-            };
+            let filt = e
+                .filter_from_attrs(&[Attribute::NonExist.into()])
+                .expect("failed to generate filter")
+                .into_valid_resolved();
 
             // --> This is the all ids path (unindexed)
             // check allow on entry max
@@ -3303,11 +3614,14 @@ mod tests {
             lim_deny.search_max_filter_test = 0;
 
             let mut e: Entry<EntryInit, EntryNew> = Entry::new();
-            e.add_ava("name", Value::new_iname("william"));
-            e.add_ava("uuid", Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
-            e.add_ava("nonexist", Value::from("x"));
-            e.add_ava("nonexist", Value::from("y"));
-            let e = unsafe { e.into_sealed_new() };
+            e.add_ava(Attribute::Name, Value::new_iname("william"));
+            e.add_ava(
+                Attribute::Uuid,
+                Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"),
+            );
+            e.add_ava(Attribute::NonExist, Value::from("x"));
+            e.add_ava(Attribute::NonExist, Value::from("y"));
+            let e = e.into_sealed_new();
             let single_result = be.create(&CID_ZERO, vec![e]);
             assert!(single_result.is_ok());
 
@@ -3324,18 +3638,16 @@ mod tests {
             //
             // This creates a partial, and because it's the first iteration in the loop, this
             // doesn't encounter partial threshold testing.
-            let filt = unsafe {
-                filter_resolved!(f_and!([
-                    f_or!([
-                        f_eq("nonexist", PartialValue::new_utf8s("x")),
-                        f_eq("nonexist", PartialValue::new_utf8s("y"))
-                    ]),
-                    f_or!([
-                        f_eq("name", PartialValue::new_utf8s("claire")),
-                        f_eq("name", PartialValue::new_utf8s("william"))
-                    ]),
-                ]))
-            };
+            let filt = filter_resolved!(f_and!([
+                f_or!([
+                    f_eq(Attribute::NonExist, PartialValue::new_utf8s("x")),
+                    f_eq(Attribute::NonExist, PartialValue::new_utf8s("y"))
+                ]),
+                f_or!([
+                    f_eq(Attribute::Name, PartialValue::new_utf8s("claire")),
+                    f_eq(Attribute::Name, PartialValue::new_utf8s("william"))
+                ]),
+            ]));
 
             let res = be.search(&lim_allow, &filt);
             assert!(res.is_ok());
@@ -3357,7 +3669,7 @@ mod tests {
 
         // This is a demo idxmeta, purely for testing.
         let idxmeta = vec![IdxKey {
-            attr: AttrString::from("uuid"),
+            attr: Attribute::Uuid.into(),
             itype: IndexType::Equality,
         }];
 
@@ -3367,23 +3679,26 @@ mod tests {
         let be_b = Backend::new(BackendConfig::new_test("db_2"), idxmeta, false)
             .expect("Failed to setup backend");
 
-        let mut be_a_txn = be_a.write();
-        let mut be_b_txn = be_b.write();
+        let mut be_a_txn = be_a.write().unwrap();
+        let mut be_b_txn = be_b.write().unwrap();
 
         assert!(be_a_txn.get_db_s_uuid() != be_b_txn.get_db_s_uuid());
 
         // Create into A
         let mut e: Entry<EntryInit, EntryNew> = Entry::new();
-        e.add_ava("userid", Value::from("william"));
-        e.add_ava("uuid", Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
-        let e = unsafe { e.into_sealed_new() };
+        e.add_ava(Attribute::UserId, Value::from("william"));
+        e.add_ava(
+            Attribute::Uuid,
+            Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"),
+        );
+        let e = e.into_sealed_new();
 
         let single_result = be_a_txn.create(&CID_ZERO, vec![e]);
 
         assert!(single_result.is_ok());
 
         // Assert it's in A but not B.
-        let filt = unsafe { filter_resolved!(f_eq("userid", PartialValue::new_utf8s("william"))) };
+        let filt = filter_resolved!(f_eq(Attribute::UserId, PartialValue::new_utf8s("william")));
 
         let lims = Limits::unlimited();
 
@@ -3395,16 +3710,19 @@ mod tests {
 
         // Create into B
         let mut e: Entry<EntryInit, EntryNew> = Entry::new();
-        e.add_ava("userid", Value::from("claire"));
-        e.add_ava("uuid", Value::from("0c680959-0944-47d6-9dea-53304d124266"));
-        let e = unsafe { e.into_sealed_new() };
+        e.add_ava(Attribute::UserId, Value::from("claire"));
+        e.add_ava(
+            Attribute::Uuid,
+            Value::from("0c680959-0944-47d6-9dea-53304d124266"),
+        );
+        let e = e.into_sealed_new();
 
         let single_result = be_b_txn.create(&CID_ZERO, vec![e]);
 
         assert!(single_result.is_ok());
 
         // Assert it's in B but not A
-        let filt = unsafe { filter_resolved!(f_eq("userid", PartialValue::new_utf8s("claire"))) };
+        let filt = filter_resolved!(f_eq(Attribute::UserId, PartialValue::new_utf8s("claire")));
 
         let lims = Limits::unlimited();
 

@@ -1,4 +1,4 @@
-use crate::common::OpType;
+use crate::common::{try_expire_at_from_string, OpType};
 use std::fmt::{self, Debug};
 use std::str::FromStr;
 
@@ -6,21 +6,24 @@ use dialoguer::theme::ColorfulTheme;
 use dialoguer::{Confirm, Input, Password, Select};
 use kanidm_client::ClientError::Http as ClientErrorHttp;
 use kanidm_client::KanidmClient;
+use kanidm_proto::constants::{ATTR_ACCOUNT_EXPIRE, ATTR_ACCOUNT_VALID_FROM};
 use kanidm_proto::messages::{AccountChangeMessage, ConsoleOutputMode, MessageStatus};
 use kanidm_proto::v1::OperationError::PasswordQuality;
-use kanidm_proto::v1::{CUIntentToken, CURegState, CUSessionToken, CUStatus, TotpSecret};
+use kanidm_proto::v1::{
+    CUCredState, CUExtPortal, CUIntentToken, CURegState, CURegWarning, CUSessionToken, CUStatus,
+    TotpSecret,
+};
 use kanidm_proto::v1::{CredentialDetail, CredentialDetailType};
 use qrcode::render::unicode;
 use qrcode::QrCode;
 use time::format_description::well_known::Rfc3339;
 use time::OffsetDateTime;
-use url::Url;
 use uuid::Uuid;
 
 use crate::webauthn::get_authenticator;
 use crate::{
-    password_prompt, AccountCredential, AccountRadius, AccountSsh, AccountUserAuthToken,
-    AccountValidity, PersonOpt, PersonPosix,
+    handle_client_error, password_prompt, AccountCredential, AccountRadius, AccountSsh,
+    AccountUserAuthToken, AccountValidity, OutputMode, PersonOpt, PersonPosix,
 };
 
 impl PersonOpt {
@@ -81,9 +84,7 @@ impl PersonOpt {
                             "No RADIUS secret set for user {}",
                             aopt.aopts.account_id.as_str(),
                         ),
-                        Err(e) => {
-                            error!("Error -> {:?}", e);
-                        }
+                        Err(e) => handle_client_error(e, aopt.copt.output_mode),
                     }
                 }
                 AccountRadius::Generate(aopt) => {
@@ -133,9 +134,7 @@ impl PersonOpt {
                         .await
                     {
                         Ok(token) => println!("{}", token),
-                        Err(e) => {
-                            error!("Error -> {:?}", e);
-                        }
+                        Err(e) => handle_client_error(e, aopt.copt.output_mode),
                     }
                 }
                 PersonPosix::Set(aopt) => {
@@ -148,7 +147,7 @@ impl PersonOpt {
                         )
                         .await
                     {
-                        error!("Error -> {:?}", e);
+                        handle_client_error(e, aopt.copt.output_mode)
                     }
                 }
                 PersonPosix::SetPassword(aopt) => {
@@ -168,7 +167,7 @@ impl PersonOpt {
                         )
                         .await
                     {
-                        error!("Error -> {:?}", e);
+                        handle_client_error(e, aopt.copt.output_mode)
                     }
                 }
             }, // end PersonOpt::Posix
@@ -188,9 +187,7 @@ impl PersonOpt {
                                 }
                             }
                         }
-                        Err(e) => {
-                            error!("Error listing sessions -> {:?}", e);
-                        }
+                        Err(e) => handle_client_error(e, apo.copt.output_mode),
                     }
                 }
                 AccountUserAuthToken::Destroy {
@@ -207,7 +204,8 @@ impl PersonOpt {
                             println!("Success");
                         }
                         Err(e) => {
-                            error!("Error destroying account session -> {:?}", e);
+                            error!("Error destroying account session");
+                            handle_client_error(e, copt.output_mode);
                         }
                     }
                 }
@@ -221,9 +219,7 @@ impl PersonOpt {
                         .await
                     {
                         Ok(pkeys) => pkeys.iter().for_each(|pkey| println!("{}", pkey)),
-                        Err(e) => {
-                            error!("Error -> {:?}", e);
-                        }
+                        Err(e) => handle_client_error(e, aopt.copt.output_mode),
                     }
                 }
                 AccountSsh::Add(aopt) => {
@@ -236,7 +232,7 @@ impl PersonOpt {
                         )
                         .await
                     {
-                        error!("Error -> {:?}", e);
+                        handle_client_error(e, aopt.copt.output_mode)
                     }
                 }
                 AccountSsh::Delete(aopt) => {
@@ -248,15 +244,24 @@ impl PersonOpt {
                         )
                         .await
                     {
-                        error!("Error -> {:?}", e);
+                        handle_client_error(e, aopt.copt.output_mode)
                     }
                 }
             }, // end PersonOpt::Ssh
             PersonOpt::List(copt) => {
                 let client = copt.to_client(OpType::Read).await;
                 match client.idm_person_account_list().await {
-                    Ok(r) => r.iter().for_each(|ent| println!("{}", ent)),
-                    Err(e) => error!("Error -> {:?}", e),
+                    Ok(r) => match copt.output_mode {
+                        OutputMode::Json => {
+                            let r_attrs: Vec<_> = r.iter().map(|entry| &entry.attrs).collect();
+                            println!(
+                                "{}",
+                                serde_json::to_string(&r_attrs).expect("Failed to serialise json")
+                            );
+                        }
+                        OutputMode::Text => r.iter().for_each(|ent| println!("{}", ent)),
+                    },
+                    Err(e) => handle_client_error(e, copt.output_mode),
                 }
             }
             PersonOpt::Update(aopt) => {
@@ -272,18 +277,26 @@ impl PersonOpt {
                     .await
                 {
                     Ok(()) => println!("Success"),
-                    Err(e) => error!("Error -> {:?}", e),
+                    Err(e) => handle_client_error(e, aopt.copt.output_mode),
                 }
             }
             PersonOpt::Get(aopt) => {
-                let client = aopt.copt.to_client(OpType::Write).await;
+                let client = aopt.copt.to_client(OpType::Read).await;
                 match client
                     .idm_person_account_get(aopt.aopts.account_id.as_str())
                     .await
                 {
-                    Ok(Some(e)) => println!("{}", e),
+                    Ok(Some(e)) => match aopt.copt.output_mode {
+                        OutputMode::Json => {
+                            println!(
+                                "{}",
+                                serde_json::to_string(&e).expect("Failed to serialise json")
+                            );
+                        }
+                        OutputMode::Text => println!("{}", e),
+                    },
                     Ok(None) => println!("No matching entries"),
-                    Err(e) => error!("Error -> {:?}", e),
+                    Err(e) => handle_client_error(e, aopt.copt.output_mode),
                 }
             }
             PersonOpt::Delete(aopt) => {
@@ -308,6 +321,8 @@ impl PersonOpt {
                         modmessage.result = format!("Error -> {:?}", e);
                         modmessage.status = MessageStatus::Failure;
                         eprintln!("{}", modmessage);
+
+                        // handle_client_error(e, aopt.copt.output_mode),
                     }
                     Ok(result) => {
                         debug!("{:?}", result);
@@ -331,45 +346,36 @@ impl PersonOpt {
                             acopt.aopts.account_id.as_str(),
                         )
                     }
-                    Err(err) => {
-                        error!("Error -> {:?}", err);
-                    }
+                    Err(e) => handle_client_error(e, acopt.copt.output_mode),
                 }
             }
             PersonOpt::Validity { commands } => match commands {
                 AccountValidity::Show(ano) => {
                     let client = ano.copt.to_client(OpType::Read).await;
 
+                    let entry = match client
+                        .idm_person_account_get(ano.aopts.account_id.as_str())
+                        .await
+                    {
+                        Err(err) => {
+                            error!(
+                                "No account {} found, or other error occurred: {:?}",
+                                ano.aopts.account_id.as_str(),
+                                err
+                            );
+                            return;
+                        }
+                        Ok(val) => match val {
+                            Some(val) => val,
+                            None => {
+                                error!("No account {} found!", ano.aopts.account_id.as_str());
+                                return;
+                            }
+                        },
+                    };
+
                     println!("user: {}", ano.aopts.account_id.as_str());
-                    let ex = match client
-                        .idm_person_account_get_attr(
-                            ano.aopts.account_id.as_str(),
-                            "account_expire",
-                        )
-                        .await
-                    {
-                        Ok(v) => v,
-                        Err(e) => {
-                            error!("Error -> {:?}", e);
-                            return;
-                        }
-                    };
-
-                    let vf = match client
-                        .idm_person_account_get_attr(
-                            ano.aopts.account_id.as_str(),
-                            "account_valid_from",
-                        )
-                        .await
-                    {
-                        Ok(v) => v,
-                        Err(e) => {
-                            error!("Error -> {:?}", e);
-                            return;
-                        }
-                    };
-
-                    if let Some(t) = vf {
+                    if let Some(t) = entry.attrs.get(ATTR_ACCOUNT_VALID_FROM) {
                         // Convert the time to local timezone.
                         let t = OffsetDateTime::parse(&t[0], &Rfc3339)
                             .map(|odt| {
@@ -387,7 +393,7 @@ impl PersonOpt {
                         println!("valid after: any time");
                     }
 
-                    if let Some(t) = ex {
+                    if let Some(t) = entry.attrs.get(ATTR_ACCOUNT_EXPIRE) {
                         let t = OffsetDateTime::parse(&t[0], &Rfc3339)
                             .map(|odt| {
                                 odt.to_offset(
@@ -405,78 +411,33 @@ impl PersonOpt {
                 }
                 AccountValidity::ExpireAt(ano) => {
                     let client = ano.copt.to_client(OpType::Write).await;
-                    if matches!(ano.datetime.as_str(), "never" | "clear") {
-                        // Unset the value
-                        match client
-                            .idm_person_account_purge_attr(
-                                ano.aopts.account_id.as_str(),
-                                "account_expire",
-                            )
-                            .await
-                        {
-                            Err(e) => error!("Error -> {:?}", e),
-                            _ => println!("Success"),
+                    let validity = match try_expire_at_from_string(ano.datetime.as_str()) {
+                        Ok(val) => val,
+                        Err(()) => return,
+                    };
+                    let res = match validity {
+                        None => {
+                            client
+                                .idm_person_account_purge_attr(
+                                    ano.aopts.account_id.as_str(),
+                                    ATTR_ACCOUNT_EXPIRE,
+                                )
+                                .await
                         }
-                    } else if matches!(ano.datetime.as_str(), "now") {
-                        // set the expiry to *now*
-                        let now = match OffsetDateTime::now_utc().format(&Rfc3339) {
-                            Ok(s) => s,
-                            Err(e) => {
-                                error!(err = ?e, "Unable to format current time to rfc3339");
-                                return;
-                            }
-                        };
-                        debug!("Setting expiry to {}", now);
-                        match client
-                            .idm_person_account_set_attr(
-                                ano.aopts.account_id.as_str(),
-                                "account_expire",
-                                &[&now],
-                            )
-                            .await
-                        {
-                            Err(e) => error!("Error setting expiry to 'now' -> {:?}", e),
-                            _ => println!("Success"),
+                        Some(new_expiry) => {
+                            client
+                                .idm_person_account_set_attr(
+                                    ano.aopts.account_id.as_str(),
+                                    ATTR_ACCOUNT_EXPIRE,
+                                    &[&new_expiry],
+                                )
+                                .await
                         }
-                    } else if matches!(ano.datetime.as_str(), "epoch") {
-                        // set the expiry to the epoch
-                        let epoch_str = match OffsetDateTime::UNIX_EPOCH.format(&Rfc3339) {
-                            Ok(s) => s,
-                            Err(e) => {
-                                error!(err = ?e, "Unable to format unix epoch to rfc3339");
-                                return;
-                            }
-                        };
-                        debug!("Setting expiry to {}", epoch_str);
-                        match client
-                            .idm_person_account_set_attr(
-                                ano.aopts.account_id.as_str(),
-                                "account_expire",
-                                &[&epoch_str],
-                            )
-                            .await
-                        {
-                            Err(e) => error!("Error setting expiry to 'epoch' -> {:?}", e),
-                            _ => println!("Success"),
-                        }
-                    } else {
-                        if let Err(e) = OffsetDateTime::parse(ano.datetime.as_str(), &Rfc3339) {
-                            error!("Error -> {:?}", e);
-                            return;
-                        }
-
-                        match client
-                            .idm_person_account_set_attr(
-                                ano.aopts.account_id.as_str(),
-                                "account_expire",
-                                &[ano.datetime.as_str()],
-                            )
-                            .await
-                        {
-                            Err(e) => error!("Error -> {:?}", e),
-                            _ => println!("Success"),
-                        }
-                    }
+                    };
+                    match res {
+                        Err(e) => handle_client_error(e, ano.copt.output_mode),
+                        _ => println!("Success"),
+                    };
                 }
                 AccountValidity::BeginFrom(ano) => {
                     let client = ano.copt.to_client(OpType::Write).await;
@@ -485,7 +446,7 @@ impl PersonOpt {
                         match client
                             .idm_person_account_purge_attr(
                                 ano.aopts.account_id.as_str(),
-                                "account_valid_from",
+                                ATTR_ACCOUNT_VALID_FROM,
                             )
                             .await
                         {
@@ -506,7 +467,7 @@ impl PersonOpt {
                         match client
                             .idm_person_account_set_attr(
                                 ano.aopts.account_id.as_str(),
-                                "account_valid_from",
+                                ATTR_ACCOUNT_VALID_FROM,
                                 &[ano.datetime.as_str()],
                             )
                             .await
@@ -601,14 +562,7 @@ impl AccountCredential {
                     .await
                 {
                     Ok(cuintent_token) => {
-                        let mut url = match Url::parse(client.get_url()) {
-                            Ok(u) => u,
-                            Err(e) => {
-                                error!("Unable to parse url - {:?}", e);
-                                return;
-                            }
-                        };
-                        url.set_path("/ui/reset");
+                        let mut url = client.make_url("/ui/reset");
                         url.query_pairs_mut()
                             .append_pair("token", cuintent_token.token.as_str());
 
@@ -662,6 +616,8 @@ enum CUAction {
     Remove,
     Passkey,
     PasskeyRemove,
+    AttestedPasskey,
+    AttestedPasskeyRemove,
     End,
     Commit,
 }
@@ -684,6 +640,9 @@ remove (rm) - Remove only the password based credential
 -- Passkeys
 passkey (pk) - Add a new Passkey
 passkey remove (passkey rm, pkrm) - Remove a Passkey
+-- Attested Passkeys
+attested-passkey (apk) - Add a new Attested Passkey
+attested-passkey-remove (attested-passkey rm, apkrm) - Remove an Attested Passkey
 "#
         )
     }
@@ -706,6 +665,10 @@ impl FromStr for CUAction {
             "remove" | "rm" => Ok(CUAction::Remove),
             "passkey" | "pk" => Ok(CUAction::Passkey),
             "passkey remove" | "passkey rm" | "pkrm" => Ok(CUAction::PasskeyRemove),
+            "attested-passkey" | "apk" => Ok(CUAction::AttestedPasskey),
+            "attested-passkey remove" | "attested-passkey rm" | "apkrm" => {
+                Ok(CUAction::AttestedPasskeyRemove)
+            }
             _ => Err(()),
         }
     }
@@ -879,23 +842,66 @@ async fn totp_enroll_prompt(session_token: &CUSessionToken, client: &KanidmClien
     // Done!
 }
 
-async fn passkey_enroll_prompt(session_token: &CUSessionToken, client: &KanidmClient) {
-    let pk_reg = match client
-        .idm_account_credential_update_passkey_init(session_token)
-        .await
-    {
-        Ok(CUStatus {
-            mfaregstate: CURegState::Passkey(pk_reg),
-            ..
-        }) => pk_reg,
-        Ok(status) => {
-            debug!(?status);
-            eprintln!("An error occurred -> InvalidState");
-            return;
+#[derive(Clone, Copy)]
+enum PasskeyClass {
+    Any,
+    Attested,
+}
+
+impl fmt::Display for PasskeyClass {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            PasskeyClass::Any => write!(f, "Passkey"),
+            PasskeyClass::Attested => write!(f, "Attested Passkey"),
         }
-        Err(e) => {
-            eprintln!("An error occurred -> {:?}", e);
-            return;
+    }
+}
+
+async fn passkey_enroll_prompt(
+    session_token: &CUSessionToken,
+    client: &KanidmClient,
+    pk_class: PasskeyClass,
+) {
+    let pk_reg = match pk_class {
+        PasskeyClass::Any => {
+            match client
+                .idm_account_credential_update_passkey_init(session_token)
+                .await
+            {
+                Ok(CUStatus {
+                    mfaregstate: CURegState::Passkey(pk_reg),
+                    ..
+                }) => pk_reg,
+                Ok(status) => {
+                    debug!(?status);
+                    eprintln!("An error occurred -> InvalidState");
+                    return;
+                }
+                Err(e) => {
+                    eprintln!("An error occurred -> {:?}", e);
+                    return;
+                }
+            }
+        }
+        PasskeyClass::Attested => {
+            match client
+                .idm_account_credential_update_attested_passkey_init(session_token)
+                .await
+            {
+                Ok(CUStatus {
+                    mfaregstate: CURegState::AttestedPasskey(pk_reg),
+                    ..
+                }) => pk_reg,
+                Ok(status) => {
+                    debug!(?status);
+                    eprintln!("An error occurred -> InvalidState");
+                    return;
+                }
+                Err(e) => {
+                    eprintln!("An error occurred -> {:?}", e);
+                    return;
+                }
+            }
         }
     };
 
@@ -919,42 +925,250 @@ async fn passkey_enroll_prompt(session_token: &CUSessionToken, client: &KanidmCl
         .interact_text()
         .expect("Failed to interact with interactive session");
 
+    match pk_class {
+        PasskeyClass::Any => {
+            match client
+                .idm_account_credential_update_passkey_finish(session_token, label, rego)
+                .await
+            {
+                Ok(_) => println!("success"),
+                Err(e) => {
+                    eprintln!("An error occurred -> {:?}", e);
+                }
+            }
+        }
+        PasskeyClass::Attested => {
+            match client
+                .idm_account_credential_update_attested_passkey_finish(session_token, label, rego)
+                .await
+            {
+                Ok(_) => println!("success"),
+                Err(e) => {
+                    eprintln!("An error occurred -> {:?}", e);
+                }
+            }
+        }
+    }
+}
+
+async fn passkey_remove_prompt(
+    session_token: &CUSessionToken,
+    client: &KanidmClient,
+    pk_class: PasskeyClass,
+) {
+    // TODO: make this a scrollable selector with a "cancel" option as the default
     match client
-        .idm_account_credential_update_passkey_finish(session_token, label, rego)
+        .idm_account_credential_update_status(session_token)
         .await
     {
-        Ok(_) => println!("success"),
+        Ok(status) => match pk_class {
+            PasskeyClass::Any => {
+                if status.passkeys.is_empty() {
+                    println!("No passkeys are configured for this user");
+                    return;
+                }
+                println!("Current passkeys:");
+                for pk in status.passkeys {
+                    println!("  {} ({})", pk.tag, pk.uuid);
+                }
+            }
+            PasskeyClass::Attested => {
+                if status.attested_passkeys.is_empty() {
+                    println!("No attested passkeys are configured for this user");
+                    return;
+                }
+                println!("Current attested passkeys:");
+                for pk in status.attested_passkeys {
+                    println!("  {} ({})", pk.tag, pk.uuid);
+                }
+            }
+        },
         Err(e) => {
-            eprintln!("An error occurred -> {:?}", e);
+            eprintln!(
+                "An error occurred retrieving existing credentials -> {:?}",
+                e
+            );
         }
-    };
+    }
+
+    let uuid_s: String = Input::new()
+        .with_prompt("\nEnter the UUID of the Passkey to remove (blank to stop) # ")
+        .validate_with(|input: &String| -> Result<(), &str> {
+            if input.is_empty() || Uuid::parse_str(input).is_ok() {
+                Ok(())
+            } else {
+                Err("This is not a valid UUID")
+            }
+        })
+        .allow_empty(true)
+        .interact_text()
+        .expect("Failed to interact with interactive session");
+
+    // Remember, if it's NOT a valid uuid, it must have been empty as a termination.
+    if let Ok(uuid) = Uuid::parse_str(&uuid_s) {
+        let result = match pk_class {
+            PasskeyClass::Any => {
+                client
+                    .idm_account_credential_update_passkey_remove(session_token, uuid)
+                    .await
+            }
+            PasskeyClass::Attested => {
+                client
+                    .idm_account_credential_update_attested_passkey_remove(session_token, uuid)
+                    .await
+            }
+        };
+
+        if let Err(e) = result {
+            eprintln!("An error occurred -> {:?}", e);
+        } else {
+            println!("success");
+        }
+    } else {
+        println!("{}s were NOT changed", pk_class);
+    }
 }
 
 fn display_status(status: CUStatus) {
     let CUStatus {
         spn,
         displayname,
-        can_commit,
-        primary,
+        ext_cred_portal,
         mfaregstate: _,
+        can_commit,
+        warnings,
+        primary,
+        primary_state,
         passkeys,
+        passkeys_state,
+        attested_passkeys,
+        attested_passkeys_state,
+        attested_passkeys_allowed_devices,
     } = status;
 
     println!("spn: {}", spn);
     println!("Name: {}", displayname);
-    if let Some(cred_detail) = &primary {
-        println!("Primary Credential:");
-        print!("{}", cred_detail);
-    } else {
-        println!("Primary Credential:");
-        println!("  not set");
+
+    match ext_cred_portal {
+        CUExtPortal::None => {}
+        CUExtPortal::Hidden => {
+            println!("Externally Managed: Not all features may be available");
+            println!("    Contact your admin for more details.");
+        }
+        CUExtPortal::Some(url) => {
+            println!("Externally Managed: Not all features may be available");
+            println!("    Visit {} to update your account details.", url.as_str());
+        }
+    };
+
+    for warning in warnings {
+        print!(" ⚠️   ");
+        match warning {
+            CURegWarning::MfaRequired => {
+                println!("Multifactor authentication required - add totp, or use passkeys");
+            }
+            CURegWarning::PasskeyRequired => {
+                println!("Passkeys required");
+            }
+            CURegWarning::AttestedPasskeyRequired => {
+                println!("Attested Passkeys required");
+            }
+            CURegWarning::AttestedResidentKeyRequired => {
+                println!("Attested Resident Keys required");
+            }
+            CURegWarning::WebauthnAttestationUnsatisfiable => {
+                println!("Attestation is unsatisfiable. Contact your administrator.");
+            }
+            CURegWarning::Unsatisfiable => {
+                println!("Account policy is unsatisfiable. Contact your administrator.");
+            }
+        }
     }
+
+    println!("Primary Credential:");
+
+    match primary_state {
+        CUCredState::Modifiable => {
+            if let Some(cred_detail) = &primary {
+                print!("{}", cred_detail);
+            } else {
+                println!("  not set");
+            }
+        }
+        CUCredState::DeleteOnly => {
+            if let Some(cred_detail) = &primary {
+                print!("{}", cred_detail);
+            } else {
+                println!("  unable to modify - access denied");
+            }
+        }
+        CUCredState::AccessDeny => {
+            println!("  unable to modify - access denied");
+        }
+        CUCredState::PolicyDeny => {
+            println!("  unable to modify - account policy denied");
+        }
+    }
+
     println!("Passkeys:");
-    if passkeys.is_empty() {
-        println!("  not set");
-    } else {
-        for pk in passkeys {
-            println!("  {} ({})", pk.tag, pk.uuid);
+    match passkeys_state {
+        CUCredState::Modifiable => {
+            if passkeys.is_empty() {
+                println!("  not set");
+            } else {
+                for pk in passkeys {
+                    println!("  {} ({})", pk.tag, pk.uuid);
+                }
+            }
+        }
+        CUCredState::DeleteOnly => {
+            if passkeys.is_empty() {
+                println!("  unable to modify - access denied");
+            } else {
+                for pk in passkeys {
+                    println!("  {} ({})", pk.tag, pk.uuid);
+                }
+            }
+        }
+        CUCredState::AccessDeny => {
+            println!("  unable to modify - access denied");
+        }
+        CUCredState::PolicyDeny => {
+            println!("  unable to modify - account policy denied");
+        }
+    }
+
+    println!("Attested Passkeys:");
+    match attested_passkeys_state {
+        CUCredState::Modifiable => {
+            if attested_passkeys.is_empty() {
+                println!("  not set");
+            } else {
+                for pk in attested_passkeys {
+                    println!("  {} ({})", pk.tag, pk.uuid);
+                }
+            }
+
+            println!("  --");
+            println!("  The following devices models are allowed by account policy");
+            for dev in attested_passkeys_allowed_devices {
+                println!("  - {}", dev);
+            }
+        }
+        CUCredState::DeleteOnly => {
+            if attested_passkeys.is_empty() {
+                println!("  unable to modify - attestation policy not configured");
+            } else {
+                for pk in attested_passkeys {
+                    println!("  {} ({})", pk.tag, pk.uuid);
+                }
+            }
+        }
+        CUCredState::AccessDeny => {
+            println!("  unable to modify - access denied");
+        }
+        CUCredState::PolicyDeny => {
+            println!("  unable to modify - attestation policy not configured");
         }
     }
 
@@ -1136,57 +1350,17 @@ async fn credential_update_exec(
                     println!("Primary credential was NOT removed");
                 }
             }
-            CUAction::Passkey => passkey_enroll_prompt(&session_token, &client).await,
+            CUAction::Passkey => {
+                passkey_enroll_prompt(&session_token, &client, PasskeyClass::Any).await
+            }
             CUAction::PasskeyRemove => {
-                // TODO: make this a scrollable selector with a "cancel" option as the default
-                match client
-                    .idm_account_credential_update_status(&session_token)
-                    .await
-                {
-                    Ok(status) => {
-                        if status.passkeys.is_empty() {
-                            println!("No passkeys are configured for this user");
-                            return;
-                        }
-                        println!("Current passkeys:");
-                        for pk in status.passkeys {
-                            println!("  {} ({})", pk.tag, pk.uuid);
-                        }
-                    }
-                    Err(e) => {
-                        eprintln!(
-                            "An error occurred retrieving existing credentials -> {:?}",
-                            e
-                        );
-                    }
-                }
-
-                let uuid_s: String = Input::new()
-                    .with_prompt("\nEnter the UUID of the Passkey to remove (blank to stop) # ")
-                    .validate_with(|input: &String| -> Result<(), &str> {
-                        if input.is_empty() || Uuid::parse_str(input).is_ok() {
-                            Ok(())
-                        } else {
-                            Err("This is not a valid UUID")
-                        }
-                    })
-                    .allow_empty(true)
-                    .interact_text()
-                    .expect("Failed to interact with interactive session");
-
-                // Remember, if it's NOT a valid uuid, it must have been empty as a termination.
-                if let Ok(uuid) = Uuid::parse_str(&uuid_s) {
-                    if let Err(e) = client
-                        .idm_account_credential_update_passkey_remove(&session_token, uuid)
-                        .await
-                    {
-                        eprintln!("An error occurred -> {:?}", e);
-                    } else {
-                        println!("success");
-                    }
-                } else {
-                    println!("Passkeys were NOT changed");
-                }
+                passkey_remove_prompt(&session_token, &client, PasskeyClass::Any).await
+            }
+            CUAction::AttestedPasskey => {
+                passkey_enroll_prompt(&session_token, &client, PasskeyClass::Attested).await
+            }
+            CUAction::AttestedPasskeyRemove => {
+                passkey_remove_prompt(&session_token, &client, PasskeyClass::Attested).await
             }
             CUAction::End => {
                 println!("Changes were NOT saved.");

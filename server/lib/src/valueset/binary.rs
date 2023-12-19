@@ -62,7 +62,7 @@ impl ValueSetT for ValueSetPrivateBinary {
         self.set.clear();
     }
 
-    fn remove(&mut self, _pv: &PartialValue) -> bool {
+    fn remove(&mut self, _pv: &PartialValue, _cid: &Cid) -> bool {
         true
     }
 
@@ -71,6 +71,14 @@ impl ValueSetT for ValueSetPrivateBinary {
     }
 
     fn substring(&self, _pv: &PartialValue) -> bool {
+        false
+    }
+
+    fn startswith(&self, _pv: &PartialValue) -> bool {
+        false
+    }
+
+    fn endswith(&self, _pv: &PartialValue) -> bool {
         false
     }
 
@@ -209,7 +217,7 @@ impl ValueSetT for ValueSetPublicBinary {
         self.map.clear();
     }
 
-    fn remove(&mut self, pv: &PartialValue) -> bool {
+    fn remove(&mut self, pv: &PartialValue, _cid: &Cid) -> bool {
         match pv {
             PartialValue::PublicBinary(t) => self.map.remove(t.as_str()).is_some(),
             _ => false,
@@ -224,6 +232,14 @@ impl ValueSetT for ValueSetPublicBinary {
     }
 
     fn substring(&self, _pv: &PartialValue) -> bool {
+        false
+    }
+
+    fn startswith(&self, _pv: &PartialValue) -> bool {
+        false
+    }
+
+    fn endswith(&self, _pv: &PartialValue) -> bool {
         false
     }
 

@@ -1,9 +1,12 @@
 use crate::prelude::*;
+use hashbrown::HashMap;
 use std::collections::BTreeSet;
 
-use super::profiles::AccessControlModify;
+use super::profiles::{
+    AccessControlModify, AccessControlModifyResolved, AccessControlReceiverCondition,
+    AccessControlTargetCondition,
+};
 use super::AccessResult;
-use crate::filter::FilterValidResolved;
 use std::sync::Arc;
 
 pub(super) enum ModifyResult<'a> {
@@ -18,8 +21,8 @@ pub(super) enum ModifyResult<'a> {
 
 pub(super) fn apply_modify_access<'a>(
     ident: &Identity,
-    related_acp: &'a [(&AccessControlModify, Filter<FilterValidResolved>)],
-    // may need sync agreements later.
+    related_acp: &'a [AccessControlModifyResolved],
+    sync_agreements: &'a HashMap<Uuid, BTreeSet<String>>,
     entry: &'a Arc<EntrySealedCommitted>,
 ) -> ModifyResult<'a> {
     let mut denied = false;
@@ -30,6 +33,11 @@ pub(super) fn apply_modify_access<'a>(
     let mut allow_rem = BTreeSet::default();
     let mut constrain_cls = BTreeSet::default();
     let mut allow_cls = BTreeSet::default();
+
+    // Some useful references.
+    //  - needed for checking entry manager conditions.
+    let ident_memberof = ident.get_memberof();
+    let ident_uuid = ident.get_uuid();
 
     // run each module. These have to be broken down further due to modify
     // kind of being three operations all in one.
@@ -46,7 +54,7 @@ pub(super) fn apply_modify_access<'a>(
         // Check with protected if we should proceed.
 
         // If it's a sync entry, constrain it.
-        match modify_sync_constrain(ident, entry) {
+        match modify_sync_constrain(ident, entry, sync_agreements) {
             AccessResult::Denied => denied = true,
             AccessResult::Constrain(mut set) => {
                 constrain_rem.extend(set.iter().copied());
@@ -62,12 +70,54 @@ pub(super) fn apply_modify_access<'a>(
         // Setup the acp's here
         let scoped_acp: Vec<&AccessControlModify> = related_acp
             .iter()
-            .filter_map(|(acm, f_res)| {
-                if entry.entry_match_no_index(f_res) {
-                    Some(*acm)
-                } else {
-                    None
-                }
+            .filter_map(|acm| {
+                match &acm.receiver_condition {
+                    AccessControlReceiverCondition::GroupChecked => {
+                        // The groups were already checked during filter resolution. Trust
+                        // that result, and continue.
+                    }
+                    AccessControlReceiverCondition::EntryManager => {
+                        // This condition relies on the entry we are looking at to have a back-ref
+                        // to our uuid or a group we are in as an entry manager.
+
+                        // Note, while schema has this as single value, we currently
+                        // fetch it as a multivalue btreeset for future incase we allow
+                        // multiple entry manager by in future.
+                        if let Some(entry_manager_uuids) =
+                            entry.get_ava_refer(Attribute::EntryManagedBy)
+                        {
+                            let group_check = ident_memberof
+                                // Have at least one group allowed.
+                                .map(|imo| imo.intersection(entry_manager_uuids).next().is_some())
+                                .unwrap_or_default();
+
+                            let user_check = ident_uuid
+                                .map(|u| entry_manager_uuids.contains(&u))
+                                .unwrap_or_default();
+
+                            if !(group_check || user_check) {
+                                // Not the entry manager
+                                return None;
+                            }
+                        } else {
+                            // Can not satsify.
+                            return None;
+                        }
+                    }
+                };
+
+                match &acm.target_condition {
+                    AccessControlTargetCondition::Scope(f_res) => {
+                        if !entry.entry_match_no_index(f_res) {
+                            debug!(entry = ?entry.get_display_id(), acm = %acm.acp.acp.name, "entry DOES NOT match acs");
+                            return None;
+                        }
+                    }
+                };
+
+                debug!(entry = ?entry.get_display_id(), acs = %acm.acp.acp.name, "acs applied to entry");
+
+                Some(acm.acp)
             })
             .collect();
 
@@ -188,6 +238,7 @@ fn modify_cls_test<'a>(scoped_acp: &[&'a AccessControlModify]) -> AccessResult<'
 fn modify_sync_constrain<'a>(
     ident: &Identity,
     entry: &'a Arc<EntrySealedCommitted>,
+    sync_agreements: &'a HashMap<Uuid, BTreeSet<String>>,
 ) -> AccessResult<'a> {
     match &ident.origin {
         IdentType::Internal => AccessResult::Ignore,
@@ -197,22 +248,34 @@ fn modify_sync_constrain<'a>(
             AccessResult::Ignore
         }
         IdentType::User(_) => {
-            if let Some(classes) = entry.get_ava_set("class") {
-                // If the entry is sync object.
-                if classes.contains(&PVCLASS_SYNC_OBJECT) {
-                    // Constrain to a limited set of attributes.
-                    AccessResult::Constrain(btreeset![
-                        "user_auth_token_session",
-                        "oauth2_session",
-                        "oauth2_consent_scope_map",
-                        "credential_update_intent_token"
-                    ])
-                } else {
-                    AccessResult::Ignore
+            // We need to meet these conditions.
+            // * We are a sync object
+            // * We have a sync_parent_uuid
+            let is_sync = entry
+                .get_ava_set(Attribute::Class)
+                .map(|classes| classes.contains(&EntryClass::SyncObject.into()))
+                .unwrap_or(false);
+
+            if !is_sync {
+                return AccessResult::Ignore;
+            }
+
+            if let Some(sync_uuid) = entry.get_ava_single_refer(Attribute::SyncParentUuid) {
+                let mut set = btreeset![
+                    Attribute::UserAuthTokenSession.as_ref(),
+                    Attribute::OAuth2Session.as_ref(),
+                    Attribute::OAuth2ConsentScopeMap.as_ref(),
+                    Attribute::CredentialUpdateIntentToken.as_ref()
+                ];
+
+                if let Some(sync_yield_authority) = sync_agreements.get(&sync_uuid) {
+                    set.extend(sync_yield_authority.iter().map(|s| s.as_str()))
                 }
+
+                AccessResult::Constrain(set)
             } else {
-                // Nothing to check.
-                AccessResult::Ignore
+                warn!(entry = ?entry.get_uuid(), "sync_parent_uuid not found on sync object, preventing all access");
+                AccessResult::Denied
             }
         }
     }

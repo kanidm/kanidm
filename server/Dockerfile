@@ -1,12 +1,9 @@
 # Build the main Kanidmd server
 ARG BASE_IMAGE=opensuse/tumbleweed:latest
+
 FROM ${BASE_IMAGE} AS repos
-RUN \
-    --mount=type=cache,id=zypp,target=/var/cache/zypp \
-    zypper mr -k repo-oss; \
-    zypper mr -k repo-non-oss; \
-    zypper mr -k repo-update; \
-    zypper dup -y
+ADD scripts/zypper_fixing.sh /zypper_fixing.sh
+RUN --mount=type=cache,id=zypp,target=/var/cache/zypp /zypper_fixing.sh
 
 # ======================
 FROM repos AS builder
@@ -24,8 +21,12 @@ RUN \
         sccache \
         cargo \
         clang \
-        make automake autoconf \
-        libopenssl-3-devel pam-devel \
+        gawk \
+        make \
+        automake \
+        autoconf \
+        libopenssl-3-devel \
+        pam-devel \
         sqlite3-devel \
         rsync \
         findutils \
@@ -46,13 +47,12 @@ COPY . /usr/src/kanidm
 WORKDIR /usr/src/kanidm/kanidmd/daemon
 
 # Exports don't persist through RUN statements.
-RUN \
---mount=type=cache,id=cargo,target=/cargo \
---mount=type=cache,id=sccache,target=/sccache \
-export CARGO_HOME=/cargo; \
-export SCCACHE_DIR=/sccache; \
-export RUSTC_WRAPPER=/usr/bin/sccache; \
-export CC="/usr/bin/clang"; \
+RUN --mount=type=cache,id=cargo,target=/cargo \
+    --mount=type=cache,id=sccache,target=/sccache \
+    export CARGO_HOME=/cargo && \
+    export SCCACHE_DIR=/sccache && \
+    export RUSTC_WRAPPER=/usr/bin/sccache && \
+    export CC="/usr/bin/clang" && \
     cargo build -p daemon ${KANIDM_BUILD_OPTIONS} \
         --target-dir="/usr/src/kanidm/target/" \
         --features="${KANIDM_FEATURES}" \
@@ -62,7 +62,6 @@ export CC="/usr/bin/clang"; \
 # ======================
 
 FROM repos
-
 RUN \
     --mount=type=cache,id=zypp,target=/var/cache/zypp \
     zypper install -y \
@@ -79,4 +78,5 @@ EXPOSE 8443 3636
 VOLUME /data
 
 ENV RUST_BACKTRACE 1
+
 CMD [ "/sbin/kanidmd", "server", "-c", "/data/server.toml"]

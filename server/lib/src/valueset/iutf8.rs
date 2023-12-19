@@ -59,7 +59,7 @@ impl ValueSetT for ValueSetIutf8 {
         self.set.clear();
     }
 
-    fn remove(&mut self, pv: &PartialValue) -> bool {
+    fn remove(&mut self, pv: &PartialValue, _cid: &Cid) -> bool {
         match pv {
             PartialValue::Iutf8(s) => self.set.remove(s),
             _ => {
@@ -79,6 +79,26 @@ impl ValueSetT for ValueSetIutf8 {
     fn substring(&self, pv: &PartialValue) -> bool {
         match pv {
             PartialValue::Iutf8(s2) => self.set.iter().any(|s1| s1.contains(s2)),
+            _ => {
+                debug_assert!(false);
+                false
+            }
+        }
+    }
+
+    fn startswith(&self, pv: &PartialValue) -> bool {
+        match pv {
+            PartialValue::Iutf8(s2) => self.set.iter().any(|s1| s1.starts_with(s2)),
+            _ => {
+                debug_assert!(false);
+                false
+            }
+        }
+    }
+
+    fn endswith(&self, pv: &PartialValue) -> bool {
+        match pv {
+            PartialValue::Iutf8(s2) => self.set.iter().any(|s1| s1.ends_with(s2)),
             _ => {
                 debug_assert!(false);
                 false

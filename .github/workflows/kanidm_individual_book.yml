@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.tag }}
       - name: Setup sccache
@@ -30,9 +30,12 @@ jobs:
       - name: Install deps
         run: |
           sudo apt-get update
-          sudo apt-get install -y clang build-essential \
-            librust-openssl-dev libssl-dev \
-            libsqlite3-dev libudev-dev \
+          sudo apt-get install -y \
+            clang \
+            build-essential \
+            librust-openssl-dev \
+            libssl-dev \
+            libudev-dev \
             libpam0g-dev
       - name: Setup mdBook
         uses: peaceiris/actions-mdbook@v1
@@ -43,13 +46,13 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
 
       - name: Install python 3.10
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: "3.10"
 
       - name: Build the docs
         run: |
-          cargo install mdbook-template
+          cargo install mdbook-template mdbook-mermaid
           cargo doc --no-deps
           mdbook build *book
           rm -rf ./docs/
@@ -75,7 +78,7 @@ jobs:
           ACTIONS_RUNNER_DEBUG: true
       - name: Upload artifact
         # https://github.com/actions/upload-artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: individual
           path: ${{inputs.tag }}.tar.gz

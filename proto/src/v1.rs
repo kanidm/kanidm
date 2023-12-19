@@ -1,22 +1,42 @@
+#![allow(non_upper_case_globals)]
+
+use num_enum::TryFromPrimitive;
+use serde::{Deserialize, Serialize};
+use serde_with::skip_serializing_none;
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 use std::str::FromStr;
-
-use num_enum::TryFromPrimitive;
-use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
+use url::Url;
+use utoipa::ToSchema;
 use uuid::Uuid;
 use webauthn_rs_proto::{
     CreationChallengeResponse, PublicKeyCredential, RegisterPublicKeyCredential,
     RequestChallengeResponse,
 };
 
+use crate::constants::{ATTR_GROUP, ATTR_LDAP_SSHPUBLICKEY};
+
 // These proto implementations are here because they have public definitions
 
-/* ===== errors ===== */
+#[derive(Clone, Copy, Debug, ToSchema)]
+pub enum AccountType {
+    Person,
+    ServiceAccount,
+}
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
+impl ToString for AccountType {
+    fn to_string(&self) -> String {
+        match self {
+            AccountType::Person => "person".to_string(),
+            AccountType::ServiceAccount => "service_account".to_string(),
+        }
+    }
+}
+
+/* ===== errors ===== */
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, ToSchema)]
 #[serde(rename_all = "lowercase")]
 pub enum SchemaError {
     NotImplemented,
@@ -33,7 +53,7 @@ pub enum SchemaError {
     PhantomAttribute(String),
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, ToSchema)]
 #[serde(rename_all = "lowercase")]
 pub enum PluginError {
     AttrUnique(String),
@@ -43,7 +63,7 @@ pub enum PluginError {
     Oauth2Secrets,
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, ToSchema)]
 #[serde(rename_all = "lowercase")]
 pub enum ConsistencyError {
     Unknown,
@@ -58,7 +78,7 @@ pub enum ConsistencyError {
     RefintNotUpheld(u64),
     MemberOfInvalid(u64),
     InvalidAttributeType(String),
-    DuplicateUniqueAttribute(String),
+    DuplicateUniqueAttribute,
     InvalidSpn(u64),
     SqliteIntegrityFailure,
     BackendAllIdsSync,
@@ -66,9 +86,10 @@ pub enum ConsistencyError {
     ChangelogDesynchronised(u64),
     ChangeStateDesynchronised(u64),
     RuvInconsistent(String),
+    DeniedName(Uuid),
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, ToSchema, PartialEq, Eq, PartialOrd, Ord)]
 #[serde(rename_all = "lowercase")]
 pub enum PasswordFeedback {
     // https://docs.rs/zxcvbn/latest/zxcvbn/feedback/enum.Suggestion.html
@@ -101,8 +122,9 @@ pub enum PasswordFeedback {
     NamesAndSurnamesByThemselvesAreEasyToGuess,
     CommonNamesAndSurnamesAreEasyToGuess,
     // Custom
-    TooShort(usize),
+    TooShort(u32),
     BadListed,
+    DontReusePasswords,
 }
 
 /// Human-readable PasswordFeedback result.
@@ -141,6 +163,12 @@ impl fmt::Display for PasswordFeedback {
             }
             PasswordFeedback::DatesAreOftenEasyToGuess => {
                 write!(f, "Dates are often easy to guess.")
+            }
+            PasswordFeedback::DontReusePasswords => {
+                write!(
+                    f,
+                    "Don't reuse passwords that already exist on your account"
+                )
             }
             PasswordFeedback::NamesAndSurnamesByThemselvesAreEasyToGuess => {
                 write!(f, "Names and surnames by themselves are easy to guess.")
@@ -197,7 +225,7 @@ impl fmt::Display for PasswordFeedback {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, ToSchema)]
 #[serde(rename_all = "lowercase")]
 pub enum OperationError {
     SessionExpired,
@@ -207,6 +235,7 @@ pub enum OperationError {
     NoMatchingAttributes,
     CorruptedEntry(u64),
     CorruptedIndex(String),
+    // TODO: this should just be a vec of the ConsistencyErrors, surely?
     ConsistencyError(Vec<Result<(), ConsistencyError>>),
     SchemaViolation(SchemaError),
     Plugin(PluginError),
@@ -253,7 +282,21 @@ pub enum OperationError {
     ReplInvalidRUVState,
     ReplDomainLevelUnsatisfiable,
     ReplDomainUuidMismatch,
+    ReplServerUuidSplitDataState,
     TransactionAlreadyCommitted,
+    /// when you ask for a gid that's lower than a safe minimum
+    GidOverlapsSystemMin(u32),
+    /// When a name is denied by the system config
+    ValueDenyName,
+    // What about something like this for unique errors?
+    // Credential Update Errors
+    CU0001WebauthnAttestationNotTrusted,
+    CU0002WebauthnRegistrationError,
+    // ValueSet errors
+    VS0001IncomingReplSshPublicKey,
+    // Value Errors
+    VL0001ValueSshPublicKeyString,
+    SC0001IncomingSshPublicKey,
 }
 
 impl PartialEq for OperationError {
@@ -271,7 +314,7 @@ impl PartialEq for OperationError {
 // domain specific fields for the purposes of IDM, over the normal
 // entry/ava/filter types. These related deeply to schema.
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, ToSchema)]
 pub struct Group {
     pub spn: String,
     pub uuid: String,
@@ -284,7 +327,7 @@ impl fmt::Display for Group {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, ToSchema)]
 pub struct Claim {
     pub name: String,
     pub uuid: String,
@@ -292,14 +335,6 @@ pub struct Claim {
     // some may even need requesting.
     // pub expiry: DateTime
 }
-
-/*
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct Application {
-    pub name: String,
-    pub uuid: String,
-}
-*/
 
 #[derive(Debug, Serialize, Deserialize, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 #[serde(rename_all = "lowercase")]
@@ -309,6 +344,7 @@ pub enum UiHint {
     ExperimentalFeatures = 0,
     PosixAccount = 1,
     CredentialUpdate = 2,
+    SynchronisedAccount = 3,
 }
 
 impl fmt::Display for UiHint {
@@ -317,6 +353,7 @@ impl fmt::Display for UiHint {
             UiHint::PosixAccount => write!(f, "PosixAccount"),
             UiHint::CredentialUpdate => write!(f, "CredentialUpdate"),
             UiHint::ExperimentalFeatures => write!(f, "ExperimentalFeatures"),
+            UiHint::SynchronisedAccount => write!(f, "SynchronisedAccount"),
         }
     }
 }
@@ -329,12 +366,13 @@ impl FromStr for UiHint {
             "CredentialUpdate" => Ok(UiHint::CredentialUpdate),
             "PosixAccount" => Ok(UiHint::PosixAccount),
             "ExperimentalFeatures" => Ok(UiHint::ExperimentalFeatures),
+            "SynchronisedAccount" => Ok(UiHint::SynchronisedAccount),
             _ => Err(()),
         }
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, ToSchema)]
 #[serde(rename_all = "lowercase")]
 pub enum UatPurposeStatus {
     ReadOnly,
@@ -342,13 +380,31 @@ pub enum UatPurposeStatus {
     PrivilegeCapable,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, ToSchema)]
+#[serde(rename_all = "lowercase")]
+pub enum UatStatusState {
+    #[serde(with = "time::serde::timestamp")]
+    ExpiresAt(time::OffsetDateTime),
+    NeverExpires,
+    Revoked,
+}
+
+impl fmt::Display for UatStatusState {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            UatStatusState::ExpiresAt(odt) => write!(f, "expires at {}", odt),
+            UatStatusState::NeverExpires => write!(f, "never expires"),
+            UatStatusState::Revoked => write!(f, "revoked"),
+        }
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, ToSchema)]
 #[serde(rename_all = "lowercase")]
 pub struct UatStatus {
     pub account_id: Uuid,
     pub session_id: Uuid,
-    #[serde(with = "time::serde::timestamp::option")]
-    pub expiry: Option<time::OffsetDateTime>,
+    pub state: UatStatusState,
     #[serde(with = "time::serde::timestamp")]
     pub issued_at: time::OffsetDateTime,
     pub purpose: UatPurposeStatus,
@@ -358,11 +414,7 @@ impl fmt::Display for UatStatus {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(f, "account_id: {}", self.account_id)?;
         writeln!(f, "session_id: {}", self.session_id)?;
-        if let Some(exp) = self.expiry {
-            writeln!(f, "expiry: {}", exp)?;
-        } else {
-            writeln!(f, "expiry: -")?;
-        }
+        writeln!(f, "state: {}", self.state)?;
         writeln!(f, "issued_at: {}", self.issued_at)?;
         match &self.purpose {
             UatPurposeStatus::ReadOnly => writeln!(f, "purpose: read only")?,
@@ -373,7 +425,7 @@ impl fmt::Display for UatStatus {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, ToSchema)]
 #[serde(rename_all = "lowercase")]
 pub enum UatPurpose {
     ReadOnly,
@@ -393,7 +445,7 @@ pub enum UatPurpose {
 /// This structure and how it works will *very much* change over time from this
 /// point onward! This means on updates, that sessions will invalidate in many
 /// cases.
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, ToSchema)]
 #[serde(rename_all = "lowercase")]
 pub struct UserAuthToken {
     pub session_id: Uuid,
@@ -408,7 +460,6 @@ pub struct UserAuthToken {
     pub displayname: String,
     pub spn: String,
     pub mail_primary: Option<String>,
-    // pub groups: Vec<Group>,
     pub ui_hints: BTreeSet<UiHint>,
 }
 
@@ -431,11 +482,6 @@ impl fmt::Display for UserAuthToken {
                 writeln!(f, "purpose: read write (expiry: none)")?
             }
         }
-        /*
-        for group in &self.groups {
-            writeln!(f, "group: {:?}", group.spn)?;
-        }
-        */
         Ok(())
     }
 }
@@ -463,7 +509,7 @@ impl UserAuthToken {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+#[derive(Debug, Serialize, Deserialize, Clone, Default, ToSchema)]
 #[serde(rename_all = "lowercase")]
 pub enum ApiTokenPurpose {
     #[default]
@@ -472,7 +518,7 @@ pub enum ApiTokenPurpose {
     Synchronise,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, ToSchema)]
 #[serde(rename_all = "lowercase")]
 pub struct ApiToken {
     // The account this is associated with.
@@ -519,7 +565,7 @@ impl PartialEq for ApiToken {
 
 impl Eq for ApiToken {}
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, ToSchema)]
 #[serde(rename_all = "lowercase")]
 pub struct ApiTokenGenerate {
     pub label: String,
@@ -533,7 +579,7 @@ pub struct ApiTokenGenerate {
 
 // This is similar to uat, but omits claims (they have no role in radius), and adds
 // the radius secret field.
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, ToSchema)]
 pub struct RadiusAuthToken {
     pub name: String,
     pub displayname: String,
@@ -554,11 +600,11 @@ impl fmt::Display for RadiusAuthToken {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, ToSchema)]
 pub struct UnixGroupToken {
     pub name: String,
     pub spn: String,
-    pub uuid: String,
+    pub uuid: Uuid,
     pub gidnumber: u32,
 }
 
@@ -571,19 +617,19 @@ impl fmt::Display for UnixGroupToken {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, ToSchema)]
 pub struct GroupUnixExtend {
     pub gidnumber: Option<u32>,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[skip_serializing_none]
+#[derive(Debug, Serialize, Deserialize, Clone, ToSchema)]
 pub struct UnixUserToken {
     pub name: String,
     pub spn: String,
     pub displayname: String,
     pub gidnumber: u32,
-    pub uuid: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    pub uuid: Uuid,
     pub shell: Option<String>,
     pub groups: Vec<UnixGroupToken>,
     pub sshkeys: Vec<String>,
@@ -605,16 +651,20 @@ impl fmt::Display for UnixUserToken {
         }
         self.sshkeys
             .iter()
-            .try_for_each(|s| writeln!(f, "ssh_publickey: {}", s))?;
+            .try_for_each(|s| writeln!(f, "{}: {}", ATTR_LDAP_SSHPUBLICKEY, s))?;
         self.groups
             .iter()
-            .try_for_each(|g| writeln!(f, "group: {}", g))
+            .try_for_each(|g| writeln!(f, "{}: {}", ATTR_GROUP, g))
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, ToSchema)]
+#[serde(deny_unknown_fields)]
 pub struct AccountUnixExtend {
     pub gidnumber: Option<u32>,
+    // TODO: rename shell to loginshell everywhere we can find
+    /// The internal attribute is "loginshell" but we use shell in the API currently
+    #[serde(alias = "loginshell")]
     pub shell: Option<String>,
 }
 
@@ -625,7 +675,7 @@ pub struct AccountOrgPersonExtend {
 }
 */
 
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, ToSchema)]
 pub enum CredentialDetailType {
     Password,
     GeneratedPassword,
@@ -634,7 +684,7 @@ pub enum CredentialDetailType {
     PasswordMfa(Vec<String>, Vec<String>, usize),
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, ToSchema)]
 pub struct CredentialDetail {
     pub uuid: Uuid,
     pub type_: CredentialDetailType,
@@ -698,13 +748,13 @@ impl fmt::Display for CredentialDetail {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, ToSchema)]
 pub struct PasskeyDetail {
     pub uuid: Uuid,
     pub tag: String,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, ToSchema)]
 pub struct CredentialStatus {
     pub creds: Vec<CredentialDetail>,
 }
@@ -719,7 +769,7 @@ impl fmt::Display for CredentialStatus {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, ToSchema)]
 pub struct BackupCodesView {
     pub backup_codes: Vec<String>,
 }
@@ -731,7 +781,7 @@ pub struct BackupCodesView {
 // the in memory server core entry type, without affecting the protoEntry type
 //
 
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Default, ToSchema)]
 pub struct Entry {
     pub attrs: BTreeMap<String, Vec<String>>,
 }
@@ -745,14 +795,14 @@ impl fmt::Display for Entry {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
+#[derive(Debug, Serialize, Deserialize, Clone, Ord, PartialOrd, Eq, PartialEq, Hash, ToSchema)]
 #[serde(rename_all = "lowercase")]
 pub enum Filter {
     // This is attr - value
     #[serde(alias = "Eq")]
     Eq(String, String),
-    #[serde(alias = "Sub")]
-    Sub(String, String),
+    #[serde(alias = "Cnt")]
+    Cnt(String, String),
     #[serde(alias = "Pres")]
     Pres(String),
     #[serde(alias = "Or")]
@@ -765,7 +815,7 @@ pub enum Filter {
     SelfUuid,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, ToSchema)]
 #[serde(rename_all = "lowercase")]
 pub enum Modify {
     Present(String, String),
@@ -773,7 +823,7 @@ pub enum Modify {
     Purged(String),
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, ToSchema)]
 pub struct ModifyList {
     pub mods: Vec<Modify>,
 }
@@ -784,7 +834,7 @@ impl ModifyList {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct SearchRequest {
     pub filter: Filter,
 }
@@ -795,7 +845,7 @@ impl SearchRequest {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct SearchResponse {
     pub entries: Vec<Entry>,
 }
@@ -806,7 +856,7 @@ impl SearchResponse {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct CreateRequest {
     pub entries: Vec<Entry>,
 }
@@ -817,7 +867,7 @@ impl CreateRequest {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct DeleteRequest {
     pub filter: Filter,
 }
@@ -828,7 +878,7 @@ impl DeleteRequest {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct ModifyRequest {
     // Probably needs a modlist?
     pub filter: Filter,
@@ -853,7 +903,7 @@ impl ModifyRequest {
 //
 // On loginSuccess, we send a cookie, and that allows the token to be
 // generated. The cookie can be shared between servers.
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "lowercase")]
 pub enum AuthCredential {
     Anonymous,
@@ -878,7 +928,7 @@ impl fmt::Debug for AuthCredential {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialOrd, Ord)]
+#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialOrd, Ord, ToSchema)]
 #[serde(rename_all = "lowercase")]
 pub enum AuthMech {
     Anonymous,
@@ -904,40 +954,43 @@ impl fmt::Display for AuthMech {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Copy, Clone)]
+#[derive(Debug, Serialize, Deserialize, Copy, Clone, ToSchema)]
 #[serde(rename_all = "lowercase")]
+// TODO: what is this actually used for?
 pub enum AuthIssueSession {
     Token,
-    Cookie,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "lowercase")]
 pub enum AuthStep {
-    // name
+    /// "I want to authenticate with this username"
     Init(String),
-    // A new way to issue sessions. Doing this as a new init type
-    // to prevent breaking existing clients. Allows requesting of the type
-    // of session that will be issued at the end if successful.
+    /// A new way to issue sessions. Doing this as a new init type
+    /// to prevent breaking existing clients. Allows requesting of the type
+    /// of session that will be issued at the end if successful.
     Init2 {
         username: String,
         issue: AuthIssueSession,
+        #[serde(default)]
+        /// If true, the session will have r/w access.
+        privileged: bool,
     },
-    // We want to talk to you like this.
+    /// We want to talk to you like this.
     Begin(AuthMech),
-    // Provide a response to a challenge.
+    /// Provide a response to a challenge.
     Cred(AuthCredential),
 }
 
 // Request auth for identity X with roles Y?
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct AuthRequest {
     pub step: AuthStep,
 }
 
 // Respond with the list of auth types and nonce, etc.
 // It can also contain a denied, or success.
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, ToSchema)]
 #[serde(rename_all = "lowercase")]
 pub enum AuthAllowed {
     Anonymous,
@@ -1000,23 +1053,20 @@ impl fmt::Display for AuthAllowed {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "lowercase")]
 pub enum AuthState {
-    // You need to select how you want to talk to me.
+    /// You need to select how you want to talk to me.
     Choose(Vec<AuthMech>),
-    // Continue to auth, allowed mechanisms/challenges listed.
+    /// Continue to auth, allowed mechanisms/challenges listed.
     Continue(Vec<AuthAllowed>),
-    // Something was bad, your session is terminated and no cookie.
+    /// Something was bad, your session is terminated and no cookie.
     Denied(String),
-    // Everything is good, your bearer token has been issued and is within
-    // the result.
+    /// Everything is good, your bearer token has been issued and is within the result.
     Success(String),
-    // Everything is good, your cookie has been issued.
-    SuccessCookie,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct AuthResponse {
     pub sessionid: Uuid,
     pub state: AuthState,
@@ -1038,7 +1088,7 @@ pub enum SetCredentialRequest {
 }
 */
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "lowercase")]
 pub enum TotpAlgo {
     Sha1,
@@ -1056,7 +1106,7 @@ impl fmt::Display for TotpAlgo {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct TotpSecret {
     pub accountname: String,
     /// User-facing name of the system, issuer of the TOTP
@@ -1089,12 +1139,12 @@ impl TotpSecret {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct CUIntentToken {
     pub token: String,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
 pub struct CUSessionToken {
     pub token: String,
 }
@@ -1114,6 +1164,9 @@ pub enum CURequest {
     PasskeyInit,
     PasskeyFinish(String, RegisterPublicKeyCredential),
     PasskeyRemove(Uuid),
+    AttestedPasskeyInit,
+    AttestedPasskeyFinish(String, RegisterPublicKeyCredential),
+    AttestedPasskeyRemove(Uuid),
 }
 
 impl fmt::Debug for CURequest {
@@ -1131,12 +1184,15 @@ impl fmt::Debug for CURequest {
             CURequest::PasskeyInit => "CURequest::PasskeyInit",
             CURequest::PasskeyFinish(_, _) => "CURequest::PasskeyFinish",
             CURequest::PasskeyRemove(_) => "CURequest::PasskeyRemove",
+            CURequest::AttestedPasskeyInit => "CURequest::AttestedPasskeyInit",
+            CURequest::AttestedPasskeyFinish(_, _) => "CURequest::AttestedPasskeyFinish",
+            CURequest::AttestedPasskeyRemove(_) => "CURequest::AttestedPasskeyRemove",
         };
         writeln!(f, "{}", t)
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub enum CURegState {
     // Nothing in progress.
     None,
@@ -1145,19 +1201,56 @@ pub enum CURegState {
     TotpInvalidSha1,
     BackupCodes(Vec<String>),
     Passkey(CreationChallengeResponse),
+    AttestedPasskey(CreationChallengeResponse),
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub enum CUExtPortal {
+    None,
+    Hidden,
+    Some(Url),
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, ToSchema, PartialEq)]
+pub enum CUCredState {
+    Modifiable,
+    DeleteOnly,
+    AccessDeny,
+    PolicyDeny,
+    // Disabled,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub enum CURegWarning {
+    MfaRequired,
+    PasskeyRequired,
+    AttestedPasskeyRequired,
+    AttestedResidentKeyRequired,
+    Unsatisfiable,
+    WebauthnAttestationUnsatisfiable,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct CUStatus {
+    // Display values
     pub spn: String,
     pub displayname: String,
-    pub can_commit: bool,
-    pub primary: Option<CredentialDetail>,
-    pub passkeys: Vec<PasskeyDetail>,
+    pub ext_cred_portal: CUExtPortal,
+    // Internal State Tracking
     pub mfaregstate: CURegState,
+    // Display hints + The credential details.
+    pub can_commit: bool,
+    pub warnings: Vec<CURegWarning>,
+    pub primary: Option<CredentialDetail>,
+    pub primary_state: CUCredState,
+    pub passkeys: Vec<PasskeyDetail>,
+    pub passkeys_state: CUCredState,
+    pub attested_passkeys: Vec<PasskeyDetail>,
+    pub attested_passkeys_state: CUCredState,
+    pub attested_passkeys_allowed_devices: Vec<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, ToSchema)]
 pub struct WhoamiResponse {
     // Should we just embed the entry? Or destructure it?
     pub youare: Entry,
@@ -1170,7 +1263,7 @@ impl WhoamiResponse {
 }
 
 // Simple string value provision.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct SingleStringRequest {
     pub value: String,
 }
@@ -1184,11 +1277,12 @@ impl SingleStringRequest {
 
 #[cfg(test)]
 mod tests {
+    use crate::constants::ATTR_CLASS;
     use crate::v1::{Filter as ProtoFilter, TotpAlgo, TotpSecret};
 
     #[test]
     fn test_protofilter_simple() {
-        let pf: ProtoFilter = ProtoFilter::Pres("class".to_string());
+        let pf: ProtoFilter = ProtoFilter::Pres(ATTR_CLASS.to_string());
 
         println!("{:?}", serde_json::to_string(&pf).expect("JSON failure"));
     }

@@ -17,6 +17,7 @@ use std::io::{Error as IoError, ErrorKind};
 use std::os::unix::fs::MetadataExt;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
+use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -25,12 +26,16 @@ use clap::{Arg, ArgAction, Command};
 use futures::{SinkExt, StreamExt};
 use kanidm_client::KanidmClientBuilder;
 use kanidm_proto::constants::DEFAULT_CLIENT_CONFIG_PATH;
-use kanidm_unix_common::cache::CacheLayer;
 use kanidm_unix_common::constants::DEFAULT_CONFIG_PATH;
-use kanidm_unix_common::unix_config::KanidmUnixdConfig;
+use kanidm_unix_common::db::{Cache, CacheTxn, Db};
+use kanidm_unix_common::idprovider::kanidm::KanidmProvider;
+// use kanidm_unix_common::idprovider::interface::AuthSession;
+use kanidm_unix_common::resolver::Resolver;
+use kanidm_unix_common::unix_config::{HsmType, KanidmUnixdConfig};
 use kanidm_unix_common::unix_passwd::{parse_etc_group, parse_etc_passwd};
 use kanidm_unix_common::unix_proto::{ClientRequest, ClientResponse, TaskRequest, TaskResponse};
 
+use kanidm_utils_users::{get_current_gid, get_current_uid, get_effective_gid, get_effective_uid};
 use libc::umask;
 use sketching::tracing_forest::traits::*;
 use sketching::tracing_forest::util::*;
@@ -43,7 +48,8 @@ use tokio::sync::mpsc::{channel, Receiver, Sender};
 use tokio::sync::oneshot;
 use tokio::time;
 use tokio_util::codec::{Decoder, Encoder, Framed};
-use users::{get_current_gid, get_current_uid, get_effective_gid, get_effective_uid};
+
+use kanidm_hsm_crypto::{soft::SoftTpm, AuthValue, BoxedDynTpm, Tpm};
 
 use notify_debouncer_full::{new_debouncer, notify::RecursiveMode, notify::Watcher};
 
@@ -51,6 +57,7 @@ use notify_debouncer_full::{new_debouncer, notify::RecursiveMode, notify::Watche
 
 type AsyncTaskRequest = (TaskRequest, oneshot::Sender<()>);
 
+#[derive(Default)]
 struct ClientCodec;
 
 impl Decoder for ClientCodec {
@@ -84,12 +91,7 @@ impl Encoder<ClientResponse> for ClientCodec {
     }
 }
 
-impl ClientCodec {
-    fn new() -> Self {
-        ClientCodec
-    }
-}
-
+#[derive(Default)]
 struct TaskCodec;
 
 impl Decoder for TaskCodec {
@@ -122,12 +124,6 @@ impl Encoder<TaskRequest> for TaskCodec {
     }
 }
 
-impl TaskCodec {
-    fn new() -> Self {
-        TaskCodec
-    }
-}
-
 /// Pass this a file path and it'll look for the file and remove it if it's there.
 fn rm_if_exist(p: &str) {
     if Path::new(p).exists() {
@@ -149,7 +145,7 @@ async fn handle_task_client(
     task_channel_rx: &mut Receiver<AsyncTaskRequest>,
 ) -> Result<(), Box<dyn Error>> {
     // setup the codec
-    let mut reqs = Framed::new(stream, TaskCodec::new());
+    let mut reqs = Framed::new(stream, TaskCodec);
 
     loop {
         // TODO wait on the channel OR the task handler, so we know
@@ -191,11 +187,20 @@ async fn handle_task_client(
 
 async fn handle_client(
     sock: UnixStream,
-    cachelayer: Arc<CacheLayer>,
+    cachelayer: Arc<Resolver<KanidmProvider>>,
     task_channel_tx: &Sender<AsyncTaskRequest>,
 ) -> Result<(), Box<dyn Error>> {
     debug!("Accepted connection");
-    let mut reqs = Framed::new(sock, ClientCodec::new());
+
+    let Ok(ucred) = sock.peer_cred() else {
+        return Err(Box::new(IoError::new(
+            ErrorKind::Other,
+            "Unable to verify peer credentials.",
+        )));
+    };
+
+    let mut reqs = Framed::new(sock, ClientCodec);
+    let mut pam_auth_session_state = None;
 
     trace!("Waiting for requests ...");
     while let Some(Ok(req)) = reqs.next().await {
@@ -277,13 +282,44 @@ async fn handle_client(
                         ClientResponse::NssGroup(None)
                     })
             }
-            ClientRequest::PamAuthenticate(account_id, cred) => {
-                debug!("pam authenticate");
-                cachelayer
-                    .pam_account_authenticate(account_id.as_str(), cred.as_str())
-                    .await
-                    .map(ClientResponse::PamStatus)
-                    .unwrap_or(ClientResponse::Error)
+            ClientRequest::PamAuthenticateInit(account_id) => {
+                debug!("pam authenticate init");
+
+                match &pam_auth_session_state {
+                    Some(_auth_session) => {
+                        // Invalid to init a request twice.
+                        warn!("Attempt to init auth session while current session is active");
+                        // Clean the former session, something is wrong.
+                        pam_auth_session_state = None;
+                        ClientResponse::Error
+                    }
+                    None => {
+                        match cachelayer
+                            .pam_account_authenticate_init(account_id.as_str())
+                            .await
+                        {
+                            Ok((auth_session, pam_auth_response)) => {
+                                pam_auth_session_state = Some(auth_session);
+                                pam_auth_response.into()
+                            }
+                            Err(_) => ClientResponse::Error,
+                        }
+                    }
+                }
+            }
+            ClientRequest::PamAuthenticateStep(pam_next_req) => {
+                debug!("pam authenticate step");
+                match &mut pam_auth_session_state {
+                    Some(auth_session) => cachelayer
+                        .pam_account_authenticate_step(auth_session, pam_next_req)
+                        .await
+                        .map(|pam_auth_response| pam_auth_response.into())
+                        .unwrap_or(ClientResponse::Error),
+                    None => {
+                        warn!("Attempt to continue auth session while current session is inactive");
+                        ClientResponse::Error
+                    }
+                }
             }
             ClientRequest::PamAccountAllowed(account_id) => {
                 debug!("pam account allowed");
@@ -346,11 +382,16 @@ async fn handle_client(
             }
             ClientRequest::ClearCache => {
                 debug!("clear cache");
-                cachelayer
-                    .clear_cache()
-                    .await
-                    .map(|_| ClientResponse::Ok)
-                    .unwrap_or(ClientResponse::Error)
+                if ucred.uid() == 0 {
+                    cachelayer
+                        .clear_cache()
+                        .await
+                        .map(|_| ClientResponse::Ok)
+                        .unwrap_or(ClientResponse::Error)
+                } else {
+                    error!("Only root may clear the cache");
+                    ClientResponse::Error
+                }
             }
             ClientRequest::Status => {
                 debug!("status check");
@@ -371,18 +412,20 @@ async fn handle_client(
     Ok(())
 }
 
-async fn process_etc_passwd_group(cachelayer: &CacheLayer) -> Result<(), Box<dyn Error>> {
+async fn process_etc_passwd_group(
+    cachelayer: &Resolver<KanidmProvider>,
+) -> Result<(), Box<dyn Error>> {
     let mut file = File::open("/etc/passwd").await?;
     let mut contents = vec![];
     file.read_to_end(&mut contents).await?;
 
-    let users = parse_etc_passwd(contents.as_slice()).map_err(|()| "Invalid passwd content")?;
+    let users = parse_etc_passwd(contents.as_slice()).map_err(|_| "Invalid passwd content")?;
 
     let mut file = File::open("/etc/group").await?;
     let mut contents = vec![];
     file.read_to_end(&mut contents).await?;
 
-    let groups = parse_etc_group(contents.as_slice()).map_err(|()| "Invalid group content")?;
+    let groups = parse_etc_group(contents.as_slice()).map_err(|_| "Invalid group content")?;
 
     let id_iter = users
         .iter()
@@ -390,6 +433,36 @@ async fn process_etc_passwd_group(cachelayer: &CacheLayer) -> Result<(), Box<dyn
         .chain(groups.iter().map(|group| (group.name.clone(), group.gid)));
 
     cachelayer.reload_nxset(id_iter).await;
+
+    Ok(())
+}
+
+async fn read_hsm_pin(hsm_pin_path: &str) -> Result<Vec<u8>, Box<dyn Error>> {
+    if !PathBuf::from_str(hsm_pin_path)?.exists() {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::NotFound,
+            format!("HSM PIN file '{}' not found", hsm_pin_path),
+        )
+        .into());
+    }
+
+    let mut file = File::open(hsm_pin_path).await?;
+    let mut contents = vec![];
+    file.read_to_end(&mut contents).await?;
+    Ok(contents)
+}
+
+async fn write_hsm_pin(hsm_pin_path: &str) -> Result<(), Box<dyn Error>> {
+    if !PathBuf::from_str(hsm_pin_path)?.exists() {
+        let new_pin = AuthValue::generate().map_err(|hsm_err| {
+            error!(?hsm_err, "Unable to generate new pin");
+            std::io::Error::new(std::io::ErrorKind::Other, "Unable to generate new pin")
+        })?;
+
+        std::fs::write(hsm_pin_path, new_pin)?;
+
+        info!("Generated new HSM pin");
+    }
 
     Ok(())
 }
@@ -409,6 +482,7 @@ async fn main() -> ExitCode {
                 .help("Allow running as root. Don't use this in production as it is risky!")
                 .short('r')
                 .long("skip-root-check")
+                .env("KANIDM_SKIP_ROOT_CHECK")
                 .action(ArgAction::SetTrue),
         )
         .arg(
@@ -416,6 +490,7 @@ async fn main() -> ExitCode {
                 .help("Show extra debug information")
                 .short('d')
                 .long("debug")
+                .env("KANIDM_DEBUG")
                 .action(ArgAction::SetTrue),
         )
         .arg(
@@ -427,23 +502,21 @@ async fn main() -> ExitCode {
         )
         .arg(
             Arg::new("unixd-config")
-                .takes_value(true)
                 .help("Set the unixd config file path")
                 .short('u')
                 .long("unixd-config")
                 .default_value(DEFAULT_CONFIG_PATH)
                 .env("KANIDM_UNIX_CONFIG")
-                .action(ArgAction::StoreValue),
+                .action(ArgAction::Set),
         )
         .arg(
             Arg::new("client-config")
-                .takes_value(true)
                 .help("Set the client config file path")
                 .short('c')
                 .long("client-config")
                 .default_value(DEFAULT_CLIENT_CONFIG_PATH)
                 .env("KANIDM_CLIENT_CONFIG")
-                .action(ArgAction::StoreValue),
+                .action(ArgAction::Set),
         )
         .get_matches();
 
@@ -451,6 +524,7 @@ async fn main() -> ExitCode {
         std::env::set_var("RUST_LOG", "debug");
     }
 
+    #[allow(clippy::expect_used)]
     tracing_forest::worker_task()
         .set_global(true)
         // Fall back to stderr
@@ -485,12 +559,16 @@ async fn main() -> ExitCode {
                     "Client config missing from {} - cannot start up. Quitting.",
                     cfg_path_str
                 );
+                let diag = kanidm_lib_file_permissions::diagnose_path(cfg_path.as_ref());
+                info!(%diag);
                 return ExitCode::FAILURE
             } else {
                 let cfg_meta = match metadata(&cfg_path) {
                     Ok(v) => v,
                     Err(e) => {
                         error!("Unable to read metadata for {} - {:?}", cfg_path_str, e);
+                        let diag = kanidm_lib_file_permissions::diagnose_path(cfg_path.as_ref());
+                        info!(%diag);
                         return ExitCode::FAILURE
                     }
                 };
@@ -519,12 +597,16 @@ async fn main() -> ExitCode {
                     "unixd config missing from {} - cannot start up. Quitting.",
                     unixd_path_str
                 );
+                let diag = kanidm_lib_file_permissions::diagnose_path(unixd_path.as_ref());
+                info!(%diag);
                 return ExitCode::FAILURE
             } else {
                 let unixd_meta = match metadata(&unixd_path) {
                     Ok(v) => v,
                     Err(e) => {
                         error!("Unable to read metadata for {} - {:?}", unixd_path_str, e);
+                        let diag = kanidm_lib_file_permissions::diagnose_path(unixd_path.as_ref());
+                        info!(%diag);
                         return ExitCode::FAILURE
                     }
                 };
@@ -572,7 +654,6 @@ async fn main() -> ExitCode {
             rm_if_exist(cfg.sock_path.as_str());
             rm_if_exist(cfg.task_sock_path.as_str());
 
-
             // Check the db path will be okay.
             if !cfg.db_path.is_empty() {
                 let db_path = PathBuf::from(cfg.db_path.as_str());
@@ -585,6 +666,8 @@ async fn main() -> ExitCode {
                                 .to_str()
                                 .unwrap_or("<db_parent_path invalid>")
                         );
+                        let diag = kanidm_lib_file_permissions::diagnose_path(db_path.as_ref());
+                        info!(%diag);
                         return ExitCode::FAILURE
                     }
 
@@ -633,6 +716,8 @@ async fn main() -> ExitCode {
                             "Refusing to run - DB path {} already exists and is not a file.",
                             db_path.to_str().unwrap_or("<db_path invalid>")
                         );
+                        let diag = kanidm_lib_file_permissions::diagnose_path(db_path.as_ref());
+                        info!(%diag);
                         return ExitCode::FAILURE
                     };
 
@@ -644,6 +729,8 @@ async fn main() -> ExitCode {
                                 db_path.to_str().unwrap_or("<db_path invalid>"),
                                 e
                             );
+                            let diag = kanidm_lib_file_permissions::diagnose_path(db_path.as_ref());
+                            info!(%diag);
                             return ExitCode::FAILURE
                         }
                     };
@@ -661,10 +748,116 @@ async fn main() -> ExitCode {
                 }
             };
 
-            let cl_inner = match CacheLayer::new(
-                cfg.db_path.as_str(), // The sqlite db path
+            let idprovider = KanidmProvider::new(rsclient);
+
+            let db = match Db::new(cfg.db_path.as_str()) {
+                Ok(db) => db,
+                Err(_e) => {
+                    error!("Failed to create database");
+                    return ExitCode::FAILURE
+                }
+            };
+
+            // perform any db migrations.
+            let mut dbtxn = db.write().await;
+            if dbtxn.migrate()
+                .and_then(|_| {
+                    dbtxn.commit()
+                }).is_err() {
+                    error!("Failed to migrate database");
+                    return ExitCode::FAILURE
+                }
+
+            // Check for and create the hsm pin if required.
+            if let Err(err) = write_hsm_pin(cfg.hsm_pin_path.as_str()).await {
+                error!(?err, "Failed to create HSM PIN into {}", cfg.hsm_pin_path.as_str());
+                return ExitCode::FAILURE
+            };
+
+            // read the hsm pin
+            let hsm_pin = match read_hsm_pin(cfg.hsm_pin_path.as_str()).await {
+                Ok(hp) => hp,
+                Err(err) => {
+                    error!(?err, "Failed to read HSM PIN from {}", cfg.hsm_pin_path.as_str());
+                    return ExitCode::FAILURE
+                }
+            };
+
+            let auth_value = match AuthValue::try_from(hsm_pin.as_slice()) {
+                Ok(av) => av,
+                Err(err) => {
+                    error!(?err, "invalid hsm pin");
+                    return ExitCode::FAILURE
+                }
+            };
+
+            let mut hsm: BoxedDynTpm = match cfg.hsm_type {
+                HsmType::Soft => {
+                    BoxedDynTpm::new(SoftTpm::new())
+                }
+                HsmType::Tpm => {
+                    error!("TPM not supported ... yet");
+                    return ExitCode::FAILURE
+                }
+            };
+
+            // With the assistance of the DB, setup the HSM and its machine key.
+            let mut db_txn = db.write().await;
+
+            let loadable_machine_key = match db_txn.get_hsm_machine_key() {
+                Ok(Some(lmk)) => lmk,
+                Ok(None) => {
+                    // No machine key found - create one, and store it.
+                    let loadable_machine_key = match hsm.machine_key_create(&auth_value) {
+                        Ok(lmk) => lmk,
+                        Err(err) => {
+                            error!(?err, "Unable to create hsm loadable machine key");
+                            return ExitCode::FAILURE
+                        }
+                    };
+
+                    if let Err(err) = db_txn.insert_hsm_machine_key(&loadable_machine_key) {
+                        error!(?err, "Unable to persist hsm loadable machine key");
+                        return ExitCode::FAILURE
+                    }
+
+                    loadable_machine_key
+                }
+                Err(err) => {
+                    error!(?err, "Unable to access hsm loadable machine key");
+                    return ExitCode::FAILURE
+                }
+            };
+
+            let machine_key = match hsm.machine_key_load(&auth_value, &loadable_machine_key) {
+                Ok(mk) => mk,
+                Err(err) => {
+                    error!(?err, "Unable to load machine root key - This can occur if you have changed your HSM pin");
+                    error!("To proceed you must remove the content of the cache db ({}) to reset all keys", cfg.db_path.as_str());
+                    return ExitCode::FAILURE
+                }
+            };
+
+            if let Err(err) = db_txn.commit() {
+                error!(?err, "Failed to commit database transaction, unable to proceed");
+                return ExitCode::FAILURE
+            }
+
+            if !cfg.default_shell.is_empty() {
+                let shell_path = PathBuf::from_str(&cfg.default_shell).expect("Failed to build a representation of your default_shell path!");
+                if !shell_path.exists() {
+                    error!("Cannot find configured default shell at {}, this could cause login issues!", shell_path.display())
+                }
+            }
+
+            // Okay, the hsm is now loaded and ready to go.
+
+            let cl_inner = match Resolver::new(
+                db,
+                idprovider,
+                hsm,
+                machine_key,
                 cfg.cache_timeout,
-                rsclient,
                 cfg.pam_allowed_login_groups.clone(),
                 cfg.default_shell.clone(),
                 cfg.home_prefix.clone(),
@@ -673,7 +866,6 @@ async fn main() -> ExitCode {
                 cfg.uid_attr_map,
                 cfg.gid_attr_map,
                 cfg.allow_local_account_override.clone(),
-                &cfg.tpm_policy,
             )
             .await
             {
@@ -691,7 +883,7 @@ async fn main() -> ExitCode {
             let task_listener = match UnixListener::bind(cfg.task_sock_path.as_str()) {
                 Ok(l) => l,
                 Err(_e) => {
-                    error!("Failed to bind UNIX socket {}", cfg.sock_path.as_str());
+                    error!("Failed to bind UNIX socket {}", cfg.task_sock_path.as_str());
                     return ExitCode::FAILURE
                 }
             };
@@ -699,7 +891,7 @@ async fn main() -> ExitCode {
             let _ = unsafe { umask(before) };
 
             // Pre-process /etc/passwd and /etc/group for nxset
-            if let Err(_) = process_etc_passwd_group(&cachelayer).await {
+            if process_etc_passwd_group(&cachelayer).await.is_err() {
                 error!("Failed to process system id providers");
                 return ExitCode::FAILURE
             }
@@ -726,16 +918,14 @@ async fn main() -> ExitCode {
                                 Ok((socket, _addr)) => {
                                     // Did it come from root?
                                     if let Ok(ucred) = socket.peer_cred() {
-                                        if ucred.uid() == 0 {
-                                            // all good!
-                                        } else {
+                                        if ucred.uid() != 0 {
                                             // move along.
-                                            debug!("Task handler not running as root, ignoring ...");
+                                            warn!("Task handler not running as root, ignoring ...");
                                             continue;
                                         }
                                     } else {
                                         // move along.
-                                        debug!("Task handler not running as root, ignoring ...");
+                                        warn!("Unable to determine socked peer cred, ignoring ...");
                                         continue;
                                     };
                                     debug!("A task handler has connected.");
@@ -800,7 +990,7 @@ async fn main() -> ExitCode {
                             break;
                         }
                         _ = inotify_rx.recv() => {
-                            if let Err(_) = process_etc_passwd_group(&inotify_cachelayer).await {
+                            if process_etc_passwd_group(&inotify_cachelayer).await.is_err() {
                                 error!("Failed to process system id providers");
                             }
                         }
@@ -860,30 +1050,35 @@ async fn main() -> ExitCode {
                     }
                     Some(()) = async move {
                         let sigterm = tokio::signal::unix::SignalKind::terminate();
+                        #[allow(clippy::unwrap_used)]
                         tokio::signal::unix::signal(sigterm).unwrap().recv().await
                     } => {
                         break
                     }
                     Some(()) = async move {
                         let sigterm = tokio::signal::unix::SignalKind::alarm();
+                        #[allow(clippy::unwrap_used)]
                         tokio::signal::unix::signal(sigterm).unwrap().recv().await
                     } => {
                         // Ignore
                     }
                     Some(()) = async move {
                         let sigterm = tokio::signal::unix::SignalKind::hangup();
+                        #[allow(clippy::unwrap_used)]
                         tokio::signal::unix::signal(sigterm).unwrap().recv().await
                     } => {
                         // Ignore
                     }
                     Some(()) = async move {
                         let sigterm = tokio::signal::unix::SignalKind::user_defined1();
+                        #[allow(clippy::unwrap_used)]
                         tokio::signal::unix::signal(sigterm).unwrap().recv().await
                     } => {
                         // Ignore
                     }
                     Some(()) = async move {
                         let sigterm = tokio::signal::unix::SignalKind::user_defined2();
+                        #[allow(clippy::unwrap_used)]
                         tokio::signal::unix::signal(sigterm).unwrap().recv().await
                     } => {
                         // Ignore

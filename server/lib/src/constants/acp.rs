@@ -2,1610 +2,1715 @@
 //! Constant Entries for the IDM
 
 use crate::constants::uuids::*;
-use crate::constants::values::*;
-use crate::entry::{Entry, EntryInit, EntryInitNew, EntryNew};
+use crate::entry::EntryInitNew;
+use crate::prelude::*;
 use crate::value::Value;
+use kanidm_proto::v1::Filter as ProtoFilter;
 
 lazy_static! {
-    pub static ref E_IDM_ADMINS_ACP_RECYCLE_SEARCH_V1: EntryInitNew = entry_init!(
-        ("class", CLASS_OBJECT.clone()),
-        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_SEARCH.clone()),
-        ("name", Value::new_iname("idm_admins_acp_recycle_search")),
-        ("uuid", Value::Uuid(UUID_IDM_ADMINS_ACP_RECYCLE_SEARCH_V1)),
-        (
-            "description",
-            Value::new_utf8s("Builtin IDM admin recycle bin search permission.")
-        ),
-        ("acp_receiver_group", Value::Refer(UUID_SYSTEM_ADMINS)),
-        (
-            "acp_targetscope",
-            Value::new_json_filter_s("{\"eq\": [\"class\", \"recycled\"]}")
-                .expect("Invalid JSON filter")
-        ),
-        ("acp_search_attr", Value::new_iutf8("name")),
-        ("acp_search_attr", Value::new_iutf8("class")),
-        ("acp_search_attr", Value::new_iutf8("uuid")),
-        ("acp_search_attr", Value::new_iutf8("last_modified_cid"))
+    /// either recycled or tombstone
+    pub static ref FILTER_RECYCLED_OR_TOMBSTONE: ProtoFilter = ProtoFilter::Or(vec![
+        match_class_filter!(EntryClass::Recycled),
+        match_class_filter!(EntryClass::Tombstone),
+    ]);
+
+    /// not either recycled or tombstone
+    pub static ref FILTER_ANDNOT_TOMBSTONE_OR_RECYCLED: ProtoFilter =
+        ProtoFilter::AndNot(Box::new(FILTER_RECYCLED_OR_TOMBSTONE.clone()));
+
+    /// members of 000000001000 / idm_high_privilege
+    pub static ref FILTER_HP: ProtoFilter = ProtoFilter::Eq(
+        Attribute::MemberOf.to_string(),
+        UUID_IDM_HIGH_PRIVILEGE.to_string(),
     );
+
+    /// OR ( HP, Recycled, Tombstone)
+    pub static ref FILTER_HP_OR_RECYCLED_OR_TOMBSTONE: ProtoFilter = ProtoFilter::Or(vec![
+        FILTER_HP.clone(),
+        match_class_filter!(EntryClass::Recycled),
+        match_class_filter!(EntryClass::Tombstone),
+    ]);
+
+    pub static ref FILTER_ANDNOT_HP_OR_RECYCLED_OR_TOMBSTONE: ProtoFilter =
+        ProtoFilter::AndNot(Box::new(FILTER_HP_OR_RECYCLED_OR_TOMBSTONE.clone()));
+
+    pub static ref DEFAULT_TARGET_SCOPE: ProtoFilter = ProtoFilter::And(Vec::with_capacity(0));
+
+}
+
+#[derive(Clone, Debug, Default)]
+/// Who will receive the privileges of this ACP.
+pub enum BuiltinAcpReceiver {
+    #[default]
+    None,
+    /// This functions as an "OR" condition, that membership of *at least one* of these UUIDs
+    /// is sufficient for you to receive the access control.
+    Group(Vec<Uuid>),
+    EntryManager,
+}
+
+#[derive(Clone, Debug, Default)]
+/// Objects that are affected by the rules of this ACP.
+pub enum BuiltinAcpTarget {
+    #[default]
+    None,
+    // Self,
+    Filter(ProtoFilter),
+    // MemberOf ( Uuid ),
+}
+
+#[derive(Clone, Debug, Default)]
+/// Built-in Access Control Profile definitions
+pub struct BuiltinAcp {
+    classes: Vec<EntryClass>,
+    pub name: &'static str,
+    uuid: Uuid,
+    description: &'static str,
+    receiver: BuiltinAcpReceiver,
+    target: BuiltinAcpTarget,
+    search_attrs: Vec<Attribute>,
+    modify_present_attrs: Vec<Attribute>,
+    modify_removed_attrs: Vec<Attribute>,
+    modify_classes: Vec<EntryClass>,
+    create_classes: Vec<EntryClass>,
+    create_attrs: Vec<Attribute>,
+}
+
+impl From<BuiltinAcp> for EntryInitNew {
+    fn from(value: BuiltinAcp) -> Self {
+        let mut entry = EntryInitNew::default();
+
+        #[allow(clippy::panic)]
+        if value.name.is_empty() {
+            panic!("Builtin ACP has no name! {:?}", value);
+        }
+        #[allow(clippy::panic)]
+        if value.classes.is_empty() {
+            panic!("Builtin ACP has no classes! {:?}", value);
+        }
+
+        value.classes.iter().for_each(|class| {
+            entry.add_ava(Attribute::Class, class.to_value());
+        });
+
+        entry.set_ava(Attribute::Name, [Value::new_iname(value.name)]);
+        entry.set_ava(Attribute::Uuid, [Value::Uuid(value.uuid)]);
+        entry.set_ava(
+            Attribute::Description,
+            [Value::new_utf8s(value.description)],
+        );
+
+        match &value.receiver {
+            #[allow(clippy::panic)]
+            BuiltinAcpReceiver::None => {
+                panic!("Builtin ACP has no receiver! {:?}", &value);
+            }
+            BuiltinAcpReceiver::Group(list) => {
+                entry.add_ava(
+                    Attribute::Class,
+                    EntryClass::AccessControlReceiverGroup.to_value(),
+                );
+                for group in list {
+                    entry.set_ava(Attribute::AcpReceiverGroup, [Value::Refer(*group)]);
+                }
+            }
+            BuiltinAcpReceiver::EntryManager => {
+                entry.add_ava(
+                    Attribute::Class,
+                    EntryClass::AccessControlReceiverEntryManager.to_value(),
+                );
+            }
+        };
+
+        match &value.target {
+            #[allow(clippy::panic)]
+            BuiltinAcpTarget::None => {
+                panic!("Builtin ACP has no target! {:?}", &value);
+            }
+            BuiltinAcpTarget::Filter(proto_filter) => {
+                entry.add_ava(
+                    Attribute::Class,
+                    EntryClass::AccessControlTargetScope.to_value(),
+                );
+                entry.set_ava(
+                    Attribute::AcpTargetScope,
+                    [Value::JsonFilt(proto_filter.clone())],
+                );
+            }
+        }
+
+        entry.set_ava(
+            Attribute::AcpSearchAttr,
+            value
+                .search_attrs
+                .into_iter()
+                .map(|sa| sa.to_value())
+                .collect::<Vec<Value>>(),
+        );
+        value.modify_present_attrs.into_iter().for_each(|attr| {
+            entry.add_ava(Attribute::AcpModifyPresentAttr, attr.to_value());
+        });
+        value.modify_removed_attrs.into_iter().for_each(|attr| {
+            entry.add_ava(Attribute::AcpModifyRemovedAttr, attr.to_value());
+        });
+        value.modify_classes.into_iter().for_each(|class| {
+            entry.add_ava(Attribute::AcpModifyClass, class.to_value());
+        });
+        value.create_classes.into_iter().for_each(|class| {
+            entry.add_ava(Attribute::AcpCreateClass, class.to_value());
+        });
+        value.create_attrs.into_iter().for_each(|attr| {
+            entry.add_ava(Attribute::AcpCreateAttr, attr.to_value());
+        });
+        entry
+    }
 }
 
 lazy_static! {
-    pub static ref E_IDM_ADMINS_ACP_REVIVE_V1: EntryInitNew = entry_init!(
-        ("class", CLASS_OBJECT.clone()),
-        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_MODIFY.clone()),
-        ("name", Value::new_iname("idm_admins_acp_revive")),
-        ("uuid", Value::Uuid(UUID_IDM_ADMINS_ACP_REVIVE_V1)),
-        (
-            "description",
-            Value::new_utf8s("Builtin IDM admin recycle bin revive permission.")
-        ),
-        ("acp_receiver_group", Value::Refer(UUID_SYSTEM_ADMINS)),
-        (
-            "acp_targetscope",
-            Value::new_json_filter_s("{\"eq\":[\"class\",\"recycled\"]}")
-                .expect("Invalid JSON filter")
-        ),
-        ("acp_modify_removedattr", Value::new_iutf8("class")),
-        ("acp_modify_class", Value::new_iutf8("recycled"))
-    );
+    pub static ref IDM_ACP_RECYCLE_BIN_SEARCH_V1: BuiltinAcp = BuiltinAcp {
+        uuid: UUID_IDM_ACP_RECYCLE_BIN_SEARCH_V1,
+        name: "idm_acp_recycle_bin_search",
+        description: "Builtin IDM recycle bin search permission.",
+        classes: vec![
+            EntryClass::Object,
+            EntryClass::AccessControlProfile,
+            EntryClass::AccessControlSearch,
+        ],
+        receiver: BuiltinAcpReceiver::Group(vec![UUID_IDM_RECYCLE_BIN_ADMINS]),
+        target: BuiltinAcpTarget::Filter(ProtoFilter::Eq(
+            Attribute::Class.to_string(),
+            ATTR_RECYCLED.to_string()
+        )),
+
+        search_attrs: vec![
+            Attribute::Class,
+            Attribute::Name,
+            Attribute::Uuid,
+            Attribute::LastModifiedCid,
+        ],
+        ..Default::default()
+    };
 }
 
 lazy_static! {
-    pub static ref E_IDM_SELF_ACP_READ_V1: EntryInitNew = entry_init!(
-        ("class", CLASS_OBJECT.clone()),
-        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_SEARCH.clone()),
-        ("name", Value::new_iname("idm_self_acp_read")),
-        ("uuid", Value::Uuid(UUID_IDM_SELF_ACP_READ_V1)),
-        (
-            "description",
-            Value::new_utf8s(
-                "Builtin IDM Control for self read - required for whoami and many other functions"
-            )
-        ),
-        ("acp_receiver_group", Value::Refer(UUID_IDM_ALL_ACCOUNTS)),
-        (
-            "acp_targetscope",
-            Value::new_json_filter_s("\"self\"").expect("Invalid JSON filter")
-        ),
-        ("acp_search_attr", Value::new_iutf8("name")),
-        ("acp_search_attr", Value::new_iutf8("spn")),
-        ("acp_search_attr", Value::new_iutf8("displayname")),
-        ("acp_search_attr", Value::new_iutf8("legalname")),
-        ("acp_search_attr", Value::new_iutf8("class")),
-        ("acp_search_attr", Value::new_iutf8("memberof")),
-        ("acp_search_attr", Value::new_iutf8("mail")),
-        ("acp_search_attr", Value::new_iutf8("radius_secret")),
-        ("acp_search_attr", Value::new_iutf8("gidnumber")),
-        ("acp_search_attr", Value::new_iutf8("loginshell")),
-        ("acp_search_attr", Value::new_iutf8("uuid")),
-        ("acp_search_attr", Value::new_iutf8("account_expire")),
-        ("acp_search_attr", Value::new_iutf8("account_valid_from")),
-        ("acp_search_attr", Value::new_iutf8("primary_credential")),
-        (
-            "acp_search_attr",
-            Value::new_iutf8("user_auth_token_session")
-        ),
-        ("acp_search_attr", Value::new_iutf8("passkeys")),
-        ("acp_search_attr", Value::new_iutf8("devicekeys"))
-    );
+    pub static ref IDM_ACP_RECYCLE_BIN_REVIVE_V1: BuiltinAcp = BuiltinAcp {
+        uuid: UUID_IDM_ACP_RECYCLE_BIN_REVIVE_V1,
+        name: "idm_acp_recycle_bin_revive",
+        description: "Builtin IDM recycle bin revive permission.",
+        classes: vec![
+            EntryClass::Object,
+            EntryClass::AccessControlProfile,
+            EntryClass::AccessControlModify,
+        ],
+        receiver: BuiltinAcpReceiver::Group(vec![UUID_IDM_RECYCLE_BIN_ADMINS]),
+        target: BuiltinAcpTarget::Filter(ProtoFilter::Eq(
+            Attribute::Class.to_string(),
+            ATTR_RECYCLED.to_string()
+        )),
+        modify_removed_attrs: vec![Attribute::Class],
+        modify_classes: vec![EntryClass::Recycled],
+        ..Default::default()
+    };
 }
 
 lazy_static! {
-    pub static ref E_IDM_SELF_ACP_WRITE_V1: EntryInitNew = entry_init!(
-        ("class", CLASS_OBJECT.clone()),
-        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_MODIFY.clone()),
-        ("name", Value::new_iname("idm_self_acp_write")),
-        ("uuid", Value::Uuid(UUID_IDM_SELF_ACP_WRITE_V1)),
-        (
-            "description",
-            Value::new_utf8s("Builtin IDM Control for self write - required for people to update their own identities and credentials in line with best practices.")
-        ),
-        (
-            "acp_receiver_group",
-            Value::Refer(UUID_IDM_ALL_PERSONS)
-        ),
-        (
-            "acp_targetscope",
-            Value::new_json_filter_s(
-                "{\"and\": [{\"eq\": [\"class\",\"person\"]}, {\"eq\": [\"class\",\"account\"]}, \"self\"]}"
-            )
-                .expect("Invalid JSON filter")
-        ),
-        ("acp_modify_removedattr", Value::new_iutf8("name")),
-        ("acp_modify_removedattr", Value::new_iutf8("displayname")),
-        ("acp_modify_removedattr", Value::new_iutf8("legalname")),
-        ("acp_modify_removedattr", Value::new_iutf8("radius_secret")),
-        ("acp_modify_removedattr", Value::new_iutf8("primary_credential")),
-        ("acp_modify_removedattr", Value::new_iutf8("ssh_publickey")),
-        ("acp_modify_removedattr", Value::new_iutf8("unix_password")),
-        ("acp_modify_removedattr", Value::new_iutf8("passkeys")),
-        ("acp_modify_removedattr", Value::new_iutf8("devicekeys")),
-        ("acp_modify_removedattr", Value::new_iutf8("user_auth_token_session")),
-
-        ("acp_modify_presentattr", Value::new_iutf8("name")),
-        ("acp_modify_presentattr", Value::new_iutf8("displayname")),
-        ("acp_modify_presentattr", Value::new_iutf8("legalname")),
-        ("acp_modify_presentattr", Value::new_iutf8("radius_secret")),
-        ("acp_modify_presentattr", Value::new_iutf8("primary_credential")),
-        ("acp_modify_presentattr", Value::new_iutf8("ssh_publickey")),
-        ("acp_modify_presentattr", Value::new_iutf8("unix_password")),
-        ("acp_modify_presentattr", Value::new_iutf8("passkeys")),
-        ("acp_modify_presentattr", Value::new_iutf8("devicekeys"))
-    );
+    pub static ref IDM_ACP_SCHEMA_WRITE_ATTRS_V1: BuiltinAcp = BuiltinAcp{
+        classes: vec![
+            EntryClass::Object,
+            EntryClass::AccessControlProfile,
+            EntryClass::AccessControlCreate,
+            EntryClass::AccessControlModify,
+            EntryClass::AccessControlSearch
+        ],
+        name: "idm_acp_schema_write_attrs",
+        uuid: UUID_IDM_ACP_SCHEMA_WRITE_ATTRS_V1,
+        description: "Builtin IDM Control for management of schema attributes.",
+        receiver: BuiltinAcpReceiver::Group ( vec![UUID_IDM_SCHEMA_ADMINS] ),
+        // has a class, and isn't recycled/tombstoned
+        target: BuiltinAcpTarget::Filter( ProtoFilter::And(vec![
+            ProtoFilter::Eq(EntryClass::Class.to_string(),EntryClass::AttributeType.to_string()),
+            FILTER_ANDNOT_TOMBSTONE_OR_RECYCLED.clone()
+        ])),
+        search_attrs: vec![
+            Attribute::Class,
+            Attribute::Description,
+            Attribute::Index,
+            Attribute::Unique,
+            Attribute::MultiValue,
+            Attribute::AttributeName,
+            Attribute::Syntax,
+            Attribute::Uuid,
+        ],
+        modify_removed_attrs: vec![
+            Attribute::Description,
+            Attribute::Index,
+            Attribute::Unique,
+            Attribute::MultiValue,
+            Attribute::Syntax,
+        ],
+        modify_present_attrs: vec![
+            Attribute::Description,
+            Attribute::Index,
+            Attribute::Unique,
+            Attribute::MultiValue,
+            Attribute::Syntax,
+        ],
+        create_attrs: vec![
+            Attribute::Class,
+            Attribute::Description,
+            Attribute::Index,
+            Attribute::Unique,
+            Attribute::MultiValue,
+            Attribute::AttributeName,
+            Attribute::Syntax,
+            Attribute::Uuid,
+        ],
+        create_classes: vec![
+            EntryClass::Object,
+            EntryClass::AttributeType,
+        ],
+        ..Default::default()
+    };
 }
 
 lazy_static! {
-    pub static ref E_IDM_ACCOUNT_SELF_ACP_WRITE_V1: EntryInitNew = entry_init!(
-        ("class", CLASS_OBJECT.clone()),
-        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_MODIFY.clone()),
-        ("name", Value::new_iname("idm_self_account_acp_write")),
-        ("uuid", Value::Uuid(UUID_IDM_ACCOUNT_SELF_ACP_WRITE_V1)),
-        (
-            "description",
-            Value::new_utf8s("Builtin IDM Control for self write - required for accounts to update their own session state.")
-        ),
-        (
-            "acp_receiver_group",
-            Value::Refer(UUID_IDM_ALL_ACCOUNTS)
-        ),
-        (
-            "acp_targetscope",
-            Value::new_json_filter_s(
-                "{\"and\": [{\"eq\": [\"class\",\"account\"]}, \"self\"]}"
-            )
-                .expect("Invalid JSON filter")
-        ),
-        ("acp_modify_removedattr", Value::new_iutf8("user_auth_token_session"))
-    );
+    pub static ref IDM_ACP_SCHEMA_WRITE_CLASSES_V1: BuiltinAcp = BuiltinAcp {
+        classes: vec![
+            EntryClass::Object,
+            EntryClass::AccessControlProfile,
+            EntryClass::AccessControlCreate,
+            EntryClass::AccessControlModify,
+            EntryClass::AccessControlSearch
+        ],
+        name: "idm_acp_schema_write_classes",
+        uuid: UUID_IDM_ACP_SCHEMA_WRITE_CLASSES_V1,
+        description: "Builtin IDM Control for management of schema classes.",
+        receiver: BuiltinAcpReceiver::Group(vec![UUID_IDM_SCHEMA_ADMINS]),
+        target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
+            ProtoFilter::Eq(
+                EntryClass::Class.to_string(),
+                EntryClass::ClassType.to_string()
+            ),
+            FILTER_ANDNOT_TOMBSTONE_OR_RECYCLED.clone()
+        ])),
+        search_attrs: vec![
+            Attribute::Class,
+            Attribute::ClassName,
+            Attribute::Description,
+            Attribute::SystemMay,
+            Attribute::May,
+            Attribute::SystemMust,
+            Attribute::Must,
+            Attribute::Uuid,
+        ],
+        modify_removed_attrs: vec![
+            Attribute::Class,
+            Attribute::Description,
+            Attribute::May,
+            Attribute::Must,
+        ],
+        modify_present_attrs: vec![
+            Attribute::Name,
+            Attribute::Description,
+            Attribute::May,
+            Attribute::Must,
+        ],
+        create_attrs: vec![
+            Attribute::Class,
+            Attribute::ClassName,
+            Attribute::Description,
+            Attribute::May,
+            Attribute::Must,
+            Attribute::Uuid,
+        ],
+        create_classes: vec![EntryClass::Object, EntryClass::ClassType,],
+        ..Default::default()
+    };
 }
 
 lazy_static! {
-    pub static ref E_IDM_PEOPLE_SELF_ACP_WRITE_MAIL_PRIV_V1: EntryInitNew = entry_init!(
-        ("class", CLASS_OBJECT.clone()),
-        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_MODIFY.clone()),
-        ("name", Value::new_iname("idm_people_self_acp_write_mail")),
-        ("uuid", Value::Uuid(UUID_IDM_PEOPLE_SELF_ACP_WRITE_MAIL_V1)),
-        (
-            "description",
-            Value::new_utf8s("Builtin IDM Control for self write of mail for people accounts.")
-        ),
-        (
-            "acp_receiver_group",
-            Value::Refer(UUID_IDM_PEOPLE_SELF_WRITE_MAIL_PRIV)
-        ),
-        (
-            "acp_targetscope",
-            Value::new_json_filter_s(
-                "{\"and\": [{\"eq\": [\"class\",\"person\"]}, {\"eq\": [\"class\",\"account\"]}, \"self\"]}"
-            )
-                .expect("Invalid JSON filter")
-        ),
-        ("acp_modify_removedattr", Value::new_iutf8("mail")),
-        ("acp_modify_presentattr", Value::new_iutf8("mail"))
-    );
+    pub static ref IDM_ACP_ACP_MANAGE_V1: BuiltinAcp = BuiltinAcp {
+        classes: vec![
+            EntryClass::Object,
+            EntryClass::AccessControlProfile,
+            EntryClass::AccessControlCreate,
+            EntryClass::AccessControlDelete,
+            EntryClass::AccessControlModify,
+            EntryClass::AccessControlSearch
+        ],
+        name: "idm_acp_acp_manage",
+        uuid: UUID_IDM_ACP_ACP_MANAGE_V1,
+        description: "Builtin IDM Control for access profiles management.",
+        receiver: BuiltinAcpReceiver::Group(vec![UUID_IDM_ACCESS_CONTROL_ADMINS]),
+        target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
+            ProtoFilter::Eq(
+                EntryClass::Class.to_string(),
+                EntryClass::AccessControlProfile.to_string()
+            ),
+            FILTER_ANDNOT_TOMBSTONE_OR_RECYCLED.clone()
+        ])),
+        search_attrs: vec![
+            Attribute::Class,
+            Attribute::Name,
+            Attribute::Description,
+            Attribute::AcpEnable,
+            Attribute::AcpReceiverGroup,
+            Attribute::AcpTargetScope,
+            Attribute::AcpSearchAttr,
+            Attribute::AcpModifyRemovedAttr,
+            Attribute::AcpModifyPresentAttr,
+            Attribute::AcpModifyClass,
+            Attribute::AcpCreateClass,
+            Attribute::AcpCreateAttr,
+        ],
+        modify_removed_attrs: vec![
+            Attribute::Class,
+            Attribute::Name,
+            Attribute::Description,
+            Attribute::AcpEnable,
+            Attribute::AcpReceiverGroup,
+            Attribute::AcpTargetScope,
+            Attribute::AcpSearchAttr,
+            Attribute::AcpModifyRemovedAttr,
+            Attribute::AcpModifyPresentAttr,
+            Attribute::AcpModifyClass,
+            Attribute::AcpCreateClass,
+            Attribute::AcpCreateAttr,
+        ],
+        modify_present_attrs: vec![
+            Attribute::Class,
+            Attribute::Name,
+            Attribute::Description,
+            Attribute::AcpEnable,
+            Attribute::AcpReceiverGroup,
+            Attribute::AcpTargetScope,
+            Attribute::AcpSearchAttr,
+            Attribute::AcpModifyRemovedAttr,
+            Attribute::AcpModifyPresentAttr,
+            Attribute::AcpModifyClass,
+            Attribute::AcpCreateClass,
+            Attribute::AcpCreateAttr,
+        ],
+        create_attrs: vec![
+            Attribute::Class,
+            Attribute::Name,
+            Attribute::Description,
+            Attribute::AcpEnable,
+            Attribute::AcpReceiverGroup,
+            Attribute::AcpTargetScope,
+            Attribute::AcpSearchAttr,
+            Attribute::AcpModifyRemovedAttr,
+            Attribute::AcpModifyPresentAttr,
+            Attribute::AcpModifyClass,
+            Attribute::AcpCreateClass,
+            Attribute::AcpCreateAttr,
+        ],
+        modify_classes: vec![
+            EntryClass::AccessControlProfile,
+            EntryClass::AccessControlSearch,
+            EntryClass::AccessControlModify,
+            EntryClass::AccessControlCreate,
+            EntryClass::AccessControlDelete,
+        ],
+        create_classes: vec![
+            EntryClass::AccessControlProfile,
+            EntryClass::AccessControlSearch,
+            EntryClass::AccessControlModify,
+            EntryClass::AccessControlCreate,
+            EntryClass::AccessControlDelete,
+        ],
+    };
 }
 
 lazy_static! {
-    pub static ref E_IDM_ALL_ACP_READ_V1: EntryInitNew = entry_init!(
-        ("class", CLASS_OBJECT.clone()),
-        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_SEARCH.clone()),
-        ("name", Value::new_iname("idm_all_acp_read")),
-        ("uuid", Value::Uuid(UUID_IDM_ALL_ACP_READ_V1)),
-        (
-            "description",
-            Value::new_utf8s("Builtin IDM Control for all read - e.g. anonymous and all authenticated accounts.")
-        ),
-        (
-            "acp_receiver_group",
-            Value::Refer(UUID_IDM_ALL_ACCOUNTS)
-        ),
-        (
-            "acp_targetscope",
-            Value::new_json_filter_s(
-                "{\"and\": [{\"pres\": \"class\"}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-            )
-                .expect("Invalid JSON filter")
-        ),
-        ("acp_search_attr", Value::new_iutf8("name")),
-        ("acp_search_attr", Value::new_iutf8("spn")),
-        ("acp_search_attr", Value::new_iutf8("displayname")),
-        ("acp_search_attr", Value::new_iutf8("class")),
-        ("acp_search_attr", Value::new_iutf8("memberof")),
-        ("acp_search_attr", Value::new_iutf8("member")),
-        ("acp_search_attr", Value::new_iutf8("uuid")),
-        ("acp_search_attr", Value::new_iutf8("gidnumber")),
-        ("acp_search_attr", Value::new_iutf8("loginshell")),
-        ("acp_search_attr", Value::new_iutf8("ssh_publickey"))
-    );
+    pub static ref IDM_ACP_GROUP_READ_V1: BuiltinAcp = BuiltinAcp {
+        classes: vec![
+            EntryClass::Object,
+            EntryClass::AccessControlProfile,
+            EntryClass::AccessControlSearch
+        ],
+        name: "idm_acp_group_read",
+        uuid: UUID_IDM_ACP_GROUP_READ,
+        description:
+            "Builtin IDM Control for allowing all groups to be read by access control admins",
+        receiver: BuiltinAcpReceiver::Group(vec![
+            UUID_IDM_ACCESS_CONTROL_ADMINS,
+            // UUID_IDM_SERVICE_DESK,
+            // UUID_IDM_PEOPLE_ADMINS,
+        ]),
+        target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
+            match_class_filter!(EntryClass::Group),
+            FILTER_ANDNOT_TOMBSTONE_OR_RECYCLED.clone(),
+        ])),
+        search_attrs: vec![
+            Attribute::Class,
+            Attribute::DynMember,
+            Attribute::Name,
+            Attribute::Uuid,
+            Attribute::Spn,
+            Attribute::Description,
+            Attribute::Member,
+            Attribute::EntryManagedBy,
+        ],
+        ..Default::default()
+    };
 }
 
 lazy_static! {
-    pub static ref E_IDM_ACP_PEOPLE_READ_PRIV_V1: EntryInitNew = entry_init!(
-        ("class", CLASS_OBJECT.clone()),
-        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_SEARCH.clone()),
-        ("name", Value::new_iname("idm_acp_people_read_priv")),
-        ("uuid", Value::Uuid(UUID_IDM_ACP_PEOPLE_READ_PRIV_V1)),
-        (
-            "description",
-            Value::new_utf8s("Builtin IDM Control for reading personal sensitive data.")
-        ),
-        (
-            "acp_receiver_group",
-            Value::Refer(UUID_IDM_PEOPLE_READ_PRIV)
-        ),
-        (
-            "acp_targetscope",
-            Value::new_json_filter_s(
-                "{\"and\": [{\"eq\": [\"class\",\"person\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-            )
-                .expect("Invalid JSON filter")
-        ),
-        ("acp_search_attr", Value::new_iutf8("name")),
-        ("acp_search_attr", Value::new_iutf8("displayname")),
-        ("acp_search_attr", Value::new_iutf8("legalname")),
-        ("acp_search_attr", Value::new_iutf8("mail"))
-    );
+    pub static ref IDM_ACP_GROUP_ENTRY_MANAGED_BY_MODIFY_V1: BuiltinAcp = BuiltinAcp {
+        classes: vec![
+            EntryClass::Object,
+            EntryClass::AccessControlProfile,
+            EntryClass::AccessControlModify,
+            EntryClass::AccessControlSearch
+        ],
+        name: "idm_acp_group_entry_managed_by",
+        uuid: UUID_IDM_ACP_GROUP_ENTRY_MANAGED_BY_MODIFY,
+        description: "Builtin IDM Control for allowing entry_managed_by to be set on group entries",
+        receiver: BuiltinAcpReceiver::Group(vec![UUID_IDM_ACCESS_CONTROL_ADMINS]),
+        target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
+            match_class_filter!(EntryClass::Group),
+            FILTER_ANDNOT_HP_OR_RECYCLED_OR_TOMBSTONE.clone(),
+        ])),
+        search_attrs: vec![
+            Attribute::Class,
+            Attribute::Name,
+            Attribute::Spn,
+            Attribute::Uuid,
+            Attribute::EntryManagedBy,
+        ],
+        modify_removed_attrs: vec![Attribute::EntryManagedBy],
+        modify_present_attrs: vec![Attribute::EntryManagedBy],
+        ..Default::default()
+    };
 }
 
 lazy_static! {
-    pub static ref E_IDM_ACP_PEOPLE_WRITE_PRIV_V1: EntryInitNew = entry_init!(
-        ("class", CLASS_OBJECT.clone()),
-        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_MODIFY.clone()),
-        ("name", Value::new_iname("idm_acp_people_write_priv")),
-        ("uuid", Value::Uuid(UUID_IDM_ACP_PEOPLE_WRITE_PRIV_V1)),
-        (
-            "description",
-            Value::new_utf8s("Builtin IDM Control for managing personal and sensitive data.")
-        ),
-        (
-            "acp_receiver_group",
-            Value::Refer(UUID_IDM_PEOPLE_WRITE_PRIV)
-        ),
-        (
-            "acp_targetscope",
-            Value::new_json_filter_s(
-                "{\"and\": [{\"eq\": [\"class\",\"person\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-            )
-                .expect("Invalid JSON filter")
-        ),
-        ("acp_modify_removedattr", Value::new_iutf8("name")),
-        ("acp_modify_removedattr", Value::new_iutf8("displayname")),
-        ("acp_modify_removedattr", Value::new_iutf8("legalname")),
-        ("acp_modify_removedattr", Value::new_iutf8("mail")),
-
-        ("acp_modify_presentattr", Value::new_iutf8("name")),
-        ("acp_modify_presentattr", Value::new_iutf8("displayname")),
-        ("acp_modify_presentattr", Value::new_iutf8("legalname")),
-        ("acp_modify_presentattr", Value::new_iutf8("mail"))
-    );
+    pub static ref IDM_ACP_GROUP_ACCOUNT_POLICY_MANAGE_V1: BuiltinAcp = BuiltinAcp {
+        classes: vec![
+            EntryClass::Object,
+            EntryClass::AccessControlProfile,
+            EntryClass::AccessControlModify,
+            EntryClass::AccessControlSearch
+        ],
+        name: "idm_acp_group_account_policy_manage_",
+        uuid: UUID_IDM_ACP_GROUP_ACCOUNT_POLICY_MANAGE,
+        description: "Builtin IDM Control for management of account policy on groups",
+        receiver: BuiltinAcpReceiver::Group(vec![UUID_IDM_ACCOUNT_POLICY_ADMINS]),
+        target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
+            match_class_filter!(EntryClass::Group),
+            ProtoFilter::AndNot(Box::new(FILTER_HP_OR_RECYCLED_OR_TOMBSTONE.clone())),
+        ])),
+        search_attrs: vec![
+            Attribute::Class,
+            Attribute::Name,
+            Attribute::Uuid,
+            Attribute::AuthSessionExpiry,
+            Attribute::AuthPasswordMinimumLength,
+            Attribute::CredentialTypeMinimum,
+            Attribute::PrivilegeExpiry,
+            Attribute::WebauthnAttestationCaList,
+        ],
+        modify_removed_attrs: vec![
+            Attribute::Class,
+            Attribute::AuthSessionExpiry,
+            Attribute::AuthPasswordMinimumLength,
+            Attribute::CredentialTypeMinimum,
+            Attribute::PrivilegeExpiry,
+            Attribute::WebauthnAttestationCaList,
+        ],
+        modify_present_attrs: vec![
+            Attribute::Class,
+            Attribute::AuthSessionExpiry,
+            Attribute::AuthPasswordMinimumLength,
+            Attribute::CredentialTypeMinimum,
+            Attribute::PrivilegeExpiry,
+            Attribute::WebauthnAttestationCaList,
+        ],
+        modify_classes: vec![EntryClass::AccountPolicy,],
+        ..Default::default()
+    };
 }
 
 lazy_static! {
-    pub static ref E_IDM_ACP_PEOPLE_MANAGE_PRIV_V1: EntryInitNew = entry_init!(
-        ("class", CLASS_OBJECT.clone()),
-        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_DELETE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_CREATE.clone()),
-        ("name", Value::new_iname("idm_acp_people_manage")),
-        ("uuid", Value::Uuid(UUID_IDM_ACP_PEOPLE_MANAGE_PRIV_V1)),
-        (
-            "description",
-            Value::new_utf8s("Builtin IDM Control for creating person (user) accounts")
-        ),
-        (
-            "acp_receiver_group",
-            Value::Refer(UUID_IDM_PEOPLE_MANAGE_PRIV)
-        ),
-        (
-            "acp_targetscope",
-            Value::new_json_filter_s(
-                "{\"and\": [{\"eq\": [\"class\",\"account\"]}, {\"eq\": [\"class\",\"person\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-            )
-                .expect("Invalid JSON filter")
-        ),
-        ("acp_create_attr", Value::new_iutf8("class")),
-        ("acp_create_attr", Value::new_iutf8("name")),
-        ("acp_create_attr", Value::new_iutf8("displayname")),
-        ("acp_create_attr", Value::new_iutf8("legalname")),
-        ("acp_create_attr", Value::new_iutf8("primary_credential")),
-        ("acp_create_attr", Value::new_iutf8("ssh_publickey")),
-        ("acp_create_attr", Value::new_iutf8("mail")),
-        ("acp_create_attr", Value::new_iutf8("account_expire")),
-        ("acp_create_attr", Value::new_iutf8("account_valid_from")),
-        ("acp_create_attr", Value::new_iutf8("passkeys")),
-        ("acp_create_attr", Value::new_iutf8("devicekeys")),
-        ("acp_create_class", Value::new_iutf8("object")),
-        ("acp_create_class", Value::new_iutf8("account")),
-        ("acp_create_class", Value::new_iutf8("person"))
-    );
-}
-
-// 31 - password import modification priv
-// right now, create requires you to have access to every attribute in a single snapshot,
-// so people will need to two step (create then import pw). Later we could add another
-// acp that allows the create here too? Should it be separate?
-lazy_static! {
-    pub static ref E_IDM_ACP_PEOPLE_ACCOUNT_PASSWORD_IMPORT_PRIV_V1: EntryInitNew = entry_init!(
-        ("class", CLASS_OBJECT.clone()),
-        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_MODIFY.clone()),
-        ("name", Value::new_iname("idm_acp_people_account_password_import_priv")),
-        ("uuid", Value::Uuid(UUID_IDM_ACP_PEOPLE_ACCOUNT_PASSWORD_IMPORT_PRIV_V1)),
-        (
-            "description",
-            Value::new_utf8s("Builtin IDM Control for allowing imports of passwords to people+account types.")
-        ),
-        (
-            "acp_receiver_group",
-            Value::Refer(UUID_IDM_PEOPLE_ACCOUNT_PASSWORD_IMPORT_PRIV)
-        ),
-        (
-            "acp_targetscope",
-            Value::new_json_filter_s(
-                "{\"and\": [{\"eq\": [\"class\",\"person\"]}, {\"eq\": [\"class\",\"account\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-            )
-                .expect("Invalid JSON filter")
-        ),
-        ("acp_modify_removedattr", Value::new_iutf8("password_import")),
-        ("acp_modify_presentattr", Value::new_iutf8("password_import"))
-    );
-}
-
-lazy_static! {
-    pub static ref E_IDM_ACP_PEOPLE_EXTEND_PRIV_V1: EntryInitNew = entry_init!(
-        ("class", CLASS_OBJECT.clone()),
-        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_MODIFY.clone()),
-        ("name", Value::new_iname("idm_acp_people_extend_priv")),
-        ("uuid", Value::Uuid(UUID_IDM_ACP_PEOPLE_EXTEND_PRIV_V1)),
-        (
-            "description",
-            Value::new_utf8s("Builtin IDM Control for allowing person class extension")
-        ),
-        (
-            "acp_receiver_group",
-            Value::Refer(UUID_IDM_PEOPLE_EXTEND_PRIV)
-        ),
-        (
-            "acp_targetscope",
-            Value::new_json_filter_s(
-                "{\"and\": [{\"eq\": [\"class\",\"account\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-            )
-                .expect("Invalid JSON filter")
-        ),
-        ("acp_modify_removedattr", Value::new_iutf8("name")),
-        ("acp_modify_removedattr", Value::new_iutf8("displayname")),
-        ("acp_modify_removedattr", Value::new_iutf8("legalname")),
-        ("acp_modify_removedattr", Value::new_iutf8("mail")),
-        ("acp_modify_presentattr", Value::new_iutf8("class")),
-        ("acp_modify_presentattr", Value::new_iutf8("name")),
-        ("acp_modify_presentattr", Value::new_iutf8("displayname")),
-        ("acp_modify_presentattr", Value::new_iutf8("legalname")),
-        ("acp_modify_presentattr", Value::new_iutf8("name")),
-        ("acp_modify_class", Value::new_iutf8("person"))
-    );
+    pub static ref IDM_ACP_OAUTH2_MANAGE_V1: BuiltinAcp = BuiltinAcp {
+        classes: vec![
+            EntryClass::Object,
+            EntryClass::AccessControlProfile,
+            EntryClass::AccessControlCreate,
+            EntryClass::AccessControlDelete,
+            EntryClass::AccessControlModify,
+            EntryClass::AccessControlSearch
+        ],
+        name: "idm_acp_hp_oauth2_manage_priv",
+        uuid: UUID_IDM_ACP_OAUTH2_MANAGE_V1,
+        description: "Builtin IDM Control for managing oauth2 resource server integrations.",
+        receiver: BuiltinAcpReceiver::Group(vec![UUID_IDM_OAUTH2_ADMINS]),
+        target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
+            match_class_filter!(EntryClass::OAuth2ResourceServer),
+            FILTER_ANDNOT_TOMBSTONE_OR_RECYCLED.clone(),
+        ])),
+        search_attrs: vec![
+            Attribute::Class,
+            Attribute::Description,
+            Attribute::DisplayName,
+            Attribute::OAuth2RsName,
+            Attribute::OAuth2RsOrigin,
+            Attribute::OAuth2RsOriginLanding,
+            Attribute::OAuth2RsScopeMap,
+            Attribute::OAuth2RsSupScopeMap,
+            Attribute::OAuth2RsBasicSecret,
+            Attribute::OAuth2RsTokenKey,
+            Attribute::Es256PrivateKeyDer,
+            Attribute::OAuth2AllowInsecureClientDisablePkce,
+            Attribute::Rs256PrivateKeyDer,
+            Attribute::OAuth2JwtLegacyCryptoEnable,
+            Attribute::OAuth2PreferShortUsername,
+            Attribute::Image,
+        ],
+        modify_removed_attrs: vec![
+            Attribute::Description,
+            Attribute::DisplayName,
+            Attribute::OAuth2RsName,
+            Attribute::OAuth2RsOrigin,
+            Attribute::OAuth2RsOriginLanding,
+            Attribute::OAuth2RsScopeMap,
+            Attribute::OAuth2RsSupScopeMap,
+            Attribute::OAuth2RsBasicSecret,
+            Attribute::OAuth2RsTokenKey,
+            Attribute::Es256PrivateKeyDer,
+            Attribute::OAuth2AllowInsecureClientDisablePkce,
+            Attribute::Rs256PrivateKeyDer,
+            Attribute::OAuth2JwtLegacyCryptoEnable,
+            Attribute::OAuth2PreferShortUsername,
+            Attribute::Image,
+        ],
+        modify_present_attrs: vec![
+            Attribute::Description,
+            Attribute::DisplayName,
+            Attribute::OAuth2RsName,
+            Attribute::OAuth2RsOrigin,
+            Attribute::OAuth2RsOriginLanding,
+            Attribute::OAuth2RsSupScopeMap,
+            Attribute::OAuth2RsScopeMap,
+            Attribute::OAuth2AllowInsecureClientDisablePkce,
+            Attribute::OAuth2JwtLegacyCryptoEnable,
+            Attribute::OAuth2PreferShortUsername,
+            Attribute::Image,
+        ],
+        create_attrs: vec![
+            Attribute::Class,
+            Attribute::Description,
+            Attribute::DisplayName,
+            Attribute::OAuth2RsName,
+            Attribute::OAuth2RsOrigin,
+            Attribute::OAuth2RsOriginLanding,
+            Attribute::OAuth2RsSupScopeMap,
+            Attribute::OAuth2RsScopeMap,
+            Attribute::OAuth2AllowInsecureClientDisablePkce,
+            Attribute::OAuth2JwtLegacyCryptoEnable,
+            Attribute::OAuth2PreferShortUsername,
+            Attribute::Image,
+        ],
+        create_classes: vec![
+            EntryClass::Object,
+            EntryClass::OAuth2ResourceServer,
+            EntryClass::OAuth2ResourceServerBasic,
+            EntryClass::OAuth2ResourceServerPublic,
+        ],
+        ..Default::default()
+    };
 }
 
 lazy_static! {
-    pub static ref E_IDM_ACP_HP_PEOPLE_READ_PRIV_V1: EntryInitNew = entry_init!(
-        ("class", CLASS_OBJECT.clone()),
-        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_SEARCH.clone()),
-        ("name", Value::new_iname("idm_acp_hp_people_read_priv")),
-        ("uuid", Value::Uuid(UUID_IDM_ACP_HP_PEOPLE_READ_PRIV_V1)),
-        (
-            "description",
-            Value::new_utf8s("Builtin IDM Control for reading high privilege personal sensitive data.")
-        ),
-        (
-            "acp_receiver_group",
-            Value::Refer(UUID_IDM_HP_PEOPLE_READ_PRIV)
-        ),
-        (
-            "acp_targetscope",
-            Value::new_json_filter_s(
-                "{\"and\": [{\"eq\": [\"class\",\"person\"]}, {\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-            )
-                .expect("Invalid JSON filter")
-        ),
-        ("acp_search_attr", Value::new_iutf8("name")),
-        ("acp_search_attr", Value::new_iutf8("displayname")),
-        ("acp_search_attr", Value::new_iutf8("legalname")),
-        ("acp_search_attr", Value::new_iutf8("mail"))
-    );
+    pub static ref IDM_ACP_DOMAIN_ADMIN_V1: BuiltinAcp = BuiltinAcp {
+        classes: vec![
+            EntryClass::Object,
+            EntryClass::AccessControlProfile,
+            EntryClass::AccessControlModify,
+            EntryClass::AccessControlSearch
+        ],
+        name: "idm_acp_domain_admin",
+        uuid: UUID_IDM_ACP_DOMAIN_ADMIN_V1,
+        description: "Builtin IDM Control for granting domain info administration locally",
+        receiver: BuiltinAcpReceiver::Group(vec![UUID_DOMAIN_ADMINS]),
+        target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
+            ProtoFilter::Eq(
+                Attribute::Uuid.to_string(),
+                STR_UUID_DOMAIN_INFO.to_string()
+            ),
+            FILTER_ANDNOT_TOMBSTONE_OR_RECYCLED.clone()
+        ])),
+        search_attrs: vec![
+            Attribute::Class,
+            Attribute::Name,
+            Attribute::Uuid,
+            Attribute::DomainDisplayName,
+            Attribute::DomainName,
+            Attribute::DomainLdapBasedn,
+            Attribute::DomainSsid,
+            Attribute::DomainUuid,
+            Attribute::Es256PrivateKeyDer,
+            Attribute::FernetPrivateKeyStr,
+            Attribute::CookiePrivateKey,
+            Attribute::LdapAllowUnixPwBind,
+        ],
+        modify_removed_attrs: vec![
+            Attribute::DomainDisplayName,
+            Attribute::DomainSsid,
+            Attribute::DomainLdapBasedn,
+            Attribute::Es256PrivateKeyDer,
+            Attribute::CookiePrivateKey,
+            Attribute::FernetPrivateKeyStr,
+            Attribute::LdapAllowUnixPwBind,
+        ],
+        modify_present_attrs: vec![
+            Attribute::DomainDisplayName,
+            Attribute::DomainLdapBasedn,
+            Attribute::DomainSsid,
+            Attribute::LdapAllowUnixPwBind,
+        ],
+        ..Default::default()
+    };
 }
 
 lazy_static! {
-    pub static ref E_IDM_ACP_ACCOUNT_MAIL_READ_PRIV_V1: EntryInitNew = entry_init!(
-        ("class", CLASS_OBJECT.clone()),
-        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_SEARCH.clone()),
-        (
-            "name",
-            Value::new_iname("idm_acp_account_mail_read_priv")
-        ),
-        (
-            "uuid",
-            Value::Uuid(UUID_IDM_ACP_ACCOUNT_MAIL_READ_PRIV_V1)
-        ),
-        (
-            "description",
-            Value::new_utf8s(
-                "Builtin IDM Control for reading account mail attributes."
-            )
-        ),
-        (
-            "acp_receiver_group",
-            Value::Refer(UUID_IDM_ACCOUNT_MAIL_READ_PRIV)
-        ),
-        (
-            "acp_targetscope",
-            Value::new_json_filter_s("{\"and\": [{\"eq\": [\"class\",\"account\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}")
-                .expect("Invalid JSON filter")
-        ),
-        ("acp_search_attr", Value::new_iutf8("mail"))
-    );
+    pub static ref IDM_ACP_SYNC_ACCOUNT_MANAGE_V1: BuiltinAcp = BuiltinAcp {
+        classes: vec![
+            EntryClass::Object,
+            EntryClass::AccessControlProfile,
+            EntryClass::AccessControlCreate,
+            EntryClass::AccessControlDelete,
+            EntryClass::AccessControlModify,
+            EntryClass::AccessControlSearch,
+        ],
+        name: "idm_acp_sync_account_manage",
+        uuid: UUID_IDM_ACP_SYNC_ACCOUNT_MANAGE_V1,
+        description: "Builtin IDM Control for managing IDM synchronisation accounts / connections",
+        receiver: BuiltinAcpReceiver::Group(vec![UUID_DOMAIN_ADMINS]),
+        target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
+            ProtoFilter::Eq(
+                Attribute::Class.to_string(),
+                EntryClass::SyncAccount.to_string()
+            ),
+            FILTER_ANDNOT_TOMBSTONE_OR_RECYCLED.clone(),
+        ])),
+        search_attrs: vec![
+            Attribute::Class,
+            Attribute::Uuid,
+            Attribute::Name,
+            Attribute::Description,
+            Attribute::JwsEs256PrivateKey,
+            Attribute::SyncTokenSession,
+            Attribute::SyncCredentialPortal,
+            Attribute::SyncYieldAuthority,
+            Attribute::SyncCookie,
+        ],
+        modify_removed_attrs: vec![
+            Attribute::Name,
+            Attribute::Description,
+            Attribute::JwsEs256PrivateKey,
+            Attribute::SyncTokenSession,
+            Attribute::SyncCredentialPortal,
+            Attribute::SyncCookie,
+            Attribute::SyncYieldAuthority,
+        ],
+        modify_present_attrs: vec![
+            Attribute::Name,
+            Attribute::Description,
+            Attribute::SyncTokenSession,
+            Attribute::SyncCredentialPortal,
+            Attribute::SyncYieldAuthority,
+        ],
+        create_attrs: vec![Attribute::Class, Attribute::Name, Attribute::Description,],
+        create_classes: vec![EntryClass::Object, EntryClass::SyncAccount,],
+        ..Default::default()
+    };
 }
 
 lazy_static! {
-    pub static ref E_IDM_ACP_HP_PEOPLE_WRITE_PRIV_V1: EntryInitNew = entry_init!(
-        ("class", CLASS_OBJECT.clone()),
-        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_MODIFY.clone()),
-        ("name", Value::new_iname("idm_acp_hp_people_write_priv")),
-        ("uuid", Value::Uuid(UUID_IDM_ACP_HP_PEOPLE_WRITE_PRIV_V1)),
-        (
-            "description",
-            Value::new_utf8s("Builtin IDM Control for managing privilege personal and sensitive data.")
-        ),
-        (
-            "acp_receiver_group",
-            Value::Refer(UUID_IDM_HP_PEOPLE_WRITE_PRIV)
-        ),
-        (
-            "acp_targetscope",
-            Value::new_json_filter_s(
-                "{\"and\": [{\"eq\": [\"class\",\"person\"]}, {\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-            )
-                .expect("Invalid JSON filter")
-        ),
-        ("acp_modify_removedattr", Value::new_iutf8("name")),
-        ("acp_modify_removedattr", Value::new_iutf8("displayname")),
-        ("acp_modify_removedattr", Value::new_iutf8("legalname")),
-        ("acp_modify_removedattr", Value::new_iutf8("mail")),
-        ("acp_modify_presentattr", Value::new_iutf8("name")),
-        ("acp_modify_presentattr", Value::new_iutf8("displayname")),
-        ("acp_modify_presentattr", Value::new_iutf8("legalname")),
-        ("acp_modify_presentattr", Value::new_iutf8("name"))
-    );
+    pub static ref IDM_ACP_GROUP_ENTRY_MANAGER_V1: BuiltinAcp = BuiltinAcp{
+        classes: vec![
+            EntryClass::Object,
+            EntryClass::AccessControlProfile,
+            EntryClass::AccessControlModify,
+            EntryClass::AccessControlSearch
+            ],
+        name: "idm_acp_group_entry_manager",
+        uuid: UUID_IDM_ACP_GROUP_ENTRY_MANAGER_V1,
+        description: "Builtin IDM Control for allowing EntryManager to read and modify groups",
+        receiver: BuiltinAcpReceiver::EntryManager,
+        // Any group
+        target: BuiltinAcpTarget::Filter( ProtoFilter::And(vec![
+            match_class_filter!(EntryClass::Group),
+            FILTER_ANDNOT_TOMBSTONE_OR_RECYCLED.clone()
+        ])),
+        search_attrs: vec![
+            Attribute::Class,
+            Attribute::Name,
+            Attribute::Uuid,
+            Attribute::Spn,
+            Attribute::Uuid,
+            Attribute::Description,
+            Attribute::Member,
+            Attribute::DynMember,
+            Attribute::EntryManagedBy,
+        ],
+        modify_present_attrs: vec![
+            Attribute::Description,
+            Attribute::Member,
+        ],
+        modify_removed_attrs: vec![
+            Attribute::Description,
+            Attribute::Member,
+        ],
+        ..Default::default()
+    };
 }
 
 lazy_static! {
-    pub static ref E_IDM_ACP_HP_PEOPLE_EXTEND_PRIV_V1: EntryInitNew = entry_init!(
-        ("class", CLASS_OBJECT.clone()),
-        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_MODIFY.clone()),
-        ("name", Value::new_iname("idm_acp_hp_people_extend_priv")),
-        ("uuid", Value::Uuid(UUID_IDM_ACP_HP_PEOPLE_EXTEND_PRIV_V1)),
-        (
-            "description",
-            Value::new_utf8s("Builtin IDM Control for allowing privilege person class extension")
-        ),
-        (
-            "acp_receiver_group",
-            Value::Refer(UUID_IDM_HP_PEOPLE_EXTEND_PRIV)
-        ),
-        (
-            "acp_targetscope",
-            Value::new_json_filter_s(
-                "{\"and\": [{\"eq\": [\"class\",\"account\"]}, {\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-            )
-                .expect("Invalid JSON filter")
-        ),
-        ("acp_modify_removedattr", Value::new_iutf8("name")),
-        ("acp_modify_removedattr", Value::new_iutf8("displayname")),
-        ("acp_modify_removedattr", Value::new_iutf8("legalname")),
-        ("acp_modify_removedattr", Value::new_iutf8("mail")),
-        ("acp_modify_presentattr", Value::new_iutf8("class")),
-        ("acp_modify_presentattr", Value::new_iutf8("name")),
-        ("acp_modify_presentattr", Value::new_iutf8("displayname")),
-        ("acp_modify_presentattr", Value::new_iutf8("legalname")),
-        ("acp_modify_presentattr", Value::new_iutf8("name")),
-        ("acp_modify_class", Value::new_iutf8("person"))
-    );
-}
-
-// -- end people
-
-lazy_static! {
-    pub static ref E_IDM_ACP_GROUP_WRITE_PRIV_V1: EntryInitNew = entry_init!(
-        ("class", CLASS_OBJECT.clone()),
-        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_MODIFY.clone()),
-        ("class", CLASS_ACCESS_CONTROL_SEARCH.clone()),
-        ("name", Value::new_iname("idm_acp_group_write_priv")),
-        ("uuid", Value::Uuid(UUID_IDM_ACP_GROUP_WRITE_PRIV_V1)),
-        (
-            "description",
-            Value::new_utf8s("Builtin IDM Control for managing groups")
-        ),
-        (
-            "acp_receiver_group",
-            Value::Refer(UUID_IDM_GROUP_WRITE_PRIV)
-        ),
-        (
-            "acp_targetscope",
-            Value::new_json_filter_s(
-                "{\"and\": [{\"eq\": [\"class\",\"group\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-            )
-                .expect("Invalid JSON filter")
-        ),
-        ("acp_search_attr", Value::new_iutf8("name")),
-        ("acp_search_attr", Value::new_iutf8("uuid")),
-        ("acp_search_attr", Value::new_iutf8("spn")),
-        ("acp_search_attr", Value::new_iutf8("uuid")),
-        ("acp_search_attr", Value::new_iutf8("description")),
-        ("acp_search_attr", Value::new_iutf8("member")),
-        ("acp_modify_removedattr", Value::new_iutf8("name")),
-        ("acp_modify_removedattr", Value::new_iutf8("description")),
-        ("acp_modify_removedattr", Value::new_iutf8("member")),
-        ("acp_modify_presentattr", Value::new_iutf8("name")),
-        ("acp_modify_presentattr", Value::new_iutf8("description")),
-        ("acp_modify_presentattr", Value::new_iutf8("member"))
-    );
+    pub static ref IDM_ACP_RADIUS_SERVERS_V1: BuiltinAcp = BuiltinAcp {
+        classes: vec![
+            EntryClass::Object,
+            EntryClass::AccessControlProfile,
+            EntryClass::AccessControlSearch,
+        ],
+        name: "idm_acp_radius_servers",
+        uuid: UUID_IDM_ACP_RADIUS_SERVERS_V1,
+        description:
+            "Builtin IDM Control for RADIUS servers to read credentials and other needed details.",
+        receiver: BuiltinAcpReceiver::Group(vec![UUID_IDM_RADIUS_SERVERS]),
+        target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
+            ProtoFilter::Pres(EntryClass::Class.to_string()),
+            FILTER_ANDNOT_TOMBSTONE_OR_RECYCLED.clone()
+        ])),
+        search_attrs: vec![
+            Attribute::Class,
+            Attribute::Name,
+            Attribute::Spn,
+            Attribute::Uuid,
+            Attribute::RadiusSecret,
+        ],
+        ..Default::default()
+    };
 }
 
 lazy_static! {
-    pub static ref E_IDM_ACP_ACCOUNT_READ_PRIV_V1: EntryInitNew = entry_init!(
-        ("class", CLASS_OBJECT.clone()),
-        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_SEARCH.clone()),
-        ("name", Value::new_iname("idm_acp_account_read_priv")),
-        ("uuid", Value::Uuid(UUID_IDM_ACP_ACCOUNT_READ_PRIV_V1)),
-        (
-            "description",
-            Value::new_utf8s("Builtin IDM Control for reading accounts.")
-        ),
-        (
-            "acp_receiver_group",
-            Value::Refer(UUID_IDM_ACCOUNT_READ_PRIV)
-        ),
-        (
-            "acp_targetscope",
-            Value::new_json_filter_s(
-                "{\"and\": [{\"eq\": [\"class\",\"account\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-            )
-                .expect("Invalid JSON filter")
-        ),
-        ("acp_search_attr", Value::new_iutf8("class")),
-        ("acp_search_attr", Value::new_iutf8("name")),
-        ("acp_search_attr", Value::new_iutf8("spn")),
-        ("acp_search_attr", Value::new_iutf8("uuid")),
-        ("acp_search_attr", Value::new_iutf8("displayname")),
-        ("acp_search_attr", Value::new_iutf8("ssh_publickey")),
-        ("acp_search_attr", Value::new_iutf8("primary_credential")),
-        ("acp_search_attr", Value::new_iutf8("memberof")),
-        ("acp_search_attr", Value::new_iutf8("mail")),
-        ("acp_search_attr", Value::new_iutf8("gidnumber")),
-        ("acp_search_attr", Value::new_iutf8("account_expire")),
-        ("acp_search_attr", Value::new_iutf8("account_valid_from")),
-        ("acp_search_attr", Value::new_iutf8("passkeys")),
-        ("acp_search_attr", Value::new_iutf8("devicekeys")),
-        ("acp_search_attr", Value::new_iutf8("api_token_session")),
-        ("acp_search_attr", Value::new_iutf8("user_auth_token_session"))
-    );
+    pub static ref IDM_ACP_RADIUS_SECRET_MANAGE_V1: BuiltinAcp = BuiltinAcp {
+        classes: vec![
+            EntryClass::Object,
+            EntryClass::AccessControlProfile,
+            EntryClass::AccessControlModify,
+            EntryClass::AccessControlSearch,
+        ],
+        name: "idm_acp_radius_secret_manage",
+        uuid: UUID_IDM_ACP_RADIUS_SECRET_MANAGE_V1,
+        description: "Builtin IDM Control allowing reads and writes to user radius secrets.",
+        receiver: BuiltinAcpReceiver::Group(vec![UUID_IDM_RADIUS_ADMINS]),
+        target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
+            match_class_filter!(EntryClass::Account),
+            FILTER_ANDNOT_TOMBSTONE_OR_RECYCLED.clone()
+        ])),
+        search_attrs: vec![Attribute::RadiusSecret],
+        modify_present_attrs: vec![Attribute::RadiusSecret],
+        modify_removed_attrs: vec![Attribute::RadiusSecret],
+        ..Default::default()
+    };
 }
 
 lazy_static! {
-    pub static ref E_IDM_ACP_ACCOUNT_WRITE_PRIV_V1: EntryInitNew = entry_init!(
-        ("class", CLASS_OBJECT.clone()),
-        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_MODIFY.clone()),
-        ("name", Value::new_iname("idm_acp_account_write_priv")),
-        ("uuid", Value::Uuid(UUID_IDM_ACP_ACCOUNT_WRITE_PRIV_V1)),
-        (
-            "description",
-            Value::new_utf8s("Builtin IDM Control for managing all accounts (both person and service).")
-        ),
-        (
-            "acp_receiver_group",
-            Value::Refer(UUID_IDM_ACCOUNT_WRITE_PRIV)
-        ),
-        (
-            "acp_targetscope",
-            Value::new_json_filter_s(
-                "{\"and\": [{\"eq\": [\"class\",\"account\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-            )
-                .expect("Invalid JSON filter")
-        ),
-        ("acp_modify_removedattr", Value::new_iutf8("name")),
-        ("acp_modify_removedattr", Value::new_iutf8("displayname")),
-        ("acp_modify_removedattr", Value::new_iutf8("ssh_publickey")),
-        ("acp_modify_removedattr", Value::new_iutf8("primary_credential")),
-        ("acp_modify_removedattr", Value::new_iutf8("mail")),
-        ("acp_modify_removedattr", Value::new_iutf8("account_expire")),
-        ("acp_modify_removedattr", Value::new_iutf8("account_valid_from")),
-        ("acp_modify_removedattr", Value::new_iutf8("passkeys")),
-        ("acp_modify_removedattr", Value::new_iutf8("devicekeys")),
-        ("acp_modify_removedattr", Value::new_iutf8("api_token_session")),
-        ("acp_modify_removedattr", Value::new_iutf8("user_auth_token_session")),
-
-        ("acp_modify_presentattr", Value::new_iutf8("name")),
-        ("acp_modify_presentattr", Value::new_iutf8("displayname")),
-        ("acp_modify_presentattr", Value::new_iutf8("ssh_publickey")),
-        ("acp_modify_presentattr", Value::new_iutf8("primary_credential")),
-        ("acp_modify_presentattr", Value::new_iutf8("mail")),
-        ("acp_modify_presentattr", Value::new_iutf8("account_expire")),
-        ("acp_modify_presentattr", Value::new_iutf8("account_valid_from")),
-        ("acp_modify_presentattr", Value::new_iutf8("passkeys")),
-        ("acp_modify_presentattr", Value::new_iutf8("devicekeys")),
-        ("acp_modify_presentattr", Value::new_iutf8("api_token_session"))
-    );
+    pub static ref IDM_ACP_PEOPLE_SELF_WRITE_MAIL_V1: BuiltinAcp = BuiltinAcp {
+        classes: vec![
+            EntryClass::Object,
+            EntryClass::AccessControlProfile,
+            EntryClass::AccessControlModify,
+        ],
+        name: "idm_people_self_acp_write_mail",
+        uuid: UUID_IDM_ACP_PEOPLE_SELF_WRITE_MAIL,
+        description: "Builtin IDM Control for self write of mail for people accounts.",
+        receiver: BuiltinAcpReceiver::Group(vec![UUID_IDM_PEOPLE_SELF_WRITE_MAIL]),
+        target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
+            match_class_filter!(EntryClass::Person).clone(),
+            match_class_filter!(EntryClass::Account).clone(),
+            ProtoFilter::SelfUuid,
+        ])),
+        modify_removed_attrs: vec![Attribute::Mail],
+        modify_present_attrs: vec![Attribute::Mail],
+        ..Default::default()
+    };
 }
 
 lazy_static! {
-    pub static ref E_IDM_ACP_ACCOUNT_MANAGE_PRIV_V1: EntryInitNew = entry_init!(
-        ("class", CLASS_OBJECT.clone()),
-        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_DELETE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_CREATE.clone()),
-        ("name", Value::new_iname("idm_acp_account_manage")),
-        ("uuid", Value::Uuid(UUID_IDM_ACP_ACCOUNT_MANAGE_PRIV_V1)),
-        (
-            "description",
-            Value::new_utf8s("Builtin IDM Control for creating and deleting (service) accounts")
-        ),
-        (
-            "acp_receiver_group",
-            Value::Refer(UUID_IDM_ACCOUNT_MANAGE_PRIV)
-        ),
-        (
-            "acp_targetscope",
-            Value::new_json_filter_s(
-                "{\"and\": [{\"eq\": [\"class\",\"account\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-            )
-                .expect("Invalid JSON filter")
-        ),
-        ("acp_create_attr", Value::new_iutf8("class")),
-        ("acp_create_attr", Value::new_iutf8("name")),
-        ("acp_create_attr", Value::new_iutf8("displayname")),
-        ("acp_create_attr", Value::new_iutf8("description")),
-        ("acp_create_attr", Value::new_iutf8("primary_credential")),
-        ("acp_create_attr", Value::new_iutf8("ssh_publickey")),
-        ("acp_create_attr", Value::new_iutf8("mail")),
-        ("acp_create_attr", Value::new_iutf8("account_expire")),
-        ("acp_create_attr", Value::new_iutf8("account_valid_from")),
-        ("acp_create_attr", Value::new_iutf8("passkeys")),
-        ("acp_create_attr", Value::new_iutf8("devicekeys")),
-        ("acp_create_class", Value::new_iutf8("object")),
-        ("acp_create_class", Value::new_iutf8("account")),
-        ("acp_create_class", Value::new_iutf8("service_account"))
-    );
-}
-
-// 14 radius read acp JSON_IDM_RADIUS_SERVERS_V1
-// The targetscope of this could change later to a "radius access" group or similar so we can add/remove
-//  users from having radius access easier.
-
-lazy_static! {
-    pub static ref E_IDM_ACP_RADIUS_SECRET_READ_PRIV_V1: EntryInitNew = entry_init!(
-        ("class", CLASS_OBJECT.clone()),
-        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_SEARCH.clone()),
-        ("name", Value::new_iname("idm_acp_radius_secret_read_priv")),
-        ("uuid", Value::Uuid(UUID_IDM_ACP_RADIUS_SECRET_READ_PRIV_V1)),
-        (
-            "description",
-            Value::new_utf8s("Builtin IDM Control for reading user radius secrets.")
-        ),
-        (
-            "acp_receiver_group",
-            Value::Refer(UUID_IDM_RADIUS_SECRET_READ_PRIV_V1)
-        ),
-        (
-            "acp_targetscope",
-            Value::new_json_filter_s(
-                "{\"and\": [{\"eq\": [\"class\",\"account\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-            )
-                .expect("Invalid JSON filter")
-        ),
-        ("acp_search_attr", Value::new_iutf8("radius_secret"))
-    );
+    pub static ref IDM_ACP_SELF_READ_V1: BuiltinAcp = BuiltinAcp {
+        name: "idm_acp_self_read",
+        uuid: UUID_IDM_ACP_SELF_READ_V1,
+        description:
+            "Builtin IDM Control for self read - required for whoami and many other functions",
+        classes: vec![
+            EntryClass::Object,
+            EntryClass::AccessControlProfile,
+            EntryClass::AccessControlSearch,
+        ],
+        receiver: BuiltinAcpReceiver::Group(vec![UUID_IDM_ALL_ACCOUNTS]),
+        target: BuiltinAcpTarget::Filter(ProtoFilter::SelfUuid),
+        search_attrs: vec![
+            Attribute::Class,
+            Attribute::Name,
+            Attribute::Spn,
+            Attribute::DisplayName,
+            Attribute::LegalName,
+            Attribute::Class,
+            Attribute::MemberOf,
+            Attribute::Mail,
+            Attribute::RadiusSecret,
+            Attribute::GidNumber,
+            Attribute::LoginShell,
+            Attribute::Uuid,
+            Attribute::SyncParentUuid,
+            Attribute::AccountExpire,
+            Attribute::AccountValidFrom,
+            Attribute::PrimaryCredential,
+            Attribute::UserAuthTokenSession,
+            Attribute::PassKeys,
+            Attribute::AttestedPasskeys,
+        ],
+        ..Default::default()
+    };
 }
 
 lazy_static! {
-    pub static ref E_IDM_ACP_RADIUS_SECRET_WRITE_PRIV_V1: EntryInitNew = entry_init!(
-        ("class", CLASS_OBJECT.clone()),
-        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_MODIFY.clone()),
-        ("name", Value::new_iname("idm_acp_radius_secret_write_priv")),
-        ("uuid", Value::Uuid(UUID_IDM_ACP_RADIUS_SECRET_WRITE_PRIV_V1)),
-        (
-            "description",
-            Value::new_utf8s("Builtin IDM Control allowing writes to user radius secrets.")
-        ),
-        (
-            "acp_receiver_group",
-            Value::Refer(UUID_IDM_RADIUS_SECRET_WRITE_PRIV_V1)
-        ),
-        (
-            "acp_targetscope",
-            Value::new_json_filter_s(
-                "{\"and\": [{\"eq\": [\"class\",\"account\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-            )
-                .expect("Invalid JSON filter")
-        ),
-        ("acp_modify_removedattr", Value::new_iutf8("radius_secret")),
-        ("acp_modify_presentattr", Value::new_iutf8("radius_secret"))
-
-    );
+    pub static ref IDM_ACP_SELF_WRITE_V1: BuiltinAcp = BuiltinAcp{
+        name: "idm_acp_self_write",
+        uuid: UUID_IDM_ACP_SELF_WRITE_V1,
+        classes: vec![
+            EntryClass::Object,
+            EntryClass::AccessControlProfile,
+            EntryClass::AccessControlModify,
+            ],
+        description: "Builtin IDM Control for self write - required for people to update their own identities and credentials in line with best practices.",
+        receiver: BuiltinAcpReceiver::Group ( vec![UUID_IDM_ALL_PERSONS] ),
+        target: BuiltinAcpTarget::Filter(ProtoFilter::SelfUuid),
+        modify_removed_attrs: vec![
+            Attribute::DisplayName,
+            Attribute::LegalName,
+            Attribute::RadiusSecret,
+            Attribute::PrimaryCredential,
+            Attribute::SshPublicKey,
+            Attribute::UnixPassword,
+            Attribute::PassKeys,
+            Attribute::AttestedPasskeys,
+            Attribute::UserAuthTokenSession,
+        ],
+        modify_present_attrs: vec![
+            Attribute::DisplayName,
+            Attribute::LegalName,
+            Attribute::RadiusSecret,
+            Attribute::PrimaryCredential,
+            Attribute::SshPublicKey,
+            Attribute::UnixPassword,
+            Attribute::PassKeys,
+            Attribute::AttestedPasskeys,
+        ],
+        ..Default::default()
+    };
 }
 
 lazy_static! {
-    pub static ref E_IDM_ACP_RADIUS_SERVERS_V1: EntryInitNew = entry_init!(
-        ("class", CLASS_OBJECT.clone()),
-        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_SEARCH.clone()),
-        ("name", Value::new_iname("idm_acp_radius_servers")),
-        ("uuid", Value::Uuid(UUID_IDM_ACP_RADIUS_SERVERS_V1)),
-        (
-            "description",
-            Value::new_utf8s("Builtin IDM Control for RADIUS servers to read credentials and other needed details.")
-        ),
-        (
-            "acp_receiver_group",
-            Value::Refer(UUID_IDM_RADIUS_SERVERS)
-        ),
-        (
-            "acp_targetscope",
-            Value::new_json_filter_s(
-            "{\"and\": [{\"pres\": \"class\"}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-            )
-                .expect("Invalid JSON filter")
-        ),
-        ("acp_search_attr", Value::new_iutf8("name")),
-        ("acp_search_attr", Value::new_iutf8("spn")),
-        ("acp_search_attr", Value::new_iutf8("uuid")),
-        ("acp_search_attr", Value::new_iutf8("radius_secret"))
-    );
+    pub static ref IDM_ACP_SELF_NAME_WRITE_V1: BuiltinAcp = BuiltinAcp{
+        name: "idm_acp_self_name_write",
+        uuid: UUID_IDM_ACP_SELF_NAME_WRITE_V1,
+        classes: vec![
+            EntryClass::Object,
+            EntryClass::AccessControlProfile,
+            EntryClass::AccessControlModify,
+            ],
+        description: "Builtin IDM Control for self write of name - required for people to update their own identities in line with best practices.",
+        receiver: BuiltinAcpReceiver::Group ( vec![UUID_IDM_ALL_PERSONS] ),
+        target: BuiltinAcpTarget::Filter(ProtoFilter::SelfUuid),
+        modify_removed_attrs: vec![
+            Attribute::Name,
+        ],
+        modify_present_attrs: vec![
+            Attribute::Name,
+        ],
+        ..Default::default()
+    };
 }
 
 lazy_static! {
-    pub static ref E_IDM_ACP_HP_ACCOUNT_READ_PRIV_V1: EntryInitNew = entry_init!(
-        ("class", CLASS_OBJECT.clone()),
-        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_SEARCH.clone()),
-        ("name", Value::new_iname("idm_acp_hp_account_read_priv")),
-        ("uuid", Value::Uuid(UUID_IDM_ACP_HP_ACCOUNT_READ_PRIV_V1)),
-        (
-            "description",
-            Value::new_utf8s("Builtin IDM Control for reading high privilege accounts.")
-        ),
-        (
-            "acp_receiver_group",
-            Value::Refer(UUID_IDM_HP_ACCOUNT_READ_PRIV)
-        ),
-        (
-            "acp_targetscope",
-            Value::new_json_filter_s(
-                "{\"and\": [{\"eq\": [\"class\",\"account\"]}, {\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-            )
-                .expect("Invalid JSON filter")
-        ),
-        ("acp_search_attr", Value::new_iutf8("class")),
-        ("acp_search_attr", Value::new_iutf8("name")),
-        ("acp_search_attr", Value::new_iutf8("spn")),
-        ("acp_search_attr", Value::new_iutf8("uuid")),
-        ("acp_search_attr", Value::new_iutf8("displayname")),
-        ("acp_search_attr", Value::new_iutf8("ssh_publickey")),
-        ("acp_search_attr", Value::new_iutf8("primary_credential")),
-        ("acp_search_attr", Value::new_iutf8("memberof")),
-        ("acp_search_attr", Value::new_iutf8("account_expire")),
-        ("acp_search_attr", Value::new_iutf8("account_valid_from")),
-        ("acp_search_attr", Value::new_iutf8("passkeys")),
-        ("acp_search_attr", Value::new_iutf8("devicekeys")),
-        ("acp_search_attr", Value::new_iutf8("api_token_session")),
-        ("acp_search_attr", Value::new_iutf8("user_auth_token_session"))
-    );
+    pub static ref IDM_ACP_ACCOUNT_SELF_WRITE_V1: BuiltinAcp = BuiltinAcp {
+        name: "idm_acp_self_account_write",
+        uuid: UUID_IDM_ACP_ACCOUNT_SELF_WRITE_V1,
+        description: "Builtin IDM Control for self write - required for accounts to update their own session state.",
+        classes: vec![
+            EntryClass::Object,
+            EntryClass::AccessControlProfile,
+            EntryClass::AccessControlModify
+            ],
+        receiver: BuiltinAcpReceiver::Group ( vec![UUID_IDM_ALL_ACCOUNTS] ),
+        target: BuiltinAcpTarget::Filter(ProtoFilter::SelfUuid),
+        modify_removed_attrs: vec![
+            Attribute::UserAuthTokenSession
+            ],
+        ..Default::default()
+    };
 }
 
 lazy_static! {
-    pub static ref E_IDM_ACP_HP_ACCOUNT_WRITE_PRIV_V1: EntryInitNew = entry_init!(
-        ("class", CLASS_OBJECT.clone()),
-        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_MODIFY.clone()),
-        ("name", Value::new_iname("idm_acp_hp_account_write_priv")),
-        ("uuid", Value::Uuid(UUID_IDM_ACP_HP_ACCOUNT_WRITE_PRIV_V1)),
-        (
-            "description",
-            Value::new_utf8s("Builtin IDM Control for managing high privilege accounts (both person and service).")
-        ),
-        (
-            "acp_receiver_group",
-            Value::Refer(UUID_IDM_HP_ACCOUNT_WRITE_PRIV)
-        ),
-        (
-            "acp_targetscope",
-            Value::new_json_filter_s(
-                "{\"and\": [{\"eq\": [\"class\",\"account\"]}, {\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-            )
-                .expect("Invalid JSON filter")
-        ),
-        ("acp_modify_removedattr", Value::new_iutf8("name")),
-        ("acp_modify_removedattr", Value::new_iutf8("displayname")),
-        ("acp_modify_removedattr", Value::new_iutf8("ssh_publickey")),
-        ("acp_modify_removedattr", Value::new_iutf8("primary_credential")),
-        ("acp_modify_removedattr", Value::new_iutf8("account_expire")),
-        ("acp_modify_removedattr", Value::new_iutf8("account_valid_from")),
-        ("acp_modify_removedattr", Value::new_iutf8("passkeys")),
-        ("acp_modify_removedattr", Value::new_iutf8("devicekeys")),
-        ("acp_modify_removedattr", Value::new_iutf8("api_token_session")),
-        ("acp_modify_removedattr", Value::new_iutf8("user_auth_token_session")),
-
-        ("acp_modify_presentattr", Value::new_iutf8("name")),
-        ("acp_modify_presentattr", Value::new_iutf8("displayname")),
-        ("acp_modify_presentattr", Value::new_iutf8("ssh_publickey")),
-        ("acp_modify_presentattr", Value::new_iutf8("primary_credential")),
-        ("acp_modify_presentattr", Value::new_iutf8("account_expire")),
-        ("acp_modify_presentattr", Value::new_iutf8("account_valid_from")),
-        ("acp_modify_presentattr", Value::new_iutf8("passkeys")),
-        ("acp_modify_presentattr", Value::new_iutf8("devicekeys")),
-        ("acp_modify_presentattr", Value::new_iutf8("api_token_session"))
-    );
+    pub static ref IDM_ACP_ALL_ACCOUNTS_POSIX_READ_V1: BuiltinAcp = BuiltinAcp {
+        classes: vec![
+            EntryClass::Object,
+            EntryClass::AccessControlProfile,
+            EntryClass::AccessControlSearch,
+        ],
+        name: "idm_acp_all_accounts_posix_read",
+        uuid: UUID_IDM_ACP_ALL_ACCOUNTS_POSIX_READ_V1,
+        description:
+            "Builtin IDM Control for reading minimal posix attrs - applies anonymous and all authenticated accounts.",
+        receiver: BuiltinAcpReceiver::Group ( vec![UUID_IDM_ALL_ACCOUNTS] ),
+        target: BuiltinAcpTarget::Filter( ProtoFilter::And(
+            vec![
+                ProtoFilter::Or(vec![
+                    match_class_filter!(EntryClass::Account),
+                    match_class_filter!(EntryClass::Group),
+                ]),
+                FILTER_ANDNOT_TOMBSTONE_OR_RECYCLED.clone(),
+            ]
+        )),
+        search_attrs: vec![
+            Attribute::Class,
+            Attribute::Name,
+            Attribute::Spn,
+            Attribute::DisplayName,
+            Attribute::Class,
+            Attribute::MemberOf,
+            Attribute::Member,
+            Attribute::DynMember,
+            Attribute::Uuid,
+            Attribute::GidNumber,
+            Attribute::LoginShell,
+            Attribute::SshPublicKey,
+        ],
+        ..Default::default()
+    };
 }
 
 lazy_static! {
-    pub static ref E_IDM_ACP_HP_GROUP_WRITE_PRIV_V1: EntryInitNew = entry_init!(
-        ("class", CLASS_OBJECT.clone()),
-        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_MODIFY.clone()),
-        ("class", CLASS_ACCESS_CONTROL_SEARCH.clone()),
-        ("name", Value::new_iname("idm_acp_hp_group_write_priv")),
-        ("uuid", Value::Uuid(UUID_IDM_ACP_HP_GROUP_WRITE_PRIV_V1)),
-        (
-            "description",
-            Value::new_utf8s("Builtin IDM Control for managing high privilege groups")
-        ),
-        (
-            "acp_receiver_group",
-            Value::Refer(UUID_IDM_HP_GROUP_WRITE_PRIV)
-        ),
-        (
-            "acp_targetscope",
-            Value::new_json_filter_s(
-                "{\"and\": [{\"eq\": [\"class\",\"group\"]}, {\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-            )
-                .expect("Invalid JSON filter")
-        ),
-        ("acp_search_attr", Value::new_iutf8("name")),
-        ("acp_search_attr", Value::new_iutf8("uuid")),
-        ("acp_search_attr", Value::new_iutf8("spn")),
-        ("acp_search_attr", Value::new_iutf8("uuid")),
-        ("acp_search_attr", Value::new_iutf8("description")),
-        ("acp_search_attr", Value::new_iutf8("member")),
-        ("acp_modify_removedattr", Value::new_iutf8("name")),
-        ("acp_modify_removedattr", Value::new_iutf8("description")),
-        ("acp_modify_removedattr", Value::new_iutf8("member")),
-        ("acp_modify_presentattr", Value::new_iutf8("name")),
-        ("acp_modify_presentattr", Value::new_iutf8("description")),
-        ("acp_modify_presentattr", Value::new_iutf8("member"))
-    );
+    pub static ref IDM_ACP_ACCOUNT_MAIL_READ_V1: BuiltinAcp = BuiltinAcp {
+        classes: vec![
+            EntryClass::Object,
+            EntryClass::AccessControlProfile,
+            EntryClass::AccessControlSearch
+        ],
+        name: "idm_acp_account_mail_read",
+        uuid: UUID_IDM_ACP_ACCOUNT_MAIL_READ_V1,
+        description: "Builtin IDM Control for reading account mail attributes.",
+        receiver: BuiltinAcpReceiver::Group(vec![UUID_IDM_ACCOUNT_MAIL_READ]),
+        target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
+            match_class_filter!(EntryClass::Account),
+            FILTER_ANDNOT_TOMBSTONE_OR_RECYCLED.clone(),
+        ])),
+        search_attrs: vec![Attribute::Mail],
+        ..Default::default()
+    };
 }
 
 lazy_static! {
-    pub static ref E_IDM_ACP_SCHEMA_WRITE_ATTRS_PRIV_V1: EntryInitNew = entry_init!(
-        ("class", CLASS_OBJECT.clone()),
-        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_CREATE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_MODIFY.clone()),
-        ("class", CLASS_ACCESS_CONTROL_SEARCH.clone()),
-        ("name", Value::new_iname("idm_acp_schema_write_attrs_priv")),
-        ("uuid", Value::Uuid(UUID_IDM_ACP_SCHEMA_WRITE_ATTRS_PRIV_V1)),
-        (
-            "description",
-            Value::new_utf8s("Builtin IDM Control for management of schema attributes.")
-        ),
-        (
-            "acp_receiver_group",
-            Value::Refer(UUID_IDM_SCHEMA_MANAGE_PRIV)
-        ),
-        (
-            "acp_targetscope",
-            Value::new_json_filter_s(
-                "{\"and\": [{\"eq\": [\"class\",\"attributetype\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-            )
-                .expect("Invalid JSON filter")
-        ),
-        ("acp_search_attr", Value::new_iutf8("class")),
-        ("acp_search_attr", Value::new_iutf8("description")),
-        ("acp_search_attr", Value::new_iutf8("index")),
-        ("acp_search_attr", Value::new_iutf8("unique")),
-        ("acp_search_attr", Value::new_iutf8("multivalue")),
-        ("acp_search_attr", Value::new_iutf8("attributename")),
-        ("acp_search_attr", Value::new_iutf8("syntax")),
-        ("acp_search_attr", Value::new_iutf8("uuid")),
-
-        ("acp_modify_removedattr", Value::new_iutf8("description")),
-        ("acp_modify_removedattr", Value::new_iutf8("index")),
-        ("acp_modify_removedattr", Value::new_iutf8("unique")),
-        ("acp_modify_removedattr", Value::new_iutf8("multivalue")),
-        ("acp_modify_removedattr", Value::new_iutf8("syntax")),
-
-        ("acp_modify_presentattr", Value::new_iutf8("description")),
-        ("acp_modify_presentattr", Value::new_iutf8("index")),
-        ("acp_modify_presentattr", Value::new_iutf8("unique")),
-        ("acp_modify_presentattr", Value::new_iutf8("multivalue")),
-        ("acp_modify_presentattr", Value::new_iutf8("syntax")),
-
-        ("acp_create_attr", Value::new_iutf8("class")),
-        ("acp_create_attr", Value::new_iutf8("description")),
-        ("acp_create_attr", Value::new_iutf8("index")),
-        ("acp_create_attr", Value::new_iutf8("unique")),
-        ("acp_create_attr", Value::new_iutf8("multivalue")),
-        ("acp_create_attr", Value::new_iutf8("attributename")),
-        ("acp_create_attr", Value::new_iutf8("syntax")),
-        ("acp_create_attr", Value::new_iutf8("uuid")),
-
-        ("acp_create_class", Value::new_iutf8("object")),
-        ("acp_create_class", Value::new_iutf8("attributetype"))
-    );
+    pub static ref IDM_ACP_SYSTEM_CONFIG_ACCOUNT_POLICY_MANAGE_V1: BuiltinAcp = BuiltinAcp {
+        classes: vec![
+            EntryClass::Object,
+            EntryClass::AccessControlProfile,
+            EntryClass::AccessControlModify,
+            EntryClass::AccessControlSearch
+        ],
+        name: "idm_acp_system_config_account_policy_manage",
+        uuid: UUID_IDM_ACP_SYSTEM_CONFIG_ACCOUNT_POLICY_MANAGE_V1,
+        description: "Builtin IDM Control for granting system configuration of account policy",
+        receiver: BuiltinAcpReceiver::Group(vec![UUID_IDM_ACCOUNT_POLICY_ADMINS]),
+        target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
+            ProtoFilter::Eq(
+                Attribute::Uuid.to_string(),
+                STR_UUID_SYSTEM_CONFIG.to_string()
+            ),
+            FILTER_ANDNOT_TOMBSTONE_OR_RECYCLED.clone()
+        ])),
+        search_attrs: vec![
+            Attribute::Class,
+            Attribute::Name,
+            Attribute::Uuid,
+            Attribute::Description,
+            Attribute::BadlistPassword,
+            Attribute::DeniedName,
+            Attribute::AuthSessionExpiry,
+            Attribute::PrivilegeExpiry,
+        ],
+        modify_removed_attrs: vec![
+            Attribute::BadlistPassword,
+            Attribute::DeniedName,
+            Attribute::AuthSessionExpiry,
+            Attribute::PrivilegeExpiry,
+        ],
+        modify_present_attrs: vec![
+            Attribute::BadlistPassword,
+            Attribute::DeniedName,
+            Attribute::AuthSessionExpiry,
+            Attribute::PrivilegeExpiry,
+        ],
+        ..Default::default()
+    };
 }
 
 lazy_static! {
-    pub static ref E_IDM_ACP_ACP_MANAGE_PRIV_V1: EntryInitNew = entry_init!(
-        ("class", CLASS_OBJECT.clone()),
-        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_CREATE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_DELETE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_MODIFY.clone()),
-        ("class", CLASS_ACCESS_CONTROL_SEARCH.clone()),
-        ("name", Value::new_iname("idm_acp_acp_manage_priv")),
-        ("uuid", Value::Uuid(UUID_IDM_ACP_ACP_MANAGE_PRIV_V1)),
-        (
-            "description",
-            Value::new_utf8s("Builtin IDM Control for access profiles management.")
-        ),
-        (
-            "acp_receiver_group",
-            Value::Refer(UUID_IDM_ACP_MANAGE_PRIV)
-        ),
-        (
-            "acp_targetscope",
-            Value::new_json_filter_s(
-                "{\"and\": [{\"eq\": [\"class\",\"access_control_profile\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-            )
-                .expect("Invalid JSON filter")
-        ),
-        ("acp_search_attr", Value::new_iutf8("class")),
-        ("acp_search_attr", Value::new_iutf8("name")),
-        ("acp_search_attr", Value::new_iutf8("description")),
-        ("acp_search_attr", Value::new_iutf8("acp_enable")),
-        ("acp_search_attr", Value::new_iutf8("acp_receiver_group")),
-        ("acp_search_attr", Value::new_iutf8("acp_targetscope")),
-        ("acp_search_attr", Value::new_iutf8("acp_search_attr")),
-        ("acp_search_attr", Value::new_iutf8("acp_modify_removedattr")),
-        ("acp_search_attr", Value::new_iutf8("acp_modify_presentattr")),
-        ("acp_search_attr", Value::new_iutf8("acp_modify_class")),
-        ("acp_search_attr", Value::new_iutf8("acp_create_class")),
-        ("acp_search_attr", Value::new_iutf8("acp_create_attr")),
-
-        ("acp_modify_removedattr", Value::new_iutf8("class")),
-        ("acp_modify_removedattr", Value::new_iutf8("name")),
-        ("acp_modify_removedattr", Value::new_iutf8("description")),
-        ("acp_modify_removedattr", Value::new_iutf8("acp_enable")),
-        ("acp_modify_removedattr", Value::new_iutf8("acp_receiver_group")),
-        ("acp_modify_removedattr", Value::new_iutf8("acp_targetscope")),
-        ("acp_modify_removedattr", Value::new_iutf8("acp_search_attr")),
-        ("acp_modify_removedattr", Value::new_iutf8("acp_modify_removedattr")),
-        ("acp_modify_removedattr", Value::new_iutf8("acp_modify_presentattr")),
-        ("acp_modify_removedattr", Value::new_iutf8("acp_modify_class")),
-        ("acp_modify_removedattr", Value::new_iutf8("acp_create_class")),
-        ("acp_modify_removedattr", Value::new_iutf8("acp_create_attr")),
-
-        ("acp_modify_presentattr", Value::new_iutf8("class")),
-        ("acp_modify_presentattr", Value::new_iutf8("name")),
-        ("acp_modify_presentattr", Value::new_iutf8("description")),
-        ("acp_modify_presentattr", Value::new_iutf8("acp_enable")),
-        ("acp_modify_presentattr", Value::new_iutf8("acp_receiver_group")),
-        ("acp_modify_presentattr", Value::new_iutf8("acp_targetscope")),
-        ("acp_modify_presentattr", Value::new_iutf8("acp_search_attr")),
-        ("acp_modify_presentattr", Value::new_iutf8("acp_modify_removedattr")),
-        ("acp_modify_presentattr", Value::new_iutf8("acp_modify_presentattr")),
-        ("acp_modify_presentattr", Value::new_iutf8("acp_modify_class")),
-        ("acp_modify_presentattr", Value::new_iutf8("acp_create_class")),
-        ("acp_modify_presentattr", Value::new_iutf8("acp_create_attr")),
-
-        ("acp_create_attr", Value::new_iutf8("class")),
-        ("acp_create_attr", Value::new_iutf8("name")),
-        ("acp_create_attr", Value::new_iutf8("description")),
-        ("acp_create_attr", Value::new_iutf8("acp_enable")),
-        ("acp_create_attr", Value::new_iutf8("acp_receiver_group")),
-        ("acp_create_attr", Value::new_iutf8("acp_targetscope")),
-        ("acp_create_attr", Value::new_iutf8("acp_search_attr")),
-        ("acp_create_attr", Value::new_iutf8("acp_modify_removedattr")),
-        ("acp_create_attr", Value::new_iutf8("acp_modify_presentattr")),
-        ("acp_create_attr", Value::new_iutf8("acp_modify_class")),
-        ("acp_create_attr", Value::new_iutf8("acp_create_class")),
-        ("acp_create_attr", Value::new_iutf8("acp_create_attr")),
-
-
-        ("acp_modify_class", Value::new_iutf8("access_control_profile")),
-        ("acp_modify_class", Value::new_iutf8("access_control_search")),
-        ("acp_modify_class", Value::new_iutf8("access_control_modify")),
-        ("acp_modify_class", Value::new_iutf8("access_control_create")),
-        ("acp_modify_class", Value::new_iutf8("access_control_delete")),
-
-        ("acp_create_class", Value::new_iutf8("access_control_profile")),
-        ("acp_create_class", Value::new_iutf8("access_control_search")),
-        ("acp_create_class", Value::new_iutf8("access_control_modify")),
-        ("acp_create_class", Value::new_iutf8("access_control_create")),
-        ("acp_create_class", Value::new_iutf8("access_control_delete"))
-    );
+    pub static ref IDM_ACP_HP_GROUP_UNIX_MANAGE_V1: BuiltinAcp = BuiltinAcp{
+        classes: vec![
+            EntryClass::Object,
+            EntryClass::AccessControlProfile,
+            EntryClass::AccessControlModify,
+            EntryClass::AccessControlSearch
+        ],
+        name: "idm_acp_hp_group_unix_manage",
+        uuid: UUID_IDM_ACP_HP_GROUP_UNIX_MANAGE_V1,
+        description: "Builtin IDM Control for managing and extending high privilege groups with unix attributes",
+        receiver: BuiltinAcpReceiver::Group ( vec![UUID_IDM_UNIX_ADMINS] ),
+        // HP group, not Recycled/Tombstone
+        target: BuiltinAcpTarget::Filter( ProtoFilter::And(vec![
+            match_class_filter!(EntryClass::Group),
+            FILTER_HP.clone(),
+            FILTER_ANDNOT_TOMBSTONE_OR_RECYCLED.clone(),
+        ])),
+        search_attrs: vec![
+            Attribute::DynMember,
+            Attribute::Class,
+            Attribute::Name,
+            Attribute::Uuid,
+            Attribute::Spn,
+            Attribute::Description,
+            Attribute::Member,
+            Attribute::GidNumber,
+        ],
+        modify_removed_attrs: vec![
+            Attribute::GidNumber,
+        ],
+        modify_present_attrs: vec![
+            Attribute::Class,
+            Attribute::GidNumber,
+        ],
+        modify_classes: vec![
+            EntryClass::PosixGroup,
+        ],
+        ..Default::default()
+    };
 }
 
 lazy_static! {
-    pub static ref E_IDM_ACP_SCHEMA_WRITE_CLASSES_PRIV_V1: EntryInitNew = entry_init!(
-        ("class", CLASS_OBJECT.clone()),
-        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_CREATE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_MODIFY.clone()),
-        ("class", CLASS_ACCESS_CONTROL_SEARCH.clone()),
-        ("name", Value::new_iname("idm_acp_schema_write_classes_priv")),
-        ("uuid", Value::Uuid(UUID_IDM_ACP_SCHEMA_WRITE_CLASSES_PRIV_V1)),
-        (
-            "description",
-            Value::new_utf8s("Builtin IDM Control for management of schema classes.")
-        ),
-        (
-            "acp_receiver_group",
-            Value::Refer(UUID_IDM_SCHEMA_MANAGE_PRIV)
-        ),
-        (
-            "acp_targetscope",
-            Value::new_json_filter_s(
-                "{\"and\": [{\"eq\": [\"class\",\"classtype\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-            )
-                .expect("Invalid JSON filter")
-        ),
-        ("acp_search_attr", Value::new_iutf8("class")),
-        ("acp_search_attr", Value::new_iutf8("classname")),
-        ("acp_search_attr", Value::new_iutf8("description")),
-        ("acp_search_attr", Value::new_iutf8("systemmay")),
-        ("acp_search_attr", Value::new_iutf8("may")),
-        ("acp_search_attr", Value::new_iutf8("systemmust")),
-        ("acp_search_attr", Value::new_iutf8("must")),
-        ("acp_search_attr", Value::new_iutf8("uuid")),
-        ("acp_modify_removedattr", Value::new_iutf8("class")),
-        ("acp_modify_removedattr", Value::new_iutf8("description")),
-        ("acp_modify_removedattr", Value::new_iutf8("may")),
-        ("acp_modify_removedattr", Value::new_iutf8("must")),
-        ("acp_modify_presentattr", Value::new_iutf8("name")),
-        ("acp_modify_presentattr", Value::new_iutf8("description")),
-        ("acp_modify_presentattr", Value::new_iutf8("may")),
-        ("acp_modify_presentattr", Value::new_iutf8("must")),
-        ("acp_create_attr", Value::new_iutf8("class")),
-        ("acp_create_attr", Value::new_iutf8("classname")),
-        ("acp_create_attr", Value::new_iutf8("description")),
-        ("acp_create_attr", Value::new_iutf8("may")),
-        ("acp_create_attr", Value::new_iutf8("must")),
-        ("acp_create_attr", Value::new_iutf8("uuid")),
-        ("acp_create_class", Value::new_iutf8("object")),
-        ("acp_create_class", Value::new_iutf8("classtype"))
-    );
-}
-
-// 21 - anonymous / everyone schema read.
-
-lazy_static! {
-    pub static ref E_IDM_ACP_GROUP_MANAGE_PRIV_V1: EntryInitNew = entry_init!(
-        ("class", CLASS_OBJECT.clone()),
-        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_DELETE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_CREATE.clone()),
-        ("name", Value::new_iname("idm_acp_group_manage")),
-        ("uuid", Value::Uuid(UUID_IDM_ACP_GROUP_MANAGE_PRIV_V1)),
-        (
-            "description",
-            Value::new_utf8s("Builtin IDM Control for creating and deleting groups in the directory")
-        ),
-        (
-            "acp_receiver_group",
-            Value::Refer(UUID_IDM_GROUP_MANAGE_PRIV)
-        ),
-        (
-            "acp_targetscope",
-            Value::new_json_filter_s(
-                "{\"and\": [{\"eq\": [\"class\",\"group\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-            )
-                .expect("Invalid JSON filter")
-        ),
-        ("acp_create_attr", Value::new_iutf8("class")),
-        ("acp_create_attr", Value::new_iutf8("name")),
-        ("acp_create_attr", Value::new_iutf8("description")),
-        ("acp_create_attr", Value::new_iutf8("member")),
-        ("acp_create_class", Value::new_iutf8("object")),
-        ("acp_create_class", Value::new_iutf8("group"))
-    );
+    pub static ref IDM_ACP_GROUP_MANAGE_V1: BuiltinAcp = BuiltinAcp{
+        classes: vec![
+            EntryClass::Object,
+            EntryClass::AccessControlProfile,
+            EntryClass::AccessControlCreate,
+            EntryClass::AccessControlDelete,
+            EntryClass::AccessControlModify,
+            EntryClass::AccessControlSearch
+            ],
+        name: "idm_acp_group_manage",
+        uuid: UUID_IDM_ACP_GROUP_MANAGE_V1,
+        description: "Builtin IDM Control for creating and deleting groups in the directory",
+        receiver: BuiltinAcpReceiver::Group ( vec![UUID_IDM_GROUP_ADMINS] ),
+         // group which is not in HP, Recycled, Tombstone
+         target: BuiltinAcpTarget::Filter( ProtoFilter::And(vec![
+            match_class_filter!(EntryClass::Group),
+            FILTER_ANDNOT_HP_OR_RECYCLED_OR_TOMBSTONE.clone(),
+        ])),
+        search_attrs: vec![
+            Attribute::Class,
+            Attribute::Name,
+            Attribute::Uuid,
+            Attribute::Spn,
+            Attribute::Uuid,
+            Attribute::Description,
+            Attribute::Member,
+            Attribute::DynMember,
+            Attribute::EntryManagedBy,
+        ],
+        create_attrs: vec![
+            Attribute::Class,
+            Attribute::Name,
+            Attribute::Description,
+            Attribute::Member,
+            Attribute::EntryManagedBy,
+        ],
+        create_classes: vec![
+            EntryClass::Object,
+            EntryClass::Group,
+        ],
+        modify_present_attrs: vec![
+            Attribute::Name,
+            Attribute::Description,
+            Attribute::Member,
+        ],
+        modify_removed_attrs: vec![
+            Attribute::Name,
+            Attribute::Description,
+            Attribute::Member,
+        ],
+        ..Default::default()
+    };
 }
 
 lazy_static! {
-    pub static ref E_IDM_ACP_HP_ACCOUNT_MANAGE_PRIV_V1: EntryInitNew = entry_init!(
-        ("class", CLASS_OBJECT.clone()),
-        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_DELETE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_CREATE.clone()),
-        ("name", Value::new_iname("idm_acp_hp_account_manage")),
-        ("uuid", Value::Uuid(UUID_IDM_ACP_HP_ACCOUNT_MANAGE_PRIV_V1)),
-        (
-            "description",
-            Value::new_utf8s("Builtin IDM Control for creating and deleting hp and regular (service) accounts")
-        ),
-        (
-            "acp_receiver_group",
-            Value::Refer(UUID_IDM_HP_ACCOUNT_MANAGE_PRIV)
-        ),
-        (
-            "acp_targetscope",
-            Value::new_json_filter_s(
-            "{\"and\": [{\"eq\": [\"class\",\"account\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-            )
-                .expect("Invalid JSON filter")
-        ),
-        ("acp_create_attr", Value::new_iutf8("class")),
-        ("acp_create_attr", Value::new_iutf8("name")),
-        ("acp_create_attr", Value::new_iutf8("displayname")),
-        ("acp_create_attr", Value::new_iutf8("description")),
-        ("acp_create_attr", Value::new_iutf8("primary_credential")),
-        ("acp_create_attr", Value::new_iutf8("ssh_publickey")),
-        ("acp_create_attr", Value::new_iutf8("account_expire")),
-        ("acp_create_attr", Value::new_iutf8("account_valid_from")),
-        ("acp_create_attr", Value::new_iutf8("passkeys")),
-        ("acp_create_attr", Value::new_iutf8("devicekeys")),
-        ("acp_create_class", Value::new_iutf8("object")),
-        ("acp_create_class", Value::new_iutf8("account")),
-        ("acp_create_class", Value::new_iutf8("service_account"))
-    );
+    pub static ref IDM_ACP_GROUP_UNIX_MANAGE_V1: BuiltinAcp = BuiltinAcp {
+        classes: vec![
+            EntryClass::Object,
+            EntryClass::AccessControlProfile,
+            EntryClass::AccessControlModify,
+            EntryClass::AccessControlSearch
+        ],
+        name: "idm_acp_group_unix_manage",
+        uuid: UUID_IDM_ACP_GROUP_UNIX_MANAGE_V1,
+        description: "Builtin IDM Control for managing unix groups",
+        receiver: BuiltinAcpReceiver::Group(vec![UUID_IDM_UNIX_ADMINS]),
+        target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
+            match_class_filter!(EntryClass::Group),
+            FILTER_ANDNOT_HP_OR_RECYCLED_OR_TOMBSTONE.clone(),
+        ])),
+        search_attrs: vec![
+            Attribute::DynMember,
+            Attribute::Class,
+            Attribute::Name,
+            Attribute::Uuid,
+            Attribute::Spn,
+            Attribute::Description,
+            Attribute::Member,
+            Attribute::GidNumber,
+        ],
+        modify_removed_attrs: vec![Attribute::GidNumber,],
+        modify_present_attrs: vec![Attribute::Class, Attribute::GidNumber,],
+        modify_classes: vec![EntryClass::PosixGroup,],
+        ..Default::default()
+    };
 }
 
 lazy_static! {
-    pub static ref E_IDM_ACP_HP_GROUP_MANAGE_PRIV_V1: EntryInitNew = entry_init!(
-        ("class", CLASS_OBJECT.clone()),
-        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_DELETE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_CREATE.clone()),
-        ("name", Value::new_iname("idm_acp_hp_group_manage")),
-        ("uuid", Value::Uuid(UUID_IDM_ACP_HP_GROUP_MANAGE_PRIV_V1)),
-        (
-            "description",
-            Value::new_utf8s("Builtin IDM Control for creating and deleting hp and regular groups in the directory")
-        ),
-        (
-            "acp_receiver_group",
-            Value::Refer(UUID_IDM_HP_GROUP_MANAGE_PRIV)
-        ),
-        (
-            "acp_targetscope",
-            Value::new_json_filter_s(
-                "{\"and\": [{\"eq\": [\"class\",\"group\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-            )
-                .expect("Invalid JSON filter")
-        ),
-        ("acp_create_attr", Value::new_iutf8("class")),
-        ("acp_create_attr", Value::new_iutf8("name")),
-        ("acp_create_attr", Value::new_iutf8("description")),
-        ("acp_create_attr", Value::new_iutf8("member")),
-        ("acp_create_class", Value::new_iutf8("object")),
-        ("acp_create_class", Value::new_iutf8("group"))
-    );
+    pub static ref IDM_ACP_ACCOUNT_UNIX_EXTEND_V1: BuiltinAcp = BuiltinAcp {
+        classes: vec![
+            EntryClass::Object,
+            EntryClass::AccessControlProfile,
+            EntryClass::AccessControlModify,
+            EntryClass::AccessControlSearch
+        ],
+        name: "idm_acp_account_unix_extend",
+        uuid: UUID_IDM_ACP_ACCOUNT_UNIX_EXTEND_V1,
+        description: "Builtin IDM Control for managing and extending unix accounts",
+        receiver: BuiltinAcpReceiver::Group(vec![UUID_IDM_UNIX_ADMINS]),
+        target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
+            match_class_filter!(EntryClass::Account),
+            FILTER_ANDNOT_TOMBSTONE_OR_RECYCLED.clone(),
+        ])),
+        search_attrs: vec![
+            Attribute::Class,
+            Attribute::Name,
+            Attribute::Uuid,
+            Attribute::Spn,
+            Attribute::Description,
+            Attribute::GidNumber,
+            Attribute::LoginShell,
+            Attribute::UnixPassword,
+            Attribute::SshPublicKey,
+        ],
+        modify_removed_attrs: vec![
+            Attribute::GidNumber,
+            Attribute::LoginShell,
+            Attribute::UnixPassword,
+            Attribute::SshPublicKey,
+        ],
+        modify_present_attrs: vec![
+            Attribute::Class,
+            Attribute::GidNumber,
+            Attribute::LoginShell,
+            Attribute::UnixPassword,
+            Attribute::SshPublicKey,
+        ],
+        modify_classes: vec![EntryClass::PosixAccount,],
+        ..Default::default()
+    };
 }
 
 lazy_static! {
-    pub static ref E_IDM_ACP_DOMAIN_ADMIN_PRIV_V1: EntryInitNew = entry_init!(
-        ("class", CLASS_OBJECT.clone()),
-        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_MODIFY.clone()),
-        ("class", CLASS_ACCESS_CONTROL_SEARCH.clone()),
-        ("name", Value::new_iname("idm_acp_domain_admin_priv")),
-        ("uuid", Value::Uuid(UUID_IDM_ACP_DOMAIN_ADMIN_PRIV_V1)),
-        (
-            "description",
-            Value::new_utf8s("Builtin IDM Control for granting domain info administration locally")
-        ),
-        (
-            "acp_receiver_group",
-            Value::Refer(UUID_DOMAIN_ADMINS)
-        ),
-        (
-            "acp_targetscope",
-            Value::new_json_filter_s(
-                "{\"and\": [{\"eq\": [\"uuid\",\"00000000-0000-0000-0000-ffffff000025\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-            )
-                .expect("Invalid JSON filter")
-        ),
-        ("acp_search_attr", Value::new_iutf8("name")),
-        ("acp_search_attr", Value::new_iutf8("uuid")),
-        ("acp_search_attr", Value::new_iutf8("domain_display_name")),
-        ("acp_search_attr", Value::new_iutf8("domain_name")),
-        ("acp_search_attr", Value::new_iutf8("domain_ldap_basedn")),
-        ("acp_search_attr", Value::new_iutf8("domain_ssid")),
-        ("acp_search_attr", Value::new_iutf8("domain_uuid")),
-        ("acp_search_attr", Value::new_iutf8("es256_private_key_der")),
-        ("acp_search_attr", Value::new_iutf8("fernet_private_key_str")),
-        ("acp_search_attr", Value::new_iutf8("cookie_private_key")),
-        ("acp_modify_removedattr", Value::new_iutf8("domain_display_name")),
-        ("acp_modify_removedattr", Value::new_iutf8("domain_ssid")),
-        ("acp_modify_removedattr", Value::new_iutf8("domain_ldap_basedn")),
-        ("acp_modify_removedattr", Value::new_iutf8("es256_private_key_der")),
-        ("acp_modify_removedattr", Value::new_iutf8("cookie_private_key")),
-        ("acp_modify_removedattr", Value::new_iutf8("fernet_private_key_str")),
-        ("acp_modify_presentattr", Value::new_iutf8("domain_display_name")),
-        ("acp_modify_presentattr", Value::new_iutf8("domain_ldap_basedn")),
-        ("acp_modify_presentattr", Value::new_iutf8("domain_ssid"))
-    );
+    pub static ref IDM_ACP_PEOPLE_PII_READ_V1: BuiltinAcp = BuiltinAcp {
+        classes: vec![
+            EntryClass::Object,
+            EntryClass::AccessControlProfile,
+            EntryClass::AccessControlSearch,
+        ],
+        name: "idm_acp_people_pii_read",
+        uuid: UUID_IDM_ACP_PEOPLE_PII_READ_V1,
+        description: "Builtin IDM Control for reading personal and sensitive data.",
+        receiver: BuiltinAcpReceiver::Group(vec![UUID_IDM_PEOPLE_ADMINS, UUID_IDM_PEOPLE_PII_READ]),
+        target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
+            match_class_filter!(EntryClass::Person).clone(),
+            FILTER_ANDNOT_TOMBSTONE_OR_RECYCLED.clone(),
+        ])),
+        search_attrs: vec![
+            Attribute::Class,
+            Attribute::Name,
+            Attribute::Uuid,
+            Attribute::Spn,
+            Attribute::DisplayName,
+            Attribute::LegalName,
+            Attribute::Mail,
+        ],
+        ..Default::default()
+    };
 }
 
 lazy_static! {
-    pub static ref E_IDM_ACP_SYSTEM_CONFIG_PRIV_V1: EntryInitNew = entry_init!(
-        ("class", CLASS_OBJECT.clone()),
-        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_MODIFY.clone()),
-        ("class", CLASS_ACCESS_CONTROL_SEARCH.clone()),
-        ("name", Value::new_iname("idm_acp_system_config_priv")),
-        ("uuid", Value::Uuid(UUID_IDM_ACP_SYSTEM_CONFIG_PRIV_V1)),
-        (
-            "description",
-            Value::new_utf8s("Builtin IDM Control for granting system configuration rights")
-        ),
-        (
-            "acp_receiver_group",
-            Value::Refer(UUID_SYSTEM_ADMINS)
-        ),
-        (
-            "acp_targetscope",
-            Value::new_json_filter_s(
-                "{\"and\": [{\"eq\": [\"uuid\",\"00000000-0000-0000-0000-ffffff000027\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-            )
-                .expect("Invalid JSON filter")
-        ),
-        ("acp_search_attr", Value::new_iutf8("name")),
-        ("acp_search_attr", Value::new_iutf8("uuid")),
-        ("acp_search_attr", Value::new_iutf8("description")),
-        ("acp_search_attr", Value::new_iutf8("badlist_password")),
-        ("acp_modify_removedattr", Value::new_iutf8("badlist_password")),
-        ("acp_modify_presentattr", Value::new_iutf8("badlist_password"))
-    );
+    pub static ref IDM_ACP_PEOPLE_PII_MANAGE_V1: BuiltinAcp = BuiltinAcp {
+        classes: vec![
+            EntryClass::Object,
+            EntryClass::AccessControlProfile,
+            EntryClass::AccessControlModify
+        ],
+        name: "idm_acp_people_pii_manage",
+        uuid: UUID_IDM_ACP_PEOPLE_PII_MANAGE_V1,
+        description: "Builtin IDM Control for modifying peoples personal and sensitive data",
+        receiver: BuiltinAcpReceiver::Group(vec![UUID_IDM_PEOPLE_ADMINS]),
+        target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
+            match_class_filter!(EntryClass::Person),
+            FILTER_ANDNOT_TOMBSTONE_OR_RECYCLED.clone(),
+        ])),
+        modify_removed_attrs: vec![
+            Attribute::Name,
+            Attribute::DisplayName,
+            Attribute::LegalName,
+            Attribute::Mail,
+        ],
+        modify_present_attrs: vec![
+            Attribute::Name,
+            Attribute::DisplayName,
+            Attribute::LegalName,
+            Attribute::Mail,
+        ],
+        ..Default::default()
+    };
+}
+
+// Person Account Create
+lazy_static! {
+    pub static ref IDM_ACP_PEOPLE_CREATE_V1: BuiltinAcp = BuiltinAcp {
+        classes: vec![
+            EntryClass::Object,
+            EntryClass::AccessControlProfile,
+            EntryClass::AccessControlCreate,
+        ],
+        name: "idm_acp_people_create",
+        uuid: UUID_IDM_ACP_PEOPLE_CREATE_V1,
+        description: "Builtin IDM Control for creating new persons.",
+        receiver: BuiltinAcpReceiver::Group(vec![
+            UUID_IDM_PEOPLE_ADMINS,
+            UUID_IDM_PEOPLE_ON_BOARDING
+        ]),
+        target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
+            match_class_filter!(EntryClass::Person).clone(),
+            match_class_filter!(EntryClass::Account).clone(),
+            FILTER_ANDNOT_TOMBSTONE_OR_RECYCLED.clone(),
+        ])),
+        create_attrs: vec![
+            Attribute::Class,
+            Attribute::Name,
+            Attribute::DisplayName,
+            Attribute::Mail,
+            Attribute::AccountExpire,
+            Attribute::AccountValidFrom,
+        ],
+        create_classes: vec![EntryClass::Object, EntryClass::Account, EntryClass::Person,],
+        ..Default::default()
+    };
 }
 
 lazy_static! {
-    pub static ref E_IDM_ACP_ACCOUNT_UNIX_EXTEND_PRIV_V1: EntryInitNew = entry_init!(
-        ("class", CLASS_OBJECT.clone()),
-        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_MODIFY.clone()),
-        ("class", CLASS_ACCESS_CONTROL_SEARCH.clone()),
-        ("name", Value::new_iname("idm_acp_account_unix_extend_priv")),
-        ("uuid", Value::Uuid(UUID_IDM_ACP_ACCOUNT_UNIX_EXTEND_PRIV_V1)),
-        (
-            "description",
-            Value::new_utf8s("Builtin IDM Control for managing and extending unix accounts")
-        ),
-        (
-            "acp_receiver_group",
-            Value::Refer(UUID_IDM_ACCOUNT_UNIX_EXTEND_PRIV)
-        ),
-        (
-            "acp_targetscope",
-            Value::new_json_filter_s(
-                "{\"and\": [{\"eq\": [\"class\",\"account\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-            )
-                .expect("Invalid JSON filter")
-        ),
-        ("acp_search_attr", Value::new_iutf8("class")),
-        ("acp_search_attr", Value::new_iutf8("name")),
-        ("acp_search_attr", Value::new_iutf8("uuid")),
-        ("acp_search_attr", Value::new_iutf8("spn")),
-        ("acp_search_attr", Value::new_iutf8("description")),
-        ("acp_search_attr", Value::new_iutf8("gidnumber")),
-        ("acp_search_attr", Value::new_iutf8("loginshell")),
-        ("acp_search_attr", Value::new_iutf8("unix_password")),
-        ("acp_modify_removedattr", Value::new_iutf8("gidnumber")),
-        ("acp_modify_removedattr", Value::new_iutf8("loginshell")),
-        ("acp_modify_removedattr", Value::new_iutf8("unix_password")),
-        ("acp_modify_presentattr", Value::new_iutf8("class")),
-        ("acp_modify_presentattr", Value::new_iutf8("gidnumber")),
-        ("acp_modify_presentattr", Value::new_iutf8("loginshell")),
-        ("acp_modify_presentattr", Value::new_iutf8("unix_password")),
-        ("acp_modify_class", Value::new_iutf8("posixaccount"))
-    );
+    pub static ref IDM_ACP_PEOPLE_MANAGE_V1: BuiltinAcp = BuiltinAcp {
+        classes: vec![
+            EntryClass::Object,
+            EntryClass::AccessControlProfile,
+            EntryClass::AccessControlModify,
+        ],
+        name: "idm_acp_people_account_policy_manage",
+        uuid: UUID_IDM_ACP_PEOPLE_MANAGE_V1,
+        description: "Builtin IDM Control for management of peoples non sensitive attributes.",
+        receiver: BuiltinAcpReceiver::Group(vec![UUID_IDM_PEOPLE_ADMINS]),
+        target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
+            match_class_filter!(EntryClass::Person),
+            match_class_filter!(EntryClass::Account),
+            FILTER_ANDNOT_HP_OR_RECYCLED_OR_TOMBSTONE.clone(),
+        ])),
+        modify_removed_attrs: vec![Attribute::AccountExpire, Attribute::AccountValidFrom,],
+        modify_present_attrs: vec![Attribute::AccountExpire, Attribute::AccountValidFrom,],
+        ..Default::default()
+    };
+}
+
+// Person Read
+lazy_static! {
+    pub static ref IDM_ACP_PEOPLE_READ_V1: BuiltinAcp = BuiltinAcp {
+        classes: vec![
+            EntryClass::Object,
+            EntryClass::AccessControlProfile,
+            EntryClass::AccessControlSearch,
+        ],
+        name: "idm_acp_people_read",
+        uuid: UUID_IDM_ACP_PEOPLE_READ_V1,
+        description: "Builtin IDM Control for reading non-sensitive data.",
+        receiver: BuiltinAcpReceiver::Group(vec![
+            UUID_IDM_PEOPLE_ADMINS,
+            UUID_IDM_PEOPLE_PII_READ,
+            UUID_IDM_ACCOUNT_MAIL_READ,
+            UUID_IDM_SERVICE_DESK
+        ]),
+        target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
+            match_class_filter!(EntryClass::Person).clone(),
+            FILTER_ANDNOT_TOMBSTONE_OR_RECYCLED.clone(),
+        ])),
+        search_attrs: vec![
+            Attribute::Class,
+            Attribute::Name,
+            Attribute::Spn,
+            Attribute::Uuid,
+            Attribute::DisplayName,
+            Attribute::MemberOf,
+            Attribute::Uuid,
+            Attribute::AccountExpire,
+            Attribute::AccountValidFrom,
+        ],
+        ..Default::default()
+    };
+}
+
+// Person Delete
+lazy_static! {
+    pub static ref IDM_ACP_PEOPLE_DELETE_V1: BuiltinAcp = BuiltinAcp {
+        classes: vec![
+            EntryClass::Object,
+            EntryClass::AccessControlProfile,
+            EntryClass::AccessControlDelete,
+        ],
+        name: "idm_acp_people_delete",
+        uuid: UUID_IDM_ACP_PEOPLE_DELETE_V1,
+        description: "Builtin IDM Control for deleting persons.",
+        receiver: BuiltinAcpReceiver::Group(vec![UUID_IDM_PEOPLE_ADMINS,]),
+        target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
+            match_class_filter!(EntryClass::Person).clone(),
+            match_class_filter!(EntryClass::Account).clone(),
+            FILTER_ANDNOT_TOMBSTONE_OR_RECYCLED.clone(),
+        ])),
+        ..Default::default()
+    };
+}
+
+// Person Account Credential Reset
+lazy_static! {
+    pub static ref IDM_ACP_PEOPLE_CREDENTIAL_RESET_V1: BuiltinAcp = BuiltinAcp {
+        classes: vec![
+            EntryClass::Object,
+            EntryClass::AccessControlProfile,
+            EntryClass::AccessControlModify,
+            EntryClass::AccessControlSearch
+        ],
+        name: "idm_acp_people_credential_reset",
+        uuid: UUID_IDM_ACP_PEOPLE_CREDENTIAL_RESET_V1,
+        description: "Builtin IDM Control for resetting peoples credentials ",
+        receiver: BuiltinAcpReceiver::Group(vec![
+            UUID_IDM_PEOPLE_ADMINS,
+            UUID_IDM_SERVICE_DESK,
+            UUID_IDM_PEOPLE_ON_BOARDING,
+        ]),
+        target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
+            match_class_filter!(EntryClass::Person),
+            match_class_filter!(EntryClass::Account),
+            FILTER_ANDNOT_HP_OR_RECYCLED_OR_TOMBSTONE.clone(),
+        ])),
+        search_attrs: vec![
+            Attribute::Class,
+            Attribute::Uuid,
+            Attribute::Name,
+            Attribute::Spn,
+            Attribute::PrimaryCredential,
+            Attribute::AccountExpire,
+            Attribute::AccountValidFrom,
+            Attribute::PassKeys,
+            Attribute::AttestedPasskeys,
+        ],
+        modify_removed_attrs: vec![
+            Attribute::PrimaryCredential,
+            Attribute::PassKeys,
+            Attribute::AttestedPasskeys,
+        ],
+        modify_present_attrs: vec![
+            Attribute::PrimaryCredential,
+            Attribute::PassKeys,
+            Attribute::AttestedPasskeys,
+        ],
+        ..Default::default()
+    };
+}
+
+// HP Person Account Credential Reset
+lazy_static! {
+    pub static ref IDM_ACP_HP_PEOPLE_CREDENTIAL_RESET_V1: BuiltinAcp = BuiltinAcp {
+        classes: vec![
+            EntryClass::Object,
+            EntryClass::AccessControlProfile,
+            EntryClass::AccessControlModify,
+            EntryClass::AccessControlSearch
+        ],
+        name: "idm_acp_hp_people_credential_reset",
+        uuid: UUID_IDM_ACP_HP_PEOPLE_CREDENTIAL_RESET_V1,
+        description: "Builtin IDM Control for resetting high privilege peoples credentials ",
+        receiver: BuiltinAcpReceiver::Group(vec![UUID_IDM_PEOPLE_ADMINS,]),
+        target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
+            match_class_filter!(EntryClass::Person),
+            match_class_filter!(EntryClass::Account),
+            FILTER_HP.clone(),
+            FILTER_ANDNOT_TOMBSTONE_OR_RECYCLED.clone(),
+        ])),
+        search_attrs: vec![
+            Attribute::Class,
+            Attribute::Uuid,
+            Attribute::Name,
+            Attribute::Spn,
+            Attribute::PrimaryCredential,
+            Attribute::AccountExpire,
+            Attribute::AccountValidFrom,
+            Attribute::PassKeys,
+            Attribute::AttestedPasskeys,
+        ],
+        modify_removed_attrs: vec![
+            Attribute::PrimaryCredential,
+            Attribute::AccountExpire,
+            Attribute::AccountValidFrom,
+            Attribute::PassKeys,
+            Attribute::AttestedPasskeys,
+        ],
+        modify_present_attrs: vec![
+            Attribute::PrimaryCredential,
+            Attribute::AccountExpire,
+            Attribute::AccountValidFrom,
+            Attribute::PassKeys,
+            Attribute::AttestedPasskeys,
+        ],
+        ..Default::default()
+    };
+}
+
+// Service Account Create/Manage
+//   needs to be able to assign to entry managed by
+lazy_static! {
+    pub static ref IDM_ACP_SERVICE_ACCOUNT_CREATE_V1: BuiltinAcp = BuiltinAcp {
+        classes: vec![
+            EntryClass::Object,
+            EntryClass::AccessControlProfile,
+            EntryClass::AccessControlCreate,
+        ],
+        name: "idm_acp_service_account_create",
+        uuid: UUID_IDM_ACP_SERVICE_ACCOUNT_CREATE_V1,
+        description: "Builtin IDM Control for creating new service accounts.",
+        receiver: BuiltinAcpReceiver::Group(vec![UUID_IDM_SERVICE_ACCOUNT_ADMINS]),
+        target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
+            match_class_filter!(EntryClass::ServiceAccount).clone(),
+            match_class_filter!(EntryClass::Account).clone(),
+            FILTER_ANDNOT_TOMBSTONE_OR_RECYCLED.clone(),
+        ])),
+        create_attrs: vec![
+            Attribute::Class,
+            Attribute::Name,
+            Attribute::DisplayName,
+            Attribute::EntryManagedBy,
+            Attribute::Description,
+            Attribute::AccountExpire,
+            Attribute::AccountValidFrom,
+        ],
+        create_classes: vec![
+            EntryClass::Object,
+            EntryClass::Account,
+            EntryClass::ServiceAccount,
+        ],
+        ..Default::default()
+    };
 }
 
 lazy_static! {
-    pub static ref E_IDM_ACP_GROUP_UNIX_EXTEND_PRIV_V1: EntryInitNew = entry_init!(
-        ("class", CLASS_OBJECT.clone()),
-        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_MODIFY.clone()),
-        ("class", CLASS_ACCESS_CONTROL_SEARCH.clone()),
-        ("name", Value::new_iname("idm_acp_group_unix_extend_priv")),
-        ("uuid", Value::Uuid(UUID_IDM_ACP_GROUP_UNIX_EXTEND_PRIV_V1)),
-        (
-            "description",
-            Value::new_utf8s("Builtin IDM Control for managing and extending unix groups")
-        ),
-        (
-            "acp_receiver_group",
-            Value::Refer(UUID_IDM_GROUP_UNIX_EXTEND_PRIV)
-        ),
-        (
-            "acp_targetscope",
-            Value::new_json_filter_s(
-                "{\"and\": [{\"eq\": [\"class\",\"group\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-            )
-                .expect("Invalid JSON filter")
-        ),
-        ("acp_search_attr", Value::new_iutf8("class")),
-        ("acp_search_attr", Value::new_iutf8("name")),
-        ("acp_search_attr", Value::new_iutf8("uuid")),
-        ("acp_search_attr", Value::new_iutf8("spn")),
-        ("acp_search_attr", Value::new_iutf8("description")),
-        ("acp_search_attr", Value::new_iutf8("member")),
-        ("acp_search_attr", Value::new_iutf8("gidnumber")),
-        ("acp_modify_removedattr", Value::new_iutf8("gidnumber")),
-        ("acp_modify_presentattr", Value::new_iutf8("class")),
-        ("acp_modify_presentattr", Value::new_iutf8("gidnumber")),
-        ("acp_modify_class", Value::new_iutf8("posixgroup"))
-    );
+    pub static ref IDM_ACP_SERVICE_ACCOUNT_MANAGE_V1: BuiltinAcp = BuiltinAcp {
+        classes: vec![
+            EntryClass::Object,
+            EntryClass::AccessControlProfile,
+            EntryClass::AccessControlModify
+        ],
+        name: "idm_acp_service_account_manage",
+        uuid: UUID_IDM_ACP_SERVICE_ACCOUNT_MANAGE_V1,
+        description: "Builtin IDM Control for modifying service account data",
+        receiver: BuiltinAcpReceiver::Group(vec![UUID_IDM_SERVICE_ACCOUNT_ADMINS]),
+        target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
+            match_class_filter!(EntryClass::ServiceAccount).clone(),
+            match_class_filter!(EntryClass::Account).clone(),
+            FILTER_ANDNOT_HP_OR_RECYCLED_OR_TOMBSTONE.clone(),
+        ])),
+        modify_removed_attrs: vec![
+            Attribute::Name,
+            Attribute::DisplayName,
+            Attribute::Mail,
+            Attribute::SshPublicKey,
+            Attribute::UnixPassword,
+            Attribute::PrimaryCredential,
+            Attribute::ApiTokenSession,
+            Attribute::UserAuthTokenSession,
+        ],
+        modify_present_attrs: vec![Attribute::Name, Attribute::DisplayName, Attribute::Mail,],
+        ..Default::default()
+    };
 }
 
 lazy_static! {
-    pub static ref E_IDM_HP_ACP_ACCOUNT_UNIX_EXTEND_PRIV_V1: EntryInitNew = entry_init!(
-        ("class", CLASS_OBJECT.clone()),
-        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_MODIFY.clone()),
-        ("class", CLASS_ACCESS_CONTROL_SEARCH.clone()),
-        ("name", Value::new_iname("idm_acp_hp_account_unix_extend_priv")),
-        ("uuid", Value::Uuid(UUID_IDM_HP_ACP_ACCOUNT_UNIX_EXTEND_PRIV_V1)),
-        (
-            "description",
-            Value::new_utf8s("Builtin IDM Control for managing and extending unix accounts")
-        ),
-        (
-            "acp_receiver_group",
-            Value::Refer(UUID_IDM_HP_ACCOUNT_UNIX_EXTEND_PRIV)
-        ),
-        (
-            "acp_targetscope",
-            Value::new_json_filter_s(
-                "{\"and\": [{\"eq\": [\"class\",\"account\"]}, {\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-            )
-                .expect("Invalid JSON filter")
-        ),
-        ("acp_search_attr", Value::new_iutf8("class")),
-        ("acp_search_attr", Value::new_iutf8("name")),
-        ("acp_search_attr", Value::new_iutf8("uuid")),
-        ("acp_search_attr", Value::new_iutf8("spn")),
-        ("acp_search_attr", Value::new_iutf8("description")),
-        ("acp_search_attr", Value::new_iutf8("gidnumber")),
-        ("acp_search_attr", Value::new_iutf8("loginshell")),
-        ("acp_search_attr", Value::new_iutf8("unix_password")),
-        ("acp_modify_removedattr", Value::new_iutf8("gidnumber")),
-        ("acp_modify_removedattr", Value::new_iutf8("loginshell")),
-        ("acp_modify_removedattr", Value::new_iutf8("unix_password")),
-        ("acp_modify_presentattr", Value::new_iutf8("class")),
-        ("acp_modify_presentattr", Value::new_iutf8("gidnumber")),
-        ("acp_modify_presentattr", Value::new_iutf8("loginshell")),
-        ("acp_modify_presentattr", Value::new_iutf8("unix_password")),
-        ("acp_modify_class", Value::new_iutf8("posixaccount"))
-    );
+    pub static ref IDM_ACP_SERVICE_ACCOUNT_DELETE_V1: BuiltinAcp = BuiltinAcp {
+        classes: vec![
+            EntryClass::Object,
+            EntryClass::AccessControlProfile,
+            EntryClass::AccessControlDelete,
+        ],
+        name: "idm_acp_service_account_delete",
+        uuid: UUID_IDM_ACP_SERVICE_ACCOUNT_DELETE_V1,
+        description: "Builtin IDM Control for deleting service accounts.",
+        receiver: BuiltinAcpReceiver::Group(vec![UUID_IDM_SERVICE_ACCOUNT_ADMINS]),
+        target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
+            match_class_filter!(EntryClass::ServiceAccount).clone(),
+            match_class_filter!(EntryClass::Account).clone(),
+            FILTER_ANDNOT_HP_OR_RECYCLED_OR_TOMBSTONE.clone(),
+        ])),
+        ..Default::default()
+    };
+}
+
+// Service Account Credential Manage
+//   entry managed by?
+
+lazy_static! {
+    pub static ref IDM_ACP_SERVICE_ACCOUNT_ENTRY_MANAGER_V1: BuiltinAcp = BuiltinAcp{
+        classes: vec![
+            EntryClass::Object,
+            EntryClass::AccessControlProfile,
+            EntryClass::AccessControlModify,
+            EntryClass::AccessControlSearch
+        ],
+        name: "idm_acp_service_account_entry_manager",
+        uuid: UUID_IDM_ACP_SERVICE_ACCOUNT_ENTRY_MANAGER_V1,
+        description: "Builtin IDM Control for allowing entry managers to modify service accounts",
+        receiver: BuiltinAcpReceiver::EntryManager,
+        target: BuiltinAcpTarget::Filter( ProtoFilter::And(vec![
+            match_class_filter!(EntryClass::Account),
+            match_class_filter!(EntryClass::ServiceAccount),
+            FILTER_ANDNOT_TOMBSTONE_OR_RECYCLED.clone(),
+        ])),
+        search_attrs: vec![
+            Attribute::Class,
+            Attribute::Name,
+            Attribute::Spn,
+            Attribute::Uuid,
+            Attribute::EntryManagedBy,
+            Attribute::DisplayName,
+            Attribute::SshPublicKey,
+            Attribute::GidNumber,
+            Attribute::LoginShell,
+            Attribute::UnixPassword,
+            Attribute::PassKeys,
+            Attribute::PrimaryCredential,
+            Attribute::AccountExpire,
+            Attribute::AccountValidFrom,
+            Attribute::ApiTokenSession,
+            Attribute::UserAuthTokenSession,
+        ],
+        modify_removed_attrs: vec![
+            Attribute::DisplayName,
+            Attribute::SshPublicKey,
+            Attribute::PrimaryCredential,
+            Attribute::UnixPassword,
+            // For legacy upgrades we allow removing this.
+            Attribute::PassKeys,
+            Attribute::AccountExpire,
+            Attribute::AccountValidFrom,
+            Attribute::ApiTokenSession,
+            Attribute::UserAuthTokenSession,
+        ],
+        modify_present_attrs: vec![
+            Attribute::DisplayName,
+            Attribute::SshPublicKey,
+            Attribute::PrimaryCredential,
+            // Should this be a thing? I think no?
+            // Attribute::UnixPassword,
+            Attribute::AccountExpire,
+            Attribute::AccountValidFrom,
+            Attribute::ApiTokenSession,
+        ],
+        ..Default::default()
+    };
+}
+
+// Service Account Access Manager
+lazy_static! {
+    pub static ref IDM_ACP_SERVICE_ACCOUNT_ENTRY_MANAGED_BY_MODIFY_V1: BuiltinAcp = BuiltinAcp {
+        classes: vec![
+            EntryClass::Object,
+            EntryClass::AccessControlProfile,
+            EntryClass::AccessControlModify,
+            EntryClass::AccessControlSearch
+        ],
+        name: "idm_acp_service_account_entry_managed_by",
+        uuid: UUID_IDM_ACP_SERVICE_ACCOUNT_ENTRY_MANAGED_BY_MODIFY,
+        description:
+            "Builtin IDM Control for allowing entry_managed_by to be set on service account entries",
+        receiver: BuiltinAcpReceiver::Group(vec![UUID_IDM_SERVICE_ACCOUNT_ADMINS]),
+        target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
+            match_class_filter!(EntryClass::ServiceAccount).clone(),
+            match_class_filter!(EntryClass::Account).clone(),
+            FILTER_ANDNOT_HP_OR_RECYCLED_OR_TOMBSTONE.clone(),
+        ])),
+        search_attrs: vec![
+            Attribute::Class,
+            Attribute::Name,
+            Attribute::Spn,
+            Attribute::Uuid,
+            Attribute::EntryManagedBy,
+        ],
+        modify_removed_attrs: vec![Attribute::EntryManagedBy],
+        modify_present_attrs: vec![Attribute::EntryManagedBy],
+        ..Default::default()
+    };
 }
 
 lazy_static! {
-    pub static ref E_IDM_HP_ACP_GROUP_UNIX_EXTEND_PRIV_V1: EntryInitNew = entry_init!(
-        ("class", CLASS_OBJECT.clone()),
-        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_MODIFY.clone()),
-        ("class", CLASS_ACCESS_CONTROL_SEARCH.clone()),
-        ("name", Value::new_iname("idm_acp_hp_group_unix_extend_priv")),
-        ("uuid", Value::Uuid(UUID_IDM_HP_ACP_GROUP_UNIX_EXTEND_PRIV_V1)),
-        (
-            "description",
-            Value::new_utf8s("Builtin IDM Control for managing and extending unix high privilege groups")
-        ),
-        (
-            "acp_receiver_group",
-            Value::Refer(UUID_IDM_HP_GROUP_UNIX_EXTEND_PRIV)
-        ),
-        (
-            "acp_targetscope",
-            Value::new_json_filter_s(
-                "{\"and\": [{\"eq\": [\"class\",\"group\"]}, {\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-            )
-                .expect("Invalid JSON filter")
-        ),
-        ("acp_search_attr", Value::new_iutf8("class")),
-        ("acp_search_attr", Value::new_iutf8("name")),
-        ("acp_search_attr", Value::new_iutf8("uuid")),
-        ("acp_search_attr", Value::new_iutf8("spn")),
-        ("acp_search_attr", Value::new_iutf8("description")),
-        ("acp_search_attr", Value::new_iutf8("member")),
-        ("acp_search_attr", Value::new_iutf8("gidnumber")),
-        ("acp_modify_removedattr", Value::new_iutf8("gidnumber")),
-        ("acp_modify_presentattr", Value::new_iutf8("class")),
-        ("acp_modify_presentattr", Value::new_iutf8("gidnumber")),
-        ("acp_modify_class", Value::new_iutf8("posixgroup"))
-    );
-}
-
-lazy_static! {
-    pub static ref E_IDM_HP_ACP_OAUTH2_MANAGE_PRIV_V1: EntryInitNew = entry_init!(
-        ("class", CLASS_OBJECT.clone()),
-        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_CREATE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_DELETE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_MODIFY.clone()),
-        ("class", CLASS_ACCESS_CONTROL_SEARCH.clone()),
-        ("name", Value::new_iname("idm_acp_hp_oauth2_manage_priv")),
-        ("uuid", Value::Uuid(UUID_IDM_HP_ACP_OAUTH2_MANAGE_PRIV_V1)),
-        (
-            "description",
-            Value::new_utf8s("Builtin IDM Control for managing oauth2 resource server integrations.")
-        ),
-        (
-            "acp_receiver_group",
-            Value::Refer(UUID_IDM_HP_OAUTH2_MANAGE_PRIV)
-        ),
-        (
-            "acp_targetscope",
-            Value::new_json_filter_s(
-                "{\"and\": [{\"eq\": [\"class\",\"oauth2_resource_server\"]},{\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-            )
-                .expect("Invalid JSON filter")
-        ),
-        ("acp_search_attr", Value::new_iutf8("class")),
-        ("acp_search_attr", Value::new_iutf8("description")),
-        ("acp_search_attr", Value::new_iutf8("displayname")),
-        ("acp_search_attr", Value::new_iutf8("oauth2_rs_name")),
-        ("acp_search_attr", Value::new_iutf8("oauth2_rs_origin")),
-        ("acp_search_attr", Value::new_iutf8("oauth2_rs_origin_landing")),
-        ("acp_search_attr", Value::new_iutf8("oauth2_rs_scope_map")),
-        ("acp_search_attr", Value::new_iutf8("oauth2_rs_sup_scope_map")),
-        ("acp_search_attr", Value::new_iutf8("oauth2_rs_basic_secret")),
-        ("acp_search_attr", Value::new_iutf8("oauth2_rs_token_key")),
-        ("acp_search_attr", Value::new_iutf8("es256_private_key_der")),
-        ("acp_search_attr", Value::new_iutf8("oauth2_allow_insecure_client_disable_pkce")),
-        ("acp_search_attr", Value::new_iutf8("rs256_private_key_der")),
-        ("acp_search_attr", Value::new_iutf8("oauth2_jwt_legacy_crypto_enable")),
-        ("acp_search_attr", Value::new_iutf8("oauth2_prefer_short_username")),
-
-        ("acp_modify_removedattr", Value::new_iutf8("description")),
-        ("acp_modify_removedattr", Value::new_iutf8("displayname")),
-        ("acp_modify_removedattr", Value::new_iutf8("oauth2_rs_name")),
-        ("acp_modify_removedattr", Value::new_iutf8("oauth2_rs_origin")),
-        ("acp_modify_removedattr", Value::new_iutf8("oauth2_rs_origin_landing")),
-        ("acp_modify_removedattr", Value::new_iutf8("oauth2_rs_scope_map")),
-        ("acp_modify_removedattr", Value::new_iutf8("oauth2_rs_sup_scope_map")),
-        ("acp_modify_removedattr", Value::new_iutf8("oauth2_rs_basic_secret")),
-        ("acp_modify_removedattr", Value::new_iutf8("oauth2_rs_token_key")),
-        ("acp_modify_removedattr", Value::new_iutf8("es256_private_key_der")),
-        ("acp_modify_removedattr", Value::new_iutf8("oauth2_allow_insecure_client_disable_pkce")),
-        ("acp_modify_removedattr", Value::new_iutf8("rs256_private_key_der")),
-        ("acp_modify_removedattr", Value::new_iutf8("oauth2_jwt_legacy_crypto_enable")),
-        ("acp_modify_removedattr", Value::new_iutf8("oauth2_prefer_short_username")),
-
-
-        ("acp_modify_presentattr", Value::new_iutf8("description")),
-        ("acp_modify_presentattr", Value::new_iutf8("displayname")),
-        ("acp_modify_presentattr", Value::new_iutf8("oauth2_rs_name")),
-        ("acp_modify_presentattr", Value::new_iutf8("oauth2_rs_origin")),
-        ("acp_modify_presentattr", Value::new_iutf8("oauth2_rs_origin_landing")),
-        ("acp_modify_presentattr", Value::new_iutf8("oauth2_rs_sup_scope_map")),
-        ("acp_modify_presentattr", Value::new_iutf8("oauth2_rs_scope_map")),
-        ("acp_modify_presentattr", Value::new_iutf8("oauth2_allow_insecure_client_disable_pkce")),
-        ("acp_modify_presentattr", Value::new_iutf8("oauth2_jwt_legacy_crypto_enable")),
-        ("acp_modify_presentattr", Value::new_iutf8("oauth2_prefer_short_username")),
-
-        ("acp_create_attr", Value::new_iutf8("class")),
-        ("acp_create_attr", Value::new_iutf8("description")),
-        ("acp_create_attr", Value::new_iutf8("displayname")),
-        ("acp_create_attr", Value::new_iutf8("oauth2_rs_name")),
-        ("acp_create_attr", Value::new_iutf8("oauth2_rs_origin")),
-        ("acp_create_attr", Value::new_iutf8("oauth2_rs_origin_landing")),
-        ("acp_create_attr", Value::new_iutf8("oauth2_rs_sup_scope_map")),
-        ("acp_create_attr", Value::new_iutf8("oauth2_rs_scope_map")),
-        ("acp_create_attr", Value::new_iutf8("oauth2_allow_insecure_client_disable_pkce")),
-        ("acp_create_attr", Value::new_iutf8("oauth2_jwt_legacy_crypto_enable")),
-        ("acp_create_attr", Value::new_iutf8("oauth2_prefer_short_username")),
-
-
-        ("acp_create_class", Value::new_iutf8("object")),
-        ("acp_create_class", Value::new_iutf8("oauth2_resource_server")),
-        ("acp_create_class", Value::new_iutf8("oauth2_resource_server_basic"))
-    );
-}
-
-lazy_static! {
-    pub static ref E_IDM_HP_ACP_SERVICE_ACCOUNT_INTO_PERSON_MIGRATE_V1: EntryInitNew = entry_init!(
-        ("class", CLASS_OBJECT.clone()),
-        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_MODIFY.clone()),
-        ("class", CLASS_ACCESS_CONTROL_SEARCH.clone()),
-        ("name", Value::new_iname("idm_hp_acp_service_account_into_person_migrate")),
-        ("uuid", Value::Uuid(UUID_IDM_HP_ACP_SERVICE_ACCOUNT_INTO_PERSON_MIGRATE_V1)),
-        (
-            "description",
-            Value::new_utf8s("Builtin IDM Control allowing service accounts to be migrated into persons")
-        ),
-        (
-            "acp_receiver_group",
-            Value::Refer(UUID_IDM_HP_SERVICE_ACCOUNT_INTO_PERSON_MIGRATE_PRIV)
-        ),
-        (
-            "acp_targetscope",
-            Value::new_json_filter_s(
-                "{\"and\": [{\"eq\": [\"class\",\"account\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-            )
-                .expect("Invalid JSON filter")
-        ),
-        ("acp_search_attr", Value::new_iutf8("class")),
-        ("acp_search_attr", Value::new_iutf8("name")),
-        ("acp_search_attr", Value::new_iutf8("uuid")),
-        ("acp_modify_removedattr", Value::new_iutf8("class")),
-        ("acp_modify_presentattr", Value::new_iutf8("class")),
-        ("acp_modify_class", Value::new_iutf8("service_account")),
-        ("acp_modify_class", Value::new_iutf8("person"))
-    );
-}
-
-lazy_static! {
-    pub static ref E_IDM_HP_ACP_SYNC_ACCOUNT_MANAGE_PRIV_V1: EntryInitNew = entry_init!(
-        ("class", CLASS_OBJECT.clone()),
-        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_CREATE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_DELETE.clone()),
-        ("class", CLASS_ACCESS_CONTROL_MODIFY.clone()),
-        ("class", CLASS_ACCESS_CONTROL_SEARCH.clone()),
-        ("name", Value::new_iname("idm_acp_hp_sync_account_manage_priv")),
-        ("uuid", Value::Uuid(UUID_IDM_HP_ACP_SYNC_ACCOUNT_MANAGE_PRIV_V1)),
-        (
-            "description",
-            Value::new_utf8s("Builtin IDM Control for managing IDM synchronisation accounts / connections")
-        ),
-        (
-            "acp_receiver_group",
-            Value::Refer(UUID_IDM_HP_SYNC_ACCOUNT_MANAGE_PRIV)
-        ),
-        (
-            "acp_targetscope",
-            Value::new_json_filter_s(
-                "{\"and\": [{\"eq\": [\"class\",\"sync_account\"]},{\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-            )
-                .expect("Invalid JSON filter")
-        ),
-        ("acp_search_attr", Value::new_iutf8("class")),
-        ("acp_search_attr", Value::new_iutf8("name")),
-        ("acp_search_attr", Value::new_iutf8("description")),
-        ("acp_search_attr", Value::new_iutf8("jws_es256_private_key")),
-        ("acp_search_attr", Value::new_iutf8("sync_token_session")),
-        ("acp_search_attr", Value::new_iutf8("sync_cookie")),
-        ("acp_modify_removedattr", Value::new_iutf8("name")),
-        ("acp_modify_removedattr", Value::new_iutf8("description")),
-        ("acp_modify_removedattr", Value::new_iutf8("jws_es256_private_key")),
-        ("acp_modify_removedattr", Value::new_iutf8("sync_token_session")),
-        ("acp_modify_removedattr", Value::new_iutf8("sync_cookie")),
-        ("acp_modify_presentattr", Value::new_iutf8("name")),
-        ("acp_modify_presentattr", Value::new_iutf8("description")),
-        ("acp_modify_presentattr", Value::new_iutf8("sync_token_session")),
-        ("acp_create_attr", Value::new_iutf8("class")),
-        ("acp_create_attr", Value::new_iutf8("name")),
-        ("acp_create_attr", Value::new_iutf8("description")),
-        ("acp_create_class", Value::new_iutf8("object")),
-        ("acp_create_class", Value::new_iutf8("sync_account"))
-    );
+    pub static ref IDM_ACP_HP_SERVICE_ACCOUNT_ENTRY_MANAGED_BY_MODIFY_V1: BuiltinAcp = BuiltinAcp {
+        classes: vec![
+            EntryClass::Object,
+            EntryClass::AccessControlProfile,
+            EntryClass::AccessControlModify,
+            EntryClass::AccessControlSearch
+        ],
+        name: "idm_acp_hp_service_account_entry_managed_by",
+        uuid: UUID_IDM_ACP_HP_SERVICE_ACCOUNT_ENTRY_MANAGED_BY_MODIFY,
+        description: "Builtin IDM Control for allowing entry_managed_by to be set on high priv service account entries",
+        receiver: BuiltinAcpReceiver::Group(vec![UUID_IDM_ACCESS_CONTROL_ADMINS]),
+        target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
+            match_class_filter!(EntryClass::ServiceAccount).clone(),
+            match_class_filter!(EntryClass::Account).clone(),
+            FILTER_HP.clone(),
+            FILTER_ANDNOT_TOMBSTONE_OR_RECYCLED.clone(),
+        ])),
+        search_attrs: vec![
+            Attribute::Class,
+            Attribute::Name,
+            Attribute::Spn,
+            Attribute::Uuid,
+            Attribute::EntryManagedBy,
+        ],
+        modify_removed_attrs: vec![Attribute::EntryManagedBy],
+        modify_present_attrs: vec![Attribute::EntryManagedBy],
+        ..Default::default()
+    };
 }

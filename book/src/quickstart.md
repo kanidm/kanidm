@@ -3,7 +3,7 @@
 This section will guide you through a quick setup of Kanidm for evaluation. It's recommended that
 for a production deployment you follow the steps in the
 [installation chapter](installing_the_server.html) instead as there are a number of security
-considerations you should understand.
+considerations you should be aware of for production deployments.
 
 ### Requirements
 
@@ -46,21 +46,29 @@ docker cp server.toml kanidmd:/data/server.toml
 ```bash
 docker run --rm -i -t -v kanidmd:/data \
   kanidm/server:latest \
-  kanidmd cert-generate -c /data/server.toml
+  kanidmd cert-generate
 ```
 
-### Recover the admin password
-
-```bash
-docker run --rm -i -t -v kanidmd:/data \
-  kanidm/server:latest \
-  kanidmd recover-account admin -c /data/server.toml
-```
-
-### Start Kanidmd
+### Start Kanidmd Container
 
 ```bash
 docker start kanidmd
+```
+
+### Recover the Admin Role Passwords
+
+The `admin` account is used to configure Kanidm itself.
+
+```bash
+docker exec -i -t kanidmd \
+  kanidmd recover-account admin
+```
+
+The `idm_admin` account is used to manage persons and groups.
+
+```
+docker exec -i -t kanidmd \
+  kanidmd recover-account idm_admin
 ```
 
 ### Setup the client configuration
@@ -75,8 +83,22 @@ verify_ca = false
 ### Check you can login
 
 ```bash
-kanidm login
+kanidm login --name idm_admin
 ```
+
+### Create an account for yourself
+
+```
+kanidm person create <your username> <Your Displayname>
+```
+
+### Setup your account credentials
+
+```
+kanidm person credential create-reset-token <your username>
+```
+
+Then follow the presented steps.
 
 ### What next?
 

@@ -4,11 +4,14 @@ use std::net::IpAddr;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use kanidm_proto::internal::AppLink;
+use kanidm_proto::internal::{AppLink, IdentifyUserRequest, IdentifyUserResponse, ImageValue};
 use kanidm_proto::v1::{
     ApiToken, AuthIssueSession, AuthRequest, BackupCodesView, CURequest, CUSessionToken, CUStatus,
     CredentialStatus, Entry as ProtoEntry, OperationError, RadiusAuthToken, SearchRequest,
     SearchResponse, UatStatus, UnixGroupToken, UnixUserToken, UserAuthToken, WhoamiResponse,
+};
+use kanidmd_lib::idm::identityverification::{
+    IdentifyUserDisplayCodeEvent, IdentifyUserStartEvent, IdentifyUserSubmitCodeEvent,
 };
 use ldap3_proto::simple::*;
 use regex::Regex;
@@ -212,6 +215,7 @@ impl QueryServerReadV1 {
                 time::OffsetDateTime::now_utc()
             }
         };
+        #[allow(clippy::unwrap_used)]
         let timestamp = now.format(&Rfc3339).unwrap();
         let dest_file = format!("{}/backup-{}.json", outpath, timestamp);
 
@@ -398,6 +402,45 @@ impl QueryServerReadV1 {
             })
     }
 
+    #[instrument(level = "debug", skip_all)]
+    /// pull an image so we can present it to the user
+    pub async fn handle_oauth2_rs_image_get_image(
+        &self,
+        uat: Option<String>,
+        rs: Filter<FilterInvalid>,
+    ) -> Result<ImageValue, OperationError> {
+        let mut idms_prox_read = self.idms.proxy_read().await;
+        let ct = duration_from_epoch_now();
+
+        let ident = idms_prox_read
+                .validate_and_parse_token_to_ident(uat.as_deref(), ct)
+                .map_err(|e| {
+                    admin_error!(err = ?e, "Invalid identity in handle_oauth2_rs_image_get_image {:?}", uat);
+                    e
+                })?;
+        let attrs = vec![Attribute::Image.to_string()];
+
+        let search = SearchEvent::from_internal_message(
+            ident,
+            &rs,
+            Some(attrs.as_slice()),
+            &mut idms_prox_read.qs_read,
+        )?;
+
+        let entries = idms_prox_read.qs_read.search(&search)?;
+        if entries.is_empty() {
+            return Err(OperationError::NoMatchingEntries);
+        }
+        let entry = match entries.first() {
+            Some(entry) => entry,
+            None => return Err(OperationError::NoMatchingEntries),
+        };
+        match entry.get_ava_single_image(Attribute::Image) {
+            Some(image) => Ok(image),
+            None => Err(OperationError::NoMatchingEntries),
+        }
+    }
+
     #[instrument(
         level = "info",
         skip_all,
@@ -536,7 +579,7 @@ impl QueryServerReadV1 {
                     // From the entry, turn it into the value
                     .and_then(|entry| {
                         entry
-                            .get_ava_single("radius_secret")
+                            .get_ava_single(Attribute::RadiusSecret)
                             .and_then(|v| v.get_secret_str().map(str::to_string))
                     });
                 Ok(r)
@@ -617,10 +660,16 @@ impl QueryServerReadV1 {
             .qs_read
             .name_to_uuid(uuid_or_name.as_str())
             .map_err(|e| {
+                // sometimes it comes back as empty which is bad, it's safe to start with `<empty` here
+                // because a valid username/uuid can never start with that and we're only logging it
+                let uuid_or_name_val = match uuid_or_name.is_empty() {
+                    true => "<empty uuid_or_name>",
+                    false => &uuid_or_name,
+                };
                 admin_info!(
                     err = ?e,
                     "Error resolving {} as gidnumber continuing ...",
-                    uuid_or_name
+                    uuid_or_name_val
                 );
                 e
             })?;
@@ -734,8 +783,8 @@ impl QueryServerReadV1 {
                     // get the first entry
                     .and_then(|e| {
                         // From the entry, turn it into the value
-                        e.get_ava_iter_sshpubkeys("ssh_publickey")
-                            .map(|i| i.map(|s| s.to_string()).collect())
+                        e.get_ava_iter_sshpubkeys(Attribute::SshPublicKey)
+                            .map(|i| i.collect())
                     })
                     .unwrap_or_else(|| {
                         // No matching entry? Return none.
@@ -797,9 +846,9 @@ impl QueryServerReadV1 {
                     // get the first entry
                     .map(|e| {
                         // From the entry, turn it into the value
-                        e.get_ava_set("ssh_publickey").and_then(|vs| {
+                        e.get_ava_set(Attribute::SshPublicKey).and_then(|vs| {
                             // Get the one tagged value
-                            vs.get_ssh_tag(&tag).map(str::to_string)
+                            vs.get_ssh_tag(&tag).map(|pk| pk.to_string())
                         })
                     })
                     .unwrap_or_else(|| {
@@ -874,6 +923,47 @@ impl QueryServerReadV1 {
         let lte = ListUserAuthTokenEvent { ident, target };
 
         idms_prox_read.account_list_user_auth_tokens(&lte)
+    }
+
+    #[instrument(
+        level = "info",
+        skip_all,
+        fields(uuid = ?eventid)
+    )]
+    pub async fn handle_user_identity_verification(
+        &self,
+        uat: Option<String>,
+        eventid: Uuid,
+        user_request: IdentifyUserRequest,
+        other_id: String,
+    ) -> Result<IdentifyUserResponse, OperationError> {
+        trace!("{:?}", &user_request);
+        let ct = duration_from_epoch_now();
+        let mut idms_prox_read = self.idms.proxy_read().await;
+        let ident = idms_prox_read
+            .validate_and_parse_token_to_ident(uat.as_deref(), ct)
+            .map_err(|e| {
+                admin_error!("Invalid identity: {:?}", e);
+                e
+            })?;
+        let target = idms_prox_read
+            .qs_read
+            .name_to_uuid(&other_id)
+            .map_err(|e| {
+                admin_error!("No user found with the provided ID: {:?}", e);
+                e
+            })?;
+        match user_request {
+            IdentifyUserRequest::Start => idms_prox_read
+                .handle_identify_user_start(&IdentifyUserStartEvent::new(target, ident)),
+            IdentifyUserRequest::DisplayCode => idms_prox_read.handle_identify_user_display_code(
+                &IdentifyUserDisplayCodeEvent::new(target, ident),
+            ),
+            IdentifyUserRequest::SubmitCode { other_totp } => idms_prox_read
+                .handle_identify_user_submit_code(&IdentifyUserSubmitCodeEvent::new(
+                    target, ident, other_totp,
+                )),
+        }
     }
 
     #[instrument(
@@ -1161,7 +1251,7 @@ impl QueryServerReadV1 {
                 .map_err(|e| {
                     admin_error!(
                         err = ?e,
-                        "Failed to begin credential_passkey_init",
+                        "Failed to begin credential_passkey_finish",
                     );
                     e
                 }),
@@ -1170,7 +1260,34 @@ impl QueryServerReadV1 {
                 .map_err(|e| {
                     admin_error!(
                         err = ?e,
-                        "Failed to begin credential_passkey_init",
+                        "Failed to begin credential_passkey_remove",
+                    );
+                    e
+                }),
+            CURequest::AttestedPasskeyInit => idms_cred_update
+                .credential_attested_passkey_init(&session_token, ct)
+                .map_err(|e| {
+                    admin_error!(
+                        err = ?e,
+                        "Failed to begin credential_attested_passkey_init",
+                    );
+                    e
+                }),
+            CURequest::AttestedPasskeyFinish(label, rpkc) => idms_cred_update
+                .credential_attested_passkey_finish(&session_token, ct, label, &rpkc)
+                .map_err(|e| {
+                    admin_error!(
+                        err = ?e,
+                        "Failed to begin credential_attested_passkey_finish",
+                    );
+                    e
+                }),
+            CURequest::AttestedPasskeyRemove(uuid) => idms_cred_update
+                .credential_attested_passkey_remove(&session_token, ct, uuid)
+                .map_err(|e| {
+                    admin_error!(
+                        err = ?e,
+                        "Failed to begin credential_attested_passkey_remove",
                     );
                     e
                 }),
@@ -1222,7 +1339,7 @@ impl QueryServerReadV1 {
                     // From the entry, turn it into the value
                     .and_then(|entry| {
                         entry
-                            .get_ava_single("oauth2_rs_basic_secret")
+                            .get_ava_single(Attribute::OAuth2RsBasicSecret)
                             .and_then(|v| v.get_secret_str().map(str::to_string))
                     });
                 Ok(r)

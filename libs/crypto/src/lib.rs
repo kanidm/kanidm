@@ -8,12 +8,12 @@
 #![deny(clippy::await_holding_lock)]
 #![deny(clippy::needless_pass_by_value)]
 #![deny(clippy::trivially_copy_pass_by_ref)]
-#![allow(clippy::unreachable)]
+#![deny(clippy::unreachable)]
 
 use argon2::{Algorithm, Argon2, Params, PasswordHash, Version};
 use base64::engine::GeneralPurpose;
 use base64::{alphabet, Engine};
-use tracing::{debug, error, info, trace, warn};
+use tracing::{debug, error, trace, warn};
 
 use base64::engine::general_purpose;
 use base64urlsafedata::Base64UrlSafeData;
@@ -23,17 +23,17 @@ use std::fmt;
 use std::time::{Duration, Instant};
 
 use kanidm_proto::v1::OperationError;
+use openssl::error::ErrorStack as OpenSSLErrorStack;
 use openssl::hash::{self, MessageDigest};
 use openssl::nid::Nid;
 use openssl::pkcs5::pbkdf2_hmac;
-use openssl::sha::Sha512;
+use openssl::sha::{Sha1, Sha256, Sha512};
 
-#[cfg(feature = "tpm")]
-pub use tss_esapi::{handles::ObjectHandle as TpmHandle, Context as TpmContext, Error as TpmError};
-#[cfg(not(feature = "tpm"))]
-pub struct TpmContext {}
-#[cfg(not(feature = "tpm"))]
-pub struct TpmHandle {}
+use kanidm_hsm_crypto::{HmacKey, Tpm};
+
+pub mod mtls;
+pub mod prelude;
+pub mod serialise;
 
 // NIST 800-63.b salt should be 112 bits -> 14  8u8.
 const PBKDF2_SALT_LEN: usize = 24;
@@ -48,44 +48,57 @@ const PBKDF2_KEY_LEN: usize = 64;
 const PBKDF2_MIN_NIST_KEY_LEN: usize = 32;
 const PBKDF2_SHA1_MIN_KEY_LEN: usize = 19;
 
-const DS_SSHA512_SALT_LEN: usize = 8;
-const DS_SSHA512_HASH_LEN: usize = 64;
+const DS_SHA_SALT_LEN: usize = 8;
+const DS_SHA1_HASH_LEN: usize = 20;
+const DS_SHA256_HASH_LEN: usize = 32;
+const DS_SHA512_HASH_LEN: usize = 64;
 
 // Taken from the argon2 library and rfc 9106
 const ARGON2_VERSION: u32 = 19;
 const ARGON2_SALT_LEN: usize = 16;
 const ARGON2_KEY_LEN: usize = 32;
+// Default amount of ram we sacrifice per thread is 8MB
 const ARGON2_MIN_RAM_KIB: u32 = 8 * 1024;
-const ARGON2_MAX_RAM_KIB: u32 = 32 * 1024;
+// Max is 64MB. This may change in time.
+const ARGON2_MAX_RAM_KIB: u32 = 64 * 1024;
+// Amount of ram to subtract when we do a T cost iter. This
+// is because t=2 m=32 == t=3 m=20. So we just step down a little
+// to keep the value about the same.
+const ARGON2_TCOST_RAM_ITER_KIB: u32 = 12 * 1024;
 const ARGON2_MIN_T_COST: u32 = 2;
-const ARGON2_MAX_T_COST: u32 = 4;
+const ARGON2_MAX_T_COST: u32 = 16;
 const ARGON2_MAX_P_COST: u32 = 1;
 
 #[derive(Clone, Debug)]
 pub enum CryptoError {
-    Tpm2,
-    Tpm2PublicBuilder,
-    Tpm2FeatureMissing,
-    Tpm2InputExceeded,
-    Tpm2ContextMissing,
-    OpenSSL,
+    Hsm,
+    HsmContextMissing,
+    OpenSSL(u64),
     Md4Disabled,
     Argon2,
     Argon2Version,
     Argon2Parameters,
 }
 
+impl From<OpenSSLErrorStack> for CryptoError {
+    fn from(ossl_err: OpenSSLErrorStack) -> Self {
+        error!(?ossl_err);
+        let code = ossl_err.errors().first().map(|e| e.code()).unwrap_or(0);
+        #[cfg(not(target_family = "windows"))]
+        let result = CryptoError::OpenSSL(code);
+
+        // this is an .into() because on windows it's a u32 not a u64
+        #[cfg(target_family = "windows")]
+        let result = CryptoError::OpenSSL(code.into());
+
+        result
+    }
+}
+
 #[allow(clippy::from_over_into)]
 impl Into<OperationError> for CryptoError {
     fn into(self) -> OperationError {
         OperationError::CryptographyError
-    }
-}
-
-#[cfg(feature = "tpm")]
-impl From<TpmError> for CryptoError {
-    fn from(_e: TpmError) -> Self {
-        CryptoError::Tpm2
     }
 }
 
@@ -111,6 +124,11 @@ pub enum DbPasswordV1 {
     PBKDF2(usize, Vec<u8>, Vec<u8>),
     PBKDF2_SHA1(usize, Vec<u8>, Vec<u8>),
     PBKDF2_SHA512(usize, Vec<u8>, Vec<u8>),
+    SHA1(Vec<u8>),
+    SSHA1(Vec<u8>, Vec<u8>),
+    SHA256(Vec<u8>),
+    SSHA256(Vec<u8>, Vec<u8>),
+    SHA512(Vec<u8>),
     SSHA512(Vec<u8>, Vec<u8>),
     NT_MD4(Vec<u8>),
 }
@@ -149,6 +167,23 @@ pub enum ReplPasswordV1 {
         salt: Base64UrlSafeData,
         hash: Base64UrlSafeData,
     },
+    SHA1 {
+        hash: Base64UrlSafeData,
+    },
+    SSHA1 {
+        salt: Base64UrlSafeData,
+        hash: Base64UrlSafeData,
+    },
+    SHA256 {
+        hash: Base64UrlSafeData,
+    },
+    SSHA256 {
+        salt: Base64UrlSafeData,
+        hash: Base64UrlSafeData,
+    },
+    SHA512 {
+        hash: Base64UrlSafeData,
+    },
     SSHA512 {
         salt: Base64UrlSafeData,
         hash: Base64UrlSafeData,
@@ -166,6 +201,11 @@ impl fmt::Debug for DbPasswordV1 {
             DbPasswordV1::PBKDF2(_, _, _) => write!(f, "PBKDF2"),
             DbPasswordV1::PBKDF2_SHA1(_, _, _) => write!(f, "PBKDF2_SHA1"),
             DbPasswordV1::PBKDF2_SHA512(_, _, _) => write!(f, "PBKDF2_SHA512"),
+            DbPasswordV1::SHA1(_) => write!(f, "SHA1"),
+            DbPasswordV1::SSHA1(_, _) => write!(f, "SSHA1"),
+            DbPasswordV1::SHA256(_) => write!(f, "SHA256"),
+            DbPasswordV1::SSHA256(_, _) => write!(f, "SSHA256"),
+            DbPasswordV1::SHA512(_) => write!(f, "SHA512"),
             DbPasswordV1::SSHA512(_, _) => write!(f, "SSHA512"),
             DbPasswordV1::NT_MD4(_) => write!(f, "NT_MD4"),
         }
@@ -249,10 +289,7 @@ impl CryptoPolicy {
         // thread x ram will be used. If we had 8 threads at 64mb of ram, that would require
         // 512mb of ram alone just for hashing. This becomes worse as core counts scale, with
         // 24 core xeons easily reaching 1.5GB in these cases.
-        //
-        // To try to balance this we cap max ram at 32MB for now.
 
-        // Default amount of ram we sacrifice per thread is 8MB
         let mut m_cost = ARGON2_MIN_RAM_KIB;
         let mut t_cost = ARGON2_MIN_T_COST;
         let p_cost = ARGON2_MAX_P_COST;
@@ -273,7 +310,7 @@ impl CryptoPolicy {
             };
 
             if let Some(ubt) = Password::bench_argon2id(params) {
-                trace!("{}µs - t_cost {} m_cost {}", ubt.as_nanos(), t_cost, m_cost);
+                debug!("{}µs - t_cost {} m_cost {}", ubt.as_nanos(), t_cost, m_cost);
                 // Parameter adjustment
                 if ubt < target_time {
                     if m_cost < ARGON2_MAX_RAM_KIB {
@@ -288,7 +325,7 @@ impl CryptoPolicy {
                             m_cost * 2
                         } else {
                             // Close! Increase in a small step
-                            m_cost + (2 * 1024)
+                            m_cost + 1024
                         };
 
                         m_cost = if m_adjust > ARGON2_MAX_RAM_KIB {
@@ -303,15 +340,20 @@ impl CryptoPolicy {
                         // here though, just to give a little window under that for adjustment.
                         //
                         // Similar, once we hit t=4 we just need to have max ram.
-                        let m_adjust = (t_cost.saturating_sub(ARGON2_MIN_T_COST)
-                            * ARGON2_MIN_RAM_KIB)
-                            + ARGON2_MAX_RAM_KIB;
+                        t_cost += 1;
+                        // Halve the ram cost.
+                        let m_adjust = m_cost
+                            .checked_sub(ARGON2_TCOST_RAM_ITER_KIB)
+                            .unwrap_or(ARGON2_MIN_RAM_KIB);
+
+                        // Floor and Ceil
                         m_cost = if m_adjust > ARGON2_MAX_RAM_KIB {
                             ARGON2_MAX_RAM_KIB
+                        } else if m_adjust < ARGON2_MIN_RAM_KIB {
+                            ARGON2_MIN_RAM_KIB
                         } else {
                             m_adjust
                         };
-                        t_cost += 1;
                         continue;
                     } else {
                         // Unable to proceed, parameters are maxed out.
@@ -336,7 +378,7 @@ impl CryptoPolicy {
             pbkdf2_cost,
             argon2id_params,
         };
-        info!(pbkdf2_cost = %p.pbkdf2_cost, argon2id_m = %p.argon2id_params.m_cost(), argon2id_p = %p.argon2id_params.p_cost(), argon2id_t = %p.argon2id_params.t_cost(), );
+        debug!(pbkdf2_cost = %p.pbkdf2_cost, argon2id_m = %p.argon2id_params.m_cost(), argon2id_p = %p.argon2id_params.p_cost(), argon2id_t = %p.argon2id_params.t_cost(), );
         p
     }
 }
@@ -373,6 +415,11 @@ enum Kdf {
     //           cost,   salt,    hash
     PBKDF2_SHA512(usize, Vec<u8>, Vec<u8>),
     //      salt     hash
+    SHA1(Vec<u8>),
+    SSHA1(Vec<u8>, Vec<u8>),
+    SHA256(Vec<u8>),
+    SSHA256(Vec<u8>, Vec<u8>),
+    SHA512(Vec<u8>),
     SSHA512(Vec<u8>, Vec<u8>),
     //     hash
     NT_MD4(Vec<u8>),
@@ -416,6 +463,21 @@ impl TryFrom<DbPasswordV1> for Password {
             }),
             DbPasswordV1::PBKDF2_SHA512(c, s, h) => Ok(Password {
                 material: Kdf::PBKDF2_SHA512(c, s, h),
+            }),
+            DbPasswordV1::SHA1(h) => Ok(Password {
+                material: Kdf::SHA1(h),
+            }),
+            DbPasswordV1::SSHA1(s, h) => Ok(Password {
+                material: Kdf::SSHA1(s, h),
+            }),
+            DbPasswordV1::SHA256(h) => Ok(Password {
+                material: Kdf::SHA256(h),
+            }),
+            DbPasswordV1::SSHA256(s, h) => Ok(Password {
+                material: Kdf::SSHA256(s, h),
+            }),
+            DbPasswordV1::SHA512(h) => Ok(Password {
+                material: Kdf::SHA512(h),
             }),
             DbPasswordV1::SSHA512(s, h) => Ok(Password {
                 material: Kdf::SSHA512(s, h),
@@ -474,6 +536,21 @@ impl TryFrom<&ReplPasswordV1> for Password {
             }),
             ReplPasswordV1::PBKDF2_SHA512 { cost, salt, hash } => Ok(Password {
                 material: Kdf::PBKDF2_SHA512(*cost, salt.0.clone(), hash.0.clone()),
+            }),
+            ReplPasswordV1::SHA1 { hash } => Ok(Password {
+                material: Kdf::SHA1(hash.0.clone()),
+            }),
+            ReplPasswordV1::SSHA1 { salt, hash } => Ok(Password {
+                material: Kdf::SSHA1(salt.0.clone(), hash.0.clone()),
+            }),
+            ReplPasswordV1::SHA256 { hash } => Ok(Password {
+                material: Kdf::SHA256(hash.0.clone()),
+            }),
+            ReplPasswordV1::SSHA256 { salt, hash } => Ok(Password {
+                material: Kdf::SSHA256(salt.0.clone(), hash.0.clone()),
+            }),
+            ReplPasswordV1::SHA512 { hash } => Ok(Password {
+                material: Kdf::SHA512(hash.0.clone()),
             }),
             ReplPasswordV1::SSHA512 { salt, hash } => Ok(Password {
                 material: Kdf::SSHA512(salt.0.clone(), hash.0.clone()),
@@ -543,12 +620,14 @@ impl TryFrom<&str> for Password {
             let nt_md4 = match value.split_once(' ') {
                 Some((_, v)) => v,
                 None => {
-                    unreachable!();
+                    return Err(());
                 }
             };
 
-            let h = base64::engine::general_purpose::STANDARD_NO_PAD
+            // Great work.
+            let h = base64::engine::general_purpose::URL_SAFE_NO_PAD
                 .decode(nt_md4)
+                .or_else(|_| base64::engine::general_purpose::URL_SAFE.decode(nt_md4))
                 .map_err(|_| ())?;
 
             return Ok(Password {
@@ -560,7 +639,7 @@ impl TryFrom<&str> for Password {
             let nt_md4 = match value.split_once(' ') {
                 Some((_, v)) => v,
                 None => {
-                    unreachable!();
+                    return Err(());
                 }
             };
 
@@ -571,12 +650,71 @@ impl TryFrom<&str> for Password {
         }
 
         // Test 389ds formats
+
+        if let Some(ds_ssha1) = value.strip_prefix("{SHA}") {
+            let h = general_purpose::STANDARD.decode(ds_ssha1).map_err(|_| ())?;
+            if h.len() != DS_SHA1_HASH_LEN {
+                return Err(());
+            }
+            return Ok(Password {
+                material: Kdf::SHA1(h.to_vec()),
+            });
+        }
+
+        if let Some(ds_ssha1) = value.strip_prefix("{SSHA}") {
+            let sh = general_purpose::STANDARD.decode(ds_ssha1).map_err(|_| ())?;
+            let (h, s) = sh.split_at(DS_SHA1_HASH_LEN);
+            if s.len() != DS_SHA_SALT_LEN {
+                return Err(());
+            }
+            return Ok(Password {
+                material: Kdf::SSHA1(s.to_vec(), h.to_vec()),
+            });
+        }
+
+        if let Some(ds_ssha256) = value.strip_prefix("{SHA256}") {
+            let h = general_purpose::STANDARD
+                .decode(ds_ssha256)
+                .map_err(|_| ())?;
+            if h.len() != DS_SHA256_HASH_LEN {
+                return Err(());
+            }
+            return Ok(Password {
+                material: Kdf::SHA256(h.to_vec()),
+            });
+        }
+
+        if let Some(ds_ssha256) = value.strip_prefix("{SSHA256}") {
+            let sh = general_purpose::STANDARD
+                .decode(ds_ssha256)
+                .map_err(|_| ())?;
+            let (h, s) = sh.split_at(DS_SHA256_HASH_LEN);
+            if s.len() != DS_SHA_SALT_LEN {
+                return Err(());
+            }
+            return Ok(Password {
+                material: Kdf::SSHA256(s.to_vec(), h.to_vec()),
+            });
+        }
+
+        if let Some(ds_ssha512) = value.strip_prefix("{SHA512}") {
+            let h = general_purpose::STANDARD
+                .decode(ds_ssha512)
+                .map_err(|_| ())?;
+            if h.len() != DS_SHA512_HASH_LEN {
+                return Err(());
+            }
+            return Ok(Password {
+                material: Kdf::SHA512(h.to_vec()),
+            });
+        }
+
         if let Some(ds_ssha512) = value.strip_prefix("{SSHA512}") {
             let sh = general_purpose::STANDARD
                 .decode(ds_ssha512)
                 .map_err(|_| ())?;
-            let (h, s) = sh.split_at(DS_SSHA512_HASH_LEN);
-            if s.len() != DS_SSHA512_SALT_LEN {
+            let (h, s) = sh.split_at(DS_SHA512_HASH_LEN);
+            if s.len() != DS_SHA_SALT_LEN {
                 return Err(());
             }
             return Ok(Password {
@@ -593,7 +731,7 @@ impl TryFrom<&str> for Password {
             let ol_pbkdf2 = match value.split_once('}') {
                 Some((_, v)) => v,
                 None => {
-                    unreachable!();
+                    return Err(());
                 }
             };
 
@@ -650,7 +788,7 @@ impl TryFrom<&str> for Password {
                 }
 
                 // Should be no way to get here!
-                unreachable!();
+                return Err(());
             } else {
                 warn!("oldap pbkdf2 found but invalid number of elements?");
             }
@@ -785,8 +923,8 @@ impl Password {
             // Turn key to a vec.
             Kdf::PBKDF2(pbkdf2_cost, salt, key)
         })
-        .map_err(|_| CryptoError::OpenSSL)
         .map(|material| Password { material })
+        .map_err(|e| e.into())
     }
 
     pub fn new_argon2id(policy: &CryptoPolicy, cleartext: &str) -> Result<Self, CryptoError> {
@@ -812,11 +950,11 @@ impl Password {
             .map(|material| Password { material })
     }
 
-    pub fn new_argon2id_tpm(
+    pub fn new_argon2id_hsm(
         policy: &CryptoPolicy,
         cleartext: &str,
-        tpm_ctx: &mut TpmContext,
-        tpm_key_handle: TpmHandle,
+        hsm: &mut dyn Tpm,
+        hmac_key: &HmacKey,
     ) -> Result<Self, CryptoError> {
         let version = Version::V0x13;
 
@@ -833,7 +971,12 @@ impl Password {
                 check_key.as_mut_slice(),
             )
             .map_err(|_| CryptoError::Argon2)
-            .and_then(|()| do_tpm_hmac(check_key, tpm_ctx, tpm_key_handle))
+            .and_then(|()| {
+                hsm.hmac(hmac_key, &check_key).map_err(|err| {
+                    error!(?err, "hsm error");
+                    CryptoError::Hsm
+                })
+            })
             .map(|key| Kdf::TPM_ARGON2ID {
                 m_cost: policy.argon2id_params.m_cost(),
                 t_cost: policy.argon2id_params.t_cost(),
@@ -857,9 +1000,9 @@ impl Password {
     pub fn verify_ctx(
         &self,
         cleartext: &str,
-        tpm: Option<(&mut TpmContext, TpmHandle)>,
+        hsm: Option<(&mut dyn Tpm, &HmacKey)>,
     ) -> Result<bool, CryptoError> {
-        match (&self.material, tpm) {
+        match (&self.material, hsm) {
             (
                 Kdf::TPM_ARGON2ID {
                     m_cost,
@@ -869,7 +1012,7 @@ impl Password {
                     salt,
                     key,
                 },
-                Some((tpm_ctx, tpm_key_handle)),
+                Some((hsm, hmac_key)),
             ) => {
                 let version: Version = (*version).try_into().map_err(|_| {
                     error!("Failed to convert {} to valid argon2id version", version);
@@ -897,15 +1040,20 @@ impl Password {
                         error!(err = ?e, "unable to perform argon2id hash");
                         CryptoError::Argon2
                     })
-                    .and_then(|()| do_tpm_hmac(check_key, tpm_ctx, tpm_key_handle))
+                    .and_then(|()| {
+                        hsm.hmac(hmac_key, &check_key).map_err(|err| {
+                            error!(?err, "hsm error");
+                            CryptoError::Hsm
+                        })
+                    })
                     .map(|hmac_key| {
                         // Actually compare the outputs.
                         &hmac_key == key
                     })
             }
             (Kdf::TPM_ARGON2ID { .. }, None) => {
-                error!("Unable to validate password - not tpm context available");
-                Err(CryptoError::Tpm2ContextMissing)
+                error!("Unable to validate password - not hsm context available");
+                Err(CryptoError::HsmContextMissing)
             }
             (
                 Kdf::ARGON2ID {
@@ -962,11 +1110,11 @@ impl Password {
                     MessageDigest::sha256(),
                     chal_key.as_mut_slice(),
                 )
-                .map_err(|_| CryptoError::OpenSSL)
                 .map(|()| {
                     // Actually compare the outputs.
                     &chal_key == key
                 })
+                .map_err(|e| e.into())
             }
             (Kdf::PBKDF2_SHA1(cost, salt, key), _) => {
                 let key_len = key.len();
@@ -979,11 +1127,11 @@ impl Password {
                     MessageDigest::sha1(),
                     chal_key.as_mut_slice(),
                 )
-                .map_err(|_| CryptoError::OpenSSL)
                 .map(|()| {
                     // Actually compare the outputs.
                     &chal_key == key
                 })
+                .map_err(|e| e.into())
             }
             (Kdf::PBKDF2_SHA512(cost, salt, key), _) => {
                 let key_len = key.len();
@@ -996,11 +1144,43 @@ impl Password {
                     MessageDigest::sha512(),
                     chal_key.as_mut_slice(),
                 )
-                .map_err(|_| CryptoError::OpenSSL)
                 .map(|()| {
                     // Actually compare the outputs.
                     &chal_key == key
                 })
+                .map_err(|e| e.into())
+            }
+            (Kdf::SHA1(key), _) => {
+                let mut hasher = Sha1::new();
+                hasher.update(cleartext.as_bytes());
+                let r = hasher.finish();
+                Ok(key == &(r.to_vec()))
+            }
+            (Kdf::SSHA1(salt, key), _) => {
+                let mut hasher = Sha1::new();
+                hasher.update(cleartext.as_bytes());
+                hasher.update(salt);
+                let r = hasher.finish();
+                Ok(key == &(r.to_vec()))
+            }
+            (Kdf::SHA256(key), _) => {
+                let mut hasher = Sha256::new();
+                hasher.update(cleartext.as_bytes());
+                let r = hasher.finish();
+                Ok(key == &(r.to_vec()))
+            }
+            (Kdf::SSHA256(salt, key), _) => {
+                let mut hasher = Sha256::new();
+                hasher.update(cleartext.as_bytes());
+                hasher.update(salt);
+                let r = hasher.finish();
+                Ok(key == &(r.to_vec()))
+            }
+            (Kdf::SHA512(key), _) => {
+                let mut hasher = Sha512::new();
+                hasher.update(cleartext.as_bytes());
+                let r = hasher.finish();
+                Ok(key == &(r.to_vec()))
             }
             (Kdf::SSHA512(salt, key), _) => {
                 let mut hasher = Sha512::new();
@@ -1076,6 +1256,11 @@ impl Password {
             Kdf::PBKDF2_SHA512(cost, salt, hash) => {
                 DbPasswordV1::PBKDF2_SHA512(*cost, salt.clone(), hash.clone())
             }
+            Kdf::SHA1(hash) => DbPasswordV1::SHA1(hash.clone()),
+            Kdf::SSHA1(salt, hash) => DbPasswordV1::SSHA1(salt.clone(), hash.clone()),
+            Kdf::SHA256(hash) => DbPasswordV1::SHA256(hash.clone()),
+            Kdf::SSHA256(salt, hash) => DbPasswordV1::SSHA256(salt.clone(), hash.clone()),
+            Kdf::SHA512(hash) => DbPasswordV1::SHA512(hash.clone()),
             Kdf::SSHA512(salt, hash) => DbPasswordV1::SSHA512(salt.clone(), hash.clone()),
             Kdf::NT_MD4(hash) => DbPasswordV1::NT_MD4(hash.clone()),
         }
@@ -1128,6 +1313,23 @@ impl Password {
                 salt: salt.clone().into(),
                 hash: hash.clone().into(),
             },
+            Kdf::SHA1(hash) => ReplPasswordV1::SHA1 {
+                hash: hash.clone().into(),
+            },
+            Kdf::SSHA1(salt, hash) => ReplPasswordV1::SSHA1 {
+                salt: salt.clone().into(),
+                hash: hash.clone().into(),
+            },
+            Kdf::SHA256(hash) => ReplPasswordV1::SHA256 {
+                hash: hash.clone().into(),
+            },
+            Kdf::SSHA256(salt, hash) => ReplPasswordV1::SSHA256 {
+                salt: salt.clone().into(),
+                hash: hash.clone().into(),
+            },
+            Kdf::SHA512(hash) => ReplPasswordV1::SHA512 {
+                hash: hash.clone().into(),
+            },
             Kdf::SSHA512(salt, hash) => ReplPasswordV1::SSHA512 {
                 salt: salt.clone().into(),
                 hash: hash.clone().into(),
@@ -1164,47 +1366,21 @@ impl Password {
             Kdf::PBKDF2(_, _, _)
             | Kdf::PBKDF2_SHA512(_, _, _)
             | Kdf::PBKDF2_SHA1(_, _, _)
+            | Kdf::SHA1(_)
+            | Kdf::SSHA1(_, _)
+            | Kdf::SHA256(_)
+            | Kdf::SSHA256(_, _)
+            | Kdf::SHA512(_)
             | Kdf::SSHA512(_, _)
             | Kdf::NT_MD4(_) => true,
         }
     }
 }
 
-#[cfg(feature = "tpm")]
-fn do_tpm_hmac(
-    data: Vec<u8>,
-    ctx: &mut TpmContext,
-    key_handle: TpmHandle,
-) -> Result<Vec<u8>, CryptoError> {
-    use tss_esapi::interface_types::algorithm::HashingAlgorithm;
-    use tss_esapi::structures::MaxBuffer;
-
-    let data: MaxBuffer = data.try_into().map_err(|_| {
-        error!("input data exceeds maximum tpm input buffer");
-        CryptoError::Tpm2InputExceeded
-    })?;
-
-    ctx.hmac(key_handle, data.into(), HashingAlgorithm::Sha256)
-        .map(|dgst| dgst.to_vec())
-        .map_err(|e| {
-            error!(tpm_err = ?e, "unable to proceed, tpm error");
-            CryptoError::Tpm2
-        })
-}
-
-#[cfg(not(feature = "tpm"))]
-#[allow(clippy::needless_pass_by_value)]
-fn do_tpm_hmac(
-    _data: Vec<u8>,
-    _ctx: &mut TpmContext,
-    _key_handle: TpmHandle,
-) -> Result<Vec<u8>, CryptoError> {
-    error!("Unable to perform hmac - tpm feature not compiled");
-    Err(CryptoError::Tpm2FeatureMissing)
-}
-
 #[cfg(test)]
 mod tests {
+    use kanidm_hsm_crypto::soft::SoftTpm;
+    use kanidm_hsm_crypto::AuthValue;
     use std::convert::TryFrom;
 
     use crate::*;
@@ -1248,6 +1424,56 @@ mod tests {
         let im_pw = "pbkdf2_sha256$36000$xIEozuZVAoYm$uW1b35DUKyhvQAf1mBqMvoBDcqSD06juzyO/nmyV0+w=";
         let password = "eicieY7ahchaoCh0eeTa";
         let r = Password::try_from(im_pw).expect("Failed to parse");
+        assert!(r.verify(password).unwrap_or(false));
+    }
+
+    #[test]
+    fn test_password_from_ds_sha1() {
+        let im_pw = "{SHA}W6ph5Mm5Pz8GgiULbPgzG37mj9g=";
+        let password = "password";
+        let r = Password::try_from(im_pw).expect("Failed to parse");
+        // Known weak, require upgrade.
+        assert!(r.requires_upgrade());
+        assert!(r.verify(password).unwrap_or(false));
+    }
+
+    #[test]
+    fn test_password_from_ds_ssha1() {
+        let im_pw = "{SSHA}EyzbBiP4u4zxOrLpKTORI/RX3HC6TCTJtnVOCQ==";
+        let password = "password";
+        let r = Password::try_from(im_pw).expect("Failed to parse");
+        // Known weak, require upgrade.
+        assert!(r.requires_upgrade());
+        assert!(r.verify(password).unwrap_or(false));
+    }
+
+    #[test]
+    fn test_password_from_ds_sha256() {
+        let im_pw = "{SHA256}XohImNooBHFR0OVvjcYpJ3NgPQ1qq73WKhHvch0VQtg=";
+        let password = "password";
+        let r = Password::try_from(im_pw).expect("Failed to parse");
+        // Known weak, require upgrade.
+        assert!(r.requires_upgrade());
+        assert!(r.verify(password).unwrap_or(false));
+    }
+
+    #[test]
+    fn test_password_from_ds_ssha256() {
+        let im_pw = "{SSHA256}luYWfFJOZgxySTsJXHgIaCYww4yMpu6yest69j/wO5n5OycuHFV/GQ==";
+        let password = "password";
+        let r = Password::try_from(im_pw).expect("Failed to parse");
+        // Known weak, require upgrade.
+        assert!(r.requires_upgrade());
+        assert!(r.verify(password).unwrap_or(false));
+    }
+
+    #[test]
+    fn test_password_from_ds_sha512() {
+        let im_pw = "{SHA512}sQnzu7wkTrgkQZF+0G1hi5AI3Qmzvv0bXgc5THBqi7mAsdd4Xll27ASbRt9fEyavWi6m0QP9B8lThf+rDKy8hg==";
+        let password = "password";
+        let r = Password::try_from(im_pw).expect("Failed to parse");
+        // Known weak, require upgrade.
+        assert!(r.requires_upgrade());
         assert!(r.verify(password).unwrap_or(false));
     }
 
@@ -1307,7 +1533,7 @@ mod tests {
         let im_pw = "{ARGON2}$argon2id$v=19$m=65536,t=2,p=1$IyTQMsvzB2JHDiWx8fq7Ew$VhYOA7AL0kbRXI5g2kOyyp8St1epkNj7WZyUY4pAIQQ";
         let password = "password";
         let r = Password::try_from(im_pw).expect("Failed to parse");
-        assert!(r.requires_upgrade());
+        assert!(!r.requires_upgrade());
         assert!(r.verify(password).unwrap_or(false));
     }
 
@@ -1351,6 +1577,9 @@ mod tests {
                 }
             }
         }
+
+        let im_pw = "ipaNTHash: pS43DjQLcUYhaNF_cd_Vhw==";
+        Password::try_from(im_pw).expect("Failed to parse");
     }
 
     #[test]
@@ -1373,33 +1602,30 @@ mod tests {
         }
     }
 
-    #[cfg(feature = "tpm")]
     #[test]
-    fn test_password_argon2id_tpm_bind() {
-        use std::str::FromStr;
-
+    fn test_password_argon2id_hsm_bind() {
         sketching::test_init();
 
-        use tss_esapi::{Context, TctiNameConf};
+        let mut hsm: Box<dyn Tpm> = Box::new(SoftTpm::new());
 
-        let mut context =
-            Context::new(TctiNameConf::from_str("device:/dev/tpmrm0").expect("Failed to get TCTI"))
-                .expect("Failed to create Context");
+        let auth_value = AuthValue::ephemeral().unwrap();
 
-        let key = context
-            .execute_with_nullauth_session(|ctx| prepare_tpm_key(ctx))
+        let loadable_machine_key = hsm.machine_key_create(&auth_value).unwrap();
+        let machine_key = hsm
+            .machine_key_load(&auth_value, &loadable_machine_key)
             .unwrap();
+
+        let loadable_hmac_key = hsm.hmac_key_create(&machine_key).unwrap();
+        let key = hsm.hmac_key_load(&machine_key, &loadable_hmac_key).unwrap();
+
+        let ctx: &mut dyn Tpm = &mut *hsm;
 
         let p = CryptoPolicy::minimum();
-        let c = context
-            .execute_with_nullauth_session(|ctx| {
-                Password::new_argon2id_tpm(&p, "password", ctx, key)
-            })
-            .unwrap();
+        let c = Password::new_argon2id_hsm(&p, "password", ctx, &key).unwrap();
 
         assert!(matches!(
             c.verify("password"),
-            Err(CryptoError::Tpm2ContextMissing)
+            Err(CryptoError::HsmContextMissing)
         ));
 
         // Assert it fails without the hmac
@@ -1426,83 +1652,8 @@ mod tests {
 
         assert!(!dup.verify("password").unwrap());
 
-        context
-            .execute_with_nullauth_session(|ctx| {
-                assert!(c.verify_ctx("password", Some((ctx, key))).unwrap());
-                assert!(!c.verify_ctx("password1", Some((ctx, key))).unwrap());
-                assert!(!c.verify_ctx("Password1", Some((ctx, key))).unwrap());
-
-                ctx.flush_context(key).expect("Failed to unload hmac key");
-
-                // Should fail, no key!
-                assert!(matches!(
-                    c.verify_ctx("password", Some((ctx, key))),
-                    Err(CryptoError::Tpm2)
-                ));
-
-                Ok::<(), CryptoError>(())
-            })
-            .unwrap();
-    }
-
-    #[cfg(feature = "tpm")]
-    pub fn prepare_tpm_key(tpm_ctx: &mut TpmContext) -> Result<TpmHandle, CryptoError> {
-        use tss_esapi::{
-            attributes::ObjectAttributesBuilder,
-            interface_types::{
-                algorithm::{HashingAlgorithm, PublicAlgorithm},
-                resource_handles::Hierarchy,
-            },
-            structures::{Digest, KeyedHashScheme, PublicBuilder, PublicKeyedHashParameters},
-        };
-
-        // We generate a digest, which is really some unique small amount of data that
-        // we save into the key context that we are going to save/load. This allows us
-        // to have unique hmac keys compared to other users of the same tpm.
-
-        let digest = tpm_ctx
-            .get_random(16)
-            .map_err(|e| {
-                error!(tpm_err = ?e, "unable to proceed, tpm error");
-                CryptoError::Tpm2
-            })
-            .and_then(|rand| {
-                Digest::try_from(rand).map_err(|e| {
-                    error!(tpm_err = ?e, "unable to proceed, tpm error");
-                    CryptoError::Tpm2
-                })
-            })?;
-
-        let object_attributes = ObjectAttributesBuilder::new()
-            .with_sign_encrypt(true)
-            .with_sensitive_data_origin(true)
-            .with_user_with_auth(true)
-            .build()
-            .map_err(|e| {
-                error!(tpm_err = ?e, "unable to proceed, tpm error");
-                CryptoError::Tpm2
-            })?;
-
-        let key_pub = PublicBuilder::new()
-            .with_public_algorithm(PublicAlgorithm::KeyedHash)
-            .with_name_hashing_algorithm(HashingAlgorithm::Sha256)
-            .with_object_attributes(object_attributes)
-            .with_keyed_hash_parameters(PublicKeyedHashParameters::new(
-                KeyedHashScheme::HMAC_SHA_256,
-            ))
-            .with_keyed_hash_unique_identifier(digest)
-            .build()
-            .map_err(|e| {
-                error!(tpm_err = ?e, "unable to proceed, tpm error");
-                CryptoError::Tpm2
-            })?;
-
-        tpm_ctx
-            .create_primary(Hierarchy::Owner, key_pub, None, None, None, None)
-            .map(|key| key.key_handle.into())
-            .map_err(|e| {
-                error!(tpm_err = ?e, "unable to proceed, tpm error");
-                CryptoError::Tpm2
-            })
+        assert!(c.verify_ctx("password", Some((ctx, &key))).unwrap());
+        assert!(!c.verify_ctx("password1", Some((ctx, &key))).unwrap());
+        assert!(!c.verify_ctx("Password1", Some((ctx, &key))).unwrap());
     }
 }

@@ -188,7 +188,7 @@ impl SearchEvent {
         target_uuid: Uuid,
         qs: &QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
-        let filter_orig = filter_all!(f_eq("uuid", PartialValue::Uuid(target_uuid)))
+        let filter_orig = filter_all!(f_eq(Attribute::Uuid, PartialValue::Uuid(target_uuid)))
             .validate(qs.get_schema())
             .map_err(OperationError::SchemaViolation)?;
         let filter = filter_orig.clone().into_ignore_hidden();
@@ -200,9 +200,11 @@ impl SearchEvent {
         })
     }
 
-    // Just impersonate the account with no filter changes.
+    /// ⚠️  - Bypass the schema state machine and force the filter to be considered valid.
+    /// This is a TEST ONLY method and will never be exposed in production.
     #[cfg(test)]
-    pub unsafe fn new_impersonate_entry_ser(e: &str, filter: Filter<FilterInvalid>) -> Self {
+    pub fn new_impersonate_entry_ser(e: &str, filter: Filter<FilterInvalid>) -> Self {
+        // Just impersonate the account with no filter changes.
         let ei: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(e);
         SearchEvent {
             ident: Identity::from_impersonate_entry_readonly(Arc::new(ei.into_sealed_committed())),
@@ -212,8 +214,10 @@ impl SearchEvent {
         }
     }
 
+    /// ⚠️  - Bypass the schema state machine and force the filter to be considered valid.
+    /// This is a TEST ONLY method and will never be exposed in production.
     #[cfg(test)]
-    pub unsafe fn new_impersonate_entry(
+    pub fn new_impersonate_entry(
         e: Arc<Entry<EntrySealed, EntryCommitted>>,
         filter: Filter<FilterInvalid>,
     ) -> Self {
@@ -225,8 +229,10 @@ impl SearchEvent {
         }
     }
 
+    /// ⚠️  - Bypass the schema state machine and force the filter to be considered valid.
+    /// This is a TEST ONLY method and will never be exposed in production.
     #[cfg(test)]
-    pub unsafe fn new_impersonate_identity(ident: Identity, filter: Filter<FilterInvalid>) -> Self {
+    pub fn new_impersonate_identity(ident: Identity, filter: Filter<FilterInvalid>) -> Self {
         SearchEvent {
             ident,
             filter: filter.clone().into_valid(),
@@ -248,12 +254,14 @@ impl SearchEvent {
         }
     }
 
+    /// ⚠️  - Bypass the schema state machine and force the filter to be considered valid.
+    /// This is a TEST ONLY method and will never be exposed in production.
     #[cfg(test)]
-    /* Impersonate a request for recycled objects */
-    pub unsafe fn new_rec_impersonate_entry(
+    pub fn new_rec_impersonate_entry(
         e: Arc<Entry<EntrySealed, EntryCommitted>>,
         filter: Filter<FilterInvalid>,
     ) -> Self {
+        /* Impersonate a request for recycled objects */
         let filter_orig = filter.into_valid();
         let filter = filter_orig.clone().into_recycled();
         SearchEvent {
@@ -264,12 +272,14 @@ impl SearchEvent {
         }
     }
 
+    /// ⚠️  - Bypass the schema state machine and force the filter to be considered valid.
+    /// This is a TEST ONLY method and will never be exposed in production.
     #[cfg(test)]
-    /* Impersonate an external request AKA filter ts + recycle */
-    pub unsafe fn new_ext_impersonate_entry(
+    pub fn new_ext_impersonate_entry(
         e: Arc<Entry<EntrySealed, EntryCommitted>>,
         filter: Filter<FilterInvalid>,
     ) -> Self {
+        /* Impersonate an external request AKA filter ts + recycle */
         SearchEvent {
             ident: Identity::from_impersonate_entry_readonly(e),
             filter: filter.clone().into_valid().into_ignore_hidden(),
@@ -298,8 +308,10 @@ impl SearchEvent {
         })
     }
 
+    /// ⚠️  - Bypass the schema state machine and force the filter to be considered valid.
+    /// This is a TEST ONLY method and will never be exposed in production.
     #[cfg(test)]
-    pub unsafe fn new_internal_invalid(filter: Filter<FilterInvalid>) -> Self {
+    pub fn new_internal_invalid(filter: Filter<FilterInvalid>) -> Self {
         SearchEvent {
             ident: Identity::from_internal(),
             filter: filter.clone().into_valid(),
@@ -355,11 +367,10 @@ impl CreateEvent {
         }
     }
 
+    /// ⚠️  - Use an unsafe entry impersonation method.
+    /// This is a TEST ONLY method and will never be exposed in production.
     #[cfg(test)]
-    pub unsafe fn new_impersonate_entry_ser(
-        e: &str,
-        entries: Vec<Entry<EntryInit, EntryNew>>,
-    ) -> Self {
+    pub fn new_impersonate_entry_ser(e: &str, entries: Vec<Entry<EntryInit, EntryNew>>) -> Self {
         let ei: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(e);
         CreateEvent {
             ident: Identity::from_impersonate_entry_readwrite(Arc::new(ei.into_sealed_committed())),
@@ -401,9 +412,10 @@ impl ExistsEvent {
         }
     }
 
+    /// ⚠️  - Bypass the schema state machine and force the filter to be considered valid.
+    /// This is a TEST ONLY method and will never be exposed in production.
     #[cfg(test)]
-    #[allow(dead_code)]
-    pub unsafe fn new_internal_invalid(filter: Filter<FilterInvalid>) -> Self {
+    pub fn new_internal_invalid(filter: Filter<FilterInvalid>) -> Self {
         ExistsEvent {
             ident: Identity::from_internal(),
             filter: filter.clone().into_valid(),
@@ -459,8 +471,10 @@ impl DeleteEvent {
         })
     }
 
+    /// ⚠️  - Bypass the schema state machine and force the filter to be considered valid.
+    /// This is a TEST ONLY method and will never be exposed in production.
     #[cfg(test)]
-    pub unsafe fn new_impersonate_entry(
+    pub fn new_impersonate_entry(
         e: Arc<Entry<EntrySealed, EntryCommitted>>,
         filter: Filter<FilterInvalid>,
     ) -> Self {
@@ -471,19 +485,21 @@ impl DeleteEvent {
         }
     }
 
+    /// ⚠️  - Bypass the schema state machine, allowing an invalid filter to be used in an impersonate request.
+    /// This is a TEST ONLY method and will never be exposed in production.
     #[cfg(test)]
     pub fn new_impersonate_identity(ident: Identity, filter: Filter<FilterInvalid>) -> Self {
-        unsafe {
-            DeleteEvent {
-                ident,
-                filter: filter.clone().into_valid(),
-                filter_orig: filter.into_valid(),
-            }
+        DeleteEvent {
+            ident,
+            filter: filter.clone().into_valid(),
+            filter_orig: filter.into_valid(),
         }
     }
 
+    /// ⚠️  - Bypass the schema state machine and force the filter to be considered valid.
+    /// This is a TEST ONLY method and will never be exposed in production.
     #[cfg(test)]
-    pub unsafe fn new_impersonate_entry_ser(e: &str, filter: Filter<FilterInvalid>) -> Self {
+    pub fn new_impersonate_entry_ser(e: &str, filter: Filter<FilterInvalid>) -> Self {
         let ei: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(e);
         DeleteEvent {
             ident: Identity::from_impersonate_entry_readwrite(Arc::new(ei.into_sealed_committed())),
@@ -492,8 +508,10 @@ impl DeleteEvent {
         }
     }
 
+    /// ⚠️  - Bypass the schema state machine and force the filter to be considered valid.
+    /// This is a TEST ONLY method and will never be exposed in production.
     #[cfg(test)]
-    pub unsafe fn new_internal_invalid(filter: Filter<FilterInvalid>) -> Self {
+    pub fn new_internal_invalid(filter: Filter<FilterInvalid>) -> Self {
         DeleteEvent {
             ident: Identity::from_internal(),
             filter: filter.clone().into_valid(),
@@ -550,7 +568,7 @@ impl ModifyEvent {
         filter: Filter<FilterInvalid>,
         qs: &mut QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
-        let f_uuid = filter_all!(f_eq("uuid", PartialValue::Uuid(target_uuid)));
+        let f_uuid = filter_all!(f_eq(Attribute::Uuid, PartialValue::Uuid(target_uuid)));
         // Add any supplemental conditions we have.
         let f = Filter::join_parts_and(f_uuid, filter);
 
@@ -596,12 +614,12 @@ impl ModifyEvent {
     pub fn from_target_uuid_attr_purge(
         ident: Identity,
         target_uuid: Uuid,
-        attr: &str,
+        attr: Attribute,
         filter: Filter<FilterInvalid>,
         qs: &QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
         let ml = ModifyList::new_purge(attr);
-        let f_uuid = filter_all!(f_eq("uuid", PartialValue::Uuid(target_uuid)));
+        let f_uuid = filter_all!(f_eq(Attribute::Uuid, PartialValue::Uuid(target_uuid)));
         // Add any supplemental conditions we have.
         let f = Filter::join_parts_and(f_uuid, filter);
 
@@ -629,8 +647,10 @@ impl ModifyEvent {
         }
     }
 
+    /// ⚠️  - Bypass the schema state machine and force the filter to be considered valid.
+    /// This is a TEST ONLY method and will never be exposed in production.
     #[cfg(test)]
-    pub unsafe fn new_internal_invalid(
+    pub fn new_internal_invalid(
         filter: Filter<FilterInvalid>,
         modlist: ModifyList<ModifyInvalid>,
     ) -> Self {
@@ -642,13 +662,15 @@ impl ModifyEvent {
         }
     }
 
+    /// ⚠️  - Bypass the schema state machine and force the filter to be considered valid.
+    /// This is a TEST ONLY method and will never be exposed in production.
     #[cfg(test)]
-    pub unsafe fn new_impersonate_entry_ser(
-        e: &str,
+    pub fn new_impersonate_entry_ser(
+        e: BuiltinAccount,
         filter: Filter<FilterInvalid>,
         modlist: ModifyList<ModifyInvalid>,
     ) -> Self {
-        let ei: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(e);
+        let ei: EntryInitNew = e.into();
         ModifyEvent {
             ident: Identity::from_impersonate_entry_readwrite(Arc::new(ei.into_sealed_committed())),
             filter: filter.clone().into_valid(),
@@ -657,8 +679,10 @@ impl ModifyEvent {
         }
     }
 
+    /// ⚠️  - Bypass the schema state machine and force the filter to be considered valid.
+    /// This is a TEST ONLY method and will never be exposed in production.
     #[cfg(test)]
-    pub unsafe fn new_impersonate_identity(
+    pub fn new_impersonate_identity(
         ident: Identity,
         filter: Filter<FilterInvalid>,
         modlist: ModifyList<ModifyInvalid>,
@@ -671,8 +695,10 @@ impl ModifyEvent {
         }
     }
 
+    /// ⚠️  - Bypass the schema state machine and force the filter to be considered valid.
+    /// This is a TEST ONLY method and will never be exposed in production.
     #[cfg(test)]
-    pub unsafe fn new_impersonate_entry(
+    pub fn new_impersonate_entry(
         e: Arc<Entry<EntrySealed, EntryCommitted>>,
         filter: Filter<FilterInvalid>,
         modlist: ModifyList<ModifyInvalid>,
@@ -808,8 +834,10 @@ impl ReviveRecycledEvent {
         Ok(ReviveRecycledEvent { ident, filter })
     }
 
+    /// ⚠️  - Bypass the schema state machine and force the filter to be considered valid.
+    /// This is a TEST ONLY method and will never be exposed in production.
     #[cfg(test)]
-    pub unsafe fn new_impersonate_entry(
+    pub fn new_impersonate_entry(
         e: Arc<Entry<EntrySealed, EntryCommitted>>,
         filter: Filter<FilterInvalid>,
     ) -> Self {

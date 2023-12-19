@@ -7,7 +7,7 @@ import socket
 from typing import Any, Dict, List, Optional
 from urllib.parse import urlparse
 
-from pydantic import BaseModel, Field, validator
+from pydantic import field_validator, ConfigDict, BaseModel, Field, RootModel
 import toml
 
 
@@ -19,15 +19,12 @@ class ClientResponse(BaseModel):
     status_code: int
     """
 
-    content: Optional[str]
-    data: Optional[Dict[str, Any]]
+    content: Optional[str] = None
+    # the data field is used for the json-parsed response
+    data: Optional[Any] = None
     headers: Dict[str, Any]
     status_code: int
-
-    class Config:
-        """Configuration"""
-
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
 class AuthInitResponse(BaseModel):
@@ -41,12 +38,8 @@ class AuthInitResponse(BaseModel):
 
     sessionid: str
     state: _AuthInitState
-    response: Optional[ClientResponse]
-
-    class Config:
-        """config class"""
-
-        arbitrary_types_allowed = True
+    response: Optional[ClientResponse] = None
+    # model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
 class AuthBeginResponse(BaseModel):
@@ -62,32 +55,25 @@ class AuthBeginResponse(BaseModel):
         continue_list: List[str] = Field(..., title="continue", alias="continue")
 
     # TODO: can we add validation for AuthBeginResponse.state.continue_list?
-    sessionid: str
+    # this should be pulled from the response headers as x-kanidm-auth-session-id
+    sessionid: Optional[str]
     state: _AuthBeginState
-    response: Optional[ClientResponse]
-
-    class Config:
-        """config class"""
-
-        arbitrary_types_allowed = True
+    response: Optional[ClientResponse] = None
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
-class AuthStepPasswordResponse(BaseModel):
-    """helps parse the response from the auth 'password' stage"""
+class AuthState(BaseModel):
+    """authstate struct"""
 
-    class _AuthStepPasswordState(BaseModel):
-        """subclass to help parse the response from the auth 'step password' stage"""
+    class _InternalState(BaseModel):
+        """subclass to help parse the response from the auth step stage"""
 
-        success: Optional[str]
+        success: Optional[str] = None
 
-    sessionid: str
-    state: _AuthStepPasswordState
-    response: Optional[ClientResponse]
-
-    class Config:
-        """config class"""
-
-        arbitrary_types_allowed = True
+    state: _InternalState
+    sessionid: Optional[str] = None
+    response: Optional[ClientResponse] = None
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
 class RadiusGroup(BaseModel):
@@ -96,7 +82,8 @@ class RadiusGroup(BaseModel):
     spn: str
     vlan: int
 
-    @validator("vlan")
+    @field_validator("vlan")
+    @classmethod
     def validate_vlan(cls, value: int) -> int:
         """validate the vlan option is above 0"""
         if not value > 0:
@@ -120,11 +107,7 @@ class RadiusTokenResponse(BaseModel):
     uuid: str
 
     groups: List[RadiusTokenGroup]
-
-    class Config:
-        """config for RadiusTokenGroupList"""
-
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
 class RadiusClient(BaseModel):
@@ -146,7 +129,8 @@ class RadiusClient(BaseModel):
     ipaddr: str
     secret: str  # TODO: this should probably be renamed to token
 
-    @validator("ipaddr")
+    @field_validator("ipaddr")
+    @classmethod
     def validate_ipaddr(cls, value: str) -> str:
         """validates the ipaddr field is an IP address, CIDR or valid hostname"""
         for typedef in (IPv6Network, IPv6Address, IPv4Address, IPv4Network):
@@ -177,7 +161,7 @@ class KanidmClientConfig(BaseModel):
 
     verify_hostnames: bool = True
     verify_certificate: bool = True
-    ca_path: Optional[str] = None
+    ca_path: Optional[str] = Field(default=None, alias='verify_ca')
 
     username: Optional[str] = None
     password: Optional[str] = None
@@ -198,9 +182,10 @@ class KanidmClientConfig(BaseModel):
     @classmethod
     def parse_toml(cls, input_string: str) -> Any:
         """loads from a string"""
-        return super().parse_obj(toml.loads(input_string))
+        return super().model_validate(toml.loads(input_string))
 
-    @validator("uri")
+    @field_validator("uri")
+    @classmethod
     def validate_uri(cls, value: Optional[str]) -> Optional[str]:
         """validator for the uri field"""
         if value is not None:
@@ -216,3 +201,50 @@ class KanidmClientConfig(BaseModel):
                 value = f"{value}/"
 
         return value
+
+
+class GroupInfo(BaseModel):
+    """nicer"""
+
+    name: str
+    dynmember: List[str]
+    member: List[str]
+    spn: str
+    uuid: str
+    # posix-enabled group
+    gidnumber: Optional[int]
+
+    def has_member(self, member: str) -> bool:
+        """check if a member is in the group"""
+        return member in self.member or member in self.dynmember
+
+
+class RawGroupInfo(BaseModel):
+    """group information as it comes back from the API"""
+
+    attrs: Dict[str, List[str]]
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    def as_groupinfo(self) -> GroupInfo:
+        """return it as the GroupInfo object which has nicer fields"""
+        for field in "name", "uuid", "spn":
+            if field not in self.attrs:
+                raise ValueError(f"Missing field {field} in {self.attrs}")
+
+        # we want either the first element of gidnumber_field, or None
+        gidnumber_field = self.attrs.get("gidnumber", [])
+        gidnumber: Optional[int] = None
+        if len(gidnumber_field) > 0:
+            gidnumber = int(gidnumber_field[0])
+
+        return GroupInfo(
+            name=self.attrs["name"][0],
+            uuid=self.attrs["uuid"][0],
+            spn=self.attrs["spn"][0],
+            member=self.attrs.get("member", []),
+            dynmember=self.attrs.get("dynmember", []),
+            gidnumber=gidnumber,
+        )
+
+
+GroupList = RootModel[List[RawGroupInfo]]

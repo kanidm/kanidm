@@ -110,7 +110,7 @@ impl LdapClient {
                 error!("Failed to initialise TLS -> {:?}", e);
             })?;
 
-        let mut framed = Framed::new(tlsstream, LdapCodec);
+        let mut framed = Framed::new(tlsstream, LdapCodec::default());
 
         framed.send(msg).await.map_err(|e| {
             error!("Unable to bind -> {:?}", e);

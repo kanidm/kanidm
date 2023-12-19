@@ -23,7 +23,11 @@ use base64urlsafedata::Base64UrlSafeData;
 use chrono::Utc;
 use clap::Parser;
 use cron::Schedule;
-use std::collections::{BTreeMap, HashMap};
+use kanidm_proto::constants::{
+    ATTR_UID, LDAP_ATTR_CN, LDAP_ATTR_OBJECTCLASS, LDAP_CLASS_GROUPOFNAMES,
+};
+use kanidmd_lib::prelude::{Attribute, EntryClass};
+use std::collections::BTreeMap;
 use std::fs::metadata;
 use std::fs::File;
 use std::io::Read;
@@ -49,13 +53,14 @@ use uuid::Uuid;
 
 use kanidm_client::KanidmClientBuilder;
 use kanidm_proto::scim_v1::{
-    MultiValueAttr, ScimEntry, ScimExternalMember, ScimSyncGroup, ScimSyncPerson, ScimSyncRequest,
-    ScimSyncRetentionMode, ScimSyncState, ScimTotp,
+    MultiValueAttr, ScimEntry, ScimExternalMember, ScimSshPubKey, ScimSyncGroup, ScimSyncPerson,
+    ScimSyncRequest, ScimSyncRetentionMode, ScimSyncState, ScimTotp,
 };
-use kanidmd_lib::utils::file_permissions_readonly;
+
+use kanidm_lib_file_permissions::readonly as file_permissions_readonly;
 
 #[cfg(target_family = "unix")]
-use users::{get_current_gid, get_current_uid, get_effective_gid, get_effective_uid};
+use kanidm_utils_users::{get_current_gid, get_current_uid, get_effective_gid, get_effective_uid};
 
 use ldap3_client::{
     proto, proto::LdapFilter, LdapClient, LdapClientBuilder, LdapSyncRepl, LdapSyncReplEntry,
@@ -72,6 +77,8 @@ async fn driver_main(opt: Opt) {
         Ok(f) => f,
         Err(e) => {
             error!("Unable to open profile file [{:?}] 🥺", e);
+            let diag = kanidm_lib_file_permissions::diagnose_path(&opt.ipa_sync_config);
+            info!(%diag);
             return;
         }
     };
@@ -188,30 +195,35 @@ async fn driver_main(opt: Opt) {
                     }
                     Some(()) = async move {
                         let sigterm = tokio::signal::unix::SignalKind::terminate();
+                        #[allow(clippy::unwrap_used)]
                         tokio::signal::unix::signal(sigterm).unwrap().recv().await
                     } => {
                         break
                     }
                     Some(()) = async move {
                         let sigterm = tokio::signal::unix::SignalKind::alarm();
+                        #[allow(clippy::unwrap_used)]
                         tokio::signal::unix::signal(sigterm).unwrap().recv().await
                     } => {
                         // Ignore
                     }
                     Some(()) = async move {
                         let sigterm = tokio::signal::unix::SignalKind::hangup();
+                        #[allow(clippy::unwrap_used)]
                         tokio::signal::unix::signal(sigterm).unwrap().recv().await
                     } => {
                         // Ignore
                     }
                     Some(()) = async move {
                         let sigterm = tokio::signal::unix::SignalKind::user_defined1();
+                        #[allow(clippy::unwrap_used)]
                         tokio::signal::unix::signal(sigterm).unwrap().recv().await
                     } => {
                         // Ignore
                     }
                     Some(()) = async move {
                         let sigterm = tokio::signal::unix::SignalKind::user_defined2();
+                        #[allow(clippy::unwrap_used)]
                         tokio::signal::unix::signal(sigterm).unwrap().recv().await
                     } => {
                         // Ignore
@@ -348,35 +360,43 @@ async fn run_sync(
     let is_initialise = cookie.is_none();
 
     let filter = LdapFilter::Or(vec![
-        // LdapFilter::Equality("objectclass".to_string(), "domain".to_string()),
+        // LdapFilter::Equality(LDAP_ATTR_OBJECTCLASS.into(), "domain".to_string()),
         LdapFilter::And(vec![
-            LdapFilter::Equality("objectclass".to_string(), "person".to_string()),
-            LdapFilter::Equality("objectclass".to_string(), "ipantuserattrs".to_string()),
-            LdapFilter::Equality("objectclass".to_string(), "posixaccount".to_string()),
+            LdapFilter::Equality(LDAP_ATTR_OBJECTCLASS.into(), "person".to_string()),
+            LdapFilter::Equality(LDAP_ATTR_OBJECTCLASS.into(), "posixaccount".to_string()),
         ]),
         LdapFilter::And(vec![
-            LdapFilter::Equality("objectclass".to_string(), "groupofnames".to_string()),
-            LdapFilter::Equality("objectclass".to_string(), "ipausergroup".to_string()),
+            LdapFilter::Equality(LDAP_ATTR_OBJECTCLASS.into(), "groupofnames".to_string()),
+            LdapFilter::Equality(LDAP_ATTR_OBJECTCLASS.into(), "ipausergroup".to_string()),
             // Ignore user private groups, kani generates these internally.
             LdapFilter::Not(Box::new(LdapFilter::Equality(
-                "objectclass".to_string(),
+                LDAP_ATTR_OBJECTCLASS.into(),
                 "mepmanagedentry".to_string(),
             ))),
             // Need to exclude the admins group as it gid conflicts to admin.
             LdapFilter::Not(Box::new(LdapFilter::Equality(
-                "cn".to_string(),
+                LDAP_ATTR_CN.into(),
                 "admins".to_string(),
             ))),
             // Kani internally has an all persons group.
             LdapFilter::Not(Box::new(LdapFilter::Equality(
-                "cn".to_string(),
+                LDAP_ATTR_CN.into(),
                 "ipausers".to_string(),
+            ))),
+            // Ignore editors/trust admins
+            LdapFilter::Not(Box::new(LdapFilter::Equality(
+                LDAP_ATTR_CN.into(),
+                "editors".to_string(),
+            ))),
+            LdapFilter::Not(Box::new(LdapFilter::Equality(
+                LDAP_ATTR_CN.into(),
+                "trust admins".to_string(),
             ))),
         ]),
         // Fetch TOTP's so we know when/if they change.
         LdapFilter::And(vec![
-            LdapFilter::Equality("objectclass".to_string(), "ipatoken".to_string()),
-            LdapFilter::Equality("objectclass".to_string(), "ipatokentotp".to_string()),
+            LdapFilter::Equality(LDAP_ATTR_OBJECTCLASS.into(), "ipatoken".to_string()),
+            LdapFilter::Equality(LDAP_ATTR_OBJECTCLASS.into(), "ipatokentotp".to_string()),
         ]),
     ]);
 
@@ -431,10 +451,14 @@ async fn run_sync(
 
             // process the entries to scim.
             let entries = match process_ipa_sync_result(
-                ipa_client,
+                &mut ipa_client,
+                sync_config.ipa_sync_base_dn.clone(),
                 entries,
                 &sync_config.entry_map,
                 is_initialise,
+                sync_config
+                    .sync_password_as_unix_password
+                    .unwrap_or_default(),
             )
             .await
             {
@@ -495,10 +519,12 @@ async fn run_sync(
 }
 
 async fn process_ipa_sync_result(
-    _ipa_client: LdapClient,
+    ipa_client: &mut LdapClient,
+    basedn: String,
     ldap_entries: Vec<LdapSyncReplEntry>,
-    entry_config_map: &HashMap<Uuid, EntryConfig>,
+    entry_config_map: &BTreeMap<Uuid, EntryConfig>,
     is_initialise: bool,
+    sync_password_as_unix_password: bool,
 ) -> Result<Vec<ScimEntry>, ()> {
     // Because of how TOTP works with freeipa it's a soft referral from
     // the totp toward the user. This means if a TOTP is added or removed
@@ -541,7 +567,7 @@ async fn process_ipa_sync_result(
         if lentry
             .entry
             .attrs
-            .get("objectclass")
+            .get(LDAP_ATTR_OBJECTCLASS)
             .map(|oc| oc.contains("ipatokentotp"))
             .unwrap_or_default()
         {
@@ -572,8 +598,8 @@ async fn process_ipa_sync_result(
             if lentry
                 .entry
                 .attrs
-                .get("objectclass")
-                .map(|oc| oc.contains("person"))
+                .get(LDAP_ATTR_OBJECTCLASS)
+                .map(|oc| oc.contains(EntryClass::Person.as_ref()))
                 .unwrap_or_default()
             {
                 user_dns.push(dn.clone());
@@ -590,7 +616,7 @@ async fn process_ipa_sync_result(
 
     // On a refresh, we need to search and fix up to make sure TOTP/USER sets are
     // consistent.
-    if !is_initialise {
+    let search_filter = if !is_initialise {
         // If the totp's related user is NOT in our sync repl, we need to fetch them.
         let fetch_user: Vec<&str> = totp_entries
             .keys()
@@ -607,41 +633,111 @@ async fn process_ipa_sync_result(
             .collect();
 
         // Create filter (could hit a limit, may need to split this search).
-
         let totp_conditions: Vec<_> = fetch_totps_for
             .iter()
             .map(|dn| LdapFilter::Equality("ipatokenowner".to_string(), dn.to_string()))
             .collect();
 
-        let user_conditions = fetch_user
+        let mut or_filter = Vec::with_capacity(2);
+
+        if !totp_conditions.is_empty() {
+            or_filter.push(LdapFilter::And(vec![
+                LdapFilter::Equality(LDAP_ATTR_OBJECTCLASS.into(), "ipatoken".to_string()),
+                LdapFilter::Equality(LDAP_ATTR_OBJECTCLASS.into(), "ipatokentotp".to_string()),
+                LdapFilter::Or(totp_conditions),
+            ]));
+        }
+
+        let user_conditions: Vec<_> = fetch_user
             .iter()
             .filter_map(|dn| {
                 // We have to split the DN to it's RDN because lol.
                 dn.split_once(',')
                     .and_then(|(rdn, _)| rdn.split_once('='))
-                    .map(|(_, uid)| LdapFilter::Equality("uid".to_string(), uid.to_string()))
+                    .map(|(_, uid)| LdapFilter::Equality(ATTR_UID.to_string(), uid.to_string()))
             })
             .collect();
 
-        let filter = LdapFilter::Or(vec![
-            LdapFilter::And(vec![
-                LdapFilter::Equality("objectclass".to_string(), "ipatoken".to_string()),
-                LdapFilter::Equality("objectclass".to_string(), "ipatokentotp".to_string()),
-                LdapFilter::Or(totp_conditions),
-            ]),
-            LdapFilter::And(vec![
-                LdapFilter::Equality("objectclass".to_string(), "person".to_string()),
-                LdapFilter::Equality("objectclass".to_string(), "ipantuserattrs".to_string()),
-                LdapFilter::Equality("objectclass".to_string(), "posixaccount".to_string()),
+        if !user_conditions.is_empty() {
+            or_filter.push(LdapFilter::And(vec![
+                LdapFilter::Equality(LDAP_ATTR_OBJECTCLASS.into(), "person".to_string()),
+                LdapFilter::Equality(LDAP_ATTR_OBJECTCLASS.into(), "ipantuserattrs".to_string()),
+                LdapFilter::Equality(LDAP_ATTR_OBJECTCLASS.into(), "posixaccount".to_string()),
                 LdapFilter::Or(user_conditions),
-            ]),
-        ]);
+            ]));
+        }
 
+        if or_filter.is_empty() {
+            None
+        } else {
+            Some(LdapFilter::Or(or_filter))
+        }
+    } else {
+        None
+    };
+
+    // If we have something that needs lookup, apply now.
+    if let Some(filter) = search_filter {
         debug!(?filter);
+        // Search - we use syncrepl here and discard the cookie because we need the
+        // entry uuid to be given from the nsuniqueid else we have issues.
+        let mode = proto::SyncRequestMode::RefreshOnly;
+        match ipa_client.syncrepl(basedn, filter, None, mode).await {
+            Ok(LdapSyncRepl::Success {
+                cookie: _,
+                refresh_deletes: _,
+                entries: sync_entries,
+                delete_uuids: _,
+                present_uuids: _,
+            }) => {
+                // Inject all new entries to our maps. At this point we discard the original content
+                // of the totp entries since we just fetched them all again anyway.
 
-        // Search
-        // Inject all new entries to our maps. At this point we discard the original content
-        // of the totp entries since we just fetched them all again anyway.
+                totp_entries.clear();
+
+                for lentry in sync_entries.into_iter() {
+                    if lentry
+                        .entry
+                        .attrs
+                        .get(LDAP_ATTR_OBJECTCLASS)
+                        .map(|oc| oc.contains("ipatokentotp"))
+                        .unwrap_or_default()
+                    {
+                        let token_owner_dn = if let Some(todn) = lentry
+                            .entry
+                            .attrs
+                            .get("ipatokenowner")
+                            .and_then(|attr| if attr.len() != 1 { None } else { attr.first() })
+                        {
+                            debug!("totp with owner {}", todn);
+                            todn.clone()
+                        } else {
+                            warn!("totp with invalid ownership will be ignored");
+                            continue;
+                        };
+
+                        if !totp_entries.contains_key(&token_owner_dn) {
+                            totp_entries.insert(token_owner_dn.clone(), Vec::default());
+                        }
+
+                        if let Some(v) = totp_entries.get_mut(&token_owner_dn) {
+                            v.push(lentry)
+                        }
+                    } else {
+                        let dn = lentry.entry.dn.clone();
+                        entries.insert(dn, lentry);
+                    }
+                }
+            }
+            Ok(LdapSyncRepl::RefreshRequired) => {
+                error!("Failed due to invalid search state from ipa");
+                return Err(());
+            }
+            Err(e) => {
+                error!(?e, "Failed to perform search from ipa");
+                return Err(());
+            }
+        }
     }
 
     // For each updated TOTP -> If it's related DN is not in Hash -> remove from map
@@ -666,7 +762,7 @@ async fn process_ipa_sync_result(
 
             let totp = totp_entries.get(&dn).unwrap_or(&empty_slice);
 
-            match ipa_to_scim_entry(e, &e_config, totp) {
+            match ipa_to_scim_entry(e, &e_config, totp, sync_password_as_unix_password) {
                 Ok(Some(e)) => Some(Ok(e)),
                 Ok(None) => None,
                 Err(()) => Some(Err(())),
@@ -675,16 +771,16 @@ async fn process_ipa_sync_result(
         .collect::<Result<Vec<_>, _>>()
 }
 
-// TODO: Allow re-map of uuid -> uuid
-
 fn ipa_to_scim_entry(
     sync_entry: LdapSyncReplEntry,
     entry_config: &EntryConfig,
     totp: &[LdapSyncReplEntry],
+    sync_password_as_unix_password: bool,
 ) -> Result<Option<ScimEntry>, ()> {
     debug!("{:#?}", sync_entry);
 
     // check the sync_entry state?
+    #[allow(clippy::unimplemented)]
     if sync_entry.state != LdapSyncStateValue::Add {
         unimplemented!();
     }
@@ -697,9 +793,14 @@ fn ipa_to_scim_entry(
         return Ok(None);
     }
 
-    let oc = sync_entry.entry.attrs.get("objectclass").ok_or_else(|| {
-        error!("Invalid entry - no object class {}", dn);
-    })?;
+    let oc = sync_entry
+        .entry
+        .attrs
+        .get(LDAP_ATTR_OBJECTCLASS)
+        .ok_or_else(|| {
+            debug!(?sync_entry);
+            error!("Invalid entry - no object class {}", dn);
+        })?;
 
     if oc.contains("person") {
         let LdapSyncReplEntry {
@@ -717,9 +818,11 @@ fn ipa_to_scim_entry(
         let user_name = if let Some(name) = entry_config.map_name.clone() {
             name
         } else {
-            entry.remove_ava_single("uid").ok_or_else(|| {
-                error!("Missing required attribute uid");
-            })?
+            entry
+                .remove_ava_single(Attribute::Uid.as_ref())
+                .ok_or_else(|| {
+                    error!("Missing required attribute {}", Attribute::Uid);
+                })?
         };
 
         // ⚠️  hardcoded skip on admin here!!!
@@ -728,33 +831,43 @@ fn ipa_to_scim_entry(
             return Ok(None);
         }
 
-        let display_name = entry.remove_ava_single("cn").ok_or_else(|| {
-            error!("Missing required attribute cn");
-        })?;
+        let display_name = entry
+            .remove_ava_single(Attribute::Cn.as_ref())
+            .ok_or_else(|| {
+                error!("Missing required attribute {}", Attribute::Cn);
+            })?;
 
-        let gidnumber = if let Some(number) = entry_config.map_gidnumber.clone() {
+        // There are some installs that incorrectly assign this to a shared
+        // group.
+        let gidnumber = if let Some(number) = entry_config.map_gidnumber {
             Some(number)
         } else {
             entry
-                .remove_ava_single("gidnumber")
-                .map(|gid| {
-                    u32::from_str(&gid).map_err(|_| {
-                        error!("Invalid gidnumber");
+                .remove_ava_single(Attribute::UidNumber.as_ref())
+                .map(|uid| {
+                    u32::from_str(&uid).map_err(|_| {
+                        error!("Invalid {}", Attribute::UidNumber);
                     })
                 })
                 .transpose()?
         };
 
         let password_import = entry
-            .remove_ava_single("ipanthash")
+            .remove_ava_single(Attribute::IpaNtHash.as_ref())
             .map(|s| format!("ipaNTHash: {}", s))
             // If we don't have this, try one of the other hashes that *might* work
             // The reason we don't do this by default is there are multiple
             // pw hash formats in 389-ds we don't support!
-            .or_else(|| entry.remove_ava_single("userpassword"));
+            .or_else(|| entry.remove_ava_single(Attribute::UserPassword.as_ref()));
+
+        let unix_password_import = if sync_password_as_unix_password {
+            password_import.clone()
+        } else {
+            None
+        };
 
         let mail: Vec<_> = entry
-            .remove_ava("mail")
+            .remove_ava(Attribute::Mail.as_ref())
             .map(|set| {
                 set.into_iter()
                     .map(|addr| MultiValueAttr {
@@ -783,7 +896,37 @@ fn ipa_to_scim_entry(
             Vec::default()
         };
 
-        let login_shell = entry.remove_ava_single("loginshell");
+        let ssh_publickey = entry
+            .remove_ava(Attribute::IpaSshPubKey.as_ref())
+            .map(|set| {
+                set.into_iter()
+                    .enumerate()
+                    .map(|(i, value)| ScimSshPubKey {
+                        label: format!("{}-{}", Attribute::IpaSshPubKey, i),
+                        value,
+                    })
+                    .collect()
+            })
+            .unwrap_or_default();
+
+        let account_disabled: bool = entry
+            .remove_ava(Attribute::NsAccountLock.as_ref())
+            .map(|set| {
+                set.into_iter()
+                    .any(|value| value != "FALSE" && value != "false")
+            })
+            .unwrap_or_default();
+
+        // Account is not valid
+        let account_expire = if account_disabled {
+            Some(chrono::DateTime::UNIX_EPOCH.to_rfc3339())
+        } else {
+            None
+        };
+
+        let account_valid_from = None;
+
+        let login_shell = entry.remove_ava_single(Attribute::LoginShell.as_ref());
         let external_id = Some(entry.dn);
 
         Ok(Some(
@@ -794,13 +937,17 @@ fn ipa_to_scim_entry(
                 display_name,
                 gidnumber,
                 password_import,
+                unix_password_import,
                 totp_import,
                 login_shell,
                 mail,
+                ssh_publickey,
+                account_expire,
+                account_valid_from,
             }
             .into(),
         ))
-    } else if oc.contains("groupofnames") {
+    } else if oc.contains(LDAP_CLASS_GROUPOFNAMES) {
         let LdapSyncReplEntry {
             entry_uuid,
             state: _,
@@ -809,9 +956,11 @@ fn ipa_to_scim_entry(
 
         let id = entry_uuid;
 
-        let name = entry.remove_ava_single("cn").ok_or_else(|| {
-            error!("Missing required attribute cn");
-        })?;
+        let name = entry
+            .remove_ava_single(Attribute::Cn.as_ref())
+            .ok_or_else(|| {
+                error!("Missing required attribute cn");
+            })?;
 
         // ⚠️  hardcoded skip on trust admins / editors / ipausers here!!!
         if name == "trust admins" || name == "editors" || name == "ipausers" || name == "admins" {
@@ -819,10 +968,10 @@ fn ipa_to_scim_entry(
             return Ok(None);
         }
 
-        let description = entry.remove_ava_single("description");
+        let description = entry.remove_ava_single(Attribute::Description.as_ref());
 
         let gidnumber = entry
-            .remove_ava_single("gidnumber")
+            .remove_ava_single(Attribute::GidNumber.as_ref())
             .map(|gid| {
                 u32::from_str(&gid).map_err(|_| {
                     error!("Invalid gidnumber");
@@ -831,7 +980,7 @@ fn ipa_to_scim_entry(
             .transpose()?;
 
         let members: Vec<_> = entry
-            .remove_ava("member")
+            .remove_ava(Attribute::Member.as_ref())
             .map(|set| {
                 set.into_iter()
                     .map(|external_id| ScimExternalMember { external_id })

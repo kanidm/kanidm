@@ -1,4 +1,4 @@
-use kanidm_unix_common::client_sync::call_daemon_blocking;
+use kanidm_unix_common::client_sync::DaemonClientBlocking;
 use kanidm_unix_common::constants::DEFAULT_CONFIG_PATH;
 use kanidm_unix_common::unix_config::KanidmUnixdConfig;
 use kanidm_unix_common::unix_proto::{ClientRequest, ClientResponse, NssGroup, NssUser};
@@ -19,7 +19,16 @@ impl PasswdHooks for KanidmPasswd {
                 }
             };
         let req = ClientRequest::NssAccounts;
-        call_daemon_blocking(cfg.sock_path.as_str(), &req, cfg.unix_sock_timeout)
+
+        let mut daemon_client = match DaemonClientBlocking::new(cfg.sock_path.as_str()) {
+            Ok(dc) => dc,
+            Err(_) => {
+                return Response::Unavail;
+            }
+        };
+
+        daemon_client
+            .call_and_wait(&req, cfg.unix_sock_timeout)
             .map(|r| match r {
                 ClientResponse::NssAccounts(l) => l.into_iter().map(passwd_from_nssuser).collect(),
                 _ => Vec::new(),
@@ -37,7 +46,16 @@ impl PasswdHooks for KanidmPasswd {
                 }
             };
         let req = ClientRequest::NssAccountByUid(uid);
-        call_daemon_blocking(cfg.sock_path.as_str(), &req, cfg.unix_sock_timeout)
+
+        let mut daemon_client = match DaemonClientBlocking::new(cfg.sock_path.as_str()) {
+            Ok(dc) => dc,
+            Err(_) => {
+                return Response::Unavail;
+            }
+        };
+
+        daemon_client
+            .call_and_wait(&req, cfg.unix_sock_timeout)
             .map(|r| match r {
                 ClientResponse::NssAccount(opt) => opt
                     .map(passwd_from_nssuser)
@@ -57,7 +75,15 @@ impl PasswdHooks for KanidmPasswd {
                 }
             };
         let req = ClientRequest::NssAccountByName(name);
-        call_daemon_blocking(cfg.sock_path.as_str(), &req, cfg.unix_sock_timeout)
+        let mut daemon_client = match DaemonClientBlocking::new(cfg.sock_path.as_str()) {
+            Ok(dc) => dc,
+            Err(_) => {
+                return Response::Unavail;
+            }
+        };
+
+        daemon_client
+            .call_and_wait(&req, cfg.unix_sock_timeout)
             .map(|r| match r {
                 ClientResponse::NssAccount(opt) => opt
                     .map(passwd_from_nssuser)
@@ -82,7 +108,15 @@ impl GroupHooks for KanidmGroup {
                 }
             };
         let req = ClientRequest::NssGroups;
-        call_daemon_blocking(cfg.sock_path.as_str(), &req, cfg.unix_sock_timeout)
+        let mut daemon_client = match DaemonClientBlocking::new(cfg.sock_path.as_str()) {
+            Ok(dc) => dc,
+            Err(_) => {
+                return Response::Unavail;
+            }
+        };
+
+        daemon_client
+            .call_and_wait(&req, cfg.unix_sock_timeout)
             .map(|r| match r {
                 ClientResponse::NssGroups(l) => l.into_iter().map(group_from_nssgroup).collect(),
                 _ => Vec::new(),
@@ -100,7 +134,15 @@ impl GroupHooks for KanidmGroup {
                 }
             };
         let req = ClientRequest::NssGroupByGid(gid);
-        call_daemon_blocking(cfg.sock_path.as_str(), &req, cfg.unix_sock_timeout)
+        let mut daemon_client = match DaemonClientBlocking::new(cfg.sock_path.as_str()) {
+            Ok(dc) => dc,
+            Err(_) => {
+                return Response::Unavail;
+            }
+        };
+
+        daemon_client
+            .call_and_wait(&req, cfg.unix_sock_timeout)
             .map(|r| match r {
                 ClientResponse::NssGroup(opt) => opt
                     .map(group_from_nssgroup)
@@ -120,7 +162,15 @@ impl GroupHooks for KanidmGroup {
                 }
             };
         let req = ClientRequest::NssGroupByName(name);
-        call_daemon_blocking(cfg.sock_path.as_str(), &req, cfg.unix_sock_timeout)
+        let mut daemon_client = match DaemonClientBlocking::new(cfg.sock_path.as_str()) {
+            Ok(dc) => dc,
+            Err(_) => {
+                return Response::Unavail;
+            }
+        };
+
+        daemon_client
+            .call_and_wait(&req, cfg.unix_sock_timeout)
             .map(|r| match r {
                 ClientResponse::NssGroup(opt) => opt
                     .map(group_from_nssgroup)

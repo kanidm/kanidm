@@ -1,18 +1,13 @@
 ---
 name: Windows Build and Test
 
-# at the moment this only builds the kanidm  client
-# because @yaleman got tired but it's enough to prove
-# it builds and be able to administer Kanidm from
-# Windows-land
-
 # Trigger the workflow on push to master or pull request
 "on":
   push:
     branches:
       - master
   pull_request:
-
+  workflow_dispatch:  # so you can run it manually
 env:
   SCCACHE_GHA_ENABLED: "true"
   RUSTC_WRAPPER: "sccache"
@@ -25,7 +20,7 @@ jobs:
   windows_build_kanidm:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Install OpenSSL
         run: |
           vcpkg integrate install
@@ -36,6 +31,6 @@ jobs:
         uses: mozilla-actions/sccache-action@v0.0.3
         with:
           version: "v0.4.2"
-      - run: cargo build -p kanidm_client -p kanidm_tools -p orca -p daemon
+      - run: cargo build -p kanidm_client -p kanidm_tools --bin kanidm
       # yamllint disable-line rule:line-length
-      - run: cargo test -p kanidm_client -p kanidm_tools -p orca -p daemon -p kanidmd_core
+      - run: cargo test -p kanidm_client -p kanidm_tools

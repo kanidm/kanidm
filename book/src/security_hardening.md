@@ -1,8 +1,8 @@
 # Security Hardening
 
 Kanidm ships with a secure-by-default configuration, however that is only as strong as the
-environment that Kanidm operates in. This could be your container environment or your Unix-like
-system.
+environment that Kanidm operates in. This means the security of your container environment and
+server is extremely important when running Kanidm.
 
 This chapter will detail a number of warnings and security practices you should follow to ensure
 that Kanidm operates in a secure environment.
@@ -14,8 +14,8 @@ full-network take over, also known as "game over".
 The unixd resolver is also a high value target as it can be accessed to allow unauthorised access to
 a server, to intercept communications to the server, or more. This also must be protected carefully.
 
-For this reason, Kanidm's components must be protected carefully. Kanidm avoids many classic attacks
-by being developed in a memory safe language, but risks still exist.
+For this reason, Kanidm's components must be secured and audited. Kanidm avoids many classic attacks
+by being developed in a memory safe language, but risks still exist in the operating environment.
 
 ## Startup Warnings
 
@@ -36,7 +36,7 @@ WARNING: DB folder /tmp has 'everyone' permission bits in the mode. This could b
 
 Each warning highlights an issue that may exist in your environment. It is not possible for us to
 prescribe an exact configuration that may secure your system. This is why we only present possible
-risks.
+risks and you must make informed decisions on how to resolve them.
 
 ### Should be Read-only to Running UID
 
@@ -118,13 +118,6 @@ and owned by root:
 
 This file should be "everyone"-readable, which is why the bits are defined as such.
 
-> NOTE: Why do you use 440 or 444 modes?
->
-> A bug exists in the implementation of readonly() in rust that checks this as "does a write bit
-> exist for any user" vs "can the current UID write the file?". This distinction is subtle but it
-> affects the check. We don't believe this is a significant issue though, because setting these to
-> 440 and 444 helps to prevent accidental changes by an administrator anyway
-
 ## Running as Non-root in docker
 
 The commands provided in this book will run kanidmd as "root" in the container to make the
@@ -158,3 +151,10 @@ docker run --rm -i -t -u 1000:1000 -v kanidmd:/data kanidm/server:latest /sbin/k
 
 > **HINT** You need to use the UID or GID number with the `-u` argument, as the container can't
 > resolve usernames from the host system.
+
+## Minimum TLS key lengths
+
+We enforce a minimum RSA and ECDSA key sizes. If your key is insufficently large, the server will
+refuse to start and inform you of this.
+
+Currently accepted key sizes are minimum 2048 bit RSA and 224 bit ECDSA.

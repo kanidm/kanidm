@@ -1,19 +1,26 @@
 use base64urlsafedata::Base64UrlSafeData;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
+use utoipa::ToSchema;
 use uuid::Uuid;
 
 pub use scim_proto::prelude::{ScimAttr, ScimComplexAttr, ScimEntry, ScimError, ScimSimpleAttr};
 pub use scim_proto::user::MultiValueAttr;
 use scim_proto::*;
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+use crate::constants::{
+    ATTR_ACCOUNT_EXPIRE, ATTR_ACCOUNT_VALID_FROM, ATTR_DESCRIPTION, ATTR_DISPLAYNAME,
+    ATTR_GIDNUMBER, ATTR_LOGINSHELL, ATTR_MAIL, ATTR_MEMBER, ATTR_NAME, ATTR_PASSWORD_IMPORT,
+    ATTR_SSH_PUBLICKEY, ATTR_TOTP_IMPORT, ATTR_UNIX_PASSWORD_IMPORT,
+};
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, ToSchema)]
 pub enum ScimSyncState {
     Refresh,
     Active { cookie: Base64UrlSafeData },
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, ToSchema)]
 pub enum ScimSyncRetentionMode {
     /// No actions are to be taken - only update or create entries in the
     /// entries set.
@@ -26,7 +33,7 @@ pub enum ScimSyncRetentionMode {
     Delete(Vec<Uuid>),
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, ToSchema)]
 pub struct ScimSyncRequest {
     pub from_state: ScimSyncState,
     pub to_state: ScimSyncState,
@@ -47,6 +54,11 @@ impl ScimSyncRequest {
         }
     }
 }
+
+pub const SCIM_ALGO: &str = "algo";
+pub const SCIM_DIGITS: &str = "digits";
+pub const SCIM_SECRET: &str = "secret";
+pub const SCIM_STEP: &str = "step";
 
 pub const SCIM_SCHEMA_SYNC: &str = "urn:ietf:params:scim:schemas:kanidm:1.0:";
 pub const SCIM_SCHEMA_SYNC_PERSON: &str = "urn:ietf:params:scim:schemas:kanidm:1.0:person";
@@ -83,14 +95,37 @@ impl Into<ScimComplexAttr> for ScimTotp {
             ScimSimpleAttr::String(external_id),
         );
 
-        attrs.insert("secret".to_string(), ScimSimpleAttr::String(secret));
+        attrs.insert(SCIM_SECRET.to_string(), ScimSimpleAttr::String(secret));
 
-        attrs.insert("algo".to_string(), ScimSimpleAttr::String(algo));
+        attrs.insert(SCIM_ALGO.to_string(), ScimSimpleAttr::String(algo));
 
-        attrs.insert("step".to_string(), ScimSimpleAttr::Number(step.into()));
+        attrs.insert(SCIM_STEP.to_string(), ScimSimpleAttr::Number(step.into()));
 
-        attrs.insert("digits".to_string(), ScimSimpleAttr::Number(digits.into()));
+        attrs.insert(
+            SCIM_DIGITS.to_string(),
+            ScimSimpleAttr::Number(digits.into()),
+        );
 
+        ScimComplexAttr { attrs }
+    }
+}
+
+#[derive(Serialize, Debug, Clone)]
+pub struct ScimSshPubKey {
+    pub label: String,
+    pub value: String,
+}
+
+#[allow(clippy::from_over_into)]
+impl Into<ScimComplexAttr> for ScimSshPubKey {
+    fn into(self) -> ScimComplexAttr {
+        let ScimSshPubKey { label, value } = self;
+
+        let mut attrs = BTreeMap::default();
+
+        attrs.insert("label".to_string(), ScimSimpleAttr::String(label));
+
+        attrs.insert("value".to_string(), ScimSimpleAttr::String(value));
         ScimComplexAttr { attrs }
     }
 }
@@ -104,9 +139,13 @@ pub struct ScimSyncPerson {
     pub display_name: String,
     pub gidnumber: Option<u32>,
     pub password_import: Option<String>,
+    pub unix_password_import: Option<String>,
     pub totp_import: Vec<ScimTotp>,
     pub login_shell: Option<String>,
     pub mail: Vec<MultiValueAttr>,
+    pub ssh_publickey: Vec<ScimSshPubKey>,
+    pub account_valid_from: Option<String>,
+    pub account_expire: Option<String>,
 }
 
 // Need to allow this because clippy is broken and doesn't realise scimentry is out of crate
@@ -121,9 +160,13 @@ impl Into<ScimEntry> for ScimSyncPerson {
             display_name,
             gidnumber,
             password_import,
+            unix_password_import,
             totp_import,
             login_shell,
             mail,
+            ssh_publickey,
+            account_valid_from,
+            account_expire,
         } = self;
 
         let schemas = if gidnumber.is_some() {
@@ -141,13 +184,17 @@ impl Into<ScimEntry> for ScimSyncPerson {
 
         let mut attrs = BTreeMap::default();
 
-        set_string!(attrs, "name", user_name);
-        set_string!(attrs, "displayname", display_name);
-        set_option_u32!(attrs, "gidnumber", gidnumber);
-        set_option_string!(attrs, "password_import", password_import);
-        set_multi_complex!(attrs, "totp_import", totp_import);
-        set_option_string!(attrs, "loginshell", login_shell);
-        set_multi_complex!(attrs, "mail", mail);
+        set_string!(attrs, ATTR_NAME, user_name);
+        set_string!(attrs, ATTR_DISPLAYNAME, display_name);
+        set_option_u32!(attrs, ATTR_GIDNUMBER, gidnumber);
+        set_option_string!(attrs, ATTR_PASSWORD_IMPORT, password_import);
+        set_option_string!(attrs, ATTR_UNIX_PASSWORD_IMPORT, unix_password_import);
+        set_multi_complex!(attrs, ATTR_TOTP_IMPORT, totp_import);
+        set_option_string!(attrs, ATTR_LOGINSHELL, login_shell);
+        set_multi_complex!(attrs, ATTR_MAIL, mail);
+        set_multi_complex!(attrs, ATTR_SSH_PUBLICKEY, ssh_publickey); // with the underscore
+        set_option_string!(attrs, ATTR_ACCOUNT_EXPIRE, account_expire);
+        set_option_string!(attrs, ATTR_ACCOUNT_VALID_FROM, account_valid_from);
 
         ScimEntry {
             schemas,
@@ -220,10 +267,10 @@ impl Into<ScimEntry> for ScimSyncGroup {
 
         let mut attrs = BTreeMap::default();
 
-        set_string!(attrs, "name", name);
-        set_option_u32!(attrs, "gidnumber", gidnumber);
-        set_option_string!(attrs, "description", description);
-        set_multi_complex!(attrs, "member", members);
+        set_string!(attrs, ATTR_NAME, name);
+        set_option_u32!(attrs, ATTR_GIDNUMBER, gidnumber);
+        set_option_string!(attrs, ATTR_DESCRIPTION, description);
+        set_multi_complex!(attrs, ATTR_MEMBER, members);
 
         ScimEntry {
             schemas,

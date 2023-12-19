@@ -372,7 +372,7 @@ impl Credential {
     pub fn try_from_repl_v1(rc: &ReplCredV1) -> Result<(String, Self), OperationError> {
         match rc {
             ReplCredV1::TmpWn { tag, set } => {
-                let m_uuid: Option<Uuid> = set.get(0).map(|v| v.uuid);
+                let m_uuid: Option<Uuid> = set.first().map(|v| v.uuid);
 
                 let v_webauthn = set
                     .iter()
@@ -494,6 +494,37 @@ impl Credential {
                 e.into()
             })
             .map(|pw| self.update_password(pw))
+    }
+
+    pub fn upgrade_password(
+        &self,
+        policy: &CryptoPolicy,
+        cleartext: &str,
+    ) -> Result<Option<Self>, OperationError> {
+        let valid = self.password_ref().and_then(|pw| {
+            pw.verify(cleartext).map_err(|e| {
+                error!(crypto_err = ?e);
+                e.into()
+            })
+        })?;
+
+        if valid {
+            let pw = Password::new(policy, cleartext).map_err(|e| {
+                error!(crypto_err = ?e);
+                e.into()
+            })?;
+
+            // Note, during update_password we normally rotate the uuid, here we
+            // set it back to our current value. This is because we are just
+            // updating the hash value, not actually changing the password itself.
+            let mut cred = self.update_password(pw);
+            cred.uuid = self.uuid;
+
+            Ok(Some(cred))
+        } else {
+            // No updates needed, password has changed.
+            Ok(None)
+        }
     }
 
     /// Extend this credential with another alternate webauthn credential. This is especially
@@ -644,6 +675,13 @@ impl Credential {
             CredentialType::Webauthn(_) => Err(OperationError::InvalidAccountState(
                 "non-password cred type?".to_string(),
             )),
+        }
+    }
+
+    pub fn is_mfa(&self) -> bool {
+        match &self.type_ {
+            CredentialType::Password(_) | CredentialType::GeneratedPassword(_) => false,
+            CredentialType::PasswordMfa(..) | CredentialType::Webauthn(_) => true,
         }
     }
 

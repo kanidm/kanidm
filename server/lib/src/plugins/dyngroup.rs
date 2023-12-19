@@ -17,7 +17,6 @@ impl DynGroup {
     #[allow(clippy::too_many_arguments)]
     fn apply_dyngroup_change(
         qs: &mut QueryServerWriteTransaction,
-        ident: &Identity,
         candidate_tuples: &mut Vec<(Arc<EntrySealedCommitted>, EntryInvalidCommitted)>,
         affected_uuids: &mut Vec<Uuid>,
         expect: bool,
@@ -25,17 +24,22 @@ impl DynGroup {
         dyn_groups: &mut DynGroupCache,
         n_dyn_groups: &[&Entry<EntrySealed, EntryCommitted>],
     ) -> Result<(), OperationError> {
+        /*
+         * This triggers even if we are modifying the dyngroups account policy attributes, which
+         * is allowed now. So we relax this, because systemprotection still blocks the creation
+         * of dyngroups.
         if !ident.is_internal() {
             // It should be impossible to trigger this right now due to protected plugin.
             error!("It is currently an error to create a dynamic group");
             return Err(OperationError::SystemProtectedObject);
         }
+        */
 
         // Search all the new groups first.
         let filt = filter!(FC::Or(
             n_dyn_groups
                 .iter()
-                .map(|e| f_eq("uuid", PartialValue::Uuid(e.get_uuid())))
+                .map(|e| f_eq(Attribute::Uuid, PartialValue::Uuid(e.get_uuid())))
                 .collect()
         ));
         let work_set = qs.internal_search_writeable(&filt)?;
@@ -43,15 +47,15 @@ impl DynGroup {
         // Go through them all and update the new groups.
         for (pre, mut nd_group) in work_set.into_iter() {
             let scope_f: ProtoFilter = nd_group
-                .get_ava_single_protofilter("dyngroup_filter")
+                .get_ava_single_protofilter(Attribute::DynGroupFilter)
                 .cloned()
                 .ok_or_else(|| {
-                    admin_error!("Missing dyngroup_filter");
+                    admin_error!("Missing {}", Attribute::DynGroupFilter);
                     OperationError::InvalidEntryState
                 })?;
 
             let scope_i = Filter::from_rw(ident_internal, &scope_f, qs).map_err(|e| {
-                admin_error!("dyngroup_filter validation failed {:?}", e);
+                admin_error!("{} validation failed {:?}", Attribute::DynGroupFilter, e);
                 e
             })?;
 
@@ -72,34 +76,34 @@ impl DynGroup {
             }
 
             // Mark the former members as being affected also.
-            if let Some(uuid_iter) = pre.get_ava_as_refuuid("dynmember") {
+            if let Some(uuid_iter) = pre.get_ava_as_refuuid(Attribute::DynMember) {
                 affected_uuids.extend(uuid_iter);
             }
 
             if let Some(members) = members {
                 // Only set something if there is actually something to do!
-                nd_group.set_ava_set("dynmember", members);
+                nd_group.set_ava_set(Attribute::DynMember, members);
                 // push the entries to pre/cand
             } else {
-                nd_group.purge_ava("dynmember");
+                nd_group.purge_ava(Attribute::DynMember);
             }
 
             candidate_tuples.push((pre, nd_group));
 
             // Insert to our new instances
             if dyn_groups.insts.insert(uuid, scope_i).is_none() == expect {
-                admin_error!("dyngroup cache uuid conflict {}", uuid);
+                admin_error!("{} cache uuid conflict {}", Attribute::DynGroup, uuid);
                 return Err(OperationError::InvalidState);
             }
         }
         Ok(())
     }
 
-    #[instrument(level = "debug", name = "dyngroup_reload", skip(qs))]
+    #[instrument(level = "debug", name = "dyngroup::reload", skip_all)]
     pub fn reload(qs: &mut QueryServerWriteTransaction) -> Result<(), OperationError> {
         let ident_internal = Identity::from_internal();
         // Internal search all our definitions.
-        let filt = filter!(f_eq("class", PVCLASS_DYNGROUP.clone()));
+        let filt = filter!(f_eq(Attribute::Class, EntryClass::DynGroup.into()));
         let entries = qs.internal_search(filt).map_err(|e| {
             admin_error!("internal search failure -> {:?}", e);
             e
@@ -109,10 +113,10 @@ impl DynGroup {
 
         for nd_group in entries.into_iter() {
             let scope_f: ProtoFilter = nd_group
-                .get_ava_single_protofilter("dyngroup_filter")
+                .get_ava_single_protofilter(Attribute::DynGroupFilter)
                 .cloned()
                 .ok_or_else(|| {
-                    admin_error!("Missing dyngroup_filter");
+                    admin_error!("Missing {}", Attribute::DynGroupFilter);
                     OperationError::InvalidEntryState
                 })?;
 
@@ -135,19 +139,19 @@ impl DynGroup {
         Ok(())
     }
 
-    #[instrument(level = "debug", name = "dyngroup_post_create", skip_all)]
+    #[instrument(level = "debug", name = "dyngroup::post_create", skip_all)]
     pub fn post_create(
         qs: &mut QueryServerWriteTransaction,
         cand: &[Entry<EntrySealed, EntryCommitted>],
-        ident: &Identity,
+        _ident: &Identity,
     ) -> Result<Vec<Uuid>, OperationError> {
         let mut affected_uuids = Vec::with_capacity(cand.len());
 
         let ident_internal = Identity::from_internal();
 
-        let (n_dyn_groups, entries): (Vec<&Entry<_, _>>, Vec<_>) = cand
-            .iter()
-            .partition(|entry| entry.attribute_equality("class", &PVCLASS_DYNGROUP));
+        let (n_dyn_groups, entries): (Vec<&Entry<_, _>>, Vec<_>) = cand.iter().partition(|entry| {
+            entry.attribute_equality(Attribute::Class, &EntryClass::DynGroup.into())
+        });
 
         // DANGER: Why do we have to do this? During the use of qs for internal search
         // and other operations we need qs to be mut. But when we borrow dyn groups here we
@@ -189,14 +193,14 @@ impl DynGroup {
             // If any of them did, we retrieve the dyngroup and setup to write the new
             // members to it.
             if !matches.is_empty() {
-                let filt = filter!(f_eq("uuid", PartialValue::Uuid(*dg_uuid)));
+                let filt = filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(*dg_uuid)));
                 let mut work_set = qs.internal_search_writeable(&filt)?;
 
                 if let Some((pre, mut d_group)) = work_set.pop() {
                     matches
                         .iter()
                         .copied()
-                        .for_each(|u| d_group.add_ava("dynmember", Value::Refer(u)));
+                        .for_each(|u| d_group.add_ava(Attribute::DynMember, Value::Refer(u)));
 
                     affected_uuids.extend(matches.into_iter());
                     affected_uuids.push(*dg_uuid);
@@ -213,7 +217,6 @@ impl DynGroup {
             trace!("considering new dyngroups");
             Self::apply_dyngroup_change(
                 qs,
-                ident,
                 &mut candidate_tuples,
                 &mut affected_uuids,
                 false,
@@ -235,25 +238,27 @@ impl DynGroup {
         Ok(affected_uuids)
     }
 
-    #[instrument(level = "debug", name = "memberof_post_modify", skip_all)]
+    #[instrument(level = "debug", name = "dyngroup::post_modify", skip_all)]
     pub fn post_modify(
         qs: &mut QueryServerWriteTransaction,
         pre_cand: &[Arc<Entry<EntrySealed, EntryCommitted>>],
         cand: &[Entry<EntrySealed, EntryCommitted>],
-        ident: &Identity,
+        _ident: &Identity,
     ) -> Result<Vec<Uuid>, OperationError> {
         let mut affected_uuids = Vec::with_capacity(cand.len());
 
         let ident_internal = Identity::from_internal();
 
         // Probably should be filter here instead.
-        let (_, pre_entries): (Vec<&Arc<Entry<_, _>>>, Vec<_>) = pre_cand
-            .iter()
-            .partition(|entry| entry.attribute_equality("class", &PVCLASS_DYNGROUP));
+        let (_, pre_entries): (Vec<&Arc<Entry<_, _>>>, Vec<_>) =
+            pre_cand.iter().partition(|entry| {
+                entry.attribute_equality(Attribute::Class, &EntryClass::DynGroup.into())
+            });
 
-        let (n_dyn_groups, post_entries): (Vec<&Entry<_, _>>, Vec<_>) = cand
-            .iter()
-            .partition(|entry| entry.attribute_equality("class", &PVCLASS_DYNGROUP));
+        let (n_dyn_groups, post_entries): (Vec<&Entry<_, _>>, Vec<_>) =
+            cand.iter().partition(|entry| {
+                entry.attribute_equality(Attribute::Class, &EntryClass::DynGroup.into())
+            });
 
         // DANGER: Why do we have to do this? During the use of qs for internal search
         // and other operations we need qs to be mut. But when we borrow dyn groups here we
@@ -274,7 +279,6 @@ impl DynGroup {
             trace!("considering modified dyngroups");
             Self::apply_dyngroup_change(
                 qs,
-                ident,
                 &mut candidate_tuples,
                 &mut affected_uuids,
                 true,
@@ -315,13 +319,13 @@ impl DynGroup {
                 .collect();
 
             if !matches.is_empty() {
-                let filt = filter!(f_eq("uuid", PartialValue::Uuid(*dg_uuid)));
+                let filt = filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(*dg_uuid)));
                 let mut work_set = qs.internal_search_writeable(&filt)?;
 
                 if let Some((pre, mut d_group)) = work_set.pop() {
                     matches.iter().copied().for_each(|choice| match choice {
-                        Ok(u) => d_group.add_ava("dynmember", Value::Refer(u)),
-                        Err(u) => d_group.remove_ava("dynmember", &PartialValue::Refer(u)),
+                        Ok(u) => d_group.add_ava(Attribute::DynMember, Value::Refer(u)),
+                        Err(u) => d_group.remove_ava(Attribute::DynMember, &PartialValue::Refer(u)),
                     });
 
                     affected_uuids.extend(matches.into_iter().map(|choice| match choice {
@@ -365,20 +369,23 @@ mod tests {
     #[test]
     fn test_create_dyngroup_add_new_group() {
         let e_dyn = entry_init!(
-            ("class", Value::new_class("object")),
-            ("class", Value::new_class("group")),
-            ("class", Value::new_class("dyngroup")),
-            ("name", Value::new_iname("test_dyngroup")),
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Group.to_value()),
+            (Attribute::Class, EntryClass::DynGroup.to_value()),
+            (Attribute::Name, Value::new_iname("test_dyngroup")),
             (
-                "dyngroup_filter",
-                Value::JsonFilt(ProtoFilter::Eq("name".to_string(), "testgroup".to_string()))
+                Attribute::DynGroupFilter,
+                Value::JsonFilt(ProtoFilter::Eq(
+                    Attribute::Name.to_string(),
+                    "testgroup".to_string()
+                ))
             )
         );
 
         let e_group: Entry<EntryInit, EntryNew> = entry_init!(
-            ("class", Value::new_class("group")),
-            ("name", Value::new_iname("testgroup")),
-            ("uuid", Value::Uuid(UUID_TEST_GROUP))
+            (Attribute::Class, EntryClass::Group.to_value()),
+            (Attribute::Name, Value::new_iname("testgroup")),
+            (Attribute::Uuid, Value::Uuid(UUID_TEST_GROUP))
         );
 
         let preload = vec![e_group];
@@ -393,14 +400,14 @@ mod tests {
             |qs: &mut QueryServerWriteTransaction| {
                 let cands = qs
                     .internal_search(filter!(f_eq(
-                        "name",
+                        Attribute::Name,
                         PartialValue::new_iname("test_dyngroup")
                     )))
                     .expect("Internal search failure");
 
                 let d_group = cands.get(0).expect("Unable to access group.");
                 let members = d_group
-                    .get_ava_set("dynmember")
+                    .get_ava_set(Attribute::DynMember)
                     .expect("No members on dyn group");
 
                 assert!(members.to_refer_single() == Some(UUID_TEST_GROUP));
@@ -411,20 +418,23 @@ mod tests {
     #[test]
     fn test_create_dyngroup_add_matching_entry() {
         let e_dyn = entry_init!(
-            ("class", Value::new_class("object")),
-            ("class", Value::new_class("group")),
-            ("class", Value::new_class("dyngroup")),
-            ("name", Value::new_iname("test_dyngroup")),
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Group.to_value()),
+            (Attribute::Class, EntryClass::DynGroup.to_value()),
+            (Attribute::Name, Value::new_iname("test_dyngroup")),
             (
-                "dyngroup_filter",
-                Value::JsonFilt(ProtoFilter::Eq("name".to_string(), "testgroup".to_string()))
+                Attribute::DynGroupFilter,
+                Value::JsonFilt(ProtoFilter::Eq(
+                    Attribute::Name.to_string(),
+                    "testgroup".to_string()
+                ))
             )
         );
 
         let e_group: Entry<EntryInit, EntryNew> = entry_init!(
-            ("class", Value::new_class("group")),
-            ("name", Value::new_iname("testgroup")),
-            ("uuid", Value::Uuid(UUID_TEST_GROUP))
+            (Attribute::Class, EntryClass::Group.to_value()),
+            (Attribute::Name, Value::new_iname("testgroup")),
+            (Attribute::Uuid, Value::Uuid(UUID_TEST_GROUP))
         );
 
         let preload = vec![e_dyn];
@@ -439,14 +449,14 @@ mod tests {
             |qs: &mut QueryServerWriteTransaction| {
                 let cands = qs
                     .internal_search(filter!(f_eq(
-                        "name",
+                        Attribute::Name,
                         PartialValue::new_iname("test_dyngroup")
                     )))
                     .expect("Internal search failure");
 
                 let d_group = cands.get(0).expect("Unable to access group.");
                 let members = d_group
-                    .get_ava_set("dynmember")
+                    .get_ava_set(Attribute::DynMember)
                     .expect("No members on dyn group");
 
                 assert!(members.to_refer_single() == Some(UUID_TEST_GROUP));
@@ -457,23 +467,23 @@ mod tests {
     #[test]
     fn test_create_dyngroup_add_non_matching_entry() {
         let e_dyn = entry_init!(
-            ("class", Value::new_class("object")),
-            ("class", Value::new_class("group")),
-            ("class", Value::new_class("dyngroup")),
-            ("name", Value::new_iname("test_dyngroup")),
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Group.to_value()),
+            (Attribute::Class, EntryClass::DynGroup.to_value()),
+            (Attribute::Name, Value::new_iname("test_dyngroup")),
             (
-                "dyngroup_filter",
+                Attribute::DynGroupFilter,
                 Value::JsonFilt(ProtoFilter::Eq(
-                    "name".to_string(),
+                    Attribute::Name.to_string(),
                     "no_possible_match_to_be_found".to_string()
                 ))
             )
         );
 
         let e_group: Entry<EntryInit, EntryNew> = entry_init!(
-            ("class", Value::new_class("group")),
-            ("name", Value::new_iname("testgroup")),
-            ("uuid", Value::Uuid(UUID_TEST_GROUP))
+            (Attribute::Class, EntryClass::Group.to_value()),
+            (Attribute::Name, Value::new_iname("testgroup")),
+            (Attribute::Uuid, Value::Uuid(UUID_TEST_GROUP))
         );
 
         let preload = vec![e_dyn];
@@ -488,13 +498,13 @@ mod tests {
             |qs: &mut QueryServerWriteTransaction| {
                 let cands = qs
                     .internal_search(filter!(f_eq(
-                        "name",
+                        Attribute::Name,
                         PartialValue::new_iname("test_dyngroup")
                     )))
                     .expect("Internal search failure");
 
                 let d_group = cands.get(0).expect("Unable to access group.");
-                assert!(d_group.get_ava_set("dynmember").is_none());
+                assert!(d_group.get_ava_set(Attribute::DynMember).is_none());
             }
         );
     }
@@ -502,20 +512,23 @@ mod tests {
     #[test]
     fn test_create_dyngroup_add_matching_entry_and_group() {
         let e_dyn = entry_init!(
-            ("class", Value::new_class("object")),
-            ("class", Value::new_class("group")),
-            ("class", Value::new_class("dyngroup")),
-            ("name", Value::new_iname("test_dyngroup")),
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Group.to_value()),
+            (Attribute::Class, EntryClass::DynGroup.to_value()),
+            (Attribute::Name, Value::new_iname("test_dyngroup")),
             (
-                "dyngroup_filter",
-                Value::JsonFilt(ProtoFilter::Eq("name".to_string(), "testgroup".to_string()))
+                Attribute::DynGroupFilter,
+                Value::JsonFilt(ProtoFilter::Eq(
+                    Attribute::Name.to_string(),
+                    "testgroup".to_string()
+                ))
             )
         );
 
         let e_group: Entry<EntryInit, EntryNew> = entry_init!(
-            ("class", Value::new_class("group")),
-            ("name", Value::new_iname("testgroup")),
-            ("uuid", Value::Uuid(UUID_TEST_GROUP))
+            (Attribute::Class, EntryClass::Group.to_value()),
+            (Attribute::Name, Value::new_iname("testgroup")),
+            (Attribute::Uuid, Value::Uuid(UUID_TEST_GROUP))
         );
 
         let preload = vec![];
@@ -530,17 +543,18 @@ mod tests {
             |qs: &mut QueryServerWriteTransaction| {
                 let cands = qs
                     .internal_search(filter!(f_eq(
-                        "name",
+                        Attribute::Name,
                         PartialValue::new_iname("test_dyngroup")
                     )))
                     .expect("Internal search failure");
 
                 let d_group = cands.get(0).expect("Unable to access group.");
                 let members = d_group
-                    .get_ava_set("dynmember")
+                    .get_ava_set(Attribute::DynMember)
                     .expect("No members on dyn group");
 
                 assert!(members.to_refer_single() == Some(UUID_TEST_GROUP));
+                assert!(d_group.get_ava_set(Attribute::Member).is_none());
             }
         );
     }
@@ -548,23 +562,23 @@ mod tests {
     #[test]
     fn test_modify_dyngroup_existing_dyngroup_filter_into_scope() {
         let e_dyn = entry_init!(
-            ("class", Value::new_class("object")),
-            ("class", Value::new_class("group")),
-            ("class", Value::new_class("dyngroup")),
-            ("name", Value::new_iname("test_dyngroup")),
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Group.to_value()),
+            (Attribute::Class, EntryClass::DynGroup.to_value()),
+            (Attribute::Name, Value::new_iname("test_dyngroup")),
             (
-                "dyngroup_filter",
+                Attribute::DynGroupFilter,
                 Value::JsonFilt(ProtoFilter::Eq(
-                    "name".to_string(),
+                    Attribute::Name.to_string(),
                     "no_such_entry_exists".to_string()
                 ))
             )
         );
 
         let e_group: Entry<EntryInit, EntryNew> = entry_init!(
-            ("class", Value::new_class("group")),
-            ("name", Value::new_iname("testgroup")),
-            ("uuid", Value::Uuid(UUID_TEST_GROUP))
+            (Attribute::Class, EntryClass::Group.to_value()),
+            (Attribute::Name, Value::new_iname("testgroup")),
+            (Attribute::Uuid, Value::Uuid(UUID_TEST_GROUP))
         );
 
         let preload = vec![e_dyn, e_group];
@@ -572,12 +586,18 @@ mod tests {
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq("name", PartialValue::new_iname("test_dyngroup"))),
+            filter!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("test_dyngroup")
+            )),
             ModifyList::new_list(vec![
                 Modify::Purged("dyngroup_filter".into()),
                 Modify::Present(
-                    AttrString::from("dyngroup_filter"),
-                    Value::JsonFilt(ProtoFilter::Eq("name".to_string(), "testgroup".to_string()))
+                    Attribute::DynGroupFilter.into(),
+                    Value::JsonFilt(ProtoFilter::Eq(
+                        Attribute::Name.to_string(),
+                        "testgroup".to_string()
+                    ))
                 )
             ]),
             None,
@@ -585,14 +605,14 @@ mod tests {
             |qs: &mut QueryServerWriteTransaction| {
                 let cands = qs
                     .internal_search(filter!(f_eq(
-                        "name",
+                        Attribute::Name,
                         PartialValue::new_iname("test_dyngroup")
                     )))
                     .expect("Internal search failure");
 
                 let d_group = cands.get(0).expect("Unable to access group.");
                 let members = d_group
-                    .get_ava_set("dynmember")
+                    .get_ava_set(Attribute::DynMember)
                     .expect("No members on dyn group");
 
                 assert!(members.to_refer_single() == Some(UUID_TEST_GROUP));
@@ -603,20 +623,23 @@ mod tests {
     #[test]
     fn test_modify_dyngroup_existing_dyngroup_filter_outof_scope() {
         let e_dyn = entry_init!(
-            ("class", Value::new_class("object")),
-            ("class", Value::new_class("group")),
-            ("class", Value::new_class("dyngroup")),
-            ("name", Value::new_iname("test_dyngroup")),
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Group.to_value()),
+            (Attribute::Class, EntryClass::DynGroup.to_value()),
+            (Attribute::Name, Value::new_iname("test_dyngroup")),
             (
-                "dyngroup_filter",
-                Value::JsonFilt(ProtoFilter::Eq("name".to_string(), "testgroup".to_string()))
+                Attribute::DynGroupFilter,
+                Value::JsonFilt(ProtoFilter::Eq(
+                    Attribute::Name.to_string(),
+                    "testgroup".to_string()
+                ))
             )
         );
 
         let e_group: Entry<EntryInit, EntryNew> = entry_init!(
-            ("class", Value::new_class("group")),
-            ("name", Value::new_iname("testgroup")),
-            ("uuid", Value::Uuid(UUID_TEST_GROUP))
+            (Attribute::Class, EntryClass::Group.to_value()),
+            (Attribute::Name, Value::new_iname("testgroup")),
+            (Attribute::Uuid, Value::Uuid(UUID_TEST_GROUP))
         );
 
         let preload = vec![e_dyn, e_group];
@@ -624,13 +647,16 @@ mod tests {
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq("name", PartialValue::new_iname("test_dyngroup"))),
+            filter!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("test_dyngroup")
+            )),
             ModifyList::new_list(vec![
                 Modify::Purged("dyngroup_filter".into()),
                 Modify::Present(
-                    AttrString::from("dyngroup_filter"),
+                    Attribute::DynGroupFilter.into(),
                     Value::JsonFilt(ProtoFilter::Eq(
-                        "name".to_string(),
+                        Attribute::Name.to_string(),
                         "no_such_entry_exists".to_string()
                     ))
                 )
@@ -640,13 +666,13 @@ mod tests {
             |qs: &mut QueryServerWriteTransaction| {
                 let cands = qs
                     .internal_search(filter!(f_eq(
-                        "name",
+                        Attribute::Name,
                         PartialValue::new_iname("test_dyngroup")
                     )))
                     .expect("Internal search failure");
 
                 let d_group = cands.get(0).expect("Unable to access group.");
-                assert!(d_group.get_ava_set("dynmember").is_none());
+                assert!(d_group.get_ava_set(Attribute::DynMember).is_none());
             }
         );
     }
@@ -654,20 +680,23 @@ mod tests {
     #[test]
     fn test_modify_dyngroup_existing_dyngroup_member_add() {
         let e_dyn = entry_init!(
-            ("class", Value::new_class("object")),
-            ("class", Value::new_class("group")),
-            ("class", Value::new_class("dyngroup")),
-            ("name", Value::new_iname("test_dyngroup")),
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Group.to_value()),
+            (Attribute::Class, EntryClass::DynGroup.to_value()),
+            (Attribute::Name, Value::new_iname("test_dyngroup")),
             (
-                "dyngroup_filter",
-                Value::JsonFilt(ProtoFilter::Eq("name".to_string(), "testgroup".to_string()))
+                Attribute::DynGroupFilter,
+                Value::JsonFilt(ProtoFilter::Eq(
+                    Attribute::Name.to_string(),
+                    "testgroup".to_string()
+                ))
             )
         );
 
         let e_group: Entry<EntryInit, EntryNew> = entry_init!(
-            ("class", Value::new_class("group")),
-            ("name", Value::new_iname("testgroup")),
-            ("uuid", Value::Uuid(UUID_TEST_GROUP))
+            (Attribute::Class, EntryClass::Group.to_value()),
+            (Attribute::Name, Value::new_iname("testgroup")),
+            (Attribute::Uuid, Value::Uuid(UUID_TEST_GROUP))
         );
 
         let preload = vec![e_dyn, e_group];
@@ -675,9 +704,12 @@ mod tests {
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq("name", PartialValue::new_iname("test_dyngroup"))),
+            filter!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("test_dyngroup")
+            )),
             ModifyList::new_list(vec![Modify::Present(
-                AttrString::from("dynmember"),
+                Attribute::DynMember.into(),
                 Value::Refer(UUID_ADMIN)
             )]),
             None,
@@ -685,14 +717,14 @@ mod tests {
             |qs: &mut QueryServerWriteTransaction| {
                 let cands = qs
                     .internal_search(filter!(f_eq(
-                        "name",
+                        Attribute::Name,
                         PartialValue::new_iname("test_dyngroup")
                     )))
                     .expect("Internal search failure");
 
                 let d_group = cands.get(0).expect("Unable to access group.");
                 let members = d_group
-                    .get_ava_set("dynmember")
+                    .get_ava_set(Attribute::DynMember)
                     .expect("No members on dyn group");
                 // We assert to refer single here because we should have "removed" uuid_admin being added
                 // at all.
@@ -704,20 +736,23 @@ mod tests {
     #[test]
     fn test_modify_dyngroup_existing_dyngroup_member_remove() {
         let e_dyn = entry_init!(
-            ("class", Value::new_class("object")),
-            ("class", Value::new_class("group")),
-            ("class", Value::new_class("dyngroup")),
-            ("name", Value::new_iname("test_dyngroup")),
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Group.to_value()),
+            (Attribute::Class, EntryClass::DynGroup.to_value()),
+            (Attribute::Name, Value::new_iname("test_dyngroup")),
             (
-                "dyngroup_filter",
-                Value::JsonFilt(ProtoFilter::Eq("name".to_string(), "testgroup".to_string()))
+                Attribute::DynGroupFilter,
+                Value::JsonFilt(ProtoFilter::Eq(
+                    Attribute::Name.to_string(),
+                    "testgroup".to_string()
+                ))
             )
         );
 
         let e_group: Entry<EntryInit, EntryNew> = entry_init!(
-            ("class", Value::new_class("group")),
-            ("name", Value::new_iname("testgroup")),
-            ("uuid", Value::Uuid(UUID_TEST_GROUP))
+            (Attribute::Class, EntryClass::Group.to_value()),
+            (Attribute::Name, Value::new_iname("testgroup")),
+            (Attribute::Uuid, Value::Uuid(UUID_TEST_GROUP))
         );
 
         let preload = vec![e_dyn, e_group];
@@ -725,21 +760,24 @@ mod tests {
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq("name", PartialValue::new_iname("test_dyngroup"))),
-            ModifyList::new_list(vec![Modify::Purged(AttrString::from("dynmember"),)]),
+            filter!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("test_dyngroup")
+            )),
+            ModifyList::new_list(vec![Modify::Purged(Attribute::DynMember.into(),)]),
             None,
             |_| {},
             |qs: &mut QueryServerWriteTransaction| {
                 let cands = qs
                     .internal_search(filter!(f_eq(
-                        "name",
+                        Attribute::Name,
                         PartialValue::new_iname("test_dyngroup")
                     )))
                     .expect("Internal search failure");
 
                 let d_group = cands.get(0).expect("Unable to access group.");
                 let members = d_group
-                    .get_ava_set("dynmember")
+                    .get_ava_set(Attribute::DynMember)
                     .expect("No members on dyn group");
                 // We assert to refer single here because we should have re-added the members
                 assert!(members.to_refer_single() == Some(UUID_TEST_GROUP));
@@ -750,20 +788,23 @@ mod tests {
     #[test]
     fn test_modify_dyngroup_into_matching_entry() {
         let e_dyn = entry_init!(
-            ("class", Value::new_class("object")),
-            ("class", Value::new_class("group")),
-            ("class", Value::new_class("dyngroup")),
-            ("name", Value::new_iname("test_dyngroup")),
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Group.to_value()),
+            (Attribute::Class, EntryClass::DynGroup.to_value()),
+            (Attribute::Name, Value::new_iname("test_dyngroup")),
             (
-                "dyngroup_filter",
-                Value::JsonFilt(ProtoFilter::Eq("name".to_string(), "testgroup".to_string()))
+                Attribute::DynGroupFilter,
+                Value::JsonFilt(ProtoFilter::Eq(
+                    Attribute::Name.to_string(),
+                    "testgroup".to_string()
+                ))
             )
         );
 
         let e_group: Entry<EntryInit, EntryNew> = entry_init!(
-            ("class", Value::new_class("group")),
-            ("name", Value::new_iname("not_testgroup")),
-            ("uuid", Value::Uuid(UUID_TEST_GROUP))
+            (Attribute::Class, EntryClass::Group.to_value()),
+            (Attribute::Name, Value::new_iname("not_testgroup")),
+            (Attribute::Uuid, Value::Uuid(UUID_TEST_GROUP))
         );
 
         let preload = vec![e_dyn, e_group];
@@ -771,24 +812,27 @@ mod tests {
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq("name", PartialValue::new_iname("not_testgroup"))),
+            filter!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("not_testgroup")
+            )),
             ModifyList::new_list(vec![
-                Modify::Purged(AttrString::from("name"),),
-                Modify::Present(AttrString::from("name"), Value::new_iname("testgroup"))
+                Modify::Purged(Attribute::Name.into(),),
+                Modify::Present(Attribute::Name.into(), Value::new_iname("testgroup"))
             ]),
             None,
             |_| {},
             |qs: &mut QueryServerWriteTransaction| {
                 let cands = qs
                     .internal_search(filter!(f_eq(
-                        "name",
+                        Attribute::Name,
                         PartialValue::new_iname("test_dyngroup")
                     )))
                     .expect("Internal search failure");
 
                 let d_group = cands.get(0).expect("Unable to access group.");
                 let members = d_group
-                    .get_ava_set("dynmember")
+                    .get_ava_set(Attribute::DynMember)
                     .expect("No members on dyn group");
 
                 assert!(members.to_refer_single() == Some(UUID_TEST_GROUP));
@@ -799,20 +843,23 @@ mod tests {
     #[test]
     fn test_modify_dyngroup_into_non_matching_entry() {
         let e_dyn = entry_init!(
-            ("class", Value::new_class("object")),
-            ("class", Value::new_class("group")),
-            ("class", Value::new_class("dyngroup")),
-            ("name", Value::new_iname("test_dyngroup")),
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Group.to_value()),
+            (Attribute::Class, EntryClass::DynGroup.to_value()),
+            (Attribute::Name, Value::new_iname("test_dyngroup")),
             (
-                "dyngroup_filter",
-                Value::JsonFilt(ProtoFilter::Eq("name".to_string(), "testgroup".to_string()))
+                Attribute::DynGroupFilter,
+                Value::JsonFilt(ProtoFilter::Eq(
+                    Attribute::Name.to_string(),
+                    "testgroup".to_string()
+                ))
             )
         );
 
         let e_group: Entry<EntryInit, EntryNew> = entry_init!(
-            ("class", Value::new_class("group")),
-            ("name", Value::new_iname("testgroup")),
-            ("uuid", Value::Uuid(UUID_TEST_GROUP))
+            (Attribute::Class, EntryClass::Group.to_value()),
+            (Attribute::Name, Value::new_iname("testgroup")),
+            (Attribute::Uuid, Value::Uuid(UUID_TEST_GROUP))
         );
 
         let preload = vec![e_dyn, e_group];
@@ -820,23 +867,23 @@ mod tests {
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq("name", PartialValue::new_iname("testgroup"))),
+            filter!(f_eq(Attribute::Name, PartialValue::new_iname("testgroup"))),
             ModifyList::new_list(vec![
-                Modify::Purged(AttrString::from("name"),),
-                Modify::Present(AttrString::from("name"), Value::new_iname("not_testgroup"))
+                Modify::Purged(Attribute::Name.into(),),
+                Modify::Present(Attribute::Name.into(), Value::new_iname("not_testgroup"))
             ]),
             None,
             |_| {},
             |qs: &mut QueryServerWriteTransaction| {
                 let cands = qs
                     .internal_search(filter!(f_eq(
-                        "name",
+                        Attribute::Name,
                         PartialValue::new_iname("test_dyngroup")
                     )))
                     .expect("Internal search failure");
 
                 let d_group = cands.get(0).expect("Unable to access group.");
-                assert!(d_group.get_ava_set("dynmember").is_none());
+                assert!(d_group.get_ava_set(Attribute::DynMember).is_none());
             }
         );
     }
@@ -844,20 +891,23 @@ mod tests {
     #[test]
     fn test_delete_dyngroup_matching_entry() {
         let e_dyn = entry_init!(
-            ("class", Value::new_class("object")),
-            ("class", Value::new_class("group")),
-            ("class", Value::new_class("dyngroup")),
-            ("name", Value::new_iname("test_dyngroup")),
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Group.to_value()),
+            (Attribute::Class, EntryClass::DynGroup.to_value()),
+            (Attribute::Name, Value::new_iname("test_dyngroup")),
             (
-                "dyngroup_filter",
-                Value::JsonFilt(ProtoFilter::Eq("name".to_string(), "testgroup".to_string()))
+                Attribute::DynGroupFilter,
+                Value::JsonFilt(ProtoFilter::Eq(
+                    Attribute::Name.to_string(),
+                    "testgroup".to_string()
+                ))
             )
         );
 
         let e_group: Entry<EntryInit, EntryNew> = entry_init!(
-            ("class", Value::new_class("group")),
-            ("name", Value::new_iname("testgroup")),
-            ("uuid", Value::Uuid(UUID_TEST_GROUP))
+            (Attribute::Class, EntryClass::Group.to_value()),
+            (Attribute::Name, Value::new_iname("testgroup")),
+            (Attribute::Uuid, Value::Uuid(UUID_TEST_GROUP))
         );
 
         let preload = vec![e_dyn, e_group];
@@ -865,18 +915,18 @@ mod tests {
         run_delete_test!(
             Ok(()),
             preload,
-            filter!(f_eq("name", PartialValue::new_iname("testgroup"))),
+            filter!(f_eq(Attribute::Name, PartialValue::new_iname("testgroup"))),
             None,
             |qs: &mut QueryServerWriteTransaction| {
                 let cands = qs
                     .internal_search(filter!(f_eq(
-                        "name",
+                        Attribute::Name,
                         PartialValue::new_iname("test_dyngroup")
                     )))
                     .expect("Internal search failure");
 
                 let d_group = cands.get(0).expect("Unable to access group.");
-                assert!(d_group.get_ava_set("dynmember").is_none());
+                assert!(d_group.get_ava_set(Attribute::DynMember).is_none());
             }
         );
     }
@@ -884,20 +934,23 @@ mod tests {
     #[test]
     fn test_delete_dyngroup_group() {
         let e_dyn = entry_init!(
-            ("class", Value::new_class("object")),
-            ("class", Value::new_class("group")),
-            ("class", Value::new_class("dyngroup")),
-            ("name", Value::new_iname("test_dyngroup")),
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Group.to_value()),
+            (Attribute::Class, EntryClass::DynGroup.to_value()),
+            (Attribute::Name, Value::new_iname("test_dyngroup")),
             (
-                "dyngroup_filter",
-                Value::JsonFilt(ProtoFilter::Eq("name".to_string(), "testgroup".to_string()))
+                Attribute::DynGroupFilter,
+                Value::JsonFilt(ProtoFilter::Eq(
+                    Attribute::Name.to_string(),
+                    "testgroup".to_string()
+                ))
             )
         );
 
         let e_group: Entry<EntryInit, EntryNew> = entry_init!(
-            ("class", Value::new_class("group")),
-            ("name", Value::new_iname("testgroup")),
-            ("uuid", Value::Uuid(UUID_TEST_GROUP))
+            (Attribute::Class, EntryClass::Group.to_value()),
+            (Attribute::Name, Value::new_iname("testgroup")),
+            (Attribute::Uuid, Value::Uuid(UUID_TEST_GROUP))
         );
 
         let preload = vec![e_dyn, e_group];
@@ -905,16 +958,22 @@ mod tests {
         run_delete_test!(
             Ok(()),
             preload,
-            filter!(f_eq("name", PartialValue::new_iname("test_dyngroup"))),
+            filter!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("test_dyngroup")
+            )),
             None,
             |qs: &mut QueryServerWriteTransaction| {
                 // Note we check memberof is empty here!
                 let cands = qs
-                    .internal_search(filter!(f_eq("name", PartialValue::new_iname("testgroup"))))
+                    .internal_search(filter!(f_eq(
+                        Attribute::Name,
+                        PartialValue::new_iname("testgroup")
+                    )))
                     .expect("Internal search failure");
 
                 let d_group = cands.get(0).expect("Unable to access group.");
-                assert!(d_group.get_ava_set("memberof").is_none());
+                assert!(d_group.get_ava_set(Attribute::MemberOf).is_none());
             }
         );
     }

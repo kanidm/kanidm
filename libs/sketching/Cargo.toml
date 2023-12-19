@@ -1,5 +1,6 @@
 [package]
 name = "sketching"
+description = "Logging crate"
 # We do not have tests in this pkg
 autotests = false
 
@@ -11,11 +12,31 @@ license = { workspace = true }
 homepage = { workspace = true }
 repository = { workspace = true }
 
-[dependencies]
-async-trait = { workspace = true }
-num_enum = { workspace = true }
-tide = { workspace = true }
-tracing = { workspace = true, features = ["attributes"] }
-tracing-subscriber = { workspace = true, features = ["env-filter"] }
-tracing-forest = { workspace = true, features = ["uuid", "smallvec", "tokio", "env-filter"] }
+[lib]
+test = false
+doctest = false
 
+[dependencies]
+gethostname = "0.4.3"
+num_enum = { workspace = true }
+opentelemetry = { workspace = true, features = ["metrics", "rt-tokio"] }
+opentelemetry-otlp = { workspace = true, default-features = false, features = [
+    "serde",
+    "logs",
+    "metrics",
+    "http-proto",
+    "grpc-tonic",
+] }
+opentelemetry_sdk = { workspace = true }
+rand = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+tracing = { workspace = true, features = ["attributes"] }
+tracing-forest = { workspace = true, features = [
+    "uuid",
+    "smallvec",
+    "tokio",
+    "env-filter",
+] }
+tracing-opentelemetry = { workspace = true }
+tracing-subscriber = { workspace = true, features = ["env-filter"] }
+uuid = { workspace = true, features = ["v4"] }

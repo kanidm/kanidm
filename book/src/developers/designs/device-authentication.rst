@@ -73,7 +73,7 @@ authenticator for the laptops webauthn:
 * (phone) Login to website with password + roaming authenticator
 * (phone) Enroll webauthn for phone SE to account
 
-While this process does not invole as much fiddling with TOTP, it still has weaknesses.
+While this process does not involve as much fiddling with TOTP, it still has weaknesses.
 
 * The user is expected to own a roaming authenticator capable of working on their phone
 * The user is expected to understand different classes of MFA and how they are device bound or not

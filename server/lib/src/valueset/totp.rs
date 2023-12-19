@@ -80,7 +80,7 @@ impl ValueSetT for ValueSetTotpSecret {
         self.map.clear();
     }
 
-    fn remove(&mut self, pv: &PartialValue) -> bool {
+    fn remove(&mut self, pv: &PartialValue, _cid: &Cid) -> bool {
         match pv {
             PartialValue::Utf8(l) => self.map.remove(l.as_str()).is_some(),
             _ => false,
@@ -95,6 +95,14 @@ impl ValueSetT for ValueSetTotpSecret {
     }
 
     fn substring(&self, _pv: &PartialValue) -> bool {
+        false
+    }
+
+    fn startswith(&self, _pv: &PartialValue) -> bool {
+        false
+    }
+
+    fn endswith(&self, _pv: &PartialValue) -> bool {
         false
     }
 

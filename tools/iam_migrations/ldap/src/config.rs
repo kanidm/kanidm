@@ -1,56 +1,62 @@
+use kanidm_proto::constants::{ATTR_UID, LDAP_ATTR_CN, LDAP_CLASS_GROUPOFNAMES};
+use kanidmd_lib::prelude::{Attribute, EntryClass};
 use serde::Deserialize;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use url::Url;
 use uuid::Uuid;
 
 use ldap3_client::proto::LdapFilter;
 
 fn person_objectclass() -> String {
-    "person".to_string()
+    EntryClass::Person.to_string()
 }
 
 fn person_attr_user_name() -> String {
-    "uid".to_string()
+    ATTR_UID.to_string()
 }
 
 fn person_attr_display_name() -> String {
-    "cn".to_string()
+    LDAP_ATTR_CN.to_string()
 }
 
 fn person_attr_gidnumber() -> String {
-    "uidnumber".to_string()
+    Attribute::UidNumber.to_string()
 }
 
 fn person_attr_password() -> String {
-    "userpassword".to_string()
+    Attribute::UserPassword.to_string()
 }
 
 fn person_attr_login_shell() -> String {
-    "loginshell".to_string()
+    Attribute::LoginShell.to_string()
 }
 
 fn person_attr_mail() -> String {
-    "mail".to_string()
+    Attribute::Mail.to_string()
+}
+
+fn person_attr_ssh_public_key() -> String {
+    Attribute::LdapSshPublicKey.to_string()
 }
 
 fn group_objectclass() -> String {
-    "groupofnames".to_string()
+    LDAP_CLASS_GROUPOFNAMES.to_string()
 }
 
 fn group_attr_name() -> String {
-    "cn".to_string()
+    Attribute::Cn.to_string()
 }
 
 fn group_attr_description() -> String {
-    "description".to_string()
+    Attribute::Description.to_string()
 }
 
 fn group_attr_member() -> String {
-    "member".to_string()
+    Attribute::Member.to_string()
 }
 
 fn group_attr_gidnumber() -> String {
-    "gidnumber".to_string()
+    Attribute::GidNumber.to_string()
 }
 
 #[derive(Debug, Deserialize)]
@@ -65,6 +71,8 @@ pub struct Config {
     pub ldap_sync_base_dn: String,
 
     pub ldap_filter: LdapFilter,
+
+    pub sync_password_as_unix_password: Option<bool>,
 
     #[serde(default = "person_objectclass")]
     pub person_objectclass: String,
@@ -81,6 +89,8 @@ pub struct Config {
     pub person_attr_login_shell: String,
     #[serde(default = "person_attr_mail")]
     pub person_attr_mail: String,
+    #[serde(default = "person_attr_ssh_public_key")]
+    pub person_attr_ssh_public_key: String,
 
     #[serde(default = "group_objectclass")]
     pub group_objectclass: String,
@@ -94,7 +104,7 @@ pub struct Config {
     pub group_attr_member: String,
 
     #[serde(flatten)]
-    pub entry_map: HashMap<Uuid, EntryConfig>,
+    pub entry_map: BTreeMap<Uuid, EntryConfig>,
 }
 
 #[derive(Debug, Deserialize, Default, Clone)]

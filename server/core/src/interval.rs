@@ -19,7 +19,7 @@ use crate::actors::v1_write::QueryServerWriteV1;
 use kanidmd_lib::constants::PURGE_FREQUENCY;
 use kanidmd_lib::event::{OnlineBackupEvent, PurgeRecycledEvent, PurgeTombstoneEvent};
 
-pub struct IntervalActor;
+pub(crate) struct IntervalActor;
 
 impl IntervalActor {
     pub fn start(
@@ -47,7 +47,7 @@ impl IntervalActor {
                 }
             }
 
-            info!("Stopped IntervalActor");
+            info!("Stopped {}", super::TaskName::IntervalActor);
         })
     }
 
@@ -59,7 +59,13 @@ impl IntervalActor {
         online_backup_config: &OnlineBackup,
         mut rx: broadcast::Receiver<CoreAction>,
     ) -> Result<tokio::task::JoinHandle<()>, ()> {
-        let outpath = online_backup_config.path.to_owned();
+        let outpath = match online_backup_config.path.to_owned() {
+            Some(val) => val,
+            None => {
+                error!("Online backup output path is not set.");
+                return Err(());
+            }
+        };
         let versions = online_backup_config.versions;
         let crono_expr = online_backup_config.schedule.as_str().to_string();
         let mut crono_expr_values = crono_expr.split_ascii_whitespace().collect::<Vec<&str>>();
@@ -149,7 +155,7 @@ impl IntervalActor {
                     }
                 }
             }
-            info!("Stopped OnlineBackupActor");
+            info!("Stopped {}", super::TaskName::BackupActor);
         });
 
         Ok(handle)

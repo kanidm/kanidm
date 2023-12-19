@@ -35,10 +35,12 @@ use std::collections::BTreeSet;
 use std::convert::TryFrom;
 use std::ffi::CStr;
 
-use kanidm_unix_common::client_sync::call_daemon_blocking;
+use kanidm_unix_common::client_sync::DaemonClientBlocking;
 use kanidm_unix_common::constants::DEFAULT_CONFIG_PATH;
 use kanidm_unix_common::unix_config::KanidmUnixdConfig;
-use kanidm_unix_common::unix_proto::{ClientRequest, ClientResponse};
+use kanidm_unix_common::unix_proto::{
+    ClientRequest, ClientResponse, PamAuthRequest, PamAuthResponse,
+};
 
 use crate::pam::constants::*;
 use crate::pam::conv::PamConv;
@@ -46,10 +48,30 @@ use crate::pam::module::{PamHandle, PamHooks};
 use crate::pam_hooks;
 use constants::PamResultCode;
 
+use tracing::{debug, error};
+use tracing_subscriber::filter::LevelFilter;
+use tracing_subscriber::fmt;
+use tracing_subscriber::prelude::*;
+
 pub fn get_cfg() -> Result<KanidmUnixdConfig, PamResultCode> {
     KanidmUnixdConfig::new()
         .read_options_from_optional_config(DEFAULT_CONFIG_PATH)
         .map_err(|_| PamResultCode::PAM_SERVICE_ERR)
+}
+
+fn install_subscriber(debug: bool) {
+    let fmt_layer = fmt::layer().with_target(false);
+
+    let filter_layer = if debug {
+        LevelFilter::DEBUG
+    } else {
+        LevelFilter::ERROR
+    };
+
+    let _ = tracing_subscriber::registry()
+        .with(filter_layer)
+        .with(fmt_layer)
+        .try_init();
 }
 
 #[derive(Debug)]
@@ -91,22 +113,17 @@ impl PamHooks for PamKanidm {
             Err(_) => return PamResultCode::PAM_SERVICE_ERR,
         };
 
+        install_subscriber(opts.debug);
+
         let tty = pamh.get_tty();
         let rhost = pamh.get_rhost();
 
-        if opts.debug {
-            println!("acct_mgmt");
-            println!("args -> {:?}", args);
-            println!("opts -> {:?}", opts);
-            println!("tty -> {:?} rhost -> {:?}", tty, rhost);
-        }
+        debug!(?args, ?opts, ?tty, ?rhost, "acct_mgmt");
 
         let account_id = match pamh.get_user(None) {
             Ok(aid) => aid,
             Err(e) => {
-                if opts.debug {
-                    println!("Error get_user -> {:?}", e);
-                }
+                error!(err = ?e, "get_user");
                 return e;
             }
         };
@@ -118,46 +135,41 @@ impl PamHooks for PamKanidm {
         let req = ClientRequest::PamAccountAllowed(account_id);
         // PamResultCode::PAM_IGNORE
 
-        match call_daemon_blocking(cfg.sock_path.as_str(), &req, cfg.unix_sock_timeout) {
+        let mut daemon_client = match DaemonClientBlocking::new(cfg.sock_path.as_str()) {
+            Ok(dc) => dc,
+            Err(e) => {
+                error!(err = ?e, "Error DaemonClientBlocking::new()");
+                return PamResultCode::PAM_SERVICE_ERR;
+            }
+        };
+
+        match daemon_client.call_and_wait(&req, cfg.unix_sock_timeout) {
             Ok(r) => match r {
                 ClientResponse::PamStatus(Some(true)) => {
-                    if opts.debug {
-                        println!("PamResultCode::PAM_SUCCESS");
-                    }
+                    debug!("PamResultCode::PAM_SUCCESS");
                     PamResultCode::PAM_SUCCESS
                 }
                 ClientResponse::PamStatus(Some(false)) => {
-                    // println!("PAM_IGNORE");
-                    if opts.debug {
-                        println!("PamResultCode::PAM_AUTH_ERR");
-                    }
+                    debug!("PamResultCode::PAM_AUTH_ERR");
                     PamResultCode::PAM_AUTH_ERR
                 }
                 ClientResponse::PamStatus(None) => {
                     if opts.ignore_unknown_user {
-                        if opts.debug {
-                            println!("PamResultCode::PAM_IGNORE");
-                        }
+                        debug!("PamResultCode::PAM_IGNORE");
                         PamResultCode::PAM_IGNORE
                     } else {
-                        if opts.debug {
-                            println!("PamResultCode::PAM_USER_UNKNOWN");
-                        }
+                        debug!("PamResultCode::PAM_USER_UNKNOWN");
                         PamResultCode::PAM_USER_UNKNOWN
                     }
                 }
                 _ => {
                     // unexpected response.
-                    if opts.debug {
-                        println!("PamResultCode::PAM_IGNORE -> {:?}", r);
-                    }
+                    error!(err = ?r, "PAM_IGNORE, unexpected resolver response");
                     PamResultCode::PAM_IGNORE
                 }
             },
             Err(e) => {
-                if opts.debug {
-                    println!("PamResultCode::PAM_IGNORE  -> {:?}", e);
-                }
+                error!(err = ?e, "PamResultCode::PAM_IGNORE");
                 PamResultCode::PAM_IGNORE
             }
         }
@@ -169,71 +181,19 @@ impl PamHooks for PamKanidm {
             Err(_) => return PamResultCode::PAM_SERVICE_ERR,
         };
 
+        install_subscriber(opts.debug);
+
         // This will == "Ok(Some("ssh"))" on remote auth.
         let tty = pamh.get_tty();
         let rhost = pamh.get_rhost();
 
-        if opts.debug {
-            println!("sm_authenticate");
-            println!("args -> {:?}", args);
-            println!("opts -> {:?}", opts);
-            println!("tty -> {:?} rhost -> {:?}", tty, rhost);
-        }
+        debug!(?args, ?opts, ?tty, ?rhost, "sm_authenticate");
 
         let account_id = match pamh.get_user(None) {
             Ok(aid) => aid,
             Err(e) => {
-                println!("Error get_user -> {:?}", e);
+                error!(err = ?e, "get_user");
                 return e;
-            }
-        };
-
-        let authtok = match pamh.get_authtok() {
-            Ok(atok) => atok,
-            Err(e) => {
-                if opts.debug {
-                    println!("Error get_authtok -> {:?}", e);
-                }
-                return e;
-            }
-        };
-
-        let authtok = match authtok {
-            Some(v) => v,
-            None => {
-                if opts.use_first_pass {
-                    if opts.debug {
-                        println!("Don't have an authtok, returning PAM_AUTH_ERR");
-                    }
-                    return PamResultCode::PAM_AUTH_ERR;
-                } else {
-                    let conv = match pamh.get_item::<PamConv>() {
-                        Ok(conv) => conv,
-                        Err(err) => {
-                            if opts.debug {
-                                println!("Couldn't get pam_conv");
-                            }
-                            return err;
-                        }
-                    };
-                    match conv.send(PAM_PROMPT_ECHO_OFF, "Password: ") {
-                        Ok(password) => match password {
-                            Some(pw) => pw,
-                            None => {
-                                if opts.debug {
-                                    println!("No password");
-                                }
-                                return PamResultCode::PAM_CRED_INSUFFICIENT;
-                            }
-                        },
-                        Err(err) => {
-                            if opts.debug {
-                                println!("Couldn't get password");
-                            }
-                            return err;
-                        }
-                    }
-                } // end opts.use_first_pass
             }
         };
 
@@ -241,41 +201,126 @@ impl PamHooks for PamKanidm {
             Ok(cfg) => cfg,
             Err(e) => return e,
         };
-        let req = ClientRequest::PamAuthenticate(account_id, authtok);
 
-        match call_daemon_blocking(cfg.sock_path.as_str(), &req, cfg.unix_sock_timeout) {
-            Ok(r) => match r {
-                ClientResponse::PamStatus(Some(true)) => {
-                    // println!("PAM_SUCCESS");
-                    PamResultCode::PAM_SUCCESS
-                }
-                ClientResponse::PamStatus(Some(false)) => {
-                    // println!("PAM_AUTH_ERR");
-                    PamResultCode::PAM_AUTH_ERR
-                }
-                ClientResponse::PamStatus(None) => {
-                    // println!("PAM_USER_UNKNOWN");
-                    if opts.ignore_unknown_user {
-                        PamResultCode::PAM_IGNORE
-                    } else {
-                        PamResultCode::PAM_USER_UNKNOWN
-                    }
-                }
-                _ => {
-                    // unexpected response.
-                    if opts.debug {
-                        println!("PAM_IGNORE -> {:?}", r);
-                    }
-                    PamResultCode::PAM_IGNORE
-                }
-            },
+        let mut timeout = cfg.unix_sock_timeout;
+        let mut daemon_client = match DaemonClientBlocking::new(cfg.sock_path.as_str()) {
+            Ok(dc) => dc,
             Err(e) => {
-                if opts.debug {
-                    println!("PAM_IGNORE -> {:?}", e);
-                }
-                PamResultCode::PAM_IGNORE
+                error!(err = ?e, "Error DaemonClientBlocking::new()");
+                return PamResultCode::PAM_SERVICE_ERR;
             }
-        }
+        };
+
+        // Later we may need to move this to a function and call it as a oneshot for auth methods
+        // that don't require any authtoks at all. For example, imagine a user authed and they
+        // needed to follow a URL to continue. In that case, they would fail here because they
+        // didn't enter an authtok that they didn't need!
+        let mut authtok = match pamh.get_authtok() {
+            Ok(Some(v)) => Some(v),
+            Ok(None) => {
+                if opts.use_first_pass {
+                    debug!("Don't have an authtok, returning PAM_AUTH_ERR");
+                    return PamResultCode::PAM_AUTH_ERR;
+                }
+                None
+            }
+            Err(e) => {
+                error!(err = ?e, "get_authtok");
+                return e;
+            }
+        };
+
+        let conv = match pamh.get_item::<PamConv>() {
+            Ok(conv) => conv,
+            Err(err) => {
+                error!(?err, "pam_conv");
+                return err;
+            }
+        };
+
+        let mut req = ClientRequest::PamAuthenticateInit(account_id);
+
+        loop {
+            match daemon_client.call_and_wait(&req, timeout) {
+                Ok(r) => match r {
+                    ClientResponse::PamAuthenticateStepResponse(PamAuthResponse::Success) => {
+                        return PamResultCode::PAM_SUCCESS;
+                    }
+                    ClientResponse::PamAuthenticateStepResponse(PamAuthResponse::Denied) => {
+                        return PamResultCode::PAM_AUTH_ERR;
+                    }
+                    ClientResponse::PamAuthenticateStepResponse(PamAuthResponse::Unknown) => {
+                        if opts.ignore_unknown_user {
+                            return PamResultCode::PAM_IGNORE;
+                        } else {
+                            return PamResultCode::PAM_USER_UNKNOWN;
+                        }
+                    }
+                    ClientResponse::PamAuthenticateStepResponse(PamAuthResponse::Password) => {
+                        let mut consume_authtok = None;
+                        // Swap the authtok out with a None, so it can only be consumed once.
+                        // If it's already been swapped, we are just swapping two null pointers
+                        // here effectively.
+                        std::mem::swap(&mut authtok, &mut consume_authtok);
+                        let cred = if let Some(cred) = consume_authtok {
+                            cred
+                        } else {
+                            match conv.send(PAM_PROMPT_ECHO_OFF, "Password: ") {
+                                Ok(password) => match password {
+                                    Some(cred) => cred,
+                                    None => {
+                                        debug!("no password");
+                                        return PamResultCode::PAM_CRED_INSUFFICIENT;
+                                    }
+                                },
+                                Err(err) => {
+                                    debug!("unable to get password");
+                                    return err;
+                                }
+                            }
+                        };
+
+                        // Now setup the request for the next loop.
+                        timeout = cfg.unix_sock_timeout;
+                        req = ClientRequest::PamAuthenticateStep(PamAuthRequest::Password { cred });
+                        continue;
+                    }
+                    ClientResponse::PamAuthenticateStepResponse(
+                        PamAuthResponse::DeviceAuthorizationGrant { data },
+                    ) => {
+                        let msg = match &data.message {
+                            Some(msg) => msg.clone(),
+                            None => format!("Using a browser on another device, visit:\n{}\nAnd enter the code:\n{}",
+                                            data.verification_uri, data.user_code)
+                        };
+                        match conv.send(PAM_TEXT_INFO, &msg) {
+                            Ok(_) => {}
+                            Err(err) => {
+                                if opts.debug {
+                                    println!("Message prompt failed");
+                                }
+                                return err;
+                            }
+                        }
+
+                        timeout = u64::from(data.expires_in);
+                        req = ClientRequest::PamAuthenticateStep(
+                            PamAuthRequest::DeviceAuthorizationGrant { data },
+                        );
+                        continue;
+                    }
+                    _ => {
+                        // unexpected response.
+                        error!(err = ?r, "PAM_IGNORE, unexpected resolver response");
+                        return PamResultCode::PAM_IGNORE;
+                    }
+                },
+                Err(err) => {
+                    error!(?err, "PAM_IGNORE");
+                    return PamResultCode::PAM_IGNORE;
+                }
+            }
+        } // while true, continue calling PamAuthenticateStep until we get a decision.
     }
 
     fn sm_chauthtok(_pamh: &PamHandle, args: Vec<&CStr>, _flags: PamFlag) -> PamResultCode {
@@ -284,11 +329,10 @@ impl PamHooks for PamKanidm {
             Err(_) => return PamResultCode::PAM_SERVICE_ERR,
         };
 
-        if opts.debug {
-            println!("sm_chauthtok");
-            println!("args -> {:?}", args);
-            println!("opts -> {:?}", opts);
-        }
+        install_subscriber(opts.debug);
+
+        debug!(?args, ?opts, "sm_chauthtok");
+
         PamResultCode::PAM_IGNORE
     }
 
@@ -298,11 +342,10 @@ impl PamHooks for PamKanidm {
             Err(_) => return PamResultCode::PAM_SERVICE_ERR,
         };
 
-        if opts.debug {
-            println!("sm_close_session");
-            println!("args -> {:?}", args);
-            println!("opts -> {:?}", opts);
-        }
+        install_subscriber(opts.debug);
+
+        debug!(?args, ?opts, "sm_close_session");
+
         PamResultCode::PAM_SUCCESS
     }
 
@@ -312,19 +355,15 @@ impl PamHooks for PamKanidm {
             Err(_) => return PamResultCode::PAM_SERVICE_ERR,
         };
 
-        if opts.debug {
-            println!("sm_open_session");
-            println!("args -> {:?}", args);
-            println!("opts -> {:?}", opts);
-        }
+        install_subscriber(opts.debug);
+
+        debug!(?args, ?opts, "sm_open_session");
 
         let account_id = match pamh.get_user(None) {
             Ok(aid) => aid,
-            Err(e) => {
-                if opts.debug {
-                    println!("Error get_user -> {:?}", e);
-                }
-                return e;
+            Err(err) => {
+                error!(?err, "get_user");
+                return err;
             }
         };
 
@@ -334,15 +373,21 @@ impl PamHooks for PamKanidm {
         };
         let req = ClientRequest::PamAccountBeginSession(account_id);
 
-        match call_daemon_blocking(cfg.sock_path.as_str(), &req, cfg.unix_sock_timeout) {
+        let mut daemon_client = match DaemonClientBlocking::new(cfg.sock_path.as_str()) {
+            Ok(dc) => dc,
+            Err(e) => {
+                error!(err = ?e, "Error DaemonClientBlocking::new()");
+                return PamResultCode::PAM_SERVICE_ERR;
+            }
+        };
+
+        match daemon_client.call_and_wait(&req, cfg.unix_sock_timeout) {
             Ok(ClientResponse::Ok) => {
                 // println!("PAM_SUCCESS");
                 PamResultCode::PAM_SUCCESS
             }
             other => {
-                if opts.debug {
-                    println!("PAM_IGNORE  -> {:?}", other);
-                }
+                debug!(err = ?other, "PAM_IGNORE");
                 PamResultCode::PAM_IGNORE
             }
         }
@@ -354,11 +399,10 @@ impl PamHooks for PamKanidm {
             Err(_) => return PamResultCode::PAM_SERVICE_ERR,
         };
 
-        if opts.debug {
-            println!("sm_setcred");
-            println!("args -> {:?}", args);
-            println!("opts -> {:?}", opts);
-        }
+        install_subscriber(opts.debug);
+
+        debug!(?args, ?opts, "sm_setcred");
+
         PamResultCode::PAM_SUCCESS
     }
 }

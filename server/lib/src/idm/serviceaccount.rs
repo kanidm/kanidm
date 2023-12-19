@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 use std::time::Duration;
 
-use compact_jwt::{Jws, JwsSigner};
+use compact_jwt::{Jws, JwsEs256Signer, JwsSigner};
 use kanidm_proto::v1::ApiToken as ProtoApiToken;
 use time::OffsetDateTime;
 
@@ -32,31 +32,33 @@ use crate::value::ApiToken;
 macro_rules! try_from_entry {
     ($value:expr) => {{
         // Check the classes
-        if !$value.attribute_equality("class", &PVCLASS_SERVICE_ACCOUNT) {
+        if !$value.attribute_equality(Attribute::Class, &EntryClass::ServiceAccount.into()) {
             return Err(OperationError::InvalidAccountState(
                 "Missing class: service account".to_string(),
             ));
         }
 
-        let spn = $value.get_ava_single_proto_string("spn").ok_or(
-            OperationError::InvalidAccountState("Missing attribute: spn".to_string()),
+        let spn = $value.get_ava_single_proto_string(Attribute::Spn).ok_or(
+            OperationError::InvalidAccountState(format!("Missing attribute: {}", Attribute::Spn)),
         )?;
 
         let jws_key = $value
-            .get_ava_single_jws_key_es256("jws_es256_private_key")
+            .get_ava_single_jws_key_es256(Attribute::JwsEs256PrivateKey)
             .cloned()
-            .ok_or(OperationError::InvalidAccountState(
-                "Missing attribute: jws_es256_private_key".to_string(),
-            ))?;
+            .ok_or(OperationError::InvalidAccountState(format!(
+                "Missing attribute: {}",
+                Attribute::JwsEs256PrivateKey
+            )))?
+            .set_sign_option_embed_jwk(true);
 
         let api_tokens = $value
-            .get_ava_as_apitoken_map("api_token_session")
+            .get_ava_as_apitoken_map(Attribute::ApiTokenSession)
             .cloned()
             .unwrap_or_default();
 
-        let valid_from = $value.get_ava_single_datetime("account_valid_from");
+        let valid_from = $value.get_ava_single_datetime(Attribute::AccountValidFrom);
 
-        let expire = $value.get_ava_single_datetime("account_expire");
+        let expire = $value.get_ava_single_datetime(Attribute::AccountExpire);
 
         let uuid = $value.get_uuid().clone();
 
@@ -80,7 +82,7 @@ pub struct ServiceAccount {
 
     pub api_tokens: BTreeMap<Uuid, ApiToken>,
 
-    pub jws_key: JwsSigner,
+    pub jws_key: JwsEs256Signer,
 }
 
 impl ServiceAccount {
@@ -100,8 +102,12 @@ impl ServiceAccount {
     ) -> bool {
         let within_valid_window = Account::check_within_valid_time(
             ct,
-            entry.get_ava_single_datetime("account_valid_from").as_ref(),
-            entry.get_ava_single_datetime("account_expire").as_ref(),
+            entry
+                .get_ava_single_datetime(Attribute::AccountValidFrom)
+                .as_ref(),
+            entry
+                .get_ava_single_datetime(Attribute::AccountExpire)
+                .as_ref(),
         );
 
         if !within_valid_window {
@@ -111,7 +117,7 @@ impl ServiceAccount {
 
         // Get the sessions.
         let session_present = entry
-            .get_ava_as_apitoken_map("api_token_session")
+            .get_ava_as_apitoken_map(Attribute::ApiTokenSession)
             .map(|session_map| session_map.get(&apit.token_id).is_some())
             .unwrap_or(false);
 
@@ -235,35 +241,41 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         );
 
         // create the session token (not yet signed)
-        let token = Jws::new(ProtoApiToken {
+        let proto_api_token = ProtoApiToken {
             account_id: service_account.uuid,
             token_id: session_id,
             label: gte.label.clone(),
             expiry: gte.expiry,
             issued_at,
             purpose,
-        });
+        };
+
+        let token = Jws::into_json(&proto_api_token).map_err(|err| {
+            error!(?err, "Unable to serialise JWS");
+            OperationError::SerdeJsonError
+        })?;
 
         // modify the account to put the session onto it.
         let modlist = ModifyList::new_list(vec![Modify::Present(
-            AttrString::from("api_token_session"),
+            Attribute::ApiTokenSession.into(),
             session,
         )]);
 
         self.qs_write
             .impersonate_modify(
                 // Filter as executed
-                &filter!(f_eq("uuid", PartialValue::Uuid(gte.target))),
+                &filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(gte.target))),
                 // Filter as intended (acp)
-                &filter_all!(f_eq("uuid", PartialValue::Uuid(gte.target))),
+                &filter_all!(f_eq(Attribute::Uuid, PartialValue::Uuid(gte.target))),
                 &modlist,
                 // Provide the event to impersonate
                 &gte.ident,
             )
             .and_then(|_| {
                 // The modify succeeded and was allowed, now sign the token for return.
-                token
-                    .sign_embed_public_jwk(&service_account.jws_key)
+                service_account
+                    .jws_key
+                    .sign(&token)
                     .map(|jws_signed| jws_signed.to_string())
                     .map_err(|e| {
                         admin_error!(err = ?e, "Unable to sign api token");
@@ -283,7 +295,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
     ) -> Result<(), OperationError> {
         // Delete the attribute with uuid.
         let modlist = ModifyList::new_list(vec![Modify::Removed(
-            AttrString::from("api_token_session"),
+            Attribute::ApiTokenSession.into(),
             PartialValue::Refer(dte.token_id),
         )]);
 
@@ -291,13 +303,19 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             .impersonate_modify(
                 // Filter as executed
                 &filter!(f_and!([
-                    f_eq("uuid", PartialValue::Uuid(dte.target)),
-                    f_eq("api_token_session", PartialValue::Refer(dte.token_id))
+                    f_eq(Attribute::Uuid, PartialValue::Uuid(dte.target)),
+                    f_eq(
+                        Attribute::ApiTokenSession,
+                        PartialValue::Refer(dte.token_id)
+                    )
                 ])),
                 // Filter as intended (acp)
                 &filter_all!(f_and!([
-                    f_eq("uuid", PartialValue::Uuid(dte.target)),
-                    f_eq("api_token_session", PartialValue::Refer(dte.token_id))
+                    f_eq(Attribute::Uuid, PartialValue::Uuid(dte.target)),
+                    f_eq(
+                        Attribute::ApiTokenSession,
+                        PartialValue::Refer(dte.token_id)
+                    )
                 ])),
                 &modlist,
                 // Provide the event to impersonate
@@ -324,9 +342,9 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         let vcred = Value::new_credential("primary", ncred);
         // We need to remove other credentials too.
         let modlist = ModifyList::new_list(vec![
-            m_purge("passkeys"),
-            m_purge("primary_credential"),
-            Modify::Present("primary_credential".into(), vcred),
+            m_purge(Attribute::PassKeys),
+            m_purge(Attribute::PrimaryCredential),
+            Modify::Present(Attribute::PrimaryCredential.into(), vcred),
         ]);
 
         trace!(?modlist, "processing change");
@@ -335,9 +353,9 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         self.qs_write
             .impersonate_modify(
                 // Filter as executed
-                &filter!(f_eq("uuid", PartialValue::Uuid(gpe.target))),
+                &filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(gpe.target))),
                 // Filter as intended (acp)
-                &filter_all!(f_eq("uuid", PartialValue::Uuid(gpe.target))),
+                &filter_all!(f_eq(Attribute::Uuid, PartialValue::Uuid(gpe.target))),
                 &modlist,
                 // Provide the event to impersonate
                 &gpe.ident,
@@ -376,26 +394,27 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
                     .and_then(|e| {
                         let account_id = e.get_uuid();
                         // From the entry, turn it into the value
-                        e.get_ava_as_apitoken_map("api_token_session").map(|smap| {
-                            smap.iter()
-                                .map(|(u, s)| {
-                                    s.scope
-                                        .try_into()
-                                        .map(|purpose| ProtoApiToken {
-                                            account_id,
-                                            token_id: *u,
-                                            label: s.label.clone(),
-                                            expiry: s.expiry,
-                                            issued_at: s.issued_at,
-                                            purpose,
-                                        })
-                                        .map_err(|e| {
-                                            admin_error!("Invalid api_token {}", u);
-                                            e
-                                        })
-                                })
-                                .collect::<Result<Vec<_>, _>>()
-                        })
+                        e.get_ava_as_apitoken_map(Attribute::ApiTokenSession)
+                            .map(|smap| {
+                                smap.iter()
+                                    .map(|(u, s)| {
+                                        s.scope
+                                            .try_into()
+                                            .map(|purpose| ProtoApiToken {
+                                                account_id,
+                                                token_id: *u,
+                                                label: s.label.clone(),
+                                                expiry: s.expiry,
+                                                issued_at: s.issued_at,
+                                                purpose,
+                                            })
+                                            .map_err(|e| {
+                                                admin_error!("Invalid api_token {}", u);
+                                                e
+                                            })
+                                    })
+                                    .collect::<Result<Vec<_>, _>>()
+                            })
                     })
                     .unwrap_or_else(|| {
                         // No matching entry? Return none.
@@ -412,7 +431,7 @@ mod tests {
     use std::str::FromStr;
     use std::time::Duration;
 
-    use compact_jwt::{Jws, JwsUnverified};
+    use compact_jwt::{JwsCompact, JwsEs256Verifier, JwsVerifier};
     use kanidm_proto::v1::ApiToken;
 
     use super::{DestroyApiTokenEvent, GenerateApiTokenEvent};
@@ -436,13 +455,13 @@ mod tests {
         let testaccount_uuid = Uuid::new_v4();
 
         let e1 = entry_init!(
-            ("class", Value::new_class("object")),
-            ("class", Value::new_class("account")),
-            ("class", Value::new_class("service_account")),
-            ("name", Value::new_iname("test_account_only")),
-            ("uuid", Value::Uuid(testaccount_uuid)),
-            ("description", Value::new_utf8s("testaccount")),
-            ("displayname", Value::new_utf8s("testaccount"))
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::ServiceAccount.to_value()),
+            (Attribute::Name, Value::new_iname("test_account_only")),
+            (Attribute::Uuid, Value::Uuid(testaccount_uuid)),
+            (Attribute::Description, Value::new_utf8s("testaccount")),
+            (Attribute::DisplayName, Value::new_utf8s("testaccount"))
         );
 
         let ce = CreateEvent::new_internal(vec![e1]);
@@ -459,11 +478,16 @@ mod tests {
 
         // Deserialise it.
         let apitoken_unverified =
-            JwsUnverified::from_str(&api_token).expect("Failed to parse apitoken");
-        let apitoken_inner: Jws<ApiToken> = apitoken_unverified
-            .validate_embeded()
-            .expect("Embedded jwk not found");
-        let apitoken_inner = apitoken_inner.into_inner();
+            JwsCompact::from_str(&api_token).expect("Failed to parse apitoken");
+
+        let jws_verifier =
+            JwsEs256Verifier::try_from(apitoken_unverified.get_jwk_pubkey().unwrap()).unwrap();
+
+        let apitoken_inner = jws_verifier
+            .verify(&apitoken_unverified)
+            .unwrap()
+            .from_json::<ApiToken>()
+            .unwrap();
 
         let ident = idms_prox_write
             .validate_and_parse_token_to_ident(Some(&api_token), ct)

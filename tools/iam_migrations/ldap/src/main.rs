@@ -19,6 +19,8 @@ use crate::error::SyncError;
 use chrono::Utc;
 use clap::Parser;
 use cron::Schedule;
+use kanidm_proto::constants::ATTR_OBJECTCLASS;
+use kanidmd_lib::prelude::Attribute;
 use std::fs::metadata;
 use std::fs::File;
 use std::io::Read;
@@ -42,14 +44,14 @@ use tracing_subscriber::prelude::*;
 use tracing_subscriber::{fmt, EnvFilter};
 
 use kanidm_client::KanidmClientBuilder;
+use kanidm_lib_file_permissions::readonly as file_permissions_readonly;
 use kanidm_proto::scim_v1::{
-    MultiValueAttr, ScimEntry, ScimExternalMember, ScimSyncGroup, ScimSyncPerson, ScimSyncRequest,
-    ScimSyncRetentionMode, ScimSyncState,
+    MultiValueAttr, ScimEntry, ScimExternalMember, ScimSshPubKey, ScimSyncGroup, ScimSyncPerson,
+    ScimSyncRequest, ScimSyncRetentionMode, ScimSyncState,
 };
-use kanidmd_lib::utils::file_permissions_readonly;
 
 #[cfg(target_family = "unix")]
-use users::{get_current_gid, get_current_uid, get_effective_gid, get_effective_uid};
+use kanidm_utils_users::{get_current_gid, get_current_uid, get_effective_gid, get_effective_uid};
 
 use ldap3_client::{proto, LdapClientBuilder, LdapSyncRepl, LdapSyncReplEntry, LdapSyncStateValue};
 
@@ -61,21 +63,33 @@ async fn driver_main(opt: Opt) {
     let mut f = match File::open(&opt.ldap_sync_config) {
         Ok(f) => f,
         Err(e) => {
-            error!("Unable to open profile file [{:?}] 🥺", e);
+            error!(
+                "Unable to open ldap sync config from '{}' [{:?}] 🥺",
+                &opt.ldap_sync_config.display(),
+                e
+            );
             return;
         }
     };
 
     let mut contents = String::new();
     if let Err(e) = f.read_to_string(&mut contents) {
-        error!("unable to read profile contents {:?}", e);
+        error!(
+            "unable to read file '{}': {:?}",
+            &opt.ldap_sync_config.display(),
+            e
+        );
         return;
     };
 
     let sync_config: Config = match toml::from_str(contents.as_str()) {
         Ok(c) => c,
         Err(e) => {
-            eprintln!("unable to parse config {:?}", e);
+            eprintln!(
+                "Unable to parse config from '{}' error: {:?}",
+                &opt.ldap_sync_config.display(),
+                e
+            );
             return;
         }
     };
@@ -178,30 +192,35 @@ async fn driver_main(opt: Opt) {
                     }
                     Some(()) = async move {
                         let sigterm = tokio::signal::unix::SignalKind::terminate();
+                        #[allow(clippy::unwrap_used)]
                         tokio::signal::unix::signal(sigterm).unwrap().recv().await
                     } => {
                         break
                     }
                     Some(()) = async move {
                         let sigterm = tokio::signal::unix::SignalKind::alarm();
+                        #[allow(clippy::unwrap_used)]
                         tokio::signal::unix::signal(sigterm).unwrap().recv().await
                     } => {
                         // Ignore
                     }
                     Some(()) = async move {
                         let sigterm = tokio::signal::unix::SignalKind::hangup();
+                        #[allow(clippy::unwrap_used)]
                         tokio::signal::unix::signal(sigterm).unwrap().recv().await
                     } => {
                         // Ignore
                     }
                     Some(()) = async move {
                         let sigterm = tokio::signal::unix::SignalKind::user_defined1();
+                        #[allow(clippy::unwrap_used)]
                         tokio::signal::unix::signal(sigterm).unwrap().recv().await
                     } => {
                         // Ignore
                     }
                     Some(()) = async move {
                         let sigterm = tokio::signal::unix::SignalKind::user_defined2();
+                        #[allow(clippy::unwrap_used)]
                         tokio::signal::unix::signal(sigterm).unwrap().recv().await
                     } => {
                         // Ignore
@@ -372,7 +391,7 @@ async fn run_sync(
                 }
             };
 
-            let entries = match process_ldap_sync_result(entries, &sync_config).await {
+            let entries = match process_ldap_sync_result(entries, sync_config).await {
                 Ok(ssr) => ssr,
                 Err(()) => {
                     error!("Failed to process IPA entries to SCIM");
@@ -454,6 +473,7 @@ fn ldap_to_scim_entry(
     debug!("{:#?}", sync_entry);
 
     // check the sync_entry state?
+    #[allow(clippy::unimplemented)]
     if sync_entry.state != LdapSyncStateValue::Add {
         unimplemented!();
     }
@@ -466,9 +486,13 @@ fn ldap_to_scim_entry(
         return Ok(None);
     }
 
-    let oc = sync_entry.entry.attrs.get("objectclass").ok_or_else(|| {
-        error!("Invalid entry - no object class {}", dn);
-    })?;
+    let oc = sync_entry
+        .entry
+        .attrs
+        .get(ATTR_OBJECTCLASS)
+        .ok_or_else(|| {
+            error!("Invalid entry - no object class {}", dn);
+        })?;
 
     if oc.contains(&sync_config.person_objectclass) {
         let LdapSyncReplEntry {
@@ -505,7 +529,7 @@ fn ldap_to_scim_entry(
                 );
             })?;
 
-        let gidnumber = if let Some(number) = entry_config.map_gidnumber.clone() {
+        let gidnumber = if let Some(number) = entry_config.map_gidnumber {
             Some(number)
         } else {
             entry
@@ -529,6 +553,15 @@ fn ldap_to_scim_entry(
             password_import
         };
 
+        let unix_password_import = if sync_config
+            .sync_password_as_unix_password
+            .unwrap_or_default()
+        {
+            password_import.clone()
+        } else {
+            None
+        };
+
         let mail: Vec<_> = entry
             .remove_ava(&sync_config.person_attr_mail)
             .map(|set| {
@@ -546,6 +579,35 @@ fn ldap_to_scim_entry(
 
         let totp_import = Vec::default();
 
+        let ssh_publickey = entry
+            .remove_ava(&sync_config.person_attr_ssh_public_key)
+            .map(|set| {
+                set.into_iter()
+                    .enumerate()
+                    .map(|(i, value)| ScimSshPubKey {
+                        label: format!("sshpublickey-{}", i),
+                        value,
+                    })
+                    .collect()
+            })
+            .unwrap_or_default();
+
+        let account_disabled: bool = entry
+            .remove_ava(Attribute::NsAccountLock.as_ref())
+            .map(|set| {
+                set.into_iter()
+                    .any(|value| value != "FALSE" && value != "false")
+            })
+            .unwrap_or_default();
+
+        // Account is not valid
+        let account_expire = if account_disabled {
+            Some(chrono::DateTime::UNIX_EPOCH.to_rfc3339())
+        } else {
+            None
+        };
+        let account_valid_from = None;
+
         let login_shell = entry.remove_ava_single(&sync_config.person_attr_login_shell);
         let external_id = Some(entry.dn);
 
@@ -557,9 +619,13 @@ fn ldap_to_scim_entry(
                 display_name,
                 gidnumber,
                 password_import,
+                unix_password_import,
                 totp_import,
                 login_shell,
                 mail,
+                ssh_publickey,
+                account_expire,
+                account_valid_from,
             }
             .into(),
         ))
@@ -755,4 +821,48 @@ fn main() {
     tracing::debug!("Using {} worker threads", par_count);
 
     rt.block_on(async move { driver_main(opt).await });
+}
+
+#[tokio::test]
+async fn test_driver_main() {
+    let testopt = Opt {
+        client_config: PathBuf::from("test"),
+        ldap_sync_config: PathBuf::from("test"),
+        debug: false,
+        schedule: false,
+        proto_dump: false,
+        dry_run: false,
+        skip_root_check: true,
+    };
+    let _ = sketching::test_init();
+
+    println!("testing config");
+    // because it can't find the profile file it'll just stop
+    assert_eq!(driver_main(testopt.clone()).await, ());
+    println!("done testing missing config");
+
+    let testopt = Opt {
+        client_config: PathBuf::from(format!("{}/Cargo.toml", env!("CARGO_MANIFEST_DIR"))),
+        ldap_sync_config: PathBuf::from(format!("{}/Cargo.toml", env!("CARGO_MANIFEST_DIR"))),
+        ..testopt
+    };
+
+    println!("valid file path, invalid contents");
+    assert_eq!(driver_main(testopt.clone()).await, ());
+    println!("done with valid file path, invalid contents");
+    let testopt = Opt {
+        client_config: PathBuf::from(format!(
+            "{}/../../../examples/iam_migration_ldap.toml",
+            env!("CARGO_MANIFEST_DIR")
+        )),
+        ldap_sync_config: PathBuf::from(format!(
+            "{}/../../../examples/iam_migration_ldap.toml",
+            env!("CARGO_MANIFEST_DIR")
+        )),
+        ..testopt
+    };
+
+    println!("valid file path, invalid contents");
+    assert_eq!(driver_main(testopt).await, ());
+    println!("done with valid file path, valid contents");
 }

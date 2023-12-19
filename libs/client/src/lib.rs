@@ -24,12 +24,19 @@ use std::os::unix::fs::MetadataExt;
 use std::path::Path;
 use std::time::Duration;
 
+use kanidm_proto::constants::uri::V1_AUTH_VALID;
+use kanidm_proto::constants::{
+    APPLICATION_JSON, ATTR_ENTRY_MANAGED_BY, ATTR_NAME, CLIENT_TOKEN_CACHE, KOPID, KSESSIONID,
+    KVERSION,
+};
 use kanidm_proto::v1::*;
 use reqwest::header::CONTENT_TYPE;
+use reqwest::Response;
 pub use reqwest::StatusCode;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use serde_json::error::Error as SerdeJsonError;
+use serde_json::json;
 use tokio::sync::{Mutex, RwLock};
 use url::Url;
 use uuid::Uuid;
@@ -37,17 +44,14 @@ use webauthn_rs_proto::{
     PublicKeyCredential, RegisterPublicKeyCredential, RequestChallengeResponse,
 };
 
+mod group;
+mod oauth;
 mod person;
 mod scim;
 mod service_account;
 mod sync_account;
 mod system;
 
-pub const APPLICATION_JSON: &str = "application/json";
-pub const KOPID: &str = "X-KANIDM-OPID";
-pub const KSESSIONID: &str = "X-KANIDM-AUTH-SESSION-ID";
-
-const KVERSION: &str = "X-KANIDM-VERSION";
 const EXPECT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[derive(Debug)]
@@ -60,15 +64,41 @@ pub enum ClientError {
     TotpVerifyFailed(Uuid, TotpSecret),
     TotpInvalidSha1(Uuid),
     JsonDecode(reqwest::Error, String),
+    InvalidResponseFormat(String),
     JsonEncode(SerdeJsonError),
     SystemError,
+    ConfigParseIssue(String),
+    CertParseIssue(String),
+    UntrustedCertificate(String),
 }
 
 #[derive(Debug, Deserialize, Serialize)]
+/// This struct is what Kanidm uses for parsing the client configuration at runtime.
+///
+/// # Configuration file inheritance
+///
+/// The configuration files are loaded in order, with the last one loaded overriding the previous one.
+///
+/// 1. The "system" config is loaded from in [kanidm_proto::constants::DEFAULT_CLIENT_CONFIG_PATH].
+/// 2. Then a per-user configuration, from [kanidm_proto::constants::DEFAULT_CLIENT_CONFIG_PATH_HOME] is loaded.
+/// 3. All of these may be overridden by setting environment variables.
+///
 pub struct KanidmClientConfig {
+    /// The URL of the server, ie `https://example.com`.
+    ///
+    /// Environment variable is `KANIDM_URL`. Yeah, we know.
     pub uri: Option<String>,
-    pub verify_ca: Option<bool>,
+    /// Whether to verify the TLS certificate of the server matches the hostname you connect to, defaults to `true`.
+    ///
+    /// Environment variable is slightly inverted - `KANIDM_SKIP_HOSTNAME_VERIFICATION`.
     pub verify_hostnames: Option<bool>,
+    /// Whether to verify the Certificate Authority details of the server's TLS certificate, defaults to `true`.
+    ///
+    /// Environment variable is slightly inverted - `KANIDM_SKIP_HOSTNAME_VERIFICATION`.
+    pub verify_ca: Option<bool>,
+    /// Optionally you can specify the path of a CA certificate to use for verifying the server, if you're not using one trusted by your system certificate store.
+    ///
+    /// Environment variable is `KANIDM_CA_PATH`.
     pub ca_path: Option<String>,
 }
 
@@ -80,6 +110,8 @@ pub struct KanidmClientBuilder {
     ca: Option<reqwest::Certificate>,
     connect_timeout: Option<u64>,
     use_system_proxies: bool,
+    /// Where to store auth tokens, only use in testing!
+    token_cache_path: Option<String>,
 }
 
 impl Display for KanidmClientBuilder {
@@ -98,8 +130,41 @@ impl Display for KanidmClientBuilder {
             Some(value) => writeln!(f, "connect_timeout: {}", value)?,
             None => writeln!(f, "connect_timeout: unset")?,
         }
-        writeln!(f, "use_system_proxies: {}", self.use_system_proxies)
+        writeln!(f, "use_system_proxies: {}", self.use_system_proxies)?;
+        writeln!(
+            f,
+            "token_cache_path: {}",
+            self.token_cache_path
+                .clone()
+                .unwrap_or(CLIENT_TOKEN_CACHE.to_string())
+        )
     }
+}
+
+#[test]
+fn test_kanidmclientbuilder_display() {
+    let foo = KanidmClientBuilder::default();
+    println!("{}", foo);
+    assert!(foo.to_string().contains("verify_ca"));
+
+    let testclient = KanidmClientBuilder {
+        address: Some("https://example.com".to_string()),
+        verify_ca: true,
+        verify_hostnames: true,
+        ca: None,
+        connect_timeout: Some(420),
+        use_system_proxies: true,
+        token_cache_path: Some(CLIENT_TOKEN_CACHE.to_string()),
+    };
+    println!("foo {}", testclient);
+    assert!(testclient.to_string().contains("verify_ca: true"));
+    assert!(testclient.to_string().contains("verify_hostnames: true"));
+
+    let badness = testclient.danger_accept_invalid_hostnames(true);
+    let badness = badness.danger_accept_invalid_certs(true);
+    println!("badness: {}", badness);
+    assert!(badness.to_string().contains("verify_ca: false"));
+    assert!(badness.to_string().contains("verify_hostnames: false"));
 }
 
 #[derive(Debug)]
@@ -111,6 +176,8 @@ pub struct KanidmClient {
     pub(crate) bearer_token: RwLock<Option<String>>,
     pub(crate) auth_session_id: RwLock<Option<String>>,
     pub(crate) check_version: Mutex<bool>,
+    /// Where to store the tokens when you auth, only modify in testing.
+    token_cache_path: String,
 }
 
 #[cfg(target_family = "unix")]
@@ -133,10 +200,11 @@ impl KanidmClientBuilder {
             ca: None,
             connect_timeout: None,
             use_system_proxies: true,
+            token_cache_path: None,
         }
     }
 
-    fn parse_certificate(ca_path: &str) -> Result<reqwest::Certificate, ()> {
+    fn parse_certificate(ca_path: &str) -> Result<reqwest::Certificate, ClientError> {
         let mut buf = Vec::new();
         // Is the CA secure?
         #[cfg(target_family = "windows")]
@@ -145,7 +213,10 @@ impl KanidmClientBuilder {
         #[cfg(target_family = "unix")]
         {
             let path = Path::new(ca_path);
-            let ca_meta = read_file_metadata(&path)?;
+            let ca_meta = read_file_metadata(&path).map_err(|e| {
+                error!("{:?}", e);
+                ClientError::ConfigParseIssue(format!("{:?}", e))
+            })?;
 
             trace!("uid:gid {}:{}", ca_meta.uid(), ca_meta.gid());
 
@@ -163,19 +234,21 @@ impl KanidmClientBuilder {
             }
         }
 
-        // TODO #725: Handle these errors better, or at least provide diagnostics - this currently fails silently
         let mut f = File::open(ca_path).map_err(|e| {
-            error!(?e);
+            error!("{:?}", e);
+            ClientError::ConfigParseIssue(format!("{:?}", e))
         })?;
         f.read_to_end(&mut buf).map_err(|e| {
-            error!(?e);
+            error!("{:?}", e);
+            ClientError::ConfigParseIssue(format!("{:?}", e))
         })?;
         reqwest::Certificate::from_pem(&buf).map_err(|e| {
-            error!(?e);
+            error!("{:?}", e);
+            ClientError::CertParseIssue(format!("{:?}", e))
         })
     }
 
-    fn apply_config_options(self, kcc: KanidmClientConfig) -> Result<Self, ()> {
+    fn apply_config_options(self, kcc: KanidmClientConfig) -> Result<Self, ClientError> {
         let KanidmClientBuilder {
             address,
             verify_ca,
@@ -183,6 +256,7 @@ impl KanidmClientBuilder {
             ca,
             connect_timeout,
             use_system_proxies,
+            token_cache_path,
         } = self;
         // Process and apply all our options if they exist.
         let address = match kcc.uri {
@@ -195,7 +269,7 @@ impl KanidmClientBuilder {
         let verify_ca = kcc.verify_ca.unwrap_or(verify_ca);
         let verify_hostnames = kcc.verify_hostnames.unwrap_or(verify_hostnames);
         let ca = match kcc.ca_path {
-            Some(ca_path) => Some(Self::parse_certificate(ca_path.as_str())?),
+            Some(ca_path) => Some(Self::parse_certificate(&ca_path)?),
             None => ca,
         };
 
@@ -206,14 +280,14 @@ impl KanidmClientBuilder {
             ca,
             connect_timeout,
             use_system_proxies,
+            token_cache_path,
         })
     }
 
-    #[allow(clippy::result_unit_err)]
     pub fn read_options_from_optional_config<P: AsRef<Path> + std::fmt::Debug>(
         self,
         config_path: P,
-    ) -> Result<Self, ()> {
+    ) -> Result<Self, ClientError> {
         debug!("Attempting to load configuration from {:#?}", &config_path);
 
         // We have to check the .exists case manually, because there are some weird overlayfs
@@ -222,6 +296,8 @@ impl KanidmClientBuilder {
         // error. This check enforces that we get the CORRECT error message instead.
         if !config_path.as_ref().exists() {
             debug!("{:?} does not exist", config_path);
+            let diag = kanidm_lib_file_permissions::diagnose_path(config_path.as_ref());
+            debug!(%diag);
             return Ok(self);
         };
 
@@ -252,16 +328,23 @@ impl KanidmClientBuilder {
                         );
                     }
                 };
+                let diag = kanidm_lib_file_permissions::diagnose_path(config_path.as_ref());
+                info!(%diag);
+
                 return Ok(self);
             }
         };
 
         let mut contents = String::new();
-        f.read_to_string(&mut contents)
-            .map_err(|e| error!("{:?}", e))?;
+        f.read_to_string(&mut contents).map_err(|e| {
+            error!("{:?}", e);
+            ClientError::ConfigParseIssue(format!("{:?}", e))
+        })?;
 
-        let config: KanidmClientConfig =
-            toml::from_str(contents.as_str()).map_err(|e| error!("{:?}", e))?;
+        let config: KanidmClientConfig = toml::from_str(&contents).map_err(|e| {
+            error!("{:?}", e);
+            ClientError::ConfigParseIssue(format!("{:?}", e))
+        })?;
 
         self.apply_config_options(config)
     }
@@ -269,72 +352,51 @@ impl KanidmClientBuilder {
     pub fn address(self, address: String) -> Self {
         KanidmClientBuilder {
             address: Some(address),
-            verify_ca: self.verify_ca,
-            verify_hostnames: self.verify_hostnames,
-            ca: self.ca,
-            connect_timeout: self.connect_timeout,
-            use_system_proxies: self.use_system_proxies,
+            ..self
         }
     }
 
     pub fn danger_accept_invalid_hostnames(self, accept_invalid_hostnames: bool) -> Self {
         KanidmClientBuilder {
-            address: self.address,
-            verify_ca: self.verify_ca,
             // We have to flip the bool state here due to english language.
             verify_hostnames: !accept_invalid_hostnames,
-            ca: self.ca,
-            connect_timeout: self.connect_timeout,
-            use_system_proxies: self.use_system_proxies,
+            ..self
         }
     }
 
     pub fn danger_accept_invalid_certs(self, accept_invalid_certs: bool) -> Self {
         KanidmClientBuilder {
-            address: self.address,
             // We have to flip the bool state here due to english language.
             verify_ca: !accept_invalid_certs,
-            verify_hostnames: self.verify_hostnames,
-            ca: self.ca,
-            connect_timeout: self.connect_timeout,
-            use_system_proxies: self.use_system_proxies,
+            ..self
         }
     }
 
     pub fn connect_timeout(self, secs: u64) -> Self {
         KanidmClientBuilder {
-            address: self.address,
-            verify_ca: self.verify_ca,
-            verify_hostnames: self.verify_hostnames,
-            ca: self.ca,
             connect_timeout: Some(secs),
-            use_system_proxies: self.use_system_proxies,
+            ..self
         }
     }
 
     pub fn no_proxy(self) -> Self {
         KanidmClientBuilder {
-            address: self.address,
-            verify_ca: self.verify_ca,
-            verify_hostnames: self.verify_hostnames,
-            ca: self.ca,
-            connect_timeout: self.connect_timeout,
             use_system_proxies: false,
+            ..self
         }
     }
 
     #[allow(clippy::result_unit_err)]
-    pub fn add_root_certificate_filepath(self, ca_path: &str) -> Result<Self, ()> {
+    pub fn add_root_certificate_filepath(self, ca_path: &str) -> Result<Self, ClientError> {
         //Okay we have a ca to add. Let's read it in and setup.
-        let ca = Self::parse_certificate(ca_path)?;
+        let ca = Self::parse_certificate(ca_path).map_err(|e| {
+            error!("{:?}", e);
+            ClientError::CertParseIssue(format!("{:?}", e))
+        })?;
 
         Ok(KanidmClientBuilder {
-            address: self.address,
-            verify_ca: self.verify_ca,
-            verify_hostnames: self.verify_hostnames,
             ca: Some(ca),
-            connect_timeout: self.connect_timeout,
-            use_system_proxies: self.use_system_proxies,
+            ..self
         })
     }
 
@@ -349,7 +411,6 @@ impl KanidmClientBuilder {
                 "verify_hostnames set to false in client configuration - this may allow network interception of passwords!"
             );
         }
-
         if !address.starts_with("https://") {
             warn!("Address does not start with 'https://' - this may allow network interception of passwords!");
         }
@@ -370,17 +431,19 @@ impl KanidmClientBuilder {
     */
 
     /// Build the client ready for usage.
-    pub fn build(self) -> Result<KanidmClient, reqwest::Error> {
+    pub fn build(self) -> Result<KanidmClient, ClientError> {
         // Errghh, how to handle this cleaner.
         let address = match &self.address {
             Some(a) => a.clone(),
             None => {
                 error!("Configuration option 'uri' missing from client configuration, cannot continue client startup without specifying a server to connect to. 🤔");
-                std::process::exit(1);
+                return Err(ClientError::ConfigParseIssue(
+                    "Configuration option 'uri' missing from client configuration, cannot continue client startup without specifying a server to connect to. 🤔".to_string(),
+                ));
             }
         };
 
-        self.display_warnings(address.as_str());
+        self.display_warnings(&address);
 
         let client_builder = reqwest::Client::builder()
             .user_agent(KanidmClientBuilder::user_agent())
@@ -404,7 +467,7 @@ impl KanidmClientBuilder {
             None => client_builder,
         };
 
-        let client = client_builder.build()?;
+        let client = client_builder.build().map_err(ClientError::Transport)?;
 
         // Now get the origin.
         #[allow(clippy::expect_used)]
@@ -414,6 +477,11 @@ impl KanidmClientBuilder {
         let origin =
             Url::parse(&uri.origin().ascii_serialization()).expect("failed to parse origin");
 
+        let token_cache_path = match self.token_cache_path.clone() {
+            Some(val) => val.to_string(),
+            None => CLIENT_TOKEN_CACHE.to_string(),
+        };
+
         Ok(KanidmClient {
             client,
             addr: address,
@@ -422,8 +490,52 @@ impl KanidmClientBuilder {
             origin,
             auth_session_id: RwLock::new(None),
             check_version: Mutex::new(true),
+            token_cache_path,
         })
     }
+}
+
+#[test]
+fn test_make_url() {
+    use kanidm_proto::constants::DEFAULT_SERVER_ADDRESS;
+    let client: KanidmClient = KanidmClientBuilder::new()
+        .address(format!("https://{}", DEFAULT_SERVER_ADDRESS))
+        .build()
+        .unwrap();
+    assert_eq!(
+        client.get_url(),
+        Url::parse(&format!("https://{}", DEFAULT_SERVER_ADDRESS)).unwrap()
+    );
+    assert_eq!(
+        client.make_url("/hello"),
+        Url::parse(&format!("https://{}/hello", DEFAULT_SERVER_ADDRESS)).unwrap()
+    );
+
+    let client: KanidmClient = KanidmClientBuilder::new()
+        .address(format!("https://{}/cheese/", DEFAULT_SERVER_ADDRESS))
+        .build()
+        .unwrap();
+    assert_eq!(
+        client.make_url("hello"),
+        Url::parse(&format!("https://{}/cheese/hello", DEFAULT_SERVER_ADDRESS)).unwrap()
+    );
+}
+
+/// This is probably pretty jank but it works and was pulled from here:
+/// <https://github.com/seanmonstar/reqwest/issues/1602#issuecomment-1220996681>
+fn find_reqwest_error_source<E: std::error::Error + 'static>(
+    orig: &dyn std::error::Error,
+) -> Option<&E> {
+    let mut cause = orig.source();
+    while let Some(err) = cause {
+        if let Some(typed) = err.downcast_ref::<E>() {
+            return Some(typed);
+        }
+        cause = err.source();
+    }
+
+    // else
+    None
 }
 
 impl KanidmClient {
@@ -431,8 +543,19 @@ impl KanidmClient {
         &self.origin
     }
 
-    pub fn get_url(&self) -> &str {
-        self.addr.as_str()
+    /// Returns the base URL of the server
+    pub fn get_url(&self) -> Url {
+        #[allow(clippy::panic)]
+        match self.addr.parse::<Url>() {
+            Ok(val) => val,
+            Err(err) => panic!("Failed to parse {} into URL: {:?}", self.addr, err),
+        }
+    }
+
+    /// Get a URL based on adding an endpoint to the base URL of the server
+    pub fn make_url(&self, endpoint: &str) -> Url {
+        #[allow(clippy::expect_used)]
+        self.get_url().join(endpoint).expect("Failed to join URL")
     }
 
     pub async fn set_token(&self, new_token: String) {
@@ -445,7 +568,7 @@ impl KanidmClient {
         (*tguard).as_ref().cloned()
     }
 
-    pub fn new_session(&self) -> Result<Self, reqwest::Error> {
+    pub fn new_session(&self) -> Result<Self, ClientError> {
         // Copy our builder, and then just process it.
         let builder = self.builder.clone();
         builder.build()
@@ -458,6 +581,11 @@ impl KanidmClient {
         Ok(())
     }
 
+    pub fn get_token_cache_path(&self) -> String {
+        self.token_cache_path.clone()
+    }
+
+    /// Check that we're getting the right version back from the server.
     async fn expect_version(&self, response: &reqwest::Response) {
         let mut guard = self.check_version.lock().await;
 
@@ -477,7 +605,7 @@ impl KanidmClient {
             warn!(server_version = ?ver, client_version = ?EXPECT_VERSION, "Mismatched client and server version - features may not work, or other unforeseen errors may occur.")
         }
 
-        #[cfg(debug_assertions)]
+        #[cfg(any(test, debug_assertions))]
         if !matching {
             error!("You're in debug/dev mode, so we're going to quit here.");
             std::process::exit(1);
@@ -487,32 +615,61 @@ impl KanidmClient {
         *guard = false;
     }
 
-    async fn perform_simple_post_request<R: Serialize, T: DeserializeOwned>(
-        &self,
-        dest: &str,
-        request: &R,
-    ) -> Result<T, ClientError> {
-        let dest = format!("{}{}", self.get_url(), dest);
+    /// You've got the response from a reqwest and you want to turn it into a `ClientError`
+    pub fn handle_response_error(&self, error: reqwest::Error) -> ClientError {
+        if error.is_connect() {
+            if find_reqwest_error_source::<std::io::Error>(&error).is_some() {
+                // TODO: one day handle IO errors better
+                trace!("Got an IO error! {:?}", &error);
+                return ClientError::Transport(error);
+            }
+            if let Some(hyper_error) = find_reqwest_error_source::<hyper::Error>(&error) {
+                // hyper errors can be *anything* depending on the underlying client libraries
+                // ref: https://github.com/hyperium/hyper/blob/9feb70e9249d9fb99634ec96f83566e6bb3b3128/src/error.rs#L26C2-L26C2
+                if format!("{:?}", hyper_error)
+                    .to_lowercase()
+                    .contains("certificate")
+                {
+                    return ClientError::UntrustedCertificate(format!("{}", hyper_error));
+                }
+            }
+        }
+        ClientError::Transport(error)
+    }
 
-        let req_string = serde_json::to_string(request).map_err(ClientError::JsonEncode)?;
-
-        let response = self
-            .client
-            .post(dest.as_str())
-            .body(req_string)
-            .header(CONTENT_TYPE, APPLICATION_JSON);
-
-        let response = response.send().await.map_err(ClientError::Transport)?;
-
-        self.expect_version(&response).await;
-
+    fn get_kopid_from_response(&self, response: &Response) -> String {
         let opid = response
             .headers()
             .get(KOPID)
             .and_then(|hv| hv.to_str().ok())
             .unwrap_or("missing_kopid")
             .to_string();
+
         debug!("opid -> {:?}", opid);
+        opid
+    }
+
+    async fn perform_simple_post_request<R: Serialize, T: DeserializeOwned>(
+        &self,
+        dest: &str,
+        request: &R,
+    ) -> Result<T, ClientError> {
+        let req_string = serde_json::to_string(request).map_err(ClientError::JsonEncode)?;
+
+        let response = self
+            .client
+            .post(self.make_url(dest))
+            .body(req_string)
+            .header(CONTENT_TYPE, APPLICATION_JSON);
+
+        let response = response
+            .send()
+            .await
+            .map_err(|err| self.handle_response_error(err))?;
+
+        self.expect_version(&response).await;
+
+        let opid = self.get_kopid_from_response(&response);
 
         match response.status() {
             reqwest::StatusCode::OK => {}
@@ -536,13 +693,12 @@ impl KanidmClient {
         dest: &str,
         request: R,
     ) -> Result<T, ClientError> {
-        let dest = format!("{}{}", self.get_url(), dest);
-
+        trace!("perform_auth_post_request connecting to {}", dest);
         let req_string = serde_json::to_string(&request).map_err(ClientError::JsonEncode)?;
 
         let response = self
             .client
-            .post(dest.as_str())
+            .post(self.make_url(dest))
             .body(req_string)
             .header(CONTENT_TYPE, APPLICATION_JSON);
 
@@ -566,7 +722,10 @@ impl KanidmClient {
             }
         };
 
-        let response = response.send().await.map_err(ClientError::Transport)?;
+        let response = response
+            .send()
+            .await
+            .map_err(|err| self.handle_response_error(err))?;
 
         self.expect_version(&response).await;
 
@@ -581,12 +740,7 @@ impl KanidmClient {
                 .and_then(|hv| hv.to_str().ok().map(str::to_string));
         }
 
-        let opid = headers
-            .get(KOPID)
-            .and_then(|hv| hv.to_str().ok())
-            .unwrap_or("missing_kopid")
-            .to_string();
-        debug!("opid -> {:?}", opid);
+        let opid = self.get_kopid_from_response(&response);
 
         match response.status() {
             reqwest::StatusCode::OK => {}
@@ -605,17 +759,15 @@ impl KanidmClient {
             .map_err(|e| ClientError::JsonDecode(e, opid))
     }
 
-    async fn perform_post_request<R: Serialize, T: DeserializeOwned>(
+    pub async fn perform_post_request<R: Serialize, T: DeserializeOwned>(
         &self,
         dest: &str,
         request: R,
     ) -> Result<T, ClientError> {
-        let dest = format!("{}{}", self.get_url(), dest);
-
         let req_string = serde_json::to_string(&request).map_err(ClientError::JsonEncode)?;
         let response = self
             .client
-            .post(dest.as_str())
+            .post(self.make_url(dest))
             .body(req_string)
             .header(CONTENT_TYPE, APPLICATION_JSON);
 
@@ -628,17 +780,14 @@ impl KanidmClient {
             }
         };
 
-        let response = response.send().await.map_err(ClientError::Transport)?;
+        let response = response
+            .send()
+            .await
+            .map_err(|err| self.handle_response_error(err))?;
 
         self.expect_version(&response).await;
 
-        let opid = response
-            .headers()
-            .get(KOPID)
-            .and_then(|hv| hv.to_str().ok())
-            .unwrap_or("missing_kopid")
-            .to_string();
-        debug!("opid -> {:?}", opid);
+        let opid = self.get_kopid_from_response(&response);
 
         match response.status() {
             reqwest::StatusCode::OK => {}
@@ -662,13 +811,11 @@ impl KanidmClient {
         dest: &str,
         request: R,
     ) -> Result<T, ClientError> {
-        let dest = format!("{}{}", self.get_url(), dest);
-
         let req_string = serde_json::to_string(&request).map_err(ClientError::JsonEncode)?;
 
         let response = self
             .client
-            .put(dest.as_str())
+            .put(self.make_url(dest))
             .header(CONTENT_TYPE, APPLICATION_JSON);
         let response = {
             let tguard = self.bearer_token.read().await;
@@ -683,18 +830,11 @@ impl KanidmClient {
             .body(req_string)
             .send()
             .await
-            .map_err(ClientError::Transport)?;
+            .map_err(|err| self.handle_response_error(err))?;
 
         self.expect_version(&response).await;
 
-        let opid = response
-            .headers()
-            .get(KOPID)
-            .and_then(|hv| hv.to_str().ok())
-            .unwrap_or("missing_kopid")
-            .to_string();
-
-        debug!("opid -> {:?}", opid);
+        let opid = self.get_kopid_from_response(&response);
 
         match response.status() {
             reqwest::StatusCode::OK => {}
@@ -718,12 +858,10 @@ impl KanidmClient {
         dest: &str,
         request: R,
     ) -> Result<T, ClientError> {
-        let dest = format!("{}{}", self.get_url(), dest);
-
         let req_string = serde_json::to_string(&request).map_err(ClientError::JsonEncode)?;
         let response = self
             .client
-            .patch(dest.as_str())
+            .patch(self.make_url(dest))
             .body(req_string)
             .header(CONTENT_TYPE, APPLICATION_JSON);
 
@@ -736,17 +874,14 @@ impl KanidmClient {
             }
         };
 
-        let response = response.send().await.map_err(ClientError::Transport)?;
+        let response = response
+            .send()
+            .await
+            .map_err(|err| self.handle_response_error(err))?;
 
         self.expect_version(&response).await;
 
-        let opid = response
-            .headers()
-            .get(KOPID)
-            .and_then(|hv| hv.to_str().ok())
-            .unwrap_or("missing_kopid")
-            .to_string();
-        debug!("opid -> {:?}", opid);
+        let opid = self.get_kopid_from_response(&response);
 
         match response.status() {
             reqwest::StatusCode::OK => {}
@@ -765,10 +900,12 @@ impl KanidmClient {
             .map_err(|e| ClientError::JsonDecode(e, opid))
     }
 
-    async fn perform_get_request<T: DeserializeOwned>(&self, dest: &str) -> Result<T, ClientError> {
-        let dest = format!("{}{}", self.get_url(), dest);
-        let response = self.client.get(dest.as_str());
-
+    #[instrument(level = "debug", skip(self))]
+    pub async fn perform_get_request<T: DeserializeOwned>(
+        &self,
+        dest: &str,
+    ) -> Result<T, ClientError> {
+        let response = self.client.get(self.make_url(dest));
         let response = {
             let tguard = self.bearer_token.read().await;
             if let Some(token) = &(*tguard) {
@@ -778,18 +915,14 @@ impl KanidmClient {
             }
         };
 
-        let response = response.send().await.map_err(ClientError::Transport)?;
+        let response = response
+            .send()
+            .await
+            .map_err(|err| self.handle_response_error(err))?;
 
         self.expect_version(&response).await;
 
-        let opid = response
-            .headers()
-            .get(KOPID)
-            .and_then(|hv| hv.to_str().ok())
-            .unwrap_or("missing_kopid")
-            .to_string();
-
-        debug!("opid -> {:?}", opid);
+        let opid = self.get_kopid_from_response(&response);
 
         match response.status() {
             reqwest::StatusCode::OK => {}
@@ -809,12 +942,11 @@ impl KanidmClient {
     }
 
     async fn perform_delete_request(&self, dest: &str) -> Result<(), ClientError> {
-        let dest = format!("{}{}", self.get_url(), dest);
-
         let response = self
             .client
-            .delete(dest.as_str())
-            .header(CONTENT_TYPE, APPLICATION_JSON);
+            .delete(self.make_url(dest))
+            // empty-ish body that makes the parser happy
+            .json(&json!([]));
 
         let response = {
             let tguard = self.bearer_token.read().await;
@@ -825,17 +957,14 @@ impl KanidmClient {
             }
         };
 
-        let response = response.send().await.map_err(ClientError::Transport)?;
+        let response = response
+            .send()
+            .await
+            .map_err(|err| self.handle_response_error(err))?;
 
         self.expect_version(&response).await;
 
-        let opid = response
-            .headers()
-            .get(KOPID)
-            .and_then(|hv| hv.to_str().ok())
-            .unwrap_or("missing_kopid")
-            .to_string();
-        debug!("opid -> {:?}", opid);
+        let opid = self.get_kopid_from_response(&response);
 
         match response.status() {
             reqwest::StatusCode::OK => {}
@@ -859,14 +988,7 @@ impl KanidmClient {
         dest: &str,
         request: R,
     ) -> Result<(), ClientError> {
-        let dest = format!("{}{}", self.get_url(), dest);
-
-        let req_string = serde_json::to_string(&request).map_err(ClientError::JsonEncode)?;
-        let response = self
-            .client
-            .delete(dest.as_str())
-            .body(req_string)
-            .header(CONTENT_TYPE, APPLICATION_JSON);
+        let response = self.client.delete(self.make_url(dest)).json(&request);
 
         let response = {
             let tguard = self.bearer_token.read().await;
@@ -877,17 +999,14 @@ impl KanidmClient {
             }
         };
 
-        let response = response.send().await.map_err(ClientError::Transport)?;
+        let response = response
+            .send()
+            .await
+            .map_err(|err| self.handle_response_error(err))?;
 
         self.expect_version(&response).await;
 
-        let opid = response
-            .headers()
-            .get(KOPID)
-            .and_then(|hv| hv.to_str().ok())
-            .unwrap_or("missing_kopid")
-            .to_string();
-        debug!("opid -> {:?}", opid);
+        let opid = self.get_kopid_from_response(&response);
 
         match response.status() {
             reqwest::StatusCode::OK => {}
@@ -906,11 +1025,13 @@ impl KanidmClient {
             .map_err(|e| ClientError::JsonDecode(e, opid))
     }
 
+    #[instrument(level = "debug", skip(self))]
     pub async fn auth_step_init(&self, ident: &str) -> Result<Set<AuthMech>, ClientError> {
         let auth_init = AuthRequest {
             step: AuthStep::Init2 {
                 username: ident.to_string(),
                 issue: AuthIssueSession::Token,
+                privileged: false,
             },
         };
 
@@ -928,6 +1049,7 @@ impl KanidmClient {
         .map(|mechs| mechs.into_iter().collect())
     }
 
+    #[instrument(level = "debug", skip(self))]
     pub async fn auth_step_begin(&self, mech: AuthMech) -> Result<Vec<AuthAllowed>, ClientError> {
         let auth_begin = AuthRequest {
             step: AuthStep::Begin(mech),
@@ -947,6 +1069,7 @@ impl KanidmClient {
         // .map(|allowed| allowed.into_iter().collect())
     }
 
+    #[instrument(level = "debug", skip_all)]
     pub async fn auth_step_anonymous(&self) -> Result<AuthResponse, ClientError> {
         let auth_anon = AuthRequest {
             step: AuthStep::Cred(AuthCredential::Anonymous),
@@ -962,6 +1085,7 @@ impl KanidmClient {
         r
     }
 
+    #[instrument(level = "debug", skip_all)]
     pub async fn auth_step_password(&self, password: &str) -> Result<AuthResponse, ClientError> {
         let auth_req = AuthRequest {
             step: AuthStep::Cred(AuthCredential::Password(password.to_string())),
@@ -976,6 +1100,7 @@ impl KanidmClient {
         r
     }
 
+    #[instrument(level = "debug", skip_all)]
     pub async fn auth_step_backup_code(
         &self,
         backup_code: &str,
@@ -993,6 +1118,7 @@ impl KanidmClient {
         r
     }
 
+    #[instrument(level = "debug", skip_all)]
     pub async fn auth_step_totp(&self, totp: u32) -> Result<AuthResponse, ClientError> {
         let auth_req = AuthRequest {
             step: AuthStep::Cred(AuthCredential::Totp(totp)),
@@ -1007,6 +1133,7 @@ impl KanidmClient {
         r
     }
 
+    #[instrument(level = "debug", skip_all)]
     pub async fn auth_step_securitykey_complete(
         &self,
         pkc: Box<PublicKeyCredential>,
@@ -1024,6 +1151,7 @@ impl KanidmClient {
         r
     }
 
+    #[instrument(level = "debug", skip_all)]
     pub async fn auth_step_passkey_complete(
         &self,
         pkc: Box<PublicKeyCredential>,
@@ -1041,6 +1169,7 @@ impl KanidmClient {
         r
     }
 
+    #[instrument(level = "debug", skip(self))]
     pub async fn auth_anonymous(&self) -> Result<(), ClientError> {
         let mechs = match self.auth_step_init("anonymous").await {
             Ok(s) => s,
@@ -1068,11 +1197,13 @@ impl KanidmClient {
         }
     }
 
+    #[instrument(level = "debug", skip(self, password))]
     pub async fn auth_simple_password(
         &self,
         ident: &str,
         password: &str,
     ) -> Result<(), ClientError> {
+        trace!("Init auth step");
         let mechs = match self.auth_step_init(ident).await {
             Ok(s) => s,
             Err(e) => return Err(e),
@@ -1096,6 +1227,7 @@ impl KanidmClient {
         }
     }
 
+    #[instrument(level = "debug", skip(self, password, totp))]
     pub async fn auth_password_totp(
         &self,
         ident: &str,
@@ -1146,6 +1278,7 @@ impl KanidmClient {
         }
     }
 
+    #[instrument(level = "debug", skip(self, password, backup_code))]
     pub async fn auth_password_backup_code(
         &self,
         ident: &str,
@@ -1196,6 +1329,7 @@ impl KanidmClient {
         }
     }
 
+    #[instrument(level = "debug", skip(self))]
     pub async fn auth_passkey_begin(
         &self,
         ident: &str,
@@ -1222,6 +1356,7 @@ impl KanidmClient {
         }
     }
 
+    #[instrument(level = "debug", skip_all)]
     pub async fn auth_passkey_complete(
         &self,
         pkc: Box<PublicKeyCredential>,
@@ -1247,6 +1382,7 @@ impl KanidmClient {
         })
     }
 
+    #[instrument(level = "debug", skip_all)]
     pub async fn reauth_simple_password(&self, password: &str) -> Result<(), ClientError> {
         let state = match self.reauth_begin().await {
             Ok(mut s) => s.pop(),
@@ -1268,6 +1404,7 @@ impl KanidmClient {
         }
     }
 
+    #[instrument(level = "debug", skip_all)]
     pub async fn reauth_password_totp(&self, password: &str, totp: u32) -> Result<(), ClientError> {
         let state = match self.reauth_begin().await {
             Ok(s) => s,
@@ -1303,6 +1440,7 @@ impl KanidmClient {
         }
     }
 
+    #[instrument(level = "debug", skip_all)]
     pub async fn reauth_passkey_begin(&self) -> Result<RequestChallengeResponse, ClientError> {
         let state = match self.reauth_begin().await {
             Ok(mut s) => s.pop(),
@@ -1316,6 +1454,7 @@ impl KanidmClient {
         }
     }
 
+    #[instrument(level = "debug", skip_all)]
     pub async fn reauth_passkey_complete(
         &self,
         pkc: Box<PublicKeyCredential>,
@@ -1328,14 +1467,11 @@ impl KanidmClient {
     }
 
     pub async fn auth_valid(&self) -> Result<(), ClientError> {
-        self.perform_get_request("/v1/auth/valid").await
+        self.perform_get_request(V1_AUTH_VALID).await
     }
 
     pub async fn whoami(&self) -> Result<Option<Entry>, ClientError> {
-        let whoami_dest = [self.addr.as_str(), "/v1/self"].concat();
-        // format!("{}/v1/self", self.addr);
-        debug!("{:?}", whoami_dest);
-        let response = self.client.get(whoami_dest.as_str());
+        let response = self.client.get(self.make_url("/v1/self"));
 
         let response = {
             let tguard = self.bearer_token.read().await;
@@ -1346,18 +1482,14 @@ impl KanidmClient {
             }
         };
 
-        let response = response.send().await.map_err(ClientError::Transport)?;
+        let response = response
+            .send()
+            .await
+            .map_err(|err| self.handle_response_error(err))?;
 
         self.expect_version(&response).await;
 
-        let opid = response
-            .headers()
-            .get(KOPID)
-            .and_then(|hv| hv.to_str().ok())
-            .unwrap_or("missing_kopid")
-            .to_string();
-        debug!("opid -> {:?}", opid);
-
+        let opid = self.get_kopid_from_response(&response);
         match response.status() {
             // Continue to process.
             reqwest::StatusCode::OK => {}
@@ -1409,26 +1541,47 @@ impl KanidmClient {
     }
 
     pub async fn idm_group_get(&self, id: &str) -> Result<Option<Entry>, ClientError> {
-        self.perform_get_request(format!("/v1/group/{}", id).as_str())
-            .await
+        self.perform_get_request(&format!("/v1/group/{}", id)).await
     }
 
     pub async fn idm_group_get_members(
         &self,
         id: &str,
     ) -> Result<Option<Vec<String>>, ClientError> {
-        self.perform_get_request(format!("/v1/group/{}/_attr/member", id).as_str())
+        self.perform_get_request(&format!("/v1/group/{}/_attr/member", id))
             .await
     }
 
-    pub async fn idm_group_create(&self, name: &str) -> Result<(), ClientError> {
+    pub async fn idm_group_create(
+        &self,
+        name: &str,
+        entry_managed_by: Option<&str>,
+    ) -> Result<(), ClientError> {
         let mut new_group = Entry {
             attrs: BTreeMap::new(),
         };
         new_group
             .attrs
-            .insert("name".to_string(), vec![name.to_string()]);
+            .insert(ATTR_NAME.to_string(), vec![name.to_string()]);
+
+        if let Some(entry_manager) = entry_managed_by {
+            new_group.attrs.insert(
+                ATTR_ENTRY_MANAGED_BY.to_string(),
+                vec![entry_manager.to_string()],
+            );
+        }
+
         self.perform_post_request("/v1/group", new_group).await
+    }
+
+    pub async fn idm_group_set_entry_managed_by(
+        &self,
+        id: &str,
+        entry_manager: &str,
+    ) -> Result<(), ClientError> {
+        let data = vec![entry_manager];
+        self.perform_put_request(&format!("/v1/group/{}/_attr/entry_managed_by", id), data)
+            .await
     }
 
     pub async fn idm_group_set_members(
@@ -1437,7 +1590,7 @@ impl KanidmClient {
         members: &[&str],
     ) -> Result<(), ClientError> {
         let m: Vec<_> = members.iter().map(|v| (*v).to_string()).collect();
-        self.perform_put_request(format!("/v1/group/{}/_attr/member", id).as_str(), m)
+        self.perform_put_request(&format!("/v1/group/{}/_attr/member", id), m)
             .await
     }
 
@@ -1447,7 +1600,7 @@ impl KanidmClient {
         members: &[&str],
     ) -> Result<(), ClientError> {
         let m: Vec<_> = members.iter().map(|v| (*v).to_string()).collect();
-        self.perform_post_request(["/v1/group/", id, "/_attr/member"].concat().as_str(), m)
+        self.perform_post_request(&format!("/v1/group/{}/_attr/member", id), m)
             .await
     }
 
@@ -1457,24 +1610,19 @@ impl KanidmClient {
         members: &[&str],
     ) -> Result<(), ClientError> {
         debug!(
-            "{}",
-            &[
-                "Asked to remove members ",
-                &members.join(","),
-                " from ",
-                group
-            ]
-            .concat()
+            "Asked to remove members {} from {}",
+            &members.join(","),
+            group
         );
         self.perform_delete_request_with_body(
-            ["/v1/group/", group, "/_attr/member"].concat().as_str(),
+            &format!("/v1/group/{}/_attr/member", group),
             &members,
         )
         .await
     }
 
     pub async fn idm_group_purge_members(&self, id: &str) -> Result<(), ClientError> {
-        self.perform_delete_request(format!("/v1/group/{}/_attr/member", id).as_str())
+        self.perform_delete_request(&format!("/v1/group/{}/_attr/member", id))
             .await
     }
 
@@ -1484,45 +1632,43 @@ impl KanidmClient {
         gidnumber: Option<u32>,
     ) -> Result<(), ClientError> {
         let gx = GroupUnixExtend { gidnumber };
-        self.perform_post_request(format!("/v1/group/{}/_unix", id).as_str(), gx)
+        self.perform_post_request(&format!("/v1/group/{}/_unix", id), gx)
             .await
     }
 
     pub async fn idm_group_unix_token_get(&self, id: &str) -> Result<UnixGroupToken, ClientError> {
-        self.perform_get_request(["/v1/group/", id, "/_unix/_token"].concat().as_str())
+        self.perform_get_request(&format!("/v1/group/{}/_unix/_token", id))
             .await
     }
 
     pub async fn idm_group_delete(&self, id: &str) -> Result<(), ClientError> {
-        self.perform_delete_request(["/v1/group/", id].concat().as_str())
+        self.perform_delete_request(&format!("/v1/group/{}", id))
             .await
     }
 
     // ==== ACCOUNTS
 
     pub async fn idm_account_unix_token_get(&self, id: &str) -> Result<UnixUserToken, ClientError> {
-        // Format doesn't work in async
-        // format!("/v1/account/{}/_unix/_token", id).as_str()
-        self.perform_get_request(["/v1/account/", id, "/_unix/_token"].concat().as_str())
+        self.perform_get_request(&format!("/v1/account/{}/_unix/_token", id))
             .await
     }
 
     // == new credential update session code.
+    #[instrument(level = "debug", skip(self))]
     pub async fn idm_person_account_credential_update_intent(
         &self,
         id: &str,
         ttl: Option<u32>,
     ) -> Result<CUIntentToken, ClientError> {
         if let Some(ttl) = ttl {
-            self.perform_get_request(
-                format!("/v1/person/{}/_credential/_update_intent?ttl={}", id, ttl).as_str(),
-            )
+            self.perform_get_request(&format!(
+                "/v1/person/{}/_credential/_update_intent?ttl={}",
+                id, ttl
+            ))
             .await
         } else {
-            self.perform_get_request(
-                format!("/v1/person/{}/_credential/_update_intent", id).as_str(),
-            )
-            .await
+            self.perform_get_request(&format!("/v1/person/{}/_credential/_update_intent", id))
+                .await
         }
     }
 
@@ -1530,7 +1676,7 @@ impl KanidmClient {
         &self,
         id: &str,
     ) -> Result<(CUSessionToken, CUStatus), ClientError> {
-        self.perform_get_request(format!("/v1/person/{}/_credential/_update", id).as_str())
+        self.perform_get_request(&format!("/v1/person/{}/_credential/_update", id))
             .await
     }
 
@@ -1590,6 +1736,7 @@ impl KanidmClient {
             .await
     }
 
+    // TODO: add test coverage
     pub async fn idm_account_credential_update_accept_sha1_totp(
         &self,
         session_token: &CUSessionToken,
@@ -1609,6 +1756,7 @@ impl KanidmClient {
             .await
     }
 
+    // TODO: add test coverage
     pub async fn idm_account_credential_update_backup_codes_generate(
         &self,
         session_token: &CUSessionToken,
@@ -1618,6 +1766,7 @@ impl KanidmClient {
             .await
     }
 
+    // TODO: add test coverage
     pub async fn idm_account_credential_update_primary_remove(
         &self,
         session_token: &CUSessionToken,
@@ -1647,12 +1796,43 @@ impl KanidmClient {
             .await
     }
 
+    // TODO: add test coverage
     pub async fn idm_account_credential_update_passkey_remove(
         &self,
         session_token: &CUSessionToken,
         uuid: Uuid,
     ) -> Result<CUStatus, ClientError> {
         let scr = CURequest::PasskeyRemove(uuid);
+        self.perform_simple_post_request("/v1/credential/_update", &(scr, &session_token))
+            .await
+    }
+
+    pub async fn idm_account_credential_update_attested_passkey_init(
+        &self,
+        session_token: &CUSessionToken,
+    ) -> Result<CUStatus, ClientError> {
+        let scr = CURequest::AttestedPasskeyInit;
+        self.perform_simple_post_request("/v1/credential/_update", &(scr, &session_token))
+            .await
+    }
+
+    pub async fn idm_account_credential_update_attested_passkey_finish(
+        &self,
+        session_token: &CUSessionToken,
+        label: String,
+        registration: RegisterPublicKeyCredential,
+    ) -> Result<CUStatus, ClientError> {
+        let scr = CURequest::AttestedPasskeyFinish(label, registration);
+        self.perform_simple_post_request("/v1/credential/_update", &(scr, &session_token))
+            .await
+    }
+
+    pub async fn idm_account_credential_update_attested_passkey_remove(
+        &self,
+        session_token: &CUSessionToken,
+        uuid: Uuid,
+    ) -> Result<CUStatus, ClientError> {
+        let scr = CURequest::AttestedPasskeyRemove(uuid);
         self.perform_simple_post_request("/v1/credential/_update", &(scr, &session_token))
             .await
     }
@@ -1671,7 +1851,7 @@ impl KanidmClient {
         &self,
         id: &str,
     ) -> Result<RadiusAuthToken, ClientError> {
-        self.perform_get_request(format!("/v1/account/{}/_radius/_token", id).as_str())
+        self.perform_get_request(&format!("/v1/account/{}/_radius/_token", id))
             .await
     }
 
@@ -1683,7 +1863,7 @@ impl KanidmClient {
         let req = SingleStringRequest {
             value: cred.to_string(),
         };
-        self.perform_post_request(["/v1/account/", id, "/_unix/_auth"].concat().as_str(), req)
+        self.perform_post_request(&format!("/v1/account/{}/_unix/_auth", id), req)
             .await
     }
 
@@ -1693,12 +1873,12 @@ impl KanidmClient {
         id: &str,
         tag: &str,
     ) -> Result<Option<String>, ClientError> {
-        self.perform_get_request(format!("/v1/account/{}/_ssh_pubkeys/{}", id, tag).as_str())
+        self.perform_get_request(&format!("/v1/account/{}/_ssh_pubkeys/{}", id, tag))
             .await
     }
 
     pub async fn idm_account_get_ssh_pubkeys(&self, id: &str) -> Result<Vec<String>, ClientError> {
-        self.perform_get_request(format!("/v1/account/{}/_ssh_pubkeys", id).as_str())
+        self.perform_get_request(&format!("/v1/account/{}/_ssh_pubkeys", id))
             .await
     }
 
@@ -1726,6 +1906,14 @@ impl KanidmClient {
             vec![new_basedn.to_string()],
         )
         .await
+    }
+
+    pub async fn idm_set_ldap_allow_unix_password_bind(
+        &self,
+        enable: bool,
+    ) -> Result<(), ClientError> {
+        self.perform_put_request("/v1/domain/_attr/ldap_allow_unix_pw_bind", vec![enable])
+            .await
     }
 
     pub async fn idm_domain_get_ssid(&self) -> Result<String, ClientError> {
@@ -1762,7 +1950,7 @@ impl KanidmClient {
         &self,
         id: &str,
     ) -> Result<Option<Entry>, ClientError> {
-        self.perform_get_request(format!("/v1/schema/attributetype/{}", id).as_str())
+        self.perform_get_request(&format!("/v1/schema/attributetype/{}", id))
             .await
     }
 
@@ -1771,228 +1959,7 @@ impl KanidmClient {
     }
 
     pub async fn idm_schema_classtype_get(&self, id: &str) -> Result<Option<Entry>, ClientError> {
-        self.perform_get_request(format!("/v1/schema/classtype/{}", id).as_str())
-            .await
-    }
-
-    // ==== Oauth2 resource server configuration
-    pub async fn idm_oauth2_rs_list(&self) -> Result<Vec<Entry>, ClientError> {
-        self.perform_get_request("/v1/oauth2").await
-    }
-
-    pub async fn idm_oauth2_rs_basic_create(
-        &self,
-        name: &str,
-        displayname: &str,
-        origin: &str,
-    ) -> Result<(), ClientError> {
-        let mut new_oauth2_rs = Entry::default();
-        new_oauth2_rs
-            .attrs
-            .insert("oauth2_rs_name".to_string(), vec![name.to_string()]);
-        new_oauth2_rs
-            .attrs
-            .insert("displayname".to_string(), vec![displayname.to_string()]);
-        new_oauth2_rs
-            .attrs
-            .insert("oauth2_rs_origin".to_string(), vec![origin.to_string()]);
-        self.perform_post_request("/v1/oauth2/_basic", new_oauth2_rs)
-            .await
-    }
-
-    // TODO: the "id" here is actually the *name* not the uuid of the entry...
-    pub async fn idm_oauth2_rs_get(&self, id: &str) -> Result<Option<Entry>, ClientError> {
-        self.perform_get_request(format!("/v1/oauth2/{}", id).as_str())
-            .await
-    }
-
-    pub async fn idm_oauth2_rs_get_basic_secret(
-        &self,
-        id: &str,
-    ) -> Result<Option<String>, ClientError> {
-        self.perform_get_request(format!("/v1/oauth2/{}/_basic_secret", id).as_str())
-            .await
-    }
-
-    #[allow(clippy::too_many_arguments)]
-    pub async fn idm_oauth2_rs_update(
-        &self,
-        id: &str,
-        name: Option<&str>,
-        displayname: Option<&str>,
-        origin: Option<&str>,
-        landing: Option<&str>,
-        reset_secret: bool,
-        reset_token_key: bool,
-        reset_sign_key: bool,
-    ) -> Result<(), ClientError> {
-        let mut update_oauth2_rs = Entry {
-            attrs: BTreeMap::new(),
-        };
-
-        if let Some(newname) = name {
-            update_oauth2_rs
-                .attrs
-                .insert("oauth2_rs_name".to_string(), vec![newname.to_string()]);
-        }
-        if let Some(newdisplayname) = displayname {
-            update_oauth2_rs
-                .attrs
-                .insert("displayname".to_string(), vec![newdisplayname.to_string()]);
-        }
-        if let Some(neworigin) = origin {
-            update_oauth2_rs
-                .attrs
-                .insert("oauth2_rs_origin".to_string(), vec![neworigin.to_string()]);
-        }
-        if let Some(newlanding) = landing {
-            update_oauth2_rs.attrs.insert(
-                "oauth2_rs_origin_landing".to_string(),
-                vec![newlanding.to_string()],
-            );
-        }
-        if reset_secret {
-            update_oauth2_rs
-                .attrs
-                .insert("oauth2_rs_basic_secret".to_string(), Vec::new());
-        }
-        if reset_token_key {
-            update_oauth2_rs
-                .attrs
-                .insert("oauth2_rs_token_key".to_string(), Vec::new());
-        }
-        if reset_sign_key {
-            update_oauth2_rs
-                .attrs
-                .insert("es256_private_key_der".to_string(), Vec::new());
-            update_oauth2_rs
-                .attrs
-                .insert("rs256_private_key_der".to_string(), Vec::new());
-        }
-        self.perform_patch_request(format!("/v1/oauth2/{}", id).as_str(), update_oauth2_rs)
-            .await
-    }
-
-    pub async fn idm_oauth2_rs_update_scope_map(
-        &self,
-        id: &str,
-        group: &str,
-        scopes: Vec<&str>,
-    ) -> Result<(), ClientError> {
-        let scopes: Vec<String> = scopes.into_iter().map(str::to_string).collect();
-        self.perform_post_request(
-            format!("/v1/oauth2/{}/_scopemap/{}", id, group).as_str(),
-            scopes,
-        )
-        .await
-    }
-
-    pub async fn idm_oauth2_rs_delete_scope_map(
-        &self,
-        id: &str,
-        group: &str,
-    ) -> Result<(), ClientError> {
-        self.perform_delete_request(format!("/v1/oauth2/{}/_scopemap/{}", id, group).as_str())
-            .await
-    }
-
-    pub async fn idm_oauth2_rs_update_sup_scope_map(
-        &self,
-        id: &str,
-        group: &str,
-        scopes: Vec<&str>,
-    ) -> Result<(), ClientError> {
-        let scopes: Vec<String> = scopes.into_iter().map(str::to_string).collect();
-        self.perform_post_request(
-            format!("/v1/oauth2/{}/_sup_scopemap/{}", id, group).as_str(),
-            scopes,
-        )
-        .await
-    }
-
-    pub async fn idm_oauth2_rs_delete_sup_scope_map(
-        &self,
-        id: &str,
-        group: &str,
-    ) -> Result<(), ClientError> {
-        self.perform_delete_request(format!("/v1/oauth2/{}/_sup_scopemap/{}", id, group).as_str())
-            .await
-    }
-
-    pub async fn idm_oauth2_rs_delete(&self, id: &str) -> Result<(), ClientError> {
-        self.perform_delete_request(["/v1/oauth2/", id].concat().as_str())
-            .await
-    }
-
-    pub async fn idm_oauth2_rs_enable_pkce(&self, id: &str) -> Result<(), ClientError> {
-        let mut update_oauth2_rs = Entry {
-            attrs: BTreeMap::new(),
-        };
-        update_oauth2_rs.attrs.insert(
-            "oauth2_allow_insecure_client_disable_pkce".to_string(),
-            Vec::new(),
-        );
-        self.perform_patch_request(format!("/v1/oauth2/{}", id).as_str(), update_oauth2_rs)
-            .await
-    }
-
-    pub async fn idm_oauth2_rs_disable_pkce(&self, id: &str) -> Result<(), ClientError> {
-        let mut update_oauth2_rs = Entry {
-            attrs: BTreeMap::new(),
-        };
-        update_oauth2_rs.attrs.insert(
-            "oauth2_allow_insecure_client_disable_pkce".to_string(),
-            vec!["true".to_string()],
-        );
-        self.perform_patch_request(format!("/v1/oauth2/{}", id).as_str(), update_oauth2_rs)
-            .await
-    }
-
-    pub async fn idm_oauth2_rs_enable_legacy_crypto(&self, id: &str) -> Result<(), ClientError> {
-        let mut update_oauth2_rs = Entry {
-            attrs: BTreeMap::new(),
-        };
-        update_oauth2_rs.attrs.insert(
-            "oauth2_jwt_legacy_crypto_enable".to_string(),
-            vec!["true".to_string()],
-        );
-        self.perform_patch_request(format!("/v1/oauth2/{}", id).as_str(), update_oauth2_rs)
-            .await
-    }
-
-    pub async fn idm_oauth2_rs_disable_legacy_crypto(&self, id: &str) -> Result<(), ClientError> {
-        let mut update_oauth2_rs = Entry {
-            attrs: BTreeMap::new(),
-        };
-        update_oauth2_rs.attrs.insert(
-            "oauth2_jwt_legacy_crypto_enable".to_string(),
-            vec!["false".to_string()],
-        );
-        self.perform_patch_request(format!("/v1/oauth2/{}", id).as_str(), update_oauth2_rs)
-            .await
-    }
-
-    pub async fn idm_oauth2_rs_prefer_short_username(&self, id: &str) -> Result<(), ClientError> {
-        let mut update_oauth2_rs = Entry {
-            attrs: BTreeMap::new(),
-        };
-        update_oauth2_rs.attrs.insert(
-            "oauth2_prefer_short_username".to_string(),
-            vec!["true".to_string()],
-        );
-        self.perform_patch_request(format!("/v1/oauth2/{}", id).as_str(), update_oauth2_rs)
-            .await
-    }
-
-    pub async fn idm_oauth2_rs_prefer_spn_username(&self, id: &str) -> Result<(), ClientError> {
-        let mut update_oauth2_rs = Entry {
-            attrs: BTreeMap::new(),
-        };
-        update_oauth2_rs.attrs.insert(
-            "oauth2_prefer_short_username".to_string(),
-            vec!["false".to_string()],
-        );
-        self.perform_patch_request(format!("/v1/oauth2/{}", id).as_str(), update_oauth2_rs)
+        self.perform_get_request(&format!("/v1/schema/classtype/{}", id))
             .await
     }
 
@@ -2002,12 +1969,12 @@ impl KanidmClient {
     }
 
     pub async fn recycle_bin_get(&self, id: &str) -> Result<Option<Entry>, ClientError> {
-        self.perform_get_request(format!("/v1/recycle_bin/{}", id).as_str())
+        self.perform_get_request(&format!("/v1/recycle_bin/{}", id))
             .await
     }
 
     pub async fn recycle_bin_revive(&self, id: &str) -> Result<(), ClientError> {
-        self.perform_post_request(format!("/v1/recycle_bin/{}/_revive", id).as_str(), ())
+        self.perform_post_request(&format!("/v1/recycle_bin/{}/_revive", id), ())
             .await
     }
 }

@@ -1,7 +1,6 @@
-use std::env;
-
 use base64::{engine::general_purpose, Engine as _};
 use serde::Deserialize;
+use std::env;
 
 #[derive(Debug, Deserialize)]
 #[allow(non_camel_case_types)]
@@ -48,10 +47,14 @@ impl std::fmt::Display for CpuOptLevel {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct ProfileConfig {
     web_ui_pkg_path: String,
     #[serde(default)]
     cpu_flags: CpuOptLevel,
+    admin_bind_path: String,
+    default_config_path: String,
+    default_unix_shell_path: String,
 }
 
 pub fn apply_profile() {
@@ -70,6 +73,19 @@ pub fn apply_profile() {
     let profile_cfg: ProfileConfig = toml::from_slice(&data)
         .unwrap_or_else(|_| panic!("Failed to parse profile - {} - {}", profile, contents));
 
+    // We have to setup for our pkg version to be passed into things correctly
+    // now. This relies on the profile build.rs to get the commit rev if present, but
+    // we combine it with the local package version
+    let version = env!("CARGO_PKG_VERSION");
+    if let Some(commit_rev) = option_env!("KANIDM_PKG_COMMIT_REV") {
+        println!(
+            "cargo:rustc-env=KANIDM_PKG_VERSION={} {}",
+            version, commit_rev
+        );
+    } else {
+        println!("cargo:rustc-env=KANIDM_PKG_VERSION={}", version);
+    };
+
     match profile_cfg.cpu_flags {
         CpuOptLevel::apple_m1 => println!("cargo:rustc-env=RUSTFLAGS=-Ctarget-cpu=apple_m1"),
         CpuOptLevel::none => {}
@@ -86,5 +102,17 @@ pub fn apply_profile() {
     println!(
         "cargo:rustc-env=KANIDM_WEB_UI_PKG_PATH={}",
         profile_cfg.web_ui_pkg_path
+    );
+    println!(
+        "cargo:rustc-env=KANIDM_ADMIN_BIND_PATH={}",
+        profile_cfg.admin_bind_path
+    );
+    println!(
+        "cargo:rustc-env=KANIDM_DEFAULT_CONFIG_PATH={}",
+        profile_cfg.default_config_path
+    );
+    println!(
+        "cargo:rustc-env=KANIDM_DEFAULT_UNIX_SHELL_PATH={}",
+        profile_cfg.default_unix_shell_path
     );
 }
