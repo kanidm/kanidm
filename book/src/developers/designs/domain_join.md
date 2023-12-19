@@ -25,6 +25,10 @@ To prevent this, unix authentication should be configurable to prevent usage to 
 This will require the machine to present machine authentication credentials simultaneously with the
 user's credentials.
 
+A potential change is removing the current unix password auth mechanism as a whole. Instead the
+users auth token would contain a TPM bound credential that only the domain joined machines TPM could
+access and use.
+
 ### Requesting Cryptographic Credentials
 
 When a user logs in to a machine, it may be required that they can use that authentication to
