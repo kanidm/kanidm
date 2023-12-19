@@ -351,8 +351,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 e
             })?;
 
-        // This is re-loaded in case the domain name changed on the remote. Also needed for changing
-        // the domain version.
+        // This is re-loaded in case the domain name changed on the remote
         self.reload_domain_info().map_err(|e| {
             error!("Failed to reload domain info");
             e
@@ -370,6 +369,17 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 error!("Failed to apply incremental schema entries");
                 e
             })?;
+
+        // Reload the domain version, doing any needed migrations.
+        //
+        // While it seems odd that we do the migrations after we recieve the entries,
+        // this is because the supplier will already be sending us everything that
+        // was just migrated. As a result, we only need to apply the migrations to entries
+        // that were not on the supplier, and therefore need updates here.
+        self.reload_domain_info_version().map_err(|e| {
+            error!("Failed to reload domain info version");
+            e
+        })?;
 
         // Finally, confirm that the ranges that we have added match the ranges from our
         // context. Note that we get this in a writeable form!

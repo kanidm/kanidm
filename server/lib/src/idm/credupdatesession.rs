@@ -2448,6 +2448,13 @@ mod tests {
     ) -> (CredentialUpdateSessionToken, CredentialUpdateSessionStatus) {
         let mut idms_prox_write = idms.proxy_write(ct).await;
 
+        // Remove the default all persons policy, it interfers with our test.
+        let modlist = ModifyList::new_purge(Attribute::CredentialTypeMinimum);
+        idms_prox_write
+            .qs_write
+            .internal_modify_uuid(UUID_IDM_ALL_PERSONS, &modlist)
+            .expect("Unable to change default session exp");
+
         let e2 = entry_init!(
             (Attribute::Class, EntryClass::Object.to_value()),
             (Attribute::Class, EntryClass::Account.to_value()),
