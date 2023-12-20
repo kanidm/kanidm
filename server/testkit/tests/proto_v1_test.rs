@@ -1872,6 +1872,14 @@ async fn test_server_applications(rsclient: KanidmClient) {
 
     let a_list = rsclient.idm_application_list().await.unwrap();
     assert!(!a_list.is_empty());
+
+    rsclient
+        .idm_application_delete("app1")
+        .await
+        .expect("Failed to delete application");
+
+    let a_list = rsclient.idm_application_list().await.unwrap();
+    assert!(a_list.is_empty());
 }
 
 // wanna test how long it takes for testkit to start up? here's your biz.
