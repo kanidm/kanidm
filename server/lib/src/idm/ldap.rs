@@ -1497,4 +1497,60 @@ mod tests {
             _ => assert!(false),
         };
     }
+
+    #[idm_test]
+    async fn test_ldap_application_ncs(idms: &IdmServer, _idms_delayed: &IdmServerDelayed) {
+        let ldaps = LdapServer::new(idms).await.expect("failed to start ldap");
+
+        for app in ["app1", "app2"] {
+            let app_uuid = Uuid::new_v4();
+            let e1 = entry_init!(
+                (Attribute::Class, EntryClass::Group.to_value()),
+                (Attribute::Class, EntryClass::Application.to_value()),
+                (Attribute::Name, Value::new_iname(app)),
+                (Attribute::Uuid, Value::Uuid(app_uuid))
+            );
+
+            let mut server_txn = idms.proxy_write(duration_from_epoch_now()).await;
+            assert!(server_txn
+                .qs_write
+                .internal_create(vec![e1])
+                .and_then(|_| server_txn.commit())
+                .is_ok());
+        }
+
+        let anon_t = ldaps.do_bind(idms, "", "").await.unwrap().unwrap();
+        assert!(anon_t.effective_session == LdapSession::UnixBind(UUID_ANONYMOUS));
+
+        let sr = SearchRequest {
+            msgid: 1,
+            base: "".to_string(),
+            scope: LdapSearchScope::Base,
+            filter: LdapFilter::Present(Attribute::ObjectClass.to_string()),
+            attrs: vec!["*".to_string()],
+        };
+        let r1 = ldaps.do_search(idms, &sr, &anon_t, Source::Internal).await.unwrap();
+
+        trace!(?r1);
+
+        // The result, and the ldap proto success msg.
+        assert!(r1.len() == 2);
+        match &r1[0].op {
+            LdapOp::SearchResultEntry(lsre) => {
+                assert_entry_contains!(
+                    lsre,
+                    "",
+                    (Attribute::ObjectClass, "top"),
+                    ("vendorname", "Kanidm Project"),
+                    ("supportedldapversion", "3"),
+                    ("defaultnamingcontext", "dc=example,dc=com"),
+                    ("namingcontexts", "app=app1,dc=example,dc=com"),
+                    ("namingcontexts", "app=app2,dc=example,dc=com")
+                );
+            }
+            _ => assert!(false),
+        };
+
+        drop(ldaps);
+    }
 }
