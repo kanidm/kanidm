@@ -1854,6 +1854,18 @@ async fn test_server_user_auth_privileged_shortcut(rsclient: KanidmClient) {
     }
 }
 
+#[kanidmd_testkit::test]
+async fn test_server_applications(rsclient: KanidmClient) {
+    let res = rsclient
+        .auth_simple_password(ADMIN_TEST_USER, ADMIN_TEST_PASSWORD)
+        .await;
+    assert!(res.is_ok());
+
+    // List the applications
+    let a_list = rsclient.idm_application_list().await.unwrap();
+    assert!(a_list.is_empty());
+}
+
 // wanna test how long it takes for testkit to start up? here's your biz.
 // turns out  as of 2023-10-11 on my M2 Max, it's about 1.0 seconds per iteration
 // #[kanidmd_testkit::test]
