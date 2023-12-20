@@ -944,6 +944,7 @@ where
                 CacheState::Online,
             ) => {
                 let mut hsm_lock = self.hsm.lock().await;
+                let mut dbtxn = self.db.write().await;
 
                 let maybe_cache_action = self
                     .client
@@ -951,12 +952,14 @@ where
                         account_id,
                         cred_handler,
                         pam_next_req,
+                        &mut dbtxn,
                         hsm_lock.deref_mut(),
                         &self.machine_key,
                     )
                     .await;
 
                 drop(hsm_lock);
+                dbtxn.commit().map_err(|_| ())?;
 
                 match maybe_cache_action {
                     Ok((res, AuthCacheAction::None)) => Ok(res),
