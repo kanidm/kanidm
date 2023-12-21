@@ -62,6 +62,7 @@ struct LdapNamingContext {
 enum LdapBindTarget {
     Account(Uuid),
     ApiToken,
+    Application(Uuid, Uuid),
 }
 
 pub struct LdapServer {
@@ -416,42 +417,9 @@ impl LdapServer {
         );
         let ct = duration_from_epoch_now();
 
+        let target = self.bind_target_from_bind_dn(idms, dn, pw).await?;
+
         let mut idm_auth = idms.auth().await;
-
-        let target: LdapBindTarget = if dn.is_empty() {
-            if pw.is_empty() {
-                LdapBindTarget::Account(UUID_ANONYMOUS)
-            } else {
-                // This is the path to access api-token logins.
-                LdapBindTarget::ApiToken
-            }
-        } else if dn == "dn=token" {
-            // Is the passed dn requesting token auth?
-            // We use dn= here since these are attr=value, and dn is a phantom so it will
-            // never be present or match a real value. We also make it an ava so that clients
-            // that over-zealously validate dn syntax are happy.
-            LdapBindTarget::ApiToken
-        } else {
-            let rdn = self
-                .naming_context_from_bind_dn(dn)?
-                .binddnre
-                .captures(dn)
-                .and_then(|caps| caps.name("val"))
-                .map(|v| v.as_str().to_string())
-                .ok_or(OperationError::NoMatchingEntries)?;
-
-            if rdn.is_empty() {
-                // That's weird ...
-                return Err(OperationError::NoMatchingEntries);
-            }
-
-            let uuid = idm_auth.qs_read.name_to_uuid(rdn.as_str()).map_err(|e| {
-                request_error!(err = ?e, ?rdn, "Error resolving rdn to target");
-                e
-            })?;
-
-            LdapBindTarget::Account(uuid)
-        };
 
         let result = match target {
             LdapBindTarget::Account(uuid) => {
@@ -461,6 +429,14 @@ impl LdapServer {
             LdapBindTarget::ApiToken => {
                 let lae = LdapTokenAuthEvent::from_parts(pw.to_string())?;
                 idm_auth.token_auth_ldap(&lae, ct).await?
+            }
+            LdapBindTarget::Application(app_uuid, usr_uuid) => {
+                security_info!(
+                    "Application binding not implemented (app {:?}, user {:?})",
+                    app_uuid,
+                    usr_uuid
+                );
+                todo!()
             }
         };
 
@@ -560,8 +536,101 @@ impl LdapServer {
         Ok(&self.default_naming_context)
     }
 
-    fn naming_context_from_bind_dn(&self, _dn: &str) -> Result<&LdapNamingContext, OperationError> {
-        Ok(&self.default_naming_context)
+    async fn bind_target_from_bind_dn(
+        &self,
+        idms: &IdmServer,
+        dn: &str,
+        pw: &str,
+    ) -> Result<LdapBindTarget, OperationError> {
+        if dn.is_empty() {
+            if pw.is_empty() {
+                return Ok(LdapBindTarget::Account(UUID_ANONYMOUS));
+            } else {
+                // This is the path to access api-token logins.
+                return Ok(LdapBindTarget::ApiToken);
+            }
+        } else if dn == "dn=token" {
+            // Is the passed dn requesting token auth?
+            // We use dn= here since these are attr=value, and dn is a phantom so it will
+            // never be present or match a real value. We also make it an ava so that clients
+            // that over-zealously validate dn syntax are happy.
+            return Ok(LdapBindTarget::ApiToken);
+        }
+
+        if let Some(rdn) = self
+            .default_naming_context
+            .binddnre
+            .captures(dn)
+            .and_then(|caps| caps.name("val"))
+            .map(|v| v.as_str().to_string())
+        {
+            if rdn.is_empty() {
+                // That's weird ...
+                return Err(OperationError::NoMatchingEntries);
+            }
+
+            let mut idm_auth = idms.auth().await;
+            let uuid = idm_auth.qs_read.name_to_uuid(rdn.as_str()).map_err(|e| {
+                request_error!(err = ?e, ?rdn, "Error resolving rdn to target");
+                e
+            })?;
+
+            return Ok(LdapBindTarget::Account(uuid));
+        }
+
+        let basedn = &self.default_naming_context.basedn;
+        let app_binddnre = Regex::new(
+            format!("^(([^=,]+)=)(?P<usr>[^=,]+),(([^=,]+)=)(?P<app>[^=,]+)(,{basedn})$").as_str(),
+        )
+        .map_err(|_| OperationError::InvalidEntryState)?;
+
+        if let Some(caps) = app_binddnre.captures(dn) {
+            let app_rdn = caps
+                .name("app")
+                .map(|v| v.as_str().to_string())
+                .ok_or(OperationError::NoMatchingEntries)?;
+            let usr_rdn = caps
+                .name("usr")
+                .map(|v| v.as_str().to_string())
+                .ok_or(OperationError::NoMatchingEntries)?;
+            if app_rdn.is_empty() || usr_rdn.is_empty() {
+                return Err(OperationError::NoMatchingEntries);
+            }
+
+            let mut idms_prox_read = idms.proxy_read().await;
+            let app_entries = idms_prox_read.qs_read.internal_search(filter!(f_eq(
+                Attribute::Class,
+                EntryClass::Application.into()
+            )))?;
+
+            for app_entry in &app_entries {
+                let app_entry_name: String = app_entry
+                    .get_ava_single_iname(Attribute::Name)
+                    .map(|s| s.to_string())
+                    .ok_or(OperationError::InvalidEntryState)?;
+                if app_rdn != app_entry_name {
+                    continue;
+                }
+
+                let app_uuid: Uuid = app_entry
+                    .get_ava_single_uuid(Attribute::Uuid)
+                    .ok_or(OperationError::InvalidEntryState)?;
+
+                let mut idm_auth = idms.auth().await;
+                let usr_uuid: Uuid =
+                    idm_auth
+                        .qs_read
+                        .name_to_uuid(usr_rdn.as_str())
+                        .map_err(|e| {
+                            request_error!(err = ?e, ?usr_rdn, "Error resolving rdn to target");
+                            e
+                        })?;
+
+                return Ok(LdapBindTarget::Application(app_uuid, usr_uuid));
+            }
+        }
+
+        Err(OperationError::NoMatchingEntries)
     }
 }
 
