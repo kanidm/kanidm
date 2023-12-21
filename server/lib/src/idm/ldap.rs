@@ -15,7 +15,7 @@ use tracing::trace;
 use uuid::Uuid;
 
 use crate::event::SearchEvent;
-use crate::idm::event::{LdapAuthEvent, LdapTokenAuthEvent};
+use crate::idm::event::{LdapApplicationAuthEvent, LdapAuthEvent, LdapTokenAuthEvent};
 use crate::idm::server::{IdmServer, IdmServerTransaction};
 use crate::prelude::*;
 
@@ -426,13 +426,13 @@ impl LdapServer {
                 let lae = LdapTokenAuthEvent::from_parts(jwsc)?;
                 idm_auth.token_auth_ldap(&lae, ct).await?
             }
-            LdapBindTarget::Application(app, usr) => {
-                security_info!(
-                    "Application binding not implemented: app={:?}, usr={:?}",
-                    app,
-                    usr
-                );
-                todo!()
+            LdapBindTarget::Application(ref app_name, usr_uuid) => {
+                let lae = LdapApplicationAuthEvent::from_parts(
+                    app_name.as_str(),
+                    usr_uuid,
+                    pw.to_string(),
+                )?;
+                idm_auth.application_auth_ldap(&lae, ct).await?
             }
         };
 

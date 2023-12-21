@@ -1,3 +1,33 @@
+use super::ldap::LdapBoundToken;
+use crate::idm::account::Account;
+use crate::idm::event::LdapApplicationAuthEvent;
+use crate::idm::server::{IdmServerAuthTransaction, IdmServerTransaction};
+use crate::prelude::*;
+
+impl<'a> IdmServerAuthTransaction<'a> {
+    pub async fn application_auth_ldap(
+        &mut self,
+        lae: &LdapApplicationAuthEvent,
+        _ct: Duration,
+    ) -> Result<Option<LdapBoundToken>, OperationError> {
+        let account: Account = self
+            .get_qs_txn()
+            .internal_search_uuid(lae.target)
+            .and_then(|entry| Account::try_from_entry_ro(&entry, self.get_qs_txn()))
+            .map_err(|e| {
+                admin_error!("Failed to search account {:?}", e);
+                e
+            })?;
+
+        if account.is_anonymous() {
+            return Err(OperationError::InvalidUuid);
+        }
+
+        security_info!("Account does not have a configured application password.");
+        Ok(None)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::event::CreateEvent;
