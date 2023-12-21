@@ -1,9 +1,6 @@
 use core::result::Result::Err;
 use kanidm_client::KanidmClient;
-use kanidm_proto::{
-    internal::{IdentifyUserRequest, IdentifyUserResponse},
-    v1::Entry,
-};
+use kanidm_proto::internal::{IdentifyUserRequest, IdentifyUserResponse};
 
 use kanidmd_lib::prelude::Attribute;
 use kanidmd_testkit::ADMIN_TEST_PASSWORD;
@@ -266,24 +263,15 @@ async fn setup_server(rsclient: &KanidmClient) {
     let res = rsclient
         .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
         .await;
+
     assert!(res.is_ok());
 }
 
 async fn create_user(rsclient: &KanidmClient, user: &str) -> String {
-    let e: Entry = serde_json::from_str(&format!(
-        r#"{{
-            "attrs": {{
-                "class": ["account", "person", "object"],
-                "name": ["{}"],
-                "displayname": ["dx{}"]
-            }}
-        }}"#,
-        user, user
-    ))
-    .unwrap();
-    let res = rsclient.create(vec![e.clone()]).await;
-
-    assert!(res.is_ok());
+    rsclient
+        .idm_person_account_create(user, &format!("dx{}", user))
+        .await
+        .expect("Unable to create person");
 
     rsclient
         .idm_person_account_primary_credential_set_password(user, UNIVERSAL_PW)

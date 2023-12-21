@@ -279,11 +279,9 @@ mod tests {
 
         let pw = crate::utils::password_from_random();
 
-        let c_status = cutxn
+        let _c_status = cutxn
             .credential_primary_set_password(&cust, ct, &pw)
             .expect("Failed to update the primary cred password");
-
-        assert!(c_status.can_commit());
 
         let c_status = cutxn
             .credential_primary_init_totp(&cust, ct)

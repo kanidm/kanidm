@@ -56,6 +56,7 @@ pub type ResolveFilterCacheReadTxn<'a> =
 enum ServerPhase {
     Bootstrap,
     SchemaReady,
+    DomainInfoReady,
     Running,
 }
 
@@ -164,6 +165,8 @@ pub trait QueryServerTransaction<'a> {
     fn pw_badlist(&self) -> &HashSet<String>;
 
     fn denied_names(&self) -> &HashSet<String>;
+
+    fn get_domain_version(&self) -> DomainVersion;
 
     fn get_domain_uuid(&self) -> Uuid;
 
@@ -989,6 +992,10 @@ impl<'a> QueryServerTransaction<'a> for QueryServerReadTransaction<'a> {
         &self.system_config.denied_names
     }
 
+    fn get_domain_version(&self) -> DomainVersion {
+        self.d_info.d_vers
+    }
+
     fn get_domain_uuid(&self) -> Uuid {
         self.d_info.d_uuid
     }
@@ -1108,6 +1115,10 @@ impl<'a> QueryServerTransaction<'a> for QueryServerWriteTransaction<'a> {
 
     fn denied_names(&self) -> &HashSet<String> {
         &self.system_config.denied_names
+    }
+
+    fn get_domain_version(&self) -> DomainVersion {
+        self.d_info.d_vers
     }
 
     fn get_domain_uuid(&self) -> Uuid {
@@ -1582,6 +1593,40 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
     /// Pulls the domain name from the database and updates the DomainInfo data in memory
     #[instrument(level = "debug", skip_all)]
+    pub(crate) fn reload_domain_info_version(&mut self) -> Result<(), OperationError> {
+        let domain_info_version = self
+            .internal_search_uuid(UUID_DOMAIN_INFO)
+            .and_then(|e| {
+                e.get_ava_single_uint32(Attribute::Version)
+                    .ok_or(OperationError::InvalidEntryState)
+            })
+            .map_err(|err| {
+                error!(?err, "Error getting domain version");
+                err
+            })?;
+
+        // We have to set the domain version here so that features which check for it
+        // will now see it's been increased.
+        let mut_d_info = self.d_info.get_mut();
+        let previous_version = mut_d_info.d_vers;
+        mut_d_info.d_vers = domain_info_version;
+
+        if previous_version == domain_info_version || *self.phase < ServerPhase::DomainInfoReady {
+            return Ok(());
+        }
+
+        debug!(domain_previous_version = ?previous_version, domain_target_version = ?domain_info_version);
+
+        if previous_version <= DOMAIN_LEVEL_2 && domain_info_version >= DOMAIN_LEVEL_3 {
+            // 2 -> 3 Migration
+            self.migrate_domain_2_to_3()?;
+        }
+
+        Ok(())
+    }
+
+    /// Pulls the domain name from the database and updates the DomainInfo data in memory
+    #[instrument(level = "debug", skip_all)]
     pub(crate) fn reload_domain_info(&mut self) -> Result<(), OperationError> {
         let domain_name = self.get_db_domain_name()?;
         let display_name = self.get_db_domain_display_name()?;
@@ -1689,6 +1734,11 @@ impl<'a> QueryServerWriteTransaction<'a> {
     }
 
     pub(crate) fn reload(&mut self) -> Result<(), OperationError> {
+        // First, check if the domain version has changed.
+        if self.changed_domain {
+            self.reload_domain_info_version()?;
+        }
+
         // This could be faster if we cache the set of classes changed
         // in an operation so we can check if we need to do the reload or not
         //

@@ -164,7 +164,7 @@ pub trait AccessControlsTransaction<'a> {
         &self,
     ) -> &mut ARCacheReadTxn<'a, (IdentityId, Filter<FilterValid>), Filter<FilterValidResolved>, ()>;
 
-    #[instrument(level = "debug", name = "access::search_related_acp", skip_all)]
+    #[instrument(level = "trace", name = "access::search_related_acp", skip_all)]
     fn search_related_acp<'b>(&'b self, ident: &Identity) -> Vec<AccessControlSearchResolved<'b>> {
         let search_state = self.get_search();
         let acp_resolve_filter_cache = self.get_acp_resolve_filter_cache();
@@ -369,7 +369,7 @@ pub trait AccessControlsTransaction<'a> {
         Ok(allowed_entries)
     }
 
-    #[instrument(level = "debug", name = "access::modify_related_acp", skip_all)]
+    #[instrument(level = "trace", name = "access::modify_related_acp", skip_all)]
     fn modify_related_acp<'b>(&'b self, ident: &Identity) -> Vec<AccessControlModifyResolved<'b>> {
         // Some useful references we'll use for the remainder of the operation
         let modify_state = self.get_modify();
@@ -706,7 +706,7 @@ pub trait AccessControlsTransaction<'a> {
         Ok(r)
     }
 
-    #[instrument(level = "debug", name = "access::delete_related_acp", skip_all)]
+    #[instrument(level = "trace", name = "access::delete_related_acp", skip_all)]
     fn delete_related_acp<'b>(&'b self, ident: &Identity) -> Vec<AccessControlDeleteResolved<'b>> {
         // Some useful references we'll use for the remainder of the operation
         let delete_state = self.get_delete();
