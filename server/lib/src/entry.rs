@@ -2402,8 +2402,12 @@ impl Entry<EntryReduced, EntryCommitted> {
             .filter_map(|(ldap_a, kani_a)| {
                 // In some special cases, we may need to transform or rewrite the values.
                 match ldap_a {
-                    "entrydn" => Some(LdapPartialAttribute {
-                        atype: "entrydn".to_string(),
+                    LDAP_ATTR_DN => Some(LdapPartialAttribute {
+                        atype: LDAP_ATTR_DN.to_string(),
+                        vals: vec![dn.as_bytes().to_vec()],
+                    }),
+                    LDAP_ATTR_ENTRYDN => Some(LdapPartialAttribute {
+                        atype: LDAP_ATTR_ENTRYDN.to_string(),
                         vals: vec![dn.as_bytes().to_vec()],
                     }),
                     LDAP_ATTR_MAIL_PRIMARY | LDAP_ATTR_EMAIL_PRIMARY => {
