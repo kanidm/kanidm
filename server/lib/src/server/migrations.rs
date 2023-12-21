@@ -132,7 +132,7 @@ impl QueryServer {
             Err(r) => Err(r),
         }?;
 
-        warn!(?db_domain_version);
+        info!(?db_domain_version, "Before setting internal domain info");
 
         // Migrations complete. Init idm will now set the system config version and minimum domain
         // level if none was present
