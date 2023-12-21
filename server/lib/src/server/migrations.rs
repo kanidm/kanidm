@@ -157,7 +157,7 @@ impl QueryServer {
 
         // The reloads will have populated this structure now.
         let domain_info_version = write_txn.get_domain_version();
-        warn!(?domain_info_version);
+        info!(?db_domain_version, "After setting internal domain info");
 
         if domain_info_version < DOMAIN_TGT_LEVEL {
             write_txn
