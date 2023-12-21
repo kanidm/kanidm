@@ -696,7 +696,7 @@ async fn main() -> ExitCode {
                         );
                         return ExitCode::FAILURE
                     }
-                    if !kanidm_lib_file_permissions::readonly(&i_meta) {
+                    if kanidm_lib_file_permissions::readonly(&i_meta) {
                         warn!("WARNING: DB folder permissions on {} indicate it may not be RW. This could cause the server start up to fail!", db_par_path_buf.to_str()
                         .unwrap_or("<db_par_path_buf invalid>")
                         );
