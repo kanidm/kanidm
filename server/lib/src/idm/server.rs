@@ -40,9 +40,9 @@ use crate::idm::delayed::{
 use crate::idm::event::PasswordChangeEvent;
 use crate::idm::event::{AuthEvent, AuthEventStep, AuthResult};
 use crate::idm::event::{
-    CredentialStatusEvent, LdapAuthEvent, LdapTokenAuthEvent, RadiusAuthTokenEvent,
-    RegenerateRadiusSecretEvent, UnixGroupTokenEvent, UnixPasswordChangeEvent, UnixUserAuthEvent,
-    UnixUserTokenEvent,
+    CredentialStatusEvent, LdapApplicationAuthEvent, LdapAuthEvent, LdapTokenAuthEvent,
+    RadiusAuthTokenEvent, RegenerateRadiusSecretEvent, UnixGroupTokenEvent,
+    UnixPasswordChangeEvent, UnixUserAuthEvent, UnixUserTokenEvent,
 };
 use crate::idm::oauth2::{
     Oauth2ResourceServers, Oauth2ResourceServersReadTransaction,
@@ -1472,6 +1472,19 @@ impl<'a> IdmServerAuthTransaction<'a> {
                 }
             }
         }
+    }
+
+    pub async fn application_auth_ldap(
+        &mut self,
+        lae: &LdapApplicationAuthEvent,
+        _ct: Duration,
+    ) -> Result<Option<LdapBoundToken>, OperationError> {
+        if lae.target == UUID_ANONYMOUS {
+            return Err(OperationError::InvalidUuid);
+        }
+
+        security_info!("Account does not have a configured application password.");
+        Ok(None)
     }
 
     pub fn commit(self) -> Result<(), OperationError> {

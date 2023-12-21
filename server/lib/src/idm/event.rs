@@ -276,6 +276,26 @@ impl LdapTokenAuthEvent {
     }
 }
 
+pub struct LdapApplicationAuthEvent {
+    pub application: Uuid,
+    pub target: Uuid,
+    pub cleartext: String,
+}
+
+impl LdapApplicationAuthEvent {
+    pub fn from_parts(
+        app_uuid: Uuid,
+        usr_uuid: Uuid,
+        cleartext: String,
+    ) -> Result<Self, OperationError> {
+        Ok(LdapApplicationAuthEvent {
+            application: app_uuid,
+            target: usr_uuid,
+            cleartext,
+        })
+    }
+}
+
 #[derive(Debug)]
 pub struct AuthEventStepInit {
     pub username: String,
