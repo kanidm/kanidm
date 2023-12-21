@@ -106,8 +106,10 @@ impl Domain {
                 if !e.attribute_pres(Attribute::Version) {
                     let n = Value::Uint32(DOMAIN_MIN_LEVEL);
                     e.set_ava(Attribute::Version, once(n));
-                    trace!("plugin_domain: Applying domain version transform");
-                }
+                    warn!("plugin_domain: Applying domain version transform");
+                } else {
+                    warn!("plugin_domain: NOT Applying domain version transform");
+                };
 
                 // create the domain_display_name if it's missing
                 if !e.attribute_pres(Attribute::DomainDisplayName) {
