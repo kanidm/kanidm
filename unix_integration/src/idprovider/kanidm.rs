@@ -200,11 +200,12 @@ impl IdProvider for KanidmProvider {
         Ok((AuthRequest::Password, AuthCredHandler::Password))
     }
 
-    async fn unix_user_online_auth_step(
+    async fn unix_user_online_auth_step<D: KeyStoreTxn + Send>(
         &self,
         account_id: &str,
         cred_handler: &mut AuthCredHandler,
         pam_next_req: PamAuthRequest,
+        _keystore: &mut D,
         _tpm: &mut tpm::BoxedDynTpm,
         _machine_key: &tpm::MachineKey,
     ) -> Result<(AuthResult, AuthCacheAction), IdpError> {
