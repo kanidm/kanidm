@@ -324,7 +324,7 @@ impl<'a> KeyStoreTxn for DbTxn<'a> {
 
         let mut stmt = self
             .conn
-            .prepare("INSERT OR REPLACE INTO hsm_int_t (key, value) VALUES (:key, :value)")
+            .prepare("INSERT OR REPLACE INTO hsm_data_t (key, value) VALUES (:key, :value)")
             .map_err(|e| self.sqlite_error("prepare", &e))?;
 
         stmt.execute(named_params! {
