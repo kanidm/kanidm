@@ -86,10 +86,12 @@ Duplicated for Service Accounts, HP persons, HP service Accounts.
 ```mermaid
 graph LR
 
+PersonOnBoard("Person On Board") --> |"Creates"| Persons("Persons")
 PersonAdmin("Person Admin") --> |"Creates Deletes"| Persons("Persons")
 PersonPIIModify --> |"Reads Modifies"| Persons
 PersonPIIModify("Person PII Modify") -.-> |"Member of"| PersonAdmin
 PersonCredentialModify("Person Credential Modify") -.-> |"Member of"| PersonAdmin
+PersonCredentialModify("Person Credential Modify") -.-> |"Member of"| PersonOnBoard
 PersonCredentialModify --> |"Reads Modifies"| Persons
 PersonCredentialModify --> |"Reads"| PersonReadNoPII("Person Read No PII")
 PersonAdmin --> PersonReadWithPII("Person Read - With PII")
