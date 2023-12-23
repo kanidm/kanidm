@@ -2505,7 +2505,7 @@ pub async fn applinks_get(
 )] // TODO: post body stuff
 pub async fn reauth(
     State(state): State<ServerState>,
-    VerifiedClientInformation(ip_addr, client_auth_info): VerifiedClientInformation,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     Extension(kopid): Extension<KOpId>,
     Json(obj): Json<AuthIssueSession>,
 ) -> Result<Response, WebError> {
@@ -2531,7 +2531,7 @@ pub async fn reauth(
 )]
 pub async fn auth(
     State(state): State<ServerState>,
-    VerifiedClientInformation(ip_addr, client_auth_info): VerifiedClientInformation,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     headers: HeaderMap,
     Extension(kopid): Extension<KOpId>,
     Json(obj): Json<AuthRequest>,
@@ -2675,9 +2675,9 @@ pub async fn auth_valid(
 )]
 pub async fn debug_ipinfo(
     State(_state): State<ServerState>,
-    VerifiedClientInformation(ip_addr, client_auth_info): VerifiedClientInformation,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
 ) -> Result<Json<Vec<IpAddr>>, ()> {
-    Ok(Json::from(vec![ip_addr]))
+    Ok(Json::from(vec![client_auth_info.ip_addr]))
 }
 
 fn cacheable_routes(state: ServerState) -> Router<ServerState> {

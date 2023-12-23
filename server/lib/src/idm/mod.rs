@@ -46,6 +46,7 @@ impl fmt::Debug for AuthState {
 
 #[derive(Debug, Clone)]
 pub struct ClientAuthInfo {
+    pub ip_addr: IpAddr,
     pub client_cert: Option<ClientCertInfo>,
     pub bearer_token: Option<String>,
 }

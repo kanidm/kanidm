@@ -17,7 +17,6 @@ use crate::https::ServerState;
 const X_FORWARDED_FOR_HEADER: HeaderName = HeaderName::from_static(X_FORWARDED_FOR);
 
 pub struct VerifiedClientInformation (
-    pub IpAddr,
     pub ClientAuthInfo,
 );
 
@@ -46,7 +45,7 @@ impl FromRequestParts<ServerState> for VerifiedClientInformation {
                 })?;
 
 
-        let xff_addr = if state.trust_x_forward_for {
+        let ip_addr = if state.trust_x_forward_for {
             if let Some(x_forward_for) = parts.headers.get(X_FORWARDED_FOR_HEADER) {
                 // X forward for may be comma separated.
                 let first = x_forward_for
@@ -76,8 +75,8 @@ impl FromRequestParts<ServerState> for VerifiedClientInformation {
         };
 
         Ok(VerifiedClientInformation(
-            xff_addr,
             ClientAuthInfo {
+                ip_addr,
                 bearer_token: None,
                 client_cert,
             }
