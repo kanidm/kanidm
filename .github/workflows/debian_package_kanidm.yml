@@ -48,7 +48,7 @@ jobs:
       - name: Upload debs
         uses: actions/upload-artifact@v4
         with:
-          name: ubuntu-packages
+          name: "packages-${{ matrix.image }}"
           path: |
             target/*.deb
   upload-to-releases:
@@ -63,8 +63,6 @@ jobs:
     steps:
       - name: Download previously built debs
         uses: actions/download-artifact@v4
-        with:
-          name: ubuntu-packages
       - name: List packages
         run: |
           ls
