@@ -48,7 +48,7 @@ jobs:
       - name: Upload debs
         uses: actions/upload-artifact@v4
         with:
-          name: "packages-${{ matrix.image }}"
+          name: replace("packages-${{ matrix.image }}", ":", "-")
           path: |
             target/*.deb
   upload-to-releases:
