@@ -24,15 +24,6 @@ pub async fn version_middleware<B>(request: Request<B>, next: Next<B>) -> Respon
     response
 }
 
-#[derive(Clone, Debug)]
-/// For holding onto the event ID and other handy request-based things
-pub struct KOpId {
-    /// The event correlation ID
-    pub eventid: Uuid,
-    /// The User Access Token, if present
-    pub uat: Option<String>,
-}
-
 #[cfg(any(test, debug_assertions))]
 /// This is a debug middleware to ensure that /v1/ endpoints only return JSON
 #[instrument(level = "debug", name = "are_we_json_yet", skip_all)]
@@ -53,6 +44,15 @@ pub async fn are_we_json_yet<B>(request: Request<B>, next: Next<B>) -> Response 
     }
 
     response
+}
+
+#[derive(Clone, Debug)]
+/// For holding onto the event ID and other handy request-based things
+pub struct KOpId {
+    /// The event correlation ID
+    pub eventid: Uuid,
+    /// The User Access Token, if present
+    pub uat: Option<String>,
 }
 
 /// This runs at the start of the request, adding an extension with `KOpId` which has useful things inside it.

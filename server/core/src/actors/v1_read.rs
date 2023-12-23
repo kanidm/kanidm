@@ -1,6 +1,5 @@
 use std::convert::TryFrom;
 use std::fs;
-use std::net::IpAddr;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
@@ -23,6 +22,7 @@ use kanidmd_lib::prelude::*;
 use kanidmd_lib::{
     event::{OnlineBackupEvent, SearchEvent, SearchResult, WhoamiResult},
     filter::{Filter, FilterInvalid},
+    idm::ClientAuthInfo,
     idm::account::ListUserAuthTokenEvent,
     idm::credupdatesession::CredentialUpdateSessionToken,
     idm::event::{
@@ -114,7 +114,7 @@ impl QueryServerReadV1 {
         sessionid: Option<Uuid>,
         req: AuthRequest,
         eventid: Uuid,
-        ip_addr: IpAddr,
+        client_auth_info: ClientAuthInfo,
     ) -> Result<AuthResult, OperationError> {
         // This is probably the first function that really implements logic
         // "on top" of the db server concept. In this case we check if
@@ -137,12 +137,10 @@ impl QueryServerReadV1 {
         // the session are enforced.
         idm_auth.expire_auth_sessions(ct).await;
 
-        let source = Source::Https(ip_addr);
-
         // Generally things like auth denied are in Ok() msgs
         // so true errors should always trigger a rollback.
         let res = idm_auth
-            .auth(&ae, ct, source)
+            .auth(&ae, ct, client_auth_info)
             .await
             .and_then(|r| idm_auth.commit().map(|_| r));
 
@@ -162,7 +160,7 @@ impl QueryServerReadV1 {
         uat: Option<String>,
         issue: AuthIssueSession,
         eventid: Uuid,
-        ip_addr: IpAddr,
+        client_auth_info: ClientAuthInfo,
     ) -> Result<AuthResult, OperationError> {
         let ct = duration_from_epoch_now();
         let mut idm_auth = self.idms.auth().await;
@@ -180,12 +178,10 @@ impl QueryServerReadV1 {
         // the session are enforced.
         idm_auth.expire_auth_sessions(ct).await;
 
-        let source = Source::Https(ip_addr);
-
         // Generally things like auth denied are in Ok() msgs
         // so true errors should always trigger a rollback.
         let res = idm_auth
-            .reauth_init(ident, issue, ct, source)
+            .reauth_init(ident, issue, ct, client_auth_info)
             .await
             .and_then(|r| idm_auth.commit().map(|_| r));
 

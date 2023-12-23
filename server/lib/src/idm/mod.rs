@@ -23,8 +23,8 @@ pub mod serviceaccount;
 pub(crate) mod unix;
 
 use std::fmt;
-
 use kanidm_proto::v1::{AuthAllowed, AuthIssueSession, AuthMech};
+use crate::server::identity::Source;
 
 pub enum AuthState {
     Choose(Vec<AuthMech>),
@@ -46,7 +46,7 @@ impl fmt::Debug for AuthState {
 
 #[derive(Debug, Clone)]
 pub struct ClientAuthInfo {
-    pub ip_addr: IpAddr,
+    pub source: Source,
     pub client_cert: Option<ClientCertInfo>,
     pub bearer_token: Option<String>,
 }
