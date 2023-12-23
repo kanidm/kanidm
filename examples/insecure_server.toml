@@ -5,6 +5,7 @@ db_fs_type = "zfs"
 db_path = "/tmp/kanidm/kanidm.db"
 tls_chain = "/tmp/kanidm/chain.pem"
 tls_key = "/tmp/kanidm/key.pem"
+tls_client_ca = "/tmp/kanidm/client_ca"
 
 #   The log level of the server. May be one of info, debug, trace
 #

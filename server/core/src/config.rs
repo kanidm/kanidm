@@ -77,6 +77,7 @@ fn default_online_backup_versions() -> usize {
 pub struct TlsConfiguration {
     pub chain: String,
     pub key: String,
+    pub client_ca: Option<String>,
 }
 
 /// This is the Server Configuration as read from `server.toml`.
@@ -99,6 +100,9 @@ pub struct ServerConfig {
     pub tls_chain: Option<String>,
     /// The file path to the TLS Private Key
     pub tls_key: Option<String>,
+
+    /// The directory path of the client ca and crl dir.
+    pub tls_client_ca: Option<String>,
 
     /// The listener address for the HTTPS server.
     ///
@@ -212,6 +216,9 @@ impl ServerConfig {
                 }
                 "TLS_KEY" => {
                     self.tls_key = Some(value.to_string());
+                }
+                "TLS_CLIENT_CA" => {
+                    self.tls_client_ca = Some(value.to_string());
                 }
                 "BINDADDRESS" => {
                     self.bindaddress = Some(value.to_string());
@@ -571,7 +578,7 @@ impl Configuration {
     pub fn update_config_for_server_mode(&mut self, sconfig: &ServerConfig) {
         #[cfg(any(test, debug_assertions))]
         debug!("update_config_for_server_mode {:?}", sconfig);
-        self.update_tls(&sconfig.tls_chain, &sconfig.tls_key);
+        self.update_tls(&sconfig.tls_chain, &sconfig.tls_key, &sconfig.tls_client_ca);
         self.update_bind(&sconfig.bindaddress);
         self.update_ldapbind(&sconfig.ldapbindaddress);
         self.update_online_backup(&sconfig.online_backup);
@@ -632,13 +639,23 @@ impl Configuration {
         self.repl_config = repl_config;
     }
 
-    pub fn update_tls(&mut self, chain: &Option<String>, key: &Option<String>) {
+    pub fn update_tls(
+        &mut self,
+        chain: &Option<String>,
+        key: &Option<String>,
+        client_ca: &Option<String>,
+    ) {
         match (chain, key) {
             (None, None) => {}
             (Some(chainp), Some(keyp)) => {
                 let chain = chainp.to_string();
                 let key = keyp.to_string();
-                self.tls_config = Some(TlsConfiguration { chain, key })
+                let client_ca = client_ca.clone();
+                self.tls_config = Some(TlsConfiguration {
+                    chain,
+                    key,
+                    client_ca,
+                })
             }
             _ => {
                 eprintln!("ERROR: Invalid TLS configuration - must provide chain and key!");

@@ -31,7 +31,7 @@ use super::middleware::caching::{cache_me, dont_cache_me};
 use super::middleware::KOpId;
 use super::ServerState;
 use crate::https::apidocs::response_schema::{ApiResponseWithout200, DefaultApiResponse};
-use crate::https::extractors::TrustedClientIp;
+use crate::https::extractors::VerifiedClientInformation;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub(crate) struct SessionId {
@@ -2505,7 +2505,7 @@ pub async fn applinks_get(
 )] // TODO: post body stuff
 pub async fn reauth(
     State(state): State<ServerState>,
-    TrustedClientIp(ip_addr): TrustedClientIp,
+    VerifiedClientInformation(ip_addr, client_auth_info): VerifiedClientInformation,
     Extension(kopid): Extension<KOpId>,
     Json(obj): Json<AuthIssueSession>,
 ) -> Result<Response, WebError> {
@@ -2531,7 +2531,7 @@ pub async fn reauth(
 )]
 pub async fn auth(
     State(state): State<ServerState>,
-    TrustedClientIp(ip_addr): TrustedClientIp,
+    VerifiedClientInformation(ip_addr, client_auth_info): VerifiedClientInformation,
     headers: HeaderMap,
     Extension(kopid): Extension<KOpId>,
     Json(obj): Json<AuthRequest>,
@@ -2675,7 +2675,7 @@ pub async fn auth_valid(
 )]
 pub async fn debug_ipinfo(
     State(_state): State<ServerState>,
-    TrustedClientIp(ip_addr): TrustedClientIp,
+    VerifiedClientInformation(ip_addr, client_auth_info): VerifiedClientInformation,
 ) -> Result<Json<Vec<IpAddr>>, ()> {
     Ok(Json::from(vec![ip_addr]))
 }

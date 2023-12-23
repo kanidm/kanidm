@@ -18,6 +18,8 @@ if [ ! -d "${KANI_TMP}" ]; then
     mkdir -p "${KANI_TMP}"
 fi
 
+mkdir -p "${KANI_TMP}"/client_ca
+
 CONFIG_FILE=${CONFIG_FILE:="../../examples/insecure_server.toml"}
 
 if [ ! -f "${CONFIG_FILE}" ]; then

@@ -35,7 +35,7 @@ pub struct KOpId {
 
 #[cfg(any(test, debug_assertions))]
 /// This is a debug middleware to ensure that /v1/ endpoints only return JSON
-#[instrument(name = "are_we_json_yet", skip_all)]
+#[instrument(level = "debug", name = "are_we_json_yet", skip_all)]
 pub async fn are_we_json_yet<B>(request: Request<B>, next: Next<B>) -> Response {
     let uri = request.uri().path().to_string();
 
@@ -56,7 +56,7 @@ pub async fn are_we_json_yet<B>(request: Request<B>, next: Next<B>) -> Response 
 }
 
 /// This runs at the start of the request, adding an extension with `KOpId` which has useful things inside it.
-#[instrument(name = "kopid_middleware", skip_all, level = "DEBUG")]
+#[instrument(level = "debug", name = "kopid_middleware", skip_all)]
 pub async fn kopid_middleware<B>(
     auth: Option<TypedHeader<Authorization<Bearer>>>,
     mut request: Request<B>,

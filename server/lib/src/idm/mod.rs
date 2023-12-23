@@ -43,3 +43,15 @@ impl fmt::Debug for AuthState {
         }
     }
 }
+
+#[derive(Debug, Clone)]
+pub struct ClientAuthInfo {
+    pub client_cert: Option<ClientCertInfo>,
+    pub bearer_token: Option<String>,
+}
+
+#[derive(Debug, Clone)]
+pub struct ClientCertInfo {
+    pub subject_key_id: Option<Vec<u8>>,
+    pub cn: Option<String>,
+}
