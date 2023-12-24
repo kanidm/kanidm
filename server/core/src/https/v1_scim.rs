@@ -14,6 +14,7 @@ use axum_auth::AuthBearer;
 use kanidm_proto::scim_v1::{ScimSyncRequest, ScimSyncState};
 use kanidm_proto::v1::Entry as ProtoEntry;
 use kanidmd_lib::prelude::*;
+use crate::https::extractors::VerifiedClientInformation;
 
 #[utoipa::path(
     get,
@@ -29,9 +30,10 @@ use kanidmd_lib::prelude::*;
 pub async fn sync_account_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
 ) -> Result<Json<Vec<ProtoEntry>>, WebError> {
     let filter = filter_all!(f_eq(Attribute::Class, EntryClass::SyncAccount.into()));
-    json_rest_event_get(state, None, filter, kopid).await
+    json_rest_event_get(state, None, filter, kopid, client_auth_info).await
 }
 
 #[utoipa::path(
@@ -47,10 +49,11 @@ pub async fn sync_account_get(
 pub async fn sync_account_post(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     Json(obj): Json<ProtoEntry>,
 ) -> Result<Json<()>, WebError> {
     let classes: Vec<String> = vec![EntryClass::SyncAccount.into(), EntryClass::Object.into()];
-    json_rest_event_post(state, classes, obj, kopid).await
+    json_rest_event_post(state, classes, obj, kopid, client_auth_info).await
 }
 
 #[utoipa::path(
@@ -68,9 +71,10 @@ pub async fn sync_account_id_get(
     State(state): State<ServerState>,
     Path(id): Path<String>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
 ) -> Result<Json<Option<ProtoEntry>>, WebError> {
     let filter = filter_all!(f_eq(Attribute::Class, EntryClass::SyncAccount.into()));
-    json_rest_event_get_id(state, id, filter, None, kopid).await
+    json_rest_event_get_id(state, id, filter, None, kopid, client_auth_info).await
 }
 
 #[utoipa::path(
@@ -88,6 +92,7 @@ pub async fn sync_account_id_patch(
     State(state): State<ServerState>,
     Path(id): Path<String>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     Json(obj): Json<ProtoEntry>,
 ) -> Result<Json<()>, WebError> {
     let filter = filter_all!(f_eq(Attribute::Class, EntryClass::SyncAccount.into()));
@@ -95,7 +100,7 @@ pub async fn sync_account_id_patch(
 
     state
         .qe_w_ref
-        .handle_internalpatch(kopid.uat, filter, obj, kopid.eventid)
+        .handle_internalpatch(client_auth_info, filter, obj, kopid.eventid)
         .await
         .map(Json::from)
         .map_err(WebError::from)
@@ -115,10 +120,11 @@ pub async fn sync_account_id_finalise_get(
     State(state): State<ServerState>,
     Path(id): Path<String>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
 ) -> Result<Json<()>, WebError> {
     state
         .qe_w_ref
-        .handle_sync_account_finalise(kopid.uat, id, kopid.eventid)
+        .handle_sync_account_finalise(client_auth_info, id, kopid.eventid)
         .await
         .map(Json::from)
         .map_err(WebError::from)
@@ -138,10 +144,11 @@ pub async fn sync_account_id_terminate_get(
     State(state): State<ServerState>,
     Path(id): Path<String>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
 ) -> Result<Json<()>, WebError> {
     state
         .qe_w_ref
-        .handle_sync_account_terminate(kopid.uat, id, kopid.eventid)
+        .handle_sync_account_terminate(client_auth_info, id, kopid.eventid)
         .await
         .map(Json::from)
         .map_err(WebError::from)
@@ -161,11 +168,12 @@ pub async fn sync_account_token_post(
     State(state): State<ServerState>,
     Path(id): Path<String>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     Json(label): Json<String>,
 ) -> Result<Json<String>, WebError> {
     state
         .qe_w_ref
-        .handle_sync_account_token_generate(kopid.uat, id, label, kopid.eventid)
+        .handle_sync_account_token_generate(client_auth_info, id, label, kopid.eventid)
         .await
         .map(Json::from)
         .map_err(WebError::from)
@@ -184,10 +192,11 @@ pub async fn sync_account_token_delete(
     State(state): State<ServerState>,
     Path(id): Path<String>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
 ) -> Result<Json<()>, WebError> {
     state
         .qe_w_ref
-        .handle_sync_account_token_destroy(kopid.uat, id, kopid.eventid)
+        .handle_sync_account_token_destroy(client_auth_info, id, kopid.eventid)
         .await
         .map(Json::from)
         .map_err(WebError::from)
@@ -206,12 +215,12 @@ pub async fn sync_account_token_delete(
 async fn scim_sync_post(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
-    AuthBearer(bearer): AuthBearer,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     Json(changes): Json<ScimSyncRequest>,
 ) -> Result<Json<()>, WebError> {
     state
         .qe_w_ref
-        .handle_scim_sync_apply(Some(bearer), changes, kopid.eventid)
+        .handle_scim_sync_apply(client_auth_info, changes, kopid.eventid)
         .await
         .map(Json::from)
         .map_err(WebError::from)
@@ -230,13 +239,14 @@ async fn scim_sync_post(
 async fn scim_sync_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     AuthBearer(bearer): AuthBearer,
 ) -> Result<Json<ScimSyncState>, WebError> {
     // Given the token, what is it's connected sync state?
     trace!(?bearer);
     state
         .qe_r_ref
-        .handle_scim_sync_status(Some(bearer), kopid.eventid)
+        .handle_scim_sync_status(client_auth_info, kopid.eventid)
         .await
         .map(Json::from)
         .map_err(WebError::from)
@@ -254,10 +264,11 @@ async fn scim_sync_get(
 pub async fn sync_account_id_attr_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     Path((id, attr)): Path<(String, String)>,
 ) -> Result<Json<Option<Vec<String>>>, WebError> {
     let filter = filter_all!(f_eq(Attribute::Class, EntryClass::SyncAccount.into()));
-    json_rest_event_get_id_attr(state, id, attr, filter, kopid).await
+    json_rest_event_get_id_attr(state, id, attr, filter, kopid, client_auth_info).await
 }
 
 #[utoipa::path(
@@ -273,11 +284,12 @@ pub async fn sync_account_id_attr_get(
 pub async fn sync_account_id_attr_put(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     Path((id, attr)): Path<(String, String)>,
     Json(values): Json<Vec<String>>,
 ) -> Result<Json<()>, WebError> {
     let filter = filter_all!(f_eq(Attribute::Class, EntryClass::SyncAccount.into()));
-    json_rest_event_put_id_attr(state, id, attr, filter, values, kopid).await
+    json_rest_event_put_id_attr(state, id, attr, filter, values, kopid, client_auth_info).await
 }
 
 /// When you want the kitchen Sink

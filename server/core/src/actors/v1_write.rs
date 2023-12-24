@@ -55,7 +55,7 @@ impl QueryServerWriteV1 {
     #[instrument(level = "debug", skip_all)]
     async fn modify_from_parts(
         &self,
-        uat: Option<String>,
+        client_auth_info: ClientAuthInfo,
         uuid_or_name: &str,
         proto_ml: &ProtoModifyList,
         filter: Filter<FilterInvalid>,
@@ -64,7 +64,7 @@ impl QueryServerWriteV1 {
         let mut idms_prox_write = self.idms.proxy_write(ct).await;
 
         let ident = idms_prox_write
-            .validate_client_auth_info_to_ident(uat.as_deref(), ct)
+            .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
                 admin_error!(err = ?e, "Invalid identity");
                 e
@@ -103,7 +103,7 @@ impl QueryServerWriteV1 {
     #[instrument(level = "debug", skip_all)]
     async fn modify_from_internal_parts(
         &self,
-        uat: Option<String>,
+        client_auth_info: ClientAuthInfo,
         uuid_or_name: &str,
         ml: &ModifyList<ModifyInvalid>,
         filter: Filter<FilterInvalid>,
@@ -112,7 +112,7 @@ impl QueryServerWriteV1 {
         let mut idms_prox_write = self.idms.proxy_write(ct).await;
 
         let ident = idms_prox_write
-            .validate_client_auth_info_to_ident(uat.as_deref(), ct)
+            .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
                 admin_error!(err = ?e, "Invalid identity");
                 e
@@ -158,7 +158,7 @@ impl QueryServerWriteV1 {
     )]
     pub async fn handle_create(
         &self,
-        uat: Option<String>,
+        client_auth_info: ClientAuthInfo,
         req: CreateRequest,
         eventid: Uuid,
     ) -> Result<(), OperationError> {
@@ -166,7 +166,7 @@ impl QueryServerWriteV1 {
         let mut idms_prox_write = self.idms.proxy_write(ct).await;
 
         let ident = idms_prox_write
-            .validate_client_auth_info_to_ident(uat.as_deref(), ct)
+            .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
                 admin_error!(err = ?e, "Invalid identity");
                 e
@@ -195,14 +195,14 @@ impl QueryServerWriteV1 {
     )]
     pub async fn handle_modify(
         &self,
-        uat: Option<String>,
+        client_auth_info: ClientAuthInfo,
         req: ModifyRequest,
         eventid: Uuid,
     ) -> Result<(), OperationError> {
         let ct = duration_from_epoch_now();
         let mut idms_prox_write = self.idms.proxy_write(ct).await;
         let ident = idms_prox_write
-            .validate_client_auth_info_to_ident(uat.as_deref(), ct)
+            .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
                 admin_error!(err = ?e, "Invalid identity");
                 e
@@ -231,14 +231,14 @@ impl QueryServerWriteV1 {
     )]
     pub async fn handle_delete(
         &self,
-        uat: Option<String>,
+        client_auth_info: ClientAuthInfo,
         req: DeleteRequest,
         eventid: Uuid,
     ) -> Result<(), OperationError> {
         let ct = duration_from_epoch_now();
         let mut idms_prox_write = self.idms.proxy_write(ct).await;
         let ident = idms_prox_write
-            .validate_client_auth_info_to_ident(uat.as_deref(), ct)
+            .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
                 admin_error!(err = ?e, "Invalid identity");
                 e
@@ -266,7 +266,7 @@ impl QueryServerWriteV1 {
     )]
     pub async fn handle_internalpatch(
         &self,
-        uat: Option<String>,
+        client_auth_info: ClientAuthInfo,
         filter: Filter<FilterInvalid>,
         update: ProtoEntry,
         eventid: Uuid,
@@ -275,7 +275,7 @@ impl QueryServerWriteV1 {
         let ct = duration_from_epoch_now();
         let mut idms_prox_write = self.idms.proxy_write(ct).await;
         let ident = idms_prox_write
-            .validate_client_auth_info_to_ident(uat.as_deref(), ct)
+            .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
                 admin_error!(err = ?e, "Invalid identity");
                 e
@@ -310,14 +310,14 @@ impl QueryServerWriteV1 {
     )]
     pub async fn handle_internaldelete(
         &self,
-        uat: Option<String>,
+        client_auth_info: ClientAuthInfo,
         filter: Filter<FilterInvalid>,
         eventid: Uuid,
     ) -> Result<(), OperationError> {
         let ct = duration_from_epoch_now();
         let mut idms_prox_write = self.idms.proxy_write(ct).await;
         let ident = idms_prox_write
-            .validate_client_auth_info_to_ident(uat.as_deref(), ct)
+            .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
                 admin_error!(err = ?e, "Invalid identity");
                 e
@@ -345,14 +345,14 @@ impl QueryServerWriteV1 {
     )]
     pub async fn handle_reviverecycled(
         &self,
-        uat: Option<String>,
+        client_auth_info: ClientAuthInfo,
         filter: Filter<FilterInvalid>,
         eventid: Uuid,
     ) -> Result<(), OperationError> {
         let ct = duration_from_epoch_now();
         let mut idms_prox_write = self.idms.proxy_write(ct).await;
         let ident = idms_prox_write
-            .validate_client_auth_info_to_ident(uat.as_deref(), ct)
+            .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
                 admin_error!(err = ?e, "Invalid identity");
                 e
@@ -380,14 +380,14 @@ impl QueryServerWriteV1 {
     )]
     pub async fn handle_service_account_credential_generate(
         &self,
-        uat: Option<String>,
+        client_auth_info: ClientAuthInfo,
         uuid_or_name: String,
         eventid: Uuid,
     ) -> Result<String, OperationError> {
         let ct = duration_from_epoch_now();
         let mut idms_prox_write = self.idms.proxy_write(ct).await;
         let ident = idms_prox_write
-            .validate_client_auth_info_to_ident(uat.as_deref(), ct)
+            .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
                 admin_error!(err = ?e, "Invalid identity");
                 e
@@ -425,7 +425,7 @@ impl QueryServerWriteV1 {
     )]
     pub async fn handle_service_account_api_token_generate(
         &self,
-        uat: Option<String>,
+        client_auth_info: ClientAuthInfo,
         uuid_or_name: String,
         label: String,
         expiry: Option<OffsetDateTime>,
@@ -435,7 +435,7 @@ impl QueryServerWriteV1 {
         let ct = duration_from_epoch_now();
         let mut idms_prox_write = self.idms.proxy_write(ct).await;
         let ident = idms_prox_write
-            .validate_client_auth_info_to_ident(uat.as_deref(), ct)
+            .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
                 admin_error!(err = ?e, "Invalid identity");
                 e
@@ -469,7 +469,7 @@ impl QueryServerWriteV1 {
     )]
     pub async fn handle_service_account_api_token_destroy(
         &self,
-        uat: Option<String>,
+        client_auth_info: ClientAuthInfo,
         uuid_or_name: String,
         token_id: Uuid,
         eventid: Uuid,
@@ -477,7 +477,7 @@ impl QueryServerWriteV1 {
         let ct = duration_from_epoch_now();
         let mut idms_prox_write = self.idms.proxy_write(ct).await;
         let ident = idms_prox_write
-            .validate_client_auth_info_to_ident(uat.as_deref(), ct)
+            .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
                 admin_error!(err = ?e, "Invalid identity");
                 e
@@ -509,7 +509,7 @@ impl QueryServerWriteV1 {
     )]
     pub async fn handle_account_user_auth_token_destroy(
         &self,
-        uat: Option<String>,
+        client_auth_info: ClientAuthInfo,
         uuid_or_name: String,
         token_id: Uuid,
         eventid: Uuid,
@@ -517,7 +517,7 @@ impl QueryServerWriteV1 {
         let ct = duration_from_epoch_now();
         let mut idms_prox_write = self.idms.proxy_write(ct).await;
         let ident = idms_prox_write
-            .validate_client_auth_info_to_ident(uat.as_deref(), ct)
+            .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
                 admin_error!(err = ?e, "Invalid identity");
                 e
@@ -549,23 +549,22 @@ impl QueryServerWriteV1 {
     )]
     pub async fn handle_logout(
         &self,
-        uat: Option<String>,
+        client_auth_info: ClientAuthInfo,
         eventid: Uuid,
     ) -> Result<(), OperationError> {
         let ct = duration_from_epoch_now();
         let mut idms_prox_write = self.idms.proxy_write(ct).await;
 
         // We specifically need a uat here to assess the auth type!
-        let (ident, uat) = idms_prox_write
-            .validate_and_parse_uat(uat.as_deref(), ct)
-            .and_then(|uat| {
-                idms_prox_write
-                    .process_uat_to_identity(&uat, ct)
-                    .map(|ident| (ident, uat))
+        let ident = idms_prox_write
+            .validate_client_auth_info_to_ident(client_auth_info, ct)
+            .map_err(|e| {
+                admin_error!(err = ?e, "Invalid identity");
+                e
             })?;
 
-        if uat.uuid == UUID_ANONYMOUS {
-            info!("Ignoring request to logout anonymous session - these sessions are not recorded");
+        if ident.can_logout() {
+            info!("Ignoring request to logout session - these sessions are not recorded");
             return Ok(());
         }
 
@@ -594,14 +593,14 @@ impl QueryServerWriteV1 {
     )]
     pub async fn handle_idmcredentialupdate(
         &self,
-        uat: Option<String>,
+        client_auth_info: ClientAuthInfo,
         uuid_or_name: String,
         eventid: Uuid,
     ) -> Result<(CUSessionToken, CUStatus), OperationError> {
         let ct = duration_from_epoch_now();
         let mut idms_prox_write = self.idms.proxy_write(ct).await;
         let ident = idms_prox_write
-            .validate_client_auth_info_to_ident(uat.as_deref(), ct)
+            .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
                 admin_error!(err = ?e, "Invalid identity");
                 e
@@ -642,7 +641,7 @@ impl QueryServerWriteV1 {
     )]
     pub async fn handle_idmcredentialupdateintent(
         &self,
-        uat: Option<String>,
+        client_auth_info: ClientAuthInfo,
         uuid_or_name: String,
         ttl: Option<Duration>,
         eventid: Uuid,
@@ -650,7 +649,7 @@ impl QueryServerWriteV1 {
         let ct = duration_from_epoch_now();
         let mut idms_prox_write = self.idms.proxy_write(ct).await;
         let ident = idms_prox_write
-            .validate_client_auth_info_to_ident(uat.as_deref(), ct)
+            .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
                 admin_error!(err = ?e, "Invalid identity");
                 e
@@ -781,14 +780,14 @@ impl QueryServerWriteV1 {
     )]
     pub async fn handle_service_account_into_person(
         &self,
-        uat: Option<String>,
+        client_auth_info: ClientAuthInfo,
         uuid_or_name: String,
         eventid: Uuid,
     ) -> Result<(), OperationError> {
         let ct = duration_from_epoch_now();
         let mut idms_prox_write = self.idms.proxy_write(ct).await;
         let ident = idms_prox_write
-            .validate_client_auth_info_to_ident(uat.as_deref(), ct)
+            .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
                 admin_error!(err = ?e, "Invalid identity");
                 e
@@ -813,14 +812,14 @@ impl QueryServerWriteV1 {
     )]
     pub async fn handle_regenerateradius(
         &self,
-        uat: Option<String>,
+        client_auth_info: ClientAuthInfo,
         uuid_or_name: String,
         eventid: Uuid,
     ) -> Result<String, OperationError> {
         let ct = duration_from_epoch_now();
         let mut idms_prox_write = self.idms.proxy_write(ct).await;
         let ident = idms_prox_write
-            .validate_client_auth_info_to_ident(uat.as_deref(), ct)
+            .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
                 admin_error!(err = ?e, "Invalid identity");
                 e
@@ -859,7 +858,7 @@ impl QueryServerWriteV1 {
     )]
     pub async fn handle_purgeattribute(
         &self,
-        uat: Option<String>,
+        client_auth_info: ClientAuthInfo,
         uuid_or_name: String,
         attr: String,
         filter: Filter<FilterInvalid>,
@@ -868,7 +867,7 @@ impl QueryServerWriteV1 {
         let ct = duration_from_epoch_now();
         let mut idms_prox_write = self.idms.proxy_write(ct).await;
         let ident = idms_prox_write
-            .validate_client_auth_info_to_ident(uat.as_deref(), ct)
+            .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
                 admin_error!(err = ?e, "Invalid identity");
                 e
@@ -911,7 +910,7 @@ impl QueryServerWriteV1 {
     )]
     pub async fn handle_removeattributevalues(
         &self,
-        uat: Option<String>,
+        client_auth_info: ClientAuthInfo,
         uuid_or_name: String,
         attr: String,
         values: Vec<String>,
@@ -921,7 +920,7 @@ impl QueryServerWriteV1 {
         let ct = duration_from_epoch_now();
         let mut idms_prox_write = self.idms.proxy_write(ct).await;
         let ident = idms_prox_write
-            .validate_client_auth_info_to_ident(uat.as_deref(), ct)
+            .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
                 admin_error!(err = ?e, "Invalid identity");
                 e
@@ -966,12 +965,12 @@ impl QueryServerWriteV1 {
     #[instrument(
         level = "info",
         name = "append_attribute",
-        skip(self, uat, uuid_or_name, attr, values, filter, eventid)
+        skip_all,
         fields(uuid = ?eventid)
     )]
     pub async fn handle_appendattribute(
         &self,
-        uat: Option<String>,
+        client_auth_info: ClientAuthInfo,
         uuid_or_name: String,
         attr: String,
         values: Vec<String>,
@@ -986,19 +985,19 @@ impl QueryServerWriteV1 {
                 .map(|v| ProtoModify::Present(attr.clone(), v))
                 .collect(),
         );
-        self.modify_from_parts(uat, &uuid_or_name, &proto_ml, filter)
+        self.modify_from_parts(client_auth_info, &uuid_or_name, &proto_ml, filter)
             .await
     }
 
     #[instrument(
         level = "info",
         name = "set_attribute",
-        skip(self, uat, uuid_or_name, attr, values, filter, eventid)
+        skip_all,
         fields(uuid = ?eventid)
     )]
     pub async fn handle_setattribute(
         &self,
-        uat: Option<String>,
+        client_auth_info: ClientAuthInfo,
         uuid_or_name: String,
         attr: String,
         values: Vec<String>,
@@ -1016,7 +1015,7 @@ impl QueryServerWriteV1 {
                 )
                 .collect(),
         );
-        self.modify_from_parts(uat, &uuid_or_name, &proto_ml, filter)
+        self.modify_from_parts(client_auth_info, &uuid_or_name, &proto_ml, filter)
             .await
     }
 
@@ -1028,7 +1027,7 @@ impl QueryServerWriteV1 {
     )]
     pub async fn handle_sshkeycreate(
         &self,
-        uat: Option<String>,
+        client_auth_info: ClientAuthInfo,
         uuid_or_name: String,
         tag: &str,
         key: &str,
@@ -1041,7 +1040,7 @@ impl QueryServerWriteV1 {
         // than relying on the proto ones.
         let ml = ModifyList::new_append(Attribute::SshPublicKey, v_sk);
 
-        self.modify_from_internal_parts(uat, &uuid_or_name, &ml, filter)
+        self.modify_from_internal_parts(client_auth_info, &uuid_or_name, &ml, filter)
             .await
     }
 
@@ -1053,7 +1052,7 @@ impl QueryServerWriteV1 {
     )]
     pub async fn handle_idmaccountunixextend(
         &self,
-        uat: Option<String>,
+        client_auth_info: ClientAuthInfo,
         uuid_or_name: String,
         ux: AccountUnixExtend,
         eventid: Uuid,
@@ -1088,19 +1087,19 @@ impl QueryServerWriteV1 {
 
         let filter = filter_all!(f_eq(Attribute::Class, EntryClass::Account.into()));
 
-        self.modify_from_internal_parts(uat, &uuid_or_name, &ml, filter)
+        self.modify_from_internal_parts(client_auth_info, &uuid_or_name, &ml, filter)
             .await
     }
 
     #[instrument(
         level = "info",
         name = "idm_group_unix_extend",
-        skip(self, uat, uuid_or_name, gx, eventid)
+        skip_all,
         fields(uuid = ?eventid)
     )]
     pub async fn handle_idmgroupunixextend(
         &self,
-        uat: Option<String>,
+        client_auth_info: ClientAuthInfo,
         uuid_or_name: String,
         gx: GroupUnixExtend,
         eventid: Uuid,
@@ -1131,7 +1130,7 @@ impl QueryServerWriteV1 {
 
         let filter = filter_all!(f_eq(Attribute::Class, EntryClass::Group.into()));
 
-        self.modify_from_internal_parts(uat, &uuid_or_name, &ml, filter)
+        self.modify_from_internal_parts(client_auth_info, &uuid_or_name, &ml, filter)
             .await
     }
 
@@ -1142,7 +1141,7 @@ impl QueryServerWriteV1 {
     )]
     pub async fn handle_idmaccountunixsetcred(
         &self,
-        uat: Option<String>,
+        client_auth_info: ClientAuthInfo,
         uuid_or_name: String,
         cred: String,
         eventid: Uuid,
@@ -1150,7 +1149,7 @@ impl QueryServerWriteV1 {
         let ct = duration_from_epoch_now();
         let mut idms_prox_write = self.idms.proxy_write(ct).await;
         let ident = idms_prox_write
-            .validate_client_auth_info_to_ident(uat.as_deref(), ct)
+            .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
                 admin_error!(err = ?e, "Invalid identity");
                 e
@@ -1185,16 +1184,16 @@ impl QueryServerWriteV1 {
     #[instrument(level = "debug", skip_all)]
     pub async fn handle_oauth2_rs_image_delete(
         &self,
-        uat: Option<String>,
+        client_auth_info: ClientAuthInfo,
         rs: Filter<FilterInvalid>,
     ) -> Result<(), OperationError> {
         let mut idms_prox_write = self.idms.proxy_write(duration_from_epoch_now()).await;
         let ct = duration_from_epoch_now();
 
         let ident = idms_prox_write
-                .validate_client_auth_info_to_ident(uat.as_deref(), ct)
+                .validate_client_auth_info_to_ident(client_auth_info, ct)
                 .map_err(|e| {
-                    admin_error!(err = ?e, "Invalid identity in handle_oauth2_rs_image_delete {:?}", uat);
+                    admin_error!(err = ?e, "Invalid identity in handle_oauth2_rs_image_delete");
                     e
                 })?;
         let ml = ModifyList::new_purge(Attribute::Image);
@@ -1215,7 +1214,7 @@ impl QueryServerWriteV1 {
     #[instrument(level = "debug", skip_all)]
     pub async fn handle_oauth2_rs_image_update(
         &self,
-        uat: Option<String>,
+        client_auth_info: ClientAuthInfo,
         rs: Filter<FilterInvalid>,
         image: ImageValue,
     ) -> Result<(), OperationError> {
@@ -1223,9 +1222,9 @@ impl QueryServerWriteV1 {
         let ct = duration_from_epoch_now();
 
         let ident = idms_prox_write
-            .validate_client_auth_info_to_ident(uat.as_deref(), ct)
+            .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
-                admin_error!(err = ?e, "Invalid identity in handle_oauth2_rs_image_update {:?}", uat);
+                admin_error!(err = ?e, "Invalid identity in handle_oauth2_rs_image_update");
                 e
             })?;
 
@@ -1255,7 +1254,7 @@ impl QueryServerWriteV1 {
     )]
     pub async fn handle_oauth2_scopemap_update(
         &self,
-        uat: Option<String>,
+        client_auth_info: ClientAuthInfo,
         group: String,
         scopes: Vec<String>,
         filter: Filter<FilterInvalid>,
@@ -1267,7 +1266,7 @@ impl QueryServerWriteV1 {
         let mut idms_prox_write = self.idms.proxy_write(ct).await;
 
         let ident = idms_prox_write
-            .validate_client_auth_info_to_ident(uat.as_deref(), ct)
+            .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
                 admin_error!(err = ?e, "Invalid identity");
                 e
@@ -1316,7 +1315,7 @@ impl QueryServerWriteV1 {
     )]
     pub async fn handle_oauth2_scopemap_delete(
         &self,
-        uat: Option<String>,
+        client_auth_info: ClientAuthInfo,
         group: String,
         filter: Filter<FilterInvalid>,
         eventid: Uuid,
@@ -1325,7 +1324,7 @@ impl QueryServerWriteV1 {
         let mut idms_prox_write = self.idms.proxy_write(ct).await;
 
         let ident = idms_prox_write
-            .validate_client_auth_info_to_ident(uat.as_deref(), ct)
+            .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
                 admin_error!(err = ?e, "Invalid identity");
                 e
@@ -1370,7 +1369,7 @@ impl QueryServerWriteV1 {
     )]
     pub async fn handle_oauth2_sup_scopemap_update(
         &self,
-        uat: Option<String>,
+        client_auth_info: ClientAuthInfo,
         group: String,
         scopes: Vec<String>,
         filter: Filter<FilterInvalid>,
@@ -1382,7 +1381,7 @@ impl QueryServerWriteV1 {
         let mut idms_prox_write = self.idms.proxy_write(ct).await;
 
         let ident = idms_prox_write
-            .validate_client_auth_info_to_ident(uat.as_deref(), ct)
+            .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
                 admin_error!(err = ?e, "Invalid identity");
                 e
@@ -1431,7 +1430,7 @@ impl QueryServerWriteV1 {
     )]
     pub async fn handle_oauth2_sup_scopemap_delete(
         &self,
-        uat: Option<String>,
+        client_auth_info: ClientAuthInfo,
         group: String,
         filter: Filter<FilterInvalid>,
         eventid: Uuid,
@@ -1440,7 +1439,7 @@ impl QueryServerWriteV1 {
         let mut idms_prox_write = self.idms.proxy_write(ct).await;
 
         let ident = idms_prox_write
-            .validate_client_auth_info_to_ident(uat.as_deref(), ct)
+            .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
                 admin_error!(err = ?e, "Invalid identity");
                 e
@@ -1487,33 +1486,22 @@ impl QueryServerWriteV1 {
     )]
     pub async fn handle_oauth2_authorise_permit(
         &self,
-        uat: Option<String>,
+        client_auth_info: ClientAuthInfo,
         consent_req: String,
         eventid: Uuid,
     ) -> Result<AuthorisePermitSuccess, OperationError> {
         let ct = duration_from_epoch_now();
         let mut idms_prox_write = self.idms.proxy_write(ct).await;
-        let (ident, uat) = idms_prox_write
-            .validate_and_parse_uat(uat.as_deref(), ct)
-            .and_then(|uat| {
-                idms_prox_write
-                    .process_uat_to_identity(&uat, ct)
-                    .map(|ident| (ident, uat))
-            })
-            .map_err(|e| {
-                admin_error!("Invalid identity: {:?}", e);
-                e
-            })?;
 
         let ident = idms_prox_write
-            .validate_client_auth_info_to_ident(uat.as_deref(), ct)
+            .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
                 admin_error!(err = ?e, "Invalid identity");
                 e
             })?;
 
         idms_prox_write
-            .check_oauth2_authorise_permit(&ident, &uat, &consent_req, ct)
+            .check_oauth2_authorise_permit(&ident, &consent_req, ct)
             .and_then(|r| idms_prox_write.commit().map(|()| r))
     }
 

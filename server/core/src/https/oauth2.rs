@@ -27,6 +27,7 @@ use kanidmd_lib::prelude::f_eq;
 use kanidmd_lib::prelude::*;
 use kanidmd_lib::value::PartialValue;
 use serde::{Deserialize, Serialize};
+use crate::https::extractors::VerifiedClientInformation;
 
 // TODO: merge this into a value in WebError later
 pub struct HTTPOauth2Error(Oauth2Error);
@@ -93,13 +94,13 @@ pub(crate) fn oauth2_id(rs_name: &str) -> Filter<FilterInvalid> {
 ///
 pub(crate) async fn oauth2_image_get(
     State(state): State<ServerState>,
-    Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     Path(rs_name): Path<String>,
 ) -> Response {
     let rs_filter = oauth2_id(&rs_name);
     let res = state
         .qe_r_ref
-        .handle_oauth2_rs_image_get_image(kopid.uat, rs_filter)
+        .handle_oauth2_rs_image_get_image(client_auth_info, rs_filter)
         .await;
 
     match res {
@@ -186,9 +187,10 @@ pub(crate) async fn oauth2_image_get(
 pub async fn oauth2_authorise_post(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     Json(auth_req): Json<AuthorisationRequest>,
 ) -> impl IntoResponse {
-    let mut res = oauth2_authorise(state, auth_req, kopid)
+    let mut res = oauth2_authorise(state, auth_req, kopid, client_auth_info)
         .await
         .into_response();
     if res.status() == StatusCode::FOUND {
@@ -202,20 +204,22 @@ pub async fn oauth2_authorise_post(
 pub async fn oauth2_authorise_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     Query(auth_req): Query<AuthorisationRequest>,
 ) -> impl IntoResponse {
     // Start the oauth2 authorisation flow to present to the user.
-    oauth2_authorise(state, auth_req, kopid).await
+    oauth2_authorise(state, auth_req, kopid, client_auth_info).await
 }
 
 async fn oauth2_authorise(
     state: ServerState,
     auth_req: AuthorisationRequest,
     kopid: KOpId,
+    client_auth_info: ClientAuthInfo
 ) -> impl IntoResponse {
     let res: Result<AuthoriseResponse, Oauth2Error> = state
         .qe_r_ref
-        .handle_oauth2_authorise(kopid.uat.clone(), auth_req, kopid.eventid)
+        .handle_oauth2_authorise(client_auth_info, auth_req, kopid.eventid)
         .await;
 
     match res {
@@ -321,9 +325,10 @@ async fn oauth2_authorise(
 pub async fn oauth2_authorise_permit_post(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     Json(consent_req): Json<String>,
 ) -> impl IntoResponse {
-    let mut res = oauth2_authorise_permit(state, consent_req, kopid)
+    let mut res = oauth2_authorise_permit(state, consent_req, kopid, client_auth_info)
         .await
         .into_response();
     if res.status() == StatusCode::FOUND {
@@ -342,19 +347,21 @@ pub async fn oauth2_authorise_permit_get(
     State(state): State<ServerState>,
     Query(token): Query<ConsentRequestData>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
 ) -> impl IntoResponse {
     // When this is called, this indicates consent to proceed from the user.
-    oauth2_authorise_permit(state, token.token, kopid).await
+    oauth2_authorise_permit(state, token.token, kopid, client_auth_info).await
 }
 
 async fn oauth2_authorise_permit(
     state: ServerState,
     consent_req: String,
     kopid: KOpId,
+    client_auth_info: ClientAuthInfo
 ) -> impl IntoResponse {
     let res = state
         .qe_w_ref
-        .handle_oauth2_authorise_permit(kopid.uat, consent_req, kopid.eventid)
+        .handle_oauth2_authorise_permit(client_auth_info, consent_req, kopid.eventid)
         .await;
 
     match res {
@@ -404,17 +411,19 @@ async fn oauth2_authorise_permit(
 pub async fn oauth2_authorise_reject_post(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     Form(consent_req): Form<ConsentRequestData>,
 ) -> Response<Body> {
-    oauth2_authorise_reject(state, consent_req.token, kopid).await
+    oauth2_authorise_reject(state, consent_req.token, kopid, client_auth_info).await
 }
 
 pub async fn oauth2_authorise_reject_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     Query(consent_req): Query<ConsentRequestData>,
 ) -> Response<Body> {
-    oauth2_authorise_reject(state, consent_req.token, kopid).await
+    oauth2_authorise_reject(state, consent_req.token, kopid, client_auth_info).await
 }
 
 // // https://datatracker.ietf.org/doc/html/rfc6749#section-4.1.2.1
@@ -424,13 +433,14 @@ async fn oauth2_authorise_reject(
     state: ServerState,
     consent_req: String,
     kopid: KOpId,
+    client_auth_info: ClientAuthInfo,
 ) -> Response<Body> {
     // Need to go back to the redir_uri
     // For this, we'll need to lookup where to go.
 
     let res = state
         .qe_r_ref
-        .handle_oauth2_authorise_reject(kopid.uat, consent_req, kopid.eventid)
+        .handle_oauth2_authorise_reject(client_auth_info, consent_req, kopid.eventid)
         .await;
 
     match res {
@@ -525,9 +535,10 @@ pub async fn oauth2_openid_userinfo_get(
     State(state): State<ServerState>,
     Path(client_id): Path<String>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
 ) -> Result<Json<OidcToken>, HTTPOauth2Error> {
     // The token we want to inspect is in the authorisation header.
-    let client_token = match kopid.uat {
+    let client_token = match client_auth_info.bearer_token {
         Some(val) => val,
         None => {
             error!("Bearer Authentication Not Provided");
@@ -564,10 +575,11 @@ pub async fn oauth2_openid_publickey_get(
 pub async fn oauth2_token_introspect_post(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     headers: HeaderMap,
     Form(intr_req): Form<AccessTokenIntrospectRequest>,
 ) -> impl IntoResponse {
-    let client_authz = match kopid.uat {
+    let client_authz = match client_auth_info.bearer_token {
         Some(val) => val,
         None => {
             error!("Bearer Authentication Not Provided, trying basic");
@@ -652,10 +664,11 @@ pub async fn oauth2_token_introspect_post(
 pub async fn oauth2_token_revoke_post(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     Form(intr_req): Form<TokenRevokeRequest>,
 ) -> impl IntoResponse {
     // TODO: we should handle the session-based auth bit here I think maybe possibly there's no tests
-    let client_authz = match kopid.uat {
+    let client_authz = match client_auth_info.bearer_token {
         Some(val) => val,
         None => {
             return (

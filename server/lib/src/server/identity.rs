@@ -220,6 +220,17 @@ impl Identity {
         }
     }
 
+    /// Indicate if the session associated with this identity has a session
+    /// that can logout. Examples of sessions that *can not* logout are anonymous,
+    /// tokens, or PIV sessions.
+    pub fn can_logout(&self) -> bool {
+        match &self.origin {
+            IdentType::Internal => false,
+            IdentType::User(u) => u.entry.get_uuid() != UUID_ANONYMOUS,
+            IdentType::Synch(_) => false,
+        }
+    }
+
     pub fn get_event_origin_id(&self) -> IdentityId {
         IdentityId::from(&self.origin)
     }

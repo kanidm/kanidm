@@ -16,7 +16,7 @@ impl QueryServerWriteV1 {
     )]
     pub async fn handle_sync_account_token_generate(
         &self,
-        uat: Option<String>,
+        client_auth_info: ClientAuthInfo,
         uuid_or_name: String,
         label: String,
         eventid: Uuid,
@@ -24,7 +24,7 @@ impl QueryServerWriteV1 {
         let ct = duration_from_epoch_now();
         let mut idms_prox_write = self.idms.proxy_write(ct).await;
         let ident = idms_prox_write
-            .validate_client_auth_info_to_ident(uat.as_deref(), ct)
+            .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
                 admin_error!(err = ?e, "Invalid identity");
                 e
@@ -56,14 +56,14 @@ impl QueryServerWriteV1 {
     )]
     pub async fn handle_sync_account_token_destroy(
         &self,
-        uat: Option<String>,
+        client_auth_info: ClientAuthInfo,
         uuid_or_name: String,
         eventid: Uuid,
     ) -> Result<(), OperationError> {
         let ct = duration_from_epoch_now();
         let mut idms_prox_write = self.idms.proxy_write(ct).await;
         let ident = idms_prox_write
-            .validate_client_auth_info_to_ident(uat.as_deref(), ct)
+            .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
                 admin_error!(err = ?e, "Invalid identity");
                 e
@@ -89,14 +89,14 @@ impl QueryServerWriteV1 {
     )]
     pub async fn handle_sync_account_finalise(
         &self,
-        uat: Option<String>,
+        client_auth_info: ClientAuthInfo,
         uuid_or_name: String,
         eventid: Uuid,
     ) -> Result<(), OperationError> {
         let ct = duration_from_epoch_now();
         let mut idms_prox_write = self.idms.proxy_write(ct).await;
         let ident = idms_prox_write
-            .validate_client_auth_info_to_ident(uat.as_deref(), ct)
+            .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
                 admin_error!(err = ?e, "Invalid identity");
                 e
@@ -124,14 +124,14 @@ impl QueryServerWriteV1 {
     )]
     pub async fn handle_sync_account_terminate(
         &self,
-        uat: Option<String>,
+        client_auth_info: ClientAuthInfo,
         uuid_or_name: String,
         eventid: Uuid,
     ) -> Result<(), OperationError> {
         let ct = duration_from_epoch_now();
         let mut idms_prox_write = self.idms.proxy_write(ct).await;
         let ident = idms_prox_write
-            .validate_client_auth_info_to_ident(uat.as_deref(), ct)
+            .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
                 admin_error!(err = ?e, "Invalid identity");
                 e
@@ -159,7 +159,7 @@ impl QueryServerWriteV1 {
     )]
     pub async fn handle_scim_sync_apply(
         &self,
-        bearer: Option<String>,
+        client_auth_info: ClientAuthInfo,
         changes: ScimSyncRequest,
         eventid: Uuid,
     ) -> Result<(), OperationError> {
@@ -167,7 +167,7 @@ impl QueryServerWriteV1 {
         let mut idms_prox_write = self.idms.proxy_write(ct).await;
 
         let ident =
-            idms_prox_write.validate_sync_client_auth_info_to_ident(bearer.as_deref(), ct)?;
+            idms_prox_write.validate_sync_client_auth_info_to_ident(client_auth_info, ct)?;
 
         let sse = ScimSyncUpdateEvent { ident };
 
@@ -185,13 +185,13 @@ impl QueryServerReadV1 {
     )]
     pub async fn handle_scim_sync_status(
         &self,
-        bearer: Option<String>,
+        client_auth_info: ClientAuthInfo,
         eventid: Uuid,
     ) -> Result<ScimSyncState, OperationError> {
         let ct = duration_from_epoch_now();
         let mut idms_prox_read = self.idms.proxy_read().await;
 
-        let ident = idms_prox_read.validate_and_parse_sync_token_to_ident(bearer.as_deref(), ct)?;
+        let ident = idms_prox_read.validate_sync_client_auth_info_to_ident(client_auth_info, ct)?;
 
         idms_prox_read.scim_sync_get_state(&ident)
     }

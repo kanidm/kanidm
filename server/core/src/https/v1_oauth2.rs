@@ -12,6 +12,7 @@ use kanidm_proto::v1::Entry as ProtoEntry;
 use kanidmd_lib::prelude::*;
 use kanidmd_lib::valueset::image::ImageValueThings;
 use sketching::admin_error;
+use crate::https::extractors::VerifiedClientInformation;
 
 #[utoipa::path(
     get,
@@ -27,12 +28,13 @@ use sketching::admin_error;
 pub(crate) async fn oauth2_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
 ) -> Result<Json<Vec<ProtoEntry>>, WebError> {
     let filter = filter_all!(f_eq(
         Attribute::Class,
         EntryClass::OAuth2ResourceServer.into()
     ));
-    json_rest_event_get(state, None, filter, kopid).await
+    json_rest_event_get(state, None, filter, kopid, client_auth_info).await
 }
 
 #[utoipa::path(
@@ -49,6 +51,7 @@ pub(crate) async fn oauth2_get(
 pub(crate) async fn oauth2_basic_post(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     Json(obj): Json<ProtoEntry>,
 ) -> Result<Json<()>, WebError> {
     let classes = vec![
@@ -56,7 +59,7 @@ pub(crate) async fn oauth2_basic_post(
         EntryClass::OAuth2ResourceServerBasic.to_string(),
         EntryClass::Object.to_string(),
     ];
-    json_rest_event_post(state, classes, obj, kopid).await
+    json_rest_event_post(state, classes, obj, kopid, client_auth_info).await
 }
 
 #[utoipa::path(
@@ -73,6 +76,7 @@ pub(crate) async fn oauth2_basic_post(
 pub(crate) async fn oauth2_public_post(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     Json(obj): Json<ProtoEntry>,
 ) -> Result<Json<()>, WebError> {
     let classes = vec![
@@ -80,7 +84,7 @@ pub(crate) async fn oauth2_public_post(
         EntryClass::OAuth2ResourceServerPublic.to_string(),
         EntryClass::Object.to_string(),
     ];
-    json_rest_event_post(state, classes, obj, kopid).await
+    json_rest_event_post(state, classes, obj, kopid, client_auth_info).await
 }
 
 #[utoipa::path(
@@ -98,11 +102,12 @@ pub(crate) async fn oauth2_id_get(
     State(state): State<ServerState>,
     Path(rs_name): Path<String>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
 ) -> Result<Json<Option<ProtoEntry>>, WebError> {
     let filter = oauth2_id(&rs_name);
     state
         .qe_r_ref
-        .handle_internalsearch(kopid.uat, filter, None, kopid.eventid)
+        .handle_internalsearch(client_auth_info, filter, None, kopid.eventid)
         .await
         .map(|mut r| r.pop())
         .map(Json::from)
@@ -124,12 +129,13 @@ pub(crate) async fn oauth2_id_get(
 pub(crate) async fn oauth2_id_get_basic_secret(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     Path(rs_name): Path<String>,
 ) -> Result<Json<Option<String>>, WebError> {
     let filter = oauth2_id(&rs_name);
     state
         .qe_r_ref
-        .handle_oauth2_basic_secret_read(kopid.uat, filter, kopid.eventid)
+        .handle_oauth2_basic_secret_read(client_auth_info, filter, kopid.eventid)
         .await
         .map(Json::from)
         .map_err(WebError::from)
@@ -150,13 +156,14 @@ pub(crate) async fn oauth2_id_patch(
     State(state): State<ServerState>,
     Path(rs_name): Path<String>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     Json(obj): Json<ProtoEntry>,
 ) -> Result<Json<()>, WebError> {
     let filter = oauth2_id(&rs_name);
 
     state
         .qe_w_ref
-        .handle_internalpatch(kopid.uat, filter, obj, kopid.eventid)
+        .handle_internalpatch(client_auth_info, filter, obj, kopid.eventid)
         .await
         .map(Json::from)
         .map_err(WebError::from)
@@ -176,13 +183,14 @@ pub(crate) async fn oauth2_id_patch(
 pub(crate) async fn oauth2_id_scopemap_post(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     Path((rs_name, group)): Path<(String, String)>,
     Json(scopes): Json<Vec<String>>,
 ) -> Result<Json<()>, WebError> {
     let filter = oauth2_id(&rs_name);
     state
         .qe_w_ref
-        .handle_oauth2_scopemap_update(kopid.uat, group, scopes, filter, kopid.eventid)
+        .handle_oauth2_scopemap_update(client_auth_info, group, scopes, filter, kopid.eventid)
         .await
         .map(Json::from)
         .map_err(WebError::from)
@@ -201,12 +209,13 @@ pub(crate) async fn oauth2_id_scopemap_post(
 pub(crate) async fn oauth2_id_scopemap_delete(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     Path((rs_name, group)): Path<(String, String)>,
 ) -> Result<Json<()>, WebError> {
     let filter = oauth2_id(&rs_name);
     state
         .qe_w_ref
-        .handle_oauth2_scopemap_delete(kopid.uat, group, filter, kopid.eventid)
+        .handle_oauth2_scopemap_delete(client_auth_info, group, filter, kopid.eventid)
         .await
         .map(Json::from)
         .map_err(WebError::from)
@@ -225,13 +234,14 @@ pub(crate) async fn oauth2_id_scopemap_delete(
 pub(crate) async fn oauth2_id_sup_scopemap_post(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     Path((rs_name, group)): Path<(String, String)>,
     Json(scopes): Json<Vec<String>>,
 ) -> Result<Json<()>, WebError> {
     let filter = oauth2_id(&rs_name);
     state
         .qe_w_ref
-        .handle_oauth2_sup_scopemap_update(kopid.uat, group, scopes, filter, kopid.eventid)
+        .handle_oauth2_sup_scopemap_update(client_auth_info, group, scopes, filter, kopid.eventid)
         .await
         .map(Json::from)
         .map_err(WebError::from)
@@ -250,12 +260,13 @@ pub(crate) async fn oauth2_id_sup_scopemap_post(
 pub(crate) async fn oauth2_id_sup_scopemap_delete(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     Path((rs_name, group)): Path<(String, String)>,
 ) -> Result<Json<()>, WebError> {
     let filter = oauth2_id(&rs_name);
     state
         .qe_w_ref
-        .handle_oauth2_sup_scopemap_delete(kopid.uat, group, filter, kopid.eventid)
+        .handle_oauth2_sup_scopemap_delete(client_auth_info, group, filter, kopid.eventid)
         .await
         .map(Json::from)
         .map_err(WebError::from)
@@ -275,12 +286,13 @@ pub(crate) async fn oauth2_id_sup_scopemap_delete(
 pub(crate) async fn oauth2_id_delete(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     Path(rs_name): Path<String>,
 ) -> Result<Json<()>, WebError> {
     let filter = oauth2_id(&rs_name);
     state
         .qe_w_ref
-        .handle_internaldelete(kopid.uat, filter, kopid.eventid)
+        .handle_internaldelete(client_auth_info, filter, kopid.eventid)
         .await
         .map(Json::from)
         .map_err(WebError::from)
@@ -298,12 +310,12 @@ pub(crate) async fn oauth2_id_delete(
 // API endpoint for deleting the image associated with an OAuth2 Resource Server.
 pub(crate) async fn oauth2_id_image_delete(
     State(state): State<ServerState>,
-    Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     Path(rs_name): Path<String>,
 ) -> Result<Json<()>, WebError> {
     state
         .qe_w_ref
-        .handle_oauth2_rs_image_delete(kopid.uat, oauth2_id(&rs_name))
+        .handle_oauth2_rs_image_delete(client_auth_info, oauth2_id(&rs_name))
         .await
         .map(Json::from)
         .map_err(WebError::from)
@@ -324,7 +336,7 @@ pub(crate) async fn oauth2_id_image_delete(
 /// [VALID_IMAGE_UPLOAD_CONTENT_TYPES].
 pub(crate) async fn oauth2_id_image_post(
     State(state): State<ServerState>,
-    Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     Path(rs_name): Path<String>,
     mut multipart: axum::extract::Multipart,
 ) -> Result<Json<()>, WebError> {
@@ -380,7 +392,7 @@ pub(crate) async fn oauth2_id_image_post(
                     let rs_name = oauth2_id(&rs_name);
                     state
                         .qe_w_ref
-                        .handle_oauth2_rs_image_update(kopid.uat, rs_name, image)
+                        .handle_oauth2_rs_image_update(client_auth_info, rs_name, image)
                         .await
                         .map(Json::from)
                         .map_err(WebError::from)
