@@ -22,9 +22,9 @@ pub mod server;
 pub mod serviceaccount;
 pub(crate) mod unix;
 
-use std::fmt;
-use kanidm_proto::v1::{AuthAllowed, AuthIssueSession, AuthMech};
 use crate::server::identity::Source;
+use kanidm_proto::v1::{AuthAllowed, AuthIssueSession, AuthMech};
+use std::fmt;
 
 pub enum AuthState {
     Choose(Vec<AuthMech>),
@@ -55,4 +55,26 @@ pub struct ClientAuthInfo {
 pub struct ClientCertInfo {
     pub subject_key_id: Option<Vec<u8>>,
     pub cn: Option<String>,
+}
+
+#[cfg(test)]
+impl From<&str> for ClientAuthInfo {
+    fn from(value: &str) -> ClientAuthInfo {
+        ClientAuthInfo {
+            source: Source::Internal,
+            client_cert: None,
+            bearer_token: Some(value.to_string()),
+        }
+    }
+}
+
+#[cfg(test)]
+impl From<ClientCertInfo> for ClientAuthInfo {
+    fn from(value: ClientCertInfo) -> ClientAuthInfo {
+        ClientAuthInfo {
+            source: Source::Internal,
+            client_cert: Some(value),
+            bearer_token: None,
+        }
+    }
 }

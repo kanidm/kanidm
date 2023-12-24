@@ -64,7 +64,7 @@ impl QueryServerWriteV1 {
         let mut idms_prox_write = self.idms.proxy_write(ct).await;
 
         let ident = idms_prox_write
-            .validate_and_parse_token_to_ident(uat.as_deref(), ct)
+            .validate_client_auth_info_to_ident(uat.as_deref(), ct)
             .map_err(|e| {
                 admin_error!(err = ?e, "Invalid identity");
                 e
@@ -112,7 +112,7 @@ impl QueryServerWriteV1 {
         let mut idms_prox_write = self.idms.proxy_write(ct).await;
 
         let ident = idms_prox_write
-            .validate_and_parse_token_to_ident(uat.as_deref(), ct)
+            .validate_client_auth_info_to_ident(uat.as_deref(), ct)
             .map_err(|e| {
                 admin_error!(err = ?e, "Invalid identity");
                 e
@@ -166,7 +166,7 @@ impl QueryServerWriteV1 {
         let mut idms_prox_write = self.idms.proxy_write(ct).await;
 
         let ident = idms_prox_write
-            .validate_and_parse_token_to_ident(uat.as_deref(), ct)
+            .validate_client_auth_info_to_ident(uat.as_deref(), ct)
             .map_err(|e| {
                 admin_error!(err = ?e, "Invalid identity");
                 e
@@ -202,7 +202,7 @@ impl QueryServerWriteV1 {
         let ct = duration_from_epoch_now();
         let mut idms_prox_write = self.idms.proxy_write(ct).await;
         let ident = idms_prox_write
-            .validate_and_parse_token_to_ident(uat.as_deref(), ct)
+            .validate_client_auth_info_to_ident(uat.as_deref(), ct)
             .map_err(|e| {
                 admin_error!(err = ?e, "Invalid identity");
                 e
@@ -238,7 +238,7 @@ impl QueryServerWriteV1 {
         let ct = duration_from_epoch_now();
         let mut idms_prox_write = self.idms.proxy_write(ct).await;
         let ident = idms_prox_write
-            .validate_and_parse_token_to_ident(uat.as_deref(), ct)
+            .validate_client_auth_info_to_ident(uat.as_deref(), ct)
             .map_err(|e| {
                 admin_error!(err = ?e, "Invalid identity");
                 e
@@ -275,7 +275,7 @@ impl QueryServerWriteV1 {
         let ct = duration_from_epoch_now();
         let mut idms_prox_write = self.idms.proxy_write(ct).await;
         let ident = idms_prox_write
-            .validate_and_parse_token_to_ident(uat.as_deref(), ct)
+            .validate_client_auth_info_to_ident(uat.as_deref(), ct)
             .map_err(|e| {
                 admin_error!(err = ?e, "Invalid identity");
                 e
@@ -317,7 +317,7 @@ impl QueryServerWriteV1 {
         let ct = duration_from_epoch_now();
         let mut idms_prox_write = self.idms.proxy_write(ct).await;
         let ident = idms_prox_write
-            .validate_and_parse_token_to_ident(uat.as_deref(), ct)
+            .validate_client_auth_info_to_ident(uat.as_deref(), ct)
             .map_err(|e| {
                 admin_error!(err = ?e, "Invalid identity");
                 e
@@ -352,7 +352,7 @@ impl QueryServerWriteV1 {
         let ct = duration_from_epoch_now();
         let mut idms_prox_write = self.idms.proxy_write(ct).await;
         let ident = idms_prox_write
-            .validate_and_parse_token_to_ident(uat.as_deref(), ct)
+            .validate_client_auth_info_to_ident(uat.as_deref(), ct)
             .map_err(|e| {
                 admin_error!(err = ?e, "Invalid identity");
                 e
@@ -387,7 +387,7 @@ impl QueryServerWriteV1 {
         let ct = duration_from_epoch_now();
         let mut idms_prox_write = self.idms.proxy_write(ct).await;
         let ident = idms_prox_write
-            .validate_and_parse_token_to_ident(uat.as_deref(), ct)
+            .validate_client_auth_info_to_ident(uat.as_deref(), ct)
             .map_err(|e| {
                 admin_error!(err = ?e, "Invalid identity");
                 e
@@ -435,7 +435,7 @@ impl QueryServerWriteV1 {
         let ct = duration_from_epoch_now();
         let mut idms_prox_write = self.idms.proxy_write(ct).await;
         let ident = idms_prox_write
-            .validate_and_parse_token_to_ident(uat.as_deref(), ct)
+            .validate_client_auth_info_to_ident(uat.as_deref(), ct)
             .map_err(|e| {
                 admin_error!(err = ?e, "Invalid identity");
                 e
@@ -477,7 +477,7 @@ impl QueryServerWriteV1 {
         let ct = duration_from_epoch_now();
         let mut idms_prox_write = self.idms.proxy_write(ct).await;
         let ident = idms_prox_write
-            .validate_and_parse_token_to_ident(uat.as_deref(), ct)
+            .validate_client_auth_info_to_ident(uat.as_deref(), ct)
             .map_err(|e| {
                 admin_error!(err = ?e, "Invalid identity");
                 e
@@ -517,7 +517,7 @@ impl QueryServerWriteV1 {
         let ct = duration_from_epoch_now();
         let mut idms_prox_write = self.idms.proxy_write(ct).await;
         let ident = idms_prox_write
-            .validate_and_parse_token_to_ident(uat.as_deref(), ct)
+            .validate_client_auth_info_to_ident(uat.as_deref(), ct)
             .map_err(|e| {
                 admin_error!(err = ?e, "Invalid identity");
                 e
@@ -601,7 +601,7 @@ impl QueryServerWriteV1 {
         let ct = duration_from_epoch_now();
         let mut idms_prox_write = self.idms.proxy_write(ct).await;
         let ident = idms_prox_write
-            .validate_and_parse_token_to_ident(uat.as_deref(), ct)
+            .validate_client_auth_info_to_ident(uat.as_deref(), ct)
             .map_err(|e| {
                 admin_error!(err = ?e, "Invalid identity");
                 e
@@ -650,7 +650,7 @@ impl QueryServerWriteV1 {
         let ct = duration_from_epoch_now();
         let mut idms_prox_write = self.idms.proxy_write(ct).await;
         let ident = idms_prox_write
-            .validate_and_parse_token_to_ident(uat.as_deref(), ct)
+            .validate_client_auth_info_to_ident(uat.as_deref(), ct)
             .map_err(|e| {
                 admin_error!(err = ?e, "Invalid identity");
                 e
@@ -788,7 +788,7 @@ impl QueryServerWriteV1 {
         let ct = duration_from_epoch_now();
         let mut idms_prox_write = self.idms.proxy_write(ct).await;
         let ident = idms_prox_write
-            .validate_and_parse_token_to_ident(uat.as_deref(), ct)
+            .validate_client_auth_info_to_ident(uat.as_deref(), ct)
             .map_err(|e| {
                 admin_error!(err = ?e, "Invalid identity");
                 e
@@ -820,7 +820,7 @@ impl QueryServerWriteV1 {
         let ct = duration_from_epoch_now();
         let mut idms_prox_write = self.idms.proxy_write(ct).await;
         let ident = idms_prox_write
-            .validate_and_parse_token_to_ident(uat.as_deref(), ct)
+            .validate_client_auth_info_to_ident(uat.as_deref(), ct)
             .map_err(|e| {
                 admin_error!(err = ?e, "Invalid identity");
                 e
@@ -868,7 +868,7 @@ impl QueryServerWriteV1 {
         let ct = duration_from_epoch_now();
         let mut idms_prox_write = self.idms.proxy_write(ct).await;
         let ident = idms_prox_write
-            .validate_and_parse_token_to_ident(uat.as_deref(), ct)
+            .validate_client_auth_info_to_ident(uat.as_deref(), ct)
             .map_err(|e| {
                 admin_error!(err = ?e, "Invalid identity");
                 e
@@ -921,7 +921,7 @@ impl QueryServerWriteV1 {
         let ct = duration_from_epoch_now();
         let mut idms_prox_write = self.idms.proxy_write(ct).await;
         let ident = idms_prox_write
-            .validate_and_parse_token_to_ident(uat.as_deref(), ct)
+            .validate_client_auth_info_to_ident(uat.as_deref(), ct)
             .map_err(|e| {
                 admin_error!(err = ?e, "Invalid identity");
                 e
@@ -1150,7 +1150,7 @@ impl QueryServerWriteV1 {
         let ct = duration_from_epoch_now();
         let mut idms_prox_write = self.idms.proxy_write(ct).await;
         let ident = idms_prox_write
-            .validate_and_parse_token_to_ident(uat.as_deref(), ct)
+            .validate_client_auth_info_to_ident(uat.as_deref(), ct)
             .map_err(|e| {
                 admin_error!(err = ?e, "Invalid identity");
                 e
@@ -1192,7 +1192,7 @@ impl QueryServerWriteV1 {
         let ct = duration_from_epoch_now();
 
         let ident = idms_prox_write
-                .validate_and_parse_token_to_ident(uat.as_deref(), ct)
+                .validate_client_auth_info_to_ident(uat.as_deref(), ct)
                 .map_err(|e| {
                     admin_error!(err = ?e, "Invalid identity in handle_oauth2_rs_image_delete {:?}", uat);
                     e
@@ -1223,7 +1223,7 @@ impl QueryServerWriteV1 {
         let ct = duration_from_epoch_now();
 
         let ident = idms_prox_write
-            .validate_and_parse_token_to_ident(uat.as_deref(), ct)
+            .validate_client_auth_info_to_ident(uat.as_deref(), ct)
             .map_err(|e| {
                 admin_error!(err = ?e, "Invalid identity in handle_oauth2_rs_image_update {:?}", uat);
                 e
@@ -1267,7 +1267,7 @@ impl QueryServerWriteV1 {
         let mut idms_prox_write = self.idms.proxy_write(ct).await;
 
         let ident = idms_prox_write
-            .validate_and_parse_token_to_ident(uat.as_deref(), ct)
+            .validate_client_auth_info_to_ident(uat.as_deref(), ct)
             .map_err(|e| {
                 admin_error!(err = ?e, "Invalid identity");
                 e
@@ -1325,7 +1325,7 @@ impl QueryServerWriteV1 {
         let mut idms_prox_write = self.idms.proxy_write(ct).await;
 
         let ident = idms_prox_write
-            .validate_and_parse_token_to_ident(uat.as_deref(), ct)
+            .validate_client_auth_info_to_ident(uat.as_deref(), ct)
             .map_err(|e| {
                 admin_error!(err = ?e, "Invalid identity");
                 e
@@ -1382,7 +1382,7 @@ impl QueryServerWriteV1 {
         let mut idms_prox_write = self.idms.proxy_write(ct).await;
 
         let ident = idms_prox_write
-            .validate_and_parse_token_to_ident(uat.as_deref(), ct)
+            .validate_client_auth_info_to_ident(uat.as_deref(), ct)
             .map_err(|e| {
                 admin_error!(err = ?e, "Invalid identity");
                 e
@@ -1440,7 +1440,7 @@ impl QueryServerWriteV1 {
         let mut idms_prox_write = self.idms.proxy_write(ct).await;
 
         let ident = idms_prox_write
-            .validate_and_parse_token_to_ident(uat.as_deref(), ct)
+            .validate_client_auth_info_to_ident(uat.as_deref(), ct)
             .map_err(|e| {
                 admin_error!(err = ?e, "Invalid identity");
                 e
@@ -1502,6 +1502,13 @@ impl QueryServerWriteV1 {
             })
             .map_err(|e| {
                 admin_error!("Invalid identity: {:?}", e);
+                e
+            })?;
+
+        let ident = idms_prox_write
+            .validate_client_auth_info_to_ident(uat.as_deref(), ct)
+            .map_err(|e| {
+                admin_error!(err = ?e, "Invalid identity");
                 e
             })?;
 

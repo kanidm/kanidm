@@ -7,6 +7,7 @@ use time::OffsetDateTime;
 pub enum AuditSource {
     Internal,
     Https(IpAddr),
+    Ldaps(IpAddr),
 }
 
 impl From<Source> for AuditSource {
@@ -14,6 +15,7 @@ impl From<Source> for AuditSource {
         match value {
             Source::Internal => AuditSource::Internal,
             Source::Https(ip) => AuditSource::Https(ip),
+            Source::Ldaps(ip) => AuditSource::Ldaps(ip),
         }
     }
 }

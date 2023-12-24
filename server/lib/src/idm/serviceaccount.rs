@@ -490,7 +490,7 @@ mod tests {
             .unwrap();
 
         let ident = idms_prox_write
-            .validate_and_parse_token_to_ident(Some(&api_token), ct)
+            .validate_client_auth_info_to_ident(api_token.as_str().into(), ct)
             .expect("Unable to verify api token.");
 
         assert!(ident.get_uuid() == Some(testaccount_uuid));
@@ -500,7 +500,7 @@ mod tests {
         // Check the expiry
         assert!(
             idms_prox_write
-                .validate_and_parse_token_to_ident(Some(&api_token), post_exp)
+                .validate_client_auth_info_to_ident(api_token.as_str().into(), post_exp)
                 .expect_err("Should not succeed")
                 == OperationError::SessionExpired
         );
@@ -515,14 +515,14 @@ mod tests {
         // Within gracewindow?
         // This is okay, because we are within the gracewindow.
         let ident = idms_prox_write
-            .validate_and_parse_token_to_ident(Some(&api_token), ct)
+            .validate_client_auth_info_to_ident(api_token.as_str().into(), ct)
             .expect("Unable to verify api token.");
         assert!(ident.get_uuid() == Some(testaccount_uuid));
 
         // Past gracewindow?
         assert!(
             idms_prox_write
-                .validate_and_parse_token_to_ident(Some(&api_token), past_grc)
+                .validate_client_auth_info_to_ident(api_token.as_str().into(), past_grc)
                 .expect_err("Should not succeed")
                 == OperationError::SessionExpired
         );

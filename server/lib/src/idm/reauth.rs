@@ -457,11 +457,15 @@ mod tests {
         }
     }
 
-    async fn token_to_ident(idms: &IdmServer, ct: Duration, token: Option<&str>) -> Identity {
+    async fn token_to_ident(
+        idms: &IdmServer,
+        ct: Duration,
+        client_auth_info: ClientAuthInfo,
+    ) -> Identity {
         let mut idms_prox_read = idms.proxy_read().await;
 
         idms_prox_read
-            .validate_and_parse_token_to_ident(token, ct)
+            .validate_client_auth_info_to_ident(client_auth_info, ct)
             .expect("Invalid UAT")
     }
 
@@ -601,7 +605,7 @@ mod tests {
             .expect("failed to authenticate with passkey");
 
         // Token_str to uat
-        let ident = token_to_ident(idms, ct, Some(token.as_str())).await;
+        let ident = token_to_ident(idms, ct, token.as_str().into()).await;
 
         // Check that the rw entitlement is not present
         debug!(?ident);
@@ -620,7 +624,7 @@ mod tests {
             .expect("Failed to get new session token");
 
         // Token_str to uat
-        let ident = token_to_ident(idms, ct, Some(token.as_str())).await;
+        let ident = token_to_ident(idms, ct, token.as_str().into()).await;
 
         // They now have the entitlement.
         debug!(?ident);
@@ -647,7 +651,7 @@ mod tests {
             .expect("failed to authenticate with passkey");
 
         // Token_str to uat
-        let ident = token_to_ident(idms, ct, Some(token.as_str())).await;
+        let ident = token_to_ident(idms, ct, token.as_str().into()).await;
 
         // Check that the rw entitlement is not present
         debug!(?ident);

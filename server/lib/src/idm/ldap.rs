@@ -8,6 +8,7 @@ use kanidm_proto::constants::*;
 use kanidm_proto::v1::{ApiToken, OperationError, UserAuthToken};
 use ldap3_proto::simple::*;
 use regex::Regex;
+use std::net::IpAddr;
 use tracing::trace;
 use uuid::Uuid;
 
@@ -138,6 +139,7 @@ impl LdapServer {
         idms: &IdmServer,
         sr: &SearchRequest,
         uat: &LdapBoundToken,
+        source: Source,
         // eventid: &Uuid,
     ) -> Result<Vec<LdapMsg>, OperationError> {
         admin_info!("Attempt LDAP Search for {}", uat.spn);
@@ -320,7 +322,7 @@ impl LdapServer {
             //
             // ! Remember, searchEvent wraps to ignore hidden for us.
             let ident = idm_read
-                .validate_ldap_session(&uat.effective_session, ct)
+                .validate_ldap_session(&uat.effective_session, source, ct)
                 .map_err(|e| {
                     admin_error!("Invalid identity: {:?}", e);
                     e
@@ -456,8 +458,11 @@ impl LdapServer {
         idms: &IdmServer,
         server_op: ServerOps,
         uat: Option<LdapBoundToken>,
+        ip_addr: IpAddr,
         eventid: Uuid,
     ) -> Result<LdapResponseState, OperationError> {
+        let source = Source::Ldaps(ip_addr);
+
         match server_op {
             ServerOps::SimpleBind(sbr) => self
                 .do_bind(idms, sbr.dn.as_str(), sbr.pw.as_str())
@@ -472,7 +477,7 @@ impl LdapServer {
                 }),
             ServerOps::Search(sr) => match uat {
                 Some(u) => self
-                    .do_search(idms, &sr, &u)
+                    .do_search(idms, &sr, &u, source)
                     .await
                     .map(LdapResponseState::MultiPartResponse)
                     .or_else(|e| {
@@ -494,7 +499,7 @@ impl LdapServer {
                         }
                     };
                     // If okay, do the search.
-                    self.do_search(idms, &sr, &lbt)
+                    self.do_search(idms, &sr, &lbt, Source::Internal)
                         .await
                         .map(|r| LdapResponseState::BindMultiPartResponse(lbt, r))
                         .or_else(|e| {
@@ -895,7 +900,10 @@ mod tests {
             filter: LdapFilter::Equality(Attribute::Name.to_string(), "testperson1".to_string()),
             attrs: vec!["*".to_string()],
         };
-        let r1 = ldaps.do_search(idms, &sr, &anon_t).await.unwrap();
+        let r1 = ldaps
+            .do_search(idms, &sr, &anon_t, Source::Internal)
+            .await
+            .unwrap();
 
         // The result, and the ldap proto success msg.
         assert!(r1.len() == 2);
@@ -927,7 +935,10 @@ mod tests {
             filter: LdapFilter::Equality(Attribute::Name.to_string(), "testperson1".to_string()),
             attrs: vec!["+".to_string()],
         };
-        let r1 = ldaps.do_search(idms, &sr, &anon_t).await.unwrap();
+        let r1 = ldaps
+            .do_search(idms, &sr, &anon_t, Source::Internal)
+            .await
+            .unwrap();
 
         // The result, and the ldap proto success msg.
         assert!(r1.len() == 2);
@@ -971,7 +982,10 @@ mod tests {
                 Attribute::UidNumber.to_string(),
             ],
         };
-        let r1 = ldaps.do_search(idms, &sr, &anon_t).await.unwrap();
+        let r1 = ldaps
+            .do_search(idms, &sr, &anon_t, Source::Internal)
+            .await
+            .unwrap();
 
         // The result, and the ldap proto success msg.
         assert!(r1.len() == 2);
@@ -1102,7 +1116,10 @@ mod tests {
         let anon_lbt = ldaps.do_bind(idms, "", "").await.unwrap().unwrap();
         assert!(anon_lbt.effective_session == LdapSession::UnixBind(UUID_ANONYMOUS));
 
-        let r1 = ldaps.do_search(idms, &sr, &anon_lbt).await.unwrap();
+        let r1 = ldaps
+            .do_search(idms, &sr, &anon_lbt, Source::Internal)
+            .await
+            .unwrap();
         assert!(r1.len() == 2);
         match &r1[0].op {
             LdapOp::SearchResultEntry(lsre) => {
@@ -1141,7 +1158,10 @@ mod tests {
         assert!(sa_lbt.effective_session == LdapSession::ApiToken(apitoken_inner));
 
         // Search and retrieve mail that's now accessible.
-        let r1 = ldaps.do_search(idms, &sr, &sa_lbt).await.unwrap();
+        let r1 = ldaps
+            .do_search(idms, &sr, &sa_lbt, Source::Internal)
+            .await
+            .unwrap();
         assert!(r1.len() == 2);
         match &r1[0].op {
             LdapOp::SearchResultEntry(lsre) => {
@@ -1216,7 +1236,10 @@ mod tests {
                 Attribute::EntryUuid.to_string(),
             ],
         };
-        let r1 = ldaps.do_search(idms, &sr, &anon_t).await.unwrap();
+        let r1 = ldaps
+            .do_search(idms, &sr, &anon_t, Source::Internal)
+            .await
+            .unwrap();
 
         // The result, and the ldap proto success msg.
         assert!(r1.len() == 2);
@@ -1252,7 +1275,10 @@ mod tests {
             filter: LdapFilter::Present(Attribute::ObjectClass.to_string()),
             attrs: vec!["*".to_string()],
         };
-        let r1 = ldaps.do_search(idms, &sr, &anon_t).await.unwrap();
+        let r1 = ldaps
+            .do_search(idms, &sr, &anon_t, Source::Internal)
+            .await
+            .unwrap();
 
         trace!(?r1);
 
@@ -1302,7 +1328,10 @@ mod tests {
             filter: LdapFilter::Present(Attribute::ObjectClass.to_string()),
             attrs: vec!["*".to_string()],
         };
-        let r1 = ldaps.do_search(idms, &sr, &anon_t).await.unwrap();
+        let r1 = ldaps
+            .do_search(idms, &sr, &anon_t, Source::Internal)
+            .await
+            .unwrap();
 
         trace!(?r1);
 
@@ -1378,7 +1407,10 @@ mod tests {
                 Attribute::EntryUuid.to_string(),
             ],
         };
-        let r1 = ldaps.do_search(idms, &sr, &anon_t).await.unwrap();
+        let r1 = ldaps
+            .do_search(idms, &sr, &anon_t, Source::Internal)
+            .await
+            .unwrap();
 
         // Empty results and ldap proto success msg.
         assert!(r1.len() == 1);
@@ -1399,7 +1431,10 @@ mod tests {
                 "entryuuid".to_string(),
             ],
         };
-        let r1 = ldaps.do_search(idms, &sr, &anon_t).await.unwrap();
+        let r1 = ldaps
+            .do_search(idms, &sr, &anon_t, Source::Internal)
+            .await
+            .unwrap();
 
         trace!(?r1);
 

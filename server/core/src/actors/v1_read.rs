@@ -83,7 +83,7 @@ impl QueryServerReadV1 {
         let ct = duration_from_epoch_now();
         let mut idms_prox_read = self.idms.proxy_read().await;
         let ident = idms_prox_read
-            .validate_and_parse_token_to_ident(uat.as_deref(), ct)
+            .validate_client_auth_info_to_ident(uat.as_deref(), ct)
             .map_err(|e| {
                 admin_error!(?e, "Invalid identity");
                 e
@@ -167,7 +167,7 @@ impl QueryServerReadV1 {
         security_info!("Begin reauth event");
 
         let ident = idm_auth
-            .validate_and_parse_token_to_ident(uat.as_deref(), ct)
+            .validate_client_auth_info_to_ident(uat.as_deref(), ct)
             .map_err(|e| {
                 admin_error!(?e, "Invalid identity");
                 e
@@ -341,7 +341,7 @@ impl QueryServerReadV1 {
         // then move this to core.rs, and don't allow Option<UAT> to get
         // this far.
         let ident = idms_prox_read
-            .validate_and_parse_token_to_ident(uat.as_deref(), ct)
+            .validate_client_auth_info_to_ident(uat.as_deref(), ct)
             .map_err(|e| {
                 admin_error!(?e, "Invalid identity");
                 e
@@ -404,7 +404,7 @@ impl QueryServerReadV1 {
         let ct = duration_from_epoch_now();
 
         let ident = idms_prox_read
-                .validate_and_parse_token_to_ident(uat.as_deref(), ct)
+                .validate_client_auth_info_to_ident(uat.as_deref(), ct)
                 .map_err(|e| {
                     admin_error!(err = ?e, "Invalid identity in handle_oauth2_rs_image_get_image {:?}", uat);
                     e
@@ -447,7 +447,7 @@ impl QueryServerReadV1 {
         let ct = duration_from_epoch_now();
         let mut idms_prox_read = self.idms.proxy_read().await;
         let ident = idms_prox_read
-            .validate_and_parse_token_to_ident(uat.as_deref(), ct)
+            .validate_client_auth_info_to_ident(uat.as_deref(), ct)
             .map_err(|e| {
                 admin_error!("Invalid identity: {:?}", e);
                 e
@@ -491,7 +491,7 @@ impl QueryServerReadV1 {
         let mut idms_prox_read = self.idms.proxy_read().await;
 
         let ident = idms_prox_read
-            .validate_and_parse_token_to_ident(uat.as_deref(), ct)
+            .validate_client_auth_info_to_ident(uat.as_deref(), ct)
             .map_err(|e| {
                 admin_error!("Invalid identity: {:?}", e);
                 e
@@ -533,7 +533,7 @@ impl QueryServerReadV1 {
         let ct = duration_from_epoch_now();
         let mut idms_prox_read = self.idms.proxy_read().await;
         let ident = idms_prox_read
-            .validate_and_parse_token_to_ident(uat.as_deref(), ct)
+            .validate_client_auth_info_to_ident(uat.as_deref(), ct)
             .map_err(|e| {
                 admin_error!("Invalid identity: {:?}", e);
                 e
@@ -594,7 +594,7 @@ impl QueryServerReadV1 {
         let mut idms_prox_read = self.idms.proxy_read().await;
 
         let ident = idms_prox_read
-            .validate_and_parse_token_to_ident(uat.as_deref(), ct)
+            .validate_client_auth_info_to_ident(uat.as_deref(), ct)
             .map_err(|e| {
                 admin_error!("Invalid identity: {:?}", e);
                 e
@@ -641,7 +641,7 @@ impl QueryServerReadV1 {
         let mut idms_prox_read = self.idms.proxy_read().await;
 
         let ident = idms_prox_read
-            .validate_and_parse_token_to_ident(uat.as_deref(), ct)
+            .validate_client_auth_info_to_ident(uat.as_deref(), ct)
             .map_err(|e| {
                 admin_error!("Invalid identity: {:?}", e);
                 e
@@ -693,7 +693,7 @@ impl QueryServerReadV1 {
         let ct = duration_from_epoch_now();
         let mut idms_prox_read = self.idms.proxy_read().await;
         let ident = idms_prox_read
-            .validate_and_parse_token_to_ident(uat.as_deref(), ct)
+            .validate_client_auth_info_to_ident(uat.as_deref(), ct)
             .map_err(|e| {
                 admin_error!("Invalid identity: {:?}", e);
                 e
@@ -739,7 +739,7 @@ impl QueryServerReadV1 {
         let ct = duration_from_epoch_now();
         let mut idms_prox_read = self.idms.proxy_read().await;
         let ident = idms_prox_read
-            .validate_and_parse_token_to_ident(uat.as_deref(), ct)
+            .validate_client_auth_info_to_ident(uat.as_deref(), ct)
             .map_err(|e| {
                 admin_error!("Invalid identity: {:?}", e);
                 e
@@ -802,7 +802,7 @@ impl QueryServerReadV1 {
         let ct = duration_from_epoch_now();
         let mut idms_prox_read = self.idms.proxy_read().await;
         let ident = idms_prox_read
-            .validate_and_parse_token_to_ident(uat.as_deref(), ct)
+            .validate_client_auth_info_to_ident(uat.as_deref(), ct)
             .map_err(|e| {
                 admin_error!("Invalid identity: {:?}", e);
                 e
@@ -866,7 +866,7 @@ impl QueryServerReadV1 {
         let ct = duration_from_epoch_now();
         let mut idms_prox_read = self.idms.proxy_read().await;
         let ident = idms_prox_read
-            .validate_and_parse_token_to_ident(uat.as_deref(), ct)
+            .validate_client_auth_info_to_ident(uat.as_deref(), ct)
             .map_err(|e| {
                 admin_error!("Invalid identity: {:?}", e);
                 e
@@ -898,7 +898,7 @@ impl QueryServerReadV1 {
         let ct = duration_from_epoch_now();
         let mut idms_prox_read = self.idms.proxy_read().await;
         let ident = idms_prox_read
-            .validate_and_parse_token_to_ident(uat.as_deref(), ct)
+            .validate_client_auth_info_to_ident(uat.as_deref(), ct)
             .map_err(|e| {
                 admin_error!("Invalid identity: {:?}", e);
                 e
@@ -932,7 +932,7 @@ impl QueryServerReadV1 {
         let ct = duration_from_epoch_now();
         let mut idms_prox_read = self.idms.proxy_read().await;
         let ident = idms_prox_read
-            .validate_and_parse_token_to_ident(uat.as_deref(), ct)
+            .validate_client_auth_info_to_ident(uat.as_deref(), ct)
             .map_err(|e| {
                 admin_error!("Invalid identity: {:?}", e);
                 e
@@ -973,7 +973,7 @@ impl QueryServerReadV1 {
         let mut idm_auth = self.idms.auth().await;
         // resolve the id
         let ident = idm_auth
-            .validate_and_parse_token_to_ident(uat.as_deref(), ct)
+            .validate_client_auth_info_to_ident(uat.as_deref(), ct)
             .map_err(|e| {
                 admin_error!(err = ?e, "Invalid identity");
                 e
@@ -1022,7 +1022,7 @@ impl QueryServerReadV1 {
         let mut idms_prox_read = self.idms.proxy_read().await;
 
         let ident = idms_prox_read
-            .validate_and_parse_token_to_ident(uat.as_deref(), ct)
+            .validate_client_auth_info_to_ident(uat.as_deref(), ct)
             .map_err(|e| {
                 admin_error!(err = ?e, "Invalid identity");
                 e
@@ -1068,7 +1068,7 @@ impl QueryServerReadV1 {
         let mut idms_prox_read = self.idms.proxy_read().await;
 
         let ident = idms_prox_read
-            .validate_and_parse_token_to_ident(uat.as_deref(), ct)
+            .validate_client_auth_info_to_ident(uat.as_deref(), ct)
             .map_err(|e| {
                 admin_error!("Invalid identity: {:?}", e);
                 e
@@ -1300,7 +1300,7 @@ impl QueryServerReadV1 {
         let ct = duration_from_epoch_now();
         let mut idms_prox_read = self.idms.proxy_read().await;
         let ident = idms_prox_read
-            .validate_and_parse_token_to_ident(uat.as_deref(), ct)
+            .validate_client_auth_info_to_ident(uat.as_deref(), ct)
             .map_err(|e| {
                 admin_error!("Invalid identity: {:?}", e);
                 e
@@ -1470,7 +1470,7 @@ impl QueryServerReadV1 {
         let ct = duration_from_epoch_now();
         let mut idms_prox_read = self.idms.proxy_read().await;
         let ident = idms_prox_read
-            .validate_and_parse_token_to_ident(uat.as_deref(), ct)
+            .validate_client_auth_info_to_ident(uat.as_deref(), ct)
             .map_err(|e| {
                 admin_error!("Invalid identity: {:?}", e);
                 e
@@ -1524,11 +1524,12 @@ impl QueryServerReadV1 {
         eventid: Uuid,
         protomsg: LdapMsg,
         uat: Option<LdapBoundToken>,
+        ip_addr: IpAddr,
     ) -> Option<LdapResponseState> {
         let res = match ServerOps::try_from(protomsg) {
             Ok(server_op) => self
                 .ldap
-                .do_op(&self.idms, server_op, uat, eventid)
+                .do_op(&self.idms, server_op, uat, ip_addr, eventid)
                 .await
                 .unwrap_or_else(|e| {
                     admin_error!("do_op failed -> {:?}", e);

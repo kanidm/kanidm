@@ -43,7 +43,7 @@ async fn client_process_msg(
         client_port = %client_address.port(),
         "LDAP client"
     );
-    qe_r_ref.handle_ldaprequest(eventid, protomsg, uat).await
+    qe_r_ref.handle_ldaprequest(eventid, protomsg, uat, client_address.ip()).await
 }
 
 async fn client_process(

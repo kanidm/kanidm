@@ -407,21 +407,39 @@ pub trait IdmServerTransaction<'a> {
     /// that we internally sign with. We can use this to select the appropriate token type
     /// and validation method.
     #[instrument(level = "info", skip_all)]
-    fn validate_and_parse_token_to_ident(
+    fn validate_client_auth_info_to_ident(
         &mut self,
-        token: Option<&str>,
+        client_auth_info: ClientAuthInfo,
         ct: Duration,
     ) -> Result<Identity, OperationError> {
-        match self.validate_and_parse_token_to_token(token, ct)? {
-            Token::UserAuthToken(uat) => self.process_uat_to_identity(&uat, ct),
-            Token::ApiToken(apit, entry) => self.process_apit_to_identity(&apit, entry, ct),
+        let ClientAuthInfo {
+            client_cert,
+            bearer_token,
+            source,
+        } = client_auth_info;
+
+        match (client_cert, bearer_token) {
+            (Some(_client_cert_info), _) => {
+                // Cert validation here.
+                todo!();
+            }
+            (None, Some(token)) => match self.validate_and_parse_token_to_token(&token, ct)? {
+                Token::UserAuthToken(uat) => self.process_uat_to_identity(&uat, ct, source),
+                Token::ApiToken(apit, entry) => {
+                    self.process_apit_to_identity(&apit, source, entry, ct)
+                }
+            },
+            (None, None) => {
+                warn!("No client certificate or bearer tokens were supplied");
+                Err(OperationError::NotAuthenticated)
+            }
         }
     }
 
     #[instrument(level = "info", skip_all)]
     fn validate_and_parse_token_to_uat(
         &mut self,
-        token: Option<&str>,
+        token: &str,
         ct: Duration,
     ) -> Result<UserAuthToken, OperationError> {
         match self.validate_and_parse_token_to_token(token, ct)? {
@@ -435,20 +453,13 @@ pub trait IdmServerTransaction<'a> {
 
     fn validate_and_parse_token_to_token(
         &mut self,
-        token: Option<&str>,
+        token: &str,
         ct: Duration,
     ) -> Result<Token, OperationError> {
-        let jwsu = token
-            .ok_or_else(|| {
-                security_info!("No token provided");
-                OperationError::NotAuthenticated
-            })
-            .and_then(|s| {
-                JwsCompact::from_str(s).map_err(|e| {
-                    security_info!(?e, "Unable to decode token");
-                    OperationError::NotAuthenticated
-                })
-            })?;
+        let jwsu = JwsCompact::from_str(token).map_err(|e| {
+            security_info!(?e, "Unable to decode token");
+            OperationError::NotAuthenticated
+        })?;
 
         // Frow the unverified token we can now get the kid, and use that to locate the correct
         // key to id the token.
@@ -692,6 +703,7 @@ pub trait IdmServerTransaction<'a> {
         &mut self,
         uat: &UserAuthToken,
         ct: Duration,
+        source: Source,
     ) -> Result<Identity, OperationError> {
         // From a UAT, get the current identity and associated information.
         let entry = self
@@ -744,6 +756,7 @@ pub trait IdmServerTransaction<'a> {
 
         Ok(Identity {
             origin: IdentType::User(IdentUser { entry }),
+            source,
             session_id: uat.session_id,
             scope,
             limits,
@@ -754,6 +767,7 @@ pub trait IdmServerTransaction<'a> {
     fn process_apit_to_identity(
         &mut self,
         apit: &ApiToken,
+        source: Source,
         entry: Arc<EntrySealedCommitted>,
         ct: Duration,
     ) -> Result<Identity, OperationError> {
@@ -769,6 +783,7 @@ pub trait IdmServerTransaction<'a> {
         let limits = Limits::default();
         Ok(Identity {
             origin: IdentType::User(IdentUser { entry }),
+            source,
             session_id: apit.token_id,
             scope,
             limits,
@@ -779,6 +794,7 @@ pub trait IdmServerTransaction<'a> {
     fn validate_ldap_session(
         &mut self,
         session: &LdapSession,
+        source: Source,
         ct: Duration,
     ) -> Result<Identity, OperationError> {
         match session {
@@ -815,6 +831,7 @@ pub trait IdmServerTransaction<'a> {
 
                     Ok(Identity {
                         origin: IdentType::User(IdentUser { entry: anon_entry }),
+                        source,
                         session_id,
                         scope: AccessScope::ReadOnly,
                         limits,
@@ -824,7 +841,7 @@ pub trait IdmServerTransaction<'a> {
                     Err(OperationError::SessionExpired)
                 }
             }
-            LdapSession::UserAuthToken(uat) => self.process_uat_to_identity(uat, ct),
+            LdapSession::UserAuthToken(uat) => self.process_uat_to_identity(uat, ct, source),
             LdapSession::ApiToken(apit) => {
                 let entry = self
                     .get_qs_txn()
@@ -834,24 +851,27 @@ pub trait IdmServerTransaction<'a> {
                         e
                     })?;
 
-                self.process_apit_to_identity(apit, entry, ct)
+                self.process_apit_to_identity(apit, source, entry, ct)
             }
         }
     }
 
     #[instrument(level = "info", skip_all)]
-    fn validate_and_parse_sync_token_to_ident(
+    fn validate_sync_client_auth_info_to_ident(
         &mut self,
-        token: Option<&str>,
+        client_auth_info: ClientAuthInfo,
         ct: Duration,
     ) -> Result<Identity, OperationError> {
-        let jwsu = token
+        // FUTURE: Could allow mTLS here instead?
+
+        let jwsu = client_auth_info
+            .bearer_token
             .ok_or_else(|| {
                 security_info!("No token provided");
                 OperationError::NotAuthenticated
             })
             .and_then(|s| {
-                JwsCompact::from_str(s).map_err(|e| {
+                JwsCompact::from_str(s.as_str()).map_err(|e| {
                     security_info!(?e, "Unable to decode token");
                     OperationError::NotAuthenticated
                 })
@@ -921,6 +941,7 @@ pub trait IdmServerTransaction<'a> {
         let limits = Limits::unlimited();
         Ok(Identity {
             origin: IdentType::Synch(entry.get_uuid()),
+            source: client_auth_info.source,
             session_id: sync_token.token_id,
             scope,
             limits,
@@ -1289,7 +1310,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
         lae: &LdapTokenAuthEvent,
         ct: Duration,
     ) -> Result<Option<LdapBoundToken>, OperationError> {
-        match self.validate_and_parse_token_to_token(Some(&lae.token), ct)? {
+        match self.validate_and_parse_token_to_token(&lae.token, ct)? {
             Token::UserAuthToken(uat) => {
                 let spn = uat.spn.clone();
                 Ok(Some(LdapBoundToken {
@@ -3394,11 +3415,11 @@ mod tests {
 
         // Check it's valid - This is within the time window so will pass.
         idms_prox_read
-            .validate_and_parse_token_to_ident(Some(token.as_str()), ct)
+            .validate_client_auth_info_to_ident(token.as_str().into(), ct)
             .expect("Failed to validate");
 
         // In X time it should be INVALID
-        match idms_prox_read.validate_and_parse_token_to_ident(Some(token.as_str()), expiry) {
+        match idms_prox_read.validate_client_auth_info_to_ident(token.as_str().into(), expiry) {
             Err(OperationError::SessionExpired) => {}
             _ => assert!(false),
         }
@@ -3539,12 +3560,12 @@ mod tests {
 
         // Check it's valid.
         idms_prox_read
-            .validate_and_parse_token_to_ident(Some(token.as_str()), ct)
+            .validate_client_auth_info_to_ident(token.as_str().into(), ct)
             .expect("Failed to validate");
 
         // If the auth session record wasn't processed, this will fail.
         idms_prox_read
-            .validate_and_parse_token_to_ident(Some(token.as_str()), post_grace)
+            .validate_client_auth_info_to_ident(token.as_str().into(), post_grace)
             .expect("Failed to validate");
 
         drop(idms_prox_read);
@@ -3560,7 +3581,7 @@ mod tests {
 
         // Now, within gracewindow, it's NOT valid because the session entry exists and is in
         // the revoked state!
-        match idms_prox_read.validate_and_parse_token_to_ident(Some(token.as_str()), post_grace) {
+        match idms_prox_read.validate_client_auth_info_to_ident(token.as_str().into(), post_grace) {
             Err(OperationError::SessionExpired) => {}
             _ => assert!(false),
         }
@@ -3585,11 +3606,11 @@ mod tests {
 
         let mut idms_prox_read = idms.proxy_read().await;
         idms_prox_read
-            .validate_and_parse_token_to_ident(Some(token.as_str()), ct)
+            .validate_client_auth_info_to_ident(token.as_str().into(), ct)
             .expect("Failed to validate");
 
         // post grace, it's not valid.
-        match idms_prox_read.validate_and_parse_token_to_ident(Some(token.as_str()), post_grace) {
+        match idms_prox_read.validate_client_auth_info_to_ident(token.as_str().into(), post_grace) {
             Err(OperationError::SessionExpired) => {}
             _ => assert!(false),
         }
@@ -3723,7 +3744,7 @@ mod tests {
         let Token::UserAuthToken(uat) = idms
             .proxy_read()
             .await
-            .validate_and_parse_token_to_token(Some(&token), ct)
+            .validate_and_parse_token_to_token(&token, ct)
             .expect("Must not fail")
         else {
             panic!("Unexpected auth token type for anonymous auth");
@@ -3761,7 +3782,7 @@ mod tests {
             )
             .expect("Unable to create uat");
         let ident = idms_prox_write
-            .process_uat_to_identity(&uat, ct)
+            .process_uat_to_identity(&uat, ct, Source::Internal)
             .expect("Unable to process uat");
 
         assert!(!ident.has_claim("authtype_anonymous"));
@@ -3780,7 +3801,7 @@ mod tests {
             )
             .expect("Unable to create uat");
         let ident = idms_prox_write
-            .process_uat_to_identity(&uat, ct)
+            .process_uat_to_identity(&uat, ct, Source::Internal)
             .expect("Unable to process uat");
 
         assert!(!ident.has_claim("authtype_unixpassword"));
@@ -3799,7 +3820,7 @@ mod tests {
             )
             .expect("Unable to create uat");
         let ident = idms_prox_write
-            .process_uat_to_identity(&uat, ct)
+            .process_uat_to_identity(&uat, ct, Source::Internal)
             .expect("Unable to process uat");
 
         assert!(!ident.has_claim("authtype_password"));
@@ -3818,7 +3839,7 @@ mod tests {
             )
             .expect("Unable to create uat");
         let ident = idms_prox_write
-            .process_uat_to_identity(&uat, ct)
+            .process_uat_to_identity(&uat, ct, Source::Internal)
             .expect("Unable to process uat");
 
         assert!(!ident.has_claim("authtype_generatedpassword"));
@@ -3837,7 +3858,7 @@ mod tests {
             )
             .expect("Unable to create uat");
         let ident = idms_prox_write
-            .process_uat_to_identity(&uat, ct)
+            .process_uat_to_identity(&uat, ct, Source::Internal)
             .expect("Unable to process uat");
 
         assert!(!ident.has_claim("authtype_webauthn"));
@@ -3856,7 +3877,7 @@ mod tests {
             )
             .expect("Unable to create uat");
         let ident = idms_prox_write
-            .process_uat_to_identity(&uat, ct)
+            .process_uat_to_identity(&uat, ct, Source::Internal)
             .expect("Unable to process uat");
 
         assert!(!ident.has_claim("authtype_passwordmfa"));
@@ -3887,7 +3908,7 @@ mod tests {
 
         // Check it's valid.
         idms_prox_read
-            .validate_and_parse_token_to_ident(Some(token.as_str()), ct)
+            .validate_client_auth_info_to_ident(token.as_str().into(), ct)
             .expect("Failed to validate");
 
         drop(idms_prox_read);
@@ -3918,11 +3939,11 @@ mod tests {
 
         let mut idms_prox_read = idms.proxy_read().await;
         assert!(idms_prox_read
-            .validate_and_parse_token_to_ident(Some(token.as_str()), ct)
+            .validate_client_auth_info_to_ident(token.as_str().into(), ct)
             .is_err());
         // A new token will work due to the matching key.
         idms_prox_read
-            .validate_and_parse_token_to_ident(Some(new_token.as_str()), ct)
+            .validate_client_auth_info_to_ident(new_token.as_str().into(), ct)
             .expect("Failed to validate");
     }
 

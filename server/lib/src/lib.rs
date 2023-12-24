@@ -88,8 +88,8 @@ pub mod prelude {
         f_and, f_andnot, f_eq, f_id, f_inc, f_lt, f_or, f_pres, f_self, f_spn_name, f_sub, Filter,
         FilterInvalid, FilterValid, FC,
     };
-    pub use crate::idm::{ClientCertInfo, ClientAuthInfo};
     pub use crate::idm::server::{IdmServer, IdmServerAudit, IdmServerDelayed};
+    pub use crate::idm::{ClientAuthInfo, ClientCertInfo};
     pub use crate::modify::{
         m_assert, m_pres, m_purge, m_remove, Modify, ModifyInvalid, ModifyList, ModifyValid,
     };

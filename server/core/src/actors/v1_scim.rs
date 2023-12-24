@@ -24,7 +24,7 @@ impl QueryServerWriteV1 {
         let ct = duration_from_epoch_now();
         let mut idms_prox_write = self.idms.proxy_write(ct).await;
         let ident = idms_prox_write
-            .validate_and_parse_token_to_ident(uat.as_deref(), ct)
+            .validate_client_auth_info_to_ident(uat.as_deref(), ct)
             .map_err(|e| {
                 admin_error!(err = ?e, "Invalid identity");
                 e
@@ -63,7 +63,7 @@ impl QueryServerWriteV1 {
         let ct = duration_from_epoch_now();
         let mut idms_prox_write = self.idms.proxy_write(ct).await;
         let ident = idms_prox_write
-            .validate_and_parse_token_to_ident(uat.as_deref(), ct)
+            .validate_client_auth_info_to_ident(uat.as_deref(), ct)
             .map_err(|e| {
                 admin_error!(err = ?e, "Invalid identity");
                 e
@@ -96,7 +96,7 @@ impl QueryServerWriteV1 {
         let ct = duration_from_epoch_now();
         let mut idms_prox_write = self.idms.proxy_write(ct).await;
         let ident = idms_prox_write
-            .validate_and_parse_token_to_ident(uat.as_deref(), ct)
+            .validate_client_auth_info_to_ident(uat.as_deref(), ct)
             .map_err(|e| {
                 admin_error!(err = ?e, "Invalid identity");
                 e
@@ -131,7 +131,7 @@ impl QueryServerWriteV1 {
         let ct = duration_from_epoch_now();
         let mut idms_prox_write = self.idms.proxy_write(ct).await;
         let ident = idms_prox_write
-            .validate_and_parse_token_to_ident(uat.as_deref(), ct)
+            .validate_client_auth_info_to_ident(uat.as_deref(), ct)
             .map_err(|e| {
                 admin_error!(err = ?e, "Invalid identity");
                 e
@@ -167,7 +167,7 @@ impl QueryServerWriteV1 {
         let mut idms_prox_write = self.idms.proxy_write(ct).await;
 
         let ident =
-            idms_prox_write.validate_and_parse_sync_token_to_ident(bearer.as_deref(), ct)?;
+            idms_prox_write.validate_sync_client_auth_info_to_ident(bearer.as_deref(), ct)?;
 
         let sse = ScimSyncUpdateEvent { ident };
 
