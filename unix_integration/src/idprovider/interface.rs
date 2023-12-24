@@ -134,11 +134,12 @@ pub trait IdProvider {
         _machine_key: &tpm::MachineKey,
     ) -> Result<(AuthRequest, AuthCredHandler), IdpError>;
 
-    async fn unix_user_online_auth_step(
+    async fn unix_user_online_auth_step<D: KeyStoreTxn + Send>(
         &self,
         _account_id: &str,
         _cred_handler: &mut AuthCredHandler,
         _pam_next_req: PamAuthRequest,
+        _keystore: &mut D,
         _tpm: &mut tpm::BoxedDynTpm,
         _machine_key: &tpm::MachineKey,
     ) -> Result<(AuthResult, AuthCacheAction), IdpError>;
