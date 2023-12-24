@@ -208,13 +208,8 @@ impl QueryServerReadV1 {
     ) -> Result<(), OperationError> {
         trace!(eventid = ?msg.eventid, "Begin online backup event");
 
-        let now = match time::OffsetDateTime::now_local() {
-            Ok(val) => val,
-            Err(_err) => {
-                admin_warn!("Failed to get local offset, using UTC");
-                time::OffsetDateTime::now_utc()
-            }
-        };
+        let now = time::OffsetDateTime::now_utc();
+
         #[allow(clippy::unwrap_used)]
         let timestamp = now.format(&Rfc3339).unwrap();
         let dest_file = format!("{}/backup-{}.json", outpath, timestamp);
@@ -244,7 +239,7 @@ impl QueryServerReadV1 {
         }
 
         // pattern to find automatically generated backup files
-        let re = Regex::new(r"^backup-\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z\.json$").map_err(
+        let re = Regex::new(r"^backup-\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,9})?Z\.json$").map_err(
             |error| {
                 error!(
                     "Failed to parse regexp for online backup files: {:?}",
