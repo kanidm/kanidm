@@ -45,10 +45,13 @@ jobs:
         run: cargo install wasm-pack
       - name: Build packages (kanidm-unixd)
         run: make -f platform/debian/Makefile debs/kanidm-unixd
+      - name: package_hash
+        run: |
+          echo "packagename=$(echo ${{ matrix.image }} | sha256sum | cut -d' ' -f1)" >> $GITHUB_OUTPUT
       - name: Upload debs
         uses: actions/upload-artifact@v4
         with:
-          name: replace("packages-${{ matrix.image }}", ":", "-")
+          name: ${{ steps.package_hash.outputs.packagename }}
           path: |
             target/*.deb
   upload-to-releases:
