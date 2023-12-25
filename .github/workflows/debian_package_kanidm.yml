@@ -67,7 +67,7 @@ jobs:
         uses: actions/download-artifact@v4
       - name: List packages
         run: |
-          ls
+          find $(pwd) -name '*.deb'
       - uses: "marvinpinto/action-automatic-releases@latest"
         with:
           repo_token: "${{ secrets.GITHUB_TOKEN }}"
