@@ -49,6 +49,9 @@ jobs:
         run: |
           echo "PACKAGENAME=$(echo ${{ matrix.image }} | sha256sum | cut -d' ' -f1)" >> $GITHUB_OUTPUT
           cat "${GITHUB_OUTPUT}"
+      - name: test
+        run: |
+          echo "${{ steps.package_hash.outputs.PACKAGENAME }}"
       - name: Upload debs
         uses: actions/upload-artifact@v4
         with:
