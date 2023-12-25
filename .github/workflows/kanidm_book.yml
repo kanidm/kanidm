@@ -125,10 +125,10 @@ jobs:
         env:
           ACTIONS_RUNNER_DEBUG: true
       - name: Upload pages artifacts
-        uses: actions/upload-pages-artifact@v2
+        uses: actions/upload-pages-artifact@v3
         with:
           # Upload entire repository
           path: 'docs/'
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v3
+        uses: actions/deploy-pages@v4
