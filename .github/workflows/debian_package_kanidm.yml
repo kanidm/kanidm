@@ -75,4 +75,4 @@ jobs:
           prerelease: true
           title: ".deb Packages"
           files: "*.deb"
-          if: ${{ github.ref == 'refs/heads/master' && github.repository == 'kanidm/kanidm' }}
+        if: ${{ github.ref == 'refs/heads/master' && github.repository == 'kanidm/kanidm' }}
