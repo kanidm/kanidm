@@ -47,12 +47,12 @@ jobs:
         run: make -f platform/debian/Makefile debs/kanidm-unixd
       - name: package_hash
         run: |
-          echo "packagename=$(echo ${{ matrix.image }} | sha256sum | cut -d' ' -f1)" >> $GITHUB_OUTPUT
+          echo "PACKAGENAME=$(echo ${{ matrix.image }} | sha256sum | cut -d' ' -f1)" >> $GITHUB_OUTPUT
           cat "${GITHUB_OUTPUT}"
       - name: Upload debs
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ steps.package_hash.outputs.packagename }}
+          name: ${{ steps.package_hash.outputs.PACKAGENAME }}
           path: |
             target/*.deb
   upload-to-releases:
