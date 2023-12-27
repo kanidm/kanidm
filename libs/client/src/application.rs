@@ -32,4 +32,12 @@ impl KanidmClient {
         self.perform_post_request(&format!("/v1/application/{}/_attr/member", id), m)
             .await
     }
+
+    pub async fn idm_application_get_members(
+        &self,
+        id: &str,
+    ) -> Result<Option<Vec<String>>, ClientError> {
+        self.perform_get_request(&format!("/v1/application/{}/_attr/member", id))
+            .await
+    }
 }

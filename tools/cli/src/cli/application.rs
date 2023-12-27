@@ -9,6 +9,7 @@ impl ApplicationOpt {
             ApplicationOpt::Create(nopt) => nopt.copt.debug,
             ApplicationOpt::Delete(nopt) => nopt.copt.debug,
             ApplicationOpt::AddMembers(gcopt) => gcopt.copt.debug,
+            ApplicationOpt::ListMembers(gcopt) => gcopt.copt.debug,
         }
     }
     pub async fn exec(&self) {
@@ -48,6 +49,17 @@ impl ApplicationOpt {
                         &new_members,
                         gcopt.name.as_str()
                     ),
+                }
+            }
+            ApplicationOpt::ListMembers(gcopt) => {
+                let client = gcopt.copt.to_client(OpType::Read).await;
+                match client
+                    .idm_application_get_members(gcopt.name.as_str())
+                    .await
+                {
+                    Ok(Some(members)) => members.iter().for_each(|m| println!("{:?}", m)),
+                    Ok(None) => warn!("No members in application {}", gcopt.name.as_str()),
+                    Err(e) => handle_client_error(e, gcopt.copt.output_mode),
                 }
             }
         }

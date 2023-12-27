@@ -686,6 +686,9 @@ pub enum ApplicationOpt {
     /// Add new members
     #[clap(name = "add-members")]
     AddMembers(GroupNamedMembers),
+    /// List the members
+    #[clap(name = "list-members")]
+    ListMembers(Named),
 }
 
 #[derive(Debug, Subcommand)]
