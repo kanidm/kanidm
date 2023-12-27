@@ -6,6 +6,7 @@ use super::v1::{
     json_rest_event_put_id_attr,
 };
 use super::ServerState;
+use crate::https::extractors::VerifiedClientInformation;
 use axum::extract::{Path, State};
 use axum::response::Html;
 use axum::routing::{get, post};
@@ -14,7 +15,6 @@ use axum_auth::AuthBearer;
 use kanidm_proto::scim_v1::{ScimSyncRequest, ScimSyncState};
 use kanidm_proto::v1::Entry as ProtoEntry;
 use kanidmd_lib::prelude::*;
-use crate::https::extractors::VerifiedClientInformation;
 
 #[utoipa::path(
     get,

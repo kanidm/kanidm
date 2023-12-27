@@ -5,6 +5,7 @@ use super::oauth2::oauth2_id;
 use super::v1::{json_rest_event_get, json_rest_event_post};
 use super::ServerState;
 
+use crate::https::extractors::VerifiedClientInformation;
 use axum::extract::{Path, State};
 use axum::{Extension, Json};
 use kanidm_proto::internal::{ImageType, ImageValue};
@@ -12,7 +13,6 @@ use kanidm_proto::v1::Entry as ProtoEntry;
 use kanidmd_lib::prelude::*;
 use kanidmd_lib::valueset::image::ImageValueThings;
 use sketching::admin_error;
-use crate::https::extractors::VerifiedClientInformation;
 
 #[utoipa::path(
     get,

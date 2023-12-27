@@ -1,13 +1,15 @@
 use axum::{
     async_trait,
-    extract::FromRequestParts,
     extract::connect_info::{ConnectInfo, Connected},
-    http::{header::HeaderName, header::AUTHORIZATION as AUTHORISATION, request::Parts, StatusCode},
+    extract::FromRequestParts,
+    http::{
+        header::HeaderName, header::AUTHORIZATION as AUTHORISATION, request::Parts, StatusCode,
+    },
     RequestPartsExt,
 };
 use hyper::server::conn::AddrStream;
 use kanidm_proto::constants::X_FORWARDED_FOR;
-use kanidmd_lib::prelude::{ClientCertInfo, ClientAuthInfo, Source};
+use kanidmd_lib::prelude::{ClientAuthInfo, ClientCertInfo, Source};
 
 use std::net::{IpAddr, SocketAddr};
 
@@ -27,21 +29,19 @@ impl FromRequestParts<ServerState> for TrustedClientIp {
         parts: &mut Parts,
         state: &ServerState,
     ) -> Result<Self, Self::Rejection> {
-
         let ConnectInfo(ClientConnInfo {
             addr,
-            client_cert: _
+            client_cert: _,
         }) = parts
-                .extract::<ConnectInfo<ClientConnInfo>>()
-                .await
-                .map_err(|_| {
-                    error!("Connect info contains invalid data");
-                    (
-                        StatusCode::BAD_REQUEST,
-                        "connect info contains invalid data",
-                    )
-                })?;
-
+            .extract::<ConnectInfo<ClientConnInfo>>()
+            .await
+            .map_err(|_| {
+                error!("Connect info contains invalid data");
+                (
+                    StatusCode::BAD_REQUEST,
+                    "connect info contains invalid data",
+                )
+            })?;
 
         let ip_addr = if state.trust_x_forward_for {
             if let Some(x_forward_for) = parts.headers.get(X_FORWARDED_FOR_HEADER) {
@@ -58,13 +58,12 @@ impl FromRequestParts<ServerState> for TrustedClientIp {
                         )
                     })?;
 
-                first.parse::<IpAddr>()
-                    .map_err(|_| {
-                        (
-                            StatusCode::BAD_REQUEST,
-                            "X-Forwarded-For contains invalid ip addr",
-                        )
-                    })?
+                first.parse::<IpAddr>().map_err(|_| {
+                    (
+                        StatusCode::BAD_REQUEST,
+                        "X-Forwarded-For contains invalid ip addr",
+                    )
+                })?
             } else {
                 addr.ip()
             }
@@ -76,9 +75,7 @@ impl FromRequestParts<ServerState> for TrustedClientIp {
     }
 }
 
-pub struct VerifiedClientInformation (
-    pub ClientAuthInfo,
-);
+pub struct VerifiedClientInformation(pub ClientAuthInfo);
 
 #[async_trait]
 impl FromRequestParts<ServerState> for VerifiedClientInformation {
@@ -89,21 +86,16 @@ impl FromRequestParts<ServerState> for VerifiedClientInformation {
         parts: &mut Parts,
         state: &ServerState,
     ) -> Result<Self, Self::Rejection> {
-
-        let ConnectInfo(ClientConnInfo {
-            addr,
-            client_cert
-        }) = parts
-                .extract::<ConnectInfo<ClientConnInfo>>()
-                .await
-                .map_err(|_| {
-                    error!("Connect info contains invalid data");
-                    (
-                        StatusCode::BAD_REQUEST,
-                        "connect info contains invalid data",
-                    )
-                })?;
-
+        let ConnectInfo(ClientConnInfo { addr, client_cert }) = parts
+            .extract::<ConnectInfo<ClientConnInfo>>()
+            .await
+            .map_err(|_| {
+                error!("Connect info contains invalid data");
+                (
+                    StatusCode::BAD_REQUEST,
+                    "connect info contains invalid data",
+                )
+            })?;
 
         let ip_addr = if state.trust_x_forward_for {
             if let Some(x_forward_for) = parts.headers.get(X_FORWARDED_FOR_HEADER) {
@@ -120,13 +112,12 @@ impl FromRequestParts<ServerState> for VerifiedClientInformation {
                         )
                     })?;
 
-                first.parse::<IpAddr>()
-                    .map_err(|_| {
-                        (
-                            StatusCode::BAD_REQUEST,
-                            "X-Forwarded-For contains invalid ip addr",
-                        )
-                    })?
+                first.parse::<IpAddr>().map_err(|_| {
+                    (
+                        StatusCode::BAD_REQUEST,
+                        "X-Forwarded-For contains invalid ip addr",
+                    )
+                })?
             } else {
                 addr.ip()
             }
@@ -134,26 +125,28 @@ impl FromRequestParts<ServerState> for VerifiedClientInformation {
             addr.ip()
         };
 
-        let bearer_token = if let Some(header) = parts.headers.get(
-            AUTHORISATION
-        ) {
-            header.to_str()
-                .map(|s| s.to_string())
+        let bearer_token = if let Some(header) = parts.headers.get(AUTHORISATION) {
+            header
+                .to_str()
                 .map_err(|err| {
-                    warn!("Invalid bearer token, ignoring");
+                    warn!(?err, "Invalid bearer token, ignoring");
                 })
                 .ok()
+                .and_then(|s| s.split_once(" "))
+                .map(|(_, s)| s.to_string())
+                .or_else(|| {
+                    warn!("bearer token format invalid, ignoring");
+                    None
+                })
         } else {
             None
         };
 
-        Ok(VerifiedClientInformation(
-            ClientAuthInfo {
-                source: Source::Https(ip_addr),
-                bearer_token,
-                client_cert,
-            }
-        ))
+        Ok(VerifiedClientInformation(ClientAuthInfo {
+            source: Source::Https(ip_addr),
+            bearer_token,
+            client_cert,
+        }))
     }
 }
 
@@ -178,4 +171,3 @@ impl<'a> Connected<&'a AddrStream> for ClientConnInfo {
         }
     }
 }
-

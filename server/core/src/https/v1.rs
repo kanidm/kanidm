@@ -2303,7 +2303,15 @@ pub async fn domain_attr_get(
     Path(attr): Path<String>,
 ) -> Result<Json<Option<Vec<String>>>, WebError> {
     let filter = filter_all!(f_eq(Attribute::Class, EntryClass::DomainInfo.into()));
-    json_rest_event_get_attr(state, STR_UUID_DOMAIN_INFO, attr, filter, kopid, client_auth_info).await
+    json_rest_event_get_attr(
+        state,
+        STR_UUID_DOMAIN_INFO,
+        attr,
+        filter,
+        kopid,
+        client_auth_info,
+    )
+    .await
 }
 
 #[utoipa::path(
@@ -2405,7 +2413,15 @@ pub async fn system_attr_get(
     VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
 ) -> Result<Json<Option<Vec<String>>>, WebError> {
     let filter = filter_all!(f_eq(Attribute::Class, EntryClass::SystemConfig.into()));
-    json_rest_event_get_attr(state, STR_UUID_SYSTEM_CONFIG, attr, filter, kopid, client_auth_info).await
+    json_rest_event_get_attr(
+        state,
+        STR_UUID_SYSTEM_CONFIG,
+        attr,
+        filter,
+        kopid,
+        client_auth_info,
+    )
+    .await
 }
 
 #[utoipa::path(

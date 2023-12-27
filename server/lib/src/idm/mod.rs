@@ -58,6 +58,17 @@ pub struct ClientCertInfo {
 }
 
 #[cfg(test)]
+impl From<Source> for ClientAuthInfo {
+    fn from(value: Source) -> ClientAuthInfo {
+        ClientAuthInfo {
+            source: value,
+            client_cert: None,
+            bearer_token: None,
+        }
+    }
+}
+
+#[cfg(test)]
 impl From<&str> for ClientAuthInfo {
     fn from(value: &str) -> ClientAuthInfo {
         ClientAuthInfo {

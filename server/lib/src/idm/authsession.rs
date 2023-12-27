@@ -889,7 +889,7 @@ pub(crate) struct AuthSessionData<'a> {
     pub(crate) issue: AuthIssueSession,
     pub(crate) webauthn: &'a Webauthn,
     pub(crate) ct: Duration,
-    pub(crate) source: Source,
+    pub(crate) client_auth_info: ClientAuthInfo,
 }
 
 #[derive(Clone)]
@@ -1008,7 +1008,7 @@ impl AuthSession {
                 state,
                 issue: asd.issue,
                 intent: AuthIntent::InitialAuth { privileged },
-                source: asd.source,
+                source: asd.client_auth_info.source,
             };
             // Get the set of mechanisms that can proceed. This is tied
             // to the session so that it can mutate state and have progression
@@ -1149,7 +1149,7 @@ impl AuthSession {
                         session_id,
                         session_expiry,
                     },
-                    source: asd.source,
+                    source: asd.client_auth_info.source,
                 };
 
                 let as_state = AuthState::Continue(allow);
@@ -1548,7 +1548,7 @@ mod tests {
             issue: AuthIssueSession::Token,
             webauthn: &webauthn,
             ct: duration_from_epoch_now(),
-            source: Source::Internal,
+            client_auth_info: Source::Internal.into(),
         };
         let (session, state) = AuthSession::new(asd, false);
         if let AuthState::Choose(auth_mechs) = state {
@@ -1584,7 +1584,7 @@ mod tests {
                 issue: AuthIssueSession::Token,
                 webauthn: $webauthn,
                 ct: duration_from_epoch_now(),
-                source: Source::Internal,
+                client_auth_info: Source::Internal.into(),
             };
             let (session, state) = AuthSession::new(asd, $privileged);
             let mut session = session.unwrap();
@@ -1771,7 +1771,7 @@ mod tests {
                 issue: AuthIssueSession::Token,
                 webauthn: $webauthn,
                 ct: duration_from_epoch_now(),
-                source: Source::Internal,
+                client_auth_info: Source::Internal.into(),
             };
             let (session, state) = AuthSession::new(asd, false);
             let mut session = session.expect("Session was unable to be created.");
@@ -2099,7 +2099,7 @@ mod tests {
                 issue: AuthIssueSession::Token,
                 webauthn: $webauthn,
                 ct: duration_from_epoch_now(),
-                source: Source::Internal,
+                client_auth_info: Source::Internal.into(),
             };
             let (session, state) = AuthSession::new(asd, false);
             let mut session = session.unwrap();

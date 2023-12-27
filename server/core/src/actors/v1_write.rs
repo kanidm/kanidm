@@ -1191,11 +1191,11 @@ impl QueryServerWriteV1 {
         let ct = duration_from_epoch_now();
 
         let ident = idms_prox_write
-                .validate_client_auth_info_to_ident(client_auth_info, ct)
-                .map_err(|e| {
-                    admin_error!(err = ?e, "Invalid identity in handle_oauth2_rs_image_delete");
-                    e
-                })?;
+            .validate_client_auth_info_to_ident(client_auth_info, ct)
+            .map_err(|e| {
+                admin_error!(err = ?e, "Invalid identity in handle_oauth2_rs_image_delete");
+                e
+            })?;
         let ml = ModifyList::new_purge(Attribute::Image);
         let mdf = match ModifyEvent::from_internal_parts(ident, &ml, &rs, &idms_prox_write.qs_write)
         {

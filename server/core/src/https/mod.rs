@@ -14,8 +14,8 @@ mod v1;
 mod v1_oauth2;
 mod v1_scim;
 
-use self::javascript::*;
 use self::extractors::ClientConnInfo;
+use self::javascript::*;
 use crate::actors::v1_read::QueryServerReadV1;
 use crate::actors::v1_write::QueryServerWriteV1;
 use crate::config::{Configuration, ServerRole, TlsConfiguration};
@@ -32,8 +32,8 @@ use hashbrown::HashMap;
 use hyper::server::accept::Accept;
 use hyper::server::conn::{AddrStream, Http};
 use kanidm_proto::constants::KSESSIONID;
-use kanidmd_lib::status::StatusActor;
 use kanidmd_lib::idm::ClientCertInfo;
+use kanidmd_lib::status::StatusActor;
 use openssl::nid;
 use openssl::ssl::{Ssl, SslAcceptor, SslFiletype, SslMethod, SslVerifyMode};
 use openssl::x509::X509;
@@ -458,9 +458,7 @@ async fn server_loop(
         // Allow dumping client cert chains for dev debugging
         // In the case this is status=false, should we be dumping these anyway?
         if enabled!(tracing::Level::TRACE) {
-            tls_builder.set_verify_callback(verify, |
-                status, x509store
-            | {
+            tls_builder.set_verify_callback(verify, |status, x509store| {
                 if let Some(current_cert) = x509store.current_cert() {
                     let cert_text_bytes = current_cert.to_text().unwrap_or_default();
                     let cert_text = String::from_utf8_lossy(cert_text_bytes.as_slice());
@@ -536,7 +534,11 @@ pub(crate) async fn handle_conn(
                     None
                 };
 
-                let cn = if let Some(cn) = peer_cert.subject_name().entries_by_nid(nid::Nid::COMMONNAME).next() {
+                let cn = if let Some(cn) = peer_cert
+                    .subject_name()
+                    .entries_by_nid(nid::Nid::COMMONNAME)
+                    .next()
+                {
                     String::from_utf8(cn.data().as_slice().to_vec())
                         .map_err(|err| {
                             warn!(?err, "client certificate CN contains invalid utf-8 - the CN will be ignored!");
@@ -546,18 +548,12 @@ pub(crate) async fn handle_conn(
                     None
                 };
 
-                Some(ClientCertInfo {
-                    subject_key_id,
-                    cn
-                })
+                Some(ClientCertInfo { subject_key_id, cn })
             } else {
                 None
             };
 
-            let client_conn_info = ClientConnInfo {
-                addr,
-                client_cert
-            };
+            let client_conn_info = ClientConnInfo { addr, client_cert };
 
             debug!(?client_conn_info);
 

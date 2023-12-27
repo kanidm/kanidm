@@ -421,7 +421,8 @@ pub trait IdmServerTransaction<'a> {
         match (client_cert, bearer_token) {
             (Some(_client_cert_info), _) => {
                 // Cert validation here.
-                todo!();
+                warn!("Unable to process client certificate identity");
+                Err(OperationError::NotAuthenticated)
             }
             (None, Some(token)) => match self.validate_and_parse_token_to_token(&token, ct)? {
                 Token::UserAuthToken(uat) => self.process_uat_to_identity(&uat, ct, source),
@@ -437,15 +438,32 @@ pub trait IdmServerTransaction<'a> {
     }
 
     #[instrument(level = "info", skip_all)]
-    fn validate_and_parse_token_to_uat(
+    fn validate_client_auth_info_to_uat(
         &mut self,
-        token: &str,
+        client_auth_info: ClientAuthInfo,
         ct: Duration,
     ) -> Result<UserAuthToken, OperationError> {
-        match self.validate_and_parse_token_to_token(token, ct)? {
-            Token::UserAuthToken(uat) => Ok(uat),
-            Token::ApiToken(_apit, _entry) => {
-                warn!("Unable to process non user auth token");
+        let ClientAuthInfo {
+            client_cert,
+            bearer_token,
+            source: _,
+        } = client_auth_info;
+
+        match (client_cert, bearer_token) {
+            (Some(_client_cert_info), _) => {
+                // Cert validation here.
+                warn!("Unable to process client certificate identity");
+                Err(OperationError::NotAuthenticated)
+            }
+            (None, Some(token)) => match self.validate_and_parse_token_to_token(&token, ct)? {
+                Token::UserAuthToken(uat) => Ok(uat),
+                Token::ApiToken(_apit, _entry) => {
+                    warn!("Unable to process non user auth token");
+                    Err(OperationError::NotAuthenticated)
+                }
+            },
+            (None, None) => {
+                warn!("No client certificate or bearer tokens were supplied");
                 Err(OperationError::NotAuthenticated)
             }
         }
@@ -990,7 +1008,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
         &mut self,
         ae: &AuthEvent,
         ct: Duration,
-        source: Source,
+        client_auth_info: ClientAuthInfo,
     ) -> Result<AuthResult, OperationError> {
         // Match on the auth event, to see what we need to do.
         match &ae.step {
@@ -1072,7 +1090,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
                     issue: init.issue,
                     webauthn: self.webauthn,
                     ct,
-                    source,
+                    client_auth_info,
                 };
 
                 let (auth_session, state) = AuthSession::new(asd, init.privileged);
@@ -2164,7 +2182,7 @@ mod tests {
             .auth(
                 &anon_init,
                 Duration::from_secs(TEST_CURRENT_TIME),
-                Source::Internal,
+                Source::Internal.into(),
             )
             .await;
         /* Some weird lifetime things happen here ... */
@@ -2206,7 +2224,7 @@ mod tests {
             .auth(
                 &anon_begin,
                 Duration::from_secs(TEST_CURRENT_TIME),
-                Source::Internal,
+                Source::Internal.into(),
             )
             .await;
         debug!("r2 ==> {:?}", r2);
@@ -2248,7 +2266,7 @@ mod tests {
             .auth(
                 &anon_step,
                 Duration::from_secs(TEST_CURRENT_TIME),
-                Source::Internal,
+                Source::Internal.into(),
             )
             .await;
         debug!("r2 ==> {:?}", r2);
@@ -2296,7 +2314,7 @@ mod tests {
                 .auth(
                     &anon_step,
                     Duration::from_secs(TEST_CURRENT_TIME),
-                    Source::Internal,
+                    Source::Internal.into(),
                 )
                 .await;
             debug!("r2 ==> {:?}", r2);
@@ -2339,7 +2357,9 @@ mod tests {
         let mut idms_auth = idms.auth().await;
         let admin_init = AuthEvent::named_init(name);
 
-        let r1 = idms_auth.auth(&admin_init, ct, Source::Internal).await;
+        let r1 = idms_auth
+            .auth(&admin_init, ct, Source::Internal.into())
+            .await;
         let ar = r1.unwrap();
         let AuthResult { sessionid, state } = ar;
 
@@ -2348,7 +2368,9 @@ mod tests {
         // Now push that we want the Password Mech.
         let admin_begin = AuthEvent::begin_mech(sessionid, AuthMech::Password);
 
-        let r2 = idms_auth.auth(&admin_begin, ct, Source::Internal).await;
+        let r2 = idms_auth
+            .auth(&admin_begin, ct, Source::Internal.into())
+            .await;
         let ar = r2.unwrap();
         let AuthResult { sessionid, state } = ar;
 
@@ -2377,7 +2399,7 @@ mod tests {
             .auth(
                 &anon_step,
                 Duration::from_secs(TEST_CURRENT_TIME),
-                Source::Internal,
+                Source::Internal.into(),
             )
             .await;
         debug!("r2 ==> {:?}", r2);
@@ -2449,7 +2471,7 @@ mod tests {
             .auth(
                 &anon_step,
                 Duration::from_secs(TEST_CURRENT_TIME),
-                Source::Internal,
+                Source::Internal.into(),
             )
             .await;
         debug!("r2 ==> {:?}", r2);
@@ -2504,7 +2526,7 @@ mod tests {
             .auth(
                 &anon_step,
                 Duration::from_secs(TEST_CURRENT_TIME),
-                Source::Internal,
+                Source::Internal.into(),
             )
             .await;
         debug!("r2 ==> {:?}", r2);
@@ -2927,7 +2949,7 @@ mod tests {
         let mut idms_auth = idms.auth().await;
         let admin_init = AuthEvent::named_init("admin");
         let r1 = idms_auth
-            .auth(&admin_init, time_low, Source::Internal)
+            .auth(&admin_init, time_low, Source::Internal.into())
             .await;
 
         let ar = r1.unwrap();
@@ -2949,7 +2971,7 @@ mod tests {
         let mut idms_auth = idms.auth().await;
         let admin_init = AuthEvent::named_init("admin");
         let r1 = idms_auth
-            .auth(&admin_init, time_high, Source::Internal)
+            .auth(&admin_init, time_high, Source::Internal.into())
             .await;
 
         let ar = r1.unwrap();
@@ -3102,7 +3124,7 @@ mod tests {
             .auth(
                 &anon_step,
                 Duration::from_secs(TEST_CURRENT_TIME),
-                Source::Internal,
+                Source::Internal.into(),
             )
             .await;
         debug!("r2 ==> {:?}", r2);
@@ -3147,7 +3169,7 @@ mod tests {
             .auth(
                 &admin_init,
                 Duration::from_secs(TEST_CURRENT_TIME),
-                Source::Internal,
+                Source::Internal.into(),
             )
             .await;
         let ar = r1.unwrap();
@@ -3161,7 +3183,7 @@ mod tests {
             .auth(
                 &admin_begin,
                 Duration::from_secs(TEST_CURRENT_TIME),
-                Source::Internal,
+                Source::Internal.into(),
             )
             .await;
         let ar = r2.unwrap();
@@ -3198,7 +3220,7 @@ mod tests {
             .auth(
                 &anon_step,
                 Duration::from_secs(TEST_CURRENT_TIME + 2),
-                Source::Internal,
+                Source::Internal.into(),
             )
             .await;
         debug!("r2 ==> {:?}", r2);
@@ -3266,7 +3288,7 @@ mod tests {
             .auth(
                 &anon_step,
                 Duration::from_secs(TEST_CURRENT_TIME),
-                Source::Internal,
+                Source::Internal.into(),
             )
             .await;
         debug!("r2 ==> {:?}", r2);
@@ -3309,7 +3331,7 @@ mod tests {
             .auth(
                 &anon_step,
                 Duration::from_secs(TEST_CURRENT_TIME),
-                Source::Internal,
+                Source::Internal.into(),
             )
             .await;
         debug!("r2 ==> {:?}", r2);
@@ -3644,7 +3666,9 @@ mod tests {
         // Send the initial auth event for initialising the session
         let anon_init = AuthEvent::anonymous_init();
         // Expect success
-        let r1 = idms_auth.auth(&anon_init, ct, Source::Internal).await;
+        let r1 = idms_auth
+            .auth(&anon_init, ct, Source::Internal.into())
+            .await;
         /* Some weird lifetime things happen here ... */
 
         let sid = match r1 {
@@ -3678,7 +3702,9 @@ mod tests {
         let mut idms_auth = idms.auth().await;
         let anon_begin = AuthEvent::begin_mech(sid, AuthMech::Anonymous);
 
-        let r2 = idms_auth.auth(&anon_begin, ct, Source::Internal).await;
+        let r2 = idms_auth
+            .auth(&anon_begin, ct, Source::Internal.into())
+            .await;
 
         match r2 {
             Ok(ar) => {
@@ -3713,7 +3739,9 @@ mod tests {
         let anon_step = AuthEvent::cred_step_anonymous(sid);
 
         // Expect success
-        let r2 = idms_auth.auth(&anon_step, ct, Source::Internal).await;
+        let r2 = idms_auth
+            .auth(&anon_step, ct, Source::Internal.into())
+            .await;
 
         let token = match r2 {
             Ok(ar) => {

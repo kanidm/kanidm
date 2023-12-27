@@ -1,8 +1,8 @@
 use std::convert::TryFrom;
 use std::fs;
+use std::net::IpAddr;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use std::net::IpAddr;
 
 use kanidm_proto::internal::{AppLink, IdentifyUserRequest, IdentifyUserResponse, ImageValue};
 use kanidm_proto::v1::{
@@ -23,7 +23,6 @@ use kanidmd_lib::prelude::*;
 use kanidmd_lib::{
     event::{OnlineBackupEvent, SearchEvent, SearchResult, WhoamiResult},
     filter::{Filter, FilterInvalid},
-    idm::ClientAuthInfo,
     idm::account::ListUserAuthTokenEvent,
     idm::credupdatesession::CredentialUpdateSessionToken,
     idm::event::{
@@ -37,6 +36,7 @@ use kanidmd_lib::{
     },
     idm::server::{IdmServer, IdmServerTransaction},
     idm::serviceaccount::ListApiTokenEvent,
+    idm::ClientAuthInfo,
 };
 
 // ===========================================================
@@ -167,7 +167,7 @@ impl QueryServerReadV1 {
         security_info!("Begin reauth event");
 
         let ident = idm_auth
-            .validate_client_auth_info_to_ident(client_auth_info, ct)
+            .validate_client_auth_info_to_ident(client_auth_info.clone(), ct)
             .map_err(|e| {
                 admin_error!(?e, "Invalid identity");
                 e
@@ -386,7 +386,7 @@ impl QueryServerReadV1 {
         // then move this to core.rs, and don't allow Option<UAT> to get
         // this far.
         idms_prox_read
-            .validate_and_parse_token_to_uat(client_auth_info, ct)
+            .validate_client_auth_info_to_uat(client_auth_info, ct)
             .map_err(|e| {
                 admin_error!(?e, "Invalid identity");
                 e
@@ -404,11 +404,11 @@ impl QueryServerReadV1 {
         let ct = duration_from_epoch_now();
 
         let ident = idms_prox_read
-                .validate_client_auth_info_to_ident(client_auth_info, ct)
-                .map_err(|e| {
-                    admin_error!(err = ?e, "Invalid identity in handle_oauth2_rs_image_get_image");
-                    e
-                })?;
+            .validate_client_auth_info_to_ident(client_auth_info, ct)
+            .map_err(|e| {
+                admin_error!(err = ?e, "Invalid identity in handle_oauth2_rs_image_get_image");
+                e
+            })?;
         let attrs = vec![Attribute::Image.to_string()];
 
         let search = SearchEvent::from_internal_message(

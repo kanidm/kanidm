@@ -1,6 +1,7 @@
 use super::errors::WebError;
 use super::middleware::KOpId;
 use super::ServerState;
+use crate::https::extractors::VerifiedClientInformation;
 use axum::extract::{Path, Query, State};
 use axum::http::header::{
     ACCESS_CONTROL_ALLOW_HEADERS, ACCESS_CONTROL_ALLOW_ORIGIN, AUTHORIZATION, CONTENT_TYPE,
@@ -27,7 +28,6 @@ use kanidmd_lib::prelude::f_eq;
 use kanidmd_lib::prelude::*;
 use kanidmd_lib::value::PartialValue;
 use serde::{Deserialize, Serialize};
-use crate::https::extractors::VerifiedClientInformation;
 
 // TODO: merge this into a value in WebError later
 pub struct HTTPOauth2Error(Oauth2Error);
@@ -215,7 +215,7 @@ async fn oauth2_authorise(
     state: ServerState,
     auth_req: AuthorisationRequest,
     kopid: KOpId,
-    client_auth_info: ClientAuthInfo
+    client_auth_info: ClientAuthInfo,
 ) -> impl IntoResponse {
     let res: Result<AuthoriseResponse, Oauth2Error> = state
         .qe_r_ref
@@ -357,7 +357,7 @@ async fn oauth2_authorise_permit(
     state: ServerState,
     consent_req: String,
     kopid: KOpId,
-    client_auth_info: ClientAuthInfo
+    client_auth_info: ClientAuthInfo,
 ) -> impl IntoResponse {
     let res = state
         .qe_w_ref
