@@ -18,12 +18,14 @@ jobs:
     strategy:
       matrix:
         image:
-          - ubuntu:22.04
-          - debian:12
+          - name: ubuntu
+            version: 22.04
+          - name: debian
+            version: 12
       fail-fast: false
     runs-on: ubuntu-latest
     container:
-      image: ${{ matrix.image }}
+      image: "${{ matrix.image.name }}:${{ matrix.image.version }}"
       env:
         DEBIAN_FRONTEND: noninteractive
     steps:
@@ -45,10 +47,11 @@ jobs:
         run: cargo install wasm-pack
       - name: Build packages (kanidm-unixd)
         run: make -f platform/debian/Makefile debs/kanidm-unixd
+
       - name: Upload debs
         uses: actions/upload-artifact@v4
         with:
-          name: ubuntu-packages
+          name: "${{ matrix.image.name }}${{ matrix.image.version }}"
           path: |
             target/*.deb
   upload-to-releases:
@@ -59,15 +62,12 @@ jobs:
     name: Upload to releases
     needs: build-deb-package
     runs-on: ubuntu-latest
-    if: ${{ github.ref == 'refs/heads/master' && github.repository == 'kanidm/kanidm' }}
     steps:
       - name: Download previously built debs
         uses: actions/download-artifact@v4
-        with:
-          name: ubuntu-packages
       - name: List packages
         run: |
-          ls
+          find $(pwd) -name '*.deb'
       - uses: "marvinpinto/action-automatic-releases@latest"
         with:
           repo_token: "${{ secrets.GITHUB_TOKEN }}"
@@ -75,3 +75,4 @@ jobs:
           prerelease: true
           title: ".deb Packages"
           files: "*.deb"
+        if: ${{ github.ref == 'refs/heads/master' && github.repository == 'kanidm/kanidm' }}
