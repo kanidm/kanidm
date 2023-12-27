@@ -21,6 +21,7 @@ pub mod scim;
 pub mod server;
 pub mod serviceaccount;
 pub(crate) mod unix;
+pub(crate) mod application;
 
 use crate::server::identity::Source;
 use kanidm_proto::v1::{AuthAllowed, AuthIssueSession, AuthMech};
