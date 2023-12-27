@@ -132,7 +132,7 @@ impl FromRequestParts<ServerState> for VerifiedClientInformation {
                     warn!(?err, "Invalid bearer token, ignoring");
                 })
                 .ok()
-                .and_then(|s| s.split_once(" "))
+                .and_then(|s| s.split_once(' '))
                 .map(|(_, s)| s.to_string())
                 .or_else(|| {
                     warn!("bearer token format invalid, ignoring");

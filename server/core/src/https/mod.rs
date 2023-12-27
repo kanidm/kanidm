@@ -528,11 +528,9 @@ pub(crate) async fn handle_conn(
             let client_cert = if let Some(peer_cert) = tls_stream.ssl().peer_certificate() {
                 // TODO: This is where we should be checking the CRL!!!
 
-                let subject_key_id = if let Some(ski) = peer_cert.subject_key_id() {
-                    Some(ski.as_slice().to_vec())
-                } else {
-                    None
-                };
+                let subject_key_id = peer_cert
+                    .subject_key_id()
+                    .map(|ski| ski.as_slice().to_vec());
 
                 let cn = if let Some(cn) = peer_cert
                     .subject_name()
