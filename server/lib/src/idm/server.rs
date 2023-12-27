@@ -29,7 +29,6 @@ use super::event::ReadBackupCodeEvent;
 use super::ldap::{LdapBoundToken, LdapSession};
 use crate::credential::{softlock::CredSoftLock, Credential};
 use crate::idm::account::Account;
-use crate::idm::application::Application;
 use crate::idm::audit::AuditEvent;
 use crate::idm::authsession::{AuthSession, AuthSessionData};
 use crate::idm::credupdatesession::CredentialUpdateSessionMutex;
@@ -1483,17 +1482,6 @@ impl<'a> IdmServerAuthTransaction<'a> {
         if lae.target == UUID_ANONYMOUS {
             return Err(OperationError::InvalidUuid);
         }
-
-        let app_entry = self.qs_read.internal_search_uuid(lae.target).map_err(|e| {
-            admin_error!(
-                "Failed to search application by uuid {:?} -> {:?}",
-                lae.target,
-                e
-            );
-            e
-        })?;
-
-        let _app = Application::try_from_entry_ro(app_entry.as_ref(), &mut self.qs_read)?;
 
         security_info!("Account does not have a configured application password.");
         Ok(None)
