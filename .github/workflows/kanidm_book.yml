@@ -82,8 +82,6 @@ jobs:
       - fanout
       - docs_master
     runs-on: ubuntu-latest
-    # yamllint disable-line rule:line-length
-    if: ${{ github.ref == 'refs/heads/master' && github.repository == 'kanidm/kanidm' }}
     steps:
       - name: Setup Pages
         uses: actions/configure-pages@v4
@@ -100,7 +98,7 @@ jobs:
       - name: Download individual artifact
         uses: actions/download-artifact@v4
         with:
-          name: individual
+          name: ${{ needs.pre_deploy.outputs.latest}}
           path: ./docs/
         env:
           ACTIONS_RUNNER_DEBUG: true
@@ -132,3 +130,5 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+        # yamllint disable-line rule:line-length
+        if: ${{ github.ref == 'refs/heads/master' && github.repository == 'kanidm/kanidm' }}
