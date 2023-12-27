@@ -683,6 +683,9 @@ pub enum ApplicationOpt {
     /// Delete an application
     #[clap(name = "delete")]
     Delete(Named),
+    /// Add new members
+    #[clap(name = "add-members")]
+    AddMembers(GroupNamedMembers),
 }
 
 #[derive(Debug, Subcommand)]

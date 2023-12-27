@@ -8,6 +8,7 @@ impl ApplicationOpt {
             ApplicationOpt::List(copt) => copt.debug,
             ApplicationOpt::Create(nopt) => nopt.copt.debug,
             ApplicationOpt::Delete(nopt) => nopt.copt.debug,
+            ApplicationOpt::AddMembers(gcopt) => gcopt.copt.debug,
         }
     }
     pub async fn exec(&self) {
@@ -31,6 +32,22 @@ impl ApplicationOpt {
                 match client.idm_application_delete(nopt.name.as_str()).await {
                     Ok(_) => println!("Application {} successfully deleted.", &nopt.name),
                     Err(e) => handle_client_error(e, nopt.copt.output_mode),
+                }
+            }
+            ApplicationOpt::AddMembers(gcopt) => {
+                let client = gcopt.copt.to_client(OpType::Write).await;
+                let new_members: Vec<&str> = gcopt.members.iter().map(String::as_str).collect();
+
+                match client
+                    .idm_application_add_members(gcopt.name.as_str(), &new_members)
+                    .await
+                {
+                    Err(e) => handle_client_error(e, gcopt.copt.output_mode),
+                    Ok(_) => println!(
+                        "Successfully added {:?} to application \"{}\"",
+                        &new_members,
+                        gcopt.name.as_str()
+                    ),
                 }
             }
         }

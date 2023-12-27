@@ -22,4 +22,14 @@ impl KanidmClient {
         self.perform_delete_request(["/v1/application/", name].concat().as_str())
             .await
     }
+
+    pub async fn idm_application_add_members(
+        &self,
+        id: &str,
+        members: &[&str],
+    ) -> Result<(), ClientError> {
+        let m: Vec<_> = members.iter().map(|v| (*v).to_string()).collect();
+        self.perform_post_request(&format!("/v1/application/{}/_attr/member", id), m)
+            .await
+    }
 }

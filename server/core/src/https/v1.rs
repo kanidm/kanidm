@@ -1297,6 +1297,27 @@ pub async fn application_id_delete(
 }
 
 #[utoipa::path(
+    post,
+    path = "/v1/application/{id}/_attr/{attr}",
+    request_body=Vec<String>,
+    responses(
+        DefaultApiResponse,
+    ),
+    security(("token_jwt" = [])),
+    tag = "v1/application/attr",
+)]
+pub async fn application_id_attr_post(
+    Path((id, attr)): Path<(String, String)>,
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+    Json(values): Json<Vec<String>>,
+) -> Result<Json<()>, WebError> {
+    let filter = filter_all!(f_eq(Attribute::Class, EntryClass::Application.into()));
+    json_rest_event_post_id_attr(state, id, attr, filter, values, kopid, client_auth_info).await
+}
+
+#[utoipa::path(
     get,
     path = "/v1/credential/_exchange_intent",
     params(
@@ -3118,6 +3139,10 @@ pub(crate) fn route_setup(state: ServerState) -> Router<ServerState> {
         .route(
             "/v1/application/:id",
             get(application_id_get).delete(application_id_delete),
+        )
+        .route(
+            "/v1/application/:id/_attr/:attr",
+            post(application_id_attr_post),
         )
         .route(
             "/v1/account/:id/_unix/_auth",
