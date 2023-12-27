@@ -47,7 +47,7 @@ jobs:
         run: cargo install wasm-pack
       - name: Build packages (kanidm-unixd)
         run: make -f platform/debian/Makefile debs/kanidm-unixd
-      - name: Build packages (kanidm cli)
+      - name: Build packages (kanidm)
         run: make -f platform/debian/Makefile debs/kanidm
 
       - name: Upload debs
