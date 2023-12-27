@@ -235,15 +235,14 @@ impl QueryServerReadV1 {
         }
 
         // pattern to find automatically generated backup files
-        let re = Regex::new(r"^backup-\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,9})?Z\.json$").map_err(
-            |error| {
+        let re = Regex::new(r"^backup-\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,9})?Z\.json$")
+            .map_err(|error| {
                 error!(
                     "Failed to parse regexp for online backup files: {:?}",
                     error
                 );
                 OperationError::InvalidState
-            },
-        )?;
+            })?;
 
         // cleanup of maximum backup versions to keep
         let mut backup_file_list: Vec<PathBuf> = Vec::new();

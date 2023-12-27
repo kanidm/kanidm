@@ -35,7 +35,7 @@ use kanidm_proto::constants::KSESSIONID;
 use kanidmd_lib::idm::ClientCertInfo;
 use kanidmd_lib::status::StatusActor;
 use openssl::nid;
-use openssl::ssl::{Ssl, SslAcceptor, SslFiletype, SslMethod, SslVerifyMode};
+use openssl::ssl::{Ssl, SslAcceptor, SslFiletype, SslMethod, SslSessionCacheMode, SslVerifyMode};
 use openssl::x509::X509;
 use sketching::*;
 use tokio_openssl::SslStream;
@@ -403,6 +403,19 @@ async fn server_loop(
         // In future we may add a "require mTLS option" which would necesitate this.
         // verify.insert(SslVerifyMode::FAIL_IF_NO_PEER_CERT);
         tls_builder.set_verify(verify);
+
+        // When client certs are available, we disable the TLS session cache.
+        // This is so that when the smartcard is *removed* on the client, it forces
+        // the client session to immediately expire.
+        //
+        // https://stackoverflow.com/questions/12393711/session-disconnect-the-client-after-smart-card-is-removed
+        //
+        // Alternately, on logout we need to trigger https://docs.rs/openssl/latest/openssl/ssl/struct.Ssl.html#method.set_ssl_context
+        // with https://docs.rs/openssl/latest/openssl/ssl/struct.Ssl.html#method.ssl_context +
+        // https://docs.rs/openssl/latest/openssl/ssl/struct.SslContextRef.html#method.remove_session
+        //
+        // Or we lower session time outs etc.
+        tls_builder.set_session_cache_mode(SslSessionCacheMode::OFF);
 
         let read_dir = fs::read_dir(client_ca).map_err(|err| {
             std::io::Error::new(
