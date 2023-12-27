@@ -1483,6 +1483,42 @@ impl<'a> IdmServerAuthTransaction<'a> {
             return Err(OperationError::InvalidUuid);
         }
 
+        let account_entry = self.qs_read.internal_search_uuid(lae.target).map_err(|e| {
+            admin_error!(
+                "Failed to search account by uuid {:?} -> {:?}",
+                lae.target,
+                e
+            );
+            e
+        })?;
+
+        let app_entry = self
+            .qs_read
+            .internal_search_uuid(lae.application)
+            .map_err(|e| {
+                admin_error!(
+                    "Failed to search application by uuid {:?} -> {:?}",
+                    lae.application,
+                    e
+                );
+                e
+            })?;
+
+        if !account_entry
+            .get_ava_refer(Attribute::MemberOf)
+            .is_some_and(|x| x.contains(&lae.application))
+        {
+            return Err(OperationError::InvalidAccountState(format!(
+                "Account {:?} is not member of application {:?}",
+                account_entry
+                    .get_ava_single_iname(Attribute::Name)
+                    .unwrap_or(account_entry.get_uuid().to_string().as_str()),
+                app_entry
+                    .get_ava_single_iname(Attribute::Name)
+                    .unwrap_or(app_entry.get_uuid().to_string().as_str())
+            )));
+        }
+
         security_info!("Account does not have a configured application password.");
         Ok(None)
     }
