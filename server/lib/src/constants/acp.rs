@@ -654,6 +654,7 @@ lazy_static! {
             Attribute::FernetPrivateKeyStr,
             Attribute::CookiePrivateKey,
             Attribute::LdapAllowUnixPwBind,
+            Attribute::Version,
         ],
         modify_removed_attrs: vec![
             Attribute::DomainDisplayName,
@@ -1043,6 +1044,7 @@ lazy_static! {
             Attribute::DeniedName,
             Attribute::AuthSessionExpiry,
             Attribute::PrivilegeExpiry,
+            Attribute::Version,
         ],
         modify_removed_attrs: vec![
             Attribute::BadlistPassword,
