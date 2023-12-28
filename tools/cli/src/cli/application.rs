@@ -10,6 +10,7 @@ impl ApplicationOpt {
             ApplicationOpt::Delete(nopt) => nopt.copt.debug,
             ApplicationOpt::AddMembers(gcopt) => gcopt.copt.debug,
             ApplicationOpt::ListMembers(gcopt) => gcopt.copt.debug,
+            ApplicationOpt::RemoveMembers(gcopt) => gcopt.copt.debug,
         }
     }
     pub async fn exec(&self) {
@@ -60,6 +61,21 @@ impl ApplicationOpt {
                     Ok(Some(members)) => members.iter().for_each(|m| println!("{:?}", m)),
                     Ok(None) => warn!("No members in application {}", gcopt.name.as_str()),
                     Err(e) => handle_client_error(e, gcopt.copt.output_mode),
+                }
+            }
+            ApplicationOpt::RemoveMembers(gcopt) => {
+                let client = gcopt.copt.to_client(OpType::Write).await;
+                let remove_members: Vec<&str> = gcopt.members.iter().map(String::as_str).collect();
+
+                match client
+                    .idm_group_remove_members(gcopt.name.as_str(), &remove_members)
+                    .await
+                {
+                    Err(e) => {
+                        error!("Failed to remove members!");
+                        handle_client_error(e, gcopt.copt.output_mode)
+                    }
+                    Ok(_) => println!("Successfully removed members from {}", gcopt.name.as_str()),
                 }
             }
         }

@@ -689,6 +689,9 @@ pub enum ApplicationOpt {
     /// List the members
     #[clap(name = "list-members")]
     ListMembers(Named),
+    /// Remove the named members
+    #[clap(name = "remove-members")]
+    RemoveMembers(GroupNamedMembers),
 }
 
 #[derive(Debug, Subcommand)]
