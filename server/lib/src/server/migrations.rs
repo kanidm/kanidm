@@ -120,6 +120,16 @@ impl QueryServer {
             if system_info_version < 17 {
                 write_txn.migrate_16_to_17()?;
             }
+
+            if system_info_version < 18 {
+                // Automate fix for #2391 - during the changes to the access controls
+                // and the recent domain migration work, this stage was not being run
+                // if a larger "jump" of migrations was performed such as rc.15 to main.
+                //
+                // This allows "forcing" a single once off run of init idm *before*
+                // the domain migrations kick in again.
+                write_txn.initialise_idm()?;
+            }
         }
 
         // Reload if anything in migrations requires it.
@@ -653,9 +663,9 @@ impl<'a> QueryServerWriteTransaction<'a> {
             .into_iter()
             .try_for_each(|entry_uuid| self.internal_delete_uuid_if_exists(entry_uuid));
         if res.is_ok() {
-            admin_debug!("initialise_idm -> result Ok!");
+            admin_debug!("migrate 16 to 17 -> result Ok!");
         } else {
-            admin_error!(?res, "initialise_idm p3 -> result");
+            admin_error!(?res, "migrate 16 to 17 -> result");
         }
         debug_assert!(res.is_ok());
         res?;
@@ -852,7 +862,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             .and_then(|_| self.internal_migrate_or_create(E_DOMAIN_INFO_V1.clone()))
             .and_then(|_| self.internal_migrate_or_create(E_SYSTEM_CONFIG_V1.clone()));
         if res.is_err() {
-            admin_error!("initialise_idm p1 -> result {:?}", res);
+            admin_error!("initialise_domain_info -> result {:?}", res);
         }
         debug_assert!(res.is_ok());
         res
@@ -873,8 +883,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
             .into_iter()
             // Each item individually logs it's result
             .try_for_each(|ent| self.internal_migrate_or_create(ent));
-        if res.is_err() {
-            admin_error!("initialise_idm p2 -> result {:?}", res);
+        if res.is_ok() {
+            admin_debug!("initialise_idm p1 -> result Ok!");
+        } else {
+            admin_error!(?res, "initialise_idm p1 -> result");
         }
         debug_assert!(res.is_ok());
         res?;
@@ -883,9 +895,9 @@ impl<'a> QueryServerWriteTransaction<'a> {
             .into_iter()
             .try_for_each(|e| self.internal_migrate_or_create(e.clone().try_into()?));
         if res.is_ok() {
-            admin_debug!("initialise_idm -> result Ok!");
+            admin_debug!("initialise_idm p2 -> result Ok!");
         } else {
-            admin_error!(?res, "initialise_idm p3 -> result");
+            admin_error!(?res, "initialise_idm p2 -> result");
         }
         debug_assert!(res.is_ok());
         res?;
@@ -938,7 +950,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             .into_iter()
             .try_for_each(|entry| self.internal_migrate_or_create(entry.into()));
         if res.is_ok() {
-            admin_debug!("initialise_idm -> result Ok!");
+            admin_debug!("initialise_idm p3 -> result Ok!");
         } else {
             admin_error!(?res, "initialise_idm p3 -> result");
         }
