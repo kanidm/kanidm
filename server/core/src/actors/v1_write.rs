@@ -563,7 +563,7 @@ impl QueryServerWriteV1 {
                 e
             })?;
 
-        if ident.can_logout() {
+        if !ident.can_logout() {
             info!("Ignoring request to logout session - these sessions are not recorded");
             return Ok(());
         }

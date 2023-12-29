@@ -420,7 +420,7 @@ pub trait IdmServerTransaction<'a> {
 
         match (client_cert, bearer_token) {
             (Some(_client_cert_info), _) => {
-                // Cert validation here.
+                // TODO: Cert validation here.
                 warn!("Unable to process client certificate identity");
                 Err(OperationError::NotAuthenticated)
             }
@@ -451,7 +451,7 @@ pub trait IdmServerTransaction<'a> {
 
         match (client_cert, bearer_token) {
             (Some(_client_cert_info), _) => {
-                // Cert validation here.
+                // TODO: Cert validation here.
                 warn!("Unable to process client certificate identity");
                 Err(OperationError::NotAuthenticated)
             }
