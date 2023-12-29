@@ -22,9 +22,9 @@ pub mod server;
 pub mod serviceaccount;
 pub(crate) mod unix;
 
-use std::fmt;
-
+use crate::server::identity::Source;
 use kanidm_proto::v1::{AuthAllowed, AuthIssueSession, AuthMech};
+use std::fmt;
 
 pub enum AuthState {
     Choose(Vec<AuthMech>),
@@ -40,6 +40,52 @@ impl fmt::Debug for AuthState {
             AuthState::Continue(allow) => write!(f, "AuthState::Continue({allow:?})"),
             AuthState::Denied(reason) => write!(f, "AuthState::Denied({reason:?})"),
             AuthState::Success(_token, issue) => write!(f, "AuthState::Success({issue:?})"),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct ClientAuthInfo {
+    pub source: Source,
+    pub client_cert: Option<ClientCertInfo>,
+    pub bearer_token: Option<String>,
+}
+
+#[derive(Debug, Clone)]
+pub struct ClientCertInfo {
+    pub subject_key_id: Option<Vec<u8>>,
+    pub cn: Option<String>,
+}
+
+#[cfg(test)]
+impl From<Source> for ClientAuthInfo {
+    fn from(value: Source) -> ClientAuthInfo {
+        ClientAuthInfo {
+            source: value,
+            client_cert: None,
+            bearer_token: None,
+        }
+    }
+}
+
+#[cfg(test)]
+impl From<&str> for ClientAuthInfo {
+    fn from(value: &str) -> ClientAuthInfo {
+        ClientAuthInfo {
+            source: Source::Internal,
+            client_cert: None,
+            bearer_token: Some(value.to_string()),
+        }
+    }
+}
+
+#[cfg(test)]
+impl From<ClientCertInfo> for ClientAuthInfo {
+    fn from(value: ClientCertInfo) -> ClientAuthInfo {
+        ClientAuthInfo {
+            source: Source::Internal,
+            client_cert: Some(value),
+            bearer_token: None,
         }
     }
 }

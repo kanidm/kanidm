@@ -21,7 +21,7 @@ use crate::value::Session;
 pub enum Source {
     Internal,
     Https(IpAddr),
-    // Ldaps,
+    Ldaps(IpAddr),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -102,7 +102,7 @@ impl From<&IdentType> for IdentityId {
 /// and other info that can assist with server decision making.
 pub struct Identity {
     pub origin: IdentType,
-    // pub(crate) source:
+    pub(crate) source: Source,
     // pub(crate) impersonate: bool,
     // In a way I guess these are session claims?
     pub(crate) session_id: Uuid,
@@ -131,9 +131,14 @@ impl std::fmt::Display for Identity {
 }
 
 impl Identity {
+    pub fn source(&self) -> &Source {
+        &self.source
+    }
+
     pub fn from_internal() -> Self {
         Identity {
             origin: IdentType::Internal,
+            source: Source::Internal,
             session_id: uuid!("00000000-0000-0000-0000-000000000000"),
             scope: AccessScope::ReadWrite,
             limits: Limits::unlimited(),
@@ -144,6 +149,7 @@ impl Identity {
     pub fn from_impersonate_entry_readonly(entry: Arc<Entry<EntrySealed, EntryCommitted>>) -> Self {
         Identity {
             origin: IdentType::User(IdentUser { entry }),
+            source: Source::Internal,
             session_id: uuid!("00000000-0000-0000-0000-000000000000"),
             scope: AccessScope::ReadOnly,
             limits: Limits::unlimited(),
@@ -156,6 +162,7 @@ impl Identity {
     ) -> Self {
         Identity {
             origin: IdentType::User(IdentUser { entry }),
+            source: Source::Internal,
             session_id: uuid!("00000000-0000-0000-0000-000000000000"),
             scope: AccessScope::ReadWrite,
             limits: Limits::unlimited(),
@@ -210,6 +217,17 @@ impl Identity {
             IdentType::Internal => None,
             IdentType::User(u) => Some(u.entry.get_uuid()),
             IdentType::Synch(u) => Some(*u),
+        }
+    }
+
+    /// Indicate if the session associated with this identity has a session
+    /// that can logout. Examples of sessions that *can not* logout are anonymous,
+    /// tokens, or PIV sessions.
+    pub fn can_logout(&self) -> bool {
+        match &self.origin {
+            IdentType::Internal => false,
+            IdentType::User(u) => u.entry.get_uuid() != UUID_ANONYMOUS,
+            IdentType::Synch(_) => false,
         }
     }
 

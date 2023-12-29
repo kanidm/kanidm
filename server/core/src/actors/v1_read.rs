@@ -36,6 +36,7 @@ use kanidmd_lib::{
     },
     idm::server::{IdmServer, IdmServerTransaction},
     idm::serviceaccount::ListApiTokenEvent,
+    idm::ClientAuthInfo,
 };
 
 // ===========================================================
@@ -70,12 +71,12 @@ impl QueryServerReadV1 {
     #[instrument(
         level = "info",
         name = "search",
-        skip(self, uat, req, eventid)
+        skip_all,
         fields(uuid = ?eventid)
     )]
     pub async fn handle_search(
         &self,
-        uat: Option<String>,
+        client_auth_info: ClientAuthInfo,
         req: SearchRequest,
         eventid: Uuid,
     ) -> Result<SearchResponse, OperationError> {
@@ -83,7 +84,7 @@ impl QueryServerReadV1 {
         let ct = duration_from_epoch_now();
         let mut idms_prox_read = self.idms.proxy_read().await;
         let ident = idms_prox_read
-            .validate_and_parse_token_to_ident(uat.as_deref(), ct)
+            .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
                 admin_error!(?e, "Invalid identity");
                 e
@@ -114,7 +115,7 @@ impl QueryServerReadV1 {
         sessionid: Option<Uuid>,
         req: AuthRequest,
         eventid: Uuid,
-        ip_addr: IpAddr,
+        client_auth_info: ClientAuthInfo,
     ) -> Result<AuthResult, OperationError> {
         // This is probably the first function that really implements logic
         // "on top" of the db server concept. In this case we check if
@@ -137,12 +138,10 @@ impl QueryServerReadV1 {
         // the session are enforced.
         idm_auth.expire_auth_sessions(ct).await;
 
-        let source = Source::Https(ip_addr);
-
         // Generally things like auth denied are in Ok() msgs
         // so true errors should always trigger a rollback.
         let res = idm_auth
-            .auth(&ae, ct, source)
+            .auth(&ae, ct, client_auth_info)
             .await
             .and_then(|r| idm_auth.commit().map(|_| r));
 
@@ -159,17 +158,16 @@ impl QueryServerReadV1 {
     )]
     pub async fn handle_reauth(
         &self,
-        uat: Option<String>,
+        client_auth_info: ClientAuthInfo,
         issue: AuthIssueSession,
         eventid: Uuid,
-        ip_addr: IpAddr,
     ) -> Result<AuthResult, OperationError> {
         let ct = duration_from_epoch_now();
         let mut idm_auth = self.idms.auth().await;
         security_info!("Begin reauth event");
 
         let ident = idm_auth
-            .validate_and_parse_token_to_ident(uat.as_deref(), ct)
+            .validate_client_auth_info_to_ident(client_auth_info.clone(), ct)
             .map_err(|e| {
                 admin_error!(?e, "Invalid identity");
                 e
@@ -180,12 +178,10 @@ impl QueryServerReadV1 {
         // the session are enforced.
         idm_auth.expire_auth_sessions(ct).await;
 
-        let source = Source::Https(ip_addr);
-
         // Generally things like auth denied are in Ok() msgs
         // so true errors should always trigger a rollback.
         let res = idm_auth
-            .reauth_init(ident, issue, ct, source)
+            .reauth_init(ident, issue, ct, client_auth_info)
             .await
             .and_then(|r| idm_auth.commit().map(|_| r));
 
@@ -325,12 +321,12 @@ impl QueryServerReadV1 {
     #[instrument(
         level = "info",
         name = "whoami",
-        skip(self, uat, eventid)
+        skip_all,
         fields(uuid = ?eventid)
     )]
     pub async fn handle_whoami(
         &self,
-        uat: Option<String>,
+        client_auth_info: ClientAuthInfo,
         eventid: Uuid,
     ) -> Result<WhoamiResponse, OperationError> {
         // Begin a read
@@ -344,7 +340,7 @@ impl QueryServerReadV1 {
         // then move this to core.rs, and don't allow Option<UAT> to get
         // this far.
         let ident = idms_prox_read
-            .validate_and_parse_token_to_ident(uat.as_deref(), ct)
+            .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
                 admin_error!(?e, "Invalid identity");
                 e
@@ -371,12 +367,12 @@ impl QueryServerReadV1 {
     #[instrument(
         level = "info",
         name = "whoami_uat",
-        skip(self, uat, eventid)
+        skip_all,
         fields(uuid = ?eventid)
     )]
     pub async fn handle_whoami_uat(
         &self,
-        uat: Option<String>,
+        client_auth_info: ClientAuthInfo,
         eventid: Uuid,
     ) -> Result<UserAuthToken, OperationError> {
         let ct = duration_from_epoch_now();
@@ -389,7 +385,7 @@ impl QueryServerReadV1 {
         // then move this to core.rs, and don't allow Option<UAT> to get
         // this far.
         idms_prox_read
-            .validate_and_parse_token_to_uat(uat.as_deref(), ct)
+            .validate_client_auth_info_to_uat(client_auth_info, ct)
             .map_err(|e| {
                 admin_error!(?e, "Invalid identity");
                 e
@@ -400,18 +396,18 @@ impl QueryServerReadV1 {
     /// pull an image so we can present it to the user
     pub async fn handle_oauth2_rs_image_get_image(
         &self,
-        uat: Option<String>,
+        client_auth_info: ClientAuthInfo,
         rs: Filter<FilterInvalid>,
     ) -> Result<ImageValue, OperationError> {
         let mut idms_prox_read = self.idms.proxy_read().await;
         let ct = duration_from_epoch_now();
 
         let ident = idms_prox_read
-                .validate_and_parse_token_to_ident(uat.as_deref(), ct)
-                .map_err(|e| {
-                    admin_error!(err = ?e, "Invalid identity in handle_oauth2_rs_image_get_image {:?}", uat);
-                    e
-                })?;
+            .validate_client_auth_info_to_ident(client_auth_info, ct)
+            .map_err(|e| {
+                admin_error!(err = ?e, "Invalid identity in handle_oauth2_rs_image_get_image");
+                e
+            })?;
         let attrs = vec![Attribute::Image.to_string()];
 
         let search = SearchEvent::from_internal_message(
@@ -442,7 +438,7 @@ impl QueryServerReadV1 {
     )]
     pub async fn handle_internalsearch(
         &self,
-        uat: Option<String>,
+        client_auth_info: ClientAuthInfo,
         filter: Filter<FilterInvalid>,
         attrs: Option<Vec<String>>,
         eventid: Uuid,
@@ -450,7 +446,7 @@ impl QueryServerReadV1 {
         let ct = duration_from_epoch_now();
         let mut idms_prox_read = self.idms.proxy_read().await;
         let ident = idms_prox_read
-            .validate_and_parse_token_to_ident(uat.as_deref(), ct)
+            .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
                 admin_error!("Invalid identity: {:?}", e);
                 e
@@ -485,7 +481,7 @@ impl QueryServerReadV1 {
     )]
     pub async fn handle_internalsearchrecycled(
         &self,
-        uat: Option<String>,
+        client_auth_info: ClientAuthInfo,
         filter: Filter<FilterInvalid>,
         attrs: Option<Vec<String>>,
         eventid: Uuid,
@@ -494,7 +490,7 @@ impl QueryServerReadV1 {
         let mut idms_prox_read = self.idms.proxy_read().await;
 
         let ident = idms_prox_read
-            .validate_and_parse_token_to_ident(uat.as_deref(), ct)
+            .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
                 admin_error!("Invalid identity: {:?}", e);
                 e
@@ -529,14 +525,14 @@ impl QueryServerReadV1 {
     )]
     pub async fn handle_internalradiusread(
         &self,
-        uat: Option<String>,
+        client_auth_info: ClientAuthInfo,
         uuid_or_name: String,
         eventid: Uuid,
     ) -> Result<Option<String>, OperationError> {
         let ct = duration_from_epoch_now();
         let mut idms_prox_read = self.idms.proxy_read().await;
         let ident = idms_prox_read
-            .validate_and_parse_token_to_ident(uat.as_deref(), ct)
+            .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
                 admin_error!("Invalid identity: {:?}", e);
                 e
@@ -589,7 +585,7 @@ impl QueryServerReadV1 {
     )]
     pub async fn handle_internalradiustokenread(
         &self,
-        uat: Option<String>,
+        client_auth_info: ClientAuthInfo,
         uuid_or_name: String,
         eventid: Uuid,
     ) -> Result<RadiusAuthToken, OperationError> {
@@ -597,7 +593,7 @@ impl QueryServerReadV1 {
         let mut idms_prox_read = self.idms.proxy_read().await;
 
         let ident = idms_prox_read
-            .validate_and_parse_token_to_ident(uat.as_deref(), ct)
+            .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
                 admin_error!("Invalid identity: {:?}", e);
                 e
@@ -636,7 +632,7 @@ impl QueryServerReadV1 {
     )]
     pub async fn handle_internalunixusertokenread(
         &self,
-        uat: Option<String>,
+        client_auth_info: ClientAuthInfo,
         uuid_or_name: String,
         eventid: Uuid,
     ) -> Result<UnixUserToken, OperationError> {
@@ -644,7 +640,7 @@ impl QueryServerReadV1 {
         let mut idms_prox_read = self.idms.proxy_read().await;
 
         let ident = idms_prox_read
-            .validate_and_parse_token_to_ident(uat.as_deref(), ct)
+            .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
                 admin_error!("Invalid identity: {:?}", e);
                 e
@@ -689,14 +685,14 @@ impl QueryServerReadV1 {
     )]
     pub async fn handle_internalunixgrouptokenread(
         &self,
-        uat: Option<String>,
+        client_auth_info: ClientAuthInfo,
         uuid_or_name: String,
         eventid: Uuid,
     ) -> Result<UnixGroupToken, OperationError> {
         let ct = duration_from_epoch_now();
         let mut idms_prox_read = self.idms.proxy_read().await;
         let ident = idms_prox_read
-            .validate_and_parse_token_to_ident(uat.as_deref(), ct)
+            .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
                 admin_error!("Invalid identity: {:?}", e);
                 e
@@ -735,14 +731,14 @@ impl QueryServerReadV1 {
     )]
     pub async fn handle_internalsshkeyread(
         &self,
-        uat: Option<String>,
+        client_auth_info: ClientAuthInfo,
         uuid_or_name: String,
         eventid: Uuid,
     ) -> Result<Vec<String>, OperationError> {
         let ct = duration_from_epoch_now();
         let mut idms_prox_read = self.idms.proxy_read().await;
         let ident = idms_prox_read
-            .validate_and_parse_token_to_ident(uat.as_deref(), ct)
+            .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
                 admin_error!("Invalid identity: {:?}", e);
                 e
@@ -797,7 +793,7 @@ impl QueryServerReadV1 {
     )]
     pub async fn handle_internalsshkeytagread(
         &self,
-        uat: Option<String>,
+        client_auth_info: ClientAuthInfo,
         uuid_or_name: String,
         tag: String,
         eventid: Uuid,
@@ -805,7 +801,7 @@ impl QueryServerReadV1 {
         let ct = duration_from_epoch_now();
         let mut idms_prox_read = self.idms.proxy_read().await;
         let ident = idms_prox_read
-            .validate_and_parse_token_to_ident(uat.as_deref(), ct)
+            .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
                 admin_error!("Invalid identity: {:?}", e);
                 e
@@ -862,14 +858,14 @@ impl QueryServerReadV1 {
     )]
     pub async fn handle_service_account_api_token_get(
         &self,
-        uat: Option<String>,
+        client_auth_info: ClientAuthInfo,
         uuid_or_name: String,
         eventid: Uuid,
     ) -> Result<Vec<ApiToken>, OperationError> {
         let ct = duration_from_epoch_now();
         let mut idms_prox_read = self.idms.proxy_read().await;
         let ident = idms_prox_read
-            .validate_and_parse_token_to_ident(uat.as_deref(), ct)
+            .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
                 admin_error!("Invalid identity: {:?}", e);
                 e
@@ -894,14 +890,14 @@ impl QueryServerReadV1 {
     )]
     pub async fn handle_account_user_auth_token_get(
         &self,
-        uat: Option<String>,
+        client_auth_info: ClientAuthInfo,
         uuid_or_name: String,
         eventid: Uuid,
     ) -> Result<Vec<UatStatus>, OperationError> {
         let ct = duration_from_epoch_now();
         let mut idms_prox_read = self.idms.proxy_read().await;
         let ident = idms_prox_read
-            .validate_and_parse_token_to_ident(uat.as_deref(), ct)
+            .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
                 admin_error!("Invalid identity: {:?}", e);
                 e
@@ -926,7 +922,7 @@ impl QueryServerReadV1 {
     )]
     pub async fn handle_user_identity_verification(
         &self,
-        uat: Option<String>,
+        client_auth_info: ClientAuthInfo,
         eventid: Uuid,
         user_request: IdentifyUserRequest,
         other_id: String,
@@ -935,7 +931,7 @@ impl QueryServerReadV1 {
         let ct = duration_from_epoch_now();
         let mut idms_prox_read = self.idms.proxy_read().await;
         let ident = idms_prox_read
-            .validate_and_parse_token_to_ident(uat.as_deref(), ct)
+            .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
                 admin_error!("Invalid identity: {:?}", e);
                 e
@@ -967,7 +963,7 @@ impl QueryServerReadV1 {
     )]
     pub async fn handle_idmaccountunixauth(
         &self,
-        uat: Option<String>,
+        client_auth_info: ClientAuthInfo,
         uuid_or_name: String,
         cred: String,
         eventid: Uuid,
@@ -976,7 +972,7 @@ impl QueryServerReadV1 {
         let mut idm_auth = self.idms.auth().await;
         // resolve the id
         let ident = idm_auth
-            .validate_and_parse_token_to_ident(uat.as_deref(), ct)
+            .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
                 admin_error!(err = ?e, "Invalid identity");
                 e
@@ -1017,7 +1013,7 @@ impl QueryServerReadV1 {
     )]
     pub async fn handle_idmcredentialstatus(
         &self,
-        uat: Option<String>,
+        client_auth_info: ClientAuthInfo,
         uuid_or_name: String,
         eventid: Uuid,
     ) -> Result<CredentialStatus, OperationError> {
@@ -1025,7 +1021,7 @@ impl QueryServerReadV1 {
         let mut idms_prox_read = self.idms.proxy_read().await;
 
         let ident = idms_prox_read
-            .validate_and_parse_token_to_ident(uat.as_deref(), ct)
+            .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
                 admin_error!(err = ?e, "Invalid identity");
                 e
@@ -1063,7 +1059,7 @@ impl QueryServerReadV1 {
     )]
     pub async fn handle_idmbackupcodeview(
         &self,
-        uat: Option<String>,
+        client_auth_info: ClientAuthInfo,
         uuid_or_name: String,
         eventid: Uuid,
     ) -> Result<BackupCodesView, OperationError> {
@@ -1071,7 +1067,7 @@ impl QueryServerReadV1 {
         let mut idms_prox_read = self.idms.proxy_read().await;
 
         let ident = idms_prox_read
-            .validate_and_parse_token_to_ident(uat.as_deref(), ct)
+            .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
                 admin_error!("Invalid identity: {:?}", e);
                 e
@@ -1296,14 +1292,14 @@ impl QueryServerReadV1 {
     )]
     pub async fn handle_oauth2_basic_secret_read(
         &self,
-        uat: Option<String>,
+        client_auth_info: ClientAuthInfo,
         filter: Filter<FilterInvalid>,
         eventid: Uuid,
     ) -> Result<Option<String>, OperationError> {
         let ct = duration_from_epoch_now();
         let mut idms_prox_read = self.idms.proxy_read().await;
         let ident = idms_prox_read
-            .validate_and_parse_token_to_ident(uat.as_deref(), ct)
+            .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
                 admin_error!("Invalid identity: {:?}", e);
                 e
@@ -1349,26 +1345,21 @@ impl QueryServerReadV1 {
     )]
     pub async fn handle_oauth2_authorise(
         &self,
-        uat: Option<String>,
+        client_auth_info: ClientAuthInfo,
         auth_req: AuthorisationRequest,
         eventid: Uuid,
     ) -> Result<AuthoriseResponse, Oauth2Error> {
         let ct = duration_from_epoch_now();
         let mut idms_prox_read = self.idms.proxy_read().await;
-        let (ident, uat) = idms_prox_read
-            .validate_and_parse_uat(uat.as_deref(), ct)
-            .and_then(|uat| {
-                idms_prox_read
-                    .process_uat_to_identity(&uat, ct)
-                    .map(|ident| (ident, uat))
-            })
+        let ident = idms_prox_read
+            .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
                 admin_error!("Invalid identity: {:?}", e);
                 Oauth2Error::AuthenticationRequired
             })?;
 
         // Now we can send to the idm server for authorisation checking.
-        idms_prox_read.check_oauth2_authorisation(&ident, &uat, &auth_req, ct)
+        idms_prox_read.check_oauth2_authorisation(&ident, &auth_req, ct)
     }
 
     #[instrument(
@@ -1378,25 +1369,20 @@ impl QueryServerReadV1 {
     )]
     pub async fn handle_oauth2_authorise_reject(
         &self,
-        uat: Option<String>,
+        client_auth_info: ClientAuthInfo,
         consent_req: String,
         eventid: Uuid,
     ) -> Result<Url, OperationError> {
         let ct = duration_from_epoch_now();
         let mut idms_prox_read = self.idms.proxy_read().await;
-        let (ident, uat) = idms_prox_read
-            .validate_and_parse_uat(uat.as_deref(), ct)
-            .and_then(|uat| {
-                idms_prox_read
-                    .process_uat_to_identity(&uat, ct)
-                    .map(|ident| (ident, uat))
-            })
+        let ident = idms_prox_read
+            .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
                 admin_error!("Invalid identity: {:?}", e);
                 e
             })?;
 
-        idms_prox_read.check_oauth2_authorise_reject(&ident, &uat, &consent_req, ct)
+        idms_prox_read.check_oauth2_authorise_reject(&ident, &consent_req, ct)
     }
 
     #[instrument(
@@ -1467,13 +1453,13 @@ impl QueryServerReadV1 {
     )]
     pub async fn handle_list_applinks(
         &self,
-        uat: Option<String>,
+        client_auth_info: ClientAuthInfo,
         eventid: Uuid,
     ) -> Result<Vec<AppLink>, OperationError> {
         let ct = duration_from_epoch_now();
         let mut idms_prox_read = self.idms.proxy_read().await;
         let ident = idms_prox_read
-            .validate_and_parse_token_to_ident(uat.as_deref(), ct)
+            .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
                 admin_error!("Invalid identity: {:?}", e);
                 e
@@ -1500,19 +1486,17 @@ impl QueryServerReadV1 {
     )]
     pub async fn handle_auth_valid(
         &self,
-        uat: Option<String>,
+        client_auth_info: ClientAuthInfo,
         eventid: Uuid,
     ) -> Result<(), OperationError> {
         let ct = duration_from_epoch_now();
         let mut idms_prox_read = self.idms.proxy_read().await;
 
-        // parse_token_to_ident
         idms_prox_read
-            .validate_and_parse_uat(uat.as_deref(), ct)
-            .and_then(|uat| idms_prox_read.process_uat_to_identity(&uat, ct))
+            .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map(|_| ())
             .map_err(|e| {
-                admin_error!("Invalid token: {:?}", e);
+                admin_error!("Invalid identity: {:?}", e);
                 e
             })
     }
@@ -1527,11 +1511,12 @@ impl QueryServerReadV1 {
         eventid: Uuid,
         protomsg: LdapMsg,
         uat: Option<LdapBoundToken>,
+        ip_addr: IpAddr,
     ) -> Option<LdapResponseState> {
         let res = match ServerOps::try_from(protomsg) {
             Ok(server_op) => self
                 .ldap
-                .do_op(&self.idms, server_op, uat, eventid)
+                .do_op(&self.idms, server_op, uat, ip_addr, eventid)
                 .await
                 .unwrap_or_else(|e| {
                     admin_error!("do_op failed -> {:?}", e);

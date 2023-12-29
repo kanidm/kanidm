@@ -14,11 +14,12 @@ mod v1;
 mod v1_oauth2;
 mod v1_scim;
 
+use self::extractors::ClientConnInfo;
 use self::javascript::*;
 use crate::actors::v1_read::QueryServerReadV1;
 use crate::actors::v1_write::QueryServerWriteV1;
 use crate::config::{Configuration, ServerRole, TlsConfiguration};
-use axum::extract::connect_info::{IntoMakeServiceWithConnectInfo, ResponseFuture};
+use axum::extract::connect_info::IntoMakeServiceWithConnectInfo;
 use axum::http::{HeaderMap, HeaderValue};
 use axum::middleware::{from_fn, from_fn_with_state};
 use axum::response::Redirect;
@@ -31,15 +32,19 @@ use hashbrown::HashMap;
 use hyper::server::accept::Accept;
 use hyper::server::conn::{AddrStream, Http};
 use kanidm_proto::constants::KSESSIONID;
+use kanidmd_lib::idm::ClientCertInfo;
 use kanidmd_lib::status::StatusActor;
-use openssl::ssl::{Ssl, SslAcceptor, SslFiletype, SslMethod};
+use openssl::nid;
+use openssl::ssl::{Ssl, SslAcceptor, SslFiletype, SslMethod, SslSessionCacheMode, SslVerifyMode};
+use openssl::x509::X509;
 use sketching::*;
 use tokio_openssl::SslStream;
 
 use futures_util::future::poll_fn;
 use tokio::net::TcpListener;
 
-use std::io::ErrorKind;
+use std::fs;
+use std::io::{ErrorKind, Read};
 use std::path::PathBuf;
 use std::pin::Pin;
 use std::sync::Arc;
@@ -311,7 +316,7 @@ pub async fn create_https_server(
         .layer(trace_layer)
         .with_state(state)
         // the connect_info bit here lets us pick up the remote address of the client
-        .into_make_service_with_connect_info::<SocketAddr>();
+        .into_make_service_with_connect_info::<ClientConnInfo>();
 
     let addr = SocketAddr::from_str(&config.address).map_err(|err| {
         error!(
@@ -361,10 +366,10 @@ pub async fn create_https_server(
 async fn server_loop(
     tls_param: TlsConfiguration,
     listener: TcpListener,
-    app: IntoMakeServiceWithConnectInfo<Router, SocketAddr>,
+    app: IntoMakeServiceWithConnectInfo<Router, ClientConnInfo>,
 ) -> Result<(), std::io::Error> {
     let mut tls_builder = SslAcceptor::mozilla_intermediate_v5(SslMethod::tls())?;
-    let mut app = app;
+
     tls_builder
         .set_certificate_chain_file(tls_param.chain.clone())
         .map_err(|err| {
@@ -373,6 +378,7 @@ async fn server_loop(
                 format!("Failed to create TLS listener: {:?}", err),
             )
         })?;
+
     tls_builder
         .set_private_key_file(tls_param.key.clone(), SslFiletype::PEM)
         .map_err(|err| {
@@ -381,13 +387,113 @@ async fn server_loop(
                 format!("Failed to create TLS listener: {:?}", err),
             )
         })?;
+
     tls_builder.check_private_key().map_err(|err| {
         std::io::Error::new(
             ErrorKind::Other,
             format!("Failed to create TLS listener: {:?}", err),
         )
     })?;
-    let acceptor = tls_builder.build();
+
+    // If configured, setup TLS client authentication.
+    if let Some(client_ca) = tls_param.client_ca.as_ref() {
+        debug!("Configuring client certificates from {}", client_ca);
+
+        let verify = SslVerifyMode::PEER;
+        // In future we may add a "require mTLS option" which would necesitate this.
+        // verify.insert(SslVerifyMode::FAIL_IF_NO_PEER_CERT);
+        tls_builder.set_verify(verify);
+
+        // When client certs are available, we disable the TLS session cache.
+        // This is so that when the smartcard is *removed* on the client, it forces
+        // the client session to immediately expire.
+        //
+        // https://stackoverflow.com/questions/12393711/session-disconnect-the-client-after-smart-card-is-removed
+        //
+        // Alternately, on logout we need to trigger https://docs.rs/openssl/latest/openssl/ssl/struct.Ssl.html#method.set_ssl_context
+        // with https://docs.rs/openssl/latest/openssl/ssl/struct.Ssl.html#method.ssl_context +
+        // https://docs.rs/openssl/latest/openssl/ssl/struct.SslContextRef.html#method.remove_session
+        //
+        // Or we lower session time outs etc.
+        tls_builder.set_session_cache_mode(SslSessionCacheMode::OFF);
+
+        let read_dir = fs::read_dir(client_ca).map_err(|err| {
+            std::io::Error::new(
+                ErrorKind::Other,
+                format!("Failed to create TLS listener: {:?}", err),
+            )
+        })?;
+
+        for cert_dir_ent in read_dir.filter_map(|item| item.ok()).filter(|item| {
+            item.file_name()
+                .to_str()
+                // Hashed certs end in .0
+                // Hsahed crls are .r0
+                .map(|fname| fname.ends_with(".0"))
+                .unwrap_or_default()
+        }) {
+            let mut cert_pem = String::new();
+            fs::File::open(cert_dir_ent.path())
+                .and_then(|mut file| file.read_to_string(&mut cert_pem))
+                .map_err(|err| {
+                    std::io::Error::new(
+                        ErrorKind::Other,
+                        format!("Failed to create TLS listener: {:?}", err),
+                    )
+                })?;
+
+            let cert = X509::from_pem(cert_pem.as_bytes()).map_err(|err| {
+                std::io::Error::new(
+                    ErrorKind::Other,
+                    format!("Failed to create TLS listener: {:?}", err),
+                )
+            })?;
+
+            let cert_store = tls_builder.cert_store_mut();
+            cert_store.add_cert(cert.clone()).map_err(|err| {
+                std::io::Error::new(
+                    ErrorKind::Other,
+                    format!("Failed to create TLS listener: {:?}", err),
+                )
+            })?;
+            // This tells the client what CA's they should use. It DOES NOT
+            // verify them. That's the job of the cert store above!
+            tls_builder.add_client_ca(&cert).map_err(|err| {
+                std::io::Error::new(
+                    ErrorKind::Other,
+                    format!("Failed to create TLS listener: {:?}", err),
+                )
+            })?;
+        }
+
+        // TODO: Build our own CRL map HERE!
+
+        // Allow dumping client cert chains for dev debugging
+        // In the case this is status=false, should we be dumping these anyway?
+        if enabled!(tracing::Level::TRACE) {
+            tls_builder.set_verify_callback(verify, |status, x509store| {
+                if let Some(current_cert) = x509store.current_cert() {
+                    let cert_text_bytes = current_cert.to_text().unwrap_or_default();
+                    let cert_text = String::from_utf8_lossy(cert_text_bytes.as_slice());
+                    tracing::warn!(client_cert = %cert_text);
+                };
+
+                if let Some(chain) = x509store.chain() {
+                    for cert in chain.iter() {
+                        let cert_text_bytes = cert.to_text().unwrap_or_default();
+                        let cert_text = String::from_utf8_lossy(cert_text_bytes.as_slice());
+                        tracing::warn!(chain_cert = %cert_text);
+                    }
+                }
+
+                status
+            });
+        }
+
+        // End tls_client setup
+    }
+
+    let tls_acceptor = tls_builder.build();
 
     let protocol = Arc::new(Http::new());
     let mut listener =
@@ -399,9 +505,12 @@ async fn server_loop(
         })?;
     loop {
         if let Some(Ok(stream)) = poll_fn(|cx| Pin::new(&mut listener).poll_accept(cx)).await {
-            let acceptor = acceptor.clone();
-            let svc = tower::MakeService::make_service(&mut app, &stream);
-            tokio::spawn(handle_conn(acceptor, stream, svc, protocol.clone()));
+            let tls_acceptor = tls_acceptor.clone();
+            let app = app.clone();
+
+            // let svc = tower::MakeService::make_service(&mut app, &stream);
+            // tokio::spawn(handle_conn(tls_acceptor, stream, svc, protocol.clone()));
+            tokio::spawn(handle_conn(tls_acceptor, stream, app, protocol.clone()));
         }
     }
 }
@@ -410,13 +519,16 @@ async fn server_loop(
 pub(crate) async fn handle_conn(
     acceptor: SslAcceptor,
     stream: AddrStream,
-    svc: ResponseFuture<Router, SocketAddr>,
+    // svc: ResponseFuture<Router, ClientConnInfo>,
+    mut app: IntoMakeServiceWithConnectInfo<Router, ClientConnInfo>,
     protocol: Arc<Http>,
 ) -> Result<(), std::io::Error> {
     let ssl = Ssl::new(acceptor.context()).map_err(|e| {
         error!("Failed to create TLS context: {:?}", e);
         std::io::Error::from(ErrorKind::ConnectionAborted)
     })?;
+
+    let addr = stream.remote_addr();
 
     let mut tls_stream = SslStream::new(ssl, stream).map_err(|e| {
         error!("Failed to create TLS stream: {:?}", e);
@@ -425,6 +537,39 @@ pub(crate) async fn handle_conn(
 
     match SslStream::accept(Pin::new(&mut tls_stream)).await {
         Ok(_) => {
+            // Process the client cert (if any)
+            let client_cert = if let Some(peer_cert) = tls_stream.ssl().peer_certificate() {
+                // TODO: This is where we should be checking the CRL!!!
+
+                let subject_key_id = peer_cert
+                    .subject_key_id()
+                    .map(|ski| ski.as_slice().to_vec());
+
+                let cn = if let Some(cn) = peer_cert
+                    .subject_name()
+                    .entries_by_nid(nid::Nid::COMMONNAME)
+                    .next()
+                {
+                    String::from_utf8(cn.data().as_slice().to_vec())
+                        .map_err(|err| {
+                            warn!(?err, "client certificate CN contains invalid utf-8 - the CN will be ignored!");
+                        })
+                        .ok()
+                } else {
+                    None
+                };
+
+                Some(ClientCertInfo { subject_key_id, cn })
+            } else {
+                None
+            };
+
+            let client_conn_info = ClientConnInfo { addr, client_cert };
+
+            debug!(?client_conn_info);
+
+            let svc = tower::MakeService::make_service(&mut app, client_conn_info);
+
             let svc = svc.await.map_err(|e| {
                 error!("Failed to build HTTP response: {:?}", e);
                 std::io::Error::from(ErrorKind::Other)
