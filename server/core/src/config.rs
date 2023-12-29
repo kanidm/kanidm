@@ -125,7 +125,7 @@ pub struct ServerConfig {
     /// Trust the X-Forwarded-For header for client IP address. Defaults to false if unset.
     pub trust_x_forward_for: Option<bool>,
 
-    /// The filesystem type, either "zfs" or "generic". Defaults to "generic" if unset.
+    /// The filesystem type, either "zfs" or "generic". Defaults to "generic" if unset. I you change this, run a database vacuum.
     pub db_fs_type: Option<kanidm_proto::internal::FsType>,
     /// The path to the "admin" socket, used for local communication when performing cer ain server control tasks.
     pub adminbindpath: Option<String>,

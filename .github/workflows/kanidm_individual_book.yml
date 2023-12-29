@@ -80,7 +80,7 @@ jobs:
         # https://github.com/actions/upload-artifact
         uses: actions/upload-artifact@v4
         with:
-          name: individual
+          name: "individual${{inputs.tag }}"
           path: ${{inputs.tag }}.tar.gz
         env:
           ACTIONS_RUNNER_DEBUG: true
