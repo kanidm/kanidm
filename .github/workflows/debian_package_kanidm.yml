@@ -69,7 +69,6 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: debs
-          pattern: "*.deb"
           merge-multiple: true
       - name: List packages
         run: |
