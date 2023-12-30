@@ -25,12 +25,19 @@ async def test_oauth2_rs_list(client: KanidmClient) -> None:
 
     username = "admin"
     # change this to be your admin password.
-    password = "Ek7A0fShLsCTXgK2xDqC9TNUgPYQdVFB6RMGKXLyNtGL5cER"
+    password = "pdf1Xz8q2QFsMTsvbv2jXNBaSEsDpW9h83ZRsH7dDfsJeJdM"
 
     auth_resp = await client.authenticate_password(
         username, password, update_internal_auth_token=True
     )
-    assert auth_resp.state.success is not None
+    if auth_resp.state is None:
+        raise ValueError(
+            "Failed to authenticate, check the admin password is set right"
+        )
+    if auth_resp.state.success is None:
+        raise ValueError(
+            "Failed to authenticate, check the admin password is set right"
+        )
 
     resource_servers = await client.oauth2_rs_list()
     print("content:")

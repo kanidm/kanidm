@@ -73,7 +73,7 @@ class AuthState(BaseModel):
 
         success: Optional[str] = None
 
-    state: _InternalState
+    state: Optional[_InternalState] = Field(_InternalState(success=None))
     sessionid: Optional[str] = None
     response: Optional[ClientResponse[Any]] = None
     model_config = ConfigDict(arbitrary_types_allowed=True)
@@ -164,7 +164,8 @@ class KanidmClientConfig(BaseModel):
 
     verify_hostnames: bool = True
     verify_certificate: bool = True
-    ca_path: Optional[str] = Field(default=None, alias="verify_ca")
+    ca_path: Optional[str] = Field(default=None)
+    verify_ca: bool = True
 
     username: Optional[str] = None
     password: Optional[str] = None

@@ -1,5 +1,6 @@
 """ reusable widgets for testing """
 
+from logging import DEBUG, basicConfig, getLogger
 from pathlib import Path
 from typing import Any
 
@@ -11,6 +12,8 @@ from kanidm import KanidmClient
 async def client() -> KanidmClient:
     """sets up a client with a basic thing"""
     try:
+        basicConfig(level=DEBUG)
+
         return KanidmClient(uri="https://idm.example.com")
     except FileNotFoundError:
         raise pytest.skip("Couldn't find config file...")
