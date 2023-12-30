@@ -73,6 +73,8 @@ jobs:
       - name: List packages
         run: |
           find $(pwd) -name '*.deb'
+      # TODO: This action is old and falling apart and will soon stop working.
+      # Context: https://github.com/marvinpinto/action-automatic-releases/pull/2
       - uses: "marvinpinto/action-automatic-releases@latest"
         with:
           repo_token: "${{ secrets.GITHUB_TOKEN }}"
