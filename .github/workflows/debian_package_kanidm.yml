@@ -67,14 +67,19 @@ jobs:
     steps:
       - name: Download previously built debs
         uses: actions/download-artifact@v4
+        with:
+          path: debs
+          merge-multiple: true
       - name: List packages
         run: |
           find $(pwd) -name '*.deb'
+      # TODO: This action is old and falling apart and will soon stop working.
+      # Context: https://github.com/marvinpinto/action-automatic-releases/pull/2
       - uses: "marvinpinto/action-automatic-releases@latest"
         with:
           repo_token: "${{ secrets.GITHUB_TOKEN }}"
           automatic_release_tag: "debs"
           prerelease: true
           title: ".deb Packages"
-          files: "*.deb"
+          files: "debs/*.deb"
         if: ${{ github.ref == 'refs/heads/master' && github.repository == 'kanidm/kanidm' }}
