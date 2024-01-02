@@ -1,4 +1,4 @@
-use clap::{Args, Subcommand, ValueEnum, builder::PossibleValue};
+use clap::{builder::PossibleValue, Args, Subcommand, ValueEnum};
 use std::fmt;
 
 #[derive(Debug, Args)]
