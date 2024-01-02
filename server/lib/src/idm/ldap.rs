@@ -1594,7 +1594,10 @@ mod tests {
             filter: LdapFilter::Present(Attribute::ObjectClass.to_string()),
             attrs: vec!["*".to_string()],
         };
-        let r1 = ldaps.do_search(idms, &sr, &anon_t, Source::Internal).await.unwrap();
+        let r1 = ldaps
+            .do_search(idms, &sr, &anon_t, Source::Internal)
+            .await
+            .unwrap();
 
         trace!(?r1);
 
