@@ -11,6 +11,7 @@ impl ApplicationOpt {
             ApplicationOpt::AddMembers(gcopt) => gcopt.copt.debug,
             ApplicationOpt::ListMembers(gcopt) => gcopt.copt.debug,
             ApplicationOpt::RemoveMembers(gcopt) => gcopt.copt.debug,
+            ApplicationOpt::PurgeMembers(gcopt) => gcopt.copt.debug,
         }
     }
     pub async fn exec(&self) {
@@ -76,6 +77,16 @@ impl ApplicationOpt {
                         handle_client_error(e, gcopt.copt.output_mode)
                     }
                     Ok(_) => println!("Successfully removed members from {}", gcopt.name.as_str()),
+                }
+            }
+            ApplicationOpt::PurgeMembers(gcopt) => {
+                let client = gcopt.copt.to_client(OpType::Write).await;
+                match client.idm_group_purge_members(gcopt.name.as_str()).await {
+                    Err(e) => handle_client_error(e, gcopt.copt.output_mode),
+                    Ok(_) => println!(
+                        "Successfully purged members of application {}",
+                        gcopt.name.as_str()
+                    ),
                 }
             }
         }
