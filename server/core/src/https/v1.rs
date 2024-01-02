@@ -1269,11 +1269,12 @@ pub async fn application_post(
 )]
 pub async fn application_id_get(
     State(state): State<ServerState>,
-    Path(id): Path<String>,
     Extension(kopid): Extension<KOpId>,
-) -> impl IntoResponse {
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+    Path(id): Path<String>,
+) -> Result<Json<Option<ProtoEntry>>, WebError> {
     let filter = filter_all!(f_eq(Attribute::Class, EntryClass::Application.into()));
-    json_rest_event_get_id(state, id, filter, None, kopid).await
+    json_rest_event_get_id(state, id, filter, None, kopid, client_auth_info).await
 }
 
 #[utoipa::path(
@@ -1287,11 +1288,12 @@ pub async fn application_id_get(
 )]
 pub async fn application_id_delete(
     State(state): State<ServerState>,
-    Path(id): Path<String>,
     Extension(kopid): Extension<KOpId>,
-) -> impl IntoResponse {
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+    Path(id): Path<String>,
+) -> Result<Json<()>, WebError> {
     let filter = filter_all!(f_eq(Attribute::Class, EntryClass::Application.into()));
-    json_rest_event_delete_id(state, id, filter, kopid).await
+    json_rest_event_delete_id(state, id, filter, kopid, client_auth_info).await
 }
 
 #[utoipa::path(
