@@ -40,4 +40,9 @@ impl KanidmClient {
         self.perform_get_request(&format!("/v1/application/{}/_attr/member", id))
             .await
     }
+
+    pub async fn idm_application_get(&self, id: &str) -> Result<Option<Entry>, ClientError> {
+        self.perform_get_request(&format!("/v1/application/{}", id))
+            .await
+    }
 }

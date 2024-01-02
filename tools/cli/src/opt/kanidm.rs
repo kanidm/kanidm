@@ -695,6 +695,9 @@ pub enum ApplicationOpt {
     /// Delete all members
     #[clap(name = "purge-members")]
     PurgeMembers(Named),
+    /// View
+    #[clap(name = "get")]
+    Get(Named),
 }
 
 #[derive(Debug, Subcommand)]

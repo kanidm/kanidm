@@ -1,6 +1,6 @@
 use crate::common::OpType;
-use crate::handle_client_error;
 use crate::ApplicationOpt;
+use crate::{handle_client_error, OutputMode};
 
 impl ApplicationOpt {
     pub fn debug(&self) -> bool {
@@ -12,6 +12,7 @@ impl ApplicationOpt {
             ApplicationOpt::ListMembers(gcopt) => gcopt.copt.debug,
             ApplicationOpt::RemoveMembers(gcopt) => gcopt.copt.debug,
             ApplicationOpt::PurgeMembers(gcopt) => gcopt.copt.debug,
+            ApplicationOpt::Get(gcopt) => gcopt.copt.debug,
         }
     }
     pub async fn exec(&self) {
@@ -87,6 +88,22 @@ impl ApplicationOpt {
                         "Successfully purged members of application {}",
                         gcopt.name.as_str()
                     ),
+                }
+            }
+            ApplicationOpt::Get(gcopt) => {
+                let client = gcopt.copt.to_client(OpType::Read).await;
+                match client.idm_group_get(gcopt.name.as_str()).await {
+                    Ok(Some(e)) => match gcopt.copt.output_mode {
+                        OutputMode::Json => {
+                            println!(
+                                "{}",
+                                serde_json::to_string(&e.attrs).expect("Failed to serialise json")
+                            );
+                        }
+                        OutputMode::Text => println!("{}", e),
+                    },
+                    Ok(None) => warn!("No matching application '{}'", gcopt.name.as_str()),
+                    Err(e) => handle_client_error(e, gcopt.copt.output_mode),
                 }
             }
         }
