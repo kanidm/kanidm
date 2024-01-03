@@ -431,7 +431,12 @@ impl LdapServer {
                 idm_auth.token_auth_ldap(&lae, ct).await?
             }
             LdapBindTarget::Application(app_uuid, usr_uuid) => {
-                let lae = LdapApplicationAuthEvent::from_parts(app_uuid, usr_uuid, pw.to_string())?;
+                let lae = LdapApplicationAuthEvent::from_parts(
+                    app_uuid,
+                    usr_uuid,
+                    "TODO".to_string(),
+                    pw.to_string(),
+                )?;
                 idm_auth.application_auth_ldap(&lae, ct).await?
             }
         };

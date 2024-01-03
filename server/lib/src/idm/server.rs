@@ -1477,7 +1477,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
     pub async fn application_auth_ldap(
         &mut self,
         lae: &LdapApplicationAuthEvent,
-        _ct: Duration,
+        ct: Duration,
     ) -> Result<Option<LdapBoundToken>, OperationError> {
         if lae.target == UUID_ANONYMOUS {
             return Err(OperationError::InvalidUuid);
@@ -1491,6 +1491,12 @@ impl<'a> IdmServerAuthTransaction<'a> {
             );
             e
         })?;
+
+        let account = Account::try_from_entry_ro(account_entry.as_ref(), &mut self.qs_read)?;
+        if !account.is_within_valid_time(ct) {
+            security_info!("Account is not within valid time period");
+            return Ok(None);
+        }
 
         let app_entry = self
             .qs_read

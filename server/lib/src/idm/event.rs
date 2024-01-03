@@ -279,6 +279,7 @@ impl LdapTokenAuthEvent {
 pub struct LdapApplicationAuthEvent {
     pub application: Uuid,
     pub target: Uuid,
+    pub label: String,
     pub cleartext: String,
 }
 
@@ -286,11 +287,13 @@ impl LdapApplicationAuthEvent {
     pub fn from_parts(
         app_uuid: Uuid,
         usr_uuid: Uuid,
+        label: String,
         cleartext: String,
     ) -> Result<Self, OperationError> {
         Ok(LdapApplicationAuthEvent {
             application: app_uuid,
             target: usr_uuid,
+            label,
             cleartext,
         })
     }
