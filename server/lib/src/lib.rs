@@ -89,6 +89,7 @@ pub mod prelude {
         FilterInvalid, FilterValid, FC,
     };
     pub use crate::idm::server::{IdmServer, IdmServerAudit, IdmServerDelayed};
+    pub use crate::idm::{ClientAuthInfo, ClientCertInfo};
     pub use crate::modify::{
         m_assert, m_pres, m_purge, m_remove, Modify, ModifyInvalid, ModifyList, ModifyValid,
     };

@@ -18,12 +18,14 @@ jobs:
     strategy:
       matrix:
         image:
-          - ubuntu:22.04
-          - debian:12
+          - name: ubuntu
+            version: 22.04
+          - name: debian
+            version: 12
       fail-fast: false
     runs-on: ubuntu-latest
     container:
-      image: ${{ matrix.image }}
+      image: "${{ matrix.image.name }}:${{ matrix.image.version }}"
       env:
         DEBIAN_FRONTEND: noninteractive
     steps:
@@ -45,10 +47,13 @@ jobs:
         run: cargo install wasm-pack
       - name: Build packages (kanidm-unixd)
         run: make -f platform/debian/Makefile debs/kanidm-unixd
+      - name: Build packages (kanidm cli)
+        run: make -f platform/debian/Makefile debs/kanidm
+
       - name: Upload debs
         uses: actions/upload-artifact@v4
         with:
-          name: ubuntu-packages
+          name: "${{ matrix.image.name }}${{ matrix.image.version }}"
           path: |
             target/*.deb
   upload-to-releases:
@@ -59,19 +64,22 @@ jobs:
     name: Upload to releases
     needs: build-deb-package
     runs-on: ubuntu-latest
-    if: ${{ github.ref == 'refs/heads/master' && github.repository == 'kanidm/kanidm' }}
     steps:
       - name: Download previously built debs
         uses: actions/download-artifact@v4
         with:
-          name: ubuntu-packages
+          path: debs
+          merge-multiple: true
       - name: List packages
         run: |
-          ls
+          find $(pwd) -name '*.deb'
+      # TODO: This action is old and falling apart and will soon stop working.
+      # Context: https://github.com/marvinpinto/action-automatic-releases/pull/2
       - uses: "marvinpinto/action-automatic-releases@latest"
         with:
           repo_token: "${{ secrets.GITHUB_TOKEN }}"
           automatic_release_tag: "debs"
           prerelease: true
           title: ".deb Packages"
-          files: "*.deb"
+          files: "debs/*.deb"
+        if: ${{ github.ref == 'refs/heads/master' && github.repository == 'kanidm/kanidm' }}

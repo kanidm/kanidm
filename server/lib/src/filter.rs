@@ -660,7 +660,7 @@ impl Filter<FilterInvalid> {
     // This has to have two versions to account for ro/rw traits, because RS can't
     // monomorphise on the trait to call clone_value. An option is to make a fn that
     // takes "clone_value(t, a, v) instead, but that may have a similar issue.
-    #[instrument(name = "filter::from_ro", level = "debug", skip_all)]
+    #[instrument(name = "filter::from_ro", level = "trace", skip_all)]
     pub fn from_ro(
         ev: &Identity,
         f: &ProtoFilter,
@@ -675,7 +675,7 @@ impl Filter<FilterInvalid> {
         })
     }
 
-    #[instrument(name = "filter::from_rw", level = "debug", skip_all)]
+    #[instrument(name = "filter::from_rw", level = "trace", skip_all)]
     pub fn from_rw(
         ev: &Identity,
         f: &ProtoFilter,
@@ -690,7 +690,7 @@ impl Filter<FilterInvalid> {
         })
     }
 
-    #[instrument(name = "filter::from_ldap_ro", level = "debug", skip_all)]
+    #[instrument(name = "filter::from_ldap_ro", level = "trace", skip_all)]
     pub fn from_ldap_ro(
         ev: &Identity,
         f: &LdapFilter,

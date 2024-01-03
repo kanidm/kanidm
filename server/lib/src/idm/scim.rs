@@ -1594,7 +1594,7 @@ mod tests {
         let mut idms_prox_read = idms.proxy_read().await;
 
         let ident = idms_prox_read
-            .validate_and_parse_sync_token_to_ident(Some(sync_token.as_str()), ct)
+            .validate_sync_client_auth_info_to_ident(sync_token.as_str().into(), ct)
             .expect("Failed to validate sync token");
 
         assert!(Some(sync_uuid) == ident.get_uuid());
@@ -1650,7 +1650,7 @@ mod tests {
         // -- Check the happy path.
         let mut idms_prox_read = idms.proxy_read().await;
         let ident = idms_prox_read
-            .validate_and_parse_sync_token_to_ident(Some(sync_token.as_str()), ct)
+            .validate_sync_client_auth_info_to_ident(sync_token.as_str().into(), ct)
             .expect("Failed to validate sync token");
         assert!(Some(sync_uuid) == ident.get_uuid());
         drop(idms_prox_read);
@@ -1671,7 +1671,7 @@ mod tests {
         // Must fail
         let mut idms_prox_read = idms.proxy_read().await;
         let fail =
-            idms_prox_read.validate_and_parse_sync_token_to_ident(Some(sync_token.as_str()), ct);
+            idms_prox_read.validate_sync_client_auth_info_to_ident(sync_token.as_str().into(), ct);
         assert!(matches!(fail, Err(OperationError::NotAuthenticated)));
         drop(idms_prox_read);
 
@@ -1695,7 +1695,7 @@ mod tests {
 
         let mut idms_prox_read = idms.proxy_read().await;
         let fail =
-            idms_prox_read.validate_and_parse_sync_token_to_ident(Some(sync_token.as_str()), ct);
+            idms_prox_read.validate_sync_client_auth_info_to_ident(sync_token.as_str().into(), ct);
         assert!(matches!(fail, Err(OperationError::NotAuthenticated)));
 
         // -- Forge a session, use wrong types
@@ -1737,8 +1737,8 @@ mod tests {
             .map(|jws_signed| jws_signed.to_string())
             .expect("Unable to sign forged token");
 
-        let fail =
-            idms_prox_read.validate_and_parse_sync_token_to_ident(Some(forged_token.as_str()), ct);
+        let fail = idms_prox_read
+            .validate_sync_client_auth_info_to_ident(forged_token.as_str().into(), ct);
         assert!(matches!(fail, Err(OperationError::NotAuthenticated)));
     }
 
@@ -1770,7 +1770,7 @@ mod tests {
             .expect("failed to generate new scim sync token");
 
         let ident = idms_prox_write
-            .validate_and_parse_sync_token_to_ident(Some(sync_token.as_str()), ct)
+            .validate_sync_client_auth_info_to_ident(sync_token.as_str().into(), ct)
             .expect("Failed to process sync token to ident");
 
         (sync_uuid, ident)

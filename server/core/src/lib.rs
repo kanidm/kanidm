@@ -47,6 +47,7 @@ use kanidmd_lib::idm::ldap::LdapServer;
 use kanidmd_lib::prelude::*;
 use kanidmd_lib::schema::Schema;
 use kanidmd_lib::status::StatusActor;
+use kanidmd_lib::value::CredentialType;
 #[cfg(not(target_family = "windows"))]
 use libc::umask;
 
@@ -876,6 +877,7 @@ pub async fn create_server_core(
                     return Err(());
                 }
             };
+
             // Add admin to idm_admins to allow tests more flexibility wrt to permissions.
             // This way our default access controls can be stricter to prevent lateral
             // movement.
@@ -891,7 +893,25 @@ pub async fn create_server_core(
                     );
                     return Err(());
                 }
-            }
+            };
+
+            match idms_prox_write.qs_write.internal_modify_uuid(
+                UUID_IDM_ALL_PERSONS,
+                &ModifyList::new_purge_and_set(
+                    Attribute::CredentialTypeMinimum,
+                    CredentialType::Any.into(),
+                ),
+            ) {
+                Ok(_) => {}
+                Err(e) => {
+                    error!(
+                        "Unable to configure INTEGRATION TEST default credential policy -> {:?}",
+                        e
+                    );
+                    return Err(());
+                }
+            };
+
             match idms_prox_write.commit() {
                 Ok(_) => {}
                 Err(e) => {

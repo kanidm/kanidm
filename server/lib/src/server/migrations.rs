@@ -1,3 +1,4 @@
+use crate::value::CredentialType;
 use kanidm_proto::v1::SchemaError;
 use std::time::Duration;
 
@@ -119,18 +120,54 @@ impl QueryServer {
             if system_info_version < 17 {
                 write_txn.migrate_16_to_17()?;
             }
+
+            if system_info_version < 18 {
+                // Automate fix for #2391 - during the changes to the access controls
+                // and the recent domain migration work, this stage was not being run
+                // if a larger "jump" of migrations was performed such as rc.15 to main.
+                //
+                // This allows "forcing" a single once off run of init idm *before*
+                // the domain migrations kick in again.
+                write_txn.initialise_idm()?;
+            }
         }
+
+        // Reload if anything in migrations requires it.
+        write_txn.reload()?;
+
+        // This is what tells us if the domain entry existed before or not.
+        let db_domain_version = match write_txn.internal_search_uuid(UUID_DOMAIN_INFO) {
+            Ok(e) => Ok(e.get_ava_single_uint32(Attribute::Version).unwrap_or(0)),
+            Err(OperationError::NoMatchingEntries) => Ok(0),
+            Err(r) => Err(r),
+        }?;
+
+        info!(?db_domain_version, "Before setting internal domain info");
+
+        // Migrations complete. Init idm will now set the system config version and minimum domain
+        // level if none was present
+        write_txn.initialise_domain_info()?;
+
+        // No domain info was present, so neither was the rest of the IDM.
+        if db_domain_version == 0 {
+            write_txn.initialise_idm()?;
+        }
+
+        // Now force everything to reload, init idm can touch a lot.
+        write_txn.force_all_reload();
+        write_txn.reload()?;
+
+        // Domain info is now ready and reloaded, we can proceed.
+        write_txn.set_phase(ServerPhase::DomainInfoReady);
 
         // This is the start of domain info related migrations which we will need in future
         // to handle replication. Due to the access control rework, and the addition of "managed by"
         // syntax, we need to ensure both node "fence" replication from each other. We do this
         // by changing domain infos to be incompatible during this phase.
-        let domain_info_version = match write_txn.internal_search_uuid(UUID_DOMAIN_INFO) {
-            Ok(e) => Ok(e.get_ava_single_uint32(Attribute::Version).unwrap_or(0)),
-            Err(OperationError::NoMatchingEntries) => Ok(0),
-            Err(r) => Err(r),
-        }?;
-        admin_debug!(?domain_info_version);
+
+        // The reloads will have populated this structure now.
+        let domain_info_version = write_txn.get_domain_version();
+        info!(?db_domain_version, "After setting internal domain info");
 
         if domain_info_version < DOMAIN_TGT_LEVEL {
             write_txn
@@ -146,13 +183,9 @@ impl QueryServer {
                 })?;
         }
 
-        // Reload if anything in migrations requires it.
+        // Reload if anything in migrations requires it - this triggers the domain migrations.
         write_txn.reload()?;
-        // Migrations complete. Init idm will now set the version as needed.
-        write_txn.initialise_idm()?;
 
-        // Now force everything to reload.
-        write_txn.force_all_reload();
         // We are ready to run
         write_txn.set_phase(ServerPhase::Running);
 
@@ -630,9 +663,9 @@ impl<'a> QueryServerWriteTransaction<'a> {
             .into_iter()
             .try_for_each(|entry_uuid| self.internal_delete_uuid_if_exists(entry_uuid));
         if res.is_ok() {
-            admin_debug!("initialise_idm -> result Ok!");
+            admin_debug!("migrate 16 to 17 -> result Ok!");
         } else {
-            admin_error!(?res, "initialise_idm p3 -> result");
+            admin_error!(?res, "migrate 16 to 17 -> result");
         }
         debug_assert!(res.is_ok());
         res?;
@@ -641,6 +674,36 @@ impl<'a> QueryServerWriteTransaction<'a> {
         self.changed_acp = true;
 
         Ok(())
+    }
+
+    #[instrument(level = "info", skip_all)]
+    /// This migration will
+    ///  * Trigger a "once off" mfa account policy rule on all persons.
+    pub fn migrate_domain_2_to_3(&mut self) -> Result<(), OperationError> {
+        let idm_all_persons = match self.internal_search_uuid(UUID_IDM_ALL_PERSONS) {
+            Ok(entry) => entry,
+            Err(OperationError::NoMatchingEntries) => return Ok(()),
+            Err(e) => return Err(e),
+        };
+
+        let credential_policy =
+            idm_all_persons.get_ava_single_credential_type(Attribute::CredentialTypeMinimum);
+
+        if credential_policy.is_some() {
+            debug!("Credential policy already present, not applying change.");
+            return Ok(());
+        }
+
+        self.internal_modify_uuid(
+            UUID_IDM_ALL_PERSONS,
+            &ModifyList::new_purge_and_set(
+                Attribute::CredentialTypeMinimum,
+                CredentialType::Mfa.into(),
+            ),
+        )
+        .map(|()| {
+            info!("Upgraded default account policy to enforce MFA");
+        })
     }
 
     #[instrument(level = "info", skip_all)]
@@ -790,7 +853,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
     #[instrument(level = "info", skip_all)]
     /// This function is idempotent, runs all the startup functionality and checks
-    pub fn initialise_idm(&mut self) -> Result<(), OperationError> {
+    pub fn initialise_domain_info(&mut self) -> Result<(), OperationError> {
         // First, check the system_info object. This stores some server information
         // and details. It's a pretty const thing. Also check anonymous, important to many
         // concepts.
@@ -799,11 +862,15 @@ impl<'a> QueryServerWriteTransaction<'a> {
             .and_then(|_| self.internal_migrate_or_create(E_DOMAIN_INFO_V1.clone()))
             .and_then(|_| self.internal_migrate_or_create(E_SYSTEM_CONFIG_V1.clone()));
         if res.is_err() {
-            admin_error!("initialise_idm p1 -> result {:?}", res);
+            admin_error!("initialise_domain_info -> result {:?}", res);
         }
         debug_assert!(res.is_ok());
-        res?;
+        res
+    }
 
+    #[instrument(level = "info", skip_all)]
+    /// This function is idempotent, runs all the startup functionality and checks
+    pub fn initialise_idm(&mut self) -> Result<(), OperationError> {
         // The domain info now exists, we should be able to do these migrations as they will
         // cause SPN regenerations to occur
 
@@ -816,8 +883,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
             .into_iter()
             // Each item individually logs it's result
             .try_for_each(|ent| self.internal_migrate_or_create(ent));
-        if res.is_err() {
-            admin_error!("initialise_idm p2 -> result {:?}", res);
+        if res.is_ok() {
+            admin_debug!("initialise_idm p1 -> result Ok!");
+        } else {
+            admin_error!(?res, "initialise_idm p1 -> result");
         }
         debug_assert!(res.is_ok());
         res?;
@@ -826,9 +895,9 @@ impl<'a> QueryServerWriteTransaction<'a> {
             .into_iter()
             .try_for_each(|e| self.internal_migrate_or_create(e.clone().try_into()?));
         if res.is_ok() {
-            admin_debug!("initialise_idm -> result Ok!");
+            admin_debug!("initialise_idm p2 -> result Ok!");
         } else {
-            admin_error!(?res, "initialise_idm p3 -> result");
+            admin_error!(?res, "initialise_idm p2 -> result");
         }
         debug_assert!(res.is_ok());
         res?;
@@ -881,7 +950,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             .into_iter()
             .try_for_each(|entry| self.internal_migrate_or_create(entry.into()));
         if res.is_ok() {
-            admin_debug!("initialise_idm -> result Ok!");
+            admin_debug!("initialise_idm p3 -> result Ok!");
         } else {
             admin_error!(?res, "initialise_idm p3 -> result");
         }

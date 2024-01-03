@@ -769,9 +769,10 @@ impl Component for LoginApp {
             LoginAppMsg::Begin => {
                 match &ctx.props().workflow {
                     LoginWorkflow::Login => {
-                        // Disable the button?
-                        let username =
-                            utils::get_value_from_element_id("username").unwrap_or_default();
+                        let username = utils::get_value_from_element_id("username")
+                            .unwrap_or_default()
+                            .trim()
+                            .to_lowercase();
 
                         #[cfg(debug_assertions)]
                         console::debug!(format!("begin for username -> {:?}", username));

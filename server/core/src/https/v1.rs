@@ -31,7 +31,7 @@ use super::middleware::caching::{cache_me, dont_cache_me};
 use super::middleware::KOpId;
 use super::ServerState;
 use crate::https::apidocs::response_schema::{ApiResponseWithout200, DefaultApiResponse};
-use crate::https::extractors::TrustedClientIp;
+use crate::https::extractors::{TrustedClientIp, VerifiedClientInformation};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub(crate) struct SessionId {
@@ -52,11 +52,12 @@ pub(crate) struct SessionId {
 pub async fn raw_create(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     Json(msg): Json<CreateRequest>,
 ) -> Result<Json<()>, WebError> {
     state
         .qe_w_ref
-        .handle_create(kopid.uat, msg, kopid.eventid)
+        .handle_create(client_auth_info, msg, kopid.eventid)
         .await
         .map(Json::from)
         .map_err(WebError::from)
@@ -76,11 +77,12 @@ pub async fn raw_create(
 pub async fn raw_modify(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     Json(msg): Json<ModifyRequest>,
 ) -> Result<Json<()>, WebError> {
     state
         .qe_w_ref
-        .handle_modify(kopid.uat, msg, kopid.eventid)
+        .handle_modify(client_auth_info, msg, kopid.eventid)
         .await
         .map(Json::from)
         .map_err(WebError::from)
@@ -100,11 +102,12 @@ pub async fn raw_modify(
 pub async fn raw_delete(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     Json(msg): Json<DeleteRequest>,
 ) -> Result<Json<()>, WebError> {
     state
         .qe_w_ref
-        .handle_delete(kopid.uat, msg, kopid.eventid)
+        .handle_delete(client_auth_info, msg, kopid.eventid)
         .await
         .map(Json::from)
         .map_err(WebError::from)
@@ -125,11 +128,12 @@ pub async fn raw_delete(
 pub async fn raw_search(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     Json(msg): Json<SearchRequest>,
 ) -> Result<Json<SearchResponse>, WebError> {
     state
         .qe_r_ref
-        .handle_search(kopid.uat, msg, kopid.eventid)
+        .handle_search(client_auth_info, msg, kopid.eventid)
         .await
         .map(Json::from)
         .map_err(WebError::from)
@@ -149,11 +153,12 @@ pub async fn raw_search(
 pub async fn whoami(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
 ) -> Result<Json<WhoamiResponse>, WebError> {
     // New event, feed current auth data from the token to it.
     state
         .qe_r_ref
-        .handle_whoami(kopid.uat, kopid.eventid)
+        .handle_whoami(client_auth_info, kopid.eventid)
         .await
         .map(Json::from)
         .map_err(WebError::from)
@@ -172,10 +177,11 @@ pub async fn whoami(
 pub async fn whoami_uat(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
 ) -> Result<Json<UserAuthToken>, WebError> {
     state
         .qe_r_ref
-        .handle_whoami_uat(kopid.uat, kopid.eventid)
+        .handle_whoami_uat(client_auth_info, kopid.eventid)
         .await
         .map(Json::from)
         .map_err(WebError::from)
@@ -193,10 +199,11 @@ pub async fn whoami_uat(
 pub async fn logout(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
 ) -> Result<Json<()>, WebError> {
     state
         .qe_w_ref
-        .handle_logout(kopid.uat, kopid.eventid)
+        .handle_logout(client_auth_info, kopid.eventid)
         .await
         .map(Json::from)
         .map_err(WebError::from)
@@ -210,10 +217,11 @@ pub async fn json_rest_event_get(
     attrs: Option<Vec<String>>,
     filter: Filter<FilterInvalid>,
     kopid: KOpId,
+    client_auth_info: ClientAuthInfo,
 ) -> Result<Json<Vec<ProtoEntry>>, WebError> {
     state
         .qe_r_ref
-        .handle_internalsearch(kopid.uat, filter, attrs, kopid.eventid)
+        .handle_internalsearch(client_auth_info, filter, attrs, kopid.eventid)
         .await
         .map(Json::from)
         .map_err(WebError::from)
@@ -225,12 +233,13 @@ pub async fn json_rest_event_get_id(
     filter: Filter<FilterInvalid>,
     attrs: Option<Vec<String>>,
     kopid: KOpId,
+    client_auth_info: ClientAuthInfo,
 ) -> Result<Json<Option<ProtoEntry>>, WebError> {
     let filter = Filter::join_parts_and(filter, filter_all!(f_id(id.as_str())));
 
     state
         .qe_r_ref
-        .handle_internalsearch(kopid.uat, filter, attrs, kopid.eventid)
+        .handle_internalsearch(client_auth_info, filter, attrs, kopid.eventid)
         .await
         .map(|mut r| r.pop())
         .map(Json::from)
@@ -242,11 +251,12 @@ pub async fn json_rest_event_delete_id(
     id: String,
     filter: Filter<FilterInvalid>,
     kopid: KOpId,
+    client_auth_info: ClientAuthInfo,
 ) -> Result<Json<()>, WebError> {
     let filter = Filter::join_parts_and(filter, filter_all!(f_id(id.as_str())));
     state
         .qe_w_ref
-        .handle_internaldelete(kopid.uat, filter, kopid.eventid)
+        .handle_internaldelete(client_auth_info, filter, kopid.eventid)
         .await
         .map(Json::from)
         .map_err(WebError::from)
@@ -258,12 +268,13 @@ pub async fn json_rest_event_get_attr(
     attr: String,
     filter: Filter<FilterInvalid>,
     kopid: KOpId,
+    client_auth_info: ClientAuthInfo,
 ) -> Result<Json<Option<Vec<String>>>, WebError> {
     let filter = Filter::join_parts_and(filter, filter_all!(f_id(id)));
     let attrs = Some(vec![attr.clone()]);
     state
         .qe_r_ref
-        .handle_internalsearch(kopid.uat, filter, attrs, kopid.eventid)
+        .handle_internalsearch(client_auth_info, filter, attrs, kopid.eventid)
         .await
         .map(|mut event_result| event_result.pop().and_then(|mut e| e.attrs.remove(&attr)))
         .map(Json::from)
@@ -276,8 +287,9 @@ pub async fn json_rest_event_get_id_attr(
     attr: String,
     filter: Filter<FilterInvalid>,
     kopid: KOpId,
+    client_auth_info: ClientAuthInfo,
 ) -> Result<Json<Option<Vec<String>>>, WebError> {
-    json_rest_event_get_attr(state, id.as_str(), attr, filter, kopid).await
+    json_rest_event_get_attr(state, id.as_str(), attr, filter, kopid, client_auth_info).await
 }
 
 pub async fn json_rest_event_post(
@@ -285,6 +297,7 @@ pub async fn json_rest_event_post(
     classes: Vec<String>,
     obj: ProtoEntry,
     kopid: KOpId,
+    client_auth_info: ClientAuthInfo,
 ) -> Result<Json<()>, WebError> {
     debug_assert!(!classes.is_empty());
 
@@ -296,7 +309,7 @@ pub async fn json_rest_event_post(
 
     state
         .qe_w_ref
-        .handle_create(kopid.uat, msg, kopid.eventid)
+        .handle_create(client_auth_info, msg, kopid.eventid)
         .await
         .map(Json::from)
         .map_err(WebError::from)
@@ -309,10 +322,11 @@ pub async fn json_rest_event_post_id_attr(
     filter: Filter<FilterInvalid>,
     values: Vec<String>,
     kopid: KOpId,
+    client_auth_info: ClientAuthInfo,
 ) -> Result<Json<()>, WebError> {
     state
         .qe_w_ref
-        .handle_appendattribute(kopid.uat, id, attr, values, filter, kopid.eventid)
+        .handle_appendattribute(client_auth_info, id, attr, values, filter, kopid.eventid)
         .await
         .map(Json::from)
         .map_err(WebError::from)
@@ -325,10 +339,11 @@ pub async fn json_rest_event_put_attr(
     filter: Filter<FilterInvalid>,
     values: Vec<String>,
     kopid: KOpId,
+    client_auth_info: ClientAuthInfo,
 ) -> Result<Json<()>, WebError> {
     state
         .qe_w_ref
-        .handle_setattribute(kopid.uat, id, attr, values, filter, kopid.eventid)
+        .handle_setattribute(client_auth_info, id, attr, values, filter, kopid.eventid)
         .await
         .map_err(WebError::from)
         .map(Json::from)
@@ -341,10 +356,11 @@ pub async fn json_rest_event_post_attr(
     filter: Filter<FilterInvalid>,
     values: Vec<String>,
     kopid: KOpId,
+    client_auth_info: ClientAuthInfo,
 ) -> Result<Json<()>, WebError> {
     state
         .qe_w_ref
-        .handle_appendattribute(kopid.uat, id, attr, values, filter, kopid.eventid)
+        .handle_appendattribute(client_auth_info, id, attr, values, filter, kopid.eventid)
         .await
         .map(Json::from)
         .map_err(WebError::from)
@@ -366,8 +382,9 @@ pub async fn json_rest_event_put_id_attr(
     filter: Filter<FilterInvalid>,
     values: Vec<String>,
     kopid: KOpId,
+    client_auth_info: ClientAuthInfo,
 ) -> Result<Json<()>, WebError> {
-    json_rest_event_put_attr(state, id, attr, filter, values, kopid).await
+    json_rest_event_put_attr(state, id, attr, filter, values, kopid, client_auth_info).await
 }
 
 pub async fn json_rest_event_delete_id_attr(
@@ -377,8 +394,9 @@ pub async fn json_rest_event_delete_id_attr(
     filter: Filter<FilterInvalid>,
     values: Option<Vec<String>>,
     kopid: KOpId,
+    client_auth_info: ClientAuthInfo,
 ) -> Result<Json<()>, WebError> {
-    json_rest_event_delete_attr(state, id, attr, filter, values, kopid).await
+    json_rest_event_delete_attr(state, id, attr, filter, values, kopid, client_auth_info).await
 }
 
 pub async fn json_rest_event_delete_attr(
@@ -388,6 +406,7 @@ pub async fn json_rest_event_delete_attr(
     filter: Filter<FilterInvalid>,
     values: Option<Vec<String>>,
     kopid: KOpId,
+    client_auth_info: ClientAuthInfo,
 ) -> Result<Json<()>, WebError> {
     let values = match values {
         Some(val) => val,
@@ -397,13 +416,13 @@ pub async fn json_rest_event_delete_attr(
     if values.is_empty() {
         state
             .qe_w_ref
-            .handle_purgeattribute(kopid.uat, uuid_or_name, attr, filter, kopid.eventid)
+            .handle_purgeattribute(client_auth_info, uuid_or_name, attr, filter, kopid.eventid)
             .await
     } else {
         state
             .qe_w_ref
             .handle_removeattributevalues(
-                kopid.uat,
+                client_auth_info,
                 uuid_or_name,
                 attr,
                 values,
@@ -430,6 +449,7 @@ pub async fn json_rest_event_delete_attr(
 pub async fn schema_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
 ) -> Result<Json<Vec<ProtoEntry>>, WebError> {
     // NOTE: This is filter_all, because from_internal_message will still do the alterations
     // needed to make it safe. This is needed because there may be aci's that block access
@@ -439,7 +459,7 @@ pub async fn schema_get(
         f_eq(Attribute::Class, EntryClass::AttributeType.into()),
         f_eq(Attribute::Class, EntryClass::ClassType.into())
     ]));
-    json_rest_event_get(state, None, filter, kopid).await
+    json_rest_event_get(state, None, filter, kopid, client_auth_info).await
 }
 
 #[utoipa::path(
@@ -455,9 +475,10 @@ pub async fn schema_get(
 pub async fn schema_attributetype_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
 ) -> Result<Json<Vec<ProtoEntry>>, WebError> {
     let filter = filter_all!(f_eq(Attribute::Class, EntryClass::AttributeType.into()));
-    json_rest_event_get(state, None, filter, kopid).await
+    json_rest_event_get(state, None, filter, kopid, client_auth_info).await
 }
 
 #[utoipa::path(
@@ -474,6 +495,7 @@ pub async fn schema_attributetype_get_id(
     State(state): State<ServerState>,
     Path(id): Path<String>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
 ) -> Result<Json<Option<ProtoEntry>>, WebError> {
     // These can't use get_id because the attribute name and class name aren't ... well name.
     let filter = filter_all!(f_and!([
@@ -486,7 +508,7 @@ pub async fn schema_attributetype_get_id(
 
     state
         .qe_r_ref
-        .handle_internalsearch(kopid.uat, filter, None, kopid.eventid)
+        .handle_internalsearch(client_auth_info, filter, None, kopid.eventid)
         .await
         .map(|mut r| r.pop())
         .map(Json::from)
@@ -506,9 +528,10 @@ pub async fn schema_attributetype_get_id(
 pub async fn schema_classtype_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
 ) -> Result<Json<Vec<ProtoEntry>>, WebError> {
     let filter = filter_all!(f_eq(Attribute::Class, EntryClass::ClassType.into()));
-    json_rest_event_get(state, None, filter, kopid).await
+    json_rest_event_get(state, None, filter, kopid, client_auth_info).await
 }
 
 #[utoipa::path(
@@ -524,6 +547,7 @@ pub async fn schema_classtype_get(
 pub async fn schema_classtype_get_id(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     Path(id): Path<String>,
 ) -> Result<Json<Option<ProtoEntry>>, WebError> {
     // These can't use get_id because they attribute name and class name aren't ... well name.
@@ -533,7 +557,7 @@ pub async fn schema_classtype_get_id(
     ]));
     state
         .qe_r_ref
-        .handle_internalsearch(kopid.uat, filter, None, kopid.eventid)
+        .handle_internalsearch(client_auth_info, filter, None, kopid.eventid)
         .await
         .map(|mut r| r.pop())
         .map(Json::from)
@@ -553,9 +577,10 @@ pub async fn schema_classtype_get_id(
 pub async fn person_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
 ) -> Result<Json<Vec<ProtoEntry>>, WebError> {
     let filter = filter_all!(f_eq(Attribute::Class, EntryClass::Person.into()));
-    json_rest_event_get(state, None, filter, kopid).await
+    json_rest_event_get(state, None, filter, kopid, client_auth_info).await
 }
 
 #[utoipa::path(
@@ -572,6 +597,7 @@ pub async fn person_get(
 pub async fn person_post(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     Json(obj): Json<ProtoEntry>,
 ) -> Result<Json<()>, WebError> {
     let classes: Vec<String> = vec![
@@ -579,7 +605,7 @@ pub async fn person_post(
         EntryClass::Account.into(),
         EntryClass::Object.into(),
     ];
-    json_rest_event_post(state, classes, obj, kopid).await
+    json_rest_event_post(state, classes, obj, kopid, client_auth_info).await
 }
 
 #[utoipa::path(
@@ -596,9 +622,10 @@ pub async fn person_id_get(
     State(state): State<ServerState>,
     Path(id): Path<String>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
 ) -> Result<Json<Option<ProtoEntry>>, WebError> {
     let filter = filter_all!(f_eq(Attribute::Class, EntryClass::Person.into()));
-    json_rest_event_get_id(state, id, filter, None, kopid).await
+    json_rest_event_get_id(state, id, filter, None, kopid, client_auth_info).await
 }
 
 #[utoipa::path(
@@ -614,9 +641,10 @@ pub async fn person_id_delete(
     State(state): State<ServerState>,
     Path(id): Path<String>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
 ) -> Result<Json<()>, WebError> {
     let filter = filter_all!(f_eq(Attribute::Class, EntryClass::Person.into()));
-    json_rest_event_delete_id(state, id, filter, kopid).await
+    json_rest_event_delete_id(state, id, filter, kopid, client_auth_info).await
 }
 
 // // == account ==
@@ -634,9 +662,10 @@ pub async fn person_id_delete(
 pub async fn service_account_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
 ) -> Result<Json<Vec<ProtoEntry>>, WebError> {
     let filter = filter_all!(f_eq(Attribute::Class, EntryClass::ServiceAccount.into()));
-    json_rest_event_get(state, None, filter, kopid).await
+    json_rest_event_get(state, None, filter, kopid, client_auth_info).await
 }
 
 #[utoipa::path(
@@ -652,6 +681,7 @@ pub async fn service_account_get(
 pub async fn service_account_post(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     Json(obj): Json<ProtoEntry>,
 ) -> Result<Json<()>, WebError> {
     let classes: Vec<String> = vec![
@@ -659,7 +689,7 @@ pub async fn service_account_post(
         EntryClass::Account.into(),
         EntryClass::Object.into(),
     ];
-    json_rest_event_post(state, classes, obj, kopid).await
+    json_rest_event_post(state, classes, obj, kopid, client_auth_info).await
 }
 
 #[utoipa::path(
@@ -675,6 +705,7 @@ pub async fn service_account_post(
 pub async fn service_account_id_patch(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     Path(id): Path<String>,
     Json(obj): Json<ProtoEntry>,
 ) -> Result<Json<()>, WebError> {
@@ -683,7 +714,7 @@ pub async fn service_account_id_patch(
     let filter = Filter::join_parts_and(filter, filter_all!(f_id(id.as_str())));
     state
         .qe_w_ref
-        .handle_internalpatch(kopid.uat, filter, obj, kopid.eventid)
+        .handle_internalpatch(client_auth_info, filter, obj, kopid.eventid)
         .await
         .map(Json::from)
         .map_err(WebError::from)
@@ -703,9 +734,10 @@ pub async fn service_account_id_get(
     State(state): State<ServerState>,
     Path(id): Path<String>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
 ) -> Result<Json<Option<ProtoEntry>>, WebError> {
     let filter = filter_all!(f_eq(Attribute::Class, EntryClass::ServiceAccount.into()));
-    json_rest_event_get_id(state, id, filter, None, kopid).await
+    json_rest_event_get_id(state, id, filter, None, kopid, client_auth_info).await
 }
 
 #[utoipa::path(
@@ -721,9 +753,10 @@ pub async fn service_account_id_delete(
     State(state): State<ServerState>,
     Path(id): Path<String>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
 ) -> Result<Json<()>, WebError> {
     let filter = filter_all!(f_eq(Attribute::Class, EntryClass::ServiceAccount.into()));
-    json_rest_event_delete_id(state, id, filter, kopid).await
+    json_rest_event_delete_id(state, id, filter, kopid, client_auth_info).await
 }
 
 #[utoipa::path(
@@ -740,10 +773,11 @@ pub async fn service_account_credential_generate(
     State(state): State<ServerState>,
     Path(id): Path<String>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
 ) -> Result<Json<String>, WebError> {
     state
         .qe_w_ref
-        .handle_service_account_credential_generate(kopid.uat, id, kopid.eventid)
+        .handle_service_account_credential_generate(client_auth_info, id, kopid.eventid)
         .await
         .map(Json::from)
         .map_err(WebError::from)
@@ -767,11 +801,12 @@ pub async fn service_account_credential_generate(
 pub async fn service_account_into_person(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     Path(id): Path<String>,
 ) -> Result<Json<()>, WebError> {
     state
         .qe_w_ref
-        .handle_service_account_into_person(kopid.uat, id, kopid.eventid)
+        .handle_service_account_into_person(client_auth_info, id, kopid.eventid)
         .await
         .map(Json::from)
         .map_err(WebError::from)
@@ -790,11 +825,12 @@ pub async fn service_account_into_person(
 pub async fn service_account_api_token_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     Path(id): Path<String>,
 ) -> Result<Json<Vec<ApiToken>>, WebError> {
     state
         .qe_r_ref
-        .handle_service_account_api_token_get(kopid.uat, id, kopid.eventid)
+        .handle_service_account_api_token_get(client_auth_info, id, kopid.eventid)
         .await
         .map(Json::from)
         .map_err(WebError::from)
@@ -814,13 +850,14 @@ pub async fn service_account_api_token_get(
 pub async fn service_account_api_token_post(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     Path(id): Path<String>,
     Json(obj): Json<ApiTokenGenerate>,
 ) -> Result<Json<String>, WebError> {
     state
         .qe_w_ref
         .handle_service_account_api_token_generate(
-            kopid.uat,
+            client_auth_info,
             id,
             obj.label,
             obj.expiry,
@@ -845,10 +882,11 @@ pub async fn service_account_api_token_delete(
     State(state): State<ServerState>,
     Path((id, token_id)): Path<(String, Uuid)>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
 ) -> Result<Json<()>, WebError> {
     state
         .qe_w_ref
-        .handle_service_account_api_token_destroy(kopid.uat, id, token_id, kopid.eventid)
+        .handle_service_account_api_token_destroy(client_auth_info, id, token_id, kopid.eventid)
         .await
         .map(Json::from)
         .map_err(WebError::from)
@@ -869,9 +907,10 @@ pub async fn person_id_get_attr(
     State(state): State<ServerState>,
     Path((id, attr)): Path<(String, String)>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
 ) -> Result<Json<Option<Vec<String>>>, WebError> {
     let filter = filter_all!(f_eq(Attribute::Class, EntryClass::Account.into()));
-    json_rest_event_get_attr(state, id.as_str(), attr, filter, kopid).await
+    json_rest_event_get_attr(state, id.as_str(), attr, filter, kopid, client_auth_info).await
 }
 
 #[utoipa::path(
@@ -888,9 +927,10 @@ pub async fn service_account_id_get_attr(
     State(state): State<ServerState>,
     Path((id, attr)): Path<(String, String)>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
 ) -> Result<Json<Option<Vec<String>>>, WebError> {
     let filter = filter_all!(f_eq(Attribute::Class, EntryClass::Account.into()));
-    json_rest_event_get_attr(state, id.as_str(), attr, filter, kopid).await
+    json_rest_event_get_attr(state, id.as_str(), attr, filter, kopid, client_auth_info).await
 }
 
 #[utoipa::path(
@@ -907,10 +947,11 @@ pub async fn person_id_post_attr(
     State(state): State<ServerState>,
     Path((id, attr)): Path<(String, String)>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     Json(values): Json<Vec<String>>,
 ) -> Result<Json<()>, WebError> {
     let filter = filter_all!(f_eq(Attribute::Class, EntryClass::Account.into()));
-    json_rest_event_post_id_attr(state, id, attr, filter, values, kopid).await
+    json_rest_event_post_id_attr(state, id, attr, filter, values, kopid, client_auth_info).await
 }
 
 #[utoipa::path(
@@ -927,10 +968,11 @@ pub async fn service_account_id_post_attr(
     State(state): State<ServerState>,
     Path((id, attr)): Path<(String, String)>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     Json(values): Json<Vec<String>>,
 ) -> Result<Json<()>, WebError> {
     let filter = filter_all!(f_eq(Attribute::Class, EntryClass::Account.into()));
-    json_rest_event_post_id_attr(state, id, attr, filter, values, kopid).await
+    json_rest_event_post_id_attr(state, id, attr, filter, values, kopid, client_auth_info).await
 }
 
 #[utoipa::path(
@@ -946,9 +988,10 @@ pub async fn person_id_delete_attr(
     State(state): State<ServerState>,
     Path((id, attr)): Path<(String, String)>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
 ) -> Result<Json<()>, WebError> {
     let filter = filter_all!(f_eq(Attribute::Class, EntryClass::Account.into()));
-    json_rest_event_delete_id_attr(state, id, attr, filter, None, kopid).await
+    json_rest_event_delete_id_attr(state, id, attr, filter, None, kopid, client_auth_info).await
 }
 
 #[utoipa::path(
@@ -964,9 +1007,10 @@ pub async fn service_account_id_delete_attr(
     State(state): State<ServerState>,
     Path((id, attr)): Path<(String, String)>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
 ) -> Result<Json<()>, WebError> {
     let filter = filter_all!(f_eq(Attribute::Class, EntryClass::Account.into()));
-    json_rest_event_delete_id_attr(state, id, attr, filter, None, kopid).await
+    json_rest_event_delete_id_attr(state, id, attr, filter, None, kopid, client_auth_info).await
 }
 
 #[utoipa::path(
@@ -982,10 +1026,11 @@ pub async fn person_id_put_attr(
     State(state): State<ServerState>,
     Path((id, attr)): Path<(String, String)>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     Json(values): Json<Vec<String>>,
 ) -> Result<Json<()>, WebError> {
     let filter = filter_all!(f_eq(Attribute::Class, EntryClass::Account.into()));
-    json_rest_event_put_attr(state, id, attr, filter, values, kopid).await
+    json_rest_event_put_attr(state, id, attr, filter, values, kopid, client_auth_info).await
 }
 
 #[utoipa::path(
@@ -1002,10 +1047,11 @@ pub async fn service_account_id_put_attr(
     State(state): State<ServerState>,
     Path((id, attr)): Path<(String, String)>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     Json(values): Json<Vec<String>>,
 ) -> Result<Json<()>, WebError> {
     let filter = filter_all!(f_eq(Attribute::Class, EntryClass::Account.into()));
-    json_rest_event_put_attr(state, id, attr, filter, values, kopid).await
+    json_rest_event_put_attr(state, id, attr, filter, values, kopid, client_auth_info).await
 }
 
 #[utoipa::path(
@@ -1021,6 +1067,7 @@ pub async fn service_account_id_put_attr(
 pub async fn person_id_patch(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     Path(id): Path<String>,
     Json(obj): Json<ProtoEntry>,
 ) -> Result<Json<()>, WebError> {
@@ -1029,7 +1076,7 @@ pub async fn person_id_patch(
     let filter = Filter::join_parts_and(filter, filter_all!(f_id(id.as_str())));
     state
         .qe_w_ref
-        .handle_internalpatch(kopid.uat, filter, obj, kopid.eventid)
+        .handle_internalpatch(client_auth_info, filter, obj, kopid.eventid)
         .await
         .map(Json::from)
         .map_err(WebError::from)
@@ -1048,11 +1095,12 @@ pub async fn person_id_patch(
 pub async fn person_id_credential_update_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     Path(id): Path<String>,
 ) -> Result<Json<(CUSessionToken, CUStatus)>, WebError> {
     state
         .qe_w_ref
-        .handle_idmcredentialupdate(kopid.uat, id, kopid.eventid)
+        .handle_idmcredentialupdate(client_auth_info, id, kopid.eventid)
         .await
         .map(Json::from)
         .map_err(WebError::from)
@@ -1076,13 +1124,14 @@ pub async fn person_id_credential_update_get(
 pub async fn person_id_credential_update_intent_ttl_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     Path(id): Path<String>,
     Query(ttl): Query<u64>,
 ) -> Result<Json<CUIntentToken>, WebError> {
     state
         .qe_w_ref
         .handle_idmcredentialupdateintent(
-            kopid.uat,
+            client_auth_info,
             id,
             Some(Duration::from_secs(ttl)),
             kopid.eventid,
@@ -1106,11 +1155,12 @@ pub async fn person_id_credential_update_intent_ttl_get(
 pub async fn person_id_credential_update_intent_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     Path(id): Path<String>,
 ) -> Result<Json<CUIntentToken>, WebError> {
     state
         .qe_w_ref
-        .handle_idmcredentialupdateintent(kopid.uat, id, None, kopid.eventid)
+        .handle_idmcredentialupdateintent(client_auth_info, id, None, kopid.eventid)
         .await
         .map(Json::from)
         .map_err(WebError::from)
@@ -1130,10 +1180,11 @@ pub async fn account_id_user_auth_token_get(
     State(state): State<ServerState>,
     Path(id): Path<String>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
 ) -> Result<Json<Vec<UatStatus>>, WebError> {
     state
         .qe_r_ref
-        .handle_account_user_auth_token_get(kopid.uat, id, kopid.eventid)
+        .handle_account_user_auth_token_get(client_auth_info, id, kopid.eventid)
         .await
         .map(Json::from)
         .map_err(WebError::from)
@@ -1152,10 +1203,11 @@ pub async fn account_user_auth_token_delete(
     State(state): State<ServerState>,
     Path((id, token_id)): Path<(String, Uuid)>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
 ) -> Result<Json<()>, WebError> {
     state
         .qe_w_ref
-        .handle_account_user_auth_token_destroy(kopid.uat, id, token_id, kopid.eventid)
+        .handle_account_user_auth_token_destroy(client_auth_info, id, token_id, kopid.eventid)
         .await
         .map(Json::from)
         .map_err(WebError::from)
@@ -1309,11 +1361,12 @@ pub async fn credential_update_cancel(
 pub async fn service_account_id_credential_status_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     Path(id): Path<String>,
 ) -> Result<Json<CredentialStatus>, WebError> {
     match state
         .qe_r_ref
-        .handle_idmcredentialstatus(kopid.uat, id.clone(), kopid.eventid)
+        .handle_idmcredentialstatus(client_auth_info, id.clone(), kopid.eventid)
         .await
         .map(Json::from)
     {
@@ -1342,11 +1395,12 @@ pub async fn service_account_id_credential_status_get(
 pub async fn person_get_id_credential_status(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     Path(id): Path<String>,
 ) -> Result<Json<CredentialStatus>, WebError> {
     match state
         .qe_r_ref
-        .handle_idmcredentialstatus(kopid.uat, id.clone(), kopid.eventid)
+        .handle_idmcredentialstatus(client_auth_info, id.clone(), kopid.eventid)
         .await
         .map(Json::from)
     {
@@ -1375,11 +1429,12 @@ pub async fn person_get_id_credential_status(
 pub async fn person_id_ssh_pubkeys_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     Path(id): Path<String>,
 ) -> Result<Json<Vec<String>>, WebError> {
     state
         .qe_r_ref
-        .handle_internalsshkeyread(kopid.uat, id, kopid.eventid)
+        .handle_internalsshkeyread(client_auth_info, id, kopid.eventid)
         .await
         .map(Json::from)
         .map_err(WebError::from)
@@ -1399,11 +1454,12 @@ pub async fn person_id_ssh_pubkeys_get(
 pub async fn account_id_ssh_pubkeys_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     Path(id): Path<String>,
 ) -> Result<Json<Vec<String>>, WebError> {
     state
         .qe_r_ref
-        .handle_internalsshkeyread(kopid.uat, id, kopid.eventid)
+        .handle_internalsshkeyread(client_auth_info, id, kopid.eventid)
         .await
         .map(Json::from)
         .map_err(WebError::from)
@@ -1422,11 +1478,12 @@ pub async fn account_id_ssh_pubkeys_get(
 pub async fn service_account_id_ssh_pubkeys_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     Path(id): Path<String>,
 ) -> Result<Json<Vec<String>>, WebError> {
     state
         .qe_r_ref
-        .handle_internalsshkeyread(kopid.uat, id, kopid.eventid)
+        .handle_internalsshkeyread(client_auth_info, id, kopid.eventid)
         .await
         .map(Json::from)
         .map_err(WebError::from)
@@ -1444,6 +1501,7 @@ pub async fn service_account_id_ssh_pubkeys_get(
 pub async fn person_id_ssh_pubkeys_post(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     Path(id): Path<String>,
     Json((tag, key)): Json<(String, String)>,
 ) -> Result<Json<()>, WebError> {
@@ -1451,7 +1509,7 @@ pub async fn person_id_ssh_pubkeys_post(
     // Add a msg here
     state
         .qe_w_ref
-        .handle_sshkeycreate(kopid.uat, id, &tag, &key, filter, kopid.eventid)
+        .handle_sshkeycreate(client_auth_info, id, &tag, &key, filter, kopid.eventid)
         .await
         .map(Json::from)
         .map_err(WebError::from)
@@ -1470,6 +1528,7 @@ pub async fn person_id_ssh_pubkeys_post(
 pub async fn service_account_id_ssh_pubkeys_post(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     Path(id): Path<String>,
     Json((tag, key)): Json<(String, String)>,
 ) -> Result<Json<()>, WebError> {
@@ -1477,7 +1536,7 @@ pub async fn service_account_id_ssh_pubkeys_post(
     // Add a msg here
     state
         .qe_w_ref
-        .handle_sshkeycreate(kopid.uat, id, &tag, &key, filter, kopid.eventid)
+        .handle_sshkeycreate(client_auth_info, id, &tag, &key, filter, kopid.eventid)
         .await
         .map(Json::from)
         .map_err(WebError::from)
@@ -1496,11 +1555,12 @@ pub async fn service_account_id_ssh_pubkeys_post(
 pub async fn person_id_ssh_pubkeys_tag_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     Path((id, tag)): Path<(String, String)>,
 ) -> Result<Json<Option<String>>, WebError> {
     state
         .qe_r_ref
-        .handle_internalsshkeytagread(kopid.uat, id, tag, kopid.eventid)
+        .handle_internalsshkeytagread(client_auth_info, id, tag, kopid.eventid)
         .await
         .map(Json::from)
         .map_err(WebError::from)
@@ -1518,11 +1578,12 @@ pub async fn person_id_ssh_pubkeys_tag_get(
 pub async fn account_id_ssh_pubkeys_tag_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     Path((id, tag)): Path<(String, String)>,
 ) -> Result<Json<Option<String>>, WebError> {
     state
         .qe_r_ref
-        .handle_internalsshkeytagread(kopid.uat, id, tag, kopid.eventid)
+        .handle_internalsshkeytagread(client_auth_info, id, tag, kopid.eventid)
         .await
         .map(Json::from)
         .map_err(WebError::from)
@@ -1541,11 +1602,12 @@ pub async fn account_id_ssh_pubkeys_tag_get(
 pub async fn service_account_id_ssh_pubkeys_tag_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     Path((id, tag)): Path<(String, String)>,
 ) -> Result<Json<Option<String>>, WebError> {
     state
         .qe_r_ref
-        .handle_internalsshkeytagread(kopid.uat, id, tag, kopid.eventid)
+        .handle_internalsshkeytagread(client_auth_info, id, tag, kopid.eventid)
         .await
         .map(Json::from)
         .map_err(WebError::from)
@@ -1566,6 +1628,7 @@ pub async fn service_account_id_ssh_pubkeys_tag_get(
 pub async fn person_id_ssh_pubkeys_tag_delete(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     Path((id, tag)): Path<(String, String)>,
 ) -> Result<Json<()>, WebError> {
     let values = vec![tag];
@@ -1573,7 +1636,7 @@ pub async fn person_id_ssh_pubkeys_tag_delete(
     state
         .qe_w_ref
         .handle_removeattributevalues(
-            kopid.uat,
+            client_auth_info,
             id,
             Attribute::SshPublicKey.to_string(),
             values,
@@ -1600,6 +1663,7 @@ pub async fn person_id_ssh_pubkeys_tag_delete(
 pub async fn service_account_id_ssh_pubkeys_tag_delete(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     Path((id, tag)): Path<(String, String)>,
 ) -> Result<Json<()>, WebError> {
     let values = vec![tag];
@@ -1607,7 +1671,7 @@ pub async fn service_account_id_ssh_pubkeys_tag_delete(
     state
         .qe_w_ref
         .handle_removeattributevalues(
-            kopid.uat,
+            client_auth_info,
             id,
             Attribute::SshPublicKey.to_string(),
             values,
@@ -1633,12 +1697,13 @@ pub async fn service_account_id_ssh_pubkeys_tag_delete(
 pub async fn person_id_radius_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     Path(id): Path<String>,
 ) -> Result<Json<Option<String>>, WebError> {
     // TODO: string
     state
         .qe_r_ref
-        .handle_internalradiusread(kopid.uat, id, kopid.eventid)
+        .handle_internalradiusread(client_auth_info, id, kopid.eventid)
         .await
         .map(Json::from)
         .map_err(WebError::from)
@@ -1658,12 +1723,13 @@ pub async fn person_id_radius_get(
 pub async fn person_id_radius_post(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     Path(id): Path<String>,
 ) -> Result<Json<String>, WebError> {
     // Need to to send the regen msg
     state
         .qe_w_ref
-        .handle_regenerateradius(kopid.uat, id, kopid.eventid)
+        .handle_regenerateradius(client_auth_info, id, kopid.eventid)
         .await
         .map(Json::from)
         .map_err(WebError::from)
@@ -1682,10 +1748,11 @@ pub async fn person_id_radius_delete(
     State(state): State<ServerState>,
     Path(id): Path<String>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
 ) -> Result<Json<()>, WebError> {
     let attr = "radius_secret".to_string();
     let filter = filter_all!(f_eq(Attribute::Class, EntryClass::Account.into()));
-    json_rest_event_delete_id_attr(state, id, attr, filter, None, kopid).await
+    json_rest_event_delete_id_attr(state, id, attr, filter, None, kopid, client_auth_info).await
 }
 
 // /v1/person/:id/_radius/_token
@@ -1703,8 +1770,9 @@ pub async fn person_id_radius_token_get(
     State(state): State<ServerState>,
     Path(id): Path<String>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
 ) -> Result<Json<RadiusAuthToken>, WebError> {
-    person_id_radius_handler(state, id, kopid).await
+    person_id_radius_handler(state, id, kopid, client_auth_info).await
 }
 
 // /v1/account/:id/_radius/_token
@@ -1722,8 +1790,9 @@ pub async fn account_id_radius_token_get(
     State(state): State<ServerState>,
     Path(id): Path<String>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
 ) -> Result<Json<RadiusAuthToken>, WebError> {
-    person_id_radius_handler(state, id, kopid).await
+    person_id_radius_handler(state, id, kopid, client_auth_info).await
 }
 
 #[utoipa::path(
@@ -1740,18 +1809,20 @@ pub async fn account_id_radius_token_post(
     State(state): State<ServerState>,
     Path(id): Path<String>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
 ) -> Result<Json<RadiusAuthToken>, WebError> {
-    person_id_radius_handler(state, id, kopid).await
+    person_id_radius_handler(state, id, kopid, client_auth_info).await
 }
 
 async fn person_id_radius_handler(
     state: ServerState,
     id: String,
     kopid: KOpId,
+    client_auth_info: ClientAuthInfo,
 ) -> Result<Json<RadiusAuthToken>, WebError> {
     state
         .qe_r_ref
-        .handle_internalradiustokenread(kopid.uat, id, kopid.eventid)
+        .handle_internalradiustokenread(client_auth_info, id, kopid.eventid)
         .await
         .map(Json::from)
         .map_err(WebError::from)
@@ -1772,11 +1843,12 @@ pub async fn person_id_unix_post(
     State(state): State<ServerState>,
     Path(id): Path<String>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     Json(obj): Json<AccountUnixExtend>,
 ) -> Result<Json<()>, WebError> {
     state
         .qe_w_ref
-        .handle_idmaccountunixextend(kopid.uat, id, obj, kopid.eventid)
+        .handle_idmaccountunixextend(client_auth_info, id, obj, kopid.eventid)
         .await
         .map(Json::from)
         .map_err(WebError::from)
@@ -1798,11 +1870,12 @@ pub async fn service_account_id_unix_post(
     State(state): State<ServerState>,
     Path(id): Path<String>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     Json(obj): Json<AccountUnixExtend>,
 ) -> Result<Json<()>, WebError> {
     state
         .qe_w_ref
-        .handle_idmaccountunixextend(kopid.uat, id, obj, kopid.eventid)
+        .handle_idmaccountunixextend(client_auth_info, id, obj, kopid.eventid)
         .await
         .map(Json::from)
         .map_err(WebError::from)
@@ -1823,11 +1896,12 @@ pub async fn account_id_unix_post(
     State(state): State<ServerState>,
     Path(id): Path<String>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     Json(obj): Json<AccountUnixExtend>,
 ) -> Result<Json<()>, WebError> {
     state
         .qe_w_ref
-        .handle_idmaccountunixextend(kopid.uat, id, obj, kopid.eventid)
+        .handle_idmaccountunixextend(client_auth_info, id, obj, kopid.eventid)
         .await
         .map(Json::from)
         .map_err(WebError::from)
@@ -1847,6 +1921,7 @@ pub async fn account_id_unix_post(
 pub async fn account_id_unix_token(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     Path(id): Path<String>,
 ) -> Result<Json<UnixUserToken>, WebError> {
     // no point asking for an empty id
@@ -1856,7 +1931,7 @@ pub async fn account_id_unix_token(
 
     let res = state
         .qe_r_ref
-        .handle_internalunixusertokenread(kopid.uat, id, kopid.eventid)
+        .handle_internalunixusertokenread(client_auth_info, id, kopid.eventid)
         .await
         .map(Json::from);
 
@@ -1886,12 +1961,13 @@ pub async fn account_id_unix_token(
 pub async fn account_id_unix_auth_post(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     Path(id): Path<String>,
     Json(obj): Json<SingleStringRequest>,
 ) -> Result<Json<Option<UnixUserToken>>, WebError> {
     state
         .qe_r_ref
-        .handle_idmaccountunixauth(kopid.uat, id, obj.value, kopid.eventid)
+        .handle_idmaccountunixauth(client_auth_info, id, obj.value, kopid.eventid)
         .await
         .map(Json::from)
         .map_err(WebError::from)
@@ -1910,12 +1986,13 @@ pub async fn account_id_unix_auth_post(
 pub async fn person_id_unix_credential_put(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     Path(id): Path<String>,
     Json(obj): Json<SingleStringRequest>,
 ) -> Result<Json<()>, WebError> {
     state
         .qe_w_ref
-        .handle_idmaccountunixsetcred(kopid.uat, id, obj.value, kopid.eventid)
+        .handle_idmaccountunixsetcred(client_auth_info, id, obj.value, kopid.eventid)
         .await
         .map(Json::from)
         .map_err(WebError::from)
@@ -1933,13 +2010,14 @@ pub async fn person_id_unix_credential_put(
 pub async fn person_id_unix_credential_delete(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     Path(id): Path<String>,
 ) -> Result<Json<()>, WebError> {
     let filter = filter_all!(f_eq(Attribute::Class, EntryClass::PosixAccount.into()));
     state
         .qe_w_ref
         .handle_purgeattribute(
-            kopid.uat,
+            client_auth_info,
             id,
             "unix_password".to_string(),
             filter,
@@ -1963,12 +2041,13 @@ pub async fn person_id_unix_credential_delete(
 pub async fn person_identify_user_post(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     Path(id): Path<String>,
     Json(user_request): Json<IdentifyUserRequest>,
 ) -> Result<Json<IdentifyUserResponse>, WebError> {
     state
         .qe_r_ref
-        .handle_user_identity_verification(kopid.uat, kopid.eventid, user_request, id)
+        .handle_user_identity_verification(client_auth_info, kopid.eventid, user_request, id)
         .await
         .map(Json::from)
         .map_err(WebError::from)
@@ -1988,9 +2067,10 @@ pub async fn person_identify_user_post(
 pub async fn group_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
 ) -> Result<Json<Vec<ProtoEntry>>, WebError> {
     let filter = filter_all!(f_eq(Attribute::Class, EntryClass::Group.into()));
-    json_rest_event_get(state, None, filter, kopid).await
+    json_rest_event_get(state, None, filter, kopid, client_auth_info).await
 }
 
 #[utoipa::path(
@@ -2008,10 +2088,11 @@ pub async fn group_get(
 pub async fn group_post(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     Json(obj): Json<ProtoEntry>,
 ) -> Result<Json<()>, WebError> {
     let classes = vec!["group".to_string(), "object".to_string()];
-    json_rest_event_post(state, classes, obj, kopid).await
+    json_rest_event_post(state, classes, obj, kopid, client_auth_info).await
 }
 
 #[utoipa::path(
@@ -2027,10 +2108,11 @@ pub async fn group_post(
 pub async fn group_id_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     Path(id): Path<String>,
 ) -> Result<Json<Option<ProtoEntry>>, WebError> {
     let filter = filter_all!(f_eq(Attribute::Class, EntryClass::Group.into()));
-    json_rest_event_get_id(state, id, filter, None, kopid).await
+    json_rest_event_get_id(state, id, filter, None, kopid, client_auth_info).await
 }
 
 #[utoipa::path(
@@ -2045,10 +2127,11 @@ pub async fn group_id_get(
 pub async fn group_id_delete(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     Path(id): Path<String>,
 ) -> Result<Json<()>, WebError> {
     let filter = filter_all!(f_eq(Attribute::Class, EntryClass::Group.into()));
-    json_rest_event_delete_id(state, id, filter, kopid).await
+    json_rest_event_delete_id(state, id, filter, kopid, client_auth_info).await
 }
 
 #[utoipa::path(
@@ -2065,9 +2148,10 @@ pub async fn group_id_attr_get(
     State(state): State<ServerState>,
     Path((id, attr)): Path<(String, String)>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
 ) -> Result<Json<Option<Vec<String>>>, WebError> {
     let filter = filter_all!(f_eq(Attribute::Class, EntryClass::Group.into()));
-    json_rest_event_get_id_attr(state, id, attr, filter, kopid).await
+    json_rest_event_get_id_attr(state, id, attr, filter, kopid, client_auth_info).await
 }
 
 #[utoipa::path(
@@ -2084,10 +2168,11 @@ pub async fn group_id_attr_post(
     Path((id, attr)): Path<(String, String)>,
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     Json(values): Json<Vec<String>>,
 ) -> Result<Json<()>, WebError> {
     let filter = filter_all!(f_eq(Attribute::Class, EntryClass::Group.into()));
-    json_rest_event_post_id_attr(state, id, attr, filter, values, kopid).await
+    json_rest_event_post_id_attr(state, id, attr, filter, values, kopid, client_auth_info).await
 }
 
 #[utoipa::path(
@@ -2104,11 +2189,12 @@ pub async fn group_id_attr_delete(
     Path((id, attr)): Path<(String, String)>,
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     values: Option<Json<Vec<String>>>,
 ) -> Result<Json<()>, WebError> {
     let filter = filter_all!(f_eq(Attribute::Class, EntryClass::Group.into()));
     let values = values.map(|v| v.0);
-    json_rest_event_delete_id_attr(state, id, attr, filter, values, kopid).await
+    json_rest_event_delete_id_attr(state, id, attr, filter, values, kopid, client_auth_info).await
 }
 
 #[utoipa::path(
@@ -2125,10 +2211,11 @@ pub async fn group_id_attr_put(
     Path((id, attr)): Path<(String, String)>,
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     Json(values): Json<Vec<String>>,
 ) -> Result<Json<()>, WebError> {
     let filter = filter_all!(f_eq(Attribute::Class, EntryClass::Group.into()));
-    json_rest_event_put_id_attr(state, id, attr, filter, values, kopid).await
+    json_rest_event_put_id_attr(state, id, attr, filter, values, kopid, client_auth_info).await
 }
 
 #[utoipa::path(
@@ -2145,11 +2232,12 @@ pub async fn group_id_unix_post(
     State(state): State<ServerState>,
     Path(id): Path<String>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     Json(obj): Json<GroupUnixExtend>,
 ) -> Result<Json<()>, WebError> {
     state
         .qe_w_ref
-        .handle_idmgroupunixextend(kopid.uat, id, obj, kopid.eventid)
+        .handle_idmgroupunixextend(client_auth_info, id, obj, kopid.eventid)
         .await
         .map(Json::from)
         .map_err(WebError::from)
@@ -2168,11 +2256,12 @@ pub async fn group_id_unix_post(
 pub async fn group_id_unix_token_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     Path(id): Path<String>,
 ) -> Result<Json<UnixGroupToken>, WebError> {
     state
         .qe_r_ref
-        .handle_internalunixgrouptokenread(kopid.uat, id, kopid.eventid)
+        .handle_internalunixgrouptokenread(client_auth_info, id, kopid.eventid)
         .await
         .map(Json::from)
         .map_err(WebError::from)
@@ -2191,9 +2280,10 @@ pub async fn group_id_unix_token_get(
 pub async fn domain_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
 ) -> Result<Json<Vec<ProtoEntry>>, WebError> {
     let filter = filter_all!(f_eq(Attribute::Uuid, PartialValue::Uuid(UUID_DOMAIN_INFO)));
-    json_rest_event_get(state, None, filter, kopid).await
+    json_rest_event_get(state, None, filter, kopid, client_auth_info).await
 }
 
 #[utoipa::path(
@@ -2209,10 +2299,19 @@ pub async fn domain_get(
 pub async fn domain_attr_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     Path(attr): Path<String>,
 ) -> Result<Json<Option<Vec<String>>>, WebError> {
     let filter = filter_all!(f_eq(Attribute::Class, EntryClass::DomainInfo.into()));
-    json_rest_event_get_attr(state, STR_UUID_DOMAIN_INFO, attr, filter, kopid).await
+    json_rest_event_get_attr(
+        state,
+        STR_UUID_DOMAIN_INFO,
+        attr,
+        filter,
+        kopid,
+        client_auth_info,
+    )
+    .await
 }
 
 #[utoipa::path(
@@ -2228,6 +2327,7 @@ pub async fn domain_attr_get(
 pub async fn domain_attr_put(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     Path(attr): Path<String>,
     Json(values): Json<Vec<String>>,
 ) -> Result<Json<()>, WebError> {
@@ -2239,6 +2339,7 @@ pub async fn domain_attr_put(
         filter,
         values,
         kopid,
+        client_auth_info,
     )
     .await
 }
@@ -2257,6 +2358,7 @@ pub async fn domain_attr_delete(
     State(state): State<ServerState>,
     Path(attr): Path<String>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     Json(values): Json<Option<Vec<String>>>,
 ) -> Result<Json<()>, WebError> {
     let filter = filter_all!(f_eq(Attribute::Class, EntryClass::DomainInfo.into()));
@@ -2267,6 +2369,7 @@ pub async fn domain_attr_delete(
         filter,
         values,
         kopid,
+        client_auth_info,
     )
     .await
 }
@@ -2284,12 +2387,13 @@ pub async fn domain_attr_delete(
 pub async fn system_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
 ) -> Result<Json<Vec<ProtoEntry>>, WebError> {
     let filter = filter_all!(f_eq(
         Attribute::Uuid,
         PartialValue::Uuid(UUID_SYSTEM_CONFIG)
     ));
-    json_rest_event_get(state, None, filter, kopid).await
+    json_rest_event_get(state, None, filter, kopid, client_auth_info).await
 }
 
 #[utoipa::path(
@@ -2306,9 +2410,18 @@ pub async fn system_attr_get(
     State(state): State<ServerState>,
     Path(attr): Path<String>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
 ) -> Result<Json<Option<Vec<String>>>, WebError> {
     let filter = filter_all!(f_eq(Attribute::Class, EntryClass::SystemConfig.into()));
-    json_rest_event_get_attr(state, STR_UUID_SYSTEM_CONFIG, attr, filter, kopid).await
+    json_rest_event_get_attr(
+        state,
+        STR_UUID_SYSTEM_CONFIG,
+        attr,
+        filter,
+        kopid,
+        client_auth_info,
+    )
+    .await
 }
 
 #[utoipa::path(
@@ -2325,6 +2438,7 @@ pub async fn system_attr_post(
     State(state): State<ServerState>,
     Path(attr): Path<String>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     Json(values): Json<Vec<String>>,
 ) -> Result<Json<()>, WebError> {
     let filter = filter_all!(f_eq(Attribute::Class, EntryClass::SystemConfig.into()));
@@ -2335,6 +2449,7 @@ pub async fn system_attr_post(
         filter,
         values,
         kopid,
+        client_auth_info,
     )
     .await
 }
@@ -2353,6 +2468,7 @@ pub async fn system_attr_delete(
     State(state): State<ServerState>,
     Path(attr): Path<String>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     Json(values): Json<Option<Vec<String>>>,
 ) -> Result<Json<()>, WebError> {
     let filter = filter_all!(f_eq(Attribute::Class, EntryClass::SystemConfig.into()));
@@ -2363,6 +2479,7 @@ pub async fn system_attr_delete(
         filter,
         values,
         kopid,
+        client_auth_info,
     )
     .await
 }
@@ -2381,6 +2498,7 @@ pub async fn system_attr_put(
     State(state): State<ServerState>,
     Path(attr): Path<String>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     Json(values): Json<Vec<String>>,
 ) -> Result<Json<()>, WebError> {
     let filter = filter_all!(f_eq(Attribute::Class, EntryClass::SystemConfig.into()));
@@ -2391,6 +2509,7 @@ pub async fn system_attr_put(
         filter,
         values,
         kopid,
+        client_auth_info,
     )
     .await
 }
@@ -2408,12 +2527,13 @@ pub async fn system_attr_put(
 pub async fn recycle_bin_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
 ) -> Result<Json<Vec<ProtoEntry>>, WebError> {
     let filter = filter_all!(f_pres(Attribute::Class));
     let attrs = None;
     state
         .qe_r_ref
-        .handle_internalsearchrecycled(kopid.uat, filter, attrs, kopid.eventid)
+        .handle_internalsearchrecycled(client_auth_info, filter, attrs, kopid.eventid)
         .await
         .map(Json::from)
         .map_err(WebError::from)
@@ -2433,13 +2553,14 @@ pub async fn recycle_bin_id_get(
     State(state): State<ServerState>,
     Path(id): Path<String>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
 ) -> Result<Json<Option<ProtoEntry>>, WebError> {
     let filter = filter_all!(f_id(id.as_str()));
     let attrs = None;
 
     state
         .qe_r_ref
-        .handle_internalsearchrecycled(kopid.uat, filter, attrs, kopid.eventid)
+        .handle_internalsearchrecycled(client_auth_info, filter, attrs, kopid.eventid)
         .await
         .map(|mut r| r.pop())
         .map(Json::from)
@@ -2459,11 +2580,12 @@ pub async fn recycle_bin_revive_id_post(
     State(state): State<ServerState>,
     Path(id): Path<String>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
 ) -> Result<Json<()>, WebError> {
     let filter = filter_all!(f_id(id.as_str()));
     state
         .qe_w_ref
-        .handle_reviverecycled(kopid.uat, filter, kopid.eventid)
+        .handle_reviverecycled(client_auth_info, filter, kopid.eventid)
         .await
         .map(Json::from)
         .map_err(WebError::from)
@@ -2483,10 +2605,11 @@ pub async fn recycle_bin_revive_id_post(
 pub async fn applinks_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
 ) -> Result<Json<Vec<AppLink>>, WebError> {
     state
         .qe_r_ref
-        .handle_list_applinks(kopid.uat, kopid.eventid)
+        .handle_list_applinks(client_auth_info, kopid.eventid)
         .await
         .map(Json::from)
         .map_err(WebError::from)
@@ -2505,14 +2628,14 @@ pub async fn applinks_get(
 )] // TODO: post body stuff
 pub async fn reauth(
     State(state): State<ServerState>,
-    TrustedClientIp(ip_addr): TrustedClientIp,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     Extension(kopid): Extension<KOpId>,
     Json(obj): Json<AuthIssueSession>,
 ) -> Result<Response, WebError> {
     // This may change in the future ...
     let inter = state
         .qe_r_ref
-        .handle_reauth(kopid.uat, obj, kopid.eventid, ip_addr)
+        .handle_reauth(client_auth_info, obj, kopid.eventid)
         .await;
     debug!("ReAuth result: {:?}", inter);
     auth_session_state_management(state, inter)
@@ -2531,7 +2654,7 @@ pub async fn reauth(
 )]
 pub async fn auth(
     State(state): State<ServerState>,
-    TrustedClientIp(ip_addr): TrustedClientIp,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     headers: HeaderMap,
     Extension(kopid): Extension<KOpId>,
     Json(obj): Json<AuthRequest>,
@@ -2547,7 +2670,7 @@ pub async fn auth(
     // invalid.
     let inter = state // This may change in the future ...
         .qe_r_ref
-        .handle_auth(maybe_sessionid, obj, kopid.eventid, ip_addr)
+        .handle_auth(maybe_sessionid, obj, kopid.eventid, client_auth_info)
         .await;
     debug!("Auth result: {:?}", inter);
     auth_session_state_management(state, inter)
@@ -2655,10 +2778,11 @@ fn auth_session_state_management(
 pub async fn auth_valid(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
 ) -> Result<Json<()>, WebError> {
     state
         .qe_r_ref
-        .handle_auth_valid(kopid.uat, kopid.eventid)
+        .handle_auth_valid(client_auth_info, kopid.eventid)
         .await
         .map(Json::from)
         .map_err(WebError::from)

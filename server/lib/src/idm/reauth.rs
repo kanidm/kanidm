@@ -23,7 +23,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
         ident: Identity,
         issue: AuthIssueSession,
         ct: Duration,
-        source: Source,
+        client_auth_info: ClientAuthInfo,
     ) -> Result<AuthResult, OperationError> {
         // re-auth only works on users, so lets get the user account.
         // hint - it's in the ident!
@@ -135,7 +135,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
             issue,
             webauthn: self.webauthn,
             ct,
-            source,
+            client_auth_info,
         };
         let (auth_session, state) =
             AuthSession::new_reauth(asd, ident.session_id, session, session_cred_id);
@@ -279,11 +279,9 @@ mod tests {
 
         let pw = crate::utils::password_from_random();
 
-        let c_status = cutxn
+        let _c_status = cutxn
             .credential_primary_set_password(&cust, ct, &pw)
             .expect("Failed to update the primary cred password");
-
-        assert!(c_status.can_commit());
 
         let c_status = cutxn
             .credential_primary_init_totp(&cust, ct)
@@ -332,7 +330,9 @@ mod tests {
 
         let auth_init = AuthEvent::named_init("testperson");
 
-        let r1 = idms_auth.auth(&auth_init, ct, Source::Internal).await;
+        let r1 = idms_auth
+            .auth(&auth_init, ct, Source::Internal.into())
+            .await;
         let ar = r1.unwrap();
         let AuthResult { sessionid, state } = ar;
 
@@ -343,7 +343,9 @@ mod tests {
 
         let auth_begin = AuthEvent::begin_mech(sessionid, AuthMech::Passkey);
 
-        let r2 = idms_auth.auth(&auth_begin, ct, Source::Internal).await;
+        let r2 = idms_auth
+            .auth(&auth_begin, ct, Source::Internal.into())
+            .await;
         let ar = r2.unwrap();
         let AuthResult { sessionid, state } = ar;
 
@@ -365,7 +367,9 @@ mod tests {
 
         let passkey_step = AuthEvent::cred_step_passkey(sessionid, resp);
 
-        let r3 = idms_auth.auth(&passkey_step, ct, Source::Internal).await;
+        let r3 = idms_auth
+            .auth(&passkey_step, ct, Source::Internal.into())
+            .await;
         debug!("r3 ==> {:?}", r3);
         idms_auth.commit().expect("Must not fail");
 
@@ -405,7 +409,9 @@ mod tests {
 
         let auth_init = AuthEvent::named_init("testperson");
 
-        let r1 = idms_auth.auth(&auth_init, ct, Source::Internal).await;
+        let r1 = idms_auth
+            .auth(&auth_init, ct, Source::Internal.into())
+            .await;
         let ar = r1.unwrap();
         let AuthResult { sessionid, state } = ar;
 
@@ -416,7 +422,9 @@ mod tests {
 
         let auth_begin = AuthEvent::begin_mech(sessionid, AuthMech::PasswordMfa);
 
-        let r2 = idms_auth.auth(&auth_begin, ct, Source::Internal).await;
+        let r2 = idms_auth
+            .auth(&auth_begin, ct, Source::Internal.into())
+            .await;
         let ar = r2.unwrap();
         let AuthResult { sessionid, state } = ar;
 
@@ -427,7 +435,9 @@ mod tests {
             .expect("Failed to perform totp step");
 
         let totp_step = AuthEvent::cred_step_totp(sessionid, totp);
-        let r2 = idms_auth.auth(&totp_step, ct, Source::Internal).await;
+        let r2 = idms_auth
+            .auth(&totp_step, ct, Source::Internal.into())
+            .await;
         let ar = r2.unwrap();
         let AuthResult { sessionid, state } = ar;
 
@@ -436,7 +446,7 @@ mod tests {
         let pw_step = AuthEvent::cred_step_password(sessionid, pw);
 
         // Expect success
-        let r3 = idms_auth.auth(&pw_step, ct, Source::Internal).await;
+        let r3 = idms_auth.auth(&pw_step, ct, Source::Internal.into()).await;
         debug!("r3 ==> {:?}", r3);
         idms_auth.commit().expect("Must not fail");
 
@@ -459,11 +469,15 @@ mod tests {
         }
     }
 
-    async fn token_to_ident(idms: &IdmServer, ct: Duration, token: Option<&str>) -> Identity {
+    async fn token_to_ident(
+        idms: &IdmServer,
+        ct: Duration,
+        client_auth_info: ClientAuthInfo,
+    ) -> Identity {
         let mut idms_prox_read = idms.proxy_read().await;
 
         idms_prox_read
-            .validate_and_parse_token_to_ident(token, ct)
+            .validate_client_auth_info_to_ident(client_auth_info, ct)
             .expect("Invalid UAT")
     }
 
@@ -478,7 +492,12 @@ mod tests {
         let origin = idms_auth.get_origin().clone();
 
         let auth_allowed = idms_auth
-            .reauth_init(ident.clone(), AuthIssueSession::Token, ct, Source::Internal)
+            .reauth_init(
+                ident.clone(),
+                AuthIssueSession::Token,
+                ct,
+                Source::Internal.into(),
+            )
             .await
             .expect("Failed to start reauth.");
 
@@ -502,7 +521,9 @@ mod tests {
 
         let passkey_step = AuthEvent::cred_step_passkey(sessionid, resp);
 
-        let r3 = idms_auth.auth(&passkey_step, ct, Source::Internal).await;
+        let r3 = idms_auth
+            .auth(&passkey_step, ct, Source::Internal.into())
+            .await;
         debug!("r3 ==> {:?}", r3);
         idms_auth.commit().expect("Must not fail");
 
@@ -537,7 +558,12 @@ mod tests {
         let mut idms_auth = idms.auth().await;
 
         let auth_allowed = idms_auth
-            .reauth_init(ident.clone(), AuthIssueSession::Token, ct, Source::Internal)
+            .reauth_init(
+                ident.clone(),
+                AuthIssueSession::Token,
+                ct,
+                Source::Internal.into(),
+            )
             .await
             .expect("Failed to start reauth.");
 
@@ -562,7 +588,9 @@ mod tests {
             .expect("Failed to perform totp step");
 
         let totp_step = AuthEvent::cred_step_totp(sessionid, totp);
-        let r2 = idms_auth.auth(&totp_step, ct, Source::Internal).await;
+        let r2 = idms_auth
+            .auth(&totp_step, ct, Source::Internal.into())
+            .await;
         let ar = r2.unwrap();
         let AuthResult { sessionid, state } = ar;
 
@@ -571,7 +599,7 @@ mod tests {
         let pw_step = AuthEvent::cred_step_password(sessionid, pw);
 
         // Expect success
-        let r3 = idms_auth.auth(&pw_step, ct, Source::Internal).await;
+        let r3 = idms_auth.auth(&pw_step, ct, Source::Internal.into()).await;
         debug!("r3 ==> {:?}", r3);
         idms_auth.commit().expect("Must not fail");
 
@@ -603,7 +631,7 @@ mod tests {
             .expect("failed to authenticate with passkey");
 
         // Token_str to uat
-        let ident = token_to_ident(idms, ct, Some(token.as_str())).await;
+        let ident = token_to_ident(idms, ct, token.as_str().into()).await;
 
         // Check that the rw entitlement is not present
         debug!(?ident);
@@ -622,7 +650,7 @@ mod tests {
             .expect("Failed to get new session token");
 
         // Token_str to uat
-        let ident = token_to_ident(idms, ct, Some(token.as_str())).await;
+        let ident = token_to_ident(idms, ct, token.as_str().into()).await;
 
         // They now have the entitlement.
         debug!(?ident);
@@ -649,7 +677,7 @@ mod tests {
             .expect("failed to authenticate with passkey");
 
         // Token_str to uat
-        let ident = token_to_ident(idms, ct, Some(token.as_str())).await;
+        let ident = token_to_ident(idms, ct, token.as_str().into()).await;
 
         // Check that the rw entitlement is not present
         debug!(?ident);
