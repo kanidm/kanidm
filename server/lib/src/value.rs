@@ -265,6 +265,7 @@ pub enum SyntaxType {
     Image = 34,
     CredentialType = 35,
     WebauthnAttestationCaList = 36,
+    ApplicationPassword = 37,
 }
 
 impl TryFrom<&str> for SyntaxType {
@@ -310,6 +311,7 @@ impl TryFrom<&str> for SyntaxType {
             "EC_KEY_PRIVATE" => Ok(SyntaxType::EcKeyPrivate),
             "CREDENTIAL_TYPE" => Ok(SyntaxType::CredentialType),
             "WEBAUTHN_ATTESTATION_CA_LIST" => Ok(SyntaxType::WebauthnAttestationCaList),
+            "APPLICATION_PASSWORD" => Ok(SyntaxType::ApplicationPassword),
             _ => Err(()),
         }
     }
@@ -355,6 +357,7 @@ impl fmt::Display for SyntaxType {
             SyntaxType::Image => "IMAGE",
             SyntaxType::CredentialType => "CREDENTIAL_TYPE",
             SyntaxType::WebauthnAttestationCaList => "WEBAUTHN_ATTESTATION_CA_LIST",
+            SyntaxType::ApplicationPassword => "APPLICATION_PASSWORD",
         })
     }
 }
@@ -790,6 +793,10 @@ impl PartialValue {
 
     pub fn new_image(input: &str) -> Self {
         PartialValue::Image(input.to_string())
+    }
+
+    pub fn new_application_password_s(us: &str) -> Option<Self> {
+        Uuid::parse_str(us).map(PartialValue::ApplicationPassword).ok()
     }
 
     pub fn to_str(&self) -> Option<&str> {
