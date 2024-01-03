@@ -602,6 +602,7 @@ pub trait QueryServerTransaction<'a> {
                     SyntaxType::TotpSecret => Err(OperationError::InvalidAttribute("TotpSecret Values can not be supplied through modification".to_string())),
                     SyntaxType::AuditLogString => Err(OperationError::InvalidAttribute("Audit logs are generated and not able to be set.".to_string())),
                     SyntaxType::EcKeyPrivate => Err(OperationError::InvalidAttribute("Ec keys are generated and not able to be set.".to_string())),
+                    SyntaxType::ApplicationPassword => Err(OperationError::InvalidAttribute("ApplicationPassword values can not be supplied through modification".to_string())),
                 }
             }
             None => {
@@ -657,7 +658,8 @@ pub trait QueryServerTransaction<'a> {
                     | SyntaxType::OauthScopeMap
                     | SyntaxType::Session
                     | SyntaxType::ApiToken
-                    | SyntaxType::Oauth2Session => {
+                    | SyntaxType::Oauth2Session
+                    | SyntaxType::ApplicationPassword => {
                         let un = self.name_to_uuid(value).unwrap_or(UUID_DOES_NOT_EXIST);
                         Ok(PartialValue::Refer(un))
                     }

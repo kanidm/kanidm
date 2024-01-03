@@ -237,6 +237,7 @@ impl SchemaAttribute {
             SyntaxType::Image => matches!(v, PartialValue::Utf8(_)),
             SyntaxType::CredentialType => matches!(v, PartialValue::CredentialType(_)),
             SyntaxType::WebauthnAttestationCaList => false,
+            SyntaxType::ApplicationPassword => matches!(v, PartialValue::Refer(_)),
         };
         if r {
             Ok(())
@@ -297,6 +298,7 @@ impl SchemaAttribute {
                 SyntaxType::WebauthnAttestationCaList => {
                     matches!(v, Value::WebauthnAttestationCaList(_))
                 }
+                SyntaxType::ApplicationPassword => matches!(v, Value::ApplicationPassword(..)),
             };
         if r {
             Ok(())

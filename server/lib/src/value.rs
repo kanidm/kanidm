@@ -264,6 +264,7 @@ pub enum SyntaxType {
     CredentialType = 35,
     WebauthnAttestationCaList = 36,
     OauthClaimMap = 37,
+    ApplicationPassword = 38,
 }
 
 impl TryFrom<&str> for SyntaxType {
@@ -310,6 +311,7 @@ impl TryFrom<&str> for SyntaxType {
             "CREDENTIAL_TYPE" => Ok(SyntaxType::CredentialType),
             "WEBAUTHN_ATTESTATION_CA_LIST" => Ok(SyntaxType::WebauthnAttestationCaList),
             "OAUTH_CLAIM_MAP" => Ok(SyntaxType::OauthClaimMap),
+            "APPLICATION_PASSWORD" => Ok(SyntaxType::ApplicationPassword),
             _ => Err(()),
         }
     }
@@ -356,6 +358,7 @@ impl fmt::Display for SyntaxType {
             SyntaxType::CredentialType => "CREDENTIAL_TYPE",
             SyntaxType::WebauthnAttestationCaList => "WEBAUTHN_ATTESTATION_CA_LIST",
             SyntaxType::OauthClaimMap => "OAUTH_CLAIM_MAP",
+            SyntaxType::ApplicationPassword => "APPLICATION_PASSWORD",
         })
     }
 }
