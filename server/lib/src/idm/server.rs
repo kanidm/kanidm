@@ -1525,8 +1525,32 @@ impl<'a> IdmServerAuthTransaction<'a> {
             )));
         }
 
-        security_info!("Account does not have a configured application password.");
-        Ok(None)
+        match account.verify_application_password(
+            &lae.application,
+            lae.label.as_str(),
+            lae.cleartext.as_str(),
+            ct,
+        )? {
+            Some(_) => {
+                let session_id = Uuid::new_v4();
+                security_info!(
+                    "Starting session {} for {} {}",
+                    session_id,
+                    account.spn,
+                    account.uuid
+                );
+
+                Ok(Some(LdapBoundToken {
+                    spn: account.spn,
+                    session_id,
+                    effective_session: LdapSession::UnixBind(account.uuid),
+                }))
+            }
+            None => {
+                security_info!("Account does not have a configured application password.");
+                Ok(None)
+            }
+        }
     }
 
     pub fn commit(self) -> Result<(), OperationError> {

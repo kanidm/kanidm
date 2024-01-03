@@ -66,6 +66,7 @@ pub struct Account {
     pub mail: Vec<String>,
     pub credential_update_intent_tokens: BTreeMap<String, IntentTokenState>,
     pub(crate) unix_extn: Option<UnixExtensions>,
+    pub apps_pwds: BTreeMap<Uuid, Vec<(String, String)>>,
 }
 
 macro_rules! try_from_entry {
@@ -198,6 +199,8 @@ macro_rules! try_from_entry {
             None
         };
 
+        let apps_pwds: BTreeMap<Uuid, Vec<(String, String)>> = BTreeMap::new();
+
         Ok(Account {
             uuid,
             name,
@@ -216,6 +219,7 @@ macro_rules! try_from_entry {
             mail,
             credential_update_intent_tokens,
             unix_extn,
+            apps_pwds,
         })
     }};
 }
@@ -682,6 +686,43 @@ impl Account {
                 }
             }
         }
+    }
+
+    pub fn verify_application_password(
+        &self,
+        app_uuid: &Uuid,
+        app_label: &str,
+        cleartext: &str,
+        ct: Duration,
+    ) -> Result<Option<UserAuthToken>, OperationError> {
+        match &self.apps_pwds.get(app_uuid) {
+            Some(pwds) => {
+                for (label, password) in pwds.iter() {
+                    if app_label == label && cleartext == password {
+                        let session_id = uuid::Uuid::new_v4();
+                        let uat: Option<UserAuthToken> = self.to_userauthtoken(
+                            session_id,
+                            SessionScope::ReadWrite,
+                            ct,
+                            DEFAULT_AUTH_SESSION_EXPIRY,
+                        );
+                        return Ok(uat);
+                    }
+                    if app_label == label && cleartext != password {
+                        security_info!("Label matches but password doesn't");
+                        return Ok(None);
+                    }
+                    if app_label != label && cleartext == password {
+                        security_info!("Password matches but label doesn't");
+                        return Ok(None);
+                    }
+                }
+            }
+            None => {
+                security_info!("No passwords present for application {:?})", app_uuid);
+            }
+        }
+        Ok(None)
     }
 }
 
