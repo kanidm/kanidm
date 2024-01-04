@@ -38,6 +38,7 @@ use crate::repl::cid::Cid;
 use crate::server::identity::IdentityId;
 use crate::valueset::image::ImageValueThings;
 use crate::valueset::uuid_to_proto_string;
+use kanidm_lib_crypto::Password;
 use kanidm_proto::v1::ApiTokenPurpose;
 use kanidm_proto::v1::Filter as ProtoFilter;
 use kanidm_proto::v1::UatPurposeStatus;
@@ -1048,6 +1049,7 @@ pub enum Value {
     Image(ImageValue),
     CredentialType(CredentialType),
     WebauthnAttestationCaList(AttestationCaList),
+    ApplicationPassword(Uuid, Uuid, String, Password),
 }
 
 impl PartialEq for Value {
@@ -1807,7 +1809,8 @@ impl Value {
             | Value::IntentToken(s, _)
             | Value::Passkey(_, s, _)
             | Value::AttestedPasskey(_, s, _)
-            | Value::TotpSecret(s, _) => {
+            | Value::TotpSecret(s, _)
+            | Value::ApplicationPassword(_, _, s, _) => {
                 Value::validate_str_escapes(s) && Value::validate_singleline(s)
             }
 
