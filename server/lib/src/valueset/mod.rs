@@ -850,5 +850,6 @@ pub fn from_repl_v1(rv1: &ReplAttrV1) -> Result<ValueSet, OperationError> {
         ReplAttrV1::WebauthnAttestationCaList { ca_list } => {
             ValueSetWebauthnAttestationCaList::from_repl_v1(ca_list)
         }
+        ReplAttrV1::ApplicationPassword { .. }=> todo!(),
     }
 }
