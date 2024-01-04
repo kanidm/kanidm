@@ -796,7 +796,9 @@ impl PartialValue {
     }
 
     pub fn new_application_password_s(us: &str) -> Option<Self> {
-        Uuid::parse_str(us).map(PartialValue::ApplicationPassword).ok()
+        Uuid::parse_str(us)
+            .map(PartialValue::ApplicationPassword)
+            .ok()
     }
 
     pub fn to_str(&self) -> Option<&str> {
