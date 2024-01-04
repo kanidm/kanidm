@@ -471,6 +471,7 @@ pub enum PartialValue {
     /// We compare on the value hash
     Image(String),
     CredentialType(CredentialType),
+    ApplicationPassword(Uuid),
 }
 
 impl From<SyntaxType> for PartialValue {
@@ -814,7 +815,8 @@ impl PartialValue {
             | PartialValue::Nsuniqueid(s)
             | PartialValue::EmailAddress(s)
             | PartialValue::RestrictedString(s) => s.clone(),
-            PartialValue::Passkey(u)
+            PartialValue::ApplicationPassword(u)
+            | PartialValue::Passkey(u)
             | PartialValue::AttestedPasskey(u)
             | PartialValue::Refer(u)
             | PartialValue::Uuid(u) => u.as_hyphenated().to_string(),
