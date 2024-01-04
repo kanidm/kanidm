@@ -32,13 +32,12 @@ use webauthn_rs::prelude::{
 };
 
 use crate::be::dbentry::DbIdentSpn;
-use crate::credential::{totp::Totp, Credential};
+use crate::credential::{apppwd::ApplicationPassword, totp::Totp, Credential};
 use crate::prelude::*;
 use crate::repl::cid::Cid;
 use crate::server::identity::IdentityId;
 use crate::valueset::image::ImageValueThings;
 use crate::valueset::uuid_to_proto_string;
-use kanidm_lib_crypto::Password;
 use kanidm_proto::v1::ApiTokenPurpose;
 use kanidm_proto::v1::Filter as ProtoFilter;
 use kanidm_proto::v1::UatPurposeStatus;
@@ -1058,7 +1057,7 @@ pub enum Value {
     Image(ImageValue),
     CredentialType(CredentialType),
     WebauthnAttestationCaList(AttestationCaList),
-    ApplicationPassword(Uuid, Uuid, String, Password),
+    ApplicationPassword(Uuid, ApplicationPassword),
 }
 
 impl PartialEq for Value {
@@ -1818,8 +1817,7 @@ impl Value {
             | Value::IntentToken(s, _)
             | Value::Passkey(_, s, _)
             | Value::AttestedPasskey(_, s, _)
-            | Value::TotpSecret(s, _)
-            | Value::ApplicationPassword(_, _, s, _) => {
+            | Value::TotpSecret(s, _) => {
                 Value::validate_str_escapes(s) && Value::validate_singleline(s)
             }
 
@@ -1848,6 +1846,10 @@ impl Value {
             Value::AuditLogString(_, s) => {
                 Value::validate_str_escapes(s) && Value::validate_singleline(s)
             }
+            Value::ApplicationPassword(_, ap) => {
+                Value::validate_str_escapes(&ap.label) && Value::validate_singleline(&ap.label)
+            }
+
             // These have stricter validators so not needed.
             Value::Nsuniqueid(s) => NSUNIQUEID_RE.is_match(s),
             Value::DateTime(odt) => odt.offset() == time::UtcOffset::UTC,
