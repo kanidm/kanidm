@@ -227,6 +227,13 @@ impl LdapServer {
                         // map all vattrs.
                         all_attrs = true;
                         all_op_attrs = true;
+                    } else if sr.attrs.len() == 1 && a.is_empty() {
+                        // Some clients incorrectly send a vector with an
+                        // empty string for all attrs, rather than a *. This is to
+                        // catch that case, but without enabling a client that sent
+                        // a valid attr + empty str.
+                        info!("client LDAP bug - empty str is not all_attrs!");
+                        all_attrs = true;
                     }
                 })
             }
