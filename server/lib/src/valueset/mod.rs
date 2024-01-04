@@ -800,6 +800,7 @@ pub fn from_db_valueset_v2(dbvs: DbValueSetV2) -> Result<ValueSet, OperationErro
         DbValueSetV2::WebauthnAttestationCaList { ca_list } => {
             ValueSetWebauthnAttestationCaList::from_dbvs2(ca_list)
         }
+        DbValueSetV2::ApplicationPassword(_) => todo!(),
     }
 }
 
