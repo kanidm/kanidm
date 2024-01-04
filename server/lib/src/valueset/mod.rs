@@ -863,5 +863,6 @@ pub fn from_repl_v1(rv1: &ReplAttrV1) -> Result<ValueSet, OperationError> {
             ValueSetWebauthnAttestationCaList::from_repl_v1(ca_list)
         }
         ReplAttrV1::OauthClaimMap { set } => ValueSetOauthClaimMap::from_repl_v1(set),
+        ReplAttrV1::ApplicationPassword { .. } => todo!(),
     }
 }
