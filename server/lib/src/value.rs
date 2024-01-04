@@ -33,7 +33,7 @@ use webauthn_rs::prelude::{
 
 use crate::be::dbentry::DbIdentSpn;
 use crate::be::dbvalue::DbValueOauthClaimMapJoinV1;
-use crate::credential::{totp::Totp, Credential};
+use crate::credential::{apppwd::ApplicationPassword, totp::Totp, Credential};
 use crate::prelude::*;
 use crate::repl::cid::Cid;
 use crate::server::identity::IdentityId;
@@ -1103,6 +1103,9 @@ pub enum Value {
 
     OauthClaimValue(String, Uuid, BTreeSet<String>),
     OauthClaimMap(String, OauthClaimMapJoin),
+
+    //TODO remove uuid
+    ApplicationPassword(Uuid, ApplicationPassword),
 }
 
 impl PartialEq for Value {
@@ -1901,6 +1904,10 @@ impl Value {
             Value::AuditLogString(_, s) => {
                 Value::validate_str_escapes(s) && Value::validate_singleline(s)
             }
+            Value::ApplicationPassword(_, ap) => {
+                Value::validate_str_escapes(&ap.label) && Value::validate_singleline(&ap.label)
+            }
+
             // These have stricter validators so not needed.
             Value::Nsuniqueid(s) => NSUNIQUEID_RE.is_match(s),
             Value::DateTime(odt) => odt.offset() == time::UtcOffset::UTC,
