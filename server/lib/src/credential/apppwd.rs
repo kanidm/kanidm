@@ -1,10 +1,10 @@
 use crate::prelude::*;
 use crate::credential::Password;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ApplicationPassword {
     uuid: Uuid,
-    application: Uuid,
+    pub application: Uuid,
     pub label: String,
-    password: Password,
+    pub(crate) password: Password,
 }

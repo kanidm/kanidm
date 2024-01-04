@@ -18,7 +18,7 @@ use kanidm_proto::v1::Filter as ProtoFilter;
 use kanidm_proto::v1::UiHint;
 
 use crate::be::dbvalue::DbValueSetV2;
-use crate::credential::{totp::Totp, Credential};
+use crate::credential::{apppwd::ApplicationPassword, totp::Totp, Credential};
 use crate::prelude::*;
 use crate::repl::{cid::Cid, proto::ReplAttrV1};
 use crate::schema::SchemaAttribute;
@@ -57,6 +57,7 @@ pub use self::utf8::ValueSetUtf8;
 pub use self::uuid::{ValueSetRefer, ValueSetUuid};
 
 mod address;
+mod apppwd;
 mod auditlogstring;
 mod binary;
 mod bool;
@@ -361,6 +362,11 @@ pub trait ValueSetT: std::fmt::Debug + DynClone {
     }
 
     fn as_webauthn_attestation_ca_list(&self) -> Option<&AttestationCaList> {
+        debug_assert!(false);
+        None
+    }
+
+    fn as_application_password_map(&self) -> Option<&BTreeMap<Uuid, ApplicationPassword>> {
         debug_assert!(false);
         None
     }
