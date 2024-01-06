@@ -53,8 +53,8 @@ repository = "https://github.com/kanidm/kanidm/"
 
 # idlset = { path = "../idlset" }
 
-# ldap3_client = { path = "../ldap3/client" }
-# ldap3_proto = { path = "../ldap3/proto" }
+ldap3_client = { path = "../ldap3/client" }
+ldap3_proto = { path = "../ldap3/proto" }
 # ldap3_client = { git = "https://github.com/kanidm/ldap3.git" }
 # ldap3_proto = { git = "https://github.com/kanidm/ldap3.git" }
 
@@ -148,8 +148,8 @@ js-sys = "^0.3.65"
 kanidmd_web_ui_shared = { path = "./server/web_ui/shared" }
 # REMOVE this
 lazy_static = "^1.4.0"
-ldap3_client = "^0.4.2"
-ldap3_proto = { version = "^0.4.2", features = ["serde"] }
+ldap3_client = "^0.4.3"
+ldap3_proto = { version = "^0.4.3", features = ["serde"] }
 
 libc = "^0.2.150"
 libnss = "^0.4.0"

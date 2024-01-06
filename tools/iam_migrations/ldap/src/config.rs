@@ -105,6 +105,9 @@ pub struct Config {
 
     #[serde(flatten)]
     pub entry_map: BTreeMap<Uuid, EntryConfig>,
+
+    /// Maximum LDAP message size (in kilobytes)
+    pub max_ber_size: Option<usize>,
 }
 
 #[derive(Debug, Deserialize, Default, Clone)]

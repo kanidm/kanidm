@@ -3523,9 +3523,7 @@ dependencies = [
 
 [[package]]
 name = "ldap3_client"
-version = "0.4.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bec3fe7dd2cd58ea17bf49e794dd89b7773bff180300fc8667a8ca8f38e4aed0"
+version = "0.4.3"
 dependencies = [
  "base64 0.21.5",
  "base64urlsafedata",
@@ -3543,9 +3541,7 @@ dependencies = [
 
 [[package]]
 name = "ldap3_proto"
-version = "0.4.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4598dd32dbd16d4fd06a1eb423bf569563d7c65e808ceae5ef3c12179134bc36"
+version = "0.4.3"
 dependencies = [
  "base64 0.21.5",
  "bytes",
