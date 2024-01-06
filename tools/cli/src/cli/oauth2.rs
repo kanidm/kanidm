@@ -313,7 +313,7 @@ impl Oauth2Opt {
                         &nopt.name,
                         None,
                         None,
-                        Some(&origin),
+                        Some(origin),
                         None,
                         true,
                         true,
