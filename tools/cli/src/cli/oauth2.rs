@@ -28,6 +28,7 @@ impl Oauth2Opt {
             Oauth2Opt::CreateBasic { copt, .. } | Oauth2Opt::CreatePublic { copt, .. } => {
                 copt.debug
             }
+            Oauth2Opt::SetOrigin { nopt, .. } => nopt.copt.debug,
         }
     }
 
@@ -299,6 +300,25 @@ impl Oauth2Opt {
                 let client = nopt.copt.to_client(OpType::Write).await;
                 match client
                     .idm_oauth2_rs_prefer_spn_username(nopt.name.as_str())
+                    .await
+                {
+                    Ok(_) => println!("Success"),
+                    Err(e) => handle_client_error(e, nopt.copt.output_mode),
+                }
+            }
+            Oauth2Opt::SetOrigin { nopt, origin } => {
+                let client = nopt.copt.to_client(OpType::Write).await;
+                match client
+                    .idm_oauth2_rs_update(
+                        &nopt.name,
+                        None,
+                        None,
+                        Some(&origin),
+                        None,
+                        true,
+                        true,
+                        true,
+                    )
                     .await
                 {
                     Ok(_) => println!("Success"),
