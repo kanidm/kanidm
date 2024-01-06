@@ -63,7 +63,13 @@ impl ValueSetT for ValueSetUtf8 {
 
     fn substring(&self, pv: &PartialValue) -> bool {
         match pv {
-            PartialValue::Utf8(s2) => self.set.iter().any(|s1| s1.contains(s2)),
+            PartialValue::Utf8(s2) => {
+                // We lowercase as LDAP and similar expect case insensitive searches here.
+                let s2_lower = s2.to_lowercase();
+                self.set
+                    .iter()
+                    .any(|s1| s1.to_lowercase().contains(&s2_lower))
+            }
             _ => {
                 debug_assert!(false);
                 false
@@ -73,7 +79,13 @@ impl ValueSetT for ValueSetUtf8 {
 
     fn startswith(&self, pv: &PartialValue) -> bool {
         match pv {
-            PartialValue::Utf8(s2) => self.set.iter().any(|s1| s1.starts_with(s2)),
+            PartialValue::Utf8(s2) => {
+                // We lowercase as LDAP and similar expect case insensitive searches here.
+                let s2_lower = s2.to_lowercase();
+                self.set
+                    .iter()
+                    .any(|s1| s1.to_lowercase().starts_with(&s2_lower))
+            }
             _ => {
                 debug_assert!(false);
                 false
@@ -83,7 +95,13 @@ impl ValueSetT for ValueSetUtf8 {
 
     fn endswith(&self, pv: &PartialValue) -> bool {
         match pv {
-            PartialValue::Utf8(s2) => self.set.iter().any(|s1| s1.ends_with(s2)),
+            PartialValue::Utf8(s2) => {
+                // We lowercase as LDAP and similar expect case insensitive searches here.
+                let s2_lower = s2.to_lowercase();
+                self.set
+                    .iter()
+                    .any(|s1| s1.to_lowercase().ends_with(&s2_lower))
+            }
             _ => {
                 debug_assert!(false);
                 false
@@ -167,5 +185,33 @@ impl ValueSetT for ValueSetUtf8 {
 
     fn as_utf8_iter(&self) -> Option<Box<dyn Iterator<Item = &str> + '_>> {
         Some(Box::new(self.set.iter().map(|s| s.as_str())))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::ValueSetUtf8;
+    use crate::prelude::PartialValue;
+    use crate::valueset::ValueSetT;
+
+    #[test]
+    fn test_utf8_substring_insensitive() {
+        let vs = ValueSetUtf8::new("Test User".to_string());
+
+        let pv_xx = PartialValue::Utf8("xx".to_string());
+        let pv_test = PartialValue::Utf8("test".to_string());
+        let pv_user = PartialValue::Utf8("usEr".to_string());
+
+        assert!(!vs.substring(&pv_xx));
+        assert!(vs.substring(&pv_test));
+        assert!(vs.substring(&pv_user));
+
+        assert!(!vs.startswith(&pv_xx));
+        assert!(vs.startswith(&pv_test));
+        assert!(!vs.startswith(&pv_user));
+
+        assert!(!vs.endswith(&pv_xx));
+        assert!(!vs.endswith(&pv_test));
+        assert!(vs.endswith(&pv_user));
     }
 }
