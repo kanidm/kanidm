@@ -53,8 +53,8 @@ repository = "https://github.com/kanidm/kanidm/"
 
 # idlset = { path = "../idlset" }
 
-ldap3_client = { path = "../ldap3/client" }
-ldap3_proto = { path = "../ldap3/proto" }
+# ldap3_client = { path = "../ldap3/client" }
+# ldap3_proto = { path = "../ldap3/proto" }
 # ldap3_client = { git = "https://github.com/kanidm/ldap3.git" }
 # ldap3_proto = { git = "https://github.com/kanidm/ldap3.git" }
 
