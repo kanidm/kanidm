@@ -224,6 +224,13 @@ enum Oauth2JwsSigner {
     RS256 { signer: JwsRs256Signer },
 }
 
+struct ClaimMap {
+    claim_name: String,
+    // Can have many values ?!
+    claim_value: BTreeSet<String>,
+    to: BTreeSet<Uuid>,
+}
+
 #[derive(Clone)]
 pub struct Oauth2RS {
     name: String,
@@ -231,6 +238,9 @@ pub struct Oauth2RS {
     uuid: Uuid,
     origin: Origin,
     origin_https: bool,
+    // How do we handle this with secure origins?
+    origin_supplemental: Vec<Url>,
+    claim_maps: ClaimMap,
     scope_maps: BTreeMap<Uuid, BTreeSet<String>>,
     sup_scope_maps: BTreeMap<Uuid, BTreeSet<String>>,
     // Our internal exchange encryption material for this rs.

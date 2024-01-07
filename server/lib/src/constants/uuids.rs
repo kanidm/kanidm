@@ -270,6 +270,10 @@ pub const UUID_SCHEMA_CLASS_ACCESS_CONTROL_TARGET_SCOPE: Uuid =
 pub const UUID_SCHEMA_ATTR_ENTRY_MANAGED_BY: Uuid = uuid!("00000000-0000-0000-0000-ffff00000156");
 pub const UUID_SCHEMA_ATTR_UNIX_PASSWORD_IMPORT: Uuid =
     uuid!("00000000-0000-0000-0000-ffff00000157");
+pub const UUID_SCHEMA_ATTR_OAUTH2_RS_ORIGIN_SUPPLEMENTAL: Uuid =
+    uuid!("00000000-0000-0000-0000-ffff00000158");
+pub const UUID_SCHEMA_ATTR_OAUTH2_RS_CLAIM_MAP: Uuid =
+    uuid!("00000000-0000-0000-0000-ffff00000159");
 
 // System and domain infos
 // I'd like to strongly criticise william of the past for making poor choices about these allocations.
