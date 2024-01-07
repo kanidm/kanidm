@@ -163,6 +163,16 @@ async fn test_oauth2_openid_basic_flow(rsclient: KanidmClient) {
         .expect("Failed to send request.");
 
     assert!(response.status() == reqwest::StatusCode::OK);
+
+    // Assert CORS on the GET too.
+    let cors_header: &str = response
+        .headers()
+        .get(http::header::ACCESS_CONTROL_ALLOW_ORIGIN)
+        .expect("missing access-control-allow-origin header")
+        .to_str()
+        .expect("invalid access-control-allow-origin header");
+    assert!(cors_header.eq("*"));
+
     assert_no_cache!(response);
 
     let discovery: OidcDiscoveryResponse = response
@@ -306,6 +316,15 @@ async fn test_oauth2_openid_basic_flow(rsclient: KanidmClient) {
         .expect("Failed to send code exchange request.");
 
     assert!(response.status() == reqwest::StatusCode::OK);
+
+    let cors_header: &str = response
+        .headers()
+        .get(http::header::ACCESS_CONTROL_ALLOW_ORIGIN)
+        .expect("missing access-control-allow-origin header")
+        .to_str()
+        .expect("invalid access-control-allow-origin header");
+    assert!(cors_header.eq("*"));
+
     assert!(
         response.headers().get(CONTENT_TYPE) == Some(&HeaderValue::from_static(APPLICATION_JSON))
     );
