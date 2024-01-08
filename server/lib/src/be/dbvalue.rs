@@ -715,7 +715,7 @@ pub enum DbValueSetV2 {
     #[serde(rename = "WC")]
     WebauthnAttestationCaList { ca_list: AttestationCaList },
     #[serde(rename = "AP")]
-    ApplicationPassword(Vec<DbValueApplicationPassword>)
+    ApplicationPassword(Vec<DbValueApplicationPassword>),
 }
 
 impl DbValueSetV2 {

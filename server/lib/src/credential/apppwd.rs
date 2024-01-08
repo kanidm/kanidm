@@ -1,5 +1,5 @@
-use crate::prelude::*;
 use crate::credential::Password;
+use crate::prelude::*;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ApplicationPassword {
