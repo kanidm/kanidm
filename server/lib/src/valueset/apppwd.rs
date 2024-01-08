@@ -23,6 +23,27 @@ impl ValueSetApplicationPassword {
         Box::new(ValueSetApplicationPassword { map })
     }
 
+    pub fn from_dbvs2(data: Vec<DbValueApplicationPassword>) -> Result<ValueSet, OperationError> {
+        let mut map: BTreeMap<Uuid, Vec<ApplicationPassword>> = BTreeMap::new();
+        for ap in data {
+            let ap = match ap {
+                DbValueApplicationPassword::V1 {
+                    refer,
+                    application_refer,
+                    label,
+                    password,
+                } => ApplicationPassword {
+                    uuid: refer,
+                    application: application_refer,
+                    label,
+                    password: Password::try_from(password).expect("Failed to parse"),
+                },
+            };
+            map.entry(ap.application).or_default().push(ap);
+        }
+        Ok(Box::new(ValueSetApplicationPassword { map }))
+    }
+
     pub fn from_repl_v1(data: &[ReplApplicationPassword]) -> Result<ValueSet, OperationError> {
         let mut map: BTreeMap<Uuid, Vec<ApplicationPassword>> = BTreeMap::new();
         for ap in data {
