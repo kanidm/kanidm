@@ -24,6 +24,7 @@ use crate::schema::SchemaAttribute;
 use crate::value::{Address, ApiToken, CredentialType, IntentTokenState, Oauth2Session, Session};
 
 pub use self::address::{ValueSetAddress, ValueSetEmailAddress};
+use self::apppwd::ValueSetApplicationPassword;
 pub use self::auditlogstring::{ValueSetAuditLogString, AUDIT_LOG_STRING_CAPACITY};
 pub use self::binary::{ValueSetPrivateBinary, ValueSetPublicBinary};
 pub use self::bool::ValueSetBool;
@@ -871,6 +872,6 @@ pub fn from_repl_v1(rv1: &ReplAttrV1) -> Result<ValueSet, OperationError> {
             ValueSetWebauthnAttestationCaList::from_repl_v1(ca_list)
         }
         ReplAttrV1::OauthClaimMap { set } => ValueSetOauthClaimMap::from_repl_v1(set),
-        ReplAttrV1::ApplicationPassword { .. } => todo!(),
+        ReplAttrV1::ApplicationPassword { set } => ValueSetApplicationPassword::from_repl_v1(set),
     }
 }
