@@ -3,8 +3,8 @@ use crate::credential::Password;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ApplicationPassword {
-    uuid: Uuid,
-    pub application: Uuid,
-    pub label: String,
+    pub(crate) uuid: Uuid,
+    pub(crate) application: Uuid,
+    pub(crate) label: String,
     pub(crate) password: Password,
 }
