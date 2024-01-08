@@ -1,7 +1,7 @@
 use crate::be::dbvalue::{DbValueApplicationPassword, DbValueSetV2};
 use crate::credential::apppwd::ApplicationPassword;
 use crate::prelude::*;
-use crate::repl::proto::{ReplAttrV1,ReplApplicationPassword};
+use crate::repl::proto::{ReplApplicationPassword, ReplAttrV1};
 use crate::schema::SchemaAttribute;
 use std::collections::btree_map::Entry as BTreeEntry;
 use std::collections::BTreeMap;
@@ -86,7 +86,7 @@ impl ValueSetT for ValueSetApplicationPassword {
         Box::new(
             self.map
                 .values()
-                .map(|ap| format!("App: {} Label: {}", ap.application, ap.label))
+                .map(|ap| format!("App: {} Label: {}", ap.application, ap.label)),
         )
     }
 
@@ -120,14 +120,20 @@ impl ValueSetT for ValueSetApplicationPassword {
     }
 
     fn to_partialvalue_iter(&self) -> Box<dyn Iterator<Item = PartialValue> + '_> {
-        Box::new(self.map.keys().cloned().map(PartialValue::ApplicationPassword))
+        Box::new(
+            self.map
+                .keys()
+                .cloned()
+                .map(PartialValue::ApplicationPassword),
+        )
     }
 
     fn to_value_iter(&self) -> Box<dyn Iterator<Item = Value> + '_> {
         Box::new(
             self.map
                 .iter()
-                .map(|(u, ap)| Value::ApplicationPassword(*u, ap.clone())))
+                .map(|(u, ap)| Value::ApplicationPassword(*u, ap.clone())),
+        )
     }
 
     fn equal(&self, other: &ValueSet) -> bool {
@@ -144,7 +150,7 @@ impl ValueSetT for ValueSetApplicationPassword {
             mergemaps!(self.map, b)
         } else {
             debug_assert!(false);
-          Err(OperationError::InvalidValueState)
+            Err(OperationError::InvalidValueState)
         }
     }
 
