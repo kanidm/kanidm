@@ -3108,7 +3108,7 @@ pub(crate) fn route_setup(state: ServerState) -> Router<ServerState> {
         )
         .route(
             "/v1/person/:id/_application_passwords",
-            get(person_id_application_passwords_get)
+            get(person_id_application_passwords_get),
         )
         // Service accounts
         .route(
