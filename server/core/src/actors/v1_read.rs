@@ -1532,4 +1532,66 @@ impl QueryServerReadV1 {
         };
         Some(res)
     }
+
+    #[instrument(
+        level = "info",
+        skip_all,
+        fields(uuid = ?eventid)
+    )]
+    pub async fn handle_internal_application_passwords_read(
+        &self,
+        client_auth_info: ClientAuthInfo,
+        uuid_or_name: String,
+        eventid: Uuid,
+    ) -> Result<Vec<String>, OperationError> {
+        let ct = duration_from_epoch_now();
+        let mut idms_prox_read = self.idms.proxy_read().await;
+        let ident = idms_prox_read
+            .validate_client_auth_info_to_ident(client_auth_info, ct)
+            .map_err(|e| {
+                admin_error!("Invalid identity: {:?}", e);
+                e
+            })?;
+        let target_uuid = idms_prox_read
+            .qs_read
+            .name_to_uuid(uuid_or_name.as_str())
+            .map_err(|e| {
+                admin_error!("Error resolving id to target");
+                e
+            })?;
+
+        // Make an event from the request
+        let srch = match SearchEvent::from_target_uuid_request(
+            ident,
+            target_uuid,
+            &idms_prox_read.qs_read,
+        ) {
+            Ok(s) => s,
+            Err(e) => {
+                admin_error!("Failed to begin read: {:?}", e);
+                return Err(e);
+            }
+        };
+
+        trace!(?srch, "Begin event");
+
+        match idms_prox_read.qs_read.search_ext(&srch) {
+            Ok(mut entries) => {
+                let r = entries
+                    .pop()
+                    // get the first entry
+                    .and_then(|e| {
+                        // From the entry, turn it into the value
+                        e.get_ava_iter_application_passwords(Attribute::ApplicationsPasswords)
+                            .map(|i| i.collect())
+                    })
+                    .unwrap_or_else(|| {
+                        // No matching entry? Return none.
+                        Vec::new()
+                    });
+                Ok(r)
+            }
+            Err(e) => Err(e),
+        }
+    }
 }

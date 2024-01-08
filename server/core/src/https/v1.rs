@@ -2179,6 +2179,30 @@ pub async fn person_identify_user_post(
 
 #[utoipa::path(
     get,
+    path = "/v1/person/{id}/_application_passwords",
+    responses(
+        (status=200), // TODO: define response
+        ApiResponseWithout200,
+    ),
+    security(("token_jwt" = [])),
+    tag = "v1/person/application_passwords",
+)]
+pub async fn person_id_application_passwords_get(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+    Path(id): Path<String>,
+) -> Result<Json<Vec<String>>, WebError> {
+    state
+        .qe_r_ref
+        .handle_internal_application_passwords_read(client_auth_info, id, kopid.eventid)
+        .await
+        .map(Json::from)
+        .map_err(WebError::from)
+}
+
+#[utoipa::path(
+    get,
     path = "/v1/group",
     responses(
         (status=200), // TODO: define response
@@ -3081,6 +3105,10 @@ pub(crate) fn route_setup(state: ServerState) -> Router<ServerState> {
         .route(
             "/v1/person/:id/_identify_user",
             post(person_identify_user_post),
+        )
+        .route(
+            "/v1/person/:id/_application_passwords",
+            get(person_id_application_passwords_get)
         )
         // Service accounts
         .route(

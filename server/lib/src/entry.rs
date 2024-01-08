@@ -2879,6 +2879,18 @@ impl<VALID, STATE> Entry<VALID, STATE> {
             .and_then(|vs| vs.as_application_password_map())
     }
 
+    pub fn get_ava_iter_application_passwords(
+        &self,
+        attr: Attribute,
+    ) -> Option<impl Iterator<Item = String> + '_> {
+        self.get_ava_application_passwords(attr).and_then(|vs| {
+            Some(
+                vs.values()
+                    .map(|ap| format!("App: {} Label: {}", ap.application, ap.label)),
+            )
+        })
+    }
+
     #[inline(always)]
     /// Return a single security principle name, if valid to transform this value.
     pub(crate) fn generate_spn(&self, domain_name: &str) -> Option<Value> {
