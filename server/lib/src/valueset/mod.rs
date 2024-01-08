@@ -752,7 +752,7 @@ pub fn from_value_iter(mut iter: impl Iterator<Item = Value>) -> Result<ValueSet
             debug_assert!(false);
             return Err(OperationError::InvalidValueState);
         }
-        Value::ApplicationPassword(_, _) => todo!(),
+        Value::ApplicationPassword(u, ap) => ValueSetApplicationPassword::new(u, ap),
     };
 
     for v in iter {

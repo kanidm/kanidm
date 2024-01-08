@@ -12,6 +12,12 @@ pub struct ValueSetApplicationPassword {
 }
 
 impl ValueSetApplicationPassword {
+    pub fn new(u: Uuid, ap: ApplicationPassword) -> Box<Self> {
+        let mut map: BTreeMap<Uuid, ApplicationPassword> = BTreeMap::new();
+        map.insert(u, ap);
+        Box::new(ValueSetApplicationPassword { map })
+    }
+
     pub fn from_repl_v1(data: &[ReplApplicationPassword]) -> Result<ValueSet, OperationError> {
         let mut map: BTreeMap<Uuid, ApplicationPassword> = BTreeMap::new();
         for ap in data {
