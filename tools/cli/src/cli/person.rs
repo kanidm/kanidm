@@ -62,6 +62,7 @@ impl PersonOpt {
             },
             PersonOpt::ApplicationPasswords { commands } => match commands {
                 AccountApplicationPasswords::List(ano) => ano.copt.debug,
+                AccountApplicationPasswords::Add(ano) => ano.copt.debug,
             },
         }
     }
@@ -495,6 +496,19 @@ impl PersonOpt {
                     {
                         Ok(pkeys) => pkeys.iter().for_each(|pkey| println!("{}", pkey)),
                         Err(e) => handle_client_error(e, aopt.copt.output_mode),
+                    }
+                }
+                AccountApplicationPasswords::Add(aopt) => {
+                    let client = aopt.copt.to_client(OpType::Write).await;
+                    if let Err(e) = client
+                        .idm_person_account_add_application_password(
+                            aopt.aopts.account_id.as_str(),
+                            aopt.application.as_str(),
+                            aopt.label.as_str(),
+                        )
+                        .await
+                    {
+                        handle_client_error(e, aopt.copt.output_mode)
                     }
                 }
             },

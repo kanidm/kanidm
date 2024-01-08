@@ -472,10 +472,24 @@ pub enum AccountUserAuthToken {
     },
 }
 
+#[derive(Debug, Args)]
+pub struct AccountNamedAppPwdOpt {
+    #[clap(flatten)]
+    aopts: AccountCommonOpt,
+    #[clap(flatten)]
+    copt: CommonOpt,
+    #[clap(name = "application")]
+    application: String,
+    #[clap(name = "label")]
+    label: String,
+}
+
 #[derive(Debug, Subcommand)]
 pub enum AccountApplicationPasswords {
     #[clap(name = "list")]
     List(AccountNamedOpt),
+    #[clap(name = "add")]
+    Add(AccountNamedAppPwdOpt),
 }
 
 #[derive(Debug, Subcommand)]

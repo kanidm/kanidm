@@ -263,4 +263,18 @@ impl KanidmClient {
         )
         .await
     }
+
+    pub async fn idm_person_account_add_application_password(
+        &self,
+        id: &str,
+        app: &str,
+        label: &str,
+    ) -> Result<Option<String>, ClientError> {
+        let ap = (app.to_string(), label.to_string());
+        self.perform_post_request(
+            format!("/v1/person/{}/_application_passwords", id).as_str(),
+            ap,
+        )
+        .await
+    }
 }
