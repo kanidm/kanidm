@@ -52,6 +52,7 @@ pub const ATTR_ACP_RECEIVER: &str = "acp_receiver";
 pub const ATTR_ACP_SEARCH_ATTR: &str = "acp_search_attr";
 pub const ATTR_ACP_TARGET_SCOPE: &str = "acp_targetscope";
 pub const ATTR_API_TOKEN_SESSION: &str = "api_token_session";
+pub const ATTR_APPLICATIONS_PASSWORDS: &str = "applications_passwords";
 pub const ATTR_ATTESTED_PASSKEYS: &str = "attested_passkeys";
 pub const ATTR_ATTR: &str = "attr";
 pub const ATTR_ATTRIBUTENAME: &str = "attributename";
