@@ -1978,4 +1978,13 @@ impl KanidmClient {
         self.perform_post_request(&format!("/v1/recycle_bin/{}/_revive", id), ())
             .await
     }
+
+    // == generic application password handlers
+    pub async fn idm_account_get_application_passwords(
+        &self,
+        id: &str,
+    ) -> Result<Vec<String>, ClientError> {
+        self.perform_get_request(&format!("/v1/person/{}/_application_passwords", id))
+            .await
+    }
 }

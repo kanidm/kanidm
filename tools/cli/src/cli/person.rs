@@ -22,8 +22,9 @@ use uuid::Uuid;
 
 use crate::webauthn::get_authenticator;
 use crate::{
-    handle_client_error, password_prompt, AccountCredential, AccountRadius, AccountSsh,
-    AccountUserAuthToken, AccountValidity, OutputMode, PersonOpt, PersonPosix,
+    handle_client_error, password_prompt, AccountApplicationPasswords, AccountCredential,
+    AccountRadius, AccountSsh, AccountUserAuthToken, AccountValidity, OutputMode, PersonOpt,
+    PersonPosix,
 };
 
 impl PersonOpt {
@@ -58,6 +59,9 @@ impl PersonOpt {
                 AccountValidity::Show(ano) => ano.copt.debug,
                 AccountValidity::ExpireAt(ano) => ano.copt.debug,
                 AccountValidity::BeginFrom(ano) => ano.copt.debug,
+            },
+            PersonOpt::ApplicationPasswords { commands } => match commands {
+                AccountApplicationPasswords::List(ano) => ano.copt.debug,
             },
         }
     }
@@ -482,6 +486,18 @@ impl PersonOpt {
                     }
                 }
             }, // end PersonOpt::Validity
+            PersonOpt::ApplicationPasswords { commands } => match commands {
+                AccountApplicationPasswords::List(aopt) => {
+                    let client = aopt.copt.to_client(OpType::Read).await;
+                    match client
+                        .idm_account_get_application_passwords(aopt.aopts.account_id.as_str())
+                        .await
+                    {
+                        Ok(pkeys) => pkeys.iter().for_each(|pkey| println!("{}", pkey)),
+                        Err(e) => handle_client_error(e, aopt.copt.output_mode),
+                    }
+                }
+            },
         }
     }
 }

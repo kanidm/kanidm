@@ -473,6 +473,12 @@ pub enum AccountUserAuthToken {
 }
 
 #[derive(Debug, Subcommand)]
+pub enum AccountApplicationPasswords {
+    #[clap(name = "list")]
+    List(AccountNamedOpt),
+}
+
+#[derive(Debug, Subcommand)]
 pub enum PersonOpt {
     /// Manage the credentials this person uses for authentication
     #[clap(name = "credential")]
@@ -524,6 +530,12 @@ pub enum PersonOpt {
     Validity {
         #[clap(subcommand)]
         commands: AccountValidity,
+    },
+    /// Manage application passwords for this person
+    #[clap(name = "application-passwords")]
+    ApplicationPasswords {
+        #[clap(subcommand)]
+        commands: AccountApplicationPasswords,
     },
 }
 
