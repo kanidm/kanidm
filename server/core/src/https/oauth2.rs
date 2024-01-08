@@ -19,7 +19,7 @@ use kanidm_proto::constants::uri::{
     OAUTH2_AUTHORISE, OAUTH2_AUTHORISE_PERMIT, OAUTH2_AUTHORISE_REJECT,
 };
 use kanidm_proto::constants::APPLICATION_JSON;
-use kanidm_proto::oauth2::{AccessTokenResponse, AuthorisationResponse, OidcDiscoveryResponse};
+use kanidm_proto::oauth2::AuthorisationResponse;
 use kanidmd_lib::idm::oauth2::{
     AccessTokenIntrospectRequest, AccessTokenRequest, AuthorisationRequest, AuthorisePermitSuccess,
     AuthoriseResponse, ErrorResponse, Oauth2Error, TokenRevokeRequest,
@@ -483,7 +483,7 @@ pub async fn oauth2_token_post(
     Extension(kopid): Extension<KOpId>,
     headers: HeaderMap,
     Form(tok_req): Form<AccessTokenRequest>,
-) -> Result<Json<AccessTokenResponse>, HTTPOauth2Error> {
+) -> impl IntoResponse {
     // This is called directly by the resource server, where we then issue
     // the token to the caller.
 
@@ -503,8 +503,13 @@ pub async fn oauth2_token_post(
         .handle_oauth2_token_exchange(client_authz, tok_req, kopid.eventid)
         .await
     {
-        Ok(tok_res) => Ok(Json(tok_res)),
-        Err(e) => Err(HTTPOauth2Error(e)),
+        Ok(tok_res) => (
+            StatusCode::OK,
+            [(ACCESS_CONTROL_ALLOW_ORIGIN, "*")],
+            Json(tok_res),
+        )
+            .into_response(),
+        Err(e) => HTTPOauth2Error(e).into_response(),
     }
 }
 
@@ -513,7 +518,7 @@ pub async fn oauth2_openid_discovery_get(
     State(state): State<ServerState>,
     Path(client_id): Path<String>,
     Extension(kopid): Extension<KOpId>,
-) -> Result<Json<OidcDiscoveryResponse>, Response> {
+) -> impl IntoResponse {
     // let client_id = req.get_url_param("client_id")?;
 
     let res = state
@@ -522,10 +527,15 @@ pub async fn oauth2_openid_discovery_get(
         .await;
 
     match res {
-        Ok(dsc) => Ok(Json(dsc)),
+        Ok(dsc) => (
+            StatusCode::OK,
+            [(ACCESS_CONTROL_ALLOW_ORIGIN, "*")],
+            Json(dsc),
+        )
+            .into_response(),
         Err(e) => {
             error!(err = ?e, "Unable to access discovery info");
-            Err(WebError::from(e).response_with_access_control_origin_header())
+            WebError::from(e).response_with_access_control_origin_header()
         }
     }
 }
@@ -772,7 +782,10 @@ pub fn route_setup(state: ServerState) -> Router<ServerState> {
         )
         // ⚠️  ⚠️   WARNING  ⚠️  ⚠️
         // IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS
-        .route("/oauth2/token", post(oauth2_token_post))
+        .route(
+            "/oauth2/token",
+            post(oauth2_token_post).options(oauth2_preflight_options),
+        )
         // ⚠️  ⚠️   WARNING  ⚠️  ⚠️
         // IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS
         .route(
