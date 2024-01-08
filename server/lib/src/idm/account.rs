@@ -199,7 +199,10 @@ macro_rules! try_from_entry {
             None
         };
 
-        let apps_pwds: BTreeMap<Uuid, ApplicationPassword> = BTreeMap::new();
+        let apps_pwds = $value
+            .get_ava_application_passwords(Attribute::ApplicationsPasswords)
+            .cloned()
+            .unwrap_or_default();
 
         Ok(Account {
             uuid,
