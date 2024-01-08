@@ -1,5 +1,5 @@
 use crate::be::dbvalue::{DbValueApplicationPassword, DbValueSetV2};
-use crate::credential::apppwd::ApplicationPassword;
+use crate::credential::{apppwd::ApplicationPassword, Password};
 use crate::prelude::*;
 use crate::repl::proto::{ReplApplicationPassword, ReplAttrV1};
 use crate::schema::SchemaAttribute;
@@ -9,6 +9,29 @@ use std::collections::BTreeMap;
 #[derive(Debug, Clone)]
 pub struct ValueSetApplicationPassword {
     map: BTreeMap<Uuid, ApplicationPassword>,
+}
+
+impl ValueSetApplicationPassword {
+    pub fn from_repl_v1(data: &[ReplApplicationPassword]) -> Result<ValueSet, OperationError> {
+        let mut map: BTreeMap<Uuid, ApplicationPassword> = BTreeMap::new();
+        for ap in data {
+            let ap = match ap {
+                ReplApplicationPassword::V1 {
+                    refer,
+                    application_refer,
+                    label,
+                    password,
+                } => ApplicationPassword {
+                    uuid: *refer,
+                    application: *application_refer,
+                    label: label.to_string(),
+                    password: Password::try_from(password).expect("Failed to parse"),
+                },
+            };
+            map.insert(ap.uuid, ap);
+        }
+        Ok(Box::new(ValueSetApplicationPassword { map }))
+    }
 }
 
 impl ValueSetT for ValueSetApplicationPassword {
