@@ -14,7 +14,7 @@ use webauthn_rs::prelude::{
 use super::accountpolicy::ResolvedAccountPolicy;
 use crate::constants::UUID_ANONYMOUS;
 use crate::credential::softlock::CredSoftLockPolicy;
-use crate::credential::Credential;
+use crate::credential::{apppwd::ApplicationPassword, Credential};
 use crate::entry::{Entry, EntryCommitted, EntryReduced, EntrySealed};
 use crate::event::SearchEvent;
 use crate::idm::group::Group;
@@ -66,7 +66,7 @@ pub struct Account {
     pub mail: Vec<String>,
     pub credential_update_intent_tokens: BTreeMap<String, IntentTokenState>,
     pub(crate) unix_extn: Option<UnixExtensions>,
-    pub apps_pwds: BTreeMap<Uuid, Vec<(String, String)>>,
+    pub apps_pwds: BTreeMap<Uuid, ApplicationPassword>,
 }
 
 macro_rules! try_from_entry {
@@ -199,7 +199,7 @@ macro_rules! try_from_entry {
             None
         };
 
-        let apps_pwds: BTreeMap<Uuid, Vec<(String, String)>> = BTreeMap::new();
+        let apps_pwds: BTreeMap<Uuid, ApplicationPassword> = BTreeMap::new();
 
         Ok(Account {
             uuid,
@@ -695,32 +695,27 @@ impl Account {
         cleartext: &str,
         ct: Duration,
     ) -> Result<Option<UserAuthToken>, OperationError> {
-        match &self.apps_pwds.get(app_uuid) {
-            Some(pwds) => {
-                for (label, password) in pwds.iter() {
-                    if app_label == label && cleartext == password {
-                        let session_id = uuid::Uuid::new_v4();
-                        let uat: Option<UserAuthToken> = self.to_userauthtoken(
-                            session_id,
-                            SessionScope::ReadWrite,
-                            ct,
-                            DEFAULT_AUTH_SESSION_EXPIRY,
-                        );
-                        return Ok(uat);
-                    }
-                    if app_label == label && cleartext != password {
-                        security_info!("Label matches but password doesn't");
-                        return Ok(None);
-                    }
-                    if app_label != label && cleartext == password {
-                        security_info!("Password matches but label doesn't");
-                        return Ok(None);
-                    }
+        for ap in self.apps_pwds.values() {
+            if *app_uuid == ap.application && app_label == ap.label {
+                if ap.password.verify(cleartext).map_err(|e| {
+                    error!(crypto_err = ?e);
+                    e.into()
+                })? {
+                    let session_id = uuid::Uuid::new_v4();
+                    let uat: Option<UserAuthToken> = self.to_userauthtoken(
+                        session_id,
+                        SessionScope::ReadWrite,
+                        ct,
+                        DEFAULT_AUTH_SESSION_EXPIRY,
+                    );
+                    return Ok(uat);
                 }
             }
-            None => {
-                security_info!("No passwords present for application {:?})", app_uuid);
-            }
+            security_info!(
+                "No application passwords present for application {:?} and label {:?})",
+                app_uuid,
+                app_label
+            );
         }
         Ok(None)
     }
