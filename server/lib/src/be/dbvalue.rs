@@ -1,6 +1,7 @@
 use std::fmt;
 use std::time::Duration;
 
+use std::collections::{BTreeMap, BTreeSet};
 use hashbrown::HashSet;
 use kanidm_proto::internal::ImageType;
 use serde::{Deserialize, Serialize};
@@ -399,6 +400,16 @@ pub struct DbValueAddressV1 {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
+pub struct DbValueOauthClaimMapV1 {
+    #[serde(rename = "n")]
+    pub name: String,
+    #[serde(rename = "j")]
+    pub join: char,
+    #[serde(rename = "d")]
+    pub values: BTreeMap<Uuid, BTreeSet<String>>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
 pub struct DbValueOauthScopeMapV1 {
     #[serde(rename = "u")]
     pub refer: Uuid,
@@ -672,6 +683,8 @@ pub enum DbValueSetV2 {
     OauthScope(Vec<String>),
     #[serde(rename = "OM")]
     OauthScopeMap(Vec<DbValueOauthScopeMapV1>),
+    #[serde(rename = "OC")]
+    OauthClaimMap(Vec<DbValueOauthClaimMapV1>),
     #[serde(rename = "E2")]
     PrivateBinary(Vec<Vec<u8>>),
     #[serde(rename = "PB")]

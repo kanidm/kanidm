@@ -762,6 +762,7 @@ impl<'a> SchemaWriteTransaction<'a> {
             // Update the unique and ref caches.
             if a.syntax == SyntaxType::ReferenceUuid ||
                 a.syntax == SyntaxType::OauthScopeMap ||
+                a.syntax == SyntaxType::OauthClaimMap ||
                 // So that when an rs is removed we trigger removal of the sessions.
                 a.syntax == SyntaxType::Oauth2Session
             // May not need to be a ref type since it doesn't have external links/impact?

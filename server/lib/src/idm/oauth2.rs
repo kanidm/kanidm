@@ -41,6 +41,7 @@ use crate::idm::server::{
 };
 use crate::prelude::*;
 use crate::value::{Oauth2Session, SessionState, OAUTHSCOPE_RE};
+use crate::valueset::OauthClaimMapping;
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 #[serde(rename_all = "snake_case")]
@@ -224,13 +225,6 @@ enum Oauth2JwsSigner {
     RS256 { signer: JwsRs256Signer },
 }
 
-struct ClaimMap {
-    claim_name: String,
-    // Can have many values ?!
-    claim_value: BTreeSet<String>,
-    to: BTreeSet<Uuid>,
-}
-
 #[derive(Clone)]
 pub struct Oauth2RS {
     name: String,
@@ -238,9 +232,12 @@ pub struct Oauth2RS {
     uuid: Uuid,
     origin: Origin,
     origin_https: bool,
+
     // How do we handle this with secure origins?
-    origin_supplemental: Vec<Url>,
-    claim_maps: ClaimMap,
+    // origin_supplemental: Vec<Url>,
+
+    claim_maps: BTreeMap<String, OauthClaimMapping>,
+
     scope_maps: BTreeMap<Uuid, BTreeSet<String>>,
     sup_scope_maps: BTreeMap<Uuid, BTreeSet<String>>,
     // Our internal exchange encryption material for this rs.
@@ -272,6 +269,7 @@ impl std::fmt::Debug for Oauth2RS {
             .field("origin", &self.origin)
             .field("scope_maps", &self.scope_maps)
             .field("sup_scope_maps", &self.sup_scope_maps)
+            .field("claim_maps", &self.claim_maps)
             .field("has_custom_image", &self.has_custom_image)
             .finish()
     }
@@ -410,6 +408,12 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
                     .cloned()
                     .unwrap_or_default();
 
+                let claim_maps = ent
+                    .get_ava_set(Attribute::OAuth2RsClaimMap)
+                    .and_then(|vs| vs.as_oauthclaim_map())
+                    .cloned()
+                    .unwrap_or_default();
+
                 trace!("{}", Attribute::OAuth2JwtLegacyCryptoEnable.as_ref());
                 let jws_signer = if ent.get_ava_single_bool(Attribute::OAuth2JwtLegacyCryptoEnable).unwrap_or(false) {
                     trace!("{}", Attribute::Rs256PrivateKeyDer);
@@ -483,6 +487,7 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
                     origin_https,
                     scope_maps,
                     sup_scope_maps,
+                    claim_maps,
                     token_fernet,
                     jws_signer,
                     iss,
@@ -2407,8 +2412,6 @@ mod tests {
 
         let idms_prox_read = idms.proxy_read().await;
 
-        // Get an ident/uat for now.
-
         // == Setup the authorisation request
         let (code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
 
@@ -4308,7 +4311,6 @@ mod tests {
         assert!(idms_prox_write.commit().is_ok());
     }
 
-    #[idm_test]
     // https://datatracker.ietf.org/doc/html/draft-ietf-oauth-security-topics#section-4.8
     //
     // It was reported we were vulnerable to this attack, but that isn't the case. First
@@ -4328,6 +4330,7 @@ mod tests {
     // exchange that code exchange with out the verifier, but I'm not sure what damage that would
     // lead to? Regardless, we test for and close off that possible hole in this test.
     //
+    #[idm_test]
     async fn test_idm_oauth2_1076_pkce_downgrade(
         idms: &IdmServer,
         _idms_delayed: &mut IdmServerDelayed,
@@ -4944,5 +4947,167 @@ mod tests {
         "#,
         );
         assert!(token_req.is_ok());
+    }
+
+    #[idm_test]
+    async fn test_idm_oauth2_custom_claims(
+        idms: &IdmServer,
+        _idms_delayed: &mut IdmServerDelayed,
+    ) {
+        let ct = Duration::from_secs(TEST_CURRENT_TIME);
+        let (secret, _uat, ident, _) =
+            setup_oauth2_resource_server_basic(idms, ct, true, false, false).await;
+
+        // Setup custom claim maps here.
+
+        // Member of a claim map.
+
+        // If you are a member of two groups, the claim maps merge. Add a different seperator
+
+        // Not a member of the claim map.
+
+        assert!(false);
+
+        let client_authz =
+            Some(general_purpose::STANDARD.encode(format!("test_resource_server:{secret}")));
+
+        let idms_prox_read = idms.proxy_read().await;
+
+        let (code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
+
+        let consent_request = good_authorisation_request!(
+            idms_prox_read,
+            &ident,
+            ct,
+            code_challenge,
+            OAUTH2_SCOPE_OPENID.to_string()
+        );
+
+        let consent_token =
+            if let AuthoriseResponse::ConsentRequested { consent_token, .. } = consent_request {
+                consent_token
+            } else {
+                unreachable!();
+            };
+
+        // == Manually submit the consent token to the permit for the permit_success
+        drop(idms_prox_read);
+        let mut idms_prox_write = idms.proxy_write(ct).await;
+
+        let permit_success = idms_prox_write
+            .check_oauth2_authorise_permit(&ident, &consent_token, ct)
+            .expect("Failed to perform OAuth2 permit");
+
+        // == Submit the token exchange code.
+        let token_req: AccessTokenRequest = GrantTypeReq::AuthorizationCode {
+            code: permit_success.code,
+            redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
+            // From the first step.
+            code_verifier,
+        }
+        .into();
+
+        let token_response = idms_prox_write
+            .check_oauth2_token_exchange(client_authz.as_deref(), &token_req, ct)
+            .expect("Failed to perform OAuth2 token exchange");
+
+        // 🎉 We got a token!
+        assert!(token_response.token_type == "Bearer");
+
+        let id_token = token_response.id_token.expect("No id_token in response!");
+        let access_token = token_response.access_token;
+
+        // Get the read txn for inspecting the tokens
+        assert!(idms_prox_write.commit().is_ok());
+
+        let mut idms_prox_read = idms.proxy_read().await;
+
+        let mut jwkset = idms_prox_read
+            .oauth2_openid_publickey("test_resource_server")
+            .expect("Failed to get public key");
+
+        let public_jwk = jwkset.keys.pop().expect("no such jwk");
+
+        let jws_validator =
+            JwsEs256Verifier::try_from(&public_jwk).expect("failed to build validator");
+
+        let oidc_unverified =
+            OidcUnverified::from_str(&id_token).expect("Failed to parse id_token");
+
+        let iat = ct.as_secs() as i64;
+
+        let oidc = jws_validator
+            .verify(&oidc_unverified)
+            .unwrap()
+            .verify_exp(iat)
+            .expect("Failed to verify oidc");
+
+        // Are the id_token values what we expect?
+        assert!(
+            oidc.iss
+                == Url::parse("https://idm.example.com/oauth2/openid/test_resource_server")
+                    .unwrap()
+        );
+        assert!(oidc.sub == OidcSubject::U(UUID_ADMIN));
+        assert!(oidc.aud == "test_resource_server");
+        assert!(oidc.iat == iat);
+        assert!(oidc.nbf == Some(iat));
+        // Previously this was the auth session but it's now inline with the access token expiry.
+        assert!(oidc.exp == iat + (OAUTH2_ACCESS_TOKEN_EXPIRY as i64));
+        assert!(oidc.auth_time.is_none());
+        // Is nonce correctly passed through?
+        assert!(oidc.nonce == Some("abcdef".to_string()));
+        assert!(oidc.at_hash.is_none());
+        assert!(oidc.acr.is_none());
+        assert!(oidc.amr.is_none());
+        assert!(oidc.azp == Some("test_resource_server".to_string()));
+        assert!(oidc.jti.is_none());
+        assert!(oidc.s_claims.name == Some("System Administrator".to_string()));
+        assert!(oidc.s_claims.preferred_username == Some("admin@example.com".to_string()));
+        assert!(
+            oidc.s_claims.scopes == vec![OAUTH2_SCOPE_OPENID.to_string(), "supplement".to_string()]
+        );
+        assert!(oidc.claims.is_empty());
+        // Does our access token work with the userinfo endpoint?
+        // Do the id_token details line up to the userinfo?
+        let userinfo = idms_prox_read
+            .oauth2_openid_userinfo("test_resource_server", &access_token, ct)
+            .expect("failed to get userinfo");
+
+        assert!(oidc.iss == userinfo.iss);
+        assert!(oidc.sub == userinfo.sub);
+        assert!(oidc.aud == userinfo.aud);
+        assert!(oidc.iat == userinfo.iat);
+        assert!(oidc.nbf == userinfo.nbf);
+        assert!(oidc.exp == userinfo.exp);
+        assert!(userinfo.auth_time.is_none());
+        assert!(userinfo.nonce == Some("abcdef".to_string()));
+        assert!(userinfo.at_hash.is_none());
+        assert!(userinfo.acr.is_none());
+        assert!(oidc.amr == userinfo.amr);
+        assert!(oidc.azp == userinfo.azp);
+        assert!(userinfo.jti.is_none());
+        assert!(oidc.s_claims == userinfo.s_claims);
+        assert!(userinfo.claims.is_empty());
+
+        // Check the oauth2 introspect bits.
+        let intr_request = AccessTokenIntrospectRequest {
+            token: access_token,
+            token_type_hint: None,
+        };
+        let intr_response = idms_prox_read
+            .check_oauth2_token_introspect(client_authz.as_deref().unwrap(), &intr_request, ct)
+            .expect("Failed to inspect token");
+
+        eprintln!("👉  {intr_response:?}");
+        assert!(intr_response.active);
+        assert!(intr_response.scope.as_deref() == Some("openid supplement"));
+        assert!(intr_response.client_id.as_deref() == Some("test_resource_server"));
+        assert!(intr_response.username.as_deref() == Some("admin@example.com"));
+        assert!(intr_response.token_type.as_deref() == Some("access_token"));
+        assert!(intr_response.iat == Some(ct.as_secs() as i64));
+        assert!(intr_response.nbf == Some(ct.as_secs() as i64));
+
+        drop(idms_prox_read);
     }
 }

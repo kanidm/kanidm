@@ -254,6 +254,13 @@ pub struct ReplOauthScopeMapV1 {
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
+pub struct ReplOauthClaimMapV1 {
+    pub name: String,
+    pub join: char,
+    pub values: BTreeMap<Uuid, BTreeSet<String>>,
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub struct ReplOauth2SessionV1 {
     pub refer: Uuid,
     pub parent: Uuid,
@@ -411,6 +418,9 @@ pub enum ReplAttrV1 {
     },
     OauthScopeMap {
         set: Vec<ReplOauthScopeMapV1>,
+    },
+    OauthClaimMap {
+        set: Vec<ReplOauthClaimMapV1>,
     },
     Oauth2Session {
         set: Vec<ReplOauth2SessionV1>,

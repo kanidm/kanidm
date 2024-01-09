@@ -42,7 +42,7 @@ pub use self::iutf8::ValueSetIutf8;
 pub use self::json::ValueSetJsonFilter;
 pub use self::jws::{ValueSetJwsKeyEs256, ValueSetJwsKeyRs256};
 pub use self::nsuniqueid::ValueSetNsUniqueId;
-pub use self::oauth::{ValueSetOauthScope, ValueSetOauthScopeMap};
+pub use self::oauth::{ValueSetOauthScope, ValueSetOauthScopeMap, OauthClaimMapping};
 pub use self::restricted::ValueSetRestricted;
 pub use self::secret::ValueSetSecret;
 pub use self::session::{ValueSetApiToken, ValueSetOauth2Session, ValueSetSession};
@@ -361,6 +361,11 @@ pub trait ValueSetT: std::fmt::Debug + DynClone {
     }
 
     fn as_webauthn_attestation_ca_list(&self) -> Option<&AttestationCaList> {
+        debug_assert!(false);
+        None
+    }
+
+    fn as_oauthclaim_map(&self) -> Option<&BTreeMap<String, OauthClaimMapping>> {
         debug_assert!(false);
         None
     }
