@@ -269,7 +269,7 @@ impl KanidmClient {
         id: &str,
         app: &str,
         label: &str,
-    ) -> Result<Option<String>, ClientError> {
+    ) -> Result<String, ClientError> {
         let ap = (app.to_string(), label.to_string());
         self.perform_post_request(
             format!("/v1/person/{}/_application_passwords", id).as_str(),

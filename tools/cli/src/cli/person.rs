@@ -500,7 +500,7 @@ impl PersonOpt {
                 }
                 AccountApplicationPasswords::Add(aopt) => {
                     let client = aopt.copt.to_client(OpType::Write).await;
-                    if let Err(e) = client
+                    match client
                         .idm_person_account_add_application_password(
                             aopt.aopts.account_id.as_str(),
                             aopt.application.as_str(),
@@ -508,7 +508,8 @@ impl PersonOpt {
                         )
                         .await
                     {
-                        handle_client_error(e, aopt.copt.output_mode)
+                        Ok(ct) => println!("{}", ct),
+                        Err(e) => handle_client_error(e, aopt.copt.output_mode),
                     }
                 }
             },
