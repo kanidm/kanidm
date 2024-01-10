@@ -6,6 +6,7 @@ use kanidm_proto::v1::{
     Entry as ProtoEntry, GroupUnixExtend, Modify as ProtoModify, ModifyList as ProtoModifyList,
     ModifyRequest, OperationError,
 };
+use kanidmd_lib::idm::event::GenerateApplicationPasswordEvent;
 use time::OffsetDateTime;
 use tracing::{info, instrument, span, trace, Instrument, Level};
 use uuid::Uuid;
@@ -1641,5 +1642,58 @@ impl QueryServerWriteV1 {
         let pw = idms_prox_write.recover_account(name.as_str(), None)?;
 
         idms_prox_write.commit().map(|()| pw)
+    }
+
+    #[instrument(
+        level = "info",
+        name = "application_password_create",
+        skip_all,
+        fields(uuid = ?eventid)
+    )]
+    pub async fn handle_application_password_create(
+        &self,
+        client_auth_info: ClientAuthInfo,
+        uuid_or_name: String,
+        application: String,
+        label: String,
+        eventid: Uuid,
+    ) -> Result<String, OperationError> {
+        let ct = duration_from_epoch_now();
+        let mut idms_prox_write = self.idms.proxy_write(ct).await;
+        let ident = idms_prox_write
+            .validate_client_auth_info_to_ident(client_auth_info, ct)
+            .map_err(|e| {
+                admin_error!(err = ?e, "Invalid identity");
+                e
+            })?;
+
+        let target_uuid = idms_prox_write
+            .qs_write
+            .name_to_uuid(uuid_or_name.as_str())
+            .map_err(|e| {
+                admin_error!(err = ?e, "Error resolving id to target");
+                e
+            })?;
+
+        let app_uuid = idms_prox_write
+            .qs_write
+            .name_to_uuid(application.as_str())
+            .map_err(|e| {
+                admin_error!(err = ?e, "Error resolving application name to target");
+                e
+            })?;
+
+        let ev = GenerateApplicationPasswordEvent::from_parts(ident, target_uuid, app_uuid, label)
+            .map_err(|e| {
+                admin_error!(
+                    err = ?e,
+                    "Failed to begin idm_account_generate_application_password",
+                );
+                e
+            })?;
+
+        idms_prox_write
+            .generate_application_password(&ev)
+            .and_then(|r| idms_prox_write.commit().map(|_| r))
     }
 }

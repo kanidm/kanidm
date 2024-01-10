@@ -588,6 +588,20 @@ impl Account {
         ))
     }
 
+    pub(crate) fn generate_application_password_mod(
+        &self,
+        application: Uuid,
+        label: &str,
+        cleartext: &str,
+    ) -> Result<ModifyList<ModifyInvalid>, OperationError> {
+        let ap = ApplicationPassword::new(application, label, cleartext)?;
+        let vap = Value::new_application_password(ap.uuid, ap);
+        Ok(ModifyList::new_append(
+            Attribute::ApplicationsPasswords,
+            vap,
+        ))
+    }
+
     pub(crate) fn to_credentialstatus(&self) -> Result<CredentialStatus, OperationError> {
         // In the future this will need to handle multiple credentials, not just single.
 

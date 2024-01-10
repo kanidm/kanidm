@@ -2202,6 +2202,30 @@ pub async fn person_id_application_passwords_get(
 }
 
 #[utoipa::path(
+    post,
+    path = "/v1/person/{id}/_application_passwords",
+    responses(
+        DefaultApiResponse,
+    ),
+    security(("token_jwt" = [])),
+    tag = "v1/person/application_passwords",
+)]
+pub async fn person_id_application_passwords_post(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+    Path(id): Path<String>,
+    Json((app, label)): Json<(String, String)>,
+) -> Result<Json<String>, WebError> {
+    state
+        .qe_w_ref
+        .handle_application_password_create(client_auth_info, id, app, label, kopid.eventid)
+        .await
+        .map(Json::from)
+        .map_err(WebError::from)
+}
+
+#[utoipa::path(
     get,
     path = "/v1/group",
     responses(
@@ -3108,7 +3132,7 @@ pub(crate) fn route_setup(state: ServerState) -> Router<ServerState> {
         )
         .route(
             "/v1/person/:id/_application_passwords",
-            get(person_id_application_passwords_get),
+            get(person_id_application_passwords_get).post(person_id_application_passwords_post),
         )
         // Service accounts
         .route(

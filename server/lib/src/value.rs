@@ -1566,6 +1566,11 @@ impl Value {
             .ok()
     }
 
+    pub fn new_application_password(id: Uuid, ap: ApplicationPassword) -> Self {
+        // TODO Implement try_from?
+        Value::ApplicationPassword(id, ap)
+    }
+
     #[allow(clippy::unreachable)]
     pub(crate) fn to_db_ident_spn(&self) -> DbIdentSpn {
         // This has to clone due to how the backend works.

@@ -531,3 +531,27 @@ impl AuthResult {
     }
 }
 */
+
+#[derive(Debug)]
+pub struct GenerateApplicationPasswordEvent {
+    pub ident: Identity,
+    pub target: Uuid,
+    pub application: Uuid,
+    pub label: String,
+}
+
+impl GenerateApplicationPasswordEvent {
+    pub fn from_parts(
+        ident: Identity,
+        target: Uuid,
+        application: Uuid,
+        label: String,
+    ) -> Result<Self, OperationError> {
+        Ok(GenerateApplicationPasswordEvent {
+            ident,
+            target,
+            application,
+            label,
+        })
+    }
+}
