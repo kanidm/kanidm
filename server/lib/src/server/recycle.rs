@@ -9,10 +9,11 @@ impl<'a> QueryServerWriteTransaction<'a> {
     pub fn purge_tombstones(&mut self) -> Result<usize, OperationError> {
         // purge everything that is a tombstone.
         let trim_cid = self.trim_cid().clone();
+        let anchor_cid = self.get_txn_cid().clone();
 
         // Delete them - this is a TRUE delete, no going back now!
         self.be_txn
-            .reap_tombstones(&trim_cid)
+            .reap_tombstones(&anchor_cid, &trim_cid)
             .map_err(|e| {
                 error!(err = ?e, "Tombstone purge operation failed (backend)");
                 e
