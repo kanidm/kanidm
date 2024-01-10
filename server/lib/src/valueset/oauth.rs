@@ -437,25 +437,16 @@ impl ValueSetOauthClaimMap {
 impl ValueSetT for ValueSetOauthClaimMap {
     fn insert_checked(&mut self, value: Value) -> Result<bool, OperationError> {
         match value {
-            /*
-            Value::OauthClaimMap(u, m) => {
-                match self.map.entry(u) {
-                    BTreeEntry::Vacant(e) => {
-                        e.insert(m);
-                        Ok(true)
-                    }
-                    // In the case that the value already exists, we update it. This is a quirk
-                    // of the oauth2 scope map type where add_ava assumes that a value's entire state
-                    // will be reflected, but we were only checking the *uuid* existed, not it's
-                    // associated map state. So by always replacing on a present, we are true to
-                    // the intent of the api.
-                    BTreeEntry::Occupied(mut e) => {
-                        e.insert(m);
-                        Ok(true)
-                    }
-                }
+            Value::OauthClaimValue(s, u) => {
+                // Add a claim with this group to this name.
             }
-            */
+            Value::OauthClaimValue(s, u, v) => {
+                // Add a value to this group associated to this claim.
+            }
+            Value::OauthClaimMap(s, j) => {
+                // Create a new claim, where multiple values use the following join process.
+
+            }
             _ => Err(OperationError::InvalidValueState),
         }
     }
@@ -466,8 +457,10 @@ impl ValueSetT for ValueSetOauthClaimMap {
 
     fn remove(&mut self, pv: &PartialValue, _cid: &Cid) -> bool {
         match pv {
+            // Remove this claim as a whole
             PartialValue::Iutf8(s) =>
                 self.map.remove(s).is_some(),
+            // Remove all references to this group from this claim map.
             PartialValue::Refer(u) => {
                 let contained = false;
                 for mapping_mut in self.map.values_mut() {
@@ -475,11 +468,18 @@ impl ValueSetT for ValueSetOauthClaimMap {
                 }
                 contained
             },
+            PartialValue::OauthClaim(s, u) => {
+                // Remove a uuid from this claim type.
+            }
+            PartialValue::OauthClaimValue(s, u, v) => {
+                // Remove a value from this uuid, associated to this claim name.
+            }
             _ => false,
         }
     }
 
     fn contains(&self, pv: &PartialValue) -> bool {
+        /*
         match pv {
             PartialValue::Iutf8(s) =>
                 self.map.contains_key(s),
@@ -492,6 +492,7 @@ impl ValueSetT for ValueSetOauthClaimMap {
             },
             _ => false,
         }
+        */
     }
 
     fn substring(&self, _pv: &PartialValue) -> bool {
