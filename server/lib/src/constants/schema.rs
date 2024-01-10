@@ -595,6 +595,16 @@ pub static ref SCHEMA_ATTR_CREDENTIAL_TYPE_MINIMUM: SchemaAttribute = SchemaAttr
     ..Default::default()
 };
 
+pub static ref SCHEMA_ATTR_APPLICATION_PASSWORD: SchemaAttribute = SchemaAttribute {
+    uuid: UUID_SCHEMA_ATTR_APPLICATION_PASSWORD,
+    name: Attribute::ApplicationsPasswords.into(),
+    description: "".to_string(),
+
+    multivalue: true,
+    syntax: SyntaxType::ApplicationPassword,
+    ..Default::default()
+};
+
 // === classes ===
 
 pub static ref SCHEMA_CLASS_PERSON: SchemaClass = SchemaClass {
@@ -694,6 +704,7 @@ pub static ref SCHEMA_CLASS_ACCOUNT: SchemaClass = SchemaClass {
         Attribute::OAuth2Session.into(),
         Attribute::Description.into(),
         Attribute::NameHistory.into(),
+        Attribute::ApplicationsPasswords.into(),
     ],
     systemmust: vec![
             Attribute::DisplayName.into(),

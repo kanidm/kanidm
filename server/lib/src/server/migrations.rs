@@ -806,6 +806,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             SCHEMA_ATTR_DENIED_NAME.clone().into(),
             SCHEMA_ATTR_CREDENTIAL_TYPE_MINIMUM.clone().into(),
             SCHEMA_ATTR_WEBAUTHN_ATTESTATION_CA_LIST.clone().into(),
+            SCHEMA_ATTR_APPLICATION_PASSWORD.clone().into(),
         ];
 
         let r = idm_schema
@@ -945,6 +946,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             IDM_ACP_SERVICE_ACCOUNT_ENTRY_MANAGED_BY_MODIFY_V1.clone(),
             IDM_ACP_HP_SERVICE_ACCOUNT_ENTRY_MANAGED_BY_MODIFY_V1.clone(),
             IDM_ACP_SERVICE_ACCOUNT_MANAGE_V1.clone(),
+            IDM_ACP_APP_PWD_MANAGE_V1.clone(),
         ];
 
         let res: Result<(), _> = idm_entries

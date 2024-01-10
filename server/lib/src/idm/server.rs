@@ -2222,12 +2222,14 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         &mut self,
         ev: &GenerateApplicationPasswordEvent,
     ) -> Result<String, OperationError> {
+        admin_error!("Target to account");
         let account = self.target_to_account(ev.target)?;
 
         // This is intended to be read/copied by a human
         let cleartext = readable_password_from_random();
 
         // Create a modlist from the change
+        admin_error!("Create modlist");
         let modlist = account
             .generate_application_password_mod(
                 ev.application,
@@ -2238,7 +2240,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 admin_error!("Unable to generate application password mod {:?}", e);
                 e
             })?;
-        trace!(?modlist, "processing change");
+        admin_error!(?modlist, "processing change");
 
         // Apply it
         self.qs_write

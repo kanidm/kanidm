@@ -874,6 +874,7 @@ lazy_static! {
             Attribute::UserAuthTokenSession,
             Attribute::PassKeys,
             Attribute::AttestedPasskeys,
+            Attribute::ApplicationsPasswords,
         ],
         ..Default::default()
     };
@@ -901,6 +902,7 @@ lazy_static! {
             Attribute::PassKeys,
             Attribute::AttestedPasskeys,
             Attribute::UserAuthTokenSession,
+            Attribute::ApplicationsPasswords,
         ],
         modify_present_attrs: vec![
             Attribute::DisplayName,
@@ -911,6 +913,7 @@ lazy_static! {
             Attribute::UnixPassword,
             Attribute::PassKeys,
             Attribute::AttestedPasskeys,
+            Attribute::ApplicationsPasswords,
         ],
         ..Default::default()
     };
@@ -1714,6 +1717,29 @@ lazy_static! {
         ],
         modify_removed_attrs: vec![Attribute::EntryManagedBy],
         modify_present_attrs: vec![Attribute::EntryManagedBy],
+        ..Default::default()
+    };
+}
+
+lazy_static! {
+    pub static ref IDM_ACP_APP_PWD_MANAGE_V1: BuiltinAcp = BuiltinAcp {
+        classes: vec![
+            EntryClass::Object,
+            EntryClass::AccessControlProfile,
+            EntryClass::AccessControlModify,
+            EntryClass::AccessControlSearch,
+        ],
+        name: "idm_acp_application_passwords_manage",
+        uuid: UUID_IDM_ACP_APP_PWD_MANAGE_V1,
+        description: "Builtin IDM Control allowing reads and writes to user application passwords.",
+        receiver: BuiltinAcpReceiver::Group(vec![UUID_IDM_APP_PWD_ADMINS]),
+        target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
+            match_class_filter!(EntryClass::Account),
+            FILTER_ANDNOT_TOMBSTONE_OR_RECYCLED.clone()
+        ])),
+        search_attrs: vec![Attribute::ApplicationsPasswords],
+        modify_present_attrs: vec![Attribute::ApplicationsPasswords],
+        modify_removed_attrs: vec![Attribute::ApplicationsPasswords],
         ..Default::default()
     };
 }

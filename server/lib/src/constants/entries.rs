@@ -236,6 +236,7 @@ impl TryFrom<String> for Attribute {
             ATTR_ACP_SEARCH_ATTR => Attribute::AcpSearchAttr,
             ATTR_ACP_TARGET_SCOPE => Attribute::AcpTargetScope,
             ATTR_API_TOKEN_SESSION => Attribute::ApiTokenSession,
+            ATTR_APPLICATIONS_PASSWORDS => Attribute::ApplicationsPasswords,
             ATTR_ATTESTED_PASSKEYS => Attribute::AttestedPasskeys,
             ATTR_ATTR => Attribute::Attr,
             ATTR_ATTRIBUTENAME => Attribute::AttributeName,

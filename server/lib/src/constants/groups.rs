@@ -249,6 +249,15 @@ lazy_static! {
         members: Vec::new(),
         ..Default::default()
     };
+
+    pub static ref BUILTIN_GROUP_APP_PWD_ADMINS: BuiltinGroup = BuiltinGroup {
+        name: "idm_application_passwords_admins",
+        description: "Builtin Application Passwords Administration Group.",
+        uuid: UUID_IDM_APP_PWD_ADMINS,
+        entry_managed_by: Some(UUID_IDM_ADMINS),
+        members: vec![UUID_IDM_ADMINS],
+        ..Default::default()
+    };
 }
 
 // at some point vs code just gives up on syntax highlighting inside lazy_static...
@@ -355,6 +364,7 @@ pub fn idm_builtin_non_admin_groups() -> Vec<&'static BuiltinGroup> {
         &BUILTIN_GROUP_SERVICE_DESK,
         &BUILTIN_GROUP_OAUTH2_ADMINS,
         &BUILTIN_GROUP_RADIUS_SERVICE_ADMINS,
+        &BUILTIN_GROUP_APP_PWD_ADMINS,
         &BUILTIN_GROUP_ACCOUNT_POLICY_ADMINS,
         &BUILTIN_GROUP_PEOPLE_ADMINS,
         &BUILTIN_GROUP_PEOPLE_PII_READ,
