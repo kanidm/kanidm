@@ -740,6 +740,11 @@ pub trait BackendTransaction {
         // If it was possible, we could just & with allids to remove the extraneous
         // values.
 
+        if idl.is_empty() {
+            // return no entries.
+            return Ok(Vec::with_capacity(0));
+        }
+
         // Make it an id list fr the backend.
         let id_list = IdList::Indexed(idl);
 
@@ -1257,11 +1262,16 @@ impl<'a> BackendWriteTransaction<'a> {
     }
 
     #[instrument(level = "debug", name = "be::reap_tombstones", skip_all)]
-    pub fn reap_tombstones(&mut self, cid: &Cid) -> Result<usize, OperationError> {
+    pub fn reap_tombstones(&mut self, cid: &Cid, trim_cid: &Cid) -> Result<usize, OperationError> {
+        debug_assert!(cid > trim_cid);
+        // Mark a new maximum for the RUV by inserting an empty change. This
+        // is important to keep the changestate always advancing.
+        self.get_ruv().insert_change(cid, IDLBitRange::default())?;
+
         // We plan to clear the RUV up to this cid. So we need to build an IDL
         // of all the entries we need to examine.
-        let idl = self.get_ruv().trim_up_to(cid).map_err(|e| {
-            admin_error!(?e, "failed to trim RUV to {:?}", cid);
+        let idl = self.get_ruv().trim_up_to(trim_cid).map_err(|e| {
+            admin_error!(?e, "failed to trim RUV to {:?}", trim_cid);
             e
         })?;
 
@@ -1293,7 +1303,7 @@ impl<'a> BackendWriteTransaction<'a> {
 
         let (tombstones, leftover): (Vec<_>, Vec<_>) = entries
             .into_iter()
-            .partition(|e| e.get_changestate().can_delete(cid));
+            .partition(|e| e.get_changestate().can_delete(trim_cid));
 
         let ruv_idls = self.get_ruv().ruv_idls();
 
@@ -2015,9 +2025,8 @@ impl Backend {
             })
             .collect();
 
-        // RUV-TODO
-        // Load the replication update vector here. For now we rebuild every startup
-        // from the database.
+        // Load the replication update vector here. Initially we build an in memory
+        // RUV, and then we load it from the DB.
         let ruv = Arc::new(ReplicationUpdateVector::default());
 
         // this has a ::memory() type, but will path == "" work?
@@ -2107,6 +2116,7 @@ mod tests {
         static ref CID_ONE: Cid = Cid::new_count(1);
         static ref CID_TWO: Cid = Cid::new_count(2);
         static ref CID_THREE: Cid = Cid::new_count(3);
+        static ref CID_ADV: Cid = Cid::new_count(10);
     }
 
     macro_rules! run_test {
@@ -2382,7 +2392,7 @@ mod tests {
             let r3 = results.remove(0);
 
             // Deletes nothing, all entries are live.
-            assert!(matches!(be.reap_tombstones(&CID_ZERO), Ok(0)));
+            assert!(matches!(be.reap_tombstones(&CID_ADV, &CID_ZERO), Ok(0)));
 
             // Put them into the tombstone state, and write that down.
             // This sets up the RUV with the changes.
@@ -2399,32 +2409,32 @@ mod tests {
 
             // The entry are now tombstones, but is still in the ruv. This is because we
             // targeted CID_ZERO, not ONE.
-            assert!(matches!(be.reap_tombstones(&CID_ZERO), Ok(0)));
+            assert!(matches!(be.reap_tombstones(&CID_ADV, &CID_ZERO), Ok(0)));
 
             assert!(entry_exists!(be, r1_ts));
             assert!(entry_exists!(be, r2_ts));
             assert!(entry_exists!(be, r3_ts));
 
-            assert!(matches!(be.reap_tombstones(&CID_ONE), Ok(0)));
+            assert!(matches!(be.reap_tombstones(&CID_ADV, &CID_ONE), Ok(0)));
 
             assert!(entry_exists!(be, r1_ts));
             assert!(entry_exists!(be, r2_ts));
             assert!(entry_exists!(be, r3_ts));
 
-            assert!(matches!(be.reap_tombstones(&CID_TWO), Ok(1)));
+            assert!(matches!(be.reap_tombstones(&CID_ADV, &CID_TWO), Ok(1)));
 
             assert!(!entry_exists!(be, r1_ts));
             assert!(entry_exists!(be, r2_ts));
             assert!(entry_exists!(be, r3_ts));
 
-            assert!(matches!(be.reap_tombstones(&CID_THREE), Ok(2)));
+            assert!(matches!(be.reap_tombstones(&CID_ADV, &CID_THREE), Ok(2)));
 
             assert!(!entry_exists!(be, r1_ts));
             assert!(!entry_exists!(be, r2_ts));
             assert!(!entry_exists!(be, r3_ts));
 
             // Nothing left
-            assert!(matches!(be.reap_tombstones(&CID_THREE), Ok(0)));
+            assert!(matches!(be.reap_tombstones(&CID_ADV, &CID_THREE), Ok(0)));
 
             assert!(!entry_exists!(be, r1_ts));
             assert!(!entry_exists!(be, r2_ts));
@@ -2812,7 +2822,7 @@ mod tests {
             // == Now we reap_tombstones, and assert we removed the items.
             let e1_ts = e1.to_tombstone(CID_ONE.clone()).into_sealed_committed();
             assert!(be.modify(&CID_ONE, &[e1], &[e1_ts]).is_ok());
-            be.reap_tombstones(&CID_TWO).unwrap();
+            be.reap_tombstones(&CID_ADV, &CID_TWO).unwrap();
 
             idl_state!(
                 be,
@@ -2894,7 +2904,7 @@ mod tests {
             let e1_ts = e1.to_tombstone(CID_ONE.clone()).into_sealed_committed();
             let e3_ts = e3.to_tombstone(CID_ONE.clone()).into_sealed_committed();
             assert!(be.modify(&CID_ONE, &[e1, e3], &[e1_ts, e3_ts]).is_ok());
-            be.reap_tombstones(&CID_TWO).unwrap();
+            be.reap_tombstones(&CID_ADV, &CID_TWO).unwrap();
 
             idl_state!(
                 be,

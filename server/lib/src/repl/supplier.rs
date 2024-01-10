@@ -208,8 +208,11 @@ impl<'a> QueryServerReadTransaction<'a> {
             .map(|e| ReplIncrementalEntryV1::new(e.as_ref(), schema, &ranges))
             .collect();
 
-        // Build the incremental context.
+        // Finally, populate the ranges with anchors from the RUV
+        let supplier_ruv = self.get_be_txn().get_ruv();
+        let ranges = supplier_ruv.get_anchored_ranges(ranges)?;
 
+        // Build the incremental context.
         Ok(ReplIncrementalContext::V1 {
             domain_version,
             domain_uuid,
@@ -309,6 +312,10 @@ impl<'a> QueryServerReadTransaction<'a> {
                 error!("Failed to access entries");
                 e
             })?;
+
+        // Finally, populate the ranges with anchors from the RUV
+        let supplier_ruv = self.get_be_txn().get_ruv();
+        let ranges = supplier_ruv.get_anchored_ranges(ranges)?;
 
         Ok(ReplRefreshContext::V1 {
             domain_version,

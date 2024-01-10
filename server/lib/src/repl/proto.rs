@@ -60,6 +60,16 @@ impl From<&ReplCidV1> for Cid {
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
+pub struct ReplAnchoredCidRange {
+    #[serde(rename = "m")]
+    pub ts_min: Duration,
+    #[serde(rename = "a", default)]
+    pub anchors: Vec<Duration>,
+    #[serde(rename = "x")]
+    pub ts_max: Duration,
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub struct ReplCidRange {
     #[serde(rename = "m")]
     pub ts_min: Duration,
@@ -700,7 +710,7 @@ pub enum ReplRefreshContext {
         domain_uuid: Uuid,
         // We need to send the current state of the ranges to populate into
         // the ranges so that lookups and ranges work properly.
-        ranges: BTreeMap<Uuid, ReplCidRange>,
+        ranges: BTreeMap<Uuid, ReplAnchoredCidRange>,
         schema_entries: Vec<ReplEntryV1>,
         meta_entries: Vec<ReplEntryV1>,
         entries: Vec<ReplEntryV1>,
@@ -721,7 +731,7 @@ pub enum ReplIncrementalContext {
         // the ranges so that lookups and ranges work properly, and the
         // consumer ends with the same state as we have (or at least merges)
         // it with this.
-        ranges: BTreeMap<Uuid, ReplCidRange>,
+        ranges: BTreeMap<Uuid, ReplAnchoredCidRange>,
         schema_entries: Vec<ReplIncrementalEntryV1>,
         meta_entries: Vec<ReplIncrementalEntryV1>,
         entries: Vec<ReplIncrementalEntryV1>,

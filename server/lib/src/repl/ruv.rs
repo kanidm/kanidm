@@ -12,7 +12,7 @@ use kanidm_proto::v1::ConsistencyError;
 
 use crate::prelude::*;
 use crate::repl::cid::Cid;
-use crate::repl::proto::ReplCidRange;
+use crate::repl::proto::{ReplAnchoredCidRange, ReplCidRange};
 use std::fmt;
 
 #[derive(Default)]
@@ -451,6 +451,46 @@ pub trait ReplicationUpdateVectorTransaction {
 
         // Done!
     }
+
+    fn get_anchored_ranges(
+        &self,
+        ranges: BTreeMap<Uuid, ReplCidRange>,
+    ) -> Result<BTreeMap<Uuid, ReplAnchoredCidRange>, OperationError> {
+        let self_range_snapshot = self.range_snapshot();
+
+        ranges
+            .into_iter()
+            .map(|(s_uuid, ReplCidRange { ts_min, ts_max })| {
+                let ts_range = self_range_snapshot.get(&s_uuid).ok_or_else(|| {
+                    error!(
+                        ?s_uuid,
+                        "expected cid range for server in ruv, was not present"
+                    );
+                    OperationError::InvalidState
+                })?;
+
+                // If these are equal and excluded, btreeset panics
+                let anchors = if ts_max > ts_min {
+                    // We exclude the ends because these are already in the ts_min/max
+                    ts_range
+                        .range((Excluded(ts_min), Excluded(ts_max)))
+                        .copied()
+                        .collect::<Vec<_>>()
+                } else {
+                    Vec::with_capacity(0)
+                };
+
+                Ok((
+                    s_uuid,
+                    ReplAnchoredCidRange {
+                        ts_min,
+                        anchors,
+                        ts_max,
+                    },
+                ))
+            })
+            .collect()
+    }
 }
 
 impl<'a> ReplicationUpdateVectorTransaction for ReplicationUpdateVectorWriteTransaction<'a> {
@@ -482,7 +522,7 @@ impl<'a> ReplicationUpdateVectorWriteTransaction<'a> {
 
     pub(crate) fn incremental_preflight_validate_ruv(
         &self,
-        ctx_ranges: &BTreeMap<Uuid, ReplCidRange>,
+        ctx_ranges: &BTreeMap<Uuid, ReplAnchoredCidRange>,
         txn_cid: &Cid,
     ) -> Result<(), OperationError> {
         // Check that the incoming ranges, for our servers id, do not exceed
@@ -521,7 +561,7 @@ impl<'a> ReplicationUpdateVectorWriteTransaction<'a> {
 
     pub(crate) fn refresh_validate_ruv(
         &self,
-        ctx_ranges: &BTreeMap<Uuid, ReplCidRange>,
+        ctx_ranges: &BTreeMap<Uuid, ReplAnchoredCidRange>,
     ) -> Result<(), OperationError> {
         // Assert that the ruv that currently exists, is a valid data set of
         // the supplied consumer range - especially check that when a uuid exists in
@@ -533,7 +573,6 @@ impl<'a> ReplicationUpdateVectorWriteTransaction<'a> {
         // exist especially in three way replication scenarioes where S1:A was the S1
         // maximum but is replaced by S2:B. This would make S1:A still it's valid
         // maximum but no entry reflects that in it's change state.
-
         let mut valid = true;
 
         for (ctx_server_uuid, ctx_server_range) in ctx_ranges.iter() {
@@ -576,17 +615,22 @@ impl<'a> ReplicationUpdateVectorWriteTransaction<'a> {
         }
     }
 
+    #[instrument(level = "trace", name = "ruv::refresh_update_ruv", skip_all)]
     pub(crate) fn refresh_update_ruv(
         &mut self,
-        ctx_ranges: &BTreeMap<Uuid, ReplCidRange>,
+        ctx_ranges: &BTreeMap<Uuid, ReplAnchoredCidRange>,
     ) -> Result<(), OperationError> {
+        // Previously this would just add in the ranges, and then the actual entries
+        // from the changestate would populate the data/ranges. Now we add empty idls
+        // to each of these so that they are db persisted allowing ruv reload.
         for (ctx_s_uuid, ctx_range) in ctx_ranges.iter() {
-            if let Some(s_range) = self.ranged.get_mut(ctx_s_uuid) {
-                // Just assert the max is what we have.
-                s_range.insert(ctx_range.ts_max);
-            } else {
-                let s_range = btreeset!(ctx_range.ts_max);
-                self.ranged.insert(*ctx_s_uuid, s_range);
+            let cid_iter = std::iter::once(&ctx_range.ts_min)
+                .chain(ctx_range.anchors.iter())
+                .chain(std::iter::once(&ctx_range.ts_max))
+                .map(|ts| Cid::new(*ctx_s_uuid, *ts));
+
+            for cid in cid_iter {
+                self.insert_change(&cid, IDLBitRange::default())?;
             }
         }
         Ok(())
@@ -824,6 +868,7 @@ impl<'a> ReplicationUpdateVectorWriteTransaction<'a> {
         // try to do.
 
         for (cid, ex_idl) in self.data.range((Unbounded, Excluded(cid))) {
+            trace!(?cid, "examining for RUV removal");
             idl = ex_idl as &_ | &idl;
 
             // Remove the reverse version of the cid from the ranged index.
