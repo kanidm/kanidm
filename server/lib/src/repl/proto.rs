@@ -59,6 +59,10 @@ impl From<&ReplCidV1> for Cid {
     }
 }
 
+/// An anchored CID range. This contains a minimum and maximum range of CID times for a server,
+/// and also includes the list of all CIDs that occur between those two points. This allows these
+/// extra change "anchors" to be injected into the consumer RUV during an incremental. Once
+/// inserted, these anchors prevent RUV trimming from creating "jumps" due to idle servers.
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub struct ReplAnchoredCidRange {
     #[serde(rename = "m")]
@@ -69,6 +73,8 @@ pub struct ReplAnchoredCidRange {
     pub ts_max: Duration,
 }
 
+/// A CID range. This contains the minimum and maximum values of a range. This is used for
+/// querying the RUV to select all elements in this range.
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub struct ReplCidRange {
     #[serde(rename = "m")]

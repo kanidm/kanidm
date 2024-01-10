@@ -1878,8 +1878,8 @@ async fn test_repl_increment_consumer_ruv_trim_past_valid(
     drop(server_b_txn);
 }
 
-// Test two synchronised nodes where changes no are occuring - this situation would previously
-// cause issues because when a change did occur, the ruv would "jump" ahead and cause desyncs.
+// Test two synchronised nodes where changes are not occuring - this situation would previously
+// cause issues because when a change did occur, the ruv would "jump" ahead and cause desyncs.w
 #[qs_pair_test]
 async fn test_repl_increment_consumer_ruv_trim_idle_servers(
     server_a: &QueryServer,

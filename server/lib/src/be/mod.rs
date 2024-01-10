@@ -1271,7 +1271,11 @@ impl<'a> BackendWriteTransaction<'a> {
         // We plan to clear the RUV up to this cid. So we need to build an IDL
         // of all the entries we need to examine.
         let idl = self.get_ruv().trim_up_to(trim_cid).map_err(|e| {
-            admin_error!(?e, "failed to trim RUV to {:?}", trim_cid);
+            admin_error!(
+                ?e,
+                "During tombstone cleanup, failed to trim RUV to {:?}",
+                trim_cid
+            );
             e
         })?;
 
