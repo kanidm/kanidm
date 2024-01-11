@@ -213,6 +213,12 @@ impl SchemaAttribute {
             SyntaxType::Url => matches!(v, PartialValue::Url(_)),
             SyntaxType::OauthScope => matches!(v, PartialValue::OauthScope(_)),
             SyntaxType::OauthScopeMap => matches!(v, PartialValue::Refer(_)),
+            SyntaxType::OauthClaimMap => {
+                matches!(v, PartialValue::Iutf8(_))
+                    || matches!(v, PartialValue::Refer(_))
+                    || matches!(v, PartialValue::OauthClaimValue(_, _, _))
+                    || matches!(v, PartialValue::OauthClaim(_, _))
+            }
             SyntaxType::PrivateBinary => matches!(v, PartialValue::PrivateBinary),
             SyntaxType::IntentToken => matches!(v, PartialValue::IntentToken(_)),
             SyntaxType::Passkey => matches!(v, PartialValue::Passkey(_)),
@@ -270,6 +276,10 @@ impl SchemaAttribute {
                 SyntaxType::Url => matches!(v, Value::Url(_)),
                 SyntaxType::OauthScope => matches!(v, Value::OauthScope(_)),
                 SyntaxType::OauthScopeMap => matches!(v, Value::OauthScopeMap(_, _)),
+                SyntaxType::OauthClaimMap => {
+                    matches!(v, Value::OauthClaimValue(_, _, _))
+                        || matches!(v, Value::OauthClaimMap(_, _))
+                }
                 SyntaxType::PrivateBinary => matches!(v, Value::PrivateBinary(_)),
                 SyntaxType::IntentToken => matches!(v, Value::IntentToken(_, _)),
                 SyntaxType::Passkey => matches!(v, Value::Passkey(_, _, _)),

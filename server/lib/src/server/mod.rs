@@ -583,6 +583,7 @@ pub trait QueryServerTransaction<'a> {
                     SyntaxType::WebauthnAttestationCaList => Value::new_webauthn_attestation_ca_list(value)
                         .ok_or_else(|| OperationError::InvalidAttribute("Invalid Webauthn Attestation CA List".to_string())),
                     SyntaxType::OauthScopeMap => Err(OperationError::InvalidAttribute("Oauth Scope Maps can not be supplied through modification - please use the IDM api".to_string())),
+                    SyntaxType::OauthClaimMap => Err(OperationError::InvalidAttribute("Oauth Claim Maps can not be supplied through modification - please use the IDM api".to_string())),
                     SyntaxType::PrivateBinary => Err(OperationError::InvalidAttribute("Private Binary Values can not be supplied through modification".to_string())),
                     SyntaxType::IntentToken => Err(OperationError::InvalidAttribute("Intent Token Values can not be supplied through modification".to_string())),
                     SyntaxType::Passkey => Err(OperationError::InvalidAttribute("Passkey Values can not be supplied through modification".to_string())),
@@ -657,6 +658,11 @@ pub trait QueryServerTransaction<'a> {
                         let un = self.name_to_uuid(value).unwrap_or(UUID_DOES_NOT_EXIST);
                         Ok(PartialValue::Refer(un))
                     }
+                    SyntaxType::OauthClaimMap => self
+                        .name_to_uuid(value)
+                        .map(PartialValue::Refer)
+                        .or_else(|_| Ok(PartialValue::new_iutf8(value))),
+
                     SyntaxType::JsonFilter => {
                         PartialValue::new_json_filter_s(value).ok_or_else(|| {
                             OperationError::InvalidAttribute("Invalid Filter syntax".to_string())

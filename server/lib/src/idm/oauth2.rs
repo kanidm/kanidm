@@ -235,7 +235,6 @@ pub struct Oauth2RS {
 
     // How do we handle this with secure origins?
     // origin_supplemental: Vec<Url>,
-
     claim_maps: BTreeMap<String, OauthClaimMapping>,
 
     scope_maps: BTreeMap<Uuid, BTreeSet<String>>,
@@ -2056,6 +2055,7 @@ mod tests {
     use crate::idm::oauth2::{AuthoriseResponse, Oauth2Error};
     use crate::idm::server::{IdmServer, IdmServerTransaction};
     use crate::prelude::*;
+    use crate::value::OauthClaimMapJoin;
     use crate::value::SessionState;
 
     use crate::credential::Credential;
@@ -4950,24 +4950,78 @@ mod tests {
     }
 
     #[idm_test]
-    async fn test_idm_oauth2_custom_claims(
-        idms: &IdmServer,
-        _idms_delayed: &mut IdmServerDelayed,
-    ) {
+    async fn test_idm_oauth2_custom_claims(idms: &IdmServer, _idms_delayed: &mut IdmServerDelayed) {
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
-        let (secret, _uat, ident, _) =
+        let (secret, _uat, ident, oauth2_rs_uuid) =
             setup_oauth2_resource_server_basic(idms, ct, true, false, false).await;
 
         // Setup custom claim maps here.
+        let mut idms_prox_write = idms.proxy_write(ct).await;
 
-        // Member of a claim map.
+        let modlist = ModifyList::new_list(vec![
+            // Member of a claim map.
+            Modify::Present(
+                Attribute::OAuth2RsClaimMap.into(),
+                Value::OauthClaimMap(
+                    "custom_a".to_string(),
+                    OauthClaimMapJoin::CommaSeparatedValue,
+                ),
+            ),
+            Modify::Present(
+                Attribute::OAuth2RsClaimMap.into(),
+                Value::OauthClaimValue(
+                    "custom_a".to_string(),
+                    UUID_SYSTEM_ADMINS,
+                    "value_a".to_string(),
+                ),
+            ),
+            // If you are a member of two groups, the claim maps merge.
+            Modify::Present(
+                Attribute::OAuth2RsClaimMap.into(),
+                Value::OauthClaimValue(
+                    "custom_a".to_string(),
+                    UUID_IDM_ALL_ACCOUNTS,
+                    "value_b".to_string(),
+                ),
+            ),
+            // Map with a different seperator
+            Modify::Present(
+                Attribute::OAuth2RsClaimMap.into(),
+                Value::OauthClaimMap(
+                    "custom_b".to_string(),
+                    OauthClaimMapJoin::SpaceSeparatedValue,
+                ),
+            ),
+            Modify::Present(
+                Attribute::OAuth2RsClaimMap.into(),
+                Value::OauthClaimValue(
+                    "custom_b".to_string(),
+                    UUID_SYSTEM_ADMINS,
+                    "value_a".to_string(),
+                ),
+            ),
+            // Not a member of the claim map.
+            Modify::Present(
+                Attribute::OAuth2RsClaimMap.into(),
+                Value::OauthClaimValue(
+                    "custom_b".to_string(),
+                    UUID_IDM_ADMINS,
+                    "value_b".to_string(),
+                ),
+            ),
+        ]);
 
-        // If you are a member of two groups, the claim maps merge. Add a different seperator
+        assert!(idms_prox_write
+            .qs_write
+            .internal_modify(
+                &filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(oauth2_rs_uuid))),
+                &modlist,
+            )
+            .is_ok());
 
-        // Not a member of the claim map.
+        assert!(idms_prox_write.commit().is_ok());
 
-        assert!(false);
-
+        // Claim maps setup, lets go.
         let client_authz =
             Some(general_purpose::STANDARD.encode(format!("test_resource_server:{secret}")));
 
@@ -5068,6 +5122,9 @@ mod tests {
             oidc.s_claims.scopes == vec![OAUTH2_SCOPE_OPENID.to_string(), "supplement".to_string()]
         );
         assert!(oidc.claims.is_empty());
+
+        assert!(false);
+
         // Does our access token work with the userinfo endpoint?
         // Do the id_token details line up to the userinfo?
         let userinfo = idms_prox_read

@@ -32,6 +32,7 @@ use webauthn_rs::prelude::{
 };
 
 use crate::be::dbentry::DbIdentSpn;
+use crate::be::dbvalue::DbValueOauthClaimMapJoinV1;
 use crate::credential::{totp::Totp, Credential};
 use crate::prelude::*;
 use crate::repl::cid::Cid;
@@ -474,6 +475,9 @@ pub enum PartialValue {
     /// We compare on the value hash
     Image(String),
     CredentialType(CredentialType),
+
+    OauthClaim(String, Uuid),
+    OauthClaimValue(String, Uuid, String),
 }
 
 impl From<SyntaxType> for PartialValue {
@@ -836,8 +840,6 @@ impl PartialValue {
             PartialValue::SecretValue | PartialValue::PrivateBinary => "_".to_string(),
             PartialValue::Spn(name, realm) => format!("{name}@{realm}"),
             PartialValue::Uint32(u) => u.to_string(),
-            // This will never work, we don't allow equality searching on Cid's
-            PartialValue::Cid(_) => "_".to_string(),
             PartialValue::DateTime(odt) => {
                 debug_assert!(odt.offset() == time::UtcOffset::UTC);
                 #[allow(clippy::expect_used)]
@@ -852,6 +854,11 @@ impl PartialValue {
             PartialValue::UiHint(u) => (*u as u16).to_string(),
             PartialValue::Image(imagehash) => imagehash.to_owned(),
             PartialValue::CredentialType(ct) => ct.to_string(),
+            // This will never work, we don't allow equality searching on Cid's
+            PartialValue::Cid(_) => "_".to_string(),
+            // We don't allow searching on claim/uuid pairs.
+            PartialValue::OauthClaim(_, _) => "_".to_string(),
+            PartialValue::OauthClaimValue(_, _, _) => "_".to_string(),
         }
     }
 
@@ -985,6 +992,41 @@ impl fmt::Debug for Session {
     }
 }
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum OauthClaimMapJoin {
+    CommaSeparatedValue,
+    SpaceSeparatedValue,
+    JsonArray,
+}
+
+impl From<DbValueOauthClaimMapJoinV1> for OauthClaimMapJoin {
+    fn from(value: DbValueOauthClaimMapJoinV1) -> OauthClaimMapJoin {
+        match value {
+            DbValueOauthClaimMapJoinV1::CommaSeparatedValue => {
+                OauthClaimMapJoin::CommaSeparatedValue
+            }
+            DbValueOauthClaimMapJoinV1::SpaceSeparatedValue => {
+                OauthClaimMapJoin::SpaceSeparatedValue
+            }
+            DbValueOauthClaimMapJoinV1::JsonArray => OauthClaimMapJoin::JsonArray,
+        }
+    }
+}
+
+impl From<OauthClaimMapJoin> for DbValueOauthClaimMapJoinV1 {
+    fn from(value: OauthClaimMapJoin) -> DbValueOauthClaimMapJoinV1 {
+        match value {
+            OauthClaimMapJoin::CommaSeparatedValue => {
+                DbValueOauthClaimMapJoinV1::CommaSeparatedValue
+            }
+            OauthClaimMapJoin::SpaceSeparatedValue => {
+                DbValueOauthClaimMapJoinV1::SpaceSeparatedValue
+            }
+            OauthClaimMapJoin::JsonArray => DbValueOauthClaimMapJoinV1::JsonArray,
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Oauth2Session {
     pub parent: Uuid,
@@ -1049,6 +1091,9 @@ pub enum Value {
     Image(ImageValue),
     CredentialType(CredentialType),
     WebauthnAttestationCaList(AttestationCaList),
+
+    OauthClaimValue(String, Uuid, String),
+    OauthClaimMap(String, OauthClaimMapJoin),
 }
 
 impl PartialEq for Value {
@@ -1843,6 +1888,11 @@ impl Value {
             Value::EmailAddress(mail, _) => VALIDATE_EMAIL_RE.is_match(mail.as_str()),
             Value::OauthScope(s) => OAUTHSCOPE_RE.is_match(s),
             Value::OauthScopeMap(_, m) => m.iter().all(|s| OAUTHSCOPE_RE.is_match(s)),
+
+            Value::OauthClaimMap(name, _) => OAUTHSCOPE_RE.is_match(name),
+            Value::OauthClaimValue(name, _, value) => {
+                OAUTHSCOPE_RE.is_match(name) && OAUTHSCOPE_RE.is_match(value)
+            }
 
             Value::PhoneNumber(_, _) => true,
             Value::Address(_) => true,

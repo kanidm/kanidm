@@ -711,7 +711,9 @@ impl<'a> QueryServerWriteTransaction<'a> {
     pub fn migrate_domain_3_to_4(&mut self) -> Result<(), OperationError> {
         let idm_schema_attrs = [
             SCHEMA_ATTR_OAUTH2_RS_CLAIM_MAP_DL4.clone().into(),
-            SCHEMA_ATTR_OAUTH2_RS_ORIGIN_SUPPLEMENTAL_DL4.clone().into(),
+            SCHEMA_ATTR_OAUTH2_ALLOW_LOCALHOST_REDIRECT_DL4
+                .clone()
+                .into(),
         ];
 
         idm_schema_attrs

@@ -118,6 +118,7 @@ pub enum Attribute {
     NsUniqueId,
     NsAccountLock,
     OAuth2AllowInsecureClientDisablePkce,
+    OAuth2AllowLocalhostRedirect,
     OAuth2ConsentScopeMap,
     OAuth2JwtLegacyCryptoEnable,
     OAuth2PreferShortUsername,
@@ -127,7 +128,6 @@ pub enum Attribute {
     OAuth2RsName,
     OAuth2RsOrigin,
     OAuth2RsOriginLanding,
-    OAuth2RsOriginSupplemental,
     OAuth2RsScopeMap,
     OAuth2RsSupScopeMap,
     OAuth2RsTokenKey,
@@ -306,6 +306,7 @@ impl TryFrom<String> for Attribute {
             ATTR_OAUTH2_ALLOW_INSECURE_CLIENT_DISABLE_PKCE => {
                 Attribute::OAuth2AllowInsecureClientDisablePkce
             }
+            ATTR_OAUTH2_ALLOW_LOCALHOST_REDIRECT => Attribute::OAuth2AllowLocalhostRedirect,
             ATTR_OAUTH2_CONSENT_SCOPE_MAP => Attribute::OAuth2ConsentScopeMap,
             ATTR_OAUTH2_JWT_LEGACY_CRYPTO_ENABLE => Attribute::OAuth2JwtLegacyCryptoEnable,
             ATTR_OAUTH2_PREFER_SHORT_USERNAME => Attribute::OAuth2PreferShortUsername,
@@ -315,7 +316,6 @@ impl TryFrom<String> for Attribute {
             ATTR_OAUTH2_RS_NAME => Attribute::OAuth2RsName,
             ATTR_OAUTH2_RS_ORIGIN => Attribute::OAuth2RsOrigin,
             ATTR_OAUTH2_RS_ORIGIN_LANDING => Attribute::OAuth2RsOriginLanding,
-            ATTR_OAUTH2_RS_ORIGIN_SUPPLEMENTAL => Attribute::OAuth2RsOriginSupplemental,
             ATTR_OAUTH2_RS_SCOPE_MAP => Attribute::OAuth2RsScopeMap,
             ATTR_OAUTH2_RS_SUP_SCOPE_MAP => Attribute::OAuth2RsSupScopeMap,
             ATTR_OAUTH2_RS_TOKEN_KEY => Attribute::OAuth2RsTokenKey,
@@ -469,6 +469,7 @@ impl From<Attribute> for &'static str {
             Attribute::OAuth2AllowInsecureClientDisablePkce => {
                 ATTR_OAUTH2_ALLOW_INSECURE_CLIENT_DISABLE_PKCE
             }
+            Attribute::OAuth2AllowLocalhostRedirect => ATTR_OAUTH2_ALLOW_LOCALHOST_REDIRECT,
             Attribute::OAuth2ConsentScopeMap => ATTR_OAUTH2_CONSENT_SCOPE_MAP,
             Attribute::OAuth2JwtLegacyCryptoEnable => ATTR_OAUTH2_JWT_LEGACY_CRYPTO_ENABLE,
             Attribute::OAuth2PreferShortUsername => ATTR_OAUTH2_PREFER_SHORT_USERNAME,
@@ -478,7 +479,6 @@ impl From<Attribute> for &'static str {
             Attribute::OAuth2RsName => ATTR_OAUTH2_RS_NAME,
             Attribute::OAuth2RsOrigin => ATTR_OAUTH2_RS_ORIGIN,
             Attribute::OAuth2RsOriginLanding => ATTR_OAUTH2_RS_ORIGIN_LANDING,
-            Attribute::OAuth2RsOriginSupplemental => ATTR_OAUTH2_RS_ORIGIN_SUPPLEMENTAL,
             Attribute::OAuth2RsScopeMap => ATTR_OAUTH2_RS_SCOPE_MAP,
             Attribute::OAuth2RsSupScopeMap => ATTR_OAUTH2_RS_SUP_SCOPE_MAP,
             Attribute::OAuth2RsTokenKey => ATTR_OAUTH2_RS_TOKEN_KEY,

@@ -329,13 +329,12 @@ pub static ref SCHEMA_ATTR_OAUTH2_RS_ORIGIN_LANDING: SchemaAttribute = SchemaAtt
 };
 
 // Introduced in DomainLevel4
-pub static ref SCHEMA_ATTR_OAUTH2_RS_ORIGIN_SUPPLEMENTAL_DL4: SchemaAttribute = SchemaAttribute {
-    uuid: UUID_SCHEMA_ATTR_OAUTH2_RS_ORIGIN_SUPPLEMENTAL,
-    name: Attribute::OAuth2RsOriginSupplemental.into(),
-    description: "Alternate origins that are valid for redirections for this RS".to_string(),
+pub static ref SCHEMA_ATTR_OAUTH2_ALLOW_LOCALHOST_REDIRECT_DL4: SchemaAttribute = SchemaAttribute {
+    uuid: UUID_SCHEMA_ATTR_OAUTH2_ALLOW_LOCALHOST_REDIRECT,
+    name: Attribute::OAuth2AllowLocalhostRedirect.into(),
+    description: "Allow public clients associated to this RS to redirect to localhost".to_string(),
 
-    multivalue: true,
-    syntax: SyntaxType::Url,
+    syntax: SyntaxType::Boolean,
     ..Default::default()
 };
 
@@ -348,7 +347,7 @@ pub static ref SCHEMA_ATTR_OAUTH2_RS_CLAIM_MAP_DL4: SchemaAttribute = SchemaAttr
     index: vec![IndexType::Equality],
     multivalue: true,
     // CHANGE ME
-    syntax: SyntaxType::OauthScopeMap,
+    syntax: SyntaxType::OauthClaimMap,
     ..Default::default()
 };
 
@@ -904,7 +903,7 @@ pub static ref SCHEMA_CLASS_OAUTH2_RS_PUBLIC_DL4: SchemaClass = SchemaClass {
     name: EntryClass::OAuth2ResourceServerPublic.into(),
     description: "The class representing a configured Oauth2 Resource Server with public clients and pkce verification".to_string(),
 
-    systemmay: vec![Attribute::OAuth2RsOriginSupplemental.into()],
+    systemmay: vec![Attribute::OAuth2AllowLocalhostRedirect.into()],
     systemexcludes: vec![EntryClass::OAuth2ResourceServerBasic.into()],
     ..Default::default()
 };
