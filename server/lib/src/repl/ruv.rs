@@ -787,21 +787,6 @@ impl<'a> ReplicationUpdateVectorWriteTransaction<'a> {
     }
 
     /*
-    pub fn contains(&self, idl: &IDLBitRange) -> bool {
-        self.data.iter()
-            .any(|(cid, ex_idl)| {
-                let idl_result = idl & ex_idl;
-                if idl_result.is_empty() {
-                    false
-                } else {
-                    debug!(?cid, ?idl_result);
-                    true
-                }
-            })
-    }
-    */
-
-    /*
         How to handle changelog trimming? If we trim a server out from the RUV as a whole, we
         need to be sure we don't oversupply changes the consumer already has. How can we do
         this cleanly? Or do we just deal with it because our own local trim will occur soon after?
@@ -831,6 +816,12 @@ impl<'a> ReplicationUpdateVectorWriteTransaction<'a> {
 
         NOTE: For now we do NOT trim out max CID's of any s_uuid so that we don't have to confront
         this edge case yet.
+
+        // == RESOLVED: Previously this was a problem as the CID ranges of any node may not be a
+        // complete view of all CID's that existed on any other node. Now with anchors in replication
+        // this changes and we have not only a complete view of all CID's that were created, but
+        // tombstone purge always create an empty anchor so the RUV always advances. This way we
+        // have a stronger assurance about which servers are live and which are not.
     */
 
     // Problem Cases
@@ -844,23 +835,16 @@ impl<'a> ReplicationUpdateVectorWriteTransaction<'a> {
            // The consumer must have all content that was formerly known.
            consumer.live_min >= supplier.former_max
            // I don't think we care what
-    */
 
-    /*
 
-      B and C must be sequential to an s_uuid.
-
-      Former (trimmed) | Live (current)
-      A <-> B          | C <-> D
-
-      0 <-> A          | B <-> B
-
+        // == RESOLVED: Anchors give us the generations that existed previously without us
+        // needing to worry about this.
     */
 
     pub fn trim_up_to(&mut self, cid: &Cid) -> Result<IDLBitRange, OperationError> {
         trace!(trim_up_to_cid = ?cid);
         let mut idl = IDLBitRange::new();
-        // let mut remove_suuid = Vec::default();
+        let mut remove_suuid = Vec::default();
 
         // Here we can use the for_each here to be trimming the
         // range set since that is not ordered by time, we need
@@ -895,12 +879,10 @@ impl<'a> ReplicationUpdateVectorWriteTransaction<'a> {
                     } else {
                         debug!("skip trimming maximum cid for s_uuid {}", cid.s_uuid);
                     }
+
                     if server_range.is_empty() {
-                        // remove_suuid.push(cid.s_uuid);
-                        error!("Impossible State - The RUV should not be cleared for a s_uuid!");
-                        error!(ruv = ?self);
-                        error!(?cid);
-                        return Err(OperationError::InvalidState);
+                        remove_suuid.push(cid.s_uuid);
+                        warn!(s_uuid = ?cid.s_uuid, "disconnected server detected - this will be removed!");
                     }
                 }
                 None => {
@@ -912,14 +894,14 @@ impl<'a> ReplicationUpdateVectorWriteTransaction<'a> {
             }
         }
 
-        /*
-        // For now, we can't actually remove any server_id's because we would break range
-        // comparisons in this case. We likely need a way to clean-ruv here.
+        // We can now remove old server id's because we have a reliable liveness check in the
+        // method of anchors being transmissed during replication. If a server is offline for
+        // an extended period, it will not have created any anchors, and it will eventually become
+        // empty in the data range. This allow it to be trimmed out.
         for s_uuid in remove_suuid {
             let x = self.ranged.remove(&s_uuid);
             assert!(x.map(|y| y.is_empty()).unwrap_or(false))
         }
-        */
 
         // Trim all cid's up to this value, and return the range of IDs
         // that are affected.
