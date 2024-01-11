@@ -2,7 +2,7 @@ use crate::credential::{CryptoPolicy, Password};
 use crate::prelude::*;
 use kanidm_proto::v1::OperationError;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct ApplicationPassword {
     pub uuid: Uuid,
     pub(crate) application: Uuid,
@@ -27,5 +27,11 @@ impl ApplicationPassword {
         };
 
         Ok(ap)
+    }
+}
+
+impl PartialEq for ApplicationPassword {
+    fn eq(&self, other: &Self) -> bool {
+        self.application == other.application && self.label == other.label
     }
 }

@@ -65,6 +65,12 @@ impl ValueSetT for ValueSetApplicationPassword {
     fn insert_checked(&mut self, value: Value) -> Result<bool, OperationError> {
         match value {
             Value::ApplicationPassword(u, ap) => {
+                for e in self.map.values() {
+                    if e == &ap {
+                        return Err(OperationError::InvalidValueState);
+                    }
+                }
+
                 if let BTreeEntry::Vacant(e) = self.map.entry(u) {
                     e.insert(ap);
                     Ok(true)
