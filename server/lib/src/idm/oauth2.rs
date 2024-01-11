@@ -5167,4 +5167,94 @@ mod tests {
 
         drop(idms_prox_read);
     }
+
+    #[idm_test]
+    async fn test_idm_oauth2_public_allow_localhost_redirect(
+        idms: &IdmServer,
+        _idms_delayed: &mut IdmServerDelayed,
+    ) {
+        let ct = Duration::from_secs(TEST_CURRENT_TIME);
+        let (_uat, ident, oauth2_rs_uuid) = setup_oauth2_resource_server_public(idms, ct).await;
+
+        let mut idms_prox_write = idms.proxy_write(ct).await;
+
+        let modlist = ModifyList::new_list(vec![Modify::Present(
+            Attribute::OAuth2AllowLocalhostRedirect.into(),
+            Value::Bool(true),
+        )]);
+
+        assert!(idms_prox_write
+            .qs_write
+            .internal_modify(
+                &filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(oauth2_rs_uuid))),
+                &modlist,
+            )
+            .is_ok());
+
+        assert!(idms_prox_write.commit().is_ok());
+
+        let idms_prox_read = idms.proxy_read().await;
+
+        // == Setup the authorisation request
+        let (code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
+
+        let auth_req = AuthorisationRequest {
+            response_type: "code".to_string(),
+            client_id: "test_resource_server".to_string(),
+            state: "123".to_string(),
+            pkce_request: Some(PkceRequest {
+                code_challenge: Base64UrlSafeData(code_challenge),
+                code_challenge_method: CodeChallengeMethod::S256,
+            }),
+            redirect_uri: Url::parse("http://localhost:8765/oauth2/result").unwrap(),
+            scope: OAUTH2_SCOPE_OPENID.to_string(),
+            nonce: Some("abcdef".to_string()),
+            oidc_ext: Default::default(),
+            unknown_keys: Default::default(),
+        };
+
+        let consent_request = idms_prox_read
+            .check_oauth2_authorisation(&ident, &auth_req, ct)
+            .expect("OAuth2 authorisation failed");
+
+        // Should be in the consent phase;
+        let consent_token =
+            if let AuthoriseResponse::ConsentRequested { consent_token, .. } = consent_request {
+                consent_token
+            } else {
+                unreachable!();
+            };
+
+        // == Manually submit the consent token to the permit for the permit_success
+        drop(idms_prox_read);
+        let mut idms_prox_write = idms.proxy_write(ct).await;
+
+        let permit_success = idms_prox_write
+            .check_oauth2_authorise_permit(&ident, &consent_token, ct)
+            .expect("Failed to perform OAuth2 permit");
+
+        // Check we are reflecting the CSRF properly.
+        assert!(permit_success.state == "123");
+
+        // == Submit the token exchange code.
+        let token_req = AccessTokenRequest {
+            grant_type: GrantTypeReq::AuthorizationCode {
+                code: permit_success.code,
+                redirect_uri: Url::parse("http://localhost:8765/oauth2/result").unwrap(),
+                // From the first step.
+                code_verifier,
+            },
+            client_id: Some("test_resource_server".to_string()),
+            client_secret: None,
+        };
+
+        let token_response = idms_prox_write
+            .check_oauth2_token_exchange(None, &token_req, ct)
+            .expect("Failed to perform OAuth2 token exchange");
+
+        // 🎉 We got a token! In the future we can then check introspection from this point.
+        assert!(token_response.token_type == "Bearer");
+
+        assert!(idms_prox_write.commit().is_ok());
+    }
 }
