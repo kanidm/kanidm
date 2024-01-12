@@ -727,6 +727,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         let idm_schema_classes = [
             SCHEMA_CLASS_OAUTH2_RS_DL4.clone().into(),
             SCHEMA_CLASS_OAUTH2_RS_PUBLIC_DL4.clone().into(),
+            IDM_ACP_OAUTH2_MANAGE_DL4.clone().into(),
         ];
 
         idm_schema_classes

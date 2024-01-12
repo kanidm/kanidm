@@ -166,6 +166,16 @@ impl From<&str> for FsType {
     }
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone, Copy)]
+pub enum Oauth2ClaimMapJoin {
+    #[serde(rename = "csv")]
+    Csv,
+    #[serde(rename = "ssv")]
+    Ssv,
+    #[serde(rename = "array")]
+    Array,
+}
+
 #[test]
 fn test_fstype_deser() {
     assert_eq!(FsType::from("zfs"), FsType::Zfs);

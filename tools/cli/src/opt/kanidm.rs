@@ -800,6 +800,38 @@ pub struct Oauth2DeleteScopeMapOpt {
     group: String,
 }
 
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub enum Oauth2ClaimMapJoin {
+    Csv,
+    Ssv,
+    Array,
+}
+
+impl Oauth2ClaimMapJoin {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::Csv => "csv",
+            Self::Ssv => "ssv",
+            Self::Array => "array",
+        }
+    }
+}
+
+impl ValueEnum for Oauth2ClaimMapJoin {
+    fn value_variants<'a>() -> &'a [Self] {
+        &[Self::Csv, Self::Ssv, Self::Array]
+    }
+
+    fn to_possible_value(&self) -> Option<PossibleValue> {
+        Some(match self {
+            Self::Csv => PossibleValue::new("csv"),
+            Self::Ssv => PossibleValue::new("ssv"),
+            Self::Array => PossibleValue::new("array"),
+        })
+    }
+}
+
+
 #[derive(Debug, Subcommand)]
 pub enum Oauth2Opt {
     #[clap(name = "list")]
@@ -853,6 +885,36 @@ pub enum Oauth2Opt {
     /// Remove a mapping from groups to scopes
     DeleteSupScopeMap(Oauth2DeleteScopeMapOpt),
 
+    #[clap(name = "update-claim-map", visible_aliases=&["create-claim-map"])]
+    /// Update or add a new mapping from a group to custom claims that it provides to members
+    UpdateClaimMap {
+        #[clap(flatten)]
+        copt: CommonOpt,
+        name: String,
+        group: String,
+        claim_name: String,
+        values: Vec<String>,
+    },
+    #[clap(name = "update-claim-map-join")]
+    UpdateClaimMapJoin {
+        #[clap(flatten)]
+        copt: CommonOpt,
+        name: String,
+        claim_name: String,
+        /// The join strategy. Valid values are csv (comma separated value), ssv (space
+        /// separated value) and array.
+        join: Oauth2ClaimMapJoin,
+    },
+    #[clap(name = "delete-claim-map")]
+    /// Remove a mapping from groups to a custom claim
+    DeleteClaimMap {
+        #[clap(flatten)]
+        copt: CommonOpt,
+        name: String,
+        claim_name: String,
+        group: String,
+    },
+
     #[clap(name = "reset-secrets")]
     /// Reset the secrets associated to this resource server
     ResetSecrets(Named),
@@ -900,12 +962,28 @@ pub enum Oauth2Opt {
     #[clap(name = "disable-legacy-crypto")]
     DisableLegacyCrypto(Named),
     #[clap(name = "prefer-short-username")]
+
+    #[clap(name = "enable-localhost-redirects")]
+    /// Allow public clients to redirect to localhost.
+    EnablePublicLocalhost {
+        #[clap(flatten)]
+        copt: CommonOpt,
+        name: String,
+    },
+    /// Disable public clients redirecting to localhost.
+    #[clap(name = "disable-localhost-redirects")]
+    DisablePublicLocalhost {
+        #[clap(flatten)]
+        copt: CommonOpt,
+        name: String,
+    },
+
     /// Use the 'name' attribute instead of 'spn' for the preferred_username
     PreferShortUsername(Named),
     #[clap(name = "prefer-spn-username")]
     /// Use the 'spn' attribute instead of 'name' for the preferred_username
     PreferSPNUsername(Named),
-    /// Set the origin of a client
+    /// Set the origin of an oauth2 client
     #[clap(name = "set-origin")]
     SetOrigin {
         #[clap(flatten)]

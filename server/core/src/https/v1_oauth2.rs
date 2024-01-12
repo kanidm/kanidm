@@ -8,7 +8,7 @@ use super::ServerState;
 use crate::https::extractors::VerifiedClientInformation;
 use axum::extract::{Path, State};
 use axum::{Extension, Json};
-use kanidm_proto::internal::{ImageType, ImageValue};
+use kanidm_proto::internal::{ImageType, ImageValue, Oauth2ClaimMapJoin};
 use kanidm_proto::v1::Entry as ProtoEntry;
 use kanidmd_lib::prelude::*;
 use kanidmd_lib::valueset::image::ImageValueThings;
@@ -216,6 +216,85 @@ pub(crate) async fn oauth2_id_scopemap_delete(
     state
         .qe_w_ref
         .handle_oauth2_scopemap_delete(client_auth_info, group, filter, kopid.eventid)
+        .await
+        .map(Json::from)
+        .map_err(WebError::from)
+}
+
+#[utoipa::path(
+    patch,
+    path = "/v1/oauth2/{rs_name}/_claimmap/{claim_name}/{group}",
+    request_body=Vec<String>,
+    responses(
+        DefaultApiResponse,
+    ),
+    security(("token_jwt" = [])),
+    tag = "v1/oauth2",
+)]
+/// Modify the scope map for a given OAuth2 Resource Server
+pub(crate) async fn oauth2_id_claimmap_post(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+    Path((rs_name, claim_name, group)): Path<(String, String, String)>,
+    Json(claims): Json<Vec<String>>,
+) -> Result<Json<()>, WebError> {
+    let filter = oauth2_id(&rs_name);
+    state
+        .qe_w_ref
+        .handle_oauth2_clapmmap_update(client_auth_info, claim_name, group, values, filter, kopid.eventid)
+        .await
+        .map(Json::from)
+        .map_err(WebError::from)
+}
+
+#[utoipa::path(
+    patch,
+    path = "/v1/oauth2/{rs_name}/_claimmap/{claim_name}",
+    request_body=Oauth2ClaimMapJoin,
+    responses(
+        DefaultApiResponse,
+    ),
+    security(("token_jwt" = [])),
+    tag = "v1/oauth2",
+)]
+/// Modify the scope map for a given OAuth2 Resource Server
+pub(crate) async fn oauth2_id_claimmap_join_post(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+    Path((rs_name, claim_name)): Path<(String, String)>,
+    Json(claims): Json<Oauth2ClaimMapJoin>,
+) -> Result<Json<()>, WebError> {
+    let filter = oauth2_id(&rs_name);
+    state
+        .qe_w_ref
+        .handle_oauth2_clapmmap_update_join(client_auth_info, claim_name, join, filter, kopid.eventid)
+        .await
+        .map(Json::from)
+        .map_err(WebError::from)
+}
+
+#[utoipa::path(
+    delete,
+    path = "/v1/oauth2/{rs_name}/_claimmap/{claim_name}/{group}",
+    responses(
+        DefaultApiResponse,
+    ),
+    security(("token_jwt" = [])),
+    tag = "v1/oauth2",
+)]
+// Delete a scope map for a given OAuth2 Resource Server
+pub(crate) async fn oauth2_id_claimmap_delete(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+    Path((rs_name, claim_name, group)): Path<(String, String, String)>,
+) -> Result<Json<()>, WebError> {
+    let filter = oauth2_id(&rs_name);
+    state
+        .qe_w_ref
+        .handle_oauth2_claimmap_delete(client_auth_info, claim_name, group, filter, kopid.eventid)
         .await
         .map(Json::from)
         .map_err(WebError::from)
