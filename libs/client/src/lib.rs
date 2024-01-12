@@ -447,6 +447,9 @@ impl KanidmClientBuilder {
 
         let client_builder = reqwest::Client::builder()
             .user_agent(KanidmClientBuilder::user_agent())
+            // We don't directly use cookies, but it may be required for load balancers that
+            // implement sticky sessions with cookies.
+            .cookie_store(true)
             .danger_accept_invalid_hostnames(!self.verify_hostnames)
             .danger_accept_invalid_certs(!self.verify_ca);
 
