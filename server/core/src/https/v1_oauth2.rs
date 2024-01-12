@@ -242,7 +242,7 @@ pub(crate) async fn oauth2_id_claimmap_post(
     let filter = oauth2_id(&rs_name);
     state
         .qe_w_ref
-        .handle_oauth2_clapmmap_update(client_auth_info, claim_name, group, values, filter, kopid.eventid)
+        .handle_oauth2_clapmmap_update(client_auth_info, claim_name, group, claims, filter, kopid.eventid)
         .await
         .map(Json::from)
         .map_err(WebError::from)
@@ -264,7 +264,7 @@ pub(crate) async fn oauth2_id_claimmap_join_post(
     Extension(kopid): Extension<KOpId>,
     VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     Path((rs_name, claim_name)): Path<(String, String)>,
-    Json(claims): Json<Oauth2ClaimMapJoin>,
+    Json(join): Json<Oauth2ClaimMapJoin>,
 ) -> Result<Json<()>, WebError> {
     let filter = oauth2_id(&rs_name);
     state
