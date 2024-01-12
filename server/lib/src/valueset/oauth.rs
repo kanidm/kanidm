@@ -372,6 +372,16 @@ pub struct OauthClaimMapping {
     values: BTreeMap<Uuid, BTreeSet<String>>,
 }
 
+impl OauthClaimMapping {
+    pub(crate) fn join(&self) -> OauthClaimMapJoin {
+        self.join
+    }
+
+    pub(crate) fn values(&self) -> &BTreeMap<Uuid, BTreeSet<String>> {
+        &self.values
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct ValueSetOauthClaimMap {
     //            Claim Name
@@ -608,14 +618,7 @@ impl ValueSetT for ValueSetOauthClaimMap {
                     OauthClaimMapJoin::JsonArray => ';',
                 };
 
-                let mut joined = String::new();
-                let max = claims.len() - 1;
-                for (i, claim) in claims.iter().enumerate() {
-                    joined.push_str(claim);
-                    if i < max {
-                        joined.push(join_char);
-                    }
-                }
+                let joined = str_concat!(claims, join_char);
 
                 format!(
                     "{}: {} \"{:?}\"",

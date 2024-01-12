@@ -4,6 +4,7 @@
 //! integrations, which are then able to be used an accessed from the IDM layer
 //! for operations involving OAuth2 authentication processing.
 
+use std::collections::btree_map::Entry as BTreeEntry;
 use std::collections::{BTreeMap, BTreeSet};
 use std::convert::TryFrom;
 use std::fmt;
@@ -40,8 +41,7 @@ use crate::idm::server::{
     IdmServerProxyReadTransaction, IdmServerProxyWriteTransaction, IdmServerTransaction,
 };
 use crate::prelude::*;
-use crate::value::{Oauth2Session, SessionState, OAUTHSCOPE_RE};
-use crate::valueset::OauthClaimMapping;
+use crate::value::{Oauth2Session, OauthClaimMapJoin, SessionState, OAUTHSCOPE_RE};
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 #[serde(rename_all = "snake_case")]
@@ -203,7 +203,9 @@ enum OauthRSType {
         enable_pkce: bool,
     },
     // Public clients must have pkce.
-    Public,
+    Public {
+        allow_localhost_redirect: bool,
+    },
 }
 
 impl std::fmt::Debug for OauthRSType {
@@ -213,7 +215,11 @@ impl std::fmt::Debug for OauthRSType {
             OauthRSType::Basic { enable_pkce, .. } => {
                 ds.field("type", &"basic").field("pkce", enable_pkce)
             }
-            OauthRSType::Public => ds.field("type", &"public"),
+            OauthRSType::Public {
+                allow_localhost_redirect,
+            } => ds
+                .field("type", &"public")
+                .field("allow_localhost_redirect", allow_localhost_redirect),
         };
         ds.finish()
     }
@@ -225,6 +231,40 @@ enum Oauth2JwsSigner {
     RS256 { signer: JwsRs256Signer },
 }
 
+#[derive(Clone, Debug)]
+struct ClaimValue {
+    join: OauthClaimMapJoin,
+    values: BTreeSet<String>,
+}
+
+impl ClaimValue {
+    fn merge(&mut self, other: &Self) {
+        self.values.extend(other.values.iter().cloned())
+    }
+
+    fn to_json_value(&self) -> serde_json::Value {
+        let join_char = match self.join {
+            OauthClaimMapJoin::CommaSeparatedValue => ',',
+            OauthClaimMapJoin::SpaceSeparatedValue => ' ',
+            OauthClaimMapJoin::JsonArray => {
+                let arr: Vec<_> = self
+                    .values
+                    .iter()
+                    .cloned()
+                    .map(serde_json::Value::String)
+                    .collect();
+
+                // This shortcuts out.
+                return serde_json::Value::Array(arr);
+            }
+        };
+
+        let joined = str_concat!(&self.values, join_char);
+
+        serde_json::Value::String(joined)
+    }
+}
+
 #[derive(Clone)]
 pub struct Oauth2RS {
     name: String,
@@ -232,18 +272,12 @@ pub struct Oauth2RS {
     uuid: Uuid,
     origin: Origin,
     origin_https: bool,
-
-    // How do we handle this with secure origins?
-    // origin_supplemental: Vec<Url>,
-    claim_maps: BTreeMap<String, OauthClaimMapping>,
-
+    claim_map: BTreeMap<Uuid, Vec<(String, ClaimValue)>>,
     scope_maps: BTreeMap<Uuid, BTreeSet<String>>,
     sup_scope_maps: BTreeMap<Uuid, BTreeSet<String>>,
     // Our internal exchange encryption material for this rs.
     token_fernet: Fernet,
-
     jws_signer: Oauth2JwsSigner,
-
     // For oidc we also need our issuer url.
     iss: Url,
     // For discovery we need to build and keep a number of values.
@@ -268,7 +302,7 @@ impl std::fmt::Debug for Oauth2RS {
             .field("origin", &self.origin)
             .field("scope_maps", &self.scope_maps)
             .field("sup_scope_maps", &self.sup_scope_maps)
-            .field("claim_maps", &self.claim_maps)
+            .field("claim_map", &self.claim_map)
             .field("has_custom_image", &self.has_custom_image)
             .finish()
     }
@@ -359,7 +393,13 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
                         enable_pkce,
                     }
                 } else if ent.attribute_equality(Attribute::Class, &EntryClass::OAuth2ResourceServerPublic.into()) {
-                    OauthRSType::Public
+                    let allow_localhost_redirect = ent
+                        .get_ava_single_bool(Attribute::OAuth2AllowLocalhostRedirect)
+                        .unwrap_or(false);
+
+                    OauthRSType::Public {
+                        allow_localhost_redirect
+                    }
                 } else {
                     error!("Missing class determining OAuth2 rs type");
                     return Err(OperationError::InvalidEntryState);
@@ -407,11 +447,50 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
                     .cloned()
                     .unwrap_or_default();
 
-                let claim_maps = ent
+                let e_claim_maps = ent
                     .get_ava_set(Attribute::OAuth2RsClaimMap)
-                    .and_then(|vs| vs.as_oauthclaim_map())
-                    .cloned()
-                    .unwrap_or_default();
+                    .and_then(|vs| vs.as_oauthclaim_map());
+
+                // ⚠️  Claim Maps as they are stored in the DB are optimised
+                // for referential integrity and user interaction. However we
+                // need to "invert" these for fast lookups during actual
+                // operation of the oauth2 client.
+                let claim_map = if let Some(e_claim_maps) = e_claim_maps {
+                    let mut claim_map = BTreeMap::default();
+
+                    for (claim_name, claim_mapping) in e_claim_maps.iter() {
+                        for (group_uuid, claim_values) in claim_mapping.values().iter() {
+                            // We always insert/append here because the outer claim_name has
+                            // to be unique.
+                            match claim_map.entry(*group_uuid) {
+                                BTreeEntry::Vacant(e) => {
+                                    e.insert(
+                                        vec![
+                                            (
+                                            claim_name.clone(), ClaimValue {
+                                                join: claim_mapping.join(),
+                                                values: claim_values.clone()
+                                            }
+                                            )
+                                        ]
+                                    );
+                                }
+                                BTreeEntry::Occupied(mut e) => {
+                                    e.get_mut().push((
+                                            claim_name.clone(), ClaimValue {
+                                                join: claim_mapping.join(),
+                                                values: claim_values.clone()
+                                            }
+                                    ));
+                                }
+                            }
+                        }
+                    }
+
+                    claim_map
+                } else {
+                    BTreeMap::default()
+                };
 
                 trace!("{}", Attribute::OAuth2JwtLegacyCryptoEnable.as_ref());
                 let jws_signer = if ent.get_ava_single_bool(Attribute::OAuth2JwtLegacyCryptoEnable).unwrap_or(false) {
@@ -486,7 +565,7 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
                     origin_https,
                     scope_maps,
                     sup_scope_maps,
-                    claim_maps,
+                    claim_map,
                     token_fernet,
                     jws_signer,
                     iss,
@@ -542,7 +621,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 }
             }
             // Relies on the token to be valid.
-            OauthRSType::Public => {}
+            OauthRSType::Public { .. } => {}
         };
 
         // We are authenticated! Yay! Now we can actually check things ...
@@ -668,7 +747,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 }
             }
             // Relies on the token to be valid - no further action needed.
-            OauthRSType::Public => {}
+            OauthRSType::Public { .. } => {}
         };
 
         // We are authenticated! Yay! Now we can actually check things ...
@@ -821,7 +900,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         let require_pkce = match &o2rs.type_ {
             OauthRSType::Basic { enable_pkce, .. } => *enable_pkce,
-            OauthRSType::Public => true,
+            OauthRSType::Public { .. } => true,
         };
 
         // If we have a verifier present, we MUST assert that a code challenge is present!
@@ -1097,7 +1176,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             };
 
             let s_claims = s_claims_for_account(o2rs, &account, &scopes);
-            let extra_claims = extra_claims_for_account(&account, &scopes);
+            let extra_claims = extra_claims_for_account(&account, &o2rs.claim_map, &scopes);
 
             let oidc = OidcToken {
                 iss,
@@ -1243,7 +1322,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 }
             }
             // Relies on the token to be valid.
-            OauthRSType::Public => {}
+            OauthRSType::Public { .. } => {}
         };
 
         o2rs.token_fernet
@@ -1303,8 +1382,24 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
                 Oauth2Error::InvalidClientId
             })?;
 
-        // redirect_uri must be part of the client_id origin.
-        if auth_req.redirect_uri.origin() != o2rs.origin {
+        let allow_localhost_redirect = match &o2rs.type_ {
+            OauthRSType::Basic { .. } => false,
+            OauthRSType::Public {
+                allow_localhost_redirect,
+            } => *allow_localhost_redirect,
+        };
+
+        let localhost_redirect = auth_req
+            .redirect_uri
+            .domain()
+            .map(|domain| domain == "localhost")
+            .unwrap_or_default();
+
+        // redirect_uri must be part of the client_id origin, unless the client is public and then it MAY
+        // be localhost.
+        if !(auth_req.redirect_uri.origin() == o2rs.origin
+            || (allow_localhost_redirect && localhost_redirect))
+        {
             admin_warn!(
                 origin = ?o2rs.origin,
                 "Invalid OAuth2 redirect_uri (must be related to origin {:?}) - got {:?}",
@@ -1314,7 +1409,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
             return Err(Oauth2Error::InvalidOrigin);
         }
 
-        if o2rs.origin_https && auth_req.redirect_uri.scheme() != "https" {
+        if !localhost_redirect && o2rs.origin_https && auth_req.redirect_uri.scheme() != "https" {
             admin_warn!(
                 origin = ?o2rs.origin,
                 "Invalid OAuth2 redirect_uri (must be https for secure origin) - got {:?}", auth_req.redirect_uri.scheme()
@@ -1324,7 +1419,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
 
         let require_pkce = match &o2rs.type_ {
             OauthRSType::Basic { enable_pkce, .. } => *enable_pkce,
-            OauthRSType::Public => true,
+            OauthRSType::Public { .. } => true,
         };
 
         let code_challenge = if let Some(pkce_request) = &auth_req.pkce_request {
@@ -1648,7 +1743,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
                 }
             }
             // Relies on the token to be valid.
-            OauthRSType::Public => {}
+            OauthRSType::Public { .. } => {}
         };
 
         // We are authenticated! Yay! Now we can actually check things ...
@@ -1813,7 +1908,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
                 let iss = o2rs.iss.clone();
 
                 let s_claims = s_claims_for_account(o2rs, &account, &scopes);
-                let extra_claims = extra_claims_for_account(&account, &scopes);
+                let extra_claims = extra_claims_for_account(&account, &o2rs.claim_map, &scopes);
                 let exp = expiry.unix_timestamp();
 
                 // ==== good to generate response ====
@@ -2007,11 +2102,44 @@ fn s_claims_for_account(
         ..Default::default()
     }
 }
+
 fn extra_claims_for_account(
     account: &Account,
+
+    claim_map: &BTreeMap<Uuid, Vec<(String, ClaimValue)>>,
+
     scopes: &BTreeSet<String>,
 ) -> BTreeMap<String, serde_json::Value> {
     let mut extra_claims = BTreeMap::new();
+
+    let mut account_claims: BTreeMap<&str, ClaimValue> = BTreeMap::new();
+
+    // for each group
+    for group_uuid in account.groups.iter().map(|g| g.uuid()) {
+        // Does this group have any custom claims?
+        if let Some(claim) = claim_map.get(&group_uuid) {
+            // If so, iterate over the set of claims and values.
+            for (claim_name, claim_value) in claim.iter() {
+                // Does this claim name already exist in our in-progress map?
+                match account_claims.entry(claim_name.as_str()) {
+                    BTreeEntry::Vacant(e) => {
+                        e.insert(claim_value.clone());
+                    }
+                    BTreeEntry::Occupied(mut e) => {
+                        let mut_claim_value = e.get_mut();
+                        // Merge the extra details into this.
+                        mut_claim_value.merge(claim_value);
+                    }
+                }
+            }
+        }
+    }
+
+    // Now, flatten all these into the final structure.
+    for (claim_name, claim_value) in account_claims {
+        extra_claims.insert(claim_name.to_string(), claim_value.to_json_value());
+    }
+
     if scopes.contains(&"groups".to_string()) {
         extra_claims.insert(
             "groups".to_string(),
@@ -5000,13 +5128,21 @@ mod tests {
                     "value_a".to_string(),
                 ),
             ),
+            Modify::Present(
+                Attribute::OAuth2RsClaimMap.into(),
+                Value::OauthClaimValue(
+                    "custom_b".to_string(),
+                    UUID_IDM_ALL_ACCOUNTS,
+                    "value_b".to_string(),
+                ),
+            ),
             // Not a member of the claim map.
             Modify::Present(
                 Attribute::OAuth2RsClaimMap.into(),
                 Value::OauthClaimValue(
                     "custom_b".to_string(),
                     UUID_IDM_ADMINS,
-                    "value_b".to_string(),
+                    "value_c".to_string(),
                 ),
             ),
         ]);
@@ -5121,9 +5257,15 @@ mod tests {
         assert!(
             oidc.s_claims.scopes == vec![OAUTH2_SCOPE_OPENID.to_string(), "supplement".to_string()]
         );
-        assert!(oidc.claims.is_empty());
 
-        assert!(false);
+        assert_eq!(
+            oidc.claims.get("custom_a").and_then(|v| v.as_str()),
+            Some("value_a,value_b")
+        );
+        assert_eq!(
+            oidc.claims.get("custom_b").and_then(|v| v.as_str()),
+            Some("value_a value_b")
+        );
 
         // Does our access token work with the userinfo endpoint?
         // Do the id_token details line up to the userinfo?
@@ -5145,7 +5287,7 @@ mod tests {
         assert!(oidc.azp == userinfo.azp);
         assert!(userinfo.jti.is_none());
         assert!(oidc.s_claims == userinfo.s_claims);
-        assert!(userinfo.claims.is_empty());
+        assert_eq!(oidc.claims, userinfo.claims);
 
         // Check the oauth2 introspect bits.
         let intr_request = AccessTokenIntrospectRequest {
@@ -5164,6 +5306,7 @@ mod tests {
         assert!(intr_response.token_type.as_deref() == Some("access_token"));
         assert!(intr_response.iat == Some(ct.as_secs() as i64));
         assert!(intr_response.nbf == Some(ct.as_secs() as i64));
+        // Introspect doesn't have custom claims.
 
         drop(idms_prox_read);
     }
