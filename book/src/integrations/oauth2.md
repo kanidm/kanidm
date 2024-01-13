@@ -200,6 +200,78 @@ kanidm system oauth2 reset-secrets
 Each resource server has unique signing keys and access secrets, so this is limited to each resource
 server.
 
+## Custom Claim Maps
+
+Some OIDC clients may consume custom claims from an id token for access control or other policy
+decisions. Each custom claim is a key:values set, where there can be many values associated to a
+claim name. Different applications may expect these values to be formatted (joined) in different
+ways.
+
+Claim values are mapped based on membership to groups. When an account is a member of multiple
+groups that would recieve the same claim, the values of these maps are merged.
+
+To create or update a claim map on a client:
+
+```
+kanidm system oauth2 update-claim-map <name> <claim_name> <kanidm_group_name> [values]...
+kanidm system oauth2 update-claim-map nextcloud account_role nextcloud_admins admin
+```
+
+To change the join strategy for a claim name. Valid strategies are csv (comma separated value), ssv
+(space separated value) and array (a native json array). The default strategy is array.
+
+```
+kanidm system oauth2 update-claim-map-join <name> <claim_name> [csv|ssv|array]
+kanidm system oauth2 update-claim-map-join nextcloud account_role csv
+```
+
+```
+# Example claim formats
+# csv
+claim: "value_a,value_b"
+
+# ssv
+claim: "value_a value_b"
+
+# array
+claim: ["value_a", "value_b"]
+```
+
+To delete a group from a claim map
+
+```
+kanidm system oauth2 delete-claim-map <name> <claim_name> <kanidm_group_name>
+kanidm system oauth2 delete-claim-map nextcloud account_role nextcloud_admins
+```
+
+## Public Client Configuration
+
+Some applications are unable to provide client authentication. A common example is single page web
+applications that act as the OAuth2 client and its corresponding webserver that is the resource
+server. In this case the SPA is unable to act as a confidential client since the basic secret would
+need to be embedded in every client.
+
+Another common example is native applications that use a redirect to localhost. These can't have a
+client secret embedded, so much act as public clients.
+
+Public clients for this reason require PKCE to bind a specific browser session to its OAuth2
+exchange. PKCE can not be disabled for public clients for this reason.
+
+To create an OAuth2 public resource server:
+
+```bash
+kanidm system oauth2 create-public <name> <displayname> <origin>
+kanidm system oauth2 create-public mywebapp "My Web App" https://webapp.example.com
+```
+
+To allow localhost redirection
+
+```bash
+kanidm system oauth2 enable-localhost-redirects <name>
+kanidm system oauth2 disable-localhost-redirects <name>
+kanidm system oauth2 enable-localhost-redirects mywebapp
+```
+
 ## Extended Options for Legacy Clients
 
 Not all resource servers support modern standards like PKCE or ECDSA. In these situations it may be
@@ -226,33 +298,6 @@ To enable legacy cryptograhy (RSA PKCS1-5 SHA256):
 
 ```bash
 kanidm system oauth2 warning-enable-legacy-crypto <resource server name>
-```
-
-## Public Client Configuration
-
-Some applications are unable to provide client authentication. A common example is single page web
-applications that act as the OAuth2 client and its corresponding webserver that is the resource
-server. In this case the SPA is unable to act as a confidential client since the basic secret would
-need to be embedded in every client.
-
-Public clients for this reason require PKCE to bind a specific browser session to its OAuth2
-exchange. PKCE can not be disabled for public clients for this reason.
-
-<!-- deno-fmt-ignore-start -->
-
-{{#template ../templates/kani-warning.md
-imagepath=../images
-title=WARNING
-text=Public clients have many limitations compared to confidential clients. You should avoid them if possible.
-}}
-
-<!-- deno-fmt-ignore-end -->
-
-To create an OAuth2 public resource server:
-
-```bash
-kanidm system oauth2 create-public <name> <displayname> <origin>
-kanidm system oauth2 create-public mywebapp "My Web App" https://webapp.example.com
 ```
 
 ## Example Integrations

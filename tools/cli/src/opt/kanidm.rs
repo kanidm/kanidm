@@ -891,8 +891,8 @@ pub enum Oauth2Opt {
         #[clap(flatten)]
         copt: CommonOpt,
         name: String,
-        group: String,
         claim_name: String,
+        group: String,
         values: Vec<String>,
     },
     #[clap(name = "update-claim-map-join")]
