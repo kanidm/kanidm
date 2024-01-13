@@ -345,7 +345,7 @@ impl Oauth2Opt {
                         name.as_str(),
                         claim_name.as_str(),
                         group.as_str(),
-                        &values,
+                        values,
                     )
                     .await
                 {

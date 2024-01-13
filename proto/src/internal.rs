@@ -151,17 +151,14 @@ impl FsType {
     }
 }
 
-impl From<String> for FsType {
-    fn from(s: String) -> Self {
-        s.as_str().into()
-    }
-}
+impl TryFrom<&str> for FsType {
+    type Error = ();
 
-impl From<&str> for FsType {
-    fn from(s: &str) -> Self {
+    fn try_from(s: &str) -> Result<Self, Self::Error> {
         match s {
-            "zfs" => FsType::Zfs,
-            _ => FsType::Generic,
+            "zfs" => Ok(FsType::Zfs),
+            "generic" => Ok(FsType::Generic),
+            _ => Err(()),
         }
     }
 }
@@ -178,8 +175,8 @@ pub enum Oauth2ClaimMapJoin {
 
 #[test]
 fn test_fstype_deser() {
-    assert_eq!(FsType::from("zfs"), FsType::Zfs);
-    assert_eq!(FsType::from("generic"), FsType::Generic);
-    assert_eq!(FsType::from(" "), FsType::Generic);
-    assert_eq!(FsType::from("crab🦀"), FsType::Generic);
+    assert_eq!(FsType::try_from("zfs"), Ok(FsType::Zfs));
+    assert_eq!(FsType::try_from("generic"), Ok(FsType::Generic));
+    assert_eq!(FsType::try_from(" "), Err(()));
+    assert_eq!(FsType::try_from("crab🦀"), Err(()));
 }
