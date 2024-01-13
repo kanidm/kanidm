@@ -399,6 +399,20 @@ impl ValueSetOauthClaimMap {
         Box::new(ValueSetOauthClaimMap { map })
     }
 
+    pub(crate) fn new_value(claim: String, group: Uuid, claims: BTreeSet<String>) -> Box<Self> {
+        let mut values = BTreeMap::default();
+        values.insert(group, claims);
+
+        let mapping = OauthClaimMapping {
+            join: OauthClaimMapJoin::default(),
+            values,
+        };
+
+        let mut map = BTreeMap::new();
+        map.insert(claim, mapping);
+        Box::new(ValueSetOauthClaimMap { map })
+    }
+
     /*
     pub(crate) fn push(&mut self, claim: String, mapping: OauthClaimMapping) -> bool {
         self.map.insert(claim, mapping).is_none()
@@ -454,29 +468,41 @@ impl ValueSetOauthClaimMap {
 impl ValueSetT for ValueSetOauthClaimMap {
     fn insert_checked(&mut self, value: Value) -> Result<bool, OperationError> {
         match value {
-            Value::OauthClaimValue(name, uuid, value) => {
+            Value::OauthClaimValue(name, uuid, claims) => {
                 // Add a value to this group associated to this claim.
-                if let Some(mapping_mut) = self.map.get_mut(&name) {
-                    match mapping_mut.values.entry(uuid) {
-                        BTreeEntry::Vacant(e) => {
-                            let mut new_claims = BTreeSet::new();
-                            new_claims.insert(value);
-                            e.insert(new_claims);
-                            Ok(true)
-                        }
-                        BTreeEntry::Occupied(mut e) => {
-                            e.get_mut().insert(value);
-                            Ok(true)
+                match self.map.entry(name) {
+                    BTreeEntry::Vacant(e) => {
+                        // New map/value. Use a default joiner.
+                        let mut values = BTreeMap::default();
+                        values.insert(uuid, claims);
+
+                        let claim_map = OauthClaimMapping {
+                            join: OauthClaimMapJoin::default(),
+                            values,
+                        };
+                        e.insert(claim_map);
+                        Ok(true)
+                    }
+                    BTreeEntry::Occupied(mut e) => {
+                        // Just add the uuid/value, this claim name already exists.
+                        let mapping_mut = e.get_mut();
+                        match mapping_mut.values.entry(uuid) {
+                            BTreeEntry::Vacant(e) => {
+                                e.insert(claims);
+                                Ok(true)
+                            }
+                            BTreeEntry::Occupied(mut e) => {
+                                e.insert(claims);
+                                Ok(true)
+                            }
                         }
                     }
-                } else {
-                    Err(OperationError::InvalidValueState)
                 }
             }
             Value::OauthClaimMap(name, join) => {
                 match self.map.entry(name) {
                     BTreeEntry::Vacant(e) => {
-                        // Create a new value.
+                        // Create a new empty claim mapping.
                         let claim_map = OauthClaimMapping {
                             join,
                             values: BTreeMap::default(),

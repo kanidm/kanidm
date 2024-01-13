@@ -231,7 +231,7 @@ pub(crate) async fn oauth2_id_scopemap_delete(
     security(("token_jwt" = [])),
     tag = "v1/oauth2",
 )]
-/// Modify the scope map for a given OAuth2 Resource Server
+/// Modify the claim map for a given OAuth2 Resource Server
 pub(crate) async fn oauth2_id_claimmap_post(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
@@ -242,7 +242,14 @@ pub(crate) async fn oauth2_id_claimmap_post(
     let filter = oauth2_id(&rs_name);
     state
         .qe_w_ref
-        .handle_oauth2_clapmmap_update(client_auth_info, claim_name, group, claims, filter, kopid.eventid)
+        .handle_oauth2_claimmap_update(
+            client_auth_info,
+            claim_name,
+            group,
+            claims,
+            filter,
+            kopid.eventid,
+        )
         .await
         .map(Json::from)
         .map_err(WebError::from)
@@ -258,7 +265,7 @@ pub(crate) async fn oauth2_id_claimmap_post(
     security(("token_jwt" = [])),
     tag = "v1/oauth2",
 )]
-/// Modify the scope map for a given OAuth2 Resource Server
+/// Modify the claim map join strategy for a given OAuth2 Resource Server
 pub(crate) async fn oauth2_id_claimmap_join_post(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
@@ -269,7 +276,13 @@ pub(crate) async fn oauth2_id_claimmap_join_post(
     let filter = oauth2_id(&rs_name);
     state
         .qe_w_ref
-        .handle_oauth2_clapmmap_update_join(client_auth_info, claim_name, join, filter, kopid.eventid)
+        .handle_oauth2_claimmap_join_update(
+            client_auth_info,
+            claim_name,
+            join,
+            filter,
+            kopid.eventid,
+        )
         .await
         .map(Json::from)
         .map_err(WebError::from)
@@ -284,7 +297,7 @@ pub(crate) async fn oauth2_id_claimmap_join_post(
     security(("token_jwt" = [])),
     tag = "v1/oauth2",
 )]
-// Delete a scope map for a given OAuth2 Resource Server
+// Delete a claim map for a given OAuth2 Resource Server
 pub(crate) async fn oauth2_id_claimmap_delete(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,

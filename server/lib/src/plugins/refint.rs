@@ -1290,7 +1290,7 @@ mod tests {
                 Value::OauthClaimValue(
                     "custom_a".to_string(),
                     Uuid::parse_str(TEST_TESTGROUP_B_UUID).unwrap(),
-                    "value_a".to_string(),
+                    btreeset!["value_a".to_string()],
                 )
             )
         );

@@ -750,7 +750,10 @@ pub fn from_value_iter(mut iter: impl Iterator<Item = Value>) -> Result<ValueSet
             ValueSetWebauthnAttestationCaList::new(ca_list)
         }
         Value::OauthClaimMap(name, join) => ValueSetOauthClaimMap::new(name, join),
-        Value::OauthClaimValue(_, _, _) | Value::PhoneNumber(_, _) => {
+        Value::OauthClaimValue(name, group, claims) => {
+            ValueSetOauthClaimMap::new_value(name, group, claims)
+        }
+        Value::PhoneNumber(_, _) => {
             debug_assert!(false);
             return Err(OperationError::InvalidValueState);
         }

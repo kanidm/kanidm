@@ -28,16 +28,13 @@ impl Oauth2Opt {
             Oauth2Opt::DisableLegacyCrypto(nopt) => nopt.copt.debug,
             Oauth2Opt::PreferShortUsername(nopt) => nopt.copt.debug,
             Oauth2Opt::PreferSPNUsername(nopt) => nopt.copt.debug,
-            Oauth2Opt::CreateBasic { copt, .. } |
-            Oauth2Opt::CreatePublic { copt, .. } |
-            Oauth2Opt::UpdateClaimMap { copt, .. } |
-            Oauth2Opt::UpdateClaimMapJoin { copt, .. } |
-            Oauth2Opt::DeleteClaimMap { copt, .. } |
-            Oauth2Opt::EnablePublicLocalhost { copt, .. } |
-            Oauth2Opt::DisablePublicLocalhost { copt, .. }
-            => {
-                copt.debug
-            }
+            Oauth2Opt::CreateBasic { copt, .. }
+            | Oauth2Opt::CreatePublic { copt, .. }
+            | Oauth2Opt::UpdateClaimMap { copt, .. }
+            | Oauth2Opt::UpdateClaimMapJoin { copt, .. }
+            | Oauth2Opt::DeleteClaimMap { copt, .. }
+            | Oauth2Opt::EnablePublicLocalhost { copt, .. }
+            | Oauth2Opt::DisablePublicLocalhost { copt, .. } => copt.debug,
             Oauth2Opt::SetOrigin { nopt, .. } => nopt.copt.debug,
         }
     }
@@ -335,19 +332,33 @@ impl Oauth2Opt {
                     Err(e) => handle_client_error(e, nopt.copt.output_mode),
                 }
             }
-            Oauth2Opt::UpdateClaimMap { copt, name, group, claim_name, values } => {
+            Oauth2Opt::UpdateClaimMap {
+                copt,
+                name,
+                group,
+                claim_name,
+                values,
+            } => {
                 let client = copt.to_client(OpType::Write).await;
-                match client.idm_oauth2_rs_update_claim_map(
-                    name.as_str(),
-                    claim_name.as_str(),
-                    group.as_str(),
-                    &values
-                ).await {
+                match client
+                    .idm_oauth2_rs_update_claim_map(
+                        name.as_str(),
+                        claim_name.as_str(),
+                        group.as_str(),
+                        &values,
+                    )
+                    .await
+                {
                     Ok(_) => println!("Success"),
                     Err(e) => handle_client_error(e, copt.output_mode),
                 }
             }
-            Oauth2Opt::UpdateClaimMapJoin { copt, name, claim_name, join } => {
+            Oauth2Opt::UpdateClaimMapJoin {
+                copt,
+                name,
+                claim_name,
+                join,
+            } => {
                 let client = copt.to_client(OpType::Write).await;
 
                 let join = match join {
@@ -356,22 +367,29 @@ impl Oauth2Opt {
                     Oauth2ClaimMapJoin::Array => ProtoOauth2ClaimMapJoin::Array,
                 };
 
-                match client.idm_oauth2_rs_update_claim_map_join(
-                    name.as_str(),
-                    claim_name.as_str(),
-                    join
-                ).await {
+                match client
+                    .idm_oauth2_rs_update_claim_map_join(name.as_str(), claim_name.as_str(), join)
+                    .await
+                {
                     Ok(_) => println!("Success"),
                     Err(e) => handle_client_error(e, copt.output_mode),
                 }
             }
-            Oauth2Opt::DeleteClaimMap { copt, name, claim_name, group } => {
+            Oauth2Opt::DeleteClaimMap {
+                copt,
+                name,
+                claim_name,
+                group,
+            } => {
                 let client = copt.to_client(OpType::Write).await;
-                match client.idm_oauth2_rs_delete_claim_map(
-                    name.as_str(),
-                    claim_name.as_str(),
-                    group.as_str(),
-                ).await {
+                match client
+                    .idm_oauth2_rs_delete_claim_map(
+                        name.as_str(),
+                        claim_name.as_str(),
+                        group.as_str(),
+                    )
+                    .await
+                {
                     Ok(_) => println!("Success"),
                     Err(e) => handle_client_error(e, copt.output_mode),
                 }
@@ -379,7 +397,10 @@ impl Oauth2Opt {
 
             Oauth2Opt::EnablePublicLocalhost { copt, name } => {
                 let client = copt.to_client(OpType::Write).await;
-                match client.idm_oauth2_rs_enable_public_localhost_redirect(name.as_str()).await {
+                match client
+                    .idm_oauth2_rs_enable_public_localhost_redirect(name.as_str())
+                    .await
+                {
                     Ok(_) => println!("Success"),
                     Err(e) => handle_client_error(e, copt.output_mode),
                 }
@@ -387,12 +408,14 @@ impl Oauth2Opt {
 
             Oauth2Opt::DisablePublicLocalhost { copt, name } => {
                 let client = copt.to_client(OpType::Write).await;
-                match client.idm_oauth2_rs_disable_public_localhost_redirect(name.as_str()).await {
+                match client
+                    .idm_oauth2_rs_disable_public_localhost_redirect(name.as_str())
+                    .await
+                {
                     Ok(_) => println!("Success"),
                     Err(e) => handle_client_error(e, copt.output_mode),
                 }
             }
-
         }
     }
 }

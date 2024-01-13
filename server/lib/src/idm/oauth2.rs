@@ -2146,6 +2146,9 @@ fn extra_claims_for_account(
             account.groups.iter().map(|x| x.to_proto().uuid).collect(),
         );
     }
+
+    trace!(?extra_claims);
+
     extra_claims
 }
 
@@ -5100,7 +5103,7 @@ mod tests {
                 Value::OauthClaimValue(
                     "custom_a".to_string(),
                     UUID_SYSTEM_ADMINS,
-                    "value_a".to_string(),
+                    btreeset!["value_a".to_string()],
                 ),
             ),
             // If you are a member of two groups, the claim maps merge.
@@ -5109,7 +5112,7 @@ mod tests {
                 Value::OauthClaimValue(
                     "custom_a".to_string(),
                     UUID_IDM_ALL_ACCOUNTS,
-                    "value_b".to_string(),
+                    btreeset!["value_b".to_string()],
                 ),
             ),
             // Map with a different seperator
@@ -5125,7 +5128,7 @@ mod tests {
                 Value::OauthClaimValue(
                     "custom_b".to_string(),
                     UUID_SYSTEM_ADMINS,
-                    "value_a".to_string(),
+                    btreeset!["value_a".to_string()],
                 ),
             ),
             Modify::Present(
@@ -5133,7 +5136,7 @@ mod tests {
                 Value::OauthClaimValue(
                     "custom_b".to_string(),
                     UUID_IDM_ALL_ACCOUNTS,
-                    "value_b".to_string(),
+                    btreeset!["value_b".to_string()],
                 ),
             ),
             // Not a member of the claim map.
@@ -5142,7 +5145,7 @@ mod tests {
                 Value::OauthClaimValue(
                     "custom_b".to_string(),
                     UUID_IDM_ADMINS,
-                    "value_c".to_string(),
+                    btreeset!["value_c".to_string()],
                 ),
             ),
         ]);

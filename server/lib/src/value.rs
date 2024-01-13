@@ -992,10 +992,11 @@ impl fmt::Debug for Session {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Default)]
 pub enum OauthClaimMapJoin {
     CommaSeparatedValue,
     SpaceSeparatedValue,
+    #[default]
     JsonArray,
 }
 
@@ -1092,7 +1093,7 @@ pub enum Value {
     CredentialType(CredentialType),
     WebauthnAttestationCaList(AttestationCaList),
 
-    OauthClaimValue(String, Uuid, String),
+    OauthClaimValue(String, Uuid, BTreeSet<String>),
     OauthClaimMap(String, OauthClaimMapJoin),
 }
 
@@ -1560,6 +1561,14 @@ impl Value {
         }
     }
 
+    pub fn new_oauthclaimmap(n: String, u: Uuid, c: BTreeSet<String>) -> Option<Self> {
+        if OAUTHSCOPE_RE.is_match(&n) && c.iter().all(|s| OAUTHSCOPE_RE.is_match(s)) {
+            Some(Value::OauthClaimValue(n, u, c))
+        } else {
+            None
+        }
+    }
+
     pub fn is_oauthscopemap(&self) -> bool {
         matches!(&self, Value::OauthScopeMap(_, _))
     }
@@ -1891,7 +1900,7 @@ impl Value {
 
             Value::OauthClaimMap(name, _) => OAUTHSCOPE_RE.is_match(name),
             Value::OauthClaimValue(name, _, value) => {
-                OAUTHSCOPE_RE.is_match(name) && OAUTHSCOPE_RE.is_match(value)
+                OAUTHSCOPE_RE.is_match(name) && value.iter().all(|s| OAUTHSCOPE_RE.is_match(s))
             }
 
             Value::PhoneNumber(_, _) => true,
