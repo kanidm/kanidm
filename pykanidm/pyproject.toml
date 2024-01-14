@@ -41,11 +41,11 @@ black = "^23.12.1"
 mkdocs = "^1.5.3"
 mkdocs-material = "^9.5.3"
 mkdocstrings = "^0.24.0"
-mkdocstrings-python = "^1.7.5"
+mkdocstrings-python = "^1.8.0"
 pook = "^1.4.0"
 
 [tool.poetry.group.dev.dependencies]
-ruff = ">=0.0.230,<0.1.12"
+ruff = ">=0.0.230,<0.1.14"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
