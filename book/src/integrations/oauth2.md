@@ -214,7 +214,7 @@ To create or update a claim map on a client:
 
 ```
 kanidm system oauth2 update-claim-map <name> <claim_name> <kanidm_group_name> [values]...
-kanidm system oauth2 update-claim-map nextcloud account_role nextcloud_admins admin
+kanidm system oauth2 update-claim-map nextcloud account_role nextcloud_admins admin login ...
 ```
 
 To change the join strategy for a claim name. Valid strategies are csv (comma separated value), ssv
@@ -252,7 +252,7 @@ server. In this case the SPA is unable to act as a confidential client since the
 need to be embedded in every client.
 
 Another common example is native applications that use a redirect to localhost. These can't have a
-client secret embedded, so much act as public clients.
+client secret embedded, so must act as public clients.
 
 Public clients for this reason require PKCE to bind a specific browser session to its OAuth2
 exchange. PKCE can not be disabled for public clients for this reason.

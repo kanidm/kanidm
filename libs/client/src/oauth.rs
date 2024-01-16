@@ -329,9 +329,10 @@ impl KanidmClient {
         let mut update_oauth2_rs = Entry {
             attrs: BTreeMap::new(),
         };
-        update_oauth2_rs
-            .attrs
-            .insert(ATTR_OAUTH2_ALLOW_LOCALHOST_REDIRECT.to_string(), Vec::new());
+        update_oauth2_rs.attrs.insert(
+            ATTR_OAUTH2_ALLOW_LOCALHOST_REDIRECT.to_string(),
+            vec!["true".to_string()],
+        );
         self.perform_patch_request(format!("/v1/oauth2/{}", id).as_str(), update_oauth2_rs)
             .await
     }
@@ -345,7 +346,7 @@ impl KanidmClient {
         };
         update_oauth2_rs.attrs.insert(
             ATTR_OAUTH2_ALLOW_LOCALHOST_REDIRECT.to_string(),
-            vec!["true".to_string()],
+            vec!["false".to_string()],
         );
         self.perform_patch_request(format!("/v1/oauth2/{}", id).as_str(), update_oauth2_rs)
             .await
