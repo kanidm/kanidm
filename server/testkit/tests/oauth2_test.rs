@@ -6,6 +6,7 @@ use std::str::FromStr;
 use compact_jwt::{JwkKeySet, JwsEs256Verifier, JwsVerifier, OidcToken, OidcUnverified};
 use kanidm_proto::constants::uri::{OAUTH2_AUTHORISE, OAUTH2_AUTHORISE_PERMIT};
 use kanidm_proto::constants::*;
+use kanidm_proto::internal::Oauth2ClaimMapJoin;
 use kanidm_proto::oauth2::{
     AccessTokenIntrospectRequest, AccessTokenIntrospectResponse, AccessTokenRequest,
     AccessTokenResponse, AuthorisationResponse, GrantTypeReq, OidcDiscoveryResponse,
@@ -485,6 +486,27 @@ async fn test_oauth2_openid_public_flow(rsclient: KanidmClient) {
         .await
         .expect("Failed to update oauth2 scopes");
 
+    // Add a custom claim map.
+    rsclient
+        .idm_oauth2_rs_update_claim_map(
+            "test_integration",
+            "test_claim",
+            IDM_ALL_ACCOUNTS.name,
+            &["claim_a".to_string(), "claim_b".to_string()],
+        )
+        .await
+        .expect("Failed to update oauth2 claims");
+
+    // Set an alternate join
+    rsclient
+        .idm_oauth2_rs_update_claim_map_join(
+            "test_integration",
+            "test_claim",
+            Oauth2ClaimMapJoin::Ssv,
+        )
+        .await
+        .expect("Failed to update oauth2 claims");
+
     // Get our admin's auth token for our new client.
     // We have to re-auth to update the mail field.
     let res = rsclient
@@ -647,6 +669,12 @@ async fn test_oauth2_openid_public_flow(rsclient: KanidmClient) {
     eprintln!("{:?}", oidc.s_claims.email);
     assert!(oidc.s_claims.email.as_deref() == Some("oauth_test@localhost"));
     assert!(oidc.s_claims.email_verified == Some(true));
+
+    eprintln!("{:?}", oidc.claims);
+    assert_eq!(
+        oidc.claims.get("test_claim").and_then(|v| v.as_str()),
+        Some("claim_a claim_b")
+    );
 
     // Check the preflight works.
     let response = client

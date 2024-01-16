@@ -74,6 +74,10 @@ macro_rules! upg_from_account_e {
 }
 
 impl Group {
+    pub(crate) fn uuid(&self) -> Uuid {
+        self.uuid
+    }
+
     pub fn try_from_account_entry_reduced<'a, TXN>(
         value: &Entry<EntryReduced, EntryCommitted>,
         qs: &mut TXN,

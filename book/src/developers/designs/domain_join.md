@@ -16,18 +16,18 @@ retrieve ssh public keys, and then perform sudo authentication.
 This has the obvious caveat that anyone can stand up a machine that trusts a Kanidm instance. This
 presents a double edged sword:
 
-- By configuring a machine to authenticate via Kanidm, there is full trust
-  in the authentication decisions Kanidm makes.
-- Users of Kanidm may be tricked into accessing a machine that is not managed
-  by their IT or other central authority.
+- By configuring a machine to authenticate via Kanidm, there is full trust in the authentication
+  decisions Kanidm makes.
+- Users of Kanidm may be tricked into accessing a machine that is not managed by their IT or other
+  central authority.
 
-To prevent this, UNIX authentication should be configurable to prevent usage from unregistered machines.
-This will require the machine to present machine authentication credentials simultaneously with the
-user's credentials.
+To prevent this, UNIX authentication should be configurable to prevent usage from unregistered
+machines. This will require the machine to present machine authentication credentials simultaneously
+with the user's credentials.
 
 A potential change is removing the current unix password auth mechanism as a whole. Instead the
-user's auth token would contain a TPM bound credential that only the domain joined machine's TPM could
-access and use.
+user's auth token would contain a TPM bound credential that only the domain joined machine's TPM
+could access and use.
 
 ### Requesting Cryptographic Credentials
 

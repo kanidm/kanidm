@@ -2,6 +2,7 @@ use super::cid::Cid;
 use super::entry::EntryChangeState;
 use super::entry::State;
 use crate::be::dbvalue::DbValueImage;
+use crate::be::dbvalue::DbValueOauthClaimMapJoinV1;
 use crate::entry::Eattrs;
 use crate::prelude::*;
 use crate::schema::{SchemaReadTransaction, SchemaTransaction};
@@ -254,6 +255,13 @@ pub struct ReplOauthScopeMapV1 {
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
+pub struct ReplOauthClaimMapV1 {
+    pub name: String,
+    pub join: DbValueOauthClaimMapJoinV1,
+    pub values: BTreeMap<Uuid, BTreeSet<String>>,
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub struct ReplOauth2SessionV1 {
     pub refer: Uuid,
     pub parent: Uuid,
@@ -411,6 +419,9 @@ pub enum ReplAttrV1 {
     },
     OauthScopeMap {
         set: Vec<ReplOauthScopeMapV1>,
+    },
+    OauthClaimMap {
+        set: Vec<ReplOauthClaimMapV1>,
     },
     Oauth2Session {
         set: Vec<ReplOauth2SessionV1>,

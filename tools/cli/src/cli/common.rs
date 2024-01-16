@@ -151,7 +151,6 @@ impl CommonOpt {
                         let mut token_refs: Vec<_> = tokens
                             .into_iter()
                             .filter(|(t, _)| t.starts_with(&filter_username))
-                            .map(|(k, v)| (k, v))
                             .collect();
 
                         match token_refs.len() {

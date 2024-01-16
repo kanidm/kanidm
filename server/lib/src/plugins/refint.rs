@@ -454,7 +454,7 @@ mod tests {
 
     use crate::event::CreateEvent;
     use crate::prelude::*;
-    use crate::value::{Oauth2Session, Session, SessionState};
+    use crate::value::{Oauth2Session, OauthClaimMapJoin, Session, SessionState};
     use time::OffsetDateTime;
 
     use crate::credential::Credential;
@@ -1252,5 +1252,80 @@ mod tests {
         assert!(group.get_ava_refer(Attribute::EntryManagedBy).is_none());
 
         assert!(server_txn.commit().is_ok());
+    }
+
+    #[test]
+    fn test_delete_remove_reference_oauth2_claim_map() {
+        let ea: Entry<EntryInit, EntryNew> = entry_init!(
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (
+                Attribute::Class,
+                EntryClass::OAuth2ResourceServer.to_value()
+            ),
+            (
+                Attribute::Class,
+                EntryClass::OAuth2ResourceServerPublic.to_value()
+            ),
+            (
+                Attribute::OAuth2RsName,
+                Value::new_iname("test_resource_server")
+            ),
+            (
+                Attribute::DisplayName,
+                Value::new_utf8s("test_resource_server")
+            ),
+            (
+                Attribute::OAuth2RsOrigin,
+                Value::new_url_s("https://demo.example.com").unwrap()
+            ),
+            (
+                Attribute::OAuth2RsClaimMap,
+                Value::OauthClaimMap(
+                    "custom_a".to_string(),
+                    OauthClaimMapJoin::CommaSeparatedValue,
+                )
+            ),
+            (
+                Attribute::OAuth2RsClaimMap,
+                Value::OauthClaimValue(
+                    "custom_a".to_string(),
+                    Uuid::parse_str(TEST_TESTGROUP_B_UUID).unwrap(),
+                    btreeset!["value_a".to_string()],
+                )
+            )
+        );
+
+        let eb: Entry<EntryInit, EntryNew> = entry_init!(
+            (Attribute::Class, EntryClass::Group.to_value()),
+            (Attribute::Name, Value::new_iname("testgroup")),
+            (
+                Attribute::Uuid,
+                Value::Uuid(Uuid::parse_str(TEST_TESTGROUP_B_UUID).unwrap())
+            ),
+            (Attribute::Description, Value::new_utf8s("testgroup"))
+        );
+
+        let preload = vec![ea, eb];
+
+        run_delete_test!(
+            Ok(()),
+            preload,
+            filter!(f_eq(Attribute::Name, PartialValue::new_iname("testgroup"))),
+            None,
+            |qs: &mut QueryServerWriteTransaction| {
+                let cands = qs
+                    .internal_search(filter!(f_eq(
+                        Attribute::OAuth2RsName,
+                        PartialValue::new_iname("test_resource_server")
+                    )))
+                    .expect("Internal search failure");
+                let ue = cands.first().expect("No entry");
+
+                assert!(ue
+                    .get_ava_set(Attribute::OAuth2RsClaimMap)
+                    .and_then(|vs| vs.as_oauthclaim_map())
+                    .is_none())
+            }
+        );
     }
 }

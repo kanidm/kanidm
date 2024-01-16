@@ -1886,7 +1886,7 @@ impl IdlSqlite {
             OperationError::BackendEngine
         })?;
         // Get not pop here
-        let conn = guard.get(0).ok_or_else(|| {
+        let conn = guard.front().ok_or_else(|| {
             error!("Unable to retrieve connection from pool");
             OperationError::BackendEngine
         })?;
