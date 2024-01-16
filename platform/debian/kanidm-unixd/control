@@ -10,5 +10,5 @@ Rules-Requires-Root: no
 
 Package: kanidm-unixd
 Architecture: any
-Depends:
+Depends: tpm-udev
 Description: Kanidm Unix Tools
